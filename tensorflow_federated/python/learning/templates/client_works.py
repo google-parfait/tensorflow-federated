@@ -33,13 +33,14 @@ from tensorflow_federated.python.learning.templates import hparams_base
 
 
 @attr.s(frozen=True)
-class ClientResult():
+class ClientResult:
   """A structure containing the result of `ClientWorkProcess.next` computation.
 
   Attributes:
     update: The local update to model weights produced by clients.
     update_weight: A weight for weighted aggregation of the `update`.
   """
+
   update = attr.ib()
   update_weight = attr.ib()
 
@@ -60,7 +61,8 @@ def _is_allowed_client_data_type(type_spec: computation_types.Type) -> bool:
   elif type_spec.is_struct():
     return all(
         _is_allowed_client_data_type(element_type)
-        for element_type in type_spec.children())
+        for element_type in type_spec.children()
+    )
   else:
     return False
 
@@ -69,30 +71,34 @@ def _is_allowed_client_data_type(type_spec: computation_types.Type) -> bool:
 def _type_check_initialize_fn(initialize_fn: computation_base.Computation):
   if not initialize_fn.type_signature.result.is_federated():
     raise errors.TemplateNotFederatedError(
-        f'Provided `initialize_fn` must return a federated type, but found '
+        'Provided `initialize_fn` must return a federated type, but found '
         f'return type:\n{initialize_fn.type_signature.result}\nTip: If you '
-        f'see a collection of federated types, try wrapping the returned '
-        f'value in `tff.federated_zip` before returning.')
+        'see a collection of federated types, try wrapping the returned '
+        'value in `tff.federated_zip` before returning.'
+    )
   if initialize_fn.type_signature.result.placement != placements.SERVER:
     raise errors.TemplatePlacementError(
-        f'The state controlled by a `ClientWorkProcess` must be placed at '
-        f'the SERVER, but found type: {initialize_fn.type_signature.result}.')
+        'The state controlled by a `ClientWorkProcess` must be placed at '
+        f'the SERVER, but found type: {initialize_fn.type_signature.result}.'
+    )
 
 
 # TODO(b/240314933): Move this (or refactor this) to a more general location.
 def _check_next_fn_is_federated(next_fn: computation_base.Computation):
   """Checks that a given `next_fn` has federated inputs and outputs."""
-  next_types = (
-      structure.flatten(next_fn.type_signature.parameter) +
-      structure.flatten(next_fn.type_signature.result))
+  next_types = structure.flatten(
+      next_fn.type_signature.parameter
+  ) + structure.flatten(next_fn.type_signature.result)
   if not all([t.is_federated() for t in next_types]):
     offending_types = '\n- '.join(
-        [t for t in next_types if not t.is_federated()])
+        [t for t in next_types if not t.is_federated()]
+    )
     raise errors.TemplateNotFederatedError(
-        f'Provided `next_fn` must be a *federated* computation, that is, '
-        f'operate on `tff.FederatedType`s, but found\n'
+        'Provided `next_fn` must be a *federated* computation, that is, '
+        'operate on `tff.FederatedType`s, but found\n'
         f'next_fn with type signature:\n{next_fn.type_signature}\n'
-        f'The non-federated types are:\n {offending_types}.')
+        f'The non-federated types are:\n {offending_types}.'
+    )
 
 
 # TODO(b/240314933): Move this (or refactor this) to a more general location.
@@ -101,47 +107,59 @@ def _type_check_next_fn_parameters(next_fn: computation_base.Computation):
   next_fn_param = next_fn.type_signature.parameter
   if not next_fn_param.is_struct():
     raise errors.TemplateNextFnNumArgsError(
-        f'The `next_fn` must have exactly three input arguments, but found '
-        f'the following input type which is not a Struct: {next_fn_param}.')
+        'The `next_fn` must have exactly three input arguments, but found '
+        f'the following input type which is not a Struct: {next_fn_param}.'
+    )
   if len(next_fn_param) != 3:
     next_param_str = '\n- '.join([str(t) for t in next_fn_param])
     raise errors.TemplateNextFnNumArgsError(
-        f'The `next_fn` must have exactly three input arguments, but found '
-        f'{len(next_fn_param)} input arguments:\n{next_param_str}')
+        'The `next_fn` must have exactly three input arguments, but found '
+        f'{len(next_fn_param)} input arguments:\n{next_param_str}'
+    )
   second_next_param = next_fn_param[1]
   client_data_param = next_fn_param[2]
   if second_next_param.placement != placements.CLIENTS:
     raise errors.TemplatePlacementError(
-        f'The second input argument of `next_fn` must be placed at CLIENTS '
-        f'but found {second_next_param}.')
+        'The second input argument of `next_fn` must be placed at CLIENTS '
+        f'but found {second_next_param}.'
+    )
   if client_data_param.placement != placements.CLIENTS:
     raise errors.TemplatePlacementError(
-        f'The third input argument of `next_fn` must be placed at CLIENTS '
-        f'but found {client_data_param}.')
+        'The third input argument of `next_fn` must be placed at CLIENTS '
+        f'but found {client_data_param}.'
+    )
   if not _is_allowed_client_data_type(client_data_param.member):
     raise ClientDataTypeError(
-        f'The third input argument of `next_fn` must be a sequence or '
-        f'a structure of squences, but found {client_data_param}.')
+        'The third input argument of `next_fn` must be a sequence or '
+        f'a structure of squences, but found {client_data_param}.'
+    )
 
 
 # TODO(b/240314933): Move this (or refactor this) to a more general location.
 def _type_check_next_fn_result(next_fn: computation_base.Computation):
   """Validates the output types of `next_fn` in a `ClientWorkProcess`."""
   next_fn_result = next_fn.type_signature.result
-  if (not next_fn_result.result.is_federated() or
-      next_fn_result.result.placement != placements.CLIENTS):
+  if (
+      not next_fn_result.result.is_federated()
+      or next_fn_result.result.placement != placements.CLIENTS
+  ):
     raise errors.TemplatePlacementError(
-        f'The "result" attribute of the return type of `next_fn` must be '
-        f'placed at CLIENTS, but found {next_fn_result.result}.')
-  if (not next_fn_result.result.member.is_struct_with_python() or
-      next_fn_result.result.member.python_container is not ClientResult):
+        'The "result" attribute of the return type of `next_fn` must be '
+        f'placed at CLIENTS, but found {next_fn_result.result}.'
+    )
+  if (
+      not next_fn_result.result.member.is_struct_with_python()
+      or next_fn_result.result.member.python_container is not ClientResult
+  ):
     raise ClientResultTypeError(
-        f'The "result" attribute of the return type of `next_fn` must have '
-        f'the `ClientResult` container, but found {next_fn_result.result}.')
+        'The "result" attribute of the return type of `next_fn` must have '
+        f'the `ClientResult` container, but found {next_fn_result.result}.'
+    )
   if next_fn_result.measurements.placement != placements.SERVER:
     raise errors.TemplatePlacementError(
-        f'The "measurements" attribute of return type of `next_fn` must be '
-        f'placed at SERVER, but found {next_fn_result.measurements}.')
+        'The "measurements" attribute of return type of `next_fn` must be '
+        f'placed at SERVER, but found {next_fn_result.measurements}.'
+    )
 
 
 class ClientWorkProcess(measured_process.MeasuredProcess):
@@ -156,12 +174,14 @@ class ClientWorkProcess(measured_process.MeasuredProcess):
   clients in a learning process.
   """
 
-  def __init__(self,
-               initialize_fn: computation_base.Computation,
-               next_fn: computation_base.Computation,
-               *,
-               get_hparams_fn: Optional[computation_base.Computation] = None,
-               set_hparams_fn: Optional[computation_base.Computation] = None):
+  def __init__(
+      self,
+      initialize_fn: computation_base.Computation,
+      next_fn: computation_base.Computation,
+      *,
+      get_hparams_fn: Optional[computation_base.Computation] = None,
+      set_hparams_fn: Optional[computation_base.Computation] = None,
+  ):
     """Initializes a `ClientWorkProcess`.
 
     The `initialize_fn` and `next_fn` must have the following type signatures:
@@ -239,7 +259,8 @@ class ClientWorkProcess(measured_process.MeasuredProcess):
       hparams_base.type_check_set_hparams_fn(set_hparams_fn, state_type)
     else:
       set_hparams_fn = hparams_base.build_basic_hparams_setter(
-          state_type, hparams_type)
+          state_type, hparams_type
+      )
 
     self._get_hparams_fn = get_hparams_fn
     self._set_hparams_fn = set_hparams_fn

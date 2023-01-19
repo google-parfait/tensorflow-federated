@@ -38,18 +38,26 @@ class FedProxConstructionTest(parameterized.TestCase):
   """Tests construction of the FedProx training process."""
 
   # pylint: disable=g-complex-comprehension
-  @parameterized.named_parameters((
-      '_'.join(name for name, _ in named_params),
-      *(param for _, param in named_params),
-  ) for named_params in itertools.product([
-      ('keras_optimizer', tf.keras.optimizers.SGD),
-      ('tff_optimizer', sgdm.build_sgdm(learning_rate=0.1)),
-  ], [
-      ('robust_aggregator', model_update_aggregator.robust_aggregator),
-      ('compression_aggregator',
-       model_update_aggregator.compression_aggregator),
-      ('secure_aggreagtor', model_update_aggregator.secure_aggregator),
-  ]))
+  @parameterized.named_parameters(
+      (
+          '_'.join(name for name, _ in named_params),
+          *(param for _, param in named_params),
+      )
+      for named_params in itertools.product(
+          [
+              ('keras_optimizer', tf.keras.optimizers.SGD),
+              ('tff_optimizer', sgdm.build_sgdm(learning_rate=0.1)),
+          ],
+          [
+              ('robust_aggregator', model_update_aggregator.robust_aggregator),
+              (
+                  'compression_aggregator',
+                  model_update_aggregator.compression_aggregator,
+              ),
+              ('secure_aggreagtor', model_update_aggregator.secure_aggregator),
+          ],
+      )
+  )
   # pylint: enable=g-complex-comprehension
   def test_construction_calls_model_fn(self, optimizer_fn, aggregation_factory):
     # Assert that the process building does not call `model_fn` too many times.
@@ -60,7 +68,8 @@ class FedProxConstructionTest(parameterized.TestCase):
         model_fn=mock_model_fn,
         proximal_strength=1.0,
         client_optimizer_fn=optimizer_fn,
-        model_aggregator=aggregation_factory())
+        model_aggregator=aggregation_factory(),
+    )
     self.assertEqual(mock_model_fn.call_count, 3)
 
   @parameterized.named_parameters(
@@ -70,13 +79,15 @@ class FedProxConstructionTest(parameterized.TestCase):
   @mock.patch.object(
       dataset_reduce,
       '_dataset_reduce_fn',
-      wraps=dataset_reduce._dataset_reduce_fn)
+      wraps=dataset_reduce._dataset_reduce_fn,
+  )
   def test_client_tf_dataset_reduce_fn(self, simulation, mock_method):
     fed_prox.build_weighted_fed_prox(
         model_fn=model_examples.LinearRegression,
         proximal_strength=1.0,
         client_optimizer_fn=sgdm.build_sgdm(1.0),
-        use_experimental_simulation_loop=simulation)
+        use_experimental_simulation_loop=simulation,
+    )
     if simulation:
       mock_method.assert_not_called()
     else:
@@ -91,25 +102,30 @@ class FedProxConstructionTest(parameterized.TestCase):
     build_fed_prox(
         model_fn=model,
         proximal_strength=1.0,
-        client_optimizer_fn=sgdm.build_sgdm(1.0))
+        client_optimizer_fn=sgdm.build_sgdm(1.0),
+    )
 
   def test_build_functional_model_fed_prox_non_tff_optimizer_fails(self):
     model = test_models.build_functional_linear_regression(feature_dim=2)
     with self.assertRaisesRegex(
         TypeError,
-        'client_optimizer_fn` must be a `tff.learning.optimizers.Optimizer'):
+        'client_optimizer_fn` must be a `tff.learning.optimizers.Optimizer',
+    ):
       fed_prox.build_weighted_fed_prox(
           model_fn=model,
           proximal_strength=1.0,
-          client_optimizer_fn=tf.keras.optimizers.SGD)
+          client_optimizer_fn=tf.keras.optimizers.SGD,
+      )
 
   @mock.patch.object(fed_prox, 'build_weighted_fed_prox')
   def test_build_weighted_fed_prox_called_by_unweighted_fed_prox(
-      self, mock_fed_avg):
+      self, mock_fed_avg
+  ):
     fed_prox.build_unweighted_fed_prox(
         model_fn=model_examples.LinearRegression,
         proximal_strength=1.0,
-        client_optimizer_fn=sgdm.build_sgdm(1.0))
+        client_optimizer_fn=sgdm.build_sgdm(1.0),
+    )
     self.assertEqual(mock_fed_avg.call_count, 1)
 
   @mock.patch.object(fed_prox, 'build_weighted_fed_prox')
@@ -118,7 +134,8 @@ class FedProxConstructionTest(parameterized.TestCase):
     fed_prox.build_unweighted_fed_prox(
         model_fn=model_examples.LinearRegression,
         proximal_strength=1.0,
-        client_optimizer_fn=sgdm.build_sgdm(1.0))
+        client_optimizer_fn=sgdm.build_sgdm(1.0),
+    )
     self.assertEqual(mock_as_weighted.call_count, 1)
 
   def test_raises_on_non_callable_model_fn(self):
@@ -126,28 +143,32 @@ class FedProxConstructionTest(parameterized.TestCase):
       fed_prox.build_weighted_fed_prox(
           model_fn=model_examples.LinearRegression(),
           proximal_strength=1.0,
-          client_optimizer_fn=tf.keras.optimizers.SGD)
+          client_optimizer_fn=tf.keras.optimizers.SGD,
+      )
 
   def test_raises_on_negative_proximal_strength(self):
     with self.assertRaises(ValueError):
       fed_prox.build_weighted_fed_prox(
           model_fn=model_examples.LinearRegression,
           proximal_strength=-1.0,
-          client_optimizer_fn=tf.keras.optimizers.SGD)
+          client_optimizer_fn=tf.keras.optimizers.SGD,
+      )
 
   def test_raises_on_invalid_distributor(self):
     model_weights_type = type_conversions.type_from_tensors(
-        model_weights.ModelWeights.from_model(
-            model_examples.LinearRegression()))
+        model_weights.ModelWeights.from_model(model_examples.LinearRegression())
+    )
     distributor = distributors.build_broadcast_process(model_weights_type)
     invalid_distributor = iterative_process.IterativeProcess(
-        distributor.initialize, distributor.next)
+        distributor.initialize, distributor.next
+    )
     with self.assertRaises(TypeError):
       fed_prox.build_weighted_fed_prox(
           model_fn=model_examples.LinearRegression,
           proximal_strength=1.0,
           client_optimizer_fn=sgdm.build_sgdm(1.0),
-          model_distributor=invalid_distributor)
+          model_distributor=invalid_distributor,
+      )
 
   def test_weighted_fed_avg_raises_on_unweighted_aggregator(self):
     model_aggregator = model_update_aggregator.robust_aggregator(weighted=False)
@@ -156,7 +177,8 @@ class FedProxConstructionTest(parameterized.TestCase):
           model_fn=model_examples.LinearRegression,
           proximal_strength=1.0,
           client_optimizer_fn=sgdm.build_sgdm(1.0),
-          model_aggregator=model_aggregator)
+          model_aggregator=model_aggregator,
+      )
 
   def test_unweighted_fed_avg_raises_on_weighted_aggregator(self):
     model_aggregator = model_update_aggregator.robust_aggregator(weighted=True)
@@ -165,7 +187,8 @@ class FedProxConstructionTest(parameterized.TestCase):
           model_fn=model_examples.LinearRegression,
           proximal_strength=1.0,
           client_optimizer_fn=sgdm.build_sgdm(1.0),
-          model_aggregator=model_aggregator)
+          model_aggregator=model_aggregator,
+      )
 
   def test_weighted_fed_prox_with_only_secure_aggregation(self):
     model_fn = model_examples.LinearRegression
@@ -174,10 +197,13 @@ class FedProxConstructionTest(parameterized.TestCase):
         proximal_strength=1.0,
         client_optimizer_fn=lambda: tf.keras.optimizers.SGD(1.0),
         model_aggregator=model_update_aggregator.secure_aggregator(
-            weighted=True),
-        metrics_aggregator=aggregator.secure_sum_then_finalize)
+            weighted=True
+        ),
+        metrics_aggregator=aggregator.secure_sum_then_finalize,
+    )
     static_assert.assert_not_contains_unsecure_aggregation(
-        learning_process.next)
+        learning_process.next
+    )
 
   def test_unweighted_fed_prox_with_only_secure_aggregation(self):
     model_fn = model_examples.LinearRegression
@@ -186,10 +212,13 @@ class FedProxConstructionTest(parameterized.TestCase):
         proximal_strength=1.0,
         client_optimizer_fn=lambda: tf.keras.optimizers.SGD(1.0),
         model_aggregator=model_update_aggregator.secure_aggregator(
-            weighted=False),
-        metrics_aggregator=aggregator.secure_sum_then_finalize)
+            weighted=False
+        ),
+        metrics_aggregator=aggregator.secure_sum_then_finalize,
+    )
     static_assert.assert_not_contains_unsecure_aggregation(
-        learning_process.next)
+        learning_process.next
+    )
 
 
 if __name__ == '__main__':

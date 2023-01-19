@@ -78,13 +78,15 @@ from tensorflow_federated.python.learning.reconstruction import reconstruction_u
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
 # Type aliases for readability.
-AggregationFactory = Union[factory.WeightedAggregationFactory,
-                           factory.UnweightedAggregationFactory]
+AggregationFactory = Union[
+    factory.WeightedAggregationFactory, factory.UnweightedAggregationFactory
+]
 LossFn = Callable[[], tf.keras.losses.Loss]
 MetricsFn = Callable[[], list[tf.keras.metrics.Metric]]
 ModelFn = Callable[[], model_lib.Model]
-OptimizerFn = Union[Callable[[], tf.keras.optimizers.Optimizer],
-                    optimizer_base.Optimizer]
+OptimizerFn = Union[
+    Callable[[], tf.keras.optimizers.Optimizer], optimizer_base.Optimizer
+]
 
 
 @attr.s(eq=False, frozen=True)
@@ -99,6 +101,7 @@ class ClientOutput:
     model_output: A structure reflecting the losses and metrics produced during
       training on the input dataset.
   """
+
   weights_delta = attr.ib()
   client_weight = attr.ib()
   model_output = attr.ib()
@@ -136,9 +139,11 @@ def _build_server_init_fn(
     optimizer = keras_optimizer.build_or_verify_tff_optimizer(
         server_optimizer_fn,
         model_weights.trainable,
-        disjoint_init_and_next=True)
+        disjoint_init_and_next=True,
+    )
     trainable_tensor_specs = tf.nest.map_structure(
-        lambda v: tf.TensorSpec(v.shape, v.dtype), model_weights.trainable)
+        lambda v: tf.TensorSpec(v.shape, v.dtype), model_weights.trainable
+    )
     optimizer_state = optimizer.initialize(trainable_tensor_specs)
     return model_weights, optimizer_state
 
@@ -151,7 +156,9 @@ def _build_server_init_fn(
             model=tf_init_tuple[0],
             optimizer_state=tf_init_tuple[1],
             delta_aggregate_state=aggregation_init_computation(),
-            model_broadcast_state=broadcast_init_computation()))
+            model_broadcast_state=broadcast_init_computation(),
+        )
+    )
 
   return server_init_tff
 
@@ -182,13 +189,16 @@ def _build_server_update_fn(
     A `tff.Computation` that updates `ServerState`.
   """
 
-  @tensorflow_computation.tf_computation(server_state_type,
-                                         model_weights_type.trainable,
-                                         aggregator_state_type,
-                                         broadcaster_state_type)
+  @tensorflow_computation.tf_computation(
+      server_state_type,
+      model_weights_type.trainable,
+      aggregator_state_type,
+      broadcaster_state_type,
+  )
   @tf.function
-  def server_update(server_state, weights_delta, aggregator_state,
-                    broadcaster_state):
+  def server_update(
+      server_state, weights_delta, aggregator_state, broadcaster_state
+  ):
     """Updates the `server_state` based on `weights_delta`.
 
     Args:
@@ -208,27 +218,36 @@ def _build_server_update_fn(
     optimizer = keras_optimizer.build_or_verify_tff_optimizer(
         server_optimizer_fn,
         global_model_weights.trainable,
-        disjoint_init_and_next=True)
+        disjoint_init_and_next=True,
+    )
     optimizer_state = server_state.optimizer_state
 
     # Initialize the model with the current state.
-    tf.nest.map_structure(lambda a, b: a.assign(b), global_model_weights,
-                          server_state.model)
+    tf.nest.map_structure(
+        lambda a, b: a.assign(b), global_model_weights, server_state.model
+    )
 
     weights_delta, has_non_finite_weight = (
-        tensor_utils.zero_all_if_any_non_finite(weights_delta))
+        tensor_utils.zero_all_if_any_non_finite(weights_delta)
+    )
 
     # We ignore the update if the weights_delta is non finite.
     if tf.equal(has_non_finite_weight, 0):
-      negative_weights_delta = tf.nest.map_structure(lambda w: -1.0 * w,
-                                                     weights_delta)
+      negative_weights_delta = tf.nest.map_structure(
+          lambda w: -1.0 * w, weights_delta
+      )
       optimizer_state, updated_weights = optimizer.next(
-          optimizer_state, global_model_weights.trainable,
-          negative_weights_delta)
+          optimizer_state,
+          global_model_weights.trainable,
+          negative_weights_delta,
+      )
       if not isinstance(optimizer, keras_optimizer.KerasOptimizer):
         # Keras optimizer mutates model variables within the `next` step.
-        tf.nest.map_structure(lambda a, b: a.assign(b),
-                              global_model_weights.trainable, updated_weights)
+        tf.nest.map_structure(
+            lambda a, b: a.assign(b),
+            global_model_weights.trainable,
+            updated_weights,
+        )
 
     # Create a new state based on the updated model.
     return structure.update_struct(
@@ -324,16 +343,19 @@ def _build_client_update_fn(
 
     global_model_weights = reconstruction_utils.get_global_variables(model)
     local_model_weights = reconstruction_utils.get_local_variables(model)
-    tf.nest.map_structure(lambda a, b: a.assign(b), global_model_weights,
-                          initial_model_weights)
+    tf.nest.map_structure(
+        lambda a, b: a.assign(b), global_model_weights, initial_model_weights
+    )
     client_optimizer = keras_optimizer.build_or_verify_tff_optimizer(
         client_optimizer_fn,
         global_model_weights.trainable,
-        disjoint_init_and_next=False)
+        disjoint_init_and_next=False,
+    )
     reconstruction_optimizer = keras_optimizer.build_or_verify_tff_optimizer(
         reconstruction_optimizer_fn,
         local_model_weights.trainable,
-        disjoint_init_and_next=False)
+        disjoint_init_and_next=False,
+    )
 
     @tf.function
     def reconstruction_reduce_fn(state, batch):
@@ -342,19 +364,27 @@ def _build_client_update_fn(
       with tf.GradientTape() as tape:
         output = model.forward_pass(batch, training=True)
         batch_loss = client_loss(
-            y_true=output.labels, y_pred=output.predictions)
+            y_true=output.labels, y_pred=output.predictions
+        )
 
       gradients = tape.gradient(batch_loss, local_model_weights.trainable)
       optimizer_state, updated_weights = reconstruction_optimizer.next(
-          optimizer_state, _flat_tuple(local_model_weights.trainable),
-          _flat_tuple(gradients))
-      updated_weights = tf.nest.pack_sequence_as(local_model_weights.trainable,
-                                                 updated_weights)
-      if not isinstance(reconstruction_optimizer,
-                        keras_optimizer.KerasOptimizer):
+          optimizer_state,
+          _flat_tuple(local_model_weights.trainable),
+          _flat_tuple(gradients),
+      )
+      updated_weights = tf.nest.pack_sequence_as(
+          local_model_weights.trainable, updated_weights
+      )
+      if not isinstance(
+          reconstruction_optimizer, keras_optimizer.KerasOptimizer
+      ):
         # Keras optimizer mutates model variables within the `next` step.
-        tf.nest.map_structure(lambda a, b: a.assign(b),
-                              local_model_weights.trainable, updated_weights)
+        tf.nest.map_structure(
+            lambda a, b: a.assign(b),
+            local_model_weights.trainable,
+            updated_weights,
+        )
 
       return num_examples_sum + output.num_examples, optimizer_state
 
@@ -365,18 +395,25 @@ def _build_client_update_fn(
       with tf.GradientTape() as tape:
         output = model.forward_pass(batch, training=True)
         batch_loss = client_loss(
-            y_true=output.labels, y_pred=output.predictions)
+            y_true=output.labels, y_pred=output.predictions
+        )
 
       gradients = tape.gradient(batch_loss, global_model_weights.trainable)
       optimizer_state, updated_weights = client_optimizer.next(
-          optimizer_state, _flat_tuple(global_model_weights.trainable),
-          _flat_tuple(gradients))
-      updated_weights = tf.nest.pack_sequence_as(global_model_weights.trainable,
-                                                 updated_weights)
+          optimizer_state,
+          _flat_tuple(global_model_weights.trainable),
+          _flat_tuple(gradients),
+      )
+      updated_weights = tf.nest.pack_sequence_as(
+          global_model_weights.trainable, updated_weights
+      )
       if not isinstance(client_optimizer, keras_optimizer.KerasOptimizer):
         # Keras optimizer mutates model variables within the `next` step.
-        tf.nest.map_structure(lambda a, b: a.assign(b),
-                              global_model_weights.trainable, updated_weights)
+        tf.nest.map_structure(
+            lambda a, b: a.assign(b),
+            global_model_weights.trainable,
+            updated_weights,
+        )
 
       # Update each metric.
       for metric in metrics:
@@ -394,38 +431,47 @@ def _build_client_update_fn(
       def initial_state_reconstruction_reduce():
         trainable_tensor_specs = tf.nest.map_structure(
             lambda v: tf.TensorSpec(v.shape, v.dtype),
-            local_model_weights.trainable)
+            local_model_weights.trainable,
+        )
         # TODO(b/161529310): We flatten and convert the trainable specs to
         # tuple, as the data iteration pattern would try to stack the tensors
         # in a list.
         return tf.constant(0), reconstruction_optimizer.initialize(
-            _flat_tuple(trainable_tensor_specs))
+            _flat_tuple(trainable_tensor_specs)
+        )
 
       recon_dataset.reduce(
           initial_state=initial_state_reconstruction_reduce(),
-          reduce_func=reconstruction_reduce_fn)
+          reduce_func=reconstruction_reduce_fn,
+      )
 
     # Train the global variables, keeping local variables frozen.
     def initial_state_train_reduce():
       trainable_tensor_specs = tf.nest.map_structure(
           lambda v: tf.TensorSpec(v.shape, v.dtype),
-          global_model_weights.trainable)
+          global_model_weights.trainable,
+      )
       # TODO(b/161529310): We flatten and convert the trainable specs to
       # tuple, as the data iteration pattern would try to stack the tensors
       # in a list.
       return tf.constant(0), client_optimizer.initialize(
-          _flat_tuple(trainable_tensor_specs))
+          _flat_tuple(trainable_tensor_specs)
+      )
 
     num_examples_sum, _ = post_recon_dataset.reduce(
-        initial_state=initial_state_train_reduce(), reduce_func=train_reduce_fn)
+        initial_state=initial_state_train_reduce(), reduce_func=train_reduce_fn
+    )
 
-    weights_delta = tf.nest.map_structure(lambda a, b: a - b,
-                                          global_model_weights.trainable,
-                                          initial_model_weights.trainable)
+    weights_delta = tf.nest.map_structure(
+        lambda a, b: a - b,
+        global_model_weights.trainable,
+        initial_model_weights.trainable,
+    )
 
     # We ignore the update if the weights_delta is non finite.
     weights_delta, has_non_finite_weight = (
-        tensor_utils.zero_all_if_any_non_finite(weights_delta))
+        tensor_utils.zero_all_if_any_non_finite(weights_delta)
+    )
 
     model_local_outputs = keras_utils.read_metric_variables(metrics)
 
@@ -472,8 +518,9 @@ def _build_run_one_round_fn(
     A `tff.Computation` for a round of training.
   """
 
-  @federated_computation.federated_computation(federated_server_state_type,
-                                               federated_dataset_type)
+  @federated_computation.federated_computation(
+      federated_server_state_type, federated_dataset_type
+  )
   def run_one_round(server_state, federated_dataset):
     """Orchestration logic for one round of computation.
 
@@ -487,40 +534,54 @@ def _build_run_one_round_fn(
         metrics.
     """
     broadcast_output = broadcast_process.next(
-        server_state.model_broadcast_state, server_state.model)
+        server_state.model_broadcast_state, server_state.model
+    )
 
     client_outputs = intrinsics.federated_map(
-        client_update_fn, (federated_dataset, broadcast_output.result))
+        client_update_fn, (federated_dataset, broadcast_output.result)
+    )
 
     if aggregation_process.is_weighted:
       aggregation_output = aggregation_process.next(
           server_state.delta_aggregate_state,
           client_outputs.weights_delta,
-          weight=client_outputs.client_weight)
+          weight=client_outputs.client_weight,
+      )
     else:
       aggregation_output = aggregation_process.next(
-          server_state.delta_aggregate_state, client_outputs.weights_delta)
+          server_state.delta_aggregate_state, client_outputs.weights_delta
+      )
 
     round_model_delta = aggregation_output.result
 
     server_state = intrinsics.federated_map(
-        server_update_fn, (server_state, round_model_delta,
-                           aggregation_output.state, broadcast_output.state))
+        server_update_fn,
+        (
+            server_state,
+            round_model_delta,
+            aggregation_output.state,
+            broadcast_output.state,
+        ),
+    )
 
     aggregated_model_outputs = federated_output_computation(
-        client_outputs.model_output)
+        client_outputs.model_output
+    )
     measurements = intrinsics.federated_zip(
         collections.OrderedDict(
             broadcast=broadcast_output.measurements,
             aggregation=aggregation_output.measurements,
-            train=aggregated_model_outputs))
+            train=aggregated_model_outputs,
+        )
+    )
     return server_state, measurements
 
   return run_one_round
 
 
 def _is_valid_broadcast_process(
-    process: measured_process_lib.MeasuredProcess) -> bool:
+    process: measured_process_lib.MeasuredProcess,
+) -> bool:
   """Validates a `MeasuredProcess` adheres to the broadcast signature.
 
   A valid broadcast process is one whose argument is placed at `SERVER` and
@@ -535,19 +596,22 @@ def _is_valid_broadcast_process(
   init_type = process.initialize.type_signature
   next_type = process.next.type_signature
   is_valid_stateful_process = (
-      init_type.result.placement is placements.SERVER and
-      next_type.parameter[0].placement is placements.SERVER and
-      next_type.result.state.placement is placements.SERVER and
-      next_type.result.measurements.placement is placements.SERVER)
-  return (isinstance(process, measured_process_lib.MeasuredProcess) and
-          is_valid_stateful_process and
-          next_type.parameter[1].placement is placements.SERVER and
-          next_type.result.result.placement is placements.CLIENTS)
+      init_type.result.placement is placements.SERVER
+      and next_type.parameter[0].placement is placements.SERVER
+      and next_type.result.state.placement is placements.SERVER
+      and next_type.result.measurements.placement is placements.SERVER
+  )
+  return (
+      isinstance(process, measured_process_lib.MeasuredProcess)
+      and is_valid_stateful_process
+      and next_type.parameter[1].placement is placements.SERVER
+      and next_type.result.result.placement is placements.CLIENTS
+  )
 
 
 def _instantiate_aggregation_process(
-    aggregation_factory,
-    model_weights_type) -> aggregation_process_lib.AggregationProcess:
+    aggregation_factory, model_weights_type
+) -> aggregation_process_lib.AggregationProcess:
   """Constructs aggregation process given factory, checking compatibilty."""
   if aggregation_factory is None:
     aggregation_factory = mean.MeanFactory()
@@ -557,23 +621,30 @@ def _instantiate_aggregation_process(
   # We give precedence to unweighted aggregation.
   if isinstance(aggregation_factory, factory.UnweightedAggregationFactory):
     aggregation_process = aggregation_factory.create(
-        model_weights_type.trainable)
+        model_weights_type.trainable
+    )
   elif isinstance(aggregation_factory, factory.WeightedAggregationFactory):
     aggregation_process = aggregation_factory.create(
-        model_weights_type.trainable, computation_types.TensorType(tf.float32))
+        model_weights_type.trainable, computation_types.TensorType(tf.float32)
+    )
   else:
-    raise ValueError('Unknown type of aggregation factory: {}'.format(
-        type(aggregation_factory)))
+    raise ValueError(
+        'Unknown type of aggregation factory: {}'.format(
+            type(aggregation_factory)
+        )
+    )
 
   process_signature = aggregation_process.next.type_signature
   input_client_value_type = process_signature.parameter[1]
   result_server_value_type = process_signature.result[1]
   if input_client_value_type.member != result_server_value_type.member:
-    raise TypeError('`aggregation_factory` does not produce a '
-                    'compatible `AggregationProcess`. The processes must '
-                    'retain the type structure of the inputs on the '
-                    f'server, but got {input_client_value_type.member} != '
-                    f'{result_server_value_type.member}.')
+    raise TypeError(
+        '`aggregation_factory` does not produce a '
+        'compatible `AggregationProcess`. The processes must '
+        'retain the type structure of the inputs on the '
+        f'server, but got {input_client_value_type.member} != '
+        f'{result_server_value_type.member}.'
+    )
 
   return aggregation_process
 
@@ -584,11 +655,14 @@ def build_training_process(
     loss_fn: LossFn,
     metrics_fn: Optional[MetricsFn] = None,
     server_optimizer_fn: OptimizerFn = functools.partial(
-        tf.keras.optimizers.SGD, 1.0),
+        tf.keras.optimizers.SGD, 1.0
+    ),
     client_optimizer_fn: OptimizerFn = functools.partial(
-        tf.keras.optimizers.SGD, 0.1),
+        tf.keras.optimizers.SGD, 0.1
+    ),
     reconstruction_optimizer_fn: OptimizerFn = functools.partial(
-        tf.keras.optimizers.SGD, 0.1),
+        tf.keras.optimizers.SGD, 0.1
+    ),
     dataset_split_fn: Optional[reconstruction_utils.DatasetSplitFn] = None,
     client_weighting: Optional[client_weight_lib.ClientWeightType] = None,
     broadcast_process: Optional[measured_process_lib.MeasuredProcess] = None,
@@ -669,35 +743,48 @@ def build_training_process(
     throwaway_model_for_metadata = model_fn()
 
   model_weights_type = type_conversions.type_from_tensors(
-      reconstruction_utils.get_global_variables(throwaway_model_for_metadata))
+      reconstruction_utils.get_global_variables(throwaway_model_for_metadata)
+  )
 
   if client_weighting is None:
     client_weighting = client_weight_lib.ClientWeighting.NUM_EXAMPLES
-  if (isinstance(aggregation_factory, factory.UnweightedAggregationFactory) and
-      client_weighting is not client_weight_lib.ClientWeighting.UNIFORM):
-    raise ValueError(f'Expected `tff.learning.ClientWeighting.UNIFORM` client '
-                     f'weighting with unweighted aggregator, instead got '
-                     f'{client_weighting}')
+  if (
+      isinstance(aggregation_factory, factory.UnweightedAggregationFactory)
+      and client_weighting is not client_weight_lib.ClientWeighting.UNIFORM
+  ):
+    raise ValueError(
+        'Expected `tff.learning.ClientWeighting.UNIFORM` client '
+        'weighting with unweighted aggregator, instead got '
+        f'{client_weighting}'
+    )
 
   if broadcast_process is None:
     broadcast_process = optimizer_utils.build_stateless_broadcaster(
-        model_weights_type=model_weights_type)
+        model_weights_type=model_weights_type
+    )
   if not _is_valid_broadcast_process(broadcast_process):
     raise TypeError(
         'broadcast_process type signature does not conform to expected '
         'signature (<state@S, input@S> -> <state@S, result@C, measurements@S>).'
-        ' Got: {t}'.format(t=broadcast_process.next.type_signature))
+        ' Got: {t}'.format(t=broadcast_process.next.type_signature)
+    )
   broadcaster_state_type = (
-      broadcast_process.initialize.type_signature.result.member)
+      broadcast_process.initialize.type_signature.result.member
+  )
 
   aggregation_process = _instantiate_aggregation_process(
-      aggregation_factory, model_weights_type)
+      aggregation_factory, model_weights_type
+  )
   aggregator_state_type = (
-      aggregation_process.initialize.type_signature.result.member)
+      aggregation_process.initialize.type_signature.result.member
+  )
 
-  server_init_tff = _build_server_init_fn(model_fn, server_optimizer_fn,
-                                          aggregation_process.initialize,
-                                          broadcast_process.initialize)
+  server_init_tff = _build_server_init_fn(
+      model_fn,
+      server_optimizer_fn,
+      aggregation_process.initialize,
+      broadcast_process.initialize,
+  )
   server_state_type = server_init_tff.type_signature.result.member
 
   server_update_fn = _build_server_update_fn(
@@ -706,13 +793,16 @@ def build_training_process(
       server_state_type,
       server_state_type.model,
       aggregator_state_type=aggregator_state_type,
-      broadcaster_state_type=broadcaster_state_type)
+      broadcaster_state_type=broadcaster_state_type,
+  )
 
   dataset_type = computation_types.SequenceType(
-      throwaway_model_for_metadata.input_spec)
+      throwaway_model_for_metadata.input_spec
+  )
   if dataset_split_fn is None:
     dataset_split_fn = reconstruction_utils.build_dataset_split_fn(
-        split_dataset=True)
+        split_dataset=True
+    )
   client_update_fn = _build_client_update_fn(
       model_fn,
       loss_fn=loss_fn,
@@ -722,7 +812,8 @@ def build_training_process(
       client_optimizer_fn=client_optimizer_fn,
       reconstruction_optimizer_fn=reconstruction_optimizer_fn,
       dataset_split_fn=dataset_split_fn,
-      client_weighting=client_weighting)
+      client_weighting=client_weighting,
+  )
 
   federated_server_state_type = computation_types.at_server(server_state_type)
   federated_dataset_type = computation_types.at_clients(dataset_type)
@@ -733,7 +824,8 @@ def build_training_process(
     metrics.extend(metrics_fn())
   metrics.append(keras_utils.MeanLossMetric(loss_fn()))
   federated_output_computation = (
-      keras_utils.federated_output_computation_from_metrics(metrics))
+      keras_utils.federated_output_computation_from_metrics(metrics)
+  )
 
   run_one_round_tff = _build_run_one_round_fn(
       server_update_fn,
@@ -746,7 +838,8 @@ def build_training_process(
   )
 
   process = iterative_process_lib.IterativeProcess(
-      initialize_fn=server_init_tff, next_fn=run_one_round_tff)
+      initialize_fn=server_init_tff, next_fn=run_one_round_tff
+  )
 
   @tensorflow_computation.tf_computation(server_state_type)
   def get_model_weights(server_state):

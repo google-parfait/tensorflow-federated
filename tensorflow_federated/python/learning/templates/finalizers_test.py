@@ -31,7 +31,8 @@ SERVER_FLOAT = computation_types.FederatedType(tf.float32, placements.SERVER)
 CLIENTS_INT = computation_types.FederatedType(tf.int32, placements.CLIENTS)
 CLIENTS_FLOAT = computation_types.FederatedType(tf.float32, placements.CLIENTS)
 MODEL_WEIGHTS_TYPE = computation_types.at_server(
-    computation_types.to_type(model_weights.ModelWeights(tf.float32, ())))
+    computation_types.to_type(model_weights.ModelWeights(tf.float32, ()))
+)
 MeasuredProcessOutput = measured_process.MeasuredProcessOutput
 
 
@@ -42,7 +43,8 @@ def server_zero():
 
 def federated_add(a, b):
   return intrinsics.federated_map(
-      tensorflow_computation.tf_computation(lambda x, y: x + y), (a, b))
+      tensorflow_computation.tf_computation(lambda x, y: x + y), (a, b)
+  )
 
 
 @federated_computation.federated_computation()
@@ -52,14 +54,19 @@ def test_initialize_fn():
 
 def test_finalizer_result(weights, update):
   return intrinsics.federated_zip(
-      model_weights.ModelWeights(federated_add(weights.trainable, update), ()))
+      model_weights.ModelWeights(federated_add(weights.trainable, update), ())
+  )
 
 
-@federated_computation.federated_computation(SERVER_INT, MODEL_WEIGHTS_TYPE,
-                                             SERVER_FLOAT)
+@federated_computation.federated_computation(
+    SERVER_INT, MODEL_WEIGHTS_TYPE, SERVER_FLOAT
+)
 def test_next_fn(state, weights, update):
-  return MeasuredProcessOutput(state, test_finalizer_result(weights, update),
-                               intrinsics.federated_value(1, placements.SERVER))
+  return MeasuredProcessOutput(
+      state,
+      test_finalizer_result(weights, update),
+      intrinsics.federated_value(1, placements.SERVER),
+  )
 
 
 class FinalizerTest(tf.test.TestCase):
@@ -72,14 +79,18 @@ class FinalizerTest(tf.test.TestCase):
 
   def test_construction_with_empty_state_does_not_raise(self):
     initialize_fn = federated_computation.federated_computation()(
-        lambda: intrinsics.federated_value((), placements.SERVER))
+        lambda: intrinsics.federated_value((), placements.SERVER)
+    )
 
     @federated_computation.federated_computation(
-        initialize_fn.type_signature.result, MODEL_WEIGHTS_TYPE, SERVER_FLOAT)
+        initialize_fn.type_signature.result, MODEL_WEIGHTS_TYPE, SERVER_FLOAT
+    )
     def next_fn(state, weights, update):
       return MeasuredProcessOutput(
-          state, test_finalizer_result(weights, update),
-          intrinsics.federated_value(1, placements.SERVER))
+          state,
+          test_finalizer_result(weights, update),
+          intrinsics.federated_value(1, placements.SERVER),
+      )
 
     try:
       finalizers.FinalizerProcess(initialize_fn, next_fn)
@@ -94,38 +105,44 @@ class FinalizerTest(tf.test.TestCase):
     with self.assertRaisesRegex(TypeError, r'Expected .*\.Computation, .*'):
       finalizers.FinalizerProcess(
           initialize_fn=test_initialize_fn,
-          next_fn=lambda state, w, u: MeasuredProcessOutput(state, w + u, ()))
+          next_fn=lambda state, w, u: MeasuredProcessOutput(state, w + u, ()),
+      )
 
   def test_init_param_not_empty_raises(self):
     one_arg_initialize_fn = federated_computation.federated_computation(
-        SERVER_INT)(lambda x: x)
+        SERVER_INT
+    )(lambda x: x)
     with self.assertRaises(errors.TemplateInitFnParamNotEmptyError):
       finalizers.FinalizerProcess(one_arg_initialize_fn, test_next_fn)
 
   def test_init_state_not_assignable(self):
     float_initialize_fn = federated_computation.federated_computation()(
-        lambda: intrinsics.federated_value(0.0, placements.SERVER))
+        lambda: intrinsics.federated_value(0.0, placements.SERVER)
+    )
     with self.assertRaises(errors.TemplateStateNotAssignableError):
       finalizers.FinalizerProcess(float_initialize_fn, test_next_fn)
 
   def test_next_state_not_assignable(self):
 
-    @federated_computation.federated_computation(SERVER_INT, MODEL_WEIGHTS_TYPE,
-                                                 SERVER_FLOAT)
+    @federated_computation.federated_computation(
+        SERVER_INT, MODEL_WEIGHTS_TYPE, SERVER_FLOAT
+    )
     def float_next_fn(state, weights, update):
       del state
       return MeasuredProcessOutput(
           intrinsics.federated_value(0.0, placements.SERVER),
           test_finalizer_result(weights, update),
-          intrinsics.federated_value(1, placements.SERVER))
+          intrinsics.federated_value(1, placements.SERVER),
+      )
 
     with self.assertRaises(errors.TemplateStateNotAssignableError):
       finalizers.FinalizerProcess(test_initialize_fn, float_next_fn)
 
   def test_next_return_tuple_raises(self):
 
-    @federated_computation.federated_computation(SERVER_INT, MODEL_WEIGHTS_TYPE,
-                                                 SERVER_FLOAT)
+    @federated_computation.federated_computation(
+        SERVER_INT, MODEL_WEIGHTS_TYPE, SERVER_FLOAT
+    )
     def tuple_next_fn(state, weights, update):
       return state, test_finalizer_result(weights, update), server_zero()
 
@@ -134,27 +151,31 @@ class FinalizerTest(tf.test.TestCase):
 
   def test_next_return_namedtuple_raises(self):
     measured_process_output = collections.namedtuple(
-        'MeasuredProcessOutput', ['state', 'result', 'measurements'])
+        'MeasuredProcessOutput', ['state', 'result', 'measurements']
+    )
 
-    @federated_computation.federated_computation(SERVER_INT, MODEL_WEIGHTS_TYPE,
-                                                 SERVER_FLOAT)
+    @federated_computation.federated_computation(
+        SERVER_INT, MODEL_WEIGHTS_TYPE, SERVER_FLOAT
+    )
     def namedtuple_next_fn(state, weights, update):
-      return measured_process_output(state,
-                                     test_finalizer_result(weights, update),
-                                     server_zero())
+      return measured_process_output(
+          state, test_finalizer_result(weights, update), server_zero()
+      )
 
     with self.assertRaises(errors.TemplateNotMeasuredProcessOutputError):
       finalizers.FinalizerProcess(test_initialize_fn, namedtuple_next_fn)
 
   def test_next_return_odict_raises(self):
 
-    @federated_computation.federated_computation(SERVER_INT, MODEL_WEIGHTS_TYPE,
-                                                 SERVER_FLOAT)
+    @federated_computation.federated_computation(
+        SERVER_INT, MODEL_WEIGHTS_TYPE, SERVER_FLOAT
+    )
     def odict_next_fn(state, weights, update):
       return collections.OrderedDict(
           state=state,
           result=test_finalizer_result(weights, update),
-          measurements=server_zero())
+          measurements=server_zero(),
+      )
 
     with self.assertRaises(errors.TemplateNotMeasuredProcessOutputError):
       finalizers.FinalizerProcess(test_initialize_fn, odict_next_fn)
@@ -166,8 +187,9 @@ class FinalizerTest(tf.test.TestCase):
 
     @tensorflow_computation.tf_computation(
         tf.int32,
-        computation_types.to_type(model_weights.ModelWeights(tf.float32,
-                                                             ())), tf.float32)
+        computation_types.to_type(model_weights.ModelWeights(tf.float32, ())),
+        tf.float32,
+    )
     def next_fn(state, weights, update):
       new_weigths = model_weights.ModelWeights(weights.trainable + update, ())
       return MeasuredProcessOutput(state, new_weigths, 0)
@@ -177,35 +199,37 @@ class FinalizerTest(tf.test.TestCase):
 
   def test_init_tuple_of_federated_types_raises(self):
     initialize_fn = federated_computation.federated_computation()(
-        lambda: (server_zero(), server_zero()))
+        lambda: (server_zero(), server_zero())
+    )
 
     @federated_computation.federated_computation(
-        initialize_fn.type_signature.result, MODEL_WEIGHTS_TYPE, SERVER_FLOAT)
+        initialize_fn.type_signature.result, MODEL_WEIGHTS_TYPE, SERVER_FLOAT
+    )
     def next_fn(state, weights, update):
-      return MeasuredProcessOutput(state,
-                                   test_finalizer_result(weights, update),
-                                   server_zero())
+      return MeasuredProcessOutput(
+          state, test_finalizer_result(weights, update), server_zero()
+      )
 
     with self.assertRaises(errors.TemplateNotFederatedError):
       finalizers.FinalizerProcess(initialize_fn, next_fn)
 
   def test_non_server_placed_init_state_raises(self):
     initialize_fn = federated_computation.federated_computation(
-        lambda: intrinsics.federated_value(0, placements.CLIENTS))
+        lambda: intrinsics.federated_value(0, placements.CLIENTS)
+    )
 
-    @federated_computation.federated_computation(CLIENTS_INT,
-                                                 MODEL_WEIGHTS_TYPE,
-                                                 SERVER_FLOAT)
+    @federated_computation.federated_computation(
+        CLIENTS_INT, MODEL_WEIGHTS_TYPE, SERVER_FLOAT
+    )
     def next_fn(state, weights, update):
-      return MeasuredProcessOutput(state,
-                                   test_finalizer_result(weights, update),
-                                   server_zero())
+      return MeasuredProcessOutput(
+          state, test_finalizer_result(weights, update), server_zero()
+      )
 
     with self.assertRaises(errors.TemplatePlacementError):
       finalizers.FinalizerProcess(initialize_fn, next_fn)
 
   def test_two_param_next_raises(self):
-
     @federated_computation.federated_computation(SERVER_INT, MODEL_WEIGHTS_TYPE)
     def next_fn(state, weights):
       return MeasuredProcessOutput(state, weights, server_zero())
@@ -215,15 +239,17 @@ class FinalizerTest(tf.test.TestCase):
 
   def test_non_server_placed_next_weight_param_raises(self):
 
-    @federated_computation.federated_computation(SERVER_INT,
-                                                 computation_types.at_clients(
-                                                     MODEL_WEIGHTS_TYPE.member),
-                                                 SERVER_FLOAT)
+    @federated_computation.federated_computation(
+        SERVER_INT,
+        computation_types.at_clients(MODEL_WEIGHTS_TYPE.member),
+        SERVER_FLOAT,
+    )
     def next_fn(state, weights, update):
       return MeasuredProcessOutput(
           state,
           test_finalizer_result(intrinsics.federated_sum(weights), update),
-          server_zero())
+          server_zero(),
+      )
 
     with self.assertRaises(errors.TemplatePlacementError):
       finalizers.FinalizerProcess(test_initialize_fn, next_fn)
@@ -231,11 +257,13 @@ class FinalizerTest(tf.test.TestCase):
   def test_constructs_with_non_model_weights_parameter(self):
     non_model_weights_type = computation_types.at_server(
         computation_types.to_type(
-            collections.OrderedDict(trainable=tf.float32, non_trainable=())))
+            collections.OrderedDict(trainable=tf.float32, non_trainable=())
+        )
+    )
 
-    @federated_computation.federated_computation(SERVER_INT,
-                                                 non_model_weights_type,
-                                                 SERVER_FLOAT)
+    @federated_computation.federated_computation(
+        SERVER_INT, non_model_weights_type, SERVER_FLOAT
+    )
     def next_fn(state, weights, update):
       del update
       return MeasuredProcessOutput(state, weights, server_zero())
@@ -247,54 +275,67 @@ class FinalizerTest(tf.test.TestCase):
 
   def test_non_server_placed_next_update_param_raises(self):
 
-    @federated_computation.federated_computation(SERVER_INT, MODEL_WEIGHTS_TYPE,
-                                                 CLIENTS_FLOAT)
+    @federated_computation.federated_computation(
+        SERVER_INT, MODEL_WEIGHTS_TYPE, CLIENTS_FLOAT
+    )
     def next_fn(state, weights, update):
       return MeasuredProcessOutput(
-          state, test_finalizer_result(weights,
-                                       intrinsics.federated_sum(update)),
-          server_zero())
+          state,
+          test_finalizer_result(weights, intrinsics.federated_sum(update)),
+          server_zero(),
+      )
 
     with self.assertRaises(errors.TemplatePlacementError):
       finalizers.FinalizerProcess(test_initialize_fn, next_fn)
 
   def test_non_server_placed_next_result_raises(self):
 
-    @federated_computation.federated_computation(SERVER_INT, MODEL_WEIGHTS_TYPE,
-                                                 SERVER_FLOAT)
+    @federated_computation.federated_computation(
+        SERVER_INT, MODEL_WEIGHTS_TYPE, SERVER_FLOAT
+    )
     def next_fn(state, weights, update):
       return MeasuredProcessOutput(
           state,
           intrinsics.federated_broadcast(
-              test_finalizer_result(weights, update)), server_zero())
+              test_finalizer_result(weights, update)
+          ),
+          server_zero(),
+      )
 
     with self.assertRaises(errors.TemplatePlacementError):
       finalizers.FinalizerProcess(test_initialize_fn, next_fn)
 
   def test_result_not_assignable_to_weight_raises(self):
     bad_cast_fn = tensorflow_computation.tf_computation(
-        lambda x: tf.nest.map_structure(lambda y: tf.cast(y, tf.float64), x))
+        lambda x: tf.nest.map_structure(lambda y: tf.cast(y, tf.float64), x)
+    )
 
-    @federated_computation.federated_computation(SERVER_INT, MODEL_WEIGHTS_TYPE,
-                                                 SERVER_FLOAT)
+    @federated_computation.federated_computation(
+        SERVER_INT, MODEL_WEIGHTS_TYPE, SERVER_FLOAT
+    )
     def next_fn(state, weights, update):
       return MeasuredProcessOutput(
           state,
-          intrinsics.federated_map(bad_cast_fn,
-                                   test_finalizer_result(weights, update)),
-          server_zero())
+          intrinsics.federated_map(
+              bad_cast_fn, test_finalizer_result(weights, update)
+          ),
+          server_zero(),
+      )
 
     with self.assertRaises(finalizers.FinalizerResultTypeError):
       finalizers.FinalizerProcess(test_initialize_fn, next_fn)
 
   def test_non_server_placed_next_measurements_raises(self):
 
-    @federated_computation.federated_computation(SERVER_INT, MODEL_WEIGHTS_TYPE,
-                                                 SERVER_FLOAT)
+    @federated_computation.federated_computation(
+        SERVER_INT, MODEL_WEIGHTS_TYPE, SERVER_FLOAT
+    )
     def next_fn(state, weights, update):
       return MeasuredProcessOutput(
-          state, test_finalizer_result(weights, update),
-          intrinsics.federated_value(1.0, placements.CLIENTS))
+          state,
+          test_finalizer_result(weights, update),
+          intrinsics.federated_value(1.0, placements.CLIENTS),
+      )
 
     with self.assertRaises(errors.TemplatePlacementError):
       finalizers.FinalizerProcess(test_initialize_fn, next_fn)

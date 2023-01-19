@@ -89,11 +89,13 @@ _EVAL_METRICS_PATH_COMPONENTS = ('client_work', 'eval')
 
 def _append_integer(integer_array: np.ndarray, new_value: int) -> np.ndarray:
   return np.concatenate(
-      [integer_array, np.asarray([new_value], dtype=np.int32)])
+      [integer_array, np.asarray([new_value], dtype=np.int32)]
+  )
 
 
-def _pop_value(round_array: np.ndarray, time_array: np.ndarray,
-               value: int) -> tuple[np.ndarray, np.ndarray]:
+def _pop_value(
+    round_array: np.ndarray, time_array: np.ndarray, value: int
+) -> tuple[np.ndarray, np.ndarray]:
   _logging.vlog(5, 'Popping %s from %s', value, round_array)
   if np.size(round_array) == 0:
     raise ValueError(f'round_array was empty, but tried to pop value: {value}')
@@ -146,10 +148,15 @@ class EvaluationManager:
       data_source: data_source_lib.FederatedDataSource,
       aggregated_metrics_manager: Optional[release_manager.ReleaseManager],
       create_state_manager_fn: Callable[
-          [str], file_program_state_manager.FileProgramStateManager],
+          [str], file_program_state_manager.FileProgramStateManager
+      ],
       create_process_fn: Callable[
-          [str], tuple[learning_process.LearningProcess,
-                       Optional[release_manager.ReleaseManager]]],
+          [str],
+          tuple[
+              learning_process.LearningProcess,
+              Optional[release_manager.ReleaseManager],
+          ],
+      ],
       cohort_size: int,
       duration: datetime.timedelta = datetime.timedelta(hours=24),
   ):
@@ -189,12 +196,14 @@ class EvaluationManager:
     if not self._pending_tasks:
       return
     done_tasks, self._pending_tasks = await asyncio.wait(
-        self._pending_tasks, timeout=None, return_when=asyncio.ALL_COMPLETED)
+        self._pending_tasks, timeout=None, return_when=asyncio.ALL_COMPLETED
+    )
     if self._pending_tasks:
       raise RuntimeError(
           'Error in Python runtime while waiting for tall tasks to complete" '
           'Expected all tasks to be complete, but wait() returned with still '
-          'unfinished tasks.')
+          'unfinished tasks.'
+      )
     _finalize_tasks(done_tasks)
 
   async def _cleanup_finished_tasks(self) -> None:
@@ -205,22 +214,29 @@ class EvaluationManager:
     done_tasks, self._pending_tasks = await asyncio.wait(
         self._pending_tasks,
         timeout=one_second,
-        return_when=asyncio.FIRST_COMPLETED)
+        return_when=asyncio.FIRST_COMPLETED,
+    )
     _finalize_tasks(done_tasks)
 
   async def resume_from_previous_state(self) -> None:
     """Load the most recent state and restart in-progress evaluations."""
-    loaded_state, loaded_version = await self._state_manager.load_latest(
-        (self._evaluating_training_checkpoints,
-         self._evaluation_start_timestamp_seconds))
+    loaded_state, loaded_version = await self._state_manager.load_latest((
+        self._evaluating_training_checkpoints,
+        self._evaluation_start_timestamp_seconds,
+    ))
     if loaded_state is None:
       _logging.info('No previous evaluations found, nothing to resume.')
       return
-    self._evaluating_training_checkpoints, self._evaluation_start_timestamp_seconds = loaded_state
+    (
+        self._evaluating_training_checkpoints,
+        self._evaluation_start_timestamp_seconds,
+    ) = loaded_state
     self._next_version = loaded_version + 1
     train_round_nums = self._evaluating_training_checkpoints.tolist()
-    _logging.info('Resuming previous evaluations found for training rounds: %s',
-                  train_round_nums)
+    _logging.info(
+        'Resuming previous evaluations found for training rounds: %s',
+        train_round_nums,
+    )
     for train_round_num in train_round_nums:
       evaluation_name = _EVAL_NAME_PATTERN.format(round_num=train_round_num)
       # Note: `start_evaluation` has already created the initial evaluation
@@ -228,11 +244,11 @@ class EvaluationManager:
       # state manager. This will resume from there.
       state_manager = self._create_state_manager_fn(evaluation_name)
       evaluation_process, metrics_manager = self._create_evaluation_process_fn(
-          evaluation_name)
-      self._start_evaluation_from_saved_model_weights(train_round_num,
-                                                      evaluation_process,
-                                                      metrics_manager,
-                                                      state_manager)
+          evaluation_name
+      )
+      self._start_evaluation_from_saved_model_weights(
+          train_round_num, evaluation_process, metrics_manager, state_manager
+      )
 
   def _start_evaluation_from_saved_model_weights(
       self,
@@ -265,23 +281,29 @@ class EvaluationManager:
           evaluation_per_round_clients_number=self._cohort_size,
           evaluation_period=self._duration,
           per_round_metrics_manager=per_round_metrics_manager,
-          aggregated_metrics_manager=self._aggregated_metrics_manager)
+          aggregated_metrics_manager=self._aggregated_metrics_manager,
+      )
       await self.record_evaluations_finished(train_round_num)
 
     self._pending_tasks.add(asyncio.create_task(run_and_record_completion()))
 
-  async def start_evaluation(self, train_round: int,
-                             start_timestamp_seconds: int,
-                             model_weights: Any) -> None:
+  async def start_evaluation(
+      self, train_round: int, start_timestamp_seconds: int, model_weights: Any
+  ) -> None:
     """Starts a new evaluation loop for the incoming model_weights."""
     await self._cleanup_finished_tasks()
     self._evaluating_training_checkpoints = _append_integer(
-        self._evaluating_training_checkpoints, train_round)
+        self._evaluating_training_checkpoints, train_round
+    )
     self._evaluation_start_timestamp_seconds = _append_integer(
-        self._evaluation_start_timestamp_seconds, start_timestamp_seconds)
-    _logging.vlog(5, 'In-flight evaluations: %s, %s',
-                  self._evaluating_training_checkpoints,
-                  self._evaluation_start_timestamp_seconds)
+        self._evaluation_start_timestamp_seconds, start_timestamp_seconds
+    )
+    _logging.vlog(
+        5,
+        'In-flight evaluations: %s, %s',
+        self._evaluating_training_checkpoints,
+        self._evaluation_start_timestamp_seconds,
+    )
     # Create and start an evaluation process. Here we create the initial state
     # and set the training model weights, then immediate save version 0 of the
     # state. This will allow resuming this evaluation even if the program
@@ -289,20 +311,26 @@ class EvaluationManager:
     evaluation_name = _EVAL_NAME_PATTERN.format(round_num=train_round)
     state_manager = self._create_state_manager_fn(evaluation_name)
     evaluation_process, metrics_manager = self._create_evaluation_process_fn(
-        evaluation_name)
+        evaluation_name
+    )
     eval_state = await value_reference.materialize_value(
-        evaluation_process.initialize())
+        evaluation_process.initialize()
+    )
     eval_state = await value_reference.materialize_value(
-        evaluation_process.set_model_weights(eval_state, model_weights))
+        evaluation_process.set_model_weights(eval_state, model_weights)
+    )
     await state_manager.save(eval_state, version=0)
-    self._start_evaluation_from_saved_model_weights(train_round,
-                                                    evaluation_process,
-                                                    metrics_manager,
-                                                    state_manager)
+    self._start_evaluation_from_saved_model_weights(
+        train_round, evaluation_process, metrics_manager, state_manager
+    )
     # Record that the evaluation process has started.
-    await self._state_manager.save((self._evaluating_training_checkpoints,
-                                    self._evaluation_start_timestamp_seconds),
-                                   version=self._next_version)
+    await self._state_manager.save(
+        (
+            self._evaluating_training_checkpoints,
+            self._evaluation_start_timestamp_seconds,
+        ),
+        version=self._next_version,
+    )
     self._next_version += 1
 
   async def record_evaluations_finished(self, train_round: int) -> None:
@@ -317,17 +345,27 @@ class EvaluationManager:
         in-progress evaluation.
     """
     try:
-      self._evaluating_training_checkpoints, self._evaluation_start_timestamp_seconds = _pop_value(
+      (
           self._evaluating_training_checkpoints,
-          self._evaluation_start_timestamp_seconds, train_round)
+          self._evaluation_start_timestamp_seconds,
+      ) = _pop_value(
+          self._evaluating_training_checkpoints,
+          self._evaluation_start_timestamp_seconds,
+          train_round,
+      )
     except ValueError as e:
       raise RuntimeError(
           'An internal error occurred where the EvaluationManager is trying to '
           f'record an evaluation for train round [{train_round}] finished that '
-          'but also has no state about in-progress evaluation rounds.') from e
-    await self._state_manager.save((self._evaluating_training_checkpoints,
-                                    self._evaluation_start_timestamp_seconds),
-                                   version=self._next_version)
+          'but also has no state about in-progress evaluation rounds.'
+      ) from e
+    await self._state_manager.save(
+        (
+            self._evaluating_training_checkpoints,
+            self._evaluation_start_timestamp_seconds,
+        ),
+        version=self._next_version,
+    )
     self._next_version += 1
 
 
@@ -335,8 +373,10 @@ def extract_and_rewrap_metrics(
     metrics_structure: Mapping[str, Any],
     *,
     path: Sequence[str],
-) -> tuple[Mapping[str, Any], Union[computation_types.TensorType,
-                                    computation_types.StructType]]:
+) -> tuple[
+    Mapping[str, Any],
+    Union[computation_types.TensorType, computation_types.StructType],
+]:
   """Extracts a sub-structure and re-wraps it with a new prefix.
 
   This is used to normalize outputs from the training and evaluation
@@ -378,9 +418,11 @@ def extract_and_rewrap_metrics(
   """
   if not path:
     raise ValueError(
-        '`path` is empty, must be a sequence of at least one element')
-  current_structure = typing.cast(MutableMapping[str, Any],
-                                  metrics_structure.copy())
+        '`path` is empty, must be a sequence of at least one element'
+    )
+  current_structure = typing.cast(
+      MutableMapping[str, Any], metrics_structure.copy()
+  )
   structure_copy = current_structure
   *path_parts, last_part = path
   for path_part in path_parts:
@@ -388,13 +430,16 @@ def extract_and_rewrap_metrics(
     if part is None:
       raise KeyError(
           f'[{path_part}] of path {path} did not exist in structure: '
-          f'{structure_copy}')
+          f'{structure_copy}'
+      )
     part = part.copy()
     current_structure[path_part] = part
     current_structure = part
   if (substructure := current_structure.get(last_part)) is None:
-    raise KeyError(f'[{last_part}] of path {path} did not exist in structure: '
-                   f'{structure_copy}')
+    raise KeyError(
+        f'[{last_part}] of path {path} did not exist in structure: '
+        f'{structure_copy}'
+    )
   del current_structure[last_part]
   structure_copy[MODEL_METRICS_PREFIX] = substructure
   # Note: we create an non-federated type for `structure_copy` which is expected
@@ -454,8 +499,10 @@ async def run_evaluation(
   federated_context.check_in_federated_context()
 
   if evaluation_period < datetime.timedelta(seconds=0):
-    raise ValueError('`evaluation_period` must be a non-negative duration, got '
-                     f'{evaluation_period}.')
+    raise ValueError(
+        '`evaluation_period` must be a non-negative duration, got '
+        f'{evaluation_period}.'
+    )
 
   evaluation_data_iterator = evaluation_data_source.iterator()
   # TODO(b/262257624): in the case of preemption, its possbile this should
@@ -466,44 +513,60 @@ async def run_evaluation(
 
   async def invoke_evaluation(evaluation_state, eval_round_num):
     round_start = time.monotonic()
-    _logging.info('Starting evaluation of `%s`, round %d', evaluation_name,
-                  eval_round_num - train_round_num)
+    _logging.info(
+        'Starting evaluation of `%s`, round %d',
+        evaluation_name,
+        eval_round_num - train_round_num,
+    )
     evaluation_data = evaluation_data_iterator.select(
-        evaluation_per_round_clients_number)
+        evaluation_per_round_clients_number
+    )
     evaluation_result = await value_reference.materialize_value(
-        evaluation_process.next(evaluation_state, evaluation_data))
+        evaluation_process.next(evaluation_state, evaluation_data)
+    )
     if isinstance(evaluation_result, learning_process.LearningProcessOutput):
       evaluation_state = evaluation_result.state
       evaluation_metrics = evaluation_result.metrics
     else:
-      raise TypeError('FederatedContext returned unexpected result type after '
-                      'evaluation computation invocation. Expected a '
-                      '`tff.learning.templates.LearningProcessOutput`, got '
-                      f'{type(evaluation_result)}')
+      raise TypeError(
+          'FederatedContext returned unexpected result type after '
+          'evaluation computation invocation. Expected a '
+          '`tff.learning.templates.LearningProcessOutput`, got '
+          f'{type(evaluation_result)}'
+      )
     # Only output the `current_round_metrics` here. The total_rounds_metrics
     # will be output once at the end of the evaluation loop.
     if per_round_metrics_manager is not None:
-      current_round_eval_metrics, current_round_eval_metrics_type = extract_and_rewrap_metrics(
-          evaluation_metrics,
-          path=_EVAL_METRICS_PATH_COMPONENTS + ('current_round_metrics',))
+      current_round_eval_metrics, current_round_eval_metrics_type = (
+          extract_and_rewrap_metrics(
+              evaluation_metrics,
+              path=_EVAL_METRICS_PATH_COMPONENTS + ('current_round_metrics',),
+          )
+      )
       await per_round_metrics_manager.release(
           current_round_eval_metrics,
           current_round_eval_metrics_type,
-          key=eval_round_num)
+          key=eval_round_num,
+      )
     elapsed_round_seconds = time.monotonic() - round_start
     _logging.info(
         'Finished evaluation of `%s`, round %d, duration %.2f seconds)',
-        evaluation_name, eval_round_num - train_round_num,
-        elapsed_round_seconds)
+        evaluation_name,
+        eval_round_num - train_round_num,
+        elapsed_round_seconds,
+    )
     return evaluation_state, evaluation_metrics, eval_round_num + 1
 
   # Read the initial state from the manager. If this is the first evalution,
   # the zeroth version should contain the initial state.
   evaluation_state, version = await state_manager.load_latest(
-      await value_reference.materialize_value(evaluation_process.initialize()))
+      await value_reference.materialize_value(evaluation_process.initialize())
+  )
   if evaluation_state is None:
-    raise ValueError('No previous state found for evaluation. Evaluations '
-                     'must previously have at least version 0 saved.')
+    raise ValueError(
+        'No previous state found for evaluation. Evaluations '
+        'must previously have at least version 0 saved.'
+    )
 
   # Set the eval_round_num to start from the train_round_num, so that in the
   # `step` view of TensorBoard the evaluation begins at the same point as the
@@ -512,25 +575,34 @@ async def run_evaluation(
   # a past state.
   eval_round_num = train_round_num + version
   # Run at least one evaluation round.
-  evaluation_state, evaluation_metrics, eval_round_num = await invoke_evaluation(
-      evaluation_state, eval_round_num)
+  evaluation_state, evaluation_metrics, eval_round_num = (
+      await invoke_evaluation(evaluation_state, eval_round_num)
+  )
   version += 1
   await state_manager.save(evaluation_state, version=version)
   # Now run evaluations over the entire evaluation period.
   while datetime.datetime.now() < deadline:
-    evaluation_state, evaluation_metrics, eval_round_num = await invoke_evaluation(
-        evaluation_state, eval_round_num)
+    evaluation_state, evaluation_metrics, eval_round_num = (
+        await invoke_evaluation(evaluation_state, eval_round_num)
+    )
     version += 1
     await state_manager.save(evaluation_state, version=version)
-  _logging.info('Finished evaluation of %s over duration %s', evaluation_name,
-                evaluation_period)
+  _logging.info(
+      'Finished evaluation of %s over duration %s',
+      evaluation_name,
+      evaluation_period,
+  )
   if aggregated_metrics_manager is not None:
-    total_rounds_eval_metrics, total_rounds_eval_metrics_type = extract_and_rewrap_metrics(
-        evaluation_metrics,
-        path=_EVAL_METRICS_PATH_COMPONENTS + ('total_rounds_metrics',))
+    total_rounds_eval_metrics, total_rounds_eval_metrics_type = (
+        extract_and_rewrap_metrics(
+            evaluation_metrics,
+            path=_EVAL_METRICS_PATH_COMPONENTS + ('total_rounds_metrics',),
+        )
+    )
     await aggregated_metrics_manager.release(
         total_rounds_eval_metrics,
         total_rounds_eval_metrics_type,
-        key=train_round_num)
+        key=train_round_num,
+    )
   # Clean-up the statemanager output, which will no longer be used.
   await state_manager.remove_all()

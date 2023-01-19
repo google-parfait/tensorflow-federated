@@ -48,12 +48,14 @@ async def _wait_for_tasks_to_finish(pending_tasks: set[asyncio.Task]):
   if not pending_tasks:
     return
   done_tasks, _ = await asyncio.wait(
-      pending_tasks, timeout=None, return_when=asyncio.ALL_COMPLETED)
+      pending_tasks, timeout=None, return_when=asyncio.ALL_COMPLETED
+  )
   await _finalize_tasks(done_tasks)
 
 
 async def _clear_finished_tasks(
-    pending_tasks: set[asyncio.Task]) -> set[asyncio.Task]:
+    pending_tasks: set[asyncio.Task],
+) -> set[asyncio.Task]:
   """Removes finished tasks, returns the set of futures that are still pending.
 
   This is intended as a "clean-up" method that will remove items from
@@ -78,7 +80,8 @@ async def _clear_finished_tasks(
   # Wait 1 second for any potentially finished task.
   one_second = 1
   done_tasks, pending_tasks = await asyncio.wait(
-      pending_tasks, timeout=one_second, return_when=asyncio.FIRST_COMPLETED)
+      pending_tasks, timeout=one_second, return_when=asyncio.FIRST_COMPLETED
+  )
   await _finalize_tasks(done_tasks)
   return pending_tasks
 
@@ -126,9 +129,9 @@ async def train_model(
     evaluation_manager: An `EvaluationManager` used to create a state manager
       for each evaluation loop that is forked off from the training loop.
     evaluation_periodicity: Either a integer number of rounds or
-     `datetime.timedelta` to await before sending a new training checkpoint to
-     `evaluation_manager.start_evaluation`. Note that the last training round
-     will always be evaluated even if it does not satisfy the periodicity.
+      `datetime.timedelta` to await before sending a new training checkpoint to
+      `evaluation_manager.start_evaluation`. Note that the last training round
+      will always be evaluated even if it does not satisfy the periodicity.
   """
   federated_context.check_in_federated_context()
 
@@ -145,20 +148,29 @@ async def train_model(
   # previous run, this program state can be used to restore the execution of
   # this program logic and skip unnecessary steps.
   train_state = await value_reference.materialize_value(
-      train_process.initialize())
+      train_process.initialize()
+  )
   program_state, version = await program_state_manager.load_latest(
-      (train_state, 0))
+      (train_state, 0)
+  )
   if program_state is not None:
     train_state, start_round = program_state
     logging.info('Found previous program state version %d', version)
     if start_round < train_total_rounds:
-      logging.info('Resuming from training round %d,running until round %d',
-                   start_round, train_total_rounds)
+      logging.info(
+          'Resuming from training round %d,running until round %d',
+          start_round,
+          train_total_rounds,
+      )
     else:
       logging.info(
-          'Loaded previously completed round %d, but only '
-          'requested training until round %d, will not run training.',
-          start_round, train_total_rounds)
+          (
+              'Loaded previously completed round %d, but only '
+              'requested training until round %d, will not run training.'
+          ),
+          start_round,
+          train_total_rounds,
+      )
       if evaluation_manager is not None:
         logging.info('Checking for remaining evaluations need to finish.')
         await evaluation_manager.wait_for_evaluations_to_finish()
@@ -166,12 +178,14 @@ async def train_model(
   else:
     start_round = 0
     logging.info(
-        'Starting program without previous state, saving initial state.')
+        'Starting program without previous state, saving initial state.'
+    )
     # Ensure the initial state (round 0) is saved before any training occurs.
     # The program manager `keep_first=True` parameterization will enable users
     # to start future experiments from the same initialization.
-    await program_state_manager.save((train_state, start_round),
-                                     version=start_round)
+    await program_state_manager.save(
+        (train_state, start_round), version=start_round
+    )
 
   train_state_type, _ = train_process.next.type_signature.result
   train_data_iterator = train_data_source.iterator()
@@ -181,7 +195,8 @@ async def train_model(
   next_evaluation_time = None
 
   def should_evaluate_round(
-      round_num: int, train_round_finished_time: datetime.datetime) -> bool:
+      round_num: int, train_round_finished_time: datetime.datetime
+  ) -> bool:
     is_last_round = round_num == train_total_rounds + 1
     if is_last_round:
       return True
@@ -199,9 +214,11 @@ async def train_model(
         return True
       return False
     else:
-      raise ValueError('`evaluation_periodicity` must be an `int` or a '
-                       '`datetime.timedelta` type. Got '
-                       f'{type(evaluation_periodicity)}')
+      raise ValueError(
+          '`evaluation_periodicity` must be an `int` or a '
+          '`datetime.timedelta` type. Got '
+          f'{type(evaluation_periodicity)}'
+      )
 
   # This is the main training loop. It sequentially performs federated learning,
   # feeding each rounds state into the next round. Occasionally a "sub-loop"
@@ -210,22 +227,26 @@ async def train_model(
   for round_num in range(start_round + 1, train_total_rounds + 1):
     logging.info('Running train round %d', round_num)
     round_participants_data = train_data_iterator.select(
-        train_per_round_clients)
+        train_per_round_clients
+    )
     train_result = train_process.next(train_state, round_participants_data)
     logging.info('Finished train round %d', round_num)
     if not isinstance(train_result, learning_process.LearningProcessOutput):
-      raise TypeError('FederatedContext returned unexpected result type after '
-                      'training computation invocation. Expected a '
-                      '`tff.learning.templates.LearningProcessOutput`, got '
-                      f'{type(train_result)}')
+      raise TypeError(
+          'FederatedContext returned unexpected result type after '
+          'training computation invocation. Expected a '
+          '`tff.learning.templates.LearningProcessOutput`, got '
+          f'{type(train_result)}'
+      )
     train_state = train_result.state
     train_metrics = train_result.metrics
     # Save the current program state. We await here to avoid the situation
     # were we start the next round, but saving fails, and we end up rolling
     # back to an even earlier round on resumption (a trade-off of speed for
     # potential wasted work).
-    await program_state_manager.save((train_state, round_num),
-                                     version=round_num)
+    await program_state_manager.save(
+        (train_state, round_num), version=round_num
+    )
     if train_metrics_manager is not None:
       try:
         released_train_metrics, released_train_metrics_type = (
@@ -239,21 +260,30 @@ async def train_model(
             '`tff.learning.templates.LearningProcess` whose `next` computation '
             'metrics result has a `train` field. Instead got a '
             '`tff.Computation` whose result signature was: '
-            f'{train_process.next.type_signature.result}') from e
+            f'{train_process.next.type_signature.result}'
+        ) from e
       pending_tasks.add(
           asyncio.create_task(
               train_metrics_manager.release(
                   released_train_metrics,
                   released_train_metrics_type,
-                  key=round_num)))
+                  key=round_num,
+              )
+          )
+      )
     train_round_finished_time = datetime.datetime.now()
     if evaluation_manager is not None and should_evaluate_round(
-        round_num, train_round_finished_time):
+        round_num, train_round_finished_time
+    ):
       model_weights = train_process.get_model_weights(train_state)
       await evaluation_manager.start_evaluation(
-          round_num, int(train_round_finished_time.timestamp()), model_weights)
-      logging.info('Added evaluation for training round %d. Pending tasks: %s',
-                   round_num, pending_tasks)
+          round_num, int(train_round_finished_time.timestamp()), model_weights
+      )
+      logging.info(
+          'Added evaluation for training round %d. Pending tasks: %s',
+          round_num,
+          pending_tasks,
+      )
     # Clean-up any tasks that have finished in the meantime.
     pending_tasks = await _clear_finished_tasks(pending_tasks)
 

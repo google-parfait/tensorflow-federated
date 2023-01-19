@@ -36,11 +36,14 @@ MetricsConstructor = Callable[[], MetricStructure]
 
 
 def create_functional_metric_fns(
-    metrics_constructor: Union[MetricConstructor, MetricsConstructor,
-                               MetricConstructors]
-) -> tuple[Callable[[], StateVar], Callable[
-    [StateVar, Any, model_lib.BatchOutput, Any], StateVar], Callable[[StateVar],
-                                                                     Any]]:
+    metrics_constructor: Union[
+        MetricConstructor, MetricsConstructor, MetricConstructors
+    ]
+) -> tuple[
+    Callable[[], StateVar],
+    Callable[[StateVar, Any, model_lib.BatchOutput, Any], StateVar],
+    Callable[[StateVar], Any],
+]:
   """Turn a Keras metric construction method into a tuple of pure functions.
 
   This can be used to convert Keras metrics for use in
@@ -88,20 +91,24 @@ def create_functional_metric_fns(
       if `metrics_constructor` is a callable returning values of the wrong type.
   """
   if isinstance(metrics_constructor, collections.OrderedDict):
-    metrics_constructor = functools.partial(tf.nest.map_structure,
-                                            lambda m: m(), metrics_constructor)
+    metrics_constructor = functools.partial(
+        tf.nest.map_structure, lambda m: m(), metrics_constructor
+    )
   if not callable(metrics_constructor):
-    raise TypeError('`metrics_constructor` must be a callable or '
-                    f'`collections.OrderedDict`. Got {metrics_constructor!r} '
-                    f'which is a {type(metrics_constructor)!r}.')
+    raise TypeError(
+        '`metrics_constructor` must be a callable or '
+        f'`collections.OrderedDict`. Got {metrics_constructor!r} '
+        f'which is a {type(metrics_constructor)!r}.'
+    )
   try:
     # Eagerly validate that the metrics_constructor returns values that
     # have the expected properties to provide better debugging messages to
     # caller.
     def check_keras_metric_type(obj):
       if not isinstance(obj, tf.keras.metrics.Metric):
-        raise TypeError('Found non-tf.keras.metrics.Metric value: '
-                        f'{type(obj)}: {obj!r}.')
+        raise TypeError(
+            f'Found non-tf.keras.metrics.Metric value: {type(obj)}: {obj!r}.'
+        )
 
     with tf.Graph().as_default():
       metrics_structure = metrics_constructor()
@@ -109,15 +116,18 @@ def create_functional_metric_fns(
   except ValueError as e:
     raise ValueError(
         '`metrics_constructor` must return a `tf.keras.metrics.Metric` '
-        'instance, or an OrderedDict of string to keras metrics.') from e
+        'instance, or an OrderedDict of string to keras metrics.'
+    ) from e
   if isinstance(metrics_structure, collections.OrderedDict):
     non_string_keys = [
         name for name in metrics_structure.keys() if not isinstance(name, str)
     ]
     if non_string_keys:
-      raise TypeError('`metrics_constructor` must return an `OrdredDict` keyed '
-                      f'by `str`. Got keys {non_string_keys} that were not '
-                      'type `str`.')
+      raise TypeError(
+          '`metrics_constructor` must return an `OrdredDict` keyed '
+          f'by `str`. Got keys {non_string_keys} that were not '
+          'type `str`.'
+      )
   del metrics_structure
 
   # IMPORTANT: the following code relies on the order of the `tf.Variable`s in
@@ -138,7 +148,8 @@ def create_functional_metric_fns(
 
     def __call__(self, next_creator_fn, **kwargs):
       tensor_variable = variable_utils.create_tensor_variable(
-          next_creator_fn, **kwargs)
+          next_creator_fn, **kwargs
+      )
       tensor_variable.index = self._current_index
       self._current_index += 1
       return tensor_variable
@@ -147,7 +158,8 @@ def create_functional_metric_fns(
   def initialize():
     with tf.variable_creator_scope(IndexedTensorVariableCreator()):
       tensor_variable_structure = tf.nest.map_structure(
-          lambda m: tuple(m.variables), metrics_constructor())
+          lambda m: tuple(m.variables), metrics_constructor()
+      )
     nonlocal variable_creation_indices
     variable_creation_indices = [
         tensor_variable.index
@@ -190,7 +202,8 @@ def create_functional_metric_fns(
         index = self._variable_creation_indices.index(self._num_parameters_seen)
         self._num_parameters_seen += 1
         return variable_utils.TensorVariable(
-            initial_value=self._flattened_parameters[index], **kwargs)
+            initial_value=self._flattened_parameters[index], **kwargs
+        )
 
     return TensorVariableInjectionCreator(variable_creation_indices, parameters)
 
@@ -203,10 +216,9 @@ def create_functional_metric_fns(
     return fn
 
   @tf.function
-  def update(state,
-             labels,
-             batch_output: model_lib.BatchOutput,
-             sample_weight=None):
+  def update(
+      state, labels, batch_output: model_lib.BatchOutput, sample_weight=None
+  ):
     del sample_weight  # Unused.
     # Keras metrics operate on the model predictions, but TFF algorithms
     # pass the entire `BatchOutput` structure in case some custom metrics
@@ -225,14 +237,17 @@ def create_functional_metric_fns(
       return tuple(metric.variables)
 
     with tf.variable_creator_scope(
-        build_replace_variable_with_parameter_creator(state)):
+        build_replace_variable_with_parameter_creator(state)
+    ):
       return tf.nest.map_structure(inner_update, metrics_constructor())
 
   @tf.function
   def finalize(state):
     with tf.variable_creator_scope(
-        build_replace_variable_with_parameter_creator(state)):
-      return tf.nest.map_structure(lambda metric: metric.result(),
-                                   metrics_constructor())
+        build_replace_variable_with_parameter_creator(state)
+    ):
+      return tf.nest.map_structure(
+          lambda metric: metric.result(), metrics_constructor()
+      )
 
   return initialize, update, finalize

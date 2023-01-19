@@ -33,11 +33,13 @@ from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.learning.models import model_weights as model_weights_lib
 
 
-def build_personalization_eval(model_fn,
-                               personalize_fn_dict,
-                               baseline_evaluate_fn,
-                               max_num_clients=100,
-                               context_tff_type=None):
+def build_personalization_eval(
+    model_fn,
+    personalize_fn_dict,
+    baseline_evaluate_fn,
+    max_num_clients=100,
+    context_tff_type=None,
+):
   """Builds the TFF computation for evaluating personalization strategies.
 
   The returned TFF computation broadcasts model weights from `tff.SERVER` to
@@ -128,7 +130,8 @@ def build_personalization_eval(model_fn,
   element_tff_type = _remove_batch_dim(batch_tff_type)
   client_input_type = collections.OrderedDict(
       train_data=computation_types.SequenceType(element_tff_type),
-      test_data=computation_types.SequenceType(element_tff_type))
+      test_data=computation_types.SequenceType(element_tff_type),
+  )
   if context_tff_type is not None:
     py_typecheck.check_type(context_tff_type, computation_types.Type)
     client_input_type['context'] = context_tff_type
@@ -144,20 +147,27 @@ def build_personalization_eval(model_fn,
     final_metrics = collections.OrderedDict()
     # Compute the evaluation metrics of the initial model.
     final_metrics['baseline_metrics'] = _compute_baseline_metrics(
-        model_fn, initial_model_weights, test_data, baseline_evaluate_fn)
+        model_fn, initial_model_weights, test_data, baseline_evaluate_fn
+    )
 
     py_typecheck.check_type(personalize_fn_dict, collections.OrderedDict)
     if 'baseline_metrics' in personalize_fn_dict:
-      raise ValueError('baseline_metrics should not be used as a key in '
-                       'personalize_fn_dict.')
+      raise ValueError(
+          'baseline_metrics should not be used as a key in personalize_fn_dict.'
+      )
 
     # Compute the evaluation metrics of the personalized models. The returned
     # `p13n_metrics` is an `OrderedDict` that maps keys (strategy names) in
     # `personalize_fn_dict` to the evaluation metrics of the corresponding
     # personalization strategies.
-    p13n_metrics = _compute_p13n_metrics(model_fn, initial_model_weights,
-                                         train_data, test_data,
-                                         personalize_fn_dict, context)
+    p13n_metrics = _compute_p13n_metrics(
+        model_fn,
+        initial_model_weights,
+        train_data,
+        test_data,
+        personalize_fn_dict,
+        context,
+    )
     final_metrics.update(p13n_metrics)
     return final_metrics
 
@@ -166,25 +176,29 @@ def build_personalization_eval(model_fn,
     raise ValueError('max_num_clients must be a positive integer.')
 
   reservoir_sampling_factory = sampling.UnweightedReservoirSamplingFactory(
-      sample_size=max_num_clients)
+      sample_size=max_num_clients
+  )
   aggregation_process = reservoir_sampling_factory.create(
-      _client_computation.type_signature.result)
+      _client_computation.type_signature.result
+  )
 
   @federated_computation.federated_computation(
       computation_types.FederatedType(model_weights_type, placements.SERVER),
-      computation_types.FederatedType(client_input_type, placements.CLIENTS))
+      computation_types.FederatedType(client_input_type, placements.CLIENTS),
+  )
   def personalization_eval(server_model_weights, federated_client_input):
     """TFF orchestration logic."""
     client_init_weights = intrinsics.federated_broadcast(server_model_weights)
     client_final_metrics = intrinsics.federated_map(
-        _client_computation, (client_init_weights, federated_client_input))
+        _client_computation, (client_init_weights, federated_client_input)
+    )
 
     # WARNING: Collecting information from clients can be risky. Users have to
     # make sure that it is proper to collect those metrics from clients.
     # TODO(b/147889283): Add a link to the TFF doc once it exists.
     sampling_output = aggregation_process.next(
-        aggregation_process.initialize(),  # No state.
-        client_final_metrics)
+        aggregation_process.initialize(), client_final_metrics  # No state.
+    )
     # In the future we may want to output `sampling_output.measurements` also
     # but currently it is empty.
     return sampling_output.result
@@ -193,7 +207,8 @@ def build_personalization_eval(model_fn,
 
 
 def _remove_batch_dim(
-    type_spec: computation_types.Type) -> computation_types.Type:
+    type_spec: computation_types.Type,
+) -> computation_types.Type:
   """Removes the batch dimension from the `tff.TensorType`s in `type_spec`.
 
   Args:
@@ -214,31 +229,40 @@ def _remove_batch_dim(
     py_typecheck.check_type(tensor_type, computation_types.TensorType)
     if (tensor_type.shape.rank is not None) and (tensor_type.shape.rank >= 1):
       return computation_types.TensorType(
-          shape=tensor_type.shape[1:], dtype=tensor_type.dtype)
+          shape=tensor_type.shape[1:], dtype=tensor_type.dtype
+      )
     else:
       raise ValueError('Provided shape must have rank 1 or higher.')
 
   return structure.map_structure(_remove_first_dim_in_tensortype, type_spec)
 
 
-def _compute_baseline_metrics(model_fn, initial_model_weights, test_data,
-                              baseline_evaluate_fn):
+def _compute_baseline_metrics(
+    model_fn, initial_model_weights, test_data, baseline_evaluate_fn
+):
   """Evaluate the model with weights being the `initial_model_weights`."""
   model = model_fn()
   model_weights = model_weights_lib.ModelWeights.from_model(model)
 
   @tf.function
   def assign_and_compute():
-    tf.nest.map_structure(lambda v, t: v.assign(t), model_weights,
-                          initial_model_weights)
+    tf.nest.map_structure(
+        lambda v, t: v.assign(t), model_weights, initial_model_weights
+    )
     py_typecheck.check_callable(baseline_evaluate_fn)
     return baseline_evaluate_fn(model, test_data)
 
   return assign_and_compute()
 
 
-def _compute_p13n_metrics(model_fn, initial_model_weights, train_data,
-                          test_data, personalize_fn_dict, context):
+def _compute_p13n_metrics(
+    model_fn,
+    initial_model_weights,
+    train_data,
+    test_data,
+    personalize_fn_dict,
+    context,
+):
   """Train and evaluate the personalized models."""
   model = model_fn()
   model_weights = model_weights_lib.ModelWeights.from_model(model)
@@ -259,8 +283,9 @@ def _compute_p13n_metrics(model_fn, initial_model_weights, train_data,
   def loop_and_compute():
     p13n_metrics = collections.OrderedDict()
     for name, personalize_fn in personalize_fns.items():
-      tf.nest.map_structure(lambda v, t: v.assign(t), model_weights,
-                            initial_model_weights)
+      tf.nest.map_structure(
+          lambda v, t: v.assign(t), model_weights, initial_model_weights
+      )
       py_typecheck.check_callable(personalize_fn)
       p13n_metrics[name] = personalize_fn(model, train_data, test_data, context)
     return p13n_metrics

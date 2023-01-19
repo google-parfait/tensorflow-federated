@@ -42,17 +42,19 @@ from tensorflow_federated.python.learning.models import model_weights as model_w
 # Convenience aliases.
 _SequenceType = computation_types.SequenceType
 _MetricsAggregatorFirstArgType = Union[
-    model_lib.MetricFinalizersType, functional.FunctionalMetricFinalizersType]
+    model_lib.MetricFinalizersType, functional.FunctionalMetricFinalizersType
+]
 _MetricsAggregator = Callable[
     [_MetricsAggregatorFirstArgType, computation_types.StructWithPythonType],
-    computation_base.Computation]
+    computation_base.Computation,
+]
 
 
 def build_local_evaluation(
     model_fn: Callable[[], model_lib.Model],
     model_weights_type: computation_types.StructType,
     batch_type: computation_types.Type,
-    use_experimental_simulation_loop: bool = False
+    use_experimental_simulation_loop: bool = False,
 ) -> computation_base.Computation:
   """Builds the local TFF computation for evaluation of the given model.
 
@@ -82,34 +84,41 @@ def build_local_evaluation(
     model parameters and sequential data, and returns the evaluation metrics.
   """
 
-  @tensorflow_computation.tf_computation(model_weights_type,
-                                         _SequenceType(batch_type))
+  @tensorflow_computation.tf_computation(
+      model_weights_type, _SequenceType(batch_type)
+  )
   @tf.function
   def client_eval(incoming_model_weights, dataset):
     """Returns local outputs after evaluting `model_weights` on `dataset`."""
     with tf.init_scope():
       model = model_fn()
     model_weights = model_weights_lib.ModelWeights.from_model(model)
-    tf.nest.map_structure(lambda v, t: v.assign(t), model_weights,
-                          incoming_model_weights)
+    tf.nest.map_structure(
+        lambda v, t: v.assign(t), model_weights, incoming_model_weights
+    )
 
     def reduce_fn(num_examples, batch):
       model_output = model.forward_pass(batch, training=False)
       if model_output.num_examples is None:
         # Compute shape from the size of the predictions if model didn't use the
         # batch size.
-        return num_examples + tf.shape(
-            model_output.predictions, out_type=tf.int64)[0]
+        return (
+            num_examples
+            + tf.shape(model_output.predictions, out_type=tf.int64)[0]
+        )
       else:
         return num_examples + tf.cast(model_output.num_examples, tf.int64)
 
     dataset_reduce_fn = dataset_reduce.build_dataset_reduce_fn(
-        use_experimental_simulation_loop)
-    num_examples = dataset_reduce_fn(reduce_fn, dataset,
-                                     lambda: tf.zeros([], dtype=tf.int64))
+        use_experimental_simulation_loop
+    )
+    num_examples = dataset_reduce_fn(
+        reduce_fn, dataset, lambda: tf.zeros([], dtype=tf.int64)
+    )
     model_output = model.report_local_unfinalized_metrics()
     return collections.OrderedDict(
-        local_outputs=model_output, num_examples=num_examples)
+        local_outputs=model_output, num_examples=num_examples
+    )
 
   return client_eval
 
@@ -117,8 +126,9 @@ def build_local_evaluation(
 def build_functional_local_evaluation(
     model: functional.FunctionalModel,
     model_weights_type: computation_types.StructType,
-    batch_type: Union[computation_types.StructType,
-                      computation_types.TensorType],
+    batch_type: Union[
+        computation_types.StructType, computation_types.TensorType
+    ],
 ) -> computation_base.Computation:
   """Creates client evaluation logic for a functional model.
 
@@ -146,8 +156,9 @@ def build_functional_local_evaluation(
     model parameters and sequential data, and returns the evaluation metrics.
   """
 
-  @tensorflow_computation.tf_computation(model_weights_type,
-                                         _SequenceType(batch_type))
+  @tensorflow_computation.tf_computation(
+      model_weights_type, _SequenceType(batch_type)
+  )
   @tf.function
   def local_eval(weights, dataset):
     metrics_state = model.initialize_metrics_state()
@@ -158,7 +169,8 @@ def build_functional_local_evaluation(
       else:
         _, labels = batch
       metrics_state = model.update_metrics_state(
-          metrics_state, labels=labels, batch_output=output)
+          metrics_state, labels=labels, batch_output=output
+      )
     unfinalized_metrics = metrics_state
     return unfinalized_metrics
 
@@ -167,7 +179,8 @@ def build_functional_local_evaluation(
 
 @deprecation.deprecated(
     '`tff.learning.build_federated_evaluation` is deprecated, use '
-    '`tff.learning.algorithms.build_fed_eval` insteand.')
+    '`tff.learning.algorithms.build_fed_eval` insteand.'
+)
 def build_federated_evaluation(
     model_fn: Union[Callable[[], model_lib.Model], functional.FunctionalModel],
     broadcast_process: Optional[measured_process.MeasuredProcess] = None,
@@ -209,17 +222,21 @@ def build_federated_evaluation(
     if not isinstance(model_fn, functional.FunctionalModel):
       raise TypeError(
           'If `model_fn` is not a callable, it must be an instance '
-          f'tff.learning.models.FunctionalModel. Got {type(model_fn)}')
+          f'tff.learning.models.FunctionalModel. Got {type(model_fn)}'
+      )
 
   if broadcast_process is not None:
     if not isinstance(broadcast_process, measured_process.MeasuredProcess):
-      raise ValueError('`broadcast_process` must be a `MeasuredProcess`, got '
-                       f'{type(broadcast_process)}.')
+      raise ValueError(
+          '`broadcast_process` must be a `MeasuredProcess`, got '
+          f'{type(broadcast_process)}.'
+      )
     if iterative_process.is_stateful(broadcast_process):
       raise ValueError(
           'Cannot create a federated evaluation with a stateful '
           'broadcast process, must be stateless (have empty state), has state: '
-          f'{broadcast_process.initialize.type_signature.result!r}')
+          f'{broadcast_process.initialize.type_signature.result!r}'
+      )
 
   if metrics_aggregator is None:
     metrics_aggregator = aggregator.sum_then_finalize
@@ -228,20 +245,24 @@ def build_federated_evaluation(
     return _build_functional_federated_evaluation(
         model=model_fn,
         broadcast_process=broadcast_process,
-        metrics_aggregator=metrics_aggregator)
+        metrics_aggregator=metrics_aggregator,
+    )
   else:
     return _build_federated_evaluation(
         model_fn=model_fn,
         broadcast_process=broadcast_process,
         metrics_aggregator=metrics_aggregator,
-        use_experimental_simulation_loop=use_experimental_simulation_loop)
+        use_experimental_simulation_loop=use_experimental_simulation_loop,
+    )
 
 
 def _build_federated_evaluation(
-    *, model_fn: Callable[[], model_lib.Model],
+    *,
+    model_fn: Callable[[], model_lib.Model],
     broadcast_process: Optional[measured_process.MeasuredProcess],
     metrics_aggregator: _MetricsAggregator,
-    use_experimental_simulation_loop: bool) -> computation_base.Computation:
+    use_experimental_simulation_loop: bool,
+) -> computation_base.Computation:
   """Builds a federated evaluation computation for a `tff.learning.Model`."""
   # Construct the model first just to obtain the metadata and define all the
   # types needed to define the computations that follow.
@@ -253,73 +274,93 @@ def _build_federated_evaluation(
     batch_type = computation_types.to_type(model.input_spec)
 
     unfinalized_metrics_type = type_conversions.type_from_tensors(
-        model.report_local_unfinalized_metrics())
+        model.report_local_unfinalized_metrics()
+    )
     metrics_aggregation_computation = metrics_aggregator(
-        model.metric_finalizers(), unfinalized_metrics_type)
+        model.metric_finalizers(), unfinalized_metrics_type
+    )
 
   local_eval = build_local_evaluation(
       model_fn=model_fn,
       model_weights_type=model_weights_type,
       batch_type=batch_type,
-      use_experimental_simulation_loop=use_experimental_simulation_loop)
+      use_experimental_simulation_loop=use_experimental_simulation_loop,
+  )
 
   @federated_computation.federated_computation(
       computation_types.at_server(model_weights_type),
-      computation_types.at_clients(_SequenceType(batch_type)))
+      computation_types.at_clients(_SequenceType(batch_type)),
+  )
   def server_eval(server_model_weights, federated_dataset):
     if broadcast_process is not None:
       # TODO(b/179091838): Zip the measurements from the broadcast_process with
       # the result of `model_metrics` below to avoid dropping these metrics.
-      broadcast_output = broadcast_process.next(broadcast_process.initialize(),
-                                                server_model_weights)
+      broadcast_output = broadcast_process.next(
+          broadcast_process.initialize(), server_model_weights
+      )
       client_outputs = intrinsics.federated_map(
-          local_eval, (broadcast_output.result, federated_dataset))
+          local_eval, (broadcast_output.result, federated_dataset)
+      )
     else:
-      client_outputs = intrinsics.federated_map(local_eval, [
-          intrinsics.federated_broadcast(server_model_weights),
-          federated_dataset
-      ])
+      client_outputs = intrinsics.federated_map(
+          local_eval,
+          [
+              intrinsics.federated_broadcast(server_model_weights),
+              federated_dataset,
+          ],
+      )
     model_metrics = metrics_aggregation_computation(
-        client_outputs.local_outputs)
+        client_outputs.local_outputs
+    )
     return intrinsics.federated_zip(collections.OrderedDict(eval=model_metrics))
 
   return server_eval
 
 
 def _build_functional_federated_evaluation(
-    *, model: functional.FunctionalModel,
+    *,
+    model: functional.FunctionalModel,
     broadcast_process: Optional[measured_process.MeasuredProcess],
-    metrics_aggregator: _MetricsAggregator) -> computation_base.Computation:
+    metrics_aggregator: _MetricsAggregator,
+) -> computation_base.Computation:
   """Builds a federated evaluation computation for a functional model."""
 
   def ndarray_to_tensorspec(ndarray):
     return tf.TensorSpec(
-        shape=ndarray.shape, dtype=tf.dtypes.as_dtype(ndarray.dtype))
+        shape=ndarray.shape, dtype=tf.dtypes.as_dtype(ndarray.dtype)
+    )
 
-  weights_type = tf.nest.map_structure(ndarray_to_tensorspec,
-                                       model.initial_weights)
+  weights_type = tf.nest.map_structure(
+      ndarray_to_tensorspec, model.initial_weights
+  )
   batch_type = computation_types.to_type(model.input_spec)
-  local_eval = build_functional_local_evaluation(model, weights_type,
-                                                 batch_type)
+  local_eval = build_functional_local_evaluation(
+      model, weights_type, batch_type
+  )
 
   @federated_computation.federated_computation(
       computation_types.at_server(weights_type),
-      computation_types.at_clients(_SequenceType(batch_type)))
+      computation_types.at_clients(_SequenceType(batch_type)),
+  )
   def federated_eval(server_weights, client_data):
     if broadcast_process is not None:
       # TODO(b/179091838): Zip the measurements from the broadcast_process with
       # the result of `model_metrics` below to avoid dropping these metrics.
-      broadcast_output = broadcast_process.next(broadcast_process.initialize(),
-                                                server_weights)
+      broadcast_output = broadcast_process.next(
+          broadcast_process.initialize(), server_weights
+      )
       client_weights = broadcast_output.result
     else:
       client_weights = intrinsics.federated_broadcast(server_weights)
     unfinalized_metrics = intrinsics.federated_map(
-        local_eval, (client_weights, client_data))
+        local_eval, (client_weights, client_data)
+    )
     metrics_aggregation_fn = metrics_aggregator(
-        model.finalize_metrics, unfinalized_metrics.type_signature.member)
+        model.finalize_metrics, unfinalized_metrics.type_signature.member
+    )
     finalized_metrics = metrics_aggregation_fn(unfinalized_metrics)
     return intrinsics.federated_zip(
-        collections.OrderedDict(eval=finalized_metrics))
+        collections.OrderedDict(eval=finalized_metrics)
+    )
 
   return federated_eval

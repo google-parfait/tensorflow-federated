@@ -50,14 +50,15 @@ from tensorflow_federated.python.learning.reconstruction import training_process
 def _create_input_spec():
   return collections.OrderedDict(
       x=tf.TensorSpec(shape=[None, 784], dtype=tf.float32),
-      y=tf.TensorSpec(dtype=tf.int32, shape=[None, 1]))
+      y=tf.TensorSpec(dtype=tf.int32, shape=[None, 1]),
+  )
 
 
 def _create_keras_model():
   initializer = tf.keras.initializers.RandomNormal(seed=0)
-  max_pool = tf.keras.layers.MaxPooling2D((2, 2), (2, 2),
-                                          padding='same',
-                                          data_format='channels_last')
+  max_pool = tf.keras.layers.MaxPooling2D(
+      (2, 2), (2, 2), padding='same', data_format='channels_last'
+  )
   model = tf.keras.Sequential([
       tf.keras.layers.Reshape(target_shape=[28, 28, 1], input_shape=(28 * 28,)),
       tf.keras.layers.Conv2D(
@@ -66,7 +67,8 @@ def _create_keras_model():
           padding='same',
           data_format='channels_last',
           activation=tf.nn.relu,
-          kernel_initializer=initializer),
+          kernel_initializer=initializer,
+      ),
       max_pool,
       tf.keras.layers.Conv2D(
           64,
@@ -74,11 +76,13 @@ def _create_keras_model():
           padding='same',
           data_format='channels_last',
           activation=tf.nn.relu,
-          kernel_initializer=initializer),
+          kernel_initializer=initializer,
+      ),
       max_pool,
       tf.keras.layers.Flatten(),
       tf.keras.layers.Dense(
-          1024, activation=tf.nn.relu, kernel_initializer=initializer),
+          1024, activation=tf.nn.relu, kernel_initializer=initializer
+      ),
       tf.keras.layers.Dropout(0.4, seed=1),
       tf.keras.layers.Dense(10, kernel_initializer=initializer),
   ])
@@ -93,7 +97,8 @@ def global_recon_model_fn():
       keras_model=keras_model,
       global_layers=keras_model.layers,
       local_layers=[],
-      input_spec=input_spec)
+      input_spec=input_spec,
+  )
 
 
 def local_recon_model_fn():
@@ -104,12 +109,14 @@ def local_recon_model_fn():
       keras_model=keras_model,
       global_layers=keras_model.layers[:-1],
       local_layers=keras_model.layers[-1:],
-      input_spec=input_spec)
+      input_spec=input_spec,
+  )
 
 
 @attr.s(eq=False, frozen=True)
 class MnistVariables:
   """Structure for variables in an MNIST model."""
+
   weights = attr.ib()
   bias = attr.ib()
 
@@ -126,11 +133,14 @@ class MnistModel(model_lib.Model):
         weights=tf.Variable(
             lambda: tf.zeros(dtype=tf.float32, shape=(784, 10)),
             name='weights',
-            trainable=True),
+            trainable=True,
+        ),
         bias=tf.Variable(
             lambda: tf.zeros(dtype=tf.float32, shape=(10)),
             name='bias',
-            trainable=True))
+            trainable=True,
+        ),
+    )
 
   @property
   def global_trainable_variables(self):
@@ -150,27 +160,36 @@ class MnistModel(model_lib.Model):
 
   @property
   def input_spec(self):
-    return collections.OrderedDict([('x', tf.TensorSpec([None, 784],
-                                                        tf.float32)),
-                                    ('y', tf.TensorSpec([None, 1], tf.int32))])
+    return collections.OrderedDict([
+        ('x', tf.TensorSpec([None, 784], tf.float32)),
+        ('y', tf.TensorSpec([None, 1], tf.int32)),
+    ])
 
   @tf.function
   def forward_pass(self, batch, training=True):
     del training
 
     y = tf.nn.softmax(
-        tf.matmul(batch['x'], self._variables.weights) + self._variables.bias)
+        tf.matmul(batch['x'], self._variables.weights) + self._variables.bias
+    )
     return model_lib.BatchOutput(
-        predictions=y, labels=batch['y'], num_examples=tf.size(batch['y']))
+        predictions=y, labels=batch['y'], num_examples=tf.size(batch['y'])
+    )
 
 
 def create_emnist_client_data():
   np.random.seed(42)
-  emnist_data = collections.OrderedDict([('x', [
-      0.1 * np.random.randn(784).astype(np.float32),
-      0.1 * np.random.randn(784).astype(np.float32),
-      0.1 * np.random.randn(784).astype(np.float32)
-  ]), ('y', [[5], [5], [9]])])
+  emnist_data = collections.OrderedDict([
+      (
+          'x',
+          [
+              0.1 * np.random.randn(784).astype(np.float32),
+              0.1 * np.random.randn(784).astype(np.float32),
+              0.1 * np.random.randn(784).astype(np.float32),
+          ],
+      ),
+      ('y', [[5], [5], [9]]),
+  ])
 
   dataset = tf.data.Dataset.from_tensor_slices(emnist_data)
 
@@ -206,7 +225,8 @@ class _DPMean(factory.UnweightedAggregationFactory):
       return [tf.squeeze(tf.math.divide_no_nan(x, tf.cast(y, tf.float32)), 0)]
 
     @federated_computation.federated_computation(
-        init.type_signature.result, computation_types.at_clients(value_type))
+        init.type_signature.result, computation_types.at_clients(value_type)
+    )
     def next_fn(state, value):
       one_at_clients = intrinsics.federated_value(1, placements.CLIENTS)
       dp_sum = self._dp_sum_process.next(state, value)
@@ -214,10 +234,12 @@ class _DPMean(factory.UnweightedAggregationFactory):
       return measured_process_lib.MeasuredProcessOutput(
           state=dp_sum.state,
           result=intrinsics.federated_map(div, (dp_sum.result, summed_one)),
-          measurements=dp_sum.measurements)
+          measurements=dp_sum.measurements,
+      )
 
     return aggregation_process_lib.AggregationProcess(
-        initialize_fn=init, next_fn=next_fn)
+        initialize_fn=init, next_fn=next_fn
+    )
 
 
 def _get_tff_optimizer(learning_rate=0.1):
@@ -244,7 +266,6 @@ class TrainingProcessTest(tf.test.TestCase, parameterized.TestCase):
       ('tff_opt', _get_tff_optimizer),
   ])
   def test_build_train_iterative_process(self, optimizer_fn):
-
     def loss_fn():
       return tf.keras.losses.SparseCategoricalCrossentropy()
 
@@ -252,19 +273,21 @@ class TrainingProcessTest(tf.test.TestCase, parameterized.TestCase):
       return [
           counters.NumExamplesCounter(),
           counters.NumBatchesCounter(),
-          tf.keras.metrics.SparseCategoricalAccuracy()
+          tf.keras.metrics.SparseCategoricalAccuracy(),
       ]
 
     it_process = training_process.build_training_process(
         local_recon_model_fn,
         loss_fn=loss_fn,
         metrics_fn=metrics_fn,
-        client_optimizer_fn=optimizer_fn())
+        client_optimizer_fn=optimizer_fn(),
+    )
 
     self.assertIsInstance(it_process, iterative_process_lib.IterativeProcess)
     federated_data_type = it_process.next.type_signature.parameter[1]
     self.assertEqual(
-        str(federated_data_type), '{<x=float32[?,784],y=int32[?,1]>*}@CLIENTS')
+        str(federated_data_type), '{<x=float32[?,784],y=int32[?,1]>*}@CLIENTS'
+    )
 
   def test_fed_recon_with_custom_client_weight_fn(self):
     self.skipTest('b/201413656')
@@ -279,12 +302,14 @@ class TrainingProcessTest(tf.test.TestCase, parameterized.TestCase):
         loss_fn=tf.keras.losses.SparseCategoricalCrossentropy,
         client_optimizer_fn=_get_tff_optimizer(0.0001),
         reconstruction_optimizer_fn=_get_tff_optimizer(0.001),
-        client_weighting=client_weight_fn)
+        client_weighting=client_weight_fn,
+    )
 
     _, train_outputs, _ = self._run_rounds(it_process, federated_data, 5)
     self.assertLess(
         np.mean([train_outputs[-1]['loss'], train_outputs[-2]['loss']]),
-        train_outputs[0]['loss'])
+        train_outputs[0]['loss'],
+    )
 
   def test_server_update_with_inf_weight_is_noop(self):
     client_data = create_emnist_client_data()
@@ -296,20 +321,22 @@ class TrainingProcessTest(tf.test.TestCase, parameterized.TestCase):
         loss_fn=tf.keras.losses.SparseCategoricalCrossentropy,
         client_optimizer_fn=_get_keras_optimizer_fn(0.001),
         reconstruction_optimizer_fn=_get_keras_optimizer_fn(0.001),
-        client_weighting=client_weight_fn)
+        client_weighting=client_weight_fn,
+    )
 
     state, _, initial_state = self._run_rounds(it_process, federated_data, 1)
-    self.assertAllClose(state.model.trainable, initial_state.model.trainable,
-                        1e-8)
-    self.assertAllClose(state.model.trainable, initial_state.model.trainable,
-                        1e-8)
+    self.assertAllClose(
+        state.model.trainable, initial_state.model.trainable, 1e-8
+    )
+    self.assertAllClose(
+        state.model.trainable, initial_state.model.trainable, 1e-8
+    )
 
   @parameterized.named_parameters([
       ('keras_opt', _get_keras_optimizer_fn),
       ('tff_opt', _get_tff_optimizer),
   ])
   def test_keras_global_model(self, optimizer_fn):
-
     def loss_fn():
       return tf.keras.losses.SparseCategoricalCrossentropy()
 
@@ -317,7 +344,7 @@ class TrainingProcessTest(tf.test.TestCase, parameterized.TestCase):
       return [
           counters.NumExamplesCounter(),
           counters.NumBatchesCounter(),
-          tf.keras.metrics.SparseCategoricalAccuracy()
+          tf.keras.metrics.SparseCategoricalAccuracy(),
       ]
 
     it_process = training_process.build_training_process(
@@ -325,7 +352,8 @@ class TrainingProcessTest(tf.test.TestCase, parameterized.TestCase):
         loss_fn=loss_fn,
         metrics_fn=metrics_fn,
         client_optimizer_fn=optimizer_fn(0.0001),
-        reconstruction_optimizer_fn=optimizer_fn(0.001))
+        reconstruction_optimizer_fn=optimizer_fn(0.001),
+    )
 
     server_state = it_process.initialize()
 
@@ -341,15 +369,19 @@ class TrainingProcessTest(tf.test.TestCase, parameterized.TestCase):
       outputs.append(output)
       loss_list.append(output['train']['loss'])
 
-    self.assertNotAllClose(server_states[0].model.trainable,
-                           server_states[1].model.trainable)
+    self.assertNotAllClose(
+        server_states[0].model.trainable, server_states[1].model.trainable
+    )
     self.assertLess(np.mean(loss_list[2:]), np.mean(loss_list[:2]))
 
     expected_keys = ['broadcast', 'aggregation', 'train']
     self.assertCountEqual(outputs[0].keys(), expected_keys)
 
     expected_train_keys = [
-        'sparse_categorical_accuracy', 'loss', 'num_examples', 'num_batches'
+        'sparse_categorical_accuracy',
+        'loss',
+        'num_examples',
+        'num_batches',
     ]
     self.assertCountEqual(outputs[0]['train'].keys(), expected_train_keys)
 
@@ -374,7 +406,7 @@ class TrainingProcessTest(tf.test.TestCase, parameterized.TestCase):
       return [
           counters.NumExamplesCounter(),
           counters.NumBatchesCounter(),
-          tf.keras.metrics.SparseCategoricalAccuracy()
+          tf.keras.metrics.SparseCategoricalAccuracy(),
       ]
 
     it_process = training_process.build_training_process(
@@ -382,14 +414,15 @@ class TrainingProcessTest(tf.test.TestCase, parameterized.TestCase):
         loss_fn=loss_fn,
         metrics_fn=metrics_fn,
         client_optimizer_fn=optimizer_fn(0.001),
-        reconstruction_optimizer_fn=optimizer_fn(0.001))
+        reconstruction_optimizer_fn=optimizer_fn(0.001),
+    )
 
     server_state = it_process.initialize()
 
     client_data = create_emnist_client_data()
     federated_data = [
         client_data(batch_size=1, max_examples=2),
-        client_data(batch_size=2)
+        client_data(batch_size=2),
     ]
 
     server_states = []
@@ -401,15 +434,19 @@ class TrainingProcessTest(tf.test.TestCase, parameterized.TestCase):
       outputs.append(output)
       loss_list.append(output['train']['loss'])
 
-    self.assertNotAllClose(server_states[0].model.trainable,
-                           server_states[1].model.trainable)
+    self.assertNotAllClose(
+        server_states[0].model.trainable, server_states[1].model.trainable
+    )
     self.assertLess(np.mean(loss_list[2:]), np.mean(loss_list[:2]))
 
     expected_keys = ['broadcast', 'aggregation', 'train']
     self.assertCountEqual(outputs[0].keys(), expected_keys)
 
     expected_train_keys = [
-        'sparse_categorical_accuracy', 'loss', 'num_examples', 'num_batches'
+        'sparse_categorical_accuracy',
+        'loss',
+        'num_examples',
+        'num_batches',
     ]
     self.assertCountEqual(outputs[0]['train'].keys(), expected_train_keys)
 
@@ -421,11 +458,11 @@ class TrainingProcessTest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(outputs[1]['train']['num_batches'], 2)
 
     expected_aggregation_keys = ['mean_weight', 'mean_value']
-    self.assertCountEqual(output['aggregation'].keys(),
-                          expected_aggregation_keys)
+    self.assertCountEqual(
+        output['aggregation'].keys(), expected_aggregation_keys
+    )
 
   def test_keras_local_layer_client_weighting_enum_num_examples(self):
-
     def loss_fn():
       return tf.keras.losses.SparseCategoricalCrossentropy()
 
@@ -433,7 +470,7 @@ class TrainingProcessTest(tf.test.TestCase, parameterized.TestCase):
       return [
           counters.NumExamplesCounter(),
           counters.NumBatchesCounter(),
-          tf.keras.metrics.SparseCategoricalAccuracy()
+          tf.keras.metrics.SparseCategoricalAccuracy(),
       ]
 
     it_process = training_process.build_training_process(
@@ -442,7 +479,8 @@ class TrainingProcessTest(tf.test.TestCase, parameterized.TestCase):
         metrics_fn=metrics_fn,
         client_optimizer_fn=_get_keras_optimizer_fn(0.001),
         reconstruction_optimizer_fn=_get_keras_optimizer_fn(0.001),
-        client_weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES)
+        client_weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES,
+    )
 
     server_state = it_process.initialize()
 
@@ -455,7 +493,10 @@ class TrainingProcessTest(tf.test.TestCase, parameterized.TestCase):
     self.assertCountEqual(output.keys(), expected_keys)
 
     expected_train_keys = [
-        'sparse_categorical_accuracy', 'loss', 'num_examples', 'num_batches'
+        'sparse_categorical_accuracy',
+        'loss',
+        'num_examples',
+        'num_batches',
     ]
     self.assertCountEqual(output['train'].keys(), expected_train_keys)
 
@@ -465,11 +506,11 @@ class TrainingProcessTest(tf.test.TestCase, parameterized.TestCase):
 
     # Ensure we are using a weighted aggregator.
     expected_aggregation_keys = ['mean_weight', 'mean_value']
-    self.assertCountEqual(output['aggregation'].keys(),
-                          expected_aggregation_keys)
+    self.assertCountEqual(
+        output['aggregation'].keys(), expected_aggregation_keys
+    )
 
   def test_keras_local_layer_client_weighting_enum_uniform(self):
-
     def loss_fn():
       return tf.keras.losses.SparseCategoricalCrossentropy()
 
@@ -477,7 +518,7 @@ class TrainingProcessTest(tf.test.TestCase, parameterized.TestCase):
       return [
           counters.NumExamplesCounter(),
           counters.NumBatchesCounter(),
-          tf.keras.metrics.SparseCategoricalAccuracy()
+          tf.keras.metrics.SparseCategoricalAccuracy(),
       ]
 
     it_process = training_process.build_training_process(
@@ -487,7 +528,8 @@ class TrainingProcessTest(tf.test.TestCase, parameterized.TestCase):
         client_optimizer_fn=_get_keras_optimizer_fn(0.001),
         reconstruction_optimizer_fn=_get_keras_optimizer_fn(0.001),
         client_weighting=client_weight_lib.ClientWeighting.UNIFORM,
-        dataset_split_fn=reconstruction_utils.simple_dataset_split_fn)
+        dataset_split_fn=reconstruction_utils.simple_dataset_split_fn,
+    )
 
     server_state = it_process.initialize()
 
@@ -500,7 +542,10 @@ class TrainingProcessTest(tf.test.TestCase, parameterized.TestCase):
     self.assertCountEqual(output.keys(), expected_keys)
 
     expected_train_keys = [
-        'sparse_categorical_accuracy', 'loss', 'num_examples', 'num_batches'
+        'sparse_categorical_accuracy',
+        'loss',
+        'num_examples',
+        'num_batches',
     ]
     self.assertCountEqual(output['train'].keys(), expected_train_keys)
 
@@ -509,11 +554,11 @@ class TrainingProcessTest(tf.test.TestCase, parameterized.TestCase):
 
     # Ensure we are using a weighted aggregator.
     expected_aggregation_keys = ['mean_weight', 'mean_value']
-    self.assertCountEqual(output['aggregation'].keys(),
-                          expected_aggregation_keys)
+    self.assertCountEqual(
+        output['aggregation'].keys(), expected_aggregation_keys
+    )
 
   def test_keras_local_layer_metrics_empty_list(self):
-
     def loss_fn():
       return tf.keras.losses.SparseCategoricalCrossentropy()
 
@@ -525,7 +570,8 @@ class TrainingProcessTest(tf.test.TestCase, parameterized.TestCase):
         loss_fn=loss_fn,
         metrics_fn=metrics_fn,
         client_optimizer_fn=_get_keras_optimizer_fn(0.0001),
-        reconstruction_optimizer_fn=_get_keras_optimizer_fn(0.001))
+        reconstruction_optimizer_fn=_get_keras_optimizer_fn(0.001),
+    )
 
     server_state = it_process.initialize()
 
@@ -541,7 +587,6 @@ class TrainingProcessTest(tf.test.TestCase, parameterized.TestCase):
     self.assertCountEqual(output['train'].keys(), expected_train_keys)
 
   def test_keras_local_layer_metrics_none(self):
-
     def loss_fn():
       return tf.keras.losses.SparseCategoricalCrossentropy()
 
@@ -550,7 +595,8 @@ class TrainingProcessTest(tf.test.TestCase, parameterized.TestCase):
         loss_fn=loss_fn,
         metrics_fn=None,
         client_optimizer_fn=_get_keras_optimizer_fn(0.001),
-        reconstruction_optimizer_fn=_get_keras_optimizer_fn(0.001))
+        reconstruction_optimizer_fn=_get_keras_optimizer_fn(0.001),
+    )
 
     server_state = it_process.initialize()
 
@@ -579,7 +625,7 @@ class TrainingProcessTest(tf.test.TestCase, parameterized.TestCase):
       return [
           counters.NumExamplesCounter(),
           counters.NumBatchesCounter(),
-          tf.keras.metrics.SparseCategoricalAccuracy()
+          tf.keras.metrics.SparseCategoricalAccuracy(),
       ]
 
     # Disable reconstruction via 0 learning rate to ensure post-recon loss
@@ -591,7 +637,8 @@ class TrainingProcessTest(tf.test.TestCase, parameterized.TestCase):
         server_optimizer_fn=optimizer_fn(0.01),
         client_optimizer_fn=optimizer_fn(0.001),
         reconstruction_optimizer_fn=optimizer_fn(0.0),
-        dataset_split_fn=reconstruction_utils.simple_dataset_split_fn)
+        dataset_split_fn=reconstruction_utils.simple_dataset_split_fn,
+    )
     state = trainer.initialize()
 
     outputs = []
@@ -605,7 +652,8 @@ class TrainingProcessTest(tf.test.TestCase, parameterized.TestCase):
     # and softmax probabilities are uniform over 10 classes. So negative log
     # likelihood is -ln(1/10). This is on expectation, so increase tolerance.
     self.assertAllClose(
-        outputs[0]['train']['loss'], tf.math.log(10.0), rtol=1e-4)
+        outputs[0]['train']['loss'], tf.math.log(10.0), rtol=1e-4
+    )
     self.assertLess(outputs[1]['train']['loss'], outputs[0]['train']['loss'])
     self.assertNotAllClose(states[0].model.trainable, states[1].model.trainable)
 
@@ -634,7 +682,7 @@ class TrainingProcessTest(tf.test.TestCase, parameterized.TestCase):
       return [
           counters.NumExamplesCounter(),
           counters.NumBatchesCounter(),
-          tf.keras.metrics.SparseCategoricalAccuracy()
+          tf.keras.metrics.SparseCategoricalAccuracy(),
       ]
 
     # Disable reconstruction via 0 learning rate to ensure post-recon loss
@@ -643,11 +691,13 @@ class TrainingProcessTest(tf.test.TestCase, parameterized.TestCase):
         MnistModel,
         loss_fn=loss_fn,
         metrics_fn=metrics_fn,
-        server_optimizer_fn=functools.partial(tf.keras.optimizers.Adagrad,
-                                              0.01),
+        server_optimizer_fn=functools.partial(
+            tf.keras.optimizers.Adagrad, 0.01
+        ),
         client_optimizer_fn=optimizer_fn(0.001),
         reconstruction_optimizer_fn=optimizer_fn(0.0),
-        dataset_split_fn=reconstruction_utils.simple_dataset_split_fn)
+        dataset_split_fn=reconstruction_utils.simple_dataset_split_fn,
+    )
     state = trainer.initialize()
 
     outputs = []
@@ -661,7 +711,8 @@ class TrainingProcessTest(tf.test.TestCase, parameterized.TestCase):
     # and softmax probabilities are uniform over 10 classes. So negative log
     # likelihood is -ln(1/10). This is on expectation, so increase tolerance.
     self.assertAllClose(
-        outputs[0]['train']['loss'], tf.math.log(10.0), rtol=1e-4)
+        outputs[0]['train']['loss'], tf.math.log(10.0), rtol=1e-4
+    )
     self.assertLess(outputs[1]['train']['loss'], outputs[0]['train']['loss'])
     self.assertNotAllClose(states[0].model.trainable, states[1].model.trainable)
 
@@ -686,12 +737,13 @@ class TrainingProcessTest(tf.test.TestCase, parameterized.TestCase):
       return [
           counters.NumExamplesCounter(),
           counters.NumBatchesCounter(),
-          tf.keras.metrics.SparseCategoricalAccuracy()
+          tf.keras.metrics.SparseCategoricalAccuracy(),
       ]
 
     # No values should be clipped and zeroed
     aggregation_factory = robust.zeroing_factory(
-        zeroing_norm=float('inf'), inner_agg_factory=mean.MeanFactory())
+        zeroing_norm=float('inf'), inner_agg_factory=mean.MeanFactory()
+    )
 
     # Disable reconstruction via 0 learning rate to ensure post-recon loss
     # matches exact expectations round 0 and decreases by the next round.
@@ -703,7 +755,8 @@ class TrainingProcessTest(tf.test.TestCase, parameterized.TestCase):
         client_optimizer_fn=_get_keras_optimizer_fn(0.001),
         reconstruction_optimizer_fn=_get_keras_optimizer_fn(0.0),
         aggregation_factory=aggregation_factory,
-        dataset_split_fn=reconstruction_utils.simple_dataset_split_fn)
+        dataset_split_fn=reconstruction_utils.simple_dataset_split_fn,
+    )
     state = trainer.initialize()
 
     outputs = []
@@ -717,7 +770,8 @@ class TrainingProcessTest(tf.test.TestCase, parameterized.TestCase):
     # and softmax probabilities are uniform over 10 classes. So negative log
     # likelihood is -ln(1/10). This is on expectation, so increase tolerance.
     self.assertAllClose(
-        outputs[0]['train']['loss'], tf.math.log(10.0), rtol=1e-4)
+        outputs[0]['train']['loss'], tf.math.log(10.0), rtol=1e-4
+    )
     self.assertLess(outputs[1]['train']['loss'], outputs[0]['train']['loss'])
     self.assertNotAllClose(states[0].model.trainable, states[1].model.trainable)
 
@@ -732,7 +786,6 @@ class TrainingProcessTest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(outputs[1]['train']['num_batches'], 4.0)
 
   def test_iterative_process_fails_with_dp_agg_and_client_weight_fn(self):
-
     def loss_fn():
       return tf.keras.losses.SparseCategoricalCrossentropy()
 
@@ -740,7 +793,7 @@ class TrainingProcessTest(tf.test.TestCase, parameterized.TestCase):
       return [
           counters.NumExamplesCounter(),
           counters.NumBatchesCounter(),
-          tf.keras.metrics.SparseCategoricalAccuracy()
+          tf.keras.metrics.SparseCategoricalAccuracy(),
       ]
 
     # No values should be changed, but working with inf directly zeroes out all
@@ -749,7 +802,8 @@ class TrainingProcessTest(tf.test.TestCase, parameterized.TestCase):
     gaussian_sum_query = tfp.GaussianSumQuery(l2_norm_clip=1e10, stddev=0)
     dp_sum_factory = differential_privacy.DifferentiallyPrivateFactory(
         query=gaussian_sum_query,
-        record_aggregation_factory=sum_factory.SumFactory())
+        record_aggregation_factory=sum_factory.SumFactory(),
+    )
     dp_mean_factory = _DPMean(dp_sum_factory)
 
     def client_weight_fn(local_outputs):
@@ -766,10 +820,10 @@ class TrainingProcessTest(tf.test.TestCase, parameterized.TestCase):
           reconstruction_optimizer_fn=_get_keras_optimizer_fn(0.0),
           aggregation_factory=dp_mean_factory,
           client_weighting=client_weight_fn,
-          dataset_split_fn=reconstruction_utils.simple_dataset_split_fn)
+          dataset_split_fn=reconstruction_utils.simple_dataset_split_fn,
+      )
 
   def test_iterative_process_fails_with_dp_agg_and_none_client_weighting(self):
-
     def loss_fn():
       return tf.keras.losses.SparseCategoricalCrossentropy()
 
@@ -777,7 +831,7 @@ class TrainingProcessTest(tf.test.TestCase, parameterized.TestCase):
       return [
           counters.NumExamplesCounter(),
           counters.NumBatchesCounter(),
-          tf.keras.metrics.SparseCategoricalAccuracy()
+          tf.keras.metrics.SparseCategoricalAccuracy(),
       ]
 
     # No values should be changed, but working with inf directly zeroes out all
@@ -786,7 +840,8 @@ class TrainingProcessTest(tf.test.TestCase, parameterized.TestCase):
     gaussian_sum_query = tfp.GaussianSumQuery(l2_norm_clip=1e10, stddev=0)
     dp_sum_factory = differential_privacy.DifferentiallyPrivateFactory(
         query=gaussian_sum_query,
-        record_aggregation_factory=sum_factory.SumFactory())
+        record_aggregation_factory=sum_factory.SumFactory(),
+    )
     dp_mean_factory = _DPMean(dp_sum_factory)
 
     with self.assertRaisesRegex(ValueError, 'unweighted aggregator'):
@@ -799,7 +854,8 @@ class TrainingProcessTest(tf.test.TestCase, parameterized.TestCase):
           reconstruction_optimizer_fn=_get_keras_optimizer_fn(0.0),
           aggregation_factory=dp_mean_factory,
           client_weighting=None,
-          dataset_split_fn=reconstruction_utils.simple_dataset_split_fn)
+          dataset_split_fn=reconstruction_utils.simple_dataset_split_fn,
+      )
 
   def test_execution_with_custom_dp_query(self):
     client_data = create_emnist_client_data()
@@ -812,7 +868,7 @@ class TrainingProcessTest(tf.test.TestCase, parameterized.TestCase):
       return [
           counters.NumExamplesCounter(),
           counters.NumBatchesCounter(),
-          tf.keras.metrics.SparseCategoricalAccuracy()
+          tf.keras.metrics.SparseCategoricalAccuracy(),
       ]
 
     # No values should be changed, but working with inf directly zeroes out all
@@ -821,7 +877,8 @@ class TrainingProcessTest(tf.test.TestCase, parameterized.TestCase):
     gaussian_sum_query = tfp.GaussianSumQuery(l2_norm_clip=1e10, stddev=0)
     dp_sum_factory = differential_privacy.DifferentiallyPrivateFactory(
         query=gaussian_sum_query,
-        record_aggregation_factory=sum_factory.SumFactory())
+        record_aggregation_factory=sum_factory.SumFactory(),
+    )
     dp_mean_factory = _DPMean(dp_sum_factory)
 
     # Disable reconstruction via 0 learning rate to ensure post-recon loss
@@ -850,7 +907,8 @@ class TrainingProcessTest(tf.test.TestCase, parameterized.TestCase):
     # and softmax probabilities are uniform over 10 classes. So negative log
     # likelihood is -ln(1/10). This is on expectation, so increase tolerance.
     self.assertAllClose(
-        outputs[0]['train']['loss'], tf.math.log(10.0), rtol=1e-4)
+        outputs[0]['train']['loss'], tf.math.log(10.0), rtol=1e-4
+    )
     self.assertLess(outputs[1]['train']['loss'], outputs[0]['train']['loss'])
     self.assertNotAllClose(states[0].model.trainable, states[1].model.trainable)
 
@@ -865,7 +923,6 @@ class TrainingProcessTest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(outputs[1]['train']['num_batches'], 4.0)
 
   def test_keras_local_layer_custom_broadcaster(self):
-
     def loss_fn():
       return tf.keras.losses.SparseCategoricalCrossentropy()
 
@@ -873,14 +930,16 @@ class TrainingProcessTest(tf.test.TestCase, parameterized.TestCase):
       return [
           counters.NumExamplesCounter(),
           counters.NumBatchesCounter(),
-          tf.keras.metrics.SparseCategoricalAccuracy()
+          tf.keras.metrics.SparseCategoricalAccuracy(),
       ]
 
     model_weights_type = type_conversions.type_from_tensors(
-        reconstruction_utils.get_global_variables(local_recon_model_fn()))
+        reconstruction_utils.get_global_variables(local_recon_model_fn())
+    )
 
     def build_custom_stateful_broadcaster(
-        model_weights_type) -> measured_process_lib.MeasuredProcess:
+        model_weights_type,
+    ) -> measured_process_lib.MeasuredProcess:
       """Builds a `MeasuredProcess` that wraps `tff.federated_broadcast`."""
 
       @federated_computation.federated_computation()
@@ -889,18 +948,21 @@ class TrainingProcessTest(tf.test.TestCase, parameterized.TestCase):
 
       @federated_computation.federated_computation(
           computation_types.FederatedType(tf.float32, placements.SERVER),
-          computation_types.FederatedType(model_weights_type,
-                                          placements.SERVER),
+          computation_types.FederatedType(
+              model_weights_type, placements.SERVER
+          ),
       )
       def stateful_broadcast(state, value):
         empty_metrics = intrinsics.federated_value(1.0, placements.SERVER)
         return measured_process_lib.MeasuredProcessOutput(
             state=state,
             result=intrinsics.federated_broadcast(value),
-            measurements=empty_metrics)
+            measurements=empty_metrics,
+        )
 
       return measured_process_lib.MeasuredProcess(
-          initialize_fn=test_server_initialization, next_fn=stateful_broadcast)
+          initialize_fn=test_server_initialization, next_fn=stateful_broadcast
+      )
 
     it_process = training_process.build_training_process(
         local_recon_model_fn,
@@ -910,7 +972,9 @@ class TrainingProcessTest(tf.test.TestCase, parameterized.TestCase):
         reconstruction_optimizer_fn=_get_keras_optimizer_fn(0.001),
         dataset_split_fn=reconstruction_utils.simple_dataset_split_fn,
         broadcast_process=build_custom_stateful_broadcaster(
-            model_weights_type=model_weights_type))
+            model_weights_type=model_weights_type
+        ),
+    )
 
     server_state = it_process.initialize()
 
@@ -926,7 +990,10 @@ class TrainingProcessTest(tf.test.TestCase, parameterized.TestCase):
     self.assertCountEqual(output.keys(), expected_keys)
 
     expected_train_keys = [
-        'sparse_categorical_accuracy', 'loss', 'num_examples', 'num_batches'
+        'sparse_categorical_accuracy',
+        'loss',
+        'num_examples',
+        'num_batches',
     ]
     self.assertCountEqual(output['train'].keys(), expected_train_keys)
 
@@ -947,18 +1014,20 @@ class TrainingProcessTest(tf.test.TestCase, parameterized.TestCase):
       return [
           counters.NumExamplesCounter(),
           counters.NumBatchesCounter(),
-          tf.keras.metrics.SparseCategoricalAccuracy()
+          tf.keras.metrics.SparseCategoricalAccuracy(),
       ]
 
     dataset_split_fn = reconstruction_utils.build_dataset_split_fn(
-        recon_epochs=3, post_recon_epochs=4, post_recon_steps_max=3)
+        recon_epochs=3, post_recon_epochs=4, post_recon_steps_max=3
+    )
     trainer = training_process.build_training_process(
         MnistModel,
         loss_fn=loss_fn,
         metrics_fn=metrics_fn,
         client_optimizer_fn=optimizer_fn(0.001),
         reconstruction_optimizer_fn=optimizer_fn(0.001),
-        dataset_split_fn=dataset_split_fn)
+        dataset_split_fn=dataset_split_fn,
+    )
     state = trainer.initialize()
 
     outputs = []
@@ -984,20 +1053,25 @@ class TrainingProcessTest(tf.test.TestCase, parameterized.TestCase):
         local_recon_model_fn,
         loss_fn=tf.keras.losses.SparseCategoricalCrossentropy,
         client_optimizer_fn=_get_keras_optimizer_fn(0.001),
-        reconstruction_optimizer_fn=_get_keras_optimizer_fn(0.001))
+        reconstruction_optimizer_fn=_get_keras_optimizer_fn(0.001),
+    )
     state = it_process.initialize()
 
     self.assertIsInstance(
-        it_process.get_model_weights(state), model_weights.ModelWeights)
-    self.assertAllClose(state.model.trainable,
-                        it_process.get_model_weights(state).trainable)
+        it_process.get_model_weights(state), model_weights.ModelWeights
+    )
+    self.assertAllClose(
+        state.model.trainable, it_process.get_model_weights(state).trainable
+    )
 
     for _ in range(3):
       state, _ = it_process.next(state, federated_data)
       self.assertIsInstance(
-          it_process.get_model_weights(state), model_weights.ModelWeights)
-      self.assertAllClose(state.model.trainable,
-                          it_process.get_model_weights(state).trainable)
+          it_process.get_model_weights(state), model_weights.ModelWeights
+      )
+      self.assertAllClose(
+          state.model.trainable, it_process.get_model_weights(state).trainable
+      )
 
   def test_process_construction_calls_model_fn(self):
     # Assert that the the process building does not call `model_fn` too many
@@ -1007,7 +1081,8 @@ class TrainingProcessTest(tf.test.TestCase, parameterized.TestCase):
     training_process.build_training_process(
         model_fn=mock_model_fn,
         loss_fn=tf.keras.losses.SparseCategoricalCrossentropy,
-        client_optimizer_fn=_get_keras_optimizer_fn())
+        client_optimizer_fn=_get_keras_optimizer_fn(),
+    )
     # TODO(b/186451541): Reduce the number of calls to model_fn.
     self.assertEqual(mock_model_fn.call_count, 4)
 

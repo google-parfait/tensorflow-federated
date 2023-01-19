@@ -29,7 +29,7 @@ _ReduceFnCallable = Callable[[Any, tf.Tensor], Any]
 def _dataset_reduce_fn(
     reduce_fn: _ReduceFnCallable,
     dataset: tf.data.Dataset,
-    initial_state_fn: Callable[[], Any] = lambda: tf.constant(0)
+    initial_state_fn: Callable[[], Any] = lambda: tf.constant(0),
 ) -> Any:
   return dataset.reduce(initial_state=initial_state_fn(), reduce_func=reduce_fn)
 
@@ -37,7 +37,7 @@ def _dataset_reduce_fn(
 def _for_iter_dataset_fn(
     reduce_fn: _ReduceFnCallable,
     dataset: tf.data.Dataset,
-    initial_state_fn: Callable[[], Any] = lambda: tf.constant(0)
+    initial_state_fn: Callable[[], Any] = lambda: tf.constant(0),
 ) -> Any:
   """Performs dataset reduce for simulation performance."""
   # TODO(b/155208489): this is a workaround for GPU simulation because
@@ -50,9 +50,10 @@ def _for_iter_dataset_fn(
 
 
 def build_dataset_reduce_fn(
-    simulation_flag: bool = True
-) -> Callable[[_ReduceFnCallable, Union[tf.data.Dataset, Iterable[Any]], Any],
-              tf.Tensor]:
+    simulation_flag: bool = True,
+) -> Callable[
+    [_ReduceFnCallable, Union[tf.data.Dataset, Iterable[Any]], Any], tf.Tensor
+]:
   # TODO(b/162683412): remove `Iterable` after pytype fix.
   """Returns a reduce loop function on input dataset."""
   if simulation_flag:

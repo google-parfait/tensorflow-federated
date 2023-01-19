@@ -42,10 +42,12 @@ class NumExamplesCounter(tf.keras.metrics.Sum):
     # label to compute the batch size.
     labels = tf.nest.flatten(y_true)
     if not all(tf.is_tensor(l) or isinstance(l, np.ndarray) for l in labels):
-      raise ValueError('NumExamplesCounter only works with `numpy.ndarray` or '
-                       '`tensorflow.Tensor` types. Received a structure with '
-                       'other values; consider using `np.asarray` or '
-                       f'`tf.convert_to_tensor`. Got: {labels}')
+      raise ValueError(
+          'NumExamplesCounter only works with `numpy.ndarray` or '
+          '`tensorflow.Tensor` types. Received a structure with '
+          'other values; consider using `np.asarray` or '
+          f'`tf.convert_to_tensor`. Got: {labels}'
+      )
     return super().update_state(tf.shape(labels[0])[0], sample_weight=None)
 
 

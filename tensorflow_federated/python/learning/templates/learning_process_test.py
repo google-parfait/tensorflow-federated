@@ -36,7 +36,6 @@ tf_computation = tensorflow_computation.tf_computation
 
 
 def create_pass_through_get_model_weights(state_type):
-
   @federated_computation(state_type)
   def pass_through_get_model_weights_fn(state):
     return state
@@ -45,7 +44,6 @@ def create_pass_through_get_model_weights(state_type):
 
 
 def create_take_arg_set_model_weights(state_type, model_type):
-
   @federated_computation(state_type, model_type)
   def take_arg_set_model_weights(state, model_weights):
     del state  # Unused.
@@ -63,7 +61,8 @@ def test_init_fn():
 @tf.function
 def sum_dataset(dataset):
   total = tf.zeros(
-      shape=dataset.element_spec.shape, dtype=dataset.element_spec.dtype)
+      shape=dataset.element_spec.shape, dtype=dataset.element_spec.dtype
+  )
   for i in iter(dataset):
     total += i
   return total
@@ -81,32 +80,43 @@ def test_next_fn(state, data):
 
   result = intrinsics.federated_map(add, (state, server_sum))
   return LearningProcessOutput(
-      state=result, metrics=intrinsics.federated_value((), placements.SERVER))
+      state=result, metrics=intrinsics.federated_value((), placements.SERVER)
+  )
 
 
 test_get_model_weights_fn = create_pass_through_get_model_weights(tf.int32)
 test_set_model_weights_fn = create_take_arg_set_model_weights(
-    tf.int32, tf.int32)
+    tf.int32, tf.int32
+)
 
 
 class LearningProcessTest(absltest.TestCase):
 
   def test_construction_does_not_raise(self):
     try:
-      learning_process.LearningProcess(test_init_fn, test_next_fn,
-                                       test_get_model_weights_fn,
-                                       test_set_model_weights_fn)
+      learning_process.LearningProcess(
+          test_init_fn,
+          test_next_fn,
+          test_get_model_weights_fn,
+          test_set_model_weights_fn,
+      )
     except:  # pylint: disable=bare-except
       self.fail('Could not construct a valid LearningProcess.')
 
   def test_learning_process_can_be_reconstructed(self):
-    process = learning_process.LearningProcess(test_init_fn, test_next_fn,
-                                               test_get_model_weights_fn,
-                                               test_set_model_weights_fn)
+    process = learning_process.LearningProcess(
+        test_init_fn,
+        test_next_fn,
+        test_get_model_weights_fn,
+        test_set_model_weights_fn,
+    )
     try:
-      learning_process.LearningProcess(process.initialize, process.next,
-                                       process.get_model_weights,
-                                       process.set_model_weights)
+      learning_process.LearningProcess(
+          process.initialize,
+          process.next,
+          process.get_model_weights,
+          process.set_model_weights,
+      )
     except:  # pylint: disable=bare-except
       self.fail('Could not reconstruct the LearningProcess.')
 
@@ -118,27 +128,31 @@ class LearningProcessTest(absltest.TestCase):
       return intrinsics.federated_value(empty_tuple, placements.SERVER)
 
     @federated_computation(
-        at_server(empty_tuple), at_clients(SequenceType(tf.int32)))
+        at_server(empty_tuple), at_clients(SequenceType(tf.int32))
+    )
     def next_fn(state, value):
       del value  # Unused.
       return LearningProcessOutput(
           state=state,
-          metrics=intrinsics.federated_value(empty_tuple, placements.SERVER))
+          metrics=intrinsics.federated_value(empty_tuple, placements.SERVER),
+      )
 
     try:
       learning_process.LearningProcess(
-          empty_initialize_fn, next_fn,
+          empty_initialize_fn,
+          next_fn,
           create_pass_through_get_model_weights(empty_tuple),
-          create_take_arg_set_model_weights(empty_tuple, empty_tuple))
+          create_take_arg_set_model_weights(empty_tuple, empty_tuple),
+      )
     except:  # pylint: disable=bare-except
       self.fail('Could not construct a LearningProcess with empty state.')
 
   def test_construction_with_unknown_dimension_does_not_raise(self):
-
     @federated_computation
     def initialize_fn():
       return intrinsics.federated_eval(
-          tf_computation(lambda: tf.constant([], tf.string)), placements.SERVER)
+          tf_computation(lambda: tf.constant([], tf.string)), placements.SERVER
+      )
 
     # This replicates a tensor that can grow in string length. The
     # `initialize_fn` will concretely start with shape `[0]`, but `next_fn` will
@@ -147,55 +161,72 @@ class LearningProcessTest(absltest.TestCase):
 
     @federated_computation(
         at_server(none_dimension_string_type),
-        at_clients(SequenceType(tf.string)))
+        at_clients(SequenceType(tf.string)),
+    )
     def next_fn(state, datasets):
       del datasets  # Unused.
       return LearningProcessOutput(
-          state, intrinsics.federated_value((), placements.SERVER))
+          state, intrinsics.federated_value((), placements.SERVER)
+      )
 
     try:
       learning_process.LearningProcess(
-          initialize_fn, next_fn,
+          initialize_fn,
+          next_fn,
           create_pass_through_get_model_weights(none_dimension_string_type),
-          create_take_arg_set_model_weights(none_dimension_string_type,
-                                            none_dimension_string_type))
+          create_take_arg_set_model_weights(
+              none_dimension_string_type, none_dimension_string_type
+          ),
+      )
     except:  # pylint: disable=bare-except
-      self.fail('Could not construct a LearningProcess with state type having '
-                'statically unknown shape.')
+      self.fail(
+          'Could not construct a LearningProcess with state type having '
+          'statically unknown shape.'
+      )
 
   def test_construction_with_nested_datasets_does_not_raise(self):
-
     @federated_computation
     def initialize_fn():
       return intrinsics.federated_eval(
           tf_computation(lambda: tf.constant(0.0, tf.float32)),
-          placements.SERVER)
+          placements.SERVER,
+      )
 
     # Test that clients can receive multiple datasets.
-    datasets_type = (SequenceType(tf.string), (SequenceType(tf.string),
-                                               SequenceType(tf.string)))
+    datasets_type = (
+        SequenceType(tf.string),
+        (SequenceType(tf.string), SequenceType(tf.string)),
+    )
 
     @federated_computation(at_server(tf.float32), at_clients(datasets_type))
     def next_fn(state, datasets):
       del datasets  # Unused.
       return LearningProcessOutput(
-          state, intrinsics.federated_value((), placements.SERVER))
+          state, intrinsics.federated_value((), placements.SERVER)
+      )
 
     try:
       learning_process.LearningProcess(
-          initialize_fn, next_fn,
+          initialize_fn,
+          next_fn,
           create_pass_through_get_model_weights(tf.float32),
-          create_take_arg_set_model_weights(tf.float32, tf.float32))
+          create_take_arg_set_model_weights(tf.float32, tf.float32),
+      )
     except learning_process.LearningProcessSequenceTypeError:
-      self.fail('Could not construct a LearningProcess with second parameter '
-                'type having nested sequences.')
+      self.fail(
+          'Could not construct a LearningProcess with second parameter '
+          'type having nested sequences.'
+      )
 
   def test_init_not_tff_computation_raises(self):
     with self.assertRaisesRegex(TypeError, r'Expected .*\.Computation, .*'):
       init_fn = lambda: 0
-      learning_process.LearningProcess(init_fn, test_next_fn,
-                                       test_get_model_weights_fn,
-                                       test_set_model_weights_fn)
+      learning_process.LearningProcess(
+          init_fn,
+          test_next_fn,
+          test_get_model_weights_fn,
+          test_set_model_weights_fn,
+      )
 
   def test_next_not_tff_computation_raises(self):
     with self.assertRaisesRegex(TypeError, r'Expected .*\.Computation, .*'):
@@ -203,32 +234,36 @@ class LearningProcessTest(absltest.TestCase):
           initialize_fn=test_init_fn,
           next_fn=lambda state, client_data: LearningProcessOutput(state, ()),
           get_model_weights=test_get_model_weights_fn,
-          set_model_weights=test_set_model_weights_fn)
+          set_model_weights=test_set_model_weights_fn,
+      )
 
   def test_init_param_not_empty_raises(self):
-
     @federated_computation(at_server(tf.int32))
     def one_arg_initialize_fn(x):
       return x
 
     with self.assertRaises(errors.TemplateInitFnParamNotEmptyError):
-      learning_process.LearningProcess(one_arg_initialize_fn, test_next_fn,
-                                       test_get_model_weights_fn,
-                                       test_set_model_weights_fn)
+      learning_process.LearningProcess(
+          one_arg_initialize_fn,
+          test_next_fn,
+          test_get_model_weights_fn,
+          test_set_model_weights_fn,
+      )
 
   def test_init_state_not_federated(self):
-
     @federated_computation
     def float_initialize_fn():
       return 0.0
 
     with self.assertRaises(errors.TemplateStateNotAssignableError):
-      learning_process.LearningProcess(float_initialize_fn, test_next_fn,
-                                       test_get_model_weights_fn,
-                                       test_set_model_weights_fn)
+      learning_process.LearningProcess(
+          float_initialize_fn,
+          test_next_fn,
+          test_get_model_weights_fn,
+          test_set_model_weights_fn,
+      )
 
   def test_next_state_not_federated(self):
-
     @federated_computation(tf.float32, at_clients(SequenceType(tf.float32)))
     def float_next_fn(state, datasets):
       del datasets  # Unused.
@@ -236,87 +271,106 @@ class LearningProcessTest(absltest.TestCase):
 
     float_next_fn = create_pass_through_get_model_weights(tf.float32)
     with self.assertRaises(errors.TemplateStateNotAssignableError):
-      learning_process.LearningProcess(test_init_fn, float_next_fn,
-                                       test_get_model_weights_fn,
-                                       test_set_model_weights_fn)
+      learning_process.LearningProcess(
+          test_init_fn,
+          float_next_fn,
+          test_get_model_weights_fn,
+          test_set_model_weights_fn,
+      )
 
   def test_init_fn_with_client_placed_state_raises(self):
-
     @federated_computation
     def init_fn():
       return intrinsics.federated_value(0, placements.CLIENTS)
 
     @federated_computation(
-        at_clients(tf.int32), at_clients(SequenceType(tf.int32)))
+        at_clients(tf.int32), at_clients(SequenceType(tf.int32))
+    )
     def next_fn(state, client_values):
       return LearningProcessOutput(state, client_values)
 
     with self.assertRaises(learning_process.LearningProcessPlacementError):
-      learning_process.LearningProcess(init_fn, next_fn,
-                                       test_get_model_weights_fn,
-                                       test_set_model_weights_fn)
+      learning_process.LearningProcess(
+          init_fn, next_fn, test_get_model_weights_fn, test_set_model_weights_fn
+      )
 
   def test_next_return_tuple_raises(self):
 
     @federated_computation(
-        at_server(tf.int32), at_clients(SequenceType(tf.int32)))
+        at_server(tf.int32), at_clients(SequenceType(tf.int32))
+    )
     def tuple_next_fn(state, client_values):
       metrics = intrinsics.federated_map(sum_dataset, client_values)
       metrics = intrinsics.federated_sum(metrics)
       return (state, metrics)
 
     with self.assertRaises(learning_process.LearningProcessOutputError):
-      learning_process.LearningProcess(test_init_fn, tuple_next_fn,
-                                       test_get_model_weights_fn,
-                                       test_set_model_weights_fn)
+      learning_process.LearningProcess(
+          test_init_fn,
+          tuple_next_fn,
+          test_get_model_weights_fn,
+          test_set_model_weights_fn,
+      )
 
   def test_next_return_namedtuple_raises(self):
-
-    learning_process_output = collections.namedtuple('LearningProcessOutput',
-                                                     ['state', 'metrics'])
+    learning_process_output = collections.namedtuple(
+        'LearningProcessOutput', ['state', 'metrics']
+    )
 
     @federated_computation(
-        at_server(tf.int32), at_clients(SequenceType(tf.int32)))
+        at_server(tf.int32), at_clients(SequenceType(tf.int32))
+    )
     def namedtuple_next_fn(state, client_values):
       metrics = intrinsics.federated_map(sum_dataset, client_values)
       metrics = intrinsics.federated_sum(metrics)
       return learning_process_output(state, metrics)
 
     with self.assertRaises(learning_process.LearningProcessOutputError):
-      learning_process.LearningProcess(test_init_fn, namedtuple_next_fn,
-                                       test_get_model_weights_fn,
-                                       test_set_model_weights_fn)
+      learning_process.LearningProcess(
+          test_init_fn,
+          namedtuple_next_fn,
+          test_get_model_weights_fn,
+          test_set_model_weights_fn,
+      )
 
   def test_next_return_odict_raises(self):
 
     @federated_computation(
-        at_server(tf.int32), at_clients(SequenceType(tf.int32)))
+        at_server(tf.int32), at_clients(SequenceType(tf.int32))
+    )
     def odict_next_fn(state, client_values):
       metrics = intrinsics.federated_map(sum_dataset, client_values)
       metrics = intrinsics.federated_sum(metrics)
       return collections.OrderedDict(state=state, metrics=metrics)
 
     with self.assertRaises(learning_process.LearningProcessOutputError):
-      learning_process.LearningProcess(test_init_fn, odict_next_fn,
-                                       test_get_model_weights_fn,
-                                       test_set_model_weights_fn)
+      learning_process.LearningProcess(
+          test_init_fn,
+          odict_next_fn,
+          test_get_model_weights_fn,
+          test_set_model_weights_fn,
+      )
 
   def test_next_fn_with_one_parameter_raises(self):
-
     @federated_computation(at_server(tf.int32))
     def next_fn(state):
       return LearningProcessOutput(state, 0)
 
     with self.assertRaises(errors.TemplateNextFnNumArgsError):
-      learning_process.LearningProcess(test_init_fn, next_fn,
-                                       test_get_model_weights_fn,
-                                       test_set_model_weights_fn)
+      learning_process.LearningProcess(
+          test_init_fn,
+          next_fn,
+          test_get_model_weights_fn,
+          test_set_model_weights_fn,
+      )
 
   def test_next_fn_with_three_parameters_raises(self):
 
     @federated_computation(
-        at_server(tf.int32), at_clients(SequenceType(tf.int32)),
-        at_server(tf.int32))
+        at_server(tf.int32),
+        at_clients(SequenceType(tf.int32)),
+        at_server(tf.int32),
+    )
     def next_fn(state, client_values, second_state):
       del second_state  # Unused.
       metrics = intrinsics.federated_map(sum_dataset, client_values)
@@ -324,91 +378,125 @@ class LearningProcessTest(absltest.TestCase):
       return LearningProcessOutput(state, metrics)
 
     with self.assertRaises(errors.TemplateNextFnNumArgsError):
-      learning_process.LearningProcess(test_init_fn, next_fn,
-                                       test_get_model_weights_fn,
-                                       test_set_model_weights_fn)
+      learning_process.LearningProcess(
+          test_init_fn,
+          next_fn,
+          test_get_model_weights_fn,
+          test_set_model_weights_fn,
+      )
 
   def test_next_fn_with_server_placed_second_arg_raises(self):
 
     @federated_computation(
-        at_server(tf.int32), at_server(SequenceType(tf.int32)))
+        at_server(tf.int32), at_server(SequenceType(tf.int32))
+    )
     def next_fn(state, server_values):
       metrics = intrinsics.federated_map(sum_dataset, server_values)
       return LearningProcessOutput(state, metrics)
 
     with self.assertRaises(learning_process.LearningProcessPlacementError):
-      learning_process.LearningProcess(test_init_fn, next_fn,
-                                       test_get_model_weights_fn,
-                                       test_set_model_weights_fn)
+      learning_process.LearningProcess(
+          test_init_fn,
+          next_fn,
+          test_get_model_weights_fn,
+          test_set_model_weights_fn,
+      )
 
   def test_next_fn_with_nonsequence_second_arg_raises(self):
-
     @federated_computation(at_server(tf.int32), at_clients(tf.int32))
     def next_fn(state, client_values):
       metrics = intrinsics.federated_sum(client_values)
       return LearningProcessOutput(state, metrics)
 
     with self.assertRaises(learning_process.LearningProcessSequenceTypeError):
-      learning_process.LearningProcess(test_init_fn, next_fn,
-                                       test_get_model_weights_fn,
-                                       test_set_model_weights_fn)
+      learning_process.LearningProcess(
+          test_init_fn,
+          next_fn,
+          test_get_model_weights_fn,
+          test_set_model_weights_fn,
+      )
 
   def test_next_fn_with_client_placed_metrics_result_raises(self):
 
     @federated_computation(
-        at_server(tf.int32), at_clients(SequenceType(tf.int32)))
+        at_server(tf.int32), at_clients(SequenceType(tf.int32))
+    )
     def next_fn(state, metrics):
       return LearningProcessOutput(state, metrics)
 
     with self.assertRaises(learning_process.LearningProcessPlacementError):
-      learning_process.LearningProcess(test_init_fn, next_fn,
-                                       test_get_model_weights_fn,
-                                       test_set_model_weights_fn)
+      learning_process.LearningProcess(
+          test_init_fn,
+          next_fn,
+          test_get_model_weights_fn,
+          test_set_model_weights_fn,
+      )
 
   def test_non_tff_computation_get_model_weights_raises(self):
     get_model_weights = lambda x: x
     with self.assertRaisesRegex(TypeError, r'Expected .*\.Computation, .*'):
-      learning_process.LearningProcess(test_init_fn, test_next_fn,
-                                       get_model_weights,
-                                       test_set_model_weights_fn)
+      learning_process.LearningProcess(
+          test_init_fn,
+          test_next_fn,
+          get_model_weights,
+          test_set_model_weights_fn,
+      )
 
   def test_non_functional_get_model_weights_raises(self):
     get_model_weights = at_server(tf.int32)
     with self.assertRaises(TypeError):
-      learning_process.LearningProcess(test_init_fn, test_next_fn,
-                                       get_model_weights,
-                                       test_set_model_weights_fn)
+      learning_process.LearningProcess(
+          test_init_fn,
+          test_next_fn,
+          get_model_weights,
+          test_set_model_weights_fn,
+      )
 
   def test_federated_get_model_weights_raises(self):
     bad_get_model_weights = create_pass_through_get_model_weights(
-        at_server(tf.float32))
+        at_server(tf.float32)
+    )
     with self.assertRaises(learning_process.GetModelWeightsTypeSignatureError):
-      learning_process.LearningProcess(test_init_fn, test_next_fn,
-                                       bad_get_model_weights,
-                                       test_set_model_weights_fn)
+      learning_process.LearningProcess(
+          test_init_fn,
+          test_next_fn,
+          bad_get_model_weights,
+          test_set_model_weights_fn,
+      )
 
   def test_get_model_weights_param_not_equivalent_to_next_fn(self):
     bad_get_model_weights = create_pass_through_get_model_weights(tf.float32)
     with self.assertRaises(learning_process.GetModelWeightsTypeSignatureError):
-      learning_process.LearningProcess(test_init_fn, test_next_fn,
-                                       bad_get_model_weights,
-                                       test_set_model_weights_fn)
+      learning_process.LearningProcess(
+          test_init_fn,
+          test_next_fn,
+          bad_get_model_weights,
+          test_set_model_weights_fn,
+      )
 
   def test_set_model_weights_param_not_equivalent_to_next_fn(self):
     bad_set_model_weights_fn = create_take_arg_set_model_weights(
-        tf.float32, tf.int32)
+        tf.float32, tf.int32
+    )
     with self.assertRaises(learning_process.SetModelWeightsTypeSignatureError):
-      learning_process.LearningProcess(test_init_fn, test_next_fn,
-                                       test_get_model_weights_fn,
-                                       bad_set_model_weights_fn)
+      learning_process.LearningProcess(
+          test_init_fn,
+          test_next_fn,
+          test_get_model_weights_fn,
+          bad_set_model_weights_fn,
+      )
 
   def test_set_model_weights_result_not_assignable(self):
     bad_set_model_weights_fn = create_take_arg_set_model_weights(
-        tf.int32, tf.float32)
+        tf.int32, tf.float32
+    )
     with self.assertRaises(learning_process.SetModelWeightsTypeSignatureError):
-      learning_process.LearningProcess(test_init_fn, test_next_fn,
-                                       test_get_model_weights_fn,
-                                       bad_set_model_weights_fn)
+      learning_process.LearningProcess(
+          test_init_fn,
+          test_next_fn,
+          test_get_model_weights_fn,
+          bad_set_model_weights_fn,
+      )
 
 
 if __name__ == '__main__':

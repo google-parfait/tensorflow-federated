@@ -38,7 +38,8 @@ class ClientWorkTest(tf.test.TestCase, parameterized.TestCase):
     centroids = tf.convert_to_tensor([centroid1, centroid2])
     point = tf.fill(shape, 2)
     closest_centroid = kmeans_clustering._find_closest_centroid(
-        centroids, point)
+        centroids, point
+    )
     self.assertEqual(closest_centroid, 1)
 
   @parameterized.named_parameters(
@@ -57,7 +58,8 @@ class ClientWorkTest(tf.test.TestCase, parameterized.TestCase):
     centroid2 = tf.fill(shape, value2)
     centroids = tf.convert_to_tensor([centroid1, centroid2])
     closest_centroid = kmeans_clustering._find_closest_centroid(
-        centroids, point)
+        centroids, point
+    )
     self.assertEqual(closest_centroid, 1)
 
   @parameterized.named_parameters(
@@ -72,13 +74,17 @@ class ClientWorkTest(tf.test.TestCase, parameterized.TestCase):
     centroids = tf.convert_to_tensor([centroid1, centroid2])
     cluster_zero_points = [tf.fill(shape, -2) for _ in range(2)]
     cluster_one_points = [tf.fill(shape, 2) for _ in range(3)]
-    data = tf.data.Dataset.from_tensor_slices(cluster_zero_points +
-                                              cluster_one_points)
+    data = tf.data.Dataset.from_tensor_slices(
+        cluster_zero_points + cluster_one_points
+    )
 
     actual_result, actual_metrics = kmeans_clustering._compute_kmeans_step(
-        centroids, data)
-    expected_result_update = (tf.convert_to_tensor(
-        [tf.fill(shape, -4), tf.fill(shape, 6)]), tf.constant([2, 3]))
+        centroids, data
+    )
+    expected_result_update = (
+        tf.convert_to_tensor([tf.fill(shape, -4), tf.fill(shape, 6)]),
+        tf.constant([2, 3]),
+    )
 
     self.assertLen(actual_result.update, 2)
     self.assertAllEqual(actual_result.update[0], expected_result_update[0])
@@ -104,15 +110,20 @@ class ClientWorkTest(tf.test.TestCase, parameterized.TestCase):
     cluster_one_points = [
         tf.fill(shape, tf.constant(2, dtype=dtype)) for _ in range(3)
     ]
-    data = tf.data.Dataset.from_tensor_slices(cluster_zero_points +
-                                              cluster_one_points)
+    data = tf.data.Dataset.from_tensor_slices(
+        cluster_zero_points + cluster_one_points
+    )
 
     actual_result, actual_metrics = kmeans_clustering._compute_kmeans_step(
-        centroids, data)
-    expected_result_update = (tf.convert_to_tensor([
-        tf.fill(shape, tf.constant(-4, dtype=dtype)),
-        tf.fill(shape, tf.constant(6, dtype=dtype))
-    ]), tf.constant([2, 3]))
+        centroids, data
+    )
+    expected_result_update = (
+        tf.convert_to_tensor([
+            tf.fill(shape, tf.constant(-4, dtype=dtype)),
+            tf.fill(shape, tf.constant(6, dtype=dtype)),
+        ]),
+        tf.constant([2, 3]),
+    )
 
     self.assertLen(actual_result.update, 2)
     self.assertEqual(actual_result.update[0].dtype, dtype)
@@ -138,21 +149,27 @@ class ClientWorkTest(tf.test.TestCase, parameterized.TestCase):
     empty_server_type = computation_types.at_server(())
 
     client_work = kmeans_clustering._build_kmeans_client_work(
-        centroids_type, data_type)
+        centroids_type, data_type
+    )
 
     next_type = client_work.next.type_signature
     next_type.parameter[0].check_equivalent_to(empty_server_type)
     next_type.parameter[1].check_equivalent_to(
-        computation_types.at_clients(centroids_type))
+        computation_types.at_clients(centroids_type)
+    )
     next_type.parameter[2].check_equivalent_to(
-        computation_types.at_clients(data_type))
+        computation_types.at_clients(data_type)
+    )
     next_type.result[0].check_equivalent_to(empty_server_type)
     next_type.result[1].member.update.check_equivalent_to(
-        computation_types.to_type((centroids_type, weight_type)))
+        computation_types.to_type((centroids_type, weight_type))
+    )
 
     expected_measurements_type = computation_types.to_type(
         collections.OrderedDict(
-            num_examples=computation_types.TensorType(_WEIGHT_DTYPE)))
+            num_examples=computation_types.TensorType(_WEIGHT_DTYPE)
+        )
+    )
     next_type.result[2].member.check_equivalent_to(expected_measurements_type)
 
   @parameterized.named_parameters(
@@ -173,21 +190,27 @@ class ClientWorkTest(tf.test.TestCase, parameterized.TestCase):
     empty_server_type = computation_types.at_server(())
 
     client_work = kmeans_clustering._build_kmeans_client_work(
-        centroids_type, data_type)
+        centroids_type, data_type
+    )
 
     next_type = client_work.next.type_signature
     next_type.parameter[0].check_equivalent_to(empty_server_type)
     next_type.parameter[1].check_equivalent_to(
-        computation_types.at_clients(centroids_type))
+        computation_types.at_clients(centroids_type)
+    )
     next_type.parameter[2].check_equivalent_to(
-        computation_types.at_clients(data_type))
+        computation_types.at_clients(data_type)
+    )
     next_type.result[0].check_equivalent_to(empty_server_type)
     next_type.result[1].member.update.check_equivalent_to(
-        computation_types.to_type((centroids_type, weight_type)))
+        computation_types.to_type((centroids_type, weight_type))
+    )
 
     expected_measurements_type = computation_types.to_type(
         collections.OrderedDict(
-            num_examples=computation_types.TensorType(_WEIGHT_DTYPE)))
+            num_examples=computation_types.TensorType(_WEIGHT_DTYPE)
+        )
+    )
     next_type.result[2].member.check_equivalent_to(expected_measurements_type)
 
 
@@ -206,7 +229,8 @@ class FinalizerTest(tf.test.TestCase, parameterized.TestCase):
     new_cluster_sums = tf.fill(centroids_shape, 1.0)
     weights = tf.fill((num_clusters,), 1)
     updated_centroids, total_weights = kmeans_clustering._update_centroids(
-        current_centroids, weights, new_cluster_sums, weights)
+        current_centroids, weights, new_cluster_sums, weights
+    )
 
     expected_centroids = 0.5 * (current_centroids + new_cluster_sums)
     expected_weights = tf.fill((num_clusters,), 2)
@@ -228,7 +252,8 @@ class FinalizerTest(tf.test.TestCase, parameterized.TestCase):
     current_weights = tf.fill((num_clusters,), 1)
     new_weights = tf.fill((num_clusters,), 0)
     updated_centroids, total_weights = kmeans_clustering._update_centroids(
-        current_centroids, current_weights, new_cluster_sums, new_weights)
+        current_centroids, current_weights, new_cluster_sums, new_weights
+    )
 
     self.assertAllEqual(total_weights, current_weights)
     self.assertAllEqual(updated_centroids, current_centroids)
@@ -247,7 +272,8 @@ class FinalizerTest(tf.test.TestCase, parameterized.TestCase):
     current_weights = tf.fill((num_clusters,), 0)
     new_weights = tf.fill((num_clusters,), 8)
     updated_centroids, total_weights = kmeans_clustering._update_centroids(
-        current_centroids, current_weights, new_cluster_sums, new_weights)
+        current_centroids, current_weights, new_cluster_sums, new_weights
+    )
 
     self.assertAllEqual(total_weights, new_weights)
     self.assertAllEqual(updated_centroids, tf.fill(centroids_shape, 2.0))
@@ -259,7 +285,8 @@ class FinalizerTest(tf.test.TestCase, parameterized.TestCase):
     current_weights = tf.constant([1, 2, 3])
     new_weights = tf.constant([1, 1, 1])
     updated_centroids, total_weights = kmeans_clustering._update_centroids(
-        current_centroids, current_weights, new_cluster_sums, new_weights)
+        current_centroids, current_weights, new_cluster_sums, new_weights
+    )
     expected_updated_centroids = tf.constant([
         [1.0 / (1.0 + 1.0), 1.0 / (1.0 + 1.0)],
         [2.0 / (1.0 + 2.0), 2.0 / (1.0 + 2.0)],
@@ -276,7 +303,8 @@ class FinalizerTest(tf.test.TestCase, parameterized.TestCase):
     current_weights = tf.constant([0, 0, 0])
     new_weights = tf.constant([1, 2, 3])
     updated_centroids, total_weights = kmeans_clustering._update_centroids(
-        current_centroids, current_weights, new_cluster_sums, new_weights)
+        current_centroids, current_weights, new_cluster_sums, new_weights
+    )
     expected_updated_centroids = tf.constant([
         [1.0 / 1.0, 1.0 / 1.0],
         [1.0 / 2.0, 1.0 / 2.0],
@@ -291,20 +319,30 @@ class FederatedKmeansTest(tf.test.TestCase):
 
   def test_constructs_with_pseudocounts_of_one(self):
     kmeans_process = kmeans_clustering.build_fed_kmeans(
-        num_clusters=3, data_shape=(2, 2))
+        num_clusters=3, data_shape=(2, 2)
+    )
     state = kmeans_process.initialize()
-    self.assertAllEqual(state.finalizer, tf.ones(3,))
+    self.assertAllEqual(
+        state.finalizer,
+        tf.ones(
+            3,
+        ),
+    )
 
   def test_initialize_uses_random_seed(self):
     data_shape = (3, 4, 5)
     kmeans_1 = kmeans_clustering.build_fed_kmeans(
-        num_clusters=6, data_shape=data_shape, random_seed=(42, 2))
+        num_clusters=6, data_shape=data_shape, random_seed=(42, 2)
+    )
     kmeans_2 = kmeans_clustering.build_fed_kmeans(
-        num_clusters=6, data_shape=data_shape, random_seed=(42, 2))
+        num_clusters=6, data_shape=data_shape, random_seed=(42, 2)
+    )
     kmeans_3 = kmeans_clustering.build_fed_kmeans(
-        num_clusters=6, data_shape=data_shape, random_seed=(43, 2))
+        num_clusters=6, data_shape=data_shape, random_seed=(43, 2)
+    )
     kmeans_4 = kmeans_clustering.build_fed_kmeans(
-        num_clusters=6, data_shape=data_shape, random_seed=(42, 3))
+        num_clusters=6, data_shape=data_shape, random_seed=(42, 3)
+    )
     init_value1 = kmeans_1.initialize().global_model_weights
     init_value2 = kmeans_2.initialize().global_model_weights
     init_value3 = kmeans_3.initialize().global_model_weights
@@ -317,7 +355,8 @@ class FederatedKmeansTest(tf.test.TestCase):
   def test_single_step_with_one_client(self):
     data_shape = (3, 2)
     kmeans = kmeans_clustering.build_fed_kmeans(
-        num_clusters=1, data_shape=data_shape, random_seed=(0, 0))
+        num_clusters=1, data_shape=data_shape, random_seed=(0, 0)
+    )
     point1 = tf.fill(data_shape, value=1.0)
     point2 = tf.fill(data_shape, value=2.0)
     dataset = tf.data.Dataset.from_tensor_slices([point1, point2])
@@ -328,7 +367,8 @@ class FederatedKmeansTest(tf.test.TestCase):
     actual_centroids = output.state.global_model_weights
     weights = output.state.finalizer
     expected_centroids = (1 / 3) * (
-        initial_centroids + tf.expand_dims(point1 + point2, axis=0))
+        initial_centroids + tf.expand_dims(point1 + point2, axis=0)
+    )
 
     self.assertAllClose(actual_centroids, expected_centroids)
     self.assertAllEqual(weights, [3])
@@ -336,7 +376,8 @@ class FederatedKmeansTest(tf.test.TestCase):
   def test_single_step_with_two_clients(self):
     data_shape = (3, 2)
     kmeans = kmeans_clustering.build_fed_kmeans(
-        num_clusters=1, data_shape=data_shape, random_seed=(0, 0))
+        num_clusters=1, data_shape=data_shape, random_seed=(0, 0)
+    )
     point1 = tf.fill(data_shape, value=1.0)
     dataset1 = tf.data.Dataset.from_tensors(point1)
     point2 = tf.fill(data_shape, value=2.0)
@@ -348,7 +389,8 @@ class FederatedKmeansTest(tf.test.TestCase):
     actual_centroids = output.state.global_model_weights
     weights = output.state.finalizer
     expected_centroids = (1 / 3) * (
-        initial_centroids + tf.expand_dims(point1 + point2, axis=0))
+        initial_centroids + tf.expand_dims(point1 + point2, axis=0)
+    )
 
     self.assertAllClose(actual_centroids, expected_centroids)
     self.assertAllEqual(weights, [3])
@@ -356,7 +398,8 @@ class FederatedKmeansTest(tf.test.TestCase):
   def test_two_steps_with_one_cluster(self):
     data_shape = (3, 2)
     kmeans = kmeans_clustering.build_fed_kmeans(
-        num_clusters=1, data_shape=data_shape, random_seed=(0, 0))
+        num_clusters=1, data_shape=data_shape, random_seed=(0, 0)
+    )
     point1 = tf.fill(data_shape, value=1.0)
     dataset1 = tf.data.Dataset.from_tensors(point1)
     point2 = tf.fill(data_shape, value=2.0)
@@ -368,7 +411,8 @@ class FederatedKmeansTest(tf.test.TestCase):
     centroids = output.state.global_model_weights
     weights = output.state.finalizer
     expected_step_1_centroids = 0.5 * (
-        initial_centroids + tf.expand_dims(point1, axis=0))
+        initial_centroids + tf.expand_dims(point1, axis=0)
+    )
     self.assertAllClose(centroids, expected_step_1_centroids)
     self.assertAllEqual(weights, [2])
 
@@ -376,7 +420,8 @@ class FederatedKmeansTest(tf.test.TestCase):
     centroids = output.state.global_model_weights
     weights = output.state.finalizer
     expected_step_2_centroids = (1 / 3) * (
-        initial_centroids + tf.expand_dims(point1 + point2, axis=0))
+        initial_centroids + tf.expand_dims(point1 + point2, axis=0)
+    )
     self.assertAllClose(centroids, expected_step_2_centroids)
     self.assertAllEqual(weights, [3])
 

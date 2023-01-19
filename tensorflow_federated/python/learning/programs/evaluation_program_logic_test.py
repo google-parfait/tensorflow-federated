@@ -74,90 +74,119 @@ class ExtractAndRewrapMetricsTest(tf.test.TestCase):
     test_structure = collections.OrderedDict(
         test=collections.OrderedDict(
             path=collections.OrderedDict(test_a=[1, 2, 3], test_b=10.0),
-            other=collections.OrderedDict(test_one=1.0, test_two=2.0)))
-    extracted_structure, extracted_type_spec = evaluation_program_logic.extract_and_rewrap_metrics(
-        test_structure, path=('test', 'path'))
+            other=collections.OrderedDict(test_one=1.0, test_two=2.0),
+        )
+    )
+    extracted_structure, extracted_type_spec = (
+        evaluation_program_logic.extract_and_rewrap_metrics(
+            test_structure, path=('test', 'path')
+        )
+    )
     self.assertAllClose(
         extracted_structure,
         collections.OrderedDict([
-            (evaluation_program_logic.MODEL_METRICS_PREFIX,
-             collections.OrderedDict(test_a=[1, 2, 3], test_b=10.0)),
-            ('test',
-             collections.OrderedDict(
-                 other=collections.OrderedDict(test_one=1.0, test_two=2.0))),
-        ]))
+            (
+                evaluation_program_logic.MODEL_METRICS_PREFIX,
+                collections.OrderedDict(test_a=[1, 2, 3], test_b=10.0),
+            ),
+            (
+                'test',
+                collections.OrderedDict(
+                    other=collections.OrderedDict(test_one=1.0, test_two=2.0)
+                ),
+            ),
+        ]),
+    )
     type_test_utils.assert_types_equivalent(
         extracted_type_spec,
         computation_types.to_type(
             collections.OrderedDict([
-                ('test',
-                 collections.OrderedDict(
-                     other=collections.OrderedDict(
-                         test_one=TensorType(tf.float32),
-                         test_two=TensorType(tf.float32)))),
-                (evaluation_program_logic.MODEL_METRICS_PREFIX,
-                 collections.OrderedDict(
-                     test_a=[TensorType(tf.int32)] * 3,
-                     test_b=TensorType(tf.float32))),
-            ])))
+                (
+                    'test',
+                    collections.OrderedDict(
+                        other=collections.OrderedDict(
+                            test_one=TensorType(tf.float32),
+                            test_two=TensorType(tf.float32),
+                        )
+                    ),
+                ),
+                (
+                    evaluation_program_logic.MODEL_METRICS_PREFIX,
+                    collections.OrderedDict(
+                        test_a=[TensorType(tf.int32)] * 3,
+                        test_b=TensorType(tf.float32),
+                    ),
+                ),
+            ])
+        ),
+    )
 
   def test_no_path_raises_error(self):
     with self.assertRaisesRegex(ValueError, '`path` is empty'):
       evaluation_program_logic.extract_and_rewrap_metrics(
-          collections.OrderedDict(foo=1, bar=2), path=())
+          collections.OrderedDict(foo=1, bar=2), path=()
+      )
 
   def test_path_does_not_exist_in_structure_fails(self):
     with self.subTest('early_path'):
       with self.assertRaisesRegex(KeyError, r'\[test\]'):
         evaluation_program_logic.extract_and_rewrap_metrics(
-            collections.OrderedDict(foo=1, bar=2), path=('test', 'bad_path'))
+            collections.OrderedDict(foo=1, bar=2), path=('test', 'bad_path')
+        )
     with self.subTest('last_path'):
       with self.assertRaisesRegex(KeyError, r'\[bad_path\]'):
         evaluation_program_logic.extract_and_rewrap_metrics(
             collections.OrderedDict(foo=collections.OrderedDict(bar=2)),
-            path=('foo', 'bad_path'))
+            path=('foo', 'bad_path'),
+        )
 
   def test_structure_with_invalid_value_fails(self):
     with self.assertRaisesRegex(TypeError, 'Could not infer the TFF type'):
       evaluation_program_logic.extract_and_rewrap_metrics(
-          collections.OrderedDict(foo=lambda x: x), path=('foo',))
+          collections.OrderedDict(foo=lambda x: x), path=('foo',)
+      )
 
   def test_federated_value_structure(self):
-
     def awaitable_value(value):
-
       async def _value():
         return value
 
       return native_platform.AwaitableValueReference(
-          _value, type_conversions.infer_type(value))
+          _value, type_conversions.infer_type(value)
+      )
 
     test_value = collections.OrderedDict(
         a=awaitable_value('foo'),
         b=collections.OrderedDict(
-            x=awaitable_value('bar'), z=awaitable_value(1.0)))
+            x=awaitable_value('bar'), z=awaitable_value(1.0)
+        ),
+    )
 
     try:
       evaluation_program_logic.extract_and_rewrap_metrics(
-          metrics_structure=test_value, path=['b'])
+          metrics_structure=test_value, path=['b']
+      )
     except Exception as e:  # pylint: disable=broad-except
       self.fail(f'Unexpected error raised: {e}')
 
 
 def _create_test_context() -> federated_context.FederatedContext:
   return native_platform.NativeFederatedContext(
-      execution_contexts.create_local_async_python_execution_context())
+      execution_contexts.create_local_async_python_execution_context()
+  )
 
 
 def _create_mock_datasource() -> mock.Mock:
   mock_datasource = mock.create_autospec(
-      data_source.FederatedDataSource, instance=True, spec_set=True)
+      data_source.FederatedDataSource, instance=True, spec_set=True
+  )
 
   def create_mock_iterator(*args, **kwargs) -> mock.Mock:
     del args  # Unused
     del kwargs  # Unused
     return mock.create_autospec(
-        data_source.FederatedDataSourceIterator, instance=True, spec_set=True)
+        data_source.FederatedDataSourceIterator, instance=True, spec_set=True
+    )
 
   mock_datasource.iterator.side_effect = create_mock_iterator
   return mock_datasource
@@ -173,18 +202,21 @@ def _create_per_round_eval_metrics_release_call(*, key: int):
           (evaluation_program_logic.MODEL_METRICS_PREFIX, mock.ANY),
       ]),
       mock.ANY,
-      key=key)
+      key=key,
+  )
 
 
 def _create_mock_eval_process() -> mock.Mock:
   mock_process = mock.create_autospec(
-      learning_process.LearningProcess, instance=True, spec_set=True)
+      learning_process.LearningProcess, instance=True, spec_set=True
+  )
   empty_state = composers.LearningAlgorithmState(
       global_model_weights=(),
       distributor=(),
       client_work=(),
       aggregator=(),
-      finalizer=())
+      finalizer=(),
+  )
   mock_process.initialize.return_value = empty_state
   mock_process.next.return_value = learning_process.LearningProcessOutput(
       empty_state,
@@ -193,9 +225,13 @@ def _create_mock_eval_process() -> mock.Mock:
           client_work=collections.OrderedDict(
               eval=collections.OrderedDict(
                   current_round_metrics=collections.OrderedDict(),
-                  total_rounds_metrics=collections.OrderedDict())),
+                  total_rounds_metrics=collections.OrderedDict(),
+              )
+          ),
           aggregator=(),
-          finalizer=()))
+          finalizer=(),
+      ),
+  )
   return mock_process
 
 
@@ -209,14 +245,17 @@ class EvaluationManagerTest(tf.test.TestCase, unittest.IsolatedAsyncioTestCase):
 
   async def test_resume_nothing(self):
     mock_data_source = mock.create_autospec(
-        data_source.FederatedDataSource, instance=True, spec_set=True)
+        data_source.FederatedDataSource, instance=True, spec_set=True
+    )
     mock_metrics_manager = mock.create_autospec(
-        release_manager.ReleaseManager, instance=True, spec_set=True)
+        release_manager.ReleaseManager, instance=True, spec_set=True
+    )
     mock_create_state_manager = mock.Mock()
     mock_meta_eval_manager = mock.create_autospec(
         file_program_state_manager.FileProgramStateManager,
         instance=True,
-        spec_set=True)
+        spec_set=True,
+    )
     mock_meta_eval_manager.load_latest.return_value = (None, 0)
     mock_create_state_manager.side_effect = [mock_meta_eval_manager]
     mock_create_process_fn = mock.Mock()
@@ -225,29 +264,35 @@ class EvaluationManagerTest(tf.test.TestCase, unittest.IsolatedAsyncioTestCase):
         aggregated_metrics_manager=mock_metrics_manager,
         create_state_manager_fn=mock_create_state_manager,
         create_process_fn=mock_create_process_fn,
-        cohort_size=10)
+        cohort_size=10,
+    )
     await manager.resume_from_previous_state()
     await manager.wait_for_evaluations_to_finish()
     mock_create_process_fn.assert_not_called()
     self.assertSequenceEqual(
         mock_create_state_manager.call_args_list,
-        [mock.call(evaluation_program_logic._EVAL_MANAGER_KEY)])
+        [mock.call(evaluation_program_logic._EVAL_MANAGER_KEY)],
+    )
     mock_meta_eval_manager.load_latest.assert_called_once()
     mock_create_process_fn.assert_not_called()
 
   async def test_start_evaluations(self):
     mock_data_source = mock.create_autospec(
-        data_source.FederatedDataSource, instance=True, spec_set=True)
+        data_source.FederatedDataSource, instance=True, spec_set=True
+    )
     mock_metrics_manager = mock.create_autospec(
-        release_manager.ReleaseManager, instance=True, spec_set=True)
+        release_manager.ReleaseManager, instance=True, spec_set=True
+    )
     # Create a state manager with no previous evaluations.
     mock_meta_eval_manager = mock.create_autospec(
         file_program_state_manager.FileProgramStateManager,
         instance=True,
-        spec_set=True)
-    mock_meta_eval_manager.load_latest.side_effect = [
-        ((np.asarray([]).astype(np.int32), np.asarray([]).astype(np.int32)), 0)
-    ]
+        spec_set=True,
+    )
+    mock_meta_eval_manager.load_latest.side_effect = [(
+        (np.asarray([]).astype(np.int32), np.asarray([]).astype(np.int32)),
+        0,
+    )]
     test_train_rounds = [5, 15]
     test_train_times = [
         int(datetime.datetime(2022, 11, 2, 10, 7).timestamp()),
@@ -257,37 +302,48 @@ class EvaluationManagerTest(tf.test.TestCase, unittest.IsolatedAsyncioTestCase):
         mock.create_autospec(
             file_program_state_manager.FileProgramStateManager,
             instance=True,
-            spec_set=True),
+            spec_set=True,
+        ),
         mock.create_autospec(
             file_program_state_manager.FileProgramStateManager,
             instance=True,
-            spec_set=True)
+            spec_set=True,
+        ),
     ]
     for mock_eval_manager in mock_eval_managers:
-      mock_eval_manager.load_latest.side_effect = [(mock.create_autospec(
-          composers.LearningAlgorithmState, instance=True), 0)]
-    mock_create_state_manager = mock.Mock(side_effect=[mock_meta_eval_manager] +
-                                          mock_eval_managers)
+      mock_eval_manager.load_latest.side_effect = [(
+          mock.create_autospec(composers.LearningAlgorithmState, instance=True),
+          0,
+      )]
+    mock_create_state_manager = mock.Mock(
+        side_effect=[mock_meta_eval_manager] + mock_eval_managers
+    )
     processes = [_create_mock_eval_process(), _create_mock_eval_process()]
     metrics_managers = [
         mock.create_autospec(
-            release_manager.ReleaseManager, instance=True, spec_set=True),
+            release_manager.ReleaseManager, instance=True, spec_set=True
+        ),
         mock.create_autospec(
-            release_manager.ReleaseManager, instance=True, spec_set=True),
+            release_manager.ReleaseManager, instance=True, spec_set=True
+        ),
     ]
     mock_create_process_fn = mock.Mock(
-        side_effect=[(process, metrics_manager)
-                     for process, metrics_manager in zip(
-                         processes, metrics_managers)])
+        side_effect=[
+            (process, metrics_manager)
+            for process, metrics_manager in zip(processes, metrics_managers)
+        ]
+    )
     manager = evaluation_program_logic.EvaluationManager(
         data_source=mock_data_source,
         aggregated_metrics_manager=mock_metrics_manager,
         create_state_manager_fn=mock_create_state_manager,
         create_process_fn=mock_create_process_fn,
         cohort_size=10,
-        duration=datetime.timedelta(milliseconds=10))
+        duration=datetime.timedelta(milliseconds=10),
+    )
     mock_create_state_manager.assert_called_once_with(
-        evaluation_program_logic._EVAL_MANAGER_KEY)
+        evaluation_program_logic._EVAL_MANAGER_KEY
+    )
     mock_create_state_manager.reset_mock()
     await manager.resume_from_previous_state()
     mock_create_process_fn.assert_not_called()
@@ -296,16 +352,20 @@ class EvaluationManagerTest(tf.test.TestCase, unittest.IsolatedAsyncioTestCase):
       await manager.start_evaluation(
           train_round=train_round,
           start_timestamp_seconds=train_time,
-          model_weights=test_model_weights)
+          model_weights=test_model_weights,
+      )
       # Assert that an evlauation process and state manager was created for
       # the newly started evaluation.
       eval_name = evaluation_program_logic._EVAL_NAME_PATTERN.format(
-          round_num=train_round)
-      self.assertSequenceEqual(mock_create_state_manager.call_args_list,
-                               [mock.call(eval_name)])
+          round_num=train_round
+      )
+      self.assertSequenceEqual(
+          mock_create_state_manager.call_args_list, [mock.call(eval_name)]
+      )
       mock_create_state_manager.reset_mock()
-      self.assertSequenceEqual(mock_create_process_fn.call_args_list,
-                               [mock.call(eval_name)])
+      self.assertSequenceEqual(
+          mock_create_process_fn.call_args_list, [mock.call(eval_name)]
+      )
       mock_create_process_fn.reset_mock()
     await manager.wait_for_evaluations_to_finish()
     # Assert that two meta-state-manager save calls, each one adding the new
@@ -314,29 +374,41 @@ class EvaluationManagerTest(tf.test.TestCase, unittest.IsolatedAsyncioTestCase):
         mock_meta_eval_manager.save.call_args_list,
         [
             # First evaluation started.
-            mock.call((_NumpyMatcher(
-                test_train_rounds[0]), _NumpyMatcher([test_train_times[0]])),
-                      version=1),
+            mock.call(
+                (
+                    _NumpyMatcher(test_train_rounds[0]),
+                    _NumpyMatcher([test_train_times[0]]),
+                ),
+                version=1,
+            ),
             # First evaluation ended.
             mock.call((_NumpyMatcher([]), _NumpyMatcher([[]])), version=2),
             # Both evaluations started and in-progress.
-            mock.call((_NumpyMatcher(
-                test_train_rounds[1]), _NumpyMatcher([test_train_times[1]])),
-                      version=3),
+            mock.call(
+                (
+                    _NumpyMatcher(test_train_rounds[1]),
+                    _NumpyMatcher([test_train_times[1]]),
+                ),
+                version=3,
+            ),
             # Second evaluation ended.
             mock.call((_NumpyMatcher([]), _NumpyMatcher([[]])), version=4),
-        ])
+        ],
+    )
 
   async def test_record_finished_evaluations_removes_from_state(self):
     mock_data_source = mock.create_autospec(
-        data_source.FederatedDataSource, instance=True, spec_set=True)
+        data_source.FederatedDataSource, instance=True, spec_set=True
+    )
     mock_metrics_manager = mock.create_autospec(
-        release_manager.ReleaseManager, instance=True, spec_set=True)
+        release_manager.ReleaseManager, instance=True, spec_set=True
+    )
     # Create a state manager with two inflight evaluations.
     mock_meta_eval_manager = mock.create_autospec(
         file_program_state_manager.FileProgramStateManager,
         instance=True,
-        spec_set=True)
+        spec_set=True,
+    )
     mock_create_state_manager = mock.Mock(side_effect=[mock_meta_eval_manager])
     mock_create_process_fn = mock.Mock()
     manager = evaluation_program_logic.EvaluationManager(
@@ -345,10 +417,12 @@ class EvaluationManagerTest(tf.test.TestCase, unittest.IsolatedAsyncioTestCase):
         create_state_manager_fn=mock_create_state_manager,
         create_process_fn=mock_create_process_fn,
         cohort_size=10,
-        duration=datetime.timedelta(milliseconds=10))
+        duration=datetime.timedelta(milliseconds=10),
+    )
     # Directly set the state, avoid starting asyncio.Task for the resumed evals.
-    manager._evaluating_training_checkpoints = np.asarray([5,
-                                                           15]).astype(np.int32)
+    manager._evaluating_training_checkpoints = np.asarray([5, 15]).astype(
+        np.int32
+    )
     manager._evaluation_start_timestamp_seconds = np.asarray([
         datetime.datetime(2022, 10, 28, 5, 15).timestamp(),
         datetime.datetime(2022, 10, 28, 5, 25).timestamp(),
@@ -358,73 +432,94 @@ class EvaluationManagerTest(tf.test.TestCase, unittest.IsolatedAsyncioTestCase):
     # Only train_round 15 should be saved after 5 finishes.
     self.assertSequenceEqual(
         mock_meta_eval_manager.save.call_args_list,
-        [mock.call((_NumpyMatcher([15]), mock.ANY), version=1)])
+        [mock.call((_NumpyMatcher([15]), mock.ANY), version=1)],
+    )
     mock_meta_eval_manager.reset_mock()
     await manager.record_evaluations_finished(15)
     # No train_rounds should be saved after 15 finishes.
     self.assertSequenceEqual(
         mock_meta_eval_manager.save.call_args_list,
-        [mock.call((_NumpyMatcher([]), _NumpyMatcher([])), version=2)])
+        [mock.call((_NumpyMatcher([]), _NumpyMatcher([])), version=2)],
+    )
     with self.assertRaisesRegex(
-        RuntimeError, 'An internal error occurred where the EvaluationManager'):
+        RuntimeError, 'An internal error occurred where the EvaluationManager'
+    ):
       await manager.record_evaluations_finished(7)
     await manager.wait_for_evaluations_to_finish()
 
   async def test_resume_previous_evaluations(self):
     mock_data_source = mock.create_autospec(
-        data_source.FederatedDataSource, instance=True, spec_set=True)
+        data_source.FederatedDataSource, instance=True, spec_set=True
+    )
     mock_metrics_manager = mock.create_autospec(
-        release_manager.ReleaseManager, instance=True, spec_set=True)
+        release_manager.ReleaseManager, instance=True, spec_set=True
+    )
     mock_create_state_manager = mock.Mock()
     mock_meta_eval_manager = mock.create_autospec(
         file_program_state_manager.FileProgramStateManager,
         instance=True,
-        spec_set=True)
+        spec_set=True,
+    )
     test_state_time = int(datetime.datetime(2022, 10, 28, 5, 15).timestamp())
     test_train_rounds = [5, 15]
-    mock_meta_eval_manager.load_latest.side_effect = [
-        ((np.asarray(test_train_rounds),
-          np.asarray([
-              test_state_time + test_train_round
-              for test_train_round in test_train_rounds
-          ])), 0)
-    ]
+    mock_meta_eval_manager.load_latest.side_effect = [(
+        (
+            np.asarray(test_train_rounds),
+            np.asarray(
+                [
+                    test_state_time + test_train_round
+                    for test_train_round in test_train_rounds
+                ]
+            ),
+        ),
+        0,
+    )]
     mock_resumed_eval_managers = [
         mock.create_autospec(
             file_program_state_manager.FileProgramStateManager,
             instance=True,
-            spec_set=True),
+            spec_set=True,
+        ),
         mock.create_autospec(
             file_program_state_manager.FileProgramStateManager,
             instance=True,
-            spec_set=True)
+            spec_set=True,
+        ),
     ]
 
     processes = [_create_mock_eval_process(), _create_mock_eval_process()]
     for index, mock_resumed_eval_manager in enumerate(
-        mock_resumed_eval_managers):
-      mock_resumed_eval_manager.load_latest.side_effect = [
-          (processes[0].initialize(), index * 10)
-      ]
-    mock_create_state_manager.side_effect = [mock_meta_eval_manager
-                                            ] + mock_resumed_eval_managers
+        mock_resumed_eval_managers
+    ):
+      mock_resumed_eval_manager.load_latest.side_effect = [(
+          processes[0].initialize(),
+          index * 10,
+      )]
+    mock_create_state_manager.side_effect = [
+        mock_meta_eval_manager
+    ] + mock_resumed_eval_managers
     metrics_managers = [
         mock.create_autospec(
-            release_manager.ReleaseManager, instance=True, spec_set=True),
+            release_manager.ReleaseManager, instance=True, spec_set=True
+        ),
         mock.create_autospec(
-            release_manager.ReleaseManager, instance=True, spec_set=True),
+            release_manager.ReleaseManager, instance=True, spec_set=True
+        ),
     ]
     mock_create_process_fn = mock.Mock(
-        side_effect=[(process, metrics_manager)
-                     for process, metrics_manager in zip(
-                         processes, metrics_managers)])
+        side_effect=[
+            (process, metrics_manager)
+            for process, metrics_manager in zip(processes, metrics_managers)
+        ]
+    )
     manager = evaluation_program_logic.EvaluationManager(
         data_source=mock_data_source,
         aggregated_metrics_manager=mock_metrics_manager,
         create_state_manager_fn=mock_create_state_manager,
         create_process_fn=mock_create_process_fn,
         cohort_size=10,
-        duration=datetime.timedelta(milliseconds=10))
+        duration=datetime.timedelta(milliseconds=10),
+    )
     await manager.resume_from_previous_state()
     await manager.wait_for_evaluations_to_finish()
     eval_names = [
@@ -433,19 +528,26 @@ class EvaluationManagerTest(tf.test.TestCase, unittest.IsolatedAsyncioTestCase):
     ]
     self.assertSequenceEqual(
         mock_create_state_manager.call_args_list,
-        [mock.call(evaluation_program_logic._EVAL_MANAGER_KEY)] +
-        [mock.call(eval_name) for eval_name in eval_names])
+        [mock.call(evaluation_program_logic._EVAL_MANAGER_KEY)]
+        + [mock.call(eval_name) for eval_name in eval_names],
+    )
     mock_meta_eval_manager.load_latest.assert_called_once()
-    self.assertSequenceEqual(mock_create_process_fn.call_args_list,
-                             [mock.call(eval_name) for eval_name in eval_names])
+    self.assertSequenceEqual(
+        mock_create_process_fn.call_args_list,
+        [mock.call(eval_name) for eval_name in eval_names],
+    )
     for index, mock_resumed_eval_manager in enumerate(
-        mock_resumed_eval_managers):
+        mock_resumed_eval_managers
+    ):
       self.assertGreaterEqual(
-          len(mock_resumed_eval_manager.save.call_args_list), 1)
+          len(mock_resumed_eval_manager.save.call_args_list), 1
+      )
       # Assert the first call to save is version 1, since version 0 is expected
       # to have already been done before starting the evaluation.
-      self.assertEqual(mock_resumed_eval_manager.save.call_args_list[0],
-                       mock.call(mock.ANY, version=(index * 10) + 1))
+      self.assertEqual(
+          mock_resumed_eval_manager.save.call_args_list[0],
+          mock.call(mock.ANY, version=(index * 10) + 1),
+      )
 
 
 class RunEvaluationTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
@@ -459,10 +561,12 @@ class RunEvaluationTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
   async def test_negative_evaluation_period_raises(self):
     eval_process = _create_mock_eval_process()
     state_manager = mock.create_autospec(
-        file_program_state_manager.FileProgramStateManager, instance=True)
+        file_program_state_manager.FileProgramStateManager, instance=True
+    )
     num_clients = 3
     with self.assertRaisesRegex(
-        ValueError, '`evaluation_period` must be a non-negative duration'):
+        ValueError, '`evaluation_period` must be a non-negative duration'
+    ):
       await evaluation_program_logic.run_evaluation(
           train_round_num=1,
           state_manager=state_manager,
@@ -472,30 +576,35 @@ class RunEvaluationTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
           evaluation_per_round_clients_number=num_clients,
           evaluation_period=datetime.timedelta(hours=-1),
           per_round_metrics_manager=mock.create_autospec(
-              release_manager.ReleaseManager, instance=True),
+              release_manager.ReleaseManager, instance=True
+          ),
           aggregated_metrics_manager=mock.create_autospec(
-              release_manager.ReleaseManager, instance=True))
+              release_manager.ReleaseManager, instance=True
+          ),
+      )
 
   async def test_invalid_process_rasies(self):
-
     @federated_computation.federated_computation
     def empty_initialize():
       return intrinsics.federated_value((), placements.SERVER)
 
     @federated_computation.federated_computation(
         computation_types.at_server(()),
-        computation_types.at_clients(computation_types.SequenceType(())))
+        computation_types.at_clients(computation_types.SequenceType(())),
+    )
     def next_fn(state, inputs):
       del inputs  # Unused.
       return state
 
     eval_process = iterative_process.IterativeProcess(empty_initialize, next_fn)
     state_manager = mock.create_autospec(
-        file_program_state_manager.FileProgramStateManager, instance=True)
+        file_program_state_manager.FileProgramStateManager, instance=True
+    )
     state_manager.load_latest.return_value = (empty_initialize(), 0)
     num_clients = 3
     with self.assertRaisesRegex(
-        TypeError, 'Expected a `tff.learning.templates.LearningProcessOutput`'):
+        TypeError, 'Expected a `tff.learning.templates.LearningProcessOutput`'
+    ):
       await evaluation_program_logic.run_evaluation(
           train_round_num=1,
           state_manager=state_manager,
@@ -505,24 +614,31 @@ class RunEvaluationTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
           evaluation_per_round_clients_number=num_clients,
           evaluation_period=datetime.timedelta(hours=1),
           per_round_metrics_manager=mock.create_autospec(
-              release_manager.ReleaseManager, instance=True),
+              release_manager.ReleaseManager, instance=True
+          ),
           aggregated_metrics_manager=mock.create_autospec(
-              release_manager.ReleaseManager, instance=True))
+              release_manager.ReleaseManager, instance=True
+          ),
+      )
 
   async def test_no_zero_state_raises(self):
     eval_process = _create_mock_eval_process()
     state_manager = mock.create_autospec(
-        file_program_state_manager.FileProgramStateManager, instance=True)
+        file_program_state_manager.FileProgramStateManager, instance=True
+    )
     # Return no initial state.
     state_manager.load_latest.return_value = (None, 0)
     num_clients = 3
     mock_per_round_metrics_manager = mock.create_autospec(
-        release_manager.ReleaseManager, instance=True)
+        release_manager.ReleaseManager, instance=True
+    )
     mock_aggregated_metrics_manager = mock.create_autospec(
-        release_manager.ReleaseManager, instance=True)
+        release_manager.ReleaseManager, instance=True
+    )
     train_round_num = 1
-    with self.assertRaisesRegex(ValueError,
-                                'No previous state found for evaluation'):
+    with self.assertRaisesRegex(
+        ValueError, 'No previous state found for evaluation'
+    ):
       await evaluation_program_logic.run_evaluation(
           train_round_num=train_round_num,
           state_manager=state_manager,
@@ -532,18 +648,22 @@ class RunEvaluationTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
           evaluation_per_round_clients_number=num_clients,
           evaluation_period=datetime.timedelta(seconds=0),
           per_round_metrics_manager=mock_per_round_metrics_manager,
-          aggregated_metrics_manager=mock_aggregated_metrics_manager)
+          aggregated_metrics_manager=mock_aggregated_metrics_manager,
+      )
 
   async def test_zero_duration_runs_one_evaluation_round(self):
     eval_process = _create_mock_eval_process()
     state_manager = mock.create_autospec(
-        file_program_state_manager.FileProgramStateManager, instance=True)
+        file_program_state_manager.FileProgramStateManager, instance=True
+    )
     state_manager.load_latest.return_value = (eval_process.initialize(), 0)
     num_clients = 3
     mock_per_round_metrics_manager = mock.create_autospec(
-        release_manager.ReleaseManager, instance=True)
+        release_manager.ReleaseManager, instance=True
+    )
     mock_aggregated_metrics_manager = mock.create_autospec(
-        release_manager.ReleaseManager, instance=True)
+        release_manager.ReleaseManager, instance=True
+    )
     train_round_num = 1
     await evaluation_program_logic.run_evaluation(
         train_round_num=train_round_num,
@@ -554,34 +674,42 @@ class RunEvaluationTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
         evaluation_per_round_clients_number=num_clients,
         evaluation_period=datetime.timedelta(seconds=0),
         per_round_metrics_manager=mock_per_round_metrics_manager,
-        aggregated_metrics_manager=mock_aggregated_metrics_manager)
+        aggregated_metrics_manager=mock_aggregated_metrics_manager,
+    )
     # Assert the evaluation state was loaded from the state manager, then the
     # first round of evaluation was saved.
-    self.assertSequenceEqual(state_manager.load_latest.call_args_list,
-                             [mock.call(mock.ANY)])
-    self.assertSequenceEqual(state_manager.save.call_args_list,
-                             [mock.call(mock.ANY, version=1)])
+    self.assertSequenceEqual(
+        state_manager.load_latest.call_args_list, [mock.call(mock.ANY)]
+    )
+    self.assertSequenceEqual(
+        state_manager.save.call_args_list, [mock.call(mock.ANY, version=1)]
+    )
     state_manager.remove_all.assert_called_once()
     # With a zero second deadline, we should expect exactly one evaluation to
     # have occurred for the training round.
     self.assertSequenceEqual(
         [_create_per_round_eval_metrics_release_call(key=train_round_num)],
-        mock_per_round_metrics_manager.release.call_args_list)
+        mock_per_round_metrics_manager.release.call_args_list,
+    )
     # Assert the aggregated metrics are output once at the end.
     self.assertSequenceEqual(
         mock_aggregated_metrics_manager.release.call_args_list,
-        [mock.call(mock.ANY, mock.ANY, key=train_round_num)])
+        [mock.call(mock.ANY, mock.ANY, key=train_round_num)],
+    )
 
   async def test_positive_duration_runs_atleast_one_evaluation_round(self):
     eval_process = _create_mock_eval_process()
     state_manager = mock.create_autospec(
-        file_program_state_manager.FileProgramStateManager, instance=True)
+        file_program_state_manager.FileProgramStateManager, instance=True
+    )
     state_manager.load_latest.return_value = (eval_process.initialize(), 0)
     num_clients = 3
     mock_per_round_metrics_manager = mock.create_autospec(
-        release_manager.ReleaseManager, instance=True)
+        release_manager.ReleaseManager, instance=True
+    )
     mock_aggregated_metrics_manager = mock.create_autospec(
-        release_manager.ReleaseManager, instance=True)
+        release_manager.ReleaseManager, instance=True
+    )
     train_round_num = 10
     await evaluation_program_logic.run_evaluation(
         train_round_num=train_round_num,
@@ -592,11 +720,13 @@ class RunEvaluationTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
         evaluation_per_round_clients_number=num_clients,
         evaluation_period=datetime.timedelta(seconds=10),
         per_round_metrics_manager=mock_per_round_metrics_manager,
-        aggregated_metrics_manager=mock_aggregated_metrics_manager)
+        aggregated_metrics_manager=mock_aggregated_metrics_manager,
+    )
     # Assert the evaluation state was loaded from the state manager, then the
     # first round of evaluation was saved.
-    self.assertSequenceEqual(state_manager.load_latest.call_args_list,
-                             [mock.call(mock.ANY)])
+    self.assertSequenceEqual(
+        state_manager.load_latest.call_args_list, [mock.call(mock.ANY)]
+    )
     state_manager.save.assert_has_calls([
         mock.call(mock.ANY, version=1),
         mock.call(mock.ANY, version=2),
@@ -610,21 +740,27 @@ class RunEvaluationTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     # Assert the aggregated metrics are output once at the end.
     self.assertSequenceEqual(
         mock_aggregated_metrics_manager.release.call_args_list,
-        [mock.call(mock.ANY, mock.ANY, key=train_round_num)])
+        [mock.call(mock.ANY, mock.ANY, key=train_round_num)],
+    )
 
   async def test_resume_evaluation_uses_correct_eval_round(self):
     eval_process = _create_mock_eval_process()
     state_manager = mock.create_autospec(
-        file_program_state_manager.FileProgramStateManager, instance=True)
+        file_program_state_manager.FileProgramStateManager, instance=True
+    )
     # Setup a state with a version later than zero.
     latest_version = 5
-    state_manager.load_latest.return_value = (eval_process.initialize(),
-                                              latest_version)
+    state_manager.load_latest.return_value = (
+        eval_process.initialize(),
+        latest_version,
+    )
     num_clients = 3
     mock_per_round_metrics_manager = mock.create_autospec(
-        release_manager.ReleaseManager, instance=True)
+        release_manager.ReleaseManager, instance=True
+    )
     mock_aggregated_metrics_manager = mock.create_autospec(
-        release_manager.ReleaseManager, instance=True)
+        release_manager.ReleaseManager, instance=True
+    )
     train_round_num = 10
     await evaluation_program_logic.run_evaluation(
         train_round_num=train_round_num,
@@ -635,11 +771,13 @@ class RunEvaluationTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
         evaluation_per_round_clients_number=num_clients,
         evaluation_period=datetime.timedelta(seconds=1),
         per_round_metrics_manager=mock_per_round_metrics_manager,
-        aggregated_metrics_manager=mock_aggregated_metrics_manager)
+        aggregated_metrics_manager=mock_aggregated_metrics_manager,
+    )
     # Assert the evaluation state was loaded from the state manager, then the
     # first round of evaluation was saved.
-    self.assertSequenceEqual(state_manager.load_latest.call_args_list,
-                             [mock.call(mock.ANY)])
+    self.assertSequenceEqual(
+        state_manager.load_latest.call_args_list, [mock.call(mock.ANY)]
+    )
     state_manager.remove_all.assert_called_once()
     # With a one second deadline, we should expect at least two evaluations.
     state_manager.save.assert_has_calls([
@@ -647,15 +785,18 @@ class RunEvaluationTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
         mock.call(mock.ANY, version=latest_version + 2),
     ])
     mock_per_round_metrics_manager.release.assert_has_calls([
-        _create_per_round_eval_metrics_release_call(key=train_round_num +
-                                                    latest_version),
-        _create_per_round_eval_metrics_release_call(key=train_round_num +
-                                                    latest_version + 1),
+        _create_per_round_eval_metrics_release_call(
+            key=train_round_num + latest_version
+        ),
+        _create_per_round_eval_metrics_release_call(
+            key=train_round_num + latest_version + 1
+        ),
     ])
     # Assert the aggregated metrics are output once at the end.
     self.assertSequenceEqual(
         mock_aggregated_metrics_manager.release.call_args_list,
-        [mock.call(mock.ANY, mock.ANY, key=train_round_num)])
+        [mock.call(mock.ANY, mock.ANY, key=train_round_num)],
+    )
 
 
 if __name__ == '__main__':

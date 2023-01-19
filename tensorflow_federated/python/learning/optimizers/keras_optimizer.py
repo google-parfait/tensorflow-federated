@@ -47,8 +47,12 @@ class KerasOptimizer(optimizer.Optimizer):
   tff.learning.optimizers format.
   """
 
-  def __init__(self, optimizer_fn: Callable[[], tf.keras.optimizers.Optimizer],
-               weights: Any, disjoint_init_and_next: bool):
+  def __init__(
+      self,
+      optimizer_fn: Callable[[], tf.keras.optimizers.Optimizer],
+      weights: Any,
+      disjoint_init_and_next: bool,
+  ):
     """Initializes `KerasOptimizer`.
 
     Args:
@@ -65,15 +69,16 @@ class KerasOptimizer(optimizer.Optimizer):
     self._disjoint_init_and_next = disjoint_init_and_next
 
     def mock_apply_gradients(opt, variables):
-      opt.apply_gradients([
-          (tf.zeros_like(w), w) for w in tf.nest.flatten(variables)
-      ])
+      opt.apply_gradients(
+          [(tf.zeros_like(w), w) for w in tf.nest.flatten(variables)]
+      )
 
     # Force the creation of tf.Variables controlled by the keras optimizer but
     # keep the variables unmodified. For instance, the "step" variable will be
     # 0, not 1, after this operation.
     tf.function(mock_apply_gradients).get_concrete_function(
-        self._optimizer, weights)
+        self._optimizer, weights
+    )
 
   def initialize(self, specs):
     del specs  # Unused.
@@ -84,11 +89,13 @@ class KerasOptimizer(optimizer.Optimizer):
 
   def next(self, state, weights, gradients):
     if self._disjoint_init_and_next:
-      tf.nest.map_structure(lambda v, s: v.assign(s),
-                            self._optimizer.variables(), state)
+      tf.nest.map_structure(
+          lambda v, s: v.assign(s), self._optimizer.variables(), state
+      )
 
     self._optimizer.apply_gradients(
-        list(zip(tf.nest.flatten(gradients), tf.nest.flatten(weights))))
+        list(zip(tf.nest.flatten(gradients), tf.nest.flatten(weights)))
+    )
 
     if self._disjoint_init_and_next:
       return self._optimizer.variables(), weights
@@ -97,10 +104,12 @@ class KerasOptimizer(optimizer.Optimizer):
 
 
 def build_or_verify_tff_optimizer(
-    optimizer_fn: Union[Callable[[], tf.keras.optimizers.Optimizer],
-                        optimizer.Optimizer],
+    optimizer_fn: Union[
+        Callable[[], tf.keras.optimizers.Optimizer], optimizer.Optimizer
+    ],
     trainable_weights: Optional[Any] = None,
-    disjoint_init_and_next: Optional[bool] = None) -> optimizer.Optimizer:
+    disjoint_init_and_next: Optional[bool] = None,
+) -> optimizer.Optimizer:
   """Returns `tff.learning.optimizers.Optimizer` for `optimizer_fn`.
 
   This helper function is used for `tff.learning` to provide backward
@@ -131,9 +140,11 @@ def build_or_verify_tff_optimizer(
   if isinstance(optimizer_fn, optimizer.Optimizer):
     return optimizer_fn
   elif callable(optimizer_fn):
-    return KerasOptimizer(optimizer_fn, trainable_weights,
-                          disjoint_init_and_next)
+    return KerasOptimizer(
+        optimizer_fn, trainable_weights, disjoint_init_and_next
+    )
   else:
     raise TypeError(
         '`optimizer_fn` must be a callable or '
-        f'`tff.learning.optimizers.Optimizer`, got {type(optimizer_fn)}')
+        f'`tff.learning.optimizers.Optimizer`, got {type(optimizer_fn)}'
+    )

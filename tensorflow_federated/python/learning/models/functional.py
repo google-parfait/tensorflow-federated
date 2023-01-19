@@ -44,8 +44,9 @@ Weight = Union[np.ndarray, int, float]
 WeightStruct = Union[Sequence[Weight], Mapping[str, Weight]]
 ModelWeights = tuple[WeightStruct, WeightStruct]
 MetricsState = TypeVar('MetricsState', bound=collections.OrderedDict[str, Any])
-FunctionalMetricFinalizersType = Callable[[MetricsState],
-                                          collections.OrderedDict[str, Any]]
+FunctionalMetricFinalizersType = Callable[
+    [MetricsState], collections.OrderedDict[str, Any]
+]
 InitializeMetricsStateFn = Callable[[], MetricsState]
 UpdateMetricsStateFn = Callable[[MetricsState, Any, Any, Any], MetricsState]
 FinalizeMetricsFn = Callable[[MetricsState], Any]
@@ -65,10 +66,12 @@ def empty_metrics_state() -> MetricsState:
 
 
 @tf.function
-def noop_update_metrics(state: MetricsState,
-                        labels: Any,
-                        batch_output: model_lib.BatchOutput,
-                        sample_weight: Optional[Any] = None) -> MetricsState:
+def noop_update_metrics(
+    state: MetricsState,
+    labels: Any,
+    batch_output: model_lib.BatchOutput,
+    sample_weight: Optional[Any] = None,
+) -> MetricsState:
   del state  # Unused.
   del labels  # Unused.
   del batch_output  # Unused.
@@ -82,21 +85,22 @@ def noop_finalize_metrics(state: MetricsState) -> tuple[Any, ...]:
   return collections.OrderedDict()
 
 
-class FunctionalModel():
+class FunctionalModel:
   """A model that parameterizes forward pass by model weights."""
 
   def __init__(
       self,
       *,  # Require all arguments be named.
       initial_weights: ModelWeights,
-      forward_pass_fn: Callable[[ModelWeights, Any, bool],
-                                model_lib.BatchOutput],
+      forward_pass_fn: Callable[
+          [ModelWeights, Any, bool], model_lib.BatchOutput
+      ],
       predict_on_batch_fn: Callable[[ModelWeights, Any, bool], Any],
-      metrics_fns: tuple[InitializeMetricsStateFn, UpdateMetricsStateFn,
-                         FinalizeMetricsFn] = (empty_metrics_state,
-                                               noop_update_metrics,
-                                               noop_finalize_metrics),
-      input_spec: Any):
+      metrics_fns: tuple[
+          InitializeMetricsStateFn, UpdateMetricsStateFn, FinalizeMetricsFn
+      ] = (empty_metrics_state, noop_update_metrics, noop_finalize_metrics),
+      input_spec: Any,
+  ):
     """Initializes a `FunctionalModel`.
 
     Example model implementing linear regression:
@@ -164,7 +168,8 @@ class FunctionalModel():
         raise CallableNotTensorFlowFunctionError(
             f'{arg_name} does not have a `get_concrete_function` attribute '
             'meaning it is not a callable decorated with `tf.function`. '
-            f'Got a {type_string} with value {fn!r}.')
+            f'Got a {type_string} with value {fn!r}.'
+        )
 
     def check_non_tf_value(value):
       if tf.is_tensor(value) or isinstance(value, tf.Variable):
@@ -173,7 +178,8 @@ class FunctionalModel():
             f'(tf.Tensor or tf.Variable). Got: {type(value)!r}. Try '
             'converting to a np.ndarray by using the `.numpy()` '
             'attribute for tf.Tensor, or `.read_value().numpy()` '
-            'for tf.Variable.')
+            'for tf.Variable.'
+        )
 
     tf.nest.map_structure(check_non_tf_value, initial_weights)
     self._initial_weights = initial_weights
@@ -182,26 +188,27 @@ class FunctionalModel():
     check_tf_function_decorated(predict_on_batch_fn, 'predict_on_batch_fn')
     self._predict_on_batch_fn = predict_on_batch_fn
     self._input_spec = input_spec
-    (self._initialize_metrics_state, self._update_metrics_state,
-     self._finalize_metrics) = metrics_fns
+    (
+        self._initialize_metrics_state,
+        self._update_metrics_state,
+        self._finalize_metrics,
+    ) = metrics_fns
 
   @property
   def initial_weights(self) -> ModelWeights:
     return self._initial_weights
 
   @tf.function
-  def forward_pass(self,
-                   model_weights: ModelWeights,
-                   batch_input: Any,
-                   training: bool = True) -> model_lib.BatchOutput:
+  def forward_pass(
+      self, model_weights: ModelWeights, batch_input: Any, training: bool = True
+  ) -> model_lib.BatchOutput:
     """Runs the forward pass and returns results."""
     return self._forward_pass_fn(model_weights, batch_input, training)
 
   @tf.function
-  def predict_on_batch(self,
-                       model_weights: ModelWeights,
-                       x: Any,
-                       training: bool = True):
+  def predict_on_batch(
+      self, model_weights: ModelWeights, x: Any, training: bool = True
+  ):
     """Returns tensor(s) interpretable by the loss function."""
     return self._predict_on_batch_fn(model_weights, x, training)
 
@@ -210,20 +217,24 @@ class FunctionalModel():
     return self._initialize_metrics_state()
 
   @tf.function
-  def update_metrics_state(self,
-                           state: MetricsState,
-                           labels: Any,
-                           batch_output: model_lib.BatchOutput,
-                           sample_weight: Optional[Any] = None) -> MetricsState:
+  def update_metrics_state(
+      self,
+      state: MetricsState,
+      labels: Any,
+      batch_output: model_lib.BatchOutput,
+      sample_weight: Optional[Any] = None,
+  ) -> MetricsState:
     return self._update_metrics_state(
         state,
         labels=labels,
         batch_output=batch_output,
-        sample_weight=sample_weight)
+        sample_weight=sample_weight,
+    )
 
   @tf.function
   def finalize_metrics(
-      self, state: MetricsState) -> collections.OrderedDict[str, Any]:
+      self, state: MetricsState
+  ) -> collections.OrderedDict[str, Any]:
     return self._finalize_metrics(state)
 
   @property
@@ -237,15 +248,19 @@ class _ModelFromFunctional(model_lib.Model):
   def __init__(
       self,
       functional_model: FunctionalModel,
-      metric_builders: Sequence[Callable[[], tf.keras.metrics.Metric]] = ()):
+      metric_builders: Sequence[Callable[[], tf.keras.metrics.Metric]] = (),
+  ):
     self._functional_model = functional_model
     # Construct `tf.Variable` to optimize during the learning process.
     trainable, non_trainable = functional_model.initial_weights
     self._trainable_variables = tuple(tf.Variable(x) for x in trainable)
     self._non_trainable_variables = tuple(
-        tf.Variable(x, trainable=False) for x in non_trainable)
-    self._model_weights = (self._trainable_variables,
-                           self._non_trainable_variables)
+        tf.Variable(x, trainable=False) for x in non_trainable
+    )
+    self._model_weights = (
+        self._trainable_variables,
+        self._non_trainable_variables,
+    )
     self._num_examples = tf.Variable(0, trainable=False)
     self._loss_sum = tf.Variable(0.0, trainable=False)
     if not metric_builders:
@@ -257,11 +272,13 @@ class _ModelFromFunctional(model_lib.Model):
       # Raise an error if there are duplicate metric names
       metric_names = [metric.name for metric in self._metrics]
       duplicates = set(
-          name for name in metric_names if metric_names.count(name) > 1)
+          name for name in metric_names if metric_names.count(name) > 1
+      )
       if duplicates:
         raise ValueError(
             f'{duplicates} appeared in the metric names more than once, '
-            'each metric should have a unique name.')
+            'each metric should have a unique name.'
+        )
 
   @property
   def trainable_variables(self) -> tuple[tf.Variable, ...]:
@@ -285,13 +302,16 @@ class _ModelFromFunctional(model_lib.Model):
   @tf.function
   def forward_pass(self, batch_input, training=True):
     batch_output = self._functional_model.forward_pass(
-        model_weights=tf.nest.map_structure(lambda v: v.read_value(),
-                                            self._model_weights),
+        model_weights=tf.nest.map_structure(
+            lambda v: v.read_value(), self._model_weights
+        ),
         batch_input=batch_input,
-        training=training)
+        training=training,
+    )
     self._num_examples.assign_add(batch_output.num_examples)
-    self._loss_sum.assign_add(batch_output.loss *
-                              tf.cast(batch_output.num_examples, tf.float32))
+    self._loss_sum.assign_add(
+        batch_output.loss * tf.cast(batch_output.num_examples, tf.float32)
+    )
     if isinstance(batch_input, Mapping):
       y_true = batch_input.get('y')
     else:
@@ -303,17 +323,20 @@ class _ModelFromFunctional(model_lib.Model):
   @tf.function
   def predict_on_batch(self, x, training=True):
     return self._functional_model.predict_on_batch(
-        model_weights=tf.nest.map_structure(lambda v: v.read_value(),
-                                            self._model_weights),
+        model_weights=tf.nest.map_structure(
+            lambda v: v.read_value(), self._model_weights
+        ),
         x=x,
-        training=training)
+        training=training,
+    )
 
   @tf.function
   def report_local_unfinalized_metrics(
-      self) -> collections.OrderedDict[str, list[tf.Tensor]]:
+      self,
+  ) -> collections.OrderedDict[str, list[tf.Tensor]]:
     outputs = collections.OrderedDict(
-        loss=[self._loss_sum,
-              tf.cast(self._num_examples, tf.float32)])
+        loss=[self._loss_sum, tf.cast(self._num_examples, tf.float32)]
+    )
     for metric in self._metrics:
       outputs[metric.name] = [v.read_value() for v in metric.variables]
     return outputs
@@ -321,11 +344,13 @@ class _ModelFromFunctional(model_lib.Model):
   def metric_finalizers(self) -> dict[str, finalizer.KerasMetricFinalizer]:
     finalizers = collections.OrderedDict(
         # `loss` result is computed by `loss_sum` / `num_examples`.
-        loss=tf.function(func=lambda x: x[0] / x[1]))
+        loss=tf.function(func=lambda x: x[0] / x[1])
+    )
     for metric_builder in self._metric_builders:
       metric_name = metric_builder().name
       finalizers[metric_name] = finalizer.create_keras_metric_finalizer(
-          metric_builder)
+          metric_builder
+      )
     return finalizers
 
   @tf.function
@@ -339,7 +364,7 @@ class _ModelFromFunctional(model_lib.Model):
 
 def model_from_functional(
     functional_model: FunctionalModel,
-    metric_constructors: Sequence[Callable[[], tf.keras.metrics.Metric]] = ()
+    metric_constructors: Sequence[Callable[[], tf.keras.metrics.Metric]] = (),
 ) -> model_lib.Model:
   """Converts a `FunctionalModel` to a `tff.learning.Model`.
 
@@ -359,17 +384,20 @@ def model_from_functional(
 
 
 class KerasFunctionalModelError(Exception):
-  """An error raised when a FunctionalModel backed by Keras is used outside TFF.
-  """
+  """An error raised when a FunctionalModel backed by Keras is used outside TFF."""
 
 
 def functional_model_from_keras(
     keras_model: Union[tf.keras.Model, Callable[[], tf.keras.Model]],
     loss_fn: tf.keras.losses.Loss,
     input_spec: Union[Sequence[Any], Mapping[str, Any]],
-    metrics_constructor: Optional[Union[keras_utils.MetricConstructor,
-                                        keras_utils.MetricsConstructor,
-                                        keras_utils.MetricConstructors]] = None
+    metrics_constructor: Optional[
+        Union[
+            keras_utils.MetricConstructor,
+            keras_utils.MetricsConstructor,
+            keras_utils.MetricConstructors,
+        ]
+    ] = None,
 ) -> FunctionalModel:
   """Converts a `tf.keras.Model` to a `tff.learning.models.FunctionalModel`.
 
@@ -431,18 +459,22 @@ def functional_model_from_keras(
         raise KerasFunctionalModelError(
             'Keras model contains a batch normalization layer, which is '
             'incompatible with `tff.learning.models.FunctionalModel`. Consider '
-            'using group normalization instead.')
+            'using group normalization instead.'
+        )
     if keras_model.non_trainable_variables:
       raise KerasFunctionalModelError(
-          'Received a Keras model with non-trainable variables. Keras models with '
-          'non-trainable variables are currently not supported by FunctionalModel'
-          '. Most training algorithms (e.g. Federated Averaging) will not '
-          'aggregate them, and they are not updated locally by the optimizer. '
-          'We can relax this in the future if we have APIs that support updating '
-          'non-trainable variables.')
+          'Received a Keras model with non-trainable variables. Keras models'
+          ' with non-trainable variables are currently not supported by'
+          ' FunctionalModel. Most training algorithms (e.g. Federated'
+          ' Averaging) will not aggregate them, and they are not updated'
+          ' locally by the optimizer. We can relax this in the future if we'
+          ' have APIs that support updating non-trainable variables.'
+      )
   elif not callable(keras_model):
-    raise ValueError('`keras_model` must be a `tf.keras.Model` or a no-arg '
-                     'callable that returns a `tf.keras.Model`.')
+    raise ValueError(
+        '`keras_model` must be a `tf.keras.Model` or a no-arg '
+        'callable that returns a `tf.keras.Model`.'
+    )
 
   # Clone the keras model inside a graph context so that we only get the
   # variables for the layers (otherwise keras adds other non-user variables). We
@@ -460,14 +492,17 @@ def functional_model_from_keras(
               'inputs from other layers directly (e.g. shared embeddings).'
               'To avoid the problem, wrap the `tf.keras.Model` construction in '
               'a no-arg callable (e.g. lambda) and pass that callable to '
-              '`functional_model_from_keras`') from e
+              '`functional_model_from_keras`'
+          ) from e
         if len(cloned_model.variables) != len(keras_model.variables):
           raise KerasFunctionalModelError(
               'The input Keras model is likely sharing variables across layers '
               'which is unsupported. Cloning the model will duplicate these '
-              'variables and result in unexpected training gradients.')
+              'variables and result in unexpected training gradients.'
+          )
       else:
         cloned_model = keras_model()
+
       # Ensure our cloned model has the same weights as the current model.
       # We'll feed in the current model waits into the palceholders for
       # assignmnet in a session below.
@@ -476,10 +511,12 @@ def functional_model_from_keras(
         return v.assign(p), p
 
       assign_ops, placeholders = zip(
-          *(assign_placeholder(v) for v in cloned_model.variables))
+          *(assign_placeholder(v) for v in cloned_model.variables)
+      )
   trainable_variables = tuple(v for v in captured_variables if v.trainable)
   non_trainable_variables = tuple(
-      v for v in captured_variables if not v.trainable)
+      v for v in captured_variables if not v.trainable
+  )
 
   # Here we get the initial weights from the incoming keras model in the order
   # they are constructed; and also ensure that the values are set to the
@@ -489,24 +526,28 @@ def functional_model_from_keras(
   else:
     model_for_variables = keras_model()
   current_model_weights = tf.nest.map_structure(
-      lambda v: v.read_value().numpy(), model_for_variables.variables)
+      lambda v: v.read_value().numpy(), model_for_variables.variables
+  )
   with tf.compat.v1.Session(graph=g) as sess:
     sess.run(tf.compat.v1.initializers.variables(captured_variables))
     sess.run(
         fetches=assign_ops,
-        feed_dict=dict(zip(placeholders, current_model_weights)))
+        feed_dict=dict(zip(placeholders, current_model_weights)),
+    )
     initial_weights = sess.run(
-        fetches=(trainable_variables, non_trainable_variables))
+        fetches=(trainable_variables, non_trainable_variables)
+    )
 
   @tf.function
-  def predict_on_batch(model_weights: ModelWeights,
-                       x: Any,
-                       training: bool = True) -> Any:
+  def predict_on_batch(
+      model_weights: ModelWeights, x: Any, training: bool = True
+  ) -> Any:
     with tf.init_scope():
       if tf.executing_eagerly():
         raise KerasFunctionalModelError(
             'tf.keras.Model used as a FunctionalModel is only usable inside a '
-            'tff.tf_computation decorated callable or a graph context.')
+            'tff.tf_computation decorated callable or a graph context.'
+        )
     # Make a copy of the weights container; can't mutate Python containers
     # inside a tf.function.
     trainable, non_trainable = (list(w) for w in model_weights)
@@ -553,9 +594,9 @@ def functional_model_from_keras(
     return variableless_model(x, training)
 
   @tf.function
-  def forward_pass(model_weights: ModelWeights,
-                   batch_input: Any,
-                   training: bool = True) -> model_lib.BatchOutput:
+  def forward_pass(
+      model_weights: ModelWeights, batch_input: Any, training: bool = True
+  ) -> model_lib.BatchOutput:
     if isinstance(batch_input, Mapping):
       x = batch_input['x']
       y = batch_input['y']
@@ -564,7 +605,8 @@ def functional_model_from_keras(
     else:
       raise ValueError(
           '`batch_input` must be either a mapping with keys `x` '
-          f'and `y` or a sequence of `(x, y)`. Got: {batch_input!r}')
+          f'and `y` or a sequence of `(x, y)`. Got: {batch_input!r}'
+      )
     predictions = predict_on_batch(model_weights, x, training)
     batch_loss = loss_fn(y_true=y, y_pred=predictions)
 
@@ -577,25 +619,30 @@ def functional_model_from_keras(
     return model_lib.BatchOutput(
         loss=batch_loss,
         predictions=predictions,
-        num_examples=nrows(tf.nest.flatten(batch_input)[0]))
+        num_examples=nrows(tf.nest.flatten(batch_input)[0]),
+    )
 
   if metrics_constructor is not None:
     metrics_fns = keras_utils.create_functional_metric_fns(metrics_constructor)
   else:
-    metrics_fns = (empty_metrics_state, noop_update_metrics,
-                   noop_finalize_metrics)
+    metrics_fns = (
+        empty_metrics_state,
+        noop_update_metrics,
+        noop_finalize_metrics,
+    )
 
   return FunctionalModel(
       initial_weights=initial_weights,
       forward_pass_fn=forward_pass,
       predict_on_batch_fn=predict_on_batch,
       metrics_fns=metrics_fns,
-      input_spec=input_spec)
+      input_spec=input_spec,
+  )
 
 
 def keras_model_from_functional_weights(
-    *, model_weights: ModelWeights,
-    keras_model: tf.keras.Model) -> tf.keras.Model:
+    *, model_weights: ModelWeights, keras_model: tf.keras.Model
+) -> tf.keras.Model:
   """Creates a new Keras model using the model weights from a `FunctionalModel`.
 
   This method is effectively the reverse of `functional_model_from_keras`. Since
@@ -622,7 +669,8 @@ def keras_model_from_functional_weights(
   if tf.compat.v1.executing_eagerly_outside_functions():
     raise ValueError(
         '`keras_model_from_functional_weights()` can only be called from within'
-        ' a graph context.')
+        ' a graph context.'
+    )
 
   # Convert to mutable lists that we can `pop` weights off of.
   trainable_weights, non_trainable_weights = [list(w) for w in model_weights]
@@ -644,8 +692,9 @@ def keras_model_from_functional_weights(
       kwargs['initializer'] = tf.compat.v1.constant_initializer(value=weight)
     else:
       raise ValueError(
-          'Can\'t set weights to a Keras model that creates variables without '
-          'initial values.')
+          "Can't set weights to a Keras model that creates variables without "
+          'initial values.'
+      )
     return next_creator_fn(**kwargs)
 
   with tf.variable_creator_scope(variable_creator_with_weights):
@@ -653,5 +702,6 @@ def keras_model_from_functional_weights(
   if trainable_weights or non_trainable_weights:
     raise ValueError(
         '`model_weights` contained more variables than `keras_model` uses, '
-        'check that the weights argument is matching the model type.')
+        'check that the weights argument is matching the model type.'
+    )
   return new_model

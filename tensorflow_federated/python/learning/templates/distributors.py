@@ -60,26 +60,30 @@ class DistributionProcess(measured_process.MeasuredProcess):
 
     if not initialize_fn.type_signature.result.is_federated():
       raise errors.TemplateNotFederatedError(
-          f'Provided `initialize_fn` must return a federated type, but found '
+          'Provided `initialize_fn` must return a federated type, but found '
           f'return type:\n{initialize_fn.type_signature.result}\nTip: If you '
-          f'see a collection of federated types, try wrapping the returned '
-          f'value in `tff.federated_zip` before returning.')
-    next_types = (
-        structure.flatten(next_fn.type_signature.parameter) +
-        structure.flatten(next_fn.type_signature.result))
+          'see a collection of federated types, try wrapping the returned '
+          'value in `tff.federated_zip` before returning.'
+      )
+    next_types = structure.flatten(
+        next_fn.type_signature.parameter
+    ) + structure.flatten(next_fn.type_signature.result)
     if not all([t.is_federated() for t in next_types]):
       offending_types = '\n- '.join(
-          [t for t in next_types if not t.is_federated()])
+          [t for t in next_types if not t.is_federated()]
+      )
       raise errors.TemplateNotFederatedError(
-          f'Provided `next_fn` must be a *federated* computation, that is, '
-          f'operate on `tff.FederatedType`s, but found\n'
+          'Provided `next_fn` must be a *federated* computation, that is, '
+          'operate on `tff.FederatedType`s, but found\n'
           f'next_fn with type signature:\n{next_fn.type_signature}\n'
-          f'The non-federated types are:\n {offending_types}.')
+          f'The non-federated types are:\n {offending_types}.'
+      )
 
     if initialize_fn.type_signature.result.placement != placements.SERVER:
       raise errors.TemplatePlacementError(
-          f'The state controlled by an `DistributionProcess` must be placed at '
-          f'the SERVER, but found type: {initialize_fn.type_signature.result}.')
+          'The state controlled by an `DistributionProcess` must be placed at '
+          f'the SERVER, but found type: {initialize_fn.type_signature.result}.'
+      )
     # Note that state of next_fn being placed at SERVER is now ensured by the
     # assertions in base class which would otherwise raise
     # TemplateStateNotAssignableError.
@@ -88,26 +92,31 @@ class DistributionProcess(measured_process.MeasuredProcess):
     next_fn_result = next_fn.type_signature.result
     if not next_fn_param.is_struct():
       raise errors.TemplateNextFnNumArgsError(
-          f'The `next_fn` must have exactly two input arguments, but found '
-          f'the following input type which is not a Struct: {next_fn_param}.')
+          'The `next_fn` must have exactly two input arguments, but found '
+          f'the following input type which is not a Struct: {next_fn_param}.'
+      )
     if len(next_fn_param) != 2:
       next_param_str = '\n- '.join([str(t) for t in next_fn_param])
       raise errors.TemplateNextFnNumArgsError(
-          f'The `next_fn` must have exactly two input arguments, but found '
-          f'{len(next_fn_param)} input arguments:\n{next_param_str}')
+          'The `next_fn` must have exactly two input arguments, but found '
+          f'{len(next_fn_param)} input arguments:\n{next_param_str}'
+      )
     if next_fn_param[1].placement != placements.SERVER:
       raise errors.TemplatePlacementError(
-          f'The second input argument of `next_fn` must be placed at SERVER '
-          f'but found {next_fn_param[1]}.')
+          'The second input argument of `next_fn` must be placed at SERVER '
+          f'but found {next_fn_param[1]}.'
+      )
 
     if next_fn_result.result.placement != placements.CLIENTS:
       raise errors.TemplatePlacementError(
-          f'The "result" attribute of return type of `next_fn` must be placed '
-          f'at CLIENTS, but found {next_fn_result.result}.')
+          'The "result" attribute of return type of `next_fn` must be placed '
+          f'at CLIENTS, but found {next_fn_result.result}.'
+      )
     if next_fn_result.measurements.placement != placements.SERVER:
       raise errors.TemplatePlacementError(
-          f'The "measurements" attribute of return type of `next_fn` must be '
-          f'placed at SERVER, but found {next_fn_result.measurements}.')
+          'The "measurements" attribute of return type of `next_fn` must be '
+          f'placed at SERVER, but found {next_fn_result.measurements}.'
+      )
 
 
 # TODO(b/190334722): Replace with a factory pattern similar to tff.aggregators.
@@ -126,21 +135,25 @@ def build_broadcast_process(value_type: computation_types.Type):
     TypeError: If `value_type` contains a `tff.types.FederatedType`.
   """
   py_typecheck.check_type(
-      value_type, (computation_types.TensorType, computation_types.StructType))
+      value_type, (computation_types.TensorType, computation_types.StructType)
+  )
   if type_analysis.contains_federated_types(value_type):
     raise TypeError(
-        f'Provided value_type must not contain any tff.types.FederatedType, '
-        f'but found: {value_type}')
+        'Provided value_type must not contain any tff.types.FederatedType, '
+        f'but found: {value_type}'
+    )
 
   @federated_computation.federated_computation
   def init_fn():
     return intrinsics.federated_value((), placements.SERVER)
 
   @federated_computation.federated_computation(
-      init_fn.type_signature.result, computation_types.at_server(value_type))
+      init_fn.type_signature.result, computation_types.at_server(value_type)
+  )
   def next_fn(state, value):
     empty_measurements = intrinsics.federated_value((), placements.SERVER)
     return measured_process.MeasuredProcessOutput(
-        state, intrinsics.federated_broadcast(value), empty_measurements)
+        state, intrinsics.federated_broadcast(value), empty_measurements
+    )
 
   return DistributionProcess(init_fn, next_fn)

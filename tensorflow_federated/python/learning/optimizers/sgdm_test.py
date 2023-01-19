@@ -26,7 +26,7 @@ _SCALAR_SPEC = tf.TensorSpec([1], tf.float32)
 _STRUCT_SPEC = [tf.TensorSpec([2], tf.float32), tf.TensorSpec([3], tf.float32)]
 _NESTED_SPEC = [
     tf.TensorSpec([10], tf.float32),
-    [tf.TensorSpec([20], tf.float32), [tf.TensorSpec([30], tf.float32)]]
+    [tf.TensorSpec([20], tf.float32), [tf.TensorSpec([30], tf.float32)]],
 ]
 
 
@@ -89,8 +89,9 @@ class SGDTest(optimizer_test_utils.TestCase, parameterized.TestCase):
     for _ in range(10):
       state, weights = optimizer.next(state, weights, gradients)
 
-    tf.nest.map_structure(lambda w: self.assertTrue(all(tf.math.is_finite(w))),
-                          weights)
+    tf.nest.map_structure(
+        lambda w: self.assertTrue(all(tf.math.is_finite(w))), weights
+    )
 
   def test_executes_with_indexed_slices(self):
     # TF can represent gradients as tf.IndexedSlices. This test makes sure this
@@ -99,13 +100,15 @@ class SGDTest(optimizer_test_utils.TestCase, parameterized.TestCase):
     gradients = tf.IndexedSlices(
         values=tf.constant([[1.0, 1.0], [1.0, 1.0]]),
         indices=tf.constant([0, 2]),
-        dense_shape=tf.constant([4, 2]))
+        dense_shape=tf.constant([4, 2]),
+    )
     optimizer = sgdm.build_sgdm(0.5)
 
     state = optimizer.initialize(tf.TensorSpec([4, 2]))
     _, weights = optimizer.next(state, weights, gradients)
-    self.assertAllClose([[0.5, 0.5], [1.0, 1.0], [0.5, 0.5], [1.0, 1.0]],
-                        weights)
+    self.assertAllClose(
+        [[0.5, 0.5], [1.0, 1.0], [0.5, 0.5], [1.0, 1.0]], weights
+    )
 
   @parameterized.named_parameters(('no_momentum', None), ('momentum_0_5', 0.5))
   def test_convergence(self, momentum):
@@ -121,20 +124,22 @@ class SGDTest(optimizer_test_utils.TestCase, parameterized.TestCase):
       state, weights = optimizer.next(state, weights, gradients)
     self.assertLess(fn(weights), 0.005)
 
-  @parameterized.named_parameters(('lr_0_1_m_none', 0.1, None),
-                                  ('lr_0_01_m_0_9', 0.01, 0.9))
+  @parameterized.named_parameters(
+      ('lr_0_1_m_none', 0.1, None), ('lr_0_01_m_0_9', 0.01, 0.9)
+  )
   def test_build_sgdm(self, learning_rate, momentum):
     optimizer = sgdm.build_sgdm(learning_rate, momentum)
     self.assertIsInstance(optimizer, optimizer_base.Optimizer)
     self.assertEqual(learning_rate, optimizer._lr)
     self.assertEqual(momentum, optimizer._momentum)
 
-  @parameterized.named_parameters(('lr_0_1_m_0', 0.1, 0.),
-                                  ('lr_0_01_m_0_9', 0.01, 0.9))
+  @parameterized.named_parameters(
+      ('lr_0_1_m_0', 0.1, 0.0), ('lr_0_01_m_0_9', 0.01, 0.9)
+  )
   def test_match_keras(self, learning_rate, momentum):
     weight_spec = [
         tf.TensorSpec([10, 2], tf.float32),
-        tf.TensorSpec([2], tf.float32)
+        tf.TensorSpec([2], tf.float32),
     ]
     steps = 10
     genarator = tf.random.Generator.from_seed(2021)
@@ -152,9 +157,9 @@ class SGDTest(optimizer_test_utils.TestCase, parameterized.TestCase):
     def keras_optimizer_fn():
       return tf.keras.optimizers.SGD(learning_rate, momentum)
 
-    self.assert_optimizers_numerically_close(model_variables_fn, gradients,
-                                             tff_optimizer_fn,
-                                             keras_optimizer_fn)
+    self.assert_optimizers_numerically_close(
+        model_variables_fn, gradients, tff_optimizer_fn, keras_optimizer_fn
+    )
 
   @parameterized.named_parameters(
       ('negative_lr', -1.0, 0.9, 'learning rate'),

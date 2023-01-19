@@ -46,30 +46,44 @@ class _LoadedSavedModel(model_lib.Model):
 
     self._forward_pass_training = _unflatten_fn(
         loaded_module.flat_forward_pass_training,
-        loaded_module.forward_pass_training_type_spec, model_lib.BatchOutput)
+        loaded_module.forward_pass_training_type_spec,
+        model_lib.BatchOutput,
+    )
     self._forward_pass_inference = _unflatten_fn(
         loaded_module.flat_forward_pass_inference,
-        loaded_module.forward_pass_inference_type_spec, model_lib.BatchOutput)
+        loaded_module.forward_pass_inference_type_spec,
+        model_lib.BatchOutput,
+    )
 
     self._predict_on_batch_training = _unflatten_fn(
         loaded_module.predict_on_batch_training,
-        loaded_module.predict_on_batch_training_type_spec, tuple)
+        loaded_module.predict_on_batch_training_type_spec,
+        tuple,
+    )
     self._predict_on_batch_inference = _unflatten_fn(
         loaded_module.predict_on_batch_inference,
-        loaded_module.predict_on_batch_inference_type_spec, tuple)
+        loaded_module.predict_on_batch_inference_type_spec,
+        tuple,
+    )
 
     self._input_spec = _deserialize_type_spec(
-        loaded_module.serialized_input_spec)
+        loaded_module.serialized_input_spec
+    )
 
-    self._report_local_unfinalized_metrics = loaded_module.report_local_unfinalized_metrics
-    self._serialized_metric_finalizers = loaded_module.serialized_metric_finalizers
+    self._report_local_unfinalized_metrics = (
+        loaded_module.report_local_unfinalized_metrics
+    )
+    self._serialized_metric_finalizers = (
+        loaded_module.serialized_metric_finalizers
+    )
 
     def raise_not_implemented_error():
       raise NotImplementedError(
-          'The `reset_metrics` method isn\'t implemented for your custom '
+          "The `reset_metrics` method isn't implemented for your custom "
           '`tff.learning.Model`. Please implement it before using this method. '
-          'You can leave this method unimplemented if you won\'t use this '
-          'method.')
+          "You can leave this method unimplemented if you won't use this "
+          'method.'
+      )
 
     if hasattr(loaded_module, 'reset_metrics'):
       self._reset_metrics = loaded_module.reset_metrics
@@ -111,15 +125,15 @@ class _LoadedSavedModel(model_lib.Model):
     return self._report_local_unfinalized_metrics()
 
   def metric_finalizers(self):
-
     def deserialize_metric_finalizer(finalizer):
       return computation_serialization.deserialize_computation(
-          computation_pb2.Computation.FromString(
-              finalizer.read_value().numpy()))
+          computation_pb2.Computation.FromString(finalizer.read_value().numpy())
+      )
 
     return collections.OrderedDict(
-        (metric_name, deserialize_metric_finalizer(finalizer)) for metric_name,
-        finalizer in self._serialized_metric_finalizers.items())
+        (metric_name, deserialize_metric_finalizer(finalizer))
+        for metric_name, finalizer in self._serialized_metric_finalizers.items()
+    )
 
   def reset_metrics(self):
     return self._reset_metrics()
@@ -130,7 +144,8 @@ def _save_tensorflow_module(tf_module: tf.Module, path: str) -> None:
   tf.saved_model.save(
       tf_module,
       export_dir=path,
-      signatures=tf_module.predict_on_batch_inference)
+      signatures=tf_module.predict_on_batch_inference,
+  )
 
 
 def _make_concrete_flat_output_fn(fn, *args, **kwargs):
@@ -157,18 +172,23 @@ def _make_concrete_flat_output_fn(fn, *args, **kwargs):
   # that we may have created earlier.
   structured_fn = lambda *args, **kwargs: fn(*args, **kwargs)  # pylint: disable=unnecessary-lambda
   concrete_fn = tf.function(structured_fn).get_concrete_function(
-      *args, **kwargs)
-  tensor_types = tf.nest.map_structure(computation_types.TensorType,
-                                       concrete_fn.output_dtypes,
-                                       concrete_fn.output_shapes)
+      *args, **kwargs
+  )
+  tensor_types = tf.nest.map_structure(
+      computation_types.TensorType,
+      concrete_fn.output_dtypes,
+      concrete_fn.output_shapes,
+  )
   result_type_spec = type_serialization.serialize_type(
-      computation_types.to_type(tensor_types))
+      computation_types.to_type(tensor_types)
+  )
 
   def flattened_output(*args, **kwargs):
     return tf.nest.flatten(fn(*args, **kwargs))
 
   flat_concrete_fn = tf.function(flattened_output).get_concrete_function(
-      *args, **kwargs)
+      *args, **kwargs
+  )
   return flat_concrete_fn, result_type_spec
 
 
@@ -176,10 +196,13 @@ def _deserialize_type_spec(serialize_type_variable, python_container=None):
   """Deserialize a `tff.Type` protocol buffer into a python class instance."""
   type_spec = type_serialization.deserialize_type(
       computation_pb2.Type.FromString(
-          serialize_type_variable.read_value().numpy()))
+          serialize_type_variable.read_value().numpy()
+      )
+  )
   if type_spec.is_struct() and python_container is not None:
     type_spec = computation_types.StructWithPythonType(
-        structure.iter_elements(type_spec), python_container)
+        structure.iter_elements(type_spec), python_container
+    )
   return type_conversions.type_to_tf_structure(type_spec)
 
 
@@ -196,8 +219,9 @@ def _unflatten_fn(fn, serialized_type_variable, python_container=None):
   Returns:
     A tf.function callable that returns output in the nested structure.
   """
-  nested_tensor_specs = _deserialize_type_spec(serialized_type_variable,
-                                               python_container)
+  nested_tensor_specs = _deserialize_type_spec(
+      serialized_type_variable, python_container
+  )
 
   def structured_output_fn(*args, **kwargs):
     result = fn(*args, **kwargs)
@@ -235,8 +259,10 @@ def save(model: model_lib.Model, path: str, input_type=None) -> None:
   py_typecheck.check_type(model, model_lib.Model)
   py_typecheck.check_type(path, str)
   if not path:
-    raise ValueError('`path` must be a non-empty string, cannot serialize '
-                     'models without an output path.')
+    raise ValueError(
+        '`path` must be a non-empty string, cannot serialize '
+        'models without an output path.'
+    )
   if isinstance(model, _LoadedSavedModel):
     # If we're saving a previously loaded model, we can simply use the module
     # already internal to the Model.
@@ -254,18 +280,22 @@ def save(model: model_lib.Model, path: str, input_type=None) -> None:
   # graph computation. We serialize the output type so that we can repack the
   # flattened values after loaded the saved model.
   forward_pass_training = _make_concrete_flat_output_fn(
-      functools.partial(model.forward_pass, training=True), model.input_spec)
+      functools.partial(model.forward_pass, training=True), model.input_spec
+  )
   m.flat_forward_pass_training = forward_pass_training[0]
   m.forward_pass_training_type_spec = tf.Variable(
       forward_pass_training[1].SerializeToString(deterministic=True),
-      trainable=False)
+      trainable=False,
+  )
 
   forward_pass_inference = _make_concrete_flat_output_fn(
-      functools.partial(model.forward_pass, training=False), model.input_spec)
+      functools.partial(model.forward_pass, training=False), model.input_spec
+  )
   m.flat_forward_pass_inference = forward_pass_inference[0]
   m.forward_pass_inference_type_spec = tf.Variable(
       forward_pass_inference[1].SerializeToString(deterministic=True),
-      trainable=False)
+      trainable=False,
+  )
   # Get model prediction input type. If `None`, default to assuming the 'x' key
   # or first element of the model input spec is the input.
   if input_type is None:
@@ -277,50 +307,61 @@ def save(model: model_lib.Model, path: str, input_type=None) -> None:
   # function, as the `training` argument is a Python value that changes the
   # graph computation.
   predict_on_batch_training = _make_concrete_flat_output_fn(
-      functools.partial(model.predict_on_batch, training=True), input_type)
+      functools.partial(model.predict_on_batch, training=True), input_type
+  )
   m.predict_on_batch_training = predict_on_batch_training[0]
   m.predict_on_batch_training_type_spec = tf.Variable(
       predict_on_batch_training[1].SerializeToString(deterministic=True),
-      trainable=False)
+      trainable=False,
+  )
   predict_on_batch_inference = _make_concrete_flat_output_fn(
-      functools.partial(model.predict_on_batch, training=False), input_type)
+      functools.partial(model.predict_on_batch, training=False), input_type
+  )
   m.predict_on_batch_inference = predict_on_batch_inference[0]
   m.predict_on_batch_inference_type_spec = tf.Variable(
       predict_on_batch_inference[1].SerializeToString(deterministic=True),
-      trainable=False)
+      trainable=False,
+  )
 
   # Serialize the report_local_unfinalized_metrics tf.function.
   m.report_local_unfinalized_metrics = (
-      model.report_local_unfinalized_metrics.get_concrete_function())
+      model.report_local_unfinalized_metrics.get_concrete_function()
+  )
 
   # Serialize the metric_finalizers as `tf.Variable`s.
   m.serialized_metric_finalizers = collections.OrderedDict()
 
   def serialize_metric_finalizer(finalizer, metric_type):
     finalizer_computation = tensorflow_computation.tf_computation(
-        finalizer, metric_type)
+        finalizer, metric_type
+    )
     return tf.Variable(
         computation_serialization.serialize_computation(
-            finalizer_computation).SerializeToString(deterministic=True),
-        trainable=False)
+            finalizer_computation
+        ).SerializeToString(deterministic=True),
+        trainable=False,
+    )
 
   for metric_name, finalizer in model.metric_finalizers().items():
     metric_type = type_conversions.type_from_tensors(
-        model.report_local_unfinalized_metrics()[metric_name])
+        model.report_local_unfinalized_metrics()[metric_name]
+    )
     m.serialized_metric_finalizers[metric_name] = serialize_metric_finalizer(
-        finalizer, metric_type)
+        finalizer, metric_type
+    )
 
   # Serialize the TFF values as string variables that contain the serialized
   # protos from the computation or the type.
   m.serialized_input_spec = tf.Variable(
       type_serialization.serialize_type(
-          computation_types.to_type(
-              model.input_spec)).SerializeToString(deterministic=True),
-      trainable=False)
+          computation_types.to_type(model.input_spec)
+      ).SerializeToString(deterministic=True),
+      trainable=False,
+  )
 
   # Serialize the reset_metrics tf.function.
   try:
-    m.reset_metrics = (model.reset_metrics.get_concrete_function())
+    m.reset_metrics = model.reset_metrics.get_concrete_function()
   except NotImplementedError:
     m.reset_metrics = None
 
@@ -338,8 +379,10 @@ def load(path: str) -> model_lib.Model:
   """
   py_typecheck.check_type(path, str)
   if not path:
-    raise ValueError('`path` must be a non-empty string, cannot deserialize '
-                     'models without an output path.')
+    raise ValueError(
+        '`path` must be a non-empty string, cannot deserialize '
+        'models without an output path.'
+    )
   return _LoadedSavedModel(tf.saved_model.load(path))
 
 
@@ -349,15 +392,17 @@ class _WeightsModule(tf.Module):
   def __init__(self, weights):
     super().__init__()
     self._weights = tf.nest.map_structure(
-        lambda x: tf.Variable(initial_value=x), weights)
+        lambda x: tf.Variable(initial_value=x), weights
+    )
 
   @tf.function(input_signature=())
   def __call__(self):
     return tf.nest.map_structure(lambda x: x.read_value(), self._weights)
 
 
-def save_functional_model(functional_model: functional.FunctionalModel,
-                          path: str):
+def save_functional_model(
+    functional_model: functional.FunctionalModel, path: str
+):
   """Serializes a `FunctionalModel` as a `tf.SavedModel` to `path`.
 
   Args:
@@ -367,7 +412,8 @@ def save_functional_model(functional_model: functional.FunctionalModel,
   m = _WeightsModule(functional_model.initial_weights)
   concrete_structured_fn = m.__call__.get_concrete_function()
   model_weights_tensor_specs = tf.nest.map_structure(
-      tf.TensorSpec.from_tensor, concrete_structured_fn.structured_outputs)
+      tf.TensorSpec.from_tensor, concrete_structured_fn.structured_outputs
+  )
 
   # Serialize forward pass concretely, once for training and once for
   # non-training.
@@ -395,38 +441,47 @@ def save_functional_model(functional_model: functional.FunctionalModel,
           model_weights_tensor_specs,
           functional_model.input_spec,
           # Note: training does not appear in the resulting concrete function.
-          training=training)
+          training=training,
+      )
     output_tensor_spec_structure = tf.nest.map_structure(
-        tf.TensorSpec.from_tensor, concrete_structured_fn.structured_outputs)
+        tf.TensorSpec.from_tensor, concrete_structured_fn.structured_outputs
+    )
     result_type_spec = type_serialization.serialize_type(
-        computation_types.to_type(output_tensor_spec_structure))
+        computation_types.to_type(output_tensor_spec_structure)
+    )
 
     @tf.function
     def flat_forward_pass(model_weights, batch_input, training):
       return tf.nest.flatten(
-          functional_model.forward_pass(model_weights, batch_input, training))
+          functional_model.forward_pass(model_weights, batch_input, training)
+      )
 
     with tf.Graph().as_default():
       flat_concrete_fn = flat_forward_pass.get_concrete_function(
           model_weights_tensor_specs,
           functional_model.input_spec,
           # Note: training does not appear in the resulting concrete function.
-          training=training)
+          training=training,
+      )
     return flat_concrete_fn, result_type_spec
 
-  fw_pass_training, fw_pass_training_type_spec = make_concrete_flat_forward_pass(
-      training=True)
+  fw_pass_training, fw_pass_training_type_spec = (
+      make_concrete_flat_forward_pass(training=True)
+  )
   m.flat_forward_pass_training = fw_pass_training
   m.forward_pass_training_type_spec = tf.Variable(
       fw_pass_training_type_spec.SerializeToString(deterministic=True),
-      trainable=False)
+      trainable=False,
+  )
 
-  fw_pass_inference, fw_pass_inference_type_spec = make_concrete_flat_forward_pass(
-      training=False)
+  fw_pass_inference, fw_pass_inference_type_spec = (
+      make_concrete_flat_forward_pass(training=False)
+  )
   m.flat_forward_pass_inference = fw_pass_inference
   m.forward_pass_inference_type_spec = tf.Variable(
       fw_pass_inference_type_spec.SerializeToString(deterministic=True),
-      trainable=False)
+      trainable=False,
+  )
 
   # Serialize predict_on_batch, once for training, once for non-training.
   x_type = functional_model.input_spec[0]
@@ -452,52 +507,62 @@ def save_functional_model(functional_model: functional.FunctionalModel,
     # parameters for `model_weights` and `batch_input`, which are
     # `tf.TensorSpec` structures here.
     concrete_structured_fn = tf.function(
-        functional_model.predict_on_batch).get_concrete_function(
-            model_weights_tensor_specs,
-            x_type,
-            # Note: training does not appear in the resulting concrete function.
-            training=training)
+        functional_model.predict_on_batch
+    ).get_concrete_function(
+        model_weights_tensor_specs,
+        x_type,
+        # Note: training does not appear in the resulting concrete function.
+        training=training,
+    )
     output_tensor_spec_structure = tf.nest.map_structure(
-        tf.TensorSpec.from_tensor, concrete_structured_fn.structured_outputs)
+        tf.TensorSpec.from_tensor, concrete_structured_fn.structured_outputs
+    )
     result_type_spec = type_serialization.serialize_type(
-        computation_types.to_type(output_tensor_spec_structure))
+        computation_types.to_type(output_tensor_spec_structure)
+    )
 
     @tf.function
     def flat_predict_on_batch(model_weights, x, training):
       return tf.nest.flatten(
-          functional_model.predict_on_batch(model_weights, x, training))
+          functional_model.predict_on_batch(model_weights, x, training)
+      )
 
     flat_concrete_fn = tf.function(flat_predict_on_batch).get_concrete_function(
         model_weights_tensor_specs,
         x_type,
         # Note: training does not appear in the resulting concrete function.
-        training=training)
+        training=training,
+    )
     return flat_concrete_fn, result_type_spec
 
   with tf.Graph().as_default():
-    predict_training, predict_training_type_spec = make_concrete_flat_predict_on_batch(
-        training=True)
+    predict_training, predict_training_type_spec = (
+        make_concrete_flat_predict_on_batch(training=True)
+    )
   m.predict_on_batch_training = predict_training
   m.predict_on_batch_training_type_spec = tf.Variable(
       predict_training_type_spec.SerializeToString(deterministic=True),
-      trainable=False)
+      trainable=False,
+  )
 
   with tf.Graph().as_default():
-    predict_inference, predict_inference_type_spec = make_concrete_flat_predict_on_batch(
-        training=False)
+    predict_inference, predict_inference_type_spec = (
+        make_concrete_flat_predict_on_batch(training=False)
+    )
   m.predict_on_batch_inference = predict_inference
   m.predict_on_batch_inference_type_spec = tf.Variable(
       predict_inference_type_spec.SerializeToString(deterministic=True),
-      trainable=False)
+      trainable=False,
+  )
 
   # Serialize TFF values as string variables that contain the serialized
   # protos from the computation or the type.
   m.serialized_input_spec = tf.Variable(
       type_serialization.serialize_type(
-          computation_types.to_type(
-              functional_model.input_spec)).SerializeToString(
-                  deterministic=True),
-      trainable=False)
+          computation_types.to_type(functional_model.input_spec)
+      ).SerializeToString(deterministic=True),
+      trainable=False,
+  )
 
   # Save everything
   _save_tensorflow_module(m, path)
@@ -510,15 +575,19 @@ class _LoadedFunctionalModel(functional.FunctionalModel):
     self._loaded_module = loaded_module
     self._input_spec = tf.nest.map_structure(
         lambda t: tf.TensorSpec(dtype=t.dtype, shape=t.shape),
-        _deserialize_type_spec(loaded_module.serialized_input_spec))
+        _deserialize_type_spec(loaded_module.serialized_input_spec),
+    )
 
-    self._initial_weights = tf.nest.map_structure(lambda x: x.numpy(),
-                                                  loaded_module())
+    self._initial_weights = tf.nest.map_structure(
+        lambda x: x.numpy(), loaded_module()
+    )
 
-    def unflatten_forward_pass_fn(flat_forward_pass,
-                                  serialized_result_type_variable):
+    def unflatten_forward_pass_fn(
+        flat_forward_pass, serialized_result_type_variable
+    ):
       result_tensor_specs = _deserialize_type_spec(
-          serialized_result_type_variable, model_lib.BatchOutput)
+          serialized_result_type_variable, model_lib.BatchOutput
+      )
 
       def forward_pass(model_weights, batch_input):
         result = flat_forward_pass(model_weights, batch_input)
@@ -528,15 +597,19 @@ class _LoadedFunctionalModel(functional.FunctionalModel):
 
     self._forward_pass_training = unflatten_forward_pass_fn(
         loaded_module.flat_forward_pass_training,
-        loaded_module.forward_pass_training_type_spec)
+        loaded_module.forward_pass_training_type_spec,
+    )
     self._forward_pass_inference = unflatten_forward_pass_fn(
         loaded_module.flat_forward_pass_inference,
-        loaded_module.forward_pass_inference_type_spec)
+        loaded_module.forward_pass_inference_type_spec,
+    )
 
-    def unflatten_predict_on_batch_fn(flat_predict_on_batch,
-                                      serialized_result_type_variable):
+    def unflatten_predict_on_batch_fn(
+        flat_predict_on_batch, serialized_result_type_variable
+    ):
       result_tensor_specs = _deserialize_type_spec(
-          serialized_result_type_variable, tuple)
+          serialized_result_type_variable, tuple
+      )
 
       def predict_on_batch(model_weights, x):
         result = flat_predict_on_batch(model_weights=model_weights, x=x)
@@ -548,26 +621,29 @@ class _LoadedFunctionalModel(functional.FunctionalModel):
 
     self._predict_on_batch_training = unflatten_predict_on_batch_fn(
         loaded_module.predict_on_batch_training,
-        loaded_module.predict_on_batch_training_type_spec)
+        loaded_module.predict_on_batch_training_type_spec,
+    )
     self._predict_on_batch_inference = unflatten_predict_on_batch_fn(
         loaded_module.predict_on_batch_inference,
-        loaded_module.predict_on_batch_inference_type_spec)
+        loaded_module.predict_on_batch_inference_type_spec,
+    )
 
   @property
   def initial_weights(self):
     return self._initial_weights
 
-  def forward_pass(self,
-                   model_weights,
-                   batch_input,
-                   training=True) -> model_lib.BatchOutput:
+  def forward_pass(
+      self, model_weights, batch_input, training=True
+  ) -> model_lib.BatchOutput:
     """Runs the forward pass and returns results."""
     if training:
       return self._forward_pass_training(
-          model_weights=model_weights, batch_input=batch_input)
+          model_weights=model_weights, batch_input=batch_input
+      )
     else:
       return self._forward_pass_inference(
-          model_weights=model_weights, batch_input=batch_input)
+          model_weights=model_weights, batch_input=batch_input
+      )
 
   def predict_on_batch(self, model_weights, x, training=True):
     """Returns tensor(s) interpretable by the loss function."""
@@ -592,6 +668,8 @@ def load_functional_model(path: str) -> functional.FunctionalModel:
   """
   py_typecheck.check_type(path, str)
   if not path:
-    raise ValueError('`path` must be a non-empty string, cannot deserialize '
-                     'models without an output path.')
+    raise ValueError(
+        '`path` must be a non-empty string, cannot deserialize '
+        'models without an output path.'
+    )
   return _LoadedFunctionalModel(tf.saved_model.load(path))

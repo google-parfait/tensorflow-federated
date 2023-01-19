@@ -30,10 +30,11 @@ MODEL_LABEL_NAME = 'y'
 MetricFinalizersType = collections.OrderedDict[str, Callable[[Any], Any]]
 
 BatchOutput = collections.namedtuple(
-    'BatchOutput', ['loss', 'predictions', 'num_examples'],
-    defaults=[None, None, None])
-BatchOutput.__doc__ = (
-    """A structure that holds the output of a `tff.learning.Model`.
+    'BatchOutput',
+    ['loss', 'predictions', 'num_examples'],
+    defaults=[None, None, None],
+)
+BatchOutput.__doc__ = """A structure that holds the output of a `tff.learning.Model`.
 
   Note: All fields are optional (may be None).
 
@@ -43,7 +44,7 @@ BatchOutput.__doc__ = (
     predictions: Tensor of predictions on the examples. The first dimension must
       be the same size (the size of the batch).
     num_examples: Number of examples seen in the batch.
-  """)
+  """
 
 
 class Model(metaclass=abc.ABCMeta):
@@ -117,7 +118,9 @@ class Model(metaclass=abc.ABCMeta):
     labels.
 
     Similar in spirit to `tf.keras.models.Model.input_spec`.
-    """.format(MODEL_ARG_NAME, MODEL_LABEL_NAME)
+    """.format(
+        MODEL_ARG_NAME, MODEL_LABEL_NAME
+    )
     pass
 
   @abc.abstractmethod
@@ -194,11 +197,14 @@ class Model(metaclass=abc.ABCMeta):
       be the logits or probabilities of the last layer in the model, however
       writers are not restricted to these, the only requirement is their loss
       function understands the result.
-    """.format(MODEL_ARG_NAME)
+    """.format(
+        MODEL_ARG_NAME
+    )
 
   @abc.abstractmethod
   def report_local_unfinalized_metrics(
-      self) -> collections.OrderedDict[str, Any]:
+      self,
+  ) -> collections.OrderedDict[str, Any]:
     """Creates an `collections.OrderedDict` of metric names to unfinalized values.
 
     For a metric, its unfinalized values are given as a structure (typically a

@@ -56,19 +56,27 @@ DEFAULT_SERVER_OPTIMIZER_FN = lambda: tf.keras.optimizers.SGD(learning_rate=1.0)
 def build_weighted_fed_prox(
     model_fn: Union[Callable[[], model_lib.Model], functional.FunctionalModel],
     proximal_strength: float,
-    client_optimizer_fn: Union[optimizer_base.Optimizer,
-                               Callable[[], tf.keras.optimizers.Optimizer]],
-    server_optimizer_fn: Union[optimizer_base.Optimizer, Callable[
-        [], tf.keras.optimizers.Optimizer]] = DEFAULT_SERVER_OPTIMIZER_FN,
+    client_optimizer_fn: Union[
+        optimizer_base.Optimizer, Callable[[], tf.keras.optimizers.Optimizer]
+    ],
+    server_optimizer_fn: Union[
+        optimizer_base.Optimizer, Callable[[], tf.keras.optimizers.Optimizer]
+    ] = DEFAULT_SERVER_OPTIMIZER_FN,
     client_weighting: Optional[
-        client_weight_lib.ClientWeighting] = client_weight_lib.ClientWeighting
-    .NUM_EXAMPLES,
+        client_weight_lib.ClientWeighting
+    ] = client_weight_lib.ClientWeighting.NUM_EXAMPLES,
     model_distributor: Optional[distributors.DistributionProcess] = None,
     model_aggregator: Optional[factory.WeightedAggregationFactory] = None,
-    metrics_aggregator: Optional[Callable[[
-        model_lib.MetricFinalizersType, computation_types.StructWithPythonType
-    ], computation_base.Computation]] = None,
-    use_experimental_simulation_loop: bool = False
+    metrics_aggregator: Optional[
+        Callable[
+            [
+                model_lib.MetricFinalizersType,
+                computation_types.StructWithPythonType,
+            ],
+            computation_base.Computation,
+        ]
+    ] = None,
+    use_experimental_simulation_loop: bool = False,
 ) -> learning_process.LearningProcess:
   """Builds a learning process that performs the FedProx algorithm.
 
@@ -162,7 +170,9 @@ def build_weighted_fed_prox(
   if not isinstance(proximal_strength, float) or proximal_strength < 0.0:
     raise ValueError(
         'proximal_strength must be a nonnegative float, found {}'.format(
-            proximal_strength))
+            proximal_strength
+        )
+    )
   elif proximal_strength == 0.0:
     logging.warning(
         'proximal_strength is set to 0.0, which means FedProx will'
@@ -172,19 +182,22 @@ def build_weighted_fed_prox(
     if not isinstance(model_fn, functional.FunctionalModel):
       raise TypeError(
           'If `model_fn` is not a callable, it must be an instance of '
-          f'tff.learning.models.FunctionalModel. Got {type(model_fn)}')
+          f'tff.learning.models.FunctionalModel. Got {type(model_fn)}'
+      )
     if not isinstance(client_optimizer_fn, optimizer_base.Optimizer):
       raise TypeError(
           'When `model_fn` is a `tff.learning.models.FunctionalModel`, the '
           '`client_optimizer_fn` must be a `tff.learning.optimizers.Optimizer`.'
-          f'Got {type(client_optimizer_fn)}.')
+          f'Got {type(client_optimizer_fn)}.'
+      )
 
     @tensorflow_computation.tf_computation()
     def initial_model_weights_fn():
       trainable_weights, non_trainable_weights = model_fn.initial_weights
       return model_weights.ModelWeights(
           tuple(tf.convert_to_tensor(w) for w in trainable_weights),
-          tuple(tf.convert_to_tensor(w) for w in non_trainable_weights))
+          tuple(tf.convert_to_tensor(w) for w in non_trainable_weights),
+      )
 
   else:
     py_typecheck.check_callable(model_fn)
@@ -193,9 +206,11 @@ def build_weighted_fed_prox(
     def initial_model_weights_fn():
       model = model_fn()
       if not isinstance(model, model_lib.Model):
-        raise TypeError('When `model_fn` is a callable, it returns instances of'
-                        ' tff.learning.Model. Instead callable returned type: '
-                        f'{type(model)}')
+        raise TypeError(
+            'When `model_fn` is a callable, it returns instances of'
+            ' tff.learning.Model. Instead callable returned type: '
+            f'{type(model)}'
+        )
       return model_weights.ModelWeights.from_model(model)
 
   model_weights_type = initial_model_weights_fn.type_signature.result
@@ -206,17 +221,20 @@ def build_weighted_fed_prox(
   if model_aggregator is None:
     model_aggregator = mean.MeanFactory()
   py_typecheck.check_type(model_aggregator, factory.WeightedAggregationFactory)
-  aggregator = model_aggregator.create(model_update_type,
-                                       computation_types.TensorType(tf.float32))
+  aggregator = model_aggregator.create(
+      model_update_type, computation_types.TensorType(tf.float32)
+  )
   process_signature = aggregator.next.type_signature
   input_client_value_type = process_signature.parameter[1]
   result_server_value_type = process_signature.result[1]
   if input_client_value_type.member != result_server_value_type.member:
-    raise TypeError('`model_update_aggregation_factory` does not produce a '
-                    'compatible `AggregationProcess`. The processes must '
-                    'retain the type structure of the inputs on the '
-                    f'server, but got {input_client_value_type.member} != '
-                    f'{result_server_value_type.member}.')
+    raise TypeError(
+        '`model_update_aggregation_factory` does not produce a '
+        'compatible `AggregationProcess`. The processes must '
+        'retain the type structure of the inputs on the '
+        f'server, but got {input_client_value_type.member} != '
+        f'{result_server_value_type.member}.'
+    )
 
   if metrics_aggregator is None:
     metrics_aggregator = metric_aggregator.sum_then_finalize
@@ -226,7 +244,8 @@ def build_weighted_fed_prox(
         optimizer=client_optimizer_fn,
         client_weighting=client_weighting,
         delta_l2_regularizer=proximal_strength,
-        metrics_aggregator=metrics_aggregator)
+        metrics_aggregator=metrics_aggregator,
+    )
   else:
     client_work = proximal_client_work.build_model_delta_client_work(
         model_fn=model_fn,
@@ -234,27 +253,39 @@ def build_weighted_fed_prox(
         client_weighting=client_weighting,
         delta_l2_regularizer=proximal_strength,
         metrics_aggregator=metrics_aggregator,
-        use_experimental_simulation_loop=use_experimental_simulation_loop)
+        use_experimental_simulation_loop=use_experimental_simulation_loop,
+    )
   finalizer = apply_optimizer_finalizer.build_apply_optimizer_finalizer(
-      server_optimizer_fn, model_weights_type)
-  return composers.compose_learning_process(initial_model_weights_fn,
-                                            model_distributor, client_work,
-                                            aggregator, finalizer)
+      server_optimizer_fn, model_weights_type
+  )
+  return composers.compose_learning_process(
+      initial_model_weights_fn,
+      model_distributor,
+      client_work,
+      aggregator,
+      finalizer,
+  )
 
 
 def build_unweighted_fed_prox(
     model_fn: Union[Callable[[], model_lib.Model], functional.FunctionalModel],
     proximal_strength: float,
-    client_optimizer_fn: Union[optimizer_base.Optimizer,
-                               Callable[[], tf.keras.optimizers.Optimizer]],
-    server_optimizer_fn: Union[optimizer_base.Optimizer, Callable[
-        [], tf.keras.optimizers.Optimizer]] = DEFAULT_SERVER_OPTIMIZER_FN,
+    client_optimizer_fn: Union[
+        optimizer_base.Optimizer, Callable[[], tf.keras.optimizers.Optimizer]
+    ],
+    server_optimizer_fn: Union[
+        optimizer_base.Optimizer, Callable[[], tf.keras.optimizers.Optimizer]
+    ] = DEFAULT_SERVER_OPTIMIZER_FN,
     model_distributor: Optional[distributors.DistributionProcess] = None,
     model_aggregator: Optional[factory.UnweightedAggregationFactory] = None,
-    metrics_aggregator: Callable[[
-        model_lib.MetricFinalizersType, computation_types.StructWithPythonType
-    ], computation_base.Computation] = metric_aggregator.sum_then_finalize,
-    use_experimental_simulation_loop: bool = False
+    metrics_aggregator: Callable[
+        [
+            model_lib.MetricFinalizersType,
+            computation_types.StructWithPythonType,
+        ],
+        computation_base.Computation,
+    ] = metric_aggregator.sum_then_finalize,
+    use_experimental_simulation_loop: bool = False,
 ) -> learning_process.LearningProcess:
   """Builds a learning process that performs the FedProx algorithm.
 
@@ -344,8 +375,9 @@ def build_unweighted_fed_prox(
   """
   if model_aggregator is None:
     model_aggregator = mean.UnweightedMeanFactory()
-  py_typecheck.check_type(model_aggregator,
-                          factory.UnweightedAggregationFactory)
+  py_typecheck.check_type(
+      model_aggregator, factory.UnweightedAggregationFactory
+  )
 
   return build_weighted_fed_prox(
       model_fn=model_fn,
@@ -356,4 +388,5 @@ def build_unweighted_fed_prox(
       model_distributor=model_distributor,
       model_aggregator=factory_utils.as_weighted_aggregator(model_aggregator),
       metrics_aggregator=metrics_aggregator,
-      use_experimental_simulation_loop=use_experimental_simulation_loop)
+      use_experimental_simulation_loop=use_experimental_simulation_loop,
+  )

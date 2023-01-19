@@ -57,8 +57,10 @@ class TestModel(model.Model):
         max_temp=tf.Variable(
             lambda: tf.zeros(dtype=tf.float32, shape=[]),
             name='max_temp',
-            trainable=True),
-        num_over=tf.Variable(0.0, name='num_over', trainable=False))
+            trainable=True,
+        ),
+        num_over=tf.Variable(0.0, name='num_over', trainable=False),
+    )
 
   @property
   def trainable_variables(self):
@@ -85,15 +87,16 @@ class TestModel(model.Model):
   def forward_pass(self, batch, training=True):
     assert not training
     num_over = tf.reduce_sum(
-        tf.cast(
-            tf.greater(batch['temp'], self._variables.max_temp), tf.float32))
+        tf.cast(tf.greater(batch['temp'], self._variables.max_temp), tf.float32)
+    )
     self._variables.num_over.assign_add(num_over)
     loss = tf.constant(0.0)
     predictions = self.predict_on_batch(batch, training)
     return model.BatchOutput(
         loss=loss,
         predictions=predictions,
-        num_examples=tf.shape(predictions)[0])
+        num_examples=tf.shape(predictions)[0],
+    )
 
   @tf.function
   def report_local_unfinalized_metrics(self):
@@ -117,8 +120,10 @@ class TestModelQuant(model.Model):
         given_nums=tf.Variable(
             lambda: tf.zeros(dtype=tf.float32, shape=(4,)),
             name='given_nums',
-            trainable=True),
-        num_same=tf.Variable(0.0, name='num_same', trainable=False))
+            trainable=True,
+        ),
+        num_same=tf.Variable(0.0, name='num_same', trainable=False),
+    )
 
   @property
   def trainable_variables(self):
@@ -147,8 +152,8 @@ class TestModelQuant(model.Model):
     assert not training
     # Calculate how many of the values in the training data match the input.
     num_same = tf.reduce_sum(
-        tf.cast(
-            tf.equal(batch['temp'], self._variables.given_nums), tf.float32))
+        tf.cast(tf.equal(batch['temp'], self._variables.given_nums), tf.float32)
+    )
     self._variables.num_same.assign_add(num_same)
     # We're not actually training anything, so just use 0 loss and predictions.
     loss = tf.constant(0.0)
@@ -156,7 +161,8 @@ class TestModelQuant(model.Model):
     return model.BatchOutput(
         loss=loss,
         predictions=predictions,
-        num_examples=tf.shape(predictions)[0])
+        num_examples=tf.shape(predictions)[0],
+    )
 
   @tf.function
   def report_local_unfinalized_metrics(self):
@@ -186,16 +192,17 @@ def _model_fn_from_keras():
       keras_model,
       input_spec=collections.OrderedDict(
           x=tf.TensorSpec(shape=(None, 1), dtype=tf.float32),
-          y=tf.TensorSpec(shape=(None, 1), dtype=tf.float32)),
+          y=tf.TensorSpec(shape=(None, 1), dtype=tf.float32),
+      ),
       loss=tf.keras.losses.MeanSquaredError(),
-      metrics=[tf.keras.metrics.Accuracy()])
+      metrics=[tf.keras.metrics.Accuracy()],
+  )
 
 
 def _build_simple_quant_encoder(quantization_bits):
   """Returns a function to quantize an input tensor using quantization_bits."""
 
   def simple_quant_encoder(value: tf.Tensor):
-
     def quant_encoder(value: tf.Tensor):
       assert value.dtype in [tf.float32, tf.float64]
       return te.encoders.uniform_quantization(quantization_bits)
@@ -209,37 +216,53 @@ def _build_simple_quant_encoder(quantization_bits):
 def _build_expected_broadcaster_next_signature():
   """Returns signature of the broadcaster used in multiple tests below."""
   state_type = computation_types.at_server(
-      computation_types.StructType([('trainable', [
-          (),
-      ]), ('non_trainable', [])]))
+      computation_types.StructType([
+          (
+              'trainable',
+              [
+                  (),
+              ],
+          ),
+          ('non_trainable', []),
+      ])
+  )
   value_type = computation_types.at_server(
-      model_weights.weights_type_from_model(TestModelQuant))
+      model_weights.weights_type_from_model(TestModelQuant)
+  )
   result_type = computation_types.at_clients(
-      model_weights.weights_type_from_model(TestModelQuant))
+      model_weights.weights_type_from_model(TestModelQuant)
+  )
   measurements_type = computation_types.at_server(())
   return computation_types.FunctionType(
       parameter=collections.OrderedDict(state=state_type, value=value_type),
       result=collections.OrderedDict(
-          state=state_type, result=result_type, measurements=measurements_type))
+          state=state_type, result=result_type, measurements=measurements_type
+      ),
+  )
 
 
 def _build_expected_test_quant_model_eval_signature():
   """Returns signature for build_federated_evaluation using TestModelQuant."""
   weights_parameter_type = computation_types.at_server(
-      model_weights.weights_type_from_model(TestModelQuant))
+      model_weights.weights_type_from_model(TestModelQuant)
+  )
   data_parameter_type = computation_types.at_clients(
       computation_types.SequenceType(
           collections.OrderedDict(
-              temp=computation_types.TensorType(
-                  shape=(None,), dtype=tf.float32))))
+              temp=computation_types.TensorType(shape=(None,), dtype=tf.float32)
+          )
+      )
+  )
   return_type = computation_types.at_server(
-      collections.OrderedDict(
-          eval=collections.OrderedDict(num_same=tf.float32)))
+      collections.OrderedDict(eval=collections.OrderedDict(num_same=tf.float32))
+  )
   return computation_types.FunctionType(
       parameter=collections.OrderedDict(
           server_model_weights=weights_parameter_type,
-          federated_dataset=data_parameter_type),
-      result=return_type)
+          federated_dataset=data_parameter_type,
+      ),
+      result=return_type,
+  )
 
 
 class FederatedEvaluationTest(parameterized.TestCase):
@@ -249,34 +272,43 @@ class FederatedEvaluationTest(parameterized.TestCase):
     model_weights_type = model_weights.weights_type_from_model(TestModel)
     batch_type = computation_types.to_type(TestModel().input_spec)
     client_evaluate = federated_evaluation.build_local_evaluation(
-        TestModel, model_weights_type, batch_type)
+        TestModel, model_weights_type, batch_type
+    )
     type_test_utils.assert_types_equivalent(
         client_evaluate.type_signature,
         FunctionType(
             parameter=StructType([
                 ('incoming_model_weights', model_weights_type),
-                ('dataset',
-                 SequenceType(
-                     StructType([('temp',
-                                  TensorType(dtype=tf.float32,
-                                             shape=[None]))]))),
+                (
+                    'dataset',
+                    SequenceType(
+                        StructType([(
+                            'temp',
+                            TensorType(dtype=tf.float32, shape=[None]),
+                        )])
+                    ),
+                ),
             ]),
             result=collections.OrderedDict(
                 local_outputs=collections.OrderedDict(num_over=tf.float32),
-                num_examples=tf.int64)))
+                num_examples=tf.int64,
+            ),
+        ),
+    )
 
     def _temp_dict(temps):
       return {'temp': np.array(temps, dtype=np.float32)}
 
     client_result = client_evaluate(
         collections.OrderedDict(trainable=[5.0], non_trainable=[]),
-        [_temp_dict([1.0, 10.0, 2.0, 8.0]),
-         _temp_dict([6.0, 11.0])])
+        [_temp_dict([1.0, 10.0, 2.0, 8.0]), _temp_dict([6.0, 11.0])],
+    )
     self.assertEqual(
         client_result,
         collections.OrderedDict(
-            local_outputs=collections.OrderedDict(num_over=4.0),
-            num_examples=6))
+            local_outputs=collections.OrderedDict(num_over=4.0), num_examples=6
+        ),
+    )
 
   def test_federated_evaluation_deprecation_warning(self):
     with self.assertWarnsRegex(DeprecationWarning, 'build_fed_eval'):
@@ -290,33 +322,45 @@ class FederatedEvaluationTest(parameterized.TestCase):
         evaluate.type_signature,
         FunctionType(
             parameter=StructType([
-                ('server_model_weights',
-                 computation_types.at_server(model_weights_type)),
-                ('federated_dataset',
-                 computation_types.at_clients(
-                     SequenceType(
-                         StructType([
-                             ('temp',
-                              TensorType(dtype=tf.float32, shape=[None]))
-                         ])))),
+                (
+                    'server_model_weights',
+                    computation_types.at_server(model_weights_type),
+                ),
+                (
+                    'federated_dataset',
+                    computation_types.at_clients(
+                        SequenceType(
+                            StructType([(
+                                'temp',
+                                TensorType(dtype=tf.float32, shape=[None]),
+                            )])
+                        )
+                    ),
+                ),
             ]),
             result=computation_types.at_server(
                 collections.OrderedDict(
-                    eval=collections.OrderedDict(num_over=tf.float32)))))
+                    eval=collections.OrderedDict(num_over=tf.float32)
+                )
+            ),
+        ),
+    )
 
     def _temp_dict(temps):
       return {'temp': np.array(temps, dtype=np.float32)}
 
     result = evaluate(
-        collections.OrderedDict(trainable=[5.0], non_trainable=[]), [
-            [_temp_dict([1.0, 10.0, 2.0, 7.0]),
-             _temp_dict([6.0, 11.0])],
+        collections.OrderedDict(trainable=[5.0], non_trainable=[]),
+        [
+            [_temp_dict([1.0, 10.0, 2.0, 7.0]), _temp_dict([6.0, 11.0])],
             [_temp_dict([9.0, 12.0, 13.0])],
             [_temp_dict([1.0]), _temp_dict([22.0, 23.0])],
-        ])
+        ],
+    )
     self.assertEqual(
         result,
-        collections.OrderedDict(eval=collections.OrderedDict(num_over=9.0)))
+        collections.OrderedDict(eval=collections.OrderedDict(num_over=9.0)),
+    )
 
   @tensorflow_test_utils.skip_test_for_multi_gpu
   def test_federated_evaluation_fails_stateful_broadcast(self):
@@ -326,101 +370,127 @@ class FederatedEvaluationTest(parameterized.TestCase):
     def init_fn():
       return intrinsics.federated_eval(
           tensorflow_computation.tf_computation(
-              lambda: tf.zeros(shape=[], dtype=tf.float32)), placements.SERVER)
+              lambda: tf.zeros(shape=[], dtype=tf.float32)
+          ),
+          placements.SERVER,
+      )
 
     @federated_computation.federated_computation(
         computation_types.at_server(tf.float32),
-        computation_types.at_clients(tf.int32))
+        computation_types.at_clients(tf.int32),
+    )
     def next_fn(state, value):
       return measured_process.MeasuredProcessOutput(state, value, state)
 
     broadcaster = measured_process.MeasuredProcess(init_fn, next_fn)
     with self.assertRaisesRegex(ValueError, 'stateful broadcast'):
       federated_evaluation.build_federated_evaluation(
-          TestModelQuant, broadcast_process=broadcaster)
+          TestModelQuant, broadcast_process=broadcaster
+      )
 
   @tensorflow_test_utils.skip_test_for_multi_gpu
   def test_federated_evaluation_fails_non_measured_process_broadcast(self):
     broadcaster = tensorflow_computation.tf_computation(lambda x: x)
     with self.assertRaisesRegex(ValueError, '`MeasuredProcess`'):
       federated_evaluation.build_federated_evaluation(
-          TestModelQuant, broadcast_process=broadcaster)
+          TestModelQuant, broadcast_process=broadcaster
+      )
 
-  @parameterized.named_parameters(('non-simulation', False),
-                                  ('simulation', True))
+  @parameterized.named_parameters(
+      ('non-simulation', False), ('simulation', True)
+  )
   @tensorflow_test_utils.skip_test_for_multi_gpu
   def test_federated_evaluation_with_keras(self, simulation):
-
     evaluate_comp = federated_evaluation.build_federated_evaluation(
-        _model_fn_from_keras, use_experimental_simulation_loop=simulation)
+        _model_fn_from_keras, use_experimental_simulation_loop=simulation
+    )
     initial_weights = tf.nest.map_structure(
         lambda x: x.read_value(),
-        model_weights.ModelWeights.from_model(_model_fn_from_keras()))
+        model_weights.ModelWeights.from_model(_model_fn_from_keras()),
+    )
 
     def _input_dict(temps):
       return collections.OrderedDict(
           x=np.reshape(np.array(temps, dtype=np.float32), (-1, 1)),
-          y=np.reshape(np.array(temps, dtype=np.float32), (-1, 1)))
+          y=np.reshape(np.array(temps, dtype=np.float32), (-1, 1)),
+      )
 
     result = evaluate_comp(
         initial_weights,
-        [[_input_dict([1.0, 10.0, 2.0, 7.0]),
-          _input_dict([6.0, 11.0])], [_input_dict([9.0, 12.0, 13.0])],
-         [_input_dict([1.0]), _input_dict([22.0, 23.0])]])
+        [
+            [_input_dict([1.0, 10.0, 2.0, 7.0]), _input_dict([6.0, 11.0])],
+            [_input_dict([9.0, 12.0, 13.0])],
+            [_input_dict([1.0]), _input_dict([22.0, 23.0])],
+        ],
+    )
     # Expect 100% accuracy and no loss because we've constructed the identity
     # function and have the same x's and y's for training data.
     self.assertDictEqual(
         result,
         collections.OrderedDict(
             eval=collections.OrderedDict(
-                accuracy=1.0, loss=0.0, num_examples=12, num_batches=5)))
+                accuracy=1.0, loss=0.0, num_examples=12, num_batches=5
+            )
+        ),
+    )
 
   @mock.patch.object(
       dataset_reduce,
       '_dataset_reduce_fn',
-      wraps=dataset_reduce._dataset_reduce_fn)
+      wraps=dataset_reduce._dataset_reduce_fn,
+  )
   @tensorflow_test_utils.skip_test_for_multi_gpu
   def test_federated_evaluation_dataset_reduce(self, mock_method):
     evaluate_comp = federated_evaluation.build_federated_evaluation(
-        _model_fn_from_keras, use_experimental_simulation_loop=False)
+        _model_fn_from_keras, use_experimental_simulation_loop=False
+    )
     initial_weights = tf.nest.map_structure(
         lambda x: x.read_value(),
-        model_weights.ModelWeights.from_model(_model_fn_from_keras()))
+        model_weights.ModelWeights.from_model(_model_fn_from_keras()),
+    )
 
     def _input_dict(temps):
       return collections.OrderedDict(
           x=np.reshape(np.array(temps, dtype=np.float32), (-1, 1)),
-          y=np.reshape(np.array(temps, dtype=np.float32), (-1, 1)))
+          y=np.reshape(np.array(temps, dtype=np.float32), (-1, 1)),
+      )
 
     evaluate_comp(
         initial_weights,
-        [[_input_dict([1.0, 10.0, 2.0, 7.0]),
-          _input_dict([6.0, 11.0])], [_input_dict([9.0, 12.0, 13.0])],
-         [_input_dict([1.0]), _input_dict([22.0, 23.0])]])
+        [
+            [_input_dict([1.0, 10.0, 2.0, 7.0]), _input_dict([6.0, 11.0])],
+            [_input_dict([9.0, 12.0, 13.0])],
+            [_input_dict([1.0]), _input_dict([22.0, 23.0])],
+        ],
+    )
 
     mock_method.assert_called()
 
   @mock.patch.object(
       dataset_reduce,
       '_dataset_reduce_fn',
-      wraps=dataset_reduce._dataset_reduce_fn)
+      wraps=dataset_reduce._dataset_reduce_fn,
+  )
   @tensorflow_test_utils.skip_test_for_gpu
   def test_federated_evaluation_simulation_loop(self, mock_method):
     evaluate_comp = federated_evaluation.build_federated_evaluation(
-        _model_fn_from_keras, use_experimental_simulation_loop=True)
+        _model_fn_from_keras, use_experimental_simulation_loop=True
+    )
     initial_weights = tf.nest.map_structure(
         lambda x: x.read_value(),
-        model_weights.ModelWeights.from_model(_model_fn_from_keras()))
+        model_weights.ModelWeights.from_model(_model_fn_from_keras()),
+    )
 
     def _input_dict(temps):
       return collections.OrderedDict(
           x=np.reshape(np.array(temps, dtype=np.float32), (-1, 1)),
-          y=np.reshape(np.array(temps, dtype=np.float32), (-1, 1)))
+          y=np.reshape(np.array(temps, dtype=np.float32), (-1, 1)),
+      )
 
     evaluate_comp(
         initial_weights,
-        [[_input_dict([1.0, 10.0, 2.0, 7.0]),
-          _input_dict([6.0, 11.0])]])
+        [[_input_dict([1.0, 10.0, 2.0, 7.0]), _input_dict([6.0, 11.0])]],
+    )
 
     mock_method.assert_not_called()
 
@@ -436,7 +506,8 @@ class FederatedEvaluationTest(parameterized.TestCase):
   def test_no_unsecure_aggregation_with_secure_metrics_finalizer(self):
     evaluate_comp = federated_evaluation.build_federated_evaluation(
         _model_fn_from_keras,
-        metrics_aggregator=aggregator.secure_sum_then_finalize)
+        metrics_aggregator=aggregator.secure_sum_then_finalize,
+    )
     static_assert.assert_not_contains_unsecure_aggregation(evaluate_comp)
 
 
@@ -446,11 +517,15 @@ class FunctionalFederatedEvaluationTest(tf.test.TestCase):
     dataset1 = tf.data.Dataset.from_tensor_slices(
         collections.OrderedDict(
             x=[[0.0, 0.0], [1.0, 0.0], [2.0, 0.0], [3.0, 0.0]],
-            y=[[0.0], [0.0], [1.0], [1.0]]))
+            y=[[0.0], [0.0], [1.0], [1.0]],
+        )
+    )
     dataset2 = tf.data.Dataset.from_tensor_slices(
         collections.OrderedDict(
             x=[[1.0, 2.0], [3.0, 4.0], [5.0, 6.0], [7.0, 8.0]],
-            y=[[1.0], [2.0], [3.0], [4.0]]))
+            y=[[1.0], [2.0], [3.0], [4.0]],
+        )
+    )
     return [dataset1.repeat(2).batch(3), dataset2.repeat(2).batch(3)]
 
   def test_raises_on_non_callable_or_functional_model(self):
@@ -463,7 +538,8 @@ class FunctionalFederatedEvaluationTest(tf.test.TestCase):
     batch_type = computation_types.to_type(dataset.element_spec)
     loss_fn = tf.keras.losses.MeanSquaredError
     keras_model = model_examples.build_linear_regression_keras_functional_model(
-        feature_dims=2)
+        feature_dims=2
+    )
 
     # Defining artifacts using `tff.learning.Model`
     def tff_model_fn():
@@ -473,14 +549,16 @@ class FunctionalFederatedEvaluationTest(tf.test.TestCase):
           )
       )
       return keras_utils.from_keras_model(
-          keras_model, loss=loss_fn(), input_spec=batch_type)
+          keras_model, loss=loss_fn(), input_spec=batch_type
+      )
 
     tff_model = tff_model_fn()
     model_weights_type = model_weights.weights_type_from_model(tff_model)
     eval_weights = model_weights.ModelWeights.from_model(tff_model)
 
     local_eval = federated_evaluation.build_local_evaluation(
-        tff_model_fn, model_weights_type, batch_type)
+        tff_model_fn, model_weights_type, batch_type
+    )
     local_output = local_eval(eval_weights, dataset)
 
     # Defining artifacts using `tff.learning.models.FunctionalModel`
@@ -488,24 +566,30 @@ class FunctionalFederatedEvaluationTest(tf.test.TestCase):
       return collections.OrderedDict(
           loss=tf.keras.metrics.MeanSquaredError(),
           num_examples=counters.NumExamplesCounter(),
-          num_batches=counters.NumBatchesCounter())
+          num_batches=counters.NumBatchesCounter(),
+      )
 
     functional_model = functional.functional_model_from_keras(
         keras_model,
         loss_fn=loss_fn(),
         input_spec=batch_type,
-        metrics_constructor=build_metrics_fn)
+        metrics_constructor=build_metrics_fn,
+    )
 
     def ndarray_to_tensorspec(ndarray):
       return tf.TensorSpec(
-          shape=ndarray.shape, dtype=tf.dtypes.as_dtype(ndarray.dtype))
+          shape=ndarray.shape, dtype=tf.dtypes.as_dtype(ndarray.dtype)
+      )
 
-    weights_type = tf.nest.map_structure(ndarray_to_tensorspec,
-                                         functional_model.initial_weights)
+    weights_type = tf.nest.map_structure(
+        ndarray_to_tensorspec, functional_model.initial_weights
+    )
     functional_eval = federated_evaluation.build_functional_local_evaluation(
-        functional_model, weights_type, batch_type)
-    functional_output = functional_eval(functional_model.initial_weights,
-                                        dataset)
+        functional_model, weights_type, batch_type
+    )
+    functional_output = functional_eval(
+        functional_model.initial_weights, dataset
+    )
 
     # Testing equality
     self.assertDictEqual(local_output['local_outputs'], functional_output)
@@ -516,7 +600,8 @@ class FunctionalFederatedEvaluationTest(tf.test.TestCase):
     batch_type = computation_types.to_type(datasets[0].element_spec)
     loss_fn = tf.keras.losses.MeanSquaredError
     keras_model = model_examples.build_linear_regression_keras_functional_model(
-        feature_dims=2)
+        feature_dims=2
+    )
     metrics_aggregator = aggregator.sum_then_finalize
 
     # Defining artifacts using `tff.learning.Model`
@@ -527,13 +612,15 @@ class FunctionalFederatedEvaluationTest(tf.test.TestCase):
           )
       )
       return keras_utils.from_keras_model(
-          keras_model, loss=loss_fn(), input_spec=batch_type)
+          keras_model, loss=loss_fn(), input_spec=batch_type
+      )
 
     federated_eval = federated_evaluation._build_federated_evaluation(
         model_fn=tff_model_fn,
         broadcast_process=None,
         metrics_aggregator=metrics_aggregator,
-        use_experimental_simulation_loop=False)
+        use_experimental_simulation_loop=False,
+    )
     tff_model = tff_model_fn()
     eval_weights = model_weights.ModelWeights.from_model(tff_model)
     eval_metrics = federated_eval(eval_weights, datasets)
@@ -543,13 +630,15 @@ class FunctionalFederatedEvaluationTest(tf.test.TestCase):
       return collections.OrderedDict(
           loss=tf.keras.metrics.MeanSquaredError(),
           num_examples=counters.NumExamplesCounter(),
-          num_batches=counters.NumBatchesCounter())
+          num_batches=counters.NumBatchesCounter(),
+      )
 
     functional_model = functional.functional_model_from_keras(
         keras_model,
         loss_fn=loss_fn(),
         input_spec=batch_type,
-        metrics_constructor=build_metrics_fn)
+        metrics_constructor=build_metrics_fn,
+    )
     functional_eval = (
         federated_evaluation._build_functional_federated_evaluation(
             model=functional_model,
@@ -557,15 +646,16 @@ class FunctionalFederatedEvaluationTest(tf.test.TestCase):
             metrics_aggregator=metrics_aggregator,
         )
     )
-    functional_metrics = functional_eval(functional_model.initial_weights,
-                                         datasets)
+    functional_metrics = functional_eval(
+        functional_model.initial_weights, datasets
+    )
     self.assertDictEqual(eval_metrics, functional_metrics)
 
   def test_no_unsecure_aggregation_with_secure_metrics_finalizer(self):
     functional_model = test_models.build_functional_linear_regression()
     evaluate_comp = federated_evaluation.build_federated_evaluation(
-        functional_model,
-        metrics_aggregator=aggregator.secure_sum_then_finalize)
+        functional_model, metrics_aggregator=aggregator.secure_sum_then_finalize
+    )
     static_assert.assert_not_contains_unsecure_aggregation(evaluate_comp)
 
 

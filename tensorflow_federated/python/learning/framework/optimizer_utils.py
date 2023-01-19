@@ -48,6 +48,7 @@ class ClientOutput:
     optimizer_output: Additional metrics or other outputs defined by the
       optimizer.
   """
+
   weights_delta = attr.ib()
   weights_delta_weight = attr.ib()
   model_output = attr.ib()
@@ -65,6 +66,7 @@ class ServerState:
     delta_aggregate_state: State (possibly empty) of the delta_aggregate_fn.
     model_broadcast_state: State (possibly empty) of the model_broadcast_fn.
   """
+
   model = attr.ib()
   optimizer_state = attr.ib()
   delta_aggregate_state = attr.ib()
@@ -101,56 +103,75 @@ def state_with_new_model_weights(
     """Assert two flat lists of ndarrays or tensors match."""
     # First try to normalize python scalar leaves to numpy. If one of the
     # values is not a Python value we can try casting the other value to it.
-    if (isinstance(old_value, python_leaf_types) and
-        isinstance(new_value, tensor_leaf_types)):
+    if isinstance(old_value, python_leaf_types) and isinstance(
+        new_value, tensor_leaf_types
+    ):
       old_value = np.add(old_value, 0, dtype=new_value.dtype)
-    elif (isinstance(old_value, tensor_leaf_types) and
-          isinstance(new_value, python_leaf_types)):
+    elif isinstance(old_value, tensor_leaf_types) and isinstance(
+        new_value, python_leaf_types
+    ):
       new_value = np.add(new_value, 0, dtype=old_value.dtype)
 
-    if (isinstance(new_value, python_leaf_types) and
-        isinstance(old_value, python_leaf_types)):
+    if isinstance(new_value, python_leaf_types) and isinstance(
+        old_value, python_leaf_types
+    ):
       # If both values are python types, just compare the types.
       if type(new_value) is not type(old_value):
-        raise TypeError(f'Element is not the same type. old '
-                        f'({type(old_value)} != new ({type(new_value)}).')
-    elif (isinstance(new_value, tensor_leaf_types) and
-          isinstance(old_value, tensor_leaf_types)):
-      if (old_value.dtype != new_value.dtype or
-          old_value.shape != new_value.shape):
-        raise TypeError('Element is not the same tensor type. old '
-                        f'({old_value.dtype}, {old_value.shape}) != '
-                        f'new ({new_value.dtype}, {new_value.shape})')
-    elif (isinstance(new_value, Sequence) and isinstance(old_value, Sequence)):
+        raise TypeError(
+            'Element is not the same type. old '
+            f'({type(old_value)} != new ({type(new_value)}).'
+        )
+    elif isinstance(new_value, tensor_leaf_types) and isinstance(
+        old_value, tensor_leaf_types
+    ):
+      if (
+          old_value.dtype != new_value.dtype
+          or old_value.shape != new_value.shape
+      ):
+        raise TypeError(
+            'Element is not the same tensor type. old '
+            f'({old_value.dtype}, {old_value.shape}) != '
+            f'new ({new_value.dtype}, {new_value.shape})'
+        )
+    elif isinstance(new_value, Sequence) and isinstance(old_value, Sequence):
       if len(old_value) != len(new_value):
-        raise TypeError('Model weights have different lengths: '
-                        f'(old) {len(old_value)} != (new) {len(new_value)})\n'
-                        f'Old values: {old_value}\nNew values: {new_value}')
+        raise TypeError(
+            'Model weights have different lengths: '
+            f'(old) {len(old_value)} != (new) {len(new_value)})\n'
+            f'Old values: {old_value}\nNew values: {new_value}'
+        )
       for old, new in zip(old_value, new_value):
         assert_weight_lists_match(old, new)
     else:
-      raise TypeError('Model weights structures contains types that cannot be '
-                      'handled.\nOld weights structure: {old}\n'
-                      'New weights structure: {new}\n'
-                      'Must be one of (int, float, np.ndarray, tf.Tensor, '
-                      'collections.abc.Sequence)'.format(
-                          old=tf.nest.map_structure(type, old_value),
-                          new=tf.nest.map_structure(type, new_value)))
+      raise TypeError(
+          'Model weights structures contains types that cannot be '
+          'handled.\nOld weights structure: {old}\n'
+          'New weights structure: {new}\n'
+          'Must be one of (int, float, np.ndarray, tf.Tensor, '
+          'collections.abc.Sequence)'.format(
+              old=tf.nest.map_structure(type, old_value),
+              new=tf.nest.map_structure(type, new_value),
+          )
+      )
 
   assert_weight_lists_match(server_state.model.trainable, trainable_weights)
-  assert_weight_lists_match(server_state.model.non_trainable,
-                            non_trainable_weights)
+  assert_weight_lists_match(
+      server_state.model.non_trainable, non_trainable_weights
+  )
   new_server_state = ServerState(
       model=model_weights_lib.ModelWeights(
-          trainable=trainable_weights, non_trainable=non_trainable_weights),
+          trainable=trainable_weights, non_trainable=non_trainable_weights
+      ),
       optimizer_state=server_state.optimizer_state,
       delta_aggregate_state=server_state.delta_aggregate_state,
-      model_broadcast_state=server_state.model_broadcast_state)
+      model_broadcast_state=server_state.model_broadcast_state,
+  )
   return new_server_state
 
 
 def _is_valid_stateful_process(
-    process: measured_process.MeasuredProcess) -> bool:
+    process: measured_process.MeasuredProcess,
+) -> bool:
   """Validates whether a `MeasuredProcess` is valid for model delta processes.
 
   Valid processes must have `state` and `measurements` placed on the server.
@@ -165,14 +186,17 @@ def _is_valid_stateful_process(
   """
   init_type = process.initialize.type_signature
   next_type = process.next.type_signature
-  return (init_type.result.placement is placements.SERVER and
-          next_type.parameter[0].placement is placements.SERVER and
-          next_type.result.state.placement is placements.SERVER and
-          next_type.result.measurements.placement is placements.SERVER)
+  return (
+      init_type.result.placement is placements.SERVER
+      and next_type.parameter[0].placement is placements.SERVER
+      and next_type.result.state.placement is placements.SERVER
+      and next_type.result.measurements.placement is placements.SERVER
+  )
 
 
 def is_valid_broadcast_process(
-    process: measured_process.MeasuredProcess) -> bool:
+    process: measured_process.MeasuredProcess,
+) -> bool:
   """Validates a `MeasuredProcess` adheres to the broadcast signature.
 
   A valid broadcast process is one whose argument is placed at `SERVER` and
@@ -185,15 +209,19 @@ def is_valid_broadcast_process(
     `True` iff the process is a validate broadcast process, otherwise `False`.
   """
   next_type = process.next.type_signature
-  return (isinstance(process, measured_process.MeasuredProcess) and
-          _is_valid_stateful_process(process) and
-          next_type.parameter[1].placement is placements.SERVER and
-          next_type.result.result.placement is placements.CLIENTS)
+  return (
+      isinstance(process, measured_process.MeasuredProcess)
+      and _is_valid_stateful_process(process)
+      and next_type.parameter[1].placement is placements.SERVER
+      and next_type.result.result.placement is placements.CLIENTS
+  )
 
 
 def build_stateless_broadcaster(
-    *, model_weights_type: Union[computation_types.StructType,
-                                 computation_types.TensorType]
+    *,
+    model_weights_type: Union[
+        computation_types.StructType, computation_types.TensorType
+    ],
 ) -> measured_process.MeasuredProcess:
   """Builds a `MeasuredProcess` that wraps `tff.federated_broadcast`."""
 
@@ -203,13 +231,16 @@ def build_stateless_broadcaster(
 
   @federated_computation.federated_computation(
       computation_types.at_server(()),
-      computation_types.at_server(model_weights_type))
+      computation_types.at_server(model_weights_type),
+  )
   def stateless_broadcast(state, value):
     empty_metrics = intrinsics.federated_value((), placements.SERVER)
     return measured_process.MeasuredProcessOutput(
         state=state,
         result=intrinsics.federated_broadcast(value),
-        measurements=empty_metrics)
+        measurements=empty_metrics,
+    )
 
   return measured_process.MeasuredProcess(
-      initialize_fn=_empty_server_initialization, next_fn=stateless_broadcast)
+      initialize_fn=_empty_server_initialization, next_fn=stateless_broadcast
+  )

@@ -38,8 +38,9 @@ from tensorflow_federated.python.program import release_manager
 TensorType = computation_types.TensorType
 
 
-class WaitForTasksToFinishTest(absltest.TestCase,
-                               unittest.IsolatedAsyncioTestCase):
+class WaitForTasksToFinishTest(
+    absltest.TestCase, unittest.IsolatedAsyncioTestCase
+):
 
   async def test_empty_tasks_does_not_raise(self):
     try:
@@ -54,8 +55,9 @@ class WaitForTasksToFinishTest(absltest.TestCase,
         return None
 
       tasks = set([asyncio.create_task(not_eval_task())])
-      with mock.patch.object(training_program_logic,
-                             '_finalize_tasks') as mock_finalize:
+      with mock.patch.object(
+          training_program_logic, '_finalize_tasks'
+      ) as mock_finalize:
         await training_program_logic._wait_for_tasks_to_finish(tasks)
         mock_finalize.assert_called_once_with(tasks)
 
@@ -66,8 +68,9 @@ class WaitForTasksToFinishTest(absltest.TestCase,
         return train_round_num
 
       tasks = set([asyncio.create_task(eval_task())])
-      with mock.patch.object(training_program_logic,
-                             '_finalize_tasks') as mock_finalize:
+      with mock.patch.object(
+          training_program_logic, '_finalize_tasks'
+      ) as mock_finalize:
         await training_program_logic._wait_for_tasks_to_finish(tasks)
         mock_finalize.assert_called_once_with(tasks)
 
@@ -78,26 +81,30 @@ class WaitForTasksToFinishTest(absltest.TestCase,
       return result
 
     tasks = set([asyncio.create_task(task(r)) for r in results])
-    with mock.patch.object(training_program_logic,
-                           '_finalize_tasks') as mock_finalize:
+    with mock.patch.object(
+        training_program_logic, '_finalize_tasks'
+    ) as mock_finalize:
       await training_program_logic._wait_for_tasks_to_finish(tasks)
       mock_finalize.assert_called_once_with(tasks)
 
 
 def _create_test_context() -> federated_context.FederatedContext:
   return native_platform.NativeFederatedContext(
-      execution_contexts.create_local_async_python_execution_context())
+      execution_contexts.create_local_async_python_execution_context()
+  )
 
 
 def _create_mock_datasource() -> mock.Mock:
   mock_datasource = mock.create_autospec(
-      data_source.FederatedDataSource, instance=True, spec_set=True)
+      data_source.FederatedDataSource, instance=True, spec_set=True
+  )
 
   def create_mock_iterator(*args, **kwargs) -> mock.Mock:
     del args  # Unused
     del kwargs  # Unused
     return mock.create_autospec(
-        data_source.FederatedDataSourceIterator, instance=True, spec_set=True)
+        data_source.FederatedDataSourceIterator, instance=True, spec_set=True
+    )
 
   mock_datasource.iterator.side_effect = create_mock_iterator
   return mock_datasource
@@ -105,13 +112,15 @@ def _create_mock_datasource() -> mock.Mock:
 
 def _create_mock_train_process() -> mock.Mock:
   mock_process = mock.create_autospec(
-      learning_process.LearningProcess, instance=True, spec_set=True)
+      learning_process.LearningProcess, instance=True, spec_set=True
+  )
   empty_state = composers.LearningAlgorithmState(
       global_model_weights=(),
       distributor=(),
       client_work=(),
       aggregator=(),
-      finalizer=())
+      finalizer=(),
+  )
   mock_process.initialize.return_value = empty_state
   mock_process.next.return_value = learning_process.LearningProcessOutput(
       state=empty_state,
@@ -119,13 +128,18 @@ def _create_mock_train_process() -> mock.Mock:
           distributor=(),
           client_work=collections.OrderedDict(train=collections.OrderedDict()),
           aggregator=(),
-          finalizer=()))
+          finalizer=(),
+      ),
+  )
   type(mock_process.next).type_signature = mock.PropertyMock(
       return_value=computation_types.FunctionType(
-          parameter=(empty_state,
-                     computation_types.SequenceType(
-                         element=TensorType(tf.float32))),
-          result=mock_process.next.return_value))
+          parameter=(
+              empty_state,
+              computation_types.SequenceType(element=TensorType(tf.float32)),
+          ),
+          result=mock_process.next.return_value,
+      )
+  )
   return mock_process
 
 
@@ -142,7 +156,8 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     context_stack_impl.context_stack.set_default_context(_create_test_context())
 
   async def test_integration_runs_5_training_rounds_two_eval_rounds_from_scratch(
-      self):
+      self,
+  ):
     train_num_clients = 5
     training_rounds = 5
     training_process = _create_mock_train_process()
@@ -150,38 +165,41 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     # Create a mock state manager that returns no previous state, starting
     # training from scratch.
     mock_program_state_manager = mock.create_autospec(
-        program_state_manager.ProgramStateManager, instance=True, spec_set=True)
+        program_state_manager.ProgramStateManager, instance=True, spec_set=True
+    )
     mock_program_state_manager.load_latest.side_effect = [(None, 0)]
 
     mock_model_output_manager = mock.create_autospec(
-        release_manager.ReleaseManager, instance=True, spec_set=True)
+        release_manager.ReleaseManager, instance=True, spec_set=True
+    )
     mock_train_metrics_manager = mock.create_autospec(
-        release_manager.ReleaseManager, instance=True, spec_set=True)
+        release_manager.ReleaseManager, instance=True, spec_set=True
+    )
     for manager in (mock_model_output_manager, mock_train_metrics_manager):
       manager.release.return_value = None
 
     # Setup the meta evaluation manager to have no previous state, and launch
     # evaluations on the second and fourth rounds (indexes 1 and 3).
     mock_evaluation_manager = mock.create_autospec(
-        evaluation_program_logic.EvaluationManager,
-        instance=True,
-        spec_set=True)
+        evaluation_program_logic.EvaluationManager, instance=True, spec_set=True
+    )
 
     # unittest.mock.AsyncMock doesn't appear to be a corourtine or asyncio.Task,
     # which is needed for the asyncio.wait calls inside the program logic.
     # Instead of mocking, we create fakes here.
     async def fake_evaluation(round_num) -> asyncio.Task:
-
       async def return_round_num() -> int:
         return round_num
 
       return asyncio.create_task(return_round_num())
 
     mock_evaluation_coros = tuple(
-        fake_evaluation(train_round) for train_round in (2, 4))
+        fake_evaluation(train_round) for train_round in (2, 4)
+    )
 
     mock_evaluation_manager.start_evaluation.side_effect = list(
-        mock_evaluation_coros)
+        mock_evaluation_coros
+    )
 
     await training_program_logic.train_model(
         train_process=training_process,
@@ -192,7 +210,8 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
         model_output_manager=mock_model_output_manager,
         evaluation_manager=mock_evaluation_manager,
         train_metrics_manager=mock_train_metrics_manager,
-        evaluation_periodicity=2)
+        evaluation_periodicity=2,
+    )
     await asyncio.gather(*mock_evaluation_coros)
 
     # Assert that the program attempted to load a previous checkpoint and then
@@ -202,9 +221,12 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
         distributor=mock.ANY,
         client_work=mock.ANY,
         aggregator=mock.ANY,
-        finalizer=mock.ANY)
-    self.assertEqual(mock_program_state_manager.load_latest.call_args_list,
-                     [mock.call((any_algorithm_state, 0))])
+        finalizer=mock.ANY,
+    )
+    self.assertEqual(
+        mock_program_state_manager.load_latest.call_args_list,
+        [mock.call((any_algorithm_state, 0))],
+    )
     self.assertEqual(
         mock_program_state_manager.save.call_args_list,
         # Expect saving the initial state (version 0) and training rounds 1
@@ -212,14 +234,18 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
         [
             mock.call((any_algorithm_state, round_num), version=round_num)
             for round_num in range(0, training_rounds + 1)
-        ])
+        ],
+    )
 
     # Assert that training metrics were released every round.
     train_state_type, _ = training_process.next.type_signature.result
-    self.assertSequenceEqual([
-        _create_metrics_release_call(key=round_num)
-        for round_num in range(1, training_rounds + 1)
-    ], mock_train_metrics_manager.release.call_args_list)
+    self.assertSequenceEqual(
+        [
+            _create_metrics_release_call(key=round_num)
+            for round_num in range(1, training_rounds + 1)
+        ],
+        mock_train_metrics_manager.release.call_args_list,
+    )
 
     # Assert the model was output once at the end of training.
     self.assertSequenceEqual(
@@ -237,7 +263,8 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     mock_evaluation_manager.resume_from_previous_state.assert_called_once()
     self.assertSequenceEqual(
         [mock.call(round_num, mock.ANY, mock.ANY) for round_num in (2, 4)],
-        mock_evaluation_manager.start_evaluation.call_args_list)
+        mock_evaluation_manager.start_evaluation.call_args_list,
+    )
     mock_evaluation_manager.wait_for_evaluations_to_finish.assert_called_once()
 
   async def test_integration_runs_training_rounds_evaluates_on_time(self):
@@ -248,22 +275,24 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     # Create a mock state manager that returns no previous state, starting
     # training from scratch.
     mock_program_state_manager = mock.create_autospec(
-        program_state_manager.ProgramStateManager, instance=True, spec_set=True)
+        program_state_manager.ProgramStateManager, instance=True, spec_set=True
+    )
     mock_program_state_manager.load_latest.side_effect = [(None, 0)]
 
     mock_model_output_manager = mock.create_autospec(
-        release_manager.ReleaseManager, instance=True, spec_set=True)
+        release_manager.ReleaseManager, instance=True, spec_set=True
+    )
     mock_train_metrics_manager = mock.create_autospec(
-        release_manager.ReleaseManager, instance=True, spec_set=True)
+        release_manager.ReleaseManager, instance=True, spec_set=True
+    )
     for manager in (mock_model_output_manager, mock_train_metrics_manager):
       manager.release.return_value = None
 
     # Setup the meta evaluation manager to have no previous state, and launch
     # evaluations on the second and fourth rounds (indexes 1 and 3).
     mock_evaluation_manager = mock.create_autospec(
-        evaluation_program_logic.EvaluationManager,
-        instance=True,
-        spec_set=True)
+        evaluation_program_logic.EvaluationManager, instance=True, spec_set=True
+    )
 
     # unittest.mock.AsyncMock doesn't appear to be a corourtine or asyncio.Task,
     # which is needed for the asyncio.wait calls inside the program logic.
@@ -286,7 +315,8 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     # rounds finishing (relative) at [0, 20, 40, 60, 80], the test will expect
     # evaluations at round [1, 3, 5].
     with mock.patch(
-        'datetime.datetime', wraps=datetime.datetime) as mock_datetime:
+        'datetime.datetime', wraps=datetime.datetime
+    ) as mock_datetime:
       start_datetime = datetime.datetime(2022, 11, 17, 9, 0)
       mock_datetime.now.side_effect = [
           start_datetime + datetime.timedelta(milliseconds=20 * i)
@@ -301,7 +331,8 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
           model_output_manager=mock_model_output_manager,
           evaluation_manager=mock_evaluation_manager,
           train_metrics_manager=mock_train_metrics_manager,
-          evaluation_periodicity=datetime.timedelta(milliseconds=25))
+          evaluation_periodicity=datetime.timedelta(milliseconds=25),
+      )
 
     # Assert that the program attempted to load a previous checkpoint and then
     # released the model state every round.
@@ -310,9 +341,12 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
         distributor=mock.ANY,
         client_work=mock.ANY,
         aggregator=mock.ANY,
-        finalizer=mock.ANY)
-    self.assertEqual(mock_program_state_manager.load_latest.call_args_list,
-                     [mock.call((any_algorithm_state, 0))])
+        finalizer=mock.ANY,
+    )
+    self.assertEqual(
+        mock_program_state_manager.load_latest.call_args_list,
+        [mock.call((any_algorithm_state, 0))],
+    )
     self.assertEqual(
         mock_program_state_manager.save.call_args_list,
         # Expect saving the initial state (version 0) and training rounds 1
@@ -320,14 +354,18 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
         [
             mock.call((any_algorithm_state, round_num), version=round_num)
             for round_num in range(0, training_rounds + 1)
-        ])
+        ],
+    )
 
     # Assert that training metrics were released every round.
     train_state_type, _ = training_process.next.type_signature.result
-    self.assertSequenceEqual([
-        _create_metrics_release_call(key=round_num)
-        for round_num in range(1, training_rounds + 1)
-    ], mock_train_metrics_manager.release.call_args_list)
+    self.assertSequenceEqual(
+        [
+            _create_metrics_release_call(key=round_num)
+            for round_num in range(1, training_rounds + 1)
+        ],
+        mock_train_metrics_manager.release.call_args_list,
+    )
 
     # Assert the model was output once at the end of training.
     self.assertSequenceEqual(
@@ -344,7 +382,8 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     # Assert that evaluations were started.
     mock_evaluation_manager.resume_from_previous_state.assert_called_once()
     mock_evaluation_manager.start_evaluation.assert_has_calls(
-        [mock.call(round_num, mock.ANY, mock.ANY) for round_num in (1, 3, 5)])
+        [mock.call(round_num, mock.ANY, mock.ANY) for round_num in (1, 3, 5)]
+    )
     mock_evaluation_manager.wait_for_evaluations_to_finish.assert_called_once()
 
   async def test_integration_runs_5_training_rounds_no_eval_manager(self):
@@ -355,13 +394,16 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     # Create a mock state manager that returns no previous state, starting
     # training from scratch.
     mock_program_state_manager = mock.create_autospec(
-        program_state_manager.ProgramStateManager, instance=True, spec_set=True)
+        program_state_manager.ProgramStateManager, instance=True, spec_set=True
+    )
     mock_program_state_manager.load_latest.side_effect = [(None, 0)]
 
     mock_model_output_manager = mock.create_autospec(
-        release_manager.ReleaseManager, instance=True, spec_set=True)
+        release_manager.ReleaseManager, instance=True, spec_set=True
+    )
     mock_train_metrics_manager = mock.create_autospec(
-        release_manager.ReleaseManager, instance=True, spec_set=True)
+        release_manager.ReleaseManager, instance=True, spec_set=True
+    )
     for manager in (mock_model_output_manager, mock_train_metrics_manager):
       manager.release.return_value = None
 
@@ -374,7 +416,8 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
         model_output_manager=mock_model_output_manager,
         evaluation_manager=None,
         train_metrics_manager=mock_train_metrics_manager,
-        evaluation_periodicity=100)
+        evaluation_periodicity=100,
+    )
 
     # Assert that the program attempted to load a previous checkpoint and then
     # released the model state every round.
@@ -383,9 +426,12 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
         distributor=mock.ANY,
         client_work=mock.ANY,
         aggregator=mock.ANY,
-        finalizer=mock.ANY)
-    self.assertEqual(mock_program_state_manager.load_latest.call_args_list,
-                     [mock.call((any_algorithm_state, 0))])
+        finalizer=mock.ANY,
+    )
+    self.assertEqual(
+        mock_program_state_manager.load_latest.call_args_list,
+        [mock.call((any_algorithm_state, 0))],
+    )
     self.assertEqual(
         mock_program_state_manager.save.call_args_list,
         # Expect saving the initial state (version 0) and training rounds 1
@@ -393,14 +439,18 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
         [
             mock.call((any_algorithm_state, round_num), version=round_num)
             for round_num in range(0, training_rounds + 1)
-        ])
+        ],
+    )
 
     # Assert that training metrics were released every round.
     train_state_type, _ = training_process.next.type_signature.result
-    self.assertSequenceEqual([
-        _create_metrics_release_call(key=round_num)
-        for round_num in range(1, training_rounds + 1)
-    ], mock_train_metrics_manager.release.call_args_list)
+    self.assertSequenceEqual(
+        [
+            _create_metrics_release_call(key=round_num)
+            for round_num in range(1, training_rounds + 1)
+        ],
+        mock_train_metrics_manager.release.call_args_list,
+    )
 
     # Assert the model was output once at the end of training.
     self.assertSequenceEqual(
@@ -423,22 +473,27 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     # (one before the last requested round).
     training_state = training_process.initialize()
     mock_program_state_manager = mock.create_autospec(
-        program_state_manager.ProgramStateManager, instance=True)
-    mock_program_state_manager.load_latest.side_effect = [
-        ((training_state, training_rounds - 1), training_rounds - 1)
-    ]
+        program_state_manager.ProgramStateManager, instance=True
+    )
+    mock_program_state_manager.load_latest.side_effect = [(
+        (training_state, training_rounds - 1),
+        training_rounds - 1,
+    )]
 
     mock_model_output_manager = mock.create_autospec(
-        release_manager.ReleaseManager, instance=True)
+        release_manager.ReleaseManager, instance=True
+    )
     mock_train_metrics_manager = mock.create_autospec(
-        release_manager.ReleaseManager, instance=True)
+        release_manager.ReleaseManager, instance=True
+    )
     for manager in (mock_model_output_manager, mock_train_metrics_manager):
       manager.release.return_value = None
 
     # Setup the meta evaluation manager to have no previous state and runs no
     # evaluations.
     mock_evaluation_manager = mock.create_autospec(
-        evaluation_program_logic.EvaluationManager, instance=True)
+        evaluation_program_logic.EvaluationManager, instance=True
+    )
 
     await training_program_logic.train_model(
         train_process=training_process,
@@ -449,7 +504,8 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
         model_output_manager=mock_model_output_manager,
         evaluation_manager=mock_evaluation_manager,
         train_metrics_manager=mock_train_metrics_manager,
-        evaluation_periodicity=100)
+        evaluation_periodicity=100,
+    )
 
     # Assert that the program attempted to load a previous checkpoint and then
     # released the model state on the next (11th) round.
@@ -458,25 +514,31 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
         distributor=mock.ANY,
         client_work=mock.ANY,
         aggregator=mock.ANY,
-        finalizer=mock.ANY)
-    self.assertEqual(mock_program_state_manager.load_latest.call_args_list,
-                     [mock.call((any_algorithm_state, 0))])
+        finalizer=mock.ANY,
+    )
+    self.assertEqual(
+        mock_program_state_manager.load_latest.call_args_list,
+        [mock.call((any_algorithm_state, 0))],
+    )
     self.assertEqual(
         mock_program_state_manager.save.call_args_list,
         # Expect saving the 11th version (running one round after loading the
         # 10th version)
         [
             mock.call(
-                (any_algorithm_state, training_rounds), version=training_rounds)
+                (any_algorithm_state, training_rounds), version=training_rounds
+            )
         ],
-        msg=mock_program_state_manager.save.call_args_list)
+        msg=mock_program_state_manager.save.call_args_list,
+    )
 
     # Assert that training metrics were released for the resumed round and the
     # model as output after all training.
     train_state_type, _ = training_process.next.type_signature.result
     self.assertSequenceEqual(
         [_create_metrics_release_call(key=training_rounds)],
-        mock_train_metrics_manager.release.call_args_list)
+        mock_train_metrics_manager.release.call_args_list,
+    )
     self.assertSequenceEqual(
         [
             mock.call(
@@ -501,22 +563,25 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     # completed the entire training process.
     training_state = training_process.initialize()
     mock_program_state_manager = mock.create_autospec(
-        program_state_manager.ProgramStateManager, instance=True)
-    mock_program_state_manager.load_latest.side_effect = [
-        ((training_state, training_rounds), training_rounds)
-    ]
+        program_state_manager.ProgramStateManager, instance=True
+    )
+    mock_program_state_manager.load_latest.side_effect = [(
+        (training_state, training_rounds),
+        training_rounds,
+    )]
 
     mock_model_output_manager = mock.create_autospec(
-        release_manager.ReleaseManager, instance=True)
+        release_manager.ReleaseManager, instance=True
+    )
     mock_train_metrics_manager = mock.create_autospec(
-        release_manager.ReleaseManager, instance=True)
+        release_manager.ReleaseManager, instance=True
+    )
 
     # Run an evaluation every round, but we assert none were run because no
     # training occurs after resuming from a previous version.
     mock_evaluation_manager = mock.create_autospec(
-        evaluation_program_logic.EvaluationManager,
-        instance=True,
-        spec_set=True)
+        evaluation_program_logic.EvaluationManager, instance=True, spec_set=True
+    )
 
     await training_program_logic.train_model(
         train_process=training_process,
@@ -527,7 +592,8 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
         model_output_manager=mock_model_output_manager,
         evaluation_manager=mock_evaluation_manager,
         train_metrics_manager=mock_train_metrics_manager,
-        evaluation_periodicity=100)
+        evaluation_periodicity=100,
+    )
 
     # Assert that the program attempted to load a previous checkpoint and then
     # was not called again because no rounds were ran.
@@ -536,10 +602,12 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
         distributor=mock.ANY,
         client_work=mock.ANY,
         aggregator=mock.ANY,
-        finalizer=mock.ANY)
+        finalizer=mock.ANY,
+    )
     self.assertSequenceEqual(
         mock_program_state_manager.load_latest.call_args_list,
-        [mock.call((any_algorithm_state, 0))])
+        [mock.call((any_algorithm_state, 0))],
+    )
     mock_program_state_manager.save.assert_not_called()
 
     # Assert no training metrics were released.

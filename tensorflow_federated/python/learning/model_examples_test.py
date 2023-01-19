@@ -29,12 +29,14 @@ class ModelExamplesTest(tf.test.TestCase, parameterized.TestCase):
     model = model_examples.LinearRegression(feature_dim=feature_dim)
 
     expected_initial_local_variables = [0, 0, 0.0]
-    self.assertSequenceEqual(model.local_variables,
-                             expected_initial_local_variables)
+    self.assertSequenceEqual(
+        model.local_variables, expected_initial_local_variables
+    )
 
     batch = collections.OrderedDict(
         x=tf.constant([[0.0] * feature_dim, [1.0] * feature_dim]),
-        y=tf.constant([[0.0], [1.0]]))
+        y=tf.constant([[0.0], [1.0]]),
+    )
 
     output = model.forward_pass(batch)
 
@@ -42,21 +44,28 @@ class ModelExamplesTest(tf.test.TestCase, parameterized.TestCase):
     # The residuals are (0., 1.), so average loss is 0.5 * 0.5 * 1.
     self.assertEqual(output.loss, 0.25)
     unfinalized_metrics = model.report_local_unfinalized_metrics()
-    self.assertEqual(unfinalized_metrics,
-                     collections.OrderedDict(loss=[0.5, 2.0], num_examples=2))
+    self.assertEqual(
+        unfinalized_metrics,
+        collections.OrderedDict(loss=[0.5, 2.0], num_examples=2),
+    )
     finalized_metrics = collections.OrderedDict(
         (metric_name, finalizer(unfinalized_metrics[metric_name]))
-        for metric_name, finalizer in model.metric_finalizers().items())
-    self.assertEqual(finalized_metrics,
-                     collections.OrderedDict(loss=0.25, num_examples=2))
+        for metric_name, finalizer in model.metric_finalizers().items()
+    )
+    self.assertEqual(
+        finalized_metrics, collections.OrderedDict(loss=0.25, num_examples=2)
+    )
 
     # Ensure reset_metrics works.
     model.reset_metrics()
-    self.assertSequenceEqual(model.local_variables,
-                             expected_initial_local_variables)
+    self.assertSequenceEqual(
+        model.local_variables, expected_initial_local_variables
+    )
     unfinalized_metrics = model.report_local_unfinalized_metrics()
-    self.assertEqual(unfinalized_metrics,
-                     collections.OrderedDict(loss=[0, 0], num_examples=0))
+    self.assertEqual(
+        unfinalized_metrics,
+        collections.OrderedDict(loss=[0, 0], num_examples=0),
+    )
 
   def test_tff(self):
     feature_dim = 2
@@ -74,19 +83,25 @@ class ModelExamplesTest(tf.test.TestCase, parameterized.TestCase):
       return _train(
           batch=collections.OrderedDict(
               x=tf.constant([[0.0, 0.0], [1.0, 1.0]]),
-              y=tf.constant([[0.0], [1.0]])))
+              y=tf.constant([[0.0], [1.0]]),
+          )
+      )
 
     batch_output, unfinalized_metrics = forward_pass_and_output()
     self.assertAllEqual(batch_output.predictions, [[0.0], [0.0]])
     self.assertEqual(batch_output.loss, 0.25)
-    self.assertEqual(unfinalized_metrics,
-                     collections.OrderedDict(loss=[0.5, 2.0], num_examples=2))
+    self.assertEqual(
+        unfinalized_metrics,
+        collections.OrderedDict(loss=[0.5, 2.0], num_examples=2),
+    )
     model = model_examples.LinearRegression(feature_dim)
     finalized_metrics = collections.OrderedDict(
         (metric_name, finalizer(unfinalized_metrics[metric_name]))
-        for metric_name, finalizer in model.metric_finalizers().items())
-    self.assertEqual(finalized_metrics,
-                     collections.OrderedDict(loss=0.25, num_examples=2))
+        for metric_name, finalizer in model.metric_finalizers().items()
+    )
+    self.assertEqual(
+        finalized_metrics, collections.OrderedDict(loss=0.25, num_examples=2)
+    )
 
 
 if __name__ == '__main__':

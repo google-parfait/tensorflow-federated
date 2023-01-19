@@ -34,10 +34,9 @@ Hparams = TypeVar('Hparams', bound=collections.OrderedDict[str, float])
 class _RmsProp(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
   """RMSprop optimizer, see `build_rmsprop` for details."""
 
-  def __init__(self,
-               learning_rate: float,
-               decay: float = 0.9,
-               epsilon: float = 1e-7):
+  def __init__(
+      self, learning_rate: float, decay: float = 0.9, epsilon: float = 1e-7
+  ):
     """Initializes RMSprop optimizer."""
     py_typecheck.check_non_negative_float(learning_rate, 'learning rate')
     _check_decay(decay)
@@ -48,7 +47,8 @@ class _RmsProp(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
 
   def initialize(self, specs: Any) -> State:
     initial_preconditioner = tf.nest.map_structure(
-        lambda s: tf.zeros(s.shape, s.dtype), specs)
+        lambda s: tf.zeros(s.shape, s.dtype), specs
+    )
     state = collections.OrderedDict([
         (optimizer.LEARNING_RATE_KEY, self._lr),
         (_DECAY_KEY, self._decay),
@@ -57,23 +57,30 @@ class _RmsProp(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
     ])
     return state
 
-  def next(self, state: State, weights: optimizer.Weights,
-           gradients: Any) -> tuple[State, optimizer.Weights]:
+  def next(
+      self, state: State, weights: optimizer.Weights, gradients: Any
+  ) -> tuple[State, optimizer.Weights]:
     gradients = optimizer.handle_indexed_slices_gradients(gradients)
     optimizer.check_weights_gradients_match(weights, gradients)
     lr = state[optimizer.LEARNING_RATE_KEY]
     decay = state[_DECAY_KEY]
     epsilon = state[_EPSILON_KEY]
     preconditioner = state[_PRECONDITIONER_KEY]
-    optimizer.check_weights_state_match(weights, preconditioner,
-                                        'preconditioner')
+    optimizer.check_weights_state_match(
+        weights, preconditioner, 'preconditioner'
+    )
 
     updated_preconditioner = tf.nest.map_structure(
-        lambda p, g: p + (tf.math.square(g) - p) * (1 - decay), preconditioner,
-        gradients)
+        lambda p, g: p + (tf.math.square(g) - p) * (1 - decay),
+        preconditioner,
+        gradients,
+    )
     updated_weights = tf.nest.map_structure(
-        lambda w, g, p: w - lr * g / (tf.math.sqrt(p) + epsilon), weights,
-        gradients, updated_preconditioner)
+        lambda w, g, p: w - lr * g / (tf.math.sqrt(p) + epsilon),
+        weights,
+        gradients,
+        updated_preconditioner,
+    )
 
     updated_state = collections.OrderedDict([
         (optimizer.LEARNING_RATE_KEY, lr),
@@ -101,9 +108,9 @@ def _check_decay(decay):
     raise ValueError('Decay must be equal to 0.0 or more, and less than 1.0.')
 
 
-def build_rmsprop(learning_rate: float,
-                  decay: float = 0.9,
-                  epsilon: float = 1e-7) -> optimizer.Optimizer:
+def build_rmsprop(
+    learning_rate: float, decay: float = 0.9, epsilon: float = 1e-7
+) -> optimizer.Optimizer:
   """Returns a `tff.learning.optimizers.Optimizer` for RMSprop.
 
   The RMSprop optimizer is based on [Tieleman and Hinton, 2012](

@@ -52,8 +52,11 @@ class OptimizerChecksTest(tf.test.TestCase, parameterized.TestCase):
   @parameterized.named_parameters(
       ('bad_shape', tf.zeros([2], tf.float32), tf.zeros([3], tf.float32)),
       ('bad_dtype', tf.zeros([2], tf.float32), tf.zeros([2], tf.float64)),
-      ('bad_structure', [tf.zeros([2]), tf.zeros([3])
-                        ], [tf.zeros([2]), [tf.zeros([3])]]),
+      (
+          'bad_structure',
+          [tf.zeros([2]), tf.zeros([3])],
+          [tf.zeros([2]), [tf.zeros([3])]],
+      ),
   )
   def test_check_weights_gradients_match(self, weights, gradients):
     with self.assertRaises(ValueError):
@@ -62,8 +65,11 @@ class OptimizerChecksTest(tf.test.TestCase, parameterized.TestCase):
   @parameterized.named_parameters(
       ('bad_shape', tf.zeros([2], tf.float32), tf.zeros([3], tf.float32)),
       ('bad_dtype', tf.zeros([2], tf.float32), tf.zeros([2], tf.float64)),
-      ('bad_structure', [tf.zeros([2]), tf.zeros([3])
-                        ], [tf.zeros([2]), [tf.zeros([3])]]),
+      (
+          'bad_structure',
+          [tf.zeros([2]), tf.zeros([3])],
+          [tf.zeros([2]), [tf.zeros([3])]],
+      ),
   )
   def test_check_weights_state_match(self, weights, state):
     with self.assertRaisesRegex(ValueError, 'foo'):
@@ -73,25 +79,29 @@ class OptimizerChecksTest(tf.test.TestCase, parameterized.TestCase):
     gradients = tf.IndexedSlices(
         values=tf.constant([[0.0, 1.0], [1.0, 3.0]]),
         indices=tf.constant([0, 2]),
-        dense_shape=tf.constant([4, 2]))
+        dense_shape=tf.constant([4, 2]),
+    )
     gradients = optimizer.handle_indexed_slices_gradients(gradients)
     self.assertIsInstance(gradients, tf.Tensor)
-    self.assertAllClose([[0.0, 1.0], [0.0, 0.0], [1.0, 3.0], [0.0, 0.0]],
-                        gradients)
+    self.assertAllClose(
+        [[0.0, 1.0], [0.0, 0.0], [1.0, 3.0], [0.0, 0.0]], gradients
+    )
 
   def test_handle_indexed_slices_struct(self):
     tensor = tf.constant([4.0, 5.5])
     slices = tf.IndexedSlices(
         values=tf.constant([[0.0, 1.0], [1.0, 3.0]]),
         indices=tf.constant([0, 2]),
-        dense_shape=tf.constant([4, 2]))
+        dense_shape=tf.constant([4, 2]),
+    )
     gradients = [tensor, slices]
     gradients = optimizer.handle_indexed_slices_gradients(gradients)
     self.assertIsInstance(gradients[0], tf.Tensor)
     self.assertIsInstance(gradients[1], tf.Tensor)
     self.assertAllClose(
         [[4.0, 5.5], [[0.0, 1.0], [0.0, 0.0], [1.0, 3.0], [0.0, 0.0]]],
-        gradients)
+        gradients,
+    )
 
 
 if __name__ == '__main__':

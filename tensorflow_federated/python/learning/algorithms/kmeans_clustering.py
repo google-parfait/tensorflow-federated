@@ -69,7 +69,8 @@ def _find_closest_centroid(centroids: tf.Tensor, point: tf.Tensor):
   data_axes = tf.range(1, limit=num_axes)
   shifted_centroids = centroids - point
   square_distances = tf.math.reduce_sum(
-      shifted_centroids * shifted_centroids, axis=data_axes)
+      shifted_centroids * shifted_centroids, axis=data_axes
+  )
   return tf.math.argmin(square_distances, axis=0, output_type=_INDEX_DTYPE)
 
 
@@ -102,24 +103,33 @@ def _compute_kmeans_step(centroids: tf.Tensor, data: tf.data.Dataset):
     cluster_sums, cluster_weights, num_examples = state
     closest_centroid = _find_closest_centroid(centroids, point)
     scatter_index = [[closest_centroid]]
-    cluster_sums = tf.tensor_scatter_nd_add(cluster_sums, scatter_index,
-                                            tf.expand_dims(point, axis=0))
-    cluster_weights = tf.tensor_scatter_nd_add(cluster_weights, scatter_index,
-                                               [1])
+    cluster_sums = tf.tensor_scatter_nd_add(
+        cluster_sums, scatter_index, tf.expand_dims(point, axis=0)
+    )
+    cluster_weights = tf.tensor_scatter_nd_add(
+        cluster_weights, scatter_index, [1]
+    )
     num_examples += 1
     return cluster_sums, cluster_weights, num_examples
 
   cluster_sums, cluster_weights, num_examples = data.reduce(
       initial_state=(cluster_sums, cluster_weights, num_examples),
-      reduce_func=reduce_fn)
+      reduce_func=reduce_fn,
+  )
 
   stat_output = collections.OrderedDict(num_examples=num_examples)
-  return client_works.ClientResult(
-      update=(cluster_sums, cluster_weights), update_weight=()), stat_output
+  return (
+      client_works.ClientResult(
+          update=(cluster_sums, cluster_weights), update_weight=()
+      ),
+      stat_output,
+  )
 
 
-def _build_kmeans_client_work(centroids_type: computation_types.TensorType,
-                              data_type: computation_types.SequenceType):
+def _build_kmeans_client_work(
+    centroids_type: computation_types.TensorType,
+    data_type: computation_types.SequenceType,
+):
   """Creates a `tff.learning.templates.ClientWorkProcess` for k-means."""
 
   @federated_computation.federated_computation
@@ -133,20 +143,24 @@ def _build_kmeans_client_work(centroids_type: computation_types.TensorType,
   @federated_computation.federated_computation(
       init_fn.type_signature.result,
       computation_types.at_clients(centroids_type),
-      computation_types.at_clients(data_type))
+      computation_types.at_clients(data_type),
+  )
   def next_fn(state, cluster_centers, client_data):
     client_result, stat_output = intrinsics.federated_map(
-        client_update, (cluster_centers, client_data))
+        client_update, (cluster_centers, client_data)
+    )
     stat_metrics = intrinsics.federated_sum(stat_output)
-    return measured_process.MeasuredProcessOutput(state, client_result,
-                                                  stat_metrics)
+    return measured_process.MeasuredProcessOutput(
+        state, client_result, stat_metrics
+    )
 
   return client_works.ClientWorkProcess(init_fn, next_fn)
 
 
 @tf.function
-def _update_centroids(current_centroids, current_weights, new_cluster_sums,
-                      new_weights):
+def _update_centroids(
+    current_centroids, current_weights, new_cluster_sums, new_weights
+):
   """Computes a weighted combination of previous and new centroids.
 
   Args:
@@ -167,28 +181,33 @@ def _update_centroids(current_centroids, current_weights, new_cluster_sums,
   # We convert the weights to floats in order to do division
   current_weights_as_float = tf.cast(current_weights, _POINT_DTYPE)
   total_weights_as_float = tf.cast(total_weights, _POINT_DTYPE)
-  current_scale = tf.math.divide_no_nan(current_weights_as_float,
-                                        total_weights_as_float)
+  current_scale = tf.math.divide_no_nan(
+      current_weights_as_float, total_weights_as_float
+  )
   new_weights_indicator = tf.cast(tf.math.greater(new_weights, 0), _POINT_DTYPE)
-  new_scale = tf.math.divide_no_nan(new_weights_indicator,
-                                    total_weights_as_float)
+  new_scale = tf.math.divide_no_nan(
+      new_weights_indicator, total_weights_as_float
+  )
 
   # We reshape so that we can do element-wise multiplication
   num_centroids = current_centroids.shape[0]
   num_dims_to_add = tf.rank(current_centroids) - 1
-  scale_shape = tf.concat([[num_centroids],
-                           tf.ones((num_dims_to_add,), dtype=tf.int32)],
-                          axis=0)
+  scale_shape = tf.concat(
+      [[num_centroids], tf.ones((num_dims_to_add,), dtype=tf.int32)], axis=0
+  )
   current_scale = tf.reshape(current_scale, scale_shape)
   new_scale = tf.reshape(new_scale, scale_shape)
 
   # Compute the updated centroids as a weighted average of current and new.
-  updated_centroids = current_scale * current_centroids + new_scale * new_cluster_sums
+  updated_centroids = (
+      current_scale * current_centroids + new_scale * new_cluster_sums
+  )
   return updated_centroids, total_weights
 
 
-def _build_kmeans_finalizer(centroids_type: computation_types.Type,
-                            num_centroids: int):
+def _build_kmeans_finalizer(
+    centroids_type: computation_types.Type, num_centroids: int
+):
   """Builds a `tff.learning.templates.FinalizerProcess` for k-means."""
 
   @tensorflow_computation.tf_computation
@@ -201,28 +220,35 @@ def _build_kmeans_finalizer(centroids_type: computation_types.Type,
 
   weights_type = initialize_weights.type_signature.result
 
-  @tensorflow_computation.tf_computation(centroids_type, weights_type,
-                                         centroids_type, weights_type)
-  def server_update_tf(current_centroids, current_weights, new_centroid_sums,
-                       new_weights):
-    return _update_centroids(current_centroids, current_weights,
-                             new_centroid_sums, new_weights)
+  @tensorflow_computation.tf_computation(
+      centroids_type, weights_type, centroids_type, weights_type
+  )
+  def server_update_tf(
+      current_centroids, current_weights, new_centroid_sums, new_weights
+  ):
+    return _update_centroids(
+        current_centroids, current_weights, new_centroid_sums, new_weights
+    )
 
   summed_updates_type = computation_types.at_server(
-      computation_types.to_type((centroids_type, weights_type)))
+      computation_types.to_type((centroids_type, weights_type))
+  )
 
   @federated_computation.federated_computation(
       init_fn.type_signature.result,
-      computation_types.at_server(centroids_type), summed_updates_type)
+      computation_types.at_server(centroids_type),
+      summed_updates_type,
+  )
   def next_fn(state, current_centroids, summed_updates):
     new_centroid_sums, new_weights = summed_updates
     updated_centroids, updated_weights = intrinsics.federated_map(
         server_update_tf,
-        (current_centroids, state, new_centroid_sums, new_weights))
+        (current_centroids, state, new_centroid_sums, new_weights),
+    )
     empty_measurements = intrinsics.federated_value((), placements.SERVER)
-    return measured_process.MeasuredProcessOutput(updated_weights,
-                                                  updated_centroids,
-                                                  empty_measurements)
+    return measured_process.MeasuredProcessOutput(
+        updated_weights, updated_centroids, empty_measurements
+    )
 
   return finalizers.FinalizerProcess(init_fn, next_fn)
 
@@ -297,17 +323,21 @@ def build_fed_kmeans(
   centroids_shape = (num_clusters,) + data_shape
 
   if not random_seed:
-    random_seed = (tf.cast(tf.timestamp() * _MILLIS_PER_SECOND,
-                           tf.int64).numpy(), 0)
+    random_seed = (
+        tf.cast(tf.timestamp() * _MILLIS_PER_SECOND, tf.int64).numpy(),
+        0,
+    )
 
   @tensorflow_computation.tf_computation
   def initialize_centers():
     return tf.random.stateless_normal(
-        centroids_shape, random_seed, dtype=_POINT_DTYPE)
+        centroids_shape, random_seed, dtype=_POINT_DTYPE
+    )
 
   centroids_type = computation_types.TensorType(_POINT_DTYPE, centroids_shape)
   weights_type = computation_types.TensorType(
-      _WEIGHT_DTYPE, shape=(num_clusters,))
+      _WEIGHT_DTYPE, shape=(num_clusters,)
+  )
   point_type = computation_types.TensorType(_POINT_DTYPE, shape=data_shape)
   data_type = computation_types.SequenceType(point_type)
 
@@ -322,10 +352,12 @@ def build_fed_kmeans(
   # the learning process composer.
   weighted_aggregator = factory_utils.as_weighted_aggregator(sum_aggregator)
   value_type = computation_types.to_type((centroids_type, weights_type))
-  aggregator = weighted_aggregator.create(value_type,
-                                          computation_types.to_type(()))
+  aggregator = weighted_aggregator.create(
+      value_type, computation_types.to_type(())
+  )
 
   finalizer = _build_kmeans_finalizer(centroids_type, num_clusters)
 
-  return composers.compose_learning_process(initialize_centers, distributor,
-                                            client_work, aggregator, finalizer)
+  return composers.compose_learning_process(
+      initialize_centers, distributor, client_work, aggregator, finalizer
+  )

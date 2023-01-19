@@ -48,7 +48,8 @@ class LinearRegression(model.Model):
     self._c = tf.Variable(0.0, trainable=False)
     self._input_spec = collections.OrderedDict(
         x=tf.TensorSpec([None, self._feature_dim], tf.float32),
-        y=tf.TensorSpec([None, 1], tf.float32))
+        y=tf.TensorSpec([None, 1], tf.float32),
+    )
 
   @property
   def trainable_variables(self) -> list[tf.Variable]:
@@ -75,11 +76,15 @@ class LinearRegression(model.Model):
   @tf.function
   def forward_pass(self, batch_input, training=True) -> model.BatchOutput:
     if not self._input_spec['y'].is_compatible_with(batch_input['y']):
-      raise ValueError("Expected batch_input['y'] to be compatible with "
-                       f"{self._input_spec['y']} but found {batch_input['y']}")
+      raise ValueError(
+          "Expected batch_input['y'] to be compatible with "
+          f"{self._input_spec['y']} but found {batch_input['y']}"
+      )
     if not self._input_spec['x'].is_compatible_with(batch_input['x']):
-      raise ValueError("Expected batch_input['x'] to be compatible with "
-                       "{self._input_spec['x']} but found {batch_input['x']}")
+      raise ValueError(
+          "Expected batch_input['x'] to be compatible with "
+          "{self._input_spec['x']} but found {batch_input['x']}"
+      )
     predictions = self.predict_on_batch(x=batch_input['x'], training=training)
     residuals = predictions - batch_input['y']
     num_examples = tf.gather(tf.shape(predictions), 0)
@@ -91,11 +96,13 @@ class LinearRegression(model.Model):
 
     average_loss = total_loss / tf.cast(num_examples, tf.float32)
     return model.BatchOutput(
-        loss=average_loss, predictions=predictions, num_examples=num_examples)
+        loss=average_loss, predictions=predictions, num_examples=num_examples
+    )
 
   @tf.function
   def report_local_unfinalized_metrics(
-      self) -> collections.OrderedDict[str, Union[tf.Tensor, list[tf.Tensor]]]:
+      self,
+  ) -> collections.OrderedDict[str, Union[tf.Tensor, list[tf.Tensor]]]:
     """Creates an `collections.OrderedDict` of metric names to unfinalized values.
 
     Returns:
@@ -109,14 +116,15 @@ class LinearRegression(model.Model):
       when defining the federated training processes or evaluation computations.
     """
     return collections.OrderedDict(
-        loss=[self._loss_sum,
-              tf.cast(self._num_examples, tf.float32)],
-        num_examples=self._num_examples)
+        loss=[self._loss_sum, tf.cast(self._num_examples, tf.float32)],
+        num_examples=self._num_examples,
+    )
 
   def metric_finalizers(
-      self
-  ) -> collections.OrderedDict[str, Callable[
-      [Union[tf.Tensor, list[tf.Tensor]]], tf.Tensor]]:
+      self,
+  ) -> collections.OrderedDict[
+      str, Callable[[Union[tf.Tensor, list[tf.Tensor]]], tf.Tensor]
+  ]:
     """Creates an `collections.OrderedDict` of metric names to finalizers.
 
     Returns:
@@ -130,7 +138,8 @@ class LinearRegression(model.Model):
     """
     return collections.OrderedDict(
         loss=tf.function(func=lambda x: x[0] / x[1]),
-        num_examples=tf.function(func=lambda x: x))
+        num_examples=tf.function(func=lambda x: x),
+    )
 
   @tf.function
   def reset_metrics(self):
@@ -161,15 +170,16 @@ def _dense_all_zeros_layer(input_dims=None, output_dim=1):
       use_bias=True,
       kernel_initializer='zeros',
       bias_initializer='zeros',
-      activation=None)
+      activation=None,
+  )
   if input_dims is not None:
     return build_keras_dense_layer(input_shape=(input_dims,))
   return build_keras_dense_layer()
 
 
-def _dense_all_zeros_regularized_layer(input_dims=None,
-                                       output_dim=1,
-                                       regularization_constant=0.01):
+def _dense_all_zeros_regularized_layer(
+    input_dims=None, output_dim=1, regularization_constant=0.01
+):
   """Create a layer that can be used in isolation for linear regression.
 
   Constructs a Keras dense layer with a single output, using biases and weights
@@ -198,15 +208,16 @@ def _dense_all_zeros_regularized_layer(input_dims=None,
       bias_initializer='zeros',
       kernel_regularizer=regularizer,
       bias_regularizer=regularizer,
-      activation=None)
+      activation=None,
+  )
   if input_dims is not None:
     return build_keras_dense_layer(input_shape=(input_dims,))
   return build_keras_dense_layer()
 
 
-def _dense_all_ones_regularized_layer(input_dims=None,
-                                      output_dim=1,
-                                      regularization_constant=0.01):
+def _dense_all_ones_regularized_layer(
+    input_dims=None, output_dim=1, regularization_constant=0.01
+):
   """Create a layer that can be used in isolation for linear regression.
 
   Constructs a Keras dense layer with a single output, using biases and weights
@@ -235,7 +246,8 @@ def _dense_all_ones_regularized_layer(input_dims=None,
       bias_initializer='ones',
       kernel_regularizer=regularizer,
       bias_regularizer=regularizer,
-      activation=None)
+      activation=None,
+  )
   if input_dims is not None:
     return build_keras_dense_layer(input_shape=(input_dims,))
   return build_keras_dense_layer()
@@ -249,22 +261,28 @@ def build_linear_regression_keras_sequential_model(feature_dims=2):
 
 
 def build_linear_regression_regularized_keras_sequential_model(
-    feature_dims=2, regularization_constant=0.01):
+    feature_dims=2, regularization_constant=0.01
+):
   """Build a linear regression `tf.keras.Model` using the Sequential API."""
   keras_model = tf.keras.models.Sequential()
   keras_model.add(
       _dense_all_zeros_regularized_layer(
-          feature_dims, regularization_constant=regularization_constant))
+          feature_dims, regularization_constant=regularization_constant
+      )
+  )
   return keras_model
 
 
 def build_linear_regression_ones_regularized_keras_sequential_model(
-    feature_dims=2, regularization_constant=0.01):
+    feature_dims=2, regularization_constant=0.01
+):
   """Build a linear regression `tf.keras.Model` using the Sequential API."""
   keras_model = tf.keras.models.Sequential()
   keras_model.add(
       _dense_all_ones_regularized_layer(
-          feature_dims, regularization_constant=regularization_constant))
+          feature_dims, regularization_constant=regularization_constant
+      )
+  )
   return keras_model
 
 
@@ -305,9 +323,9 @@ def build_conv_batch_norm_keras_model():
   # variables.
   l = tf.keras.layers
   data_format = 'channels_last'
-  max_pool = l.MaxPooling2D((2, 2), (2, 2),
-                            padding='same',
-                            data_format=data_format)
+  max_pool = l.MaxPooling2D(
+      (2, 2), (2, 2), padding='same', data_format=data_format
+  )
   keras_model = tf.keras.models.Sequential([
       l.Reshape(target_shape=[28, 28, 1], input_shape=(28 * 28,)),
       l.Conv2D(
@@ -317,7 +335,8 @@ def build_conv_batch_norm_keras_model():
           data_format=data_format,
           activation=tf.nn.relu,
           kernel_initializer='zeros',
-          bias_initializer='zeros'),
+          bias_initializer='zeros',
+      ),
       max_pool,
       l.BatchNormalization(),
       l.Conv2D(
@@ -327,7 +346,8 @@ def build_conv_batch_norm_keras_model():
           data_format=data_format,
           activation=tf.nn.relu,
           kernel_initializer='zeros',
-          bias_initializer='zeros'),
+          bias_initializer='zeros',
+      ),
       max_pool,
       l.BatchNormalization(),
       l.Flatten(),
@@ -335,7 +355,8 @@ def build_conv_batch_norm_keras_model():
           1024,
           activation=tf.nn.relu,
           kernel_initializer='zeros',
-          bias_initializer='zeros'),
+          bias_initializer='zeros',
+      ),
       l.Dropout(0.4),
       l.Dense(10, kernel_initializer='zeros', bias_initializer='zeros'),
   ])
@@ -353,7 +374,8 @@ def build_multiple_inputs_keras_model():
       l.concatenate([
           l.Dense(1)(a),
           l.Dense(1)(b),
-      ]))
+      ])
+  )
   return tf.keras.Model(inputs={'a': a, 'b': b}, outputs=[output])
 
 
@@ -371,7 +393,8 @@ def build_multiple_outputs_keras_model():
 
 
 def build_multiple_outputs_regularized_keras_model(
-    regularization_constant=0.01):
+    regularization_constant=0.01,
+):
   """Builds a test model with three outputs.
 
   All weights are initialized to ones.
@@ -386,7 +409,8 @@ def build_multiple_outputs_regularized_keras_model(
   dense = functools.partial(
       _dense_all_ones_regularized_layer,
       output_dim=1,
-      regularization_constant=regularization_constant)
+      regularization_constant=regularization_constant,
+  )
   a = tf.keras.layers.Input((1,))
   b = tf.keras.layers.Input((1,))
 
@@ -401,10 +425,14 @@ def build_lookup_table_keras_model():
   """Builds a test model with embedding feature columns."""
   l = tf.keras.layers
   a = l.Input(shape=(1,), dtype=tf.string)
+  # pylint: disable=g-deprecated-tf-checker
   embedded_lookup_feature = tf.feature_column.embedding_column(
       tf.feature_column.categorical_column_with_vocabulary_list(
-          key='colors', vocabulary_list=('R', 'G', 'B')),
-      dimension=16)
+          key='colors', vocabulary_list=('R', 'G', 'B')
+      ),
+      dimension=16,
+  )
+  # pylint: enable=g-deprecated-tf-checker
   dense_features = l.DenseFeatures([embedded_lookup_feature])({'colors': a})
   output = l.Dense(1)(dense_features)
   return tf.keras.Model(inputs=[a], outputs=[output])
@@ -426,5 +454,5 @@ def build_ragged_tensor_input_keras_model():
       tf.keras.layers.LSTM(32, use_bias=False),
       tf.keras.layers.Dense(32),
       tf.keras.layers.Activation(tf.nn.relu),
-      tf.keras.layers.Dense(1)
+      tf.keras.layers.Dense(1),
   ])

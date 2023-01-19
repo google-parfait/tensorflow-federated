@@ -46,8 +46,12 @@ def from_keras_model(
     loss: Loss,
     input_spec,
     loss_weights: Optional[list[float]] = None,
-    metrics: Optional[Union[list[tf.keras.metrics.Metric],
-                            list[Callable[[], tf.keras.metrics.Metric]]]] = None
+    metrics: Optional[
+        Union[
+            list[tf.keras.metrics.Metric],
+            list[Callable[[], tf.keras.metrics.Metric]],
+        ]
+    ] = None,
 ) -> model_lib.Model:
   """Builds a `tff.learning.Model` from a `tf.keras.Model`.
 
@@ -116,7 +120,9 @@ def from_keras_model(
       specified but `loss` is not a list, if `input_spec` does not contain
       exactly two elements, or if `input_spec` is a dictionary and does not
       contain keys `'x'` and `'y'`.
-  """.format(model_lib.MODEL_ARG_NAME, model_lib.MODEL_LABEL_NAME)
+  """.format(
+      model_lib.MODEL_ARG_NAME, model_lib.MODEL_LABEL_NAME
+  )
   # Validate `keras_model`
   py_typecheck.check_type(keras_model, tf.keras.Model)
   if keras_model._is_compiled:  # pylint: disable=protected-access
@@ -131,11 +137,13 @@ def from_keras_model(
     loss_weights = [1.0]
   else:
     if len(loss) != len(keras_model.outputs):
-      raise ValueError('If a loss list is provided, `keras_model` must have '
-                       'equal number of outputs to the losses.\nloss: {}\nof '
-                       'length: {}.\noutputs: {}\nof length: {}.'.format(
-                           loss, len(loss), keras_model.outputs,
-                           len(keras_model.outputs)))
+      raise ValueError(
+          'If a loss list is provided, `keras_model` must have '
+          'equal number of outputs to the losses.\nloss: {}\nof '
+          'length: {}.\noutputs: {}\nof length: {}.'.format(
+              loss, len(loss), keras_model.outputs, len(keras_model.outputs)
+          )
+      )
     for loss_fn in loss:
       py_typecheck.check_type(loss_fn, tf.keras.losses.Loss)
 
@@ -146,42 +154,49 @@ def from_keras_model(
         raise ValueError(
             '`keras_model` must have equal number of losses and loss_weights.'
             '\nloss: {}\nof length: {}.'
-            '\nloss_weights: {}\nof length: {}.'.format(loss, len(loss),
-                                                        loss_weights,
-                                                        len(loss_weights)))
+            '\nloss_weights: {}\nof length: {}.'.format(
+                loss, len(loss), loss_weights, len(loss_weights)
+            )
+        )
       for loss_weight in loss_weights:
         py_typecheck.check_type(loss_weight, float)
 
   if len(input_spec) != 2:
-    raise ValueError('The top-level structure in `input_spec` must contain '
-                     'exactly two top-level elements, as it must specify type '
-                     'information for both inputs to and predictions from the '
-                     'model. You passed input spec {}.'.format(input_spec))
+    raise ValueError(
+        'The top-level structure in `input_spec` must contain '
+        'exactly two top-level elements, as it must specify type '
+        'information for both inputs to and predictions from the '
+        'model. You passed input spec {}.'.format(input_spec)
+    )
   if isinstance(input_spec, computation_types.Type):
     if not type_analysis.is_structure_of_tensors(input_spec):
       raise TypeError(
           'Expected a `tff.Type` with all the leaf nodes being '
-          '`tff.TensorType`s, found an input spec {}.'.format(input_spec))
+          '`tff.TensorType`s, found an input spec {}.'.format(input_spec)
+      )
     input_spec = type_conversions.structure_from_tensor_type_tree(
         lambda tensor_type: tf.TensorSpec(tensor_type.shape, tensor_type.dtype),
-        input_spec)
+        input_spec,
+    )
   else:
     tensor_spec = (tf.TensorSpec, tf.RaggedTensorSpec)
     tf.nest.map_structure(
         lambda s: py_typecheck.check_type(s, tensor_spec, 'input spec member'),
-        input_spec)
+        input_spec,
+    )
   if isinstance(input_spec, Mapping):
     if model_lib.MODEL_ARG_NAME not in input_spec:
       raise ValueError(
           'The `input_spec` is a collections.abc.Mapping (e.g., a dict), so it '
-          'must contain an entry with key `\'{}\'`, representing the input(s) '
-          'to the Keras model.'.format(model_lib.MODEL_ARG_NAME))
+          "must contain an entry with key `'{}'`, representing the input(s) "
+          'to the Keras model.'.format(model_lib.MODEL_ARG_NAME)
+      )
     if model_lib.MODEL_LABEL_NAME not in input_spec:
       raise ValueError(
           'The `input_spec` is a collections.abc.Mapping (e.g., a dict), so it '
-          'must contain an entry with key `\'{}\'`, representing the label(s) '
-          'to be used in the Keras loss(es).'.format(
-              model_lib.MODEL_LABEL_NAME))
+          "must contain an entry with key `'{}'`, representing the label(s) "
+          'to be used in the Keras loss(es).'.format(model_lib.MODEL_LABEL_NAME)
+      )
 
   if metrics is None:
     metrics = []
@@ -191,9 +206,13 @@ def from_keras_model(
   for layer in keras_model.layers:
     if isinstance(layer, tf.keras.layers.BatchNormalization):
       warnings.warn(
-          'Batch Normalization contains non-trainable variables that won\'t be '
-          'updated during the training. Consider using Group Normalization '
-          'instead.', UserWarning)
+          (
+              "Batch Normalization contains non-trainable variables that won't"
+              ' be updated during the training. Consider using Group'
+              ' Normalization instead.'
+          ),
+          UserWarning,
+      )
       break
 
   return _KerasModel(
@@ -201,14 +220,19 @@ def from_keras_model(
       input_spec=input_spec,
       loss_fns=loss,
       loss_weights=loss_weights,
-      metrics=metrics)
+      metrics=metrics,
+  )
 
 
 def federated_aggregate_keras_metric(
-    metrics: Union[tf.keras.metrics.Metric, Sequence[tf.keras.metrics.Metric],
-                   Callable[[], tf.keras.metrics.Metric],
-                   Sequence[Callable[[], tf.keras.metrics.Metric]]],
-    federated_values):
+    metrics: Union[
+        tf.keras.metrics.Metric,
+        Sequence[tf.keras.metrics.Metric],
+        Callable[[], tf.keras.metrics.Metric],
+        Sequence[Callable[[], tf.keras.metrics.Metric]],
+    ],
+    federated_values,
+):
   """Aggregates variables a keras metric placed at CLIENTS to SERVER.
 
   Args:
@@ -226,13 +250,15 @@ def federated_aggregate_keras_metric(
     `tf.keras.metrics.Metric` and calling `tf.keras.metrics.Metric.result`. The
     resulting structure has `tff.SERVER` placement.
   """
-  member_types = tf.nest.map_structure(lambda t: t.type_signature.member,
-                                       federated_values)
+  member_types = tf.nest.map_structure(
+      lambda t: t.type_signature.member, federated_values
+  )
 
   @tensorflow_computation.tf_computation
   def zeros_fn():
     return type_conversions.structure_from_tensor_type_tree(
-        lambda t: tf.zeros(shape=t.shape, dtype=t.dtype), member_types)
+        lambda t: tf.zeros(shape=t.shape, dtype=t.dtype), member_types
+    )
 
   zeros = zeros_fn()
 
@@ -248,9 +274,12 @@ def federated_aggregate_keras_metric(
   def report(accumulators):
     """Insert `accumulators` back into the keras metric to obtain result."""
 
-    def finalize_metric(metric: Union[tf.keras.metrics.Metric,
-                                      Callable[[], tf.keras.metrics.Metric]],
-                        values):
+    def finalize_metric(
+        metric: Union[
+            tf.keras.metrics.Metric, Callable[[], tf.keras.metrics.Metric]
+        ],
+        values,
+    ):
       # Note: if the input metric is an instance of `tf.keras.metrics.Metric`,
       # the following call requires that `type(metric)` have a no argument
       # __init__ method, which will restrict the types of metrics that can be
@@ -274,22 +303,32 @@ def federated_aggregate_keras_metric(
       return finalize_metric(metrics, accumulators)
     else:
       # Otherwise map over all the metrics.
-      return collections.OrderedDict([
-          (name, finalize_metric(metric, values))
-          for metric, (name, values) in zip(metrics, accumulators.items())
-      ])
+      return collections.OrderedDict(
+          [
+              (name, finalize_metric(metric, values))
+              for metric, (name, values) in zip(metrics, accumulators.items())
+          ]
+      )
 
-  return intrinsics.federated_aggregate(federated_values, zeros, accumulate,
-                                        merge, report)
+  return intrinsics.federated_aggregate(
+      federated_values, zeros, accumulate, merge, report
+  )
 
 
 class _KerasModel(model_lib.Model):
   """Internal wrapper class for tf.keras.Model objects."""
 
-  def __init__(self, keras_model: tf.keras.Model, input_spec,
-               loss_fns: list[tf.keras.losses.Loss], loss_weights: list[float],
-               metrics: Union[list[tf.keras.metrics.Metric],
-                              list[Callable[[], tf.keras.metrics.Metric]]]):
+  def __init__(
+      self,
+      keras_model: tf.keras.Model,
+      input_spec,
+      loss_fns: list[tf.keras.losses.Loss],
+      loss_weights: list[float],
+      metrics: Union[
+          list[tf.keras.metrics.Metric],
+          list[Callable[[], tf.keras.metrics.Metric]],
+      ],
+  ):
     self._keras_model = keras_model
     self._input_spec = input_spec
     self._loss_fns = loss_fns
@@ -314,7 +353,8 @@ class _KerasModel(model_lib.Model):
             raise TypeError(
                 f'Metric constructor {metric} is not a no-arg callable that '
                 'creates a `tf.keras.metrics.Metric`, it created a '
-                f'{type(constructed_metric).__name__}.')
+                f'{type(constructed_metric).__name__}.'
+            )
           metric_names.add(constructed_metric.name)
           self._metric_constructors[constructed_metric.name] = metric
           self._metrics.append(constructed_metric)
@@ -324,14 +364,16 @@ class _KerasModel(model_lib.Model):
               'Expected the input metric to be either a '
               '`tf.keras.metrics.Metric` or a no-arg callable that constructs '
               'a `tf.keras.metrics.Metric`, found a non-callable '
-              f'{py_typecheck.type_string(type(metric))}.')
+              f'{py_typecheck.type_string(type(metric))}.'
+          )
 
       if has_keras_metric and has_keras_metric_constructor:
         raise TypeError(
             'Expected the input `metrics` to be either a list of '
             '`tf.keras.metrics.Metric` objects or a list of no-arg callables '
             'that each constructs a `tf.keras.metrics.Metric`, '
-            f'found both types in the `metrics`: {metrics}.')
+            f'found both types in the `metrics`: {metrics}.'
+        )
 
     # This is defined here so that it closes over the `loss_fn`.
     class _WeightedMeanLossMetric(tf.keras.metrics.Mean):
@@ -353,8 +395,9 @@ class _KerasModel(model_lib.Model):
         else:
           batch_loss = tf.zeros(())
           for i in range(len(self._loss_fns)):
-            batch_loss += self._loss_weights[i] * self._loss_fns[i](y_true[i],
-                                                                    y_pred[i])
+            batch_loss += self._loss_weights[i] * self._loss_fns[i](
+                y_true[i], y_pred[i]
+            )
 
         return super().update_state(batch_loss, batch_size)
 
@@ -407,8 +450,10 @@ class _KerasModel(model_lib.Model):
     else:
       inputs = batch_input[0]
     if inputs is None:
-      raise KeyError('Received a batch_input that is missing required key `x`. '
-                     f'Instead have keys {list(batch_input.keys())}')
+      raise KeyError(
+          'Received a batch_input that is missing required key `x`. '
+          f'Instead have keys {list(batch_input.keys())}'
+      )
     predictions = self.predict_on_batch(inputs, training)
 
     if isinstance(batch_input, Mapping):
@@ -423,8 +468,10 @@ class _KerasModel(model_lib.Model):
         # user-provided loss function. Keras does the same in the
         # `tf.keras.Model` training step. This is expected to have no effect if
         # no per-layer losses are added to the model.
-        batch_loss = tf.add_n([loss_fn(y_true=y_true, y_pred=predictions)] +
-                              self._keras_model.losses)
+        batch_loss = tf.add_n(
+            [loss_fn(y_true=y_true, y_pred=predictions)]
+            + self._keras_model.losses
+        )
 
       else:
         # Note: we add each of the per-layer regularization losses to the losses
@@ -437,7 +484,8 @@ class _KerasModel(model_lib.Model):
           loss_fn = self._loss_fns[i]
           loss_wt = self._loss_weights[i]
           batch_loss += loss_wt * loss_fn(
-              y_true=y_true[i], y_pred=predictions[i])
+              y_true=y_true[i], y_pred=predictions[i]
+          )
     else:
       batch_loss = None
 
@@ -452,7 +500,8 @@ class _KerasModel(model_lib.Model):
     return model_lib.BatchOutput(
         loss=batch_loss,
         predictions=predictions,
-        num_examples=nrows(tf.nest.flatten(inputs)[0]))
+        num_examples=nrows(tf.nest.flatten(inputs)[0]),
+    )
 
   @tf.function
   def forward_pass(self, batch_input, training=True):
@@ -460,7 +509,8 @@ class _KerasModel(model_lib.Model):
 
   @tf.function
   def report_local_unfinalized_metrics(
-      self) -> collections.OrderedDict[str, list[tf.Tensor]]:
+      self,
+  ) -> collections.OrderedDict[str, list[tf.Tensor]]:
     """Creates an `collections.OrderedDict` of metric names to unfinalized values.
 
     Returns:
@@ -482,7 +532,8 @@ class _KerasModel(model_lib.Model):
     return outputs
 
   def metric_finalizers(
-      self) -> collections.OrderedDict[str, finalizer.KerasMetricFinalizer]:
+      self,
+  ) -> collections.OrderedDict[str, finalizer.KerasMetricFinalizer]:
     """Creates an `collections.OrderedDict` of metric names to finalizers.
 
     Returns:
@@ -499,9 +550,11 @@ class _KerasModel(model_lib.Model):
     if self._metric_constructors:
       for metric_name, metric_constructor in self._metric_constructors.items():
         finalizers[metric_name] = finalizer.create_keras_metric_finalizer(
-            metric_constructor)
+            metric_constructor
+        )
     else:
       for metric in self.get_metrics():
         finalizers[metric.name] = finalizer.create_keras_metric_finalizer(
-            metric)
+            metric
+        )
     return finalizers

@@ -75,10 +75,12 @@ def from_keras_model(
   if not isinstance(keras_model, tf.keras.Model):
     raise TypeError('Expected `int`, found {}.'.format(type(keras_model)))
   if len(input_spec) != 2:
-    raise ValueError('The top-level structure in `input_spec` must contain '
-                     'exactly two elements, as it must specify type '
-                     'information for both inputs to and predictions from the '
-                     'model.')
+    raise ValueError(
+        'The top-level structure in `input_spec` must contain '
+        'exactly two elements, as it must specify type '
+        'information for both inputs to and predictions from the '
+        'model.'
+    )
 
   if keras_model._is_compiled:  # pylint: disable=protected-access
     raise ValueError('`keras_model` must not be compiled')
@@ -87,7 +89,8 @@ def from_keras_model(
       inner_model=keras_model,
       global_layers=global_layers,
       local_layers=local_layers,
-      input_spec=input_spec)
+      input_spec=input_spec,
+  )
 
 
 class _KerasModel(model_lib.Model):
@@ -102,10 +105,13 @@ class _KerasModel(model_lib.Model):
   there for both training and evaluation.
   """
 
-  def __init__(self, inner_model: tf.keras.Model,
-               global_layers: Iterable[tf.keras.layers.Layer],
-               local_layers: Iterable[tf.keras.layers.Layer],
-               input_spec: computation_types.Type):
+  def __init__(
+      self,
+      inner_model: tf.keras.Model,
+      global_layers: Iterable[tf.keras.layers.Layer],
+      local_layers: Iterable[tf.keras.layers.Layer],
+      input_spec: computation_types.Type,
+  ):
     self._keras_model = inner_model
     self._global_layers = list(global_layers)
     self._local_layers = list(local_layers)
@@ -119,23 +125,29 @@ class _KerasModel(model_lib.Model):
     for layer in self._global_layers + self._local_layers:
       global_and_local_variables.update(
           (var.ref(), var.name)
-          for var in layer.trainable_variables + layer.non_trainable_variables)
+          for var in layer.trainable_variables + layer.non_trainable_variables
+      )
 
-    keras_variables = set((var.ref(), var.name)
-                          for var in inner_model.trainable_variables +
-                          inner_model.non_trainable_variables)
+    keras_variables = set(
+        (var.ref(), var.name)
+        for var in inner_model.trainable_variables
+        + inner_model.non_trainable_variables
+    )
 
     if global_and_local_variables != keras_variables:
       # Use a symmetric set difference to compare the variables, since either
       # set may include variables not present in the other.
       variables_difference = global_and_local_variables ^ keras_variables
-      raise ValueError('Global and local layers must include all trainable '
-                       'and non-trainable variables in the Keras model. '
-                       'Difference: {d}, Global and local layers vars: {v}, '
-                       'Keras vars: {k}'.format(
-                           d=variables_difference,
-                           v=global_and_local_variables,
-                           k=keras_variables))
+      raise ValueError(
+          'Global and local layers must include all trainable '
+          'and non-trainable variables in the Keras model. '
+          'Difference: {d}, Global and local layers vars: {v}, '
+          'Keras vars: {k}'.format(
+              d=variables_difference,
+              v=global_and_local_variables,
+              k=keras_variables,
+          )
+      )
 
   @property
   def global_trainable_variables(self):
@@ -178,8 +190,10 @@ class _KerasModel(model_lib.Model):
     else:
       inputs = batch_input[0]
     if inputs is None:
-      raise KeyError('Received a batch_input that is missing required key `x`. '
-                     'Instead have keys {}'.format(list(batch_input.keys())))
+      raise KeyError(
+          'Received a batch_input that is missing required key `x`. '
+          'Instead have keys {}'.format(list(batch_input.keys()))
+      )
     predictions = self._keras_model(inputs, training=training)
 
     if isinstance(batch_input, Mapping):
@@ -190,7 +204,8 @@ class _KerasModel(model_lib.Model):
     return model_lib.BatchOutput(
         predictions=predictions,
         labels=y_true,
-        num_examples=tf.shape(tf.nest.flatten(inputs)[0])[0])
+        num_examples=tf.shape(tf.nest.flatten(inputs)[0])[0],
+    )
 
 
 class MeanLossMetric(tf.keras.metrics.Mean):
@@ -223,7 +238,7 @@ class MeanLossMetric(tf.keras.metrics.Mean):
 
 
 def read_metric_variables(
-    metrics: list[tf.keras.metrics.Metric]
+    metrics: list[tf.keras.metrics.Metric],
 ) -> collections.OrderedDict[str, Any]:
   """Reads values from Keras metric variables."""
   metric_variables = collections.OrderedDict()
@@ -235,7 +250,7 @@ def read_metric_variables(
 # TODO(b/219753531): Revisit the `federated_output_computation` when rewriting
 # the FedRecon to use the new composable APIs.
 def federated_output_computation_from_metrics(
-    metrics: list[tf.keras.metrics.Metric]
+    metrics: list[tf.keras.metrics.Metric],
 ) -> federated_computation.federated_computation:
   """Produces a federated computation for aggregating Keras metrics.
 
@@ -256,14 +271,17 @@ def federated_output_computation_from_metrics(
   # Get a sample of metric variables to use to determine its type.
   sample_metric_variables = read_metric_variables(metrics)
 
-  metric_variable_type_dict = tf.nest.map_structure(tf.TensorSpec.from_tensor,
-                                                    sample_metric_variables)
+  metric_variable_type_dict = tf.nest.map_structure(
+      tf.TensorSpec.from_tensor, sample_metric_variables
+  )
   federated_local_outputs_type = computation_types.at_clients(
-      metric_variable_type_dict)
+      metric_variable_type_dict
+  )
 
   def federated_output(local_outputs):
     return base_utils.federated_aggregate_keras_metric(metrics, local_outputs)
 
   federated_output_computation = federated_computation.federated_computation(
-      federated_output, federated_local_outputs_type)
+      federated_output, federated_local_outputs_type
+  )
   return federated_output_computation

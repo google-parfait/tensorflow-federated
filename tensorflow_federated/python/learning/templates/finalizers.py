@@ -40,12 +40,14 @@ class FinalizerProcess(measured_process.MeasuredProcess):
   server in a learning process after aggregating model updates from clients.
   """
 
-  def __init__(self,
-               initialize_fn: computation_base.Computation,
-               next_fn: computation_base.Computation,
-               *,
-               get_hparams_fn: Optional[computation_base.Computation] = None,
-               set_hparams_fn: Optional[computation_base.Computation] = None):
+  def __init__(
+      self,
+      initialize_fn: computation_base.Computation,
+      next_fn: computation_base.Computation,
+      *,
+      get_hparams_fn: Optional[computation_base.Computation] = None,
+      set_hparams_fn: Optional[computation_base.Computation] = None,
+  ):
     """Initializes a `FinalizerProcess`.
 
     The `initialize_fn` and `next_fn` must have the following type signatures:
@@ -107,26 +109,30 @@ class FinalizerProcess(measured_process.MeasuredProcess):
 
     if not initialize_fn.type_signature.result.is_federated():
       raise errors.TemplateNotFederatedError(
-          f'Provided `initialize_fn` must return a federated type, but found '
+          'Provided `initialize_fn` must return a federated type, but found '
           f'return type:\n{initialize_fn.type_signature.result}\nTip: If you '
-          f'see a collection of federated types, try wrapping the returned '
-          f'value in `tff.federated_zip` before returning.')
-    next_types = (
-        structure.flatten(next_fn.type_signature.parameter) +
-        structure.flatten(next_fn.type_signature.result))
+          'see a collection of federated types, try wrapping the returned '
+          'value in `tff.federated_zip` before returning.'
+      )
+    next_types = structure.flatten(
+        next_fn.type_signature.parameter
+    ) + structure.flatten(next_fn.type_signature.result)
     if not all([t.is_federated() for t in next_types]):
       offending_types = '\n- '.join(
-          [t for t in next_types if not t.is_federated()])
+          [t for t in next_types if not t.is_federated()]
+      )
       raise errors.TemplateNotFederatedError(
-          f'Provided `next_fn` must be a *federated* computation, that is, '
-          f'operate on `tff.FederatedType`s, but found\n'
+          'Provided `next_fn` must be a *federated* computation, that is, '
+          'operate on `tff.FederatedType`s, but found\n'
           f'next_fn with type signature:\n{next_fn.type_signature}\n'
-          f'The non-federated types are:\n {offending_types}.')
+          f'The non-federated types are:\n {offending_types}.'
+      )
 
     if initialize_fn.type_signature.result.placement != placements.SERVER:
       raise errors.TemplatePlacementError(
-          f'The state controlled by an `FinalizerProcess` must be placed at '
-          f'the SERVER, but found type: {initialize_fn.type_signature.result}.')
+          'The state controlled by an `FinalizerProcess` must be placed at '
+          f'the SERVER, but found type: {initialize_fn.type_signature.result}.'
+      )
     # Note that state of next_fn being placed at SERVER is now ensured by the
     # assertions in base class which would otherwise raise
     # TemplateStateNotAssignableError.
@@ -134,40 +140,48 @@ class FinalizerProcess(measured_process.MeasuredProcess):
     next_fn_param = next_fn.type_signature.parameter
     if not next_fn_param.is_struct():
       raise errors.TemplateNextFnNumArgsError(
-          f'The `next_fn` must have exactly two input arguments, but found '
-          f'the following input type which is not a Struct: {next_fn_param}.')
+          'The `next_fn` must have exactly two input arguments, but found '
+          f'the following input type which is not a Struct: {next_fn_param}.'
+      )
     if len(next_fn_param) != 3:
       next_param_str = '\n- '.join([str(t) for t in next_fn_param])
       raise errors.TemplateNextFnNumArgsError(
-          f'The `next_fn` must have exactly three input arguments, but found '
-          f'{len(next_fn_param)} input arguments:\n{next_param_str}')
+          'The `next_fn` must have exactly three input arguments, but found '
+          f'{len(next_fn_param)} input arguments:\n{next_param_str}'
+      )
     model_weights_param = next_fn_param[1]
     update_from_clients_param = next_fn_param[2]
     if model_weights_param.placement != placements.SERVER:
       raise errors.TemplatePlacementError(
-          f'The second input argument of `next_fn` must be placed at SERVER '
-          f'but found {model_weights_param}.')
+          'The second input argument of `next_fn` must be placed at SERVER '
+          f'but found {model_weights_param}.'
+      )
     if update_from_clients_param.placement != placements.SERVER:
       raise errors.TemplatePlacementError(
-          f'The third input argument of `next_fn` must be placed at SERVER '
-          f'but found {update_from_clients_param}.')
+          'The third input argument of `next_fn` must be placed at SERVER '
+          f'but found {update_from_clients_param}.'
+      )
 
     next_fn_result = next_fn.type_signature.result
     if next_fn_result.result.placement != placements.SERVER:
       raise errors.TemplatePlacementError(
-          f'The "result" attribute of the return type of `next_fn` must be '
-          f'placed at SERVER, but found {next_fn_result.result}.')
+          'The "result" attribute of the return type of `next_fn` must be '
+          f'placed at SERVER, but found {next_fn_result.result}.'
+      )
     if not model_weights_param.member.is_assignable_from(
-        next_fn_result.result.member):
+        next_fn_result.result.member
+    ):
       raise FinalizerResultTypeError(
-          f'The second input argument of `next_fn` must match the "result" '
-          f'attribute of the return type of `next_fn`. Found:\n'
+          'The second input argument of `next_fn` must match the "result" '
+          'attribute of the return type of `next_fn`. Found:\n'
           f'Second input argument: {next_fn_param[1].member}\n'
-          f'Result attribute: {next_fn_result.result.member}.')
+          f'Result attribute: {next_fn_result.result.member}.'
+      )
     if next_fn_result.measurements.placement != placements.SERVER:
       raise errors.TemplatePlacementError(
-          f'The "measurements" attribute of return type of `next_fn` must be '
-          f'placed at SERVER, but found {next_fn_result.measurements}.')
+          'The "measurements" attribute of return type of `next_fn` must be '
+          f'placed at SERVER, but found {next_fn_result.measurements}.'
+      )
 
     state_type = initialize_fn.type_signature.result.member
     if get_hparams_fn is not None:
@@ -181,7 +195,8 @@ class FinalizerProcess(measured_process.MeasuredProcess):
       hparams_base.type_check_set_hparams_fn(set_hparams_fn, state_type)
     else:
       set_hparams_fn = hparams_base.build_basic_hparams_setter(
-          state_type, hparams_type)
+          state_type, hparams_type
+      )
 
     self._get_hparams_fn = get_hparams_fn
     self._set_hparams_fn = set_hparams_fn

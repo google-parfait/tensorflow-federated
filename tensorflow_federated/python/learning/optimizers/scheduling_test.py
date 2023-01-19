@@ -35,7 +35,8 @@ class ScheduledLROptimizerTest(parameterized.TestCase, tf.test.TestCase):
 
   def test_scheduled_sgd_computes_correctly(self):
     scheduled_sgd = scheduling.schedule_learning_rate(
-        sgdm.build_sgdm(1.0), _example_schedule_fn)
+        sgdm.build_sgdm(1.0), _example_schedule_fn
+    )
 
     weight = tf.constant(1.0)
     gradient = tf.constant(1.0)
@@ -59,7 +60,8 @@ class ScheduledLROptimizerTest(parameterized.TestCase, tf.test.TestCase):
   )
   def test_schedule_learning_rate_integrates_with(self, optimizer):
     scheduled_optimizer = scheduling.schedule_learning_rate(
-        optimizer, _example_schedule_fn)
+        optimizer, _example_schedule_fn
+    )
     self.assertIsInstance(scheduled_optimizer, optimizer_base.Optimizer)
 
   def test_keras_optimizer_raises(self):
@@ -69,9 +71,11 @@ class ScheduledLROptimizerTest(parameterized.TestCase, tf.test.TestCase):
 
   def test_scheduling_scheduled_optimizer_raises(self):
     scheduled_optimizer = scheduling.schedule_learning_rate(
-        sgdm.build_sgdm(1.0), _example_schedule_fn)
+        sgdm.build_sgdm(1.0), _example_schedule_fn
+    )
     twice_scheduled_optimizer = scheduling.schedule_learning_rate(
-        scheduled_optimizer, _example_schedule_fn)
+        scheduled_optimizer, _example_schedule_fn
+    )
     with self.assertRaisesRegex(KeyError, 'must have learning rate'):
       twice_scheduled_optimizer.initialize(tf.TensorSpec((), tf.float32))
 

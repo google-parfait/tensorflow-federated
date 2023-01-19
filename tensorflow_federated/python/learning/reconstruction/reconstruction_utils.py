@@ -35,12 +35,14 @@ from tensorflow_federated.python.learning.reconstruction import model as model_l
 # entirely, etc. See `build_dataset_split_fn` for a builder, although users can
 # also specify their own `DatasetSplitFn`s (see `simple_dataset_split_fn` for an
 # example).
-DatasetSplitFn = Callable[[tf.data.Dataset, tf.Tensor], tuple[tf.data.Dataset,
-                                                              tf.data.Dataset]]
+DatasetSplitFn = Callable[
+    [tf.data.Dataset, tf.Tensor], tuple[tf.data.Dataset, tf.data.Dataset]
+]
 
 
 def simple_dataset_split_fn(
-    client_dataset: tf.data.Dataset) -> tuple[tf.data.Dataset, tf.data.Dataset]:
+    client_dataset: tf.data.Dataset,
+) -> tuple[tf.data.Dataset, tf.data.Dataset]:
   """An example of a `DatasetSplitFn` that returns the original client data.
 
   Both the reconstruction data and post-reconstruction data will result from
@@ -62,11 +64,13 @@ def simple_dataset_split_fn(
   return client_dataset, client_dataset
 
 
-def build_dataset_split_fn(recon_epochs: int = 1,
-                           recon_steps_max: Optional[int] = None,
-                           post_recon_epochs: int = 1,
-                           post_recon_steps_max: Optional[int] = None,
-                           split_dataset: bool = False) -> DatasetSplitFn:
+def build_dataset_split_fn(
+    recon_epochs: int = 1,
+    recon_steps_max: Optional[int] = None,
+    post_recon_epochs: int = 1,
+    post_recon_steps_max: Optional[int] = None,
+    split_dataset: bool = False,
+) -> DatasetSplitFn:
   """Builds a `DatasetSplitFn` for Federated Reconstruction training/evaluation.
 
   Returned `DatasetSplitFn` parameterizes training and evaluation computations
@@ -112,7 +116,7 @@ def build_dataset_split_fn(recon_epochs: int = 1,
   get_entry = lambda i, entry: entry
 
   def dataset_split_fn(
-      client_dataset: tf.data.Dataset
+      client_dataset: tf.data.Dataset,
   ) -> tuple[tf.data.Dataset, tf.data.Dataset]:
     """A `DatasetSplitFn` built with the given arguments.
 
@@ -126,10 +130,12 @@ def build_dataset_split_fn(recon_epochs: int = 1,
     # Split dataset if needed. This assumes the dataset has a consistent
     # order across iterations.
     if split_dataset:
-      recon_dataset = client_dataset.enumerate().filter(recon_condition).map(
-          get_entry)
-      post_recon_dataset = client_dataset.enumerate().filter(
-          post_recon_condition).map(get_entry)
+      recon_dataset = (
+          client_dataset.enumerate().filter(recon_condition).map(get_entry)
+      )
+      post_recon_dataset = (
+          client_dataset.enumerate().filter(post_recon_condition).map(get_entry)
+      )
     else:
       recon_dataset = client_dataset
       post_recon_dataset = client_dataset
@@ -154,21 +160,23 @@ def get_global_variables(model: model_lib.Model) -> model_weights.ModelWeights:
   """Gets global variables from a `Model` as `ModelWeights`."""
   return model_weights.ModelWeights(
       trainable=model.global_trainable_variables,
-      non_trainable=model.global_non_trainable_variables)
+      non_trainable=model.global_non_trainable_variables,
+  )
 
 
 def get_local_variables(model: model_lib.Model) -> model_weights.ModelWeights:
   """Gets local variables from a `Model` as `ModelWeights`."""
   return model_weights.ModelWeights(
       trainable=model.local_trainable_variables,
-      non_trainable=model.local_non_trainable_variables)
+      non_trainable=model.local_non_trainable_variables,
+  )
 
 
 def has_only_global_variables(model: model_lib.Model) -> bool:
   """Returns `True` if the model has no local variables."""
-  local_variables_list = (
-      list(model.local_trainable_variables) +
-      list(model.local_non_trainable_variables))
+  local_variables_list = list(model.local_trainable_variables) + list(
+      model.local_non_trainable_variables
+  )
   if local_variables_list:
     return False
   return True

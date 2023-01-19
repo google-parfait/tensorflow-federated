@@ -34,12 +34,12 @@ from tensorflow_federated.python.learning.templates import hparams_base
 
 
 class Error(Exception):
-  """Generic module-level error, allows caller to handle all exceptions raised.
-  """
+  """Generic module-level error, allows caller to handle all exceptions raised."""
 
 
 class LearningProcessPlacementError(Error):
   """Raises when a learning process does not have expected placements."""
+
   pass
 
 
@@ -77,6 +77,7 @@ class LearningProcessOutput:
       (eg. timing information and the amount of communication occurring between
       clients and server).
   """
+
   state = attr.ib()
   metrics = attr.ib()
 
@@ -104,14 +105,16 @@ class LearningProcess(iterative_process.IterativeProcess):
   >>> model_weights = process.get_model_weights(state)
   """
 
-  def __init__(self,
-               initialize_fn: computation_base.Computation,
-               next_fn: computation_base.Computation,
-               get_model_weights: computation_base.Computation,
-               set_model_weights: computation_base.Computation,
-               *,
-               get_hparams_fn: Optional[computation_base.Computation] = None,
-               set_hparams_fn: Optional[computation_base.Computation] = None):
+  def __init__(
+      self,
+      initialize_fn: computation_base.Computation,
+      next_fn: computation_base.Computation,
+      get_model_weights: computation_base.Computation,
+      set_model_weights: computation_base.Computation,
+      *,
+      get_hparams_fn: Optional[computation_base.Computation] = None,
+      set_hparams_fn: Optional[computation_base.Computation] = None,
+  ):
     """Creates a `tff.learning.templates.LearningProcess`.
 
     The `initialize_fn`, `next_fn`, `get_model_weights`, and `set_model_weights`
@@ -195,26 +198,32 @@ class LearningProcess(iterative_process.IterativeProcess):
     init_fn_result = initialize_fn.type_signature.result
     if init_fn_result.placement != placements.SERVER:
       raise LearningProcessPlacementError(
-          f'The result of `initialize_fn` must be placed at `SERVER` but found '
-          f'placement {init_fn_result.placement}.')
+          'The result of `initialize_fn` must be placed at `SERVER` but found '
+          f'placement {init_fn_result.placement}.'
+      )
 
     next_result_type = next_fn.type_signature.result
-    if not (isinstance(next_result_type, computation_types.StructWithPythonType)
-            and next_result_type.python_container is LearningProcessOutput):
+    if not (
+        isinstance(next_result_type, computation_types.StructWithPythonType)
+        and next_result_type.python_container is LearningProcessOutput
+    ):
       raise LearningProcessOutputError(
-          f'The `next_fn` of a `LearningProcess` must return a '
-          f'`LearningProcessOutput` object, but returns {next_result_type!r}')
+          'The `next_fn` of a `LearningProcess` must return a '
+          f'`LearningProcessOutput` object, but returns {next_result_type!r}'
+      )
     # We perform a more strict type check on the inputs to `next_fn` than in the
     # base class.
     next_fn_param = next_fn.type_signature.parameter
     if not next_fn_param.is_struct() or len(next_fn_param) != 2:
       raise errors.TemplateNextFnNumArgsError(
-          f'The `next_fn` must have two input arguments, but found an input '
-          f'of type {next_fn_param}.')
+          'The `next_fn` must have two input arguments, but found an input '
+          f'of type {next_fn_param}.'
+      )
     if next_fn_param[1].placement != placements.CLIENTS:
       raise LearningProcessPlacementError(
-          f'The second input argument of `next_fn` must be placed at `CLIENTS`,'
-          f' but found placement {next_fn_param[1].placement}.')
+          'The second input argument of `next_fn` must be placed at `CLIENTS`,'
+          f' but found placement {next_fn_param[1].placement}.'
+      )
 
     def is_allowed_client_data_type(type_spec: computation_types.Type) -> bool:
       """Returns `True` if the type is a valid client dataset type."""
@@ -223,20 +232,23 @@ class LearningProcess(iterative_process.IterativeProcess):
       elif type_spec.is_struct():
         return all(
             is_allowed_client_data_type(element_type)
-            for element_type in type_spec.children())
+            for element_type in type_spec.children()
+        )
       else:
         return False
 
     if not is_allowed_client_data_type(next_fn_param[1].member):
       raise LearningProcessSequenceTypeError(
-          f'The member type of the second input argument to `next_fn` must be a'
-          f' `tff.SequenceType` or a nested `tff.StructType` of sequence types '
-          f'but found {next_fn_param[1].member} instead.')
+          'The member type of the second input argument to `next_fn` must be a'
+          ' `tff.SequenceType` or a nested `tff.StructType` of sequence types '
+          f'but found {next_fn_param[1].member} instead.'
+      )
     next_fn_result = next_fn.type_signature.result
     if next_fn_result.metrics.placement != placements.SERVER:
       raise LearningProcessPlacementError(
-          f'The result of `next_fn` must be placed at `SERVER` but found '
-          f'placement {next_fn_result.metrics.placement} for `metrics`.')
+          'The result of `next_fn` must be placed at `SERVER` but found '
+          f'placement {next_fn_result.metrics.placement} for `metrics`.'
+      )
 
     py_typecheck.check_type(get_model_weights, computation_base.Computation)
     get_model_weights_type = get_model_weights.type_signature
@@ -244,10 +256,11 @@ class LearningProcess(iterative_process.IterativeProcess):
     next_fn_state_param = next_fn.type_signature.parameter[0].member
     if not get_model_weights_param.is_equivalent_to(next_fn_state_param):
       raise GetModelWeightsTypeSignatureError(
-          f'The input type of `get_model_weights` must be assignable from '
-          f'the member type of the output of `initialize_fn`, but found input '
+          'The input type of `get_model_weights` must be assignable from '
+          'the member type of the output of `initialize_fn`, but found input '
           f'type {get_model_weights_param}, which is not equivalent to '
-          f'{next_fn_state_param}.')
+          f'{next_fn_state_param}.'
+      )
     self._get_model_weights = get_model_weights
 
     py_typecheck.check_type(set_model_weights, computation_base.Computation)
@@ -255,17 +268,19 @@ class LearningProcess(iterative_process.IterativeProcess):
     set_model_weights_state_param = set_model_weights_type.parameter[0]
     if not set_model_weights_state_param.is_equivalent_to(next_fn_state_param):
       raise SetModelWeightsTypeSignatureError(
-          f'The input type of `set_model_weights` must be assignable from '
-          f'the member type of the output of `initialize_fn`, but found input '
+          'The input type of `set_model_weights` must be assignable from '
+          'the member type of the output of `initialize_fn`, but found input '
           f'type {set_model_weights_state_param}, which is not equivalent to '
-          f'{next_fn_state_param}.')
+          f'{next_fn_state_param}.'
+      )
     set_model_weights_result = set_model_weights_type.result
     if not next_fn_state_param.is_assignable_from(set_model_weights_result):
       raise SetModelWeightsTypeSignatureError(
-          f'The output type of `set_model_weights` must be assignable to '
-          f'the first parameter of `next_fn`, but found input '
+          'The output type of `set_model_weights` must be assignable to '
+          'the first parameter of `next_fn`, but found input '
           f'type {set_model_weights_result}, which is not assignable to; '
-          f'{next_fn_state_param}.')
+          f'{next_fn_state_param}.'
+      )
     self._set_model_weights = set_model_weights
 
     state_type = initialize_fn.type_signature.result.member
@@ -280,7 +295,8 @@ class LearningProcess(iterative_process.IterativeProcess):
       hparams_base.type_check_set_hparams_fn(set_hparams_fn, state_type)
     else:
       set_hparams_fn = hparams_base.build_basic_hparams_setter(
-          state_type, hparams_type)
+          state_type, hparams_type
+      )
 
     self._get_hparams_fn = get_hparams_fn
     self._set_hparams_fn = set_hparams_fn

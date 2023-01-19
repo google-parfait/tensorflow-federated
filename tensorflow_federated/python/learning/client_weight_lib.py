@@ -27,6 +27,7 @@ import tensorflow as tf
 
 class ClientWeighting(enum.Enum):
   """Enum for built-in methods for weighing clients."""
+
   UNIFORM = 1
   NUM_EXAMPLES = 2
 
@@ -36,8 +37,11 @@ ClientWeightType = Union[ClientWeighting, ClientWeightFnType]
 
 
 def check_is_client_weighting_or_callable(client_weighting):
-  if (not isinstance(client_weighting, ClientWeighting) and
-      not callable(client_weighting)):
-    raise TypeError(f'`client_weighting` must be either an instance of '
-                    f'`ClientWeighting` or it must be callable. '
-                    f'Found type {type(client_weighting)}.')
+  if not isinstance(client_weighting, ClientWeighting) and not callable(
+      client_weighting
+  ):
+    raise TypeError(
+        '`client_weighting` must be either an instance of '
+        '`ClientWeighting` or it must be callable. '
+        f'Found type {type(client_weighting)}.'
+    )

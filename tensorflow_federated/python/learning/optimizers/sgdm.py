@@ -50,28 +50,34 @@ class _SGD(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
     if self._momentum is not None and self._momentum > 0:
       state[_MOMENTUM_KEY] = self._momentum
       state[_ACCUMULATOR_KEY] = tf.nest.map_structure(
-          lambda s: tf.zeros(s.shape, s.dtype), specs)
+          lambda s: tf.zeros(s.shape, s.dtype), specs
+      )
     return state
 
-  def next(self, state: State, weights: optimizer.Weights,
-           gradients: Any) -> tuple[State, optimizer.Weights]:
+  def next(
+      self, state: State, weights: optimizer.Weights, gradients: Any
+  ) -> tuple[State, optimizer.Weights]:
     gradients = optimizer.handle_indexed_slices_gradients(gradients)
     optimizer.check_weights_gradients_match(weights, gradients)
     lr = state[optimizer.LEARNING_RATE_KEY]
 
     if _MOMENTUM_KEY not in state:
-      updated_weights = tf.nest.map_structure(lambda w, g: w - lr * g, weights,
-                                              gradients)
-      updated_state = collections.OrderedDict([(optimizer.LEARNING_RATE_KEY, lr)
-                                              ])
+      updated_weights = tf.nest.map_structure(
+          lambda w, g: w - lr * g, weights, gradients
+      )
+      updated_state = collections.OrderedDict(
+          [(optimizer.LEARNING_RATE_KEY, lr)]
+      )
     else:
       momentum = state[_MOMENTUM_KEY]
       accumulator = state[_ACCUMULATOR_KEY]
       optimizer.check_weights_state_match(weights, accumulator, 'accumulator')
-      updated_accumulator = tf.nest.map_structure(lambda a, g: momentum * a + g,
-                                                  accumulator, gradients)
-      updated_weights = tf.nest.map_structure(lambda w, m: w - lr * m, weights,
-                                              updated_accumulator)
+      updated_accumulator = tf.nest.map_structure(
+          lambda a, g: momentum * a + g, accumulator, gradients
+      )
+      updated_weights = tf.nest.map_structure(
+          lambda w, m: w - lr * m, weights, updated_accumulator
+      )
       updated_state = collections.OrderedDict([
           (optimizer.LEARNING_RATE_KEY, lr),
           (_MOMENTUM_KEY, momentum),
@@ -97,8 +103,9 @@ def _check_momentum(momentum):
     raise ValueError(f'Momentum must be between 0.0 and 1.0, found {momentum}')
 
 
-def build_sgdm(learning_rate: float = 0.01,
-               momentum: Optional[float] = None) -> optimizer.Optimizer:
+def build_sgdm(
+    learning_rate: float = 0.01, momentum: Optional[float] = None
+) -> optimizer.Optimizer:
   """Returns a `tff.learning.optimizers.Optimizer` for momentum SGD.
 
   This class supports the simple gradient descent and its variant with momentum.

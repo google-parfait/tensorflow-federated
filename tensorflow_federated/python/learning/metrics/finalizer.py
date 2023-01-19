@@ -36,8 +36,9 @@ KerasMetricFinalizer = Callable[[list[tf.Tensor]], Any]
 # TODO(b/197746608): removes the code path that takes in a constructed Keras
 # metric, because reconstructing metric via `from_config` can cause problems.
 def create_keras_metric_finalizer(
-    metric: Union[tf.keras.metrics.Metric, Callable[[],
-                                                    tf.keras.metrics.Metric]]
+    metric: Union[
+        tf.keras.metrics.Metric, Callable[[], tf.keras.metrics.Metric]
+    ]
 ) -> KerasMetricFinalizer:
   """Creates a finalizer function for the given Keras metric.
 
@@ -57,7 +58,6 @@ def create_keras_metric_finalizer(
 
   @tf.function
   def finalizer(unfinalized_metric_values: list[tf.Tensor]):
-
     # Construct a new keras metirc here, which is necessary because this
     # `tf.function` may be invoked in a different context as the `model_fn`, and
     # we need the `tf.Variable`s to be created in the current scope in order to
@@ -70,7 +70,8 @@ def create_keras_metric_finalizer(
           'The input to the finalizer should be a list of `tf.Tensor`s matching'
           f' the variables of the Keras metric {keras_metric.name}. Expected '
           f'a list of `tf.Tensor`s of length {len(keras_metric.variables)}, '
-          f'found a list of length {len(unfinalized_metric_values)}.')
+          f'found a list of length {len(unfinalized_metric_values)}.'
+      )
     for v, a in zip(keras_metric.variables, unfinalized_metric_values):
       py_typecheck.check_type(a, tf.Tensor)
       if v.shape != a.shape or v.dtype != a.dtype:
@@ -78,7 +79,8 @@ def create_keras_metric_finalizer(
             'The input to the finalizer should be a list of `tf.Tensor`s '
             f'matching the variables of the Keras metric {keras_metric.name}. '
             f'Expected a `tf.Tensor` of shape {v.shape} and dtype {v.dtype!r}, '
-            f'found a `tf.Tensor` of shape {a.shape} and dtype {a.dtype!r}.')
+            f'found a `tf.Tensor` of shape {a.shape} and dtype {a.dtype!r}.'
+        )
       v.assign(a)
     return keras_metric.result()
 
@@ -96,8 +98,10 @@ def _check_keras_metric_config_constructable(metric: tf.keras.metrics.Metric):
     the metric is not constructable from the `get_config()` method.
   """
   if not isinstance(metric, tf.keras.metrics.Metric):
-    raise TypeError(f'Metric {type(metric)} is not a `tf.keras.metrics.Metric` '
-                    'to be constructable from the `get_config()` method.')
+    raise TypeError(
+        f'Metric {type(metric)} is not a `tf.keras.metrics.Metric` '
+        'to be constructable from the `get_config()` method.'
+    )
 
   metric_type_str = type(metric).__name__
 
@@ -122,13 +126,15 @@ def _check_keras_metric_config_constructable(metric: tf.keras.metrics.Metric):
           '    self._arg1 = arg1\n\n'
           '  def get_config(self)\n'
           '    config = super().get_config()\n'
-          '    config[\'arg1\'] = self._arg1\n'
-          '    return config')
+          "    config['arg1'] = self._arg1\n"
+          '    return config'
+      )
 
 
 def create_keras_metric(
-    metric: Union[tf.keras.metrics.Metric, Callable[[],
-                                                    tf.keras.metrics.Metric]]
+    metric: Union[
+        tf.keras.metrics.Metric, Callable[[], tf.keras.metrics.Metric]
+    ]
 ) -> tf.keras.metrics.Metric:
   """Create a `tf.keras.metrics.Metric` from a `tf.keras.metrics.Metric`.
 
@@ -156,10 +162,12 @@ def create_keras_metric(
           'Expected input `metric` to be either a `tf.keras.metrics.Metric` '
           'or a no-arg callable that creates a `tf.keras.metrics.Metric`, '
           'found a callable that returns a '
-          f'{py_typecheck.type_string(type(keras_metric))}.')
+          f'{py_typecheck.type_string(type(keras_metric))}.'
+      )
   else:
     raise TypeError(
         'Expected input `metric` to be either a `tf.keras.metrics.Metric` '
         'or a no-arg callable that constructs a `tf.keras.metrics.Metric`, '
-        f'found a non-callable {py_typecheck.type_string(type(metric))}.')
+        f'found a non-callable {py_typecheck.type_string(type(metric))}.'
+    )
   return keras_metric

@@ -48,50 +48,59 @@ from tensorflow_federated.python.learning.models import functional
 
 
 def _build_finalizer_computation(
-    metric_finalizers: Union[model_lib.MetricFinalizersType,
-                             functional.FunctionalMetricFinalizersType],
-    local_unfinalized_metrics_type: computation_types.StructWithPythonType
+    metric_finalizers: Union[
+        model_lib.MetricFinalizersType,
+        functional.FunctionalMetricFinalizersType,
+    ],
+    local_unfinalized_metrics_type: computation_types.StructWithPythonType,
 ) -> computation_base.Computation:
   """Builds computation for finalizing metrics."""
   if callable(metric_finalizers):
     return tensorflow_computation.tf_computation(
-        local_unfinalized_metrics_type)(
-            metric_finalizers)
+        local_unfinalized_metrics_type
+    )(metric_finalizers)
 
   @tensorflow_computation.tf_computation(local_unfinalized_metrics_type)
   def finazlier_computation(unfinalized_metrics):
     finalized_metrics = collections.OrderedDict()
     for metric_name, metric_finalizer in metric_finalizers.items():
       finalized_metrics[metric_name] = metric_finalizer(
-          unfinalized_metrics[metric_name])
+          unfinalized_metrics[metric_name]
+      )
     return finalized_metrics
 
   return finazlier_computation
 
 
-def _intialize_unfinalized_metrics_accumulators(local_unfinalized_metrics_type,
-                                                initial_unfinalized_metrics):
+def _intialize_unfinalized_metrics_accumulators(
+    local_unfinalized_metrics_type, initial_unfinalized_metrics
+):
   """Initalizes the unfinalized metrics accumulators."""
   if initial_unfinalized_metrics is not None:
     initial_unfinalized_metrics_type = type_conversions.type_from_tensors(
-        initial_unfinalized_metrics)
+        initial_unfinalized_metrics
+    )
     if initial_unfinalized_metrics_type != local_unfinalized_metrics_type:
-      raise TypeError('The initial unfinalized metrics type doesn\'t match '
-                      'with the `local_unfinalized_metrics_type`, expect: '
-                      f'{local_unfinalized_metrics_type}, found: '
-                      f'{initial_unfinalized_metrics_type}.')
+      raise TypeError(
+          "The initial unfinalized metrics type doesn't match "
+          'with the `local_unfinalized_metrics_type`, expect: '
+          f'{local_unfinalized_metrics_type}, found: '
+          f'{initial_unfinalized_metrics_type}.'
+      )
 
   @tensorflow_computation.tf_computation
   def create_all_zero_state():
     return type_conversions.structure_from_tensor_type_tree(
         lambda t: tf.zeros(shape=t.shape, dtype=t.dtype),
-        local_unfinalized_metrics_type)
+        local_unfinalized_metrics_type,
+    )
 
   if initial_unfinalized_metrics is None:
     return intrinsics.federated_eval(create_all_zero_state, placements.SERVER)
 
-  return intrinsics.federated_value(initial_unfinalized_metrics,
-                                    placements.SERVER)
+  return intrinsics.federated_value(
+      initial_unfinalized_metrics, placements.SERVER
+  )
 
 
 # TODO(b/227811468): Support other inner aggregators for SecAgg and DP.
@@ -121,12 +130,16 @@ class SumThenFinalizeFactory(factory.UnweightedAggregationFactory):
     - `measurements`: the measurements of the inner summation process.
   """
 
-  def __init__(self,
-               metric_finalizers: model_lib.MetricFinalizersType,
-               initial_unfinalized_metrics: Optional[collections.OrderedDict[
-                   str, Any]] = None,
-               inner_summation_factory: Optional[
-                   factory.UnweightedAggregationFactory] = None):
+  def __init__(
+      self,
+      metric_finalizers: model_lib.MetricFinalizersType,
+      initial_unfinalized_metrics: Optional[
+          collections.OrderedDict[str, Any]
+      ] = None,
+      inner_summation_factory: Optional[
+          factory.UnweightedAggregationFactory
+      ] = None,
+  ):
     """Initialize the `SumThenFinalizeFactory`.
 
     Args:
@@ -154,15 +167,17 @@ class SumThenFinalizeFactory(factory.UnweightedAggregationFactory):
     self._metric_finalizers = metric_finalizers
 
     if initial_unfinalized_metrics is not None:
-      py_typecheck.check_type(initial_unfinalized_metrics,
-                              collections.OrderedDict)
+      py_typecheck.check_type(
+          initial_unfinalized_metrics, collections.OrderedDict
+      )
     self._initial_unfinalized_metrics = initial_unfinalized_metrics
 
     if inner_summation_factory is None:
       inner_summation_factory = sum_factory_lib.SumFactory()
     else:
-      py_typecheck.check_type(inner_summation_factory,
-                              factory.UnweightedAggregationFactory)
+      py_typecheck.check_type(
+          inner_summation_factory, factory.UnweightedAggregationFactory
+      )
     self._inner_summation_factory = inner_summation_factory
 
   def create(
@@ -188,70 +203,90 @@ class SumThenFinalizeFactory(factory.UnweightedAggregationFactory):
         unfinalized metrics mismatch the type of local unfinalized metrics.
     """
     aggregation_utils.check_local_unfinalzied_metrics_type(
-        local_unfinalized_metrics_type)
+        local_unfinalized_metrics_type
+    )
     if not callable(self._metric_finalizers):
       # If we have a FunctionalMetricsFinalizerType its a function that can only
       # be checked when we call it, as users may have used *args/**kwargs
       # arguments or otherwise making it hard to deduce the type.
       aggregation_utils.check_finalizers_matches_unfinalized_metrics(
-          self._metric_finalizers, local_unfinalized_metrics_type)
+          self._metric_finalizers, local_unfinalized_metrics_type
+      )
 
     inner_summation_process = self._inner_summation_factory.create(
-        local_unfinalized_metrics_type)
+        local_unfinalized_metrics_type
+    )
 
     @federated_computation.federated_computation
     def init_fn():
       unfinalized_metrics_accumulators = (
           _intialize_unfinalized_metrics_accumulators(
-              local_unfinalized_metrics_type,
-              self._initial_unfinalized_metrics))
-      return intrinsics.federated_zip((inner_summation_process.initialize(),
-                                       unfinalized_metrics_accumulators))
+              local_unfinalized_metrics_type, self._initial_unfinalized_metrics
+          )
+      )
+      return intrinsics.federated_zip((
+          inner_summation_process.initialize(),
+          unfinalized_metrics_accumulators,
+      ))
 
     @federated_computation.federated_computation(
         init_fn.type_signature.result,
-        computation_types.at_clients(local_unfinalized_metrics_type))
-    def next_fn(state,
-                unfinalized_metrics) -> measured_process.MeasuredProcessOutput:
+        computation_types.at_clients(local_unfinalized_metrics_type),
+    )
+    def next_fn(
+        state, unfinalized_metrics
+    ) -> measured_process.MeasuredProcessOutput:
       inner_summation_state, unfinalized_metrics_accumulators = state
 
       inner_summation_output = inner_summation_process.next(
-          inner_summation_state, unfinalized_metrics)
+          inner_summation_state, unfinalized_metrics
+      )
       summed_unfinalized_metrics = inner_summation_output.result
       inner_summation_state = inner_summation_output.state
 
-      @tensorflow_computation.tf_computation(local_unfinalized_metrics_type,
-                                             local_unfinalized_metrics_type)
-      def add_unfinalized_metrics(unfinalized_metrics,
-                                  summed_unfinalized_metrics):
-        return tf.nest.map_structure(tf.add, unfinalized_metrics,
-                                     summed_unfinalized_metrics)
+      @tensorflow_computation.tf_computation(
+          local_unfinalized_metrics_type, local_unfinalized_metrics_type
+      )
+      def add_unfinalized_metrics(
+          unfinalized_metrics, summed_unfinalized_metrics
+      ):
+        return tf.nest.map_structure(
+            tf.add, unfinalized_metrics, summed_unfinalized_metrics
+        )
 
       unfinalized_metrics_accumulators = intrinsics.federated_map(
           add_unfinalized_metrics,
-          (unfinalized_metrics_accumulators, summed_unfinalized_metrics))
+          (unfinalized_metrics_accumulators, summed_unfinalized_metrics),
+      )
 
       finalizer_computation = _build_finalizer_computation(
-          self._metric_finalizers, local_unfinalized_metrics_type)
+          self._metric_finalizers, local_unfinalized_metrics_type
+      )
 
       current_round_metrics = intrinsics.federated_map(
-          finalizer_computation, summed_unfinalized_metrics)
+          finalizer_computation, summed_unfinalized_metrics
+      )
       total_rounds_metrics = intrinsics.federated_map(
-          finalizer_computation, unfinalized_metrics_accumulators)
+          finalizer_computation, unfinalized_metrics_accumulators
+      )
 
       return measured_process.MeasuredProcessOutput(
           state=intrinsics.federated_zip(
-              (inner_summation_state, unfinalized_metrics_accumulators)),
+              (inner_summation_state, unfinalized_metrics_accumulators)
+          ),
           result=intrinsics.federated_zip(
-              (current_round_metrics, total_rounds_metrics)),
-          measurements=inner_summation_output.measurements)
+              (current_round_metrics, total_rounds_metrics)
+          ),
+          measurements=inner_summation_output.measurements,
+      )
 
     return aggregation_process.AggregationProcess(init_fn, next_fn)
 
 
 MetricValueLowerBoundType = Union[int, float, None]
-MetricValueUpperBoundType = Union[int, float,
-                                  estimation_process.EstimationProcess]
+MetricValueUpperBoundType = Union[
+    int, float, estimation_process.EstimationProcess
+]
 
 
 @dataclasses.dataclass(frozen=True)
@@ -261,6 +296,7 @@ class _MetricRange:
   This is used as an opaque object in a nested structure to prevent
   `tree.map_structure` from traversing to the numeric leaves.
   """
+
   lower: MetricValueLowerBoundType
   upper: MetricValueUpperBoundType
 
@@ -268,19 +304,26 @@ class _MetricRange:
     """A type-aware equality that prevents int/float conversion."""
     if isinstance(self.upper, estimation_process.EstimationProcess):
       return False
-    return (type(self.upper) is type(other.upper) and
-            self.upper == other.upper and
-            type(self.lower) is type(other.lower) and self.lower == other.lower)
+    return (
+        type(self.upper) is type(other.upper)
+        and self.upper == other.upper
+        and type(self.lower) is type(other.lower)
+        and self.lower == other.lower
+    )
 
 
 UserMetricValueRange = Union[tuple[float, float], tuple[int, int], _MetricRange]
-UserMetricValueRangeDict = collections.OrderedDict[str, Union[
-    UserMetricValueRange, 'UserMetricValueRangeDict']]
-MetricValueRange = Union[tuple[float, float], tuple[int, int],
-                         tuple[None, estimation_process.EstimationProcess]]
-MetricValueRangeDict = collections.OrderedDict[str,
-                                               Union[MetricValueRange,
-                                                     'MetricValueRangeDict']]
+UserMetricValueRangeDict = collections.OrderedDict[
+    str, Union[UserMetricValueRange, 'UserMetricValueRangeDict']
+]
+MetricValueRange = Union[
+    tuple[float, float],
+    tuple[int, int],
+    tuple[None, estimation_process.EstimationProcess],
+]
+MetricValueRangeDict = collections.OrderedDict[
+    str, Union[MetricValueRange, 'MetricValueRangeDict']
+]
 
 DEFAULT_FIXED_SECURE_LOWER_BOUND = 0
 # Use a power of 2 minus one to more accurately encode floating dtypes that
@@ -310,16 +353,20 @@ def _check_user_metric_value_range(value_range: UserMetricValueRange):
   """
   py_typecheck.check_type(value_range, tuple, 'range')
   if len(value_range) != 2:
-    raise ValueError('Ranges must be defined as a 2-tuple, got a tuple of '
-                     f'length {len(value_range)}.')
+    raise ValueError(
+        'Ranges must be defined as a 2-tuple, got a tuple of '
+        f'length {len(value_range)}.'
+    )
 
   lower, upper = value_range
   py_typecheck.check_type(lower, (int, float), 'lower bound')
   if type(upper) is not type(lower):
-    raise TypeError('The lower bound threshold should have the same type as '
-                    'the upper bound threshold, but found the lower bound '
-                    f'threshold type {type(lower)} and the upper bound '
-                    f'threshold type {type(upper)}.')
+    raise TypeError(
+        'The lower bound threshold should have the same type as '
+        'the upper bound threshold, but found the lower bound '
+        f'threshold type {type(lower)} and the upper bound '
+        f'threshold type {type(upper)}.'
+    )
 
 
 # TODO(b/233054212): re-enable lint
@@ -327,7 +374,7 @@ def create_default_secure_sum_quantization_ranges(
     local_unfinalized_metrics_type: computation_types.StructWithPythonType,
     lower_bound: Optional[Union[int, float]] = DEFAULT_FIXED_SECURE_LOWER_BOUND,
     upper_bound: Optional[Union[int, float]] = DEFAULT_FIXED_SECURE_UPPER_BOUND,
-    use_auto_tuned_bounds_for_float_values: Optional[bool] = True
+    use_auto_tuned_bounds_for_float_values: Optional[bool] = True,
 ) -> MetricValueRangeDict:  # pylint: disable=g-bare-generic
   """Create a nested structure of quantization ranges for secure sum encoding.
 
@@ -372,15 +419,19 @@ def create_default_secure_sum_quantization_ranges(
     raise ValueError('`upper_bound` must be greater than `lower_bound`.')
   integer_range_width = math.floor(upper_bound) - math.ceil(lower_bound)
 
-  auto_tuned_float_upper_bound = quantile_estimation.PrivateQuantileEstimationProcess.no_noise(
-      initial_estimate=50.0,
-      target_quantile=0.95,
-      learning_rate=1.0,
-      multiplier=2.0,
-      secure_estimation=True)
+  auto_tuned_float_upper_bound = (
+      quantile_estimation.PrivateQuantileEstimationProcess.no_noise(
+          initial_estimate=50.0,
+          target_quantile=0.95,
+          learning_rate=1.0,
+          multiplier=2.0,
+          secure_estimation=True,
+      )
+  )
 
   def create_default_range(
-      type_spec: computation_types.TensorType) -> MetricValueRange:
+      type_spec: computation_types.TensorType,
+  ) -> MetricValueRange:
     if type_spec.dtype.is_floating:
       if use_auto_tuned_bounds_for_float_values:
         return None, auto_tuned_float_upper_bound
@@ -390,22 +441,25 @@ def create_default_secure_sum_quantization_ranges(
         raise ValueError(
             'Encounter an integer tensor in the type, but quantization range '
             f'[{lower_bound}, {upper_bound}] is not wide enough to quantize '
-            f'any integers (becomes [{int(lower_bound)}, {int(upper_bound)}]).')
+            f'any integers (becomes [{int(lower_bound)}, {int(upper_bound)}]).'
+        )
       return math.ceil(lower_bound), math.floor(upper_bound)
     else:
       raise UnquantizableDTypeError(
           'Do not know how to create a default range for dtype '
-          f'{type_spec.dtype}. Only floating or integer types are supported.')
+          f'{type_spec.dtype}. Only floating or integer types are supported.'
+      )
 
   return type_conversions.structure_from_tensor_type_tree(
-      create_default_range, local_unfinalized_metrics_type)
+      create_default_range, local_unfinalized_metrics_type
+  )
 
 
 # TODO(b/233054212): re-enable lint
 # pylint: disable=g-bare-generic
 def fill_missing_values_with_defaults(
-    default_values: MetricValueRangeDict,
-    user_values: UserMetricValueRangeDict) -> MetricValueRangeDict:
+    default_values: MetricValueRangeDict, user_values: UserMetricValueRangeDict
+) -> MetricValueRangeDict:
   # pylint: enable=g-bare-generic
   """Fill missing user provided metric value ranges with default ranges.
 
@@ -426,10 +480,12 @@ def fill_missing_values_with_defaults(
       user_values = {}
     filled_with_defaults_values = []
     for key, default_value in default_values.items():
-      filled_with_defaults_values.append(
-          (key,
-           fill_missing_values_with_defaults(default_value,
-                                             user_values.get(key))))
+      filled_with_defaults_values.append((
+          key,
+          fill_missing_values_with_defaults(
+              default_value, user_values.get(key)
+          ),
+      ))
     return type(default_values)(filled_with_defaults_values)
   elif isinstance(default_values, list):
     if user_values is None:
@@ -458,16 +514,19 @@ _DELIMITER = '/'
 # and tensor dtype. In secure summation, we will create a aggregation process
 # for each factory key. Metric values sharing the same factory key will be
 # aggregated together.
-def create_factory_key(lower: MetricValueLowerBoundType,
-                       upper: MetricValueUpperBoundType,
-                       tensor_dtype: tf.dtypes.DType) -> str:
+def create_factory_key(
+    lower: MetricValueLowerBoundType,
+    upper: MetricValueUpperBoundType,
+    tensor_dtype: tf.dtypes.DType,
+) -> str:
   """Creates a string key for a `tff.aggregators.SecureSumFactory`."""
   # The `tff.templates.EstimationProcess` are only used as the default upper
   # bound for float values, so replace it as a fixed string.
   if isinstance(upper, estimation_process.EstimationProcess):
     upper = 'default_estimation_process'
   return _DELIMITER.join(
-      str(item) for item in [lower, upper, tensor_dtype.as_datatype_enum])
+      str(item) for item in [lower, upper, tensor_dtype.as_datatype_enum]
+  )
 
 
 class SecureSumFactory(factory.UnweightedAggregationFactory):
@@ -496,8 +555,9 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
 
   # TODO(b/233054212): re-enable lint
   # pylint: disable=g-bare-generic
-  def __init__(self,
-               metric_value_ranges: Optional[UserMetricValueRangeDict] = None):
+  def __init__(
+      self, metric_value_ranges: Optional[UserMetricValueRangeDict] = None
+  ):
     # pylint: enable=g-bare-generic
     """Initializes `SecureSumFactory`.
 
@@ -544,7 +604,7 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
 
   def create(
       self,
-      local_unfinalized_metrics_type: computation_types.StructWithPythonType
+      local_unfinalized_metrics_type: computation_types.StructWithPythonType,
   ) -> aggregation_process.AggregationProcess:
     """Creates an `AggregationProcess` for secure summation over metrics.
 
@@ -563,33 +623,42 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
       TypeError: If any argument type mismatches.
     """
     aggregation_utils.check_local_unfinalzied_metrics_type(
-        local_unfinalized_metrics_type)
+        local_unfinalized_metrics_type
+    )
 
     default_metric_value_ranges = create_default_secure_sum_quantization_ranges(
-        local_unfinalized_metrics_type)
+        local_unfinalized_metrics_type
+    )
 
     # Walk the incoming `metric_value_ranges` and `default_metric_value_ranges`
     # and fill in any missing ranges using the defaults.
     try:
       metric_value_ranges = fill_missing_values_with_defaults(
-          default_metric_value_ranges, self._metric_value_ranges)
+          default_metric_value_ranges, self._metric_value_ranges
+      )
     except TypeError as e:
-      raise TypeError('Failed to create encoding value range from: '
-                      f'{self._metric_value_ranges}') from e
+      raise TypeError(
+          'Failed to create encoding value range from: '
+          f'{self._metric_value_ranges}'
+      ) from e
 
     # Create an aggregator factory for each unique value range, rather than each
     # leaf tensor (which could introduce a lot of duplication).
     aggregator_factories = {
-        value_range: secure.SecureSumFactory(value_range.upper,
-                                             value_range.lower)
+        value_range: secure.SecureSumFactory(
+            value_range.upper, value_range.lower
+        )
         for value_range in set(tree.flatten(metric_value_ranges))
     }
     # Construct a python container of `tff.TensorType` so we can traverse it in
     # parallel with the value ranges during AggregationProcess construction.
     # Otherwise we have a `tff.Type` but `metric_value_ranges` is a Python
     # container which are difficult to traverse in parallel.
-    structure_of_tensor_types = type_conversions.structure_from_tensor_type_tree(
-        lambda t: t, local_unfinalized_metrics_type)
+    structure_of_tensor_types = (
+        type_conversions.structure_from_tensor_type_tree(
+            lambda t: t, local_unfinalized_metrics_type
+        )
+    )
 
     # We will construct groups of tensors with the same dtype and quantization
     # value range so that we can construct fewer aggregations-of-structures,
@@ -603,9 +672,11 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
     flattened_path_list = []
     for (path, tensor_spec), (_, value_range) in zip(
         tree.flatten_with_path(structure_of_tensor_types),
-        tree.flatten_with_path(metric_value_ranges)):
-      factory_key = create_factory_key(value_range.lower, value_range.upper,
-                                       tensor_spec.dtype)
+        tree.flatten_with_path(metric_value_ranges),
+    ):
+      factory_key = create_factory_key(
+          value_range.lower, value_range.upper, tensor_spec.dtype
+      )
       factory_key_by_path[path] = factory_key
       value_range_by_factory_key[factory_key] = value_range
       path_list_by_factory_key[factory_key].append(path)
@@ -644,13 +715,19 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
     # create aggregation processes from the factories.
     tensor_type_list_by_factory_key = (
         type_conversions.structure_from_tensor_type_tree(
-            lambda t: t, group_value_by_factory_key.type_signature.result))
-    for factory_key, tensor_type_list in tensor_type_list_by_factory_key.items(
-    ):
+            lambda t: t, group_value_by_factory_key.type_signature.result
+        )
+    )
+    for (
+        factory_key,
+        tensor_type_list,
+    ) in tensor_type_list_by_factory_key.items():
       value_range = value_range_by_factory_key[factory_key]
-      aggregation_process_by_factory_key[
-          factory_key] = aggregator_factories.get(value_range).create(
-              computation_types.to_type(tensor_type_list))
+      aggregation_process_by_factory_key[factory_key] = (
+          aggregator_factories.get(value_range).create(
+              computation_types.to_type(tensor_type_list)
+          )
+      )
 
     @federated_computation.federated_computation
     def init_fn():
@@ -661,42 +738,53 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
 
     @federated_computation.federated_computation(
         init_fn.type_signature.result,
-        computation_types.at_clients(local_unfinalized_metrics_type))
+        computation_types.at_clients(local_unfinalized_metrics_type),
+    )
     def next_fn(state, client_local_unfinalized_metrics):
       client_local_grouped_unfinalized_metrics = intrinsics.federated_map(
-          group_value_by_factory_key, client_local_unfinalized_metrics)
+          group_value_by_factory_key, client_local_unfinalized_metrics
+      )
       metrics_aggregation_output = collections.OrderedDict()
       new_state = collections.OrderedDict()
       for factory_key, process in aggregation_process_by_factory_key.items():
         metrics_aggregation_output[factory_key] = process.next(
             state[factory_key],
-            client_local_grouped_unfinalized_metrics[factory_key])
+            client_local_grouped_unfinalized_metrics[factory_key],
+        )
         new_state[factory_key] = metrics_aggregation_output[factory_key].state
 
       metrics_aggregation_output = intrinsics.federated_zip(
-          metrics_aggregation_output)
+          metrics_aggregation_output
+      )
 
       @tensorflow_computation.tf_computation(
-          metrics_aggregation_output.type_signature.member)
+          metrics_aggregation_output.type_signature.member
+      )
       def flatten_aggregation_output(grouped_aggregation_output):
         secure_sum_measurements = collections.OrderedDict(
             (factory_key, output.measurements)
-            for factory_key, output in grouped_aggregation_output.items())
+            for factory_key, output in grouped_aggregation_output.items()
+        )
         grouped_unfinalized_metrics = collections.OrderedDict(
             (factory_key, output.result)
-            for factory_key, output in grouped_aggregation_output.items())
+            for factory_key, output in grouped_aggregation_output.items()
+        )
         flattened_unfinalized_metrics_list = flatten_grouped_values(
-            grouped_unfinalized_metrics)
+            grouped_unfinalized_metrics
+        )
         unfinalized_metrics = tf.nest.pack_sequence_as(
-            structure_of_tensor_types, flattened_unfinalized_metrics_list)
+            structure_of_tensor_types, flattened_unfinalized_metrics_list
+        )
         return unfinalized_metrics, secure_sum_measurements
 
       unfinalized_metrics, secure_sum_measurements = intrinsics.federated_map(
-          flatten_aggregation_output, metrics_aggregation_output)
+          flatten_aggregation_output, metrics_aggregation_output
+      )
 
       return measured_process.MeasuredProcessOutput(
           state=intrinsics.federated_zip(new_state),
           result=unfinalized_metrics,
-          measurements=secure_sum_measurements)
+          measurements=secure_sum_measurements,
+      )
 
     return aggregation_process.AggregationProcess(init_fn, next_fn)

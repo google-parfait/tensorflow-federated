@@ -33,7 +33,7 @@ _SCALAR_SPEC = tf.TensorSpec([1], tf.float32)
 _STRUCT_SPEC = [tf.TensorSpec([2], tf.float32), tf.TensorSpec([3], tf.float32)]
 _NESTED_SPEC = [
     tf.TensorSpec([10], tf.float32),
-    [tf.TensorSpec([20], tf.float32), [tf.TensorSpec([30], tf.float32)]]
+    [tf.TensorSpec([20], tf.float32), [tf.TensorSpec([30], tf.float32)]],
 ]
 
 
@@ -46,7 +46,8 @@ def _example_schedule_fn(round_num):
 
 def _scheduled_sgd():
   return scheduling.schedule_learning_rate(
-      sgdm.build_sgdm(0.1), _example_schedule_fn)
+      sgdm.build_sgdm(0.1), _example_schedule_fn
+  )
 
 
 def _run_in_eager_mode(optimizer, spec):
@@ -68,7 +69,8 @@ def _run_in_tf_computation(optimizer, spec):
   weights = tf.nest.map_structure(lambda s: tf.ones(s.shape, s.dtype), spec)
   gradients = tf.nest.map_structure(lambda s: tf.ones(s.shape, s.dtype), spec)
   init_fn = tensorflow_computation.tf_computation(
-      lambda: optimizer.initialize(spec))
+      lambda: optimizer.initialize(spec)
+  )
   next_fn = tensorflow_computation.tf_computation(optimizer.next)
 
   state = init_fn()
@@ -90,16 +92,21 @@ def _run_in_federated_computation(optimizer, spec):
   def init_fn():
     return intrinsics.federated_eval(
         tensorflow_computation.tf_computation(
-            lambda: optimizer.initialize(spec)), placements.SERVER)
+            lambda: optimizer.initialize(spec)
+        ),
+        placements.SERVER,
+    )
 
   @federated_computation.federated_computation(
       init_fn.type_signature.result,
       computation_types.at_server(computation_types.to_type(spec)),
-      computation_types.at_server(computation_types.to_type(spec)))
+      computation_types.at_server(computation_types.to_type(spec)),
+  )
   def next_fn(state, weights, gradients):
     return intrinsics.federated_map(
         tensorflow_computation.tf_computation(optimizer.next),
-        (state, weights, gradients))
+        (state, weights, gradients),
+    )
 
   state = init_fn()
   state_history = [state]
@@ -144,7 +151,8 @@ class IntegrationTest(tf.test.TestCase, parameterized.TestCase):
 
     self.assertAllClose(eager_history, tf_comp_history, rtol=1e-5, atol=1e-5)
     self.assertAllClose(
-        eager_history, federated_comp_history, rtol=1e-5, atol=1e-5)
+        eager_history, federated_comp_history, rtol=1e-5, atol=1e-5
+    )
 
 
 if __name__ == '__main__':

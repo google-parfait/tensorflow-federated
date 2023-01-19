@@ -52,7 +52,8 @@ def _evaluate_fn(model, dataset, batch_size=1):
   dataset_reduce_fn(
       reduce_fn=eval_fn,
       dataset=batched_dataset,
-      initial_state_fn=lambda: tf.constant(0))
+      initial_state_fn=lambda: tf.constant(0),
+  )
 
   # Obtain the metrics.
   results = collections.OrderedDict()
@@ -74,7 +75,6 @@ def _build_personalize_fn(optimizer_fn, train_batch_size, test_batch_size):
 
   @tf.function
   def personalize_fn(model, train_data, test_data, context=None):
-
     def train_fn(num_examples_sum, batch):
       """Runs gradient descent on a batch."""
       with tf.GradientTape() as tape:
@@ -83,8 +83,9 @@ def _build_personalize_fn(optimizer_fn, train_batch_size, test_batch_size):
       grads = tape.gradient(output.loss, model.trainable_variables)
       optimizer.apply_gradients(
           zip(
-              tf.nest.flatten(grads),
-              tf.nest.flatten(model.trainable_variables)))
+              tf.nest.flatten(grads), tf.nest.flatten(model.trainable_variables)
+          )
+      )
       return num_examples_sum + output.num_examples
 
     # Train a personalized model.
@@ -92,7 +93,8 @@ def _build_personalize_fn(optimizer_fn, train_batch_size, test_batch_size):
     num_examples_sum = dataset_reduce_fn(
         reduce_fn=train_fn,
         dataset=batched_train_data,
-        initial_state_fn=lambda: tf.constant(0))
+        initial_state_fn=lambda: tf.constant(0),
+    )
 
     # For test coverage, this example uses an optional `int32` as `context`.
     if context is not None:
@@ -142,7 +144,8 @@ def _create_zero_model_weights(model_fn):
   """Creates the model weights with all zeros."""
   whimsy_model = model_fn()
   return tf.nest.map_structure(
-      tf.zeros_like, model_weights.ModelWeights.from_model(whimsy_model))
+      tf.zeros_like, model_weights.ModelWeights.from_model(whimsy_model)
+  )
 
 
 class PersonalizationEvalTest(tf.test.TestCase, parameterized.TestCase):
@@ -152,48 +155,52 @@ class PersonalizationEvalTest(tf.test.TestCase, parameterized.TestCase):
     with self.assertRaises(TypeError):
       # `model_fn` should be a callable.
       bad_model_fn = 6
-      p13n_eval.build_personalization_eval(bad_model_fn, p13n_fn_dict,
-                                           _evaluate_fn)
+      p13n_eval.build_personalization_eval(
+          bad_model_fn, p13n_fn_dict, _evaluate_fn
+      )
 
     with self.assertRaises(TypeError):
       # `model_fn` should be a callable that returns a `tff.learning.Model`.
       bad_model_fn = lambda: 6
-      p13n_eval.build_personalization_eval(bad_model_fn, p13n_fn_dict,
-                                           _evaluate_fn)
+      p13n_eval.build_personalization_eval(
+          bad_model_fn, p13n_fn_dict, _evaluate_fn
+      )
 
   def test_failure_with_invalid_p13n_fns(self):
-
     def model_fn():
       return model_examples.LinearRegression(feature_dim=2)
 
     with self.assertRaises(TypeError):
       # `personalize_fn_dict` should be a `OrderedDict`.
       bad_p13n_fn_dict = {'a': 6}
-      p13n_eval.build_personalization_eval(model_fn, bad_p13n_fn_dict,
-                                           _evaluate_fn)
+      p13n_eval.build_personalization_eval(
+          model_fn, bad_p13n_fn_dict, _evaluate_fn
+      )
 
     with self.assertRaises(TypeError):
       # `personalize_fn_dict` should be a `OrderedDict` that maps a `string` to
       # a `callable`.
       bad_p13n_fn_dict = collections.OrderedDict(a=6)
-      p13n_eval.build_personalization_eval(model_fn, bad_p13n_fn_dict,
-                                           _evaluate_fn)
+      p13n_eval.build_personalization_eval(
+          model_fn, bad_p13n_fn_dict, _evaluate_fn
+      )
 
     with self.assertRaises(TypeError):
       # `personalize_fn_dict` should be a `OrderedDict` that maps a `string` to
       # a `callable` that when called, gives another `callable`.
       bad_p13n_fn_dict = collections.OrderedDict(x=lambda: 2)
-      p13n_eval.build_personalization_eval(model_fn, bad_p13n_fn_dict,
-                                           _evaluate_fn)
+      p13n_eval.build_personalization_eval(
+          model_fn, bad_p13n_fn_dict, _evaluate_fn
+      )
 
     with self.assertRaises(ValueError):
       # `personalize_fn_dict` should not use `baseline_metrics` as a key.
       bad_p13n_fn_dict = collections.OrderedDict(baseline_metrics=lambda: 2)
-      p13n_eval.build_personalization_eval(model_fn, bad_p13n_fn_dict,
-                                           _evaluate_fn)
+      p13n_eval.build_personalization_eval(
+          model_fn, bad_p13n_fn_dict, _evaluate_fn
+      )
 
   def test_failure_with_invalid_baseline_eval_fn(self):
-
     def model_fn():
       return model_examples.LinearRegression(feature_dim=2)
 
@@ -202,11 +209,11 @@ class PersonalizationEvalTest(tf.test.TestCase, parameterized.TestCase):
     with self.assertRaises(TypeError):
       # `baseline_evaluate_fn` should be a callable.
       bad_baseline_evaluate_fn = 6
-      p13n_eval.build_personalization_eval(model_fn, p13n_fn_dict,
-                                           bad_baseline_evaluate_fn)
+      p13n_eval.build_personalization_eval(
+          model_fn, p13n_fn_dict, bad_baseline_evaluate_fn
+      )
 
   def test_success_with_directly_constructed_model(self):
-
     def model_fn():
       return model_examples.LinearRegression(feature_dim=2)
 
@@ -214,14 +221,18 @@ class PersonalizationEvalTest(tf.test.TestCase, parameterized.TestCase):
     p13n_fn_dict = _create_p13n_fn_dict(learning_rate=1.0)
 
     federated_p13n_eval = p13n_eval.build_personalization_eval(
-        model_fn, p13n_fn_dict, _evaluate_fn)
+        model_fn, p13n_fn_dict, _evaluate_fn
+    )
 
     # Perform p13n eval on two clients: their train data are equivalent, but the
     # test data have different scales.
-    results = federated_p13n_eval(zero_model_weights, [
-        _create_client_input(train_scale=1.0, test_scale=1.0),
-        _create_client_input(train_scale=1.0, test_scale=2.0)
-    ])
+    results = federated_p13n_eval(
+        zero_model_weights,
+        [
+            _create_client_input(train_scale=1.0, test_scale=1.0),
+            _create_client_input(train_scale=1.0, test_scale=2.0),
+        ],
+    )
 
     # Check if the baseline metrics are correct.
     baseline_metrics = results['baseline_metrics']
@@ -261,24 +272,34 @@ class PersonalizationEvalTest(tf.test.TestCase, parameterized.TestCase):
     self.assertAlmostEqual(bs2_test_outputs['loss'][client_2_idx], 0.5)
 
   @parameterized.named_parameters(
-      ('python_container',
-       collections.OrderedDict(
-           x=tf.TensorSpec(shape=[None, 2], dtype=tf.float32),
-           y=tf.TensorSpec(shape=[None, 1], dtype=tf.float32))),
-      ('tff_struct_with_python_type',
-       computation_types.StructWithPythonType(
-           collections.OrderedDict(
-               x=tf.TensorSpec(shape=[None, 2], dtype=tf.float32),
-               y=tf.TensorSpec(shape=[None, 1], dtype=tf.float32)),
-           container_type=collections.OrderedDict)),
-      ('tff_struct_type',
-       computation_types.StructType(
-           collections.OrderedDict(
-               x=tf.TensorSpec(shape=[None, 2], dtype=tf.float32),
-               y=tf.TensorSpec(shape=[None, 1], dtype=tf.float32)))),
+      (
+          'python_container',
+          collections.OrderedDict(
+              x=tf.TensorSpec(shape=[None, 2], dtype=tf.float32),
+              y=tf.TensorSpec(shape=[None, 1], dtype=tf.float32),
+          ),
+      ),
+      (
+          'tff_struct_with_python_type',
+          computation_types.StructWithPythonType(
+              collections.OrderedDict(
+                  x=tf.TensorSpec(shape=[None, 2], dtype=tf.float32),
+                  y=tf.TensorSpec(shape=[None, 1], dtype=tf.float32),
+              ),
+              container_type=collections.OrderedDict,
+          ),
+      ),
+      (
+          'tff_struct_type',
+          computation_types.StructType(
+              collections.OrderedDict(
+                  x=tf.TensorSpec(shape=[None, 2], dtype=tf.float32),
+                  y=tf.TensorSpec(shape=[None, 1], dtype=tf.float32),
+              )
+          ),
+      ),
   )
   def test_success_with_model_constructed_from_keras(self, input_spec):
-
     def model_fn():
       inputs = tf.keras.Input(shape=(2,))  # feature dim = 2
       outputs = tf.keras.layers.Dense(1)(inputs)
@@ -286,20 +307,25 @@ class PersonalizationEvalTest(tf.test.TestCase, parameterized.TestCase):
       return keras_utils.from_keras_model(
           keras_model,
           input_spec=input_spec,
-          loss=tf.keras.losses.MeanSquaredError())
+          loss=tf.keras.losses.MeanSquaredError(),
+      )
 
     zero_model_weights = _create_zero_model_weights(model_fn)
     p13n_fn_dict = _create_p13n_fn_dict(learning_rate=0.5)
 
     federated_p13n_eval = p13n_eval.build_personalization_eval(
-        model_fn, p13n_fn_dict, _evaluate_fn)
+        model_fn, p13n_fn_dict, _evaluate_fn
+    )
 
     # Perform p13n eval on two clients: their train data are equivalent, but the
     # test data have different scales.
-    results = federated_p13n_eval(zero_model_weights, [
-        _create_client_input(train_scale=1.0, test_scale=1.0),
-        _create_client_input(train_scale=1.0, test_scale=2.0)
-    ])
+    results = federated_p13n_eval(
+        zero_model_weights,
+        [
+            _create_client_input(train_scale=1.0, test_scale=1.0),
+            _create_client_input(train_scale=1.0, test_scale=2.0),
+        ],
+    )
 
     # Check if the baseline metrics are correct.
     baseline_metrics = results['baseline_metrics']
@@ -327,7 +353,6 @@ class PersonalizationEvalTest(tf.test.TestCase, parameterized.TestCase):
     self.assertAlmostEqual(sorted(bs2_test_outputs['loss']), [0.0, 1.0])
 
   def test_failure_with_batched_datasets(self):
-
     def model_fn():
       return model_examples.LinearRegression(feature_dim=2)
 
@@ -335,17 +360,18 @@ class PersonalizationEvalTest(tf.test.TestCase, parameterized.TestCase):
     p13n_fn_dict = _create_p13n_fn_dict(learning_rate=1.0)
 
     federated_p13n_eval = p13n_eval.build_personalization_eval(
-        model_fn, p13n_fn_dict, _evaluate_fn)
+        model_fn, p13n_fn_dict, _evaluate_fn
+    )
 
     with self.assertRaises(TypeError):
       # client_input should not have batched datasets.
       bad_client_input = collections.OrderedDict(
           train_data=_create_dataset(scale=1.0).batch(1),
-          test_data=_create_dataset(scale=1.0).batch(1))
+          test_data=_create_dataset(scale=1.0).batch(1),
+      )
       federated_p13n_eval(zero_model_weights, [bad_client_input])
 
   def test_failure_with_invalid_context_type(self):
-
     def model_fn():
       return model_examples.LinearRegression(feature_dim=2)
 
@@ -359,7 +385,8 @@ class PersonalizationEvalTest(tf.test.TestCase, parameterized.TestCase):
           model_fn,
           p13n_fn_dict,
           _evaluate_fn,
-          context_tff_type=bad_context_tff_type)
+          context_tff_type=bad_context_tff_type,
+      )
 
     with self.assertRaises(TypeError):
       # `context_tff_type` is provided but `context` is not provided.
@@ -368,14 +395,21 @@ class PersonalizationEvalTest(tf.test.TestCase, parameterized.TestCase):
           model_fn,
           p13n_fn_dict,
           _evaluate_fn,
-          context_tff_type=context_tff_type)
-      federated_p13n_eval(zero_model_weights, [
-          _create_client_input(train_scale=1.0, test_scale=1.0, context=None),
-          _create_client_input(train_scale=1.0, test_scale=2.0, context=None)
-      ])
+          context_tff_type=context_tff_type,
+      )
+      federated_p13n_eval(
+          zero_model_weights,
+          [
+              _create_client_input(
+                  train_scale=1.0, test_scale=1.0, context=None
+              ),
+              _create_client_input(
+                  train_scale=1.0, test_scale=2.0, context=None
+              ),
+          ],
+      )
 
   def test_success_with_valid_context(self):
-
     def model_fn():
       return model_examples.LinearRegression(feature_dim=2)
 
@@ -385,13 +419,17 @@ class PersonalizationEvalTest(tf.test.TestCase, parameterized.TestCase):
     # Build the p13n eval with an extra `context` argument.
     context_tff_type = computation_types.to_type(tf.int32)
     federated_p13n_eval = p13n_eval.build_personalization_eval(
-        model_fn, p13n_fn_dict, _evaluate_fn, context_tff_type=context_tff_type)
+        model_fn, p13n_fn_dict, _evaluate_fn, context_tff_type=context_tff_type
+    )
 
     # Perform p13n eval on two clients with different `context` values.
-    results = federated_p13n_eval(zero_model_weights, [
-        _create_client_input(train_scale=1.0, test_scale=1.0, context=2),
-        _create_client_input(train_scale=1.0, test_scale=2.0, context=5)
-    ])
+    results = federated_p13n_eval(
+        zero_model_weights,
+        [
+            _create_client_input(train_scale=1.0, test_scale=1.0, context=2),
+            _create_client_input(train_scale=1.0, test_scale=2.0, context=5),
+        ],
+    )
 
     bs1_metrics = results['batch_size_1']
     bs2_metrics = results['batch_size_2']
@@ -400,11 +438,11 @@ class PersonalizationEvalTest(tf.test.TestCase, parameterized.TestCase):
     # Note: the order is not preserved due to `federated_sample`, but the order
     # should be consistent across different personalization strategies.
     self.assertAllEqual(sorted(bs1_metrics['num_examples']), [5, 8])
-    self.assertAllEqual(bs1_metrics['num_examples'],
-                        bs2_metrics['num_examples'])
+    self.assertAllEqual(
+        bs1_metrics['num_examples'], bs2_metrics['num_examples']
+    )
 
   def test_failure_with_invalid_sample_size(self):
-
     def model_fn():
       return model_examples.LinearRegression(feature_dim=2)
 
@@ -414,16 +452,17 @@ class PersonalizationEvalTest(tf.test.TestCase, parameterized.TestCase):
       # `max_num_clients` should be an `int`.
       bad_num_clients = 1.0
       p13n_eval.build_personalization_eval(
-          model_fn, p13n_fn_dict, _evaluate_fn, max_num_clients=bad_num_clients)
+          model_fn, p13n_fn_dict, _evaluate_fn, max_num_clients=bad_num_clients
+      )
 
     with self.assertRaises(ValueError):
       # `max_num_clients` should be a positive `int`.
       bad_num_clients = 0
       p13n_eval.build_personalization_eval(
-          model_fn, p13n_fn_dict, _evaluate_fn, max_num_clients=bad_num_clients)
+          model_fn, p13n_fn_dict, _evaluate_fn, max_num_clients=bad_num_clients
+      )
 
   def test_success_with_small_sample_size(self):
-
     def model_fn():
       return model_examples.LinearRegression(feature_dim=2)
 
@@ -431,13 +470,17 @@ class PersonalizationEvalTest(tf.test.TestCase, parameterized.TestCase):
     p13n_fn_dict = _create_p13n_fn_dict(learning_rate=1.0)
 
     federated_p13n_eval = p13n_eval.build_personalization_eval(
-        model_fn, p13n_fn_dict, _evaluate_fn, max_num_clients=1)
+        model_fn, p13n_fn_dict, _evaluate_fn, max_num_clients=1
+    )
 
     # Perform p13n eval on two clients.
-    results = federated_p13n_eval(zero_model_weights, [
-        _create_client_input(train_scale=1.0, test_scale=1.0),
-        _create_client_input(train_scale=1.0, test_scale=2.0)
-    ])
+    results = federated_p13n_eval(
+        zero_model_weights,
+        [
+            _create_client_input(train_scale=1.0, test_scale=1.0),
+            _create_client_input(train_scale=1.0, test_scale=2.0),
+        ],
+    )
     # The results should only contain metrics from one client.
     self.assertAllEqual(len(results['baseline_metrics']['loss']), 1)
     self.assertAllEqual(len(results['batch_size_1']['test_outputs']['loss']), 1)
@@ -450,7 +493,8 @@ class PersonalizationEvalTest(tf.test.TestCase, parameterized.TestCase):
     mock_model_fn = mock.Mock(side_effect=model_examples.LinearRegression)
     p13n_fn_dict = _create_p13n_fn_dict(learning_rate=1.0)
     p13n_eval.build_personalization_eval(
-        mock_model_fn, p13n_fn_dict, _evaluate_fn, max_num_clients=1)
+        mock_model_fn, p13n_fn_dict, _evaluate_fn, max_num_clients=1
+    )
     # TODO(b/186451541): reduce the number of calls to model_fn.
     self.assertEqual(mock_model_fn.call_count, 3)
 

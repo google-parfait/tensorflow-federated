@@ -30,7 +30,8 @@ from tensorflow_federated.python.learning.models import functional
 
 def check_finalizers_matches_unfinalized_metrics(
     metric_finalizers: model_lib.MetricFinalizersType,
-    local_unfinalized_metrics_type: computation_types.StructWithPythonType):
+    local_unfinalized_metrics_type: computation_types.StructWithPythonType,
+):
   """Verifies that compatibility of variables and finalizers.
 
   Args:
@@ -43,15 +44,20 @@ def check_finalizers_matches_unfinalized_metrics(
   """
   metric_names_in_metric_finalizers = set(metric_finalizers.keys())
   metric_names_in_local_unfinalized_metrics = set(
-      structure.name_list(local_unfinalized_metrics_type))
-  if (metric_names_in_metric_finalizers !=
-      metric_names_in_local_unfinalized_metrics):
+      structure.name_list(local_unfinalized_metrics_type)
+  )
+  if (
+      metric_names_in_metric_finalizers
+      != metric_names_in_local_unfinalized_metrics
+  ):
     difference_1 = (
-        metric_names_in_metric_finalizers -
-        metric_names_in_local_unfinalized_metrics)
+        metric_names_in_metric_finalizers
+        - metric_names_in_local_unfinalized_metrics
+    )
     difference_2 = (
-        metric_names_in_local_unfinalized_metrics -
-        metric_names_in_metric_finalizers)
+        metric_names_in_local_unfinalized_metrics
+        - metric_names_in_metric_finalizers
+    )
     raise ValueError(
         'The metric names in `metric_finalizers` do not match those in the '
         '`local_unfinalized_metrics`. Metric names in the `metric_finalizers`'
@@ -61,12 +67,16 @@ def check_finalizers_matches_unfinalized_metrics(
         'Metrics names in the `metric_finalizers`: '
         f'{metric_names_in_metric_finalizers}. Metric names in the '
         '`local_unfinalized_metrics`: '
-        f'{metric_names_in_local_unfinalized_metrics}.')
+        f'{metric_names_in_local_unfinalized_metrics}.'
+    )
 
 
 def check_metric_finalizers(
-    metric_finalizers: Union[model_lib.MetricFinalizersType,
-                             functional.FunctionalMetricFinalizersType]):
+    metric_finalizers: Union[
+        model_lib.MetricFinalizersType,
+        functional.FunctionalMetricFinalizersType,
+    ]
+):
   """Validates `metric_finalizers` raising error on failure.
 
   Args:
@@ -77,15 +87,17 @@ def check_metric_finalizers(
       any key is not a `str` type, or value is not a `callable`.
   """
   if not callable(metric_finalizers):
-    py_typecheck.check_type(metric_finalizers, collections.OrderedDict,
-                            'metric_finalizers')
+    py_typecheck.check_type(
+        metric_finalizers, collections.OrderedDict, 'metric_finalizers'
+    )
     for key, value in metric_finalizers.items():
       py_typecheck.check_type(key, str, f'metric_finalizers key {key}')
       py_typecheck.check_callable(value, f'metric_finalizers value {value}')
 
 
 def check_local_unfinalzied_metrics_type(
-    local_unfinalized_metrics_type: computation_types.StructWithPythonType):
+    local_unfinalized_metrics_type: computation_types.StructWithPythonType,
+):
   """Validates `local_unfinalized_metrics_type` raising error on failure.
 
   Args:
@@ -99,12 +111,14 @@ def check_local_unfinalzied_metrics_type(
   # Directly check the type (instead of using `py_typecheck`) here so that the
   # the error message has a better format (specifically, the expected type is
   # shown as `tff.types.StructWithPythonType` in the error message).
-  if not isinstance(local_unfinalized_metrics_type,
-                    computation_types.StructWithPythonType):
+  if not isinstance(
+      local_unfinalized_metrics_type, computation_types.StructWithPythonType
+  ):
     raise TypeError(
         'Expected the input `local_unfinalized_metrics_type` to be a '
         '`tff.types.StructWithPythonType`, found '
-        f'{py_typecheck.type_string(type(local_unfinalized_metrics_type))}.')
+        f'{py_typecheck.type_string(type(local_unfinalized_metrics_type))}.'
+    )
   local_metrics_container = local_unfinalized_metrics_type.python_container
   if local_metrics_container is not collections.OrderedDict:
     raise TypeError(

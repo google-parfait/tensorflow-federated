@@ -48,18 +48,23 @@ from tensorflow_federated.python.learning.templates import distributors
 from tensorflow_federated.python.learning.templates import learning_process
 from tensorflow_federated.python.learning.templates import model_delta_client_work
 
-TFFOrKerasOptimizer = Union[optimizer_base.Optimizer,
-                            tf.keras.optimizers.Optimizer]
+TFFOrKerasOptimizer = Union[
+    optimizer_base.Optimizer, tf.keras.optimizers.Optimizer
+]
 
 
 def build_scheduled_client_work(
     model_fn: Callable[[], model_lib.Model],
     learning_rate_fn: Callable[[int], float],
     optimizer_fn: Callable[[float], TFFOrKerasOptimizer],
-    metrics_aggregator: Callable[[
-        model_lib.MetricFinalizersType, computation_types.StructWithPythonType
-    ], computation_base.Computation],
-    use_experimental_simulation_loop: bool = False
+    metrics_aggregator: Callable[
+        [
+            model_lib.MetricFinalizersType,
+            computation_types.StructWithPythonType,
+        ],
+        computation_base.Computation,
+    ],
+    use_experimental_simulation_loop: bool = False,
 ) -> client_works.ClientWorkProcess:
   """Creates a `ClientWorkProcess` for federated averaging.
 
@@ -98,16 +103,22 @@ def build_scheduled_client_work(
     whimsy_model = model_fn()
     whimsy_optimizer = optimizer_fn(1.0)
     unfinalized_metrics_type = type_conversions.type_from_tensors(
-        whimsy_model.report_local_unfinalized_metrics())
+        whimsy_model.report_local_unfinalized_metrics()
+    )
     metrics_aggregation_fn = metrics_aggregator(
-        whimsy_model.metric_finalizers(), unfinalized_metrics_type)
+        whimsy_model.metric_finalizers(), unfinalized_metrics_type
+    )
   data_type = computation_types.SequenceType(whimsy_model.input_spec)
   weights_type = model_weights.weights_type_from_model(whimsy_model)
 
   if isinstance(whimsy_optimizer, optimizer_base.Optimizer):
-    build_client_update_fn = model_delta_client_work.build_model_delta_update_with_tff_optimizer
+    build_client_update_fn = (
+        model_delta_client_work.build_model_delta_update_with_tff_optimizer
+    )
   else:
-    build_client_update_fn = model_delta_client_work.build_model_delta_update_with_keras_optimizer
+    build_client_update_fn = (
+        model_delta_client_work.build_model_delta_update_with_keras_optimizer
+    )
 
   @tensorflow_computation.tf_computation(weights_type, data_type, tf.int32)
   def client_update_computation(initial_model_weights, dataset, round_num):
@@ -116,7 +127,8 @@ def build_scheduled_client_work(
     client_update = build_client_update_fn(
         model_fn=model_fn,
         weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES,
-        use_experimental_simulation_loop=use_experimental_simulation_loop)
+        use_experimental_simulation_loop=use_experimental_simulation_loop,
+    )
     return client_update(optimizer, initial_model_weights, dataset)
 
   @federated_computation.federated_computation
@@ -129,18 +141,23 @@ def build_scheduled_client_work(
     return x + 1
 
   @federated_computation.federated_computation(
-      init_fn.type_signature.result, computation_types.at_clients(weights_type),
-      computation_types.at_clients(data_type))
+      init_fn.type_signature.result,
+      computation_types.at_clients(weights_type),
+      computation_types.at_clients(data_type),
+  )
   def next_fn(state, weights, client_data):
     round_num_at_clients = intrinsics.federated_broadcast(state)
     client_result, model_outputs = intrinsics.federated_map(
-        client_update_computation, (weights, client_data, round_num_at_clients))
+        client_update_computation, (weights, client_data, round_num_at_clients)
+    )
     updated_state = intrinsics.federated_map(add_one, state)
     train_metrics = metrics_aggregation_fn(model_outputs)
     measurements = intrinsics.federated_zip(
-        collections.OrderedDict(train=train_metrics))
-    return measured_process.MeasuredProcessOutput(updated_state, client_result,
-                                                  measurements)
+        collections.OrderedDict(train=train_metrics)
+    )
+    return measured_process.MeasuredProcessOutput(
+        updated_state, client_result, measurements
+    )
 
   return client_works.ClientWorkProcess(init_fn, next_fn)
 
@@ -149,15 +166,21 @@ def build_weighted_fed_avg_with_optimizer_schedule(
     model_fn: Callable[[], model_lib.Model],
     client_learning_rate_fn: Callable[[int], float],
     client_optimizer_fn: Callable[[float], TFFOrKerasOptimizer],
-    server_optimizer_fn: Union[optimizer_base.Optimizer, Callable[
-        [],
-        tf.keras.optimizers.Optimizer]] = fed_avg.DEFAULT_SERVER_OPTIMIZER_FN,
+    server_optimizer_fn: Union[
+        optimizer_base.Optimizer, Callable[[], tf.keras.optimizers.Optimizer]
+    ] = fed_avg.DEFAULT_SERVER_OPTIMIZER_FN,
     model_distributor: Optional[distributors.DistributionProcess] = None,
     model_aggregator: Optional[factory.WeightedAggregationFactory] = None,
-    metrics_aggregator: Optional[Callable[[
-        model_lib.MetricFinalizersType, computation_types.StructWithPythonType
-    ], computation_base.Computation]] = None,
-    use_experimental_simulation_loop: bool = False
+    metrics_aggregator: Optional[
+        Callable[
+            [
+                model_lib.MetricFinalizersType,
+                computation_types.StructWithPythonType,
+            ],
+            computation_base.Computation,
+        ]
+    ] = None,
+    use_experimental_simulation_loop: bool = False,
 ) -> learning_process.LearningProcess:
   """Builds a learning process for FedAvg with client optimizer scheduling.
 
@@ -260,26 +283,37 @@ def build_weighted_fed_avg_with_optimizer_schedule(
   if model_aggregator is None:
     model_aggregator = mean.MeanFactory()
   py_typecheck.check_type(model_aggregator, factory.WeightedAggregationFactory)
-  aggregator = model_aggregator.create(model_weights_type.trainable,
-                                       computation_types.TensorType(tf.float32))
+  aggregator = model_aggregator.create(
+      model_weights_type.trainable, computation_types.TensorType(tf.float32)
+  )
   process_signature = aggregator.next.type_signature
   input_client_value_type = process_signature.parameter[1]
   result_server_value_type = process_signature.result[1]
   if input_client_value_type.member != result_server_value_type.member:
-    raise TypeError('`model_update_aggregation_factory` does not produce a '
-                    'compatible `AggregationProcess`. The processes must '
-                    'retain the type structure of the inputs on the '
-                    f'server, but got {input_client_value_type.member} != '
-                    f'{result_server_value_type.member}.')
+    raise TypeError(
+        '`model_update_aggregation_factory` does not produce a '
+        'compatible `AggregationProcess`. The processes must '
+        'retain the type structure of the inputs on the '
+        f'server, but got {input_client_value_type.member} != '
+        f'{result_server_value_type.member}.'
+    )
 
   if metrics_aggregator is None:
     metrics_aggregator = metric_aggregator.sum_then_finalize
-  client_work = build_scheduled_client_work(model_fn, client_learning_rate_fn,
-                                            client_optimizer_fn,
-                                            metrics_aggregator,
-                                            use_experimental_simulation_loop)
+  client_work = build_scheduled_client_work(
+      model_fn,
+      client_learning_rate_fn,
+      client_optimizer_fn,
+      metrics_aggregator,
+      use_experimental_simulation_loop,
+  )
   finalizer = apply_optimizer_finalizer.build_apply_optimizer_finalizer(
-      server_optimizer_fn, model_weights_type)
-  return composers.compose_learning_process(initial_model_weights_fn,
-                                            model_distributor, client_work,
-                                            aggregator, finalizer)
+      server_optimizer_fn, model_weights_type
+  )
+  return composers.compose_learning_process(
+      initial_model_weights_fn,
+      model_distributor,
+      client_work,
+      aggregator,
+      finalizer,
+  )

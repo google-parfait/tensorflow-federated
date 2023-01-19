@@ -30,197 +30,268 @@ from tensorflow_federated.python.learning.templates import apply_optimizer_final
 
 SERVER_FLOAT = computation_types.FederatedType(tf.float32, placements.SERVER)
 MODEL_WEIGHTS_TYPE = computation_types.at_server(
-    computation_types.to_type(model_weights.ModelWeights(tf.float32, ())))
+    computation_types.to_type(model_weights.ModelWeights(tf.float32, ()))
+)
 MeasuredProcessOutput = measured_process.MeasuredProcessOutput
 
 
-class ApplyOptimizerFinalizerComputationTest(tf.test.TestCase,
-                                             parameterized.TestCase):
+class ApplyOptimizerFinalizerComputationTest(
+    tf.test.TestCase, parameterized.TestCase
+):
 
   def test_initialize_has_expected_type_with_keras_optimizer(self):
     mw_type = computation_types.to_type(
         model_weights.ModelWeights(
-            trainable=(tf.float32, tf.float32), non_trainable=tf.float32))
+            trainable=(tf.float32, tf.float32), non_trainable=tf.float32
+        )
+    )
     optimizer_fn = lambda: tf.keras.optimizers.legacy.SGD(learning_rate=1.0)
 
     finalizer = apply_optimizer_finalizer.build_apply_optimizer_finalizer(
-        optimizer_fn, mw_type)
+        optimizer_fn, mw_type
+    )
     expected_state_type = computation_types.at_server([tf.int64])
     expected_initialize_type = computation_types.FunctionType(
-        parameter=None, result=expected_state_type)
-    type_test_utils.assert_types_equivalent(finalizer.initialize.type_signature,
-                                            expected_initialize_type)
+        parameter=None, result=expected_state_type
+    )
+    type_test_utils.assert_types_equivalent(
+        finalizer.initialize.type_signature, expected_initialize_type
+    )
 
   def test_next_has_expected_type_with_keras_optimizer(self):
     mw_type = computation_types.to_type(
         model_weights.ModelWeights(
-            trainable=(tf.float32, tf.float32), non_trainable=tf.float32))
+            trainable=(tf.float32, tf.float32), non_trainable=tf.float32
+        )
+    )
     optimizer_fn = lambda: tf.keras.optimizers.legacy.SGD(learning_rate=1.0)
 
     finalizer = apply_optimizer_finalizer.build_apply_optimizer_finalizer(
-        optimizer_fn, mw_type)
+        optimizer_fn, mw_type
+    )
 
     expected_param_weights_type = computation_types.at_server(mw_type)
     expected_param_update_type = computation_types.at_server(mw_type.trainable)
     expected_result_type = computation_types.at_server(mw_type)
     expected_state_type = computation_types.at_server([tf.int64])
     expected_measurements_type = computation_types.at_server(
-        collections.OrderedDict(update_non_finite=tf.int32))
+        collections.OrderedDict(update_non_finite=tf.int32)
+    )
     expected_next_type = computation_types.FunctionType(
         parameter=collections.OrderedDict(
             state=expected_state_type,
             weights=expected_param_weights_type,
-            update=expected_param_update_type),
-        result=MeasuredProcessOutput(expected_state_type, expected_result_type,
-                                     expected_measurements_type))
-    type_test_utils.assert_types_equivalent(finalizer.next.type_signature,
-                                            expected_next_type)
+            update=expected_param_update_type,
+        ),
+        result=MeasuredProcessOutput(
+            expected_state_type,
+            expected_result_type,
+            expected_measurements_type,
+        ),
+    )
+    type_test_utils.assert_types_equivalent(
+        finalizer.next.type_signature, expected_next_type
+    )
 
   def test_get_hparams_has_expected_type_with_keras_optimizer(self):
     mw_type = computation_types.to_type(
         model_weights.ModelWeights(
-            trainable=(tf.float32, tf.float32), non_trainable=tf.float32))
+            trainable=(tf.float32, tf.float32), non_trainable=tf.float32
+        )
+    )
     optimizer_fn = lambda: tf.keras.optimizers.legacy.SGD(learning_rate=1.0)
 
     finalizer = apply_optimizer_finalizer.build_apply_optimizer_finalizer(
-        optimizer_fn, mw_type)
+        optimizer_fn, mw_type
+    )
 
     expected_state_type = [tf.int64]
     expected_hparams_type = collections.OrderedDict()
     expected_get_hparams_type = computation_types.FunctionType(
-        parameter=expected_state_type, result=expected_hparams_type)
+        parameter=expected_state_type, result=expected_hparams_type
+    )
     type_test_utils.assert_types_equivalent(
-        finalizer.get_hparams.type_signature, expected_get_hparams_type)
+        finalizer.get_hparams.type_signature, expected_get_hparams_type
+    )
 
   def test_set_hparams_has_expected_type_with_keras_optimizer(self):
     mw_type = computation_types.to_type(
         model_weights.ModelWeights(
-            trainable=(tf.float32, tf.float32), non_trainable=tf.float32))
+            trainable=(tf.float32, tf.float32), non_trainable=tf.float32
+        )
+    )
     optimizer_fn = lambda: tf.keras.optimizers.legacy.SGD(learning_rate=1.0)
 
     finalizer = apply_optimizer_finalizer.build_apply_optimizer_finalizer(
-        optimizer_fn, mw_type)
+        optimizer_fn, mw_type
+    )
 
     expected_state_type = [tf.int64]
     expected_hparams_type = collections.OrderedDict()
     expected_set_hparams_type = computation_types.FunctionType(
-        parameter=computation_types.StructType([('state', expected_state_type),
-                                                ('hparams',
-                                                 expected_hparams_type)]),
-        result=expected_state_type)
+        parameter=computation_types.StructType(
+            [('state', expected_state_type), ('hparams', expected_hparams_type)]
+        ),
+        result=expected_state_type,
+    )
     type_test_utils.assert_types_equivalent(
-        finalizer.set_hparams.type_signature, expected_set_hparams_type)
+        finalizer.set_hparams.type_signature, expected_set_hparams_type
+    )
 
   def test_initialize_has_expected_type_with_tff_optimizer(self):
     mw_type = computation_types.to_type(
         model_weights.ModelWeights(
-            trainable=(tf.float32, tf.float32), non_trainable=tf.float32))
+            trainable=(tf.float32, tf.float32), non_trainable=tf.float32
+        )
+    )
 
     finalizer = apply_optimizer_finalizer.build_apply_optimizer_finalizer(
-        sgdm.build_sgdm(1.0), mw_type)
+        sgdm.build_sgdm(1.0), mw_type
+    )
 
     expected_state_type = computation_types.at_server(
         computation_types.to_type(
-            collections.OrderedDict([(optimizer_base.LEARNING_RATE_KEY,
-                                      tf.float32)])))
+            collections.OrderedDict(
+                [(optimizer_base.LEARNING_RATE_KEY, tf.float32)]
+            )
+        )
+    )
     expected_initialize_type = computation_types.FunctionType(
-        parameter=None, result=expected_state_type)
-    type_test_utils.assert_types_equivalent(finalizer.initialize.type_signature,
-                                            expected_initialize_type)
+        parameter=None, result=expected_state_type
+    )
+    type_test_utils.assert_types_equivalent(
+        finalizer.initialize.type_signature, expected_initialize_type
+    )
 
   def test_next_has_expected_type_with_tff_optimizer(self):
     mw_type = computation_types.to_type(
         model_weights.ModelWeights(
-            trainable=(tf.float32, tf.float32), non_trainable=tf.float32))
+            trainable=(tf.float32, tf.float32), non_trainable=tf.float32
+        )
+    )
 
     finalizer = apply_optimizer_finalizer.build_apply_optimizer_finalizer(
-        sgdm.build_sgdm(1.0), mw_type)
+        sgdm.build_sgdm(1.0), mw_type
+    )
 
     expected_param_weights_type = computation_types.at_server(mw_type)
     expected_param_update_type = computation_types.at_server(mw_type.trainable)
     expected_result_type = computation_types.at_server(mw_type)
     expected_state_type = computation_types.at_server(
         computation_types.to_type(
-            collections.OrderedDict([(optimizer_base.LEARNING_RATE_KEY,
-                                      tf.float32)])))
+            collections.OrderedDict(
+                [(optimizer_base.LEARNING_RATE_KEY, tf.float32)]
+            )
+        )
+    )
     expected_measurements_type = computation_types.at_server(
-        collections.OrderedDict(update_non_finite=tf.int32))
+        collections.OrderedDict(update_non_finite=tf.int32)
+    )
     expected_next_type = computation_types.FunctionType(
         parameter=collections.OrderedDict(
             state=expected_state_type,
             weights=expected_param_weights_type,
-            update=expected_param_update_type),
-        result=MeasuredProcessOutput(expected_state_type, expected_result_type,
-                                     expected_measurements_type))
-    type_test_utils.assert_types_equivalent(finalizer.next.type_signature,
-                                            expected_next_type)
+            update=expected_param_update_type,
+        ),
+        result=MeasuredProcessOutput(
+            expected_state_type,
+            expected_result_type,
+            expected_measurements_type,
+        ),
+    )
+    type_test_utils.assert_types_equivalent(
+        finalizer.next.type_signature, expected_next_type
+    )
 
   def test_get_hparams_has_expected_type_with_tff_optimizer(self):
     mw_type = computation_types.to_type(
         model_weights.ModelWeights(
-            trainable=(tf.float32, tf.float32), non_trainable=tf.float32))
+            trainable=(tf.float32, tf.float32), non_trainable=tf.float32
+        )
+    )
 
     finalizer = apply_optimizer_finalizer.build_apply_optimizer_finalizer(
-        sgdm.build_sgdm(1.0), mw_type)
+        sgdm.build_sgdm(1.0), mw_type
+    )
 
-    expected_state_type = collections.OrderedDict([
-        (optimizer_base.LEARNING_RATE_KEY, tf.float32)
-    ])
+    expected_state_type = collections.OrderedDict(
+        [(optimizer_base.LEARNING_RATE_KEY, tf.float32)]
+    )
     expected_hparams_type = expected_state_type
     expected_get_hparams_type = computation_types.FunctionType(
-        parameter=expected_state_type, result=expected_hparams_type)
+        parameter=expected_state_type, result=expected_hparams_type
+    )
     type_test_utils.assert_types_equivalent(
-        finalizer.get_hparams.type_signature, expected_get_hparams_type)
+        finalizer.get_hparams.type_signature, expected_get_hparams_type
+    )
 
   def test_set_hparams_has_expected_type_with_tff_optimizer(self):
     mw_type = computation_types.to_type(
         model_weights.ModelWeights(
-            trainable=(tf.float32, tf.float32), non_trainable=tf.float32))
+            trainable=(tf.float32, tf.float32), non_trainable=tf.float32
+        )
+    )
 
     finalizer = apply_optimizer_finalizer.build_apply_optimizer_finalizer(
-        sgdm.build_sgdm(1.0), mw_type)
+        sgdm.build_sgdm(1.0), mw_type
+    )
 
-    expected_state_type = collections.OrderedDict([
-        (optimizer_base.LEARNING_RATE_KEY, tf.float32)
-    ])
+    expected_state_type = collections.OrderedDict(
+        [(optimizer_base.LEARNING_RATE_KEY, tf.float32)]
+    )
     expected_hparams_type = expected_state_type
     expected_set_hparams_type = computation_types.FunctionType(
-        parameter=computation_types.StructType([('state', expected_state_type),
-                                                ('hparams',
-                                                 expected_hparams_type)]),
-        result=expected_state_type)
+        parameter=computation_types.StructType(
+            [('state', expected_state_type), ('hparams', expected_hparams_type)]
+        ),
+        result=expected_state_type,
+    )
     type_test_utils.assert_types_equivalent(
-        finalizer.set_hparams.type_signature, expected_set_hparams_type)
+        finalizer.set_hparams.type_signature, expected_set_hparams_type
+    )
 
   @parameterized.named_parameters(
       ('not_struct', computation_types.TensorType(tf.float32)),
       ('federated_type', MODEL_WEIGHTS_TYPE),
-      ('model_weights_of_federated_types',
-       computation_types.to_type(
-           model_weights.ModelWeights(SERVER_FLOAT, SERVER_FLOAT))),
-      ('not_model_weights', computation_types.to_type(
-          (tf.float32, tf.float32))),
-      ('function_type', computation_types.FunctionType(None,
-                                                       MODEL_WEIGHTS_TYPE)),
-      ('sequence_type', computation_types.SequenceType(
-          MODEL_WEIGHTS_TYPE.member)))
+      (
+          'model_weights_of_federated_types',
+          computation_types.to_type(
+              model_weights.ModelWeights(SERVER_FLOAT, SERVER_FLOAT)
+          ),
+      ),
+      (
+          'not_model_weights',
+          computation_types.to_type((tf.float32, tf.float32)),
+      ),
+      (
+          'function_type',
+          computation_types.FunctionType(None, MODEL_WEIGHTS_TYPE),
+      ),
+      (
+          'sequence_type',
+          computation_types.SequenceType(MODEL_WEIGHTS_TYPE.member),
+      ),
+  )
   def test_incorrect_value_type_raises(self, bad_type):
     with self.assertRaises(TypeError):
       apply_optimizer_finalizer.build_apply_optimizer_finalizer(
-          sgdm.build_sgdm(1.0), bad_type)
+          sgdm.build_sgdm(1.0), bad_type
+      )
 
   def test_unexpected_optimizer_fn_raises(self):
     optimizer = tf.keras.optimizers.SGD(1.0)
     with self.assertRaises(TypeError):
       apply_optimizer_finalizer.build_apply_optimizer_finalizer(
-          optimizer, MODEL_WEIGHTS_TYPE.member)
+          optimizer, MODEL_WEIGHTS_TYPE.member
+      )
 
 
 class ApplyOptimizerFinalizerExecutionTest(tf.test.TestCase):
 
   def test_execution_with_stateless_tff_optimizer(self):
     finalizer = apply_optimizer_finalizer.build_apply_optimizer_finalizer(
-        sgdm.build_sgdm(1.0), MODEL_WEIGHTS_TYPE.member)
+        sgdm.build_sgdm(1.0), MODEL_WEIGHTS_TYPE.member
+    )
 
     weights = model_weights.ModelWeights(1.0, ())
     update = 0.1
@@ -232,14 +303,16 @@ class ApplyOptimizerFinalizerExecutionTest(tf.test.TestCase):
       self.assertEqual(1.0, optimizer_state[optimizer_base.LEARNING_RATE_KEY])
       self.assertAllClose(1.0 - 0.1 * (i + 1), weights.trainable)
       self.assertEqual(
-          collections.OrderedDict(update_non_finite=0), output.measurements)
+          collections.OrderedDict(update_non_finite=0), output.measurements
+      )
 
   def test_execution_with_keras_sgd_optimizer(self):
     server_optimizer_fn = lambda: tf.keras.optimizers.legacy.SGD(1.0)
     # Note that SGD only maintains a counter of how many times it has been
     # called. No other state is used.
     finalizer = apply_optimizer_finalizer.build_apply_optimizer_finalizer(
-        server_optimizer_fn, MODEL_WEIGHTS_TYPE.member)
+        server_optimizer_fn, MODEL_WEIGHTS_TYPE.member
+    )
 
     weights = model_weights.ModelWeights(1.0, ())
     update = 0.1
@@ -252,7 +325,8 @@ class ApplyOptimizerFinalizerExecutionTest(tf.test.TestCase):
       self.assertEqual([i + 1], optimizer_state)
       self.assertAllClose(1.0 - 0.1 * (i + 1), weights.trainable)
       self.assertEqual(
-          collections.OrderedDict(update_non_finite=0), output.measurements)
+          collections.OrderedDict(update_non_finite=0), output.measurements
+      )
 
   def test_keras_finalizer_execution_with_non_finite_update(self):
     init_fn, next_fn = (
@@ -270,21 +344,23 @@ class ApplyOptimizerFinalizerExecutionTest(tf.test.TestCase):
     test_trainable_weights = [0.0]
 
     with self.subTest('inf'):
-      state, weights, measurements = next_fn(initial_state,
-                                             test_trainable_weights,
-                                             [float('inf')])
+      state, weights, measurements = next_fn(
+          initial_state, test_trainable_weights, [float('inf')]
+      )
       self.assertAllClose(state, initial_state)
       self.assertAllClose(weights, test_trainable_weights)
-      self.assertAllEqual(measurements,
-                          collections.OrderedDict(update_non_finite=1))
+      self.assertAllEqual(
+          measurements, collections.OrderedDict(update_non_finite=1)
+      )
     with self.subTest('nan'):
-      state, weights, measurements = next_fn(initial_state,
-                                             test_trainable_weights,
-                                             [float('nan')])
+      state, weights, measurements = next_fn(
+          initial_state, test_trainable_weights, [float('nan')]
+      )
       self.assertAllClose(state, initial_state)
       self.assertAllClose(weights, test_trainable_weights)
-      self.assertAllEqual(measurements,
-                          collections.OrderedDict(update_non_finite=1))
+      self.assertAllEqual(
+          measurements, collections.OrderedDict(update_non_finite=1)
+      )
 
   def test_tff_finalizer_execution_with_non_finite_update(self):
     init_fn, next_fn = (
@@ -302,26 +378,29 @@ class ApplyOptimizerFinalizerExecutionTest(tf.test.TestCase):
     test_trainable_weights = [0.0]
 
     with self.subTest('inf'):
-      state, weights, measurements = next_fn(initial_state,
-                                             test_trainable_weights,
-                                             [float('inf')])
+      state, weights, measurements = next_fn(
+          initial_state, test_trainable_weights, [float('inf')]
+      )
       self.assertAllClose(state, initial_state)
       self.assertAllClose(weights, test_trainable_weights)
-      self.assertAllEqual(measurements,
-                          collections.OrderedDict(update_non_finite=1))
+      self.assertAllEqual(
+          measurements, collections.OrderedDict(update_non_finite=1)
+      )
     with self.subTest('nan'):
-      state, weights, measurements = next_fn(initial_state,
-                                             test_trainable_weights,
-                                             [float('nan')])
+      state, weights, measurements = next_fn(
+          initial_state, test_trainable_weights, [float('nan')]
+      )
       self.assertAllClose(state, initial_state)
       self.assertAllClose(weights, test_trainable_weights)
-      self.assertAllEqual(measurements,
-                          collections.OrderedDict(update_non_finite=1))
+      self.assertAllEqual(
+          measurements, collections.OrderedDict(update_non_finite=1)
+      )
 
   def test_execution_with_stateful_tff_optimizer(self):
     momentum = 0.5
     finalizer = apply_optimizer_finalizer.build_apply_optimizer_finalizer(
-        sgdm.build_sgdm(1.0, momentum=momentum), MODEL_WEIGHTS_TYPE.member)
+        sgdm.build_sgdm(1.0, momentum=momentum), MODEL_WEIGHTS_TYPE.member
+    )
 
     weights = model_weights.ModelWeights(1.0, ())
     update = 0.1
@@ -332,10 +411,12 @@ class ApplyOptimizerFinalizerExecutionTest(tf.test.TestCase):
       optimizer_state = output.state
       expected_velocity = expected_velocity * momentum + update
       self.assertNear(expected_velocity, optimizer_state['accumulator'], 1e-6)
-      self.assertAllClose(weights.trainable - expected_velocity,
-                          output.result.trainable)
+      self.assertAllClose(
+          weights.trainable - expected_velocity, output.result.trainable
+      )
       self.assertEqual(
-          collections.OrderedDict(update_non_finite=0), output.measurements)
+          collections.OrderedDict(update_non_finite=0), output.measurements
+      )
     weights = output.result
 
   def test_execution_with_stateful_keras_optimizer(self):
@@ -345,7 +426,8 @@ class ApplyOptimizerFinalizerExecutionTest(tf.test.TestCase):
       return tf.keras.optimizers.SGD(learning_rate=1.0, momentum=0.5)
 
     finalizer = apply_optimizer_finalizer.build_apply_optimizer_finalizer(
-        server_optimizer_fn, MODEL_WEIGHTS_TYPE.member)
+        server_optimizer_fn, MODEL_WEIGHTS_TYPE.member
+    )
 
     weights = model_weights.ModelWeights(1.0, ())
     update = 0.1
@@ -358,16 +440,19 @@ class ApplyOptimizerFinalizerExecutionTest(tf.test.TestCase):
       # Keras stores the negative of the velocity term used by
       # tff.learning.optimizers.SGDM
       self.assertAllClose([i + 1, -expected_velocity], optimizer_state)
-      self.assertAllClose(weights.trainable - expected_velocity,
-                          output.result.trainable)
+      self.assertAllClose(
+          weights.trainable - expected_velocity, output.result.trainable
+      )
       self.assertEqual(
-          collections.OrderedDict(update_non_finite=0), output.measurements)
+          collections.OrderedDict(update_non_finite=0), output.measurements
+      )
       weights = output.result
 
   def test_get_hparams_with_keras_optimizer(self):
     optimizer = lambda: tf.keras.optimizers.SGD(learning_rate=1.0, momentum=0.9)
     finalizer = apply_optimizer_finalizer.build_apply_optimizer_finalizer(
-        optimizer, MODEL_WEIGHTS_TYPE.member)
+        optimizer, MODEL_WEIGHTS_TYPE.member
+    )
     state = finalizer.initialize()
 
     hparams = finalizer.get_hparams(state)
@@ -379,7 +464,8 @@ class ApplyOptimizerFinalizerExecutionTest(tf.test.TestCase):
   def test_set_hparams_with_keras_optimizer(self):
     optimizer = lambda: tf.keras.optimizers.SGD(learning_rate=1.0, momentum=0.9)
     finalizer = apply_optimizer_finalizer.build_apply_optimizer_finalizer(
-        optimizer, MODEL_WEIGHTS_TYPE.member)
+        optimizer, MODEL_WEIGHTS_TYPE.member
+    )
     state = finalizer.initialize()
     hparams = collections.OrderedDict()
 
@@ -390,7 +476,8 @@ class ApplyOptimizerFinalizerExecutionTest(tf.test.TestCase):
   def test_get_hparams_with_tff_optimizer(self):
     optimizer = sgdm.build_sgdm(learning_rate=1.0, momentum=0.9)
     finalizer = apply_optimizer_finalizer.build_apply_optimizer_finalizer(
-        optimizer, MODEL_WEIGHTS_TYPE.member)
+        optimizer, MODEL_WEIGHTS_TYPE.member
+    )
     state = finalizer.initialize()
 
     hparams = finalizer.get_hparams(state)
@@ -402,7 +489,8 @@ class ApplyOptimizerFinalizerExecutionTest(tf.test.TestCase):
   def test_set_hparams_with_tff_optimizer(self):
     optimizer = sgdm.build_sgdm(learning_rate=1.0, momentum=0.9)
     finalizer = apply_optimizer_finalizer.build_apply_optimizer_finalizer(
-        optimizer, MODEL_WEIGHTS_TYPE.member)
+        optimizer, MODEL_WEIGHTS_TYPE.member
+    )
     state = finalizer.initialize()
     hparams = collections.OrderedDict(learning_rate=0.5, momentum=0.4)
 

@@ -40,7 +40,8 @@ def _get_finalized_metrics_type(metric_finalizers, unfinalized_metrics):
   else:
     finalized_metrics = collections.OrderedDict(
         (metric, finalizer(unfinalized_metrics[metric]))
-        for metric, finalizer in metric_finalizers.items())
+        for metric, finalizer in metric_finalizers.items()
+    )
   return type_conversions.type_from_tensors(finalized_metrics)
 
 
@@ -54,7 +55,8 @@ _DEFAULT_INT_FACTORY_KEY = '0/1048575/3'
 
 _DEFAULT_FIXED_FLOAT_RANGE = (
     float(aggregation_factory.DEFAULT_FIXED_SECURE_LOWER_BOUND),
-    float(aggregation_factory.DEFAULT_FIXED_SECURE_UPPER_BOUND))
+    float(aggregation_factory.DEFAULT_FIXED_SECURE_UPPER_BOUND),
+)
 _DEFAULT_AUTO_TUNED_FLOAT_RANGE = (
     None,
     quantile_estimation.PrivateQuantileEstimationProcess.no_noise(
@@ -62,119 +64,173 @@ _DEFAULT_AUTO_TUNED_FLOAT_RANGE = (
         target_quantile=0.95,
         learning_rate=1.0,
         multiplier=2.0,
-        secure_estimation=True))
-_DEFAULT_INT_RANGE = (int(aggregation_factory.DEFAULT_FIXED_SECURE_LOWER_BOUND),
-                      int(aggregation_factory.DEFAULT_FIXED_SECURE_UPPER_BOUND))
+        secure_estimation=True,
+    ),
+)
+_DEFAULT_INT_RANGE = (
+    int(aggregation_factory.DEFAULT_FIXED_SECURE_LOWER_BOUND),
+    int(aggregation_factory.DEFAULT_FIXED_SECURE_UPPER_BOUND),
+)
 
 
-class SumThenFinalizeFactoryComputationTest(tf.test.TestCase,
-                                            parameterized.TestCase):
+class SumThenFinalizeFactoryComputationTest(
+    tf.test.TestCase, parameterized.TestCase
+):
 
   @parameterized.named_parameters(
-      ('scalar_metric',
-       collections.OrderedDict(num_examples=tf.function(func=lambda x: x)),
-       collections.OrderedDict(num_examples=1.0)),
-      ('non_scalar_metric', collections.OrderedDict(loss=_tf_mean),
-       collections.OrderedDict(loss=[2.0, 1.0])),
-      ('callable',
-       tf.function(
-           lambda x: collections.OrderedDict(mean_loss=_tf_mean(x['loss']))),
-       collections.OrderedDict(loss=[1.0, 2.0])))
+      (
+          'scalar_metric',
+          collections.OrderedDict(num_examples=tf.function(func=lambda x: x)),
+          collections.OrderedDict(num_examples=1.0),
+      ),
+      (
+          'non_scalar_metric',
+          collections.OrderedDict(loss=_tf_mean),
+          collections.OrderedDict(loss=[2.0, 1.0]),
+      ),
+      (
+          'callable',
+          tf.function(
+              lambda x: collections.OrderedDict(mean_loss=_tf_mean(x['loss']))
+          ),
+          collections.OrderedDict(loss=[1.0, 2.0]),
+      ),
+  )
   def test_type_properties(self, metric_finalizers, unfinalized_metrics):
     aggregate_factory = aggregation_factory.SumThenFinalizeFactory(
-        metric_finalizers)
-    self.assertIsInstance(aggregate_factory,
-                          factory.UnweightedAggregationFactory)
+        metric_finalizers
+    )
+    self.assertIsInstance(
+        aggregate_factory, factory.UnweightedAggregationFactory
+    )
     local_unfinalized_metrics_type = type_conversions.type_from_tensors(
-        unfinalized_metrics)
+        unfinalized_metrics
+    )
     process = aggregate_factory.create(local_unfinalized_metrics_type)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
     expected_state_type = computation_types.FederatedType(
-        ((), local_unfinalized_metrics_type), placements.SERVER)
+        ((), local_unfinalized_metrics_type), placements.SERVER
+    )
     expected_initialize_type = computation_types.FunctionType(
-        parameter=None, result=expected_state_type)
+        parameter=None, result=expected_state_type
+    )
     self.assertTrue(
         process.initialize.type_signature.is_equivalent_to(
-            expected_initialize_type))
+            expected_initialize_type
+        )
+    )
 
     finalized_metrics_type = _get_finalized_metrics_type(
-        metric_finalizers, unfinalized_metrics)
+        metric_finalizers, unfinalized_metrics
+    )
     result_value_type = computation_types.FederatedType(
-        (finalized_metrics_type, finalized_metrics_type), placements.SERVER)
+        (finalized_metrics_type, finalized_metrics_type), placements.SERVER
+    )
     measurements_type = computation_types.FederatedType((), placements.SERVER)
     expected_next_type = computation_types.FunctionType(
         parameter=collections.OrderedDict(
             state=expected_state_type,
             unfinalized_metrics=computation_types.FederatedType(
-                local_unfinalized_metrics_type, placements.CLIENTS)),
-        result=measured_process.MeasuredProcessOutput(expected_state_type,
-                                                      result_value_type,
-                                                      measurements_type))
+                local_unfinalized_metrics_type, placements.CLIENTS
+            ),
+        ),
+        result=measured_process.MeasuredProcessOutput(
+            expected_state_type, result_value_type, measurements_type
+        ),
+    )
     self.assertTrue(
-        process.next.type_signature.is_equivalent_to(expected_next_type))
+        process.next.type_signature.is_equivalent_to(expected_next_type)
+    )
 
   @parameterized.named_parameters(
       ('default_metric_value_ranges', None),
-      ('custom_metric_value_ranges',
-       collections.OrderedDict(
-           num_examples=(0, 100), loss=[
-               None,
-               (0.0, 100.0),
-           ])))
+      (
+          'custom_metric_value_ranges',
+          collections.OrderedDict(
+              num_examples=(0, 100),
+              loss=[
+                  None,
+                  (0.0, 100.0),
+              ],
+          ),
+      ),
+  )
   def test_type_properties_with_inner_secure_sum_process(
-      self, metric_value_ranges):
+      self, metric_value_ranges
+  ):
     if metric_value_ranges is None:
       secure_summation_factory = aggregation_factory.SecureSumFactory()
     else:
       secure_summation_factory = aggregation_factory.SecureSumFactory(
-          metric_value_ranges)
+          metric_value_ranges
+      )
     metric_finalizers = collections.OrderedDict(
         num_examples=tf.function(func=lambda x: x),
         loss=tf.function(func=lambda x: tf.math.divide_no_nan(x[0], x[1])),
         custom_sum=tf.function(
-            func=lambda x: tf.add_n(map(tf.math.reduce_sum, x))))
+            func=lambda x: tf.add_n(map(tf.math.reduce_sum, x))
+        ),
+    )
     local_unfinalized_metrics = collections.OrderedDict(
         num_examples=1,
         loss=[2.0, 1.0],
-        custom_sum=[tf.constant(1.0), tf.constant([1.0, 1.0])])
+        custom_sum=[tf.constant(1.0), tf.constant([1.0, 1.0])],
+    )
     local_unfinalized_metrics_type = type_conversions.type_from_tensors(
-        local_unfinalized_metrics)
+        local_unfinalized_metrics
+    )
 
     aggregate_factory = aggregation_factory.SumThenFinalizeFactory(
-        metric_finalizers, inner_summation_factory=secure_summation_factory)
+        metric_finalizers, inner_summation_factory=secure_summation_factory
+    )
     process = aggregate_factory.create(local_unfinalized_metrics_type)
 
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
     secure_summation_process = secure_summation_factory.create(
-        local_unfinalized_metrics_type)
+        local_unfinalized_metrics_type
+    )
     expected_state_type = computation_types.FederatedType(
-        (secure_summation_process.initialize.type_signature.result.member,
-         local_unfinalized_metrics_type), placements.SERVER)
+        (
+            secure_summation_process.initialize.type_signature.result.member,
+            local_unfinalized_metrics_type,
+        ),
+        placements.SERVER,
+    )
     expected_initialize_type = computation_types.FunctionType(
-        parameter=None, result=expected_state_type)
+        parameter=None, result=expected_state_type
+    )
     self.assertTrue(
         process.initialize.type_signature.is_equivalent_to(
-            expected_initialize_type))
+            expected_initialize_type
+        )
+    )
 
     finalized_metrics_type = _get_finalized_metrics_type(
-        metric_finalizers, local_unfinalized_metrics)
+        metric_finalizers, local_unfinalized_metrics
+    )
     result_value_type = computation_types.FederatedType(
-        (finalized_metrics_type, finalized_metrics_type), placements.SERVER)
+        (finalized_metrics_type, finalized_metrics_type), placements.SERVER
+    )
     measurements_type = computation_types.FederatedType(
         secure_summation_process.next.type_signature.result.measurements.member,
-        placements.SERVER)
+        placements.SERVER,
+    )
     expected_next_type = computation_types.FunctionType(
         parameter=collections.OrderedDict(
             state=expected_state_type,
             unfinalized_metrics=computation_types.FederatedType(
-                local_unfinalized_metrics_type, placements.CLIENTS)),
-        result=measured_process.MeasuredProcessOutput(expected_state_type,
-                                                      result_value_type,
-                                                      measurements_type))
+                local_unfinalized_metrics_type, placements.CLIENTS
+            ),
+        ),
+        result=measured_process.MeasuredProcessOutput(
+            expected_state_type, result_value_type, measurements_type
+        ),
+    )
     self.assertTrue(
-        process.next.type_signature.is_equivalent_to(expected_next_type))
+        process.next.type_signature.is_equivalent_to(expected_next_type)
+    )
 
     try:
       static_assert.assert_not_contains_unsecure_aggregation(process.next)
@@ -183,52 +239,68 @@ class SumThenFinalizeFactoryComputationTest(tf.test.TestCase,
 
   @parameterized.named_parameters(
       ('float', 1.0),
-      ('list',
-       [tf.function(func=lambda x: x),
-        tf.function(func=lambda x: x + 1)]))
+      (
+          'list',
+          [tf.function(func=lambda x: x), tf.function(func=lambda x: x + 1)],
+      ),
+  )
   def test_incorrect_finalizers_type_raises(self, bad_finalizers):
     with self.assertRaises(TypeError):
       aggregation_factory.SumThenFinalizeFactory(bad_finalizers)
 
   @parameterized.named_parameters(
-      ('federated_type',
-       computation_types.FederatedType(tf.float32, placements.SERVER)),
+      (
+          'federated_type',
+          computation_types.FederatedType(tf.float32, placements.SERVER),
+      ),
       ('function_type', computation_types.FunctionType(None, ())),
-      ('sequence_type', computation_types.SequenceType(tf.float32)))
+      ('sequence_type', computation_types.SequenceType(tf.float32)),
+  )
   def test_incorrect_unfinalized_metrics_type_raises(
-      self, bad_unfinalized_metrics_type):
+      self, bad_unfinalized_metrics_type
+  ):
     metric_finalizers = collections.OrderedDict(
-        num_examples=tf.function(func=lambda x: x))
+        num_examples=tf.function(func=lambda x: x)
+    )
     aggregate_factory = aggregation_factory.SumThenFinalizeFactory(
-        metric_finalizers)
-    with self.assertRaisesRegex(TypeError,
-                                'Expected .*`tff.types.StructWithPythonType`'):
+        metric_finalizers
+    )
+    with self.assertRaisesRegex(
+        TypeError, 'Expected .*`tff.types.StructWithPythonType`'
+    ):
       aggregate_factory.create(bad_unfinalized_metrics_type)
 
   def test_finalizers_and_unfinalized_metrics_type_mismatch_raises(self):
     metric_finalizers = collections.OrderedDict(
-        num_examples=tf.function(func=lambda x: x))
+        num_examples=tf.function(func=lambda x: x)
+    )
     aggregate_factory = aggregation_factory.SumThenFinalizeFactory(
-        metric_finalizers)
+        metric_finalizers
+    )
     local_unfinalized_metrics_type = computation_types.StructWithPythonType(
         collections.OrderedDict(
             x=tf.TensorSpec(shape=[None, 2], dtype=tf.float32),
-            y=tf.TensorSpec(shape=[None, 1], dtype=tf.float32)),
-        container_type=collections.OrderedDict)
+            y=tf.TensorSpec(shape=[None, 1], dtype=tf.float32),
+        ),
+        container_type=collections.OrderedDict,
+    )
     with self.assertRaisesRegex(
-        ValueError,
-        'The metric names in `metric_finalizers` do not match those'):
+        ValueError, 'The metric names in `metric_finalizers` do not match those'
+    ):
       aggregate_factory.create(local_unfinalized_metrics_type)
 
   def test_unfinalized_metrics_type_and_initial_values_mismatch_raises(self):
     metric_finalizers = collections.OrderedDict(
-        num_examples=tf.function(func=lambda x: x))
+        num_examples=tf.function(func=lambda x: x)
+    )
     local_unfinalized_metrics_type = type_conversions.type_from_tensors(
-        collections.OrderedDict(num_examples=1.0))
+        collections.OrderedDict(num_examples=1.0)
+    )
     initial_unfinalized_metrics = collections.OrderedDict(num_examples=[1.0])
     aggregate_factory = aggregation_factory.SumThenFinalizeFactory(
         metric_finalizers,
-        initial_unfinalized_metrics=initial_unfinalized_metrics)
+        initial_unfinalized_metrics=initial_unfinalized_metrics,
+    )
     with self.assertRaisesRegex(TypeError, 'initial unfinalized metrics type'):
       aggregate_factory.create(local_unfinalized_metrics_type)
 
@@ -240,15 +312,20 @@ class SumThenFinalizeFactoryExecutionTest(tf.test.TestCase):
         num_examples=tf.function(func=lambda x: x),
         loss=tf.function(func=lambda x: tf.math.divide_no_nan(x[0], x[1])),
         custom_sum=tf.function(
-            func=lambda x: tf.add_n(map(tf.math.reduce_sum, x))))
+            func=lambda x: tf.add_n(map(tf.math.reduce_sum, x))
+        ),
+    )
     local_unfinalized_metrics = collections.OrderedDict(
         num_examples=1.0,
         loss=[2.0, 1.0],
-        custom_sum=[tf.constant(1.0), tf.constant([1.0, 1.0])])
+        custom_sum=[tf.constant(1.0), tf.constant([1.0, 1.0])],
+    )
     local_unfinalized_metrics_type = type_conversions.type_from_tensors(
-        local_unfinalized_metrics)
+        local_unfinalized_metrics
+    )
     aggregate_factory = aggregation_factory.SumThenFinalizeFactory(
-        metric_finalizers)
+        metric_finalizers
+    )
     process = aggregate_factory.create(local_unfinalized_metrics_type)
 
     state = process.initialize()
@@ -256,9 +333,13 @@ class SumThenFinalizeFactoryExecutionTest(tf.test.TestCase):
     expected_unfinalized_metrics_accumulators = collections.OrderedDict(
         num_examples=0.0,
         loss=[0.0, 0.0],
-        custom_sum=[tf.constant(0.0), tf.constant([0.0, 0.0])])
-    tf.nest.map_structure(self.assertAllEqual, unfinalized_metrics_accumulators,
-                          expected_unfinalized_metrics_accumulators)
+        custom_sum=[tf.constant(0.0), tf.constant([0.0, 0.0])],
+    )
+    tf.nest.map_structure(
+        self.assertAllEqual,
+        unfinalized_metrics_accumulators,
+        expected_unfinalized_metrics_accumulators,
+    )
 
     client_data = [local_unfinalized_metrics, local_unfinalized_metrics]
     output = process.next(state, client_data)
@@ -267,80 +348,111 @@ class SumThenFinalizeFactoryExecutionTest(tf.test.TestCase):
     expected_unfinalized_metrics_accumulators = collections.OrderedDict(
         num_examples=2.0,
         loss=[4.0, 2.0],
-        custom_sum=[tf.constant(2.0), tf.constant([2.0, 2.0])])
-    tf.nest.map_structure(self.assertAllEqual, unfinalized_metrics_accumulators,
-                          expected_unfinalized_metrics_accumulators)
+        custom_sum=[tf.constant(2.0), tf.constant([2.0, 2.0])],
+    )
+    tf.nest.map_structure(
+        self.assertAllEqual,
+        unfinalized_metrics_accumulators,
+        expected_unfinalized_metrics_accumulators,
+    )
     self.assertEqual(
         current_round_metrics,
         collections.OrderedDict(
-            num_examples=2.0, loss=2.0, custom_sum=tf.constant(6.0)))
+            num_examples=2.0, loss=2.0, custom_sum=tf.constant(6.0)
+        ),
+    )
     self.assertEqual(
         total_rounds_metrics,
         collections.OrderedDict(
-            num_examples=2.0, loss=2.0, custom_sum=tf.constant(6.0)))
+            num_examples=2.0, loss=2.0, custom_sum=tf.constant(6.0)
+        ),
+    )
 
   def test_sum_then_finalize_metrics_with_initial_values(self):
     metric_finalizers = collections.OrderedDict(
         num_examples=tf.function(func=lambda x: x),
-        loss=tf.function(func=lambda x: tf.math.divide_no_nan(x[0], x[1])))
+        loss=tf.function(func=lambda x: tf.math.divide_no_nan(x[0], x[1])),
+    )
     local_unfinalized_metrics = collections.OrderedDict(
-        num_examples=1.0, loss=[2.0, 1.0])
+        num_examples=1.0, loss=[2.0, 1.0]
+    )
     local_unfinalized_metrics_type = type_conversions.type_from_tensors(
-        local_unfinalized_metrics)
+        local_unfinalized_metrics
+    )
     initial_unfinalized_metrics = collections.OrderedDict(
-        num_examples=2.0, loss=[3.0, 2.0])
+        num_examples=2.0, loss=[3.0, 2.0]
+    )
     aggregate_factory = aggregation_factory.SumThenFinalizeFactory(
         metric_finalizers,
-        initial_unfinalized_metrics=initial_unfinalized_metrics)
+        initial_unfinalized_metrics=initial_unfinalized_metrics,
+    )
     process = aggregate_factory.create(local_unfinalized_metrics_type)
 
     state = process.initialize()
     _, unfinalized_metrics_accumulators = state
-    self.assertEqual(unfinalized_metrics_accumulators,
-                     initial_unfinalized_metrics)
+    self.assertEqual(
+        unfinalized_metrics_accumulators, initial_unfinalized_metrics
+    )
 
     client_data = [local_unfinalized_metrics, local_unfinalized_metrics]
     output = process.next(state, client_data)
     _, unfinalized_metrics_accumulators = output.state
     current_round_metrics, total_rounds_metrics = output.result
-    self.assertEqual(unfinalized_metrics_accumulators,
-                     collections.OrderedDict(num_examples=4.0, loss=[7.0, 4.0]))
-    self.assertEqual(current_round_metrics,
-                     collections.OrderedDict(num_examples=2.0, loss=2.0))
-    self.assertEqual(total_rounds_metrics,
-                     collections.OrderedDict(num_examples=4.0, loss=1.75))
+    self.assertEqual(
+        unfinalized_metrics_accumulators,
+        collections.OrderedDict(num_examples=4.0, loss=[7.0, 4.0]),
+    )
+    self.assertEqual(
+        current_round_metrics,
+        collections.OrderedDict(num_examples=2.0, loss=2.0),
+    )
+    self.assertEqual(
+        total_rounds_metrics,
+        collections.OrderedDict(num_examples=4.0, loss=1.75),
+    )
 
   def test_secure_sum_then_finalize_metrics(self):
     metric_finalizers = collections.OrderedDict(
         num_examples=tf.function(func=lambda x: x),
         loss=tf.function(func=lambda x: tf.math.divide_no_nan(x[0], x[1])),
         custom_sum=tf.function(
-            func=lambda x: tf.add_n(map(tf.math.reduce_sum, x))))
+            func=lambda x: tf.add_n(map(tf.math.reduce_sum, x))
+        ),
+    )
     local_unfinalized_metrics = collections.OrderedDict(
         num_examples=1,
         loss=[2.0, 1.0],
-        custom_sum=[tf.constant(101.0),
-                    tf.constant([1.0, 1.0])])
+        custom_sum=[tf.constant(101.0), tf.constant([1.0, 1.0])],
+    )
     local_unfinalized_metrics_type = type_conversions.type_from_tensors(
-        local_unfinalized_metrics)
+        local_unfinalized_metrics
+    )
     secure_sum_factory = aggregation_factory.SecureSumFactory()
 
     aggregate_factory = aggregation_factory.SumThenFinalizeFactory(
-        metric_finalizers, inner_summation_factory=secure_sum_factory)
+        metric_finalizers, inner_summation_factory=secure_sum_factory
+    )
     process = aggregate_factory.create(local_unfinalized_metrics_type)
     state = process.initialize()
     init_inner_summation_process_state, unfinalized_metrics_accumulators = state
     expected_init_unfinalized_metrics_accumulators = collections.OrderedDict(
         num_examples=0.0,
         loss=[0.0, 0.0],
-        custom_sum=[tf.constant(0.0), tf.constant([0.0, 0.0])])
+        custom_sum=[tf.constant(0.0), tf.constant([0.0, 0.0])],
+    )
     secure_sum_process = secure_sum_factory.create(
-        local_unfinalized_metrics_type)
-    tf.nest.map_structure(self.assertAllEqual, unfinalized_metrics_accumulators,
-                          expected_init_unfinalized_metrics_accumulators)
-    tf.nest.map_structure(self.assertAllEqual,
-                          init_inner_summation_process_state,
-                          secure_sum_process.initialize())
+        local_unfinalized_metrics_type
+    )
+    tf.nest.map_structure(
+        self.assertAllEqual,
+        unfinalized_metrics_accumulators,
+        expected_init_unfinalized_metrics_accumulators,
+    )
+    tf.nest.map_structure(
+        self.assertAllEqual,
+        init_inner_summation_process_state,
+        secure_sum_process.initialize(),
+    )
 
     client_data = [local_unfinalized_metrics, local_unfinalized_metrics]
     output = process.next(state, client_data)
@@ -356,35 +468,51 @@ class SumThenFinalizeFactoryExecutionTest(tf.test.TestCase):
     expected_unfinalized_metrics_accumulators = collections.OrderedDict(
         num_examples=2.0,
         loss=[4.0, 2.0],
-        custom_sum=[tf.constant(200.0),
-                    tf.constant([2.0, 2.0])])
-    tf.nest.map_structure(self.assertAllEqual, unfinalized_metrics_accumulators,
-                          expected_unfinalized_metrics_accumulators)
+        custom_sum=[tf.constant(200.0), tf.constant([2.0, 2.0])],
+    )
+    tf.nest.map_structure(
+        self.assertAllEqual,
+        unfinalized_metrics_accumulators,
+        expected_unfinalized_metrics_accumulators,
+    )
 
     current_round_metrics, total_rounds_metrics = output.result
     self.assertEqual(
         current_round_metrics,
         collections.OrderedDict(
-            num_examples=2.0, loss=2.0, custom_sum=tf.constant(204.0)))
+            num_examples=2.0, loss=2.0, custom_sum=tf.constant(204.0)
+        ),
+    )
     self.assertEqual(
         total_rounds_metrics,
         collections.OrderedDict(
-            num_examples=2.0, loss=2.0, custom_sum=tf.constant(204.0)))
+            num_examples=2.0, loss=2.0, custom_sum=tf.constant(204.0)
+        ),
+    )
 
     self.assertEqual(
         output.measurements,
-        collections.OrderedDict([(_DEFAULT_FLOAT_FACTORY_KEY,
-                                  collections.OrderedDict(
-                                      secure_upper_clipped_count=2,
-                                      secure_lower_clipped_count=0,
-                                      secure_upper_threshold=100.0,
-                                      secure_lower_threshold=-100.0)),
-                                 (_DEFAULT_INT_FACTORY_KEY,
-                                  collections.OrderedDict(
-                                      secure_upper_clipped_count=0,
-                                      secure_lower_clipped_count=0,
-                                      secure_upper_threshold=1048575,
-                                      secure_lower_threshold=0))]))
+        collections.OrderedDict([
+            (
+                _DEFAULT_FLOAT_FACTORY_KEY,
+                collections.OrderedDict(
+                    secure_upper_clipped_count=2,
+                    secure_lower_clipped_count=0,
+                    secure_upper_threshold=100.0,
+                    secure_lower_threshold=-100.0,
+                ),
+            ),
+            (
+                _DEFAULT_INT_FACTORY_KEY,
+                collections.OrderedDict(
+                    secure_upper_clipped_count=0,
+                    secure_lower_clipped_count=0,
+                    secure_upper_threshold=1048575,
+                    secure_lower_threshold=0,
+                ),
+            ),
+        ]),
+    )
 
 
 class SecureSumFactoryTest(tf.test.TestCase, parameterized.TestCase):
@@ -394,9 +522,11 @@ class SecureSumFactoryTest(tf.test.TestCase, parameterized.TestCase):
     local_unfinalized_metrics = collections.OrderedDict(
         num_examples=1,
         loss=[2.0, 1.0],
-        custom_sum=[tf.constant(1.0), tf.constant([1.0, 1.0])])
+        custom_sum=[tf.constant(1.0), tf.constant([1.0, 1.0])],
+    )
     local_unfinalized_metrics_type = type_conversions.type_from_tensors(
-        local_unfinalized_metrics)
+        local_unfinalized_metrics
+    )
     process = aggregate_factory.create(local_unfinalized_metrics_type)
     try:
       static_assert.assert_not_contains_unsecure_aggregation(process.next)
@@ -406,58 +536,75 @@ class SecureSumFactoryTest(tf.test.TestCase, parameterized.TestCase):
     state = process.initialize()
 
     expected_factory_keys = set(
-        [_DEFAULT_FLOAT_FACTORY_KEY, _DEFAULT_INT_FACTORY_KEY])
+        [_DEFAULT_FLOAT_FACTORY_KEY, _DEFAULT_INT_FACTORY_KEY]
+    )
     self.assertEqual(state.keys(), expected_factory_keys)
 
     client_data = [local_unfinalized_metrics, local_unfinalized_metrics]
     output = process.next(state, client_data)
     self.assertEqual(output.state.keys(), expected_factory_keys)
     # Assert only default float bounds are updated.
-    self.assertNotAllEqual(output.state[_DEFAULT_FLOAT_FACTORY_KEY],
-                           state[_DEFAULT_FLOAT_FACTORY_KEY])
-    self.assertAllEqual(output.state[_DEFAULT_INT_FACTORY_KEY],
-                        state[_DEFAULT_INT_FACTORY_KEY])
+    self.assertNotAllEqual(
+        output.state[_DEFAULT_FLOAT_FACTORY_KEY],
+        state[_DEFAULT_FLOAT_FACTORY_KEY],
+    )
+    self.assertAllEqual(
+        output.state[_DEFAULT_INT_FACTORY_KEY], state[_DEFAULT_INT_FACTORY_KEY]
+    )
 
     tf.nest.map_structure(
-        self.assertAllEqual, output.result,
+        self.assertAllEqual,
+        output.result,
         collections.OrderedDict(
             num_examples=2,
             loss=[4.0, 2.0],
-            custom_sum=[tf.constant(2.0),
-                        tf.constant([2.0, 2.0])]))
+            custom_sum=[tf.constant(2.0), tf.constant([2.0, 2.0])],
+        ),
+    )
 
     self.assertEqual(
         output.measurements,
-        collections.OrderedDict([(_DEFAULT_FLOAT_FACTORY_KEY,
-                                  collections.OrderedDict(
-                                      secure_upper_clipped_count=0,
-                                      secure_lower_clipped_count=0,
-                                      secure_upper_threshold=100.0,
-                                      secure_lower_threshold=-100.0)),
-                                 (_DEFAULT_INT_FACTORY_KEY,
-                                  collections.OrderedDict(
-                                      secure_upper_clipped_count=0,
-                                      secure_lower_clipped_count=0,
-                                      secure_upper_threshold=aggregation_factory
-                                      .DEFAULT_FIXED_SECURE_UPPER_BOUND,
-                                      secure_lower_threshold=aggregation_factory
-                                      .DEFAULT_FIXED_SECURE_LOWER_BOUND))]))
+        collections.OrderedDict([
+            (
+                _DEFAULT_FLOAT_FACTORY_KEY,
+                collections.OrderedDict(
+                    secure_upper_clipped_count=0,
+                    secure_lower_clipped_count=0,
+                    secure_upper_threshold=100.0,
+                    secure_lower_threshold=-100.0,
+                ),
+            ),
+            (
+                _DEFAULT_INT_FACTORY_KEY,
+                collections.OrderedDict(
+                    secure_upper_clipped_count=0,
+                    secure_lower_clipped_count=0,
+                    secure_upper_threshold=aggregation_factory.DEFAULT_FIXED_SECURE_UPPER_BOUND,
+                    secure_lower_threshold=aggregation_factory.DEFAULT_FIXED_SECURE_LOWER_BOUND,
+                ),
+            ),
+        ]),
+    )
 
   def test_user_value_ranges_returns_correct_results(self):
     local_unfinalized_metrics = collections.OrderedDict(
         num_examples=150,
         loss=[2.0, 1.0],
-        custom_sum=[tf.constant(101.0),
-                    tf.constant([1.0, 1.0])])
+        custom_sum=[tf.constant(101.0), tf.constant([1.0, 1.0])],
+    )
     local_unfinalized_metrics_type = type_conversions.type_from_tensors(
-        local_unfinalized_metrics)
+        local_unfinalized_metrics
+    )
     metric_value_ranges = collections.OrderedDict(
-        num_examples=(0, 100), loss=[
+        num_examples=(0, 100),
+        loss=[
             None,
             (0.0, 100.0),
-        ])
+        ],
+    )
     aggregate_factory = aggregation_factory.SecureSumFactory(
-        metric_value_ranges)
+        metric_value_ranges
+    )
     process = aggregate_factory.create(local_unfinalized_metrics_type)
     try:
       static_assert.assert_not_contains_unsecure_aggregation(process.next)
@@ -466,12 +613,15 @@ class SecureSumFactoryTest(tf.test.TestCase, parameterized.TestCase):
 
     state = process.initialize()
     custom_float_factory_key = aggregation_factory.create_factory_key(
-        0.0, 100.0, tf.float32)
+        0.0, 100.0, tf.float32
+    )
     custom_int_factory_key = aggregation_factory.create_factory_key(
-        0, 100, tf.int32)
+        0, 100, tf.int32
+    )
     expected_factory_keys = set([
-        _DEFAULT_FLOAT_FACTORY_KEY, custom_float_factory_key,
-        custom_int_factory_key
+        _DEFAULT_FLOAT_FACTORY_KEY,
+        custom_float_factory_key,
+        custom_int_factory_key,
     ])
     self.assertEqual(state.keys(), expected_factory_keys)
 
@@ -479,80 +629,110 @@ class SecureSumFactoryTest(tf.test.TestCase, parameterized.TestCase):
     output = process.next(state, client_data)
     self.assertEqual(output.state.keys(), expected_factory_keys)
     # Assert only default float bounds are updated.
-    self.assertNotAllEqual(output.state[_DEFAULT_FLOAT_FACTORY_KEY],
-                           state[_DEFAULT_FLOAT_FACTORY_KEY])
-    self.assertAllEqual(output.state[custom_float_factory_key],
-                        state[custom_float_factory_key])
-    self.assertAllEqual(output.state[custom_int_factory_key],
-                        state[custom_int_factory_key])
+    self.assertNotAllEqual(
+        output.state[_DEFAULT_FLOAT_FACTORY_KEY],
+        state[_DEFAULT_FLOAT_FACTORY_KEY],
+    )
+    self.assertAllEqual(
+        output.state[custom_float_factory_key], state[custom_float_factory_key]
+    )
+    self.assertAllEqual(
+        output.state[custom_int_factory_key], state[custom_int_factory_key]
+    )
 
     tf.nest.map_structure(
-        self.assertAllEqual, output.result,
+        self.assertAllEqual,
+        output.result,
         collections.OrderedDict(
             num_examples=200,
             loss=[4.0, 2.0],
-            custom_sum=[tf.constant(200.0),
-                        tf.constant([2.0, 2.0])]))
+            custom_sum=[tf.constant(200.0), tf.constant([2.0, 2.0])],
+        ),
+    )
 
     self.assertEqual(
         output.measurements,
-        collections.OrderedDict([(_DEFAULT_FLOAT_FACTORY_KEY,
-                                  collections.OrderedDict(
-                                      secure_upper_clipped_count=2,
-                                      secure_lower_clipped_count=0,
-                                      secure_upper_threshold=100.0,
-                                      secure_lower_threshold=-100.0)),
-                                 (custom_float_factory_key,
-                                  collections.OrderedDict(
-                                      secure_upper_clipped_count=0,
-                                      secure_lower_clipped_count=0,
-                                      secure_upper_threshold=100.0,
-                                      secure_lower_threshold=0.0)),
-                                 (custom_int_factory_key,
-                                  collections.OrderedDict(
-                                      secure_upper_clipped_count=2,
-                                      secure_lower_clipped_count=0,
-                                      secure_upper_threshold=100,
-                                      secure_lower_threshold=0))]))
+        collections.OrderedDict([
+            (
+                _DEFAULT_FLOAT_FACTORY_KEY,
+                collections.OrderedDict(
+                    secure_upper_clipped_count=2,
+                    secure_lower_clipped_count=0,
+                    secure_upper_threshold=100.0,
+                    secure_lower_threshold=-100.0,
+                ),
+            ),
+            (
+                custom_float_factory_key,
+                collections.OrderedDict(
+                    secure_upper_clipped_count=0,
+                    secure_lower_clipped_count=0,
+                    secure_upper_threshold=100.0,
+                    secure_lower_threshold=0.0,
+                ),
+            ),
+            (
+                custom_int_factory_key,
+                collections.OrderedDict(
+                    secure_upper_clipped_count=2,
+                    secure_lower_clipped_count=0,
+                    secure_upper_threshold=100,
+                    secure_lower_threshold=0,
+                ),
+            ),
+        ]),
+    )
 
   @parameterized.named_parameters(
-      ('federated_type',
-       computation_types.FederatedType(tf.float32, placements.SERVER)),
+      (
+          'federated_type',
+          computation_types.FederatedType(tf.float32, placements.SERVER),
+      ),
       ('function_type', computation_types.FunctionType(None, ())),
-      ('sequence_type', computation_types.SequenceType(tf.float32)))
+      ('sequence_type', computation_types.SequenceType(tf.float32)),
+  )
   def test_incorrect_unfinalized_metrics_type_raises(
-      self, bad_unfinalized_metrics_type):
+      self, bad_unfinalized_metrics_type
+  ):
     secure_sum_factory = aggregation_factory.SecureSumFactory()
-    with self.assertRaisesRegex(TypeError,
-                                'Expected .*`tff.types.StructWithPythonType`'):
+    with self.assertRaisesRegex(
+        TypeError, 'Expected .*`tff.types.StructWithPythonType`'
+    ):
       secure_sum_factory.create(bad_unfinalized_metrics_type)
 
   def test_user_value_ranges_fails_invalid_dtype(self):
     local_unfinalized_metrics = collections.OrderedDict(
-        custom_sum=[tf.constant('abc')])
+        custom_sum=[tf.constant('abc')]
+    )
     secure_sum_factory = aggregation_factory.SecureSumFactory()
     with self.assertRaises(aggregation_factory.UnquantizableDTypeError):
       secure_sum_factory.create(
           local_unfinalized_metrics_type=type_conversions.type_from_tensors(
-              local_unfinalized_metrics))
+              local_unfinalized_metrics
+          )
+      )
 
   def test_user_value_ranges_fails_not_2_tuple(self):
     local_unfinalized_metrics_type = type_conversions.type_from_tensors(
-        collections.OrderedDict(
-            accuracy=[tf.constant(1.0), tf.constant(2.0)]))
-    metric_value_ranges = collections.OrderedDict(accuracy=[
-        # Invalid specification
-        (0.0, 1.0, 2.0),
-        None
-    ])
+        collections.OrderedDict(accuracy=[tf.constant(1.0), tf.constant(2.0)])
+    )
+    metric_value_ranges = collections.OrderedDict(
+        accuracy=[
+            # Invalid specification
+            (0.0, 1.0, 2.0),
+            None,
+        ]
+    )
     secure_sum_factory = aggregation_factory.SecureSumFactory(
-        metric_value_ranges)
+        metric_value_ranges
+    )
     with self.assertRaisesRegex(ValueError, 'must be defined as a 2-tuple'):
       secure_sum_factory.create(local_unfinalized_metrics_type)
 
 
-class CreateDefaultSecureSumQuantizationRangesTest(parameterized.TestCase,
-                                                   tf.test.TestCase):
+class CreateDefaultSecureSumQuantizationRangesTest(
+    parameterized.TestCase, tf.test.TestCase
+):
 
   # The auto-tuned bound of float values is a `tff.templates.EstimationProcess`,
   # simply check two bounds have the same type.
@@ -565,198 +745,321 @@ class CreateDefaultSecureSumQuantizationRangesTest(parameterized.TestCase,
       ('float64', TensorType(tf.float64, [1]), _DEFAULT_AUTO_TUNED_FLOAT_RANGE),
       ('int32', TensorType(tf.int32, [1]), _DEFAULT_INT_RANGE),
       ('int64', TensorType(tf.int64, [3]), _DEFAULT_INT_RANGE),
-      ('<int64,float32>', computation_types.to_type([tf.int64, tf.float32]),
-       [_DEFAULT_INT_RANGE, _DEFAULT_AUTO_TUNED_FLOAT_RANGE]),
-      ('<a=int64,b=<c=float32,d=[int32,int32]>>',
-       computation_types.to_type(
-           collections.OrderedDict(
-               a=tf.int64,
-               b=collections.OrderedDict(c=tf.float32, d=[tf.int32, tf.int32
-                                                         ]))),
-       collections.OrderedDict(
-           a=_DEFAULT_INT_RANGE,
-           b=collections.OrderedDict(
-               c=_DEFAULT_AUTO_TUNED_FLOAT_RANGE,
-               d=[_DEFAULT_INT_RANGE, _DEFAULT_INT_RANGE]))),
+      (
+          '<int64,float32>',
+          computation_types.to_type([tf.int64, tf.float32]),
+          [_DEFAULT_INT_RANGE, _DEFAULT_AUTO_TUNED_FLOAT_RANGE],
+      ),
+      (
+          '<a=int64,b=<c=float32,d=[int32,int32]>>',
+          computation_types.to_type(
+              collections.OrderedDict(
+                  a=tf.int64,
+                  b=collections.OrderedDict(
+                      c=tf.float32, d=[tf.int32, tf.int32]
+                  ),
+              )
+          ),
+          collections.OrderedDict(
+              a=_DEFAULT_INT_RANGE,
+              b=collections.OrderedDict(
+                  c=_DEFAULT_AUTO_TUNED_FLOAT_RANGE,
+                  d=[_DEFAULT_INT_RANGE, _DEFAULT_INT_RANGE],
+              ),
+          ),
+      ),
   )
-  def test_default_auto_tuned_range_construction(self, type_spec,
-                                                 expected_range):
-
-    self.addTypeEqualityFunc(estimation_process.EstimationProcess,
-                             self.assertAutoTunedBoundEqual)
+  def test_default_auto_tuned_range_construction(
+      self, type_spec, expected_range
+  ):
+    self.addTypeEqualityFunc(
+        estimation_process.EstimationProcess, self.assertAutoTunedBoundEqual
+    )
     tf.nest.map_structure(
         self.assertEqual,
         aggregation_factory.create_default_secure_sum_quantization_ranges(
-            type_spec), expected_range)
+            type_spec
+        ),
+        expected_range,
+    )
 
   @parameterized.named_parameters(
       ('float32', TensorType(tf.float32, [3]), _DEFAULT_FIXED_FLOAT_RANGE),
       ('float64', TensorType(tf.float64, [1]), _DEFAULT_FIXED_FLOAT_RANGE),
       ('int32', TensorType(tf.int32, [1]), _DEFAULT_INT_RANGE),
       ('int64', TensorType(tf.int64, [3]), _DEFAULT_INT_RANGE),
-      ('<int64,float32>', computation_types.to_type([tf.int64, tf.float32]),
-       [_DEFAULT_INT_RANGE, _DEFAULT_FIXED_FLOAT_RANGE]),
-      ('<a=int64,b=<c=float32,d=[int32,int32]>>',
-       computation_types.to_type(
-           collections.OrderedDict(
-               a=tf.int64,
-               b=collections.OrderedDict(c=tf.float32, d=[tf.int32, tf.int32
-                                                         ]))),
-       collections.OrderedDict(
-           a=_DEFAULT_INT_RANGE,
-           b=collections.OrderedDict(
-               c=_DEFAULT_FIXED_FLOAT_RANGE,
-               d=[_DEFAULT_INT_RANGE, _DEFAULT_INT_RANGE]))),
+      (
+          '<int64,float32>',
+          computation_types.to_type([tf.int64, tf.float32]),
+          [_DEFAULT_INT_RANGE, _DEFAULT_FIXED_FLOAT_RANGE],
+      ),
+      (
+          '<a=int64,b=<c=float32,d=[int32,int32]>>',
+          computation_types.to_type(
+              collections.OrderedDict(
+                  a=tf.int64,
+                  b=collections.OrderedDict(
+                      c=tf.float32, d=[tf.int32, tf.int32]
+                  ),
+              )
+          ),
+          collections.OrderedDict(
+              a=_DEFAULT_INT_RANGE,
+              b=collections.OrderedDict(
+                  c=_DEFAULT_FIXED_FLOAT_RANGE,
+                  d=[_DEFAULT_INT_RANGE, _DEFAULT_INT_RANGE],
+              ),
+          ),
+      ),
   )
   def test_default_fixed_range_construction(self, type_spec, expected_range):
     self.assertAllEqual(
         aggregation_factory.create_default_secure_sum_quantization_ranges(
-            type_spec, use_auto_tuned_bounds_for_float_values=False),
-        expected_range)
+            type_spec, use_auto_tuned_bounds_for_float_values=False
+        ),
+        expected_range,
+    )
 
   @parameterized.named_parameters(
-      ('float32_float_range', TensorType(
-          tf.float32, [3]), 0.1, 0.5, _DEFAULT_AUTO_TUNED_FLOAT_RANGE),
-      ('float32_int_range', TensorType(
-          tf.float32, [3]), 1, 5, _DEFAULT_AUTO_TUNED_FLOAT_RANGE),
+      (
+          'float32_float_range',
+          TensorType(tf.float32, [3]),
+          0.1,
+          0.5,
+          _DEFAULT_AUTO_TUNED_FLOAT_RANGE,
+      ),
+      (
+          'float32_int_range',
+          TensorType(tf.float32, [3]),
+          1,
+          5,
+          _DEFAULT_AUTO_TUNED_FLOAT_RANGE,
+      ),
       ('int32_int_range', TensorType(tf.int32, [1]), 1, 5, (1, 5)),
-      ('int32_float_range', TensorType(tf.int32, [1]), 1., 5., (1, 5)),
-      ('int32_float_range_truncated', TensorType(tf.int32, [1]), 1.5, 5.5,
-       (2, 5)),
-      ('<int64,float32>', computation_types.to_type([tf.int64, tf.float32]), 1,
-       5, [(1, 5), _DEFAULT_AUTO_TUNED_FLOAT_RANGE]),
-      ('<a=int64,b=<c=float32,d=[int32,int32]>>',
-       computation_types.to_type(
-           collections.OrderedDict(
-               a=tf.int64,
-               b=collections.OrderedDict(c=tf.float32, d=[tf.int32, tf.int32
-                                                         ]))), 1, 5,
-       collections.OrderedDict(
-           a=(1, 5),
-           b=collections.OrderedDict(
-               c=_DEFAULT_AUTO_TUNED_FLOAT_RANGE, d=[(1, 5), (1, 5)]))),
+      ('int32_float_range', TensorType(tf.int32, [1]), 1.0, 5.0, (1, 5)),
+      (
+          'int32_float_range_truncated',
+          TensorType(tf.int32, [1]),
+          1.5,
+          5.5,
+          (2, 5),
+      ),
+      (
+          '<int64,float32>',
+          computation_types.to_type([tf.int64, tf.float32]),
+          1,
+          5,
+          [(1, 5), _DEFAULT_AUTO_TUNED_FLOAT_RANGE],
+      ),
+      (
+          '<a=int64,b=<c=float32,d=[int32,int32]>>',
+          computation_types.to_type(
+              collections.OrderedDict(
+                  a=tf.int64,
+                  b=collections.OrderedDict(
+                      c=tf.float32, d=[tf.int32, tf.int32]
+                  ),
+              )
+          ),
+          1,
+          5,
+          collections.OrderedDict(
+              a=(1, 5),
+              b=collections.OrderedDict(
+                  c=_DEFAULT_AUTO_TUNED_FLOAT_RANGE, d=[(1, 5), (1, 5)]
+              ),
+          ),
+      ),
   )
   def test_user_supplied_range_using_default_auto_tuned_range(
-      self, type_spec, lower_bound, upper_bound, expected_range):
-    self.addTypeEqualityFunc(estimation_process.EstimationProcess,
-                             self.assertAutoTunedBoundEqual)
+      self, type_spec, lower_bound, upper_bound, expected_range
+  ):
+    self.addTypeEqualityFunc(
+        estimation_process.EstimationProcess, self.assertAutoTunedBoundEqual
+    )
     tf.nest.map_structure(
         self.assertEqual,
         aggregation_factory.create_default_secure_sum_quantization_ranges(
-            type_spec, lower_bound, upper_bound), expected_range)
+            type_spec, lower_bound, upper_bound
+        ),
+        expected_range,
+    )
 
   @parameterized.named_parameters(
-      ('float32_float_range', TensorType(tf.float32, [3]), 0.1, 0.5,
-       (0.1, 0.5)),
-      ('float32_int_range', TensorType(tf.float32, [3]), 1, 5, (1., 5.)),
+      (
+          'float32_float_range',
+          TensorType(tf.float32, [3]),
+          0.1,
+          0.5,
+          (0.1, 0.5),
+      ),
+      ('float32_int_range', TensorType(tf.float32, [3]), 1, 5, (1.0, 5.0)),
       ('int32_int_range', TensorType(tf.int32, [1]), 1, 5, (1, 5)),
-      ('int32_float_range', TensorType(tf.int32, [1]), 1., 5., (1, 5)),
-      ('int32_float_range_truncated', TensorType(tf.int32, [1]), 1.5, 5.5,
-       (2, 5)),
-      ('<int64,float32>', computation_types.to_type(
-          [tf.int64, tf.float32]), 1, 5, [(1, 5), (1., 5.)]),
-      ('<a=int64,b=<c=float32,d=[int32,int32]>>',
-       computation_types.to_type(
-           collections.OrderedDict(
-               a=tf.int64,
-               b=collections.OrderedDict(c=tf.float32, d=[tf.int32, tf.int32
-                                                         ]))), 1, 5,
-       collections.OrderedDict(
-           a=(1, 5), b=collections.OrderedDict(c=(1., 5.), d=[(1, 5),
-                                                              (1, 5)]))),
+      ('int32_float_range', TensorType(tf.int32, [1]), 1.0, 5.0, (1, 5)),
+      (
+          'int32_float_range_truncated',
+          TensorType(tf.int32, [1]),
+          1.5,
+          5.5,
+          (2, 5),
+      ),
+      (
+          '<int64,float32>',
+          computation_types.to_type([tf.int64, tf.float32]),
+          1,
+          5,
+          [(1, 5), (1.0, 5.0)],
+      ),
+      (
+          '<a=int64,b=<c=float32,d=[int32,int32]>>',
+          computation_types.to_type(
+              collections.OrderedDict(
+                  a=tf.int64,
+                  b=collections.OrderedDict(
+                      c=tf.float32, d=[tf.int32, tf.int32]
+                  ),
+              )
+          ),
+          1,
+          5,
+          collections.OrderedDict(
+              a=(1, 5),
+              b=collections.OrderedDict(c=(1.0, 5.0), d=[(1, 5), (1, 5)]),
+          ),
+      ),
   )
   def test_user_supplied_range_using_default_fixed_range(
-      self, type_spec, lower_bound, upper_bound, expected_range):
+      self, type_spec, lower_bound, upper_bound, expected_range
+  ):
     self.assertAllEqual(
         aggregation_factory.create_default_secure_sum_quantization_ranges(
             type_spec,
             lower_bound,
             upper_bound,
-            use_auto_tuned_bounds_for_float_values=False), expected_range)
+            use_auto_tuned_bounds_for_float_values=False,
+        ),
+        expected_range,
+    )
 
   def test_invalid_dtype(self):
     with self.assertRaises(aggregation_factory.UnquantizableDTypeError):
       aggregation_factory.create_default_secure_sum_quantization_ranges(
-          TensorType(tf.string))
+          TensorType(tf.string)
+      )
 
   def test_too_narrow_integer_range(self):
     with self.assertRaisesRegex(ValueError, 'not wide enough'):
       aggregation_factory.create_default_secure_sum_quantization_ranges(
-          TensorType(tf.int32), lower_bound=0.7, upper_bound=1.3)
+          TensorType(tf.int32), lower_bound=0.7, upper_bound=1.3
+      )
 
   def test_range_reversed(self):
     with self.assertRaisesRegex(ValueError, 'must be greater than'):
       aggregation_factory.create_default_secure_sum_quantization_ranges(
-          TensorType(tf.int32), lower_bound=10, upper_bound=5)
+          TensorType(tf.int32), lower_bound=10, upper_bound=5
+      )
     with self.assertRaisesRegex(ValueError, 'must be greater than'):
       aggregation_factory.create_default_secure_sum_quantization_ranges(
-          TensorType(tf.int32), lower_bound=10., upper_bound=5.)
+          TensorType(tf.int32), lower_bound=10.0, upper_bound=5.0
+      )
 
 
-class FillMissingMetricValueRangesTest(parameterized.TestCase,
-                                       tf.test.TestCase):
+class FillMissingMetricValueRangesTest(
+    parameterized.TestCase, tf.test.TestCase
+):
 
   @parameterized.named_parameters(
-      ('none_user_ranges', None,
-       collections.OrderedDict(
-           num_example=MetricRange(0, 100),
-           loss=[MetricRange(0.0, 100.0),
-                 MetricRange(0.0, 100.0)])),
-      ('partial_user_ranges', collections.OrderedDict(loss=[None, (0.0,
-                                                                   400.0)]),
-       collections.OrderedDict(
-           num_example=MetricRange(0, 100),
-           loss=[MetricRange(0.0, 100.0),
-                 MetricRange(0.0, 400.0)])),
-      ('full_tuple_user_ranges',
-       collections.OrderedDict(
-           num_example=(10, 200), loss=[(-100.0, 300.0), (0.0, 400.0)]),
-       collections.OrderedDict(
-           num_example=MetricRange(10, 200),
-           loss=[MetricRange(-100.0, 300.0),
-                 MetricRange(0.0, 400.0)])),
-      ('full_metric_range_user_ranges',
-       collections.OrderedDict(
-           num_example=MetricRange(10, 200),
-           loss=[MetricRange(-100.0, 300.0),
-                 MetricRange(0.0, 400.0)]),
-       collections.OrderedDict(
-           num_example=MetricRange(10, 200),
-           loss=[MetricRange(-100.0, 300.0),
-                 MetricRange(0.0, 400.0)])))
-  def test_fill_user_ranges_returns_correct_results(self, user_ranges,
-                                                    expected_filled_ranges):
+      (
+          'none_user_ranges',
+          None,
+          collections.OrderedDict(
+              num_example=MetricRange(0, 100),
+              loss=[MetricRange(0.0, 100.0), MetricRange(0.0, 100.0)],
+          ),
+      ),
+      (
+          'partial_user_ranges',
+          collections.OrderedDict(loss=[None, (0.0, 400.0)]),
+          collections.OrderedDict(
+              num_example=MetricRange(0, 100),
+              loss=[MetricRange(0.0, 100.0), MetricRange(0.0, 400.0)],
+          ),
+      ),
+      (
+          'full_tuple_user_ranges',
+          collections.OrderedDict(
+              num_example=(10, 200), loss=[(-100.0, 300.0), (0.0, 400.0)]
+          ),
+          collections.OrderedDict(
+              num_example=MetricRange(10, 200),
+              loss=[MetricRange(-100.0, 300.0), MetricRange(0.0, 400.0)],
+          ),
+      ),
+      (
+          'full_metric_range_user_ranges',
+          collections.OrderedDict(
+              num_example=MetricRange(10, 200),
+              loss=[MetricRange(-100.0, 300.0), MetricRange(0.0, 400.0)],
+          ),
+          collections.OrderedDict(
+              num_example=MetricRange(10, 200),
+              loss=[MetricRange(-100.0, 300.0), MetricRange(0.0, 400.0)],
+          ),
+      ),
+  )
+  def test_fill_user_ranges_returns_correct_results(
+      self, user_ranges, expected_filled_ranges
+  ):
     default_ranges = collections.OrderedDict(
-        num_example=(0, 100), loss=[(0.0, 100.0), (0.0, 100.0)])
+        num_example=(0, 100), loss=[(0.0, 100.0), (0.0, 100.0)]
+    )
     filled_ranges = aggregation_factory.fill_missing_values_with_defaults(
-        default_ranges, user_ranges)
-    tf.nest.map_structure(self.assertAllEqual, filled_ranges,
-                          expected_filled_ranges)
+        default_ranges, user_ranges
+    )
+    tf.nest.map_structure(
+        self.assertAllEqual, filled_ranges, expected_filled_ranges
+    )
 
   @parameterized.named_parameters(
-      ('range_as_list',
-       collections.OrderedDict(
-           num_example=[10, 200], loss=[None, [0.0, 400.0]]), 'range'),
-      ('invalid_bound_type',
-       collections.OrderedDict(num_example=('lower', 'upper')), 'lower bound'),
-      ('bounds_not_match', collections.OrderedDict(num_example=(1.0, 100)),
-       'same type'))
+      (
+          'range_as_list',
+          collections.OrderedDict(
+              num_example=[10, 200], loss=[None, [0.0, 400.0]]
+          ),
+          'range',
+      ),
+      (
+          'invalid_bound_type',
+          collections.OrderedDict(num_example=('lower', 'upper')),
+          'lower bound',
+      ),
+      (
+          'bounds_not_match',
+          collections.OrderedDict(num_example=(1.0, 100)),
+          'same type',
+      ),
+  )
   def test_invalid_user_ranges_type_raises(self, user_ranges, expected_regex):
     default_ranges = collections.OrderedDict(
-        num_example=(0, 100), loss=[(0.0, 100.0), (0.0, 100.0)])
+        num_example=(0, 100), loss=[(0.0, 100.0), (0.0, 100.0)]
+    )
     with self.assertRaisesRegex(TypeError, expected_regex):
       aggregation_factory.fill_missing_values_with_defaults(
-          default_ranges, user_ranges)
+          default_ranges, user_ranges
+      )
 
   @parameterized.named_parameters(
       ('1_tuple', collections.OrderedDict(num_example=(10,))),
-      ('3_tuple', collections.OrderedDict(num_example=(10, 50, 100))))
+      ('3_tuple', collections.OrderedDict(num_example=(10, 50, 100))),
+  )
   def test_invalid_user_ranges_value_raises(self, user_ranges):
     default_ranges = collections.OrderedDict(
-        num_example=(0, 100), loss=[(0.0, 100.0), (0.0, 100.0)])
+        num_example=(0, 100), loss=[(0.0, 100.0), (0.0, 100.0)]
+    )
     with self.assertRaisesRegex(ValueError, '2-tuple'):
       aggregation_factory.fill_missing_values_with_defaults(
-          default_ranges, user_ranges)
+          default_ranges, user_ranges
+      )
 
 
 if __name__ == '__main__':

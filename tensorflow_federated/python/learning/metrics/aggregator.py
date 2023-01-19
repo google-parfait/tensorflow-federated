@@ -38,9 +38,11 @@ class InternalError(Exception):
 
 
 def sum_then_finalize(
-    metric_finalizers: Union[model_lib.MetricFinalizersType,
-                             functional.FunctionalMetricFinalizersType],
-    local_unfinalized_metrics_type: computation_types.StructWithPythonType
+    metric_finalizers: Union[
+        model_lib.MetricFinalizersType,
+        functional.FunctionalMetricFinalizersType,
+    ],
+    local_unfinalized_metrics_type: computation_types.StructWithPythonType,
 ) -> computation_base.Computation:
   """Creates a TFF computation that aggregates metrics via `sum_then_finalize`.
 
@@ -76,23 +78,28 @@ def sum_then_finalize(
   """
   aggregation_utils.check_metric_finalizers(metric_finalizers)
   aggregation_utils.check_local_unfinalzied_metrics_type(
-      local_unfinalized_metrics_type)
+      local_unfinalized_metrics_type
+  )
   if not callable(metric_finalizers):
     # If we have a FunctionalMetricsFinalizerType it's a function that can only
     # we checked when we call it, as users may have used *args/**kwargs
     # arguments or otherwise making it hard to deduce the type.
     aggregation_utils.check_finalizers_matches_unfinalized_metrics(
-        metric_finalizers, local_unfinalized_metrics_type)
+        metric_finalizers, local_unfinalized_metrics_type
+    )
 
   @federated_computation.federated_computation(
-      computation_types.at_clients(local_unfinalized_metrics_type))
+      computation_types.at_clients(local_unfinalized_metrics_type)
+  )
   def aggregator_computation(client_local_unfinalized_metrics):
     unfinalized_metrics_sum = intrinsics.federated_sum(
-        client_local_unfinalized_metrics)
+        client_local_unfinalized_metrics
+    )
 
     if callable(metric_finalizers):
       finalizer_computation = tensorflow_computation.tf_computation(
-          metric_finalizers, local_unfinalized_metrics_type)
+          metric_finalizers, local_unfinalized_metrics_type
+      )
     else:
 
       @tensorflow_computation.tf_computation(local_unfinalized_metrics_type)
@@ -100,11 +107,13 @@ def sum_then_finalize(
         finalized_metrics = collections.OrderedDict()
         for metric_name, metric_finalizer in metric_finalizers.items():
           finalized_metrics[metric_name] = metric_finalizer(
-              unfinalized_metrics[metric_name])
+              unfinalized_metrics[metric_name]
+          )
         return finalized_metrics
 
-    return intrinsics.federated_map(finalizer_computation,
-                                    unfinalized_metrics_sum)
+    return intrinsics.federated_map(
+        finalizer_computation, unfinalized_metrics_sum
+    )
 
   return aggregator_computation
 
@@ -117,11 +126,14 @@ DEFAULT_SECURE_UPPER_BOUND = 2**20 - 1
 
 
 def secure_sum_then_finalize(
-    metric_finalizers: Union[model_lib.MetricFinalizersType,
-                             functional.FunctionalMetricFinalizersType],
+    metric_finalizers: Union[
+        model_lib.MetricFinalizersType,
+        functional.FunctionalMetricFinalizersType,
+    ],
     local_unfinalized_metrics_type: computation_types.StructWithPythonType,
     metric_value_ranges: Optional[
-        aggregation_factory.UserMetricValueRangeDict] = None
+        aggregation_factory.UserMetricValueRangeDict
+    ] = None,
 ) -> computation_base.Computation:
   """Creates a TFF computation that aggregates metrics using secure summation.
 
@@ -202,25 +214,32 @@ def secure_sum_then_finalize(
   """
   aggregation_utils.check_metric_finalizers(metric_finalizers)
   aggregation_utils.check_local_unfinalzied_metrics_type(
-      local_unfinalized_metrics_type)
+      local_unfinalized_metrics_type
+  )
   if not callable(metric_finalizers):
     # If we have a FunctionalMetricsFinalizerType it's a function that can only
     # we checked when we call it, as users may have used *args/**kwargs
     # arguments or otherwise making it hard to deduce the type.
     aggregation_utils.check_finalizers_matches_unfinalized_metrics(
-        metric_finalizers, local_unfinalized_metrics_type)
+        metric_finalizers, local_unfinalized_metrics_type
+    )
 
-  default_metric_value_ranges = aggregation_factory.create_default_secure_sum_quantization_ranges(
-      local_unfinalized_metrics_type,
-      lower_bound=DEFAULT_SECURE_LOWER_BOUND,
-      upper_bound=DEFAULT_SECURE_UPPER_BOUND,
-      use_auto_tuned_bounds_for_float_values=False)
+  default_metric_value_ranges = (
+      aggregation_factory.create_default_secure_sum_quantization_ranges(
+          local_unfinalized_metrics_type,
+          lower_bound=DEFAULT_SECURE_LOWER_BOUND,
+          upper_bound=DEFAULT_SECURE_UPPER_BOUND,
+          use_auto_tuned_bounds_for_float_values=False,
+      )
+  )
   try:
     metric_value_ranges = aggregation_factory.fill_missing_values_with_defaults(
-        default_metric_value_ranges, metric_value_ranges)
+        default_metric_value_ranges, metric_value_ranges
+    )
   except TypeError as e:
-    raise TypeError('Failed to create encoding value range from: '
-                    f'{metric_value_ranges}') from e
+    raise TypeError(
+        f'Failed to create encoding value range from: {metric_value_ranges}'
+    ) from e
 
   # Create a secure sum factory to perform secure summation on metrics.
   # Note that internally metrics are grouped by their value range and dtype, and
@@ -233,36 +252,44 @@ def secure_sum_then_finalize(
   assert not iterative_process.is_stateful(secure_sum_process)
 
   @federated_computation.federated_computation(
-      computation_types.at_clients(local_unfinalized_metrics_type))
+      computation_types.at_clients(local_unfinalized_metrics_type)
+  )
   def aggregator_computation(client_local_unfinalized_metrics):
     unused_state = secure_sum_process.initialize()
-    output = secure_sum_process.next(unused_state,
-                                     client_local_unfinalized_metrics)
+    output = secure_sum_process.next(
+        unused_state, client_local_unfinalized_metrics
+    )
 
     unfinalized_metrics = output.result
     unfinalized_metrics_type = (
-        secure_sum_process.next.type_signature.result.result.member)
+        secure_sum_process.next.type_signature.result.result.member
+    )
     # One minor downside of grouping the inner aggregation processes is that the
     # SecAgg measurements (e.g., clipped_count) are computed at a group level
     # (a group means all metric values belonging to the same `factory_key`).
     secure_sum_measurements = output.measurements
     secure_sum_measurements_type = (
-        secure_sum_process.next.type_signature.result.measurements.member)
+        secure_sum_process.next.type_signature.result.measurements.member
+    )
 
-    @tensorflow_computation.tf_computation(unfinalized_metrics_type,
-                                           secure_sum_measurements_type)
+    @tensorflow_computation.tf_computation(
+        unfinalized_metrics_type, secure_sum_measurements_type
+    )
     def finalizer_computation(unfinalized_metrics, secure_sum_measurements):
       finalized_metrics = collections.OrderedDict(
-          secure_sum_measurements=secure_sum_measurements)
+          secure_sum_measurements=secure_sum_measurements
+      )
       if callable(metric_finalizers):
         finalized_metrics.update(metric_finalizers(unfinalized_metrics))
       else:
         for metric_name, metric_finalizer in metric_finalizers.items():
           finalized_metrics[metric_name] = metric_finalizer(
-              unfinalized_metrics[metric_name])
+              unfinalized_metrics[metric_name]
+          )
       return finalized_metrics
 
     return intrinsics.federated_map(
-        finalizer_computation, (unfinalized_metrics, secure_sum_measurements))
+        finalizer_computation, (unfinalized_metrics, secure_sum_measurements)
+    )
 
   return aggregator_computation

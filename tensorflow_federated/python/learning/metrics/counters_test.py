@@ -21,13 +21,11 @@ from tensorflow_federated.python.learning.metrics import counters
 NAMED_LABEL_TESTS = [
     ('single_label', np.zeros([10]), np.zeros([5, 1])),
     ('multi_label_list', [np.zeros([10])] * 2, [np.zeros([5, 1])] * 2),
-    ('multi_label_dict', {
-        'x1': np.zeros([10]),
-        'y1': np.zeros([10])
-    }, {
-        'x2': np.zeros([5, 1]),
-        'y2': np.zeros([5, 1])
-    }),
+    (
+        'multi_label_dict',
+        {'x1': np.zeros([10]), 'y1': np.zeros([10])},
+        {'x2': np.zeros([5, 1]), 'y2': np.zeros([5, 1])},
+    ),
 ]
 
 

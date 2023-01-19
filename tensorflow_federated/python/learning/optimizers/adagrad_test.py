@@ -26,7 +26,7 @@ _SCALAR_SPEC = tf.TensorSpec([1], tf.float32)
 _STRUCT_SPEC = [tf.TensorSpec([2], tf.float32), tf.TensorSpec([3], tf.float32)]
 _NESTED_SPEC = [
     tf.TensorSpec([10], tf.float32),
-    [tf.TensorSpec([20], tf.float32), [tf.TensorSpec([30], tf.float32)]]
+    [tf.TensorSpec([20], tf.float32), [tf.TensorSpec([30], tf.float32)]],
 ]
 
 
@@ -44,7 +44,8 @@ class AdagradTest(optimizer_test_utils.TestCase, parameterized.TestCase):
     weights = tf.constant([1.0], tf.float32)
     gradients = tf.constant([2.0], tf.float32)
     optimizer = adagrad.build_adagrad(
-        learning_rate=0.01, initial_preconditioner_value=0.0, epsilon=0.0)
+        learning_rate=0.01, initial_preconditioner_value=0.0, epsilon=0.0
+    )
     history = [weights]
 
     state = optimizer.initialize(_SCALAR_SPEC)
@@ -60,7 +61,8 @@ class AdagradTest(optimizer_test_utils.TestCase, parameterized.TestCase):
             [0.9771554],  # w3 = w2 - 0.01 * 2.0 / sqrt(12)
             [0.9721554],  # w4 = w3 - 0.01 * 2.0 / sqrt(16)
         ],
-        history)
+        history,
+    )
 
   @parameterized.named_parameters(
       ('scalar_spec', _SCALAR_SPEC),
@@ -76,8 +78,9 @@ class AdagradTest(optimizer_test_utils.TestCase, parameterized.TestCase):
     for _ in range(10):
       state, weights = optimizer.next(state, weights, gradients)
 
-    tf.nest.map_structure(lambda w: self.assertTrue(all(tf.math.is_finite(w))),
-                          weights)
+    tf.nest.map_structure(
+        lambda w: self.assertTrue(all(tf.math.is_finite(w))), weights
+    )
 
   def test_executes_with_indexed_slices(self):
     # TF can represent gradients as tf.IndexedSlices. This test makes sure this
@@ -86,13 +89,15 @@ class AdagradTest(optimizer_test_utils.TestCase, parameterized.TestCase):
     gradients = tf.IndexedSlices(
         values=tf.constant([[1.0, 1.0], [1.0, 1.0]]),
         indices=tf.constant([0, 2]),
-        dense_shape=tf.constant([4, 2]))
+        dense_shape=tf.constant([4, 2]),
+    )
     optimizer = adagrad.build_adagrad(0.5, initial_preconditioner_value=0.0)
 
     state = optimizer.initialize(tf.TensorSpec([4, 2]))
     _, weights = optimizer.next(state, weights, gradients)
-    self.assertAllClose([[0.5, 0.5], [1.0, 1.0], [0.5, 0.5], [1.0, 1.0]],
-                        weights)
+    self.assertAllClose(
+        [[0.5, 0.5], [1.0, 1.0], [0.5, 0.5], [1.0, 1.0]], weights
+    )
 
   def test_convergence(self):
     init_w, fn, grad_fn = optimizer_test_utils.test_quadratic_problem()
@@ -114,7 +119,7 @@ class AdagradTest(optimizer_test_utils.TestCase, parameterized.TestCase):
   def test_match_keras(self):
     weight_spec = [
         tf.TensorSpec([10, 2], tf.float32),
-        tf.TensorSpec([2], tf.float32)
+        tf.TensorSpec([2], tf.float32),
     ]
     steps = 10
     genarator = tf.random.Generator.from_seed(2021)
@@ -130,9 +135,9 @@ class AdagradTest(optimizer_test_utils.TestCase, parameterized.TestCase):
     tff_optimizer_fn = lambda: adagrad.build_adagrad(0.01)
     keras_optimizer_fn = lambda: tf.keras.optimizers.Adagrad(0.01)
 
-    self.assert_optimizers_numerically_close(model_variables_fn, gradients,
-                                             tff_optimizer_fn,
-                                             keras_optimizer_fn)
+    self.assert_optimizers_numerically_close(
+        model_variables_fn, gradients, tff_optimizer_fn, keras_optimizer_fn
+    )
 
   @parameterized.named_parameters(
       ('negative_lr', -1.0, 0.1, 1e-7, 'learning rate'),
@@ -162,7 +167,8 @@ class AdagradTest(optimizer_test_utils.TestCase, parameterized.TestCase):
   )
   def test_get_hparams_returns_expected_result(self, spec):
     optimizer = adagrad.build_adagrad(
-        learning_rate=0.1, epsilon=0.01, initial_preconditioner_value=0.2)
+        learning_rate=0.1, epsilon=0.01, initial_preconditioner_value=0.2
+    )
     state = optimizer.initialize(spec)
     expected_hparams = collections.OrderedDict(learning_rate=0.1, epsilon=0.01)
     actual_hparams = optimizer.get_hparams(state)
@@ -176,7 +182,8 @@ class AdagradTest(optimizer_test_utils.TestCase, parameterized.TestCase):
   )
   def test_set_hparams_returns_expected_result(self, spec):
     optimizer = adagrad.build_adagrad(
-        learning_rate=0.1, epsilon=0.01, initial_preconditioner_value=0.2)
+        learning_rate=0.1, epsilon=0.01, initial_preconditioner_value=0.2
+    )
     state = optimizer.initialize(spec)
     hparams = collections.OrderedDict(learning_rate=0.5, epsilon=2.0)
     expected_state = copy.deepcopy(state)

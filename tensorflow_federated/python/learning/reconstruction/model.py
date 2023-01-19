@@ -34,6 +34,7 @@ class BatchOutput:
     labels: A `tf.Tensor` of labels for the examples.
     num_examples: A `tf.int32` scalar number of examples seen in the batch.
   """
+
   predictions = attr.ib()
   labels = attr.ib()
   num_examples = attr.ib()

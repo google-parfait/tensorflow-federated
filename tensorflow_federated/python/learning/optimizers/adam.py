@@ -29,7 +29,10 @@ _STEP_KEY = 'step'
 _ACCUMULATOR_KEY = 'accumulator'
 _PRECONDITIONER_KEY = 'preconditioner'
 _HPARAMS_KEYS = [
-    optimizer.LEARNING_RATE_KEY, _BETA_1_KEY, _BETA_2_KEY, _EPSILON_KEY
+    optimizer.LEARNING_RATE_KEY,
+    _BETA_1_KEY,
+    _BETA_2_KEY,
+    _EPSILON_KEY,
 ]
 
 State = TypeVar('State', bound=collections.OrderedDict[str, Any])
@@ -39,11 +42,13 @@ Hparams = TypeVar('Hparams', bound=collections.OrderedDict[str, float])
 class _Adam(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
   """Adam optimizer, see `build_adam` for details."""
 
-  def __init__(self,
-               learning_rate: float,
-               beta_1: float = 0.9,
-               beta_2: float = 0.999,
-               epsilon: float = 1e-7):
+  def __init__(
+      self,
+      learning_rate: float,
+      beta_1: float = 0.9,
+      beta_2: float = 0.999,
+      epsilon: float = 1e-7,
+  ):
     """Initializes Adam optimizer."""
     py_typecheck.check_non_negative_float(learning_rate, 'learning rate')
     _check_beta(beta_1)
@@ -56,9 +61,11 @@ class _Adam(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
 
   def initialize(self, specs: Any) -> State:
     initial_accumulator = tf.nest.map_structure(
-        lambda s: tf.zeros(s.shape, s.dtype), specs)
+        lambda s: tf.zeros(s.shape, s.dtype), specs
+    )
     initial_preconditioner = tf.nest.map_structure(
-        lambda s: tf.zeros(s.shape, s.dtype), specs)
+        lambda s: tf.zeros(s.shape, s.dtype), specs
+    )
     state = collections.OrderedDict([
         (optimizer.LEARNING_RATE_KEY, self._lr),
         (_BETA_1_KEY, self._beta_1),
@@ -70,8 +77,9 @@ class _Adam(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
     ])
     return state
 
-  def next(self, state: State, weights: optimizer.Weights,
-           gradients: Any) -> tuple[State, optimizer.Weights]:
+  def next(
+      self, state: State, weights: optimizer.Weights, gradients: Any
+  ) -> tuple[State, optimizer.Weights]:
     gradients = optimizer.handle_indexed_slices_gradients(gradients)
     optimizer.check_weights_gradients_match(weights, gradients)
     lr = state[optimizer.LEARNING_RATE_KEY]
@@ -82,20 +90,30 @@ class _Adam(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
     accumulator = state[_ACCUMULATOR_KEY]
     preconditioner = state[_PRECONDITIONER_KEY]
     optimizer.check_weights_state_match(weights, accumulator, 'accumulator')
-    optimizer.check_weights_state_match(weights, preconditioner,
-                                        'preconditioner')
+    optimizer.check_weights_state_match(
+        weights, preconditioner, 'preconditioner'
+    )
 
     updated_accumulator = tf.nest.map_structure(
-        lambda a, g: a + (g - a) * (1 - beta_1), accumulator, gradients)
+        lambda a, g: a + (g - a) * (1 - beta_1), accumulator, gradients
+    )
     updated_preconditioner = tf.nest.map_structure(
-        lambda s, g: s + (tf.math.square(g) - s) * (1 - beta_2), preconditioner,
-        gradients)
-    normalized_lr = lr * tf.math.sqrt(
-        (1 - tf.math.pow(beta_2, tf.cast(step, tf.float32)))) / (
-            1 - tf.math.pow(beta_1, tf.cast(step, tf.float32)))
+        lambda s, g: s + (tf.math.square(g) - s) * (1 - beta_2),
+        preconditioner,
+        gradients,
+    )
+    normalized_lr = (
+        lr
+        * tf.math.sqrt((1 - tf.math.pow(beta_2, tf.cast(step, tf.float32))))
+        / (1 - tf.math.pow(beta_1, tf.cast(step, tf.float32)))
+    )
     updated_weights = tf.nest.map_structure(
         lambda w, g, a, s: w - normalized_lr * a / (tf.math.sqrt(s) + epsilon),
-        weights, gradients, updated_accumulator, updated_preconditioner)
+        weights,
+        gradients,
+        updated_accumulator,
+        updated_preconditioner,
+    )
 
     updated_state = collections.OrderedDict([
         (optimizer.LEARNING_RATE_KEY, lr),
@@ -126,10 +144,12 @@ def _check_beta(beta):
     raise ValueError('Beta must be equal to 0.0 or more, and less than 1.0.')
 
 
-def build_adam(learning_rate: float,
-               beta_1: float = 0.9,
-               beta_2: float = 0.999,
-               epsilon: float = 1e-7) -> optimizer.Optimizer:
+def build_adam(
+    learning_rate: float,
+    beta_1: float = 0.9,
+    beta_2: float = 0.999,
+    epsilon: float = 1e-7,
+) -> optimizer.Optimizer:
   """Returns a `tff.learning.optimizers.Optimizer` for Adam.
 
   The Adam optimizer is based on [Adam: A Method for Stochastic Optimization](

@@ -25,7 +25,8 @@ from tensorflow_federated.python.learning.reconstruction import reconstruction_u
 def _create_input_spec():
   return collections.OrderedDict(
       x=tf.TensorSpec(shape=[None, 784], dtype=tf.float32),
-      y=tf.TensorSpec(shape=[None, 1], dtype=tf.int32))
+      y=tf.TensorSpec(shape=[None, 1], dtype=tf.int32),
+  )
 
 
 def _create_keras_model():
@@ -42,8 +43,9 @@ class ReconstructionUtilsTest(tf.test.TestCase):
     # 3 batches.
     client_dataset = tf.data.Dataset.range(6).batch(2)
 
-    recon_dataset, post_recon_dataset = reconstruction_utils.simple_dataset_split_fn(
-        client_dataset)
+    recon_dataset, post_recon_dataset = (
+        reconstruction_utils.simple_dataset_split_fn(client_dataset)
+    )
 
     recon_list = list(recon_dataset.as_numpy_iterator())
     post_recon_list = list(post_recon_dataset.as_numpy_iterator())
@@ -56,14 +58,16 @@ class ReconstructionUtilsTest(tf.test.TestCase):
     client_dataset = tf.data.Dataset.range(6).batch(2)
 
     split_dataset_fn = reconstruction_utils.build_dataset_split_fn(
-        recon_epochs=2, post_recon_epochs=1)
+        recon_epochs=2, post_recon_epochs=1
+    )
     recon_dataset, post_recon_dataset = split_dataset_fn(client_dataset)
 
     recon_list = list(recon_dataset.as_numpy_iterator())
     post_recon_list = list(post_recon_dataset.as_numpy_iterator())
 
-    self.assertAllEqual(recon_list,
-                        [[0, 1], [2, 3], [4, 5], [0, 1], [2, 3], [4, 5]])
+    self.assertAllEqual(
+        recon_list, [[0, 1], [2, 3], [4, 5], [0, 1], [2, 3], [4, 5]]
+    )
     self.assertAllEqual(post_recon_list, [[0, 1], [2, 3], [4, 5]])
 
   def test_build_dataset_split_fn_recon_max_steps(self):
@@ -71,7 +75,8 @@ class ReconstructionUtilsTest(tf.test.TestCase):
     client_dataset = tf.data.Dataset.range(6).batch(2)
 
     split_dataset_fn = reconstruction_utils.build_dataset_split_fn(
-        recon_epochs=2, recon_steps_max=4)
+        recon_epochs=2, recon_steps_max=4
+    )
     recon_dataset, post_recon_dataset = split_dataset_fn(client_dataset)
 
     recon_list = list(recon_dataset.as_numpy_iterator())
@@ -82,14 +87,16 @@ class ReconstructionUtilsTest(tf.test.TestCase):
 
     # Adding more steps than the number of actual steps has no effect.
     split_dataset_fn = reconstruction_utils.build_dataset_split_fn(
-        recon_epochs=2, recon_steps_max=7)
+        recon_epochs=2, recon_steps_max=7
+    )
     recon_dataset, post_recon_dataset = split_dataset_fn(client_dataset)
 
     recon_list = list(recon_dataset.as_numpy_iterator())
     post_recon_list = list(post_recon_dataset.as_numpy_iterator())
 
-    self.assertAllEqual(recon_list,
-                        [[0, 1], [2, 3], [4, 5], [0, 1], [2, 3], [4, 5]])
+    self.assertAllEqual(
+        recon_list, [[0, 1], [2, 3], [4, 5], [0, 1], [2, 3], [4, 5]]
+    )
     self.assertAllEqual(post_recon_list, [[0, 1], [2, 3], [4, 5]])
 
   def test_build_dataset_split_fn_recon_epochs_max_steps_zero_post_epochs(self):
@@ -97,7 +104,8 @@ class ReconstructionUtilsTest(tf.test.TestCase):
     client_dataset = tf.data.Dataset.range(6).batch(2)
 
     split_dataset_fn = reconstruction_utils.build_dataset_split_fn(
-        recon_epochs=1, recon_steps_max=4, post_recon_epochs=0)
+        recon_epochs=1, recon_steps_max=4, post_recon_epochs=0
+    )
 
     recon_dataset, post_recon_dataset = split_dataset_fn(client_dataset)
 
@@ -112,7 +120,8 @@ class ReconstructionUtilsTest(tf.test.TestCase):
     client_dataset = tf.data.Dataset.range(6).batch(2)
 
     split_dataset_fn = reconstruction_utils.build_dataset_split_fn(
-        post_recon_epochs=2, post_recon_steps_max=4)
+        post_recon_epochs=2, post_recon_steps_max=4
+    )
     recon_dataset, post_recon_dataset = split_dataset_fn(client_dataset)
 
     recon_list = list(recon_dataset.as_numpy_iterator())
@@ -126,7 +135,8 @@ class ReconstructionUtilsTest(tf.test.TestCase):
     client_dataset = tf.data.Dataset.range(6).batch(2)
 
     split_dataset_fn = reconstruction_utils.build_dataset_split_fn(
-        split_dataset=True)
+        split_dataset=True
+    )
     recon_dataset, post_recon_dataset = split_dataset_fn(client_dataset)
 
     recon_list = list(recon_dataset.as_numpy_iterator())
@@ -140,7 +150,8 @@ class ReconstructionUtilsTest(tf.test.TestCase):
     client_dataset = tf.data.Dataset.range(8).batch(2)
 
     split_dataset_fn = reconstruction_utils.build_dataset_split_fn(
-        split_dataset=True)
+        split_dataset=True
+    )
     recon_dataset, post_recon_dataset = split_dataset_fn(client_dataset)
 
     recon_list = list(recon_dataset.as_numpy_iterator())
@@ -155,7 +166,8 @@ class ReconstructionUtilsTest(tf.test.TestCase):
     client_dataset = tf.data.Dataset.range(0).batch(2)
 
     split_dataset_fn = reconstruction_utils.build_dataset_split_fn(
-        split_dataset=True)
+        split_dataset=True
+    )
     recon_dataset, post_recon_dataset = split_dataset_fn(client_dataset)
 
     recon_list = list(recon_dataset.as_numpy_iterator())
@@ -170,7 +182,8 @@ class ReconstructionUtilsTest(tf.test.TestCase):
     client_dataset = tf.data.Dataset.range(1).batch(4)
 
     split_dataset_fn = reconstruction_utils.build_dataset_split_fn(
-        split_dataset=True)
+        split_dataset=True
+    )
     recon_dataset, post_recon_dataset = split_dataset_fn(client_dataset)
 
     recon_list = list(recon_dataset.as_numpy_iterator())
@@ -188,7 +201,8 @@ class ReconstructionUtilsTest(tf.test.TestCase):
         recon_steps_max=3,
         post_recon_epochs=2,
         post_recon_steps_max=3,
-        split_dataset=True)
+        split_dataset=True,
+    )
 
     recon_dataset, post_recon_dataset = split_dataset_fn(client_dataset)
 
@@ -207,7 +221,8 @@ class ReconstructionUtilsTest(tf.test.TestCase):
         recon_steps_max=3,
         post_recon_epochs=2,
         post_recon_steps_max=0,
-        split_dataset=True)
+        split_dataset=True,
+    )
 
     recon_dataset, post_recon_dataset = split_dataset_fn(client_dataset)
 
@@ -224,15 +239,17 @@ class ReconstructionUtilsTest(tf.test.TestCase):
         keras_model=keras_model,
         global_layers=keras_model.layers[:-1],
         local_layers=keras_model.layers[-1:],
-        input_spec=input_spec)
+        input_spec=input_spec,
+    )
 
     global_weights = reconstruction_utils.get_global_variables(model)
 
     self.assertIsInstance(global_weights, model_weights.ModelWeights)
     # The last layer of the Keras model, which is a local Dense layer, contains
     # 2 trainable variables for the weights and bias.
-    self.assertEqual(global_weights.trainable,
-                     keras_model.trainable_variables[:-2])
+    self.assertEqual(
+        global_weights.trainable, keras_model.trainable_variables[:-2]
+    )
     self.assertEmpty(global_weights.non_trainable)
 
   def test_get_local_variables(self):
@@ -242,15 +259,17 @@ class ReconstructionUtilsTest(tf.test.TestCase):
         keras_model=keras_model,
         global_layers=keras_model.layers[:-1],
         local_layers=keras_model.layers[-1:],
-        input_spec=input_spec)
+        input_spec=input_spec,
+    )
 
     local_weights = reconstruction_utils.get_local_variables(model)
 
     self.assertIsInstance(local_weights, model_weights.ModelWeights)
     # The last layer of the Keras model, which is a local Dense layer, contains
     # 2 trainable variables for the weights and bias.
-    self.assertEqual(local_weights.trainable,
-                     keras_model.trainable_variables[-2:])
+    self.assertEqual(
+        local_weights.trainable, keras_model.trainable_variables[-2:]
+    )
     self.assertEmpty(local_weights.non_trainable)
 
   def test_has_only_global_variables_true(self):
@@ -260,7 +279,8 @@ class ReconstructionUtilsTest(tf.test.TestCase):
         keras_model=keras_model,
         global_layers=keras_model.layers,
         local_layers=[],
-        input_spec=input_spec)
+        input_spec=input_spec,
+    )
     self.assertTrue(reconstruction_utils.has_only_global_variables(model))
 
   def test_has_only_global_variables_false(self):
@@ -270,7 +290,8 @@ class ReconstructionUtilsTest(tf.test.TestCase):
         keras_model=keras_model,
         global_layers=keras_model.layers[:-1],
         local_layers=keras_model.layers[-1:],
-        input_spec=input_spec)
+        input_spec=input_spec,
+    )
     self.assertFalse(reconstruction_utils.has_only_global_variables(model))
 
 

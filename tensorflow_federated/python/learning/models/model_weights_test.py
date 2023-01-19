@@ -59,7 +59,8 @@ class TestModel(model_lib.Model):
 
   def forward_pass(self, batch_input, training=True):
     return model_lib.BatchOutput(
-        loss=0.0, predictions=self.predict_on_batch, num_examples=0)
+        loss=0.0, predictions=self.predict_on_batch, num_examples=0
+    )
 
   @tf.function
   def report_local_unfinalized_metrics(self):
@@ -88,29 +89,61 @@ class WeightsTypeFromModelTest(absltest.TestCase):
     weights_type = model_weights.weights_type_from_model(model)
     self.assertEqual(
         computation_types.StructWithPythonType(
-            [('trainable',
-              computation_types.StructWithPythonType([
-                  computation_types.TensorType(tf.float32, [3]),
-                  computation_types.TensorType(tf.float32, [1]),
-              ], list)),
-             ('non_trainable',
-              computation_types.StructWithPythonType([
-                  computation_types.TensorType(tf.int32),
-              ], list))], model_weights.ModelWeights), weights_type)
+            [
+                (
+                    'trainable',
+                    computation_types.StructWithPythonType(
+                        [
+                            computation_types.TensorType(tf.float32, [3]),
+                            computation_types.TensorType(tf.float32, [1]),
+                        ],
+                        list,
+                    ),
+                ),
+                (
+                    'non_trainable',
+                    computation_types.StructWithPythonType(
+                        [
+                            computation_types.TensorType(tf.int32),
+                        ],
+                        list,
+                    ),
+                ),
+            ],
+            model_weights.ModelWeights,
+        ),
+        weights_type,
+    )
 
   def test_returns_model_weights_for_model_callable(self):
     weights_type = model_weights.weights_type_from_model(TestModel)
     self.assertEqual(
         computation_types.StructWithPythonType(
-            [('trainable',
-              computation_types.StructWithPythonType([
-                  computation_types.TensorType(tf.float32, [3]),
-                  computation_types.TensorType(tf.float32, [1]),
-              ], list)),
-             ('non_trainable',
-              computation_types.StructWithPythonType([
-                  computation_types.TensorType(tf.int32),
-              ], list))], model_weights.ModelWeights), weights_type)
+            [
+                (
+                    'trainable',
+                    computation_types.StructWithPythonType(
+                        [
+                            computation_types.TensorType(tf.float32, [3]),
+                            computation_types.TensorType(tf.float32, [1]),
+                        ],
+                        list,
+                    ),
+                ),
+                (
+                    'non_trainable',
+                    computation_types.StructWithPythonType(
+                        [
+                            computation_types.TensorType(tf.int32),
+                        ],
+                        list,
+                    ),
+                ),
+            ],
+            model_weights.ModelWeights,
+        ),
+        weights_type,
+    )
 
 
 class ConvertVariablesToArraysTest(tf.test.TestCase):
@@ -122,7 +155,6 @@ class ConvertVariablesToArraysTest(tf.test.TestCase):
         w.convert_variables_to_arrays()
 
   def test_raises_exception_in_tf_function(self):
-
     @tf.function
     def a_tf_function(w):
       return w.convert_variables_to_arrays()
@@ -133,7 +165,6 @@ class ConvertVariablesToArraysTest(tf.test.TestCase):
       a_tf_function(w)
 
   def test_raises_exception_in_tf_function_and_graph_context(self):
-
     @tf.function
     def a_tf_function(w):
       return w.convert_variables_to_arrays()
@@ -186,28 +217,38 @@ class ConvertVariablesToArraysTest(tf.test.TestCase):
 
   def test_converts_heterogeneous_types(self):
     w = model_weights.ModelWeights(
-        [1, 2.0, tf.constant(3), tf.Variable(4)], [np.zeros([2, 3])])
+        [1, 2.0, tf.constant(3), tf.Variable(4)], [np.zeros([2, 3])]
+    )
     converted = w.convert_variables_to_arrays()
-    tf.nest.map_structure(lambda item: self.assertIsInstance(item, np.ndarray),
-                          converted.trainable)
-    tf.nest.map_structure(lambda item: self.assertIsInstance(item, np.ndarray),
-                          converted.non_trainable)
+    tf.nest.map_structure(
+        lambda item: self.assertIsInstance(item, np.ndarray),
+        converted.trainable,
+    )
+    tf.nest.map_structure(
+        lambda item: self.assertIsInstance(item, np.ndarray),
+        converted.non_trainable,
+    )
 
   def test_converts_struct(self):
     w = model_weights.ModelWeights(
-        structure.Struct.unnamed(1.0), structure.Struct.unnamed(2.0, 3.0))
+        structure.Struct.unnamed(1.0), structure.Struct.unnamed(2.0, 3.0)
+    )
     converted = w.convert_variables_to_arrays()
     structure.map_structure(
         lambda item: self.assertIsInstance(item, np.ndarray),
-        converted.trainable)
+        converted.trainable,
+    )
     structure.map_structure(
         lambda item: self.assertIsInstance(item, np.ndarray),
-        converted.non_trainable)
+        converted.non_trainable,
+    )
     self.assertAllEqual(
-        structure.to_elements(converted.trainable), [(None, np.array([1.0]))])
+        structure.to_elements(converted.trainable), [(None, np.array([1.0]))]
+    )
     self.assertAllEqual(
         structure.to_elements(converted.non_trainable),
-        [(None, np.array([2.0])), (None, np.array([3.0]))])
+        [(None, np.array([2.0])), (None, np.array([3.0]))],
+    )
 
   def test_converts_heterogeneous_struct(self):
     w = model_weights.ModelWeights(
@@ -216,16 +257,25 @@ class ConvertVariablesToArraysTest(tf.test.TestCase):
             b=2.0,
             c=tf.constant(3),
             d=tf.Variable(4),
-            e=structure.Struct.named(nested_a=5, nested_b=6.0)),
-        structure.Struct.unnamed(0.0))
+            e=structure.Struct.named(nested_a=5, nested_b=6.0),
+        ),
+        structure.Struct.unnamed(0.0),
+    )
     converted = w.convert_variables_to_arrays()
     structure.map_structure(
         lambda item: self.assertIsInstance(item, np.ndarray),
-        converted.trainable)
+        converted.trainable,
+    )
     self.assertAllEqual(
         structure.to_elements(converted.trainable),
-        [('a', 1), ('b', 2.0), ('c', 3), ('d', 4),
-         ('e', structure.Struct.named(nested_a=5, nested_b=6.0))])
+        [
+            ('a', 1),
+            ('b', 2.0),
+            ('c', 3),
+            ('d', 4),
+            ('e', structure.Struct.named(nested_a=5, nested_b=6.0)),
+        ],
+    )
 
 
 if __name__ == '__main__':

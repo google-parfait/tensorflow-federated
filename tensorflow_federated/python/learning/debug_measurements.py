@@ -41,7 +41,7 @@ def _calculate_global_norm(tensor_struct):
 def _calculate_global_norm_mixed_dtype(tensor_struct):
   """Calculate the Euclidean norm of a nested structure of tensors."""
   norms_squared = [
-      tf.cast(tf.norm(a, ord=2)**2, tf.float32)
+      tf.cast(tf.norm(a, ord=2) ** 2, tf.float32)
       for a in tf.nest.flatten(tensor_struct)
   ]
   return tf.math.sqrt(tf.reduce_sum(tf.stack(norms_squared)))
@@ -70,7 +70,8 @@ def _calculate_server_update_statistics_mixed_dtype(server_update):
   return collections.OrderedDict(
       server_update_max=max_value,
       server_update_norm=global_norm,
-      server_update_min=min_value)
+      server_update_min=min_value,
+  )
 
 
 @tensorflow_computation.tf_computation
@@ -78,19 +79,26 @@ def _calculate_server_update_statistics(server_update):
   """Calculate the L2 norm, and the max and min values of a server update."""
   flattened_struct = tf.nest.flatten(server_update)
   max_value = tf.math.reduce_max(
-      tf.nest.map_structure(tf.math.reduce_max, flattened_struct))
+      tf.nest.map_structure(tf.math.reduce_max, flattened_struct)
+  )
   min_value = tf.math.reduce_min(
-      tf.nest.map_structure(tf.math.reduce_min, flattened_struct))
+      tf.nest.map_structure(tf.math.reduce_min, flattened_struct)
+  )
   global_norm = _calculate_global_norm(server_update)
   return collections.OrderedDict(
       server_update_max=max_value,
       server_update_norm=global_norm,
-      server_update_min=min_value)
+      server_update_min=min_value,
+  )
 
 
 @tensorflow_computation.tf_computation
-def _calculate_unbiased_std_dev(expected_value, expected_squared_value,
-                                sum_of_weights, sum_of_squared_weights):
+def _calculate_unbiased_std_dev(
+    expected_value,
+    expected_squared_value,
+    sum_of_weights,
+    sum_of_squared_weights,
+):
   """Calculate the standard_deviation of a discrete distribution.
 
   Here, we assume that we have some distribution that takes on values `x_1` up
@@ -118,7 +126,8 @@ def _calculate_unbiased_std_dev(expected_value, expected_squared_value,
   """
   biased_variance = expected_squared_value - expected_value**2
   correction_factor = tf.math.divide_no_nan(
-      sum_of_weights**2, sum_of_weights**2 - sum_of_squared_weights)
+      sum_of_weights**2, sum_of_weights**2 - sum_of_squared_weights
+  )
   return tf.math.sqrt(correction_factor * biased_variance)
 
 
@@ -128,49 +137,67 @@ def _calculate_client_update_statistics_with_norm(client_norms, client_weights):
 
   average_client_norm = intrinsics.federated_mean(client_norms, client_weights)
   average_client_norm_squared = intrinsics.federated_mean(
-      client_norms_squared, client_weights)
+      client_norms_squared, client_weights
+  )
 
   # TODO(b/197972289): Add SecAgg compatibility to these measurements
   sum_of_client_weights = intrinsics.federated_sum(client_weights)
-  client_weights_squared = intrinsics.federated_map(_square_value,
-                                                    client_weights)
+  client_weights_squared = intrinsics.federated_map(
+      _square_value, client_weights
+  )
   sum_of_client_weights_squared = intrinsics.federated_sum(
-      client_weights_squared)
+      client_weights_squared
+  )
 
   unbiased_std_dev = intrinsics.federated_map(
       _calculate_unbiased_std_dev,
-      (average_client_norm, average_client_norm_squared, sum_of_client_weights,
-       sum_of_client_weights_squared))
+      (
+          average_client_norm,
+          average_client_norm_squared,
+          sum_of_client_weights,
+          sum_of_client_weights_squared,
+      ),
+  )
 
   return intrinsics.federated_zip(
       collections.OrderedDict(
           average_client_norm=average_client_norm,
-          std_dev_client_norm=unbiased_std_dev))
+          std_dev_client_norm=unbiased_std_dev,
+      )
+  )
 
 
 def _calculate_client_update_statistics(client_updates, client_weights):
   """Calculate the average and standard deviation of client updates."""
-  client_norms = intrinsics.federated_map(_calculate_global_norm,
-                                          client_updates)
-  return _calculate_client_update_statistics_with_norm(client_norms,
-                                                       client_weights)
+  client_norms = intrinsics.federated_map(
+      _calculate_global_norm, client_updates
+  )
+  return _calculate_client_update_statistics_with_norm(
+      client_norms, client_weights
+  )
 
 
-def _calculate_client_update_statistics_mixed_dtype(client_updates,
-                                                    client_weights):
+def _calculate_client_update_statistics_mixed_dtype(
+    client_updates, client_weights
+):
   """Calculate client update statistics of mixed data types."""
-  client_norms = intrinsics.federated_map(_calculate_global_norm_mixed_dtype,
-                                          client_updates)
-  return _calculate_client_update_statistics_with_norm(client_norms,
-                                                       client_weights)
+  client_norms = intrinsics.federated_map(
+      _calculate_global_norm_mixed_dtype, client_updates
+  )
+  return _calculate_client_update_statistics_with_norm(
+      client_norms, client_weights
+  )
 
 
 def _build_aggregator_measurement_fns(
-    client_measurement_fn: Callable[..., dict[
-        str, Any]] = _calculate_client_update_statistics,
-    server_measurement_fn: Callable[..., dict[
-        str, Any]] = _calculate_server_update_statistics,
-    weighted_aggregator: bool = True) ->...:
+    client_measurement_fn: Callable[
+        ..., dict[str, Any]
+    ] = _calculate_client_update_statistics,
+    server_measurement_fn: Callable[
+        ..., dict[str, Any]
+    ] = _calculate_server_update_statistics,
+    weighted_aggregator: bool = True,
+) -> ...:
   """Create measurement functions suitable for debugging learning processes.
 
   These functions are intended for use with `tff.aggregators.add_measurements`.
@@ -219,7 +246,7 @@ def _build_aggregator_measurement_fns(
 
 
 def add_debug_measurements(
-    aggregation_factory: factory.AggregationFactory
+    aggregation_factory: factory.AggregationFactory,
 ) -> factory.AggregationFactory:
   """Adds measurements suitable for debugging learning processes.
 
@@ -263,22 +290,26 @@ def add_debug_measurements(
   Returns:
     A `tff.aggregators.AggregationFactory`.
   """
-  is_weighted_aggregator = isinstance(aggregation_factory,
-                                      factory.WeightedAggregationFactory)
+  is_weighted_aggregator = isinstance(
+      aggregation_factory, factory.WeightedAggregationFactory
+  )
   client_measurement_fn, server_measurement_fn = (
       _build_aggregator_measurement_fns(
           client_measurement_fn=_calculate_client_update_statistics,
           server_measurement_fn=_calculate_server_update_statistics,
-          weighted_aggregator=is_weighted_aggregator))
+          weighted_aggregator=is_weighted_aggregator,
+      )
+  )
 
   return measurements.add_measurements(
       aggregation_factory,
       client_measurement_fn=client_measurement_fn,
-      server_measurement_fn=server_measurement_fn)
+      server_measurement_fn=server_measurement_fn,
+  )
 
 
 def add_debug_measurements_with_mixed_dtype(
-    aggregation_factory: factory.AggregationFactory
+    aggregation_factory: factory.AggregationFactory,
 ) -> factory.AggregationFactory:
   """Adds measurements suitable for debugging learning processes.
 
@@ -329,15 +360,19 @@ def add_debug_measurements_with_mixed_dtype(
   Returns:
     A `tff.aggregators.AggregationFactory`.
   """
-  is_weighted_aggregator = isinstance(aggregation_factory,
-                                      factory.WeightedAggregationFactory)
+  is_weighted_aggregator = isinstance(
+      aggregation_factory, factory.WeightedAggregationFactory
+  )
   client_measurement_fn, server_measurement_fn = (
       _build_aggregator_measurement_fns(
           client_measurement_fn=_calculate_client_update_statistics_mixed_dtype,
           server_measurement_fn=_calculate_server_update_statistics_mixed_dtype,
-          weighted_aggregator=is_weighted_aggregator))
+          weighted_aggregator=is_weighted_aggregator,
+      )
+  )
 
   return measurements.add_measurements(
       aggregation_factory,
       client_measurement_fn=client_measurement_fn,
-      server_measurement_fn=server_measurement_fn)
+      server_measurement_fn=server_measurement_fn,
+  )

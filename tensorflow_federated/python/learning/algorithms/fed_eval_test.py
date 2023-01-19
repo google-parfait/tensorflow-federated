@@ -60,8 +60,10 @@ class TestModel(model.Model):
         max_temp=tf.Variable(
             lambda: tf.zeros(dtype=tf.float32, shape=[]),
             name='max_temp',
-            trainable=True),
-        num_over=tf.Variable(0.0, name='num_over', trainable=False))
+            trainable=True,
+        ),
+        num_over=tf.Variable(0.0, name='num_over', trainable=False),
+    )
 
   @property
   def trainable_variables(self):
@@ -88,15 +90,16 @@ class TestModel(model.Model):
   def forward_pass(self, batch, training=True):
     assert not training
     num_over = tf.reduce_sum(
-        tf.cast(
-            tf.greater(batch['temp'], self._variables.max_temp), tf.float32))
+        tf.cast(tf.greater(batch['temp'], self._variables.max_temp), tf.float32)
+    )
     self._variables.num_over.assign_add(num_over)
     loss = tf.constant(0.0)
     predictions = self.predict_on_batch(batch, training)
     return model.BatchOutput(
         loss=loss,
         predictions=predictions,
-        num_examples=tf.shape(predictions)[0])
+        num_examples=tf.shape(predictions)[0],
+    )
 
   @tf.function
   def report_local_unfinalized_metrics(self):
@@ -119,54 +122,66 @@ def _get_finalized_metrics_type(metric_finalizers, unfinalized_metrics):
   return type_conversions.type_from_tensors(finalized_metrics)
 
 
-def _create_custom_metrics_aggregation_process(metric_finalizers,
-                                               local_unfinalized_metrics_type):
+def _create_custom_metrics_aggregation_process(
+    metric_finalizers, local_unfinalized_metrics_type
+):
   """Creates an `AggregationProcess` gets maximum and finalizes metrics."""
 
   @tensorflow_computation.tf_computation
   def create_all_zero_state():
     return type_conversions.structure_from_tensor_type_tree(
         lambda t: tf.zeros(shape=t.shape, dtype=t.dtype),
-        local_unfinalized_metrics_type)
+        local_unfinalized_metrics_type,
+    )
 
   @federated_computation.federated_computation()
   def init_fn():
     return intrinsics.federated_eval(create_all_zero_state, placements.SERVER)
 
-  @tensorflow_computation.tf_computation(local_unfinalized_metrics_type,
-                                         local_unfinalized_metrics_type)
-  def get_max_unfinalized_metrics(unfinalized_metrics,
-                                  new_max_unfinalized_metrics):
-    return tf.nest.map_structure(tf.math.maximum, unfinalized_metrics,
-                                 new_max_unfinalized_metrics)
+  @tensorflow_computation.tf_computation(
+      local_unfinalized_metrics_type, local_unfinalized_metrics_type
+  )
+  def get_max_unfinalized_metrics(
+      unfinalized_metrics, new_max_unfinalized_metrics
+  ):
+    return tf.nest.map_structure(
+        tf.math.maximum, unfinalized_metrics, new_max_unfinalized_metrics
+    )
 
   @federated_computation.federated_computation(
       init_fn.type_signature.result,
-      computation_types.at_clients(local_unfinalized_metrics_type))
+      computation_types.at_clients(local_unfinalized_metrics_type),
+  )
   def next_fn(state, unfinalized_metrics):
     max_unfinalized_metrics = primitives.federated_max(unfinalized_metrics)
 
-    state = intrinsics.federated_map(get_max_unfinalized_metrics,
-                                     (state, max_unfinalized_metrics))
+    state = intrinsics.federated_map(
+        get_max_unfinalized_metrics, (state, max_unfinalized_metrics)
+    )
 
     @tensorflow_computation.tf_computation(local_unfinalized_metrics_type)
     def finalizer_computation(unfinalized_metrics):
       finalized_metrics = collections.OrderedDict()
       for metric_name, metric_finalizer in metric_finalizers.items():
         finalized_metrics[metric_name] = metric_finalizer(
-            unfinalized_metrics[metric_name])
+            unfinalized_metrics[metric_name]
+        )
       return finalized_metrics
 
-    current_round_metrics = intrinsics.federated_map(finalizer_computation,
-                                                     max_unfinalized_metrics)
-    total_rounds_metrics = intrinsics.federated_map(finalizer_computation,
-                                                    state)
+    current_round_metrics = intrinsics.federated_map(
+        finalizer_computation, max_unfinalized_metrics
+    )
+    total_rounds_metrics = intrinsics.federated_map(
+        finalizer_computation, state
+    )
 
     return measured_process.MeasuredProcessOutput(
         state=state,
         result=intrinsics.federated_zip(
-            (current_round_metrics, total_rounds_metrics)),
-        measurements=intrinsics.federated_value((), placements.SERVER))
+            (current_round_metrics, total_rounds_metrics)
+        ),
+        measurements=intrinsics.federated_value((), placements.SERVER),
+    )
 
   return aggregation_process.AggregationProcess(init_fn, next_fn)
 
@@ -180,13 +195,17 @@ class FedEvalProcessTest(tf.test.TestCase):
     metric_finalizers = test_model.metric_finalizers()
     unfinalized_metrics = test_model.report_local_unfinalized_metrics()
     local_unfinalized_metrics_type = type_conversions.type_from_tensors(
-        unfinalized_metrics)
+        unfinalized_metrics
+    )
     finalized_metrics_type = _get_finalized_metrics_type(
-        metric_finalizers, unfinalized_metrics)
+        metric_finalizers, unfinalized_metrics
+    )
     metics_aggregator = aggregation_factory.SumThenFinalizeFactory(
-        metric_finalizers).create(local_unfinalized_metrics_type)
+        metric_finalizers
+    ).create(local_unfinalized_metrics_type)
     metics_aggregator_state_type = (
-        metics_aggregator.initialize.type_signature.result.member)
+        metics_aggregator.initialize.type_signature.result.member
+    )
 
     eval_process = fed_eval.build_fed_eval(model_fn)
     self.assertIsInstance(eval_process, learning_process.LearningProcess)
@@ -197,45 +216,66 @@ class FedEvalProcessTest(tf.test.TestCase):
             distributor=(),
             client_work=metics_aggregator_state_type,
             aggregator=collections.OrderedDict(
-                value_sum_process=(), weight_sum_process=()),
-            finalizer=()))
+                value_sum_process=(), weight_sum_process=()
+            ),
+            finalizer=(),
+        )
+    )
     expected_metrics_type = computation_types.at_server(
         collections.OrderedDict(
             distributor=(),
             client_work=collections.OrderedDict(
                 eval=collections.OrderedDict(
                     current_round_metrics=finalized_metrics_type,
-                    total_rounds_metrics=finalized_metrics_type)),
+                    total_rounds_metrics=finalized_metrics_type,
+                )
+            ),
             aggregator=collections.OrderedDict(mean_value=(), mean_weight=()),
-            finalizer=()))
+            finalizer=(),
+        )
+    )
     type_test_utils.assert_types_equivalent(
         eval_process.initialize.type_signature,
-        FunctionType(parameter=None, result=expected_state_type))
+        FunctionType(parameter=None, result=expected_state_type),
+    )
     type_test_utils.assert_types_equivalent(
         eval_process.next.type_signature,
         FunctionType(
             parameter=StructType([
                 ('state', expected_state_type),
-                ('client_data',
-                 computation_types.at_clients(
-                     SequenceType(
-                         StructType([
-                             ('temp',
-                              TensorType(dtype=tf.float32, shape=[None]))
-                         ])))),
+                (
+                    'client_data',
+                    computation_types.at_clients(
+                        SequenceType(
+                            StructType([(
+                                'temp',
+                                TensorType(dtype=tf.float32, shape=[None]),
+                            )])
+                        )
+                    ),
+                ),
             ]),
             result=learning_process.LearningProcessOutput(
-                state=expected_state_type, metrics=expected_metrics_type)))
+                state=expected_state_type, metrics=expected_metrics_type
+            ),
+        ),
+    )
     type_test_utils.assert_types_equivalent(
         eval_process.get_model_weights.type_signature,
         FunctionType(
-            parameter=expected_state_type.member, result=model_weights_type))
+            parameter=expected_state_type.member, result=model_weights_type
+        ),
+    )
     type_test_utils.assert_types_equivalent(
         eval_process.set_model_weights.type_signature,
         FunctionType(
-            parameter=StructType([('state', expected_state_type.member),
-                                  ('model_weights', model_weights_type)]),
-            result=expected_state_type.member))
+            parameter=StructType([
+                ('state', expected_state_type.member),
+                ('model_weights', model_weights_type),
+            ]),
+            result=expected_state_type.member,
+        ),
+    )
 
   @tensorflow_test_utils.skip_test_for_multi_gpu
   def test_fed_eval_process_execution(self):
@@ -245,65 +285,81 @@ class FedEvalProcessTest(tf.test.TestCase):
     # the `get_model_weights` method returns the same model weights.
     state = eval_process.initialize()
     model_weights = model_weights_lib.ModelWeights(
-        trainable=[5.0], non_trainable=[])
+        trainable=[5.0], non_trainable=[]
+    )
     new_state = eval_process.set_model_weights(
-        state,
-        model_weights_lib.ModelWeights(trainable=[5.0], non_trainable=[]))
-    tf.nest.map_structure(self.assertAllEqual, model_weights,
-                          eval_process.get_model_weights(new_state))
+        state, model_weights_lib.ModelWeights(trainable=[5.0], non_trainable=[])
+    )
+    tf.nest.map_structure(
+        self.assertAllEqual,
+        model_weights,
+        eval_process.get_model_weights(new_state),
+    )
 
     def _temp_dict(temps):
       return {'temp': np.array(temps, dtype=np.float32)}
 
     clients_data = [
-        [_temp_dict([1.0, 10.0, 2.0, 7.0]),
-         _temp_dict([6.0, 11.0])],
+        [_temp_dict([1.0, 10.0, 2.0, 7.0]), _temp_dict([6.0, 11.0])],
         [_temp_dict([9.0, 12.0, 13.0])],
         [_temp_dict([1.0]), _temp_dict([22.0, 23.0])],
     ]
 
     output = eval_process.next(new_state, clients_data)
-    tf.nest.map_structure(self.assertAllEqual, model_weights,
-                          eval_process.get_model_weights(output.state))
+    tf.nest.map_structure(
+        self.assertAllEqual,
+        model_weights,
+        eval_process.get_model_weights(output.state),
+    )
     _, accumulated_unfinalized_metrics = output.state.client_work
-    self.assertEqual(accumulated_unfinalized_metrics,
-                     collections.OrderedDict([('num_over', 9.0)]))
+    self.assertEqual(
+        accumulated_unfinalized_metrics,
+        collections.OrderedDict([('num_over', 9.0)]),
+    )
     self.assertEqual(
         output.metrics['client_work'],
         collections.OrderedDict(
             eval=collections.OrderedDict(
                 current_round_metrics=collections.OrderedDict(num_over=9.0),
-                total_rounds_metrics=collections.OrderedDict(num_over=9.0))))
+                total_rounds_metrics=collections.OrderedDict(num_over=9.0),
+            )
+        ),
+    )
 
   def test_fed_eval_with_model_distributor(self):
     model_weights_type = model_weights_lib.weights_type_from_model(TestModel)
 
     def test_distributor():
-
       @federated_computation.federated_computation()
       def init_fn():
         return intrinsics.federated_value((), placements.SERVER)
 
       @federated_computation.federated_computation(
           init_fn.type_signature.result,
-          computation_types.at_server(model_weights_type))
+          computation_types.at_server(model_weights_type),
+      )
       def next_fn(state, value):
         return measured_process.MeasuredProcessOutput(
-            state, intrinsics.federated_broadcast(value),
-            intrinsics.federated_value((), placements.SERVER))
+            state,
+            intrinsics.federated_broadcast(value),
+            intrinsics.federated_value((), placements.SERVER),
+        )
 
       return distributors.DistributionProcess(init_fn, next_fn)
 
     eval_process = fed_eval.build_fed_eval(TestModel, test_distributor())
     type_test_utils.assert_types_equivalent(
         eval_process.initialize.type_signature.result.member.distributor,
-        test_distributor().initialize.type_signature.result.member)
+        test_distributor().initialize.type_signature.result.member,
+    )
     type_test_utils.assert_types_equivalent(
         eval_process.next.type_signature.result.state.member.distributor,
-        test_distributor().next.type_signature.result.state.member)
+        test_distributor().next.type_signature.result.state.member,
+    )
     type_test_utils.assert_types_equivalent(
         eval_process.next.type_signature.result.metrics.member.distributor,
-        test_distributor().next.type_signature.result.measurements.member)
+        test_distributor().next.type_signature.result.measurements.member,
+    )
 
   @tensorflow_test_utils.skip_test_for_multi_gpu
   def test_fed_eval_with_metrics_aggregation_process(self):
@@ -311,46 +367,56 @@ class FedEvalProcessTest(tf.test.TestCase):
     test_model = model_fn()
     unfinalized_metrics = test_model.report_local_unfinalized_metrics()
     local_unfinalized_metrics_type = type_conversions.type_from_tensors(
-        unfinalized_metrics)
+        unfinalized_metrics
+    )
     metric_finalizers = test_model.metric_finalizers()
 
     eval_process = fed_eval.build_fed_eval(
         model_fn,
         metrics_aggregation_process=_create_custom_metrics_aggregation_process(
-            metric_finalizers, local_unfinalized_metrics_type))
+            metric_finalizers, local_unfinalized_metrics_type
+        ),
+    )
     state = eval_process.initialize()
-    self.assertEqual(state.client_work,
-                     collections.OrderedDict([('num_over', 0.0)]))
+    self.assertEqual(
+        state.client_work, collections.OrderedDict([('num_over', 0.0)])
+    )
 
     def _temp_dict(temps):
       return {'temp': np.array(temps, dtype=np.float32)}
 
     clients_data = [
-        [_temp_dict([1.0, 10.0, 2.0, 7.0]),
-         _temp_dict([6.0, 11.0])],
+        [_temp_dict([1.0, 10.0, 2.0, 7.0]), _temp_dict([6.0, 11.0])],
         [_temp_dict([9.0, 12.0, 13.0])],
         [_temp_dict([1.0]), _temp_dict([22.0, 23.0])],
     ]
 
     output = eval_process.next(state, clients_data)
-    self.assertEqual(output.state.client_work,
-                     collections.OrderedDict([('num_over', 6.0)]))
+    self.assertEqual(
+        output.state.client_work, collections.OrderedDict([('num_over', 6.0)])
+    )
     self.assertEqual(
         output.metrics['client_work'],
         collections.OrderedDict(
             eval=collections.OrderedDict(
                 current_round_metrics=collections.OrderedDict(num_over=6.0),
-                total_rounds_metrics=collections.OrderedDict(num_over=6.0))))
+                total_rounds_metrics=collections.OrderedDict(num_over=6.0),
+            )
+        ),
+    )
 
   def test_invalid_metrics_aggregation_process_raises(self):
     test_model = TestModel()
     metrics_aggregator = aggregator.sum_then_finalize(
         test_model.metric_finalizers(),
         type_conversions.type_from_tensors(
-            test_model.report_local_unfinalized_metrics()))
+            test_model.report_local_unfinalized_metrics()
+        ),
+    )
     with self.assertRaisesRegex(TypeError, 'AggregationProcess'):
       fed_eval.build_fed_eval(
-          TestModel, metrics_aggregation_process=metrics_aggregator)
+          TestModel, metrics_aggregation_process=metrics_aggregator
+      )
 
   def test_invalid_model_distributor_raises(self):
     model_distributor = tensorflow_computation.tf_computation(lambda x: x)
@@ -372,11 +438,15 @@ class FunctionalFedEvalProcessTest(tf.test.TestCase):
     dataset1 = tf.data.Dataset.from_tensor_slices(
         collections.OrderedDict(
             x=[[0.0, 0.0], [1.0, 0.0], [2.0, 0.0], [3.0, 0.0]],
-            y=[[0.0], [0.0], [1.0], [1.0]]))
+            y=[[0.0], [0.0], [1.0], [1.0]],
+        )
+    )
     dataset2 = tf.data.Dataset.from_tensor_slices(
         collections.OrderedDict(
             x=[[1.0, 2.0], [3.0, 4.0], [5.0, 6.0], [7.0, 8.0]],
-            y=[[1.0], [2.0], [3.0], [4.0]]))
+            y=[[1.0], [2.0], [3.0], [4.0]],
+        )
+    )
     return [dataset1.repeat(2).batch(3), dataset2.repeat(2).batch(3)]
 
   def test_raises_on_non_callable_or_functional_model(self):
@@ -390,13 +460,15 @@ class FunctionalFedEvalProcessTest(tf.test.TestCase):
     loss_fn = tf.keras.losses.MeanSquaredError
     keras_model_fn = functools.partial(
         model_examples.build_linear_regression_keras_functional_model,
-        feature_dims=2)
+        feature_dims=2,
+    )
 
     # Defining artifacts using `tff.learning.Model`
     def tff_model_fn():
       keras_model = keras_model_fn()
       return keras_utils.from_keras_model(
-          keras_model, loss=loss_fn(), input_spec=batch_type)
+          keras_model, loss=loss_fn(), input_spec=batch_type
+      )
 
     eval_process = fed_eval.build_fed_eval(tff_model_fn)
     eval_state = eval_process.initialize()
@@ -407,18 +479,22 @@ class FunctionalFedEvalProcessTest(tf.test.TestCase):
       return collections.OrderedDict(
           loss=tf.keras.metrics.MeanSquaredError(),
           num_examples=counters.NumExamplesCounter(),
-          num_batches=counters.NumBatchesCounter())
+          num_batches=counters.NumBatchesCounter(),
+      )
 
     functional_model = functional.functional_model_from_keras(
         keras_model=keras_model_fn,
         loss_fn=loss_fn(),
         input_spec=batch_type,
-        metrics_constructor=build_metrics_fn)
+        metrics_constructor=build_metrics_fn,
+    )
     functional_eval_process = fed_eval.build_fed_eval(functional_model)
     functional_eval_state = functional_eval_process.initialize()
     functional_eval_output = functional_eval_process.next(
-        functional_eval_state, datasets)
+        functional_eval_state, datasets
+    )
     self.assertDictEqual(eval_output.metrics, functional_eval_output.metrics)
+
 
 if __name__ == '__main__':
   execution_contexts.set_sync_local_cpp_execution_context()

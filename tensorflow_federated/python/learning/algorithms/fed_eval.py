@@ -53,7 +53,7 @@ def _build_fed_eval_client_work(
     model_fn: Callable[[], model_lib.Model],
     metrics_aggregation_process: Optional[_AggregationProcess],
     model_weights_type: computation_types.StructType,
-    use_experimental_simulation_loop: bool = False
+    use_experimental_simulation_loop: bool = False,
 ) -> client_works.ClientWorkProcess:
   """Builds a `ClientWorkProcess` that performs model evaluation at clients."""
 
@@ -63,43 +63,55 @@ def _build_fed_eval_client_work(
     if metrics_aggregation_process is None:
       metrics_finalizers = model.metric_finalizers()
       local_unfinalized_metrics_type = type_conversions.type_from_tensors(
-          model.report_local_unfinalized_metrics())
+          model.report_local_unfinalized_metrics()
+      )
       metrics_aggregation_process = aggregation_factory.SumThenFinalizeFactory(
-          metrics_finalizers).create(local_unfinalized_metrics_type)
+          metrics_finalizers
+      ).create(local_unfinalized_metrics_type)
     else:
-      py_typecheck.check_type(metrics_aggregation_process, _AggregationProcess,
-                              'metrics_aggregation_process')
+      py_typecheck.check_type(
+          metrics_aggregation_process,
+          _AggregationProcess,
+          'metrics_aggregation_process',
+      )
 
   @federated_computation.federated_computation
   def init_fn():
     return metrics_aggregation_process.initialize()
 
   client_update_computation = federated_evaluation.build_local_evaluation(
-      model_fn, model_weights_type, batch_type,
-      use_experimental_simulation_loop)
+      model_fn, model_weights_type, batch_type, use_experimental_simulation_loop
+  )
 
   @federated_computation.federated_computation(
       init_fn.type_signature.result,
       computation_types.at_clients(model_weights_type),
-      computation_types.at_clients(computation_types.SequenceType(batch_type)))
+      computation_types.at_clients(computation_types.SequenceType(batch_type)),
+  )
   def next_fn(state, model_weights, client_data):
-    model_outputs = intrinsics.federated_map(client_update_computation,
-                                             (model_weights, client_data))
+    model_outputs = intrinsics.federated_map(
+        client_update_computation, (model_weights, client_data)
+    )
     metrics_output = metrics_aggregation_process.next(
-        state, model_outputs.local_outputs)
+        state, model_outputs.local_outputs
+    )
     current_round_metrics, total_rounds_metrics = metrics_output.result
     measurements = intrinsics.federated_zip(
         collections.OrderedDict(
             eval=collections.OrderedDict(
                 current_round_metrics=current_round_metrics,
-                total_rounds_metrics=total_rounds_metrics)))
+                total_rounds_metrics=total_rounds_metrics,
+            )
+        )
+    )
     # Return empty result as no model update will be performed for evaluation.
     empty_client_result = intrinsics.federated_value(
         client_works.ClientResult(update=(), update_weight=()),
-        placements.CLIENTS)
-    return measured_process.MeasuredProcessOutput(metrics_output.state,
-                                                  empty_client_result,
-                                                  measurements)
+        placements.CLIENTS,
+    )
+    return measured_process.MeasuredProcessOutput(
+        metrics_output.state, empty_client_result, measurements
+    )
 
   return client_works.ClientWorkProcess(init_fn, next_fn)
 
@@ -113,28 +125,33 @@ def _build_functional_fed_eval_client_work(
 
   def ndarray_to_tensorspec(ndarray):
     return tf.TensorSpec(
-        shape=ndarray.shape, dtype=tf.dtypes.as_dtype(ndarray.dtype))
+        shape=ndarray.shape, dtype=tf.dtypes.as_dtype(ndarray.dtype)
+    )
 
   # Wrap in a `ModelWeights` structure that is required by the `finalizer.`
   weights_type = model_weights_lib.ModelWeights(
       tuple(ndarray_to_tensorspec(w) for w in model.initial_weights[0]),
-      tuple(ndarray_to_tensorspec(w) for w in model.initial_weights[1]))
+      tuple(ndarray_to_tensorspec(w) for w in model.initial_weights[1]),
+  )
   tuple_weights_type = (weights_type.trainable, weights_type.non_trainable)
   batch_type = computation_types.to_type(model.input_spec)
   local_eval = federated_evaluation.build_functional_local_evaluation(
-      model, tuple_weights_type, batch_type)
+      model, tuple_weights_type, batch_type
+  )
 
   if metrics_aggregation_process is None:
     unfinalized_metrics_type = local_eval.type_signature.result
     metrics_aggregation_process = aggregation_factory.SumThenFinalizeFactory(
-        model.finalize_metrics).create(unfinalized_metrics_type)
+        model.finalize_metrics
+    ).create(unfinalized_metrics_type)
 
   @federated_computation.federated_computation
   def init_fn():
     return metrics_aggregation_process.initialize()
 
   @tensorflow_computation.tf_computation(
-      model_weights_type, computation_types.SequenceType(batch_type))
+      model_weights_type, computation_types.SequenceType(batch_type)
+  )
   def client_update_computation(model_weights, client_data):
     # Switch to the tuple expected by FunctionalModel.
     tuple_weights = (model_weights.trainable, model_weights.non_trainable)
@@ -143,32 +160,40 @@ def _build_functional_fed_eval_client_work(
   @federated_computation.federated_computation(
       init_fn.type_signature.result,
       computation_types.at_clients(model_weights_type),
-      computation_types.at_clients(computation_types.SequenceType(batch_type)))
+      computation_types.at_clients(computation_types.SequenceType(batch_type)),
+  )
   def next_fn(state, model_weights, client_data):
-    unfinalized_metrics = intrinsics.federated_map(client_update_computation,
-                                                   (model_weights, client_data))
-    metrics_output = metrics_aggregation_process.next(state,
-                                                      unfinalized_metrics)
+    unfinalized_metrics = intrinsics.federated_map(
+        client_update_computation, (model_weights, client_data)
+    )
+    metrics_output = metrics_aggregation_process.next(
+        state, unfinalized_metrics
+    )
     current_round_metrics, total_rounds_metrics = metrics_output.result
     measurements = intrinsics.federated_zip(
         collections.OrderedDict(
             eval=collections.OrderedDict(
                 current_round_metrics=current_round_metrics,
-                total_rounds_metrics=total_rounds_metrics)))
+                total_rounds_metrics=total_rounds_metrics,
+            )
+        )
+    )
     # Return empty result as no model update will be performed for evaluation.
     empty_client_result = intrinsics.federated_value(
         client_works.ClientResult(update=(), update_weight=()),
-        placements.CLIENTS)
-    return measured_process.MeasuredProcessOutput(metrics_output.state,
-                                                  empty_client_result,
-                                                  measurements)
+        placements.CLIENTS,
+    )
+    return measured_process.MeasuredProcessOutput(
+        metrics_output.state, empty_client_result, measurements
+    )
 
   return client_works.ClientWorkProcess(init_fn, next_fn)
 
 
 def _build_identity_finalizer(
     model_weights_type: computation_types.StructType,
-    update_type: computation_types.StructType) -> finalizers.FinalizerProcess:
+    update_type: computation_types.StructType,
+) -> finalizers.FinalizerProcess:
   """Builds a `FinalizerProcess` that performs no update on model weights."""
 
   @federated_computation.federated_computation()
@@ -181,12 +206,14 @@ def _build_identity_finalizer(
   @federated_computation.federated_computation(
       init_fn.type_signature.result,
       computation_types.at_server(model_weights_type),
-      computation_types.at_server(update_type))
+      computation_types.at_server(update_type),
+  )
   def next_fn(state, weights, update):
     del update
     empty_measurements = intrinsics.federated_value((), placements.SERVER)
-    return measured_process.MeasuredProcessOutput(state, weights,
-                                                  empty_measurements)
+    return measured_process.MeasuredProcessOutput(
+        state, weights, empty_measurements
+    )
 
   return finalizers.FinalizerProcess(init_fn, next_fn)
 
@@ -195,8 +222,9 @@ def build_fed_eval(
     model_fn: Union[Callable[[], model_lib.Model], functional.FunctionalModel],
     model_distributor: Optional[distributors.DistributionProcess] = None,
     metrics_aggregation_process: Optional[
-        aggregation_process.AggregationProcess] = None,
-    use_experimental_simulation_loop: bool = False
+        aggregation_process.AggregationProcess
+    ] = None,
+    use_experimental_simulation_loop: bool = False,
 ) -> learning_process.LearningProcess:
   """Builds a learning process that performs federated evaluation.
 
@@ -266,14 +294,17 @@ def build_fed_eval(
     if not isinstance(model_fn, functional.FunctionalModel):
       raise TypeError(
           'If `model_fn` is not a callable, it must be an instance '
-          f'tff.learning.models.FunctionalModel. Got {type(model_fn)}')
+          f'tff.learning.models.FunctionalModel. Got {type(model_fn)}'
+      )
 
     @tensorflow_computation.tf_computation()
     def initial_model_weights_fn():
       trainable_weights, non_trainable_weights = model_fn.initial_weights
       return model_weights_lib.ModelWeights(
           tuple(tf.convert_to_tensor(w) for w in trainable_weights),
-          tuple(tf.convert_to_tensor(w) for w in non_trainable_weights))
+          tuple(tf.convert_to_tensor(w) for w in non_trainable_weights),
+      )
+
   else:
 
     @tensorflow_computation.tf_computation()
@@ -285,31 +316,42 @@ def build_fed_eval(
   if model_distributor is None:
     model_distributor = distributors.build_broadcast_process(model_weights_type)
   else:
-    py_typecheck.check_type(model_distributor, distributors.DistributionProcess,
-                            'model_distributor')
+    py_typecheck.check_type(
+        model_distributor, distributors.DistributionProcess, 'model_distributor'
+    )
 
   if not callable(model_fn):
     client_work = _build_functional_fed_eval_client_work(
-        model_fn, metrics_aggregation_process, model_weights_type)
+        model_fn, metrics_aggregation_process, model_weights_type
+    )
   else:
-    client_work = _build_fed_eval_client_work(model_fn,
-                                              metrics_aggregation_process,
-                                              model_weights_type,
-                                              use_experimental_simulation_loop)
+    client_work = _build_fed_eval_client_work(
+        model_fn,
+        metrics_aggregation_process,
+        model_weights_type,
+        use_experimental_simulation_loop,
+    )
 
   client_work_result_type = computation_types.at_clients(
-      client_works.ClientResult(update=(), update_weight=()))
+      client_works.ClientResult(update=(), update_weight=())
+  )
   model_update_type = client_work_result_type.member.update
   model_update_weight_type = client_work_result_type.member.update_weight
   model_aggregator_factory = mean.MeanFactory()
-  model_aggregator = model_aggregator_factory.create(model_update_type,
-                                                     model_update_weight_type)
+  model_aggregator = model_aggregator_factory.create(
+      model_update_type, model_update_weight_type
+  )
 
   # The finalizer performs no update on model weights.
   finalizer = _build_identity_finalizer(
       model_weights_type,
-      model_aggregator.next.type_signature.result.result.member)
+      model_aggregator.next.type_signature.result.result.member,
+  )
 
-  return composers.compose_learning_process(initial_model_weights_fn,
-                                            model_distributor, client_work,
-                                            model_aggregator, finalizer)
+  return composers.compose_learning_process(
+      initial_model_weights_fn,
+      model_distributor,
+      client_work,
+      model_aggregator,
+      finalizer,
+  )

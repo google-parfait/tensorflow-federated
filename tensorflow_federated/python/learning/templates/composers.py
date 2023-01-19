@@ -57,6 +57,7 @@ class LearningAlgorithmState:
     aggregator: State of the aggregator component.
     finalizer: State of the finalizer component.
   """
+
   global_model_weights = attr.ib()
   distributor = attr.ib()
   client_work = attr.ib()

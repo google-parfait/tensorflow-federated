@@ -75,7 +75,8 @@ class HparamsBaseTest(absltest.TestCase):
   def test_set_hparams_fn_with_compatible_state_type_does_not_raise(self):
     state_type = computation_types.TensorType(tf.int32)
     hparams_type = computation_types.to_type(
-        collections.OrderedDict(a=tf.int32))
+        collections.OrderedDict(a=tf.int32)
+    )
 
     @tensorflow_computation.tf_computation(tf.int32, hparams_type)
     def set_hparams_fn(state, hparams):
@@ -87,7 +88,8 @@ class HparamsBaseTest(absltest.TestCase):
   def test_set_hparams_fn_with_incompatible_input_state_type_raises(self):
     state_type = computation_types.TensorType(tf.int32)
     hparams_type = computation_types.to_type(
-        collections.OrderedDict(a=tf.int32))
+        collections.OrderedDict(a=tf.int32)
+    )
 
     @tensorflow_computation.tf_computation(tf.float32, hparams_type)
     def set_hparams_fn(state, hparams):
@@ -100,7 +102,8 @@ class HparamsBaseTest(absltest.TestCase):
   def test_set_hparams_fn_with_incompatible_outputput_state_type_raises(self):
     state_type = computation_types.TensorType(tf.int32)
     hparams_type = computation_types.to_type(
-        collections.OrderedDict(a=tf.float32))
+        collections.OrderedDict(a=tf.float32)
+    )
 
     @tensorflow_computation.tf_computation(tf.int32, hparams_type)
     def set_hparams_fn(state, hparams):
@@ -115,22 +118,29 @@ class HparamsBaseTest(absltest.TestCase):
     get_hparams_fn = hparams_base.build_basic_hparams_getter(state_type)
     expected_hparams_type = computation_types.to_type(collections.OrderedDict())
     expected_function_type = computation_types.FunctionType(
-        parameter=state_type, result=expected_hparams_type)
-    type_test_utils.assert_types_equivalent(get_hparams_fn.type_signature,
-                                            expected_function_type)
+        parameter=state_type, result=expected_hparams_type
+    )
+    type_test_utils.assert_types_equivalent(
+        get_hparams_fn.type_signature, expected_function_type
+    )
 
   def test_default_set_hparams_returns_state_of_matching_type(self):
     state_type = computation_types.TensorType(tf.int32)
     hparams_type = computation_types.to_type(
-        collections.OrderedDict(a=tf.float32))
+        collections.OrderedDict(a=tf.float32)
+    )
     set_hparams_fn = hparams_base.build_basic_hparams_setter(
-        state_type, hparams_type)
+        state_type, hparams_type
+    )
     expected_function_type = computation_types.FunctionType(
-        parameter=computation_types.StructType([('state', state_type),
-                                                ('hparams', hparams_type)]),
-        result=state_type)
-    type_test_utils.assert_types_equivalent(set_hparams_fn.type_signature,
-                                            expected_function_type)
+        parameter=computation_types.StructType(
+            [('state', state_type), ('hparams', hparams_type)]
+        ),
+        result=state_type,
+    )
+    type_test_utils.assert_types_equivalent(
+        set_hparams_fn.type_signature, expected_function_type
+    )
 
 
 if __name__ == '__main__':

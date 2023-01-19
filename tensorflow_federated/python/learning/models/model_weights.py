@@ -41,6 +41,7 @@ class ModelWeights:
   It may also be used to hold other values that are parallel to these variables,
   e.g., tensors corresponding to variable values, or updates to model variables.
   """
+
   trainable = attr.ib()
   non_trainable = attr.ib()
 
@@ -54,7 +55,8 @@ class ModelWeights:
     py_typecheck.check_type(struct, structure.Struct)
     return cls(
         [value for _, value in structure.iter_elements(struct.trainable)],
-        [value for _, value in structure.iter_elements(struct.non_trainable)])
+        [value for _, value in structure.iter_elements(struct.non_trainable)],
+    )
 
   def assign_weights_to(self, model):
     """Assign these TFF model weights to the weights of a model.
@@ -65,22 +67,34 @@ class ModelWeights:
     """
     py_typecheck.check_type(model, (model_lib.Model, tf.keras.Model))
     if isinstance(model, tf.keras.Model):
-      tf.nest.map_structure(lambda var, t: var.assign(t),
-                            model.trainable_weights, self.trainable)
-      tf.nest.map_structure(lambda var, t: var.assign(t),
-                            model.non_trainable_weights, self.non_trainable)
+      tf.nest.map_structure(
+          lambda var, t: var.assign(t), model.trainable_weights, self.trainable
+      )
+      tf.nest.map_structure(
+          lambda var, t: var.assign(t),
+          model.non_trainable_weights,
+          self.non_trainable,
+      )
     else:
-      tf.nest.map_structure(lambda var, t: var.assign(t),
-                            model.trainable_variables, self.trainable)
-      tf.nest.map_structure(lambda var, t: var.assign(t),
-                            model.non_trainable_variables, self.non_trainable)
+      tf.nest.map_structure(
+          lambda var, t: var.assign(t),
+          model.trainable_variables,
+          self.trainable,
+      )
+      tf.nest.map_structure(
+          lambda var, t: var.assign(t),
+          model.non_trainable_variables,
+          self.non_trainable,
+      )
 
   def convert_variables_to_arrays(self) -> 'ModelWeights':
     """Converts any internal `tf.Variable`s to numpy arrays."""
 
     if not tf.compat.v1.executing_eagerly():
-      raise ValueError('Can only convert to numpy array in eager mode outside '
-                       'a @tf.function.')
+      raise ValueError(
+          'Can only convert to numpy array in eager mode outside '
+          'a @tf.function.'
+      )
 
     if isinstance(self.trainable, structure.Struct):
       new_trainable = structure.map_structure(np.array, self.trainable)

@@ -80,10 +80,12 @@ class TestCase(tf.test.TestCase):
   """A helper class to test TFF optimizers."""
 
   def assert_optimizers_numerically_close(
-      self, model_variables_fn: Callable[[], Collection[tf.Variable]],
+      self,
+      model_variables_fn: Callable[[], Collection[tf.Variable]],
       gradients: Collection[Collection[tf.Tensor]],
       tff_optimizer_fn: Callable[[], optimizer_base.Optimizer],
-      keras_optimizer_fn: Callable[[], tf.keras.optimizers.Optimizer]):
+      keras_optimizer_fn: Callable[[], tf.keras.optimizers.Optimizer],
+  ):
     """Test the numerical correctness of TFF optimizer by comparign to Keras.
 
     When implementing a `tff.learning.optimizer.Optimizer` that exists in Keras,
@@ -104,7 +106,8 @@ class TestCase(tf.test.TestCase):
       model_weights = model_variables_fn()
       optimizer = tff_optimizer_fn()
       model_weight_specs = tf.nest.map_structure(
-          lambda v: tf.TensorSpec(v.shape, v.dtype), model_weights)
+          lambda v: tf.TensorSpec(v.shape, v.dtype), model_weights
+      )
       state = optimizer.initialize(model_weight_specs)
       for grad in gradients:
         state, model_weights = optimizer.next(state, model_weights, grad)

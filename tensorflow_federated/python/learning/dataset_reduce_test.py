@@ -25,8 +25,9 @@ DATASET_REDUCE_OP = 'ReduceDataset'
 
 
 def _get_op_names(graph_def: tf.compat.v1.GraphDef) -> Iterable[str]:
-  all_nodes = itertools.chain(graph_def.node,
-                              *[f.node_def for f in graph_def.library.function])
+  all_nodes = itertools.chain(
+      graph_def.node, *[f.node_def for f in graph_def.library.function]
+  )
   return [n.name for n in all_nodes]
 
 
@@ -34,7 +35,8 @@ class DatasetReduceTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('non-simulation', False, dataset_reduce._dataset_reduce_fn),
-      ('simulation', True, dataset_reduce._for_iter_dataset_fn))
+      ('simulation', True, dataset_reduce._for_iter_dataset_fn),
+  )
   def test_build_dataset_reduce_fn(self, simulation, reduce_fn):
     dataset_reduce_fn = dataset_reduce.build_dataset_reduce_fn(simulation)
     self.assertIs(dataset_reduce_fn, reduce_fn)
@@ -44,39 +46,47 @@ class DatasetReduceTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('non-simulation', False, dataset_reduce._dataset_reduce_fn),
-      ('simulation', True, dataset_reduce._for_iter_dataset_fn))
+      ('simulation', True, dataset_reduce._for_iter_dataset_fn),
+  )
   def test_build_dataset_reduce_fn_float(self, simulation, reduce_fn):
     dataset_reduce_fn = dataset_reduce.build_dataset_reduce_fn(simulation)
     self.assertIs(dataset_reduce_fn, reduce_fn)
-    ds = tf.data.Dataset.range(
-        10, output_type=tf.float32).map(lambda x: 0.1 * x)
+    ds = tf.data.Dataset.range(10, output_type=tf.float32).map(
+        lambda x: 0.1 * x
+    )
     total_sum = dataset_reduce_fn(
         reduce_fn=lambda x, y: x + y,
         dataset=ds,
-        initial_state_fn=lambda: tf.constant(0.))
+        initial_state_fn=lambda: tf.constant(0.0),
+    )
     self.assertEqual(total_sum, np.float32(4.5))
 
   @parameterized.named_parameters(
       ('non-simulation', False, dataset_reduce._dataset_reduce_fn),
-      ('simulation', True, dataset_reduce._for_iter_dataset_fn))
+      ('simulation', True, dataset_reduce._for_iter_dataset_fn),
+  )
   def test_build_dataset_reduce_fn_tuple(self, simulation, reduce_fn):
     dataset_reduce_fn = dataset_reduce.build_dataset_reduce_fn(simulation)
     self.assertIs(dataset_reduce_fn, reduce_fn)
-    ds = tf.data.Dataset.range(
-        10, output_type=tf.float32).map(lambda x: 0.1 * x)
+    ds = tf.data.Dataset.range(10, output_type=tf.float32).map(
+        lambda x: 0.1 * x
+    )
     total_cnt, total_sum = dataset_reduce_fn(
         reduce_fn=lambda x, y: (x[0] + 1, x[1] + y),
         dataset=ds,
-        initial_state_fn=lambda: (tf.constant(0.), tf.constant(0.1)))
+        initial_state_fn=lambda: (tf.constant(0.0), tf.constant(0.1)),
+    )
     self.assertEqual(total_cnt, np.float32(10))
     self.assertEqual(total_sum, np.float32(4.6))
 
-  @parameterized.named_parameters(('non-simulation', False),
-                                  ('simulation', True))
+  @parameterized.named_parameters(
+      ('non-simulation', False), ('simulation', True)
+  )
   def test_dataset_reduce_op_presence(self, simulation):
     with tf.Graph().as_default() as graph:
       dataset_reduce_fn = tf.function(
-          dataset_reduce.build_dataset_reduce_fn(simulation))
+          dataset_reduce.build_dataset_reduce_fn(simulation)
+      )
       ds = tf.data.Dataset.range(10, output_type=tf.int32)
       dataset_reduce_fn(reduce_fn=lambda x, y: x + y, dataset=ds)
     if simulation:

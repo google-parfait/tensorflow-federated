@@ -63,8 +63,9 @@ class Optimizer(abc.ABC, Generic[State, Weights, Hparams]):
     pass
 
   @abc.abstractmethod
-  def next(self, state: State, weights: Weights,
-           gradients: Any) -> tuple[State, Weights]:
+  def next(
+      self, state: State, weights: Weights, gradients: Any
+  ) -> tuple[State, Weights]:
     """Takes a step of the optimizer.
 
     Args:
@@ -140,7 +141,8 @@ def check_weights_gradients_match(weights, gradients):
         'Provided weights and gradients must be collections of tensors of the '
         'same structure and the tensors must have the same shapes and dtypes.\n'
         f'Provided weights: {weights}\n'
-        f'Provided gradients: {gradients}') from e
+        f'Provided gradients: {gradients}'
+    ) from e
 
 
 def check_weights_state_match(weights, state, name):
@@ -151,12 +153,13 @@ def check_weights_state_match(weights, state, name):
     # Raises a more informative error message.
     raise ValueError(
         f'Provided {name} and weigths do not match. The {name} term in '
-        f'the state and weights must be collections of tensors of the same '
-        f'structure and the tensors must have the same shapes and dtypes. A '
-        f'possible reason is that the `initialize` method was invoked with '
-        f'`specs` not matching the weights being optimized.\n'
+        'the state and weights must be collections of tensors of the same '
+        'structure and the tensors must have the same shapes and dtypes. A '
+        'possible reason is that the `initialize` method was invoked with '
+        '`specs` not matching the weights being optimized.\n'
         f'Provided {name}: {state}\n'
-        f'Provided weights: {weights}') from e
+        f'Provided weights: {weights}'
+    ) from e
 
 
 def handle_indexed_slices_gradients(gradients):

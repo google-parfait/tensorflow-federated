@@ -33,14 +33,17 @@ Hparams = TypeVar('Hparams', bound=collections.OrderedDict[str, float])
 class _Adagrad(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
   """Adagrad optimizer, see `build_adagrad` for details."""
 
-  def __init__(self,
-               learning_rate: float,
-               initial_preconditioner_value: float = 0.1,
-               epsilon: float = 1e-7):
+  def __init__(
+      self,
+      learning_rate: float,
+      initial_preconditioner_value: float = 0.1,
+      epsilon: float = 1e-7,
+  ):
     """Initializes SGD optimizer."""
     py_typecheck.check_non_negative_float(learning_rate, 'learning rate')
-    py_typecheck.check_non_negative_float(initial_preconditioner_value,
-                                          'initial preconditioner value')
+    py_typecheck.check_non_negative_float(
+        initial_preconditioner_value, 'initial preconditioner value'
+    )
     py_typecheck.check_non_negative_float(epsilon, 'epsilon')
     self._lr = learning_rate
     self._initial_precond = initial_preconditioner_value
@@ -48,7 +51,8 @@ class _Adagrad(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
 
   def initialize(self, specs: Any) -> State:
     initial_preconditioner = tf.nest.map_structure(
-        lambda s: tf.ones(s.shape, s.dtype) * self._initial_precond, specs)
+        lambda s: tf.ones(s.shape, s.dtype) * self._initial_precond, specs
+    )
     state = collections.OrderedDict([
         (optimizer.LEARNING_RATE_KEY, self._lr),
         (_EPSILON_KEY, self._epsilon),
@@ -56,21 +60,27 @@ class _Adagrad(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
     ])
     return state
 
-  def next(self, state: State, weights: optimizer.Weights,
-           gradients: Any) -> tuple[State, optimizer.Weights]:
+  def next(
+      self, state: State, weights: optimizer.Weights, gradients: Any
+  ) -> tuple[State, optimizer.Weights]:
     gradients = optimizer.handle_indexed_slices_gradients(gradients)
     optimizer.check_weights_gradients_match(weights, gradients)
     lr = state[optimizer.LEARNING_RATE_KEY]
     epsilon = state[_EPSILON_KEY]
     preconditioner = state[_PRECONDITIONER_KEY]
-    optimizer.check_weights_state_match(weights, preconditioner,
-                                        'preconditioner')
+    optimizer.check_weights_state_match(
+        weights, preconditioner, 'preconditioner'
+    )
 
     updated_preconditioner = tf.nest.map_structure(
-        lambda a, g: a + tf.math.square(g), preconditioner, gradients)
+        lambda a, g: a + tf.math.square(g), preconditioner, gradients
+    )
     updated_weights = tf.nest.map_structure(
-        lambda w, g, a: w - lr * g / tf.math.sqrt(a + epsilon), weights,
-        gradients, updated_preconditioner)
+        lambda w, g, a: w - lr * g / tf.math.sqrt(a + epsilon),
+        weights,
+        gradients,
+        updated_preconditioner,
+    )
 
     updated_state = collections.OrderedDict([
         (optimizer.LEARNING_RATE_KEY, lr),
@@ -91,9 +101,11 @@ class _Adagrad(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
     return structure.update_struct(state, **hparams)
 
 
-def build_adagrad(learning_rate: float,
-                  initial_preconditioner_value: float = 0.1,
-                  epsilon: float = 1e-7) -> optimizer.Optimizer:
+def build_adagrad(
+    learning_rate: float,
+    initial_preconditioner_value: float = 0.1,
+    epsilon: float = 1e-7,
+) -> optimizer.Optimizer:
   """Returns a `tff.learning.optimizers.Optimizer` for Adagrad.
 
   The Adagrad optimizer is based on [Adaptive Subgradient Methods for Online

@@ -57,8 +57,9 @@ from tensorflow_federated.python.learning.templates import learning_process
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
 
-def _build_client_update(model: model_lib.Model,
-                         use_experimental_simulation_loop: bool):
+def _build_client_update(
+    model: model_lib.Model, use_experimental_simulation_loop: bool
+):
   """Creates client update logic for FedSGD.
 
   Args:
@@ -70,13 +71,15 @@ def _build_client_update(model: model_lib.Model,
     A `tf.function`.
   """
   dataset_reduce_fn = dataset_reduce.build_dataset_reduce_fn(
-      use_experimental_simulation_loop)
+      use_experimental_simulation_loop
+  )
 
   @tf.function
   def client_update(initial_weights, dataset):
     model_weights = model_weights_lib.ModelWeights.from_model(model)
-    tf.nest.map_structure(lambda a, b: a.assign(b), model_weights,
-                          initial_weights)
+    tf.nest.map_structure(
+        lambda a, b: a.assign(b), model_weights, initial_weights
+    )
 
     def reduce_fn(state, batch):
       """Runs forward_pass on batch and sums the weighted gradients."""
@@ -88,7 +91,8 @@ def _build_client_update(model: model_lib.Model,
       num_examples = tf.cast(output.num_examples, tf.float32)
       accumulated_gradients = tuple(
           accumulator + num_examples * gradient
-          for accumulator, gradient in zip(accumulated_gradients, gradients))
+          for accumulator, gradient in zip(accumulated_gradients, gradients)
+      )
 
       # We may be able to optimize the reduce function to avoid doubling the
       # number of required variables here (e.g. keeping two copies of all
@@ -99,39 +103,49 @@ def _build_client_update(model: model_lib.Model,
     def _zero_initial_state():
       """Create a tuple of (gradient accumulators, num examples)."""
       return tuple(
-          tf.nest.map_structure(tf.zeros_like,
-                                model_weights.trainable)), tf.constant(
-                                    0, dtype=tf.float32)
+          tf.nest.map_structure(tf.zeros_like, model_weights.trainable)
+      ), tf.constant(0, dtype=tf.float32)
 
     gradient_sums, num_examples_sum = dataset_reduce_fn(
         reduce_fn=reduce_fn,
         dataset=dataset,
-        initial_state_fn=_zero_initial_state)
+        initial_state_fn=_zero_initial_state,
+    )
 
     # We now normalize to compute the average gradient over all examples.
     average_gradient = tf.nest.map_structure(
-        lambda gradient: gradient / num_examples_sum, gradient_sums)
+        lambda gradient: gradient / num_examples_sum, gradient_sums
+    )
 
     model_output = model.report_local_unfinalized_metrics()
     average_gradient, has_non_finite_delta = (
-        tensor_utils.zero_all_if_any_non_finite(average_gradient))
+        tensor_utils.zero_all_if_any_non_finite(average_gradient)
+    )
     if has_non_finite_delta > 0:
       client_weight = tf.constant(0.0)
     else:
       client_weight = num_examples_sum
 
-    return client_works.ClientResult(
-        update=average_gradient, update_weight=client_weight), model_output
+    return (
+        client_works.ClientResult(
+            update=average_gradient, update_weight=client_weight
+        ),
+        model_output,
+    )
 
   return client_update
 
 
 def _build_fed_sgd_client_work(
     model_fn: Callable[[], model_lib.Model],
-    metrics_aggregator: Callable[[
-        model_lib.MetricFinalizersType, computation_types.StructWithPythonType
-    ], computation_base.Computation],
-    use_experimental_simulation_loop: bool = False
+    metrics_aggregator: Callable[
+        [
+            model_lib.MetricFinalizersType,
+            computation_types.StructWithPythonType,
+        ],
+        computation_base.Computation,
+    ],
+    use_experimental_simulation_loop: bool = False,
 ) -> client_works.ClientWorkProcess:
   """Creates a `tff.learning.templates.ClientWorkProcess` for federated SGD.
 
@@ -158,9 +172,11 @@ def _build_fed_sgd_client_work(
     # with variables created for this model.
     model = model_fn()
     unfinalized_metrics_type = type_conversions.type_from_tensors(
-        model.report_local_unfinalized_metrics())
-    metrics_aggregation_fn = metrics_aggregator(model.metric_finalizers(),
-                                                unfinalized_metrics_type)
+        model.report_local_unfinalized_metrics()
+    )
+    metrics_aggregation_fn = metrics_aggregator(
+        model.metric_finalizers(), unfinalized_metrics_type
+    )
   data_type = computation_types.SequenceType(model.input_spec)
   weights_type = model_weights_lib.weights_type_from_model(model)
 
@@ -170,21 +186,27 @@ def _build_fed_sgd_client_work(
 
   @tensorflow_computation.tf_computation(weights_type, data_type)
   def client_update_computation(initial_model_weights, dataset):
-    client_update = _build_client_update(model_fn(),
-                                         use_experimental_simulation_loop)
+    client_update = _build_client_update(
+        model_fn(), use_experimental_simulation_loop
+    )
     return client_update(initial_model_weights, dataset)
 
   @federated_computation.federated_computation(
-      init_fn.type_signature.result, computation_types.at_clients(weights_type),
-      computation_types.at_clients(data_type))
+      init_fn.type_signature.result,
+      computation_types.at_clients(weights_type),
+      computation_types.at_clients(data_type),
+  )
   def next_fn(state, model_weights, client_data):
     client_result, model_outputs = intrinsics.federated_map(
-        client_update_computation, (model_weights, client_data))
+        client_update_computation, (model_weights, client_data)
+    )
     train_metrics = metrics_aggregation_fn(model_outputs)
     measurements = intrinsics.federated_zip(
-        collections.OrderedDict(train=train_metrics))
-    return measured_process.MeasuredProcessOutput(state, client_result,
-                                                  measurements)
+        collections.OrderedDict(train=train_metrics)
+    )
+    return measured_process.MeasuredProcessOutput(
+        state, client_result, measurements
+    )
 
   return client_works.ClientWorkProcess(init_fn, next_fn)
 
@@ -203,12 +225,15 @@ def _build_functional_client_update(
     A `tf.function`.
   """
   dataset_reduce_fn = dataset_reduce.build_dataset_reduce_fn(
-      use_experimental_simulation_loop)
+      use_experimental_simulation_loop
+  )
 
   @tf.function
   def client_update(initial_weights, dataset):
-    trainable_weights, non_trainable_weights = (initial_weights.trainable,
-                                                initial_weights.non_trainable)
+    trainable_weights, non_trainable_weights = (
+        initial_weights.trainable,
+        initial_weights.non_trainable,
+    )
 
     def reduce_fn(state, batch):
       """Runs forward_pass on batch and sums the weighted gradients."""
@@ -218,52 +243,71 @@ def _build_functional_client_update(
         output = model.forward_pass(
             model_weights=(trainable_weights, non_trainable_weights),
             batch_input=batch,
-            training=True)
+            training=True,
+        )
         gradients = tape.gradient(output.loss, trainable_weights)
         num_examples = tf.cast(output.num_examples, tf.float32)
         accumulated_gradients = tuple(
             accumulator + num_examples * gradient
-            for accumulator, gradient in zip(accumulated_gradients, gradients))
+            for accumulator, gradient in zip(accumulated_gradients, gradients)
+        )
       if isinstance(batch, collections.abc.Mapping):
         labels = batch['y']
       else:
         _, labels = batch
       metrics_state = model.update_metrics_state(
-          metrics_state, labels=labels, batch_output=output)
-      return (accumulated_gradients, metrics_state,
-              num_examples_sum + num_examples)
+          metrics_state, labels=labels, batch_output=output
+      )
+      return (
+          accumulated_gradients,
+          metrics_state,
+          num_examples_sum + num_examples,
+      )
 
     def _zero_initial_state():
       """Create a tuple of (gradient accumulators, metrics, num examples)."""
-      return (tuple(tf.nest.map_structure(tf.zeros_like, trainable_weights)),
-              model.initialize_metrics_state(),
-              tf.constant(0, dtype=tf.float32))
+      return (
+          tuple(tf.nest.map_structure(tf.zeros_like, trainable_weights)),
+          model.initialize_metrics_state(),
+          tf.constant(0, dtype=tf.float32),
+      )
 
     gradient_sums, metrics_state, num_examples_sum = dataset_reduce_fn(
         reduce_fn=reduce_fn,
         dataset=dataset,
-        initial_state_fn=_zero_initial_state)
+        initial_state_fn=_zero_initial_state,
+    )
     # We now normalize to compute the average gradient over all examples.
     average_gradient = tf.nest.map_structure(
-        lambda gradient: gradient / num_examples_sum, gradient_sums)
+        lambda gradient: gradient / num_examples_sum, gradient_sums
+    )
     average_gradient, has_non_finite_delta = (
-        tensor_utils.zero_all_if_any_non_finite(average_gradient))
+        tensor_utils.zero_all_if_any_non_finite(average_gradient)
+    )
     if has_non_finite_delta > 0:
       client_weight = tf.constant(0.0)
     else:
       client_weight = num_examples_sum
-    return client_works.ClientResult(
-        update=average_gradient, update_weight=client_weight), metrics_state
+    return (
+        client_works.ClientResult(
+            update=average_gradient, update_weight=client_weight
+        ),
+        metrics_state,
+    )
 
   return client_update
 
 
 def _build_functional_fed_sgd_client_work(
     model: functional.FunctionalModel,
-    metrics_aggregator: Callable[[
-        model_lib.MetricFinalizersType, computation_types.StructWithPythonType
-    ], computation_base.Computation],
-    use_experimental_simulation_loop: bool = False
+    metrics_aggregator: Callable[
+        [
+            model_lib.MetricFinalizersType,
+            computation_types.StructWithPythonType,
+        ],
+        computation_base.Computation,
+    ],
+    use_experimental_simulation_loop: bool = False,
 ) -> client_works.ClientWorkProcess:
   """Creates a `tff.learning.templates.ClientWorkProcess` for federated SGD.
 
@@ -296,7 +340,8 @@ def _build_functional_fed_sgd_client_work(
   trainable_weights, non_trainable_weights = model.initial_weights
   weights_type = model_weights_lib.ModelWeights(
       tuple(ndarray_to_tensorspec(w) for w in trainable_weights),
-      tuple(ndarray_to_tensorspec(w) for w in non_trainable_weights))
+      tuple(ndarray_to_tensorspec(w) for w in non_trainable_weights),
+  )
 
   @federated_computation.federated_computation
   def init_fn():
@@ -305,22 +350,29 @@ def _build_functional_fed_sgd_client_work(
   @tensorflow_computation.tf_computation(weights_type, data_type)
   def client_update_computation(initial_model_weights, dataset):
     client_update = _build_functional_client_update(
-        model, use_experimental_simulation_loop)
+        model, use_experimental_simulation_loop
+    )
     return client_update(initial_model_weights, dataset)
 
   @federated_computation.federated_computation(
-      init_fn.type_signature.result, computation_types.at_clients(weights_type),
-      computation_types.at_clients(data_type))
+      init_fn.type_signature.result,
+      computation_types.at_clients(weights_type),
+      computation_types.at_clients(data_type),
+  )
   def next_fn(state, model_weights, client_data):
     client_result, unfinalized_metrics = intrinsics.federated_map(
-        client_update_computation, (model_weights, client_data))
+        client_update_computation, (model_weights, client_data)
+    )
     metrics_aggregation_fn = metrics_aggregator(
-        model.finalize_metrics, unfinalized_metrics.type_signature.member)
+        model.finalize_metrics, unfinalized_metrics.type_signature.member
+    )
     train_metrics = metrics_aggregation_fn(unfinalized_metrics)
     measurements = intrinsics.federated_zip(
-        collections.OrderedDict(train=train_metrics))
-    return measured_process.MeasuredProcessOutput(state, client_result,
-                                                  measurements)
+        collections.OrderedDict(train=train_metrics)
+    )
+    return measured_process.MeasuredProcessOutput(
+        state, client_result, measurements
+    )
 
   return client_works.ClientWorkProcess(init_fn, next_fn)
 
@@ -330,13 +382,20 @@ DEFAULT_SERVER_OPTIMIZER_FN = lambda: tf.keras.optimizers.SGD(learning_rate=0.1)
 
 def build_fed_sgd(
     model_fn: Union[Callable[[], model_lib.Model], functional.FunctionalModel],
-    server_optimizer_fn: Union[optimizer_base.Optimizer, Callable[
-        [], tf.keras.optimizers.Optimizer]] = DEFAULT_SERVER_OPTIMIZER_FN,
+    server_optimizer_fn: Union[
+        optimizer_base.Optimizer, Callable[[], tf.keras.optimizers.Optimizer]
+    ] = DEFAULT_SERVER_OPTIMIZER_FN,
     model_distributor: Optional[distributors.DistributionProcess] = None,
     model_aggregator: Optional[factory.WeightedAggregationFactory] = None,
-    metrics_aggregator: Optional[Callable[[
-        model_lib.MetricFinalizersType, computation_types.StructWithPythonType
-    ], computation_base.Computation]] = None,
+    metrics_aggregator: Optional[
+        Callable[
+            [
+                model_lib.MetricFinalizersType,
+                computation_types.StructWithPythonType,
+            ],
+            computation_base.Computation,
+        ]
+    ] = None,
     use_experimental_simulation_loop: bool = False,
 ) -> learning_process.LearningProcess:
   """Builds a learning process that performs federated SGD.
@@ -407,14 +466,16 @@ def build_fed_sgd(
     if not isinstance(model_fn, functional.FunctionalModel):
       raise TypeError(
           'If `model_fn` is not a callable, it must be an instance of '
-          f'tff.learning.models.FunctionalModel. Got {type(model_fn)}')
+          f'tff.learning.models.FunctionalModel. Got {type(model_fn)}'
+      )
 
     @tensorflow_computation.tf_computation()
     def initial_model_weights_fn():
       trainable_weights, non_trainable_weights = model_fn.initial_weights
       return model_weights_lib.ModelWeights(
           tuple(tf.convert_to_tensor(w) for w in trainable_weights),
-          tuple(tf.convert_to_tensor(w) for w in non_trainable_weights))
+          tuple(tf.convert_to_tensor(w) for w in non_trainable_weights),
+      )
 
   else:
     py_typecheck.check_callable(model_fn)
@@ -423,9 +484,11 @@ def build_fed_sgd(
     def initial_model_weights_fn():
       model = model_fn()
       if not isinstance(model, model_lib.Model):
-        raise TypeError('When `model_fn` is a callable, it returns instances of'
-                        ' tff.learning.Model. Instead callable returned type: '
-                        f'{type(model)}')
+        raise TypeError(
+            'When `model_fn` is a callable, it returns instances of'
+            ' tff.learning.Model. Instead callable returned type: '
+            f'{type(model)}'
+        )
       return model_weights_lib.ModelWeights.from_model(model)
 
   model_weights_type = initial_model_weights_fn.type_signature.result
@@ -436,8 +499,9 @@ def build_fed_sgd(
   model_update_type = model_weights_type.trainable
   if model_aggregator is None:
     model_aggregator = mean.MeanFactory()
-  aggregator = model_aggregator.create(model_update_type,
-                                       computation_types.TensorType(tf.float32))
+  aggregator = model_aggregator.create(
+      model_update_type, computation_types.TensorType(tf.float32)
+  )
 
   if metrics_aggregator is None:
     metrics_aggregator = metric_aggregator.sum_then_finalize
@@ -445,14 +509,21 @@ def build_fed_sgd(
     client_work = _build_functional_fed_sgd_client_work(
         model_fn,
         metrics_aggregator,
-        use_experimental_simulation_loop=use_experimental_simulation_loop)
+        use_experimental_simulation_loop=use_experimental_simulation_loop,
+    )
   else:
     client_work = _build_fed_sgd_client_work(
         model_fn,
         metrics_aggregator,
-        use_experimental_simulation_loop=use_experimental_simulation_loop)
+        use_experimental_simulation_loop=use_experimental_simulation_loop,
+    )
   finalizer = apply_optimizer_finalizer.build_apply_optimizer_finalizer(
-      server_optimizer_fn, model_weights_type)
-  return composers.compose_learning_process(initial_model_weights_fn,
-                                            model_distributor, client_work,
-                                            aggregator, finalizer)
+      server_optimizer_fn, model_weights_type
+  )
+  return composers.compose_learning_process(
+      initial_model_weights_fn,
+      model_distributor,
+      client_work,
+      aggregator,
+      finalizer,
+  )

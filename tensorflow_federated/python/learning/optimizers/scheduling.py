@@ -25,8 +25,8 @@ _LEARNING_RATE_KEY = optimizer_base.LEARNING_RATE_KEY
 
 
 def schedule_learning_rate(
-    optimizer: optimizer_base.Optimizer,
-    schedule_fn: Callable[[int], float]) -> optimizer_base.Optimizer:
+    optimizer: optimizer_base.Optimizer, schedule_fn: Callable[[int], float]
+) -> optimizer_base.Optimizer:
   """Returns an optimizer with scheduled learning rate.
 
   The returned optimizer will use a learning rate of `schedule_fn(i)` for the
@@ -52,8 +52,11 @@ def schedule_learning_rate(
 class _ScheduledLROptimizer(optimizer_base.Optimizer):
   """Optimizer with scheduled learning rate."""
 
-  def __init__(self, optimizer: optimizer_base.Optimizer,
-               schedule_fn: Callable[[int], float]):
+  def __init__(
+      self,
+      optimizer: optimizer_base.Optimizer,
+      schedule_fn: Callable[[int], float],
+  ):
     py_typecheck.check_type(optimizer, optimizer_base.Optimizer)
     py_typecheck.check_callable(schedule_fn)
     self._optimizer = optimizer
@@ -65,15 +68,18 @@ class _ScheduledLROptimizer(optimizer_base.Optimizer):
     round_num = tf.constant(0, tf.int32)
     optimizer_state[_LEARNING_RATE_KEY] = self._schedule_fn(round_num)
     return collections.OrderedDict(
-        round_num=round_num, optimizer=optimizer_state)
+        round_num=round_num, optimizer=optimizer_state
+    )
 
   def next(self, state, weights, gradients):
-    optimizer_state, weights = self._optimizer.next(state['optimizer'], weights,
-                                                    gradients)
+    optimizer_state, weights = self._optimizer.next(
+        state['optimizer'], weights, gradients
+    )
     round_num = state['round_num'] + 1
     optimizer_state[_LEARNING_RATE_KEY] = self._schedule_fn(round_num)
     new_state = collections.OrderedDict(
-        round_num=round_num, optimizer=optimizer_state)
+        round_num=round_num, optimizer=optimizer_state
+    )
     return new_state, weights
 
 
@@ -82,4 +88,5 @@ def _check_lr_exists(optimizer_state):
     raise KeyError(
         'Optimizer to be scheduled must have learning rate under '
         '`tff.learning.optimizer.LEARNING_RATE_KEY` key in its state. Found '
-        f'optimizer state: {optimizer_state}')
+        f'optimizer state: {optimizer_state}'
+    )

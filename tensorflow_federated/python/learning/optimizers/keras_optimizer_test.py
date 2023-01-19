@@ -26,7 +26,7 @@ _SCALAR_SPEC = tf.TensorSpec([1], tf.float32)
 _STRUCT_SPEC = [tf.TensorSpec([2], tf.float32), tf.TensorSpec([3], tf.float32)]
 _NESTED_SPEC = [
     tf.TensorSpec([10], tf.float32),
-    [tf.TensorSpec([20], tf.float32), [tf.TensorSpec([30], tf.float32)]]
+    [tf.TensorSpec([20], tf.float32), [tf.TensorSpec([30], tf.float32)]],
 ]
 
 
@@ -60,9 +60,11 @@ class KerasOptimizerTest(tf.test.TestCase, parameterized.TestCase):
     def initialize_fn():
       variables = tf.Variable(tf.zeros([5, 1]))
       optimizer = keras_optimizer.KerasOptimizer(
-          optimizer_fn, variables, disjoint_init_and_next=True)
+          optimizer_fn, variables, disjoint_init_and_next=True
+      )
       return optimizer.initialize(
-          tf.TensorSpec(variables.shape, variables.dtype))
+          tf.TensorSpec(variables.shape, variables.dtype)
+      )
 
     @tf.function
     def single_step(optimizer, state, variables):
@@ -74,7 +76,8 @@ class KerasOptimizerTest(tf.test.TestCase, parameterized.TestCase):
     def next_fn(state, initial_weights):
       variables = tf.Variable(initial_weights)
       optimizer = keras_optimizer.KerasOptimizer(
-          optimizer_fn, variables, disjoint_init_and_next=True)
+          optimizer_fn, variables, disjoint_init_and_next=True
+      )
       return single_step(optimizer, state, variables)
 
     state = initialize_fn()
@@ -110,7 +113,8 @@ class KerasOptimizerTest(tf.test.TestCase, parameterized.TestCase):
     @tf.function
     def training_loop(optimizer, variables):
       state = optimizer.initialize(
-          tf.TensorSpec(variables.shape, variables.dtype))
+          tf.TensorSpec(variables.shape, variables.dtype)
+      )
       for _ in range(100):
         gradients = grad_fn(variables)
         state, variables = optimizer.next(state, variables, gradients)
@@ -120,7 +124,8 @@ class KerasOptimizerTest(tf.test.TestCase, parameterized.TestCase):
     def local_training(initial_weights):
       variables = tf.Variable(initial_weights)
       optimizer = keras_optimizer.KerasOptimizer(
-          optimizer_fn, variables, disjoint_init_and_next=False)
+          optimizer_fn, variables, disjoint_init_and_next=False
+      )
       return training_loop(optimizer, variables)
 
     state, optimized_weights = local_training(weights)
@@ -135,7 +140,8 @@ class KerasOptimizerTest(tf.test.TestCase, parameterized.TestCase):
     @tf.function
     def training_loop(optimizer, variables):
       state = optimizer.initialize(
-          tf.TensorSpec(variables.shape, variables.dtype))
+          tf.TensorSpec(variables.shape, variables.dtype)
+      )
       for _ in range(3):
         gradients = tf.constant(1.0)
         state, variables = optimizer.next(state, variables, gradients)
@@ -146,7 +152,8 @@ class KerasOptimizerTest(tf.test.TestCase, parameterized.TestCase):
     def test_computation(initial_weights):
       variables = tf.Variable(initial_weights)
       optimizer = keras_optimizer.KerasOptimizer(
-          optimizer_fn, variables, disjoint_init_and_next=False)
+          optimizer_fn, variables, disjoint_init_and_next=False
+      )
       return training_loop(optimizer, variables)
 
     state, weights, optimizer_variables = test_computation(1.0)
@@ -168,18 +175,22 @@ class KerasOptimizerTest(tf.test.TestCase, parameterized.TestCase):
     """Test compatibility with different structures of variables."""
     optimizer_fn = lambda: tf.keras.optimizers.SGD(0.1)
     variables = tf.nest.map_structure(
-        lambda s: tf.Variable(tf.ones(s.shape, s.dtype)), specs)
-    gradients = tf.nest.map_structure(lambda s: tf.ones(s.shape, s.dtype),
-                                      specs)
+        lambda s: tf.Variable(tf.ones(s.shape, s.dtype)), specs
+    )
+    gradients = tf.nest.map_structure(
+        lambda s: tf.ones(s.shape, s.dtype), specs
+    )
 
     optimizer = keras_optimizer.KerasOptimizer(
-        optimizer_fn, variables, disjoint_init_and_next=disjoint_init_and_next)
+        optimizer_fn, variables, disjoint_init_and_next=disjoint_init_and_next
+    )
     state = optimizer.initialize(specs)
     for _ in range(3):
       state, variables = optimizer.next(state, variables, gradients)
 
     expected_variables = tf.nest.map_structure(
-        lambda s: 0.7 * tf.ones(s.shape, s.dtype), specs)
+        lambda s: 0.7 * tf.ones(s.shape, s.dtype), specs
+    )
     self.assertAllClose(expected_variables, variables)
 
   @parameterized.named_parameters(
@@ -193,9 +204,11 @@ class KerasOptimizerTest(tf.test.TestCase, parameterized.TestCase):
   def test_build_tff_optimizer_keras(self, specs, disjoint_init_and_next):
     optimizer_fn = lambda: tf.keras.optimizers.SGD(0.1)
     variables = tf.nest.map_structure(
-        lambda s: tf.Variable(tf.ones(s.shape, s.dtype)), specs)
+        lambda s: tf.Variable(tf.ones(s.shape, s.dtype)), specs
+    )
     optimizer = keras_optimizer.build_or_verify_tff_optimizer(
-        optimizer_fn, variables, disjoint_init_and_next)
+        optimizer_fn, variables, disjoint_init_and_next
+    )
     self.assertIsInstance(optimizer, optimizer_base.Optimizer)
 
   def test_build_tff_optimizer_tff(self):
@@ -208,10 +221,12 @@ class KerasOptimizerTest(tf.test.TestCase, parameterized.TestCase):
       ('client', False),
   )
   def test_build_tff_optimizer_raise(self, disjoint_init_and_next):
-    with self.assertRaisesRegex(TypeError,
-                                '`optimizer_fn` must be a callable or '):
-      keras_optimizer.build_or_verify_tff_optimizer(None, None,
-                                                    disjoint_init_and_next)
+    with self.assertRaisesRegex(
+        TypeError, '`optimizer_fn` must be a callable or '
+    ):
+      keras_optimizer.build_or_verify_tff_optimizer(
+          None, None, disjoint_init_and_next
+      )
 
   @parameterized.named_parameters(
       ('server', True),
@@ -222,7 +237,8 @@ class KerasOptimizerTest(tf.test.TestCase, parameterized.TestCase):
       keras_optimizer.build_or_verify_tff_optimizer(
           optimizer_fn=lambda x: x,
           trainable_weights=None,
-          disjoint_init_and_next=disjoint_init_and_next)
+          disjoint_init_and_next=disjoint_init_and_next,
+      )
 
 
 if __name__ == '__main__':

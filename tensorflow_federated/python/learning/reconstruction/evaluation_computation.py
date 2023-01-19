@@ -54,8 +54,9 @@ def build_federated_evaluation(
     *,  # Callers pass below args by name.
     loss_fn: training_process.LossFn,
     metrics_fn: Optional[training_process.MetricsFn] = None,
-    reconstruction_optimizer_fn: training_process.OptimizerFn = functools
-    .partial(tf.keras.optimizers.SGD, 0.1),
+    reconstruction_optimizer_fn: training_process.OptimizerFn = functools.partial(
+        tf.keras.optimizers.SGD, 0.1
+    ),
     dataset_split_fn: Optional[reconstruction_utils.DatasetSplitFn] = None,
     broadcast_process: Optional[measured_process_lib.MeasuredProcess] = None,
 ) -> computation_base.Computation:
@@ -123,7 +124,8 @@ def build_federated_evaluation(
     if metrics_fn is not None:
       metrics.extend(metrics_fn())
     federated_output_computation = (
-        keras_utils.federated_output_computation_from_metrics(metrics))
+        keras_utils.federated_output_computation_from_metrics(metrics)
+    )
     # Remove unneeded variables to avoid polluting namespace.
     del model
     del global_weights
@@ -131,31 +133,41 @@ def build_federated_evaluation(
 
   if dataset_split_fn is None:
     dataset_split_fn = reconstruction_utils.build_dataset_split_fn(
-        split_dataset=True)
+        split_dataset=True
+    )
 
   if broadcast_process is None:
     broadcast_process = optimizer_utils.build_stateless_broadcaster(
-        model_weights_type=model_weights_type)
+        model_weights_type=model_weights_type
+    )
   if not optimizer_utils.is_valid_broadcast_process(broadcast_process):
     raise TypeError(
         'broadcast_process type signature does not conform to expected '
         'signature (<state@S, input@S> -> <state@S, result@C, measurements@S>).'
-        ' Got: {t}'.format(t=broadcast_process.next.type_signature))
+        ' Got: {t}'.format(t=broadcast_process.next.type_signature)
+    )
   if iterative_process.is_stateful(broadcast_process):
-    raise TypeError(f'Eval broadcast_process must be stateless (have an empty '
-                    'state), has state '
-                    f'{broadcast_process.initialize.type_signature.result!r}')
+    raise TypeError(
+        'Eval broadcast_process must be stateless (have an empty '
+        'state), has state '
+        f'{broadcast_process.initialize.type_signature.result!r}'
+    )
 
   @tensorflow_computation.tf_computation(
-      model_weights_type, computation_types.SequenceType(batch_type))
-  def client_computation(incoming_model_weights: computation_types.Type,
-                         client_dataset: computation_types.SequenceType):
+      model_weights_type, computation_types.SequenceType(batch_type)
+  )
+  def client_computation(
+      incoming_model_weights: computation_types.Type,
+      client_dataset: computation_types.SequenceType,
+  ):
     """Reconstructs and evaluates with `incoming_model_weights`."""
     client_model = model_fn()
     client_global_weights = reconstruction_utils.get_global_variables(
-        client_model)
+        client_model
+    )
     client_local_weights = reconstruction_utils.get_local_variables(
-        client_model)
+        client_model
+    )
     metrics = [keras_utils.MeanLossMetric(loss_fn())]
     if metrics_fn is not None:
       metrics.extend(metrics_fn())
@@ -168,11 +180,13 @@ def build_federated_evaluation(
       with tf.GradientTape() as tape:
         output = client_model.forward_pass(batch, training=True)
         batch_loss = client_loss(
-            y_true=output.labels, y_pred=output.predictions)
+            y_true=output.labels, y_pred=output.predictions
+        )
 
       gradients = tape.gradient(batch_loss, client_local_weights.trainable)
       reconstruction_optimizer.apply_gradients(
-          zip(gradients, client_local_weights.trainable))
+          zip(gradients, client_local_weights.trainable)
+      )
       return num_examples_sum + output.num_examples
 
     @tf.function
@@ -190,8 +204,11 @@ def build_federated_evaluation(
       recon_dataset, eval_dataset = dataset_split_fn(client_dataset)
 
       # Assign incoming global weights to `client_model` before reconstruction.
-      tf.nest.map_structure(lambda v, t: v.assign(t), client_global_weights,
-                            incoming_model_weights)
+      tf.nest.map_structure(
+          lambda v, t: v.assign(t),
+          client_global_weights,
+          incoming_model_weights,
+      )
 
       recon_dataset.reduce(tf.constant(0), reconstruction_reduce_fn)
       eval_dataset.reduce(tf.constant(0), evaluation_reduce_fn)
@@ -203,18 +220,25 @@ def build_federated_evaluation(
 
   @federated_computation.federated_computation(
       computation_types.at_server(model_weights_type),
-      computation_types.at_clients(computation_types.SequenceType(batch_type)))
-  def server_eval(server_model_weights: computation_types.FederatedType,
-                  federated_dataset: computation_types.FederatedType):
-    broadcast_output = broadcast_process.next(broadcast_process.initialize(),
-                                              server_model_weights)
+      computation_types.at_clients(computation_types.SequenceType(batch_type)),
+  )
+  def server_eval(
+      server_model_weights: computation_types.FederatedType,
+      federated_dataset: computation_types.FederatedType,
+  ):
+    broadcast_output = broadcast_process.next(
+        broadcast_process.initialize(), server_model_weights
+    )
     client_outputs = intrinsics.federated_map(
-        client_computation, [broadcast_output.result, federated_dataset])
+        client_computation, [broadcast_output.result, federated_dataset]
+    )
     aggregated_client_outputs = federated_output_computation(client_outputs)
     measurements = intrinsics.federated_zip(
         collections.OrderedDict(
             broadcast=broadcast_output.measurements,
-            eval=aggregated_client_outputs))
+            eval=aggregated_client_outputs,
+        )
+    )
     return measurements
 
   return server_eval
