@@ -30,15 +30,18 @@ import tensorflow_federated as tff
 
 from tensorflow_federated.python.tests import jax_components
 
-BATCH_TYPE = collections.OrderedDict([
-    ('pixels', tff.TensorType(np.float32, (50, 784))),
-    ('labels', tff.TensorType(np.int32, (50,)))
-])
+# NOTE: the keys must be in sorted order here, otherwise the tf.data
+# implementations will sort the keys  but TFF won't, leading to mismatched
+# parameter values when feeding batches into XLA computations.
+BATCH_TYPE = collections.OrderedDict(
+    labels=tff.TensorType(np.int32, (50,)),
+    pixels=tff.TensorType(np.float32, (50, 784)),
+)
 
-MODEL_TYPE = collections.OrderedDict([
-    ('weights', tff.TensorType(np.float32, (784, 10))),
-    ('bias', tff.TensorType(np.float32, (10,)))
-])
+MODEL_TYPE = collections.OrderedDict(
+    weights=tff.TensorType(np.float32, (784, 10)),
+    bias=tff.TensorType(np.float32, (10,)),
+)
 
 
 def loss(model, batch):
@@ -57,7 +60,10 @@ def prepare_data(num_clients, num_batches):
       pixels = np.random.uniform(
           low=0.0, high=1.0, size=(50, 784)).astype(np.float32)
       labels = np.random.randint(low=0, high=9, size=(50,), dtype=np.int32)
-      batch = collections.OrderedDict([('pixels', pixels), ('labels', labels)])
+      # NOTE: the keys must be in sorted order here, otherwise the tf.data
+      # implementations will sort the keys  but TFF won't, leading to mismatched
+      # parameter values when feeding batches into XLA computations.
+      batch = collections.OrderedDict(labels=labels, pixels=pixels)
       batches.append(batch)
     federated_training_data.append(batches)
   centralized_eval_data = list(
@@ -66,6 +72,10 @@ def prepare_data(num_clients, num_batches):
 
 
 class JaxTrainingTest(absltest.TestCase):
+
+  def setUp(self):
+    super().setUp()
+    tff.backends.xla.set_local_cpp_execution_context()
 
   def test_federated_training(self):
     training_data, eval_data = prepare_data(num_clients=2, num_batches=10)
@@ -83,5 +93,4 @@ class JaxTrainingTest(absltest.TestCase):
 
 
 if __name__ == '__main__':
-  tff.backends.xla.set_local_python_execution_context()
   absltest.main()

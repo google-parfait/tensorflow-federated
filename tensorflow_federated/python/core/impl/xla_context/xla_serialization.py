@@ -13,7 +13,9 @@
 # limitations under the License.
 """Utilities for serializing and deserializing XLA code."""
 
-from typing import Optional
+from collections.abc import Sequence
+import typing
+from typing import Optional, Union
 
 from jax.lib import xla_client
 import numpy as np
@@ -28,7 +30,9 @@ from tensorflow_federated.python.core.impl.types import type_serialization
 _HLO_MODULE_PROTO_URI = 'type.googleapis.com/xla.HloModuleProto'
 
 
-def pack_xla_computation(xla_computation):
+def pack_xla_computation(
+    xla_computation: xla_client.XlaComputation,
+) -> any_pb2.Any:
   """Pack a `XlaComputation` into `Any` proto with a HLO module proto payload.
 
   Args:
@@ -47,7 +51,7 @@ def pack_xla_computation(xla_computation):
       value=xla_computation.as_serialized_hlo_module_proto())
 
 
-def unpack_xla_computation(any_pb):
+def unpack_xla_computation(any_pb: any_pb2.Any) -> xla_client.XlaComputation:
   """Unpacks an `Any` proto to an `XlaComputation`.
 
   Args:
@@ -68,8 +72,8 @@ def unpack_xla_computation(any_pb):
 
 
 def _make_xla_binding_for_type(
-    tensor_indexes: list[int],
-    type_spec: Optional[computation_types.Type]) -> Optional[pb.Xla.Binding]:
+    tensor_indexes: Sequence[int], type_spec: Optional[computation_types.Type]
+) -> Optional[pb.Xla.Binding]:
   """Generates an XLA binding for TFF type `type_spec`.
 
   In the generated binding, tensors are assigned indexes in consecutive order
@@ -88,12 +92,18 @@ def _make_xla_binding_for_type(
     return None
 
   py_typecheck.check_type(type_spec, computation_types.Type)
-  py_typecheck.check_type(tensor_indexes, list)
+  py_typecheck.check_type(tensor_indexes, Sequence)
 
-  def _make_starting_at_index(type_spec, idx):
+  def _make_starting_at_index(
+      type_spec: computation_types.Type, idx: int
+  ) -> tuple[pb.Xla.Binding, int]:
     if isinstance(type_spec, computation_types.TensorType):
-      return pb.Xla.Binding(
-          tensor=pb.Xla.TensorBinding(index=tensor_indexes[idx])), idx + 1
+      return (
+          pb.Xla.Binding(
+              tensor=pb.Xla.TensorBinding(index=tensor_indexes[idx])
+          ),
+          idx + 1,
+      )
 
     if isinstance(type_spec, computation_types.StructType):
       elements = []
@@ -109,7 +119,16 @@ def _make_xla_binding_for_type(
   return binding
 
 
-def _remove_struct_element_names_from_tff_type(type_spec):
+_T = typing.TypeVar(
+    '_T',
+    computation_types.TensorType,
+    computation_types.StructType,
+    computation_types.StructWithPythonType,
+    computation_types.FunctionType,
+)
+
+
+def _remove_struct_element_names_from_tff_type(type_spec: _T) -> _T:
   """Removes names of struct elements from `type_spec`.
 
   Args:
@@ -137,7 +156,11 @@ def _remove_struct_element_names_from_tff_type(type_spec):
   ])
 
 
-def create_xla_tff_computation(xla_computation, tensor_indexes, type_spec):
+def create_xla_tff_computation(
+    xla_computation: xla_client.XlaComputation,
+    tensor_indexes: Sequence[int],
+    type_spec: computation_types.FunctionType,
+) -> pb.Computation:
   """Creates an XLA TFF computation.
 
   Args:
@@ -154,7 +177,7 @@ def create_xla_tff_computation(xla_computation, tensor_indexes, type_spec):
       e.g., because the TFF types mismatch.
   """
   py_typecheck.check_type(xla_computation, xla_client.XlaComputation)
-  py_typecheck.check_type(tensor_indexes, list)
+  py_typecheck.check_type(tensor_indexes, Sequence)
   py_typecheck.check_type(type_spec, computation_types.FunctionType)
   parameter_binding = _make_xla_binding_for_type(tensor_indexes,
                                                  type_spec.parameter)
@@ -176,8 +199,11 @@ def create_xla_tff_computation(xla_computation, tensor_indexes, type_spec):
           result=result_binding))
 
 
-def xla_computation_and_bindings_to_tff_type(xla_computation, parameter_binding,
-                                             result_binding):
+def xla_computation_and_bindings_to_tff_type(
+    xla_computation: xla_client.XlaComputation,
+    parameter_binding: Optional[pb.Xla.Binding],
+    result_binding: pb.Xla.Binding,
+) -> computation_types.FunctionType:
   """Constructs the TFF type from an `xla_client.XlaComputation` and bindings.
 
   NOTE: This is a helper function, primarily intended for use in checking the
@@ -190,7 +216,7 @@ def xla_computation_and_bindings_to_tff_type(xla_computation, parameter_binding,
     result_binding: An instance of `pb.Xla.Binding` for the result.
 
   Returns:
-    An instance of `computation_types.Type`.
+    An instance of `computation_types.FunctionType`.
   """
   py_typecheck.check_type(xla_computation, xla_client.XlaComputation)
   program_shape = xla_computation.program_shape()
@@ -201,7 +227,9 @@ def xla_computation_and_bindings_to_tff_type(xla_computation, parameter_binding,
                                          result_binding))
 
 
-def xla_shapes_and_binding_to_tff_type(xla_shapes, binding):
+def xla_shapes_and_binding_to_tff_type(
+    xla_shapes: Sequence[xla_client.Shape], binding: Optional[pb.Xla.Binding]
+) -> Union[computation_types.TensorType, computation_types.StructType]:
   """Constructs the TFF type from a list of `xla_client.Shape` and a binding.
 
   Args:
@@ -211,7 +239,7 @@ def xla_shapes_and_binding_to_tff_type(xla_shapes, binding):
   Returns:
     An instance of `computation_types.Type` (or `None`).
   """
-  py_typecheck.check_type(xla_shapes, list)
+  py_typecheck.check_type(xla_shapes, Sequence)
   if binding is not None:
     py_typecheck.check_type(binding, pb.Xla.Binding)
   tensor_shapes = []
@@ -219,7 +247,9 @@ def xla_shapes_and_binding_to_tff_type(xla_shapes, binding):
     tensor_shapes += flatten_xla_shape(shape)
   unused_shape_indexes = set(range(len(tensor_shapes)))
 
-  def _get_type(binding):
+  def _get_type(
+      binding: Optional[pb.Xla.Binding],
+  ) -> Union[computation_types.TensorType, computation_types.StructType]:
     if binding is None:
       return None
     kind = binding.WhichOneof('binding')
@@ -250,7 +280,9 @@ def xla_shapes_and_binding_to_tff_type(xla_shapes, binding):
   return tff_type
 
 
-def flatten_xla_shape(xla_shape):
+def flatten_xla_shape(
+    xla_shape: xla_client.Shape,
+) -> Sequence[xla_client.Shape]:
   """Flattens a possibly nested tuple XLA shape into a list of tensor shapes.
 
   Args:

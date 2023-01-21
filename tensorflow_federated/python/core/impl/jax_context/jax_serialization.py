@@ -13,9 +13,14 @@
 # limitations under the License.
 """Experimental utilities for serializing JAX computations."""
 
+
+from collections.abc import Callable, Mapping, Sequence
+from typing import Any, Optional, Union
+
 import jax
 import numpy as np
 
+from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.context_stack import context_stack_base
@@ -29,7 +34,9 @@ from tensorflow_federated.python.core.impl.xla_context import xla_serialization
 class _XlaSerializerTensorArg(jax.ShapeDtypeStruct, typed_object.TypedObject):
   """Represents tensor type info understood by both TFF and JAX serializer."""
 
-  def __init__(self, tensor_type, tensor_index):
+  def __init__(
+      self, tensor_type: computation_types.TensorType, tensor_index: int
+  ):
     py_typecheck.check_type(tensor_type, computation_types.TensorType)
     # We assume shape has already been checked to be fully defined here.
     shape = tuple(tensor_type.shape.as_list())
@@ -39,31 +46,57 @@ class _XlaSerializerTensorArg(jax.ShapeDtypeStruct, typed_object.TypedObject):
     self._tensor_index = tensor_index
 
   @property
-  def type_signature(self):
+  def type_signature(self) -> computation_types.TensorType:
     return self._type_signature
 
   @property
-  def tensor_index(self):
+  def tensor_index(self) -> int:
     return self._tensor_index
 
 
+@jax.tree_util.register_pytree_node_class
 class _XlaSerializerStructArg(structure.Struct, typed_object.TypedObject):
   """Represents struct type info understood by both TFF and JAX serializer."""
 
-  def __init__(self, type_spec, elements):
+  def __init__(
+      self, type_spec: computation_types.StructType, elements: Sequence[Any]
+  ):
     py_typecheck.check_type(type_spec, computation_types.StructType)
     structure.Struct.__init__(self, elements)
     self._type_signature = type_spec
 
   @property
-  def type_signature(self):
+  def type_signature(self) -> computation_types.StructType:
     return self._type_signature
 
-  def __str__(self):
-    return '_XlaSerializerStructArg({})'.format(structure.Struct.__str__(self))
+  def __str__(self) -> str:
+    return f'_XlaSerializerStructArg({structure.Struct.__str__(self)})'
+
+  def tree_flatten(
+      self,
+  ) -> tuple[
+      tuple[Union[_XlaSerializerTensorArg, '_XlaSerializerStructArg'], ...],
+      computation_types.StructType,
+  ]:
+    return tuple(self), self._type_signature
+
+  @classmethod
+  def tree_unflatten(
+      cls,
+      aux_data: computation_types.StructType,
+      children: tuple[
+          Union[_XlaSerializerTensorArg, '_XlaSerializerStructArg'], ...
+      ],
+  ) -> '_XlaSerializerStructArg':
+    return cls(
+        type_spec=aux_data,
+        elements=tuple(zip(structure.name_list_with_nones(aux_data), children)),
+    )
 
 
-def _tff_type_to_xla_serializer_arg(type_spec: computation_types.Type):
+def _tff_type_to_xla_serializer_arg(
+    type_spec: computation_types.Type,
+) -> Union[_XlaSerializerStructArg, _XlaSerializerTensorArg]:
   """Converts TFF type into an argument for the JAX-to-XLA serializer.
 
   Args:
@@ -90,7 +123,9 @@ def _tff_type_to_xla_serializer_arg(type_spec: computation_types.Type):
                     'tensors) in the signature:\n'
                     f'{type_spec.formatted_representation()}')
 
-  def _make(type_spec, next_unused_tensor_index):
+  def _make(
+      type_spec: computation_types.Type, next_unused_tensor_index: int
+  ) -> tuple[Union[_XlaSerializerStructArg, _XlaSerializerTensorArg], int]:
     if type_spec.is_tensor():
       obj = _XlaSerializerTensorArg(type_spec, next_unused_tensor_index)
       next_unused_tensor_index = next_unused_tensor_index + 1
@@ -111,7 +146,9 @@ def _tff_type_to_xla_serializer_arg(type_spec: computation_types.Type):
   return obj
 
 
-def _jax_shape_dtype_struct_to_tff_tensor(val):
+def _jax_shape_dtype_struct_to_tff_tensor(
+    val: jax.ShapeDtypeStruct,
+) -> computation_types.TensorType:
   """Converts `jax.ShapeDtypeStruct` to `computation_types.TensorType`.
 
   Args:
@@ -127,7 +164,17 @@ def _jax_shape_dtype_struct_to_tff_tensor(val):
   return computation_types.TensorType(val.dtype, val.shape)
 
 
-def serialize_jax_computation(traced_fn, arg_fn, parameter_type, context_stack):
+def serialize_jax_computation(
+    traced_fn: Callable[..., Any],
+    arg_fn: Callable[
+        [Union[_XlaSerializerStructArg, _XlaSerializerTensorArg]],
+        tuple[Sequence[Any], Mapping[str, Any]],
+    ],
+    parameter_type: Union[
+        computation_types.StructType, computation_types.TensorType
+    ],
+    context_stack: context_stack_base.ContextStack,
+) -> tuple[pb.Computation, computation_types.FunctionType]:
   """Serializes a Python function containing JAX code as a TFF computation.
 
   Args:
@@ -142,7 +189,9 @@ def serialize_jax_computation(traced_fn, arg_fn, parameter_type, context_stack):
     context_stack: The context stack to use during serialization.
 
   Returns:
-    An instance of `pb.Computation` with the constructed computation.
+    A 2-tuple of `pb.Computation` with the constructed computation and a
+    `computation_types.FunctionType` containing the full type including
+    Python container annotations.
 
   Raises:
     TypeError: if the arguments are of the wrong types.
@@ -179,15 +228,19 @@ def serialize_jax_computation(traced_fn, arg_fn, parameter_type, context_stack):
     returned_type_spec = _jax_shape_dtype_struct_to_tff_tensor(returned_shape)
   else:
     returned_type_spec = computation_types.to_type(
-        structure.map_structure(
-            _jax_shape_dtype_struct_to_tff_tensor,
-            structure.from_container(returned_shape, recursive=True)))
+        jax.tree_util.tree_map(
+            _jax_shape_dtype_struct_to_tff_tensor, returned_shape
+        )
+    )
 
   computation_type = computation_types.FunctionType(parameter_type,
                                                     returned_type_spec)
-  return xla_serialization.create_xla_tff_computation(compiled_xla,
-                                                      tensor_indexes,
-                                                      computation_type)
+  return (
+      xla_serialization.create_xla_tff_computation(
+          compiled_xla, tensor_indexes, computation_type
+      ),
+      computation_type,
+  )
 
 
 # Registers TFF's Struct as a node that Jax's tree-traversal utilities can walk
@@ -197,12 +250,16 @@ def serialize_jax_computation(traced_fn, arg_fn, parameter_type, context_stack):
 # pack/unpack intermediate contaienrs of other types.
 
 
-def _struct_flatten(struct):
+def _struct_flatten(
+    struct: structure.Struct,
+) -> tuple[tuple[Any, ...], tuple[Optional[str], ...]]:
   child_names, child_values = tuple(zip(*structure.iter_elements(struct)))
   return (child_values, child_names)
 
 
-def _struct_unflatten(child_names, child_values):
+def _struct_unflatten(
+    child_names: tuple[Optional[str], ...], child_values: tuple[Any, ...]
+) -> structure.Struct:
   return structure.Struct(tuple(zip(child_names, child_values)))
 
 

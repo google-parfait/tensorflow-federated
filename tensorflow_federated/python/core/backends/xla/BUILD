@@ -17,7 +17,10 @@ py_library(
     srcs = ["__init__.py"],
     srcs_version = "PY3",
     visibility = ["//tensorflow_federated/python/core/backends:__pkg__"],
-    deps = [":execution_contexts"],
+    deps = [
+        ":cpp_execution_contexts",
+        ":execution_contexts",
+    ],
 )
 
 py_library(

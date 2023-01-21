@@ -14,8 +14,10 @@
 """Experimental federated learning components for JAX."""
 
 import collections
+import operator
 
 import jax
+from jax import numpy as jnp
 import tensorflow_federated as tff
 
 # TODO(b/175888145): Evolve this to reach parity with TensorFlow-specific helper
@@ -52,31 +54,54 @@ def build_jax_federated_averaging_process(batch_type, model_type, loss_fn,
   # py_typecheck.check_callable(loss_fn)
   # py_typecheck.check_type(step_size, np.float)
 
-  def _tensor_zeros(tensor_type):
-    return jax.numpy.zeros(
-        tensor_type.shape.dims, dtype=tensor_type.dtype.as_numpy_dtype)
-
   @tff.jax_computation
   def _create_zero_model():
-    model_zeros = tff.structure.map_structure(_tensor_zeros, model_type)
-    return tff.types.type_to_py_container(model_zeros, model_type)
+    def _tensor_zeros(tensor_type):
+      return jnp.zeros(
+          shape=tensor_type.shape.dims, dtype=tensor_type.dtype.as_numpy_dtype
+      )
+
+    return tff.structure_from_tensor_type_tree(_tensor_zeros, model_type)
+
+  @tff.jax_computation
+  def create_zero_float():
+    return jnp.zeros(shape=[])
+
+  @tff.jax_computation
+  def accumulate(accumulator, value):
+    return jax.tree_util.tree_map(operator.add, accumulator, (value, 1))
+
+  @tff.jax_computation
+  def merge(a, b):
+    return jax.tree_util.tree_map(operator.add, a, b)
+
+  @tff.jax_computation
+  def report(summed_model_update, total_count):
+    normalize_fn = lambda weight: weight / total_count
+    return jax.tree_util.tree_map(normalize_fn, summed_model_update)
+
+  @tff.federated_computation
+  def mean_as_aggregate(arg):
+    return tff.federated_aggregate(
+        arg,
+        (_create_zero_model(), create_zero_float()),
+        accumulate,
+        merge,
+        report,
+    )
 
   @tff.federated_computation
   def _create_zero_model_on_server():
     return tff.federated_eval(_create_zero_model, tff.SERVER)
 
-  def _apply_update(model_param, param_delta):
-    return model_param - step_size * param_delta
-
   @tff.jax_computation(model_type, batch_type)
   def _train_on_one_batch(model, batch):
-    params = tff.structure.flatten(
-        tff.structure.from_container(model, recursive=True))
-    grads = tff.structure.flatten(
-        tff.structure.from_container(jax.grad(loss_fn)(model, batch)))
-    updated_params = [_apply_update(x, y) for (x, y) in zip(params, grads)]
-    trained_model = tff.structure.pack_sequence_as(model_type, updated_params)
-    return tff.types.type_to_py_container(trained_model, model_type)
+
+    def _apply_update(model_param, param_delta):
+      return model_param - step_size * param_delta
+
+    grads = jax.grad(loss_fn)(model, batch)
+    return jax.tree_util.tree_map(_apply_update, model, grads)
 
   local_dataset_type = tff.SequenceType(batch_type)
 
@@ -85,14 +110,18 @@ def build_jax_federated_averaging_process(batch_type, model_type, loss_fn,
     return tff.sequence_reduce(batches, model, _train_on_one_batch)
 
   @tff.federated_computation(
-      tff.FederatedType(model_type, tff.SERVER),
-      tff.FederatedType(local_dataset_type, tff.CLIENTS))
+      tff.types.at_server(model_type), tff.types.at_clients(local_dataset_type)
+  )
   def _train_one_round(model, federated_data):
     locally_trained_models = tff.federated_map(
         _train_on_one_client,
-        collections.OrderedDict([('model', tff.federated_broadcast(model)),
-                                 ('batches', federated_data)]))
-    return tff.federated_mean(locally_trained_models)
+        collections.OrderedDict(
+            model=tff.federated_broadcast(model), batches=federated_data
+        ),
+    )
+    # We hand-implement an unweighted federated mean as a TFF aggregate, since
+    # we cant effectively lower to jax yet.
+    return mean_as_aggregate(locally_trained_models)
 
   return tff.templates.IterativeProcess(
       initialize_fn=_create_zero_model_on_server, next_fn=_train_one_round)

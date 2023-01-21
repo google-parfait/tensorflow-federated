@@ -511,10 +511,11 @@ class XLAExecutor : public ExecutorBase<ValueFuture> {
       case v0::Value::ValueCase::kComputation: {
         const v0::Computation& comp_pb = value_pb.computation();
         if (!comp_pb.has_xla()) {
-          return absl::InvalidArgumentError(
-              absl::StrCat("Only XLA computations can be embedded in the XLA "
-                           "executor; attempted to embed a value of type ",
-                           comp_pb.type().Utf8DebugString()));
+          return absl::InvalidArgumentError(absl::StrCat(
+              "Only XLA computations can be embedded in the XLA "
+              "executor. Attempted to embed a computation oneof [",
+              comp_pb.computation_case(), "] and TFF type signature [",
+              comp_pb.type().Utf8DebugString(), "]"));
         }
         if (!comp_pb.type().has_function()) {
           return absl::InvalidArgumentError(

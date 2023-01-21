@@ -72,6 +72,57 @@ class CppExecutionContextsTest(absltest.TestCase):
         aggregate([np.float32(1), np.float32(2), np.float32(3)]), np.float32(6)
     )
 
+  def test_sequence_reduce(self):
+    sequence = list(range(10))
+
+    @federated_computation.federated_computation(
+        computation_types.SequenceType(np.int32)
+    )
+    def comp(x):
+      @jax_computation.jax_computation
+      def _zero():
+        return np.int32(0)
+
+      @jax_computation.jax_computation(np.int32, np.int32)
+      def _add(a, b):
+        return a + b
+
+      return intrinsics.sequence_reduce(x, _zero(), _add)
+
+    # TODO(b/266303055): the FederatingExecutor raises an error when it sees
+    # a non-federated intrinsic rather than forwarding to the child unplaced
+    # executor, this should be fixed.
+    with self.assertRaisesRegex(
+        Exception, 'Unsupported intrinsic URI: sequence_reduce'
+    ):
+      # self.assertEqual(comp(sequence), sum(range(10)))
+      comp(sequence)
+
+  def test_federated_sequence_reduce(self):
+    sequence = list(range(10))
+
+    @federated_computation.federated_computation(
+        computation_types.at_server(computation_types.SequenceType(np.int32))
+    )
+    def comp(x):
+      @jax_computation.jax_computation
+      def _zero():
+        return np.int32(0)
+
+      @jax_computation.jax_computation(np.int32, np.int32)
+      def _add(a, b):
+        return a + b
+
+      @federated_computation.federated_computation(
+          computation_types.SequenceType(np.int32)
+      )
+      def _sum(sequence):
+        return intrinsics.sequence_reduce(sequence, _zero(), _add)
+
+      return intrinsics.federated_map(_sum, x)
+
+    self.assertEqual(comp(sequence), sum(range(10)))
+
   def test_federated_sum(self):
     @federated_computation.federated_computation(
         computation_types.at_clients(np.int32)
