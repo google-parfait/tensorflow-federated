@@ -50,8 +50,13 @@ def create_local_cpp_execution_context(
 
   def leaf_executor_fn(max_concurrent_computation_calls):
     del max_concurrent_computation_calls  # Unused.
-    xla_executor_fn = executor_bindings.create_xla_executor()
-    return executor_bindings.create_sequence_executor(xla_executor_fn)
+    xla_executor = executor_bindings.create_xla_executor()
+    reference_resolving_executor = (
+        executor_bindings.create_reference_resolving_executor(xla_executor)
+    )
+    return executor_bindings.create_sequence_executor(
+        reference_resolving_executor
+    )
 
   factory = cpp_executor_factory.local_cpp_executor_factory(
       default_num_clients=default_num_clients,

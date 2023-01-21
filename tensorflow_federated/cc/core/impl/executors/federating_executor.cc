@@ -257,6 +257,9 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
       }
       case v0::Value::kComputation: {
         if (value_pb.computation().has_intrinsic()) {
+          // TODO(b/266303055): instead of returning an error when a URI is for
+          // a non-federated intrinsic, this shoudl fall-through, forwarding to
+          // the child unplaced executor.
           return ExecutorValue::CreateFederatedIntrinsic(
               TFF_TRY(FederatedIntrinsicFromUri(
                   value_pb.computation().intrinsic().uri())));
