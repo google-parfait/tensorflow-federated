@@ -273,12 +273,13 @@ class ProtoStringMatcher : public ProtoMatcherBase {
       const std::vector<std::string> &errors() const { return errors_; }
 
      private:
-      void AddError(int line, int column, const std::string &message) override {
+        void AddError(int line, int column,
+                      const std::string& message) override {
         errors_.push_back(
             absl::StrFormat("line %d, column %d: %s", line, column, message));
       }
-      void AddWarning(int line, int column,
-                      const std::string &message) override {
+        void AddWarning(int line, int column,
+                        const std::string& message) override {
         errors_.push_back(
             absl::StrFormat("line %d, column %d: %s", line, column, message));
       }
