@@ -29,6 +29,7 @@ py_library(
     deps = [
         ":compiler",
         ":execution_contexts",
+        ":mergeable_comp_compiler",
     ],
 )
 
