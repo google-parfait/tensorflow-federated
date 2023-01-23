@@ -473,8 +473,11 @@ def get_intrinsic_reductions(
     py_typecheck.check_type(x, building_blocks.ComputationBuildingBlock)
     operand_type = x.type_signature.member
     zero = building_block_factory.create_generic_constant(operand_type, 0)
-    plus_op = building_block_factory.create_tensorflow_binary_operator_with_upcast(
-        tf.add, computation_types.StructType([operand_type, operand_type]))
+    plus_op = (
+        building_block_factory.create_tensorflow_binary_operator_with_upcast(
+            tf.add, computation_types.StructType([operand_type, operand_type])
+        )
+    )
     identity = building_block_factory.create_identity(operand_type)
     return building_block_factory.create_federated_aggregate(
         x, zero, plus_op, plus_op, identity)
@@ -652,10 +655,13 @@ def _get_secure_intrinsic_reductions(
         return structure.map_structure(tf.add, summation,
                                        summand), original_max_input
 
-    assert_less_equal_and_add = building_block_factory.create_tensorflow_binary_operator(
-        assert_less_equal_max_and_add,
-        operand_type=aggregation_zero.type_signature,
-        second_operand_type=summand_type)
+    assert_less_equal_and_add = (
+        building_block_factory.create_tensorflow_binary_operator(
+            assert_less_equal_max_and_add,
+            operand_type=aggregation_zero.type_signature,
+            second_operand_type=summand_type,
+        )
+    )
 
     def nested_plus(a, b):
       return structure.map_structure(tf.add, a, b)
@@ -696,8 +702,11 @@ def _get_secure_intrinsic_reductions(
 
       return structure.map_structure(compute_max_input, bitwidth)
 
-    compute_max_value_op = building_block_factory.create_tensorflow_unary_operator(
-        max_input_from_bitwidth, bitwidth_arg.type_signature)
+    compute_max_value_op = (
+        building_block_factory.create_tensorflow_unary_operator(
+            max_input_from_bitwidth, bitwidth_arg.type_signature
+        )
+    )
 
     max_value = building_blocks.Call(compute_max_value_op, bitwidth_arg)
     return federated_secure_sum(

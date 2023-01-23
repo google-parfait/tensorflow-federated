@@ -692,10 +692,12 @@ class Lambda(ComputationBuildingBlock):
       parameter_name = None
     if (parameter_name is None) != (parameter_type is None):
       raise TypeError(
-          'A lambda expression must have either a valid parameter name and type '
-          'or both parameter name and type must be `None`. '
+          'A lambda expression must have either a valid parameter name and '
+          'type or both parameter name and type must be `None`. '
           '`parameter_name` was {} but `parameter_type` was {}.'.format(
-              parameter_name, parameter_type))
+              parameter_name, parameter_type
+          )
+      )
     if parameter_name is not None:
       py_typecheck.check_type(parameter_name, str)
       parameter_type = computation_types.to_type(parameter_type)
@@ -1391,7 +1393,9 @@ def _structural_representation(comp):
     for left_line, right_line in zip(left[1:], right[1:]):
       trailing_padding = _get_trailing_padding(left_line)
       leading_padding = _get_leading_padding(right_line)
-      minimum_inset = trailing_padding + leading_padding - minimum_content_padding
+      minimum_inset = (
+          trailing_padding + leading_padding - minimum_content_padding
+      )
       inset = min(inset, minimum_inset)
     return inset
 
