@@ -30,6 +30,7 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
+from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -647,3 +648,191 @@ def force_align_and_split_by_intrinsics(
   except tree_analysis.NonuniqueNameError as e:
     raise ValueError(f'nonunique names in result of splitting\n{comp}') from e
   return before, after
+
+
+def _augment_lambda_with_parameter_for_unbound_references(
+    comp: building_blocks.Lambda, lambda_parameter_extension_name: str
+) -> tuple[
+    building_blocks.Lambda, list[building_blocks.ComputationBuildingBlock]
+]:
+  """Resolves unbound references in `comp` by extending the input parameter.
+
+  This is a private helper method intended to be used only in constructing the
+  DistributeAggregateForm for a computation.
+
+  We attempt to re-write `comp` such that a minimal amount of information gets
+  passed through the extended input parameter. In other words, if we encounter
+  a selection such as unbound_arg[0] in `comp`, the extended input parameter
+  will contain a new value that can be used in place of unbound_arg[0] rather
+  than in place of unbound_arg. As another example, if we encounter a struct
+  such as [unbound_arg, bound_arg], the extended input parameter will contain a
+  new value that can be used in place of unbound_arg rather than in place of the
+  entire struct. We do not go so far as replacing entire calls, however, so
+  for something like federated_sum(unbound_arg[0]) we would just add a new value
+  to the extended input parameter that can be used in place of the argument to
+  the call.
+
+  Args:
+    comp: The lambda computation potentially containing unbound references. The
+      lambda must be in CDF, the input parameter must be a struct, and the input
+      parameter must always be used via a selection and never used directly.
+    lambda_parameter_extension_name: The name of the new element in the input
+      parameter struct.
+
+  Returns:
+    A tuple containing
+      - The revised lambda computation, which is guaranteed to have 1 more
+        element in the input parameter struct and no unbound references.
+      - A list of the `ComputationBuildingBlock`s that were replaced by
+        selections and whose values are now expected to be supplied to the new
+        input.
+
+  Raises:
+    TypeError: If types do not match.
+    ValueError: If the input parameter is used within the computation in ways
+      that are unsupported.
+  """
+
+  py_typecheck.check_type(comp, building_blocks.Lambda)
+  py_typecheck.check_type(
+      comp.type_signature.parameter, computation_types.StructType
+  )
+
+  comp_parameter_name = comp.parameter_name
+
+  # Helper function to check that the input parameter is always accessed via
+  # a selection. Note that this function will be used while traversing the
+  # computation in preorder fashion.
+  def _check_input_parameter_used_via_selection(inner_comp):
+    # Mark subtrees involving a selection of the input parameter as
+    # "transformed" so that we skip traversal of the inner reference subtree
+    # below.
+    if (
+        inner_comp.is_selection()
+        and inner_comp.source.is_reference()
+        and inner_comp.source.name == comp_parameter_name
+    ):
+      return inner_comp, True
+
+    # If we encounter a reference to the input parameter, it must be accessed
+    # without an immediately surrounding selection. This is not supported
+    # because we will not be able to satisfy type signature requirements in a
+    # later step when we attempt to replace the input parameter with an
+    # augmented one.
+    if inner_comp.is_reference() and inner_comp.name == comp_parameter_name:
+      raise ValueError(
+          'Computation accesses input parameter without an immediate selection.'
+      )
+
+    return inner_comp, False
+
+  # Trace the computation to ensure that the input parameter is always used via
+  # a selection and never used directly.
+  transformation_utils.transform_preorder(
+      comp, _check_input_parameter_used_via_selection
+  )
+
+  unbound_refs = transformation_utils.get_map_of_unbound_references(comp)
+  top_level_unbound_refs = unbound_refs[comp]
+
+  # Maintain a map where the keys are the computations that should be passed to
+  # the extended input parameter and the values correspond to the index at which
+  # the computation will be found in the extended input parameter.
+  new_input_comps = collections.OrderedDict()
+
+  def _is_replacement_candidate(inner_comp):
+    # A replacement is needed if the subtree represents a reference to an top-
+    # level unbound ref.
+    if inner_comp.is_reference() and unbound_refs[inner_comp].issubset(
+        top_level_unbound_refs
+    ):
+      return True
+
+    # A replacement is also needed if the subtree represents a selection into
+    # a top-level unbound ref. We trigger the replacement on selections at this
+    # level so that we can pass the minimal amount of information possible
+    # through the extended input parameter.
+    if inner_comp.is_selection():
+      return _is_replacement_candidate(inner_comp.source)
+
+    return False
+
+  # Helper function to determine the list of new input comps. Note that this
+  # function will be used while traversing the computation in preorder fashion.
+  def _compute_new_parameter_elements(inner_comp):
+    # Specific unbound references indicate that a value must be passed in via
+    # an input extension. Only add the computation to the list if there is no
+    # equivalent computation already present.
+    if _is_replacement_candidate(inner_comp):
+      if inner_comp not in new_input_comps:
+        new_input_comps[inner_comp] = len(new_input_comps)
+      return inner_comp, True
+
+    return inner_comp, False
+
+  # Trace the computation to find the unbound references and construct the
+  # list of new input comps. Use a preorder transformation since it is
+  # important to replace larger subtrees when possible (e.g. replacing an entire
+  # selection subtree vs just replacing the selection source subtree).
+  transformation_utils.transform_preorder(comp, _compute_new_parameter_elements)
+
+  # Update the comp parameter type to include the new extension.
+  new_parameter_type = computation_types.StructType(
+      structure.to_elements(comp.type_signature.parameter)
+      + [(
+          lambda_parameter_extension_name,
+          [e.type_signature for e in new_input_comps.keys()],
+      )]
+  )
+
+  # Helper function to update a computation to use the extended input parameter.
+  def _rebind_unbound_references_to_new_parameter(inner_comp):
+    # Replace a computation involving specific unbound references with a
+    # selection into the list of new input comps.
+    if _is_replacement_candidate(inner_comp):
+      assert inner_comp in new_input_comps
+      new_comp = building_blocks.Selection(
+          building_blocks.Selection(
+              building_blocks.Reference(
+                  comp_parameter_name, new_parameter_type
+              ),
+              # The input param extension will be added at the end.
+              index=len(new_parameter_type) - 1,
+          ),
+          index=new_input_comps[inner_comp],
+      )
+      return new_comp, True
+
+    # Replace selections into the original input parameter with selections into
+    # the extended input parameter to maintain type signature correctness.
+    if (
+        inner_comp.is_selection()
+        and inner_comp.source.is_reference()
+        and inner_comp.source.name == comp_parameter_name
+    ):
+      return (
+          building_blocks.Selection(
+              building_blocks.Reference(
+                  comp_parameter_name, new_parameter_type
+              ),
+              # Use the same index as before.
+              index=inner_comp.as_index(),
+          ),
+          True,
+      )
+
+    return inner_comp, False
+
+  # Replace the unbound references with selections into the list of new input
+  # comps and also update existing selections into the original input parameter.
+  # Use a preorder transformation again to ensure that the new input comps are
+  # used in the correct order.
+  comp = building_blocks.Lambda(
+      comp.parameter_name,
+      new_parameter_type,
+      transformation_utils.transform_preorder(
+          comp.result, _rebind_unbound_references_to_new_parameter
+      )[0],
+  )
+
+  return comp, new_input_comps.keys()

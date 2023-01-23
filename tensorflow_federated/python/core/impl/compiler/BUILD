@@ -364,6 +364,7 @@ py_library(
     deps = [
         ":building_block_factory",
         ":building_blocks",
+        ":transformation_utils",
         ":tree_analysis",
         ":tree_transformations",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -381,8 +382,10 @@ py_test(
         ":building_block_factory",
         ":building_block_test_utils",
         ":building_blocks",
+        ":transformation_utils",
         ":transformations",
         ":tree_analysis",
+        "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_analysis",
         "//tensorflow_federated/python/core/impl/types:type_test_utils",

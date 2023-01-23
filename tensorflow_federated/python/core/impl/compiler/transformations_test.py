@@ -15,9 +15,11 @@
 from absl.testing import absltest
 import tensorflow as tf
 
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_block_test_utils
 from tensorflow_federated.python.core.impl.compiler import building_blocks
+from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.compiler import transformations
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -430,6 +432,220 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
         building_block_factory.create_null_federated_aggregate(),
         building_block_factory.create_null_federated_secure_sum_bitwidth(),
     ])
+
+
+class AugmentLambdaWithParameterForUnboundReferences(absltest.TestCase):
+
+  def _check_transformed_comp_validity(
+      self,
+      original_comp: building_blocks.Lambda,
+      transformed_comp: building_blocks.ComputationBuildingBlock,
+      lambda_parameter_extension_name: str,
+  ):
+    transformed_comp.check_lambda()
+
+    # The transformed lambda comp should have an additional element in the input
+    # parameter named `lambda_parameter_extension_name`.
+    self.assertLen(
+        transformed_comp.parameter_type, len(original_comp.parameter_type) + 1
+    )
+    self.assertEqual(
+        structure.to_elements(transformed_comp.parameter_type)[
+            len(transformed_comp.parameter_type) - 1
+        ][0],
+        lambda_parameter_extension_name,
+    )
+
+    # The transformed lambda comp should have no unbound references.
+    self.assertEmpty(
+        transformation_utils.get_map_of_unbound_references(transformed_comp)[
+            transformed_comp
+        ]
+    )
+
+  def test_identifies_unbound_refs(self):
+    original_arg_type = computation_types.StructType([tf.int32])
+    int_at_clients_type = computation_types.at_clients(tf.int32)
+    comp = building_blocks.Lambda(
+        'arg',
+        original_arg_type,
+        building_blocks.Block(
+            [(
+                'a',
+                building_block_factory.create_federated_sum(
+                    building_blocks.Reference('x', int_at_clients_type)
+                ),
+            )],
+            building_blocks.Struct([
+                building_blocks.Reference(
+                    'a', computation_types.at_server(tf.int32)
+                ),
+                building_blocks.Reference('y', int_at_clients_type),
+                building_blocks.Reference('x', int_at_clients_type),
+            ]),
+        ),
+    )
+    lambda_parameter_extension_name = 'intermediate_state'
+    transformed_comp, new_input_comps = (
+        transformations._augment_lambda_with_parameter_for_unbound_references(
+            comp, lambda_parameter_extension_name
+        )
+    )
+
+    self._check_transformed_comp_validity(
+        comp, transformed_comp, lambda_parameter_extension_name
+    )
+    self.assertLen(new_input_comps, 3)
+    for new_input_comp, expected_new_input_comp in zip(
+        new_input_comps,
+        [
+            building_blocks.Reference('x', int_at_clients_type),
+            building_blocks.Reference('y', int_at_clients_type),
+            building_blocks.Reference('x', int_at_clients_type),
+        ],
+    ):
+      self.assertEqual(new_input_comp.proto, expected_new_input_comp.proto)
+
+  def test_identifies_unbound_selections(self):
+    original_arg_type = computation_types.StructType([tf.int32])
+    int_at_clients_type = computation_types.at_clients(tf.int32)
+    federated_sum_param = building_blocks.Selection(
+        building_blocks.Reference('x', [int_at_clients_type]), index=0
+    )
+    other_result_param = building_blocks.Selection(
+        building_blocks.Selection(
+            building_blocks.Reference(
+                'y', [[int_at_clients_type, int_at_clients_type]]
+            ),
+            index=0,
+        ),
+        index=1,
+    )
+    comp = building_blocks.Lambda(
+        'arg',
+        original_arg_type,
+        building_blocks.Block(
+            [(
+                'a',
+                building_block_factory.create_federated_sum(
+                    federated_sum_param
+                ),
+            )],
+            building_blocks.Struct([
+                building_blocks.Reference(
+                    'a', computation_types.at_server(tf.int32)
+                ),
+                other_result_param,
+            ]),
+        ),
+    )
+    lambda_parameter_extension_name = 'intermediate_state'
+    transformed_comp, new_input_comps = (
+        transformations._augment_lambda_with_parameter_for_unbound_references(
+            comp, lambda_parameter_extension_name
+        )
+    )
+
+    self._check_transformed_comp_validity(
+        comp, transformed_comp, lambda_parameter_extension_name
+    )
+    self.assertLen(new_input_comps, 2)
+    for new_input_comp, expected_new_input_comp in zip(
+        new_input_comps, [federated_sum_param, other_result_param]
+    ):
+      self.assertEqual(new_input_comp.proto, expected_new_input_comp.proto)
+
+  def test_identifies_unbound_refs_in_struct(self):
+    original_arg_type = computation_types.StructType(
+        [computation_types.at_clients(tf.int32)]
+    )
+    int_at_clients_type = computation_types.at_clients(tf.int32)
+    comp = building_blocks.Lambda(
+        'arg',
+        original_arg_type,
+        building_blocks.Block(
+            [(
+                'a',
+                building_block_factory.create_federated_sum(
+                    building_block_factory.create_federated_zip(
+                        building_blocks.Struct([
+                            building_blocks.Selection(
+                                building_blocks.Reference(
+                                    'arg', original_arg_type
+                                ),
+                                index=0,
+                            ),
+                            building_blocks.Reference('b', int_at_clients_type),
+                            building_blocks.Struct(
+                                [
+                                    building_blocks.Reference(
+                                        'c', int_at_clients_type
+                                    )
+                                ]
+                            ),
+                        ])
+                    )
+                ),
+            )],
+            building_blocks.Reference(
+                'a',
+                computation_types.at_server([tf.int32, tf.int32, [tf.int32]]),
+            ),
+        ),
+    )
+    lambda_parameter_extension_name = 'intermediate_state'
+    transformed_comp, new_input_comps = (
+        transformations._augment_lambda_with_parameter_for_unbound_references(
+            comp, lambda_parameter_extension_name
+        )
+    )
+
+    self._check_transformed_comp_validity(
+        comp, transformed_comp, lambda_parameter_extension_name
+    )
+    self.assertLen(new_input_comps, 2)
+    for new_input_comp, expected_new_input_comp in zip(
+        new_input_comps,
+        [
+            building_blocks.Reference('b', int_at_clients_type),
+            building_blocks.Reference('c', int_at_clients_type),
+        ],
+    ):
+      self.assertEqual(new_input_comp.proto, expected_new_input_comp.proto)
+
+  def test_no_unbound_refs(self):
+    original_arg_type = computation_types.StructType([tf.int32])
+    comp = building_blocks.Lambda(
+        'arg',
+        original_arg_type,
+        building_blocks.Selection(
+            building_blocks.Reference('arg', original_arg_type), index=0
+        ),
+    )
+    lambda_parameter_extension_name = 'intermediate_state'
+    transformed_comp, new_input_comps = (
+        transformations._augment_lambda_with_parameter_for_unbound_references(
+            comp, lambda_parameter_extension_name
+        )
+    )
+
+    self._check_transformed_comp_validity(
+        comp, transformed_comp, lambda_parameter_extension_name
+    )
+    self.assertEmpty(new_input_comps)
+
+  def test_parameter_usage_without_selection(self):
+    original_arg_type = computation_types.StructType([tf.int32])
+    comp = building_blocks.Lambda(
+        'arg',
+        original_arg_type,
+        building_blocks.Reference('arg', original_arg_type),
+    )
+    lambda_parameter_extension_name = 'intermediate_state'
+    with self.assertRaises(ValueError):
+      transformations._augment_lambda_with_parameter_for_unbound_references(
+          comp, lambda_parameter_extension_name
+      )
 
 
 if __name__ == '__main__':
