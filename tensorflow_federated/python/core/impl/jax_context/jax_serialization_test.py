@@ -281,5 +281,141 @@ class StructPytreeTest(absltest.TestCase):
     self.assertEqual(struct, new_struct)
 
 
+class XlaSerializerStructArgPytreeTest(absltest.TestCase):
+
+  def test_named_struct(self):
+    struct_arg = jax_serialization._XlaSerializerStructArg(
+        computation_types.StructType(
+            [('a', np.float32), ('b', np.int64), ('c', np.int32)]
+        ),
+        [('a', 1.0), ('b', 2), ('c', 3)],
+    )
+    children, aux_data = jax.tree_util.tree_flatten(struct_arg)
+    self.assertEqual(children, [1.0, 2, 3])
+    new_struct_arg = jax.tree_util.tree_unflatten(aux_data, children)
+    self.assertEqual(struct_arg, new_struct_arg)
+
+  def test_unnamed_struct(self):
+    struct_arg = jax_serialization._XlaSerializerStructArg(
+        computation_types.StructType([
+            (None, np.float32),
+            (None, np.int64),
+            (None, np.int32),
+        ]),
+        elements=[(None, 1.0), (None, 2), (None, 3)],
+    )
+    children, aux_data = jax.tree_util.tree_flatten(struct_arg)
+    self.assertEqual(children, [1.0, 2, 3])
+    new_struct_arg = jax.tree_util.tree_unflatten(aux_data, children)
+    self.assertEqual(struct_arg, new_struct_arg)
+
+  def test_mixed_named_struct(self):
+    struct_arg = jax_serialization._XlaSerializerStructArg(
+        computation_types.StructType([
+            ('a', np.int32),
+            (None, np.int32),
+            ('b', np.int64),
+            (None, np.int64),
+        ]),
+        elements=[('a', 1), (None, 2), ('b', 3), (None, 4)],
+    )
+    children, aux_data = jax.tree_util.tree_flatten(struct_arg)
+    self.assertEqual(children, [1, 2, 3, 4])
+    new_struct_arg = jax.tree_util.tree_unflatten(aux_data, children)
+    self.assertEqual(struct_arg, new_struct_arg)
+
+  def test_nested_structs(self):
+    struct_arg = jax_serialization._XlaSerializerStructArg(
+        computation_types.StructType([
+            ('a', np.int32),
+            (
+                'b',
+                computation_types.StructType([
+                    ('c', np.int32),
+                    (
+                        'd',
+                        computation_types.StructType(
+                            [(None, np.int32), (None, np.int32)]
+                        ),
+                    ),
+                    ('e', np.int32),
+                ]),
+            ),
+        ]),
+        elements=[
+            ('a', 1),
+            (
+                'b',
+                jax_serialization._XlaSerializerStructArg(
+                    computation_types.StructType([
+                        ('c', np.int32),
+                        (
+                            'd',
+                            computation_types.StructType(
+                                [(None, np.int32), (None, np.int32)]
+                            ),
+                        ),
+                        ('e', np.int32),
+                    ]),
+                    elements=[
+                        ('c', 4),
+                        (
+                            'd',
+                            jax_serialization._XlaSerializerStructArg(
+                                computation_types.StructType(
+                                    [(None, np.int32), (None, np.int32)]
+                                ),
+                                elements=[(None, 5), (None, 6)],
+                            ),
+                        ),
+                        ('e', 7),
+                    ],
+                ),
+            ),
+        ],
+    )
+    children, aux_data = jax.tree_util.tree_flatten(struct_arg)
+    self.assertEqual(children, [1, 4, 5, 6, 7])
+    new_struct_arg = jax.tree_util.tree_unflatten(aux_data, children)
+    self.assertEqual(struct_arg, new_struct_arg)
+
+  def test_mixed_nested_structs_and_python_containers(self):
+    struct_arg = jax_serialization._XlaSerializerStructArg(
+        computation_types.StructType([
+            ('a', np.int32),
+            computation_types.StructType([(
+                (None, np.int32),
+                (
+                    None,
+                    computation_types.StructType(
+                        [(None, np.int32), (None, np.int32)]
+                    ),
+                ),
+                (None, np.int32),
+            )]),
+        ]),
+        elements=[
+            ('a', 1),
+            (
+                None,
+                [
+                    4,
+                    jax_serialization._XlaSerializerStructArg(
+                        computation_types.StructType(
+                            [(None, np.int32), (None, np.int32)]
+                        ),
+                        elements=[(None, 5), (None, 6)],
+                    ),
+                    7,
+                ],
+            ),
+        ],
+    )
+    children, aux_data = jax.tree_util.tree_flatten(struct_arg)
+    self.assertEqual(children, [1, 4, 5, 6, 7])
+    new_struct_arg = jax.tree_util.tree_unflatten(aux_data, children)
+    self.assertEqual(struct_arg, new_struct_arg)
+
+
 if __name__ == '__main__':
   absltest.main()

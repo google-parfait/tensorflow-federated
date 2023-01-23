@@ -13,6 +13,10 @@
 # limitations under the License.
 """Experimental utilities for serializing JAX computations."""
 
+
+from collections.abc import Sequence
+from typing import Any, Union
+
 import jax
 import numpy as np
 
@@ -47,20 +51,44 @@ class _XlaSerializerTensorArg(jax.ShapeDtypeStruct, typed_object.TypedObject):
     return self._tensor_index
 
 
+@jax.tree_util.register_pytree_node_class
 class _XlaSerializerStructArg(structure.Struct, typed_object.TypedObject):
   """Represents struct type info understood by both TFF and JAX serializer."""
 
-  def __init__(self, type_spec, elements):
+  def __init__(
+      self, type_spec: computation_types.StructType, elements: Sequence[Any]
+  ):
     py_typecheck.check_type(type_spec, computation_types.StructType)
     structure.Struct.__init__(self, elements)
     self._type_signature = type_spec
 
   @property
-  def type_signature(self):
+  def type_signature(self) -> computation_types.StructType:
     return self._type_signature
 
   def __str__(self):
-    return '_XlaSerializerStructArg({})'.format(structure.Struct.__str__(self))
+    return f'_XlaSerializerStructArg({structure.Struct.__str__(self)})'
+
+  def tree_flatten(
+      self,
+  ) -> tuple[
+      tuple[Union[_XlaSerializerTensorArg, '_XlaSerializerStructArg'], ...],
+      computation_types.StructType,
+  ]:
+    return tuple(self), self._type_signature
+
+  @classmethod
+  def tree_unflatten(
+      cls,
+      aux_data: computation_types.StructType,
+      children: tuple[
+          Union[_XlaSerializerTensorArg, '_XlaSerializerStructArg'], ...
+      ],
+  ) -> '_XlaSerializerStructArg':
+    return cls(
+        type_spec=aux_data,
+        elements=tuple(zip(structure.name_list_with_nones(aux_data), children)),
+    )
 
 
 def _tff_type_to_xla_serializer_arg(type_spec: computation_types.Type):
