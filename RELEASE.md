@@ -1,3 +1,23 @@
+# Release 0.47.0
+
+## Major Features and Improvements
+
+*   Added a `LayoutMap` message in the computation proto for TensorFlow
+    `DTensor` based execution.
+
+## Breaking Changes
+
+*   Removed the `compiler_fn` parameter from the high level
+    `*_mergeable_execution_context` functions.
+
+## Bug Fixes
+
+*   Aligned the context types allowed by the
+    `tff.program.NativeFederatedContext` and the
+    `tff.program.PrefetchingDataSource`.
+*   Updated `build_functional_model_delta_update` to use `ReduceDataset` ops to
+    rely on MLIR Bridge for XLA compilation and TPU usage.
+
 # Release 0.46.0
 
 ## Major Features and Improvements
