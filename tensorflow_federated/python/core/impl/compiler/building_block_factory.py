@@ -282,8 +282,9 @@ def construct_tensorflow_selecting_and_packing_outputs(
   output_spec = structure.flatten(output_structure)
   type_analysis.check_tensorflow_compatible_type(parameter_type)
   with tf.Graph().as_default() as graph:
-    parameter_value, parameter_binding = tensorflow_utils.stamp_parameter_in_graph(
-        'x', parameter_type, graph)
+    parameter_value, parameter_binding = (
+        tensorflow_utils.stamp_parameter_in_graph('x', parameter_type, graph)
+    )
   results = _extract_selections(parameter_value, output_spec)
 
   repacked_result = structure.pack_sequence_as(output_structure, results)
@@ -1170,7 +1171,10 @@ def create_federated_select(
           client_keys.type_signature), max_key.type_signature,
       server_val.type_signature, select_fn.type_signature
   ], result_type)
-  intrinsic_def = intrinsic_defs.FEDERATED_SECURE_SELECT if secure else intrinsic_defs.FEDERATED_SELECT
+  if secure:
+    intrinsic_def = intrinsic_defs.FEDERATED_SECURE_SELECT
+  else:
+    intrinsic_def = intrinsic_defs.FEDERATED_SELECT
   intrinsic = building_blocks.Intrinsic(intrinsic_def.uri, intrinsic_type)
   values = building_blocks.Struct([client_keys, max_key, server_val, select_fn])
   return building_blocks.Call(intrinsic, values)
@@ -1691,8 +1695,9 @@ def _check_generic_operator_type(type_spec):
         'binary operators. You have passed the tuple type {}, which fails the '
         'check that the two members of the tuple are either the same type, or '
         'the second is a scalar with the same dtype as the leaves of the '
-        'first. See `type_analysis.is_binary_op_with_upcast_compatible_pair` for '
-        'more details.'.format(type_spec))
+        'first. See `type_analysis.is_binary_op_with_upcast_compatible_pair` '
+        'for more details.'.format(type_spec)
+    )
 
 
 @functools.lru_cache()
@@ -1719,8 +1724,11 @@ def create_tensorflow_binary_operator_with_upcast(
   py_typecheck.check_callable(operator)
   _check_generic_operator_type(type_signature)
   type_analysis.check_tensorflow_compatible_type(type_signature)
-  tf_proto, type_signature = tensorflow_computation_factory.create_binary_operator_with_upcast(
-      type_signature, operator)
+  tf_proto, type_signature = (
+      tensorflow_computation_factory.create_binary_operator_with_upcast(
+          type_signature, operator
+      )
+  )
   compiled = building_blocks.CompiledComputation(
       tf_proto, type_signature=type_signature)
   return compiled

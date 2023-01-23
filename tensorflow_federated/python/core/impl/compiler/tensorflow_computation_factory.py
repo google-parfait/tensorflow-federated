@@ -278,10 +278,14 @@ def create_binary_operator(
   py_typecheck.check_callable(operator)
 
   with tf.Graph().as_default() as graph:
-    operand_1_value, operand_1_binding = tensorflow_utils.stamp_parameter_in_graph(
-        'x', operand_type, graph)
-    operand_2_value, operand_2_binding = tensorflow_utils.stamp_parameter_in_graph(
-        'y', second_operand_type, graph)
+    operand_1_value, operand_1_binding = (
+        tensorflow_utils.stamp_parameter_in_graph('x', operand_type, graph)
+    )
+    operand_2_value, operand_2_binding = (
+        tensorflow_utils.stamp_parameter_in_graph(
+            'y', second_operand_type, graph
+        )
+    )
     result_value = operator(operand_1_value, operand_2_value)
     result_type, result_binding = tensorflow_utils.capture_result_from_graph(
         result_value, graph)
@@ -355,8 +359,9 @@ def create_binary_operator_with_upcast(
   with tf.Graph().as_default() as graph:
     first_arg, operand_1_binding = tensorflow_utils.stamp_parameter_in_graph(
         'x', type_signature[0], graph)
-    operand_2_value, operand_2_binding = tensorflow_utils.stamp_parameter_in_graph(
-        'y', type_signature[1], graph)
+    operand_2_value, operand_2_binding = (
+        tensorflow_utils.stamp_parameter_in_graph('y', type_signature[1], graph)
+    )
 
     if type_signature[0].is_struct() and type_signature[1].is_struct():
       # If both the first and second arguments are structs with the same
@@ -527,8 +532,9 @@ def create_computation_for_py_fn(
 
   with tf.Graph().as_default() as graph:
     if parameter_type is not None:
-      parameter_value, parameter_binding = tensorflow_utils.stamp_parameter_in_graph(
-          'x', parameter_type, graph)
+      parameter_value, parameter_binding = (
+          tensorflow_utils.stamp_parameter_in_graph('x', parameter_type, graph)
+      )
       result = fn(parameter_value)
     else:
       parameter_binding = None

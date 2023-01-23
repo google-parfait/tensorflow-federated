@@ -225,10 +225,12 @@ def _compute_intrinsic_dependencies(
     def record_dependencies(subvalue):
       if subvalue.is_reference():
         if subvalue.name not in intrinsic_dependencies_for_ref:
+          names = [(n, v.compact_representation()) for n, v in locals_list]
           raise ValueError(
-              f'Can\'t resolve {subvalue.name} in {[(name, value.compact_representation()) for name, value in locals_list]}\n'
+              f"Can't resolve {subvalue.name} in {names}\n"
               f'Current map {intrinsic_dependencies_for_ref}\n'
-              f'Original comp: {comp_repr}\n')
+              f'Original comp: {comp_repr}\n'
+          )
         intrinsic_dependencies.update(  # pylint: disable=cell-var-from-loop
             intrinsic_dependencies_for_ref[subvalue.name])
       elif subvalue.is_lambda():
