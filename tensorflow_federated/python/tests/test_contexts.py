@@ -66,8 +66,6 @@ def get_all_contexts():
        tff.backends.native.create_sizing_execution_context),
       ('native_sync_local_cpp',
        tff.backends.native.create_sync_local_cpp_execution_context),
-      ('native_thread_debug',
-       tff.backends.native.create_thread_debugging_execution_context),
       ('test_python',
        tff.backends.test.create_test_python_execution_context),
   ]  # pyformat: disable
