@@ -11,11 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
-# pytype: skip-file
-# This modules disables the Pytype analyzer, see
-# https://github.com/tensorflow/federated/blob/main/docs/pytype.md for more
-# information.
 """A library of composite transformations.
 
 A composite transformation is one that applies multiple atomic transformation to
@@ -837,4 +832,4 @@ def _augment_lambda_with_parameter_for_unbound_references(
       )[0],
   )
 
-  return comp, new_input_comps.keys()
+  return comp, list(new_input_comps.keys())
