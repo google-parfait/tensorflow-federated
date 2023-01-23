@@ -54,6 +54,7 @@ class FileReleaseManagerPermissionDeniedError(Exception):
 class CSVSaveMode(enum.Enum):
   APPEND = 'append'
   WRITE = 'write'
+  READ = 'read'
 
 
 class CSVFileReleaseManager(
@@ -316,6 +317,8 @@ class CSVFileReleaseManager(
       await self._append_value(normalized_value)
     elif self._save_mode == CSVSaveMode.WRITE:
       await self._write_value(normalized_value)
+    elif self._save_mode == CSVSaveMode.READ:
+      await self._read_values(normalized_value)
     self._latest_key = key
 
 
