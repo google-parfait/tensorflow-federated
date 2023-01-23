@@ -11,16 +11,27 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Definitions of experimental computation wrapper instances."""
+"""Definitions of JAX computation wrapper instances."""
+
+from collections.abc import Callable
+from typing import Any, Optional, Union
 
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.computation import computation_wrapper
 from tensorflow_federated.python.core.impl.computation import function_utils
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.jax_context import jax_serialization
+from tensorflow_federated.python.core.impl.types import computation_types
 
 
-def _jax_strategy_fn(fn_to_wrap, fn_name, parameter_type, unpack):
+def _jax_strategy_fn(
+    fn_to_wrap: Callable[..., Any],
+    fn_name: Optional[str],
+    parameter_type: Optional[
+        Union[computation_types.StructType, computation_types.TensorType]
+    ],
+    unpack: Optional[bool],
+) -> computation_impl.ConcreteComputation:
   """Serializes a Python function containing JAX code as a TFF computation.
 
   Args:
@@ -39,11 +50,12 @@ def _jax_strategy_fn(fn_to_wrap, fn_name, parameter_type, unpack):
   unpack_arguments_fn = function_utils.create_argument_unpacking_fn(
       fn_to_wrap, parameter_type, unpack=unpack)
   ctx_stack = context_stack_impl.context_stack
-  comp_pb = jax_serialization.serialize_jax_computation(fn_to_wrap,
-                                                        unpack_arguments_fn,
-                                                        parameter_type,
-                                                        ctx_stack)
-  return computation_impl.ConcreteComputation(comp_pb, ctx_stack)
+  comp_pb, extra_type_spec = jax_serialization.serialize_jax_computation(
+      fn_to_wrap, unpack_arguments_fn, parameter_type, ctx_stack
+  )
+  return computation_impl.ConcreteComputation(
+      comp_pb, ctx_stack, annotated_type=extra_type_spec
+  )
 
 
 jax_computation = computation_wrapper.ComputationWrapper(_jax_strategy_fn)
