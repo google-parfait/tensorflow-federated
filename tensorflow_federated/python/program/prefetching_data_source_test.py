@@ -34,6 +34,8 @@ class PrefetchingDataSourceIteratorTest(
 
   # pyformat: disable
   @parameterized.named_parameters(
+      ('async_cpp',
+       execution_contexts.create_local_async_python_execution_context()),
       ('async_python',
        execution_contexts.create_local_async_python_execution_context()),
   )
@@ -244,6 +246,8 @@ class PrefetchingDataSourceIteratorTest(
 
   # pyformat: disable
   @parameterized.named_parameters(
+      ('async_cpp',
+       execution_contexts.create_local_async_python_execution_context()),
       ('async_python',
        execution_contexts.create_local_async_python_execution_context()),
   )
@@ -276,6 +280,8 @@ class PrefetchingDataSourceIteratorTest(
 
   # pyformat: disable
   @parameterized.named_parameters(
+      ('async_cpp',
+       execution_contexts.create_local_async_python_execution_context()),
       ('async_python',
        execution_contexts.create_local_async_python_execution_context()),
   )
@@ -392,6 +398,8 @@ class PrefetchingDataSourceTest(parameterized.TestCase):
 
   # pyformat: disable
   @parameterized.named_parameters(
+      ('async_cpp',
+       execution_contexts.create_local_async_python_execution_context()),
       ('async_python',
        execution_contexts.create_local_async_python_execution_context()),
   )

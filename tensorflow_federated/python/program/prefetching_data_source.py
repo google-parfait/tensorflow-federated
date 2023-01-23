@@ -101,8 +101,7 @@ class PrefetchingDataSourceIterator(
     Args:
       iterator: A `tff.program.FederatedDataSourceIterator` used to prefetch
         data from.
-      context: The `async_execution_context.AsyncExecutionContext` to prefetch
-        data in.
+      context: The `tff.framework.AsyncExecutionContext` to prefetch data in.
       total_rounds: The total number of rounds.
       num_rounds_to_prefetch: The number of rounds to prefetch.
       num_clients_to_prefetch: The number of clients to prefetch per round. Must
@@ -274,8 +273,7 @@ class PrefetchingDataSource(data_source_lib.FederatedDataSource):
     Args:
       data_source: A `tff.program.FederatedDataSource` used to prefetch data
         from.
-      context: The `async_execution_context.AsyncExecutionContext` to prefetch
-        data in.
+      context: The `tff.framework.AsyncExecutionContext` to prefetch data in.
       total_rounds: The total number of rounds.
       num_rounds_to_prefetch: The number of rounds to prefetch.
       num_clients_to_prefetch: The number of clients to prefetch per round. Must

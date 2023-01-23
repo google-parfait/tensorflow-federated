@@ -28,7 +28,7 @@ from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.computation import computation_base
-from tensorflow_federated.python.core.impl.context_stack import context_base
+from tensorflow_federated.python.core.impl.execution_contexts import async_execution_context
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
@@ -477,7 +477,9 @@ class NativeFederatedContextTest(
       self, comp, arg, expected_value
   ):
     context = execution_contexts.create_local_async_python_execution_context()
-    mock_context = mock.Mock(spec=context_base.AsyncContext, wraps=context)
+    mock_context = mock.Mock(
+        spec=async_execution_context.AsyncExecutionContext, wraps=context
+    )
     context = native_platform.NativeFederatedContext(mock_context)
 
     with program_test_utils.assert_not_warns(RuntimeWarning):
@@ -524,7 +526,9 @@ class NativeFederatedContextTest(
       self, comp, arg, expected_value
   ):
     context = execution_contexts.create_local_async_python_execution_context()
-    mock_context = mock.Mock(spec=context_base.AsyncContext, wraps=context)
+    mock_context = mock.Mock(
+        spec=async_execution_context.AsyncExecutionContext, wraps=context
+    )
     context = native_platform.NativeFederatedContext(mock_context)
 
     with program_test_utils.assert_not_warns(RuntimeWarning):
@@ -569,7 +573,9 @@ class NativeFederatedContextTest(
       self, comp, arg, expected_value
   ):
     context = execution_contexts.create_local_async_python_execution_context()
-    mock_context = mock.Mock(spec=context_base.AsyncContext, wraps=context)
+    mock_context = mock.Mock(
+        spec=async_execution_context.AsyncExecutionContext, wraps=context
+    )
     context = native_platform.NativeFederatedContext(mock_context)
 
     with program_test_utils.assert_not_warns(RuntimeWarning):
@@ -610,7 +616,9 @@ class NativeFederatedContextTest(
       self, comp, arg, expected_value
   ):
     context = execution_contexts.create_local_async_python_execution_context()
-    mock_context = mock.Mock(spec=context_base.AsyncContext, wraps=context)
+    mock_context = mock.Mock(
+        spec=async_execution_context.AsyncExecutionContext, wraps=context
+    )
     context = native_platform.NativeFederatedContext(mock_context)
 
     with program_test_utils.assert_not_warns(RuntimeWarning):
