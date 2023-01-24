@@ -23,7 +23,8 @@ FLAGS = flags.FLAGS
 EXPECTED_ELEMENT_TYPE = collections.OrderedDict(
     coarse_label=tf.TensorSpec(shape=(), dtype=tf.int64),
     image=tf.TensorSpec(shape=(32, 32, 3), dtype=tf.uint8),
-    label=tf.TensorSpec(shape=(), dtype=tf.int64))
+    label=tf.TensorSpec(shape=(), dtype=tf.int64),
+)
 
 
 class CIFAR100Test(tf.test.TestCase):
@@ -35,7 +36,8 @@ class CIFAR100Test(tf.test.TestCase):
 
     for client_id in client_data.client_ids:
       data = self.evaluate(
-          list(client_data.create_tf_dataset_for_client(client_id)))
+          list(client_data.create_tf_dataset_for_client(client_id))
+      )
       coarse_labels = [x['coarse_label'] for x in data]
       images = [x['image'] for x in data]
       labels = [x['label'] for x in data]
@@ -52,7 +54,8 @@ class CIFAR100Test(tf.test.TestCase):
   def test_load_from_gcs(self):
     self.skipTest(
         "CI infrastructure doesn't support downloading from GCS. Remove "
-        'skipTest to run test locally.')
+        'skipTest to run test locally.'
+    )
     cifar_test = cifar100.load_data(FLAGS.test_tmpdir)[1]
     self.assertLen(cifar_test.client_ids, 100)
     self.assertCountEqual(cifar_test.client_ids, [str(i) for i in range(100)])
@@ -67,7 +70,8 @@ class CIFAR100Test(tf.test.TestCase):
     labels = []
     for client_id in cifar_test.client_ids:
       client_data = self.evaluate(
-          list(cifar_test.create_tf_dataset_for_client(client_id)))
+          list(cifar_test.create_tf_dataset_for_client(client_id))
+      )
       self.assertLen(client_data, 100)
       for x in client_data:
         coarse_labels.append(x['coarse_label'])

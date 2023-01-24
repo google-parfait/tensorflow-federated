@@ -69,8 +69,9 @@ def create_preprocess_fn(
   elif emnist_task == 'autoencoder':
     mapping_fn = _reshape_for_autoencoder
   else:
-    raise ValueError('emnist_task must be one of "character_recognition" or '
-                     '"autoencoder".')
+    raise ValueError(
+        'emnist_task must be one of "character_recognition" or "autoencoder".'
+    )
 
   def preprocess_fn(dataset: tf.data.Dataset) -> tf.data.Dataset:
     if shuffle_buffer_size > 1:
@@ -83,6 +84,7 @@ def create_preprocess_fn(
     return dataset.map(
         mapping_fn,
         num_parallel_calls=num_parallel_calls,
-        deterministic=debug_seed is not None)
+        deterministic=debug_seed is not None,
+    )
 
   return preprocess_fn

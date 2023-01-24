@@ -42,7 +42,6 @@ def _install_executor_in_synchronous_context(executor_factory_instance):
 class ExecutionContextIntegrationTest(parameterized.TestCase):
 
   def test_simple_no_arg_tf_computation_with_int_result(self):
-
     @tensorflow_computation.tf_computation
     def comp():
       return tf.constant(10)
@@ -54,7 +53,6 @@ class ExecutionContextIntegrationTest(parameterized.TestCase):
     self.assertEqual(result, 10)
 
   def test_one_arg_tf_computation_with_int_param_and_result(self):
-
     @tensorflow_computation.tf_computation(tf.int32)
     def comp(x):
       return tf.add(x, 10)
@@ -66,7 +64,6 @@ class ExecutionContextIntegrationTest(parameterized.TestCase):
     self.assertEqual(result, 13)
 
   def test_three_arg_tf_computation_with_int_params_and_result(self):
-
     @tensorflow_computation.tf_computation(tf.int32, tf.int32, tf.int32)
     def comp(x, y, z):
       return tf.multiply(tf.add(x, y), z)
@@ -80,7 +77,8 @@ class ExecutionContextIntegrationTest(parameterized.TestCase):
   def test_tf_computation_with_dataset_params_and_int_result(self):
 
     @tensorflow_computation.tf_computation(
-        computation_types.SequenceType(tf.int32))
+        computation_types.SequenceType(tf.int32)
+    )
     def comp(ds):
       return ds.reduce(np.int32(0), lambda x, y: x + y)
 
@@ -92,7 +90,6 @@ class ExecutionContextIntegrationTest(parameterized.TestCase):
     self.assertEqual(result, 45)
 
   def test_tf_computation_with_structured_result(self):
-
     @tensorflow_computation.tf_computation
     def comp():
       return collections.OrderedDict([
@@ -108,36 +105,47 @@ class ExecutionContextIntegrationTest(parameterized.TestCase):
     self.assertDictEqual(result, {'a': 10, 'b': 20})
 
   @parameterized.named_parameters(
-      ('local_executor_none_clients',
-       python_executor_stacks.local_executor_factory()),
-      ('local_executor_three_clients',
-       python_executor_stacks.local_executor_factory(default_num_clients=3)),
+      (
+          'local_executor_none_clients',
+          python_executor_stacks.local_executor_factory(),
+      ),
+      (
+          'local_executor_three_clients',
+          python_executor_stacks.local_executor_factory(default_num_clients=3),
+      ),
   )
   def test_with_temperature_sensor_example(self, executor):
 
     @tensorflow_computation.tf_computation(
-        computation_types.SequenceType(tf.float32), tf.float32)
+        computation_types.SequenceType(tf.float32), tf.float32
+    )
     def count_over(ds, t):
       return ds.reduce(
-          np.float32(0), lambda n, x: n + tf.cast(tf.greater(x, t), tf.float32))
+          np.float32(0), lambda n, x: n + tf.cast(tf.greater(x, t), tf.float32)
+      )
 
     @tensorflow_computation.tf_computation(
-        computation_types.SequenceType(tf.float32))
+        computation_types.SequenceType(tf.float32)
+    )
     def count_total(ds):
       return ds.reduce(np.float32(0.0), lambda n, _: n + 1.0)
 
     @federated_computation.federated_computation(
         computation_types.at_clients(
-            computation_types.SequenceType(tf.float32)),
-        computation_types.at_server(tf.float32))
+            computation_types.SequenceType(tf.float32)
+        ),
+        computation_types.at_server(tf.float32),
+    )
     def comp(temperatures, threshold):
       return intrinsics.federated_mean(
           intrinsics.federated_map(
               count_over,
               intrinsics.federated_zip(
-                  [temperatures,
-                   intrinsics.federated_broadcast(threshold)])),
-          intrinsics.federated_map(count_total, temperatures))
+                  [temperatures, intrinsics.federated_broadcast(threshold)]
+              ),
+          ),
+          intrinsics.federated_map(count_total, temperatures),
+      )
 
     with _install_executor_in_synchronous_context(executor):
       to_float = lambda x: tf.cast(x, tf.float32)
@@ -153,7 +161,8 @@ class ExecutionContextIntegrationTest(parameterized.TestCase):
   def test_changing_cardinalities_across_calls(self):
 
     @federated_computation.federated_computation(
-        computation_types.at_clients(tf.int32))
+        computation_types.at_clients(tf.int32)
+    )
     def comp(x):
       return x
 
@@ -169,7 +178,6 @@ class ExecutionContextIntegrationTest(parameterized.TestCase):
     self.assertEqual(ten, ten_ints)
 
   def test_conflicting_cardinalities_within_call(self):
-
     @federated_computation.federated_computation([
         computation_types.at_clients(tf.int32),
         computation_types.at_clients(tf.int32),
@@ -186,7 +194,6 @@ class ExecutionContextIntegrationTest(parameterized.TestCase):
         comp([five_ints, ten_ints])
 
   def test_tuple_argument_can_accept_unnamed_elements(self):
-
     @tensorflow_computation.tf_computation(tf.int32, tf.int32)
     def foo(x, y):
       return x + y
@@ -219,7 +226,6 @@ class ExecutionContextIntegrationTest(parameterized.TestCase):
         identity(data)
 
   def test_sync_interface_interops_with_asyncio(self):
-
     @tensorflow_computation.tf_computation(tf.int32)
     def add_one(x):
       return x + 1

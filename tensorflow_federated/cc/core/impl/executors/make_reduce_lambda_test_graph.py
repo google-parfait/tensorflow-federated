@@ -33,9 +33,11 @@ def make_graph():
     # Create a placeholder with a fixed name to allow the code running the graph
     # to provide input.
     dataset_input = tf.compat.v1.placeholder(
-        name=DATASET_INPUT_TENSOR_NAME, dtype=tf.dtypes.variant)
+        name=DATASET_INPUT_TENSOR_NAME, dtype=tf.dtypes.variant
+    )
     dataset = tf.data.experimental.from_variant(
-        dataset_input, tf.TensorSpec(shape=(), dtype=tf.int64))
+        dataset_input, tf.TensorSpec(shape=(), dtype=tf.int64)
+    )
     result = dataset.reduce(
         initial_state=tf.convert_to_tensor(0, tf.int64),
         reduce_func=operator.add,

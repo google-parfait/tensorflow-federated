@@ -29,23 +29,24 @@ class SerializerParserTest(tf.test.TestCase, parameterized.TestCase):
       ('non-iterable None', None),
       ('non-iterable tensorspec', tf.TensorSpec(shape=())),
       ('non-iterable tensorspec batched', tf.TensorSpec(shape=(None,))),
-      ('tuple of tensorspec',
-       (tf.TensorSpec(shape=()), tf.TensorSpec(shape=()))),
-      ('list of tensorspec', [tf.TensorSpec(shape=()),
-                              tf.TensorSpec(shape=())]))
+      (
+          'tuple of tensorspec',
+          (tf.TensorSpec(shape=()), tf.TensorSpec(shape=())),
+      ),
+      (
+          'list of tensorspec',
+          [tf.TensorSpec(shape=()), tf.TensorSpec(shape=())],
+      ),
+  )
   def test_check_element_spec_type_raises_type_error(self, element_spec):
     with self.assertRaises(sql_client_data_utils.ElementSpecCompatibilityError):
       sql_client_data_utils._validate_element_spec(element_spec)
 
-  @parameterized.named_parameters(('integer key', {
-      1: tf.TensorSpec(shape=())
-  }), ('tuple key', {
-      ('a', 'b'): tf.TensorSpec(shape=())
-  }), ('nested mapping', {
-      'outer': {
-          'inner': tf.TensorSpec(shape=())
-      }
-  }))
+  @parameterized.named_parameters(
+      ('integer key', {1: tf.TensorSpec(shape=())}),
+      ('tuple key', {('a', 'b'): tf.TensorSpec(shape=())}),
+      ('nested mapping', {'outer': {'inner': tf.TensorSpec(shape=())}}),
+  )
   def test_check_element_spec_key_type_raises_type_error(self, element_spec):
     with self.assertRaises(sql_client_data_utils.ElementSpecCompatibilityError):
       sql_client_data_utils._validate_element_spec(element_spec)
@@ -58,17 +59,25 @@ class SerializerParserTest(tf.test.TestCase, parameterized.TestCase):
       ('int64_2darray', tf.eye(3, dtype=tf.int64)),
       ('int64_3darray', tf.ones((2, 3, 4), dtype=tf.int64)),
       ('float32_scalar', tf.convert_to_tensor(1.0, dtype=tf.float32)),
-      ('float32_1darray', tf.convert_to_tensor([3.0, 4.0, 5.0],
-                                               dtype=tf.float32)),
-      ('float32_2darray',
-       tf.convert_to_tensor(np.random.randn(3, 4), dtype=tf.float32)),
-      ('float32_3darray',
-       tf.convert_to_tensor(np.random.randn(3, 4, 5), dtype=tf.float32)),
-      ('string', tf.convert_to_tensor('test', dtype=tf.string)))
+      (
+          'float32_1darray',
+          tf.convert_to_tensor([3.0, 4.0, 5.0], dtype=tf.float32),
+      ),
+      (
+          'float32_2darray',
+          tf.convert_to_tensor(np.random.randn(3, 4), dtype=tf.float32),
+      ),
+      (
+          'float32_3darray',
+          tf.convert_to_tensor(np.random.randn(3, 4, 5), dtype=tf.float32),
+      ),
+      ('string', tf.convert_to_tensor('test', dtype=tf.string)),
+  )
   def test_serializer_parser_on_a_single_elem(self, tensor):
     elem = collections.OrderedDict(test_key=tensor)
     elem_spec = collections.OrderedDict(
-        test_key=tf.TensorSpec.from_tensor(tensor))
+        test_key=tf.TensorSpec.from_tensor(tensor)
+    )
 
     serializer = sql_client_data_utils._build_serializer(elem_spec)
     parser = sql_client_data_utils._build_parser(elem_spec)
@@ -86,9 +95,12 @@ class SqlClientDataUtilsTest(tf.test.TestCase):
   def test_save_to_sql_client_data(self):
     test_ds1 = tf.data.Dataset.from_tensor_slices(
         collections.OrderedDict(
-            i=[1, 2, 3], f=[4.0, 5.0, 6.0], s=['a', 'b', 'c']))
+            i=[1, 2, 3], f=[4.0, 5.0, 6.0], s=['a', 'b', 'c']
+        )
+    )
     test_ds2 = tf.data.Dataset.from_tensor_slices(
-        collections.OrderedDict(i=[4, 5], f=[7.0, 8.0], s=['d', 'e']))
+        collections.OrderedDict(i=[4, 5], f=[7.0, 8.0], s=['d', 'e'])
+    )
     test_client_dataset_mapping = {'foo': test_ds1, 'bar': test_ds2}
     test_client_ids = list(test_client_dataset_mapping.keys())
 
@@ -96,13 +108,15 @@ class SqlClientDataUtilsTest(tf.test.TestCase):
 
     database_filepath = os.path.join(self.get_temp_dir(), 'db')
 
-    sql_client_data_utils.save_to_sql_client_data(test_client_ids, dataset_fn,
-                                                  database_filepath)
+    sql_client_data_utils.save_to_sql_client_data(
+        test_client_ids, dataset_fn, database_filepath
+    )
 
     self.assertTrue(tf.io.gfile.exists(database_filepath))
 
     rebuilt_cd = sql_client_data_utils.load_and_parse_sql_client_data(
-        database_filepath, test_ds1.element_spec)
+        database_filepath, test_ds1.element_spec
+    )
 
     self.assertCountEqual(rebuilt_cd.client_ids, test_client_ids)
 
@@ -116,9 +130,12 @@ class SqlClientDataUtilsTest(tf.test.TestCase):
   def test_save_to_sql_client_data_with_split_names(self):
     test_ds1 = tf.data.Dataset.from_tensor_slices(
         collections.OrderedDict(
-            i=[1, 2, 3], f=[4.0, 5.0, 6.0], s=['a', 'b', 'c']))
+            i=[1, 2, 3], f=[4.0, 5.0, 6.0], s=['a', 'b', 'c']
+        )
+    )
     test_ds2 = tf.data.Dataset.from_tensor_slices(
-        collections.OrderedDict(i=[4, 5], f=[7.0, 8.0], s=['d', 'e']))
+        collections.OrderedDict(i=[4, 5], f=[7.0, 8.0], s=['d', 'e'])
+    )
     test_client_dataset_mapping = {'foo': test_ds1, 'bar': test_ds2}
     test_client_ids = list(test_client_dataset_mapping.keys())
     test_split_name_1, test_split_name_2 = 'first', 'second'
@@ -133,12 +150,14 @@ class SqlClientDataUtilsTest(tf.test.TestCase):
         dataset_fn=dataset_fn,
         database_filepath=database_filepath,
         allow_overwrite=False,
-        split_names_by_client_id=test_split_names)
+        split_names_by_client_id=test_split_names,
+    )
 
     self.assertTrue(tf.io.gfile.exists(database_filepath))
 
     rebuilt_cd = sql_client_data_utils.load_and_parse_sql_client_data(
-        database_filepath, test_ds1.element_spec, test_split_name_1)
+        database_filepath, test_ds1.element_spec, test_split_name_1
+    )
 
     self.assertEqual(rebuilt_cd.client_ids, [test_client_ids[0]])
 
@@ -148,7 +167,8 @@ class SqlClientDataUtilsTest(tf.test.TestCase):
 
       for rebuilt_odict, original_odict in zip(rebuilt_ds, ds):
         self.assertEqual(
-            list(rebuilt_odict.keys()), list(original_odict.keys()))
+            list(rebuilt_odict.keys()), list(original_odict.keys())
+        )
 
         for key in rebuilt_odict.keys():
           self.assertAllEqual(rebuilt_odict[key], original_odict[key])
@@ -156,9 +176,12 @@ class SqlClientDataUtilsTest(tf.test.TestCase):
   def test_save_to_sql_client_data_with_empty_split_names(self):
     test_ds1 = tf.data.Dataset.from_tensor_slices(
         collections.OrderedDict(
-            i=[1, 2, 3], f=[4.0, 5.0, 6.0], s=['a', 'b', 'c']))
+            i=[1, 2, 3], f=[4.0, 5.0, 6.0], s=['a', 'b', 'c']
+        )
+    )
     test_ds2 = tf.data.Dataset.from_tensor_slices(
-        collections.OrderedDict(i=[4, 5], f=[7.0, 8.0], s=['d', 'e']))
+        collections.OrderedDict(i=[4, 5], f=[7.0, 8.0], s=['d', 'e'])
+    )
     test_client_dataset_mapping = {'foo': test_ds1, 'bar': test_ds2}
     test_client_ids = list(test_client_dataset_mapping.keys())
 
@@ -172,14 +195,18 @@ class SqlClientDataUtilsTest(tf.test.TestCase):
           dataset_fn=dataset_fn,
           database_filepath=database_filepath,
           allow_overwrite=False,
-          split_names_by_client_id={})
+          split_names_by_client_id={},
+      )
 
   def test_save_to_sql_client_data_with_missing_split_name(self):
     test_ds1 = tf.data.Dataset.from_tensor_slices(
         collections.OrderedDict(
-            i=[1, 2, 3], f=[4.0, 5.0, 6.0], s=['a', 'b', 'c']))
+            i=[1, 2, 3], f=[4.0, 5.0, 6.0], s=['a', 'b', 'c']
+        )
+    )
     test_ds2 = tf.data.Dataset.from_tensor_slices(
-        collections.OrderedDict(i=[4, 5], f=[7.0, 8.0], s=['d', 'e']))
+        collections.OrderedDict(i=[4, 5], f=[7.0, 8.0], s=['d', 'e'])
+    )
     test_client_dataset_mapping = {'foo': test_ds1, 'bar': test_ds2}
     test_client_ids = list(test_client_dataset_mapping.keys())
     test_split_names = {'foo': 'first'}
@@ -194,14 +221,18 @@ class SqlClientDataUtilsTest(tf.test.TestCase):
           dataset_fn=dataset_fn,
           database_filepath=database_filepath,
           allow_overwrite=False,
-          split_names_by_client_id=test_split_names)
+          split_names_by_client_id=test_split_names,
+      )
 
   def test_save_to_sql_client_can_overwrite_if_enabled(self):
     test_ds1 = tf.data.Dataset.from_tensor_slices(
         collections.OrderedDict(
-            i=[1, 2, 3], f=[4.0, 5.0, 6.0], s=['a', 'b', 'c']))
+            i=[1, 2, 3], f=[4.0, 5.0, 6.0], s=['a', 'b', 'c']
+        )
+    )
     test_ds2 = tf.data.Dataset.from_tensor_slices(
-        collections.OrderedDict(i=[4, 5], f=[7.0, 8.0], s=['d', 'e']))
+        collections.OrderedDict(i=[4, 5], f=[7.0, 8.0], s=['d', 'e'])
+    )
     test_client_dataset_mapping = {'foo': test_ds1, 'bar': test_ds2}
     test_client_ids = list(test_client_dataset_mapping.keys())
 
@@ -209,18 +240,21 @@ class SqlClientDataUtilsTest(tf.test.TestCase):
 
     database_filepath = os.path.join(self.get_temp_dir(), 'db')
 
-    sql_client_data_utils.save_to_sql_client_data(test_client_ids[0:1],
-                                                  dataset_fn, database_filepath)
+    sql_client_data_utils.save_to_sql_client_data(
+        test_client_ids[0:1], dataset_fn, database_filepath
+    )
 
     self.assertTrue(tf.io.gfile.exists(database_filepath))
 
     sql_client_data_utils.save_to_sql_client_data(
-        test_client_ids, dataset_fn, database_filepath, allow_overwrite=True)
+        test_client_ids, dataset_fn, database_filepath, allow_overwrite=True
+    )
 
     self.assertTrue(tf.io.gfile.exists(database_filepath))
 
     rebuilt_cd = sql_client_data_utils.load_and_parse_sql_client_data(
-        database_filepath, test_ds1.element_spec)
+        database_filepath, test_ds1.element_spec
+    )
 
     self.assertCountEqual(rebuilt_cd.client_ids, test_client_ids)
 
@@ -230,18 +264,21 @@ class SqlClientDataUtilsTest(tf.test.TestCase):
 
       for rebuilt_odict, original_odict in zip(rebuilt_ds, ds):
         self.assertEqual(
-            list(rebuilt_odict.keys()), list(original_odict.keys()))
+            list(rebuilt_odict.keys()), list(original_odict.keys())
+        )
 
         for key in rebuilt_odict.keys():
           self.assertAllEqual(rebuilt_odict[key], original_odict[key])
 
   def test_save_to_sql_client_will_not_overwrite_if_not_allowed(self):
-
     test_ds1 = tf.data.Dataset.from_tensor_slices(
         collections.OrderedDict(
-            i=[1, 2, 3], f=[4.0, 5.0, 6.0], s=['a', 'b', 'c']))
+            i=[1, 2, 3], f=[4.0, 5.0, 6.0], s=['a', 'b', 'c']
+        )
+    )
     test_ds2 = tf.data.Dataset.from_tensor_slices(
-        collections.OrderedDict(i=[4, 5], f=[7.0, 8.0], s=['d', 'e']))
+        collections.OrderedDict(i=[4, 5], f=[7.0, 8.0], s=['d', 'e'])
+    )
     test_client_dataset_mapping = {'foo': test_ds1, 'bar': test_ds2}
     test_client_ids = list(test_client_dataset_mapping.keys())
 
@@ -249,21 +286,26 @@ class SqlClientDataUtilsTest(tf.test.TestCase):
 
     database_filepath = os.path.join(self.get_temp_dir(), 'db')
 
-    sql_client_data_utils.save_to_sql_client_data(test_client_ids[0:1],
-                                                  dataset_fn, database_filepath)
+    sql_client_data_utils.save_to_sql_client_data(
+        test_client_ids[0:1], dataset_fn, database_filepath
+    )
 
     self.assertTrue(tf.io.gfile.exists(database_filepath))
 
     with self.assertRaises(FileExistsError):
       sql_client_data_utils.save_to_sql_client_data(
-          test_client_ids, dataset_fn, database_filepath, allow_overwrite=False)
+          test_client_ids, dataset_fn, database_filepath, allow_overwrite=False
+      )
 
   def test_save_to_sql_client_data_raises_type_error(self):
     test_ds1 = tf.data.Dataset.from_tensor_slices(
         collections.OrderedDict(
-            i=[1, 2, 3], f=[4.0, 5.0, 6.0], s=['a', 'b', 'c']))
+            i=[1, 2, 3], f=[4.0, 5.0, 6.0], s=['a', 'b', 'c']
+        )
+    )
     test_ds2 = tf.data.Dataset.from_tensor_slices(
-        collections.OrderedDict(i=[7.0, 8.0], f=[4, 5], s=['d', 'e']))
+        collections.OrderedDict(i=[7.0, 8.0], f=[4, 5], s=['d', 'e'])
+    )
     # Uses a different element_spec intentionally.
 
     test_client_dataset_mapping = {'foo': test_ds1, 'bar': test_ds2}
@@ -274,8 +316,9 @@ class SqlClientDataUtilsTest(tf.test.TestCase):
     database_filepath = os.path.join(self.get_temp_dir(), 'db')
 
     with self.assertRaises(sql_client_data_utils.ElementSpecCompatibilityError):
-      sql_client_data_utils.save_to_sql_client_data(test_client_ids, dataset_fn,
-                                                    database_filepath)
+      sql_client_data_utils.save_to_sql_client_data(
+          test_client_ids, dataset_fn, database_filepath
+      )
 
 
 if __name__ == '__main__':

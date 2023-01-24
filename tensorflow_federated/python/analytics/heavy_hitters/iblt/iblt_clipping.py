@@ -35,7 +35,8 @@ def get_clipped_elements_with_counts(
     multi_contribution: bool = True,
     batch_size: int = 1,
     string_max_bytes: int = 10,
-    unique_counts: bool = False) -> tf.data.Dataset:
+    unique_counts: bool = False,
+) -> tf.data.Dataset:
   """Gets elements and corresponding clipped counts from the input `dataset`.
 
   Returns a dataset that yields `OrderedDict`s with two keys: `key` with
@@ -81,17 +82,20 @@ def get_clipped_elements_with_counts(
           dataset,
           max_words_per_user,
           batch_size=batch_size,
-          string_max_bytes=string_max_bytes)
+          string_max_bytes=string_max_bytes,
+      )
     else:
       # `tff.analytics.data_processing.get_top_elements_with_counts` returns the
       # top `max_words_per_user` words in client's local histogram. Each element
       # appears at most once in the list.
       k_words, counts = data_processing.get_top_elements_with_counts(
-          dataset, max_words_per_user, string_max_bytes=string_max_bytes)
+          dataset, max_words_per_user, string_max_bytes=string_max_bytes
+      )
       counts = tf.ones_like(counts)
   else:
     k_words, counts = data_processing.get_unique_elements_with_counts(
-        dataset, string_max_bytes=string_max_bytes)
+        dataset, string_max_bytes=string_max_bytes
+    )
     if not multi_contribution:
       counts = tf.ones_like(counts)
   if unique_counts:
@@ -105,13 +109,15 @@ def get_clipped_elements_with_counts(
 class ClippingIbltFactory(factory.UnweightedAggregationFactory):
   """Factory for clipping client data before aggregation."""
 
-  def __init__(self,
-               inner_iblt_agg: iblt_factory.IbltFactory,
-               max_words_per_user: Optional[int] = None,
-               multi_contribution: bool = True,
-               batch_size: int = 1,
-               string_max_bytes: int = 10,
-               unique_counts: bool = False):
+  def __init__(
+      self,
+      inner_iblt_agg: iblt_factory.IbltFactory,
+      max_words_per_user: Optional[int] = None,
+      multi_contribution: bool = True,
+      batch_size: int = 1,
+      string_max_bytes: int = 10,
+      unique_counts: bool = False,
+  ):
     """Initializes ClientPreprocessingAggregationFactory.
 
     Args:
@@ -149,31 +155,39 @@ class ClippingIbltFactory(factory.UnweightedAggregationFactory):
     self.unique_counts = unique_counts
 
   def create(
-      self,
-      value_type: factory.ValueType) -> aggregation_process.AggregationProcess:
-
+      self, value_type: factory.ValueType
+  ) -> aggregation_process.AggregationProcess:
     expected_type = computation_types.SequenceType(
-        computation_types.TensorType(shape=[None], dtype=tf.string))
+        computation_types.TensorType(shape=[None], dtype=tf.string)
+    )
 
     if value_type != expected_type:
-      raise ValueError('Expected value_type to be %s, got %s' %
-                       (expected_type, value_type))
+      raise ValueError(
+          'Expected value_type to be %s, got %s' % (expected_type, value_type)
+      )
 
     @tensorflow_computation.tf_computation(value_type)
     @tf.function
     def preprocess(client_data):
       return get_clipped_elements_with_counts(
-          client_data, self.max_words_per_user, self.multi_contribution,
-          self.batch_size, self.string_max_bytes, self.unique_counts)
+          client_data,
+          self.max_words_per_user,
+          self.multi_contribution,
+          self.batch_size,
+          self.string_max_bytes,
+          self.unique_counts,
+      )
 
     inner_process = self.inner_iblt_agg.create(preprocess.type_signature.result)
 
     @federated_computation.federated_computation(
         inner_process.initialize.type_signature.result,
-        computation_types.at_clients(value_type))
+        computation_types.at_clients(value_type),
+    )
     def next_fn(state, client_data):
       preprocessed = intrinsics.federated_map(preprocess, client_data)
       return inner_process.next(state, preprocessed)
 
-    return aggregation_process.AggregationProcess(inner_process.initialize,
-                                                  next_fn)
+    return aggregation_process.AggregationProcess(
+        inner_process.initialize, next_fn
+    )

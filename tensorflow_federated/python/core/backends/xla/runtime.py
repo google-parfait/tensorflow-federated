@@ -85,9 +85,12 @@ class ComputationCallable(typed_object.TypedObject):
   # in a follow-up, possibly applying the same ideas across all the leaf-level
   # executors.
 
-  def __init__(self, comp_pb: pb.Computation,
-               type_spec: computation_types.FunctionType,
-               backend: xla_client.Client):
+  def __init__(
+      self,
+      comp_pb: pb.Computation,
+      type_spec: computation_types.FunctionType,
+      backend: xla_client.Client,
+  ):
     """Creates this callable for a given computation, type, and backend.
 
     Args:
@@ -104,13 +107,15 @@ class ComputationCallable(typed_object.TypedObject):
     which_computation = comp_pb.WhichOneof('computation')
     if which_computation != 'xla':
       raise ValueError(
-          'Unsupported computation type: {}'.format(which_computation))
+          'Unsupported computation type: {}'.format(which_computation)
+      )
     xla_comp = xla_serialization.unpack_xla_computation(comp_pb.xla.hlo_module)
     mhlo_module = xla_client._xla.mlir.xla_computation_to_mlir_module(xla_comp)
     compile_options = xla_client.CompileOptions()
     self._executable = backend.compile(mhlo_module, compile_options)
     self._inverted_parameter_tensor_indexes = list(
-        np.argsort(_binding_to_tensor_indexes(comp_pb.xla.parameter)))
+        np.argsort(_binding_to_tensor_indexes(comp_pb.xla.parameter))
+    )
     self._result_tensor_indexes = _binding_to_tensor_indexes(comp_pb.xla.result)
     self._type_signature = type_spec
     self._backend = backend
@@ -158,7 +163,8 @@ class ComputationCallable(typed_object.TypedObject):
     ]
 
     unordered_result = xla_client.execute_with_python_values(
-        self._executable, reordered_flat_py_args, self._backend)
+        self._executable, reordered_flat_py_args, self._backend
+    )
     py_typecheck.check_type(unordered_result, list)
     result = [unordered_result[idx] for idx in self._result_tensor_indexes]
     result_type = self.type_signature.result

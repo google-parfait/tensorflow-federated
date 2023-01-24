@@ -74,7 +74,8 @@ class CreateConstantTest(parameterized.TestCase, tf.test.TestCase):
   # pyformat: enable
   def test_returns_computation(self, value, type_signature, expected_result):
     proto, _ = tensorflow_computation_factory.create_constant(
-        value, type_signature)
+        value, type_signature
+    )
 
     self.assertIsInstance(proto, pb.Computation)
     actual_type = type_serialization.deserialize_type(proto.type)
@@ -91,12 +92,21 @@ class CreateConstantTest(parameterized.TestCase, tf.test.TestCase):
       ('none_type', 10, None),
       ('federated_type', 10, computation_types.at_server(tf.int32)),
       ('bad_type', 10.0, _TensorType(tf.int32)),
-      ('value_structure_larger_than_type_structure',
-       (10.0, 11.0), _StructType([tf.float32])),
-      ('value_structure_smaller_than_type_structure',
-       (10.0,), _StructType([(None, tf.float32), (None, tf.float32)])),
-      ('named_value_unnamed_type', collections.OrderedDict(a=10.0),
-       _StructType([(None, tf.float32)])),
+      (
+          'value_structure_larger_than_type_structure',
+          (10.0, 11.0),
+          _StructType([tf.float32]),
+      ),
+      (
+          'value_structure_smaller_than_type_structure',
+          (10.0,),
+          _StructType([(None, tf.float32), (None, tf.float32)]),
+      ),
+      (
+          'named_value_unnamed_type',
+          collections.OrderedDict(a=10.0),
+          _StructType([(None, tf.float32)]),
+      ),
   )
   def test_raises_type_error(self, value, type_signature):
     with self.assertRaises(TypeError):
@@ -108,26 +118,48 @@ class CreateUnaryOperatorTest(parameterized.TestCase, tf.test.TestCase):
   @parameterized.named_parameters(
       ('abs_int', tf.math.abs, _TensorType(tf.int32), [-1], 1),
       ('abs_float', tf.math.abs, _TensorType(tf.float32), [-1.0], 1.0),
-      ('abs_unnamed_tuple', lambda x: structure.map_structure(tf.math.abs, x),
-       _StructType([_TensorType(tf.int32, [2]),
-                    _TensorType(tf.float32, [2])]), [[-1, -2], [-3.0, -4.0]],
-       structure.Struct([(None, [1, 2]), (None, [3.0, 4.0])])),
-      ('abs_named_tuple', lambda x: structure.map_structure(tf.math.abs, x),
-       _StructType([('a', _TensorType(tf.int32, [2])),
-                    ('b', _TensorType(tf.float32, [2]))]), [
-                        [-1, -2], [-3.0, -4.0]
-                    ], structure.Struct([('a', [1, 2]), ('b', [3.0, 4.0])])),
-      ('reduce_sum_int', tf.math.reduce_sum, _TensorType(tf.int32, [2]), [2, 2
-                                                                         ], 4),
-      ('reduce_sum_float', tf.math.reduce_sum, _TensorType(
-          tf.float32, [2]), [2.0, 2.5], 4.5),
+      (
+          'abs_unnamed_tuple',
+          lambda x: structure.map_structure(tf.math.abs, x),
+          _StructType(
+              [_TensorType(tf.int32, [2]), _TensorType(tf.float32, [2])]
+          ),
+          [[-1, -2], [-3.0, -4.0]],
+          structure.Struct([(None, [1, 2]), (None, [3.0, 4.0])]),
+      ),
+      (
+          'abs_named_tuple',
+          lambda x: structure.map_structure(tf.math.abs, x),
+          _StructType([
+              ('a', _TensorType(tf.int32, [2])),
+              ('b', _TensorType(tf.float32, [2])),
+          ]),
+          [[-1, -2], [-3.0, -4.0]],
+          structure.Struct([('a', [1, 2]), ('b', [3.0, 4.0])]),
+      ),
+      (
+          'reduce_sum_int',
+          tf.math.reduce_sum,
+          _TensorType(tf.int32, [2]),
+          [2, 2],
+          4,
+      ),
+      (
+          'reduce_sum_float',
+          tf.math.reduce_sum,
+          _TensorType(tf.float32, [2]),
+          [2.0, 2.5],
+          4.5,
+      ),
       ('log_inf', tf.math.log, _TensorType(tf.float32), [0.0], -np.inf),
   )
   # pyformat: enable
-  def test_returns_computation(self, operator, operand_type, operand,
-                               expected_result):
+  def test_returns_computation(
+      self, operator, operand_type, operand, expected_result
+  ):
     proto, _ = tensorflow_computation_factory.create_unary_operator(
-        operator, operand_type)
+        operator, operand_type
+    )
 
     self.assertIsInstance(proto, pb.Computation)
     actual_type = type_serialization.deserialize_type(proto.type)
@@ -138,7 +170,8 @@ class CreateUnaryOperatorTest(parameterized.TestCase, tf.test.TestCase):
     expected_parameter_type = operand_type
     self.assertEqual(actual_type.parameter, expected_parameter_type)
     actual_result = tensorflow_computation_test_utils.run_tensorflow(
-        proto, operand)
+        proto, operand
+    )
     self.assertAllEqual(actual_result, expected_result)
 
   @parameterized.named_parameters(
@@ -148,10 +181,10 @@ class CreateUnaryOperatorTest(parameterized.TestCase, tf.test.TestCase):
       ('sequence_type', tf.math.add, computation_types.SequenceType(tf.int32)),
   )
   def test_raises_type_error(self, operator, type_signature):
-
     with self.assertRaises(TypeError):
       tensorflow_computation_factory.create_unary_operator(
-          operator, type_signature)
+          operator, type_signature
+      )
 
 
 class CreateBinaryOperatorTest(parameterized.TestCase):
@@ -197,10 +230,17 @@ class CreateBinaryOperatorTest(parameterized.TestCase):
        structure.Struct([(None, 0.5), (None, 1.0)])),
   )
   # pyformat: enable
-  def test_returns_computation(self, operator, operand_type,
-                               second_operand_type, operands, expected_result):
+  def test_returns_computation(
+      self,
+      operator,
+      operand_type,
+      second_operand_type,
+      operands,
+      expected_result,
+  ):
     proto, _ = tensorflow_computation_factory.create_binary_operator(
-        operator, operand_type, second_operand_type)
+        operator, operand_type, second_operand_type
+    )
 
     self.assertIsInstance(proto, pb.Computation)
     actual_type = type_serialization.deserialize_type(proto.type)
@@ -214,7 +254,8 @@ class CreateBinaryOperatorTest(parameterized.TestCase):
       expected_parameter_type = _StructType([operand_type, second_operand_type])
     self.assertEqual(actual_type.parameter, expected_parameter_type)
     actual_result = tensorflow_computation_test_utils.run_tensorflow(
-        proto, operands)
+        proto, operands
+    )
     self.assertEqual(actual_result, expected_result)
 
   @parameterized.named_parameters(
@@ -226,7 +267,8 @@ class CreateBinaryOperatorTest(parameterized.TestCase):
   def test_raises_type_error(self, operator, type_signature):
     with self.assertRaises(TypeError):
       tensorflow_computation_factory.create_binary_operator(
-          operator, type_signature)
+          operator, type_signature
+      )
 
 
 class CreateBinaryOperatorWithUpcastTest(parameterized.TestCase):
@@ -317,10 +359,14 @@ class CreateBinaryOperatorWithUpcastTest(parameterized.TestCase):
        structure.Struct.unnamed([np.array([3.25])])),
   )
   # pyformat: enable
-  def test_returns_computation(self, operator, type_signature, operands,
-                               expected_result):
-    proto, _ = tensorflow_computation_factory.create_binary_operator_with_upcast(
-        type_signature, operator)
+  def test_returns_computation(
+      self, operator, type_signature, operands, expected_result
+  ):
+    proto, _ = (
+        tensorflow_computation_factory.create_binary_operator_with_upcast(
+            type_signature, operator
+        )
+    )
 
     self.assertIsInstance(proto, pb.Computation)
     actual_type = type_serialization.deserialize_type(proto.type)
@@ -331,28 +377,40 @@ class CreateBinaryOperatorWithUpcastTest(parameterized.TestCase):
     expected_parameter_type = _StructType(type_signature)
     self.assertEqual(actual_type.parameter, expected_parameter_type)
     actual_result = tensorflow_computation_test_utils.run_tensorflow(
-        proto, operands)
+        proto, operands
+    )
     self.assertEqual(actual_result, expected_result)
 
   @parameterized.named_parameters(
-      ('different_structures', tf.math.add,
-       _StructType([
-           _StructType([
-               _TensorType(tf.int32),
-           ]),
-           _StructType([_TensorType(tf.int32),
-                        _TensorType(tf.int32)]),
-       ]), [1, [2, 3]]),
-      ('shape_incompatible', tf.math.add,
-       _StructType([
-           _TensorType(dtype=tf.float64, shape=[None]),
-           _TensorType(dtype=tf.float64, shape=[1, 1])
-       ]), [np.array([1.0]), np.array([[2.25]])]))
+      (
+          'different_structures',
+          tf.math.add,
+          _StructType([
+              _StructType(
+                  [
+                      _TensorType(tf.int32),
+                  ]
+              ),
+              _StructType([_TensorType(tf.int32), _TensorType(tf.int32)]),
+          ]),
+          [1, [2, 3]],
+      ),
+      (
+          'shape_incompatible',
+          tf.math.add,
+          _StructType([
+              _TensorType(dtype=tf.float64, shape=[None]),
+              _TensorType(dtype=tf.float64, shape=[1, 1]),
+          ]),
+          [np.array([1.0]), np.array([[2.25]])],
+      ),
+  )
   def test_fails(self, operator, type_signature, operands):
     operands = tf.nest.map_structure(tf.constant, operands)
     with self.assertRaises(TypeError):
       tensorflow_computation_factory.create_binary_operator_with_upcast(
-          type_signature, operator)
+          type_signature, operator
+      )
 
 
 class CreateEmptyTupleTest(tf.test.TestCase):
@@ -391,7 +449,8 @@ class CreateIdentityTest(parameterized.TestCase):
     expected_type = type_factory.unary_op(type_signature)
     self.assertEqual(actual_type, expected_type)
     actual_result = tensorflow_computation_test_utils.run_tensorflow(
-        proto, value)
+        proto, value
+    )
     self.assertEqual(actual_result, value)
 
   @parameterized.named_parameters(
@@ -404,7 +463,8 @@ class CreateIdentityTest(parameterized.TestCase):
 
   def test_feeds_and_fetches_different(self):
     proto, _ = tensorflow_computation_factory.create_identity(
-        _TensorType(tf.int32))
+        _TensorType(tf.int32)
+    )
     self.assertNotEqual(proto.tensorflow.parameter, proto.tensorflow.result)
 
 
@@ -413,24 +473,34 @@ class CreateReplicateInputTest(parameterized.TestCase):
   @parameterized.named_parameters(
       ('int', _TensorType(tf.int32), 3, 10),
       ('float', _TensorType(tf.float32), 3, 10.0),
-      ('unnamed_tuple', _StructType([tf.int32, tf.float32]), 3,
-       structure.Struct([(None, 10), (None, 10.0)])),
-      ('named_tuple', _StructType([
-          ('a', tf.int32), ('b', tf.float32)
-      ]), 3, structure.Struct([('a', 10), ('b', 10.0)])),
+      (
+          'unnamed_tuple',
+          _StructType([tf.int32, tf.float32]),
+          3,
+          structure.Struct([(None, 10), (None, 10.0)]),
+      ),
+      (
+          'named_tuple',
+          _StructType([('a', tf.int32), ('b', tf.float32)]),
+          3,
+          structure.Struct([('a', 10), ('b', 10.0)]),
+      ),
       ('sequence', computation_types.SequenceType(tf.int32), 3, [10] * 3),
   )
   def test_returns_computation(self, type_signature, count, value):
     proto, _ = tensorflow_computation_factory.create_replicate_input(
-        type_signature, count)
+        type_signature, count
+    )
 
     self.assertIsInstance(proto, pb.Computation)
     actual_type = type_serialization.deserialize_type(proto.type)
-    expected_type = computation_types.FunctionType(type_signature,
-                                                   [type_signature] * count)
+    expected_type = computation_types.FunctionType(
+        type_signature, [type_signature] * count
+    )
     expected_type.check_assignable_from(actual_type)
     actual_result = tensorflow_computation_test_utils.run_tensorflow(
-        proto, value)
+        proto, value
+    )
     expected_result = structure.Struct([(None, value)] * count)
     self.assertEqual(actual_result, expected_result)
 
@@ -442,7 +512,8 @@ class CreateReplicateInputTest(parameterized.TestCase):
   def test_raises_type_error(self, type_signature, count):
     with self.assertRaises(TypeError):
       tensorflow_computation_factory.create_replicate_input(
-          type_signature, count)
+          type_signature, count
+      )
 
 
 class CreateComputationForPyFnTest(parameterized.TestCase):
@@ -463,10 +534,12 @@ class CreateComputationForPyFnTest(parameterized.TestCase):
        45),
   )
   # pyformat: enable
-  def test_returns_computation(self, py_fn, type_signature, arg,
-                               expected_result):
+  def test_returns_computation(
+      self, py_fn, type_signature, arg, expected_result
+  ):
     proto, _ = tensorflow_computation_factory.create_computation_for_py_fn(
-        py_fn, type_signature)
+        py_fn, type_signature
+    )
 
     self.assertIsInstance(proto, pb.Computation)
     actual_result = tensorflow_computation_test_utils.run_tensorflow(proto, arg)
@@ -480,7 +553,8 @@ class CreateComputationForPyFnTest(parameterized.TestCase):
   def test_raises_type_error_with_none(self, py_fn, type_signature):
     with self.assertRaises(TypeError):
       tensorflow_computation_factory.create_computation_for_py_fn(
-          py_fn, type_signature)
+          py_fn, type_signature
+      )
 
 
 if __name__ == '__main__':

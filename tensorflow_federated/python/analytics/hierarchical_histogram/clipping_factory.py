@@ -62,7 +62,8 @@ class HistogramClippingSumFactory(factory.UnweightedAggregationFactory):
       clip_mechanism: str = 'sub-sampling',
       max_records_per_user: int = 10,
       inner_agg_factory: Optional[factory.UnweightedAggregationFactory] = None,
-      cast_to_float: bool = False):
+      cast_to_float: bool = False,
+  ):
     """Initializes a `HistogramClippingSumFactory` instance.
 
     Args:
@@ -109,23 +110,31 @@ class HistogramClippingSumFactory(factory.UnweightedAggregationFactory):
     inner_value_type = value_type
     if self._cast_to_float:
       inner_value_type = computation_types.to_type(
-          (tf.float32, value_type.shape))
+          (tf.float32, value_type.shape)
+      )
     inner_agg_process = self._inner_agg_factory.create(inner_value_type)
 
     init_fn = inner_agg_process.initialize
 
     tff_clip_fn = tensorflow_computation.tf_computation(clip_fn)
     tff_cast_fn = tensorflow_computation.tf_computation(
-        lambda x: tf.cast(x, inner_value_type.dtype))
+        lambda x: tf.cast(x, inner_value_type.dtype)
+    )
 
     @federated_computation.federated_computation(
-        init_fn.type_signature.result, computation_types.at_clients(value_type))
+        init_fn.type_signature.result, computation_types.at_clients(value_type)
+    )
     def next_fn(state, value):
       # Clip values before aggregation.
       clipped_value = intrinsics.federated_map(
-          tff_clip_fn, (value,
-                        intrinsics.federated_value(self._max_records_per_user,
-                                                   placements.CLIENTS)))
+          tff_clip_fn,
+          (
+              value,
+              intrinsics.federated_value(
+                  self._max_records_per_user, placements.CLIENTS
+              ),
+          ),
+      )
       clipped_value = intrinsics.federated_map(tff_cast_fn, clipped_value)
 
       return inner_agg_process.next(state, clipped_value)
@@ -151,8 +160,8 @@ def _sub_sample_clip(histogram, sample_num):
   def sub_sample():
     indices = tf.repeat(tf.range(tf.shape(histogram)[0]), histogram)
     seed = tf.cast(
-        tf.stack([tf.timestamp() * 1e6,
-                  tf.timestamp() * 1e6]), dtype=tf.int64)
+        tf.stack([tf.timestamp() * 1e6, tf.timestamp() * 1e6]), dtype=tf.int64
+    )
     samples = tf.random.stateless_uniform(tf.shape(indices), seed)
     _, sampled_idx = tf.math.top_k(samples, k=sample_num, sorted=False)
     ind = tf.expand_dims(tf.gather(indices, sampled_idx), axis=1)
@@ -161,7 +170,8 @@ def _sub_sample_clip(histogram, sample_num):
 
   l1_norm = tf.norm(histogram, ord=1)
   result = tf.cond(
-      tf.greater(l1_norm, sample_num), sub_sample, lambda: histogram)
+      tf.greater(l1_norm, sample_num), sub_sample, lambda: histogram
+  )
   result.set_shape(histogram.shape.as_list())
   # Ensure shape as TF shape inference may fail due to custom sampling.
   return result
@@ -186,10 +196,11 @@ def _distinct_clip(histogram, sample_num):
 
   def distinct():
     indices = tf.squeeze(
-        tf.cast(tf.where(tf.not_equal(histogram, 0)), tf.int32))
+        tf.cast(tf.where(tf.not_equal(histogram, 0)), tf.int32)
+    )
     seed = tf.cast(
-        tf.stack([tf.timestamp() * 1e6,
-                  tf.timestamp() * 1e6]), dtype=tf.int64)
+        tf.stack([tf.timestamp() * 1e6, tf.timestamp() * 1e6]), dtype=tf.int64
+    )
     samples = tf.random.stateless_uniform(tf.shape(indices), seed)
     _, sampled_idx = tf.math.top_k(samples, k=sample_num, sorted=False)
     ind = tf.expand_dims(tf.gather(indices, sampled_idx), axis=1)
@@ -198,22 +209,27 @@ def _distinct_clip(histogram, sample_num):
 
   l0_norm = tf.math.count_nonzero(histogram, dtype=tf.int32)
   result = tf.cond(
-      tf.greater(l0_norm, sample_num), distinct,
-      lambda: tf.minimum(histogram, 1))
+      tf.greater(l0_norm, sample_num),
+      distinct,
+      lambda: tf.minimum(histogram, 1),
+  )
   # Ensure shape as TF shape inference may fail due to custom sampling.
   return tf.reshape(result, histogram.shape)
 
 
 def _check_is_integer_struct(value_type, label):
   if not type_analysis.is_structure_of_integers(value_type):
-    raise TypeError(f'Component dtypes of `{label}` must all be integers. '
-                    f'Found {repr(value_type)}.')
+    raise TypeError(
+        f'Component dtypes of `{label}` must all be integers. '
+        f'Found {repr(value_type)}.'
+    )
 
 
 def _check_is_tensor_type(value, label):
   if not value.is_tensor():
-    raise TypeError(f'Expected `{label}` to be `TensorType`. '
-                    f'Found type: {repr(value)}')
+    raise TypeError(
+        f'Expected `{label}` to be `TensorType`. Found type: {repr(value)}'
+    )
 
 
 def _check_positive(value, label):
@@ -223,5 +239,4 @@ def _check_positive(value, label):
 
 def _check_membership(value, valid_set, label):
   if value not in valid_set:
-    raise ValueError(f'`{label}` must be one of {valid_set}. '
-                     f'Found {value}.')
+    raise ValueError(f'`{label}` must be one of {valid_set}. Found {value}.')

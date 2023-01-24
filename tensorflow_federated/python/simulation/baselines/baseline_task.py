@@ -34,10 +34,13 @@ class BaselineTask:
       task. Note that `model_fn().input_spec` must match
       `datasets.element_type_structure`.
   """
+
   datasets: task_data.BaselineTaskDatasets = attr.ib(
-      validator=attr.validators.instance_of(task_data.BaselineTaskDatasets))
+      validator=attr.validators.instance_of(task_data.BaselineTaskDatasets)
+  )
   model_fn: Callable[[], model.Model] = attr.ib(
-      validator=attr.validators.is_callable())
+      validator=attr.validators.is_callable()
+  )
 
   def __attrs_post_init__(self):
     # Wrap model construction in a graph to avoid polluting the global context
@@ -45,8 +48,10 @@ class BaselineTask:
     with tf.Graph().as_default():
       tff_model = self.model_fn()
     if not isinstance(tff_model, model.Model):
-      raise TypeError('Expected model_fn to output a tff.learning.Model, '
-                      'found {} instead'.format(type(tff_model)))
+      raise TypeError(
+          'Expected model_fn to output a tff.learning.Model, '
+          'found {} instead'.format(type(tff_model))
+      )
 
     dataset_element_spec = self.datasets.element_type_structure
     model_input_spec = tff_model.input_spec
@@ -55,4 +60,6 @@ class BaselineTask:
       raise ValueError(
           'Dataset element spec and model input spec do not match.'
           'Found dataset element spec {}, but model input spec {}'.format(
-              dataset_element_spec, model_input_spec))
+              dataset_element_spec, model_input_spec
+          )
+      )

@@ -48,24 +48,29 @@ _DEFAULT_MAX_SERIALIZED_SEQUENCE_SIZE_BYTES = 100 * (1024**2)  # 100 MB
 
 class DatasetSerializationError(Exception):
   """Error raised during Dataset serialization or deserialization."""
+
   pass
 
 
 @tracing.trace
 def _serialize_computation(
     comp: computation_pb2.Computation,
-    type_spec: Optional[computation_types.Type]) -> _SerializeReturnType:
+    type_spec: Optional[computation_types.Type],
+) -> _SerializeReturnType:
   """Serializes a TFF computation."""
   type_spec = executor_utils.reconcile_value_type_with_type_spec(
-      type_serialization.deserialize_type(comp.type), type_spec)
+      type_serialization.deserialize_type(comp.type), type_spec
+  )
   return executor_pb2.Value(computation=comp), type_spec
 
 
 def _value_proto_for_np_array(
-    value, type_spec: computation_types.Type) -> executor_pb2.Value:
+    value, type_spec: computation_types.Type
+) -> executor_pb2.Value:
   """Creates value proto for np array, assumed to be assignable to type_spec."""
   tensor_proto = tf.make_tensor_proto(
-      value, dtype=type_spec.dtype, verify_shape=True)
+      value, dtype=type_spec.dtype, verify_shape=True
+  )
   any_pb = any_pb2.Any()
   any_pb.Pack(tensor_proto)
   return executor_pb2.Value(tensor=any_pb)
@@ -111,8 +116,10 @@ def _serialize_tensor_value(
   else:
     value = np.asarray(value)
   if not tf.TensorShape(value.shape).is_compatible_with(type_spec.shape):
-    raise TypeError(f'Cannot serialize tensor with shape {value.shape} to '
-                    f'shape {type_spec.shape}.')
+    raise TypeError(
+        f'Cannot serialize tensor with shape {value.shape} to '
+        f'shape {type_spec.shape}.'
+    )
   if value.dtype != type_spec.dtype.as_numpy_dtype:
     try:
       value = value.astype(type_spec.dtype.as_numpy_dtype, casting='same_kind')
@@ -120,7 +127,8 @@ def _serialize_tensor_value(
       value_type_string = py_typecheck.type_string(type(original_value))
       raise TypeError(
           f'Failed to serialize value of Python type {value_type_string} to '
-          f'a tensor of type {type_spec}.\nValue: {original_value}') from te
+          f'a tensor of type {type_spec}.\nValue: {original_value}'
+      ) from te
 
   value_proto = _value_proto_for_np_array(value, type_spec)
   return value_proto, type_spec
@@ -128,7 +136,8 @@ def _serialize_tensor_value(
 
 def _serialize_dataset(
     dataset,
-    max_serialized_size_bytes=_DEFAULT_MAX_SERIALIZED_SEQUENCE_SIZE_BYTES):
+    max_serialized_size_bytes=_DEFAULT_MAX_SERIALIZED_SEQUENCE_SIZE_BYTES,
+):
   """Serializes a `tf.data.Dataset` value into a `bytes` object.
 
   Args:
@@ -145,19 +154,23 @@ def _serialize_dataset(
     SerializationError: if there was an error in TensorFlow during
       serialization.
   """
-  py_typecheck.check_type(dataset,
-                          type_conversions.TF_DATASET_REPRESENTATION_TYPES)
+  py_typecheck.check_type(
+      dataset, type_conversions.TF_DATASET_REPRESENTATION_TYPES
+  )
   dataset_graph = tf.raw_ops.DatasetToGraphV2(
-      input_dataset=tf.data.experimental.to_variant(dataset))
+      input_dataset=tf.data.experimental.to_variant(dataset)
+  )
   if tf.executing_eagerly():
     dataset_graph_def_bytes = dataset_graph.numpy()
   else:
     dataset_graph_def_bytes = tf.compat.v1.Session().run(dataset_graph)
   if len(dataset_graph_def_bytes) > max_serialized_size_bytes:
-    raise ValueError('Serialized size of Dataset ({:d} bytes) exceeds maximum '
-                     'allowed ({:d} bytes)'.format(
-                         len(dataset_graph_def_bytes),
-                         max_serialized_size_bytes))
+    raise ValueError(
+        'Serialized size of Dataset ({:d} bytes) exceeds maximum '
+        'allowed ({:d} bytes)'.format(
+            len(dataset_graph_def_bytes), max_serialized_size_bytes
+        )
+    )
   return dataset_graph_def_bytes
 
 
@@ -182,37 +195,45 @@ def _check_container_compat_with_tf_nest(type_spec: computation_types.Type):
       # traversal, so there is no ambiguity here either.
       return type_to_check, False
     elif not type_to_check.is_struct_with_python():
-      raise ValueError('Attempting to serialize a named struct type with '
-                       'ambiguous traversal order (sequence order distinct '
-                       'from alphabetical order) without a Python container; '
-                       'this is an unsafe operation, as TFF cannot determine '
-                       'the intended traversal order after deserializing the '
-                       'proto due to inconsistent behavior of tf.nest.')
+      raise ValueError(
+          'Attempting to serialize a named struct type with '
+          'ambiguous traversal order (sequence order distinct '
+          'from alphabetical order) without a Python container; '
+          'this is an unsafe operation, as TFF cannot determine '
+          'the intended traversal order after deserializing the '
+          'proto due to inconsistent behavior of tf.nest.'
+      )
 
     container_type = computation_types.StructWithPythonType.get_container_type(
-        type_to_check)
+        type_to_check
+    )
     if (not names_are_sorted) and container_type is not collections.OrderedDict:
-      raise ValueError('Attempted to serialize a dataset yielding named '
-                       'elements in non-sorted sequence order with '
-                       f'non-OrderedDict container (type {container_type}). '
-                       'This is an ambiguous operation; `tf.nest` behaves in '
-                       'a manner which depends on the Python type of this '
-                       'container, so coercing the dataset reconstructed '
-                       'from the resulting Value proto depends on assuming a '
-                       'single Python type here. Please prefer to use '
-                       '`collections.OrderedDict` containers for the elements '
-                       'your dataset yields.')
+      raise ValueError(
+          'Attempted to serialize a dataset yielding named '
+          'elements in non-sorted sequence order with '
+          f'non-OrderedDict container (type {container_type}). '
+          'This is an ambiguous operation; `tf.nest` behaves in '
+          'a manner which depends on the Python type of this '
+          'container, so coercing the dataset reconstructed '
+          'from the resulting Value proto depends on assuming a '
+          'single Python type here. Please prefer to use '
+          '`collections.OrderedDict` containers for the elements '
+          'your dataset yields.'
+      )
     return type_to_check, False
 
   type_transformations.transform_type_postorder(
-      type_spec, _check_ordereddict_container_for_struct)
+      type_spec, _check_ordereddict_container_for_struct
+  )
 
 
 @tracing.trace
 def _serialize_sequence_value(
-    value: Union[Union[type_conversions.TF_DATASET_REPRESENTATION_TYPES],
-                 list[Any]],
-    type_spec: computation_types.SequenceType) -> _SerializeReturnType:
+    value: Union[
+        Union[type_conversions.TF_DATASET_REPRESENTATION_TYPES], list[Any]
+    ],
+    type_spec: computation_types.SequenceType,
+) -> _SerializeReturnType:
   """Serializes a `tf.data.Dataset` value into `executor_pb2.Value`.
 
   Args:
@@ -228,19 +249,23 @@ def _serialize_sequence_value(
   """
   if isinstance(value, list):
     value = tensorflow_utils.make_data_set_from_elements(
-        None, value, type_spec.element)
+        None, value, type_spec.element
+    )
   if not isinstance(value, type_conversions.TF_DATASET_REPRESENTATION_TYPES):
     raise TypeError(
         'Cannot serialize Python type {!s} as TFF type {!s}.'.format(
             py_typecheck.type_string(type(value)),
-            type_spec if type_spec is not None else 'unknown'))
+            type_spec if type_spec is not None else 'unknown',
+        )
+    )
   element_type = computation_types.to_type(value.element_spec)
   _check_container_compat_with_tf_nest(element_type)
   value_type = computation_types.SequenceType(element_type)
   if not type_spec.is_assignable_from(value_type):
     raise TypeError(
         'Cannot serialize dataset with elements of type {!s} as TFF type {!s}.'
-        .format(value_type, type_spec if type_spec is not None else 'unknown'))
+        .format(value_type, type_spec if type_spec is not None else 'unknown')
+    )
   value_proto = executor_pb2.Value()
   # TFF must store the type spec here because TF will lose the ordering of the
   # names for `tf.data.Dataset` that return elements of
@@ -248,7 +273,8 @@ def _serialize_sequence_value(
   # key ordering upon deserialization.
   value_proto.sequence.serialized_graph_def = _serialize_dataset(value)
   value_proto.sequence.element_type.CopyFrom(
-      type_serialization.serialize_type(element_type))
+      type_serialization.serialize_type(element_type)
+  )
   return value_proto, type_spec
 
 
@@ -260,10 +286,12 @@ def _serialize_struct_type(
   """Serializes a value of tuple type."""
   value_structure = structure.from_container(struct_typed_value)
   if len(value_structure) != len(type_spec):
-    raise TypeError('Cannot serialize a struct value of '
-                    f'{len(value_structure)} elements to a struct type '
-                    f'requiring {len(type_spec)} elements. Trying to serialize'
-                    f'\n{struct_typed_value!r}\nto\n{type_spec}.')
+    raise TypeError(
+        'Cannot serialize a struct value of '
+        f'{len(value_structure)} elements to a struct type '
+        f'requiring {len(type_spec)} elements. Trying to serialize'
+        f'\n{struct_typed_value!r}\nto\n{type_spec}.'
+    )
   type_elem_iter = structure.iter_elements(type_spec)
   val_elem_iter = structure.iter_elements(value_structure)
   elements = []
@@ -275,7 +303,8 @@ def _serialize_struct_type(
       element = executor_pb2.Value.Struct.Element(value=e_value)
     elements.append(element)
   value_proto = executor_pb2.Value(
-      struct=executor_pb2.Value.Struct(element=elements))
+      struct=executor_pb2.Value.Struct(element=elements)
+  )
   return value_proto, type_spec
 
 
@@ -295,7 +324,8 @@ def _serialize_federated_value(
     type_spec.member.check_assignable_from(it_type)
     value_proto.federated.value.append(federated_value_proto)
   value_proto.federated.type.CopyFrom(
-      type_serialization.serialize_type(type_spec).federated)
+      type_serialization.serialize_type(type_spec).federated
+  )
   return value_proto, type_spec
 
 
@@ -327,12 +357,14 @@ def serialize_value(
   elif isinstance(value, computation_impl.ConcreteComputation):
     return _serialize_computation(
         computation_impl.ConcreteComputation.get_proto(value),
-        executor_utils.reconcile_value_with_type_spec(value, type_spec))
+        executor_utils.reconcile_value_with_type_spec(value, type_spec),
+    )
   elif type_spec is None:
-    raise TypeError('A type hint is required when serializing a value which '
-                    'is not a TFF computation. Asked to serialized value {v} '
-                    ' of type {t} with None type spec.'.format(
-                        v=value, t=type(value)))
+    raise TypeError(
+        'A type hint is required when serializing a value which '
+        'is not a TFF computation. Asked to serialized value {v} '
+        ' of type {t} with None type spec.'.format(v=value, t=type(value))
+    )
   elif type_spec.is_tensor():
     return _serialize_tensor_value(value, type_spec)
   elif type_spec.is_sequence():
@@ -345,15 +377,20 @@ def serialize_value(
     raise ValueError(
         'Unable to serialize value with Python type {} and {} TFF type.'.format(
             str(py_typecheck.type_string(type(value))),
-            str(type_spec) if type_spec is not None else 'unknown'))
+            str(type_spec) if type_spec is not None else 'unknown',
+        )
+    )
 
 
 @tracing.trace
 def _deserialize_computation(
-    value_proto: executor_pb2.Value) -> _DeserializeReturnType:
+    value_proto: executor_pb2.Value,
+) -> _DeserializeReturnType:
   """Deserializes a TFF computation."""
-  return (value_proto.computation,
-          type_serialization.deserialize_type(value_proto.computation.type))
+  return (
+      value_proto.computation,
+      type_serialization.deserialize_type(value_proto.computation.type),
+  )
 
 
 def _tensor_for_value(value_proto: executor_pb2.Value) -> tf.Tensor:
@@ -366,7 +403,8 @@ def _tensor_for_value(value_proto: executor_pb2.Value) -> tf.Tensor:
 
 @tracing.trace
 def _deserialize_tensor_value(
-    value_proto: executor_pb2.Value) -> _DeserializeReturnType:
+    value_proto: executor_pb2.Value,
+) -> _DeserializeReturnType:
   """Deserializes a tensor value from `.Value`.
 
   Args:
@@ -383,15 +421,17 @@ def _deserialize_tensor_value(
   """
   value = _tensor_for_value(value_proto)
   value_type = computation_types.TensorType(
-      dtype=value.dtype, shape=value.shape)
+      dtype=value.dtype, shape=value.shape
+  )
   if not value.shape:
     # Unwrap the scalar array as just a primitive numeric.
     value = value.dtype.type(value)
   return value, value_type
 
 
-def _deserialize_dataset_from_graph_def(serialized_graph_def: bytes,
-                                        element_type: computation_types.Type):
+def _deserialize_dataset_from_graph_def(
+    serialized_graph_def: bytes, element_type: computation_types.Type
+):
   """Deserializes a serialized `tf.compat.v1.GraphDef` to a `tf.data.Dataset`.
 
   Args:
@@ -407,24 +447,36 @@ def _deserialize_dataset_from_graph_def(serialized_graph_def: bytes,
   type_analysis.check_tensorflow_compatible_type(element_type)
 
   def transform_to_tff_known_type(
-      type_spec: computation_types.Type) -> tuple[computation_types.Type, bool]:
+      type_spec: computation_types.Type,
+  ) -> tuple[computation_types.Type, bool]:
     """Transforms `StructType` to `StructWithPythonType`."""
     if type_spec.is_struct() and not type_spec.is_struct_with_python():
       field_is_named = tuple(
-          name is not None for name, _ in structure.iter_elements(type_spec))
+          name is not None for name, _ in structure.iter_elements(type_spec)
+      )
       has_names = any(field_is_named)
       is_all_named = all(field_is_named)
       if is_all_named:
-        return computation_types.StructWithPythonType(
-            elements=structure.iter_elements(type_spec),
-            container_type=collections.OrderedDict), True
+        return (
+            computation_types.StructWithPythonType(
+                elements=structure.iter_elements(type_spec),
+                container_type=collections.OrderedDict,
+            ),
+            True,
+        )
       elif not has_names:
-        return computation_types.StructWithPythonType(
-            elements=structure.iter_elements(type_spec),
-            container_type=tuple), True
+        return (
+            computation_types.StructWithPythonType(
+                elements=structure.iter_elements(type_spec),
+                container_type=tuple,
+            ),
+            True,
+        )
       else:
-        raise TypeError('Cannot represent TFF type in TF because it contains '
-                        f'partially named structures. Type: {type_spec}')
+        raise TypeError(
+            'Cannot represent TFF type in TF because it contains '
+            f'partially named structures. Type: {type_spec}'
+        )
     return type_spec, False
 
   if element_type.is_struct():
@@ -432,18 +484,21 @@ def _deserialize_dataset_from_graph_def(serialized_graph_def: bytes,
     # `StructType` into a `StructWithPythonType` for use as the
     # `tf.data.Dataset.element_spec` later.
     tf_compatible_type, _ = type_transformations.transform_type_postorder(
-        element_type, transform_to_tff_known_type)
+        element_type, transform_to_tff_known_type
+    )
   else:
     # We've checked this is only a struct or tensors, so we know this is a
     # `TensorType` here and will use as-is.
     tf_compatible_type = element_type
 
   tf_type_spec = type_conversions.type_to_tf_structure(tf_compatible_type)
-  element_spec = type_conversions.type_to_py_container(tf_type_spec,
-                                                       element_type)
+  element_spec = type_conversions.type_to_py_container(
+      tf_type_spec, element_type
+  )
   ds = tf.data.experimental.from_variant(
       tf.raw_ops.DatasetFromGraph(graph_def=serialized_graph_def),
-      structure=element_spec)
+      structure=element_spec,
+  )
   # If a serialized dataset had elements of nested structes of tensors (e.g.
   # `dict`, `OrderedDict`), the deserialized dataset will return `dict`,
   # `tuple`, or `namedtuple` (loses `collections.OrderedDict` in a conversion).
@@ -453,13 +508,14 @@ def _deserialize_dataset_from_graph_def(serialized_graph_def: bytes,
   # TFF understand), using the field order stored in the TFF type stored during
   # serialization.
   return tensorflow_utils.coerce_dataset_elements_to_tff_type_spec(
-      ds, element_type)
+      ds, element_type
+  )
 
 
 @tracing.trace
 def _deserialize_sequence_value(
     sequence_value_proto: executor_pb2.Value.Sequence,
-    type_hint: Optional[computation_types.Type] = None
+    type_hint: Optional[computation_types.Type] = None,
 ) -> _DeserializeReturnType:
   """Deserializes a `tf.data.Dataset`.
 
@@ -475,31 +531,36 @@ def _deserialize_sequence_value(
   """
   if sequence_value_proto.HasField('element_type'):
     element_type = type_serialization.deserialize_type(
-        sequence_value_proto.element_type)
+        sequence_value_proto.element_type
+    )
   elif type_hint is not None:
     element_type = type_hint.element
   else:
     raise ValueError(
         'Cannot deserialize a sequence Value proto that without one of '
-        '`element_type` proto field or `element_type_hint`')
+        '`element_type` proto field or `element_type_hint`'
+    )
   which_value = sequence_value_proto.WhichOneof('value')
   if which_value == 'zipped_saved_model':
-    raise ValueError('Deserializing dataset from zipped save model no longer '
-                     'supported.')
+    raise ValueError(
+        'Deserializing dataset from zipped save model no longer supported.'
+    )
   elif which_value == 'serialized_graph_def':
     ds = _deserialize_dataset_from_graph_def(
-        sequence_value_proto.serialized_graph_def, element_type)
+        sequence_value_proto.serialized_graph_def, element_type
+    )
   else:
     raise NotImplementedError(
         'Deserializing Sequences enocded as {!s} has not been implemented'
-        .format(which_value))
+        .format(which_value)
+    )
   return ds, computation_types.SequenceType(element=element_type)
 
 
 @tracing.trace
 def _deserialize_struct_value(
     value_proto: executor_pb2.Value,
-    type_hint: Optional[computation_types.Type] = None
+    type_hint: Optional[computation_types.Type] = None,
 ) -> _DeserializeReturnType:
   """Deserializes a value of struct type."""
   val_elems = []
@@ -518,7 +579,8 @@ def _deserialize_struct_value(
 
 def _ensure_deserialized_types_compatible(
     previous_type: Optional[computation_types.Type],
-    next_type: computation_types.Type) -> computation_types.Type:
+    next_type: computation_types.Type,
+) -> computation_types.Type:
   """Ensures one of `previous_type` or `next_type` is assignable to the other.
 
   Returns the type which is assignable from the other.
@@ -540,16 +602,17 @@ def _ensure_deserialized_types_compatible(
       return next_type
     elif previous_type.is_assignable_from(next_type):
       return previous_type
-    raise TypeError('Type mismatch checking member assignability under a '
-                    'federated value. Deserialized type {} is incompatible '
-                    'with previously deserialized {}.'.format(
-                        next_type, previous_type))
+    raise TypeError(
+        'Type mismatch checking member assignability under a '
+        'federated value. Deserialized type {} is incompatible '
+        'with previously deserialized {}.'.format(next_type, previous_type)
+    )
 
 
 @tracing.trace
 def _deserialize_federated_value(
     value_proto: executor_pb2.Value,
-    type_hint: Optional[computation_types.Type] = None
+    type_hint: Optional[computation_types.Type] = None,
 ) -> _DeserializeReturnType:
   """Deserializes a value of federated type."""
   if not value_proto.federated.value:
@@ -583,7 +646,8 @@ def _deserialize_federated_value(
   type_spec = computation_types.FederatedType(
       item_type,
       placement=placements.uri_to_placement_literal(placement_uri),
-      all_equal=all_equal)
+      all_equal=all_equal,
+  )
   if all_equal:
     value = value[0]
   return value, type_spec
@@ -592,7 +656,7 @@ def _deserialize_federated_value(
 @tracing.trace
 def deserialize_value(
     value_proto: executor_pb2.Value,
-    type_hint: Optional[computation_types.Type] = None
+    type_hint: Optional[computation_types.Type] = None,
 ) -> _DeserializeReturnType:
   """Deserializes a value (of any type) from `executor_pb2.Value`.
 
@@ -612,8 +676,10 @@ def deserialize_value(
     ValueError: If the value is malformed.
   """
   if not hasattr(value_proto, 'WhichOneof'):
-    raise TypeError('`value_proto` must be a protocol buffer message with a '
-                    '`value` oneof field.')
+    raise TypeError(
+        '`value_proto` must be a protocol buffer message with a '
+        '`value` oneof field.'
+    )
   which_value = value_proto.WhichOneof('value')
   if which_value == 'tensor':
     return _deserialize_tensor_value(value_proto)
@@ -627,29 +693,33 @@ def deserialize_value(
     return _deserialize_federated_value(value_proto, type_hint)
   else:
     raise ValueError(
-        'Unable to deserialize a value of type {}.'.format(which_value))
+        'Unable to deserialize a value of type {}.'.format(which_value)
+    )
 
 
 CardinalitiesType = Mapping[placements.PlacementLiteral, int]
 
 
 def serialize_cardinalities(
-    cardinalities: CardinalitiesType) -> list[executor_pb2.Cardinality]:
+    cardinalities: CardinalitiesType,
+) -> list[executor_pb2.Cardinality]:
   serialized_cardinalities = []
   for placement, cardinality in cardinalities.items():
     cardinality_message = executor_pb2.Cardinality(
         placement=computation_pb2.Placement(uri=placement.uri),
-        cardinality=cardinality)
+        cardinality=cardinality,
+    )
     serialized_cardinalities.append(cardinality_message)
   return serialized_cardinalities
 
 
 def deserialize_cardinalities(
-    serialized_cardinalities: Collection[executor_pb2.Cardinality]
+    serialized_cardinalities: Collection[executor_pb2.Cardinality],
 ) -> CardinalitiesType:
   cardinalities_dict = {}
   for cardinality_spec in serialized_cardinalities:
     literal = placements.uri_to_placement_literal(
-        cardinality_spec.placement.uri)
+        cardinality_spec.placement.uri
+    )
     cardinalities_dict[literal] = cardinality_spec.cardinality
   return cardinalities_dict

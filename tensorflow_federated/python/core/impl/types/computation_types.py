@@ -78,7 +78,7 @@ def type_mismatch_error_message(
     first_str = repr(first)
     second_str = repr(second)
     diff = None
-  elif (len(first_str) > MAX_LINE_LEN or len(second_str) > MAX_LINE_LEN):
+  elif len(first_str) > MAX_LINE_LEN or len(second_str) > MAX_LINE_LEN:
     # The types are large structures, and so the formatted representation is
     # used and a summary diff is added. The logic here is that large types
     # may be easier to diff visually with a more structured representation,
@@ -89,8 +89,10 @@ def type_mismatch_error_message(
     split_second = second_str.split('\n')
     diff = '\n'.join(difflib.unified_diff(split_first, split_second))
   message = [
-      'Type', f'`{first_str}`',
-      f'is not {relation.value} to {maybe_expected}type', f'`{second_str}`'
+      'Type',
+      f'`{first_str}`',
+      f'is not {relation.value} to {maybe_expected}type',
+      f'`{second_str}`',
   ]
   if diff:
     message += [f'\nDiff:\n{diff}']
@@ -104,8 +106,9 @@ def type_mismatch_error_message(
 class TypeNotAssignableError(TypeError):
 
   def __init__(self, source_type, target_type):
-    self.message = type_mismatch_error_message(source_type, target_type,
-                                               TypeRelation.ASSIGNABLE)
+    self.message = type_mismatch_error_message(
+        source_type, target_type, TypeRelation.ASSIGNABLE
+    )
     super().__init__(self.message)
     self.source_type = source_type
     self.target_type = target_type
@@ -114,8 +117,9 @@ class TypeNotAssignableError(TypeError):
 class TypesNotEquivalentError(TypeError):
 
   def __init__(self, first_type, second_type):
-    self.message = type_mismatch_error_message(first_type, second_type,
-                                               TypeRelation.EQUIVALENT)
+    self.message = type_mismatch_error_message(
+        first_type, second_type, TypeRelation.EQUIVALENT
+    )
     super().__init__(self.message)
     self.first_type = first_type
     self.second_type = second_type
@@ -124,8 +128,9 @@ class TypesNotEquivalentError(TypeError):
 class TypesNotIdenticalError(TypeError):
 
   def __init__(self, first_type, second_type):
-    self.message = type_mismatch_error_message(first_type, second_type,
-                                               TypeRelation.IDENTICAL)
+    self.message = type_mismatch_error_message(
+        first_type, second_type, TypeRelation.IDENTICAL
+    )
     super().__init__(self.message)
     self.first_type = first_type
     self.second_type = second_type
@@ -285,7 +290,7 @@ class Type(metaclass=abc.ABCMeta):
     return self == other
 
 
-class _ValueWithHash():
+class _ValueWithHash:
   """A wrapper for a value which combines it with a hashcode."""
 
   def __init__(self, value, hashcode):
@@ -309,8 +314,9 @@ class _ValueWithHash():
 # stored as a field of each class because some class objects themselves would
 # begin destruction before the map fields of other classes, causing errors
 # during destruction.
-_intern_pool: dict[typing.Type[Any], dict[Any, Any]] = (
-    collections.defaultdict(lambda: {}))
+_intern_pool: dict[typing.Type[Any], dict[Any, Any]] = collections.defaultdict(
+    lambda: {}
+)
 
 
 def _clear_intern_pool():
@@ -367,8 +373,9 @@ class _Intern(abc.ABCMeta):
       raise TypeError(
           f'Invalid arguments to `{cls.__name__}` constructor:\n{message}'
       ) from None
-    hashable_args = _ValueWithHash(normalized_args,
-                                   cls._hash_normalized_args(*normalized_args))
+    hashable_args = _ValueWithHash(
+        normalized_args, cls._hash_normalized_args(*normalized_args)
+    )
     intern_pool_for_cls = _intern_pool[cls]
     interned = intern_pool_for_cls.get(hashable_args, None)
     if interned is None:
@@ -395,14 +402,18 @@ def _is_dtype_spec(dtype):
   Returns:
     Boolean result indicating whether `dtype` is a Numpy or TF dtype.
   """
-  return (isinstance(dtype, tf.dtypes.DType) or
-          isinstance(dtype, type) and issubclass(dtype, np.number) or
-          isinstance(dtype, np.dtype))
+  return (
+      isinstance(dtype, tf.dtypes.DType)
+      or isinstance(dtype, type)
+      and issubclass(dtype, np.number)
+      or isinstance(dtype, np.dtype)
+  )
 
 
 @attr.s(auto_attribs=True, frozen=True, slots=True, eq=True)
 class _TensorShapeContainer:
   """Container type to hold normalized TensorShape information."""
+
   has_rank: bool
   # shape_tuple must be non-None if has_rank is True.
   shape_tuple: Optional[Sequence[int]] = None
@@ -429,7 +440,8 @@ class TensorType(Type, metaclass=_Intern):
       shape_container = _TensorShapeContainer(has_rank=False)
     else:
       shape_container = _TensorShapeContainer(
-          has_rank=True, shape_tuple=tuple(shape.as_list()))
+          has_rank=True, shape_tuple=tuple(shape.as_list())
+      )
     return (dtype, shape_container)
 
   @classmethod
@@ -489,15 +501,19 @@ class TensorType(Type, metaclass=_Intern):
     return self._hash
 
   def __eq__(self, other):
-    return ((self is other) or
-            (isinstance(other, TensorType) and self._dtype == other.dtype and
-             tensor_utils.same_shape(self._shape, other.shape)))
+    return (self is other) or (
+        isinstance(other, TensorType)
+        and self._dtype == other.dtype
+        and tensor_utils.same_shape(self._shape, other.shape)
+    )
 
   def is_assignable_from(self, source_type: 'Type') -> bool:
     if self is source_type:
       return True
-    if (not isinstance(source_type, TensorType) or
-        self.dtype != source_type.dtype):
+    if (
+        not isinstance(source_type, TensorType)
+        or self.dtype != source_type.dtype
+    ):
       return False
     target_shape = self.shape
     source_shape = source_type.shape
@@ -521,20 +537,22 @@ class TensorType(Type, metaclass=_Intern):
 
     return all(
         _dimension_is_assignable_from(target_shape_elem, source_shape_elem)
-        for target_shape_elem, source_shape_elem in zip(target_shape_list,
-                                                        source_shape_list))
+        for target_shape_elem, source_shape_elem in zip(
+            target_shape_list, source_shape_list
+        )
+    )
 
 
 def _format_struct_type_members(struct_type: 'StructType') -> str:
-
   def _element_repr(element):
     name, value = element
     if name is not None:
-      return '(\'{}\', {!r})'.format(name, value)
+      return "('{}', {!r})".format(name, value)
     return repr(value)
 
   return ', '.join(
-      _element_repr(e) for e in structure.iter_elements(struct_type))
+      _element_repr(e) for e in structure.iter_elements(struct_type)
+  )
 
 
 class StructType(structure.Struct, Type, metaclass=_Intern):
@@ -614,8 +632,9 @@ class StructType(structure.Struct, Type, metaclass=_Intern):
     return hash((structure.Struct.__hash__(self), 'NTT'))
 
   def __eq__(self, other):
-    return (self is other) or (isinstance(other, StructType) and
-                               structure.Struct.__eq__(self, other))
+    return (self is other) or (
+        isinstance(other, StructType) and structure.Struct.__eq__(self, other)
+    )
 
   def is_assignable_from(self, source_type: 'Type') -> bool:
     if self is source_type:
@@ -624,10 +643,13 @@ class StructType(structure.Struct, Type, metaclass=_Intern):
       return False
     target_elements = structure.to_elements(self)
     source_elements = structure.to_elements(source_type)
-    return ((len(target_elements) == len(source_elements)) and all(
-        ((source_elements[k][0] in [target_elements[k][0], None]) and
-         target_elements[k][1].is_assignable_from(source_elements[k][1]))
-        for k in range(len(target_elements))))
+    return (len(target_elements) == len(source_elements)) and all(
+        (
+            (source_elements[k][0] in [target_elements[k][0], None])
+            and target_elements[k][1].is_assignable_from(source_elements[k][1])
+        )
+        for k in range(len(target_elements))
+    )
 
 
 class StructWithPythonType(StructType, metaclass=_Intern):
@@ -660,18 +682,20 @@ class StructWithPythonType(StructType, metaclass=_Intern):
 
   def __repr__(self):
     members = _format_struct_type_members(self)
-    return 'StructType([{}]) as {}'.format(members,
-                                           self._container_type.__name__)
+    return 'StructType([{}]) as {}'.format(
+        members, self._container_type.__name__
+    )
 
   def __hash__(self):
     # Salt to avoid overlap.
     return hash((structure.Struct.__hash__(self), 'NTTWPCT'))
 
   def __eq__(self, other):
-    return ((self is other) or
-            (isinstance(other, StructWithPythonType) and
-             (self._container_type == other._container_type) and
-             structure.Struct.__eq__(self, other)))
+    return (self is other) or (
+        isinstance(other, StructWithPythonType)
+        and (self._container_type == other._container_type)
+        and structure.Struct.__eq__(self, other)
+    )
 
   @classmethod
   def get_container_type(cls, value):
@@ -698,14 +722,17 @@ class SequenceType(Type, metaclass=_Intern):
       # for sequence elements.
       if not type_spec.is_struct():
         return type_spec
-      elements = [(name, convert_struct_with_list_to_struct_with_tuple(value))
-                  for name, value in structure.iter_elements(type_spec)]
+      elements = [
+          (name, convert_struct_with_list_to_struct_with_tuple(value))
+          for name, value in structure.iter_elements(type_spec)
+      ]
       if not type_spec.is_struct_with_python():
         return StructType(elements=elements)
       container_cls = StructWithPythonType.get_container_type(type_spec)
       return StructWithPythonType(
           elements=elements,
-          container_type=tuple if container_cls is list else container_cls)
+          container_type=tuple if container_cls is list else container_cls,
+      )
 
     type_spec = convert_struct_with_list_to_struct_with_tuple(to_type(element))
     return (type_spec,)
@@ -737,14 +764,16 @@ class SequenceType(Type, metaclass=_Intern):
     return hash(self._element)
 
   def __eq__(self, other):
-    return ((self is other) or (isinstance(other, SequenceType) and
-                                self._element == other.element))
+    return (self is other) or (
+        isinstance(other, SequenceType) and self._element == other.element
+    )
 
   def is_assignable_from(self, source_type: 'Type') -> bool:
     if self is source_type:
       return True
-    return ((isinstance(source_type, SequenceType) and
-             self.element.is_assignable_from(source_type.element)))
+    return isinstance(
+        source_type, SequenceType
+    ) and self.element.is_assignable_from(source_type.element)
 
 
 class FunctionType(Type, metaclass=_Intern):
@@ -791,9 +820,11 @@ class FunctionType(Type, metaclass=_Intern):
     return hash((self._parameter, self._result))
 
   def __eq__(self, other):
-    return ((self is other) or (isinstance(other, FunctionType) and
-                                self._parameter == other.parameter and
-                                self._result == other.result))
+    return (self is other) or (
+        isinstance(other, FunctionType)
+        and self._parameter == other.parameter
+        and self._result == other.result
+    )
 
   def is_assignable_from(self, source_type: 'Type') -> bool:
     if self is source_type:
@@ -803,8 +834,10 @@ class FunctionType(Type, metaclass=_Intern):
     if (self.parameter is None) != (source_type.parameter is None):
       return False
     # Note that function parameters are contravariant, so we invert the check.
-    if (self.parameter is not None and
-        not source_type.parameter.is_assignable_from(self.parameter)):
+    if (
+        self.parameter is not None
+        and not source_type.parameter.is_assignable_from(self.parameter)
+    ):
       return False
     return self.result.is_assignable_from(source_type.result)
 
@@ -838,14 +871,15 @@ class AbstractType(Type, metaclass=_Intern):
     return self._label
 
   def __repr__(self):
-    return 'AbstractType(\'{}\')'.format(self._label)
+    return "AbstractType('{}')".format(self._label)
 
   def __hash__(self):
     return hash(self._label)
 
   def __eq__(self, other):
-    return (self is other) or (isinstance(other, AbstractType) and
-                               self._label == other.label)
+    return (self is other) or (
+        isinstance(other, AbstractType) and self._label == other.label
+    )
 
   def is_assignable_from(self, source_type: 'Type') -> bool:
     del source_type  # Unused.
@@ -901,10 +935,12 @@ class FederatedType(Type, metaclass=_Intern):
       all_equal = placement.default_all_equal
     return (member, placement, all_equal)
 
-  def __init__(self,
-               member: Any,
-               placement: placements.PlacementLiteral,
-               all_equal: Optional[bool] = None):
+  def __init__(
+      self,
+      member: Any,
+      placement: placements.PlacementLiteral,
+      all_equal: Optional[bool] = None,
+  ):
     """Constructs a new federated type instance.
 
     Args:
@@ -950,26 +986,30 @@ class FederatedType(Type, metaclass=_Intern):
     return self._all_equal
 
   def __repr__(self):
-    return 'FederatedType({!r}, {!r}, {!r})'.format(self._member,
-                                                    self._placement,
-                                                    self._all_equal)
+    return 'FederatedType({!r}, {!r}, {!r})'.format(
+        self._member, self._placement, self._all_equal
+    )
 
   def __hash__(self):
     return hash((self._member, self._placement, self._all_equal))
 
   def __eq__(self, other):
-    return ((self is other) or (isinstance(other, FederatedType) and
-                                self._member == other.member and
-                                self._placement == other.placement and
-                                self._all_equal == other.all_equal))
+    return (self is other) or (
+        isinstance(other, FederatedType)
+        and self._member == other.member
+        and self._placement == other.placement
+        and self._all_equal == other.all_equal
+    )
 
   def is_assignable_from(self, source_type: 'Type') -> bool:
     if self is source_type:
       return True
-    return (isinstance(source_type, FederatedType) and
-            self.member.is_assignable_from(source_type.member) and
-            (not self.all_equal or source_type.all_equal) and
-            self.placement is source_type.placement)
+    return (
+        isinstance(source_type, FederatedType)
+        and self.member.is_assignable_from(source_type.member)
+        and (not self.all_equal or source_type.all_equal)
+        and self.placement is source_type.placement
+    )
 
 
 def at_server(type_spec: Any) -> FederatedType:
@@ -999,7 +1039,7 @@ def at_clients(type_spec: Any, all_equal: bool = False) -> FederatedType:
 
 
 def to_type(
-    spec: ...
+    spec: ...,
 ) -> Union[TensorType, StructType, StructWithPythonType, SequenceType]:
   """Converts the argument into an instance of `tff.Type`.
 
@@ -1069,11 +1109,18 @@ def to_type(
     return TensorType(spec.dtype, spec.shape)
   elif isinstance(spec, tf.data.DatasetSpec):
     return SequenceType(element=to_type(spec.element_spec))
-  elif (isinstance(spec, tuple) and (len(spec) == 2) and
-        _is_dtype_spec(spec[0]) and
-        (isinstance(spec[1], tf.TensorShape) or
-         (isinstance(spec[1], (list, tuple)) and all(
-             (isinstance(x, int) or x is None) for x in spec[1])))):
+  elif (
+      isinstance(spec, tuple)
+      and (len(spec) == 2)
+      and _is_dtype_spec(spec[0])
+      and (
+          isinstance(spec[1], tf.TensorShape)
+          or (
+              isinstance(spec[1], (list, tuple))
+              and all((isinstance(x, int) or x is None) for x in spec[1])
+          )
+      )
+  ):
     # We found a 2-element tuple of the form (dtype, shape), where dtype is an
     # instance of tf.dtypes.DType, and shape is either an instance of
     # tf.TensorShape, or a list, or a tuple that can be fed as argument into a
@@ -1096,7 +1143,8 @@ def to_type(
     # ordering, which the original container did not have.
     raise TypeError(
         'Unsupported mapping type {}. Use collections.OrderedDict for '
-        'mappings.'.format(py_typecheck.type_string(type(spec))))
+        'mappings.'.format(py_typecheck.type_string(type(spec)))
+    )
   elif isinstance(spec, structure.Struct):
     return StructType(structure.to_elements(spec))
   elif isinstance(spec, tf.RaggedTensorSpec):
@@ -1114,25 +1162,38 @@ def to_type(
       flat_values_shape = tf.TensorShape(None)
       flat_values_type = TensorType(spec.dtype, flat_values_shape)
     nested_row_splits_type = StructWithPythonType(
-        ([(None, TensorType(spec.row_splits_dtype, [None]))] *
-         spec.ragged_rank), tuple)
-    return StructWithPythonType([('flat_values', flat_values_type),
-                                 ('nested_row_splits', nested_row_splits_type)],
-                                tf.RaggedTensor)
+        (
+            [(None, TensorType(spec.row_splits_dtype, [None]))]
+            * spec.ragged_rank
+        ),
+        tuple,
+    )
+    return StructWithPythonType(
+        [
+            ('flat_values', flat_values_type),
+            ('nested_row_splits', nested_row_splits_type),
+        ],
+        tf.RaggedTensor,
+    )
   elif isinstance(spec, tf.SparseTensorSpec):
     dtype = spec.dtype
     shape = spec.shape
     unknown_num_values = None
     rank = None if shape is None else shape.rank
-    return StructWithPythonType([
-        ('indices', TensorType(tf.int64, [unknown_num_values, rank])),
-        ('values', TensorType(dtype, [unknown_num_values])),
-        ('dense_shape', TensorType(tf.int64, [rank])),
-    ], tf.SparseTensor)
+    return StructWithPythonType(
+        [
+            ('indices', TensorType(tf.int64, [unknown_num_values, rank])),
+            ('values', TensorType(dtype, [unknown_num_values])),
+            ('dense_shape', TensorType(tf.int64, [rank])),
+        ],
+        tf.SparseTensor,
+    )
   else:
     raise TypeError(
         'Unable to interpret an argument of type {} as a type spec.'.format(
-            py_typecheck.type_string(type(spec))))
+            py_typecheck.type_string(type(spec))
+        )
+    )
 
 
 def _to_type_from_attrs(spec) -> Type:
@@ -1143,12 +1204,14 @@ def _to_type_from_attrs(spec) -> Type:
         'Converting `attr` classes to a federated type is no longer supported. '
         'Either populate an instance of the `attr.s` class with the '
         'appropriate field types, or use one of the other forms described in '
-        '`tff.to_type()` instead.')
+        '`tff.to_type()` instead.'
+    )
   else:
     # attrs class instance, inspect the field values for instances convertible
     # to types.
     elements = attr.asdict(
-        spec, dict_factory=collections.OrderedDict, recurse=False)
+        spec, dict_factory=collections.OrderedDict, recurse=False
+    )
     the_type = type(spec)
 
   return StructWithPythonType(elements, the_type)
@@ -1162,6 +1225,7 @@ class _PossiblyDisallowedChildren:
   `_possibly_disallowed_members` and its cache record which of these type kinds
   appears inside a type, allowing for quick well-formedness checks.
   """
+
   federated: Optional[Type]
   function: Optional[Type]
   sequence: Optional[Type]
@@ -1189,7 +1253,8 @@ atexit.register(_clear_disallowed_cache)
 
 
 def _possibly_disallowed_children(
-    type_signature: Type,) -> _PossiblyDisallowedChildren:
+    type_signature: Type,
+) -> _PossiblyDisallowedChildren:
   """Returns possibly disallowed child types appearing in `type_signature`."""
   cached = _possibly_disallowed_children_cache.get(type_signature, None)
   if cached:
@@ -1227,20 +1292,25 @@ def _check_well_formed(type_signature: Type):
       return
     raise TypeError(
         f'{disallowed_type} has been encountered in the type {type_signature}. '
-        f'{disallowed_kind} are disallowed inside of {context}.')
+        f'{disallowed_kind} are disallowed inside of {context}.'
+    )
 
   children = _possibly_disallowed_children(type_signature)
 
   if type_signature.is_federated():
     # Federated types cannot have federated or functional children.
-    for (child_type, kind) in ((children.federated, _FEDERATED_TYPES),
-                               (children.function, _FUNCTION_TYPES)):
+    for child_type, kind in (
+        (children.federated, _FEDERATED_TYPES),
+        (children.function, _FUNCTION_TYPES),
+    ):
       _check_disallowed(child_type, kind, _FEDERATED_TYPES)
   elif type_signature.is_sequence():
     # Sequence types cannot have federated, functional, or sequence children.
-    for (child_type, kind) in ((children.federated, _FEDERATED_TYPES),
-                               (children.function, _FUNCTION_TYPES),
-                               (children.sequence, _SEQUENCE_TYPES)):
+    for child_type, kind in (
+        (children.federated, _FEDERATED_TYPES),
+        (children.function, _FUNCTION_TYPES),
+        (children.sequence, _SEQUENCE_TYPES),
+    ):
       _check_disallowed(child_type, kind, _SEQUENCE_TYPES)
 
 
@@ -1375,8 +1445,9 @@ def _string_representation(type_spec, formatted: bool) -> str:
       else:
         return [type_spec.dtype.name]
     else:
-      raise NotImplementedError('Unexpected type found: {}.'.format(
-          type(type_spec)))
+      raise NotImplementedError(
+          'Unexpected type found: {}.'.format(type(type_spec))
+      )
 
   lines = _lines_for_type(type_spec, formatted)
   lines = [line.rstrip() for line in lines]

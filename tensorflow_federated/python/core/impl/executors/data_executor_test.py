@@ -53,11 +53,14 @@ class DataExecutorTest(absltest.TestCase):
   def test_data_proto_tensor(self):
     ex = data_executor.DataExecutor(
         eager_tf_executor.EagerTFExecutor(),
-        TestDataBackend(self, 'foo://bar', 10, tf.int32))
+        TestDataBackend(self, 'foo://bar', 10, tf.int32),
+    )
     proto = pb.Computation(
         data=pb.Data(uri='foo://bar'),
         type=type_serialization.serialize_type(
-            computation_types.TensorType(tf.int32)))
+            computation_types.TensorType(tf.int32)
+        ),
+    )
     val = asyncio.run(ex.create_value(proto))
     self.assertIsInstance(val, eager_tf_executor.EagerValue)
     self.assertEqual(str(val.type_signature), 'int32')
@@ -68,20 +71,25 @@ class DataExecutorTest(absltest.TestCase):
     type_spec = computation_types.SequenceType(tf.int64)
     ex = data_executor.DataExecutor(
         eager_tf_executor.EagerTFExecutor(),
-        TestDataBackend(self, 'foo://bar', tf.data.Dataset.range(3), type_spec))
+        TestDataBackend(self, 'foo://bar', tf.data.Dataset.range(3), type_spec),
+    )
     proto = pb.Computation(
         data=pb.Data(uri='foo://bar'),
-        type=type_serialization.serialize_type(type_spec))
+        type=type_serialization.serialize_type(type_spec),
+    )
     val = asyncio.run(ex.create_value(proto))
     self.assertIsInstance(val, eager_tf_executor.EagerValue)
     self.assertEqual(str(val.type_signature), 'int64*')
-    self.assertCountEqual([x.numpy() for x in iter(asyncio.run(val.compute()))],
-                          [0, 1, 2])
+    self.assertCountEqual(
+        [x.numpy() for x in iter(asyncio.run(val.compute()))], [0, 1, 2]
+    )
     ex.close()
 
   def test_pass_through_tensor(self):
-    ex = data_executor.DataExecutor(eager_tf_executor.EagerTFExecutor(),
-                                    TestDataBackend(self, 'none', None, None))
+    ex = data_executor.DataExecutor(
+        eager_tf_executor.EagerTFExecutor(),
+        TestDataBackend(self, 'none', None, None),
+    )
     val = asyncio.run(ex.create_value(10, tf.int32))
     self.assertIsInstance(val, eager_tf_executor.EagerValue)
     self.assertEqual(str(val.type_signature), 'int32')
@@ -89,8 +97,10 @@ class DataExecutorTest(absltest.TestCase):
     ex.close()
 
   def test_pass_through_comp(self):
-    ex = data_executor.DataExecutor(eager_tf_executor.EagerTFExecutor(),
-                                    TestDataBackend(self, 'none', None, None))
+    ex = data_executor.DataExecutor(
+        eager_tf_executor.EagerTFExecutor(),
+        TestDataBackend(self, 'none', None, None),
+    )
 
     @tensorflow_computation.tf_computation
     def comp():
@@ -108,14 +118,18 @@ class DataExecutorTest(absltest.TestCase):
     type_spec = computation_types.SequenceType(tf.int64)
     ex = data_executor.DataExecutor(
         eager_tf_executor.EagerTFExecutor(),
-        TestDataBackend(self, 'foo://bar', tf.data.Dataset.range(3), type_spec))
+        TestDataBackend(self, 'foo://bar', tf.data.Dataset.range(3), type_spec),
+    )
     proto = pb.Computation(
         data=pb.Data(uri='foo://bar'),
-        type=type_serialization.serialize_type(type_spec))
+        type=type_serialization.serialize_type(type_spec),
+    )
     arg_val = asyncio.run(
         ex.create_value(
             collections.OrderedDict([('x', proto), ('y', 10)]),
-            computation_types.StructType([('x', type_spec), ('y', tf.int32)])))
+            computation_types.StructType([('x', type_spec), ('y', tf.int32)]),
+        )
+    )
 
     @tensorflow_computation.tf_computation(type_spec, tf.int32)
     def comp(x, y):
@@ -132,10 +146,12 @@ class DataExecutorTest(absltest.TestCase):
     type_spec = computation_types.SequenceType(tf.int64)
     ex = data_executor.DataExecutor(
         eager_tf_executor.EagerTFExecutor(),
-        TestDataBackend(self, 'foo://bar', tf.data.Dataset.range(5), type_spec))
+        TestDataBackend(self, 'foo://bar', tf.data.Dataset.range(5), type_spec),
+    )
     ex_fn = lambda device: ex
     factory = executor_test_utils.LocalTestExecutorFactory(
-        leaf_executor_fn=ex_fn)
+        leaf_executor_fn=ex_fn
+    )
     context = executor_test_utils.TestExecutionContext(factory)
 
     @tensorflow_computation.tf_computation(type_spec)

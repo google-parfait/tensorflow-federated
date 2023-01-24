@@ -31,6 +31,7 @@ from tensorflow_federated.python.simulation.models import resnet_models
 
 class ResnetModel(enum.Enum):
   """Enum for ResNet classification models."""
+
   RESNET18 = 'resnet18'
   RESNET34 = 'resnet34'
   RESNET50 = 'resnet50'
@@ -44,14 +45,18 @@ DEFAULT_CROP_HEIGHT = 24
 DEFAULT_CROP_WIDTH = 24
 
 
-def _get_resnet_model(model_id: Union[str, ResnetModel],
-                      input_shape: tuple[int, int, int]) -> tf.keras.Model:
+def _get_resnet_model(
+    model_id: Union[str, ResnetModel], input_shape: tuple[int, int, int]
+) -> tf.keras.Model:
   """Constructs a `tf.keras.Model` for digit recognition."""
   try:
     model_enum = ResnetModel(model_id)
   except ValueError as e:
-    raise ValueError('The model argument must be one of {}, found {}'.format(
-        model, ResnetModel)) from e
+    raise ValueError(
+        'The model argument must be one of {}, found {}'.format(
+            model, ResnetModel
+        )
+    ) from e
 
   if model_enum == ResnetModel.RESNET18:
     keras_model_fn = resnet_models.create_resnet18
@@ -64,8 +69,11 @@ def _get_resnet_model(model_id: Union[str, ResnetModel],
   elif model_enum == ResnetModel.RESNET152:
     keras_model_fn = resnet_models.create_resnet152
   else:
-    raise ValueError('The model id must be one of {}, found {}'.format(
-        _RESNET_MODELS, model_enum))
+    raise ValueError(
+        'The model id must be one of {}, found {}'.format(
+            _RESNET_MODELS, model_enum
+        )
+    )
   return keras_model_fn(input_shape=input_shape, num_classes=_NUM_CLASSES)
 
 
@@ -115,28 +123,33 @@ def create_image_classification_task_with_datasets(
 
   if eval_client_spec is None:
     eval_client_spec = client_spec.ClientSpec(
-        num_epochs=1, batch_size=64, shuffle_buffer_size=1)
+        num_epochs=1, batch_size=64, shuffle_buffer_size=1
+    )
 
   train_preprocess_fn = image_classification_preprocessing.create_preprocess_fn(
       train_client_spec,
       crop_shape=crop_shape,
-      distort_image=distort_train_images)
+      distort_image=distort_train_images,
+  )
   eval_preprocess_fn = image_classification_preprocessing.create_preprocess_fn(
-      eval_client_spec, crop_shape=crop_shape)
+      eval_client_spec, crop_shape=crop_shape
+  )
 
   task_datasets = task_data.BaselineTaskDatasets(
       train_data=train_data,
       test_data=test_data,
       validation_data=None,
       train_preprocess_fn=train_preprocess_fn,
-      eval_preprocess_fn=eval_preprocess_fn)
+      eval_preprocess_fn=eval_preprocess_fn,
+  )
 
   def model_fn() -> model.Model:
     return keras_utils.from_keras_model(
         keras_model=_get_resnet_model(model_id, crop_shape),
         loss=tf.keras.losses.SparseCategoricalCrossentropy(),
         input_spec=task_datasets.element_type_structure,
-        metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
+        metrics=[tf.keras.metrics.SparseCategoricalAccuracy()],
+    )
 
   return baseline_task.BaselineTask(task_datasets, model_fn)
 
@@ -149,7 +162,8 @@ def create_image_classification_task(
     crop_width: int = DEFAULT_CROP_WIDTH,
     distort_train_images: bool = False,
     cache_dir: Optional[str] = None,
-    use_synthetic_data: bool = False) -> baseline_task.BaselineTask:
+    use_synthetic_data: bool = False,
+) -> baseline_task.BaselineTask:
   """Creates a baseline task for image classification on CIFAR-100.
 
   The goal of the task is to minimize the sparse categorical crossentropy
@@ -194,5 +208,12 @@ def create_image_classification_task(
     cifar_train, cifar_test = cifar100.load_data(cache_dir=cache_dir)
 
   return create_image_classification_task_with_datasets(
-      train_client_spec, eval_client_spec, model_id, crop_height, crop_width,
-      distort_train_images, cifar_train, cifar_test)
+      train_client_spec,
+      eval_client_spec,
+      model_id,
+      crop_height,
+      crop_width,
+      distort_train_images,
+      cifar_train,
+      cifar_test,
+  )

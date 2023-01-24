@@ -30,12 +30,14 @@ from tensorflow_federated.python.core.impl.types import type_analysis
 
 _TypeOrTupleOfTypes = Union[
     type[building_blocks.ComputationBuildingBlock],
-    tuple[type[building_blocks.ComputationBuildingBlock], ...]]
+    tuple[type[building_blocks.ComputationBuildingBlock], ...],
+]
 
 
 def visit_preorder(
     tree: building_blocks.ComputationBuildingBlock,
-    function: Callable[[building_blocks.ComputationBuildingBlock], None]):
+    function: Callable[[building_blocks.ComputationBuildingBlock], None],
+):
   py_typecheck.check_type(tree, building_blocks.ComputationBuildingBlock)
 
   def _visit(building_block):
@@ -47,7 +49,8 @@ def visit_preorder(
 
 def visit_postorder(
     tree: building_blocks.ComputationBuildingBlock,
-    function: Callable[[building_blocks.ComputationBuildingBlock], None]):
+    function: Callable[[building_blocks.ComputationBuildingBlock], None],
+):
   py_typecheck.check_type(tree, building_blocks.ComputationBuildingBlock)
 
   def _visit(building_block):
@@ -57,12 +60,15 @@ def visit_postorder(
   transformation_utils.transform_postorder(tree, _visit)
 
 
-_BuildingBlockPredicate = Callable[[building_blocks.ComputationBuildingBlock],
-                                   bool]
+_BuildingBlockPredicate = Callable[
+    [building_blocks.ComputationBuildingBlock], bool
+]
 
 
-def count(tree: building_blocks.ComputationBuildingBlock,
-          predicate: Optional[_BuildingBlockPredicate] = None) -> int:
+def count(
+    tree: building_blocks.ComputationBuildingBlock,
+    predicate: Optional[_BuildingBlockPredicate] = None,
+) -> int:
   """Returns the number of building blocks in `tree` matching `predicate`.
 
   Args:
@@ -81,14 +87,17 @@ def count(tree: building_blocks.ComputationBuildingBlock,
   return counter
 
 
-def contains(tree: building_blocks.ComputationBuildingBlock,
-             predicate: _BuildingBlockPredicate) -> bool:
+def contains(
+    tree: building_blocks.ComputationBuildingBlock,
+    predicate: _BuildingBlockPredicate,
+) -> bool:
   """Returns whether or not a building block in `tree` matches `predicate`."""
   return count(tree, predicate) != 0
 
 
-def count_types(tree: building_blocks.ComputationBuildingBlock,
-                types: _TypeOrTupleOfTypes) -> int:
+def count_types(
+    tree: building_blocks.ComputationBuildingBlock, types: _TypeOrTupleOfTypes
+) -> int:
   """Returns the number of instances of `types` in `tree`.
 
   Args:
@@ -100,8 +109,9 @@ def count_types(tree: building_blocks.ComputationBuildingBlock,
   return count(tree, lambda x: isinstance(x, types))
 
 
-def contains_types(tree: building_blocks.ComputationBuildingBlock,
-                   types: _TypeOrTupleOfTypes) -> bool:
+def contains_types(
+    tree: building_blocks.ComputationBuildingBlock, types: _TypeOrTupleOfTypes
+) -> bool:
   """Checks if `tree` contains any instance of `types`.
 
   Args:
@@ -116,8 +126,9 @@ def contains_types(tree: building_blocks.ComputationBuildingBlock,
   return count_types(tree, types) > 0
 
 
-def contains_only_types(tree: building_blocks.ComputationBuildingBlock,
-                        types: _TypeOrTupleOfTypes) -> bool:
+def contains_only_types(
+    tree: building_blocks.ComputationBuildingBlock, types: _TypeOrTupleOfTypes
+) -> bool:
   """Checks if `tree` contains only instances of `types`.
 
   Args:
@@ -149,12 +160,18 @@ def check_has_single_placement(comp, single_placement):
 
   def _check_single_placement(comp):
     """Checks that the placement in `type_spec` matches `single_placement`."""
-    if (comp.type_signature.is_federated() and
-        comp.type_signature.placement != single_placement):
-      raise ValueError('Comp contains a placement other than {}; '
-                       'placement {} on comp {} inside the structure. '.format(
-                           single_placement, comp.type_signature.placement,
-                           comp.compact_representation()))
+    if (
+        comp.type_signature.is_federated()
+        and comp.type_signature.placement != single_placement
+    ):
+      raise ValueError(
+          'Comp contains a placement other than {}; '
+          'placement {} on comp {} inside the structure. '.format(
+              single_placement,
+              comp.type_signature.placement,
+              comp.compact_representation(),
+          )
+      )
 
   visit_postorder(comp, _check_single_placement)
 
@@ -192,7 +209,8 @@ def check_contains_only_reducible_intrinsics(comp):
     if comp.is_intrinsic() and comp.uri not in reducible_uris:
       raise ValueError(
           'Encountered an Intrinsic not currently reducible to aggregate or '
-          'broadcast, the intrinsic {}'.format(comp.compact_representation()))
+          'broadcast, the intrinsic {}'.format(comp.compact_representation())
+      )
 
   visit_postorder(comp, _check)
 
@@ -204,7 +222,8 @@ class NonuniqueNameError(ValueError):
     self.name = name
     message = (
         f'The name `{name}` is bound multiple times in the computation:\n'
-        f'{comp.compact_representation()}')
+        f'{comp.compact_representation()}'
+    )
     super().__init__(message)
 
 
@@ -278,22 +297,29 @@ def extract_nodes_consuming(tree, predicate):
 
   def _are_children_in_dependent_set(comp, symbol_tree):
     """Checks if the dependencies of `comp` are present in `dependent_nodes`."""
-    if (comp.is_intrinsic() or comp.is_data() or comp.is_placement() or
-        comp.is_compiled_computation()):
+    if (
+        comp.is_intrinsic()
+        or comp.is_data()
+        or comp.is_placement()
+        or comp.is_compiled_computation()
+    ):
       return False
     elif comp.is_lambda():
       return id(comp.result) in dependent_nodes.mapping
     elif comp.is_block():
-      return any(
-          id(x[1]) in dependent_nodes.mapping for x in comp.locals) or id(
-              comp.result) in dependent_nodes.mapping
+      return (
+          any(id(x[1]) in dependent_nodes.mapping for x in comp.locals)
+          or id(comp.result) in dependent_nodes.mapping
+      )
     elif comp.is_struct():
       return any(id(x) in dependent_nodes.mapping for x in comp)
     elif comp.is_selection():
       return id(comp.source) in dependent_nodes.mapping
     elif comp.is_call():
-      return id(comp.function) in dependent_nodes.mapping or id(
-          comp.argument) in dependent_nodes.mapping
+      return (
+          id(comp.function) in dependent_nodes.mapping
+          or id(comp.argument) in dependent_nodes.mapping
+      )
     elif comp.is_reference():
       return _is_reference_dependent(comp, symbol_tree)
 
@@ -314,16 +340,20 @@ def extract_nodes_consuming(tree, predicate):
     return comp, False
 
   symbol_tree = transformation_utils.SymbolTree(
-      transformation_utils.ReferenceCounter)
+      transformation_utils.ReferenceCounter
+  )
   transformation_utils.transform_postorder_with_symbol_bindings(
-      tree, _populate_dependent_set, symbol_tree)
+      tree, _populate_dependent_set, symbol_tree
+  )
   return dependent_nodes.to_set()
 
 
 def _extract_calls_with_fn_consuming_arg(
-    tree: building_blocks.ComputationBuildingBlock, *,
+    tree: building_blocks.ComputationBuildingBlock,
+    *,
     fn_predicate: _BuildingBlockPredicate,
-    arg_predicate: _BuildingBlockPredicate) -> list[building_blocks.Call]:
+    arg_predicate: _BuildingBlockPredicate,
+) -> list[building_blocks.Call]:
   """Extracts calls depending on function and arg predicates.
 
   This function returns all calls in `tree` whose fns consume nodes matching
@@ -345,7 +375,8 @@ def _extract_calls_with_fn_consuming_arg(
   py_typecheck.check_type(tree, building_blocks.ComputationBuildingBlock)
 
   nodes_dependent_on_arg_predicate = extract_nodes_consuming(
-      tree, arg_predicate)
+      tree, arg_predicate
+  )
 
   nodes_dependent_on_fn_predicate = extract_nodes_consuming(tree, fn_predicate)
 
@@ -353,8 +384,10 @@ def _extract_calls_with_fn_consuming_arg(
 
   for node in nodes_dependent_on_arg_predicate:
     if node.is_call():
-      if (node.argument in nodes_dependent_on_arg_predicate and
-          node.function in nodes_dependent_on_fn_predicate):
+      if (
+          node.argument in nodes_dependent_on_arg_predicate
+          and node.function in nodes_dependent_on_fn_predicate
+      ):
         instances.append(node)
   return instances
 
@@ -383,10 +416,14 @@ def check_broadcast_not_dependent_on_aggregate(tree):
     return x.is_intrinsic() and x.intrinsic_def().broadcast_kind
 
   broadcast_dependent_examples = _extract_calls_with_fn_consuming_arg(
-      tree, fn_predicate=broadcast_predicate, arg_predicate=aggregate_predicate)
+      tree, fn_predicate=broadcast_predicate, arg_predicate=aggregate_predicate
+  )
   if broadcast_dependent_examples:
-    raise ValueError('Detected broadcast dependent on aggregate. '
-                     'Examples are: {}'.format(broadcast_dependent_examples))
+    raise ValueError(
+        'Detected broadcast dependent on aggregate. Examples are: {}'.format(
+            broadcast_dependent_examples
+        )
+    )
 
 
 def check_aggregate_not_dependent_on_aggregate(tree):
@@ -410,10 +447,14 @@ def check_aggregate_not_dependent_on_aggregate(tree):
     return x.is_intrinsic() and x.intrinsic_def().aggregation_kind
 
   multiple_agg_dependent_examples = _extract_calls_with_fn_consuming_arg(
-      tree, fn_predicate=aggregate_predicate, arg_predicate=aggregate_predicate)
+      tree, fn_predicate=aggregate_predicate, arg_predicate=aggregate_predicate
+  )
   if multiple_agg_dependent_examples:
-    raise ValueError('Detected one aggregate dependent on another. '
-                     'Examples are: {}'.format(multiple_agg_dependent_examples))
+    raise ValueError(
+        'Detected one aggregate dependent on another. Examples are: {}'.format(
+            multiple_agg_dependent_examples
+        )
+    )
 
 
 def count_tensorflow_ops_under(comp):
@@ -437,8 +478,10 @@ def count_tensorflow_ops_under(comp):
 
   def _count_tf_ops(inner_comp):
     nonlocal count_ops
-    if (inner_comp.is_compiled_computation() and
-        inner_comp.proto.WhichOneof('computation') == 'tensorflow'):
+    if (
+        inner_comp.is_compiled_computation()
+        and inner_comp.proto.WhichOneof('computation') == 'tensorflow'
+    ):
       count_ops += building_block_analysis.count_tensorflow_ops_in(inner_comp)
 
   visit_postorder(comp, _count_tf_ops)
@@ -466,10 +509,13 @@ def count_tensorflow_variables_under(comp):
 
   def _count_tf_vars(inner_comp):
     nonlocal count_vars
-    if (inner_comp.is_compiled_computation() and
-        inner_comp.proto.WhichOneof('computation') == 'tensorflow'):
+    if (
+        inner_comp.is_compiled_computation()
+        and inner_comp.proto.WhichOneof('computation') == 'tensorflow'
+    ):
       count_vars += building_block_analysis.count_tensorflow_variables_in(
-          inner_comp)
+          inner_comp
+      )
 
   visit_postorder(comp, _count_tf_vars)
   return count_vars
@@ -488,21 +534,28 @@ def check_contains_no_unbound_references(tree, excluding=None):
     ValueError: If `comp` has unbound references.
   """
   if not contains_no_unbound_references(tree, excluding):
-    raise ValueError('The AST contains unbound references: {}.'.format(
-        tree.formatted_representation()))
+    raise ValueError(
+        'The AST contains unbound references: {}.'.format(
+            tree.formatted_representation()
+        )
+    )
 
 
 def check_contains_no_new_unbound_references(old_tree, new_tree):
   """Checks that `new_tree` contains no unbound references not in `old_tree`."""
-  old_unbound = transformation_utils.get_map_of_unbound_references(
-      old_tree)[old_tree]
-  new_unbound = transformation_utils.get_map_of_unbound_references(
-      new_tree)[new_tree]
+  old_unbound = transformation_utils.get_map_of_unbound_references(old_tree)[
+      old_tree
+  ]
+  new_unbound = transformation_utils.get_map_of_unbound_references(new_tree)[
+      new_tree
+  ]
   diff = new_unbound - old_unbound
   if diff:
-    raise ValueError('Expected no new unbounded references. '
-                     f'Old tree:\n{old_tree}\nNew tree:\n{new_tree}\n'
-                     f'New unbound references: {diff}')
+    raise ValueError(
+        'Expected no new unbounded references. '
+        f'Old tree:\n{old_tree}\nNew tree:\n{new_tree}\n'
+        f'New unbound references: {diff}'
+    )
 
 
 def contains_called_intrinsic(tree, uri=None):
@@ -576,7 +629,8 @@ def _compiled_comp_equal(comp_1, comp_2):
   graphdef_1 = serialization_utils.unpack_graph_def(tensorflow_1.graph_def)
   graphdef_2 = serialization_utils.unpack_graph_def(tensorflow_2.graph_def)
   return tf.__internal__.graph_util.graph_defs_equal(
-      graphdef_1, graphdef_2, treat_nan_as_equal=True)
+      graphdef_1, graphdef_2, treat_nan_as_equal=True
+  )
 
 
 def trees_equal(comp_1, comp_2):
@@ -607,9 +661,11 @@ def trees_equal(comp_1, comp_2):
       `building_blocks.ComputationBuildingBlock`.
   """
   py_typecheck.check_type(
-      comp_1, (building_blocks.ComputationBuildingBlock, type(None)))
+      comp_1, (building_blocks.ComputationBuildingBlock, type(None))
+  )
   py_typecheck.check_type(
-      comp_2, (building_blocks.ComputationBuildingBlock, type(None)))
+      comp_2, (building_blocks.ComputationBuildingBlock, type(None))
+  )
 
   def _trees_equal(comp_1, comp_2, reference_equivalences):
     """Internal helper for `trees_equal`."""
@@ -625,17 +681,19 @@ def trees_equal(comp_1, comp_2):
     if comp_1.is_block():
       if len(comp_1.locals) != len(comp_2.locals):
         return False
-      for (name_1, value_1), (name_2, value_2) in zip(comp_1.locals,
-                                                      comp_2.locals):
+      for (name_1, value_1), (name_2, value_2) in zip(
+          comp_1.locals, comp_2.locals
+      ):
         if not _trees_equal(value_1, value_2, reference_equivalences):
           return False
         reference_equivalences.append((name_1, name_2))
       return _trees_equal(comp_1.result, comp_2.result, reference_equivalences)
     elif comp_1.is_call():
-      return (_trees_equal(comp_1.function, comp_2.function,
-                           reference_equivalences) and
-              _trees_equal(comp_1.argument, comp_2.argument,
-                           reference_equivalences))
+      return _trees_equal(
+          comp_1.function, comp_2.function, reference_equivalences
+      ) and _trees_equal(
+          comp_1.argument, comp_2.argument, reference_equivalences
+      )
     elif comp_1.is_compiled_computation():
       return _compiled_comp_equal(comp_1, comp_2)
     elif comp_1.is_data():
@@ -646,20 +704,24 @@ def trees_equal(comp_1, comp_2):
       if comp_1.parameter_type != comp_2.parameter_type:
         return False
       reference_equivalences.append(
-          (comp_1.parameter_name, comp_2.parameter_name))
+          (comp_1.parameter_name, comp_2.parameter_name)
+      )
       return _trees_equal(comp_1.result, comp_2.result, reference_equivalences)
     elif comp_1.is_placement():
       return comp_1.uri == comp_2.uri
     elif comp_1.is_reference():
       for comp_1_candidate, comp_2_candidate in reversed(
-          reference_equivalences):
+          reference_equivalences
+      ):
         if comp_1.name == comp_1_candidate:
           return comp_2.name == comp_2_candidate
       return comp_1.name == comp_2.name
     elif comp_1.is_selection():
-      return (comp_1.name == comp_2.name and
-              comp_1.index == comp_2.index and _trees_equal(
-                  comp_1.source, comp_2.source, reference_equivalences))
+      return (
+          comp_1.name == comp_2.name
+          and comp_1.index == comp_2.index
+          and _trees_equal(comp_1.source, comp_2.source, reference_equivalences)
+      )
     elif comp_1.is_struct():
       # The element names are checked as part of the `type_signature`.
       if len(comp_1) != len(comp_2):
@@ -673,10 +735,14 @@ def trees_equal(comp_1, comp_2):
   return _trees_equal(comp_1, comp_2, [])
 
 
+_DEFAULT_KIND_PREDICATE = lambda k: k is not None
+
+
 def find_aggregations_in_tree(
     comp,
-    kind_predicate: Callable[[intrinsic_defs.AggregationKind],
-                             bool] = lambda k: k is not None,
+    kind_predicate: Callable[
+        [intrinsic_defs.AggregationKind], bool
+    ] = _DEFAULT_KIND_PREDICATE,
 ) -> list[building_blocks.Call]:
   """Finds aggregating calls with kind matching `kind_predicate` in `comp`.
 
@@ -710,14 +776,16 @@ def find_aggregations_in_tree(
       return
     # Aggregation cannot be occurring if the output type is not federated
     if not type_analysis.contains_federated_types(
-        comp.function.type_signature.result):
+        comp.function.type_signature.result
+    ):
       return
 
     # We can't tell whether an arbitrary AST fragment results in an intrinsic
     # with a given URI, so we report an error in this case.
     if not comp.function.is_intrinsic():
-      raise ValueError('Cannot determine whether call contains aggregation: ' +
-                       str(comp))
+      raise ValueError(
+          'Cannot determine whether call contains aggregation: ' + str(comp)
+      )
 
     # Aggregation with inputs that don't contain any tensors isn't interesting.
     #
@@ -728,7 +796,8 @@ def find_aggregations_in_tree(
     # This means that this check *must* come after the check above ensuring
     # that we're only talking about calls to `building_blocks.Intrinsic`s.
     if comp.argument is None or not type_analysis.contains_tensor_types(
-        comp.argument.type_signature):
+        comp.argument.type_signature
+    ):
       return
 
     if kind_predicate(comp.function.intrinsic_def().aggregation_kind):
@@ -739,16 +808,18 @@ def find_aggregations_in_tree(
 
 
 def find_secure_aggregation_in_tree(
-    comp: building_blocks.ComputationBuildingBlock
+    comp: building_blocks.ComputationBuildingBlock,
 ) -> list[building_blocks.Call]:
   """See documentation on `tree_contains_aggregation` for details."""
   return find_aggregations_in_tree(
-      comp, lambda kind: kind == intrinsic_defs.AggregationKind.SECURE)
+      comp, lambda kind: kind == intrinsic_defs.AggregationKind.SECURE
+  )
 
 
 def find_unsecure_aggregation_in_tree(
-    comp: building_blocks.ComputationBuildingBlock
+    comp: building_blocks.ComputationBuildingBlock,
 ) -> list[building_blocks.Call]:
   """See documentation on `tree_contains_aggregation` for details."""
   return find_aggregations_in_tree(
-      comp, lambda kind: kind == intrinsic_defs.AggregationKind.DEFAULT)
+      comp, lambda kind: kind == intrinsic_defs.AggregationKind.DEFAULT
+  )

@@ -34,7 +34,8 @@ def threshold_histogram(histogram_keys, histogram_values, threshold):
   """
   histogram_mask = tf.math.greater_equal(histogram_values, threshold)
   histogram_keys_thresholded = tf.boolean_mask(histogram_keys, histogram_mask)
-  histogram_values_thresholded = tf.boolean_mask(histogram_values,
-                                                 histogram_mask)
+  histogram_values_thresholded = tf.boolean_mask(
+      histogram_values, histogram_mask
+  )
 
   return histogram_keys_thresholded, histogram_values_thresholded

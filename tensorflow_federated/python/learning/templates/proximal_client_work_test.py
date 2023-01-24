@@ -294,7 +294,6 @@ class ProximalClientWorkExecutionTest(tf.test.TestCase, parameterized.TestCase):
     )
 
   def test_custom_metrics_aggregator(self):
-
     def sum_then_finalize_then_times_two(
         metric_finalizers, local_unfinalized_metrics_type
     ):
@@ -494,7 +493,6 @@ class FunctionalProximalClientWorkExecutionTest(
     )
 
   def test_custom_metrics_aggregator(self):
-
     def sum_then_finalize_then_times_two(
         metric_finalizers, local_unfinalized_metrics_type
     ):

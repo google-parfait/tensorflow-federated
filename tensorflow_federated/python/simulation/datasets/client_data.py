@@ -33,7 +33,8 @@ class IncompatiblePreprocessFnError(TypeError):
         'The preprocess_fn must not be a tff.Computation. Please use a python'
         ' callable or tf.function instead. This restriction is because '
         '`tf.data.Dataset.map` wraps preprocessing functions with a '
-        '`tf.function` decorator, which cannot call to a `tff.Computation`.')
+        '`tf.function` decorator, which cannot call to a `tff.Computation`.'
+    )
     super().__init__(message)
 
 
@@ -61,7 +62,8 @@ def check_numpy_random_seed(seed: Any) -> None:
   elif is_nonnegative_32_bit_int(seed):
     return
   elif isinstance(seed, Sequence) and all(
-      [is_nonnegative_32_bit_int(x) for x in seed]):
+      [is_nonnegative_32_bit_int(x) for x in seed]
+  ):
     return
   raise InvalidRandomSeedError(type(seed))
 
@@ -71,7 +73,8 @@ class InvalidRandomSeedError(TypeError):
   def __init__(self, seed_type):
     message = (
         'The seed must be a nonnegative 32-bit integer, a sequence of such '
-        'integers, or None. Found {} instead.'.format(seed_type))
+        'integers, or None. Found {} instead.'.format(seed_type)
+    )
     super().__init__(message)
 
 
@@ -142,8 +145,8 @@ class ClientData(metaclass=abc.ABCMeta):
     if client_id not in self.client_ids:
       raise ValueError(
           'ID [{i}] is not a client in this ClientData. See '
-          'property `client_ids` for the list of valid ids.'.format(
-              i=client_id))
+          'property `client_ids` for the list of valid ids.'.format(i=client_id)
+      )
     return self.serializable_dataset_fn(client_id)
 
   @property
@@ -154,8 +157,8 @@ class ClientData(metaclass=abc.ABCMeta):
     performance optimization for distributed execution.
     """
     if (not hasattr(self, '_cached_dataset_computation')) or (
-        self._cached_dataset_computation is None):
-
+        self._cached_dataset_computation is None
+    ):
       @tensorflow_computation.tf_computation(tf.string)
       def dataset_computation(client_id):
         return self.serializable_dataset_fn(client_id)
@@ -177,7 +180,7 @@ class ClientData(metaclass=abc.ABCMeta):
   def datasets(
       self,
       limit_count: Optional[int] = None,
-      seed: Optional[Union[int, Sequence[int]]] = None
+      seed: Optional[Union[int, Sequence[int]]] = None,
   ) -> Iterable[tf.data.Dataset]:
     """Yields the `tf.data.Dataset` for each client in random order.
 
@@ -204,8 +207,8 @@ class ClientData(metaclass=abc.ABCMeta):
       yield dataset
 
   def create_tf_dataset_from_all_clients(
-      self,
-      seed: Optional[Union[int, Sequence[int]]] = None) -> tf.data.Dataset:
+      self, seed: Optional[Union[int, Sequence[int]]] = None
+  ) -> tf.data.Dataset:
     """Creates a new `tf.data.Dataset` containing _all_ client examples.
 
     This function is intended for use training centralized, non-distributed
@@ -235,8 +238,8 @@ class ClientData(metaclass=abc.ABCMeta):
     return example_dataset
 
   def preprocess(
-      self, preprocess_fn: Callable[[tf.data.Dataset],
-                                    tf.data.Dataset]) -> 'ClientData':
+      self, preprocess_fn: Callable[[tf.data.Dataset], tf.data.Dataset]
+  ) -> 'ClientData':
     """Applies `preprocess_fn` to each client's data.
 
     Args:
@@ -282,7 +285,8 @@ class ClientData(metaclass=abc.ABCMeta):
     if isinstance(serializable_dataset_fn, computation_base.Computation):
       raise TypeError(
           'The input serializable_dataset_fn cannot be a tff.Computation, as it'
-          ' must be serializable within the context of a tf.function.')
+          ' must be serializable within the context of a tf.function.'
+      )
 
     return ConcreteClientData(client_ids, serializable_dataset_fn)
 
@@ -291,7 +295,7 @@ class ClientData(metaclass=abc.ABCMeta):
       cls,
       client_data: 'ClientData',
       num_test_clients: int,
-      seed: Optional[Union[int, Sequence[int]]] = None
+      seed: Optional[Union[int, Sequence[int]]] = None,
   ) -> tuple['ClientData', 'ClientData']:
     """Returns a pair of (train, test) `ClientData`.
 
@@ -325,9 +329,12 @@ class ClientData(metaclass=abc.ABCMeta):
       raise ValueError('Please specify num_test_clients > 0.')
 
     if len(client_data.client_ids) <= num_test_clients:
-      raise ValueError('The client_data supplied has only {} clients, but '
-                       '{} test clients were requested.'.format(
-                           len(client_data.client_ids), num_test_clients))
+      raise ValueError(
+          'The client_data supplied has only {} clients, but '
+          '{} test clients were requested.'.format(
+              len(client_data.client_ids), num_test_clients
+          )
+      )
 
     check_numpy_random_seed(seed)
     train_client_ids = list(client_data.client_ids)
@@ -340,8 +347,9 @@ class ClientData(metaclass=abc.ABCMeta):
           # Arbitrarily threshold where "many" (relative to num_test_clients)
           # clients have no data. Note: If needed, we could make this limit
           # configurable.
-          len(clients_with_insufficient_batches) > 5 * num_test_clients + 10):
-
+          len(clients_with_insufficient_batches)
+          > 5 * num_test_clients + 10
+      ):
         raise ValueError('Encountered too many clients with no data.')
 
       client_id = train_client_ids.pop()
@@ -359,11 +367,14 @@ class ClientData(metaclass=abc.ABCMeta):
     assert len(test_client_ids) == num_test_clients
 
     def from_ids(client_ids: Iterable[str]) -> 'ClientData':
-      return cls.from_clients_and_tf_fn(client_ids,
-                                        client_data.serializable_dataset_fn)
+      return cls.from_clients_and_tf_fn(
+          client_ids, client_data.serializable_dataset_fn
+      )
 
-    return (from_ids(train_client_ids + clients_with_insufficient_batches),
-            from_ids(test_client_ids))
+    return (
+        from_ids(train_client_ids + clients_with_insufficient_batches),
+        from_ids(test_client_ids),
+    )
 
 
 class PreprocessClientData(ClientData):
@@ -375,21 +386,26 @@ class PreprocessClientData(ClientData):
   """
 
   def __init__(  # pylint: disable=super-init-not-called
-      self, underlying_client_data: ClientData,
-      preprocess_fn: Callable[[tf.data.Dataset], tf.data.Dataset]):
+      self,
+      underlying_client_data: ClientData,
+      preprocess_fn: Callable[[tf.data.Dataset], tf.data.Dataset],
+  ):
     py_typecheck.check_type(underlying_client_data, ClientData)
     py_typecheck.check_callable(preprocess_fn)
     self._underlying_client_data = underlying_client_data
     self._preprocess_fn = preprocess_fn
     example_dataset = self._preprocess_fn(
         self._underlying_client_data.create_tf_dataset_for_client(
-            next(iter(underlying_client_data.client_ids))))
+            next(iter(underlying_client_data.client_ids))
+        )
+    )
     self._element_type_structure = example_dataset.element_spec
     self._dataset_computation = None
 
     def serializable_dataset_fn(client_id: str) -> tf.data.Dataset:
       return self._preprocess_fn(
-          self._underlying_client_data.serializable_dataset_fn(client_id))  # pylint:disable=protected-access
+          self._underlying_client_data.serializable_dataset_fn(client_id)
+      )  # pylint:disable=protected-access
 
     self._serializable_dataset_fn = serializable_dataset_fn
 
@@ -403,7 +419,8 @@ class PreprocessClientData(ClientData):
 
   def create_tf_dataset_for_client(self, client_id: str) -> tf.data.Dataset:
     return self._preprocess_fn(
-        self._underlying_client_data.create_tf_dataset_for_client(client_id))
+        self._underlying_client_data.create_tf_dataset_for_client(client_id)
+    )
 
   @property
   def element_type_structure(self):

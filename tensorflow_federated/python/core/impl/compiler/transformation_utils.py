@@ -64,8 +64,13 @@ def transform_postorder(comp, transform):
       that is currently not recognized.
   """
   py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
-  if (comp.is_compiled_computation() or comp.is_data() or comp.is_intrinsic() or
-      comp.is_placement() or comp.is_reference()):
+  if (
+      comp.is_compiled_computation()
+      or comp.is_data()
+      or comp.is_intrinsic()
+      or comp.is_placement()
+      or comp.is_reference()
+  ):
     return transform(comp)
   elif comp.is_selection():
     source, source_modified = transform_postorder(comp.source, transform)
@@ -82,7 +87,8 @@ def transform_postorder(comp, transform):
       elements_modified = elements_modified or value_modified
     if elements_modified:
       comp = building_blocks.Struct(
-          elements, container_type=comp.type_signature.python_container)
+          elements, container_type=comp.type_signature.python_container
+      )
     comp, comp_modified = transform(comp)
     return comp, comp_modified or elements_modified
   elif comp.is_call():
@@ -98,8 +104,9 @@ def transform_postorder(comp, transform):
   elif comp.is_lambda():
     result, result_modified = transform_postorder(comp.result, transform)
     if result_modified:
-      comp = building_blocks.Lambda(comp.parameter_name, comp.parameter_type,
-                                    result)
+      comp = building_blocks.Lambda(
+          comp.parameter_name, comp.parameter_type, result
+      )
     comp, comp_modified = transform(comp)
     return comp, comp_modified or result_modified
   elif comp.is_block():
@@ -116,7 +123,8 @@ def transform_postorder(comp, transform):
     return comp, comp_modified or variables_modified or result_modified
   else:
     raise NotImplementedError(
-        'Unrecognized computation building block: {}'.format(str(comp)))
+        'Unrecognized computation building block: {}'.format(str(comp))
+    )
 
 
 TransformReturnType = tuple[building_blocks.ComputationBuildingBlock, bool]
@@ -124,8 +132,9 @@ TransformReturnType = tuple[building_blocks.ComputationBuildingBlock, bool]
 
 def transform_preorder(
     comp: building_blocks.ComputationBuildingBlock,
-    transform: Callable[[building_blocks.ComputationBuildingBlock],
-                        TransformReturnType]
+    transform: Callable[
+        [building_blocks.ComputationBuildingBlock], TransformReturnType
+    ],
 ) -> TransformReturnType:
   """Walks the AST of `comp` preorder, calling `transform` on the way down.
 
@@ -162,18 +171,28 @@ def transform_preorder(
   inner_comp, modified = transform(comp)
   if modified:
     return inner_comp, modified
-  if (inner_comp.is_compiled_computation() or inner_comp.is_data() or
-      inner_comp.is_intrinsic() or inner_comp.is_placement() or
-      inner_comp.is_reference()):
+  if (
+      inner_comp.is_compiled_computation()
+      or inner_comp.is_data()
+      or inner_comp.is_intrinsic()
+      or inner_comp.is_placement()
+      or inner_comp.is_reference()
+  ):
     return inner_comp, modified
   elif inner_comp.is_lambda():
     transformed_result, result_modified = transform_preorder(
-        inner_comp.result, transform)
+        inner_comp.result, transform
+    )
     if not (modified or result_modified):
       return inner_comp, False
-    return building_blocks.Lambda(inner_comp.parameter_name,
-                                  inner_comp.parameter_type,
-                                  transformed_result), True
+    return (
+        building_blocks.Lambda(
+            inner_comp.parameter_name,
+            inner_comp.parameter_type,
+            transformed_result,
+        ),
+        True,
+    )
   elif inner_comp.is_struct():
     elements_modified = False
     elements = []
@@ -186,17 +205,24 @@ def transform_preorder(
     return building_blocks.Struct(elements), True
   elif inner_comp.is_selection():
     transformed_source, source_modified = transform_preorder(
-        inner_comp.source, transform)
+        inner_comp.source, transform
+    )
     if not (modified or source_modified):
       return inner_comp, False
-    return building_blocks.Selection(transformed_source, inner_comp.name,
-                                     inner_comp.index), True
+    return (
+        building_blocks.Selection(
+            transformed_source, inner_comp.name, inner_comp.index
+        ),
+        True,
+    )
   elif inner_comp.is_call():
-    transformed_fn, fn_modified = transform_preorder(inner_comp.function,
-                                                     transform)
+    transformed_fn, fn_modified = transform_preorder(
+        inner_comp.function, transform
+    )
     if inner_comp.argument is not None:
       transformed_arg, arg_modified = transform_preorder(
-          inner_comp.argument, transform)
+          inner_comp.argument, transform
+      )
     else:
       transformed_arg = None
       arg_modified = False
@@ -211,14 +237,18 @@ def transform_preorder(
       transformed_variables.append((key, transformed_value))
       values_modified = values_modified or value_modified
     transformed_result, result_modified = transform_preorder(
-        inner_comp.result, transform)
+        inner_comp.result, transform
+    )
     if not (modified or values_modified or result_modified):
       return inner_comp, False
-    return building_blocks.Block(transformed_variables,
-                                 transformed_result), True
+    return (
+        building_blocks.Block(transformed_variables, transformed_result),
+        True,
+    )
   else:
     raise NotImplementedError(
-        'Unrecognized computation building block: {}'.format(str(inner_comp)))
+        'Unrecognized computation building block: {}'.format(str(inner_comp))
+    )
 
 
 def transform_postorder_with_symbol_bindings(comp, transform, symbol_tree):
@@ -274,21 +304,29 @@ def transform_postorder_with_symbol_bindings(comp, transform, symbol_tree):
   py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
   py_typecheck.check_type(symbol_tree, SymbolTree)
   if not callable(transform):
-    raise TypeError('Argument `transform` to '
-                    '`transform_postorder_with_symbol_bindings` must '
-                    'be callable.')
+    raise TypeError(
+        'Argument `transform` to '
+        '`transform_postorder_with_symbol_bindings` must '
+        'be callable.'
+    )
   identifier_seq = itertools.count(start=1)
 
-  def _transform_postorder_with_symbol_bindings_switch(comp, transform_fn,
-                                                       ctxt_tree,
-                                                       identifier_sequence):
+  def _transform_postorder_with_symbol_bindings_switch(
+      comp, transform_fn, ctxt_tree, identifier_sequence
+  ):
     """Recursive helper function delegated to after binding comp_id sequence."""
-    if (comp.is_compiled_computation() or comp.is_data() or
-        comp.is_intrinsic() or comp.is_placement() or comp.is_reference()):
+    if (
+        comp.is_compiled_computation()
+        or comp.is_data()
+        or comp.is_intrinsic()
+        or comp.is_placement()
+        or comp.is_reference()
+    ):
       return _traverse_leaf(comp, transform_fn, ctxt_tree, identifier_sequence)
     elif comp.is_selection():
-      return _traverse_selection(comp, transform, ctxt_tree,
-                                 identifier_sequence)
+      return _traverse_selection(
+          comp, transform, ctxt_tree, identifier_sequence
+      )
     elif comp.is_struct():
       return _traverse_tuple(comp, transform, ctxt_tree, identifier_sequence)
     elif comp.is_call():
@@ -299,7 +337,8 @@ def transform_postorder_with_symbol_bindings(comp, transform, symbol_tree):
       return _traverse_block(comp, transform, ctxt_tree, identifier_sequence)
     else:
       raise NotImplementedError(
-          'Unrecognized computation building block: {}'.format(str(comp)))
+          'Unrecognized computation building block: {}'.format(str(comp))
+      )
 
   def _traverse_leaf(comp, transform, context_tree, identifier_seq):
     """Helper function holding traversal logic for leaf nodes."""
@@ -310,15 +349,17 @@ def transform_postorder_with_symbol_bindings(comp, transform, symbol_tree):
     """Helper function holding traversal logic for selection nodes."""
     _ = next(identifier_seq)
     source, source_modified = _transform_postorder_with_symbol_bindings_switch(
-        comp.source, transform, context_tree, identifier_seq)
+        comp.source, transform, context_tree, identifier_seq
+    )
     if source_modified:
       # Normalize selection to index based on the type signature of the
       # original source. The new source may not have names present.
       if comp.index is not None:
         index = comp.index
       else:
-        index = structure.name_to_index_map(
-            comp.source.type_signature)[comp.name]
+        index = structure.name_to_index_map(comp.source.type_signature)[
+            comp.name
+        ]
       comp = building_blocks.Selection(source, index=index)
     comp, comp_modified = transform(comp, context_tree)
     return comp, comp_modified or source_modified
@@ -330,7 +371,8 @@ def transform_postorder_with_symbol_bindings(comp, transform, symbol_tree):
     elements_modified = False
     for key, value in structure.iter_elements(comp):
       value, value_modified = _transform_postorder_with_symbol_bindings_switch(
-          value, transform, context_tree, identifier_seq)
+          value, transform, context_tree, identifier_seq
+      )
       elements.append((key, value))
       elements_modified = elements_modified or value_modified
     if elements_modified:
@@ -342,10 +384,12 @@ def transform_postorder_with_symbol_bindings(comp, transform, symbol_tree):
     """Helper function holding traversal logic for call nodes."""
     _ = next(identifier_seq)
     fn, fn_modified = _transform_postorder_with_symbol_bindings_switch(
-        comp.function, transform, context_tree, identifier_seq)
+        comp.function, transform, context_tree, identifier_seq
+    )
     if comp.argument is not None:
       arg, arg_modified = _transform_postorder_with_symbol_bindings_switch(
-          comp.argument, transform, context_tree, identifier_seq)
+          comp.argument, transform, context_tree, identifier_seq
+      )
     else:
       arg, arg_modified = (None, False)
     if fn_modified or arg_modified:
@@ -359,11 +403,13 @@ def transform_postorder_with_symbol_bindings(comp, transform, symbol_tree):
     context_tree.drop_scope_down(comp_id)
     context_tree.ingest_variable_binding(name=comp.parameter_name, value=None)
     result, result_modified = _transform_postorder_with_symbol_bindings_switch(
-        comp.result, transform, context_tree, identifier_seq)
+        comp.result, transform, context_tree, identifier_seq
+    )
     context_tree.walk_to_scope_beginning()
     if result_modified:
-      comp = building_blocks.Lambda(comp.parameter_name, comp.parameter_type,
-                                    result)
+      comp = building_blocks.Lambda(
+          comp.parameter_name, comp.parameter_type, result
+      )
     comp, comp_modified = transform(comp, context_tree)
     context_tree.pop_scope_up()
     return comp, comp_modified or result_modified
@@ -376,12 +422,14 @@ def transform_postorder_with_symbol_bindings(comp, transform, symbol_tree):
     variables_modified = False
     for key, value in comp.locals:
       value, value_modified = _transform_postorder_with_symbol_bindings_switch(
-          value, transform, context_tree, identifier_seq)
+          value, transform, context_tree, identifier_seq
+      )
       context_tree.ingest_variable_binding(name=key, value=value)
       variables.append((key, value))
       variables_modified = variables_modified or value_modified
     result, result_modified = _transform_postorder_with_symbol_bindings_switch(
-        comp.result, transform, context_tree, identifier_seq)
+        comp.result, transform, context_tree, identifier_seq
+    )
     context_tree.walk_to_scope_beginning()
     if variables_modified or result_modified:
       comp = building_blocks.Block(variables, result)
@@ -390,7 +438,8 @@ def transform_postorder_with_symbol_bindings(comp, transform, symbol_tree):
     return comp, comp_modified or variables_modified or result_modified
 
   return _transform_postorder_with_symbol_bindings_switch(
-      comp, transform, symbol_tree, identifier_seq)
+      comp, transform, symbol_tree, identifier_seq
+  )
 
 
 class SymbolTree:
@@ -495,8 +544,9 @@ class SymbolTree:
         comp = comp.older_sibling
       elif comp.parent is not None:
         comp = comp.parent
-    raise ValueError('The name \'{}\' is not available in \'{}\'.'.format(
-        name, self))
+    raise ValueError(
+        "The name '{}' is not available in '{}'.".format(name, self)
+    )
 
   def walk_to_scope_beginning(self):
     """Walks `active_node` back to the sentinel node beginning current scope.
@@ -529,8 +579,9 @@ class SymbolTree:
     if self.active_node.parent:
       self.active_node = self.active_node.parent
     else:
-      raise ValueError('You have tried to pop out of the highest level in this '
-                       '`SymbolTree`.')
+      raise ValueError(
+          'You have tried to pop out of the highest level in this `SymbolTree`.'
+      )
 
   def drop_scope_down(self, comp_id):
     """Constructs a new scope level for `self`.
@@ -577,7 +628,8 @@ class SymbolTree:
     else:
       raise ValueError(
           'You have tried to move to a nonexistent variable binding in {}'
-          .format(self))
+          .format(self)
+      )
 
   def ingest_variable_binding(self, name, value):
     """Constructs or updates node in symbol tree as AST is walked.
@@ -624,7 +676,8 @@ class SymbolTree:
             'You have a mismatch between your symbol tree and the '
             'computation you are trying to process; your symbol tree is {} '
             'and you are looking for a BoundVariableTracker with name {} '
-            'and value {}'.format(self, name, value))
+            'and value {}'.format(self, name, value)
+        )
       self.walk_down_one_variable_binding()
       self.active_node.payload.value = value
 
@@ -634,7 +687,8 @@ class SymbolTree:
     if self._node_ids.get(id(comp_tracker)):
       raise ValueError(
           'Each instance of {} can only appear once in a given symbol tree.'
-          .format(self.payload_type))
+          .format(self.payload_type)
+      )
     self.active_node = typing.cast(SequentialBindingNode, self.active_node)
     if self.active_node.younger_sibling is not None:
       raise ValueError('Ambiguity in adding a younger sibling')
@@ -661,9 +715,11 @@ class SymbolTree:
     """
     py_typecheck.check_type(comp_tracker, SequentialBindingNode)
     if self._node_ids.get(id(comp_tracker)):
-      raise ValueError('Each node can only appear once in a given'
-                       'symbol tree. You have tried to add {} '
-                       'twice.'.format(comp_tracker.payload))
+      raise ValueError(
+          'Each node can only appear once in a given'
+          'symbol tree. You have tried to add {} '
+          'twice.'.format(comp_tracker.payload)
+      )
     self.active_node = typing.cast(SequentialBindingNode, self.active_node)
     comp_tracker.set_parent(self.active_node)
     self.active_node.add_child(constructing_comp_id, comp_tracker)
@@ -695,13 +751,15 @@ class SymbolTree:
       return False
     if len(self_node.children) != len(other_node.children):
       return False
-    for (_, val_1), (_, val_2) in zip(self_node.children.items(),
-                                      other_node.children.items()):
+    for (_, val_1), (_, val_2) in zip(
+        self_node.children.items(), other_node.children.items()
+    ):
       # keys not compared to avoid coupling walking logic to `SymbolTree`.
       if not self._equal_under_node(val_1, val_2):
         return False
-    return self._equal_under_node(self_node.younger_sibling,
-                                  other_node.younger_sibling)
+    return self._equal_under_node(
+        self_node.younger_sibling, other_node.younger_sibling
+    )
 
   def __eq__(self, other):
     """Walks to root of `self` and `other` before testing equality of subtrees.
@@ -944,12 +1002,16 @@ class BoundVariableTracker(metaclass=abc.ABCMeta):
       return NotImplemented
     if self.name != other.name:
       return False
-    if (isinstance(self.value, building_blocks.ComputationBuildingBlock) and
-        isinstance(other.value, building_blocks.ComputationBuildingBlock)):
-      return (self.value.compact_representation()
-              == other.value.compact_representation() and
-              self.value.type_signature.is_equivalent_to(
-                  other.value.type_signature))
+    if isinstance(
+        self.value, building_blocks.ComputationBuildingBlock
+    ) and isinstance(other.value, building_blocks.ComputationBuildingBlock):
+      return (
+          self.value.compact_representation()
+          == other.value.compact_representation()
+          and self.value.type_signature.is_equivalent_to(
+              other.value.type_signature
+          )
+      )
     return self.value is other.value
 
   def __ne__(self, other):
@@ -962,13 +1024,15 @@ class _BeginScopePointer(BoundVariableTracker):
 
   def __init__(self, name=None, value=None):
     if name is not None or value is not None:
-      raise ValueError('Please don\'t pass a name or value to '
-                       '_BeginScopePointer; it will simply be ignored.')
+      raise ValueError(
+          "Please don't pass a name or value to "
+          '_BeginScopePointer; it will simply be ignored.'
+      )
     super().__init__('BeginScope', None)
 
   def update(self, value=None):
     del value  # Unused.
-    raise RuntimeError('We shouldn\'t be trying to update the outer context.')
+    raise RuntimeError("We shouldn't be trying to update the outer context.")
 
   def __str__(self):
     return self.name
@@ -1036,7 +1100,8 @@ class ReferenceCounter(BoundVariableTracker):
 
   def __str__(self):
     return 'Instance count: {}; value: {}; name: {}.'.format(
-        self.count, self.value, self.name)
+        self.count, self.value, self.name
+    )
 
   def __repr__(self):
     return str(self)
@@ -1077,8 +1142,9 @@ def get_count_of_references_to_variables(comp):
       context_tree.update_payload_with_name(comp.name)
     return comp, False
 
-  transform_postorder_with_symbol_bindings(comp, transform_fn,
-                                           reference_counter)
+  transform_postorder_with_symbol_bindings(
+      comp, transform_fn, reference_counter
+  )
   return reference_counter
 
 
@@ -1102,7 +1168,7 @@ def get_unique_names(comp):
 
 
 def get_map_of_unbound_references(
-    comp: building_blocks.ComputationBuildingBlock
+    comp: building_blocks.ComputationBuildingBlock,
 ) -> dict[building_blocks.ComputationBuildingBlock, set[str]]:
   """Gets a Python `dict` of unbound references in `comp`, keyed by Python `id`.
 
@@ -1156,7 +1222,7 @@ def get_map_of_unbound_references(
 
 
 class TransformSpec(metaclass=abc.ABCMeta):
-  """"Base class to express the should_transform/transform interface."""
+  """Base class to express the should_transform/transform interface."""
 
   def __init__(self, global_transform=False):
     self._global_transform = global_transform

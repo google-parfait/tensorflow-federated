@@ -44,24 +44,29 @@ _TF_FUNCTION_CACHE_SIZE = 100
 
 
 def _all_graph_def_nodes(
-    graph_def: tf.compat.v1.GraphDef) -> Iterable[tf.compat.v1.NodeDef]:
-  return itertools.chain(graph_def.node,
-                         *[f.node_def for f in graph_def.library.function])
+    graph_def: tf.compat.v1.GraphDef,
+) -> Iterable[tf.compat.v1.NodeDef]:
+  return itertools.chain(
+      graph_def.node, *[f.node_def for f in graph_def.library.function]
+  )
 
 
 # TODO(b/159180073): remove this check after enabling reduce op for multi-GPU
 def _check_dataset_reduce_for_multi_gpu(
-    graph_def: tf.compat.v1.GraphDef) -> None:
+    graph_def: tf.compat.v1.GraphDef,
+) -> None:
   """Detect if ReduceDataset Op is used in a multi-GPU simulation."""
   has_dataset_reduce_node = any(
-      node.op == 'ReduceDataset' for node in _all_graph_def_nodes(graph_def))
+      node.op == 'ReduceDataset' for node in _all_graph_def_nodes(graph_def)
+  )
   if has_dataset_reduce_node:
     raise ValueError(
-        'Detected dataset reduce op in multi-GPU TFF simulation: '
-        '`use_experimental_simulation_loop=True` for `tff.learning`; or use '
-        '`for ... in iter(dataset)` for your own dataset iterations. See '
-        'https://www.tensorflow.org/federated/tutorials/simulations_with_accelerators'
-        ' for examples.')
+        'Detected dataset reduce op in multi-GPU TFF simulation:'
+        ' `use_experimental_simulation_loop=True` for `tff.learning`; or use'
+        ' `for ... in iter(dataset)` for your own dataset iterations. See'
+        ' https://www.tensorflow.org/federated/tutorials/simulations_with_accelerators'
+        ' for examples.'
+    )
 
 
 def _uniquify_shared_names(graph_def):
@@ -77,8 +82,9 @@ def _uniquify_shared_names(graph_def):
   return graph_def
 
 
-def _get_wrapped_function_from_comp(comp, must_pin_function_to_cpu, param_type,
-                                    device):
+def _get_wrapped_function_from_comp(
+    comp, must_pin_function_to_cpu, param_type, device
+):
   """Extracts the TensorFlow function from serialized computation.
 
   Args:
@@ -107,11 +113,13 @@ def _get_wrapped_function_from_comp(comp, must_pin_function_to_cpu, param_type,
     init_op = comp.tensorflow.initialize_op
     if init_op:
       graph_def = tensorflow_utils.add_control_deps_for_init_op(
-          graph_def, init_op)
+          graph_def, init_op
+      )
 
     def _import_fn():
       return tf.graph_util.import_graph_def(
-          _uniquify_shared_names(graph_def), name='')
+          _uniquify_shared_names(graph_def), name=''
+      )
 
     if must_pin_function_to_cpu:
       with tf.device('cpu'):
@@ -126,18 +134,22 @@ def _get_wrapped_function_from_comp(comp, must_pin_function_to_cpu, param_type,
 
   if param_type is not None:
     input_tensor_names = tensorflow_utils.extract_tensor_names_from_binding(
-        comp.tensorflow.parameter)
+        comp.tensorflow.parameter
+    )
   else:
     input_tensor_names = []
   output_tensor_names = tensorflow_utils.extract_tensor_names_from_binding(
-      comp.tensorflow.result)
+      comp.tensorflow.result
+  )
   import_graph = wrapped_noarg_fn.graph
   try:
     wrapped_fn = wrapped_noarg_fn.prune(
-        feeds=tf.nest.map_structure(import_graph.as_graph_element,
-                                    input_tensor_names),
-        fetches=tf.nest.map_structure(import_graph.as_graph_element,
-                                      output_tensor_names),
+        feeds=tf.nest.map_structure(
+            import_graph.as_graph_element, input_tensor_names
+        ),
+        fetches=tf.nest.map_structure(
+            import_graph.as_graph_element, output_tensor_names
+        ),
     )
   except KeyError as e:
     raise TypeError(
@@ -146,12 +158,22 @@ def _get_wrapped_function_from_comp(comp, must_pin_function_to_cpu, param_type,
         'names may not refer to tensors in the graph.'.format(
             g=import_graph,
             feeds=input_tensor_names,
-            fetches=output_tensor_names)) from e
+            fetches=output_tensor_names,
+        )
+    ) from e
   return wrapped_fn
 
 
-def _call_embedded_tf(*, arg, param_fns, result_fns, result_type, wrapped_fn,
-                      destroy_before_invocation, destroy_after_invocation):
+def _call_embedded_tf(
+    *,
+    arg,
+    param_fns,
+    result_fns,
+    result_type,
+    wrapped_fn,
+    destroy_before_invocation,
+    destroy_after_invocation,
+):
   """Function to be run upon EagerTFExecutor.create_call invocation.
 
   As this function is run completely synchronously, and
@@ -195,18 +217,23 @@ def _call_embedded_tf(*, arg, param_fns, result_fns, result_type, wrapped_fn,
   with tracing.span(
       'EagerTFExecutor.create_call',
       'resource_cleanup_before_invocation',
-      span=True):
+      span=True,
+  ):
     for resource in destroy_before_invocation:
       tf.raw_ops.DestroyResourceOp(resource=resource)
 
   param_elements = []
   if arg is not None:
     with tracing.span(
-        'EagerTFExecutor.create_call', 'arg_ingestion', span=True):
+        'EagerTFExecutor.create_call', 'arg_ingestion', span=True
+    ):
       arg_parts = structure.flatten(arg)
       if len(arg_parts) != len(param_fns):
-        raise RuntimeError('Expected {} arguments, found {}.'.format(
-            len(param_fns), len(arg_parts)))
+        raise RuntimeError(
+            'Expected {} arguments, found {}.'.format(
+                len(param_fns), len(arg_parts)
+            )
+        )
       for arg_part, param_fn in zip(arg_parts, param_fns):
         param_elements.append(param_fn(arg_part))
   result_parts = wrapped_fn(*param_elements)
@@ -220,7 +247,8 @@ def _call_embedded_tf(*, arg, param_fns, result_fns, result_type, wrapped_fn,
   with tracing.span(
       'EagerTFExecutor.create_call',
       'resource_cleanup_after_invocation',
-      span=True):
+      span=True,
+  ):
     for resource in destroy_after_invocation:
       tf.raw_ops.DestroyResourceOp(resource=resource)
 
@@ -270,22 +298,29 @@ def embed_tensorflow_computation(comp, type_spec=None, device=None):
   type_spec = computation_types.to_type(type_spec)
   if type_spec is not None:
     if not type_spec.is_equivalent_to(comp_type):
-      raise TypeError('Expected a computation of type {}, got {}.'.format(
-          type_spec, comp_type))
+      raise TypeError(
+          'Expected a computation of type {}, got {}.'.format(
+              type_spec, comp_type
+          )
+      )
   else:
     type_spec = comp_type
   # TODO(b/156302055): Currently, TF will raise on any function returning a
   # `tf.data.Dataset` not pinned to CPU. We should follow up here and remove
   # this gating when we can.
-  must_pin_function_to_cpu = type_analysis.contains(type_spec.result,
-                                                    lambda t: t.is_sequence())
+  must_pin_function_to_cpu = type_analysis.contains(
+      type_spec.result, lambda t: t.is_sequence()
+  )
   which_computation = comp.WhichOneof('computation')
   if which_computation != 'tensorflow':
     unexpected_building_block = (
         building_blocks.ComputationBuildingBlock.from_proto(comp)
     )
-    raise TypeError('Expected a TensorFlow computation, found {}.'.format(
-        unexpected_building_block))
+    raise TypeError(
+        'Expected a TensorFlow computation, found {}.'.format(
+            unexpected_building_block
+        )
+    )
 
   if type_spec.is_function():
     param_type = type_spec.parameter
@@ -294,8 +329,9 @@ def embed_tensorflow_computation(comp, type_spec=None, device=None):
     param_type = None
     result_type = type_spec
 
-  wrapped_fn = _get_wrapped_function_from_comp(comp, must_pin_function_to_cpu,
-                                               param_type, device)
+  wrapped_fn = _get_wrapped_function_from_comp(
+      comp, must_pin_function_to_cpu, param_type, device
+  )
   param_fns = []
   if param_type is not None:
     for spec in structure.flatten(type_spec.parameter):
@@ -338,13 +374,15 @@ def embed_tensorflow_computation(comp, type_spec=None, device=None):
     for resource in wrapped_fn.prune(feeds={}, fetches=lazy_cleanup_ops)():
       destroy_after_invocation.append(resource)
 
-  def fn_to_return(arg,
-                   param_fns=tuple(param_fns),
-                   result_fns=tuple(result_fns),
-                   result_type=result_type,
-                   wrapped_fn=wrapped_fn,
-                   destroy_before=tuple(destroy_before_invocation),
-                   destroy_after=tuple(destroy_after_invocation)):
+  def fn_to_return(
+      arg,
+      param_fns=tuple(param_fns),
+      result_fns=tuple(result_fns),
+      result_type=result_type,
+      wrapped_fn=wrapped_fn,
+      destroy_before=tuple(destroy_before_invocation),
+      destroy_after=tuple(destroy_after_invocation),
+  ):
     # This double-function pattern works around python late binding, forcing the
     # variables to bind eagerly.
     return _call_embedded_tf(
@@ -354,7 +392,8 @@ def embed_tensorflow_computation(comp, type_spec=None, device=None):
         result_type=result_type,
         wrapped_fn=wrapped_fn,
         destroy_before_invocation=destroy_before,
-        destroy_after_invocation=destroy_after)
+        destroy_after_invocation=destroy_after,
+    )
 
   # pylint: disable=function-redefined
   if must_pin_function_to_cpu:
@@ -363,6 +402,7 @@ def embed_tensorflow_computation(comp, type_spec=None, device=None):
     def fn_to_return(x):
       with tf.device('cpu'):
         return old_fn_to_return(x)
+
   elif device is not None:
     old_fn_to_return = fn_to_return
 
@@ -388,16 +428,25 @@ def _to_computation_internal_rep(
 ):
   """Converts a `pb.Computation` to a `tf.function`."""
   if value.tensorflow.cache_key.id:
-    logging.debug('Using value id for cache key: %s',
-                  value.tensorflow.cache_key.id)
-    key = (value.tensorflow.cache_key.id,
-           type_serialization.serialize_type(type_spec).SerializeToString(
-               deterministic=True), device.name if device else None)
+    logging.debug(
+        'Using value id for cache key: %s', value.tensorflow.cache_key.id
+    )
+    key = (
+        value.tensorflow.cache_key.id,
+        type_serialization.serialize_type(type_spec).SerializeToString(
+            deterministic=True
+        ),
+        device.name if device else None,
+    )
   else:
     logging.debug('Using hash of graph_def for cache key')
-    key = (value.SerializeToString(deterministic=True),
-           type_serialization.serialize_type(type_spec).SerializeToString(
-               deterministic=True), device.name if device else None)
+    key = (
+        value.SerializeToString(deterministic=True),
+        type_serialization.serialize_type(type_spec).SerializeToString(
+            deterministic=True
+        ),
+        device.name if device else None,
+    )
   cached_fn = tf_function_cache.get(key)
   if cached_fn is not None:
     return cached_fn
@@ -420,48 +469,56 @@ def _to_struct_internal_rep(
   value_iterator = structure.iter_elements(value_struct)
 
   if len(type_spec) != len(value_struct):
-    raise TypeError('Mismatched number of elements between type spec and value '
-                    'in `to_representation_for_type`. Type spec has {} '
-                    'elements, value has {}.'.format(
-                        len(type_spec), len(value_struct)))
+    raise TypeError(
+        'Mismatched number of elements between type spec and value '
+        'in `to_representation_for_type`. Type spec has {} '
+        'elements, value has {}.'.format(len(type_spec), len(value_struct))
+    )
   result_elem = []
-  for (type_name, elem_type), (val_name,
-                               elem_val) in zip(type_iterator, value_iterator):
+  for (type_name, elem_type), (val_name, elem_val) in zip(
+      type_iterator, value_iterator
+  ):
     if val_name is not None and type_name != val_name:
       raise TypeError(
           'Mismatching element names in type vs. value: {} vs. {}.'.format(
-              type_name, val_name))
-    elem_repr = to_representation_for_type(elem_val, tf_function_cache,
-                                           elem_type, device)
+              type_name, val_name
+          )
+      )
+    elem_repr = to_representation_for_type(
+        elem_val, tf_function_cache, elem_type, device
+    )
     result_elem.append((type_name, elem_repr))
   return structure.Struct(result_elem)
 
 
 @tracing.trace
-def _to_tensor_internal_rep(*, value: Any,
-                            type_spec: computation_types.Type) -> tf.Tensor:
+def _to_tensor_internal_rep(
+    *, value: Any, type_spec: computation_types.Type
+) -> tf.Tensor:
   """Normalizes tensor-like value to a tf.Tensor."""
   if not tf.is_tensor(value):
     value = tf.convert_to_tensor(value, dtype=type_spec.dtype)
   elif hasattr(value, 'read_value'):
     # a tf.Variable-like result, get a proper tensor.
     value = value.read_value()
-  value_type = (
-      computation_types.TensorType(value.dtype.base_dtype, value.shape))
+  value_type = computation_types.TensorType(value.dtype.base_dtype, value.shape)
   if not type_spec.is_assignable_from(value_type):
     raise TypeError(
         'The apparent type {} of a tensor {} does not match the expected '
-        'type {}.'.format(value_type, value, type_spec))
+        'type {}.'.format(value_type, value, type_spec)
+    )
   return value
 
 
 @tracing.trace
 def _to_sequence_internal_rep(
-    *, value: Any, type_spec: computation_types.Type) -> tf.data.Dataset:
+    *, value: Any, type_spec: computation_types.Type
+) -> tf.data.Dataset:
   """Ingests `value`, converting to an eager dataset."""
   if isinstance(value, list):
     value = tensorflow_utils.make_data_set_from_elements(
-        None, value, type_spec.element)
+        None, value, type_spec.element
+    )
   if isinstance(value, type_conversions.TF_DATASET_REPRESENTATION_TYPES):
     element_type = computation_types.to_type(value.element_spec)
     value_type = computation_types.SequenceType(element_type)
@@ -512,41 +569,51 @@ def to_representation_for_type(
   if isinstance(value, computation_impl.ConcreteComputation):
     return to_representation_for_type(
         computation_impl.ConcreteComputation.get_proto(value),
-        tf_function_cache, type_spec, device)
+        tf_function_cache,
+        type_spec,
+        device,
+    )
   elif isinstance(value, pb.Computation):
     computation_oneof = value.WhichOneof('computation')
     if computation_oneof != 'tensorflow':
-      raise ValueError('Eager TF Executor can only execute computations of '
-                       'TensorFlow flavor; encountered a computation of type '
-                       f'{computation_oneof}')
+      raise ValueError(
+          'Eager TF Executor can only execute computations of '
+          'TensorFlow flavor; encountered a computation of type '
+          f'{computation_oneof}'
+      )
     return _to_computation_internal_rep(
         value=value,
         tf_function_cache=tf_function_cache,
         type_spec=type_spec,
-        device=device)
+        device=device,
+    )
   elif type_spec.is_struct():
     return _to_struct_internal_rep(
         value=value,
         tf_function_cache=tf_function_cache,
         type_spec=type_spec,
-        device=device)
+        device=device,
+    )
   elif device is not None:
     py_typecheck.check_type(device, tf.config.LogicalDevice)
     with tf.device(device.name):
       return to_representation_for_type(
-          value, tf_function_cache, type_spec=type_spec, device=None)
+          value, tf_function_cache, type_spec=type_spec, device=None
+      )
   elif isinstance(value, EagerValue):
     return value.reference
   elif isinstance(value, executor_value_base.ExecutorValue):
     raise TypeError(
-        'Cannot accept a value embedded within a non-eager executor.')
+        'Cannot accept a value embedded within a non-eager executor.'
+    )
   elif type_spec.is_tensor():
     return _to_tensor_internal_rep(value=value, type_spec=type_spec)
   elif type_spec.is_sequence():
     return _to_sequence_internal_rep(value=value, type_spec=type_spec)
   else:
     raise TypeError(
-        f'Unexpected type {type_spec} for value of type {type(value)}: {value}')
+        f'Unexpected type {type_spec} for value of type {type(value)}: {value}'
+    )
 
 
 class EagerValue(executor_value_base.ExecutorValue):
@@ -678,9 +745,9 @@ class EagerTFExecutor(executor_base.Executor):
     else:
       type_spec = computation_types.to_type(type_spec)
       py_typecheck.check_type(type_spec, computation_types.Type)
-    normalized_value = to_representation_for_type(value,
-                                                  self._tf_function_cache,
-                                                  type_spec, self._device)
+    normalized_value = to_representation_for_type(
+        value, self._tf_function_cache, type_spec, self._device
+    )
     return EagerValue(normalized_value, type_spec)
 
   @tracing.trace
@@ -702,8 +769,9 @@ class EagerTFExecutor(executor_base.Executor):
     if arg is not None:
       py_typecheck.check_type(arg, EagerValue)
     if not comp.type_signature.is_function():
-      raise TypeError('Expected a functional type, found {}'.format(
-          comp.type_signature))
+      raise TypeError(
+          'Expected a functional type, found {}'.format(comp.type_signature)
+      )
     if comp.type_signature.parameter is not None:
       return EagerValue(
           comp.reference(arg.reference), comp.type_signature.result
@@ -732,9 +800,10 @@ class EagerTFExecutor(executor_base.Executor):
       type_elements.append((k, v.type_signature))
     return EagerValue(
         structure.Struct(val_elements),
-        computation_types.StructType([
-            (k, v) if k is not None else v for k, v in type_elements
-        ]))
+        computation_types.StructType(
+            [(k, v) if k is not None else v for k, v in type_elements]
+        ),
+    )
 
   @tracing.trace
   async def create_selection(self, source, index):

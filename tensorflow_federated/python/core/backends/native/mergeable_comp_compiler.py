@@ -33,28 +33,34 @@ def _compile_to_tf(fn):
 
 
 def _select_output_result_and_wrap_as_noarg_tensorflow(
-    fn: building_blocks.Lambda,
-    path: building_block_factory.Path) -> computation_impl.ConcreteComputation:
+    fn: building_blocks.Lambda, path: building_block_factory.Path
+) -> computation_impl.ConcreteComputation:
   selected_and_wrapped = building_blocks.Lambda(
-      None, None,
-      building_block_factory.select_output_from_lambda(fn, path).result)
+      None,
+      None,
+      building_block_factory.select_output_from_lambda(fn, path).result,
+  )
   selected_and_compiled = _compile_to_tf(selected_and_wrapped)
   return computation_impl.ConcreteComputation.from_building_block(
-      selected_and_compiled)
+      selected_and_compiled
+  )
 
 
 def _select_output_result_and_wrap_as_tensorflow(
-    fn: building_blocks.Lambda,
-    path: building_block_factory.Path) -> computation_impl.ConcreteComputation:
-  selected_fn = building_block_factory.select_output_from_lambda(fn,
-                                                                 path).result
+    fn: building_blocks.Lambda, path: building_block_factory.Path
+) -> computation_impl.ConcreteComputation:
+  selected_fn = building_block_factory.select_output_from_lambda(
+      fn, path
+  ).result
   selected_and_compiled = _compile_to_tf(selected_fn)
   return computation_impl.ConcreteComputation.from_building_block(
-      selected_and_compiled)
+      selected_and_compiled
+  )
 
 
 def _extract_federated_aggregate_computations(
-    before_agg: building_blocks.Lambda):
+    before_agg: building_blocks.Lambda,
+):
   """Extracts aggregate computations from `before_agg`.
 
   Args:
@@ -76,41 +82,48 @@ def _extract_federated_aggregate_computations(
   # bodies of these computations which are undefined in the smaller sub-scope.
   # Compilation to TF ensures these references are removed.
   zero = _select_output_result_and_wrap_as_noarg_tensorflow(
-      federated_aggregate_arguments, 1)
+      federated_aggregate_arguments, 1
+  )
   accumulate = _select_output_result_and_wrap_as_tensorflow(
-      federated_aggregate_arguments, 2)
+      federated_aggregate_arguments, 2
+  )
   merge = _select_output_result_and_wrap_as_tensorflow(
-      federated_aggregate_arguments, 3)
+      federated_aggregate_arguments, 3
+  )
   report = _select_output_result_and_wrap_as_tensorflow(
-      federated_aggregate_arguments, 4)
+      federated_aggregate_arguments, 4
+  )
   return zero, accumulate, merge, report
 
 
 def _ensure_lambda(
-    building_block: building_blocks.ComputationBuildingBlock
+    building_block: building_blocks.ComputationBuildingBlock,
 ) -> building_blocks.Lambda:
   """Wraps a functional building block as a lambda if necessary."""
   building_block.type_signature.check_function()
   if not isinstance(building_block, building_blocks.Lambda):
     if building_block.type_signature.parameter is not None:
       name_generator = building_block_factory.unique_name_generator(
-          building_block)
+          building_block
+      )
       parameter_name = next(name_generator)
       argument = building_blocks.Reference(
-          parameter_name, building_block.type_signature.parameter)
+          parameter_name, building_block.type_signature.parameter
+      )
       parameter_type = argument.type_signature
     else:
       argument = None
       parameter_type = None
       parameter_name = None
     result = building_blocks.Call(building_block, argument)
-    building_block = building_blocks.Lambda(parameter_name, parameter_type,
-                                            result)
+    building_block = building_blocks.Lambda(
+        parameter_name, parameter_type, result
+    )
   return building_block
 
 
 def compile_to_mergeable_comp_form(
-    comp: computation_impl.ConcreteComputation
+    comp: computation_impl.ConcreteComputation,
 ) -> mergeable_comp_execution_context.MergeableCompForm:
   """Compiles a computation with a single aggregation to `MergeableCompForm`.
 
@@ -143,9 +156,11 @@ def compile_to_mergeable_comp_form(
   # We transform the body of this computation to easily preserve the top-level
   # lambda required by force-aligning.
   call_dominant_body_bb = transformations.to_call_dominant(lowered_bb.result)
-  call_dominant_bb = building_blocks.Lambda(lowered_bb.parameter_name,
-                                            lowered_bb.parameter_type,
-                                            call_dominant_body_bb)
+  call_dominant_bb = building_blocks.Lambda(
+      lowered_bb.parameter_name,
+      lowered_bb.parameter_type,
+      call_dominant_body_bb,
+  )
 
   # This check should not throw false positives because we just ensured we are
   # in call-dominant form.
@@ -153,13 +168,16 @@ def compile_to_mergeable_comp_form(
 
   before_agg, after_agg = transformations.force_align_and_split_by_intrinsics(
       call_dominant_bb,
-      [building_block_factory.create_null_federated_aggregate()])
+      [building_block_factory.create_null_federated_aggregate()],
+  )
 
   # Construct a report function which accepts the result of merge.
   merge_fn_type = before_agg.type_signature.result['federated_aggregate_param'][
-      3]
+      3
+  ]
   identity_report = computation_impl.ConcreteComputation.from_building_block(
-      building_block_factory.create_compiled_identity(merge_fn_type.result))
+      building_block_factory.create_compiled_identity(merge_fn_type.result)
+  )
 
   zero_comp, accumulate_comp, merge_comp, report_comp = (
       _extract_federated_aggregate_computations(before_agg)
@@ -169,26 +187,30 @@ def compile_to_mergeable_comp_form(
       computation_impl.ConcreteComputation.from_building_block(before_agg)
   )
   after_agg_callable = computation_impl.ConcreteComputation.from_building_block(
-      after_agg)
+      after_agg
+  )
 
   if before_agg.type_signature.parameter is not None:
     # TODO(b/147499373): If None-arguments were uniformly represented as empty
     # tuples, we would be able to avoid this (and related) ugly casing.
 
     @federated_computation.federated_computation(
-        before_agg.type_signature.parameter)
+        before_agg.type_signature.parameter
+    )
     def up_to_merge_computation(arg):
-      federated_aggregate_args = before_agg_callable(
-          arg)['federated_aggregate_param']
+      federated_aggregate_args = before_agg_callable(arg)[
+          'federated_aggregate_param'
+      ]
       value_to_aggregate = federated_aggregate_args[0]
       zero = zero_comp()
-      return intrinsics.federated_aggregate(value_to_aggregate, zero,
-                                            accumulate_comp, merge_comp,
-                                            identity_report)
+      return intrinsics.federated_aggregate(
+          value_to_aggregate, zero, accumulate_comp, merge_comp, identity_report
+      )
 
     @federated_computation.federated_computation(
         before_agg.type_signature.parameter,
-        computation_types.at_server(identity_report.type_signature.result))
+        computation_types.at_server(identity_report.type_signature.result),
+    )
     def after_merge_computation(top_level_arg, merge_result):
       reported_result = intrinsics.federated_map(report_comp, merge_result)
       return after_agg_callable(top_level_arg, [reported_result])
@@ -197,26 +219,31 @@ def compile_to_mergeable_comp_form(
 
     @federated_computation.federated_computation()
     def up_to_merge_computation():
-      federated_aggregate_args = before_agg_callable(
-      )['federated_aggregate_param']
+      federated_aggregate_args = before_agg_callable()[
+          'federated_aggregate_param'
+      ]
       value_to_aggregate = federated_aggregate_args[0]
       zero = zero_comp()
-      return intrinsics.federated_aggregate(value_to_aggregate, zero,
-                                            accumulate_comp, merge_comp,
-                                            identity_report)
+      return intrinsics.federated_aggregate(
+          value_to_aggregate, zero, accumulate_comp, merge_comp, identity_report
+      )
 
     @federated_computation.federated_computation(
-        computation_types.at_server(identity_report.type_signature.result))
+        computation_types.at_server(identity_report.type_signature.result)
+    )
     def after_merge_computation(merge_result):
       reported_result = intrinsics.federated_map(report_comp, merge_result)
       return after_agg_callable([[reported_result]])
 
   annotated_type_signature = computation_types.FunctionType(
-      after_merge_computation.type_signature.parameter, original_return_type)
+      after_merge_computation.type_signature.parameter, original_return_type
+  )
   after_merge_computation = computation_impl.ConcreteComputation.with_type(
-      after_merge_computation, annotated_type_signature)
+      after_merge_computation, annotated_type_signature
+  )
 
   return mergeable_comp_execution_context.MergeableCompForm(
       up_to_merge=up_to_merge_computation,
       merge=merge_comp,
-      after_merge=after_merge_computation)
+      after_merge=after_merge_computation,
+  )

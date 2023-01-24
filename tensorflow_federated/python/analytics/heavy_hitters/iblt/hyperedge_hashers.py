@@ -37,8 +37,8 @@ def _to_sparse_indices_format(hash_indices: tf.Tensor) -> tf.Tensor:
   input_length = tf.shape(hash_indices)[1]
 
   hash_indices = tf.reshape(
-      tf.transpose(tf.stack(hash_indices)),
-      shape=[input_length, repetitions, 1])
+      tf.transpose(tf.stack(hash_indices)), shape=[input_length, repetitions, 1]
+  )
   hash_indices = tf.cast(hash_indices, dtype=tf.int64)
   row_indices = tf.reshape(tf.range(input_length), shape=[input_length, 1, 1])
   row_indices = tf.tile(row_indices, [1, repetitions, 1])
@@ -48,12 +48,13 @@ def _to_sparse_indices_format(hash_indices: tf.Tensor) -> tf.Tensor:
   column_indices = tf.tile(column_indices, [input_length, 1, 1])
   column_indices = tf.cast(column_indices, dtype=tf.int64)
 
-  sparse_indices = tf.concat([row_indices, column_indices, hash_indices],
-                             axis=2)
+  sparse_indices = tf.concat(
+      [row_indices, column_indices, hash_indices], axis=2
+  )
   return sparse_indices
 
 
-class RandomHyperEdgeHasher():
+class RandomHyperEdgeHasher:
   """Hashes a string to a list of independently sampled indices.
 
   For a string, generates a set of indices such that each index is independently
@@ -98,8 +99,9 @@ class RandomHyperEdgeHasher():
       hash_indices = []
       for i in range(self._repetitions):
         hash_indices.append(
-            farmhash.fingerprint64(str(self._salt[i]) + data_string) %
-            self._table_size)
+            farmhash.fingerprint64(str(self._salt[i]) + data_string)
+            % self._table_size
+        )
       all_hash_indices.append(hash_indices)
 
     return all_hash_indices
@@ -122,21 +124,24 @@ class RandomHyperEdgeHasher():
       salted_input.append(tf.strings.join([self._salt[i], input_strings]))
       hash_indices.append(
           tf.strings.to_hash_bucket_fast(
-              salted_input[i], num_buckets=self._table_size))
+              salted_input[i], num_buckets=self._table_size
+          )
+      )
 
     sparse_indices = _to_sparse_indices_format(hash_indices)
     return sparse_indices
 
 
-class CoupledHyperEdgeHasher():
+class CoupledHyperEdgeHasher:
   """Hashes a string to an hyper-edge with coupled indices.
 
   For a string, generates a set of indices such that the indices are close to
   each as described in https://arxiv.org/pdf/2001.10500.pdf.
   """
 
-  def __init__(self, seed: int, table_size: int, repetitions: int,
-               rescale_factor: float):
+  def __init__(
+      self, seed: int, table_size: int, repetitions: int, rescale_factor: float
+  ):
     """Initialize CoupledHyperEdgeHasher.
 
     Args:
@@ -160,9 +165,11 @@ class CoupledHyperEdgeHasher():
       raise ValueError('repetitions must be at least 3.')
 
     if rescale_factor <= 0 or rescale_factor > table_size - 1:
-      raise ValueError('rescale_factor must be positive and no greater than'
-                       f' table_size - 1. Found table_size = {table_size} and'
-                       f' rescale_factor = {rescale_factor}')
+      raise ValueError(
+          'rescale_factor must be positive and no greater than'
+          f' table_size - 1. Found table_size = {table_size} and'
+          f' rescale_factor = {rescale_factor}'
+      )
 
     self._seed = seed
     self._salt = [str(seed + i) + _SEPARATOR for i in range(repetitions)]
@@ -173,14 +180,16 @@ class CoupledHyperEdgeHasher():
 
   def _get_hash_indices_single(self, data_string: str) -> list[int]:
     """Computes the indices of `data_string` in IBLT."""
-    position = self._hash_to_float(data_string,
-                                   (0.5, self._rescale_factor + 0.5))
+    position = self._hash_to_float(
+        data_string, (0.5, self._rescale_factor + 0.5)
+    )
     hash_indices = []
     for i in range(self._repetitions):
       salted_string = str(self._salt[i]) + data_string
       offset = self._hash_to_float(salted_string, (-0.5, 0.5))
       hash_indices.append(
-          int(np.floor((position + offset) * self._rescaled_table_size)))
+          int(np.floor((position + offset) * self._rescaled_table_size))
+      )
     return hash_indices
 
   def get_hash_indices(self, data_strings: list[str]) -> list[list[int]]:
@@ -198,10 +207,12 @@ class CoupledHyperEdgeHasher():
       all_hash_indices.append(self._get_hash_indices_single(data_string))
     return all_hash_indices
 
-  def _hash_to_float(self,
-                     input_string: str,
-                     hash_range: tuple[float, float],
-                     precision: int = tf.int32.max) -> float:
+  def _hash_to_float(
+      self,
+      input_string: str,
+      hash_range: tuple[float, float],
+      precision: int = tf.int32.max,
+  ) -> float:
     """Hashes a string and returns a `float`.
 
     `hash_range` is evenly divided into a number of buckets. The hashed value of
@@ -226,10 +237,12 @@ class CoupledHyperEdgeHasher():
     hashed_value = ((float(hashed_value) / precision) * (high - low)) + low
     return hashed_value
 
-  def _hash_to_float_tf(self,
-                        input_strings: tf.Tensor,
-                        hash_range: tuple[float, float],
-                        precision: int = tf.int32.max) -> tf.Tensor:
+  def _hash_to_float_tf(
+      self,
+      input_strings: tf.Tensor,
+      hash_range: tuple[float, float],
+      precision: int = tf.int32.max,
+  ) -> tf.Tensor:
     """Hashes a `tf.strings` 1-d tensor and returns a `tf.float32` 1-d tensor.
 
     `hash_range` is evenly divided into a number of buckets. The hashed value of
@@ -247,10 +260,12 @@ class CoupledHyperEdgeHasher():
     """
     (low, high) = hash_range
     hashed_value = tf.strings.to_hash_bucket_fast(
-        input_strings, num_buckets=precision)
+        input_strings, num_buckets=precision
+    )
     hashed_value = hashed_value % precision
-    hashed_value = ((tf.cast(hashed_value, tf.float32) / precision) *
-                    (high - low)) + low
+    hashed_value = (
+        (tf.cast(hashed_value, tf.float32) / precision) * (high - low)
+    ) + low
     return hashed_value
 
   def get_hash_indices_tf(self, data_strings):
@@ -265,14 +280,16 @@ class CoupledHyperEdgeHasher():
       hash-index of the `i-th` input string in repetition `r` at index
       `(i, r, 2)`.
     """
-    positions = self._hash_to_float_tf(data_strings,
-                                       (0.5, self._rescale_factor + 0.5))
+    positions = self._hash_to_float_tf(
+        data_strings, (0.5, self._rescale_factor + 0.5)
+    )
     hash_indices = []
     for i in range(self._repetitions):
       salted_inputs = tf.strings.join([self._salt[i], data_strings])
       offset = self._hash_to_float_tf(salted_inputs, (-0.5, 0.5))
       hash_indices.append(
-          tf.floor((positions + offset) * self._rescaled_table_size))
+          tf.floor((positions + offset) * self._rescaled_table_size)
+      )
 
     sparse_indices = _to_sparse_indices_format(hash_indices)
     return sparse_indices

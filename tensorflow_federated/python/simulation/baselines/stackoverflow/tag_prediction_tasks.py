@@ -29,10 +29,13 @@ from tensorflow_federated.python.simulation.datasets import stackoverflow
 
 
 def _build_logistic_regression_model(input_size: int, output_size: int):
-  return tf.keras.models.Sequential([
-      tf.keras.layers.Dense(
-          output_size, activation='sigmoid', input_shape=(input_size,))
-  ])
+  return tf.keras.models.Sequential(
+      [
+          tf.keras.layers.Dense(
+              output_size, activation='sigmoid', input_shape=(input_size,)
+          )
+      ]
+  )
 
 
 def create_tag_prediction_task_from_datasets(
@@ -64,32 +67,39 @@ def create_tag_prediction_task_from_datasets(
   """
   if eval_client_spec is None:
     eval_client_spec = client_spec.ClientSpec(
-        num_epochs=1, batch_size=100, shuffle_buffer_size=1)
+        num_epochs=1, batch_size=100, shuffle_buffer_size=1
+    )
 
   word_vocab_size = len(word_vocab)
   tag_vocab_size = len(tag_vocab)
   train_preprocess_fn = tag_prediction_preprocessing.create_preprocess_fn(
-      train_client_spec, word_vocab, tag_vocab)
+      train_client_spec, word_vocab, tag_vocab
+  )
   eval_preprocess_fn = tag_prediction_preprocessing.create_preprocess_fn(
-      eval_client_spec, word_vocab, tag_vocab)
+      eval_client_spec, word_vocab, tag_vocab
+  )
   task_datasets = task_data.BaselineTaskDatasets(
       train_data=train_data,
       test_data=test_data,
       validation_data=validation_data,
       train_preprocess_fn=train_preprocess_fn,
-      eval_preprocess_fn=eval_preprocess_fn)
+      eval_preprocess_fn=eval_preprocess_fn,
+  )
 
   def model_fn() -> model.Model:
     return keras_utils.from_keras_model(
         keras_model=_build_logistic_regression_model(
-            input_size=word_vocab_size, output_size=tag_vocab_size),
+            input_size=word_vocab_size, output_size=tag_vocab_size
+        ),
         loss=tf.keras.losses.BinaryCrossentropy(
-            from_logits=False, reduction=tf.keras.losses.Reduction.SUM),
+            from_logits=False, reduction=tf.keras.losses.Reduction.SUM
+        ),
         input_spec=task_datasets.element_type_structure,
         metrics=[
             tf.keras.metrics.Precision(name='precision'),
             tf.keras.metrics.Recall(top_k=5, name='recall_at_5'),
-        ])
+        ],
+    )
 
   return baseline_task.BaselineTask(task_datasets, model_fn)
 
@@ -145,7 +155,8 @@ def create_tag_prediction_task(
     tag_vocab_dict = stackoverflow.get_synthetic_tag_counts()
   else:
     stackoverflow_train, stackoverflow_validation, stackoverflow_test = (
-        stackoverflow.load_data(cache_dir=cache_dir))
+        stackoverflow.load_data(cache_dir=cache_dir)
+    )
     word_vocab_dict = stackoverflow.load_word_counts(vocab_size=word_vocab_size)
     tag_vocab_dict = stackoverflow.load_tag_counts()
 
@@ -153,5 +164,11 @@ def create_tag_prediction_task(
   tag_vocab = list(tag_vocab_dict.keys())[:tag_vocab_size]
 
   return create_tag_prediction_task_from_datasets(
-      train_client_spec, eval_client_spec, word_vocab, tag_vocab,
-      stackoverflow_train, stackoverflow_test, stackoverflow_validation)
+      train_client_spec,
+      eval_client_spec,
+      word_vocab,
+      tag_vocab,
+      stackoverflow_train,
+      stackoverflow_test,
+      stackoverflow_validation,
+  )

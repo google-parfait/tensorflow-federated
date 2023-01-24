@@ -36,11 +36,13 @@ class StackoverflowTest(absltest.TestCase):
   def test_get_synthetic(self):
     client_data = stackoverflow.get_synthetic()
     synthetic_data_dictionary = stackoverflow.create_synthetic_data_dictionary()
-    self.assertCountEqual(client_data.client_ids,
-                          synthetic_data_dictionary.keys())
+    self.assertCountEqual(
+        client_data.client_ids, synthetic_data_dictionary.keys()
+    )
     self.assertEqual(client_data.element_type_structure, EXPECTED_ELEMENT_TYPE)
     dataset = client_data.create_tf_dataset_for_client(
-        next(iter(synthetic_data_dictionary.keys())))
+        next(iter(synthetic_data_dictionary.keys()))
+    )
     self.assertEqual(dataset.element_spec, EXPECTED_ELEMENT_TYPE)
 
   def test_get_synthetic_word_counts(self):
@@ -62,7 +64,8 @@ class StackoverflowTest(absltest.TestCase):
   def test_load_word_counts(self):
     self.skipTest(
         "CI infrastructure doesn't support downloading from GCS. Remove "
-        'skipTest to run test locally.')
+        'skipTest to run test locally.'
+    )
     word_counts = stackoverflow.load_word_counts()
     self.assertLen(word_counts, 6005329)
     self.assertEqual(word_counts['.'], 342309)
@@ -71,7 +74,8 @@ class StackoverflowTest(absltest.TestCase):
   def test_load_word_counts_small_vocab(self):
     self.skipTest(
         "CI infrastructure doesn't support downloading from GCS. Remove "
-        'skipTest to run test locally.')
+        'skipTest to run test locally.'
+    )
     num_words = 100
     word_counts = stackoverflow.load_word_counts(vocab_size=num_words)
     self.assertLen(word_counts, num_words)
@@ -81,7 +85,8 @@ class StackoverflowTest(absltest.TestCase):
   def test_load_tag_counts(self):
     self.skipTest(
         "CI infrastructure doesn't support downloading from GCS. Remove "
-        'skipTest to run test locally.')
+        'skipTest to run test locally.'
+    )
     tag_counts = stackoverflow.load_tag_counts()
     self.assertLen(tag_counts, 50454)
     self.assertEqual(tag_counts['html'], 167815)
@@ -90,7 +95,8 @@ class StackoverflowTest(absltest.TestCase):
   def test_load_from_gcs(self):
     self.skipTest(
         "CI infrastructure doesn't support downloading from GCS. Remove "
-        'skipTest to run test locally.')
+        'skipTest to run test locally.'
+    )
     train, heldout, test = stackoverflow.load_data(cache_dir=FLAGS.test_tmpdir)
     self.assertLen(train.client_ids, 342_477)
     self.assertLen(heldout.client_ids, 38_758)

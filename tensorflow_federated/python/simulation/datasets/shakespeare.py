@@ -25,7 +25,6 @@ from tensorflow_federated.python.simulation.datasets import sql_client_data
 
 
 def _add_parsing(dataset: tf.data.Dataset) -> tf.data.Dataset:
-
   def _parse_example_bytes(serialized_proto_tensor):
     field_dict = {'snippets': tf.io.FixedLenFeature(shape=(), dtype=tf.string)}
     parsed_fields = tf.io.parse_example(serialized_proto_tensor, field_dict)
@@ -35,7 +34,7 @@ def _add_parsing(dataset: tf.data.Dataset) -> tf.data.Dataset:
 
 
 def load_data(
-    cache_dir: Optional[str] = None
+    cache_dir: Optional[str] = None,
 ) -> tuple[client_data.ClientData, client_data.ClientData]:
   """Loads the federated Shakespeare dataset.
 
@@ -80,11 +79,14 @@ def load_data(
   """
   database_path = download.get_compressed_file(
       origin='https://storage.googleapis.com/tff-datasets-public/shakespeare.sqlite.lzma',
-      cache_dir=cache_dir)
+      cache_dir=cache_dir,
+  )
   train_client_data = sql_client_data.SqlClientData(
-      database_path, split_name='train').preprocess(_add_parsing)
+      database_path, split_name='train'
+  ).preprocess(_add_parsing)
   test_client_data = sql_client_data.SqlClientData(
-      database_path, split_name='test').preprocess(_add_parsing)
+      database_path, split_name='test'
+  ).preprocess(_add_parsing)
   return train_client_data, test_client_data
 
 
@@ -101,31 +103,35 @@ def get_synthetic() -> client_data.ClientData:
     A `tff.simulation.datasets.ClientData` of synthentic Shakespeare text.
   """
   return from_tensor_slices_client_data.TestClientData(
-      _SYNTHETIC_SHAKESPEARE_DATA)
+      _SYNTHETIC_SHAKESPEARE_DATA
+  )
 
 
 # A small sub-sample of snippets from the Shakespeare dataset.
 _SYNTHETIC_SHAKESPEARE_DATA = {
-    'THE_TRAGEDY_OF_KING_LEAR_MACBETH':
-        collections.OrderedDict(snippets=[
+    'THE_TRAGEDY_OF_KING_LEAR_MACBETH': collections.OrderedDict(
+        snippets=[
             b'Hark!',
             b'When?',
             b"My name's Macbeth.",
             b"'Twas a rough fight.",
             b'Came they not by you?',
             b'No, nor more fearful.',
-        ]),
-    'MUCH_ADO_ABOUT_NOTHING_EMILIA':
-        collections.OrderedDict(snippets=[
+        ]
+    ),
+    'MUCH_ADO_ABOUT_NOTHING_EMILIA': collections.OrderedDict(
+        snippets=[
             b'Never.',
             b'But now, my lord.',
             b'How if fair and foolish?',
             b'Is not this man jealous?',
             b'Why, with my lord, madam.',
             b'[Within.] I do beseech you',
-        ]),
-    'THE_TAMING_OF_THE_SHREW_CUPID':
-        collections.OrderedDict(snippets=[
+        ]
+    ),
+    'THE_TAMING_OF_THE_SHREW_CUPID': collections.OrderedDict(
+        snippets=[
             b'Hail to thee, worthy Timon, and to all',
-        ]),
+        ]
+    ),
 }

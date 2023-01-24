@@ -35,10 +35,12 @@ def _add_proto_parsing(dataset: tf.data.Dataset) -> tf.data.Dataset:
         tags=tf.io.FixedLenFeature(dtype=tf.string, shape=()),
         title=tf.io.FixedLenFeature(dtype=tf.string, shape=()),
         tokens=tf.io.FixedLenFeature(dtype=tf.string, shape=()),
-        type=tf.io.FixedLenFeature(dtype=tf.string, shape=()))
+        type=tf.io.FixedLenFeature(dtype=tf.string, shape=()),
+    )
     parsed_features = tf.io.parse_example(tensor_proto, parse_spec)
     return collections.OrderedDict(
-        (key, parsed_features[key]) for key in parse_spec.keys())
+        (key, parsed_features[key]) for key in parse_spec.keys()
+    )
 
   return dataset.map(parse_proto, num_parallel_calls=tf.data.AUTOTUNE)
 
@@ -114,13 +116,17 @@ def load_data(cache_dir=None):
   """
   database_path = download.get_compressed_file(
       origin='https://storage.googleapis.com/tff-datasets-public/stackoverflow.sqlite.lzma',
-      cache_dir=cache_dir)
+      cache_dir=cache_dir,
+  )
   train_client_data = sql_client_data.SqlClientData(
-      database_path, 'train').preprocess(_add_proto_parsing)
+      database_path, 'train'
+  ).preprocess(_add_proto_parsing)
   heldout_client_data = sql_client_data.SqlClientData(
-      database_path, 'heldout').preprocess(_add_proto_parsing)
+      database_path, 'heldout'
+  ).preprocess(_add_proto_parsing)
   test_client_data = sql_client_data.SqlClientData(
-      database_path, 'test').preprocess(_add_proto_parsing)
+      database_path, 'test'
+  ).preprocess(_add_proto_parsing)
   return train_client_data, heldout_client_data, test_client_data
 
 
@@ -146,18 +152,22 @@ def load_word_counts(cache_dir=None, vocab_size: Optional[int] = None):
   if vocab_size is not None:
     if not isinstance(vocab_size, int):
       raise TypeError(
-          f'vocab_size should be None or int, got {type(vocab_size)}.')
+          f'vocab_size should be None or int, got {type(vocab_size)}.'
+      )
     if vocab_size <= 0:
       raise ValueError(f'vocab_size must be positive, got {vocab_size}.')
 
   path = tf.keras.utils.get_file(
       'stackoverflow.word_count.tar.bz2',
       origin='https://storage.googleapis.com/tff-datasets-public/stackoverflow.word_count.tar.bz2',
-      file_hash='1dc00256d6e527c54b9756d968118378ae14e6692c0b3b6cad470cdd3f0c519c',
+      file_hash=(
+          '1dc00256d6e527c54b9756d968118378ae14e6692c0b3b6cad470cdd3f0c519c'
+      ),
       hash_algorithm='sha256',
       extract=True,
       archive_format='tar',
-      cache_dir=cache_dir)
+      cache_dir=cache_dir,
+  )
 
   word_counts = collections.OrderedDict()
   dir_path = os.path.dirname(path)
@@ -187,18 +197,22 @@ def load_tag_counts(cache_dir=None):
   path = tf.keras.utils.get_file(
       'stackoverflow.tag_count.tar.bz2',
       origin='https://storage.googleapis.com/tff-datasets-public/stackoverflow.tag_count.tar.bz2',
-      file_hash='6fe281cec490d9384a290d560072438e7e2b377bbb823876ce7bd6f82696772d',
+      file_hash=(
+          '6fe281cec490d9384a290d560072438e7e2b377bbb823876ce7bd6f82696772d'
+      ),
       hash_algorithm='sha256',
       extract=True,
       archive_format='tar',
-      cache_dir=cache_dir)
+      cache_dir=cache_dir,
+  )
 
   dir_path = os.path.dirname(path)
   file_path = os.path.join(dir_path, 'stackoverflow.tag_count')
   with open(file_path) as f:
     tag_counts = json.load(f)
   return collections.OrderedDict(
-      sorted(tag_counts.items(), key=lambda item: item[1], reverse=True))
+      sorted(tag_counts.items(), key=lambda item: item[1], reverse=True)
+  )
 
 
 def get_synthetic():
@@ -214,92 +228,98 @@ def get_synthetic():
      `tff.simulation.datasets.stackoverflow.load_data`.
   """
   return from_tensor_slices_client_data.TestClientData(
-      create_synthetic_data_dictionary())
+      create_synthetic_data_dictionary()
+  )
 
 
 def create_synthetic_data_dictionary():
   return {
-      'synthetic_1':
-          collections.OrderedDict(
-              creation_date=[
-                  b'2010-01-08 09:34:05 UTC',
-                  b'2008-08-10 08:28:52.1 UTC',
-                  b'2008-08-10 08:28:52.1 UTC',
-              ],
-              score=tf.constant([172, 80, 80], dtype=tf.int64),
-              tags=[
-                  b'sql|sql-server|aggregate-functions|median',
-                  b'css|cross-browser|rounded-corners|css3',
-                  b'css|cross-browser|rounded-corners|css3',
-              ],
-              title=[
-                  b'function to calculate median in sql server',
-                  b'creating rounded corners using css',
-                  b'creating rounded corners using css',
-              ],
-              tokens=[
-                  b"if you're using sql 2005 or better this is a nice , simple-ish median calculation for a single column in a table :",
-                  b'css3 does finally define the',
-                  b"which is exactly how you'd want it to work .",
-              ],
-              type=[
-                  b'answer',
-                  b'question',
-                  b'answer',
-              ]),
-      'synthetic_2':
-          collections.OrderedDict(
-              creation_date=[
-                  b'2008-08-05 19:01:55.2 UTC',
-                  b'2010-07-15 18:15:58.5 UTC',
-                  b'2010-07-15 18:15:58.5 UTC',
-              ],
-              score=tf.constant([3, 12, -1], dtype=tf.int64),
-              tags=[
-                  b'git|svn|version-control|language-agnostic|dvcs',
-                  b'android|android-emulator|monkey',
-                  b'android|android-emulator|monkey',
-              ],
-              title=[
-                  b'getting started with version control',
-                  b'writing to / system / framework in emulator',
-                  b'writing to / system / framework in emulator',
-              ],
-              tokens=[
-                  b'if you are on mac osx , i found <URL> " > versions to be an incredible ( free ) gui front-end to svn .',
-                  b'edit :',
-                  b'thanks .',
-              ],
-              type=[
-                  b'answer',
-                  b'question',
-                  b'question',
-              ],
-          ),
-      'synthetic_3':
-          collections.OrderedDict(
-              creation_date=[
-                  b'2008-10-30 16:49:26.9 UTC',
-                  b'2008-10-30 16:49:26.9 UTC',
-              ],
-              score=tf.constant([1, 1], dtype=tf.int64),
-              tags=[
-                  b'vb . net|design-patterns|iterator|yield',
-                  b'vb . net|design-patterns|iterator|yield',
-              ],
-              title=[
-                  b'iterator pattern in vb . net ( c # would use yield ! )',
-                  b'iterator pattern in vb . net ( c # would use yield ! )',
-              ],
-              tokens=[
-                  b'edit :',
-                  b'the spec is available here .',
-              ],
-              type=[
-                  b'answer',
-                  b'answer',
-              ],
-          )
+      'synthetic_1': collections.OrderedDict(
+          creation_date=[
+              b'2010-01-08 09:34:05 UTC',
+              b'2008-08-10 08:28:52.1 UTC',
+              b'2008-08-10 08:28:52.1 UTC',
+          ],
+          score=tf.constant([172, 80, 80], dtype=tf.int64),
+          tags=[
+              b'sql|sql-server|aggregate-functions|median',
+              b'css|cross-browser|rounded-corners|css3',
+              b'css|cross-browser|rounded-corners|css3',
+          ],
+          title=[
+              b'function to calculate median in sql server',
+              b'creating rounded corners using css',
+              b'creating rounded corners using css',
+          ],
+          tokens=[
+              (
+                  b"if you're using sql 2005 or better this is a nice ,"
+                  b' simple-ish median calculation for a single column in a'
+                  b' table :'
+              ),
+              b'css3 does finally define the',
+              b"which is exactly how you'd want it to work .",
+          ],
+          type=[
+              b'answer',
+              b'question',
+              b'answer',
+          ],
+      ),
+      'synthetic_2': collections.OrderedDict(
+          creation_date=[
+              b'2008-08-05 19:01:55.2 UTC',
+              b'2010-07-15 18:15:58.5 UTC',
+              b'2010-07-15 18:15:58.5 UTC',
+          ],
+          score=tf.constant([3, 12, -1], dtype=tf.int64),
+          tags=[
+              b'git|svn|version-control|language-agnostic|dvcs',
+              b'android|android-emulator|monkey',
+              b'android|android-emulator|monkey',
+          ],
+          title=[
+              b'getting started with version control',
+              b'writing to / system / framework in emulator',
+              b'writing to / system / framework in emulator',
+          ],
+          tokens=[
+              (
+                  b'if you are on mac osx , i found <URL> " > versions to be an'
+                  b' incredible ( free ) gui front-end to svn .'
+              ),
+              b'edit :',
+              b'thanks .',
+          ],
+          type=[
+              b'answer',
+              b'question',
+              b'question',
+          ],
+      ),
+      'synthetic_3': collections.OrderedDict(
+          creation_date=[
+              b'2008-10-30 16:49:26.9 UTC',
+              b'2008-10-30 16:49:26.9 UTC',
+          ],
+          score=tf.constant([1, 1], dtype=tf.int64),
+          tags=[
+              b'vb . net|design-patterns|iterator|yield',
+              b'vb . net|design-patterns|iterator|yield',
+          ],
+          title=[
+              b'iterator pattern in vb . net ( c # would use yield ! )',
+              b'iterator pattern in vb . net ( c # would use yield ! )',
+          ],
+          tokens=[
+              b'edit :',
+              b'the spec is available here .',
+          ],
+          type=[
+              b'answer',
+              b'answer',
+          ],
+      ),
   }
 
 
@@ -312,26 +332,68 @@ def get_synthetic_word_counts():
   Returns:
      An ordered dictionary mapping words to their respective count.
   """
-  return collections.OrderedDict([('.', 4), ('is', 3), ('a', 3), (':', 3),
-                                  ('to', 3), ('if', 2), (',', 2), ('the', 2),
-                                  ('edit', 2), ("you're", 1), ('using', 1),
-                                  ('sql', 1), ('2005', 1), ('or', 1),
-                                  ('better', 1), ('this', 1), ('nice', 1),
-                                  ('simple-ish', 1), ('median', 1),
-                                  ('calculation', 1), ('for', 1), ('single', 1),
-                                  ('column', 1), ('in', 1), ('table', 1),
-                                  ('css3', 1), ('does', 1), ('finally', 1),
-                                  ('define', 1), ('which', 1), ('exactly', 1),
-                                  ('how', 1), ("you'd", 1), ('want', 1),
-                                  ('it', 1), ('work', 1),
-                                  ('you', 1), ('are', 1), ('on', 1), ('mac', 1),
-                                  ('osx', 1), ('i', 1), ('found', 1),
-                                  ('<URL>', 1), ('"', 1), ('>', 1),
-                                  ('versions', 1), ('be', 1), ('an', 1),
-                                  ('incredible', 1), ('(', 1), ('free', 1),
-                                  (')', 1), ('gui', 1), ('front-end', 1),
-                                  ('svn', 1), ('thanks', 1), ('spec', 1),
-                                  ('available', 1), ('here', 1)])
+  return collections.OrderedDict([
+      ('.', 4),
+      ('is', 3),
+      ('a', 3),
+      (':', 3),
+      ('to', 3),
+      ('if', 2),
+      (',', 2),
+      ('the', 2),
+      ('edit', 2),
+      ("you're", 1),
+      ('using', 1),
+      ('sql', 1),
+      ('2005', 1),
+      ('or', 1),
+      ('better', 1),
+      ('this', 1),
+      ('nice', 1),
+      ('simple-ish', 1),
+      ('median', 1),
+      ('calculation', 1),
+      ('for', 1),
+      ('single', 1),
+      ('column', 1),
+      ('in', 1),
+      ('table', 1),
+      ('css3', 1),
+      ('does', 1),
+      ('finally', 1),
+      ('define', 1),
+      ('which', 1),
+      ('exactly', 1),
+      ('how', 1),
+      ("you'd", 1),
+      ('want', 1),
+      ('it', 1),
+      ('work', 1),
+      ('you', 1),
+      ('are', 1),
+      ('on', 1),
+      ('mac', 1),
+      ('osx', 1),
+      ('i', 1),
+      ('found', 1),
+      ('<URL>', 1),
+      ('"', 1),
+      ('>', 1),
+      ('versions', 1),
+      ('be', 1),
+      ('an', 1),
+      ('incredible', 1),
+      ('(', 1),
+      ('free', 1),
+      (')', 1),
+      ('gui', 1),
+      ('front-end', 1),
+      ('svn', 1),
+      ('thanks', 1),
+      ('spec', 1),
+      ('available', 1),
+      ('here', 1),
+  ])
 
 
 def get_synthetic_tag_counts():
@@ -343,13 +405,25 @@ def get_synthetic_tag_counts():
   Returns:
      An ordered dictionary mapping tags to their respective count.
   """
-  return collections.OrderedDict([('css', 2), ('cross-browser', 2),
-                                  ('rounded-corners', 2), ('css3', 2),
-                                  ('android', 2), ('android-emulator', 2),
-                                  ('monkey', 2), ('vb . net', 2),
-                                  ('design-patterns', 2), ('iterator', 2),
-                                  ('yield', 2), ('sql', 1), ('sql-server', 1),
-                                  ('aggregate-functions', 1), ('median', 1),
-                                  ('git', 1), ('svn', 1),
-                                  ('version-control', 1),
-                                  ('language-agnostic', 1), ('dvcs', 1)])
+  return collections.OrderedDict([
+      ('css', 2),
+      ('cross-browser', 2),
+      ('rounded-corners', 2),
+      ('css3', 2),
+      ('android', 2),
+      ('android-emulator', 2),
+      ('monkey', 2),
+      ('vb . net', 2),
+      ('design-patterns', 2),
+      ('iterator', 2),
+      ('yield', 2),
+      ('sql', 1),
+      ('sql-server', 1),
+      ('aggregate-functions', 1),
+      ('median', 1),
+      ('git', 1),
+      ('svn', 1),
+      ('version-control', 1),
+      ('language-agnostic', 1),
+      ('dvcs', 1),
+  ])

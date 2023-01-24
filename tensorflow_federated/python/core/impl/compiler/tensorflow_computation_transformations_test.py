@@ -28,15 +28,19 @@ from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
 
 def _extract_call_ops(
-    comp: computation_pb2.Computation) -> Iterator[tf.compat.v1.NodeDef]:
+    comp: computation_pb2.Computation,
+) -> Iterator[tf.compat.v1.NodeDef]:
   computation_oneof = comp.WhichOneof('computation')
   if computation_oneof != 'tensorflow':
-    raise TypeError('`prune_tensorflow_proto` only accepts `Computation` '
-                    'protos of the "tensorflow" variety; you have passed '
-                    'one of variety {}.'.format(computation_oneof))
+    raise TypeError(
+        '`prune_tensorflow_proto` only accepts `Computation` '
+        'protos of the "tensorflow" variety; you have passed '
+        'one of variety {}.'.format(computation_oneof)
+    )
   graph_def = serialization_utils.unpack_graph_def(comp.tensorflow.graph_def)
-  all_nodes = itertools.chain(graph_def.node,
-                              *[f.node_def for f in graph_def.library.function])
+  all_nodes = itertools.chain(
+      graph_def.node, *[f.node_def for f in graph_def.library.function]
+  )
   for node in all_nodes:
     if node.op in tensorflow_computation_transformations.CALL_OPS:
       yield node
@@ -55,14 +59,16 @@ class DisableGrapplerForPartitionedCalls(absltest.TestCase):
   def test_raises_on_none(self):
     with self.assertRaises(TypeError):
       tensorflow_computation_transformations.disable_grappler_for_partitioned_calls(
-          None)
+          None
+      )
 
   def test_raises_on_compiled_computation(self):
     tensor_type = computation_types.TensorType(tf.int32)
     comp = building_block_factory.create_compiled_identity(tensor_type)
     with self.assertRaises(TypeError):
       tensorflow_computation_transformations.disable_grappler_for_partitioned_calls(
-          comp)
+          comp
+      )
 
   def assertCallOpsGrapplerNotDisabled(self, comp: computation_pb2.Computation):
     call_ops = _extract_call_ops(comp)
@@ -73,14 +79,14 @@ class DisableGrapplerForPartitionedCalls(absltest.TestCase):
     self.assertTrue(all(_is_grappler_disabled(op) for op in call_ops))
 
   def test_partitioned_call_nodes(self):
-
     @tf.function
     def test():
       return tf.constant(1)
 
     with tf.Graph().as_default() as graph:
       result_type, result_binding = tensorflow_utils.capture_result_from_graph(
-          test(), graph)
+          test(), graph
+      )
 
     function_type = computation_types.FunctionType(None, result_type)
     serialized_function_type = type_serialization.serialize_type(function_type)
@@ -89,15 +95,17 @@ class DisableGrapplerForPartitionedCalls(absltest.TestCase):
         tensorflow=computation_pb2.TensorFlow(
             graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
             parameter=None,
-            result=result_binding))
+            result=result_binding,
+        ),
+    )
 
     self.assertCallOpsGrapplerNotDisabled(proto)
     transformed_proto = tensorflow_computation_transformations.disable_grappler_for_partitioned_calls(
-        proto)
+        proto
+    )
     self.assertCallOpsGrapplerDisabled(transformed_proto)
 
   def test_stateful_partitioned_call_nodes(self):
-
     with tf.Graph().as_default() as graph:
       v = tf.Variable(0)
 
@@ -106,7 +114,8 @@ class DisableGrapplerForPartitionedCalls(absltest.TestCase):
         return v.assign_add(1)
 
       result_type, result_binding = tensorflow_utils.capture_result_from_graph(
-          test(), graph)
+          test(), graph
+      )
 
     function_type = computation_types.FunctionType(None, result_type)
     serialized_function_type = type_serialization.serialize_type(function_type)
@@ -115,25 +124,28 @@ class DisableGrapplerForPartitionedCalls(absltest.TestCase):
         tensorflow=computation_pb2.TensorFlow(
             graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
             parameter=None,
-            result=result_binding))
+            result=result_binding,
+        ),
+    )
 
     self.assertCallOpsGrapplerNotDisabled(proto)
     transformed_proto = tensorflow_computation_transformations.disable_grappler_for_partitioned_calls(
-        proto)
+        proto
+    )
     self.assertCallOpsGrapplerDisabled(transformed_proto)
 
 
 class CheckAllowedOps(absltest.TestCase):
 
   def test_valid_ops(self):
-
     @tf.function
     def test():
       return tf.constant(1)
 
     with tf.Graph().as_default() as graph:
       result_type, result_binding = tensorflow_utils.capture_result_from_graph(
-          test(), graph)
+          test(), graph
+      )
 
     function_type = computation_types.FunctionType(None, result_type)
     serialized_function_type = type_serialization.serialize_type(function_type)
@@ -142,21 +154,24 @@ class CheckAllowedOps(absltest.TestCase):
         tensorflow=computation_pb2.TensorFlow(
             graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
             parameter=None,
-            result=result_binding))
+            result=result_binding,
+        ),
+    )
 
     allowed_op_names = frozenset(['Const', 'PartitionedCall', 'Identity'])
     tensorflow_computation_transformations.check_allowed_ops(
-        proto, allowed_op_names)
+        proto, allowed_op_names
+    )
 
   def test_invalid_ops(self):
-
     @tf.function
     def test():
       return tf.constant(1)
 
     with tf.Graph().as_default() as graph:
       result_type, result_binding = tensorflow_utils.capture_result_from_graph(
-          test(), graph)
+          test(), graph
+      )
 
     function_type = computation_types.FunctionType(None, result_type)
     serialized_function_type = type_serialization.serialize_type(function_type)
@@ -165,26 +180,30 @@ class CheckAllowedOps(absltest.TestCase):
         tensorflow=computation_pb2.TensorFlow(
             graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
             parameter=None,
-            result=result_binding))
+            result=result_binding,
+        ),
+    )
 
     allowed_op_names = frozenset(['Const'])
-    with self.assertRaises(tensorflow_computation_transformations
-                           .DisallowedOpInTensorFlowComputationError):
+    with self.assertRaises(
+        tensorflow_computation_transformations.DisallowedOpInTensorFlowComputationError
+    ):
       tensorflow_computation_transformations.check_allowed_ops(
-          proto, allowed_op_names)
+          proto, allowed_op_names
+      )
 
 
 class CheckNoDisallowedOps(absltest.TestCase):
 
   def test_valid_ops(self):
-
     @tf.function
     def test():
       return tf.constant(1)
 
     with tf.Graph().as_default() as graph:
       result_type, result_binding = tensorflow_utils.capture_result_from_graph(
-          test(), graph)
+          test(), graph
+      )
 
     function_type = computation_types.FunctionType(None, result_type)
     serialized_function_type = type_serialization.serialize_type(function_type)
@@ -193,21 +212,24 @@ class CheckNoDisallowedOps(absltest.TestCase):
         tensorflow=computation_pb2.TensorFlow(
             graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
             parameter=None,
-            result=result_binding))
+            result=result_binding,
+        ),
+    )
 
     disallowed_op_names = frozenset(['ShardedFilename'])
     tensorflow_computation_transformations.check_no_disallowed_ops(
-        proto, disallowed_op_names)
+        proto, disallowed_op_names
+    )
 
   def test_invalid_ops(self):
-
     @tf.function
     def test():
       return tf.constant(1)
 
     with tf.Graph().as_default() as graph:
       result_type, result_binding = tensorflow_utils.capture_result_from_graph(
-          test(), graph)
+          test(), graph
+      )
 
     function_type = computation_types.FunctionType(None, result_type)
     serialized_function_type = type_serialization.serialize_type(function_type)
@@ -216,13 +238,17 @@ class CheckNoDisallowedOps(absltest.TestCase):
         tensorflow=computation_pb2.TensorFlow(
             graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
             parameter=None,
-            result=result_binding))
+            result=result_binding,
+        ),
+    )
 
     disallowed_op_names = frozenset(['Const'])
-    with self.assertRaises(tensorflow_computation_transformations
-                           .DisallowedOpInTensorFlowComputationError):
+    with self.assertRaises(
+        tensorflow_computation_transformations.DisallowedOpInTensorFlowComputationError
+    ):
       tensorflow_computation_transformations.check_no_disallowed_ops(
-          proto, disallowed_op_names)
+          proto, disallowed_op_names
+      )
 
 
 if __name__ == '__main__':

@@ -28,8 +28,9 @@ from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 from tensorflow_federated.python.tensorflow_libs import variable_utils
 
 
-def tf_computation_serializer(parameter_type: Optional[computation_types.Type],
-                              context_stack):
+def tf_computation_serializer(
+    parameter_type: Optional[computation_types.Type], context_stack
+):
   """Serializes a TF computation with a given parameter type.
 
   Args:
@@ -65,7 +66,8 @@ def tf_computation_serializer(parameter_type: Optional[computation_types.Type],
 
   with tf.Graph().as_default() as graph:
     session_token_tensor = tf.compat.v1.placeholder(
-        tf.string, shape=(), name='session_token_tensor')
+        tf.string, shape=(), name='session_token_tensor'
+    )
     if parameter_type is not None:
       parameter_value, parameter_binding = (
           tensorflow_utils.stamp_parameter_in_graph(
@@ -76,7 +78,8 @@ def tf_computation_serializer(parameter_type: Optional[computation_types.Type],
       parameter_value = None
       parameter_binding = None
     context = tensorflow_computation_context.TensorFlowComputationContext(
-        graph, session_token_tensor)
+        graph, session_token_tensor
+    )
     with context_stack.install(context):
       with variable_utils.record_variable_creation_scope() as all_variables:
         result = yield parameter_value
@@ -84,14 +87,16 @@ def tf_computation_serializer(parameter_type: Optional[computation_types.Type],
       if all_variables:
         # Use a readable but not-too-long name for the init_op.
         name = 'init_op_for_' + '_'.join(
-            [v.name.replace(':0', '') for v in all_variables])
+            [v.name.replace(':0', '') for v in all_variables]
+        )
         if len(name) > 50:
           name = 'init_op_for_{}_variables'.format(len(all_variables))
         initializer_ops.append(
-            tf.compat.v1.initializers.variables(all_variables, name=name))
+            tf.compat.v1.initializers.variables(all_variables, name=name)
+        )
       initializer_ops.extend(
-          tf.compat.v1.get_collection(
-              tf.compat.v1.GraphKeys.TABLE_INITIALIZERS))
+          tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.TABLE_INITIALIZERS)
+      )
       if initializer_ops:
         # Before running the main new init op, run any initializers for sub-
         # computations from context.init_ops. Variables from import_graph_def
@@ -99,15 +104,18 @@ def tf_computation_serializer(parameter_type: Optional[computation_types.Type],
         # initialized without this code path.
         with tf.compat.v1.control_dependencies(context.init_ops):
           init_op_name = tf.group(
-              *initializer_ops, name='grouped_initializers').name
+              *initializer_ops, name='grouped_initializers'
+          ).name
       elif context.init_ops:
         init_op_name = tf.group(
-            *context.init_ops, name='subcomputation_init_ops').name
+            *context.init_ops, name='subcomputation_init_ops'
+        ).name
       else:
         init_op_name = None
 
     result_type, result_binding = tensorflow_utils.capture_result_from_graph(
-        result, graph)
+        result, graph
+    )
 
   type_signature = computation_types.FunctionType(parameter_type, result_type)
 
@@ -116,7 +124,9 @@ def tf_computation_serializer(parameter_type: Optional[computation_types.Type],
       parameter=parameter_binding,
       result=result_binding,
       session_token_tensor_name=session_token_tensor.name,
-      initialize_op=init_op_name)
+      initialize_op=init_op_name,
+  )
   yield pb.Computation(
       type=type_serialization.serialize_type(type_signature),
-      tensorflow=tensorflow), type_signature
+      tensorflow=tensorflow,
+  ), type_signature

@@ -38,12 +38,14 @@ def _bind_comp_as_reference(comp):
   if not isinstance(fc_context, symbol_binding_context.SymbolBindingContext):
     raise context_base.ContextError(
         f'Attempted to construct an intrinsic in context {fc_context} which '
-        ' does not support binding references.')
+        ' does not support binding references.'
+    )
   return fc_context.bind_computation_to_reference(comp)
 
 
-def federated_aggregate(value, zero, accumulate, merge,
-                        report) -> value_impl.Value:
+def federated_aggregate(
+    value, zero, accumulate, merge, report
+) -> value_impl.Value:
   """Aggregates `value` from `tff.CLIENTS` to `tff.SERVER`.
 
   This generalized aggregation function admits multi-layered architectures that
@@ -93,8 +95,9 @@ def federated_aggregate(value, zero, accumulate, merge,
     TypeError: If the arguments are not of the types specified above.
   """
   value = value_impl.to_value(value, None)
-  value = value_utils.ensure_federated_value(value, placements.CLIENTS,
-                                             'value to be aggregated')
+  value = value_utils.ensure_federated_value(
+      value, placements.CLIENTS, 'value to be aggregated'
+  )
 
   zero = value_impl.to_value(zero, None)
   py_typecheck.check_type(zero, value_impl.Value)
@@ -102,42 +105,56 @@ def federated_aggregate(value, zero, accumulate, merge,
       accumulate,
       None,
       parameter_type_hint=computation_types.StructType(
-          [zero.type_signature, value.type_signature.member]))
+          [zero.type_signature, value.type_signature.member]
+      ),
+  )
   merge = value_impl.to_value(
       merge,
       None,
       parameter_type_hint=computation_types.StructType(
-          [accumulate.type_signature.result] * 2))
+          [accumulate.type_signature.result] * 2
+      ),
+  )
   report = value_impl.to_value(
-      report, None, parameter_type_hint=merge.type_signature.result)
+      report, None, parameter_type_hint=merge.type_signature.result
+  )
   for op in [accumulate, merge, report]:
     py_typecheck.check_type(op, value_impl.Value)
     py_typecheck.check_type(op.type_signature, computation_types.FunctionType)
 
   if not accumulate.type_signature.parameter[0].is_assignable_from(
-      zero.type_signature):
-    raise TypeError('Expected `zero` to be assignable to type {}, '
-                    'but was of incompatible type {}.'.format(
-                        accumulate.type_signature.parameter[0],
-                        zero.type_signature))
+      zero.type_signature
+  ):
+    raise TypeError(
+        'Expected `zero` to be assignable to type {}, '
+        'but was of incompatible type {}.'.format(
+            accumulate.type_signature.parameter[0], zero.type_signature
+        )
+    )
 
   accumulate_type_expected = type_factory.reduction_op(
-      accumulate.type_signature.result, value.type_signature.member)
+      accumulate.type_signature.result, value.type_signature.member
+  )
   merge_type_expected = type_factory.reduction_op(
-      accumulate.type_signature.result, accumulate.type_signature.result)
+      accumulate.type_signature.result, accumulate.type_signature.result
+  )
   report_type_expected = computation_types.FunctionType(
-      merge.type_signature.result, report.type_signature.result)
-  for op_name, op, type_expected in [('accumulate', accumulate,
-                                      accumulate_type_expected),
-                                     ('merge', merge, merge_type_expected),
-                                     ('report', report, report_type_expected)]:
+      merge.type_signature.result, report.type_signature.result
+  )
+  for op_name, op, type_expected in [
+      ('accumulate', accumulate, accumulate_type_expected),
+      ('merge', merge, merge_type_expected),
+      ('report', report, report_type_expected),
+  ]:
     if not type_expected.is_assignable_from(op.type_signature):
       raise TypeError(
           'Expected parameter `{}` to be of type {}, but received {} instead.'
-          .format(op_name, type_expected, op.type_signature))
+          .format(op_name, type_expected, op.type_signature)
+      )
 
   comp = building_block_factory.create_federated_aggregate(
-      value.comp, zero.comp, accumulate.comp, merge.comp, report.comp)
+      value.comp, zero.comp, accumulate.comp, merge.comp, report.comp
+  )
   comp = _bind_comp_as_reference(comp)
   return value_impl.Value(comp)
 
@@ -159,8 +176,9 @@ def federated_broadcast(value):
       `tff.SERVER`.
   """
   value = value_impl.to_value(value, None)
-  value = value_utils.ensure_federated_value(value, placements.SERVER,
-                                             'value to be broadcasted')
+  value = value_utils.ensure_federated_value(
+      value, placements.SERVER, 'value to be broadcasted'
+  )
 
   if not value.type_signature.all_equal:
     raise TypeError('The broadcasted value should be equal at all locations.')
@@ -195,7 +213,9 @@ def federated_eval(fn, placement):
     raise TypeError(
         '`federated_eval` expects a `fn` that accepts no arguments, but '
         'the `fn` provided has a parameter of type {}.'.format(
-            fn.type_signature.parameter))
+            fn.type_signature.parameter
+        )
+    )
 
   comp = building_block_factory.create_federated_eval(fn.comp, placement)
   comp = _bind_comp_as_reference(comp)
@@ -236,16 +256,20 @@ def federated_map(fn, arg):
   arg = value_utils.ensure_federated_value(arg, label='value to be mapped')
 
   fn = value_impl.to_value(
-      fn, None, parameter_type_hint=arg.type_signature.member)
+      fn, None, parameter_type_hint=arg.type_signature.member
+  )
 
   py_typecheck.check_type(fn, value_impl.Value)
   py_typecheck.check_type(fn.type_signature, computation_types.FunctionType)
   if not fn.type_signature.parameter.is_assignable_from(
-      arg.type_signature.member):
+      arg.type_signature.member
+  ):
     raise TypeError(
         'The mapping function expects a parameter of type {}, but member '
         'constituents of the mapped value are of incompatible type {}.'.format(
-            fn.type_signature.parameter, arg.type_signature.member))
+            fn.type_signature.parameter, arg.type_signature.member
+        )
+    )
 
   # TODO(b/144384398): Change structure to one that maps the placement type
   # to the building_block function that fits it, in a way that allows the
@@ -254,13 +278,17 @@ def federated_map(fn, arg):
     if not arg.type_signature.all_equal:
       raise TypeError(
           'Arguments placed at {} should be equal at all locations.'.format(
-              placements.SERVER))
+              placements.SERVER
+          )
+      )
     comp = building_block_factory.create_federated_apply(fn.comp, arg.comp)
   elif arg.type_signature.placement is placements.CLIENTS:
     comp = building_block_factory.create_federated_map(fn.comp, arg.comp)
   else:
-    raise TypeError('Expected `arg` to have a type with a supported placement, '
-                    'found {}.'.format(arg.type_signature.placement))
+    raise TypeError(
+        'Expected `arg` to have a type with a supported placement, '
+        'found {}.'.format(arg.type_signature.placement)
+    )
 
   comp = _bind_comp_as_reference(comp)
   return value_impl.Value(comp)
@@ -274,23 +302,29 @@ def federated_map_all_equal(fn, arg):
   # intrinsic this is based on to work with federated values of arbitrary
   # placement.
   arg = value_impl.to_value(arg, None)
-  arg = value_utils.ensure_federated_value(arg, placements.CLIENTS,
-                                           'value to be mapped')
+  arg = value_utils.ensure_federated_value(
+      arg, placements.CLIENTS, 'value to be mapped'
+  )
 
   fn = value_impl.to_value(
-      fn, None, parameter_type_hint=arg.type_signature.member)
+      fn, None, parameter_type_hint=arg.type_signature.member
+  )
 
   py_typecheck.check_type(fn, value_impl.Value)
   py_typecheck.check_type(fn.type_signature, computation_types.FunctionType)
   if not fn.type_signature.parameter.is_assignable_from(
-      arg.type_signature.member):
+      arg.type_signature.member
+  ):
     raise TypeError(
         'The mapping function expects a parameter of type {}, but member '
         'constituents of the mapped value are of incompatible type {}.'.format(
-            fn.type_signature.parameter, arg.type_signature.member))
+            fn.type_signature.parameter, arg.type_signature.member
+        )
+    )
 
   comp = building_block_factory.create_federated_map_all_equal(
-      fn.comp, arg.comp)
+      fn.comp, arg.comp
+  )
   comp = _bind_comp_as_reference(comp)
   return value_impl.Value(comp)
 
@@ -332,27 +366,38 @@ def federated_mean(value, weight=None):
   # variable.
 
   value = value_impl.to_value(value, None)
-  value = value_utils.ensure_federated_value(value, placements.CLIENTS,
-                                             'value to be averaged')
+  value = value_utils.ensure_federated_value(
+      value, placements.CLIENTS, 'value to be averaged'
+  )
   if not type_analysis.is_average_compatible(value.type_signature):
     raise TypeError(
         'The value type {} is not compatible with the average operator.'.format(
-            value.type_signature))
+            value.type_signature
+        )
+    )
 
   if weight is not None:
     weight = value_impl.to_value(weight, None)
-    weight = value_utils.ensure_federated_value(weight, placements.CLIENTS,
-                                                'weight to use in averaging')
-    py_typecheck.check_type(weight.type_signature.member,
-                            computation_types.TensorType)
+    weight = value_utils.ensure_federated_value(
+        weight, placements.CLIENTS, 'weight to use in averaging'
+    )
+    py_typecheck.check_type(
+        weight.type_signature.member, computation_types.TensorType
+    )
     if weight.type_signature.member.shape.ndims != 0:
-      raise TypeError('The weight type {} is not a federated scalar.'.format(
-          weight.type_signature))
-    if not (weight.type_signature.member.dtype.is_integer or
-            weight.type_signature.member.dtype.is_floating):
+      raise TypeError(
+          'The weight type {} is not a federated scalar.'.format(
+              weight.type_signature
+          )
+      )
+    if not (
+        weight.type_signature.member.dtype.is_integer
+        or weight.type_signature.member.dtype.is_floating
+    ):
       raise TypeError(
           'The weight type {} is not a federated integer or floating-point '
-          'tensor.'.format(weight.type_signature))
+          'tensor.'.format(weight.type_signature)
+      )
 
   weight_comp = None if weight is None else weight.comp
   comp = building_block_factory.create_federated_mean(value.comp, weight_comp)
@@ -378,8 +423,9 @@ def federated_sum(value):
       `tff.CLIENTS`.
   """
   value = value_impl.to_value(value, None)
-  value = value_utils.ensure_federated_value(value, placements.CLIENTS,
-                                             'value to be summed')
+  value = value_utils.ensure_federated_value(
+      value, placements.CLIENTS, 'value to be summed'
+  )
   type_analysis.check_is_sum_compatible(value.type_signature)
   comp = building_block_factory.create_federated_sum(value.comp)
   comp = _bind_comp_as_reference(comp)
@@ -407,15 +453,21 @@ def federated_value(value, placement):
   """
   if isinstance(value, value_impl.Value):
     warnings.warn(
-        'Deprecation warning: Using `tff.federated_value` with arguments '
-        'other than simple Python constants is deprecated. When placing the '
-        'result of a `tf_computation`, prefer `tff.federated_eval`.',
-        DeprecationWarning)
+        (
+            'Deprecation warning: Using `tff.federated_value` with arguments'
+            ' other than simple Python constants is deprecated. When placing'
+            ' the result of a `tf_computation`, prefer `tff.federated_eval`.'
+        ),
+        DeprecationWarning,
+    )
   value = value_impl.to_value(value, None)
   if type_analysis.contains(value.type_signature, lambda t: t.is_federated()):
-    raise TypeError('Cannot place value {} containing federated types at '
-                    'another placement; requested to be placed at {}.'.format(
-                        value, placement))
+    raise TypeError(
+        'Cannot place value {} containing federated types at '
+        'another placement; requested to be placed at {}.'.format(
+            value, placement
+        )
+    )
 
   comp = building_block_factory.create_federated_value(value.comp, placement)
   comp = _bind_comp_as_reference(comp)
@@ -464,30 +516,38 @@ def _select_parameter_mismatch(
   """Throws a `TypeError` indicating a mismatched `select` parameter type."""
   secure_string = '_secure' if secure else ''
   intrinsic_name = f'federated{secure_string}_select'
-  message = (
-      f'Expected `{intrinsic_name}` parameter `{name}` to be {type_desc}')
+  message = f'Expected `{intrinsic_name}` parameter `{name}` to be {type_desc}'
   if expected_type is None:
     raise TypeError(f'{message}, found value of type {param_type}')
   else:
-    raise TypeError(f'{message}:\n' +
-                    computation_types.type_mismatch_error_message(
-                        param_type,
-                        expected_type,
-                        computation_types.TypeRelation.ASSIGNABLE,
-                        second_is_expected=True))
+    raise TypeError(
+        f'{message}:\n'
+        + computation_types.type_mismatch_error_message(
+            param_type,
+            expected_type,
+            computation_types.TypeRelation.ASSIGNABLE,
+            second_is_expected=True,
+        )
+    )
 
 
 def _check_select_keys_type(keys_type, secure):
   if not (keys_type.is_federated and keys_type.placement.is_clients()):
-    _select_parameter_mismatch(keys_type, 'a federated value placed at clients',
-                               'client_keys', secure)
-  if not (keys_type.member.is_tensor() and keys_type.member.dtype == tf.int32
-          and keys_type.member.shape.rank == 1 and
-          keys_type.member.shape.dims[0].value is not None):
+    _select_parameter_mismatch(
+        keys_type, 'a federated value placed at clients', 'client_keys', secure
+    )
+  if not (
+      keys_type.member.is_tensor()
+      and keys_type.member.dtype == tf.int32
+      and keys_type.member.shape.rank == 1
+      and keys_type.member.shape.dims[0].value is not None
+  ):
     _select_parameter_mismatch(
         keys_type.member,
         'a rank-1 tensor with statically known shape and tf.int32 dtype',
-        'client_keys.type_signature.member', secure)
+        'client_keys.type_signature.member',
+        secure,
+    )
 
 
 def federated_select(client_keys, max_key, server_val, select_fn):
@@ -519,7 +579,8 @@ def federated_select(client_keys, max_key, server_val, select_fn):
       of type `<S, int32> -> RESULT`.
   """
   return _federated_select(
-      client_keys, max_key, server_val, select_fn, secure=False)
+      client_keys, max_key, server_val, select_fn, secure=False
+  )
 
 
 def federated_secure_select(client_keys, max_key, server_val, select_fn):
@@ -550,7 +611,8 @@ def federated_secure_select(client_keys, max_key, server_val, select_fn):
       of type `<S, int32> -> RESULT`.
   """
   return _federated_select(
-      client_keys, max_key, server_val, select_fn, secure=True)
+      client_keys, max_key, server_val, select_fn, secure=True
+  )
 
 
 def _federated_select(client_keys, max_key, server_val, select_fn, secure):
@@ -565,39 +627,51 @@ def _federated_select(client_keys, max_key, server_val, select_fn, secure):
         'a 32-bit unsigned integer placed at server',
         'max_key',
         secure,
-        expected_type=expected_max_key_type)
+        expected_type=expected_max_key_type,
+    )
   server_val = value_impl.to_value(server_val, None)
   server_val = value_utils.ensure_federated_value(
-      server_val, label='server_val')
+      server_val, label='server_val'
+  )
   expected_server_val_type = computation_types.at_server(
-      computation_types.AbstractType('T'))
-  if (not server_val.type_signature.is_federated() or
-      not server_val.type_signature.placement.is_server()):
+      computation_types.AbstractType('T')
+  )
+  if (
+      not server_val.type_signature.is_federated()
+      or not server_val.type_signature.placement.is_server()
+  ):
     _select_parameter_mismatch(
         server_val.type_signature,
         'a value placed at server',
         'server_val',
         secure,
-        expected_type=expected_server_val_type)
+        expected_type=expected_server_val_type,
+    )
   select_fn_param_type = computation_types.to_type(
-      [server_val.type_signature.member, tf.int32])
+      [server_val.type_signature.member, tf.int32]
+  )
   select_fn = value_impl.to_value(
-      select_fn, None, parameter_type_hint=select_fn_param_type)
+      select_fn, None, parameter_type_hint=select_fn_param_type
+  )
   expected_select_fn_type = computation_types.FunctionType(
-      select_fn_param_type, computation_types.AbstractType('U'))
-  if (not select_fn.type_signature.is_function() or
-      not select_fn.type_signature.parameter.is_assignable_from(
-          select_fn_param_type)):
+      select_fn_param_type, computation_types.AbstractType('U')
+  )
+  if (
+      not select_fn.type_signature.is_function()
+      or not select_fn.type_signature.parameter.is_assignable_from(
+          select_fn_param_type
+      )
+  ):
     _select_parameter_mismatch(
         select_fn.type_signature,
         'a function from state and key to result',
         'select_fn',
         secure,
-        expected_type=expected_select_fn_type)
-  comp = building_block_factory.create_federated_select(client_keys.comp,
-                                                        max_key.comp,
-                                                        server_val.comp,
-                                                        select_fn.comp, secure)
+        expected_type=expected_select_fn_type,
+    )
+  comp = building_block_factory.create_federated_select(
+      client_keys.comp, max_key.comp, server_val.comp, select_fn.comp, secure
+  )
   comp = _bind_comp_as_reference(comp)
   return value_impl.Value(comp)
 
@@ -653,24 +727,30 @@ def federated_secure_modular_sum(value, modulus):
       `tff.CLIENTS`.
   """
   value = value_impl.to_value(value, None)
-  value = value_utils.ensure_federated_value(value, placements.CLIENTS,
-                                             'value to be summed')
+  value = value_utils.ensure_federated_value(
+      value, placements.CLIENTS, 'value to be summed'
+  )
   type_analysis.check_is_structure_of_integers(value.type_signature)
   modulus_value = value_impl.to_value(modulus, None)
   value_member_type = value.type_signature.member
   modulus_type = modulus_value.type_signature
   if not type_analysis.is_single_integer_or_matches_structure(
-      modulus_type, value_member_type):
+      modulus_type, value_member_type
+  ):
     raise TypeError(
         'Expected `federated_secure_sum` parameter `modulus` to match '
         'the structure of `value`, with one integer max per tensor in '
         '`value`. Found `value` of `{}` and `modulus` of `{}`.'.format(
-            value_member_type, modulus_type))
+            value_member_type, modulus_type
+        )
+    )
   if modulus_type.is_tensor() and value_member_type.is_struct():
     modulus_value = value_impl.to_value(
-        structure.map_structure(lambda _: modulus, value_member_type), None)
+        structure.map_structure(lambda _: modulus, value_member_type), None
+    )
   comp = building_block_factory.create_federated_secure_modular_sum(
-      value.comp, modulus_value.comp)
+      value.comp, modulus_value.comp
+  )
   comp = _bind_comp_as_reference(comp)
   return value_impl.Value(comp)
 
@@ -722,24 +802,30 @@ def federated_secure_sum(value, max_input):
       `tff.CLIENTS`.
   """
   value = value_impl.to_value(value, None)
-  value = value_utils.ensure_federated_value(value, placements.CLIENTS,
-                                             'value to be summed')
+  value = value_utils.ensure_federated_value(
+      value, placements.CLIENTS, 'value to be summed'
+  )
   type_analysis.check_is_structure_of_integers(value.type_signature)
   max_input_value = value_impl.to_value(max_input, None)
   value_member_type = value.type_signature.member
   max_input_type = max_input_value.type_signature
   if not type_analysis.is_single_integer_or_matches_structure(
-      max_input_type, value_member_type):
+      max_input_type, value_member_type
+  ):
     raise TypeError(
         'Expected `federated_secure_sum` parameter `max_input` to match '
         'the structure of `value`, with one integer max per tensor in '
         '`value`. Found `value` of `{}` and `max_input` of `{}`.'.format(
-            value_member_type, max_input_type))
+            value_member_type, max_input_type
+        )
+    )
   if max_input_type.is_tensor() and value_member_type.is_struct():
     max_input_value = value_impl.to_value(
-        structure.map_structure(lambda _: max_input, value_member_type), None)
+        structure.map_structure(lambda _: max_input, value_member_type), None
+    )
   comp = building_block_factory.create_federated_secure_sum(
-      value.comp, max_input_value.comp)
+      value.comp, max_input_value.comp
+  )
   comp = _bind_comp_as_reference(comp)
   return value_impl.Value(comp)
 
@@ -794,14 +880,16 @@ def federated_secure_sum_bitwidth(value, bitwidth):
       `tff.CLIENTS`.
   """
   value = value_impl.to_value(value, None)
-  value = value_utils.ensure_federated_value(value, placements.CLIENTS,
-                                             'value to be summed')
+  value = value_utils.ensure_federated_value(
+      value, placements.CLIENTS, 'value to be summed'
+  )
   type_analysis.check_is_structure_of_integers(value.type_signature)
   bitwidth_value = value_impl.to_value(bitwidth, None)
   value_member_type = value.type_signature.member
   bitwidth_type = bitwidth_value.type_signature
   if not type_analysis.is_single_integer_or_matches_structure(
-      bitwidth_type, value_member_type):
+      bitwidth_type, value_member_type
+  ):
     raise TypeError(
         'Expected `federated_secure_sum_bitwidth` parameter `bitwidth` to '
         'match the structure of `value`, with one integer bitwidth per tensor '
@@ -811,9 +899,11 @@ def federated_secure_sum_bitwidth(value, bitwidth):
     )
   if bitwidth_type.is_tensor() and value_member_type.is_struct():
     bitwidth_value = value_impl.to_value(
-        structure.map_structure(lambda _: bitwidth, value_member_type), None)
+        structure.map_structure(lambda _: bitwidth, value_member_type), None
+    )
   comp = building_block_factory.create_federated_secure_sum_bitwidth(
-      value.comp, bitwidth_value.comp)
+      value.comp, bitwidth_value.comp
+  )
   comp = _bind_comp_as_reference(comp)
   return value_impl.Value(comp)
 
@@ -867,16 +957,20 @@ def sequence_map(fn, arg):
     parameter_type = computation_types.SequenceType(fn.type_signature.parameter)
     result_type = computation_types.SequenceType(fn.type_signature.result)
     intrinsic_type = computation_types.FunctionType(
-        (fn.type_signature, parameter_type), result_type)
-    intrinsic = building_blocks.Intrinsic(intrinsic_defs.SEQUENCE_MAP.uri,
-                                          intrinsic_type)
+        (fn.type_signature, parameter_type), result_type
+    )
+    intrinsic = building_blocks.Intrinsic(
+        intrinsic_defs.SEQUENCE_MAP.uri, intrinsic_type
+    )
     intrinsic_impl = value_impl.Value(intrinsic)
     local_fn = value_utils.get_curried(intrinsic_impl)(fn)
     return federated_map(local_fn, arg)
   else:
     raise TypeError(
         'Cannot apply `tff.sequence_map()` to a value of type {}.'.format(
-            arg.type_signature))
+            arg.type_signature
+        )
+    )
 
 
 def sequence_reduce(value, zero, op):
@@ -932,12 +1026,14 @@ def sequence_reduce(value, zero, op):
     value.type_signature.check_sequence()
   if not is_federated_sequence:
     comp = building_block_factory.create_sequence_reduce(
-        value.comp, zero.comp, op.comp)
+        value.comp, zero.comp, op.comp
+    )
     comp = _bind_comp_as_reference(comp)
     return value_impl.Value(comp)
   else:
     ref_type = computation_types.StructType(
-        [value_member_type, zero_member_type])
+        [value_member_type, zero_member_type]
+    )
     ref = building_blocks.Reference('arg', ref_type)
     arg1 = building_blocks.Selection(ref, index=0)
     arg2 = building_blocks.Selection(ref, index=1)
@@ -968,10 +1064,12 @@ def sequence_sum(value):
   if value.type_signature.is_sequence():
     element_type = value.type_signature.element
   else:
-    py_typecheck.check_type(value.type_signature,
-                            computation_types.FederatedType)
-    py_typecheck.check_type(value.type_signature.member,
-                            computation_types.SequenceType)
+    py_typecheck.check_type(
+        value.type_signature, computation_types.FederatedType
+    )
+    py_typecheck.check_type(
+        value.type_signature.member, computation_types.SequenceType
+    )
     element_type = value.type_signature.member.element
   type_analysis.check_is_sum_compatible(element_type)
 
@@ -981,12 +1079,16 @@ def sequence_sum(value):
     return value_impl.Value(comp)
   elif value.type_signature.is_federated():
     intrinsic_type = computation_types.FunctionType(
-        value.type_signature.member, value.type_signature.member.element)
-    intrinsic = building_blocks.Intrinsic(intrinsic_defs.SEQUENCE_SUM.uri,
-                                          intrinsic_type)
+        value.type_signature.member, value.type_signature.member.element
+    )
+    intrinsic = building_blocks.Intrinsic(
+        intrinsic_defs.SEQUENCE_SUM.uri, intrinsic_type
+    )
     intrinsic_impl = value_impl.Value(intrinsic)
     return federated_map(intrinsic_impl, value)
   else:
     raise TypeError(
         'Cannot apply `tff.sequence_sum()` to a value of type {}.'.format(
-            value.type_signature))
+            value.type_signature
+        )
+    )

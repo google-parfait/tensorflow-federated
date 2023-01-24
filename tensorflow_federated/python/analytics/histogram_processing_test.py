@@ -20,8 +20,9 @@ from tensorflow_federated.python.analytics import histogram_processing
 from tensorflow_federated.python.analytics import histogram_test_utils
 
 
-class HistogramProcessingTest(histogram_test_utils.HistogramTest,
-                              parameterized.TestCase):
+class HistogramProcessingTest(
+    histogram_test_utils.HistogramTest, parameterized.TestCase
+):
 
   @parameterized.named_parameters(
       (
@@ -29,44 +30,28 @@ class HistogramProcessingTest(histogram_test_utils.HistogramTest,
           tf.constant([b'a', b'b', b'c', b'd', b'e'], dtype=tf.string),
           tf.constant([1.0, 10.3, 6.0, 4.5, 2.1], dtype=tf.float32),
           tf.constant(4.5, dtype=tf.float32),
-          {
-              b'b': 10.3,
-              b'c': 6.0,
-              b'd': 4.5
-          },
+          {b'b': 10.3, b'c': 6.0, b'd': 4.5},
       ),
       (
           'python_inputs',
           [b'a', b'b', b'c', b'd', b'e'],
           [1.0, 10.3, 6.0, 4.5, 2.1],
           4.5,
-          {
-              b'b': 10.3,
-              b'c': 6.0,
-              b'd': 4.5
-          },
+          {b'b': 10.3, b'c': 6.0, b'd': 4.5},
       ),
       (
           'mixed_input_types',
           [b'a', b'b', b'c', b'd', b'e'],
           tf.constant([1.0, 10.3, 6.0, 4.5, 2.1], dtype=tf.float32),
           4.5,
-          {
-              b'b': 10.3,
-              b'c': 6.0,
-              b'd': 4.5
-          },
+          {b'b': 10.3, b'c': 6.0, b'd': 4.5},
       ),
       (
           'tensor_float64_inputs',
           tf.constant([b'a', b'b', b'c', b'd', b'e'], dtype=tf.string),
           tf.constant([1.0, 10.3, 6.0, 4.5, 2.1], dtype=tf.float64),
           tf.constant(4.5, dtype=tf.float64),
-          {
-              b'b': 10.3,
-              b'c': 6.0,
-              b'd': 4.5
-          },
+          {b'b': 10.3, b'c': 6.0, b'd': 4.5},
       ),
       (
           'empty_inputs',
@@ -80,11 +65,7 @@ class HistogramProcessingTest(histogram_test_utils.HistogramTest,
           [b'a', b'b', b'c', b'd', b'e'],
           [1.0, float('inf'), 6.0, 4.5, 2.1],
           4.5,
-          {
-              b'b': float('inf'),
-              b'c': 6.0,
-              b'd': 4.5
-          },
+          {b'b': float('inf'), b'c': 6.0, b'd': 4.5},
       ),
       (
           'inf_threshold',
@@ -94,24 +75,32 @@ class HistogramProcessingTest(histogram_test_utils.HistogramTest,
           {},
       ),
   )
-  def test_threshold_histogram_returns_expected_values(self, histogram_keys,
-                                                       histogram_values,
-                                                       threshold,
-                                                       expected_histogram):
-    histogram_keys_thresholded_tf, histogram_values_thresholded_tf = histogram_processing.threshold_histogram(
-        histogram_keys, histogram_values, threshold)
-    self.assert_histograms_all_close(histogram_keys_thresholded_tf,
-                                     histogram_values_thresholded_tf,
-                                     expected_histogram.keys(),
-                                     expected_histogram.values())
+  def test_threshold_histogram_returns_expected_values(
+      self, histogram_keys, histogram_values, threshold, expected_histogram
+  ):
+    histogram_keys_thresholded_tf, histogram_values_thresholded_tf = (
+        histogram_processing.threshold_histogram(
+            histogram_keys, histogram_values, threshold
+        )
+    )
+    self.assert_histograms_all_close(
+        histogram_keys_thresholded_tf,
+        histogram_values_thresholded_tf,
+        expected_histogram.keys(),
+        expected_histogram.values(),
+    )
 
   def test_threshold_histogram_duplicate_keys(self):
     histogram_keys = [b'a', b'a', b'b', b'c', b'd', b'e']
-    histogram_values = tf.constant([1.0, 5.0, 10.3, 6.0, 4.5, 2.1],
-                                   dtype=tf.float32)
+    histogram_values = tf.constant(
+        [1.0, 5.0, 10.3, 6.0, 4.5, 2.1], dtype=tf.float32
+    )
     threshold = 4.5
-    histogram_keys_thresholded_tf, histogram_values_thresholded_tf = histogram_processing.threshold_histogram(
-        histogram_keys, histogram_values, threshold)
+    histogram_keys_thresholded_tf, histogram_values_thresholded_tf = (
+        histogram_processing.threshold_histogram(
+            histogram_keys, histogram_values, threshold
+        )
+    )
 
     expected_histogram_keys = [b'a', b'b', b'c', b'd']
     expected_histogram_values = [5.0, 10.3, 6.0, 4.5]
@@ -119,8 +108,9 @@ class HistogramProcessingTest(histogram_test_utils.HistogramTest,
     # The (key, value) pairs are correctly thresholded when there are duplicate
     # keys, but values for the same key are not automatically summed up.
     self.assertAllEqual(histogram_keys_thresholded_tf, expected_histogram_keys)
-    self.assertAllClose(histogram_values_thresholded_tf,
-                        expected_histogram_values)
+    self.assertAllClose(
+        histogram_values_thresholded_tf, expected_histogram_values
+    )
 
   @parameterized.named_parameters(
       (
@@ -134,13 +124,14 @@ class HistogramProcessingTest(histogram_test_utils.HistogramTest,
           tf.constant([1.0, 10.3, 6.0, 4.5, 2.1, 3], dtype=tf.float32),
       ),
   )
-  def test_threshold_histogram_raise_value_error(self, histogram_keys,
-                                                 histogram_values):
+  def test_threshold_histogram_raise_value_error(
+      self, histogram_keys, histogram_values
+  ):
     threshold = tf.constant(4.5, dtype=tf.float32)
     with self.assertRaises(ValueError):
-      _, _ = histogram_processing.threshold_histogram(histogram_keys,
-                                                      histogram_values,
-                                                      threshold)
+      _, _ = histogram_processing.threshold_histogram(
+          histogram_keys, histogram_values, threshold
+      )
 
 
 if __name__ == '__main__':

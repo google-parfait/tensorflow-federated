@@ -57,7 +57,8 @@ def _make_manual_reduce_graph(dataset_construction_graph, return_element):
   with tf.Graph().as_default() as graph:
     v1 = tf.import_graph_def(
         dataset_construction_graph.as_graph_def(),
-        return_elements=[return_element])[0]
+        return_elements=[return_element],
+    )[0]
     structure = tf.TensorSpec([], tf.int64)
     ds1 = tf.data.experimental.from_variant(v1, structure=structure)
     out = ds1.reduce(tf.constant(0, dtype=tf.int64), lambda x, y: x + y)
@@ -100,7 +101,8 @@ class GraphOptTest(tf.test.TestCase):
     with tf.compat.v1.Session(graph=new_graph) as sess:
       new_out = sess.run(
           opt_graph_spec.out_names,
-          feed_dict={x: 1 for x in opt_graph_spec.in_names})
+          feed_dict={x: 1 for x in opt_graph_spec.in_names},
+      )
 
     self.assertEqual(new_out, orig_out)
 
@@ -124,8 +126,9 @@ class GraphOptTest(tf.test.TestCase):
     opt_graph_spec = graph_optimizations.optimize_graph_spec(gs, config_proto)
 
     self.assertIsInstance(opt_graph_spec, graph_spec.GraphSpec)
-    self.assertLess(opt_graph_spec.graph_def.ByteSize(),
-                    raw_graph_spec.graph_def.ByteSize())
+    self.assertLess(
+        opt_graph_spec.graph_def.ByteSize(), raw_graph_spec.graph_def.ByteSize()
+    )
 
   def test_semantic_equivalence_for_reduction(self):
     ds_graph, _, out = _make_dataset_constructing_graph()
@@ -155,7 +158,8 @@ class GraphOptTest(tf.test.TestCase):
       new_sess.run(opt_graph_spec.init_op)
       new_out = new_sess.run(
           opt_graph_spec.out_names,
-          feed_dict={x: 1 for x in opt_graph_spec.in_names})
+          feed_dict={x: 1 for x in opt_graph_spec.in_names},
+      )
 
     self.assertEqual(new_out, orig_out)
 
@@ -169,7 +173,7 @@ class GraphOptTest(tf.test.TestCase):
     for node in graph_def.node:
       if node.op == 'Const':
         for float_val in node.attr['value'].tensor.float_val:
-          if float_val == 1.:
+          if float_val == 1.0:
             orig_constants_1.append(node)
 
     in_names = [in_name]
@@ -182,7 +186,7 @@ class GraphOptTest(tf.test.TestCase):
     for node in opt_graph_spec.graph_def.node:
       if node.op == 'Const':
         for float_val in node.attr['value'].tensor.float_val:
-          if float_val == 1.:
+          if float_val == 1.0:
             opt_constants_1.append(node)
 
     self.assertIsInstance(opt_graph_spec, graph_spec.GraphSpec)
@@ -215,12 +219,12 @@ class GraphOptTest(tf.test.TestCase):
       new_sess.run(opt_graph_spec.init_op)
       new_out = new_sess.run(
           opt_graph_spec.out_names,
-          feed_dict={x: 1 for x in opt_graph_spec.in_names})
+          feed_dict={x: 1 for x in opt_graph_spec.in_names},
+      )
 
     self.assertEqual(new_out, orig_out)
 
   def test_reduces_graph_size_in_function_lib(self):
-
     class StateHolder:
       pass
 
@@ -230,7 +234,7 @@ class GraphOptTest(tf.test.TestCase):
     @tf.function
     def foo(x):
       if obj.variable is None:
-        obj.variable = tf.Variable(initial_value=0.)
+        obj.variable = tf.Variable(initial_value=0.0)
         obj.variable.assign_add(x)
       return obj.variable.read_value()
 
@@ -254,7 +258,6 @@ class GraphOptTest(tf.test.TestCase):
     self.assertLess(opt_graph_spec.graph_def.ByteSize(), graph_def.ByteSize())
 
   def test_semantic_equivalence_for_graphdef_with_function(self):
-
     class StateHolder:
       pass
 
@@ -264,7 +267,7 @@ class GraphOptTest(tf.test.TestCase):
     @tf.function
     def foo(x):
       if obj.variable is None:
-        obj.variable = tf.Variable(initial_value=0.)
+        obj.variable = tf.Variable(initial_value=0.0)
         obj.variable.assign_add(x)
       return obj.variable.read_value()
 
@@ -298,7 +301,8 @@ class GraphOptTest(tf.test.TestCase):
       new_sess.run(opt_graph_spec.init_op)
       new_out = new_sess.run(
           opt_graph_spec.out_names,
-          feed_dict={x: 1 for x in opt_graph_spec.in_names})
+          feed_dict={x: 1 for x in opt_graph_spec.in_names},
+      )
 
     self.assertEqual(new_out, orig_out)
 

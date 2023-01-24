@@ -28,12 +28,13 @@ def _add_proto_parsing(dataset: tf.data.Dataset) -> tf.data.Dataset:
   def parse_proto(tensor_proto):
     parse_spec = {
         'pixels': tf.io.FixedLenFeature(shape=(28, 28), dtype=tf.float32),
-        'label': tf.io.FixedLenFeature(shape=(), dtype=tf.int64)
+        'label': tf.io.FixedLenFeature(shape=(), dtype=tf.int64),
     }
     parsed_features = tf.io.parse_example(tensor_proto, parse_spec)
     return collections.OrderedDict(
         label=tf.cast(parsed_features['label'], tf.int32),
-        pixels=parsed_features['pixels'])
+        pixels=parsed_features['pixels'],
+    )
 
   return dataset.map(parse_proto, num_parallel_calls=tf.data.AUTOTUNE)
 
@@ -103,17 +104,22 @@ def load_data(only_digits=True, cache_dir=None):
   """
   database_path = download.get_compressed_file(
       origin='https://storage.googleapis.com/tff-datasets-public/emnist_all.sqlite.lzma',
-      cache_dir=cache_dir)
+      cache_dir=cache_dir,
+  )
   if only_digits:
     train_client_data = sql_client_data.SqlClientData(
-        database_path, 'digits_only_train').preprocess(_add_proto_parsing)
+        database_path, 'digits_only_train'
+    ).preprocess(_add_proto_parsing)
     test_client_data = sql_client_data.SqlClientData(
-        database_path, 'digits_only_test').preprocess(_add_proto_parsing)
+        database_path, 'digits_only_test'
+    ).preprocess(_add_proto_parsing)
   else:
     train_client_data = sql_client_data.SqlClientData(
-        database_path, 'all_train').preprocess(_add_proto_parsing)
+        database_path, 'all_train'
+    ).preprocess(_add_proto_parsing)
     test_client_data = sql_client_data.SqlClientData(
-        database_path, 'all_test').preprocess(_add_proto_parsing)
+        database_path, 'all_test'
+    ).preprocess(_add_proto_parsing)
   return train_client_data, test_client_data
 
 
@@ -130,7 +136,7 @@ def get_synthetic():
   """
   return from_tensor_slices_client_data.TestClientData({
       'synthetic1': _get_synthetic_digits_data(),
-      'synthetic2': _get_synthetic_digits_data()
+      'synthetic2': _get_synthetic_digits_data(),
   })
 
 

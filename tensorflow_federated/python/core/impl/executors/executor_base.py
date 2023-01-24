@@ -61,9 +61,8 @@ class Executor(metaclass=abc.ABCMeta):
 
   @abc.abstractmethod
   async def create_call(
-      self,
-      comp: evb.ExecutorValue,
-      arg: Optional[evb.ExecutorValue] = None) -> evb.ExecutorValue:
+      self, comp: evb.ExecutorValue, arg: Optional[evb.ExecutorValue] = None
+  ) -> evb.ExecutorValue:
     """A coroutine that creates a call to `comp` with optional argument `arg`.
 
     Args:

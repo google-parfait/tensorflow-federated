@@ -32,13 +32,17 @@ def make_test_example(client_id: str, e: int) -> bytes:
   return tf.train.Example(
       features=tf.train.Features(
           feature={
-              'client_id':
-                  tf.train.Feature(
-                      bytes_list=tf.train.BytesList(
-                          value=[client_id.encode('utf-8')])),
-              'example_num':
-                  tf.train.Feature(int64_list=tf.train.Int64List(value=[e])),
-          })).SerializeToString()
+              'client_id': tf.train.Feature(
+                  bytes_list=tf.train.BytesList(
+                      value=[client_id.encode('utf-8')]
+                  )
+              ),
+              'example_num': tf.train.Feature(
+                  int64_list=tf.train.Int64List(value=[e])
+              ),
+          }
+      )
+  ).SerializeToString()
 
 
 def setUpModule():
@@ -66,16 +70,23 @@ def setUpModule():
         split_name = 'train' if e % 2 == 0 else 'test'
         split_counts[split_name] += 1
         connection.execute(
-            'INSERT INTO examples '
-            '(split_name, client_id, serialized_example_proto) '
-            'VALUES (?, ?, ?);',
-            (split_name, client_id, make_test_example(client_id, e)))
+            (
+                'INSERT INTO examples '
+                '(split_name, client_id, serialized_example_proto) '
+                'VALUES (?, ?, ?);'
+            ),
+            (split_name, client_id, make_test_example(client_id, e)),
+        )
       for split_name, count in split_counts.items():
         if count == 0:
           continue
         connection.execute(
-            'INSERT INTO client_metadata (client_id, split_name, num_examples) '
-            'VALUES (?, ?, ?);', (client_id, split_name, count))
+            (
+                'INSERT INTO client_metadata (client_id, split_name,'
+                ' num_examples) VALUES (?, ?, ?);'
+            ),
+            (client_id, split_name, count),
+        )
 
 
 class SqlClientDataTest(tf.test.TestCase):
@@ -86,13 +97,15 @@ class SqlClientDataTest(tf.test.TestCase):
       client_data.create_tf_dataset_for_client('missing_client_id')
 
   def test_create_dataset_for_client(self):
-
     def test_split(split_name, example_counts):
       client_data = sql_client_data.SqlClientData(
-          test_dataset_filepath(), split_name=split_name)
+          test_dataset_filepath(), split_name=split_name
+      )
       self.assertEqual(client_data.client_ids, list(example_counts.keys()))
-      self.assertEqual(client_data.element_type_structure,
-                       tf.TensorSpec(shape=(), dtype=tf.string))
+      self.assertEqual(
+          client_data.element_type_structure,
+          tf.TensorSpec(shape=(), dtype=tf.string),
+      )
       for client_id, expected_examples in example_counts.items():
         dataset = client_data.create_tf_dataset_for_client(client_id)
         actual_examples = dataset.reduce(0, lambda s, x: s + 1)
@@ -107,13 +120,15 @@ class SqlClientDataTest(tf.test.TestCase):
       test_split('test', {'test_b': 1, 'test_c': 1})
 
   def test_create_dataset_from_all_clients(self):
-
     def test_split(split_name, example_counts):
       client_data = sql_client_data.SqlClientData(
-          test_dataset_filepath(), split_name=split_name)
+          test_dataset_filepath(), split_name=split_name
+      )
       self.assertEqual(client_data.client_ids, list(example_counts.keys()))
-      self.assertEqual(client_data.element_type_structure,
-                       tf.TensorSpec(shape=(), dtype=tf.string))
+      self.assertEqual(
+          client_data.element_type_structure,
+          tf.TensorSpec(shape=(), dtype=tf.string),
+      )
       expected_examples = sum(example_counts.values())
       dataset = client_data.create_tf_dataset_from_all_clients()
       actual_examples = dataset.reduce(0, lambda s, x: s + 1)
@@ -128,13 +143,14 @@ class SqlClientDataTest(tf.test.TestCase):
       test_split('test', {'test_b': 1, 'test_c': 1})
 
   def test_dataset_computation(self):
-
     def test_split(split_name, expected_examples):
       client_data = sql_client_data.SqlClientData(
-          test_dataset_filepath(), split_name=split_name)
+          test_dataset_filepath(), split_name=split_name
+      )
       self.assertEqual(
           str(client_data.dataset_computation.type_signature),
-          '(string -> string*)')
+          '(string -> string*)',
+      )
       dataset = client_data.dataset_computation('test_c')
       actual_examples = dataset.reduce(0, lambda s, x: s + 1)
       self.assertEqual(actual_examples, expected_examples)
@@ -150,13 +166,15 @@ class SqlClientDataTest(tf.test.TestCase):
 class PreprocessSqlClientDataTest(tf.test.TestCase):
 
   def test_preprocess_with_identity_gives_same_structure(self):
-
     def test_split(split_name):
       client_data = sql_client_data.SqlClientData(
-          test_dataset_filepath(), split_name=split_name)
+          test_dataset_filepath(), split_name=split_name
+      )
       preprocessed_client_data = client_data.preprocess(lambda x: x)
-      self.assertEqual(preprocessed_client_data.element_type_structure,
-                       client_data.element_type_structure)
+      self.assertEqual(
+          preprocessed_client_data.element_type_structure,
+          client_data.element_type_structure,
+      )
 
     with self.subTest('no_split'):
       test_split(None)
@@ -166,14 +184,16 @@ class PreprocessSqlClientDataTest(tf.test.TestCase):
       test_split('test')
 
   def test_create_dataset_for_client_with_identity_preprocess(self):
-
     def test_split(split_name, example_counts):
       client_data = sql_client_data.SqlClientData(
-          test_dataset_filepath(), split_name=split_name)
+          test_dataset_filepath(), split_name=split_name
+      )
       client_data = client_data.preprocess(lambda x: x)
       self.assertEqual(client_data.client_ids, list(example_counts.keys()))
-      self.assertEqual(client_data.element_type_structure,
-                       tf.TensorSpec(shape=(), dtype=tf.string))
+      self.assertEqual(
+          client_data.element_type_structure,
+          tf.TensorSpec(shape=(), dtype=tf.string),
+      )
       for client_id, expected_examples in example_counts.items():
         dataset = client_data.create_tf_dataset_for_client(client_id)
         actual_examples = dataset.reduce(0, lambda s, x: s + 1)
@@ -188,14 +208,16 @@ class PreprocessSqlClientDataTest(tf.test.TestCase):
       test_split('test', {'test_b': 1, 'test_c': 1})
 
   def test_create_dataset_from_all_clients_with_identity_preprocess(self):
-
     def test_split(split_name, example_counts):
       client_data = sql_client_data.SqlClientData(
-          test_dataset_filepath(), split_name=split_name)
+          test_dataset_filepath(), split_name=split_name
+      )
       client_data = client_data.preprocess(lambda x: x)
       self.assertEqual(client_data.client_ids, list(example_counts.keys()))
-      self.assertEqual(client_data.element_type_structure,
-                       tf.TensorSpec(shape=(), dtype=tf.string))
+      self.assertEqual(
+          client_data.element_type_structure,
+          tf.TensorSpec(shape=(), dtype=tf.string),
+      )
       expected_examples = sum(example_counts.values())
       dataset = client_data.create_tf_dataset_from_all_clients()
       actual_examples = dataset.reduce(0, lambda s, x: s + 1)
@@ -210,14 +232,15 @@ class PreprocessSqlClientDataTest(tf.test.TestCase):
       test_split('test', {'test_b': 1, 'test_c': 1})
 
   def test_dataset_computation_with_identity_preprocess(self):
-
     def test_split(split_name, expected_examples):
       client_data = sql_client_data.SqlClientData(
-          test_dataset_filepath(), split_name=split_name)
+          test_dataset_filepath(), split_name=split_name
+      )
       client_data = client_data.preprocess(lambda x: x)
       self.assertEqual(
           str(client_data.dataset_computation.type_signature),
-          '(string -> string*)')
+          '(string -> string*)',
+      )
       dataset = client_data.dataset_computation('test_c')
       actual_examples = dataset.reduce(0, lambda s, x: s + 1)
       self.assertEqual(actual_examples, expected_examples)
@@ -230,14 +253,16 @@ class PreprocessSqlClientDataTest(tf.test.TestCase):
       test_split('test', 1)
 
   def test_create_dataset_for_client_with_take_preprocess(self):
-
     def test_split(split_name, example_counts):
       client_data = sql_client_data.SqlClientData(
-          test_dataset_filepath(), split_name=split_name)
+          test_dataset_filepath(), split_name=split_name
+      )
       client_data = client_data.preprocess(lambda x: x.take(1))
       self.assertEqual(client_data.client_ids, list(example_counts.keys()))
-      self.assertEqual(client_data.element_type_structure,
-                       tf.TensorSpec(shape=(), dtype=tf.string))
+      self.assertEqual(
+          client_data.element_type_structure,
+          tf.TensorSpec(shape=(), dtype=tf.string),
+      )
       for client_id, expected_examples in example_counts.items():
         dataset = client_data.create_tf_dataset_for_client(client_id)
         actual_examples = dataset.reduce(0, lambda s, x: s + 1)
@@ -252,10 +277,10 @@ class PreprocessSqlClientDataTest(tf.test.TestCase):
       test_split('test', {'test_b': 1, 'test_c': 1})
 
   def test_create_dataset_from_all_clients_with_take_preprocess(self):
-
     def test_split(split_name):
       client_data = sql_client_data.SqlClientData(
-          test_dataset_filepath(), split_name=split_name)
+          test_dataset_filepath(), split_name=split_name
+      )
       client_data = client_data.preprocess(lambda x: x.take(1))
       expected_examples = len(client_data.client_ids)
       dataset = client_data.create_tf_dataset_from_all_clients()
@@ -270,14 +295,15 @@ class PreprocessSqlClientDataTest(tf.test.TestCase):
       test_split('test')
 
   def test_dataset_computation_with_take_preprocess(self):
-
     def test_split(split_name, expected_examples):
       client_data = sql_client_data.SqlClientData(
-          test_dataset_filepath(), split_name=split_name)
+          test_dataset_filepath(), split_name=split_name
+      )
       client_data = client_data.preprocess(lambda x: x.take(1))
       self.assertEqual(
           str(client_data.dataset_computation.type_signature),
-          '(string -> string*)')
+          '(string -> string*)',
+      )
       dataset = client_data.dataset_computation('test_c')
       actual_examples = dataset.reduce(0, lambda s, x: s + 1)
       self.assertEqual(actual_examples, expected_examples)

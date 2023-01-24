@@ -28,20 +28,23 @@ class CreateChunkerTest(tf.test.TestCase):
 
   def test_utf8_encoding(self):
     chunker = chunkers.create_chunker(
-        string_max_bytes=1234, encoding=_CharacterEncoding.UTF8)
+        string_max_bytes=1234, encoding=_CharacterEncoding.UTF8
+    )
 
     self.assertIsInstance(chunker, chunkers.UTF8Chunker)
     self.assertEqual(chunker.dtype, tf.int64)
 
   def test_utf8_int32(self):
     chunker = chunkers.create_chunker(
-        string_max_bytes=1234, encoding=_CharacterEncoding.UTF8, dtype=tf.int32)
+        string_max_bytes=1234, encoding=_CharacterEncoding.UTF8, dtype=tf.int32
+    )
 
     self.assertEqual(chunker.dtype, tf.int32)
 
   def test_unknown_encoding(self):
     chunker = chunkers.create_chunker(
-        string_max_bytes=1234, encoding=_CharacterEncoding.UNKNOWN)
+        string_max_bytes=1234, encoding=_CharacterEncoding.UNKNOWN
+    )
 
     self.assertIsInstance(chunker, chunkers.BinaryChunker)
 
@@ -50,7 +53,8 @@ class CreateChunkerTest(tf.test.TestCase):
       chunkers.create_chunker(
           string_max_bytes=1234,
           encoding=_CharacterEncoding.UNKNOWN,
-          dtype=tf.uint16)
+          dtype=tf.uint16,
+      )
 
 
 # https://en.wikipedia.org/wiki/UTF-8#Codepage_layout
@@ -67,7 +71,8 @@ class BinaryChunkerValidationTest(tf.test.TestCase, parameterized.TestCase):
       ('too_large', tf.int32.max + 1, ValueError),
   )
   def test_init_invalid_string_max_bytes_raises(
-      self, string_max_bytes: Any, expected_exception: BaseException):
+      self, string_max_bytes: Any, expected_exception: BaseException
+  ):
     with self.assertRaisesRegex(expected_exception, 'string_max_bytes'):
       chunkers.BinaryChunker(string_max_bytes=string_max_bytes, dtype=tf.int32)
 
@@ -78,18 +83,21 @@ class BinaryChunkerValidationTest(tf.test.TestCase, parameterized.TestCase):
       ('too_large', tf.int32.max + 1, ValueError),
   )
   def test_init_invalid_max_chunk_value_raises(
-      self, max_chunk_value: Any, expected_exception: BaseException):
+      self, max_chunk_value: Any, expected_exception: BaseException
+  ):
     with self.assertRaisesRegex(expected_exception, 'max_chunk_value'):
       chunkers.BinaryChunker(
-          string_max_bytes=10, max_chunk_value=max_chunk_value, dtype=tf.int32)
+          string_max_bytes=10, max_chunk_value=max_chunk_value, dtype=tf.int32
+      )
 
   @parameterized.named_parameters(
       ('none', None, TypeError),
       ('wrong_type', object(), TypeError),
       ('unsupported', tf.int16, ValueError),
   )
-  def test_init_invalid_dtype_raises(self, dtype: Any,
-                                     expected_exception: BaseException):
+  def test_init_invalid_dtype_raises(
+      self, dtype: Any, expected_exception: BaseException
+  ):
     with self.assertRaisesRegex(expected_exception, 'dtype'):
       chunkers.BinaryChunker(string_max_bytes=1234, dtype=dtype)
 
@@ -133,54 +141,65 @@ _BINARY_TEST_INPUTS = [
     dict(
         testcase_name='int32_1byte_chunk_size',
         dtype=tf.int32,
-        max_chunk_value=255),
+        max_chunk_value=255,
+    ),
     dict(
         testcase_name='int32_small_chunk_size',
         dtype=tf.int32,
-        max_chunk_value=1000),
+        max_chunk_value=1000,
+    ),
     dict(
         testcase_name='int32_max_chunk_size',
         dtype=tf.int32,
-        max_chunk_value=None),
+        max_chunk_value=None,
+    ),
     dict(
         testcase_name='int64_small_chunk_size',
         dtype=tf.int64,
-        max_chunk_value=2000),
+        max_chunk_value=2000,
+    ),
     dict(
         testcase_name='int64_int32_chunk_size',
         dtype=tf.int64,
-        max_chunk_value=tf.int32.max),
+        max_chunk_value=tf.int32.max,
+    ),
     dict(
         testcase_name='int64_max_chunk_size',
         dtype=tf.int64,
-        max_chunk_value=None),
+        max_chunk_value=None,
+    ),
 )
 class BinaryChunkerTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_dtype(self, dtype: tf.dtypes.DType, max_chunk_value: Optional[int]):
     chunker = chunkers.BinaryChunker(
-        string_max_bytes=20, dtype=dtype, max_chunk_value=max_chunk_value)
+        string_max_bytes=20, dtype=dtype, max_chunk_value=max_chunk_value
+    )
 
     self.assertEqual(chunker.dtype, dtype)
 
   def test_encode_and_decode_tensorflow_as_expected(
-      self, dtype: tf.dtypes.DType, max_chunk_value: Optional[int]):
+      self, dtype: tf.dtypes.DType, max_chunk_value: Optional[int]
+  ):
     input_binary = _BINARY_TEST_INPUTS
     string_max_bytes = 10
 
     chunker = chunkers.BinaryChunker(
         string_max_bytes=string_max_bytes,
         dtype=dtype,
-        max_chunk_value=max_chunk_value)
+        max_chunk_value=max_chunk_value,
+    )
     encoded_chunks, trimmed_input_strings = chunker.encode_tensorflow(
-        tf.constant(input_binary))
+        tf.constant(input_binary)
+    )
     decoded_strings = chunker.decode_tensorflow(encoded_chunks).numpy()
 
     self.assertCountEqual(input_binary, decoded_strings)
     self.assertCountEqual(trimmed_input_strings.numpy(), decoded_strings)
 
   def test_encode_and_decode_tensorflow_trim_strings_as_expected(
-      self, dtype: tf.dtypes.DType, max_chunk_value: Optional[int]):
+      self, dtype: tf.dtypes.DType, max_chunk_value: Optional[int]
+  ):
     input_binary = _BINARY_TEST_INPUTS
     string_max_bytes = 5
     expected_trimmed = [x[:string_max_bytes] for x in input_binary]
@@ -188,16 +207,19 @@ class BinaryChunkerTest(tf.test.TestCase, parameterized.TestCase):
     chunker = chunkers.BinaryChunker(
         string_max_bytes=string_max_bytes,
         dtype=dtype,
-        max_chunk_value=max_chunk_value)
+        max_chunk_value=max_chunk_value,
+    )
     encoded_chunks, trimmed_input_strings = chunker.encode_tensorflow(
-        tf.constant(input_binary))
+        tf.constant(input_binary)
+    )
     decoded_strings = chunker.decode_tensorflow(encoded_chunks).numpy()
 
     self.assertCountEqual(expected_trimmed, decoded_strings)
     self.assertCountEqual(trimmed_input_strings.numpy(), decoded_strings)
 
   def test_encode_and_decode_tensorflow_long_strings(
-      self, dtype: tf.dtypes.DType, max_chunk_value: Optional[int]):
+      self, dtype: tf.dtypes.DType, max_chunk_value: Optional[int]
+  ):
     string_max_bytes = max_chunk_value or dtype.max
     # `string_max_bytes = max_chunk_value` causes OOMs for very large values
     string_max_bytes = min(string_max_bytes, 1_000_000)
@@ -207,16 +229,19 @@ class BinaryChunkerTest(tf.test.TestCase, parameterized.TestCase):
     chunker = chunkers.BinaryChunker(
         string_max_bytes=string_max_bytes,
         dtype=dtype,
-        max_chunk_value=max_chunk_value)
+        max_chunk_value=max_chunk_value,
+    )
     encoded_chunks, trimmed_input_strings = chunker.encode_tensorflow(
-        tf.constant(input_binary))
+        tf.constant(input_binary)
+    )
     decoded_strings = chunker.decode_tensorflow(encoded_chunks).numpy()
 
     self.assertCountEqual(expected_trimmed, decoded_strings)
     self.assertCountEqual(trimmed_input_strings.numpy(), decoded_strings)
 
-  def test_decode_tensorflow_single_string(self, dtype: tf.dtypes.DType,
-                                           max_chunk_value: Optional[int]):
+  def test_decode_tensorflow_single_string(
+      self, dtype: tf.dtypes.DType, max_chunk_value: Optional[int]
+  ):
     # IbltDecoder calls `decode_tensorflow` with a single string at a time in
     # 1-D tensor, rather than 2-D tensor with all strings like
     # `encode_tensorflow` returns. Most tests feed the results of
@@ -257,16 +282,28 @@ class UTF8ChunkerTest(tf.test.TestCase, parameterized.TestCase):
       ('int32_20', 20, tf.int32),
       ('int64_20', 20, tf.int64),
   )
-  def test_encode_and_decode_tensorflow_as_expected(self, string_max_bytes,
-                                                    dtype):
+  def test_encode_and_decode_tensorflow_as_expected(
+      self, string_max_bytes, dtype
+  ):
     input_strings = [
-        '', 'some', 'unicodes', 'अ', 'क', 'æ', '☺️', '☺️', '☺️', '😇',
-        ' has space ', 'has, comma'
+        '',
+        'some',
+        'unicodes',
+        'अ',
+        'क',
+        'æ',
+        '☺️',
+        '☺️',
+        '☺️',
+        '😇',
+        ' has space ',
+        'has, comma',
     ]
 
     chunker = chunkers.UTF8Chunker(string_max_bytes, dtype=dtype)
     encoded_chunks, trimmed_input_strings = chunker.encode_tensorflow(
-        tf.constant(input_strings))
+        tf.constant(input_strings)
+    )
     decoded_strings = chunker.decode_tensorflow(encoded_chunks).numpy()
 
     # Set 'ignore' in `.decode()` to ignore decoding error because the strings
@@ -283,33 +320,88 @@ class UTF8ChunkerTest(tf.test.TestCase, parameterized.TestCase):
     self.assertCountEqual(trimmed_input_strings, decoded_strings)
 
   @parameterized.named_parameters(
-      ('max_len_8', 8, [
-          '', 'some', 'interesting', 'unicodes', ' has more space ',
-          'has, some, comma', '新年快乐', '☺️😇'
-      ], [
-          '', 'some', 'interest', 'unicodes', ' has mor', 'has, som', '新年', '☺️'
-      ]),
-      ('max_len_5', 5, [
-          '', 'some', 'interesting', 'unicodes', ' has more space ',
-          'has, some, comma', '新年快乐', '☺️😇'
-      ], [
-          '', 'some', 'interest', 'unicodes', ' has mor', 'has, som', '新年', '☺️'
-      ]),
-      ('max_len_10', 10, [
-          '', 'some', 'interesting', 'unicodes', ' has more space ',
-          'has, some, comma', '新年快乐', '☺️😇'
-      ], [
-          '', 'some', 'interesting', 'unicodes', ' has more space ',
-          'has, some, comma', '新年快乐', '☺️😇'
-      ]),
+      (
+          'max_len_8',
+          8,
+          [
+              '',
+              'some',
+              'interesting',
+              'unicodes',
+              ' has more space ',
+              'has, some, comma',
+              '新年快乐',
+              '☺️😇',
+          ],
+          [
+              '',
+              'some',
+              'interest',
+              'unicodes',
+              ' has mor',
+              'has, som',
+              '新年',
+              '☺️',
+          ],
+      ),
+      (
+          'max_len_5',
+          5,
+          [
+              '',
+              'some',
+              'interesting',
+              'unicodes',
+              ' has more space ',
+              'has, some, comma',
+              '新年快乐',
+              '☺️😇',
+          ],
+          [
+              '',
+              'some',
+              'interest',
+              'unicodes',
+              ' has mor',
+              'has, som',
+              '新年',
+              '☺️',
+          ],
+      ),
+      (
+          'max_len_10',
+          10,
+          [
+              '',
+              'some',
+              'interesting',
+              'unicodes',
+              ' has more space ',
+              'has, some, comma',
+              '新年快乐',
+              '☺️😇',
+          ],
+          [
+              '',
+              'some',
+              'interesting',
+              'unicodes',
+              ' has more space ',
+              'has, some, comma',
+              '新年快乐',
+              '☺️😇',
+          ],
+      ),
   )
   def test_encode_and_decode_tensorflow_trim_strings_as_expected(
-      self, string_max_bytes, input_strings, expected_decoded_strings):
+      self, string_max_bytes, input_strings, expected_decoded_strings
+  ):
     dtype = tf.int64
 
     chunker = chunkers.UTF8Chunker(string_max_bytes, dtype=dtype)
     encoded_chunks, trimmed_input_strings = chunker.encode_tensorflow(
-        tf.constant(input_strings))
+        tf.constant(input_strings)
+    )
     decoded_strings = chunker.decode_tensorflow(encoded_chunks).numpy()
     decoded_strings_list = [
         decoded_strings[i].decode('utf-8', 'ignore')
@@ -329,13 +421,24 @@ class UTF8ChunkerTest(tf.test.TestCase, parameterized.TestCase):
   )
   def test_encode_and_decode_python_as_expected(self, string_max_bytes, dtype):
     input_strings = [
-        '', 'some', 'unicodes', 'अ', 'क', 'æ', '☺️', '☺️', '☺️', '😇',
-        'has space ', 'has, comma'
+        '',
+        'some',
+        'unicodes',
+        'अ',
+        'क',
+        'æ',
+        '☺️',
+        '☺️',
+        '☺️',
+        '😇',
+        'has space ',
+        'has, comma',
     ]
 
     chunker = chunkers.UTF8Chunker(string_max_bytes, dtype=dtype)
     encoded_chunks, trimmed_input_strings = chunker.encode_tensorflow(
-        tf.constant(input_strings))
+        tf.constant(input_strings)
+    )
     decoded_strings = chunker.decode_python(encoded_chunks.numpy())
 
     # Set 'ignore' in `.decode()` to ignore decoding error because the strings
@@ -352,33 +455,88 @@ class UTF8ChunkerTest(tf.test.TestCase, parameterized.TestCase):
     self.assertCountEqual(trimmed_input_strings, decoded_strings)
 
   @parameterized.named_parameters(
-      ('max_len_8', 8, [
-          '', 'some', 'interesting', 'unicodes', ' has more space ',
-          'has, some, comma', '新年快乐', '☺️😇'
-      ], [
-          '', 'some', 'interest', 'unicodes', ' has mor', 'has, som', '新年', '☺️'
-      ]),
-      ('max_len_5', 5, [
-          '', 'some', 'interesting', 'unicodes', ' has more space ',
-          'has, some, comma', '新年快乐', '☺️😇'
-      ], [
-          '', 'some', 'interest', 'unicodes', ' has mor', 'has, som', '新年', '☺️'
-      ]),
-      ('max_len_10', 10, [
-          '', 'some', 'interesting', 'unicodes', ' has more space ',
-          'has, some, comma', '新年快乐', '☺️😇'
-      ], [
-          '', 'some', 'interesting', 'unicodes', ' has more space ',
-          'has, some, comma', '新年快乐', '☺️😇'
-      ]),
+      (
+          'max_len_8',
+          8,
+          [
+              '',
+              'some',
+              'interesting',
+              'unicodes',
+              ' has more space ',
+              'has, some, comma',
+              '新年快乐',
+              '☺️😇',
+          ],
+          [
+              '',
+              'some',
+              'interest',
+              'unicodes',
+              ' has mor',
+              'has, som',
+              '新年',
+              '☺️',
+          ],
+      ),
+      (
+          'max_len_5',
+          5,
+          [
+              '',
+              'some',
+              'interesting',
+              'unicodes',
+              ' has more space ',
+              'has, some, comma',
+              '新年快乐',
+              '☺️😇',
+          ],
+          [
+              '',
+              'some',
+              'interest',
+              'unicodes',
+              ' has mor',
+              'has, som',
+              '新年',
+              '☺️',
+          ],
+      ),
+      (
+          'max_len_10',
+          10,
+          [
+              '',
+              'some',
+              'interesting',
+              'unicodes',
+              ' has more space ',
+              'has, some, comma',
+              '新年快乐',
+              '☺️😇',
+          ],
+          [
+              '',
+              'some',
+              'interesting',
+              'unicodes',
+              ' has more space ',
+              'has, some, comma',
+              '新年快乐',
+              '☺️😇',
+          ],
+      ),
   )
   def test_encode_and_decode_python_trim_strings_as_expected(
-      self, string_max_bytes, input_strings, expected_decoded_strings):
+      self, string_max_bytes, input_strings, expected_decoded_strings
+  ):
     dtype = tf.int64
 
     chunker = chunkers.UTF8Chunker(string_max_bytes, dtype=dtype)
     encoded_chunks, trimmed_input_strings = chunker.encode_tensorflow(
-        tf.constant(input_strings))
+        tf.constant(input_strings)
+    )
     decoded_strings = chunker.decode_python(encoded_chunks.numpy())
 
     # Set 'ignore' in `.decode()` to ignore decoding error because the strings
@@ -401,17 +559,30 @@ class UTF8ChunkerTest(tf.test.TestCase, parameterized.TestCase):
       ('int64_20', 20, tf.int64),
   )
   def test_encode_and_decode_tensorflow_small_bytes_per_chunk_as_expected(
-      self, string_max_bytes, dtype):
+      self, string_max_bytes, dtype
+  ):
     max_chunk_value = 2**31 - 1
     input_strings = [
-        '', 'some', 'unicodes', 'अ', 'क', 'æ', '☺️', '☺️', '☺️', '😇',
-        ' has space ', 'has, comma'
+        '',
+        'some',
+        'unicodes',
+        'अ',
+        'क',
+        'æ',
+        '☺️',
+        '☺️',
+        '☺️',
+        '😇',
+        ' has space ',
+        'has, comma',
     ]
 
     chunker = chunkers.UTF8Chunker(
-        string_max_bytes, max_chunk_value=max_chunk_value, dtype=dtype)
+        string_max_bytes, max_chunk_value=max_chunk_value, dtype=dtype
+    )
     encoded_chunks, trimmed_input_strings = chunker.encode_tensorflow(
-        tf.constant(input_strings))
+        tf.constant(input_strings)
+    )
     self.assertAllLess(encoded_chunks, max_chunk_value)
 
     decoded_strings = chunker.decode_tensorflow(encoded_chunks).numpy()
@@ -436,17 +607,30 @@ class UTF8ChunkerTest(tf.test.TestCase, parameterized.TestCase):
       ('int64_20', 20, tf.int64),
   )
   def test_encode_and_decode_python_small_bytes_per_chunk_as_expected(
-      self, string_max_bytes, dtype):
+      self, string_max_bytes, dtype
+  ):
     max_chunk_value = 2**31 - 1
     input_strings = [
-        '', 'some', 'unicodes', 'अ', 'क', 'æ', '☺️', '☺️', '☺️', '😇',
-        ' has space ', 'has, comma'
+        '',
+        'some',
+        'unicodes',
+        'अ',
+        'क',
+        'æ',
+        '☺️',
+        '☺️',
+        '☺️',
+        '😇',
+        ' has space ',
+        'has, comma',
     ]
 
     chunker = chunkers.UTF8Chunker(
-        string_max_bytes, max_chunk_value=max_chunk_value, dtype=dtype)
+        string_max_bytes, max_chunk_value=max_chunk_value, dtype=dtype
+    )
     encoded_chunks, trimmed_input_strings = chunker.encode_tensorflow(
-        tf.constant(input_strings))
+        tf.constant(input_strings)
+    )
     self.assertAllLess(encoded_chunks, max_chunk_value)
 
     decoded_strings = chunker.decode_python(encoded_chunks.numpy())
@@ -471,12 +655,14 @@ class UTF8ChunkerTest(tf.test.TestCase, parameterized.TestCase):
   def test_arguments_max_chunk_neg_value_error(self):
     with self.assertRaises(ValueError):
       chunkers.UTF8Chunker(
-          string_max_bytes=10, max_chunk_value=-1, dtype=tf.int64)
+          string_max_bytes=10, max_chunk_value=-1, dtype=tf.int64
+      )
 
   def test_max_chunk_value_too_large_error(self):
     with self.assertRaises(ValueError):
       chunkers.UTF8Chunker(
-          string_max_bytes=10, max_chunk_value=2**33, dtype=tf.int32)
+          string_max_bytes=10, max_chunk_value=2**33, dtype=tf.int32
+      )
 
   @parameterized.named_parameters(
       ('uint16', tf.uint16),

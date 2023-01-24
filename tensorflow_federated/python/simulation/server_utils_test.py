@@ -28,33 +28,37 @@ class ServerUtilsTest(absltest.TestCase):
 
   @mock.patch('absl.logging.info')
   def test_server_context_shuts_down_under_keyboard_interrupt(
-      self, mock_logging_info):
-
+      self, mock_logging_info
+  ):
     ex = eager_tf_executor.EagerTFExecutor()
     ex_factory = python_executor_stacks.ResourceManagingExecutorFactory(
-        lambda _: ex)
+        lambda _: ex
+    )
 
-    with server_utils.server_context(ex_factory, 1,
-                                     portpicker.pick_unused_port()):
+    with server_utils.server_context(
+        ex_factory, 1, portpicker.pick_unused_port()
+    ):
       time.sleep(1)
       raise KeyboardInterrupt
 
     mock_logging_info.assert_has_calls([
         mock.call('Server stopped by KeyboardInterrupt.'),
-        mock.call('Shutting down server.')
+        mock.call('Shutting down server.'),
     ])
 
   @mock.patch('absl.logging.info')
-  def test_server_context_shuts_down_uncaught_exception(self,
-                                                        mock_logging_info):
-
+  def test_server_context_shuts_down_uncaught_exception(
+      self, mock_logging_info
+  ):
     ex = eager_tf_executor.EagerTFExecutor()
     ex_factory = python_executor_stacks.ResourceManagingExecutorFactory(
-        lambda _: ex)
+        lambda _: ex
+    )
 
     with self.assertRaises(TypeError):
-      with server_utils.server_context(ex_factory, 1,
-                                       portpicker.pick_unused_port()):
+      with server_utils.server_context(
+          ex_factory, 1, portpicker.pick_unused_port()
+      ):
         time.sleep(1)
         raise TypeError
 
@@ -63,13 +67,16 @@ class ServerUtilsTest(absltest.TestCase):
   def test_failure_on_construction_fails_as_expected(self):
     ex = eager_tf_executor.EagerTFExecutor()
     ex_factory = python_executor_stacks.ResourceManagingExecutorFactory(
-        lambda _: ex)
+        lambda _: ex
+    )
 
     with mock.patch.object(
-        executor_service, 'ExecutorService', side_effect=ValueError):
+        executor_service, 'ExecutorService', side_effect=ValueError
+    ):
       with self.assertRaises(ValueError):
-        with server_utils.server_context(ex_factory, 1,
-                                         portpicker.pick_unused_port()):
+        with server_utils.server_context(
+            ex_factory, 1, portpicker.pick_unused_port()
+        ):
           time.sleep(1)
 
 

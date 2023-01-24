@@ -24,9 +24,7 @@ class TensorUtilsTest(tf.test.TestCase):
 
   def test_check_nested_equal(self):
     nested_dict = {
-        'KEY1': {
-            'NESTED_KEY': 0
-        },
+        'KEY1': {'NESTED_KEY': 0},
         'KEY2': 1,
     }
     nested_list = [('KEY1', ('NESTED_KEY', 0)), ('KEY2', 1)]
@@ -62,18 +60,14 @@ class TensorUtilsTest(tf.test.TestCase):
     # Same as nested_dict, but using float values. Equality still holds for
     # 0 == 0.0 despite different types.
     nested_dict_different_types = {
-        'KEY1': {
-            'NESTED_KEY': 0.0
-        },
+        'KEY1': {'NESTED_KEY': 0.0},
         'KEY2': 1.0,
     }
     tf.nest.assert_same_structure(nested_dict, nested_dict_different_types)
 
     # Same as nested_dict but with one different value
     nested_dict_different_value = {
-        'KEY1': {
-            'NESTED_KEY': 0.5
-        },
+        'KEY1': {'NESTED_KEY': 0.5},
         'KEY2': 1.0,
     }
     with self.assertRaises(ValueError):
@@ -140,7 +134,6 @@ class TensorUtilsTest(tf.test.TestCase):
       tensor_utils.to_odict({1: 'a', 2: 'b'})
 
   def test_zero_all_if_any_non_finite(self):
-
     def expect_ok(structure):
       with tf.Graph().as_default():
         result, error = tensor_utils.zero_all_if_any_non_finite(structure)
@@ -149,8 +142,11 @@ class TensorUtilsTest(tf.test.TestCase):
         try:
           tf.nest.map_structure(np.testing.assert_allclose, result, structure)
         except AssertionError:
-          self.fail('Expected to get input {} back, but instead got {}'.format(
-              structure, result))
+          self.fail(
+              'Expected to get input {} back, but instead got {}'.format(
+                  structure, result
+              )
+          )
         self.assertEqual(error, 0)
 
     expect_ok([])
@@ -172,13 +168,10 @@ class TensorUtilsTest(tf.test.TestCase):
 
     expect_zeros(np.inf, 0.0)
     expect_zeros((1.0, (2.0, np.nan)), (0.0, (0.0, 0.0)))
-    expect_zeros((1.0, (2.0, {
-        'a': 3.0,
-        'b': [[np.inf], [np.nan]]
-    })), (0.0, (0.0, {
-        'a': 0.0,
-        'b': [[0.0], [0.0]]
-    })))
+    expect_zeros(
+        (1.0, (2.0, {'a': 3.0, 'b': [[np.inf], [np.nan]]})),
+        (0.0, (0.0, {'a': 0.0, 'b': [[0.0], [0.0]]})),
+    )
 
   def test_is_scalar_with_list(self):
     self.assertRaises(TypeError, tensor_utils.is_scalar, [10])
@@ -194,32 +187,45 @@ class TensorUtilsTest(tf.test.TestCase):
 
   def test_is_scalar_with_nonscalar_tf_variable(self):
     self.assertFalse(
-        tensor_utils.is_scalar(tf.Variable([0.0, 1.0], 'notscalar')))
+        tensor_utils.is_scalar(tf.Variable([0.0, 1.0], 'notscalar'))
+    )
 
   def test_same_shape(self):
     self.assertTrue(
-        tensor_utils.same_shape(tf.TensorShape(None), tf.TensorShape(None)))
+        tensor_utils.same_shape(tf.TensorShape(None), tf.TensorShape(None))
+    )
     self.assertTrue(
-        tensor_utils.same_shape(tf.TensorShape([None]), tf.TensorShape([None])))
+        tensor_utils.same_shape(tf.TensorShape([None]), tf.TensorShape([None]))
+    )
     self.assertTrue(
-        tensor_utils.same_shape(tf.TensorShape([1]), tf.TensorShape([1])))
+        tensor_utils.same_shape(tf.TensorShape([1]), tf.TensorShape([1]))
+    )
     self.assertTrue(
         tensor_utils.same_shape(
-            tf.TensorShape([None, 1]), tf.TensorShape([None, 1])))
+            tf.TensorShape([None, 1]), tf.TensorShape([None, 1])
+        )
+    )
     self.assertTrue(
         tensor_utils.same_shape(
-            tf.TensorShape([1, 2, 3]), tf.TensorShape([1, 2, 3])))
+            tf.TensorShape([1, 2, 3]), tf.TensorShape([1, 2, 3])
+        )
+    )
 
     self.assertFalse(
-        tensor_utils.same_shape(tf.TensorShape(None), tf.TensorShape([1])))
+        tensor_utils.same_shape(tf.TensorShape(None), tf.TensorShape([1]))
+    )
     self.assertFalse(
-        tensor_utils.same_shape(tf.TensorShape([1]), tf.TensorShape(None)))
+        tensor_utils.same_shape(tf.TensorShape([1]), tf.TensorShape(None))
+    )
     self.assertFalse(
-        tensor_utils.same_shape(tf.TensorShape([1]), tf.TensorShape([None])))
+        tensor_utils.same_shape(tf.TensorShape([1]), tf.TensorShape([None]))
+    )
     self.assertFalse(
-        tensor_utils.same_shape(tf.TensorShape([1]), tf.TensorShape([2])))
+        tensor_utils.same_shape(tf.TensorShape([1]), tf.TensorShape([2]))
+    )
     self.assertFalse(
-        tensor_utils.same_shape(tf.TensorShape([1, 2]), tf.TensorShape([2, 1])))
+        tensor_utils.same_shape(tf.TensorShape([1, 2]), tf.TensorShape([2, 1]))
+    )
 
 
 if __name__ == '__main__':

@@ -18,9 +18,9 @@ import functools
 import tensorflow as tf
 
 
-def create_recurrent_model(vocab_size: int,
-                           sequence_length: int,
-                           mask_zero: bool = True) -> tf.keras.Model:
+def create_recurrent_model(
+    vocab_size: int, sequence_length: int, mask_zero: bool = True
+) -> tf.keras.Model:
   """Creates a RNN model using LSTM layers for Shakespeare language models.
 
   The model first embeds sequences of length `sequence_length` into an
@@ -56,13 +56,16 @@ def create_recurrent_model(vocab_size: int,
           input_dim=vocab_size,
           input_length=sequence_length,
           output_dim=8,
-          mask_zero=mask_zero))
+          mask_zero=mask_zero,
+      )
+  )
   lstm_layer_builder = functools.partial(
       tf.keras.layers.LSTM,
       units=256,
       kernel_initializer='he_normal',
       return_sequences=True,
-      stateful=False)
+      stateful=False,
+  )
   model.add(lstm_layer_builder())
   model.add(lstm_layer_builder())
   model.add(tf.keras.layers.Dense(vocab_size))

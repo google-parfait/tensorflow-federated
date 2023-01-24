@@ -29,9 +29,11 @@ class LogisticRegressionModelTest(tf.test.TestCase, parameterized.TestCase):
       ('input100_output1', 100, 1),
   )
   def test_constructs_keras_model_with_correct_dimensions(
-      self, input_size, output_size):
+      self, input_size, output_size
+  ):
     model = tag_prediction_tasks._build_logistic_regression_model(
-        input_size=input_size, output_size=output_size)
+        input_size=input_size, output_size=output_size
+    )
     self.assertIsInstance(model, tf.keras.Model)
 
     model_weights = model.weights
@@ -44,20 +46,25 @@ class TagPredictionTasksTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_constructs_with_eval_client_spec(self):
     train_client_spec = client_spec.ClientSpec(
-        num_epochs=2, batch_size=10, max_elements=3, shuffle_buffer_size=5)
+        num_epochs=2, batch_size=10, max_elements=3, shuffle_buffer_size=5
+    )
     eval_client_spec = client_spec.ClientSpec(
-        num_epochs=1, batch_size=2, max_elements=5, shuffle_buffer_size=10)
+        num_epochs=1, batch_size=2, max_elements=5, shuffle_buffer_size=10
+    )
     baseline_task_spec = tag_prediction_tasks.create_tag_prediction_task(
         train_client_spec,
         eval_client_spec=eval_client_spec,
-        use_synthetic_data=True)
+        use_synthetic_data=True,
+    )
     self.assertIsInstance(baseline_task_spec, baseline_task.BaselineTask)
 
   def test_constructs_without_eval_client_spec(self):
     train_client_spec = client_spec.ClientSpec(
-        num_epochs=2, batch_size=10, max_elements=3, shuffle_buffer_size=5)
+        num_epochs=2, batch_size=10, max_elements=3, shuffle_buffer_size=5
+    )
     baseline_task_spec = tag_prediction_tasks.create_tag_prediction_task(
-        train_client_spec, use_synthetic_data=True)
+        train_client_spec, use_synthetic_data=True
+    )
     self.assertIsInstance(baseline_task_spec, baseline_task.BaselineTask)
 
   @parameterized.named_parameters(
@@ -68,11 +75,13 @@ class TagPredictionTasksTest(tf.test.TestCase, parameterized.TestCase):
   )
   def test_constructs_with_different_word_vocab_sizes(self, word_vocab_size):
     train_client_spec = client_spec.ClientSpec(
-        num_epochs=2, batch_size=10, max_elements=3, shuffle_buffer_size=5)
+        num_epochs=2, batch_size=10, max_elements=3, shuffle_buffer_size=5
+    )
     baseline_task_spec = tag_prediction_tasks.create_tag_prediction_task(
         train_client_spec,
         word_vocab_size=word_vocab_size,
-        use_synthetic_data=True)
+        use_synthetic_data=True,
+    )
     self.assertIsInstance(baseline_task_spec, baseline_task.BaselineTask)
 
   @parameterized.named_parameters(
@@ -82,12 +91,14 @@ class TagPredictionTasksTest(tf.test.TestCase, parameterized.TestCase):
   )
   def test_raises_on_bad_word_vocab_size(self, word_vocab_size):
     train_client_spec = client_spec.ClientSpec(
-        num_epochs=2, batch_size=10, max_elements=3, shuffle_buffer_size=5)
+        num_epochs=2, batch_size=10, max_elements=3, shuffle_buffer_size=5
+    )
     with self.assertRaises(ValueError):
       tag_prediction_tasks.create_tag_prediction_task(
           train_client_spec,
           word_vocab_size=word_vocab_size,
-          use_synthetic_data=True)
+          use_synthetic_data=True,
+      )
 
   @parameterized.named_parameters(
       ('tag_vocab_size1', 1),
@@ -97,11 +108,13 @@ class TagPredictionTasksTest(tf.test.TestCase, parameterized.TestCase):
   )
   def test_constructs_with_different_tag_vocab_sizes(self, tag_vocab_size):
     train_client_spec = client_spec.ClientSpec(
-        num_epochs=2, batch_size=10, max_elements=3, shuffle_buffer_size=5)
+        num_epochs=2, batch_size=10, max_elements=3, shuffle_buffer_size=5
+    )
     baseline_task_spec = tag_prediction_tasks.create_tag_prediction_task(
         train_client_spec,
         tag_vocab_size=tag_vocab_size,
-        use_synthetic_data=True)
+        use_synthetic_data=True,
+    )
     self.assertIsInstance(baseline_task_spec, baseline_task.BaselineTask)
 
   @parameterized.named_parameters(
@@ -111,26 +124,33 @@ class TagPredictionTasksTest(tf.test.TestCase, parameterized.TestCase):
   )
   def test_raises_on_bad_tag_vocab_size(self, tag_vocab_size):
     train_client_spec = client_spec.ClientSpec(
-        num_epochs=2, batch_size=10, max_elements=3, shuffle_buffer_size=5)
+        num_epochs=2, batch_size=10, max_elements=3, shuffle_buffer_size=5
+    )
     with self.assertRaises(ValueError):
       tag_prediction_tasks.create_tag_prediction_task(
           train_client_spec,
           tag_vocab_size=tag_vocab_size,
-          use_synthetic_data=True)
+          use_synthetic_data=True,
+      )
 
   def test_preprocessed_test_dataset_can_yield_batches(self):
     train_client_spec = client_spec.ClientSpec(
-        num_epochs=2, batch_size=10, max_elements=3, shuffle_buffer_size=5)
+        num_epochs=2, batch_size=10, max_elements=3, shuffle_buffer_size=5
+    )
     eval_client_spec = client_spec.ClientSpec(
-        num_epochs=1, batch_size=2, max_elements=5, shuffle_buffer_size=10)
+        num_epochs=1, batch_size=2, max_elements=5, shuffle_buffer_size=10
+    )
     baseline_task_spec = tag_prediction_tasks.create_tag_prediction_task(
         train_client_spec,
         eval_client_spec=eval_client_spec,
-        use_synthetic_data=True)
+        use_synthetic_data=True,
+    )
     test_data = baseline_task_spec.datasets.test_data
     preprocessed_test_data = test_data.preprocess(
-        baseline_task_spec.datasets.eval_preprocess_fn)
-    test_tf_dataset = preprocessed_test_data.create_tf_dataset_from_all_clients(
+        baseline_task_spec.datasets.eval_preprocess_fn
+    )
+    test_tf_dataset = (
+        preprocessed_test_data.create_tf_dataset_from_all_clients()
     )
     # Fails due to b/243523845.
     with self.assertRaises(tf.errors.InvalidArgumentError):

@@ -45,10 +45,13 @@ class CppToPythonExecutorValue(executor_value_base.ExecutorValue):
   embedded in C++ executors.
   """
 
-  def __init__(self, owned_value_id: executor_bindings.OwnedValueId,
-               type_signature: computation_types.Type,
-               cpp_executor: executor_bindings.Executor,
-               futures_executor: concurrent.futures.Executor):
+  def __init__(
+      self,
+      owned_value_id: executor_bindings.OwnedValueId,
+      type_signature: computation_types.Type,
+      cpp_executor: executor_bindings.Executor,
+      futures_executor: concurrent.futures.Executor,
+  ):
     self._owned_value_id = owned_value_id
     self._type_signature = type_signature
     self._cpp_executor = cpp_executor
@@ -94,29 +97,34 @@ class CppToPythonExecutorBridge(executor_base.Executor):
   bridge class and the values it constructs.
   """
 
-  def __init__(self, cpp_executor: executor_bindings.Executor,
-               futures_executor: concurrent.futures.Executor):
+  def __init__(
+      self,
+      cpp_executor: executor_bindings.Executor,
+      futures_executor: concurrent.futures.Executor,
+  ):
     self._cpp_executor = cpp_executor
     self._futures_executor = futures_executor
 
   @tracing.trace
   async def create_value(
-      self, value: Any,
-      type_signature: computation_types.Type) -> CppToPythonExecutorValue:
+      self, value: Any, type_signature: computation_types.Type
+  ) -> CppToPythonExecutorValue:
     serialized_value, _ = value_serialization.serialize_value(
-        value, type_signature)
+        value, type_signature
+    )
     try:
       owned_id = self._cpp_executor.create_value(serialized_value)
     except Exception as e:  # pylint: disable=broad-except
       _handle_error(e)
-    return CppToPythonExecutorValue(owned_id, type_signature,
-                                    self._cpp_executor, self._futures_executor)
+    return CppToPythonExecutorValue(
+        owned_id, type_signature, self._cpp_executor, self._futures_executor
+    )
 
   @tracing.trace
   async def create_call(
       self,
       fn: CppToPythonExecutorValue,
-      arg: Optional[CppToPythonExecutorValue] = None
+      arg: Optional[CppToPythonExecutorValue] = None,
   ) -> CppToPythonExecutorValue:
     fn_ref = fn.reference
     if arg is not None:
@@ -127,13 +135,17 @@ class CppToPythonExecutorBridge(executor_base.Executor):
       owned_call_id = self._cpp_executor.create_call(fn_ref, arg_ref)
     except Exception as e:  # pylint: disable=broad-except
       _handle_error(e)
-    return CppToPythonExecutorValue(owned_call_id, fn.type_signature.result,
-                                    self._cpp_executor, self._futures_executor)
+    return CppToPythonExecutorValue(
+        owned_call_id,
+        fn.type_signature.result,
+        self._cpp_executor,
+        self._futures_executor,
+    )
 
   @tracing.trace
   async def create_struct(
-      self,
-      elements: Sequence[CppToPythonExecutorValue]) -> CppToPythonExecutorValue:
+      self, elements: Sequence[CppToPythonExecutorValue]
+  ) -> CppToPythonExecutorValue:
     executor_value_struct = structure.from_container(elements)
     id_list = []
     type_list = []
@@ -144,13 +156,17 @@ class CppToPythonExecutorBridge(executor_base.Executor):
       struct_id = self._cpp_executor.create_struct(id_list)
     except Exception as e:  # pylint: disable=broad-except
       _handle_error(e)
-    return CppToPythonExecutorValue(struct_id,
-                                    computation_types.StructType(type_list),
-                                    self._cpp_executor, self._futures_executor)
+    return CppToPythonExecutorValue(
+        struct_id,
+        computation_types.StructType(type_list),
+        self._cpp_executor,
+        self._futures_executor,
+    )
 
   @tracing.trace
-  async def create_selection(self, source: CppToPythonExecutorValue,
-                             index: int) -> CppToPythonExecutorValue:
+  async def create_selection(
+      self, source: CppToPythonExecutorValue, index: int
+  ) -> CppToPythonExecutorValue:
     try:
       selection_id = self._cpp_executor.create_selection(
           source.reference, index
@@ -158,8 +174,9 @@ class CppToPythonExecutorBridge(executor_base.Executor):
     except Exception as e:  # pylint: disable=broad-except
       _handle_error(e)
     selection_type = source.type_signature[index]
-    return CppToPythonExecutorValue(selection_id, selection_type,
-                                    self._cpp_executor, self._futures_executor)
+    return CppToPythonExecutorValue(
+        selection_id, selection_type, self._cpp_executor, self._futures_executor
+    )
 
   def close(self):
     # We pass on close; though we could release the reference we hold to the C++

@@ -21,7 +21,8 @@ from tensorflow_federated.python.core.impl.context_stack import context_stack_im
 
 
 def serialize_computation(
-    computation: computation_base.Computation) -> pb.Computation:
+    computation: computation_base.Computation,
+) -> pb.Computation:
   """Serializes 'tff.Computation' as a pb.Computation.
 
   Note: Currently only serialization for computation_impl.ConcreteComputation is
@@ -43,15 +44,20 @@ def serialize_computation(
   if isinstance(computation, computation_impl.ConcreteComputation):
     computation_proto = pb.Computation()
     computation_proto.CopyFrom(
-        computation_impl.ConcreteComputation.get_proto(computation))
+        computation_impl.ConcreteComputation.get_proto(computation)
+    )
     return computation_proto
   else:
-    raise NotImplementedError('Serialization of type {} is not currently'
-                              'implemented yet.'.format(type(computation)))
+    raise NotImplementedError(
+        'Serialization of type {} is not currentlyimplemented yet.'.format(
+            type(computation)
+        )
+    )
 
 
 def deserialize_computation(
-    computation_proto: pb.Computation) -> computation_base.Computation:
+    computation_proto: pb.Computation,
+) -> computation_base.Computation:
   """Deserializes 'tff.Computation' as a pb.Computation.
 
   Args:
@@ -64,5 +70,6 @@ def deserialize_computation(
     TypeError: If the argument is of the wrong type.
   """
   py_typecheck.check_type(computation_proto, pb.Computation)
-  return computation_impl.ConcreteComputation(computation_proto,
-                                              context_stack_impl.context_stack)
+  return computation_impl.ConcreteComputation(
+      computation_proto, context_stack_impl.context_stack
+  )

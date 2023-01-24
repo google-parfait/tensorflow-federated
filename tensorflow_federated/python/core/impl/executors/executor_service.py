@@ -73,8 +73,9 @@ def _get_hashable_key(cardinalities: executor_factory.CardinalitiesType) -> str:
 class ExecutorService(executor_pb2_grpc.ExecutorGroupServicer):
   """A wrapper around a target executor that makes it into a gRPC service."""
 
-  def __init__(self, ex_factory: executor_factory.ExecutorFactory, *args,
-               **kwargs):
+  def __init__(
+      self, ex_factory: executor_factory.ExecutorFactory, *args, **kwargs
+  ):
     py_typecheck.check_type(ex_factory, executor_factory.ExecutorFactory)
     super().__init__(*args, **kwargs)
     self._ex_factory = ex_factory
@@ -95,9 +96,11 @@ class ExecutorService(executor_pb2_grpc.ExecutorGroupServicer):
 
     self._event_loop = asyncio.new_event_loop()
     self._event_loop.set_task_factory(
-        tracing.propagate_trace_context_task_factory)
+        tracing.propagate_trace_context_task_factory
+    )
     self._thread = threading.Thread(
-        target=functools.partial(run_loop, self._event_loop), daemon=True)
+        target=functools.partial(run_loop, self._event_loop), daemon=True
+    )
     self._thread.start()
 
     def finalize(loop, thread):
@@ -111,10 +114,12 @@ class ExecutorService(executor_pb2_grpc.ExecutorGroupServicer):
     with tracing.with_trace_context_from_rpc():
       return asyncio.run_coroutine_threadsafe(
           tracing.wrap_coroutine_in_current_trace_context(coro),
-          self._event_loop)
+          self._event_loop,
+      )
 
-  def executor(self, request: Any,
-               context: grpc.ServicerContext) -> executor_base.Executor:
+  def executor(
+      self, request: Any, context: grpc.ServicerContext
+  ) -> executor_base.Executor:
     """Returns the executor which should be used to handle `request`."""
     with self._lock:
       executor = self._executors.get(request.executor.id)
@@ -132,19 +137,23 @@ class ExecutorService(executor_pb2_grpc.ExecutorGroupServicer):
   ) -> executor_pb2.GetExecutorResponse:
     """Returns an identifier for an executor with the provided requirements."""
     py_typecheck.check_type(request, executor_pb2.GetExecutorRequest)
-    with self._try_handle_request_context(request, context,
-                                          executor_pb2.GetExecutorResponse):
+    with self._try_handle_request_context(
+        request, context, executor_pb2.GetExecutorResponse
+    ):
       cardinalities_dict = value_serialization.deserialize_cardinalities(
-          request.cardinalities)
+          request.cardinalities
+      )
       key = _get_hashable_key(cardinalities_dict)
       with self._lock:
         if key not in self._executors:
           self._executors[key] = self._ex_factory.create_executor(
-              cardinalities_dict)
+              cardinalities_dict
+          )
         self._executor_ref_counts[key] += 1
         self._ids_to_cardinalities[key] = cardinalities_dict
       return executor_pb2.GetExecutorResponse(
-          executor=executor_pb2.ExecutorId(id=key))
+          executor=executor_pb2.ExecutorId(id=key)
+      )
 
   def DestroyExecutor(self, request):
     with self._lock:
@@ -186,19 +195,23 @@ class ExecutorService(executor_pb2_grpc.ExecutorGroupServicer):
         logging.info('Raised an RPC error')
         if grpc_err.code() == grpc.StatusCode.FAILED_PRECONDITION:
           # Raised if a worker needs to be reconfigured.
-          logging.info('Executor underneath service raised FailedPrecondition; '
-                       'invalidating references to this executor.')
+          logging.info(
+              'Executor underneath service raised FailedPrecondition; '
+              'invalidating references to this executor.'
+          )
           self.DestroyExecutor(request)
         elif grpc_err.code() == grpc.StatusCode.UNAVAILABLE:
           # Raised if a worker goes down during invocation.
-          logging.info('Executor underneath service unavailable; preemptively '
-                       'invalidating references to this executor.')
+          logging.info(
+              'Executor underneath service unavailable; preemptively '
+              'invalidating references to this executor.'
+          )
           self.DestroyExecutor(request)
         return blank_response_fn()
       else:
         # Unknown; just reraise, see if anyone else can handle.
         raise grpc_err
-    except (executors_errors.RetryableError) as err:
+    except executors_errors.RetryableError as err:
       # Raised if no workers are available during executor construction.
       _set_unavailable_error(context, err)
       return blank_response_fn()
@@ -213,18 +226,19 @@ class ExecutorService(executor_pb2_grpc.ExecutorGroupServicer):
   ) -> executor_pb2.CreateValueResponse:
     """Creates a value embedded in the executor."""
     py_typecheck.check_type(request, executor_pb2.CreateValueRequest)
-    with self._try_handle_request_context(request, context,
-                                          executor_pb2.CreateValueResponse):
+    with self._try_handle_request_context(
+        request, context, executor_pb2.CreateValueResponse
+    ):
       with tracing.span('ExecutorService.CreateValue', 'deserialize_value'):
-        value, value_type = (
-            value_serialization.deserialize_value(request.value))
+        value, value_type = value_serialization.deserialize_value(request.value)
       value_id = str(uuid.uuid4())
       coro = self.executor(request, context).create_value(value, value_type)
       future_val = self._run_coro_threadsafe_with_tracing(coro)
       with self._lock:
         self._values[value_id] = future_val
       return executor_pb2.CreateValueResponse(
-          value_ref=executor_pb2.ValueRef(id=value_id))
+          value_ref=executor_pb2.ValueRef(id=value_id)
+      )
 
   def CreateCall(
       self,
@@ -233,8 +247,9 @@ class ExecutorService(executor_pb2_grpc.ExecutorGroupServicer):
   ) -> executor_pb2.CreateCallResponse:
     """Creates a call embedded in the executor."""
     py_typecheck.check_type(request, executor_pb2.CreateCallRequest)
-    with self._try_handle_request_context(request, context,
-                                          executor_pb2.CreateCallResponse):
+    with self._try_handle_request_context(
+        request, context, executor_pb2.CreateCallResponse
+    ):
       function_id = str(request.function_ref.id)
       argument_id = str(request.argument_ref.id)
       with self._lock:
@@ -243,10 +258,14 @@ class ExecutorService(executor_pb2_grpc.ExecutorGroupServicer):
 
       async def _process_create_call():
         function = await asyncio.wrap_future(function_val)
-        argument = await asyncio.wrap_future(
-            argument_val) if argument_val is not None else None
-        return await self.executor(request,
-                                   context).create_call(function, argument)
+        argument = (
+            await asyncio.wrap_future(argument_val)
+            if argument_val is not None
+            else None
+        )
+        return await self.executor(request, context).create_call(
+            function, argument
+        )
 
       coro = _process_create_call()
       result_fut = self._run_coro_threadsafe_with_tracing(coro)
@@ -254,7 +273,8 @@ class ExecutorService(executor_pb2_grpc.ExecutorGroupServicer):
       with self._lock:
         self._values[result_id] = result_fut
       return executor_pb2.CreateCallResponse(
-          value_ref=executor_pb2.ValueRef(id=result_id))
+          value_ref=executor_pb2.ValueRef(id=result_id)
+      )
 
   def CreateStruct(
       self,
@@ -263,8 +283,9 @@ class ExecutorService(executor_pb2_grpc.ExecutorGroupServicer):
   ) -> executor_pb2.CreateStructResponse:
     """Creates a struct embedded in the executor."""
     py_typecheck.check_type(request, executor_pb2.CreateStructRequest)
-    with self._try_handle_request_context(request, context,
-                                          executor_pb2.CreateStructResponse):
+    with self._try_handle_request_context(
+        request, context, executor_pb2.CreateStructResponse
+    ):
       with self._lock:
         elem_futures = [self._values[e.value_ref.id] for e in request.element]
       elem_names = [
@@ -273,18 +294,21 @@ class ExecutorService(executor_pb2_grpc.ExecutorGroupServicer):
 
       async def _process_create_struct():
         elem_values = await asyncio.gather(
-            *[asyncio.wrap_future(v) for v in elem_futures])
+            *[asyncio.wrap_future(v) for v in elem_futures]
+        )
         elements = list(zip(elem_names, elem_values))
         struct = structure.Struct(elements)
         return await self.executor(request, context).create_struct(struct)
 
       result_fut = self._run_coro_threadsafe_with_tracing(
-          _process_create_struct())
+          _process_create_struct()
+      )
       result_id = str(uuid.uuid4())
       with self._lock:
         self._values[result_id] = result_fut
       return executor_pb2.CreateStructResponse(
-          value_ref=executor_pb2.ValueRef(id=result_id))
+          value_ref=executor_pb2.ValueRef(id=result_id)
+      )
 
   def CreateSelection(
       self,
@@ -293,23 +317,27 @@ class ExecutorService(executor_pb2_grpc.ExecutorGroupServicer):
   ) -> executor_pb2.CreateSelectionResponse:
     """Creates a selection embedded in the executor."""
     py_typecheck.check_type(request, executor_pb2.CreateSelectionRequest)
-    with self._try_handle_request_context(request, context,
-                                          executor_pb2.CreateSelectionResponse):
+    with self._try_handle_request_context(
+        request, context, executor_pb2.CreateSelectionResponse
+    ):
       with self._lock:
         source_fut = self._values[request.source_ref.id]
 
       async def _process_create_selection():
         source = await asyncio.wrap_future(source_fut)
         return await self.executor(request, context).create_selection(
-            source, request.index)
+            source, request.index
+        )
 
       result_fut = self._run_coro_threadsafe_with_tracing(
-          _process_create_selection())
+          _process_create_selection()
+      )
       result_id = str(uuid.uuid4())
       with self._lock:
         self._values[result_id] = result_fut
       return executor_pb2.CreateSelectionResponse(
-          value_ref=executor_pb2.ValueRef(id=result_id))
+          value_ref=executor_pb2.ValueRef(id=result_id)
+      )
 
   def Compute(
       self,
@@ -318,7 +346,8 @@ class ExecutorService(executor_pb2_grpc.ExecutorGroupServicer):
   ) -> executor_pb2.ComputeResponse:
     """Computes a value embedded in the executor."""
     return self._run_coro_threadsafe_with_tracing(
-        self._Compute(request, context)).result()
+        self._Compute(request, context)
+    ).result()
 
   async def _Compute(
       self,
@@ -327,8 +356,9 @@ class ExecutorService(executor_pb2_grpc.ExecutorGroupServicer):
   ) -> executor_pb2.ComputeResponse:
     """Asynchronous implemention of `Compute`."""
     py_typecheck.check_type(request, executor_pb2.ComputeRequest)
-    with self._try_handle_request_context(request, context,
-                                          executor_pb2.ComputeResponse):
+    with self._try_handle_request_context(
+        request, context, executor_pb2.ComputeResponse
+    ):
       value_id = str(request.value_ref.id)
       with self._lock:
         future_val = asyncio.wrap_future(self._values[value_id])

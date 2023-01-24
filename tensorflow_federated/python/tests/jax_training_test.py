@@ -47,7 +47,9 @@ MODEL_TYPE = collections.OrderedDict(
 def loss(model, batch):
   y = jax.nn.softmax(
       jax.numpy.add(
-          jax.numpy.matmul(batch['pixels'], model['weights']), model['bias']))
+          jax.numpy.matmul(batch['pixels'], model['weights']), model['bias']
+      )
+  )
   targets = jax.nn.one_hot(jax.numpy.reshape(batch['labels'], -1), 10)
   return -jax.numpy.mean(jax.numpy.sum(targets * jax.numpy.log(y), axis=1))
 
@@ -57,8 +59,9 @@ def prepare_data(num_clients, num_batches):
   for _ in range(num_clients):
     batches = []
     for _ in range(num_batches):
-      pixels = np.random.uniform(
-          low=0.0, high=1.0, size=(50, 784)).astype(np.float32)
+      pixels = np.random.uniform(low=0.0, high=1.0, size=(50, 784)).astype(
+          np.float32
+      )
       labels = np.random.randint(low=0, high=9, size=(50,), dtype=np.int32)
       # NOTE: the keys must be in sorted order here, otherwise the tf.data
       # implementations will sort the keys  but TFF won't, leading to mismatched
@@ -67,7 +70,8 @@ def prepare_data(num_clients, num_batches):
       batches.append(batch)
     federated_training_data.append(batches)
   centralized_eval_data = list(
-      itertools.chain.from_iterable(federated_training_data))
+      itertools.chain.from_iterable(federated_training_data)
+  )
   return federated_training_data, centralized_eval_data
 
 
@@ -80,7 +84,8 @@ class JaxTrainingTest(absltest.TestCase):
   def test_federated_training(self):
     training_data, eval_data = prepare_data(num_clients=2, num_batches=10)
     trainer = jax_components.build_jax_federated_averaging_process(
-        BATCH_TYPE, MODEL_TYPE, loss, step_size=0.001)
+        BATCH_TYPE, MODEL_TYPE, loss, step_size=0.001
+    )
     model = trainer.initialize()
     losses = []
     num_rounds = 5

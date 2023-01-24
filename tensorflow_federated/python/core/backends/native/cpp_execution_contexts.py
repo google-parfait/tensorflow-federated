@@ -46,7 +46,8 @@ def create_sync_local_cpp_execution_context(
   del stream_structs  # Unused.
   factory = cpp_executor_factory.local_cpp_executor_factory(
       default_num_clients=default_num_clients,
-      max_concurrent_computation_calls=max_concurrent_computation_calls)
+      max_concurrent_computation_calls=max_concurrent_computation_calls,
+  )
   context = sync_execution_context.SyncExecutionContext(
       executor_fn=factory, compiler_fn=compiler.desugar_and_transform_to_native
   )
@@ -67,7 +68,8 @@ def set_sync_local_cpp_execution_context(
 
 
 def create_local_async_cpp_execution_context(
-    default_num_clients: int = 0, max_concurrent_computation_calls: int = -1):
+    default_num_clients: int = 0, max_concurrent_computation_calls: int = -1
+):
   """Creates a local async execution context backed by TFF-C++ runtime.
 
   Args:
@@ -83,7 +85,8 @@ def create_local_async_cpp_execution_context(
   """
   factory = cpp_executor_factory.local_cpp_executor_factory(
       default_num_clients=default_num_clients,
-      max_concurrent_computation_calls=max_concurrent_computation_calls)
+      max_concurrent_computation_calls=max_concurrent_computation_calls,
+  )
   context = async_execution_context.AsyncExecutionContext(
       executor_fn=factory, compiler_fn=compiler.desugar_and_transform_to_native
   )
@@ -91,7 +94,8 @@ def create_local_async_cpp_execution_context(
 
 
 def set_local_async_cpp_execution_context(
-    default_num_clients: int = 0, max_concurrent_computation_calls: int = -1):
+    default_num_clients: int = 0, max_concurrent_computation_calls: int = -1
+):
   """Sets a local execution context backed by TFF-C++ runtime.
 
   Args:
@@ -104,15 +108,18 @@ def set_local_async_cpp_execution_context(
   """
   context = create_local_async_cpp_execution_context(
       default_num_clients=default_num_clients,
-      max_concurrent_computation_calls=max_concurrent_computation_calls)
+      max_concurrent_computation_calls=max_concurrent_computation_calls,
+  )
   set_default_context.set_default_context(context)
 
 
 def set_remote_cpp_execution_context(
     channels: Sequence[executor_bindings.GRPCChannel],
-    default_num_clients: int = 0):
+    default_num_clients: int = 0,
+):
   context = create_remote_cpp_execution_context(
-      channels=channels, default_num_clients=default_num_clients)
+      channels=channels, default_num_clients=default_num_clients
+  )
   set_default_context.set_default_context(context)
 
 
@@ -122,7 +129,8 @@ def create_remote_cpp_execution_context(
 ) -> sync_execution_context.SyncExecutionContext:
   """Creates a remote execution context backed by TFF-C++ runtime."""
   factory = cpp_executor_factory.remote_cpp_executor_factory(
-      channels=channels, default_num_clients=default_num_clients)
+      channels=channels, default_num_clients=default_num_clients
+  )
   context = sync_execution_context.SyncExecutionContext(
       executor_fn=factory, compiler_fn=compiler.desugar_and_transform_to_native
   )
@@ -135,7 +143,8 @@ def create_remote_async_cpp_execution_context(
 ) -> async_execution_context.AsyncExecutionContext:
   """Creates a remote execution context backed by TFF-C++ runtime."""
   factory = cpp_executor_factory.remote_cpp_executor_factory(
-      channels=channels, default_num_clients=default_num_clients)
+      channels=channels, default_num_clients=default_num_clients
+  )
   context = async_execution_context.AsyncExecutionContext(
       executor_fn=factory, compiler_fn=compiler.desugar_and_transform_to_native
   )

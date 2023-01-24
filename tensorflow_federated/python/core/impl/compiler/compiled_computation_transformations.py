@@ -38,7 +38,8 @@ def _unpack_proto_into_graph_spec(tf_block_proto):
     the information present in `tf_block_proto`.
   """
   graph = serialization_utils.unpack_graph_def(
-      tf_block_proto.tensorflow.graph_def)
+      tf_block_proto.tensorflow.graph_def
+  )
   graph_init_op_name = tf_block_proto.tensorflow.initialize_op
   if not graph_init_op_name:
     graph_init_op_name = None
@@ -47,13 +48,16 @@ def _unpack_proto_into_graph_spec(tf_block_proto):
 
   if graph_parameter_binding.WhichOneof('binding') is not None:
     graph_parameter_list = tensorflow_utils.extract_tensor_names_from_binding(
-        graph_parameter_binding)
+        graph_parameter_binding
+    )
   else:
     graph_parameter_list = []
   graph_result_list = tensorflow_utils.extract_tensor_names_from_binding(
-      graph_result_binding)
-  return graph_spec.GraphSpec(graph, graph_init_op_name, graph_parameter_list,
-                              graph_result_list)
+      graph_result_binding
+  )
+  return graph_spec.GraphSpec(
+      graph, graph_init_op_name, graph_parameter_list, graph_result_list
+  )
 
 
 def optimize_tensorflow_comp(tf_computation, config_proto):
@@ -75,23 +79,31 @@ def optimize_tensorflow_comp(tf_computation, config_proto):
   graph_spec_obj = _unpack_proto_into_graph_spec(tf_proto)
 
   optimized_graph_spec = graph_optimizations.optimize_graph_spec(
-      graph_spec_obj, config_proto)
+      graph_spec_obj, config_proto
+  )
   graph_def = serialization_utils.pack_graph_def(optimized_graph_spec.graph_def)
   original_tf = tf_proto.tensorflow
   tf_result_proto = computation_pb2.TensorFlow(
       graph_def=graph_def,
-      initialize_op=(original_tf.initialize_op
-                     if original_tf.initialize_op else None),
-      session_token_tensor_name=(original_tf.session_token_tensor_name
-                                 if original_tf.session_token_tensor_name else
-                                 None),
-      parameter=(original_tf.parameter
-                 if original_tf.HasField('parameter') else None),
-      result=original_tf.result)
+      initialize_op=(
+          original_tf.initialize_op if original_tf.initialize_op else None
+      ),
+      session_token_tensor_name=(
+          original_tf.session_token_tensor_name
+          if original_tf.session_token_tensor_name
+          else None
+      ),
+      parameter=(
+          original_tf.parameter if original_tf.HasField('parameter') else None
+      ),
+      result=original_tf.result,
+  )
   optimized_proto = computation_pb2.Computation(
-      type=tf_proto.type, tensorflow=tf_result_proto)
+      type=tf_proto.type, tensorflow=tf_result_proto
+  )
   return building_blocks.CompiledComputation(
-      optimized_proto, type_signature=tf_computation.type_signature)
+      optimized_proto, type_signature=tf_computation.type_signature
+  )
 
 
 class TensorFlowOptimizer(transformation_utils.TransformSpec):
@@ -118,8 +130,9 @@ class TensorFlowOptimizer(transformation_utils.TransformSpec):
 def optimize_tensorflow_graphs(comp, grappler_config_proto):
   """Performs any static optimization on TensorFlow subcomputations."""
   transform_spec = TensorFlowOptimizer(grappler_config_proto)
-  return transformation_utils.transform_postorder(comp,
-                                                  transform_spec.transform)
+  return transformation_utils.transform_postorder(
+      comp, transform_spec.transform
+  )
 
 
 class DisableCallOpGrappler(transformation_utils.TransformSpec):
@@ -133,24 +146,32 @@ class DisableCallOpGrappler(transformation_utils.TransformSpec):
   """
 
   def should_transform(self, comp):
-    return (comp.is_compiled_computation() and
-            comp.proto.WhichOneof('computation') == 'tensorflow')
+    return (
+        comp.is_compiled_computation()
+        and comp.proto.WhichOneof('computation') == 'tensorflow'
+    )
 
   def transform(self, comp):
     if not self.should_transform(comp):
       return comp, False
     py_typecheck.check_type(comp, building_blocks.CompiledComputation)
     new_comp_proto = tensorflow_computation_transformations.disable_grappler_for_partitioned_calls(
-        comp.proto)
-    return building_blocks.CompiledComputation(
-        new_comp_proto, type_signature=comp.type_signature), True
+        comp.proto
+    )
+    return (
+        building_blocks.CompiledComputation(
+            new_comp_proto, type_signature=comp.type_signature
+        ),
+        True,
+    )
 
 
 def transform_tf_call_ops_to_disable_grappler(comp):
   """Performs grappler disabling on TensorFlow subcomputations."""
   transform_spec = DisableCallOpGrappler()
-  return transformation_utils.transform_postorder(comp,
-                                                  transform_spec.transform)
+  return transformation_utils.transform_postorder(
+      comp, transform_spec.transform
+  )
 
 
 class VerifyAllowedOps(transformation_utils.TransformSpec):
@@ -168,10 +189,13 @@ class VerifyAllowedOps(transformation_utils.TransformSpec):
   def __init__(self, allowed_op_names: frozenset[str]):
     self._allowed_op_names = allowed_op_names
 
-  def should_transform(self,
-                       comp: building_blocks.ComputationBuildingBlock) -> bool:
-    return (comp.is_compiled_computation() and
-            comp.proto.WhichOneof('computation') == 'tensorflow')
+  def should_transform(
+      self, comp: building_blocks.ComputationBuildingBlock
+  ) -> bool:
+    return (
+        comp.is_compiled_computation()
+        and comp.proto.WhichOneof('computation') == 'tensorflow'
+    )
 
   def transform(
       self, comp: building_blocks.ComputationBuildingBlock
@@ -180,18 +204,20 @@ class VerifyAllowedOps(transformation_utils.TransformSpec):
       return comp, False
     py_typecheck.check_type(comp, building_blocks.CompiledComputation)
     tensorflow_computation_transformations.check_allowed_ops(
-        comp.proto, self._allowed_op_names)
+        comp.proto, self._allowed_op_names
+    )
     return comp, False
 
 
 def check_allowed_ops(
     comp: building_blocks.ComputationBuildingBlock,
-    allowed_op_names: frozenset[str]
+    allowed_op_names: frozenset[str],
 ) -> tuple[building_blocks.ComputationBuildingBlock, bool]:
   """Checks any Tensorflow computation contains only allowed ops."""
   transform_spec = VerifyAllowedOps(allowed_op_names)
-  return transformation_utils.transform_postorder(comp,
-                                                  transform_spec.transform)
+  return transformation_utils.transform_postorder(
+      comp, transform_spec.transform
+  )
 
 
 class RaiseOnDisallowedOp(transformation_utils.TransformSpec):
@@ -209,10 +235,13 @@ class RaiseOnDisallowedOp(transformation_utils.TransformSpec):
   def __init__(self, disallowed_op_names: frozenset[str]):
     self._disallowed_op_names = disallowed_op_names
 
-  def should_transform(self,
-                       comp: building_blocks.ComputationBuildingBlock) -> bool:
-    return (comp.is_compiled_computation() and
-            comp.proto.WhichOneof('computation') == 'tensorflow')
+  def should_transform(
+      self, comp: building_blocks.ComputationBuildingBlock
+  ) -> bool:
+    return (
+        comp.is_compiled_computation()
+        and comp.proto.WhichOneof('computation') == 'tensorflow'
+    )
 
   def transform(
       self, comp: building_blocks.ComputationBuildingBlock
@@ -221,18 +250,20 @@ class RaiseOnDisallowedOp(transformation_utils.TransformSpec):
       return comp, False
     py_typecheck.check_type(comp, building_blocks.CompiledComputation)
     tensorflow_computation_transformations.check_no_disallowed_ops(
-        comp.proto, self._disallowed_op_names)
+        comp.proto, self._disallowed_op_names
+    )
     return comp, False
 
 
 def check_disallowed_ops(
     comp: building_blocks.ComputationBuildingBlock,
-    disallowed_op_names: frozenset[str]
+    disallowed_op_names: frozenset[str],
 ) -> tuple[building_blocks.ComputationBuildingBlock, bool]:
   """Raises error on disallowed ops in any Tensorflow computation."""
   transform_spec = RaiseOnDisallowedOp(disallowed_op_names)
-  return transformation_utils.transform_postorder(comp,
-                                                  transform_spec.transform)
+  return transformation_utils.transform_postorder(
+      comp, transform_spec.transform
+  )
 
 
 class AddUniqueIDs(transformation_utils.TransformSpec):
@@ -247,8 +278,10 @@ class AddUniqueIDs(transformation_utils.TransformSpec):
   """
 
   def should_transform(self, comp):
-    return (comp.is_compiled_computation() and
-            comp.proto.WhichOneof('computation') == 'tensorflow')
+    return (
+        comp.is_compiled_computation()
+        and comp.proto.WhichOneof('computation') == 'tensorflow'
+    )
 
   def transform(self, comp):
     if not self.should_transform(comp):
@@ -262,16 +295,23 @@ class AddUniqueIDs(transformation_utils.TransformSpec):
     # particularly in MapReduceForm compiltion for secure_sum intrinsics over
     # empty structures.
     hash_value = hash(
-        (comp.type_signature, comp.proto.tensorflow.graph_def.value))
+        (comp.type_signature, comp.proto.tensorflow.graph_def.value)
+    )
     new_tf_proto.cache_key.id = ctypes.c_uint64(hash_value).value
     new_comp_proto = computation_pb2.Computation(
-        type=comp.proto.type, tensorflow=new_tf_proto)
-    return building_blocks.CompiledComputation(
-        new_comp_proto, type_signature=comp.type_signature), True
+        type=comp.proto.type, tensorflow=new_tf_proto
+    )
+    return (
+        building_blocks.CompiledComputation(
+            new_comp_proto, type_signature=comp.type_signature
+        ),
+        True,
+    )
 
 
 def transform_tf_add_ids(comp):
   """Adds unique IDs to each TensorFlow subcomputations."""
   transform_spec = AddUniqueIDs()
-  return transformation_utils.transform_postorder(comp,
-                                                  transform_spec.transform)
+  return transformation_utils.transform_postorder(
+      comp, transform_spec.transform
+  )

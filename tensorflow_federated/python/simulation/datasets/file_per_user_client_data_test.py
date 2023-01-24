@@ -35,13 +35,13 @@ from tensorflow_federated.python.simulation.datasets import file_per_user_client
 # See `FilePerUserClientDataTest._setup_fake_per_user_data` for how this split
 # up per-user.
 FAKE_TEST_DATA = [
-    ('ClientA', 3, 4.0, [5., 6.5]),
-    ('ClientB', 1, 4.2, [1., 6.1]),
-    ('ClientB', 2, 5.3, [5., 6.3]),
-    ('ClientA', 5, 4.7, [3., 6.8]),
-    ('ClientC', 3, 1.0, [5., 6.4]),
-    ('ClientA', 2, 7.5, [7., 6.2]),
-    ('ClientA', 3, 4.0, [9., 6.9]),
+    ('ClientA', 3, 4.0, [5.0, 6.5]),
+    ('ClientB', 1, 4.2, [1.0, 6.1]),
+    ('ClientB', 2, 5.3, [5.0, 6.3]),
+    ('ClientA', 5, 4.7, [3.0, 6.8]),
+    ('ClientC', 3, 1.0, [5.0, 6.4]),
+    ('ClientA', 2, 7.5, [7.0, 6.2]),
+    ('ClientA', 3, 4.0, [9.0, 6.9]),
 ]
 
 
@@ -51,20 +51,25 @@ def _create_example(features):
   for i, feature in enumerate(features):
     if isinstance(feature, int):
       output_features[str(i)] = tf.train.Feature(
-          int64_list=tf.train.Int64List(value=[feature]))
+          int64_list=tf.train.Int64List(value=[feature])
+      )
     elif isinstance(feature, float):
       output_features[str(i)] = tf.train.Feature(
-          float_list=tf.train.FloatList(value=[feature]))
+          float_list=tf.train.FloatList(value=[feature])
+      )
     elif isinstance(feature, list):
       output_features[str(i)] = tf.train.Feature(
-          float_list=tf.train.FloatList(value=feature))
+          float_list=tf.train.FloatList(value=feature)
+      )
     else:
       # This is hit if the unittest is updated with unknown types, not an error
       # in the object under test. Extend the unittest capabilities to fix.
-      raise NotImplementedError('Cannot handle feature type [{}]'.format(
-          type(feature)))
-  return tf.train.Example(features=tf.train.Features(
-      feature=output_features)).SerializeToString()
+      raise NotImplementedError(
+          'Cannot handle feature type [{}]'.format(type(feature))
+      )
+  return tf.train.Example(
+      features=tf.train.Features(feature=output_features)
+  ).SerializeToString()
 
 
 class FakeUserData:
@@ -163,9 +168,11 @@ class FilePerUserClientDataTest(tf.test.TestCase):
     self.assertEqual(data.client_ids, expected_client_ids)
 
   def test_element_type_structure(self):
-    expected_structure = (tf.TensorSpec(shape=[], dtype=tf.int64),
-                          tf.TensorSpec(shape=[], dtype=tf.float32),
-                          tf.TensorSpec(shape=[2], dtype=tf.float32))
+    expected_structure = (
+        tf.TensorSpec(shape=[], dtype=tf.int64),
+        tf.TensorSpec(shape=[], dtype=tf.float32),
+        tf.TensorSpec(shape=[2], dtype=tf.float32),
+    )
     actual_structure = self._create_fake_client_data().element_type_structure
     self.assertEqual(expected_structure, actual_structure)
 
@@ -174,14 +181,16 @@ class FilePerUserClientDataTest(tf.test.TestCase):
     # Iterate over each client, ensuring we received a tf.data.Dataset with the
     # correct data.
     client_id_counters = collections.Counter(
-        example[0] for example in FAKE_TEST_DATA)
+        example[0] for example in FAKE_TEST_DATA
+    )
     for client_id, expected_num_examples in client_id_counters.items():
       tf_dataset = data.create_tf_dataset_for_client(client_id)
       self.assertIsInstance(tf_dataset, tf.data.Dataset)
 
       actual_num_examples = tf_dataset.reduce(0, lambda x, _: x + 1)
       self.assertEqual(
-          self.evaluate(actual_num_examples), expected_num_examples)
+          self.evaluate(actual_num_examples), expected_num_examples
+      )
 
       # Assert the actual examples provided are the same.
       expected_examples = [
@@ -208,19 +217,22 @@ class FilePerUserClientDataTest(tf.test.TestCase):
 
   def test_dataset_computation(self):
     data = self._create_fake_client_data()
-    self.assertIsInstance(data.dataset_computation,
-                          computation_base.Computation)
+    self.assertIsInstance(
+        data.dataset_computation, computation_base.Computation
+    )
     # Iterate over each client, ensuring we received a tf.data.Dataset with the
     # correct data.
     client_id_counters = collections.Counter(
-        example[0] for example in FAKE_TEST_DATA)
+        example[0] for example in FAKE_TEST_DATA
+    )
     for client_id, expected_num_examples in client_id_counters.items():
       tf_dataset = data.dataset_computation(client_id)
       self.assertIsInstance(tf_dataset, tf.data.Dataset)
 
       actual_num_examples = tf_dataset.reduce(0, lambda x, _: x + 1)
       self.assertEqual(
-          self.evaluate(actual_num_examples), expected_num_examples)
+          self.evaluate(actual_num_examples), expected_num_examples
+      )
 
       # Assert the actual examples provided are the same.
       expected_examples = [
@@ -240,14 +252,16 @@ class FilePerUserClientDataTest(tf.test.TestCase):
   def test_build_client_file_dict(self):
     temp_dir = FilePerUserClientDataTest.temp_dir
     data = file_per_user_client_data.FilePerUserClientData.create_from_dir(
-        path=temp_dir, create_tf_dataset_fn=tf.data.TFRecordDataset)
+        path=temp_dir, create_tf_dataset_fn=tf.data.TFRecordDataset
+    )
     expected_client_ids = set(example[0] for example in FAKE_TEST_DATA)
     self.assertLen(data.client_ids, len(expected_client_ids))
 
   def test_build_client_file_dict_default_create_fn(self):
     temp_dir = FilePerUserClientDataTest.temp_dir
     data = file_per_user_client_data.FilePerUserClientData.create_from_dir(
-        path=temp_dir)
+        path=temp_dir
+    )
     expected_client_ids = set(example[0] for example in FAKE_TEST_DATA)
     self.assertLen(data.client_ids, len(expected_client_ids))
 
@@ -261,7 +275,8 @@ class FilePerUserClientDataTest(tf.test.TestCase):
       return tf.data.Dataset.range(100)
 
     client_data = file_per_user_client_data.FilePerUserClientData(
-        client_ids_to_files=client_ids_to_files, dataset_fn=dataset_fn)
+        client_ids_to_files=client_ids_to_files, dataset_fn=dataset_fn
+    )
     # Ensure this completes within the test timeout without raising error.
     # Previous implementations caused this to take an very long time via Python
     # list -> generator -> list transformations.
@@ -294,9 +309,11 @@ class PreprocessFilePerUserClientDataTest(tf.test.TestCase):
 
   def test_preprocess_with_identity_gives_same_structure(self):
     data = self._create_fake_client_data().preprocess(lambda x: x)
-    expected_structure = (tf.TensorSpec(shape=[], dtype=tf.int64),
-                          tf.TensorSpec(shape=[], dtype=tf.float32),
-                          tf.TensorSpec(shape=[2], dtype=tf.float32))
+    expected_structure = (
+        tf.TensorSpec(shape=[], dtype=tf.int64),
+        tf.TensorSpec(shape=[], dtype=tf.float32),
+        tf.TensorSpec(shape=[2], dtype=tf.float32),
+    )
     actual_structure = data.element_type_structure
     self.assertEqual(expected_structure, actual_structure)
 
@@ -336,7 +353,8 @@ class PreprocessFilePerUserClientDataTest(tf.test.TestCase):
       return tf.data.Dataset.range(100)
 
     client_data = file_per_user_client_data.FilePerUserClientData(
-        client_ids_to_files=client_ids_to_files, dataset_fn=dataset_fn)
+        client_ids_to_files=client_ids_to_files, dataset_fn=dataset_fn
+    )
     client_data = client_data.preprocess(lambda x: x)
     # Ensure this completes within the test timeout without raising error.
     # Previous implementations caused this to take an very long time via Python

@@ -30,7 +30,8 @@ def _federated_computation_wrapper_fn(parameter_type, name):
       parameter_name=parameter_name,
       parameter_type=parameter_type,
       context_stack=ctx_stack,
-      suggested_name=name)
+      suggested_name=name,
+  )
   arg = next(fn_generator)
   try:
     result = yield arg
@@ -38,15 +39,15 @@ def _federated_computation_wrapper_fn(parameter_type, name):
     fn_generator.throw(e)
   target_lambda, extra_type_spec = fn_generator.send(result)
   fn_generator.close()
-  yield computation_impl.ConcreteComputation(target_lambda.proto, ctx_stack,
-                                             extra_type_spec)
+  yield computation_impl.ConcreteComputation(
+      target_lambda.proto, ctx_stack, extra_type_spec
+  )
 
 
 federated_computation = computation_wrapper.ComputationWrapper(
-    computation_wrapper.PythonTracingStrategy(
-        _federated_computation_wrapper_fn))
-federated_computation.__doc__ = (
-    """Decorates/wraps Python functions as TFF federated/composite computations.
+    computation_wrapper.PythonTracingStrategy(_federated_computation_wrapper_fn)
+)
+federated_computation.__doc__ = """Decorates/wraps Python functions as TFF federated/composite computations.
 
   The term *federated computation* as used here refers to any computation that
   uses TFF programming abstractions. Examples of such computations may include
@@ -88,4 +89,4 @@ federated_computation.__doc__ = (
     in the typical decorator style of usage, returns a callable that expects
     to be called with the function definition supplied as a parameter. See
     also `tff.tf_computation` for an extended documentation.
-  """)
+  """

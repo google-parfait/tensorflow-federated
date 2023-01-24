@@ -25,23 +25,27 @@ import tensorflow as tf
 import tensorflow_federated as tff
 
 
-def create_localhost_remote_context(ports: Sequence[str],
-                                    default_num_clients=None):
+def create_localhost_remote_context(
+    ports: Sequence[str], default_num_clients=None
+):
   """Connects remote executors to `ports`."""
   channels = [
       grpc.insecure_channel('localhost:{}'.format(port)) for port in ports
   ]
   if default_num_clients is None:
     context = tff.backends.native.create_remote_python_execution_context(
-        channels)
+        channels
+    )
   else:
     context = tff.backends.native.create_remote_python_execution_context(
-        channels, default_num_clients=default_num_clients)
+        channels, default_num_clients=default_num_clients
+    )
   return context
 
 
 def create_inprocess_worker_contexts(
-    ports: Sequence[str]) -> list[contextlib.AbstractContextManager[None]]:
+    ports: Sequence[str],
+) -> list[contextlib.AbstractContextManager[None]]:
   """Constructs inprocess workers listening on `ports`.
 
   Starting and running inprocess workers and aggregators leads to lower
@@ -60,9 +64,8 @@ def create_inprocess_worker_contexts(
   for port in ports:
     executor_factory = tff.framework.local_executor_factory()
     server_context = tff.simulation.server_context(  # pytype: disable=wrong-arg-types
-        executor_factory,
-        num_threads=1,
-        port=port)
+        executor_factory, num_threads=1, port=port
+    )
     server_contexts.append(server_context)
   return server_contexts
 
@@ -94,9 +97,8 @@ def create_inprocess_aggregator_contexts(
     channel = grpc.insecure_channel('localhost:{}'.format(target_port))
     executor_factory = tff.framework.remote_executor_factory([channel])
     server_context = tff.simulation.server_context(  # pytype: disable=wrong-arg-types
-        executor_factory,
-        num_threads=1,
-        port=server_port)
+        executor_factory, num_threads=1, port=server_port
+    )
     aggregator_contexts.append(server_context)
   return worker_contexts + aggregator_contexts
 
@@ -139,12 +141,14 @@ def create_standalone_subprocess_aggregator_contexts(
   return aggregator_contexts
 
 
-def start_python_aggregator(worker_port: str,
-                            aggregator_port: str) -> subprocess.Popen[bytes]:
+def start_python_aggregator(
+    worker_port: str, aggregator_port: str
+) -> subprocess.Popen[bytes]:
   """Starts running Python aggregator in a subprocess."""
   python_service_binary = os.path.join(
       tf.compat.v1.resource_loader.get_root_dir_with_all_resources(),
-      tf.compat.v1.resource_loader.get_path_to_datafile('test_aggregator'))
+      tf.compat.v1.resource_loader.get_path_to_datafile('test_aggregator'),
+  )
 
   args = [
       python_service_binary,

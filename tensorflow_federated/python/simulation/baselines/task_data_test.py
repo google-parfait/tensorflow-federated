@@ -26,8 +26,9 @@ def create_client_data(num_clients):
     num_examples = tf.strings.to_number(client_id, out_type=tf.int64) + 1
     return tf.data.Dataset.range(num_examples)
 
-  return client_data.ClientData.from_clients_and_tf_fn(client_ids,
-                                                       create_dataset_fn)
+  return client_data.ClientData.from_clients_and_tf_fn(
+      client_ids, create_dataset_fn
+  )
 
 
 class GetElementSpecTest(tf.test.TestCase, parameterized.TestCase):
@@ -60,42 +61,50 @@ class GetElementSpecTest(tf.test.TestCase, parameterized.TestCase):
 class BaselineTaskDatasetsTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_raises_when_train_and_test_types_are_different_no_preprocessing(
-      self):
+      self,
+  ):
     self.skipTest('b/249818282')
     train_data = create_client_data(10)
     test_data = tf.data.Dataset.range(10, output_type=tf.int32)
     with self.assertRaisesRegex(
         ValueError,
-        'train and test element structures after preprocessing must be equal'):
+        'train and test element structures after preprocessing must be equal',
+    ):
       task_data.BaselineTaskDatasets(train_data=train_data, test_data=test_data)
 
   def test_raises_when_train_and_test_types_are_different_with_train_preprocessing(
-      self):
+      self,
+  ):
     self.skipTest('b/249818282')
     train_data = create_client_data(10)
     test_data = tf.data.Dataset.range(10)
     train_preprocess_fn = lambda x: x.map(lambda y: tf.cast(y, dtype=tf.int32))
     with self.assertRaisesRegex(
         ValueError,
-        'train and test element structures after preprocessing must be equal'):
+        'train and test element structures after preprocessing must be equal',
+    ):
       task_data.BaselineTaskDatasets(
           train_data=train_data,
           train_preprocess_fn=train_preprocess_fn,
-          test_data=test_data)
+          test_data=test_data,
+      )
 
   def test_raises_when_train_and_test_types_are_different_with_eval_preprocessing(
-      self):
+      self,
+  ):
     self.skipTest('b/249818282')
     train_data = create_client_data(10)
     test_data = tf.data.Dataset.range(10)
     eval_preprocess_fn = lambda x: x.map(lambda y: tf.cast(y, dtype=tf.int32))
     with self.assertRaisesRegex(
         ValueError,
-        'train and test element structures after preprocessing must be equal'):
+        'train and test element structures after preprocessing must be equal',
+    ):
       task_data.BaselineTaskDatasets(
           train_data=train_data,
           eval_preprocess_fn=eval_preprocess_fn,
-          test_data=test_data)
+          test_data=test_data,
+      )
 
   def test_raises_when_test_and_validation_types_are_different(self):
     train_data = create_client_data(10)
@@ -103,19 +112,24 @@ class BaselineTaskDatasetsTest(tf.test.TestCase, parameterized.TestCase):
     validation_data = tf.data.Dataset.range(10, output_type=tf.int32)
     with self.assertRaisesRegex(
         ValueError,
-        'validation set must be None, or have the same element type structure '
-        'as the test data'):
+        (
+            'validation set must be None, or have the same element type'
+            ' structure as the test data'
+        ),
+    ):
       task_data.BaselineTaskDatasets(
           train_data=train_data,
           test_data=test_data,
-          validation_data=validation_data)
+          validation_data=validation_data,
+      )
 
   def test_constructs_without_eval_preprocess_fn(self):
     preprocess_fn = lambda x: x.map(lambda y: 2 * y)
     test_task_data = task_data.BaselineTaskDatasets(
         train_data=create_client_data(10),
         train_preprocess_fn=preprocess_fn,
-        test_data=create_client_data(2))
+        test_data=create_client_data(2),
+    )
     train_preprocess_fn = test_task_data.train_preprocess_fn
     example_dataset = train_preprocess_fn(tf.data.Dataset.range(20))
     for i, x in enumerate(example_dataset):
@@ -128,16 +142,19 @@ class BaselineTaskDatasetsTest(tf.test.TestCase, parameterized.TestCase):
         train_data=create_client_data(10),
         train_preprocess_fn=train_preprocess_fn,
         test_data=create_client_data(2),
-        eval_preprocess_fn=eval_preprocess_fn)
+        eval_preprocess_fn=eval_preprocess_fn,
+    )
     example_dataset = test_task_data.eval_preprocess_fn(
-        tf.data.Dataset.range(20))
+        tf.data.Dataset.range(20)
+    )
     for i, x in enumerate(example_dataset):
       self.assertEqual(3 * i, x.numpy())
 
   def test_sample_train_clients_returns_train_datasets(self):
     train_data = create_client_data(10)
     test_task_data = task_data.BaselineTaskDatasets(
-        train_data=train_data, test_data=create_client_data(2))
+        train_data=train_data, test_data=create_client_data(2)
+    )
     all_client_datasets = [
         train_data.create_tf_dataset_for_client(x)
         for x in train_data.client_ids
@@ -156,7 +173,8 @@ class BaselineTaskDatasetsTest(tf.test.TestCase, parameterized.TestCase):
     test_task_data = task_data.BaselineTaskDatasets(
         train_data=train_data,
         train_preprocess_fn=preprocess_fn,
-        test_data=create_client_data(2))
+        test_data=create_client_data(2),
+    )
     preprocess_train_data = train_data.preprocess(preprocess_fn)
     all_client_datasets = [
         preprocess_train_data.create_tf_dataset_for_client(x)
@@ -172,15 +190,19 @@ class BaselineTaskDatasetsTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_sample_train_clients_random_seed(self):
     test_task_data = task_data.BaselineTaskDatasets(
-        train_data=create_client_data(100), test_data=create_client_data(2))
+        train_data=create_client_data(100), test_data=create_client_data(2)
+    )
     client_datasets1 = test_task_data.sample_train_clients(
-        num_clients=5, random_seed=0)
+        num_clients=5, random_seed=0
+    )
     data1 = [list(ds.as_numpy_iterator()) for ds in client_datasets1]
     client_datasets2 = test_task_data.sample_train_clients(
-        num_clients=5, random_seed=0)
+        num_clients=5, random_seed=0
+    )
     data2 = [list(ds.as_numpy_iterator()) for ds in client_datasets2]
     client_datasets3 = test_task_data.sample_train_clients(
-        num_clients=5, random_seed=1)
+        num_clients=5, random_seed=1
+    )
     data3 = [list(ds.as_numpy_iterator()) for ds in client_datasets3]
 
     self.assertAllEqual(data1, data2)
@@ -188,24 +210,29 @@ class BaselineTaskDatasetsTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_create_centralized_test_from_client_data(self):
     test_task_data = task_data.BaselineTaskDatasets(
-        train_data=create_client_data(100), test_data=create_client_data(3))
+        train_data=create_client_data(100), test_data=create_client_data(3)
+    )
     test_data = test_task_data.get_centralized_test_data()
     self.assertSameElements(
-        list(test_data.as_numpy_iterator()), [0, 0, 0, 1, 1, 2])
+        list(test_data.as_numpy_iterator()), [0, 0, 0, 1, 1, 2]
+    )
 
   def test_create_centralized_test_from_client_data_with_eval_preprocess(self):
     eval_preprocess_fn = lambda x: x.map(lambda y: 3 * y)
     test_task_data = task_data.BaselineTaskDatasets(
         train_data=create_client_data(100),
         test_data=create_client_data(3),
-        eval_preprocess_fn=eval_preprocess_fn)
+        eval_preprocess_fn=eval_preprocess_fn,
+    )
     test_data = test_task_data.get_centralized_test_data()
     self.assertSameElements(
-        list(test_data.as_numpy_iterator()), [0, 0, 0, 3, 3, 6])
+        list(test_data.as_numpy_iterator()), [0, 0, 0, 3, 3, 6]
+    )
 
   def test_create_centralized_test_from_dataset(self):
     test_task_data = task_data.BaselineTaskDatasets(
-        train_data=create_client_data(100), test_data=tf.data.Dataset.range(7))
+        train_data=create_client_data(100), test_data=tf.data.Dataset.range(7)
+    )
     test_data = test_task_data.get_centralized_test_data()
     self.assertSameElements(list(test_data.as_numpy_iterator()), list(range(7)))
 
@@ -214,7 +241,8 @@ class BaselineTaskDatasetsTest(tf.test.TestCase, parameterized.TestCase):
     test_task_data = task_data.BaselineTaskDatasets(
         train_data=create_client_data(100),
         test_data=tf.data.Dataset.range(7),
-        eval_preprocess_fn=eval_preprocess_fn)
+        eval_preprocess_fn=eval_preprocess_fn,
+    )
     test_data = test_task_data.get_centralized_test_data()
     expected_data = [3 * a for a in range(7)]
     self.assertSameElements(list(test_data.as_numpy_iterator()), expected_data)
@@ -227,7 +255,8 @@ class BaselineTaskDatasetsTest(tf.test.TestCase, parameterized.TestCase):
   def test_record_train_dataset_info(self, num_clients):
     test_task_data = task_data.BaselineTaskDatasets(
         train_data=create_client_data(num_clients),
-        test_data=create_client_data(2))
+        test_data=create_client_data(2),
+    )
     actual_train_info = test_task_data._record_dataset_information()['train']
     expected_train_info = ['Train', 'Federated', num_clients]
     self.assertEqual(actual_train_info, expected_train_info)
@@ -243,7 +272,8 @@ class BaselineTaskDatasetsTest(tf.test.TestCase, parameterized.TestCase):
     else:
       test_data = tf.data.Dataset.range(5)
     test_task_data = task_data.BaselineTaskDatasets(
-        train_data=create_client_data(1), test_data=test_data)
+        train_data=create_client_data(1), test_data=test_data
+    )
     actual_test_info = test_task_data._record_dataset_information()['test']
     expected_test_info = ['Test', test_dataset_type, num_clients]
     self.assertEqual(actual_test_info, expected_test_info)
@@ -254,8 +284,9 @@ class BaselineTaskDatasetsTest(tf.test.TestCase, parameterized.TestCase):
       ('validation_config3', 'Centralized', 'N/A'),
       ('validation_config4', None, None),
   )
-  def test_record_validation_dataset_info(self, validation_dataset_type,
-                                          num_clients):
+  def test_record_validation_dataset_info(
+      self, validation_dataset_type, num_clients
+  ):
     if validation_dataset_type == 'Federated':
       validation_data = create_client_data(num_clients)
     elif validation_dataset_type == 'Centralized':
@@ -265,15 +296,20 @@ class BaselineTaskDatasetsTest(tf.test.TestCase, parameterized.TestCase):
     test_task_data = task_data.BaselineTaskDatasets(
         train_data=create_client_data(1),
         test_data=create_client_data(1),
-        validation_data=validation_data)
+        validation_data=validation_data,
+    )
     if validation_dataset_type is None:
-      self.assertNotIn('validation',
-                       test_task_data._record_dataset_information())
+      self.assertNotIn(
+          'validation', test_task_data._record_dataset_information()
+      )
     else:
-      actual_validation_info = test_task_data._record_dataset_information(
-      )['validation']
+      actual_validation_info = test_task_data._record_dataset_information()[
+          'validation'
+      ]
       expected_validation_info = [
-          'Validation', validation_dataset_type, num_clients
+          'Validation',
+          validation_dataset_type,
+          num_clients,
       ]
       self.assertEqual(actual_validation_info, expected_validation_info)
 
@@ -285,11 +321,13 @@ class BaselineTaskDatasetsTest(tf.test.TestCase, parameterized.TestCase):
     test_task_data = task_data.BaselineTaskDatasets(
         train_data=create_client_data(10),
         train_preprocess_fn=train_preprocess_fn,
-        test_data=create_client_data(2))
+        test_data=create_client_data(2),
+    )
     summary_list = []
     test_task_data.summary(print_fn=summary_list.append)
     expected_train_preprocess_summary = 'Train Preprocess Function: {}'.format(
-        is_not_none)
+        is_not_none
+    )
     self.assertEqual(summary_list[5], expected_train_preprocess_summary)
 
   @parameterized.named_parameters(
@@ -300,11 +338,13 @@ class BaselineTaskDatasetsTest(tf.test.TestCase, parameterized.TestCase):
     test_task_data = task_data.BaselineTaskDatasets(
         train_data=create_client_data(10),
         eval_preprocess_fn=eval_preprocess_fn,
-        test_data=create_client_data(2))
+        test_data=create_client_data(2),
+    )
     summary_list = []
     test_task_data.summary(print_fn=summary_list.append)
     expected_eval_preprocess_summary = 'Eval Preprocess Function: {}'.format(
-        is_not_none)
+        is_not_none
+    )
     self.assertEqual(summary_list[6], expected_eval_preprocess_summary)
 
   @parameterized.named_parameters(
@@ -332,12 +372,19 @@ class BaselineTaskDatasetsTest(tf.test.TestCase, parameterized.TestCase):
     test_task_data = task_data.BaselineTaskDatasets(
         train_data=train_data,
         test_data=test_data,
-        validation_data=validation_data)
+        validation_data=validation_data,
+    )
     data_summary = []
     test_task_data.summary(print_fn=data_summary.append)
     actual_header_values = data_summary[0].split()
     expected_header_values = [
-        'Split', '|Dataset', 'Type', '|Number', 'of', 'Clients', '|'
+        'Split',
+        '|Dataset',
+        'Type',
+        '|Number',
+        'of',
+        'Clients',
+        '|',
     ]
     self.assertEqual(actual_header_values, expected_header_values)
 
@@ -350,12 +397,16 @@ class BaselineTaskDatasetsTest(tf.test.TestCase, parameterized.TestCase):
     train_data = create_client_data(num_clients)
     test_data = tf.data.Dataset.range(5)
     test_task_data = task_data.BaselineTaskDatasets(
-        train_data=train_data, test_data=test_data)
+        train_data=train_data, test_data=test_data
+    )
     data_summary = []
     test_task_data.summary(print_fn=data_summary.append)
     actual_train_summary = data_summary[2].split()
     expected_train_summary = [
-        'Train', '|Federated', '|{}'.format(num_clients), '|'
+        'Train',
+        '|Federated',
+        '|{}'.format(num_clients),
+        '|',
     ]
     self.assertEqual(actual_train_summary, expected_train_summary)
 
@@ -371,12 +422,16 @@ class BaselineTaskDatasetsTest(tf.test.TestCase, parameterized.TestCase):
     else:
       test_data = tf.data.Dataset.range(5)
     test_task_data = task_data.BaselineTaskDatasets(
-        train_data=train_data, test_data=test_data)
+        train_data=train_data, test_data=test_data
+    )
     data_summary = []
     test_task_data.summary(print_fn=data_summary.append)
     actual_test_summary = data_summary[3].split()
     expected_test_summary = [
-        'Test', '|{}'.format(test_type), '|{}'.format(num_clients), '|'
+        'Test',
+        '|{}'.format(test_type),
+        '|{}'.format(num_clients),
+        '|',
     ]
     self.assertEqual(actual_test_summary, expected_test_summary)
 
@@ -385,8 +440,9 @@ class BaselineTaskDatasetsTest(tf.test.TestCase, parameterized.TestCase):
       ('validation_config2', 'Federated', 23),
       ('validation_config3', 'Centralized', 'N/A'),
   )
-  def test_summary_gives_correct_validation_information(self, validation_type,
-                                                        num_clients):
+  def test_summary_gives_correct_validation_information(
+      self, validation_type, num_clients
+  ):
     if validation_type == 'Federated':
       validation_data = create_client_data(num_clients)
     elif validation_type == 'Centralized':
@@ -396,20 +452,24 @@ class BaselineTaskDatasetsTest(tf.test.TestCase, parameterized.TestCase):
     test_task_data = task_data.BaselineTaskDatasets(
         train_data=create_client_data(1),
         test_data=create_client_data(1),
-        validation_data=validation_data)
+        validation_data=validation_data,
+    )
     data_summary = []
     test_task_data.summary(print_fn=data_summary.append)
     actual_validation_summary = data_summary[4].split()
     expected_validation_summary = [
-        'Validation', '|{}'.format(validation_type), '|{}'.format(num_clients),
-        '|'
+        'Validation',
+        '|{}'.format(validation_type),
+        '|{}'.format(num_clients),
+        '|',
     ]
     self.assertEqual(actual_validation_summary, expected_validation_summary)
 
   def test_summary_table_structure_without_validation(self):
     train_data = create_client_data(1)
     test_task_data = task_data.BaselineTaskDatasets(
-        train_data=train_data, test_data=train_data)
+        train_data=train_data, test_data=train_data
+    )
     data_summary = []
     test_task_data.summary(print_fn=data_summary.append)
     self.assertLen(data_summary, 7)
@@ -423,7 +483,8 @@ class BaselineTaskDatasetsTest(tf.test.TestCase, parameterized.TestCase):
   def test_summary_table_structure_with_validation(self):
     train_data = create_client_data(1)
     test_task_data = task_data.BaselineTaskDatasets(
-        train_data=train_data, test_data=train_data, validation_data=train_data)
+        train_data=train_data, test_data=train_data, validation_data=train_data
+    )
     data_summary = []
     test_task_data.summary(print_fn=data_summary.append)
     self.assertLen(data_summary, 8)

@@ -65,17 +65,24 @@ class ContainsTypesTest(parameterized.TestCase):
   ])
   # pyformat: enable
   def test_returns_true(self, type_signature, types):
-    result = type_analysis.contains(type_signature,
-                                    lambda x: isinstance(x, types))
+    result = type_analysis.contains(
+        type_signature, lambda x: isinstance(x, types)
+    )
     self.assertTrue(result)
 
-  @parameterized.named_parameters([
-      ('one_type', computation_types.TensorType(tf.int32),
-       computation_types.StructType),
-  ])
+  @parameterized.named_parameters(
+      [
+          (
+              'one_type',
+              computation_types.TensorType(tf.int32),
+              computation_types.StructType,
+          ),
+      ]
+  )
   def test_returns_false(self, type_signature, types):
-    result = type_analysis.contains(type_signature,
-                                    lambda x: isinstance(x, types))
+    result = type_analysis.contains(
+        type_signature, lambda x: isinstance(x, types)
+    )
     self.assertFalse(result)
 
 
@@ -95,8 +102,9 @@ class ContainsOnlyTypesTest(parameterized.TestCase):
   ])
   # pyformat: enable
   def test_returns_true(self, type_signature, types):
-    result = type_analysis.contains_only(type_signature,
-                                         lambda x: isinstance(x, types))
+    result = type_analysis.contains_only(
+        type_signature, lambda x: isinstance(x, types)
+    )
     self.assertTrue(result)
 
   # pyformat: disable
@@ -110,8 +118,9 @@ class ContainsOnlyTypesTest(parameterized.TestCase):
   ])
   # pyformat: enable
   def test_returns_false(self, type_signature, types):
-    result = type_analysis.contains_only(type_signature,
-                                         lambda x: isinstance(x, types))
+    result = type_analysis.contains_only(
+        type_signature, lambda x: isinstance(x, types)
+    )
     self.assertFalse(result)
 
 
@@ -188,11 +197,20 @@ class IsSumCompatibleTest(parameterized.TestCase):
 
   @parameterized.named_parameters([
       ('tensor_type', computation_types.TensorType(tf.int32)),
-      ('tuple_type_int', computation_types.StructType([tf.int32, tf.int32],)),
-      ('tuple_type_float',
-       computation_types.StructType([tf.complex128, tf.float32, tf.float64])),
-      ('federated_type',
-       computation_types.FederatedType(tf.int32, placements.CLIENTS)),
+      (
+          'tuple_type_int',
+          computation_types.StructType(
+              [tf.int32, tf.int32],
+          ),
+      ),
+      (
+          'tuple_type_float',
+          computation_types.StructType([tf.complex128, tf.float32, tf.float64]),
+      ),
+      (
+          'federated_type',
+          computation_types.FederatedType(tf.int32, placements.CLIENTS),
+      ),
   ])
   def test_positive_examples(self, type_spec):
     type_analysis.check_is_sum_compatible(type_spec)
@@ -200,17 +218,23 @@ class IsSumCompatibleTest(parameterized.TestCase):
   @parameterized.named_parameters([
       ('tensor_type_bool', computation_types.TensorType(tf.bool)),
       ('tensor_type_string', computation_types.TensorType(tf.string)),
-      ('partially_defined_shape',
-       computation_types.TensorType(tf.int32, shape=[None])),
+      (
+          'partially_defined_shape',
+          computation_types.TensorType(tf.int32, shape=[None]),
+      ),
       ('tuple_type', computation_types.StructType([tf.int32, tf.bool])),
       ('sequence_type', computation_types.SequenceType(tf.int32)),
       ('placement_type', computation_types.PlacementType()),
       ('function_type', computation_types.FunctionType(tf.int32, tf.int32)),
       ('abstract_type', computation_types.AbstractType('T')),
-      ('ragged_tensor',
-       computation_types.StructWithPythonType([], tf.RaggedTensor)),
-      ('sparse_tensor',
-       computation_types.StructWithPythonType([], tf.SparseTensor)),
+      (
+          'ragged_tensor',
+          computation_types.StructWithPythonType([], tf.RaggedTensor),
+      ),
+      (
+          'sparse_tensor',
+          computation_types.StructWithPythonType([], tf.SparseTensor),
+      ),
   ])
   def test_negative_examples(self, type_spec):
     with self.assertRaises(type_analysis.SumIncompatibleError):
@@ -222,10 +246,14 @@ class IsAverageCompatibleTest(parameterized.TestCase):
   @parameterized.named_parameters([
       ('tensor_type_float32', computation_types.TensorType(tf.float32)),
       ('tensor_type_float64', computation_types.TensorType(tf.float64)),
-      ('tuple_type',
-       computation_types.StructType([('x', tf.float32), ('y', tf.float64)])),
-      ('federated_type',
-       computation_types.FederatedType(tf.float32, placements.CLIENTS)),
+      (
+          'tuple_type',
+          computation_types.StructType([('x', tf.float32), ('y', tf.float64)]),
+      ),
+      (
+          'federated_type',
+          computation_types.FederatedType(tf.float32, placements.CLIENTS),
+      ),
   ])
   def test_returns_true(self, type_spec):
     self.assertTrue(type_analysis.is_average_compatible(type_spec))
@@ -249,23 +277,46 @@ class CheckTypeTest(absltest.TestCase):
 class CheckFederatedTypeTest(absltest.TestCase):
 
   def test_passes_or_raises_type_error(self):
-    type_spec = computation_types.FederatedType(tf.int32, placements.CLIENTS,
-                                                False)
-    type_analysis.check_federated_type(type_spec,
-                                       computation_types.TensorType(tf.int32),
-                                       placements.CLIENTS, False)
-    type_analysis.check_federated_type(type_spec,
-                                       computation_types.TensorType(tf.int32),
-                                       None, None)
-    type_analysis.check_federated_type(type_spec, None, placements.CLIENTS,
-                                       None)
+    type_spec = computation_types.FederatedType(
+        tf.int32, placements.CLIENTS, False
+    )
+    type_analysis.check_federated_type(
+        type_spec,
+        computation_types.TensorType(tf.int32),
+        placements.CLIENTS,
+        False,
+    )
+    type_analysis.check_federated_type(
+        type_spec, computation_types.TensorType(tf.int32), None, None
+    )
+    type_analysis.check_federated_type(
+        type_spec, None, placements.CLIENTS, None
+    )
     type_analysis.check_federated_type(type_spec, None, None, False)
-    self.assertRaises(TypeError, type_analysis.check_federated_type, type_spec,
-                      tf.bool, None, None)
-    self.assertRaises(TypeError, type_analysis.check_federated_type, type_spec,
-                      None, placements.SERVER, None)
-    self.assertRaises(TypeError, type_analysis.check_federated_type, type_spec,
-                      None, None, True)
+    self.assertRaises(
+        TypeError,
+        type_analysis.check_federated_type,
+        type_spec,
+        tf.bool,
+        None,
+        None,
+    )
+    self.assertRaises(
+        TypeError,
+        type_analysis.check_federated_type,
+        type_spec,
+        None,
+        placements.SERVER,
+        None,
+    )
+    self.assertRaises(
+        TypeError,
+        type_analysis.check_federated_type,
+        type_spec,
+        None,
+        None,
+        True,
+    )
 
 
 class IsStructureOfFloatsTest(parameterized.TestCase):
@@ -274,13 +325,17 @@ class IsStructureOfFloatsTest(parameterized.TestCase):
       ('empty_struct', computation_types.StructType([])),
       ('float', computation_types.TensorType(tf.float32)),
       ('floats', computation_types.StructType([tf.float32, tf.float32])),
-      ('nested_struct',
-       computation_types.StructType([
-           computation_types.TensorType(tf.float32),
-           computation_types.StructType([tf.float32, tf.float32])
-       ])),
-      ('federated_float_at_clients',
-       computation_types.FederatedType(tf.float32, placements.CLIENTS)),
+      (
+          'nested_struct',
+          computation_types.StructType([
+              computation_types.TensorType(tf.float32),
+              computation_types.StructType([tf.float32, tf.float32]),
+          ]),
+      ),
+      (
+          'federated_float_at_clients',
+          computation_types.FederatedType(tf.float32, placements.CLIENTS),
+      ),
   )
   def test_returns_true(self, type_spec):
     self.assertTrue(type_analysis.is_structure_of_floats(type_spec))
@@ -290,11 +345,13 @@ class IsStructureOfFloatsTest(parameterized.TestCase):
       ('int', computation_types.TensorType(tf.int32)),
       ('string', computation_types.TensorType(tf.string)),
       ('float_and_bool', computation_types.StructType([tf.float32, tf.bool])),
-      ('nested_struct',
-       computation_types.StructType([
-           computation_types.TensorType(tf.float32),
-           computation_types.StructType([tf.bool, tf.bool])
-       ])),
+      (
+          'nested_struct',
+          computation_types.StructType([
+              computation_types.TensorType(tf.float32),
+              computation_types.StructType([tf.bool, tf.bool]),
+          ]),
+      ),
       ('sequence_of_floats', computation_types.SequenceType(tf.float32)),
       ('placement', computation_types.PlacementType()),
       ('function', computation_types.FunctionType(tf.float32, tf.float32)),
@@ -310,13 +367,17 @@ class IsStructureOfIntegersTest(parameterized.TestCase):
       ('empty_struct', computation_types.StructType([])),
       ('int', computation_types.TensorType(tf.int32)),
       ('ints', computation_types.StructType([tf.int32, tf.int32])),
-      ('nested_struct',
-       computation_types.StructType([
-           computation_types.TensorType(tf.int32),
-           computation_types.StructType([tf.int32, tf.int32])
-       ])),
-      ('federated_int_at_clients',
-       computation_types.FederatedType(tf.int32, placements.CLIENTS)),
+      (
+          'nested_struct',
+          computation_types.StructType([
+              computation_types.TensorType(tf.int32),
+              computation_types.StructType([tf.int32, tf.int32]),
+          ]),
+      ),
+      (
+          'federated_int_at_clients',
+          computation_types.FederatedType(tf.int32, placements.CLIENTS),
+      ),
   )
   def test_returns_true(self, type_spec):
     self.assertTrue(type_analysis.is_structure_of_integers(type_spec))
@@ -326,11 +387,13 @@ class IsStructureOfIntegersTest(parameterized.TestCase):
       ('float', computation_types.TensorType(tf.float32)),
       ('string', computation_types.TensorType(tf.string)),
       ('int_and_bool', computation_types.StructType([tf.int32, tf.bool])),
-      ('nested_struct',
-       computation_types.StructType([
-           computation_types.TensorType(tf.int32),
-           computation_types.StructType([tf.bool, tf.bool])
-       ])),
+      (
+          'nested_struct',
+          computation_types.StructType([
+              computation_types.TensorType(tf.int32),
+              computation_types.StructType([tf.bool, tf.bool]),
+          ]),
+      ),
       ('sequence_of_ints', computation_types.SequenceType(tf.int32)),
       ('placement', computation_types.PlacementType()),
       ('function', computation_types.FunctionType(tf.int32, tf.int32)),
@@ -367,7 +430,9 @@ class IsSingleIntegerOrMatchesStructure(parameterized.TestCase):
   def test_returns_true(self, type_sig, shape_type):
     self.assertTrue(
         type_analysis.is_single_integer_or_matches_structure(
-            type_sig, shape_type))
+            type_sig, shape_type
+        )
+    )
 
   # pyformat: disable
   @parameterized.named_parameters(
@@ -385,29 +450,35 @@ class IsSingleIntegerOrMatchesStructure(parameterized.TestCase):
   def test_returns_false(self, type_sig, shape_type):
     self.assertFalse(
         type_analysis.is_single_integer_or_matches_structure(
-            type_sig, shape_type))
+            type_sig, shape_type
+        )
+    )
 
 
 class IsAnonTupleWithPyContainerTest(absltest.TestCase):
 
   def test_returns_true(self):
     value = structure.Struct([('a', 0.0)])
-    type_spec = computation_types.StructWithPythonType([('a', tf.float32)],
-                                                       dict)
+    type_spec = computation_types.StructWithPythonType(
+        [('a', tf.float32)], dict
+    )
     self.assertTrue(type_analysis.is_struct_with_py_container(value, type_spec))
 
   def test_returns_false_with_none_value(self):
     value = None
-    type_spec = computation_types.StructWithPythonType([('a', tf.float32)],
-                                                       dict)
+    type_spec = computation_types.StructWithPythonType(
+        [('a', tf.float32)], dict
+    )
     self.assertFalse(
-        type_analysis.is_struct_with_py_container(value, type_spec))
+        type_analysis.is_struct_with_py_container(value, type_spec)
+    )
 
   def test_returns_false_with_named_tuple_type_spec(self):
     value = structure.Struct([('a', 0.0)])
     type_spec = computation_types.StructType([('a', tf.float32)])
     self.assertFalse(
-        type_analysis.is_struct_with_py_container(value, type_spec))
+        type_analysis.is_struct_with_py_container(value, type_spec)
+    )
 
 
 class CheckConcreteInstanceOf(absltest.TestCase):
@@ -415,18 +486,21 @@ class CheckConcreteInstanceOf(absltest.TestCase):
   def test_raises_with_int_first_argument(self):
     with self.assertRaises(TypeError):
       type_analysis.check_concrete_instance_of(
-          1, computation_types.TensorType(tf.int32))
+          1, computation_types.TensorType(tf.int32)
+      )
 
   def test_raises_with_int_second_argument(self):
     with self.assertRaises(TypeError):
       type_analysis.check_concrete_instance_of(
-          computation_types.TensorType(tf.int32), 1)
+          computation_types.TensorType(tf.int32), 1
+      )
 
   def test_raises_different_structures(self):
     with self.assertRaises(type_analysis.MismatchedStructureError):
       type_analysis.check_concrete_instance_of(
           computation_types.TensorType(tf.int32),
-          computation_types.StructType([tf.int32]))
+          computation_types.StructType([tf.int32]),
+      )
 
   def test_raises_with_abstract_type_as_first_arg(self):
     t1 = computation_types.AbstractType('T1')
@@ -446,8 +520,9 @@ class CheckConcreteInstanceOf(absltest.TestCase):
       type_analysis.check_concrete_instance_of(t2, t1)
 
   def func_with_param(self, param_type):
-    return computation_types.FunctionType(param_type,
-                                          computation_types.StructType([]))
+    return computation_types.FunctionType(
+        param_type, computation_types.StructType([])
+    )
 
   def test_with_single_abstract_type_and_tuple_type(self):
     t1 = self.func_with_param(computation_types.AbstractType('T1'))
@@ -468,45 +543,52 @@ class CheckConcreteInstanceOf(absltest.TestCase):
 
   def test_succeeds_under_tuple(self):
     t1 = self.func_with_param(
-        computation_types.StructType([computation_types.AbstractType('T1')] *
-                                     2))
+        computation_types.StructType([computation_types.AbstractType('T1')] * 2)
+    )
     t2 = self.func_with_param(
         computation_types.StructType([
             computation_types.TensorType(tf.int32),
-            computation_types.TensorType(tf.int32)
-        ]))
+            computation_types.TensorType(tf.int32),
+        ])
+    )
     type_analysis.check_concrete_instance_of(t2, t1)
 
   def test_fails_under_tuple_conflicting_concrete_types(self):
     t1 = self.func_with_param(
-        computation_types.StructType([computation_types.AbstractType('T1')] *
-                                     2))
+        computation_types.StructType([computation_types.AbstractType('T1')] * 2)
+    )
     t2 = self.func_with_param(
         computation_types.StructType([
             computation_types.TensorType(tf.int32),
-            computation_types.TensorType(tf.float32)
-        ]))
+            computation_types.TensorType(tf.float32),
+        ])
+    )
     with self.assertRaises(type_analysis.MismatchedConcreteTypesError):
       type_analysis.check_concrete_instance_of(t2, t1)
 
   def test_succeeds_abstract_type_under_sequence_type(self):
     t1 = self.func_with_param(
-        computation_types.SequenceType(computation_types.AbstractType('T')))
+        computation_types.SequenceType(computation_types.AbstractType('T'))
+    )
     t2 = self.func_with_param(computation_types.SequenceType(tf.int32))
     type_analysis.check_concrete_instance_of(t2, t1)
 
   def test_fails_conflicting_concrete_types_under_sequence(self):
     t1 = self.func_with_param(
-        computation_types.SequenceType([computation_types.AbstractType('T')] *
-                                       2))
+        computation_types.SequenceType(
+            [computation_types.AbstractType('T')] * 2
+        )
+    )
     t2 = self.func_with_param(
-        computation_types.SequenceType([tf.int32, tf.float32]))
+        computation_types.SequenceType([tf.int32, tf.float32])
+    )
     with self.assertRaises(type_analysis.MismatchedConcreteTypesError):
       type_analysis.check_concrete_instance_of(t2, t1)
 
   def test_succeeds_single_function_type(self):
-    t1 = computation_types.FunctionType(*[computation_types.AbstractType('T')] *
-                                        2)
+    t1 = computation_types.FunctionType(
+        *[computation_types.AbstractType('T')] * 2
+    )
     t2 = computation_types.FunctionType(tf.int32, tf.int32)
     type_analysis.check_concrete_instance_of(t2, t1)
 
@@ -514,16 +596,19 @@ class CheckConcreteInstanceOf(absltest.TestCase):
     t1 = computation_types.FunctionType(
         computation_types.StructType([
             computation_types.AbstractType('U'),
-            computation_types.AbstractType('T')
-        ]), computation_types.AbstractType('T'))
+            computation_types.AbstractType('T'),
+        ]),
+        computation_types.AbstractType('T'),
+    )
     t2 = computation_types.FunctionType(
-        computation_types.StructType([tf.int32, tf.float32]), tf.float32)
+        computation_types.StructType([tf.int32, tf.float32]), tf.float32
+    )
     type_analysis.check_concrete_instance_of(t2, t1)
 
   def test_fails_conflicting_binding_in_parameter_and_result(self):
     t1 = computation_types.FunctionType(
-        computation_types.AbstractType('T'),
-        computation_types.AbstractType('T'))
+        computation_types.AbstractType('T'), computation_types.AbstractType('T')
+    )
     t2 = computation_types.FunctionType(tf.int32, tf.float32)
     with self.assertRaises(type_analysis.UnassignableConcreteTypesError):
       type_analysis.check_concrete_instance_of(t2, t1)
@@ -533,10 +618,14 @@ class CheckConcreteInstanceOf(absltest.TestCase):
         computation_types.FederatedType(
             [computation_types.AbstractType('T1')] * 2,
             placements.CLIENTS,
-            all_equal=True))
+            all_equal=True,
+        )
+    )
     t2 = self.func_with_param(
         computation_types.FederatedType(
-            [tf.int32] * 2, placements.CLIENTS, all_equal=True))
+            [tf.int32] * 2, placements.CLIENTS, all_equal=True
+        )
+    )
     type_analysis.check_concrete_instance_of(t2, t1)
 
   def test_abstract_fails_on_different_federated_placements(self):
@@ -544,10 +633,14 @@ class CheckConcreteInstanceOf(absltest.TestCase):
         computation_types.FederatedType(
             [computation_types.AbstractType('T1')] * 2,
             placements.CLIENTS,
-            all_equal=True))
+            all_equal=True,
+        )
+    )
     t2 = self.func_with_param(
         computation_types.FederatedType(
-            [tf.int32] * 2, placements.SERVER, all_equal=True))
+            [tf.int32] * 2, placements.SERVER, all_equal=True
+        )
+    )
     with self.assertRaises(type_analysis.MismatchedStructureError):
       type_analysis.check_concrete_instance_of(t2, t1)
 
@@ -556,10 +649,14 @@ class CheckConcreteInstanceOf(absltest.TestCase):
         computation_types.FederatedType(
             [computation_types.AbstractType('T1')] * 2,
             placements.CLIENTS,
-            all_equal=True))
+            all_equal=True,
+        )
+    )
     t2 = self.func_with_param(
         computation_types.FederatedType(
-            [tf.int32] * 2, placements.SERVER, all_equal=True))
+            [tf.int32] * 2, placements.SERVER, all_equal=True
+        )
+    )
     with self.assertRaises(type_analysis.MismatchedStructureError):
       type_analysis.check_concrete_instance_of(t2, t1)
 
@@ -568,14 +665,17 @@ class CheckConcreteInstanceOf(absltest.TestCase):
     unnamed = struct(None)
     concrete = computation_types.FunctionType(
         computation_types.StructType(
-            [unnamed,
-             computation_types.FunctionType(struct('bar'), unnamed)]),
-        struct('foo'))
+            [unnamed, computation_types.FunctionType(struct('bar'), unnamed)]
+        ),
+        struct('foo'),
+    )
     abstract = computation_types.AbstractType('A')
     generic = computation_types.FunctionType(
         computation_types.StructType(
-            [abstract,
-             computation_types.FunctionType(abstract, abstract)]), abstract)
+            [abstract, computation_types.FunctionType(abstract, abstract)]
+        ),
+        abstract,
+    )
     type_analysis.check_concrete_instance_of(concrete, generic)
 
 
@@ -625,60 +725,81 @@ class IsBinaryOpWithUpcastCompatibleTest(absltest.TestCase):
 
   def test_fails_on_none(self):
     self.assertFalse(
-        type_analysis.is_binary_op_with_upcast_compatible_pair(None, None))
+        type_analysis.is_binary_op_with_upcast_compatible_pair(None, None)
+    )
 
   def test_passes_empty_tuples(self):
     self.assertTrue(
         type_analysis.is_binary_op_with_upcast_compatible_pair(
-            computation_types.StructType([]), computation_types.StructType([])))
+            computation_types.StructType([]), computation_types.StructType([])
+        )
+    )
 
   def test_fails_scalars_different_dtypes(self):
     self.assertFalse(
         type_analysis.is_binary_op_with_upcast_compatible_pair(
             computation_types.TensorType(tf.int32),
-            computation_types.TensorType(tf.float32)))
+            computation_types.TensorType(tf.float32),
+        )
+    )
 
   def test_passes_named_tuple_and_compatible_scalar(self):
     self.assertTrue(
         type_analysis.is_binary_op_with_upcast_compatible_pair(
-            computation_types.StructType([
-                ('a', computation_types.TensorType(tf.int32, [2, 2]))
-            ]), computation_types.TensorType(tf.int32)))
+            computation_types.StructType(
+                [('a', computation_types.TensorType(tf.int32, [2, 2]))]
+            ),
+            computation_types.TensorType(tf.int32),
+        )
+    )
 
   def test_fails_named_tuple_and_incompatible_scalar(self):
     self.assertFalse(
         type_analysis.is_binary_op_with_upcast_compatible_pair(
-            computation_types.StructType([
-                ('a', computation_types.TensorType(tf.int32, [2, 2]))
-            ]), computation_types.TensorType(tf.float32)))
+            computation_types.StructType(
+                [('a', computation_types.TensorType(tf.int32, [2, 2]))]
+            ),
+            computation_types.TensorType(tf.float32),
+        )
+    )
 
   def test_fails_compatible_scalar_and_named_tuple(self):
     self.assertFalse(
         type_analysis.is_binary_op_with_upcast_compatible_pair(
             computation_types.TensorType(tf.float32),
-            computation_types.StructType([
-                ('a', computation_types.TensorType(tf.int32, [2, 2]))
-            ])))
+            computation_types.StructType(
+                [('a', computation_types.TensorType(tf.int32, [2, 2]))]
+            ),
+        )
+    )
 
   def test_fails_named_tuple_type_and_non_scalar_tensor(self):
     self.assertFalse(
         type_analysis.is_binary_op_with_upcast_compatible_pair(
-            computation_types.StructType([
-                ('a', computation_types.TensorType(tf.int32, [2, 2]))
-            ]), computation_types.TensorType(tf.int32, [2])))
+            computation_types.StructType(
+                [('a', computation_types.TensorType(tf.int32, [2, 2]))]
+            ),
+            computation_types.TensorType(tf.int32, [2]),
+        )
+    )
 
 
 class TestCheckValidFederatedWeightedMeanArgumentTupleTypeTest(
-    absltest.TestCase):
+    absltest.TestCase
+):
 
   def test_raises_type_error(self):
     type_analysis.check_valid_federated_weighted_mean_argument_tuple_type(
         computation_types.StructType(
-            [computation_types.at_clients(tf.float32)] * 2))
+            [computation_types.at_clients(tf.float32)] * 2
+        )
+    )
     with self.assertRaises(TypeError):
       type_analysis.check_valid_federated_weighted_mean_argument_tuple_type(
           computation_types.StructType(
-              [computation_types.at_clients(tf.int32)] * 2))
+              [computation_types.at_clients(tf.int32)] * 2
+          )
+      )
 
 
 class CountTensorsInTypeTest(absltest.TestCase):
@@ -690,39 +811,43 @@ class CountTensorsInTypeTest(absltest.TestCase):
   def test_counts_all_tensors_no_filter(self):
     struct_type = computation_types.StructType([
         ('a', computation_types.TensorType(tf.int32, shape=[2, 2])),
-        ('b', computation_types.TensorType(tf.int32, shape=[2, 1]))
+        ('b', computation_types.TensorType(tf.int32, shape=[2, 1])),
     ])
 
     tensors_and_param_count = type_analysis.count_tensors_in_type(struct_type)
 
     expected_tensors_and_param_count = collections.OrderedDict(
-        num_tensors=2, parameters=6, num_unspecified_tensors=0)
+        num_tensors=2, parameters=6, num_unspecified_tensors=0
+    )
     self.assertEqual(tensors_and_param_count, expected_tensors_and_param_count)
 
   def test_skips_unspecified_params(self):
     struct_type = computation_types.StructType([
         ('a', computation_types.TensorType(tf.int32, shape=[2, 2])),
-        ('b', computation_types.TensorType(tf.int32, shape=[None, 1]))
+        ('b', computation_types.TensorType(tf.int32, shape=[None, 1])),
     ])
 
     tensors_and_param_count = type_analysis.count_tensors_in_type(struct_type)
 
     expected_tensors_and_param_count = collections.OrderedDict(
-        num_tensors=2, parameters=4, num_unspecified_tensors=1)
+        num_tensors=2, parameters=4, num_unspecified_tensors=1
+    )
     self.assertEqual(tensors_and_param_count, expected_tensors_and_param_count)
 
   def test_tensor_filter_only_counts_matching_tensors(self):
     struct_type = computation_types.StructType([
         ('a', computation_types.TensorType(tf.float32, shape=[2, 2])),
-        ('b', computation_types.TensorType(tf.int32, shape=[2, 1]))
+        ('b', computation_types.TensorType(tf.int32, shape=[2, 1])),
     ])
     tensor_filter = lambda tensor_type: tensor_type.dtype == tf.float32
 
     tensors_and_param_count = type_analysis.count_tensors_in_type(
-        struct_type, tensor_filter)
+        struct_type, tensor_filter
+    )
 
     expected_tensors_and_param_count = collections.OrderedDict(
-        num_tensors=1, parameters=4, num_unspecified_tensors=0)
+        num_tensors=1, parameters=4, num_unspecified_tensors=0
+    )
     self.assertEqual(tensors_and_param_count, expected_tensors_and_param_count)
 
 

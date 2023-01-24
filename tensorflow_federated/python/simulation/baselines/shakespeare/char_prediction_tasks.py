@@ -65,32 +65,38 @@ def create_character_prediction_task_from_datasets(
 
   if eval_client_spec is None:
     eval_client_spec = client_spec.ClientSpec(
-        num_epochs=1, batch_size=32, shuffle_buffer_size=1)
+        num_epochs=1, batch_size=32, shuffle_buffer_size=1
+    )
 
   train_preprocess_fn = char_prediction_preprocessing.create_preprocess_fn(
-      train_client_spec, sequence_length)
+      train_client_spec, sequence_length
+  )
   eval_preprocess_fn = char_prediction_preprocessing.create_preprocess_fn(
-      eval_client_spec, sequence_length)
+      eval_client_spec, sequence_length
+  )
 
   task_datasets = task_data.BaselineTaskDatasets(
       train_data=train_data,
       test_data=test_data,
       validation_data=None,
       train_preprocess_fn=train_preprocess_fn,
-      eval_preprocess_fn=eval_preprocess_fn)
+      eval_preprocess_fn=eval_preprocess_fn,
+  )
 
   pad_token, _, _, _ = char_prediction_preprocessing.get_special_tokens()
 
   def model_fn() -> model.Model:
     return keras_utils.from_keras_model(
         keras_model=char_prediction_models.create_recurrent_model(
-            vocab_size=VOCAB_LENGTH, sequence_length=sequence_length),
+            vocab_size=VOCAB_LENGTH, sequence_length=sequence_length
+        ),
         loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
         input_spec=task_datasets.element_type_structure,
         metrics=[
             keras_metrics.NumTokensCounter(masked_tokens=[pad_token]),
-            keras_metrics.MaskedCategoricalAccuracy(masked_tokens=[pad_token])
-        ])
+            keras_metrics.MaskedCategoricalAccuracy(masked_tokens=[pad_token]),
+        ],
+    )
 
   return baseline_task.BaselineTask(task_datasets, model_fn)
 
@@ -100,7 +106,8 @@ def create_character_prediction_task(
     eval_client_spec: Optional[client_spec.ClientSpec] = None,
     sequence_length: int = DEFAULT_SEQUENCE_LENGTH,
     cache_dir: Optional[str] = None,
-    use_synthetic_data: bool = False) -> baseline_task.BaselineTask:
+    use_synthetic_data: bool = False,
+) -> baseline_task.BaselineTask:
   """Creates a baseline task for next-character prediction on Shakespeare.
 
   The goal of the task is to take `sequence_length` characters (eg. alpha-
@@ -134,7 +141,10 @@ def create_character_prediction_task(
   else:
     train_data, test_data = shakespeare.load_data(cache_dir=cache_dir)
 
-  return create_character_prediction_task_from_datasets(train_client_spec,
-                                                        eval_client_spec,
-                                                        sequence_length,
-                                                        train_data, test_data)
+  return create_character_prediction_task_from_datasets(
+      train_client_spec,
+      eval_client_spec,
+      sequence_length,
+      train_data,
+      test_data,
+  )

@@ -16,16 +16,19 @@
 
 class TemplateInitFnParamNotEmptyError(TypeError):
   """`TypeError` for `initialize_fn` having arguments."""
+
   pass
 
 
 class TemplateStateNotAssignableError(TypeError):
   """`TypeError` for `state` not being assignable to expected `state`."""
+
   pass
 
 
 class TemplateNotMeasuredProcessOutputError(TypeError):
   """`TypeError` for output of `next_fn` not being a `MeasuredProcessOutput`."""
+
   pass
 
 

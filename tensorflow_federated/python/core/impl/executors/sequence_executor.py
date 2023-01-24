@@ -54,7 +54,6 @@ class _SyncFromAsyncIterable:
     return self.__iter__()
 
   def __iter__(self):
-
     def _generate(event_loop, async_iter):
       try:
         while True:
@@ -109,7 +108,9 @@ class _SequenceFromPayload(_Sequence):
     except Exception as e:
       raise NotImplementedError(
           'Unrecognized type of payload: {}: returned {} from iter()'.format(
-              py_typecheck.type_string(type(payload)), str(e))) from e
+              py_typecheck.type_string(type(payload)), str(e)
+          )
+      ) from e
 
   async def compute(self):
     return self._payload
@@ -121,10 +122,13 @@ class _SequenceFromPayload(_Sequence):
 class _SequenceFromMap(_Sequence):
   """An internal representation of a sequence created from a map op."""
 
-  def __init__(self, source: _Sequence,
-               map_fn: executor_value_base.ExecutorValue,
-               target_executor: executor_base.Executor,
-               type_spec: computation_types.SequenceType):
+  def __init__(
+      self,
+      source: _Sequence,
+      map_fn: executor_value_base.ExecutorValue,
+      target_executor: executor_base.Executor,
+      type_spec: computation_types.SequenceType,
+  ):
     """Constructs a representation of a mapped sequence.
 
     Args:
@@ -152,9 +156,12 @@ class _SequenceFromMap(_Sequence):
 class _AsyncMapIterator:
   """An async iterator based on a mapping function."""
 
-  def __init__(self, source: _Sequence,
-               map_fn: executor_value_base.ExecutorValue,
-               target_executor: executor_base.Executor):
+  def __init__(
+      self,
+      source: _Sequence,
+      map_fn: executor_value_base.ExecutorValue,
+      target_executor: executor_base.Executor,
+  ):
     self._source_aiter = source.__aiter__()
     self._source_element_type = source.type_signature.element
     self._map_fn = map_fn
@@ -162,10 +169,12 @@ class _AsyncMapIterator:
 
   async def __anext__(self):
     next_element = await self._source_aiter.__anext__()
-    element_val = await _delegate(next_element, self._source_element_type,
-                                  self._target_executor)
+    element_val = await _delegate(
+        next_element, self._source_element_type, self._target_executor
+    )
     mapped_val = await self._target_executor.create_call(
-        self._map_fn, element_val)
+        self._map_fn, element_val
+    )
     return await mapped_val.compute()
 
 
@@ -190,9 +199,8 @@ class _SequenceMapOp(_SequenceOp):
   async def execute(self, target_executor: executor_base.Executor, arg):
     arg_type = self._type_signature.parameter
     seq, map_fn = await asyncio.gather(
-        *
-        [_to_sequence(arg[1]),
-         _delegate(arg[0], arg_type[0], target_executor)])
+        *[_to_sequence(arg[1]), _delegate(arg[0], arg_type[0], target_executor)]
+    )
     result_type = self._type_signature.result
     return _SequenceFromMap(seq, map_fn, target_executor, result_type)
 
@@ -204,8 +212,8 @@ class _SequenceReduceOp(_SequenceOp):
     arg_type = self._type_signature.parameter
     seq = await _to_sequence(arg[0])
     accumulator, op = await asyncio.gather(
-        *
-        [_delegate(arg[idx], arg_type[idx], target_executor) for idx in [1, 2]])
+        *[_delegate(arg[idx], arg_type[idx], target_executor) for idx in [1, 2]]
+    )
     element_type = seq.type_signature.element
     async for x in seq:
       el = await target_executor.create_value(x, element_type)
@@ -227,12 +235,16 @@ async def _to_sequence(sequence_val):
   if isinstance(sequence_val, _Sequence):
     return sequence_val
   py_typecheck.check_type(sequence_val, executor_value_base.ExecutorValue)
-  return _SequenceFromPayload(await sequence_val.compute(),
-                              sequence_val.type_signature)
+  return _SequenceFromPayload(
+      await sequence_val.compute(), sequence_val.type_signature
+  )
 
 
-async def _delegate(val, type_spec: computation_types.Type,
-                    target_executor: executor_base.Executor):
+async def _delegate(
+    val,
+    type_spec: computation_types.Type,
+    target_executor: executor_base.Executor,
+):
   """Delegates value representation to target executor.
 
   Args:
@@ -253,8 +265,11 @@ async def _delegate(val, type_spec: computation_types.Type,
     return await target_executor.create_value(await val.compute(), type_spec)
   if isinstance(val, structure.Struct):
     if len(val) != len(type_spec):
-      raise ValueError('Found {} elements and {} types in a struct {}.'.format(
-          len(val), len(type_spec), str(val)))
+      raise ValueError(
+          'Found {} elements and {} types in a struct {}.'.format(
+              len(val), len(type_spec), str(val)
+          )
+      )
     elements = structure.iter_elements(val)
     element_types = structure.iter_elements(type_spec)
     names = []
@@ -263,7 +278,9 @@ async def _delegate(val, type_spec: computation_types.Type,
       if el_name != el_type_name:
         raise ValueError(
             'Element name mismatch between value ({}) and type ({}).'.format(
-                str(val), str(type_spec)))
+                str(val), str(type_spec)
+            )
+        )
       names.append(el_name)
       coros.append(_delegate(el, el_type, target_executor))
     flat_targets = await asyncio.gather(*coros)
@@ -317,15 +334,18 @@ class SequenceExecutorValue(executor_value_base.ExecutorValue):
 
   @tracing.trace
   async def compute(self):
-
     async def _comp(x):
       if isinstance(x, (_Sequence, executor_value_base.ExecutorValue)):
         return await x.compute()
       if isinstance(x, structure.Struct):
         return structure.pack_sequence_as(
-            x, await asyncio.gather(*[_comp(y) for y in structure.flatten(x)]))
-      raise NotImplementedError('Unable to compute a value of type {}.'.format(
-          py_typecheck.type_string(type(x))))
+            x, await asyncio.gather(*[_comp(y) for y in structure.flatten(x)])
+        )
+      raise NotImplementedError(
+          'Unable to compute a value of type {}.'.format(
+              py_typecheck.type_string(type(x))
+          )
+      )
 
     return await _comp(self._value)
 
@@ -364,7 +384,7 @@ class SequenceExecutor(executor_base.Executor):
 
   _SUPPORTED_INTRINSIC_TO_SEQUENCE_OP = {
       intrinsic_defs.SEQUENCE_MAP.uri: _SequenceMapOp,
-      intrinsic_defs.SEQUENCE_REDUCE.uri: _SequenceReduceOp
+      intrinsic_defs.SEQUENCE_REDUCE.uri: _SequenceReduceOp,
   }
 
   @tracing.trace(span=True)
@@ -397,7 +417,8 @@ class SequenceExecutor(executor_base.Executor):
       type_spec = computation_types.to_type(type_spec)
     if isinstance(type_spec, computation_types.SequenceType):
       return SequenceExecutorValue(
-          _SequenceFromPayload(value, type_spec), type_spec)
+          _SequenceFromPayload(value, type_spec), type_spec
+      )
     if isinstance(value, pb.Computation):
       value_type = type_serialization.deserialize_type(value.type)
       value_type.check_equivalent_to(type_spec)
@@ -407,13 +428,18 @@ class SequenceExecutor(executor_base.Executor):
       if which_computation == 'intrinsic':
         intrinsic_def = intrinsic_defs.uri_to_intrinsic_def(value.intrinsic.uri)
         if intrinsic_def is None:
-          raise ValueError('Encountered an unrecognized intrinsic "{}".'.format(
-              value.intrinsic.uri))
+          raise ValueError(
+              'Encountered an unrecognized intrinsic "{}".'.format(
+                  value.intrinsic.uri
+              )
+          )
         op_type = SequenceExecutor._SUPPORTED_INTRINSIC_TO_SEQUENCE_OP.get(
-            intrinsic_def.uri)
+            intrinsic_def.uri
+        )
         if op_type is not None:
-          type_analysis.check_concrete_instance_of(type_spec,
-                                                   intrinsic_def.type_signature)
+          type_analysis.check_concrete_instance_of(
+              type_spec, intrinsic_def.type_signature
+          )
           op = op_type(type_spec)
           return SequenceExecutorValue(op, type_spec)
     if isinstance(type_spec, computation_types.StructType):
@@ -421,10 +447,12 @@ class SequenceExecutor(executor_base.Executor):
         value = structure.from_container(value)
       elements = structure.flatten(value)
       element_types = structure.flatten(type_spec)
-      flat_embedded_vals = await asyncio.gather(*[
-          self.create_value(el, el_type)
-          for el, el_type in zip(elements, element_types)
-      ])
+      flat_embedded_vals = await asyncio.gather(
+          *[
+              self.create_value(el, el_type)
+              for el, el_type in zip(elements, element_types)
+          ]
+      )
       embedded_struct = structure.pack_sequence_as(value, flat_embedded_vals)
       return await self.create_struct(embedded_struct)
     target_value = await self._target_executor.create_value(value, type_spec)
@@ -451,7 +479,8 @@ class SequenceExecutor(executor_base.Executor):
     raise NotImplementedError(
         'Unsupported functional representation of type {} (possibly indicating '
         'a mismatch between structures supported by create_cvalue() and '
-        'create_call()).'.format(py_typecheck.type_string(type(fn))))
+        'create_call()).'.format(py_typecheck.type_string(type(fn)))
+    )
 
   @tracing.trace
   async def create_struct(self, elements):
@@ -464,7 +493,8 @@ class SequenceExecutor(executor_base.Executor):
       type_elements.append((k, v.type_signature))
     return SequenceExecutorValue(
         structure.Struct(val_elements),
-        computation_types.StructType(type_elements))
+        computation_types.StructType(type_elements),
+    )
 
   @tracing.trace
   async def create_selection(self, source, index):

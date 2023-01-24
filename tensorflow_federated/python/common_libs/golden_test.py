@@ -22,13 +22,15 @@ from tensorflow_federated.python.common_libs import golden
 class GoldenTest(absltest.TestCase):
 
   def test_check_string_succeeds(self):
-    golden.check_string('test_check_string_succeeds.expected',
-                        'foo\nbar\nbaz\nfizzbuzz')
+    golden.check_string(
+        'test_check_string_succeeds.expected', 'foo\nbar\nbaz\nfizzbuzz'
+    )
 
   def test_check_string_fails(self):
     with self.assertRaises(golden.MismatchedGoldenError):
-      golden.check_string('test_check_string_fails.expected',
-                          'not\nwhat\nyou\nexpected')
+      golden.check_string(
+          'test_check_string_fails.expected', 'not\nwhat\nyou\nexpected'
+      )
 
   def test_check_string_updates(self):
     filename = 'test_check_string_updates.expected'
@@ -59,8 +61,9 @@ class GoldenTest(absltest.TestCase):
       f.write(old_contents)
 
   def test_check_raises_traceback(self):
-    with golden.check_raises_traceback('test_check_raises_traceback.expected',
-                                       RuntimeError):
+    with golden.check_raises_traceback(
+        'test_check_raises_traceback.expected', RuntimeError
+    ):
       raise RuntimeError()
 
 

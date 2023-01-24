@@ -24,14 +24,16 @@ from tensorflow_federated.python.core.impl.types import computation_types
 
 
 class FederatedResolvingStrategyValueComputeTest(
-    unittest.IsolatedAsyncioTestCase):
+    unittest.IsolatedAsyncioTestCase
+):
 
   async def test_returns_value_with_embedded_value(self):
     tensor_type = computation_types.TensorType(tf.float32, shape=[])
     value = eager_tf_executor.EagerValue(10.0, tensor_type)
     type_signature = computation_types.TensorType(tf.float32)
     value = federated_resolving_strategy.FederatedResolvingStrategyValue(
-        value, type_signature)
+        value, type_signature
+    )
 
     result = await value.compute()
 
@@ -46,7 +48,8 @@ class FederatedResolvingStrategyValueComputeTest(
     ]
     type_signature = computation_types.at_clients(tf.float32)
     value = federated_resolving_strategy.FederatedResolvingStrategyValue(
-        value, type_signature)
+        value, type_signature
+    )
 
     result = await value.compute()
 
@@ -57,7 +60,8 @@ class FederatedResolvingStrategyValueComputeTest(
     value = [eager_tf_executor.EagerValue(10.0, tensor_type)]
     type_signature = computation_types.at_clients(tf.float32, all_equal=True)
     value = federated_resolving_strategy.FederatedResolvingStrategyValue(
-        value, type_signature)
+        value, type_signature
+    )
 
     result = await value.compute()
 
@@ -68,7 +72,8 @@ class FederatedResolvingStrategyValueComputeTest(
     value = [eager_tf_executor.EagerValue(10.0, tensor_type)]
     type_signature = computation_types.at_server(tf.float32)
     value = federated_resolving_strategy.FederatedResolvingStrategyValue(
-        value, type_signature)
+        value, type_signature
+    )
 
     result = await value.compute()
 
@@ -81,9 +86,11 @@ class FederatedResolvingStrategyValueComputeTest(
     names = ['a', 'b', 'c']
     value = structure.Struct((n, element) for n in names)
     type_signature = computation_types.StructType(
-        (n, element_type) for n in names)
+        (n, element_type) for n in names
+    )
     value = federated_resolving_strategy.FederatedResolvingStrategyValue(
-        value, type_signature)
+        value, type_signature
+    )
 
     result = await value.compute()
 
@@ -94,7 +101,8 @@ class FederatedResolvingStrategyValueComputeTest(
     value = [10.0, 11.0, 12.0]
     type_signature = computation_types.at_clients(tf.float32)
     value = federated_resolving_strategy.FederatedResolvingStrategyValue(
-        value, type_signature)
+        value, type_signature
+    )
 
     with self.assertRaises(TypeError):
       await value.compute()
@@ -103,7 +111,8 @@ class FederatedResolvingStrategyValueComputeTest(
     value = 10.0
     type_signature = computation_types.TensorType(tf.float32)
     value = federated_resolving_strategy.FederatedResolvingStrategyValue(
-        value, type_signature)
+        value, type_signature
+    )
 
     with self.assertRaises(RuntimeError):
       await value.compute()

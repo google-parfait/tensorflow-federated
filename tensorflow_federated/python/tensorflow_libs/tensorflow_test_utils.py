@@ -73,10 +73,13 @@ def create_logical_multi_gpus(memory_limit=128):
   if not gpu_devices:
     raise ValueError('Physical GPU is not detected.')
   if len(gpu_devices) == 1:
-    tf.config.set_logical_device_configuration(gpu_devices[0], [
-        tf.config.LogicalDeviceConfiguration(memory_limit=memory_limit),
-        tf.config.LogicalDeviceConfiguration(memory_limit=memory_limit)
-    ])
+    tf.config.set_logical_device_configuration(
+        gpu_devices[0],
+        [
+            tf.config.LogicalDeviceConfiguration(memory_limit=memory_limit),
+            tf.config.LogicalDeviceConfiguration(memory_limit=memory_limit),
+        ],
+    )
 
 
 # TODO(b/160896627): Kokoro GPU tests provide multi-GPU environment by default,

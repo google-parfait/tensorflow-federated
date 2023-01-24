@@ -35,13 +35,14 @@ from tensorflow_federated.python.tensorflow_libs import function
 
 
 def is_function(maybe_fn):
-  return (isinstance(
-      maybe_fn, (types.FunctionType, types.MethodType, functools.partial)) or
-          function.is_tf_function(maybe_fn))
+  return isinstance(
+      maybe_fn, (types.FunctionType, types.MethodType, functools.partial)
+  ) or function.is_tf_function(maybe_fn)
 
 
 def get_signature(
-    fn: Union[types.FunctionType, types.MethodType]) -> inspect.Signature:
+    fn: Union[types.FunctionType, types.MethodType]
+) -> inspect.Signature:
   """Returns the `inspect.Signature` structure for the given function or method.
 
   Args:
@@ -58,12 +59,16 @@ def get_signature(
   elif function.is_tf_function(fn):
     return inspect.signature(fn.python_function)
   else:
-    raise TypeError('Expected a Python function or a defun, found {}.'.format(
-        py_typecheck.type_string(type(fn))))
+    raise TypeError(
+        'Expected a Python function or a defun, found {}.'.format(
+            py_typecheck.type_string(type(fn))
+        )
+    )
 
 
-def is_signature_compatible_with_types(signature: inspect.Signature, *args,
-                                       **kwargs) -> bool:
+def is_signature_compatible_with_types(
+    signature: inspect.Signature, *args, **kwargs
+) -> bool:
   """Determines if functions matching signature accept `args` and `kwargs`.
 
   Args:
@@ -89,8 +94,10 @@ def is_signature_compatible_with_types(signature: inspect.Signature, *args,
 
   # If we have no defaults then `bind` will have raised `TypeError` if the
   # signature was not compatible with *args and **kwargs.
-  if all(p.default is inspect.Parameter.empty
-         for p in signature.parameters.values()):
+  if all(
+      p.default is inspect.Parameter.empty
+      for p in signature.parameters.values()
+  ):
     return True
 
   # Otherwise we need to check the defaults against the types that were given to
@@ -145,7 +152,8 @@ def is_argument_struct(arg) -> bool:
 
 
 def unpack_args_from_struct(
-    struct_with_args) -> tuple[list[Any], dict[str, Any]]:
+    struct_with_args,
+) -> tuple[list[Any], dict[str, Any]]:
   """Extracts argument types from a struct.
 
   Args:
@@ -166,7 +174,8 @@ def unpack_args_from_struct(
   elif isinstance(struct_with_args, typed_object.TypedObject):
     elements = []
     for index, (name, _) in enumerate(
-        structure.to_elements(struct_with_args.type_signature)):
+        structure.to_elements(struct_with_args.type_signature)
+    ):
       if name is not None:
         elements.append((name, getattr(struct_with_args, name)))
       else:
@@ -185,9 +194,9 @@ def unpack_args_from_struct(
   return args, kwargs
 
 
-def pack_args_into_struct(args: Sequence[Any],
-                          kwargs: Mapping[str, Any],
-                          type_spec=None) -> structure.Struct:
+def pack_args_into_struct(
+    args: Sequence[Any], kwargs: Mapping[str, Any], type_spec=None
+) -> structure.Struct:
   """Packs positional and keyword arguments into a `Struct`.
 
   If 'type_spec' is not None, it must be a `StructType` or something that's
@@ -215,21 +224,24 @@ def pack_args_into_struct(args: Sequence[Any],
   """
   type_spec = computation_types.to_type(type_spec)
   if not type_spec:
-    return structure.Struct([(None, arg) for arg in args] +
-                            list(kwargs.items()))
+    return structure.Struct(
+        [(None, arg) for arg in args] + list(kwargs.items())
+    )
   else:
     py_typecheck.check_type(type_spec, computation_types.StructType)
     if not is_argument_struct(type_spec):  # pylint: disable=attribute-error
       raise TypeError(
           'Parameter type {} does not have a structure of an argument struct, '
           'and cannot be populated from multiple positional and keyword '
-          'arguments'.format(type_spec))
+          'arguments'.format(type_spec)
+      )
     else:
       result_elements = []
       positions_used = set()
       keywords_used = set()
-      for index, (name,
-                  elem_type) in enumerate(structure.to_elements(type_spec)):
+      for index, (name, elem_type) in enumerate(
+          structure.to_elements(type_spec)
+      ):
         if index < len(args):
           # This argument is present in `args`.
           if name is not None and name in kwargs:
@@ -247,11 +259,13 @@ def pack_args_into_struct(args: Sequence[Any],
           raise TypeError(f'Missing argument `{name}` of type {elem_type}.')
         else:
           raise TypeError(
-              f'Missing argument of type {elem_type} at position {index}.')
+              f'Missing argument of type {elem_type} at position {index}.'
+          )
       positions_missing = set(range(len(args))).difference(positions_used)
       if positions_missing:
         raise TypeError(
-            f'Positional arguments at {positions_missing} not used.')
+            f'Positional arguments at {positions_missing} not used.'
+        )
       keywords_missing = set(kwargs.keys()).difference(keywords_used)
       if keywords_missing:
         raise TypeError(f'Keyword arguments at {keywords_missing} not used.')
@@ -288,8 +302,10 @@ def pack_args(parameter_type, args: Sequence[Any], kwargs: Mapping[str, Any]):
   if not args and not kwargs:
     raise TypeError(
         'Declared a parameter of type {}, but got no arguments.'.format(
-            parameter_type))
-  single_positional_arg = (len(args) == 1 and not kwargs)
+            parameter_type
+        )
+    )
+  single_positional_arg = len(args) == 1 and not kwargs
   if single_positional_arg:
     return args[0]
   if not parameter_type.is_struct():
@@ -298,19 +314,24 @@ def pack_args(parameter_type, args: Sequence[Any], kwargs: Mapping[str, Any]):
     raise TypeError(
         'Parameter type {} is compatible only with a single positional '
         'argument, but found {} positional and {} keyword args.'.format(
-            parameter_type, len(args), len(kwargs)))
+            parameter_type, len(args), len(kwargs)
+        )
+    )
   if not is_argument_struct(parameter_type):
     raise TypeError(
         'Parameter type {} does not have a structure of an argument '
         'struct, and cannot be populated from multiple positional and '
         'keyword arguments; please construct a struct before the '
-        'call.'.format(parameter_type))
+        'call.'.format(parameter_type)
+    )
   return pack_args_into_struct(args, kwargs, parameter_type)
 
 
-def _infer_unpack_needed(fn: types.FunctionType,
-                         parameter_type: computation_types.Type,
-                         should_unpack: Optional[bool] = None) -> bool:
+def _infer_unpack_needed(
+    fn: types.FunctionType,
+    parameter_type: computation_types.Type,
+    should_unpack: Optional[bool] = None,
+) -> bool:
   """Returns whether parameter_type must be unpacked when calling fn.
 
   Args:
@@ -327,23 +348,30 @@ def _infer_unpack_needed(fn: types.FunctionType,
   # TODO(b/113112885): Revisit whether the 3-way 'unpack' knob is sufficient
   # for our needs, or more options are needed.
   if should_unpack not in [True, False, None]:
-    raise TypeError('The unpack argument has an unexpected value {!r}.'.format(
-        should_unpack))
+    raise TypeError(
+        'The unpack argument has an unexpected value {!r}.'.format(
+            should_unpack
+        )
+    )
   py_typecheck.check_type(parameter_type, computation_types.Type)
   unpack = should_unpack  # Default return value.
   signature = get_signature(fn)
   unpack_required = not is_signature_compatible_with_types(
-      signature, parameter_type)
+      signature, parameter_type
+  )
   # Boolean identity comparison becaue unpack can have a non-boolean value.
   if unpack_required and should_unpack is False:  # pylint: disable=g-bool-id-comparison
     raise TypeError(
-        'The supplied function \'{}\' with signature {} cannot accept a '
-        'value of type \'{}\' as a single argument.'.format(
-            fn.__name__, signature, parameter_type))
+        "The supplied function '{}' with signature {} cannot accept a "
+        "value of type '{}' as a single argument.".format(
+            fn.__name__, signature, parameter_type
+        )
+    )
   if is_argument_struct(parameter_type):
     arg_types, kwarg_types = unpack_args_from_struct(parameter_type)
     unpack_possible = is_signature_compatible_with_types(
-        signature, *arg_types, **kwarg_types)
+        signature, *arg_types, **kwarg_types
+    )
   else:
     unpack_possible = False
   # Boolean identity comparison becaue unpack can have a non-boolean value.
@@ -352,12 +380,15 @@ def _infer_unpack_needed(fn: types.FunctionType,
         'The supplied function with signature {} cannot accept a value of type '
         '{} as multiple positional and/or keyword arguments. That is, the '
         'argument cannot be unpacked, but unpacking was requested.'.format(
-            signature, parameter_type))
+            signature, parameter_type
+        )
+    )
   if unpack_required and not unpack_possible:
     raise TypeError(
         'The supplied function "{}" with signature {} cannot accept a value of '
         'type {} as either a single argument or multiple positional and/or '
-        'keyword arguments.'.format(fn.__name__, signature, parameter_type))
+        'keyword arguments.'.format(fn.__name__, signature, parameter_type)
+    )
   if not unpack_required and unpack_possible and should_unpack is None:
     # The supplied function could accept a value as either a single argument,
     # or as multiple positional and/or keyword arguments, and the caller did
@@ -369,8 +400,10 @@ def _infer_unpack_needed(fn: types.FunctionType,
   if unpack is None:
     # Any ambiguity at this point has been resolved, so the following
     # condition holds and need only be verified in tests.
-    assert unpack_required == unpack_possible, (unpack_required,
-                                                unpack_possible)
+    assert unpack_required == unpack_possible, (
+        unpack_required,
+        unpack_possible,
+    )
     unpack = unpack_possible
 
   return unpack
@@ -388,10 +421,13 @@ def _unpack_arg(arg_types, kwarg_types, arg) -> _Arguments:
     if not expected_type.is_assignable_from(actual_type):
       raise TypeError(
           'Expected element at position {} to be of type {}, found {}.'.format(
-              idx, expected_type, actual_type))
+              idx, expected_type, actual_type
+          )
+      )
     if isinstance(element_value, structure.Struct):
       element_value = type_conversions.type_to_py_container(
-          element_value, expected_type)
+          element_value, expected_type
+      )
     args.append(element_value)
   kwargs = {}
   for name, expected_type in kwarg_types.items():
@@ -400,10 +436,13 @@ def _unpack_arg(arg_types, kwarg_types, arg) -> _Arguments:
     if not expected_type.is_assignable_from(actual_type):
       raise TypeError(
           'Expected element named {} to be of type {}, found {}.'.format(
-              name, expected_type, actual_type))
+              name, expected_type, actual_type
+          )
+      )
     if type_analysis.is_struct_with_py_container(element_value, expected_type):
       element_value = type_conversions.type_to_py_container(
-          element_value, expected_type)
+          element_value, expected_type
+      )
     kwargs[name] = element_value
   return args, kwargs
 
@@ -412,8 +451,11 @@ def _ensure_arg_type(parameter_type, arg) -> _Arguments:
   """Ensures that `arg` matches `parameter_type` before returning it."""
   arg_type = type_conversions.infer_type(arg)
   if not parameter_type.is_assignable_from(arg_type):
-    raise TypeError('Expected an argument of type {}, found {}.'.format(
-        parameter_type, arg_type))
+    raise TypeError(
+        'Expected an argument of type {}, found {}.'.format(
+            parameter_type, arg_type
+        )
+    )
   if type_analysis.is_struct_with_py_container(arg, parameter_type):
     arg = type_conversions.type_to_py_container(arg, parameter_type)
   return [arg], {}
@@ -422,7 +464,8 @@ def _ensure_arg_type(parameter_type, arg) -> _Arguments:
 def create_argument_unpacking_fn(
     fn: types.FunctionType,
     parameter_type: Optional[computation_types.Type],
-    unpack: Optional[bool] = None) -> Callable[[Any], _Arguments]:
+    unpack: Optional[bool] = None,
+) -> Callable[[Any], _Arguments]:
   """Returns a function which converts TFF values into arguments to `fn`.
 
   This function helps to simplify dealing with functions and defuns that might
@@ -471,7 +514,8 @@ def create_argument_unpacking_fn(
       if arg is not None:
         raise RuntimeError(
             'Unexpected non-`None` argument to no-arg function with '
-            f'parameter type `None`: {arg}')
+            f'parameter type `None`: {arg}'
+        )
       return [], {}
 
     return _none_arg
@@ -486,8 +530,12 @@ def create_argument_unpacking_fn(
 class PolymorphicComputation:
   """A generic polymorphic function that accepts arguments of diverse types."""
 
-  def __init__(self, concrete_function_factory: Callable[
-      [computation_types.Type, Optional[bool]], computation_base.Computation]):
+  def __init__(
+      self,
+      concrete_function_factory: Callable[
+          [computation_types.Type, Optional[bool]], computation_base.Computation
+      ],
+  ):
     """Crates a polymorphic function with a given function factory.
 
     Args:
@@ -502,9 +550,8 @@ class PolymorphicComputation:
     self._concrete_function_cache = {}
 
   def fn_for_argument_type(
-      self,
-      arg_type: computation_types.Type,
-      unpack: Optional[bool] = None) -> computation_base.Computation:
+      self, arg_type: computation_types.Type, unpack: Optional[bool] = None
+  ) -> computation_base.Computation:
     """Concretizes this function with the provided `arg_type`.
 
     The first time this function is called with a particular type on a
@@ -527,13 +574,16 @@ class PolymorphicComputation:
     concrete_fn = self._concrete_function_cache.get(key)
     if not concrete_fn:
       concrete_fn = (self._concrete_function_factory)(arg_type, unpack)
-      py_typecheck.check_type(concrete_fn, computation_base.Computation,
-                              'computation')
+      py_typecheck.check_type(
+          concrete_fn, computation_base.Computation, 'computation'
+      )
       if concrete_fn.type_signature.parameter != arg_type:
         raise TypeError(
             'Expected a concrete function that takes parameter {}, got one '
-            'that takes {}.'.format(arg_type,
-                                    concrete_fn.type_signature.parameter))
+            'that takes {}.'.format(
+                arg_type, concrete_fn.type_signature.parameter
+            )
+        )
       self._concrete_function_cache[key] = concrete_fn
     return concrete_fn
 

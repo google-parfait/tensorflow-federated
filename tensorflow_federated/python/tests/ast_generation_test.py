@@ -26,11 +26,11 @@ class AstGenerationTest(absltest.TestCase):
     return building_block.formatted_representation()
 
   def assert_ast_equal(self, comp, expected):
-    self.assertEqual(comp.to_building_block().formatted_representation(),
-                     expected)
+    self.assertEqual(
+        comp.to_building_block().formatted_representation(), expected
+    )
 
   def test_flattens_to_tf_computation(self):
-
     @tff.tf_computation
     def five():
       return 5
@@ -39,18 +39,17 @@ class AstGenerationTest(absltest.TestCase):
     def federated_five():
       return five()
 
+    # pyformat: disable
     self.assert_ast_equal(
         federated_five,
-        # pyformat: disable
         '( -> (let\n'
         '  fc_federated_five_symbol_0={}()\n'
         ' in fc_federated_five_symbol_0))'.format(
             self.formatted_computation(five))
-        # pyformat: enable
     )
+    # pyformat: enable
 
   def test_only_one_random_only_generates_a_single_call_to_random(self):
-
     @tff.tf_computation
     def rand():
       return tf.random.normal([])
@@ -60,17 +59,17 @@ class AstGenerationTest(absltest.TestCase):
       single_random_number = rand()
       return (single_random_number, single_random_number)
 
+    # pyformat: disable
     self.assert_ast_equal(
         same_rand_tuple,
-        # pyformat: disable
         '( -> (let\n'
         '  fc_same_rand_tuple_symbol_0={}()\n'
         ' in <\n'
         '  fc_same_rand_tuple_symbol_0,\n'
         '  fc_same_rand_tuple_symbol_0\n'
         '>))'.format(self.formatted_computation(rand))
-        # pyformat: enable
     )
+    # pyformat: enable
 
 
 if __name__ == '__main__':

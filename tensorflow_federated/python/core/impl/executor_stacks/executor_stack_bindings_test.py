@@ -26,18 +26,24 @@ _CARDINALITIES = {placements.CLIENTS: 5}
 
 class ExecutorStackBindingsTest(parameterized.TestCase):
 
-  @parameterized.named_parameters(('from_target_list', list),
-                                  ('from_target_tuple', tuple),
-                                  ('from_target_ndarray', np.array))
+  @parameterized.named_parameters(
+      ('from_target_list', list),
+      ('from_target_tuple', tuple),
+      ('from_target_ndarray', np.array),
+  )
   def test_executor_construction_raises_no_channels_available(
-      self, container_constructor):
+      self, container_constructor
+  ):
     with self.assertRaisesRegex(Exception, 'UNAVAILABLE'):
       executor_stack_bindings.create_remote_executor_stack(
-          channels=container_constructor([
-              executor_bindings.create_insecure_grpc_channel(t)
-              for t in _TARGET_LIST
-          ]),
-          cardinalities=_CARDINALITIES)
+          channels=container_constructor(
+              [
+                  executor_bindings.create_insecure_grpc_channel(t)
+                  for t in _TARGET_LIST
+              ]
+          ),
+          cardinalities=_CARDINALITIES,
+      )
 
 
 if __name__ == '__main__':

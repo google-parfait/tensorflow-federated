@@ -28,7 +28,8 @@ def _xla_tensor_shape_from_tff_tensor_type(tensor_type):
   py_typecheck.check_type(tensor_type, computation_types.TensorType)
   return xla_client.Shape.array_shape(
       xla_client.dtype_to_etype(tensor_type.dtype.as_numpy_dtype),
-      tensor_type.shape.dims)
+      tensor_type.shape.dims,
+  )
 
 
 def _xla_tensor_shape_list_from_from_tff_tensor_or_struct_type(type_spec):
@@ -60,11 +61,13 @@ def _create_xla_binary_op_computation(type_spec, xla_binary_op_constructor):
   """
   py_typecheck.check_type(type_spec, computation_types.Type)
   if not type_analysis.is_structure_of_tensors(type_spec):
-    raise ValueError('Not a tensor or a structure of tensors: {}'.format(
-        str(type_spec)))
+    raise ValueError(
+        'Not a tensor or a structure of tensors: {}'.format(str(type_spec))
+    )
 
   tensor_shapes = _xla_tensor_shape_list_from_from_tff_tensor_or_struct_type(
-      type_spec)
+      type_spec
+  )
   num_tensors = len(tensor_shapes)
   builder = xla_client.XlaBuilder('comp')
   params = [
@@ -80,14 +83,17 @@ def _create_xla_binary_op_computation(type_spec, xla_binary_op_constructor):
   xla_computation = builder.build()
 
   comp_type = computation_types.FunctionType(
-      computation_types.StructType([(None, type_spec)] * 2), type_spec)
+      computation_types.StructType([(None, type_spec)] * 2), type_spec
+  )
   comp_pb = xla_serialization.create_xla_tff_computation(
-      xla_computation, list(range(2 * num_tensors)), comp_type)
+      xla_computation, list(range(2 * num_tensors)), comp_type
+  )
   return (comp_pb, comp_type)
 
 
 class XlaComputationFactory(
-    local_computation_factory_base.LocalComputationFactory):
+    local_computation_factory_base.LocalComputationFactory
+):
   """An implementation of local computation factory for XLA computations."""
 
   def __init__(self):
@@ -98,8 +104,9 @@ class XlaComputationFactory(
   ) -> local_computation_factory_base.ComputationProtoAndType:
     py_typecheck.check_type(type_spec, computation_types.Type)
     if not type_analysis.is_structure_of_tensors(type_spec):
-      raise ValueError('Not a tensor or a structure of tensors: {}'.format(
-          str(type_spec)))
+      raise ValueError(
+          'Not a tensor or a structure of tensors: {}'.format(str(type_spec))
+      )
 
     builder = xla_client.XlaBuilder('comp')
 
@@ -108,7 +115,8 @@ class XlaComputationFactory(
       numpy_value = np.full(
           shape=tensor_type.shape.dims,
           fill_value=value,
-          dtype=tensor_type.dtype.as_numpy_dtype)
+          dtype=tensor_type.dtype.as_numpy_dtype,
+      )
       return xla_client.ops.Constant(builder, numpy_value)
 
     if isinstance(type_spec, computation_types.TensorType):
@@ -124,7 +132,8 @@ class XlaComputationFactory(
 
     comp_type = computation_types.FunctionType(None, type_spec)
     comp_pb = xla_serialization.create_xla_tff_computation(
-        xla_computation, [], comp_type)
+        xla_computation, [], comp_type
+    )
     return (comp_pb, comp_type)
 
   def create_plus_operator(
@@ -138,17 +147,20 @@ class XlaComputationFactory(
     return _create_xla_binary_op_computation(type_spec, xla_client.ops.Mul)
 
   def create_scalar_multiply_operator(
-      self, operand_type: computation_types.Type,
-      scalar_type: computation_types.TensorType
+      self,
+      operand_type: computation_types.Type,
+      scalar_type: computation_types.TensorType,
   ) -> local_computation_factory_base.ComputationProtoAndType:
     py_typecheck.check_type(operand_type, computation_types.Type)
     py_typecheck.check_type(scalar_type, computation_types.TensorType)
     if not type_analysis.is_structure_of_tensors(operand_type):
-      raise ValueError('Not a tensor or a structure of tensors: {}'.format(
-          str(operand_type)))
+      raise ValueError(
+          'Not a tensor or a structure of tensors: {}'.format(str(operand_type))
+      )
 
     operand_shapes = _xla_tensor_shape_list_from_from_tff_tensor_or_struct_type(
-        operand_type)
+        operand_type
+    )
     scalar_shape = _xla_tensor_shape_from_tff_tensor_type(scalar_type)
     num_operand_tensors = len(operand_shapes)
     builder = xla_client.XlaBuilder('comp')
@@ -164,8 +176,12 @@ class XlaComputationFactory(
     xla_computation = builder.build()
 
     comp_type = computation_types.FunctionType(
-        computation_types.StructType([(None, operand_type),
-                                      (None, scalar_type)]), operand_type)
+        computation_types.StructType(
+            [(None, operand_type), (None, scalar_type)]
+        ),
+        operand_type,
+    )
     comp_pb = xla_serialization.create_xla_tff_computation(
-        xla_computation, list(range(num_operand_tensors + 1)), comp_type)
+        xla_computation, list(range(num_operand_tensors + 1)), comp_type
+    )
     return (comp_pb, comp_type)

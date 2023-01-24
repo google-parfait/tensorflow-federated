@@ -24,12 +24,14 @@ from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.simulation.datasets import client_data
 
 CentralOrClientData = Union[tf.data.Dataset, client_data.ClientData]
-PreprocessFnType = Union[Callable[[tf.data.Dataset], tf.data.Dataset],
-                         computation_base.Computation]
+PreprocessFnType = Union[
+    Callable[[tf.data.Dataset], tf.data.Dataset], computation_base.Computation
+]
 
 
-def _get_element_spec(data: CentralOrClientData,
-                      preprocess_fn: Optional[PreprocessFnType] = None):
+def _get_element_spec(
+    data: CentralOrClientData, preprocess_fn: Optional[PreprocessFnType] = None
+):
   """Determines the element type of a dataset after preprocessing."""
   if isinstance(data, client_data.ClientData):
     if preprocess_fn is not None:
@@ -67,12 +69,14 @@ class BaselineTaskDatasets:
       task.
   """
 
-  def __init__(self,
-               train_data: client_data.ClientData,
-               test_data: CentralOrClientData,
-               validation_data: Optional[CentralOrClientData] = None,
-               train_preprocess_fn: Optional[PreprocessFnType] = None,
-               eval_preprocess_fn: Optional[PreprocessFnType] = None):
+  def __init__(
+      self,
+      train_data: client_data.ClientData,
+      test_data: CentralOrClientData,
+      validation_data: Optional[CentralOrClientData] = None,
+      train_preprocess_fn: Optional[PreprocessFnType] = None,
+      eval_preprocess_fn: Optional[PreprocessFnType] = None,
+  ):
     """Creates a `BaselineTaskDatasets`.
 
     Args:
@@ -101,7 +105,7 @@ class BaselineTaskDatasets:
     self._train_preprocess_fn = train_preprocess_fn
     self._eval_preprocess_fn = eval_preprocess_fn
 
-    if (train_preprocess_fn is not None and not callable(train_preprocess_fn)):
+    if train_preprocess_fn is not None and not callable(train_preprocess_fn):
       raise ValueError('The train_preprocess_fn must be None or callable.')
     self._train_preprocess_fn = train_preprocess_fn
 
@@ -109,8 +113,9 @@ class BaselineTaskDatasets:
       raise ValueError('The eval_preprocess_fn must be None or callable.')
     self._eval_preprocess_fn = eval_preprocess_fn
 
-    post_preprocess_train_type = _get_element_spec(train_data,
-                                                   train_preprocess_fn)
+    post_preprocess_train_type = _get_element_spec(
+        train_data, train_preprocess_fn
+    )
     if train_preprocess_fn is None:
       self._preprocess_train_data = train_data
     else:
@@ -127,7 +132,8 @@ class BaselineTaskDatasets:
         raise ValueError(
             'The validation set must be None, or have the same element type '
             'structure as the test data. Found test type {} and validation type'
-            ' {}'.format(test_type, validation_type))
+            ' {}'.format(test_type, validation_type)
+        )
 
     self._data_info = None
 
@@ -179,7 +185,9 @@ class BaselineTaskDatasets:
         validation_type = 'Centralized'
         num_validation_clients = 'N/A'
       data_info['validation'] = [
-          'Validation', validation_type, num_validation_clients
+          'Validation',
+          validation_type,
+          num_validation_clients,
       ]
 
     return data_info
@@ -188,7 +196,8 @@ class BaselineTaskDatasets:
       self,
       num_clients: int,
       replace: bool = False,
-      random_seed: Optional[int] = None) -> list[tf.data.Dataset]:
+      random_seed: Optional[int] = None,
+  ) -> list[tf.data.Dataset]:
     """Samples training clients uniformly at random.
 
     Args:
@@ -209,7 +218,8 @@ class BaselineTaskDatasets:
     client_ids = random_state.choice(
         self._preprocess_train_data.client_ids,
         size=num_clients,
-        replace=replace)
+        replace=replace,
+    )
     return [
         self._preprocess_train_data.create_tf_dataset_for_client(x)
         for x in client_ids
@@ -280,9 +290,10 @@ class BaselineTaskDatasets:
     row_strings = []
     for col_values in data_info.values():
       row_string = ''
-      for (col_val, col_len) in zip(col_values, col_lengths):
+      for col_val, col_len in zip(col_values, col_lengths):
         row_string += '{col_val:<{col_len}}|'.format(
-            col_val=col_val, col_len=col_len)
+            col_val=col_val, col_len=col_len
+        )
       row_strings.append(row_string)
 
     total_width = sum(col_lengths) + num_cols
@@ -292,8 +303,8 @@ class BaselineTaskDatasets:
     for x in row_strings:
       print_fn(x)
 
-    train_preprocess_fn_exists = (self._train_preprocess_fn is not None)
+    train_preprocess_fn_exists = self._train_preprocess_fn is not None
     print_fn('Train Preprocess Function: {}'.format(train_preprocess_fn_exists))
 
-    eval_preprocess_fn_exists = (self._eval_preprocess_fn is not None)
+    eval_preprocess_fn_exists = self._eval_preprocess_fn is not None
     print_fn('Eval Preprocess Function: {}'.format(eval_preprocess_fn_exists))

@@ -86,8 +86,8 @@ class RemoteExecutorStub(abc.ABC):
 
   @abc.abstractmethod
   def compute(
-      self,
-      request: executor_pb2.ComputeRequest) -> executor_pb2.ComputeResponse:
+      self, request: executor_pb2.ComputeRequest
+  ) -> executor_pb2.ComputeResponse:
     """Invokes Compute in a remote TFF runtime.
 
     Args:
@@ -100,8 +100,8 @@ class RemoteExecutorStub(abc.ABC):
 
   @abc.abstractmethod
   def dispose(
-      self,
-      request: executor_pb2.DisposeRequest) -> executor_pb2.DisposeResponse:
+      self, request: executor_pb2.DisposeRequest
+  ) -> executor_pb2.DisposeResponse:
     """Invokes Dispose in a remote TFF runtime.
 
     Args:

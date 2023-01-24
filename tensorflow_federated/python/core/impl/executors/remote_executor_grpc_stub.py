@@ -30,8 +30,10 @@ from tensorflow_federated.python.core.impl.executors import remote_executor_stub
 
 def _is_retryable_grpc_error(error):
   """Predicate defining what is a retryable gRPC error."""
-  return (isinstance(error, grpc.RpcError) and
-          error.code() in executors_errors.get_grpc_retryable_error_codes())
+  return (
+      isinstance(error, grpc.RpcError)
+      and error.code() in executors_errors.get_grpc_retryable_error_codes()
+  )
 
 
 @tracing.trace(span=True)
@@ -60,7 +62,8 @@ class RemoteExecutorGrpcStub(remote_executor_stub.RemoteExecutorStub):
     """
 
     def _channel_status_callback(
-        channel_connectivity: grpc.ChannelConnectivity):
+        channel_connectivity: grpc.ChannelConnectivity,
+    ):
       self._channel_status = channel_connectivity
 
     self._channel_status = False
@@ -100,14 +103,14 @@ class RemoteExecutorGrpcStub(remote_executor_stub.RemoteExecutorStub):
     return _request(self._stub.CreateSelection, request)
 
   def compute(
-      self,
-      request: executor_pb2.ComputeRequest) -> executor_pb2.ComputeResponse:
+      self, request: executor_pb2.ComputeRequest
+  ) -> executor_pb2.ComputeResponse:
     """Dispatches a Compute gRPC."""
     return _request(self._stub.Compute, request)
 
   def dispose(
-      self,
-      request: executor_pb2.DisposeRequest) -> executor_pb2.DisposeResponse:
+      self, request: executor_pb2.DisposeRequest
+  ) -> executor_pb2.DisposeResponse:
     """Dispatches a Dispose gRPC."""
     return _request(self._stub.Dispose, request)
 

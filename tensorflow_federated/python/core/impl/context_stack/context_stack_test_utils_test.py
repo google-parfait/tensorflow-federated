@@ -53,8 +53,9 @@ class WithContextTest(parameterized.TestCase):
     def _foo():
       self.assertEqual(context_stack_impl.context_stack.current, context)
 
-    with mock.patch.object(contextlib.ExitStack,
-                           'enter_context') as mock_enter_context:
+    with mock.patch.object(
+        contextlib.ExitStack, 'enter_context'
+    ) as mock_enter_context:
       # Assert that the context is installed.
       self.assertNotEqual(context_stack_impl.context_stack.current, context)
       _foo()
@@ -95,8 +96,9 @@ class WithContextTest(parameterized.TestCase):
       del x  # Unused.
       self.assertEqual(context_stack_impl.context_stack.current, context)
 
-    with mock.patch.object(contextlib.ExitStack,
-                           'enter_context') as mock_enter_context:
+    with mock.patch.object(
+        contextlib.ExitStack, 'enter_context'
+    ) as mock_enter_context:
       # Assert that the context is installed.
       self.assertNotEqual(context_stack_impl.context_stack.current, context)
       _foo(1)
@@ -137,8 +139,9 @@ class WithContextTest(parameterized.TestCase):
       del x  # Unused.
       self.assertEqual(context_stack_impl.context_stack.current, context)
 
-    with mock.patch.object(contextlib.ExitStack,
-                           'enter_context') as mock_enter_context:
+    with mock.patch.object(
+        contextlib.ExitStack, 'enter_context'
+    ) as mock_enter_context:
       # Assert that the context is installed.
       self.assertNotEqual(context_stack_impl.context_stack.current, context)
       _foo(x=1)
@@ -179,8 +182,9 @@ class WithContextTest(parameterized.TestCase):
       self.assertEqual(context_stack_impl.context_stack.current, context)
       return x
 
-    with mock.patch.object(contextlib.ExitStack,
-                           'enter_context') as mock_enter_context:
+    with mock.patch.object(
+        contextlib.ExitStack, 'enter_context'
+    ) as mock_enter_context:
       # Assert that the context is installed.
       self.assertNotEqual(context_stack_impl.context_stack.current, context)
       x = _foo(1)
@@ -228,8 +232,9 @@ class WithContextTest(parameterized.TestCase):
       def test_bar(self):
         self.assertNotEqual(context_stack_impl.context_stack.current, context)
 
-    with mock.patch.object(contextlib.ExitStack,
-                           'enter_context') as mock_enter_context:
+    with mock.patch.object(
+        contextlib.ExitStack, 'enter_context'
+    ) as mock_enter_context:
       # Assert that the context is installed.
       self.assertNotEqual(context_stack_impl.context_stack.current, context)
       suite = unittest.defaultTestLoader.loadTestsFromTestCase(_FooTest)
@@ -286,8 +291,9 @@ class WithContextsTest(parameterized.TestCase):
       def test_bar(self):
         pass
 
-    with mock.patch.object(context_stack_test_utils,
-                           'with_context') as mock_with_context:
+    with mock.patch.object(
+        context_stack_test_utils, 'with_context'
+    ) as mock_with_context:
       suite = unittest.defaultTestLoader.loadTestsFromTestCase(_FooTest)
       runner = unittest.TextTestRunner()
       result = runner.run(suite)

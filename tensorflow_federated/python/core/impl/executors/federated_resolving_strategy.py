@@ -13,32 +13,32 @@
 # limitations under the License.
 """A strategy for resolving federated types and intrinsics.
 
-                +------------+
-                | Federating |   +----------+
-            +-->+ Executor   +-->+ unplaced |
-            |   +--+---------+   | executor |
-            |      |             +----------+
-  +---------+--+   |
-  | Federated  +<--+
-  | Resolving  |
-  | Strategy   |
-  +--+---------+
-     |
-     |   +-----------+
-     +-->+ target    |
-         | executors |
-         +-----------+
+              +------------+
+              | Federating |   +----------+
+          +-->+ Executor   +-->+ unplaced |
+          |   +--+---------+   | executor |
+          |      |             +----------+
++---------+--+   |
+| Federated  +<--+
+| Resolving  |
+| Strategy   |
++--+---------+
+   |
+   |   +-----------+
+   +-->+ target    |
+       | executors |
+       +-----------+
 
-  A `FederatedResolvingStrategy`:
+A `FederatedResolvingStrategy`:
 
-  * Implements the logic for resolving federated types and intrinsics, while
-    delegating unplaced computations to the target executor(s) associated with
-    the placement of the federated type or intrinsic.
+* Implements the logic for resolving federated types and intrinsics, while
+  delegating unplaced computations to the target executor(s) associated with
+  the placement of the federated type or intrinsic.
 
-    Note: The default strategy never delegates federated types and intrinsics.
+  Note: The default strategy never delegates federated types and intrinsics.
 
-  * Delegates handling unplaced types, computations, and processing back to the
-    `FederatingExecutor`. DO_NOT_SBUMIT: Provide an example of this.
+* Delegates handling unplaced types, computations, and processing back to the
+  `FederatingExecutor`. DO_NOT_SBUMIT: Provide an example of this.
 """
 
 import asyncio
@@ -100,16 +100,20 @@ class FederatedResolvingStrategyValue(executor_value_base.ExecutorValue):
     if isinstance(self._value, executor_value_base.ExecutorValue):
       return await self._value.compute()
     elif isinstance(self._value, structure.Struct):
-      results = await asyncio.gather(*[
-          FederatedResolvingStrategyValue(v, t).compute()
-          for v, t in zip(self._value, self._type_signature)
-      ])
+      results = await asyncio.gather(
+          *[
+              FederatedResolvingStrategyValue(v, t).compute()
+              for v, t in zip(self._value, self._type_signature)
+          ]
+      )
       element_types = structure.iter_elements(self._type_signature)
       return structure.Struct(
-          (n, v) for (n, _), v in zip(element_types, results))
+          (n, v) for (n, _), v in zip(element_types, results)
+      )
     elif isinstance(self._value, list):
-      py_typecheck.check_type(self._type_signature,
-                              computation_types.FederatedType)
+      py_typecheck.check_type(
+          self._type_signature, computation_types.FederatedType
+      )
       for value in self._value:
         py_typecheck.check_type(value, executor_value_base.ExecutorValue)
       if self._type_signature.all_equal:
@@ -119,8 +123,10 @@ class FederatedResolvingStrategyValue(executor_value_base.ExecutorValue):
     else:
       raise RuntimeError(
           'Computing values of type {} represented as {} is not supported in '
-          'this executor.'.format(self._type_signature,
-                                  py_typecheck.type_string(type(self._value))))
+          'this executor.'.format(
+              self._type_signature, py_typecheck.type_string(type(self._value))
+          )
+      )
 
 
 class FederatedResolvingStrategy(federating_executor.FederatingStrategy):
@@ -153,7 +159,8 @@ class FederatedResolvingStrategy(federating_executor.FederatingStrategy):
     return lambda executor: cls(
         executor,
         target_executors,
-        local_computation_factory=local_computation_factory)
+        local_computation_factory=local_computation_factory,
+    )
     # pylint:enable=g-long-lambda
 
   def __init__(
@@ -192,7 +199,8 @@ class FederatedResolvingStrategy(federating_executor.FederatingStrategy):
     py_typecheck.check_type(target_executors, dict)
     py_typecheck.check_type(
         local_computation_factory,
-        local_computation_factory_base.LocalComputationFactory)
+        local_computation_factory_base.LocalComputationFactory,
+    )
     self._target_executors = {}
     self._local_computation_factory = local_computation_factory
     for k, v in target_executors.items():
@@ -211,7 +219,9 @@ class FederatedResolvingStrategy(federating_executor.FederatingStrategy):
         if pl_cardinality != 1:
           raise ValueError(
               'Unsupported cardinality for placement "{}": {}.'.format(
-                  pl, pl_cardinality))
+                  pl, pl_cardinality
+              )
+          )
 
   def close(self):
     for p, v in self._target_executors.items():
@@ -236,10 +246,11 @@ class FederatedResolvingStrategy(federating_executor.FederatingStrategy):
       ValueError: If `value` is not compatible.
     """
     children = self._target_executors.get(placement)
-    if (not children and placement != placements.CLIENTS):
+    if not children and placement != placements.CLIENTS:
       raise ValueError(
-          'Expected at least one participant for the \'{}\' placement, found '
-          'none.'.format(placement))
+          "Expected at least one participant for the '{}' placement, found "
+          'none.'.format(placement)
+      )
 
   def _check_value_compatible_with_placement(self, value, placement, all_equal):
     """Tests that `value` is compatible with the given `placement`.
@@ -260,10 +271,12 @@ class FederatedResolvingStrategy(federating_executor.FederatingStrategy):
             'Expected a value that contains one element for each participant '
             'for the given placement, found a value with {elements} elements '
             'and this executor is configured to have {participants} '
-            'participants for the \'{placement}\' placement.'.format(
+            "participants for the '{placement}' placement.".format(
                 elements=len(value),
                 placement=placement,
-                participants=len(children)))
+                participants=len(children),
+            )
+        )
 
   def ingest_value(
       self, value: Any, type_signature: computation_types.Type
@@ -271,10 +284,12 @@ class FederatedResolvingStrategy(federating_executor.FederatingStrategy):
     if type_signature is not None:
       if type_signature.is_federated():
         self._check_strategy_compatible_with_placement(type_signature.placement)
-      elif type_signature.is_function() and type_signature.result.is_federated(
+      elif (
+          type_signature.is_function() and type_signature.result.is_federated()
       ):
         self._check_strategy_compatible_with_placement(
-            type_signature.result.placement)
+            type_signature.result.placement
+        )
     return FederatedResolvingStrategyValue(value, type_signature)
 
   async def compute_federated_value(
@@ -282,14 +297,17 @@ class FederatedResolvingStrategy(federating_executor.FederatingStrategy):
   ) -> FederatedResolvingStrategyValue:
     self._check_strategy_compatible_with_placement(type_signature.placement)
     children = self._target_executors[type_signature.placement]
-    self._check_value_compatible_with_placement(value, type_signature.placement,
-                                                type_signature.all_equal)
+    self._check_value_compatible_with_placement(
+        value, type_signature.placement, type_signature.all_equal
+    )
     if type_signature.all_equal:
       value = [value for _ in children]
-    result = await asyncio.gather(*[
-        c.create_value(v, type_signature.member)
-        for v, c in zip(value, children)
-    ])
+    result = await asyncio.gather(
+        *[
+            c.create_value(v, type_signature.member)
+            for v, c in zip(value, children)
+        ]
+    )
     return FederatedResolvingStrategyValue(result, type_signature)
 
   @tracing.trace
@@ -310,7 +328,9 @@ class FederatedResolvingStrategy(federating_executor.FederatingStrategy):
     return FederatedResolvingStrategyValue(
         results,
         computation_types.FederatedType(
-            fn_type.result, placement, all_equal=all_equal))
+            fn_type.result, placement, all_equal=all_equal
+        ),
+    )
 
   @tracing.trace
   async def _map(self, arg, all_equal=None):
@@ -324,7 +344,8 @@ class FederatedResolvingStrategy(federating_executor.FederatingStrategy):
       all_equal = val_type.all_equal
     elif all_equal and not val_type.all_equal:
       raise ValueError(
-          'Cannot map a non-all_equal argument into an all_equal result.')
+          'Cannot map a non-all_equal argument into an all_equal result.'
+      )
     fn = arg.reference[0]
     py_typecheck.check_type(fn, pb.Computation)
     val = arg.reference[1]
@@ -338,14 +359,18 @@ class FederatedResolvingStrategy(federating_executor.FederatingStrategy):
       fn_at_child = await child.create_value(fn, fn_type)
       return await child.create_call(fn_at_child, value)
 
-    results = await asyncio.gather(*[
-        _map_child(fn, fn_type, value, child)
-        for (value, child) in zip(val, children)
-    ])
+    results = await asyncio.gather(
+        *[
+            _map_child(fn, fn_type, value, child)
+            for (value, child) in zip(val, children)
+        ]
+    )
     return FederatedResolvingStrategyValue(
         results,
         computation_types.FederatedType(
-            fn_type.result, val_type.placement, all_equal=all_equal))
+            fn_type.result, val_type.placement, all_equal=all_equal
+        ),
+    )
 
   async def _zip_struct_into_child(self, child, child_index, value, value_type):
     """Embeds `value` elements at `child_index` into `child`."""
@@ -358,18 +383,25 @@ class FederatedResolvingStrategy(federating_executor.FederatingStrategy):
     # <>; <<>>; <<>, <>>
     if isinstance(value, executor_value_base.ExecutorValue):
       if not type_analysis.contains_only(
-          value_type, lambda element_type: element_type.is_struct()):
+          value_type, lambda element_type: element_type.is_struct()
+      ):
         raise ValueError(
-            f'Expected zippable value of type `structure.Struct`, but found '
-            f'value of type {value} (TFF type {value_type})')
+            'Expected zippable value of type `structure.Struct`, but found '
+            f'value of type {value} (TFF type {value_type})'
+        )
       return value
     py_typecheck.check_type(value, structure.Struct)
-    new_elements = await asyncio.gather(*[
-        self._zip_struct_into_child(child, child_index, element, element_type)
-        for element, element_type in zip(value, value_type)
-    ])
+    new_elements = await asyncio.gather(
+        *[
+            self._zip_struct_into_child(
+                child, child_index, element, element_type
+            )
+            for element, element_type in zip(value, value_type)
+        ]
+    )
     named_elements = structure.Struct(
-        list(zip(structure.name_list_with_nones(value), new_elements)))
+        list(zip(structure.name_list_with_nones(value), new_elements))
+    )
     return await child.create_struct(named_elements)
 
   @tracing.trace
@@ -390,7 +422,9 @@ class FederatedResolvingStrategy(federating_executor.FederatingStrategy):
         computation_types.FederatedType(
             type_transformations.strip_placement(arg.type_signature),
             placement,
-            all_equal=all_equal))
+            all_equal=all_equal,
+        ),
+    )
 
   @tracing.trace
   async def compute_federated_aggregate(
@@ -398,7 +432,9 @@ class FederatedResolvingStrategy(federating_executor.FederatingStrategy):
   ) -> executor_value_base.ExecutorValue:
     val_type, zero_type, accumulate_type, merge_type, report_type = (
         executor_utils.parse_federated_aggregate_argument_types(
-            arg.type_signature))
+            arg.type_signature
+        )
+    )
     del val_type, merge_type
     py_typecheck.check_type(arg.reference, structure.Struct)
     py_typecheck.check_len(arg.reference, 5)
@@ -415,8 +451,9 @@ class FederatedResolvingStrategy(federating_executor.FederatingStrategy):
     zero = FederatedResolvingStrategyValue(zero, zero_type)
     pre_report = await self.reduce(val, zero, accumulate, accumulate_type)
 
-    py_typecheck.check_type(pre_report.type_signature,
-                            computation_types.FederatedType)
+    py_typecheck.check_type(
+        pre_report.type_signature, computation_types.FederatedType
+    )
     pre_report.type_signature.member.check_equivalent_to(report_type.parameter)
 
     return await self.compute_federated_apply(
@@ -445,7 +482,8 @@ class FederatedResolvingStrategy(federating_executor.FederatingStrategy):
           'found {}.'.format(len(arg.reference))
       )
     return await executor_utils.compute_intrinsic_federated_broadcast(
-        self._executor, arg)
+        self._executor, arg
+    )
 
   @tracing.trace
   async def compute_federated_eval_at_clients(
@@ -486,11 +524,14 @@ class FederatedResolvingStrategy(federating_executor.FederatingStrategy):
             child,
             member_type,
             float(1.0 / count),
-            local_computation_factory=self._local_computation_factory),
+            local_computation_factory=self._local_computation_factory,
+        ),
         executor_utils.embed_multiply_operator(
             child,
             member_type,
-            local_computation_factory=self._local_computation_factory))
+            local_computation_factory=self._local_computation_factory,
+        ),
+    )
     multiply_arg = await child.create_struct(
         structure.Struct([(None, arg_sum.reference[0]), (None, factor)])
     )
@@ -511,21 +552,26 @@ class FederatedResolvingStrategy(federating_executor.FederatingStrategy):
       return await server.create_value(await v.compute(), v.type_signature)
 
     item_futures = asyncio.as_completed([_move(v) for v in val])
-    zero_at_server = await server.create_value(await zero.compute(),
-                                               zero.type_signature)
+    zero_at_server = await server.create_value(
+        await zero.compute(), zero.type_signature
+    )
     op_at_server = await server.create_value(op, op_type)
 
     result = zero_at_server
     for item_future in item_futures:
       item = await item_future
       result = await server.create_call(
-          op_at_server, await server.create_struct(
-              structure.Struct([(None, result), (None, item)])))
-    return FederatedResolvingStrategyValue([result],
-                                           computation_types.FederatedType(
-                                               result.type_signature,
-                                               placements.SERVER,
-                                               all_equal=True))
+          op_at_server,
+          await server.create_struct(
+              structure.Struct([(None, result), (None, item)])
+          ),
+      )
+    return FederatedResolvingStrategyValue(
+        [result],
+        computation_types.FederatedType(
+            result.type_signature, placements.SERVER, all_equal=True
+        ),
+    )
 
   @tracing.trace
   async def compute_federated_secure_sum_bitwidth(
@@ -549,14 +595,16 @@ class FederatedResolvingStrategy(federating_executor.FederatingStrategy):
         'For a fake implementation of `federated_secure_select` suitable for '
         'testing, consider using the test executor context by adding the '
         'following during initialization: '
-        '`tff.backends.test.set_test_python_execution_context()`')
+        '`tff.backends.test.set_test_python_execution_context()`'
+    )
 
   @tracing.trace
   async def compute_federated_select(
       self, arg: executor_value_base.ExecutorValue
   ) -> executor_value_base.ExecutorValue:
     client_keys_type, max_key_type, server_val_type, select_fn_type = (
-        arg.type_signature)
+        arg.type_signature
+    )
     py_typecheck.check_type(arg.reference, structure.Struct)
     client_keys, max_key, server_val, select_fn = arg.reference
     # We slice up the value as-needed, so `max_key` is not used.
@@ -565,21 +613,25 @@ class FederatedResolvingStrategy(federating_executor.FederatingStrategy):
     py_typecheck.check_type(client_keys, list)
     py_typecheck.check_type(server_val, list)
     server_val_at_server = server_val[0]
-    py_typecheck.check_type(server_val_at_server,
-                            executor_value_base.ExecutorValue)
+    py_typecheck.check_type(
+        server_val_at_server, executor_value_base.ExecutorValue
+    )
     py_typecheck.check_type(select_fn, pb.Computation)
     server = self._target_executors[placements.SERVER][0]
     clients = self._target_executors[placements.CLIENTS]
     single_key_type = computation_types.TensorType(tf.int32)
     client_keys_type.member.check_tensor()
-    if (client_keys_type.member.dtype != tf.int32 or
-        client_keys_type.member.shape.rank != 1):
+    if (
+        client_keys_type.member.dtype != tf.int32
+        or client_keys_type.member.shape.rank != 1
+    ):
       raise TypeError(f'Unexpected `client_keys_type`: {client_keys_type}')
     num_keys_per_client: int = client_keys_type.member.shape.dims[0].value
     unplaced_result_type = computation_types.SequenceType(select_fn_type.result)
     select_fn_at_server = await server.create_value(select_fn, select_fn_type)
     index_fn_at_server = await executor_utils.embed_indexing_operator(
-        server, client_keys_type.member, single_key_type)
+        server, client_keys_type.member, single_key_type
+    )
 
     async def select_single_key(keys_at_server, key_index):
       # Grab the `key_index`th key from the keys tensor.
@@ -587,30 +639,41 @@ class FederatedResolvingStrategy(federating_executor.FederatingStrategy):
           structure.Struct([
               (None, keys_at_server),
               (None, await server.create_value(key_index, single_key_type)),
-          ]))
+          ])
+      )
       key_at_server = await server.create_call(index_fn_at_server, index_arg)
       select_fn_arg = await server.create_struct(
           structure.Struct([
               (None, server_val_at_server),
               (None, key_at_server),
-          ]))
+          ])
+      )
       selected = await server.create_call(select_fn_at_server, select_fn_arg)
       return await selected.compute()
 
     async def select_single_client(client, keys_at_client):
-      keys_at_server = await server.create_value(await keys_at_client.compute(),
-                                                 client_keys_type.member)
-      unplaced_values = await asyncio.gather(*[
-          select_single_key(keys_at_server, i)
-          for i in range(num_keys_per_client)
-      ])
+      keys_at_server = await server.create_value(
+          await keys_at_client.compute(), client_keys_type.member
+      )
+      unplaced_values = await asyncio.gather(
+          *[
+              select_single_key(keys_at_server, i)
+              for i in range(num_keys_per_client)
+          ]
+      )
       return await client.create_value(unplaced_values, unplaced_result_type)
 
     return FederatedResolvingStrategyValue(
-        list(await asyncio.gather(*[
-            select_single_client(client, keys_at_client)
-            for client, keys_at_client in zip(clients, client_keys)
-        ])), computation_types.at_clients(unplaced_result_type))
+        list(
+            await asyncio.gather(
+                *[
+                    select_single_client(client, keys_at_client)
+                    for client, keys_at_client in zip(clients, client_keys)
+                ]
+            )
+        ),
+        computation_types.at_clients(unplaced_result_type),
+    )
 
   @tracing.trace
   async def compute_federated_sum(
@@ -622,11 +685,14 @@ class FederatedResolvingStrategy(federating_executor.FederatingStrategy):
             self._executor,
             arg.type_signature.member,
             0,
-            local_computation_factory=self._local_computation_factory),
+            local_computation_factory=self._local_computation_factory,
+        ),
         executor_utils.embed_plus_operator(
             self._executor,
             arg.type_signature.member,
-            local_computation_factory=self._local_computation_factory))
+            local_computation_factory=self._local_computation_factory,
+        ),
+    )
     return await self.reduce(
         arg.reference, zero, plus.reference, plus.type_signature
     )
@@ -636,14 +702,16 @@ class FederatedResolvingStrategy(federating_executor.FederatingStrategy):
       self, arg: executor_value_base.ExecutorValue
   ) -> executor_value_base.ExecutorValue:
     return await executor_utils.compute_intrinsic_federated_value(
-        self._executor, arg, placements.CLIENTS)
+        self._executor, arg, placements.CLIENTS
+    )
 
   @tracing.trace
   async def compute_federated_value_at_server(
       self, arg: executor_value_base.ExecutorValue
   ) -> executor_value_base.ExecutorValue:
     return await executor_utils.compute_intrinsic_federated_value(
-        self._executor, arg, placements.SERVER)
+        self._executor, arg, placements.SERVER
+    )
 
   @tracing.trace
   async def compute_federated_weighted_mean(
@@ -652,7 +720,8 @@ class FederatedResolvingStrategy(federating_executor.FederatingStrategy):
     return await executor_utils.compute_intrinsic_federated_weighted_mean(
         self._executor,
         arg,
-        local_computation_factory=self._local_computation_factory)
+        local_computation_factory=self._local_computation_factory,
+    )
 
   @tracing.trace
   async def compute_federated_zip_at_clients(

@@ -74,15 +74,20 @@ class KerasModelWrapper:
   def weights(self):
     return ModelWeights(
         trainable=self.keras_model.trainable_variables,
-        non_trainable=self.keras_model.non_trainable_variables)
+        non_trainable=self.keras_model.non_trainable_variables,
+    )
 
   def from_weights(self, model_weights):
-    tf.nest.map_structure(lambda v, t: v.assign(t),
-                          self.keras_model.trainable_variables,
-                          list(model_weights.trainable))
-    tf.nest.map_structure(lambda v, t: v.assign(t),
-                          self.keras_model.non_trainable_variables,
-                          list(model_weights.non_trainable))
+    tf.nest.map_structure(
+        lambda v, t: v.assign(t),
+        self.keras_model.trainable_variables,
+        list(model_weights.trainable),
+    )
+    tf.nest.map_structure(
+        lambda v, t: v.assign(t),
+        self.keras_model.non_trainable_variables,
+        list(model_weights.non_trainable),
+    )
 
 
 def keras_evaluate(model, test_data, metric):
@@ -103,6 +108,7 @@ class ClientState:
   -   `iters_count`: The number of total iterations a client has computed in
       the total rounds so far.
   """
+
   client_index = attr.ib()
   iters_count = attr.ib()
 
@@ -121,6 +127,7 @@ class ClientOutput:
        results of training on the input dataset.
   -   `client_state`: The updated `ClientState`.
   """
+
   weights_delta = attr.ib()
   client_weight = attr.ib()
   model_output = attr.ib()
@@ -137,6 +144,7 @@ class ServerState:
   -   'round_num': Current round index
   -   `total_iters_count`: The total number of iterations run on seen clients
   """
+
   model_weights = attr.ib()
   optimizer_state = attr.ib()
   round_num = attr.ib()
@@ -154,13 +162,15 @@ class BroadcastMessage:
        clients. It is not explicitly used, but can be applied to enable
        learning rate scheduling.
   """
+
   model_weights = attr.ib()
   round_num = attr.ib()
 
 
 @tf.function
-def server_update(model, server_optimizer, server_state, weights_delta,
-                  total_iters_count):
+def server_update(
+    model, server_optimizer, server_state, weights_delta, total_iters_count
+):
   """Updates `server_state` based on `weights_delta`.
 
   Args:
@@ -177,15 +187,20 @@ def server_update(model, server_optimizer, server_state, weights_delta,
   """
   # Initialize the model with the current state.
   model_weights = get_model_weights(model)
-  tf.nest.map_structure(lambda v, t: v.assign(t), model_weights,
-                        server_state.model_weights)
-  tf.nest.map_structure(lambda v, t: v.assign(t), server_optimizer.variables(),
-                        server_state.optimizer_state)
+  tf.nest.map_structure(
+      lambda v, t: v.assign(t), model_weights, server_state.model_weights
+  )
+  tf.nest.map_structure(
+      lambda v, t: v.assign(t),
+      server_optimizer.variables(),
+      server_state.optimizer_state,
+  )
 
   # Apply the update to the model.
   neg_weights_delta = [-1.0 * x for x in weights_delta]
   server_optimizer.apply_gradients(
-      zip(neg_weights_delta, model_weights.trainable), name='server_update')
+      zip(neg_weights_delta, model_weights.trainable), name='server_update'
+  )
 
   # Create a new state based on the updated model.
   return tff.structure.update_struct(
@@ -193,7 +208,8 @@ def server_update(model, server_optimizer, server_state, weights_delta,
       model_weights=model_weights,
       optimizer_state=server_optimizer.variables(),
       round_num=server_state.round_num + 1,
-      total_iters_count=total_iters_count)
+      total_iters_count=total_iters_count,
+  )
 
 
 @tf.function
@@ -211,13 +227,14 @@ def build_server_broadcast_message(server_state):
     A `BroadcastMessage`.
   """
   return BroadcastMessage(
-      model_weights=server_state.model_weights,
-      round_num=server_state.round_num)
+      model_weights=server_state.model_weights, round_num=server_state.round_num
+  )
 
 
 @tf.function
-def client_update(model, dataset, client_state, server_message,
-                  client_optimizer):
+def client_update(
+    model, dataset, client_state, server_message, client_optimizer
+):
   """Performans client local training of `model` on `dataset`.
 
   Args:
@@ -232,8 +249,9 @@ def client_update(model, dataset, client_state, server_message,
   """
   model_weights = get_model_weights(model)
   initial_weights = server_message.model_weights
-  tf.nest.map_structure(lambda v, t: v.assign(t), model_weights,
-                        initial_weights)
+  tf.nest.map_structure(
+      lambda v, t: v.assign(t), model_weights, initial_weights
+  )
 
   num_examples = tf.constant(0, dtype=tf.int32)
   loss_sum = tf.constant(0, dtype=tf.float32)
@@ -243,17 +261,21 @@ def client_update(model, dataset, client_state, server_message,
       outputs = model.forward_pass(batch)
     grads = tape.gradient(outputs.loss, model_weights.trainable)
     client_optimizer.apply_gradients(zip(grads, model_weights.trainable))
-    batch_size = (tf.shape(batch['x'])[0])
+    batch_size = tf.shape(batch['x'])[0]
     num_examples += batch_size
     loss_sum += outputs.loss * tf.cast(batch_size, tf.float32)
     iters_count += 1
 
-  weights_delta = tf.nest.map_structure(lambda a, b: a - b,
-                                        model_weights.trainable,
-                                        initial_weights.trainable)
+  weights_delta = tf.nest.map_structure(
+      lambda a, b: a - b, model_weights.trainable, initial_weights.trainable
+  )
 
   client_weight = tf.cast(num_examples, tf.float32)
   return ClientOutput(
-      weights_delta, client_weight, loss_sum / client_weight,
+      weights_delta,
+      client_weight,
+      loss_sum / client_weight,
       ClientState(
-          client_index=client_state.client_index, iters_count=iters_count))
+          client_index=client_state.client_index, iters_count=iters_count
+      ),
+  )

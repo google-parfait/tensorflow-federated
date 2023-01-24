@@ -38,7 +38,6 @@ class OrderedTasksTest(absltest.TestCase):
     self.assertEqual(nums, [0])
 
   def test_runs_awaitable_in_separate_task_while_in_context(self):
-
     async def run():
       event = asyncio.Event()
 
@@ -103,14 +102,12 @@ class SharedAwaitableTest(absltest.TestCase):
     return 5
 
   def test_await_once_returns_result(self):
-
     async def x():
       self.assertEqual(await async_utils.SharedAwaitable(self.async_five()), 5)
 
     asyncio.run(x())
 
   def test_await_several_times_returns_result(self):
-
     async def x():
       async_result = async_utils.SharedAwaitable(self.async_five())
       self.assertEqual(await async_result, 5)
@@ -124,7 +121,6 @@ class SharedAwaitableTest(absltest.TestCase):
     raise ValueError('error')
 
   def test_reraises_exception_on_await(self):
-
     async def x():
       async_raiser = async_utils.SharedAwaitable(self.async_raise_value_error())
       with self.assertRaises(ValueError):

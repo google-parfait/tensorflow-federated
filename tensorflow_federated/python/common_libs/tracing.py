@@ -42,16 +42,17 @@ from absl import logging
 from tensorflow_federated.python.common_libs import py_typecheck
 
 
-class TracedSpan():
+class TracedSpan:
   """The trace was wrapping a non-function span.
 
   This value will be given back from `TracingProvider::span`'s first `yield`
   if the trace was being used to wrap a `span` rather than a whole function.
   """
+
   pass
 
 
-class TracedFunctionReturned():
+class TracedFunctionReturned:
   """The traced function returned successfully.
 
   This value will be given back from `TracingProvider::span`'s first `yield`
@@ -63,7 +64,7 @@ class TracedFunctionReturned():
     self.value = value
 
 
-class TracedFunctionThrew():
+class TracedFunctionThrew:
   """The traced function threw an exception.
 
   This value will be given back from `TracingProvider::span`'s first `yield`
@@ -157,9 +158,13 @@ class LoggingTracingProvider(TracingProvider):
     start_time = time.time()
     logging.debug('(%s) Entering %s.%s', nonce, scope, sub_scope)
     yield None
-    logging.debug('(%s) Exiting %s.%s. Elapsed time %f', nonce, scope,
-                  sub_scope,
-                  time.time() - start_time)
+    logging.debug(
+        '(%s) Exiting %s.%s. Elapsed time %f',
+        nonce,
+        scope,
+        sub_scope,
+        time.time() - start_time,
+    )
 
 
 _global_tracing_providers = [LoggingTracingProvider()]
@@ -194,7 +199,8 @@ def trace(fn=None, **trace_kwargs):
     async def async_trace(*fn_args, **fn_kwargs):
       # Produce the span generator
       span_gen = _span_generator(
-          scope, sub_scope, trace_kwargs, fn_args=fn_args, fn_kwargs=fn_kwargs)
+          scope, sub_scope, trace_kwargs, fn_args=fn_args, fn_kwargs=fn_kwargs
+      )
       # Run up until the first yield
       next(span_gen)
       completed = False
@@ -213,7 +219,8 @@ def trace(fn=None, **trace_kwargs):
           error_type, error_value, traceback = sys.exc_info()
           try:
             span_gen.send(
-                TracedFunctionThrew(error_type, error_value, traceback))
+                TracedFunctionThrew(error_type, error_value, traceback)
+            )
           except StopIteration:
             pass
         raise
@@ -224,7 +231,8 @@ def trace(fn=None, **trace_kwargs):
     @functools.wraps(fn)
     def sync_trace(*fn_args, **fn_kwargs):
       span_gen = _span_generator(
-          scope, sub_scope, trace_kwargs, fn_args=fn_args, fn_kwargs=fn_kwargs)
+          scope, sub_scope, trace_kwargs, fn_args=fn_args, fn_kwargs=fn_kwargs
+      )
       next(span_gen)
       completed = False
       try:
@@ -240,7 +248,8 @@ def trace(fn=None, **trace_kwargs):
           error_type, error_value, traceback = sys.exc_info()
           try:
             span_gen.send(
-                TracedFunctionThrew(error_type, error_value, traceback))
+                TracedFunctionThrew(error_type, error_value, traceback)
+            )
           except StopIteration:
             pass
         raise
@@ -345,11 +354,9 @@ def span(scope, sub_scope, **trace_opts):
     pass
 
 
-def _span_generator(scope,
-                    sub_scope,
-                    trace_opts,
-                    fn_args=None,
-                    fn_kwargs=None) -> Generator[None, TraceResult, None]:
+def _span_generator(
+    scope, sub_scope, trace_opts, fn_args=None, fn_kwargs=None
+) -> Generator[None, TraceResult, None]:
   """Wraps up all the `TracingProvider.span` generators into one."""
   # Create a nonce so that all of the traces from this span can be associated
   # with one another.
@@ -357,10 +364,18 @@ def _span_generator(scope,
   # Call `span` on all the global `TraceProvider`s and run it up until `yield`.
   span_generators = []
   new_span_yields: SpanYields = []
-  for tp, parent_span_yield in zip(_global_tracing_providers,
-                                   _current_span_yields()):
-    new_span_gen = tp.span(scope, sub_scope, nonce, parent_span_yield, fn_args,
-                           fn_kwargs, trace_opts)
+  for tp, parent_span_yield in zip(
+      _global_tracing_providers, _current_span_yields()
+  ):
+    new_span_gen = tp.span(
+        scope,
+        sub_scope,
+        nonce,
+        parent_span_yield,
+        fn_args,
+        fn_kwargs,
+        trace_opts,
+    )
     new_span_yield = next(new_span_gen)
     span_generators.append(new_span_gen)
     new_span_yields.append(new_span_yield)
@@ -400,8 +415,9 @@ def wrap_coroutine_in_current_trace_context(coro):
 def wrap_rpc_in_trace_context():
   """Attempts to record the trace context into the enclosed RPC call."""
   with contextlib.ExitStack() as stack:
-    for tp, parent_span_yield in zip(_global_tracing_providers,
-                                     _current_span_yields()):
+    for tp, parent_span_yield in zip(
+        _global_tracing_providers, _current_span_yields()
+    ):
       stack.enter_context(tp.wrap_rpc(parent_span_yield))
     yield None
 

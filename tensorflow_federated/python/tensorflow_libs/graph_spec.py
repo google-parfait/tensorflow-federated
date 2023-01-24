@@ -23,9 +23,10 @@ def _check_names_are_strings(instance, attribute, value):
   del instance  # Unused.
   for name in value:
     if not isinstance(name, str):
-      raise TypeError('Each entry in {} must be of string type; '
-                      'encountered an element of type {}'.format(
-                          attribute, type(name)))
+      raise TypeError(
+          'Each entry in {} must be of string type; '
+          'encountered an element of type {}'.format(attribute, type(name))
+      )
 
 
 @attr.s(frozen=True, eq=False)
@@ -45,10 +46,13 @@ class GraphSpec:
     out_names: An iterable of string names of the output tensors in `graph_def`,
       subject to the same restrictions as `in_names`.
   """
+
   graph_def: tf.compat.v1.GraphDef = attr.ib(
-      validator=attr.validators.instance_of(tf.compat.v1.GraphDef))
+      validator=attr.validators.instance_of(tf.compat.v1.GraphDef)
+  )
   init_op: Optional[str] = attr.ib(
-      validator=attr.validators.instance_of((str, type(None))))
+      validator=attr.validators.instance_of((str, type(None)))
+  )
   in_names: Sequence[str] = attr.ib(validator=_check_names_are_strings)
   out_names: Sequence[str] = attr.ib(validator=_check_names_are_strings)
 
@@ -72,7 +76,8 @@ class GraphSpec:
 
     def _get_tensor_spec(name):
       return tf.TensorSpec.from_tensor(
-          graph_for_tensor_specs.get_tensor_by_name(name))
+          graph_for_tensor_specs.get_tensor_by_name(name)
+      )
 
     in_names_to_tensor_specs = {
         name: _get_tensor_spec(name) for name in self.in_names
@@ -87,21 +92,26 @@ class GraphSpec:
 
     if self.init_op is not None:
       meta_graph_def.collection_def[
-          tf.compat.v1.GraphKeys.INIT_OP].node_list.value.append(self.init_op)
+          tf.compat.v1.GraphKeys.INIT_OP
+      ].node_list.value.append(self.init_op)
 
     signature_def = meta_graph_def.signature_def['FunctionSpec']
     for index, input_name in enumerate(self.in_names):
       input_tensor_info = signature_def.inputs['arg_{}'.format(index)]
       input_tensor_info.name = input_name
       input_tensor_info.dtype = in_names_to_tensor_specs[
-          input_name].dtype.as_datatype_enum
+          input_name
+      ].dtype.as_datatype_enum
       input_tensor_info.tensor_shape.CopyFrom(
-          in_names_to_tensor_specs[input_name].shape.as_proto())
+          in_names_to_tensor_specs[input_name].shape.as_proto()
+      )
     for index, output_name in enumerate(self.out_names):
       output_tensor_info = signature_def.outputs['output_{}'.format(index)]
       output_tensor_info.name = output_name
       output_tensor_info.dtype = out_names_to_tensor_specs[
-          output_name].dtype.as_datatype_enum
+          output_name
+      ].dtype.as_datatype_enum
       output_tensor_info.tensor_shape.CopyFrom(
-          out_names_to_tensor_specs[output_name].shape.as_proto())
+          out_names_to_tensor_specs[output_name].shape.as_proto()
+      )
     return meta_graph_def

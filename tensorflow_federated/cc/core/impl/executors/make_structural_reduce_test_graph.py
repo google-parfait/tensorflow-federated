@@ -33,27 +33,26 @@ def make_graph():
     # Create a placeholder with a fixed name to allow the code running the graph
     # to provide input.
     serialized_dataset_input = tf.compat.v1.placeholder(
-        name=DATASET_INPUT_TENSOR_NAME, dtype=tf.string)
+        name=DATASET_INPUT_TENSOR_NAME, dtype=tf.string
+    )
     variant_dataset = tf.raw_ops.DatasetFromGraph(
-        graph_def=serialized_dataset_input)
+        graph_def=serialized_dataset_input
+    )
     int_spec = tf.TensorSpec(shape=(), dtype=tf.int64)
     # Structure the inputs using dictionaries and lists to check that layout
     # of structural inputs works properly.
-    dataset = tf.data.experimental.from_variant(variant_dataset, {
-        'a': int_spec,
-        'nested': (int_spec, int_spec)
-    })
+    dataset = tf.data.experimental.from_variant(
+        variant_dataset, {'a': int_spec, 'nested': (int_spec, int_spec)}
+    )
     zero = tf.convert_to_tensor(0, tf.int64)
 
     def sum_structure(first, second):
       return tf.nest.map_structure(operator.add, first, second)
 
     result = dataset.reduce(
-        initial_state={
-            'a': zero,
-            'nested': (zero, zero)
-        },
-        reduce_func=sum_structure)
+        initial_state={'a': zero, 'nested': (zero, zero)},
+        reduce_func=sum_structure,
+    )
     # Create tensors with fixed names to allow the code running the graph to
     # receive output.
     tf.identity(result['a'], name=OUTPUT_TENSOR_NAMES[0])

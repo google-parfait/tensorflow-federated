@@ -30,7 +30,8 @@ class DatabaseFormatError(Exception):
 
 REQUIRED_TABLES = frozenset(["examples", "client_metadata"])
 REQUIRED_EXAMPLES_COLUMNS = frozenset(
-    ["split_name", "client_id", "serialized_example_proto"])
+    ["split_name", "client_id", "serialized_example_proto"]
+)
 
 
 def _check_database_format(database_filepath: str):
@@ -51,7 +52,8 @@ def _check_database_format(database_filepath: str):
   if missing_tables:
     raise DatabaseFormatError(
         f"Database at [{database_filepath}] does not have the required "
-        f"{missing_tables} tables.")
+        f"{missing_tables} tables."
+    )
   column_names = set()
   for r in connection.execute("PRAGMA table_info(examples);"):
     column_names.add(r[1])
@@ -60,11 +62,13 @@ def _check_database_format(database_filepath: str):
     raise DatabaseFormatError(
         "Database table `examples` must contain columns "
         f"{REQUIRED_EXAMPLES_COLUMNS}, "
-        f"but is missing columns {missing_required_columns}.")
+        f"but is missing columns {missing_required_columns}."
+    )
 
 
-def _fetch_client_ids(database_filepath: str,
-                      split_name: Optional[str] = None) -> Iterator[str]:
+def _fetch_client_ids(
+    database_filepath: str, split_name: Optional[str] = None
+) -> Iterator[str]:
   """Fetches the list of client_ids.
 
   Args:
@@ -124,9 +128,11 @@ class SqlClientData(client_data.ClientData):
     self._filepath = database_filepath
     self._split_name = split_name
     self._client_ids = sorted(
-        list(_fetch_client_ids(database_filepath, split_name)))
-    logging.info("Loaded %d client ids from SQL database.",
-                 len(self._client_ids))
+        list(_fetch_client_ids(database_filepath, split_name))
+    )
+    logging.info(
+        "Loaded %d client ids from SQL database.", len(self._client_ids)
+    )
     # SQLite returns a single column of bytes which are serialized protocol
     # buffer messages.
     self._element_type_structure = tf.TensorSpec(dtype=tf.string, shape=())
@@ -135,7 +141,8 @@ class SqlClientData(client_data.ClientData):
     """Creates a `tf.data.Dataset` for a client in a TF-serializable manner."""
     query_parts = [
         "SELECT serialized_example_proto FROM examples WHERE client_id = '",
-        client_id, "'"
+        client_id,
+        "'",
     ]
     if self._split_name is not None:
       query_parts.extend([" and split_name ='", self._split_name, "'"])
@@ -143,7 +150,8 @@ class SqlClientData(client_data.ClientData):
         driver_name="sqlite",
         data_source_name=self._filepath,
         query=tf.strings.join(query_parts),
-        output_types=(tf.string))
+        output_types=(tf.string),
+    )
 
   @property
   def serializable_dataset_fn(self):
@@ -169,8 +177,8 @@ class SqlClientData(client_data.ClientData):
     if client_id not in self.client_ids:
       raise ValueError(
           "ID [{i}] is not a client in this ClientData. See "
-          "property `client_ids` for the list of valid ids.".format(
-              i=client_id))
+          "property `client_ids` for the list of valid ids.".format(i=client_id)
+      )
     return self._create_dataset(client_id)
 
   @property

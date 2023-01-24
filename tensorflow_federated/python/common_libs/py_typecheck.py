@@ -37,9 +37,13 @@ def check_type(target, type_spec, label=None):
     TypeError: when the target is not of one of the types in `type_spec`.
   """
   if not isinstance(target, type_spec):
-    raise TypeError('Expected {}{}, found {}.'.format(
-        '{} to be of type '.format(label) if label is not None else '',
-        type_string(type_spec), type_string(type(target))))
+    raise TypeError(
+        'Expected {}{}, found {}.'.format(
+            '{} to be of type '.format(label) if label is not None else '',
+            type_string(type_spec),
+            type_string(type(target)),
+        )
+    )
   return target
 
 
@@ -55,9 +59,12 @@ def check_none(target, label=None):
     TypeError: when the target is not `None`.
   """
   if target is not None:
-    raise TypeError('Expected {} to be `None`, found {}.'.format(
-        label if label is not None else 'the argument',
-        type_string(type(target))))
+    raise TypeError(
+        'Expected {} to be `None`, found {}.'.format(
+            label if label is not None else 'the argument',
+            type_string(type(target)),
+        )
+    )
 
 
 def check_not_none(target, label=None):
@@ -72,8 +79,11 @@ def check_not_none(target, label=None):
     TypeError: when the target is `None`.
   """
   if target is None:
-    raise TypeError('Expected {} to not be `None`.'.format(
-        label if label is not None else 'the argument'))
+    raise TypeError(
+        'Expected {} to not be `None`.'.format(
+            label if label is not None else 'the argument'
+        )
+    )
 
 
 def check_subclass(target_class, parent_class):
@@ -90,17 +100,23 @@ def check_subclass(target_class, parent_class):
     TypeError if the `target_class` doesn't subclass a class in `parent_class`.
   """
   if not issubclass(target_class, parent_class):
-    raise TypeError('Expected {} to subclass {}, but it does not.'.format(
-        target_class, parent_class))
+    raise TypeError(
+        'Expected {} to subclass {}, but it does not.'.format(
+            target_class, parent_class
+        )
+    )
   return target_class
 
 
 def check_callable(target, label=None):
   """Checks target is callable and then returns it."""
   if not callable(target):
-    raise TypeError('Expected {} callable, found non-callable {}.'.format(
-        '{} to be'.format(label) if label is not None else 'a',
-        type_string(type(target))))
+    raise TypeError(
+        'Expected {} callable, found non-callable {}.'.format(
+            '{} to be'.format(label) if label is not None else 'a',
+            type_string(type(target)),
+        )
+    )
   return target
 
 
@@ -141,9 +157,11 @@ def is_attrs(value):
 def check_attrs(value):
   """Checks that `value` is an attrs decorated class or an instance thereof."""
   if not is_attrs(value):
-    raise TypeError('Expected an instance of an attrs decorated class, or an '
-                    'attrs-decorated class type; found a value of type '
-                    f'{type(value)}')
+    raise TypeError(
+        'Expected an instance of an attrs decorated class, or an '
+        'attrs-decorated class type; found a value of type '
+        f'{type(value)}'
+    )
 
 
 def is_dataclass(value):
@@ -154,8 +172,10 @@ def is_dataclass(value):
 def check_dataclass(value):
   """Checks that `value` is a Python dataclass or an instance thereof."""
   if not is_dataclass(value):
-    raise TypeError('Expected an instance of a Python dataclass, or a '
-                    f'dataclass type; found a value of type {type(value)}')
+    raise TypeError(
+        'Expected an instance of a Python dataclass, or a '
+        f'dataclass type; found a value of type {type(value)}'
+    )
 
 
 def is_named_tuple(value):
@@ -197,8 +217,9 @@ def is_name_value_pair(element, name_required=True, value_type=None):
   """
   if not isinstance(element, collections.abc.Sequence) or len(element) != 2:
     return False
-  if ((name_required or element[0] is not None) and
-      not isinstance(element[0], str)):
+  if (name_required or element[0] is not None) and not isinstance(
+      element[0], str
+  ):
     return False
   if value_type is not None and not isinstance(element[1], value_type):
     return False
@@ -218,7 +239,9 @@ def check_len(target, length):
   if len(target) != length:
     raise ValueError(
         'Expected an argument of length {}, got one of length {} ({}).'.format(
-            length, len(target), target))
+            length, len(target), target
+        )
+    )
 
 
 def check_non_negative_float(target, label=None):
@@ -235,5 +258,7 @@ def check_non_negative_float(target, label=None):
   """
   check_type(target, float)
   if target < 0.0:
-    raise ValueError(f'Provided {label if label else "target"} must be '
-                     f'non-negative, found {target}')
+    raise ValueError(
+        f'Provided {label if label else "target"} must be '
+        f'non-negative, found {target}'
+    )

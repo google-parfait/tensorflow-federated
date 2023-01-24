@@ -23,12 +23,15 @@ from typing import Optional
 
 from absl import flags
 
-_GOLDEN = flags.DEFINE_multi_string('golden', [],
-                                    'List of golden files available.')
-_UPDATE_GOLDENS = flags.DEFINE_bool('update_goldens', False,
-                                    'Set true to update golden files.')
-_VERBOSE = flags.DEFINE_bool('verbose', False,
-                             'Set true to show golden diff output.')
+_GOLDEN = flags.DEFINE_multi_string(
+    'golden', [], 'List of golden files available.'
+)
+_UPDATE_GOLDENS = flags.DEFINE_bool(
+    'update_goldens', False, 'Set true to update golden files.'
+)
+_VERBOSE = flags.DEFINE_bool(
+    'verbose', False, 'Set true to show golden diff output.'
+)
 
 FLAGS = flags.FLAGS
 
@@ -54,7 +57,8 @@ def _filename_to_golden_path(filename: str) -> str:
             f'Multiple golden files provided for filename {name}:\n'
             f'{old_path} and\n'
             f'{golden_path}\n'
-            'Golden file names in the same test target must be unique.')
+            'Golden file names in the same test target must be unique.'
+        )
       _filename_to_golden_map[name] = golden_path
   if filename not in _filename_to_golden_map:
     raise RuntimeError(f'No `--golden` files found with filename {filename}')
@@ -76,10 +80,12 @@ def check_string(filename: str, value: str):
     golden_contents = f.read()
   if value == golden_contents:
     return
-  message = (f'The contents of golden file {filename} '
-             'no longer match the current value.\n'
-             'To update the golden file, rerun this target with:\n'
-             '`--test_arg=--update_goldens --test_strategy=local`\n')
+  message = (
+      f'The contents of golden file {filename} '
+      'no longer match the current value.\n'
+      'To update the golden file, rerun this target with:\n'
+      '`--test_arg=--update_goldens --test_strategy=local`\n'
+  )
   if _VERBOSE.value:
     message += 'Full diff:\n'
     split_value = value.split('\n')
@@ -98,26 +104,28 @@ def traceback_string(exc_type, exc_value, tb) -> str:
   exception_string = exception_string_io.getvalue()
   # Strip path to TFF to normalize error messages
   # First in filepaths.
-  without_filepath = re.sub(r'\/\S*\/tensorflow_federated\/', '',
-                            exception_string)
+  without_filepath = re.sub(
+      r'\/\S*\/tensorflow_federated\/', '', exception_string
+  )
   # Then also in class paths.
-  without_classpath = re.sub(r'(\S*\.)+?(?=tensorflow_federated)', '',
-                             without_filepath)
+  without_classpath = re.sub(
+      r'(\S*\.)+?(?=tensorflow_federated)', '', without_filepath
+  )
   # Strip line numbers to avoid churn
   without_linenumber = re.sub(r', line \d*', '', without_classpath)
   return without_linenumber
 
 
 def check_raises_traceback(
-    filename: str,
-    exception: Exception) -> contextlib.AbstractContextManager[None]:
+    filename: str, exception: Exception
+) -> contextlib.AbstractContextManager[None]:
   """Check for `exception` to be raised, generating a golden traceback."""
   # Note: does not use `@contextlib.contextmanager` because that adds
   # this function to the traceback.
   return _TracebackManager(filename, exception)
 
 
-class _TracebackManager():
+class _TracebackManager:
   """Context manager for collecting tracebacks and comparing them to goldens."""
 
   def __init__(self, filename, exception):

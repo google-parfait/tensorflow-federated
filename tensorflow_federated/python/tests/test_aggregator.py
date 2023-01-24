@@ -30,19 +30,21 @@ flags.DEFINE_integer(
     10000,
     lower_bound=1024,
     upper_bound=65535,
-    help='The port to listen on.')
+    help='The port to listen on.',
+)
 flags.DEFINE_integer(
     'aggregator_port',
     10001,
     lower_bound=1024,
     upper_bound=65535,
-    help='The port to listen on.')
+    help='The port to listen on.',
+)
 
 GRPC_MAX_MESSAGE_LENGTH_BYTES = 2 * 1000 * 1000 * 1000
 GRPC_CHANNEL_OPTIONS = [
     ('grpc.max_message_length', GRPC_MAX_MESSAGE_LENGTH_BYTES),
     ('grpc.max_receive_message_length', GRPC_MAX_MESSAGE_LENGTH_BYTES),
-    ('grpc.max_send_message_length', GRPC_MAX_MESSAGE_LENGTH_BYTES)
+    ('grpc.max_send_message_length', GRPC_MAX_MESSAGE_LENGTH_BYTES),
 ]
 
 
@@ -65,19 +67,23 @@ async def run_aggregator():
   # Catch SIGINT, which the test framework will raise.
   shutdown_event = asyncio.Event()
   event_loop.add_signal_handler(
-      signal.SIGINT, functools.partial(handler, shutdown_event=shutdown_event))
+      signal.SIGINT, functools.partial(handler, shutdown_event=shutdown_event)
+  )
 
   server_endpoint = f'[::]:{FLAGS.worker_port}'
   insecure_channel = grpc.insecure_channel(
-      server_endpoint, options=GRPC_CHANNEL_OPTIONS)
+      server_endpoint, options=GRPC_CHANNEL_OPTIONS
+  )
   ex_context = tff.backends.native.create_remote_python_execution_context(
-      channels=[insecure_channel])
+      channels=[insecure_channel]
+  )
 
   with tff.simulation.server_context(
       ex_context.executor_factory,
       num_threads=1,
       port=FLAGS.aggregator_port,
-      options=GRPC_CHANNEL_OPTIONS):
+      options=GRPC_CHANNEL_OPTIONS,
+  ):
     await wait(shutdown_event)
   logging.info('Exiting process')
 

@@ -80,7 +80,8 @@ def main(argv: Sequence[str]) -> None:
   # the approprate abstract interfaces.
 
   # Create a context in which to execute the program logic.
-  context = tff.google.backends.native.create_local_async_cpp_execution_context(
+  context = (
+      tff.google.backends.native.create_local_async_cpp_execution_context()
   )
   context = tff.program.NativeFederatedContext(context)
   tff.framework.set_default_context(context)
@@ -124,10 +125,12 @@ def main(argv: Sequence[str]) -> None:
   # required, it may be ok to release all the metrics.
   train_metrics_manager = tff.program.FilteringReleaseManager(
       tff.program.GroupingReleaseManager(train_metrics_managers),
-      _filter_metrics)
+      _filter_metrics,
+  )
   evaluation_metrics_manager = tff.program.FilteringReleaseManager(
       tff.program.GroupingReleaseManager(evaluation_metrics_managers),
-      _filter_metrics)
+      _filter_metrics,
+  )
 
   # Create a program state manager with access to platform storage.
   program_state_manager = None
@@ -135,7 +138,8 @@ def main(argv: Sequence[str]) -> None:
   if _OUTPUT_DIR.value is not None:
     program_state_dir = os.path.join(_OUTPUT_DIR.value, 'program_state')
     program_state_manager = tff.program.FileProgramStateManager(
-        program_state_dir)
+        program_state_dir
+    )
 
   # Execute the program logic; the program logic is abstracted into a separate
   # function to illustrate the boundary between the program and the program
@@ -153,7 +157,9 @@ def main(argv: Sequence[str]) -> None:
           train_metrics_manager=train_metrics_manager,
           evaluation_metrics_manager=evaluation_metrics_manager,
           model_output_manager=model_output_manager,
-          program_state_manager=program_state_manager))
+          program_state_manager=program_state_manager,
+      )
+  )
 
 
 if __name__ == '__main__':

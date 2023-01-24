@@ -42,8 +42,11 @@ def merge_cardinalities(existing, to_add):
     if key not in cardinalities:
       cardinalities[key] = val
     elif cardinalities[key] != val:
-      raise ValueError('Conflicting cardinalities for {}: {} vs {}'.format(
-          key, val, cardinalities[key]))
+      raise ValueError(
+          'Conflicting cardinalities for {}: {} vs {}'.format(
+              key, val, cardinalities[key]
+          )
+      )
   return cardinalities
 
 
@@ -52,15 +55,17 @@ class InvalidNonAllEqualValueError(TypeError):
   def __init__(self, value, type_spec):
     message = (
         f'Expected non-all-equal value with placement {type_spec.placement} '
-        f'to be a `list` or `tuple`, found a value of Python type '
-        f'{type(value)}:\n{value}')
+        'to be a `list` or `tuple`, found a value of Python type '
+        f'{type(value)}:\n{value}'
+    )
     super().__init__(message)
 
 
 # We define this type here to avoid having to redeclare it wherever we
 # parameterize by a cardinality inference fn.
-CardinalityInferenceFnType = Callable[[Any, computation_types.Type],
-                                      Mapping[placements.PlacementLiteral, int]]
+CardinalityInferenceFnType = Callable[
+    [Any, computation_types.Type], Mapping[placements.PlacementLiteral, int]
+]
 
 
 def infer_cardinalities(value, type_spec):
@@ -101,8 +106,8 @@ def infer_cardinalities(value, type_spec):
     cardinality_dict = {}
     for idx, (_, elem_type) in enumerate(structure.to_elements(type_spec)):
       cardinality_dict = merge_cardinalities(
-          cardinality_dict, infer_cardinalities(structure_value[idx],
-                                                elem_type))
+          cardinality_dict, infer_cardinalities(structure_value[idx], elem_type)
+      )
     return cardinality_dict
   else:
     return {}

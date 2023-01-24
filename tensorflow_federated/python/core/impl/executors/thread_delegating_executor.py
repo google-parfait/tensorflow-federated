@@ -31,8 +31,11 @@ def _delegate_with_trace_ctx(coro, async_runner):
 class ThreadDelegatingExecutorValue(evb.ExecutorValue):
   """An ExecutorValue which delegates `compute` to an external event loop."""
 
-  def __init__(self, value: evb.ExecutorValue,
-               async_runner: async_utils.AsyncThreadRunner):
+  def __init__(
+      self,
+      value: evb.ExecutorValue,
+      async_runner: async_utils.AsyncThreadRunner,
+  ):
     self._value = value
     self._async_runner = async_runner
 
@@ -45,8 +48,9 @@ class ThreadDelegatingExecutorValue(evb.ExecutorValue):
     return self.reference.type_signature
 
   async def compute(self):
-    return await _delegate_with_trace_ctx(self._value.compute(),
-                                          self._async_runner)
+    return await _delegate_with_trace_ctx(
+        self._value.compute(), self._async_runner
+    )
 
 
 class ThreadDelegatingExecutor(eb.Executor):
@@ -85,13 +89,13 @@ class ThreadDelegatingExecutor(eb.Executor):
   @tracing.trace
   async def create_value(self, value, type_spec=None) -> evb.ExecutorValue:
     return await self._delegate(
-        self._target_executor.create_value(value, type_spec))
+        self._target_executor.create_value(value, type_spec)
+    )
 
   @tracing.trace
   async def create_call(
-      self,
-      comp: evb.ExecutorValue,
-      arg: Optional[evb.ExecutorValue] = None) -> evb.ExecutorValue:
+      self, comp: evb.ExecutorValue, arg: Optional[evb.ExecutorValue] = None
+  ) -> evb.ExecutorValue:
     comp = comp.reference
     arg = arg.reference if arg else None
     return await self._delegate(self._target_executor.create_call(comp, arg))
@@ -103,10 +107,12 @@ class ThreadDelegatingExecutor(eb.Executor):
     pairs = ((n, v.reference) for (n, v) in elements_iter)
     inner_elements = structure.Struct(pairs)
     return await self._delegate(
-        self._target_executor.create_struct(inner_elements))
+        self._target_executor.create_struct(inner_elements)
+    )
 
   @tracing.trace
   async def create_selection(self, source, index):
     source = source.reference
     return await self._delegate(
-        self._target_executor.create_selection(source, index))
+        self._target_executor.create_selection(source, index)
+    )

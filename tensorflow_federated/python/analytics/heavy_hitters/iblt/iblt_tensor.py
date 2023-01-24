@@ -58,8 +58,14 @@ _CharacterEncoding = chunkers.CharacterEncoding
 class IbltTensorDecoder(iblt_lib.IbltDecoder):
   """Decodes the strings and counts stored in an IBLT data structure."""
 
-  def __init__(self, iblt: tf.Tensor, iblt_values: tf.Tensor,
-               value_shape: Sequence[int], *args, **kwargs):
+  def __init__(
+      self,
+      iblt: tf.Tensor,
+      iblt_values: tf.Tensor,
+      value_shape: Sequence[int],
+      *args,
+      **kwargs,
+  ):
     """Initializes the IBLT Tensor Decoder.
 
     Args:
@@ -76,25 +82,34 @@ class IbltTensorDecoder(iblt_lib.IbltDecoder):
     self.num_values = np.prod(self.value_shape)
 
   @tf.function
-  def _check_if_queue_is_empty(self, iblt: tf.Tensor, iblt_values: tf.Tensor,
-                               out_strings: tf.TensorArray,
-                               out_counts: tf.TensorArray,
-                               out_tensor_values: tf.TensorArray) -> bool:
+  def _check_if_queue_is_empty(
+      self,
+      iblt: tf.Tensor,
+      iblt_values: tf.Tensor,
+      out_strings: tf.TensorArray,
+      out_counts: tf.TensorArray,
+      out_tensor_values: tf.TensorArray,
+  ) -> bool:
     """Checks if `self.q` is empty."""
     del iblt, iblt_values, out_strings, out_counts, out_tensor_values
     return self.q.size() > 0
 
   @tf.function
   def _peel_element_from_iblt(
-      self, iblt: tf.Tensor, iblt_values: tf.Tensor,
-      out_strings: tf.TensorArray, out_counts: tf.TensorArray,
-      out_tensor_values: tf.TensorArray
-  ) -> tuple[tf.Tensor, tf.Tensor, tf.TensorArray, tf.TensorArray,
-             tf.TensorArray]:
+      self,
+      iblt: tf.Tensor,
+      iblt_values: tf.Tensor,
+      out_strings: tf.TensorArray,
+      out_counts: tf.TensorArray,
+      out_tensor_values: tf.TensorArray,
+  ) -> tuple[
+      tf.Tensor, tf.Tensor, tf.TensorArray, tf.TensorArray, tf.TensorArray
+  ]:
     """Peels an element from IBLT and adds new peelable elements to queue."""
     repetition, index = self.q.dequeue()
     iblt, hash_indices, data_string, count = self._decode_and_remove(
-        iblt, repetition, index)
+        iblt, repetition, index
+    )
     tensor_value = self._decode_value(iblt_values, repetition, index)
     iblt_values = self._remove_value(iblt_values, hash_indices, tensor_value)
     if tf.strings.length(data_string) > 0:
@@ -107,13 +122,18 @@ class IbltTensorDecoder(iblt_lib.IbltDecoder):
           self.q.enqueue((r, hash_indices[r]))
     return iblt, iblt_values, out_strings, out_counts, out_tensor_values
 
-  def _decode_value(self, iblt_values: tf.Tensor, repetition: int,
-                    index: int) -> tf.Tensor:
+  def _decode_value(
+      self, iblt_values: tf.Tensor, repetition: int, index: int
+  ) -> tf.Tensor:
     """Returns tensor value at `repetition` and `index`."""
     return tf.reshape(iblt_values[repetition][index], shape=self.value_shape)
 
-  def _remove_value(self, iblt_values: tf.Tensor, hash_indices: tf.Tensor,
-                    tensor_value: tf.Tensor):
+  def _remove_value(
+      self,
+      iblt_values: tf.Tensor,
+      hash_indices: tf.Tensor,
+      tensor_value: tf.Tensor,
+  ):
     """Removes `tensor_value` from `iblt_values`."""
     indices, values = [], []
 
@@ -127,7 +147,8 @@ class IbltTensorDecoder(iblt_lib.IbltDecoder):
 
   @tf.function
   def get_freq_estimates_tf(
-      self) -> tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]:
+      self,
+  ) -> tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]:
     """Decodes key-value pairs from an IBLT.
 
     Returns:
@@ -146,12 +167,17 @@ class IbltTensorDecoder(iblt_lib.IbltDecoder):
       # If the value shapes are empty, just do regular IBLT decoding and return
       # an empty tensor for `out_tensor_values`.
       strings, counts, num_not_decoded = super().get_freq_estimates_tf()
-      return strings, counts, tf.constant([],
-                                          dtype=self._dtype), num_not_decoded
+      return (
+          strings,
+          counts,
+          tf.constant([], dtype=self._dtype),
+          num_not_decoded,
+      )
 
     iblt = tf.math.floormod(
         tf.cast(self.iblt, dtype=self._dtype),
-        tf.constant(self.field_size, dtype=self._dtype))
+        tf.constant(self.field_size, dtype=self._dtype),
+    )
 
     iblt_values = self.iblt_values
 
@@ -162,30 +188,46 @@ class IbltTensorDecoder(iblt_lib.IbltDecoder):
           self.q.enqueue((repetition, index))
 
     out_strings = tf.TensorArray(
-        tf.string, size=0, dynamic_size=True, clear_after_read=False)
+        tf.string, size=0, dynamic_size=True, clear_after_read=False
+    )
     out_counts = tf.TensorArray(
-        self._dtype, size=0, dynamic_size=True, clear_after_read=False)
+        self._dtype, size=0, dynamic_size=True, clear_after_read=False
+    )
     out_tensor_values = tf.TensorArray(
-        iblt_values.dtype, size=0, dynamic_size=True, clear_after_read=False)
+        iblt_values.dtype, size=0, dynamic_size=True, clear_after_read=False
+    )
 
     # While queue is non-empty, pop and subtract from IBLT, add new peelable
     # locations to queue.
-    iblt, iblt_values, out_strings, out_counts, out_tensor_values = tf.while_loop(
-        self._check_if_queue_is_empty,
-        self._peel_element_from_iblt,
-        loop_vars=(iblt, iblt_values, out_strings, out_counts,
-                   out_tensor_values),
-        parallel_iterations=1)
+    iblt, iblt_values, out_strings, out_counts, out_tensor_values = (
+        tf.while_loop(
+            self._check_if_queue_is_empty,
+            self._peel_element_from_iblt,
+            loop_vars=(
+                iblt,
+                iblt_values,
+                out_strings,
+                out_counts,
+                out_tensor_values,
+            ),
+            parallel_iterations=1,
+        )
+    )
 
     # Count of entries that could not be decoded:
     num_not_decoded = tf.reduce_sum(iblt[:, :, self.count]) / self.repetitions
     num_not_decoded = tf.cast(num_not_decoded, dtype=self._dtype)
 
-    return out_strings.stack(), out_counts.stack(), out_tensor_values.stack(
-    ), num_not_decoded
+    return (
+        out_strings.stack(),
+        out_counts.stack(),
+        out_tensor_values.stack(),
+        num_not_decoded,
+    )
 
   def get_freq_estimates(  # pytype: disable=signature-mismatch  # overriding-return-type-checks
-      self) -> tuple[dict[Optional[str], int], dict[Optional[str], np.ndarray]]:
+      self,
+  ) -> tuple[dict[Optional[str], int], dict[Optional[str], np.ndarray]]:
     """Decodes key-value pairs from an IBLT.
 
     Note that this method only works for UTF-8 strings, and when running TF in
@@ -199,7 +241,8 @@ class IbltTensorDecoder(iblt_lib.IbltDecoder):
       raise NotImplementedError("This method only works with Eager execution.")
 
     out_strings, out_counts, out_tensor_values, num_not_decoded = (
-        self.get_freq_estimates_tf())
+        self.get_freq_estimates_tf()
+    )
 
     output_strings = [
         string.decode("utf-8", "ignore")
@@ -231,8 +274,10 @@ class IbltTensorEncoder(iblt_lib.IbltEncoder):
     super().__init__(*args, **kwargs)
     self.value_shape = value_shape or ()
     self.num_values = int(np.prod(self.value_shape))
-    self.iblt_values_shape = (self.repetitions,
-                              self.table_size) + self.value_shape
+    self.iblt_values_shape = (
+        self.repetitions,
+        self.table_size,
+    ) + self.value_shape
 
     # TODO(b/199440652) remove when compute_values is implemented with scatter
     if len(self.value_shape) > 1:
@@ -245,8 +290,12 @@ class IbltTensorEncoder(iblt_lib.IbltEncoder):
     else:
       self._tile_shape = [1, self.repetitions]
 
-  def _compute_values(self, sparse_indices: tf.Tensor, input_values: tf.Tensor,
-                      input_length: int) -> tf.SparseTensor:
+  def _compute_values(
+      self,
+      sparse_indices: tf.Tensor,
+      input_values: tf.Tensor,
+      input_length: int,
+  ) -> tf.SparseTensor:
     """Returns SparseTensor with tensor value for each (string, repetition)."""
 
     # TODO(b/199440652) replace the sparse tensor construction
@@ -257,10 +306,12 @@ class IbltTensorEncoder(iblt_lib.IbltEncoder):
 
     tensor_indices = tf.tile(
         tf.range(self.num_values, dtype=tf.int64),
-        [input_length * self.repetitions])
+        [input_length * self.repetitions],
+    )
     tensor_indices_reshaped = tf.reshape(tensor_indices, shape=[-1, 1])
-    fused_indices = tf.concat([repeated_indices, tensor_indices_reshaped],
-                              axis=-1)
+    fused_indices = tf.concat(
+        [repeated_indices, tensor_indices_reshaped], axis=-1
+    )
 
     repeated_values = tf.tile(input_values, self._tile_shape)
     flattened_values = tf.reshape(repeated_values, [-1])
@@ -268,14 +319,16 @@ class IbltTensorEncoder(iblt_lib.IbltEncoder):
     value = tf.SparseTensor(
         indices=fused_indices,
         values=flattened_values,
-        dense_shape=(input_length,) +
-        (self.repetitions, self.table_size, self.num_values))
+        dense_shape=(input_length,)
+        + (self.repetitions, self.table_size, self.num_values),
+    )
 
     return value
 
   @tf.function
-  def compute_iblt(self, input_strings: tf.Tensor,
-                   input_values: tf.Tensor) -> tuple[tf.Tensor, tf.Tensor]:
+  def compute_iblt(
+      self, input_strings: tf.Tensor, input_values: tf.Tensor
+  ) -> tuple[tf.Tensor, tf.Tensor]:
     """Returns Tensor containing the values of the IBLT data structure.
 
     Args:
@@ -295,8 +348,11 @@ class IbltTensorEncoder(iblt_lib.IbltEncoder):
     tf.debugging.assert_type(input_strings, tf.string)
 
     tf.debugging.assert_equal(
-        tf.shape(input_values), (tf.shape(input_strings)[0],) + self.value_shape
-        if self.value_shape else tf.constant([], dtype=tf.int32))
+        tf.shape(input_values),
+        (tf.shape(input_strings)[0],) + self.value_shape
+        if self.value_shape
+        else tf.constant([], dtype=tf.int32),
+    )
 
     chunks, trimmed_input_strings = self.compute_chunks(input_strings)
     if self.drop_strings_above_max_length:
@@ -308,7 +364,8 @@ class IbltTensorEncoder(iblt_lib.IbltEncoder):
     hash_check = self._compute_hash_check(trimmed_input_strings)
 
     sparse_indices = self.hyperedge_hasher.get_hash_indices_tf(
-        trimmed_input_strings)
+        trimmed_input_strings
+    )
 
     input_length = tf.size(trimmed_input_strings)
     counts = self._compute_counts(sparse_indices, input_length)
@@ -328,8 +385,9 @@ class IbltTensorEncoder(iblt_lib.IbltEncoder):
       # tensor construction and just return an empty tensor.
       iblt_values = tf.constant([], dtype=self._dtype)
     else:
-      sparse_values = self._compute_values(sparse_indices, input_values,
-                                           input_length)
+      sparse_values = self._compute_values(
+          sparse_indices, input_values, input_length
+      )
       iblt_values = tf.sparse.reduce_sum(sparse_values, 0)
       iblt_values = tf.reshape(iblt_values, self.iblt_values_shape)
     return iblt, iblt_values
@@ -392,5 +450,6 @@ def decode_iblt_tensor_tf(
       repetitions=repetitions,
       hash_family=hash_family,
       hash_family_params=hash_family_params,
-      field_size=field_size)
+      field_size=field_size,
+  )
   return iblt_decoder.get_freq_estimates_tf()

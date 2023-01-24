@@ -50,8 +50,11 @@ def CreateDataDescriptor(arg_uris: list[str], arg_type: computation_types.Type):
       for uri in arg_uris
   ]
   return DataDescriptor(
-      None, args, computation_types.FederatedType(arg_type, placements.CLIENTS),
-      len(args))
+      None,
+      args,
+      computation_types.FederatedType(arg_type, placements.CLIENTS),
+      len(args),
+  )
 
 
 class CardinalityFreeDataDescriptor(ingestable_base.Ingestable):
@@ -75,8 +78,12 @@ class CardinalityFreeDataDescriptor(ingestable_base.Ingestable):
   executed on the clients. In this case, the computation can be omitted.
   """
 
-  def __init__(self, comp: Optional[computation_base.Computation], arg: Any,
-               arg_type: computation_types.Type):
+  def __init__(
+      self,
+      comp: Optional[computation_base.Computation],
+      arg: Any,
+      arg_type: computation_types.Type,
+  ):
     """Constructs this data descriptor from the given computation and argument.
 
     Args:
@@ -99,11 +106,14 @@ class CardinalityFreeDataDescriptor(ingestable_base.Ingestable):
     self._arg_type = computation_types.to_type(arg_type)
     if self._comp is not None:
       if not self._comp.type_signature.parameter.is_assignable_from(
-          self._arg_type):
-        raise ValueError('Argument type {} incompatible with the computation '
-                         'parameter {}.'.format(
-                             str(self._arg_type),
-                             str(self._comp.type_signature.parameter)))
+          self._arg_type
+      ):
+        raise ValueError(
+            'Argument type {} incompatible with the computation '
+            'parameter {}.'.format(
+                str(self._arg_type), str(self._comp.type_signature.parameter)
+            )
+        )
       self._type_signature = self._comp.type_signature.result
     else:
       self._type_signature = self._arg_type
@@ -123,15 +133,16 @@ class CardinalityFreeDataDescriptor(ingestable_base.Ingestable):
       arg_coro = executor.create_value(self._arg, expected_arg_type)
     if self._comp is not None:
       comp_val, arg_val = await asyncio.gather(
-          executor.create_value(self._comp, self._comp.type_signature),
-          arg_coro)
+          executor.create_value(self._comp, self._comp.type_signature), arg_coro
+      )
       return await executor.create_call(comp_val, arg_val)
     else:
       return await arg_coro
 
 
-class DataDescriptor(CardinalityFreeDataDescriptor,
-                     cardinality_carrying_base.CardinalityCarrying):
+class DataDescriptor(
+    CardinalityFreeDataDescriptor, cardinality_carrying_base.CardinalityCarrying
+):
   """Represents fully-specified data-yielding computations.
 
   Similar to CardinalityFreeDataDescriptor, but additionally accepts a
@@ -139,11 +150,13 @@ class DataDescriptor(CardinalityFreeDataDescriptor,
   of clients this data descriptor is intended to represent.
   """
 
-  def __init__(self,
-               comp: Optional[computation_base.Computation],
-               arg: Any,
-               arg_type: computation_types.Type,
-               cardinality: Optional[int] = None):
+  def __init__(
+      self,
+      comp: Optional[computation_base.Computation],
+      arg: Any,
+      arg_type: computation_types.Type,
+      cardinality: Optional[int] = None,
+  ):
     """Constructs this data descriptor from the given computation and argument.
 
     Args:

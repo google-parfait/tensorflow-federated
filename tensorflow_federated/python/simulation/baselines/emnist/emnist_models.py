@@ -20,11 +20,14 @@ from typing import Optional
 import tensorflow as tf
 
 
-class _DeterministicInitializer():
+class _DeterministicInitializer:
   """Wrapper to produce different deterministic initialization values."""
 
-  def __init__(self, initializer_type: type[tf.keras.initializers.Initializer],
-               base_seed: int):
+  def __init__(
+      self,
+      initializer_type: type[tf.keras.initializers.Initializer],
+      base_seed: int,
+  ):
     self._initializer_type = initializer_type
     if base_seed is None:
       base_seed = random.randint(1, 1e9)
@@ -36,8 +39,8 @@ class _DeterministicInitializer():
 
 
 def create_conv_dropout_model(
-    only_digits: bool = True,
-    debug_seed: Optional[int] = None) -> tf.keras.Model:
+    only_digits: bool = True, debug_seed: Optional[int] = None
+) -> tf.keras.Model:
   """Create a convolutional network with dropout.
 
   When `only_digits=True`, the summary of returned model is
@@ -82,7 +85,8 @@ def create_conv_dropout_model(
   """
   data_format = 'channels_last'
   glorot_uniform = _DeterministicInitializer(
-      tf.keras.initializers.GlorotUniform, base_seed=debug_seed)
+      tf.keras.initializers.GlorotUniform, base_seed=debug_seed
+  )
   model = tf.keras.models.Sequential([
       tf.keras.layers.Conv2D(
           32,
@@ -90,31 +94,35 @@ def create_conv_dropout_model(
           activation='relu',
           data_format=data_format,
           input_shape=(28, 28, 1),
-          kernel_initializer=glorot_uniform()),
+          kernel_initializer=glorot_uniform(),
+      ),
       tf.keras.layers.Conv2D(
           64,
           kernel_size=(3, 3),
           activation='relu',
           data_format=data_format,
-          kernel_initializer=glorot_uniform()),
+          kernel_initializer=glorot_uniform(),
+      ),
       tf.keras.layers.MaxPool2D(pool_size=(2, 2), data_format=data_format),
       tf.keras.layers.Dropout(0.25),
       tf.keras.layers.Flatten(),
       tf.keras.layers.Dense(
-          128, activation='relu', kernel_initializer=glorot_uniform()),
+          128, activation='relu', kernel_initializer=glorot_uniform()
+      ),
       tf.keras.layers.Dropout(0.5),
       tf.keras.layers.Dense(
           10 if only_digits else 62,
           activation=tf.nn.softmax,
-          kernel_initializer=glorot_uniform()),
+          kernel_initializer=glorot_uniform(),
+      ),
   ])
 
   return model
 
 
 def create_original_fedavg_cnn_model(
-    only_digits: bool = True,
-    debug_seed: Optional[int] = None) -> tf.keras.Model:
+    only_digits: bool = True, debug_seed: Optional[int] = None
+) -> tf.keras.Model:
   """Create a convolutional network without dropout.
 
   This recreates the CNN model used in the original FedAvg paper,
@@ -163,10 +171,12 @@ def create_original_fedavg_cnn_model(
       tf.keras.layers.MaxPooling2D,
       pool_size=(2, 2),
       padding='same',
-      data_format=data_format)
+      data_format=data_format,
+  )
 
   glorot_uniform = _DeterministicInitializer(
-      tf.keras.initializers.GlorotUniform, base_seed=debug_seed)
+      tf.keras.initializers.GlorotUniform, base_seed=debug_seed
+  )
 
   def conv2d(**kwargs):
     return tf.keras.layers.Conv2D(
@@ -175,7 +185,8 @@ def create_original_fedavg_cnn_model(
         data_format=data_format,
         activation=tf.nn.relu,
         kernel_initializer=glorot_uniform(),
-        **kwargs)
+        **kwargs,
+    )
 
   model = tf.keras.models.Sequential([
       conv2d(filters=32, input_shape=(28, 28, 1)),
@@ -184,11 +195,13 @@ def create_original_fedavg_cnn_model(
       max_pool(),
       tf.keras.layers.Flatten(),
       tf.keras.layers.Dense(
-          512, activation=tf.nn.relu, kernel_initializer=glorot_uniform()),
+          512, activation=tf.nn.relu, kernel_initializer=glorot_uniform()
+      ),
       tf.keras.layers.Dense(
           10 if only_digits else 62,
           activation=tf.nn.softmax,
-          kernel_initializer=glorot_uniform()),
+          kernel_initializer=glorot_uniform(),
+      ),
   ])
   return model
 
@@ -196,7 +209,8 @@ def create_original_fedavg_cnn_model(
 def create_two_hidden_layer_model(
     only_digits: bool = True,
     hidden_units: int = 200,
-    debug_seed: Optional[int] = None) -> tf.keras.Model:
+    debug_seed: Optional[int] = None,
+) -> tf.keras.Model:
   """Create a two hidden-layer fully connected neural network.
 
   When `only_digits=True`, the summary of returned model summary is
@@ -236,28 +250,33 @@ def create_two_hidden_layer_model(
     raise ValueError('hidden_units must be a positive integer.')
 
   glorot_uniform = _DeterministicInitializer(
-      tf.keras.initializers.GlorotUniform, base_seed=debug_seed)
+      tf.keras.initializers.GlorotUniform, base_seed=debug_seed
+  )
 
   model = tf.keras.models.Sequential([
       tf.keras.layers.Reshape(input_shape=(28, 28, 1), target_shape=(28 * 28,)),
       tf.keras.layers.Dense(
           hidden_units,
           activation=tf.nn.relu,
-          kernel_initializer=glorot_uniform()),
+          kernel_initializer=glorot_uniform(),
+      ),
       tf.keras.layers.Dense(
           hidden_units,
           activation=tf.nn.relu,
-          kernel_initializer=glorot_uniform()),
+          kernel_initializer=glorot_uniform(),
+      ),
       tf.keras.layers.Dense(
           10 if only_digits else 62,
           activation=tf.nn.softmax,
-          kernel_initializer=glorot_uniform()),
+          kernel_initializer=glorot_uniform(),
+      ),
   ])
   return model
 
 
 def create_autoencoder_model(
-    debug_seed: Optional[int] = None) -> tf.keras.Model:
+    debug_seed: Optional[int] = None,
+) -> tf.keras.Model:
   """Create a bottleneck autoencoder model for use with EMNIST.
 
   The model is based of the MNIST autoencoder from:
@@ -301,27 +320,36 @@ def create_autoencoder_model(
   """
 
   glorot_uniform = _DeterministicInitializer(
-      tf.keras.initializers.GlorotUniform, base_seed=debug_seed)
+      tf.keras.initializers.GlorotUniform, base_seed=debug_seed
+  )
 
   model = tf.keras.models.Sequential([
       tf.keras.layers.Dense(
           1000,
           activation='sigmoid',
           input_shape=(784,),
-          kernel_initializer=glorot_uniform()),
+          kernel_initializer=glorot_uniform(),
+      ),
       tf.keras.layers.Dense(
-          500, activation='sigmoid', kernel_initializer=glorot_uniform()),
+          500, activation='sigmoid', kernel_initializer=glorot_uniform()
+      ),
       tf.keras.layers.Dense(
-          250, activation='sigmoid', kernel_initializer=glorot_uniform()),
+          250, activation='sigmoid', kernel_initializer=glorot_uniform()
+      ),
       tf.keras.layers.Dense(
-          30, activation='linear', kernel_initializer=glorot_uniform()),
+          30, activation='linear', kernel_initializer=glorot_uniform()
+      ),
       tf.keras.layers.Dense(
-          250, activation='sigmoid', kernel_initializer=glorot_uniform()),
+          250, activation='sigmoid', kernel_initializer=glorot_uniform()
+      ),
       tf.keras.layers.Dense(
-          500, activation='sigmoid', kernel_initializer=glorot_uniform()),
+          500, activation='sigmoid', kernel_initializer=glorot_uniform()
+      ),
       tf.keras.layers.Dense(
-          1000, activation='sigmoid', kernel_initializer=glorot_uniform()),
+          1000, activation='sigmoid', kernel_initializer=glorot_uniform()
+      ),
       tf.keras.layers.Dense(
-          784, activation='sigmoid', kernel_initializer=glorot_uniform()),
+          784, activation='sigmoid', kernel_initializer=glorot_uniform()
+      ),
   ])
   return model

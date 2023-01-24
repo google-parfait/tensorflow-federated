@@ -27,7 +27,8 @@ class TracingExecutorTest(absltest.TestCase):
 
   def test_simple(self):
     ex = executor_test_utils.TracingExecutor(
-        eager_tf_executor.EagerTFExecutor())
+        eager_tf_executor.EagerTFExecutor()
+    )
 
     @tensorflow_computation.tf_computation(tf.int32)
     def add_one(x):
@@ -44,11 +45,14 @@ class TracingExecutorTest(absltest.TestCase):
     result = asyncio.run(_make())
     self.assertEqual(result.numpy(), 11)
 
-    expected_trace = [('create_value', add_one, 1),
-                      ('create_value', 10, tf.int32, 2),
-                      ('create_call', 1, 2, 3),
-                      ('create_struct', structure.Struct([('foo', 3)]), 4),
-                      ('create_selection', 4, 0, 5), ('compute', 5, result)]
+    expected_trace = [
+        ('create_value', add_one, 1),
+        ('create_value', 10, tf.int32, 2),
+        ('create_call', 1, 2, 3),
+        ('create_struct', structure.Struct([('foo', 3)]), 4),
+        ('create_selection', 4, 0, 5),
+        ('compute', 5, result),
+    ]
 
     self.assertLen(ex.trace, len(expected_trace))
     for x, y in zip(ex.trace, expected_trace):

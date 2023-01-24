@@ -32,6 +32,7 @@ class SpecialTokens:
     beginning_of_sentence: int - Special token for beginning of sentence.
     end_of_sentence: int - Special token for end of sentence.
   """
+
   padding = attr.ib()
   out_of_vocab = attr.ib()
   beginning_of_sentence = attr.ib()
@@ -60,7 +61,8 @@ def split_input_target(chunk: tf.Tensor) -> tuple[tf.Tensor, tf.Tensor]:
 def build_to_ids_fn(
     vocab: list[str],
     max_sequence_length: int,
-    num_out_of_vocab_buckets: int = 1) -> Callable[[tf.Tensor], tf.Tensor]:
+    num_out_of_vocab_buckets: int = 1,
+) -> Callable[[tf.Tensor], tf.Tensor]:
   """Constructs function mapping examples to sequences of token indices."""
   special_tokens = get_special_tokens(len(vocab), num_out_of_vocab_buckets)
   bos = special_tokens.beginning_of_sentence
@@ -69,32 +71,36 @@ def build_to_ids_fn(
   table_values = tf.range(len(vocab), dtype=tf.int64)
   table = tf.lookup.StaticVocabularyTable(
       tf.lookup.KeyValueTensorInitializer(vocab, table_values),
-      num_oov_buckets=num_out_of_vocab_buckets)
+      num_oov_buckets=num_out_of_vocab_buckets,
+  )
 
   def to_ids(example):
-
     sentence = tf.reshape(example['tokens'], shape=[1])
     words = tf.strings.split(sentence, sep=' ').values
     truncated_words = words[:max_sequence_length]
     tokens = table.lookup(truncated_words) + 1
     tokens = tf.cond(
         tf.less(tf.size(tokens), max_sequence_length),
-        lambda: tf.concat([tokens, [eos]], 0), lambda: tokens)
+        lambda: tf.concat([tokens, [eos]], 0),
+        lambda: tokens,
+    )
 
     return tf.concat([[bos], tokens], 0)
 
   return to_ids
 
 
-def batch_and_split(dataset: tf.data.Dataset, sequence_length: int,
-                    batch_size: int) -> tf.data.Dataset:
+def batch_and_split(
+    dataset: tf.data.Dataset, sequence_length: int, batch_size: int
+) -> tf.data.Dataset:
   return dataset.padded_batch(
-      batch_size, padded_shapes=[sequence_length + 1]).map(
-          split_input_target, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+      batch_size, padded_shapes=[sequence_length + 1]
+  ).map(split_input_target, num_parallel_calls=tf.data.experimental.AUTOTUNE)
 
 
-def get_special_tokens(vocab_size: int,
-                       num_out_of_vocab_buckets: int = 1) -> SpecialTokens:
+def get_special_tokens(
+    vocab_size: int, num_out_of_vocab_buckets: int = 1
+) -> SpecialTokens:
   """Gets tokens dataset preprocessing code will add to Stackoverflow."""
   return SpecialTokens(
       padding=0,
@@ -102,7 +108,8 @@ def get_special_tokens(vocab_size: int,
           vocab_size + 1 + n for n in range(num_out_of_vocab_buckets)
       ],
       beginning_of_sentence=vocab_size + num_out_of_vocab_buckets + 1,
-      end_of_sentence=vocab_size + num_out_of_vocab_buckets + 2)
+      end_of_sentence=vocab_size + num_out_of_vocab_buckets + 2,
+  )
 
 
 def create_preprocess_fn(
@@ -110,7 +117,7 @@ def create_preprocess_fn(
     vocab: list[str],
     sequence_length: int = constants.DEFAULT_SEQUENCE_LENGTH,
     num_out_of_vocab_buckets: int = 1,
-    num_parallel_calls: int = tf.data.experimental.AUTOTUNE
+    num_parallel_calls: int = tf.data.experimental.AUTOTUNE,
 ) -> Callable[[tf.data.Dataset], tf.data.Dataset]:
   """Creates a preprocessing functions for Stack Overflow next-word-prediction.
 
@@ -155,7 +162,8 @@ def create_preprocess_fn(
     to_ids = build_to_ids_fn(
         vocab=vocab,
         max_sequence_length=sequence_length,
-        num_out_of_vocab_buckets=num_out_of_vocab_buckets)
+        num_out_of_vocab_buckets=num_out_of_vocab_buckets,
+    )
     if shuffle_buffer_size > 1:
       dataset = dataset.shuffle(shuffle_buffer_size)
     if preprocess_spec.num_epochs > 1:

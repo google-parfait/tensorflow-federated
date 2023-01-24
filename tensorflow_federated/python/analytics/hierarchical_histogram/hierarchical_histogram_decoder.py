@@ -39,15 +39,21 @@ def _check_hierarchical_histogram_shape(hierarchical_histogram):
     return
   arity = len(hierarchical_histogram[1]) / len(hierarchical_histogram[0])
   for layer in range(1, depth - 1):
-    if len(hierarchical_histogram[layer + 1]) % len(
-        hierarchical_histogram[layer]) != 0:
+    if (
+        len(hierarchical_histogram[layer + 1])
+        % len(hierarchical_histogram[layer])
+        != 0
+    ):
       raise ValueError('Input hierarchical histogram is invalid.')
-    elif len(hierarchical_histogram[layer + 1]) / len(
-        hierarchical_histogram[layer]) != arity:
+    elif (
+        len(hierarchical_histogram[layer + 1])
+        / len(hierarchical_histogram[layer])
+        != arity
+    ):
       raise ValueError('Input hierarchical histogram is invalid.')
 
 
-class HierarchicalHistogramDecoder():
+class HierarchicalHistogramDecoder:
   """Hierarchical histogram decoder.
 
   Decodes the output hierarchical histogram of the function returned by
@@ -59,11 +65,13 @@ class HierarchicalHistogramDecoder():
   query accuracy.
   """
 
-  def __init__(self,
-               hierarchical_histogram: tf.RaggedTensor,
-               lower_bound: float,
-               upper_bound: float,
-               use_efficient: bool = False):
+  def __init__(
+      self,
+      hierarchical_histogram: tf.RaggedTensor,
+      lower_bound: float,
+      upper_bound: float,
+      use_efficient: bool = False,
+  ):
     """Initializer for `HierarchicalHistogramDecoder`.
 
     `use_efficient` decides whether to use the accuracy optimization trick from
@@ -92,8 +100,9 @@ class HierarchicalHistogramDecoder():
       self._arity = 2
     else:
       self._arity = int(
-          len(self._hierarchical_histogram[1]) /
-          len(self._hierarchical_histogram[0]))
+          len(self._hierarchical_histogram[1])
+          / len(self._hierarchical_histogram[0])
+      )
     self._size = len(hierarchical_histogram[-1])
     self._num_layers = math.ceil(math.log(self._size, self._arity)) + 1
     self._use_efficient = use_efficient
@@ -146,7 +155,7 @@ class HierarchicalHistogramDecoder():
   def _construct_matrix(self):
     """Constructs the matrix for the least square optimization."""
     row_size = (self._arity**self._num_layers - 1) // (self._arity - 1)
-    col_size = self._arity**(self._num_layers - 1)
+    col_size = self._arity ** (self._num_layers - 1)
     matrix = np.zeros([row_size, col_size])
 
     row_index = 0
@@ -164,7 +173,7 @@ class HierarchicalHistogramDecoder():
     for layer in range(self._num_layers - 1):
       for index in range(self._arity**layer):
         parent = self._hierarchical_histogram[layer][index]
-        children_sum = 0.
+        children_sum = 0.0
         for child in range(index * self._arity, (index + 1) * self._arity):
           children_sum += self._hierarchical_histogram[layer + 1][child]
         if not np.isclose(parent, children_sum):
@@ -192,8 +201,11 @@ class HierarchicalHistogramDecoder():
     ls_matrix = self._construct_matrix()
     ls_rhs = self._flatten_hierarhical_hist()
     consistent_hist = np.linalg.lstsq(ls_matrix, ls_rhs, rcond=None)[0]
-    self._hierarchical_histogram = build_tree_from_leaf.create_hierarchical_histogram(
-        consistent_hist, self._arity)
+    self._hierarchical_histogram = (
+        build_tree_from_leaf.create_hierarchical_histogram(
+            consistent_hist, self._arity
+        )
+    )
 
   def _check_index(self, layer: int, index: int):
     """Checks whether a node index is legal.
@@ -208,11 +220,15 @@ class HierarchicalHistogramDecoder():
       `ValueError` if (layer, index) does not point to an existing node.
     """
     if layer < 0 or layer >= self._num_layers:
-      raise ValueError(f'Cross-layer index {layer} is out of valid range. '
-                       f'Expected to be within [0, {self._num_layers}).')
+      raise ValueError(
+          f'Cross-layer index {layer} is out of valid range. '
+          f'Expected to be within [0, {self._num_layers}).'
+      )
     if index < 0 or index >= self._arity**layer:
-      raise ValueError(f'Inner-layer index {index} is out of valid range. '
-                       f'Expected to be within [0, {self._arity**layer}).')
+      raise ValueError(
+          f'Inner-layer index {index} is out of valid range. '
+          f'Expected to be within [0, {self._arity**layer}).'
+      )
 
   def _from_below(self, layer: int, index: int) -> float:
     """Returns an estimate of a node value from its subtree.
@@ -264,8 +280,9 @@ class HierarchicalHistogramDecoder():
       node_value = self._hierarchical_histogram[layer][index]
       parent_index = index // self._arity
       above_value = self._from_above(layer - 1, parent_index)
-      for sibling_index in range(parent_index * self._arity,
-                                 (parent_index + 1) * self._arity):
+      for sibling_index in range(
+          parent_index * self._arity, (parent_index + 1) * self._arity
+      ):
         if sibling_index != index:
           above_value -= self._from_below(layer, sibling_index)
 
@@ -299,18 +316,21 @@ class HierarchicalHistogramDecoder():
         return below_value
       parent_index = index // self._arity
       above_value = self._from_above(layer - 1, parent_index)
-      for sibling_index in range(parent_index * self._arity,
-                                 (parent_index + 1) * self._arity):
+      for sibling_index in range(
+          parent_index * self._arity, (parent_index + 1) * self._arity
+      ):
         if sibling_index != index:
           above_value -= self._from_below(layer, sibling_index)
-      below_variance = 1 / (2 - (self._arity**(layer - self._num_layers + 1)))
-      above_variance = 1 / (3 - (self._arity**(layer - self._num_layers + 1)))
-      weight = (1 / below_variance) / ((1 / below_variance) +
-                                       (1 / (below_variance + above_variance)))
+      below_variance = 1 / (2 - (self._arity ** (layer - self._num_layers + 1)))
+      above_variance = 1 / (3 - (self._arity ** (layer - self._num_layers + 1)))
+      weight = (1 / below_variance) / (
+          (1 / below_variance) + (1 / (below_variance + above_variance))
+      )
       return weight * below_value + (1 - weight) * above_value
 
-  def _range_query(self, left: int, right: int, layer: int,
-                   index: int) -> float:
+  def _range_query(
+      self, left: int, right: int, layer: int, index: int
+  ) -> float:
     """Recursively query the cumulative value within a range [left, right].
 
     Args:
@@ -337,11 +357,13 @@ class HierarchicalHistogramDecoder():
       range_sum = 0
       for child_index in range(index * self._arity, (index + 1) * self._arity):
         interval_left, interval_right = self._left_right_most_leaf(
-            layer + 1, child_index)
+            layer + 1, child_index
+        )
         interval_left = max(left, interval_left)
         interval_right = min(right, interval_right)
-        range_sum += self._range_query(interval_left, interval_right, layer + 1,
-                                       child_index)
+        range_sum += self._range_query(
+            interval_left, interval_right, layer + 1, child_index
+        )
       return range_sum
 
   def range_query(self, left: int, right: int) -> float:
@@ -357,17 +379,20 @@ class HierarchicalHistogramDecoder():
     """
 
     if left < 0 or right >= self._size:
-      raise ValueError(f'[{left}, {right}] is outside the valid range '
-                       f'[0, {self._size}).')
+      raise ValueError(
+          f'[{left}, {right}] is outside the valid range [0, {self._size}).'
+      )
 
     if left > right:
-      raise ValueError(f'left {left} is expected to be less than or equal to '
-                       f'right {right}.')
+      raise ValueError(
+          f'left {left} is expected to be less than or equal to right {right}.'
+      )
 
     return self._range_query(left, right, 0, 0)
 
-  def _quantile_query(self, expected_weight: float, layer: int,
-                      index: int) -> int:
+  def _quantile_query(
+      self, expected_weight: float, layer: int, index: int
+  ) -> int:
     """Recursively queries the q-quantile in an ordinal histogram.
 
     Args:
@@ -388,17 +413,20 @@ class HierarchicalHistogramDecoder():
 
     # TODO(b/193976080): make this a binary search to improve performance when
     # arity is large.
-    exclusive_left_children_sum = 0.
+    exclusive_left_children_sum = 0.0
     for child_index in range(index * self._arity, (index + 1) * self._arity):
       left_children_sum = exclusive_left_children_sum + self.node_query(
-          layer + 1, child_index)
+          layer + 1, child_index
+      )
       if left_children_sum == expected_weight:
         quantile = self._right_most_leaf(layer + 1, child_index)
         break
       elif left_children_sum > expected_weight:
         quantile = self._quantile_query(
-            expected_weight - exclusive_left_children_sum, layer + 1,
-            child_index)
+            expected_weight - exclusive_left_children_sum,
+            layer + 1,
+            child_index,
+        )
         break
       exclusive_left_children_sum = left_children_sum
 
@@ -424,7 +452,8 @@ class HierarchicalHistogramDecoder():
     if not self._check_consistency():
       raise ValueError(
           'Quantile query can only be run on consistent hierarchical histogram.'
-          ' Call `enforce_consistency` before running `quantile_query`.')
+          ' Call `enforce_consistency` before running `quantile_query`.'
+      )
 
     if not 0 <= q <= 1:
       raise ValueError(f'`q={q}` is expected to be within [0, 1].')

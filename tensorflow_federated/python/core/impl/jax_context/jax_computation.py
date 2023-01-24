@@ -48,7 +48,8 @@ def _jax_strategy_fn(
   """
   del fn_name  # Unused.
   unpack_arguments_fn = function_utils.create_argument_unpacking_fn(
-      fn_to_wrap, parameter_type, unpack=unpack)
+      fn_to_wrap, parameter_type, unpack=unpack
+  )
   ctx_stack = context_stack_impl.context_stack
   comp_pb, extra_type_spec = jax_serialization.serialize_jax_computation(
       fn_to_wrap, unpack_arguments_fn, parameter_type, ctx_stack
@@ -59,8 +60,7 @@ def _jax_strategy_fn(
 
 
 jax_computation = computation_wrapper.ComputationWrapper(_jax_strategy_fn)
-jax_computation.__doc__ = (
-    """Decorates/wraps Python functions containing JAX code as TFF computations.
+jax_computation.__doc__ = """Decorates/wraps Python functions containing JAX code as TFF computations.
 
   This wrapper can be used in a similar manner to `tff.tf_computation`, with
   exception of the following:
@@ -79,4 +79,4 @@ jax_computation.__doc__ = (
   def comp(x):
     return jax.numpy.add(x, np.int32(10))
   ```
-  """)
+  """

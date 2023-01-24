@@ -33,14 +33,16 @@ def create_lambda_empty_struct() -> pb.Computation:
   type_signature = computation_types.FunctionType(None, result_type)
   result = pb.Computation(
       type=type_serialization.serialize_type(result_type),
-      struct=pb.Struct(element=[]))
+      struct=pb.Struct(element=[]),
+  )
   fn = pb.Lambda(parameter_name=None, result=result)
   # We are unpacking the lambda argument here because `lambda` is a reserved
   # keyword in Python, but it is also the name of the parameter for a
   # `pb.Computation`.
   # https://developers.google.com/protocol-buffers/docs/reference/python-generated#keyword-conflicts
   return pb.Computation(
-      type=type_serialization.serialize_type(type_signature), **{'lambda': fn})  # pytype: disable=wrong-keyword-args
+      type=type_serialization.serialize_type(type_signature), **{'lambda': fn}
+  )  # pytype: disable=wrong-keyword-args
 
 
 def create_lambda_identity(type_spec: computation_types.Type) -> pb.Computation:
@@ -59,11 +61,13 @@ def create_lambda_identity(type_spec: computation_types.Type) -> pb.Computation:
   type_signature = type_factory.unary_op(type_spec)
   result = pb.Computation(
       type=type_serialization.serialize_type(type_spec),
-      reference=pb.Reference(name='a'))
+      reference=pb.Reference(name='a'),
+  )
   fn = pb.Lambda(parameter_name='a', result=result)
   # We are unpacking the lambda argument here because `lambda` is a reserved
   # keyword in Python, but it is also the name of the parameter for a
   # `pb.Computation`.
   # https://developers.google.com/protocol-buffers/docs/reference/python-generated#keyword-conflicts
   return pb.Computation(
-      type=type_serialization.serialize_type(type_signature), **{'lambda': fn})  # pytype: disable=wrong-keyword-args
+      type=type_serialization.serialize_type(type_signature), **{'lambda': fn}
+  )  # pytype: disable=wrong-keyword-args

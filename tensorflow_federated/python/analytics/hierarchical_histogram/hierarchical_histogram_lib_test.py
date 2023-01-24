@@ -33,15 +33,27 @@ def get_mock_timestamp():
 class ClientWorkTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
-      ('test_1', tf.data.Dataset.from_tensor_slices(
-          [1., 2., 3., 4.]), [1, 5], 4, [1., 1., 1., 1.]),
-      ('test_2', tf.data.Dataset.from_tensor_slices(
-          [2., 7., 5., 3.]), [1, 8], 7, [0., 1., 1., 0., 1., 0., 1.]),
+      (
+          'test_1',
+          tf.data.Dataset.from_tensor_slices([1.0, 2.0, 3.0, 4.0]),
+          [1, 5],
+          4,
+          [1.0, 1.0, 1.0, 1.0],
+      ),
+      (
+          'test_2',
+          tf.data.Dataset.from_tensor_slices([2.0, 7.0, 5.0, 3.0]),
+          [1, 8],
+          7,
+          [0.0, 1.0, 1.0, 0.0, 1.0, 0.0, 1.0],
+      ),
   )
-  def test_discretized_histogram_counts(self, client_data, data_range, num_bins,
-                                        reference_histogram):
-    histogram = hihi._discretized_histogram_counts(client_data, data_range[0],
-                                                   data_range[1], num_bins)
+  def test_discretized_histogram_counts(
+      self, client_data, data_range, num_bins, reference_histogram
+  ):
+    histogram = hihi._discretized_histogram_counts(
+        client_data, data_range[0], data_range[1], num_bins
+    )
 
     self.assertAllClose(histogram, reference_histogram)
 
@@ -52,8 +64,9 @@ class ClientWorkTest(tf.test.TestCase, parameterized.TestCase):
   def test_raises_error(self, data_range, num_bins):
     client_data = tf.data.Dataset.from_tensor_slices(np.zeros(4, dtype=float))
     with self.assertRaises(ValueError):
-      hihi._discretized_histogram_counts(client_data, data_range[0],
-                                         data_range[1], num_bins)
+      hihi._discretized_histogram_counts(
+          client_data, data_range[0], data_range[1], num_bins
+      )
 
 
 class HierarchicalHistogramTest(tf.test.TestCase, parameterized.TestCase):
@@ -135,7 +148,8 @@ class HierarchicalHistogramTest(tf.test.TestCase, parameterized.TestCase):
         noise_multiplier=noise_multiplier,
         expected_clients_per_round=expected_clients_per_round,
         bits=bits,
-        enable_secure_sum=enable_secure_sum)
+        enable_secure_sum=enable_secure_sum,
+    )
     hihi_computation_result = hihi_computation(client_data)
 
     hihi_process = hihi.build_hierarchical_histogram_process(
@@ -149,41 +163,163 @@ class HierarchicalHistogramTest(tf.test.TestCase, parameterized.TestCase):
         noise_multiplier=noise_multiplier,
         expected_clients_per_round=expected_clients_per_round,
         bits=bits,
-        enable_secure_sum=enable_secure_sum)
+        enable_secure_sum=enable_secure_sum,
+    )
 
     init_state = hihi_process.initialize()
     hihi_process_result, _ = hihi_process.next(init_state, client_data)
 
-    return hihi_computation_result.aggregated_hierarchical_histogram, hihi_process_result.aggregated_hierarchical_histogram
+    return (
+        hihi_computation_result.aggregated_hierarchical_histogram,
+        hihi_process_result.aggregated_hierarchical_histogram,
+    )
 
   @parameterized.named_parameters(
-      ('data_range_error', [2, 1], 1, 2, 'sub-sampling', 1, 'central-gaussian',
-       0.1, 1, 1),
-      ('num_bins_error', [1, 2], 0, 2, 'sub-sampling', 1, 'central-gaussian',
-       0.1, 1, 1),
-      ('arity_error', [1, 2], 1, 1, 'sub-sampling', 1, 'central-gaussian', 0.1,
-       1, 1),
-      ('clip_mechanism_error', [1, 2], 1, 2, 'invalid', 1, 'central-gaussian',
-       0.1, 1, 1),
-      ('max_records_per_user_error', [1, 2], 1, 2, 'sub-sampling', 0,
-       'central-gaussian', 0.1, 1, 1),
-      ('dp_mechanism_error', [1, 2
-                             ], 1, 2, 'sub-sampling', 1, 'invalid', 0.1, 1, 1),
-      ('noise_multiplier_error', [1, 2], 1, 2, 'sub-sampling', 1,
-       'central-gaussian', -0.1, 1, 1),
-      ('expected_clients_per_round_error', [1, 2], 1, 2, 'sub-sampling', 1,
-       'central-gaussian', 0.1, 0, 1),
-      ('bits_less_than_1', [1, 2], 1, 2, 'sub-sampling', 1, 'central-gaussian',
-       0.1, 1, 0),
-      ('bits_large_than_23', [1, 2], 1, 2, 'sub-sampling', 1,
-       'central-gaussian', 0.1, 1, 23),
-      ('bits_less_than_log_client_num', [1, 2], 1, 2, 'sub-sampling', 1,
-       'central-gaussian', 0.1, 8, 2),
+      (
+          'data_range_error',
+          [2, 1],
+          1,
+          2,
+          'sub-sampling',
+          1,
+          'central-gaussian',
+          0.1,
+          1,
+          1,
+      ),
+      (
+          'num_bins_error',
+          [1, 2],
+          0,
+          2,
+          'sub-sampling',
+          1,
+          'central-gaussian',
+          0.1,
+          1,
+          1,
+      ),
+      (
+          'arity_error',
+          [1, 2],
+          1,
+          1,
+          'sub-sampling',
+          1,
+          'central-gaussian',
+          0.1,
+          1,
+          1,
+      ),
+      (
+          'clip_mechanism_error',
+          [1, 2],
+          1,
+          2,
+          'invalid',
+          1,
+          'central-gaussian',
+          0.1,
+          1,
+          1,
+      ),
+      (
+          'max_records_per_user_error',
+          [1, 2],
+          1,
+          2,
+          'sub-sampling',
+          0,
+          'central-gaussian',
+          0.1,
+          1,
+          1,
+      ),
+      (
+          'dp_mechanism_error',
+          [1, 2],
+          1,
+          2,
+          'sub-sampling',
+          1,
+          'invalid',
+          0.1,
+          1,
+          1,
+      ),
+      (
+          'noise_multiplier_error',
+          [1, 2],
+          1,
+          2,
+          'sub-sampling',
+          1,
+          'central-gaussian',
+          -0.1,
+          1,
+          1,
+      ),
+      (
+          'expected_clients_per_round_error',
+          [1, 2],
+          1,
+          2,
+          'sub-sampling',
+          1,
+          'central-gaussian',
+          0.1,
+          0,
+          1,
+      ),
+      (
+          'bits_less_than_1',
+          [1, 2],
+          1,
+          2,
+          'sub-sampling',
+          1,
+          'central-gaussian',
+          0.1,
+          1,
+          0,
+      ),
+      (
+          'bits_large_than_23',
+          [1, 2],
+          1,
+          2,
+          'sub-sampling',
+          1,
+          'central-gaussian',
+          0.1,
+          1,
+          23,
+      ),
+      (
+          'bits_less_than_log_client_num',
+          [1, 2],
+          1,
+          2,
+          'sub-sampling',
+          1,
+          'central-gaussian',
+          0.1,
+          8,
+          2,
+      ),
   )
-  def test_raises_error_hh_computation(self, data_range, num_bins, arity,
-                                       clip_mechanism, max_records_per_user,
-                                       dp_mechanism, noise_multiplier,
-                                       expected_clients_per_round, bits):
+  def test_raises_error_hh_computation(
+      self,
+      data_range,
+      num_bins,
+      arity,
+      clip_mechanism,
+      max_records_per_user,
+      dp_mechanism,
+      noise_multiplier,
+      expected_clients_per_round,
+      bits,
+  ):
     with self.assertRaises(ValueError):
       hihi.build_hierarchical_histogram_computation(
           lower_bound=data_range[0],
@@ -195,36 +331,155 @@ class HierarchicalHistogramTest(tf.test.TestCase, parameterized.TestCase):
           dp_mechanism=dp_mechanism,
           noise_multiplier=noise_multiplier,
           expected_clients_per_round=expected_clients_per_round,
-          bits=bits)
+          bits=bits,
+      )
 
   @parameterized.named_parameters(
-      ('data_range_error', [2, 1], 1, 2, 'sub-sampling', 1, 'central-gaussian',
-       0.1, 1, 1),
-      ('num_bins_error', [1, 2], 0, 2, 'sub-sampling', 1, 'central-gaussian',
-       0.1, 1, 1),
-      ('arity_error', [1, 2], 1, 1, 'sub-sampling', 1, 'central-gaussian', 0.1,
-       1, 1),
-      ('clip_mechanism_error', [1, 2], 1, 2, 'invalid', 1, 'central-gaussian',
-       0.1, 1, 1),
-      ('max_records_per_user_error', [1, 2], 1, 2, 'sub-sampling', 0,
-       'central-gaussian', 0.1, 1, 1),
-      ('dp_mechanism_error', [1, 2
-                             ], 1, 2, 'sub-sampling', 1, 'invalid', 0.1, 1, 1),
-      ('noise_multiplier_error', [1, 2], 1, 2, 'sub-sampling', 1,
-       'central-gaussian', -0.1, 1, 1),
-      ('expected_clients_per_round_error', [1, 2], 1, 2, 'sub-sampling', 1,
-       'central-gaussian', 0.1, 0, 1),
-      ('bits_less_than_1', [1, 2], 1, 2, 'sub-sampling', 1, 'central-gaussian',
-       0.1, 1, 0),
-      ('bits_large_than_23', [1, 2], 1, 2, 'sub-sampling', 1,
-       'central-gaussian', 0.1, 1, 23),
-      ('bits_less_than_log_client_num', [1, 2], 1, 2, 'sub-sampling', 1,
-       'central-gaussian', 0.1, 8, 2),
+      (
+          'data_range_error',
+          [2, 1],
+          1,
+          2,
+          'sub-sampling',
+          1,
+          'central-gaussian',
+          0.1,
+          1,
+          1,
+      ),
+      (
+          'num_bins_error',
+          [1, 2],
+          0,
+          2,
+          'sub-sampling',
+          1,
+          'central-gaussian',
+          0.1,
+          1,
+          1,
+      ),
+      (
+          'arity_error',
+          [1, 2],
+          1,
+          1,
+          'sub-sampling',
+          1,
+          'central-gaussian',
+          0.1,
+          1,
+          1,
+      ),
+      (
+          'clip_mechanism_error',
+          [1, 2],
+          1,
+          2,
+          'invalid',
+          1,
+          'central-gaussian',
+          0.1,
+          1,
+          1,
+      ),
+      (
+          'max_records_per_user_error',
+          [1, 2],
+          1,
+          2,
+          'sub-sampling',
+          0,
+          'central-gaussian',
+          0.1,
+          1,
+          1,
+      ),
+      (
+          'dp_mechanism_error',
+          [1, 2],
+          1,
+          2,
+          'sub-sampling',
+          1,
+          'invalid',
+          0.1,
+          1,
+          1,
+      ),
+      (
+          'noise_multiplier_error',
+          [1, 2],
+          1,
+          2,
+          'sub-sampling',
+          1,
+          'central-gaussian',
+          -0.1,
+          1,
+          1,
+      ),
+      (
+          'expected_clients_per_round_error',
+          [1, 2],
+          1,
+          2,
+          'sub-sampling',
+          1,
+          'central-gaussian',
+          0.1,
+          0,
+          1,
+      ),
+      (
+          'bits_less_than_1',
+          [1, 2],
+          1,
+          2,
+          'sub-sampling',
+          1,
+          'central-gaussian',
+          0.1,
+          1,
+          0,
+      ),
+      (
+          'bits_large_than_23',
+          [1, 2],
+          1,
+          2,
+          'sub-sampling',
+          1,
+          'central-gaussian',
+          0.1,
+          1,
+          23,
+      ),
+      (
+          'bits_less_than_log_client_num',
+          [1, 2],
+          1,
+          2,
+          'sub-sampling',
+          1,
+          'central-gaussian',
+          0.1,
+          8,
+          2,
+      ),
   )
-  def test_raises_error_hh_process(self, data_range, num_bins, arity,
-                                   clip_mechanism, max_records_per_user,
-                                   dp_mechanism, noise_multiplier,
-                                   expected_clients_per_round, bits):
+  def test_raises_error_hh_process(
+      self,
+      data_range,
+      num_bins,
+      arity,
+      clip_mechanism,
+      max_records_per_user,
+      dp_mechanism,
+      noise_multiplier,
+      expected_clients_per_round,
+      bits,
+  ):
     with self.assertRaises(ValueError):
       hihi.build_hierarchical_histogram_process(
           lower_bound=data_range[0],
@@ -236,160 +491,354 @@ class HierarchicalHistogramTest(tf.test.TestCase, parameterized.TestCase):
           dp_mechanism=dp_mechanism,
           noise_multiplier=noise_multiplier,
           expected_clients_per_round=expected_clients_per_round,
-          bits=bits)
+          bits=bits,
+      )
 
   @parameterized.named_parameters(
-      ('test_binary_1', [
-          tf.data.Dataset.from_tensor_slices([1., 2., 3., 4.]),
-          tf.data.Dataset.from_tensor_slices([1., 1., 3., 3.])
-      ], [1, 5], 4, 2, [[8], [4, 4], [3, 1, 3, 1]], True),
-      ('test_binary_2', [
-          tf.data.Dataset.from_tensor_slices([2., 2., 2., 2.]),
-          tf.data.Dataset.from_tensor_slices([3., 3., 3., 3.])
-      ], [1, 5], 4, 2, [[8], [4, 4], [0, 4, 4, 0]], False),
-      ('test_ternary_1', [
-          tf.data.Dataset.from_tensor_slices([1., 2., 3., 1.]),
-          tf.data.Dataset.from_tensor_slices([2., 3., 1., 2.])
-      ], [1, 4], 3, 3, [[8], [3, 3, 2]], True),
-      ('test_ternary_2', [
-          tf.data.Dataset.from_tensor_slices([2., 2., 2., 2.]),
-          tf.data.Dataset.from_tensor_slices([3., 3., 3., 3.])
-      ], [1, 4], 3, 3, [[8], [0, 4, 4]], False),
+      (
+          'test_binary_1',
+          [
+              tf.data.Dataset.from_tensor_slices([1.0, 2.0, 3.0, 4.0]),
+              tf.data.Dataset.from_tensor_slices([1.0, 1.0, 3.0, 3.0]),
+          ],
+          [1, 5],
+          4,
+          2,
+          [[8], [4, 4], [3, 1, 3, 1]],
+          True,
+      ),
+      (
+          'test_binary_2',
+          [
+              tf.data.Dataset.from_tensor_slices([2.0, 2.0, 2.0, 2.0]),
+              tf.data.Dataset.from_tensor_slices([3.0, 3.0, 3.0, 3.0]),
+          ],
+          [1, 5],
+          4,
+          2,
+          [[8], [4, 4], [0, 4, 4, 0]],
+          False,
+      ),
+      (
+          'test_ternary_1',
+          [
+              tf.data.Dataset.from_tensor_slices([1.0, 2.0, 3.0, 1.0]),
+              tf.data.Dataset.from_tensor_slices([2.0, 3.0, 1.0, 2.0]),
+          ],
+          [1, 4],
+          3,
+          3,
+          [[8], [3, 3, 2]],
+          True,
+      ),
+      (
+          'test_ternary_2',
+          [
+              tf.data.Dataset.from_tensor_slices([2.0, 2.0, 2.0, 2.0]),
+              tf.data.Dataset.from_tensor_slices([3.0, 3.0, 3.0, 3.0]),
+          ],
+          [1, 4],
+          3,
+          3,
+          [[8], [0, 4, 4]],
+          False,
+      ),
   )
   def test_central_no_noise_hierarchical_histogram_wo_clip(
-      self, client_data, data_range, num_bins, arity, reference_hi_hist,
-      enable_secure_sum):
-    (hihi_computation_result,
-     hihi_process_result) = self._get_hierarchical_histogram_results(
-         client_data=client_data,
-         lower_bound=data_range[0],
-         upper_bound=data_range[1],
-         num_bins=num_bins,
-         arity=arity,
-         max_records_per_user=4,
-         dp_mechanism='no-noise',
-         enable_secure_sum=enable_secure_sum)
+      self,
+      client_data,
+      data_range,
+      num_bins,
+      arity,
+      reference_hi_hist,
+      enable_secure_sum,
+  ):
+    (hihi_computation_result, hihi_process_result) = (
+        self._get_hierarchical_histogram_results(
+            client_data=client_data,
+            lower_bound=data_range[0],
+            upper_bound=data_range[1],
+            num_bins=num_bins,
+            arity=arity,
+            max_records_per_user=4,
+            dp_mechanism='no-noise',
+            enable_secure_sum=enable_secure_sum,
+        )
+    )
 
     self.assertAllClose(hihi_computation_result, reference_hi_hist)
     self.assertAllClose(hihi_process_result, reference_hi_hist)
 
   @parameterized.named_parameters(
-      ('test_binary_sub_sampling', [
-          tf.data.Dataset.from_tensor_slices([1., 2., 3., 4.]),
-          tf.data.Dataset.from_tensor_slices([1., 1., 3., 3.])
-      ], [1, 5], 4, 2, 'sub-sampling', 3, 6., True),
-      ('test_binary_distinct', [
-          tf.data.Dataset.from_tensor_slices([1., 2., 3., 4.]),
-          tf.data.Dataset.from_tensor_slices([1., 1., 3., 3.])
-      ], [1, 5], 4, 2, 'distinct', 3, 5., False),
-      ('test_ternary_sub_sampling', [
-          tf.data.Dataset.from_tensor_slices([1., 2., 3., 1.]),
-          tf.data.Dataset.from_tensor_slices([2., 3., 1., 2.])
-      ], [1, 4], 3, 3, 'sub-sampling', 3, 6., True),
-      ('test_ternary_distinct', [
-          tf.data.Dataset.from_tensor_slices([1., 2., 3., 1.]),
-          tf.data.Dataset.from_tensor_slices([2., 3., 1., 2.])
-      ], [1, 4], 3, 3, 'distinct', 3, 6., False),
+      (
+          'test_binary_sub_sampling',
+          [
+              tf.data.Dataset.from_tensor_slices([1.0, 2.0, 3.0, 4.0]),
+              tf.data.Dataset.from_tensor_slices([1.0, 1.0, 3.0, 3.0]),
+          ],
+          [1, 5],
+          4,
+          2,
+          'sub-sampling',
+          3,
+          6.0,
+          True,
+      ),
+      (
+          'test_binary_distinct',
+          [
+              tf.data.Dataset.from_tensor_slices([1.0, 2.0, 3.0, 4.0]),
+              tf.data.Dataset.from_tensor_slices([1.0, 1.0, 3.0, 3.0]),
+          ],
+          [1, 5],
+          4,
+          2,
+          'distinct',
+          3,
+          5.0,
+          False,
+      ),
+      (
+          'test_ternary_sub_sampling',
+          [
+              tf.data.Dataset.from_tensor_slices([1.0, 2.0, 3.0, 1.0]),
+              tf.data.Dataset.from_tensor_slices([2.0, 3.0, 1.0, 2.0]),
+          ],
+          [1, 4],
+          3,
+          3,
+          'sub-sampling',
+          3,
+          6.0,
+          True,
+      ),
+      (
+          'test_ternary_distinct',
+          [
+              tf.data.Dataset.from_tensor_slices([1.0, 2.0, 3.0, 1.0]),
+              tf.data.Dataset.from_tensor_slices([2.0, 3.0, 1.0, 2.0]),
+          ],
+          [1, 4],
+          3,
+          3,
+          'distinct',
+          3,
+          6.0,
+          False,
+      ),
   )
   def test_central_no_noise_hierarchical_histogram_w_clip(
-      self, client_data, data_range, num_bins, arity, clip_mechanism,
-      max_records_per_user, reference_layer_l1_norm, enable_secure_sum):
-    (hihi_computation_result,
-     hihi_process_result) = self._get_hierarchical_histogram_results(
-         client_data=client_data,
-         lower_bound=data_range[0],
-         upper_bound=data_range[1],
-         num_bins=num_bins,
-         arity=arity,
-         clip_mechanism=clip_mechanism,
-         max_records_per_user=max_records_per_user,
-         dp_mechanism='no-noise',
-         enable_secure_sum=enable_secure_sum)
+      self,
+      client_data,
+      data_range,
+      num_bins,
+      arity,
+      clip_mechanism,
+      max_records_per_user,
+      reference_layer_l1_norm,
+      enable_secure_sum,
+  ):
+    (hihi_computation_result, hihi_process_result) = (
+        self._get_hierarchical_histogram_results(
+            client_data=client_data,
+            lower_bound=data_range[0],
+            upper_bound=data_range[1],
+            num_bins=num_bins,
+            arity=arity,
+            clip_mechanism=clip_mechanism,
+            max_records_per_user=max_records_per_user,
+            dp_mechanism='no-noise',
+            enable_secure_sum=enable_secure_sum,
+        )
+    )
 
     for layer in range(hihi_computation_result.shape[0]):
       self.assertAllClose(
           tf.math.reduce_sum(hihi_computation_result[layer]),
-          reference_layer_l1_norm)
+          reference_layer_l1_norm,
+      )
     for layer in range(hihi_process_result.shape[0]):
       self.assertAllClose(
           tf.math.reduce_sum(hihi_process_result[layer]),
-          reference_layer_l1_norm)
+          reference_layer_l1_norm,
+      )
 
   @parameterized.named_parameters(
-      ('test_binary_1', [
-          tf.data.Dataset.from_tensor_slices([1., 2., 3., 4.]),
-          tf.data.Dataset.from_tensor_slices([1., 1., 3., 3.])
-      ], [1, 5], 4, 2, [[8.], [4., 4.], [3., 1., 3., 1.]], 5.0, True),
-      ('test_binary_2', [
-          tf.data.Dataset.from_tensor_slices([2., 2., 2., 2.]),
-          tf.data.Dataset.from_tensor_slices([3., 3., 3., 3.])
-      ], [1, 5], 4, 2, [[8.], [4., 4.], [0., 4., 4., 0.]], 1.0, False),
-      ('test_ternary_1', [
-          tf.data.Dataset.from_tensor_slices([1., 2., 3., 1.]),
-          tf.data.Dataset.from_tensor_slices([2., 3., 1., 2.])
-      ], [1, 4], 3, 3, [[8.], [3., 3., 2.]], 5.0, True),
-      ('test_ternary_2', [
-          tf.data.Dataset.from_tensor_slices([2., 2., 2., 2.]),
-          tf.data.Dataset.from_tensor_slices([3., 3., 3., 3.])
-      ], [1, 4], 3, 3, [[8.], [0., 4., 4.]], 1.0, False),
+      (
+          'test_binary_1',
+          [
+              tf.data.Dataset.from_tensor_slices([1.0, 2.0, 3.0, 4.0]),
+              tf.data.Dataset.from_tensor_slices([1.0, 1.0, 3.0, 3.0]),
+          ],
+          [1, 5],
+          4,
+          2,
+          [[8.0], [4.0, 4.0], [3.0, 1.0, 3.0, 1.0]],
+          5.0,
+          True,
+      ),
+      (
+          'test_binary_2',
+          [
+              tf.data.Dataset.from_tensor_slices([2.0, 2.0, 2.0, 2.0]),
+              tf.data.Dataset.from_tensor_slices([3.0, 3.0, 3.0, 3.0]),
+          ],
+          [1, 5],
+          4,
+          2,
+          [[8.0], [4.0, 4.0], [0.0, 4.0, 4.0, 0.0]],
+          1.0,
+          False,
+      ),
+      (
+          'test_ternary_1',
+          [
+              tf.data.Dataset.from_tensor_slices([1.0, 2.0, 3.0, 1.0]),
+              tf.data.Dataset.from_tensor_slices([2.0, 3.0, 1.0, 2.0]),
+          ],
+          [1, 4],
+          3,
+          3,
+          [[8.0], [3.0, 3.0, 2.0]],
+          5.0,
+          True,
+      ),
+      (
+          'test_ternary_2',
+          [
+              tf.data.Dataset.from_tensor_slices([2.0, 2.0, 2.0, 2.0]),
+              tf.data.Dataset.from_tensor_slices([3.0, 3.0, 3.0, 3.0]),
+          ],
+          [1, 4],
+          3,
+          3,
+          [[8.0], [0.0, 4.0, 4.0]],
+          1.0,
+          False,
+      ),
   )
   def test_central_gaussian_hierarchical_histogram_wo_clip(
-      self, client_data, data_range, num_bins, arity, reference_hi_hist,
-      noise_multiplier, enable_secure_sum):
-    (hihi_computation_result,
-     hihi_process_result) = self._get_hierarchical_histogram_results(
-         client_data=client_data,
-         lower_bound=data_range[0],
-         upper_bound=data_range[1],
-         num_bins=num_bins,
-         arity=arity,
-         max_records_per_user=4,
-         dp_mechanism='central-gaussian',
-         noise_multiplier=noise_multiplier,
-         enable_secure_sum=enable_secure_sum)
+      self,
+      client_data,
+      data_range,
+      num_bins,
+      arity,
+      reference_hi_hist,
+      noise_multiplier,
+      enable_secure_sum,
+  ):
+    (hihi_computation_result, hihi_process_result) = (
+        self._get_hierarchical_histogram_results(
+            client_data=client_data,
+            lower_bound=data_range[0],
+            upper_bound=data_range[1],
+            num_bins=num_bins,
+            arity=arity,
+            max_records_per_user=4,
+            dp_mechanism='central-gaussian',
+            noise_multiplier=noise_multiplier,
+            enable_secure_sum=enable_secure_sum,
+        )
+    )
 
     # 300 is a rough estimation of six-sigma considering the effect of the L2
     # norm bound and the privacy composition.
     self.assertAllClose(
         hihi_computation_result,
         reference_hi_hist,
-        atol=300. * noise_multiplier)
+        atol=300.0 * noise_multiplier,
+    )
     self.assertAllClose(
-        hihi_process_result, reference_hi_hist, atol=300. * noise_multiplier)
+        hihi_process_result, reference_hi_hist, atol=300.0 * noise_multiplier
+    )
 
   @parameterized.named_parameters(
-      ('test_binary_sub_sampling', [
-          tf.data.Dataset.from_tensor_slices([1., 2., 3., 4.]),
-          tf.data.Dataset.from_tensor_slices([1., 1., 3., 3.])
-      ], [1, 5], 4, 2, 'sub-sampling', 3, 6., 1., True),
-      ('test_binary_distinct', [
-          tf.data.Dataset.from_tensor_slices([1., 2., 3., 4.]),
-          tf.data.Dataset.from_tensor_slices([1., 1., 3., 3.])
-      ], [1, 5], 4, 2, 'distinct', 3, 5., 5., False),
-      ('test_ternary_sub_sampling', [
-          tf.data.Dataset.from_tensor_slices([1., 2., 3., 1.]),
-          tf.data.Dataset.from_tensor_slices([2., 3., 1., 2.])
-      ], [1, 4], 3, 3, 'sub-sampling', 3, 6., 1., True),
-      ('test_ternary_distinct', [
-          tf.data.Dataset.from_tensor_slices([1., 2., 3., 1.]),
-          tf.data.Dataset.from_tensor_slices([2., 3., 1., 2.])
-      ], [1, 4], 3, 3, 'distinct', 3, 6., 5., False),
+      (
+          'test_binary_sub_sampling',
+          [
+              tf.data.Dataset.from_tensor_slices([1.0, 2.0, 3.0, 4.0]),
+              tf.data.Dataset.from_tensor_slices([1.0, 1.0, 3.0, 3.0]),
+          ],
+          [1, 5],
+          4,
+          2,
+          'sub-sampling',
+          3,
+          6.0,
+          1.0,
+          True,
+      ),
+      (
+          'test_binary_distinct',
+          [
+              tf.data.Dataset.from_tensor_slices([1.0, 2.0, 3.0, 4.0]),
+              tf.data.Dataset.from_tensor_slices([1.0, 1.0, 3.0, 3.0]),
+          ],
+          [1, 5],
+          4,
+          2,
+          'distinct',
+          3,
+          5.0,
+          5.0,
+          False,
+      ),
+      (
+          'test_ternary_sub_sampling',
+          [
+              tf.data.Dataset.from_tensor_slices([1.0, 2.0, 3.0, 1.0]),
+              tf.data.Dataset.from_tensor_slices([2.0, 3.0, 1.0, 2.0]),
+          ],
+          [1, 4],
+          3,
+          3,
+          'sub-sampling',
+          3,
+          6.0,
+          1.0,
+          True,
+      ),
+      (
+          'test_ternary_distinct',
+          [
+              tf.data.Dataset.from_tensor_slices([1.0, 2.0, 3.0, 1.0]),
+              tf.data.Dataset.from_tensor_slices([2.0, 3.0, 1.0, 2.0]),
+          ],
+          [1, 4],
+          3,
+          3,
+          'distinct',
+          3,
+          6.0,
+          5.0,
+          False,
+      ),
   )
   def test_central_gaussian_hierarchical_histogram_w_clip(
-      self, client_data, data_range, num_bins, arity, clip_mechanism,
-      max_records_per_user, reference_layer_l1_norm, noise_multiplier,
-      enable_secure_sum):
-    (hihi_computation_result,
-     hihi_process_result) = self._get_hierarchical_histogram_results(
-         client_data=client_data,
-         lower_bound=data_range[0],
-         upper_bound=data_range[1],
-         num_bins=num_bins,
-         arity=arity,
-         clip_mechanism=clip_mechanism,
-         max_records_per_user=max_records_per_user,
-         dp_mechanism='central-gaussian',
-         enable_secure_sum=enable_secure_sum)
+      self,
+      client_data,
+      data_range,
+      num_bins,
+      arity,
+      clip_mechanism,
+      max_records_per_user,
+      reference_layer_l1_norm,
+      noise_multiplier,
+      enable_secure_sum,
+  ):
+    (hihi_computation_result, hihi_process_result) = (
+        self._get_hierarchical_histogram_results(
+            client_data=client_data,
+            lower_bound=data_range[0],
+            upper_bound=data_range[1],
+            num_bins=num_bins,
+            arity=arity,
+            clip_mechanism=clip_mechanism,
+            max_records_per_user=max_records_per_user,
+            dp_mechanism='central-gaussian',
+            enable_secure_sum=enable_secure_sum,
+        )
+    )
 
     # 600 is a rough estimation of six-sigma considering the effect of the L2
     # norm bound, the privacy composition and noise accumulation via sum.
@@ -397,87 +846,181 @@ class HierarchicalHistogramTest(tf.test.TestCase, parameterized.TestCase):
       self.assertAllClose(
           tf.math.reduce_sum(hihi_computation_result[layer]),
           reference_layer_l1_norm,
-          atol=600. * noise_multiplier)
+          atol=600.0 * noise_multiplier,
+      )
     for layer in range(hihi_process_result.shape[0]):
       self.assertAllClose(
           tf.math.reduce_sum(hihi_process_result[layer]),
           reference_layer_l1_norm,
-          atol=600. * noise_multiplier)
+          atol=600.0 * noise_multiplier,
+      )
 
   @parameterized.named_parameters(
-      ('test_binary_1', [
-          tf.data.Dataset.from_tensor_slices([1., 2., 3., 4.]),
-          tf.data.Dataset.from_tensor_slices([1., 1., 3., 3.])
-      ], [1, 5], 4, 2, [[8], [4, 4], [3, 1, 3, 1]], 5.0),
-      ('test_binary_2', [
-          tf.data.Dataset.from_tensor_slices([2., 2., 2., 2.]),
-          tf.data.Dataset.from_tensor_slices([3., 3., 3., 3.])
-      ], [1, 5], 4, 2, [[8], [4, 4], [0, 4, 4, 0]], 1.0),
-      ('test_ternary_1', [
-          tf.data.Dataset.from_tensor_slices([1., 2., 3., 1.]),
-          tf.data.Dataset.from_tensor_slices([2., 3., 1., 2.])
-      ], [1, 4], 3, 3, [[8], [3, 3, 2]], 5.0),
-      ('test_ternary_2', [
-          tf.data.Dataset.from_tensor_slices([2., 2., 2., 2.]),
-          tf.data.Dataset.from_tensor_slices([3., 3., 3., 3.])
-      ], [1, 4], 3, 3, [[8], [0, 4, 4]], 1.0),
+      (
+          'test_binary_1',
+          [
+              tf.data.Dataset.from_tensor_slices([1.0, 2.0, 3.0, 4.0]),
+              tf.data.Dataset.from_tensor_slices([1.0, 1.0, 3.0, 3.0]),
+          ],
+          [1, 5],
+          4,
+          2,
+          [[8], [4, 4], [3, 1, 3, 1]],
+          5.0,
+      ),
+      (
+          'test_binary_2',
+          [
+              tf.data.Dataset.from_tensor_slices([2.0, 2.0, 2.0, 2.0]),
+              tf.data.Dataset.from_tensor_slices([3.0, 3.0, 3.0, 3.0]),
+          ],
+          [1, 5],
+          4,
+          2,
+          [[8], [4, 4], [0, 4, 4, 0]],
+          1.0,
+      ),
+      (
+          'test_ternary_1',
+          [
+              tf.data.Dataset.from_tensor_slices([1.0, 2.0, 3.0, 1.0]),
+              tf.data.Dataset.from_tensor_slices([2.0, 3.0, 1.0, 2.0]),
+          ],
+          [1, 4],
+          3,
+          3,
+          [[8], [3, 3, 2]],
+          5.0,
+      ),
+      (
+          'test_ternary_2',
+          [
+              tf.data.Dataset.from_tensor_slices([2.0, 2.0, 2.0, 2.0]),
+              tf.data.Dataset.from_tensor_slices([3.0, 3.0, 3.0, 3.0]),
+          ],
+          [1, 4],
+          3,
+          3,
+          [[8], [0, 4, 4]],
+          1.0,
+      ),
   )
   def test_distributed_discrete_gaussian_hierarchical_histogram_wo_clip(
-      self, client_data, data_range, num_bins, arity, reference_hi_hist,
-      noise_multiplier):
-    (hihi_computation_result,
-     hihi_process_result) = self._get_hierarchical_histogram_results(
-         client_data=client_data,
-         lower_bound=data_range[0],
-         upper_bound=data_range[1],
-         num_bins=num_bins,
-         arity=arity,
-         max_records_per_user=4,
-         dp_mechanism='distributed-discrete-gaussian',
-         noise_multiplier=noise_multiplier,
-         enable_secure_sum=True)
+      self,
+      client_data,
+      data_range,
+      num_bins,
+      arity,
+      reference_hi_hist,
+      noise_multiplier,
+  ):
+    (hihi_computation_result, hihi_process_result) = (
+        self._get_hierarchical_histogram_results(
+            client_data=client_data,
+            lower_bound=data_range[0],
+            upper_bound=data_range[1],
+            num_bins=num_bins,
+            arity=arity,
+            max_records_per_user=4,
+            dp_mechanism='distributed-discrete-gaussian',
+            noise_multiplier=noise_multiplier,
+            enable_secure_sum=True,
+        )
+    )
 
     # 300 is a rough estimation of six-sigma considering the effect of the L2
     # norm bound and the privacy composition.
     self.assertAllClose(
         hihi_computation_result,
         reference_hi_hist,
-        atol=300. * noise_multiplier)
+        atol=300.0 * noise_multiplier,
+    )
     self.assertAllClose(
-        hihi_process_result, reference_hi_hist, atol=300. * noise_multiplier)
+        hihi_process_result, reference_hi_hist, atol=300.0 * noise_multiplier
+    )
 
   @parameterized.named_parameters(
-      ('test_binary_sub_sampling', [
-          tf.data.Dataset.from_tensor_slices([1., 2., 3., 4.]),
-          tf.data.Dataset.from_tensor_slices([1., 1., 3., 3.])
-      ], [1, 5], 4, 2, 'sub-sampling', 3, 6, 1.),
-      ('test_binary_distinct', [
-          tf.data.Dataset.from_tensor_slices([1., 2., 3., 4.]),
-          tf.data.Dataset.from_tensor_slices([1., 1., 3., 3.])
-      ], [1, 5], 4, 2, 'distinct', 3, 5, 5.),
-      ('test_ternary_sub_sampling', [
-          tf.data.Dataset.from_tensor_slices([1., 2., 3., 1.]),
-          tf.data.Dataset.from_tensor_slices([2., 3., 1., 2.])
-      ], [1, 4], 3, 3, 'sub-sampling', 3, 6, 1.),
-      ('test_ternary_distinct', [
-          tf.data.Dataset.from_tensor_slices([1., 2., 3., 1.]),
-          tf.data.Dataset.from_tensor_slices([2., 3., 1., 2.])
-      ], [1, 4], 3, 3, 'distinct', 3, 6, 5.),
+      (
+          'test_binary_sub_sampling',
+          [
+              tf.data.Dataset.from_tensor_slices([1.0, 2.0, 3.0, 4.0]),
+              tf.data.Dataset.from_tensor_slices([1.0, 1.0, 3.0, 3.0]),
+          ],
+          [1, 5],
+          4,
+          2,
+          'sub-sampling',
+          3,
+          6,
+          1.0,
+      ),
+      (
+          'test_binary_distinct',
+          [
+              tf.data.Dataset.from_tensor_slices([1.0, 2.0, 3.0, 4.0]),
+              tf.data.Dataset.from_tensor_slices([1.0, 1.0, 3.0, 3.0]),
+          ],
+          [1, 5],
+          4,
+          2,
+          'distinct',
+          3,
+          5,
+          5.0,
+      ),
+      (
+          'test_ternary_sub_sampling',
+          [
+              tf.data.Dataset.from_tensor_slices([1.0, 2.0, 3.0, 1.0]),
+              tf.data.Dataset.from_tensor_slices([2.0, 3.0, 1.0, 2.0]),
+          ],
+          [1, 4],
+          3,
+          3,
+          'sub-sampling',
+          3,
+          6,
+          1.0,
+      ),
+      (
+          'test_ternary_distinct',
+          [
+              tf.data.Dataset.from_tensor_slices([1.0, 2.0, 3.0, 1.0]),
+              tf.data.Dataset.from_tensor_slices([2.0, 3.0, 1.0, 2.0]),
+          ],
+          [1, 4],
+          3,
+          3,
+          'distinct',
+          3,
+          6,
+          5.0,
+      ),
   )
   def test_distributed_discrete_gaussian_hierarchical_histogram_w_clip(
-      self, client_data, data_range, num_bins, arity, clip_mechanism,
-      max_records_per_user, reference_layer_l1_norm, noise_multiplier):
-    (hihi_computation_result,
-     hihi_process_result) = self._get_hierarchical_histogram_results(
-         client_data=client_data,
-         lower_bound=data_range[0],
-         upper_bound=data_range[1],
-         num_bins=num_bins,
-         arity=arity,
-         clip_mechanism=clip_mechanism,
-         max_records_per_user=max_records_per_user,
-         dp_mechanism='distributed-discrete-gaussian',
-         enable_secure_sum=True)
+      self,
+      client_data,
+      data_range,
+      num_bins,
+      arity,
+      clip_mechanism,
+      max_records_per_user,
+      reference_layer_l1_norm,
+      noise_multiplier,
+  ):
+    (hihi_computation_result, hihi_process_result) = (
+        self._get_hierarchical_histogram_results(
+            client_data=client_data,
+            lower_bound=data_range[0],
+            upper_bound=data_range[1],
+            num_bins=num_bins,
+            arity=arity,
+            clip_mechanism=clip_mechanism,
+            max_records_per_user=max_records_per_user,
+            dp_mechanism='distributed-discrete-gaussian',
+            enable_secure_sum=True,
+        )
+    )
 
     # 600 is a rough estimation of six-sigma considering the effect of the L2
     # norm bound, the privacy composition and noise accumulation via sum.
@@ -485,48 +1028,57 @@ class HierarchicalHistogramTest(tf.test.TestCase, parameterized.TestCase):
       self.assertAllClose(
           tf.math.reduce_sum(hihi_computation_result[layer]),
           reference_layer_l1_norm,
-          atol=600. * noise_multiplier)
+          atol=600.0 * noise_multiplier,
+      )
     for layer in range(hihi_process_result.shape[0]):
       self.assertAllClose(
           tf.math.reduce_sum(hihi_process_result[layer]),
           reference_layer_l1_norm,
-          atol=600. * noise_multiplier)
+          atol=600.0 * noise_multiplier,
+      )
 
-  @parameterized.named_parameters(('no_noise', 'no-noise'),
-                                  ('central_dp', 'central-gaussian'),
-                                  ('ddp', 'distributed-discrete-gaussian'))
+  @parameterized.named_parameters(
+      ('no_noise', 'no-noise'),
+      ('central_dp', 'central-gaussian'),
+      ('ddp', 'distributed-discrete-gaussian'),
+  )
   def test_secure_sum(self, dp_mechanism):
     hihi_computation = hihi.build_hierarchical_histogram_computation(
         lower_bound=0,
         upper_bound=10,
         num_bins=5,
         dp_mechanism=dp_mechanism,
-        enable_secure_sum=True)
+        enable_secure_sum=True,
+    )
     static_assert.assert_not_contains_unsecure_aggregation(hihi_computation)
 
   @mock.patch('tensorflow.timestamp')
   def test_round_timestamp(self, timestamp_mock):
     timestamp_mock.side_effect = get_mock_timestamp
     client_data = [
-        tf.data.Dataset.from_tensor_slices([1., 2., 3., 4.]),
-        tf.data.Dataset.from_tensor_slices([1., 1., 3., 3.])
+        tf.data.Dataset.from_tensor_slices([1.0, 2.0, 3.0, 4.0]),
+        tf.data.Dataset.from_tensor_slices([1.0, 1.0, 3.0, 3.0]),
     ]
     data_range = [1, 5]
     num_bins = 4
 
     hihi_computation = hihi.build_hierarchical_histogram_computation(
-        lower_bound=data_range[0], upper_bound=data_range[1], num_bins=num_bins)
+        lower_bound=data_range[0], upper_bound=data_range[1], num_bins=num_bins
+    )
     hihi_computation_result = hihi_computation(client_data)
 
     hihi_process = hihi.build_hierarchical_histogram_process(
-        lower_bound=data_range[0], upper_bound=data_range[1], num_bins=num_bins)
+        lower_bound=data_range[0], upper_bound=data_range[1], num_bins=num_bins
+    )
 
     initial_state = hihi_process.initialize()
     hihi_process_result, _ = hihi_process.next(initial_state, client_data)
-    self.assertEqual(EXPECTED_ROUND_TIMESTAMP,
-                     hihi_computation_result.round_timestamp)
-    self.assertEqual(EXPECTED_ROUND_TIMESTAMP,
-                     hihi_process_result.round_timestamp)
+    self.assertEqual(
+        EXPECTED_ROUND_TIMESTAMP, hihi_computation_result.round_timestamp
+    )
+    self.assertEqual(
+        EXPECTED_ROUND_TIMESTAMP, hihi_process_result.round_timestamp
+    )
 
 
 if __name__ == '__main__':

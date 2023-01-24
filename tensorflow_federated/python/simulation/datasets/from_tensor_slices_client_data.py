@@ -23,11 +23,12 @@ from tensorflow_federated.python.simulation.datasets import client_data
 
 def isnamedtuple(example_structure):
   return isinstance(example_structure, tuple) and hasattr(
-      example_structure, '_fields')
+      example_structure, '_fields'
+  )
 
 
 class TestClientData(client_data.ClientData):
-  """"A `tff.simulation.datasets.ClientData` intended for test purposes.
+  """A `tff.simulation.datasets.ClientData` intended for test purposes.
 
   The implementation is based on `tf.data.Dataset.from_tensor_slices.` This
   class is intended only for constructing toy federated datasets, especially
@@ -67,7 +68,8 @@ class TestClientData(client_data.ClientData):
           'The tensor slices in the client data dictionary must be strictly '
           'lists, tuples (not namedtuples), or dictionaries, but the provided '
           'data was a namedtuple. Suggest using ._asdict() to convert the '
-          'namedtuples to dictionaries to work with this class.')
+          'namedtuples to dictionaries to work with this class.'
+      )
     # The structures must be lists, tuples, or dictionaries.
     py_typecheck.check_type(example_structure, (list, tuple, dict))
     # The structures must all be the same.
@@ -80,11 +82,11 @@ class TestClientData(client_data.ClientData):
           raise TypeError(
               'The input tensor_slices_dict must have entries that convert '
               'to identical TensorFlow data types, but found two different '
-              'entries with values of %s and %s' %
-              (expected_dtype, tensor.dtype))
+              'entries with values of %s and %s'
+              % (expected_dtype, tensor.dtype)
+          )
 
     if isinstance(example_structure, dict):
-
       # This is needed to keep data that was loosely specified in a list or
       # tuple together in a common object (a tf.Tensor or tf.RaggedTensor), for
       # correct flattening.
@@ -104,8 +106,9 @@ class TestClientData(client_data.ClientData):
 
       for s in structures:
         convert_any_lists_of_strings_or_bytes_to_ragged_tensors(s)
-        check_types_match([tf.constant(x) for x in tf.nest.flatten(s)],
-                          self._dtypes)
+        check_types_match(
+            [tf.constant(x) for x in tf.nest.flatten(s)], self._dtypes
+        )
     else:
       self._example_structure = None
       self._dtypes = [tf.constant(example_structure).dtype]
@@ -175,7 +178,8 @@ class TestClientData(client_data.ClientData):
       flat_structure = tf.nest.flatten(s) if isinstance(s, dict) else [s]
       for i, x in enumerate(flat_structure):
         serialized_flat_structures[i].append(
-            tf.io.serialize_tensor(tf.constant(x)))
+            tf.io.serialize_tensor(tf.constant(x))
+        )
 
     # Put the data into TF hash tables. There is one hash table for each
     # field in the client data.
@@ -184,23 +188,28 @@ class TestClientData(client_data.ClientData):
       hash_tables.append(
           tf.lookup.StaticHashTable(
               initializer=tf.lookup.KeyValueTensorInitializer(
-                  keys=keys, values=serialized_flat_structures[i]),
+                  keys=keys, values=serialized_flat_structures[i]
+              ),
               # Note: This default_value should never be encountered, as
               # we do a check above that the client_id is in the set of
               # keys.
-              default_value='unknown_value'))
+              default_value='unknown_value',
+          )
+      )
 
     # Recover data relating to the given client_id from the hash table.
     tensor_slices_list = [
         tf.io.parse_tensor(
-            table.lookup(tf.convert_to_tensor(client_id)), out_type=dtype)
+            table.lookup(tf.convert_to_tensor(client_id)), out_type=dtype
+        )
         for table, dtype in zip(hash_tables, self._dtypes)
     ]
 
     # If necessary, unflatten the structures back into desired structure.
     if self._example_structure is not None:
-      tensor_slices = tf.nest.pack_sequence_as(self._example_structure,
-                                               tensor_slices_list)
+      tensor_slices = tf.nest.pack_sequence_as(
+          self._example_structure, tensor_slices_list
+      )
       for k, v in self._example_structure.items():
         tensor_slices[k] = tf.stack(tensor_slices[k])
         tensor_slices[k].set_shape([None] + list(v.shape)[1:])

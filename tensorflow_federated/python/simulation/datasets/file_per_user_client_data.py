@@ -29,8 +29,11 @@ class FilePerUserClientData(client_data.ClientData):
   This mapping is restricted to one file per user.
   """
 
-  def __init__(self, client_ids_to_files: Mapping[str, str],
-               dataset_fn: Callable[[str], tf.data.Dataset]):
+  def __init__(
+      self,
+      client_ids_to_files: Mapping[str, str],
+      dataset_fn: Callable[[str], tf.data.Dataset],
+  ):
     """Constructs a `tff.simulation.datasets.ClientData` object.
 
     Args:
@@ -51,7 +54,10 @@ class FilePerUserClientData(client_data.ClientData):
       client_ids_to_path = tf.lookup.StaticHashTable(
           tf.lookup.KeyValueTensorInitializer(
               list(client_ids_to_files.keys()),
-              list(client_ids_to_files.values())), '')
+              list(client_ids_to_files.values()),
+          ),
+          '',
+      )
       client_path = client_ids_to_path.lookup(client_id)
       return dataset_fn(client_path)
 
@@ -85,12 +91,13 @@ class FilePerUserClientData(client_data.ClientData):
     if client_id not in self.client_ids:
       raise ValueError(
           'ID [{i}] is not a client in this ClientData. See '
-          'property `client_ids` for the list of valid ids.'.format(
-              i=client_id))
+          'property `client_ids` for the list of valid ids.'.format(i=client_id)
+      )
 
     client_dataset = self.serializable_dataset_fn(tf.constant(client_id))
-    tensor_utils.check_nested_equal(client_dataset.element_spec,
-                                    self._element_type_structure)
+    tensor_utils.check_nested_equal(
+        client_dataset.element_spec, self._element_type_structure
+    )
     return client_dataset
 
   @property

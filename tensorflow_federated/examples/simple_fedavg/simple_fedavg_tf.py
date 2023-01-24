@@ -43,6 +43,7 @@ class ClientOutput:
       `tff.learning.Model.report_local_unfinalized_metrics`, reflecting the
       results of training on the input dataset.
   """
+
   weights_delta = attr.ib()
   client_weight = attr.ib()
   model_output = attr.ib()
@@ -58,6 +59,7 @@ class ServerState:
     optimizer_state: Variables of optimizer.
     round_num: The current round in the training process.
   """
+
   model = attr.ib()
   optimizer_state = attr.ib()
   round_num = attr.ib()
@@ -75,6 +77,7 @@ class BroadcastMessage:
       clients. It is not explicitly used, but can be applied to enable learning
       rate scheduling.
   """
+
   model_weights = attr.ib()
   round_num = attr.ib()
 
@@ -96,22 +99,28 @@ def server_update(model, server_optimizer, server_state, weights_delta):
   """
   # Initialize the model with the current state.
   model_weights = tff.learning.models.ModelWeights.from_model(model)
-  tf.nest.map_structure(lambda v, t: v.assign(t), model_weights,
-                        server_state.model)
-  tf.nest.map_structure(lambda v, t: v.assign(t), server_optimizer.variables(),
-                        server_state.optimizer_state)
+  tf.nest.map_structure(
+      lambda v, t: v.assign(t), model_weights, server_state.model
+  )
+  tf.nest.map_structure(
+      lambda v, t: v.assign(t),
+      server_optimizer.variables(),
+      server_state.optimizer_state,
+  )
 
   # Apply the update to the model.
   neg_weights_delta = [-1.0 * x for x in weights_delta]
   server_optimizer.apply_gradients(
-      zip(neg_weights_delta, model_weights.trainable), name='server_update')
+      zip(neg_weights_delta, model_weights.trainable), name='server_update'
+  )
 
   # Create a new state based on the updated model.
   return tff.structure.update_struct(
       server_state,
       model=model_weights,
       optimizer_state=server_optimizer.variables(),
-      round_num=server_state.round_num + 1)
+      round_num=server_state.round_num + 1,
+  )
 
 
 @tf.function
@@ -129,7 +138,8 @@ def build_server_broadcast_message(server_state):
     A `BroadcastMessage`.
   """
   return BroadcastMessage(
-      model_weights=server_state.model, round_num=server_state.round_num)
+      model_weights=server_state.model, round_num=server_state.round_num
+  )
 
 
 @tf.function
@@ -149,8 +159,9 @@ def client_update(model, dataset, server_message, client_optimizer):
   """
   model_weights = tff.learning.models.ModelWeights.from_model(model)
   initial_weights = server_message.model_weights
-  tf.nest.map_structure(lambda v, t: v.assign(t), model_weights,
-                        initial_weights)
+  tf.nest.map_structure(
+      lambda v, t: v.assign(t), model_weights, initial_weights
+  )
 
   num_examples = tf.constant(0, dtype=tf.int32)
   # Explicit use `iter` for dataset is a trick that makes TFF more robust in
@@ -164,9 +175,9 @@ def client_update(model, dataset, server_message, client_optimizer):
     batch_size = tf.shape(batch['y'])[0]
     num_examples += batch_size
 
-  weights_delta = tf.nest.map_structure(lambda a, b: a - b,
-                                        model_weights.trainable,
-                                        initial_weights.trainable)
+  weights_delta = tf.nest.map_structure(
+      lambda a, b: a - b, model_weights.trainable, initial_weights.trainable
+  )
   client_weight = tf.cast(num_examples, tf.float32)
   model_outputs = model.report_local_unfinalized_metrics()
   return ClientOutput(weights_delta, client_weight, model_outputs)

@@ -35,38 +35,55 @@ class ComputationImplTest(absltest.TestCase):
     computation_impl.ConcreteComputation(
         pb.Computation(
             **{
-                'type':
-                    type_serialization.serialize_type(
-                        computation_types.FunctionType(tf.int32, tf.int32)),
-                'intrinsic':
-                    pb.Intrinsic(uri='whatever')
-            }), context_stack_impl.context_stack)
+                'type': type_serialization.serialize_type(
+                    computation_types.FunctionType(tf.int32, tf.int32)
+                ),
+                'intrinsic': pb.Intrinsic(uri='whatever'),
+            }
+        ),
+        context_stack_impl.context_stack,
+    )
 
     # This should fail, as the proto is not well-formed.
-    self.assertRaises(TypeError, computation_impl.ConcreteComputation,
-                      pb.Computation(), context_stack_impl.context_stack)
+    self.assertRaises(
+        TypeError,
+        computation_impl.ConcreteComputation,
+        pb.Computation(),
+        context_stack_impl.context_stack,
+    )
 
     # This should fail, as "10" is not an instance of pb.Computation.
-    self.assertRaises(TypeError, computation_impl.ConcreteComputation, 10,
-                      context_stack_impl.context_stack)
+    self.assertRaises(
+        TypeError,
+        computation_impl.ConcreteComputation,
+        10,
+        context_stack_impl.context_stack,
+    )
 
   def test_with_type_preserves_python_container(self):
     struct_return_type = computation_types.FunctionType(
-        tf.int32, computation_types.StructType([(None, tf.int32)]))
+        tf.int32, computation_types.StructType([(None, tf.int32)])
+    )
     original_comp = computation_impl.ConcreteComputation(
         pb.Computation(
             **{
                 'type': type_serialization.serialize_type(struct_return_type),
-                'intrinsic': pb.Intrinsic(uri='whatever')
-            }), context_stack_impl.context_stack)
+                'intrinsic': pb.Intrinsic(uri='whatever'),
+            }
+        ),
+        context_stack_impl.context_stack,
+    )
 
     list_return_type = computation_types.FunctionType(
         tf.int32,
-        computation_types.StructWithPythonType([(None, tf.int32)], list))
+        computation_types.StructWithPythonType([(None, tf.int32)], list),
+    )
     fn_with_annotated_type = computation_impl.ConcreteComputation.with_type(
-        original_comp, list_return_type)
+        original_comp, list_return_type
+    )
     type_test_utils.assert_types_identical(
-        list_return_type, fn_with_annotated_type.type_signature)
+        list_return_type, fn_with_annotated_type.type_signature
+    )
 
   def test_with_type_raises_non_assignable_type(self):
     int_return_type = computation_types.FunctionType(tf.int32, tf.int32)
@@ -74,15 +91,20 @@ class ComputationImplTest(absltest.TestCase):
         pb.Computation(
             **{
                 'type': type_serialization.serialize_type(int_return_type),
-                'intrinsic': pb.Intrinsic(uri='whatever')
-            }), context_stack_impl.context_stack)
+                'intrinsic': pb.Intrinsic(uri='whatever'),
+            }
+        ),
+        context_stack_impl.context_stack,
+    )
 
     list_return_type = computation_types.FunctionType(
         tf.int32,
-        computation_types.StructWithPythonType([(None, tf.int32)], list))
+        computation_types.StructWithPythonType([(None, tf.int32)], list),
+    )
     with self.assertRaises(computation_types.TypeNotAssignableError):
-      computation_impl.ConcreteComputation.with_type(original_comp,
-                                                     list_return_type)
+      computation_impl.ConcreteComputation.with_type(
+          original_comp, list_return_type
+      )
 
 
 class FromBuildingBlockTest(absltest.TestCase):
@@ -93,9 +115,11 @@ class FromBuildingBlockTest(absltest.TestCase):
 
   def test_converts_building_block_to_computation(self):
     buiding_block = building_blocks.Lambda(
-        'x', tf.int32, building_blocks.Reference('x', tf.int32))
+        'x', tf.int32, building_blocks.Reference('x', tf.int32)
+    )
     computation = computation_impl.ConcreteComputation.from_building_block(
-        buiding_block)
+        buiding_block
+    )
     self.assertIsInstance(computation, computation_impl.ConcreteComputation)
 
 

@@ -38,19 +38,20 @@ def _invoke(ex, comp, arg=None):
 
 def _threaded_eager_executor() -> executor_base.Executor:
   return thread_delegating_executor.ThreadDelegatingExecutor(
-      eager_tf_executor.EagerTFExecutor())
+      eager_tf_executor.EagerTFExecutor()
+  )
 
 
 class ThreadDelegatingExecutorTest(absltest.TestCase):
 
   def _threaded_eager_value_to_numpy(self, value):
     self.assertIsInstance(
-        value, thread_delegating_executor.ThreadDelegatingExecutorValue)
+        value, thread_delegating_executor.ThreadDelegatingExecutorValue
+    )
     self.assertIsInstance(value.reference, eager_tf_executor.EagerValue)
     return value.reference.reference.numpy()
 
   def test_nondeterminism_with_fake_executor_that_synchronously_sleeps(self):
-
     class FakeExecutor(executor_base.Executor):
 
       def __init__(self):
@@ -104,7 +105,6 @@ class ThreadDelegatingExecutorTest(absltest.TestCase):
     self.assertNotEqual(o1, o2)
 
   def test_with_eager_tf_executor(self):
-
     @tensorflow_computation.tf_computation(tf.int32)
     def add_one(x):
       return tf.add(x, 1)
@@ -114,17 +114,21 @@ class ThreadDelegatingExecutorTest(absltest.TestCase):
     async def compute():
       return await ex.create_selection(
           await ex.create_struct(
-              collections.OrderedDict([
-                  ('a', await
-                   ex.create_call(await ex.create_value(add_one), await
-                                  ex.create_value(10, tf.int32)))
-              ])), 0)
+              collections.OrderedDict([(
+                  'a',
+                  await ex.create_call(
+                      await ex.create_value(add_one),
+                      await ex.create_value(10, tf.int32),
+                  ),
+              )])
+          ),
+          0,
+      )
 
     result = asyncio.run(compute())
     self.assertEqual(self._threaded_eager_value_to_numpy(result), 11)
 
   def use_executor(self, ex):
-
     @tensorflow_computation.tf_computation(tf.int32)
     def add_one(x):
       return tf.add(x, 1)
@@ -132,11 +136,16 @@ class ThreadDelegatingExecutorTest(absltest.TestCase):
     async def compute():
       return await ex.create_selection(
           await ex.create_struct(
-              collections.OrderedDict([
-                  ('a', await
-                   ex.create_call(await ex.create_value(add_one), await
-                                  ex.create_value(10, tf.int32)))
-              ])), 0)
+              collections.OrderedDict([(
+                  'a',
+                  await ex.create_call(
+                      await ex.create_value(add_one),
+                      await ex.create_value(10, tf.int32),
+                  ),
+              )])
+          ),
+          0,
+      )
 
     return asyncio.run(compute())
 
@@ -147,7 +156,6 @@ class ThreadDelegatingExecutorTest(absltest.TestCase):
     self.assertEqual(self._threaded_eager_value_to_numpy(result), 11)
 
   def test_multiple_computations_with_same_executor(self):
-
     @tensorflow_computation.tf_computation(tf.int32)
     def add_one(x):
       return tf.add(x, 1)
@@ -157,11 +165,16 @@ class ThreadDelegatingExecutorTest(absltest.TestCase):
     async def compute():
       return await ex.create_selection(
           await ex.create_struct(
-              collections.OrderedDict([
-                  ('a', await
-                   ex.create_call(await ex.create_value(add_one), await
-                                  ex.create_value(10, tf.int32)))
-              ])), 0)
+              collections.OrderedDict([(
+                  'a',
+                  await ex.create_call(
+                      await ex.create_value(add_one),
+                      await ex.create_value(10, tf.int32),
+                  ),
+              )])
+          ),
+          0,
+      )
 
     result = asyncio.run(compute())
     self.assertEqual(self._threaded_eager_value_to_numpy(result), 11)
@@ -174,7 +187,6 @@ class ThreadDelegatingExecutorTest(absltest.TestCase):
     self.assertEqual(self._threaded_eager_value_to_numpy(result), 11)
 
   def test_end_to_end(self):
-
     @tensorflow_computation.tf_computation(tf.int32)
     def add_one(x):
       return tf.add(x, 1)

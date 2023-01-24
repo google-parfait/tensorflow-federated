@@ -43,6 +43,7 @@ class MeasuredProcessOutput:
       surfacing values to track the progress of a process that are not sent to
       chained `MeasuredProcess`es.
   """
+
   state = attr.ib()
   result = attr.ib()
   measurements = attr.ib()
@@ -68,10 +69,12 @@ class MeasuredProcess(iterative_process.IterativeProcess):
   guidance of composition.
   """
 
-  def __init__(self,
-               initialize_fn: computation_base.Computation,
-               next_fn: computation_base.Computation,
-               next_is_multi_arg: Optional[bool] = None):
+  def __init__(
+      self,
+      initialize_fn: computation_base.Computation,
+      next_fn: computation_base.Computation,
+      next_is_multi_arg: Optional[bool] = None,
+  ):
     """Creates a `tff.templates.MeasuredProcess`.
 
     Args:
@@ -101,11 +104,14 @@ class MeasuredProcess(iterative_process.IterativeProcess):
     """
     super().__init__(initialize_fn, next_fn, next_is_multi_arg)
     next_result_type = next_fn.type_signature.result
-    if not (isinstance(next_result_type, computation_types.StructWithPythonType)
-            and next_result_type.python_container is MeasuredProcessOutput):
+    if not (
+        isinstance(next_result_type, computation_types.StructWithPythonType)
+        and next_result_type.python_container is MeasuredProcessOutput
+    ):
       raise errors.TemplateNotMeasuredProcessOutputError(
-          f'The `next_fn` of a `MeasuredProcess` must return a '
-          f'`MeasuredProcessOutput` object, but returns {next_result_type!r}')
+          'The `next_fn` of a `MeasuredProcess` must return a '
+          f'`MeasuredProcessOutput` object, but returns {next_result_type!r}'
+      )
 
     # Perform a more strict type check on state than the base class. Base class
     # ensures that state returned by initialize_fn is accepted as input argument
@@ -115,11 +121,12 @@ class MeasuredProcess(iterative_process.IterativeProcess):
     state_type = self.state_type
     if not state_type.is_assignable_from(next_fn.type_signature.result.state):
       raise errors.TemplateStateNotAssignableError(
-          f'The state attrubute of returned MeasuredProcessOutput must be '
-          f'assignable to its first input argument, but found\n'
-          f'`next_fn` which returns MeasuredProcessOutput with state attribute '
+          'The state attrubute of returned MeasuredProcessOutput must be '
+          'assignable to its first input argument, but found\n'
+          '`next_fn` which returns MeasuredProcessOutput with state attribute '
           f'of type:\n{next_result_type}\n'
-          f'which is not assignable to its first input argument:\n{state_type}')
+          f'which is not assignable to its first input argument:\n{state_type}'
+      )
 
   @property
   def next(self) -> computation_base.Computation:
@@ -136,7 +143,8 @@ class MeasuredProcess(iterative_process.IterativeProcess):
 
 
 def chain_measured_processes(
-    measured_processes: collections.OrderedDict[str, Any]) -> MeasuredProcess:
+    measured_processes: collections.OrderedDict[str, Any]
+) -> MeasuredProcess:
   """Creates a composition of multiple `tff.templates.MeasuredProcess`es.
 
   Composing `MeasuredProcess`es is a chaining process in which the output of the
@@ -175,6 +183,7 @@ def chain_measured_processes(
     TypeError: If the function argment type doesn't match with the input type of
     the composite function.
   """
+
   # Concatenate all the initialization computations.
   @federated_computation.federated_computation
   def composition_initialize():
@@ -182,24 +191,33 @@ def chain_measured_processes(
       return intrinsics.federated_zip(
           collections.OrderedDict(
               (name, process.initialize())
-              for name, process in measured_processes.items()))
+              for name, process in measured_processes.items()
+          )
+      )
     except TypeError as e:
-      state_type = tf.nest.map_structure(lambda process: process.state_type,
-                                         measured_processes)
-      raise TypeError(f'Cannot concatenate the initialization functions as not '
-                      f'all `tff.templates.MeasuredProcess`es have the same '
-                      f'placement of the state: {state_type}.') from e
+      state_type = tf.nest.map_structure(
+          lambda process: process.state_type, measured_processes
+      )
+      raise TypeError(
+          'Cannot concatenate the initialization functions as not '
+          'all `tff.templates.MeasuredProcess`es have the same '
+          f'placement of the state: {state_type}.'
+      ) from e
 
   first_process = next(iter(measured_processes.values()))
   first_process_value_type_spec = first_process.next.type_signature.parameter[1]
   concatenated_state_type_spec = computation_types.at_server(
-      computation_types.StructType([
-          (name, process.next.type_signature.parameter[0].member)
-          for name, process in measured_processes.items()
-      ]))
+      computation_types.StructType(
+          [
+              (name, process.next.type_signature.parameter[0].member)
+              for name, process in measured_processes.items()
+          ]
+      )
+  )
 
-  @federated_computation.federated_computation(concatenated_state_type_spec,
-                                               first_process_value_type_spec)
+  @federated_computation.federated_computation(
+      concatenated_state_type_spec, first_process_value_type_spec
+  )
   def composition_next(state, values):
     new_states = collections.OrderedDict()
     measurements = collections.OrderedDict()
@@ -207,10 +225,13 @@ def chain_measured_processes(
       values_type = values.type_signature
       if values_type is not None:
         if not values_type.is_assignable_from(
-            process.next.type_signature.parameter[1]):
-          raise TypeError(f'Cannot call function {name} of type '
-                          f'{process.next.type_signature} with value of type '
-                          f'{values.type_signature}.')
+            process.next.type_signature.parameter[1]
+        ):
+          raise TypeError(
+              f'Cannot call function {name} of type '
+              f'{process.next.type_signature} with value of type '
+              f'{values.type_signature}.'
+          )
       output = process.next(state[name], values)
       new_states[name] = output.state
       measurements[name] = output.measurements
@@ -218,13 +239,15 @@ def chain_measured_processes(
     return MeasuredProcessOutput(
         state=intrinsics.federated_zip(new_states),
         result=values,
-        measurements=intrinsics.federated_zip(measurements))
+        measurements=intrinsics.federated_zip(measurements),
+    )
 
   return MeasuredProcess(composition_initialize, composition_next)
 
 
 def concatenate_measured_processes(
-    measured_processes: collections.OrderedDict[str, Any]) -> MeasuredProcess:
+    measured_processes: collections.OrderedDict[str, Any]
+) -> MeasuredProcess:
   """Creates a concatenation of multiple `tff.templates.MeasuredProcess`es.
 
   For example, given `y = f(x)` and `z = g(y)`, this produces a new
@@ -260,6 +283,7 @@ def concatenate_measured_processes(
     TypeError: If the `MeasuredProcess`es have the state at different placement
     (e.g. F.state@SERVER, G.state@CLIENTS).
   """
+
   # Concatenate all the initialization computations.
   @federated_computation.federated_computation
   def concatenation_initialize():
@@ -267,24 +291,33 @@ def concatenate_measured_processes(
       return intrinsics.federated_zip(
           collections.OrderedDict(
               (name, process.initialize())
-              for name, process in measured_processes.items()))
+              for name, process in measured_processes.items()
+          )
+      )
     except TypeError as e:
-      state_type = tf.nest.map_structure(lambda process: process.state_type,
-                                         measured_processes)
-      raise TypeError(f'Cannot concatenate the initialization functions as not '
-                      f'all `tff.templates.MeasuredProcess`es have the same '
-                      f'placement of the state: {state_type}.') from e
+      state_type = tf.nest.map_structure(
+          lambda process: process.state_type, measured_processes
+      )
+      raise TypeError(
+          'Cannot concatenate the initialization functions as not '
+          'all `tff.templates.MeasuredProcess`es have the same '
+          f'placement of the state: {state_type}.'
+      ) from e
 
   concatenated_state_type_spec = computation_types.at_server(
-      tf.nest.map_structure(lambda process: process.state_type.member,
-                            measured_processes))
+      tf.nest.map_structure(
+          lambda process: process.state_type.member, measured_processes
+      )
+  )
   concatenated_values_type_spec = tf.nest.map_structure(
       lambda process: process.next.type_signature.parameter[1],
-      measured_processes)
+      measured_processes,
+  )
 
   # Concatenate all the next computations.
-  @federated_computation.federated_computation(concatenated_state_type_spec,
-                                               concatenated_values_type_spec)
+  @federated_computation.federated_computation(
+      concatenated_state_type_spec, concatenated_values_type_spec
+  )
   def concatenation_next(state, values):
     new_states = collections.OrderedDict()
     results = collections.OrderedDict()
@@ -297,6 +330,7 @@ def concatenate_measured_processes(
     return MeasuredProcessOutput(
         state=intrinsics.federated_zip(new_states),
         result=results,
-        measurements=intrinsics.federated_zip(measurements))
+        measurements=intrinsics.federated_zip(measurements),
+    )
 
   return MeasuredProcess(concatenation_initialize, concatenation_next)

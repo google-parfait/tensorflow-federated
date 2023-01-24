@@ -36,7 +36,7 @@ async def _then(first, second):
   await second
 
 
-class OrderedTasks():
+class OrderedTasks:
   """A group of asynchronous tasks to be run sequentially.
 
   Newly added awaitables or functions will be added to a new task to be run as
@@ -47,7 +47,6 @@ class OrderedTasks():
   """
 
   def __init__(self):
-
     async def empty_coroutine():
       pass
 
@@ -56,7 +55,8 @@ class OrderedTasks():
   def add(self, awaitable):
     """Add an awaitable to run after previously-added tasks have completed."""
     self._last_task = asyncio.create_task(
-        _then(self._last_task, _log_error(awaitable)))
+        _then(self._last_task, _log_error(awaitable))
+    )
 
   def add_all(self, *awaitables):
     """Add awaitables run concurrently after previous tasks have completed."""
@@ -98,7 +98,7 @@ async def ordered_tasks():
     await tasks.wait()
 
 
-class SharedAwaitable():
+class SharedAwaitable:
   """A wrapper allowing `async` functions to be `await`ed from multiple places.
 
   `async` functions (those that start with `async def`) are typically `await`ed
@@ -177,7 +177,7 @@ class SharedAwaitable():
     return waiter().__await__()
 
 
-class AsyncThreadRunner():
+class AsyncThreadRunner:
   """Class which bridges async and synchronous synchronous interfaces.
 
   This class serves as a resource and logic container, starting an event loop
@@ -200,7 +200,8 @@ class AsyncThreadRunner():
   def __init__(self):
     self._event_loop = asyncio.new_event_loop()
     self._event_loop.set_task_factory(
-        tracing.propagate_trace_context_task_factory)
+        tracing.propagate_trace_context_task_factory
+    )
 
     def target_fn():
       self._event_loop.run_forever()
@@ -225,4 +226,5 @@ class AsyncThreadRunner():
   async def await_coro_and_return_result(self, coro):
     """Runs coroutine in the managed event loop, returning the result."""
     return await asyncio.wrap_future(
-        asyncio.run_coroutine_threadsafe(coro, self._event_loop))
+        asyncio.run_coroutine_threadsafe(coro, self._event_loop)
+    )

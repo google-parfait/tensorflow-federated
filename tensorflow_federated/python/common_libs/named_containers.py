@@ -33,9 +33,11 @@ def dataclass_to_odict(dataclass_obj: Any) -> collections.OrderedDict[str, Any]:
 
 
 def attrs_class_to_odict(
-    attr_class_obj: Any) -> collections.OrderedDict[Any, Any]:
+    attr_class_obj: Any,
+) -> collections.OrderedDict[Any, Any]:
   """Shallow-copies an attr-class object to an ordered dict."""
   py_typecheck.check_attrs(attr_class_obj)
   odict = attr.asdict(
-      attr_class_obj, dict_factory=collections.OrderedDict, recurse=False)
+      attr_class_obj, dict_factory=collections.OrderedDict, recurse=False
+  )
   return odict  # pytype:disable=bad-return-type

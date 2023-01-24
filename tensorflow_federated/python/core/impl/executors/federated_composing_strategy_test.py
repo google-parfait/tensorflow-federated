@@ -51,9 +51,11 @@ def _create_worker_stack():
 
 def _create_middle_stack(children):
   factory = federated_composing_strategy.FederatedComposingStrategy.factory(
-      _create_bottom_stack(), children)
-  executor = federating_executor.FederatingExecutor(factory,
-                                                    _create_bottom_stack())
+      _create_bottom_stack(), children
+  )
+  executor = federating_executor.FederatingExecutor(
+      factory, _create_bottom_stack()
+  )
   return reference_resolving_executor.ReferenceResolvingExecutor(executor)
 
 
@@ -90,7 +92,8 @@ class FederatedComposingStrategyTest(parameterized.TestCase):
         placements.CLIENTS: raising_executors,
     })
     federating_ex = federating_executor.FederatingExecutor(
-        factory, _create_worker_stack())
+        factory, _create_worker_stack()
+    )
 
     raising_stacks = [federating_ex for _ in range(3)]
 
@@ -100,7 +103,8 @@ class FederatedComposingStrategyTest(parameterized.TestCase):
     ])
 
     @federated_computation.federated_computation(
-        computation_types.at_clients(tf.float32))
+        computation_types.at_clients(tf.float32)
+    )
     def comp(x):
       return intrinsics.federated_mean(x)
 
@@ -118,7 +122,6 @@ class FederatedComposingStrategyTest(parameterized.TestCase):
     self.assertEqual(result, 6.5)
 
   def test_federated_value_at_server(self):
-
     @federated_computation.federated_computation
     def comp():
       return intrinsics.federated_value(10, placements.SERVER)
@@ -128,7 +131,6 @@ class FederatedComposingStrategyTest(parameterized.TestCase):
     self.assertEqual(result, 10)
 
   def test_federated_value_at_clients(self):
-
     @federated_computation.federated_computation
     def comp():
       return intrinsics.federated_value(10, placements.CLIENTS)
@@ -138,7 +140,6 @@ class FederatedComposingStrategyTest(parameterized.TestCase):
     self.assertEqual(result, 10)
 
   def test_federated_eval_at_server(self):
-
     @federated_computation.federated_computation
     def comp():
       return_five = tensorflow_computation.tf_computation(lambda: 5)
@@ -149,7 +150,6 @@ class FederatedComposingStrategyTest(parameterized.TestCase):
     self.assertEqual(result, 5)
 
   def test_federated_eval_at_server_then_map(self):
-
     @tensorflow_computation.tf_computation(tf.int32)
     def add_one(x):
       return x + 1
@@ -166,7 +166,6 @@ class FederatedComposingStrategyTest(parameterized.TestCase):
     self.assertEqual(result, 6)
 
   def test_federated_eval_at_clients(self):
-
     @federated_computation.federated_computation
     def comp():
       return_five = tensorflow_computation.tf_computation(lambda: 5)
@@ -180,7 +179,6 @@ class FederatedComposingStrategyTest(parameterized.TestCase):
       self.assertEqual(x, 5)
 
   def test_federated_aggregate(self):
-
     @tensorflow_computation.tf_computation(tf.int32, tf.int32)
     def add_int(x, y):
       return x + y
@@ -192,23 +190,28 @@ class FederatedComposingStrategyTest(parameterized.TestCase):
     @federated_computation.federated_computation
     def comp():
       value = intrinsics.federated_value(10, placements.CLIENTS)
-      return intrinsics.federated_aggregate(value, 0, add_int, add_int,
-                                            add_five)
+      return intrinsics.federated_aggregate(
+          value, 0, add_int, add_int, add_five
+      )
 
     executor, num_clients = _create_test_executor()
     result = _invoke(executor, comp)
     self.assertEqual(result, 10 * num_clients + 5)
 
   def test_federated_aggregate_of_nested_tuple(self):
-    test_type = computation_types.StructType([
-        ('a', (tf.int32, tf.float32)),
-    ])
+    test_type = computation_types.StructType(
+        [
+            ('a', (tf.int32, tf.float32)),
+        ]
+    )
 
     @tensorflow_computation.tf_computation(test_type, test_type)
     def add_test_type(x, y):
-      return collections.OrderedDict([
-          ('a', (x.a[0] + y.a[0], x.a[1] + y.a[1])),
-      ])
+      return collections.OrderedDict(
+          [
+              ('a', (x.a[0] + y.a[0], x.a[1] + y.a[1])),
+          ]
+      )
 
     @tensorflow_computation.tf_computation(test_type)
     def add_five_and_three(x):
@@ -217,24 +220,29 @@ class FederatedComposingStrategyTest(parameterized.TestCase):
     @federated_computation.federated_computation
     def comp():
       value = intrinsics.federated_value(
-          collections.OrderedDict([('a', (10, 2.0))]), placements.CLIENTS)
+          collections.OrderedDict([('a', (10, 2.0))]), placements.CLIENTS
+      )
       zero = collections.OrderedDict([('a', (0, 0.0))])
-      return intrinsics.federated_aggregate(value, zero, add_test_type,
-                                            add_test_type, add_five_and_three)
+      return intrinsics.federated_aggregate(
+          value, zero, add_test_type, add_test_type, add_five_and_three
+      )
 
     executor, num_clients = _create_test_executor()
     result = _invoke(executor, comp)
-    expected_result = structure.Struct([
-        ('a',
-         structure.Struct([
-             (None, 10 * num_clients + 5),
-             (None, 2.0 * num_clients + 3.0),
-         ])),
-    ])
+    expected_result = structure.Struct(
+        [
+            (
+                'a',
+                structure.Struct([
+                    (None, 10 * num_clients + 5),
+                    (None, 2.0 * num_clients + 3.0),
+                ]),
+            ),
+        ]
+    )
     self.assertEqual(result, expected_result)
 
   def test_federated_broadcast(self):
-
     @tensorflow_computation.tf_computation(tf.int32)
     def add_one(x):
       return x + 1
@@ -250,7 +258,6 @@ class FederatedComposingStrategyTest(parameterized.TestCase):
     self.assertEqual(result, [10 + 1] * num_clients)
 
   def test_federated_map_at_server(self):
-
     @tensorflow_computation.tf_computation(tf.int32)
     def add_one(x):
       return x + 1
@@ -265,7 +272,6 @@ class FederatedComposingStrategyTest(parameterized.TestCase):
     self.assertEqual(result, 10 + 1)
 
   def test_federated_map(self):
-
     @tensorflow_computation.tf_computation(tf.int32)
     def add_one(x):
       return x + 1
@@ -280,7 +286,6 @@ class FederatedComposingStrategyTest(parameterized.TestCase):
     self.assertEqual(result, [10 + 1] * num_clients)
 
   def test_federated_map_all_equal(self):
-
     @tensorflow_computation.tf_computation(tf.int32)
     def add_one(x):
       return x + 1
@@ -296,7 +301,6 @@ class FederatedComposingStrategyTest(parameterized.TestCase):
       self.assertEqual(value.numpy(), 10 + 1)
 
   def test_federated_select(self):
-
     @tensorflow_computation.tf_computation
     def get_keys():
       return tf.constant([1, 2, 5])
@@ -310,8 +314,9 @@ class FederatedComposingStrategyTest(parameterized.TestCase):
       client_keys = intrinsics.federated_eval(get_keys, placements.CLIENTS)
       max_key = intrinsics.federated_value(5, placements.SERVER)
       server_val = intrinsics.federated_value('db', placements.SERVER)
-      return intrinsics.federated_select(client_keys, max_key, server_val,
-                                         select_fn)
+      return intrinsics.federated_select(
+          client_keys, max_key, server_val, select_fn
+      )
 
     executor, num_clients = _create_test_executor()
     results = _invoke(executor, comp)
@@ -324,7 +329,6 @@ class FederatedComposingStrategyTest(parameterized.TestCase):
         self.assertEqual(actual, expected)
 
   def test_federated_zip_at_server_unnamed(self):
-
     @federated_computation.federated_computation
     def comp():
       return intrinsics.federated_zip([
@@ -332,32 +336,35 @@ class FederatedComposingStrategyTest(parameterized.TestCase):
           intrinsics.federated_value(20, placements.SERVER),
       ])
 
-    self.assertEqual(comp.type_signature.compact_representation(),
-                     '( -> <int32,int32>@SERVER)')
+    self.assertEqual(
+        comp.type_signature.compact_representation(),
+        '( -> <int32,int32>@SERVER)',
+    )
     executor, _ = _create_test_executor()
     result = _invoke(executor, comp)
     expected_result = structure.Struct([(None, 10), (None, 20)])
     self.assertEqual(result, expected_result)
 
   def test_federated_zip_at_server_named(self):
-
     @federated_computation.federated_computation
     def comp():
       return intrinsics.federated_zip(
           collections.OrderedDict([
               ('A', intrinsics.federated_value(10, placements.SERVER)),
               ('B', intrinsics.federated_value(20, placements.SERVER)),
-          ]))
+          ])
+      )
 
-    self.assertEqual(comp.type_signature.compact_representation(),
-                     '( -> <A=int32,B=int32>@SERVER)')
+    self.assertEqual(
+        comp.type_signature.compact_representation(),
+        '( -> <A=int32,B=int32>@SERVER)',
+    )
     executor, _ = _create_test_executor()
     result = _invoke(executor, comp)
     expected_result = structure.Struct([('A', 10), ('B', 20)])
     self.assertEqual(result, expected_result)
 
   def test_federated_zip_at_clients_unnamed(self):
-
     @federated_computation.federated_computation
     def comp():
       return intrinsics.federated_zip([
@@ -365,8 +372,10 @@ class FederatedComposingStrategyTest(parameterized.TestCase):
           intrinsics.federated_value(20, placements.CLIENTS),
       ])
 
-    self.assertEqual(comp.type_signature.compact_representation(),
-                     '( -> {<int32,int32>}@CLIENTS)')
+    self.assertEqual(
+        comp.type_signature.compact_representation(),
+        '( -> {<int32,int32>}@CLIENTS)',
+    )
     executor, _ = _create_test_executor()
     result = _invoke(executor, comp)
     for value in result:
@@ -374,17 +383,19 @@ class FederatedComposingStrategyTest(parameterized.TestCase):
       self.assertEqual(value, excepted_value)
 
   def test_federated_zip_at_clients_named(self):
-
     @federated_computation.federated_computation
     def comp():
       return intrinsics.federated_zip(
           collections.OrderedDict([
               ('A', intrinsics.federated_value(10, placements.CLIENTS)),
               ('B', intrinsics.federated_value(20, placements.CLIENTS)),
-          ]))
+          ])
+      )
 
-    self.assertEqual(comp.type_signature.compact_representation(),
-                     '( -> {<A=int32,B=int32>}@CLIENTS)')
+    self.assertEqual(
+        comp.type_signature.compact_representation(),
+        '( -> {<A=int32,B=int32>}@CLIENTS)',
+    )
     executor, _ = _create_test_executor()
     result = _invoke(executor, comp)
     for value in result:
@@ -396,7 +407,6 @@ class FederatedComposingStrategyTest(parameterized.TestCase):
       ('at_server', placements.SERVER),
   ])
   def test_federated_zip_nested(self, placement):
-
     @federated_computation.federated_computation()
     def comp():
       server_val = intrinsics.federated_value(10, placement)
@@ -412,7 +422,6 @@ class FederatedComposingStrategyTest(parameterized.TestCase):
     self.assertEqual(result, expected_result)
 
   def test_federated_sum(self):
-
     @federated_computation.federated_computation
     def comp():
       value = intrinsics.federated_value(10, placements.CLIENTS)
@@ -425,7 +434,8 @@ class FederatedComposingStrategyTest(parameterized.TestCase):
   def test_federated_mean(self):
 
     @federated_computation.federated_computation(
-        computation_types.at_clients(tf.float32))
+        computation_types.at_clients(tf.float32)
+    )
     def comp(x):
       return intrinsics.federated_mean(x)
 
@@ -438,31 +448,39 @@ class FederatedComposingStrategyTest(parameterized.TestCase):
 
     @federated_computation.federated_computation(
         computation_types.at_clients(tf.float32),
-        computation_types.at_clients(tf.float32))
+        computation_types.at_clients(tf.float32),
+    )
     def comp(x, y):
       return intrinsics.federated_mean(x, y)
 
     executor, num_clients = _create_test_executor()
-    arg = structure.Struct([('x', [float(x + 1) for x in range(num_clients)]),
-                            ('y', [1.0, 2.0, 3.0] * 4)])
+    arg = structure.Struct([
+        ('x', [float(x + 1) for x in range(num_clients)]),
+        ('y', [1.0, 2.0, 3.0] * 4),
+    ])
     result = _invoke(executor, comp, arg)
     self.assertAlmostEqual(result, 6.83333333333, places=3)
 
   def test_executor_call_unsupported_intrinsic(self):
     # `whimsy_intrinsic` definition is needed to allow successful lookup.
     whimsy_intrinsic = intrinsic_defs.IntrinsicDef(
-        'WHIMSY_INTRINSIC', 'whimsy_intrinsic',
-        computation_types.AbstractType('T'))
+        'WHIMSY_INTRINSIC',
+        'whimsy_intrinsic',
+        computation_types.AbstractType('T'),
+    )
     type_signature = computation_types.TensorType(tf.int32)
     comp = pb.Computation(
         type=type_serialization.serialize_type(type_signature),
-        intrinsic=pb.Intrinsic(uri='whimsy_intrinsic'))
+        intrinsic=pb.Intrinsic(uri='whimsy_intrinsic'),
+    )
     del whimsy_intrinsic
 
     factory = federated_composing_strategy.FederatedComposingStrategy.factory(
-        _create_bottom_stack(), [_create_worker_stack()])
-    executor = federating_executor.FederatingExecutor(factory,
-                                                      _create_bottom_stack())
+        _create_bottom_stack(), [_create_worker_stack()]
+    )
+    executor = federating_executor.FederatingExecutor(
+        factory, _create_bottom_stack()
+    )
 
     v1 = asyncio.run(executor.create_value(comp))
     with self.assertRaises(NotImplementedError):

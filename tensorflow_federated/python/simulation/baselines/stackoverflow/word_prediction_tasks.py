@@ -75,28 +75,33 @@ def create_word_prediction_task_from_datasets(
 
   if eval_client_spec is None:
     eval_client_spec = client_spec.ClientSpec(
-        num_epochs=1, batch_size=64, shuffle_buffer_size=1)
+        num_epochs=1, batch_size=64, shuffle_buffer_size=1
+    )
 
   train_preprocess_fn = word_prediction_preprocessing.create_preprocess_fn(
       train_client_spec,
       vocab,
       sequence_length=sequence_length,
-      num_out_of_vocab_buckets=num_out_of_vocab_buckets)
+      num_out_of_vocab_buckets=num_out_of_vocab_buckets,
+  )
   eval_preprocess_fn = word_prediction_preprocessing.create_preprocess_fn(
       eval_client_spec,
       vocab,
       sequence_length=sequence_length,
-      num_out_of_vocab_buckets=num_out_of_vocab_buckets)
+      num_out_of_vocab_buckets=num_out_of_vocab_buckets,
+  )
 
   task_datasets = task_data.BaselineTaskDatasets(
       train_data=train_data,
       test_data=test_data,
       validation_data=validation_data,
       train_preprocess_fn=train_preprocess_fn,
-      eval_preprocess_fn=eval_preprocess_fn)
+      eval_preprocess_fn=eval_preprocess_fn,
+  )
 
   special_tokens = word_prediction_preprocessing.get_special_tokens(
-      vocab_size, num_out_of_vocab_buckets=num_out_of_vocab_buckets)
+      vocab_size, num_out_of_vocab_buckets=num_out_of_vocab_buckets
+  )
   pad_token = special_tokens.padding
   oov_tokens = special_tokens.out_of_vocab
   eos_token = special_tokens.end_of_sentence
@@ -105,30 +110,36 @@ def create_word_prediction_task_from_datasets(
     return [
         keras_metrics.NumTokensCounter(masked_tokens=[pad_token]),
         keras_metrics.MaskedCategoricalAccuracy(
-            name='accuracy', masked_tokens=[pad_token]),
+            name='accuracy', masked_tokens=[pad_token]
+        ),
         keras_metrics.MaskedCategoricalAccuracy(
             name='accuracy_without_out_of_vocab',
-            masked_tokens=[pad_token] + oov_tokens),
+            masked_tokens=[pad_token] + oov_tokens,
+        ),
         # Notice that the beginning of sentence token never appears in the
         # ground truth label.
         keras_metrics.MaskedCategoricalAccuracy(
             name='accuracy_without_out_of_vocab_or_end_of_sentence',
-            masked_tokens=[pad_token, eos_token] + oov_tokens),
+            masked_tokens=[pad_token, eos_token] + oov_tokens,
+        ),
     ]
 
   # The total vocabulary size is the number of words in the vocabulary, plus
   # the number of out-of-vocabulary tokens, plus three tokens used for
   # padding, beginning of sentence and end of sentence.
   extended_vocab_size = (
-      vocab_size + special_tokens.get_number_of_special_tokens())
+      vocab_size + special_tokens.get_number_of_special_tokens()
+  )
 
   def model_fn() -> model.Model:
     return keras_utils.from_keras_model(
         keras_model=word_prediction_models.create_recurrent_model(
-            vocab_size=extended_vocab_size),
+            vocab_size=extended_vocab_size
+        ),
         loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
         input_spec=task_datasets.element_type_structure,
-        metrics=metrics_builder())
+        metrics=metrics_builder(),
+    )
 
   return baseline_task.BaselineTask(task_datasets, model_fn)
 
@@ -140,7 +151,8 @@ def create_word_prediction_task(
     vocab_size: int = constants.DEFAULT_WORD_VOCAB_SIZE,
     num_out_of_vocab_buckets: int = 1,
     cache_dir: Optional[str] = None,
-    use_synthetic_data: bool = False) -> baseline_task.BaselineTask:
+    use_synthetic_data: bool = False,
+) -> baseline_task.BaselineTask:
   """Creates a baseline task for next-word prediction on Stack Overflow.
 
   The goal of the task is to take `sequence_length` words from a post and
@@ -182,12 +194,19 @@ def create_word_prediction_task(
     vocab_dict = stackoverflow.get_synthetic_word_counts()
   else:
     stackoverflow_train, stackoverflow_validation, stackoverflow_test = (
-        stackoverflow.load_data(cache_dir=cache_dir))
+        stackoverflow.load_data(cache_dir=cache_dir)
+    )
     vocab_dict = stackoverflow.load_word_counts(vocab_size=vocab_size)
 
   vocab = list(vocab_dict.keys())[:vocab_size]
 
   return create_word_prediction_task_from_datasets(
-      train_client_spec, eval_client_spec, sequence_length, vocab,
-      num_out_of_vocab_buckets, stackoverflow_train, stackoverflow_test,
-      stackoverflow_validation)
+      train_client_spec,
+      eval_client_spec,
+      sequence_length,
+      vocab,
+      num_out_of_vocab_buckets,
+      stackoverflow_train,
+      stackoverflow_test,
+      stackoverflow_validation,
+  )

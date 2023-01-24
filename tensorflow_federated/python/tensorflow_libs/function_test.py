@@ -22,9 +22,12 @@ class FunctionTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('polymorphic_function', tf.function(lambda x: None)),
-      ('concrete_function',
-       tf.function(
-           lambda x: None, input_signature=(tf.TensorSpec(None, tf.int32),))),
+      (
+          'concrete_function',
+          tf.function(
+              lambda x: None, input_signature=(tf.TensorSpec(None, tf.int32),)
+          ),
+      ),
   )
   def test_is_tf_function_true(self, fn):
     self.assertTrue(function.is_tf_function(fn))

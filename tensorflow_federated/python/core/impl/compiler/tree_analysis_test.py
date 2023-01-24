@@ -39,10 +39,14 @@ class TestCheckContainsOnlyReducibleIntrinsics(absltest.TestCase):
   def test_passes_with_federated_map(self):
     intrinsic = building_blocks.Intrinsic(
         intrinsic_defs.FEDERATED_MAP.uri,
-        computation_types.FunctionType([
-            computation_types.FunctionType(tf.int32, tf.float32),
-            computation_types.FederatedType(tf.int32, placements.CLIENTS)
-        ], computation_types.FederatedType(tf.float32, placements.CLIENTS)))
+        computation_types.FunctionType(
+            [
+                computation_types.FunctionType(tf.int32, tf.float32),
+                computation_types.FederatedType(tf.int32, placements.CLIENTS),
+            ],
+            computation_types.FederatedType(tf.float32, placements.CLIENTS),
+        ),
+    )
     tree_analysis.check_contains_only_reducible_intrinsics(intrinsic)
 
   def test_raises_with_federated_mean(self):
@@ -50,7 +54,9 @@ class TestCheckContainsOnlyReducibleIntrinsics(absltest.TestCase):
         intrinsic_defs.FEDERATED_MEAN.uri,
         computation_types.FunctionType(
             computation_types.FederatedType(tf.int32, placements.CLIENTS),
-            computation_types.FederatedType(tf.int32, placements.SERVER)))
+            computation_types.FederatedType(tf.int32, placements.SERVER),
+        ),
+    )
 
     with self.assertRaisesRegex(ValueError, intrinsic.compact_representation()):
       tree_analysis.check_contains_only_reducible_intrinsics(intrinsic)
@@ -74,88 +80,104 @@ class NodesDependentOnPredicateTest(absltest.TestCase):
 
   def test_adds_all_nodes_to_set_with_constant_true_predicate(self):
     nested_tree = building_block_test_utils.create_nested_syntax_tree()
-    all_nodes = tree_analysis.extract_nodes_consuming(nested_tree,
-                                                      lambda x: True)
+    all_nodes = tree_analysis.extract_nodes_consuming(
+        nested_tree, lambda x: True
+    )
     node_count = tree_analysis.count(nested_tree)
     self.assertLen(all_nodes, node_count)
 
   def test_adds_no_nodes_to_set_with_constant_false_predicate(self):
     nested_tree = building_block_test_utils.create_nested_syntax_tree()
-    all_nodes = tree_analysis.extract_nodes_consuming(nested_tree,
-                                                      lambda x: False)
+    all_nodes = tree_analysis.extract_nodes_consuming(
+        nested_tree, lambda x: False
+    )
     self.assertEmpty(all_nodes)
 
   def test_propogates_dependence_up_through_lambda(self):
     type_signature = computation_types.TensorType(tf.int32)
-    whimsy_intrinsic = building_blocks.Intrinsic('whimsy_intrinsic',
-                                                 type_signature)
+    whimsy_intrinsic = building_blocks.Intrinsic(
+        'whimsy_intrinsic', type_signature
+    )
     lam = building_blocks.Lambda('x', tf.int32, whimsy_intrinsic)
     dependent_nodes = tree_analysis.extract_nodes_consuming(
-        lam, whimsy_intrinsic_predicate)
+        lam, whimsy_intrinsic_predicate
+    )
     self.assertIn(lam, dependent_nodes)
 
   def test_propogates_dependence_up_through_block_result(self):
     type_signature = computation_types.TensorType(tf.int32)
-    whimsy_intrinsic = building_blocks.Intrinsic('whimsy_intrinsic',
-                                                 type_signature)
+    whimsy_intrinsic = building_blocks.Intrinsic(
+        'whimsy_intrinsic', type_signature
+    )
     integer_reference = building_blocks.Reference('int', tf.int32)
     block = building_blocks.Block([('x', integer_reference)], whimsy_intrinsic)
     dependent_nodes = tree_analysis.extract_nodes_consuming(
-        block, whimsy_intrinsic_predicate)
+        block, whimsy_intrinsic_predicate
+    )
     self.assertIn(block, dependent_nodes)
 
   def test_propogates_dependence_up_through_block_locals(self):
     type_signature = computation_types.TensorType(tf.int32)
-    whimsy_intrinsic = building_blocks.Intrinsic('whimsy_intrinsic',
-                                                 type_signature)
+    whimsy_intrinsic = building_blocks.Intrinsic(
+        'whimsy_intrinsic', type_signature
+    )
     integer_reference = building_blocks.Reference('int', tf.int32)
     block = building_blocks.Block([('x', whimsy_intrinsic)], integer_reference)
     dependent_nodes = tree_analysis.extract_nodes_consuming(
-        block, whimsy_intrinsic_predicate)
+        block, whimsy_intrinsic_predicate
+    )
     self.assertIn(block, dependent_nodes)
 
   def test_propogates_dependence_up_through_tuple(self):
     type_signature = computation_types.TensorType(tf.int32)
-    whimsy_intrinsic = building_blocks.Intrinsic('whimsy_intrinsic',
-                                                 type_signature)
+    whimsy_intrinsic = building_blocks.Intrinsic(
+        'whimsy_intrinsic', type_signature
+    )
     integer_reference = building_blocks.Reference('int', tf.int32)
     tup = building_blocks.Struct([integer_reference, whimsy_intrinsic])
     dependent_nodes = tree_analysis.extract_nodes_consuming(
-        tup, whimsy_intrinsic_predicate)
+        tup, whimsy_intrinsic_predicate
+    )
     self.assertIn(tup, dependent_nodes)
 
   def test_propogates_dependence_up_through_selection(self):
     type_signature = computation_types.StructType([tf.int32])
-    whimsy_intrinsic = building_blocks.Intrinsic('whimsy_intrinsic',
-                                                 type_signature)
+    whimsy_intrinsic = building_blocks.Intrinsic(
+        'whimsy_intrinsic', type_signature
+    )
     selection = building_blocks.Selection(whimsy_intrinsic, index=0)
     dependent_nodes = tree_analysis.extract_nodes_consuming(
-        selection, whimsy_intrinsic_predicate)
+        selection, whimsy_intrinsic_predicate
+    )
     self.assertIn(selection, dependent_nodes)
 
   def test_propogates_dependence_up_through_call(self):
     type_signature = computation_types.TensorType(tf.int32)
-    whimsy_intrinsic = building_blocks.Intrinsic('whimsy_intrinsic',
-                                                 type_signature)
+    whimsy_intrinsic = building_blocks.Intrinsic(
+        'whimsy_intrinsic', type_signature
+    )
     ref_to_x = building_blocks.Reference('x', tf.int32)
     identity_lambda = building_blocks.Lambda('x', tf.int32, ref_to_x)
     called_lambda = building_blocks.Call(identity_lambda, whimsy_intrinsic)
     dependent_nodes = tree_analysis.extract_nodes_consuming(
-        called_lambda, whimsy_intrinsic_predicate)
+        called_lambda, whimsy_intrinsic_predicate
+    )
     self.assertIn(called_lambda, dependent_nodes)
 
   def test_propogates_dependence_into_binding_to_reference(self):
     fed_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     ref_to_x = building_blocks.Reference('x', fed_type)
-    federated_zero = building_blocks.Intrinsic(intrinsic_defs.GENERIC_ZERO.uri,
-                                               fed_type)
+    federated_zero = building_blocks.Intrinsic(
+        intrinsic_defs.GENERIC_ZERO.uri, fed_type
+    )
 
     def federated_zero_predicate(x):
       return x.is_intrinsic() and x.uri == intrinsic_defs.GENERIC_ZERO.uri
 
     block = building_blocks.Block([('x', federated_zero)], ref_to_x)
     dependent_nodes = tree_analysis.extract_nodes_consuming(
-        block, federated_zero_predicate)
+        block, federated_zero_predicate
+    )
     self.assertIn(ref_to_x, dependent_nodes)
 
 
@@ -166,44 +188,59 @@ class BroadcastDependentOnAggregateTest(absltest.TestCase):
       tree_analysis.check_broadcast_not_dependent_on_aggregate(None)
 
   def test_does_not_find_aggregate_dependent_on_broadcast(self):
-    broadcast = building_block_test_utils.create_whimsy_called_federated_broadcast(
+    broadcast = (
+        building_block_test_utils.create_whimsy_called_federated_broadcast()
     )
     value_type = broadcast.type_signature
     zero = building_blocks.Data('zero', value_type.member)
-    accumulate_result = building_blocks.Data('accumulate_result',
-                                             value_type.member)
-    accumulate = building_blocks.Lambda('accumulate_parameter',
-                                        [value_type.member, value_type.member],
-                                        accumulate_result)
+    accumulate_result = building_blocks.Data(
+        'accumulate_result', value_type.member
+    )
+    accumulate = building_blocks.Lambda(
+        'accumulate_parameter',
+        [value_type.member, value_type.member],
+        accumulate_result,
+    )
     merge_result = building_blocks.Data('merge_result', value_type.member)
-    merge = building_blocks.Lambda('merge_parameter',
-                                   [value_type.member, value_type.member],
-                                   merge_result)
+    merge = building_blocks.Lambda(
+        'merge_parameter', [value_type.member, value_type.member], merge_result
+    )
     report_result = building_blocks.Data('report_result', value_type.member)
-    report = building_blocks.Lambda('report_parameter', value_type.member,
-                                    report_result)
-    aggregate_dependent_on_broadcast = building_block_factory.create_federated_aggregate(
-        broadcast, zero, accumulate, merge, report)
+    report = building_blocks.Lambda(
+        'report_parameter', value_type.member, report_result
+    )
+    aggregate_dependent_on_broadcast = (
+        building_block_factory.create_federated_aggregate(
+            broadcast, zero, accumulate, merge, report
+        )
+    )
     tree_analysis.check_broadcast_not_dependent_on_aggregate(
-        aggregate_dependent_on_broadcast)
+        aggregate_dependent_on_broadcast
+    )
 
   def test_finds_broadcast_dependent_on_aggregate(self):
-    aggregate = building_block_test_utils.create_whimsy_called_federated_aggregate(
+    aggregate = (
+        building_block_test_utils.create_whimsy_called_federated_aggregate()
     )
     broadcasted_aggregate = building_block_factory.create_federated_broadcast(
-        aggregate)
+        aggregate
+    )
     with self.assertRaises(ValueError):
       tree_analysis.check_broadcast_not_dependent_on_aggregate(
-          broadcasted_aggregate)
+          broadcasted_aggregate
+      )
 
   def test_returns_correct_example_of_broadcast_dependent_on_aggregate(self):
-    aggregate = building_block_test_utils.create_whimsy_called_federated_aggregate(
+    aggregate = (
+        building_block_test_utils.create_whimsy_called_federated_aggregate()
     )
     broadcasted_aggregate = building_block_factory.create_federated_broadcast(
-        aggregate)
+        aggregate
+    )
     with self.assertRaisesRegex(ValueError, 'acc_param'):
       tree_analysis.check_broadcast_not_dependent_on_aggregate(
-          broadcasted_aggregate)
+          broadcasted_aggregate
+      )
 
 
 class AggregateDependentOnAggregateTest(absltest.TestCase):
@@ -213,34 +250,46 @@ class AggregateDependentOnAggregateTest(absltest.TestCase):
       tree_analysis.check_aggregate_not_dependent_on_aggregate(None)
 
   def test_does_not_find_aggregate_dependent_on_broadcast(self):
-    broadcast = building_block_test_utils.create_whimsy_called_federated_broadcast(
+    broadcast = (
+        building_block_test_utils.create_whimsy_called_federated_broadcast()
     )
     value_type = broadcast.type_signature
     zero = building_blocks.Data('zero', value_type.member)
-    accumulate_result = building_blocks.Data('accumulate_result',
-                                             value_type.member)
-    accumulate = building_blocks.Lambda('accumulate_parameter',
-                                        [value_type.member, value_type.member],
-                                        accumulate_result)
+    accumulate_result = building_blocks.Data(
+        'accumulate_result', value_type.member
+    )
+    accumulate = building_blocks.Lambda(
+        'accumulate_parameter',
+        [value_type.member, value_type.member],
+        accumulate_result,
+    )
     merge_result = building_blocks.Data('merge_result', value_type.member)
-    merge = building_blocks.Lambda('merge_parameter',
-                                   [value_type.member, value_type.member],
-                                   merge_result)
+    merge = building_blocks.Lambda(
+        'merge_parameter', [value_type.member, value_type.member], merge_result
+    )
     report_result = building_blocks.Data('report_result', value_type.member)
-    report = building_blocks.Lambda('report_parameter', value_type.member,
-                                    report_result)
-    aggregate_dependent_on_broadcast = building_block_factory.create_federated_aggregate(
-        broadcast, zero, accumulate, merge, report)
+    report = building_blocks.Lambda(
+        'report_parameter', value_type.member, report_result
+    )
+    aggregate_dependent_on_broadcast = (
+        building_block_factory.create_federated_aggregate(
+            broadcast, zero, accumulate, merge, report
+        )
+    )
     tree_analysis.check_aggregate_not_dependent_on_aggregate(
-        aggregate_dependent_on_broadcast)
+        aggregate_dependent_on_broadcast
+    )
 
   def test_finds_aggregate_dependent_on_aggregate(self):
-    aggregate = building_block_test_utils.create_whimsy_called_federated_aggregate(
+    aggregate = (
+        building_block_test_utils.create_whimsy_called_federated_aggregate()
     )
     broadcasted_aggregate = building_block_factory.create_federated_broadcast(
-        aggregate)
+        aggregate
+    )
     second_aggregate = building_block_factory.create_federated_sum(
-        broadcasted_aggregate)
+        broadcasted_aggregate
+    )
     with self.assertRaises(ValueError):
       tree_analysis.check_aggregate_not_dependent_on_aggregate(second_aggregate)
 
@@ -259,19 +308,24 @@ class CountTensorFlowOpsTest(absltest.TestCase):
   def test_single_tensorflow_node_count_agrees_with_node_count(self):
     tensor_type = computation_types.TensorType(tf.int32)
     integer_identity = building_block_factory.create_compiled_identity(
-        tensor_type)
+        tensor_type
+    )
     node_tf_op_count = building_block_analysis.count_tensorflow_ops_in(
-        integer_identity)
+        integer_identity
+    )
     tree_tf_op_count = tree_analysis.count_tensorflow_ops_under(
-        integer_identity)
+        integer_identity
+    )
     self.assertEqual(node_tf_op_count, tree_tf_op_count)
 
   def test_tensorflow_op_count_doubles_number_of_ops_in_two_tuple(self):
     tensor_type = computation_types.TensorType(tf.int32)
     integer_identity = building_block_factory.create_compiled_identity(
-        tensor_type)
+        tensor_type
+    )
     node_tf_op_count = building_block_analysis.count_tensorflow_ops_in(
-        integer_identity)
+        integer_identity
+    )
     tf_tuple = building_blocks.Struct([integer_identity, integer_identity])
     tree_tf_op_count = tree_analysis.count_tensorflow_ops_under(tf_tuple)
     self.assertEqual(tree_tf_op_count, 2 * node_tf_op_count)
@@ -283,7 +337,9 @@ def _pack_noarg_graph(graph_def, return_type, result_binding):
   proto = pb.Computation(
       type=type_serialization.serialize_type(function_type),
       tensorflow=pb.TensorFlow(
-          graph_def=packed_graph_def, parameter=None, result=result_binding))
+          graph_def=packed_graph_def, parameter=None, result=result_binding
+      ),
+  )
   building_block = building_blocks.ComputationBuildingBlock.from_proto(proto)
   return building_block
 
@@ -328,22 +384,26 @@ class CountTensorFlowVariablesTest(absltest.TestCase):
   def test_returns_zero_no_tensorflow(self):
     no_tensorflow_comp = building_block_test_utils.create_nested_syntax_tree()
     variable_count = tree_analysis.count_tensorflow_variables_under(
-        no_tensorflow_comp)
+        no_tensorflow_comp
+    )
     self.assertEqual(variable_count, 0)
 
   def test_returns_zero_tensorflow_with_no_variables(self):
     no_variable_comp = _create_no_variable_tensorflow()
     variable_count = tree_analysis.count_tensorflow_variables_under(
-        no_variable_comp)
+        no_variable_comp
+    )
     self.assertEqual(variable_count, 0)
 
   def test_tensorflow_op_count_doubles_number_of_ops_in_two_tuple(self):
     two_variable_comp = _create_two_variable_tensorflow()
-    node_tf_variable_count = building_block_analysis.count_tensorflow_variables_in(
-        two_variable_comp)
+    node_tf_variable_count = (
+        building_block_analysis.count_tensorflow_variables_in(two_variable_comp)
+    )
     tf_tuple = building_blocks.Struct([two_variable_comp, two_variable_comp])
     tree_tf_variable_count = tree_analysis.count_tensorflow_variables_under(
-        tf_tuple)
+        tf_tuple
+    )
     self.assertEqual(tree_tf_variable_count, 2 * node_tf_variable_count)
 
 
@@ -393,7 +453,8 @@ class ContainsNoUnboundReferencesTest(absltest.TestCase):
     ref = building_blocks.Reference('a', tf.int32)
     fn = building_blocks.Lambda('b', tf.int32, ref)
     self.assertTrue(
-        tree_analysis.contains_no_unbound_references(fn, excluding='a'))
+        tree_analysis.contains_no_unbound_references(fn, excluding='a')
+    )
 
   def test_returns_false(self):
     ref = building_blocks.Reference('a', tf.int32)
@@ -540,26 +601,32 @@ class TreesEqualTest(absltest.TestCase):
   def test_returns_false_for_compiled_computations_with_different_types(self):
     tensor_type_1 = computation_types.TensorType(tf.int32)
     compiled_1 = building_block_factory.create_compiled_identity(
-        tensor_type_1, 'a')
+        tensor_type_1, 'a'
+    )
     tensor_type_2 = computation_types.TensorType(tf.float32)
     compiled_2 = building_block_factory.create_compiled_identity(
-        tensor_type_2, 'a')
+        tensor_type_2, 'a'
+    )
     self.assertFalse(tree_analysis.trees_equal(compiled_1, compiled_2))
 
   def test_returns_true_for_compiled_computations(self):
     tensor_type = computation_types.TensorType(tf.int32)
     compiled_1 = building_block_factory.create_compiled_identity(
-        tensor_type, 'a')
+        tensor_type, 'a'
+    )
     compiled_2 = building_block_factory.create_compiled_identity(
-        tensor_type, 'a')
+        tensor_type, 'a'
+    )
     self.assertTrue(tree_analysis.trees_equal(compiled_1, compiled_2))
 
   def test_returns_true_for_compiled_computations_with_different_names(self):
     tensor_type = computation_types.TensorType(tf.int32)
     compiled_1 = building_block_factory.create_compiled_identity(
-        tensor_type, 'a')
+        tensor_type, 'a'
+    )
     compiled_2 = building_block_factory.create_compiled_identity(
-        tensor_type, 'b')
+        tensor_type, 'b'
+    )
     self.assertTrue(tree_analysis.trees_equal(compiled_1, compiled_2))
 
   def test_returns_false_for_data_with_different_types(self):
@@ -622,7 +689,8 @@ class TreesEqualTest(absltest.TestCase):
     self.assertFalse(tree_analysis.trees_equal(fn_1, fn_2))
 
   def test_returns_true_for_lambdas_with_different_parameter_names_but_same_result(
-      self):
+      self,
+  ):
     data_1 = building_blocks.Data('x', tf.int32)
     ref_1 = building_blocks.Reference('a', tf.int32)
     fn_1 = building_blocks.Lambda(ref_1.name, ref_1.type_signature, data_1)
@@ -631,7 +699,8 @@ class TreesEqualTest(absltest.TestCase):
     self.assertTrue(tree_analysis.trees_equal(fn_1, fn_2))
 
   def test_returns_false_for_lambdas_referring_to_different_unbound_variables(
-      self):
+      self,
+  ):
     ref_to_x = building_blocks.Reference('x', tf.int32)
     ref_to_y = building_blocks.Reference('y', tf.int32)
     fn_1 = building_blocks.Lambda('a', tf.int32, ref_to_x)
@@ -746,23 +815,33 @@ class TreesEqualTest(absltest.TestCase):
 
 
 non_aggregation_intrinsics = building_blocks.Struct([
-    (None,
-     building_block_test_utils.create_whimsy_called_federated_broadcast()),
-    (None,
-     building_block_test_utils.create_whimsy_called_federated_value(
-         placements.CLIENTS))
+    (
+        None,
+        building_block_test_utils.create_whimsy_called_federated_broadcast(),
+    ),
+    (
+        None,
+        building_block_test_utils.create_whimsy_called_federated_value(
+            placements.CLIENTS
+        ),
+    ),
 ])
 
 unit = computation_types.StructType([])
-trivial_aggregate = building_block_test_utils.create_whimsy_called_federated_aggregate(
-    value_type=unit)
+trivial_aggregate = (
+    building_block_test_utils.create_whimsy_called_federated_aggregate(
+        value_type=unit
+    )
+)
 trivial_mean = building_block_test_utils.create_whimsy_called_federated_mean(
-    unit)
+    unit
+)
 trivial_sum = building_block_test_utils.create_whimsy_called_federated_sum(unit)
 # TODO(b/120439632) Enable once federated_mean accepts structured weights.
 # trivial_weighted_mean = ...
 trivial_secure_sum = building_block_test_utils.create_whimsy_called_federated_secure_sum_bitwidth(
-    unit)
+    unit
+)
 
 
 class ContainsAggregationShared(parameterized.TestCase):
@@ -785,7 +864,10 @@ class ContainsAggregationShared(parameterized.TestCase):
         building_blocks.Data(
             'unknown_func',
             computation_types.FunctionType(
-                None, computation_types.at_clients(tf.int32))))
+                None, computation_types.at_clients(tf.int32)
+            ),
+        )
+    )
     with self.assertRaises(ValueError):
       tree_analysis.find_unsecure_aggregation_in_tree(comp)
     with self.assertRaises(ValueError):
@@ -793,26 +875,34 @@ class ContainsAggregationShared(parameterized.TestCase):
 
   # functions without a federated output can't aggregate
   def test_returns_none_on_unresolvable_function_call_with_non_federated_output(
-      self):
+      self,
+  ):
     input_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     output_type = tf.int32
     comp = building_blocks.Call(
         building_blocks.Data(
             'unknown_func',
-            computation_types.FunctionType(input_type, output_type)),
-        building_blocks.Data('client_data', input_type))
+            computation_types.FunctionType(input_type, output_type),
+        ),
+        building_blocks.Data('client_data', input_type),
+    )
 
     self.assertEmpty(tree_analysis.find_unsecure_aggregation_in_tree(comp))
     self.assertEmpty(tree_analysis.find_secure_aggregation_in_tree(comp))
 
 
-simple_aggregate = building_block_test_utils.create_whimsy_called_federated_aggregate(
+simple_aggregate = (
+    building_block_test_utils.create_whimsy_called_federated_aggregate()
 )
 simple_mean = building_block_test_utils.create_whimsy_called_federated_mean()
 simple_sum = building_block_test_utils.create_whimsy_called_federated_sum()
-simple_weighted_mean = building_block_test_utils.create_whimsy_called_federated_mean(
-    tf.float32, tf.float32)
-simple_secure_sum = building_block_test_utils.create_whimsy_called_federated_secure_sum_bitwidth(
+simple_weighted_mean = (
+    building_block_test_utils.create_whimsy_called_federated_mean(
+        tf.float32, tf.float32
+    )
+)
+simple_secure_sum = (
+    building_block_test_utils.create_whimsy_called_federated_secure_sum_bitwidth()
 )
 
 
@@ -835,7 +925,8 @@ class ContainsSecureAggregation(parameterized.TestCase):
 
   def test_returns_str_on_nested_secure_aggregation(self):
     comp = building_block_test_utils.create_whimsy_called_federated_secure_sum_bitwidth(
-        (tf.int32, tf.int32))
+        (tf.int32, tf.int32)
+    )
     self.assert_one_aggregation(comp)
 
 
@@ -843,7 +934,8 @@ class ContainsUnsecureAggregation(parameterized.TestCase):
 
   def test_returns_none_on_secure_aggregation(self):
     self.assertEmpty(
-        tree_analysis.find_unsecure_aggregation_in_tree(simple_secure_sum))
+        tree_analysis.find_unsecure_aggregation_in_tree(simple_secure_sum)
+    )
 
   @parameterized.named_parameters([
       ('simple_aggregate', simple_aggregate),

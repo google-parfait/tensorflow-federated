@@ -25,8 +25,9 @@ from tensorflow_federated.python.core.impl.types import type_serialization
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
 
-def _stamp_value_into_graph(value: Any, type_signature: computation_types.Type,
-                            graph: tf.Graph) -> Any:
+def _stamp_value_into_graph(
+    value: Any, type_signature: computation_types.Type, graph: tf.Graph
+) -> Any:
   """Stamps `value` in `graph` as an object of type `type_signature`.
 
   Args:
@@ -44,14 +45,16 @@ def _stamp_value_into_graph(value: Any, type_signature: computation_types.Type,
   if type_signature.is_tensor():
     if isinstance(value, np.ndarray) or tf.is_tensor(value):
       value_type = computation_types.TensorType(
-          tf.dtypes.as_dtype(value.dtype), tf.TensorShape(value.shape))
+          tf.dtypes.as_dtype(value.dtype), tf.TensorShape(value.shape)
+      )
       type_signature.check_assignable_from(value_type)
       with graph.as_default():
         return tf.constant(value)
     else:
       with graph.as_default():
         return tf.constant(
-            value, dtype=type_signature.dtype, shape=type_signature.shape)
+            value, dtype=type_signature.dtype, shape=type_signature.shape
+        )
   elif type_signature.is_struct():
     if isinstance(value, (list, dict)):
       value = structure.from_container(value)
@@ -62,11 +65,13 @@ def _stamp_value_into_graph(value: Any, type_signature: computation_types.Type,
       stamped_elements.append((name, stamped_element))
     return structure.Struct(stamped_elements)
   elif type_signature.is_sequence():
-    return tensorflow_utils.make_data_set_from_elements(graph, value,
-                                                        type_signature.element)
+    return tensorflow_utils.make_data_set_from_elements(
+        graph, value, type_signature.element
+    )
   else:
     raise NotImplementedError(
-        'Unable to stamp a value of type {} in graph.'.format(type_signature))
+        'Unable to stamp a value of type {} in graph.'.format(type_signature)
+    )
 
 
 def run_tensorflow(computation_proto: pb.Computation, arg: Any = None) -> Any:
@@ -83,12 +88,14 @@ def run_tensorflow(computation_proto: pb.Computation, arg: Any = None) -> Any:
   with tf.Graph().as_default() as graph:
     type_signature = type_serialization.deserialize_type(computation_proto.type)
     if type_signature.parameter is not None:
-      stamped_arg = _stamp_value_into_graph(arg, type_signature.parameter,
-                                            graph)
+      stamped_arg = _stamp_value_into_graph(
+          arg, type_signature.parameter, graph
+      )
     else:
       stamped_arg = None
     init_op, result = tensorflow_utils.deserialize_and_call_tf_computation(
-        computation_proto, stamped_arg, graph, '', tf.constant('bogus_token'))
+        computation_proto, stamped_arg, graph, '', tf.constant('bogus_token')
+    )
   with tf.compat.v1.Session(graph=graph) as sess:
     if init_op:
       sess.run(init_op)

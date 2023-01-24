@@ -34,7 +34,9 @@ DISTRIBUTED_DP_MECHANISMS = [
     'distributed-discrete-gaussian',  # Distributed discrete Gaussian mechanism.
 ]
 
-DP_MECHANISMS = CENTRAL_DP_MECHANISMS + DISTRIBUTED_DP_MECHANISMS + NO_NOISE_MECHANISMS
+DP_MECHANISMS = (
+    CENTRAL_DP_MECHANISMS + DISTRIBUTED_DP_MECHANISMS + NO_NOISE_MECHANISMS
+)
 
 
 def create_hierarchical_histogram_aggregation_factory(
@@ -46,7 +48,8 @@ def create_hierarchical_histogram_aggregation_factory(
     noise_multiplier: float = 0.0,
     expected_clients_per_round: int = 10,
     bits: int = 22,
-    enable_secure_sum: bool = True):
+    enable_secure_sum: bool = True,
+):
   """Creates hierarchical histogram aggregation factory.
 
   Hierarchical histogram factory is constructed by composing 3 aggregation
@@ -109,8 +112,9 @@ def create_hierarchical_histogram_aggregation_factory(
   """
   _check_positive(num_bins, 'num_bins')
   _check_greater_equal(arity, 2, 'arity')
-  _check_membership(clip_mechanism, clipping_factory.CLIP_MECHANISMS,
-                    'clip_mechanism')
+  _check_membership(
+      clip_mechanism, clipping_factory.CLIP_MECHANISMS, 'clip_mechanism'
+  )
   _check_positive(max_records_per_user, 'max_records_per_user')
   _check_membership(dp_mechanism, DP_MECHANISMS, 'dp_mechanism')
   _check_non_negative(noise_multiplier, 'noise_multiplier')
@@ -122,7 +126,8 @@ def create_hierarchical_histogram_aggregation_factory(
   if dp_mechanism in ['central-gaussian', 'distributed-discrete-gaussian']:
     if clip_mechanism == 'sub-sampling':
       l2_norm_bound = max_records_per_user * math.sqrt(
-          _tree_depth(num_bins, arity))
+          _tree_depth(num_bins, arity)
+      )
     elif clip_mechanism == 'distinct':
       # The following code block converts `max_records_per_user` to L2 norm
       # bound of the hierarchical histogram layer by layer. For the bottom
@@ -131,18 +136,21 @@ def create_hierarchical_histogram_aggregation_factory(
       # the worst case is only 0s and `max_records_per_user/2` 2s. And so on
       # until the root node. Another natural L2 norm bound on each layer is
       # `max_records_per_user` so we take the minimum between the two bounds.
-      square_l2_norm_bound = 0.
+      square_l2_norm_bound = 0.0
       square_layer_l2_norm_bound = max_records_per_user
       for _ in range(_tree_depth(num_bins, arity)):
-        square_l2_norm_bound += min(max_records_per_user**2,
-                                    square_layer_l2_norm_bound)
+        square_l2_norm_bound += min(
+            max_records_per_user**2, square_layer_l2_norm_bound
+        )
         square_layer_l2_norm_bound *= arity
       l2_norm_bound = math.sqrt(square_l2_norm_bound)
 
   if not enable_secure_sum and dp_mechanism in DISTRIBUTED_DP_MECHANISMS:
-    raise ValueError(f'When dp_mechanism is {DISTRIBUTED_DP_MECHANISMS}, '
-                     'enable_secure_sum must be set to True to preserve '
-                     'distributed DP.')
+    raise ValueError(
+        f'When dp_mechanism is {DISTRIBUTED_DP_MECHANISMS}, '
+        'enable_secure_sum must be set to True to preserve '
+        'distributed DP.'
+    )
 
   # Build nested aggregtion factory from innermost to outermost.
   # 1. Sum factory. The most inner factory that sums the preprocessed records.
@@ -170,35 +178,49 @@ def create_hierarchical_histogram_aggregation_factory(
       # `expected_clients_per_round`, overflow still might happen. It is the
       # caller's responsibility to carefully choose `bits` according to system
       # details to avoid overflow or performance degradation.
-      if bits < math.log2(4 * math.sqrt(expected_clients_per_round) *
-                          noise_multiplier * l2_norm_bound +
-                          expected_clients_per_round *
-                          max_records_per_user) + 1:
+      if (
+          bits
+          < math.log2(
+              4
+              * math.sqrt(expected_clients_per_round)
+              * noise_multiplier
+              * l2_norm_bound
+              + expected_clients_per_round * max_records_per_user
+          )
+          + 1
+      ):
         raise ValueError(
             f'The selected bit-width ({bits}) is too small for the '
-            f'given parameters (expected_clients_per_round = '
+            'given parameters (expected_clients_per_round = '
             f'{expected_clients_per_round}, max_records_per_user = '
             f'{max_records_per_user}, noise_multiplier = '
             f'{noise_multiplier}) and will harm the accuracy of the '
-            f'result. Please decrease the '
-            f'`expected_clients_per_round` / `max_records_per_user` '
-            f'/ `noise_multiplier`, or increase `bits`.')
+            'result. Please decrease the '
+            '`expected_clients_per_round` / `max_records_per_user` '
+            '/ `noise_multiplier`, or increase `bits`.'
+        )
       nested_factory = secure.SecureModularSumFactory(
-          modulus=2**(bits - 1), symmetric_range=True)
+          modulus=2 ** (bits - 1), symmetric_range=True
+      )
 
   # 2. DP operations.
   # Constructs `DifferentiallyPrivateFactory` according to the chosen
   # `dp_mechanism`.
   if dp_mechanism == 'central-gaussian':
     query = tfp.TreeRangeSumQuery.build_central_gaussian_query(
-        l2_norm_bound, noise_multiplier * l2_norm_bound, arity)
+        l2_norm_bound, noise_multiplier * l2_norm_bound, arity
+    )
     # If the inner `DifferentiallyPrivateFactory` uses `GaussianSumQuery`, then
     # the record is casted to `tf.float32` before feeding to the DP factory.
     cast_to_float = True
   elif dp_mechanism == 'distributed-discrete-gaussian':
     query = tfp.TreeRangeSumQuery.build_distributed_discrete_gaussian_query(
-        l2_norm_bound, noise_multiplier * l2_norm_bound /
-        math.sqrt(expected_clients_per_round), arity)
+        l2_norm_bound,
+        noise_multiplier
+        * l2_norm_bound
+        / math.sqrt(expected_clients_per_round),
+        arity,
+    )
     # If the inner `DifferentiallyPrivateFactory` uses
     # `DistributedDiscreteGaussianQuery`, then the record is kept as `tf.int32`
     # before feeding to the DP factory.
@@ -212,14 +234,16 @@ def create_hierarchical_histogram_aggregation_factory(
   else:
     raise ValueError('Unexpected dp_mechanism.')
   nested_factory = differential_privacy.DifferentiallyPrivateFactory(
-      query, nested_factory)
+      query, nested_factory
+  )
 
   # 3. Clip as specified by `clip_mechanism`.
   nested_factory = clipping_factory.HistogramClippingSumFactory(
       clip_mechanism=clip_mechanism,
       max_records_per_user=max_records_per_user,
       inner_agg_factory=nested_factory,
-      cast_to_float=cast_to_float)
+      cast_to_float=cast_to_float,
+  )
 
   return nested_factory
 
@@ -241,15 +265,15 @@ def _check_non_negative(value, label):
 
 def _check_membership(value, valid_set, label):
   if value not in valid_set:
-    raise ValueError(f'`{label}` must be one of {valid_set}. '
-                     f'Found {value}.')
+    raise ValueError(f'`{label}` must be one of {valid_set}. Found {value}.')
 
 
 def _check_in_range(value, label, left, right):
   """Checks that a scalar value is in specified range."""
   if not value >= left or not value <= right:
-    raise ValueError(f'{label} should be within [{left}, {right}]. '
-                     f'Found {value}.')
+    raise ValueError(
+        f'{label} should be within [{left}, {right}]. Found {value}.'
+    )
 
 
 def _tree_depth(num_leaves: int, arity: int):

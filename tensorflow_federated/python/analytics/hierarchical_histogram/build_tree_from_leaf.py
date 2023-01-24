@@ -29,21 +29,21 @@ def create_hierarchical_histogram(histogram, arity: int):
     hierarchical histogram.
   """
   if arity < 2:
-    raise ValueError(f'Arity should be at least 2.' f'arity={arity} is given.')
+    raise ValueError(f'Arity should be at least 2.arity={arity} is given.')
 
   depth = math.ceil(math.log(len(histogram), arity)) + 1
-  size_ = arity**(depth - 1)
+  size_ = arity ** (depth - 1)
   histogram = np.pad(
-      histogram, (0, size_ - len(histogram)),
-      'constant',
-      constant_values=(0, 0)).tolist()
+      histogram, (0, size_ - len(histogram)), 'constant', constant_values=(0, 0)
+  ).tolist()
 
   def _shrink_histogram(histogram):
     return np.sum((np.reshape(histogram, (-1, arity))), axis=1).tolist()
 
   hierarchical_histogram = [histogram]
   for _ in range(depth - 1):
-    hierarchical_histogram = [_shrink_histogram(hierarchical_histogram[0])
-                             ] + hierarchical_histogram
+    hierarchical_histogram = [
+        _shrink_histogram(hierarchical_histogram[0])
+    ] + hierarchical_histogram
 
   return hierarchical_histogram

@@ -171,7 +171,6 @@ class ClientWorkTest(absltest.TestCase):
       client_works.ClientWorkProcess(float_initialize_fn, test_next_fn)
 
   def test_next_state_not_assignable(self):
-
     @federated_computation.federated_computation(
         SERVER_INT, MODEL_WEIGHTS_TYPE, CLIENTS_FLOAT_SEQUENCE
     )
@@ -187,7 +186,6 @@ class ClientWorkTest(absltest.TestCase):
       client_works.ClientWorkProcess(test_initialize_fn, float_next_fn)
 
   def test_next_return_tuple_raises(self):
-
     @federated_computation.federated_computation(
         SERVER_INT, MODEL_WEIGHTS_TYPE, CLIENTS_FLOAT_SEQUENCE
     )
@@ -214,7 +212,6 @@ class ClientWorkTest(absltest.TestCase):
       client_works.ClientWorkProcess(test_initialize_fn, namedtuple_next_fn)
 
   def test_next_return_odict_raises(self):
-
     @federated_computation.federated_computation(
         SERVER_INT, MODEL_WEIGHTS_TYPE, CLIENTS_FLOAT_SEQUENCE
     )
@@ -293,7 +290,6 @@ class ClientWorkTest(absltest.TestCase):
       client_works.ClientWorkProcess(test_initialize_fn, next_fn)
 
   def test_non_clients_placed_next_weights_param_raises(self):
-
     @federated_computation.federated_computation(
         SERVER_INT,
         computation_types.at_server(MODEL_WEIGHTS_TYPE.member),
@@ -330,7 +326,6 @@ class ClientWorkTest(absltest.TestCase):
       self.fail('Could not construct a valid ClientWorkProcess.')
 
   def test_constructs_with_struct_of_client_data_parameter(self):
-
     @federated_computation.federated_computation(
         SERVER_INT,
         MODEL_WEIGHTS_TYPE,
@@ -375,7 +370,6 @@ class ClientWorkTest(absltest.TestCase):
       client_works.ClientWorkProcess(test_initialize_fn, next_fn)
 
   def test_non_sequence_or_struct_next_data_param_raises(self):
-
     @federated_computation.federated_computation(
         SERVER_INT, MODEL_WEIGHTS_TYPE, CLIENTS_FLOAT
     )
@@ -394,7 +388,6 @@ class ClientWorkTest(absltest.TestCase):
       client_works.ClientWorkProcess(test_initialize_fn, next_fn)
 
   def test_non_clients_placed_next_result_raises(self):
-
     @federated_computation.federated_computation(
         SERVER_INT, MODEL_WEIGHTS_TYPE, CLIENTS_FLOAT_SEQUENCE
     )
@@ -409,7 +402,6 @@ class ClientWorkTest(absltest.TestCase):
       client_works.ClientWorkProcess(test_initialize_fn, next_fn)
 
   def test_non_zipped_next_result_raises(self):
-
     @federated_computation.federated_computation(
         SERVER_INT, MODEL_WEIGHTS_TYPE, CLIENTS_FLOAT_SEQUENCE
     )
@@ -427,7 +419,6 @@ class ClientWorkTest(absltest.TestCase):
       client_works.ClientWorkProcess(test_initialize_fn, next_fn)
 
   def test_incorrect_client_result_container_raises(self):
-
     @federated_computation.federated_computation(
         SERVER_INT, MODEL_WEIGHTS_TYPE, CLIENTS_FLOAT_SEQUENCE
     )
@@ -445,7 +436,6 @@ class ClientWorkTest(absltest.TestCase):
       client_works.ClientWorkProcess(test_initialize_fn, next_fn)
 
   def test_non_server_placed_next_measurements_raises(self):
-
     @federated_computation.federated_computation(
         SERVER_INT, MODEL_WEIGHTS_TYPE, CLIENTS_FLOAT_SEQUENCE
     )

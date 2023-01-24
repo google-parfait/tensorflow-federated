@@ -31,13 +31,15 @@ class RecordVariableCreationScopeTest(tf.test.TestCase):
       v3 = tf.compat.v1.get_variable(
           name='v1_var',
           shape=(),
-          initializer=tf.compat.v1.initializers.constant)
+          initializer=tf.compat.v1.initializers.constant,
+      )
       # Explicitly add a variable that is not added to any collections.
       v4 = tf.compat.v1.get_variable(
           name='v1_var_no_collections',
           shape=(),
           initializer=tf.compat.v1.initializers.constant,
-          collections=[])
+          collections=[],
+      )
     self.assertEqual([v1, v2, v3, v4], variable_list)
 
 
@@ -84,7 +86,8 @@ class TensorVariableTest(tf.test.TestCase, parameterized.TestCase):
   )
   def test_creation_python_callable(self, python_value, dtype):
     v = variable_utils.TensorVariable(
-        initial_value=lambda: python_value, dtype=dtype)
+        initial_value=lambda: python_value, dtype=dtype
+    )
     self.assertIsInstance(v, variable_utils.TensorVariable)
     if dtype is not None:
       self.assertEqual(v.dtype, dtype)
@@ -124,33 +127,36 @@ class TensorVariableTest(tf.test.TestCase, parameterized.TestCase):
   @parameterized.named_parameters(
       # pylint: disable=g-complex-comprehension,undefined-variable
       ('_'.join([value[0], operator_fn[0]]), value[1], operator_fn[1])
-      for value, operator_fn in itertools.product([
-          ('scalar_int', 1),
-          ('tensor_int', [1, 2, 3]),
-          ('scalar_float', 1.0),
-          ('tensor_float', [1.0, 2.0, 3.0]),
-      ], [
-          ('__add__', operator.__add__),
-          ('__eq__', operator.__eq__),
-          ('__floordiv__', operator.__floordiv__),
-          ('__ge__', operator.__ge__),
-          ('__gt__', operator.__gt__),
-          ('__le__', operator.__le__),
-          ('__lt__', operator.__lt__),
-          ('__mul__', operator.__mul__),
-          ('__ne__', operator.__ne__),
-          ('__truediv__', operator.__truediv__),
-          ('add', operator.add),
-          ('eq', operator.eq),
-          ('floordiv', operator.floordiv),
-          ('ge', operator.ge),
-          ('gt', operator.gt),
-          ('le', operator.le),
-          ('lt', operator.lt),
-          ('mul', operator.mul),
-          ('ne', operator.ne),
-          ('truediv', operator.truediv),
-      ])
+      for value, operator_fn in itertools.product(
+          [
+              ('scalar_int', 1),
+              ('tensor_int', [1, 2, 3]),
+              ('scalar_float', 1.0),
+              ('tensor_float', [1.0, 2.0, 3.0]),
+          ],
+          [
+              ('__add__', operator.__add__),
+              ('__eq__', operator.__eq__),
+              ('__floordiv__', operator.__floordiv__),
+              ('__ge__', operator.__ge__),
+              ('__gt__', operator.__gt__),
+              ('__le__', operator.__le__),
+              ('__lt__', operator.__lt__),
+              ('__mul__', operator.__mul__),
+              ('__ne__', operator.__ne__),
+              ('__truediv__', operator.__truediv__),
+              ('add', operator.add),
+              ('eq', operator.eq),
+              ('floordiv', operator.floordiv),
+              ('ge', operator.ge),
+              ('gt', operator.gt),
+              ('le', operator.le),
+              ('lt', operator.lt),
+              ('mul', operator.mul),
+              ('ne', operator.ne),
+              ('truediv', operator.truediv),
+          ],
+      )
       # pylint: enable=g-complex-comprehension,undefined-variable
   )
   def test_binary_operators(self, value, operator_fn):
@@ -165,17 +171,20 @@ class TensorVariableTest(tf.test.TestCase, parameterized.TestCase):
   @parameterized.named_parameters(
       # pylint: disable=g-complex-comprehension,undefined-variable
       ('_'.join([value[0], operator_fn[0]]), value[1], operator_fn[1])
-      for value, operator_fn in itertools.product([
-          ('scalar_int', 1),
-          ('tensor_int', [1, 2, 3]),
-          ('scalar_bool', True),
-          ('tensor_bool', [True, False, True]),
-      ], [
-          ('__and__', operator.__and__),
-          ('and', operator.and_),
-          ('__or__', operator.__and__),
-          ('or', operator.and_),
-      ])
+      for value, operator_fn in itertools.product(
+          [
+              ('scalar_int', 1),
+              ('tensor_int', [1, 2, 3]),
+              ('scalar_bool', True),
+              ('tensor_bool', [True, False, True]),
+          ],
+          [
+              ('__and__', operator.__and__),
+              ('and', operator.and_),
+              ('__or__', operator.__and__),
+              ('or', operator.and_),
+          ],
+      )
       # pylint: enable=g-complex-comprehension,undefined-variable
   )
   def test_non_float_binary_operators(self, value, operator_fn):
@@ -190,17 +199,20 @@ class TensorVariableTest(tf.test.TestCase, parameterized.TestCase):
   @parameterized.named_parameters(
       # pylint: disable=g-complex-comprehension,undefined-variable
       ('_'.join([value[0], operator_fn[0]]), value[1], operator_fn[1])
-      for value, operator_fn in itertools.product([
-          ('scalar_int', -1),
-          ('tensor_int', [1, -2, 3]),
-      ], [
-          ('__neg__', operator.__neg__),
-          ('neg', operator.neg),
-          ('__invert__', operator.__invert__),
-          ('invert', operator.invert),
-          ('__abs__', operator.__abs__),
-          ('abs', operator.abs),
-      ])
+      for value, operator_fn in itertools.product(
+          [
+              ('scalar_int', -1),
+              ('tensor_int', [1, -2, 3]),
+          ],
+          [
+              ('__neg__', operator.__neg__),
+              ('neg', operator.neg),
+              ('__invert__', operator.__invert__),
+              ('invert', operator.invert),
+              ('__abs__', operator.__abs__),
+              ('abs', operator.abs),
+          ],
+      )
       # pylint: enable=g-complex-comprehension,undefined-variable
   )
   def test_unary_operators(self, value, operator_fn):
@@ -237,8 +249,9 @@ class TensorVariableTest(tf.test.TestCase, parameterized.TestCase):
   def test_scalar_getitem_fails(self, value):
     value = tf.convert_to_tensor(value)
     tensor_variable = variable_utils.TensorVariable(value)
-    with self.assertRaisesRegex(tf.errors.InvalidArgumentError,
-                                'Index out of range'):
+    with self.assertRaisesRegex(
+        tf.errors.InvalidArgumentError, 'Index out of range'
+    ):
       tensor_variable[0]  # pylint: disable=pointless-statement
 
   def test_shape_validation_eager(self):
@@ -306,7 +319,9 @@ class TensorVariableTest(tf.test.TestCase, parameterized.TestCase):
           initializer=tf.convert_to_tensor(test_value),
           shape=[3],
           partitioner=tf.compat.v1.min_max_variable_partitioner(
-              max_partitions=3, min_slice_size=1))
+              max_partitions=3, min_slice_size=1
+          ),
+      )
 
       v = create_variable(name='partitioned_variable')
       output_v = tf.identity(v)

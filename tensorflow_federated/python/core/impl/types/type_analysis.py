@@ -41,8 +41,9 @@ def preorder_types(type_signature: computation_types.Type):
     yield from preorder_types(child)
 
 
-def count(type_signature: computation_types.Type,
-          predicate: _TypePredicate) -> int:
+def count(
+    type_signature: computation_types.Type, predicate: _TypePredicate
+) -> int:
   """Returns the number of types in `type_signature` matching `predicate`.
 
   Args:
@@ -54,8 +55,9 @@ def count(type_signature: computation_types.Type,
   return sum(map(one_or_zero, preorder_types(type_signature)))
 
 
-def contains(type_signature: computation_types.Type,
-             predicate: _TypePredicate) -> bool:
+def contains(
+    type_signature: computation_types.Type, predicate: _TypePredicate
+) -> bool:
   """Checks if `type_signature` contains any types that pass `predicate`."""
   for t in preorder_types(type_signature):
     if predicate(t):
@@ -100,7 +102,9 @@ def check_type(value: Any, type_spec: computation_types.Type):
             value_type,
             type_spec,
             computation_types.TypeRelation.ASSIGNABLE,
-            second_is_expected=True))
+            second_is_expected=True,
+        )
+    )
 
 
 def is_tensorflow_compatible_type(type_spec):
@@ -108,7 +112,8 @@ def is_tensorflow_compatible_type(type_spec):
   if type_spec is None:
     return True
   return contains_only(
-      type_spec, lambda t: t.is_struct() or t.is_sequence() or t.is_tensor())
+      type_spec, lambda t: t.is_struct() or t.is_sequence() or t.is_tensor()
+  )
 
 
 def is_structure_of_tensors(type_spec):
@@ -119,7 +124,8 @@ def check_tensorflow_compatible_type(type_spec):
   if not is_tensorflow_compatible_type(type_spec):
     raise TypeError(
         'Expected type to be compatible with TensorFlow (i.e. tensor, '
-        'sequence, or tuple types), found {}.'.format(type_spec))
+        'sequence, or tuple types), found {}.'.format(type_spec)
+    )
 
 
 def is_generic_op_compatible_type(type_spec):
@@ -131,7 +137,8 @@ def is_generic_op_compatible_type(type_spec):
 
 def is_binary_op_with_upcast_compatible_pair(
     possibly_nested_type: Optional[computation_types.Type],
-    type_to_upcast: computation_types.Type) -> bool:
+    type_to_upcast: computation_types.Type,
+) -> bool:
   """Checks unambiguity in applying `type_to_upcast` to `possibly_nested_type`.
 
   That is, checks that either these types are equivalent and contain only
@@ -155,15 +162,18 @@ def is_binary_op_with_upcast_compatible_pair(
     py_typecheck.check_type(possibly_nested_type, computation_types.Type)
   if type_to_upcast is not None:
     py_typecheck.check_type(type_to_upcast, computation_types.Type)
-  if not (is_generic_op_compatible_type(possibly_nested_type) and
-          is_generic_op_compatible_type(type_to_upcast)):
+  if not (
+      is_generic_op_compatible_type(possibly_nested_type)
+      and is_generic_op_compatible_type(type_to_upcast)
+  ):
     return False
   if possibly_nested_type is None:
     return type_to_upcast is None
   if possibly_nested_type.is_equivalent_to(type_to_upcast):
     return True
-  if not (type_to_upcast.is_tensor() and type_to_upcast.shape == tf.TensorShape(
-      ())):
+  if not (
+      type_to_upcast.is_tensor() and type_to_upcast.shape == tf.TensorShape(())
+  ):
     return False
 
   types_are_ok = [True]
@@ -175,8 +185,9 @@ def is_binary_op_with_upcast_compatible_pair(
       types_are_ok[0] = False
     return type_spec, False
 
-  type_transformations.transform_type_postorder(possibly_nested_type,
-                                                _check_tensor_types)
+  type_transformations.transform_type_postorder(
+      possibly_nested_type, _check_tensor_types
+  )
 
   return types_are_ok[0]
 
@@ -219,8 +230,9 @@ def check_all_abstract_types_are_bound(type_spec):
       occur in 'type_spec'.
   """
 
-  def _check_or_get_unbound_abstract_type_labels(type_spec, bound_labels,
-                                                 check):
+  def _check_or_get_unbound_abstract_type_labels(
+      type_spec, bound_labels, check
+  ):
     """Checks or collects abstract type labels from 'type_spec'.
 
     This is a helper function used by 'check_abstract_types_are_bound', not to
@@ -245,31 +257,37 @@ def check_all_abstract_types_are_bound(type_spec):
     if type_spec.is_tensor():
       return set()
     elif type_spec.is_sequence():
-      return _check_or_get_unbound_abstract_type_labels(type_spec.element,
-                                                        bound_labels, check)
+      return _check_or_get_unbound_abstract_type_labels(
+          type_spec.element, bound_labels, check
+      )
     elif type_spec.is_federated():
-      return _check_or_get_unbound_abstract_type_labels(type_spec.member,
-                                                        bound_labels, check)
+      return _check_or_get_unbound_abstract_type_labels(
+          type_spec.member, bound_labels, check
+      )
     elif type_spec.is_struct():
-      return set().union(*[
-          _check_or_get_unbound_abstract_type_labels(v, bound_labels, check)
-          for _, v in structure.iter_elements(type_spec)
-      ])
+      return set().union(
+          *[
+              _check_or_get_unbound_abstract_type_labels(v, bound_labels, check)
+              for _, v in structure.iter_elements(type_spec)
+          ]
+      )
     elif type_spec.is_abstract():
       if type_spec.label in bound_labels:
         return set()
       elif not check:
         return set([type_spec.label])
       else:
-        raise TypeError('Unbound type label \'{}\'.'.format(type_spec.label))
+        raise TypeError("Unbound type label '{}'.".format(type_spec.label))
     elif type_spec.is_function():
       if type_spec.parameter is None:
         parameter_labels = set()
       else:
         parameter_labels = _check_or_get_unbound_abstract_type_labels(
-            type_spec.parameter, bound_labels, False)
+            type_spec.parameter, bound_labels, False
+        )
       result_labels = _check_or_get_unbound_abstract_type_labels(
-          type_spec.result, bound_labels.union(parameter_labels), check)
+          type_spec.result, bound_labels.union(parameter_labels), check
+      )
       return parameter_labels.union(result_labels)
 
   _check_or_get_unbound_abstract_type_labels(type_spec, set(), True)
@@ -294,7 +312,8 @@ class SumIncompatibleError(TypeError):
     message = (
         'Expected a type which is compatible with the sum operator, found\n'
         f'{type_spec_context}\nwhich contains\n{type_spec}\nwhich is not '
-        f'sum-compatible because {reason}.')
+        f'sum-compatible because {reason}.'
+    )
     super().__init__(message)
 
 
@@ -319,26 +338,38 @@ def check_is_sum_compatible(type_spec, type_spec_context=None):
   py_typecheck.check_type(type_spec_context, computation_types.Type)
   if type_spec.is_tensor():
     if not is_numeric_dtype(type_spec.dtype):
-      raise SumIncompatibleError(type_spec, type_spec_context,
-                                 f'{type_spec.dtype} is not numeric')
-    if not type_spec.shape.is_fully_defined():
-      raise SumIncompatibleError(type_spec, type_spec_context,
-                                 f'{type_spec.shape} is not fully defined')
-  elif type_spec.is_struct():
-    if (type_spec.python_container is tf.RaggedTensor or
-        type_spec.python_container is tf.sparse.SparseTensor):
       raise SumIncompatibleError(
-          type_spec, type_spec_context,
-          '`tf.RaggedTensor` and `tf.sparse.SparseTensor` cannot be used with '
-          'simple summation')
+          type_spec, type_spec_context, f'{type_spec.dtype} is not numeric'
+      )
+    if not type_spec.shape.is_fully_defined():
+      raise SumIncompatibleError(
+          type_spec,
+          type_spec_context,
+          f'{type_spec.shape} is not fully defined',
+      )
+  elif type_spec.is_struct():
+    if (
+        type_spec.python_container is tf.RaggedTensor
+        or type_spec.python_container is tf.sparse.SparseTensor
+    ):
+      raise SumIncompatibleError(
+          type_spec,
+          type_spec_context,
+          (
+              '`tf.RaggedTensor` and `tf.sparse.SparseTensor` cannot be used'
+              ' with simple summation'
+          ),
+      )
     for _, element_type in structure.iter_elements(type_spec):
       check_is_sum_compatible(element_type, type_spec_context)
   elif type_spec.is_federated():
     check_is_sum_compatible(type_spec.member, type_spec_context)
   else:
     raise SumIncompatibleError(
-        type_spec, type_spec_context,
-        'only structures of tensors (possibly federated) may be summed')
+        type_spec,
+        type_spec_context,
+        'only structures of tensors (possibly federated) may be summed',
+    )
 
 
 def is_structure_of_floats(type_spec: computation_types.Type) -> bool:
@@ -359,8 +390,8 @@ def is_structure_of_floats(type_spec: computation_types.Type) -> bool:
     return type_spec.dtype.is_floating
   elif type_spec.is_struct():
     return all(
-        is_structure_of_floats(v)
-        for _, v in structure.iter_elements(type_spec))
+        is_structure_of_floats(v) for _, v in structure.iter_elements(type_spec)
+    )
   elif type_spec.is_federated():
     return is_structure_of_floats(type_spec.member)
   else:
@@ -371,7 +402,9 @@ def check_is_structure_of_floats(type_spec):
   if not is_structure_of_floats(type_spec):
     raise TypeError(
         'Expected a type which is structure of floats, found {}.'.format(
-            type_spec))
+            type_spec
+        )
+    )
 
 
 def is_structure_of_integers(type_spec: computation_types.Type) -> bool:
@@ -393,7 +426,8 @@ def is_structure_of_integers(type_spec: computation_types.Type) -> bool:
   elif type_spec.is_struct():
     return all(
         is_structure_of_integers(v)
-        for _, v in structure.iter_elements(type_spec))
+        for _, v in structure.iter_elements(type_spec)
+    )
   elif type_spec.is_federated():
     return is_structure_of_integers(type_spec.member)
   else:
@@ -404,12 +438,14 @@ def check_is_structure_of_integers(type_spec):
   if not is_structure_of_integers(type_spec):
     raise TypeError(
         'Expected a type which is structure of integers, found {}.'.format(
-            type_spec))
+            type_spec
+        )
+    )
 
 
 def is_single_integer_or_matches_structure(
-    type_sig: computation_types.Type,
-    shape_type: computation_types.Type) -> bool:
+    type_sig: computation_types.Type, shape_type: computation_types.Type
+) -> bool:
   """If `type_sig` is an integer or integer structure matching `shape_type`."""
 
   py_typecheck.check_type(type_sig, computation_types.Type)
@@ -425,7 +461,8 @@ def is_single_integer_or_matches_structure(
     if len(type_sig) != len(shape_name_and_types):
       return False
     for (inner_name, type_sig), (inner_shape_name, inner_shape_type) in zip(
-        bitwidth_name_and_types, shape_name_and_types):
+        bitwidth_name_and_types, shape_name_and_types
+    ):
       if inner_name != inner_shape_name:
         return False
       if not is_single_integer_or_matches_structure(type_sig, inner_shape_type):
@@ -439,7 +476,8 @@ def check_federated_type(
     type_spec: computation_types.FederatedType,
     member: Optional[computation_types.Type] = None,
     placement: Optional[placements.PlacementLiteral] = None,
-    all_equal: Optional[bool] = None):
+    all_equal: Optional[bool] = None,
+):
   """Checks that `type_spec` is a federated type with the given parameters.
 
   Args:
@@ -462,13 +500,17 @@ def check_federated_type(
     if type_spec.placement is not placement:
       raise TypeError(
           'Expected federated type placed at {}, got one placed at {}.'.format(
-              placement, type_spec.placement))
+              placement, type_spec.placement
+          )
+      )
   if all_equal is not None:
     py_typecheck.check_type(all_equal, bool)
     if type_spec.all_equal != all_equal:
       raise TypeError(
           'Expected federated type with all_equal {}, got one with {}.'.format(
-              all_equal, type_spec.all_equal))
+              all_equal, type_spec.all_equal
+          )
+      )
 
 
 def is_average_compatible(type_spec: computation_types.Type) -> bool:
@@ -489,7 +531,8 @@ def is_average_compatible(type_spec: computation_types.Type) -> bool:
     return type_spec.dtype.is_floating or type_spec.dtype.is_complex
   elif type_spec.is_struct():
     return all(
-        is_average_compatible(v) for _, v in structure.iter_elements(type_spec))
+        is_average_compatible(v) for _, v in structure.iter_elements(type_spec)
+    )
   elif type_spec.is_federated():
     return is_average_compatible(type_spec.member)
   else:
@@ -497,50 +540,74 @@ def is_average_compatible(type_spec: computation_types.Type) -> bool:
 
 
 def is_struct_with_py_container(value, type_spec):
-  return (type_spec.is_struct_with_python() and
-          isinstance(value, structure.Struct))
+  return type_spec.is_struct_with_python() and isinstance(
+      value, structure.Struct
+  )
 
 
 class NotConcreteTypeError(TypeError):
 
   def __init__(self, full_type, found_abstract):
-    message = ('Expected concrete type containing no abstract types, but '
-               f'found abstract type {found_abstract} in {full_type}.')
+    message = (
+        'Expected concrete type containing no abstract types, but '
+        f'found abstract type {found_abstract} in {full_type}.'
+    )
     super().__init__(message)
 
 
-class MismatchedConcreteTypesError(TypeError):
+class MismatchedConcreteTypesError(TypeError):  # pylint: disable=missing-class-docstring
 
-  def __init__(self, full_concrete, full_generic, abstract_label,
-               first_concrete, second_concrete):
+  def __init__(
+      self,
+      full_concrete,
+      full_generic,
+      abstract_label,
+      first_concrete,
+      second_concrete,
+  ):
     message = (
         f'Expected concrete type {full_concrete} to be a valid substitution '
         f'for generic type {full_generic}, but abstract type {abstract_label} '
         f'had substitutions {first_concrete} and {second_concrete}, which are '
-        'not equivalent.')
+        'not equivalent.'
+    )
     super().__init__(message)
 
 
-class UnassignableConcreteTypesError(TypeError):
+class UnassignableConcreteTypesError(TypeError):  # pylint: disable=missing-class-docstring
 
-  def __init__(self, full_concrete, full_generic, abstract_label, definition,
-               not_assignable_from):
+  def __init__(
+      self,
+      full_concrete,
+      full_generic,
+      abstract_label,
+      definition,
+      not_assignable_from,
+  ):
     message = (
         f'Expected concrete type {full_concrete} to be a valid substitution '
         f'for generic type {full_generic}, but abstract type {abstract_label} '
         f'was defined as {definition}, and later used as {not_assignable_from} '
-        ' which cannot be assigned from the former.')
+        ' which cannot be assigned from the former.'
+    )
     super().__init__(message)
 
 
-class MismatchedStructureError(TypeError):
+class MismatchedStructureError(TypeError):  # pylint: disable=missing-class-docstring
 
-  def __init__(self, full_concrete, full_generic, concrete_member,
-               generic_member, mismatch):
+  def __init__(
+      self,
+      full_concrete,
+      full_generic,
+      concrete_member,
+      generic_member,
+      mismatch,
+  ):
     message = (
         f'Expected concrete type {full_concrete} to be a valid substitution '
         f'for generic type {full_generic}, but their structures do not match: '
-        f'{concrete_member} differs in {mismatch} from {generic_member}.')
+        f'{concrete_member} differs in {mismatch} from {generic_member}.'
+    )
     super().__init__(message)
 
 
@@ -550,12 +617,14 @@ class MissingDefiningUsageError(TypeError):
     message = (
         f'Missing defining use of abstract type {label_name} in type '
         f'{generic_type}. See `check_concrete_instance_of` documentation for '
-        'details on what counts as a defining use.')
+        'details on what counts as a defining use.'
+    )
     super().__init__(message)
 
 
-def check_concrete_instance_of(concrete_type: computation_types.Type,
-                               generic_type: computation_types.Type):
+def check_concrete_instance_of(
+    concrete_type: computation_types.Type, generic_type: computation_types.Type
+):
   """Checks whether `concrete_type` is a valid substitution of `generic_type`.
 
   This function determines whether `generic_type`'s type parameters can be
@@ -589,15 +658,21 @@ def check_concrete_instance_of(concrete_type: computation_types.Type,
   type_bindings = {}
   non_defining_usages = collections.defaultdict(list)
 
-  def _check_helper(generic_type_member: computation_types.Type,
-                    concrete_type_member: computation_types.Type,
-                    defining: bool):
+  def _check_helper(
+      generic_type_member: computation_types.Type,
+      concrete_type_member: computation_types.Type,
+      defining: bool,
+  ):
     """Recursive helper function."""
 
     def _raise_structural(mismatch):
-      raise MismatchedStructureError(concrete_type, generic_type,
-                                     concrete_type_member, generic_type_member,
-                                     mismatch)
+      raise MismatchedStructureError(
+          concrete_type,
+          generic_type,
+          concrete_type_member,
+          generic_type_member,
+          mismatch,
+      )
 
     def _both_are(predicate):
       if predicate(generic_type_member):
@@ -616,9 +691,13 @@ def check_concrete_instance_of(concrete_type: computation_types.Type,
         bound_type = type_bindings.get(label)
         if bound_type is not None:
           if not concrete_type_member.is_equivalent_to(bound_type):
-            raise MismatchedConcreteTypesError(concrete_type, generic_type,
-                                               label, bound_type,
-                                               concrete_type_member)
+            raise MismatchedConcreteTypesError(
+                concrete_type,
+                generic_type,
+                label,
+                bound_type,
+                concrete_type_member,
+            )
         else:
           type_bindings[label] = concrete_type_member
     elif _both_are(lambda t: t.is_tensor()):
@@ -637,24 +716,30 @@ def check_concrete_instance_of(concrete_type: computation_types.Type,
           _raise_structural('element names')
         _check_helper(generic_elements[k][1], concrete_elements[k][1], defining)
     elif _both_are(lambda t: t.is_sequence()):
-      _check_helper(generic_type_member.element, concrete_type_member.element,
-                    defining)
+      _check_helper(
+          generic_type_member.element, concrete_type_member.element, defining
+      )
     elif _both_are(lambda t: t.is_function()):
       if generic_type_member.parameter is None:
         if concrete_type_member.parameter is not None:
           _raise_structural('parameter')
       else:
-        _check_helper(generic_type_member.parameter,
-                      concrete_type_member.parameter, not defining)
-      _check_helper(generic_type_member.result, concrete_type_member.result,
-                    defining)
+        _check_helper(
+            generic_type_member.parameter,
+            concrete_type_member.parameter,
+            not defining,
+        )
+      _check_helper(
+          generic_type_member.result, concrete_type_member.result, defining
+      )
     elif _both_are(lambda t: t.is_federated()):
       if generic_type_member.placement != concrete_type_member.placement:
         _raise_structural('placement')
       if generic_type_member.all_equal != concrete_type_member.all_equal:
         _raise_structural('all equal')
-      _check_helper(generic_type_member.member, concrete_type_member.member,
-                    defining)
+      _check_helper(
+          generic_type_member.member, concrete_type_member.member, defining
+      )
     else:
       raise TypeError(f'Unexpected type kind {generic_type}.')
 
@@ -675,12 +760,14 @@ def check_concrete_instance_of(concrete_type: computation_types.Type,
     else:
       for usage in usages:
         if not usage.is_assignable_from(bound_type):
-          raise UnassignableConcreteTypesError(concrete_type, generic_type,
-                                               label, bound_type, usage)
+          raise UnassignableConcreteTypesError(
+              concrete_type, generic_type, label, bound_type, usage
+          )
 
 
 def check_valid_federated_weighted_mean_argument_tuple_type(
-    type_spec: computation_types.StructType):
+    type_spec: computation_types.StructType,
+):
   """Checks that `type_spec` is a valid type of a federated weighted mean arg.
 
   Args:
@@ -697,7 +784,8 @@ def check_valid_federated_weighted_mean_argument_tuple_type(
     if not is_average_compatible(v.member):
       raise TypeError(
           'Expected average-compatible args, got {} from argument of type {}.'
-          .format(v.member, type_spec))
+          .format(v.member, type_spec)
+      )
   w_type = type_spec[1].member
   py_typecheck.check_type(w_type, computation_types.TensorType)
   if w_type.shape.ndims != 0:
@@ -706,8 +794,9 @@ def check_valid_federated_weighted_mean_argument_tuple_type(
 
 def count_tensors_in_type(
     type_spec: computation_types.Type,
-    tensor_filter: Optional[Callable[[computation_types.TensorType],
-                                     bool]] = None
+    tensor_filter: Optional[
+        Callable[[computation_types.TensorType], bool]
+    ] = None,
 ) -> OrderedDict[str, Any]:
   """Counts tensors and fully-specified elements under `type_spec`.
 
@@ -733,7 +822,8 @@ def count_tensors_in_type(
   py_typecheck.check_callable(tensor_filter)
 
   tensors_and_params = collections.OrderedDict(
-      num_tensors=0, parameters=0, num_unspecified_tensors=0)
+      num_tensors=0, parameters=0, num_unspecified_tensors=0
+  )
 
   def _capture_tensors(type_signature):
     if type_signature.is_tensor() and tensor_filter(type_signature):

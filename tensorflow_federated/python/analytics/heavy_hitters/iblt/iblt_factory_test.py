@@ -31,17 +31,23 @@ from tensorflow_federated.python.core.impl.types import computation_types
 _CharacterEncoding = chunkers.CharacterEncoding
 
 DATA = [
-    (['seattle', 'hello', 'world', 'bye'], [[1, 2, 3], [4, 5, 1], [1, 1, 1],
-                                            [-5, 2, 9]]),
+    (
+        ['seattle', 'hello', 'world', 'bye'],
+        [[1, 2, 3], [4, 5, 1], [1, 1, 1], [-5, 2, 9]],
+    ),
     (['hi', 'seattle'], [[2, 3, 4], [-5, -5, -5]]),
-    (['good', 'morning', 'hi', 'bye'], [[3, 3, 8], [-1, -5, -6], [0, 0, 0],
-                                        [3, 1, 8]]),
+    (
+        ['good', 'morning', 'hi', 'bye'],
+        [[3, 3, 8], [-1, -5, -6], [0, 0, 0], [3, 1, 8]],
+    ),
 ]
 
 VALUE_TYPE = computation_types.SequenceType(
     collections.OrderedDict(
         key=tf.string,
-        value=computation_types.TensorType(shape=(3,), dtype=tf.int64)))
+        value=computation_types.TensorType(shape=(3,), dtype=tf.int64),
+    )
+)
 
 AGGREGATED_DATA = {
     'seattle': [-4, -3, -2],
@@ -50,7 +56,7 @@ AGGREGATED_DATA = {
     'hi': [2, 3, 4],
     'good': [3, 3, 8],
     'morning': [-1, -5, -6],
-    'bye': [-2, 3, 17]
+    'bye': [-2, 3, 17],
 }
 
 DEFAULT_REPETITIONS = 3
@@ -63,8 +69,14 @@ def _generate_client_data(
   client_data = []
   for input_strings, string_values in input_structure:
     client = collections.OrderedDict([
-        (iblt_factory.DATASET_KEY, tf.constant(input_strings, dtype=tf.string)),
-        (iblt_factory.DATASET_VALUE, tf.constant(string_values, dtype=tf.int64))
+        (
+            iblt_factory.DATASET_KEY,
+            tf.constant(input_strings, dtype=tf.string),
+        ),
+        (
+            iblt_factory.DATASET_VALUE,
+            tf.constant(string_values, dtype=tf.int64),
+        ),
     ])
     client_data.append(tf.data.Dataset.from_tensor_slices(client))
   return client_data
@@ -82,92 +94,133 @@ class IbltFactoryTest(tf.test.TestCase, parameterized.TestCase):
   def test_capacity_validation(self):
     with self.assertRaisesRegex(ValueError, 'capacity'):
       iblt_factory.IbltFactory(
-          capacity=0, string_max_bytes=10, repetitions=3, seed=0)
+          capacity=0, string_max_bytes=10, repetitions=3, seed=0
+      )
     with self.assertRaisesRegex(ValueError, 'capacity'):
       iblt_factory.IbltFactory(
-          capacity=-1, string_max_bytes=10, repetitions=3, seed=0)
+          capacity=-1, string_max_bytes=10, repetitions=3, seed=0
+      )
     # Should not raise
     iblt_factory.IbltFactory(
-        capacity=1, string_max_bytes=10, repetitions=3, seed=0)
+        capacity=1, string_max_bytes=10, repetitions=3, seed=0
+    )
 
   def test_string_max_bytes_validation(self):
     with self.assertRaisesRegex(ValueError, 'string_max_bytes'):
       iblt_factory.IbltFactory(
-          string_max_bytes=0, capacity=10, repetitions=3, seed=0)
+          string_max_bytes=0, capacity=10, repetitions=3, seed=0
+      )
     with self.assertRaisesRegex(ValueError, 'string_max_bytes'):
       iblt_factory.IbltFactory(
-          string_max_bytes=-1, capacity=10, repetitions=3, seed=0)
+          string_max_bytes=-1, capacity=10, repetitions=3, seed=0
+      )
     # Should not raise
     iblt_factory.IbltFactory(
-        string_max_bytes=1, capacity=10, repetitions=3, seed=0)
+        string_max_bytes=1, capacity=10, repetitions=3, seed=0
+    )
 
   def test_repetitions_validation(self):
     with self.assertRaisesRegex(ValueError, 'repetitions'):
       iblt_factory.IbltFactory(
-          repetitions=0, capacity=10, string_max_bytes=10, seed=0)
+          repetitions=0, capacity=10, string_max_bytes=10, seed=0
+      )
     with self.assertRaisesRegex(ValueError, 'repetitions'):
       iblt_factory.IbltFactory(
-          repetitions=2, capacity=10, string_max_bytes=10, seed=0)
+          repetitions=2, capacity=10, string_max_bytes=10, seed=0
+      )
     # Should not raise
     iblt_factory.IbltFactory(
-        repetitions=3, capacity=10, string_max_bytes=10, seed=0)
+        repetitions=3, capacity=10, string_max_bytes=10, seed=0
+    )
 
   @parameterized.named_parameters(
-      ('scalar',
-       computation_types.SequenceType(
-           computation_types.TensorType(shape=(), dtype=tf.int64))),
-      ('list',
-       computation_types.SequenceType(
-           computation_types.TensorType(shape=(3,), dtype=tf.int64))),
-      ('dict_wrong_key',
-       computation_types.SequenceType(
-           collections.OrderedDict([
-               ('foo', tf.int64),
-               (iblt_factory.DATASET_VALUE,
-                computation_types.TensorType(shape=(1,), dtype=tf.int64)),
-           ]))),
-      ('dict_extra_key',
-       computation_types.SequenceType(
-           collections.OrderedDict([
-               ('bar', tf.int64),
-               (iblt_factory.DATASET_KEY, tf.int64),
-               (iblt_factory.DATASET_VALUE,
-                computation_types.TensorType(shape=(1,), dtype=tf.int64)),
-           ]))),
-      ('dict_int64_int64',
-       computation_types.SequenceType(
-           collections.OrderedDict([
-               (iblt_factory.DATASET_KEY, tf.int64),
-               (iblt_factory.DATASET_VALUE,
-                computation_types.TensorType(shape=(1,), dtype=tf.int64)),
-           ]))),
-      ('dict_string_int32',
-       computation_types.SequenceType(
-           collections.OrderedDict([
-               (iblt_factory.DATASET_KEY, tf.string),
-               (iblt_factory.DATASET_VALUE,
-                computation_types.TensorType(shape=(1,), dtype=tf.int32)),
-           ]))),
+      (
+          'scalar',
+          computation_types.SequenceType(
+              computation_types.TensorType(shape=(), dtype=tf.int64)
+          ),
+      ),
+      (
+          'list',
+          computation_types.SequenceType(
+              computation_types.TensorType(shape=(3,), dtype=tf.int64)
+          ),
+      ),
+      (
+          'dict_wrong_key',
+          computation_types.SequenceType(
+              collections.OrderedDict([
+                  ('foo', tf.int64),
+                  (
+                      iblt_factory.DATASET_VALUE,
+                      computation_types.TensorType(shape=(1,), dtype=tf.int64),
+                  ),
+              ])
+          ),
+      ),
+      (
+          'dict_extra_key',
+          computation_types.SequenceType(
+              collections.OrderedDict([
+                  ('bar', tf.int64),
+                  (iblt_factory.DATASET_KEY, tf.int64),
+                  (
+                      iblt_factory.DATASET_VALUE,
+                      computation_types.TensorType(shape=(1,), dtype=tf.int64),
+                  ),
+              ])
+          ),
+      ),
+      (
+          'dict_int64_int64',
+          computation_types.SequenceType(
+              collections.OrderedDict([
+                  (iblt_factory.DATASET_KEY, tf.int64),
+                  (
+                      iblt_factory.DATASET_VALUE,
+                      computation_types.TensorType(shape=(1,), dtype=tf.int64),
+                  ),
+              ])
+          ),
+      ),
+      (
+          'dict_string_int32',
+          computation_types.SequenceType(
+              collections.OrderedDict([
+                  (iblt_factory.DATASET_KEY, tf.string),
+                  (
+                      iblt_factory.DATASET_VALUE,
+                      computation_types.TensorType(shape=(1,), dtype=tf.int32),
+                  ),
+              ])
+          ),
+      ),
   )
   def test_value_type_validation(self, value_type):
     iblt_agg_factory = iblt_factory.IbltFactory(
-        capacity=10, string_max_bytes=5, repetitions=3, seed=0)
+        capacity=10, string_max_bytes=5, repetitions=3, seed=0
+    )
     with self.assertRaises(ValueError):
       iblt_agg_factory.create(value_type)
 
   def test_string_max_bytes_error(self):
     client = collections.OrderedDict([
-        (iblt_factory.DATASET_KEY,
-         tf.constant(['thisisalongword'], dtype=tf.string)),
+        (
+            iblt_factory.DATASET_KEY,
+            tf.constant(['thisisalongword'], dtype=tf.string),
+        ),
         (iblt_factory.DATASET_VALUE, tf.constant([[1]], dtype=tf.int64)),
     ])
     value_type = computation_types.SequenceType(
         collections.OrderedDict(
             key=tf.string,
-            value=computation_types.TensorType(shape=(1,), dtype=tf.int64)))
+            value=computation_types.TensorType(shape=(1,), dtype=tf.int64),
+        )
+    )
     client_data = [tf.data.Dataset.from_tensor_slices(client)]
     iblt_agg_factory = iblt_factory.IbltFactory(
-        capacity=10, string_max_bytes=5, repetitions=3, seed=0)
+        capacity=10, string_max_bytes=5, repetitions=3, seed=0
+    )
     iblt_agg_process = iblt_agg_factory.create(value_type)
     with self.assertRaises(tf.errors.InvalidArgumentError):
       iblt_agg_process.next(iblt_agg_process.initialize(), client_data)
@@ -215,7 +268,8 @@ class IbltFactoryTest(tf.test.TestCase, parameterized.TestCase):
       seed: int,
       sketch_agg_factory: Optional[factory.UnweightedAggregationFactory] = None,
       value_tensor_agg_factory: Optional[
-          factory.UnweightedAggregationFactory] = None,
+          factory.UnweightedAggregationFactory
+      ] = None,
   ):
     iblt_agg_factory = iblt_factory.IbltFactory(
         sketch_agg_factory=sketch_agg_factory,
@@ -223,10 +277,12 @@ class IbltFactoryTest(tf.test.TestCase, parameterized.TestCase):
         capacity=capacity,
         string_max_bytes=string_max_bytes,
         repetitions=repetitions,
-        seed=seed)
+        seed=seed,
+    )
     iblt_agg_process = iblt_agg_factory.create(VALUE_TYPE)
-    process_output = iblt_agg_process.next(iblt_agg_process.initialize(),
-                                           CLIENT_DATA)
+    process_output = iblt_agg_process.next(
+        iblt_agg_process.initialize(), CLIENT_DATA
+    )
     output_strings = [
         s.decode('utf-8') for s in process_output.result.output_strings
     ]
@@ -235,9 +291,9 @@ class IbltFactoryTest(tf.test.TestCase, parameterized.TestCase):
 
     self.assertCountEqual(result, AGGREGATED_DATA)
 
-    expected_measurements = collections.OrderedDict([('num_not_decoded', 0),
-                                                     ('sketch', ()),
-                                                     ('value_tensor', ())])
+    expected_measurements = collections.OrderedDict(
+        [('num_not_decoded', 0), ('sketch', ()), ('value_tensor', ())]
+    )
     self.assertCountEqual(process_output.measurements, expected_measurements)
 
   def test_binary_string_aggregation(self):
@@ -270,15 +326,22 @@ class IbltFactoryTest(tf.test.TestCase, parameterized.TestCase):
                 value=computation_types.TensorType(
                     shape=(2,),
                     dtype=tf.int64,
-                ))))
-    process_output = iblt_agg_process.next(iblt_agg_process.initialize(),
-                                           client_data)
+                ),
+            )
+        )
+    )
+    process_output = iblt_agg_process.next(
+        iblt_agg_process.initialize(), client_data
+    )
     logging.info('process_output: %s', process_output)
 
     self.assertEqual(process_output.measurements['num_not_decoded'], 0)
     result = dict(
-        zip(process_output.result.output_strings,
-            process_output.result.string_values))
+        zip(
+            process_output.result.output_strings,
+            process_output.result.string_values,
+        )
+    )
     self.assertCountEqual(result, expected_aggregated)
 
 

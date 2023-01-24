@@ -37,20 +37,24 @@ class ModelCollectionTest(tf.test.TestCase):
   def test_2nn_output_shape(self):
     image = tf.random.normal([7, 28, 28, 1])
     model = emnist_models.create_two_hidden_layer_model(
-        only_digits=False, hidden_units=200)
+        only_digits=False, hidden_units=200
+    )
     logits = model(image)
     self.assertIsNotNone(logits)
     self.assertEqual(logits.shape, [7, 62])
 
   def test_2nn_raises_on_nonpositive_hidden_units(self):
-    with self.assertRaisesRegex(ValueError,
-                                'hidden_units must be a positive integer'):
+    with self.assertRaisesRegex(
+        ValueError, 'hidden_units must be a positive integer'
+    ):
       emnist_models.create_two_hidden_layer_model(
-          only_digits=True, hidden_units=0)
+          only_digits=True, hidden_units=0
+      )
 
   def test_2nn_number_of_parameters(self):
     model = emnist_models.create_two_hidden_layer_model(
-        only_digits=True, hidden_units=200)
+        only_digits=True, hidden_units=200
+    )
 
     # We calculate the number of parameters based on the fact that given densely
     # connected layers of size n and m with bias units, there are (n+1)m

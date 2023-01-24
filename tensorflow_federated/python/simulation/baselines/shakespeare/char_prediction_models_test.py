@@ -20,36 +20,43 @@ from tensorflow_federated.python.simulation.baselines.shakespeare import char_pr
 class ModelsTest(tf.test.TestCase):
 
   def test_create_recurrent_model_raises_on_nonpositive_vocab_size(self):
-    with self.assertRaisesRegex(ValueError,
-                                'vocab_size must be a positive integer'):
+    with self.assertRaisesRegex(
+        ValueError, 'vocab_size must be a positive integer'
+    ):
       char_prediction_models.create_recurrent_model(
-          vocab_size=-2, sequence_length=8)
+          vocab_size=-2, sequence_length=8
+      )
 
   def test_create_recurrent_model_raises_on_nonpositive_sequence_length(self):
-    with self.assertRaisesRegex(ValueError,
-                                'sequence_length must be a positive integer'):
+    with self.assertRaisesRegex(
+        ValueError, 'sequence_length must be a positive integer'
+    ):
       char_prediction_models.create_recurrent_model(
-          vocab_size=3, sequence_length=0)
+          vocab_size=3, sequence_length=0
+      )
 
   def test_model_input_output_shape(self):
     vocab_size = 5
     sequence_length = 7
     model = char_prediction_models.create_recurrent_model(
-        vocab_size, sequence_length)
+        vocab_size, sequence_length
+    )
 
     self.assertEqual(model.input_shape, (None, sequence_length))
     self.assertEqual(model.output_shape, (None, sequence_length, vocab_size))
 
   def test_mask_zero_results_in_correct_mask(self):
     mask_model = char_prediction_models.create_recurrent_model(
-        vocab_size=3, sequence_length=3, mask_zero=True)
+        vocab_size=3, sequence_length=3, mask_zero=True
+    )
     data = tf.constant([[0, 1, 1]])
     output_mask = mask_model.compute_mask(data, mask=None)
     self.assertAllEqual(output_mask, [[False, True, True]])
 
   def test_no_mask_zero_results_in_correct_mask(self):
     mask_model = char_prediction_models.create_recurrent_model(
-        vocab_size=3, sequence_length=3, mask_zero=False)
+        vocab_size=3, sequence_length=3, mask_zero=False
+    )
     data = tf.constant([[0, 1, 1]])
     output_mask = mask_model.compute_mask(data, mask=None)
     self.assertIsNone(output_mask)

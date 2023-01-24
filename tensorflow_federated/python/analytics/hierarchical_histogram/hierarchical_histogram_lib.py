@@ -30,7 +30,7 @@ from tensorflow_federated.python.core.templates import iterative_process
 
 
 @attr.s(eq=False, frozen=True)
-class ServerOutput():
+class ServerOutput:
   """The container of results.
 
   Attributes:
@@ -40,13 +40,17 @@ class ServerOutput():
       The value is expressed as seconds since the Unix epoch (1970-01-01
       00:00:00 UTC).
   """
+
   aggregated_hierarchical_histogram = attr.ib()
   round_timestamp = attr.ib()
 
 
-def _discretized_histogram_counts(client_data: tf.data.Dataset,
-                                  lower_bound: float, upper_bound: float,
-                                  num_bins: int) -> tf.Tensor:
+def _discretized_histogram_counts(
+    client_data: tf.data.Dataset,
+    lower_bound: float,
+    upper_bound: float,
+    num_bins: int,
+) -> tf.Tensor:
   """Disretizes `client_data` and creates a histogram on the discretized data.
 
   Discretizes `client_data` by allocating records into `num_bins` bins between
@@ -64,8 +68,10 @@ def _discretized_histogram_counts(client_data: tf.data.Dataset,
   """
 
   if upper_bound < lower_bound:
-    raise ValueError(f'upper_bound: {upper_bound} is smaller than '
-                     f'lower_bound: {lower_bound}.')
+    raise ValueError(
+        f'upper_bound: {upper_bound} is smaller than '
+        f'lower_bound: {lower_bound}.'
+    )
 
   if num_bins <= 0:
     raise ValueError(f'num_bins: {num_bins} smaller or equal to zero.')
@@ -73,8 +79,9 @@ def _discretized_histogram_counts(client_data: tf.data.Dataset,
   data_type = client_data.element_spec.dtype
 
   if data_type != tf.float32:
-    raise ValueError(f'`client_data` contains {data_type} values.'
-                     f'`tf.float32` is expected.')
+    raise ValueError(
+        f'`client_data` contains {data_type} values.`tf.float32` is expected.'
+    )
 
   precision = (upper_bound - lower_bound) / num_bins
 
@@ -93,19 +100,21 @@ def _discretized_histogram_counts(client_data: tf.data.Dataset,
     """
 
     if histogram.shape != (num_bins,):
-      raise ValueError(f'Expected shape ({num_bins}, ). '
-                       f'Get {histogram.shape}.')
+      raise ValueError(f'Expected shape ({num_bins}, ). Get {histogram.shape}.')
 
     if record < lower_bound or record >= upper_bound:
       return histogram
     else:
       bin_index = tf.cast(
-          tf.math.floor((record - lower_bound) / precision), tf.int32)
+          tf.math.floor((record - lower_bound) / precision), tf.int32
+      )
     return tf.tensor_scatter_nd_add(
-        tensor=histogram, indices=[[bin_index]], updates=[1])
+        tensor=histogram, indices=[[bin_index]], updates=[1]
+    )
 
   histogram = client_data.reduce(
-      tf.zeros([num_bins], dtype=tf.int32), insert_record)
+      tf.zeros([num_bins], dtype=tf.int32), insert_record
+  )
 
   return histogram
 
@@ -121,7 +130,8 @@ def build_hierarchical_histogram_computation(
     noise_multiplier: float = 0.0,
     expected_clients_per_round: int = 10,
     bits: int = 22,
-    enable_secure_sum: bool = True):
+    enable_secure_sum: bool = True,
+):
   """Creates the TFF computation for hierarchical histogram aggregation.
 
   Args:
@@ -167,33 +177,44 @@ def build_hierarchical_histogram_computation(
   Returns:
     A federated computation that performs hierarchical histogram aggregation.
   """
-  _check_greater_than_equal(upper_bound, lower_bound, 'upper_bound',
-                            'lower_bound')
+  _check_greater_than_equal(
+      upper_bound, lower_bound, 'upper_bound', 'lower_bound'
+  )
   _check_positive(num_bins, 'num_bins')
   _check_greater_than_equal_thres(arity, 2, 'arity')
-  _check_membership(clip_mechanism, clipping_factory.CLIP_MECHANISMS,
-                    'clip_mechanism')
-  _check_greater_than_equal_thres(max_records_per_user, 1,
-                                  'max_records_per_user')
-  _check_membership(dp_mechanism, hierarchical_histogram_factory.DP_MECHANISMS,
-                    'dp_mechanism')
-  _check_greater_than_equal_thres(noise_multiplier, 0., noise_multiplier)
+  _check_membership(
+      clip_mechanism, clipping_factory.CLIP_MECHANISMS, 'clip_mechanism'
+  )
+  _check_greater_than_equal_thres(
+      max_records_per_user, 1, 'max_records_per_user'
+  )
+  _check_membership(
+      dp_mechanism, hierarchical_histogram_factory.DP_MECHANISMS, 'dp_mechanism'
+  )
+  _check_greater_than_equal_thres(noise_multiplier, 0.0, noise_multiplier)
   _check_positive(expected_clients_per_round, 'expected_clients_per_round')
   _check_in_range(bits, 'bits', 1, 22)
-  _check_greater_than_equal_thres(bits, math.log2(expected_clients_per_round),
-                                  'bits')
-  if (not enable_secure_sum and
-      dp_mechanism in hierarchical_histogram_factory.DISTRIBUTED_DP_MECHANISMS):
+  _check_greater_than_equal_thres(
+      bits, math.log2(expected_clients_per_round), 'bits'
+  )
+  if (
+      not enable_secure_sum
+      and dp_mechanism
+      in hierarchical_histogram_factory.DISTRIBUTED_DP_MECHANISMS
+  ):
     raise ValueError(
         'When dp_mechanism is '
         f'{hierarchical_histogram_factory.DISTRIBUTED_DP_MECHANISMS}, '
-        'enable_secure_sum must be set to True to preserve distributed DP.')
+        'enable_secure_sum must be set to True to preserve distributed DP.'
+    )
 
   @tensorflow_computation.tf_computation(
-      computation_types.SequenceType(tf.float32))
+      computation_types.SequenceType(tf.float32)
+  )
   def client_work(client_data):
-    return _discretized_histogram_counts(client_data, lower_bound, upper_bound,
-                                         num_bins)
+    return _discretized_histogram_counts(
+        client_data, lower_bound, upper_bound, num_bins
+    )
 
   agg_factory = hierarchical_histogram_factory.create_hierarchical_histogram_aggregation_factory(
       num_bins=num_bins,
@@ -204,23 +225,31 @@ def build_hierarchical_histogram_computation(
       noise_multiplier=noise_multiplier,
       expected_clients_per_round=expected_clients_per_round,
       bits=bits,
-      enable_secure_sum=enable_secure_sum)
+      enable_secure_sum=enable_secure_sum,
+  )
 
   process = agg_factory.create(client_work.type_signature.result)
 
   @federated_computation.federated_computation(
-      computation_types.at_clients(client_work.type_signature.parameter))
+      computation_types.at_clients(client_work.type_signature.parameter)
+  )
   def hierarchical_histogram_computation(federated_client_data):
     round_timestamp = intrinsics.federated_eval(
         tensorflow_computation.tf_computation(
-            lambda: tf.cast(tf.timestamp(), tf.int64)), placements.SERVER)
-    client_histogram = intrinsics.federated_map(client_work,
-                                                federated_client_data)
+            lambda: tf.cast(tf.timestamp(), tf.int64)
+        ),
+        placements.SERVER,
+    )
+    client_histogram = intrinsics.federated_map(
+        client_work, federated_client_data
+    )
 
     server_output = intrinsics.federated_zip(
         ServerOutput(
             process.next(process.initialize(), client_histogram).result,
-            round_timestamp))
+            round_timestamp,
+        )
+    )
     return server_output
 
   return hierarchical_histogram_computation
@@ -288,27 +317,36 @@ def build_hierarchical_histogram_process(
   Returns:
     A federated computation that performs hierarchical histogram aggregation.
   """
-  _check_greater_than_equal(upper_bound, lower_bound, 'upper_bound',
-                            'lower_bound')
+  _check_greater_than_equal(
+      upper_bound, lower_bound, 'upper_bound', 'lower_bound'
+  )
   _check_positive(num_bins, 'num_bins')
   _check_greater_than_equal_thres(arity, 2, 'arity')
-  _check_membership(clip_mechanism, clipping_factory.CLIP_MECHANISMS,
-                    'clip_mechanism')
-  _check_greater_than_equal_thres(max_records_per_user, 1,
-                                  'max_records_per_user')
-  _check_membership(dp_mechanism, hierarchical_histogram_factory.DP_MECHANISMS,
-                    'dp_mechanism')
-  _check_greater_than_equal_thres(noise_multiplier, 0., noise_multiplier)
+  _check_membership(
+      clip_mechanism, clipping_factory.CLIP_MECHANISMS, 'clip_mechanism'
+  )
+  _check_greater_than_equal_thres(
+      max_records_per_user, 1, 'max_records_per_user'
+  )
+  _check_membership(
+      dp_mechanism, hierarchical_histogram_factory.DP_MECHANISMS, 'dp_mechanism'
+  )
+  _check_greater_than_equal_thres(noise_multiplier, 0.0, noise_multiplier)
   _check_positive(expected_clients_per_round, 'expected_clients_per_round')
   _check_in_range(bits, 'bits', 1, 22)
-  _check_greater_than_equal_thres(bits, math.log2(expected_clients_per_round),
-                                  'bits')
-  if (not enable_secure_sum and
-      dp_mechanism in hierarchical_histogram_factory.DISTRIBUTED_DP_MECHANISMS):
+  _check_greater_than_equal_thres(
+      bits, math.log2(expected_clients_per_round), 'bits'
+  )
+  if (
+      not enable_secure_sum
+      and dp_mechanism
+      in hierarchical_histogram_factory.DISTRIBUTED_DP_MECHANISMS
+  ):
     raise ValueError(
         'When dp_mechanism is '
         f'{hierarchical_histogram_factory.DISTRIBUTED_DP_MECHANISMS}, '
-        'enable_secure_sum must be set to True to preserve distributed DP.')
+        'enable_secure_sum must be set to True to preserve distributed DP.'
+    )
   one_round_computation = build_hierarchical_histogram_computation(
       lower_bound=lower_bound,
       upper_bound=upper_bound,
@@ -320,7 +358,8 @@ def build_hierarchical_histogram_process(
       noise_multiplier=noise_multiplier,
       expected_clients_per_round=expected_clients_per_round,
       bits=bits,
-      enable_secure_sum=enable_secure_sum)
+      enable_secure_sum=enable_secure_sum,
+  )
 
   parameter_type_signature = one_round_computation.type_signature.parameter
   result_type_signature = one_round_computation.type_signature.result
@@ -341,7 +380,8 @@ def build_hierarchical_histogram_process(
     nested_row_splits[-1] = flat_values_shape[0]
     initial_hierarchical_histogram = tf.RaggedTensor.from_nested_row_splits(
         flat_values=tf.zeros(shape=flat_values_shape, dtype=flat_values_dtype),
-        nested_row_splits=[nested_row_splits])
+        nested_row_splits=[nested_row_splits],
+    )
     initial_timestamp = tf.constant(0, dtype=tf.int64)
     return ServerOutput(initial_hierarchical_histogram, initial_timestamp)
 
@@ -349,20 +389,24 @@ def build_hierarchical_histogram_process(
   def init_fn():
     return intrinsics.federated_eval(initialize, placements.SERVER)
 
-  @federated_computation.federated_computation(init_fn.type_signature.result,
-                                               parameter_type_signature)
+  @federated_computation.federated_computation(
+      init_fn.type_signature.result, parameter_type_signature
+  )
   def next_fn(_, client_data):
     return one_round_computation(client_data), intrinsics.federated_value(
-        (), placements.SERVER)
+        (), placements.SERVER
+    )
 
   return iterative_process.IterativeProcess(init_fn, next_fn)
 
 
 def _check_greater_than_equal(lvalue, rvalue, llabel, rlabel):
   if lvalue < rvalue:
-    raise ValueError(f'`{llabel}` should be no smaller than '
-                     f'`{rlabel}`. Found {lvalue} and '
-                     f'{rvalue}.')
+    raise ValueError(
+        f'`{llabel}` should be no smaller than '
+        f'`{rlabel}`. Found {lvalue} and '
+        f'{rvalue}.'
+    )
 
 
 def _check_greater_than_equal_thres(value, threshold, label):
@@ -382,12 +426,12 @@ def _check_non_negative(value, label):
 
 def _check_membership(value, valid_set, label):
   if value not in valid_set:
-    raise ValueError(f'`{label}` must be one of {valid_set}. '
-                     f'Found {value}.')
+    raise ValueError(f'`{label}` must be one of {valid_set}. Found {value}.')
 
 
 def _check_in_range(value, label, left, right):
   """Checks that a scalar value is in specified range."""
   if not value >= left or not value <= right:
-    raise ValueError(f'{label} should be within [{left}, {right}]. '
-                     f'Found {value}.')
+    raise ValueError(
+        f'{label} should be within [{left}, {right}]. Found {value}.'
+    )

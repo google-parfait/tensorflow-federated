@@ -130,7 +130,7 @@ setuptools.setup(
         'Source': 'https://github.com/tensorflow/federated',
         'Documentation': 'https://www.tensorflow.org/federated',
     },
-    packages=setuptools.find_packages(exclude=('tools')),
+    packages=setuptools.find_packages(exclude=['tools']),
     install_requires=REQUIRED_PACKAGES,
     python_requires='>=3.9.0,<3.11',
 )

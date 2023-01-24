@@ -39,11 +39,13 @@ _STREAM_CLOSE_WAIT_SECONDS = 10
 class RemoteValue(executor_value_base.ExecutorValue):
   """A reference to a value embedded in a remotely deployed executor service."""
 
-  def __init__(self,
-               value_ref: executor_pb2.ValueRef,
-               type_spec,
-               executor,
-               dispose_at_exit: bool = True):
+  def __init__(
+      self,
+      value_ref: executor_pb2.ValueRef,
+      type_spec,
+      executor,
+      dispose_at_exit: bool = True,
+  ):
     """Creates the value.
 
     Args:
@@ -66,8 +68,9 @@ class RemoteValue(executor_value_base.ExecutorValue):
     def finalizer(value_ref, executor, executor_id):
       executor._dispose(value_ref, executor_id)  # pylint: disable=protected-access
 
-    f = weakref.finalize(self, finalizer, value_ref, executor,
-                         executor._executor_id)
+    f = weakref.finalize(
+        self, finalizer, value_ref, executor, executor._executor_id
+    )
     f.atexit = dispose_at_exit
 
   @property
@@ -89,11 +92,13 @@ class RemoteExecutor(executor_base.Executor):
   # TODO(b/134543154): Switch to using an asynchronous gRPC client so we don't
   # have to block on all those calls.
 
-  def __init__(self,
-               stub: remote_executor_stub.RemoteExecutorStub,
-               thread_pool_executor=None,
-               dispose_batch_size=20,
-               stream_structs: bool = False):
+  def __init__(
+      self,
+      stub: remote_executor_stub.RemoteExecutorStub,
+      thread_pool_executor=None,
+      dispose_batch_size=20,
+      stream_structs: bool = False,
+  ):
     """Creates a remote executor.
 
     Args:
@@ -130,10 +135,14 @@ class RemoteExecutor(executor_base.Executor):
     if self._executor_id is None:
       raise ValueError(
           'Attempted to use a `RemoteExecutor` without first calling '
-          '`set_cardinalities` after creation or after a call to `close()`.')
+          '`set_cardinalities` after creation or after a call to `close()`.'
+      )
 
-  def _dispose(self, value_ref: executor_pb2.ValueRef,
-               value_executor_id: executor_pb2.ExecutorId):
+  def _dispose(
+      self,
+      value_ref: executor_pb2.ValueRef,
+      value_executor_id: executor_pb2.ExecutorId,
+  ):
     """Disposes of the remote value stored on the worker service."""
     if value_executor_id != self._executor_id:
       # The executor this value corresponds to was already disposed, so we can
@@ -144,22 +153,26 @@ class RemoteExecutor(executor_base.Executor):
       return
     dispose_request = self._dispose_request
     self._dispose_request = executor_pb2.DisposeRequest(
-        executor=self._executor_id)
+        executor=self._executor_id
+    )
     self._stub.dispose(dispose_request)
 
   @tracing.trace(span=True)
-  def set_cardinalities(self,
-                        cardinalities: Mapping[placements.PlacementLiteral,
-                                               int]):
+  def set_cardinalities(
+      self, cardinalities: Mapping[placements.PlacementLiteral, int]
+  ):
     if self._executor_id is not None:
       self._clear_executor()
     serialized_cardinalities = value_serialization.serialize_cardinalities(
-        cardinalities)
+        cardinalities
+    )
     request = executor_pb2.GetExecutorRequest(
-        cardinalities=serialized_cardinalities)
+        cardinalities=serialized_cardinalities
+    )
     self._executor_id = self._stub.get_executor(request).executor
     self._dispose_request = executor_pb2.DisposeRequest(
-        executor=self._executor_id)
+        executor=self._executor_id
+    )
 
   @tracing.trace(span=True)
   def _clear_executor(self):
@@ -169,30 +182,38 @@ class RemoteExecutor(executor_base.Executor):
     try:
       self._stub.dispose_executor(request)
     except (grpc.RpcError, executors_errors.RetryableError):
-      logging.debug('RPC error caught during attempt to clear state on the '
-                    'server; this likely indicates a broken connection, and '
-                    'therefore there is no state to clear.')
+      logging.debug(
+          'RPC error caught during attempt to clear state on the '
+          'server; this likely indicates a broken connection, and '
+          'therefore there is no state to clear.'
+      )
     self._executor_id = None
     self._dispose_request = None
     return
 
   @tracing.trace(span=True)
   async def create_value_stream_structs(
-      self, value, type_spec: computation_types.StructType):
+      self, value, type_spec: computation_types.StructType
+  ):
     value = structure.from_container(value)
     if len(value) != len(type_spec):
       raise TypeError(
           'Value {} does not match type {}: mismatching tuple length.'.format(
-              value, type_spec))
+              value, type_spec
+          )
+      )
 
     value_refs = []
     for (value_elem_name, value_elem), (type_elem_name, type_elem) in zip(
-        structure.iter_elements(value), structure.iter_elements(type_spec)):
+        structure.iter_elements(value), structure.iter_elements(type_spec)
+    ):
       if value_elem_name not in [type_elem_name, None]:
         raise TypeError(
             'Value {} does not match type {}: mismatching tuple element '
-            'names {} vs. {}.'.format(value, type_spec, value_elem_name,
-                                      type_elem_name))
+            'names {} vs. {}.'.format(
+                value, type_spec, value_elem_name, type_elem_name
+            )
+        )
       value_refs.append(self.create_value(value_elem, type_elem))
     value_refs = await asyncio.gather(*value_refs)
     return await self.create_struct(value_refs)
@@ -211,7 +232,8 @@ class RemoteExecutor(executor_base.Executor):
 
     value_proto, type_spec = serialize_value()
     create_value_request = executor_pb2.CreateValueRequest(
-        executor=self._executor_id, value=value_proto)
+        executor=self._executor_id, value=value_proto
+    )
     response = self._stub.create_value(create_value_request)
     py_typecheck.check_type(response, executor_pb2.CreateValueResponse)
     return RemoteValue(response.value_ref, type_spec, self)
@@ -226,7 +248,8 @@ class RemoteExecutor(executor_base.Executor):
     create_call_request = executor_pb2.CreateCallRequest(
         executor=self._executor_id,
         function_ref=comp.reference,
-        argument_ref=(arg.reference if arg is not None else None))
+        argument_ref=(arg.reference if arg is not None else None),
+    )
     response = self._stub.create_call(create_call_request)
     py_typecheck.check_type(response, executor_pb2.CreateCallResponse)
     return RemoteValue(response.value_ref, comp.type_signature.result, self)
@@ -241,11 +264,14 @@ class RemoteExecutor(executor_base.Executor):
       py_typecheck.check_type(v, RemoteValue)
       proto_elem.append(
           executor_pb2.CreateStructRequest.Element(
-              name=(k if k else None), value_ref=v.reference))
+              name=(k if k else None), value_ref=v.reference
+          )
+      )
       type_elem.append((k, v.type_signature) if k else v.type_signature)
     result_type = computation_types.StructType(type_elem)
     request = executor_pb2.CreateStructRequest(
-        executor=self._executor_id, element=proto_elem)
+        executor=self._executor_id, element=proto_elem
+    )
     response = self._stub.create_struct(request)
     py_typecheck.check_type(response, executor_pb2.CreateStructResponse)
     return RemoteValue(response.value_ref, result_type, self)
@@ -258,14 +284,16 @@ class RemoteExecutor(executor_base.Executor):
     py_typecheck.check_type(index, int)
     result_type = source.type_signature[index]
     request = executor_pb2.CreateSelectionRequest(
-        executor=self._executor_id, source_ref=source.reference, index=index)
+        executor=self._executor_id, source_ref=source.reference, index=index
+    )
     response = self._stub.create_selection(request)
     py_typecheck.check_type(response, executor_pb2.CreateSelectionResponse)
     return RemoteValue(response.value_ref, result_type, self)
 
   @tracing.trace(span=True)
-  async def _compute_stream_structs(self, value_ref,
-                                    type_spec: computation_types.StructType):
+  async def _compute_stream_structs(
+      self, value_ref, type_spec: computation_types.StructType
+  ):
     py_typecheck.check_type(value_ref, executor_pb2.ValueRef)
     values = []
     source = RemoteValue(value_ref, type_spec, self, False)
@@ -275,14 +303,16 @@ class RemoteExecutor(executor_base.Executor):
       value = await self._compute(select_response.reference, element_spec)
       return value
 
-    for index, (_,
-                element_spec) in enumerate(structure.iter_elements(type_spec)):
+    for index, (_, element_spec) in enumerate(
+        structure.iter_elements(type_spec)
+    ):
       values.append(per_element(source, index, element_spec))
 
     values = await asyncio.gather(*values)
     structure.name_list_with_nones(type_spec)
     return structure.Struct(
-        zip(structure.name_list_with_nones(type_spec), values))
+        zip(structure.name_list_with_nones(type_spec), values)
+    )
 
   @tracing.trace(span=True)
   async def _compute(self, value_ref, type_spec):
@@ -293,7 +323,8 @@ class RemoteExecutor(executor_base.Executor):
       return await self._compute_stream_structs(value_ref, type_spec)
 
     request = executor_pb2.ComputeRequest(
-        executor=self._executor_id, value_ref=value_ref)
+        executor=self._executor_id, value_ref=value_ref
+    )
     response = self._stub.compute(request)
     py_typecheck.check_type(response, executor_pb2.ComputeResponse)
     value, _ = value_serialization.deserialize_value(response.value, type_spec)

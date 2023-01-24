@@ -48,4 +48,5 @@ class DataBackendExample(tff.framework.DataBackend):
 
     # Run the blocking method on a separate thread from the event loop
     return await asyncio.get_running_loop().run_in_executor(
-        None, blocking_materialize)
+        None, blocking_materialize
+    )

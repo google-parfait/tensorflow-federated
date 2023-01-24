@@ -42,15 +42,14 @@ def all_isinstance(objs: Iterable[Any], classinfo: type[Any]) -> bool:
 
 
 def create_test_executor(
-    number_of_clients: int = 3) -> federating_executor.FederatingExecutor:
-
+    number_of_clients: int = 3,
+) -> federating_executor.FederatingExecutor:
   def create_bottom_stack():
     executor = eager_tf_executor.EagerTFExecutor()
     return reference_resolving_executor.ReferenceResolvingExecutor(executor)
 
   factory = federated_resolving_strategy.FederatedResolvingStrategy.factory({
-      placements.SERVER:
-          create_bottom_stack(),
+      placements.SERVER: create_bottom_stack(),
       placements.CLIENTS: [
           create_bottom_stack() for _ in range(number_of_clients)
       ],
@@ -95,8 +94,9 @@ def get_named_parameters_for_supported_intrinsics() -> list[tuple[str, Any]]:
   # pyformat: enable
 
 
-class FederatingExecutorCreateValueTest(unittest.IsolatedAsyncioTestCase,
-                                        parameterized.TestCase):
+class FederatingExecutorCreateValueTest(
+    unittest.IsolatedAsyncioTestCase, parameterized.TestCase
+):
 
   # pyformat: disable
   @parameterized.named_parameters([
@@ -124,8 +124,10 @@ class FederatingExecutorCreateValueTest(unittest.IsolatedAsyncioTestCase,
     result = await executor.create_value(value, type_signature)
 
     self.assertIsInstance(result, executor_value_base.ExecutorValue)
-    self.assertEqual(result.type_signature.compact_representation(),
-                     type_signature.compact_representation())
+    self.assertEqual(
+        result.type_signature.compact_representation(),
+        type_signature.compact_representation(),
+    )
 
   # pyformat: disable
   @parameterized.named_parameters([
@@ -145,8 +147,10 @@ class FederatingExecutorCreateValueTest(unittest.IsolatedAsyncioTestCase,
     result = await executor.create_value(value)
 
     self.assertIsInstance(result, executor_value_base.ExecutorValue)
-    self.assertEqual(result.type_signature.compact_representation(),
-                     type_signature.compact_representation())
+    self.assertEqual(
+        result.type_signature.compact_representation(),
+        type_signature.compact_representation(),
+    )
 
   # pyformat: disable
   @parameterized.named_parameters([
@@ -158,17 +162,21 @@ class FederatingExecutorCreateValueTest(unittest.IsolatedAsyncioTestCase,
        *executor_test_utils.create_whimsy_computation_tensorflow_empty()),
   ])
   # pyformat: enable
-  async def test_returns_value_with_computation_impl(self, proto,
-                                                     type_signature):
+  async def test_returns_value_with_computation_impl(
+      self, proto, type_signature
+  ):
     executor = create_test_executor()
     value = computation_impl.ConcreteComputation(
-        proto, context_stack_impl.context_stack)
+        proto, context_stack_impl.context_stack
+    )
 
     result = await executor.create_value(value, type_signature)
 
     self.assertIsInstance(result, executor_value_base.ExecutorValue)
-    self.assertEqual(result.type_signature.compact_representation(),
-                     type_signature.compact_representation())
+    self.assertEqual(
+        result.type_signature.compact_representation(),
+        type_signature.compact_representation(),
+    )
 
   # pyformat: disable
   @parameterized.named_parameters([
@@ -216,7 +224,8 @@ class FederatingExecutorCreateValueTest(unittest.IsolatedAsyncioTestCase,
   ] + get_named_parameters_for_supported_intrinsics())
   # pyformat: enable
   async def test_raises_type_error_with_value_and_bad_type(
-      self, value, type_signature):
+      self, value, type_signature
+  ):
     del type_signature  # Unused.
     executor = create_test_executor()
     bad_type_signature = computation_types.TensorType(tf.string)
@@ -245,7 +254,8 @@ class FederatingExecutorCreateValueTest(unittest.IsolatedAsyncioTestCase,
       await executor.create_value(value, type_signature)
 
   async def test_raises_value_error_with_unrecognized_computation_intrinsic(
-      self):
+      self,
+  ):
     executor = create_test_executor()
     type_signature = computation_types.TensorType(tf.int32)
     # A `ValueError` will be raised because `create_value` can not recognize the
@@ -254,13 +264,15 @@ class FederatingExecutorCreateValueTest(unittest.IsolatedAsyncioTestCase,
     type_signature = computation_types.TensorType(tf.int32)
     value = pb.Computation(
         type=type_serialization.serialize_type(type_signature),
-        intrinsic=pb.Intrinsic(uri='unregistered_intrinsic'))
+        intrinsic=pb.Intrinsic(uri='unregistered_intrinsic'),
+    )
 
     with self.assertRaises(ValueError):
       await executor.create_value(value, type_signature)
 
   async def test_raises_value_error_with_unrecognized_computation_selection(
-      self):
+      self,
+  ):
     executor = create_test_executor()
     source, _ = executor_test_utils.create_whimsy_computation_tuple()
     type_signature = computation_types.StructType([])
@@ -269,7 +281,8 @@ class FederatingExecutorCreateValueTest(unittest.IsolatedAsyncioTestCase,
     # field.
     value = pb.Computation(
         type=type_serialization.serialize_type(type_signature),
-        selection=pb.Selection(source=source))
+        selection=pb.Selection(source=source),
+    )
 
     with self.assertRaises(ValueError):
       await executor.create_value(value, type_signature)
@@ -297,19 +310,24 @@ class FederatingExecutorCreateValueTest(unittest.IsolatedAsyncioTestCase,
   ])
   # pyformat: enable
   async def test_raises_value_error_with_no_target_executor_server(
-      self, value, type_signature):
-    factory = federated_resolving_strategy.FederatedResolvingStrategy.factory({
-        placements.CLIENTS: eager_tf_executor.EagerTFExecutor(),
-    })
+      self, value, type_signature
+  ):
+    factory = federated_resolving_strategy.FederatedResolvingStrategy.factory(
+        {
+            placements.CLIENTS: eager_tf_executor.EagerTFExecutor(),
+        }
+    )
     executor = federating_executor.FederatingExecutor(
-        factory, eager_tf_executor.EagerTFExecutor())
+        factory, eager_tf_executor.EagerTFExecutor()
+    )
     value, type_signature = executor_test_utils.create_whimsy_value_at_server()
 
     with self.assertRaises(ValueError):
       await executor.create_value(value, type_signature)
 
   async def test_raises_value_error_with_unexpected_federated_type_at_clients(
-      self):
+      self,
+  ):
     executor = create_test_executor()
     value = [10, 20]
     type_signature = computation_types.at_clients(tf.int32)
@@ -318,7 +336,8 @@ class FederatingExecutorCreateValueTest(unittest.IsolatedAsyncioTestCase,
       await executor.create_value(value, type_signature)
 
   async def test_raises_type_error_with_unexpected_federated_type_at_clients_all_equal(
-      self):
+      self,
+  ):
     executor = create_test_executor()
     value = [10] * 3
     type_signature = computation_types.at_clients(tf.int32, all_equal=True)
@@ -327,8 +346,9 @@ class FederatingExecutorCreateValueTest(unittest.IsolatedAsyncioTestCase,
       await executor.create_value(value, type_signature)
 
 
-class FederatingExecutorCreateCallTest(unittest.IsolatedAsyncioTestCase,
-                                       parameterized.TestCase):
+class FederatingExecutorCreateCallTest(
+    unittest.IsolatedAsyncioTestCase, parameterized.TestCase
+):
 
   # pyformat: disable
   @parameterized.named_parameters([
@@ -415,8 +435,9 @@ class FederatingExecutorCreateCallTest(unittest.IsolatedAsyncioTestCase,
        10.0),
   ])
   # pyformat: enable
-  async def test_returns_value_with_comp_and_arg(self, comp, comp_type, args,
-                                                 expected_result):
+  async def test_returns_value_with_comp_and_arg(
+      self, comp, comp_type, args, expected_result
+  ):
     executor = create_test_executor()
 
     comp = await executor.create_value(comp, comp_type)
@@ -428,26 +449,33 @@ class FederatingExecutorCreateCallTest(unittest.IsolatedAsyncioTestCase,
     result = await executor.create_call(comp, arg)
 
     self.assertIsInstance(result, executor_value_base.ExecutorValue)
-    self.assertEqual(result.type_signature.compact_representation(),
-                     comp_type.result.compact_representation())
+    self.assertEqual(
+        result.type_signature.compact_representation(),
+        comp_type.result.compact_representation(),
+    )
     actual_result = await result.compute()
     self.assert_maybe_list_equal(actual_result, expected_result)
 
   def assert_maybe_list_equal(self, actual_result, expected_result):
-    if (all_isinstance([actual_result, expected_result], list) or
-        all_isinstance([actual_result, expected_result], tf.data.Dataset)):
-      for actual_element, expected_element in zip(actual_result,
-                                                  expected_result):
+    if all_isinstance([actual_result, expected_result], list) or all_isinstance(
+        [actual_result, expected_result], tf.data.Dataset
+    ):
+      for actual_element, expected_element in zip(
+          actual_result, expected_result
+      ):
         self.assert_maybe_list_equal(actual_element, expected_element)
     else:
       self.assertEqual(actual_result, expected_result)
 
   async def test_returns_value_with_intrinsic_def_federated_eval_at_clients_and_random(
-      self):
+      self,
+  ):
     executor = create_test_executor(number_of_clients=3)
-    comp, comp_type = executor_test_utils.create_whimsy_intrinsic_def_federated_eval_at_clients(
+    comp, comp_type = (
+        executor_test_utils.create_whimsy_intrinsic_def_federated_eval_at_clients()
     )
-    arg, arg_type = executor_test_utils.create_whimsy_computation_tensorflow_random(
+    arg, arg_type = (
+        executor_test_utils.create_whimsy_computation_tensorflow_random()
     )
 
     comp = await executor.create_value(comp, comp_type)
@@ -455,14 +483,17 @@ class FederatingExecutorCreateCallTest(unittest.IsolatedAsyncioTestCase,
     result = await executor.create_call(comp, arg)
 
     self.assertIsInstance(result, executor_value_base.ExecutorValue)
-    self.assertEqual(result.type_signature.compact_representation(),
-                     comp_type.result.compact_representation())
+    self.assertEqual(
+        result.type_signature.compact_representation(),
+        comp_type.result.compact_representation(),
+    )
     actual_result = await result.compute()
     unique_results = set([x.numpy() for x in actual_result])
     if len(actual_result) != len(unique_results):
       self.fail(
           'Expected the result to contain different random numbers, found {}.'
-          .format(actual_result))
+          .format(actual_result)
+      )
 
   # pyformat: disable
   @parameterized.named_parameters([
@@ -477,15 +508,18 @@ class FederatingExecutorCreateCallTest(unittest.IsolatedAsyncioTestCase,
     result = await executor.create_call(comp)
 
     self.assertIsInstance(result, executor_value_base.ExecutorValue)
-    self.assertEqual(result.type_signature.compact_representation(),
-                     comp_type.result.compact_representation())
+    self.assertEqual(
+        result.type_signature.compact_representation(),
+        comp_type.result.compact_representation(),
+    )
     actual_result = await result.compute()
     expected_result = []
     self.assertCountEqual(actual_result, expected_result)
 
   async def test_raises_type_error_with_unembedded_comp(self):
     executor = create_test_executor()
-    comp, _ = executor_test_utils.create_whimsy_computation_tensorflow_identity(
+    comp, _ = (
+        executor_test_utils.create_whimsy_computation_tensorflow_identity()
     )
     arg, arg_type = executor_test_utils.create_whimsy_value_unplaced()
 
@@ -495,7 +529,8 @@ class FederatingExecutorCreateCallTest(unittest.IsolatedAsyncioTestCase,
 
   async def test_raises_type_error_with_unembedded_arg(self):
     executor = create_test_executor()
-    comp, comp_type = executor_test_utils.create_whimsy_computation_tensorflow_identity(
+    comp, comp_type = (
+        executor_test_utils.create_whimsy_computation_tensorflow_identity()
     )
     arg, _ = executor_test_utils.create_whimsy_value_unplaced()
 
@@ -545,9 +580,11 @@ class FederatingExecutorCreateCallTest(unittest.IsolatedAsyncioTestCase,
       await executor.create_call(comp)
 
   async def test_raises_not_implemented_error_with_intrinsic_def_federated_secure_sum_bitwidth(
-      self):
+      self,
+  ):
     executor = create_test_executor()
-    comp, comp_type = executor_test_utils.create_whimsy_intrinsic_def_federated_secure_sum_bitwidth(
+    comp, comp_type = (
+        executor_test_utils.create_whimsy_intrinsic_def_federated_secure_sum_bitwidth()
     )
     arg_1 = [10, 11, 12]
     arg_1_type = computation_types.at_clients(tf.int32, all_equal=False)
@@ -562,16 +599,20 @@ class FederatingExecutorCreateCallTest(unittest.IsolatedAsyncioTestCase,
       await executor.create_call(comp, args)
 
   async def test_raises_not_implemented_error_with_unimplemented_intrinsic(
-      self):
+      self,
+  ):
     executor = create_test_executor()
     # `whimsy_intrinsic` definition is needed to allow lookup.
     whimsy_intrinsic = intrinsic_defs.IntrinsicDef(
-        'WHIMSY_INTRINSIC', 'whimsy_intrinsic',
-        computation_types.AbstractType('T'))
+        'WHIMSY_INTRINSIC',
+        'whimsy_intrinsic',
+        computation_types.AbstractType('T'),
+    )
     type_signature = computation_types.TensorType(tf.int32)
     comp = pb.Computation(
         intrinsic=pb.Intrinsic(uri='whimsy_intrinsic'),
-        type=type_serialization.serialize_type(type_signature))
+        type=type_serialization.serialize_type(type_signature),
+    )
     del whimsy_intrinsic
 
     comp = await executor.create_value(comp)
@@ -579,8 +620,9 @@ class FederatingExecutorCreateCallTest(unittest.IsolatedAsyncioTestCase,
       await executor.create_call(comp)
 
 
-class FederatingExecutorCreateStructTest(unittest.IsolatedAsyncioTestCase,
-                                         parameterized.TestCase):
+class FederatingExecutorCreateStructTest(
+    unittest.IsolatedAsyncioTestCase, parameterized.TestCase
+):
 
   # pyformat: disable
   @parameterized.named_parameters([
@@ -603,15 +645,18 @@ class FederatingExecutorCreateStructTest(unittest.IsolatedAsyncioTestCase,
     result = await executor.create_struct(elements)
 
     self.assertIsInstance(result, executor_value_base.ExecutorValue)
-    self.assertEqual(result.type_signature.compact_representation(),
-                     type_signature.compact_representation())
+    self.assertEqual(
+        result.type_signature.compact_representation(),
+        type_signature.compact_representation(),
+    )
     actual_result = await result.compute()
     expected_result = [await element.compute()] * 3
     self.assertCountEqual(actual_result, expected_result)
 
   async def test_returns_value_with_elements_value_placement_literal(self):
     executor = create_test_executor()
-    value, type_signature = executor_test_utils.create_whimsy_placement_literal(
+    value, type_signature = (
+        executor_test_utils.create_whimsy_placement_literal()
     )
 
     element = await executor.create_value(value, type_signature)
@@ -620,8 +665,10 @@ class FederatingExecutorCreateStructTest(unittest.IsolatedAsyncioTestCase,
     result = await executor.create_struct(elements)
 
     self.assertIsInstance(result, executor_value_base.ExecutorValue)
-    self.assertEqual(result.type_signature.compact_representation(),
-                     type_signature.compact_representation())
+    self.assertEqual(
+        result.type_signature.compact_representation(),
+        type_signature.compact_representation(),
+    )
 
   # pyformat: disable
   @parameterized.named_parameters([
@@ -633,8 +680,9 @@ class FederatingExecutorCreateStructTest(unittest.IsolatedAsyncioTestCase,
        *executor_test_utils.create_whimsy_computation_tensorflow_constant()),
   ])
   # pyformat: enable
-  async def test_returns_value_with_elements_fn_and_arg(self, fn, fn_type, arg,
-                                                        arg_type):
+  async def test_returns_value_with_elements_fn_and_arg(
+      self, fn, fn_type, arg, arg_type
+  ):
     executor = create_test_executor()
 
     fn = await executor.create_value(fn, fn_type)
@@ -645,8 +693,10 @@ class FederatingExecutorCreateStructTest(unittest.IsolatedAsyncioTestCase,
     result = await executor.create_struct(elements)
 
     self.assertIsInstance(result, executor_value_base.ExecutorValue)
-    self.assertEqual(result.type_signature.compact_representation(),
-                     type_signature.compact_representation())
+    self.assertEqual(
+        result.type_signature.compact_representation(),
+        type_signature.compact_representation(),
+    )
     actual_result = await result.compute()
     expected_result = [await element.compute()] * 3
     self.assertCountEqual(actual_result, expected_result)
@@ -667,8 +717,10 @@ class FederatingExecutorCreateStructTest(unittest.IsolatedAsyncioTestCase,
     result = await executor.create_struct(elements)
 
     self.assertIsInstance(result, executor_value_base.ExecutorValue)
-    self.assertEqual(result.type_signature.compact_representation(),
-                     type_signature.compact_representation())
+    self.assertEqual(
+        result.type_signature.compact_representation(),
+        type_signature.compact_representation(),
+    )
     actual_result = await result.compute()
     expected_result = [await element.compute()] * 3
     self.assertCountEqual(actual_result, expected_result)
@@ -685,9 +737,11 @@ class FederatingExecutorCreateStructTest(unittest.IsolatedAsyncioTestCase,
 class FederatingExecutorCreateSelectionTest(unittest.IsolatedAsyncioTestCase):
 
   async def test_returns_value_with_source_and_index_computation_tensorflow(
-      self):
+      self,
+  ):
     executor = create_test_executor()
-    source, type_signature = executor_test_utils.create_whimsy_computation_tensorflow_tuple(
+    source, type_signature = (
+        executor_test_utils.create_whimsy_computation_tensorflow_tuple()
     )
 
     source = await executor.create_value(source, type_signature)
@@ -695,8 +749,10 @@ class FederatingExecutorCreateSelectionTest(unittest.IsolatedAsyncioTestCase):
     result = await executor.create_selection(source, 0)
 
     self.assertIsInstance(result, executor_value_base.ExecutorValue)
-    self.assertEqual(result.type_signature.compact_representation(),
-                     type_signature.result[0].compact_representation())
+    self.assertEqual(
+        result.type_signature.compact_representation(),
+        type_signature.result[0].compact_representation(),
+    )
     actual_result = await result.compute()
     expected_result = (await source.compute())[0]
     self.assertEqual(actual_result, expected_result)
@@ -712,16 +768,20 @@ class FederatingExecutorCreateSelectionTest(unittest.IsolatedAsyncioTestCase):
     result = await executor.create_selection(source, 0)
 
     self.assertIsInstance(result, executor_value_base.ExecutorValue)
-    self.assertEqual(result.type_signature.compact_representation(),
-                     type_signature[0].compact_representation())
+    self.assertEqual(
+        result.type_signature.compact_representation(),
+        type_signature[0].compact_representation(),
+    )
     actual_result = await result.compute()
     expected_result = (await source.compute())[0]
     self.assertEqual(actual_result, expected_result)
 
   async def test_returns_value_with_source_and_name_computation_tensorflow(
-      self):
+      self,
+  ):
     executor = create_test_executor()
-    source, type_signature = executor_test_utils.create_whimsy_computation_tensorflow_tuple(
+    source, type_signature = (
+        executor_test_utils.create_whimsy_computation_tensorflow_tuple()
     )
 
     source = await executor.create_value(source, type_signature)
@@ -729,8 +789,10 @@ class FederatingExecutorCreateSelectionTest(unittest.IsolatedAsyncioTestCase):
     result = await executor.create_selection(source, 0)
 
     self.assertIsInstance(result, executor_value_base.ExecutorValue)
-    self.assertEqual(result.type_signature.compact_representation(),
-                     type_signature.result['a'].compact_representation())
+    self.assertEqual(
+        result.type_signature.compact_representation(),
+        type_signature.result['a'].compact_representation(),
+    )
     actual_result = await result.compute()
     expected_result = (await source.compute())['a']
     self.assertEqual(actual_result, expected_result)
@@ -743,13 +805,16 @@ class FederatingExecutorCreateSelectionTest(unittest.IsolatedAsyncioTestCase):
     element = await executor.create_value(element, element_type)
     elements = structure.Struct((n, element) for n in names)
     type_signature = computation_types.StructType(
-        (n, element_type) for n in names)
+        (n, element_type) for n in names
+    )
     source = await executor.create_struct(elements)
     result = await executor.create_selection(source, 0)
 
     self.assertIsInstance(result, executor_value_base.ExecutorValue)
-    self.assertEqual(result.type_signature.compact_representation(),
-                     type_signature['a'].compact_representation())
+    self.assertEqual(
+        result.type_signature.compact_representation(),
+        type_signature['a'].compact_representation(),
+    )
     actual_result = await result.compute()
     expected_result = (await source.compute())['a']
     self.assertEqual(actual_result, expected_result)
@@ -776,7 +841,8 @@ class FederatingExecutorCreateSelectionTest(unittest.IsolatedAsyncioTestCase):
 
     value = intrinsic_defs.GENERIC_ZERO
     type_signature = computation_types.StructType(
-        [computation_types.TensorType(tf.int32)] * 3)
+        [computation_types.TensorType(tf.int32)] * 3
+    )
 
     source = await executor.create_value(value, type_signature)
     with self.assertRaises(ValueError):

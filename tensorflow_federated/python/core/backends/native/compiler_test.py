@@ -27,7 +27,8 @@ class DesugarAndTransformTest(tf.test.TestCase):
   def test_desugaring_sum_insert_id_for_tf_computations(self):
 
     @federated_computation.federated_computation(
-        computation_types.at_clients(tf.int32))
+        computation_types.at_clients(tf.int32)
+    )
     def fed_sum(x):
       return intrinsics.federated_sum(x)
 
@@ -35,17 +36,21 @@ class DesugarAndTransformTest(tf.test.TestCase):
     reduced_bb = reduced_comp.to_building_block()
 
     def _check_tf_computations_have_ids(comp):
-      if (comp.is_compiled_computation() and
-          comp.proto.WhichOneof('computation') == 'tensorflow' and
-          not comp.proto.tensorflow.cache_key.id):
+      if (
+          comp.is_compiled_computation()
+          and comp.proto.WhichOneof('computation') == 'tensorflow'
+          and not comp.proto.tensorflow.cache_key.id
+      ):
         raise ValueError(
             f'Building block {comp.formatted_representation()} is a compiled '
-            'computation of TensorFlow type but without a cache key ID.')
+            'computation of TensorFlow type but without a cache key ID.'
+        )
       return comp, False
 
     # Doesn't raise.
-    transformation_utils.transform_postorder(reduced_bb,
-                                             _check_tf_computations_have_ids)
+    transformation_utils.transform_postorder(
+        reduced_bb, _check_tf_computations_have_ids
+    )
 
 
 if __name__ == '__main__':

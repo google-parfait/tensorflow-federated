@@ -35,11 +35,13 @@ class TransformingClientData(client_data.ClientData):
   "client_A-1".
   """
 
-  def __init__(self,
-               base_client_data: client_data.ClientData,
-               make_transform_fn: Callable[[str], Callable[[Any], Any]],
-               expand_client_id: Optional[Callable[[str], list[str]]] = None,
-               reduce_client_id: Optional[Callable[[str], str]] = None):
+  def __init__(
+      self,
+      base_client_data: client_data.ClientData,
+      make_transform_fn: Callable[[str], Callable[[Any], Any]],
+      expand_client_id: Optional[Callable[[str], list[str]]] = None,
+      reduce_client_id: Optional[Callable[[str], str]] = None,
+  ):
     """Initializes the TransformingClientData.
 
     Args:
@@ -67,8 +69,10 @@ class TransformingClientData(client_data.ClientData):
     self._make_transform_fn = make_transform_fn
 
     if (expand_client_id is None) != (reduce_client_id is None):
-      raise ValueError('Must specify both or neither of `expand_client_id` and '
-                       '`reduce_client_id`.')
+      raise ValueError(
+          'Must specify both or neither of `expand_client_id` and '
+          '`reduce_client_id`.'
+      )
 
     if expand_client_id is None:
       self._client_ids = raw_client_ids
@@ -94,7 +98,8 @@ class TransformingClientData(client_data.ClientData):
   def _create_dataset(self, client_id: str) -> tf.data.Dataset:
     orig_client_id = self._reduce_client_id(client_id)
     orig_dataset = self._base_client_data.serializable_dataset_fn(
-        orig_client_id)
+        orig_client_id
+    )
     transform = self._make_transform_fn(client_id)
     return orig_dataset.map(transform, tf.data.experimental.AUTOTUNE)
 

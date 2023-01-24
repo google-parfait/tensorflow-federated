@@ -25,13 +25,15 @@ from tensorflow_federated.python.core.impl.executors import value_serialization
 from tensorflow_federated.python.core.impl.types import computation_types
 
 
-class CcToPythonExecutorTest(parameterized.TestCase,
-                             unittest.IsolatedAsyncioTestCase):
+class CcToPythonExecutorTest(
+    parameterized.TestCase, unittest.IsolatedAsyncioTestCase
+):
 
   def setUp(self):
     super().setUp()
     self._mock_executor = unittest.mock.create_autospec(
-        executor_bindings.Executor)
+        executor_bindings.Executor
+    )
     self._test_executor = cpp_to_python_executor.CppToPythonExecutorBridge(
         self._mock_executor,
         concurrent.futures.ThreadPoolExecutor(max_workers=None),
@@ -40,11 +42,16 @@ class CcToPythonExecutorTest(parameterized.TestCase,
   @parameterized.named_parameters(
       ('integer', 1, computation_types.to_type(tf.int32)),
       ('float', 1.0, computation_types.to_type(tf.float32)),
-      ('mixed_structure', structure.Struct.unnamed(
-          0, 1.0), computation_types.to_type([tf.int32, tf.float32])),
-      ('nested_structure',
-       structure.Struct.unnamed(0, structure.Struct.unnamed(
-           1, 2)), computation_types.to_type([tf.int32, [tf.int32, tf.int32]])),
+      (
+          'mixed_structure',
+          structure.Struct.unnamed(0, 1.0),
+          computation_types.to_type([tf.int32, tf.float32]),
+      ),
+      (
+          'nested_structure',
+          structure.Struct.unnamed(0, structure.Struct.unnamed(1, 2)),
+          computation_types.to_type([tf.int32, [tf.int32, tf.int32]]),
+      ),
   )
   async def test_create_value(self, value, type_spec):
     _ = await self._test_executor.create_value(value, type_spec)
@@ -53,12 +60,15 @@ class CcToPythonExecutorTest(parameterized.TestCase,
 
   async def test_create_call_tensorflow_function_noarg(self):
     owned_call_id = unittest.mock.create_autospec(
-        executor_bindings.OwnedValueId)
+        executor_bindings.OwnedValueId
+    )
     self._mock_executor.create_call.return_value = owned_call_id
     fn = unittest.mock.create_autospec(
-        cpp_to_python_executor.CppToPythonExecutorValue)
+        cpp_to_python_executor.CppToPythonExecutorValue
+    )
     fn.type_signature = computation_types.FunctionType(
-        None, computation_types.to_type(tf.int32))
+        None, computation_types.to_type(tf.int32)
+    )
     fn.reference = 1
 
     constructed_call = await self._test_executor.create_call(fn)
@@ -68,15 +78,19 @@ class CcToPythonExecutorTest(parameterized.TestCase,
 
   async def test_create_call_tensorflow_function_with_arg(self):
     owned_call_id = unittest.mock.create_autospec(
-        executor_bindings.OwnedValueId)
+        executor_bindings.OwnedValueId
+    )
     self._mock_executor.create_call.return_value = owned_call_id
     fn = unittest.mock.create_autospec(
-        cpp_to_python_executor.CppToPythonExecutorValue)
+        cpp_to_python_executor.CppToPythonExecutorValue
+    )
     fn.type_signature = computation_types.FunctionType(
-        None, computation_types.to_type(tf.int32))
+        None, computation_types.to_type(tf.int32)
+    )
     fn.reference = 1
     arg = unittest.mock.create_autospec(
-        cpp_to_python_executor.CppToPythonExecutorValue)
+        cpp_to_python_executor.CppToPythonExecutorValue
+    )
     arg.type_signature = computation_types.to_type(tf.int32)
     arg.reference = 2
 
@@ -87,25 +101,30 @@ class CcToPythonExecutorTest(parameterized.TestCase,
 
   async def test_create_struct(self):
     owned_struct_id = unittest.mock.create_autospec(
-        executor_bindings.OwnedValueId)
+        executor_bindings.OwnedValueId
+    )
     self._mock_executor.create_struct.return_value = owned_struct_id
     struct_element = unittest.mock.create_autospec(
-        cpp_to_python_executor.CppToPythonExecutorValue)
+        cpp_to_python_executor.CppToPythonExecutorValue
+    )
     struct_element.type_signature = computation_types.to_type(tf.int32)
     struct_element.reference = 1
 
     constructed_struct = await self._test_executor.create_struct(
-        [struct_element])
+        [struct_element]
+    )
 
     self._mock_executor.create_struct.assert_called_with([1])
     self.assertIs(constructed_struct.reference, owned_struct_id.ref)
 
   async def test_create_selection(self):
     owned_selection_id = unittest.mock.create_autospec(
-        executor_bindings.OwnedValueId)
+        executor_bindings.OwnedValueId
+    )
     self._mock_executor.create_selection.return_value = owned_selection_id
     source = unittest.mock.create_autospec(
-        cpp_to_python_executor.CppToPythonExecutorValue)
+        cpp_to_python_executor.CppToPythonExecutorValue
+    )
     source.type_signature = computation_types.to_type([tf.int32])
     source.reference = 1
 
@@ -118,12 +137,16 @@ class CcToPythonExecutorTest(parameterized.TestCase,
     owned_id = unittest.mock.create_autospec(executor_bindings.OwnedValueId)
     owned_id.ref = 1
     serialized_two, _ = value_serialization.serialize_value(
-        2, computation_types.to_type(tf.int32))
+        2, computation_types.to_type(tf.int32)
+    )
     self._mock_executor.materialize.return_value = serialized_two
     type_signature = computation_types.to_type(tf.int32)
     executor_value = cpp_to_python_executor.CppToPythonExecutorValue(
-        owned_id, type_signature, self._mock_executor,
-        concurrent.futures.ThreadPoolExecutor())
+        owned_id,
+        type_signature,
+        self._mock_executor,
+        concurrent.futures.ThreadPoolExecutor(),
+    )
 
     computed_value = await executor_value.compute()
 

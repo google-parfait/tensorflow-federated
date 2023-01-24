@@ -38,25 +38,27 @@ from tensorflow_federated.python.core.impl.types import placements
 class TestEnv:
   """A test environment that consists of a single client and backend service."""
 
-  def __init__(self,
-               ex_factory: executor_factory.ExecutorFactory,
-               num_clients: int = 0):
+  def __init__(
+      self, ex_factory: executor_factory.ExecutorFactory, num_clients: int = 0
+  ):
     port = portpicker.pick_unused_port()
     self._server_pool = logging_pool.pool(max_workers=1)
     self._server = grpc.server(self._server_pool)
     self._server.add_insecure_port('[::]:{}'.format(port))
     self._service = executor_service.ExecutorService(ex_factory=ex_factory)
     executor_pb2_grpc.add_ExecutorGroupServicer_to_server(
-        self._service, self._server)
+        self._service, self._server
+    )
     self._server.start()
     self._channel = grpc.insecure_channel('localhost:{}'.format(port))
     self._stub = executor_pb2_grpc.ExecutorGroupStub(self._channel)
 
     serialized_cards = value_serialization.serialize_cardinalities(
-        {placements.CLIENTS: num_clients})
+        {placements.CLIENTS: num_clients}
+    )
     self._executor_pb = self._stub.GetExecutor(
-        executor_pb2.GetExecutorRequest(
-            cardinalities=serialized_cards)).executor
+        executor_pb2.GetExecutorRequest(cardinalities=serialized_cards)
+    ).executor
 
   def __del__(self):
     self._channel.close()
@@ -76,7 +78,9 @@ class TestEnv:
     response = self._stub.Compute(
         executor_pb2.ComputeRequest(
             executor=self._executor_pb,
-            value_ref=executor_pb2.ValueRef(id=value_id)))
+            value_ref=executor_pb2.ValueRef(id=value_id),
+        )
+    )
     py_typecheck.check_type(response, executor_pb2.ComputeResponse)
     value, _ = value_serialization.deserialize_value(response.value)
     return value
@@ -93,7 +97,6 @@ class TestEnv:
 class ExecutorServiceTest(absltest.TestCase):
 
   def test_executor_service_slowly_create_tensor_value(self):
-
     class SlowExecutorValue(executor_value_base.ExecutorValue):
 
       def __init__(self, v, t):
@@ -144,7 +147,9 @@ class ExecutorServiceTest(absltest.TestCase):
     value_proto, _ = value_serialization.serialize_value(10, tf.int32)
     response = env.stub.CreateValue(
         executor_pb2.CreateValueRequest(
-            executor=env.executor_pb, value=value_proto))
+            executor=env.executor_pb, value=value_proto
+        )
+    )
     ex.busy.wait()
     self.assertEqual(ex.status, 'busy')
     ex.done.set()
@@ -154,13 +159,17 @@ class ExecutorServiceTest(absltest.TestCase):
 
   def test_executor_service_create_tensor_value(self):
     ex_factory = executor_test_utils.BasicTestExFactory(
-        eager_tf_executor.EagerTFExecutor())
+        eager_tf_executor.EagerTFExecutor()
+    )
     env = TestEnv(ex_factory)
     value_proto, _ = value_serialization.serialize_value(
-        tf.constant(10.0).numpy(), tf.float32)
+        tf.constant(10.0).numpy(), tf.float32
+    )
     response = env.stub.CreateValue(
         executor_pb2.CreateValueRequest(
-            executor=env.executor_pb, value=value_proto))
+            executor=env.executor_pb, value=value_proto
+        )
+    )
     self.assertIsInstance(response, executor_pb2.CreateValueResponse)
     value_id = str(response.value_ref.id)
     value = env.get_value(value_id)
@@ -169,7 +178,8 @@ class ExecutorServiceTest(absltest.TestCase):
 
   def test_executor_service_create_no_arg_computation_value_and_call(self):
     ex_factory = executor_test_utils.BasicTestExFactory(
-        eager_tf_executor.EagerTFExecutor())
+        eager_tf_executor.EagerTFExecutor()
+    )
     env = TestEnv(ex_factory)
 
     @tensorflow_computation.tf_computation
@@ -179,11 +189,15 @@ class ExecutorServiceTest(absltest.TestCase):
     value_proto, _ = value_serialization.serialize_value(comp)
     response = env.stub.CreateValue(
         executor_pb2.CreateValueRequest(
-            executor=env.executor_pb, value=value_proto))
+            executor=env.executor_pb, value=value_proto
+        )
+    )
     self.assertIsInstance(response, executor_pb2.CreateValueResponse)
     response = env.stub.CreateCall(
         executor_pb2.CreateCallRequest(
-            executor=env.executor_pb, function_ref=response.value_ref))
+            executor=env.executor_pb, function_ref=response.value_ref
+        )
+    )
     self.assertIsInstance(response, executor_pb2.CreateCallResponse)
     value_id = str(response.value_ref.id)
     value = env.get_value(value_id)
@@ -192,14 +206,18 @@ class ExecutorServiceTest(absltest.TestCase):
 
   def test_executor_service_value_unavailable_after_dispose(self):
     ex_factory = executor_test_utils.BasicTestExFactory(
-        eager_tf_executor.EagerTFExecutor())
+        eager_tf_executor.EagerTFExecutor()
+    )
     env = TestEnv(ex_factory)
     value_proto, _ = value_serialization.serialize_value(
-        tf.constant(10.0).numpy(), tf.float32)
+        tf.constant(10.0).numpy(), tf.float32
+    )
     # Create the value
     response = env.stub.CreateValue(
         executor_pb2.CreateValueRequest(
-            executor=env.executor_pb, value=value_proto))
+            executor=env.executor_pb, value=value_proto
+        )
+    )
     self.assertIsInstance(response, executor_pb2.CreateValueResponse)
     value_id = str(response.value_ref.id)
     # Check that the value appears in the _values map
@@ -216,7 +234,6 @@ class ExecutorServiceTest(absltest.TestCase):
       env.get_value_future_directly(value_id)
 
   def test_dispose_does_not_trigger_cleanup(self):
-
     class MockFactory(executor_factory.ExecutorFactory, mock.MagicMock):
 
       def create_executor(self, *args, **kwargs):
@@ -230,11 +247,14 @@ class ExecutorServiceTest(absltest.TestCase):
 
     env = TestEnv(ex_factory)
     value_proto, _ = value_serialization.serialize_value(
-        tf.constant(10.0).numpy(), tf.float32)
+        tf.constant(10.0).numpy(), tf.float32
+    )
     # Create the value
     response = env.stub.CreateValue(
         executor_pb2.CreateValueRequest(
-            executor=env.executor_pb, value=value_proto))
+            executor=env.executor_pb, value=value_proto
+        )
+    )
     self.assertIsInstance(response, executor_pb2.CreateValueResponse)
     value_id = str(response.value_ref.id)
     # Check that the value appears in the _values map
@@ -251,7 +271,8 @@ class ExecutorServiceTest(absltest.TestCase):
 
   def test_executor_service_create_one_arg_computation_value_and_call(self):
     ex_factory = executor_test_utils.BasicTestExFactory(
-        eager_tf_executor.EagerTFExecutor())
+        eager_tf_executor.EagerTFExecutor()
+    )
     env = TestEnv(ex_factory)
 
     @tensorflow_computation.tf_computation(tf.int32)
@@ -261,14 +282,18 @@ class ExecutorServiceTest(absltest.TestCase):
     value_proto, _ = value_serialization.serialize_value(comp)
     response = env.stub.CreateValue(
         executor_pb2.CreateValueRequest(
-            executor=env.executor_pb, value=value_proto))
+            executor=env.executor_pb, value=value_proto
+        )
+    )
     self.assertIsInstance(response, executor_pb2.CreateValueResponse)
     comp_ref = response.value_ref
 
     value_proto, _ = value_serialization.serialize_value(10, tf.int32)
     response = env.stub.CreateValue(
         executor_pb2.CreateValueRequest(
-            executor=env.executor_pb, value=value_proto))
+            executor=env.executor_pb, value=value_proto
+        )
+    )
     self.assertIsInstance(response, executor_pb2.CreateValueResponse)
     arg_ref = response.value_ref
 
@@ -276,7 +301,9 @@ class ExecutorServiceTest(absltest.TestCase):
         executor_pb2.CreateCallRequest(
             executor=env.executor_pb,
             function_ref=comp_ref,
-            argument_ref=arg_ref))
+            argument_ref=arg_ref,
+        )
+    )
     self.assertIsInstance(response, executor_pb2.CreateCallResponse)
     value_id = str(response.value_ref.id)
     value = env.get_value(value_id)
@@ -285,13 +312,16 @@ class ExecutorServiceTest(absltest.TestCase):
 
   def test_executor_service_create_and_select_from_tuple(self):
     ex_factory = executor_test_utils.BasicTestExFactory(
-        eager_tf_executor.EagerTFExecutor())
+        eager_tf_executor.EagerTFExecutor()
+    )
     env = TestEnv(ex_factory)
 
     value_proto, _ = value_serialization.serialize_value(10, tf.int32)
     response = env.stub.CreateValue(
         executor_pb2.CreateValueRequest(
-            executor=env.executor_pb, value=value_proto))
+            executor=env.executor_pb, value=value_proto
+        )
+    )
     self.assertIsInstance(response, executor_pb2.CreateValueResponse)
     ten_ref = response.value_ref
     self.assertEqual(env.get_value(ten_ref.id), 10)
@@ -299,7 +329,9 @@ class ExecutorServiceTest(absltest.TestCase):
     value_proto, _ = value_serialization.serialize_value(20, tf.int32)
     response = env.stub.CreateValue(
         executor_pb2.CreateValueRequest(
-            executor=env.executor_pb, value=value_proto))
+            executor=env.executor_pb, value=value_proto
+        )
+    )
     self.assertIsInstance(response, executor_pb2.CreateValueResponse)
     twenty_ref = response.value_ref
     self.assertEqual(env.get_value(twenty_ref.id), 20)
@@ -309,10 +341,14 @@ class ExecutorServiceTest(absltest.TestCase):
             executor=env.executor_pb,
             element=[
                 executor_pb2.CreateStructRequest.Element(
-                    name='a', value_ref=ten_ref),
+                    name='a', value_ref=ten_ref
+                ),
                 executor_pb2.CreateStructRequest.Element(
-                    name='b', value_ref=twenty_ref)
-            ]))
+                    name='b', value_ref=twenty_ref
+                ),
+            ],
+        )
+    )
     self.assertIsInstance(response, executor_pb2.CreateStructResponse)
     tuple_ref = response.value_ref
     self.assertEqual(str(env.get_value(tuple_ref.id)), '<a=10,b=20>')
@@ -320,7 +356,9 @@ class ExecutorServiceTest(absltest.TestCase):
     for index, result_val in [(0, 10), (1, 20)]:
       response = env.stub.CreateSelection(
           executor_pb2.CreateSelectionRequest(
-              executor=env.executor_pb, source_ref=tuple_ref, index=index))
+              executor=env.executor_pb, source_ref=tuple_ref, index=index
+          )
+      )
       self.assertIsInstance(response, executor_pb2.CreateSelectionResponse)
       selection_ref = response.value_ref
       self.assertEqual(env.get_value(selection_ref.id), result_val)
@@ -328,7 +366,6 @@ class ExecutorServiceTest(absltest.TestCase):
     del env
 
   def test_dispose_executor_calls_close(self):
-
     class MockExecutor(executor_base.Executor):
 
       async def create_value(self, value, type_spec=None):
@@ -351,11 +388,12 @@ class ExecutorServiceTest(absltest.TestCase):
     ex_factory = executor_test_utils.BasicTestExFactory(mock_executor)
     env = TestEnv(ex_factory)
     env.stub.DisposeExecutor(
-        executor_pb2.DisposeExecutorRequest(executor=env.executor_pb))
+        executor_pb2.DisposeExecutorRequest(executor=env.executor_pb)
+    )
 
   def test_raising_failed_precondition_destroys_executor(self):
+    """A simple clas to mock out the exceptions raised by GRPC."""
 
-    # A simple clas to mock out the exceptions raised by GRPC.
     class GrpcFailedPrecondition(grpc.RpcError):
       pass
 
@@ -371,7 +409,9 @@ class ExecutorServiceTest(absltest.TestCase):
     value_proto, _ = value_serialization.serialize_value(10, tf.int32)
     value_id = env.stub.CreateValue(
         executor_pb2.CreateValueRequest(
-            executor=env.executor_pb, value=value_proto))
+            executor=env.executor_pb, value=value_proto
+        )
+    )
     # When CreateValue is forced to run, the executor's error will be raised. We
     # raise lazily because the service operates future-to-future.
     with self.assertRaises(grpc.RpcError):
@@ -382,9 +422,12 @@ class ExecutorServiceTest(absltest.TestCase):
     with self.assertRaises(grpc.RpcError) as rpc_err:
       env.stub.CreateValue(
           executor_pb2.CreateValueRequest(
-              executor=env.executor_pb, value=value_proto))
-    self.assertEqual(rpc_err.exception.code(),
-                     grpc.StatusCode.FAILED_PRECONDITION)
+              executor=env.executor_pb, value=value_proto
+          )
+      )
+    self.assertEqual(
+        rpc_err.exception.code(), grpc.StatusCode.FAILED_PRECONDITION
+    )
     self.assertIn('No executor found', rpc_err.exception.exception().details())
 
 

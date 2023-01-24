@@ -33,7 +33,8 @@ from tensorflow_federated.python.tensorflow_libs import tensorflow_test_utils
 
 
 def _get_first_logical_device(
-    device_type: Optional[str]) -> Optional[tf.config.LogicalDevice]:
+    device_type: Optional[str],
+) -> Optional[tf.config.LogicalDevice]:
   if device_type is None:
     return None
   tf_devices = tf.config.list_logical_devices(device_type=device_type)
@@ -44,37 +45,37 @@ def _get_first_logical_device(
 class EmbedTfCompTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_embed_tensorflow_computation_with_int_arg_and_result(self):
-
     @tensorflow_computation.tf_computation(tf.int32)
     def comp(x):
       return x + 1
 
     fn = eager_tf_executor.embed_tensorflow_computation(
-        computation_impl.ConcreteComputation.get_proto(comp))
+        computation_impl.ConcreteComputation.get_proto(comp)
+    )
     result = fn(tf.constant(10))
     self.assertIsInstance(result, tf.Tensor)
     self.assertEqual(result, 11)
 
   def test_embed_tensorflow_computation_with_float(self):
-
     @tensorflow_computation.tf_computation(tf.float32)
     def comp(x):
       return x + 0.5
 
     fn = eager_tf_executor.embed_tensorflow_computation(
-        computation_impl.ConcreteComputation.get_proto(comp))
+        computation_impl.ConcreteComputation.get_proto(comp)
+    )
     result = fn(tf.constant(10.0))
     self.assertIsInstance(result, tf.Tensor)
     self.assertEqual(result, 10.5)
 
   def test_embed_tensorflow_computation_with_no_arg_and_int_result(self):
-
     @tensorflow_computation.tf_computation
     def comp():
       return 1000
 
     fn = eager_tf_executor.embed_tensorflow_computation(
-        computation_impl.ConcreteComputation.get_proto(comp))
+        computation_impl.ConcreteComputation.get_proto(comp)
+    )
     result = fn()
     self.assertIsInstance(result, tf.Tensor)
     self.assertEqual(result, 1000)
@@ -83,24 +84,26 @@ class EmbedTfCompTest(tf.test.TestCase, parameterized.TestCase):
   def test_embed_tensorflow_computation_with_dataset_arg_and_int_result(self):
 
     @tensorflow_computation.tf_computation(
-        computation_types.SequenceType(tf.int32))
+        computation_types.SequenceType(tf.int32)
+    )
     def comp(ds):
       return ds.reduce(np.int32(0), lambda p, q: p + q)
 
     fn = eager_tf_executor.embed_tensorflow_computation(
-        computation_impl.ConcreteComputation.get_proto(comp))
+        computation_impl.ConcreteComputation.get_proto(comp)
+    )
     result = fn(tf.data.Dataset.from_tensor_slices([10, 20]))
     self.assertIsInstance(result, tf.Tensor)
     self.assertEqual(result, 30)
 
   def test_embed_tensorflow_computation_with_tuple_arg_and_result(self):
-
     @tensorflow_computation.tf_computation([('a', tf.int32), ('b', tf.int32)])
     def comp(a, b):
       return {'sum': a + b}
 
     fn = eager_tf_executor.embed_tensorflow_computation(
-        computation_impl.ConcreteComputation.get_proto(comp))
+        computation_impl.ConcreteComputation.get_proto(comp)
+    )
     p = tf.constant(10)
     q = tf.constant(20)
     result = fn(structure.Struct([('a', p), ('b', q)]))
@@ -110,7 +113,6 @@ class EmbedTfCompTest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(result.sum, 30)
 
   def test_embed_tensorflow_computation_with_variable_v1(self):
-
     @tensorflow_computation.tf_computation
     def comp():
       x = tf.Variable(10)
@@ -118,13 +120,13 @@ class EmbedTfCompTest(tf.test.TestCase, parameterized.TestCase):
         return tf.add(x, 20)
 
     fn = eager_tf_executor.embed_tensorflow_computation(
-        computation_impl.ConcreteComputation.get_proto(comp))
+        computation_impl.ConcreteComputation.get_proto(comp)
+    )
     result = fn()
     self.assertIsInstance(result, tf.Tensor)
     self.assertEqual(result, 30)
 
   def test_embed_tensorflow_computation_with_variable_v2(self):
-
     @tensorflow_computation.tf_computation(tf.int32)
     def comp(x):
       v = tf.Variable(10)
@@ -133,13 +135,13 @@ class EmbedTfCompTest(tf.test.TestCase, parameterized.TestCase):
           return tf.add(x, v)
 
     fn = eager_tf_executor.embed_tensorflow_computation(
-        computation_impl.ConcreteComputation.get_proto(comp))
+        computation_impl.ConcreteComputation.get_proto(comp)
+    )
     result = fn(tf.constant(30))
     self.assertIsInstance(result, tf.Tensor)
     self.assertEqual(result, 60)
 
   def test_embed_tensorflow_computation_with_float_variables_same_name(self):
-
     @tensorflow_computation.tf_computation
     def comp1():
       x = tf.Variable(0.5, name='bob')
@@ -154,7 +156,8 @@ class EmbedTfCompTest(tf.test.TestCase, parameterized.TestCase):
 
     fns = [
         eager_tf_executor.embed_tensorflow_computation(
-            computation_impl.ConcreteComputation.get_proto(x))
+            computation_impl.ConcreteComputation.get_proto(x)
+        )
         for x in [comp1, comp2]
     ]
     results = [f() for f in fns]
@@ -173,7 +176,8 @@ class EmbedTfCompTest(tf.test.TestCase, parameterized.TestCase):
         return tf.graph_util.import_graph_def(
             graph.as_graph_def(),
             input_map={x.name: arg},
-            return_elements=[y.name])[0]
+            return_elements=[y.name],
+        )[0]
 
     signature = [tf.TensorSpec([], tf.int32)]
     wrapped_fn = tf.compat.v1.wrap_function(_function_to_wrap, signature)
@@ -190,11 +194,10 @@ class EmbedTfCompTest(tf.test.TestCase, parameterized.TestCase):
     # This function is not tested for TPU because of `placeholder`.
     for device in tf.config.list_logical_devices(device_type):
       self.assertTrue(
-          self._get_wrap_function_on_device(device).device.endswith(
-              device.name))
+          self._get_wrap_function_on_device(device).device.endswith(device.name)
+      )
 
   def _get_embed_tensorflow_computation_succeeds_with_device(self, device):
-
     @tensorflow_computation.tf_computation(tf.int32)
     def comp(x):
       return tf.add(x, 1)
@@ -202,28 +205,36 @@ class EmbedTfCompTest(tf.test.TestCase, parameterized.TestCase):
     comp_proto = computation_impl.ConcreteComputation.get_proto(comp)
 
     fn = eager_tf_executor.embed_tensorflow_computation(
-        comp_proto, comp.type_signature, device=device)
+        comp_proto, comp.type_signature, device=device
+    )
     result = fn(tf.constant(20))
     return result
 
-  @parameterized.named_parameters(('cpu', 'CPU'), ('gpu', 'GPU'),
-                                  ('tpu', 'TPU'))
+  @parameterized.named_parameters(
+      ('cpu', 'CPU'), ('gpu', 'GPU'), ('tpu', 'TPU')
+  )
   def test_embed_tensorflow_computation_succeeds_on_devices(self, device_type):
     for device in tf.config.list_logical_devices(device_type):
       self.assertTrue(
           self._get_embed_tensorflow_computation_succeeds_with_device(
-              device).device.endswith(device.name))
+              device
+          ).device.endswith(device.name)
+      )
 
   def _skip_in_multi_gpus(self):
     logical_gpus = tf.config.list_logical_devices('GPU')
     if len(logical_gpus) > 1:
       self.skipTest('Skip the test if multi-GPUs, checkout the MultiGPUTests')
 
-  @parameterized.named_parameters(('device_none', None), ('device_cpu', 'CPU'),
-                                  ('device_gpu', 'GPU'), ('device_tpu', 'TPU'))
+  @parameterized.named_parameters(
+      ('device_none', None),
+      ('device_cpu', 'CPU'),
+      ('device_gpu', 'GPU'),
+      ('device_tpu', 'TPU'),
+  )
   def test_get_no_arg_wrapped_function_from_comp_with_dataset_reduce(
-      self, device_type):
-
+      self, device_type
+  ):
     self._skip_in_multi_gpus()
 
     @tensorflow_computation.tf_computation
@@ -234,14 +245,19 @@ class EmbedTfCompTest(tf.test.TestCase, parameterized.TestCase):
         computation_impl.ConcreteComputation.get_proto(comp),
         must_pin_function_to_cpu=False,
         param_type=None,
-        device=_get_first_logical_device(device_type))
+        device=_get_first_logical_device(device_type),
+    )
     self.assertEqual(wrapped_fn(), np.int64(45))
 
-  @parameterized.named_parameters(('device_none', None), ('device_cpu', 'CPU'),
-                                  ('device_gpu', 'GPU'), ('device_tpu', 'TPU'))
+  @parameterized.named_parameters(
+      ('device_none', None),
+      ('device_cpu', 'CPU'),
+      ('device_gpu', 'GPU'),
+      ('device_tpu', 'TPU'),
+  )
   def test_get_no_arg_wrapped_function_from_comp_with_iter_dataset(
-      self, device_type):
-
+      self, device_type
+  ):
     self._skip_in_multi_gpus()
 
     @tensorflow_computation.tf_computation
@@ -256,33 +272,45 @@ class EmbedTfCompTest(tf.test.TestCase, parameterized.TestCase):
         computation_impl.ConcreteComputation.get_proto(comp),
         must_pin_function_to_cpu=False,
         param_type=None,
-        device=_get_first_logical_device(device_type))
+        device=_get_first_logical_device(device_type),
+    )
     self.assertEqual(wrapped_fn(), np.int64(45))
 
-  @parameterized.named_parameters(('device_none', None), ('device_cpu', 'CPU'),
-                                  ('device_gpu', 'GPU'), ('device_tpu', 'TPU'))
+  @parameterized.named_parameters(
+      ('device_none', None),
+      ('device_cpu', 'CPU'),
+      ('device_gpu', 'GPU'),
+      ('device_tpu', 'TPU'),
+  )
   def test_get_no_arg_wrapped_function_with_variables(self, device_type):
-
     self._skip_in_multi_gpus()
 
     @tensorflow_computation.tf_computation
     def comp():
       initial_val = tf.Variable(np.int64(1.0))
-      return tf.data.Dataset.range(10).map(lambda x: x + 1).reduce(
-          initial_val, lambda p, q: p + q)
+      return (
+          tf.data.Dataset.range(10)
+          .map(lambda x: x + 1)
+          .reduce(initial_val, lambda p, q: p + q)
+      )
 
     wrapped_fn = eager_tf_executor._get_wrapped_function_from_comp(
         computation_impl.ConcreteComputation.get_proto(comp),
         must_pin_function_to_cpu=False,
         param_type=None,
-        device=_get_first_logical_device(device_type))
+        device=_get_first_logical_device(device_type),
+    )
     self.assertEqual(wrapped_fn(), np.int64(56))
 
-  @parameterized.named_parameters(('device_none', None), ('device_cpu', 'CPU'),
-                                  ('device_gpu', 'GPU'), ('device_tpu', 'TPU'))
+  @parameterized.named_parameters(
+      ('device_none', None),
+      ('device_cpu', 'CPU'),
+      ('device_gpu', 'GPU'),
+      ('device_tpu', 'TPU'),
+  )
   def test_get_no_arg_wrapped_function_with_composed_fn_and_variables(
-      self, device_type):
-
+      self, device_type
+  ):
     self._skip_in_multi_gpus()
 
     @tf.function
@@ -295,7 +323,8 @@ class EmbedTfCompTest(tf.test.TestCase, parameterized.TestCase):
 
     @tensorflow_computation.tf_computation(
         computation_types.SequenceType(tf.int64),
-        computation_types.TensorType(tf.int64))
+        computation_types.TensorType(tf.int64),
+    )
     def dataset_reduce_fn_wrapper(ds, whimsy_val):
       initial_val = tf.Variable(np.int64(1.0)) + whimsy_val
       return dataset_reduce_fn(ds, initial_val)
@@ -310,14 +339,16 @@ class EmbedTfCompTest(tf.test.TestCase, parameterized.TestCase):
         computation_impl.ConcreteComputation.get_proto(comp),
         must_pin_function_to_cpu=False,
         param_type=None,
-        device=_get_first_logical_device(device_type))
+        device=_get_first_logical_device(device_type),
+    )
     self.assertEqual(wrapped_fn(), np.int64(57))
 
-  @parameterized.named_parameters(('device_none', None), ('device_cpu', 'CPU'),
-                                  ('device_gpu', 'GPU'))
+  @parameterized.named_parameters(
+      ('device_none', None), ('device_cpu', 'CPU'), ('device_gpu', 'GPU')
+  )
   def test_get_wrapped_function_from_comp_raises_with_incorrect_binding(
-      self, device_type):
-
+      self, device_type
+  ):
     self._skip_in_multi_gpus()
 
     with tf.Graph().as_default() as graph:
@@ -326,18 +357,23 @@ class EmbedTfCompTest(tf.test.TestCase, parameterized.TestCase):
       tf.add(1.0, assign_op)
 
     result_binding = pb.TensorFlow.Binding(
-        tensor=pb.TensorFlow.TensorBinding(tensor_name='Invalid'))
+        tensor=pb.TensorFlow.TensorBinding(tensor_name='Invalid')
+    )
     comp = pb.Computation(
         tensorflow=pb.TensorFlow(
             graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
-            result=result_binding))
-    with self.assertRaisesRegex(TypeError,
-                                'Caught exception trying to prune graph.*'):
+            result=result_binding,
+        )
+    )
+    with self.assertRaisesRegex(
+        TypeError, 'Caught exception trying to prune graph.*'
+    ):
       eager_tf_executor._get_wrapped_function_from_comp(
           comp,
           must_pin_function_to_cpu=False,
           param_type=None,
-          device=_get_first_logical_device(device_type))
+          device=_get_first_logical_device(device_type),
+      )
 
   def test_check_dataset_reduce_for_multi_gpu_raises(self):
     self._skip_in_multi_gpus()
@@ -345,7 +381,8 @@ class EmbedTfCompTest(tf.test.TestCase, parameterized.TestCase):
       tf.data.Dataset.range(10).reduce(np.int64(0), lambda p, q: p + q)
     with self.assertRaises(ValueError):
       eager_tf_executor._check_dataset_reduce_for_multi_gpu(
-          graph.as_graph_def())
+          graph.as_graph_def()
+      )
 
 
 def _create_test_executor_factory():
@@ -375,15 +412,14 @@ class EagerTFExecutorTest(tf.test.TestCase, parameterized.TestCase):
     value = 10
     type_signature = computation_types.TensorType(tf.int32)
     v = eager_tf_executor.to_representation_for_type(
-        value, {}, type_signature,
-        tf.config.list_logical_devices('CPU')[0])
+        value, {}, type_signature, tf.config.list_logical_devices('CPU')[0]
+    )
     self.assertIsInstance(v, tf.Tensor)
     self.assertEqual(v, 10)
     self.assertEqual(v.dtype, tf.int32)
     self.assertTrue(v.device.endswith('CPU:0'))
 
   def _get_to_representation_for_type_succeeds_on_device(self, device):
-
     @tensorflow_computation.tf_computation(tf.int32)
     def comp(x):
       return tf.add(x, 1)
@@ -391,22 +427,27 @@ class EagerTFExecutorTest(tf.test.TestCase, parameterized.TestCase):
     comp_proto = computation_impl.ConcreteComputation.get_proto(comp)
 
     fn = eager_tf_executor.to_representation_for_type(
-        comp_proto, {}, comp.type_signature, device=device)
+        comp_proto, {}, comp.type_signature, device=device
+    )
     result = fn(tf.constant(20))
     return result
 
-  @parameterized.named_parameters(('cpu', 'CPU'), ('gpu', 'GPU'),
-                                  ('tpu', 'TPU'))
+  @parameterized.named_parameters(
+      ('cpu', 'CPU'), ('gpu', 'GPU'), ('tpu', 'TPU')
+  )
   def test_to_representation_for_type_succeeds_on_device(self, device_type):
     for device in tf.config.list_logical_devices(device_type):
       self.assertTrue(
           self._get_to_representation_for_type_succeeds_on_device(
-              device).device.endswith(device.name))
+              device
+          ).device.endswith(device.name)
+      )
 
   def test_eager_value_constructor_with_int_constant(self):
     int_tensor_type = computation_types.TensorType(dtype=tf.int32, shape=[])
     normalized_value = eager_tf_executor.to_representation_for_type(
-        10, {}, int_tensor_type)
+        10, {}, int_tensor_type
+    )
     v = eager_tf_executor.EagerValue(normalized_value, int_tensor_type)
     self.assertEqual(str(v.type_signature), 'int32')
     self.assertIsInstance(v.reference, tf.Tensor)
@@ -440,22 +481,29 @@ class EagerTFExecutorTest(tf.test.TestCase, parameterized.TestCase):
 
     with self.assertRaisesRegex(ValueError, 'computation of type lambda'):
       asyncio.run(
-          ex.create_value(comp.to_building_block().proto, comp.type_signature))
+          ex.create_value(comp.to_building_block().proto, comp.type_signature)
+      )
 
   def test_executor_create_value_struct_mismatched_type(self):
     ex = eager_tf_executor.EagerTFExecutor()
     with self.assertRaises(TypeError):
       asyncio.run(
-          ex.create_value([10],
-                          computation_types.StructType([(None, tf.int32),
-                                                        (None, tf.float32)])))
+          ex.create_value(
+              [10],
+              computation_types.StructType(
+                  [(None, tf.int32), (None, tf.float32)]
+              ),
+          )
+      )
 
   def test_executor_create_value_unnamed_int_pair(self):
     ex = eager_tf_executor.EagerTFExecutor()
     val = asyncio.run(
-        ex.create_value([10, {
-            'a': 20
-        }], [tf.int32, collections.OrderedDict([('a', tf.int32)])]))
+        ex.create_value(
+            [10, {'a': 20}],
+            [tf.int32, collections.OrderedDict([('a', tf.int32)])],
+        )
+    )
     self.assertIsInstance(val, eager_tf_executor.EagerValue)
     self.assertEqual(str(val.type_signature), '<int32,<a=int32>>')
     self.assertIsInstance(val.reference, structure.Struct)
@@ -471,8 +519,10 @@ class EagerTFExecutorTest(tf.test.TestCase, parameterized.TestCase):
   def test_executor_create_value_named_type_unnamed_value(self):
     ex = eager_tf_executor.EagerTFExecutor()
     val = asyncio.run(
-        ex.create_value([10, 20],
-                        collections.OrderedDict(a=tf.int32, b=tf.int32)))
+        ex.create_value(
+            [10, 20], collections.OrderedDict(a=tf.int32, b=tf.int32)
+        )
+    )
     self.assertIsInstance(val, eager_tf_executor.EagerValue)
     self.assertEqual(str(val.type_signature), '<a=int32,b=int32>')
     self.assertIsInstance(val.reference, structure.Struct)
@@ -491,8 +541,10 @@ class EagerTFExecutorTest(tf.test.TestCase, parameterized.TestCase):
 
     comp_proto = computation_impl.ConcreteComputation.get_proto(comp)
     val = asyncio.run(
-        ex.create_value(comp_proto,
-                        computation_types.FunctionType(None, tf.int32)))
+        ex.create_value(
+            comp_proto, computation_types.FunctionType(None, tf.int32)
+        )
+    )
     self.assertIsInstance(val, eager_tf_executor.EagerValue)
     self.assertEqual(str(val.type_signature), '( -> int32)')
     self.assertTrue(callable(val.reference))
@@ -512,8 +564,13 @@ class EagerTFExecutorTest(tf.test.TestCase, parameterized.TestCase):
         ex.create_value(
             comp_proto,
             computation_types.FunctionType(
-                computation_types.StructType([('a', tf.int32),
-                                              ('b', tf.int32)]), tf.int32)))
+                computation_types.StructType(
+                    [('a', tf.int32), ('b', tf.int32)]
+                ),
+                tf.int32,
+            ),
+        )
+    )
     self.assertIsInstance(val, eager_tf_executor.EagerValue)
     self.assertEqual(str(val.type_signature), '(<a=int32,b=int32> -> int32)')
     self.assertTrue(callable(val.reference))
@@ -523,7 +580,6 @@ class EagerTFExecutorTest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(result, 20)
 
   def test_executor_create_call_add_numbers(self):
-
     @tensorflow_computation.tf_computation(tf.int32, tf.int32)
     def comp(a, b):
       return a + b
@@ -533,7 +589,9 @@ class EagerTFExecutorTest(tf.test.TestCase, parameterized.TestCase):
     arg = asyncio.run(
         ex.create_value(
             structure.Struct([('a', 10), ('b', 20)]),
-            comp.type_signature.parameter))
+            comp.type_signature.parameter,
+        )
+    )
     result = asyncio.run(ex.create_call(comp, arg))
     self.assertIsInstance(result, eager_tf_executor.EagerValue)
     self.assertEqual(str(result.type_signature), 'int32')
@@ -544,7 +602,8 @@ class EagerTFExecutorTest(tf.test.TestCase, parameterized.TestCase):
 
     @tensorflow_computation.tf_computation(
         computation_types.TensorType(shape=[None], dtype=tf.string),
-        computation_types.TensorType(shape=[], dtype=tf.string))
+        computation_types.TensorType(shape=[], dtype=tf.string),
+    )
     def comp(table_args, to_lookup):
       values = tf.range(tf.shape(table_args)[0])
       initializer = tf.lookup.KeyValueTensorInitializer(table_args, values)
@@ -555,14 +614,22 @@ class EagerTFExecutorTest(tf.test.TestCase, parameterized.TestCase):
     comp = asyncio.run(ex.create_value(comp))
     arg_1 = asyncio.run(
         ex.create_value(
-            structure.Struct([('table_args', tf.constant(['a', 'b', 'c'])),
-                              ('to_lookup', tf.constant('a'))]),
-            comp.type_signature.parameter))
+            structure.Struct([
+                ('table_args', tf.constant(['a', 'b', 'c'])),
+                ('to_lookup', tf.constant('a')),
+            ]),
+            comp.type_signature.parameter,
+        )
+    )
     arg_2 = asyncio.run(
         ex.create_value(
-            structure.Struct([('table_args', tf.constant(['a', 'b', 'c', 'd'])),
-                              ('to_lookup', tf.constant('d'))]),
-            comp.type_signature.parameter))
+            structure.Struct([
+                ('table_args', tf.constant(['a', 'b', 'c', 'd'])),
+                ('to_lookup', tf.constant('d')),
+            ]),
+            comp.type_signature.parameter,
+        )
+    )
     result_1 = asyncio.run(ex.create_call(comp, arg_1))
     result_2 = asyncio.run(ex.create_call(comp, arg_2))
 
@@ -574,7 +641,8 @@ class EagerTFExecutorTest(tf.test.TestCase, parameterized.TestCase):
   def test_executor_create_call_take_two_int_from_finite_dataset(self):
 
     @tensorflow_computation.tf_computation(
-        computation_types.SequenceType(tf.int32))
+        computation_types.SequenceType(tf.int32)
+    )
     def comp(ds):
       return ds.take(2)
 
@@ -591,16 +659,18 @@ class EagerTFExecutorTest(tf.test.TestCase, parameterized.TestCase):
   # TODO(b/137602785): bring GPU test back after the fix for `wrap_function`.
   @tensorflow_test_utils.skip_test_for_gpu
   def test_executor_create_call_take_two_from_stateful_dataset(self):
-
     vocab = ['a', 'b', 'c', 'd', 'e', 'f']
 
     @tensorflow_computation.tf_computation(
-        computation_types.SequenceType(tf.string))
+        computation_types.SequenceType(tf.string)
+    )
     def comp(ds):
       table = tf.lookup.StaticVocabularyTable(
           tf.lookup.KeyValueTensorInitializer(
-              vocab, tf.range(len(vocab), dtype=tf.int64)),
-          num_oov_buckets=1)
+              vocab, tf.range(len(vocab), dtype=tf.int64)
+          ),
+          num_oov_buckets=1,
+      )
       ds = ds.map(table.lookup)
       return ds.take(2)
 
@@ -619,7 +689,8 @@ class EagerTFExecutorTest(tf.test.TestCase, parameterized.TestCase):
   def test_executor_create_call_take_three_int_from_infinite_dataset(self):
 
     @tensorflow_computation.tf_computation(
-        computation_types.SequenceType(tf.int32))
+        computation_types.SequenceType(tf.int32)
+    )
     def comp(ds):
       return ds.take(3)
 
@@ -638,7 +709,8 @@ class EagerTFExecutorTest(tf.test.TestCase, parameterized.TestCase):
   def test_executor_create_call_reduce_first_five_from_infinite_dataset(self):
 
     @tensorflow_computation.tf_computation(
-        computation_types.SequenceType(tf.int32))
+        computation_types.SequenceType(tf.int32)
+    )
     def comp(ds):
       return ds.take(5).reduce(np.int32(0), lambda p, q: p + q)
 
@@ -655,15 +727,16 @@ class EagerTFExecutorTest(tf.test.TestCase, parameterized.TestCase):
   # TODO(b/137602785): bring GPU test back after the fix for `wrap_function`.
   @tensorflow_test_utils.skip_test_for_gpu
   def test_executor_create_call_with_dataset_of_tuples(self):
-
     element = collections.namedtuple('_', 'a b')
 
     @tensorflow_computation.tf_computation(
-        computation_types.SequenceType(element(tf.int32, tf.int32)))
+        computation_types.SequenceType(element(tf.int32, tf.int32))
+    )
     def comp(ds):
       return ds.reduce(
           element(np.int32(0), np.int32(0)),
-          lambda p, q: element(p.a + q.a, p.b + q.b))
+          lambda p, q: element(p.a + q.a, p.b + q.b),
+      )
 
     ds = tf.data.Dataset.from_tensor_slices(element([10, 20, 30], [4, 5, 6]))
     ex = eager_tf_executor.EagerTFExecutor()
@@ -686,9 +759,11 @@ class EagerTFExecutorTest(tf.test.TestCase, parameterized.TestCase):
       return tuple(await asyncio.gather(*values))
 
     v1, v2 = asyncio.run(
-        gather_values([ex.create_value(x, tf.int32) for x in [10, 20]]))
+        gather_values([ex.create_value(x, tf.int32) for x in [10, 20]])
+    )
     v3 = asyncio.run(
-        ex.create_struct(collections.OrderedDict([('a', v1), ('b', v2)])))
+        ex.create_struct(collections.OrderedDict([('a', v1), ('b', v2)]))
+    )
     self.assertIsInstance(v3, eager_tf_executor.EagerValue)
     self.assertIsInstance(v3.reference, structure.Struct)
     self.assertLen(v3.reference, 2)
@@ -736,7 +811,6 @@ class EagerTFExecutorTest(tf.test.TestCase, parameterized.TestCase):
       self.assertEqual(val, 10 * (n + 2))
 
   def test_execution_of_tensorflow(self):
-
     @tensorflow_computation.tf_computation
     def comp():
       return tf.math.add(5, 5)
@@ -749,7 +823,6 @@ class EagerTFExecutorTest(tf.test.TestCase, parameterized.TestCase):
 
   @tensorflow_test_utils.skip_test_for_gpu
   def test_executor_create_value_from_iterable(self):
-
     def _generate_items():
       yield 2
       yield 5

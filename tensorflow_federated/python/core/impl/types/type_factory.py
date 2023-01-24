@@ -22,7 +22,8 @@ from tensorflow_federated.python.core.impl.types import computation_types
 
 def reduction_op(
     result_type_spec: computation_types.Type,
-    element_type_spec: computation_types.Type) -> computation_types.Type:
+    element_type_spec: computation_types.Type,
+) -> computation_types.Type:
   """Returns the type of a reduction operator of the form `(<U,T> -> U)`.
 
   Args:
@@ -35,7 +36,8 @@ def reduction_op(
   """
   return computation_types.FunctionType(
       computation_types.StructType([result_type_spec, element_type_spec]),
-      result_type_spec)
+      result_type_spec,
+  )
 
 
 def unary_op(type_spec: computation_types.Type) -> computation_types.Type:

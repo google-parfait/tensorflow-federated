@@ -67,8 +67,8 @@ class AsyncContext(metaclass=abc.ABCMeta):
 
     Args:
       comp: The computation being invoked. The Python type of `comp` expected
-        here (e.g., `pb.Computation`. `tff.framework.ConcreteComputation`,
-        or other) may depend on the context. It is the responsibility of the
+        here (e.g., `pb.Computation`. `tff.framework.ConcreteComputation`, or
+        other) may depend on the context. It is the responsibility of the
         concrete implementation of this interface to verify that the type of
         `comp` matches what the context is expecting.
       arg: The argument passed to the computation. If no argument is passed,

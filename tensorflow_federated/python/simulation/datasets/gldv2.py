@@ -31,7 +31,10 @@ from tensorflow_federated.python.simulation.datasets import vision_datasets_util
 
 
 FED_GLD_SPLIT_FILE_BUNDLE = 'landmarks-user-160k'
-FED_GLD_SPLIT_FILE_DOWNLOAD_URL = 'http://storage.googleapis.com/gresearch/federated-vision-datasets/%s.zip' % FED_GLD_SPLIT_FILE_BUNDLE
+FED_GLD_SPLIT_FILE_DOWNLOAD_URL = (
+    'http://storage.googleapis.com/gresearch/federated-vision-datasets/%s.zip'
+    % FED_GLD_SPLIT_FILE_BUNDLE
+)
 FED_GLD_SPLIT_FILE_BUNDLE_MD5_CHECKSUM = '53c36bd7d5fc12f927af2820b7e4a57c'
 FED_GLD_TRAIN_SPLIT_FILE = 'federated_train.csv'
 FED_GLD_TEST_SPLIT_FILE = 'test.csv'
@@ -39,7 +42,9 @@ GLD_SHARD_BASE_URL = 'https://s3.amazonaws.com/google-landmark'
 NUM_SHARD_TRAIN = 500
 MINI_GLD_TRAIN_DOWNLOAD_URL = 'https://storage.googleapis.com/tff-datasets-public/mini_gld_train_split.csv'
 MINI_GLD_TRAIN_SPLIT_FILE = 'mini_gld_train_split.csv'
-MINI_GLD_TEST_DOWNLOAD_URL = 'https://storage.googleapis.com/tff-datasets-public/mini_gld_test.csv'
+MINI_GLD_TEST_DOWNLOAD_URL = (
+    'https://storage.googleapis.com/tff-datasets-public/mini_gld_test.csv'
+)
 MINI_GLD_TEST_SPLIT_FILE = 'mini_gld_test.csv'
 MINI_GLD_TRAIN_SPLIT_FILE_MD5_CHECKSUM = '9fd62cf79a67046fdd673d3a0ac52841'
 MINI_GLD_TEST_SPLIT_FILE_MD5_CHECKSUM = '298e9d19d66357236f66fe8e22920933'
@@ -64,8 +69,8 @@ def _listener_process(queue: multiprocessing.Queue, log_file: str):
   root = logging.getLogger()
   h = logging.FileHandler(log_file)
   fmt = logging.Formatter(
-      fmt='%(asctime)s %(levelname)-8s %(message)s',
-      datefmt='%Y-%m-%d %H:%M:%S')
+      fmt='%(asctime)s %(levelname)-8s %(message)s', datefmt='%Y-%m-%d %H:%M:%S'
+  )
   h.setFormatter(fmt)
   root.addHandler(h)
   while True:
@@ -82,7 +87,8 @@ def _listener_process(queue: multiprocessing.Queue, log_file: str):
 
 
 def _create_dataset_with_mapping(
-    image_dir: str, mapping: list[dict[str, str]]) -> list[tf.train.Example]:
+    image_dir: str, mapping: list[dict[str, str]]
+) -> list[tf.train.Example]:
   """Builds a dataset based on the mapping file and the images in the image dir.
 
   Args:
@@ -101,7 +107,8 @@ def _create_dataset_with_mapping(
       with open(img_path, 'rb') as f:
         img_bytes = f.read()
         examples.append(
-            vision_datasets_utils.create_example(img_bytes, int(row['class'])))
+            vision_datasets_utils.create_example(img_bytes, int(row['class']))
+        )
     except IOError as e:
       logger.warning('Image %s is not found. Exception: %s', img_path, e)
       continue
@@ -127,7 +134,9 @@ def _create_train_data_files(cache_dir: str, image_dir: str, mapping_file: str):
     logger.error('%s has wrong format.', mapping_file)
     raise ValueError(
         'The mapping file must contain user_id, image_id and class columns. '
-        'The existing columns are %s' % ','.join(mapping_table[0].keys()))
+        'The existing columns are %s'
+        % ','.join(mapping_table[0].keys())
+    )
   if not os.path.exists(cache_dir):
     os.makedirs(cache_dir)
   mapping_per_user = collections.defaultdict(list)
@@ -139,8 +148,12 @@ def _create_train_data_files(cache_dir: str, image_dir: str, mapping_file: str):
     with tf.io.TFRecordWriter(os.path.join(cache_dir, str(user_id))) as writer:
       for example in examples:
         writer.write(example.SerializeToString())
-      logger.info('Created tfrecord file for user %s with %d examples, at %s',
-                  user_id, len(examples), cache_dir)
+      logger.info(
+          'Created tfrecord file for user %s with %d examples, at %s',
+          user_id,
+          len(examples),
+          cache_dir,
+      )
 
 
 def _create_test_data_file(cache_dir: str, image_dir: str, mapping_file: str):
@@ -161,7 +174,9 @@ def _create_test_data_file(cache_dir: str, image_dir: str, mapping_file: str):
     logger.error('%s has wrong format.', mapping_file)
     raise ValueError(
         'The mapping file must contain image_id and class columns. The existing'
-        ' columns are %s' % ','.join(mapping_table[0].keys()))
+        ' columns are %s'
+        % ','.join(mapping_table[0].keys())
+    )
   if not os.path.exists(cache_dir):
     os.makedirs(cache_dir)
   examples = _create_dataset_with_mapping(image_dir, mapping_table)
@@ -172,8 +187,11 @@ def _create_test_data_file(cache_dir: str, image_dir: str, mapping_file: str):
 
 
 def _create_federated_gld_dataset(
-    cache_dir: str, image_dir: str, train_mapping_file: str,
-    test_mapping_file: str) -> tuple[ClientData, tf.data.Dataset]:
+    cache_dir: str,
+    image_dir: str,
+    train_mapping_file: str,
+    test_mapping_file: str,
+) -> tuple[ClientData, tf.data.Dataset]:
   """Generate fedreated GLDv2 dataset with the downloaded images.
 
   Args:
@@ -189,20 +207,24 @@ def _create_federated_gld_dataset(
   _create_train_data_files(
       cache_dir=os.path.join(cache_dir, FED_GLD_CACHE, TRAIN_SUB_DIR),
       image_dir=image_dir,
-      mapping_file=train_mapping_file)
+      mapping_file=train_mapping_file,
+  )
   _create_test_data_file(
       cache_dir=os.path.join(cache_dir, FED_GLD_CACHE),
       image_dir=image_dir,
-      mapping_file=test_mapping_file)
+      mapping_file=test_mapping_file,
+  )
   return vision_datasets_utils.load_data_from_cache(
       cache_dir=os.path.join(cache_dir, FED_GLD_CACHE),
       train_sub_dir=TRAIN_SUB_DIR,
       test_file_name=TEST_FILE_NAME,
-      logger_tag=LOGGER)
+      logger_tag=LOGGER,
+  )
 
 
 def _create_mini_gld_dataset(
-    cache_dir: str, image_dir: str) -> tuple[ClientData, tf.data.Dataset]:
+    cache_dir: str, image_dir: str
+) -> tuple[ClientData, tf.data.Dataset]:
   """Generate mini federated GLDv2 dataset with the downloaded images.
 
   Args:
@@ -217,30 +239,36 @@ def _create_mini_gld_dataset(
       origin=MINI_GLD_TRAIN_DOWNLOAD_URL,
       file_hash=MINI_GLD_TRAIN_SPLIT_FILE_MD5_CHECKSUM,
       hash_algorithm='md5',
-      cache_dir=cache_dir)
+      cache_dir=cache_dir,
+  )
   test_path = tf.keras.utils.get_file(
       MINI_GLD_TEST_SPLIT_FILE,
       origin=MINI_GLD_TEST_DOWNLOAD_URL,
       file_hash=MINI_GLD_TEST_SPLIT_FILE_MD5_CHECKSUM,
       hash_algorithm='md5',
-      cache_dir=cache_dir)
+      cache_dir=cache_dir,
+  )
   _create_train_data_files(
       cache_dir=os.path.join(cache_dir, MINI_GLD_CACHE, TRAIN_SUB_DIR),
       image_dir=image_dir,
-      mapping_file=train_path)
+      mapping_file=train_path,
+  )
   _create_test_data_file(
       cache_dir=os.path.join(cache_dir, MINI_GLD_CACHE),
       image_dir=image_dir,
-      mapping_file=test_path)
+      mapping_file=test_path,
+  )
   return vision_datasets_utils.load_data_from_cache(
       cache_dir=os.path.join(cache_dir, MINI_GLD_CACHE),
       train_sub_dir=TRAIN_SUB_DIR,
       test_file_name=TEST_FILE_NAME,
-      logger_tag=LOGGER)
+      logger_tag=LOGGER,
+  )
 
 
-def _filter_images(shard: int, all_images: set[str], image_dir: str,
-                   base_url: str):
+def _filter_images(
+    shard: int, all_images: set[str], image_dir: str, base_url: str
+):
   """Download full GLDv2 dataset, only keep images that are included in the federated gld v2 dataset.
 
   Args:
@@ -262,7 +290,8 @@ def _filter_images(shard: int, all_images: set[str], image_dir: str,
     md5_path = tf.keras.utils.get_file(
         'images_md5_%s.txt' % shard_str,
         origin=images_md5_url,
-        cache_dir=tmp_dir)
+        cache_dir=tmp_dir,
+    )
     with open(md5_path, 'r') as f:
       md5_hash = f.read()
     if not md5_hash:
@@ -277,7 +306,8 @@ def _filter_images(shard: int, all_images: set[str], image_dir: str,
         file_hash=md5_hash,
         hash_algorithm='md5',
         extract=True,
-        cache_dir=tmp_dir)
+        cache_dir=tmp_dir,
+    )
     logger.info('Data for shard %s was downloaded successfully.', shard_str)
     count = 0
     for root, _, files in os.walk(tmp_dir):
@@ -286,9 +316,11 @@ def _filter_images(shard: int, all_images: set[str], image_dir: str,
         if extension == '.jpg' and name in all_images:
           count += 1
           shutil.copyfile(
-              os.path.join(root, filename), os.path.join(image_dir, filename))
-    logger.info('Moved %d images from shard %s to %s', count, shard_str,
-                image_dir)
+              os.path.join(root, filename), os.path.join(image_dir, filename)
+          )
+    logger.info(
+        'Moved %d images from shard %s to %s', count, shard_str, image_dir
+    )
 
 
 def _download_data(
@@ -317,18 +349,23 @@ def _download_data(
       hash_algorithm='md5',
       extract=True,
       archive_format='zip',
-      cache_dir=cache_dir)
+      cache_dir=cache_dir,
+  )
   logger.info('Fed gldv2 mapping files are downloaded successfully.')
   base_path = os.path.dirname(path)
-  train_path = os.path.join(base_path, FED_GLD_SPLIT_FILE_BUNDLE,
-                            FED_GLD_TRAIN_SPLIT_FILE)
-  test_path = os.path.join(base_path, FED_GLD_SPLIT_FILE_BUNDLE,
-                           FED_GLD_TEST_SPLIT_FILE)
+  train_path = os.path.join(
+      base_path, FED_GLD_SPLIT_FILE_BUNDLE, FED_GLD_TRAIN_SPLIT_FILE
+  )
+  test_path = os.path.join(
+      base_path, FED_GLD_SPLIT_FILE_BUNDLE, FED_GLD_TEST_SPLIT_FILE
+  )
   train_mapping = vision_datasets_utils.read_csv(train_path)
   test_mapping = vision_datasets_utils.read_csv(test_path)
   all_images = set()
-  all_images.update([row['image_id'] for row in train_mapping],
-                    [row['image_id'] for row in test_mapping])
+  all_images.update(
+      [row['image_id'] for row in train_mapping],
+      [row['image_id'] for row in test_mapping],
+  )
   image_dir = os.path.join(cache_dir, 'images')
   if not os.path.exists(image_dir):
     os.mkdir(image_dir)
@@ -341,16 +378,19 @@ def _download_data(
 
   logger.info('Finish downloading GLDv2 dataset.')
   fed_gld_train, fed_gld_test = _create_federated_gld_dataset(
-      cache_dir, image_dir, train_path, test_path)
+      cache_dir, image_dir, train_path, test_path
+  )
   mini_gld_train, mini_gld_test = _create_mini_gld_dataset(cache_dir, image_dir)
 
   return fed_gld_train, fed_gld_test, mini_gld_train, mini_gld_test
 
 
-def load_data(num_worker: int = 1,
-              cache_dir: str = 'cache',
-              gld23k: bool = False,
-              base_url: str = GLD_SHARD_BASE_URL):
+def load_data(
+    num_worker: int = 1,
+    cache_dir: str = 'cache',
+    gld23k: bool = False,
+    base_url: str = GLD_SHARD_BASE_URL,
+):
   """Loads a federated version of the Google Landmark v2 dataset.
 
   The dataset consists of photos of various world landmarks, with images
@@ -395,7 +435,8 @@ def load_data(num_worker: int = 1,
   q = multiprocessing.Queue(-1)
   listener = multiprocessing.Process(
       target=_listener_process,
-      args=(q, os.path.join(cache_dir, 'load_data.log')))
+      args=(q, os.path.join(cache_dir, 'load_data.log')),
+  )
   listener.start()
   logger = logging.getLogger(LOGGER)
   qh = logging.handlers.QueueHandler(q)
@@ -407,13 +448,14 @@ def load_data(num_worker: int = 1,
     existing_data_cache = os.path.join(cache_dir, FED_GLD_CACHE)
   try:
     logger.info('Try loading dataset from cache')
-    return vision_datasets_utils.load_data_from_cache(existing_data_cache,
-                                                      TRAIN_SUB_DIR,
-                                                      TEST_FILE_NAME, LOGGER)
+    return vision_datasets_utils.load_data_from_cache(
+        existing_data_cache, TRAIN_SUB_DIR, TEST_FILE_NAME, LOGGER
+    )
   except Exception:  # pylint: disable=broad-except
     logger.info('Loading from cache failed, start to download the data.')
     fed_gld_train, fed_gld_test, mini_gld_train, mini_gld_test = _download_data(
-        num_worker, cache_dir, base_url)
+        num_worker, cache_dir, base_url
+    )
   finally:
     q.put_nowait(None)
     listener.join()
@@ -432,9 +474,10 @@ def get_synthetic() -> ClientData:
     A `tff.simulation.datasets.ClientData`.
   """
   images = tf.random.stateless_uniform(
-      shape=(3, 600, 800, 3), minval=0, maxval=255, dtype=tf.int32, seed=(0, 0))
+      shape=(3, 600, 800, 3), minval=0, maxval=255, dtype=tf.int32, seed=(0, 0)
+  )
   labels = tf.constant([[0], [1], [2]], dtype=tf.int64)
-  data = collections.OrderedDict([('image/decoded',
-                                   tf.cast(images, dtype=tf.uint8)),
-                                  ('class', labels)])
+  data = collections.OrderedDict(
+      [('image/decoded', tf.cast(images, dtype=tf.uint8)), ('class', labels)]
+  )
   return from_tensor_slices_client_data.TestClientData({'synthetic': data})

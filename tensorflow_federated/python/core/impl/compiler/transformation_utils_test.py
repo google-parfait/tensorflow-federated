@@ -76,7 +76,8 @@ class FakeTracker(transformation_utils.BoundVariableTracker):
 
 def fake_tracker_node_factory():
   return transformation_utils.SequentialBindingNode(
-      FakeTracker('FakeTracker', None))
+      FakeTracker('FakeTracker', None)
+  )
 
 
 class TrivialBoundVariableTracker(transformation_utils.BoundVariableTracker):
@@ -131,7 +132,8 @@ def _get_number_of_nodes_via_transform_postorder(comp, predicate=None):
 
 
 def _get_number_of_nodes_via_transform_postorder_with_symbol_bindings(
-    comp, predicate=None):
+    comp, predicate=None
+):
   """Returns the number of nodes in `comp` matching `predicate`."""
   py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
   empty_context_tree = transformation_utils.SymbolTree(FakeTracker)
@@ -145,7 +147,8 @@ def _get_number_of_nodes_via_transform_postorder_with_symbol_bindings(
     return comp, False
 
   transformation_utils.transform_postorder_with_symbol_bindings(
-      comp, fn, empty_context_tree)
+      comp, fn, empty_context_tree
+  )
 
   return count
 
@@ -168,7 +171,6 @@ def _get_number_of_nodes_via_transform_preorder(comp, predicate=None):
 class TransformationUtilsTest(parameterized.TestCase):
 
   def test_transform_postorder_fails_on_none_comp(self):
-
     def transform(comp):
       return comp, False
 
@@ -188,7 +190,8 @@ class TransformationUtilsTest(parameterized.TestCase):
     call = building_blocks.Call(fn, arg)
     comp = building_blocks.Lambda(ref.name, tf.int32, call)
     self.assertEqual(
-        str(comp), '(FEDERATED_arg -> FEDERATED_arg[0](FEDERATED_arg[1]))')
+        str(comp), '(FEDERATED_arg -> FEDERATED_arg[0](FEDERATED_arg[1]))'
+    )
 
     def _transformation_fn_generator():
       n = 0
@@ -197,7 +200,8 @@ class TransformationUtilsTest(parameterized.TestCase):
 
         def _fn(x):
           intrinsic_type = computation_types.FunctionType(
-              x.type_signature, x.type_signature)
+              x.type_signature, x.type_signature
+          )
           intrinsic = building_blocks.Intrinsic('F{}'.format(n), intrinsic_type)
           call = building_blocks.Call(intrinsic, x)
           return call, True
@@ -209,10 +213,14 @@ class TransformationUtilsTest(parameterized.TestCase):
     tx_fn = lambda x: next(transformation_fn_sequence)(x)
     # pylint: enable=unnecessary-lambda
     transfomed_comp, modified = transformation_utils.transform_postorder(
-        comp, tx_fn)
+        comp, tx_fn
+    )
     self.assertEqual(
         transfomed_comp.compact_representation(),
-        'F6((FEDERATED_arg -> F5(F2(F1(FEDERATED_arg)[0])(F4(F3(FEDERATED_arg)[1])))))'
+        (
+            'F6((FEDERATED_arg ->'
+            ' F5(F2(F1(FEDERATED_arg)[0])(F4(F3(FEDERATED_arg)[1])))))'
+        ),
     )
     self.assertTrue(modified)
 
@@ -227,33 +235,40 @@ class TransformationUtilsTest(parameterized.TestCase):
       return comp, False
 
     transformed, modified = transformation_utils.transform_preorder(
-        blk, _transformation_fn)
+        blk, _transformation_fn
+    )
     self.assertTrue(modified)
     self.assertEqual(transformed.compact_representation(), '(let x=a in a)')
 
   @parameterized.named_parameters(
-      _construct_trivial_instance_of_all_computation_building_blocks() +
-      [('complex_tree', building_block_test_utils.create_nested_syntax_tree())])
+      _construct_trivial_instance_of_all_computation_building_blocks()
+      + [(
+          'complex_tree',
+          building_block_test_utils.create_nested_syntax_tree(),
+      )]
+  )
   def test_transform_postorder_returns_untransformed(self, comp):
-
     def transform_noop(comp):
       return comp, False
 
     same_comp, modified = transformation_utils.transform_postorder(
-        comp, transform_noop)
-    self.assertEqual(same_comp.compact_representation(),
-                     comp.compact_representation())
+        comp, transform_noop
+    )
+    self.assertEqual(
+        same_comp.compact_representation(), comp.compact_representation()
+    )
     self.assertFalse(modified)
 
   @parameterized.named_parameters(
-      _construct_trivial_instance_of_all_computation_building_blocks())
+      _construct_trivial_instance_of_all_computation_building_blocks()
+  )
   def test_transform_postorder_does_not_construct_new_internal(self, comp):
-
     def transform_noop(comp):
       return comp, False
 
     same_comp, modified = transformation_utils.transform_postorder(
-        comp, transform_noop)
+        comp, transform_noop
+    )
 
     self.assertEqual(comp, same_comp)
     self.assertFalse(modified)
@@ -261,7 +276,8 @@ class TransformationUtilsTest(parameterized.TestCase):
   def test_transform_postorder_hits_all_nodes_once(self):
     complex_ast = building_block_test_utils.create_nested_syntax_tree()
     self.assertEqual(
-        _get_number_of_nodes_via_transform_postorder(complex_ast), 22)
+        _get_number_of_nodes_via_transform_postorder(complex_ast), 22
+    )
 
   def test_transform_postorder_walks_to_leaves_in_postorder(self):
     complex_ast = building_block_test_utils.create_nested_syntax_tree()
@@ -275,8 +291,9 @@ class TransformationUtilsTest(parameterized.TestCase):
 
     transformation_utils.transform_postorder(complex_ast, transform)
 
-    self.assertEqual(leaf_name_order,
-                     ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k'])
+    self.assertEqual(
+        leaf_name_order, ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k']
+    )
 
   def test_transform_postorder_walks_block_locals_postorder(self):
     complex_ast = building_block_test_utils.create_nested_syntax_tree()
@@ -318,8 +335,24 @@ class TransformationUtilsTest(parameterized.TestCase):
 
     transformation_utils.transform_postorder(complex_ast, transform)
     postorder_nodes = [
-        'a', 'b', 'c', 'd', 't', 'e', 'f', 'u', 'g', 'v', 'h', 'i', 'j', 'w',
-        'x', 'y', 'z', 'k'
+        'a',
+        'b',
+        'c',
+        'd',
+        't',
+        'e',
+        'f',
+        'u',
+        'g',
+        'v',
+        'h',
+        'i',
+        'j',
+        'w',
+        'x',
+        'y',
+        'z',
+        'k',
     ]
 
     self.assertEqual(leaf_name_order, list(postorder_nodes))
@@ -335,19 +368,23 @@ class TransformationUtilsTest(parameterized.TestCase):
 
     with self.assertRaises(TypeError):
       transformation_utils.transform_postorder_with_symbol_bindings(
-          None, transform, empty_context_tree)
+          None, transform, empty_context_tree
+      )
 
   def test_transform_postorder_with_symbol_bindings_fails_on_none_transform(
-      self):
+      self,
+  ):
     empty_symbol_tree = transformation_utils.SymbolTree(FakeTracker)
     whimsy_comp = building_blocks.Reference('x', tf.int32)
 
     with self.assertRaises(TypeError):
       transformation_utils.transform_postorder_with_symbol_bindings(
-          whimsy_comp, None, empty_symbol_tree)
+          whimsy_comp, None, empty_symbol_tree
+      )
 
   def test_transform_postorder_with_symbol_bindings_fails_on_none_symbol_tree(
-      self):
+      self,
+  ):
     whimsy_comp = building_blocks.Reference('x', tf.int32)
 
     def transform(comp, ctxt_tree):
@@ -356,65 +393,92 @@ class TransformationUtilsTest(parameterized.TestCase):
 
     with self.assertRaises(TypeError):
       transformation_utils.transform_postorder_with_symbol_bindings(
-          whimsy_comp, transform, None)
+          whimsy_comp, transform, None
+      )
 
   @parameterized.named_parameters(
-      _construct_trivial_instance_of_all_computation_building_blocks() +
-      [('complex_ast', building_block_test_utils.create_nested_syntax_tree())])
+      _construct_trivial_instance_of_all_computation_building_blocks()
+      + [('complex_ast', building_block_test_utils.create_nested_syntax_tree())]
+  )
   def test_transform_postorder_with_symbol_bindings_returns_untransformed(
-      self, comp):
-
+      self, comp
+  ):
     def transform_noop(comp, ctxt_tree):
       del ctxt_tree
       return comp, False
 
     empty_context_tree = transformation_utils.SymbolTree(FakeTracker)
-    same_comp, _ = transformation_utils.transform_postorder_with_symbol_bindings(
-        comp, transform_noop, empty_context_tree)
-    self.assertEqual(same_comp.compact_representation(),
-                     comp.compact_representation())
+    same_comp, _ = (
+        transformation_utils.transform_postorder_with_symbol_bindings(
+            comp, transform_noop, empty_context_tree
+        )
+    )
+    self.assertEqual(
+        same_comp.compact_representation(), comp.compact_representation()
+    )
 
   @parameterized.named_parameters(
-      _construct_trivial_instance_of_all_computation_building_blocks())
+      _construct_trivial_instance_of_all_computation_building_blocks()
+  )
   def test_transform_postorder_with_symbol_bindings_does_not_constructs_new_internal_nodes(
-      self, comp):
-
+      self, comp
+  ):
     def transform_noop(comp, ctxt_tree):
       del ctxt_tree
       return comp, False
 
     empty_context_tree = transformation_utils.SymbolTree(FakeTracker)
-    same_comp, _ = transformation_utils.transform_postorder_with_symbol_bindings(
-        comp, transform_noop, empty_context_tree)
-    if not (comp.is_compiled_computation() or comp.is_data() or
-            comp.is_intrinsic() or comp.is_placement() or comp.is_reference()):
+    same_comp, _ = (
+        transformation_utils.transform_postorder_with_symbol_bindings(
+            comp, transform_noop, empty_context_tree
+        )
+    )
+    if not (
+        comp.is_compiled_computation()
+        or comp.is_data()
+        or comp.is_intrinsic()
+        or comp.is_placement()
+        or comp.is_reference()
+    ):
       self.assertEqual(id(comp), id(same_comp))
 
   def test_transform_postorder_with_symbol_bindings_hits_all_nodes_once(self):
     complex_ast = building_block_test_utils.create_nested_syntax_tree()
 
     simple_count = _get_number_of_nodes_via_transform_postorder(complex_ast)
-    with_hooks_count = _get_number_of_nodes_via_transform_postorder_with_symbol_bindings(
-        complex_ast)
+    with_hooks_count = (
+        _get_number_of_nodes_via_transform_postorder_with_symbol_bindings(
+            complex_ast
+        )
+    )
 
     self.assertEqual(with_hooks_count, simple_count)
 
   @parameterized.named_parameters(
       ('reference', building_blocks.Reference),
-      ('lambda', building_blocks.Lambda), ('block', building_blocks.Block),
-      ('data', building_blocks.Data), ('intrinsic', building_blocks.Intrinsic),
+      ('lambda', building_blocks.Lambda),
+      ('block', building_blocks.Block),
+      ('data', building_blocks.Data),
+      ('intrinsic', building_blocks.Intrinsic),
       ('struct', building_blocks.Struct),
-      ('selection', building_blocks.Selection), ('call', building_blocks.Call),
+      ('selection', building_blocks.Selection),
+      ('call', building_blocks.Call),
       ('compiled_computation', building_blocks.CompiledComputation),
-      ('placement', building_blocks.Placement))
+      ('placement', building_blocks.Placement),
+  )
   def test_transform_postorder_with_symbol_bindings_counts_each_type_correctly(
-      self, cbb_type):
+      self, cbb_type
+  ):
     complex_ast = building_block_test_utils.create_nested_syntax_tree()
 
     simple_count = _get_number_of_nodes_via_transform_postorder(
-        complex_ast, predicate=lambda x: isinstance(x, cbb_type))
-    with_hooks_count = _get_number_of_nodes_via_transform_postorder_with_symbol_bindings(
-        complex_ast, predicate=lambda x: isinstance(x, cbb_type))
+        complex_ast, predicate=lambda x: isinstance(x, cbb_type)
+    )
+    with_hooks_count = (
+        _get_number_of_nodes_via_transform_postorder_with_symbol_bindings(
+            complex_ast, predicate=lambda x: isinstance(x, cbb_type)
+        )
+    )
 
     self.assertEqual(with_hooks_count, simple_count)
 
@@ -430,9 +494,11 @@ class TransformationUtilsTest(parameterized.TestCase):
 
     empty_context_tree = transformation_utils.SymbolTree(FakeTracker)
     transformation_utils.transform_postorder_with_symbol_bindings(
-        outer_comp, transform, empty_context_tree)
-    self.assertEqual(leaf_order,
-                     ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k'])
+        outer_comp, transform, empty_context_tree
+    )
+    self.assertEqual(
+        leaf_order, ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k']
+    )
 
   def test_transform_postorder_hooks_walks_block_locals_postorder(self):
     block_locals_order = []
@@ -447,7 +513,8 @@ class TransformationUtilsTest(parameterized.TestCase):
 
     empty_context_tree = transformation_utils.SymbolTree(FakeTracker)
     transformation_utils.transform_postorder_with_symbol_bindings(
-        outer_comp, transform, empty_context_tree)
+        outer_comp, transform, empty_context_tree
+    )
     self.assertEqual(block_locals_order, ['t', 'u', 'v', 'w', 'x', 'y', 'z'])
 
   def test_transform_postorder_hooks_walks_variable_declarations_in_order(self):
@@ -471,9 +538,11 @@ class TransformationUtilsTest(parameterized.TestCase):
 
     empty_context_tree = transformation_utils.SymbolTree(PreorderHookTracker)
     transformation_utils.transform_postorder_with_symbol_bindings(
-        outer_comp, lambda x, y: (x, False), empty_context_tree)
-    self.assertEqual(variable_binding_order,
-                     ['arg', 'y', 'z', 't', 'u', 'v', 'x', 'w'])
+        outer_comp, lambda x, y: (x, False), empty_context_tree
+    )
+    self.assertEqual(
+        variable_binding_order, ['arg', 'y', 'z', 't', 'u', 'v', 'x', 'w']
+    )
 
   def test_transform_postorder_hooks_walks_postorder_interleaved(self):
     named_node_order = []
@@ -490,10 +559,27 @@ class TransformationUtilsTest(parameterized.TestCase):
 
     empty_context_tree = transformation_utils.SymbolTree(FakeTracker)
     transformation_utils.transform_postorder_with_symbol_bindings(
-        outer_comp, transform, empty_context_tree)
+        outer_comp, transform, empty_context_tree
+    )
     correct_results = [
-        'a', 'b', 'c', 'd', 't', 'e', 'f', 'u', 'g', 'v', 'h', 'i', 'j', 'w',
-        'x', 'y', 'z', 'k'
+        'a',
+        'b',
+        'c',
+        'd',
+        't',
+        'e',
+        'f',
+        'u',
+        'g',
+        'v',
+        'h',
+        'i',
+        'j',
+        'w',
+        'x',
+        'y',
+        'z',
+        'k',
     ]
     self.assertEqual(named_node_order, correct_results)
 
@@ -510,14 +596,16 @@ class TransformationUtilsTest(parameterized.TestCase):
       return comp, False
 
     transformation_utils.transform_postorder_with_symbol_bindings(
-        lam, transform, empty_symbol_tree)
+        lam, transform, empty_symbol_tree
+    )
 
     self.assertEqual(value_holder[0].count, 1)
     self.assertEqual(value_holder[0].name, 'x')
     self.assertIsNone(value_holder[0].value)
 
   def test_transform_postorder_with_symbol_bindings_binds_single_block_local(
-      self):
+      self,
+  ):
     result = building_blocks.Reference('x', tf.int32)
     arg = building_blocks.Data('input_data', tf.int32)
     block = building_blocks.Block([('x', arg)], result)
@@ -531,14 +619,16 @@ class TransformationUtilsTest(parameterized.TestCase):
       return comp, False
 
     transformation_utils.transform_postorder_with_symbol_bindings(
-        block, transform, empty_symbol_tree)
+        block, transform, empty_symbol_tree
+    )
 
     self.assertEqual(value_holder[0].count, 1)
     self.assertEqual(value_holder[0].name, 'x')
     self.assertEqual(value_holder[0].value, arg)
 
   def test_transform_postorder_with_symbol_bindings_binds_sequential_block_locals(
-      self):
+      self,
+  ):
     result = building_blocks.Reference('x', tf.int32)
     arg = building_blocks.Data('input_data', tf.int32)
     arg2 = building_blocks.Reference('x', tf.int32)
@@ -553,7 +643,8 @@ class TransformationUtilsTest(parameterized.TestCase):
       return comp, False
 
     transformation_utils.transform_postorder_with_symbol_bindings(
-        block, transform, empty_symbol_tree)
+        block, transform, empty_symbol_tree
+    )
 
     self.assertEqual(value_holder[0].count, 1)
     self.assertEqual(value_holder[0].name, 'x')
@@ -564,18 +655,22 @@ class TransformationUtilsTest(parameterized.TestCase):
 
   def test_symbol_tree_initializes(self):
     symbol_tree = transformation_utils.SymbolTree(FakeTracker)
-    self.assertIsInstance(symbol_tree.active_node.payload,
-                          transformation_utils._BeginScopePointer)
+    self.assertIsInstance(
+        symbol_tree.active_node.payload, transformation_utils._BeginScopePointer
+    )
     self.assertTrue(
-        py_typecheck.check_subclass(symbol_tree.payload_type,
-                                    transformation_utils.BoundVariableTracker))
+        py_typecheck.check_subclass(
+            symbol_tree.payload_type, transformation_utils.BoundVariableTracker
+        )
+    )
 
   def test_symbol_tree_node_reuse_fails(self):
-
     fake_tracker_node_one = transformation_utils.SequentialBindingNode(
-        FakeTracker('FakeTracker', None))
+        FakeTracker('FakeTracker', None)
+    )
     fake_tracker_node_two = transformation_utils.SequentialBindingNode(
-        FakeTracker('FakeTracker', None))
+        FakeTracker('FakeTracker', None)
+    )
     symbol_tree = transformation_utils.SymbolTree(FakeTracker)
     symbol_tree._add_child(0, fake_tracker_node_one)
     symbol_tree._move_to_child(0)
@@ -587,7 +682,6 @@ class TransformationUtilsTest(parameterized.TestCase):
       symbol_tree._add_younger_sibling(fake_tracker_node_one)
 
   def test_bad_mock_class_fails_symbol_tree(self):
-
     class BadMock:
       pass
 
@@ -595,7 +689,6 @@ class TransformationUtilsTest(parameterized.TestCase):
       transformation_utils.SymbolTree(BadMock)
 
   def test_symbol_tree_get_payload_resolves_child_parent_name_conflict(self):
-
     def _construct_symbol_tree():
       """Constructs a symbol tree of the form below.
 
@@ -613,11 +706,13 @@ class TransformationUtilsTest(parameterized.TestCase):
       symbol_tree = transformation_utils.SymbolTree(FakeTracker)
       x_tracker = FakeTracker('x', None)
       symbol_tree._add_child(
-          0, transformation_utils.SequentialBindingNode(x_tracker))
+          0, transformation_utils.SequentialBindingNode(x_tracker)
+      )
       symbol_tree._move_to_child(0)
       x_tracker2 = FakeTracker('x', None)
       symbol_tree._add_child(
-          1, transformation_utils.SequentialBindingNode(x_tracker2))
+          1, transformation_utils.SequentialBindingNode(x_tracker2)
+      )
       symbol_tree._move_to_child(1)
       return symbol_tree, x_tracker, x_tracker2
 
@@ -625,7 +720,6 @@ class TransformationUtilsTest(parameterized.TestCase):
     self.assertEqual(id(symbol_tree.get_payload_with_name('x')), id(x_tracker2))
 
   def test_symbol_tree_get_payload_resolves_sibling_name_conflict(self):
-
     def _construct_symbol_tree():
       """Constructs a symbol tree of the form below.
 
@@ -642,11 +736,13 @@ class TransformationUtilsTest(parameterized.TestCase):
       symbol_tree = transformation_utils.SymbolTree(FakeTracker)
       x_tracker = FakeTracker('x', None)
       symbol_tree._add_child(
-          0, transformation_utils.SequentialBindingNode(x_tracker))
+          0, transformation_utils.SequentialBindingNode(x_tracker)
+      )
       symbol_tree._move_to_child(0)
       x_tracker2 = FakeTracker('x', None)
       symbol_tree._add_younger_sibling(
-          transformation_utils.SequentialBindingNode(x_tracker2))
+          transformation_utils.SequentialBindingNode(x_tracker2)
+      )
       symbol_tree.walk_down_one_variable_binding()
       return symbol_tree, x_tracker, x_tracker2
 
@@ -654,7 +750,6 @@ class TransformationUtilsTest(parameterized.TestCase):
     self.assertEqual(id(symbol_tree.get_payload_with_name('x')), id(x_tracker2))
 
   def test_symbol_tree_get_payload_addresses_parent(self):
-
     def _construct_symbol_tree():
       """Constructs a symbol tree of the form below.
 
@@ -672,11 +767,13 @@ class TransformationUtilsTest(parameterized.TestCase):
       symbol_tree = transformation_utils.SymbolTree(FakeTracker)
       z_tracker = FakeTracker('z', None)
       symbol_tree._add_child(
-          0, transformation_utils.SequentialBindingNode(z_tracker))
+          0, transformation_utils.SequentialBindingNode(z_tracker)
+      )
       symbol_tree._move_to_child(0)
       x_tracker = FakeTracker('x', None)
       symbol_tree._add_child(
-          1, transformation_utils.SequentialBindingNode(x_tracker))
+          1, transformation_utils.SequentialBindingNode(x_tracker)
+      )
       symbol_tree._move_to_child(1)
       return symbol_tree, z_tracker, x_tracker
 
@@ -684,7 +781,6 @@ class TransformationUtilsTest(parameterized.TestCase):
     self.assertEqual(id(symbol_tree.get_payload_with_name('z')), id(z_tracker))
 
   def test_symbol_tree_updates_correct_node_across_siblings(self):
-
     def _construct_symbol_tree():
       r"""Builds symbol tree with the structure below.
 
@@ -702,11 +798,14 @@ class TransformationUtilsTest(parameterized.TestCase):
         used to construct it.
       """
       x_tracker = transformation_utils.SequentialBindingNode(
-          UpdatableTracker('x', None))
+          UpdatableTracker('x', None)
+      )
       elder_y = transformation_utils.SequentialBindingNode(
-          UpdatableTracker('y', None))
+          UpdatableTracker('y', None)
+      )
       young_y = transformation_utils.SequentialBindingNode(
-          UpdatableTracker('y', None))
+          UpdatableTracker('y', None)
+      )
 
       complex_symbol_tree = transformation_utils.SymbolTree(UpdatableTracker)
       complex_symbol_tree._add_child(4, x_tracker)
@@ -717,8 +816,9 @@ class TransformationUtilsTest(parameterized.TestCase):
       complex_symbol_tree.walk_down_one_variable_binding()
       return complex_symbol_tree, x_tracker, elder_y, young_y
 
-    (complex_symbol_tree, x_tracker, elder_y,
-     young_y) = _construct_symbol_tree()
+    (complex_symbol_tree, x_tracker, elder_y, young_y) = (
+        _construct_symbol_tree()
+    )
     complex_symbol_tree.update_payload_with_name('x')
     complex_symbol_tree.update_payload_with_name('y')
     self.assertEqual(x_tracker.payload.count, 1)
@@ -729,7 +829,6 @@ class TransformationUtilsTest(parameterized.TestCase):
     self.assertIsNone(complex_symbol_tree.get_payload_with_name('z'))
 
   def test_symbol_tree_updates_correct_node_across_generations(self):
-
     def _construct_symbol_tree():
       r"""Builds symbol tree with the structure below.
 
@@ -748,13 +847,17 @@ class TransformationUtilsTest(parameterized.TestCase):
         used to construct it.
       """
       x_tracker = transformation_utils.SequentialBindingNode(
-          UpdatableTracker('x', None))
+          UpdatableTracker('x', None)
+      )
       elder_y = transformation_utils.SequentialBindingNode(
-          UpdatableTracker('y', None))
+          UpdatableTracker('y', None)
+      )
       young_y = transformation_utils.SequentialBindingNode(
-          UpdatableTracker('y', None))
+          UpdatableTracker('y', None)
+      )
       misdirect_z = transformation_utils.SequentialBindingNode(
-          UpdatableTracker('z', None))
+          UpdatableTracker('z', None)
+      )
 
       complex_symbol_tree = transformation_utils.SymbolTree(UpdatableTracker)
       complex_symbol_tree.drop_scope_down(4)
@@ -770,8 +873,9 @@ class TransformationUtilsTest(parameterized.TestCase):
       complex_symbol_tree.pop_scope_up()
       return (complex_symbol_tree, x_tracker, elder_y, young_y, misdirect_z)
 
-    (complex_symbol_tree, x_tracker, elder_y, young_y,
-     misdirect_z) = _construct_symbol_tree()
+    (complex_symbol_tree, x_tracker, elder_y, young_y, misdirect_z) = (
+        _construct_symbol_tree()
+    )
     complex_symbol_tree.update_payload_with_name('x')
     complex_symbol_tree.update_payload_with_name('y')
     self.assertEqual(x_tracker.payload.count, 1)
@@ -799,14 +903,16 @@ class TransformationUtilsTest(parameterized.TestCase):
       symbol_tree.update_payload_with_name('x')
 
   def test_symbol_tree_walk_to_scope_beginning_nonempty_scope_moves_to_sentinel(
-      self):
+      self,
+  ):
     symbol_tree = transformation_utils.SymbolTree(FakeTracker)
     symbol_tree.ingest_variable_binding('x', None)
     fake_tracker_payload = symbol_tree.active_node.payload
     symbol_tree.walk_to_scope_beginning()
     self.assertIsInstance(fake_tracker_payload, FakeTracker)
-    self.assertIsInstance(symbol_tree.active_node.payload,
-                          transformation_utils._BeginScopePointer)
+    self.assertIsInstance(
+        symbol_tree.active_node.payload, transformation_utils._BeginScopePointer
+    )
 
   def test_symbol_tree_walk_to_scope_beginning_empty_scope_noops(self):
     symbol_tree = transformation_utils.SymbolTree(FakeTracker)
@@ -819,7 +925,9 @@ class TransformationUtilsTest(parameterized.TestCase):
     symbol_tree._add_child(
         0,
         transformation_utils.SequentialBindingNode(
-            FakeTracker('FakeTracker', None)))
+            FakeTracker('FakeTracker', None)
+        ),
+    )
     with self.assertRaisesRegex(ValueError, 'highest level'):
       symbol_tree.pop_scope_up()
 
@@ -839,8 +947,9 @@ class TransformationUtilsTest(parameterized.TestCase):
     symbol_tree = transformation_utils.SymbolTree(FakeTracker)
     symbol_tree.ingest_variable_binding('x', None)
     symbol_tree.drop_scope_down(0)
-    self.assertIsInstance(symbol_tree.active_node.payload,
-                          transformation_utils._BeginScopePointer)
+    self.assertIsInstance(
+        symbol_tree.active_node.payload, transformation_utils._BeginScopePointer
+    )
 
   def test_symbol_tree_drop_scope_down_equivalent_to_add_child_and_move(self):
     symbol_tree = transformation_utils.SymbolTree(FakeTracker)
@@ -849,7 +958,9 @@ class TransformationUtilsTest(parameterized.TestCase):
     shadow_symbol_tree._add_child(
         0,
         transformation_utils.SequentialBindingNode(
-            transformation_utils._BeginScopePointer()))
+            transformation_utils._BeginScopePointer()
+        ),
+    )
     shadow_symbol_tree._move_to_child(0)
     self.assertEqual(symbol_tree, shadow_symbol_tree)
 
@@ -865,7 +976,8 @@ class TransformationUtilsTest(parameterized.TestCase):
     self.assertIsInstance(symbol_tree.active_node.payload, FakeTracker)
 
   def test_symbol_tree_walk_down_good_variable_binding_moves_to_bound_variable(
-      self):
+      self,
+  ):
     symbol_tree = transformation_utils.SymbolTree(FakeTracker)
     symbol_tree.ingest_variable_binding('x', None)
     symbol_tree.walk_to_scope_beginning()
@@ -877,26 +989,32 @@ class TransformationUtilsTest(parameterized.TestCase):
     symbol_tree = transformation_utils.SymbolTree(FakeTracker)
     with self.assertRaises(TypeError):
       symbol_tree.ingest_variable_binding(
-          0, building_blocks.Reference('x', tf.int32))
+          0, building_blocks.Reference('x', tf.int32)
+      )
     with self.assertRaises(TypeError):
       symbol_tree.ingest_variable_binding('x', 0)
 
   def test_drop_scope_down_and_ingest_variable_binding_adds_node_to_empty_tree(
-      self):
+      self,
+  ):
     symbol_tree = transformation_utils.SymbolTree(FakeTracker)
     shadow_symbol_tree = transformation_utils.SymbolTree(FakeTracker)
     symbol_tree.drop_scope_down(0)
     symbol_tree.ingest_variable_binding(
-        'x', building_blocks.Reference('x', tf.int32))
+        'x', building_blocks.Reference('x', tf.int32)
+    )
     shadow_symbol_tree._add_child(
         0,
         transformation_utils.SequentialBindingNode(
-            transformation_utils._BeginScopePointer()))
+            transformation_utils._BeginScopePointer()
+        ),
+    )
     shadow_symbol_tree._move_to_child(0)
     shadow_symbol_tree._add_younger_sibling(
         transformation_utils.SequentialBindingNode(
-            FakeTracker('FakeTracker', building_blocks.Reference('x',
-                                                                 tf.int32))))
+            FakeTracker('FakeTracker', building_blocks.Reference('x', tf.int32))
+        )
+    )
     self.assertEqual(symbol_tree, shadow_symbol_tree)
 
   def test_ingest_variable_binding_adds_node_to_empty_tree(self):
@@ -904,10 +1022,12 @@ class TransformationUtilsTest(parameterized.TestCase):
     shadow_symbol_tree = transformation_utils.SymbolTree(FakeTracker)
     payload_to_add = FakeTracker('x', building_blocks.Data('a', tf.int32))
     shadow_symbol_tree._add_younger_sibling(
-        transformation_utils.SequentialBindingNode(payload_to_add))
+        transformation_utils.SequentialBindingNode(payload_to_add)
+    )
 
-    symbol_tree.ingest_variable_binding(payload_to_add.name,
-                                        payload_to_add.value)
+    symbol_tree.ingest_variable_binding(
+        payload_to_add.name, payload_to_add.value
+    )
 
     self.assertEqual(symbol_tree, shadow_symbol_tree)
 
@@ -916,18 +1036,21 @@ class TransformationUtilsTest(parameterized.TestCase):
     shadow_symbol_tree = _construct_complex_symbol_tree()
     payload_to_add = FakeTracker('x', building_blocks.Data('a', tf.int32))
     shadow_symbol_tree._add_younger_sibling(
-        transformation_utils.SequentialBindingNode(payload_to_add))
+        transformation_utils.SequentialBindingNode(payload_to_add)
+    )
 
-    symbol_tree.ingest_variable_binding('x',
-                                        building_blocks.Data('a', tf.int32))
+    symbol_tree.ingest_variable_binding(
+        'x', building_blocks.Data('a', tf.int32)
+    )
 
     self.assertEqual(symbol_tree, shadow_symbol_tree)
 
   def test_ingest_variable_overwrites_existing_node_with_same_name(self):
     symbol_tree = transformation_utils.SymbolTree(FakeTracker)
     symbol_tree.drop_scope_down(1)
-    symbol_tree.ingest_variable_binding('y',
-                                        building_blocks.Data('b', tf.int32))
+    symbol_tree.ingest_variable_binding(
+        'y', building_blocks.Data('b', tf.int32)
+    )
     resolved_y = symbol_tree.get_payload_with_name('y')
     self.assertEqual(resolved_y.value.uri, 'b')
     self.assertEqual(str(resolved_y.value.type_signature), 'int32')
@@ -942,8 +1065,9 @@ class TransformationUtilsTest(parameterized.TestCase):
     symbol_tree.drop_scope_down(0)
     symbol_tree.ingest_variable_binding('x', building_blocks.Data('a', tf.bool))
     symbol_tree.drop_scope_down(1)
-    symbol_tree.ingest_variable_binding('y',
-                                        building_blocks.Data('b', tf.int32))
+    symbol_tree.ingest_variable_binding(
+        'y', building_blocks.Data('b', tf.int32)
+    )
     resolved_x = symbol_tree.get_payload_with_name('x')
     self.assertEqual(resolved_x.value.uri, 'a')
     self.assertEqual(str(resolved_x.value.type_signature), 'bool')
@@ -958,17 +1082,20 @@ class TransformationUtilsTest(parameterized.TestCase):
     symbol_tree.drop_scope_down(0)
     symbol_tree.ingest_variable_binding('x', building_blocks.Data('a', tf.bool))
     symbol_tree.drop_scope_down(1)
-    symbol_tree.ingest_variable_binding('y',
-                                        building_blocks.Data('b', tf.int32))
+    symbol_tree.ingest_variable_binding(
+        'y', building_blocks.Data('b', tf.int32)
+    )
     symbol_tree.pop_scope_up()
     symbol_tree.drop_scope_down(1)
     with self.assertRaises(ValueError):
-      symbol_tree.ingest_variable_binding('z',
-                                          building_blocks.Data('c', tf.int32))
+      symbol_tree.ingest_variable_binding(
+          'z', building_blocks.Data('c', tf.int32)
+      )
 
   def test_symbol_tree_add_sibling(self):
     fake_node = transformation_utils.SequentialBindingNode(
-        FakeTracker('FakeTracker', None))
+        FakeTracker('FakeTracker', None)
+    )
     symbol_tree = transformation_utils.SymbolTree(FakeTracker)
     symbol_tree._add_younger_sibling(fake_node)
     symbol_tree.walk_down_one_variable_binding()
@@ -976,8 +1103,10 @@ class TransformationUtilsTest(parameterized.TestCase):
     self.assertIsNone(symbol_tree.active_node.children.get(0))
     self.assertIsNone(symbol_tree.active_node.younger_sibling)
     symbol_tree.walk_to_scope_beginning()
-    self.assertEqual(symbol_tree.active_node.payload,
-                     transformation_utils._BeginScopePointer())
+    self.assertEqual(
+        symbol_tree.active_node.payload,
+        transformation_utils._BeginScopePointer(),
+    )
     self.assertIsNotNone(symbol_tree.active_node.younger_sibling)
     self.assertIsNone(symbol_tree.active_node.children.get(0))
 
@@ -988,18 +1117,22 @@ class TransformationUtilsTest(parameterized.TestCase):
 
   def test_symbol_tree_add_child(self):
     fake_node = transformation_utils.SequentialBindingNode(
-        FakeTracker('FakeTracker', None))
+        FakeTracker('FakeTracker', None)
+    )
     symbol_tree = transformation_utils.SymbolTree(FakeTracker)
     symbol_tree._add_child(0, fake_node)
     symbol_tree._move_to_child(0)
     self.assertEqual(id(symbol_tree.active_node), id(fake_node))
     symbol_tree.active_node = symbol_tree.active_node.parent
-    self.assertEqual(symbol_tree.active_node.payload,
-                     transformation_utils._BeginScopePointer())
+    self.assertEqual(
+        symbol_tree.active_node.payload,
+        transformation_utils._BeginScopePointer(),
+    )
 
   def test_symbol_tree_move_to_bad_child_fails(self):
     fake_node = transformation_utils.SequentialBindingNode(
-        FakeTracker('FakeTracker', None))
+        FakeTracker('FakeTracker', None)
+    )
     symbol_tree = transformation_utils.SymbolTree(FakeTracker)
     symbol_tree._add_child(0, fake_node)
     with self.assertRaises(ValueError):
@@ -1011,7 +1144,8 @@ class TransformationUtilsTest(parameterized.TestCase):
     self.assertEqual(first_tree, second_tree)
     second_tree._add_child(
         10,
-        transformation_utils.SequentialBindingNode(FakeTracker('alpha', None)))
+        transformation_utils.SequentialBindingNode(FakeTracker('alpha', None)),
+    )
     self.assertNotEqual(first_tree, second_tree)
     self.assertNotEqual(second_tree, first_tree)
 
@@ -1044,12 +1178,12 @@ class TransformationUtilsTest(parameterized.TestCase):
 
     self.assertEqual(
         str(symbol_tree),
-        '[BeginScope]-[FakeTracker]-[FakeTracker]->{([BeginScope]-[FakeTracker]-[FakeTracker]-[FakeTracker]),(([BeginScope]-[FakeTracker*]->{([BeginScope]-[FakeTracker]),(([BeginScope]-[FakeTracker])})}'
+        '[BeginScope]-[FakeTracker]-[FakeTracker]->{([BeginScope]-[FakeTracker]-[FakeTracker]-[FakeTracker]),(([BeginScope]-[FakeTracker*]->{([BeginScope]-[FakeTracker]),(([BeginScope]-[FakeTracker])})}',
     )
     symbol_tree.pop_scope_up()
     self.assertEqual(
         str(symbol_tree),
-        '[BeginScope]-[FakeTracker]-[FakeTracker*]->{([BeginScope]-[FakeTracker]-[FakeTracker]-[FakeTracker]),(([BeginScope]-[FakeTracker]->{([BeginScope]-[FakeTracker]),(([BeginScope]-[FakeTracker])})}'
+        '[BeginScope]-[FakeTracker]-[FakeTracker*]->{([BeginScope]-[FakeTracker]-[FakeTracker]-[FakeTracker]),(([BeginScope]-[FakeTracker]->{([BeginScope]-[FakeTracker]),(([BeginScope]-[FakeTracker])})}',
     )
 
   def test_trivial_subclass_init_fails_bad_args(self):
@@ -1072,9 +1206,9 @@ class TransformationUtilsTest(parameterized.TestCase):
       transformation_utils.SequentialBindingNode(0)
 
   def test_sequential_binding_node_initialization(self):
-
     trivial_instance = transformation_utils.SequentialBindingNode(
-        TrivialBoundVariableTracker('trivial_name', None))
+        TrivialBoundVariableTracker('trivial_name', None)
+    )
 
     self.assertEqual(trivial_instance.payload.name, 'trivial_name')
     self.assertEmpty(trivial_instance.children)
@@ -1091,9 +1225,11 @@ class TransformationUtilsTest(parameterized.TestCase):
 
   def test_sequential_binding_node_parent_child_relationship(self):
     trivial_instance = transformation_utils.SequentialBindingNode(
-        TrivialBoundVariableTracker('trivial_name', None))
+        TrivialBoundVariableTracker('trivial_name', None)
+    )
     second_trivial_instance = transformation_utils.SequentialBindingNode(
-        TrivialBoundVariableTracker('second_trivial_name', None))
+        TrivialBoundVariableTracker('second_trivial_name', None)
+    )
 
     self.assertNotEqual(trivial_instance, second_trivial_instance)
     second_trivial_instance.set_parent(trivial_instance)
@@ -1108,9 +1244,11 @@ class TransformationUtilsTest(parameterized.TestCase):
 
   def test_sequential_binding_node_sibling_relationship(self):
     trivial_instance = transformation_utils.SequentialBindingNode(
-        TrivialBoundVariableTracker('trivial_name', None))
+        TrivialBoundVariableTracker('trivial_name', None)
+    )
     second_trivial_instance = transformation_utils.SequentialBindingNode(
-        TrivialBoundVariableTracker('second_trivial_name', None))
+        TrivialBoundVariableTracker('second_trivial_name', None)
+    )
 
     self.assertNotEqual(trivial_instance, second_trivial_instance)
     trivial_instance.set_younger_sibling(second_trivial_instance)
@@ -1124,28 +1262,34 @@ class TransformationUtilsTest(parameterized.TestCase):
 
   def test_sequential_binding_nodes_cousin_relationship(self):
     trivial_instance = transformation_utils.SequentialBindingNode(
-        TrivialBoundVariableTracker('trivial_name', None))
+        TrivialBoundVariableTracker('trivial_name', None)
+    )
     second_trivial_instance = transformation_utils.SequentialBindingNode(
-        TrivialBoundVariableTracker('second_trivial_name', None))
+        TrivialBoundVariableTracker('second_trivial_name', None)
+    )
     third_trivial_instance = transformation_utils.SequentialBindingNode(
-        TrivialBoundVariableTracker('third_trivial_name', None))
+        TrivialBoundVariableTracker('third_trivial_name', None)
+    )
     trivial_instance.add_child(0, second_trivial_instance)
     trivial_instance.add_child(1, third_trivial_instance)
     second_trivial_instance.set_parent(trivial_instance)
     third_trivial_instance.set_parent(trivial_instance)
     second_trivial_instance_relations = [
-        second_trivial_instance.parent, second_trivial_instance.older_sibling,
-        second_trivial_instance.younger_sibling
+        second_trivial_instance.parent,
+        second_trivial_instance.older_sibling,
+        second_trivial_instance.younger_sibling,
     ] + list(second_trivial_instance.children.values())
 
     third_trivial_instance_relations = [
-        third_trivial_instance.parent, third_trivial_instance.older_sibling,
-        third_trivial_instance.younger_sibling
+        third_trivial_instance.parent,
+        third_trivial_instance.older_sibling,
+        third_trivial_instance.younger_sibling,
     ] + list(third_trivial_instance.children.values())
     self.assertNotIn(second_trivial_instance, third_trivial_instance_relations)
     self.assertNotIn(third_trivial_instance, second_trivial_instance_relations)
     self.assertEqual(
-        id(second_trivial_instance.parent), id(third_trivial_instance.parent))
+        id(second_trivial_instance.parent), id(third_trivial_instance.parent)
+    )
 
   def test_bound_variable_tracker_equality_names(self):
     data = building_blocks.Data('bound_data', tf.int32)
@@ -1159,9 +1303,11 @@ class TransformationUtilsTest(parameterized.TestCase):
 
   def test_bound_variable_tracker_equality_values(self):
     whimsy_tracker = TrivialBoundVariableTracker(
-        'x', building_blocks.Data('bound_data', tf.int32))
+        'x', building_blocks.Data('bound_data', tf.int32)
+    )
     second_whimsy_tracker = TrivialBoundVariableTracker(
-        'x', building_blocks.Data('other_data', tf.int32))
+        'x', building_blocks.Data('other_data', tf.int32)
+    )
     self.assertNotEqual(whimsy_tracker, second_whimsy_tracker)
 
   def test_outer_context_pointer_equality(self):
@@ -1178,15 +1324,18 @@ class TransformationUtilsTest(parameterized.TestCase):
 
   def test_reference_tracker_initializes(self):
     whimsy_tracker = transformation_utils.ReferenceCounter(
-        'x', building_blocks.Data('bound_data', tf.int32))
+        'x', building_blocks.Data('bound_data', tf.int32)
+    )
     self.assertEqual(whimsy_tracker.name, 'x')
-    self.assertEqual(whimsy_tracker.value.compact_representation(),
-                     'bound_data')
+    self.assertEqual(
+        whimsy_tracker.value.compact_representation(), 'bound_data'
+    )
     self.assertEqual(whimsy_tracker.count, 0)
 
   def test_reference_tracker_updates(self):
     whimsy_tracker = transformation_utils.ReferenceCounter(
-        'x', building_blocks.Data('bound_data', tf.int32))
+        'x', building_blocks.Data('bound_data', tf.int32)
+    )
     for k in range(10):
       whimsy_tracker.update()
       self.assertEqual(whimsy_tracker.count, k + 1)
@@ -1204,38 +1353,47 @@ class TransformationUtilsTest(parameterized.TestCase):
   def test_get_count_of_references_to_variables_simple_block(self):
     simple_block = _construct_simple_block(tf.int32)
     context_stack = transformation_utils.get_count_of_references_to_variables(
-        simple_block)
+        simple_block
+    )
 
     def _construct_context_stack():
       constructed_context_stack = transformation_utils.SymbolTree(
-          transformation_utils.ReferenceCounter)
-      arg = transformation_utils.ReferenceCounter(simple_block.locals[0][0],
-                                                  simple_block.locals[0][1])
+          transformation_utils.ReferenceCounter
+      )
+      arg = transformation_utils.ReferenceCounter(
+          simple_block.locals[0][0], simple_block.locals[0][1]
+      )
       arg.update()
       constructed_context_stack.drop_scope_down(1)
       constructed_context_stack._add_younger_sibling(
-          transformation_utils.SequentialBindingNode(arg))
+          transformation_utils.SequentialBindingNode(arg)
+      )
       return constructed_context_stack
 
     self.assertEqual(context_stack, _construct_context_stack())
 
   def test_get_count_of_references_to_variables_simple_block_two_references(
-      self):
+      self,
+  ):
     simple_block = _construct_simple_block(tf.int32)
     ref = simple_block.result
     result = building_blocks.Struct([ref, ref])
     simple_block = building_blocks.Block(simple_block.locals, result)
-    self.assertEqual(simple_block.compact_representation(),
-                     '(let x=data in <x,x>)')
+    self.assertEqual(
+        simple_block.compact_representation(), '(let x=data in <x,x>)'
+    )
     context_stack = transformation_utils.get_count_of_references_to_variables(
-        simple_block)
+        simple_block
+    )
 
     def _construct_context_stack():
       constructed_context_stack = transformation_utils.SymbolTree(
-          transformation_utils.ReferenceCounter)
+          transformation_utils.ReferenceCounter
+      )
       constructed_context_stack.drop_scope_down(1)
       constructed_context_stack.ingest_variable_binding(
-          simple_block.locals[0][0], simple_block.locals[0][1])
+          simple_block.locals[0][0], simple_block.locals[0][1]
+      )
       constructed_context_stack.update_payload_with_name(ref.name)
       constructed_context_stack.update_payload_with_name(ref.name)
       return constructed_context_stack
@@ -1243,60 +1401,76 @@ class TransformationUtilsTest(parameterized.TestCase):
     self.assertEqual(context_stack, _construct_context_stack())
 
   def test_get_count_of_references_to_variables_nested_blocks_conflicting_names(
-      self):
+      self,
+  ):
     first_block = _construct_simple_block(tf.int32)
-    outer_block_output = building_blocks.Reference('x',
-                                                   first_block.type_signature)
-    second_block = building_blocks.Block([('x', first_block)],
-                                         outer_block_output)
+    outer_block_output = building_blocks.Reference(
+        'x', first_block.type_signature
+    )
+    second_block = building_blocks.Block(
+        [('x', first_block)], outer_block_output
+    )
 
-    self.assertEqual(second_block.compact_representation(),
-                     '(let x=(let x=data in x) in x)')
+    self.assertEqual(
+        second_block.compact_representation(), '(let x=(let x=data in x) in x)'
+    )
     context_stack = transformation_utils.get_count_of_references_to_variables(
-        second_block)
+        second_block
+    )
 
     def _construct_context_stack():
       constructed_context_stack = transformation_utils.SymbolTree(
-          transformation_utils.ReferenceCounter)
+          transformation_utils.ReferenceCounter
+      )
       constructed_context_stack.drop_scope_down(1)
       constructed_context_stack.drop_scope_down(2)
       constructed_context_stack.ingest_variable_binding(
-          first_block.locals[0][0], first_block.locals[0][1])
+          first_block.locals[0][0], first_block.locals[0][1]
+      )
       constructed_context_stack.update_payload_with_name(
-          first_block.result.name)
+          first_block.result.name
+      )
       constructed_context_stack.pop_scope_up()
       constructed_context_stack.ingest_variable_binding(
-          second_block.locals[0][0], second_block.locals[0][1])
+          second_block.locals[0][0], second_block.locals[0][1]
+      )
       constructed_context_stack.update_payload_with_name(
-          second_block.result.name)
+          second_block.result.name
+      )
       constructed_context_stack.pop_scope_up()
       return constructed_context_stack
 
     self.assertEqual(str(context_stack), str(_construct_context_stack()))
 
   def test_get_count_of_references_to_variables_block_lambda_name_conflict(
-      self):
+      self,
+  ):
     innermost_x = building_blocks.Reference('x', tf.int32)
     inner_lambda = building_blocks.Lambda('x', tf.int32, innermost_x)
     second_x = building_blocks.Reference('x', tf.int32)
     called_lambda = building_blocks.Call(inner_lambda, second_x)
     block_input = building_blocks.Data('data', tf.int32)
     block = building_blocks.Block([('x', block_input)], called_lambda)
-    self.assertEqual(block.compact_representation(),
-                     '(let x=data in (x -> x)(x))')
+    self.assertEqual(
+        block.compact_representation(), '(let x=data in (x -> x)(x))'
+    )
     context_stack = transformation_utils.get_count_of_references_to_variables(
-        block)
+        block
+    )
 
     def _construct_context_stack():
       constructed_context_stack = transformation_utils.SymbolTree(
-          transformation_utils.ReferenceCounter)
+          transformation_utils.ReferenceCounter
+      )
       constructed_context_stack.drop_scope_down(2)
-      constructed_context_stack.ingest_variable_binding(block.locals[0][0],
-                                                        block.locals[0][1])
+      constructed_context_stack.ingest_variable_binding(
+          block.locals[0][0], block.locals[0][1]
+      )
       constructed_context_stack.update_payload_with_name(second_x.name)
       constructed_context_stack.drop_scope_down(3)
       constructed_context_stack.ingest_variable_binding(
-          inner_lambda.parameter_name, None)
+          inner_lambda.parameter_name, None
+      )
       constructed_context_stack.update_payload_with_name(innermost_x.name)
       constructed_context_stack.pop_scope_up()
       constructed_context_stack.pop_scope_up()
@@ -1310,21 +1484,26 @@ class TransformationUtilsTest(parameterized.TestCase):
     outer_x = building_blocks.Reference('x', tf.int32)
     call = building_blocks.Call(inner_lambda, outer_x)
     outer_lambda = building_blocks.Lambda('x', tf.int32, call)
-    self.assertEqual(outer_lambda.compact_representation(),
-                     '(x -> (x -> x)(x))')
+    self.assertEqual(
+        outer_lambda.compact_representation(), '(x -> (x -> x)(x))'
+    )
     context_stack = transformation_utils.get_count_of_references_to_variables(
-        outer_lambda)
+        outer_lambda
+    )
 
     def _construct_context_stack():
       constructed_context_stack = transformation_utils.SymbolTree(
-          transformation_utils.ReferenceCounter)
+          transformation_utils.ReferenceCounter
+      )
       constructed_context_stack.drop_scope_down(0)
       constructed_context_stack.ingest_variable_binding(
-          outer_lambda.parameter_name, None)
+          outer_lambda.parameter_name, None
+      )
       constructed_context_stack.update_payload_with_name(outer_x.name)
       constructed_context_stack.drop_scope_down(0)
       constructed_context_stack.ingest_variable_binding(
-          inner_lambda.parameter_name, None)
+          inner_lambda.parameter_name, None
+      )
       constructed_context_stack.update_payload_with_name(inner_x.name)
       constructed_context_stack.pop_scope_up()
       constructed_context_stack.pop_scope_up()
@@ -1333,27 +1512,33 @@ class TransformationUtilsTest(parameterized.TestCase):
     self.assertEqual(context_stack, _construct_context_stack())
 
   def test_get_count_of_references_to_variables_block_local_overwriting_name_in_scope(
-      self):
+      self,
+  ):
     arg_comp = building_blocks.Reference('arg', [tf.int32, tf.int32])
     selected = building_blocks.Selection(arg_comp, index=0)
     internal_arg = building_blocks.Reference('arg', tf.int32)
     block = building_blocks.Block([('arg', selected)], internal_arg)
     lam = building_blocks.Lambda('arg', arg_comp.type_signature, block)
-    self.assertEqual(lam.compact_representation(),
-                     '(arg -> (let arg=arg[0] in arg))')
+    self.assertEqual(
+        lam.compact_representation(), '(arg -> (let arg=arg[0] in arg))'
+    )
     context_stack = transformation_utils.get_count_of_references_to_variables(
-        lam)
+        lam
+    )
 
     def _construct_context_stack():
       constructed_context_stack = transformation_utils.SymbolTree(
-          transformation_utils.ReferenceCounter)
+          transformation_utils.ReferenceCounter
+      )
       constructed_context_stack.drop_scope_down(1)
-      constructed_context_stack.ingest_variable_binding(lam.parameter_name,
-                                                        None)
+      constructed_context_stack.ingest_variable_binding(
+          lam.parameter_name, None
+      )
       constructed_context_stack.update_payload_with_name(arg_comp.name)
       constructed_context_stack.drop_scope_down(2)
-      constructed_context_stack.ingest_variable_binding(block.locals[0][0],
-                                                        block.locals[0][1])
+      constructed_context_stack.ingest_variable_binding(
+          block.locals[0][0], block.locals[0][1]
+      )
       constructed_context_stack.update_payload_with_name(internal_arg.name)
       constructed_context_stack.pop_scope_up()
       constructed_context_stack.pop_scope_up()
@@ -1362,27 +1547,34 @@ class TransformationUtilsTest(parameterized.TestCase):
     self.assertEqual(context_stack, _construct_context_stack())
 
   def test_get_count_of_references_to_variables_nested_block_no_name_conflict(
-      self):
+      self,
+  ):
     used1 = building_blocks.Reference('used1', tf.int32)
     used2 = building_blocks.Data('used2', tf.int32)
     ref = building_blocks.Reference('x', used1.type_signature)
     lower_block = building_blocks.Block([('x', used1)], ref)
     higher_block = building_blocks.Block([('used1', used2)], lower_block)
-    self.assertEqual(higher_block.compact_representation(),
-                     '(let used1=used2 in (let x=used1 in x))')
+    self.assertEqual(
+        higher_block.compact_representation(),
+        '(let used1=used2 in (let x=used1 in x))',
+    )
     context_stack = transformation_utils.get_count_of_references_to_variables(
-        higher_block)
+        higher_block
+    )
 
     def _construct_context_stack():
       constructed_context_stack = transformation_utils.SymbolTree(
-          transformation_utils.ReferenceCounter)
+          transformation_utils.ReferenceCounter
+      )
       constructed_context_stack.drop_scope_down(1)
       constructed_context_stack.ingest_variable_binding(
-          higher_block.locals[0][0], higher_block.locals[0][1])
+          higher_block.locals[0][0], higher_block.locals[0][1]
+      )
       constructed_context_stack.update_payload_with_name(used1.name)
       constructed_context_stack.drop_scope_down(1)
       constructed_context_stack.ingest_variable_binding(
-          lower_block.locals[0][0], lower_block.locals[0][1])
+          lower_block.locals[0][0], lower_block.locals[0][1]
+      )
       constructed_context_stack.update_payload_with_name(ref.name)
       constructed_context_stack.pop_scope_up()
       constructed_context_stack.pop_scope_up()
@@ -1394,26 +1586,35 @@ class TransformationUtilsTest(parameterized.TestCase):
     used1 = building_blocks.Reference('used1', tf.int32)
     used2 = building_blocks.Data('used2', tf.int32)
     user_inlined_lower_block = building_blocks.Block([('x', used1)], used1)
-    user_inlined_higher_block = building_blocks.Block([('used1', used2)],
-                                                      user_inlined_lower_block)
-    self.assertEqual(user_inlined_higher_block.compact_representation(),
-                     '(let used1=used2 in (let x=used1 in used1))')
-    second_context_stack = transformation_utils.get_count_of_references_to_variables(
-        user_inlined_higher_block)
+    user_inlined_higher_block = building_blocks.Block(
+        [('used1', used2)], user_inlined_lower_block
+    )
+    self.assertEqual(
+        user_inlined_higher_block.compact_representation(),
+        '(let used1=used2 in (let x=used1 in used1))',
+    )
+    second_context_stack = (
+        transformation_utils.get_count_of_references_to_variables(
+            user_inlined_higher_block
+        )
+    )
 
     def _construct_second_context_stack():
       constructed_context_stack = transformation_utils.SymbolTree(
-          transformation_utils.ReferenceCounter)
+          transformation_utils.ReferenceCounter
+      )
       constructed_context_stack.drop_scope_down(1)
       constructed_context_stack.ingest_variable_binding(
           user_inlined_higher_block.locals[0][0],
-          user_inlined_higher_block.locals[0][1])
+          user_inlined_higher_block.locals[0][1],
+      )
       constructed_context_stack.update_payload_with_name(used1.name)
       constructed_context_stack.update_payload_with_name(used1.name)
       constructed_context_stack.drop_scope_down(3)
       constructed_context_stack.ingest_variable_binding(
           user_inlined_lower_block.locals[0][0],
-          user_inlined_lower_block.locals[0][1])
+          user_inlined_lower_block.locals[0][1],
+      )
       constructed_context_stack.pop_scope_up()
       constructed_context_stack.pop_scope_up()
       return constructed_context_stack
@@ -1428,71 +1629,92 @@ class TransformationUtilsTest(parameterized.TestCase):
     mediate_tuple = building_blocks.Struct([item1, inner_block])
     used = building_blocks.Data('used', tf.int32)
     used1 = building_blocks.Data('used1', tf.int32)
-    outer_block = building_blocks.Block([('x', used), ('y', used1)],
-                                        mediate_tuple)
-    self.assertEqual(outer_block.compact_representation(),
-                     '(let x=used,y=used1 in <x,(let x=y in x)>)')
+    outer_block = building_blocks.Block(
+        [('x', used), ('y', used1)], mediate_tuple
+    )
+    self.assertEqual(
+        outer_block.compact_representation(),
+        '(let x=used,y=used1 in <x,(let x=y in x)>)',
+    )
     context_stack = transformation_utils.get_count_of_references_to_variables(
-        outer_block)
+        outer_block
+    )
 
     def _construct_context_stack():
       constructed_context_stack = transformation_utils.SymbolTree(
-          transformation_utils.ReferenceCounter)
+          transformation_utils.ReferenceCounter
+      )
       constructed_context_stack.drop_scope_down(1)
       constructed_context_stack.ingest_variable_binding(
-          outer_block.locals[0][0], outer_block.locals[0][1])
+          outer_block.locals[0][0], outer_block.locals[0][1]
+      )
       constructed_context_stack.ingest_variable_binding(
-          outer_block.locals[1][0], outer_block.locals[1][1])
+          outer_block.locals[1][0], outer_block.locals[1][1]
+      )
       constructed_context_stack.update_payload_with_name(intermediate_arg.name)
       constructed_context_stack.update_payload_with_name(item1.name)
       constructed_context_stack.drop_scope_down(6)
       constructed_context_stack.ingest_variable_binding(
-          inner_block.locals[0][0], inner_block.locals[0][1])
+          inner_block.locals[0][0], inner_block.locals[0][1]
+      )
       constructed_context_stack.update_payload_with_name(innermost.name)
       return constructed_context_stack
 
     self.assertEqual(context_stack, _construct_context_stack())
 
   def test_get_count_of_references_to_variables_sequential_overwrite_in_block_locals(
-      self):
-
+      self,
+  ):
     tensor_type = computation_types.TensorType(tf.int32)
     make_10 = building_block_factory.create_tensorflow_constant(tensor_type, 10)
 
     whimsy_x_reference = building_blocks.Reference('x', tf.int32)
 
-    make_13 = building_blocks.Block([
-        ('x', make_10),
-        ('x', whimsy_x_reference),
-        ('x', whimsy_x_reference),
-        ('x', whimsy_x_reference),
-    ], whimsy_x_reference)
+    make_13 = building_blocks.Block(
+        [
+            ('x', make_10),
+            ('x', whimsy_x_reference),
+            ('x', whimsy_x_reference),
+            ('x', whimsy_x_reference),
+        ],
+        whimsy_x_reference,
+    )
 
     references = transformation_utils.get_count_of_references_to_variables(
-        make_13)
+        make_13
+    )
 
     child_id = list(references.active_node.children.keys())[0]
 
     def _make_context_tree():
       constructed_context_stack = transformation_utils.SymbolTree(
-          transformation_utils.ReferenceCounter)
+          transformation_utils.ReferenceCounter
+      )
       constructed_context_stack.drop_scope_down(child_id)
-      constructed_context_stack.ingest_variable_binding(make_13.locals[0][0],
-                                                        make_13.locals[0][1])
+      constructed_context_stack.ingest_variable_binding(
+          make_13.locals[0][0], make_13.locals[0][1]
+      )
       constructed_context_stack.update_payload_with_name(
-          whimsy_x_reference.name)
-      constructed_context_stack.ingest_variable_binding(make_13.locals[1][0],
-                                                        make_13.locals[1][1])
+          whimsy_x_reference.name
+      )
+      constructed_context_stack.ingest_variable_binding(
+          make_13.locals[1][0], make_13.locals[1][1]
+      )
       constructed_context_stack.update_payload_with_name(
-          whimsy_x_reference.name)
-      constructed_context_stack.ingest_variable_binding(make_13.locals[2][0],
-                                                        make_13.locals[2][1])
+          whimsy_x_reference.name
+      )
+      constructed_context_stack.ingest_variable_binding(
+          make_13.locals[2][0], make_13.locals[2][1]
+      )
       constructed_context_stack.update_payload_with_name(
-          whimsy_x_reference.name)
-      constructed_context_stack.ingest_variable_binding(make_13.locals[3][0],
-                                                        make_13.locals[3][1])
+          whimsy_x_reference.name
+      )
+      constructed_context_stack.ingest_variable_binding(
+          make_13.locals[3][0], make_13.locals[3][1]
+      )
       constructed_context_stack.update_payload_with_name(
-          whimsy_x_reference.name)
+          whimsy_x_reference.name
+      )
       constructed_context_stack.walk_to_scope_beginning()
       return constructed_context_stack
 
@@ -1503,7 +1725,6 @@ class TransformationUtilsTest(parameterized.TestCase):
 class TransformPreorderTest(parameterized.TestCase):
 
   def test_transform_preorder_fails_on_none_comp(self):
-
     def transform(comp):
       return comp, False
 
@@ -1531,8 +1752,10 @@ class TransformPreorderTest(parameterized.TestCase):
     arg = building_blocks.Selection(ref, index=1)
     call = building_blocks.Call(fn, arg)
     comp = building_blocks.Lambda(ref.name, tf.int32, call)
-    self.assertEqual(comp.compact_representation(),
-                     '(FEDERATED_arg -> FEDERATED_arg[0](FEDERATED_arg[1]))')
+    self.assertEqual(
+        comp.compact_representation(),
+        '(FEDERATED_arg -> FEDERATED_arg[0](FEDERATED_arg[1]))',
+    )
 
     def _transformation_fn_generator():
       n = 0
@@ -1541,7 +1764,8 @@ class TransformPreorderTest(parameterized.TestCase):
 
         def _fn(x):
           intrinsic_type = computation_types.FunctionType(
-              x.type_signature, x.type_signature)
+              x.type_signature, x.type_signature
+          )
           intrinsic = building_blocks.Intrinsic('F{}'.format(n), intrinsic_type)
           call = building_blocks.Call(intrinsic, x)
           return call, True
@@ -1553,36 +1777,44 @@ class TransformPreorderTest(parameterized.TestCase):
     tx_fn = lambda x: next(transformation_fn_sequence)(x)
     # pylint: enable=unnecessary-lambda
     transfomed_comp, modified = transformation_utils.transform_preorder(
-        comp, tx_fn)
+        comp, tx_fn
+    )
     self.assertTrue(modified)
     self.assertEqual(
         transfomed_comp.compact_representation(),
-        'F1((FEDERATED_arg -> FEDERATED_arg[0](FEDERATED_arg[1])))')
+        'F1((FEDERATED_arg -> FEDERATED_arg[0](FEDERATED_arg[1])))',
+    )
     self.assertTrue(modified)
 
   @parameterized.named_parameters(
-      _construct_trivial_instance_of_all_computation_building_blocks() +
-      [('complex_tree', building_block_test_utils.create_nested_syntax_tree())])
+      _construct_trivial_instance_of_all_computation_building_blocks()
+      + [(
+          'complex_tree',
+          building_block_test_utils.create_nested_syntax_tree(),
+      )]
+  )
   def test_transform_preorder_returns_untransformed(self, comp):
-
     def transform_noop(comp):
       return comp, False
 
     same_comp, modified = transformation_utils.transform_preorder(
-        comp, transform_noop)
-    self.assertEqual(same_comp.compact_representation(),
-                     comp.compact_representation())
+        comp, transform_noop
+    )
+    self.assertEqual(
+        same_comp.compact_representation(), comp.compact_representation()
+    )
     self.assertFalse(modified)
 
   @parameterized.named_parameters(
-      _construct_trivial_instance_of_all_computation_building_blocks())
+      _construct_trivial_instance_of_all_computation_building_blocks()
+  )
   def test_transform_preorder_does_not_construct_new_internal(self, comp):
-
     def transform_noop(comp):
       return comp, False
 
     same_comp, modified = transformation_utils.transform_preorder(
-        comp, transform_noop)
+        comp, transform_noop
+    )
 
     self.assertEqual(comp, same_comp)
     self.assertFalse(modified)
@@ -1590,7 +1822,8 @@ class TransformPreorderTest(parameterized.TestCase):
   def test_transform_preorder_hits_all_nodes_once(self):
     complex_ast = building_block_test_utils.create_nested_syntax_tree()
     self.assertEqual(
-        _get_number_of_nodes_via_transform_preorder(complex_ast), 22)
+        _get_number_of_nodes_via_transform_preorder(complex_ast), 22
+    )
 
   def test_transform_preorder_walks_to_leaves_in_preorder(self):
     complex_ast = building_block_test_utils.create_nested_syntax_tree()
@@ -1604,8 +1837,9 @@ class TransformPreorderTest(parameterized.TestCase):
 
     transformation_utils.transform_preorder(complex_ast, transform)
 
-    self.assertEqual(leaf_name_order,
-                     ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k'])
+    self.assertEqual(
+        leaf_name_order, ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k']
+    )
 
   def test_transform_preorder_walks_block_locals_preorder(self):
     complex_ast = building_block_test_utils.create_nested_syntax_tree()
@@ -1670,19 +1904,22 @@ class TransformPreorderTest(parameterized.TestCase):
     self.assertEqual(leaf_name_order, list(preorder_nodes))
 
   def test_transform_preorder_passes_transform_through_tuple_correctly(self):
-
     def transform_data_to_reference(comp):
       if isinstance(comp, building_blocks.Data):
         return building_blocks.Reference(comp.uri, comp.type_signature), True
       return comp, False
 
     tuple_holding_data = building_blocks.Struct(
-        [building_blocks.Data('a', tf.int32)])
+        [building_blocks.Data('a', tf.int32)]
+    )
     data_replaced, modified = transformation_utils.transform_preorder(
-        tuple_holding_data, transform_data_to_reference)
+        tuple_holding_data, transform_data_to_reference
+    )
     self.assertTrue(modified)
-    self.assertEqual(data_replaced.compact_representation(),
-                     tuple_holding_data.compact_representation())
+    self.assertEqual(
+        data_replaced.compact_representation(),
+        tuple_holding_data.compact_representation(),
+    )
     self.assertLen(data_replaced, 1)
     self.assertIsInstance(data_replaced[0], building_blocks.Reference)
 
@@ -1722,7 +1959,7 @@ class GetUniqueNamesTest(absltest.TestCase):
   def test_captures_reference_name(self):
     ref_to_x = building_blocks.Reference('x', tf.int32)
     names = transformation_utils.get_unique_names(ref_to_x)
-    self.assertCountEqual(names, ('x'))
+    self.assertCountEqual(names, 'x')
 
   def test_captures_unbound_reference_name(self):
     ref_to_z = building_blocks.Reference('z', tf.int32)
@@ -1741,7 +1978,8 @@ class GetMapOfUnboundReferencesTest(absltest.TestCase):
     x_ref = building_blocks.Reference('x', tf.int32)
     call_on_x_ref = building_blocks.Call(lambda_1, x_ref)
     unbound_refs = transformation_utils.get_map_of_unbound_references(
-        call_on_x_ref)[lambda_1]
+        call_on_x_ref
+    )[lambda_1]
     self.assertEmpty(unbound_refs)
 
 

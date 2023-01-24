@@ -40,16 +40,22 @@ def optimize_graph_spec(graph_spec_obj, config_proto):
   try:
     # Grappler raises if it fails to find feeds and fetches, but can handle
     # *some* no-arg graphs, so we try/except here.
-    optimized_graph_def = tf_optimizer.OptimizeGraph(config_proto,
-                                                     meta_graph_def)
+    optimized_graph_def = tf_optimizer.OptimizeGraph(
+        config_proto, meta_graph_def
+    )
   except ValueError as error:
     logging.info(
-        'Grappler has raised the error %s; falling back to using '
-        'non-optimized graph.', error)
+        (
+            'Grappler has raised the error %s; falling back to using '
+            'non-optimized graph.'
+        ),
+        error,
+    )
     optimized_graph_def = graph_spec_obj.graph_def
 
   return graph_spec.GraphSpec(
       optimized_graph_def,
       init_op=graph_spec_obj.init_op,
       in_names=graph_spec_obj.in_names,
-      out_names=graph_spec_obj.out_names)
+      out_names=graph_spec_obj.out_names,
+  )

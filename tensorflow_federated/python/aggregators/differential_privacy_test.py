@@ -180,7 +180,7 @@ class DPFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
 
     state = process.initialize()
 
-# pyformat: disable
+    # pyformat: disable
     client_data = [
         [0.1, 0.2],         # not clipped (norm < 1)
         [5 / 13, 12 / 13],  # not clipped (norm == 1)
@@ -189,7 +189,8 @@ class DPFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
     output = process.next(state, client_data)
 
     expected_result = [0.1 +  5 / 13 + 3 / 5,
-                       0.2 + 12 / 13 + 4 / 5]    # pyformat: enable
+                       0.2 + 12 / 13 + 4 / 5]
+    # pyformat: enable
     self.assertAllClose(expected_result, output.result)
 
   def test_inner_sum(self):

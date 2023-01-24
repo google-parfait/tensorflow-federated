@@ -28,9 +28,11 @@ TestNamedTuple = collections.namedtuple('TestTuple', ['x', 'y'])
 
 def _federated_computation_serializer(fn, parameter_name, parameter_type):
   unpack_arguments = function_utils.create_argument_unpacking_fn(
-      fn, parameter_type)
+      fn, parameter_type
+  )
   fn_gen = federated_computation_utils.federated_computation_serializer(
-      parameter_name, parameter_type, context_stack_impl.context_stack)
+      parameter_name, parameter_type, context_stack_impl.context_stack
+  )
   args, kwargs = unpack_arguments(next(fn_gen))
   result = fn(*args, **kwargs)
   return fn_gen.send(result)
@@ -61,8 +63,9 @@ class FnToBuildingBlockTest(parameterized.TestCase):
   # pyformat: enable
   def test_returns_result(self, fn, parameter_type, fn_str):
     parameter_name = 'foo' if parameter_type is not None else None
-    result, _ = _federated_computation_serializer(fn, parameter_name,
-                                                  parameter_type)
+    result, _ = _federated_computation_serializer(
+        fn, parameter_name, parameter_type
+    )
     self.assertStartsWith(str(result), fn_str)
 
   # pyformat: disable
@@ -89,13 +92,17 @@ class FnToBuildingBlockTest(parameterized.TestCase):
            ('x', tf.float32), ('y', tf.int32)], TestNamedTuple)),
   )
   # pyformat: enable
-  def test_returns_result_with_py_container(self, fn, parameter_type,
-                                            expected_result_type):
+  def test_returns_result_with_py_container(
+      self, fn, parameter_type, expected_result_type
+  ):
     _, type_signature = _federated_computation_serializer(
-        fn, 'foo', parameter_type)
+        fn, 'foo', parameter_type
+    )
     self.assertIs(type(type_signature.result), type(expected_result_type))
-    self.assertIs(type_signature.result.python_container,
-                  expected_result_type.python_container)
+    self.assertIs(
+        type_signature.result.python_container,
+        expected_result_type.python_container,
+    )
     self.assertEqual(type_signature.result, expected_result_type)
 
 

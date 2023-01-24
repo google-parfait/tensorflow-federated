@@ -41,7 +41,8 @@ def create_simple_keras_model(learning_rate=0.1):
       metrics=[
           tf.keras.metrics.SparseCategoricalAccuracy(),
           counters.NumExamplesCounter(),
-      ])
+      ],
+  )
   return model
 
 
@@ -65,11 +66,14 @@ def keras_dataset_from_emnist(dataset):
 
 
 # TODO(b/235837441): Move this functionality to a more general location.
-class _DeterministicInitializer():
+class _DeterministicInitializer:
   """Wrapper to produce different deterministic initialization values."""
 
-  def __init__(self, initializer_type: type[tf.keras.initializers.Initializer],
-               base_seed: int):
+  def __init__(
+      self,
+      initializer_type: type[tf.keras.initializers.Initializer],
+      base_seed: int,
+  ):
     self._initializer_type = initializer_type
     if base_seed is None:
       base_seed = random.randint(1, 1e9)
@@ -98,10 +102,11 @@ def create_keras_model(compile_model=False):
   data_format = 'channels_last'
   input_shape = [28, 28, 1]
   initializer = _DeterministicInitializer(
-      tf.keras.initializers.RandomNormal, base_seed=0)
-  max_pool = tf.keras.layers.MaxPooling2D((2, 2), (2, 2),
-                                          padding='same',
-                                          data_format=data_format)
+      tf.keras.initializers.RandomNormal, base_seed=0
+  )
+  max_pool = tf.keras.layers.MaxPooling2D(
+      (2, 2), (2, 2), padding='same', data_format=data_format
+  )
   model = tf.keras.Sequential([
       tf.keras.layers.Reshape(target_shape=input_shape, input_shape=(28 * 28,)),
       tf.keras.layers.Conv2D(
@@ -110,7 +115,8 @@ def create_keras_model(compile_model=False):
           padding='same',
           data_format=data_format,
           activation=tf.nn.relu,
-          kernel_initializer=initializer()),
+          kernel_initializer=initializer(),
+      ),
       max_pool,
       tf.keras.layers.Conv2D(
           64,
@@ -118,16 +124,19 @@ def create_keras_model(compile_model=False):
           padding='same',
           data_format=data_format,
           activation=tf.nn.relu,
-          kernel_initializer=initializer()),
+          kernel_initializer=initializer(),
+      ),
       max_pool,
       tf.keras.layers.Flatten(),
       tf.keras.layers.Dense(
-          1024, activation=tf.nn.relu, kernel_initializer=initializer()),
+          1024, activation=tf.nn.relu, kernel_initializer=initializer()
+      ),
       tf.keras.layers.Dropout(0.4, seed=1),
       tf.keras.layers.Dense(10, kernel_initializer=initializer()),
   ])
   if compile_model:
     model.compile(
         loss=tf.keras.losses.SparseCategoricalCrossentropy(),
-        optimizer=tf.keras.optimizers.SGD(learning_rate=0.1))
+        optimizer=tf.keras.optimizers.SGD(learning_rate=0.1),
+    )
   return model

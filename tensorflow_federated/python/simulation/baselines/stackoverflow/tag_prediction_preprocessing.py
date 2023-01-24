@@ -21,25 +21,29 @@ from tensorflow_federated.python.simulation.baselines import client_spec
 from tensorflow_federated.python.simulation.baselines.stackoverflow import constants
 
 
-def build_to_ids_fn(word_vocab: list[str],
-                    tag_vocab: list[str]) -> Callable[[tf.Tensor], tf.Tensor]:
+def build_to_ids_fn(
+    word_vocab: list[str], tag_vocab: list[str]
+) -> Callable[[tf.Tensor], tf.Tensor]:
   """Constructs a function mapping examples to sequences of token indices."""
   word_vocab_size = len(word_vocab)
   word_table_values = tf.range(word_vocab_size, dtype=tf.int64)
   word_table = tf.lookup.StaticVocabularyTable(
       tf.lookup.KeyValueTensorInitializer(word_vocab, word_table_values),
-      num_oov_buckets=1)
+      num_oov_buckets=1,
+  )
 
   tag_vocab_size = len(tag_vocab)
   tag_table_values = tf.range(tag_vocab_size, dtype=tf.int64)
   tag_table = tf.lookup.StaticVocabularyTable(
       tf.lookup.KeyValueTensorInitializer(tag_vocab, tag_table_values),
-      num_oov_buckets=1)
+      num_oov_buckets=1,
+  )
 
   def to_ids(example):
     """Converts a Stack Overflow example to a bag-of-words/tags format."""
-    sentence = tf.strings.join([example['tokens'], example['title']],
-                               separator=' ')
+    sentence = tf.strings.join(
+        [example['tokens'], example['title']], separator=' '
+    )
     words = tf.strings.split(sentence)
     tokens = word_table.lookup(words)
     token_sums = tf.reduce_sum(tf.one_hot(tokens, word_vocab_size), axis=0)
@@ -61,7 +65,7 @@ def create_preprocess_fn(
     preprocess_spec: client_spec.ClientSpec,
     word_vocab: list[str],
     tag_vocab: list[str],
-    num_parallel_calls: int = tf.data.experimental.AUTOTUNE
+    num_parallel_calls: int = tf.data.experimental.AUTOTUNE,
 ) -> Callable[[tf.data.Dataset], tf.data.Dataset]:
   """Creates a preprocessing function for Stack Overflow tag prediction data.
 

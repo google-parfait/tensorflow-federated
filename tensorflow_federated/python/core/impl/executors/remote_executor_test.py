@@ -48,17 +48,20 @@ def test_context(stream_structs: bool = False):
   server = grpc.server(server_pool)
   server.add_insecure_port('[::]:{}'.format(port))
   target_factory = executor_test_utils.LocalTestExecutorFactory(
-      default_num_clients=3)
+      default_num_clients=3
+  )
   tracers = []
 
   def _tracer_fn(cardinalities):
     tracer = executor_test_utils.TracingExecutor(
-        target_factory.create_executor(cardinalities))
+        target_factory.create_executor(cardinalities)
+    )
     tracers.append(tracer)
     return tracer
 
   service = executor_service.ExecutorService(
-      executor_test_utils.BasicTestExFactory(_tracer_fn))
+      executor_test_utils.BasicTestExFactory(_tracer_fn)
+  )
   executor_pb2_grpc.add_ExecutorGroupServicer_to_server(service, server)
   server.start()
 
@@ -66,10 +69,12 @@ def test_context(stream_structs: bool = False):
 
   stub = remote_executor_grpc_stub.RemoteExecutorGrpcStub(channel)
   remote_exec = remote_executor.RemoteExecutor(
-      stub, stream_structs=stream_structs)
+      stub, stream_structs=stream_structs
+  )
   remote_exec.set_cardinalities({placements.CLIENTS: 3})
   executor = reference_resolving_executor.ReferenceResolvingExecutor(
-      remote_exec)
+      remote_exec
+  )
   try:
     yield collections.namedtuple('_', 'executor tracers')(executor, tracers)
   finally:
@@ -109,10 +114,12 @@ def _raise_non_retryable_grpc_error(*args):
   raise error
 
 
-def _set_cardinalities_with_mock(executor: remote_executor.RemoteExecutor,
-                                 mock_stub: mock.Mock):
+def _set_cardinalities_with_mock(
+    executor: remote_executor.RemoteExecutor, mock_stub: mock.Mock
+):
   mock_stub.get_executor.return_value = executor_pb2.GetExecutorResponse(
-      executor=executor_pb2.ExecutorId(id='id'))
+      executor=executor_pb2.ExecutorId(id='id')
+  )
   executor.set_cardinalities({placements.CLIENTS: 3})
 
 
@@ -123,20 +130,23 @@ class RemoteValueTest(parameterized.TestCase):
       ('true', True),
   )
   @mock.patch.object(remote_executor_stub, 'RemoteExecutorStub')
-  def test_compute_returns_result_with_stream_structs(self, stream_structs,
-                                                      mock_stub):
+  def test_compute_returns_result_with_stream_structs(
+      self, stream_structs, mock_stub
+  ):
     tensor_proto = tf.make_tensor_proto(1)
     any_pb = any_pb2.Any()
     any_pb.Pack(tensor_proto)
     value = executor_pb2.Value(tensor=any_pb)
     mock_stub.compute.return_value = executor_pb2.ComputeResponse(value=value)
     executor = remote_executor.RemoteExecutor(
-        mock_stub, stream_structs=stream_structs)
+        mock_stub, stream_structs=stream_structs
+    )
     _set_cardinalities_with_mock(executor, mock_stub)
     executor.set_cardinalities({placements.CLIENTS: 3})
     type_signature = computation_types.FunctionType(None, tf.int32)
-    comp = remote_executor.RemoteValue(executor_pb2.ValueRef(), type_signature,
-                                       executor)
+    comp = remote_executor.RemoteValue(
+        executor_pb2.ValueRef(), type_signature, executor
+    )
 
     result = asyncio.run(comp.compute())
 
@@ -149,14 +159,17 @@ class RemoteValueTest(parameterized.TestCase):
   )
   @mock.patch.object(remote_executor_stub, 'RemoteExecutorStub')
   def test_compute_reraises_grpc_error_with_stream_structs(
-      self, stream_structs, mock_stub):
+      self, stream_structs, mock_stub
+  ):
     mock_stub.compute = mock.Mock(side_effect=_raise_non_retryable_grpc_error)
     executor = remote_executor.RemoteExecutor(
-        mock_stub, stream_structs=stream_structs)
+        mock_stub, stream_structs=stream_structs
+    )
     _set_cardinalities_with_mock(executor, mock_stub)
     type_signature = computation_types.FunctionType(None, tf.int32)
-    comp = remote_executor.RemoteValue(executor_pb2.ValueRef(), type_signature,
-                                       executor)
+    comp = remote_executor.RemoteValue(
+        executor_pb2.ValueRef(), type_signature, executor
+    )
 
     with self.assertRaises(grpc.RpcError) as context:
       asyncio.run(comp.compute())
@@ -169,14 +182,17 @@ class RemoteValueTest(parameterized.TestCase):
   )
   @mock.patch.object(remote_executor_stub, 'RemoteExecutorStub')
   def test_compute_reraises_type_error_with_stream_structs(
-      self, stream_structs, mock_stub):
+      self, stream_structs, mock_stub
+  ):
     mock_stub.compute = mock.Mock(side_effect=TypeError)
     executor = remote_executor.RemoteExecutor(
-        mock_stub, stream_structs=stream_structs)
+        mock_stub, stream_structs=stream_structs
+    )
     _set_cardinalities_with_mock(executor, mock_stub)
     type_signature = computation_types.FunctionType(None, tf.int32)
-    comp = remote_executor.RemoteValue(executor_pb2.ValueRef(), type_signature,
-                                       executor)
+    comp = remote_executor.RemoteValue(
+        executor_pb2.ValueRef(), type_signature, executor
+    )
 
     with self.assertRaises(TypeError):
       asyncio.run(comp.compute())
@@ -190,11 +206,14 @@ class RemoteExecutorTest(parameterized.TestCase):
   )
   @mock.patch.object(remote_executor_stub, 'RemoteExecutorStub')
   def test_set_cardinalities_returns_none_with_stream_structs(
-      self, stream_structs, mock_stub):
+      self, stream_structs, mock_stub
+  ):
     mock_stub.get_executor.return_value = executor_pb2.GetExecutorResponse(
-        executor=executor_pb2.ExecutorId(id='test_id'))
+        executor=executor_pb2.ExecutorId(id='test_id')
+    )
     executor = remote_executor.RemoteExecutor(
-        mock_stub, stream_structs=stream_structs)
+        mock_stub, stream_structs=stream_structs
+    )
     _set_cardinalities_with_mock(executor, mock_stub)
     result = executor.set_cardinalities({placements.CLIENTS: 3})
     self.assertIsNone(result)
@@ -205,10 +224,12 @@ class RemoteExecutorTest(parameterized.TestCase):
   )
   @mock.patch.object(remote_executor_stub, 'RemoteExecutorStub')
   def test_create_value_returns_remote_value_with_stream_structs(
-      self, stream_structs, mock_stub):
+      self, stream_structs, mock_stub
+  ):
     mock_stub.create_value.return_value = executor_pb2.CreateValueResponse()
     executor = remote_executor.RemoteExecutor(
-        mock_stub, stream_structs=stream_structs)
+        mock_stub, stream_structs=stream_structs
+    )
     _set_cardinalities_with_mock(executor, mock_stub)
 
     result = asyncio.run(executor.create_value(1, tf.int32))
@@ -222,11 +243,14 @@ class RemoteExecutorTest(parameterized.TestCase):
   )
   @mock.patch.object(remote_executor_stub, 'RemoteExecutorStub')
   def test_create_value_reraises_grpc_error_with_stream_structs(
-      self, stream_structs, mock_stub):
+      self, stream_structs, mock_stub
+  ):
     mock_stub.create_value = mock.Mock(
-        side_effect=_raise_non_retryable_grpc_error)
+        side_effect=_raise_non_retryable_grpc_error
+    )
     executor = remote_executor.RemoteExecutor(
-        mock_stub, stream_structs=stream_structs)
+        mock_stub, stream_structs=stream_structs
+    )
     _set_cardinalities_with_mock(executor, mock_stub)
 
     with self.assertRaises(grpc.RpcError) as context:
@@ -240,10 +264,12 @@ class RemoteExecutorTest(parameterized.TestCase):
   )
   @mock.patch.object(remote_executor_stub, 'RemoteExecutorStub')
   def test_create_value_reraises_type_error_with_stream_structs(
-      self, stream_structs, mock_stub):
+      self, stream_structs, mock_stub
+  ):
     mock_stub.create_value = mock.Mock(side_effect=TypeError)
     executor = remote_executor.RemoteExecutor(
-        mock_stub, stream_structs=stream_structs)
+        mock_stub, stream_structs=stream_structs
+    )
     _set_cardinalities_with_mock(executor, mock_stub)
 
     with self.assertRaises(TypeError):
@@ -255,7 +281,8 @@ class RemoteExecutorTest(parameterized.TestCase):
   )
   @mock.patch.object(remote_executor_stub, 'RemoteExecutorStub')
   def test_create_value_for_nested_struct_with_stream_structs(
-      self, stream_structs, mock_stub):
+      self, stream_structs, mock_stub
+  ):
     if stream_structs:
       self.skipTest(
           'b/263261613 - Support multiple return_value types in mock_stub'
@@ -265,28 +292,48 @@ class RemoteExecutorTest(parameterized.TestCase):
       mock_stub.create_value.return_value = executor_pb2.CreateValueResponse()
 
     executor = remote_executor.RemoteExecutor(
-        mock_stub, stream_structs=stream_structs)
+        mock_stub, stream_structs=stream_structs
+    )
     _set_cardinalities_with_mock(executor, mock_stub)
     tensor_shape = (2, 10)
     struct_value = structure.Struct([
         ('a', tf.zeros(shape=tensor_shape, dtype=tf.int32)),
-        ('b',
-         structure.Struct([('b0', tf.zeros(shape=tensor_shape, dtype=tf.int32)),
-                           ('b1', tf.zeros(shape=tensor_shape,
-                                           dtype=tf.int32))])),
-        ('c', tf.zeros(shape=tensor_shape, dtype=tf.int32))
+        (
+            'b',
+            structure.Struct([
+                ('b0', tf.zeros(shape=tensor_shape, dtype=tf.int32)),
+                ('b1', tf.zeros(shape=tensor_shape, dtype=tf.int32)),
+            ]),
+        ),
+        ('c', tf.zeros(shape=tensor_shape, dtype=tf.int32)),
     ])
 
     type_signature = computation_types.StructType([
-        ('a', computation_types.TensorType(shape=tensor_shape, dtype=tf.int32)),
-        ('b',
-         computation_types.StructType([
-             ('b0',
-              computation_types.TensorType(shape=tensor_shape, dtype=tf.int32)),
-             ('b1',
-              computation_types.TensorType(shape=tensor_shape, dtype=tf.int32))
-         ])),
-        ('c', computation_types.TensorType(shape=tensor_shape, dtype=tf.int32))
+        (
+            'a',
+            computation_types.TensorType(shape=tensor_shape, dtype=tf.int32),
+        ),
+        (
+            'b',
+            computation_types.StructType([
+                (
+                    'b0',
+                    computation_types.TensorType(
+                        shape=tensor_shape, dtype=tf.int32
+                    ),
+                ),
+                (
+                    'b1',
+                    computation_types.TensorType(
+                        shape=tensor_shape, dtype=tf.int32
+                    ),
+                ),
+            ]),
+        ),
+        (
+            'c',
+            computation_types.TensorType(shape=tensor_shape, dtype=tf.int32),
+        ),
     ])
 
     result = asyncio.run(executor.create_value(struct_value, type_signature))
@@ -303,14 +350,17 @@ class RemoteExecutorTest(parameterized.TestCase):
   )
   @mock.patch.object(remote_executor_stub, 'RemoteExecutorStub')
   def test_create_call_returns_remote_value_with_stream_structs(
-      self, stream_structs, mock_stub):
+      self, stream_structs, mock_stub
+  ):
     mock_stub.create_call.return_value = executor_pb2.CreateCallResponse()
     executor = remote_executor.RemoteExecutor(
-        mock_stub, stream_structs=stream_structs)
+        mock_stub, stream_structs=stream_structs
+    )
     _set_cardinalities_with_mock(executor, mock_stub)
     type_signature = computation_types.FunctionType(None, tf.int32)
-    fn = remote_executor.RemoteValue(executor_pb2.ValueRef(), type_signature,
-                                     executor)
+    fn = remote_executor.RemoteValue(
+        executor_pb2.ValueRef(), type_signature, executor
+    )
 
     result = asyncio.run(executor.create_call(fn, None))
 
@@ -323,15 +373,19 @@ class RemoteExecutorTest(parameterized.TestCase):
   )
   @mock.patch.object(remote_executor_stub, 'RemoteExecutorStub')
   def test_create_call_reraises_grpc_error_with_stream_structs(
-      self, stream_structs, mock_stub):
+      self, stream_structs, mock_stub
+  ):
     mock_stub.create_call = mock.Mock(
-        side_effect=_raise_non_retryable_grpc_error)
+        side_effect=_raise_non_retryable_grpc_error
+    )
     executor = remote_executor.RemoteExecutor(
-        mock_stub, stream_structs=stream_structs)
+        mock_stub, stream_structs=stream_structs
+    )
     _set_cardinalities_with_mock(executor, mock_stub)
     type_signature = computation_types.FunctionType(None, tf.int32)
-    comp = remote_executor.RemoteValue(executor_pb2.ValueRef(), type_signature,
-                                       executor)
+    comp = remote_executor.RemoteValue(
+        executor_pb2.ValueRef(), type_signature, executor
+    )
 
     with self.assertRaises(grpc.RpcError) as context:
       asyncio.run(executor.create_call(comp, None))
@@ -344,14 +398,17 @@ class RemoteExecutorTest(parameterized.TestCase):
   )
   @mock.patch.object(remote_executor_stub, 'RemoteExecutorStub')
   def test_create_call_reraises_type_error_with_stream_structs(
-      self, stream_structs, mock_stub):
+      self, stream_structs, mock_stub
+  ):
     mock_stub.create_call = mock.Mock(side_effect=TypeError)
     executor = remote_executor.RemoteExecutor(
-        mock_stub, stream_structs=stream_structs)
+        mock_stub, stream_structs=stream_structs
+    )
     _set_cardinalities_with_mock(executor, mock_stub)
     type_signature = computation_types.FunctionType(None, tf.int32)
-    comp = remote_executor.RemoteValue(executor_pb2.ValueRef(), type_signature,
-                                       executor)
+    comp = remote_executor.RemoteValue(
+        executor_pb2.ValueRef(), type_signature, executor
+    )
 
     with self.assertRaises(TypeError):
       asyncio.run(executor.create_call(comp))
@@ -362,16 +419,20 @@ class RemoteExecutorTest(parameterized.TestCase):
   )
   @mock.patch.object(remote_executor_stub, 'RemoteExecutorStub')
   def test_create_struct_returns_remote_value_with_stream_structs(
-      self, stream_structs, mock_stub):
+      self, stream_structs, mock_stub
+  ):
     mock_stub.create_struct.return_value = executor_pb2.CreateStructResponse()
     executor = remote_executor.RemoteExecutor(
-        mock_stub, stream_structs=stream_structs)
+        mock_stub, stream_structs=stream_structs
+    )
     _set_cardinalities_with_mock(executor, mock_stub)
     type_signature = computation_types.TensorType(tf.int32)
-    value_1 = remote_executor.RemoteValue(executor_pb2.ValueRef(),
-                                          type_signature, executor)
-    value_2 = remote_executor.RemoteValue(executor_pb2.ValueRef(),
-                                          type_signature, executor)
+    value_1 = remote_executor.RemoteValue(
+        executor_pb2.ValueRef(), type_signature, executor
+    )
+    value_2 = remote_executor.RemoteValue(
+        executor_pb2.ValueRef(), type_signature, executor
+    )
 
     result = asyncio.run(executor.create_struct([value_1, value_2]))
 
@@ -384,17 +445,22 @@ class RemoteExecutorTest(parameterized.TestCase):
   )
   @mock.patch.object(remote_executor_stub, 'RemoteExecutorStub')
   def test_create_struct_reraises_grpc_error_with_stream_structs(
-      self, stream_structs, mock_stub):
+      self, stream_structs, mock_stub
+  ):
     mock_stub.create_struct = mock.Mock(
-        side_effect=_raise_non_retryable_grpc_error)
+        side_effect=_raise_non_retryable_grpc_error
+    )
     executor = remote_executor.RemoteExecutor(
-        mock_stub, stream_structs=stream_structs)
+        mock_stub, stream_structs=stream_structs
+    )
     _set_cardinalities_with_mock(executor, mock_stub)
     type_signature = computation_types.TensorType(tf.int32)
-    value_1 = remote_executor.RemoteValue(executor_pb2.ValueRef(),
-                                          type_signature, executor)
-    value_2 = remote_executor.RemoteValue(executor_pb2.ValueRef(),
-                                          type_signature, executor)
+    value_1 = remote_executor.RemoteValue(
+        executor_pb2.ValueRef(), type_signature, executor
+    )
+    value_2 = remote_executor.RemoteValue(
+        executor_pb2.ValueRef(), type_signature, executor
+    )
 
     with self.assertRaises(grpc.RpcError) as context:
       asyncio.run(executor.create_struct([value_1, value_2]))
@@ -407,16 +473,20 @@ class RemoteExecutorTest(parameterized.TestCase):
   )
   @mock.patch.object(remote_executor_stub, 'RemoteExecutorStub')
   def test_create_struct_reraises_type_error_with_stream_structs(
-      self, stream_structs, mock_stub):
+      self, stream_structs, mock_stub
+  ):
     mock_stub.create_struct = mock.Mock(side_effect=TypeError)
     executor = remote_executor.RemoteExecutor(
-        mock_stub, stream_structs=stream_structs)
+        mock_stub, stream_structs=stream_structs
+    )
     _set_cardinalities_with_mock(executor, mock_stub)
     type_signature = computation_types.TensorType(tf.int32)
-    value_1 = remote_executor.RemoteValue(executor_pb2.ValueRef(),
-                                          type_signature, executor)
-    value_2 = remote_executor.RemoteValue(executor_pb2.ValueRef(),
-                                          type_signature, executor)
+    value_1 = remote_executor.RemoteValue(
+        executor_pb2.ValueRef(), type_signature, executor
+    )
+    value_2 = remote_executor.RemoteValue(
+        executor_pb2.ValueRef(), type_signature, executor
+    )
 
     with self.assertRaises(TypeError):
       asyncio.run(executor.create_struct([value_1, value_2]))
@@ -427,16 +497,19 @@ class RemoteExecutorTest(parameterized.TestCase):
   )
   @mock.patch.object(remote_executor_stub, 'RemoteExecutorStub')
   def test_create_selection_returns_remote_value_with_stream_structs(
-      self, stream_structs, mock_stub):
+      self, stream_structs, mock_stub
+  ):
     mock_stub.create_selection.return_value = (
         executor_pb2.CreateSelectionResponse()
     )
     executor = remote_executor.RemoteExecutor(
-        mock_stub, stream_structs=stream_structs)
+        mock_stub, stream_structs=stream_structs
+    )
     _set_cardinalities_with_mock(executor, mock_stub)
     type_signature = computation_types.StructType([tf.int32, tf.int32])
-    source = remote_executor.RemoteValue(executor_pb2.ValueRef(),
-                                         type_signature, executor)
+    source = remote_executor.RemoteValue(
+        executor_pb2.ValueRef(), type_signature, executor
+    )
 
     result = asyncio.run(executor.create_selection(source, 0))
 
@@ -449,15 +522,19 @@ class RemoteExecutorTest(parameterized.TestCase):
   )
   @mock.patch.object(remote_executor_stub, 'RemoteExecutorStub')
   def test_create_selection_reraises_non_retryable_grpc_error_with_stream_structs(
-      self, stream_structs, mock_stub):
+      self, stream_structs, mock_stub
+  ):
     mock_stub.create_selection = mock.Mock(
-        side_effect=_raise_non_retryable_grpc_error)
+        side_effect=_raise_non_retryable_grpc_error
+    )
     executor = remote_executor.RemoteExecutor(
-        mock_stub, stream_structs=stream_structs)
+        mock_stub, stream_structs=stream_structs
+    )
     _set_cardinalities_with_mock(executor, mock_stub)
     type_signature = computation_types.StructType([tf.int32, tf.int32])
-    source = remote_executor.RemoteValue(executor_pb2.ValueRef(),
-                                         type_signature, executor)
+    source = remote_executor.RemoteValue(
+        executor_pb2.ValueRef(), type_signature, executor
+    )
 
     with self.assertRaises(grpc.RpcError) as context:
       asyncio.run(executor.create_selection(source, 0))
@@ -470,14 +547,17 @@ class RemoteExecutorTest(parameterized.TestCase):
   )
   @mock.patch.object(remote_executor_stub, 'RemoteExecutorStub')
   def test_create_selection_reraises_type_error_with_stream_structs(
-      self, stream_structs, mock_stub):
+      self, stream_structs, mock_stub
+  ):
     mock_stub.create_selection = mock.Mock(side_effect=TypeError)
     executor = remote_executor.RemoteExecutor(
-        mock_stub, stream_structs=stream_structs)
+        mock_stub, stream_structs=stream_structs
+    )
     _set_cardinalities_with_mock(executor, mock_stub)
     type_signature = computation_types.StructType([tf.int32, tf.int32])
-    source = remote_executor.RemoteValue(executor_pb2.ValueRef(),
-                                         type_signature, executor)
+    source = remote_executor.RemoteValue(
+        executor_pb2.ValueRef(), type_signature, executor
+    )
 
     with self.assertRaises(TypeError):
       asyncio.run(executor.create_selection(source, 0))
@@ -536,7 +616,6 @@ class RemoteExecutorIntegrationTest(parameterized.TestCase):
       self._test_with_selection(context)
 
   def _test_with_selection(self, context):
-
     @tensorflow_computation.tf_computation(tf.int32)
     def foo(x):
       return collections.OrderedDict([('A', x + 10), ('B', x + 20)])
@@ -563,7 +642,6 @@ class RemoteExecutorIntegrationTest(parameterized.TestCase):
       ('true', True),
   )
   def test_execution_of_tensorflow_with_stream_structs(self, stream_structs):
-
     @tensorflow_computation.tf_computation
     def comp():
       return tf.math.add(5, 5)
@@ -578,11 +656,13 @@ class RemoteExecutorIntegrationTest(parameterized.TestCase):
       ('true', True),
   )
   def test_with_federated_computations_with_stream_structs(
-      self, stream_structs):
+      self, stream_structs
+  ):
     with test_context(stream_structs) as context:
 
       @federated_computation.federated_computation(
-          computation_types.FederatedType(tf.int32, placements.CLIENTS))
+          computation_types.FederatedType(tf.int32, placements.CLIENTS)
+      )
       def foo(x):
         return intrinsics.federated_sum(x)
 
@@ -590,7 +670,8 @@ class RemoteExecutorIntegrationTest(parameterized.TestCase):
       self.assertEqual(result, 60)
 
       @federated_computation.federated_computation(
-          computation_types.FederatedType(tf.int32, placements.SERVER))
+          computation_types.FederatedType(tf.int32, placements.SERVER)
+      )
       def bar(x):
         return intrinsics.federated_broadcast(x)
 
@@ -602,7 +683,8 @@ class RemoteExecutorIntegrationTest(parameterized.TestCase):
         return x + 1
 
       @federated_computation.federated_computation(
-          computation_types.FederatedType(tf.int32, placements.SERVER))
+          computation_types.FederatedType(tf.int32, placements.SERVER)
+      )
       def baz(x):
         value = intrinsics.federated_broadcast(x)
         return intrinsics.federated_map(add_one, value)

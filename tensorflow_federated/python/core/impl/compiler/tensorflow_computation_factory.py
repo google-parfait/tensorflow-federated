@@ -42,39 +42,45 @@ ComputationProtoAndType = local_computation_factory_base.ComputationProtoAndType
 
 
 class TensorFlowComputationFactory(
-    local_computation_factory_base.LocalComputationFactory):
+    local_computation_factory_base.LocalComputationFactory
+):
   """An implementation of local computation factory for TF computations."""
 
   def __init__(self):
     pass
 
   def create_constant_from_scalar(
-      self, value,
-      type_spec: computation_types.Type) -> ComputationProtoAndType:
+      self, value, type_spec: computation_types.Type
+  ) -> ComputationProtoAndType:
     return create_constant(value, type_spec)
 
   def create_plus_operator(
-      self, type_spec: computation_types.Type) -> ComputationProtoAndType:
-
+      self, type_spec: computation_types.Type
+  ) -> ComputationProtoAndType:
     def plus(a, b):
       return structure.map_structure(tf.add, a, b)
 
     return create_binary_operator(plus, type_spec)
 
   def create_multiply_operator(
-      self, type_spec: computation_types.Type) -> ComputationProtoAndType:
-
+      self, type_spec: computation_types.Type
+  ) -> ComputationProtoAndType:
     def multiply(a, b):
       return structure.map_structure(tf.multiply, a, b)
 
     return create_binary_operator(multiply, type_spec)
 
   def create_scalar_multiply_operator(
-      self, operand_type: computation_types.Type,
-      scalar_type: computation_types.TensorType) -> ComputationProtoAndType:
+      self,
+      operand_type: computation_types.Type,
+      scalar_type: computation_types.TensorType,
+  ) -> ComputationProtoAndType:
     return create_binary_operator_with_upcast(
-        computation_types.StructType([(None, operand_type),
-                                      (None, scalar_type)]), tf.multiply)
+        computation_types.StructType(
+            [(None, operand_type), (None, scalar_type)]
+        ),
+        tf.multiply,
+    )
 
   def create_indexing_operator(
       self,
@@ -94,7 +100,8 @@ def _tensorflow_comp(
 
 
 def create_constant(
-    value, type_spec: computation_types.Type) -> ComputationProtoAndType:
+    value, type_spec: computation_types.Type
+) -> ComputationProtoAndType:
   """Returns a tensorflow computation returning a constant `value`.
 
   The returned computation has the type signature `( -> T)`, where `T` is
@@ -116,15 +123,19 @@ def create_constant(
   if not type_analysis.is_generic_op_compatible_type(type_spec):
     raise TypeError(
         'Type spec {} cannot be constructed as a TensorFlow constant in TFF; '
-        ' only nested tuples and tensors are permitted.'.format(type_spec))
+        ' only nested tuples and tensors are permitted.'.format(type_spec)
+    )
   inferred_value_type = type_conversions.infer_type(value)
-  if (inferred_value_type.is_struct() and
-      not type_spec.is_assignable_from(inferred_value_type)):
+  if inferred_value_type.is_struct() and not type_spec.is_assignable_from(
+      inferred_value_type
+  ):
     raise TypeError(
         'Must pass a only tensor or structure of tensor values to '
         '`create_tensorflow_constant`; encountered a value {v} with inferred '
         'type {t!r}, but needed {s!r}'.format(
-            v=value, t=inferred_value_type, s=type_spec))
+            v=value, t=inferred_value_type, s=type_spec
+        )
+    )
   if inferred_value_type.is_struct():
     value = structure.from_container(value, recursive=True)
   tensor_dtypes_in_type_spec = []
@@ -137,13 +148,15 @@ def create_constant(
 
   type_transformations.transform_type_postorder(type_spec, _pack_dtypes)
 
-  if (any(x.is_integer for x in tensor_dtypes_in_type_spec) and
-      (inferred_value_type.is_tensor() and
-       not inferred_value_type.dtype.is_integer)):
+  if any(x.is_integer for x in tensor_dtypes_in_type_spec) and (
+      inferred_value_type.is_tensor()
+      and not inferred_value_type.dtype.is_integer
+  ):
     raise TypeError(
         'Only integers can be used as scalar values if our desired constant '
         'type spec contains any integer tensors; passed scalar {} of dtype {} '
-        'for type spec {}.'.format(value, inferred_value_type.dtype, type_spec))
+        'for type spec {}.'.format(value, inferred_value_type.dtype, type_spec)
+    )
 
   result_type = type_spec
 
@@ -157,7 +170,8 @@ def create_constant(
       if inferred_value_type.is_struct():
         # Copy the leaf values according to the type_spec structure.
         for (name, elem_type), value in zip(
-            structure.iter_elements(type_spec), value):
+            structure.iter_elements(type_spec), value
+        ):
           elements.append((name, _create_result_tensor(elem_type, value)))
       else:
         # "Broadcast" the value to each level of the type_spec structure.
@@ -169,18 +183,21 @@ def create_constant(
   with tf.Graph().as_default() as graph:
     result = _create_result_tensor(result_type, value)
     _, result_binding = tensorflow_utils.capture_result_from_graph(
-        result, graph)
+        result, graph
+    )
 
   type_signature = computation_types.FunctionType(None, result_type)
   tensorflow = pb.TensorFlow(
       graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
       parameter=None,
-      result=result_binding)
+      result=result_binding,
+  )
   return _tensorflow_comp(tensorflow, type_signature)
 
 
 def create_unary_operator(
-    operator, operand_type: computation_types.Type) -> ComputationProtoAndType:
+    operator, operand_type: computation_types.Type
+) -> ComputationProtoAndType:
   """Returns a tensorflow computation computing a unary operation.
 
   The returned computation has the type signature `(T -> U)`, where `T` is
@@ -198,34 +215,39 @@ def create_unary_operator(
     TypeError: If the constraints of `operand_type` are violated or `operator`
       is not callable.
   """
-  if (operand_type is None or
-      not type_analysis.is_generic_op_compatible_type(operand_type)):
+  if operand_type is None or not type_analysis.is_generic_op_compatible_type(
+      operand_type
+  ):
     raise TypeError(
         '`operand_type` contains a type other than '
         '`computation_types.TensorType` and `computation_types.StructType`; '
-        f'this is disallowed in the generic operators. Got: {operand_type} ')
+        f'this is disallowed in the generic operators. Got: {operand_type} '
+    )
   py_typecheck.check_callable(operator)
 
   with tf.Graph().as_default() as graph:
     operand_value, operand_binding = tensorflow_utils.stamp_parameter_in_graph(
-        'x', operand_type, graph)
+        'x', operand_type, graph
+    )
     result_value = operator(operand_value)
     result_type, result_binding = tensorflow_utils.capture_result_from_graph(
-        result_value, graph)
+        result_value, graph
+    )
 
   type_signature = computation_types.FunctionType(operand_type, result_type)
   parameter_binding = operand_binding
   tensorflow = pb.TensorFlow(
       graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
       parameter=parameter_binding,
-      result=result_binding)
+      result=result_binding,
+  )
   return _tensorflow_comp(tensorflow, type_signature)
 
 
 def create_binary_operator(
     operator,
     operand_type: computation_types.Type,
-    second_operand_type: Optional[computation_types.Type] = None
+    second_operand_type: Optional[computation_types.Type] = None,
 ) -> ComputationProtoAndType:
   """Returns a tensorflow computation computing a binary operation.
 
@@ -260,14 +282,16 @@ def create_binary_operator(
     raise TypeError(
         '`operand_type` contains a type other than '
         '`computation_types.TensorType` and `computation_types.StructType`; '
-        f'this is disallowed in the generic operators. Got: {operand_type} ')
+        f'this is disallowed in the generic operators. Got: {operand_type} '
+    )
   if second_operand_type is not None:
     if not type_analysis.is_generic_op_compatible_type(second_operand_type):
       raise TypeError(
           '`second_operand_type` contains a type other than '
           '`computation_types.TensorType` and `computation_types.StructType`; '
           'this is disallowed in the generic operators. '
-          f'Got: {second_operand_type} ')
+          f'Got: {second_operand_type} '
+      )
   elif second_operand_type is None:
     second_operand_type = operand_type
   py_typecheck.check_callable(operator)
@@ -283,24 +307,30 @@ def create_binary_operator(
     )
     result_value = operator(operand_1_value, operand_2_value)
     result_type, result_binding = tensorflow_utils.capture_result_from_graph(
-        result_value, graph)
+        result_value, graph
+    )
 
   type_signature = computation_types.FunctionType(
       computation_types.StructType((operand_type, second_operand_type)),
-      result_type)
+      result_type,
+  )
   parameter_binding = pb.TensorFlow.Binding(
       struct=pb.TensorFlow.StructBinding(
-          element=[operand_1_binding, operand_2_binding]))
+          element=[operand_1_binding, operand_2_binding]
+      )
+  )
   tensorflow = pb.TensorFlow(
       graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
       parameter=parameter_binding,
-      result=result_binding)
+      result=result_binding,
+  )
   return _tensorflow_comp(tensorflow, type_signature)
 
 
 def create_binary_operator_with_upcast(
     type_signature: computation_types.StructType,
-    operator: Callable[[Any, Any], Any]) -> ComputationProtoAndType:
+    operator: Callable[[Any, Any], Any],
+) -> ComputationProtoAndType:
   """Creates TF computation upcasting its argument and applying `operator`.
 
   Args:
@@ -322,38 +352,49 @@ def create_binary_operator_with_upcast(
   py_typecheck.check_callable(operator)
   type_analysis.check_tensorflow_compatible_type(type_signature)
   if not type_signature.is_struct() or len(type_signature) != 2:
-    raise TypeError('To apply a binary operator, we must by definition have an '
-                    'argument which is a `StructType` with 2 elements; '
-                    'asked to create a binary operator for type: {t}'.format(
-                        t=type_signature))
+    raise TypeError(
+        'To apply a binary operator, we must by definition have an '
+        'argument which is a `StructType` with 2 elements; '
+        'asked to create a binary operator for type: {t}'.format(
+            t=type_signature
+        )
+    )
   if type_analysis.contains(type_signature, lambda t: t.is_sequence()):
     raise TypeError(
         'Applying binary operators in TensorFlow is only '
         'supported on Tensors and StructTypes; you '
-        'passed {t} which contains a SequenceType.'.format(t=type_signature))
+        'passed {t} which contains a SequenceType.'.format(t=type_signature)
+    )
 
   def _pack_into_type(to_pack: tf.Tensor, type_spec: computation_types.Type):
     """Pack Tensor value `to_pack` into the nested structure `type_spec`."""
     if type_spec.is_struct():
       elem_iter = structure.iter_elements(type_spec)
-      return structure.Struct([(elem_name, _pack_into_type(to_pack, elem_type))
-                               for elem_name, elem_type in elem_iter])
+      return structure.Struct(
+          [
+              (elem_name, _pack_into_type(to_pack, elem_type))
+              for elem_name, elem_type in elem_iter
+          ]
+      )
     elif type_spec.is_tensor():
       value_tensor_type = type_conversions.type_from_tensors(to_pack)
       if type_spec.is_assignable_from(value_tensor_type):
         return to_pack
       elif not type_spec.shape.is_fully_defined():
-        raise TypeError('Cannot generate TensorFlow creating binary operator '
-                        'with first type not assignable from second, and '
-                        'first type without fully defined shapes. First '
-                        f'type contains an element of type: {type_spec}.\n'
-                        f'Packing value {to_pack} into this type is '
-                        'undefined.')
+        raise TypeError(
+            'Cannot generate TensorFlow creating binary operator '
+            'with first type not assignable from second, and '
+            'first type without fully defined shapes. First '
+            f'type contains an element of type: {type_spec}.\n'
+            f'Packing value {to_pack} into this type is '
+            'undefined.'
+        )
       return tf.cast(tf.broadcast_to(to_pack, type_spec.shape), type_spec.dtype)
 
   with tf.Graph().as_default() as graph:
     first_arg, operand_1_binding = tensorflow_utils.stamp_parameter_in_graph(
-        'x', type_signature[0], graph)
+        'x', type_signature[0], graph
+    )
     operand_2_value, operand_2_binding = (
         tensorflow_utils.stamp_parameter_in_graph('y', type_signature[1], graph)
     )
@@ -366,9 +407,10 @@ def create_binary_operator_with_upcast(
       if structure.is_same_structure(type_signature[0], type_signature[1]):
         second_arg = operand_2_value
       else:
-        raise TypeError('Cannot upcast one structure to a different structure. '
-                        '{x} -> {y}'.format(
-                            x=type_signature[1], y=type_signature[0]))
+        raise TypeError(
+            'Cannot upcast one structure to a different structure. '
+            '{x} -> {y}'.format(x=type_signature[1], y=type_signature[0])
+        )
     elif type_signature[0].is_assignable_from(type_signature[1]):
       second_arg = operand_2_value
     else:
@@ -379,20 +421,26 @@ def create_binary_operator_with_upcast(
     elif type_signature[0].is_struct():
       result_value = structure.map_structure(operator, first_arg, second_arg)
     else:
-      raise TypeError('Encountered unexpected type {t}; can only handle Tensor '
-                      'and StructTypes.'.format(t=type_signature[0]))
+      raise TypeError(
+          'Encountered unexpected type {t}; can only handle Tensor '
+          'and StructTypes.'.format(t=type_signature[0])
+      )
 
   result_type, result_binding = tensorflow_utils.capture_result_from_graph(
-      result_value, graph)
+      result_value, graph
+  )
 
   type_signature = computation_types.FunctionType(type_signature, result_type)
   parameter_binding = pb.TensorFlow.Binding(
       struct=pb.TensorFlow.StructBinding(
-          element=[operand_1_binding, operand_2_binding]))
+          element=[operand_1_binding, operand_2_binding]
+      )
+  )
   tensorflow = pb.TensorFlow(
       graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
       parameter=parameter_binding,
-      result=result_binding)
+      result=result_binding,
+  )
   return _tensorflow_comp(tensorflow, type_signature)
 
 
@@ -407,21 +455,28 @@ def create_indexing_operator(
     raise TypeError(f'Expected index type to be a scalar, found {index_type}.')
   with tf.Graph().as_default() as graph:
     operand_value, operand_binding = tensorflow_utils.stamp_parameter_in_graph(
-        'indexing_operand', operand_type, graph)
+        'indexing_operand', operand_type, graph
+    )
     index_value, index_binding = tensorflow_utils.stamp_parameter_in_graph(
-        'index', index_type, graph)
+        'index', index_type, graph
+    )
     result_value = tf.gather(operand_value, index_value)
     result_type, result_binding = tensorflow_utils.capture_result_from_graph(
-        result_value, graph)
+        result_value, graph
+    )
   type_signature = computation_types.FunctionType(
-      computation_types.StructType((operand_type, index_type)), result_type)
+      computation_types.StructType((operand_type, index_type)), result_type
+  )
   parameter_binding = pb.TensorFlow.Binding(
       struct=pb.TensorFlow.StructBinding(
-          element=[operand_binding, index_binding]))
+          element=[operand_binding, index_binding]
+      )
+  )
   tensorflow = pb.TensorFlow(
       graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
       parameter=parameter_binding,
-      result=result_binding)
+      result=result_binding,
+  )
   return _tensorflow_comp(tensorflow, type_signature)
 
 
@@ -434,7 +489,8 @@ def create_empty_tuple() -> ComputationProtoAndType:
 
 
 def create_identity(
-    type_signature: computation_types.Type) -> ComputationProtoAndType:
+    type_signature: computation_types.Type,
+) -> ComputationProtoAndType:
   """Returns a tensorflow computation representing an identity function.
 
   The returned computation has the type signature `(T -> T)`, where `T` is
@@ -462,13 +518,15 @@ def create_identity(
     identity_fn = functools.partial(structure.map_structure, tf.identity)
   else:
     raise NotImplementedError(
-        f'TensorFlow identity cannot be created for type {type_signature}')
+        f'TensorFlow identity cannot be created for type {type_signature}'
+    )
 
   return create_computation_for_py_fn(identity_fn, parameter_type)
 
 
-def create_replicate_input(type_signature: computation_types.Type,
-                           count: int) -> ComputationProtoAndType:
+def create_replicate_input(
+    type_signature: computation_types.Type, count: int
+) -> ComputationProtoAndType:
   """Returns a tensorflow computation returning `count` copies of its argument.
 
   The returned computation has the type signature `(T -> <T, T, T, ...>)`, where
@@ -496,17 +554,25 @@ def create_replicate_input(type_signature: computation_types.Type,
         parameter=tensorflow_comp.parameter,
         result=pb.TensorFlow.Binding(
             struct=pb.TensorFlow.StructBinding(
-                element=(single_result_binding for _ in range(count)))))
+                element=(single_result_binding for _ in range(count))
+            )
+        ),
+    )
   else:
     new_tf_pb = pb.TensorFlow(
         graph_def=tensorflow_comp.graph_def,
         result=pb.TensorFlow.Binding(
             struct=pb.TensorFlow.StructBinding(
-                element=(single_result_binding for _ in range(count)))))
+                element=(single_result_binding for _ in range(count))
+            )
+        ),
+    )
   fn_type = computation_types.FunctionType(
       parameter_type,
-      computation_types.StructType([(None, parameter_type) for _ in range(count)
-                                   ]))
+      computation_types.StructType(
+          [(None, parameter_type) for _ in range(count)]
+      ),
+  )
   return _tensorflow_comp(new_tf_pb, fn_type)
 
 
@@ -535,11 +601,13 @@ def create_computation_for_py_fn(
       parameter_binding = None
       result = fn()
     result_type, result_binding = tensorflow_utils.capture_result_from_graph(
-        result, graph)
+        result, graph
+    )
 
   type_signature = computation_types.FunctionType(parameter_type, result_type)
   tensorflow = pb.TensorFlow(
       graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
       parameter=parameter_binding,
-      result=result_binding)
+      result=result_binding,
+  )
   return _tensorflow_comp(tensorflow, type_signature)

@@ -32,8 +32,8 @@ from tensorflow_federated.python.core.impl.types import placements
 
 
 def create_test_federated_stack(
-    num_clients=3) -> federating_executor.FederatingExecutor:
-
+    num_clients=3,
+) -> federating_executor.FederatingExecutor:
   def create_bottom_stack():
     executor = eager_tf_executor.EagerTFExecutor()
     return reference_resolving_executor.ReferenceResolvingExecutor(executor)
@@ -46,37 +46,39 @@ def create_test_federated_stack(
 
 
 def create_test_aggregated_stack(
-    clients_per_stack=3,
-    stacks_per_layer=3,
-    num_layers=3) -> federating_executor.FederatingExecutor:
-
+    clients_per_stack=3, stacks_per_layer=3, num_layers=3
+) -> federating_executor.FederatingExecutor:
   def create_bottom_stack():
     executor = eager_tf_executor.EagerTFExecutor()
     return reference_resolving_executor.ReferenceResolvingExecutor(executor)
 
   def create_worker_stack():
     factroy = federated_resolving_strategy.FederatedResolvingStrategy.factory({
-        placements.SERVER:
-            create_bottom_stack(),
+        placements.SERVER: create_bottom_stack(),
         placements.CLIENTS: [
             create_bottom_stack() for _ in range(clients_per_stack)
         ],
     })
-    return federating_executor.FederatingExecutor(factroy,
-                                                  create_bottom_stack())
+    return federating_executor.FederatingExecutor(
+        factroy, create_bottom_stack()
+    )
 
   def create_aggregation_stack(children):
     factory = federated_composing_strategy.FederatedComposingStrategy.factory(
-        create_bottom_stack(), children)
-    return federating_executor.FederatingExecutor(factory,
-                                                  create_bottom_stack())
+        create_bottom_stack(), children
+    )
+    return federating_executor.FederatingExecutor(
+        factory, create_bottom_stack()
+    )
 
   def create_aggregation_layer(num_stacks):
     return create_aggregation_stack(
-        [create_worker_stack() for _ in range(num_stacks)])
+        [create_worker_stack() for _ in range(num_stacks)]
+    )
 
   return create_aggregation_stack(
-      [create_aggregation_layer(stacks_per_layer) for _ in range(num_layers)])
+      [create_aggregation_layer(stacks_per_layer) for _ in range(num_layers)]
+  )
 
 
 # pyformat: disable
@@ -94,39 +96,49 @@ def create_test_aggregated_stack(
      27),
 ])
 # pyformat: enable
-class ComputeIntrinsicFederatedBroadcastTest(unittest.IsolatedAsyncioTestCase,
-                                             parameterized.TestCase):
+class ComputeIntrinsicFederatedBroadcastTest(
+    unittest.IsolatedAsyncioTestCase, parameterized.TestCase
+):
 
   async def test_returns_value_with_federated_type_at_server(
-      self, executor, num_clients):
+      self, executor, num_clients
+  ):
     del num_clients  # Unused.
     value, type_signature = executor_test_utils.create_whimsy_value_at_server()
 
     value = await executor.create_value(value, type_signature)
     result = await executor_utils.compute_intrinsic_federated_broadcast(
-        executor, value)
+        executor, value
+    )
 
     self.assertIsInstance(result, executor_value_base.ExecutorValue)
     expected_type = computation_types.at_clients(
-        type_signature.member, all_equal=True)
-    self.assertEqual(result.type_signature.compact_representation(),
-                     expected_type.compact_representation())
+        type_signature.member, all_equal=True
+    )
+    self.assertEqual(
+        result.type_signature.compact_representation(),
+        expected_type.compact_representation(),
+    )
     actual_result = await result.compute()
     self.assertEqual(actual_result, 10.0)
 
   async def test_raises_type_error_with_federated_type_at_clients(
-      self, executor, num_clients):
+      self, executor, num_clients
+  ):
     value, type_signature = executor_test_utils.create_whimsy_value_at_clients(
-        num_clients)
+        num_clients
+    )
 
     value = await executor.create_value(value, type_signature)
 
     with self.assertRaises(TypeError):
       await executor_utils.compute_intrinsic_federated_broadcast(
-          executor, value)
+          executor, value
+      )
 
-  async def test_raises_type_error_with_unplaced_type(self, executor,
-                                                      num_clients):
+  async def test_raises_type_error_with_unplaced_type(
+      self, executor, num_clients
+  ):
     del num_clients  # Unused.
     value, type_signature = executor_test_utils.create_whimsy_value_unplaced()
 
@@ -134,7 +146,8 @@ class ComputeIntrinsicFederatedBroadcastTest(unittest.IsolatedAsyncioTestCase,
 
     with self.assertRaises(TypeError):
       await executor_utils.compute_intrinsic_federated_broadcast(
-          executor, value)
+          executor, value
+      )
 
 
 # pyformat: disable
@@ -149,20 +162,24 @@ class ComputeIntrinsicFederatedBroadcastTest(unittest.IsolatedAsyncioTestCase,
          clients_per_stack=3, stacks_per_layer=3, num_layers=3)),
 ])
 # pyformat: enable
-class ComputeIntrinsicFederatedValueTest(unittest.IsolatedAsyncioTestCase,
-                                         parameterized.TestCase):
+class ComputeIntrinsicFederatedValueTest(
+    unittest.IsolatedAsyncioTestCase, parameterized.TestCase
+):
 
   async def test_returns_value_with_unplaced_type_and_clients(self, executor):
     value, type_signature = executor_test_utils.create_whimsy_value_unplaced()
 
     value = await executor.create_value(value, type_signature)
     result = await executor_utils.compute_intrinsic_federated_value(
-        executor, value, placements.CLIENTS)
+        executor, value, placements.CLIENTS
+    )
 
     self.assertIsInstance(result, executor_value_base.ExecutorValue)
     expected_type = computation_types.at_clients(type_signature, all_equal=True)
-    self.assertEqual(result.type_signature.compact_representation(),
-                     expected_type.compact_representation())
+    self.assertEqual(
+        result.type_signature.compact_representation(),
+        expected_type.compact_representation(),
+    )
     actual_result = await result.compute()
     self.assertEqual(actual_result, 10.0)
 
@@ -171,18 +188,22 @@ class ComputeIntrinsicFederatedValueTest(unittest.IsolatedAsyncioTestCase,
 
     value = await executor.create_value(value, type_signature)
     result = await executor_utils.compute_intrinsic_federated_value(
-        executor, value, placements.SERVER)
+        executor, value, placements.SERVER
+    )
 
     self.assertIsInstance(result, executor_value_base.ExecutorValue)
     expected_type = computation_types.at_server(type_signature)
-    self.assertEqual(result.type_signature.compact_representation(),
-                     expected_type.compact_representation())
+    self.assertEqual(
+        result.type_signature.compact_representation(),
+        expected_type.compact_representation(),
+    )
     actual_result = await result.compute()
     self.assertEqual(actual_result, 10.0)
 
 
 class ComputeIntrinsicFederatedWeightedMeanTest(
-    unittest.IsolatedAsyncioTestCase, parameterized.TestCase):
+    unittest.IsolatedAsyncioTestCase, parameterized.TestCase
+):
 
   # pyformat: disable
   @parameterized.named_parameters([
@@ -208,7 +229,8 @@ class ComputeIntrinsicFederatedWeightedMeanTest(
       num_clients,
   ):
     value, type_signature = executor_test_utils.create_whimsy_value_at_clients(
-        num_clients)
+        num_clients
+    )
 
     # Weighted mean computed in Python
     expected_result = sum([x**2 for x in value]) / sum(value)
@@ -216,12 +238,15 @@ class ComputeIntrinsicFederatedWeightedMeanTest(
     value = await executor.create_value(value, type_signature)
     arg = await executor.create_struct([value, value])
     result = await executor_utils.compute_intrinsic_federated_weighted_mean(
-        executor, arg)
+        executor, arg
+    )
 
     self.assertIsInstance(result, executor_value_base.ExecutorValue)
     expected_type = computation_types.at_server(type_signature.member)
-    self.assertEqual(result.type_signature.compact_representation(),
-                     expected_type.compact_representation())
+    self.assertEqual(
+        result.type_signature.compact_representation(),
+        expected_type.compact_representation(),
+    )
     actual_result = await result.compute()
     self.assertEqual(actual_result, expected_result)
 
@@ -248,7 +273,8 @@ class ComputeIntrinsicFederatedWeightedMeanTest(
 
     with self.assertRaises(TypeError):
       await executor_utils.compute_intrinsic_federated_weighted_mean(
-          executor, arg)
+          executor, arg
+      )
 
   # pyformat: disable
   @parameterized.named_parameters([
@@ -266,13 +292,15 @@ class ComputeIntrinsicFederatedWeightedMeanTest(
       num_clients,
   ):
     value, type_signature = executor_test_utils.create_whimsy_value_at_clients(
-        num_clients)
+        num_clients
+    )
     value = await executor.create_value(value, type_signature)
     arg = await executor.create_struct([value])
 
     with self.assertRaises(TypeError):
       await executor_utils.compute_intrinsic_federated_weighted_mean(
-          executor, arg)
+          executor, arg
+      )
 
 
 class TypeUtilsTest(parameterized.TestCase):
@@ -295,10 +323,12 @@ class TypeUtilsTest(parameterized.TestCase):
        computation_types.TensorType(tf.int32)),
   ])
   # pyformat: enable
-  def test_reconcile_value_with_type_spec_returns_type(self, value, type_spec,
-                                                       expected_type):
+  def test_reconcile_value_with_type_spec_returns_type(
+      self, value, type_spec, expected_type
+  ):
     actual_type = executor_utils.reconcile_value_with_type_spec(
-        value, type_spec)
+        value, type_spec
+    )
     self.assertEqual(actual_type, expected_type)
 
   # pyformat: disable
@@ -311,7 +341,8 @@ class TypeUtilsTest(parameterized.TestCase):
   ])
   # pyformat: enable
   def test_reconcile_value_with_type_spec_raises_type_error(
-      self, value, type_spec):
+      self, value, type_spec
+  ):
     with self.assertRaises(TypeError):
       executor_utils.reconcile_value_with_type_spec(value, type_spec)
 
@@ -328,13 +359,16 @@ class TypeUtilsTest(parameterized.TestCase):
   ])
   # pyformat: enable
   def test_reconcile_value_type_with_type_spec_returns_type(
-      self, value_type, type_spec, expected_type):
+      self, value_type, type_spec, expected_type
+  ):
     actual_type = executor_utils.reconcile_value_type_with_type_spec(
-        value_type, type_spec)
+        value_type, type_spec
+    )
     self.assertEqual(actual_type, expected_type)
 
   def test_reconcile_value_type_with_type_spec_raises_type_error_value_type_and_bad_type_spec(
-      self):
+      self,
+  ):
     value_type = computation_types.TensorType(tf.int32)
     type_spec = computation_types.TensorType(tf.string)
 

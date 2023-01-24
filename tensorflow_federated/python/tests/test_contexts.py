@@ -29,12 +29,14 @@ def _create_local_python_mergeable_comp_context():
       tff.backends.native.create_local_async_python_execution_context()
   )
   return tff.backends.native.create_mergeable_comp_execution_context(
-      [async_context])
+      [async_context]
+  )
 
 
 def create_sequence_op_supporting_context():
   executor_factory = tff.framework.local_executor_factory(
-      support_sequence_ops=True)
+      support_sequence_ops=True
+  )
   return tff.framework.SyncExecutionContext(
       executor_fn=executor_factory,
       compiler_fn=tff.backends.native.compiler.transform_to_native_form,

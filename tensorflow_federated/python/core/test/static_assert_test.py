@@ -58,7 +58,8 @@ class AssertContainsSecAggTest(absltest.TestCase):
 
   def test_passes_on_bothagg(self):
     static_assert.assert_contains_secure_aggregation(
-        secure_and_unsecure_aggregation)
+        secure_and_unsecure_aggregation
+    )
 
 
 class AssertNotContainsSecAggTest(absltest.TestCase):
@@ -76,7 +77,8 @@ class AssertNotContainsSecAggTest(absltest.TestCase):
   def test_fails_on_bothagg(self):
     with self.assertRaises(AssertionError):
       static_assert.assert_not_contains_secure_aggregation(
-          secure_and_unsecure_aggregation)
+          secure_and_unsecure_aggregation
+      )
 
 
 class AssertContainsUnsecAggTest(absltest.TestCase):
@@ -94,7 +96,8 @@ class AssertContainsUnsecAggTest(absltest.TestCase):
 
   def test_passes_on_bothagg(self):
     static_assert.assert_contains_unsecure_aggregation(
-        secure_and_unsecure_aggregation)
+        secure_and_unsecure_aggregation
+    )
 
 
 class AssertNotContainsUnsecAggTest(absltest.TestCase):
@@ -108,12 +111,14 @@ class AssertNotContainsUnsecAggTest(absltest.TestCase):
   def test_fails_on_unsecagg(self):
     with self.assertRaises(AssertionError):
       static_assert.assert_not_contains_unsecure_aggregation(
-          unsecure_aggregation)
+          unsecure_aggregation
+      )
 
   def test_fails_on_bothagg(self):
     with self.assertRaises(AssertionError):
       static_assert.assert_not_contains_unsecure_aggregation(
-          secure_and_unsecure_aggregation)
+          secure_and_unsecure_aggregation
+      )
 
 
 if __name__ == '__main__':

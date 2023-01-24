@@ -24,7 +24,6 @@ R = TypeVar('R')
 
 
 def _add_decorator(fn: Callable[..., R], message: str) -> Callable[..., R]:
-
   @functools.wraps(fn)
   def wrapper(*args, **kwargs) -> R:
     warnings.warn(message=message, category=DeprecationWarning)
@@ -69,12 +68,16 @@ def deprecated(*args):
   if len(args) == 1:
     message = args[0]
     if not isinstance(message, str):
-      raise ValueError('When using `deprecated` as a decorator, the first '
-                       f'argument must be a `str`, got a: {type(message)}.')
+      raise ValueError(
+          'When using `deprecated` as a decorator, the first '
+          f'argument must be a `str`, got a: {type(message)}.'
+      )
     return functools.partial(_add_decorator, message=message)
   elif len(args) == 2:
     fn, message = args
     return _add_decorator(fn, message)
   else:
-    raise ValueError('`deprecated` only takes one or two positional arguments. '
-                     f'Got arguments: {args}')
+    raise ValueError(
+        '`deprecated` only takes one or two positional arguments. '
+        f'Got arguments: {args}'
+    )

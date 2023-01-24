@@ -90,8 +90,9 @@ class MapReduceFormCompilationError(Exception):
 
 def check_extraction_result(before_extraction, extracted):
   """Checks parsing TFF to TF has constructed an object of correct type."""
-  py_typecheck.check_type(before_extraction,
-                          building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(
+      before_extraction, building_blocks.ComputationBuildingBlock
+  )
   py_typecheck.check_type(extracted, building_blocks.ComputationBuildingBlock)
   if before_extraction.type_signature.is_function():
     if not extracted.is_compiled_computation():
@@ -99,26 +100,38 @@ def check_extraction_result(before_extraction, extracted):
           'We expect to parse down to a `building_blocks.CompiledComputation`, '
           'since we have the functional type {} after unwrapping placement. '
           'Instead we have the computation {} of type {}'.format(
-              before_extraction.type_signature, extracted,
-              extracted.type_signature))
+              before_extraction.type_signature,
+              extracted,
+              extracted.type_signature,
+          )
+      )
   else:
     if not extracted.is_call():
       raise MapReduceFormCompilationError(
           'We expect to parse down to a `building_blocks.Call`, since we have '
           'the non-functional type {} after unwrapping placement. Instead we '
           'have the computation {} of type {}'.format(
-              before_extraction.type_signature, extracted,
-              extracted.type_signature))
+              before_extraction.type_signature,
+              extracted,
+              extracted.type_signature,
+          )
+      )
     if not extracted.function.is_compiled_computation():
       raise MapReduceFormCompilationError(
           'We expect to parse a computation of the non-functional type {} down '
           'to a called TensorFlow block. Instead we hav a call to the '
           'computation {} of type {}. This likely means that we the '
           'computation {} represents a case the Tff-to-TF parser is missing.'
-          .format(before_extraction.type_signature, extracted.function,
-                  extracted.function.type_signature, before_extraction))
+          .format(
+              before_extraction.type_signature,
+              extracted.function,
+              extracted.function.type_signature,
+              before_extraction,
+          )
+      )
   if not before_extraction.type_signature.is_assignable_from(
-      extracted.type_signature):
+      extracted.type_signature
+  ):
     # In some situations, TF may can statically determine more type information
     # after TFF has coalesced computations (example: calling an identity
     # function of type (int32[?] -> int32[?]) on an argument of type int32[1]).
@@ -129,7 +142,9 @@ def check_extraction_result(before_extraction, extracted):
         'incorrect TFF type signature. Before extraction, we had a TFF '
         'object of type signature {}, but after extraction, we have instead '
         'a TFF object of type signature {}'.format(
-            before_extraction.type_signature, extracted.type_signature))
+            before_extraction.type_signature, extracted.type_signature
+        )
+    )
 
 
 def consolidate_and_extract_local_processing(comp, grappler_config_proto):
@@ -243,7 +258,7 @@ def consolidate_and_extract_local_processing(comp, grappler_config_proto):
 
 
 def unpack_compiled_computations(
-    comp: building_blocks.ComputationBuildingBlock
+    comp: building_blocks.ComputationBuildingBlock,
 ) -> building_blocks.ComputationBuildingBlock:
   """Deserializes compiled computations into building blocks where possible."""
 
@@ -253,8 +268,10 @@ def unpack_compiled_computations(
     kind = subcomp.proto.WhichOneof('computation')
     if kind == 'tensorflow' or kind == 'xla':
       return subcomp, False
-    return building_blocks.ComputationBuildingBlock.from_proto(
-        subcomp.proto), True
+    return (
+        building_blocks.ComputationBuildingBlock.from_proto(subcomp.proto),
+        True,
+    )
 
   comp, _ = transformation_utils.transform_postorder(comp, _unpack)
   return comp
@@ -305,7 +322,8 @@ def _evaluate_to_tensorflow(
 
       def call_concrete(*args):
         concrete = computation_impl.ConcreteComputation(
-            comp.proto, context_stack_impl.context_stack)
+            comp.proto, context_stack_impl.context_stack
+        )
         result = concrete(*args)
         if comp.type_signature.result.is_struct():
           return structure.from_container(result, recursive=True)
@@ -314,7 +332,8 @@ def _evaluate_to_tensorflow(
       return call_concrete
     if kind == 'xla':
       raise XlaToTensorFlowError(
-          f'Cannot compile XLA subcomptation to TensorFlow:\n{comp}')
+          f'Cannot compile XLA subcomptation to TensorFlow:\n{comp}'
+      )
     raise ValueError(f'Unexpected compiled computation kind:\n{kind}')
   if comp.is_call():
     function = _evaluate_to_tensorflow(comp.function, bindings)
@@ -343,7 +362,8 @@ def _evaluate_to_tensorflow(
     return structure.Struct(elements)
   if comp.is_intrinsic() or comp.is_data() or comp.is_placement():
     raise ExternalBlockToTensorFlowError(
-        f'Cannot evaluate intrinsic, data, or placement blocks to tensorflow, found {comp}'
+        'Cannot evaluate intrinsic, data, or placement blocks to tensorflow,'
+        f' found {comp}'
     )
 
 
@@ -368,14 +388,17 @@ def compile_local_computation_to_tensorflow(
   if not comp.type_signature.is_function():
     lambda_wrapped = building_blocks.Lambda(None, None, comp)
     return building_blocks.Call(
-        compile_local_computation_to_tensorflow(lambda_wrapped), None)
+        compile_local_computation_to_tensorflow(lambda_wrapped), None
+    )
 
   parameter_type = comp.type_signature.parameter
   type_analysis.check_tensorflow_compatible_type(parameter_type)
   type_analysis.check_tensorflow_compatible_type(comp.type_signature.result)
 
-  if (comp.is_compiled_computation() and
-      comp.proto.WhichOneof('computation') == 'tensorflow'):
+  if (
+      comp.is_compiled_computation()
+      and comp.proto.WhichOneof('computation') == 'tensorflow'
+  ):
     return comp
 
   # Ensure that unused values are removed and that reference bindings have
@@ -389,11 +412,13 @@ def compile_local_computation_to_tensorflow(
     @tensorflow_computation.tf_computation
     def result_computation():
       return _evaluate_to_tensorflow(to_evaluate, {})
+
   else:
     name_generator = building_block_factory.unique_name_generator(comp)
     parameter_name = next(name_generator)
     to_evaluate = building_blocks.Call(
-        comp, building_blocks.Reference(parameter_name, parameter_type))
+        comp, building_blocks.Reference(parameter_name, parameter_type)
+    )
 
     @tensorflow_computation.tf_computation(parameter_type)
     def result_computation(arg):
@@ -415,12 +440,18 @@ def compile_local_subcomputations_to_tensorflow(
     cached = local_cache.get(comp, None)
     if cached is not None:
       return cached
-    if (comp.is_intrinsic() or comp.is_data() or comp.is_placement() or
-        type_analysis.contains_federated_types(comp.type_signature)):
+    if (
+        comp.is_intrinsic()
+        or comp.is_data()
+        or comp.is_placement()
+        or type_analysis.contains_federated_types(comp.type_signature)
+    ):
       local_cache[comp] = False
       return False
-    if (comp.is_compiled_computation() and
-        comp.proto.WhichOneof('computation') == 'xla'):
+    if (
+        comp.is_compiled_computation()
+        and comp.proto.WhichOneof('computation') == 'xla'
+    ):
       local_cache[comp] = False
       return False
     for child in comp.children():
@@ -472,14 +503,17 @@ def parse_tff_to_tf(comp, grappler_config_proto):
   # TODO(b/184883078): Remove this check and trust Grappler to disable itself
   # based on the `disable_meta_optimizer` config.
   should_skip_grappler = (
-      grappler_config_proto.HasField('graph_options') and
-      grappler_config_proto.graph_options.HasField('rewrite_options') and
-      grappler_config_proto.graph_options.rewrite_options.disable_meta_optimizer
+      grappler_config_proto.HasField('graph_options')
+      and grappler_config_proto.graph_options.HasField('rewrite_options')
+      and grappler_config_proto.graph_options.rewrite_options.disable_meta_optimizer
   )
   if not should_skip_grappler:
     logging.info('Using Grappler on `MapReduceForm` TensorFlow graphs.')
-    tf_parsed, _ = compiled_computation_transformations.optimize_tensorflow_graphs(
-        tf_parsed, grappler_config_proto)
+    tf_parsed, _ = (
+        compiled_computation_transformations.optimize_tensorflow_graphs(
+            tf_parsed, grappler_config_proto
+        )
+    )
 
   return tf_parsed
 
@@ -514,31 +548,42 @@ def concatenate_function_outputs(first_function, second_function):
   tree_analysis.check_has_unique_names(second_function)
 
   if first_function.parameter_type != second_function.parameter_type:
-    raise TypeError('Must pass two functions which declare the same parameter '
-                    'type to `concatenate_function_outputs`; you have passed '
-                    'one function which declared a parameter of type {}, and '
-                    'another which declares a parameter of type {}'.format(
-                        first_function.type_signature,
-                        second_function.type_signature))
+    raise TypeError(
+        'Must pass two functions which declare the same parameter '
+        'type to `concatenate_function_outputs`; you have passed '
+        'one function which declared a parameter of type {}, and '
+        'another which declares a parameter of type {}'.format(
+            first_function.type_signature, second_function.type_signature
+        )
+    )
 
   def _rename_first_function_arg(comp):
     if comp.is_reference() and comp.name == first_function.parameter_name:
       if comp.type_signature != second_function.parameter_type:
-        raise AssertionError('{}, {}'.format(comp.type_signature,
-                                             second_function.parameter_type))
-      return building_blocks.Reference(second_function.parameter_name,
-                                       comp.type_signature), True
+        raise AssertionError(
+            '{}, {}'.format(comp.type_signature, second_function.parameter_type)
+        )
+      return (
+          building_blocks.Reference(
+              second_function.parameter_name, comp.type_signature
+          ),
+          True,
+      )
     return comp, False
 
   first_function, _ = transformation_utils.transform_postorder(
-      first_function, _rename_first_function_arg)
+      first_function, _rename_first_function_arg
+  )
 
   concatenated_function = building_blocks.Lambda(
-      second_function.parameter_name, second_function.parameter_type,
-      building_blocks.Struct([first_function.result, second_function.result]))
+      second_function.parameter_name,
+      second_function.parameter_type,
+      building_blocks.Struct([first_function.result, second_function.result]),
+  )
 
   renamed, _ = tree_transformations.uniquify_reference_names(
-      concatenated_function)
+      concatenated_function
+  )
 
   return renamed
 
@@ -574,19 +619,29 @@ def normalize_all_equal_bit(comp):
   def _normalize_reference_bit(comp):
     if not comp.type_signature.is_federated():
       return comp, False
-    return building_blocks.Reference(
-        comp.name,
-        computation_types.FederatedType(comp.type_signature.member,
-                                        comp.type_signature.placement)), True
+    return (
+        building_blocks.Reference(
+            comp.name,
+            computation_types.FederatedType(
+                comp.type_signature.member, comp.type_signature.placement
+            ),
+        ),
+        True,
+    )
 
   def _normalize_lambda_bit(comp):
     if not comp.parameter_type.is_federated():
       return comp, False
-    return building_blocks.Lambda(
-        comp.parameter_name,
-        computation_types.FederatedType(comp.parameter_type.member,
-                                        comp.parameter_type.placement),
-        comp.result), True
+    return (
+        building_blocks.Lambda(
+            comp.parameter_name,
+            computation_types.FederatedType(
+                comp.parameter_type.member, comp.parameter_type.placement
+            ),
+            comp.result,
+        ),
+        True,
+    )
 
   def _normalize_intrinsic_bit(comp):
     """Replaces federated map all equal with federated map."""
@@ -594,15 +649,19 @@ def normalize_all_equal_bit(comp):
       return comp, False
     parameter_type = [
         comp.type_signature.parameter[0],
-        computation_types.FederatedType(comp.type_signature.parameter[1].member,
-                                        placements.CLIENTS)
+        computation_types.FederatedType(
+            comp.type_signature.parameter[1].member, placements.CLIENTS
+        ),
     ]
     intrinsic_type = computation_types.FunctionType(
         parameter_type,
-        computation_types.FederatedType(comp.type_signature.result.member,
-                                        placements.CLIENTS))
-    new_intrinsic = building_blocks.Intrinsic(intrinsic_defs.FEDERATED_MAP.uri,
-                                              intrinsic_type)
+        computation_types.FederatedType(
+            comp.type_signature.result.member, placements.CLIENTS
+        ),
+    )
+    new_intrinsic = building_blocks.Intrinsic(
+        intrinsic_defs.FEDERATED_MAP.uri, intrinsic_type
+    )
     return new_intrinsic, True
 
   def _transform_switch(comp):

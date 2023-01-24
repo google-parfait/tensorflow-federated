@@ -19,12 +19,14 @@ from tensorflow_federated.python.core.impl.execution_contexts import sync_execut
 from tensorflow_federated.python.core.impl.executor_stacks import python_executor_stacks
 
 
-def create_test_python_execution_context(default_num_clients=0,
-                                         clients_per_thread=1):
+def create_test_python_execution_context(
+    default_num_clients=0, clients_per_thread=1
+):
   """Creates an execution context that executes computations locally."""
   factory = python_executor_stacks.local_executor_factory(
       default_num_clients=default_num_clients,
-      clients_per_thread=clients_per_thread)
+      clients_per_thread=clients_per_thread,
+  )
 
   return sync_execution_context.SyncExecutionContext(
       executor_fn=factory,
@@ -32,10 +34,12 @@ def create_test_python_execution_context(default_num_clients=0,
   )
 
 
-def set_test_python_execution_context(default_num_clients=0,
-                                      clients_per_thread=1):
+def set_test_python_execution_context(
+    default_num_clients=0, clients_per_thread=1
+):
   """Sets an execution context that executes computations locally."""
   context = create_test_python_execution_context(
       default_num_clients=default_num_clients,
-      clients_per_thread=clients_per_thread)
+      clients_per_thread=clients_per_thread,
+  )
   context_stack_impl.context_stack.set_default_context(context)

@@ -32,7 +32,8 @@ def create_autoencoder_task_from_datasets(
     train_client_spec: client_spec.ClientSpec,
     eval_client_spec: Optional[client_spec.ClientSpec],
     train_data: client_data.ClientData,
-    test_data: client_data.ClientData) -> baseline_task.BaselineTask:
+    test_data: client_data.ClientData,
+) -> baseline_task.BaselineTask:
   """Creates a baseline task for autoencoding on EMNIST.
 
   Args:
@@ -52,18 +53,22 @@ def create_autoencoder_task_from_datasets(
 
   if eval_client_spec is None:
     eval_client_spec = client_spec.ClientSpec(
-        num_epochs=1, batch_size=64, shuffle_buffer_size=1)
+        num_epochs=1, batch_size=64, shuffle_buffer_size=1
+    )
 
   train_preprocess_fn = emnist_preprocessing.create_preprocess_fn(
-      train_client_spec, emnist_task=emnist_task)
+      train_client_spec, emnist_task=emnist_task
+  )
   eval_preprocess_fn = emnist_preprocessing.create_preprocess_fn(
-      eval_client_spec, emnist_task=emnist_task)
+      eval_client_spec, emnist_task=emnist_task
+  )
   task_datasets = task_data.BaselineTaskDatasets(
       train_data=train_data,
       test_data=test_data,
       validation_data=None,
       train_preprocess_fn=train_preprocess_fn,
-      eval_preprocess_fn=eval_preprocess_fn)
+      eval_preprocess_fn=eval_preprocess_fn,
+  )
 
   def model_fn() -> model.Model:
     return keras_utils.from_keras_model(
@@ -72,8 +77,9 @@ def create_autoencoder_task_from_datasets(
         input_spec=task_datasets.element_type_structure,
         metrics=[
             tf.keras.metrics.MeanSquaredError(),
-            tf.keras.metrics.MeanAbsoluteError()
-        ])
+            tf.keras.metrics.MeanAbsoluteError(),
+        ],
+    )
 
   return baseline_task.BaselineTask(task_datasets, model_fn)
 
@@ -83,7 +89,8 @@ def create_autoencoder_task(
     eval_client_spec: Optional[client_spec.ClientSpec] = None,
     only_digits: bool = False,
     cache_dir: Optional[str] = None,
-    use_synthetic_data: bool = False) -> baseline_task.BaselineTask:
+    use_synthetic_data: bool = False,
+) -> baseline_task.BaselineTask:
   """Creates a baseline task for autoencoding on EMNIST.
 
   This task involves performing autoencoding on the EMNIST dataset using a
@@ -120,8 +127,9 @@ def create_autoencoder_task(
     emnist_test = synthetic_data
   else:
     emnist_train, emnist_test = emnist.load_data(
-        only_digits=only_digits, cache_dir=cache_dir)
+        only_digits=only_digits, cache_dir=cache_dir
+    )
 
-  return create_autoencoder_task_from_datasets(train_client_spec,
-                                               eval_client_spec, emnist_train,
-                                               emnist_test)
+  return create_autoencoder_task_from_datasets(
+      train_client_spec, eval_client_spec, emnist_train, emnist_test
+  )

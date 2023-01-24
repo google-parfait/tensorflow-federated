@@ -31,7 +31,8 @@ def main(argv):
 
   channel = grpc.insecure_channel('{}:{}'.format(FLAGS.host, FLAGS.port))
   context = tff.backends.native.create_remote_python_execution_context(
-      channels=[channel])
+      channels=[channel]
+  )
   tff.framework.set_default_context(context)
 
   print(tff.federated_computation(lambda: 'Hello World')())

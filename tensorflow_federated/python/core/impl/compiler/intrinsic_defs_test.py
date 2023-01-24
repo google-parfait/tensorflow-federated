@@ -19,7 +19,6 @@ from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 
 
 def _get_intrinsic_named_parameters():
-
   def _predicate(obj):
     return isinstance(obj, intrinsic_defs.IntrinsicDef)
 
@@ -41,33 +40,65 @@ class IntrinsicDefsTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('federated_broadcast', 'FEDERATED_BROADCAST', '(T@SERVER -> T@CLIENTS)'),
-      ('federated_eval_at_clients', 'FEDERATED_EVAL_AT_CLIENTS',
-       '(( -> T) -> {T}@CLIENTS)'),
-      ('federated_eval_at_server', 'FEDERATED_EVAL_AT_SERVER',
-       '(( -> T) -> T@SERVER)'),
-      ('federated_map', 'FEDERATED_MAP',
-       '(<(T -> U),{T}@CLIENTS> -> {U}@CLIENTS)'),
-      ('federated_secure_modular_sum', 'FEDERATED_SECURE_MODULAR_SUM',
-       '(<{V}@CLIENTS,M> -> V@SERVER)'),
-      ('federated_secure_sum', 'FEDERATED_SECURE_SUM',
-       '(<{V}@CLIENTS,M> -> V@SERVER)'),
-      ('federated_secure_sum_bitwidth', 'FEDERATED_SECURE_SUM_BITWIDTH',
-       '(<{V}@CLIENTS,B> -> V@SERVER)'),
-      ('federated_secure_select', 'FEDERATED_SECURE_SELECT',
-       '(<{Ks}@CLIENTS,int32@SERVER,T@SERVER,(<T,int32> -> U)> -> {U*}@CLIENTS)'
+      (
+          'federated_eval_at_clients',
+          'FEDERATED_EVAL_AT_CLIENTS',
+          '(( -> T) -> {T}@CLIENTS)',
       ),
-      ('federated_select', 'FEDERATED_SELECT',
-       '(<{Ks}@CLIENTS,int32@SERVER,T@SERVER,(<T,int32> -> U)> -> {U*}@CLIENTS)'
+      (
+          'federated_eval_at_server',
+          'FEDERATED_EVAL_AT_SERVER',
+          '(( -> T) -> T@SERVER)',
+      ),
+      (
+          'federated_map',
+          'FEDERATED_MAP',
+          '(<(T -> U),{T}@CLIENTS> -> {U}@CLIENTS)',
+      ),
+      (
+          'federated_secure_modular_sum',
+          'FEDERATED_SECURE_MODULAR_SUM',
+          '(<{V}@CLIENTS,M> -> V@SERVER)',
+      ),
+      (
+          'federated_secure_sum',
+          'FEDERATED_SECURE_SUM',
+          '(<{V}@CLIENTS,M> -> V@SERVER)',
+      ),
+      (
+          'federated_secure_sum_bitwidth',
+          'FEDERATED_SECURE_SUM_BITWIDTH',
+          '(<{V}@CLIENTS,B> -> V@SERVER)',
+      ),
+      (
+          'federated_secure_select',
+          'FEDERATED_SECURE_SELECT',
+          (
+              '(<{Ks}@CLIENTS,int32@SERVER,T@SERVER,(<T,int32> -> U)> ->'
+              ' {U*}@CLIENTS)'
+          ),
+      ),
+      (
+          'federated_select',
+          'FEDERATED_SELECT',
+          (
+              '(<{Ks}@CLIENTS,int32@SERVER,T@SERVER,(<T,int32> -> U)> ->'
+              ' {U*}@CLIENTS)'
+          ),
       ),
       ('federated_sum', 'FEDERATED_SUM', '({T}@CLIENTS -> T@SERVER)'),
-      ('federated_zip_at_clients', 'FEDERATED_ZIP_AT_CLIENTS',
-       '(T -> {U}@CLIENTS)'),
+      (
+          'federated_zip_at_clients',
+          'FEDERATED_ZIP_AT_CLIENTS',
+          '(T -> {U}@CLIENTS)',
+      ),
       ('federated_zip_at_server', 'FEDERATED_ZIP_AT_SERVER', '(T -> U@SERVER)'),
   )
   def test_type_signature_strings(self, name, type_str):
     intrinsic = getattr(intrinsic_defs, name)
-    self.assertEqual(intrinsic.type_signature.compact_representation(),
-                     type_str)
+    self.assertEqual(
+        intrinsic.type_signature.compact_representation(), type_str
+    )
 
 
 if __name__ == '__main__':

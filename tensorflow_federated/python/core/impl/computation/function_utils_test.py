@@ -36,19 +36,23 @@ class FunctionUtilsTest(parameterized.TestCase):
     # In a tf.function with a defined input signature, **kwargs or default
     # values are not allowed, but *args are, and the input signature may overlap
     # with *args.
-    fn = tf.function(lambda x, y, *z: None, (
-        tf.TensorSpec(None, tf.int32),
-        tf.TensorSpec(None, tf.bool),
-        tf.TensorSpec(None, tf.float32),
-        tf.TensorSpec(None, tf.float32),
-    ))
+    fn = tf.function(
+        lambda x, y, *z: None,
+        (
+            tf.TensorSpec(None, tf.int32),
+            tf.TensorSpec(None, tf.bool),
+            tf.TensorSpec(None, tf.float32),
+            tf.TensorSpec(None, tf.float32),
+        ),
+    )
     self.assertEqual(
         collections.OrderedDict(function_utils.get_signature(fn).parameters),
         collections.OrderedDict(
             x=inspect.Parameter('x', inspect.Parameter.POSITIONAL_OR_KEYWORD),
             y=inspect.Parameter('y', inspect.Parameter.POSITIONAL_OR_KEYWORD),
             z=inspect.Parameter('z', inspect.Parameter.VAR_POSITIONAL),
-        ))
+        ),
+    )
 
   def test_get_defun_argspec_with_untyped_non_eager_defun(self):
     # In a tf.function with no input signature, the same restrictions as in a
@@ -60,10 +64,10 @@ class FunctionUtilsTest(parameterized.TestCase):
             x=inspect.Parameter('x', inspect.Parameter.POSITIONAL_OR_KEYWORD),
             y=inspect.Parameter('y', inspect.Parameter.POSITIONAL_OR_KEYWORD),
             z=inspect.Parameter('z', inspect.Parameter.VAR_POSITIONAL),
-        ))
+        ),
+    )
 
   def test_get_signature_with_class_instance_method(self):
-
     class C:
 
       def __init__(self, x):
@@ -77,10 +81,11 @@ class FunctionUtilsTest(parameterized.TestCase):
     self.assertEqual(
         signature.parameters,
         collections.OrderedDict(
-            y=inspect.Parameter('y', inspect.Parameter.POSITIONAL_OR_KEYWORD)))
+            y=inspect.Parameter('y', inspect.Parameter.POSITIONAL_OR_KEYWORD)
+        ),
+    )
 
   def test_get_signature_with_class_property(self):
-
     class C:
 
       @property
@@ -92,7 +97,6 @@ class FunctionUtilsTest(parameterized.TestCase):
       function_utils.get_signature(c.x)
 
   def test_as_wrapper_with_classmethod(self):
-
     class C:
 
       @classmethod
@@ -103,7 +107,9 @@ class FunctionUtilsTest(parameterized.TestCase):
     self.assertEqual(
         signature.parameters,
         collections.OrderedDict(
-            x=inspect.Parameter('x', inspect.Parameter.POSITIONAL_OR_KEYWORD)))
+            x=inspect.Parameter('x', inspect.Parameter.POSITIONAL_OR_KEYWORD)
+        ),
+    )
 
   # pyformat: disable
   @parameterized.parameters(
@@ -150,11 +156,16 @@ class FunctionUtilsTest(parameterized.TestCase):
         raise AssertionError(  # pylint: disable=raise-missing-from
             'With signature `{!s}`, args {!s}, kwargs {!s}, expected bound '
             'args {!s} and error {!s}, tested function returned {!s} and the '
-            'test has failed with message: {!s}'.format(signature, args, kwargs,
-                                                        expected_callargs,
-                                                        expected_error,
-                                                        result_callargs,
-                                                        test_err))
+            'test has failed with message: {!s}'.format(
+                signature,
+                args,
+                kwargs,
+                expected_callargs,
+                expected_error,
+                result_callargs,
+                test_err,
+            )
+        )
     else:
       with self.assertRaises(TypeError):
         _ = signature.bind(*args, **kwargs)
@@ -179,11 +190,14 @@ class FunctionUtilsTest(parameterized.TestCase):
        collections.OrderedDict(b=tf.bool)),
   )
   # pyformat: enable
-  def test_is_signature_compatible_with_types_true(self, signature, *args,
-                                                   **kwargs):
+  def test_is_signature_compatible_with_types_true(
+      self, signature, *args, **kwargs
+  ):
     self.assertFalse(
         function_utils.is_signature_compatible_with_types(
-            signature, *args, **kwargs))
+            signature, *args, **kwargs
+        )
+    )
 
   # pyformat: disable
   @parameterized.named_parameters(
@@ -197,11 +211,14 @@ class FunctionUtilsTest(parameterized.TestCase):
        collections.OrderedDict(b=tf.bool)),
   )
   # pyformat: enable
-  def test_is_signature_compatible_with_types_false(self, signature, *args,
-                                                    **kwargs):
+  def test_is_signature_compatible_with_types_false(
+      self, signature, *args, **kwargs
+  ):
     self.assertFalse(
         function_utils.is_signature_compatible_with_types(
-            signature, *args, **kwargs))
+            signature, *args, **kwargs
+        )
+    )
 
   # pyformat: disable
   @parameterized.named_parameters(
@@ -224,11 +241,13 @@ class FunctionUtilsTest(parameterized.TestCase):
        [1], {'a': 2}),
   )
   # pyformat: enable
-  def test_unpack_args_from_structure(self, tuple_with_args, expected_args,
-                                      expected_kwargs):
+  def test_unpack_args_from_structure(
+      self, tuple_with_args, expected_args, expected_kwargs
+  ):
     self.assertEqual(
         function_utils.unpack_args_from_struct(tuple_with_args),
-        (expected_args, expected_kwargs))
+        (expected_args, expected_kwargs),
+    )
 
   # pyformat: disable
   @parameterized.named_parameters(
@@ -241,27 +260,29 @@ class FunctionUtilsTest(parameterized.TestCase):
        [('a', tf.int32), ('b', tf.bool)], [], {'a': tf.int32, 'b': tf.bool}),
   )
   # pyformat: enable
-  def test_unpack_args_from_struct_type(self, tuple_with_args, expected_args,
-                                        expected_kwargs):
+  def test_unpack_args_from_struct_type(
+      self, tuple_with_args, expected_args, expected_kwargs
+  ):
     args, kwargs = function_utils.unpack_args_from_struct(tuple_with_args)
     self.assertEqual(len(args), len(expected_args))
     for idx, arg in enumerate(args):
       self.assertTrue(
-          arg.is_equivalent_to(computation_types.to_type(expected_args[idx])))
+          arg.is_equivalent_to(computation_types.to_type(expected_args[idx]))
+      )
     self.assertEqual(set(kwargs.keys()), set(expected_kwargs.keys()))
     for k, v in kwargs.items():
       self.assertTrue(
-          v.is_equivalent_to(computation_types.to_type(expected_kwargs[k])))
+          v.is_equivalent_to(computation_types.to_type(expected_kwargs[k]))
+      )
 
   def test_pack_args_into_struct_without_type_spec(self):
     self.assertEqual(
         function_utils.pack_args_into_struct([1], {'a': 10}),
-        structure.Struct([(None, 1), ('a', 10)]))
+        structure.Struct([(None, 1), ('a', 10)]),
+    )
     self.assertIn(
-        function_utils.pack_args_into_struct([1, 2], {
-            'a': 10,
-            'b': 20
-        }), [
+        function_utils.pack_args_into_struct([1, 2], {'a': 10, 'b': 20}),
+        [
             structure.Struct([
                 (None, 1),
                 (None, 2),
@@ -273,19 +294,20 @@ class FunctionUtilsTest(parameterized.TestCase):
                 (None, 2),
                 ('b', 20),
                 ('a', 10),
-            ])
-        ])
+            ]),
+        ],
+    )
     self.assertIn(
-        function_utils.pack_args_into_struct([], {
-            'a': 10,
-            'b': 20
-        }), [
+        function_utils.pack_args_into_struct([], {'a': 10, 'b': 20}),
+        [
             structure.Struct([('a', 10), ('b', 20)]),
-            structure.Struct([('b', 20), ('a', 10)])
-        ])
+            structure.Struct([('b', 20), ('a', 10)]),
+        ],
+    )
     self.assertEqual(
         function_utils.pack_args_into_struct([1], {}),
-        structure.Struct([(None, 1)]))
+        structure.Struct([(None, 1)]),
+    )
 
   # pyformat: disable
   @parameterized.named_parameters(
@@ -302,17 +324,18 @@ class FunctionUtilsTest(parameterized.TestCase):
        [('x', tf.int32), ('y', tf.bool)], [('x', 1), ('y', True)]))
   # pyformat: enable
   def test_pack_args_into_struct_with_type_spec_expect_success(
-      self, args, kwargs, type_spec, elements):
+      self, args, kwargs, type_spec, elements
+  ):
     self.assertEqual(
         function_utils.pack_args_into_struct(args, kwargs, type_spec),
-        structure.Struct(elements))
+        structure.Struct(elements),
+    )
 
   def test_pack_args_into_struct_named_to_unnamed_fails(self):
     with self.assertRaises(TypeError):
-      function_utils.pack_args_into_struct([], {
-          'x': 1,
-          'y': True
-      }, [tf.int32, tf.bool])
+      function_utils.pack_args_into_struct(
+          [], {'x': 1, 'y': True}, [tf.int32, tf.bool]
+      )
 
   # pyformat: disable
   @parameterized.named_parameters(
@@ -329,7 +352,8 @@ class FunctionUtilsTest(parameterized.TestCase):
   def test_pack_args(self, parameter_type, args, kwargs, expected_value_string):
     self.assertEqual(
         str(function_utils.pack_args(parameter_type, args, kwargs)),
-        expected_value_string)
+        expected_value_string,
+    )
 
   # pyformat: disable
   @parameterized.named_parameters(
@@ -348,11 +372,13 @@ class FunctionUtilsTest(parameterized.TestCase):
        [tf.int32], None, structure.Struct([(None, 10)]), '[10]'),
   )
   # pyformat: enable
-  def test_wrap_as_zero_or_one_arg_callable(self, fn, parameter_type, unpack,
-                                            arg, expected_result):
+  def test_wrap_as_zero_or_one_arg_callable(
+      self, fn, parameter_type, unpack, arg, expected_result
+  ):
     parameter_type = computation_types.to_type(parameter_type)
     unpack_arguments = function_utils.create_argument_unpacking_fn(
-        fn, parameter_type, unpack)
+        fn, parameter_type, unpack
+    )
     args, kwargs = unpack_arguments(arg)
     actual_result = fn(*args, **kwargs)
     self.assertEqual(actual_result, expected_result)
@@ -361,7 +387,6 @@ class FunctionUtilsTest(parameterized.TestCase):
 class PolymorphicComputationTest(absltest.TestCase):
 
   def test_call_returns_result(self):
-
     class TestContext(context_base.SyncContext):
 
       def ingest(self, val, type_spec):
@@ -369,7 +394,8 @@ class PolymorphicComputationTest(absltest.TestCase):
 
       def invoke(self, comp, arg):
         return 'name={},type={},arg={},unpack={}'.format(
-            comp.name, comp.type_signature.parameter, arg, comp.unpack)
+            comp.name, comp.type_signature.parameter, arg, comp.unpack
+        )
 
     class TestContextStack(context_stack_base.ContextStack):
 
@@ -392,10 +418,12 @@ class PolymorphicComputationTest(absltest.TestCase):
       def __init__(self, name, unpack, parameter_type):
         self._name = name
         self._unpack = unpack
-        type_signature = computation_types.FunctionType(parameter_type,
-                                                        tf.string)
+        type_signature = computation_types.FunctionType(
+            parameter_type, tf.string
+        )
         test_proto = pb.Computation(
-            type=type_serialization.serialize_type(type_signature))
+            type=type_serialization.serialize_type(type_signature)
+        )
         super().__init__(test_proto, context_stack, type_signature)
 
       @property
@@ -419,24 +447,30 @@ class PolymorphicComputationTest(absltest.TestCase):
 
     self.assertEqual(fn(10), 'name=1,type=<int32>,arg=<10>,unpack=True')
     self.assertEqual(
-        fn(20, x=True),
-        'name=2,type=<int32,x=bool>,arg=<20,x=True>,unpack=True')
+        fn(20, x=True), 'name=2,type=<int32,x=bool>,arg=<20,x=True>,unpack=True'
+    )
     fn_with_bool_arg = fn.fn_for_argument_type(
-        computation_types.to_type(tf.bool))
+        computation_types.to_type(tf.bool)
+    )
     self.assertEqual(
-        fn_with_bool_arg(True), 'name=3,type=bool,arg=True,unpack=None')
+        fn_with_bool_arg(True), 'name=3,type=bool,arg=True,unpack=None'
+    )
     self.assertEqual(
-        fn(30, x=40), 'name=4,type=<int32,x=int32>,arg=<30,x=40>,unpack=True')
+        fn(30, x=40), 'name=4,type=<int32,x=int32>,arg=<30,x=40>,unpack=True'
+    )
     self.assertEqual(fn(50), 'name=1,type=<int32>,arg=<50>,unpack=True')
     self.assertEqual(
-        fn(0, x=False),
-        'name=2,type=<int32,x=bool>,arg=<0,x=False>,unpack=True')
+        fn(0, x=False), 'name=2,type=<int32,x=bool>,arg=<0,x=False>,unpack=True'
+    )
     fn_with_bool_arg = fn.fn_for_argument_type(
-        computation_types.to_type(tf.bool))
+        computation_types.to_type(tf.bool)
+    )
     self.assertEqual(
-        fn_with_bool_arg(False), 'name=3,type=bool,arg=False,unpack=None')
+        fn_with_bool_arg(False), 'name=3,type=bool,arg=False,unpack=None'
+    )
     self.assertEqual(
-        fn(60, x=70), 'name=4,type=<int32,x=int32>,arg=<60,x=70>,unpack=True')
+        fn(60, x=70), 'name=4,type=<int32,x=int32>,arg=<60,x=70>,unpack=True'
+    )
 
 
 if __name__ == '__main__':

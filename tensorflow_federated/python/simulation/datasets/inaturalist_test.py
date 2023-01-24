@@ -21,7 +21,7 @@ from tensorflow_federated.python.simulation.datasets import vision_datasets_util
 
 EXPECTED_ELEMENT_TYPE = collections.OrderedDict([
     ('image/decoded', tf.TensorSpec(shape=(128, 128, 3), dtype=tf.uint8)),
-    ('class', tf.TensorSpec(shape=(), dtype=tf.int64))
+    ('class', tf.TensorSpec(shape=(), dtype=tf.int64)),
 ])
 
 
@@ -44,40 +44,40 @@ class INatualistTest(tf.test.TestCase):
     image_map = {}
     for image_name, content in images.items():
       tmp_file = tmp_dir.create_file(
-          file_path=image_name + '.jpg', content=content)
+          file_path=image_name + '.jpg', content=content
+      )
       image_map[image_name] = tmp_file.full_path
 
-    mapping = [{
-        'image_id': 'image_1',
-        'class': '0'
-    }, {
-        'image_id': 'image_2',
-        'class': '12'
-    }]
+    mapping = [
+        {'image_id': 'image_1', 'class': '0'},
+        {'image_id': 'image_2', 'class': '12'},
+    ]
 
     expected_features = [
         tf.train.Example(
             features=tf.train.Features(
                 feature={
-                    vision_datasets_utils.KEY_IMAGE_BYTES:
-                        tf.train.Feature(
-                            bytes_list=tf.train.BytesList(
-                                value=[b'somebytes'])),
-                    vision_datasets_utils.KEY_CLASS:
-                        tf.train.Feature(
-                            int64_list=tf.train.Int64List(value=[0])),
-                })),
+                    vision_datasets_utils.KEY_IMAGE_BYTES: tf.train.Feature(
+                        bytes_list=tf.train.BytesList(value=[b'somebytes'])
+                    ),
+                    vision_datasets_utils.KEY_CLASS: tf.train.Feature(
+                        int64_list=tf.train.Int64List(value=[0])
+                    ),
+                }
+            )
+        ),
         tf.train.Example(
             features=tf.train.Features(
                 feature={
-                    vision_datasets_utils.KEY_IMAGE_BYTES:
-                        tf.train.Feature(
-                            bytes_list=tf.train.BytesList(
-                                value=[b'someotherbytes'])),
-                    vision_datasets_utils.KEY_CLASS:
-                        tf.train.Feature(
-                            int64_list=tf.train.Int64List(value=[12])),
-                })),
+                    vision_datasets_utils.KEY_IMAGE_BYTES: tf.train.Feature(
+                        bytes_list=tf.train.BytesList(value=[b'someotherbytes'])
+                    ),
+                    vision_datasets_utils.KEY_CLASS: tf.train.Feature(
+                        int64_list=tf.train.Int64List(value=[12])
+                    ),
+                }
+            )
+        ),
     ]
 
     features = inaturalist._create_dataset_with_mapping(image_map, mapping)

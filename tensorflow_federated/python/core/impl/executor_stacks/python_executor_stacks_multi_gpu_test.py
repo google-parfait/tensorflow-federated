@@ -28,7 +28,6 @@ from tensorflow_federated.python.tensorflow_libs import tensorflow_test_utils
 
 
 def _create_tff_parallel_clients_with_dataset_reduce():
-
   @tf.function
   def reduce_fn(x, y):
     return x + y
@@ -38,13 +37,15 @@ def _create_tff_parallel_clients_with_dataset_reduce():
     return ds.reduce(initial_val, reduce_fn)
 
   @tensorflow_computation.tf_computation(
-      computation_types.SequenceType(tf.int64))
+      computation_types.SequenceType(tf.int64)
+  )
   def dataset_reduce_fn_wrapper(ds):
     initial_val = tf.Variable(np.int64(1.0))
     return dataset_reduce_fn(ds, initial_val)
 
   @federated_computation.federated_computation(
-      computation_types.at_clients(computation_types.SequenceType(tf.int64)))
+      computation_types.at_clients(computation_types.SequenceType(tf.int64))
+  )
   def parallel_client_run(client_datasets):
     return intrinsics.federated_map(dataset_reduce_fn_wrapper, client_datasets)
 
@@ -52,7 +53,6 @@ def _create_tff_parallel_clients_with_dataset_reduce():
 
 
 def _create_tff_parallel_clients_with_iter_dataset():
-
   @tf.function
   def reduce_fn(x, y):
     return x + y
@@ -64,13 +64,15 @@ def _create_tff_parallel_clients_with_iter_dataset():
     return initial_val
 
   @tensorflow_computation.tf_computation(
-      computation_types.SequenceType(tf.int64))
+      computation_types.SequenceType(tf.int64)
+  )
   def dataset_reduce_fn_wrapper(ds):
     initial_val = tf.Variable(np.int64(1.0))
     return dataset_reduce_fn(ds, initial_val)
 
   @federated_computation.federated_computation(
-      computation_types.at_clients(computation_types.SequenceType(tf.int64)))
+      computation_types.at_clients(computation_types.SequenceType(tf.int64))
+  )
   def parallel_client_run(client_datasets):
     return intrinsics.federated_map(dataset_reduce_fn_wrapper, client_datasets)
 
@@ -92,7 +94,8 @@ class MultiGPUTest(tf.test.TestCase, parameterized.TestCase):
     server_tf_device = None if not tf_devices else tf_devices[0]
     gpu_devices = tf.config.list_logical_devices('GPU')
     unplaced_factory = python_executor_stacks.UnplacedExecutorFactory(
-        server_device=server_tf_device, client_devices=gpu_devices)
+        server_device=server_tf_device, client_devices=gpu_devices
+    )
     unplaced_executor = unplaced_factory.create_executor()
     self.assertIsInstance(unplaced_executor, executor_base.Executor)
 
@@ -105,12 +108,13 @@ class MultiGPUTest(tf.test.TestCase, parameterized.TestCase):
     server_tf_device = None if not tf_devices else tf_devices[0]
     gpu_devices = tf.config.list_logical_devices('GPU')
     local_executor = python_executor_stacks.local_executor_factory(
-        server_tf_device=server_tf_device, client_tf_devices=gpu_devices)
+        server_tf_device=server_tf_device, client_tf_devices=gpu_devices
+    )
     with executor_test_utils.install_executor(local_executor):
       parallel_client_run = _create_tff_parallel_clients_with_iter_dataset()
       client_data = [
           tf.data.Dataset.range(10),
-          tf.data.Dataset.range(10).map(lambda x: x + 1)
+          tf.data.Dataset.range(10).map(lambda x: x + 1),
       ]
       client_results = parallel_client_run(client_data)
       self.assertEqual(client_results, [np.int64(46), np.int64(56)])
@@ -124,18 +128,19 @@ class MultiGPUTest(tf.test.TestCase, parameterized.TestCase):
     server_tf_device = None if not tf_devices else tf_devices[0]
     gpu_devices = tf.config.list_logical_devices('GPU')
     local_executor = python_executor_stacks.local_executor_factory(
-        server_tf_device=server_tf_device, client_tf_devices=gpu_devices)
+        server_tf_device=server_tf_device, client_tf_devices=gpu_devices
+    )
     with executor_test_utils.install_executor(local_executor):
       parallel_client_run = _create_tff_parallel_clients_with_dataset_reduce()
       client_data = [
           tf.data.Dataset.range(10),
-          tf.data.Dataset.range(10).map(lambda x: x + 1)
+          tf.data.Dataset.range(10).map(lambda x: x + 1),
       ]
       # TODO(b/159180073): merge this one into iter dataset test when the
       # dataset reduce function can be correctly used for GPU device.
       with self.assertRaisesRegex(
-          ValueError,
-          'Detected dataset reduce op in multi-GPU TFF simulation.*'):
+          ValueError, 'Detected dataset reduce op in multi-GPU TFF simulation.*'
+      ):
         parallel_client_run(client_data)
 
 

@@ -22,23 +22,28 @@ class ComputationPb2Test(absltest.TestCase):
   def test_tensor_datatype_enum_subset_of_tensorflow(self):
     self.assertContainsSubset(
         list(computation_pb2.TensorType.DataType.items()),
-        list(types_pb2.DataType.items()))
+        list(types_pb2.DataType.items()),
+    )
 
   def test_tensor_datatype_enum_no_reference_types(self):
     tff_enum_items = frozenset(
-        list(computation_pb2.TensorType.DataType.items()))
+        list(computation_pb2.TensorType.DataType.items())
+    )
     for name, value in types_pb2.DataType.items():
       if not name.endswith('_REF'):
         continue
       self.assertNotIn((name, value), tff_enum_items)
 
   def test_tensor_datatype_enum_no_variant_type(self):
-    self.assertNotIn(types_pb2.DT_VARIANT,
-                     list(computation_pb2.TensorType.DataType.values()))
+    self.assertNotIn(
+        types_pb2.DT_VARIANT, list(computation_pb2.TensorType.DataType.values())
+    )
 
   def test_tensor_datatype_enum_no_resource_type(self):
-    self.assertNotIn(types_pb2.DT_RESOURCE,
-                     list(computation_pb2.TensorType.DataType.values()))
+    self.assertNotIn(
+        types_pb2.DT_RESOURCE,
+        list(computation_pb2.TensorType.DataType.values()),
+    )
 
 
 if __name__ == '__main__':

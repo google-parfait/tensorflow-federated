@@ -43,7 +43,8 @@ def _unwrap(value):
     return value.numpy()
   elif isinstance(value, structure.Struct):
     return structure.Struct(
-        (k, _unwrap(v)) for k, v in structure.iter_elements(value))
+        (k, _unwrap(v)) for k, v in structure.iter_elements(value)
+    )
   elif isinstance(value, list):
     return [_unwrap(v) for v in value]
   else:
@@ -92,26 +93,31 @@ async def _ingest(executor, val, type_spec):
     py_typecheck.check_type(val_type, computation_types.Type)
     type_spec.check_assignable_from(val_type)
     return await val.ingest(executor)
-  elif (isinstance(val, structure.Struct) and not type_spec.is_federated()):
+  elif isinstance(val, structure.Struct) and not type_spec.is_federated():
     type_spec.check_struct()
     v_elem = structure.to_elements(val)
     t_elem = structure.to_elements(type_spec)
     if len(v_elem) != len(t_elem):
       raise TypeError(
           'Value {} does not match type {}: mismatching tuple length.'.format(
-              val, type_spec))
-    for ((vk, _), (tk, _)) in zip(v_elem, t_elem):
+              val, type_spec
+          )
+      )
+    for (vk, _), (tk, _) in zip(v_elem, t_elem):
       if vk not in [tk, None]:
         raise TypeError(
             'Value {} does not match type {}: mismatching tuple element '
-            'names {} vs. {}.'.format(val, type_spec, vk, tk))
+            'names {} vs. {}.'.format(val, type_spec, vk, tk)
+        )
     ingested = []
     for (_, v), (_, t) in zip(v_elem, t_elem):
       ingested.append(_ingest(executor, v, t))
     ingested = await asyncio.gather(*ingested)
     return await executor.create_struct(
         structure.Struct(
-            (name, val) for (name, _), val in zip(t_elem, ingested)))
+            (name, val) for (name, _), val in zip(t_elem, ingested)
+        )
+    )
   else:
     return await executor.create_value(val, type_spec)
 
@@ -152,11 +158,12 @@ class AsyncExecutionContext(context_base.AsyncContext):
   def __init__(
       self,
       executor_fn: executor_factory.ExecutorFactory,
-      compiler_fn: Optional[Callable[[computation_base.Computation],
-                                     Any]] = None,
+      compiler_fn: Optional[
+          Callable[[computation_base.Computation], Any]
+      ] = None,
       *,
-      cardinality_inference_fn: cardinalities_utils
-      .CardinalityInferenceFnType = cardinalities_utils.infer_cardinalities):
+      cardinality_inference_fn: cardinalities_utils.CardinalityInferenceFnType = cardinalities_utils.infer_cardinalities,
+  ):
     """Initializes an execution context.
 
     Args:
@@ -194,7 +201,8 @@ class AsyncExecutionContext(context_base.AsyncContext):
   @retrying.retry(
       retry_on_exception_filter=_is_retryable_error,
       wait_max_ms=30 * 1000,
-      wait_multiplier=2)
+      wait_multiplier=2,
+  )
   async def invoke(self, comp, arg):
     if asyncio.iscoroutine(arg):
       # Awaiting if we are passed a coro allows us to install and use the async
@@ -211,20 +219,23 @@ class AsyncExecutionContext(context_base.AsyncContext):
         comp = self._compiler_pipeline.compile(comp)
 
     with tracing.span('ExecutionContext', 'Invoke', span=True):
-
       if arg is not None:
         cardinalities = self._cardinality_inference_fn(
-            arg, comp.type_signature.parameter)
+            arg, comp.type_signature.parameter
+        )
       else:
         cardinalities = {}
 
-      with self._reset_factory_on_error(self._executor_factory,
-                                        cardinalities) as executor:
+      with self._reset_factory_on_error(
+          self._executor_factory, cardinalities
+      ) as executor:
         py_typecheck.check_type(executor, executor_base.Executor)
 
         if arg is not None:
           arg = await tracing.wrap_coroutine_in_current_trace_context(
-              _ingest(executor, arg, comp.type_signature.parameter))
+              _ingest(executor, arg, comp.type_signature.parameter)
+          )
 
         return await tracing.wrap_coroutine_in_current_trace_context(
-            _invoke(executor, comp, arg, result_type))
+            _invoke(executor, comp, arg, result_type)
+        )

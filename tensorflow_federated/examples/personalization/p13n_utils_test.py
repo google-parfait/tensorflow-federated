@@ -28,26 +28,27 @@ def _create_dataset():
   """Constructs an unbatched dataset with three datapoints."""
   return tf.data.Dataset.from_tensor_slices({
       'x': np.array([[-1.0, -1.0], [1.0, 1.0], [1.0, 1.0]], dtype=np.float32),
-      'y': np.array([[1.0], [1.0], [1.0]], dtype=np.float32)
+      'y': np.array([[1.0], [1.0], [1.0]], dtype=np.float32),
   })
 
 
 def _model_fn():
   """Constructs a linear model with weights initialized to be zeros."""
   inputs = tf.keras.Input(shape=(_INPUT_DIM,))
-  outputs = tf.keras.layers.Dense(
-      _OUTPUT_DIM, kernel_initializer='zeros')(
-          inputs)
+  outputs = tf.keras.layers.Dense(_OUTPUT_DIM, kernel_initializer='zeros')(
+      inputs
+  )
   keras_model = tf.keras.Model(inputs=inputs, outputs=outputs)
   input_spec = collections.OrderedDict([
       ('x', tf.TensorSpec([None, _INPUT_DIM], dtype=tf.float32)),
-      ('y', tf.TensorSpec([None, _OUTPUT_DIM], dtype=tf.float32))
+      ('y', tf.TensorSpec([None, _OUTPUT_DIM], dtype=tf.float32)),
   ])
   return tff.learning.from_keras_model(
       keras_model=keras_model,
       input_spec=input_spec,
       loss=tf.keras.losses.MeanSquaredError(),
-      metrics=[tf.keras.metrics.MeanAbsoluteError()])
+      metrics=[tf.keras.metrics.MeanAbsoluteError()],
+  )
 
 
 class P13nUtilsTest(tf.test.TestCase):
@@ -62,13 +63,15 @@ class P13nUtilsTest(tf.test.TestCase):
 
     # Model weights are zeros, so MeanSquaredError and MeanAbsoluteError are 1.
     self.assertDictEqual(
-        metrics, {
+        metrics,
+        {
             'num_test_examples': 3,
             'mean_absolute_error': 1.0,
             'loss': 1.0,
             'num_examples': 3,
             'num_batches': 3,
-        })
+        },
+    )
 
   def test_build_and_run_personalize_fn_succeeds_with_valid_args(self):
     p13n_fn = p13n_utils.build_personalize_fn(
@@ -76,9 +79,11 @@ class P13nUtilsTest(tf.test.TestCase):
         batch_size=2,
         num_epochs=1,
         num_epochs_per_eval=1,
-        shuffle=False)
+        shuffle=False,
+    )
     p13n_metrics = p13n_fn(
-        model=self.model, train_data=self.dataset, test_data=self.dataset)
+        model=self.model, train_data=self.dataset, test_data=self.dataset
+    )
 
     # The model weights become [0, 0, 1] after training one epoch, so the
     # MeanSquaredError and MeanAbsoluteError are 0.
@@ -92,8 +97,9 @@ class P13nUtilsTest(tf.test.TestCase):
                 'num_examples': 3,
                 'num_batches': 3,
             },
-            'num_train_examples': 3  # Same dataset is used for train and test.
-        })
+            'num_train_examples': 3,  # Same dataset is used for train and test.
+        },
+    )
 
 
 if __name__ == '__main__':

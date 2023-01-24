@@ -27,14 +27,16 @@ class RuntimeTest(absltest.TestCase):
 
   def test_normalize_tensor_representation_int32(self):
     result = runtime.normalize_tensor_representation(
-        10, computation_types.TensorType(np.int32))
+        10, computation_types.TensorType(np.int32)
+    )
     self.assertIsInstance(result, np.int32)
     self.assertEqual(result, 10)
 
   def test_normalize_tensor_representation_int32x2x3(self):
     result = runtime.normalize_tensor_representation(
         np.array(((1, 2), (3, 4), (5, 6)), dtype=np.int32),
-        computation_types.TensorType(np.int32, (3, 2)))
+        computation_types.TensorType(np.int32, (3, 2)),
+    )
     self.assertIsInstance(result, np.ndarray)
     self.assertEqual(result.dtype, np.int32)
     self.assertEqual(result.shape, (3, 2))
@@ -46,7 +48,8 @@ class RuntimeTest(absltest.TestCase):
     xla_comp = builder.build()
     comp_type = computation_types.FunctionType(None, np.int32)
     comp_pb = xla_serialization.create_xla_tff_computation(
-        xla_comp, [], comp_type)
+        xla_comp, [], comp_type
+    )
     backend = jax.lib.xla_bridge.get_backend()
     comp_callable = runtime.ComputationCallable(comp_pb, comp_type, backend)
     self.assertIsInstance(comp_callable, runtime.ComputationCallable)
@@ -62,14 +65,17 @@ class RuntimeTest(absltest.TestCase):
     xla_comp = builder.build()
     comp_type = computation_types.FunctionType((np.int32, np.int32), np.int32)
     comp_pb = xla_serialization.create_xla_tff_computation(
-        xla_comp, [0, 1], comp_type)
+        xla_comp, [0, 1], comp_type
+    )
     backend = jax.lib.xla_bridge.get_backend()
     comp_callable = runtime.ComputationCallable(comp_pb, comp_type, backend)
     self.assertIsInstance(comp_callable, runtime.ComputationCallable)
     self.assertEqual(
-        str(comp_callable.type_signature), '(<int32,int32> -> int32)')
+        str(comp_callable.type_signature), '(<int32,int32> -> int32)'
+    )
     result = comp_callable(
-        structure.Struct([(None, np.int32(2)), (None, np.int32(3))]))
+        structure.Struct([(None, np.int32(2)), (None, np.int32(3))])
+    )
     self.assertEqual(result, 5)
 
 

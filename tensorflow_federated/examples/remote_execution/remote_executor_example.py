@@ -40,17 +40,24 @@ flags.DEFINE_integer('n_rounds', 3, 'Number of rounds.')
 
 
 def build_synthetic_emnist():
-  return tf.data.Dataset.from_tensor_slices(
-      collections.OrderedDict(
-          x=np.random.normal(size=[100, 28 * 28]),
-          y=np.random.uniform(low=0, high=9, size=[100]).astype(np.int32),
-      )).repeat(NUM_EPOCHS).batch(BATCH_SIZE)
+  return (
+      tf.data.Dataset.from_tensor_slices(
+          collections.OrderedDict(
+              x=np.random.normal(size=[100, 28 * 28]),
+              y=np.random.uniform(low=0, high=9, size=[100]).astype(np.int32),
+          )
+      )
+      .repeat(NUM_EPOCHS)
+      .batch(BATCH_SIZE)
+  )
 
 
 NUM_EPOCHS = 10
 BATCH_SIZE = 20
-GRPC_OPTIONS = [('grpc.max_message_length', 20 * 1024 * 1024),
-                ('grpc.max_receive_message_length', 20 * 1024 * 1024)]
+GRPC_OPTIONS = [
+    ('grpc.max_message_length', 20 * 1024 * 1024),
+    ('grpc.max_receive_message_length', 20 * 1024 * 1024),
+]
 
 
 def main(argv):
@@ -77,17 +84,21 @@ def main(argv):
         model,
         input_spec=input_spec,
         loss=tf.keras.losses.SparseCategoricalCrossentropy(),
-        metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
+        metrics=[tf.keras.metrics.SparseCategoricalAccuracy()],
+    )
 
   iterative_process = tff.learning.algorithms.build_weighted_fed_avg(
       model_fn,
-      client_optimizer_fn=lambda: tf.keras.optimizers.SGD(learning_rate=0.02))
+      client_optimizer_fn=lambda: tf.keras.optimizers.SGD(learning_rate=0.02),
+  )
 
   context = tff.backends.native.create_remote_python_execution_context(  # pytype: disable=module-attr  # gen-stub-imports
       channels=[
           grpc.insecure_channel(
-              f'{FLAGS.host}:{FLAGS.port}', options=GRPC_OPTIONS)
-      ])
+              f'{FLAGS.host}:{FLAGS.port}', options=GRPC_OPTIONS
+          )
+      ]
+  )
   tff.framework.set_default_context(context)
   print('Set default context.')
 

@@ -67,7 +67,8 @@ def create_concrete_client_data() -> cd.ConcreteClientData:
     return tf.data.Dataset.range(num_examples)
 
   return cd.ClientData.from_clients_and_tf_fn(
-      client_ids=client_ids, serializable_dataset_fn=create_dataset_fn)
+      client_ids=client_ids, serializable_dataset_fn=create_dataset_fn
+  )
 
 
 def dataset_length(dataset):
@@ -86,23 +87,27 @@ class TrainTestClientSplitTest(tf.test.TestCase, parameterized.TestCase):
 
     client_ids = [str(x) for x in range(10)]
     return cd.ClientData.from_clients_and_tf_fn(
-        client_ids=client_ids, serializable_dataset_fn=create_dataset_fn)
+        client_ids=client_ids, serializable_dataset_fn=create_dataset_fn
+    )
 
   def test_split_train_test_selects_nonempty_test_clients(self):
     # Only even client_ids have data:
     client_data = self.get_even_odd_client_data()
 
     train, test = cd.ClientData.train_test_client_split(
-        client_data, num_test_clients=3)
+        client_data, num_test_clients=3
+    )
     # Test that all clients end up in one of the two ClientData:
-    self.assertCountEqual(client_data.client_ids,
-                          train.client_ids + test.client_ids)
+    self.assertCountEqual(
+        client_data.client_ids, train.client_ids + test.client_ids
+    )
     self.assertLen(test.client_ids, 3)
     for client_id in test.client_ids:
       self.assertEqual(int(client_id) % 2, 0)
 
     train, test = cd.ClientData.train_test_client_split(
-        client_data, num_test_clients=5)
+        client_data, num_test_clients=5
+    )
     self.assertLen(test.client_ids, 5)
     self.assertLen(train.client_ids, 5)
 
@@ -125,9 +130,11 @@ class TrainTestClientSplitTest(tf.test.TestCase, parameterized.TestCase):
     client_data = self.get_even_odd_client_data()
 
     train_0, test_0 = cd.ClientData.train_test_client_split(
-        client_data, num_test_clients=3, seed=0)
+        client_data, num_test_clients=3, seed=0
+    )
     train_1, test_1 = cd.ClientData.train_test_client_split(
-        client_data, num_test_clients=3, seed=0)
+        client_data, num_test_clients=3, seed=0
+    )
 
     self.assertEqual(train_0.client_ids, train_1.client_ids)
     self.assertEqual(test_0.client_ids, test_1.client_ids)
@@ -144,7 +151,8 @@ class TrainTestClientSplitTest(tf.test.TestCase, parameterized.TestCase):
   def test_split_does_not_raise_on_expected_random_seed(self, seed):
     client_data = client_data = self.get_even_odd_client_data()
     cd.ClientData.train_test_client_split(
-        client_data, num_test_clients=3, seed=seed)
+        client_data, num_test_clients=3, seed=seed
+    )
 
   @parameterized.named_parameters(
       ('integer1', -1),
@@ -159,25 +167,28 @@ class TrainTestClientSplitTest(tf.test.TestCase, parameterized.TestCase):
     client_data = client_data = self.get_even_odd_client_data()
     with self.assertRaises(cd.InvalidRandomSeedError):
       cd.ClientData.train_test_client_split(
-          client_data, num_test_clients=3, seed=seed)
+          client_data, num_test_clients=3, seed=seed
+      )
 
 
 class ConcreteClientDataTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_raises_on_tff_computation(self):
-
     @tensorflow_computation.tf_computation
     def dataset_fn():
       return 0
 
     with self.assertRaises(TypeError):
       cd.ClientData.from_clients_and_tf_fn(
-          client_ids=[], serializable_dataset_fn=dataset_fn)
+          client_ids=[], serializable_dataset_fn=dataset_fn
+      )
 
   def test_concrete_client_data_create_expected_datasets(self):
     client_data = create_concrete_client_data()
-    self.assertEqual(client_data.element_type_structure,
-                     tf.TensorSpec(shape=(), dtype=tf.int64))
+    self.assertEqual(
+        client_data.element_type_structure,
+        tf.TensorSpec(shape=(), dtype=tf.int64),
+    )
     for i in client_data.client_ids:
       client_dataset = client_data.create_tf_dataset_for_client(i)
       self.assertEqual(dataset_length(client_dataset), int(i))
@@ -210,7 +221,8 @@ class ConcreteClientDataTest(tf.test.TestCase, parameterized.TestCase):
       return tf.data.Dataset.range(num_examples)
 
     client_data = cd.ClientData.from_clients_and_tf_fn(
-        client_ids=client_ids, serializable_dataset_fn=only_call_me_thrice)
+        client_ids=client_ids, serializable_dataset_fn=only_call_me_thrice
+    )
     datasets_iter = client_data.datasets()
     next(datasets_iter)
     next(datasets_iter)
@@ -300,7 +312,8 @@ class ConcreteClientDataTest(tf.test.TestCase, parameterized.TestCase):
       return tf.data.Dataset.range(100)
 
     client_data = cd.ClientData.from_clients_and_tf_fn(
-        client_ids=client_ids, serializable_dataset_fn=create_dataset)
+        client_ids=client_ids, serializable_dataset_fn=create_dataset
+    )
     # Ensure this completes within the test timeout without raising error.
     # Previous implementations caused this to take an very long time via Python
     # list -> generator -> list transformations.
@@ -322,9 +335,11 @@ class PreprocessClientDataTest(tf.test.TestCase, parameterized.TestCase):
     for client_id in client_data.client_ids:
       expected_dataset = [2 * a for a in range(int(client_id))]
       actual_dataset = preprocess_client_data.create_tf_dataset_for_client(
-          client_id)
-      self.assertEqual(expected_dataset,
-                       list(actual_dataset.as_numpy_iterator()))
+          client_id
+      )
+      self.assertEqual(
+          expected_dataset, list(actual_dataset.as_numpy_iterator())
+      )
 
   def test_preprocess_with_take_one(self):
     client_data = create_concrete_client_data()
@@ -338,7 +353,9 @@ class PreprocessClientDataTest(tf.test.TestCase, parameterized.TestCase):
     self.assertLen(
         client_data.client_ids,
         dataset_length(
-            preprocess_client_data.create_tf_dataset_from_all_clients()))
+            preprocess_client_data.create_tf_dataset_from_all_clients()
+        ),
+    )
 
   def test_preprocess_creates_expected_client_datasets_with_dataset_comp(self):
     client_data = create_concrete_client_data()
@@ -350,8 +367,9 @@ class PreprocessClientDataTest(tf.test.TestCase, parameterized.TestCase):
     for client_id in client_data.client_ids:
       expected_dataset = [2 * a for a in range(int(client_id))]
       actual_dataset = preprocess_client_data.dataset_computation(client_id)
-      self.assertEqual(expected_dataset,
-                       list(actual_dataset.as_numpy_iterator()))
+      self.assertEqual(
+          expected_dataset, list(actual_dataset.as_numpy_iterator())
+      )
 
   def test_preprocess_creates_expected_amalgamated_dataset(self):
     client_data = create_concrete_client_data()
@@ -362,9 +380,12 @@ class PreprocessClientDataTest(tf.test.TestCase, parameterized.TestCase):
     preprocess_client_data = client_data.preprocess(preprocess_fn)
     expected_amalgamated_dataset = [0, 0, 2, 0, 2, 4]
     actual_amalgamated_dataset = (
-        preprocess_client_data.create_tf_dataset_from_all_clients())
-    self.assertCountEqual(expected_amalgamated_dataset,
-                          list(actual_amalgamated_dataset.as_numpy_iterator()))
+        preprocess_client_data.create_tf_dataset_from_all_clients()
+    )
+    self.assertCountEqual(
+        expected_amalgamated_dataset,
+        list(actual_amalgamated_dataset.as_numpy_iterator()),
+    )
 
   def test_preprocess_raises_on_tff_computation(self):
     client_data = create_concrete_client_data()

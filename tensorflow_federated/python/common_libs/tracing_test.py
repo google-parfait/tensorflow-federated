@@ -42,8 +42,9 @@ class DebugLoggingTest(absltest.TestCase):
     self.handler.close()
     super().tearDown()
 
-  def _test_debug_logging_with_async_function(self, async_fn, test_regex, *args,
-                                              **kwargs):
+  def _test_debug_logging_with_async_function(
+      self, async_fn, test_regex, *args, **kwargs
+  ):
     try:
       logging.set_verbosity(1)
       retval = asyncio.run(async_fn(*args, **kwargs))
@@ -55,8 +56,9 @@ class DebugLoggingTest(absltest.TestCase):
     self.assertEmpty(''.join(self.log.getvalue()))
     return retval
 
-  def _test_debug_logging_with_sync_function(self, sync_fn, test_regex, *args,
-                                             **kwargs):
+  def _test_debug_logging_with_sync_function(
+      self, sync_fn, test_regex, *args, **kwargs
+  ):
     try:
       logging.set_verbosity(1)
       retval = sync_fn(*args, **kwargs)
@@ -68,16 +70,15 @@ class DebugLoggingTest(absltest.TestCase):
     return retval
 
   def test_logging_enter_exit(self):
-
     @tracing.trace
     async def foo():
       return await asyncio.sleep(1)
 
     self._test_debug_logging_with_async_function(
-        foo, '.*Entering .*foo.*\n.*Exiting .*foo.*')
+        foo, '.*Entering .*foo.*\n.*Exiting .*foo.*'
+    )
 
   def test_logging_timing_captured(self):
-
     @tracing.trace
     async def foo():
       return await asyncio.sleep(1)
@@ -85,26 +86,26 @@ class DebugLoggingTest(absltest.TestCase):
     self._test_debug_logging_with_async_function(foo, 'Elapsed time')
 
   def test_logging_timing_captures_value_around_async_call(self):
-
     @tracing.trace
     async def foo():
       return await asyncio.sleep(1)
 
     self._test_debug_logging_with_async_function(
-        foo, r'<locals>\.foo\. ' + ELAPSED_ONE_REGEX)
+        foo, r'<locals>\.foo\. ' + ELAPSED_ONE_REGEX
+    )
 
   def test_logging_non_blocking_function(self):
-
     @tracing.trace(span=True)
     async def foo():
       return await asyncio.gather(
-          asyncio.sleep(1), asyncio.sleep(1), asyncio.sleep(1))
+          asyncio.sleep(1), asyncio.sleep(1), asyncio.sleep(1)
+      )
 
     self._test_debug_logging_with_async_function(
-        foo, r'<locals>\.foo\. ' + ELAPSED_ONE_REGEX)
+        foo, r'<locals>\.foo\. ' + ELAPSED_ONE_REGEX
+    )
 
   def test_logging_non_blocking_method(self):
-
     class AClass(absltest.TestCase):
 
       @tracing.trace(span=True)
@@ -126,11 +127,11 @@ class DebugLoggingTest(absltest.TestCase):
         'foo',
         'bar',
         arg3='baz',
-        arg4=True)
+        arg4=True,
+    )
     self.assertEqual(3, result)
 
   def test_logging_blocking_method(self):
-
     class AClass(absltest.TestCase):
 
       @tracing.trace(span=True)
@@ -151,11 +152,11 @@ class DebugLoggingTest(absltest.TestCase):
         'foo',
         'bar',
         arg3='baz',
-        arg4=True)
+        arg4=True,
+    )
     self.assertEqual(3, result)
 
   def test_logging_blocking_function(self):
-
     @tracing.trace(span=True)
     def foo(foo_arg, bar_arg, arg3=None, arg4=None):
       self.assertEqual('foo', foo_arg)
@@ -172,7 +173,8 @@ class DebugLoggingTest(absltest.TestCase):
         'foo',
         'bar',
         arg3='baz',
-        arg4=True)
+        arg4=True,
+    )
     self.assertEqual(3, result)
 
 
@@ -188,8 +190,16 @@ class MockTracingProvider(tracing.TracingProvider):
     self.trace_optss = []
     self.trace_results = []
 
-  def span(self, scope, sub_scope, nonce, parent_span_yield, fn_args, fn_kwargs,
-           trace_opts):
+  def span(
+      self,
+      scope,
+      sub_scope,
+      nonce,
+      parent_span_yield,
+      fn_args,
+      fn_kwargs,
+      trace_opts,
+  ):
     self.scopes.append(scope)
     self.sub_scopes.append(sub_scope)
     self.nonces.append(nonce)
@@ -308,7 +318,8 @@ class TracingProviderInterfaceTest(absltest.TestCase):
       # This sends the coroutine over to another thread,
       # keeping the current trace context.
       coro_with_trace_ctx = tracing.wrap_coroutine_in_current_trace_context(
-          middle())
+          middle()
+      )
       asyncio.run_coroutine_threadsafe(coro_with_trace_ctx, loop).result()
 
     loop.call_soon_threadsafe(loop.stop)

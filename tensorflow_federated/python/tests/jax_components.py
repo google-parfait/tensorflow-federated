@@ -24,8 +24,9 @@ import tensorflow_federated as tff
 # and eventually unify the two.
 
 
-def build_jax_federated_averaging_process(batch_type, model_type, loss_fn,
-                                          step_size):
+def build_jax_federated_averaging_process(
+    batch_type, model_type, loss_fn, step_size
+):
   """Constructs an iterative process that implements simple federated averaging.
 
   Args:
@@ -96,7 +97,6 @@ def build_jax_federated_averaging_process(batch_type, model_type, loss_fn,
 
   @tff.jax_computation(model_type, batch_type)
   def _train_on_one_batch(model, batch):
-
     def _apply_update(model_param, param_delta):
       return model_param - step_size * param_delta
 
@@ -124,4 +124,5 @@ def build_jax_federated_averaging_process(batch_type, model_type, loss_fn,
     return mean_as_aggregate(locally_trained_models)
 
   return tff.templates.IterativeProcess(
-      initialize_fn=_create_zero_model_on_server, next_fn=_train_one_round)
+      initialize_fn=_create_zero_model_on_server, next_fn=_train_one_round
+  )

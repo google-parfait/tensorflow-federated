@@ -35,8 +35,9 @@ from tensorflow_federated.examples.simple_fedavg.simple_fedavg_tf import server_
 from tensorflow_federated.examples.simple_fedavg.simple_fedavg_tf import ServerState
 
 
-def _initialize_optimizer_vars(model: tff.learning.Model,
-                               optimizer: tf.keras.optimizers.Optimizer):
+def _initialize_optimizer_vars(
+    model: tff.learning.Model, optimizer: tf.keras.optimizers.Optimizer
+):
   """Creates optimizer variables to assign the optimizer's state."""
   # Create zero gradients to force an update that doesn't modify.
   # Force eagerly constructing the optimizer variables. Normally Keras lazily
@@ -52,7 +53,8 @@ def _initialize_optimizer_vars(model: tff.learning.Model,
 def build_federated_averaging_process(
     model_fn,
     server_optimizer_fn=lambda: tf.keras.optimizers.SGD(learning_rate=1.0),
-    client_optimizer_fn=lambda: tf.keras.optimizers.SGD(learning_rate=0.02)):
+    client_optimizer_fn=lambda: tf.keras.optimizers.SGD(learning_rate=0.02),
+):
   """Builds the TFF computations for optimization using federated averaging.
 
   Args:
@@ -68,9 +70,11 @@ def build_federated_averaging_process(
 
   whimsy_model = model_fn()
   unfinalized_metrics_type = tff.framework.type_from_tensors(
-      whimsy_model.report_local_unfinalized_metrics())
+      whimsy_model.report_local_unfinalized_metrics()
+  )
   metrics_aggregation_computation = tff.learning.metrics.sum_then_finalize(
-      whimsy_model.metric_finalizers(), unfinalized_metrics_type)
+      whimsy_model.metric_finalizers(), unfinalized_metrics_type
+  )
 
   @tff.tf_computation
   def server_init_tf():
@@ -81,7 +85,8 @@ def build_federated_averaging_process(
     return ServerState(
         model=model_weights,
         optimizer_state=server_optimizer.variables(),
-        round_num=0)
+        round_num=0,
+    )
 
   server_state_type = server_init_tf.type_signature.result
   model_weights_type = server_state_type.model
@@ -109,8 +114,9 @@ def build_federated_averaging_process(
   federated_server_state_type = tff.type_at_server(server_state_type)
   federated_dataset_type = tff.type_at_clients(tf_dataset_type)
 
-  @tff.federated_computation(federated_server_state_type,
-                             federated_dataset_type)
+  @tff.federated_computation(
+      federated_server_state_type, federated_dataset_type
+  )
   def run_one_round(server_state, federated_dataset):
     """Orchestration logic for one round of computation.
 
@@ -127,16 +133,20 @@ def build_federated_averaging_process(
     server_message_at_client = tff.federated_broadcast(server_message)
 
     client_outputs = tff.federated_map(
-        client_update_fn, (federated_dataset, server_message_at_client))
+        client_update_fn, (federated_dataset, server_message_at_client)
+    )
 
     weight_denom = client_outputs.client_weight
     round_model_delta = tff.federated_mean(
-        client_outputs.weights_delta, weight=weight_denom)
+        client_outputs.weights_delta, weight=weight_denom
+    )
 
-    server_state = tff.federated_map(server_update_fn,
-                                     (server_state, round_model_delta))
+    server_state = tff.federated_map(
+        server_update_fn, (server_state, round_model_delta)
+    )
     aggregated_outputs = metrics_aggregation_computation(
-        client_outputs.model_output)
+        client_outputs.model_output
+    )
     return server_state, aggregated_outputs
 
   @tff.federated_computation
@@ -145,4 +155,5 @@ def build_federated_averaging_process(
     return tff.federated_eval(server_init_tf, tff.SERVER)
 
   return tff.templates.IterativeProcess(
-      initialize_fn=server_init_tff, next_fn=run_one_round)
+      initialize_fn=server_init_tff, next_fn=run_one_round
+  )

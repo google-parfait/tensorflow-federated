@@ -30,55 +30,67 @@ class CreateResnetModelTest(tf.test.TestCase, parameterized.TestCase):
   def test_get_resnet18_model(self, mock_model_builder):
     input_shape = (32, 32, 3)
     image_classification_tasks._get_resnet_model(
-        model_id='resnet18', input_shape=input_shape)
+        model_id='resnet18', input_shape=input_shape
+    )
     mock_model_builder.assert_called_once_with(
         input_shape=input_shape,
-        num_classes=image_classification_tasks._NUM_CLASSES)
+        num_classes=image_classification_tasks._NUM_CLASSES,
+    )
 
   @mock.patch.object(resnet_models, 'create_resnet34')
   def test_get_resnet34_model(self, mock_model_builder):
     input_shape = (24, 24, 3)
     image_classification_tasks._get_resnet_model(
-        model_id='resnet34', input_shape=input_shape)
+        model_id='resnet34', input_shape=input_shape
+    )
     mock_model_builder.assert_called_once_with(
         input_shape=input_shape,
-        num_classes=image_classification_tasks._NUM_CLASSES)
+        num_classes=image_classification_tasks._NUM_CLASSES,
+    )
 
   @mock.patch.object(resnet_models, 'create_resnet50')
   def test_get_resnet50_model(self, mock_model_builder):
     input_shape = (24, 1, 3)
     image_classification_tasks._get_resnet_model(
-        model_id='resnet50', input_shape=input_shape)
+        model_id='resnet50', input_shape=input_shape
+    )
     mock_model_builder.assert_called_once_with(
         input_shape=input_shape,
-        num_classes=image_classification_tasks._NUM_CLASSES)
+        num_classes=image_classification_tasks._NUM_CLASSES,
+    )
 
   @mock.patch.object(resnet_models, 'create_resnet101')
   def test_get_resnet101_model(self, mock_model_builder):
     input_shape = (1, 32, 3)
     image_classification_tasks._get_resnet_model(
-        model_id='resnet101', input_shape=input_shape)
+        model_id='resnet101', input_shape=input_shape
+    )
     mock_model_builder.assert_called_once_with(
         input_shape=input_shape,
-        num_classes=image_classification_tasks._NUM_CLASSES)
+        num_classes=image_classification_tasks._NUM_CLASSES,
+    )
 
   @mock.patch.object(resnet_models, 'create_resnet152')
   def test_get_resnet152_model(self, mock_model_builder):
     input_shape = (2, 5, 3)
     image_classification_tasks._get_resnet_model(
-        model_id='resnet152', input_shape=input_shape)
+        model_id='resnet152', input_shape=input_shape
+    )
     mock_model_builder.assert_called_once_with(
         input_shape=input_shape,
-        num_classes=image_classification_tasks._NUM_CLASSES)
+        num_classes=image_classification_tasks._NUM_CLASSES,
+    )
 
 
 class ImageClassificationTaskTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_constructs_with_eval_client_spec(self):
     train_client_spec = client_spec.ClientSpec(
-        num_epochs=2, batch_size=10, max_elements=3, shuffle_buffer_size=5)
+        num_epochs=2, batch_size=10, max_elements=3, shuffle_buffer_size=5
+    )
     eval_client_spec = client_spec.ClientSpec(
-        num_epochs=1, batch_size=2, max_elements=5, shuffle_buffer_size=10)
+        num_epochs=1, batch_size=2, max_elements=5, shuffle_buffer_size=10
+    )
     baseline_task_spec = (
         image_classification_tasks.create_image_classification_task(
             train_client_spec,
@@ -91,7 +103,8 @@ class ImageClassificationTaskTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_constructs_with_no_eval_client_spec(self):
     train_client_spec = client_spec.ClientSpec(
-        num_epochs=2, batch_size=10, max_elements=3, shuffle_buffer_size=5)
+        num_epochs=2, batch_size=10, max_elements=3, shuffle_buffer_size=5
+    )
     baseline_task_spec = (
         image_classification_tasks.create_image_classification_task(
             train_client_spec, model_id='resnet18', use_synthetic_data=True
@@ -107,7 +120,8 @@ class ImageClassificationTaskTest(tf.test.TestCase, parameterized.TestCase):
   )
   def test_constructs_with_different_crop_sizes(self, crop_height, crop_width):
     train_client_spec = client_spec.ClientSpec(
-        num_epochs=2, batch_size=10, max_elements=3, shuffle_buffer_size=5)
+        num_epochs=2, batch_size=10, max_elements=3, shuffle_buffer_size=5
+    )
     baseline_task_spec = (
         image_classification_tasks.create_image_classification_task(
             train_client_spec,
@@ -128,25 +142,29 @@ class ImageClassificationTaskTest(tf.test.TestCase, parameterized.TestCase):
   )
   def test_raises_on_bad_crop_sizes(self, crop_height, crop_width):
     train_client_spec = client_spec.ClientSpec(
-        num_epochs=2, batch_size=10, max_elements=3, shuffle_buffer_size=5)
+        num_epochs=2, batch_size=10, max_elements=3, shuffle_buffer_size=5
+    )
     with self.assertRaisesRegex(
-        ValueError, 'The crop_height and crop_width '
-        'must be between 1 and 32.'):
+        ValueError, 'The crop_height and crop_width must be between 1 and 32.'
+    ):
       image_classification_tasks.create_image_classification_task(
           train_client_spec,
           model_id='resnet18',
           crop_height=crop_height,
           crop_width=crop_width,
-          use_synthetic_data=True)
+          use_synthetic_data=True,
+      )
 
   def test_train_distortion_gives_nondeterministic_result(self):
     train_client_spec = client_spec.ClientSpec(
-        num_epochs=1, batch_size=1, max_elements=1, shuffle_buffer_size=1)
+        num_epochs=1, batch_size=1, max_elements=1, shuffle_buffer_size=1
+    )
     task = image_classification_tasks.create_image_classification_task(
         train_client_spec,
         model_id='resnet18',
         distort_train_images=True,
-        use_synthetic_data=True)
+        use_synthetic_data=True,
+    )
     train_preprocess_fn = task.datasets.train_preprocess_fn
     dataset = task.datasets.train_data.create_tf_dataset_from_all_clients()
     tf.random.set_seed(0)
@@ -157,12 +175,14 @@ class ImageClassificationTaskTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_no_train_distortion_gives_deterministic_result(self):
     train_client_spec = client_spec.ClientSpec(
-        num_epochs=1, batch_size=1, max_elements=1, shuffle_buffer_size=1)
+        num_epochs=1, batch_size=1, max_elements=1, shuffle_buffer_size=1
+    )
     task = image_classification_tasks.create_image_classification_task(
         train_client_spec,
         model_id='resnet18',
         distort_train_images=False,
-        use_synthetic_data=True)
+        use_synthetic_data=True,
+    )
     train_preprocess_fn = task.datasets.train_preprocess_fn
     dataset = task.datasets.train_data.create_tf_dataset_from_all_clients()
     tf.random.set_seed(0)
@@ -180,7 +200,8 @@ class ImageClassificationTaskTest(tf.test.TestCase, parameterized.TestCase):
   )
   def test_constructs_with_different_models(self, model_id):
     train_client_spec = client_spec.ClientSpec(
-        num_epochs=2, batch_size=10, max_elements=3, shuffle_buffer_size=5)
+        num_epochs=2, batch_size=10, max_elements=3, shuffle_buffer_size=5
+    )
     baseline_task_spec = (
         image_classification_tasks.create_image_classification_task(
             train_client_spec,

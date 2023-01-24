@@ -49,7 +49,8 @@ class ValueTest(parameterized.TestCase):
 
   def run(self, result=None):
     fc_context = federated_computation_context.FederatedComputationContext(
-        context_stack_impl.context_stack)
+        context_stack_impl.context_stack
+    )
     with context_stack_impl.context_stack.install(fc_context):
       super(ValueTest, self).run(result)
 
@@ -67,14 +68,15 @@ class ValueTest(parameterized.TestCase):
     x = value_impl.Value(x_comp)
     self.assertIs(x.comp, x_comp)
     self.assertEqual(str(x.type_signature), 'int32')
-    self.assertEqual(repr(x), 'Reference(\'foo\', TensorType(tf.int32))')
+    self.assertEqual(repr(x), "Reference('foo', TensorType(tf.int32))")
     self.assertEqual(str(x), 'foo')
     with self.assertRaises(SyntaxError):
       x(10)
 
   def test_value_impl_with_selection(self):
     x = value_impl.Value(
-        building_blocks.Reference('foo', [('bar', tf.int32), ('baz', tf.bool)]))
+        building_blocks.Reference('foo', [('bar', tf.int32), ('baz', tf.bool)])
+    )
     self.assertContainsSubset(['bar', 'baz'], dir(x))
     self.assertLen(x, 2)
     y = x.bar
@@ -98,8 +100,9 @@ class ValueTest(parameterized.TestCase):
     with self.assertRaises(IndexError):
       _ = x[-1]
     self.assertEqual(','.join(str(e) for e in iter(x)), 'foo[0],foo[1]')
-    self.assertEqual(','.join(str(e.type_signature) for e in iter(x)),
-                     'int32,bool')
+    self.assertEqual(
+        ','.join(str(e.type_signature) for e in iter(x)), 'int32,bool'
+    )
     with self.assertRaises(SyntaxError):
       x(10)
 
@@ -125,7 +128,9 @@ class ValueTest(parameterized.TestCase):
   def test_value_impl_with_call(self):
     x = value_impl.Value(
         building_blocks.Reference(
-            'foo', computation_types.FunctionType(tf.int32, tf.bool)),)
+            'foo', computation_types.FunctionType(tf.int32, tf.bool)
+        ),
+    )
     y = value_impl.Value(building_blocks.Reference('bar', tf.int32))
     z = x(y)
     self.assertIsInstance(z, value_impl.Value)
@@ -143,10 +148,13 @@ class ValueTest(parameterized.TestCase):
 
   def test_value_impl_with_lambda(self):
     arg_name = 'arg'
-    arg_type = [('f', computation_types.FunctionType(tf.int32, tf.int32)),
-                ('x', tf.int32)]
+    arg_type = [
+        ('f', computation_types.FunctionType(tf.int32, tf.int32)),
+        ('x', tf.int32),
+    ]
     result_value = (lambda arg: arg.f(arg.f(arg.x)))(
-        value_impl.Value(building_blocks.Reference(arg_name, arg_type)))
+        value_impl.Value(building_blocks.Reference(arg_name, arg_type))
+    )
     self.assertIsInstance(result_value, value_impl.Value)
     self.assertEqual(str(result_value.type_signature), 'int32')
     self.assertEqual(str(result_value), 'fc_FEDERATED_symbol_1')
@@ -158,13 +166,19 @@ class ValueTest(parameterized.TestCase):
     self.assertEqual(str(bound_symbols[0][1]), 'arg.f(arg.x)')
 
   def test_value_impl_with_plus_raises_mismatched_types(self):
-    x = value_impl.Value(building_blocks.Reference('x', tf.int32),)
-    y = value_impl.Value(building_blocks.Reference('y', tf.float32),)
+    x = value_impl.Value(
+        building_blocks.Reference('x', tf.int32),
+    )
+    y = value_impl.Value(
+        building_blocks.Reference('y', tf.float32),
+    )
     with self.assertRaisesRegex(TypeError, 'Cannot add non-equivalent types'):
       _ = x + y
 
   def test_value_impl_with_plus(self):
-    x = value_impl.Value(building_blocks.Reference('x', tf.int32),)
+    x = value_impl.Value(
+        building_blocks.Reference('x', tf.int32),
+    )
     y = value_impl.Value(building_blocks.Reference('y', tf.int32))
     z = x + y
     self.assertIsInstance(z, value_impl.Value)
@@ -177,8 +191,12 @@ class ValueTest(parameterized.TestCase):
     self.assertEqual(comp.compact_representation(), 'generic_plus(<x,y>)')
 
   def test_to_value_for_tuple(self):
-    x = value_impl.Value(building_blocks.Reference('foo', tf.int32),)
-    y = value_impl.Value(building_blocks.Reference('bar', tf.bool),)
+    x = value_impl.Value(
+        building_blocks.Reference('foo', tf.int32),
+    )
+    y = value_impl.Value(
+        building_blocks.Reference('bar', tf.bool),
+    )
     v = value_impl.to_value((x, y), None)
     self.assertIsInstance(v, value_impl.Value)
     self.assertEqual(str(v), '<foo,bar>')
@@ -201,7 +219,8 @@ class ValueTest(parameterized.TestCase):
     x = value_impl.Value(building_blocks.Reference('foo', tf.int32))
     y = value_impl.Value(building_blocks.Reference('bar', tf.int32))
     v = value_impl.to_value(
-        TestDataclass(TestDataclass(x, y), TestDataclass(x, y)), None)
+        TestDataclass(TestDataclass(x, y), TestDataclass(x, y)), None
+    )
     self.assertIsInstance(v, value_impl.Value)
     self.assertEqual(str(v), '<x=<x=foo,y=bar>,y=<x=foo,y=bar>>')
 
@@ -209,7 +228,8 @@ class ValueTest(parameterized.TestCase):
     x = value_impl.Value(building_blocks.Reference('foo', tf.int32))
     y = value_impl.Value(building_blocks.Reference('bar', tf.int32))
     v = value_impl.to_value(
-        TestAttrClass(TestAttrClass(x, y), TestAttrClass(x, y)), None)
+        TestAttrClass(TestAttrClass(x, y), TestAttrClass(x, y)), None
+    )
     self.assertIsInstance(v, value_impl.Value)
     self.assertEqual(str(v), '<x=<x=foo,y=bar>,y=<x=foo,y=bar>>')
 
@@ -255,15 +275,18 @@ class ValueTest(parameterized.TestCase):
   def test_to_value_for_computations(self):
     tensor_type = computation_types.TensorType(tf.int32)
     computation_proto, _ = tensorflow_computation_factory.create_constant(
-        10, tensor_type)
+        10, tensor_type
+    )
     computation = computation_impl.ConcreteComputation(
-        computation_proto, context_stack_impl.context_stack)
+        computation_proto, context_stack_impl.context_stack
+    )
 
     value = value_impl.to_value(computation, None)
 
     self.assertIsInstance(value, value_impl.Value)
-    self.assertEqual(value.type_signature.compact_representation(),
-                     '( -> int32)')
+    self.assertEqual(
+        value.type_signature.compact_representation(), '( -> int32)'
+    )
 
   def test_to_value_with_string(self):
     value = value_impl.to_value('a', tf.string)
@@ -312,19 +335,22 @@ class ValueTest(parameterized.TestCase):
 
   def test_to_value_with_np_ndarray(self):
     value = value_impl.to_value(
-        np.ndarray(shape=(2, 0), dtype=np.int32), (tf.int32, [2, 0]))
+        np.ndarray(shape=(2, 0), dtype=np.int32), (tf.int32, [2, 0])
+    )
     self.assertIsInstance(value, value_impl.Value)
     self.assertEqual(str(value.type_signature), 'int32[2,0]')
 
   def test_to_value_with_list_of_ints(self):
-    value = value_impl.to_value([1, 2, 3],
-                                computation_types.SequenceType(tf.int32))
+    value = value_impl.to_value(
+        [1, 2, 3], computation_types.SequenceType(tf.int32)
+    )
     self.assertIsInstance(value, value_impl.Value)
     self.assertEqual(str(value.type_signature), 'int32*')
 
   def test_to_value_sequence_in_tuple_with_type(self):
     expected_type = computation_types.StructWithPythonType(
-        [computation_types.SequenceType(tf.int32)], tuple)
+        [computation_types.SequenceType(tf.int32)], tuple
+    )
     value = value_impl.to_value(([1, 2, 3],), expected_type)
     value.type_signature.check_identical_to(expected_type)
 
@@ -339,19 +365,27 @@ class ValueTest(parameterized.TestCase):
 
   def test_tf_mapping_raises_helpful_error(self):
     with self.assertRaisesRegex(
-        TypeError, 'TensorFlow construct (.*) has been '
-        'encountered in a federated context.'):
+        TypeError,
+        (
+            'TensorFlow construct (.*) has been '
+            'encountered in a federated context.'
+        ),
+    ):
       _ = value_impl.to_value(tf.constant(10), None)
     with self.assertRaisesRegex(
-        TypeError, 'TensorFlow construct (.*) has been '
-        'encountered in a federated context.'):
+        TypeError,
+        (
+            'TensorFlow construct (.*) has been '
+            'encountered in a federated context.'
+        ),
+    ):
       _ = value_impl.to_value(tf.Variable(np.array([10.0])), None)
 
   def test_slicing_support_namedtuple(self):
     x = value_impl.Value(building_blocks.Reference('foo', tf.int32))
     y = value_impl.Value(building_blocks.Reference('bar', tf.bool))
     v = value_impl.to_value(collections.namedtuple('_', 'a b')(x, y), None)
-    sliced_v = v[:int(len(v) / 2)]
+    sliced_v = v[: int(len(v) / 2)]
     self.assertIsInstance(sliced_v, value_impl.Value)
     sliced_v = v[:4:2]
     self.assertEqual(str(sliced_v), '<foo>')
@@ -369,7 +403,8 @@ class ValueTest(parameterized.TestCase):
 
   def test_slicing_support_non_tuple_underlying_comp(self):
     test_computation_building_blocks = building_blocks.Reference(
-        'test', [tf.int32] * 5)
+        'test', [tf.int32] * 5
+    )
     v = value_impl.Value(test_computation_building_blocks)
     sliced_v = v[:4:2]
     self.assertIsInstance(sliced_v, value_impl.Value)
@@ -380,7 +415,6 @@ class ValueTest(parameterized.TestCase):
 
   @parameterized.named_parameters(('list', list), ('tuple', tuple))
   def test_slicing_tuple_values_from_front(self, sequence_type):
-
     def _to_value(cbb):
       return value_impl.to_value(cbb, None)
 
@@ -393,7 +427,8 @@ class ValueTest(parameterized.TestCase):
     sliced = v[:2]
     self.assertEqual((str(sliced.type_signature)), '<int32,int32>')
     self.assertEqual(
-        str(sliced), '<fc_FEDERATED_symbol_0,fc_FEDERATED_symbol_1>')
+        str(sliced), '<fc_FEDERATED_symbol_0,fc_FEDERATED_symbol_1>'
+    )
 
     expected_symbol_bindings = [
         ('fc_FEDERATED_symbol_0', [r'comp#[a-zA-Z0-9]*()']),
@@ -404,15 +439,14 @@ class ValueTest(parameterized.TestCase):
     ]
 
     bindings = self.bound_symbols()
-    for (bound_name, comp), (expected_name,
-                             expected_regex) in zip(bindings,
-                                                    expected_symbol_bindings):
+    for (bound_name, comp), (expected_name, expected_regex) in zip(
+        bindings, expected_symbol_bindings
+    ):
       self.assertEqual(bound_name, expected_name)
       self.assertRegexMatch(comp.compact_representation(), expected_regex)
 
   @parameterized.named_parameters(('list', list), ('tuple', tuple))
   def test_slicing_tuple_values_from_back(self, sequence_type):
-
     def _to_value(cbb):
       return value_impl.to_value(cbb, None)
 
@@ -426,7 +460,8 @@ class ValueTest(parameterized.TestCase):
     self.assertEqual((str(sliced.type_signature)), '<int32,int32,int32>')
     self.assertEqual(
         str(sliced),
-        '<fc_FEDERATED_symbol_2,fc_FEDERATED_symbol_3,fc_FEDERATED_symbol_4>')
+        '<fc_FEDERATED_symbol_2,fc_FEDERATED_symbol_3,fc_FEDERATED_symbol_4>',
+    )
 
     expected_symbol_bindings = [
         ('fc_FEDERATED_symbol_0', [r'comp#[a-zA-Z0-9]*()']),
@@ -437,15 +472,14 @@ class ValueTest(parameterized.TestCase):
     ]
 
     bindings = self.bound_symbols()
-    for (bound_name, comp), (expected_name,
-                             expected_regex) in zip(bindings,
-                                                    expected_symbol_bindings):
+    for (bound_name, comp), (expected_name, expected_regex) in zip(
+        bindings, expected_symbol_bindings
+    ):
       self.assertEqual(bound_name, expected_name)
       self.assertRegexMatch(comp.compact_representation(), expected_regex)
 
   @parameterized.named_parameters(('list', list), ('tuple', tuple))
   def test_slicing_tuple_values_skipping_steps(self, sequence_type):
-
     def _to_value(val):
       return value_impl.to_value(val, None)
 
@@ -456,7 +490,8 @@ class ValueTest(parameterized.TestCase):
     self.assertEqual((str(sliced.type_signature)), '<int32,int32,int32>')
     self.assertEqual(
         str(sliced),
-        '<fc_FEDERATED_symbol_0,fc_FEDERATED_symbol_2,fc_FEDERATED_symbol_4>')
+        '<fc_FEDERATED_symbol_0,fc_FEDERATED_symbol_2,fc_FEDERATED_symbol_4>',
+    )
 
     expected_symbol_bindings = [
         ('fc_FEDERATED_symbol_0', [r'comp#[a-zA-Z0-9]*()']),
@@ -467,9 +502,9 @@ class ValueTest(parameterized.TestCase):
     ]
 
     bindings = self.bound_symbols()
-    for (bound_name, comp), (expected_name,
-                             expected_regex) in zip(bindings,
-                                                    expected_symbol_bindings):
+    for (bound_name, comp), (expected_name, expected_regex) in zip(
+        bindings, expected_symbol_bindings
+    ):
       self.assertEqual(bound_name, expected_name)
       self.assertRegexMatch(comp.compact_representation(), expected_regex)
 
@@ -477,10 +512,15 @@ class ValueTest(parameterized.TestCase):
     federated_value = value_impl.to_value(
         building_blocks.Reference(
             'test',
-            computation_types.FederatedType([tf.int32, tf.bool],
-                                            placements.CLIENTS, False)), None)
+            computation_types.FederatedType(
+                [tf.int32, tf.bool], placements.CLIENTS, False
+            ),
+        ),
+        None,
+    )
     self.assertEqual(
-        str(federated_value.type_signature), '{<int32,bool>}@CLIENTS')
+        str(federated_value.type_signature), '{<int32,bool>}@CLIENTS'
+    )
     federated_attribute = federated_value[0]
     self.assertEqual(str(federated_attribute.type_signature), '{int32}@CLIENTS')
 
@@ -488,10 +528,15 @@ class ValueTest(parameterized.TestCase):
     federated_value = value_impl.to_value(
         building_blocks.Reference(
             'test',
-            computation_types.FederatedType([tf.int32, tf.bool],
-                                            placements.CLIENTS, False)), None)
+            computation_types.FederatedType(
+                [tf.int32, tf.bool], placements.CLIENTS, False
+            ),
+        ),
+        None,
+    )
     self.assertEqual(
-        str(federated_value.type_signature), '{<int32,bool>}@CLIENTS')
+        str(federated_value.type_signature), '{<int32,bool>}@CLIENTS'
+    )
     identity = federated_value[:]
     self.assertEqual(str(identity.type_signature), '{<int32,bool>}@CLIENTS')
     self.assertEqual(str(identity), 'federated_map(<(x -> <x[0],x[1]>),test>)')
@@ -500,8 +545,12 @@ class ValueTest(parameterized.TestCase):
     federated_value = value_impl.to_value(
         building_blocks.Reference(
             'test',
-            computation_types.FederatedType([tf.int32, tf.bool],
-                                            placements.SERVER, True)), None)
+            computation_types.FederatedType(
+                [tf.int32, tf.bool], placements.SERVER, True
+            ),
+        ),
+        None,
+    )
     self.assertEqual(str(federated_value.type_signature), '<int32,bool>@SERVER')
     federated_attribute = federated_value[0]
     self.assertEqual(str(federated_attribute.type_signature), 'int32@SERVER')
@@ -510,22 +559,32 @@ class ValueTest(parameterized.TestCase):
     federated_value = value_impl.to_value(
         building_blocks.Reference(
             'test',
-            computation_types.FederatedType([tf.int32, tf.bool],
-                                            placements.SERVER, True)), None)
+            computation_types.FederatedType(
+                [tf.int32, tf.bool], placements.SERVER, True
+            ),
+        ),
+        None,
+    )
     self.assertEqual(str(federated_value.type_signature), '<int32,bool>@SERVER')
     identity = federated_value[:]
     self.assertEqual(str(identity.type_signature), '<int32,bool>@SERVER')
     self.assertEqual(
-        str(identity), 'federated_apply(<(x -> <x[0],x[1]>),test>)')
+        str(identity), 'federated_apply(<(x -> <x[0],x[1]>),test>)'
+    )
 
   def test_getitem_key_resolution(self):
     federated_value = value_impl.to_value(
         building_blocks.Reference(
             'test',
-            computation_types.FederatedType([('a', tf.int32), ('b', tf.bool)],
-                                            placements.SERVER, True)), None)
+            computation_types.FederatedType(
+                [('a', tf.int32), ('b', tf.bool)], placements.SERVER, True
+            ),
+        ),
+        None,
+    )
     self.assertEqual(
-        str(federated_value.type_signature), '<a=int32,b=bool>@SERVER')
+        str(federated_value.type_signature), '<a=int32,b=bool>@SERVER'
+    )
     federated_attribute = federated_value['a']
     self.assertEqual(str(federated_attribute.type_signature), 'int32@SERVER')
     with self.assertRaises(AttributeError):
@@ -535,10 +594,15 @@ class ValueTest(parameterized.TestCase):
     federated_value = value_impl.to_value(
         building_blocks.Reference(
             'test',
-            computation_types.FederatedType([('a', tf.int32), ('b', tf.bool)],
-                                            placements.SERVER, True)), None)
+            computation_types.FederatedType(
+                [('a', tf.int32), ('b', tf.bool)], placements.SERVER, True
+            ),
+        ),
+        None,
+    )
     self.assertEqual(
-        str(federated_value.type_signature), '<a=int32,b=bool>@SERVER')
+        str(federated_value.type_signature), '<a=int32,b=bool>@SERVER'
+    )
     federated_attribute = federated_value.a
     self.assertEqual(str(federated_attribute.type_signature), 'int32@SERVER')
 
@@ -546,10 +610,15 @@ class ValueTest(parameterized.TestCase):
     federated_value = value_impl.to_value(
         building_blocks.Reference(
             'test',
-            computation_types.FederatedType([('a', tf.int32), ('b', tf.bool)],
-                                            placements.CLIENTS, False)), None)
+            computation_types.FederatedType(
+                [('a', tf.int32), ('b', tf.bool)], placements.CLIENTS, False
+            ),
+        ),
+        None,
+    )
     self.assertEqual(
-        str(federated_value.type_signature), '{<a=int32,b=bool>}@CLIENTS')
+        str(federated_value.type_signature), '{<a=int32,b=bool>}@CLIENTS'
+    )
     federated_attribute = federated_value.a
     self.assertEqual(str(federated_attribute.type_signature), '{int32}@CLIENTS')
 
@@ -557,32 +626,49 @@ class ValueTest(parameterized.TestCase):
     federated_value_clients = value_impl.to_value(
         building_blocks.Reference(
             'test',
-            computation_types.FederatedType([('a', tf.int32), ('b', tf.bool)],
-                                            placements.CLIENTS, True)), None)
+            computation_types.FederatedType(
+                [('a', tf.int32), ('b', tf.bool)], placements.CLIENTS, True
+            ),
+        ),
+        None,
+    )
     self.assertEqual(
-        str(federated_value_clients.type_signature), '<a=int32,b=bool>@CLIENTS')
-    with self.assertRaisesRegex(AttributeError,
-                                r'There is no such attribute \'c\''):
+        str(federated_value_clients.type_signature), '<a=int32,b=bool>@CLIENTS'
+    )
+    with self.assertRaisesRegex(
+        AttributeError, r'There is no such attribute \'c\''
+    ):
       _ = federated_value_clients.c
     federated_value_server = value_impl.to_value(
         building_blocks.Reference(
             'test',
-            computation_types.FederatedType([('a', tf.int32), ('b', tf.bool)],
-                                            placements.SERVER, True)), None)
+            computation_types.FederatedType(
+                [('a', tf.int32), ('b', tf.bool)], placements.SERVER, True
+            ),
+        ),
+        None,
+    )
     self.assertEqual(
-        str(federated_value_server.type_signature), '<a=int32,b=bool>@SERVER')
-    with self.assertRaisesRegex(AttributeError,
-                                r'There is no such attribute \'c\''):
+        str(federated_value_server.type_signature), '<a=int32,b=bool>@SERVER'
+    )
+    with self.assertRaisesRegex(
+        AttributeError, r'There is no such attribute \'c\''
+    ):
       _ = federated_value_server.c
 
   def test_getattr_federated_value_with_none_default_missing_name(self):
     federated_value = value_impl.to_value(
         building_blocks.Reference(
             'test',
-            computation_types.FederatedType([('a', tf.int32), ('b', tf.bool)],
-                                            placements.SERVER, True)), None)
+            computation_types.FederatedType(
+                [('a', tf.int32), ('b', tf.bool)], placements.SERVER, True
+            ),
+        ),
+        None,
+    )
     self.assertEqual(
-        str(federated_value.type_signature), '<a=int32,b=bool>@SERVER')
+        str(federated_value.type_signature), '<a=int32,b=bool>@SERVER'
+    )
     missing_attr = getattr(federated_value, 'c', None)
     self.assertIsNone(missing_attr)
 
@@ -590,8 +676,10 @@ class ValueTest(parameterized.TestCase):
     struct_value = value_impl.to_value(
         building_blocks.Reference(
             'test',
-            computation_types.StructType([('a', tf.int32), ('b', tf.bool)])),
-        None)
+            computation_types.StructType([('a', tf.int32), ('b', tf.bool)]),
+        ),
+        None,
+    )
     self.assertEqual(str(struct_value.type_signature), '<a=int32,b=bool>')
     missing_attr = getattr(struct_value, 'c', None)
     self.assertIsNone(missing_attr)

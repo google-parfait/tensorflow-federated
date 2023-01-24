@@ -295,7 +295,6 @@ class LearningProcessTest(absltest.TestCase):
       )
 
   def test_next_return_tuple_raises(self):
-
     @federated_computation(
         at_server(tf.int32), at_clients(SequenceType(tf.int32))
     )
@@ -334,7 +333,6 @@ class LearningProcessTest(absltest.TestCase):
       )
 
   def test_next_return_odict_raises(self):
-
     @federated_computation(
         at_server(tf.int32), at_clients(SequenceType(tf.int32))
     )
@@ -365,7 +363,6 @@ class LearningProcessTest(absltest.TestCase):
       )
 
   def test_next_fn_with_three_parameters_raises(self):
-
     @federated_computation(
         at_server(tf.int32),
         at_clients(SequenceType(tf.int32)),
@@ -386,7 +383,6 @@ class LearningProcessTest(absltest.TestCase):
       )
 
   def test_next_fn_with_server_placed_second_arg_raises(self):
-
     @federated_computation(
         at_server(tf.int32), at_server(SequenceType(tf.int32))
     )
@@ -417,7 +413,6 @@ class LearningProcessTest(absltest.TestCase):
       )
 
   def test_next_fn_with_client_placed_metrics_result_raises(self):
-
     @federated_computation(
         at_server(tf.int32), at_clients(SequenceType(tf.int32))
     )

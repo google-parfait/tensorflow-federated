@@ -23,13 +23,14 @@ from typing import Any, Union
 from tensorflow_federated.python.common_libs import py_typecheck
 
 
-def retry(fn=None,
-          *,
-          retry_on_exception_filter: Callable[[Exception],
-                                              bool] = lambda x: True,
-          retry_on_result_filter: Callable[[Any], bool] = lambda x: False,
-          wait_max_ms: Union[float, int] = 30000,
-          wait_multiplier: Union[float, int] = 2):
+def retry(
+    fn=None,
+    *,
+    retry_on_exception_filter: Callable[[Exception], bool] = lambda x: True,
+    retry_on_result_filter: Callable[[Any], bool] = lambda x: False,
+    wait_max_ms: Union[float, int] = 30000,
+    wait_multiplier: Union[float, int] = 2,
+):
   """Pure Python decorator that retries functions or coroutine functions.
 
   `retry` starts at some delay between function invocations, and backs
@@ -61,20 +62,29 @@ def retry(fn=None,
   if not inspect.isfunction(retry_on_exception_filter):
     raise TypeError(
         'Expected function to be passed as retry_on_exception_filter; '
-        'encountered {} of type {}.'.format(retry_on_exception_filter,
-                                            type(retry_on_exception_filter)))
+        'encountered {} of type {}.'.format(
+            retry_on_exception_filter, type(retry_on_exception_filter)
+        )
+    )
   if not inspect.isfunction(retry_on_result_filter):
-    raise TypeError('Expected function to be passed as retry_on_result_filter; '
-                    'encountered {} of type {}.'.format(
-                        retry_on_result_filter, type(retry_on_result_filter)))
+    raise TypeError(
+        'Expected function to be passed as retry_on_result_filter; '
+        'encountered {} of type {}.'.format(
+            retry_on_result_filter, type(retry_on_result_filter)
+        )
+    )
   if wait_max_ms <= 0:
     raise ValueError(
         'wait_max_ms required to be positive; encountered value {}.'.format(
-            wait_max_ms))
+            wait_max_ms
+        )
+    )
   if wait_multiplier <= 0:
     raise ValueError(
         'wait_multiplier required to be positive; encountered value {}.'.format(
-            wait_multiplier))
+            wait_multiplier
+        )
+    )
 
   if fn is None:
     # Called with arguments; delay decoration until `fn` is passed in.
@@ -83,7 +93,8 @@ def retry(fn=None,
         retry_on_exception_filter=retry_on_exception_filter,
         retry_on_result_filter=retry_on_result_filter,
         wait_max_ms=wait_max_ms,
-        wait_multiplier=wait_multiplier)
+        wait_multiplier=wait_multiplier,
+    )
 
   if inspect.iscoroutinefunction(fn):
     # Similar to the logic in tracing.py, we case on corofunction versus vanilla
@@ -91,8 +102,7 @@ def retry(fn=None,
 
     @functools.wraps(fn)
     async def retry_coro_fn(*args, **kwargs):
-
-      retry_wait_ms = 1.
+      retry_wait_ms = 1.0
 
       while True:
         try:
@@ -118,8 +128,7 @@ def retry(fn=None,
 
     @functools.wraps(fn)
     def retry_fn(*args, **kwargs):
-
-      retry_wait_ms = 1.
+      retry_wait_ms = 1.0
 
       while True:
         try:
@@ -141,5 +150,7 @@ def retry(fn=None,
     return retry_fn
 
   else:
-    raise TypeError('Retrying expects Python function or coroutine function; '
-                    'passed {} of type {}.'.format(fn, type(fn)))
+    raise TypeError(
+        'Retrying expects Python function or coroutine function; '
+        'passed {} of type {}.'.format(fn, type(fn))
+    )

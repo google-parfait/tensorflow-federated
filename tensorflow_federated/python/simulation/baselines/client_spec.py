@@ -40,21 +40,26 @@ class ClientSpec:
       buffer size to use. If set to `None`, a default value suitable for the
       task's dataset will be used. If set to `1`, no shuffling occurs.
   """
+
   num_epochs: int = attr.ib(
       validator=[attr.validators.instance_of(int), _check_positive],
-      converter=int)
+      converter=int,
+  )
   batch_size: int = attr.ib(
       validator=[attr.validators.instance_of(int), _check_positive],
-      converter=int)
+      converter=int,
+  )
   max_elements: Optional[int] = attr.ib(
       default=None,
       validator=[
           attr.validators.optional(attr.validators.instance_of(int)),
-          attr.validators.optional(_check_positive)
-      ])
+          attr.validators.optional(_check_positive),
+      ],
+  )
   shuffle_buffer_size: Optional[int] = attr.ib(
       default=None,
       validator=[
           attr.validators.optional(attr.validators.instance_of(int)),
-          attr.validators.optional(_check_positive)
-      ])
+          attr.validators.optional(_check_positive),
+      ],
+  )

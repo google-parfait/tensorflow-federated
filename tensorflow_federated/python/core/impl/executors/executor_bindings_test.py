@@ -40,8 +40,10 @@ def _test_map_integers(tensor):
           keys=list(range(5)),
           values=list(reversed(range(5))),
           key_dtype=tf.int64,
-          value_dtype=tf.int64),
-      default_value=-1)
+          value_dtype=tf.int64,
+      ),
+      default_value=-1,
+  )
   return table.lookup(tensor)
 
 
@@ -57,8 +59,9 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
     executor = executor_bindings.create_tensorflow_executor()
     # 1. Test a simple tensor.
     expected_type_spec = TensorType(shape=[3], dtype=tf.int64)
-    value_pb, _ = value_serialization.serialize_value([1, 2, 3],
-                                                      expected_type_spec)
+    value_pb, _ = value_serialization.serialize_value(
+        [1, 2, 3], expected_type_spec
+    )
     value = executor.create_value(value_pb)
     self.assertIsInstance(value, executor_bindings.OwnedValueId)
     self.assertEqual(value.ref, 0)
@@ -66,17 +69,19 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
     self.assertEqual(repr(value), r'<OwnedValueId: 0>')
     materialized_value = executor.materialize(value.ref)
     deserialized_value, type_spec = value_serialization.deserialize_value(
-        materialized_value)
+        materialized_value
+    )
     type_test_utils.assert_types_identical(type_spec, expected_type_spec)
     self.assertAllEqual(deserialized_value, [1, 2, 3])
     # 2. Test a struct of tensors, ensure that we get a different ID.
     expected_type_spec = StructType([
         ('a', TensorType(shape=[3], dtype=tf.int64)),
-        ('b', TensorType(shape=[], dtype=tf.float32))
+        ('b', TensorType(shape=[], dtype=tf.float32)),
     ])
     value_pb, _ = value_serialization.serialize_value(
         collections.OrderedDict(a=tf.constant([1, 2, 3]), b=tf.constant(42.0)),
-        expected_type_spec)
+        expected_type_spec,
+    )
     value = executor.create_value(value_pb)
     self.assertIsInstance(value, executor_bindings.OwnedValueId)
     # Assert the value ID was incremented.
@@ -85,14 +90,18 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
     self.assertEqual(repr(value), r'<OwnedValueId: 1>')
     materialized_value = executor.materialize(value.ref)
     deserialized_value, type_spec = value_serialization.deserialize_value(
-        materialized_value)
+        materialized_value
+    )
     # Note: here we've lost the names `a` and `b` in the output. The output
     # is a more _strict_ type.
     self.assertTrue(expected_type_spec.is_assignable_from(type_spec))
     deserialized_value = type_conversions.type_to_py_container(
-        deserialized_value, expected_type_spec)
-    self.assertAllClose(deserialized_value,
-                        collections.OrderedDict(a=(1, 2, 3), b=42.0))
+        deserialized_value, expected_type_spec
+    )
+    self.assertAllClose(
+        deserialized_value, collections.OrderedDict(a=(1, 2, 3), b=42.0)
+    )
+
     # 3. Test creating a value from a computation.
     @tensorflow_computation.tf_computation(tf.int32, tf.int32)
     def foo(a, b):
@@ -110,34 +119,42 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
   @parameterized.named_parameters(
       ('range', tf.data.Dataset.range(5)),
       ('shuffled_range', tf.data.Dataset.range(5).shuffle(3)),
-      ('mapped_with_resource_range',
-       tf.data.Dataset.range(5).map(_test_map_integers)),
+      (
+          'mapped_with_resource_range',
+          tf.data.Dataset.range(5).map(_test_map_integers),
+      ),
       ('mapped_range', tf.data.Dataset.range(5).map(lambda x: x)),
-      ('batched_range', tf.data.Dataset.range(5).batch(2,
-                                                       drop_remainder=False)),
+      (
+          'batched_range',
+          tf.data.Dataset.range(5).batch(2, drop_remainder=False),
+      ),
       ('tensor_slices', tf.data.Dataset.from_tensor_slices(list(range(5)))),
   )
   def test_create_value_sequence(self, dataset):
     executor = executor_bindings.create_tensorflow_executor()
     sequence_type = SequenceType(dataset.element_spec)
     arg_value_pb, _ = value_serialization.serialize_value(
-        dataset, sequence_type)
+        dataset, sequence_type
+    )
     arg = executor.create_value(arg_value_pb)
 
     @tensorflow_computation.tf_computation(sequence_type)
     def sum_examples(ds):
       return ds.reduce(
           tf.constant(0, ds.element_spec.dtype),
-          lambda s, x: s + tf.reduce_sum(x))
+          lambda s, x: s + tf.reduce_sum(x),
+      )
 
     comp_pb = executor_pb2.Value(
-        computation=sum_examples.get_proto(sum_examples))
+        computation=sum_examples.get_proto(sum_examples)
+    )
     comp = executor.create_value(comp_pb)
     result = executor.create_call(comp.ref, arg.ref)
     output_pb = executor.materialize(result.ref)
     result, result_type_spec = value_serialization.deserialize_value(output_pb)
     type_test_utils.assert_types_identical(
-        result_type_spec, TensorType(sequence_type.element.dtype))
+        result_type_spec, TensorType(sequence_type.element.dtype)
+    )
     self.assertEqual(result, sum(range(5)))
 
   def test_create_tuple_of_value_sequence(self):
@@ -145,15 +162,15 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
     executor = executor_bindings.create_tensorflow_executor()
     struct_of_sequence_type = StructType([
         (None, SequenceType(datasets[0].element_spec)),
-        (None, SequenceType(datasets[0].element_spec))
+        (None, SequenceType(datasets[0].element_spec)),
     ])
     arg_value_pb, _ = value_serialization.serialize_value(
-        datasets, struct_of_sequence_type)
+        datasets, struct_of_sequence_type
+    )
     arg = executor.create_value(arg_value_pb)
 
     @tensorflow_computation.tf_computation(struct_of_sequence_type)
     def preprocess(datasets):
-
       def double_value(x):
         return 2 * x
 
@@ -168,15 +185,18 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
     result = executor.create_call(comp.ref, arg.ref)
     output_pb = executor.materialize(result.ref)
     result, result_type_spec = value_serialization.deserialize_value(
-        output_pb, type_hint=struct_of_sequence_type)
-    type_test_utils.assert_types_identical(result_type_spec,
-                                           struct_of_sequence_type)
+        output_pb, type_hint=struct_of_sequence_type
+    )
+    type_test_utils.assert_types_identical(
+        result_type_spec, struct_of_sequence_type
+    )
 
   def test_create_struct(self):
     executor = executor_bindings.create_tensorflow_executor()
     expected_type_spec = TensorType(shape=[3], dtype=tf.int64)
     value_pb, _ = value_serialization.serialize_value(
-        tf.constant([1, 2, 3]), expected_type_spec)
+        tf.constant([1, 2, 3]), expected_type_spec
+    )
     value = executor.create_value(value_pb)
     self.assertEqual(value.ref, 0)
     # 1. Create a struct from duplicated values.
@@ -184,30 +204,37 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
     self.assertEqual(struct_value.ref, 1)
     materialized_value = executor.materialize(struct_value.ref)
     deserialized_value, type_spec = value_serialization.deserialize_value(
-        materialized_value)
+        materialized_value
+    )
     struct_type_spec = computation_types.to_type(
-        [expected_type_spec, expected_type_spec])
+        [expected_type_spec, expected_type_spec]
+    )
     type_test_utils.assert_types_equivalent(type_spec, struct_type_spec)
     deserialized_value = type_conversions.type_to_py_container(
-        deserialized_value, struct_type_spec)
+        deserialized_value, struct_type_spec
+    )
     self.assertAllClose([(1, 2, 3), (1, 2, 3)], deserialized_value)
     # 2. Create a struct from the struct and another value.
     new_struct_value = executor.create_struct([struct_value.ref, value.ref])
     materialized_value = executor.materialize(new_struct_value.ref)
     deserialized_value, type_spec = value_serialization.deserialize_value(
-        materialized_value)
+        materialized_value
+    )
     struct_type_spec = computation_types.to_type(
-        [struct_type_spec, expected_type_spec])
+        [struct_type_spec, expected_type_spec]
+    )
     type_test_utils.assert_types_equivalent(type_spec, struct_type_spec)
     deserialized_value = type_conversions.type_to_py_container(
-        deserialized_value, struct_type_spec)
+        deserialized_value, struct_type_spec
+    )
     self.assertAllClose([[(1, 2, 3), (1, 2, 3)], (1, 2, 3)], deserialized_value)
 
   def test_create_selection(self):
     executor = executor_bindings.create_tensorflow_executor()
     expected_type_spec = TensorType(shape=[3], dtype=tf.int64)
     value_pb, _ = value_serialization.serialize_value(
-        tf.constant([1, 2, 3]), expected_type_spec)
+        tf.constant([1, 2, 3]), expected_type_spec
+    )
     value = executor.create_value(value_pb)
     self.assertEqual(value.ref, 0)
     # 1. Create a struct from duplicated values.
@@ -215,27 +242,33 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
     self.assertEqual(struct_value.ref, 1)
     materialized_value = executor.materialize(struct_value.ref)
     deserialized_value, type_spec = value_serialization.deserialize_value(
-        materialized_value)
+        materialized_value
+    )
     struct_type_spec = computation_types.to_type(
-        [expected_type_spec, expected_type_spec])
+        [expected_type_spec, expected_type_spec]
+    )
     type_test_utils.assert_types_equivalent(type_spec, struct_type_spec)
     deserialized_value = type_conversions.type_to_py_container(
-        deserialized_value, struct_type_spec)
+        deserialized_value, struct_type_spec
+    )
     self.assertAllClose([(1, 2, 3), (1, 2, 3)], deserialized_value)
     # 2. Select the first value out of the struct.
     new_value = executor.create_selection(struct_value.ref, 0)
     materialized_value = executor.materialize(new_value.ref)
     deserialized_value, type_spec = value_serialization.deserialize_value(
-        materialized_value)
+        materialized_value
+    )
     type_test_utils.assert_types_equivalent(type_spec, expected_type_spec)
     deserialized_value = type_conversions.type_to_py_container(
-        deserialized_value, struct_type_spec)
+        deserialized_value, struct_type_spec
+    )
     self.assertAllClose((1, 2, 3), deserialized_value)
 
   def test_call_with_arg(self):
     executor = executor_bindings.create_tensorflow_executor()
     value_pb, _ = value_serialization.serialize_value(
-        tf.constant([1, 2, 3]), TensorType(shape=[3], dtype=tf.int64))
+        tf.constant([1, 2, 3]), TensorType(shape=[3], dtype=tf.int64)
+    )
     value_ref = executor.create_value(value_pb)
     arg = executor.create_struct((value_ref.ref, value_ref.ref))
 
@@ -275,17 +308,20 @@ class ReferenceResolvingExecutorBindingsTest(tf.test.TestCase):
   def test_create(self):
     try:
       executor_bindings.create_reference_resolving_executor(
-          executor_bindings.create_tensorflow_executor())
+          executor_bindings.create_tensorflow_executor()
+      )
     except Exception as e:  # pylint: disable=broad-except
       self.fail(f'Exception: {e}')
 
   def test_create_value(self):
     executor = executor_bindings.create_reference_resolving_executor(
-        executor_bindings.create_tensorflow_executor())
+        executor_bindings.create_tensorflow_executor()
+    )
     # 1. Test a simple tensor.
     expected_type_spec = TensorType(shape=[3], dtype=tf.int64)
-    value_pb, _ = value_serialization.serialize_value([1, 2, 3],
-                                                      expected_type_spec)
+    value_pb, _ = value_serialization.serialize_value(
+        [1, 2, 3], expected_type_spec
+    )
     value = executor.create_value(value_pb)
     self.assertIsInstance(value, executor_bindings.OwnedValueId)
     self.assertEqual(value.ref, 0)
@@ -293,17 +329,19 @@ class ReferenceResolvingExecutorBindingsTest(tf.test.TestCase):
     self.assertEqual(repr(value), r'<OwnedValueId: 0>')
     materialized_value = executor.materialize(value.ref)
     deserialized_value, type_spec = value_serialization.deserialize_value(
-        materialized_value)
+        materialized_value
+    )
     type_test_utils.assert_types_identical(type_spec, expected_type_spec)
     self.assertAllEqual(deserialized_value, [1, 2, 3])
     # 2. Test a struct of tensors, ensure that we get a different ID.
     expected_type_spec = StructType([
         ('a', TensorType(shape=[3], dtype=tf.int64)),
-        ('b', TensorType(shape=[], dtype=tf.float32))
+        ('b', TensorType(shape=[], dtype=tf.float32)),
     ])
     value_pb, _ = value_serialization.serialize_value(
         collections.OrderedDict(a=tf.constant([1, 2, 3]), b=tf.constant(42.0)),
-        expected_type_spec)
+        expected_type_spec,
+    )
     value = executor.create_value(value_pb)
     self.assertIsInstance(value, executor_bindings.OwnedValueId)
     # Assert the value ID was incremented.
@@ -312,14 +350,18 @@ class ReferenceResolvingExecutorBindingsTest(tf.test.TestCase):
     self.assertEqual(repr(value), r'<OwnedValueId: 1>')
     materialized_value = executor.materialize(value.ref)
     deserialized_value, type_spec = value_serialization.deserialize_value(
-        materialized_value)
+        materialized_value
+    )
     # Note: here we've lost the names `a` and `b` in the output. The output
     # is a more _strict_ type.
     self.assertTrue(expected_type_spec.is_assignable_from(type_spec))
     deserialized_value = type_conversions.type_to_py_container(
-        deserialized_value, expected_type_spec)
-    self.assertAllClose(deserialized_value,
-                        collections.OrderedDict(a=(1, 2, 3), b=42.0))
+        deserialized_value, expected_type_spec
+    )
+    self.assertAllClose(
+        deserialized_value, collections.OrderedDict(a=(1, 2, 3), b=42.0)
+    )
+
     # 3. Test creating a value from a computation.
     @tensorflow_computation.tf_computation(tf.int32, tf.int32)
     def foo(a, b):
@@ -336,10 +378,12 @@ class ReferenceResolvingExecutorBindingsTest(tf.test.TestCase):
 
   def test_create_struct(self):
     executor = executor_bindings.create_reference_resolving_executor(
-        executor_bindings.create_tensorflow_executor())
+        executor_bindings.create_tensorflow_executor()
+    )
     expected_type_spec = TensorType(shape=[3], dtype=tf.int64)
     value_pb, _ = value_serialization.serialize_value(
-        tf.constant([1, 2, 3]), expected_type_spec)
+        tf.constant([1, 2, 3]), expected_type_spec
+    )
     value = executor.create_value(value_pb)
     self.assertEqual(value.ref, 0)
     # 1. Create a struct from duplicated values.
@@ -347,31 +391,39 @@ class ReferenceResolvingExecutorBindingsTest(tf.test.TestCase):
     self.assertEqual(struct_value.ref, 1)
     materialized_value = executor.materialize(struct_value.ref)
     deserialized_value, type_spec = value_serialization.deserialize_value(
-        materialized_value)
+        materialized_value
+    )
     struct_type_spec = computation_types.to_type(
-        [expected_type_spec, expected_type_spec])
+        [expected_type_spec, expected_type_spec]
+    )
     type_test_utils.assert_types_equivalent(type_spec, struct_type_spec)
     deserialized_value = type_conversions.type_to_py_container(
-        deserialized_value, struct_type_spec)
+        deserialized_value, struct_type_spec
+    )
     self.assertAllClose([(1, 2, 3), (1, 2, 3)], deserialized_value)
     # 2. Create a struct from the struct and another value.
     new_struct_value = executor.create_struct([struct_value.ref, value.ref])
     materialized_value = executor.materialize(new_struct_value.ref)
     deserialized_value, type_spec = value_serialization.deserialize_value(
-        materialized_value)
+        materialized_value
+    )
     struct_type_spec = computation_types.to_type(
-        [struct_type_spec, expected_type_spec])
+        [struct_type_spec, expected_type_spec]
+    )
     type_test_utils.assert_types_equivalent(type_spec, struct_type_spec)
     deserialized_value = type_conversions.type_to_py_container(
-        deserialized_value, struct_type_spec)
+        deserialized_value, struct_type_spec
+    )
     self.assertAllClose([[(1, 2, 3), (1, 2, 3)], (1, 2, 3)], deserialized_value)
 
   def test_create_selection(self):
     executor = executor_bindings.create_reference_resolving_executor(
-        executor_bindings.create_tensorflow_executor())
+        executor_bindings.create_tensorflow_executor()
+    )
     expected_type_spec = TensorType(shape=[3], dtype=tf.int64)
     value_pb, _ = value_serialization.serialize_value(
-        tf.constant([1, 2, 3]), expected_type_spec)
+        tf.constant([1, 2, 3]), expected_type_spec
+    )
     value = executor.create_value(value_pb)
     self.assertEqual(value.ref, 0)
     # 1. Create a struct from duplicated values.
@@ -379,28 +431,35 @@ class ReferenceResolvingExecutorBindingsTest(tf.test.TestCase):
     self.assertEqual(struct_value.ref, 1)
     materialized_value = executor.materialize(struct_value.ref)
     deserialized_value, type_spec = value_serialization.deserialize_value(
-        materialized_value)
+        materialized_value
+    )
     struct_type_spec = computation_types.to_type(
-        [expected_type_spec, expected_type_spec])
+        [expected_type_spec, expected_type_spec]
+    )
     type_test_utils.assert_types_equivalent(type_spec, struct_type_spec)
     deserialized_value = type_conversions.type_to_py_container(
-        deserialized_value, struct_type_spec)
+        deserialized_value, struct_type_spec
+    )
     self.assertAllClose([(1, 2, 3), (1, 2, 3)], deserialized_value)
     # 2. Select the first value out of the struct.
     new_value = executor.create_selection(struct_value.ref, 0)
     materialized_value = executor.materialize(new_value.ref)
     deserialized_value, type_spec = value_serialization.deserialize_value(
-        materialized_value)
+        materialized_value
+    )
     type_test_utils.assert_types_equivalent(type_spec, expected_type_spec)
     deserialized_value = type_conversions.type_to_py_container(
-        deserialized_value, struct_type_spec)
+        deserialized_value, struct_type_spec
+    )
     self.assertAllClose((1, 2, 3), deserialized_value)
 
   def test_call_with_arg(self):
     executor = executor_bindings.create_reference_resolving_executor(
-        executor_bindings.create_tensorflow_executor())
+        executor_bindings.create_tensorflow_executor()
+    )
     value_pb, _ = value_serialization.serialize_value(
-        tf.constant([1, 2, 3]), TensorType(shape=[3], dtype=tf.int64))
+        tf.constant([1, 2, 3]), TensorType(shape=[3], dtype=tf.int64)
+    )
     value_ref = executor.create_value(value_pb)
     arg = executor.create_struct((value_ref.ref, value_ref.ref))
 
@@ -417,7 +476,8 @@ class ReferenceResolvingExecutorBindingsTest(tf.test.TestCase):
 
   def test_call_no_arg(self):
     executor = executor_bindings.create_reference_resolving_executor(
-        executor_bindings.create_tensorflow_executor())
+        executor_bindings.create_tensorflow_executor()
+    )
 
     @tensorflow_computation.tf_computation
     def foo():
@@ -443,35 +503,42 @@ class FederatingExecutorBindingsTest(tf.test.TestCase):
       try:
         executor_bindings.create_federating_executor(
             executor_bindings.create_tensorflow_executor(),
-            {placements.CLIENTS: 10})
+            {placements.CLIENTS: 10},
+        )
       except Exception as e:  # pylint: disable=broad-except
         self.fail(f'Exception: {e}')
     with self.subTest('fails_non_dict'):
       with self.assertRaisesRegex(TypeError, 'must be a `Mapping`'):
         executor_bindings.create_federating_executor(
             executor_bindings.create_tensorflow_executor(),
-            [(placements.CLIENTS, 10)])
+            [(placements.CLIENTS, 10)],
+        )
     with self.subTest('fails_non_placement_keys'):
       with self.assertRaisesRegex(TypeError, '`PlacementLiteral`'):
         executor_bindings.create_federating_executor(
-            executor_bindings.create_tensorflow_executor(), {'clients': 10})
+            executor_bindings.create_tensorflow_executor(), {'clients': 10}
+        )
       with self.assertRaisesRegex(TypeError, '`PlacementLiteral`'):
         executor_bindings.create_federating_executor(
-            executor_bindings.create_tensorflow_executor(), {10: 10})
+            executor_bindings.create_tensorflow_executor(), {10: 10}
+        )
     with self.subTest('fails_non_int_value'):
       with self.assertRaisesRegex(TypeError, r'`int` values'):
         executor_bindings.create_federating_executor(
             executor_bindings.create_tensorflow_executor(),
-            {placements.CLIENTS: 0.5})
+            {placements.CLIENTS: 0.5},
+        )
 
 
 class RemoteExecutorBindingsTest(tf.test.TestCase):
 
   def test_insecure_channel_construction(self):
     remote_ex = executor_bindings.create_remote_executor(
-        executor_bindings.create_insecure_grpc_channel('localhost:{}'.format(
-            portpicker.pick_unused_port())),
-        cardinalities={placements.CLIENTS: 10})
+        executor_bindings.create_insecure_grpc_channel(
+            'localhost:{}'.format(portpicker.pick_unused_port())
+        ),
+        cardinalities={placements.CLIENTS: 10},
+    )
     self.assertIsInstance(remote_ex, executor_bindings.Executor)
 
 
@@ -482,7 +549,8 @@ class ComposingExecutorBindingsTest(tf.test.TestCase):
     children = [
         executor_bindings.create_composing_child(
             executor_bindings.create_tensorflow_executor(),
-            {placements.CLIENTS: 0})
+            {placements.CLIENTS: 0},
+        )
     ]
     composing_ex = executor_bindings.create_composing_executor(server, children)
     self.assertIsInstance(composing_ex, executor_bindings.Executor)
@@ -500,7 +568,8 @@ class SerializeTensorTest(tf.test.TestCase, parameterized.TestCase):
   )
   def test_serialize(self, input_value, dtype):
     value_proto = executor_bindings.serialize_tensor_value(
-        tf.convert_to_tensor(input_value, dtype))
+        tf.convert_to_tensor(input_value, dtype)
+    )
     tensor_proto = tf.make_tensor_proto(values=0)
     self.assertTrue(value_proto.tensor.Unpack(tensor_proto))
     roundtrip_value = tf.make_ndarray(tensor_proto)
@@ -516,7 +585,8 @@ class SerializeTensorTest(tf.test.TestCase, parameterized.TestCase):
   )
   def test_roundtrip(self, input_value, dtype):
     value_proto = executor_bindings.serialize_tensor_value(
-        tf.convert_to_tensor(input_value, dtype))
+        tf.convert_to_tensor(input_value, dtype)
+    )
     roundtrip_value = executor_bindings.deserialize_tensor_value(value_proto)
     self.assertAllEqual(roundtrip_value, input_value)
 
@@ -540,13 +610,15 @@ class SequenceExecutorBindingsTest(parameterized.TestCase):
   def test_create(self):
     try:
       executor_bindings.create_sequence_executor(
-          executor_bindings.create_xla_executor())
+          executor_bindings.create_xla_executor()
+      )
     except Exception as e:  # pylint: disable=broad-except
       self.fail(f'Exception: {e}')
 
   def test_materialize_on_unkown_fails(self):
     executor = executor_bindings.create_sequence_executor(
-        executor_bindings.create_xla_executor())
+        executor_bindings.create_xla_executor()
+    )
     with self.assertRaisesRegex(Exception, 'NOT_FOUND'):
       executor.materialize(0)
 

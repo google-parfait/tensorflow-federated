@@ -53,7 +53,8 @@ def build_federated_averaging_process(
     model_fn,
     client_state_fn,
     server_optimizer_fn=lambda: tf.keras.optimizers.SGD(learning_rate=1.0),
-    client_optimizer_fn=lambda: tf.keras.optimizers.SGD(learning_rate=0.1)):
+    client_optimizer_fn=lambda: tf.keras.optimizers.SGD(learning_rate=0.1),
+):
   """Builds the TFF computations for optimization using federated averaging.
 
   Args:
@@ -80,7 +81,8 @@ def build_federated_averaging_process(
         model_weights=get_model_weights(model),
         optimizer_state=server_optimizer.variables(),
         round_num=0,
-        total_iters_count=0)
+        total_iters_count=0,
+    )
 
   server_state_type = server_init_tf.type_signature.result
 
@@ -88,14 +90,18 @@ def build_federated_averaging_process(
 
   client_state_type = tff.framework.type_from_tensors(client_state_fn())
 
-  @tff.tf_computation(server_state_type, model_weights_type.trainable,
-                      client_state_type.iters_count)  # pytype: disable=attribute-error  # gen-stub-imports
+  @tff.tf_computation(
+      server_state_type,
+      model_weights_type.trainable,
+      client_state_type.iters_count,
+  )  # pytype: disable=attribute-error  # gen-stub-imports
   def server_update_fn(server_state, model_delta, total_iters_count):
     model = model_fn()
     server_optimizer = server_optimizer_fn()
     _initialize_optimizer_vars(model, server_optimizer)
-    return server_update(model, server_optimizer, server_state, model_delta,
-                         total_iters_count)
+    return server_update(
+        model, server_optimizer, server_state, model_delta, total_iters_count
+    )
 
   @tff.tf_computation(server_state_type)
   def server_message_fn(server_state):
@@ -108,17 +114,20 @@ def build_federated_averaging_process(
   def client_update_fn(tf_dataset, client_state, server_message):
     model = model_fn()
     client_optimizer = client_optimizer_fn()
-    return client_update(model, tf_dataset, client_state, server_message,
-                         client_optimizer)
+    return client_update(
+        model, tf_dataset, client_state, server_message, client_optimizer
+    )
 
   federated_server_state_type = tff.type_at_server(server_state_type)
   federated_dataset_type = tff.type_at_clients(tf_dataset_type)
 
   federated_client_state_type = tff.type_at_clients(client_state_type)
 
-  @tff.federated_computation(federated_server_state_type,
-                             federated_dataset_type,
-                             federated_client_state_type)
+  @tff.federated_computation(
+      federated_server_state_type,
+      federated_dataset_type,
+      federated_client_state_type,
+  )
   def run_one_round(server_state, federated_dataset, client_states):
     """Orchestration logic for one round of computation.
 
@@ -136,17 +145,22 @@ def build_federated_averaging_process(
 
     client_outputs = tff.federated_map(
         client_update_fn,
-        (federated_dataset, client_states, server_message_at_client))
+        (federated_dataset, client_states, server_message_at_client),
+    )
 
     weight_denom = client_outputs.client_weight
     round_model_delta = tff.federated_mean(
-        client_outputs.weights_delta, weight=weight_denom)
+        client_outputs.weights_delta, weight=weight_denom
+    )
     total_iters_count = tff.federated_sum(
-        client_outputs.client_state.iters_count)
+        client_outputs.client_state.iters_count
+    )
     server_state = tff.federated_map(
-        server_update_fn, (server_state, round_model_delta, total_iters_count))
+        server_update_fn, (server_state, round_model_delta, total_iters_count)
+    )
     round_loss_metric = tff.federated_mean(
-        client_outputs.model_output, weight=weight_denom)
+        client_outputs.model_output, weight=weight_denom
+    )
 
     return server_state, round_loss_metric, client_outputs.client_state
 
@@ -156,4 +170,5 @@ def build_federated_averaging_process(
     return tff.federated_value(server_init_tf(), tff.SERVER)
 
   return tff.templates.IterativeProcess(
-      initialize_fn=server_init_tff, next_fn=run_one_round)
+      initialize_fn=server_init_tff, next_fn=run_one_round
+  )

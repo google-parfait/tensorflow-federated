@@ -26,24 +26,34 @@ def learning_process_builder(
   return tff.learning.algorithms.build_weighted_fed_avg(
       model_fn=model_fn,
       client_optimizer_fn=tf.keras.optimizers.SGD,
-      server_optimizer_fn=tf.keras.optimizers.SGD)
+      server_optimizer_fn=tf.keras.optimizers.SGD,
+  )
 
 
 class FederatedTasksTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
-      ('cifar100_image_classification',
-       tff.simulation.baselines.cifar100.create_image_classification_task),
-      ('emnist_autoencoder',
-       tff.simulation.baselines.emnist.create_autoencoder_task),
-      ('emnist_character_recognition',
-       tff.simulation.baselines.emnist.create_character_recognition_task),
-      ('shakespeare_character_prediction',
-       tff.simulation.baselines.shakespeare.create_character_prediction_task),
+      (
+          'cifar100_image_classification',
+          tff.simulation.baselines.cifar100.create_image_classification_task,
+      ),
+      (
+          'emnist_autoencoder',
+          tff.simulation.baselines.emnist.create_autoencoder_task,
+      ),
+      (
+          'emnist_character_recognition',
+          tff.simulation.baselines.emnist.create_character_recognition_task,
+      ),
+      (
+          'shakespeare_character_prediction',
+          tff.simulation.baselines.shakespeare.create_character_prediction_task,
+      ),
   )
   def test_run_federated(self, baseline_task_fn):
     train_client_spec = tff.simulation.baselines.ClientSpec(
-        num_epochs=1, batch_size=32)
+        num_epochs=1, batch_size=32
+    )
     baseline_task = baseline_task_fn(train_client_spec, use_synthetic_data=True)
 
     process = learning_process_builder(baseline_task.model_fn)
@@ -55,7 +65,8 @@ class FederatedTasksTest(tf.test.TestCase, parameterized.TestCase):
     tff.simulation.run_training_process(
         training_process=process,
         training_selection_fn=client_selection_fn,
-        total_rounds=2)
+        total_rounds=2,
+    )
 
 
 if __name__ == '__main__':

@@ -39,15 +39,16 @@ DATASET_VALUE = 'value'
 
 
 @attr.s(eq=False, frozen=True)
-class ServerOutput():
+class ServerOutput:
   output_strings = attr.ib()
   string_values = attr.ib()
   num_not_decoded = attr.ib()
 
 
 @tf.function
-def _parse_client_dict(dataset: tf.data.Dataset,
-                       string_max_bytes: int) -> tuple[tf.Tensor, tf.Tensor]:
+def _parse_client_dict(
+    dataset: tf.data.Dataset, string_max_bytes: int
+) -> tuple[tf.Tensor, tf.Tensor]:
   """Parses the dictionary in the input `dataset` to key and value lists.
 
   Args:
@@ -73,12 +74,18 @@ def _parse_client_dict(dataset: tf.data.Dataset,
   tf.debugging.Assert(
       tf.math.logical_not(
           tf.math.reduce_any(
-              tf.greater(tf.strings.length(input_strings), string_max_bytes))),
+              tf.greater(tf.strings.length(input_strings), string_max_bytes)
+          )
+      ),
       data=[
-          f'IbltFactory: Input strings must be truncated to {string_max_bytes=}',
-          input_strings
+          (
+              'IbltFactory: Input strings must be truncated to'
+              f' {string_max_bytes=}'
+          ),
+          input_strings,
       ],
-      name='CHECK_STRING_LENGTH')
+      name='CHECK_STRING_LENGTH',
+  )
   return input_strings, string_values
 
 
@@ -95,7 +102,8 @@ class IbltFactory(factory.UnweightedAggregationFactory):
       seed: int = 0,
       sketch_agg_factory: Optional[factory.UnweightedAggregationFactory] = None,
       value_tensor_agg_factory: Optional[
-          factory.UnweightedAggregationFactory] = None,
+          factory.UnweightedAggregationFactory
+      ] = None,
   ) -> None:
     """Initializes IbltFactory.
 
@@ -125,17 +133,24 @@ class IbltFactory(factory.UnweightedAggregationFactory):
       ValueError: if parameters don't meet expectations.
     """
     if capacity < 1:
-      raise ValueError('capacity should be at least 1, got ' f'{capacity}')
+      raise ValueError(f'capacity should be at least 1, got {capacity}')
     if string_max_bytes < 1:
-      raise ValueError('string_max_bytes should be at least 1, got '
-                       f'{string_max_bytes}')
+      raise ValueError(
+          f'string_max_bytes should be at least 1, got {string_max_bytes}'
+      )
     if repetitions < 3:
       raise ValueError(f'repetitions should be at least 3, got {repetitions}')
 
-    self._sketch_agg_factory = sum_factory.SumFactory(
-    ) if sketch_agg_factory is None else sketch_agg_factory
-    self._value_tensor_agg_factory = sum_factory.SumFactory(
-    ) if value_tensor_agg_factory is None else value_tensor_agg_factory
+    self._sketch_agg_factory = (
+        sum_factory.SumFactory()
+        if sketch_agg_factory is None
+        else sketch_agg_factory
+    )
+    self._value_tensor_agg_factory = (
+        sum_factory.SumFactory()
+        if value_tensor_agg_factory is None
+        else value_tensor_agg_factory
+    )
     self._capacity = capacity
     self._string_max_bytes = string_max_bytes
     self._encoding = encoding
@@ -163,26 +178,33 @@ class IbltFactory(factory.UnweightedAggregationFactory):
     expected_value_type = computation_types.SequenceType(
         collections.OrderedDict([
             (DATASET_KEY, tf.string),
-            (DATASET_VALUE,
-             computation_types.TensorType(shape=[None], dtype=tf.int64)),
-        ]))
+            (
+                DATASET_VALUE,
+                computation_types.TensorType(shape=[None], dtype=tf.int64),
+            ),
+        ])
+    )
     if not expected_value_type.is_assignable_from(value_type):
-      raise ValueError('value_shape must be compatible with '
-                       f'{expected_value_type}. Found {value_type} instead.')
+      raise ValueError(
+          'value_shape must be compatible with '
+          f'{expected_value_type}. Found {value_type} instead.'
+      )
     self._value_shape = tuple(value_type.element[DATASET_VALUE].shape)
 
     @tensorflow_computation.tf_computation(value_type)
     def encode_iblt(dataset):
       """The TF computation to compute the IBLT frequency sketches."""
-      input_strings, string_values = _parse_client_dict(dataset,
-                                                        self._string_max_bytes)
+      input_strings, string_values = _parse_client_dict(
+          dataset, self._string_max_bytes
+      )
       iblt_encoder = iblt_tensor.IbltTensorEncoder(
           capacity=self._capacity,
           string_max_bytes=self._string_max_bytes,
           encoding=self._encoding,
           repetitions=self._repetitions,
           value_shape=self._value_shape,
-          seed=self._seed)
+          seed=self._seed,
+      )
       return iblt_encoder.compute_iblt(input_strings, string_values)
 
     @tensorflow_computation.tf_computation(encode_iblt.type_signature.result)
@@ -197,16 +219,20 @@ class IbltFactory(factory.UnweightedAggregationFactory):
           string_max_bytes=self._string_max_bytes,
           encoding=self._encoding,
           repetitions=self._repetitions,
-          seed=self._seed)
-      (output_strings, _, string_values,
-       num_not_decoded) = iblt_decoder.get_freq_estimates_tf()
+          seed=self._seed,
+      )
+      (output_strings, _, string_values, num_not_decoded) = (
+          iblt_decoder.get_freq_estimates_tf()
+      )
 
       return (output_strings, string_values, num_not_decoded)
 
     inner_aggregator_sketch = self._sketch_agg_factory.create(
-        encode_iblt.type_signature.result[0])
+        encode_iblt.type_signature.result[0]
+    )
     inner_aggregator_value_tensor = self._value_tensor_agg_factory.create(
-        encode_iblt.type_signature.result[1])
+        encode_iblt.type_signature.result[1]
+    )
 
     @federated_computation.federated_computation
     def init_fn():
@@ -215,31 +241,41 @@ class IbltFactory(factory.UnweightedAggregationFactory):
       return intrinsics.federated_zip((sketch_state, value_tensor_state))
 
     @federated_computation.federated_computation(
-        init_fn.type_signature.result, computation_types.at_clients(value_type))
+        init_fn.type_signature.result, computation_types.at_clients(value_type)
+    )
     def next_fn(state, dataset):
       sketch_state, value_tensor_state = state
       sketch, value_tensor = intrinsics.federated_map(encode_iblt, dataset)
       sketch_output = inner_aggregator_sketch.next(sketch_state, sketch)
       value_tensor_output = inner_aggregator_value_tensor.next(
-          value_tensor_state, value_tensor)
+          value_tensor_state, value_tensor
+      )
       summed_sketch = sketch_output.result
       summed_value_tensor = value_tensor_output.result
-      (output_strings,
-       string_values, num_not_decoded) = intrinsics.federated_map(
-           decode_iblt, (summed_sketch, summed_value_tensor))
+      (output_strings, string_values, num_not_decoded) = (
+          intrinsics.federated_map(
+              decode_iblt, (summed_sketch, summed_value_tensor)
+          )
+      )
       result = intrinsics.federated_zip(
           ServerOutput(
               output_strings=output_strings,
               string_values=string_values,
-              num_not_decoded=num_not_decoded))
+              num_not_decoded=num_not_decoded,
+          )
+      )
       updated_state = intrinsics.federated_zip(
-          (sketch_output.state, value_tensor_output.state))
+          (sketch_output.state, value_tensor_output.state)
+      )
       updated_measurements = intrinsics.federated_zip(
           collections.OrderedDict(
               num_not_decoded=num_not_decoded,
               sketch=sketch_output.measurements,
-              value_tensor=value_tensor_output.measurements))
-      return measured_process.MeasuredProcessOutput(updated_state, result,
-                                                    updated_measurements)
+              value_tensor=value_tensor_output.measurements,
+          )
+      )
+      return measured_process.MeasuredProcessOutput(
+          updated_state, result, updated_measurements
+      )
 
     return aggregation_process.AggregationProcess(init_fn, next_fn)

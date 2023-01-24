@@ -63,8 +63,10 @@ def to_representation_for_type(value, type_spec, backend=None):
   type_spec = executor_utils.reconcile_value_with_type_spec(value, type_spec)
   if isinstance(value, computation_impl.ConcreteComputation):
     return to_representation_for_type(
-        computation_impl.ConcreteComputation.get_proto(value), type_spec,
-        backend)
+        computation_impl.ConcreteComputation.get_proto(value),
+        type_spec,
+        backend,
+    )
   if isinstance(value, pb.Computation):
     comp_type = type_serialization.deserialize_type(value.type)
     if type_spec is not None:
@@ -73,7 +75,9 @@ def to_representation_for_type(value, type_spec, backend=None):
   if isinstance(type_spec, computation_types.StructType):
     return structure.map_structure(
         lambda v, t: to_representation_for_type(v, t, backend),
-        structure.from_container(value, recursive=True), type_spec)
+        structure.from_container(value, recursive=True),
+        type_spec,
+    )
   if isinstance(type_spec, computation_types.TensorType):
     return runtime.normalize_tensor_representation(value, type_spec)
   raise TypeError('Unexpected type {}.'.format(type_spec))
@@ -110,7 +114,8 @@ class XlaValue(executor_value_base.ExecutorValue):
   async def compute(self):
     py_typecheck.check_type(
         self._type_signature,
-        (computation_types.StructType, computation_types.TensorType))
+        (computation_types.StructType, computation_types.TensorType),
+    )
     return self._value
 
 
@@ -154,7 +159,8 @@ class XlaExecutor(executor_base.Executor):
     """
     if device is not None:
       raise ValueError(
-          'Explicitly specifying a device is currently not supported.')
+          'Explicitly specifying a device is currently not supported.'
+      )
     self._backend = jax.lib.xla_bridge.get_backend()
 
   @tracing.trace(span=True)
@@ -183,8 +189,7 @@ class XlaExecutor(executor_base.Executor):
     if arg is not None:
       py_typecheck.check_type(arg, XlaValue)
     py_typecheck.check_type(comp.type_signature, computation_types.FunctionType)
-    py_typecheck.check_type(comp.reference,
-                            runtime.ComputationCallable)
+    py_typecheck.check_type(comp.reference, runtime.ComputationCallable)
     if comp.type_signature.parameter is not None:
       result = comp.reference(arg.reference)
     else:
@@ -200,9 +205,9 @@ class XlaExecutor(executor_base.Executor):
       val_elements.append((k, v.reference))
       type_elements.append((k, v.type_signature))
     struct_val = structure.Struct(val_elements)
-    struct_type = computation_types.StructType([
-        (k, v) if k is not None else v for k, v in type_elements
-    ])
+    struct_type = computation_types.StructType(
+        [(k, v) if k is not None else v for k, v in type_elements]
+    )
     return XlaValue(struct_val, struct_type, self._backend)
 
   @tracing.trace
@@ -215,15 +220,20 @@ class XlaExecutor(executor_base.Executor):
       if name is not None:
         raise ValueError(
             'Cannot simultaneously specify name {} and index {}.'.format(
-                name, index))
+                name, index
+            )
+        )
       else:
-        return XlaValue(source.reference[index],
-                        source.type_signature[index], self._backend)
+        return XlaValue(
+            source.reference[index], source.type_signature[index], self._backend
+        )
     elif name is not None:
       py_typecheck.check_type(name, str)
       return XlaValue(
           getattr(source.reference, str(name)),
-          getattr(source.type_signature, str(name)), self._backend)
+          getattr(source.type_signature, str(name)),
+          self._backend,
+      )
     else:
       raise ValueError('Must specify either name or index.')
 

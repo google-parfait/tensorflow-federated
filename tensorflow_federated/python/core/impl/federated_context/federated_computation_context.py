@@ -85,7 +85,8 @@ class FederatedComputationContext(symbol_binding_context.SymbolBindingContext):
   ) -> building_blocks.Reference:
     """Binds a computation to a symbol, returns a reference to this binding."""
     name = 'fc_{name}_symbol_{val}'.format(
-        name=self._name, val=self._next_symbol_val)
+        name=self._name, val=self._next_symbol_val
+    )
     self._next_symbol_val += 1
     self._symbol_bindings.append((name, comp))
     ref = building_blocks.Reference(name, comp.type_signature)
@@ -93,7 +94,8 @@ class FederatedComputationContext(symbol_binding_context.SymbolBindingContext):
 
   @property
   def symbol_bindings(
-      self) -> list[tuple[str, building_blocks.ComputationBuildingBlock]]:
+      self,
+  ) -> list[tuple[str, building_blocks.ComputationBuildingBlock]]:
     return self._symbol_bindings
 
   def invoke(self, comp, arg):
@@ -104,7 +106,8 @@ class FederatedComputationContext(symbol_binding_context.SymbolBindingContext):
       if tys.parameter is None:
         raise ValueError(
             'A computation of type {} does not expect any arguments, but got '
-            'an argument {}.'.format(tys, arg))
+            'an argument {}.'.format(tys, arg)
+        )
       arg = value_impl.to_value(arg, tys.parameter, zip_if_needed=True)
       type_analysis.check_type(arg, tys.parameter)
       ret_val = fn(arg)
@@ -112,7 +115,8 @@ class FederatedComputationContext(symbol_binding_context.SymbolBindingContext):
       if tys.parameter is not None:
         raise ValueError(
             'A computation of type {} expects an argument of type {}, but got '
-            ' no argument.'.format(tys, tys.parameter))
+            ' no argument.'.format(tys, tys.parameter)
+        )
       ret_val = fn()
     type_analysis.check_type(ret_val, tys.result)
     return ret_val

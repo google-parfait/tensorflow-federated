@@ -24,15 +24,18 @@ class DataConversionsTest(absltest.TestCase):
     num_clients = 10
     placement_keyed_mapping = {
         placements.SERVER: 1,
-        placements.CLIENTS: num_clients
+        placements.CLIENTS: num_clients,
     }
     expected_string_keyed_mapping = {
         placements.SERVER.uri: 1,
-        placements.CLIENTS.uri: num_clients
+        placements.CLIENTS.uri: num_clients,
     }
 
-    string_keyed_mapping = data_conversions.convert_cardinalities_dict_to_string_keyed(
-        placement_keyed_mapping)
+    string_keyed_mapping = (
+        data_conversions.convert_cardinalities_dict_to_string_keyed(
+            placement_keyed_mapping
+        )
+    )
 
     self.assertEqual(string_keyed_mapping, expected_string_keyed_mapping)
 
@@ -41,17 +44,19 @@ class DataConversionsTest(absltest.TestCase):
 
     with self.assertRaises(TypeError):
       data_conversions.convert_cardinalities_dict_to_string_keyed(
-          string_keyed_mapping)
+          string_keyed_mapping
+      )
 
   def test_raises_non_integer_values(self):
     placement_keyed_non_integer_valued_mapping = {
-        placements.SERVER: 1.,
-        placements.CLIENTS: 10.
+        placements.SERVER: 1.0,
+        placements.CLIENTS: 10.0,
     }
 
     with self.assertRaises(TypeError):
       data_conversions.convert_cardinalities_dict_to_string_keyed(
-          placement_keyed_non_integer_valued_mapping)
+          placement_keyed_non_integer_valued_mapping
+      )
 
 
 if __name__ == '__main__':

@@ -59,7 +59,6 @@ def to_var_dict(variables):
 
   Returns:
     A `collections.OrderedDict` keyed by variable name with the ":0" removed.
-
   """
   tuples = []
   seen_names = set()
@@ -127,10 +126,14 @@ def is_scalar(tensor):
     TypeError: when the argument is not a tensor.
   """
   if not tf.is_tensor(tensor):
-    raise TypeError('Expected a tensor, found "{}".'.format(
-        py_typecheck.type_string(type(tensor))))
-  return (hasattr(tensor, 'get_shape') and
-          all(dim == 1 for dim in tensor.get_shape()))
+    raise TypeError(
+        'Expected a tensor, found "{}".'.format(
+            py_typecheck.type_string(type(tensor))
+        )
+    )
+  return hasattr(tensor, 'get_shape') and all(
+      dim == 1 for dim in tensor.get_shape()
+  )
 
 
 def _same_dimension(x, y):
@@ -167,4 +170,5 @@ def same_shape(x, y):
     return y.dims is None
   else:
     return y.dims is not None and all(
-        _same_dimension(a, b) for a, b in zip(x.dims, y.dims))
+        _same_dimension(a, b) for a, b in zip(x.dims, y.dims)
+    )

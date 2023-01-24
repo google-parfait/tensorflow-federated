@@ -30,8 +30,9 @@ class DownloadTest(absltest.TestCase):
 
   @mock.patch.object(tf.io.gfile, 'exists', side_effect=[True, False])
   @mock.patch.object(tf.io.gfile, 'makedirs')
-  def test_uncache_file_is_fetched_with_content_length(self, mock_makedirs,
-                                                       mock_exists):
+  def test_uncache_file_is_fetched_with_content_length(
+      self, mock_makedirs, mock_exists
+  ):
     test_data = b'data'
     test_url = 'http://www.test.org/my/test/file.lzma'
     mock_urlopen = mock.mock_open(read_data=lzma.compress(test_data))
@@ -41,8 +42,8 @@ class DownloadTest(absltest.TestCase):
     expected_output_path = os.path.join(FLAGS.test_tmpdir, 'file')
     self.assertEqual(path, expected_output_path)
     mock_exists.assert_has_calls(
-        [mock.call(FLAGS.test_tmpdir),
-         mock.call(expected_output_path)])
+        [mock.call(FLAGS.test_tmpdir), mock.call(expected_output_path)]
+    )
     mock_urlopen.assert_called_once_with(test_url)
     mock_makedirs.assert_not_called()
     self.assertTrue(os.path.exists(expected_output_path))
@@ -52,7 +53,8 @@ class DownloadTest(absltest.TestCase):
   @mock.patch.object(tf.io.gfile, 'exists', side_effect=[True, False])
   @mock.patch.object(tf.io.gfile, 'makedirs')
   def test_uncache_file_is_fetched_without_content_length(
-      self, mock_makedirs, mock_exists):
+      self, mock_makedirs, mock_exists
+  ):
     test_data = b'data'
     test_url = 'http://www.test.org/my/test/file.lzma'
     mock_urlopen = mock.mock_open(read_data=lzma.compress(test_data))
@@ -64,8 +66,8 @@ class DownloadTest(absltest.TestCase):
     expected_output_path = os.path.join(FLAGS.test_tmpdir, 'file')
     self.assertEqual(path, expected_output_path)
     mock_exists.assert_has_calls(
-        [mock.call(FLAGS.test_tmpdir),
-         mock.call(expected_output_path)])
+        [mock.call(FLAGS.test_tmpdir), mock.call(expected_output_path)]
+    )
     mock_urlopen.assert_called_once_with(test_url)
     mock_makedirs.assert_not_called()
     self.assertTrue(os.path.exists(expected_output_path))
@@ -79,10 +81,11 @@ class DownloadTest(absltest.TestCase):
     mock_urlopen.return_value.headers = {}
     with mock.patch.object(urllib.request, 'urlopen', mock_urlopen):
       download.get_compressed_file(
-          'http://www.test.org/my/test/file.lzma', cache_dir=FLAGS.test_tmpdir)
+          'http://www.test.org/my/test/file.lzma', cache_dir=FLAGS.test_tmpdir
+      )
     mock_exists.assert_has_calls([
         mock.call(FLAGS.test_tmpdir),
-        mock.call(os.path.join(FLAGS.test_tmpdir, 'file'))
+        mock.call(os.path.join(FLAGS.test_tmpdir, 'file')),
     ])
     mock_makedirs.assert_not_called()
     mock_urlopen.assert_not_called()
@@ -95,8 +98,9 @@ class DownloadTest(absltest.TestCase):
   @mock.patch.object(tf.io.gfile, 'makedirs')
   def test_cache_dir_not_exists_creates_dirs(self, mock_makedirs, mock_exists):
     cache_subdir = os.path.join(FLAGS.test_tmpdir, 'test_subdir')
-    download.get_compressed_file('http://www.test.org/my/test/file.lzma',
-                                 cache_subdir)
+    download.get_compressed_file(
+        'http://www.test.org/my/test/file.lzma', cache_subdir
+    )
     mock_makedirs.assert_called_once_with(cache_subdir)
     mock_exists.assert_has_calls([
         mock.call(cache_subdir),

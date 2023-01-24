@@ -32,6 +32,7 @@ _DEFAULT_SPLIT_NAME = 'default_split'
 
 class ElementSpecCompatibilityError(TypeError):
   """Exception if the element_spec does not follow `Mapping[str, tf.TensorSpec]`."""
+
   pass
 
 
@@ -43,13 +44,15 @@ def _bytes_feature(tensor) -> tf.train.Feature:
 def _float_feature(tensor) -> tf.train.Feature:
   """Returns a float_list from a float / double."""
   return tf.train.Feature(
-      float_list=tf.train.FloatList(value=tensor.numpy().flatten()))
+      float_list=tf.train.FloatList(value=tensor.numpy().flatten())
+  )
 
 
 def _int64_feature(tensor) -> tf.train.Feature:
   """Returns an int64_list from a bool / enum / int / uint."""
   return tf.train.Feature(
-      int64_list=tf.train.Int64List(value=tensor.numpy().flatten()))
+      int64_list=tf.train.Int64List(value=tensor.numpy().flatten())
+  )
 
 
 def _validate_element_spec(element_spec: Mapping[str, tf.TensorSpec]):
@@ -58,15 +61,18 @@ def _validate_element_spec(element_spec: Mapping[str, tf.TensorSpec]):
   if not isinstance(element_spec, Mapping):
     raise ElementSpecCompatibilityError(
         f'{element_spec} has type {type(element_spec)}, but expected '
-        f'`Mapping[str, tf.TensorSpec]`.')
+        '`Mapping[str, tf.TensorSpec]`.'
+    )
   for key, tensor_spec in element_spec.items():
     if not isinstance(key, str):
       raise ElementSpecCompatibilityError(
-          f'{key} has type {type(key)}, but expected str.')
+          f'{key} has type {type(key)}, but expected str.'
+      )
     if not isinstance(tensor_spec, tf.TensorSpec):
       raise ElementSpecCompatibilityError(
           f'{tensor_spec} has type {type(tensor_spec)}, but expected '
-          '`tf.TensorSpec`.')
+          '`tf.TensorSpec`.'
+      )
 
 
 def _build_serializer(
@@ -77,7 +83,6 @@ def _build_serializer(
   _validate_element_spec(element_spec)
   feature_funcs = collections.OrderedDict()
   for key, tensor_spec in element_spec.items():
-
     if tensor_spec.dtype is tf.string:
       feature_funcs[key] = _bytes_feature
     elif tensor_spec.dtype.is_floating:
@@ -86,16 +91,17 @@ def _build_serializer(
       feature_funcs[key] = _int64_feature
     else:
       raise ElementSpecCompatibilityError(
-          f'Unsupported dtype {tensor_spec.dtype}.')
+          f'Unsupported dtype {tensor_spec.dtype}.'
+      )
 
   def serializer(element: Mapping[str, tf.Tensor]) -> bytes:
-
     feature = {
         key: feature_funcs[key](tensor) for key, tensor in element.items()
     }
 
-    return tf.train.Example(features=tf.train.Features(
-        feature=feature)).SerializeToString()
+    return tf.train.Example(
+        features=tf.train.Features(feature=feature)
+    ).SerializeToString()
 
   return serializer
 
@@ -119,7 +125,8 @@ def _build_parser(
       raise ValueError(f'unsupported dtype {tensor_spec.dtype}')
 
     parse_specs[key] = tf.io.FixedLenFeature(
-        shape=tensor_spec.shape, dtype=parser_dtype)
+        shape=tensor_spec.shape, dtype=parser_dtype
+    )
 
   def parser(tensor_proto: bytes) -> Mapping[str, tf.Tensor]:
     parsed_features = tf.io.parse_example(tensor_proto, parse_specs)
@@ -179,12 +186,14 @@ def save_to_sql_client_data(
   if not isinstance(example_element_spec, Mapping):
     raise ElementSpecCompatibilityError(
         'The element_spec of the local dataset must be a Mapping, '
-        f'found {example_element_spec} instead')
+        f'found {example_element_spec} instead'
+    )
   for key, val in example_element_spec.items():
     if not isinstance(val, tf.TensorSpec):
       raise ElementSpecCompatibilityError(
-          'The element_spec of the local dataset must be a Mapping[str, TensorSpec], '
-          f'and must not be nested, found {key}:{val} instead.')
+          'The element_spec of the local dataset must be a Mapping[str,'
+          f' TensorSpec], and must not be nested, found {key}:{val} instead.'
+      )
 
   serializer = _build_serializer(example_element_spec)
 
@@ -203,19 +212,23 @@ def save_to_sql_client_data(
     for q in test_setup_queries:
       con.execute(q)
 
-    logging.info('Starting writing to SQL database at scratch path {%s}.',
-                 tmp_database_filepath)
+    logging.info(
+        'Starting writing to SQL database at scratch path {%s}.',
+        tmp_database_filepath,
+    )
 
     for client_id in client_ids:
       local_ds = dataset_fn(client_id)
 
       if local_ds.element_spec != example_element_spec:
-        raise ElementSpecCompatibilityError(f"""
+        raise ElementSpecCompatibilityError(
+            f"""
             All the clients must share the same dataset element type.
             The local dataset of client '{client_id}' has element type
             {local_ds.element_spec}, which is different from client
             '{example_client_id}' which has element type {example_element_spec}.
-            """)
+            """
+        )
 
       if split_names_by_client_id is not None:
         split_name = split_names_by_client_id.get(client_id)
@@ -228,13 +241,21 @@ def save_to_sql_client_data(
       for elem in local_ds:
         num_elem += 1
         con.execute(
-            'INSERT INTO examples '
-            '(split_name, client_id, serialized_example_proto) '
-            'VALUES (?, ?, ?);', (split_name, client_id, serializer(elem)))
+            (
+                'INSERT INTO examples '
+                '(split_name, client_id, serialized_example_proto) '
+                'VALUES (?, ?, ?);'
+            ),
+            (split_name, client_id, serializer(elem)),
+        )
 
       con.execute(
-          'INSERT INTO client_metadata (client_id, split_name, num_examples) '
-          'VALUES (?, ?, ?);', (client_id, split_name, num_elem))
+          (
+              'INSERT INTO client_metadata (client_id, split_name,'
+              ' num_examples) VALUES (?, ?, ?);'
+          ),
+          (client_id, split_name, num_elem),
+      )
 
   if tf.io.gfile.exists(database_filepath):
     tf.io.gfile.remove(database_filepath)
@@ -247,7 +268,8 @@ def save_to_sql_client_data(
 def load_and_parse_sql_client_data(
     database_filepath: str,
     element_spec: Mapping[str, tf.TensorSpec],
-    split_name: Optional[str] = None) -> client_data.ClientData:
+    split_name: Optional[str] = None,
+) -> client_data.ClientData:
   """Load a `ClientData` arises by parsing a serialized `SqlClientData`.
 
   Args:
@@ -258,8 +280,8 @@ def load_and_parse_sql_client_data(
       the serialized `tff.simulation.datasets.SqlClientData`. The `element_spec`
       must be of type `Mapping[str, TensorSpec]`.
     split_name: An optional `str` identifier for the split of the database to
-        use. This filters clients and examples based on the `split_name` column.
-        A value of `None` means no filtering, selecting all examples.
+      use. This filters clients and examples based on the `split_name` column. A
+      value of `None` means no filtering, selecting all examples.
 
   Returns:
     A `tff.simulation.datasets.ClientData` instance arised from parsing a
@@ -281,10 +303,12 @@ def load_and_parse_sql_client_data(
     logging.info('Starting fetching SQL database to local.')
     tmp_dir = tempfile.mkdtemp()
     tmp_database_filepath = tf.io.gfile.join(
-        tmp_dir, os.path.basename(database_filepath))
+        tmp_dir, os.path.basename(database_filepath)
+    )
     tf.io.gfile.copy(database_filepath, tmp_database_filepath, overwrite=True)
     database_filepath = tmp_database_filepath
     logging.info('Finished fetching SQL database to local.')
 
-  return sql_client_data.SqlClientData(database_filepath,
-                                       split_name).preprocess(dataset_parser)
+  return sql_client_data.SqlClientData(
+      database_filepath, split_name
+  ).preprocess(dataset_parser)

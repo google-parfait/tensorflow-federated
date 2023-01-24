@@ -30,11 +30,14 @@ def _check_no_graph_level_seed(graph_def):
   for x in graph_def.node:
     seed_attr = x.attr.get('seed')
     seed2_attr = x.attr.get('seed2')
-    if seed_attr is not None and not (seed_attr.i == DEFAULT_GRAPH_SEED or
-                                      (seed_attr.i == 0 and seed2_attr.i == 0)):
+    if seed_attr is not None and not (
+        seed_attr.i == DEFAULT_GRAPH_SEED
+        or (seed_attr.i == 0 and seed2_attr.i == 0)
+    ):
       raise ValueError(
           'TFF disallows the setting of a graph-level random seed. See the '
-          'FAQ for more details on reasoning and preferred randomness in TFF.')
+          'FAQ for more details on reasoning and preferred randomness in TFF.'
+      )
 
 
 def pack_graph_def(graph_def):
@@ -77,7 +80,8 @@ def unpack_graph_def(any_pb):
   graph_def = tf.compat.v1.GraphDef()
   if not any_pb.Unpack(graph_def):
     raise ValueError(
-        'Unable to unpack value [{}] as a tf.compat.v1.GraphDef'.format(any_pb))
+        'Unable to unpack value [{}] as a tf.compat.v1.GraphDef'.format(any_pb)
+    )
   return graph_def
 
 
@@ -103,4 +107,5 @@ def pack_function_def(function_def: FunctionDef) -> any_pb2.Any:
   # using the Any.Pack() method.
   return any_pb2.Any(
       type_url='type.googleapis.com/' + function_def.DESCRIPTOR.full_name,
-      value=function_def.SerializeToString(deterministic=True))
+      value=function_def.SerializeToString(deterministic=True),
+  )

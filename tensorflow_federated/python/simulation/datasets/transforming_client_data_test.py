@@ -22,24 +22,21 @@ from tensorflow_federated.python.simulation.datasets import from_tensor_slices_c
 from tensorflow_federated.python.simulation.datasets import transforming_client_data
 
 TEST_DATA = {
-    'CLIENT A':
-        collections.OrderedDict(
-            x=[[1, 2], [3, 4], [5, 6]],
-            y=[4.0, 5.0, 6.0],
-            z=['a', 'b', 'c'],
-        ),
-    'CLIENT B':
-        collections.OrderedDict(
-            x=[[10, 11]],
-            y=[7.0],
-            z=['d'],
-        ),
-    'CLIENT C':
-        collections.OrderedDict(
-            x=[[100, 101], [200, 201]],
-            y=[8.0, 9.0],
-            z=['e', 'f'],
-        ),
+    'CLIENT A': collections.OrderedDict(
+        x=[[1, 2], [3, 4], [5, 6]],
+        y=[4.0, 5.0, 6.0],
+        z=['a', 'b', 'c'],
+    ),
+    'CLIENT B': collections.OrderedDict(
+        x=[[10, 11]],
+        y=[7.0],
+        z=['d'],
+    ),
+    'CLIENT C': collections.OrderedDict(
+        x=[[100, 101], [200, 201]],
+        y=[8.0, 9.0],
+        z=['e', 'f'],
+    ),
 }
 
 TEST_CLIENT_DATA = from_tensor_slices_client_data.TestClientData(TEST_DATA)
@@ -50,8 +47,9 @@ def _make_transform_expanded(client_id):
   index = tf.cast(tf.strings.to_number(index_str), tf.int32)
 
   def fn(data):
-    return collections.OrderedDict([('x', data['x'] + 10 * index),
-                                    ('y', data['y']), ('z', data['z'])])
+    return collections.OrderedDict(
+        [('x', data['x'] + 10 * index), ('y', data['y']), ('z', data['z'])]
+    )
 
   return fn
 
@@ -78,8 +76,11 @@ def test_reduce_client_id(client_id):
 
 
 TRANSFORMED_CLIENT_DATA = transforming_client_data.TransformingClientData(
-    TEST_CLIENT_DATA, _make_transform_expanded, test_expand_client_id,
-    test_reduce_client_id)
+    TEST_CLIENT_DATA,
+    _make_transform_expanded,
+    test_expand_client_id,
+    test_reduce_client_id,
+)
 
 
 class TransformingClientDataTest(tf.test.TestCase):
@@ -94,7 +95,8 @@ class TransformingClientDataTest(tf.test.TestCase):
 
   def test_default_num_transformed_clients(self):
     transformed_client_data = transforming_client_data.TransformingClientData(
-        TEST_CLIENT_DATA, _make_transform_raw)
+        TEST_CLIENT_DATA, _make_transform_raw
+    )
     client_ids = transformed_client_data.client_ids
     self.assertCountEqual(client_ids, TEST_DATA.keys())
 
@@ -105,18 +107,21 @@ class TransformingClientDataTest(tf.test.TestCase):
     TRANSFORMED_CLIENT_DATA.create_tf_dataset_for_client('0_CLIENT C')
 
     # This should not be valid: no prefix.
-    with self.assertRaisesRegex(ValueError,
-                                'is not a client in this ClientData'):
+    with self.assertRaisesRegex(
+        ValueError, 'is not a client in this ClientData'
+    ):
       TRANSFORMED_CLIENT_DATA.create_tf_dataset_for_client('CLIENT A')
 
     # This should not be valid: no corresponding client.
-    with self.assertRaisesRegex(ValueError,
-                                'is not a client in this ClientData'):
+    with self.assertRaisesRegex(
+        ValueError, 'is not a client in this ClientData'
+    ):
       TRANSFORMED_CLIENT_DATA.create_tf_dataset_for_client('0_CLIENT D')
 
     # This should not be valid: index out of range.
-    with self.assertRaisesRegex(ValueError,
-                                'is not a client in this ClientData'):
+    with self.assertRaisesRegex(
+        ValueError, 'is not a client in this ClientData'
+    ):
       TRANSFORMED_CLIENT_DATA.create_tf_dataset_for_client('3_CLIENT B')
 
   def test_dataset_computation(self):
@@ -127,18 +132,21 @@ class TransformingClientDataTest(tf.test.TestCase):
       match = re.search(pattern, client_id)
       client = match.group(2)
       base_client_dataset = TEST_CLIENT_DATA.create_tf_dataset_for_client(
-          client)
+          client
+      )
       expected_dataset = base_client_dataset.map(
-          _make_transform_expanded(client_id))
+          _make_transform_expanded(client_id)
+      )
       for actual_client_data, expected_client_data in zip(
           actual_dataset.as_numpy_iterator(),
-          expected_dataset.as_numpy_iterator()):
-        for actual_datum, expected_datum in zip(actual_client_data,
-                                                expected_client_data):
+          expected_dataset.as_numpy_iterator(),
+      ):
+        for actual_datum, expected_datum in zip(
+            actual_client_data, expected_client_data
+        ):
           self.assertEqual(actual_datum, expected_datum)
 
   def test_create_tf_dataset_from_all_clients(self):
-
     # Expands `CLIENT {N}` into N clients which add range(N) to the feature.
     def expand_client_id(client_id):
       return [client_id + '-' + str(i) for i in range(int(client_id[-1]))]
@@ -157,7 +165,8 @@ class TransformingClientDataTest(tf.test.TestCase):
     }  # pyformat: disable
     client_data = from_tensor_slices_client_data.TestClientData(raw_data)
     transformed_client_data = transforming_client_data.TransformingClientData(
-        client_data, make_transform_fn, expand_client_id, reduce_client_id)
+        client_data, make_transform_fn, expand_client_id, reduce_client_id
+    )
 
     flat_data = transformed_client_data.create_tf_dataset_from_all_clients()
     self.assertIsInstance(flat_data, tf.data.Dataset)

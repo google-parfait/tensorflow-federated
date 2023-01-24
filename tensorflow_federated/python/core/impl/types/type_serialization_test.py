@@ -44,14 +44,18 @@ class TypeSerializationTest(parameterized.TestCase):
     actual_proto = type_serialization.serialize_type(type_signature)
     expected_proto = pb.Type(
         tensor=pb.TensorType(
-            dtype=dtype.as_datatype_enum, dims=_shape_to_dims(shape)))
+            dtype=dtype.as_datatype_enum, dims=_shape_to_dims(shape)
+        )
+    )
     self.assertEqual(actual_proto, expected_proto)
 
   def test_serialize_type_with_string_sequence(self):
     actual_proto = type_serialization.serialize_type(
-        computation_types.SequenceType(tf.string))
+        computation_types.SequenceType(tf.string)
+    )
     expected_proto = pb.Type(
-        sequence=pb.SequenceType(element=_create_scalar_tensor_type(tf.string)))
+        sequence=pb.SequenceType(element=_create_scalar_tensor_type(tf.string))
+    )
     self.assertEqual(actual_proto, expected_proto)
 
   def test_serialize_type_with_tensor_tuple(self):
@@ -63,69 +67,99 @@ class TypeSerializationTest(parameterized.TestCase):
     ])
     actual_proto = type_serialization.serialize_type(type_signature)
     expected_proto = pb.Type(
-        struct=pb.StructType(element=[
-            pb.StructType.Element(
-                name='x', value=_create_scalar_tensor_type(tf.int32)),
-            pb.StructType.Element(
-                name='y', value=_create_scalar_tensor_type(tf.string)),
-            pb.StructType.Element(value=_create_scalar_tensor_type(tf.float32)),
-            pb.StructType.Element(
-                name='z', value=_create_scalar_tensor_type(tf.bool)),
-        ]))
+        struct=pb.StructType(
+            element=[
+                pb.StructType.Element(
+                    name='x', value=_create_scalar_tensor_type(tf.int32)
+                ),
+                pb.StructType.Element(
+                    name='y', value=_create_scalar_tensor_type(tf.string)
+                ),
+                pb.StructType.Element(
+                    value=_create_scalar_tensor_type(tf.float32)
+                ),
+                pb.StructType.Element(
+                    name='z', value=_create_scalar_tensor_type(tf.bool)
+                ),
+            ]
+        )
+    )
     self.assertEqual(actual_proto, expected_proto)
 
   def test_serialize_type_with_nested_tuple(self):
-    type_signature = computation_types.StructType([
-        ('x', [('y', [('z', tf.bool)])]),
-    ])
+    type_signature = computation_types.StructType(
+        [
+            ('x', [('y', [('z', tf.bool)])]),
+        ]
+    )
     actual_proto = type_serialization.serialize_type(type_signature)
 
     def _tuple_type_proto(elements):
       return pb.Type(struct=pb.StructType(element=elements))
 
     z_proto = pb.StructType.Element(
-        name='z', value=_create_scalar_tensor_type(tf.bool))
-    expected_proto = _tuple_type_proto([
-        pb.StructType.Element(
-            name='x',
-            value=_tuple_type_proto([
-                pb.StructType.Element(
-                    name='y', value=_tuple_type_proto([z_proto]))
-            ]))
-    ])
+        name='z', value=_create_scalar_tensor_type(tf.bool)
+    )
+    expected_proto = _tuple_type_proto(
+        [
+            pb.StructType.Element(
+                name='x',
+                value=_tuple_type_proto(
+                    [
+                        pb.StructType.Element(
+                            name='y', value=_tuple_type_proto([z_proto])
+                        )
+                    ]
+                ),
+            )
+        ]
+    )
     self.assertEqual(actual_proto, expected_proto)
 
   def test_serialize_type_with_function(self):
     actual_proto = type_serialization.serialize_type(
-        computation_types.FunctionType((tf.int32, tf.int32), tf.bool))
+        computation_types.FunctionType((tf.int32, tf.int32), tf.bool)
+    )
     expected_proto = pb.Type(
         function=pb.FunctionType(
             parameter=pb.Type(
-                struct=pb.StructType(element=[
-                    pb.StructType.Element(
-                        value=_create_scalar_tensor_type(tf.int32)),
-                    pb.StructType.Element(
-                        value=_create_scalar_tensor_type(tf.int32))
-                ])),
-            result=_create_scalar_tensor_type(tf.bool)))
+                struct=pb.StructType(
+                    element=[
+                        pb.StructType.Element(
+                            value=_create_scalar_tensor_type(tf.int32)
+                        ),
+                        pb.StructType.Element(
+                            value=_create_scalar_tensor_type(tf.int32)
+                        ),
+                    ]
+                )
+            ),
+            result=_create_scalar_tensor_type(tf.bool),
+        )
+    )
     self.assertEqual(actual_proto, expected_proto)
 
   def test_serialize_type_with_placement(self):
     actual_proto = type_serialization.serialize_type(
-        computation_types.PlacementType())
+        computation_types.PlacementType()
+    )
     expected_proto = pb.Type(placement=pb.PlacementType())
     self.assertEqual(actual_proto, expected_proto)
 
   def test_serialize_type_with_federated_bool(self):
-    federated_type = computation_types.FederatedType(tf.bool,
-                                                     placements.CLIENTS, True)
+    federated_type = computation_types.FederatedType(
+        tf.bool, placements.CLIENTS, True
+    )
     actual_proto = type_serialization.serialize_type(federated_type)
     expected_proto = pb.Type(
         federated=pb.FederatedType(
             placement=pb.PlacementSpec(
-                value=pb.Placement(uri=placements.CLIENTS.uri)),
+                value=pb.Placement(uri=placements.CLIENTS.uri)
+            ),
             all_equal=True,
-            member=_create_scalar_tensor_type(tf.bool)))
+            member=_create_scalar_tensor_type(tf.bool),
+        )
+    )
     self.assertEqual(actual_proto, expected_proto)
 
   def test_serialize_deserialize_tensor_types(self):
@@ -140,7 +174,8 @@ class TypeSerializationTest(parameterized.TestCase):
     self._serialize_deserialize_roundtrip_test([
         computation_types.SequenceType(tf.int32),
         computation_types.SequenceType(
-            computation_types.StructType((tf.int32, tf.bool))),
+            computation_types.StructType((tf.int32, tf.bool))
+        ),
     ])
 
   def test_serialize_deserialize_named_tuple_types(self):
@@ -155,14 +190,16 @@ class TypeSerializationTest(parameterized.TestCase):
 
   def test_serialize_deserialize_named_tuple_types_py_container(self):
     # The Py container is destroyed during ser/de.
-    with_container = computation_types.StructWithPythonType((tf.int32, tf.bool),
-                                                            tuple)
+    with_container = computation_types.StructWithPythonType(
+        (tf.int32, tf.bool), tuple
+    )
     p1 = type_serialization.serialize_type(with_container)
     without_container = type_serialization.deserialize_type(p1)
     self.assertNotEqual(with_container, without_container)  # Not equal.
     self.assertIsInstance(without_container, computation_types.StructType)
-    self.assertNotIsInstance(without_container,
-                             computation_types.StructWithPythonType)
+    self.assertNotIsInstance(
+        without_container, computation_types.StructWithPythonType
+    )
     with_container.check_equivalent_to(without_container)
 
   def test_serialize_deserialize_function_types(self):
@@ -172,16 +209,20 @@ class TypeSerializationTest(parameterized.TestCase):
     ])
 
   def test_serialize_deserialize_placement_type(self):
-    self._serialize_deserialize_roundtrip_test([
-        computation_types.PlacementType(),
-    ])
+    self._serialize_deserialize_roundtrip_test(
+        [
+            computation_types.PlacementType(),
+        ]
+    )
 
   def test_serialize_deserialize_federated_types(self):
     self._serialize_deserialize_roundtrip_test([
         computation_types.FederatedType(
-            tf.int32, placements.CLIENTS, all_equal=True),
+            tf.int32, placements.CLIENTS, all_equal=True
+        ),
         computation_types.FederatedType(
-            tf.int32, placements.CLIENTS, all_equal=False),
+            tf.int32, placements.CLIENTS, all_equal=False
+        ),
     ])
 
   def _serialize_deserialize_roundtrip_test(self, type_list):

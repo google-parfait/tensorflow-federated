@@ -26,8 +26,9 @@ def _is_nonempty_struct(type_signature) -> bool:
   return type_signature.is_struct() and type_signature
 
 
-def _infer_state_type(initialize_result_type, next_parameter_type,
-                      next_is_multi_arg):
+def _infer_state_type(
+    initialize_result_type, next_parameter_type, next_is_multi_arg
+):
   """Infers the state type from the `initialize` and `next` types."""
   if next_is_multi_arg is None:
     # `state_type` may be `next_parameter_type` or
@@ -35,8 +36,9 @@ def _infer_state_type(initialize_result_type, next_parameter_type,
     # `initialize_result_type`.
     if next_parameter_type.is_assignable_from(initialize_result_type):
       return next_parameter_type
-    if (_is_nonempty_struct(next_parameter_type) and
-        next_parameter_type[0].is_assignable_from(initialize_result_type)):
+    if _is_nonempty_struct(next_parameter_type) and next_parameter_type[
+        0
+    ].is_assignable_from(initialize_result_type):
       return next_parameter_type[0]
     raise errors.TemplateStateNotAssignableError(
         'The return type of `initialize_fn` must be assignable to either\n'
@@ -44,12 +46,14 @@ def _infer_state_type(initialize_result_type, next_parameter_type,
         'but found `initialize_fn` return type:\n'
         f'{initialize_result_type}\n'
         'and `next_fn` with whole argument type:\n'
-        f'{next_parameter_type}')
+        f'{next_parameter_type}'
+    )
   elif next_is_multi_arg:
     if not _is_nonempty_struct(next_parameter_type):
       raise errors.TemplateNextFnNumArgsError(
           'Expected `next_parameter_type` to be a structure type of at least '
-          f'length one, but found type:\n{next_parameter_type}')
+          f'length one, but found type:\n{next_parameter_type}'
+      )
     if next_parameter_type[0].is_assignable_from(initialize_result_type):
       return next_parameter_type[0]
     raise errors.TemplateStateNotAssignableError(
@@ -57,7 +61,8 @@ def _infer_state_type(initialize_result_type, next_parameter_type,
         'argument to `next_fn`, but found `initialize_fn` return type:\n'
         f'{initialize_result_type}\n'
         'and `next_fn` whose first argument type is:\n'
-        f'{next_parameter_type}')
+        f'{next_parameter_type}'
+    )
   else:
     # `next_is_multi_arg` is `False`
     if next_parameter_type.is_assignable_from(initialize_result_type):
@@ -67,7 +72,8 @@ def _infer_state_type(initialize_result_type, next_parameter_type,
         'argument to `next_fn`, but found `initialize_fn` return type:\n'
         f'{initialize_result_type}\n'
         'and `next_fn` whose first argument type is:\n'
-        f'{next_parameter_type}')
+        f'{next_parameter_type}'
+    )
 
 
 class IterativeProcess:
@@ -107,10 +113,12 @@ class IterativeProcess:
   ```
   """
 
-  def __init__(self,
-               initialize_fn: computation_base.Computation,
-               next_fn: computation_base.Computation,
-               next_is_multi_arg: Optional[bool] = None):
+  def __init__(
+      self,
+      initialize_fn: computation_base.Computation,
+      next_fn: computation_base.Computation,
+      next_is_multi_arg: Optional[bool] = None,
+  ):
     """Creates a `tff.templates.IterativeProcess`.
 
     Args:
@@ -138,29 +146,33 @@ class IterativeProcess:
     py_typecheck.check_type(initialize_fn, computation_base.Computation)
     if initialize_fn.type_signature.parameter is not None:
       raise errors.TemplateInitFnParamNotEmptyError(
-          f'Provided `initialize_fn` must be a no-arg function, but found '
-          f'input argument(s) {initialize_fn.type_signature.parameter}.')
+          'Provided `initialize_fn` must be a no-arg function, but found '
+          f'input argument(s) {initialize_fn.type_signature.parameter}.'
+      )
     initialize_result_type = initialize_fn.type_signature.result
 
     py_typecheck.check_type(next_fn, computation_base.Computation)
     next_parameter_type = next_fn.type_signature.parameter
-    state_type = _infer_state_type(initialize_result_type, next_parameter_type,
-                                   next_is_multi_arg)
+    state_type = _infer_state_type(
+        initialize_result_type, next_parameter_type, next_is_multi_arg
+    )
 
     next_result_type = next_fn.type_signature.result
     if state_type.is_assignable_from(next_result_type):
       # The whole return value is the state type
       pass
-    elif (_is_nonempty_struct(next_result_type) and
-          state_type.is_assignable_from(next_result_type[0])):
+    elif _is_nonempty_struct(
+        next_result_type
+    ) and state_type.is_assignable_from(next_result_type[0]):
       # The first return value is state type
       pass
     else:
       raise errors.TemplateStateNotAssignableError(
-          f'The first return argument of `next_fn` must be '
-          f'assignable to its first input argument, but found\n'
+          'The first return argument of `next_fn` must be '
+          'assignable to its first input argument, but found\n'
           f'`next_fn` which returns type:\n{next_result_type}\n'
-          f'which is not assignable to its first input argument:\n{state_type}')
+          f'which is not assignable to its first input argument:\n{state_type}'
+      )
 
     self._state_type = state_type
     self._initialize_fn = initialize_fn

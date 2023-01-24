@@ -103,13 +103,17 @@ def compose_dataset_computation_with_computation(
   if not dataset_return_type.is_sequence():
     raise TypeError(
         'Expected a `tff.SequenceType` to be returned from '
-        '`dataset_computation`; found {} instead.'.format(dataset_return_type))
+        '`dataset_computation`; found {} instead.'.format(dataset_return_type)
+    )
   # TODO(b/226637447): This restriction seems unnecessary, and can be removed.
   if dataset_computation.type_signature.parameter is None:
-    raise TypeError('Can only construct a new iterative process if '
-                    '`dataset_computation` accepts a non-None arg; the '
-                    'type {} accepts no argument.'.format(
-                        dataset_computation.type_signature))
+    raise TypeError(
+        'Can only construct a new iterative process if '
+        '`dataset_computation` accepts a non-None arg; the '
+        'type {} accepts no argument.'.format(
+            dataset_computation.type_signature
+        )
+    )
 
   comp_body_param_type = computation_body.type_signature.parameter
 
@@ -119,7 +123,8 @@ def compose_dataset_computation_with_computation(
   if is_desired_federated_sequence(comp_body_param_type):
     # Single argument that matches, we compose in a straightforward manner.
     new_param_type = computation_types.FederatedType(
-        dataset_computation.type_signature.parameter, placements.CLIENTS)
+        dataset_computation.type_signature.parameter, placements.CLIENTS
+    )
 
     @federated_computation.federated_computation(new_param_type)
     def new_computation(param):
@@ -138,7 +143,8 @@ def compose_dataset_computation_with_computation(
     # Federated version of the dataset_computation's argument type signature to
     # use in the final computation type.
     federated_param_type = computation_types.FederatedType(
-        dataset_computation.type_signature.parameter, placements.CLIENTS)
+        dataset_computation.type_signature.parameter, placements.CLIENTS
+    )
     # Tracks all sequence types encountered in the recursive search for the
     # error message in case the desired argument is not found.
     sequence_types = []
@@ -165,7 +171,8 @@ def compose_dataset_computation_with_computation(
       nonlocal dataset_index_path
       new_param_elements = []
       for idx, (elem_name, elem_type) in enumerate(
-          structure.iter_elements(struct_param_type)):
+          structure.iter_elements(struct_param_type)
+      ):
         if elem_type.is_federated() and elem_type.member.is_sequence():
           sequence_types.append(elem_type.member)
 
@@ -176,12 +183,14 @@ def compose_dataset_computation_with_computation(
                 'that declares more than one sequence parameter '
                 f'matching the expected dataset type {elem_type}; '
                 'received a computation declaring parameter '
-                f'{comp_body_param_type}.')
+                f'{comp_body_param_type}.'
+            )
           dataset_index_path = index_path + [idx]
           new_param_elements.append((elem_name, federated_param_type))
         elif elem_type.is_struct():
           new_param_elements.append(
-              (elem_name, build_new_param_type(elem_type, index_path + [idx])))
+              (elem_name, build_new_param_type(elem_type, index_path + [idx]))
+          )
         else:
           new_param_elements.append((elem_name, elem_type))
       return computation_types.StructType(new_param_elements)
@@ -193,16 +202,20 @@ def compose_dataset_computation_with_computation(
       # accepts sequences whose types are not compatible with `elem_type`.
       if sequence_types:
         raise SequenceTypeNotAssignableError(
-            'No sequence parameter assignable from expected dataset '
-            'computation result type found in `computation_body`. '
-            '\nList of sequences in argument signature: {}\nExpected sequence type: '
-            '{}'.format(sequence_types, dataset_return_type))
+            'No sequence parameter assignable from expected dataset computation'
+            ' result type found in `computation_body`. \nList of sequences in'
+            ' argument signature: {}\nExpected sequence type: {}'.format(
+                sequence_types, dataset_return_type
+            )
+        )
       else:
         raise SequenceTypeNotFoundError(
             'No sequence parameter found in `computation_body`, but '
             'composition with a computation yielding sequences requested.'
             '\nArgument signature: {}\nExpected sequence type: {}'.format(
-                comp_body_param_type, dataset_return_type))
+                comp_body_param_type, dataset_return_type
+            )
+        )
 
     def map_at_path(param, index_path, depth, computation):
       """Builds a new parameter by inserting a `federated_map` computation.
@@ -229,13 +242,15 @@ def compose_dataset_computation_with_computation(
           ret_param.append(intrinsics.federated_map(computation, elem))
         else:
           ret_param.append(
-              map_at_path(elem, index_path, depth + 1, computation))
+              map_at_path(elem, index_path, depth + 1, computation)
+          )
       return ret_param
 
     @federated_computation.federated_computation(new_param_type)
     def new_computation(param):
       return computation_body(
-          map_at_path(param, dataset_index_path, 0, dataset_computation))
+          map_at_path(param, dataset_index_path, 0, dataset_computation)
+      )
 
     return new_computation
   else:
@@ -244,8 +259,8 @@ def compose_dataset_computation_with_computation(
         'signature of `dataset_computation` result signature, nor a struct '
         'of arguments.\n'
         'Argument signature: {}\n'
-        'Result signature: {}'.format(comp_body_param_type,
-                                      dataset_return_type))
+        'Result signature: {}'.format(comp_body_param_type, dataset_return_type)
+    )
 
 
 def compose_dataset_computation_with_iterative_process(
@@ -313,25 +328,34 @@ def compose_dataset_computation_with_iterative_process(
   if not dataset_return_type.is_sequence():
     raise TypeError(
         'Expected a `tff.SequenceType` to be returned from '
-        '`dataset_computation`; found {} instead.'.format(dataset_return_type))
+        '`dataset_computation`; found {} instead.'.format(dataset_return_type)
+    )
   # TODO(b/226637447): This restriction seems unnecessary, and can be removed.
   if dataset_computation.type_signature.parameter is None:
-    raise TypeError('Can only construct a new iterative process if '
-                    '`dataset_computation` accepts a non-None arg; the '
-                    'type {} accepts no argument.'.format(
-                        dataset_computation.type_signature))
+    raise TypeError(
+        'Can only construct a new iterative process if '
+        '`dataset_computation` accepts a non-None arg; the '
+        'type {} accepts no argument.'.format(
+            dataset_computation.type_signature
+        )
+    )
 
   init_fn = process.initialize
-  if type_analysis.contains(init_fn.type_signature.result,
-                            lambda x: x.is_sequence()):
-    raise TypeError('Cannot construct a new iterative process if a dataset is '
-                    'returned by `initialize`; initialize has result type '
-                    '{}.'.format(init_fn.type_signature.result))
+  if type_analysis.contains(
+      init_fn.type_signature.result, lambda x: x.is_sequence()
+  ):
+    raise TypeError(
+        'Cannot construct a new iterative process if a dataset is '
+        'returned by `initialize`; initialize has result type '
+        '{}.'.format(init_fn.type_signature.result)
+    )
 
   new_next_comp = compose_dataset_computation_with_computation(
-      dataset_computation, process.next)
+      dataset_computation, process.next
+  )
   return iterative_process.IterativeProcess(
-      initialize_fn=init_fn, next_fn=new_next_comp)
+      initialize_fn=init_fn, next_fn=new_next_comp
+  )
 
 
 def compose_dataset_computation_with_learning_process(
@@ -357,7 +381,8 @@ def compose_dataset_computation_with_learning_process(
     A `tff.templates.IterativeProcess`.
   """
   new_process = compose_dataset_computation_with_iterative_process(
-      dataset_computation, process)
+      dataset_computation, process
+  )
   for attribute in dir(process):
     # We need to ensure that we do not call `setattr` on non-public attributes
     # or attributes already posessed by the iterative process (eg. 'next')

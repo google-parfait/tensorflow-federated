@@ -114,14 +114,17 @@ def _tff_type_to_xla_serializer_arg(
         return True
     return False
 
-  has_undefined_shapes = type_analysis.contains(type_spec,
-                                                _undefined_shape_predicate)
+  has_undefined_shapes = type_analysis.contains(
+      type_spec, _undefined_shape_predicate
+  )
   if has_undefined_shapes:
-    raise TypeError('Can only serialize XLA computations whose parameters '
-                    'contain fully-defined TensorShapes at the leaves; '
-                    'encountered undefined tensor shapes (or unknown rank '
-                    'tensors) in the signature:\n'
-                    f'{type_spec.formatted_representation()}')
+    raise TypeError(
+        'Can only serialize XLA computations whose parameters '
+        'contain fully-defined TensorShapes at the leaves; '
+        'encountered undefined tensor shapes (or unknown rank '
+        'tensors) in the signature:\n'
+        f'{type_spec.formatted_representation()}'
+    )
 
   def _make(
       type_spec: computation_types.Type, next_unused_tensor_index: int
@@ -138,9 +141,11 @@ def _tff_type_to_xla_serializer_arg(
       obj = _XlaSerializerStructArg(type_spec, elements)
       return obj, next_unused_tensor_index
     else:
-      raise TypeError('Can only construct an XLA serializer for TFF types '
-                      'which contain exclusively structure and tensor types; '
-                      f'found type:\n {type_spec.formatted_representation()}')
+      raise TypeError(
+          'Can only construct an XLA serializer for TFF types '
+          'which contain exclusively structure and tensor types; '
+          f'found type:\n {type_spec.formatted_representation()}'
+      )
 
   obj, _ = _make(type_spec, 0)
   return obj
@@ -233,8 +238,9 @@ def serialize_jax_computation(
         )
     )
 
-  computation_type = computation_types.FunctionType(parameter_type,
-                                                    returned_type_spec)
+  computation_type = computation_types.FunctionType(
+      parameter_type, returned_type_spec
+  )
   return (
       xla_serialization.create_xla_tff_computation(
           compiled_xla, tensor_indexes, computation_type
@@ -263,5 +269,6 @@ def _struct_unflatten(
   return structure.Struct(tuple(zip(child_names, child_values)))
 
 
-jax.tree_util.register_pytree_node(structure.Struct, _struct_flatten,
-                                   _struct_unflatten)
+jax.tree_util.register_pytree_node(
+    structure.Struct, _struct_flatten, _struct_unflatten
+)

@@ -22,21 +22,21 @@ from tensorflow_federated.python.core.impl.jax_context import jax_computation_co
 class JaxComputationContextTest(absltest.TestCase):
 
   def test_ingest_raises_not_implemented_error(self):
-
     context = jax_computation_context.JaxComputationContext()
-    with self.assertRaisesRegex(NotImplementedError,
-                                'JAX code is not currently supported'):
+    with self.assertRaisesRegex(
+        NotImplementedError, 'JAX code is not currently supported'
+    ):
       context.ingest(10, np.int32)
 
   def test_invoke_raises_not_implemented_error(self):
-
     @jax_computation.jax_computation
     def foo():
       return 10
 
     context = jax_computation_context.JaxComputationContext()
-    with self.assertRaisesRegex(NotImplementedError,
-                                'JAX code is not currently supported'):
+    with self.assertRaisesRegex(
+        NotImplementedError, 'JAX code is not currently supported'
+    ):
       context.invoke(foo, None)
 
 

@@ -40,8 +40,10 @@ EVALUATION_TIME_KEY = 'evaluation_time_in_seconds'
 
 def _run_training(
     training_fn: computation_base.Computation,
-    client_selection_fn: Callable[[int], Any], state: Any,
-    round_num: int) -> tuple[Any, collections.OrderedDict[str, Any]]:
+    client_selection_fn: Callable[[int], Any],
+    state: Any,
+    round_num: int,
+) -> tuple[Any, collections.OrderedDict[str, Any]]:
   """Runs one round of federated training."""
   logging.info('Running training at round %d', round_num)
   training_time_start = time.time()
@@ -53,9 +55,12 @@ def _run_training(
   return state, collections.OrderedDict(metrics)
 
 
-def _run_evaluation(evaluation_fn: Callable[[Any, Any], MetricsType],
-                    client_selection_fn: Callable[[int], Any], state: Any,
-                    round_num: int) -> collections.OrderedDict[str, Any]:
+def _run_evaluation(
+    evaluation_fn: Callable[[Any, Any], MetricsType],
+    client_selection_fn: Callable[[int], Any],
+    state: Any,
+    round_num: int,
+) -> collections.OrderedDict[str, Any]:
   """Runs one round of federated evaluation."""
   logging.info('Running evaluation at round %d', round_num)
   evaluation_time_start = time.time()
@@ -64,7 +69,8 @@ def _run_evaluation(evaluation_fn: Callable[[Any, Any], MetricsType],
   evaluation_time = time.time() - evaluation_time_start
   metrics[EVALUATION_TIME_KEY] = evaluation_time
   return collections.OrderedDict(
-      {EVALUATION_METRICS_PREFIX + k: v for (k, v) in metrics.items()})
+      {EVALUATION_METRICS_PREFIX + k: v for (k, v) in metrics.items()}
+  )
 
 
 def run_training_process(
@@ -75,10 +81,13 @@ def run_training_process(
     evaluation_selection_fn: Optional[Callable[[int], Any]] = None,
     rounds_per_evaluation: int = 1,
     program_state_manager: Optional[
-        program_state_manager_lib.ProgramStateManager] = None,
+        program_state_manager_lib.ProgramStateManager
+    ] = None,
     rounds_per_saving_program_state: int = 1,
-    metrics_managers: Optional[Iterable[
-        release_manager_lib.ReleaseManager]] = None):
+    metrics_managers: Optional[
+        Iterable[release_manager_lib.ReleaseManager]
+    ] = None,
+):
   """Runs a federated `training_process`.
 
   The following `tff.Computation` types signaures are required:
@@ -136,7 +145,8 @@ def run_training_process(
   if program_state_manager is not None:
     training_process_structure = training_process.initialize()
     program_state, previous_saved_version = loop.run_until_complete(
-        program_state_manager.load_latest(training_process_structure))
+        program_state_manager.load_latest(training_process_structure)
+    )
   else:
     program_state = None
   if program_state is not None:
@@ -149,16 +159,20 @@ def run_training_process(
     start_round = 1
 
     if evaluation_fn is not None and evaluation_selection_fn is not None:
-      evaluation_metrics = _run_evaluation(evaluation_fn,
-                                           evaluation_selection_fn, state, 0)
+      evaluation_metrics = _run_evaluation(
+          evaluation_fn, evaluation_selection_fn, state, 0
+      )
 
       if metrics_managers is not None:
         metrics_type = type_conversions.infer_type(evaluation_metrics)
         loop.run_until_complete(
-            asyncio.gather(*[
-                m.release(evaluation_metrics, metrics_type, 0)
-                for m in metrics_managers
-            ]))
+            asyncio.gather(
+                *[
+                    m.release(evaluation_metrics, metrics_type, 0)
+                    for m in metrics_managers
+                ]
+            )
+        )
 
     if program_state_manager is not None:
       loop.run_until_complete(program_state_manager.save(state, 0))
@@ -166,27 +180,30 @@ def run_training_process(
   for round_num in range(start_round, total_rounds + 1):
     logging.info('Starting round %d', round_num)
     metrics = collections.OrderedDict()
-    state, training_metrics = _run_training(training_process.next,
-                                            training_selection_fn, state,
-                                            round_num)
+    state, training_metrics = _run_training(
+        training_process.next, training_selection_fn, state, round_num
+    )
     if metrics_managers is not None:
       metrics.update(training_metrics)
 
     if evaluation_fn is not None and evaluation_selection_fn is not None:
       if round_num % rounds_per_evaluation == 0:
-        evaluation_metrics = _run_evaluation(evaluation_fn,
-                                             evaluation_selection_fn, state,
-                                             round_num)
+        evaluation_metrics = _run_evaluation(
+            evaluation_fn, evaluation_selection_fn, state, round_num
+        )
         if metrics_managers is not None:
           metrics.update(evaluation_metrics)
 
     if metrics_managers is not None:
       metrics_type = type_conversions.infer_type(metrics)
       loop.run_until_complete(
-          asyncio.gather(*[
-              m.release(metrics, metrics_type, round_num)
-              for m in metrics_managers
-          ]))
+          asyncio.gather(
+              *[
+                  m.release(metrics, metrics_type, round_num)
+                  for m in metrics_managers
+              ]
+          )
+      )
 
     if program_state_manager is not None:
       if round_num % rounds_per_saving_program_state == 0:

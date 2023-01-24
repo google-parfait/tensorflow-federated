@@ -123,7 +123,6 @@ class FinalizerTest(tf.test.TestCase):
       finalizers.FinalizerProcess(float_initialize_fn, test_next_fn)
 
   def test_next_state_not_assignable(self):
-
     @federated_computation.federated_computation(
         SERVER_INT, MODEL_WEIGHTS_TYPE, SERVER_FLOAT
     )
@@ -139,7 +138,6 @@ class FinalizerTest(tf.test.TestCase):
       finalizers.FinalizerProcess(test_initialize_fn, float_next_fn)
 
   def test_next_return_tuple_raises(self):
-
     @federated_computation.federated_computation(
         SERVER_INT, MODEL_WEIGHTS_TYPE, SERVER_FLOAT
     )
@@ -166,7 +164,6 @@ class FinalizerTest(tf.test.TestCase):
       finalizers.FinalizerProcess(test_initialize_fn, namedtuple_next_fn)
 
   def test_next_return_odict_raises(self):
-
     @federated_computation.federated_computation(
         SERVER_INT, MODEL_WEIGHTS_TYPE, SERVER_FLOAT
     )
@@ -238,7 +235,6 @@ class FinalizerTest(tf.test.TestCase):
       finalizers.FinalizerProcess(test_initialize_fn, next_fn)
 
   def test_non_server_placed_next_weight_param_raises(self):
-
     @federated_computation.federated_computation(
         SERVER_INT,
         computation_types.at_clients(MODEL_WEIGHTS_TYPE.member),
@@ -274,7 +270,6 @@ class FinalizerTest(tf.test.TestCase):
       self.fail('Could not construct a valid FinalizerProcess.')
 
   def test_non_server_placed_next_update_param_raises(self):
-
     @federated_computation.federated_computation(
         SERVER_INT, MODEL_WEIGHTS_TYPE, CLIENTS_FLOAT
     )
@@ -289,7 +284,6 @@ class FinalizerTest(tf.test.TestCase):
       finalizers.FinalizerProcess(test_initialize_fn, next_fn)
 
   def test_non_server_placed_next_result_raises(self):
-
     @federated_computation.federated_computation(
         SERVER_INT, MODEL_WEIGHTS_TYPE, SERVER_FLOAT
     )
@@ -326,7 +320,6 @@ class FinalizerTest(tf.test.TestCase):
       finalizers.FinalizerProcess(test_initialize_fn, next_fn)
 
   def test_non_server_placed_next_measurements_raises(self):
-
     @federated_computation.federated_computation(
         SERVER_INT, MODEL_WEIGHTS_TYPE, SERVER_FLOAT
     )

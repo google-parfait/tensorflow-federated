@@ -26,7 +26,8 @@ from tensorflow_federated.python.core.impl.context_stack import context_stack_im
 _Context = Union[context_base.AsyncContext, context_base.SyncContext]
 _ContextFactory = Callable[[], _Context]
 _EnvironmentFactory = Callable[
-    [], Iterable[contextlib.AbstractContextManager[None]]]
+    [], Iterable[contextlib.AbstractContextManager[None]]
+]
 
 
 class TestContext(context_base.SyncContext):
@@ -41,8 +42,10 @@ def test_environment():
   yield None
 
 
-def with_context(context_fn: _ContextFactory,
-                 environment_fn: Optional[_EnvironmentFactory] = None):
+def with_context(
+    context_fn: _ContextFactory,
+    environment_fn: Optional[_EnvironmentFactory] = None,
+):
   """Returns a decorator for running a test in a context.
 
   Args:
@@ -55,7 +58,6 @@ def with_context(context_fn: _ContextFactory,
   """
 
   def decorator(fn):
-
     @functools.wraps(fn)
     def wrapper(*args, **kwargs):
       context = context_fn()
@@ -88,12 +90,13 @@ def with_contexts(*named_contexts):
     raise ValueError('Expected at least one named parameter, found none.')
 
   def decorator(fn):
-
     @functools.wraps(fn)
     @parameterized.named_parameters(*named_contexts)
-    def wrapper(self,
-                context_fn: _ContextFactory,
-                environment_fn: Optional[_EnvironmentFactory] = None):
+    def wrapper(
+        self,
+        context_fn: _ContextFactory,
+        environment_fn: Optional[_EnvironmentFactory] = None,
+    ):
       with_context_decorator = with_context(context_fn, environment_fn)
       decorated_fn = with_context_decorator(fn)
       decorated_fn(self)

@@ -16,7 +16,7 @@
 import math
 
 
-def analytic_gauss_stddev(epsilon, delta, norm_bound, tol=1.e-12):
+def analytic_gauss_stddev(epsilon, delta, norm_bound, tol=1.0e-12):
   """Compute the stddev for the Gaussian mechanism with the given DP params.
 
   Calibrate a Gaussian perturbation for differential privacy using the
@@ -43,7 +43,8 @@ def analytic_gauss_stddev(epsilon, delta, norm_bound, tol=1.e-12):
     raise ValueError(f'delta must be in (0, 1), got delta={delta}.')
   if norm_bound <= 0:
     raise ValueError(
-        f'norm_bound must be positive, got norm_bound={norm_bound}.')
+        f'norm_bound must be positive, got norm_bound={norm_bound}.'
+    )
   if tol <= 0:
     raise ValueError(f'tol must be positive, got tol={tol}.')
 

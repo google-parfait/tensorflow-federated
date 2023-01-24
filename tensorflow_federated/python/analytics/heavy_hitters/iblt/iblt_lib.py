@@ -109,7 +109,9 @@ def _internal_parameters(
   table_size = int(1.1 * minimum_space / repetitions + 10)
 
   # go/iblt-coupled-hash-analysis for analysis of coupled hash family.
-  suggested_hash_family = _HASH_FAMILY_COUPLED if capacity >= 100000 else _HASH_FAMILY_RANDOM
+  suggested_hash_family = (
+      _HASH_FAMILY_COUPLED if capacity >= 100000 else _HASH_FAMILY_RANDOM
+  )
   if hash_family is None:
     hash_family = suggested_hash_family
   suggested_hash_family_params = {}
@@ -140,8 +142,12 @@ def _gcd_tf(a, b, dtype=tf.int64):
   """
   a = tf.cast(a, dtype=dtype)
   b = tf.cast(b, dtype=dtype)
-  x0, x1, y0, y1 = (tf.constant(0, dtype=dtype), tf.constant(1, dtype=dtype),
-                    tf.constant(1, dtype=dtype), tf.constant(0, dtype=dtype))
+  x0, x1, y0, y1 = (
+      tf.constant(0, dtype=dtype),
+      tf.constant(1, dtype=dtype),
+      tf.constant(1, dtype=dtype),
+      tf.constant(0, dtype=dtype),
+  )
 
   def cond(a, b, x0, x1, y0, y1):
     del b, x0, x1, y0, y1
@@ -154,7 +160,8 @@ def _gcd_tf(a, b, dtype=tf.int64):
     return a, b, x0, x1, y0, y1
 
   a, b, x0, x1, y0, y1 = tf.while_loop(
-      cond, body, loop_vars=(a, b, x0, x1, y0, y1))
+      cond, body, loop_vars=(a, b, x0, x1, y0, y1)
+  )
   return b, x0, y0
 
 
@@ -185,13 +192,15 @@ def _get_hash_check_salt(seed: int) -> str:
   return "hash_check_" + str(seed)
 
 
-def _compute_hash_check(input_strings: tf.Tensor, field_size: int, seed: int,
-                        dtype: tf.dtypes.DType) -> tf.Tensor:
+def _compute_hash_check(
+    input_strings: tf.Tensor, field_size: int, seed: int, dtype: tf.dtypes.DType
+) -> tf.Tensor:
   """Returns the hash_check for input_strings modulo field_size."""
   hash_check_salt = _get_hash_check_salt(seed)
   salted_input = tf.strings.join([hash_check_salt, input_strings])
   hash_check = tf.strings.to_hash_bucket_fast(
-      salted_input, num_buckets=field_size)
+      salted_input, num_buckets=field_size
+  )
   hash_check = tf.reshape(hash_check, shape=[tf.size(hash_check), 1])
   hash_check = tf.cast(hash_check, dtype=dtype)
   return hash_check
@@ -247,14 +256,18 @@ class IbltDecoder:
     """
     self._dtype = tf.int64
     self.iblt = iblt
-    self.table_size, self.hash_family, self.hash_family_params = _internal_parameters(
-        capacity, repetitions, hash_family, hash_family_params)
+    self.table_size, self.hash_family, self.hash_family_params = (
+        _internal_parameters(
+            capacity, repetitions, hash_family, hash_family_params
+        )
+    )
     self.field_size = field_size
     self.chunker = chunkers.create_chunker(
         string_max_bytes=string_max_bytes,
         encoding=encoding,
         max_chunk_value=self.field_size,
-        dtype=self._dtype)
+        dtype=self._dtype,
+    )
     self.num_chunks = self.chunker.get_num_chunks()
     self.count = self.num_chunks
     self.check = self.num_chunks + 1
@@ -264,16 +277,20 @@ class IbltDecoder:
     self.q = tf.queue.RandomShuffleQueue(
         capacity=self.table_size * self.repetitions,
         min_after_dequeue=0,
-        dtypes=(self._dtype, self._dtype))
+        dtypes=(self._dtype, self._dtype),
+    )
     if self.hash_family == _HASH_FAMILY_RANDOM:
       self.hyperedge_hasher = hyperedge_hashers.RandomHyperEdgeHasher(
-          seed, self.table_size, repetitions, **self.hash_family_params)
+          seed, self.table_size, repetitions, **self.hash_family_params
+      )
     elif self.hash_family == _HASH_FAMILY_COUPLED:
       self.hyperedge_hasher = hyperedge_hashers.CoupledHyperEdgeHasher(
-          seed, self.table_size, repetitions, **self.hash_family_params)
+          seed, self.table_size, repetitions, **self.hash_family_params
+      )
     else:
       raise NotImplementedError(
-          f"Hash family {hash_family} not supported in IBLTs.")
+          f"Hash family {hash_family} not supported in IBLTs."
+      )
 
   def decode_string_from_chunks(self, chunks):
     """Computes string from sequence of ints each encoding 'chunk_length' bytes.
@@ -301,9 +318,11 @@ class IbltDecoder:
     if input_strings.dtype != tf.string:
       raise TypeError(
           "hash checks can only be computed on string tensors, got: "
-          f"{input_strings.dtype}")
+          f"{input_strings.dtype}"
+      )
     return _compute_hash_check(
-        input_strings, self.field_size, seed=self.seed, dtype=self._dtype)
+        input_strings, self.field_size, seed=self.seed, dtype=self._dtype
+    )
 
   def _is_peelable(self, iblt, repetition, index):
     """Tests if can recover string and count from location (repetition, index).
@@ -333,21 +352,28 @@ class IbltDecoder:
       that represent the encoding of the data_string. If no string is decoded,
       data_string is set to '' and the rest is set to -1.
     """
-    empty_return = (tf.constant(""), tf.constant(0, dtype=self._dtype),
-                    tf.zeros((self.num_chunks,), dtype=self._dtype))
-    if tf.math.not_equal(iblt[repetition][index][self.count],
-                         tf.constant(0, dtype=self._dtype)):
+    empty_return = (
+        tf.constant(""),
+        tf.constant(0, dtype=self._dtype),
+        tf.zeros((self.num_chunks,), dtype=self._dtype),
+    )
+    if tf.math.not_equal(
+        iblt[repetition][index][self.count], tf.constant(0, dtype=self._dtype)
+    ):
       inverse_count = _inverse_mod(
           iblt[repetition][index][self.count],
           self.field_size,
-          dtype=self._dtype)
-      chunks = (iblt[repetition][index][0:self.num_chunks] *
-                inverse_count) % self.field_size
+          dtype=self._dtype,
+      )
+      chunks = (
+          iblt[repetition][index][0 : self.num_chunks] * inverse_count
+      ) % self.field_size
       data_string = self.decode_string_from_chunks(chunks)
       hash_check = self._get_hash_check(data_string)
       if tf.math.equal(
           iblt[repetition][index][self.check],
-          iblt[repetition][index][self.count] * hash_check % self.field_size):
+          iblt[repetition][index][self.count] * hash_check % self.field_size,
+      ):
         return (data_string, iblt[repetition][index][self.count], chunks)
       else:
         return empty_return
@@ -377,14 +403,19 @@ class IbltDecoder:
       repetition = tf.constant(repetition, dtype=self._dtype)
       indices.append(tf.stack([repetition, index, self.count], axis=0))
       values.append(
-          (iblt[repetition][index][self.count] - count) % self.field_size)
+          (iblt[repetition][index][self.count] - count) % self.field_size
+      )
       indices.append(tf.stack([repetition, index, self.check], axis=0))
-      values.append((iblt[repetition][index][self.check] -
-                     (count * hash_check)) % self.field_size)
+      values.append(
+          (iblt[repetition][index][self.check] - (count * hash_check))
+          % self.field_size
+      )
       for chunk_id in range(self.num_chunks):
         indices.append(tf.stack([repetition, index, chunk_id], axis=0))
-        values.append((iblt[repetition][index][chunk_id] -
-                       (count * chunks[chunk_id])) % self.field_size)
+        values.append(
+            (iblt[repetition][index][chunk_id] - (count * chunks[chunk_id]))
+            % self.field_size
+        )
     indices = tf.stack(indices, axis=0)
     values = tf.stack([tf.squeeze(value) for value in values], axis=0)
     iblt = tf.tensor_scatter_nd_update(iblt, indices, values)
@@ -392,8 +423,9 @@ class IbltDecoder:
 
   def _get_hash_indices(self, data_string):
     data_strings = tf.expand_dims(data_string, 0)
-    hash_indices = self.hyperedge_hasher.get_hash_indices_tf(data_strings)[0, :,
-                                                                           2]
+    hash_indices = self.hyperedge_hasher.get_hash_indices_tf(data_strings)[
+        0, :, 2
+    ]
     hash_indices = tf.cast(hash_indices, dtype=self._dtype)
     return hash_indices
 
@@ -401,8 +433,9 @@ class IbltDecoder:
     data_string, count, chunks = self._decode(iblt, repetition, index)
     hash_indices = self._get_hash_indices(data_string)
     if tf.strings.length(data_string) > 0:
-      iblt = self._remove_element(iblt, data_string, hash_indices, chunks,
-                                  count)
+      iblt = self._remove_element(
+          iblt, data_string, hash_indices, chunks, count
+      )
     return iblt, hash_indices, data_string, count
 
   @tf.function
@@ -417,7 +450,8 @@ class IbltDecoder:
     """
     iblt = tf.math.floormod(
         tf.cast(self.iblt, dtype=self._dtype),
-        tf.constant(self.field_size, dtype=self._dtype))
+        tf.constant(self.field_size, dtype=self._dtype),
+    )
 
     # Initialize queue with all locations that can be decoded:
     for repetition in tf.range(self.repetitions, dtype=self._dtype):
@@ -426,9 +460,11 @@ class IbltDecoder:
           self.q.enqueue((repetition, index))
 
     out_strings = tf.TensorArray(
-        tf.string, size=0, dynamic_size=True, clear_after_read=False)
+        tf.string, size=0, dynamic_size=True, clear_after_read=False
+    )
     out_counts = tf.TensorArray(
-        self._dtype, size=0, dynamic_size=True, clear_after_read=False)
+        self._dtype, size=0, dynamic_size=True, clear_after_read=False
+    )
 
     # While queue is non-empty, pop and subtract from IBLT, add new peelable
     # locations to queue.
@@ -439,7 +475,8 @@ class IbltDecoder:
     def body(iblt, out_strings, out_counts):
       repetition, index = self.q.dequeue()
       iblt, hash_indices, data_string, count = self._decode_and_remove(
-          iblt, repetition, index)
+          iblt, repetition, index
+      )
       if tf.strings.length(data_string) > 0:
         index = out_counts.size()
         out_counts = out_counts.write(index, count)
@@ -453,7 +490,8 @@ class IbltDecoder:
         cond,
         body,
         loop_vars=(iblt, out_strings, out_counts),
-        parallel_iterations=1)
+        parallel_iterations=1,
+    )
 
     # Count of entries that could not be decoded:
     num_not_decoded = tf.reduce_sum(iblt[:, :, self.count]) / self.repetitions
@@ -484,7 +522,9 @@ class IbltDecoder:
                 string.decode("utf-8", "ignore")
                 for string in out_strings.numpy().tolist()
             ],
-            out_counts.numpy().tolist()))
+            out_counts.numpy().tolist(),
+        )
+    )
     num_not_decoded = num_not_decoded.numpy()
     if num_not_decoded:
       counter[None] = num_not_decoded
@@ -501,17 +541,19 @@ class IbltEncoder:
     sum of checks of keys hashing to `h` in `r` if `c = num_chunks + 1`.
   """
 
-  def __init__(self,
-               capacity,
-               string_max_bytes,
-               *,
-               encoding: _CharacterEncoding = _CharacterEncoding.UTF8,
-               drop_strings_above_max_length=False,
-               seed=0,
-               repetitions=DEFAULT_REPETITIONS,
-               hash_family=None,
-               hash_family_params=None,
-               field_size=DEFAULT_FIELD_SIZE):
+  def __init__(
+      self,
+      capacity,
+      string_max_bytes,
+      *,
+      encoding: _CharacterEncoding = _CharacterEncoding.UTF8,
+      drop_strings_above_max_length=False,
+      seed=0,
+      repetitions=DEFAULT_REPETITIONS,
+      hash_family=None,
+      hash_family_params=None,
+      field_size=DEFAULT_FIELD_SIZE,
+  ):
     """Initializes internal IBLT parameters.
 
     Args:
@@ -533,7 +575,8 @@ class IbltEncoder:
     """
     self.string_max_bytes = string_max_bytes
     self.table_size, hash_family, hash_family_params = _internal_parameters(
-        capacity, repetitions, hash_family, hash_family_params)
+        capacity, repetitions, hash_family, hash_family_params
+    )
     self.repetitions = repetitions
     self.seed = seed
     self.field_size = field_size
@@ -543,18 +586,22 @@ class IbltEncoder:
         string_max_bytes=string_max_bytes,
         encoding=encoding,
         max_chunk_value=self.field_size,
-        dtype=self._dtype)
+        dtype=self._dtype,
+    )
     self.num_chunks = self.chunker.get_num_chunks()
     self.iblt_shape = (self.repetitions, self.table_size, self.num_chunks + 2)
     if hash_family == _HASH_FAMILY_RANDOM:
       self.hyperedge_hasher = hyperedge_hashers.RandomHyperEdgeHasher(
-          seed, self.table_size, repetitions, **hash_family_params)
+          seed, self.table_size, repetitions, **hash_family_params
+      )
     elif hash_family == _HASH_FAMILY_COUPLED:
       self.hyperedge_hasher = hyperedge_hashers.CoupledHyperEdgeHasher(
-          seed, self.table_size, repetitions, **hash_family_params)
+          seed, self.table_size, repetitions, **hash_family_params
+      )
     else:
       raise NotImplementedError(
-          "Hash family {} not supported in IBLTs.".format(hash_family))
+          "Hash family {} not supported in IBLTs.".format(hash_family)
+      )
 
   def _compute_hash_check(self, input_strings):
     """Returns Tensor containing hash_check for each (input string, repetition).
@@ -567,7 +614,8 @@ class IbltEncoder:
       at index `(i, r)`.
     """
     hash_check = _compute_hash_check(
-        input_strings, self.field_size, seed=self.seed, dtype=self._dtype)
+        input_strings, self.field_size, seed=self.seed, dtype=self._dtype
+    )
     hash_check = tf.tile(hash_check, [1, self.repetitions])
     return hash_check
 
@@ -601,11 +649,13 @@ class IbltEncoder:
       `0 <= r < repetitions`, and `h` is the hash-position of the ith input
       string in repetition `r`.
     """
-    counts_chunk_indices = tf.fill([input_length, self.repetitions, 1],
-                                   self.num_chunks)
+    counts_chunk_indices = tf.fill(
+        [input_length, self.repetitions, 1], self.num_chunks
+    )
     counts_chunk_indices = tf.cast(counts_chunk_indices, dtype=self._dtype)
-    counts_sparse_indices = tf.concat([sparse_indices, counts_chunk_indices],
-                                      axis=2)
+    counts_sparse_indices = tf.concat(
+        [sparse_indices, counts_chunk_indices], axis=2
+    )
     counts_sparse_indices = tf.reshape(counts_sparse_indices, shape=[-1, 4])
     if input_counts is not None:
       counts_values = tf.repeat(input_counts, [self.repetitions])
@@ -615,14 +665,13 @@ class IbltEncoder:
     counts = tf.SparseTensor(
         indices=counts_sparse_indices,
         values=counts_values,
-        dense_shape=(input_length,) + self.iblt_shape)
+        dense_shape=(input_length,) + self.iblt_shape,
+    )
     return counts
 
-  def _compute_checks(self,
-                      sparse_indices,
-                      hash_check,
-                      input_length,
-                      input_counts=None):
+  def _compute_checks(
+      self, sparse_indices, hash_check, input_length, input_counts=None
+  ):
     """Returns SparseTensor with hash_check for each (input string, repetition).
 
     Args:
@@ -643,24 +692,25 @@ class IbltEncoder:
     if input_counts is not None:
       hash_check = hash_check * input_counts
 
-    checks_chunk_indices = tf.fill([input_length, self.repetitions, 1],
-                                   self.num_chunks + 1)
+    checks_chunk_indices = tf.fill(
+        [input_length, self.repetitions, 1], self.num_chunks + 1
+    )
     checks_chunk_indices = tf.cast(checks_chunk_indices, dtype=self._dtype)
-    checks_sparse_indices = tf.concat([sparse_indices, checks_chunk_indices],
-                                      axis=2)
+    checks_sparse_indices = tf.concat(
+        [sparse_indices, checks_chunk_indices], axis=2
+    )
     checks_sparse_indices = tf.reshape(checks_sparse_indices, shape=[-1, 4])
     checks_values = tf.reshape(hash_check, shape=[-1])
     checks = tf.SparseTensor(
         indices=checks_sparse_indices,
         values=checks_values,
-        dense_shape=(input_length,) + self.iblt_shape)
+        dense_shape=(input_length,) + self.iblt_shape,
+    )
     return checks
 
-  def _compute_keys(self,
-                    sparse_indices,
-                    chunks,
-                    input_length,
-                    input_counts=None):
+  def _compute_keys(
+      self, sparse_indices, chunks, input_length, input_counts=None
+  ):
     """Returns SparseTensor with key for each (input string, repetition, chunk).
 
     Args:
@@ -686,13 +736,16 @@ class IbltEncoder:
     keys_chunk_indices = tf.expand_dims(keys_chunk_indices, 0)
     keys_chunk_indices = tf.expand_dims(keys_chunk_indices, 0)
     keys_chunk_indices = tf.expand_dims(keys_chunk_indices, -1)
-    keys_chunk_indices = tf.tile(keys_chunk_indices,
-                                 [input_length, self.repetitions, 1, 1])
+    keys_chunk_indices = tf.tile(
+        keys_chunk_indices, [input_length, self.repetitions, 1, 1]
+    )
     keys_sparse_indices = tf.expand_dims(sparse_indices, -2)
-    keys_sparse_indices = tf.tile(keys_sparse_indices,
-                                  [1, 1, self.num_chunks, 1])
-    keys_sparse_indices = tf.concat([keys_sparse_indices, keys_chunk_indices],
-                                    axis=-1)
+    keys_sparse_indices = tf.tile(
+        keys_sparse_indices, [1, 1, self.num_chunks, 1]
+    )
+    keys_sparse_indices = tf.concat(
+        [keys_sparse_indices, keys_chunk_indices], axis=-1
+    )
     keys_sparse_indices = tf.reshape(keys_sparse_indices, shape=[-1, 4])
     keys_values = tf.expand_dims(chunks, 1)
     keys_values = tf.tile(keys_values, [1, self.repetitions, 1])
@@ -700,7 +753,8 @@ class IbltEncoder:
     keys = tf.SparseTensor(
         indices=keys_sparse_indices,
         values=keys_values,
-        dense_shape=(input_length,) + self.iblt_shape)
+        dense_shape=(input_length,) + self.iblt_shape,
+    )
     return keys
 
   @tf.function
@@ -737,14 +791,17 @@ class IbltEncoder:
     hash_check = self._compute_hash_check(trimmed_input_strings)
 
     sparse_indices = self.hyperedge_hasher.get_hash_indices_tf(
-        trimmed_input_strings)
+        trimmed_input_strings
+    )
 
     input_length = tf.size(trimmed_input_strings)
     counts = self._compute_counts(sparse_indices, input_length, input_counts)
-    checks = self._compute_checks(sparse_indices, hash_check, input_length,
-                                  input_counts)
-    keys = self._compute_keys(sparse_indices, chunks, input_length,
-                              input_counts)
+    checks = self._compute_checks(
+        sparse_indices, hash_check, input_length, input_counts
+    )
+    keys = self._compute_keys(
+        sparse_indices, chunks, input_length, input_counts
+    )
     sparse_iblt = tf.sparse.add(keys, counts)
     sparse_iblt = tf.sparse.add(sparse_iblt, checks)
     iblt = tf.sparse.reduce_sum(sparse_iblt, 0)
@@ -803,5 +860,6 @@ def decode_iblt_tf(
       repetitions=repetitions,
       hash_family=hash_family,
       hash_family_params=hash_family_params,
-      field_size=field_size)
+      field_size=field_size,
+  )
   return iblt_decoder.get_freq_estimates_tf()

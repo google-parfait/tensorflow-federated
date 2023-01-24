@@ -44,8 +44,10 @@ def build_dataset_mixture(a, b, a_probability, seed=None):
     random_generator = tf.random.Generator.from_non_deterministic_state()
 
   def _random_pick_example(example_a, example_b):
-    if random_generator.uniform(
-        shape=(), minval=0.0, maxval=1.0) < a_probability:
+    if (
+        random_generator.uniform(shape=(), minval=0.0, maxval=1.0)
+        < a_probability
+    ):
       return example_a
     return example_b
 
@@ -78,9 +80,9 @@ def build_single_label_dataset(dataset, label_key, desired_label):
   return dataset.filter(_select_on_label)
 
 
-def build_synthethic_iid_datasets(client_data,
-                                  client_dataset_size: int,
-                                  shuffle_buffer_size: int = 10000):
+def build_synthethic_iid_datasets(
+    client_data, client_dataset_size: int, shuffle_buffer_size: int = 10000
+):
   """Constructs an iterable of IID clients from a `tff.simulation.datasets.ClientData`.
 
   The returned iterator yields a stream of `tf.data.Datsets` that approximates
@@ -103,6 +105,7 @@ def build_synthethic_iid_datasets(client_data,
   """
   global_dataset = client_data.create_tf_dataset_from_all_clients()
   global_dataset = global_dataset.shuffle(
-      buffer_size=shuffle_buffer_size, reshuffle_each_iteration=True)
+      buffer_size=shuffle_buffer_size, reshuffle_each_iteration=True
+  )
   global_dataset = global_dataset.repeat(None)  # Repeat forever
   return global_dataset.window(client_dataset_size)

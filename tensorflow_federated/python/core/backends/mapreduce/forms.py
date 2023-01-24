@@ -33,8 +33,10 @@ def _check_tensorflow_computation(label, comp):
   comp_proto = computation_impl.ConcreteComputation.get_proto(comp)
   which_comp = comp_proto.WhichOneof('computation')
   if which_comp != 'tensorflow':
-    raise TypeError('Expected all computations supplied as arguments to '
-                    'be plain TensorFlow, found {}.'.format(which_comp))
+    raise TypeError(
+        'Expected all computations supplied as arguments to '
+        'be plain TensorFlow, found {}.'.format(which_comp)
+    )
 
 
 def _check_lambda_computation(label, comp):
@@ -42,15 +44,18 @@ def _check_lambda_computation(label, comp):
   comp_proto = computation_impl.ConcreteComputation.get_proto(comp)
   which_comp = comp_proto.WhichOneof('computation')
   if which_comp != 'lambda':
-    raise TypeError('Expected all computations supplied as arguments to '
-                    'be Lambda computations, found {}.'.format(which_comp))
+    raise TypeError(
+        'Expected all computations supplied as arguments to '
+        'be Lambda computations, found {}.'.format(which_comp)
+    )
   tree_analysis.check_contains_no_unbound_references(comp.to_building_block())
   tree_analysis.check_has_unique_names(comp.to_building_block())
 
 
 def _check_flattened_intrinsic_args_are_selections(
     value: building_blocks.ComputationBuildingBlock,
-    expected_reference_name: str):
+    expected_reference_name: str,
+):
   """Checks that the flattened args of an intrinsic call are all Selections."""
   inner_values = []
   if value.is_struct():
@@ -63,13 +68,18 @@ def _check_flattened_intrinsic_args_are_selections(
       raise TypeError(
           'Expected that all arguments to an intrinsic call are selections or '
           '(potentially nested) structs of selections, but found {}'.format(
-              inner_value.type_signature))
-    if inner_value.source.is_reference(
-    ) and inner_value.source.name != expected_reference_name:
+              inner_value.type_signature
+          )
+      )
+    if (
+        inner_value.source.is_reference()
+        and inner_value.source.name != expected_reference_name
+    ):
       raise TypeError(
           'Expected that all arguments to an intrinsic call are ultimately '
           'selections of the top-level lambda parameter {} but found selection '
-          'source {}'.format(expected_reference_name, inner_value.source.name))
+          'source {}'.format(expected_reference_name, inner_value.source.name)
+      )
 
 
 def _is_assignable_from_or_both_none(first, second):
@@ -82,22 +92,26 @@ def _is_tuple(type_signature: computation_types.Type, length: int) -> bool:
   return type_signature.is_struct() and len(type_signature) == length
 
 
-def _check_accepts_tuple(label: str, comp: computation_base.Computation,
-                         length: int):
+def _check_accepts_tuple(
+    label: str, comp: computation_base.Computation, length: int
+):
   param_type = comp.type_signature.parameter
   if not _is_tuple(param_type, length):
     raise TypeError(
         f'The `{label}` computation accepts a parameter of type\n{param_type}\n'
-        f'that is not a tuple of length {length}.')
+        f'that is not a tuple of length {length}.'
+    )
 
 
-def _check_returns_tuple(label: str, comp: computation_base.Computation,
-                         length: int):
+def _check_returns_tuple(
+    label: str, comp: computation_base.Computation, length: int
+):
   result_type = comp.type_signature.result
   if not _is_tuple(result_type, length):
     raise TypeError(
         f'The `{label}` computation returns a result of type\n{result_type}\n'
-        f'that is not a tuple of length {length}.')
+        f'that is not a tuple of length {length}.'
+    )
 
 
 class BroadcastForm:
@@ -124,11 +138,13 @@ class BroadcastForm:
   ```
   """
 
-  def __init__(self,
-               compute_server_context,
-               client_processing,
-               server_data_label=None,
-               client_data_label=None):
+  def __init__(
+      self,
+      compute_server_context,
+      client_processing,
+      server_data_label=None,
+      client_data_label=None,
+  ):
     for label, comp in (
         ('compute_server_context', compute_server_context),
         ('client_processing', client_processing),
@@ -137,13 +153,15 @@ class BroadcastForm:
     _check_accepts_tuple('client_processing', client_processing, 2)
     client_first_arg_type = client_processing.type_signature.parameter[0]
     server_context_type = compute_server_context.type_signature.result
-    if not _is_assignable_from_or_both_none(client_first_arg_type,
-                                            server_context_type):
+    if not _is_assignable_from_or_both_none(
+        client_first_arg_type, server_context_type
+    ):
       raise TypeError(
           'The `client_processing` computation expects an argument tuple with '
           f'type\n{client_first_arg_type}\nas the first element (the context '
           'type from the server), which does not match the result type\n'
-          f'{server_context_type}\n of `compute_server_context`.')
+          f'{server_context_type}\n of `compute_server_context`.'
+      )
     self._compute_server_context = compute_server_context
     self._client_processing = client_processing
     if server_data_label is not None:
@@ -182,8 +200,11 @@ class BroadcastForm:
     ):
       # Add sufficient padding to align first column;
       # len('compute_server_context') == 22
-      print_fn('{:<22}: {}'.format(
-          label, comp.type_signature.compact_representation()))
+      print_fn(
+          '{:<22}: {}'.format(
+              label, comp.type_signature.compact_representation()
+          )
+      )
 
 
 # `work` has a separate output for each aggregation path.
@@ -311,42 +332,53 @@ class MapReduceForm(typed_object.TypedObject):
     _check_accepts_tuple('work', work, 2)
     work_2nd_arg_type = work.type_signature.parameter[1]
     prepare_result_type = prepare.type_signature.result
-    if not _is_assignable_from_or_both_none(work_2nd_arg_type,
-                                            prepare_result_type):
+    if not _is_assignable_from_or_both_none(
+        work_2nd_arg_type, prepare_result_type
+    ):
       raise TypeError(
           'The `work` computation expects an argument tuple with type {} as '
           'the second element (the initial client state from the server), '
           'which does not match the result type {} of `prepare`.'.format(
-              work_2nd_arg_type, prepare_result_type))
+              work_2nd_arg_type, prepare_result_type
+          )
+      )
 
     _check_returns_tuple('work', work, WORK_RESULT_LEN)
 
     py_typecheck.check_len(accumulate.type_signature.parameter, 2)
     accumulate.type_signature.parameter[0].check_assignable_from(
-        zero.type_signature.result)
+        zero.type_signature.result
+    )
     accumulate_2nd_arg_type = accumulate.type_signature.parameter[1]
     work_client_update_type = work.type_signature.result[WORK_UPDATE_INDEX]
-    if not _is_assignable_from_or_both_none(accumulate_2nd_arg_type,
-                                            work_client_update_type):
-
+    if not _is_assignable_from_or_both_none(
+        accumulate_2nd_arg_type, work_client_update_type
+    ):
       raise TypeError(
           'The `accumulate` computation expects a second argument of type {}, '
           'which does not match the expected {} as implied by the type '
-          'signature of `work`.'.format(accumulate_2nd_arg_type,
-                                        work_client_update_type))
+          'signature of `work`.'.format(
+              accumulate_2nd_arg_type, work_client_update_type
+          )
+      )
     accumulate.type_signature.parameter[0].check_assignable_from(
-        accumulate.type_signature.result)
+        accumulate.type_signature.result
+    )
 
     py_typecheck.check_len(merge.type_signature.parameter, 2)
     merge.type_signature.parameter[0].check_assignable_from(
-        accumulate.type_signature.result)
+        accumulate.type_signature.result
+    )
     merge.type_signature.parameter[1].check_assignable_from(
-        accumulate.type_signature.result)
+        accumulate.type_signature.result
+    )
     merge.type_signature.parameter[0].check_assignable_from(
-        merge.type_signature.result)
+        merge.type_signature.result
+    )
 
     report.type_signature.parameter.check_assignable_from(
-        merge.type_signature.result)
+        merge.type_signature.result
+    )
 
     expected_update_parameter_type = computation_types.to_type([
         type_signature.parameter[0].member,
@@ -356,7 +388,7 @@ class MapReduceForm(typed_object.TypedObject):
             work.type_signature.result[WORK_SECAGG_BITWIDTH_INDEX],
             work.type_signature.result[WORK_SECAGG_MAX_INPUT_INDEX],
             work.type_signature.result[WORK_SECAGG_MODULUS_INDEX],
-        ]
+        ],
     ])
     # The first part of the parameter should align with any initial state that
     # the Computation that the MapReduceForm is based upon should take in as
@@ -364,13 +396,16 @@ class MapReduceForm(typed_object.TypedObject):
     # state should be verified outside of the constructor of the MapReduceForm.
     if not _is_assignable_from_or_both_none(
         computation_types.to_type(update.type_signature.parameter),
-        expected_update_parameter_type):
+        expected_update_parameter_type,
+    ):
       raise TypeError(
           'The `update` computation expects arguments of type {}, '
           'which does not match the expected {} as implied by the type '
           'signatures of `report` and `work`.'.format(
               computation_types.to_type(update.type_signature.parameter[1:]),
-              expected_update_parameter_type))
+              expected_update_parameter_type,
+          )
+      )
 
     _check_returns_tuple('update', update, 2)
 
@@ -378,10 +413,11 @@ class MapReduceForm(typed_object.TypedObject):
     if not prepare_arg_type.is_assignable_from(updated_state_type):
       raise TypeError(
           'The `update` computation returns a result tuple whose first element '
-          f'(the updated state type of the server) is type:\n'
+          '(the updated state type of the server) is type:\n'
           f'{updated_state_type}\n'
-          f'which is not assignable to the state parameter type of `prepare`:\n'
-          f'{prepare_arg_type}')
+          'which is not assignable to the state parameter type of `prepare`:\n'
+          f'{prepare_arg_type}'
+      )
 
     self._type_signature = type_signature
     self._prepare = prepare
@@ -457,9 +493,12 @@ class MapReduceForm(typed_object.TypedObject):
     # Tensors aggregated over `federated_secure_...` are the last three outputs
     # of `work`.
     _, secagg_bitwidth_type, secagg_max_input_type, secagg_modulus_type = (
-        self.work.type_signature.result)
+        self.work.type_signature.result
+    )
     for secagg_type in [
-        secagg_bitwidth_type, secagg_max_input_type, secagg_modulus_type
+        secagg_bitwidth_type,
+        secagg_max_input_type,
+        secagg_modulus_type,
     ]:
       if type_analysis.contains_tensor_types(secagg_type):
         return True
@@ -486,8 +525,11 @@ class MapReduceForm(typed_object.TypedObject):
     ):
       # Add sufficient padding to align first column;
       # len('secure_modular_sum_modulus') == 26
-      print_fn('{:<26}: {}'.format(
-          label, comp.type_signature.compact_representation()))
+      print_fn(
+          '{:<26}: {}'.format(
+              label, comp.type_signature.compact_representation()
+          )
+      )
 
 
 class DistributeAggregateForm(typed_object.TypedObject):
@@ -520,12 +562,14 @@ class DistributeAggregateForm(typed_object.TypedObject):
   """
 
   def __init__(
-      self, type_signature: computation_types.FunctionType,
+      self,
+      type_signature: computation_types.FunctionType,
       server_prepare: computation_impl.ConcreteComputation,
       server_to_client_broadcast: computation_impl.ConcreteComputation,
       client_work: computation_impl.ConcreteComputation,
       client_to_server_aggregation: computation_impl.ConcreteComputation,
-      server_result: computation_impl.ConcreteComputation):
+      server_result: computation_impl.ConcreteComputation,
+  ):
     """Constructs a representation of a round for a federated learning system.
 
     Note: All the computations supplied here as arguments must be TFF Lambda
@@ -561,42 +605,50 @@ class DistributeAggregateForm(typed_object.TypedObject):
     # represents the server state and produce 2 results (data to broadcast and
     # temporary state). It should contain only server placements.
     _check_returns_tuple('server_prepare', server_prepare, length=2)
-    tree_analysis.check_has_single_placement(server_prepare.to_building_block(),
-                                             placements.SERVER)
+    tree_analysis.check_has_single_placement(
+        server_prepare.to_building_block(), placements.SERVER
+    )
 
     # The broadcast function can take an arbitrary number of inputs and produce
     # an arbitrary number of outputs. It should contain a block of locals that
     # are exclusively broadcast-type intrinsics and should return the results of
     # these intrinsics in the order they are computed.
     expected_return_references = []
-    for local_name, local_value in server_to_client_broadcast.to_building_block(
-    ).result.locals:
+    for (
+        local_name,
+        local_value,
+    ) in server_to_client_broadcast.to_building_block().result.locals:
       local_value.check_call()
       local_value.function.check_intrinsic()
       if not local_value.function.intrinsic_def().broadcast_kind:
         raise ValueError(
             'Expected only broadcast intrinsics but found {}'.format(
-                local_value.function.uri))
+                local_value.function.uri
+            )
+        )
       _check_flattened_intrinsic_args_are_selections(
           local_value.argument,
-          server_to_client_broadcast.to_building_block().parameter_name)
+          server_to_client_broadcast.to_building_block().parameter_name,
+      )
       expected_return_references.append(local_name)
     server_to_client_broadcast.to_building_block().result.result.check_struct()
     return_references = [
-        reference.name for reference in
-        server_to_client_broadcast.to_building_block().result.result
+        reference.name
+        for reference in server_to_client_broadcast.to_building_block().result.result
     ]
     if expected_return_references != return_references:
       raise ValueError(
           'Expected the broadcast function to return references {} but '
-          'received {}'.format(expected_return_references, return_references))
+          'received {}'.format(expected_return_references, return_references)
+      )
 
     # The client_work function should take 2 inputs (client data and broadcasted
     # data) and produce an output of arbitrary length that represents the data
     # to aggregate. It should contain only CLIENTS placements.
     _check_accepts_tuple('client_work', client_work, length=2)
-    tree_analysis.check_has_single_placement(client_work.to_building_block(),
-                                             placements.CLIENTS)
+    tree_analysis.check_has_single_placement(
+        client_work.to_building_block(), placements.CLIENTS
+    )
 
     # The client_to_server_aggregation function should take 2 inputs (temporary
     # state and client results) and produce an output of arbitrary length that
@@ -604,96 +656,116 @@ class DistributeAggregateForm(typed_object.TypedObject):
     # are exclusively aggregation-type intrinsics and should return the results
     # of these intrinsics in the order they are computed.
     _check_accepts_tuple(
-        'client_to_server_aggregation', client_to_server_aggregation, length=2)
+        'client_to_server_aggregation', client_to_server_aggregation, length=2
+    )
     expected_return_references = []
-    for local_name, local_value in client_to_server_aggregation.to_building_block(
-    ).result.locals:
+    for (
+        local_name,
+        local_value,
+    ) in client_to_server_aggregation.to_building_block().result.locals:
       local_value.check_call()
       local_value.function.check_intrinsic()
       if not local_value.function.intrinsic_def().aggregation_kind:
         raise ValueError(
             'Expected only aggregation intrinsics but found {}'.format(
-                local_value.function.uri))
+                local_value.function.uri
+            )
+        )
       _check_flattened_intrinsic_args_are_selections(
           local_value.argument,
-          client_to_server_aggregation.to_building_block().parameter_name)
+          client_to_server_aggregation.to_building_block().parameter_name,
+      )
       expected_return_references.append(local_name)
-    client_to_server_aggregation.to_building_block().result.result.check_struct(
-    )
+    client_to_server_aggregation.to_building_block().result.result.check_struct()
     return_references = [
-        reference.name for reference in
-        client_to_server_aggregation.to_building_block().result.result
+        reference.name
+        for reference in client_to_server_aggregation.to_building_block().result.result
     ]
     if expected_return_references != return_references:
       raise ValueError(
           'Expected the aggregation function to return references {} but '
-          'received {}'.format(expected_return_references, return_references))
+          'received {}'.format(expected_return_references, return_references)
+      )
 
     # The server_result function should take 3 inputs (server state, temporary
     # state, and aggregate client data) and produce 2 outputs (new server state
     # and server output). It should contain only SERVER placements.
     _check_accepts_tuple('server_result', server_result, length=3)
     _check_returns_tuple('server_result', server_result, length=2)
-    tree_analysis.check_has_single_placement(server_result.to_building_block(),
-                                             placements.SERVER)
+    tree_analysis.check_has_single_placement(
+        server_result.to_building_block(), placements.SERVER
+    )
 
     # The broadcast input data types in the 'server_prepare' result and
     # 'server_to_client_broadcast' argument should match.
     if not _is_assignable_from_or_both_none(
         server_to_client_broadcast.type_signature.parameter,
-        server_prepare.type_signature.result[0]):
+        server_prepare.type_signature.result[0],
+    ):
       raise TypeError(
           'The `server_to_client_broadcast` computation expects an argument '
           'type {} that does not match the corresponding result type {} of '
           '`server_prepare`.'.format(
               server_to_client_broadcast.type_signature.parameter,
-              server_prepare.type_signature.result[0]))
+              server_prepare.type_signature.result[0],
+          )
+      )
 
     # The broadcast output data types in the 'server_to_client_broadcast' result
     # and 'client_work' argument should match.
     if not _is_assignable_from_or_both_none(
         client_work.type_signature.parameter[1],
-        server_to_client_broadcast.type_signature.result):
+        server_to_client_broadcast.type_signature.result,
+    ):
       raise TypeError(
           'The `client_work` computation expects an argument type {} '
           'that does not match the corresponding result type {} of '
           '`server_to_client_broadcast`.'.format(
               client_work.type_signature.parameter[1],
-              server_to_client_broadcast.type_signature.result))
+              server_to_client_broadcast.type_signature.result,
+          )
+      )
 
     # The aggregation input data types in the 'client_work' result and
     # 'client_to_server_aggregation' argument should match.
     if not _is_assignable_from_or_both_none(
         client_to_server_aggregation.type_signature.parameter[1],
-        client_work.type_signature.result):
+        client_work.type_signature.result,
+    ):
       raise TypeError(
           'The `client_to_server_aggregation` computation expects an argument '
           'type {} that does not match the corresponding result type {} of '
           '`client_work`.'.format(
               client_to_server_aggregation.type_signature.parameter[1],
-              client_work.type_signature.result))
+              client_work.type_signature.result,
+          )
+      )
 
     # The aggregation output data types in the 'client_to_server_aggregation'
     # result and 'server_result' argument should match.
     if not _is_assignable_from_or_both_none(
         server_result.type_signature.parameter[2],
-        client_to_server_aggregation.type_signature.result):
+        client_to_server_aggregation.type_signature.result,
+    ):
       raise TypeError(
           'The `server_result` computation expects an argument type {} '
           'that does not match the corresponding result type {} of '
           '`client_to_server_aggregation`.'.format(
               server_result.type_signature.parameter[2],
-              client_to_server_aggregation.type_signature.result))
+              client_to_server_aggregation.type_signature.result,
+          )
+      )
 
     # The temporary state data types in the 'server_prepare' result,
     # 'client_to_server_aggregation' argument, and 'server_result' argument
     # should match.
-    if (not _is_assignable_from_or_both_none(
+    if not _is_assignable_from_or_both_none(
         client_to_server_aggregation.type_signature.parameter[0],
-        server_prepare.type_signature.result[1]) or
-        not _is_assignable_from_or_both_none(
-            server_result.type_signature.parameter[1],
-            server_prepare.type_signature.result[1])):
+        server_prepare.type_signature.result[1],
+    ) or not _is_assignable_from_or_both_none(
+        server_result.type_signature.parameter[1],
+        server_prepare.type_signature.result[1],
+    ):
       raise TypeError(
           'The `client_to_server_aggregation` computation expects an argument '
           'type {} and the `server_result` computation expects an argument '
@@ -701,50 +773,68 @@ class DistributeAggregateForm(typed_object.TypedObject):
           '`server_prepare`.'.format(
               client_to_server_aggregation.type_signature.parameter[0],
               server_result.type_signature.parameter[1],
-              server_prepare.type_signature.result[1]))
+              server_prepare.type_signature.result[1],
+          )
+      )
 
     # The server state data types in the original computation argument, the
     # 'server_prepare' argument, the 'server_result' argument, the
     # 'server_result' result, and the original computation result should match.
-    if (not _is_assignable_from_or_both_none(
-        server_prepare.type_signature.parameter, type_signature.parameter[0]) or
+    if (
         not _is_assignable_from_or_both_none(
+            server_prepare.type_signature.parameter, type_signature.parameter[0]
+        )
+        or not _is_assignable_from_or_both_none(
             server_result.type_signature.parameter[0],
-            type_signature.parameter[0]) or
-        not _is_assignable_from_or_both_none(
-            server_result.type_signature.result[0], type_signature.parameter[0])
-        or not _is_assignable_from_or_both_none(type_signature.result[0],
-                                                type_signature.parameter[0])):
+            type_signature.parameter[0],
+        )
+        or not _is_assignable_from_or_both_none(
+            server_result.type_signature.result[0], type_signature.parameter[0]
+        )
+        or not _is_assignable_from_or_both_none(
+            type_signature.result[0], type_signature.parameter[0]
+        )
+    ):
       raise TypeError(
           'The original computation argument type {}, '
           'the `server_prepare` computation argument type {}, '
           'the `server_result` computation argument type {}, '
           'the `server_result` computation result type {}, '
           'and the original computation result type {} should all match.'
-          .format(type_signature.parameter[0],
-                  server_prepare.type_signature.parameter,
-                  server_result.type_signature.parameter[0],
-                  server_result.type_signature.result[0],
-                  type_signature.result[0]))
+          .format(
+              type_signature.parameter[0],
+              server_prepare.type_signature.parameter,
+              server_result.type_signature.parameter[0],
+              server_result.type_signature.result[0],
+              type_signature.result[0],
+          )
+      )
 
     # The data types of the client data in the original computation argument
     # and the 'client_work' argument should match.
     if not _is_assignable_from_or_both_none(
-        client_work.type_signature.parameter[0], type_signature.parameter[1]):
+        client_work.type_signature.parameter[0], type_signature.parameter[1]
+    ):
       raise TypeError(
           'The `client_work` computation expects an argument type {} '
           'that does not match the original computation argument type {}.'
-          .format(client_work.type_signature.parameter[0],
-                  type_signature.parameter[1]))
+          .format(
+              client_work.type_signature.parameter[0],
+              type_signature.parameter[1],
+          )
+      )
 
     # The server-side output data types in the original computation result and
     # the 'server_result' result should match.
     if not _is_assignable_from_or_both_none(
-        server_result.type_signature.result[1], type_signature.result[1]):
+        server_result.type_signature.result[1], type_signature.result[1]
+    ):
       raise TypeError(
           'The `server_result` computation expects an result type {} '
           'that does not match the original computation result type {}.'.format(
-              server_result.type_signature.result[1], type_signature.result[1]))
+              server_result.type_signature.result[1], type_signature.result[1]
+          )
+      )
 
     self._type_signature = type_signature
     self._server_prepare = server_prepare
@@ -772,7 +862,8 @@ class DistributeAggregateForm(typed_object.TypedObject):
 
   @property
   def client_to_server_aggregation(
-      self) -> computation_impl.ConcreteComputation:
+      self,
+  ) -> computation_impl.ConcreteComputation:
     return self._client_to_server_aggregation
 
   @property
@@ -795,5 +886,8 @@ class DistributeAggregateForm(typed_object.TypedObject):
     ):
       # Add sufficient padding to align first column;
       # len('client_to_server_aggregation') == 28
-      print_fn('{:<28}: {}'.format(
-          label, comp.type_signature.compact_representation()))
+      print_fn(
+          '{:<28}: {}'.format(
+              label, comp.type_signature.compact_representation()
+          )
+      )

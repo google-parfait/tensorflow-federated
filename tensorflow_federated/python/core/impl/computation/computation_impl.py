@@ -47,17 +47,17 @@ class ConcreteComputation(computation_base.Computation):
     return value._computation_proto  # pylint: disable=protected-access
 
   @classmethod
-  def with_type(cls, value: 'ConcreteComputation',
-                type_spec: computation_types.Type) -> 'ConcreteComputation':
+  def with_type(
+      cls, value: 'ConcreteComputation', type_spec: computation_types.Type
+  ) -> 'ConcreteComputation':
     py_typecheck.check_type(value, cls)
     py_typecheck.check_type(type_spec, computation_types.Type)
     # Ensure we are assigning a type-safe signature.
     value.type_signature.check_assignable_from(type_spec)
     # pylint: disable=protected-access
     return cls(
-        value._computation_proto,
-        value._context_stack,
-        annotated_type=type_spec)
+        value._computation_proto, value._context_stack, annotated_type=type_spec
+    )
     # pylint: enable=protected-access
 
   @classmethod
@@ -65,27 +65,33 @@ class ConcreteComputation(computation_base.Computation):
       cls, building_block: building_blocks.ComputationBuildingBlock
   ) -> 'ConcreteComputation':
     """Converts a computation building block to a computation impl."""
-    py_typecheck.check_type(building_block,
-                            building_blocks.ComputationBuildingBlock)
+    py_typecheck.check_type(
+        building_block, building_blocks.ComputationBuildingBlock
+    )
     return cls(
         building_block.proto,
         context_stack_impl.context_stack,
-        annotated_type=building_block.type_signature)
+        annotated_type=building_block.type_signature,
+    )
 
   def to_building_block(self):
     # TODO(b/161560999): currently destroys annotated type.
     # This should perhaps be fixed by adding `type_parameter` to `from_proto`.
     return building_blocks.ComputationBuildingBlock.from_proto(
-        self._computation_proto)
+        self._computation_proto
+    )
 
   def to_compiled_building_block(self):
     return building_blocks.CompiledComputation(
-        self._computation_proto, type_signature=self.type_signature)
+        self._computation_proto, type_signature=self.type_signature
+    )
 
-  def __init__(self,
-               computation_proto: pb.Computation,
-               context_stack: context_stack_base.ContextStack,
-               annotated_type: Optional[computation_types.FunctionType] = None):
+  def __init__(
+      self,
+      computation_proto: pb.Computation,
+      context_stack: context_stack_base.ContextStack,
+      annotated_type: Optional[computation_types.FunctionType] = None,
+  ):
     """Constructs a new instance of ConcreteComputation from the computation_proto.
 
     Args:
@@ -106,14 +112,17 @@ class ConcreteComputation(computation_base.Computation):
     if annotated_type is not None:
       if not type_spec.is_assignable_from(annotated_type):
         raise TypeError(
-            f'annotated_type not compatible with computation_proto.type\n'
+            'annotated_type not compatible with computation_proto.type\n'
             f'computation_proto.type: {type_spec}\n'
-            f'annotated_type: {annotated_type}')
+            f'annotated_type: {annotated_type}'
+        )
       type_spec = annotated_type
 
     if not type_spec.is_function():
-      raise TypeError(f'{type_spec} is not a functional type, from proto: '
-                      f'{computation_proto}')
+      raise TypeError(
+          f'{type_spec} is not a functional type, from proto: '
+          f'{computation_proto}'
+      )
 
     self._type_signature = type_spec
     self._context_stack = context_stack

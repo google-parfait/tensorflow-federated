@@ -33,7 +33,11 @@ def replace_secure_intrinsics_with_bodies(comp):
   """
   # Compile secure_sum and secure_sum_bitwidth intrinsics to insecure
   # TensorFlow computations for testing purposes.
-  replaced_intrinsic_bodies, _ = tree_transformations.replace_secure_intrinsics_with_insecure_bodies(
-      comp.to_building_block())
+  replaced_intrinsic_bodies, _ = (
+      tree_transformations.replace_secure_intrinsics_with_insecure_bodies(
+          comp.to_building_block()
+      )
+  )
   return computation_impl.ConcreteComputation.from_building_block(
-      replaced_intrinsic_bodies)
+      replaced_intrinsic_bodies
+  )

@@ -67,7 +67,6 @@ def test_init_model_weights_fn():
 
 
 def test_distributor():
-
   @federated_computation.federated_computation(
       empty_init_fn.type_signature.result,
       computation_types.at_server(MODEL_WEIGHTS_TYPE),
@@ -107,7 +106,6 @@ def test_aggregator():
 
 
 def test_finalizer():
-
   @federated_computation.federated_computation(
       empty_init_fn.type_signature.result,
       computation_types.at_server(MODEL_WEIGHTS_TYPE),
@@ -161,7 +159,6 @@ class ComposeLearningProcessTest(tf.test.TestCase):
     self.assertLen(metrics_type, 4)
 
   def test_one_arg_computation_init_raises(self):
-
     @tensorflow_computation.tf_computation(
         computation_types.TensorType(tf.float32)
     )

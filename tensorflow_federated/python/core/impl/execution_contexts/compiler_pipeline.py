@@ -38,14 +38,16 @@ class CompilerPipeline:
   returns MapReduceForms.
   """
 
-  def __init__(self, compilation_fn: Callable[[computation_base.Computation],
-                                              Any]):
+  def __init__(
+      self, compilation_fn: Callable[[computation_base.Computation], Any]
+  ):
     py_typecheck.check_callable(compilation_fn)
     self._compilation_fn = compilation_fn
 
   @functools.lru_cache()
   def compile(self, computation_to_compile: computation_base.Computation):
     """Generates executable for `computation_to_compile`."""
-    py_typecheck.check_type(computation_to_compile,
-                            computation_base.Computation)
+    py_typecheck.check_type(
+        computation_to_compile, computation_base.Computation
+    )
     return self._compilation_fn(computation_to_compile)

@@ -42,13 +42,13 @@ from tensorflow_federated.python.core.impl.executors import remote_executor
 from tensorflow_federated.python.core.impl.executors import remote_executor_grpc_stub
 from tensorflow_federated.python.core.impl.types import placements
 
-_LOCALHOST_SERVER_WAIT_TIME_SEC = 1.
+_LOCALHOST_SERVER_WAIT_TIME_SEC = 1.0
 
 _GRPC_MAX_MESSAGE_LENGTH_BYTES = 2 * 1000 * 1000 * 1000
 _GRPC_CHANNEL_OPTIONS = [
     ('grpc.max_message_length', _GRPC_MAX_MESSAGE_LENGTH_BYTES),
     ('grpc.max_receive_message_length', _GRPC_MAX_MESSAGE_LENGTH_BYTES),
-    ('grpc.max_send_message_length', _GRPC_MAX_MESSAGE_LENGTH_BYTES)
+    ('grpc.max_send_message_length', _GRPC_MAX_MESSAGE_LENGTH_BYTES),
 ]
 
 
@@ -67,11 +67,13 @@ def create_local_python_execution_context(
       clients_per_thread=clients_per_thread,
       server_tf_device=server_tf_device,
       client_tf_devices=client_tf_devices,
-      reference_resolving_clients=reference_resolving_clients)
+      reference_resolving_clients=reference_resolving_clients,
+  )
 
   def _compiler(comp):
     native_form = compiler.transform_to_native_form(
-        comp, transform_math_to_tf=not reference_resolving_clients)
+        comp, transform_math_to_tf=not reference_resolving_clients
+    )
     return native_form
 
   return sync_execution_context.SyncExecutionContext(
@@ -79,12 +81,14 @@ def create_local_python_execution_context(
   )
 
 
-def set_local_python_execution_context(default_num_clients: int = 0,
-                                       max_fanout: int = 100,
-                                       clients_per_thread: int = 1,
-                                       server_tf_device=None,
-                                       client_tf_devices=tuple(),
-                                       reference_resolving_clients=False):
+def set_local_python_execution_context(
+    default_num_clients: int = 0,
+    max_fanout: int = 100,
+    clients_per_thread: int = 1,
+    server_tf_device=None,
+    client_tf_devices=tuple(),
+    reference_resolving_clients=False,
+):
   """Sets an execution context that executes computations locally."""
   context = create_local_python_execution_context(
       default_num_clients=default_num_clients,
@@ -103,7 +107,7 @@ def create_local_async_python_execution_context(
     clients_per_thread: int = 1,
     server_tf_device=None,
     client_tf_devices=tuple(),
-    reference_resolving_clients: bool = False
+    reference_resolving_clients: bool = False,
 ) -> async_execution_context.AsyncExecutionContext:
   """Creates a context that executes computations locally as coro functions."""
   factory = python_executor_stacks.local_executor_factory(
@@ -112,11 +116,13 @@ def create_local_async_python_execution_context(
       clients_per_thread=clients_per_thread,
       server_tf_device=server_tf_device,
       client_tf_devices=client_tf_devices,
-      reference_resolving_clients=reference_resolving_clients)
+      reference_resolving_clients=reference_resolving_clients,
+  )
 
   def _compiler(comp):
     native_form = compiler.transform_to_native_form(
-        comp, transform_math_to_tf=not reference_resolving_clients)
+        comp, transform_math_to_tf=not reference_resolving_clients
+    )
     return native_form
 
   return async_execution_context.AsyncExecutionContext(
@@ -130,7 +136,8 @@ def set_local_async_python_execution_context(
     clients_per_thread: int = 1,
     server_tf_device=None,
     client_tf_devices=tuple(),
-    reference_resolving_clients: bool = False):
+    reference_resolving_clients: bool = False,
+):
   """Sets a context that executes computations locally as coro functions."""
   context = create_local_async_python_execution_context(
       default_num_clients=default_num_clients,
@@ -138,12 +145,14 @@ def set_local_async_python_execution_context(
       clients_per_thread=clients_per_thread,
       server_tf_device=server_tf_device,
       client_tf_devices=client_tf_devices,
-      reference_resolving_clients=reference_resolving_clients)
+      reference_resolving_clients=reference_resolving_clients,
+  )
   context_stack_impl.context_stack.set_default_context(context)
 
 
-def create_thread_debugging_execution_context(default_num_clients: int = 0,
-                                              clients_per_thread=1):
+def create_thread_debugging_execution_context(
+    default_num_clients: int = 0, clients_per_thread=1
+):
   """Creates a simple execution context that executes computations locally."""
   factory = python_executor_stacks.thread_debugging_executor_factory(
       default_num_clients=default_num_clients,
@@ -158,12 +167,14 @@ def create_thread_debugging_execution_context(default_num_clients: int = 0,
   )
 
 
-def set_thread_debugging_execution_context(default_num_clients: int = 0,
-                                           clients_per_thread=1):
+def set_thread_debugging_execution_context(
+    default_num_clients: int = 0, clients_per_thread=1
+):
   """Sets an execution context that executes computations locally."""
   context = create_thread_debugging_execution_context(
       default_num_clients=default_num_clients,
-      clients_per_thread=clients_per_thread)
+      clients_per_thread=clients_per_thread,
+  )
   context_stack_impl.context_stack.set_default_context(context)
 
 
@@ -258,7 +269,7 @@ def create_remote_async_python_execution_context(
     thread_pool_executor: Optional[futures.Executor] = None,
     dispose_batch_size: int = 20,
     max_fanout: int = 100,
-    default_num_clients: int = 0
+    default_num_clients: int = 0,
 ) -> async_execution_context.AsyncExecutionContext:
   """Creates context executing computations async via workers on `channels`.
 
@@ -299,11 +310,13 @@ def create_remote_async_python_execution_context(
   )
 
 
-def set_remote_async_python_execution_context(channels,
-                                              thread_pool_executor=None,
-                                              dispose_batch_size=20,
-                                              max_fanout: int = 100,
-                                              default_num_clients: int = 0):
+def set_remote_async_python_execution_context(
+    channels,
+    thread_pool_executor=None,
+    dispose_batch_size=20,
+    max_fanout: int = 100,
+    default_num_clients: int = 0,
+):
   """Installs context executing computations async via workers on `channels`.
 
   Args:
@@ -391,7 +404,8 @@ def _decompress_file(compressed_path, output_path):
   """Decompresses a compressed file to the given `output_path`."""
   if not os.path.isfile(compressed_path):
     raise FileNotFoundError(
-        f'Did not find a compressed file at: {compressed_path}')
+        f'Did not find a compressed file at: {compressed_path}'
+    )
 
   with lzma.open(compressed_path) as compressed_file:
     contents = compressed_file.read()
@@ -434,7 +448,8 @@ def _create_local_cpp_executor_factory(
   # of the worker binary will remain the same when this function is executed
   # from the Python package and from a Bazel test.
   data_dir = os.path.join(
-      os.path.dirname(__file__), '..', '..', '..', '..', 'data')
+      os.path.dirname(__file__), '..', '..', '..', '..', 'data'
+  )
   binary_name = 'worker_binary'
   binary_path = os.path.join(data_dir, binary_name)
 
@@ -444,12 +459,14 @@ def _create_local_cpp_executor_factory(
 
     try:
       _decompress_file(compressed_path, binary_path)
-      logging.debug('Did not find a compressed worker binary at: %s',
-                    compressed_path)
+      logging.debug(
+          'Did not find a compressed worker binary at: %s', compressed_path
+      )
     except FileNotFoundError as e:
       raise RuntimeError(
           f'Expected either a worker binary at {binary_path} or a compressed '
-          f'worker binary at {compressed_path}, found neither.') from e
+          f'worker binary at {compressed_path}, found neither.'
+      ) from e
   else:
     logging.debug('Found a worker binary at: %s', binary_path)
 
@@ -463,7 +480,7 @@ def _create_local_cpp_executor_factory(
     logging.debug('Starting TFF C++ server on port: %s', port)
     return subprocess.Popen(args, stdout=sys.stdout, stderr=sys.stderr), port
 
-  class ServiceManager():
+  class ServiceManager:
     """Class responsible for managing a local TFF executor service."""
 
     def __init__(self):

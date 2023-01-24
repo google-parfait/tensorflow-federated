@@ -82,13 +82,18 @@ def ensure_federated_value(value, placement=None, label=None):
       raise TypeError(
           'The {l} must be a FederatedType or implicitly convertible '
           'to a FederatedType (got a {t}).'.format(
-              l=label if label else 'value', t=comp.type_signature)) from e
+              l=label if label else 'value', t=comp.type_signature
+          )
+      ) from e
     value = value_impl.Value(zipped)
 
   if placement and value.type_signature.placement is not placement:
     raise TypeError(
         'The {} should be placed at {}, but it is placed at {}.'.format(
-            label if label else 'value', placement,
-            value.type_signature.placement))
+            label if label else 'value',
+            placement,
+            value.type_signature.placement,
+        )
+    )
 
   return value

@@ -25,6 +25,7 @@ from tensorflow_federated.python.core.templates import iterative_process
 
 class EstimateNotAssignableError(TypeError):
   """`TypeError` for estimate not being assignable to expected type."""
+
   pass
 
 
@@ -41,11 +42,13 @@ class EstimationProcess(iterative_process.IterativeProcess):
   state, that is, the type of object returned by `initialize`.
   """
 
-  def __init__(self,
-               initialize_fn: computation_base.Computation,
-               next_fn: computation_base.Computation,
-               report_fn: computation_base.Computation,
-               next_is_multi_arg: Optional[bool] = None):
+  def __init__(
+      self,
+      initialize_fn: computation_base.Computation,
+      next_fn: computation_base.Computation,
+      report_fn: computation_base.Computation,
+      next_is_multi_arg: Optional[bool] = None,
+  ):
     """Creates a `tff.templates.EstimationProcess`.
 
     Args:
@@ -71,17 +74,19 @@ class EstimationProcess(iterative_process.IterativeProcess):
         argument of `next_fn` and `report_fn`.
     """
     super().__init__(
-        initialize_fn, next_fn, next_is_multi_arg=next_is_multi_arg)
+        initialize_fn, next_fn, next_is_multi_arg=next_is_multi_arg
+    )
 
     py_typecheck.check_type(report_fn, computation_base.Computation)
     report_fn_arg_type = report_fn.type_signature.parameter
     if not report_fn_arg_type.is_assignable_from(self.state_type):
       raise errors.TemplateStateNotAssignableError(
-          f'The state type of the process must be assignable to the '
-          f'input argument of `report_fn`, but the state type is: '
+          'The state type of the process must be assignable to the '
+          'input argument of `report_fn`, but the state type is: '
           f'{self.state_type}\n'
-          f'and the argument of `report_fn` is:\n'
-          f'{report_fn_arg_type}')
+          'and the argument of `report_fn` is:\n'
+          f'{report_fn_arg_type}'
+      )
 
     self._report_fn = report_fn
 
@@ -122,21 +127,25 @@ class EstimationProcess(iterative_process.IterativeProcess):
 
     if not map_fn_arg_type.is_assignable_from(estimate_type):
       raise EstimateNotAssignableError(
-          f'The return type of `report` of this process must be '
-          f'assignable to the input argument of `map_fn`, but '
+          'The return type of `report` of this process must be '
+          'assignable to the input argument of `map_fn`, but '
           f'`report` returns type:\n{estimate_type}\n'
-          f'and the argument of `map_fn` is:\n{map_fn_arg_type}')
+          f'and the argument of `map_fn` is:\n{map_fn_arg_type}'
+      )
 
     try:
       transformed_report_fn = tensorflow_computation.tf_computation(
-          lambda state: map_fn(self.report(state)), self.state_type)
+          lambda state: map_fn(self.report(state)), self.state_type
+      )
     except TypeError:
       # Raised if the computation operates in federated types. However, there is
       # currently no way to distinguish these using the public API.
       transformed_report_fn = federated_computation.federated_computation(
-          lambda state: map_fn(self.report(state)), self.state_type)
+          lambda state: map_fn(self.report(state)), self.state_type
+      )
 
     return EstimationProcess(
         initialize_fn=self.initialize,
         next_fn=self.next,
-        report_fn=transformed_report_fn)
+        report_fn=transformed_report_fn,
+    )

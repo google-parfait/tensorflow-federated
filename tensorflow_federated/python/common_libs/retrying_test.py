@@ -51,10 +51,14 @@ class RetryingArgValidationtest(absltest.TestCase):
       retrying.retry(fn=lambda x: x, wait_max_ms=0)
 
 
-class CountInvocations():
+class CountInvocations:
 
-  def __init__(self, n_invocations_to_raise: int, error_to_raise: Exception,
-               return_value: Any):
+  def __init__(
+      self,
+      n_invocations_to_raise: int,
+      error_to_raise: Exception,
+      return_value: Any,
+  ):
     self._n_invocations_to_raise = n_invocations_to_raise
     self._error_to_raise = error_to_raise
     self._return_value = return_value
@@ -75,12 +79,11 @@ class CountInvocations():
 class RetryingFunctionTest(absltest.TestCase):
 
   def test_standalone_decorator_always_retries(self):
-
     expected_return_val = 0
     expected_num_invocations = 3
-    count_invocations_callable = CountInvocations(expected_num_invocations,
-                                                  TypeError('Error'),
-                                                  expected_return_val)
+    count_invocations_callable = CountInvocations(
+        expected_num_invocations, TypeError('Error'), expected_return_val
+    )
 
     @retrying.retry
     def invoke_callable(*args, **kwargs):
@@ -90,15 +93,16 @@ class RetryingFunctionTest(absltest.TestCase):
 
     self.assertEqual(return_val, expected_return_val)
     # Final call succeeds
-    self.assertEqual(count_invocations_callable.n_invocations,
-                     expected_num_invocations + 1)
+    self.assertEqual(
+        count_invocations_callable.n_invocations, expected_num_invocations + 1
+    )
 
   def test_error_filter_raises_wrong_error_type(self):
-
     count_invocations_callable = CountInvocations(1, TypeError('Error'), 0)
 
     @retrying.retry(
-        retry_on_exception_filter=lambda e: isinstance(e, ValueError))
+        retry_on_exception_filter=lambda e: isinstance(e, ValueError)
+    )
     def invoke_callable(*args, **kwargs):
       return count_invocations_callable(*args, **kwargs)
 
@@ -106,7 +110,6 @@ class RetryingFunctionTest(absltest.TestCase):
       invoke_callable()
 
   def test_error_filter_called_with_raised_err(self):
-
     error = TypeError('error')
     expected_result = 1
 
@@ -127,9 +130,9 @@ class RetryingFunctionTest(absltest.TestCase):
   def test_result_filter_not_incur_retry(self):
     expected_return_val = 0
     expected_num_invocations = 3
-    count_invocations_callable = CountInvocations(expected_num_invocations,
-                                                  TypeError('Error'),
-                                                  expected_return_val)
+    count_invocations_callable = CountInvocations(
+        expected_num_invocations, TypeError('Error'), expected_return_val
+    )
     mock_callable = mock.MagicMock(return_value=False)
 
     def result_filter(*args):
@@ -143,16 +146,16 @@ class RetryingFunctionTest(absltest.TestCase):
 
     self.assertEqual(return_val, expected_return_val)
     # Final call succeeds
-    self.assertEqual(count_invocations_callable.n_invocations,
-                     expected_num_invocations + 1)
+    self.assertEqual(
+        count_invocations_callable.n_invocations, expected_num_invocations + 1
+    )
 
   def test_result_filter_incur_retry(self):
-
     expected_return_val = 0
     expected_num_invocations = 3
-    count_invocations_callable = CountInvocations(expected_num_invocations,
-                                                  TypeError('Error'),
-                                                  expected_return_val)
+    count_invocations_callable = CountInvocations(
+        expected_num_invocations, TypeError('Error'), expected_return_val
+    )
     mock_callable = mock.Mock()
     mock_callable.side_effect = [True, False]
 
@@ -167,8 +170,9 @@ class RetryingFunctionTest(absltest.TestCase):
 
     self.assertEqual(return_val, expected_return_val)
     # Final call succeeds
-    self.assertEqual(count_invocations_callable.n_invocations,
-                     expected_num_invocations + 2)
+    self.assertEqual(
+        count_invocations_callable.n_invocations, expected_num_invocations + 2
+    )
 
 
 class RetryingCoroFunctionTest(absltest.TestCase):
@@ -181,12 +185,11 @@ class RetryingCoroFunctionTest(absltest.TestCase):
     return self._loop.run_until_complete(fn(args))
 
   def test_standalone_decorator_always_retries(self):
-
     expected_return_val = 0
     expected_num_invocations = 3
-    count_invocations_callable = CountInvocations(expected_num_invocations,
-                                                  TypeError('Error'),
-                                                  expected_return_val)
+    count_invocations_callable = CountInvocations(
+        expected_num_invocations, TypeError('Error'), expected_return_val
+    )
 
     @retrying.retry
     async def invoke_callable(*args, **kwargs):
@@ -196,15 +199,16 @@ class RetryingCoroFunctionTest(absltest.TestCase):
 
     self.assertEqual(return_val, expected_return_val)
     # Final call succeeds
-    self.assertEqual(count_invocations_callable.n_invocations,
-                     expected_num_invocations + 1)
+    self.assertEqual(
+        count_invocations_callable.n_invocations, expected_num_invocations + 1
+    )
 
   def test_error_filter_raises_wrong_error_type(self):
-
     count_invocations_callable = CountInvocations(1, TypeError('Error'), 0)
 
     @retrying.retry(
-        retry_on_exception_filter=lambda e: isinstance(e, ValueError))
+        retry_on_exception_filter=lambda e: isinstance(e, ValueError)
+    )
     async def invoke_callable(*args, **kwargs):
       return count_invocations_callable(*args, **kwargs)
 
@@ -212,7 +216,6 @@ class RetryingCoroFunctionTest(absltest.TestCase):
       self._run_sync(invoke_callable)
 
   def test_error_filter_called_with_raised_err(self):
-
     error = TypeError('error')
     expected_result = 1
 
@@ -233,9 +236,9 @@ class RetryingCoroFunctionTest(absltest.TestCase):
   def test_result_filter_not_incur_retry(self):
     expected_result = 0
     expected_num_invocations = 3
-    count_invocations_callable = CountInvocations(expected_num_invocations,
-                                                  TypeError('Error'),
-                                                  expected_result)
+    count_invocations_callable = CountInvocations(
+        expected_num_invocations, TypeError('Error'), expected_result
+    )
     mock_callable = mock.MagicMock(return_value=False)
 
     def result_filter(*args):
@@ -249,16 +252,16 @@ class RetryingCoroFunctionTest(absltest.TestCase):
 
     self.assertEqual(result, expected_result)
     # Final call succeeds
-    self.assertEqual(count_invocations_callable.n_invocations,
-                     expected_num_invocations + 1)
+    self.assertEqual(
+        count_invocations_callable.n_invocations, expected_num_invocations + 1
+    )
 
   def test_result_filter_incur_retry(self):
-
     expected_result = 0
     expected_num_invocations = 3
-    count_invocations_callable = CountInvocations(expected_num_invocations,
-                                                  TypeError('Error'),
-                                                  expected_result)
+    count_invocations_callable = CountInvocations(
+        expected_num_invocations, TypeError('Error'), expected_result
+    )
     mock_callable = mock.Mock()
     mock_callable.side_effect = [True, False]
 
@@ -273,8 +276,9 @@ class RetryingCoroFunctionTest(absltest.TestCase):
 
     self.assertEqual(result, expected_result)
     # Final call succeeds
-    self.assertEqual(count_invocations_callable.n_invocations,
-                     expected_num_invocations + 2)
+    self.assertEqual(
+        count_invocations_callable.n_invocations, expected_num_invocations + 2
+    )
 
 
 if __name__ == '__main__':

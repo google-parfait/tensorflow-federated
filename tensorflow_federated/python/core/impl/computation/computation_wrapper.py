@@ -16,8 +16,7 @@
 # This modules disables the Pytype analyzer, see
 # https://github.com/tensorflow/federated/blob/main/docs/pytype.md for more
 # information.
-"""Utilities for constructing decorators/wrappers for functions and tf.function.
-"""
+"""Utilities for constructing decorators/wrappers for functions and tf.function."""
 
 import collections
 import functools
@@ -43,32 +42,38 @@ def _check_parameters(parameters):
       # We don't have a way to build defaults into the function's type.
       raise TypeError(
           'TFF does not support default parameters. Found parameter '
-          f'`{parameter.name}` with default value {parameter.default}')
+          f'`{parameter.name}` with default value {parameter.default}'
+      )
     if parameter.kind is inspect.Parameter.POSITIONAL_ONLY:
       # We don't have a way to encode positional-only into the function's type.
       raise TypeError(
           'TFF does not support positional-only parameters. Found parameter '
-          f'`{parameter.name}` which appears before a `/` entry.')
+          f'`{parameter.name}` which appears before a `/` entry.'
+      )
     if parameter.kind is inspect.Parameter.KEYWORD_ONLY:
       # We don't have a way to encode keyword-only into the function's type.
       raise TypeError(
           'TFF does not support keyword-only arguments. Found parameter '
-          f'`{parameter.name}` which appears after a `*` or `*args` entry.')
-    if parameter.kind in (inspect.Parameter.VAR_POSITIONAL,
-                          inspect.Parameter.VAR_KEYWORD):
+          f'`{parameter.name}` which appears after a `*` or `*args` entry.'
+      )
+    if parameter.kind in (
+        inspect.Parameter.VAR_POSITIONAL,
+        inspect.Parameter.VAR_KEYWORD,
+    ):
       # For concrete functions, we can't determine at tracing time which
       # arguments should be bundled into args vs. kwargs, since arguments can
       # be passed by position *or* by keyword at later call sites.
-      raise TypeError('TFF does not support varargs. Found varargs parameter '
-                      f'`{parameter.name}`.')
+      raise TypeError(
+          'TFF does not support varargs. Found varargs parameter '
+          f'`{parameter.name}`.'
+      )
     if parameter.kind is not inspect.Parameter.POSITIONAL_OR_KEYWORD:
       raise AssertionError(f'Unexpected parameter kind: {parameter.kind}')
 
 
-def _wrap_concrete(fn_name: Optional[str],
-                   wrapper_fn,
-                   parameter_type,
-                   unpack=None) -> computation_impl.ConcreteComputation:
+def _wrap_concrete(
+    fn_name: Optional[str], wrapper_fn, parameter_type, unpack=None
+) -> computation_impl.ConcreteComputation:
   """Wraps with `wrapper_fn` given the provided `parameter_type`."""
   del unpack  # Unused.
   generator = wrapper_fn(parameter_type, fn_name)
@@ -78,15 +83,22 @@ def _wrap_concrete(fn_name: Optional[str],
   except Exception as e:  # pylint: disable=broad-except
     generator.throw(e)
   concrete_fn = generator.send(result)
-  py_typecheck.check_type(concrete_fn, computation_impl.ConcreteComputation,
-                          'value returned by the wrapper')
+  py_typecheck.check_type(
+      concrete_fn,
+      computation_impl.ConcreteComputation,
+      'value returned by the wrapper',
+  )
   result_parameter_type = concrete_fn.type_signature.parameter
-  if (result_parameter_type is not None and
-      not result_parameter_type.is_equivalent_to(parameter_type)):
+  if (
+      result_parameter_type is not None
+      and not result_parameter_type.is_equivalent_to(parameter_type)
+  ):
     raise TypeError(
         'Expected a concrete function that takes parameter {}, got one '
         'that takes {}.'.format(
-            str(parameter_type), str(concrete_fn.type_signature.parameter)))
+            str(parameter_type), str(concrete_fn.type_signature.parameter)
+        )
+    )
   yield concrete_fn
 
 
@@ -107,20 +119,23 @@ def _parameter_type(
     if not parameter_type.is_struct() or len(parameter_type) != len(parameters):
       raise TypeError(
           f'Function with {len(parameters)} parameters must have a parameter '
-          f'type with the same number of parameters. Found parameter type '
-          f'{parameter_type}.')
+          'type with the same number of parameters. Found parameter type '
+          f'{parameter_type}.'
+      )
     name_list_from_types = structure.name_list(parameter_type)
     if name_list_from_types:
       if len(name_list_from_types) != len(parameter_type):
         raise TypeError(
             'Types with both named and unnamed fields cannot be unpacked into '
-            f'argument lists. Found parameter type {parameter_type}.')
+            f'argument lists. Found parameter type {parameter_type}.'
+        )
       if set(name_list_from_types) != set(parameter_names):
         raise TypeError(
             'Function argument names must match field names of parameter type. '
             f'Found argument names {parameter_names}, which do not match '
             f'{name_list_from_types}, the top-level fields of the parameter '
-            f'type {parameter_type}.')
+            f'type {parameter_type}.'
+        )
       # The provided parameter type has all named fields which exactly match
       # the names of the function's parameters.
       return parameter_type
@@ -129,7 +144,8 @@ def _parameter_type(
       # the function parameters.
       parameter_types = (v for (_, v) in structure.to_elements(parameter_type))
       return computation_types.StructWithPythonType(
-          list(zip(parameter_names, parameter_types)), collections.OrderedDict)
+          list(zip(parameter_names, parameter_types)), collections.OrderedDict
+      )
   elif len(parameters) == 1:
     # If there are multiple provided argument types but the function being
     # decorated only accepts a single argument, tuple the arguments together.
@@ -137,11 +153,13 @@ def _parameter_type(
   if len(parameters) != len(parameter_types):
     raise TypeError(
         f'Function with {len(parameters)} parameters is '
-        f'incompatible with provided argument types {parameter_types}.')
+        f'incompatible with provided argument types {parameter_types}.'
+    )
   # The function has `n` parameters and `n` parameter types.
   # Zip them up into a structure using the names from the function as keys.
   return computation_types.StructWithPythonType(
-      list(zip(parameter_names, parameter_types)), collections.OrderedDict)
+      list(zip(parameter_names, parameter_types)), collections.OrderedDict
+  )
 
 
 class ComputationReturnedNoneError(ValueError):
@@ -153,8 +171,9 @@ class ComputationReturnedNoneError(ValueError):
     filename = code.co_filename
     message = (
         f'The function defined on line {line_number} of file {filename} '
-        'returned `None` (or didn\'t explicitly `return` at all), but TFF '
-        'computations must return some non-`None` value.')
+        "returned `None` (or didn't explicitly `return` at all), but TFF "
+        'computations must return some non-`None` value.'
+    )
     super().__init__(message)
 
 
@@ -209,9 +228,11 @@ class PythonTracingStrategy:
 
   def __call__(self, fn_to_wrap, fn_name, parameter_type, unpack):
     unpack_arguments_fn = function_utils.create_argument_unpacking_fn(
-        fn_to_wrap, parameter_type, unpack=unpack)
-    wrapped_fn_generator = _wrap_concrete(fn_name, self._wrapper_fn,
-                                          parameter_type)
+        fn_to_wrap, parameter_type, unpack=unpack
+    )
+    wrapped_fn_generator = _wrap_concrete(
+        fn_name, self._wrapper_fn, parameter_type
+    )
     packed_args = next(wrapped_fn_generator)
     try:
       args, kwargs = unpack_arguments_fn(packed_args)
@@ -444,7 +465,8 @@ class ComputationWrapper:
           provided_types.append(computation_types.to_type(args[0]))
         except TypeError as e:
           raise TypeError(
-              f'Expected a function or a type, found {args[0]}.') from e
+              f'Expected a function or a type, found {args[0]}.'
+          ) from e
         if len(args) > 1:
           provided_types.extend(map(computation_types.to_type, args[1:]))
       return functools.partial(self.__call__, tff_internal_types=provided_types)
@@ -479,17 +501,20 @@ class ComputationWrapper:
     if (not parameter_types) and parameters:
       # There is no TFF type specification, and the function/tf.function
       # declares parameters. Create a polymorphic template.
-      def _polymorphic_wrapper(parameter_type: computation_types.Type,
-                               unpack: Optional[bool]):
+      def _polymorphic_wrapper(
+          parameter_type: computation_types.Type, unpack: Optional[bool]
+      ):
         return self._strategy(
-            fn_to_wrap, fn_name, parameter_type, unpack=unpack)
+            fn_to_wrap, fn_name, parameter_type, unpack=unpack
+        )
 
       wrapped_func = function_utils.PolymorphicComputation(_polymorphic_wrapper)
     else:
       # Either we have a concrete parameter type, or this is no-arg function.
       parameter_type = _parameter_type(parameters, parameter_types)
       wrapped_func = self._strategy(
-          fn_to_wrap, fn_name, parameter_type, unpack=None)
+          fn_to_wrap, fn_name, parameter_type, unpack=None
+      )
 
     # Copy the __doc__ attribute with the documentation in triple-quotes from
     # the decorated function.
@@ -507,8 +532,10 @@ def _check_returns_type_helper(fn, expected_return_type):
   def wrapped_func(*args, **kwargs):
     result = fn(*args, **kwargs)
     if result is None:
-      raise ValueError('TFF computations may not return `None`. '
-                       'Consider instead returning `()`.')
+      raise ValueError(
+          'TFF computations may not return `None`. '
+          'Consider instead returning `()`.'
+      )
     result_type = type_conversions.infer_type(result)
     if not result_type.is_identical_to(expected_return_type):
       raise TypeError(
@@ -517,7 +544,9 @@ def _check_returns_type_helper(fn, expected_return_type):
               result_type,
               expected_return_type,
               computation_types.TypeRelation.IDENTICAL,
-              second_is_expected=True))
+              second_is_expected=True,
+          )
+      )
     return result
 
   return wrapped_func
@@ -575,21 +604,26 @@ def check_returns_type(*args):
     # function definition, of an inline invocation as "... = xyz(lambda....).
     if len(args) != 2:
       raise ValueError(
-          f'`check_returns_type` expected two arguments: a function to '
+          '`check_returns_type` expected two arguments: a function to '
           f'decorate and an expected return type. Found {len(args)} arguments: '
-          f'{args}')
-    return _check_returns_type_helper(args[0],
-                                      computation_types.to_type(args[1]))
+          f'{args}'
+      )
+    return _check_returns_type_helper(
+        args[0], computation_types.to_type(args[1])
+    )
   else:
     # The function is being invoked as a decorator with arguments.
     # The arguments come first, then the returned value is applied to
     # the function to be wrapped.
     if len(args) != 1:
       raise ValueError(
-          f'`check_returns_type` expected a single argument specifying the '
-          f'return type. Found {len(args)} arguments: {args}')
+          '`check_returns_type` expected a single argument specifying the '
+          f'return type. Found {len(args)} arguments: {args}'
+      )
     return_type = computation_types.to_type(args[0])
     if return_type is None:
-      raise ValueError('Asserted return type may not be `None`. '
-                       'Consider instead a return type of `()`')
+      raise ValueError(
+          'Asserted return type may not be `None`. '
+          'Consider instead a return type of `()`'
+      )
     return lambda fn: _check_returns_type_helper(fn, return_type)

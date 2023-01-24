@@ -36,12 +36,13 @@ class MultiGPUTest(tf.test.TestCase):
     with tf.Graph().as_default() as graph:
       tf.data.Dataset.range(10).reduce(np.int64(0), lambda p, q: p + q)
     with self.assertRaisesRegex(
-        ValueError, 'Detected dataset reduce op in multi-GPU TFF simulation.*'):
+        ValueError, 'Detected dataset reduce op in multi-GPU TFF simulation.*'
+    ):
       eager_tf_executor._check_dataset_reduce_for_multi_gpu(
-          graph.as_graph_def())
+          graph.as_graph_def()
+      )
 
   def test_get_no_arg_wrapped_function_multi_gpu_no_reduce(self):
-
     @tensorflow_computation.tf_computation
     @tf.function
     def comp():
@@ -54,11 +55,11 @@ class MultiGPUTest(tf.test.TestCase):
         computation_impl.ConcreteComputation.get_proto(comp),
         must_pin_function_to_cpu=False,
         param_type=None,
-        device=None)
+        device=None,
+    )
     self.assertEqual(wrapped_fn(), np.int64(45))
 
   def test_get_no_arg_wrapped_function_multi_gpu_tf_device(self):
-
     logical_gpus = tf.config.list_logical_devices('GPU')
 
     @tensorflow_computation.tf_computation
@@ -70,7 +71,8 @@ class MultiGPUTest(tf.test.TestCase):
         computation_impl.ConcreteComputation.get_proto(comp),
         must_pin_function_to_cpu=False,
         param_type=None,
-        device=None)
+        device=None,
+    )
     self.assertEqual(wrapped_fn(), np.int64(45))
 
 

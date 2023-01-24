@@ -36,18 +36,21 @@ class RemoteRuntimeStreamStructsTest(parameterized.TestCase):
 
   @tff.test.with_contexts(*_CONTEXTS)
   def test_large_struct_identity0(self):
-
     small_tensor_shape = (100_000_000, 1)
     large_struct = tff.structure.Struct(
-        [(None, tf.zeros(shape=small_tensor_shape, dtype=tf.float32))] * 6)
+        [(None, tf.zeros(shape=small_tensor_shape, dtype=tf.float32))] * 6
+    )
 
     @tff.tf_computation(
-        tff.StructType([
-            (None, tff.TensorType(shape=small_tensor_shape, dtype=tf.float32))
-        ] * 6))
+        tff.StructType(
+            [(None, tff.TensorType(shape=small_tensor_shape, dtype=tf.float32))]
+            * 6
+        )
+    )
     def identity(s):
       with tf.compat.v1.control_dependencies(
-          [tf.print(t) for t in tff.structure.flatten(s)]):
+          [tf.print(t) for t in tff.structure.flatten(s)]
+      ):
         return tff.structure.map_structure(tf.identity, s)
 
     identity(large_struct)
@@ -61,21 +64,41 @@ class RemoteRuntimeStreamStructsTest(parameterized.TestCase):
         ('c', tf.zeros(shape=small_tensor_shape, dtype=tf.float32)),
         ('d', tf.zeros(shape=small_tensor_shape, dtype=tf.float32)),
         ('e', tf.zeros(shape=small_tensor_shape, dtype=tf.float32)),
-        ('f', tf.zeros(shape=small_tensor_shape, dtype=tf.float32))
+        ('f', tf.zeros(shape=small_tensor_shape, dtype=tf.float32)),
     ])
 
     @tff.tf_computation(
         tff.StructType([
-            ('a', tff.TensorType(shape=small_tensor_shape, dtype=tf.float32)),
-            ('b', tff.TensorType(shape=small_tensor_shape, dtype=tf.float32)),
-            ('c', tff.TensorType(shape=small_tensor_shape, dtype=tf.float32)),
-            ('d', tff.TensorType(shape=small_tensor_shape, dtype=tf.float32)),
-            ('e', tff.TensorType(shape=small_tensor_shape, dtype=tf.float32)),
-            ('f', tff.TensorType(shape=small_tensor_shape, dtype=tf.float32))
-        ]))
+            (
+                'a',
+                tff.TensorType(shape=small_tensor_shape, dtype=tf.float32),
+            ),
+            (
+                'b',
+                tff.TensorType(shape=small_tensor_shape, dtype=tf.float32),
+            ),
+            (
+                'c',
+                tff.TensorType(shape=small_tensor_shape, dtype=tf.float32),
+            ),
+            (
+                'd',
+                tff.TensorType(shape=small_tensor_shape, dtype=tf.float32),
+            ),
+            (
+                'e',
+                tff.TensorType(shape=small_tensor_shape, dtype=tf.float32),
+            ),
+            (
+                'f',
+                tff.TensorType(shape=small_tensor_shape, dtype=tf.float32),
+            ),
+        ])
+    )
     def identity(s):
       with tf.compat.v1.control_dependencies(
-          [tf.print(t) for t in tff.structure.flatten(s)]):
+          [tf.print(t) for t in tff.structure.flatten(s)]
+      ):
         return tff.structure.map_structure(tf.identity, s)
 
     identity(large_struct)
@@ -85,32 +108,65 @@ class RemoteRuntimeStreamStructsTest(parameterized.TestCase):
     small_tensor_shape = (100, 10)
     small_struct = tff.structure.Struct([
         ('a', tf.zeros(shape=small_tensor_shape, dtype=tf.float32)),
-        ('b',
-         tff.structure.Struct([
-             ('b0', tf.zeros(shape=small_tensor_shape, dtype=tf.float32)),
-             ('b1', tf.zeros(shape=small_tensor_shape, dtype=tf.float32))
-         ])), ('c', tf.zeros(shape=small_tensor_shape, dtype=tf.float32)),
+        (
+            'b',
+            tff.structure.Struct([
+                (
+                    'b0',
+                    tf.zeros(shape=small_tensor_shape, dtype=tf.float32),
+                ),
+                (
+                    'b1',
+                    tf.zeros(shape=small_tensor_shape, dtype=tf.float32),
+                ),
+            ]),
+        ),
+        ('c', tf.zeros(shape=small_tensor_shape, dtype=tf.float32)),
         ('d', tf.zeros(shape=small_tensor_shape, dtype=tf.float32)),
-        ('e', tf.zeros(shape=small_tensor_shape, dtype=tf.float32))
+        ('e', tf.zeros(shape=small_tensor_shape, dtype=tf.float32)),
     ])
 
     @tff.tf_computation(
         tff.StructType([
-            ('a', tff.TensorType(shape=small_tensor_shape, dtype=tf.float32)),
-            ('b',
-             tff.StructType([
-                 ('b0',
-                  tff.TensorType(shape=small_tensor_shape, dtype=tf.float32)),
-                 ('b1',
-                  tff.TensorType(shape=small_tensor_shape, dtype=tf.float32))
-             ])),
-            ('c', tff.TensorType(shape=small_tensor_shape, dtype=tf.float32)),
-            ('d', tff.TensorType(shape=small_tensor_shape, dtype=tf.float32)),
-            ('e', tff.TensorType(shape=small_tensor_shape, dtype=tf.float32))
-        ]))
+            (
+                'a',
+                tff.TensorType(shape=small_tensor_shape, dtype=tf.float32),
+            ),
+            (
+                'b',
+                tff.StructType([
+                    (
+                        'b0',
+                        tff.TensorType(
+                            shape=small_tensor_shape, dtype=tf.float32
+                        ),
+                    ),
+                    (
+                        'b1',
+                        tff.TensorType(
+                            shape=small_tensor_shape, dtype=tf.float32
+                        ),
+                    ),
+                ]),
+            ),
+            (
+                'c',
+                tff.TensorType(shape=small_tensor_shape, dtype=tf.float32),
+            ),
+            (
+                'd',
+                tff.TensorType(shape=small_tensor_shape, dtype=tf.float32),
+            ),
+            (
+                'e',
+                tff.TensorType(shape=small_tensor_shape, dtype=tf.float32),
+            ),
+        ])
+    )
     def identity(s):
       with tf.compat.v1.control_dependencies(
-          [tf.print(t) for t in tff.structure.flatten(s)]):
+          [tf.print(t) for t in tff.structure.flatten(s)]
+      ):
         return tff.structure.map_structure(tf.identity, s)
 
     identity(small_struct)

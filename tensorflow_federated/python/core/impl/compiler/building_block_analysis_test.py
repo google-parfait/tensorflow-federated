@@ -36,7 +36,6 @@ class CountTensorFlowOpsTest(absltest.TestCase):
       building_block_analysis.count_tensorflow_ops_in(ref)
 
   def test_counts_correct_number_of_ops_simple_case(self):
-
     with tf.Graph().as_default() as g:
       a = tf.constant(0)
       b = tf.constant(1)
@@ -49,38 +48,45 @@ class CountTensorFlowOpsTest(absltest.TestCase):
     proto = pb.Computation(
         type=type_serialization.serialize_type(function_type),
         tensorflow=pb.TensorFlow(
-            graph_def=packed_graph_def, parameter=None, result=result_binding))
+            graph_def=packed_graph_def, parameter=None, result=result_binding
+        ),
+    )
     building_block = building_blocks.ComputationBuildingBlock.from_proto(proto)
     tf_ops_in_graph = building_block_analysis.count_tensorflow_ops_in(
-        building_block)
+        building_block
+    )
     # Expect 4 ops: two constants, one addition, and an identity on the result.
     self.assertEqual(tf_ops_in_graph, 4)
 
   def test_counts_correct_number_of_ops_with_function(self):
-
     @tf.function
     def add_one(x):
       return x + 1
 
     with tf.Graph().as_default() as graph:
-      parameter_value, parameter_binding = tensorflow_utils.stamp_parameter_in_graph(
-          'x', tf.int32, graph)
+      parameter_value, parameter_binding = (
+          tensorflow_utils.stamp_parameter_in_graph('x', tf.int32, graph)
+      )
       result = add_one(add_one(parameter_value))
 
     result_type, result_binding = tensorflow_utils.capture_result_from_graph(
-        result, graph)
+        result, graph
+    )
     type_signature = computation_types.FunctionType(tf.int32, result_type)
     tensorflow = pb.TensorFlow(
         graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
         parameter=parameter_binding,
-        result=result_binding)
+        result=result_binding,
+    )
     proto = pb.Computation(
         type=type_serialization.serialize_type(type_signature),
-        tensorflow=tensorflow)
+        tensorflow=tensorflow,
+    )
     building_block = building_blocks.ComputationBuildingBlock.from_proto(proto)
 
     tf_ops_in_graph = building_block_analysis.count_tensorflow_ops_in(
-        building_block)
+        building_block
+    )
 
     # Expect 7 ops:
     #    Inside the tf.function:
@@ -101,7 +107,6 @@ class CountTensorFlowVariablesTest(absltest.TestCase):
       building_block_analysis.count_tensorflow_variables_in(None)
 
   def test_counts_no_variables(self):
-
     with tf.Graph().as_default() as g:
       a = tf.constant(0)
       b = tf.constant(1)
@@ -114,14 +119,16 @@ class CountTensorFlowVariablesTest(absltest.TestCase):
     proto = pb.Computation(
         type=type_serialization.serialize_type(function_type),
         tensorflow=pb.TensorFlow(
-            graph_def=packed_graph_def, parameter=None, result=result_binding))
+            graph_def=packed_graph_def, parameter=None, result=result_binding
+        ),
+    )
     building_block = building_blocks.ComputationBuildingBlock.from_proto(proto)
     tf_vars_in_graph = building_block_analysis.count_tensorflow_variables_in(
-        building_block)
+        building_block
+    )
     self.assertEqual(tf_vars_in_graph, 0)
 
   def test_avoids_misdirection_with_name(self):
-
     with tf.Graph().as_default() as g:
       a = tf.constant(0, name='variable1')
       b = tf.constant(1, name='variable2')
@@ -134,14 +141,16 @@ class CountTensorFlowVariablesTest(absltest.TestCase):
     proto = pb.Computation(
         type=type_serialization.serialize_type(function_type),
         tensorflow=pb.TensorFlow(
-            graph_def=packed_graph_def, parameter=None, result=result_binding))
+            graph_def=packed_graph_def, parameter=None, result=result_binding
+        ),
+    )
     building_block = building_blocks.ComputationBuildingBlock.from_proto(proto)
     tf_vars_in_graph = building_block_analysis.count_tensorflow_variables_in(
-        building_block)
+        building_block
+    )
     self.assertEqual(tf_vars_in_graph, 0)
 
   def test_counts_two_variables_correctly(self):
-
     with tf.Graph().as_default() as g:
       a = tf.Variable(0, name='variable1')
       b = tf.Variable(1, name='variable2')
@@ -154,14 +163,16 @@ class CountTensorFlowVariablesTest(absltest.TestCase):
     proto = pb.Computation(
         type=type_serialization.serialize_type(function_type),
         tensorflow=pb.TensorFlow(
-            graph_def=packed_graph_def, parameter=None, result=result_binding))
+            graph_def=packed_graph_def, parameter=None, result=result_binding
+        ),
+    )
     building_block = building_blocks.ComputationBuildingBlock.from_proto(proto)
     tf_vars_in_graph = building_block_analysis.count_tensorflow_variables_in(
-        building_block)
+        building_block
+    )
     self.assertEqual(tf_vars_in_graph, 2)
 
   def test_counts_correct_variables_with_function(self):
-
     @tf.function
     def add_one(x):
       with tf.init_scope():
@@ -169,24 +180,29 @@ class CountTensorFlowVariablesTest(absltest.TestCase):
       return x + y
 
     with tf.Graph().as_default() as graph:
-      parameter_value, parameter_binding = tensorflow_utils.stamp_parameter_in_graph(
-          'x', tf.int32, graph)
+      parameter_value, parameter_binding = (
+          tensorflow_utils.stamp_parameter_in_graph('x', tf.int32, graph)
+      )
       result = add_one(add_one(parameter_value))
 
     result_type, result_binding = tensorflow_utils.capture_result_from_graph(
-        result, graph)
+        result, graph
+    )
     type_signature = computation_types.FunctionType(tf.int32, result_type)
     tensorflow = pb.TensorFlow(
         graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
         parameter=parameter_binding,
-        result=result_binding)
+        result=result_binding,
+    )
     proto = pb.Computation(
         type=type_serialization.serialize_type(type_signature),
-        tensorflow=tensorflow)
+        tensorflow=tensorflow,
+    )
     building_block = building_blocks.ComputationBuildingBlock.from_proto(proto)
 
     tf_vars_in_graph = building_block_analysis.count_tensorflow_variables_in(
-        building_block)
+        building_block
+    )
 
     self.assertEqual(tf_vars_in_graph, 1)
 
@@ -199,7 +215,6 @@ class GetDevicePlacementInTest(absltest.TestCase):
       building_block_analysis.get_device_placement_in(ref)
 
   def test_gets_none_placement(self):
-
     with tf.Graph().as_default() as g:
       a = tf.Variable(0, name='variable1')
       b = tf.Variable(1, name='variable2')
@@ -212,17 +227,19 @@ class GetDevicePlacementInTest(absltest.TestCase):
     proto = pb.Computation(
         type=type_serialization.serialize_type(function_type),
         tensorflow=pb.TensorFlow(
-            graph_def=packed_graph_def, parameter=None, result=result_binding))
+            graph_def=packed_graph_def, parameter=None, result=result_binding
+        ),
+    )
     building_block = building_blocks.ComputationBuildingBlock.from_proto(proto)
     device_placements = building_block_analysis.get_device_placement_in(
-        building_block)
+        building_block
+    )
     all_device_placements = list(device_placements.keys())
     self.assertLen(all_device_placements, 1)
     self.assertEqual(all_device_placements[0], '')
     self.assertGreater(device_placements[''], 0)
 
   def test_gets_all_explicit_placement(self):
-
     with tf.Graph().as_default() as g:
       with tf.device('/cpu:0'):
         a = tf.constant(0)
@@ -236,10 +253,13 @@ class GetDevicePlacementInTest(absltest.TestCase):
     proto = pb.Computation(
         type=type_serialization.serialize_type(function_type),
         tensorflow=pb.TensorFlow(
-            graph_def=packed_graph_def, parameter=None, result=result_binding))
+            graph_def=packed_graph_def, parameter=None, result=result_binding
+        ),
+    )
     building_block = building_blocks.ComputationBuildingBlock.from_proto(proto)
     device_placements = building_block_analysis.get_device_placement_in(
-        building_block)
+        building_block
+    )
     all_device_placements = list(sorted(device_placements.keys()))
     # Expect two placements, the explicit 'cpu' from above, and the empty
     # placement of the `tf.identity` op add to the captured result.
@@ -262,10 +282,13 @@ class GetDevicePlacementInTest(absltest.TestCase):
     proto = pb.Computation(
         type=type_serialization.serialize_type(function_type),
         tensorflow=pb.TensorFlow(
-            graph_def=packed_graph_def, parameter=None, result=result_binding))
+            graph_def=packed_graph_def, parameter=None, result=result_binding
+        ),
+    )
     building_block = building_blocks.ComputationBuildingBlock.from_proto(proto)
     device_placements = building_block_analysis.get_device_placement_in(
-        building_block)
+        building_block
+    )
     all_device_placements = list(device_placements.keys())
     self.assertLen(all_device_placements, 2)
     if all_device_placements[0]:

@@ -68,13 +68,17 @@ def remove_mapped_or_applied_identity(comp):
 
   def _should_transform(comp):
     """Returns `True` if `comp` is a mapped or applied identity function."""
-    if (comp.is_call() and comp.function.is_intrinsic() and
-        comp.function.uri in (
+    if (
+        comp.is_call()
+        and comp.function.is_intrinsic()
+        and comp.function.uri
+        in (
             intrinsic_defs.FEDERATED_MAP.uri,
             intrinsic_defs.FEDERATED_MAP_ALL_EQUAL.uri,
             intrinsic_defs.FEDERATED_APPLY.uri,
             intrinsic_defs.SEQUENCE_MAP.uri,
-        )):
+        )
+    ):
       called_function = comp.argument[0]
       return building_block_analysis.is_identity_function(called_function)
     return False
@@ -98,7 +102,8 @@ class RemoveUnusedBlockLocals(transformation_utils.TransformSpec):
     if not self.should_transform(comp):
       return comp, False
     unbound_ref_set = transformation_utils.get_map_of_unbound_references(
-        comp.result)[comp.result]
+        comp.result
+    )[comp.result]
     if (not unbound_ref_set) or (not comp.locals):
       return comp.result, True
     new_locals = []
@@ -106,7 +111,8 @@ class RemoveUnusedBlockLocals(transformation_utils.TransformSpec):
       if name in unbound_ref_set:
         new_locals.append((name, val))
         unbound_ref_set = unbound_ref_set.union(
-            transformation_utils.get_map_of_unbound_references(val)[val])
+            transformation_utils.get_map_of_unbound_references(val)[val]
+        )
         unbound_ref_set.discard(name)
     if len(new_locals) == len(comp.locals):
       return comp, False
@@ -117,8 +123,9 @@ class RemoveUnusedBlockLocals(transformation_utils.TransformSpec):
 
 def remove_unused_block_locals(comp):
   transform_spec = RemoveUnusedBlockLocals()
-  return transformation_utils.transform_postorder(comp,
-                                                  transform_spec.transform)
+  return transformation_utils.transform_postorder(
+      comp, transform_spec.transform
+  )
 
 
 def uniquify_reference_names(comp, name_generator=None):
@@ -163,8 +170,9 @@ def uniquify_reference_names(comp, name_generator=None):
       used_names.add(self.new_name)
 
     def __str__(self):
-      return 'Value: {}, name: {}, new_name: {}'.format(self.value, self.name,
-                                                        self.new_name)
+      return 'Value: {}, name: {}, new_name: {}'.format(
+          self.value, self.name, self.new_name
+      )
 
   def _transform(comp, context_tree):
     """Renames References in `comp` to unique names."""
@@ -175,8 +183,12 @@ def uniquify_reference_names(comp, name_generator=None):
       new_name = payload.new_name
       if new_name is comp.name:
         return comp, False
-      return building_blocks.Reference(new_name, comp.type_signature,
-                                       comp.context), True
+      return (
+          building_blocks.Reference(
+              new_name, comp.type_signature, comp.context
+          ),
+          True,
+      )
     elif comp.is_block():
       new_locals = []
       modified = False
@@ -191,16 +203,20 @@ def uniquify_reference_names(comp, name_generator=None):
         return comp, False
       context_tree.walk_down_one_variable_binding()
       new_name = context_tree.get_payload_with_name(
-          comp.parameter_name).new_name
+          comp.parameter_name
+      ).new_name
       if new_name is comp.parameter_name:
         return comp, False
-      return building_blocks.Lambda(new_name, comp.parameter_type,
-                                    comp.result), True
+      return (
+          building_blocks.Lambda(new_name, comp.parameter_type, comp.result),
+          True,
+      )
     return comp, False
 
   symbol_tree = transformation_utils.SymbolTree(_RenameNode)
   return transformation_utils.transform_postorder_with_symbol_bindings(
-      comp, _transform, symbol_tree)
+      comp, _transform, symbol_tree
+  )
 
 
 def strip_placement(comp):
@@ -236,7 +252,8 @@ def strip_placement(comp):
           'Attempted to `strip_placement` from computation containing '
           'multiple different placements.\n'
           f'Found placements `{placement}` and `{new_placement}` in '
-          f'comp:\n{comp.compact_representation()}')
+          f'comp:\n{comp.compact_representation()}'
+      )
 
   def _remove_placement_from_type(type_spec):
     if type_spec.is_federated():
@@ -248,7 +265,8 @@ def strip_placement(comp):
   def _remove_reference_placement(comp):
     """Unwraps placement from references and updates unbound reference info."""
     new_type, _ = type_transformations.transform_type_postorder(
-        comp.type_signature, _remove_placement_from_type)
+        comp.type_signature, _remove_placement_from_type
+    )
     return building_blocks.Reference(comp.name, new_type)
 
   def _identity_function(arg_type):
@@ -297,8 +315,9 @@ def strip_placement(comp):
         intrinsic_defs.FEDERATED_APPLY.uri,
     ]
     if comp.uri in maps:
-      return _call_first_with_second_function(tys.parameter[0],
-                                              tys.parameter[1].member)
+      return _call_first_with_second_function(
+          tys.parameter[0], tys.parameter[1].member
+      )
 
     # `federated_eval`'s argument must simply be `call`ed and is replaced
     # with `lambda x: x()`
@@ -317,30 +336,35 @@ def strip_placement(comp):
       new_parameter_type = None
     else:
       new_parameter_type, _ = type_transformations.transform_type_postorder(
-          comp.parameter_type, _remove_placement_from_type)
-    return building_blocks.Lambda(comp.parameter_name, new_parameter_type,
-                                  comp.result)
+          comp.parameter_type, _remove_placement_from_type
+      )
+    return building_blocks.Lambda(
+        comp.parameter_name, new_parameter_type, comp.result
+    )
 
   def _simplify_calls(comp):
     """Unwraps structures introduced by removing intrinsics."""
     zip_or_value_removed = (
-        comp.function.result.is_reference() and
-        comp.function.result.name == comp.function.parameter_name)
+        comp.function.result.is_reference()
+        and comp.function.result.name == comp.function.parameter_name
+    )
     if zip_or_value_removed:
       return comp.argument
     else:
       map_removed = (
-          comp.function.result.is_call() and
-          comp.function.result.function.is_selection() and
-          comp.function.result.function.index == 0 and
-          comp.function.result.argument.is_selection() and
-          comp.function.result.argument.index == 1 and
-          comp.function.result.function.source.is_reference() and
-          comp.function.result.function.source.name
-          == comp.function.parameter_name and
-          comp.function.result.function.source.is_reference() and
-          comp.function.result.function.source.name
-          == comp.function.parameter_name and comp.argument.is_struct())
+          comp.function.result.is_call()
+          and comp.function.result.function.is_selection()
+          and comp.function.result.function.index == 0
+          and comp.function.result.argument.is_selection()
+          and comp.function.result.argument.index == 1
+          and comp.function.result.function.source.is_reference()
+          and comp.function.result.function.source.name
+          == comp.function.parameter_name
+          and comp.function.result.function.source.is_reference()
+          and comp.function.result.function.source.name
+          == comp.function.parameter_name
+          and comp.argument.is_struct()
+      )
       if map_removed:
         return building_blocks.Call(comp.argument[0], comp.argument[1])
     return comp
@@ -363,8 +387,13 @@ def strip_placement(comp):
 
 
 def _reduce_intrinsic(
-    comp, uri, body_fn: Callable[[building_blocks.ComputationBuildingBlock],
-                                 building_blocks.ComputationBuildingBlock]):
+    comp,
+    uri,
+    body_fn: Callable[
+        [building_blocks.ComputationBuildingBlock],
+        building_blocks.ComputationBuildingBlock,
+    ],
+):
   """Replaces all the intrinsics with the given `uri` with a callable."""
   py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
   py_typecheck.check_type(uri, str)
@@ -376,29 +405,38 @@ def _reduce_intrinsic(
     if not _should_transform(comp):
       return comp, False
     arg_name = next(building_block_factory.unique_name_generator(comp))
-    comp_arg = building_blocks.Reference(arg_name,
-                                         comp.type_signature.parameter)
+    comp_arg = building_blocks.Reference(
+        arg_name, comp.type_signature.parameter
+    )
     intrinsic_body = body_fn(comp_arg)
-    intrinsic_reduced = building_blocks.Lambda(comp_arg.name,
-                                               comp_arg.type_signature,
-                                               intrinsic_body)
+    intrinsic_reduced = building_blocks.Lambda(
+        comp_arg.name, comp_arg.type_signature, intrinsic_body
+    )
     return intrinsic_reduced, True
 
   return transformation_utils.transform_postorder(comp, _transform)
 
 
 def _apply_generic_op(op, arg):
-  if not (arg.type_signature.is_federated() or
-          type_analysis.is_structure_of_tensors(arg.type_signature)):
+  if not (
+      arg.type_signature.is_federated()
+      or type_analysis.is_structure_of_tensors(arg.type_signature)
+  ):
     # If there are federated elements nested in a struct, we need to zip these
     # together before passing to binary operator constructor.
     arg = building_block_factory.create_federated_zip(arg)
   return building_block_factory.apply_binary_operator_with_upcast(arg, op)
 
 
-def get_intrinsic_reductions(
-) -> dict[str, Callable[[building_blocks.ComputationBuildingBlock],
-                        building_blocks.ComputationBuildingBlock]]:
+def get_intrinsic_reductions() -> (
+    dict[
+        str,
+        Callable[
+            [building_blocks.ComputationBuildingBlock],
+            building_blocks.ComputationBuildingBlock,
+        ],
+    ]
+):
   """Returns map from intrinsic to reducing function.
 
   The returned dictionary is a `collections.OrderedDict` which maps intrinsic
@@ -475,7 +513,8 @@ def get_intrinsic_reductions(
     )
     identity = building_block_factory.create_identity(operand_type)
     return building_block_factory.create_federated_aggregate(
-        x, zero, plus_op, plus_op, identity)
+        x, zero, plus_op, plus_op, identity
+    )
 
   # - FEDERATED_ZIP(x, y) := GENERIC_ZIP(x, y)
   #
@@ -580,19 +619,27 @@ def replace_intrinsics_with_bodies(comp):
   return comp, transformed
 
 
-def _ensure_structure(int_or_structure, int_or_structure_type,
-                      possible_struct_type):
+def _ensure_structure(
+    int_or_structure, int_or_structure_type, possible_struct_type
+):
   if int_or_structure_type.is_struct() or not possible_struct_type.is_struct():
     return int_or_structure
   else:
     # Broadcast int_or_structure to the same structure as the struct type
-    return structure.map_structure(lambda *args: int_or_structure,
-                                   possible_struct_type)
+    return structure.map_structure(
+        lambda *args: int_or_structure, possible_struct_type
+    )
 
 
-def _get_secure_intrinsic_reductions(
-) -> dict[str, Callable[[building_blocks.ComputationBuildingBlock],
-                        building_blocks.ComputationBuildingBlock]]:
+def _get_secure_intrinsic_reductions() -> (
+    dict[
+        str,
+        Callable[
+            [building_blocks.ComputationBuildingBlock],
+            building_blocks.ComputationBuildingBlock,
+        ],
+    ]
+):
   """Returns map from intrinsic to reducing function.
 
   The returned dictionary is a `collections.OrderedDict` which maps intrinsic
@@ -624,31 +671,43 @@ def _get_secure_intrinsic_reductions(
     # While accumulating summands, we'll assert each summand is less than or
     # equal to max_input. Otherwise the comptuation should issue an error.
     summation_zero = building_block_factory.create_generic_constant(
-        summand_type, 0)
-    aggregation_zero = building_blocks.Struct([summation_zero, max_input_arg],
-                                              container_type=tuple)
+        summand_type, 0
+    )
+    aggregation_zero = building_blocks.Struct(
+        [summation_zero, max_input_arg], container_type=tuple
+    )
 
     def assert_less_equal_max_and_add(summation_and_max_input, summand):
       summation, original_max_input = summation_and_max_input
-      max_input = _ensure_structure(original_max_input, max_input_type,
-                                    summand_type)
+      max_input = _ensure_structure(
+          original_max_input, max_input_type, summand_type
+      )
 
       # Assert that all coordinates in all tensors are less than the secure sum
       # allowed max input value.
       def assert_all_coordinates_less_equal(x, m):
         return tf.Assert(
             tf.reduce_all(
-                tf.less_equal(tf.cast(x, tf.int64), tf.cast(m, tf.int64))), [
-                    'client value larger than maximum specified for secure sum',
-                    x, 'not less than or equal to', m
-                ])
+                tf.less_equal(tf.cast(x, tf.int64), tf.cast(m, tf.int64))
+            ),
+            [
+                'client value larger than maximum specified for secure sum',
+                x,
+                'not less than or equal to',
+                m,
+            ],
+        )
 
       assert_ops = structure.flatten(
-          structure.map_structure(assert_all_coordinates_less_equal, summand,
-                                  max_input))
+          structure.map_structure(
+              assert_all_coordinates_less_equal, summand, max_input
+          )
+      )
       with tf.control_dependencies(assert_ops):
-        return structure.map_structure(tf.add, summation,
-                                       summand), original_max_input
+        return (
+            structure.map_structure(tf.add, summation, summand),
+            original_max_input,
+        )
 
     assert_less_equal_and_add = (
         building_block_factory.create_tensorflow_binary_operator(
@@ -662,17 +721,23 @@ def _get_secure_intrinsic_reductions(
       return structure.map_structure(tf.add, a, b)
 
     plus_op = building_block_factory.create_tensorflow_binary_operator(
-        nested_plus, operand_type=aggregation_zero.type_signature)
+        nested_plus, operand_type=aggregation_zero.type_signature
+    )
 
     # In the `report` function we take the summation and drop the second element
     # of the struct (which was holding the max_value).
     drop_max_value_op = building_block_factory.create_tensorflow_unary_operator(
         lambda x: type_conversions.type_to_py_container(x[0], summand_type),
-        aggregation_zero.type_signature)
+        aggregation_zero.type_signature,
+    )
 
     return building_block_factory.create_federated_aggregate(
-        summand_arg, aggregation_zero, assert_less_equal_and_add, plus_op,
-        drop_max_value_op)
+        summand_arg,
+        aggregation_zero,
+        assert_less_equal_and_add,
+        plus_op,
+        drop_max_value_op,
+    )
 
   def federated_secure_sum_bitwidth(arg):
     py_typecheck.check_type(arg, building_blocks.ComputationBuildingBlock)
@@ -687,13 +752,16 @@ def _get_secure_intrinsic_reductions(
 
       def compute_max_input(bits):
         assert_op = tf.Assert(
-            tf.less_equal(bits, max_secure_sum_bitwidth), [
+            tf.less_equal(bits, max_secure_sum_bitwidth),
+            [
                 bits,
-                f'is greater than maximum bitwidth {max_secure_sum_bitwidth}'
-            ])
+                f'is greater than maximum bitwidth {max_secure_sum_bitwidth}',
+            ],
+        )
         with tf.control_dependencies([assert_op]):
-          return tf.math.pow(tf.constant(2, tf.int64), tf.cast(bits,
-                                                               tf.int64)) - 1
+          return (
+              tf.math.pow(tf.constant(2, tf.int64), tf.cast(bits, tf.int64)) - 1
+          )
 
       return structure.map_structure(compute_max_input, bitwidth)
 
@@ -705,7 +773,8 @@ def _get_secure_intrinsic_reductions(
 
     max_value = building_blocks.Call(compute_max_value_op, bitwidth_arg)
     return federated_secure_sum(
-        building_blocks.Struct([summand_arg, max_value]))
+        building_blocks.Struct([summand_arg, max_value])
+    )
 
   def federated_secure_modular_sum(arg):
     py_typecheck.check_type(arg, building_blocks.ComputationBuildingBlock)
@@ -719,22 +788,30 @@ def _get_secure_intrinsic_reductions(
 
     unplaced_modulus = building_blocks.Selection(arg, index=1)
     placed_modulus = building_block_factory.create_federated_value(
-        unplaced_modulus, placements.SERVER)
+        unplaced_modulus, placements.SERVER
+    )
     modulus_arg = building_block_factory.create_federated_zip(
-        building_blocks.Struct([raw_summed_values, placed_modulus],
-                               container_type=container_type))
+        building_blocks.Struct(
+            [raw_summed_values, placed_modulus], container_type=container_type
+        )
+    )
 
     def map_structure_mod(summed_values, modulus):
-      modulus = _ensure_structure(modulus, unplaced_modulus.type_signature,
-                                  raw_summed_values.type_signature.member)
+      modulus = _ensure_structure(
+          modulus,
+          unplaced_modulus.type_signature,
+          raw_summed_values.type_signature.member,
+      )
       return structure.map_structure(tf.math.mod, summed_values, modulus)
 
     modulus_fn = building_block_factory.create_tensorflow_binary_operator(
         map_structure_mod,
         operand_type=raw_summed_values.type_signature.member,
-        second_operand_type=placed_modulus.type_signature.member)
+        second_operand_type=placed_modulus.type_signature.member,
+    )
     modulus_computed = building_block_factory.create_federated_apply(
-        modulus_fn, modulus_arg)
+        modulus_fn, modulus_arg
+    )
 
     return modulus_computed
 
@@ -749,13 +826,18 @@ def _get_secure_intrinsic_reductions(
         max_key_arg,
         server_val_arg,
         select_fn_arg,
-        secure=False)
+        secure=False,
+    )
 
   secure_intrinsic_bodies_by_uri = collections.OrderedDict([
-      (intrinsic_defs.FEDERATED_SECURE_SUM_BITWIDTH.uri,
-       federated_secure_sum_bitwidth),
-      (intrinsic_defs.FEDERATED_SECURE_MODULAR_SUM.uri,
-       federated_secure_modular_sum),
+      (
+          intrinsic_defs.FEDERATED_SECURE_SUM_BITWIDTH.uri,
+          federated_secure_sum_bitwidth,
+      ),
+      (
+          intrinsic_defs.FEDERATED_SECURE_MODULAR_SUM.uri,
+          federated_secure_modular_sum,
+      ),
       (intrinsic_defs.FEDERATED_SECURE_SUM.uri, federated_secure_sum),
       (intrinsic_defs.FEDERATED_SECURE_SELECT.uri, federated_secure_select),
   ])

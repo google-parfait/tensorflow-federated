@@ -27,30 +27,33 @@ class JaxComponentsTest(absltest.TestCase):
   def test_build_jax_federated_averaging_process(self):
     batch_type = collections.OrderedDict([
         ('pixels', tff.TensorType(np.float32, (50, 784))),
-        ('labels', tff.TensorType(np.int32, (50,)))
+        ('labels', tff.TensorType(np.int32, (50,))),
     ])
 
     def random_batch():
-      pixels = np.random.uniform(
-          low=0.0, high=1.0, size=(50, 784)).astype(np.float32)
+      pixels = np.random.uniform(low=0.0, high=1.0, size=(50, 784)).astype(
+          np.float32
+      )
       labels = np.random.randint(low=0, high=9, size=(50,), dtype=np.int32)
       return collections.OrderedDict([('pixels', pixels), ('labels', labels)])
 
     model_type = collections.OrderedDict([
         ('weights', tff.TensorType(np.float32, (784, 10))),
-        ('bias', tff.TensorType(np.float32, (10,)))
+        ('bias', tff.TensorType(np.float32, (10,))),
     ])
 
     def loss(model, batch):
       y = jax.nn.softmax(
           jax.numpy.add(
-              jax.numpy.matmul(batch['pixels'], model['weights']),
-              model['bias']))
+              jax.numpy.matmul(batch['pixels'], model['weights']), model['bias']
+          )
+      )
       targets = jax.nn.one_hot(jax.numpy.reshape(batch['labels'], -1), 10)
       return -jax.numpy.mean(jax.numpy.sum(targets * jax.numpy.log(y), axis=1))
 
     trainer = jax_components.build_jax_federated_averaging_process(
-        batch_type, model_type, loss, step_size=0.001)
+        batch_type, model_type, loss, step_size=0.001
+    )
 
     trainer.next(trainer.initialize(), [[random_batch()]])
 

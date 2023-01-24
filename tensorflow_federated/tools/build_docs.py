@@ -22,17 +22,21 @@ import tensorflow_federated as tff
 
 FLAGS = flags.FLAGS
 
-flags.DEFINE_string('output_dir', '/tmp/federated_api',
-                    'Where to output the docs')
+flags.DEFINE_string(
+    'output_dir', '/tmp/federated_api', 'Where to output the docs'
+)
 
-flags.DEFINE_string('code_url_prefix', None,
-                    'The url prefix for links to code.')
+flags.DEFINE_string(
+    'code_url_prefix', None, 'The url prefix for links to code.'
+)
 
-flags.DEFINE_bool('search_hints', True,
-                  'Include metadata search hints in the generated files')
+flags.DEFINE_bool(
+    'search_hints', True, 'Include metadata search hints in the generated files'
+)
 
-flags.DEFINE_string('site_path', 'federated/api_docs/python',
-                    'Path prefix in the _toc.yaml')
+flags.DEFINE_string(
+    'site_path', 'federated/api_docs/python', 'Path prefix in the _toc.yaml'
+)
 
 
 def main(argv):
@@ -46,9 +50,9 @@ def main(argv):
       search_hints=FLAGS.search_hints,
       site_path=FLAGS.site_path,
       callbacks=[
-          tensorflow_docs.api_generator.public_api
-          .explicit_package_contents_filter,
-      ])
+          tensorflow_docs.api_generator.public_api.explicit_package_contents_filter,
+      ],
+  )
   doc_generator.build(FLAGS.output_dir)
 
 

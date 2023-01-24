@@ -24,32 +24,34 @@ class VisionDatasetsUtilsTest(tf.test.TestCase):
     image_bytes_2 = b'someotherbytes'
     created_examples = [
         utils.create_example(image_bytes_1, 0),
-        utils.create_example(image_bytes_2, 1)
+        utils.create_example(image_bytes_2, 1),
     ]
 
     expected_dataset = [
         tf.train.Example(
             features=tf.train.Features(
                 feature={
-                    utils.KEY_IMAGE_BYTES:
-                        tf.train.Feature(
-                            bytes_list=tf.train.BytesList(
-                                value=[image_bytes_1])),
-                    utils.KEY_CLASS:
-                        tf.train.Feature(
-                            int64_list=tf.train.Int64List(value=[0])),
-                })),
+                    utils.KEY_IMAGE_BYTES: tf.train.Feature(
+                        bytes_list=tf.train.BytesList(value=[image_bytes_1])
+                    ),
+                    utils.KEY_CLASS: tf.train.Feature(
+                        int64_list=tf.train.Int64List(value=[0])
+                    ),
+                }
+            )
+        ),
         tf.train.Example(
             features=tf.train.Features(
                 feature={
-                    utils.KEY_IMAGE_BYTES:
-                        tf.train.Feature(
-                            bytes_list=tf.train.BytesList(
-                                value=[image_bytes_2])),
-                    utils.KEY_CLASS:
-                        tf.train.Feature(
-                            int64_list=tf.train.Int64List(value=[1])),
-                })),
+                    utils.KEY_IMAGE_BYTES: tf.train.Feature(
+                        bytes_list=tf.train.BytesList(value=[image_bytes_2])
+                    ),
+                    utils.KEY_CLASS: tf.train.Feature(
+                        int64_list=tf.train.Int64List(value=[1])
+                    ),
+                }
+            )
+        ),
     ]
 
     self.assertSequenceEqual(created_examples, expected_dataset)

@@ -21,7 +21,7 @@ import numpy as np
 #  Settings for a multiplicative linear congruential generator (aka Lehmer
 #  generator) suggested in 'Random Number Generators: Good
 #  Ones are Hard to Find' by Park and Miller.
-MLCG_MODULUS = 2**(31) - 1
+MLCG_MODULUS = 2 ** (31) - 1
 MLCG_MULTIPLIER = 16807
 
 # Type variable for matching the input and output of `build_sampling_fn`
@@ -31,7 +31,8 @@ T = TypeVar('T')
 def build_uniform_sampling_fn(
     sample_range: Sequence[T],
     replace: bool = False,
-    random_seed: Optional[int] = None) -> Callable[[int, int], list[T]]:
+    random_seed: Optional[int] = None,
+) -> Callable[[int, int], list[T]]:
   """Builds the function for sampling from the input iterator at each round.
 
   If an integer `random_seed` is provided, we set a random seed before sampling
@@ -58,20 +59,25 @@ def build_uniform_sampling_fn(
     mlcg_start = np.random.RandomState(random_seed).randint(1, MLCG_MODULUS - 1)
 
     def get_pseudo_random_int(round_num):
-      return pow(MLCG_MULTIPLIER, round_num,
-                 MLCG_MODULUS) * mlcg_start % MLCG_MODULUS
+      return (
+          pow(MLCG_MULTIPLIER, round_num, MLCG_MODULUS)
+          * mlcg_start
+          % MLCG_MODULUS
+      )
 
   def sample_fn(round_num: int, size: int):
-
     if isinstance(random_seed, int):
       random_state = np.random.RandomState(get_pseudo_random_int(round_num))
     else:
       random_state = np.random.RandomState()
     try:
       return random_state.choice(
-          sample_range, size=size, replace=replace).tolist()
+          sample_range, size=size, replace=replace
+      ).tolist()
     except ValueError as e:
-      raise ValueError(f'Failed to sample {size} clients from population of '
-                       f'size {len(sample_range)}.') from e
+      raise ValueError(
+          f'Failed to sample {size} clients from population of '
+          f'size {len(sample_range)}.'
+      ) from e
 
   return sample_fn

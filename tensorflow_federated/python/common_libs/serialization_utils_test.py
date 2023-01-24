@@ -56,12 +56,14 @@ class SerializationUtilsTest(absltest.TestCase):
       serialization_utils.unpack_graph_def(any_pb)
 
   def test_pack_function_def_returns_any_pb(self):
-
     def foo(a):
       return a
 
-    function_def = tf.function(foo).get_concrete_function(
-        a=tf.TensorSpec(shape=[], dtype=tf.int32)).function_def
+    function_def = (
+        tf.function(foo)
+        .get_concrete_function(a=tf.TensorSpec(shape=[], dtype=tf.int32))
+        .function_def
+    )
     any_pb = serialization_utils.pack_function_def(function_def)
     self.assertIsInstance(any_pb, any_pb2.Any)
 

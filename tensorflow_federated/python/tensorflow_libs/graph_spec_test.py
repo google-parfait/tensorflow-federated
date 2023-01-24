@@ -93,7 +93,8 @@ def _make_manual_reduce_graph(dataset_construction_graph, return_element):
   with tf.Graph().as_default() as graph:
     v1 = tf.graph_util.import_graph_def(
         dataset_construction_graph.as_graph_def(),
-        return_elements=[return_element])[0]
+        return_elements=[return_element],
+    )[0]
     structure = tf.TensorSpec([], tf.int64)
     ds1 = tf.data.experimental.from_variant(v1, structure=structure)
     out = ds1.reduce(tf.constant(0, dtype=tf.int64), lambda x, y: x + y)
@@ -127,7 +128,7 @@ class ToMetaGraphDefTest(tf.test.TestCase):
     with tf.compat.v1.Session(graph=g) as sess:
       should_be_one = sess.run(out_name, feed_dict={in_name: 0})
 
-    self.assertEqual(should_be_one, 1.)
+    self.assertEqual(should_be_one, 1.0)
 
   def test_meta_graph_def_restores_and_runs_with_variables(self):
     graph, in_name, out_name = _make_add_variable_number_graph()
@@ -144,7 +145,8 @@ class ToMetaGraphDefTest(tf.test.TestCase):
     with tf.Graph().as_default() as g:
       tf.compat.v1.train.import_meta_graph(metagraphdef)
       restored_init_op = tf.group(
-          *tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.INIT_OP)).name
+          *tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.INIT_OP)
+      ).name
 
     with tf.compat.v1.Session(graph=g) as sess:
       sess.run(restored_init_op)
@@ -152,14 +154,15 @@ class ToMetaGraphDefTest(tf.test.TestCase):
       should_be_two = sess.run(out_name, feed_dict={in_name: 0})
       should_be_three = sess.run(out_name, feed_dict={in_name: 0})
 
-    self.assertEqual(should_be_one, 1.)
-    self.assertEqual(should_be_two, 2.)
-    self.assertEqual(should_be_three, 3.)
+    self.assertEqual(should_be_one, 1.0)
+    self.assertEqual(should_be_two, 2.0)
+    self.assertEqual(should_be_three, 3.0)
 
   def test_meta_graph_def_restores_and_runs_with_datasets(self):
     dataset_graph, _, dataset_out_name = _make_dataset_constructing_graph()
-    graph, _, out_name = _make_manual_reduce_graph(dataset_graph,
-                                                   dataset_out_name)
+    graph, _, out_name = _make_manual_reduce_graph(
+        dataset_graph, dataset_out_name
+    )
 
     with graph.as_default():
       init_op = tf.compat.v1.global_variables_initializer().name
@@ -173,7 +176,8 @@ class ToMetaGraphDefTest(tf.test.TestCase):
     with tf.Graph().as_default() as g:
       tf.compat.v1.train.import_meta_graph(metagraphdef)
       restored_init_op = tf.compat.v1.get_collection(
-          tf.compat.v1.GraphKeys.INIT_OP)
+          tf.compat.v1.GraphKeys.INIT_OP
+      )
 
     with tf.compat.v1.Session(graph=g) as sess:
       sess.run(restored_init_op)

@@ -36,8 +36,9 @@ _CHI_SQUARE_CRITICAL_VALUE = {
 
 class HyperedgeHashersTest(tf.test.TestCase, parameterized.TestCase):
 
-  def _assert_distribution_uniform(self, samples, degrees_of_freedom, *,
-                                   is_uniform):
+  def _assert_distribution_uniform(
+      self, samples, degrees_of_freedom, *, is_uniform
+  ):
     """Checks if `samples` are uniformly distributed by chi square tests.
 
     Note: the critical values needed in this test file are hard coded in
@@ -58,11 +59,13 @@ class HyperedgeHashersTest(tf.test.TestCase, parameterized.TestCase):
     chi_square = np.sum(np.square(counts - expected_counts) / expected_counts)
 
     if is_uniform:
-      self.assertLess(chi_square,
-                      _CHI_SQUARE_CRITICAL_VALUE[degrees_of_freedom])
+      self.assertLess(
+          chi_square, _CHI_SQUARE_CRITICAL_VALUE[degrees_of_freedom]
+      )
     else:
-      self.assertGreaterEqual(chi_square,
-                              _CHI_SQUARE_CRITICAL_VALUE[degrees_of_freedom])
+      self.assertGreaterEqual(
+          chi_square, _CHI_SQUARE_CRITICAL_VALUE[degrees_of_freedom]
+      )
 
   @parameterized.named_parameters(
       ('table_size_0', 0, 3, 'table_size must be at least 1.'),
@@ -71,26 +74,43 @@ class HyperedgeHashersTest(tf.test.TestCase, parameterized.TestCase):
       ('repetitions_2', 10, 2, 'repetitions must be at least 3.'),
       ('repetitions_neg', 10, -1, 'repetitions must be at least 3.'),
   )
-  def test_random_hash_family_raise_params_value_error(self, table_size,
-                                                       repetitions,
-                                                       raises_regex):
+  def test_random_hash_family_raise_params_value_error(
+      self, table_size, repetitions, raises_regex
+  ):
     seed = 0
     with self.assertRaisesRegex(ValueError, raises_regex):
       hyperedge_hashers.RandomHyperEdgeHasher(seed, table_size, repetitions)
 
   @parameterized.named_parameters(
-      ('seed_0_table_size_5', 0, 5, 3,
-       ['hello', 'these', 'are', 'some', 'strings']),
-      ('seed_1_table_size_100', 1, 100, 5,
-       ['', 'some', 'unicodes', 'अ', 'क', 'æ', '☺️', '☺️']),
-      ('seed_5_table_size_2000', 5, 2000, 3,
-       ['has, some, comma', '新年快乐', '☺️😇']),
+      (
+          'seed_0_table_size_5',
+          0,
+          5,
+          3,
+          ['hello', 'these', 'are', 'some', 'strings'],
+      ),
+      (
+          'seed_1_table_size_100',
+          1,
+          100,
+          5,
+          ['', 'some', 'unicodes', 'अ', 'क', 'æ', '☺️', '☺️'],
+      ),
+      (
+          'seed_5_table_size_2000',
+          5,
+          2000,
+          3,
+          ['has, some, comma', '新年快乐', '☺️😇'],
+      ),
       ('empty_strings', 0, 5, 3, []),
   )
-  def test_random_hash_family_as_expected(self, seed, table_size, repetitions,
-                                          data_strings):
-    hasher = hyperedge_hashers.RandomHyperEdgeHasher(seed, table_size,
-                                                     repetitions)
+  def test_random_hash_family_as_expected(
+      self, seed, table_size, repetitions, data_strings
+  ):
+    hasher = hyperedge_hashers.RandomHyperEdgeHasher(
+        seed, table_size, repetitions
+    )
     data_strings_tensor = tf.constant(data_strings, dtype=tf.string)
     hashes = np.array(hasher.get_hash_indices(data_strings))
     hashes_tensor = hasher.get_hash_indices_tf(data_strings_tensor)
@@ -135,9 +155,11 @@ class HyperedgeHashersTest(tf.test.TestCase, parameterized.TestCase):
       ),
   )
   def test_random_hash_family_distribution_as_expected(
-      self, seed, table_size, repetitions, data_strings_upper_bound):
-    hasher = hyperedge_hashers.RandomHyperEdgeHasher(seed, table_size,
-                                                     repetitions)
+      self, seed, table_size, repetitions, data_strings_upper_bound
+  ):
+    hasher = hyperedge_hashers.RandomHyperEdgeHasher(
+        seed, table_size, repetitions
+    )
     data_strings = [str(x) for x in range(data_strings_upper_bound)]
     data_strings_tensor = tf.constant(data_strings, dtype=tf.string)
     hashes = np.array(hasher.get_hash_indices(data_strings))
@@ -153,9 +175,11 @@ class HyperedgeHashersTest(tf.test.TestCase, parameterized.TestCase):
     # All indices should be uniformly distributed.
     degrees_of_freedom = table_size - 1
     self._assert_distribution_uniform(
-        hashes, degrees_of_freedom, is_uniform=True)
+        hashes, degrees_of_freedom, is_uniform=True
+    )
     self._assert_distribution_uniform(
-        np.squeeze(hashes_tensor[:, :, 2]), degrees_of_freedom, is_uniform=True)
+        np.squeeze(hashes_tensor[:, :, 2]), degrees_of_freedom, is_uniform=True
+    )
 
   @parameterized.named_parameters(
       ('table_size_0', 0, 3, 4, 'table_size must be at least 1.'),
@@ -165,32 +189,56 @@ class HyperedgeHashersTest(tf.test.TestCase, parameterized.TestCase):
       ('repetitions_neg', 10, -1, 4, 'repetitions must be at least 3.'),
       ('rescale_factor_0', 10, 3, 0, 'rescale_factor must be positive.*'),
       ('rescale_factor_neg', 10, 3, -1, 'rescale_factor must be positive.*'),
-      ('rescale_factor_more_than_table_size', 10, 3, 15,
-       'rescale_factor must be positive.*'),
+      (
+          'rescale_factor_more_than_table_size',
+          10,
+          3,
+          15,
+          'rescale_factor must be positive.*',
+      ),
   )
-  def test_coupled_hash_family_raise_params_value_error(self, table_size,
-                                                        repetitions,
-                                                        rescale_factor,
-                                                        raises_regex):
+  def test_coupled_hash_family_raise_params_value_error(
+      self, table_size, repetitions, rescale_factor, raises_regex
+  ):
     seed = 0
     with self.assertRaisesRegex(ValueError, raises_regex):
-      hyperedge_hashers.CoupledHyperEdgeHasher(seed, table_size, repetitions,
-                                               rescale_factor)
+      hyperedge_hashers.CoupledHyperEdgeHasher(
+          seed, table_size, repetitions, rescale_factor
+      )
 
   @parameterized.named_parameters(
-      ('seed_0_table_size_5', 0, 5, 3, 4,
-       ['hello', 'these', 'are', 'some', 'strings']),
-      ('seed_1_table_size_100', 1, 100, 5, 1,
-       ['', 'some', 'unicodes', 'अ', 'क', 'æ', '☺️', '☺️']),
-      ('seed_0_table_size_2000', 0, 2000, 3, 4,
-       ['has, some, comma', '新年快乐', '☺️😇']),
+      (
+          'seed_0_table_size_5',
+          0,
+          5,
+          3,
+          4,
+          ['hello', 'these', 'are', 'some', 'strings'],
+      ),
+      (
+          'seed_1_table_size_100',
+          1,
+          100,
+          5,
+          1,
+          ['', 'some', 'unicodes', 'अ', 'क', 'æ', '☺️', '☺️'],
+      ),
+      (
+          'seed_0_table_size_2000',
+          0,
+          2000,
+          3,
+          4,
+          ['has, some, comma', '新年快乐', '☺️😇'],
+      ),
       ('empty_strings', 0, 5, 3, 4, []),
   )
-  def test_coupled_hash_family_as_expected(self, seed, table_size, repetitions,
-                                           rescale_factor, data_strings):
-    hasher = hyperedge_hashers.CoupledHyperEdgeHasher(seed, table_size,
-                                                      repetitions,
-                                                      rescale_factor)
+  def test_coupled_hash_family_as_expected(
+      self, seed, table_size, repetitions, rescale_factor, data_strings
+  ):
+    hasher = hyperedge_hashers.CoupledHyperEdgeHasher(
+        seed, table_size, repetitions, rescale_factor
+    )
     data_strings_tensor = tf.constant(data_strings, dtype=tf.string)
     hashes = np.array(hasher.get_hash_indices(data_strings))
     hashes_tensor = hasher.get_hash_indices_tf(data_strings_tensor)
@@ -214,9 +262,11 @@ class HyperedgeHashersTest(tf.test.TestCase, parameterized.TestCase):
     # `table_size/rescale_factor` distance from each other.
     if data_strings:
       max_per_element_index_difference = np.max(
-          np.max(hashes, axis=1) - np.min(hashes, axis=1))
-      self.assertLess(max_per_element_index_difference,
-                      table_size / float(rescale_factor))
+          np.max(hashes, axis=1) - np.min(hashes, axis=1)
+      )
+      self.assertLess(
+          max_per_element_index_difference, table_size / float(rescale_factor)
+      )
 
   @parameterized.named_parameters(
       ('table_size_500', 100, 500, 3, 4, 10000),
@@ -238,11 +288,16 @@ class HyperedgeHashersTest(tf.test.TestCase, parameterized.TestCase):
       ),
   )
   def test_coupled_hash_family_distribution_as_expected(
-      self, seed, table_size, repetitions, rescale_factor,
-      data_strings_upper_bound):
-    hasher = hyperedge_hashers.CoupledHyperEdgeHasher(seed, table_size,
-                                                      repetitions,
-                                                      rescale_factor)
+      self,
+      seed,
+      table_size,
+      repetitions,
+      rescale_factor,
+      data_strings_upper_bound,
+  ):
+    hasher = hyperedge_hashers.CoupledHyperEdgeHasher(
+        seed, table_size, repetitions, rescale_factor
+    )
     data_strings = [str(x) for x in range(data_strings_upper_bound)]
     data_strings_tensor = tf.constant(data_strings, dtype=tf.string)
     hashes = np.array(hasher.get_hash_indices(data_strings))
@@ -258,11 +313,11 @@ class HyperedgeHashersTest(tf.test.TestCase, parameterized.TestCase):
     # All indices should not be uniformly distributed.
     degrees_of_freedom = table_size - 1
     self._assert_distribution_uniform(
-        hashes, degrees_of_freedom, is_uniform=False)
+        hashes, degrees_of_freedom, is_uniform=False
+    )
     self._assert_distribution_uniform(
-        np.squeeze(hashes_tensor[:, :, 2]),
-        degrees_of_freedom,
-        is_uniform=False)
+        np.squeeze(hashes_tensor[:, :, 2]), degrees_of_freedom, is_uniform=False
+    )
 
     # Indices in the middle should be uniformly distributed.
     lower_bound = max(1, math.ceil(table_size / 2) - 10)
@@ -272,9 +327,11 @@ class HyperedgeHashersTest(tf.test.TestCase, parameterized.TestCase):
     hashes_tensor_in_the_middle = hashes_tensor[:, :, 2][middle_indices]
     degrees_of_freedom = len(hashes_in_the_middle) - 1
     self._assert_distribution_uniform(
-        hashes_in_the_middle, degrees_of_freedom, is_uniform=True)
+        hashes_in_the_middle, degrees_of_freedom, is_uniform=True
+    )
     self._assert_distribution_uniform(
-        hashes_tensor_in_the_middle, degrees_of_freedom, is_uniform=True)
+        hashes_tensor_in_the_middle, degrees_of_freedom, is_uniform=True
+    )
 
 
 if __name__ == '__main__':

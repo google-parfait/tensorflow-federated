@@ -74,7 +74,8 @@ class RunTrainingProcessTest(parameterized.TestCase):
     training_loop.run_training_process(
         training_process=training_process,
         training_selection_fn=training_selection_fn,
-        total_rounds=total_rounds)
+        total_rounds=total_rounds,
+    )
 
     training_process.initialize.assert_called_once()
     expected_calls = []
@@ -102,14 +103,16 @@ class RunTrainingProcessTest(parameterized.TestCase):
     training_process = mock.create_autospec(iterative_process.IterativeProcess)
     training_process.initialize.return_value = 'initialize'
     training_process.next.return_value = collections.OrderedDict(
-        state='update', metrics={'metric': 1.0})
+        state='update', metrics={'metric': 1.0}
+    )
     training_selection_fn = mock.MagicMock()
     training_selection_fn.return_value = [0]
 
     training_loop.run_training_process(
         training_process=training_process,
         training_selection_fn=training_selection_fn,
-        total_rounds=total_rounds)
+        total_rounds=total_rounds,
+    )
 
     training_process.initialize.assert_called_once()
     expected_calls = []
@@ -142,7 +145,8 @@ class RunTrainingProcessTest(parameterized.TestCase):
     training_process.next.return_value = ('update', {'metric': 1.0})
     training_selection_fn = mock.MagicMock()
     evaluation_fn = mock.create_autospec(
-        computation_base.Computation, return_value={'metric': 1.0})
+        computation_base.Computation, return_value={'metric': 1.0}
+    )
     evaluation_selection_fn = mock.MagicMock()
     evaluation_selection_fn.return_value = [0]
 
@@ -152,7 +156,8 @@ class RunTrainingProcessTest(parameterized.TestCase):
         total_rounds=total_rounds,
         evaluation_fn=evaluation_fn,
         evaluation_selection_fn=evaluation_selection_fn,
-        rounds_per_evaluation=rounds_per_evaluation)
+        rounds_per_evaluation=rounds_per_evaluation,
+    )
 
     call = mock.call(0)
     expected_calls = [call]
@@ -186,8 +191,12 @@ class RunTrainingProcessTest(parameterized.TestCase):
       ('with_program_state_10_5', 10, 5, 'update', 1),
   )
   def test_program_state_manager_called_without_existing_program_state(
-      self, total_rounds, rounds_per_saving_program_state, program_state,
-      version):
+      self,
+      total_rounds,
+      rounds_per_saving_program_state,
+      program_state,
+      version,
+  ):
     training_process = mock.create_autospec(iterative_process.IterativeProcess)
     training_process.initialize.return_value = 'initialize'
     training_process.next.return_value = ('update', {'metric': 1.0})
@@ -200,7 +209,8 @@ class RunTrainingProcessTest(parameterized.TestCase):
         training_selection_fn=training_selection_fn,
         total_rounds=total_rounds,
         program_state_manager=program_state_manager,
-        rounds_per_saving_program_state=rounds_per_saving_program_state)
+        rounds_per_saving_program_state=rounds_per_saving_program_state,
+    )
 
     program_state_manager.load_latest.assert_called_once()
     expected_calls = []
@@ -225,7 +235,8 @@ class RunTrainingProcessTest(parameterized.TestCase):
       ('5_2', 5, 2),
   )
   def test_program_state_manager_called_with_existing_program_state(
-      self, version, total_rounds):
+      self, version, total_rounds
+  ):
     training_process = mock.create_autospec(iterative_process.IterativeProcess)
     training_process.initialize.return_value = 'initialize'
     training_process.next.return_value = ('update', {'metric': 1.0})
@@ -238,7 +249,8 @@ class RunTrainingProcessTest(parameterized.TestCase):
         training_selection_fn=training_selection_fn,
         total_rounds=total_rounds,
         program_state_manager=program_state_manager,
-        rounds_per_saving_program_state=1)
+        rounds_per_saving_program_state=1,
+    )
 
     program_state_manager.load_latest.assert_called_once()
     expected_calls = []
@@ -256,7 +268,9 @@ class RunTrainingProcessTest(parameterized.TestCase):
   def test_metrics_managers_called_without_evaluation(self, total_rounds):
     training_process = mock.create_autospec(iterative_process.IterativeProcess)
     training_process.initialize.return_value = 'initialize'
-    training_process.initialize.type_signature.return_value = _test_init_fn.type_signature
+    training_process.initialize.type_signature.return_value = (
+        _test_init_fn.type_signature
+    )
     training_process.next.return_value = ('update', {'metric': 1.0})
     training_process.next.type_signature = _test_next_fn.type_signature
     training_selection_fn = mock.MagicMock()
@@ -269,7 +283,8 @@ class RunTrainingProcessTest(parameterized.TestCase):
         training_process=training_process,
         training_selection_fn=training_selection_fn,
         total_rounds=total_rounds,
-        metrics_managers=metrics_managers)
+        metrics_managers=metrics_managers,
+    )
 
     expected_calls = []
     for round_num in range(1, total_rounds + 1):
@@ -278,11 +293,14 @@ class RunTrainingProcessTest(parameterized.TestCase):
           ('training_time_in_seconds', mock.ANY),
           ('round_number', round_num),
       ])
-      metrics_type = computation_types.StructWithPythonType([
-          ('metric', tf.float32),
-          ('training_time_in_seconds', tf.float32),
-          ('round_number', tf.int32),
-      ], collections.OrderedDict)
+      metrics_type = computation_types.StructWithPythonType(
+          [
+              ('metric', tf.float32),
+              ('training_time_in_seconds', tf.float32),
+              ('round_number', tf.int32),
+          ],
+          collections.OrderedDict,
+      )
       call = mock.call(metrics, metrics_type, round_num)
       expected_calls.append(call)
     for metrics_manager in metrics_managers:
@@ -297,8 +315,9 @@ class RunTrainingProcessTest(parameterized.TestCase):
       ('10_1', 10, 1),
       ('10_5', 10, 5),
   )
-  def test_metrics_managers_called_with_evaluation(self, total_rounds,
-                                                   rounds_per_evaluation):
+  def test_metrics_managers_called_with_evaluation(
+      self, total_rounds, rounds_per_evaluation
+  ):
     training_process = mock.create_autospec(iterative_process.IterativeProcess)
     training_process.initialize.return_value = 'initialize'
     training_process.next.return_value = ('update', {'metric': 1.0})
@@ -318,17 +337,21 @@ class RunTrainingProcessTest(parameterized.TestCase):
         evaluation_fn=evaluation_fn,
         evaluation_selection_fn=evaluation_selection_fn,
         rounds_per_evaluation=rounds_per_evaluation,
-        metrics_managers=metrics_managers)
+        metrics_managers=metrics_managers,
+    )
 
     expected_calls = []
     metrics = collections.OrderedDict([
         ('evaluation/metric', 1.0),
         ('evaluation/evaluation_time_in_seconds', mock.ANY),
     ])
-    metrics_type = computation_types.StructWithPythonType([
-        ('evaluation/metric', tf.float32),
-        ('evaluation/evaluation_time_in_seconds', tf.float32),
-    ], collections.OrderedDict)
+    metrics_type = computation_types.StructWithPythonType(
+        [
+            ('evaluation/metric', tf.float32),
+            ('evaluation/evaluation_time_in_seconds', tf.float32),
+        ],
+        collections.OrderedDict,
+    )
     call = mock.call(metrics, metrics_type, 0)
     expected_calls.append(call)
     for round_num in range(1, total_rounds + 1):
@@ -340,24 +363,30 @@ class RunTrainingProcessTest(parameterized.TestCase):
             ('evaluation/metric', 1.0),
             ('evaluation/evaluation_time_in_seconds', mock.ANY),
         ])
-        metrics_type = computation_types.StructWithPythonType([
-            ('metric', tf.float32),
-            ('training_time_in_seconds', tf.float32),
-            ('round_number', tf.int32),
-            ('evaluation/metric', tf.float32),
-            ('evaluation/evaluation_time_in_seconds', tf.float32),
-        ], collections.OrderedDict)
+        metrics_type = computation_types.StructWithPythonType(
+            [
+                ('metric', tf.float32),
+                ('training_time_in_seconds', tf.float32),
+                ('round_number', tf.int32),
+                ('evaluation/metric', tf.float32),
+                ('evaluation/evaluation_time_in_seconds', tf.float32),
+            ],
+            collections.OrderedDict,
+        )
       else:
         metrics = collections.OrderedDict([
             ('metric', 1.0),
             ('training_time_in_seconds', mock.ANY),
             ('round_number', round_num),
         ])
-        metrics_type = computation_types.StructWithPythonType([
-            ('metric', tf.float32),
-            ('training_time_in_seconds', tf.float32),
-            ('round_number', tf.int32),
-        ], collections.OrderedDict)
+        metrics_type = computation_types.StructWithPythonType(
+            [
+                ('metric', tf.float32),
+                ('training_time_in_seconds', tf.float32),
+                ('round_number', tf.int32),
+            ],
+            collections.OrderedDict,
+        )
       call = mock.call(metrics, metrics_type, round_num)
       expected_calls.append(call)
     for metrics_manager in metrics_managers:
@@ -366,7 +395,9 @@ class RunTrainingProcessTest(parameterized.TestCase):
   def test_metrics_managers_called_with_training_and_evaluation_time_10(self):
     training_process = mock.create_autospec(iterative_process.IterativeProcess)
     training_process.initialize.return_value = 'initialize'
-    training_process.initialize.type_signature.return_value = _test_init_fn.type_signature
+    training_process.initialize.type_signature.return_value = (
+        _test_init_fn.type_signature
+    )
     training_process.next.return_value = ('update', {'metric': 1.0})
     training_process.next.type_signature = _test_next_fn.type_signature
     training_selection_fn = mock.MagicMock()
@@ -386,17 +417,21 @@ class RunTrainingProcessTest(parameterized.TestCase):
             total_rounds=1,
             evaluation_fn=evaluation_fn,
             evaluation_selection_fn=evaluation_selection_fn,
-            metrics_managers=[metrics_manager])
+            metrics_managers=[metrics_manager],
+        )
 
     expected_calls = []
     metrics = collections.OrderedDict([
         ('evaluation/metric', 1.0),
         ('evaluation/evaluation_time_in_seconds', 10.0),
     ])
-    metrics_type = computation_types.StructWithPythonType([
-        ('evaluation/metric', tf.float32),
-        ('evaluation/evaluation_time_in_seconds', tf.float32),
-    ], collections.OrderedDict)
+    metrics_type = computation_types.StructWithPythonType(
+        [
+            ('evaluation/metric', tf.float32),
+            ('evaluation/evaluation_time_in_seconds', tf.float32),
+        ],
+        collections.OrderedDict,
+    )
     call = mock.call(metrics, metrics_type, 0)
     expected_calls.append(call)
     metrics = collections.OrderedDict([
@@ -406,13 +441,16 @@ class RunTrainingProcessTest(parameterized.TestCase):
         ('evaluation/metric', 1.0),
         ('evaluation/evaluation_time_in_seconds', 10.0),
     ])
-    metrics_type = computation_types.StructWithPythonType([
-        ('metric', tf.float32),
-        ('training_time_in_seconds', tf.float32),
-        ('round_number', tf.int32),
-        ('evaluation/metric', tf.float32),
-        ('evaluation/evaluation_time_in_seconds', tf.float32),
-    ], collections.OrderedDict)
+    metrics_type = computation_types.StructWithPythonType(
+        [
+            ('metric', tf.float32),
+            ('training_time_in_seconds', tf.float32),
+            ('round_number', tf.int32),
+            ('evaluation/metric', tf.float32),
+            ('evaluation/evaluation_time_in_seconds', tf.float32),
+        ],
+        collections.OrderedDict,
+    )
     call = mock.call(metrics, metrics_type, 1)
     expected_calls.append(call)
     self.assertEqual(metrics_manager.release.call_args_list, expected_calls)

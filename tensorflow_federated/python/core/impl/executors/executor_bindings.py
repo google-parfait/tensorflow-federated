@@ -48,14 +48,15 @@ GRPCChannel = executor_bindings.GRPCChannelInterface
 # literals to strings.
 def create_federating_executor(
     inner_executor: executor_bindings.Executor,
-    cardinalities: Mapping[placements.PlacementLiteral, int]
+    cardinalities: Mapping[placements.PlacementLiteral, int],
 ) -> executor_bindings.Executor:
   """Constructs a FederatingExecutor with a specified placement."""
   uri_cardinalities = (
       data_conversions.convert_cardinalities_dict_to_string_keyed(cardinalities)
   )
-  return executor_bindings.create_federating_executor(inner_executor,
-                                                      uri_cardinalities)
+  return executor_bindings.create_federating_executor(
+      inner_executor, uri_cardinalities
+  )
 
 
 def create_remote_executor(
@@ -71,7 +72,7 @@ def create_remote_executor(
 
 def create_composing_child(
     executor: executor_bindings.Executor,
-    cardinalities: Mapping[placements.PlacementLiteral, int]
+    cardinalities: Mapping[placements.PlacementLiteral, int],
 ) -> executor_bindings.Executor:
   """Constructs a ComposingChild with specified cardinalities."""
   uri_cardinalities = (

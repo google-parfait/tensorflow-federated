@@ -34,28 +34,37 @@ class DataBackendExampleTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('string', STRING_URI, tf.string, STRING_VALUE),
-      ('int_struct', INT_STRUCT_URI,
-       (tf.int32,), tff.structure.Struct.unnamed(INT_VALUE)),
+      (
+          'int_struct',
+          INT_STRUCT_URI,
+          (tf.int32,),
+          tff.structure.Struct.unnamed(INT_VALUE),
+      ),
   )
   def test_materialize_returns(self, uri, type_signature, expected_value):
     backend = data_backend_example.DataBackendExample()
     value = asyncio.run(
         backend.materialize(
-            tff_computation_proto.Data(uri=uri), tff.to_type(type_signature)))
+            tff_computation_proto.Data(uri=uri), tff.to_type(type_signature)
+        )
+    )
     self.assertEqual(value, expected_value)
 
   def test_raises_no_uri(self):
     backend = data_backend_example.DataBackendExample()
     with self.assertRaisesRegex(status.StatusNotOk, 'non-URI data blocks'):
       asyncio.run(
-          backend.materialize(tff_computation_proto.Data(), tff.to_type(())))
+          backend.materialize(tff_computation_proto.Data(), tff.to_type(()))
+      )
 
   def test_raises_unknown_uri(self):
     backend = data_backend_example.DataBackendExample()
     with self.assertRaisesRegex(status.StatusNotOk, 'Unknown URI'):
       asyncio.run(
           backend.materialize(
-              tff_computation_proto.Data(uri='unknown_uri'), tff.to_type(())))
+              tff_computation_proto.Data(uri='unknown_uri'), tff.to_type(())
+          )
+      )
 
 
 if __name__ == '__main__':

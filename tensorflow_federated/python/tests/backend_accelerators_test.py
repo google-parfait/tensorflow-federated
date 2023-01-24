@@ -20,7 +20,6 @@ import tensorflow_federated as tff
 
 
 def _create_tff_parallel_clients_with_dataset_reduce():
-
   @tf.function
   def reduce_fn(x, y):
     return x + y
@@ -42,7 +41,6 @@ def _create_tff_parallel_clients_with_dataset_reduce():
 
 
 def _create_tff_parallel_clients_with_iter_dataset():
-
   @tf.function
   def reduce_fn(x, y):
     return x + y
@@ -71,31 +69,48 @@ class LocalExecutorMultiTPUTest(tf.test.TestCase, parameterized.TestCase):
     super().setUp()
     tpu_devices = tf.config.list_logical_devices('TPU')
     if len(tpu_devices) < 2:
-      self.skipTest('Skip multi-tpu tests when {} tpus are provided'.format(
-          len(tpu_devices)))
+      self.skipTest(
+          'Skip multi-tpu tests when {} tpus are provided'.format(
+              len(tpu_devices)
+          )
+      )
 
   @parameterized.named_parameters(
-      ('iter_server_on_cpu', 'CPU',
-       _create_tff_parallel_clients_with_iter_dataset),
-      ('iter_server_on_tpu', 'TPU',
-       _create_tff_parallel_clients_with_iter_dataset),
-      ('reduce_server_on_cpu', 'CPU',
-       _create_tff_parallel_clients_with_dataset_reduce),
-      ('reduce_server_on_tpu', 'TPU',
-       _create_tff_parallel_clients_with_dataset_reduce),
+      (
+          'iter_server_on_cpu',
+          'CPU',
+          _create_tff_parallel_clients_with_iter_dataset,
+      ),
+      (
+          'iter_server_on_tpu',
+          'TPU',
+          _create_tff_parallel_clients_with_iter_dataset,
+      ),
+      (
+          'reduce_server_on_cpu',
+          'CPU',
+          _create_tff_parallel_clients_with_dataset_reduce,
+      ),
+      (
+          'reduce_server_on_tpu',
+          'TPU',
+          _create_tff_parallel_clients_with_dataset_reduce,
+      ),
   )
-  def test_local_executor_multi_tpus(self, tf_device,
-                                     create_tff_parallel_clients_fn):
+  def test_local_executor_multi_tpus(
+      self, tf_device, create_tff_parallel_clients_fn
+  ):
     self.skipTest('b/157625321')
     tf_devices = tf.config.list_logical_devices(tf_device)
     server_tf_device = None if not tf_devices else tf_devices[0]
     client_devices = tf.config.list_logical_devices('TPU')
     tff.backends.native.set_local_python_execution_context(
-        server_tf_device=server_tf_device, client_tf_devices=client_devices)
+        server_tf_device=server_tf_device, client_tf_devices=client_devices
+    )
     parallel_client_run = create_tff_parallel_clients_fn()
     client_data = [
         tf.data.Dataset.range(10),
-        tf.data.Dataset.range(10).map(lambda x: x + 1)
+        tf.data.Dataset.range(10).map(lambda x: x + 1),
     ]
     client_results = parallel_client_run(client_data)
     self.assertEqual(client_results, [np.int64(46), np.int64(56)])

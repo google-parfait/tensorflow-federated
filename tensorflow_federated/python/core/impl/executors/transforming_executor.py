@@ -50,10 +50,12 @@ class TransformingExecutor(executor_base.Executor):
     if isinstance(value, computation_impl.ConcreteComputation):
       return await self.create_value(
           computation_impl.ConcreteComputation.get_proto(value),
-          executor_utils.reconcile_value_with_type_spec(value, type_spec))
+          executor_utils.reconcile_value_with_type_spec(value, type_spec),
+      )
     elif isinstance(value, pb.Computation):
       return await self.create_value(
-          building_blocks.ComputationBuildingBlock.from_proto(value), type_spec)
+          building_blocks.ComputationBuildingBlock.from_proto(value), type_spec
+      )
     elif isinstance(value, building_blocks.ComputationBuildingBlock):
       value = self._transformation_fn(value)
       py_typecheck.check_type(value, building_blocks.ComputationBuildingBlock)

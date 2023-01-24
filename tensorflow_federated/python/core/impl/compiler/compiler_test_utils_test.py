@@ -27,25 +27,39 @@ class CheckCompiledComputationsTest(parameterized.TestCase):
     computation_1 = building_block_test_utils.create_nested_syntax_tree()
     computation_2 = building_block_test_utils.create_nested_syntax_tree()
     computations = collections.OrderedDict(
-        computation_1=computation_1, computation_2=computation_2)
-    compiler_test_utils.check_computations('test_check_computations.expected',
-                                           computations)
+        computation_1=computation_1, computation_2=computation_2
+    )
+    compiler_test_utils.check_computations(
+        'test_check_computations.expected', computations
+    )
 
   def test_check_computations_fails(self):
     computations = collections.OrderedDict(
-        computation=building_block_test_utils.create_nested_syntax_tree())
+        computation=building_block_test_utils.create_nested_syntax_tree()
+    )
     with self.assertRaises(golden.MismatchedGoldenError):
-      compiler_test_utils.check_computations('test_check_computations.expected',
-                                             computations)
+      compiler_test_utils.check_computations(
+          'test_check_computations.expected', computations
+      )
 
   @parameterized.named_parameters([
-      ('invalid_filename', 1.0,
-       collections.OrderedDict(
-           computation=building_block_test_utils.create_nested_syntax_tree())),
-      ('invalid_computations', 'test_check_computations.expected',
-       [building_block_test_utils.create_nested_syntax_tree()]),
-      ('invalid_computation', 'test_check_computations.expected',
-       collections.OrderedDict(computation=1.0)),
+      (
+          'invalid_filename',
+          1.0,
+          collections.OrderedDict(
+              computation=building_block_test_utils.create_nested_syntax_tree()
+          ),
+      ),
+      (
+          'invalid_computations',
+          'test_check_computations.expected',
+          [building_block_test_utils.create_nested_syntax_tree()],
+      ),
+      (
+          'invalid_computation',
+          'test_check_computations.expected',
+          collections.OrderedDict(computation=1.0),
+      ),
   ])
   def test_check_computations_raises_type_error(self, filename, computations):
     with self.assertRaises(TypeError):

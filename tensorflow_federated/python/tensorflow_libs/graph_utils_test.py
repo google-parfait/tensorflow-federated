@@ -64,12 +64,14 @@ class AddControlDepMappingsTest(tf.test.TestCase):
         graph_utils.add_control_dep_mappings({
             'foo:0': bar,
             'test': test2,
-        }), {
+        }),
+        {
             'foo:0': bar,
             '^foo': '^bar',
             'test': test2,
             '^test': '^test2',
-        })
+        },
+    )
 
   def test_add_mappings_skip_existing_control_deps(self):
     input_map = {'^foo': '^bar'}

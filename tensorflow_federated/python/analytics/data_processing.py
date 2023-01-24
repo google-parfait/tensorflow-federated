@@ -20,8 +20,9 @@ from tensorflow_federated.python.common_libs import py_typecheck
 
 
 @tf.function
-def get_all_elements(dataset: tf.data.Dataset,
-                     string_max_bytes: Optional[int] = None):
+def get_all_elements(
+    dataset: tf.data.Dataset, string_max_bytes: Optional[int] = None
+):
   """Gets all the elements from the input dataset.
 
   The input `dataset` must yield batched rank-1 tensors. This function reads
@@ -45,36 +46,43 @@ def get_all_elements(dataset: tf.data.Dataset,
   """
 
   if dataset.element_spec.shape.rank != 1:
-    raise ValueError('The shape of elements in `dataset` must be of rank 1, '
-                     f' found rank = {dataset.element_spec.shape.rank}'
-                     ' instead.')
+    raise ValueError(
+        'The shape of elements in `dataset` must be of rank 1, '
+        f' found rank = {dataset.element_spec.shape.rank}'
+        ' instead.'
+    )
 
   if dataset.element_spec.dtype != tf.string:
-    raise TypeError('`dataset.element_spec.dtype` must be `tf.string`, found'
-                    f' element type {dataset.element_spec.dtype}')
+    raise TypeError(
+        '`dataset.element_spec.dtype` must be `tf.string`, found'
+        f' element type {dataset.element_spec.dtype}'
+    )
 
   if string_max_bytes is not None and string_max_bytes < 1:
-    raise ValueError('`string_max_bytes` must be at least 1 when it is not'
-                     ' None.')
+    raise ValueError(
+        '`string_max_bytes` must be at least 1 when it is not None.'
+    )
 
   initial_list = tf.constant([], dtype=tf.string)
 
   def add_element(element_list, element_batch):
     if string_max_bytes is not None:
       element_batch = tf.strings.substr(
-          element_batch, 0, string_max_bytes, unit='BYTE')
+          element_batch, 0, string_max_bytes, unit='BYTE'
+      )
     element_list = tf.concat([element_list, element_batch], axis=0)
     return element_list
 
   all_element_list = dataset.reduce(
-      initial_state=initial_list, reduce_func=add_element)
+      initial_state=initial_list, reduce_func=add_element
+  )
 
   return all_element_list
 
 
-def _get_capped_dataset(dataset: tf.data.Dataset,
-                        max_user_contribution: int,
-                        batch_size: int = 1):
+def _get_capped_dataset(
+    dataset: tf.data.Dataset, max_user_contribution: int, batch_size: int = 1
+):
   """Returns capped `tf.data.Dataset` with the input `dataset`.
 
   The input `dataset` must yield batched rank-1 tensors. This function caps the
@@ -101,9 +109,11 @@ def _get_capped_dataset(dataset: tf.data.Dataset,
       `tf.string`.
   """
   if dataset.element_spec.shape.rank != 1:
-    raise ValueError('The shape of elements in `dataset` must be of rank 1, '
-                     f' found rank = {dataset.element_spec.shape.rank}'
-                     ' instead.')
+    raise ValueError(
+        'The shape of elements in `dataset` must be of rank 1, '
+        f' found rank = {dataset.element_spec.shape.rank}'
+        ' instead.'
+    )
 
   if max_user_contribution < 1:
     raise ValueError('`max_user_contribution` must be at least 1.')
@@ -112,18 +122,22 @@ def _get_capped_dataset(dataset: tf.data.Dataset,
     raise ValueError('`batch_size` must be at least 1.')
 
   if dataset.element_spec.dtype != tf.string:
-    raise TypeError('`dataset.element_spec.dtype` must be `tf.string`, found'
-                    f' element type {dataset.element_spec.dtype}')
+    raise TypeError(
+        '`dataset.element_spec.dtype` must be `tf.string`, found'
+        f' element type {dataset.element_spec.dtype}'
+    )
 
   capped_size = max_user_contribution // batch_size
   capped_dataset = dataset.take(capped_size)
   return capped_dataset
 
 
-def get_capped_elements(dataset: tf.data.Dataset,
-                        max_user_contribution: int,
-                        batch_size: int = 1,
-                        string_max_bytes: Optional[int] = None):
+def get_capped_elements(
+    dataset: tf.data.Dataset,
+    max_user_contribution: int,
+    batch_size: int = 1,
+    string_max_bytes: Optional[int] = None,
+):
   """Gets the first `max_user_contribution` elements from the input dataset.
 
   The input `dataset` must yield batched rank-1 tensors. This function reads
@@ -157,19 +171,23 @@ def get_capped_elements(dataset: tf.data.Dataset,
   """
 
   if string_max_bytes is not None and string_max_bytes < 1:
-    raise ValueError('`string_max_bytes` must be at least 1 when it is not'
-                     ' None.')
+    raise ValueError(
+        '`string_max_bytes` must be at least 1 when it is not None.'
+    )
   capped_dataset = _get_capped_dataset(
       dataset=dataset,
       max_user_contribution=max_user_contribution,
-      batch_size=batch_size)
+      batch_size=batch_size,
+  )
   return get_all_elements(capped_dataset, string_max_bytes)
 
 
-def get_capped_elements_with_counts(dataset: tf.data.Dataset,
-                                    max_user_contribution: int,
-                                    batch_size: int = 1,
-                                    string_max_bytes: Optional[int] = None):
+def get_capped_elements_with_counts(
+    dataset: tf.data.Dataset,
+    max_user_contribution: int,
+    batch_size: int = 1,
+    string_max_bytes: Optional[int] = None,
+):
   """Gets the capped elements with counts from the input dataset.
 
   The input `dataset` must yield batched rank-1 tensors. This function reads
@@ -204,18 +222,21 @@ def get_capped_elements_with_counts(dataset: tf.data.Dataset,
       `tf.string`.
   """
   if string_max_bytes is not None and string_max_bytes < 1:
-    raise ValueError('`string_max_bytes` must be at least 1 when it is not'
-                     ' None.')
+    raise ValueError(
+        '`string_max_bytes` must be at least 1 when it is not None.'
+    )
   capped_dataset = _get_capped_dataset(
       dataset=dataset,
       max_user_contribution=max_user_contribution,
-      batch_size=batch_size)
+      batch_size=batch_size,
+  )
   return get_unique_elements_with_counts(capped_dataset, string_max_bytes)
 
 
 @tf.function
-def get_unique_elements(dataset: tf.data.Dataset,
-                        string_max_bytes: Optional[int] = None):
+def get_unique_elements(
+    dataset: tf.data.Dataset, string_max_bytes: Optional[int] = None
+):
   """Gets the unique elements from the input `dataset`.
 
   The input `dataset` must yield batched rank-1 tensors. This function reads
@@ -240,30 +261,37 @@ def get_unique_elements(dataset: tf.data.Dataset,
   """
 
   if dataset.element_spec.shape.rank != 1:
-    raise ValueError('The shape of elements in `dataset` must be of rank 1, '
-                     f' found rank = {dataset.element_spec.shape.rank}'
-                     ' instead.')
+    raise ValueError(
+        'The shape of elements in `dataset` must be of rank 1, '
+        f' found rank = {dataset.element_spec.shape.rank}'
+        ' instead.'
+    )
 
   if string_max_bytes is not None and string_max_bytes < 1:
-    raise ValueError('`string_max_bytes` must be at least 1 when it is not'
-                     ' None.')
+    raise ValueError(
+        '`string_max_bytes` must be at least 1 when it is not None.'
+    )
 
   if dataset.element_spec.dtype != tf.string:
-    raise TypeError('`dataset.element_spec.dtype` must be `tf.string`, found'
-                    f' element type {dataset.element_spec.dtype}')
+    raise TypeError(
+        '`dataset.element_spec.dtype` must be `tf.string`, found'
+        f' element type {dataset.element_spec.dtype}'
+    )
 
   initial_list = tf.constant([], dtype=tf.string)
 
   def add_unique_element(element_list, element_batch):
     if string_max_bytes is not None:
       element_batch = tf.strings.substr(
-          element_batch, 0, string_max_bytes, unit='BYTE')
+          element_batch, 0, string_max_bytes, unit='BYTE'
+      )
     element_list = tf.concat([element_list, element_batch], axis=0)
     element_list, _ = tf.unique(element_list)
     return element_list
 
   unique_element_list = dataset.reduce(
-      initial_state=initial_list, reduce_func=add_unique_element)
+      initial_state=initial_list, reduce_func=add_unique_element
+  )
 
   return unique_element_list
 
@@ -271,8 +299,8 @@ def get_unique_elements(dataset: tf.data.Dataset,
 # TODO(b/192336690): Improve the efficiency of get_unique_elements_with_counts.
 # The current implementation iterates `dataset` twice, which is not optimal.
 def get_unique_elements_with_counts(
-    dataset: tf.data.Dataset,
-    string_max_bytes: Optional[int] = None) -> tuple[tf.Tensor, tf.Tensor]:
+    dataset: tf.data.Dataset, string_max_bytes: Optional[int] = None
+) -> tuple[tf.Tensor, tf.Tensor]:
   """Gets unique elements and their counts from the input `dataset`.
 
   This method returns a tuple of `elements` and `counts`, where `elements` are
@@ -303,17 +331,22 @@ def get_unique_elements_with_counts(
       `tf.string`.
   """
   if dataset.element_spec.shape.rank != 1:
-    raise ValueError('The shape of elements in `dataset` must be of rank 1, '
-                     f' found rank = {dataset.element_spec.shape.rank}'
-                     ' instead.')
+    raise ValueError(
+        'The shape of elements in `dataset` must be of rank 1, '
+        f' found rank = {dataset.element_spec.shape.rank}'
+        ' instead.'
+    )
 
   if string_max_bytes is not None and string_max_bytes < 1:
-    raise ValueError('`string_max_bytes` must be at least 1 when it is not'
-                     ' None.')
+    raise ValueError(
+        '`string_max_bytes` must be at least 1 when it is not None.'
+    )
 
   if dataset.element_spec.dtype != tf.string:
-    raise TypeError('`dataset.element_spec.dtype` must be `tf.string`, found'
-                    f' element type {dataset.element_spec.dtype}')
+    raise TypeError(
+        '`dataset.element_spec.dtype` must be `tf.string`, found'
+        f' element type {dataset.element_spec.dtype}'
+    )
 
   all_elements = get_all_elements(dataset, string_max_bytes)
 
@@ -326,7 +359,8 @@ def get_unique_elements_with_counts(
   counts = tf.foldl(
       accumulate_counts,
       indices,
-      initializer=tf.zeros_like(elements, dtype=tf.int64))
+      initializer=tf.zeros_like(elements, dtype=tf.int64),
+  )
 
   return elements, counts
 
@@ -335,7 +369,8 @@ def get_unique_elements_with_counts(
 def get_top_elements_with_counts(
     dataset: tf.data.Dataset,
     max_user_contribution: int,
-    string_max_bytes: Optional[int] = None) -> tuple[tf.Tensor, tf.Tensor]:
+    string_max_bytes: Optional[int] = None,
+) -> tuple[tf.Tensor, tf.Tensor]:
   """Gets top unique elements from the input `dataset`.
 
   This method returns a tuple of `elements` and `counts`, where `elements` are
@@ -375,15 +410,18 @@ def get_top_elements_with_counts(
 
   if tf.math.greater(tf.size(elements), max_user_contribution):
     counts, top_indices = tf.math.top_k(
-        counts, max_user_contribution, sorted=False)
+        counts, max_user_contribution, sorted=False
+    )
     top_elements = tf.gather(elements, top_indices)
     return top_elements, counts
   return elements, counts
 
 
-def get_top_elements(dataset: tf.data.Dataset,
-                     max_user_contribution: int,
-                     string_max_bytes: Optional[int] = None):
+def get_top_elements(
+    dataset: tf.data.Dataset,
+    max_user_contribution: int,
+    string_max_bytes: Optional[int] = None,
+):
   """Gets top unique elements from the input `dataset`.
 
   This method returns the set of `max_user_contribution` elements that appear
@@ -423,13 +461,16 @@ def get_top_elements(dataset: tf.data.Dataset,
   top_elements, _ = get_top_elements_with_counts(
       dataset=dataset,
       max_user_contribution=max_user_contribution,
-      string_max_bytes=string_max_bytes)
+      string_max_bytes=string_max_bytes,
+  )
   return top_elements
 
 
-def get_top_multi_elements(dataset: tf.data.Dataset,
-                           max_user_contribution: int,
-                           string_max_bytes: Optional[int] = None):
+def get_top_multi_elements(
+    dataset: tf.data.Dataset,
+    max_user_contribution: int,
+    string_max_bytes: Optional[int] = None,
+):
   """Gets the top unique word multiset from the input `dataset`.
 
   This method returns the `max_user_contribution` most common unique elements
@@ -470,7 +511,8 @@ def get_top_multi_elements(dataset: tf.data.Dataset,
   top_elements, counts = get_top_elements_with_counts(
       dataset=dataset,
       max_user_contribution=max_user_contribution,
-      string_max_bytes=string_max_bytes)
+      string_max_bytes=string_max_bytes,
+  )
   return tf.repeat(top_elements, counts)
 
 
@@ -513,11 +555,14 @@ def to_stacked_tensor(ds: tf.data.Dataset) -> tf.Tensor:
 
   with tf.name_scope('to_stacked_tensor'):
     try:
-      initial_state = tf.nest.map_structure(expanded_empty_tensor,
-                                            ds.element_spec)
+      initial_state = tf.nest.map_structure(
+          expanded_empty_tensor, ds.element_spec
+      )
     except _TensorShapeNotFullyDefinedError as shape_not_defined_error:
-      raise ValueError('Dataset elements must have fully-defined shapes. '
-                       f'Found: {ds.element_spec}') from shape_not_defined_error
+      raise ValueError(
+          'Dataset elements must have fully-defined shapes. '
+          f'Found: {ds.element_spec}'
+      ) from shape_not_defined_error
 
   @tf.function
   def append_tensor(stacked: tf.Tensor, tensor: tf.Tensor) -> tf.Tensor:

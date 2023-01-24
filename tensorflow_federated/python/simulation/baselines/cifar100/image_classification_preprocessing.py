@@ -26,8 +26,7 @@ NUM_EXAMPLES_PER_CLIENT = 500
 
 
 def build_image_map(
-    crop_shape: Union[tf.Tensor, Sequence[int]],
-    distort: bool = False
+    crop_shape: Union[tf.Tensor, Sequence[int]], distort: bool = False
 ) -> Callable[[tf.Tensor], tuple[tf.Tensor, tf.Tensor]]:
   """Builds a function that crops and normalizes CIFAR-100 elements.
 
@@ -60,7 +59,8 @@ def build_image_map(
 
     def crop_fn(image):
       return tf.image.resize_with_crop_or_pad(
-          image, target_height=crop_shape[0], target_width=crop_shape[1])
+          image, target_height=crop_shape[0], target_width=crop_shape[1]
+      )
 
   def image_map(example):
     image = tf.cast(example['image'], tf.float32)
@@ -75,7 +75,7 @@ def create_preprocess_fn(
     preprocess_spec: client_spec.ClientSpec,
     crop_shape: tuple[int, int, int] = CIFAR_SHAPE,
     distort_image=False,
-    num_parallel_calls: int = tf.data.experimental.AUTOTUNE
+    num_parallel_calls: int = tf.data.experimental.AUTOTUNE,
 ) -> Callable[[tf.data.Dataset], tf.data.Dataset]:
   """Creates a preprocessing function for CIFAR-100 client datasets.
 
@@ -109,8 +109,10 @@ def create_preprocess_fn(
     raise TypeError('Argument crop_shape must be an iterable.')
   crop_shape = tuple(crop_shape)
   if len(crop_shape) != 3:
-    raise ValueError('The crop_shape must have length 3, corresponding to a '
-                     'tensor of shape [height, width, channels].')
+    raise ValueError(
+        'The crop_shape must have length 3, corresponding to a '
+        'tensor of shape [height, width, channels].'
+    )
 
   shuffle_buffer_size = preprocess_spec.shuffle_buffer_size
   if shuffle_buffer_size is None:

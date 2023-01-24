@@ -31,7 +31,6 @@ class ListDataBackend(tff.framework.DataBackend):
 
 
 def main(_: Sequence[str]) -> None:
-
   def ex_fn(device: tf.config.LogicalDevice) -> tff.framework.DataExecutor:
     # In order to de-reference data uri's bundled in TFF computations, a
     # DataExecutor must exist in the runtime context to process those uri's and
@@ -39,7 +38,8 @@ def main(_: Sequence[str]) -> None:
     # TF operations) with a DataExecutor instance defined with a DataBackend
     # object.
     return tff.framework.DataExecutor(
-        tff.framework.EagerTFExecutor(device), data_backend=ListDataBackend())
+        tff.framework.EagerTFExecutor(device), data_backend=ListDataBackend()
+    )
 
   # Executor factory used by the runtime context to spawn executors to run TFF
   # computations.
@@ -64,13 +64,15 @@ def main(_: Sequence[str]) -> None:
   # underlying dataset as federated and allows combining it with a federated
   # computation.
   data_handle = tff.framework.DataDescriptor(
-      None, arguments, tff.FederatedType(element_type, tff.CLIENTS),
-      len(arguments))
+      None,
+      arguments,
+      tff.FederatedType(element_type, tff.CLIENTS),
+      len(arguments),
+  )
 
   # Federated computation that sums the values in the lists.
   @tff.federated_computation(tff.types.FederatedType(element_type, tff.CLIENTS))
   def foo(x):
-
     @tff.tf_computation(element_type)
     def local_sum(nums):
       return nums.reduce(0, lambda x, y: x + y)

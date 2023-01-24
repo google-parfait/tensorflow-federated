@@ -25,21 +25,26 @@ class WordPredictionTasksTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_constructs_with_eval_client_spec(self):
     train_client_spec = client_spec.ClientSpec(
-        num_epochs=2, batch_size=10, max_elements=3, shuffle_buffer_size=5)
+        num_epochs=2, batch_size=10, max_elements=3, shuffle_buffer_size=5
+    )
     eval_client_spec = client_spec.ClientSpec(
-        num_epochs=1, batch_size=2, max_elements=5, shuffle_buffer_size=10)
+        num_epochs=1, batch_size=2, max_elements=5, shuffle_buffer_size=10
+    )
     baseline_task_spec = word_prediction_tasks.create_word_prediction_task(
         train_client_spec,
         vocab_size=10,
         eval_client_spec=eval_client_spec,
-        use_synthetic_data=True)
+        use_synthetic_data=True,
+    )
     self.assertIsInstance(baseline_task_spec, baseline_task.BaselineTask)
 
   def test_constructs_without_eval_client_spec(self):
     train_client_spec = client_spec.ClientSpec(
-        num_epochs=2, batch_size=10, max_elements=3, shuffle_buffer_size=5)
+        num_epochs=2, batch_size=10, max_elements=3, shuffle_buffer_size=5
+    )
     baseline_task_spec = word_prediction_tasks.create_word_prediction_task(
-        train_client_spec, vocab_size=10, use_synthetic_data=True)
+        train_client_spec, vocab_size=10, use_synthetic_data=True
+    )
     self.assertIsInstance(baseline_task_spec, baseline_task.BaselineTask)
 
   @parameterized.named_parameters(
@@ -50,12 +55,14 @@ class WordPredictionTasksTest(tf.test.TestCase, parameterized.TestCase):
   )
   def test_constructs_with_different_sequence_lengths(self, sequence_length):
     train_client_spec = client_spec.ClientSpec(
-        num_epochs=2, batch_size=10, max_elements=3, shuffle_buffer_size=5)
+        num_epochs=2, batch_size=10, max_elements=3, shuffle_buffer_size=5
+    )
     baseline_task_spec = word_prediction_tasks.create_word_prediction_task(
         train_client_spec,
         vocab_size=10,
         sequence_length=sequence_length,
-        use_synthetic_data=True)
+        use_synthetic_data=True,
+    )
     self.assertIsInstance(baseline_task_spec, baseline_task.BaselineTask)
 
   @parameterized.named_parameters(
@@ -65,13 +72,15 @@ class WordPredictionTasksTest(tf.test.TestCase, parameterized.TestCase):
   )
   def test_raises_on_bad_sequence_lengths(self, sequence_length):
     train_client_spec = client_spec.ClientSpec(
-        num_epochs=2, batch_size=10, max_elements=3, shuffle_buffer_size=5)
+        num_epochs=2, batch_size=10, max_elements=3, shuffle_buffer_size=5
+    )
     with self.assertRaises(ValueError):
       word_prediction_tasks.create_word_prediction_task(
           train_client_spec,
           vocab_size=10,
           sequence_length=sequence_length,
-          use_synthetic_data=True)
+          use_synthetic_data=True,
+      )
 
   @parameterized.named_parameters(
       ('vocab_size1', 1),
@@ -81,9 +90,11 @@ class WordPredictionTasksTest(tf.test.TestCase, parameterized.TestCase):
   )
   def test_constructs_with_different_vocab_sizes(self, vocab_size):
     train_client_spec = client_spec.ClientSpec(
-        num_epochs=2, batch_size=10, max_elements=3, shuffle_buffer_size=5)
+        num_epochs=2, batch_size=10, max_elements=3, shuffle_buffer_size=5
+    )
     baseline_task_spec = word_prediction_tasks.create_word_prediction_task(
-        train_client_spec, vocab_size=vocab_size, use_synthetic_data=True)
+        train_client_spec, vocab_size=vocab_size, use_synthetic_data=True
+    )
     self.assertIsInstance(baseline_task_spec, baseline_task.BaselineTask)
 
   @parameterized.named_parameters(
@@ -93,16 +104,20 @@ class WordPredictionTasksTest(tf.test.TestCase, parameterized.TestCase):
   )
   def test_raises_on_bad_vocab_size(self, vocab_size):
     train_client_spec = client_spec.ClientSpec(
-        num_epochs=2, batch_size=10, max_elements=3, shuffle_buffer_size=5)
+        num_epochs=2, batch_size=10, max_elements=3, shuffle_buffer_size=5
+    )
     with self.assertRaises(ValueError):
       word_prediction_tasks.create_word_prediction_task(
-          train_client_spec, vocab_size=vocab_size, use_synthetic_data=True)
+          train_client_spec, vocab_size=vocab_size, use_synthetic_data=True
+      )
 
   def test_model_is_compatible_with_preprocessed_data(self):
     train_client_spec = client_spec.ClientSpec(num_epochs=1, batch_size=10)
     baseline_task_spec = word_prediction_tasks.create_word_prediction_task(
-        train_client_spec, use_synthetic_data=True)
-    centralized_dataset = baseline_task_spec.datasets.get_centralized_test_data(
+        train_client_spec, use_synthetic_data=True
+    )
+    centralized_dataset = (
+        baseline_task_spec.datasets.get_centralized_test_data()
     )
     sample_batch = next(iter(centralized_dataset))
     model = baseline_task_spec.model_fn()

@@ -40,7 +40,8 @@ def make_control_dependency(name: str) -> str:
 
 
 def add_control_dep_mappings(
-    input_map: dict[str, tf.Tensor]) -> dict[str, tf.Tensor]:
+    input_map: dict[str, tf.Tensor]
+) -> dict[str, tf.Tensor]:
   """Add control dependency mappings for all tensors in an input map.
 
   Intended to be used for the `input_map` argument of
@@ -55,8 +56,10 @@ def add_control_dep_mappings(
     A new new `dict` with potentially additional keys for control dependencies.
   """
   return dict(
-      **input_map, **{
+      **input_map,
+      **{
           make_control_dependency(k): make_control_dependency(v.name)
           for k, v in input_map.items()
           if not is_control_dependency(k)
-      })
+      },
+  )

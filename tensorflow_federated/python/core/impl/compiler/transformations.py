@@ -65,7 +65,7 @@ def to_call_dominant(
   global_comp = comp
   name_generator = building_block_factory.unique_name_generator(comp)
 
-  class _Scope():
+  class _Scope:
     """Name resolution scopes which track the creation of new value bindings."""
 
     def __init__(self, parent=None, bind_to_parent=False):
@@ -140,7 +140,7 @@ def to_call_dominant(
       return building_blocks.Selection(source, index=comp.as_index())
     elif comp.is_struct():
       elements = []
-      for (name, value) in structure.iter_elements(comp):
+      for name, value in structure.iter_elements(comp):
         value = _build(value, scope)
         elements.append((name, value))
       return building_blocks.Struct(elements)
@@ -159,22 +159,29 @@ def to_call_dominant(
       if comp.parameter_name:
         scope.add_local(
             comp.parameter_name,
-            building_blocks.Reference(comp.parameter_name, comp.parameter_type))
+            building_blocks.Reference(comp.parameter_name, comp.parameter_type),
+        )
       result = _build(comp.result, scope)
       block = scope.bindings_to_block_with_result(result)
-      return building_blocks.Lambda(comp.parameter_name, comp.parameter_type,
-                                    block)
+      return building_blocks.Lambda(
+          comp.parameter_name, comp.parameter_type, block
+      )
     elif comp.is_block():
       scope = scope.new_child()
-      for (name, value) in comp.locals:
+      for name, value in comp.locals:
         scope.add_local(name, _build(value, scope))
       return _build(comp.result, scope)
-    elif (comp.is_intrinsic() or comp.is_data() or
-          comp.is_compiled_computation() or comp.is_placement()):
+    elif (
+        comp.is_intrinsic()
+        or comp.is_data()
+        or comp.is_compiled_computation()
+        or comp.is_placement()
+    ):
       return comp
     else:
       raise ValueError(
-          f'Unrecognized computation kind\n{comp}\nin\n{global_comp}')
+          f'Unrecognized computation kind\n{comp}\nin\n{global_comp}'
+      )
 
   scope = _Scope()
   result = _build(comp, scope)
@@ -193,10 +200,12 @@ _NamedBinding = tuple[str, building_blocks.ComputationBuildingBlock]
 @attr.s
 class _IntrinsicDependencies:
   uri_to_locals: dict[str, list[_NamedBinding]] = attr.ib(
-      factory=lambda: collections.defaultdict(list))
+      factory=lambda: collections.defaultdict(list)
+  )
   locals_dependent_on_intrinsics: list[_NamedBinding] = attr.ib(factory=list)
   locals_not_dependent_on_intrinsics: list[_NamedBinding] = attr.ib(
-      factory=list)
+      factory=list
+  )
 
 
 class _NonAlignableAlongIntrinsicError(ValueError):
@@ -227,7 +236,8 @@ def _compute_intrinsic_dependencies(
               f'Original comp: {comp_repr}\n'
           )
         intrinsic_dependencies.update(  # pylint: disable=cell-var-from-loop
-            intrinsic_dependencies_for_ref[subvalue.name])
+            intrinsic_dependencies_for_ref[subvalue.name]
+        )
       elif subvalue.is_lambda():
         # We treat the lambdas that appear in CDF (inside intrinsic invocations)
         # as though their parameters are independent of the rest of the
@@ -247,25 +257,31 @@ def _compute_intrinsic_dependencies(
 
     # All intrinsic calls are guaranteed to be top-level in call-dominant form.
     is_intrinsic_call = (
-        local_value.is_call() and local_value.function.is_intrinsic() and
-        local_value.function.uri in intrinsic_uris)
+        local_value.is_call()
+        and local_value.function.is_intrinsic()
+        and local_value.function.uri in intrinsic_uris
+    )
     if is_intrinsic_call:
       if intrinsic_dependencies:
         raise _NonAlignableAlongIntrinsicError(
             'Cannot force-align intrinsics:\n'
             f'Call to intrinsic `{local_value.function.uri}` depends '
-            f'on calls to intrinsics:\n`{intrinsic_dependencies}`.')
+            f'on calls to intrinsics:\n`{intrinsic_dependencies}`.'
+        )
       intrinsic_dependencies_for_ref[local_name] = set(
-          [local_value.function.uri])
+          [local_value.function.uri]
+      )
       result.uri_to_locals[local_value.function.uri].append(
-          (local_name, local_value))
+          (local_name, local_value)
+      )
     else:
       intrinsic_dependencies_for_ref[local_name] = intrinsic_dependencies
       if intrinsic_dependencies:
         result.locals_dependent_on_intrinsics.append((local_name, local_value))
       else:
         result.locals_not_dependent_on_intrinsics.append(
-            (local_name, local_value))
+            (local_name, local_value)
+        )
   return result
 
 
@@ -308,35 +324,44 @@ def _compute_merged_intrinsics(
               uri=uri,
               args=default_call.argument,
               return_type=default_call.type_signature,
-              unpack_to_locals=[]))
+              unpack_to_locals=[],
+          )
+      )
     else:
       calls = [local[1] for local in locals_for_uri]
       result_placement = calls[0].type_signature.placement
       result_all_equal = calls[0].type_signature.all_equal
       for call in calls:
         if call.type_signature.all_equal != result_all_equal:
-          raise ValueError('Encountered intrinsics to be merged with '
-                           f'mismatched all_equal bits. Intrinsic of URI {uri} '
-                           f'first call had all_equal bit {result_all_equal}, '
-                           'encountered call with all_equal value '
-                           f'{call.type_signature.all_equal}')
+          raise ValueError(
+              'Encountered intrinsics to be merged with '
+              f'mismatched all_equal bits. Intrinsic of URI {uri} '
+              f'first call had all_equal bit {result_all_equal}, '
+              'encountered call with all_equal value '
+              f'{call.type_signature.all_equal}'
+          )
       return_type = computation_types.FederatedType(
-          computation_types.StructType([
-              (None, call.type_signature.member) for call in calls
-          ]),
+          computation_types.StructType(
+              [(None, call.type_signature.member) for call in calls]
+          ),
           placement=result_placement,
-          all_equal=result_all_equal)
-      abstract_parameter_type = default_call.function.intrinsic_def(
-      ).type_signature.parameter
+          all_equal=result_all_equal,
+      )
+      abstract_parameter_type = (
+          default_call.function.intrinsic_def().type_signature.parameter
+      )
       results.append(
           _MergedIntrinsic(
               uri=uri,
-              args=_merge_args(abstract_parameter_type,
-                               [call.argument for call in calls],
-                               name_generator),
+              args=_merge_args(
+                  abstract_parameter_type,
+                  [call.argument for call in calls],
+                  name_generator,
+              ),
               return_type=return_type,
               unpack_to_locals=[name for (name, _) in locals_for_uri],
-          ))
+          )
+      )
   return results
 
 
@@ -359,13 +384,17 @@ def _merge_args(
   """
   if abstract_parameter_type.is_federated():
     zip_args = building_block_factory.create_federated_zip(
-        building_blocks.Struct(args))
+        building_blocks.Struct(args)
+    )
     # `create_federated_zip` introduces repeated names.
     zip_args, _ = tree_transformations.uniquify_reference_names(
-        zip_args, name_generator)
+        zip_args, name_generator
+    )
     return zip_args
-  if (abstract_parameter_type.is_tensor() or
-      abstract_parameter_type.is_abstract()):
+  if (
+      abstract_parameter_type.is_tensor()
+      or abstract_parameter_type.is_abstract()
+  ):
     return building_blocks.Struct([(None, arg) for arg in args])
   if abstract_parameter_type.is_function():
     # For functions, we must compose them differently depending on whether the
@@ -396,29 +425,35 @@ def _merge_args(
       param_type = computation_types.StructType(parameter_types)
       param_ref = building_blocks.Reference(param_name, param_type)
       calls = []
-      for (n, fn) in enumerate(args):
+      for n, fn in enumerate(args):
         args_to_fn = []
         for i in range(num_args):
           args_to_fn.append(
               building_blocks.Selection(
-                  building_blocks.Selection(param_ref, index=i), index=n))
+                  building_blocks.Selection(param_ref, index=i), index=n
+              )
+          )
         calls.append(
             building_blocks.Call(
-                fn,
-                building_blocks.Struct([(None, arg) for arg in args_to_fn])))
+                fn, building_blocks.Struct([(None, arg) for arg in args_to_fn])
+            )
+        )
     else:
       param_type = computation_types.StructType(
-          [arg.type_signature.parameter for arg in args])
+          [arg.type_signature.parameter for arg in args]
+      )
       param_ref = building_blocks.Reference(param_name, param_type)
       calls = [
-          building_blocks.Call(fn,
-                               building_blocks.Selection(param_ref, index=n))
+          building_blocks.Call(
+              fn, building_blocks.Selection(param_ref, index=n)
+          )
           for (n, fn) in enumerate(args)
       ]
     return building_blocks.Lambda(
         parameter_name=param_name,
         parameter_type=param_type,
-        result=building_blocks.Struct([(None, call) for call in calls]))
+        result=building_blocks.Struct([(None, call) for call in calls]),
+    )
   if abstract_parameter_type.is_struct():
     # Bind each argument to a name so that we can reference them multiple times.
     arg_locals = []
@@ -431,10 +466,11 @@ def _merge_args(
     for i in range(len(abstract_parameter_type)):
       ith_args = [building_blocks.Selection(ref, index=i) for ref in arg_refs]
       merged_args.append(
-          _merge_args(abstract_parameter_type[i], ith_args, name_generator))
+          _merge_args(abstract_parameter_type[i], ith_args, name_generator)
+      )
     return building_blocks.Block(
-        arg_locals,
-        building_blocks.Struct([(None, arg) for arg in merged_args]))
+        arg_locals, building_blocks.Struct([(None, arg) for arg in merged_args])
+    )
   raise TypeError(f'Cannot merge args of type: {abstract_parameter_type}')
 
 
@@ -551,34 +587,47 @@ def force_align_and_split_by_intrinsics(
     # above ensure that names are unique, as it ends in a call to
     # `uniquify_reference_names`.
     comp = building_blocks.Lambda(
-        comp.result.parameter_name, comp.result.parameter_type,
-        building_blocks.Block(comp.locals + additional_locals, result))
+        comp.result.parameter_name,
+        comp.result.parameter_type,
+        building_blocks.Block(comp.locals + additional_locals, result),
+    )
   comp.check_lambda()
 
   # Simple computations with no intrinsic calls won't have a block.
   # Normalize these as well.
   if not comp.result.is_block():
-    comp = building_blocks.Lambda(comp.parameter_name, comp.parameter_type,
-                                  building_blocks.Block([], comp.result))
+    comp = building_blocks.Lambda(
+        comp.parameter_name,
+        comp.parameter_type,
+        building_blocks.Block([], comp.result),
+    )
   comp.result.check_block()
 
   name_generator = building_block_factory.unique_name_generator(comp)
 
   intrinsic_uris = set(call.function.uri for call in intrinsic_defaults)
-  deps = _compute_intrinsic_dependencies(intrinsic_uris, comp.parameter_name,
-                                         comp.result.locals, comp_repr)
-  merged_intrinsics = _compute_merged_intrinsics(intrinsic_defaults,
-                                                 deps.uri_to_locals,
-                                                 name_generator)
+  deps = _compute_intrinsic_dependencies(
+      intrinsic_uris, comp.parameter_name, comp.result.locals, comp_repr
+  )
+  merged_intrinsics = _compute_merged_intrinsics(
+      intrinsic_defaults, deps.uri_to_locals, name_generator
+  )
 
   # Note: the outputs are labeled as `{uri}_param for convenience, e.g.
   # `federated_secure_sum_param: ...`.
   before = building_blocks.Lambda(
-      comp.parameter_name, comp.parameter_type,
+      comp.parameter_name,
+      comp.parameter_type,
       building_blocks.Block(
           deps.locals_not_dependent_on_intrinsics,
-          building_blocks.Struct([(f'{merged.uri}_param', merged.args)
-                                  for merged in merged_intrinsics])))
+          building_blocks.Struct(
+              [
+                  (f'{merged.uri}_param', merged.args)
+                  for merged in merged_intrinsics
+              ]
+          ),
+      ),
+  )
 
   after_param_name = next(name_generator)
   if comp.parameter_type is not None:
@@ -586,25 +635,38 @@ def force_align_and_split_by_intrinsics(
     # tuples, we would be able to avoid this (and related) ugly casing.
     after_param_type = computation_types.StructType([
         ('original_arg', comp.parameter_type),
-        ('intrinsic_results',
-         computation_types.StructType([(f'{merged.uri}_result',
-                                        merged.return_type)
-                                       for merged in merged_intrinsics])),
+        (
+            'intrinsic_results',
+            computation_types.StructType(
+                [
+                    (f'{merged.uri}_result', merged.return_type)
+                    for merged in merged_intrinsics
+                ]
+            ),
+        ),
     ])
   else:
-    after_param_type = computation_types.StructType([
-        ('intrinsic_results',
-         computation_types.StructType([(f'{merged.uri}_result',
-                                        merged.return_type)
-                                       for merged in merged_intrinsics])),
-    ])
-  after_param_ref = building_blocks.Reference(after_param_name,
-                                              after_param_type)
+    after_param_type = computation_types.StructType(
+        [
+            (
+                'intrinsic_results',
+                computation_types.StructType(
+                    [
+                        (f'{merged.uri}_result', merged.return_type)
+                        for merged in merged_intrinsics
+                    ]
+                ),
+            ),
+        ]
+    )
+  after_param_ref = building_blocks.Reference(
+      after_param_name, after_param_type
+  )
   if comp.parameter_type is not None:
-    original_arg_bindings = [
-        (comp.parameter_name,
-         building_blocks.Selection(after_param_ref, name='original_arg'))
-    ]
+    original_arg_bindings = [(
+        comp.parameter_name,
+        building_blocks.Selection(after_param_ref, name='original_arg'),
+    )]
   else:
     original_arg_bindings = []
 
@@ -613,17 +675,22 @@ def force_align_and_split_by_intrinsics(
     if merged.unpack_to_locals:
       intrinsic_result = building_blocks.Selection(
           building_blocks.Selection(after_param_ref, name='intrinsic_results'),
-          name=f'{merged.uri}_result')
+          name=f'{merged.uri}_result',
+      )
       select_param_type = intrinsic_result.type_signature.member
       for i, binding_name in enumerate(merged.unpack_to_locals):
         select_param_name = next(name_generator)
-        select_param_ref = building_blocks.Reference(select_param_name,
-                                                     select_param_type)
+        select_param_ref = building_blocks.Reference(
+            select_param_name, select_param_type
+        )
         selected = building_block_factory.create_federated_map_or_apply(
             building_blocks.Lambda(
-                select_param_name, select_param_type,
-                building_blocks.Selection(select_param_ref, index=i)),
-            intrinsic_result)
+                select_param_name,
+                select_param_type,
+                building_blocks.Selection(select_param_ref, index=i),
+            ),
+            intrinsic_result,
+        )
         unzip_bindings.append((binding_name, selected))
   after = building_blocks.Lambda(
       after_param_name,
@@ -636,9 +703,12 @@ def force_align_and_split_by_intrinsics(
           # through to `after` except via one of the intrinsics being split
           # upon. In MapReduceForm, this limitation is caused by the fact that
           # `prepare` has no output which serves as an input to `report`.
-          deps.locals_not_dependent_on_intrinsics + unzip_bindings +
-          deps.locals_dependent_on_intrinsics,
-          comp.result.result))
+          deps.locals_not_dependent_on_intrinsics
+          + unzip_bindings
+          + deps.locals_dependent_on_intrinsics,
+          comp.result.result,
+      ),
+  )
   try:
     tree_analysis.check_has_unique_names(before)
     tree_analysis.check_has_unique_names(after)

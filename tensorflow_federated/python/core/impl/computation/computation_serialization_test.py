@@ -28,12 +28,15 @@ class ComputationSerializationTest(absltest.TestCase):
   def test_serialize_deserialize_round_trip(self):
     operand_type = computation_types.TensorType(tf.int32)
     proto, _ = tensorflow_computation_factory.create_binary_operator(
-        tf.add, operand_type, operand_type)
+        tf.add, operand_type, operand_type
+    )
     comp = computation_impl.ConcreteComputation(
-        proto, context_stack_impl.context_stack)
+        proto, context_stack_impl.context_stack
+    )
     serialized_comp = computation_serialization.serialize_computation(comp)
     deserialize_comp = computation_serialization.deserialize_computation(
-        serialized_comp)
+        serialized_comp
+    )
     self.assertIsInstance(deserialize_comp, computation_base.Computation)
     self.assertEqual(deserialize_comp, comp)
 

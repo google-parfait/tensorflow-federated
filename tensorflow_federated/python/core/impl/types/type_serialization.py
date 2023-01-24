@@ -30,7 +30,8 @@ from tensorflow_federated.python.core.impl.types import placements
 
 
 def _to_tensor_type_proto(
-    tensor_type: computation_types.TensorType) -> pb.TensorType:
+    tensor_type: computation_types.TensorType,
+) -> pb.TensorType:
   shape = tensor_type.shape
   if shape.dims is None:
     dims = None
@@ -41,7 +42,8 @@ def _to_tensor_type_proto(
   return pb.TensorType(
       dtype=tensor_type.dtype.base_dtype.as_datatype_enum,
       dims=dims,
-      unknown_rank=unknown_rank)
+      unknown_rank=unknown_rank,
+  )
 
 
 def _to_tensor_shape(tensor_type_proto: pb.TensorType) -> tf.TensorShape:
@@ -60,7 +62,8 @@ _type_serialization_cache = weakref.WeakKeyDictionary({})
 
 
 def serialize_type(
-    type_spec: Optional[computation_types.Type]) -> Optional[pb.Type]:
+    type_spec: Optional[computation_types.Type],
+) -> Optional[pb.Type]:
   """Serializes 'type_spec' as a pb.Type.
 
   Note: Currently only serialization for tensor, named tuple, sequence, and
@@ -87,18 +90,24 @@ def serialize_type(
     proto = pb.Type(tensor=_to_tensor_type_proto(type_spec))
   elif type_spec.is_sequence():
     proto = pb.Type(
-        sequence=pb.SequenceType(element=serialize_type(type_spec.element)))
+        sequence=pb.SequenceType(element=serialize_type(type_spec.element))
+    )
   elif type_spec.is_struct():
     proto = pb.Type(
-        struct=pb.StructType(element=[
-            pb.StructType.Element(name=e[0], value=serialize_type(e[1]))
-            for e in structure.iter_elements(type_spec)
-        ]))
+        struct=pb.StructType(
+            element=[
+                pb.StructType.Element(name=e[0], value=serialize_type(e[1]))
+                for e in structure.iter_elements(type_spec)
+            ]
+        )
+    )
   elif type_spec.is_function():
     proto = pb.Type(
         function=pb.FunctionType(
             parameter=serialize_type(type_spec.parameter),
-            result=serialize_type(type_spec.result)))
+            result=serialize_type(type_spec.result),
+        )
+    )
   elif type_spec.is_placement():
     proto = pb.Type(placement=pb.PlacementType())
   elif type_spec.is_federated():
@@ -106,8 +115,11 @@ def serialize_type(
         federated=pb.FederatedType(
             member=serialize_type(type_spec.member),
             placement=pb.PlacementSpec(
-                value=pb.Placement(uri=type_spec.placement.uri)),
-            all_equal=type_spec.all_equal))
+                value=pb.Placement(uri=type_spec.placement.uri)
+            ),
+            all_equal=type_spec.all_equal,
+        )
+    )
   else:
     raise NotImplementedError
 
@@ -116,7 +128,8 @@ def serialize_type(
 
 
 def deserialize_type(
-    type_proto: Optional[pb.Type]) -> Optional[computation_types.Type]:
+    type_proto: Optional[pb.Type],
+) -> Optional[computation_types.Type]:
   """Deserializes 'type_proto' as a computation_types.Type.
 
   Note: Currently only deserialization for tensor, named tuple, sequence, and
@@ -144,10 +157,12 @@ def deserialize_type(
     tensor_proto = type_proto.tensor
     return computation_types.TensorType(
         dtype=tf.dtypes.as_dtype(tensor_proto.dtype),
-        shape=_to_tensor_shape(tensor_proto))
+        shape=_to_tensor_shape(tensor_proto),
+    )
   elif type_variant == 'sequence':
     return computation_types.SequenceType(
-        deserialize_type(type_proto.sequence.element))
+        deserialize_type(type_proto.sequence.element)
+    )
   elif type_variant == 'struct':
 
     def empty_str_to_none(s):
@@ -156,13 +171,17 @@ def deserialize_type(
       return s
 
     return computation_types.StructType(
-        [(empty_str_to_none(e.name), deserialize_type(e.value))
-         for e in type_proto.struct.element],
-        convert=False)
+        [
+            (empty_str_to_none(e.name), deserialize_type(e.value))
+            for e in type_proto.struct.element
+        ],
+        convert=False,
+    )
   elif type_variant == 'function':
     return computation_types.FunctionType(
         parameter=deserialize_type(type_proto.function.parameter),
-        result=deserialize_type(type_proto.function.result))
+        result=deserialize_type(type_proto.function.result),
+    )
   elif type_variant == 'placement':
     return computation_types.PlacementType()
   elif type_variant == 'federated':
@@ -171,11 +190,14 @@ def deserialize_type(
       return computation_types.FederatedType(
           member=deserialize_type(type_proto.federated.member),
           placement=placements.uri_to_placement_literal(
-              type_proto.federated.placement.value.uri),
-          all_equal=type_proto.federated.all_equal)
+              type_proto.federated.placement.value.uri
+          ),
+          all_equal=type_proto.federated.all_equal,
+      )
     else:
       raise NotImplementedError(
           'Deserialization of federated types with placement spec as {} '
-          'is not currently implemented yet.'.format(placement_oneof))
+          'is not currently implemented yet.'.format(placement_oneof)
+      )
   else:
     raise NotImplementedError('Unknown type variant {}.'.format(type_variant))

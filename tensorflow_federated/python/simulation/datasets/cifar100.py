@@ -35,7 +35,8 @@ def _add_proto_parsing(dataset: tf.data.Dataset) -> tf.data.Dataset:
     return collections.OrderedDict(
         coarse_label=parsed_features['coarse_label'],
         image=tf.cast(parsed_features['image'], tf.uint8),
-        label=parsed_features['label'])
+        label=parsed_features['label'],
+    )
 
   return dataset.map(parse_proto, num_parallel_calls=tf.data.AUTOTUNE)
 
@@ -100,11 +101,14 @@ def load_data(cache_dir=None):
   """
   database_path = download.get_compressed_file(
       origin='https://storage.googleapis.com/tff-datasets-public/cifar100.sqlite.lzma',
-      cache_dir=cache_dir)
+      cache_dir=cache_dir,
+  )
   train_client_data = sql_client_data.SqlClientData(
-      database_path, 'train').preprocess(_add_proto_parsing)
+      database_path, 'train'
+  ).preprocess(_add_proto_parsing)
   test_client_data = sql_client_data.SqlClientData(
-      database_path, 'test').preprocess(_add_proto_parsing)
+      database_path, 'test'
+  ).preprocess(_add_proto_parsing)
   return train_client_data, test_client_data
 
 
@@ -121,7 +125,7 @@ def get_synthetic():
   """
   return from_tensor_slices_client_data.TestClientData({
       'synthetic1': _get_synthetic_digits_data(),
-      'synthetic2': _get_synthetic_digits_data()
+      'synthetic2': _get_synthetic_digits_data(),
   })
 
 
@@ -144,7 +148,8 @@ def _get_synthetic_digits_data():
   labels = tf.constant([0, 51, 51, 88, 71], dtype=tf.int64)
 
   return collections.OrderedDict(
-      coarse_label=coarse_labels, image=images, label=labels)
+      coarse_label=coarse_labels, image=images, label=labels
+  )
 
 
 # This consists of 5 CIFAR-like that have been downsampled to images of shape

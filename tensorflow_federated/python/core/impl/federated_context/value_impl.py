@@ -67,7 +67,8 @@ def _check_struct_or_federated_struct(
   if not (_is_named_tuple(vimpl) or _is_federated_named_tuple(vimpl)):
     raise AttributeError(
         f'`tff.Value` of non-structural type {vimpl.type_signature} has no '
-        f'attribute {attribute}')
+        f'attribute {attribute}'
+    )
 
 
 def _bind_computation_to_reference(comp, op: str):
@@ -77,7 +78,8 @@ def _bind_computation_to_reference(comp, op: str):
         '`tff.Value`s should only be used in contexts which can bind '
         'references, generally a `FederatedComputationContext`. Attempted '
         f'to bind the result of {op} in a context {context} of '
-        f'type {type(context)}.')
+        f'type {type(context)}.'
+    )
   return context.bind_computation_to_reference(comp)
 
 
@@ -130,13 +132,15 @@ class Value(typed_object.TypedObject, metaclass=abc.ABCMeta):
     if _is_federated_named_tuple(self):
       if name not in structure.name_list(self.type_signature.member):
         raise AttributeError(
-            'There is no such attribute \'{}\' in this federated tuple. Valid '
+            "There is no such attribute '{}' in this federated tuple. Valid "
             'attributes: ({})'.format(
-                name, ', '.join(dir(self.type_signature.member))))
+                name, ', '.join(dir(self.type_signature.member))
+            )
+        )
 
       return Value(
-          building_block_factory.create_federated_getattr_call(
-              self._comp, name))
+          building_block_factory.create_federated_getattr_call(self._comp, name)
+      )
     if name not in dir(self.type_signature):
       attributes = ', '.join(dir(self.type_signature))
       raise AttributeError(
@@ -151,7 +155,8 @@ class Value(typed_object.TypedObject, metaclass=abc.ABCMeta):
     raise TypeError(
         'Federated computation values do not support boolean operations. '
         'If you were attempting to perform logic on tensors, consider moving '
-        'this logic into a tff.tf_computation.')
+        'this logic into a tff.tf_computation.'
+    )
 
   def __len__(self):
     type_signature = _unfederated(self.type_signature)
@@ -159,7 +164,8 @@ class Value(typed_object.TypedObject, metaclass=abc.ABCMeta):
       raise TypeError(
           'Operator len() is only supported for (possibly federated) structure '
           'types, but the object on which it has been invoked is of type {}.'
-          .format(self.type_signature))
+          .format(self.type_signature)
+      )
     return len(type_signature)
 
   def __getitem__(self, key: Union[int, str, slice]):
@@ -168,18 +174,21 @@ class Value(typed_object.TypedObject, metaclass=abc.ABCMeta):
       return getattr(self, key)
     if _is_federated_named_tuple(self):
       return Value(
-          building_block_factory.create_federated_getitem_call(self._comp,
-                                                               key),)
+          building_block_factory.create_federated_getitem_call(self._comp, key),
+      )
     if not _is_named_tuple(self):
       raise TypeError(
           'Operator getitem() is only supported for structure types, but the '
           'object on which it has been invoked is of type {}.'.format(
-              self.type_signature))
+              self.type_signature
+          )
+      )
     elem_length = len(self.type_signature)
     if isinstance(key, int):
       if key < 0 or key >= elem_length:
         raise IndexError(
-            'The index of the selected element {} is out of range.'.format(key))
+            'The index of the selected element {} is out of range.'.format(key)
+        )
       if self._comp.is_struct():
         return Value(self._comp[key])
       else:
@@ -187,8 +196,9 @@ class Value(typed_object.TypedObject, metaclass=abc.ABCMeta):
     elif isinstance(key, slice):
       index_range = range(*key.indices(elem_length))
       if not index_range:
-        raise IndexError('Attempted to slice 0 elements, which is not '
-                         'currently supported.')
+        raise IndexError(
+            'Attempted to slice 0 elements, which is not currently supported.'
+        )
       return to_value([self[k] for k in index_range], None)
 
   def __iter__(self):
@@ -207,12 +217,14 @@ class Value(typed_object.TypedObject, metaclass=abc.ABCMeta):
       raise SyntaxError(
           'Function-like invocation is only supported for values of functional '
           'types, but the value being invoked is of type {} that does not '
-          'support invocation.'.format(self.type_signature))
+          'support invocation.'.format(self.type_signature)
+      )
     if args or kwargs:
       args = [to_value(x, None) for x in args]
       kwargs = {k: to_value(v, None) for k, v in kwargs.items()}
-      arg = function_utils.pack_args(self.type_signature.parameter, args,
-                                     kwargs)
+      arg = function_utils.pack_args(
+          self.type_signature.parameter, args, kwargs
+      )
       arg = to_value(arg, None).comp
     else:
       arg = None
@@ -223,17 +235,23 @@ class Value(typed_object.TypedObject, metaclass=abc.ABCMeta):
   def __add__(self, other):
     other = to_value(other, None)
     if not self.type_signature.is_equivalent_to(other.type_signature):
-      raise TypeError('Cannot add non-equivalent types. ' +
-                      computation_types.type_mismatch_error_message(
-                          self.type_signature, other.type_signature,
-                          computation_types.TypeRelation.EQUIVALENT))
+      raise TypeError(
+          'Cannot add non-equivalent types. '
+          + computation_types.type_mismatch_error_message(
+              self.type_signature,
+              other.type_signature,
+              computation_types.TypeRelation.EQUIVALENT,
+          )
+      )
     call = building_blocks.Call(
         building_blocks.Intrinsic(
             intrinsic_defs.GENERIC_PLUS.uri,
             computation_types.FunctionType(
-                [self.type_signature, self.type_signature],
-                self.type_signature)),
-        to_value([self, other], None).comp)
+                [self.type_signature, self.type_signature], self.type_signature
+            ),
+        ),
+        to_value([self, other], None).comp,
+    )
     ref = _bind_computation_to_reference(call, 'adding a tff.Value')
     return Value(ref)
 
@@ -243,8 +261,9 @@ def _wrap_computation_as_value(proto: pb.Computation) -> Value:
   py_typecheck.check_type(proto, pb.Computation)
   compiled = building_blocks.CompiledComputation(proto)
   call = building_blocks.Call(compiled)
-  ref = _bind_computation_to_reference(call,
-                                       'wrapping a computation as a value')
+  ref = _bind_computation_to_reference(
+      call, 'wrapping a computation as a value'
+  )
   return Value(ref)
 
 
@@ -258,7 +277,8 @@ def _wrap_constant_as_value(const) -> Value:
     An instance of `tff.Value`.
   """
   tf_comp, _ = tensorflow_computation_factory.create_computation_for_py_fn(
-      fn=lambda: tf.constant(const), parameter_type=None)
+      fn=lambda: tf.constant(const), parameter_type=None
+  )
   return _wrap_computation_as_value(tf_comp)
 
 
@@ -283,20 +303,24 @@ def _wrap_sequence_as_value(elements, element_type) -> Value:
     if not element_type.is_assignable_from(inferred_type):
       raise TypeError(
           'Expected all sequence elements to be {}, found {}.'.format(
-              element_type, inferred_type))
+              element_type, inferred_type
+          )
+      )
 
   def _create_dataset_from_elements():
     return tensorflow_utils.make_data_set_from_elements(
-        tf.compat.v1.get_default_graph(), elements, element_type)
+        tf.compat.v1.get_default_graph(), elements, element_type
+    )
 
   proto, _ = tensorflow_computation_factory.create_computation_for_py_fn(
-      fn=_create_dataset_from_elements, parameter_type=None)
+      fn=_create_dataset_from_elements, parameter_type=None
+  )
   return _wrap_computation_as_value(proto)
 
 
 def _dictlike_items_to_value(items, type_spec, container_type) -> Value:
   elements = []
-  for (i, (k, v)) in enumerate(items):
+  for i, (k, v) in enumerate(items):
     element_type = None if type_spec is None else type_spec[i]
     element_value = to_value(v, element_type)
     elements.append((k, element_value.comp))
@@ -371,8 +395,13 @@ def to_value(
     result = Value(arg)
   elif isinstance(arg, placements.PlacementLiteral):
     result = Value(building_blocks.Placement(arg))
-  elif isinstance(arg, (computation_impl.ConcreteComputation,
-                        function_utils.PolymorphicComputation)):
+  elif isinstance(
+      arg,
+      (
+          computation_impl.ConcreteComputation,
+          function_utils.PolymorphicComputation,
+      ),
+  ):
     if isinstance(arg, function_utils.PolymorphicComputation):
       if parameter_type_hint is None:
         raise TypeError(
@@ -408,7 +437,9 @@ def to_value(
       raise TypeError(
           'Unsupported mapping type {}. Use collections.OrderedDict for '
           'mappings. Unsupported mapping: {}'.format(
-              py_typecheck.type_string(type(arg)), arg))
+              py_typecheck.type_string(type(arg)), arg
+          )
+      )
     result = _dictlike_items_to_value(arg.items(), type_spec, type(arg))
   elif isinstance(arg, (tuple, list)):
     items = zip(itertools.repeat(None), arg)
@@ -420,19 +451,25 @@ def to_value(
         'TensorFlow construct {} has been encountered in a federated '
         'context. TFF does not support mixing TF and federated orchestration '
         'code. Please wrap any TensorFlow constructs with '
-        '`tff.tf_computation`.'.format(arg))
+        '`tff.tf_computation`.'.format(arg)
+    )
   else:
-    raise TypeError('Unable to interpret an argument of Python type '
-                    f'{py_typecheck.type_string(type(arg))} as a `tff.Value`.')
+    raise TypeError(
+        'Unable to interpret an argument of Python type '
+        f'{py_typecheck.type_string(type(arg))} as a `tff.Value`.'
+    )
   py_typecheck.check_type(result, Value)
-  if (type_spec is not None and
-      not type_spec.is_assignable_from(result.type_signature)):
+  if type_spec is not None and not type_spec.is_assignable_from(
+      result.type_signature
+  ):
     if zip_if_needed:
       # Returns `None` if such a zip can't be performed.
       zipped_comp = building_block_factory.zip_to_match_type(
-          comp_to_zip=result.comp, target_type=type_spec)
+          comp_to_zip=result.comp, target_type=type_spec
+      )
       if zipped_comp is not None:
         return Value(zipped_comp)
-    raise computation_types.TypeNotAssignableError(type_spec,
-                                                   result.type_signature)
+    raise computation_types.TypeNotAssignableError(
+        type_spec, result.type_signature
+    )
   return result

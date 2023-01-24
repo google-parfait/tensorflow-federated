@@ -19,15 +19,15 @@ from tensorflow_federated.python.core.impl.types import computation_types
 
 def generate_unnamed_type_signature(
     client_work: computation_impl.ConcreteComputation,
-    server_result: computation_impl.ConcreteComputation
+    server_result: computation_impl.ConcreteComputation,
 ) -> computation_types.FunctionType:
   """Generates a type signature for the DistributeAggregateForm."""
   parameter = computation_types.StructType([
       server_result.type_signature.parameter[0],
-      client_work.type_signature.parameter[0]
+      client_work.type_signature.parameter[0],
   ])
   result = computation_types.StructType([
       server_result.type_signature.parameter[0],
-      server_result.type_signature.result[1]
+      server_result.type_signature.result[1],
   ])
   return computation_types.FunctionType(parameter, result)

@@ -30,23 +30,30 @@ class TensorFlowComputationContextTest(absltest.TestCase):
     bogus_proto = pb.Computation(
         type=type_serialization.serialize_type(
             computation_types.to_type(
-                computation_types.FunctionType(tf.int32, tf.int32))),
-        reference=pb.Reference(name='boogledy'))
+                computation_types.FunctionType(tf.int32, tf.int32)
+            )
+        ),
+        reference=pb.Reference(name='boogledy'),
+    )
     non_tf_computation = computation_impl.ConcreteComputation(
-        bogus_proto, context_stack_impl.context_stack)
+        bogus_proto, context_stack_impl.context_stack
+    )
 
     context = tensorflow_computation_context.TensorFlowComputationContext(
-        tf.compat.v1.get_default_graph(), tf.constant('bogus_token'))
+        tf.compat.v1.get_default_graph(), tf.constant('bogus_token')
+    )
 
     with self.assertRaisesRegex(
-        ValueError, 'Can only invoke TensorFlow in the body of '
-        'a TensorFlow computation'):
+        ValueError,
+        'Can only invoke TensorFlow in the body of a TensorFlow computation',
+    ):
       context.invoke(non_tf_computation, None)
 
   def test_invoke_returns_result_with_tf_computation(self):
     make_10 = tensorflow_computation.tf_computation(lambda: tf.constant(10))
-    add_one = tensorflow_computation.tf_computation(lambda x: tf.add(x, 1),
-                                                    tf.int32)
+    add_one = tensorflow_computation.tf_computation(
+        lambda x: tf.add(x, 1), tf.int32
+    )
 
     @tensorflow_computation.tf_computation
     def add_one_with_v1(x):
@@ -62,12 +69,17 @@ class TensorFlowComputationContextTest(absltest.TestCase):
     def foo():
       zero = tf.Variable(0, name='zero')
       ten = tf.Variable(make_10())
-      return (add_one_with_v2(add_one_with_v1(add_one(make_10()))) + zero +
-              ten - ten)
+      return (
+          add_one_with_v2(add_one_with_v1(add_one(make_10())))
+          + zero
+          + ten
+          - ten
+      )
 
     with tf.compat.v1.Graph().as_default() as graph:
       context = tensorflow_computation_context.TensorFlowComputationContext(
-          graph, tf.constant('bogus_token'))
+          graph, tf.constant('bogus_token')
+      )
 
     self.assertEqual(foo.type_signature.compact_representation(), '( -> int32)')
     x = context.invoke(foo, None)
@@ -79,14 +91,14 @@ class TensorFlowComputationContextTest(absltest.TestCase):
     self.assertEqual(result, 13)
 
   def test_get_session_token(self):
-
     @tensorflow_computation.tf_computation
     def get_the_token():
       return tensorflow_computation_context.get_session_token()
 
     with tf.compat.v1.Graph().as_default() as graph:
       context = tensorflow_computation_context.TensorFlowComputationContext(
-          graph, tf.constant('test_token'))
+          graph, tf.constant('test_token')
+      )
 
     x = context.invoke(get_the_token, None)
     with tf.compat.v1.Session(graph=graph) as sess:
@@ -94,7 +106,6 @@ class TensorFlowComputationContextTest(absltest.TestCase):
     self.assertEqual(result, b'test_token')
 
   def test_get_session_token_nested(self):
-
     @tensorflow_computation.tf_computation
     def get_the_token_nested():
       return tensorflow_computation_context.get_session_token()
@@ -105,7 +116,8 @@ class TensorFlowComputationContextTest(absltest.TestCase):
 
     with tf.compat.v1.Graph().as_default() as graph:
       context = tensorflow_computation_context.TensorFlowComputationContext(
-          graph, tf.constant('test_token_nested'))
+          graph, tf.constant('test_token_nested')
+      )
 
     x = context.invoke(get_the_token, None)
     with tf.compat.v1.Session(graph=graph) as sess:

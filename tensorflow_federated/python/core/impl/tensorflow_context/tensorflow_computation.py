@@ -36,13 +36,16 @@ def _tf_wrapper_fn(parameter_type, name):
   """Wrapper function to plug Tensorflow logic into the TFF framework."""
   del name  # Unused.
   if not type_analysis.is_tensorflow_compatible_type(parameter_type):
-    raise TypeError('`tf_computation`s can accept only parameter types with '
-                    'constituents `SequenceType`, `StructType` '
-                    'and `TensorType`; you have attempted to create one '
-                    'with the type {}.'.format(parameter_type))
+    raise TypeError(
+        '`tf_computation`s can accept only parameter types with '
+        'constituents `SequenceType`, `StructType` '
+        'and `TensorType`; you have attempted to create one '
+        'with the type {}.'.format(parameter_type)
+    )
   ctx_stack = context_stack_impl.context_stack
   tf_serializer = tensorflow_serialization.tf_computation_serializer(
-      parameter_type, ctx_stack)
+      parameter_type, ctx_stack
+  )
   arg = next(tf_serializer)
   try:
     result = yield arg
@@ -50,14 +53,15 @@ def _tf_wrapper_fn(parameter_type, name):
     tf_serializer.throw(e)
   comp_pb, extra_type_spec = tf_serializer.send(result)
   tf_serializer.close()
-  yield computation_impl.ConcreteComputation(comp_pb, ctx_stack,
-                                             extra_type_spec)
+  yield computation_impl.ConcreteComputation(
+      comp_pb, ctx_stack, extra_type_spec
+  )
 
 
 tf_computation = computation_wrapper.ComputationWrapper(
-    computation_wrapper.PythonTracingStrategy(_tf_wrapper_fn))
-tf_computation.__doc__ = (
-    """Decorates/wraps Python functions and defuns as TFF TensorFlow computations.
+    computation_wrapper.PythonTracingStrategy(_tf_wrapper_fn)
+)
+tf_computation.__doc__ = """Decorates/wraps Python functions and defuns as TFF TensorFlow computations.
 
   This symbol can be used as either a decorator or a wrapper applied to a
   function given to it as an argument. The supported patterns and examples of
@@ -187,12 +191,11 @@ tf_computation.__doc__ = (
     in the typical decorator style of usage, returns a callable that expects
     to be called with the function definition supplied as a parameter; see the
     patterns and examples of usage above.
-  """)
+  """
 
 
 class CapturedVariableError(Exception):
-  """Error raised when TFF tracing encountered variables captured from an outer scope.
-  """
+  """Error raised when TFF tracing encountered variables captured from an outer scope."""
 
 
 def _no_lifting_creator(next_creator_fn, **kwargs):
@@ -209,10 +212,13 @@ def _no_lifting_creator(next_creator_fn, **kwargs):
 # The ArgDef protocol buffer message type isn't exposed in the `tensorflow`
 # package, this is a less than ideal workaround.
 ArgDef = type(
-    tf.compat.v1.GraphDef().library.function.add().signature.input_arg.add())
-TensorStructureType = Union[computation_types.TensorType,
-                            computation_types.StructType,
-                            computation_types.SequenceType]
+    tf.compat.v1.GraphDef().library.function.add().signature.input_arg.add()
+)
+TensorStructureType = Union[
+    computation_types.TensorType,
+    computation_types.StructType,
+    computation_types.SequenceType,
+]
 
 
 def _extract_bindings(
@@ -224,26 +230,41 @@ def _extract_bindings(
   def extract(
       type_spec: Optional[TensorStructureType],
       function_args: Sequence[ArgDef],
-      arg_index=0) -> tuple[Optional[pb.TensorFlowFunction.Binding], int]:
+      arg_index=0,
+  ) -> tuple[Optional[pb.TensorFlowFunction.Binding], int]:
     if type_spec is None:
       return None, 0
     elif type_spec.is_tensor():
       arg_def = function_args[arg_index]
       if arg_def.type != type_spec.dtype.as_datatype_enum:
-        raise TypeError(f'Argument at position {arg_index} had binding type '
-                        f'{tf.dtypes.as_dtype(arg_def.type)}, but '
-                        f'type signature expected type {type_spec.dtype}.')
-      return pb.TensorFlowFunction.Binding(
-          tensor=pb.TensorFlowFunction.TensorBinding(arg_name=arg_def.name)), 1
+        raise TypeError(
+            f'Argument at position {arg_index} had binding type '
+            f'{tf.dtypes.as_dtype(arg_def.type)}, but '
+            f'type signature expected type {type_spec.dtype}.'
+        )
+      return (
+          pb.TensorFlowFunction.Binding(
+              tensor=pb.TensorFlowFunction.TensorBinding(arg_name=arg_def.name)
+          ),
+          1,
+      )
     elif type_spec.is_sequence():
       arg_def = function_args[arg_index]
       if arg_def.type != tf.variant:
-        raise TypeError(f'Argument at position {arg_index} had binding type '
-                        f'{tf.dtypes.as_dtype(arg_def.type)}, but '
-                        f'sequence type signature expected tf.variant.')
-      return pb.TensorFlowFunction.Binding(
-          sequence=pb.TensorFlowFunction.SequenceBinding(
-              arg_name=arg_def.name)), 1
+        raise TypeError(
+            f'Argument at position {arg_index} had binding type '
+            f'{tf.dtypes.as_dtype(arg_def.type)}, but '
+            'sequence type signature expected tf.variant.'
+        )
+      return (
+          pb.TensorFlowFunction.Binding(
+              sequence=pb.TensorFlowFunction.SequenceBinding(
+                  arg_name=arg_def.name
+              )
+          ),
+          1,
+      )
+
     elif type_spec.is_struct():
       # tf.function tracing uses tf.nest.flatten to destructure input arguments.
       # The `GetValueIterator` method in tensorflow/python/util/util.cc sorts
@@ -254,11 +275,14 @@ def _extract_bindings(
       # across TFF when needing to reconcile TFF Struct traversal with
       # tf.nest.flatten.
       def field_iterator(
-          struct_type: computation_types.StructType
+          struct_type: computation_types.StructType,
       ) -> Generator[computation_types.Type, None, None]:
         if struct_type.is_struct_with_python() and issubclass(
             computation_types.StructWithPythonType.get_container_type(
-                struct_type), Mapping):
+                struct_type
+            ),
+            Mapping,
+        ):
           for field_name in sorted(structure.name_list(struct_type)):
             yield struct_type[field_name]
         else:
@@ -270,27 +294,37 @@ def _extract_bindings(
       args_consumed = 0
       elements = []
       for field in field_iterator(type_spec):
-        element, args_used = extract(field, function_args,
-                                     arg_index + args_consumed)
+        element, args_used = extract(
+            field, function_args, arg_index + args_consumed
+        )
         elements.append(element)
         args_consumed += args_used
-      return pb.TensorFlowFunction.Binding(
-          structure=pb.TensorFlowFunction.StructBinding(
-              element=elements)), args_consumed
+      return (
+          pb.TensorFlowFunction.Binding(
+              structure=pb.TensorFlowFunction.StructBinding(element=elements)
+          ),
+          args_consumed,
+      )
     else:
-      raise TypeError('Cannot build bindings for type signature, must be '
-                      'TensorType, SequenceType, or StructType. '
-                      f'Got: {type_spec!r}')
+      raise TypeError(
+          'Cannot build bindings for type signature, must be '
+          'TensorType, SequenceType, or StructType. '
+          f'Got: {type_spec!r}'
+      )
 
   try:
     binding, args_consumed = extract(type_spec, arg_defs)
   except TypeError as e:
-    raise TypeError(f'Failed to creating bindings for type {type_spec!r} with '
-                    f'arguments {arg_defs}') from e
+    raise TypeError(
+        f'Failed to creating bindings for type {type_spec!r} with '
+        f'arguments {arg_defs}'
+    ) from e
   if args_consumed != len(arg_defs):
-    raise ValueError('Number of args is not compatible with type '
-                     f'{type_spec!r}. Expected {args_consumed} args to bind, '
-                     f'but got {len(arg_defs)} args.')
+    raise ValueError(
+        'Number of args is not compatible with type '
+        f'{type_spec!r}. Expected {args_consumed} args to bind, '
+        f'but got {len(arg_defs)} args.'
+    )
   return binding
 
 
@@ -305,13 +339,16 @@ class _TensorFlowFunctionTracingStrategy:
       unpack: Optional[bool],
   ) -> computation_impl.ConcreteComputation:
     if not type_analysis.is_tensorflow_compatible_type(parameter_type):
-      raise TypeError('`tf_computation`s can accept only parameter types with '
-                      'constituents `SequenceType`, `StructType` '
-                      'and `TensorType`; you have attempted to create one '
-                      'with the type {}.'.format(parameter_type))
+      raise TypeError(
+          '`tf_computation`s can accept only parameter types with '
+          'constituents `SequenceType`, `StructType` '
+          'and `TensorType`; you have attempted to create one '
+          'with the type {}.'.format(parameter_type)
+      )
     ctx_stack = context_stack_impl.context_stack
     unpack_arguments_fn = function_utils.create_argument_unpacking_fn(
-        fn_to_wrap, parameter_type, unpack=unpack)
+        fn_to_wrap, parameter_type, unpack=unpack
+    )
 
     # Disabling variable lifting does not work on XLA devices so it is required
     # that the `tf.function` tracing _NOT_ jit compile.
@@ -323,20 +360,28 @@ class _TensorFlowFunctionTracingStrategy:
       # by the `tf.function` APIs. However, `unpack_arguments_fn` expects the
       # `Struct` type. So `packed_args` will come in as a Python container,
       # and we wrap it in a `Struct` type here to be compatible.
-      if (packed_args is not None and parameter_type is not None and
-          parameter_type.is_struct()):
+      if (
+          packed_args is not None
+          and parameter_type is not None
+          and parameter_type.is_struct()
+      ):
         packed_args = structure.from_container(packed_args, recursive=False)
       args, kwargs = unpack_arguments_fn(packed_args)
       with tf.variable_creator_scope(_no_lifting_creator):
         return fn_to_wrap(*args, **kwargs)
 
-    TensorFlowSpec = Union[tf.data.DatasetSpec, tf.TensorSpec,
-                           tf.SparseTensorSpec, tf.RaggedTensorSpec]
+    TensorFlowSpec = Union[
+        tf.data.DatasetSpec,
+        tf.TensorSpec,
+        tf.SparseTensorSpec,
+        tf.RaggedTensorSpec,
+    ]
 
     def _tf_spec_from_tff_type(
-        type_spec: computation_types.Type
-    ) -> Union[TensorFlowSpec, Sequence[TensorFlowSpec], Mapping[
-        str, TensorFlowSpec]]:
+        type_spec: computation_types.Type,
+    ) -> Union[
+        TensorFlowSpec, Sequence[TensorFlowSpec], Mapping[str, TensorFlowSpec]
+    ]:
       if type_spec.is_tensor():
         return tf.TensorSpec(shape=type_spec.shape, dtype=type_spec.dtype)
       elif type_spec.is_sequence():
@@ -346,41 +391,50 @@ class _TensorFlowFunctionTracingStrategy:
         if container_type is tf.SparseTensor:
           [rank] = type_spec['dense_shape'].shape
           return tf.SparseTensorSpec(
-              shape=[None] * rank, dtype=type_spec['values'].dtype)
+              shape=[None] * rank, dtype=type_spec['values'].dtype
+          )
         elif container_type is tf.RaggedTensor:
           flat_values_type_spec = type_spec['flat_values']
           flat_values_spec = tf.TensorSpec(
               shape=flat_values_type_spec.shape,
-              dtype=flat_values_type_spec.dtype)
+              dtype=flat_values_type_spec.dtype,
+          )
           nested_row_splits_type_spec = type_spec['nested_row_splits']
           row_splits_dtype = nested_row_splits_type_spec[0].dtype
           return tf.RaggedTensorSpec(
               dtype=flat_values_spec.dtype,
               ragged_rank=len(nested_row_splits_type_spec),
               row_splits_dtype=row_splits_dtype,
-              flat_values_spec=flat_values_spec)
+              flat_values_spec=flat_values_spec,
+          )
         else:
-          structure_of_type_specs = structure.Struct([
-              (name, _tf_spec_from_tff_type(child_type))
-              for name, child_type in structure.iter_elements(type_spec)
-          ])
-          return type_conversions.type_to_py_container(structure_of_type_specs,
-                                                       type_spec)
+          structure_of_type_specs = structure.Struct(
+              [
+                  (name, _tf_spec_from_tff_type(child_type))
+                  for name, child_type in structure.iter_elements(type_spec)
+              ]
+          )
+          return type_conversions.type_to_py_container(
+              structure_of_type_specs, type_spec
+          )
       else:
-        raise TypeError('Cannot trace functions with arguments of type: '
-                        f'{type_spec!r}')
+        raise TypeError(
+            f'Cannot trace functions with arguments of type: {type_spec!r}'
+        )
 
     if parameter_type is None:
       concrete_fn = fn_without_variable_lifting.get_concrete_function()
     else:
       tensorflow_input_spec = _tf_spec_from_tff_type(parameter_type)
       concrete_fn = fn_without_variable_lifting.get_concrete_function(
-          tensorflow_input_spec)
+          tensorflow_input_spec
+      )
 
     if concrete_fn.variables:
       raise CapturedVariableError(
           'Traced function references variables from an outer scope, '
-          f'this is not allowed. Found variables: {concrete_fn.variables}')
+          f'this is not allowed. Found variables: {concrete_fn.variables}'
+      )
 
     if concrete_fn.structured_outputs is None:
       raise computation_wrapper.ComputationReturnedNoneError(fn_to_wrap)
@@ -398,33 +452,43 @@ class _TensorFlowFunctionTracingStrategy:
         raise TypeError(
             'Function output must be a `tf.Tensor`, `tf.SparseTensor`, '
             '`tf.RaggedTensor`, or a `tf.data.Dataset`. '
-            f'Unknown tensor value type: {type(tensors)!r}.')
+            f'Unknown tensor value type: {type(tensors)!r}.'
+        )
 
     type_signature = computation_types.FunctionType(
         parameter=parameter_type,
         result=computation_types.to_type(
-            tf.nest.map_structure(_symbolic_tensors_to_tf_specs,
-                                  concrete_fn.structured_outputs)))
+            tf.nest.map_structure(
+                _symbolic_tensors_to_tf_specs, concrete_fn.structured_outputs
+            )
+        ),
+    )
 
     parameter_binding = _extract_bindings(
-        type_signature.parameter, concrete_fn.function_def.signature.input_arg)
+        type_signature.parameter, concrete_fn.function_def.signature.input_arg
+    )
     result_binding = _extract_bindings(
-        type_signature.result, concrete_fn.function_def.signature.output_arg)
+        type_signature.result, concrete_fn.function_def.signature.output_arg
+    )
     comp_pb = pb.Computation(
         type=type_serialization.serialize_type(type_signature),
         tensorflow_function=pb.TensorFlowFunction(
             function_def=serialization_utils.pack_function_def(
-                concrete_fn.function_def),
+                concrete_fn.function_def
+            ),
             parameter=parameter_binding,
-            result=result_binding))
+            result=result_binding,
+        ),
+    )
     return computation_impl.ConcreteComputation(
-        comp_pb, ctx_stack, annotated_type=type_signature)
+        comp_pb, ctx_stack, annotated_type=type_signature
+    )
 
 
 experimental_tf_fn_computation = computation_wrapper.ComputationWrapper(
-    _TensorFlowFunctionTracingStrategy())
-experimental_tf_fn_computation.__doc__ = (
-    """Decorates/wraps functions as TFF TensorFlow computations.
+    _TensorFlowFunctionTracingStrategy()
+)
+experimental_tf_fn_computation.__doc__ = """Decorates/wraps functions as TFF TensorFlow computations.
 
   This symbol can be used as either a decorator or a wrapper applied to a
   function given to it as an argument.
@@ -553,4 +617,4 @@ experimental_tf_fn_computation.__doc__ = (
     in the typical decorator style of usage, returns a callable that expects
     to be called with the function definition supplied as a parameter; see the
     patterns and examples of usage above.
-  """)
+  """

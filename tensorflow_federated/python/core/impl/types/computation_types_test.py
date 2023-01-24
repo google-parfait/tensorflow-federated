@@ -34,7 +34,8 @@ class TypeMismatchErrorTest(absltest.TestCase):
     first = computation_types.TensorType(tf.int32)
     second = computation_types.TensorType(tf.bool)
     actual = computation_types.type_mismatch_error_message(
-        first, second, computation_types.TypeRelation.EQUIVALENT)
+        first, second, computation_types.TypeRelation.EQUIVALENT
+    )
     golden.check_string('short_compact_repr.expected', actual)
 
   def test_long_formatted_with_diff(self):
@@ -42,14 +43,16 @@ class TypeMismatchErrorTest(absltest.TestCase):
     first = computation_types.StructType([(None, int32)] * 20)
     second = computation_types.StructType([(None, int32)] * 21)
     actual = computation_types.type_mismatch_error_message(
-        first, second, computation_types.TypeRelation.EQUIVALENT)
+        first, second, computation_types.TypeRelation.EQUIVALENT
+    )
     golden.check_string('long_formatted_with_diff.expected', actual)
 
   def test_container_types_full_repr(self):
     first = computation_types.StructWithPythonType([], list)
     second = computation_types.StructWithPythonType([], tuple)
     actual = computation_types.type_mismatch_error_message(
-        first, second, computation_types.TypeRelation.EQUIVALENT)
+        first, second, computation_types.TypeRelation.EQUIVALENT
+    )
     golden.check_string('container_types_full_repr.expected', actual)
 
 
@@ -66,11 +69,13 @@ class TestCheckEquivalentTypesTest(absltest.TestCase):
 class TensorTypeTest(absltest.TestCase):
 
   def test_constructor_argument_normalization_error(self):
-    if ((sys.version_info[0] == 3 and sys.version_info[1] > 9) or
-        sys.version_info[0] > 3):
+    if (
+        sys.version_info[0] == 3 and sys.version_info[1] > 9
+    ) or sys.version_info[0] > 3:
       self.skipTest('b/248295968')
     with golden.check_raises_traceback(
-        'constructor_argument_normalization_error.expected', TypeError):
+        'constructor_argument_normalization_error.expected', TypeError
+    ):
       computation_types.TensorType()
 
   def test_unknown_tensorshape(self):
@@ -79,10 +84,12 @@ class TensorTypeTest(absltest.TestCase):
     self.assertEqual(t.shape, tf.TensorShape(None))
 
   def test_differentiates_unknown_rank_from_unknown_dim(self):
-    unknown_rank_type = computation_types.TensorType(tf.int32,
-                                                     tf.TensorShape(None))
-    unknown_dim_type = computation_types.TensorType(tf.int32,
-                                                    tf.TensorShape([None]))
+    unknown_rank_type = computation_types.TensorType(
+        tf.int32, tf.TensorShape(None)
+    )
+    unknown_dim_type = computation_types.TensorType(
+        tf.int32, tf.TensorShape([None])
+    )
     self.assertNotEqual(unknown_rank_type, unknown_dim_type)
 
   def test_interns_tensortype_with_none_dims(self):
@@ -97,26 +104,34 @@ class TensorTypeTest(absltest.TestCase):
 
   def test_repr(self):
     self.assertEqual(
-        repr(computation_types.TensorType(tf.int32)), 'TensorType(tf.int32)')
+        repr(computation_types.TensorType(tf.int32)), 'TensorType(tf.int32)'
+    )
     self.assertEqual(
         repr(computation_types.TensorType(tf.int32, [10])),
-        'TensorType(tf.int32, [10])')
+        'TensorType(tf.int32, [10])',
+    )
     self.assertEqual(
         repr(computation_types.TensorType(tf.int32, [3, 5])),
-        'TensorType(tf.int32, [3, 5])')
+        'TensorType(tf.int32, [3, 5])',
+    )
 
   def test_str(self):
     self.assertEqual(str(computation_types.TensorType(tf.int32)), 'int32')
     self.assertEqual(
-        str(computation_types.TensorType(tf.int32, [10])), 'int32[10]')
+        str(computation_types.TensorType(tf.int32, [10])), 'int32[10]'
+    )
     self.assertEqual(
-        str(computation_types.TensorType(tf.int32, [3, 5])), 'int32[3,5]')
+        str(computation_types.TensorType(tf.int32, [3, 5])), 'int32[3,5]'
+    )
     self.assertEqual(
-        str(computation_types.TensorType(tf.int32, [None])), 'int32[?]')
+        str(computation_types.TensorType(tf.int32, [None])), 'int32[?]'
+    )
     self.assertEqual(
-        str(computation_types.TensorType(tf.int32, [None, None])), 'int32[?,?]')
+        str(computation_types.TensorType(tf.int32, [None, None])), 'int32[?,?]'
+    )
     self.assertEqual(
-        str(computation_types.TensorType(tf.int32, [None, 10])), 'int32[?,10]')
+        str(computation_types.TensorType(tf.int32, [None, 10])), 'int32[?,10]'
+    )
 
   def test_equality(self):
     t1 = computation_types.TensorType(tf.int32, [10])
@@ -135,13 +150,17 @@ class TensorTypeTest(absltest.TestCase):
   def test_is_assignable_from(self):
     t = computation_types.TensorType(tf.int32, [10])
     self.assertFalse(
-        t.is_assignable_from(computation_types.TensorType(tf.int32)))
+        t.is_assignable_from(computation_types.TensorType(tf.int32))
+    )
     self.assertFalse(
-        t.is_assignable_from(computation_types.TensorType(tf.int32, [5])))
+        t.is_assignable_from(computation_types.TensorType(tf.int32, [5]))
+    )
     self.assertFalse(
-        t.is_assignable_from(computation_types.TensorType(tf.int32, [10, 10])))
+        t.is_assignable_from(computation_types.TensorType(tf.int32, [10, 10]))
+    )
     type_test_utils.assert_type_assignable_from(
-        t, computation_types.TensorType(tf.int32, 10))
+        t, computation_types.TensorType(tf.int32, 10)
+    )
 
   def test_is_assignable_from_unknown_dims(self):
     t1 = computation_types.TensorType(tf.int32, [None])
@@ -170,41 +189,57 @@ class StructTypeTest(absltest.TestCase):
   def test_repr(self):
     self.assertEqual(
         repr(computation_types.StructType([tf.int32, ('a', tf.bool)])),
-        'StructType([TensorType(tf.int32), (\'a\', TensorType(tf.bool))])')
+        "StructType([TensorType(tf.int32), ('a', TensorType(tf.bool))])",
+    )
 
   def test_str(self):
     self.assertEqual(str(computation_types.StructType([tf.int32])), '<int32>')
     self.assertEqual(
-        str(computation_types.StructType([('a', tf.int32)])), '<a=int32>')
+        str(computation_types.StructType([('a', tf.int32)])), '<a=int32>'
+    )
     self.assertEqual(
-        str(computation_types.StructType(('a', tf.int32))), '<a=int32>')
+        str(computation_types.StructType(('a', tf.int32))), '<a=int32>'
+    )
     self.assertEqual(
-        str(computation_types.StructType([tf.int32, tf.bool])), '<int32,bool>')
+        str(computation_types.StructType([tf.int32, tf.bool])), '<int32,bool>'
+    )
     self.assertEqual(
         str(computation_types.StructType([('a', tf.int32), tf.float32])),
-        '<a=int32,float32>')
+        '<a=int32,float32>',
+    )
     self.assertEqual(
         str(computation_types.StructType([('a', tf.int32), ('b', tf.float32)])),
-        '<a=int32,b=float32>')
+        '<a=int32,b=float32>',
+    )
     self.assertEqual(
         str(
-            computation_types.StructType([('a', tf.int32),
-                                          ('b',
-                                           computation_types.StructType([
-                                               ('x', tf.string), ('y', tf.bool)
-                                           ]))])),
-        '<a=int32,b=<x=string,y=bool>>')
+            computation_types.StructType([
+                ('a', tf.int32),
+                (
+                    'b',
+                    computation_types.StructType(
+                        [('x', tf.string), ('y', tf.bool)]
+                    ),
+                ),
+            ])
+        ),
+        '<a=int32,b=<x=string,y=bool>>',
+    )
 
   def test_elements(self):
     self.assertEqual(
         repr(
             structure.to_elements(
-                computation_types.StructType([tf.int32, ('a', tf.bool)]))),
-        '[(None, TensorType(tf.int32)), (\'a\', TensorType(tf.bool))]')
+                computation_types.StructType([tf.int32, ('a', tf.bool)])
+            )
+        ),
+        "[(None, TensorType(tf.int32)), ('a', TensorType(tf.bool))]",
+    )
 
   def test_with_none_keys(self):
     self.assertEqual(
-        str(computation_types.StructType([(None, tf.int32)])), '<int32>')
+        str(computation_types.StructType([(None, tf.int32)])), '<int32>'
+    )
 
   def test_equality(self):
     t1 = computation_types.to_type([tf.int32, tf.bool])
@@ -246,31 +281,36 @@ class StructWithPythonTypeTest(absltest.TestCase):
     t = computation_types.StructWithPythonType([('a', tf.int32)], dict)
     self.assertIs(t.python_container, dict)
     self.assertEqual(
-        repr(t), 'StructType([(\'a\', TensorType(tf.int32))]) as dict')
+        repr(t), "StructType([('a', TensorType(tf.int32))]) as dict"
+    )
 
   def test_ordered_dict(self):
-    t = computation_types.StructWithPythonType([('a', tf.int32)],
-                                               collections.OrderedDict)
+    t = computation_types.StructWithPythonType(
+        [('a', tf.int32)], collections.OrderedDict
+    )
     self.assertIs(t.python_container, collections.OrderedDict)
     self.assertEqual(
-        repr(t), 'StructType([(\'a\', TensorType(tf.int32))]) as OrderedDict')
+        repr(t), "StructType([('a', TensorType(tf.int32))]) as OrderedDict"
+    )
 
   def test_tuple(self):
     t = computation_types.StructWithPythonType([('a', tf.int32)], tuple)
     self.assertIs(t.python_container, tuple)
     self.assertEqual(
-        repr(t), 'StructType([(\'a\', TensorType(tf.int32))]) as tuple')
+        repr(t), "StructType([('a', TensorType(tf.int32))]) as tuple"
+    )
 
   def test_py_named_tuple(self):
     py_named_tuple_type = collections.namedtuple('test_tuple', ['a'])
-    t = computation_types.StructWithPythonType([('a', tf.int32)],
-                                               py_named_tuple_type)
+    t = computation_types.StructWithPythonType(
+        [('a', tf.int32)], py_named_tuple_type
+    )
     self.assertIs(t.python_container, py_named_tuple_type)
     self.assertEqual(
-        repr(t), 'StructType([(\'a\', TensorType(tf.int32))]) as test_tuple')
+        repr(t), "StructType([('a', TensorType(tf.int32))]) as test_tuple"
+    )
 
   def test_py_attr_class(self):
-
     @attr.s
     class TestFoo:
       a = attr.ib()
@@ -278,7 +318,8 @@ class StructWithPythonTypeTest(absltest.TestCase):
     t = computation_types.StructWithPythonType([('a', tf.int32)], TestFoo)
     self.assertIs(t.python_container, TestFoo)
     self.assertEqual(
-        repr(t), 'StructType([(\'a\', TensorType(tf.int32))]) as TestFoo')
+        repr(t), "StructType([('a', TensorType(tf.int32))]) as TestFoo"
+    )
 
   def test_identity(self):
     t1 = computation_types.StructWithPythonType([('a', tf.int32)], dict)
@@ -291,23 +332,28 @@ class SequenceTypeTest(absltest.TestCase):
   def test_repr(self):
     self.assertEqual(
         repr(computation_types.SequenceType(tf.int32)),
-        'SequenceType(TensorType(tf.int32))')
+        'SequenceType(TensorType(tf.int32))',
+    )
     self.assertEqual(
         repr(
             computation_types.SequenceType(
-                computation_types.StructType((tf.int32, tf.bool)))),
-        'SequenceType(StructType([TensorType(tf.int32), '
-        'TensorType(tf.bool)]))')
+                computation_types.StructType((tf.int32, tf.bool))
+            )
+        ),
+        'SequenceType(StructType([TensorType(tf.int32), TensorType(tf.bool)]))',
+    )
 
   def test_str(self):
     self.assertEqual(str(computation_types.SequenceType(tf.int32)), 'int32*')
     self.assertEqual(
         str(computation_types.SequenceType((tf.int32, tf.bool))),
-        '<int32,bool>*')
+        '<int32,bool>*',
+    )
 
   def test_element(self):
     self.assertEqual(
-        str(computation_types.SequenceType(tf.int32).element), 'int32')
+        str(computation_types.SequenceType(tf.int32).element), 'int32'
+    )
 
   def test_equality(self):
     t1 = computation_types.SequenceType(tf.int32)
@@ -324,10 +370,13 @@ class SequenceTypeTest(absltest.TestCase):
   def test_is_assignable_from(self):
     type_test_utils.assert_type_assignable_from(
         computation_types.SequenceType(tf.int32),
-        computation_types.SequenceType(tf.int32))
+        computation_types.SequenceType(tf.int32),
+    )
     self.assertFalse(
         computation_types.SequenceType(tf.int32).is_assignable_from(
-            computation_types.SequenceType(tf.bool)))
+            computation_types.SequenceType(tf.bool)
+        )
+    )
 
   def test_converts_struct_with_list_to_struct_with_tuple(self):
     sequence_type = computation_types.SequenceType([tf.int32])
@@ -336,9 +385,11 @@ class SequenceTypeTest(absltest.TestCase):
 
   def test_converts_nested_struct_with_list_to_struct_with_tuple(self):
     sequence_type = computation_types.SequenceType(
-        [collections.OrderedDict(a=[tf.int32])])
+        [collections.OrderedDict(a=[tf.int32])]
+    )
     expected_type = computation_types.SequenceType(
-        [collections.OrderedDict(a=(tf.int32,))])
+        [collections.OrderedDict(a=(tf.int32,))]
+    )
     type_test_utils.assert_types_identical(sequence_type, expected_type)
 
 
@@ -347,17 +398,21 @@ class FunctionTypeTest(absltest.TestCase):
   def test_repr(self):
     self.assertEqual(
         repr(computation_types.FunctionType(tf.int32, tf.bool)),
-        'FunctionType(TensorType(tf.int32), TensorType(tf.bool))')
+        'FunctionType(TensorType(tf.int32), TensorType(tf.bool))',
+    )
     self.assertEqual(
         repr(computation_types.FunctionType(None, tf.bool)),
-        'FunctionType(None, TensorType(tf.bool))')
+        'FunctionType(None, TensorType(tf.bool))',
+    )
 
   def test_str(self):
     self.assertEqual(
         str(computation_types.FunctionType(tf.int32, tf.bool)),
-        '(int32 -> bool)')
+        '(int32 -> bool)',
+    )
     self.assertEqual(
-        str(computation_types.FunctionType(None, tf.bool)), '( -> bool)')
+        str(computation_types.FunctionType(None, tf.bool)), '( -> bool)'
+    )
 
   def test_parameter_and_result(self):
     t = computation_types.FunctionType(tf.int32, tf.bool)
@@ -393,7 +448,7 @@ class AbstractTypeTest(absltest.TestCase):
 
   def test_construction(self):
     t1 = computation_types.AbstractType('T1')
-    self.assertEqual(repr(t1), 'AbstractType(\'T1\')')
+    self.assertEqual(repr(t1), "AbstractType('T1')")
     self.assertEqual(str(t1), 'T1')
     self.assertEqual(t1.label, 'T1')
     self.assertRaises(TypeError, computation_types.AbstractType, 10)
@@ -449,11 +504,16 @@ class FederatedTypeTest(absltest.TestCase):
     self.assertIs(t1.placement, placements.CLIENTS)
     self.assertFalse(t1.all_equal)
     self.assertEqual(
-        repr(t1), 'FederatedType(TensorType(tf.int32), '
-        'PlacementLiteral(\'clients\'), False)')
+        repr(t1),
+        (
+            'FederatedType(TensorType(tf.int32), '
+            "PlacementLiteral('clients'), False)"
+        ),
+    )
     self.assertEqual(str(t1), '{int32}@CLIENTS')
     t2 = computation_types.FederatedType(
-        tf.int32, placements.CLIENTS, all_equal=True)
+        tf.int32, placements.CLIENTS, all_equal=True
+    )
     self.assertEqual(str(t2), 'int32@CLIENTS')
 
   def test_equality(self):
@@ -476,24 +536,29 @@ class FederatedTypeTest(absltest.TestCase):
     t1 = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     type_test_utils.assert_type_assignable_from(t1, t1)
     t2 = computation_types.FederatedType(
-        tf.int32, placements.CLIENTS, all_equal=True)
+        tf.int32, placements.CLIENTS, all_equal=True
+    )
     type_test_utils.assert_type_assignable_from(t1, t2)
     type_test_utils.assert_type_assignable_from(t2, t2)
     self.assertFalse(t2.is_assignable_from(t1))
     t3 = computation_types.FederatedType(
-        computation_types.TensorType(tf.int32, [10]), placements.CLIENTS)
+        computation_types.TensorType(tf.int32, [10]), placements.CLIENTS
+    )
     t4 = computation_types.FederatedType(
-        computation_types.TensorType(tf.int32, [None]), placements.CLIENTS)
+        computation_types.TensorType(tf.int32, [None]), placements.CLIENTS
+    )
     type_test_utils.assert_type_assignable_from(t4, t3)
     self.assertFalse(t3.is_assignable_from(t4))
     t5 = computation_types.FederatedType(
-        computation_types.TensorType(tf.int32, [10]), placements.SERVER)
+        computation_types.TensorType(tf.int32, [10]), placements.SERVER
+    )
     self.assertFalse(t3.is_assignable_from(t5))
     self.assertFalse(t5.is_assignable_from(t3))
     t6 = computation_types.FederatedType(
         computation_types.TensorType(tf.int32, [10]),
         placements.CLIENTS,
-        all_equal=True)
+        all_equal=True,
+    )
     type_test_utils.assert_type_assignable_from(t3, t6)
     type_test_utils.assert_type_assignable_from(t4, t6)
     self.assertFalse(t6.is_assignable_from(t3))
@@ -502,15 +567,17 @@ class FederatedTypeTest(absltest.TestCase):
   def test_at_server(self):
     type_spec = computation_types.TensorType(tf.bool)
     actual_type = computation_types.at_server(type_spec)
-    expected_type = computation_types.FederatedType(type_spec,
-                                                    placements.SERVER)
+    expected_type = computation_types.FederatedType(
+        type_spec, placements.SERVER
+    )
     self.assertEqual(actual_type, expected_type)
 
   def test_at_clients(self):
     type_spec = computation_types.TensorType(tf.bool)
     actual_type = computation_types.at_clients(type_spec)
-    expected_type = computation_types.FederatedType(type_spec,
-                                                    placements.CLIENTS)
+    expected_type = computation_types.FederatedType(
+        type_spec, placements.CLIENTS
+    )
     self.assertEqual(actual_type, expected_type)
 
 
@@ -538,12 +605,15 @@ class ToTypeTest(absltest.TestCase):
     test_shape = [None, 3]
     test_dtype = tf.int64
     s = tf.data.DatasetSpec(
-        element_spec=tf.TensorSpec(test_shape, dtype=test_dtype))
+        element_spec=tf.TensorSpec(test_shape, dtype=test_dtype)
+    )
     t = computation_types.to_type(s)
     type_test_utils.assert_types_identical(
         t,
         computation_types.SequenceType(
-            computation_types.TensorType(shape=test_shape, dtype=test_dtype)))
+            computation_types.TensorType(shape=test_shape, dtype=test_dtype)
+        ),
+    )
 
   def test_tf_type_and_shape(self):
     s = (tf.int32, [10])
@@ -648,7 +718,6 @@ class ToTypeTest(absltest.TestCase):
     self.assertIsInstance(b, computation_types.TensorType)
 
   def test_attrs_type_raises_deprecation_error(self):
-
     @attr.s
     class TestFoo:
       a = attr.ib(type=tf.int32)
@@ -656,12 +725,11 @@ class ToTypeTest(absltest.TestCase):
 
     with self.assertRaisesRegex(
         TypeError,
-        'Converting `attr` classes to a federated type is no longer supported.'
+        'Converting `attr` classes to a federated type is no longer supported.',
     ):
       computation_types.to_type(TestFoo)
 
   def test_attrs_instance(self):
-
     @attr.s
     class TestFoo:
       a = attr.ib()
@@ -673,7 +741,6 @@ class ToTypeTest(absltest.TestCase):
     self.assertEqual(str(t), '<a=int32,b=float32[2]>')
 
   def test_nested_attrs_class(self):
-
     @attr.s
     class TestFoo:
       a = attr.ib()
@@ -684,7 +751,8 @@ class ToTypeTest(absltest.TestCase):
       c = attr.ib()
 
     t = computation_types.to_type(
-        TestFoo(a=[tf.int32, tf.bool], b=TestFoo2(c=(tf.float32, [2]))))
+        TestFoo(a=[tf.int32, tf.bool], b=TestFoo2(c=(tf.float32, [2])))
+    )
     self.assertIsInstance(t, computation_types.StructWithPythonType)
     self.assertIs(t.python_container, TestFoo)
     self.assertIsInstance(t.a, computation_types.StructWithPythonType)
@@ -698,13 +766,15 @@ class ToTypeTest(absltest.TestCase):
         structure.Struct((
             (None, tf.int32),
             ('b', tf.int64),
-        )))
+        ))
+    )
     self.assertEqual(
         t,
         computation_types.StructType([
             (None, computation_types.TensorType(tf.int32)),
-            ('b', computation_types.TensorType(tf.int64))
-        ]))
+            ('b', computation_types.TensorType(tf.int64)),
+        ]),
+    )
 
   def test_with_np_int32(self):
     t = computation_types.to_type(np.int32)
@@ -732,11 +802,14 @@ class ToTypeTest(absltest.TestCase):
     self.assertEqual(t.python_container, tf.RaggedTensor)
     self.assertEqual(
         t.flat_values,
-        computation_types.TensorType(tf.int32, tf.TensorShape(None)))
+        computation_types.TensorType(tf.int32, tf.TensorShape(None)),
+    )
     self.assertEqual(
         t.nested_row_splits,
         computation_types.StructWithPythonType(
-            [(None, computation_types.TensorType(tf.int64, [None]))], tuple))
+            [(None, computation_types.TensorType(tf.int64, [None]))], tuple
+        ),
+    )
 
   def test_sparse_tensor_spec(self):
     # sparse_tensor = [0, 2, 0, 0, 0]
@@ -745,8 +818,9 @@ class ToTypeTest(absltest.TestCase):
     t = computation_types.to_type(sparse_tensor_spec)
     self.assertIsInstance(t, computation_types.StructWithPythonType)
     self.assertEqual(t.python_container, tf.SparseTensor)
-    self.assertEqual(t.indices,
-                     computation_types.TensorType(tf.int64, [None, 1]))
+    self.assertEqual(
+        t.indices, computation_types.TensorType(tf.int64, [None, 1])
+    )
     self.assertEqual(t.values, computation_types.TensorType(tf.int32, [None]))
     self.assertEqual(t.dense_shape, computation_types.TensorType(tf.int64, [1]))
 
@@ -778,12 +852,14 @@ class RepresentationTest(absltest.TestCase):
     self.assertEqual(type_spec.formatted_representation(), '(int32 -> float32)')
 
   def test_returns_string_for_function_type_with_named_tuple_type_parameter(
-      self):
+      self,
+  ):
     parameter = computation_types.StructType((tf.int32, tf.float32))
     type_spec = computation_types.FunctionType(parameter, tf.bool)
 
-    self.assertEqual(type_spec.compact_representation(),
-                     '(<int32,float32> -> bool)')
+    self.assertEqual(
+        type_spec.compact_representation(), '(<int32,float32> -> bool)'
+    )
     # pyformat: disable
     self.assertEqual(
         type_spec.formatted_representation(),
@@ -798,8 +874,9 @@ class RepresentationTest(absltest.TestCase):
     result = computation_types.StructType((tf.int32, tf.float32))
     type_spec = computation_types.FunctionType(tf.bool, result)
 
-    self.assertEqual(type_spec.compact_representation(),
-                     '(bool -> <int32,float32>)')
+    self.assertEqual(
+        type_spec.compact_representation(), '(bool -> <int32,float32>)'
+    )
     # pyformat: disable
     self.assertEqual(
         type_spec.formatted_representation(),
@@ -811,13 +888,15 @@ class RepresentationTest(absltest.TestCase):
     # pyformat: enable
 
   def test_returns_string_for_function_type_with_named_tuple_type_parameter_and_result(
-      self):
+      self,
+  ):
     parameter = computation_types.StructType((tf.int32, tf.float32))
     result = computation_types.StructType((tf.bool, tf.string))
     type_spec = computation_types.FunctionType(parameter, result)
 
-    self.assertEqual(type_spec.compact_representation(),
-                     '(<int32,float32> -> <bool,string>)')
+    self.assertEqual(
+        type_spec.compact_representation(), '(<int32,float32> -> <bool,string>)'
+    )
     # pyformat: disable
     self.assertEqual(
         type_spec.formatted_representation(),
@@ -847,7 +926,8 @@ class RepresentationTest(absltest.TestCase):
 
   def test_returns_string_for_named_tuple_type_named(self):
     type_spec = computation_types.StructType(
-        (('a', tf.int32), ('b', tf.float32)))
+        (('a', tf.int32), ('b', tf.float32))
+    )
 
     self.assertEqual(type_spec.compact_representation(), '<a=int32,b=float32>')
     # pyformat: disable
@@ -866,8 +946,9 @@ class RepresentationTest(absltest.TestCase):
     type_spec_3 = computation_types.StructType((type_spec_2, tf.string))
     type_spec = type_spec_3
 
-    self.assertEqual(type_spec.compact_representation(),
-                     '<<<int32,float32>,bool>,string>')
+    self.assertEqual(
+        type_spec.compact_representation(), '<<<int32,float32>,bool>,string>'
+    )
     # pyformat: disable
     self.assertEqual(
         type_spec.formatted_representation(),
@@ -975,47 +1056,69 @@ class CheckWellFormedTest(parameterized.TestCase):
     except TypeError:
       self.fail('Raised TypeError unexpectedly.')
 
+  # pylint: disable=g-long-lambda
   @parameterized.named_parameters([
       (
           'federated_function_type',
-          lambda: computation_types.FederatedType(  # pylint: disable=g-long-lambda
-              computation_types.FunctionType(tf.int32, tf.int32), placements.
-              CLIENTS)),
+          lambda: computation_types.FederatedType(
+              computation_types.FunctionType(tf.int32, tf.int32),
+              placements.CLIENTS,
+          ),
+      ),
       (
           'federated_federated_type',
-          lambda: computation_types.FederatedType(  # pylint: disable=g-long-lambda
+          lambda: computation_types.FederatedType(
               computation_types.FederatedType(tf.int32, placements.CLIENTS),
-              placements.CLIENTS)),
+              placements.CLIENTS,
+          ),
+      ),
       (
           'sequence_sequence_type',
-          lambda: computation_types.SequenceType(  # pylint: disable=g-long-lambda
-              computation_types.SequenceType([tf.int32]))),
+          lambda: computation_types.SequenceType(
+              computation_types.SequenceType([tf.int32])
+          ),
+      ),
       (
           'sequence_federated_type',
-          lambda: computation_types.SequenceType(  # pylint: disable=g-long-lambda
-              computation_types.FederatedType(tf.int32, placements.CLIENTS))),
+          lambda: computation_types.SequenceType(
+              computation_types.FederatedType(tf.int32, placements.CLIENTS)
+          ),
+      ),
       (
           'tuple_federated_function_type',
-          lambda: computation_types.StructType([  # pylint: disable=g-long-lambda
-              computation_types.FederatedType(
-                  computation_types.FunctionType(tf.int32, tf.int32), placements
-                  .CLIENTS)
-          ])),
+          lambda: computation_types.StructType(
+              [
+                  computation_types.FederatedType(
+                      computation_types.FunctionType(tf.int32, tf.int32),
+                      placements.CLIENTS,
+                  )
+              ]
+          ),
+      ),
       (
           'tuple_federated_federated_type',
-          lambda: computation_types.StructType([  # pylint: disable=g-long-lambda
-              computation_types.FederatedType(
-                  computation_types.FederatedType(tf.int32, placements.CLIENTS),
-                  placements.CLIENTS)
-          ])),
+          lambda: computation_types.StructType(
+              [
+                  computation_types.FederatedType(
+                      computation_types.FederatedType(
+                          tf.int32, placements.CLIENTS
+                      ),
+                      placements.CLIENTS,
+                  )
+              ]
+          ),
+      ),
       (
           'federated_tuple_function_type',
-          lambda: computation_types.FederatedType(  # pylint: disable=g-long-lambda
-              computation_types.StructType([
-                  computation_types.FunctionType(tf.int32, tf.int32)
-              ]), placements.CLIENTS)),
+          lambda: computation_types.FederatedType(
+              computation_types.StructType(
+                  [computation_types.FunctionType(tf.int32, tf.int32)]
+              ),
+              placements.CLIENTS,
+          ),
+      ),
   ])
-  # pyformat: enable
+  # pylint: disable=g-long-lambda
   def test_raises_type_error(self, create_type_signature):
     with self.assertRaises(TypeError):
       create_type_signature()

@@ -25,8 +25,9 @@ from tensorflow_federated.examples.personalization.p13n_utils import build_perso
 from tensorflow_federated.examples.personalization.p13n_utils import evaluate_fn
 
 
-def _get_emnist_datasets(
-) -> tuple[list[tf.data.Dataset], list[dict[str, tf.data.Dataset]]]:
+def _get_emnist_datasets() -> (
+    tuple[list[tf.data.Dataset], list[dict[str, tf.data.Dataset]]]
+):
   """Pre-process EMNIST-62 dataset for FedAvg and personalization."""
 
   def element_fn(element):
@@ -37,8 +38,12 @@ def _get_emnist_datasets(
     num_epochs_per_round = 10
     batch_size = 20
     buffer_size = 1000
-    return dataset.repeat(num_epochs_per_round).map(element_fn).shuffle(
-        buffer_size).batch(batch_size)
+    return (
+        dataset.repeat(num_epochs_per_round)
+        .map(element_fn)
+        .shuffle(buffer_size)
+        .batch(batch_size)
+    )
 
   def preprocess_p13n_data(dataset):
     """Pre-process the dataset for training/evaluating a personalized model."""
@@ -49,11 +54,13 @@ def _get_emnist_datasets(
     return dataset.map(element_fn)
 
   emnist_train, emnist_test = tff.simulation.datasets.emnist.load_data(
-      only_digits=False)  # EMNIST has 3400 clients.
+      only_digits=False
+  )  # EMNIST has 3400 clients.
 
   # Shuffle the client ids before splitting into training and personalization.
   client_ids = list(
-      np.random.RandomState(seed=42).permutation(emnist_train.client_ids))
+      np.random.RandomState(seed=42).permutation(emnist_train.client_ids)
+  )
 
   # The first 2500 clients are used for training a global model.
   federated_train_data = [
@@ -68,12 +75,20 @@ def _get_emnist_datasets(
   for c in client_ids[2500:]:
     federated_p13n_data.append(
         collections.OrderedDict([
-            ('train_data',
-             preprocess_p13n_data(
-                 emnist_train.create_tf_dataset_for_client(c))),
-            ('test_data',
-             preprocess_p13n_data(emnist_test.create_tf_dataset_for_client(c)))
-        ]))
+            (
+                'train_data',
+                preprocess_p13n_data(
+                    emnist_train.create_tf_dataset_for_client(c)
+                ),
+            ),
+            (
+                'test_data',
+                preprocess_p13n_data(
+                    emnist_test.create_tf_dataset_for_client(c)
+                ),
+            ),
+        ])
+    )
 
   return federated_train_data, federated_p13n_data
 
@@ -97,16 +112,19 @@ def _create_conv_dropout_model(only_digits: bool = True) -> tf.keras.Model:
           kernel_size=(3, 3),
           activation='relu',
           data_format=data_format,
-          input_shape=(28, 28, 1)),
+          input_shape=(28, 28, 1),
+      ),
       tf.keras.layers.Conv2D(
-          64, kernel_size=(3, 3), activation='relu', data_format=data_format),
+          64, kernel_size=(3, 3), activation='relu', data_format=data_format
+      ),
       tf.keras.layers.MaxPool2D(pool_size=(2, 2), data_format=data_format),
       tf.keras.layers.Dropout(0.25),
       tf.keras.layers.Flatten(),
       tf.keras.layers.Dense(128, activation='relu'),
       tf.keras.layers.Dropout(0.5),
       tf.keras.layers.Dense(
-          10 if only_digits else 62, activation=tf.nn.softmax),
+          10 if only_digits else 62, activation=tf.nn.softmax
+      ),
   ])
 
   return model
@@ -126,7 +144,8 @@ def main(argv):
         keras_model=keras_model,
         loss=tf.keras.losses.SparseCategoricalCrossentropy(),
         input_spec=federated_train_data[0].element_spec,
-        metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
+        metrics=[tf.keras.metrics.SparseCategoricalAccuracy()],
+    )
 
   # Build a standard federated averaging process for training the global model.
   client_opt = lambda: tf.keras.optimizers.SGD(learning_rate=0.02)
@@ -134,7 +153,8 @@ def main(argv):
   learning_process = tff.learning.algorithms.build_weighted_fed_avg(
       model_fn=model_fn,
       client_optimizer_fn=client_opt,
-      server_optimizer_fn=server_opt)
+      server_optimizer_fn=server_opt,
+  )
 
   # Initialize the server state of the FedAvg process.
   server_state = learning_process.initialize()
@@ -156,14 +176,16 @@ def main(argv):
       optimizer_fn=sgd_opt,
       batch_size=20,
       num_epochs=3,
-      num_epochs_per_eval=1)
+      num_epochs_per_eval=1,
+  )
   adam_opt = lambda: tf.keras.optimizers.Adam(learning_rate=0.002)
   personalize_fn_dict['adam'] = functools.partial(
       build_personalize_fn,
       optimizer_fn=adam_opt,
       batch_size=20,
       num_epochs=3,
-      num_epochs_per_eval=1)
+      num_epochs_per_eval=1,
+  )
 
   # Build the `tff.Computation` for evaluating the personalization strategies.
   # Here `p13n_eval` is a `tff.Computation` with the following type signature:
@@ -172,7 +194,8 @@ def main(argv):
       model_fn=model_fn,
       personalize_fn_dict=personalize_fn_dict,
       baseline_evaluate_fn=evaluate_fn,
-      max_num_clients=100)  # Metrics from at most 100 clients will be returned.
+      max_num_clients=100,
+  )  # Metrics from at most 100 clients will be returned.
 
   # Train a global model using the standard FedAvg algorithm.
   num_total_rounds = 5
@@ -181,7 +204,9 @@ def main(argv):
   for _ in range(1, num_total_rounds + 1):
     sampled_train_data = list(
         np.random.choice(
-            federated_train_data, num_clients_per_round, replace=False))
+            federated_train_data, num_clients_per_round, replace=False
+        )
+    )
     next_output = learning_process.next(server_state, sampled_train_data)
     server_state = next_output.state
 
@@ -192,7 +217,9 @@ def main(argv):
   num_clients_do_p13n_eval = 50
   sampled_p13n_data = list(
       np.random.choice(
-          federated_p13n_data, num_clients_do_p13n_eval, replace=False))
+          federated_p13n_data, num_clients_do_p13n_eval, replace=False
+      )
+  )
   model_weights = learning_process.get_model_weights(server_state)
   p13n_metrics = p13n_eval(model_weights, sampled_p13n_data)
   # Specifically, `p13n_metrics` is an `OrderedDict` that maps
@@ -213,18 +240,21 @@ def main(argv):
   # 2. mean accuracy of SGD-trained personalized models obtained at Epoch 1.
   # 3. mean accuracy of Adam-trained personalized models obtained at Epoch 1.
   global_model_accuracies = np.array(
-      p13n_metrics['baseline_metrics']['sparse_categorical_accuracy'])
+      p13n_metrics['baseline_metrics']['sparse_categorical_accuracy']
+  )
   mean_global_acc = np.mean(global_model_accuracies).item()
   print(f'Mean accuracy of the global model: {mean_global_acc}.')
 
   print('Mean accuracy of the personalized models at Epoch 1:')
   personalized_models_accuracies_sgd = np.array(
-      p13n_metrics['sgd']['epoch_1']['sparse_categorical_accuracy'])
+      p13n_metrics['sgd']['epoch_1']['sparse_categorical_accuracy']
+  )
   mean_p13n_acc_sgd = np.mean(personalized_models_accuracies_sgd).item()
   print(f'SGD-trained personalized models: {mean_p13n_acc_sgd}.')
 
   personalized_models_accuracies_adam = np.array(
-      p13n_metrics['adam']['epoch_1']['sparse_categorical_accuracy'])
+      p13n_metrics['adam']['epoch_1']['sparse_categorical_accuracy']
+  )
   mean_p13n_acc_adam = np.mean(personalized_models_accuracies_adam).item()
   print(f'Adam-trained personalized models: {mean_p13n_acc_adam}.')
 

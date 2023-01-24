@@ -30,11 +30,13 @@ _ONE_DAY_IN_SECONDS = 60 * 60 * 24
 
 
 @contextlib.contextmanager
-def server_context(ex_factory: executor_factory.ExecutorFactory,
-                   num_threads: int,
-                   port: int,
-                   credentials: Optional[grpc.ServerCredentials] = None,
-                   options: Optional[list[tuple[Any, Any]]] = None):
+def server_context(
+    ex_factory: executor_factory.ExecutorFactory,
+    num_threads: int,
+    port: int,
+    credentials: Optional[grpc.ServerCredentials] = None,
+    options: Optional[list[tuple[Any, Any]]] = None,
+):
   """Context manager yielding gRPC server hosting simulation component.
 
   Args:
@@ -68,7 +70,8 @@ def server_context(ex_factory: executor_factory.ExecutorFactory,
   if options is not None:
     server_kwargs['options'] = options
   thread_pool_executor = concurrent.futures.ThreadPoolExecutor(
-      max_workers=num_threads)
+      max_workers=num_threads
+  )
   server = grpc.server(thread_pool_executor, **server_kwargs)
   try:
     full_port_string = '[::]:{}'.format(port)
@@ -87,11 +90,13 @@ def server_context(ex_factory: executor_factory.ExecutorFactory,
     server.stop(None)
 
 
-def run_server(ex_factory: executor_factory.ExecutorFactory,
-               num_threads: int,
-               port: int,
-               credentials: Optional[grpc.ServerCredentials] = None,
-               options: Optional[list[tuple[Any, Any]]] = None):
+def run_server(
+    ex_factory: executor_factory.ExecutorFactory,
+    num_threads: int,
+    port: int,
+    credentials: Optional[grpc.ServerCredentials] = None,
+    options: Optional[list[tuple[Any, Any]]] = None,
+):
   """Runs a gRPC server hosting a simulation component in this process.
 
   The server runs indefinitely, but can be stopped by a keyboard interrupt.

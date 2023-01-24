@@ -31,10 +31,14 @@ from tensorflow_federated.examples.stateful_clients import stateful_fedavg_tff
 # Training hyperparameters
 flags.DEFINE_integer('total_rounds', 256, 'Number of total training rounds.')
 flags.DEFINE_integer('rounds_per_eval', 1, 'How often to evaluate')
-flags.DEFINE_integer('train_clients_per_round', 2,
-                     'How many clients to sample per round.')
-flags.DEFINE_integer('client_epochs_per_round', 1,
-                     'Number of epochs in the client to take per round.')
+flags.DEFINE_integer(
+    'train_clients_per_round', 2, 'How many clients to sample per round.'
+)
+flags.DEFINE_integer(
+    'client_epochs_per_round',
+    1,
+    'Number of epochs in the client to take per round.',
+)
 flags.DEFINE_integer('batch_size', 20, 'Batch size used on the client.')
 flags.DEFINE_integer('test_batch_size', 100, 'Minibatch size of test data.')
 
@@ -55,26 +59,33 @@ def get_emnist_dataset():
     of all clients.
   """
   emnist_train, emnist_test = tff.simulation.datasets.emnist.load_data(
-      only_digits=True)
+      only_digits=True
+  )
 
   def element_fn(element):
     return collections.OrderedDict(
-        x=tf.expand_dims(element['pixels'], -1), y=element['label'])
+        x=tf.expand_dims(element['pixels'], -1), y=element['label']
+    )
 
   def preprocess_train_dataset(dataset):
     # Use buffer_size same as the maximum client dataset size,
     # 418 for Federated EMNIST
-    return dataset.map(element_fn).shuffle(buffer_size=418).repeat(
-        count=FLAGS.client_epochs_per_round).batch(
-            FLAGS.batch_size, drop_remainder=False)
+    return (
+        dataset.map(element_fn)
+        .shuffle(buffer_size=418)
+        .repeat(count=FLAGS.client_epochs_per_round)
+        .batch(FLAGS.batch_size, drop_remainder=False)
+    )
 
   def preprocess_test_dataset(dataset):
     return dataset.map(element_fn).batch(
-        FLAGS.test_batch_size, drop_remainder=False)
+        FLAGS.test_batch_size, drop_remainder=False
+    )
 
   emnist_train = emnist_train.preprocess(preprocess_train_dataset)
   emnist_test = preprocess_test_dataset(
-      emnist_test.create_tf_dataset_from_all_clients())
+      emnist_test.create_tf_dataset_from_all_clients()
+  )
   return emnist_train, emnist_test
 
 
@@ -99,13 +110,15 @@ def create_original_fedavg_cnn_model(only_digits=True):
       tf.keras.layers.MaxPooling2D,
       pool_size=(2, 2),
       padding='same',
-      data_format=data_format)
+      data_format=data_format,
+  )
   conv2d = functools.partial(
       tf.keras.layers.Conv2D,
       kernel_size=5,
       padding='same',
       data_format=data_format,
-      activation=tf.nn.relu)
+      activation=tf.nn.relu,
+  )
 
   model = tf.keras.models.Sequential([
       conv2d(filters=32, input_shape=input_shape),
@@ -139,8 +152,9 @@ def main(argv):
     """Constructs a fully initialized model for use in federated averaging."""
     keras_model = create_original_fedavg_cnn_model(only_digits=True)
     loss = tf.keras.losses.SparseCategoricalCrossentropy()
-    return stateful_fedavg_tf.KerasModelWrapper(keras_model,
-                                                test_data.element_spec, loss)
+    return stateful_fedavg_tf.KerasModelWrapper(
+        keras_model, test_data.element_spec, loss
+    )
 
   # Initialize client states.
   client_states = {
@@ -153,8 +167,11 @@ def main(argv):
     return stateful_fedavg_tf.ClientState(client_index=-1, iters_count=0)
 
   iterative_process = stateful_fedavg_tff.build_federated_averaging_process(
-      tff_model_fn, get_sample_client_state, server_optimizer_fn,
-      client_optimizer_fn)
+      tff_model_fn,
+      get_sample_client_state,
+      server_optimizer_fn,
+      client_optimizer_fn,
+  )
   server_state = iterative_process.initialize()
 
   metric = tf.keras.metrics.SparseCategoricalAccuracy(name='test_accuracy')
@@ -163,7 +180,8 @@ def main(argv):
     sampled_clients = np.random.choice(
         train_data.client_ids[:3],
         size=FLAGS.train_clients_per_round,
-        replace=False)
+        replace=False,
+    )
     sampled_train_data = [
         train_data.create_tf_dataset_for_client(client)
         for client in sampled_clients
@@ -172,20 +190,26 @@ def main(argv):
         client_states[client] for client in sampled_clients
     ]  # Sample corresponding client states.
     server_state, train_metrics, updated_client_states = iterative_process.next(
-        server_state, sampled_train_data, sampled_client_states)
+        server_state, sampled_train_data, sampled_client_states
+    )
     print(f'Round {round_num} training loss: {train_metrics}')
     # Save updated client states back into the global `client_states` structure.
     for client_state in updated_client_states:
       client_id = train_data.client_ids[client_state.client_index]
       client_states[client_id] = client_state
-      print(f'Round {round_num} iterations on client '
-            f'{client_id}: {client_state .iters_count}')
-    print(f'Round {round_num} total iterations on '
-          f'sampled clients: {server_state.total_iters_count}')
+      print(
+          f'Round {round_num} iterations on client '
+          f'{client_id}: {client_state .iters_count}'
+      )
+    print(
+        f'Round {round_num} total iterations on '
+        f'sampled clients: {server_state.total_iters_count}'
+    )
     if round_num % FLAGS.rounds_per_eval == 0:
       model.from_weights(server_state.model_weights)
-      accuracy = stateful_fedavg_tf.keras_evaluate(model.keras_model, test_data,
-                                                   metric)
+      accuracy = stateful_fedavg_tf.keras_evaluate(
+          model.keras_model, test_data, metric
+      )
       print(f'Round {round_num} validation accuracy: {accuracy * 100.0}')
 
 

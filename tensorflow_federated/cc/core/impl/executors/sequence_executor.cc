@@ -461,7 +461,7 @@ class SequenceExecutor : public ExecutorBase<ValueFuture> {
   absl::StatusOr<ValueFuture> CreateStruct(
       std::vector<ValueFuture> members) final {
     std::function<absl::StatusOr<SequenceExecutorValue>(
-        std::vector<SequenceExecutorValue> &&)>
+        std::vector<SequenceExecutorValue>&&)>
         mapping_fn = [executor = this->target_executor_](
                          std::vector<SequenceExecutorValue>&& member_elems) {
           return SequenceExecutorValue::CreateStruct(std::move(member_elems));
@@ -472,7 +472,7 @@ class SequenceExecutor : public ExecutorBase<ValueFuture> {
   absl::StatusOr<ValueFuture> CreateSelection(ValueFuture value,
                                               const uint32_t index) final {
     std::function<absl::StatusOr<SequenceExecutorValue>(
-        std::vector<SequenceExecutorValue> &&)>
+        std::vector<SequenceExecutorValue>&&)>
         mapping_fn = [executor = this->target_executor_,
                       index](std::vector<SequenceExecutorValue>&& source_vector)
         -> absl::StatusOr<SequenceExecutorValue> {

@@ -45,7 +45,8 @@ def _sum_integers(x: int, y: int) -> int:
 
 @tff.federated_computation(
     tff.type_at_server(tf.int32),
-    tff.type_at_clients(tff.SequenceType(tf.int32)))
+    tff.type_at_clients(tff.SequenceType(tf.int32)),
+)
 def train(
     server_state: int, client_data: tf.data.Dataset
 ) -> tuple[int, collections.OrderedDict[str, Any]]:
@@ -67,19 +68,22 @@ def train(
   client_sums = tff.federated_map(_sum_dataset, client_data)
   total_sum = tff.federated_sum(client_sums)
   updated_state = tff.federated_map(_sum_integers, (server_state, total_sum))
-  metrics = collections.OrderedDict([
-      (METRICS_TOTAL_SUM, total_sum),
-  ])
+  metrics = collections.OrderedDict(
+      [
+          (METRICS_TOTAL_SUM, total_sum),
+      ]
+  )
   metrics = tff.federated_zip(metrics)
   return updated_state, metrics
 
 
 @tff.federated_computation(
     tff.type_at_server(tf.int32),
-    tff.type_at_clients(tff.SequenceType(tf.int32)))
+    tff.type_at_clients(tff.SequenceType(tf.int32)),
+)
 def evaluation(
-    server_state: int,
-    client_data: tf.data.Dataset) -> collections.OrderedDict[str, Any]:
+    server_state: int, client_data: tf.data.Dataset
+) -> collections.OrderedDict[str, Any]:
   """Computes the sum of all the integers on the clients.
 
   Computes the sum of all the integers on the clients and returns the following
@@ -98,8 +102,10 @@ def evaluation(
   del server_state  # Unused.
   client_sums = tff.federated_map(_sum_dataset, client_data)
   total_sum = tff.federated_sum(client_sums)
-  metrics = collections.OrderedDict([
-      (METRICS_TOTAL_SUM, total_sum),
-  ])
+  metrics = collections.OrderedDict(
+      [
+          (METRICS_TOTAL_SUM, total_sum),
+      ]
+  )
   metrics = tff.federated_zip(metrics)
   return metrics

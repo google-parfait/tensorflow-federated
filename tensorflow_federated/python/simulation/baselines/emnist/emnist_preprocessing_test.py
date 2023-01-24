@@ -40,9 +40,11 @@ class PreprocessFnTest(tf.test.TestCase, parameterized.TestCase):
     preprocess_spec = client_spec.ClientSpec(num_epochs=1, batch_size=1)
     with self.assertRaisesRegex(
         ValueError,
-        'emnist_task must be one of "character_recognition" or "autoencoder".'):
+        'emnist_task must be one of "character_recognition" or "autoencoder".',
+    ):
       emnist_preprocessing.create_preprocess_fn(
-          preprocess_spec, emnist_task='bad_task')
+          preprocess_spec, emnist_task='bad_task'
+      )
 
   @parameterized.named_parameters(
       ('param1', 1, 1),
@@ -52,16 +54,19 @@ class PreprocessFnTest(tf.test.TestCase, parameterized.TestCase):
       ('param5', 5, 3),
       ('param6', 7, 2),
   )
-  def test_ds_length_is_ceil_num_epochs_over_batch_size(self, num_epochs,
-                                                        batch_size):
+  def test_ds_length_is_ceil_num_epochs_over_batch_size(
+      self, num_epochs, batch_size
+  ):
     ds = tf.data.Dataset.from_tensor_slices(TEST_DATA)
     preprocess_spec = client_spec.ClientSpec(
-        num_epochs=num_epochs, batch_size=batch_size)
+        num_epochs=num_epochs, batch_size=batch_size
+    )
     preprocess_fn = emnist_preprocessing.create_preprocess_fn(preprocess_spec)
     preprocessed_ds = preprocess_fn(ds)
     self.assertEqual(
         _compute_length_of_dataset(preprocessed_ds),
-        tf.cast(tf.math.ceil(num_epochs / batch_size), tf.int32))
+        tf.cast(tf.math.ceil(num_epochs / batch_size), tf.int32),
+    )
 
   @parameterized.named_parameters(
       ('max_elements1', 1),
@@ -74,43 +79,61 @@ class PreprocessFnTest(tf.test.TestCase, parameterized.TestCase):
     repeat_size = 10
     ds = tf.data.Dataset.from_tensor_slices(TEST_DATA).repeat(repeat_size)
     preprocess_spec = client_spec.ClientSpec(
-        num_epochs=1, batch_size=1, max_elements=max_elements)
+        num_epochs=1, batch_size=1, max_elements=max_elements
+    )
     preprocess_fn = emnist_preprocessing.create_preprocess_fn(preprocess_spec)
     preprocessed_ds = preprocess_fn(ds)
     self.assertEqual(
         _compute_length_of_dataset(preprocessed_ds),
-        min(repeat_size, max_elements))
+        min(repeat_size, max_elements),
+    )
 
   def test_character_recognition_preprocess_returns_correct_elements(self):
     ds = tf.data.Dataset.from_tensor_slices(TEST_DATA)
     preprocess_spec = client_spec.ClientSpec(
-        num_epochs=1, batch_size=20, shuffle_buffer_size=1)
+        num_epochs=1, batch_size=20, shuffle_buffer_size=1
+    )
     preprocess_fn = emnist_preprocessing.create_preprocess_fn(
-        preprocess_spec, emnist_task='character_recognition')
+        preprocess_spec, emnist_task='character_recognition'
+    )
     preprocessed_ds = preprocess_fn(ds)
-    self.assertEqual(preprocessed_ds.element_spec,
-                     (tf.TensorSpec(shape=(None, 28, 28, 1), dtype=tf.float32),
-                      tf.TensorSpec(shape=(None,), dtype=tf.int32)))
+    self.assertEqual(
+        preprocessed_ds.element_spec,
+        (
+            tf.TensorSpec(shape=(None, 28, 28, 1), dtype=tf.float32),
+            tf.TensorSpec(shape=(None,), dtype=tf.int32),
+        ),
+    )
 
     element = next(iter(preprocessed_ds))
-    expected_element = (tf.zeros(shape=(1, 28, 28, 1), dtype=tf.float32),
-                        tf.zeros(shape=(1,), dtype=tf.int32))
+    expected_element = (
+        tf.zeros(shape=(1, 28, 28, 1), dtype=tf.float32),
+        tf.zeros(shape=(1,), dtype=tf.int32),
+    )
     self.assertAllClose(self.evaluate(element), expected_element)
 
   def test_autoencoder_preprocess_returns_correct_elements(self):
     ds = tf.data.Dataset.from_tensor_slices(TEST_DATA)
     preprocess_spec = client_spec.ClientSpec(
-        num_epochs=1, batch_size=20, shuffle_buffer_size=1)
+        num_epochs=1, batch_size=20, shuffle_buffer_size=1
+    )
     preprocess_fn = emnist_preprocessing.create_preprocess_fn(
-        preprocess_spec, emnist_task='autoencoder')
+        preprocess_spec, emnist_task='autoencoder'
+    )
     preprocessed_ds = preprocess_fn(ds)
-    self.assertEqual(preprocessed_ds.element_spec,
-                     (tf.TensorSpec(shape=(None, 784), dtype=tf.float32),
-                      tf.TensorSpec(shape=(None, 784), dtype=tf.float32)))
+    self.assertEqual(
+        preprocessed_ds.element_spec,
+        (
+            tf.TensorSpec(shape=(None, 784), dtype=tf.float32),
+            tf.TensorSpec(shape=(None, 784), dtype=tf.float32),
+        ),
+    )
 
     element = next(iter(preprocessed_ds))
-    expected_element = (tf.ones(shape=(1, 784), dtype=tf.float32),
-                        tf.ones(shape=(1, 784), dtype=tf.float32))
+    expected_element = (
+        tf.ones(shape=(1, 784), dtype=tf.float32),
+        tf.ones(shape=(1, 784), dtype=tf.float32),
+    )
     self.assertAllClose(self.evaluate(element), expected_element)
 
 

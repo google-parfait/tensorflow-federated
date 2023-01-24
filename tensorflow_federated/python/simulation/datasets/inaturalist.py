@@ -27,13 +27,19 @@ from tensorflow_federated.python.simulation.datasets.client_data import ClientDa
 LOGGER = 'iNat2017'
 TRAIN_SUB_DIR = 'train'
 TEST_FILE_NAME = 'test.tfRecord'
-INAT_TRAIN_DOWNLOAD_URL = 'https://storage.googleapis.com/tff-datasets-public/iNaturalist_train.csv'
+INAT_TRAIN_DOWNLOAD_URL = (
+    'https://storage.googleapis.com/tff-datasets-public/iNaturalist_train.csv'
+)
 INAT_TRAIN_SPLIT_FILE = 'iNaturalist_train.csv'
 INAT_TRAIN_IMAGE_URL = 'https://ml-inat-competition-datasets.s3.amazonaws.com/2017/train_val_images.tar.gz'
 INAT_TRAIN_IMAGE_MD5_CHECKSUM = '7c784ea5e424efaec655bd392f87301f'
-INAT_TEST_DOWNLOAD_URL = 'https://storage.googleapis.com/tff-datasets-public/iNaturalist_test.csv'
+INAT_TEST_DOWNLOAD_URL = (
+    'https://storage.googleapis.com/tff-datasets-public/iNaturalist_test.csv'
+)
 INAT_TEST_SPLIT_FILE = 'iNaturalist_test.csv'
-INAT_TEST_IMAGE_URL = 'https://ml-inat-competition-datasets.s3.amazonaws.com/2017/test2017.tar.gz'
+INAT_TEST_IMAGE_URL = (
+    'https://ml-inat-competition-datasets.s3.amazonaws.com/2017/test2017.tar.gz'
+)
 INAT_TEST_IMAGE_MD5_CHECKSUM = '7d9b096fa1cd94d67a0fa779ea301234'
 INAT_TRAIN_SPLIT_FILE_MD5_CHECKSUM = '63d5a41699434bc2b13f5853f3764c18'
 INAT_TEST_SPLIT_FILE_MD5_CHECKSUM = 'bcf08a5a740ee76dac4e5af668081891'
@@ -41,6 +47,7 @@ INAT_TEST_SPLIT_FILE_MD5_CHECKSUM = 'bcf08a5a740ee76dac4e5af668081891'
 
 class INaturalistSplit(enum.Enum):
   """The different split for the iNaturalist dataset."""
+
   USER_120K = enum.auto()
   GEO_100 = enum.auto()
   GEO_300 = enum.auto()
@@ -54,8 +61,8 @@ class INaturalistSplit(enum.Enum):
 
 
 def _load_data_from_cache(
-    cache_dir: str,
-    split: INaturalistSplit) -> tuple[ClientData, tf.data.Dataset]:
+    cache_dir: str, split: INaturalistSplit
+) -> tuple[ClientData, tf.data.Dataset]:
   """Load train and test data from the TFRecord files.
 
   Args:
@@ -66,8 +73,9 @@ def _load_data_from_cache(
     A tuple of `ClientData`, `tf.data.Dataset`.
   """
   cache_dir = os.path.join(cache_dir, split.name)
-  return utils.load_data_from_cache(cache_dir, TRAIN_SUB_DIR, TEST_FILE_NAME,
-                                    LOGGER)
+  return utils.load_data_from_cache(
+      cache_dir, TRAIN_SUB_DIR, TEST_FILE_NAME, LOGGER
+  )
 
 
 def _generate_image_map(image_dir: str) -> dict[str, str]:
@@ -90,8 +98,8 @@ def _generate_image_map(image_dir: str) -> dict[str, str]:
 
 
 def _create_dataset_with_mapping(
-    image_path_map: dict[str, str],
-    image_class_list: list[dict[str, str]]) -> list[tf.train.Example]:
+    image_path_map: dict[str, str], image_class_list: list[dict[str, str]]
+) -> list[tf.train.Example]:
   """Builds a dataset based on the mapping file and the images in the image dir.
 
   Args:
@@ -112,12 +120,17 @@ def _create_dataset_with_mapping(
     with open(image_path_map[image_id], 'rb') as f:
       img_bytes = f.read()
       examples.append(
-          utils.create_example(img_bytes, int(image_class['class'])))
+          utils.create_example(img_bytes, int(image_class['class']))
+      )
   return examples
 
 
-def _create_train_data_files(image_path_map: dict[str, str], cache_dir: str,
-                             split: INaturalistSplit, train_path: str):
+def _create_train_data_files(
+    image_path_map: dict[str, str],
+    cache_dir: str,
+    split: INaturalistSplit,
+    train_path: str,
+):
   """Create the train data and persist it into a separate file per user.
 
   Args:
@@ -135,8 +148,10 @@ def _create_train_data_files(image_path_map: dict[str, str], cache_dir: str,
   if not all(col in mapping_table[0].keys() for col in expected_cols):
     logger.error('%s has wrong format.', train_path)
     raise ValueError(
-        'The mapping file must contain the user_id for the chosen split, image_id and class columns. '
-        'The existing columns are %s' % ','.join(mapping_table[0].keys()))
+        'The mapping file must contain the user_id for the chosen split,'
+        ' image_id and class columns. The existing columns are %s'
+        % ','.join(mapping_table[0].keys())
+    )
   cache_dir = os.path.join(cache_dir, split.name.lower(), TRAIN_SUB_DIR)
   if not os.path.exists(cache_dir):
     logger.info('Creating cache directory for training data.')
@@ -151,12 +166,20 @@ def _create_train_data_files(image_path_map: dict[str, str], cache_dir: str,
     with tf.io.TFRecordWriter(os.path.join(cache_dir, str(user_id))) as writer:
       for example in examples:
         writer.write(example.SerializeToString())
-      logger.info('Created tfrecord file for user %s with %d examples, at %s',
-                  user_id, len(examples), cache_dir)
+      logger.info(
+          'Created tfrecord file for user %s with %d examples, at %s',
+          user_id,
+          len(examples),
+          cache_dir,
+      )
 
 
-def _create_test_data_file(image_path_map: dict[str, str], cache_dir: str,
-                           split: INaturalistSplit, mapping_file: str):
+def _create_test_data_file(
+    image_path_map: dict[str, str],
+    cache_dir: str,
+    split: INaturalistSplit,
+    mapping_file: str,
+):
   """Create the test data and persist it into a file.
 
   Args:
@@ -173,7 +196,9 @@ def _create_test_data_file(image_path_map: dict[str, str], cache_dir: str,
     logger.error('%s has wrong format.', mapping_file)
     raise ValueError(
         'The mapping file must contain image_id and class columns. The existing'
-        ' columns are %s' % ','.join(mapping_table[0].keys()))
+        ' columns are %s'
+        % ','.join(mapping_table[0].keys())
+    )
   cache_dir = os.path.join(cache_dir, split.name.lower())
   examples = _create_dataset_with_mapping(image_path_map, mapping_table)
   with tf.io.TFRecordWriter(os.path.join(cache_dir, TEST_FILE_NAME)) as writer:
@@ -183,8 +208,8 @@ def _create_test_data_file(image_path_map: dict[str, str], cache_dir: str,
 
 
 def _generate_data_from_image_dir(
-    image_dir: str, cache_dir: str,
-    split: INaturalistSplit) -> tuple[ClientData, tf.data.Dataset]:
+    image_dir: str, cache_dir: str, split: INaturalistSplit
+) -> tuple[ClientData, tf.data.Dataset]:
   """Generate dataset from the images.
 
   Args:
@@ -202,13 +227,15 @@ def _generate_data_from_image_dir(
       origin=INAT_TRAIN_DOWNLOAD_URL,
       file_hash=INAT_TRAIN_SPLIT_FILE_MD5_CHECKSUM,
       hash_algorithm='md5',
-      cache_dir=cache_dir)
+      cache_dir=cache_dir,
+  )
   test_path = tf.keras.utils.get_file(
       INAT_TEST_SPLIT_FILE,
       origin=INAT_TEST_DOWNLOAD_URL,
       file_hash=INAT_TEST_SPLIT_FILE_MD5_CHECKSUM,
       hash_algorithm='md5',
-      cache_dir=cache_dir)
+      cache_dir=cache_dir,
+  )
   logger.info('Fed iNaturalist 2017 mapping files are downloaded successfully.')
   image_map = _generate_image_map(image_dir)
   _create_train_data_files(image_map, cache_dir, split, train_path)
@@ -219,7 +246,7 @@ def _generate_data_from_image_dir(
 def load_data(
     image_dir: str = 'images',
     cache_dir: str = 'cache',
-    split: INaturalistSplit = INaturalistSplit.USER_120K
+    split: INaturalistSplit = INaturalistSplit.USER_120K,
 ) -> tuple[ClientData, tf.data.Dataset]:
   """Loads a federated version of the iNaturalist 2017 dataset.
 
@@ -262,7 +289,6 @@ def load_data(
   Returns:
     Tuple of (train, test) where the tuple elements are
     a `tff.simulation.datasets.ClientData` and a  `tf.data.Dataset`.
-
   """
   logging.basicConfig(filename='load_data.log', level=logging.INFO)
   logger = logging.getLogger(LOGGER)
@@ -277,8 +303,9 @@ def load_data(
       raise ValueError('image_dir cannot be empty or none.') from e
     if not os.path.isdir(image_dir):
       logger.error('Image directory %s does not exist', image_dir)
-      raise ValueError('%s does not exist or is not a directory' %
-                       image_dir) from e
+      raise ValueError(
+          '%s does not exist or is not a directory' % image_dir
+      ) from e
     logger.info('Start to download the images for the training set.')
     tf.keras.utils.get_file(
         'train_val_images.tar.gz',
@@ -286,7 +313,8 @@ def load_data(
         file_hash=INAT_TRAIN_IMAGE_MD5_CHECKSUM,
         hash_algorithm='md5',
         extract=True,
-        cache_dir=image_dir)
+        cache_dir=image_dir,
+    )
     logger.info('Finish to download the images for the training set.')
     logger.info('Start to download the images for the testing set.')
     tf.keras.utils.get_file(
@@ -295,7 +323,8 @@ def load_data(
         file_hash=INAT_TEST_IMAGE_MD5_CHECKSUM,
         hash_algorithm='md5',
         extract=True,
-        cache_dir=image_dir)
+        cache_dir=image_dir,
+    )
     logger.info('Finish to download the images for the testing set.')
     return _generate_data_from_image_dir(image_dir, cache_dir, split)
 
@@ -315,6 +344,7 @@ def get_synthetic() -> ClientData:
   ]
   images_as_tensor = tf.cast(tf.stack(images, axis=0), dtype=tf.uint8)
   labels = tf.constant([0, 1, 2], dtype=tf.int64)
-  data = collections.OrderedDict([('image/decoded', images_as_tensor),
-                                  ('class', labels)])
+  data = collections.OrderedDict(
+      [('image/decoded', images_as_tensor), ('class', labels)]
+  )
   return from_tensor_slices_client_data.TestClientData({'synthetic': data})

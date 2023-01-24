@@ -27,8 +27,11 @@ from tensorflow_federated.python.core.impl.types import type_serialization
 class DataExecutor(executor_base.Executor):
   """The data executor is responsible for the `data` building block."""
 
-  def __init__(self, target_executor: executor_base.Executor,
-               data_backend: data_backend_base.DataBackend):
+  def __init__(
+      self,
+      target_executor: executor_base.Executor,
+      data_backend: data_backend_base.DataBackend,
+  ):
     """Creates a new instance of this executor.
 
     Args:
@@ -79,10 +82,12 @@ class DataExecutor(executor_base.Executor):
         value = structure.from_container(value)
       elements = structure.flatten(value)
       element_types = structure.flatten(type_spec)
-      flat_embedded_vals = await asyncio.gather(*[
-          self.create_value(el, el_type)
-          for el, el_type in zip(elements, element_types)
-      ])
+      flat_embedded_vals = await asyncio.gather(
+          *[
+              self.create_value(el, el_type)
+              for el, el_type in zip(elements, element_types)
+          ]
+      )
       embedded_struct = structure.pack_sequence_as(value, flat_embedded_vals)
       return await self._target_executor.create_struct(embedded_struct)
     else:

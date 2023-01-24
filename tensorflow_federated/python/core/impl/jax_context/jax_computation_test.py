@@ -24,7 +24,6 @@ from tensorflow_federated.python.core.impl.types import computation_types
 class JaxWrapperTest(absltest.TestCase):
 
   def test_invoke_with_single_arg_fn(self):
-
     @jax_computation.jax_computation(np.int32)
     def foo(x):
       return jax.numpy.add(x, np.int32(10))
@@ -33,7 +32,6 @@ class JaxWrapperTest(absltest.TestCase):
     self.assertEqual(str(foo.type_signature), '(int32 -> int32)')
 
   def test_invoke_with_two_arg_fn(self):
-
     @jax_computation.jax_computation(np.int32, np.int32)
     def foo(x, y):
       return jax.numpy.add(x, y)
@@ -44,13 +42,15 @@ class JaxWrapperTest(absltest.TestCase):
   def test_arg_ordering(self):
 
     @jax_computation.jax_computation(
-        computation_types.TensorType(np.int32, 10), np.int32)
+        computation_types.TensorType(np.int32, 10), np.int32
+    )
     def foo(b, a):
       return jax.numpy.add(a, jax.numpy.sum(b))
 
     self.assertIsInstance(foo, computation_impl.ConcreteComputation)
     self.assertEqual(
-        str(foo.type_signature), '(<b=int32[10],a=int32> -> int32)')
+        str(foo.type_signature), '(<b=int32[10],a=int32> -> int32)'
+    )
 
 
 if __name__ == '__main__':

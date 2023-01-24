@@ -31,7 +31,8 @@ class RetryableErrorTest(tf.test.TestCase):
   def test_is_retryable_error(self):
     retryable_error = executors_errors.RetryableError()
     self.assertTrue(
-        async_execution_context._is_retryable_error(retryable_error))
+        async_execution_context._is_retryable_error(retryable_error)
+    )
     self.assertFalse(async_execution_context._is_retryable_error(TypeError()))
     self.assertFalse(async_execution_context._is_retryable_error(1))
     self.assertFalse(async_execution_context._is_retryable_error('a'))
@@ -75,7 +76,8 @@ class AsyncContextInstallationTest(tf.test.TestCase):
     context = async_execution_context.AsyncExecutionContext(factory)
 
     @federated_computation.federated_computation(
-        computation_types.FederatedType(tf.int32, placements.CLIENTS))
+        computation_types.FederatedType(tf.int32, placements.CLIENTS)
+    )
     def repackage_arg(x):
       return [x, x]
 
@@ -85,13 +87,15 @@ class AsyncContextInstallationTest(tf.test.TestCase):
       self.assertTrue(asyncio.iscoroutine(single_val_coro))
       self.assertTrue(asyncio.iscoroutine(second_val_coro))
       self.assertEqual(
-          [asyncio.run(single_val_coro),
-           asyncio.run(second_val_coro)], [[[1], [1]], [[1, 2], [1, 2]]])
+          [asyncio.run(single_val_coro), asyncio.run(second_val_coro)],
+          [[[1], [1]], [[1, 2], [1, 2]]],
+      )
 
   def test_runs_cardinality_free(self):
     factory = python_executor_stacks.local_executor_factory()
     context = async_execution_context.AsyncExecutionContext(
-        factory, cardinality_inference_fn=(lambda x, y: {}))
+        factory, cardinality_inference_fn=(lambda x, y: {})
+    )
 
     @federated_computation.federated_computation(tf.int32)
     def identity(x):
@@ -112,7 +116,8 @@ class AsyncContextInstallationTest(tf.test.TestCase):
       return {placements.CLIENTS: 1}
 
     context = async_execution_context.AsyncExecutionContext(
-        factory, cardinality_inference_fn=_cardinality_fn)
+        factory, cardinality_inference_fn=_cardinality_fn
+    )
 
     arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
 

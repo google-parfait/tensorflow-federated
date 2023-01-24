@@ -28,37 +28,36 @@ class GLDV2Test(tf.test.TestCase):
     for image_name, content in images.items():
       tmp_dir.create_file(file_path=image_name + '.jpg', content=content)
 
-    mapping = [{
-        'image_id': 'image_1',
-        'class': '0'
-    }, {
-        'image_id': 'image_2',
-        'class': '12'
-    }]
+    mapping = [
+        {'image_id': 'image_1', 'class': '0'},
+        {'image_id': 'image_2', 'class': '12'},
+    ]
 
     expected_features = [
         tf.train.Example(
             features=tf.train.Features(
                 feature={
-                    vision_datasets_utils.KEY_IMAGE_BYTES:
-                        tf.train.Feature(
-                            bytes_list=tf.train.BytesList(
-                                value=[b'somebytes'])),
-                    vision_datasets_utils.KEY_CLASS:
-                        tf.train.Feature(
-                            int64_list=tf.train.Int64List(value=[0])),
-                })),
+                    vision_datasets_utils.KEY_IMAGE_BYTES: tf.train.Feature(
+                        bytes_list=tf.train.BytesList(value=[b'somebytes'])
+                    ),
+                    vision_datasets_utils.KEY_CLASS: tf.train.Feature(
+                        int64_list=tf.train.Int64List(value=[0])
+                    ),
+                }
+            )
+        ),
         tf.train.Example(
             features=tf.train.Features(
                 feature={
-                    vision_datasets_utils.KEY_IMAGE_BYTES:
-                        tf.train.Feature(
-                            bytes_list=tf.train.BytesList(
-                                value=[b'someotherbytes'])),
-                    vision_datasets_utils.KEY_CLASS:
-                        tf.train.Feature(
-                            int64_list=tf.train.Int64List(value=[12])),
-                })),
+                    vision_datasets_utils.KEY_IMAGE_BYTES: tf.train.Feature(
+                        bytes_list=tf.train.BytesList(value=[b'someotherbytes'])
+                    ),
+                    vision_datasets_utils.KEY_CLASS: tf.train.Feature(
+                        int64_list=tf.train.Int64List(value=[12])
+                    ),
+                }
+            )
+        ),
     ]
 
     features = gldv2._create_dataset_with_mapping(tmp_dir.full_path, mapping)
@@ -68,8 +67,11 @@ class GLDV2Test(tf.test.TestCase):
     client_data = gldv2.get_synthetic()
     self.assertLen(client_data.client_ids, 1)
     expected_element_type = collections.OrderedDict([
-        ('image/decoded', tf.TensorSpec(shape=(600, 800, 3), dtype=tf.uint8)),
-        ('class', tf.TensorSpec(shape=(1,), dtype=tf.int64))
+        (
+            'image/decoded',
+            tf.TensorSpec(shape=(600, 800, 3), dtype=tf.uint8),
+        ),
+        ('class', tf.TensorSpec(shape=(1,), dtype=tf.int64)),
     ])
     self.assertEqual(client_data.element_type_structure, expected_element_type)
     data = client_data.create_tf_dataset_for_client(client_data.client_ids[0])
@@ -77,6 +79,7 @@ class GLDV2Test(tf.test.TestCase):
     self.assertLen(images, 3)
     labels = [element['class'] for element in data]
     self.assertEqual(labels, [[0], [1], [2]])
+
 
 if __name__ == '__main__':
   tf.test.main()

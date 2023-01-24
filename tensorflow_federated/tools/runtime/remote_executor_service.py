@@ -25,34 +25,44 @@ flags.DEFINE_integer('threads', '10', 'number of worker threads in thread pool')
 flags.DEFINE_string('private_key', '', 'the private key for SSL/TLS setup')
 flags.DEFINE_string('certificate_chain', '', 'the cert for SSL/TLS setup')
 flags.DEFINE_integer('clients', '1', 'number of clients to host on this worker')
-flags.DEFINE_integer('fanout', '100',
-                     'max fanout in the hierarchy of local executors')
+flags.DEFINE_integer(
+    'fanout', '100', 'max fanout in the hierarchy of local executors'
+)
 
-GRPC_OPTIONS = [('grpc.max_message_length', 20 * 1024 * 1024),
-                ('grpc.max_receive_message_length', 20 * 1024 * 1024)]
+GRPC_OPTIONS = [
+    ('grpc.max_message_length', 20 * 1024 * 1024),
+    ('grpc.max_receive_message_length', 20 * 1024 * 1024),
+]
 
 
 def main(argv):
   del argv
   executor_factory = tff.framework.local_executor_factory(
-      default_num_clients=FLAGS.clients, max_fanout=FLAGS.fanout)
+      default_num_clients=FLAGS.clients, max_fanout=FLAGS.fanout
+  )
   if FLAGS.private_key:
     if FLAGS.certificate_chain:
       with open(FLAGS.private_key, 'rb') as f:
         private_key = f.read()
       with open(FLAGS.certificate_chain, 'rb') as f:
         certificate_chain = f.read()
-      credentials = grpc.ssl_server_credentials(((
-          private_key,
-          certificate_chain,
-      ),))
+      credentials = grpc.ssl_server_credentials(
+          (
+              (
+                  private_key,
+                  certificate_chain,
+              ),
+          )
+      )
     else:
       raise ValueError(
-          'Private key has been specified, but the certificate chain missing.')
+          'Private key has been specified, but the certificate chain missing.'
+      )
   else:
     credentials = None
-  tff.simulation.run_server(executor_factory, FLAGS.threads, FLAGS.port,
-                            credentials, GRPC_OPTIONS)
+  tff.simulation.run_server(
+      executor_factory, FLAGS.threads, FLAGS.port, credentials, GRPC_OPTIONS
+  )
 
 
 if __name__ == '__main__':

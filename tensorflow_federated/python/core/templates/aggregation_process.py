@@ -25,11 +25,13 @@ _INPUT_PARAM_INDEX = 1
 
 class AggregationNotFederatedError(TypeError):
   """`TypeError` for aggregation functions not being federated."""
+
   pass
 
 
 class AggregationPlacementError(TypeError):
   """`TypeError` for aggregation types not being placed as expected."""
+
   pass
 
 
@@ -72,8 +74,11 @@ class AggregationProcess(measured_process.MeasuredProcess):
   aggregation.
   """
 
-  def __init__(self, initialize_fn: computation_base.Computation,
-               next_fn: computation_base.Computation):
+  def __init__(
+      self,
+      initialize_fn: computation_base.Computation,
+      next_fn: computation_base.Computation,
+  ):
     """Creates a `tff.templates.AggregationProcess`.
 
     Args:
@@ -111,26 +116,29 @@ class AggregationProcess(measured_process.MeasuredProcess):
 
     if not initialize_fn.type_signature.result.is_federated():
       raise AggregationNotFederatedError(
-          f'Provided `initialize_fn` must return a federated type, but found '
+          'Provided `initialize_fn` must return a federated type, but found '
           f'return type:\n{initialize_fn.type_signature.result}\nTip: If you '
-          f'see a collection of federated types, try wrapping the returned '
-          f'value in `tff.federated_zip` before returning.')
-    next_types = (
-        structure.flatten(next_fn.type_signature.parameter) +
-        structure.flatten(next_fn.type_signature.result))
+          'see a collection of federated types, try wrapping the returned '
+          'value in `tff.federated_zip` before returning.'
+      )
+    next_types = structure.flatten(
+        next_fn.type_signature.parameter
+    ) + structure.flatten(next_fn.type_signature.result)
     non_federated_types = [t for t in next_types if not t.is_federated()]
     if non_federated_types:
       offending_types_str = '\n- '.join(str(t) for t in non_federated_types)
       raise AggregationNotFederatedError(
-          f'Provided `next_fn` must both be a *federated* computations, that '
-          f'is, operate on `tff.FederatedType`s, but found\n'
+          'Provided `next_fn` must both be a *federated* computations, that '
+          'is, operate on `tff.FederatedType`s, but found\n'
           f'next_fn with type signature:\n{next_fn.type_signature}\n'
-          f'The non-federated types are:\n {offending_types_str}.')
+          f'The non-federated types are:\n {offending_types_str}.'
+      )
 
     if initialize_fn.type_signature.result.placement != placements.SERVER:
       raise AggregationPlacementError(
-          f'The state controlled by an `AggregationProcess` must be placed at '
-          f'the SERVER, but found type: {initialize_fn.type_signature.result}.')
+          'The state controlled by an `AggregationProcess` must be placed at '
+          f'the SERVER, but found type: {initialize_fn.type_signature.result}.'
+      )
     # Note that state of next_fn being placed at SERVER is now ensured by the
     # assertions in base class which would otherwise raise
     # errors.TemplateStateNotAssignableError.
@@ -139,22 +147,26 @@ class AggregationProcess(measured_process.MeasuredProcess):
     next_fn_result = next_fn.type_signature.result
     if len(next_fn_param) < 2:
       raise errors.TemplateNextFnNumArgsError(
-          f'The `next_fn` must have at least two input arguments, but found '
-          f'the following input type: {next_fn_param}.')
+          'The `next_fn` must have at least two input arguments, but found '
+          f'the following input type: {next_fn_param}.'
+      )
 
     if next_fn_param[_INPUT_PARAM_INDEX].placement != placements.CLIENTS:
       raise AggregationPlacementError(
-          f'The second input argument of `next_fn` must be placed at CLIENTS '
-          f'but found {next_fn_param[_INPUT_PARAM_INDEX]}.')
+          'The second input argument of `next_fn` must be placed at CLIENTS '
+          f'but found {next_fn_param[_INPUT_PARAM_INDEX]}.'
+      )
 
     if next_fn_result.result.placement != placements.SERVER:
       raise AggregationPlacementError(
-          f'The "result" attribute of return type of `next_fn` must be placed '
-          f'at SERVER, but found {next_fn_result.result}.')
+          'The "result" attribute of return type of `next_fn` must be placed '
+          f'at SERVER, but found {next_fn_result.result}.'
+      )
     if next_fn_result.measurements.placement != placements.SERVER:
       raise AggregationPlacementError(
-          f'The "measurements" attribute of return type of `next_fn` must be '
-          f'placed at SERVER, but found {next_fn_result.measurements}.')
+          'The "measurements" attribute of return type of `next_fn` must be '
+          f'placed at SERVER, but found {next_fn_result.measurements}.'
+      )
 
   @property
   def next(self) -> computation_base.Computation:

@@ -29,27 +29,32 @@ class FederatedComputationWrapperTest(absltest.TestCase):
   def test_federated_computation_wrapper(self):
 
     @federated_computation.federated_computation(
-        (computation_types.FunctionType(tf.int32, tf.int32), tf.int32))
+        (computation_types.FunctionType(tf.int32, tf.int32), tf.int32)
+    )
     def foo(f, x):
       return f(f(x))
 
     self.assertIsInstance(foo, computation_impl.ConcreteComputation)
     self.assertEqual(
-        str(foo.type_signature), '(<f=(int32 -> int32),x=int32> -> int32)')
+        str(foo.type_signature), '(<f=(int32 -> int32),x=int32> -> int32)'
+    )
 
     self.assertEqual(
         str(foo.to_building_block()),
-        '(foo_arg -> (let fc_foo_symbol_0=foo_arg[0](foo_arg[1]),fc_foo_symbol_1=foo_arg[0](fc_foo_symbol_0) in fc_foo_symbol_1))'
+        (
+            '(foo_arg -> (let'
+            ' fc_foo_symbol_0=foo_arg[0](foo_arg[1]),fc_foo_symbol_1=foo_arg[0](fc_foo_symbol_0)'
+            ' in fc_foo_symbol_1))'
+        ),
     )
 
   def test_stackframes_in_errors(self):
-
     class DummyError(RuntimeError):
       pass
 
     with golden.check_raises_traceback(
-        'federated_computation_traceback.expected', DummyError):
-
+        'federated_computation_traceback.expected', DummyError
+    ):
       @federated_computation.federated_computation
       def _():
         raise DummyError()
@@ -57,7 +62,8 @@ class FederatedComputationWrapperTest(absltest.TestCase):
   def test_empty_tuple_arg(self):
 
     @federated_computation.federated_computation(
-        computation_types.StructType([]))
+        computation_types.StructType([])
+    )
     def foo(x):
       return x
 
@@ -68,8 +74,9 @@ class FederatedComputationWrapperTest(absltest.TestCase):
 
   def test_stack_resets_on_none_returned(self):
     stack = get_context_stack.get_context_stack()
-    self.assertIsInstance(stack.current,
-                          runtime_error_context.RuntimeErrorContext)
+    self.assertIsInstance(
+        stack.current, runtime_error_context.RuntimeErrorContext
+    )
 
     try:
 
@@ -79,7 +86,8 @@ class FederatedComputationWrapperTest(absltest.TestCase):
 
     except computation_wrapper.ComputationReturnedNoneError:
       self.assertIsInstance(  # pylint: disable=g-assert-in-except
-          stack.current, runtime_error_context.RuntimeErrorContext)
+          stack.current, runtime_error_context.RuntimeErrorContext
+      )
 
 
 if __name__ == '__main__':

@@ -69,7 +69,8 @@ class ContextForTest(context_base.SyncContext):
     return Result(
         arg=arg,
         arg_type=zero_traced_fn.type_signature.parameter,
-        zero_result=zero_traced_fn.zero_result)
+        zero_result=zero_traced_fn.zero_result,
+    )
 
 
 @attr.s
@@ -80,7 +81,8 @@ class Result:
 
 
 test_wrap = computation_wrapper.ComputationWrapper(
-    computation_wrapper.PythonTracingStrategy(_zero_tracer))
+    computation_wrapper.PythonTracingStrategy(_zero_tracer)
+)
 
 
 class ComputationWrapperTest(absltest.TestCase):
@@ -112,7 +114,9 @@ class ComputationWrapperTest(absltest.TestCase):
         Result(
             arg=structure.Struct([(None, 10)]),
             arg_type=computation_types.StructType([(None, tffint32)]),
-            zero_result=1))
+            zero_result=1,
+        ),
+    )
 
   def assert_is_add_one_unary_arg_fn(self, fn):
     self.assertEqual(fn(10), Result(arg=10, arg_type=tffint32, zero_result=1))
@@ -122,24 +126,31 @@ class ComputationWrapperTest(absltest.TestCase):
         fn(10, 20),
         Result(
             arg=structure.Struct([(None, 10), (None, 20)]),
-            arg_type=computation_types.StructType([(None, tffint32),
-                                                   (None, tffint32)]),
-            zero_result=0))
+            arg_type=computation_types.StructType(
+                [(None, tffint32), (None, tffint32)]
+            ),
+            zero_result=0,
+        ),
+    )
 
   def assert_is_add_two_named_args_fn(self, fn):
     self.assertEqual(
         fn(1, 2),
         Result(
             arg=structure.Struct([('x', 1), ('y', 2)]),
-            arg_type=computation_types.StructType([('x', tffint32),
-                                                   ('y', tffint32)]),
-            zero_result=0))
+            arg_type=computation_types.StructType(
+                [('x', tffint32), ('y', tffint32)]
+            ),
+            zero_result=0,
+        ),
+    )
 
   def assert_is_add_two_implied_name_args_fn(self, fn):
     expected = Result(
         arg=structure.Struct([('x', 10), ('y', 20)]),
         arg_type=computation_types.to_type(
-            collections.OrderedDict(x=tffint32, y=tffint32)),
+            collections.OrderedDict(x=tffint32, y=tffint32)
+        ),
         zero_result=0,
     )
 
@@ -156,7 +167,6 @@ class ComputationWrapperTest(absltest.TestCase):
         pass
 
   def test_as_decorator_without_arguments_on_no_parameter_py_fn(self):
-
     @test_wrap
     def my_fn():
       """This is my fn."""
@@ -169,14 +179,12 @@ class ComputationWrapperTest(absltest.TestCase):
     self.assert_is_return_ten_fn(test_wrap(lambda: 10))
 
   def test_as_wrapper_without_arguments_on_no_parameter_partial(self):
-
     def identity(x):
       return x
 
     self.assert_is_return_ten_fn(test_wrap(functools.partial(identity, 10)))
 
   def test_as_decorator_with_empty_arguments_on_no_parameter_py_fn(self):
-
     @test_wrap()
     def my_fn():
       """This is my fn."""
@@ -197,7 +205,6 @@ class ComputationWrapperTest(absltest.TestCase):
       test_wrap(lambda: None, tf.int32)
 
   def test_as_decorator_with_one_argument_on_one_parameter_py_fn(self):
-
     @test_wrap(tf.int32)
     def my_fn(x):
       """This is my fn."""
@@ -251,7 +258,6 @@ class ComputationWrapperTest(absltest.TestCase):
       test_wrap(lambda x, z: None, [('x', tf.int32), ('y', tf.int32)])
 
   def test_as_decorator_with_tuple_params_on_two_parameter_py_fn(self):
-
     @test_wrap((tf.int32, tf.int32))
     def my_fn(x, y):
       """This is my fn."""
@@ -281,10 +287,12 @@ class ComputationWrapperTest(absltest.TestCase):
         my_fn(1, 2),  # pylint: disable=too-many-function-args
         Result(
             arg=structure.Struct([('x', 1), ('y', 2)]),
-            arg_type=computation_types.StructType([('x', tffint32),
-                                                   ('y', tffint32)]),
+            arg_type=computation_types.StructType(
+                [('x', tffint32), ('y', tffint32)]
+            ),
             zero_result=0,
-        ))
+        ),
+    )
     self.assertEqual(my_fn.__doc__, 'This is my fn.')
 
   def test_as_wrapper_with_tuple_params_on_one_parameter_py_fn(self):
@@ -294,10 +302,10 @@ class ComputationWrapperTest(absltest.TestCase):
             arg=structure.Struct([(None, 1), (None, 2)]),
             arg_type=computation_types.to_type((tffint32, tffint32)),
             zero_result=0,
-        ))
+        ),
+    )
 
   def test_as_decorator_with_named_tuple_params_on_two_param_py_fn(self):
-
     @test_wrap([('x', tf.int32), ('y', tf.int32)])
     def my_fn(x, y):
       """This is my fn."""
@@ -311,7 +319,6 @@ class ComputationWrapperTest(absltest.TestCase):
     self.assert_is_add_two_named_args_fn(wrapped)
 
   def test_as_decorator_without_arguments_on_py_fn_with_one_param(self):
-
     @test_wrap
     def my_fn(x):
       """This is my fn."""
@@ -325,7 +332,6 @@ class ComputationWrapperTest(absltest.TestCase):
     self.assert_is_add_one_struct_arg_fn(wrapped)
 
   def test_as_decorator_without_arguments_on_py_fn_with_two_params(self):
-
     @test_wrap
     def my_fn(x, y):
       """This is my fn."""
@@ -335,7 +341,6 @@ class ComputationWrapperTest(absltest.TestCase):
     self.assertEqual(my_fn.__doc__, 'This is my fn.')
 
   def test_as_decorator_with_empty_arguments_on_py_fn_with_one_param(self):
-
     @test_wrap()
     def my_fn(x):
       """This is my fn."""
@@ -345,7 +350,6 @@ class ComputationWrapperTest(absltest.TestCase):
     self.assertEqual(my_fn.__doc__, 'This is my fn.')
 
   def test_as_decorator_with_empty_arguments_on_py_fn_with_two_params(self):
-
     @test_wrap()
     def my_fn(x, y):
       """This is my fn."""
@@ -391,7 +395,6 @@ class ComputationWrapperTest(absltest.TestCase):
         return kwargs['x'] / kwargs['y']
 
   def test_as_decorator_with_unbundled_arguments(self):
-
     @test_wrap(tf.int32, tf.int32)
     def foo(x, y):
       return x + y
@@ -399,7 +402,6 @@ class ComputationWrapperTest(absltest.TestCase):
     self.assert_is_add_two_implied_name_args_fn(foo)
 
   def test_as_decorator_with_named_positional_arguments(self):
-
     @test_wrap(tf.int32, tf.int32)
     def foo(x, y):
       return x + y
@@ -418,7 +420,6 @@ class ComputationWrapperTest(absltest.TestCase):
     self.assert_is_add_two_implied_name_args_fn(foo)
 
   def test_as_wrapper_with_one_argument_instance_method(self):
-
     class IntWrapper:
 
       def __init__(self, x):
@@ -430,14 +431,15 @@ class ComputationWrapperTest(absltest.TestCase):
     five = IntWrapper(5)
     wrapped = test_wrap(five.multiply_by, tf.int32)
     self.assertEqual(
-        wrapped(2), Result(
+        wrapped(2),
+        Result(
             arg=2,
             arg_type=tffint32,
             zero_result=0,
-        ))
+        ),
+    )
 
   def test_as_wrapper_with_no_argument_instance_method(self):
-
     class C:
 
       def __init__(self, x):
@@ -451,7 +453,6 @@ class ComputationWrapperTest(absltest.TestCase):
     self.assertEqual(wrapped(), Result(arg=None, arg_type=None, zero_result=99))
 
   def test_as_wrapper_with_class_property(self):
-
     class C:
 
       @property
@@ -463,7 +464,6 @@ class ComputationWrapperTest(absltest.TestCase):
       test_wrap(c.x)
 
   def test_as_wrapper_with_classmethod(self):
-
     class C:
 
       @classmethod
@@ -477,13 +477,13 @@ class ComputationWrapperTest(absltest.TestCase):
             arg=structure.Struct([(None, 'foo')]),
             arg_type=computation_types.StructType([None, tffstring]),
             zero_result='C_',
-        ))
+        ),
+    )
 
 
 class CheckReturnsTypeTest(absltest.TestCase):
 
   def test_basic_non_tff_function_as_decorator_succeeds(self):
-
     @computation_wrapper.check_returns_type(tf.int32)
     def f():
       return 5
@@ -491,7 +491,6 @@ class CheckReturnsTypeTest(absltest.TestCase):
     self.assertEqual(f(), 5)
 
   def test_basic_non_tff_function_as_decorator_fails(self):
-
     @computation_wrapper.check_returns_type(tf.int32)
     def f():
       return [5]
@@ -500,7 +499,6 @@ class CheckReturnsTypeTest(absltest.TestCase):
       f()
 
   def test_basic_non_tff_function_as_nondecorator_succeeds(self):
-
     def f():
       return 5
 
@@ -508,7 +506,6 @@ class CheckReturnsTypeTest(absltest.TestCase):
     self.assertEqual(f_wrapped(), 5)
 
   def test_basic_non_tff_function_as_nondecorator_fails(self):
-
     def f():
       return [5]
 

@@ -31,11 +31,12 @@ class SyncExecutionContext(context_base.SyncContext):
   def __init__(
       self,
       executor_fn: executor_factory.ExecutorFactory,
-      compiler_fn: Optional[Callable[[computation_base.Computation],
-                                     Any]] = None,
+      compiler_fn: Optional[
+          Callable[[computation_base.Computation], Any]
+      ] = None,
       *,
-      cardinality_inference_fn: cardinalities_utils
-      .CardinalityInferenceFnType = cardinalities_utils.infer_cardinalities):
+      cardinality_inference_fn: cardinalities_utils.CardinalityInferenceFnType = cardinalities_utils.infer_cardinalities,
+  ):
     """Initializes a synchronous execution context which retries invocations.
 
     Args:
@@ -51,7 +52,8 @@ class SyncExecutionContext(context_base.SyncContext):
     self._async_context = async_execution_context.AsyncExecutionContext(
         executor_fn=executor_fn,
         compiler_fn=compiler_fn,
-        cardinality_inference_fn=cardinality_inference_fn)
+        cardinality_inference_fn=cardinality_inference_fn,
+    )
     self._async_runner = async_utils.AsyncThreadRunner()
 
   @property
@@ -60,4 +62,5 @@ class SyncExecutionContext(context_base.SyncContext):
 
   def invoke(self, comp, arg):
     return self._async_runner.run_coro_and_return_result(
-        self._async_context.invoke(comp, arg))
+        self._async_context.invoke(comp, arg)
+    )

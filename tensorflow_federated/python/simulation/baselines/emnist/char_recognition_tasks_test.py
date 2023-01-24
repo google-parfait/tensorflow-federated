@@ -24,27 +24,35 @@ from tensorflow_federated.python.simulation.baselines.emnist import char_recogni
 from tensorflow_federated.python.simulation.baselines.emnist import emnist_models
 
 
-class CreateCharacterRecognitionModelTest(tf.test.TestCase,
-                                          parameterized.TestCase):
+class CreateCharacterRecognitionModelTest(
+    tf.test.TestCase, parameterized.TestCase
+):
 
   @parameterized.named_parameters(
       ('emnist_10', True),
       ('emnist_62', False),
   )
   def test_get_character_recognition_model_constructs_cnn_dropout(
-      self, only_digits):
-    with mock.patch.object(emnist_models,
-                           'create_conv_dropout_model') as mock_model_builder:
+      self, only_digits
+  ):
+    with mock.patch.object(
+        emnist_models, 'create_conv_dropout_model'
+    ) as mock_model_builder:
       char_recognition_tasks._get_character_recognition_model(
-          model_id='cnn_dropout', only_digits=only_digits)
+          model_id='cnn_dropout', only_digits=only_digits
+      )
       mock_model_builder.assert_called_once_with(
-          only_digits=only_digits, debug_seed=None)
-    with mock.patch.object(emnist_models,
-                           'create_conv_dropout_model') as mock_model_builder:
+          only_digits=only_digits, debug_seed=None
+      )
+    with mock.patch.object(
+        emnist_models, 'create_conv_dropout_model'
+    ) as mock_model_builder:
       char_recognition_tasks._get_character_recognition_model(
-          model_id='cnn_dropout', only_digits=only_digits, debug_seed=42)
+          model_id='cnn_dropout', only_digits=only_digits, debug_seed=42
+      )
       mock_model_builder.assert_called_once_with(
-          only_digits=only_digits, debug_seed=42)
+          only_digits=only_digits, debug_seed=42
+      )
 
   @parameterized.named_parameters(
       ('emnist_10', True),
@@ -52,19 +60,23 @@ class CreateCharacterRecognitionModelTest(tf.test.TestCase,
   )
   def test_get_character_recognition_model_constructs_cnn(self, only_digits):
     with mock.patch.object(
-        emnist_models,
-        'create_original_fedavg_cnn_model') as mock_model_builder:
+        emnist_models, 'create_original_fedavg_cnn_model'
+    ) as mock_model_builder:
       char_recognition_tasks._get_character_recognition_model(
-          model_id='cnn', only_digits=only_digits)
+          model_id='cnn', only_digits=only_digits
+      )
       mock_model_builder.assert_called_once_with(
-          only_digits=only_digits, debug_seed=None)
+          only_digits=only_digits, debug_seed=None
+      )
     with mock.patch.object(
-        emnist_models,
-        'create_original_fedavg_cnn_model') as mock_model_builder:
+        emnist_models, 'create_original_fedavg_cnn_model'
+    ) as mock_model_builder:
       char_recognition_tasks._get_character_recognition_model(
-          model_id='cnn', only_digits=only_digits, debug_seed=42)
+          model_id='cnn', only_digits=only_digits, debug_seed=42
+      )
       mock_model_builder.assert_called_once_with(
-          only_digits=only_digits, debug_seed=42)
+          only_digits=only_digits, debug_seed=42
+      )
 
   @parameterized.named_parameters(
       ('emnist_10', True),
@@ -72,17 +84,23 @@ class CreateCharacterRecognitionModelTest(tf.test.TestCase,
   )
   def test_get_character_recognition_model_constructs_2nn(self, only_digits):
     with mock.patch.object(
-        emnist_models, 'create_two_hidden_layer_model') as mock_model_builder:
+        emnist_models, 'create_two_hidden_layer_model'
+    ) as mock_model_builder:
       char_recognition_tasks._get_character_recognition_model(
-          model_id='2nn', only_digits=only_digits)
+          model_id='2nn', only_digits=only_digits
+      )
       mock_model_builder.assert_called_once_with(
-          only_digits=only_digits, debug_seed=None)
+          only_digits=only_digits, debug_seed=None
+      )
     with mock.patch.object(
-        emnist_models, 'create_two_hidden_layer_model') as mock_model_builder:
+        emnist_models, 'create_two_hidden_layer_model'
+    ) as mock_model_builder:
       char_recognition_tasks._get_character_recognition_model(
-          model_id='2nn', only_digits=only_digits, debug_seed=42)
+          model_id='2nn', only_digits=only_digits, debug_seed=42
+      )
       mock_model_builder.assert_called_once_with(
-          only_digits=only_digits, debug_seed=42)
+          only_digits=only_digits, debug_seed=42
+      )
 
   @parameterized.named_parameters(
       ('emnist_10', True),
@@ -91,11 +109,13 @@ class CreateCharacterRecognitionModelTest(tf.test.TestCase,
   def test_raises_on_unsupported_model(self, only_digits):
     with self.assertRaises(ValueError):
       char_recognition_tasks._get_character_recognition_model(
-          model_id='unsupported_model', only_digits=only_digits)
+          model_id='unsupported_model', only_digits=only_digits
+      )
 
 
-class CreateCharacterRecognitionTaskTest(tf.test.TestCase,
-                                         parameterized.TestCase):
+class CreateCharacterRecognitionTaskTest(
+    tf.test.TestCase, parameterized.TestCase
+):
 
   @parameterized.named_parameters(
       ('emnist_10_cnn', True, 'cnn'),
@@ -107,9 +127,11 @@ class CreateCharacterRecognitionTaskTest(tf.test.TestCase,
   )
   def test_constructs_with_eval_client_spec(self, only_digits, model_id):
     train_client_spec = client_spec.ClientSpec(
-        num_epochs=2, batch_size=10, max_elements=3, shuffle_buffer_size=5)
+        num_epochs=2, batch_size=10, max_elements=3, shuffle_buffer_size=5
+    )
     eval_client_spec = client_spec.ClientSpec(
-        num_epochs=1, batch_size=2, max_elements=5, shuffle_buffer_size=10)
+        num_epochs=1, batch_size=2, max_elements=5, shuffle_buffer_size=10
+    )
     baseline_task_spec = (
         char_recognition_tasks.create_character_recognition_task(
             train_client_spec,
@@ -131,7 +153,8 @@ class CreateCharacterRecognitionTaskTest(tf.test.TestCase,
   )
   def test_constructs_with_no_eval_client_spec(self, only_digits, model_id):
     train_client_spec = client_spec.ClientSpec(
-        num_epochs=2, batch_size=10, max_elements=3, shuffle_buffer_size=5)
+        num_epochs=2, batch_size=10, max_elements=3, shuffle_buffer_size=5
+    )
     baseline_task_spec = (
         char_recognition_tasks.create_character_recognition_task(
             train_client_spec,

@@ -228,7 +228,6 @@ class DistributionProcessTest(tf.test.TestCase):
       distributors.DistributionProcess(test_initialize_fn, next_fn)
 
   def test_three_params_next_raises(self):
-
     @federated_computation.federated_computation(
         SERVER_INT, SERVER_FLOAT, SERVER_FLOAT
     )

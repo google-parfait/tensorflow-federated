@@ -25,6 +25,7 @@ Breaking the centralized barrier for cross-device federated learning.
     Reddi, Sebastian U. Stich, and Ananda Theertha Suresh.
     Advances in Neural Information Processing Systems 34 (2021).
     https://proceedings.neurips.cc/paper/2021/file/f0e6be4ce76ccfa73c5a540d992d0756-Paper.pdf
+
 """
 
 import collections

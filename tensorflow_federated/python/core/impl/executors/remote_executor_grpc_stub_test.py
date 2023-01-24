@@ -74,7 +74,8 @@ class RemoteExecutorGrpcStubTest(absltest.TestCase):
     instance.Compute = mock.Mock(side_effect=[response])
 
     request = executor_pb2.ComputeRequest(
-        executor=executor_pb2.ExecutorId(), value_ref=executor_pb2.ValueRef())
+        executor=executor_pb2.ExecutorId(), value_ref=executor_pb2.ValueRef()
+    )
 
     stub = create_stub()
     result = stub.compute(request)
@@ -85,14 +86,16 @@ class RemoteExecutorGrpcStubTest(absltest.TestCase):
     self.assertEqual(value, 1)
 
   def test_compute_raises_retryable_error_on_grpc_error_unavailable(
-      self, mock_executor_grpc_stub):
+      self, mock_executor_grpc_stub
+  ):
     instance = mock_executor_grpc_stub.return_value
     instance.Compute = mock.Mock(side_effect=_raise_grpc_error_unavailable)
     stub = create_stub()
 
     with self.assertRaises(executors_errors.RetryableError):
       stub.compute(
-          executor_pb2.ComputeRequest(value_ref=executor_pb2.ValueRef()))
+          executor_pb2.ComputeRequest(value_ref=executor_pb2.ValueRef())
+      )
 
   def test_compute_reraises_grpc_error(self, grpc_stub):
     instance = grpc_stub.return_value
@@ -100,7 +103,8 @@ class RemoteExecutorGrpcStubTest(absltest.TestCase):
 
     stub = create_stub()
     request = executor_pb2.ComputeRequest(
-        executor=executor_pb2.ExecutorId(), value_ref=executor_pb2.ValueRef())
+        executor=executor_pb2.ExecutorId(), value_ref=executor_pb2.ValueRef()
+    )
 
     with self.assertRaises(grpc.RpcError) as context:
       stub.compute(request)
@@ -124,7 +128,8 @@ class RemoteExecutorGrpcStubTest(absltest.TestCase):
     self.assertEqual(result, response)
 
   def test_create_value_raises_retryable_error_on_grpc_error_unavailable(
-      self, mock_executor_grpc_stub):
+      self, mock_executor_grpc_stub
+  ):
     instance = mock_executor_grpc_stub.return_value
     instance.CreateValue = mock.Mock(side_effect=_raise_grpc_error_unavailable)
     stub = create_stub()
@@ -135,7 +140,8 @@ class RemoteExecutorGrpcStubTest(absltest.TestCase):
   def test_create_value_reraises_grpc_error(self, mock_executor_grpc_stub):
     instance = mock_executor_grpc_stub.return_value
     instance.CreateValue = mock.Mock(
-        side_effect=_raise_non_retryable_grpc_error)
+        side_effect=_raise_non_retryable_grpc_error
+    )
     stub = create_stub()
 
     with self.assertRaises(grpc.RpcError) as context:
@@ -162,7 +168,8 @@ class RemoteExecutorGrpcStubTest(absltest.TestCase):
     self.assertEqual(result, response)
 
   def test_create_call_raises_retryable_error_on_grpc_error_unavailable(
-      self, mock_executor_grpc_stub):
+      self, mock_executor_grpc_stub
+  ):
     instance = mock_executor_grpc_stub.return_value
     instance.CreateCall = mock.Mock(side_effect=_raise_grpc_error_unavailable)
     stub = create_stub()
@@ -200,7 +207,8 @@ class RemoteExecutorGrpcStubTest(absltest.TestCase):
     self.assertEqual(result, response)
 
   def test_create_struct_raises_retryable_error_on_grpc_error_unavailable(
-      self, mock_executor_grpc_stub):
+      self, mock_executor_grpc_stub
+  ):
     instance = mock_executor_grpc_stub.return_value
     instance.CreateStruct = mock.Mock(side_effect=_raise_grpc_error_unavailable)
     stub = create_stub()
@@ -211,7 +219,8 @@ class RemoteExecutorGrpcStubTest(absltest.TestCase):
   def test_create_struct_reraises_grpc_error(self, mock_executor_grpc_stub):
     instance = mock_executor_grpc_stub.return_value
     instance.CreateStruct = mock.Mock(
-        side_effect=_raise_non_retryable_grpc_error)
+        side_effect=_raise_non_retryable_grpc_error
+    )
     stub = create_stub()
 
     with self.assertRaises(grpc.RpcError) as context:
@@ -234,26 +243,31 @@ class RemoteExecutorGrpcStubTest(absltest.TestCase):
     stub = create_stub()
 
     result = stub.create_selection(
-        request=executor_pb2.CreateSelectionRequest())
+        request=executor_pb2.CreateSelectionRequest()
+    )
 
     instance.CreateSelection.assert_called_once()
     self.assertEqual(result, response)
 
   def test_create_selection_raises_retryable_error_on_grpc_error_unavailable(
-      self, mock_executor_grpc_stub):
+      self, mock_executor_grpc_stub
+  ):
     instance = mock_executor_grpc_stub.return_value
     instance.CreateSelection = mock.Mock(
-        side_effect=_raise_grpc_error_unavailable)
+        side_effect=_raise_grpc_error_unavailable
+    )
     stub = create_stub()
 
     with self.assertRaises(executors_errors.RetryableError):
       stub.create_selection(request=executor_pb2.CreateSelectionRequest())
 
   def test_create_selection_reraises_non_retryable_grpc_error(
-      self, mock_executor_grpc_stub):
+      self, mock_executor_grpc_stub
+  ):
     instance = mock_executor_grpc_stub.return_value
     instance.CreateSelection = mock.Mock(
-        side_effect=_raise_non_retryable_grpc_error)
+        side_effect=_raise_non_retryable_grpc_error
+    )
     stub = create_stub()
     with self.assertRaises(grpc.RpcError) as context:
       stub.create_selection(request=executor_pb2.CreateSelectionRequest())

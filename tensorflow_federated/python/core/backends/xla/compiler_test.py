@@ -34,14 +34,16 @@ class CompilerTest(absltest.TestCase):
   def test_create_constant_from_scalar_float32(self):
     constant_type = computation_types.TensorType(np.float32)
     comp, comp_type = self._factory.create_constant_from_scalar(
-        10.0, constant_type)
+        10.0, constant_type
+    )
     result = self._run_comp(comp, comp_type)
     self.assertEqual(result, 10.0)
 
   def test_create_constant_from_scalar_int32x3(self):
     constant_type = computation_types.TensorType(np.int32, [3])
     comp, comp_type = self._factory.create_constant_from_scalar(
-        10, constant_type)
+        10, constant_type
+    )
     result = self._run_comp(comp, comp_type)
     self.assertIsInstance(result, np.ndarray)
     self.assertEqual(result.dtype, np.int32)
@@ -51,7 +53,8 @@ class CompilerTest(absltest.TestCase):
   def test_create_constant_from_scalar_int32x3x2(self):
     constant_type = computation_types.TensorType(np.int32, [3, 2])
     comp, comp_type = self._factory.create_constant_from_scalar(
-        10, constant_type)
+        10, constant_type
+    )
     result = self._run_comp(comp, comp_type)
     self.assertIsInstance(result, np.ndarray)
     self.assertEqual(result.dtype, np.int32)
@@ -60,9 +63,11 @@ class CompilerTest(absltest.TestCase):
 
   def test_create_constant_from_scalar_int32_struct(self):
     constant_type = computation_types.to_type(
-        collections.OrderedDict([('a', np.int32), ('b', np.int32)]))
+        collections.OrderedDict([('a', np.int32), ('b', np.int32)])
+    )
     comp, comp_type = self._factory.create_constant_from_scalar(
-        10, constant_type)
+        10, constant_type
+    )
     result = self._run_comp(comp, comp_type)
     self.assertEqual(str(result), '<a=10,b=10>')
 
@@ -70,10 +75,12 @@ class CompilerTest(absltest.TestCase):
     constant_type = computation_types.to_type(
         collections.OrderedDict([
             ('a', np.float32),
-            ('b', collections.OrderedDict([('c', np.float32)]))
-        ]))
+            ('b', collections.OrderedDict([('c', np.float32)])),
+        ])
+    )
     comp, comp_type = self._factory.create_constant_from_scalar(
-        10, constant_type)
+        10, constant_type
+    )
     result = self._run_comp(comp, comp_type)
     self.assertEqual(str(result), '<a=10.0,b=<c=10.0>>')
 
@@ -86,20 +93,35 @@ class CompilerTest(absltest.TestCase):
 
   def test_create_plus_operator_nested_structure(self):
     arg_type = computation_types.to_type(
-        collections.OrderedDict([('a', np.int32), ('b', np.float32),
-                                 ('c',
-                                  collections.OrderedDict([('d', np.float32),
-                                                           ('e', np.int32)]))]))
+        collections.OrderedDict([
+            ('a', np.int32),
+            ('b', np.float32),
+            (
+                'c',
+                collections.OrderedDict([('d', np.float32), ('e', np.int32)]),
+            ),
+        ])
+    )
     comp, comp_type = self._factory.create_plus_operator(arg_type)
     arg1 = collections.OrderedDict([
-        ('a', np.int32(2)), ('b', np.float32(3.0)),
-        ('c',
-         collections.OrderedDict([('d', np.float32(4.0)), ('e', np.int32(5))]))
+        ('a', np.int32(2)),
+        ('b', np.float32(3.0)),
+        (
+            'c',
+            collections.OrderedDict(
+                [('d', np.float32(4.0)), ('e', np.int32(5))]
+            ),
+        ),
     ])
     arg2 = collections.OrderedDict([
-        ('a', np.int32(5)), ('b', np.float32(6.0)),
-        ('c',
-         collections.OrderedDict([('d', np.float32(7.0)), ('e', np.int32(8))]))
+        ('a', np.int32(5)),
+        ('b', np.float32(6.0)),
+        (
+            'c',
+            collections.OrderedDict(
+                [('d', np.float32(7.0)), ('e', np.int32(8))]
+            ),
+        ),
     ])
     arg = structure.Struct([(None, arg1), (None, arg2)])
     result = self._run_comp(comp, comp_type, arg=arg)
@@ -116,7 +138,8 @@ class CompilerTest(absltest.TestCase):
     operand_type = computation_types.to_type(np.float32)
     scalar_type = computation_types.to_type(np.float32)
     comp, comp_type = self._factory.create_scalar_multiply_operator(
-        operand_type, scalar_type)
+        operand_type, scalar_type
+    )
     operand = np.float32(10.0)
     scalar = np.float32(5.0)
     arg = structure.Struct([(None, operand), (None, scalar)])
@@ -125,12 +148,15 @@ class CompilerTest(absltest.TestCase):
 
   def test_create_scalar_multiply_operator_2xfloat32(self):
     operand_type = computation_types.to_type(
-        collections.OrderedDict([('a', np.float32), ('b', np.float32)]))
+        collections.OrderedDict([('a', np.float32), ('b', np.float32)])
+    )
     scalar_type = computation_types.to_type(np.float32)
     comp, comp_type = self._factory.create_scalar_multiply_operator(
-        operand_type, scalar_type)
-    operand = collections.OrderedDict([('a', np.float32(10.0)),
-                                       ('b', np.float32(11.0))])
+        operand_type, scalar_type
+    )
+    operand = collections.OrderedDict(
+        [('a', np.float32(10.0)), ('b', np.float32(11.0))]
+    )
     scalar = np.float32(5.0)
     arg = structure.Struct([(None, operand), (None, scalar)])
     result = self._run_comp(comp, comp_type, arg=arg)

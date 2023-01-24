@@ -33,7 +33,8 @@ class NumTokensCounterTest(tf.test.TestCase):
         y_pred=[
             0
             # y_pred is thrown away
-        ])
+        ],
+    )
     self.assertEqual(self.evaluate(metric.result()), 8)
 
   def test_counts_total_examples_with_zero_mask_no_sample_weight(self):
@@ -46,7 +47,8 @@ class NumTokensCounterTest(tf.test.TestCase):
     metric.update_state(
         y_true=[[1, 2, 3, 4], [0, 0, 0, 0]],
         y_pred=[0],
-        sample_weight=[[1, 2, 3, 4], [1, 1, 1, 1]])
+        sample_weight=[[1, 2, 3, 4], [1, 1, 1, 1]],
+    )
     self.assertEqual(self.evaluate(metric.result()), 14)
 
   def test_counts_total_examples_with_zero_mask_with_sample_weight(self):
@@ -54,7 +56,8 @@ class NumTokensCounterTest(tf.test.TestCase):
     metric.update_state(
         y_true=[[1, 2, 3, 0], [1, 0, 0, 0]],
         y_pred=[0],
-        sample_weight=[[1, 2, 3, 4], [1, 1, 1, 1]])
+        sample_weight=[[1, 2, 3, 4], [1, 1, 1, 1]],
+    )
     self.assertEqual(self.evaluate(metric.result()), 7)
 
 
@@ -71,7 +74,8 @@ class MaskedCategoricalAccuracyTest(tf.test.TestCase):
   def test_constructor_with_masked_token(self):
     metric_name = 'my_test_metric'
     metric = keras_metrics.MaskedCategoricalAccuracy(
-        name=metric_name, masked_tokens=[100])
+        name=metric_name, masked_tokens=[100]
+    )
     self.assertIsInstance(metric, tf.keras.metrics.Metric)
     self.assertEqual(metric.name, metric_name)
     self.assertAllEqual(metric.get_config()['masked_tokens'], [100])
@@ -96,7 +100,8 @@ class MaskedCategoricalAccuracyTest(tf.test.TestCase):
                 [0.1, 0.1, 0.1, 0.9, 0.1],
                 [0.9, 0.1, 0.1, 0.1, 0.0],
             ],
-        ])
+        ],
+    )
     self.assertAllClose(self.evaluate(metric.result()), 5 / 7.0)
     metric.update_state(
         y_true=[[0, 4, 1, 2]],
@@ -108,7 +113,8 @@ class MaskedCategoricalAccuracyTest(tf.test.TestCase):
                 [0.1, 0.1, 0.1, 0.9, 0.1],
                 [0.1, 0.1, 0.1, 0.1, 0.9],
             ],
-        ])
+        ],
+    )
     self.assertAllClose(self.evaluate(metric.result()), 6 / 10.0)
 
   def test_update_state_with_no_special_character(self):
@@ -130,7 +136,8 @@ class MaskedCategoricalAccuracyTest(tf.test.TestCase):
                 [0.1, 0.1, 0.1, 0.9, 0.1],
                 [0.9, 0.1, 0.1, 0.1, 0.0],
             ],
-        ])
+        ],
+    )
     self.assertEqual(self.evaluate(metric.result()), 6 / 8.0)
     metric.update_state(
         y_true=[[0, 4, 1, 2]],
@@ -142,7 +149,8 @@ class MaskedCategoricalAccuracyTest(tf.test.TestCase):
                 [0.1, 0.1, 0.1, 0.9, 0.1],
                 [0.1, 0.1, 0.1, 0.1, 0.9],
             ],
-        ])
+        ],
+    )
     self.assertAllClose(self.evaluate(metric.result()), 8 / 12.0)
 
   def test_weighted_update_state_with_masked_token(self):
@@ -166,7 +174,8 @@ class MaskedCategoricalAccuracyTest(tf.test.TestCase):
             ],
         ],
         # A weight for each `y_true` scalar.
-        sample_weight=[[1.0, 2.0, 1.0, 2.0], [1.0, 2.0, 1.0, 2.0]])
+        sample_weight=[[1.0, 2.0, 1.0, 2.0], [1.0, 2.0, 1.0, 2.0]],
+    )
     self.assertAllClose(self.evaluate(metric.result()), (4 + 4) / 10.0)
     metric.update_state(
         y_true=[[0, 4, 1, 2]],
@@ -179,7 +188,8 @@ class MaskedCategoricalAccuracyTest(tf.test.TestCase):
                 [0.1, 0.1, 0.1, 0.1, 0.9],
             ],
         ],
-        sample_weight=[1.0, 1.0, 2.0, 2.0])
+        sample_weight=[1.0, 1.0, 2.0, 2.0],
+    )
     self.assertAllClose(self.evaluate(metric.result()), (4 + 4 + 1) / 15.0)
 
   def test_weighted_update_state_no_special_character(self):
@@ -203,7 +213,8 @@ class MaskedCategoricalAccuracyTest(tf.test.TestCase):
             ],
         ],
         # A weight for each `y_true` scalar.
-        sample_weight=[1.0, 2.0, 1.0, 2.0, 1.0, 2.0, 1.0, 2.0])
+        sample_weight=[1.0, 2.0, 1.0, 2.0, 1.0, 2.0, 1.0, 2.0],
+    )
     self.assertAllClose(self.evaluate(metric.result()), (6 + 4) / 12.0)
     metric.update_state(
         y_true=[[0, 4, 1, 2]],
@@ -216,11 +227,13 @@ class MaskedCategoricalAccuracyTest(tf.test.TestCase):
                 [0.1, 0.1, 0.1, 0.1, 0.9],
             ],
         ],
-        sample_weight=[1.0, 1.0, 2.0, 2.0])
+        sample_weight=[1.0, 1.0, 2.0, 2.0],
+    )
     self.assertAllClose(self.evaluate(metric.result()), (6 + 4 + 2) / 18.0)
 
   def test_weighted_update_state_no_special_character_rank_2_sample_weight(
-      self):
+      self,
+  ):
     metric = keras_metrics.MaskedCategoricalAccuracy()
     metric.update_state(
         y_true=[[1, 2, 3, 4], [0, 0, 0, 0]],
@@ -241,7 +254,8 @@ class MaskedCategoricalAccuracyTest(tf.test.TestCase):
             ],
         ],
         # A weight for each `y_true` scalar.
-        sample_weight=[[1.0, 2.0, 1.0, 2.0], [1.0, 2.0, 1.0, 2.0]])
+        sample_weight=[[1.0, 2.0, 1.0, 2.0], [1.0, 2.0, 1.0, 2.0]],
+    )
     self.assertAllClose(self.evaluate(metric.result()), (6 + 4) / 12.0)
 
   def test_weighted_update_state_with_scalar_weight(self):
@@ -257,8 +271,9 @@ class MaskedCategoricalAccuracyTest(tf.test.TestCase):
                 [0.1, 0.1, 0.1, 0.1, 0.9],
             ],
         ],
-        sample_weight=1.0)
-    self.assertAllClose(self.evaluate(metric.result()), .5)
+        sample_weight=1.0,
+    )
+    self.assertAllClose(self.evaluate(metric.result()), 0.5)
 
   def test_weighted_update_state_special_character_rank_2_sample_weight(self):
     metric = keras_metrics.MaskedCategoricalAccuracy(masked_tokens=[4])
@@ -281,7 +296,8 @@ class MaskedCategoricalAccuracyTest(tf.test.TestCase):
             ],
         ],
         # A weight for each `y_true` scalar.
-        sample_weight=[[1.0, 2.0, 1.0, 2.0], [1.0, 2.0, 1.0, 2.0]])
+        sample_weight=[[1.0, 2.0, 1.0, 2.0], [1.0, 2.0, 1.0, 2.0]],
+    )
     self.assertAllClose(self.evaluate(metric.result()), (6 + 2) / 10.0)
 
   def test_update_state_with_multiple_tokens_masked(self):
@@ -303,7 +319,8 @@ class MaskedCategoricalAccuracyTest(tf.test.TestCase):
                 [0.1, 0.1, 0.1, 0.9, 0.1],
                 [0.9, 0.1, 0.1, 0.1, 0.0],
             ],
-        ])
+        ],
+    )
     self.assertAllClose(self.evaluate(metric.result()), 0.5)
 
   def test_update_state_with_all_tokens_masked(self):
@@ -324,7 +341,8 @@ class MaskedCategoricalAccuracyTest(tf.test.TestCase):
                 [0.1, 0.1, 0.1, 0.9, 0.1],
                 [0.9, 0.1, 0.1, 0.1, 0.0],
             ],
-        ])
+        ],
+    )
     self.assertAllClose(self.evaluate(metric.result()), 0.0)
 
 

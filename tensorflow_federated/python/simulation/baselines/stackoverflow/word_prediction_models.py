@@ -29,11 +29,13 @@ class TransposableEmbedding(tf.keras.layers.Layer):
     return tf.matmul(inputs, self.embeddings, transpose_b=True)
 
 
-def create_recurrent_model(vocab_size: int,
-                           embedding_size: int = 96,
-                           num_lstm_layers: int = 1,
-                           lstm_size: int = 670,
-                           shared_embedding: bool = False) -> tf.keras.Model:
+def create_recurrent_model(
+    vocab_size: int,
+    embedding_size: int = 96,
+    num_lstm_layers: int = 1,
+    lstm_size: int = 670,
+    shared_embedding: bool = False,
+) -> tf.keras.Model:
   """Constructs a recurrent model with an initial embeding layer.
 
   The resulting model embeds sequences of integer tokens (whose values vary
@@ -68,7 +70,8 @@ def create_recurrent_model(vocab_size: int,
 
   inputs = tf.keras.layers.Input(shape=(None,))
   input_embedding = tf.keras.layers.Embedding(
-      input_dim=vocab_size, output_dim=embedding_size, mask_zero=True)
+      input_dim=vocab_size, output_dim=embedding_size, mask_zero=True
+  )
   embedded = input_embedding(inputs)
   projected = embedded
 

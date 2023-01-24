@@ -57,17 +57,15 @@ class TensorVariable:
   resource from a session.
   """
 
-  def __init__(self,
-               initial_value,
-               dtype=None,
-               validate_shape=True,
-               shape=None,
-               **kwargs):
+  def __init__(
+      self, initial_value, dtype=None, validate_shape=True, shape=None, **kwargs
+  ):
     """For details see https://www.tensorflow.org/api_docs/python/tf/Variable#args_1."""
     if callable(initial_value):
       if dtype is None:
-        raise ValueError('When `initial_value` is a callable, `dtype` must be '
-                         'specified.')
+        raise ValueError(
+            'When `initial_value` is a callable, `dtype` must be specified.'
+        )
       initial_value = initial_value()
     if tf.is_tensor(initial_value):
       self._initial_value = initial_value
@@ -116,7 +114,8 @@ class TensorVariable:
     if not self._shape.is_compatible_with(tf.TensorShape(value.shape)):
       raise ValueError(
           f'Cannot assign value to variable {self!r}. The TensorVariable shape '
-          f'{self._shape}, and the value shape {value.shape} are incompatible.')
+          f'{self._shape}, and the value shape {value.shape} are incompatible.'
+      )
 
   def assign_add(self, value, use_locking=False, name=None, read_value=True):
     del use_locking  # Unused.
@@ -202,8 +201,10 @@ class TensorVariable:
     if not tf.executing_eagerly():
       return hash(self._tensor)
     else:
-      raise TypeError(f'TensorVariable {self!r} is unhashable. Instead, use '
-                      'tensorvariable.ref() as the key.')
+      raise TypeError(
+          f'TensorVariable {self!r} is unhashable. Instead, use '
+          'tensorvariable.ref() as the key.'
+      )
 
   def __repr__(self) -> str:
     return f'<TensorVariable: {self._tensor}>'
@@ -232,5 +233,6 @@ def _convert_tensor_variable_to_tensor(value, *args, **kwargs):
   return value.read_value()
 
 
-tf.register_tensor_conversion_function(TensorVariable,
-                                       _convert_tensor_variable_to_tensor)
+tf.register_tensor_conversion_function(
+    TensorVariable, _convert_tensor_variable_to_tensor
+)

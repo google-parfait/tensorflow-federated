@@ -22,16 +22,27 @@ from tensorflow_federated.python.analytics.hierarchical_histogram import build_t
 class UtilsTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
-      ('binary_no_padding', [1., 1., 1., 1.], 2, [[4.], [2., 2.],
-                                                  [1., 1., 1., 1.]]),
-      ('binary_padding', [1., 1., 1.], 2, [[3.], [2., 1.], [1., 1., 1., 0.]]),
-      ('ternary_no_padding', [1., 1., 1.], 3, [[3.], [1., 1., 1.]]),
-      ('ternary_padding', [1., 1.], 3, [[2.], [1., 1., 0.]]),
+      (
+          'binary_no_padding',
+          [1.0, 1.0, 1.0, 1.0],
+          2,
+          [[4.0], [2.0, 2.0], [1.0, 1.0, 1.0, 1.0]],
+      ),
+      (
+          'binary_padding',
+          [1.0, 1.0, 1.0],
+          2,
+          [[3.0], [2.0, 1.0], [1.0, 1.0, 1.0, 0.0]],
+      ),
+      ('ternary_no_padding', [1.0, 1.0, 1.0], 3, [[3.0], [1.0, 1.0, 1.0]]),
+      ('ternary_padding', [1.0, 1.0], 3, [[2.0], [1.0, 1.0, 0.0]]),
   )
-  def test_create_hierarchical_hist(self, histogram, arity,
-                                    expected_hierarchical_histogram):
+  def test_create_hierarchical_hist(
+      self, histogram, arity, expected_hierarchical_histogram
+  ):
     hierarchical_histogram = build_tree_from_leaf.create_hierarchical_histogram(
-        histogram, arity)
+        histogram, arity
+    )
     self.assertAllClose(hierarchical_histogram, expected_hierarchical_histogram)
 
 

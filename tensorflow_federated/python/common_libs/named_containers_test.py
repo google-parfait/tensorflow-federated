@@ -43,9 +43,14 @@ class UserDefinedClassToOdictTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('list', lambda x: [x], list),
-      ('odict', lambda a: collections.OrderedDict(x=a),
-       collections.OrderedDict), ('dataclass', TestDataclass, TestDataclass),
-      ('attrs_class', TestAttrClass, TestAttrClass))
+      (
+          'odict',
+          lambda a: collections.OrderedDict(x=a),
+          collections.OrderedDict,
+      ),
+      ('dataclass', TestDataclass, TestDataclass),
+      ('attrs_class', TestAttrClass, TestAttrClass),
+  )
   def test_dataclass_not_recursed_through(self, container_fn, expected_type):
     a = TestDataclass(container_fn(0))
     odict_a = named_containers.dataclass_to_odict(a)
@@ -67,9 +72,14 @@ class UserDefinedClassToOdictTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('list', lambda x: [x], list),
-      ('odict', lambda a: collections.OrderedDict(x=a),
-       collections.OrderedDict), ('dataclass', TestDataclass, TestDataclass),
-      ('attrs_class', TestAttrClass, TestAttrClass))
+      (
+          'odict',
+          lambda a: collections.OrderedDict(x=a),
+          collections.OrderedDict,
+      ),
+      ('dataclass', TestDataclass, TestDataclass),
+      ('attrs_class', TestAttrClass, TestAttrClass),
+  )
   def test_attrs_class_not_recursed_through(self, container_fn, expected_type):
     a = TestAttrClass(container_fn(0))
     odict_a = named_containers.attrs_class_to_odict(a)

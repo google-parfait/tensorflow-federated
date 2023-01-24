@@ -24,8 +24,10 @@ class JaxComputationContext(context_base.SyncContext):
 
   def ingest(self, val, type_spec):
     raise NotImplementedError(
-        'Invoking computations from JAX code is not currently supported.')
+        'Invoking computations from JAX code is not currently supported.'
+    )
 
   def invoke(self, comp, arg):
     raise NotImplementedError(
-        'Invoking computations from JAX code is not currently supported.')
+        'Invoking computations from JAX code is not currently supported.'
+    )

@@ -62,7 +62,8 @@ class _UnboundRefChecker:
     tree = building_blocks.ComputationBuildingBlock.from_proto(proto)
     unbound_ref_map = transformation_utils.get_map_of_unbound_references(tree)
     self._evaluated_comps.update(
-        {_hash_proto(k.proto): v for k, v in unbound_ref_map.items()})
+        {_hash_proto(k.proto): v for k, v in unbound_ref_map.items()}
+    )
     return unbound_ref_map[tree]
 
 
@@ -112,10 +113,11 @@ class ReferenceResolvingExecutorScope:
       return await self._parent.resolve_reference(name)
     else:
       raise ValueError(
-          'The name \'{}\' is not defined in this scope.'.format(name))
+          "The name '{}' is not defined in this scope.".format(name)
+      )
 
 
-class ScopedLambda():
+class ScopedLambda:
   """Represents a lambda value with some attached scope.
 
   The scope is used to handle variables captured within the lambda.
@@ -161,8 +163,9 @@ class ScopedLambda():
     return await executor._evaluate(comp_lambda.result, new_scope)  # pylint: disable=protected-access
 
 
-LambdaValueInner = Union[executor_value_base.ExecutorValue, ScopedLambda,
-                         structure.Struct]
+LambdaValueInner = Union[
+    executor_value_base.ExecutorValue, ScopedLambda, structure.Struct
+]
 
 
 class ReferenceResolvingExecutorValue(executor_value_base.ExecutorValue):
@@ -202,9 +205,9 @@ class ReferenceResolvingExecutorValue(executor_value_base.ExecutorValue):
       for k, v in structure.iter_elements(value):
         py_typecheck.check_type(v, ReferenceResolvingExecutorValue)
         type_elements.append((k, v.type_signature))
-      type_spec = computation_types.StructType([
-          (k, v) if k is not None else v for k, v in type_elements
-      ])
+      type_spec = computation_types.StructType(
+          [(k, v) if k is not None else v for k, v in type_elements]
+      )
     self._value = value
     self._type_signature = type_spec
 
@@ -223,7 +226,9 @@ class ReferenceResolvingExecutorValue(executor_value_base.ExecutorValue):
           'Materializing a computed value of a functional TFF type {} is not '
           'possible; only non-functional values can be materialized. Did you '
           'perhaps forget to __call__() a function you declared?'.format(
-              str(self._type_signature)))
+              str(self._type_signature)
+          )
+      )
     elif isinstance(self._value, executor_value_base.ExecutorValue):
       return await self._value.compute()
     else:
@@ -274,19 +279,22 @@ class ReferenceResolvingExecutor(executor_base.Executor):
     if isinstance(value, computation_impl.ConcreteComputation):
       return await self.create_value(
           computation_impl.ConcreteComputation.get_proto(value),
-          executor_utils.reconcile_value_with_type_spec(value, type_spec))
+          executor_utils.reconcile_value_with_type_spec(value, type_spec),
+      )
     elif isinstance(value, pb.Computation):
       return await self._evaluate(value)
     elif type_spec is not None and type_spec.is_struct():
       v_el = structure.to_elements(structure.from_container(value))
       vals = await asyncio.gather(
-          *[self.create_value(val, t) for (_, val), t in zip(v_el, type_spec)])
+          *[self.create_value(val, t) for (_, val), t in zip(v_el, type_spec)]
+      )
       return ReferenceResolvingExecutorValue(
-          structure.Struct((name, val) for (name, _), val in zip(v_el, vals)))
+          structure.Struct((name, val) for (name, _), val in zip(v_el, vals))
+      )
     else:
-      return ReferenceResolvingExecutorValue(await
-                                             self._target_executor.create_value(
-                                                 value, type_spec))
+      return ReferenceResolvingExecutorValue(
+          await self._target_executor.create_value(value, type_spec)
+      )
 
   @tracing.trace
   async def create_struct(self, elements):
@@ -299,7 +307,8 @@ class ReferenceResolvingExecutor(executor_base.Executor):
     source_repr = source.reference
     if isinstance(source_repr, executor_value_base.ExecutorValue):
       return ReferenceResolvingExecutorValue(
-          await self._target_executor.create_selection(source_repr, index))
+          await self._target_executor.create_selection(source_repr, index)
+      )
     elif isinstance(source_repr, ScopedLambda):
       raise ValueError('Cannot index into a lambda.')
     else:
@@ -317,27 +326,33 @@ class ReferenceResolvingExecutor(executor_base.Executor):
       py_typecheck.check_type(arg, ReferenceResolvingExecutorValue)
       arg_type = arg.type_signature
       if not param_type.is_assignable_from(arg_type):
-        raise TypeError('ReferenceResolvingExecutor asked to create call with '
-                        'incompatible type specifications. Function '
-                        'takes an argument of type {}, but was supplied '
-                        'an argument of type {}'.format(param_type, arg_type))
+        raise TypeError(
+            'ReferenceResolvingExecutor asked to create call with '
+            'incompatible type specifications. Function '
+            'takes an argument of type {}, but was supplied '
+            'an argument of type {}'.format(param_type, arg_type)
+        )
 
     comp_repr = comp.reference
     if isinstance(comp_repr, executor_value_base.ExecutorValue):
       # `comp` represents a function in the target executor, so we convert the
       # argument to a value inside the target executor and `create_call` on
       # the target executor.
-      delegated_arg = await self._embed_value_in_target_exec(
-          arg) if arg is not None else None
-      return ReferenceResolvingExecutorValue(await
-                                             self._target_executor.create_call(
-                                                 comp_repr, delegated_arg))
+      delegated_arg = (
+          await self._embed_value_in_target_exec(arg)
+          if arg is not None
+          else None
+      )
+      return ReferenceResolvingExecutorValue(
+          await self._target_executor.create_call(comp_repr, delegated_arg)
+      )
     elif isinstance(comp_repr, ScopedLambda):
       return await comp_repr.invoke(self, arg)
     else:
       raise TypeError(
           'Unexpected type to ReferenceResolvingExecutor create_call: {}'
-          .format(type(comp_repr)))
+          .format(type(comp_repr))
+      )
 
   @tracing.trace(stats=False)
   async def _embed_value_in_target_exec(
@@ -367,10 +382,13 @@ class ReferenceResolvingExecutor(executor_base.Executor):
       return value_repr
     elif isinstance(value_repr, structure.Struct):
       vals = await asyncio.gather(
-          *[self._embed_value_in_target_exec(v) for v in value_repr])
+          *[self._embed_value_in_target_exec(v) for v in value_repr]
+      )
       return await self._target_executor.create_struct(
           structure.Struct(
-              zip((k for k, _ in structure.iter_elements(value_repr)), vals)))
+              zip((k for k, _ in structure.iter_elements(value_repr)), vals)
+          )
+      )
     else:
       py_typecheck.check_type(value_repr, ScopedLambda)
       # Pull `comp` out of the `ScopedLambda`, asserting that it doesn't
@@ -383,15 +401,19 @@ class ReferenceResolvingExecutor(executor_base.Executor):
         # doing. Typechecking should reject a lambda passed to Tensorflow code,
         # and intrinsics are the only other functional construct in TFF.
         tree = building_blocks.ComputationBuildingBlock.from_proto(
-            value_repr.comp)
+            value_repr.comp
+        )
         raise RuntimeError(
             'lambda passed to intrinsic contains references to captured '
             'variables. This is not currently supported. For more information, '
             'see b/148685415. '
             'Found references {} in computation {} with type {}'.format(
-                unbound_refs, tree, tree.type_signature))
-      return await self._target_executor.create_value(value_repr.comp,
-                                                      value.type_signature)
+                unbound_refs, tree, tree.type_signature
+            )
+        )
+      return await self._target_executor.create_value(
+          value_repr.comp, value.type_signature
+      )
 
   @tracing.trace(stats=False)
   async def _evaluate_to_delegate(
@@ -401,7 +423,9 @@ class ReferenceResolvingExecutor(executor_base.Executor):
   ) -> ReferenceResolvingExecutorValue:
     return ReferenceResolvingExecutorValue(
         await self._target_executor.create_value(
-            comp, type_serialization.deserialize_type(comp.type)))
+            comp, type_serialization.deserialize_type(comp.type)
+        )
+    )
 
   @tracing.trace(stats=False)
   async def _evaluate_lambda(
@@ -411,7 +435,8 @@ class ReferenceResolvingExecutor(executor_base.Executor):
   ) -> ReferenceResolvingExecutorValue:
     type_spec = type_serialization.deserialize_type(comp.type)
     return ReferenceResolvingExecutorValue(
-        ScopedLambda(comp, scope), type_spec=type_spec)
+        ScopedLambda(comp, scope), type_spec=type_spec
+    )
 
   @tracing.trace(stats=False)
   async def _evaluate_reference(
@@ -488,7 +513,11 @@ class ReferenceResolvingExecutor(executor_base.Executor):
     py_typecheck.check_type(scope, ReferenceResolvingExecutorScope)
     which_computation = comp.WhichOneof('computation')
     if which_computation in [
-        'tensorflow', 'intrinsic', 'data', 'placement', 'xla'
+        'tensorflow',
+        'intrinsic',
+        'data',
+        'placement',
+        'xla',
     ]:
       # nothing interesting here-- forward the creation to the child executor
       return await self._evaluate_to_delegate(comp, scope)
@@ -506,4 +535,5 @@ class ReferenceResolvingExecutor(executor_base.Executor):
       return await self._evaluate_block(comp, scope)
     else:
       raise NotImplementedError(
-          'Unsupported computation type "{}".'.format(which_computation))
+          'Unsupported computation type "{}".'.format(which_computation)
+      )

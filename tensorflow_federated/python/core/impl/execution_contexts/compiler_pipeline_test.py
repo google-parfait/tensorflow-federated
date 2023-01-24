@@ -21,7 +21,6 @@ from tensorflow_federated.python.core.impl.execution_contexts import compiler_pi
 class CompilerPipelineTest(absltest.TestCase):
 
   def test_compile_computation_with_identity(self):
-
     class BogusComputation(computation_base.Computation):
 
       def __init__(self, v: int):

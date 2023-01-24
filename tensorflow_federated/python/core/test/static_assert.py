@@ -21,8 +21,9 @@ from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.computation import computation_impl
 
 
-def _raise_expected_none(calls: list[building_blocks.Call],
-                         kind: str) -> Optional[str]:
+def _raise_expected_none(
+    calls: list[building_blocks.Call], kind: str
+) -> Optional[str]:
   assert len(calls) != 0  # pylint: disable=g-explicit-length-test
   msg = 'Expected no {} aggregations, found {}:'.format(kind, len(calls))
   msg += ''.join(('\n\t' + call.compact_representation() for call in calls))
@@ -50,7 +51,9 @@ def assert_contains_secure_aggregation(comp):
   if len(calls) == 0:  # pylint: disable=g-explicit-length-test
     raise AssertionError(
         'Expected secure aggregation, but none were found in: {}'.format(
-            comp.compact_representation()))
+            comp.compact_representation()
+        )
+    )
 
 
 def assert_not_contains_secure_aggregation(comp):
@@ -96,7 +99,9 @@ def assert_contains_unsecure_aggregation(comp):
   if len(calls) == 0:  # pylint: disable=g-explicit-length-test
     raise AssertionError(
         'Expected unsecure aggregation, but none were found in:\n{}'.format(
-            comp.compact_representation()))
+            comp.compact_representation()
+        )
+    )
 
 
 def assert_not_contains_unsecure_aggregation(comp):

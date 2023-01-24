@@ -48,7 +48,8 @@ class Chunker(abc.ABC):
 
   @abc.abstractmethod
   def encode_tensorflow(
-      self, input_strings: tf.Tensor) -> tuple[tf.Tensor, tf.Tensor]:
+      self, input_strings: tf.Tensor
+  ) -> tuple[tf.Tensor, tf.Tensor]:
     """Encodes `input_strings` to tensors.
 
     Args:
@@ -90,11 +91,13 @@ class CharacterEncoding(enum.Enum):
 _DEFAULT_DTYPE = tf.int64
 
 
-def create_chunker(*,
-                   string_max_bytes: int,
-                   encoding: CharacterEncoding = CharacterEncoding.UTF8,
-                   max_chunk_value: Optional[int] = None,
-                   dtype: tf.dtypes.DType = _DEFAULT_DTYPE) -> Chunker:
+def create_chunker(
+    *,
+    string_max_bytes: int,
+    encoding: CharacterEncoding = CharacterEncoding.UTF8,
+    max_chunk_value: Optional[int] = None,
+    dtype: tf.dtypes.DType = _DEFAULT_DTYPE,
+) -> Chunker:
   """Creates a `Chunker` for the given specification.
 
   Note: not all parameters are supported by all Chunkers. See chunker subclass
@@ -148,11 +151,13 @@ class BinaryChunker(Chunker):
   zero padding used to ensure all encoded tensors have the same size.
   """
 
-  def __init__(self,
-               *,
-               string_max_bytes: int,
-               max_chunk_value: Optional[int] = None,
-               dtype: tf.dtypes.DType = _DEFAULT_DTYPE):
+  def __init__(
+      self,
+      *,
+      string_max_bytes: int,
+      max_chunk_value: Optional[int] = None,
+      dtype: tf.dtypes.DType = _DEFAULT_DTYPE,
+  ):
     """Initializes the chunker.
 
     Args:
@@ -172,27 +177,31 @@ class BinaryChunker(Chunker):
       max_chunk_value = dtype.max
     py_typecheck.check_type(max_chunk_value, int, label='max_chunk_value')
 
-    if (string_max_bytes <= 0 or string_max_bytes > max_chunk_value):
+    if string_max_bytes <= 0 or string_max_bytes > max_chunk_value:
       raise ValueError(
           f'string_max_bytes must be between [1, {max_chunk_value=}]. '
-          f'Found: {string_max_bytes}')
+          f'Found: {string_max_bytes}'
+      )
 
     if dtype not in (tf.int32, tf.int64):
-      raise ValueError('`dtype` must be either `tf.int32` or `tf.int64`.'
-                       f'Found: {dtype}')
+      raise ValueError(
+          f'`dtype` must be either `tf.int32` or `tf.int64`.Found: {dtype}'
+      )
 
     if max_chunk_value < tf.uint8.max or max_chunk_value > dtype.max:
       raise ValueError(
           f'`max_chunk_value must be between [{tf.uint8.max}, {dtype.max=}]. '
-          f'Found: {max_chunk_value}')
+          f'Found: {max_chunk_value}'
+      )
 
     self._string_max_bytes = string_max_bytes
     self._dtype = dtype
     self._max_chunk_value = max_chunk_value
 
     self._chunk_value_bitrange = math.floor(math.log2(max_chunk_value))
-    self._num_data_chunks = math.ceil(self._string_max_bytes * 8 /
-                                      self._chunk_value_bitrange)
+    self._num_data_chunks = math.ceil(
+        self._string_max_bytes * 8 / self._chunk_value_bitrange
+    )
     # The header always fits into a single chunk because
     # `string_max_bytes <= max_chunk_value`
     self._num_header_chunks = 1
@@ -216,7 +225,8 @@ class BinaryChunker(Chunker):
 
   @tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=tf.string)])
   def encode_tensorflow(
-      self, input_strings: tf.Tensor) -> tuple[tf.Tensor, tf.Tensor]:
+      self, input_strings: tf.Tensor
+  ) -> tuple[tf.Tensor, tf.Tensor]:
     """Encodes `input_strings` to tensors.
 
     Args:
@@ -245,7 +255,8 @@ class BinaryChunker(Chunker):
     #   b'12345',
     # ]
     trimmed = tf.strings.substr(
-        input_strings, pos=0, len=self._string_max_bytes, unit='BYTE')
+        input_strings, pos=0, len=self._string_max_bytes, unit='BYTE'
+    )
 
     # `trimmed_lengths_in_bytes` is a 1-D vector of the byte size of each
     # trimmed string. ex:
@@ -263,13 +274,15 @@ class BinaryChunker(Chunker):
     #   [49, 50, 51, 52, 53],
     # ]
     split_bytes = tf.io.decode_raw(
-        trimmed, out_type=tf.uint8, fixed_length=self._string_max_bytes)
+        trimmed, out_type=tf.uint8, fixed_length=self._string_max_bytes
+    )
 
     def pack_string_bytes_to_int(string_bytes: tf.Tensor) -> tf.Tensor:
       return te.utils.pack_into_int(
           string_bytes,
           input_bitrange=8,
-          target_bitrange=self._chunk_value_bitrange)
+          target_bitrange=self._chunk_value_bitrange,
+      )
 
     # `data_chunks` is a 2-D array containing the chunked binary encoding
     # of each trimmed string, with binary data packed into each integer chunk
@@ -280,8 +293,10 @@ class BinaryChunker(Chunker):
     # ]
     data_chunks = tf.squeeze(
         tf.map_fn(
-            pack_string_bytes_to_int, elems=tf.cast(split_bytes, self._dtype)),
-        axis=-1)
+            pack_string_bytes_to_int, elems=tf.cast(split_bytes, self._dtype)
+        ),
+        axis=-1,
+    )
 
     # `header` is a 2-D tensor containing the trimmed length of each string in
     # the encoding dtype. ex:
@@ -290,7 +305,8 @@ class BinaryChunker(Chunker):
     #   [5],
     # ]
     header = tf.expand_dims(
-        tf.cast(trimmed_lengths_in_bytes, self._dtype), axis=1)
+        tf.cast(trimmed_lengths_in_bytes, self._dtype), axis=1
+    )
 
     # `encoding` is a 2-D array containing the header byte size for each string
     # followed by its byte encoding. ex:
@@ -311,10 +327,12 @@ class BinaryChunker(Chunker):
       tf.debugging.assert_less_equal(
           encoding,
           tf.cast(self._max_chunk_value, self._dtype),
-          message='Encoded chunk values must be less than `max_chunk_value.')
+          message='Encoded chunk values must be less than `max_chunk_value.',
+      )
     if self._dtype.min < 0:
       tf.debugging.assert_non_negative(
-          encoding, message='Encoded chunk values must be non-negative')
+          encoding, message='Encoded chunk values must be non-negative'
+      )
 
     return (encoding, trimmed)
 
@@ -343,17 +361,24 @@ class BinaryChunker(Chunker):
     try:
       encoded_chunks = tf.convert_to_tensor(encoded_chunks, dtype=self._dtype)
     except Exception as e:
-      raise ValueError('`encoded_chunks` must be a {self._dtype} tensor. '
-                       f'Found: {encoded_chunks}') from e
-    if (len(encoded_chunks.shape) == 1 and
-        encoded_chunks.shape[0] == self.get_num_chunks()):
+      raise ValueError(
+          '`encoded_chunks` must be a {self._dtype} tensor. '
+          f'Found: {encoded_chunks}'
+      ) from e
+    if (
+        len(encoded_chunks.shape) == 1
+        and encoded_chunks.shape[0] == self.get_num_chunks()
+    ):
       # Invoked with a single encoded string (case #2 above);
       # expand dims to a 2-D
       encoded_chunks = tf.expand_dims(encoded_chunks, axis=0)
     tf.debugging.assert_shapes(
         [(encoded_chunks, (None, self.get_num_chunks()))],
-        message=('`encoded_chunks` must be a 2-D vector '
-                 f'with second dimension size `{self.get_num_chunks()}`.'))
+        message=(
+            '`encoded_chunks` must be a 2-D vector '
+            f'with second dimension size `{self.get_num_chunks()}`.'
+        ),
+    )
 
     # `header` is a 2-D array contains the header bytes split off from the
     # encoded string data. ex:
@@ -364,14 +389,16 @@ class BinaryChunker(Chunker):
     header, encoded_data = tf.split(
         encoded_chunks,
         axis=1,
-        num_or_size_splits=[self._num_header_chunks, self._num_data_chunks])
+        num_or_size_splits=[self._num_header_chunks, self._num_data_chunks],
+    )
 
     def unpack_string_bytes_from_int(string_chunks: tf.Tensor) -> tf.Tensor:
       return te.utils.unpack_from_int(
           string_chunks,
           original_bitrange=8,
           target_bitrange=self._chunk_value_bitrange,
-          shape=[self._string_max_bytes])
+          shape=[self._string_max_bytes],
+      )
 
     # `decoded_bytes` is a 2-D array containing the byte-size integer
     # representation of each string padded with zeros. ex:
@@ -381,7 +408,8 @@ class BinaryChunker(Chunker):
     # ]
     decoded_bytes = tf.map_fn(
         unpack_string_bytes_from_int,
-        elems=tf.expand_dims(encoded_data, axis=-1))
+        elems=tf.expand_dims(encoded_data, axis=-1),
+    )
 
     # `byte_strings` contains the encoded binary data as indiviual bytes
     # of tf.string binary, padded with 0 bytes to `string_max_bytes`. ex:
@@ -399,7 +427,8 @@ class BinaryChunker(Chunker):
     #   5
     # ]
     string_lengths = tf.squeeze(
-        tf.cast(header, _BINARY_CHUNKER_STRING_LEN_DTYPE))
+        tf.cast(header, _BINARY_CHUNKER_STRING_LEN_DTYPE)
+    )
 
     # `decoded` is the final decoded string data, in a 1-D `tf.string` tensor
     # with all padding removed. ex:
@@ -412,14 +441,16 @@ class BinaryChunker(Chunker):
         padded_strings,
         pos=tf.zeros_like(string_lengths),
         len=string_lengths,
-        unit='BYTE')
+        unit='BYTE',
+    )
 
     tf.debugging.assert_type(decoded, tf.string)
     tf.debugging.assert_shapes(
         # $NUM_STRINGS is a placeholder for the assertion, to verify that
         # both tensors have the same size for in the corresponding dimension.
         [(encoded_chunks, ('$NUM_STRINGS', self.get_num_chunks()))],
-        [(decoded, ('$NUM_STRINGS'))])
+        [(decoded, '$NUM_STRINGS')],
+    )
 
     return decoded
 
@@ -427,11 +458,13 @@ class BinaryChunker(Chunker):
 class UTF8Chunker(Chunker):
   """Encodes and decodes strings into integer tensors using UTF-8 encoding."""
 
-  def __init__(self,
-               string_max_bytes: int,
-               *,
-               max_chunk_value: Optional[int] = None,
-               dtype: tf.dtypes.DType = _DEFAULT_DTYPE):
+  def __init__(
+      self,
+      string_max_bytes: int,
+      *,
+      max_chunk_value: Optional[int] = None,
+      dtype: tf.dtypes.DType = _DEFAULT_DTYPE,
+  ):
     """Initializes the chunker.
 
     Args:
@@ -462,15 +495,20 @@ class UTF8Chunker(Chunker):
       if max_chunk_value < 1:
         raise ValueError('If set, max_chunk_value must be at least 1.')
       if self._max_chunk_value > self._dtype.max:
-        raise ValueError('max_chunk_value {} cannot fit in dtype {}'.format(
-            max_chunk_value, dtype))
+        raise ValueError(
+            'max_chunk_value {} cannot fit in dtype {}'.format(
+                max_chunk_value, dtype
+            )
+        )
       self._dtype_size_bytes = math.floor(
-          math.log2(self._max_chunk_value) / self._utf8_size_bits)
+          math.log2(self._max_chunk_value) / self._utf8_size_bits
+      )
     else:
       self._dtype_size_bytes = self._dtype.size
 
     self._num_chunks = math.ceil(
-        float(string_max_bytes) / self._dtype_size_bytes)
+        float(string_max_bytes) / self._dtype_size_bytes
+    )
     self._max_length = self._num_chunks * self._dtype_size_bytes
     self._bit_lengths = [
         self._utf8_size_bits * i for i in range(self._dtype_size_bytes)
@@ -490,7 +528,8 @@ class UTF8Chunker(Chunker):
     return self._num_chunks
 
   def encode_tensorflow(
-      self, input_strings: tf.Tensor) -> tuple[tf.Tensor, tf.Tensor]:
+      self, input_strings: tf.Tensor
+  ) -> tuple[tf.Tensor, tf.Tensor]:
     """Encodes `input_strings` to tensors.
 
     Args:
@@ -512,23 +551,30 @@ class UTF8Chunker(Chunker):
       decoding errors.
     """
     string_bytes = tf.io.decode_raw(
-        input_strings, out_type=tf.uint8, fixed_length=self._max_length)
-    string_bytes_reshaped = tf.reshape(string_bytes,
-                                       (-1, self._dtype_size_bytes))
+        input_strings, out_type=tf.uint8, fixed_length=self._max_length
+    )
+    string_bytes_reshaped = tf.reshape(
+        string_bytes, (-1, self._dtype_size_bytes)
+    )
     string_bytes_cast = tf.cast(string_bytes_reshaped, self._dtype)
-    dtype_multipliers = tf.constant([[2**(bit)] for bit in self._bit_lengths],
-                                    dtype=self._dtype)
+    dtype_multipliers = tf.constant(
+        [[2 ** (bit)] for bit in self._bit_lengths], dtype=self._dtype
+    )
     encoded_as_dtype = tf.matmul(string_bytes_cast, dtype_multipliers)
     if self._max_chunk_value:
-      tf.assert_less(encoded_as_dtype,
-                     tf.constant(self._max_chunk_value, dtype=self._dtype))
+      tf.assert_less(
+          encoded_as_dtype,
+          tf.constant(self._max_chunk_value, dtype=self._dtype),
+      )
     encoded_strings = tf.reshape(encoded_as_dtype, (-1, self._num_chunks))
 
     int_to_char_map = tf.constant(self._int_to_byte_map, dtype=tf.string)
     trimmed_input_strings = tf.nn.embedding_lookup(
-        int_to_char_map, tf.cast(string_bytes, dtype=tf.int32))
+        int_to_char_map, tf.cast(string_bytes, dtype=tf.int32)
+    )
     trimmed_input_strings = tf.strings.reduce_join(
-        trimmed_input_strings, axis=1)
+        trimmed_input_strings, axis=1
+    )
 
     return encoded_strings, trimmed_input_strings
 
@@ -544,18 +590,22 @@ class UTF8Chunker(Chunker):
       A `tf.Tensor` of shape `(num_strings,)` and type `tf.string`.
     """
     encoded_chunks_reshaped = tf.reshape(encoded_chunks, (-1, 1))
-    encoded_chunks_tiled = tf.tile(encoded_chunks_reshaped,
-                                   [1, self._dtype_size_bytes])
+    encoded_chunks_tiled = tf.tile(
+        encoded_chunks_reshaped, [1, self._dtype_size_bytes]
+    )
     bit_lengths = tf.constant(self._bit_lengths, dtype=self._dtype)
-    encoded_chunks_shifted = tf.bitwise.right_shift(encoded_chunks_tiled,
-                                                    bit_lengths)
-    encoded_chunks_modulo = encoded_chunks_shifted % 2**(self._utf8_size_bits)
-    encoded_chunks_reshaped = tf.reshape(encoded_chunks_modulo,
-                                         (-1, self._max_length))
+    encoded_chunks_shifted = tf.bitwise.right_shift(
+        encoded_chunks_tiled, bit_lengths
+    )
+    encoded_chunks_modulo = encoded_chunks_shifted % 2 ** (self._utf8_size_bits)
+    encoded_chunks_reshaped = tf.reshape(
+        encoded_chunks_modulo, (-1, self._max_length)
+    )
     encoded_chunks_bytes = tf.cast(encoded_chunks_reshaped, dtype=tf.int32)
     int_to_char_map = tf.constant(self._int_to_byte_map, dtype=tf.string)
-    decoded_strings = tf.nn.embedding_lookup(int_to_char_map,
-                                             encoded_chunks_bytes)
+    decoded_strings = tf.nn.embedding_lookup(
+        int_to_char_map, encoded_chunks_bytes
+    )
     decoded_strings = tf.strings.reduce_join(decoded_strings, axis=1)
 
     return decoded_strings
@@ -571,21 +621,25 @@ class UTF8Chunker(Chunker):
       A `np.ndarray` of shape `(num_strings,)` and type `np.string`.
     """
     encoded_chunks_reshaped = encoded_chunks.reshape((-1, 1))
-    encoded_chunks_tiles = np.tile(encoded_chunks_reshaped,
-                                   [1, self._dtype_size_bytes])
-    encoded_chunks_bytes_shifted = np.right_shift(encoded_chunks_tiles,
-                                                  self._bit_lengths)
-    encoded_chunks_bytes = encoded_chunks_bytes_shifted % 2**(
-        self._utf8_size_bits)
+    encoded_chunks_tiles = np.tile(
+        encoded_chunks_reshaped, [1, self._dtype_size_bytes]
+    )
+    encoded_chunks_bytes_shifted = np.right_shift(
+        encoded_chunks_tiles, self._bit_lengths
+    )
+    encoded_chunks_bytes = encoded_chunks_bytes_shifted % 2 ** (
+        self._utf8_size_bits
+    )
     int_to_char_fn = lambda x: (dict(enumerate(self._int_to_byte_map)).get(x))
 
     # Added `otypes=(np.string_,)` as an additional arg to np.vectorize to avoid
     # numpy crashes with empty strings (not able to identify the type).
-    decoded_chars = np.vectorize(
-        int_to_char_fn, otypes=(np.string_,))(
-            encoded_chunks_bytes)
+    decoded_chars = np.vectorize(int_to_char_fn, otypes=(np.string_,))(
+        encoded_chunks_bytes
+    )
     decoded_chars_reshaped = decoded_chars.reshape(-1, self._max_length)
     decoded_strings = np.apply_along_axis(
-        lambda r: r.tobytes(), arr=decoded_chars_reshaped, axis=1)
+        lambda r: r.tobytes(), arr=decoded_chars_reshaped, axis=1
+    )
 
     return decoded_strings

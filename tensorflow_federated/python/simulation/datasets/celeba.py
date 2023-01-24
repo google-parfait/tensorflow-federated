@@ -70,17 +70,33 @@ def _add_proto_parsing(dataset: tf.data.Dataset) -> tf.data.Dataset:
 
   def parse_proto(tensor_proto):
     parse_spec = collections.OrderedDict(
-        sorted([(IMAGE_NAME,
-                 tf.io.FixedLenFeature(shape=(84, 84, 3), dtype=tf.int64))] +
-               [(attribute_name,
-                 tf.io.FixedLenFeature(shape=(), dtype=tf.int64))
-                for attribute_name in ATTRIBUTE_NAMES]))
+        sorted(
+            [(
+                IMAGE_NAME,
+                tf.io.FixedLenFeature(shape=(84, 84, 3), dtype=tf.int64),
+            )]
+            + [
+                (
+                    attribute_name,
+                    tf.io.FixedLenFeature(shape=(), dtype=tf.int64),
+                )
+                for attribute_name in ATTRIBUTE_NAMES
+            ]
+        )
+    )
     parsed_features = tf.io.parse_example(tensor_proto, parse_spec)
     return collections.OrderedDict(
-        sorted([(IMAGE_NAME, parsed_features[IMAGE_NAME])] +
-               [(attribute_name,
-                 tf.cast(parsed_features[attribute_name], tf.bool))
-                for attribute_name in ATTRIBUTE_NAMES]))
+        sorted(
+            [(IMAGE_NAME, parsed_features[IMAGE_NAME])]
+            + [
+                (
+                    attribute_name,
+                    tf.cast(parsed_features[attribute_name], tf.bool),
+                )
+                for attribute_name in ATTRIBUTE_NAMES
+            ]
+        )
+    )
 
   return dataset.map(parse_proto, num_parallel_calls=tf.data.AUTOTUNE)
 
@@ -173,15 +189,20 @@ def load_data(split_by_clients=True, cache_dir=None):
   """
   database_path = download.get_compressed_file(
       origin='https://storage.googleapis.com/tff-datasets-public/celeba.sqlite.lzma',
-      cache_dir=cache_dir)
+      cache_dir=cache_dir,
+  )
   if split_by_clients:
     train_client_data = sql_client_data.SqlClientData(
-        database_path, 'split_by_clients_train').preprocess(_add_proto_parsing)
+        database_path, 'split_by_clients_train'
+    ).preprocess(_add_proto_parsing)
     test_client_data = sql_client_data.SqlClientData(
-        database_path, 'split_by_clients_test').preprocess(_add_proto_parsing)
+        database_path, 'split_by_clients_test'
+    ).preprocess(_add_proto_parsing)
   else:
     train_client_data = sql_client_data.SqlClientData(
-        database_path, 'split_by_examples_train').preprocess(_add_proto_parsing)
+        database_path, 'split_by_examples_train'
+    ).preprocess(_add_proto_parsing)
     test_client_data = sql_client_data.SqlClientData(
-        database_path, 'split_by_examples_test').preprocess(_add_proto_parsing)
+        database_path, 'split_by_examples_test'
+    ).preprocess(_add_proto_parsing)
   return train_client_data, test_client_data

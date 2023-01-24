@@ -51,7 +51,6 @@ class DatasetsTest(parameterized.TestCase):
 
   @tensorflow_test_utils.skip_test_for_gpu
   def test_takes_dataset(self):
-
     @tensorflow_computation.tf_computation
     def foo(ds):
       return ds.take(10).reduce(np.int64(0), lambda x, y: x + y)
@@ -64,7 +63,6 @@ class DatasetsTest(parameterized.TestCase):
 
   @tensorflow_test_utils.skip_test_for_gpu
   def test_returns_dataset(self):
-
     @tensorflow_computation.tf_computation
     def foo():
       return tf.data.Dataset.range(10)
@@ -74,10 +72,10 @@ class DatasetsTest(parameterized.TestCase):
     expected_result = tf.data.Dataset.range(10)
     self.assertEqual(
         list(actual_result.as_numpy_iterator()),
-        list(expected_result.as_numpy_iterator()))
+        list(expected_result.as_numpy_iterator()),
+    )
 
   def test_takes_dataset_infinite(self):
-
     @tensorflow_computation.tf_computation
     def foo(ds):
       return ds.take(10).reduce(np.int64(0), lambda x, y: x + y)
@@ -89,7 +87,6 @@ class DatasetsTest(parameterized.TestCase):
     self.assertEqual(actual_result, expected_result)
 
   def test_returns_dataset_infinite(self):
-
     @tensorflow_computation.tf_computation
     def foo():
       return tf.data.Dataset.range(10).repeat()
@@ -99,11 +96,11 @@ class DatasetsTest(parameterized.TestCase):
     expected_result = tf.data.Dataset.range(10).repeat()
     self.assertEqual(
         actual_result.take(100).reduce(np.int64(0), lambda x, y: x + y),
-        expected_result.take(100).reduce(np.int64(0), lambda x, y: x + y))
+        expected_result.take(100).reduce(np.int64(0), lambda x, y: x + y),
+    )
 
   @tensorflow_test_utils.skip_test_for_gpu
   def test_returns_dataset_two(self):
-
     @tensorflow_computation.tf_computation
     def foo():
       return [tf.data.Dataset.range(5), tf.data.Dataset.range(10)]
@@ -113,14 +110,15 @@ class DatasetsTest(parameterized.TestCase):
     expected_result = [tf.data.Dataset.range(5), tf.data.Dataset.range(10)]
     self.assertEqual(
         list(actual_result[0].as_numpy_iterator()),
-        list(expected_result[0].as_numpy_iterator()))
+        list(expected_result[0].as_numpy_iterator()),
+    )
     self.assertEqual(
         list(actual_result[1].as_numpy_iterator()),
-        list(expected_result[1].as_numpy_iterator()))
+        list(expected_result[1].as_numpy_iterator()),
+    )
 
   @tensorflow_test_utils.skip_test_for_gpu
   def test_returns_dataset_and_tensor(self):
-
     @tensorflow_computation.tf_computation
     def foo():
       return [tf.data.Dataset.range(5), tf.constant(5)]
@@ -130,12 +128,12 @@ class DatasetsTest(parameterized.TestCase):
     expected_result = [tf.data.Dataset.range(5), tf.constant(5)]
     self.assertEqual(
         list(actual_result[0].as_numpy_iterator()),
-        list(expected_result[0].as_numpy_iterator()))
+        list(expected_result[0].as_numpy_iterator()),
+    )
     self.assertEqual(actual_result[1], expected_result[1])
 
   @tensorflow_test_utils.skip_test_for_gpu
   def test_returns_empty_dataset(self):
-
     @tensorflow_computation.tf_computation
     def foo():
       tensor_slices = collections.OrderedDict([('a', [1, 1]), ('b', [1, 1])])
@@ -152,7 +150,8 @@ class DatasetsTest(parameterized.TestCase):
     expected_result = tf.data.Dataset.range(10).batch(5).take(0)
     self.assertEqual(
         list(actual_result.as_numpy_iterator()),
-        list(expected_result.as_numpy_iterator()))
+        list(expected_result.as_numpy_iterator()),
+    )
 
 
 class AsyncLocalExecutionContextTest(absltest.TestCase):
@@ -167,7 +166,6 @@ class AsyncLocalExecutionContextTest(absltest.TestCase):
     self.assertEqual(result, 1)
 
   def test_asyncio_gather(self):
-
     @tensorflow_computation.tf_computation
     def return_two():
       return 2
@@ -180,10 +178,9 @@ class AsyncLocalExecutionContextTest(absltest.TestCase):
 
 
 def _create_mock_remote_executor_grpc_stub(
-    computation: computation_impl.ConcreteComputation
+    computation: computation_impl.ConcreteComputation,
 ) -> remote_executor_grpc_stub.RemoteExecutorGrpcStub:
-
-  class _GetExecutorResponse():
+  class _GetExecutorResponse:
 
     @property
     def executor(self, *args, **kwargs):
@@ -191,7 +188,8 @@ def _create_mock_remote_executor_grpc_stub(
       return executor_pb2.ExecutorId(id='0')
 
   mock_ex = mock.create_autospec(
-      remote_executor_grpc_stub.RemoteExecutorGrpcStub)
+      remote_executor_grpc_stub.RemoteExecutorGrpcStub
+  )
   mock_ex.is_ready = True
   mock_ex.get_executor.return_value = _GetExecutorResponse()
   mock_ex.create_value.return_value = executor_pb2.CreateValueResponse()
@@ -217,7 +215,8 @@ class SyncLocalCPPExecutionContextTest(absltest.TestCase):
     with mock.patch.object(
         remote_executor_grpc_stub,
         'RemoteExecutorGrpcStub',
-        return_value=mock_remote_ex):
+        return_value=mock_remote_ex,
+    ):
       context.invoke(return_one, None)
 
     expected_args = [
@@ -226,7 +225,8 @@ class SyncLocalCPPExecutionContextTest(absltest.TestCase):
         '--max_concurrent_computation_calls=-1',
     ]
     mock_popen.assert_called_once_with(
-        expected_args, stdout=sys.stdout, stderr=sys.stderr)
+        expected_args, stdout=sys.stdout, stderr=sys.stderr
+    )
 
   @mock.patch.object(subprocess, 'Popen')
   def test_stub_going_down_restarts_process(self, mock_popen):
@@ -237,7 +237,8 @@ class SyncLocalCPPExecutionContextTest(absltest.TestCase):
     with mock.patch.object(
         remote_executor_grpc_stub,
         'RemoteExecutorGrpcStub',
-        return_value=mock_remote_ex):
+        return_value=mock_remote_ex,
+    ):
       value_fn = lambda: context.invoke(return_one, None)
       # Set the thread to daemonic, to avoid blocking shutdown.
       thread = threading.Thread(target=value_fn, daemon=True)
@@ -253,7 +254,8 @@ class SyncLocalCPPExecutionContextTest(absltest.TestCase):
         '--max_concurrent_computation_calls=-1',
     ]
     mock_popen.assert_called_once_with(
-        expected_args, stdout=sys.stdout, stderr=sys.stderr)
+        expected_args, stdout=sys.stdout, stderr=sys.stderr
+    )
 
 
 if __name__ == '__main__':

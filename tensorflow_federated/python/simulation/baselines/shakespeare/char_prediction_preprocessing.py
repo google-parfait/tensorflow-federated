@@ -23,7 +23,8 @@ DEFAULT_SEQUENCE_LENGTH = 80  # from McMahan et al AISTATS 2017
 # Vocabulary re-used from the Federated Learning for Text Generation tutorial.
 # https://www.tensorflow.org/federated/tutorials/federated_learning_for_text_generation
 CHAR_VOCAB = list(
-    'dhlptx@DHLPTX $(,048cgkoswCGKOSW[_#\'/37;?bfjnrvzBFJNRVZ"&*.26:\naeimquyAEIMQUY]!%)-159\r'
+    'dhlptx@DHLPTX'
+    ' $(,048cgkoswCGKOSW[_#\'/37;?bfjnrvzBFJNRVZ"&*.26:\naeimquyAEIMQUY]!%)-159\r'
 )
 DEFAULT_SHUFFLE_BUFFER_SIZE = 50
 
@@ -33,7 +34,6 @@ def get_special_tokens() -> tuple[int, int, int, int]:
 
   Returns:
     A tuple of the four special characters, (pad, oov, bos, eos).
-
   """
   vocab_size = len(CHAR_VOCAB)
   pad = 0
@@ -63,7 +63,8 @@ def _build_tokenize_fn(split_length: int = DEFAULT_SEQUENCE_LENGTH + 1):
 
   ids = tf.range(len(CHAR_VOCAB), dtype=tf.int64)
   lookup_table = tf.lookup.StaticVocabularyTable(
-      tf.lookup.KeyValueTensorInitializer(CHAR_VOCAB, ids), num_oov_buckets=1)
+      tf.lookup.KeyValueTensorInitializer(CHAR_VOCAB, ids), num_oov_buckets=1
+  )
 
   def to_tokens_and_pad(example: tf.Tensor) -> tf.Tensor:
     """Convert a Shakespeare example to a int64 tensor of token ids, and pad."""
@@ -86,7 +87,7 @@ def _split_target(sequence_batch: tf.Tensor) -> tuple[tf.Tensor, tf.Tensor]:
 def create_preprocess_fn(
     preprocess_spec: client_spec.ClientSpec,
     sequence_length: int = DEFAULT_SEQUENCE_LENGTH,
-    num_parallel_calls: int = tf.data.experimental.AUTOTUNE
+    num_parallel_calls: int = tf.data.experimental.AUTOTUNE,
 ) -> Callable[[tf.data.Dataset], tf.data.Dataset]:
   """Creates a preprocessing function for Shakespeare client datasets.
 

@@ -24,17 +24,20 @@ import tensorflow_federated as tff
 _OPTIMIZER_FN_TYPE = Callable[[], tf.keras.optimizers.Optimizer]
 _PERSONALIZE_FN_TYPE = Callable[
     [tff.learning.Model, tf.data.Dataset, tf.data.Dataset, Any],
-    collections.OrderedDict[str, tf.Tensor]]
+    collections.OrderedDict[str, tf.Tensor],
+]
 _EVAL_BATCH_SIZE = 1  # Batch size used when evaluating a dataset.
 _SHUFFLE_BUFFER_SIZE = 1000  # Buffer size used when shuffling a dataset.
 # pylint: enable=invalid-name
 
 
-def build_personalize_fn(optimizer_fn: _OPTIMIZER_FN_TYPE,
-                         batch_size: int,
-                         num_epochs: int,
-                         num_epochs_per_eval: int,
-                         shuffle: bool = True) -> _PERSONALIZE_FN_TYPE:
+def build_personalize_fn(
+    optimizer_fn: _OPTIMIZER_FN_TYPE,
+    batch_size: int,
+    num_epochs: int,
+    num_epochs_per_eval: int,
+    shuffle: bool = True,
+) -> _PERSONALIZE_FN_TYPE:
   """Builds a `tf.function` that represents a personalization strategy.
 
   The returned `tf.function` represents the optimization algorithm to run on
@@ -74,7 +77,8 @@ def build_personalize_fn(optimizer_fn: _OPTIMIZER_FN_TYPE,
       model: tff.learning.Model,
       train_data: tf.data.Dataset,
       test_data: tf.data.Dataset,
-      context: Optional[Any] = None) -> collections.OrderedDict[str, Any]:
+      context: Optional[Any] = None,
+  ) -> collections.OrderedDict[str, Any]:
     """A personalization strategy that trains a model and returns the metrics.
 
     Args:
@@ -96,8 +100,9 @@ def build_personalize_fn(optimizer_fn: _OPTIMIZER_FN_TYPE,
       grads = tape.gradient(output.loss, model.trainable_variables)
       optimizer.apply_gradients(
           zip(
-              tf.nest.flatten(grads),
-              tf.nest.flatten(model.trainable_variables)))
+              tf.nest.flatten(grads), tf.nest.flatten(model.trainable_variables)
+          )
+      )
       # Update the number of examples.
       return num_examples_sum + output.num_examples
 
@@ -108,7 +113,8 @@ def build_personalize_fn(optimizer_fn: _OPTIMIZER_FN_TYPE,
       if shuffle:
         train_data = train_data.shuffle(_SHUFFLE_BUFFER_SIZE)
       training_state = train_data.batch(batch_size).reduce(
-          initial_state=training_state, reduce_func=train_one_batch)
+          initial_state=training_state, reduce_func=train_one_batch
+      )
       # Evaluate the trained model every `num_epochs_per_eval` epochs.
       if (epoch_idx % num_epochs_per_eval == 0) or (epoch_idx == num_epochs):
         metrics_dict[f'epoch_{epoch_idx}'] = evaluate_fn(model, test_data)
@@ -123,8 +129,8 @@ def build_personalize_fn(optimizer_fn: _OPTIMIZER_FN_TYPE,
 
 @tf.function
 def evaluate_fn(
-    model: tff.learning.Model,
-    dataset: tf.data.Dataset) -> collections.OrderedDict[str, tf.Tensor]:
+    model: tff.learning.Model, dataset: tf.data.Dataset
+) -> collections.OrderedDict[str, tf.Tensor]:
   """Evaluates a model on the given dataset.
 
   The returned metrics include those given by
@@ -155,7 +161,8 @@ def evaluate_fn(
   # Runs `reduce_fn` over the input dataset. The final metrics can be accessed
   # by `model.report_local_unfinalized_metrics()`.
   num_examples_sum = dataset.batch(_EVAL_BATCH_SIZE).reduce(
-      initial_state=0, reduce_func=reduce_fn)
+      initial_state=0, reduce_func=reduce_fn
+  )
   eval_metrics = collections.OrderedDict()
   eval_metrics['num_test_examples'] = num_examples_sum
   local_outputs = model.report_local_unfinalized_metrics()
@@ -167,10 +174,11 @@ def evaluate_fn(
   for name, metric in local_outputs.items():
     if not isinstance(metric, list):
       raise TypeError(
-          f'The metric value returned by `report_local_unfinalized_metrics` is '
-          f'expected to be a list, but found an instance of '
+          'The metric value returned by `report_local_unfinalized_metrics` is '
+          'expected to be a list, but found an instance of '
           f'{type(metric)}. Please check that your TFF model is '
-          'built from a keras model.')
+          'built from a keras model.'
+      )
     if len(metric) == 2:
       # The loss and accuracy metrics used in this p13n example has two values:
       # one represents `sum`, and the other represents `count`.
@@ -179,7 +187,8 @@ def evaluate_fn(
       eval_metrics[name] = metric[0]
     else:
       raise ValueError(
-          f'The metric value returned by `report_local_unfinalized_metrics` '
-          f'is expected to be a list of length 1 or 2, but found '
-          f'one with length {len(metric)}.')
+          'The metric value returned by `report_local_unfinalized_metrics` '
+          'is expected to be a list of length 1 or 2, but found '
+          f'one with length {len(metric)}.'
+      )
   return eval_metrics

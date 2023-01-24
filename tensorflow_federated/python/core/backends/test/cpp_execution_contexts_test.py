@@ -49,8 +49,8 @@ class SecureModularSumTest(parameterized.TestCase, tf.test.TestCase):
   )
   # pyformat: enable
   def test_executes_computation_with_modular_secure_sum_integer_modulus(
-      self, arg, expected_result, tff_type):
-
+      self, arg, expected_result, tff_type
+  ):
     cpp_execution_contexts.set_test_cpp_execution_context()
 
     modulus = 5
@@ -62,21 +62,38 @@ class SecureModularSumTest(parameterized.TestCase, tf.test.TestCase):
     # assertAllEqual doesnt handle nested structures well, so we use
     # assertAllClose with no tolerance here.
     self.assertAllClose(
-        expected_result, modular_sum_by_five(arg), atol=0.0, rtol=0.0)
+        expected_result, modular_sum_by_five(arg), atol=0.0, rtol=0.0
+    )
 
   @parameterized.named_parameters(
-      ('one_client_not_divisible', [[1, 2]], [1, 2],
-       computation_types.at_clients([tf.int32, tf.int32])),
-      ('two_clients_none_divisible', [[1, 2], [3, 4]], [4, 6],
-       computation_types.at_clients([tf.int32, tf.int32])),
-      ('three_clients_one_divisible', [[1, 2], [3, 4], [10, 14]], [4, 6],
-       computation_types.at_clients([tf.int32, tf.int32])),
-      ('two_clients_one_partially_divisible', [[1, 2], [3, 4], [10, 15]],
-       [4, 0], computation_types.at_clients([tf.int32, tf.int32])),
+      (
+          'one_client_not_divisible',
+          [[1, 2]],
+          [1, 2],
+          computation_types.at_clients([tf.int32, tf.int32]),
+      ),
+      (
+          'two_clients_none_divisible',
+          [[1, 2], [3, 4]],
+          [4, 6],
+          computation_types.at_clients([tf.int32, tf.int32]),
+      ),
+      (
+          'three_clients_one_divisible',
+          [[1, 2], [3, 4], [10, 14]],
+          [4, 6],
+          computation_types.at_clients([tf.int32, tf.int32]),
+      ),
+      (
+          'two_clients_one_partially_divisible',
+          [[1, 2], [3, 4], [10, 15]],
+          [4, 0],
+          computation_types.at_clients([tf.int32, tf.int32]),
+      ),
   )
   def test_executes_computation_with_modular_secure_sum_struct_modulus(
-      self, arg, expected_result, tff_type):
-
+      self, arg, expected_result, tff_type
+  ):
     cpp_execution_contexts.set_test_cpp_execution_context()
     modulus = [5, 7]
 
@@ -95,13 +112,15 @@ class SecureSumBitwidthTest(tf.test.TestCase, parameterized.TestCase):
       ('five_clients', [x * 5 for x in range(5)]),
   )
   def test_executes_computation_with_bitwidth_secure_sum_large_bitwidth(
-      self, arg):
+      self, arg
+  ):
     cpp_execution_contexts.set_test_cpp_execution_context()
     bitwidth = 32
     expected_result = sum(arg)
 
     @federated_computation.federated_computation(
-        computation_types.at_clients(tf.int32))
+        computation_types.at_clients(tf.int32)
+    )
     def sum_with_bitwidth(arg):
       return intrinsics.federated_secure_sum_bitwidth(arg, bitwidth)
 
@@ -120,9 +139,9 @@ class SecureSumBitwidthTest(tf.test.TestCase, parameterized.TestCase):
       ),
   )
   # pyformat: enable
-  def test_executes_computation_with_argument_structure(self, arg,
-                                                        expected_result,
-                                                        tff_type):
+  def test_executes_computation_with_argument_structure(
+      self, arg, expected_result, tff_type
+  ):
     cpp_execution_contexts.set_test_cpp_execution_context()
 
     bitwidth = 32
@@ -142,12 +161,14 @@ class SecureSumMaxValueTest(tf.test.TestCase, parameterized.TestCase):
     max_value = 1
 
     @federated_computation.federated_computation(
-        computation_types.at_clients(tf.int32))
+        computation_types.at_clients(tf.int32)
+    )
     def secure_sum(arg):
       return intrinsics.federated_secure_sum(arg, max_value)
 
     with self.assertRaisesRegex(
-        Exception, 'client value larger than maximum specified for secure sum'):
+        Exception, 'client value larger than maximum specified for secure sum'
+    ):
       secure_sum([2, 4])
 
   @parameterized.named_parameters(
@@ -163,7 +184,8 @@ class SecureSumMaxValueTest(tf.test.TestCase, parameterized.TestCase):
     expected_result = sum(arg)
 
     @federated_computation.federated_computation(
-        computation_types.at_clients(tf.int32))
+        computation_types.at_clients(tf.int32)
+    )
     def secure_sum(arg):
       return intrinsics.federated_secure_sum(arg, max_value)
 
@@ -182,9 +204,9 @@ class SecureSumMaxValueTest(tf.test.TestCase, parameterized.TestCase):
                dtype=tf.int32, shape=[10]), tf.int32])),
   )
   # pyformat: enable
-  def test_executes_computation_with_argument_structure(self, arg,
-                                                        expected_result,
-                                                        tff_type):
+  def test_executes_computation_with_argument_structure(
+      self, arg, expected_result, tff_type
+  ):
     cpp_execution_contexts.set_test_cpp_execution_context()
 
     max_value = 100

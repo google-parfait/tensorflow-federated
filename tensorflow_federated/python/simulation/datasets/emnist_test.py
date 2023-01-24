@@ -22,7 +22,8 @@ from tensorflow_federated.python.simulation.datasets import emnist
 FLAGS = flags.FLAGS
 EXPECTED_ELEMENT_TYPE = collections.OrderedDict(
     label=tf.TensorSpec(shape=(), dtype=tf.int32),
-    pixels=tf.TensorSpec(shape=(28, 28), dtype=tf.float32))
+    pixels=tf.TensorSpec(shape=(28, 28), dtype=tf.float32),
+)
 
 
 class EmnistTest(tf.test.TestCase):
@@ -33,7 +34,8 @@ class EmnistTest(tf.test.TestCase):
     self.assertEqual(client_data.element_type_structure, EXPECTED_ELEMENT_TYPE)
     for client_id in client_data.client_ids:
       data = self.evaluate(
-          list(client_data.create_tf_dataset_for_client(client_id)))
+          list(client_data.create_tf_dataset_for_client(client_id))
+      )
       images = [x['pixels'] for x in data]
       labels = [x['label'] for x in data]
       self.assertLen(labels, 10)
@@ -45,7 +47,8 @@ class EmnistTest(tf.test.TestCase):
   def test_load_from_gcs(self):
     self.skipTest(
         "CI infrastructure doesn't support downloading from GCS. Remove "
-        'skipTest to run test locally.')
+        'skipTest to run test locally.'
+    )
 
     def run_test(only_digits: bool, expect_num_clients):
       train, test = emnist.load_data(only_digits, cache_dir=FLAGS.test_tmpdir)

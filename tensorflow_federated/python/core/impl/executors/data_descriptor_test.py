@@ -32,8 +32,11 @@ class DataDescriptorTest(absltest.TestCase):
   def test_non_federated(self):
     ds = data_descriptor.DataDescriptor(
         tensorflow_computation.tf_computation(
-            lambda x: tf.cast(x + 10, tf.float32), tf.int32), 20,
-        computation_types.TensorType(tf.int32))
+            lambda x: tf.cast(x + 10, tf.float32), tf.int32
+        ),
+        20,
+        computation_types.TensorType(tf.int32),
+    )
     self.assertEqual(str(ds.type_signature), 'float32')
 
     @tensorflow_computation.tf_computation(tf.float32)
@@ -41,7 +44,8 @@ class DataDescriptorTest(absltest.TestCase):
       return x * 20.0
 
     with executor_test_utils.install_executor(
-        executor_test_utils.LocalTestExecutorFactory()):
+        executor_test_utils.LocalTestExecutorFactory()
+    ):
       result = foo(ds)
     self.assertEqual(result, 600.0)
 
@@ -49,17 +53,25 @@ class DataDescriptorTest(absltest.TestCase):
     ds = data_descriptor.DataDescriptor(
         federated_computation.federated_computation(
             lambda x: intrinsics.federated_value(x, placements.CLIENTS),
-            tf.int32), 1000, computation_types.TensorType(tf.int32), 3)
+            tf.int32,
+        ),
+        1000,
+        computation_types.TensorType(tf.int32),
+        3,
+    )
     self.assertEqual(str(ds.type_signature), 'int32@CLIENTS')
 
     @federated_computation.federated_computation(
         computation_types.FederatedType(
-            tf.int32, placements.CLIENTS, all_equal=True))
+            tf.int32, placements.CLIENTS, all_equal=True
+        )
+    )
     def foo(x):
       return intrinsics.federated_sum(x)
 
     with executor_test_utils.install_executor(
-        executor_test_utils.LocalTestExecutorFactory()):
+        executor_test_utils.LocalTestExecutorFactory()
+    ):
       result = foo(ds)
     self.assertEqual(result, 3000)
 
@@ -68,21 +80,31 @@ class DataDescriptorTest(absltest.TestCase):
       data_descriptor.DataDescriptor(
           federated_computation.federated_computation(
               lambda x: intrinsics.federated_value(x, placements.SERVER),
-              tf.int32), 1000, computation_types.TensorType(tf.int32), 3)
+              tf.int32,
+          ),
+          1000,
+          computation_types.TensorType(tf.int32),
+          3,
+      )
 
   def test_comp_none(self):
     ds = data_descriptor.DataDescriptor(
-        None, [1, 2, 3],
-        computation_types.FederatedType(tf.int32, placements.CLIENTS), 3)
+        None,
+        [1, 2, 3],
+        computation_types.FederatedType(tf.int32, placements.CLIENTS),
+        3,
+    )
     self.assertEqual(str(ds.type_signature), '{int32}@CLIENTS')
 
     @federated_computation.federated_computation(
-        computation_types.FederatedType(tf.int32, placements.CLIENTS))
+        computation_types.FederatedType(tf.int32, placements.CLIENTS)
+    )
     def foo(x):
       return intrinsics.federated_sum(x)
 
     with executor_test_utils.install_executor(
-        executor_test_utils.LocalTestExecutorFactory()):
+        executor_test_utils.LocalTestExecutorFactory()
+    ):
       result = foo(ds)
     self.assertEqual(result, 6)
 
@@ -90,29 +112,36 @@ class DataDescriptorTest(absltest.TestCase):
     ds = data_descriptor.CardinalityFreeDataDescriptor(
         federated_computation.federated_computation(
             lambda x: intrinsics.federated_value(x, placements.CLIENTS),
-            tf.int32), 1000, computation_types.TensorType(tf.int32))
+            tf.int32,
+        ),
+        1000,
+        computation_types.TensorType(tf.int32),
+    )
     self.assertEqual(str(ds.type_signature), 'int32@CLIENTS')
 
     @federated_computation.federated_computation(
         computation_types.FederatedType(
-            tf.int32, placements.CLIENTS, all_equal=True))
+            tf.int32, placements.CLIENTS, all_equal=True
+        )
+    )
     def foo(x):
       return intrinsics.federated_sum(x)
 
     # Since this DataDescriptor does not specify its cardinality, the number of
     # values placed is inferred from the decault setting for the executor.
     with executor_test_utils.install_executor(
-        executor_test_utils.LocalTestExecutorFactory(default_num_clients=1)):
+        executor_test_utils.LocalTestExecutorFactory(default_num_clients=1)
+    ):
       result = foo(ds)
     self.assertEqual(result, 1000)
 
     with executor_test_utils.install_executor(
-        executor_test_utils.LocalTestExecutorFactory(default_num_clients=3)):
+        executor_test_utils.LocalTestExecutorFactory(default_num_clients=3)
+    ):
       result = foo(ds)
     self.assertEqual(result, 3000)
 
   def test_create_data_descriptor_for_data_backend(self):
-
     class TestDataBackend(data_backend_base.DataBackend):
 
       def __init__(self, value):
@@ -127,13 +156,16 @@ class DataDescriptorTest(absltest.TestCase):
     def ex_fn(device):
       return data_executor.DataExecutor(
           eager_tf_executor.EagerTFExecutor(device),
-          TestDataBackend(data_constant))
+          TestDataBackend(data_constant),
+      )
 
     factory = executor_test_utils.LocalTestExecutorFactory(
-        leaf_executor_fn=ex_fn)
+        leaf_executor_fn=ex_fn
+    )
 
     @federated_computation.federated_computation(
-        computation_types.FederatedType(type_spec, placements.CLIENTS))
+        computation_types.FederatedType(type_spec, placements.CLIENTS)
+    )
     def foo(dd):
       return intrinsics.federated_sum(dd)
 

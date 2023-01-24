@@ -60,7 +60,8 @@ class TransformingExecutorTest(absltest.TestCase):
   def test_with_removal_of_identity_mapping(self):
 
     @federated_computation.federated_computation(
-        computation_types.at_server(tf.int32))
+        computation_types.at_server(tf.int32)
+    )
     def comp(x):
       return intrinsics.federated_map(_identity, x)
 
@@ -71,12 +72,14 @@ class TransformingExecutorTest(absltest.TestCase):
       return x
 
     self.assertEqual(
-        _test_create_value(comp, transformation_fn), '(comp_arg -> comp_arg)')
+        _test_create_value(comp, transformation_fn), '(comp_arg -> comp_arg)'
+    )
 
   def test_with_inlining_of_blocks(self):
 
     @federated_computation.federated_computation(
-        computation_types.at_server(tf.int32))
+        computation_types.at_server(tf.int32)
+    )
     def comp(x):
       return intrinsics.federated_zip([x, x])
 
@@ -86,8 +89,10 @@ class TransformingExecutorTest(absltest.TestCase):
       x, _ = tree_transformations.remove_mapped_or_applied_identity(x)
       return transformations.to_call_dominant(x)
 
-    self.assertIn('federated_zip_at_server(<comp_arg,comp_arg>)',
-                  _test_create_value(comp, transformation_fn))
+    self.assertIn(
+        'federated_zip_at_server(<comp_arg,comp_arg>)',
+        _test_create_value(comp, transformation_fn),
+    )
 
 
 if __name__ == '__main__':

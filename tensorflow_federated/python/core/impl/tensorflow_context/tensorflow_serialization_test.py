@@ -30,61 +30,75 @@ class TensorFlowSerializationTest(tf.test.TestCase):
 
   def assert_serializes(self, fn, parameter_type, expected_fn_type_str):
     serializer = tensorflow_serialization.tf_computation_serializer(
-        parameter_type, context_stack_impl.context_stack)
+        parameter_type, context_stack_impl.context_stack
+    )
     arg_to_fn = next(serializer)
     result = fn(arg_to_fn)
     comp, extra_type_spec = serializer.send(result)
     deserialized_type = type_serialization.deserialize_type(comp.type)
     type_test_utils.assert_types_equivalent(deserialized_type, extra_type_spec)
-    self.assertEqual(deserialized_type.compact_representation(),
-                     expected_fn_type_str)
+    self.assertEqual(
+        deserialized_type.compact_representation(), expected_fn_type_str
+    )
     self.assertEqual(comp.WhichOneof('computation'), 'tensorflow')
     return comp.tensorflow, extra_type_spec
 
   def test_serialize_tensorflow_with_no_parameter(self):
-    tf_proto, _ = self.assert_serializes(lambda _: tf.constant(99), None,
-                                         '( -> int32)')
+    tf_proto, _ = self.assert_serializes(
+        lambda _: tf.constant(99), None, '( -> int32)'
+    )
     results = tf.compat.v1.Session().run(
         tf.graph_util.import_graph_def(
-            serialization_utils.unpack_graph_def(tf_proto.graph_def), None,
-            [tf_proto.result.tensor.tensor_name]))
+            serialization_utils.unpack_graph_def(tf_proto.graph_def),
+            None,
+            [tf_proto.result.tensor.tensor_name],
+        )
+    )
     self.assertEqual(results, [99])
 
   def test_serialize_tensorflow_with_table_no_variables(self):
-
     def table_lookup(word):
       table = tf.lookup.StaticVocabularyTable(
-          tf.lookup.KeyValueTensorInitializer(['a', 'b', 'c'],
-                                              np.arange(3, dtype=np.int64)),
-          num_oov_buckets=1)
+          tf.lookup.KeyValueTensorInitializer(
+              ['a', 'b', 'c'], np.arange(3, dtype=np.int64)
+          ),
+          num_oov_buckets=1,
+      )
       return table.lookup(word)
 
     tf_proto, _ = self.assert_serializes(
         table_lookup,
         computation_types.TensorType(dtype=tf.string, shape=(None,)),
-        '(string[?] -> int64[?])')
+        '(string[?] -> int64[?])',
+    )
 
     with tf.Graph().as_default() as g:
       tf.graph_util.import_graph_def(
-          serialization_utils.unpack_graph_def(tf_proto.graph_def), name='')
+          serialization_utils.unpack_graph_def(tf_proto.graph_def), name=''
+      )
     with tf.compat.v1.Session(graph=g) as sess:
       sess.run(fetches=tf_proto.initialize_op)
       results = sess.run(
           fetches=tf_proto.result.tensor.tensor_name,
-          feed_dict={tf_proto.parameter.tensor.tensor_name: ['b', 'c', 'a']})
+          feed_dict={tf_proto.parameter.tensor.tensor_name: ['b', 'c', 'a']},
+      )
     self.assertAllEqual(results, [1, 2, 0])
 
   @tensorflow_test_utils.graph_mode_test
   def test_serialize_tensorflow_with_simple_add_three_lambda(self):
-    tf_proto, _ = self.assert_serializes(lambda x: x + 3,
-                                         computation_types.TensorType(tf.int32),
-                                         '(int32 -> int32)')
+    tf_proto, _ = self.assert_serializes(
+        lambda x: x + 3,
+        computation_types.TensorType(tf.int32),
+        '(int32 -> int32)',
+    )
     parameter = tf.constant(1000)
     results = tf.compat.v1.Session().run(
         tf.graph_util.import_graph_def(
             serialization_utils.unpack_graph_def(tf_proto.graph_def),
             {tf_proto.parameter.tensor.tensor_name: parameter},
-            [tf_proto.result.tensor.tensor_name]))
+            [tf_proto.result.tensor.tensor_name],
+        )
+    )
     self.assertEqual(results, [1003])
 
   @tensorflow_test_utils.graph_mode_test
@@ -93,51 +107,66 @@ class TensorFlowSerializationTest(tf.test.TestCase):
     output_type = collections.namedtuple('OutputType', ['A', 'B'])
     _, extra_type_spec = self.assert_serializes(
         lambda z: output_type(2.0 * tf.cast(z.x, tf.float32), 3.0 * z.y),
-        computation_types.StructWithPythonType([('x', tf.int32),
-                                                ('y', (tf.float32, [2]))],
-                                               batch_type),
-        '(<x=int32,y=float32[2]> -> <A=float32,B=float32[2]>)')
-    self.assertIsInstance(extra_type_spec.parameter,
-                          computation_types.StructWithPythonType)
+        computation_types.StructWithPythonType(
+            [('x', tf.int32), ('y', (tf.float32, [2]))], batch_type
+        ),
+        '(<x=int32,y=float32[2]> -> <A=float32,B=float32[2]>)',
+    )
+    self.assertIsInstance(
+        extra_type_spec.parameter, computation_types.StructWithPythonType
+    )
     self.assertIs(extra_type_spec.parameter.python_container, batch_type)
-    self.assertIsInstance(extra_type_spec.result,
-                          computation_types.StructWithPythonType)
+    self.assertIsInstance(
+        extra_type_spec.result, computation_types.StructWithPythonType
+    )
     self.assertIs(extra_type_spec.result.python_container, output_type)
 
   @tensorflow_test_utils.graph_mode_test
   def test_serialize_tensorflow_with_data_set_sum_lambda(self):
-
     def _legacy_dataset_reducer_example(ds):
       return ds.reduce(np.int64(0), lambda x, y: x + y)
 
     tf_proto, _ = self.assert_serializes(
         _legacy_dataset_reducer_example,
-        computation_types.SequenceType(tf.int64), '(int64* -> int64)')
+        computation_types.SequenceType(tf.int64),
+        '(int64* -> int64)',
+    )
     parameter = tf.data.Dataset.range(5)
     results = tf.compat.v1.Session().run(
         tf.graph_util.import_graph_def(
-            serialization_utils.unpack_graph_def(tf_proto.graph_def), {
-                tf_proto.parameter.sequence.variant_tensor_name:
+            serialization_utils.unpack_graph_def(tf_proto.graph_def),
+            {
+                tf_proto.parameter.sequence.variant_tensor_name: (
                     tf.data.experimental.to_variant(parameter)
-            }, [tf_proto.result.tensor.tensor_name]))
+                )
+            },
+            [tf_proto.result.tensor.tensor_name],
+        )
+    )
     self.assertEqual(results, [10])
 
   @tensorflow_test_utils.graph_mode_test
   def test_serialize_tensorflow_with_dataset_yielding_lists(self):
-
     def _legacy_dataset_reducer_example(ds):
       return ds.reduce(np.int64(0), lambda x, y: x + y[0])
 
     tf_proto, _ = self.assert_serializes(
         _legacy_dataset_reducer_example,
-        computation_types.SequenceType([tf.int64]), '(<int64>* -> int64)')
+        computation_types.SequenceType([tf.int64]),
+        '(<int64>* -> int64)',
+    )
     parameter = tf.data.Dataset.range(5)
     results = tf.compat.v1.Session().run(
         tf.graph_util.import_graph_def(
-            serialization_utils.unpack_graph_def(tf_proto.graph_def), {
-                tf_proto.parameter.sequence.variant_tensor_name:
+            serialization_utils.unpack_graph_def(tf_proto.graph_def),
+            {
+                tf_proto.parameter.sequence.variant_tensor_name: (
                     tf.data.experimental.to_variant(parameter)
-            }, [tf_proto.result.tensor.tensor_name]))
+                )
+            },
+            [tf_proto.result.tensor.tensor_name],
+        )
+    )
     self.assertEqual(results, [10])
 
 

@@ -33,8 +33,9 @@ def _fetch_lzma_file(origin: str, filename: str):
   # Read and decompress in approximately megabyte chunks.
   chunk_size = 2**20
   decompressor = lzma.LZMADecompressor()
-  with urllib.request.urlopen(origin) as in_stream, \
-      tf.io.gfile.GFile(filename, 'wb') as out_stream:
+  with urllib.request.urlopen(origin) as in_stream, tf.io.gfile.GFile(
+      filename, 'wb'
+  ) as out_stream:
     length = in_stream.headers.get('content-length')
     if length is not None:
       total_size = int(length)
@@ -42,8 +43,8 @@ def _fetch_lzma_file(origin: str, filename: str):
       total_size = None
     download_chunk = in_stream.read(chunk_size)
     with tqdm.tqdm(
-        total=total_size,
-        desc=f'Downloading {url_basename(origin)}') as progbar:
+        total=total_size, desc=f'Downloading {url_basename(origin)}'
+    ) as progbar:
       while download_chunk:
         progbar.update(len(download_chunk))
         out_stream.write(decompressor.decompress(download_chunk))
@@ -70,7 +71,8 @@ def get_compressed_file(origin: str, cache_dir: Optional[str] = None) -> str:
   if ext != '.lzma':
     raise ValueError(
         'Only decompressing LZMA files is supported. If the file '
-        'is LZMA compressed, rename the origin to have a .lzma suffix.')
+        'is LZMA compressed, rename the origin to have a .lzma suffix.'
+    )
   if not tf.io.gfile.exists(cache_dir):
     tf.io.gfile.makedirs(cache_dir)
   if tf.io.gfile.exists(extracted_filename):

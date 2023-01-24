@@ -48,8 +48,9 @@ class EstimationProcessTest(absltest.TestCase):
 
   def test_construction_does_not_raise(self):
     try:
-      estimation_process.EstimationProcess(test_initialize_fn, test_next_fn,
-                                           test_report_fn)
+      estimation_process.EstimationProcess(
+          test_initialize_fn, test_next_fn, test_report_fn
+      )
     except:  # pylint: disable=bare-except
       self.fail('Could not construct a valid EstimationProcess.')
 
@@ -64,174 +65,213 @@ class EstimationProcessTest(absltest.TestCase):
 
   def test_construction_with_unknown_dimension_does_not_raise(self):
     initialize_fn = tensorflow_computation.tf_computation()(
-        lambda: tf.constant([], dtype=tf.string))
+        lambda: tf.constant([], dtype=tf.string)
+    )
 
     @tensorflow_computation.tf_computation(
-        computation_types.TensorType(shape=[None], dtype=tf.string))
+        computation_types.TensorType(shape=[None], dtype=tf.string)
+    )
     def next_fn(strings):
       return tf.concat([strings, tf.constant(['abc'])], axis=0)
 
     @tensorflow_computation.tf_computation(
-        computation_types.TensorType(shape=[None], dtype=tf.string))
+        computation_types.TensorType(shape=[None], dtype=tf.string)
+    )
     def report_fn(strings):
       return strings
 
     try:
       estimation_process.EstimationProcess(initialize_fn, next_fn, report_fn)
     except:  # pylint: disable=bare-except
-      self.fail('Could not construct an EstimationProcess with parameter types '
-                'with statically unknown shape.')
+      self.fail(
+          'Could not construct an EstimationProcess with parameter types '
+          'with statically unknown shape.'
+      )
 
   def test_init_not_tff_computation_raises(self):
     with self.assertRaisesRegex(TypeError, r'Expected .*\.Computation, .*'):
       estimation_process.EstimationProcess(
           initialize_fn=lambda: 0,
           next_fn=test_next_fn,
-          report_fn=test_report_fn)
+          report_fn=test_report_fn,
+      )
 
   def test_next_not_tff_computation_raises(self):
     with self.assertRaisesRegex(TypeError, r'Expected .*\.Computation, .*'):
       estimation_process.EstimationProcess(
           initialize_fn=test_initialize_fn,
           next_fn=lambda state: state,
-          report_fn=test_report_fn)
+          report_fn=test_report_fn,
+      )
 
   def test_report_not_tff_computation_raises(self):
     with self.assertRaisesRegex(TypeError, r'Expected .*\.Computation, .*'):
       estimation_process.EstimationProcess(
           initialize_fn=test_initialize_fn,
           next_fn=test_next_fn,
-          report_fn=lambda state: state)
+          report_fn=lambda state: state,
+      )
 
   def test_init_param_not_empty_raises(self):
-    one_arg_initialize_fn = tensorflow_computation.tf_computation(
-        tf.int32)(lambda x: x)
+    one_arg_initialize_fn = tensorflow_computation.tf_computation(tf.int32)(
+        lambda x: x
+    )
     with self.assertRaises(errors.TemplateInitFnParamNotEmptyError):
-      estimation_process.EstimationProcess(one_arg_initialize_fn, test_next_fn,
-                                           test_report_fn)
+      estimation_process.EstimationProcess(
+          one_arg_initialize_fn, test_next_fn, test_report_fn
+      )
 
   def test_init_state_not_assignable(self):
     float_initialize_fn = tensorflow_computation.tf_computation()(lambda: 0.0)
     with self.assertRaises(errors.TemplateStateNotAssignableError):
-      estimation_process.EstimationProcess(float_initialize_fn, test_next_fn,
-                                           test_report_fn)
+      estimation_process.EstimationProcess(
+          float_initialize_fn, test_next_fn, test_report_fn
+      )
 
   def test_federated_init_state_not_assignable(self):
     initialize_fn = federated_computation.federated_computation()(
-        lambda: intrinsics.federated_value(0, placements.SERVER))
+        lambda: intrinsics.federated_value(0, placements.SERVER)
+    )
     next_fn = federated_computation.federated_computation(
-        computation_types.FederatedType(
-            tf.int32, placements.CLIENTS))(lambda state: state)
+        computation_types.FederatedType(tf.int32, placements.CLIENTS)
+    )(lambda state: state)
     report_fn = federated_computation.federated_computation(
-        initialize_fn.type_signature.result)(lambda state: state)
+        initialize_fn.type_signature.result
+    )(lambda state: state)
     with self.assertRaises(errors.TemplateStateNotAssignableError):
       estimation_process.EstimationProcess(initialize_fn, next_fn, report_fn)
 
   def test_next_state_not_assignable(self):
-    float_next_fn = tensorflow_computation.tf_computation(
-        tf.float32)(lambda state: tf.cast(state, tf.float32))
+    float_next_fn = tensorflow_computation.tf_computation(tf.float32)(
+        lambda state: tf.cast(state, tf.float32)
+    )
     with self.assertRaises(errors.TemplateStateNotAssignableError):
-      estimation_process.EstimationProcess(test_initialize_fn, float_next_fn,
-                                           test_report_fn)
+      estimation_process.EstimationProcess(
+          test_initialize_fn, float_next_fn, test_report_fn
+      )
 
   def test_federated_next_state_not_assignable(self):
     initialize_fn = federated_computation.federated_computation()(
-        lambda: intrinsics.federated_value(0, placements.SERVER))
+        lambda: intrinsics.federated_value(0, placements.SERVER)
+    )
     next_fn = federated_computation.federated_computation(
-        initialize_fn.type_signature.result)(
-            intrinsics.federated_broadcast)
+        initialize_fn.type_signature.result
+    )(intrinsics.federated_broadcast)
     report_fn = federated_computation.federated_computation(
-        initialize_fn.type_signature.result)(lambda state: state)
+        initialize_fn.type_signature.result
+    )(lambda state: state)
     with self.assertRaises(errors.TemplateStateNotAssignableError):
       estimation_process.EstimationProcess(initialize_fn, next_fn, report_fn)
 
   def test_next_state_not_assignable_tuple_result(self):
     float_next_fn = tensorflow_computation.tf_computation(
-        tf.float32,
-        tf.float32)(lambda state, x: (tf.cast(state, tf.float32), x))
+        tf.float32, tf.float32
+    )(lambda state, x: (tf.cast(state, tf.float32), x))
     with self.assertRaises(errors.TemplateStateNotAssignableError):
-      estimation_process.EstimationProcess(test_initialize_fn, float_next_fn,
-                                           test_report_fn)
+      estimation_process.EstimationProcess(
+          test_initialize_fn, float_next_fn, test_report_fn
+      )
 
   # Tests specific only for the EstimationProcess contract below.
 
   def test_report_state_not_assignable(self):
-    report_fn = tensorflow_computation.tf_computation(
-        tf.float32)(lambda estimate: estimate)
+    report_fn = tensorflow_computation.tf_computation(tf.float32)(
+        lambda estimate: estimate
+    )
     with self.assertRaises(errors.TemplateStateNotAssignableError):
-      estimation_process.EstimationProcess(test_initialize_fn, test_next_fn,
-                                           report_fn)
+      estimation_process.EstimationProcess(
+          test_initialize_fn, test_next_fn, report_fn
+      )
 
   def test_federated_report_state_not_assignable(self):
     initialize_fn = federated_computation.federated_computation()(
-        lambda: intrinsics.federated_value(0, placements.SERVER))
+        lambda: intrinsics.federated_value(0, placements.SERVER)
+    )
     next_fn = federated_computation.federated_computation(
-        initialize_fn.type_signature.result)(lambda state: state)
+        initialize_fn.type_signature.result
+    )(lambda state: state)
     report_fn = federated_computation.federated_computation(
-        computation_types.FederatedType(
-            tf.int32, placements.CLIENTS))(lambda state: state)
+        computation_types.FederatedType(tf.int32, placements.CLIENTS)
+    )(lambda state: state)
     with self.assertRaises(errors.TemplateStateNotAssignableError):
       estimation_process.EstimationProcess(initialize_fn, next_fn, report_fn)
 
   def test_mapped_process_as_expected(self):
-    process = estimation_process.EstimationProcess(test_initialize_fn,
-                                                   test_next_fn, test_report_fn)
+    process = estimation_process.EstimationProcess(
+        test_initialize_fn, test_next_fn, test_report_fn
+    )
     mapped_process = process.map(test_map_fn)
 
     self.assertIsInstance(mapped_process, estimation_process.EstimationProcess)
     self.assertEqual(process.initialize, mapped_process.initialize)
     self.assertEqual(process.next, mapped_process.next)
-    self.assertEqual(process.report.type_signature.parameter,
-                     mapped_process.report.type_signature.parameter)
-    self.assertEqual(test_map_fn.type_signature.result,
-                     mapped_process.report.type_signature.result)
+    self.assertEqual(
+        process.report.type_signature.parameter,
+        mapped_process.report.type_signature.parameter,
+    )
+    self.assertEqual(
+        test_map_fn.type_signature.result,
+        mapped_process.report.type_signature.result,
+    )
 
   def test_federated_mapped_process_as_expected(self):
     initialize_fn = federated_computation.federated_computation()(
-        lambda: intrinsics.federated_value(0, placements.SERVER))
+        lambda: intrinsics.federated_value(0, placements.SERVER)
+    )
     next_fn = federated_computation.federated_computation(
-        initialize_fn.type_signature.result)(lambda state: state)
+        initialize_fn.type_signature.result
+    )(lambda state: state)
     report_fn = federated_computation.federated_computation(
-        initialize_fn.type_signature.result)(
-            lambda state: intrinsics.federated_map(test_report_fn, state))
-    process = estimation_process.EstimationProcess(initialize_fn, next_fn,
-                                                   report_fn)
+        initialize_fn.type_signature.result
+    )(lambda state: intrinsics.federated_map(test_report_fn, state))
+    process = estimation_process.EstimationProcess(
+        initialize_fn, next_fn, report_fn
+    )
 
     map_fn = federated_computation.federated_computation(
-        report_fn.type_signature.result)(
-            lambda estimate: intrinsics.federated_map(test_map_fn, estimate))
+        report_fn.type_signature.result
+    )(lambda estimate: intrinsics.federated_map(test_map_fn, estimate))
     mapped_process = process.map(map_fn)
 
     self.assertIsInstance(mapped_process, estimation_process.EstimationProcess)
     self.assertEqual(process.initialize, mapped_process.initialize)
     self.assertEqual(process.next, mapped_process.next)
-    self.assertEqual(process.report.type_signature.parameter,
-                     mapped_process.report.type_signature.parameter)
-    self.assertEqual(map_fn.type_signature.result,
-                     mapped_process.report.type_signature.result)
+    self.assertEqual(
+        process.report.type_signature.parameter,
+        mapped_process.report.type_signature.parameter,
+    )
+    self.assertEqual(
+        map_fn.type_signature.result,
+        mapped_process.report.type_signature.result,
+    )
 
   def test_map_estimate_not_assignable(self):
-    map_fn = tensorflow_computation.tf_computation(
-        tf.int32)(lambda estimate: estimate)
-    process = estimation_process.EstimationProcess(test_initialize_fn,
-                                                   test_next_fn, test_report_fn)
+    map_fn = tensorflow_computation.tf_computation(tf.int32)(
+        lambda estimate: estimate
+    )
+    process = estimation_process.EstimationProcess(
+        test_initialize_fn, test_next_fn, test_report_fn
+    )
     with self.assertRaises(estimation_process.EstimateNotAssignableError):
       process.map(map_fn)
 
   def test_federated_map_estimate_not_assignable(self):
     initialize_fn = federated_computation.federated_computation()(
-        lambda: intrinsics.federated_value(0, placements.SERVER))
+        lambda: intrinsics.federated_value(0, placements.SERVER)
+    )
     next_fn = federated_computation.federated_computation(
-        initialize_fn.type_signature.result)(lambda state: state)
+        initialize_fn.type_signature.result
+    )(lambda state: state)
     report_fn = federated_computation.federated_computation(
-        initialize_fn.type_signature.result)(
-            lambda state: intrinsics.federated_map(test_report_fn, state))
-    process = estimation_process.EstimationProcess(initialize_fn, next_fn,
-                                                   report_fn)
+        initialize_fn.type_signature.result
+    )(lambda state: intrinsics.federated_map(test_report_fn, state))
+    process = estimation_process.EstimationProcess(
+        initialize_fn, next_fn, report_fn
+    )
 
     map_fn = federated_computation.federated_computation(
-        computation_types.FederatedType(
-            tf.int32, placements.CLIENTS))(lambda estimate: estimate)
+        computation_types.FederatedType(tf.int32, placements.CLIENTS)
+    )(lambda estimate: estimate)
     with self.assertRaises(estimation_process.EstimateNotAssignableError):
       process.map(map_fn)
 

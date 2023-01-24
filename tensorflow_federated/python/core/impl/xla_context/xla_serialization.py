@@ -47,7 +47,8 @@ def pack_xla_computation(
   py_typecheck.check_type(xla_computation, xla_client.XlaComputation)
   return any_pb2.Any(
       type_url=_HLO_MODULE_PROTO_URI,
-      value=xla_computation.as_serialized_hlo_module_proto())
+      value=xla_computation.as_serialized_hlo_module_proto(),
+  )
 
 
 def unpack_xla_computation(any_pb: any_pb2.Any) -> xla_client.XlaComputation:
@@ -65,8 +66,9 @@ def unpack_xla_computation(any_pb: any_pb2.Any) -> xla_client.XlaComputation:
   """
   py_typecheck.check_type(any_pb, any_pb2.Any)
   if any_pb.type_url != _HLO_MODULE_PROTO_URI:
-    raise ValueError('Not a serialized `HloModuleProto`: {}.'.format(
-        str(any_pb.type_url)))
+    raise ValueError(
+        'Not a serialized `HloModuleProto`: {}.'.format(str(any_pb.type_url))
+    )
   return xla_client.XlaComputation(any_pb.value)
 
 
@@ -111,8 +113,9 @@ def _make_xla_binding_for_type(
         elements.append(binding)
       return pb.Xla.Binding(struct=pb.Xla.StructBinding(element=elements)), idx
 
-    raise NotImplementedError('XLA bindings for {} are unsupported'.format(
-        str(type_spec)))
+    raise NotImplementedError(
+        'XLA bindings for {} are unsupported'.format(str(type_spec))
+    )
 
   binding, _ = _make_starting_at_index(type_spec, 0)
   return binding
@@ -145,14 +148,17 @@ def _remove_struct_element_names_from_tff_type(type_spec: _T) -> _T:
   if isinstance(type_spec, computation_types.FunctionType):
     return computation_types.FunctionType(
         _remove_struct_element_names_from_tff_type(type_spec.parameter),
-        _remove_struct_element_names_from_tff_type(type_spec.result))
+        _remove_struct_element_names_from_tff_type(type_spec.result),
+    )
   if isinstance(type_spec, computation_types.TensorType):
     return type_spec
   py_typecheck.check_type(type_spec, computation_types.StructType)
-  return computation_types.StructType([
-      (None, _remove_struct_element_names_from_tff_type(v))
-      for _, v in structure.iter_elements(type_spec)
-  ])
+  return computation_types.StructType(
+      [
+          (None, _remove_struct_element_names_from_tff_type(v))
+          for _, v in structure.iter_elements(type_spec)
+      ]
+  )
 
 
 def create_xla_tff_computation(
@@ -178,24 +184,30 @@ def create_xla_tff_computation(
   py_typecheck.check_type(xla_computation, xla_client.XlaComputation)
   py_typecheck.check_type(tensor_indexes, Sequence)
   py_typecheck.check_type(type_spec, computation_types.FunctionType)
-  parameter_binding = _make_xla_binding_for_type(tensor_indexes,
-                                                 type_spec.parameter)
+  parameter_binding = _make_xla_binding_for_type(
+      tensor_indexes, type_spec.parameter
+  )
   result_binding = _make_xla_binding_for_type(
-      list(range(len(structure.flatten(type_spec.result)))), type_spec.result)
+      list(range(len(structure.flatten(type_spec.result)))), type_spec.result
+  )
   reconstructed_type = xla_computation_and_bindings_to_tff_type(
-      xla_computation, parameter_binding, result_binding)
+      xla_computation, parameter_binding, result_binding
+  )
   py_typecheck.check_type(reconstructed_type, computation_types.FunctionType)
   expected_type = _remove_struct_element_names_from_tff_type(type_spec)
   if not reconstructed_type.is_equivalent_to(expected_type):
     raise ValueError(
         'The TFF type of the XLA computation {} does not match the expected '
-        'TFF type {}.'.format(str(reconstructed_type), str(expected_type)))
+        'TFF type {}.'.format(str(reconstructed_type), str(expected_type))
+    )
   return pb.Computation(
       type=type_serialization.serialize_type(type_spec),
       xla=pb.Xla(
           hlo_module=pack_xla_computation(xla_computation),
           parameter=parameter_binding,
-          result=result_binding))
+          result=result_binding,
+      ),
+  )
 
 
 def xla_computation_and_bindings_to_tff_type(
@@ -220,10 +232,13 @@ def xla_computation_and_bindings_to_tff_type(
   py_typecheck.check_type(xla_computation, xla_client.XlaComputation)
   program_shape = xla_computation.program_shape()
   return computation_types.FunctionType(
-      xla_shapes_and_binding_to_tff_type(program_shape.parameter_shapes(),
-                                         parameter_binding),
-      xla_shapes_and_binding_to_tff_type([program_shape.result_shape()],
-                                         result_binding))
+      xla_shapes_and_binding_to_tff_type(
+          program_shape.parameter_shapes(), parameter_binding
+      ),
+      xla_shapes_and_binding_to_tff_type(
+          [program_shape.result_shape()], result_binding
+      ),
+  )
 
 
 def xla_shapes_and_binding_to_tff_type(
@@ -256,18 +271,21 @@ def xla_shapes_and_binding_to_tff_type(
       index = binding.tensor.index
       if (index < 0) or (index >= len(tensor_shapes)):
         raise ValueError(
-            'Binding refers to an inexistent index {}.'.format(index))
+            'Binding refers to an inexistent index {}.'.format(index)
+        )
       if index not in unused_shape_indexes:
         raise ValueError(
-            'Duplicate bindings referring to index {}.'.format(index))
+            'Duplicate bindings referring to index {}.'.format(index)
+        )
       unused_shape_indexes.remove(index)
       shape = tensor_shapes[index]
-      return computation_types.TensorType(shape.numpy_dtype(),
-                                          shape.dimensions())
+      return computation_types.TensorType(
+          shape.numpy_dtype(), shape.dimensions()
+      )
     if kind == 'struct':
-      return computation_types.StructType([
-          (None, _get_type(x)) for x in binding.struct.element
-      ])
+      return computation_types.StructType(
+          [(None, _get_type(x)) for x in binding.struct.element]
+      )
     if kind is None:
       return None
     raise ValueError('Unrecognized binding type {}.'.format(kind))
@@ -275,7 +293,8 @@ def xla_shapes_and_binding_to_tff_type(
   tff_type = _get_type(binding)
   if unused_shape_indexes:
     raise ValueError(
-        'Binding fails to capture tensors {}.'.format(unused_shape_indexes))
+        'Binding fails to capture tensors {}.'.format(unused_shape_indexes)
+    )
   return tff_type
 
 

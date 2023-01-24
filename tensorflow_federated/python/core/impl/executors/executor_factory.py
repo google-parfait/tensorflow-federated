@@ -38,7 +38,8 @@ class ExecutorFactory(metaclass=abc.ABCMeta):
 
   @abc.abstractmethod
   def create_executor(
-      self, cardinalities: CardinalitiesType) -> executor_base.Executor:
+      self, cardinalities: CardinalitiesType
+  ) -> executor_base.Executor:
     """Abstract method to construct instance of `executor_base.Executor`.
 
     `create_executor` must accept a dict mapping

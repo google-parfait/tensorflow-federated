@@ -25,7 +25,7 @@ from tensorflow_federated.python.core.impl.compiler import transformation_utils
 # generated are different at HEAD vs in OSS, resulting in different hash values
 # for the computation name which fail to compare.
 def _name_compiled_computations(
-    tree: building_blocks.ComputationBuildingBlock
+    tree: building_blocks.ComputationBuildingBlock,
 ) -> building_blocks.ComputationBuildingBlock:
   """Name the compiled computations."""
   counter = 1
@@ -35,16 +35,22 @@ def _name_compiled_computations(
     if building_block.is_compiled_computation():
       new_name = str(counter)
       counter += 1
-      return building_blocks.CompiledComputation(
-          proto=building_block.proto, name=new_name), True
+      return (
+          building_blocks.CompiledComputation(
+              proto=building_block.proto, name=new_name
+          ),
+          True,
+      )
     return building_block, False
 
   return transformation_utils.transform_postorder(tree, _transform)[0]
 
 
 def check_computations(
-    filename: str, computations: collections.OrderedDict[
-        str, building_blocks.ComputationBuildingBlock]
+    filename: str,
+    computations: collections.OrderedDict[
+        str, building_blocks.ComputationBuildingBlock
+    ],
 ) -> None:
   """Check the AST of computations matches the contents of the golden file.
 
@@ -60,9 +66,11 @@ def check_computations(
   py_typecheck.check_type(computations, collections.OrderedDict, 'computations')
   values = []
   for name, computation in computations.items():
-    py_typecheck.check_type(computation,
-                            building_blocks.ComputationBuildingBlock, name)
+    py_typecheck.check_type(
+        computation, building_blocks.ComputationBuildingBlock, name
+    )
     computation_ast = _name_compiled_computations(computation)
     values.append(
-        f'{name}:\n\n{computation_ast.formatted_representation()}\n\n')
+        f'{name}:\n\n{computation_ast.formatted_representation()}\n\n'
+    )
   golden.check_string(filename, ''.join(values))

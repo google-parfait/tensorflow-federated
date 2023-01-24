@@ -38,14 +38,17 @@ class PreprocessFnTest(tf.test.TestCase, parameterized.TestCase):
     preprocess_spec = client_spec.ClientSpec(num_epochs=1, batch_size=1)
     with self.assertRaisesRegex(TypeError, 'crop_shape must be an iterable'):
       image_classification_preprocessing.create_preprocess_fn(
-          preprocess_spec, crop_shape=32)
+          preprocess_spec, crop_shape=32
+      )
 
   def test_raises_iterable_length_2_crop(self):
     preprocess_spec = client_spec.ClientSpec(num_epochs=1, batch_size=1)
-    with self.assertRaisesRegex(ValueError,
-                                'The crop_shape must have length 3'):
+    with self.assertRaisesRegex(
+        ValueError, 'The crop_shape must have length 3'
+    ):
       image_classification_preprocessing.create_preprocess_fn(
-          preprocess_spec, crop_shape=(32, 32))
+          preprocess_spec, crop_shape=(32, 32)
+      )
 
   @parameterized.named_parameters(
       ('num_epochs_1_batch_size_1', 1, 1),
@@ -55,17 +58,21 @@ class PreprocessFnTest(tf.test.TestCase, parameterized.TestCase):
       ('num_epochs_3_batch_size_5', 3, 5),
       ('num_epochs_7_batch_size_2', 7, 2),
   )
-  def test_ds_length_is_ceil_num_epochs_over_batch_size(self, num_epochs,
-                                                        batch_size):
+  def test_ds_length_is_ceil_num_epochs_over_batch_size(
+      self, num_epochs, batch_size
+  ):
     ds = tf.data.Dataset.from_tensor_slices(TEST_DATA)
     preprocess_spec = client_spec.ClientSpec(
-        num_epochs=num_epochs, batch_size=batch_size)
+        num_epochs=num_epochs, batch_size=batch_size
+    )
     preprocess_fn = image_classification_preprocessing.create_preprocess_fn(
-        preprocess_spec)
+        preprocess_spec
+    )
     preprocessed_ds = preprocess_fn(ds)
     self.assertEqual(
         _compute_length_of_dataset(preprocessed_ds),
-        tf.cast(tf.math.ceil(num_epochs / batch_size), tf.int32))
+        tf.cast(tf.math.ceil(num_epochs / batch_size), tf.int32),
+    )
 
   @parameterized.named_parameters(
       ('crop_shape_1_no_distort', (32, 32, 3), False),
@@ -75,25 +82,32 @@ class PreprocessFnTest(tf.test.TestCase, parameterized.TestCase):
       ('crop_shape_2_distort', (28, 28, 3), True),
       ('crop_shape_3_distort', (24, 26, 3), True),
   )
-  def test_preprocess_fn_returns_correct_element(self, crop_shape,
-                                                 distort_image):
+  def test_preprocess_fn_returns_correct_element(
+      self, crop_shape, distort_image
+  ):
     ds = tf.data.Dataset.from_tensor_slices(TEST_DATA)
     preprocess_spec = client_spec.ClientSpec(
-        num_epochs=1, batch_size=1, shuffle_buffer_size=1)
+        num_epochs=1, batch_size=1, shuffle_buffer_size=1
+    )
     preprocess_fn = image_classification_preprocessing.create_preprocess_fn(
-        preprocess_spec, crop_shape=crop_shape, distort_image=distort_image)
+        preprocess_spec, crop_shape=crop_shape, distort_image=distort_image
+    )
     preprocessed_ds = preprocess_fn(ds)
     expected_element_spec_shape = (None,) + crop_shape
     self.assertEqual(
         preprocessed_ds.element_spec,
-        (tf.TensorSpec(shape=expected_element_spec_shape, dtype=tf.float32),
-         tf.TensorSpec(shape=(None,), dtype=tf.int64)))
+        (
+            tf.TensorSpec(shape=expected_element_spec_shape, dtype=tf.float32),
+            tf.TensorSpec(shape=(None,), dtype=tf.int64),
+        ),
+    )
 
     expected_element_shape = (1,) + crop_shape
     element = next(iter(preprocessed_ds))
-    expected_element = (tf.zeros(
-        shape=expected_element_shape,
-        dtype=tf.float32), tf.ones(shape=(1,), dtype=tf.int32))
+    expected_element = (
+        tf.zeros(shape=expected_element_shape, dtype=tf.float32),
+        tf.ones(shape=(1,), dtype=tf.int32),
+    )
     self.assertAllClose(self.evaluate(element), expected_element)
 
   def test_preprocess_is_no_op_for_normalized_image(self):
@@ -102,7 +116,8 @@ class PreprocessFnTest(tf.test.TestCase, parameterized.TestCase):
     x = x / tf.math.reduce_std(x)  # x now has variance 1
     simple_example = collections.OrderedDict(image=x, label=0)
     image_map = image_classification_preprocessing.build_image_map(
-        crop_shape, distort=False)
+        crop_shape, distort=False
+    )
     cropped_example = image_map(simple_example)
 
     self.assertEqual(cropped_example[0].shape, crop_shape)
@@ -120,13 +135,16 @@ class PreprocessFnTest(tf.test.TestCase, parameterized.TestCase):
     repeat_size = 10
     ds = tf.data.Dataset.from_tensor_slices(TEST_DATA).repeat(repeat_size)
     preprocess_spec = client_spec.ClientSpec(
-        num_epochs=1, batch_size=1, max_elements=max_elements)
+        num_epochs=1, batch_size=1, max_elements=max_elements
+    )
     preprocess_fn = image_classification_preprocessing.create_preprocess_fn(
-        preprocess_spec)
+        preprocess_spec
+    )
     preprocessed_ds = preprocess_fn(ds)
     self.assertEqual(
         _compute_length_of_dataset(preprocessed_ds),
-        min(repeat_size, max_elements))
+        min(repeat_size, max_elements),
+    )
 
 
 if __name__ == '__main__':

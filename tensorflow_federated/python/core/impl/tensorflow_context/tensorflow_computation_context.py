@@ -31,7 +31,8 @@ def get_session_token() -> tf.Tensor:
     raise context_base.ContextError(
         'Session tokens can only be retrieved from within the '
         '`TensorFlowComputationContext (in a `@tff.tf_computation`). '
-        f'Instead, the context {context} of type {type(context)} was found.')
+        f'Instead, the context {context} of type {type(context)} was found.'
+    )
   return context.session_token
 
 
@@ -66,14 +67,19 @@ class TensorFlowComputationContext(context_base.SyncContext):
     if computation_oneof != 'tensorflow':
       raise ValueError(
           'Can only invoke TensorFlow in the body of a TensorFlow '
-          'computation; got computation of type {}'.format(computation_oneof))
+          'computation; got computation of type {}'.format(computation_oneof)
+      )
     shared_name_suffix = f'_tffshared_{self._shared_name_index}'
     self._shared_name_index += 1
-    init_op, result = (
-        tensorflow_utils.deserialize_and_call_tf_computation(
-            computation_proto, arg, self._graph, shared_name_suffix,
-            self.session_token))
+    init_op, result = tensorflow_utils.deserialize_and_call_tf_computation(
+        computation_proto,
+        arg,
+        self._graph,
+        shared_name_suffix,
+        self.session_token,
+    )
     if init_op:
       self._init_ops.append(init_op)
-    return type_conversions.type_to_py_container(result,
-                                                 comp.type_signature.result)
+    return type_conversions.type_to_py_container(
+        result, comp.type_signature.result
+    )

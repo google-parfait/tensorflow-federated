@@ -36,7 +36,7 @@ _CharacterEncoding = chunkers.CharacterEncoding
 
 
 @attr.s(eq=False, frozen=True)
-class ServerOutput():
+class ServerOutput:
   """The container of results.
 
   Attributes:
@@ -50,6 +50,7 @@ class ServerOutput():
     round_timestamp: An int64 scalar of the timestamp of the beginning of the
       round. The value is in seconds since the epoch, in UTC.
   """
+
   clients = attr.ib()
   heavy_hitters = attr.ib()
   heavy_hitters_unique_counts = attr.ib()
@@ -68,8 +69,9 @@ def build_iblt_computation(
     max_heavy_hitters: Optional[int] = None,
     string_postprocessor: Optional[Callable[[tf.Tensor], tf.Tensor]] = None,
     secure_sum_bitwidth: Optional[int] = None,
-    decode_iblt_fn: Optional[Callable[..., tuple[tf.Tensor, tf.Tensor,
-                                                 tf.Tensor, tf.Tensor]]] = None,
+    decode_iblt_fn: Optional[
+        Callable[..., tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]]
+    ] = None,
     seed: int = 0,
     batch_size: int = 1,
     repetitions: int = 3,
@@ -143,26 +145,31 @@ def build_iblt_computation(
     ValueError: if parameters don't meet expectations.
   """
   if string_max_bytes < 1:
-    raise ValueError('string_max_bytes should be at least 1, got '
-                     f'{string_max_bytes}')
+    raise ValueError(
+        f'string_max_bytes should be at least 1, got {string_max_bytes}'
+    )
   if repetitions < 3:
     raise ValueError(f'repetitions should be at least 3, got {repetitions}')
   if max_heavy_hitters is not None and max_heavy_hitters < 1:
     raise ValueError(
         'max_heavy_hitters should be at least 1 when it is not None, '
-        f'got {max_heavy_hitters}')
+        f'got {max_heavy_hitters}'
+    )
   if max_words_per_user is not None and max_words_per_user < 1:
     raise ValueError(
         'max_words_per_user should be at least 1 when it is not None, '
-        f'got {max_words_per_user}')
+        f'got {max_words_per_user}'
+    )
   if k_anonymity < 1:
     raise ValueError(f'k_anonymity must be at least 1, got {k_anonymity}')
   if secure_sum_bitwidth is not None:
-    if not isinstance(secure_sum_bitwidth, int) or (secure_sum_bitwidth <= 0 or
-                                                    secure_sum_bitwidth > 62):
+    if not isinstance(secure_sum_bitwidth, int) or (
+        secure_sum_bitwidth <= 0 or secure_sum_bitwidth > 62
+    ):
       raise ValueError(
           'If set, secure_sum_bitwidth requires an integer in the range [1,62],'
-          f' got {secure_sum_bitwidth}')
+          f' got {secure_sum_bitwidth}'
+      )
   if batch_size < 1:
     raise ValueError(f'batch_size must be at least 1, got {batch_size}')
 
@@ -170,7 +177,8 @@ def build_iblt_computation(
     decode_iblt_fn = iblt_tensor.decode_iblt_tensor_tf
 
   dataset_type = computation_types.SequenceType(
-      computation_types.TensorType(shape=[None], dtype=tf.string))
+      computation_types.TensorType(shape=[None], dtype=tf.string)
+  )
 
   @tensorflow_computation.tf_computation(dataset_type)
   @tf.function
@@ -182,24 +190,28 @@ def build_iblt_computation(
         encoding=_CharacterEncoding.UTF8,
         repetitions=repetitions,
         value_shape=(1,),
-        seed=seed)
+        seed=seed,
+    )
     if max_words_per_user is not None:
       if multi_contribution:
         k_words, counts = data_processing.get_capped_elements_with_counts(
             dataset,
             max_words_per_user,
             batch_size=batch_size,
-            string_max_bytes=string_max_bytes)
+            string_max_bytes=string_max_bytes,
+        )
       else:
         # `tff.analytics.data_processing.get_top_elements` returns the top
         # `max_words_per_user` words in client's local histogram. Each element
         # appears at most once in the list.
         k_words, counts = data_processing.get_top_elements_with_counts(
-            dataset, max_words_per_user, string_max_bytes=string_max_bytes)
+            dataset, max_words_per_user, string_max_bytes=string_max_bytes
+        )
         counts = tf.ones_like(counts)
     else:
       k_words, counts = data_processing.get_unique_elements_with_counts(
-          dataset, string_max_bytes=string_max_bytes)
+          dataset, string_max_bytes=string_max_bytes
+      )
       if not multi_contribution:
         counts = tf.ones_like(counts)
     counts = tf.reshape(counts, shape=[-1, 1])
@@ -216,46 +228,64 @@ def build_iblt_computation(
         capacity=capacity,
         string_max_bytes=string_max_bytes,
         repetitions=repetitions,
-        seed=seed)
+        seed=seed,
+    )
 
-    (heavy_hitters, heavy_hitters_unique_counts, heavy_hitters_counts,
-     num_not_decoded) = iblt_decoded
+    (
+        heavy_hitters,
+        heavy_hitters_unique_counts,
+        heavy_hitters_counts,
+        num_not_decoded,
+    ) = iblt_decoded
 
     heavy_hitters_counts = tf.squeeze(heavy_hitters_counts, axis=1)
 
     if k_anonymity > 1:
-      heavy_hitters_mask = tf.math.greater_equal(heavy_hitters_unique_counts,
-                                                 k_anonymity)
+      heavy_hitters_mask = tf.math.greater_equal(
+          heavy_hitters_unique_counts, k_anonymity
+      )
       heavy_hitters = tf.boolean_mask(heavy_hitters, heavy_hitters_mask)
-      heavy_hitters_unique_counts = tf.boolean_mask(heavy_hitters_unique_counts,
-                                                    heavy_hitters_mask)
-      heavy_hitters_counts = tf.boolean_mask(heavy_hitters_counts,
-                                             heavy_hitters_mask)
+      heavy_hitters_unique_counts = tf.boolean_mask(
+          heavy_hitters_unique_counts, heavy_hitters_mask
+      )
+      heavy_hitters_counts = tf.boolean_mask(
+          heavy_hitters_counts, heavy_hitters_mask
+      )
 
-    if max_heavy_hitters is not None and tf.shape(
-        heavy_hitters)[0] > max_heavy_hitters:
+    if (
+        max_heavy_hitters is not None
+        and tf.shape(heavy_hitters)[0] > max_heavy_hitters
+    ):
       _, top_indices = tf.math.top_k(heavy_hitters_counts, max_heavy_hitters)
       heavy_hitters = tf.gather(heavy_hitters, top_indices)
-      heavy_hitters_unique_counts = tf.gather(heavy_hitters_unique_counts,
-                                              top_indices)
+      heavy_hitters_unique_counts = tf.gather(
+          heavy_hitters_unique_counts, top_indices
+      )
       heavy_hitters_counts = tf.gather(heavy_hitters_counts, top_indices)
 
     if string_postprocessor is not None:
       heavy_hitters = string_postprocessor(heavy_hitters)
 
-    return (heavy_hitters, heavy_hitters_unique_counts, heavy_hitters_counts,
-            num_not_decoded)
+    return (
+        heavy_hitters,
+        heavy_hitters_unique_counts,
+        heavy_hitters_counts,
+        num_not_decoded,
+    )
 
   def secure_sum(x):
     return intrinsics.federated_secure_sum(
-        x, max_input=2**secure_sum_bitwidth - 1)
+        x, max_input=2**secure_sum_bitwidth - 1
+    )
 
   def secure_modular_sum(x):
     return intrinsics.federated_secure_modular_sum(
-        x, modulus=np.int64(iblt_lib.DEFAULT_FIELD_SIZE))
+        x, modulus=np.int64(iblt_lib.DEFAULT_FIELD_SIZE)
+    )
 
   @federated_computation.federated_computation(
-      computation_types.at_clients(dataset_type))
+      computation_types.at_clients(dataset_type)
+  )
   def one_round_computation(examples):
     """The TFF computation to compute the aggregated IBLT sketch."""
     if secure_sum_bitwidth is not None:
@@ -268,15 +298,21 @@ def build_iblt_computation(
       count_sum_fn = intrinsics.federated_sum
     round_timestamp = intrinsics.federated_eval(
         tensorflow_computation.tf_computation(
-            lambda: tf.cast(tf.timestamp(), tf.int64)), placements.SERVER)
+            lambda: tf.cast(tf.timestamp(), tf.int64)
+        ),
+        placements.SERVER,
+    )
     clients = count_sum_fn(intrinsics.federated_value(1, placements.CLIENTS))
     sketch, count_tensor = intrinsics.federated_map(compute_sketch, examples)
     sketch = sketch_sum_fn(sketch)
     count_tensor = count_sum_fn(count_tensor)
 
-    (heavy_hitters, heavy_hitters_unique_counts, heavy_hitters_counts,
-     num_not_decoded) = intrinsics.federated_map(decode_heavy_hitters,
-                                                 (sketch, count_tensor))
+    (
+        heavy_hitters,
+        heavy_hitters_unique_counts,
+        heavy_hitters_counts,
+        num_not_decoded,
+    ) = intrinsics.federated_map(decode_heavy_hitters, (sketch, count_tensor))
     server_output = intrinsics.federated_zip(
         ServerOutput(
             clients=clients,
@@ -284,7 +320,9 @@ def build_iblt_computation(
             heavy_hitters_unique_counts=heavy_hitters_unique_counts,
             heavy_hitters_counts=heavy_hitters_counts,
             num_not_decoded=num_not_decoded,
-            round_timestamp=round_timestamp))
+            round_timestamp=round_timestamp,
+        )
+    )
     return server_output
 
   return one_round_computation

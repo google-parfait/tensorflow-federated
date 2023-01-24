@@ -41,7 +41,6 @@ class FederatedMinTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(_MIN_MAX_TEST_DTYPES)
   def test_federated_min_scalar(self, dtype):
-
     @federated_computation.federated_computation(
         computation_types.at_clients(dtype)
     )
@@ -155,7 +154,6 @@ class FederatedMaxTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(_MIN_MAX_TEST_DTYPES)
   def test_federated_max_scalar(self, dtype):
-
     @federated_computation.federated_computation(
         computation_types.at_clients(dtype)
     )
@@ -268,7 +266,6 @@ class FederatedMaxTest(tf.test.TestCase, parameterized.TestCase):
 class FederatedSampleTest(tf.test.TestCase):
 
   def test_federated_sample_single_value(self):
-
     @federated_computation.federated_computation(
         computation_types.FederatedType(tf.float32, placements.CLIENTS)
     )
@@ -316,7 +313,6 @@ class FederatedSampleTest(tf.test.TestCase):
       call_federated_sample([True, False, True, True])
 
   def test_federated_sample_max_size_is_100(self):
-
     @federated_computation.federated_computation(
         computation_types.FederatedType(tf.float32, placements.CLIENTS)
     )
@@ -328,7 +324,6 @@ class FederatedSampleTest(tf.test.TestCase):
     self.assertAlmostEqual(len(np.nonzero(value)[0]), 50, delta=20)
 
   def test_federated_sample_preserves_nan_percentage(self):
-
     @federated_computation.federated_computation(
         computation_types.FederatedType(tf.float32, placements.CLIENTS)
     )
@@ -339,7 +334,6 @@ class FederatedSampleTest(tf.test.TestCase):
     self.assertAlmostEqual(np.count_nonzero(np.isnan(value)), 50, delta=20)
 
   def test_federated_sample_preserves_inf_percentage(self):
-
     @federated_computation.federated_computation(
         computation_types.FederatedType(tf.float32, placements.CLIENTS)
     )

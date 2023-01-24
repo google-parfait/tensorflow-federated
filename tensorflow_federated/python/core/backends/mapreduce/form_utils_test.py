@@ -57,8 +57,9 @@ def get_iterative_process_for_sum_example():
     del client_input  # Unused
     return 1, 1
 
-  @tensorflow_computation.tf_computation([tf.int32, tf.int32],
-                                         [tf.int32, tf.int32])
+  @tensorflow_computation.tf_computation(
+      [tf.int32, tf.int32], [tf.int32, tf.int32]
+  )
   def update(server_state, global_update):
     del server_state  # Unused
     return global_update, []
@@ -75,9 +76,11 @@ def get_iterative_process_for_sum_example():
     client_updates = intrinsics.federated_map(work, c3)
     unsecure_update = intrinsics.federated_sum(client_updates[0])
     secure_update = intrinsics.federated_secure_sum_bitwidth(
-        client_updates[1], 8)
+        client_updates[1], 8
+    )
     s6 = intrinsics.federated_zip(
-        [server_state, [unsecure_update, secure_update]])
+        [server_state, [unsecure_update, secure_update]]
+    )
     new_server_state, server_output = intrinsics.federated_map(update, s6)
     return new_server_state, server_output
 
@@ -101,14 +104,16 @@ def get_computation_with_nested_broadcasts():
     del client_input  # Unused
     return 1, 1
 
-  @tensorflow_computation.tf_computation([tf.int32, tf.int32],
-                                         [tf.int32, tf.int32])
+  @tensorflow_computation.tf_computation(
+      [tf.int32, tf.int32], [tf.int32, tf.int32]
+  )
   def update(server_state, global_update):
     del server_state  # Unused
     return global_update, []
 
   @federated_computation.federated_computation(
-      computation_types.FederatedType([tf.int32, tf.int32], placements.SERVER))
+      computation_types.FederatedType([tf.int32, tf.int32], placements.SERVER)
+  )
   def broadcast_and_return_arg_and_result(x):
     broadcasted = intrinsics.federated_broadcast(x)
     return [broadcasted, x]
@@ -126,9 +131,11 @@ def get_computation_with_nested_broadcasts():
     client_updates = intrinsics.federated_map(work, c3)
     unsecure_update = intrinsics.federated_sum(client_updates[0])
     secure_update = intrinsics.federated_secure_sum_bitwidth(
-        client_updates[1], 8)
+        client_updates[1], 8
+    )
     s6 = intrinsics.federated_zip(
-        [server_state, [unsecure_update, secure_update]])
+        [server_state, [unsecure_update, secure_update]]
+    )
     new_server_state, server_output = intrinsics.federated_map(update, s6)
     return new_server_state, server_output
 
@@ -153,8 +160,9 @@ def get_iterative_process_for_sum_example_with_no_prepare():
     del client_input  # Unused
     return 1, 1
 
-  @tensorflow_computation.tf_computation([tf.int32, tf.int32],
-                                         [tf.int32, tf.int32])
+  @tensorflow_computation.tf_computation(
+      [tf.int32, tf.int32], [tf.int32, tf.int32]
+  )
   def update(server_state, global_update):
     del server_state  # Unused
     return global_update, []
@@ -171,9 +179,11 @@ def get_iterative_process_for_sum_example_with_no_prepare():
     client_updates = intrinsics.federated_map(work, c3)
     unsecure_update = intrinsics.federated_sum(client_updates[0])
     secure_update = intrinsics.federated_secure_sum_bitwidth(
-        client_updates[1], 8)
+        client_updates[1], 8
+    )
     s6 = intrinsics.federated_zip(
-        [server_state, [unsecure_update, secure_update]])
+        [server_state, [unsecure_update, secure_update]]
+    )
     new_server_state, server_output = intrinsics.federated_map(update, s6)
     return new_server_state, server_output
 
@@ -198,8 +208,9 @@ def get_iterative_process_for_sum_example_with_no_broadcast():
     del client_data  # Unused
     return 1, 1
 
-  @tensorflow_computation.tf_computation([tf.int32, tf.int32],
-                                         [tf.int32, tf.int32])
+  @tensorflow_computation.tf_computation(
+      [tf.int32, tf.int32], [tf.int32, tf.int32]
+  )
   def update(server_state, global_update):
     del server_state  # Unused
     return global_update, []
@@ -215,9 +226,11 @@ def get_iterative_process_for_sum_example_with_no_broadcast():
     client_updates = intrinsics.federated_map(work, client_data)
     unsecure_update = intrinsics.federated_sum(client_updates[0])
     secure_update = intrinsics.federated_secure_sum_bitwidth(
-        client_updates[1], 8)
+        client_updates[1], 8
+    )
     s6 = intrinsics.federated_zip(
-        [server_state, [unsecure_update, secure_update]])
+        [server_state, [unsecure_update, secure_update]]
+    )
     new_server_state, server_output = intrinsics.federated_map(update, s6)
     return new_server_state, server_output
 
@@ -269,8 +282,7 @@ def get_iterative_process_for_sum_example_with_no_federated_aggregate():
   return iterative_process.IterativeProcess(init_fn, next_fn)
 
 
-def get_iterative_process_for_sum_example_with_no_federated_secure_sum_bitwidth(
-):
+def get_iterative_process_for_sum_example_with_no_federated_secure_sum_bitwidth():
   """Returns an iterative process for a sum example.
 
   This iterative process does not have a call to
@@ -350,9 +362,11 @@ def get_iterative_process_for_sum_example_with_no_update():
     client_updates = intrinsics.federated_map(work, c3)
     unsecure_update = intrinsics.federated_sum(client_updates[0])
     secure_update = intrinsics.federated_secure_sum_bitwidth(
-        client_updates[1], 8)
+        client_updates[1], 8
+    )
     new_server_state = intrinsics.federated_zip(
-        [unsecure_update, secure_update])
+        [unsecure_update, secure_update]
+    )
     # No call to `federated_map` with an `update` function.
     server_output = intrinsics.federated_value([], placements.SERVER)
     return new_server_state, server_output
@@ -396,7 +410,8 @@ def get_iterative_process_for_sum_example_with_no_server_state():
     client_updates = intrinsics.federated_map(work, client_data)
     unsecure_update = intrinsics.federated_sum(client_updates[0])
     secure_update = intrinsics.federated_secure_sum_bitwidth(
-        client_updates[1], 8)
+        client_updates[1], 8
+    )
     s5 = intrinsics.federated_zip([unsecure_update, secure_update])
     # Empty server state.
     new_server_state = intrinsics.federated_value([], placements.SERVER)
@@ -419,8 +434,9 @@ def get_iterative_process_for_sum_example_with_no_aggregation():
     """The `init` function for `tff.templates.IterativeProcess`."""
     return intrinsics.federated_value([0, 0], placements.SERVER)
 
-  @tensorflow_computation.tf_computation([tf.int32, tf.int32],
-                                         [tf.int32, tf.int32])
+  @tensorflow_computation.tf_computation(
+      [tf.int32, tf.int32], [tf.int32, tf.int32]
+  )
   def update(server_state, global_update):
     del server_state  # Unused
     return global_update, []
@@ -437,7 +453,8 @@ def get_iterative_process_for_sum_example_with_no_aggregation():
     # No call to `federated_secure_sum_bitwidth`.
     secure_update = intrinsics.federated_value(1, placements.SERVER)
     s6 = intrinsics.federated_zip(
-        [server_state, [unsecure_update, secure_update]])
+        [server_state, [unsecure_update, secure_update]]
+    )
     new_server_state, server_output = intrinsics.federated_map(update, s6)
     return new_server_state, server_output
 
@@ -474,14 +491,19 @@ def get_iterative_process_for_minimal_sum_example():
     client_updates = intrinsics.federated_map(work, client_data)
     unsecure_update = intrinsics.federated_sum(client_updates[0])
     secure_sum_bitwidth_update = intrinsics.federated_secure_sum_bitwidth(
-        client_updates[1], bitwidth=8)
+        client_updates[1], bitwidth=8
+    )
     secure_sum_update = intrinsics.federated_secure_sum(
-        client_updates[2], max_input=1)
+        client_updates[2], max_input=1
+    )
     secure_modular_sum_update = intrinsics.federated_secure_modular_sum(
-        client_updates[3], modulus=8)
+        client_updates[3], modulus=8
+    )
     new_server_state = intrinsics.federated_zip([
-        unsecure_update, secure_sum_bitwidth_update, secure_sum_update,
-        secure_modular_sum_update
+        unsecure_update,
+        secure_sum_bitwidth_update,
+        secure_sum_update,
+        secure_modular_sum_update,
     ])
     # No call to `federated_map` with an `update` function.
     server_output = intrinsics.federated_value([], placements.SERVER)
@@ -526,20 +548,24 @@ class MapReduceFormTestCase(tf.test.TestCase):
     elif isinstance(value, (np.ndarray, np.number)):
       return value
     else:
-      raise TypeError('Cannot evaluate value of type `{!s}`.'.format(
-          type(value)))
+      raise TypeError(
+          'Cannot evaluate value of type `{!s}`.'.format(type(value))
+      )
 
 
-class GetComputationForMapReduceFormTest(MapReduceFormTestCase,
-                                         parameterized.TestCase):
+class GetComputationForMapReduceFormTest(
+    MapReduceFormTestCase, parameterized.TestCase
+):
 
   @parameterized.named_parameters(
       ('temperature', mapreduce_test_utils.get_temperature_sensor_example()),
-      ('mnist', mapreduce_test_utils.get_mnist_training_example()))
+      ('mnist', mapreduce_test_utils.get_mnist_training_example()),
+  )
   def test_type_signature_matches_generated_computation(self, example):
     comp = form_utils.get_computation_for_map_reduce_form(example.mrf)
     self.assertTrue(
-        comp.type_signature.is_equivalent_to(example.mrf.type_signature))
+        comp.type_signature.is_equivalent_to(example.mrf.type_signature)
+    )
 
   def test_with_temperature_sensor_example(self):
     example = mapreduce_test_utils.get_temperature_sensor_example()
@@ -549,26 +575,31 @@ class GetComputationForMapReduceFormTest(MapReduceFormTestCase,
     comp = form_utils.get_computation_for_map_reduce_form(example.mrf)
     state, metrics = comp(state, [[28.0], [30.0, 33.0, 29.0]])
     self.assertAllEqual(state, collections.OrderedDict(num_rounds=1))
-    self.assertAllClose(metrics,
-                        collections.OrderedDict(ratio_over_threshold=0.5))
+    self.assertAllClose(
+        metrics, collections.OrderedDict(ratio_over_threshold=0.5)
+    )
 
     state, metrics = comp(state, [[33.0], [34.0], [35.0], [36.0]])
-    self.assertAllClose(metrics,
-                        collections.OrderedDict(ratio_over_threshold=0.75))
+    self.assertAllClose(
+        metrics, collections.OrderedDict(ratio_over_threshold=0.75)
+    )
 
 
-class CheckMapReduceFormCompatibleWithComputationTest(MapReduceFormTestCase,
-                                                      parameterized.TestCase):
+class CheckMapReduceFormCompatibleWithComputationTest(
+    MapReduceFormTestCase, parameterized.TestCase
+):
 
   @parameterized.named_parameters(
-      *get_example_cf_compatible_iterative_processes())
+      *get_example_cf_compatible_iterative_processes()
+  )
   def test_allows_valid_computation(self, ip):
     form_utils.check_computation_compatible_with_map_reduce_form(ip.next)
 
   def test_disallows_broadcast_dependent_on_aggregate(self):
 
     @federated_computation.federated_computation(
-        computation_types.at_server(tf.int32), computation_types.at_clients(()))
+        computation_types.at_server(tf.int32), computation_types.at_clients(())
+    )
     def comp(server_state, client_data):
       del server_state, client_data
       client_val = intrinsics.federated_value(0, placements.CLIENTS)
@@ -588,10 +619,12 @@ class GetMapReduceFormTest(MapReduceFormTestCase, parameterized.TestCase):
 
   def test_next_computation_returning_tensor_fails_well(self):
     initialize = (
-        mapreduce_test_utils.get_temperature_sensor_example().initialize)
+        mapreduce_test_utils.get_temperature_sensor_example().initialize
+    )
     init_result = initialize.type_signature.result
-    lam = building_blocks.Lambda('x', init_result,
-                                 building_blocks.Reference('x', init_result))
+    lam = building_blocks.Lambda(
+        'x', init_result, building_blocks.Reference('x', init_result)
+    )
     bad_comp = computation_impl.ConcreteComputation.from_building_block(lam)
     with self.assertRaises(TypeError):
       form_utils.get_map_reduce_form_for_computation(bad_comp)
@@ -600,19 +633,21 @@ class GetMapReduceFormTest(MapReduceFormTestCase, parameterized.TestCase):
     example = mapreduce_test_utils.get_temperature_sensor_example()
     comp = form_utils.get_computation_for_map_reduce_form(example.mrf)
     comp_bb = comp.to_building_block()
-    top_level_param = building_blocks.Reference(comp_bb.parameter_name,
-                                                comp_bb.parameter_type)
+    top_level_param = building_blocks.Reference(
+        comp_bb.parameter_name, comp_bb.parameter_type
+    )
     first_result = building_blocks.Call(comp_bb, top_level_param)
     middle_param = building_blocks.Struct([
         building_blocks.Selection(first_result, index=0),
-        building_blocks.Selection(top_level_param, index=1)
+        building_blocks.Selection(top_level_param, index=1),
     ])
     second_result = building_blocks.Call(comp_bb, middle_param)
-    not_reducible = building_blocks.Lambda(comp_bb.parameter_name,
-                                           comp_bb.parameter_type,
-                                           second_result)
+    not_reducible = building_blocks.Lambda(
+        comp_bb.parameter_name, comp_bb.parameter_type, second_result
+    )
     bad_comp = computation_impl.ConcreteComputation.from_building_block(
-        not_reducible)
+        not_reducible
+    )
 
     with self.assertRaisesRegex(ValueError, 'broadcast dependent on aggregate'):
       form_utils.get_map_reduce_form_for_computation(bad_comp)
@@ -624,7 +659,8 @@ class GetMapReduceFormTest(MapReduceFormTestCase, parameterized.TestCase):
 
   def test_constructs_map_reduce_form_from_mnist_training_example(self):
     comp = form_utils.get_computation_for_map_reduce_form(
-        mapreduce_test_utils.get_mnist_training_example().mrf)
+        mapreduce_test_utils.get_mnist_training_example().mrf
+    )
     mrf = form_utils.get_map_reduce_form_for_computation(comp)
     self.assertIsInstance(mrf, forms.MapReduceForm)
 
@@ -635,7 +671,9 @@ class GetMapReduceFormTest(MapReduceFormTestCase, parameterized.TestCase):
     comp = form_utils.get_computation_for_map_reduce_form(example.mrf)
     new_initialize = (
         form_utils.get_state_initialization_computation_for_map_reduce_form(
-            example.initialize))
+            example.initialize
+        )
+    )
     new_mrf = form_utils.get_map_reduce_form_for_computation(comp)
     new_comp = form_utils.get_computation_for_map_reduce_form(new_mrf)
     state = new_initialize()
@@ -643,17 +681,22 @@ class GetMapReduceFormTest(MapReduceFormTestCase, parameterized.TestCase):
 
     state, metrics = new_comp(state, [[28.0], [30.0, 33.0, 29.0]])
     self.assertEqual(state['num_rounds'], 1)
-    self.assertAllClose(metrics,
-                        collections.OrderedDict(ratio_over_threshold=0.5))
+    self.assertAllClose(
+        metrics, collections.OrderedDict(ratio_over_threshold=0.5)
+    )
 
     state, metrics = new_comp(state, [[33.0], [34.0], [35.0], [36.0]])
-    self.assertAllClose(metrics,
-                        collections.OrderedDict(ratio_over_threshold=0.75))
+    self.assertAllClose(
+        metrics, collections.OrderedDict(ratio_over_threshold=0.75)
+    )
     self.assertEqual(
         tree_analysis.count_tensorflow_variables_under(
-            comp.to_building_block()),
+            comp.to_building_block()
+        ),
         tree_analysis.count_tensorflow_variables_under(
-            new_comp.to_building_block()))
+            new_comp.to_building_block()
+        ),
+    )
 
   def test_mnist_training_round_trip(self):
     example = mapreduce_test_utils.get_mnist_training_example()
@@ -666,9 +709,12 @@ class GetMapReduceFormTest(MapReduceFormTestCase, parameterized.TestCase):
     grappler_config.graph_options.rewrite_options.disable_meta_optimizer = True
     new_initialize = (
         form_utils.get_state_initialization_computation_for_map_reduce_form(
-            example.initialize))
+            example.initialize
+        )
+    )
     new_mrf = form_utils.get_map_reduce_form_for_computation(
-        comp, grappler_config)
+        comp, grappler_config
+    )
     new_comp = form_utils.get_computation_for_map_reduce_form(new_mrf)
 
     state1 = example.initialize()
@@ -687,24 +733,30 @@ class GetMapReduceFormTest(MapReduceFormTestCase, parameterized.TestCase):
     self.assertAllClose(metrics, alt_metrics)
     self.assertEqual(
         tree_analysis.count_tensorflow_variables_under(
-            comp.to_building_block()),
+            comp.to_building_block()
+        ),
         tree_analysis.count_tensorflow_variables_under(
-            new_comp.to_building_block()))
+            new_comp.to_building_block()
+        ),
+    )
 
   @parameterized.named_parameters(
-      *get_example_cf_compatible_iterative_processes())
+      *get_example_cf_compatible_iterative_processes()
+  )
   def test_returns_map_reduce_form(self, ip):
     mrf = form_utils.get_map_reduce_form_for_computation(ip.next)
 
     self.assertIsInstance(mrf, forms.MapReduceForm)
 
   @parameterized.named_parameters(
-      *get_example_cf_compatible_iterative_processes())
+      *get_example_cf_compatible_iterative_processes()
+  )
   def test_returns_canonical_form_with_grappler_disabled(self, ip):
     grappler_config = tf.compat.v1.ConfigProto()
     grappler_config.graph_options.rewrite_options.disable_meta_optimizer = True
     mrf = form_utils.get_map_reduce_form_for_computation(
-        ip.next, grappler_config)
+        ip.next, grappler_config
+    )
 
     self.assertIsInstance(mrf, forms.MapReduceForm)
 
@@ -714,7 +766,8 @@ class GetMapReduceFormTest(MapReduceFormTestCase, parameterized.TestCase):
     self.assertIsInstance(mrf, forms.MapReduceForm)
 
   def test_returns_map_reduce_form_with_indirection_to_intrinsic(self):
-    ip = mapreduce_test_utils.get_iterative_process_for_example_with_lambda_returning_aggregation(
+    ip = (
+        mapreduce_test_utils.get_iterative_process_for_example_with_lambda_returning_aggregation()
     )
 
     mrf = form_utils.get_map_reduce_form_for_computation(ip.next)
@@ -722,7 +775,8 @@ class GetMapReduceFormTest(MapReduceFormTestCase, parameterized.TestCase):
     self.assertIsInstance(mrf, forms.MapReduceForm)
 
   def get_map_reduce_form_for_client_to_server_fn(
-      self, client_to_server_fn) -> forms.MapReduceForm:
+      self, client_to_server_fn
+  ) -> forms.MapReduceForm:
     """Produces a `MapReduceForm` for the provided `client_to_server_fn`.
 
     Creates an `iterative_process.IterativeProcess` which uses
@@ -749,17 +803,20 @@ class GetMapReduceFormTest(MapReduceFormTestCase, parameterized.TestCase):
 
   def test_returns_map_reduce_form_with_secure_sum_bitwidth(self):
     mrf = self.get_map_reduce_form_for_client_to_server_fn(
-        lambda data: intrinsics.federated_secure_sum_bitwidth(data, 7))
+        lambda data: intrinsics.federated_secure_sum_bitwidth(data, 7)
+    )
     self.assertEqual(mrf.secure_sum_bitwidth(), (7,))
 
   def test_returns_map_reduce_form_with_secure_sum_max_input(self):
     mrf = self.get_map_reduce_form_for_client_to_server_fn(
-        lambda data: intrinsics.federated_secure_sum(data, 12))
+        lambda data: intrinsics.federated_secure_sum(data, 12)
+    )
     self.assertEqual(mrf.secure_sum_max_input(), (12,))
 
   def test_returns_map_reduce_form_with_secure_modular_sum_modulus(self):
     mrf = self.get_map_reduce_form_for_client_to_server_fn(
-        lambda data: intrinsics.federated_secure_modular_sum(data, 22))
+        lambda data: intrinsics.federated_secure_modular_sum(data, 22)
+    )
     self.assertEqual(mrf.secure_modular_sum_modulus(), (22,))
 
 
@@ -770,8 +827,9 @@ class BroadcastFormTest(tf.test.TestCase):
     server_data_type = computation_types.at_server(tf.int32)
     client_data_type = computation_types.at_clients(tf.int32)
 
-    @federated_computation.federated_computation(server_data_type,
-                                                 client_data_type)
+    @federated_computation.federated_computation(
+        server_data_type, client_data_type
+    )
     def add_server_number_plus_one(server_number, client_numbers):
       one = intrinsics.federated_value(1, placements.SERVER)
       server_context = intrinsics.federated_map(add, (one, server_number))
@@ -779,22 +837,26 @@ class BroadcastFormTest(tf.test.TestCase):
       return intrinsics.federated_map(add, (client_context, client_numbers))
 
     bf = form_utils.get_broadcast_form_for_computation(
-        add_server_number_plus_one)
+        add_server_number_plus_one
+    )
     self.assertEqual(bf.server_data_label, 'server_number')
     self.assertEqual(bf.client_data_label, 'client_numbers')
     type_test_utils.assert_types_equivalent(
         bf.compute_server_context.type_signature,
-        computation_types.FunctionType(tf.int32, (tf.int32,)))
+        computation_types.FunctionType(tf.int32, (tf.int32,)),
+    )
     self.assertEqual(2, bf.compute_server_context(1)[0])
     type_test_utils.assert_types_equivalent(
         bf.client_processing.type_signature,
-        computation_types.FunctionType(((tf.int32,), tf.int32), tf.int32))
+        computation_types.FunctionType(((tf.int32,), tf.int32), tf.int32),
+    )
     self.assertEqual(3, bf.client_processing((1,), 2))
 
     round_trip_comp = form_utils.get_computation_for_broadcast_form(bf)
     type_test_utils.assert_types_equivalent(
         round_trip_comp.type_signature,
-        add_server_number_plus_one.type_signature)
+        add_server_number_plus_one.type_signature,
+    )
     # 2 (server data) + 1 (constant in comp) + 2 (client data) = 5 (output)
     self.assertEqual([5, 6, 7], round_trip_comp(2, [2, 3, 4]))
 
@@ -803,8 +865,9 @@ class BroadcastFormTest(tf.test.TestCase):
     server_data_type = computation_types.at_server(())
     client_data_type = computation_types.at_clients(tf.int32)
 
-    @federated_computation.federated_computation(server_data_type,
-                                                 client_data_type)
+    @federated_computation.federated_computation(
+        server_data_type, client_data_type
+    )
     def add_five_at_clients(naught_at_server, client_numbers):
       del naught_at_server
       return intrinsics.federated_map(add_five, client_numbers)
@@ -814,15 +877,18 @@ class BroadcastFormTest(tf.test.TestCase):
     self.assertEqual(bf.client_data_label, 'client_numbers')
     type_test_utils.assert_types_equivalent(
         bf.compute_server_context.type_signature,
-        computation_types.FunctionType((), ()))
+        computation_types.FunctionType((), ()),
+    )
     type_test_utils.assert_types_equivalent(
         bf.client_processing.type_signature,
-        computation_types.FunctionType(((), tf.int32), tf.int32))
+        computation_types.FunctionType(((), tf.int32), tf.int32),
+    )
     self.assertEqual(6, bf.client_processing((), 1))
 
     round_trip_comp = form_utils.get_computation_for_broadcast_form(bf)
-    type_test_utils.assert_types_equivalent(round_trip_comp.type_signature,
-                                            add_five_at_clients.type_signature)
+    type_test_utils.assert_types_equivalent(
+        round_trip_comp.type_signature, add_five_at_clients.type_signature
+    )
     self.assertEqual([10, 11, 12], round_trip_comp((), [5, 6, 7]))
 
 
@@ -835,34 +901,45 @@ class AsFunctionOfSingleSubparameterTest(tf.test.TestCase):
     new_type.check_function()
     type_test_utils.assert_types_equivalent(
         new_type,
-        computation_types.FunctionType(old_type.parameter[index],
-                                       old_type.result))
+        computation_types.FunctionType(
+            old_type.parameter[index], old_type.result
+        ),
+    )
 
   def test_selection(self):
-    fed_at_clients = computation_types.FederatedType(tf.int32,
-                                                     placements.CLIENTS)
+    fed_at_clients = computation_types.FederatedType(
+        tf.int32, placements.CLIENTS
+    )
     fed_at_server = computation_types.FederatedType(tf.int32, placements.SERVER)
     tuple_of_federated_types = computation_types.StructType(
-        [fed_at_clients, fed_at_server])
+        [fed_at_clients, fed_at_server]
+    )
     lam = building_blocks.Lambda(
-        'x', tuple_of_federated_types,
+        'x',
+        tuple_of_federated_types,
         building_blocks.Selection(
-            building_blocks.Reference('x', tuple_of_federated_types), index=0))
+            building_blocks.Reference('x', tuple_of_federated_types), index=0
+        ),
+    )
     new_lam = form_utils._as_function_of_single_subparameter(lam, 0)
     self.assert_selected_param_to_result_type(lam, new_lam, 0)
 
   def test_named_element_selection(self):
-    fed_at_clients = computation_types.FederatedType(tf.int32,
-                                                     placements.CLIENTS)
+    fed_at_clients = computation_types.FederatedType(
+        tf.int32, placements.CLIENTS
+    )
     fed_at_server = computation_types.FederatedType(tf.int32, placements.SERVER)
     tuple_of_federated_types = computation_types.StructType([
         (None, fed_at_server),
         ('a', fed_at_clients),
     ])
     lam = building_blocks.Lambda(
-        'x', tuple_of_federated_types,
+        'x',
+        tuple_of_federated_types,
         building_blocks.Selection(
-            building_blocks.Reference('x', tuple_of_federated_types), name='a'))
+            building_blocks.Reference('x', tuple_of_federated_types), name='a'
+        ),
+    )
     new_lam = form_utils._as_function_of_single_subparameter(lam, 1)
     self.assert_selected_param_to_result_type(lam, new_lam, 1)
 
@@ -870,190 +947,258 @@ class AsFunctionOfSingleSubparameterTest(tf.test.TestCase):
 class AsFunctionOfSomeSubparametersTest(tf.test.TestCase):
 
   def test_raises_on_non_tuple_parameter(self):
-    lam = building_blocks.Lambda('x', tf.int32,
-                                 building_blocks.Reference('x', tf.int32))
+    lam = building_blocks.Lambda(
+        'x', tf.int32, building_blocks.Reference('x', tf.int32)
+    )
     with self.assertRaises(form_utils._ParameterSelectionError):
       form_utils._as_function_of_some_federated_subparameters(lam, [(0,)])
 
   def test_raises_on_selection_from_non_tuple(self):
-    lam = building_blocks.Lambda('x', [tf.int32],
-                                 building_blocks.Reference('x', [tf.int32]))
+    lam = building_blocks.Lambda(
+        'x', [tf.int32], building_blocks.Reference('x', [tf.int32])
+    )
     with self.assertRaises(form_utils._ParameterSelectionError):
       form_utils._as_function_of_some_federated_subparameters(lam, [(0, 0)])
 
   def test_raises_on_non_federated_selection(self):
-    lam = building_blocks.Lambda('x', [tf.int32],
-                                 building_blocks.Reference('x', [tf.int32]))
+    lam = building_blocks.Lambda(
+        'x', [tf.int32], building_blocks.Reference('x', [tf.int32])
+    )
     with self.assertRaises(form_utils._NonFederatedSelectionError):
       form_utils._as_function_of_some_federated_subparameters(lam, [(0,)])
 
   def test_raises_on_selections_at_different_placements(self):
-    fed_at_clients = computation_types.FederatedType(tf.int32,
-                                                     placements.CLIENTS)
+    fed_at_clients = computation_types.FederatedType(
+        tf.int32, placements.CLIENTS
+    )
     fed_at_server = computation_types.FederatedType(tf.int32, placements.SERVER)
     tuple_of_federated_types = computation_types.StructType(
-        [fed_at_clients, fed_at_server])
+        [fed_at_clients, fed_at_server]
+    )
     lam = building_blocks.Lambda(
-        'x', tuple_of_federated_types,
+        'x',
+        tuple_of_federated_types,
         building_blocks.Selection(
-            building_blocks.Reference('x', tuple_of_federated_types), index=0))
+            building_blocks.Reference('x', tuple_of_federated_types), index=0
+        ),
+    )
     with self.assertRaises(form_utils._MismatchedSelectionPlacementError):
       form_utils._as_function_of_some_federated_subparameters(lam, [(0,), (1,)])
 
   def test_single_element_selection(self):
-    fed_at_clients = computation_types.FederatedType(tf.int32,
-                                                     placements.CLIENTS)
+    fed_at_clients = computation_types.FederatedType(
+        tf.int32, placements.CLIENTS
+    )
     fed_at_server = computation_types.FederatedType(tf.int32, placements.SERVER)
     tuple_of_federated_types = computation_types.StructType(
-        [fed_at_clients, fed_at_server])
+        [fed_at_clients, fed_at_server]
+    )
     lam = building_blocks.Lambda(
-        'x', tuple_of_federated_types,
+        'x',
+        tuple_of_federated_types,
         building_blocks.Selection(
-            building_blocks.Reference('x', tuple_of_federated_types), index=0))
+            building_blocks.Reference('x', tuple_of_federated_types), index=0
+        ),
+    )
 
     new_lam = form_utils._as_function_of_some_federated_subparameters(
-        lam, [(0,)])
+        lam, [(0,)]
+    )
     expected_parameter_type = computation_types.at_clients((tf.int32,))
     type_test_utils.assert_types_equivalent(
         new_lam.type_signature,
-        computation_types.FunctionType(expected_parameter_type,
-                                       lam.result.type_signature))
+        computation_types.FunctionType(
+            expected_parameter_type, lam.result.type_signature
+        ),
+    )
 
   def test_single_named_element_selection(self):
-    fed_at_clients = computation_types.FederatedType(tf.int32,
-                                                     placements.CLIENTS)
+    fed_at_clients = computation_types.FederatedType(
+        tf.int32, placements.CLIENTS
+    )
     fed_at_server = computation_types.FederatedType(tf.int32, placements.SERVER)
-    tuple_of_federated_types = computation_types.StructType([
-        ('a', fed_at_clients), ('b', fed_at_server)
-    ])
+    tuple_of_federated_types = computation_types.StructType(
+        [('a', fed_at_clients), ('b', fed_at_server)]
+    )
     lam = building_blocks.Lambda(
-        'x', tuple_of_federated_types,
+        'x',
+        tuple_of_federated_types,
         building_blocks.Selection(
-            building_blocks.Reference('x', tuple_of_federated_types), name='a'))
+            building_blocks.Reference('x', tuple_of_federated_types), name='a'
+        ),
+    )
 
     new_lam = form_utils._as_function_of_some_federated_subparameters(
-        lam, [(0,)])
+        lam, [(0,)]
+    )
     expected_parameter_type = computation_types.at_clients((tf.int32,))
     type_test_utils.assert_types_equivalent(
         new_lam.type_signature,
-        computation_types.FunctionType(expected_parameter_type,
-                                       lam.result.type_signature))
+        computation_types.FunctionType(
+            expected_parameter_type, lam.result.type_signature
+        ),
+    )
 
   def test_single_element_selection_leaves_no_unbound_references(self):
-    fed_at_clients = computation_types.FederatedType(tf.int32,
-                                                     placements.CLIENTS)
+    fed_at_clients = computation_types.FederatedType(
+        tf.int32, placements.CLIENTS
+    )
     fed_at_server = computation_types.FederatedType(tf.int32, placements.SERVER)
     tuple_of_federated_types = computation_types.StructType(
-        [fed_at_clients, fed_at_server])
+        [fed_at_clients, fed_at_server]
+    )
     lam = building_blocks.Lambda(
-        'x', tuple_of_federated_types,
+        'x',
+        tuple_of_federated_types,
         building_blocks.Selection(
-            building_blocks.Reference('x', tuple_of_federated_types), index=0))
+            building_blocks.Reference('x', tuple_of_federated_types), index=0
+        ),
+    )
     new_lam = form_utils._as_function_of_some_federated_subparameters(
-        lam, [(0,)])
+        lam, [(0,)]
+    )
     unbound_references = transformation_utils.get_map_of_unbound_references(
-        new_lam)[new_lam]
+        new_lam
+    )[new_lam]
     self.assertEmpty(unbound_references)
 
   def test_single_nested_element_selection(self):
-    fed_at_clients = computation_types.FederatedType(tf.int32,
-                                                     placements.CLIENTS)
+    fed_at_clients = computation_types.FederatedType(
+        tf.int32, placements.CLIENTS
+    )
     fed_at_server = computation_types.FederatedType(tf.int32, placements.SERVER)
-    tuple_of_federated_types = computation_types.StructType([[fed_at_clients],
-                                                             fed_at_server])
+    tuple_of_federated_types = computation_types.StructType(
+        [[fed_at_clients], fed_at_server]
+    )
     lam = building_blocks.Lambda(
-        'x', tuple_of_federated_types,
+        'x',
+        tuple_of_federated_types,
         building_blocks.Selection(
             building_blocks.Selection(
                 building_blocks.Reference('x', tuple_of_federated_types),
-                index=0),
-            index=0))
+                index=0,
+            ),
+            index=0,
+        ),
+    )
 
     new_lam = form_utils._as_function_of_some_federated_subparameters(
-        lam, [(0, 0)])
+        lam, [(0, 0)]
+    )
     expected_parameter_type = computation_types.at_clients((tf.int32,))
     type_test_utils.assert_types_equivalent(
         new_lam.type_signature,
-        computation_types.FunctionType(expected_parameter_type,
-                                       lam.result.type_signature))
+        computation_types.FunctionType(
+            expected_parameter_type, lam.result.type_signature
+        ),
+    )
 
   def test_multiple_nested_element_selection(self):
-    fed_at_clients = computation_types.FederatedType(tf.int32,
-                                                     placements.CLIENTS)
+    fed_at_clients = computation_types.FederatedType(
+        tf.int32, placements.CLIENTS
+    )
     fed_at_server = computation_types.FederatedType(tf.int32, placements.SERVER)
-    tuple_of_federated_types = computation_types.StructType([[fed_at_clients],
-                                                             fed_at_server,
-                                                             [fed_at_clients]])
+    tuple_of_federated_types = computation_types.StructType(
+        [[fed_at_clients], fed_at_server, [fed_at_clients]]
+    )
     first_selection = building_blocks.Selection(
         building_blocks.Selection(
-            building_blocks.Reference('x', tuple_of_federated_types), index=0),
-        index=0)
+            building_blocks.Reference('x', tuple_of_federated_types), index=0
+        ),
+        index=0,
+    )
     second_selection = building_blocks.Selection(
         building_blocks.Selection(
-            building_blocks.Reference('x', tuple_of_federated_types), index=2),
-        index=0)
+            building_blocks.Reference('x', tuple_of_federated_types), index=2
+        ),
+        index=0,
+    )
     lam = building_blocks.Lambda(
-        'x', tuple_of_federated_types,
-        building_blocks.Struct([first_selection, second_selection]))
+        'x',
+        tuple_of_federated_types,
+        building_blocks.Struct([first_selection, second_selection]),
+    )
 
     new_lam = form_utils._as_function_of_some_federated_subparameters(
-        lam, [(0, 0), (2, 0)])
+        lam, [(0, 0), (2, 0)]
+    )
 
     expected_parameter_type = computation_types.at_clients((tf.int32, tf.int32))
     type_test_utils.assert_types_equivalent(
         new_lam.type_signature,
-        computation_types.FunctionType(expected_parameter_type,
-                                       lam.result.type_signature))
+        computation_types.FunctionType(
+            expected_parameter_type, lam.result.type_signature
+        ),
+    )
 
   def test_multiple_nested_named_element_selection(self):
-    fed_at_clients = computation_types.FederatedType(tf.int32,
-                                                     placements.CLIENTS)
+    fed_at_clients = computation_types.FederatedType(
+        tf.int32, placements.CLIENTS
+    )
     fed_at_server = computation_types.FederatedType(tf.int32, placements.SERVER)
     tuple_of_federated_types = computation_types.StructType([
-        ('a', [('a', fed_at_clients)]), ('b', fed_at_server),
-        ('c', [('c', fed_at_clients)])
+        ('a', [('a', fed_at_clients)]),
+        ('b', fed_at_server),
+        ('c', [('c', fed_at_clients)]),
     ])
     first_selection = building_blocks.Selection(
         building_blocks.Selection(
-            building_blocks.Reference('x', tuple_of_federated_types), name='a'),
-        name='a')
+            building_blocks.Reference('x', tuple_of_federated_types), name='a'
+        ),
+        name='a',
+    )
     second_selection = building_blocks.Selection(
         building_blocks.Selection(
-            building_blocks.Reference('x', tuple_of_federated_types), name='c'),
-        name='c')
+            building_blocks.Reference('x', tuple_of_federated_types), name='c'
+        ),
+        name='c',
+    )
     lam = building_blocks.Lambda(
-        'x', tuple_of_federated_types,
-        building_blocks.Struct([first_selection, second_selection]))
+        'x',
+        tuple_of_federated_types,
+        building_blocks.Struct([first_selection, second_selection]),
+    )
 
     new_lam = form_utils._as_function_of_some_federated_subparameters(
-        lam, [(0, 0), (2, 0)])
+        lam, [(0, 0), (2, 0)]
+    )
 
     expected_parameter_type = computation_types.at_clients((tf.int32, tf.int32))
     type_test_utils.assert_types_equivalent(
         new_lam.type_signature,
-        computation_types.FunctionType(expected_parameter_type,
-                                       lam.result.type_signature))
+        computation_types.FunctionType(
+            expected_parameter_type, lam.result.type_signature
+        ),
+    )
 
   def test_binding_multiple_args_results_in_unique_names(self):
-    fed_at_clients = computation_types.FederatedType(tf.int32,
-                                                     placements.CLIENTS)
+    fed_at_clients = computation_types.FederatedType(
+        tf.int32, placements.CLIENTS
+    )
     fed_at_server = computation_types.FederatedType(tf.int32, placements.SERVER)
-    tuple_of_federated_types = computation_types.StructType([[fed_at_clients],
-                                                             fed_at_server,
-                                                             [fed_at_clients]])
+    tuple_of_federated_types = computation_types.StructType(
+        [[fed_at_clients], fed_at_server, [fed_at_clients]]
+    )
     first_selection = building_blocks.Selection(
         building_blocks.Selection(
-            building_blocks.Reference('x', tuple_of_federated_types), index=0),
-        index=0)
+            building_blocks.Reference('x', tuple_of_federated_types), index=0
+        ),
+        index=0,
+    )
     second_selection = building_blocks.Selection(
         building_blocks.Selection(
-            building_blocks.Reference('x', tuple_of_federated_types), index=2),
-        index=0)
+            building_blocks.Reference('x', tuple_of_federated_types), index=2
+        ),
+        index=0,
+    )
     lam = building_blocks.Lambda(
-        'x', tuple_of_federated_types,
-        building_blocks.Struct([first_selection, second_selection]))
+        'x',
+        tuple_of_federated_types,
+        building_blocks.Struct([first_selection, second_selection]),
+    )
     new_lam = form_utils._as_function_of_some_federated_subparameters(
-        lam, [(0, 0), (2, 0)])
+        lam, [(0, 0), (2, 0)]
+    )
     tree_analysis.check_has_unique_names(new_lam)
 
 

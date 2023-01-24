@@ -30,7 +30,7 @@ from tensorflow_federated.python.core.impl.computation import computation_impl
 def transform_to_native_form(
     comp: computation_impl.ConcreteComputation,
     transform_math_to_tf: bool = False,
-    grappler_config: Optional[tf.compat.v1.ConfigProto] = None
+    grappler_config: Optional[tf.compat.v1.ConfigProto] = None,
 ) -> computation_impl.ConcreteComputation:
   """Compiles a computation for execution in the TFF native runtime.
 
@@ -52,14 +52,17 @@ def transform_to_native_form(
       version of `comp`.
   """
   proto = computation_impl.ConcreteComputation.get_proto(comp)
-  computation_building_block = building_blocks.ComputationBuildingBlock.from_proto(
-      proto)
+  computation_building_block = (
+      building_blocks.ComputationBuildingBlock.from_proto(proto)
+  )
   try:
     logging.debug('Compiling TFF computation to CDF.')
     with tracing.span(
-        'transform_to_native_form', 'to_call_dominant', span=True):
+        'transform_to_native_form', 'to_call_dominant', span=True
+    ):
       call_dominant_form = transformations.to_call_dominant(
-          computation_building_block)
+          computation_building_block
+      )
     logging.debug('Computation compiled to:')
     logging.debug(call_dominant_form.formatted_representation())
     if transform_math_to_tf:
@@ -67,32 +70,50 @@ def transform_to_native_form(
       with tracing.span(
           'transform_to_native_form',
           'compile_local_subcomputations_to_tensorflow',
-          span=True):
-        call_dominant_form = compiler.compile_local_subcomputations_to_tensorflow(
-            call_dominant_form)
+          span=True,
+      ):
+        call_dominant_form = (
+            compiler.compile_local_subcomputations_to_tensorflow(
+                call_dominant_form
+            )
+        )
       logging.debug('Computation compiled to:')
       logging.debug(call_dominant_form.formatted_representation())
     if grappler_config is not None:
       with tracing.span(
-          'transform_to_native_form', 'optimize_tf_graphs', span=True):
-        call_dominant_form, _ = compiled_computation_transformations.optimize_tensorflow_graphs(
-            call_dominant_form, grappler_config)
+          'transform_to_native_form', 'optimize_tf_graphs', span=True
+      ):
+        call_dominant_form, _ = (
+            compiled_computation_transformations.optimize_tensorflow_graphs(
+                call_dominant_form, grappler_config
+            )
+        )
     with tracing.span(
         'transform_to_native_form',
         'transform_tf_call_ops_disable_grappler',
-        span=True):
-      disabled_grapler_form, _ = compiled_computation_transformations.transform_tf_call_ops_to_disable_grappler(
-          call_dominant_form)
+        span=True,
+    ):
+      disabled_grapler_form, _ = (
+          compiled_computation_transformations.transform_tf_call_ops_to_disable_grappler(
+              call_dominant_form
+          )
+      )
     with tracing.span(
-        'transform_to_native_form', 'transform_tf_add_ids', span=True):
-      form_with_ids, _ = compiled_computation_transformations.transform_tf_add_ids(
-          disabled_grapler_form)
+        'transform_to_native_form', 'transform_tf_add_ids', span=True
+    ):
+      form_with_ids, _ = (
+          compiled_computation_transformations.transform_tf_add_ids(
+              disabled_grapler_form
+          )
+      )
     return computation_impl.ConcreteComputation.from_building_block(
-        form_with_ids)
+        form_with_ids
+    )
   except ValueError as e:
     logging.debug('Compilation for native runtime failed with error %s', e)
-    logging.debug('computation: %s',
-                  computation_building_block.compact_representation())
+    logging.debug(
+        'computation: %s', computation_building_block.compact_representation()
+    )
     return comp
 
 
@@ -110,13 +131,18 @@ def desugar_and_transform_to_native(comp):
   rewrite_options.loop_optimization = aggressive
   rewrite_options.function_optimization = aggressive
 
-  intrinsics_desugared_bb, _ = tree_transformations.replace_intrinsics_with_bodies(
-      comp.to_building_block())
+  intrinsics_desugared_bb, _ = (
+      tree_transformations.replace_intrinsics_with_bodies(
+          comp.to_building_block()
+      )
+  )
   # Desugaring intrinsics injects TF computations; transforming to native form
   # adds TF cache IDs to them. It is crucial that these transformations execute
   # in this order.
   native_form = transform_to_native_form(
       computation_impl.ConcreteComputation.from_building_block(
-          intrinsics_desugared_bb),
-      grappler_config=grappler_config)
+          intrinsics_desugared_bb
+      ),
+      grappler_config=grappler_config,
+  )
   return native_form

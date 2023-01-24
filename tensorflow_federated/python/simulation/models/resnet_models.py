@@ -16,7 +16,6 @@
 
 Related papers/blogs:
 - http://arxiv.org/pdf/1603.05027v2.pdf
-
 """
 
 from collections.abc import Iterable

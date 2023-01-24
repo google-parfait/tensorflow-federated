@@ -48,13 +48,16 @@ def federated_computation_serializer(
   py_typecheck.check_type(context_stack, context_stack_base.ContextStack)
   if suggested_name is not None:
     py_typecheck.check_type(suggested_name, str)
-  if isinstance(context_stack.current,
-                federated_computation_context.FederatedComputationContext):
+  if isinstance(
+      context_stack.current,
+      federated_computation_context.FederatedComputationContext,
+  ):
     parent_context = context_stack.current
   else:
     parent_context = None
   context = federated_computation_context.FederatedComputationContext(
-      context_stack, suggested_name=suggested_name, parent=parent_context)
+      context_stack, suggested_name=suggested_name, parent=parent_context
+  )
   if parameter_name is not None:
     py_typecheck.check_type(parameter_name, str)
     parameter_name = '{}_{}'.format(context.name, str(parameter_name))
@@ -63,15 +66,19 @@ def federated_computation_serializer(
       result = yield None
     else:
       result = yield value_impl.Value(
-          building_blocks.Reference(parameter_name, parameter_type))
+          building_blocks.Reference(parameter_name, parameter_type)
+      )
     annotated_result_type = type_conversions.infer_type(result)
     result = value_impl.to_value(result, annotated_result_type)
     result_comp = result.comp
     symbols_bound_in_context = context_stack.current.symbol_bindings
     if symbols_bound_in_context:
       result_comp = building_blocks.Block(
-          local_symbols=symbols_bound_in_context, result=result_comp)
-    annotated_type = computation_types.FunctionType(parameter_type,
-                                                    annotated_result_type)
-    yield building_blocks.Lambda(parameter_name, parameter_type,
-                                 result_comp), annotated_type
+          local_symbols=symbols_bound_in_context, result=result_comp
+      )
+    annotated_type = computation_types.FunctionType(
+        parameter_type, annotated_result_type
+    )
+    yield building_blocks.Lambda(
+        parameter_name, parameter_type, result_comp
+    ), annotated_type
