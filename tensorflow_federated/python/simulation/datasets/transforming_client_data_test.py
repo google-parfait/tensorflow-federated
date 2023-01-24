@@ -150,13 +150,11 @@ class TransformingClientDataTest(tf.test.TestCase):
 
     reduce_client_id = lambda client_id: tf.strings.split(client_id, sep='-')[0]
 
-    # pyformat: disable
     raw_data = {
         'CLIENT 1': [0],        # expanded to [0]
         'CLIENT 2': [1, 3, 5],  # expanded to [1, 3, 5], [2, 4, 6]
         'CLIENT 3': [7, 10]     # expanded to [7, 10], [8, 11], [9, 12]
-    }
-    # pyformat: enable
+    }  # pyformat: disable
     client_data = from_tensor_slices_client_data.TestClientData(raw_data)
     transformed_client_data = transforming_client_data.TransformingClientData(
         client_data, make_transform_fn, expand_client_id, reduce_client_id)

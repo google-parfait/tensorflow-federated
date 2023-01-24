@@ -435,7 +435,8 @@ def _create_local_cpp_executor_factory(
       cardinality, if thus number cannot be inferred by the arguments of a
       computation.
     max_concurrent_computation_calls: The maximum number of concurrent calls to
-      a single computation in the C++ runtime. If `None`, there is no limit.
+      a single computation in the C++ runtime. If nonpositive, there is no
+      limit.
     stream_structs: The flag to enable decomposing and streaming struct values.
 
   Raises:
@@ -536,9 +537,9 @@ def _create_local_cpp_executor_factory(
 
 def create_async_local_cpp_execution_context(
     default_num_clients: int = 0,
-    max_concurrent_computation_calls: int = 0,
+    max_concurrent_computation_calls: int = -1,
     stream_structs: bool = False,
-) -> async_execution_context.AsyncExecutionContext:
+) -> context_base.AsyncContext:
   """Returns an execution context backed by C++ runtime.
 
   This execution context starts a C++ worker assumed to be at path
@@ -568,7 +569,7 @@ def create_async_local_cpp_execution_context(
 
 def set_async_local_cpp_execution_context(
     default_num_clients: int = 0,
-    max_concurrent_computation_calls: int = 1,
+    max_concurrent_computation_calls: int = -1,
     stream_structs: bool = False,
 ) -> None:
   """Sets default context to a C++ runtime."""
@@ -582,9 +583,9 @@ def set_async_local_cpp_execution_context(
 
 def create_sync_local_cpp_execution_context(
     default_num_clients: int = 0,
-    max_concurrent_computation_calls: int = 0,
+    max_concurrent_computation_calls: int = -1,
     stream_structs: bool = False,
-) -> sync_execution_context.SyncExecutionContext:
+) -> context_base.SyncContext:
   """Returns an execution context backed by C++ runtime.
 
   This execution context starts a C++ worker assumed to be at path
@@ -596,7 +597,8 @@ def create_sync_local_cpp_execution_context(
       cardinality, if thus number cannot be inferred by the arguments of a
       computation.
     max_concurrent_computation_calls: The maximum number of concurrent calls to
-      a single computation in the C++ runtime. If `None`, there is no limit.
+      a single computation in the C++ runtime. If nonpositive, there is no
+      limit.
     stream_structs: The flag to enable decomposing and streaming struct values.
 
   Raises:
@@ -614,7 +616,7 @@ def create_sync_local_cpp_execution_context(
 
 def set_sync_local_cpp_execution_context(
     default_num_clients: int = 0,
-    max_concurrent_computation_calls: int = 1,
+    max_concurrent_computation_calls: int = -1,
     stream_structs: bool = False,
 ) -> None:
   """Sets default context to a C++ runtime."""

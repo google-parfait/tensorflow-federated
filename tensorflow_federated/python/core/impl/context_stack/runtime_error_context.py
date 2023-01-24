@@ -27,8 +27,9 @@ class RuntimeErrorContext(context_base.SyncContext):
         '\n'
         'If you are getting this error when testing a module inside of '
         '`tensorflow_federated/python/core/...`, you may need to explicitly '
-        'invoke `execution_contexts.set_local_cpp_execution_context()` in '
-        'the `main` function of your test.')
+        'invoke `execution_contexts.set_sync_local_cpp_execution_context()` in '
+        'the `main` function of your test.'
+    )
 
   def invoke(self, comp, arg):
     del comp  # Unused

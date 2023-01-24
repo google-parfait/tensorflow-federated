@@ -14,12 +14,14 @@
 
 import asyncio
 import collections
+import inspect
 import time
 
 from absl.testing import absltest
 import tensorflow as tf
 
 from tensorflow_federated.python.core.backends.native import cpp_execution_contexts
+from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.context_stack import get_context_stack
 from tensorflow_federated.python.core.impl.executors import executor_bindings
@@ -30,11 +32,48 @@ from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 
 
-class CPPExecutionContextTest(tf.test.TestCase):
+def _assert_signature_equal(first_obj, second_obj):
+  internal_signature = inspect.signature(first_obj)
+  external_signature = inspect.signature(second_obj)
+  # Only assert that the parameters and return type annotations are equal, the
+  # entire signature (e.g. the docstring) is not expected to be equal.
+  if internal_signature.parameters != external_signature.parameters:
+    raise AssertionError(
+        f'{internal_signature.parameters} != {external_signature.parameters}'
+    )
+  if (
+      internal_signature.return_annotation
+      != external_signature.return_annotation
+  ):
+    raise AssertionError(
+        f'{internal_signature.return_annotation} !='
+        f' {external_signature.return_annotation}'
+    )
+
+
+class CreateSyncLocalCPPExecutionContextTest(absltest.TestCase):
+
+  def test_has_same_signature(self):
+    _assert_signature_equal(
+        cpp_execution_contexts.create_sync_local_cpp_execution_context,
+        execution_contexts.create_sync_local_cpp_execution_context,
+    )
 
   def test_constructs_local_context(self):
-    context = cpp_execution_contexts.create_local_cpp_execution_context()
+    context = cpp_execution_contexts.create_sync_local_cpp_execution_context()
     self.assertIsInstance(context, context_base.SyncContext)
+
+
+class SetSyncLocalCPPExecutionContextTest(absltest.TestCase):
+
+  def test_has_same_signature(self):
+    _assert_signature_equal(
+        cpp_execution_contexts.set_sync_local_cpp_execution_context,
+        execution_contexts.set_sync_local_cpp_execution_context,
+    )
+
+
+class CPPExecutionContextTest(tf.test.TestCase):
 
   def test_constructs_remote_context(self):
     targets = ['fake_target']
@@ -52,7 +91,7 @@ class CPPExecutionContextTest(tf.test.TestCase):
     def identity(x):
       return x
 
-    context = cpp_execution_contexts.create_local_cpp_execution_context()
+    context = cpp_execution_contexts.create_sync_local_cpp_execution_context()
     with get_context_stack.get_context_stack().install(context):
       odict = identity(collections.OrderedDict(a=0, b=1.))
 
@@ -65,7 +104,7 @@ class CPPExecutionContextTest(tf.test.TestCase):
     def multiply(ordered_dict):
       return ordered_dict['x'] * ordered_dict['y']
 
-    context = cpp_execution_contexts.create_local_cpp_execution_context()
+    context = cpp_execution_contexts.create_sync_local_cpp_execution_context()
     with get_context_stack.get_context_stack().install(context):
       zero = multiply(collections.OrderedDict(x=0, y=1))
       one = multiply(collections.OrderedDict(x=1, y=1))
@@ -118,7 +157,7 @@ class CPPExecutionContextTest(tf.test.TestCase):
     def create_dataset():
       return tf.data.Dataset.range(5)
 
-    context = cpp_execution_contexts.create_local_cpp_execution_context()
+    context = cpp_execution_contexts.create_sync_local_cpp_execution_context()
     with get_context_stack.get_context_stack().install(context):
       with self.subTest('unplaced'):
         dataset = create_dataset()

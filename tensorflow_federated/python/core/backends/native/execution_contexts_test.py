@@ -223,7 +223,7 @@ class SyncLocalCPPExecutionContextTest(absltest.TestCase):
     expected_args = [
         mock.ANY,
         mock.ANY,
-        '--max_concurrent_computation_calls=0',
+        '--max_concurrent_computation_calls=-1',
     ]
     mock_popen.assert_called_once_with(
         expected_args, stdout=sys.stdout, stderr=sys.stderr)
@@ -250,7 +250,7 @@ class SyncLocalCPPExecutionContextTest(absltest.TestCase):
     expected_args = [
         mock.ANY,
         mock.ANY,
-        '--max_concurrent_computation_calls=0',
+        '--max_concurrent_computation_calls=-1',
     ]
     mock_popen.assert_called_once_with(
         expected_args, stdout=sys.stdout, stderr=sys.stderr)
