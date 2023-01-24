@@ -575,8 +575,9 @@ def check_returns_type(*args):
     # function definition, of an inline invocation as "... = xyz(lambda....).
     if len(args) != 2:
       raise ValueError(
-          f'`check_returns_type` expected two arguments: a function to decorate '
-          f'and an expected return type. Found {len(args)} arguments: {args}')
+          f'`check_returns_type` expected two arguments: a function to '
+          f'decorate and an expected return type. Found {len(args)} arguments: '
+          f'{args}')
     return _check_returns_type_helper(args[0],
                                       computation_types.to_type(args[1]))
   else:
