@@ -29,7 +29,6 @@ from tensorflow_federated.python.core.impl.executors import executor_factory
 from tensorflow_federated.python.core.impl.executors import executor_test_utils
 from tensorflow_federated.python.core.impl.executors import federated_composing_strategy
 from tensorflow_federated.python.core.impl.executors import federating_executor
-from tensorflow_federated.python.core.impl.executors import reference_resolving_executor
 from tensorflow_federated.python.core.impl.executors import remote_executor
 from tensorflow_federated.python.core.impl.executors import remote_executor_grpc_stub
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
@@ -101,12 +100,6 @@ def _create_concurrent_maxthread_tuples():
         clients_per_thread=concurrency, leaf_executor_fn=tf_executor_mock
     )
     tuples.append((local_ex_string, ex_factory, concurrency, tf_executor_mock))
-    debug_ex_string = 'debug_executor_{}_client_thread'.format(concurrency)
-    tf_executor_mock = ExecutorMock()
-    ex_factory = python_executor_stacks.thread_debugging_executor_factory(
-        clients_per_thread=concurrency, leaf_executor_fn=tf_executor_mock
-    )
-    tuples.append((debug_ex_string, ex_factory, concurrency, tf_executor_mock))
   return tuples
 
 
@@ -233,10 +226,6 @@ class ExecutorStacksTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('local_executor', python_executor_stacks.local_executor_factory),
-      (
-          'debug_executor',
-          python_executor_stacks.thread_debugging_executor_factory,
-      ),
   )
   def test_construction_with_no_args(self, executor_factory_fn):
     executor_factory_impl = executor_factory_fn()
@@ -302,18 +291,8 @@ class ExecutorStacksTest(parameterized.TestCase):
           python_executor_stacks.local_executor_factory(),
       ),
       (
-          'debug_executor_none_clients',
-          python_executor_stacks.thread_debugging_executor_factory(),
-      ),
-      (
           'local_executor_one_client',
           python_executor_stacks.local_executor_factory(default_num_clients=1),
-      ),
-      (
-          'debug_executor_one_client',
-          python_executor_stacks.thread_debugging_executor_factory(
-              default_num_clients=1
-          ),
       ),
   )
   def test_execution_of_tensorflow(self, executor):
@@ -337,19 +316,6 @@ class ExecutorStacksTest(parameterized.TestCase):
     # One for server executor, one for unplaced executor, concurrency_level for
     # clients.
     self.assertLen(args_list, concurrency_level + 2)
-
-  @mock.patch.object(
-      reference_resolving_executor,
-      'ReferenceResolvingExecutor',
-      return_value=ExecutorMock(),
-  )
-  def test_thread_debugging_executor_constructs_exactly_one_reference_resolving_executor(
-      self, executor_mock
-  ):
-    python_executor_stacks.thread_debugging_executor_factory().create_executor(
-        {placements.CLIENTS: 10}
-    )
-    executor_mock.assert_called_once()
 
 
 class UnplacedExecutorFactoryTest(parameterized.TestCase):

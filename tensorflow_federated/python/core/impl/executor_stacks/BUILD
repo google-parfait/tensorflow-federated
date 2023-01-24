@@ -122,7 +122,6 @@ py_cpu_gpu_test(
         "//tensorflow_federated/python/core/impl/executors:executor_test_utils",
         "//tensorflow_federated/python/core/impl/executors:federated_composing_strategy",
         "//tensorflow_federated/python/core/impl/executors:federating_executor",
-        "//tensorflow_federated/python/core/impl/executors:reference_resolving_executor",
         "//tensorflow_federated/python/core/impl/executors:remote_executor",
         "//tensorflow_federated/python/core/impl/executors:remote_executor_grpc_stub",
         "//tensorflow_federated/python/core/impl/federated_context:federated_computation",

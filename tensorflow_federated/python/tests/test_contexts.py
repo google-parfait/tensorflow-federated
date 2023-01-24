@@ -66,8 +66,6 @@ def get_all_contexts():
            WORKER_PORTS, AGGREGATOR_PORTS)),
       ('native_sync_local_cpp',
        tff.backends.native.create_sync_local_cpp_execution_context),
-      ('native_thread_debug',
-       tff.backends.native.create_thread_debugging_execution_context),
       ('test_python',
        tff.backends.test.create_test_python_execution_context),
   ]  # pyformat: disable

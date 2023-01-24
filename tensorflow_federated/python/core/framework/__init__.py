@@ -35,7 +35,6 @@ from tensorflow_federated.python.core.impl.executor_stacks.python_executor_stack
 from tensorflow_federated.python.core.impl.executor_stacks.python_executor_stacks import remote_executor_factory
 from tensorflow_federated.python.core.impl.executor_stacks.python_executor_stacks import remote_executor_factory_from_stubs
 from tensorflow_federated.python.core.impl.executor_stacks.python_executor_stacks import ResourceManagingExecutorFactory
-from tensorflow_federated.python.core.impl.executor_stacks.python_executor_stacks import thread_debugging_executor_factory
 from tensorflow_federated.python.core.impl.executor_stacks.python_executor_stacks import UnplacedExecutorFactory
 from tensorflow_federated.python.core.impl.executors import executors_errors
 from tensorflow_federated.python.core.impl.executors.cardinalities_utils import merge_cardinalities

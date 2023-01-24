@@ -150,34 +150,6 @@ def set_local_async_python_execution_context(
   context_stack_impl.context_stack.set_default_context(context)
 
 
-def create_thread_debugging_execution_context(
-    default_num_clients: int = 0, clients_per_thread=1
-):
-  """Creates a simple execution context that executes computations locally."""
-  factory = python_executor_stacks.thread_debugging_executor_factory(
-      default_num_clients=default_num_clients,
-      clients_per_thread=clients_per_thread,
-  )
-
-  def _debug_compiler(comp):
-    return compiler.transform_to_native_form(comp, transform_math_to_tf=True)
-
-  return sync_execution_context.SyncExecutionContext(
-      executor_fn=factory, compiler_fn=_debug_compiler
-  )
-
-
-def set_thread_debugging_execution_context(
-    default_num_clients: int = 0, clients_per_thread=1
-):
-  """Sets an execution context that executes computations locally."""
-  context = create_thread_debugging_execution_context(
-      default_num_clients=default_num_clients,
-      clients_per_thread=clients_per_thread,
-  )
-  context_stack_impl.context_stack.set_default_context(context)
-
-
 def create_remote_python_execution_context(
     channels,
     thread_pool_executor=None,
