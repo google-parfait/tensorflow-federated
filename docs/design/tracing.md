@@ -40,15 +40,15 @@ methods (e.g. `__getattr__`).
 In more detail, when there is exactly one argument, tracing is accomplished by:
 
 1.  Constructing a
-    [value_impl.ValueImpl](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/federated_context/value_impl.py)
+    [value_impl.Value](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/federated_context/value_impl.py)
     backed by a
     [building_blocks.Reference](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/compiler/building_blocks.py)
     with appropriate type signature to represent the argument.
 
-2.  Invoking the function on the `ValueImpl`. This causes the Python runtime to
-    invoke the dunder methods implemented by `ValueImpl`, which translates those
+2.  Invoking the function on the `Value`. This causes the Python runtime to
+    invoke the dunder methods implemented by `Value`, which translates those
     dunder methods as AST construction. Each dunder method constructs a AST and
-    returns a `ValueImpl` backed by that AST.
+    returns a `Value` backed by that AST.
 
 For example:
 
@@ -59,13 +59,13 @@ def foo(x):
 
 Here the function’s parameter is a tuple and in the body of the fuction the 0th
 element is selected. This invokes Python’s `__getitem__` method, which is
-overridden on `ValueImpl`. In the simplest case, the implementation of
-`ValueImpl.__getitem__` constructs a
+overridden on `Value`. In the simplest case, the implementation of
+`Value.__getitem__` constructs a
 [building_blocks.Selection](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/compiler/building_blocks.py)
-to represent the invocation of `__getitem__` and returns a `ValueImpl` backed by
+to represent the invocation of `__getitem__` and returns a `Value` backed by
 this new `Selection`.
 
-Tracing continues because each dunder methods return a `ValueImpl`, stamping out
+Tracing continues because each dunder methods return a `Value`, stamping out
 every operation in the body of the function which causes one of the overriden
 dunder methods to be invoked.
 
