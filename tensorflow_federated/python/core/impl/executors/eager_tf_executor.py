@@ -536,7 +536,7 @@ def to_representation_for_type(
       return to_representation_for_type(
           value, tf_function_cache, type_spec=type_spec, device=None)
   elif isinstance(value, EagerValue):
-    return value.internal_representation
+    return value.reference
   elif isinstance(value, executor_value_base.ExecutorValue):
     raise TypeError(
         'Cannot accept a value embedded within a non-eager executor.')
@@ -568,12 +568,7 @@ class EagerValue(executor_value_base.ExecutorValue):
     self._value = value
 
   @property
-  def internal_representation(self):
-    """Returns a representation of the eager value embedded in the executor.
-
-    This property is only intended for use by the eager executor and tests. Not
-    for consumption by consumers of the executor interface.
-    """
+  def reference(self):
     return self._value
 
   @property
@@ -619,8 +614,8 @@ class EagerTFExecutor(executor_base.Executor):
   One further implementation detail is worth noting. Like all executors, this
   executor embeds incoming data as an instance of an executor-specific class,
   here the `EagerValue`. All `EagerValues` are assumed in this implmentation
-  to have an `internal_representation` which is a fixed point under the action
-  of `to_representation_for_type` with type the `type_signature` attribute of
+  to have an `reference` which is a fixed point under the action of
+  `to_representation_for_type` with type the `type_signature` attribute of
   the `EagerValue`. This invariant is introduced by normalization in
   `create_value`, and is respected by the form of returned `EagerValues` in all
   other methods this executor exposes.
@@ -711,11 +706,10 @@ class EagerTFExecutor(executor_base.Executor):
           comp.type_signature))
     if comp.type_signature.parameter is not None:
       return EagerValue(
-          comp.internal_representation(arg.internal_representation),
-          comp.type_signature.result)
+          comp.reference(arg.reference), comp.type_signature.result
+      )
     elif arg is None:
-      return EagerValue(comp.internal_representation(),
-                        comp.type_signature.result)
+      return EagerValue(comp.reference(), comp.type_signature.result)
     else:
       raise TypeError('Cannot pass an argument to a no-argument function.')
 
@@ -734,7 +728,7 @@ class EagerTFExecutor(executor_base.Executor):
     type_elements = []
     for k, v in elements:
       py_typecheck.check_type(v, EagerValue)
-      val_elements.append((k, v.internal_representation))
+      val_elements.append((k, v.reference))
       type_elements.append((k, v.type_signature))
     return EagerValue(
         structure.Struct(val_elements),
@@ -759,10 +753,9 @@ class EagerTFExecutor(executor_base.Executor):
     """
     py_typecheck.check_type(source, EagerValue)
     py_typecheck.check_type(source.type_signature, computation_types.StructType)
-    py_typecheck.check_type(source.internal_representation, structure.Struct)
+    py_typecheck.check_type(source.reference, structure.Struct)
     py_typecheck.check_type(index, int)
-    return EagerValue(source.internal_representation[index],
-                      source.type_signature[index])
+    return EagerValue(source.reference[index], source.type_signature[index])
 
   def close(self):
     pass

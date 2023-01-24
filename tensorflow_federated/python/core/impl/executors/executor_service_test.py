@@ -101,6 +101,10 @@ class ExecutorServiceTest(absltest.TestCase):
         self._t = t
 
       @property
+      def reference(self):
+        return self._v
+
+      @property
       def type_signature(self):
         return self._t
 

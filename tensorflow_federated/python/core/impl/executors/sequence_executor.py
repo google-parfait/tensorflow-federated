@@ -275,9 +275,12 @@ async def _delegate(val, type_spec: computation_types.Type,
 class SequenceExecutorValue(executor_value_base.ExecutorValue):
   """A representation of a value owned and managed by the `SequenceExecutor`."""
 
-  _VALID_INTERNAL_REPRESENTATION_TYPES = (_Sequence, _SequenceOp,
-                                          executor_value_base.ExecutorValue,
-                                          structure.Struct)
+  _VALUE_TYPES = (
+      _Sequence,
+      _SequenceOp,
+      executor_value_base.ExecutorValue,
+      structure.Struct,
+  )
 
   def __init__(self, value, type_spec):
     """Creates an instance of `SequenceExecutorValue` to represent `value`.
@@ -300,13 +303,12 @@ class SequenceExecutorValue(executor_value_base.ExecutorValue):
       type_spec: The TFF type of the value.
     """
     py_typecheck.check_type(type_spec, computation_types.Type)
-    py_typecheck.check_type(
-        value, SequenceExecutorValue._VALID_INTERNAL_REPRESENTATION_TYPES)
+    py_typecheck.check_type(value, SequenceExecutorValue._VALUE_TYPES)
     self._type_signature = type_spec
     self._value = value
 
   @property
-  def internal_representation(self):
+  def reference(self):
     return self._value
 
   @property
@@ -432,18 +434,18 @@ class SequenceExecutor(executor_base.Executor):
   async def create_call(self, comp, arg=None):
     py_typecheck.check_type(comp, SequenceExecutorValue)
     py_typecheck.check_type(comp.type_signature, computation_types.FunctionType)
-    fn = comp.internal_representation
+    fn = comp.reference
     if isinstance(fn, executor_value_base.ExecutorValue):
       if arg is not None:
-        arg = await _delegate(arg.internal_representation, arg.type_signature,
-                              self._target_executor)
+        arg = await _delegate(
+            arg.reference, arg.type_signature, self._target_executor
+        )
       target_result = await self._target_executor.create_call(fn, arg)
       return SequenceExecutorValue(target_result, target_result.type_signature)
     if isinstance(fn, _SequenceOp):
       py_typecheck.check_type(arg, SequenceExecutorValue)
       comp.type_signature.parameter.check_assignable_from(arg.type_signature)
-      result = await fn.execute(self._target_executor,
-                                arg.internal_representation)
+      result = await fn.execute(self._target_executor, arg.reference)
       result_type = comp.type_signature.result
       return SequenceExecutorValue(result, result_type)
     raise NotImplementedError(
@@ -458,7 +460,7 @@ class SequenceExecutor(executor_base.Executor):
     type_elements = []
     for k, v in elements:
       py_typecheck.check_type(v, SequenceExecutorValue)
-      val_elements.append((k, v.internal_representation))
+      val_elements.append((k, v.reference))
       type_elements.append((k, v.type_signature))
     return SequenceExecutorValue(
         structure.Struct(val_elements),
@@ -468,15 +470,16 @@ class SequenceExecutor(executor_base.Executor):
   async def create_selection(self, source, index):
     py_typecheck.check_type(source, SequenceExecutorValue)
     py_typecheck.check_type(source.type_signature, computation_types.StructType)
-    if isinstance(source.internal_representation,
-                  executor_value_base.ExecutorValue):
+    if isinstance(source.reference, executor_value_base.ExecutorValue):
       target_val = await self._target_executor.create_selection(
-          source.internal_representation, index)
+          source.reference, index
+      )
       return SequenceExecutorValue(target_val, target_val.type_signature)
-    py_typecheck.check_type(source.internal_representation, structure.Struct)
+    py_typecheck.check_type(source.reference, structure.Struct)
     py_typecheck.check_type(index, int)
-    return SequenceExecutorValue(source.internal_representation[index],
-                                 source.type_signature[index])
+    return SequenceExecutorValue(
+        source.reference[index], source.type_signature[index]
+    )
 
   def close(self):
     self._target_executor.close()

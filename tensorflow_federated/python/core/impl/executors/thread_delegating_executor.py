@@ -11,11 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
-# pytype: skip-file
-# This modules disables the Pytype analyzer, see
-# https://github.com/tensorflow/federated/blob/main/docs/pytype.md for more
-# information.
 """A concurrent executor that does work asynchronously in multiple threads."""
 
 from typing import Optional
@@ -42,12 +37,12 @@ class ThreadDelegatingExecutorValue(evb.ExecutorValue):
     self._async_runner = async_runner
 
   @property
-  def internal_representation(self) -> evb.ExecutorValue:
+  def reference(self) -> evb.ExecutorValue:
     return self._value
 
   @property
   def type_signature(self):
-    return self.internal_representation.type_signature
+    return self.reference.type_signature
 
   async def compute(self):
     return await _delegate_with_trace_ctx(self._value.compute(),
@@ -97,21 +92,21 @@ class ThreadDelegatingExecutor(eb.Executor):
       self,
       comp: evb.ExecutorValue,
       arg: Optional[evb.ExecutorValue] = None) -> evb.ExecutorValue:
-    comp = comp.internal_representation
-    arg = arg.internal_representation if arg else None
+    comp = comp.reference
+    arg = arg.reference if arg else None
     return await self._delegate(self._target_executor.create_call(comp, arg))
 
   @tracing.trace
   async def create_struct(self, elements):
     elements_as_structure = structure.from_container(elements)
     elements_iter = structure.iter_elements(elements_as_structure)
-    pairs = ((n, v.internal_representation) for (n, v) in elements_iter)
+    pairs = ((n, v.reference) for (n, v) in elements_iter)
     inner_elements = structure.Struct(pairs)
     return await self._delegate(
         self._target_executor.create_struct(inner_elements))
 
   @tracing.trace
   async def create_selection(self, source, index):
-    source = source.internal_representation
+    source = source.reference
     return await self._delegate(
         self._target_executor.create_selection(source, index))

@@ -11,11 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
-# pytype: skip-file
-# This modules disables the Pytype analyzer, see
-# https://github.com/tensorflow/federated/blob/main/docs/pytype.md for more
-# information.
 """An executor that handles federated types and federated operators.
 
                 +------------+
@@ -432,19 +427,23 @@ class FederatingExecutor(executor_base.Executor):
                               computation_types.FunctionType)
       param_type = comp.type_signature.parameter
       param_type.check_assignable_from(arg.type_signature)
-      arg = self._strategy.ingest_value(arg.internal_representation, param_type)
-    if isinstance(comp.internal_representation, pb.Computation):
-      which_computation = comp.internal_representation.WhichOneof('computation')
-      if ((which_computation in ['tensorflow', 'xla', 'intrinsic']) or
-          ((which_computation == 'intrinsic') and
-           (comp.internal_representation.intrinsic.uri
-            in FederatingExecutor._FORWARDED_INTRINSICS))):
+      arg = self._strategy.ingest_value(arg.reference, param_type)
+    if isinstance(comp.reference, pb.Computation):
+      which_computation = comp.reference.WhichOneof('computation')
+      if (which_computation in ['tensorflow', 'xla', 'intrinsic']) or (
+          (which_computation == 'intrinsic')
+          and (
+              comp.reference.intrinsic.uri
+              in FederatingExecutor._FORWARDED_INTRINSICS
+          )
+      ):
         embedded_comp = await self._unplaced_executor.create_value(
-            comp.internal_representation, comp.type_signature)
+            comp.reference, comp.type_signature
+        )
         if arg is not None:
           embedded_arg = await executor_utils.delegate_entirely_to_executor(
-              arg.internal_representation, arg.type_signature,
-              self._unplaced_executor)
+              arg.reference, arg.type_signature, self._unplaced_executor
+          )
         else:
           embedded_arg = None
         result = await self._unplaced_executor.create_call(
@@ -454,12 +453,16 @@ class FederatingExecutor(executor_base.Executor):
         raise ValueError(
             'Directly calling computations of type {} is unsupported.'.format(
                 which_computation))
-    elif isinstance(comp.internal_representation, intrinsic_defs.IntrinsicDef):
+    elif isinstance(comp.reference, intrinsic_defs.IntrinsicDef):
       return await self._strategy.compute_federated_intrinsic(
-          comp.internal_representation.uri, arg)
+          comp.reference.uri, arg
+      )
     else:
-      raise ValueError('Calling objects of type {} is unsupported.'.format(
-          py_typecheck.type_string(type(comp.internal_representation))))
+      raise ValueError(
+          'Calling objects of type {} is unsupported.'.format(
+              py_typecheck.type_string(type(comp.reference))
+          )
+      )
 
   @tracing.trace
   async def create_struct(
@@ -482,7 +485,7 @@ class FederatingExecutor(executor_base.Executor):
     for name, value in structure.iter_elements(
         structure.from_container(elements)):
       py_typecheck.check_type(value, executor_value_base.ExecutorValue)
-      element_values.append((name, value.internal_representation))
+      element_values.append((name, value.reference))
       if name is not None:
         element_types.append((name, value.type_signature))
       else:
@@ -518,17 +521,18 @@ class FederatingExecutor(executor_base.Executor):
     """
     py_typecheck.check_type(source, executor_value_base.ExecutorValue)
     py_typecheck.check_type(source.type_signature, computation_types.StructType)
-    if isinstance(source.internal_representation,
-                  executor_value_base.ExecutorValue):
+    if isinstance(source.reference, executor_value_base.ExecutorValue):
       result = await self._unplaced_executor.create_selection(
-          source.internal_representation, index)
+          source.reference, index
+      )
       return self._strategy.ingest_value(result, result.type_signature)
-    elif isinstance(source.internal_representation, structure.Struct):
-      value = source.internal_representation[index]
+    elif isinstance(source.reference, structure.Struct):
+      value = source.reference[index]
       type_signature = source.type_signature[index]
       return self._strategy.ingest_value(value, type_signature)
     else:
       raise ValueError(
           'Unexpected internal representation while creating selection. '
           'Expected one of `Struct` or value embedded in target '
-          'executor, received {}'.format(source.internal_representation))
+          'executor, received {}'.format(source.reference)
+      )

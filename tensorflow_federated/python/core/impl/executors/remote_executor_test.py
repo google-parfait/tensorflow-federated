@@ -258,7 +258,7 @@ class RemoteExecutorTest(parameterized.TestCase):
       self, stream_structs, mock_stub):
     if stream_structs:
       self.skipTest(
-          'b/263261613 - Missing support for multiple return_value types in mock_stub'
+          'b/263261613 - Support multiple return_value types in mock_stub'
       )
       mock_stub.create_value.return_value = executor_pb2.CreateStructResponse()
     else:
@@ -428,7 +428,8 @@ class RemoteExecutorTest(parameterized.TestCase):
   @mock.patch.object(remote_executor_stub, 'RemoteExecutorStub')
   def test_create_selection_returns_remote_value_with_stream_structs(
       self, stream_structs, mock_stub):
-    mock_stub.create_selection.return_value = executor_pb2.CreateSelectionResponse(
+    mock_stub.create_selection.return_value = (
+        executor_pb2.CreateSelectionResponse()
     )
     executor = remote_executor.RemoteExecutor(
         mock_stub, stream_structs=stream_structs)

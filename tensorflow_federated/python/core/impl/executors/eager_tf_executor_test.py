@@ -409,8 +409,8 @@ class EagerTFExecutorTest(tf.test.TestCase, parameterized.TestCase):
         10, {}, int_tensor_type)
     v = eager_tf_executor.EagerValue(normalized_value, int_tensor_type)
     self.assertEqual(str(v.type_signature), 'int32')
-    self.assertIsInstance(v.internal_representation, tf.Tensor)
-    self.assertEqual(v.internal_representation, 10)
+    self.assertIsInstance(v.reference, tf.Tensor)
+    self.assertEqual(v.reference, 10)
 
   def test_executor_constructor_fails_if_not_in_eager_mode(self):
     with tf.Graph().as_default():
@@ -427,9 +427,9 @@ class EagerTFExecutorTest(tf.test.TestCase, parameterized.TestCase):
     ex = eager_tf_executor.EagerTFExecutor()
     val = asyncio.run(ex.create_value(10, tf.int32))
     self.assertIsInstance(val, eager_tf_executor.EagerValue)
-    self.assertIsInstance(val.internal_representation, tf.Tensor)
+    self.assertIsInstance(val.reference, tf.Tensor)
     self.assertEqual(str(val.type_signature), 'int32')
-    self.assertEqual(val.internal_representation, 10)
+    self.assertEqual(val.reference, 10)
 
   def test_executor_create_value_raises_on_lambda(self):
     ex = eager_tf_executor.EagerTFExecutor()
@@ -458,15 +458,15 @@ class EagerTFExecutorTest(tf.test.TestCase, parameterized.TestCase):
         }], [tf.int32, collections.OrderedDict([('a', tf.int32)])]))
     self.assertIsInstance(val, eager_tf_executor.EagerValue)
     self.assertEqual(str(val.type_signature), '<int32,<a=int32>>')
-    self.assertIsInstance(val.internal_representation, structure.Struct)
-    self.assertLen(val.internal_representation, 2)
-    self.assertIsInstance(val.internal_representation[0], tf.Tensor)
-    self.assertIsInstance(val.internal_representation[1], structure.Struct)
-    self.assertLen(val.internal_representation[1], 1)
-    self.assertEqual(dir(val.internal_representation[1]), ['a'])
-    self.assertIsInstance(val.internal_representation[1][0], tf.Tensor)
-    self.assertEqual(val.internal_representation[0], 10)
-    self.assertEqual(val.internal_representation[1][0], 20)
+    self.assertIsInstance(val.reference, structure.Struct)
+    self.assertLen(val.reference, 2)
+    self.assertIsInstance(val.reference[0], tf.Tensor)
+    self.assertIsInstance(val.reference[1], structure.Struct)
+    self.assertLen(val.reference[1], 1)
+    self.assertEqual(dir(val.reference[1]), ['a'])
+    self.assertIsInstance(val.reference[1][0], tf.Tensor)
+    self.assertEqual(val.reference[0], 10)
+    self.assertEqual(val.reference[1][0], 20)
 
   def test_executor_create_value_named_type_unnamed_value(self):
     ex = eager_tf_executor.EagerTFExecutor()
@@ -475,12 +475,12 @@ class EagerTFExecutorTest(tf.test.TestCase, parameterized.TestCase):
                         collections.OrderedDict(a=tf.int32, b=tf.int32)))
     self.assertIsInstance(val, eager_tf_executor.EagerValue)
     self.assertEqual(str(val.type_signature), '<a=int32,b=int32>')
-    self.assertIsInstance(val.internal_representation, structure.Struct)
-    self.assertLen(val.internal_representation, 2)
-    self.assertIsInstance(val.internal_representation[0], tf.Tensor)
-    self.assertIsInstance(val.internal_representation[1], tf.Tensor)
-    self.assertEqual(val.internal_representation[0], 10)
-    self.assertEqual(val.internal_representation[1], 20)
+    self.assertIsInstance(val.reference, structure.Struct)
+    self.assertLen(val.reference, 2)
+    self.assertIsInstance(val.reference[0], tf.Tensor)
+    self.assertIsInstance(val.reference[1], tf.Tensor)
+    self.assertEqual(val.reference[0], 10)
+    self.assertEqual(val.reference[1], 20)
 
   def test_executor_create_value_no_arg_computation(self):
     ex = eager_tf_executor.EagerTFExecutor()
@@ -495,8 +495,8 @@ class EagerTFExecutorTest(tf.test.TestCase, parameterized.TestCase):
                         computation_types.FunctionType(None, tf.int32)))
     self.assertIsInstance(val, eager_tf_executor.EagerValue)
     self.assertEqual(str(val.type_signature), '( -> int32)')
-    self.assertTrue(callable(val.internal_representation))
-    result = val.internal_representation()
+    self.assertTrue(callable(val.reference))
+    result = val.reference()
     self.assertIsInstance(result, tf.Tensor)
     self.assertEqual(result, 1000)
 
@@ -516,9 +516,9 @@ class EagerTFExecutorTest(tf.test.TestCase, parameterized.TestCase):
                                               ('b', tf.int32)]), tf.int32)))
     self.assertIsInstance(val, eager_tf_executor.EagerValue)
     self.assertEqual(str(val.type_signature), '(<a=int32,b=int32> -> int32)')
-    self.assertTrue(callable(val.internal_representation))
+    self.assertTrue(callable(val.reference))
     arg = structure.Struct([('a', tf.constant(10)), ('b', tf.constant(10))])
-    result = val.internal_representation(arg)
+    result = val.reference(arg)
     self.assertIsInstance(result, tf.Tensor)
     self.assertEqual(result, 20)
 
@@ -537,8 +537,8 @@ class EagerTFExecutorTest(tf.test.TestCase, parameterized.TestCase):
     result = asyncio.run(ex.create_call(comp, arg))
     self.assertIsInstance(result, eager_tf_executor.EagerValue)
     self.assertEqual(str(result.type_signature), 'int32')
-    self.assertIsInstance(result.internal_representation, tf.Tensor)
-    self.assertEqual(result.internal_representation, 30)
+    self.assertIsInstance(result.reference, tf.Tensor)
+    self.assertEqual(result.reference, 30)
 
   def test_dynamic_lookup_table_usage(self):
 
@@ -566,8 +566,8 @@ class EagerTFExecutorTest(tf.test.TestCase, parameterized.TestCase):
     result_1 = asyncio.run(ex.create_call(comp, arg_1))
     result_2 = asyncio.run(ex.create_call(comp, arg_2))
 
-    self.assertEqual(self.evaluate(result_1.internal_representation), 0)
-    self.assertEqual(self.evaluate(result_2.internal_representation), 3)
+    self.assertEqual(self.evaluate(result_1.reference), 0)
+    self.assertEqual(self.evaluate(result_2.reference), 3)
 
   # TODO(b/137602785): bring GPU test back after the fix for `wrap_function`.
   @tensorflow_test_utils.skip_test_for_gpu
@@ -585,9 +585,8 @@ class EagerTFExecutorTest(tf.test.TestCase, parameterized.TestCase):
     result = asyncio.run(ex.create_call(comp, arg))
     self.assertIsInstance(result, eager_tf_executor.EagerValue)
     self.assertEqual(str(result.type_signature), 'int32*')
-    self.assertIn('Dataset', type(result.internal_representation).__name__)
-    self.assertCountEqual([x.numpy() for x in result.internal_representation],
-                          [10, 20])
+    self.assertIn('Dataset', type(result.reference).__name__)
+    self.assertCountEqual([x.numpy() for x in result.reference], [10, 20])
 
   # TODO(b/137602785): bring GPU test back after the fix for `wrap_function`.
   @tensorflow_test_utils.skip_test_for_gpu
@@ -612,9 +611,8 @@ class EagerTFExecutorTest(tf.test.TestCase, parameterized.TestCase):
     result = asyncio.run(ex.create_call(comp, arg))
     self.assertIsInstance(result, eager_tf_executor.EagerValue)
     self.assertEqual(str(result.type_signature), 'int64*')
-    self.assertIn('Dataset', type(result.internal_representation).__name__)
-    self.assertCountEqual([x.numpy() for x in result.internal_representation],
-                          [0, 1])
+    self.assertIn('Dataset', type(result.reference).__name__)
+    self.assertCountEqual([x.numpy() for x in result.reference], [0, 1])
 
   # TODO(b/137602785): bring GPU test back after the fix for `wrap_function`.
   @tensorflow_test_utils.skip_test_for_gpu
@@ -632,9 +630,8 @@ class EagerTFExecutorTest(tf.test.TestCase, parameterized.TestCase):
     result = asyncio.run(ex.create_call(comp, arg))
     self.assertIsInstance(result, eager_tf_executor.EagerValue)
     self.assertEqual(str(result.type_signature), 'int32*')
-    self.assertIn('Dataset', type(result.internal_representation).__name__)
-    self.assertCountEqual([x.numpy() for x in result.internal_representation],
-                          [10, 10, 10])
+    self.assertIn('Dataset', type(result.reference).__name__)
+    self.assertCountEqual([x.numpy() for x in result.reference], [10, 10, 10])
 
   # TODO(b/137602785): bring GPU test back after the fix for `wrap_function`.
   @tensorflow_test_utils.skip_test_for_gpu
@@ -652,8 +649,8 @@ class EagerTFExecutorTest(tf.test.TestCase, parameterized.TestCase):
     result = asyncio.run(ex.create_call(comp, arg))
     self.assertIsInstance(result, eager_tf_executor.EagerValue)
     self.assertEqual(str(result.type_signature), 'int32')
-    self.assertIsInstance(result.internal_representation, tf.Tensor)
-    self.assertEqual(result.internal_representation, 90)
+    self.assertIsInstance(result.reference, tf.Tensor)
+    self.assertEqual(result.reference, 90)
 
   # TODO(b/137602785): bring GPU test back after the fix for `wrap_function`.
   @tensorflow_test_utils.skip_test_for_gpu
@@ -675,12 +672,12 @@ class EagerTFExecutorTest(tf.test.TestCase, parameterized.TestCase):
     result = asyncio.run(ex.create_call(comp, arg))
     self.assertIsInstance(result, eager_tf_executor.EagerValue)
     self.assertEqual(str(result.type_signature), '<a=int32,b=int32>')
-    self.assertIsInstance(result.internal_representation, structure.Struct)
-    self.assertCountEqual(dir(result.internal_representation), ['a', 'b'])
-    self.assertIsInstance(result.internal_representation.a, tf.Tensor)
-    self.assertIsInstance(result.internal_representation.b, tf.Tensor)
-    self.assertEqual(result.internal_representation.a, 60)
-    self.assertEqual(result.internal_representation.b, 15)
+    self.assertIsInstance(result.reference, structure.Struct)
+    self.assertCountEqual(dir(result.reference), ['a', 'b'])
+    self.assertIsInstance(result.reference.a, tf.Tensor)
+    self.assertIsInstance(result.reference.b, tf.Tensor)
+    self.assertEqual(result.reference.a, 60)
+    self.assertEqual(result.reference.b, 15)
 
   def test_executor_create_struct_and_selection(self):
     ex = eager_tf_executor.EagerTFExecutor()
@@ -693,24 +690,24 @@ class EagerTFExecutorTest(tf.test.TestCase, parameterized.TestCase):
     v3 = asyncio.run(
         ex.create_struct(collections.OrderedDict([('a', v1), ('b', v2)])))
     self.assertIsInstance(v3, eager_tf_executor.EagerValue)
-    self.assertIsInstance(v3.internal_representation, structure.Struct)
-    self.assertLen(v3.internal_representation, 2)
-    self.assertCountEqual(dir(v3.internal_representation), ['a', 'b'])
-    self.assertIsInstance(v3.internal_representation[0], tf.Tensor)
-    self.assertIsInstance(v3.internal_representation[1], tf.Tensor)
+    self.assertIsInstance(v3.reference, structure.Struct)
+    self.assertLen(v3.reference, 2)
+    self.assertCountEqual(dir(v3.reference), ['a', 'b'])
+    self.assertIsInstance(v3.reference[0], tf.Tensor)
+    self.assertIsInstance(v3.reference[1], tf.Tensor)
     self.assertEqual(str(v3.type_signature), '<a=int32,b=int32>')
-    self.assertEqual(v3.internal_representation[0], 10)
-    self.assertEqual(v3.internal_representation[1], 20)
+    self.assertEqual(v3.reference[0], 10)
+    self.assertEqual(v3.reference[1], 20)
     v4 = asyncio.run(ex.create_selection(v3, 0))
     self.assertIsInstance(v4, eager_tf_executor.EagerValue)
-    self.assertIsInstance(v4.internal_representation, tf.Tensor)
+    self.assertIsInstance(v4.reference, tf.Tensor)
     self.assertEqual(str(v4.type_signature), 'int32')
-    self.assertEqual(v4.internal_representation, 10)
+    self.assertEqual(v4.reference, 10)
     v5 = asyncio.run(ex.create_selection(v3, 1))
     self.assertIsInstance(v5, eager_tf_executor.EagerValue)
-    self.assertIsInstance(v5.internal_representation, tf.Tensor)
+    self.assertIsInstance(v5.reference, tf.Tensor)
     self.assertEqual(str(v5.type_signature), 'int32')
-    self.assertEqual(v5.internal_representation, 20)
+    self.assertEqual(v5.reference, 20)
 
   def test_executor_compute(self):
     ex = eager_tf_executor.EagerTFExecutor()
@@ -764,9 +761,8 @@ class EagerTFExecutorTest(tf.test.TestCase, parameterized.TestCase):
     val = asyncio.run(ex.create_value(_generate_items, type_spec))
     self.assertIsInstance(val, eager_tf_executor.EagerValue)
     self.assertEqual(str(val.type_signature), str(type_spec))
-    self.assertIn('Dataset', type(val.internal_representation).__name__)
-    self.assertCountEqual([x.numpy() for x in val.internal_representation],
-                          [2, 5, 10])
+    self.assertIn('Dataset', type(val.reference).__name__)
+    self.assertCountEqual([x.numpy() for x in val.reference], [2, 5, 10])
 
 
 if __name__ == '__main__':

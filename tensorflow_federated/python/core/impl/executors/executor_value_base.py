@@ -18,12 +18,25 @@ import abc
 from tensorflow_federated.python.core.impl.types import typed_object
 
 
-class ExecutorValue(typed_object.TypedObject, metaclass=abc.ABCMeta):
+class ExecutorValue(abc.ABC, typed_object.TypedObject):
   """Represents the abstract interface for values embedded within executors.
 
   The embedded values may represent computations in-flight that may materialize
   in the future or fail before they materialize.
   """
+
+  @property
+  @abc.abstractmethod
+  def reference(self):
+    """Returns a reference to the value without transferring ownership.
+
+    A reference is an opaque object that is understood by the executors that
+    produced the value, therefore:
+
+    1. Executors need to preserve this contract in their implementation.
+    2. Users of Executors should not need to depend on this value.
+    """
+    raise NotImplementedError
 
   @abc.abstractmethod
   async def compute(self):

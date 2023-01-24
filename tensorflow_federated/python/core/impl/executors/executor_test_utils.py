@@ -180,14 +180,14 @@ class TracingExecutor(executor_base.Executor):
 
   async def create_call(self, comp, arg=None):
     if arg is not None:
-      target_val = await self._target.create_call(comp.value, arg.value)
+      target_val = await self._target.create_call(comp.reference, arg.reference)
       wrapped_val = TracingExecutorValue(self, self._get_new_value_index(),
                                          target_val)
       self._trace.append(
           ('create_call', comp.index, arg.index, wrapped_val.index))
       return wrapped_val
     else:
-      target_val = await self._target.create_call(comp.value)
+      target_val = await self._target.create_call(comp.reference)
       wrapped_val = TracingExecutorValue(self, self._get_new_value_index(),
                                          target_val)
       self._trace.append(('create_call', comp.index, wrapped_val.index))
@@ -195,7 +195,7 @@ class TracingExecutor(executor_base.Executor):
 
   async def create_struct(self, elements):
     target_val = await self._target.create_struct(
-        structure.map_structure(lambda x: x.value, elements))
+        structure.map_structure(lambda x: x.reference, elements))
     wrapped_val = TracingExecutorValue(self, self._get_new_value_index(),
                                        target_val)
     self._trace.append(
@@ -207,7 +207,7 @@ class TracingExecutor(executor_base.Executor):
     self._target.close()
 
   async def create_selection(self, source, index):
-    target_val = await self._target.create_selection(source.value, index)
+    target_val = await self._target.create_selection(source.reference, index)
     wrapped_val = TracingExecutorValue(self, self._get_new_value_index(),
                                        target_val)
     self._trace.append(
@@ -238,7 +238,7 @@ class TracingExecutorValue(executor_value_base.ExecutorValue):
     return self._index
 
   @property
-  def value(self):
+  def reference(self):
     return self._value
 
   @property

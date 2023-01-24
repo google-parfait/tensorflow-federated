@@ -11,11 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
-# pytype: skip-file
-# This modules disables the Pytype analyzer, see
-# https://github.com/tensorflow/federated/blob/main/docs/pytype.md for more
-# information.
 """A local proxy for a remote executor service hosted on a separate machine."""
 
 import asyncio
@@ -79,13 +74,13 @@ class RemoteValue(executor_value_base.ExecutorValue):
   def type_signature(self):
     return self._type_signature
 
+  @property
+  def reference(self):
+    return self._value_ref
+
   @tracing.trace(span=True)
   async def compute(self):
     return await self._executor._compute(self._value_ref, self._type_signature)  # pylint: disable=protected-access
-
-  @property
-  def value_ref(self):
-    return self._value_ref
 
 
 class RemoteExecutor(executor_base.Executor):
@@ -230,8 +225,8 @@ class RemoteExecutor(executor_base.Executor):
       py_typecheck.check_type(arg, RemoteValue)
     create_call_request = executor_pb2.CreateCallRequest(
         executor=self._executor_id,
-        function_ref=comp.value_ref,
-        argument_ref=(arg.value_ref if arg is not None else None))
+        function_ref=comp.reference,
+        argument_ref=(arg.reference if arg is not None else None))
     response = self._stub.create_call(create_call_request)
     py_typecheck.check_type(response, executor_pb2.CreateCallResponse)
     return RemoteValue(response.value_ref, comp.type_signature.result, self)
@@ -246,7 +241,7 @@ class RemoteExecutor(executor_base.Executor):
       py_typecheck.check_type(v, RemoteValue)
       proto_elem.append(
           executor_pb2.CreateStructRequest.Element(
-              name=(k if k else None), value_ref=v.value_ref))
+              name=(k if k else None), value_ref=v.reference))
       type_elem.append((k, v.type_signature) if k else v.type_signature)
     result_type = computation_types.StructType(type_elem)
     request = executor_pb2.CreateStructRequest(
@@ -263,7 +258,7 @@ class RemoteExecutor(executor_base.Executor):
     py_typecheck.check_type(index, int)
     result_type = source.type_signature[index]
     request = executor_pb2.CreateSelectionRequest(
-        executor=self._executor_id, source_ref=source.value_ref, index=index)
+        executor=self._executor_id, source_ref=source.reference, index=index)
     response = self._stub.create_selection(request)
     py_typecheck.check_type(response, executor_pb2.CreateSelectionResponse)
     return RemoteValue(response.value_ref, result_type, self)
@@ -277,7 +272,7 @@ class RemoteExecutor(executor_base.Executor):
 
     async def per_element(source, index, element_spec):
       select_response = await self.create_selection(source, index)
-      value = await self._compute(select_response.value_ref, element_spec)
+      value = await self._compute(select_response.reference, element_spec)
       return value
 
     for index, (_,

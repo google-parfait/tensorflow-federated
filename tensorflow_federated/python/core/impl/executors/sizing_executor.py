@@ -120,22 +120,23 @@ class SizingExecutor(executor_base.Executor):
 
   async def create_call(self, comp, arg=None):
     if arg is not None:
-      target_val = await self._target.create_call(comp.value, arg.value)
+      target_val = await self._target.create_call(comp.reference, arg.reference)
       wrapped_val = SizingExecutorValue(self, target_val)
       return wrapped_val
     else:
-      target_val = await self._target.create_call(comp.value)
+      target_val = await self._target.create_call(comp.reference)
       wrapped_val = SizingExecutorValue(self, target_val)
       return wrapped_val
 
   async def create_struct(self, elements):
     target_val = await self._target.create_struct(
-        structure.map_structure(lambda x: x.value, elements))
+        structure.map_structure(lambda x: x.reference, elements)
+    )
     wrapped_val = SizingExecutorValue(self, target_val)
     return wrapped_val
 
   async def create_selection(self, source, index):
-    target_val = await self._target.create_selection(source.value, index)
+    target_val = await self._target.create_selection(source.reference, index)
     wrapped_val = SizingExecutorValue(self, target_val)
     return wrapped_val
 
@@ -159,7 +160,7 @@ class SizingExecutorValue(executor_value_base.ExecutorValue):
     self._value = value
 
   @property
-  def value(self):
+  def reference(self):
     return self._value
 
   @property

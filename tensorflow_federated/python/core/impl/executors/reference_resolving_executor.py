@@ -11,11 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
-# pytype: skip-file
-# This modules disables the Pytype analyzer, see
-# https://github.com/tensorflow/federated/blob/main/docs/pytype.md for more
-# information.
 """An executor that understands lambda expressions and related abstractions."""
 
 import asyncio
@@ -214,12 +209,7 @@ class ReferenceResolvingExecutorValue(executor_value_base.ExecutorValue):
     self._type_signature = type_spec
 
   @property
-  def internal_representation(self) -> LambdaValueInner:
-    """Returns a representation of the value embedded in the executor.
-
-    This property is only intended for use by the lambda executor and tests. Not
-    for consumption by consumers of the executor interface.
-    """
+  def reference(self) -> LambdaValueInner:
     return self._value
 
   @property
@@ -306,7 +296,7 @@ class ReferenceResolvingExecutor(executor_base.Executor):
   async def create_selection(self, source, index):
     py_typecheck.check_type(source, ReferenceResolvingExecutorValue)
     py_typecheck.check_type(source.type_signature, computation_types.StructType)
-    source_repr = source.internal_representation
+    source_repr = source.reference
     if isinstance(source_repr, executor_value_base.ExecutorValue):
       return ReferenceResolvingExecutorValue(
           await self._target_executor.create_selection(source_repr, index))
@@ -332,7 +322,7 @@ class ReferenceResolvingExecutor(executor_base.Executor):
                         'takes an argument of type {}, but was supplied '
                         'an argument of type {}'.format(param_type, arg_type))
 
-    comp_repr = comp.internal_representation
+    comp_repr = comp.reference
     if isinstance(comp_repr, executor_value_base.ExecutorValue):
       # `comp` represents a function in the target executor, so we convert the
       # argument to a value inside the target executor and `create_call` on
@@ -372,7 +362,7 @@ class ReferenceResolvingExecutor(executor_base.Executor):
         is in a form that cannot be delegated.
     """
     py_typecheck.check_type(value, ReferenceResolvingExecutorValue)
-    value_repr = value.internal_representation
+    value_repr = value.reference
     if isinstance(value_repr, executor_value_base.ExecutorValue):
       return value_repr
     elif isinstance(value_repr, structure.Struct):

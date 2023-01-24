@@ -46,9 +46,8 @@ class ThreadDelegatingExecutorTest(absltest.TestCase):
   def _threaded_eager_value_to_numpy(self, value):
     self.assertIsInstance(
         value, thread_delegating_executor.ThreadDelegatingExecutorValue)
-    self.assertIsInstance(value.internal_representation,
-                          eager_tf_executor.EagerValue)
-    return value.internal_representation.internal_representation.numpy()
+    self.assertIsInstance(value.reference, eager_tf_executor.EagerValue)
+    return value.reference.reference.numpy()
 
   def test_nondeterminism_with_fake_executor_that_synchronously_sleeps(self):
 
@@ -92,9 +91,7 @@ class ThreadDelegatingExecutorTest(absltest.TestCase):
         return await asyncio.gather(*vals)
 
       results = asyncio.run(gather_coro(vals))
-      results = [
-          thread_value.internal_representation for thread_value in results
-      ]
+      results = [thread_value.reference for thread_value in results]
       self.assertCountEqual(results, list(range(10)))
       del executors
       return test_ex.output

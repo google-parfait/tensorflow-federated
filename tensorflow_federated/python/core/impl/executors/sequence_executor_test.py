@@ -82,10 +82,8 @@ class SequenceExecutorTest(absltest.TestCase):
         self._sequence_executor.create_value(int_const, type_spec))
     self.assertIsInstance(val, sequence_executor.SequenceExecutorValue)
     self.assertEqual(str(val.type_signature), str(type_spec))
-    self.assertIsInstance(val.internal_representation,
-                          eager_tf_executor.EagerValue)
-    self.assertEqual(val.internal_representation.internal_representation,
-                     int_const)
+    self.assertIsInstance(val.reference, eager_tf_executor.EagerValue)
+    self.assertEqual(val.reference.reference, int_const)
     result = asyncio.run(val.compute())
     self.assertEqual(result, 10)
 
@@ -97,11 +95,9 @@ class SequenceExecutorTest(absltest.TestCase):
         self._sequence_executor.create_value(my_struct, type_spec))
     self.assertIsInstance(val, sequence_executor.SequenceExecutorValue)
     self.assertEqual(str(val.type_signature), str(type_spec))
-    self.assertIsInstance(val.internal_representation, structure.Struct)
-    self.assertIsInstance(val.internal_representation.a,
-                          eager_tf_executor.EagerValue)
-    self.assertIsInstance(val.internal_representation.b,
-                          eager_tf_executor.EagerValue)
+    self.assertIsInstance(val.reference, structure.Struct)
+    self.assertIsInstance(val.reference.a, eager_tf_executor.EagerValue)
+    self.assertIsInstance(val.reference.b, eager_tf_executor.EagerValue)
     result = asyncio.run(val.compute())
     self.assertEqual(str(result), '<a=10,b=20>')
 
@@ -116,15 +112,12 @@ class SequenceExecutorTest(absltest.TestCase):
     val = asyncio.run(self._sequence_executor.create_struct(elements))
     self.assertIsInstance(val, sequence_executor.SequenceExecutorValue)
     self.assertEqual(str(val.type_signature), '<v10=int32,v20=int32>')
-    self.assertIsInstance(val.internal_representation, structure.Struct)
-    self.assertListEqual(
-        structure.name_list(val.internal_representation), ['v10', 'v20'])
-    self.assertIsInstance(val.internal_representation.v10,
-                          eager_tf_executor.EagerValue)
-    self.assertIsInstance(val.internal_representation.v20,
-                          eager_tf_executor.EagerValue)
-    self.assertEqual(asyncio.run(val.internal_representation.v10.compute()), 10)
-    self.assertEqual(asyncio.run(val.internal_representation.v20.compute()), 20)
+    self.assertIsInstance(val.reference, structure.Struct)
+    self.assertListEqual(structure.name_list(val.reference), ['v10', 'v20'])
+    self.assertIsInstance(val.reference.v10, eager_tf_executor.EagerValue)
+    self.assertIsInstance(val.reference.v20, eager_tf_executor.EagerValue)
+    self.assertEqual(asyncio.run(val.reference.v10.compute()), 10)
+    self.assertEqual(asyncio.run(val.reference.v20.compute()), 20)
 
   def test_create_selection(self):
     my_struct = collections.OrderedDict([('a', 10), ('b', 20)])
@@ -144,11 +137,10 @@ class SequenceExecutorTest(absltest.TestCase):
     val = asyncio.run(self._sequence_executor.create_value(comp_pb, type_spec))
     self.assertIsInstance(val, sequence_executor.SequenceExecutorValue)
     self.assertEqual(str(val.type_signature), str(type_spec))
-    self.assertIsInstance(val.internal_representation,
-                          eager_tf_executor.EagerValue)
+    self.assertIsInstance(val.reference, eager_tf_executor.EagerValue)
 
     async def _fn():
-      fn = val.internal_representation
+      fn = val.reference
       arg = await self._target_executor.create_value(10, tf.int32)
       result = await self._target_executor.create_call(fn, arg)
       return await result.compute()
@@ -193,9 +185,8 @@ class SequenceExecutorTest(absltest.TestCase):
     val = asyncio.run(self._sequence_executor.create_value(ds, type_spec))
     self.assertIsInstance(val, sequence_executor.SequenceExecutorValue)
     self.assertEqual(str(val.type_signature), str(type_spec))
-    self.assertIsInstance(val.internal_representation,
-                          sequence_executor._Sequence)
-    self.assertIs(asyncio.run(val.internal_representation.compute()), ds)
+    self.assertIsInstance(val.reference, sequence_executor._Sequence)
+    self.assertIs(asyncio.run(val.reference.compute()), ds)
     result = list(asyncio.run(val.compute()))
     self.assertListEqual(result, list(range(5)))
 
@@ -222,8 +213,7 @@ class SequenceExecutorTest(absltest.TestCase):
                                       tf.int32)
     self.assertIsInstance(val, sequence_executor.SequenceExecutorValue)
     self.assertEqual(str(val.type_signature), str(type_spec))
-    self.assertIsInstance(val.internal_representation,
-                          sequence_executor._SequenceReduceOp)
+    self.assertIsInstance(val.reference, sequence_executor._SequenceReduceOp)
 
   def test_sequence_reduce_tf_dataset(self):
     ds = tf.data.Dataset.range(5)
@@ -272,8 +262,7 @@ class SequenceExecutorTest(absltest.TestCase):
     val = _make_sequence_map_value(self._sequence_executor, tf.int32, tf.int32)
     self.assertIsInstance(val, sequence_executor.SequenceExecutorValue)
     self.assertEqual(str(val.type_signature), str(type_spec))
-    self.assertIsInstance(val.internal_representation,
-                          sequence_executor._SequenceMapOp)
+    self.assertIsInstance(val.reference, sequence_executor._SequenceMapOp)
 
   def test_sequence_map_tf_dataset(self):
     ds = tf.data.Dataset.range(3)
@@ -293,8 +282,9 @@ class SequenceExecutorTest(absltest.TestCase):
         self._sequence_executor.create_call(sequence_map_val, arg_val))
     self.assertIsInstance(result_val, sequence_executor.SequenceExecutorValue)
     self.assertEqual(str(result_val.type_signature), 'int64*')
-    self.assertIsInstance(result_val.internal_representation,
-                          sequence_executor._SequenceFromMap)
+    self.assertIsInstance(
+        result_val.reference, sequence_executor._SequenceFromMap
+    )
     result = list(asyncio.run(result_val.compute()))
     self.assertListEqual(result, [2, 3, 4])
 
@@ -337,8 +327,9 @@ class SequenceExecutorTest(absltest.TestCase):
         self._sequence_executor.create_call(sequence_map_2_val, arg_2_val))
     self.assertIsInstance(result_2_val, sequence_executor.SequenceExecutorValue)
     self.assertEqual(str(result_2_val.type_signature), 'int64*')
-    self.assertIsInstance(result_2_val.internal_representation,
-                          sequence_executor._SequenceFromMap)
+    self.assertIsInstance(
+        result_2_val.reference, sequence_executor._SequenceFromMap
+    )
     result = list(asyncio.run(result_2_val.compute()))
     self.assertListEqual(result, [5, 7, 9])
 

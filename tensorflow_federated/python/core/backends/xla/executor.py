@@ -99,8 +99,7 @@ class XlaValue(executor_value_base.ExecutorValue):
     self._value = to_representation_for_type(value, type_spec, backend)
 
   @property
-  def internal_representation(self):
-    """Returns internal representation of the value embedded in the executor."""
+  def reference(self):
     return self._value
 
   @property
@@ -184,12 +183,12 @@ class XlaExecutor(executor_base.Executor):
     if arg is not None:
       py_typecheck.check_type(arg, XlaValue)
     py_typecheck.check_type(comp.type_signature, computation_types.FunctionType)
-    py_typecheck.check_type(comp.internal_representation,
+    py_typecheck.check_type(comp.reference,
                             runtime.ComputationCallable)
     if comp.type_signature.parameter is not None:
-      result = comp.internal_representation(arg.internal_representation)
+      result = comp.reference(arg.reference)
     else:
-      result = comp.internal_representation()
+      result = comp.reference()
     return XlaValue(result, comp.type_signature.result, self._backend)
 
   @tracing.trace
@@ -198,7 +197,7 @@ class XlaExecutor(executor_base.Executor):
     type_elements = []
     for k, v in structure.iter_elements(structure.from_container(elements)):
       py_typecheck.check_type(v, XlaValue)
-      val_elements.append((k, v.internal_representation))
+      val_elements.append((k, v.reference))
       type_elements.append((k, v.type_signature))
     struct_val = structure.Struct(val_elements)
     struct_type = computation_types.StructType([
@@ -210,7 +209,7 @@ class XlaExecutor(executor_base.Executor):
   async def create_selection(self, source, index=None, name=None):
     py_typecheck.check_type(source, XlaValue)
     py_typecheck.check_type(source.type_signature, computation_types.StructType)
-    py_typecheck.check_type(source.internal_representation, structure.Struct)
+    py_typecheck.check_type(source.reference, structure.Struct)
     if index is not None:
       py_typecheck.check_type(index, int)
       if name is not None:
@@ -218,12 +217,12 @@ class XlaExecutor(executor_base.Executor):
             'Cannot simultaneously specify name {} and index {}.'.format(
                 name, index))
       else:
-        return XlaValue(source.internal_representation[index],
+        return XlaValue(source.reference[index],
                         source.type_signature[index], self._backend)
     elif name is not None:
       py_typecheck.check_type(name, str)
       return XlaValue(
-          getattr(source.internal_representation, str(name)),
+          getattr(source.reference, str(name)),
           getattr(source.type_signature, str(name)), self._backend)
     else:
       raise ValueError('Must specify either name or index.')

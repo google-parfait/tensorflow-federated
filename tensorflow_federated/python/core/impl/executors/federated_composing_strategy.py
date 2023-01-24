@@ -11,11 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
-# pytype: skip-file
-# This modules disables the Pytype analyzer, see
-# https://github.com/tensorflow/federated/blob/main/docs/pytype.md for more
-# information.
 """A strategy for composing federated types and intrinsics in disjoint scopes.
 
                 +------------+
@@ -87,7 +82,7 @@ class FederatedComposingStrategyValue(executor_value_base.ExecutorValue):
     self._type_signature = computation_types.to_type(type_signature)
 
   @property
-  def internal_representation(self):
+  def reference(self):
     return self._value
 
   @property
@@ -309,14 +304,14 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
 
   @tracing.trace
   async def compute_federated_aggregate(
-      self,
-      arg: FederatedComposingStrategyValue) -> FederatedComposingStrategyValue:
+      self, arg: executor_value_base.ExecutorValue
+  ) -> executor_value_base.ExecutorValue:
     value_type, zero_type, accumulate_type, merge_type, report_type = (
         executor_utils.parse_federated_aggregate_argument_types(
             arg.type_signature))
-    py_typecheck.check_type(arg.internal_representation, structure.Struct)
-    py_typecheck.check_len(arg.internal_representation, 5)
-    val = arg.internal_representation[0]
+    py_typecheck.check_type(arg.reference, structure.Struct)
+    py_typecheck.check_len(arg.reference, 5)
+    val = arg.reference[0]
     py_typecheck.check_type(val, list)
     py_typecheck.check_len(val, len(self._target_executors))
     identity_report, identity_report_type = (
@@ -330,9 +325,9 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
     aggr_comp = executor_utils.create_intrinsic_comp(
         intrinsic_defs.FEDERATED_AGGREGATE, aggr_type)
     zero = await (await self._executor.create_selection(arg, 1)).compute()
-    accumulate = arg.internal_representation[2]
-    merge = arg.internal_representation[3]
-    report = arg.internal_representation[4]
+    accumulate = arg.reference[2]
+    merge = arg.reference[3]
+    report = arg.reference[4]
 
     async def _child_fn(ex, v):
       py_typecheck.check_type(v, executor_value_base.ExecutorValue)
@@ -375,18 +370,18 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
 
   @tracing.trace
   async def compute_federated_apply(
-      self,
-      arg: FederatedComposingStrategyValue) -> FederatedComposingStrategyValue:
-    py_typecheck.check_type(arg.internal_representation, structure.Struct)
-    py_typecheck.check_len(arg.internal_representation, 2)
+      self, arg: executor_value_base.ExecutorValue
+  ) -> executor_value_base.ExecutorValue:
+    py_typecheck.check_type(arg.reference, structure.Struct)
+    py_typecheck.check_len(arg.reference, 2)
     fn_type = arg.type_signature[0]
     py_typecheck.check_type(fn_type, computation_types.FunctionType)
     val_type = arg.type_signature[1]
     type_analysis.check_federated_type(
         val_type, fn_type.parameter, placements.SERVER, all_equal=True)
-    fn = arg.internal_representation[0]
+    fn = arg.reference[0]
     py_typecheck.check_type(fn, pb.Computation)
-    val = arg.internal_representation[1]
+    val = arg.reference[1]
     py_typecheck.check_type(val, executor_value_base.ExecutorValue)
     return FederatedComposingStrategyValue(
         await self._server_executor.create_call(
@@ -395,17 +390,17 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
 
   @tracing.trace
   async def compute_federated_broadcast(
-      self,
-      arg: FederatedComposingStrategyValue) -> FederatedComposingStrategyValue:
+      self, arg: executor_value_base.ExecutorValue
+  ) -> executor_value_base.ExecutorValue:
     return await executor_utils.compute_intrinsic_federated_broadcast(
         self._executor, arg)
 
   @tracing.trace
   async def _eval(self, arg, intrinsic, placement, all_equal):
     py_typecheck.check_type(arg.type_signature, computation_types.FunctionType)
-    py_typecheck.check_type(arg.internal_representation, pb.Computation)
+    py_typecheck.check_type(arg.reference, pb.Computation)
     py_typecheck.check_type(placement, placements.PlacementLiteral)
-    fn = arg.internal_representation
+    fn = arg.reference
     fn_type = arg.type_signature
     eval_type = computation_types.FunctionType(
         fn_type,
@@ -429,28 +424,29 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
 
   @tracing.trace
   async def compute_federated_eval_at_clients(
-      self,
-      arg: FederatedComposingStrategyValue) -> FederatedComposingStrategyValue:
+      self, arg: executor_value_base.ExecutorValue
+  ) -> executor_value_base.ExecutorValue:
     return await self._eval(arg, intrinsic_defs.FEDERATED_EVAL_AT_CLIENTS,
                             placements.CLIENTS, False)
 
   @tracing.trace
   async def compute_federated_eval_at_server(
-      self,
-      arg: FederatedComposingStrategyValue) -> FederatedComposingStrategyValue:
+      self, arg: executor_value_base.ExecutorValue
+  ) -> executor_value_base.ExecutorValue:
     py_typecheck.check_type(arg.type_signature, computation_types.FunctionType)
-    py_typecheck.check_type(arg.internal_representation, pb.Computation)
+    py_typecheck.check_type(arg.reference, pb.Computation)
     fn_type = arg.type_signature
     embedded_fn = await self._server_executor.create_value(
-        arg.internal_representation, fn_type)
+        arg.reference, fn_type
+    )
     embedded_call = await self._server_executor.create_call(embedded_fn)
     return FederatedComposingStrategyValue(
         embedded_call, computation_types.at_server(fn_type.result))
 
   @tracing.trace
   async def _map(self, arg, all_equal=None):
-    py_typecheck.check_type(arg.internal_representation, structure.Struct)
-    py_typecheck.check_len(arg.internal_representation, 2)
+    py_typecheck.check_type(arg.reference, structure.Struct)
+    py_typecheck.check_len(arg.reference, 2)
     fn_type = arg.type_signature[0]
     py_typecheck.check_type(fn_type, computation_types.FunctionType)
     val_type = arg.type_signature[1]
@@ -460,9 +456,9 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
     elif all_equal and not val_type.all_equal:
       raise ValueError(
           'Cannot map a non-all_equal argument into an all_equal result.')
-    fn = arg.internal_representation[0]
+    fn = arg.reference[0]
     py_typecheck.check_type(fn, pb.Computation)
-    val = arg.internal_representation[1]
+    val = arg.reference[1]
     py_typecheck.check_type(val, list)
 
     map_type = computation_types.FunctionType(
@@ -486,20 +482,20 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
 
   @tracing.trace
   async def compute_federated_map(
-      self,
-      arg: FederatedComposingStrategyValue) -> FederatedComposingStrategyValue:
+      self, arg: executor_value_base.ExecutorValue
+  ) -> executor_value_base.ExecutorValue:
     return await self._map(arg, all_equal=False)
 
   @tracing.trace
   async def compute_federated_map_all_equal(
-      self,
-      arg: FederatedComposingStrategyValue) -> FederatedComposingStrategyValue:
+      self, arg: executor_value_base.ExecutorValue
+  ) -> executor_value_base.ExecutorValue:
     return await self._map(arg, all_equal=True)
 
   @tracing.trace
   async def compute_federated_mean(
-      self,
-      arg: FederatedComposingStrategyValue) -> FederatedComposingStrategyValue:
+      self, arg: executor_value_base.ExecutorValue
+  ) -> executor_value_base.ExecutorValue:
     type_analysis.check_federated_type(
         arg.type_signature, placement=placements.CLIENTS)
     member_type = arg.type_signature.member
@@ -534,8 +530,8 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
 
   @tracing.trace
   async def compute_federated_sum(
-      self,
-      arg: FederatedComposingStrategyValue) -> FederatedComposingStrategyValue:
+      self, arg: executor_value_base.ExecutorValue
+  ) -> executor_value_base.ExecutorValue:
     type_analysis.check_federated_type(
         arg.type_signature, placement=placements.CLIENTS)
     id_comp, id_type = tensorflow_computation_factory.create_identity(
@@ -557,25 +553,25 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
 
   @tracing.trace
   async def compute_federated_secure_sum_bitwidth(
-      self,
-      arg: FederatedComposingStrategyValue) -> FederatedComposingStrategyValue:
+      self, arg: executor_value_base.ExecutorValue
+  ) -> executor_value_base.ExecutorValue:
     raise NotImplementedError('The secure sum intrinsic is not implemented.')
 
   @tracing.trace
   async def compute_federated_secure_select(
-      self,
-      arg: FederatedComposingStrategyValue) -> FederatedComposingStrategyValue:
+      self, arg: executor_value_base.ExecutorValue
+  ) -> executor_value_base.ExecutorValue:
     raise NotImplementedError('The secure select intrinsic is not implemented.')
 
   @tracing.trace
   async def compute_federated_select(
-      self,
-      arg: FederatedComposingStrategyValue) -> FederatedComposingStrategyValue:
+      self, arg: executor_value_base.ExecutorValue
+  ) -> executor_value_base.ExecutorValue:
     client_keys_type, max_key_type, server_val_type, select_fn_type = (
         arg.type_signature)
     del client_keys_type  # Unused
-    py_typecheck.check_type(arg.internal_representation, structure.Struct)
-    client_keys, max_key, server_val, select_fn = arg.internal_representation
+    py_typecheck.check_type(arg.reference, structure.Struct)
+    client_keys, max_key, server_val, select_fn = arg.reference
     py_typecheck.check_type(client_keys, list)
     py_typecheck.check_len(client_keys, len(self._target_executors))
     py_typecheck.check_type(max_key, executor_value_base.ExecutorValue)
@@ -614,22 +610,22 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
 
   @tracing.trace
   async def compute_federated_value_at_clients(
-      self,
-      arg: FederatedComposingStrategyValue) -> FederatedComposingStrategyValue:
+      self, arg: executor_value_base.ExecutorValue
+  ) -> executor_value_base.ExecutorValue:
     return await executor_utils.compute_intrinsic_federated_value(
         self._executor, arg, placements.CLIENTS)
 
   @tracing.trace
   async def compute_federated_value_at_server(
-      self,
-      arg: FederatedComposingStrategyValue) -> FederatedComposingStrategyValue:
+      self, arg: executor_value_base.ExecutorValue
+  ) -> executor_value_base.ExecutorValue:
     return await executor_utils.compute_intrinsic_federated_value(
         self._executor, arg, placements.SERVER)
 
   @tracing.trace
   async def compute_federated_weighted_mean(
-      self,
-      arg: FederatedComposingStrategyValue) -> FederatedComposingStrategyValue:
+      self, arg: executor_value_base.ExecutorValue
+  ) -> executor_value_base.ExecutorValue:
     return await executor_utils.compute_intrinsic_federated_weighted_mean(
         self._executor,
         arg,
@@ -651,8 +647,8 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
 
   @tracing.trace
   async def compute_federated_zip_at_clients(
-      self,
-      arg: FederatedComposingStrategyValue) -> FederatedComposingStrategyValue:
+      self, arg: executor_value_base.ExecutorValue
+  ) -> executor_value_base.ExecutorValue:
     py_typecheck.check_type(arg.type_signature, computation_types.StructType)
     result_type = computation_types.at_clients(
         type_transformations.strip_placement(arg.type_signature))
@@ -662,7 +658,8 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
 
     async def _child_fn(child, child_index):
       struct_value = await self._zip_struct_into_child(
-          child, child_index, arg.internal_representation, arg.type_signature)
+          child, child_index, arg.reference, arg.type_signature
+      )
       return await child.create_call(
           await child.create_value(zip_comp, zip_type), struct_value)
 
@@ -686,11 +683,12 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
 
   @tracing.trace
   async def compute_federated_zip_at_server(
-      self,
-      arg: FederatedComposingStrategyValue) -> FederatedComposingStrategyValue:
+      self, arg: executor_value_base.ExecutorValue
+  ) -> executor_value_base.ExecutorValue:
     py_typecheck.check_type(arg.type_signature, computation_types.StructType)
     result_type = computation_types.at_server(
         type_transformations.strip_placement(arg.type_signature))
     return FederatedComposingStrategyValue(
-        await self._zip_struct_into_server(arg.internal_representation,
-                                           arg.type_signature), result_type)
+        await self._zip_struct_into_server(arg.reference, arg.type_signature),
+        result_type,
+    )

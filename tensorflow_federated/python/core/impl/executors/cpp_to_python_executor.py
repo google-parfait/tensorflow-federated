@@ -59,8 +59,7 @@ class CppToPythonExecutorValue(executor_value_base.ExecutorValue):
     return self._type_signature
 
   @property
-  def ref(self) -> int:
-    """Hands out a reference to self without transferring ownership."""
+  def reference(self) -> int:
     return self._owned_value_id.ref
 
   @tracing.trace
@@ -119,9 +118,9 @@ class CppToPythonExecutorBridge(executor_base.Executor):
       fn: CppToPythonExecutorValue,
       arg: Optional[CppToPythonExecutorValue] = None
   ) -> CppToPythonExecutorValue:
-    fn_ref = fn.ref
+    fn_ref = fn.reference
     if arg is not None:
-      arg_ref = arg.ref
+      arg_ref = arg.reference
     else:
       arg_ref = None
     try:
@@ -139,7 +138,7 @@ class CppToPythonExecutorBridge(executor_base.Executor):
     id_list = []
     type_list = []
     for name, value in structure.iter_elements(executor_value_struct):
-      id_list.append(value.ref)
+      id_list.append(value.reference)
       type_list.append((name, value.type_signature))
     try:
       struct_id = self._cpp_executor.create_struct(id_list)
@@ -153,7 +152,9 @@ class CppToPythonExecutorBridge(executor_base.Executor):
   async def create_selection(self, source: CppToPythonExecutorValue,
                              index: int) -> CppToPythonExecutorValue:
     try:
-      selection_id = self._cpp_executor.create_selection(source.ref, index)
+      selection_id = self._cpp_executor.create_selection(
+          source.reference, index
+      )
     except Exception as e:  # pylint: disable=broad-except
       _handle_error(e)
     selection_type = source.type_signature[index]

@@ -95,8 +95,8 @@ class ExecutorTest(absltest.TestCase):
     int_val = asyncio.run(ex.create_value(10, np.int32))
     self.assertIsInstance(int_val, executor.XlaValue)
     self.assertEqual(str(int_val.type_signature), 'int32')
-    self.assertIsInstance(int_val.internal_representation, np.int32)
-    self.assertEqual(int_val.internal_representation, 10)
+    self.assertIsInstance(int_val.reference, np.int32)
+    self.assertEqual(int_val.reference, 10)
     result = asyncio.run(int_val.compute())
     self.assertEqual(result, 10)
 
@@ -107,8 +107,8 @@ class ExecutorTest(absltest.TestCase):
     struct_val = asyncio.run(ex.create_struct([x_val, y_val]))
     self.assertIsInstance(struct_val, executor.XlaValue)
     self.assertEqual(str(struct_val.type_signature), '<int32,int32>')
-    self.assertIsInstance(struct_val.internal_representation, structure.Struct)
-    self.assertEqual(str(struct_val.internal_representation), '<10,20>')
+    self.assertIsInstance(struct_val.reference, structure.Struct)
+    self.assertEqual(str(struct_val.reference), '<10,20>')
     result = asyncio.run(struct_val.compute())
     self.assertEqual(str(result), '<10,20>')
 
@@ -123,8 +123,8 @@ class ExecutorTest(absltest.TestCase):
     comp_val = asyncio.run(ex.create_value(comp_pb, comp_type))
     self.assertIsInstance(comp_val, executor.XlaValue)
     self.assertEqual(str(comp_val.type_signature), str(comp_type))
-    self.assertTrue(callable(comp_val.internal_representation))
-    result = comp_val.internal_representation()
+    self.assertTrue(callable(comp_val.reference))
+    result = comp_val.reference()
     self.assertEqual(result, 10)
     call_val = asyncio.run(ex.create_call(comp_val))
     self.assertIsInstance(call_val, executor.XlaValue)
@@ -163,9 +163,9 @@ class ExecutorTest(absltest.TestCase):
     self.assertIsInstance(struct_val, executor.XlaValue)
     self.assertEqual(str(struct_val.type_signature), '<a=int32,b=int32>')
     by_index_val = asyncio.run(ex.create_selection(struct_val, index=0))
-    self.assertEqual(by_index_val.internal_representation, 10)
+    self.assertEqual(by_index_val.reference, 10)
     by_name_val = asyncio.run(ex.create_selection(struct_val, name='b'))
-    self.assertEqual(by_name_val.internal_representation, 20)
+    self.assertEqual(by_name_val.reference, 20)
 
 
 if __name__ == '__main__':

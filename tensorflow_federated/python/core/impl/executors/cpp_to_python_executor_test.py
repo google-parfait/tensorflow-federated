@@ -59,12 +59,12 @@ class CcToPythonExecutorTest(parameterized.TestCase,
         cpp_to_python_executor.CppToPythonExecutorValue)
     fn.type_signature = computation_types.FunctionType(
         None, computation_types.to_type(tf.int32))
-    fn.ref = 1
+    fn.reference = 1
 
     constructed_call = await self._test_executor.create_call(fn)
 
     self._mock_executor.create_call.assert_called_with(1, None)
-    self.assertIs(constructed_call.ref, owned_call_id.ref)
+    self.assertIs(constructed_call.reference, owned_call_id.ref)
 
   async def test_create_call_tensorflow_function_with_arg(self):
     owned_call_id = unittest.mock.create_autospec(
@@ -74,16 +74,16 @@ class CcToPythonExecutorTest(parameterized.TestCase,
         cpp_to_python_executor.CppToPythonExecutorValue)
     fn.type_signature = computation_types.FunctionType(
         None, computation_types.to_type(tf.int32))
-    fn.ref = 1
+    fn.reference = 1
     arg = unittest.mock.create_autospec(
         cpp_to_python_executor.CppToPythonExecutorValue)
     arg.type_signature = computation_types.to_type(tf.int32)
-    arg.ref = 2
+    arg.reference = 2
 
     constructed_call = await self._test_executor.create_call(fn, arg)
 
     self._mock_executor.create_call.assert_called_with(1, 2)
-    self.assertIs(constructed_call.ref, owned_call_id.ref)
+    self.assertIs(constructed_call.reference, owned_call_id.ref)
 
   async def test_create_struct(self):
     owned_struct_id = unittest.mock.create_autospec(
@@ -92,13 +92,13 @@ class CcToPythonExecutorTest(parameterized.TestCase,
     struct_element = unittest.mock.create_autospec(
         cpp_to_python_executor.CppToPythonExecutorValue)
     struct_element.type_signature = computation_types.to_type(tf.int32)
-    struct_element.ref = 1
+    struct_element.reference = 1
 
     constructed_struct = await self._test_executor.create_struct(
         [struct_element])
 
     self._mock_executor.create_struct.assert_called_with([1])
-    self.assertIs(constructed_struct.ref, owned_struct_id.ref)
+    self.assertIs(constructed_struct.reference, owned_struct_id.ref)
 
   async def test_create_selection(self):
     owned_selection_id = unittest.mock.create_autospec(
@@ -107,12 +107,12 @@ class CcToPythonExecutorTest(parameterized.TestCase,
     source = unittest.mock.create_autospec(
         cpp_to_python_executor.CppToPythonExecutorValue)
     source.type_signature = computation_types.to_type([tf.int32])
-    source.ref = 1
+    source.reference = 1
 
     selected_element = await self._test_executor.create_selection(source, 0)
 
     self._mock_executor.create_selection.assert_called_with(1, 0)
-    self.assertIs(selected_element.ref, owned_selection_id.ref)
+    self.assertIs(selected_element.reference, owned_selection_id.ref)
 
   async def test_compute(self):
     owned_id = unittest.mock.create_autospec(executor_bindings.OwnedValueId)
