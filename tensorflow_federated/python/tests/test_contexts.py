@@ -62,8 +62,6 @@ def get_all_contexts():
        functools.partial(
            remote_runtime_test_utils.create_inprocess_aggregator_contexts,
            WORKER_PORTS, AGGREGATOR_PORTS)),
-      ('native_sizing',
-       tff.backends.native.create_sizing_execution_context),
       ('native_sync_local_cpp',
        tff.backends.native.create_sync_local_cpp_execution_context),
       ('native_thread_debug',

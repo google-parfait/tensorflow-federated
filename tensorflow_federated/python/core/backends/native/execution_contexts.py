@@ -142,19 +142,6 @@ def set_local_async_python_execution_context(
   context_stack_impl.context_stack.set_default_context(context)
 
 
-def create_sizing_execution_context(default_num_clients: int = 0,
-                                    max_fanout: int = 100,
-                                    clients_per_thread: int = 1):
-  """Creates an execution context that executes computations locally."""
-  factory = python_executor_stacks.sizing_executor_factory(
-      default_num_clients=default_num_clients,
-      max_fanout=max_fanout,
-      clients_per_thread=clients_per_thread)
-  return sync_execution_context.SyncExecutionContext(
-      executor_fn=factory, compiler_fn=compiler.transform_to_native_form
-  )
-
-
 def create_thread_debugging_execution_context(default_num_clients: int = 0,
                                               clients_per_thread=1):
   """Creates a simple execution context that executes computations locally."""

@@ -707,36 +707,6 @@ py_test(
 )
 
 py_library(
-    name = "sizing_executor",
-    srcs = ["sizing_executor.py"],
-    srcs_version = "PY3",
-    deps = [
-        ":executor_base",
-        ":executor_value_base",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/common_libs:structure",
-        "//tensorflow_federated/python/core/impl/types:typed_object",
-    ],
-)
-
-py_test(
-    name = "sizing_executor_test",
-    size = "small",
-    srcs = ["sizing_executor_test.py"],
-    python_version = "PY3",
-    shard_count = 10,
-    srcs_version = "PY3",
-    deps = [
-        ":eager_tf_executor",
-        ":reference_resolving_executor",
-        ":sizing_executor",
-        "//tensorflow_federated/python/common_libs:structure",
-        "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-    ],
-)
-
-py_library(
     name = "thread_delegating_executor",
     srcs = ["thread_delegating_executor.py"],
     srcs_version = "PY3",

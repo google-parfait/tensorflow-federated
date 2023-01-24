@@ -94,11 +94,6 @@ def _create_concurrent_maxthread_tuples():
     ex_factory = python_executor_stacks.local_executor_factory(
         clients_per_thread=concurrency, leaf_executor_fn=tf_executor_mock)
     tuples.append((local_ex_string, ex_factory, concurrency, tf_executor_mock))
-    sizing_ex_string = 'sizing_executor_{}_client_thread'.format(concurrency)
-    tf_executor_mock = ExecutorMock()
-    ex_factory = python_executor_stacks.sizing_executor_factory(
-        clients_per_thread=concurrency, leaf_executor_fn=tf_executor_mock)
-    tuples.append((sizing_ex_string, ex_factory, concurrency, tf_executor_mock))
     debug_ex_string = 'debug_executor_{}_client_thread'.format(concurrency)
     tf_executor_mock = ExecutorMock()
     ex_factory = python_executor_stacks.thread_debugging_executor_factory(
@@ -108,24 +103,6 @@ def _create_concurrent_maxthread_tuples():
 
 
 class ConcreteExecutorFactoryTest(parameterized.TestCase):
-
-  def _maybe_wrap_stack_fn(self, stack_fn, ex_factory):
-    """The stack_fn for SizingExecutorFactory requires two outputs.
-
-    If required, we will wrap the stack_fn and provide a whimsy value as the
-    second return value.
-
-    Args:
-      stack_fn: The original stack_fn
-      ex_factory: A class which inherits from ExecutorFactory.
-
-    Returns:
-      A stack_fn that might additionally return a list as the second value.
-    """
-    if ex_factory == python_executor_stacks.SizingExecutorFactory:
-      return lambda x: (stack_fn(x), [])
-    else:
-      return stack_fn
 
   def test_subclass_base_fails_no_create_method(self):
 
@@ -160,7 +137,6 @@ class ConcreteExecutorFactoryTest(parameterized.TestCase):
     Fine()
 
   @parameterized.named_parameters(
-      ('SizingExecutorFactory', python_executor_stacks.SizingExecutorFactory),
       ('ResourceManagingExecutorFactory',
        python_executor_stacks.ResourceManagingExecutorFactory))
   def test_concrete_class_instantiates_stack_fn(self, ex_factory):
@@ -169,12 +145,10 @@ class ConcreteExecutorFactoryTest(parameterized.TestCase):
       del x  # Unused
       return eager_tf_executor.EagerTFExecutor()
 
-    maybe_wrapped_stack_fn = self._maybe_wrap_stack_fn(_stack_fn, ex_factory)
-    factory = ex_factory(maybe_wrapped_stack_fn)
+    factory = ex_factory(_stack_fn)
     self.assertIsInstance(factory, ex_factory)
 
   @parameterized.named_parameters(
-      ('SizingExecutorFactory', python_executor_stacks.SizingExecutorFactory),
       ('ResourceManagingExecutorFactory',
        python_executor_stacks.ResourceManagingExecutorFactory))
   def test_call_constructs_executor(self, ex_factory):
@@ -183,13 +157,11 @@ class ConcreteExecutorFactoryTest(parameterized.TestCase):
       del x  # Unused
       return eager_tf_executor.EagerTFExecutor()
 
-    maybe_wrapped_stack_fn = self._maybe_wrap_stack_fn(_stack_fn, ex_factory)
-    factory = ex_factory(maybe_wrapped_stack_fn)
+    factory = ex_factory(_stack_fn)
     ex = factory.create_executor({})
     self.assertIsInstance(ex, executor_base.Executor)
 
   @parameterized.named_parameters(
-      ('SizingExecutorFactory', python_executor_stacks.SizingExecutorFactory),
       ('ResourceManagingExecutorFactory',
        python_executor_stacks.ResourceManagingExecutorFactory))
   def test_cleanup_succeeds_without_init(self, ex_factory):
@@ -198,12 +170,10 @@ class ConcreteExecutorFactoryTest(parameterized.TestCase):
       del x  # Unused
       return eager_tf_executor.EagerTFExecutor()
 
-    maybe_wrapped_stack_fn = self._maybe_wrap_stack_fn(_stack_fn, ex_factory)
-    factory = ex_factory(maybe_wrapped_stack_fn)
+    factory = ex_factory(_stack_fn)
     factory.clean_up_executor({placements.CLIENTS: 1})
 
   @parameterized.named_parameters(
-      ('SizingExecutorFactory', python_executor_stacks.SizingExecutorFactory),
       ('ResourceManagingExecutorFactory',
        python_executor_stacks.ResourceManagingExecutorFactory))
   def test_cleanup_calls_close(self, ex_factory):
@@ -214,14 +184,12 @@ class ConcreteExecutorFactoryTest(parameterized.TestCase):
       del x  # Unused
       return ex
 
-    maybe_wrapped_stack_fn = self._maybe_wrap_stack_fn(_stack_fn, ex_factory)
-    factory = ex_factory(maybe_wrapped_stack_fn)
+    factory = ex_factory(_stack_fn)
     factory.create_executor({})
     factory.clean_up_executor({})
     ex.close.assert_called_once()
 
   @parameterized.named_parameters(
-      ('SizingExecutorFactory', python_executor_stacks.SizingExecutorFactory),
       ('ResourceManagingExecutorFactory',
        python_executor_stacks.ResourceManagingExecutorFactory))
   def test_construction_with_multiple_cardinalities_reuses_existing_stacks(
@@ -236,8 +204,7 @@ class ConcreteExecutorFactoryTest(parameterized.TestCase):
       num_times_invoked += 1
       return ex
 
-    maybe_wrapped_stack_fn = self._maybe_wrap_stack_fn(_stack_fn, ex_factory)
-    factory = ex_factory(maybe_wrapped_stack_fn)
+    factory = ex_factory(_stack_fn)
     for _ in range(2):
       factory.create_executor({})
       factory.create_executor({placements.SERVER: 1})
@@ -257,7 +224,6 @@ class ExecutorStacksTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('local_executor', python_executor_stacks.local_executor_factory),
-      ('sizing_executor', python_executor_stacks.sizing_executor_factory),
       ('debug_executor',
        python_executor_stacks.thread_debugging_executor_factory),
   )
@@ -269,7 +235,6 @@ class ExecutorStacksTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('local_executor', python_executor_stacks.local_executor_factory),
-      ('sizing_executor', python_executor_stacks.sizing_executor_factory),
   )
   def test_construction_raises_with_max_fanout_one(self, executor_factory_fn):
     with self.assertRaises(ValueError):
@@ -278,12 +243,8 @@ class ExecutorStacksTest(parameterized.TestCase):
   @parameterized.named_parameters(
       ('local_executor_none_clients',
        python_executor_stacks.local_executor_factory()),
-      ('sizing_executor_none_clients',
-       python_executor_stacks.sizing_executor_factory()),
       ('local_executor_three_clients',
        python_executor_stacks.local_executor_factory(default_num_clients=3)),
-      ('sizing_executor_three_clients',
-       python_executor_stacks.sizing_executor_factory(default_num_clients=3)),
   )
   @tensorflow_test_utils.skip_test_for_multi_gpu
   def test_execution_of_temperature_sensor_example(self, executor):
@@ -303,7 +264,6 @@ class ExecutorStacksTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('local_executor', python_executor_stacks.local_executor_factory),
-      ('sizing_executor', python_executor_stacks.sizing_executor_factory),
   )
   def test_execution_with_inferred_clients_larger_than_fanout(
       self, executor_factory_fn):
@@ -322,14 +282,10 @@ class ExecutorStacksTest(parameterized.TestCase):
   @parameterized.named_parameters(
       ('local_executor_none_clients',
        python_executor_stacks.local_executor_factory()),
-      ('sizing_executor_none_clients',
-       python_executor_stacks.sizing_executor_factory()),
       ('debug_executor_none_clients',
        python_executor_stacks.thread_debugging_executor_factory()),
       ('local_executor_one_client',
        python_executor_stacks.local_executor_factory(default_num_clients=1)),
-      ('sizing_executor_one_client',
-       python_executor_stacks.sizing_executor_factory(default_num_clients=1)),
       ('debug_executor_one_client',
        python_executor_stacks.thread_debugging_executor_factory(
            default_num_clients=1)),
@@ -435,46 +391,6 @@ class FederatingExecutorFactoryTest(absltest.TestCase):
     federating_factory = python_executor_stacks.FederatingExecutorFactory(
         clients_per_thread=1, unplaced_ex_factory=unplaced_factory)
     self.assertIsInstance(federating_factory, executor_factory.ExecutorFactory)
-
-  def test_raises_on_access_of_nonexistent_sizing_executors(self):
-    unplaced_factory = python_executor_stacks.UnplacedExecutorFactory()
-    federating_factory = python_executor_stacks.FederatingExecutorFactory(
-        clients_per_thread=1, unplaced_ex_factory=unplaced_factory)
-    with self.assertRaisesRegex(ValueError, 'not configured'):
-      _ = federating_factory.sizing_executors
-
-  def test_returns_empty_list_of_sizing_executors_if_configured(self):
-    unplaced_factory = python_executor_stacks.UnplacedExecutorFactory()
-    federating_factory = python_executor_stacks.FederatingExecutorFactory(
-        clients_per_thread=1,
-        unplaced_ex_factory=unplaced_factory,
-        use_sizing=True)
-    sizing_ex_list = federating_factory.sizing_executors
-    self.assertIsInstance(sizing_ex_list, list)
-    self.assertEmpty(sizing_ex_list)
-
-  def test_constructs_as_many_sizing_executors_as_client_executors(self):
-    unplaced_factory = python_executor_stacks.UnplacedExecutorFactory()
-    federating_factory = python_executor_stacks.FederatingExecutorFactory(
-        clients_per_thread=2,
-        unplaced_ex_factory=unplaced_factory,
-        use_sizing=True)
-    federating_factory.create_executor(cardinalities={placements.CLIENTS: 10})
-    sizing_ex_list = federating_factory.sizing_executors
-    self.assertIsInstance(sizing_ex_list, list)
-    self.assertLen(sizing_ex_list, 5)
-
-  def test_reinvocation_of_create_executor_extends_sizing_executors(self):
-    unplaced_factory = python_executor_stacks.UnplacedExecutorFactory()
-    federating_factory = python_executor_stacks.FederatingExecutorFactory(
-        clients_per_thread=2,
-        unplaced_ex_factory=unplaced_factory,
-        use_sizing=True)
-    federating_factory.create_executor(cardinalities={placements.CLIENTS: 10})
-    federating_factory.create_executor(cardinalities={placements.CLIENTS: 12})
-    sizing_ex_list = federating_factory.sizing_executors
-    self.assertIsInstance(sizing_ex_list, list)
-    self.assertLen(sizing_ex_list, 5 + 6)
 
 
 class MinimalLengthFlatStackFnTest(parameterized.TestCase):

@@ -21,11 +21,10 @@
 from collections.abc import Callable, Sequence
 from concurrent import futures
 import math
-from typing import Any, Optional, Union
+from typing import Optional, Union
 import warnings
 
 from absl import logging
-import attr
 import cachetools
 import grpc
 import tensorflow as tf
@@ -45,7 +44,6 @@ from tensorflow_federated.python.core.impl.executors import remote_executor
 from tensorflow_federated.python.core.impl.executors import remote_executor_grpc_stub
 from tensorflow_federated.python.core.impl.executors import remote_executor_stub
 from tensorflow_federated.python.core.impl.executors import sequence_executor
-from tensorflow_federated.python.core.impl.executors import sizing_executor
 from tensorflow_federated.python.core.impl.executors import thread_delegating_executor
 from tensorflow_federated.python.core.impl.types import placements
 
@@ -135,137 +133,7 @@ class ResourceManagingExecutorFactory(executor_factory.ExecutorFactory):
     del self._executors[key]
 
 
-@attr.s(auto_attribs=True, eq=False, order=False, frozen=True)
-class SizeInfo:
-  """Structure for size information from SizingExecutorFactory.get_size_info().
-
-  Attribues:
-    `broadcast_history`: 2D ragged list of 2-tuples which represents the
-      broadcast history.
-    `aggregate_history`: 2D ragged list of 2-tuples which represents the
-      aggregate history.
-    `broadcast_bits`: A list of shape [number_of_execs] representing the
-      number of broadcasted bits passed through each executor.
-    `aggregate_bits`: A list of shape [number_of_execs] representing the
-      number of aggregated bits passed through each executor.
-  """
-
-  broadcast_history: dict[Any, sizing_executor.SizeAndDTypes]
-  aggregate_history: dict[Any, sizing_executor.SizeAndDTypes]
-  broadcast_bits: list[int]
-  aggregate_bits: list[int]
-
-
-class SizingExecutorFactory(ResourceManagingExecutorFactory):
-  """A executor factory holding an executor per cardinality."""
-
-  def __init__(
-      self,
-      executor_stack_fn: Callable[
-          [executor_factory.CardinalitiesType],
-          tuple[executor_base.Executor, list[sizing_executor.SizingExecutor]],
-      ],
-  ):
-    """Initializes `SizingExecutorFactory`.
-
-    Args:
-      executor_stack_fn: Similar to base class but the second return value of
-        the callable is used to expose the SizingExecutors.
-    """
-
-    super().__init__(executor_stack_fn)
-    # Sizing executors are intended to record the entire history of execution,
-    # and therefore we don't want to be silently clearing them. So we leave
-    # sizing_executors as a proper dict.
-    self._sizing_executors = {}
-
-  def create_executor(
-      self, cardinalities: executor_factory.CardinalitiesType
-  ) -> executor_base.Executor:
-    """See base class."""
-
-    py_typecheck.check_type(cardinalities, dict)
-    key = _get_hashable_key(cardinalities)
-    ex = self._executors.get(key)
-    if ex is not None:
-      return ex
-    ex, sizing_executors = self._executor_stack_fn(cardinalities)
-    self._sizing_executors[key] = []
-    for executor in sizing_executors:
-      if not isinstance(executor, sizing_executor.SizingExecutor):
-        raise ValueError('Expected all input executors to be sizing executors')
-      self._sizing_executors[key].append(executor)
-    py_typecheck.check_type(ex, executor_base.Executor)
-    self._executors[key] = ex
-    return ex
-
-  def get_size_info(self) -> SizeInfo:
-    """Returns information about the transferred data of each SizingExecutor.
-
-    Returns the history of broadcast and aggregation for each executor as well
-    as the number of aggregated bits that has been passed through.
-
-    Returns:
-      An instance of `SizeInfo`.
-    """
-    size_ex_dict = self._sizing_executors
-
-    def _extract_history(sizing_exs: list[sizing_executor.SizingExecutor]):
-      broadcast_history, aggregate_history = [], []
-      for ex in sizing_exs:
-        broadcast_history.extend(ex.broadcast_history)
-        aggregate_history.extend(ex.aggregate_history)
-      return broadcast_history, aggregate_history
-
-    broadcast_history, aggregate_history = {}, {}
-    for key, size_exs in size_ex_dict.items():
-      current_broadcast_history, current_aggregate_history = _extract_history(
-          size_exs
-      )
-      broadcast_history[key] = current_broadcast_history
-      aggregate_history[key] = current_aggregate_history
-
-    broadcast_bits = [
-        self._calculate_bit_size(hist) for hist in broadcast_history.values()
-    ]
-    aggregate_bits = [
-        self._calculate_bit_size(hist) for hist in aggregate_history.values()
-    ]
-    return SizeInfo(
-        broadcast_history=broadcast_history,
-        aggregate_history=aggregate_history,
-        broadcast_bits=broadcast_bits,
-        aggregate_bits=aggregate_bits,
-    )
-
-  def _bits_per_element(self, dtype: tf.dtypes.DType) -> int:
-    """Returns the number of bits that a tensorflow DType uses per element."""
-    if dtype == tf.string:
-      return 8
-    elif dtype == tf.bool:
-      return 1
-    return dtype.size * 8
-
-  def _calculate_bit_size(self, history: sizing_executor.SizeAndDTypes) -> int:
-    """Takes a list of 2 element lists and calculates the number of bits represented.
-
-    The input list should follow the format of self.broadcast_history or
-    self.aggregate_history. That is, each 2 element list should be
-    [num_elements, dtype].
-
-    Args:
-      history: The history of values passed through the executor.
-
-    Returns:
-      The number of bits represented in the history.
-    """
-    bit_size = 0
-    for num_elements, dtype in history:
-      bit_size += num_elements * self._bits_per_element(dtype)
-    return bit_size
-
-
-# pylint:disable=missing-function-docstring
+# pylint: disable=missing-function-docstring
 def _wrap_executor_in_threading_stack(
     ex: executor_base.Executor,
     support_sequence_ops: bool = False,
@@ -285,6 +153,7 @@ def _wrap_executor_in_threading_stack(
         threaded_ex
     )
   return threaded_ex
+# pylint: enable=missing-function-docstring
 
 
 class UnplacedExecutorFactory(executor_factory.ExecutorFactory):
@@ -355,10 +224,7 @@ class FederatingExecutorFactory(executor_factory.ExecutorFactory):
   """Executor factory for stacks which delegate placed computations.
 
   `FederatingExecutorFactory` validates cardinality requests and manages
-  the relationship between the clients and the client executors. Additionally,
-  `FederatingExecutorFactory` allows for the measurement of tensors crossing
-  the federated communication boundary via the
-  `sizing_executor.SizingExecutor`.
+  the relationship between the clients and the client executors.
 
   This factory is initialized with:
     * An integer number of clients per thread, indicating the number of client
@@ -372,8 +238,6 @@ class FederatingExecutorFactory(executor_factory.ExecutorFactory):
     * A number of default clients. If client cardinalities cannot be inferred
       from data, this value will be used as the default number of clients to
       be supported by the returned executors.
-    * A boolean `use_sizing` to indicate whether to wire instances of
-      `sizing_executors.SizingExecutor` on top of the client stacks.
     * An optional instance of `LocalComputationFactory` to use to construct
       local computations used as parameters in certain federated operators
       (such as `tff.federated_sum`, etc.). Defaults to a TensorFlow factory.
@@ -385,7 +249,6 @@ class FederatingExecutorFactory(executor_factory.ExecutorFactory):
       clients_per_thread: int,
       unplaced_ex_factory: UnplacedExecutorFactory,
       default_num_clients: int = 0,
-      use_sizing: bool = False,
       local_computation_factory: local_computation_factory_base.LocalComputationFactory = tensorflow_computation_factory.TensorFlowComputationFactory(),
       federated_strategy_factory=federated_resolving_strategy.FederatedResolvingStrategy.factory,
   ):
@@ -401,24 +264,8 @@ class FederatingExecutorFactory(executor_factory.ExecutorFactory):
     if default_num_clients < 0:
       raise ValueError('Number of clients must be nonnegative.')
     self._default_num_clients = default_num_clients
-    self._use_sizing = use_sizing
-    if self._use_sizing:
-      self._sizing_executors = []
-    else:
-      self._sizing_executors = None
     self._federated_strategy_factory = federated_strategy_factory
     self._local_computation_factory = local_computation_factory
-
-  @property
-  def sizing_executors(self) -> list[sizing_executor.SizingExecutor]:
-    if not self._use_sizing:
-      raise ValueError(
-          'This federated factory is not configured to produce '
-          'size information. Construct a new federated factory, '
-          'passing argument `use_sizing=True`.'
-      )
-    else:
-      return self._sizing_executors
 
   def _validate_requested_clients(
       self, cardinalities: executor_factory.CardinalitiesType
@@ -440,11 +287,6 @@ class FederatingExecutorFactory(executor_factory.ExecutorFactory):
         )
         for _ in range(num_client_executors)
     ]
-    if self._use_sizing:
-      client_stacks = [
-          sizing_executor.SizingExecutor(ex) for ex in client_stacks
-      ]
-      self._sizing_executors.extend(client_stacks)
 
     federating_strategy_factory = self._federated_strategy_factory(
         {
@@ -720,7 +562,6 @@ def local_executor_factory(
       clients_per_thread=clients_per_thread,
       unplaced_ex_factory=unplaced_ex_factory,
       default_num_clients=default_num_clients,
-      use_sizing=False,
       local_computation_factory=local_computation_factory,
   )
   flat_stack_fn = create_minimal_length_flat_stack_fn(
@@ -804,79 +645,11 @@ def thread_debugging_executor_factory(
       clients_per_thread=clients_per_thread,
       unplaced_ex_factory=unplaced_ex_factory,
       default_num_clients=default_num_clients,
-      use_sizing=False,
   )
 
   return ResourceManagingExecutorFactory(
       federating_executor_factory.create_executor
   )
-
-
-def sizing_executor_factory(
-    default_num_clients: int = 0,
-    max_fanout: int = 100,
-    clients_per_thread: int = 1,
-    leaf_executor_fn=eager_tf_executor.EagerTFExecutor,
-) -> executor_factory.ExecutorFactory:
-  """Constructs an executor factory to execute computations locally with sizing.
-
-  Args:
-    default_num_clients: The number of clients to run by default if cardinality
-      cannot be inferred from arguments.
-    max_fanout: The maximum fanout at any point in the aggregation hierarchy. If
-      `num_clients > max_fanout`, the constructed executor stack will consist of
-      multiple levels of aggregators. The height of the stack will be on the
-      order of `log(num_clients) / log(max_fanout)`.
-    clients_per_thread: Integer number of clients for each of TFF's threads to
-      run in sequence. Increasing `clients_per_thread` therefore reduces the
-      concurrency of the TFF runtime, which can be useful if client work is very
-      lightweight or models are very large and multiple copies cannot fit in
-      memory.
-    leaf_executor_fn: A function that constructs leaf-level executors. Default
-      is the eager TF executor (other possible options: XLA). Should accept the
-      `device` keyword argument if the executor is to be configured with
-      explicitly chosen devices.
-
-  Returns:
-    An instance of `executor_factory.ExecutorFactory` encapsulating the
-    executor construction logic specified above.
-
-  Raises:
-    ValueError: If the number of clients is specified and not one or larger.
-  """
-  py_typecheck.check_type(max_fanout, int)
-  py_typecheck.check_type(clients_per_thread, int)
-  if max_fanout < 2:
-    raise ValueError('Max fanout must be greater than 1.')
-  unplaced_ex_factory = UnplacedExecutorFactory(
-      leaf_executor_fn=leaf_executor_fn
-  )
-  federating_executor_factory = FederatingExecutorFactory(
-      clients_per_thread=clients_per_thread,
-      unplaced_ex_factory=unplaced_ex_factory,
-      default_num_clients=default_num_clients,
-      use_sizing=True,
-  )
-  flat_stack_fn = create_minimal_length_flat_stack_fn(
-      max_fanout, federating_executor_factory
-  )
-  full_stack_factory = ComposingExecutorFactory(
-      max_fanout=max_fanout,
-      unplaced_ex_factory=unplaced_ex_factory,
-      flat_stack_fn=flat_stack_fn,
-  )
-
-  def _factory_fn(
-      cardinalities: executor_factory.CardinalitiesType,
-  ) -> executor_base.Executor:
-    if cardinalities.get(placements.CLIENTS, 0) < max_fanout:
-      executor = federating_executor_factory.create_executor(cardinalities)
-    else:
-      executor = full_stack_factory.create_executor(cardinalities)
-    sizing_executor_list = federating_executor_factory.sizing_executors
-    return executor, sizing_executor_list
-
-  return SizingExecutorFactory(_factory_fn)
 
 
 class ReconstructOnChangeExecutorFactory(executor_factory.ExecutorFactory):

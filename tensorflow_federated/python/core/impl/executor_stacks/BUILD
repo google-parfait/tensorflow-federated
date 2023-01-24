@@ -102,7 +102,6 @@ py_library(
         "//tensorflow_federated/python/core/impl/executors:remote_executor_grpc_stub",
         "//tensorflow_federated/python/core/impl/executors:remote_executor_stub",
         "//tensorflow_federated/python/core/impl/executors:sequence_executor",
-        "//tensorflow_federated/python/core/impl/executors:sizing_executor",
         "//tensorflow_federated/python/core/impl/executors:thread_delegating_executor",
         "//tensorflow_federated/python/core/impl/types:placements",
     ],
