@@ -44,6 +44,7 @@ This strategy:
 """
 
 import asyncio
+from collections.abc import Sequence
 from typing import Any
 
 import tensorflow as tf
@@ -155,7 +156,7 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
   def factory(
       cls,
       server_executor: executor_base.Executor,
-      target_executors: list[executor_base.Executor],
+      target_executors: Sequence[executor_base.Executor],
       local_computation_factory: local_computation_factory_base.LocalComputationFactory = tensorflow_computation_factory.TensorFlowComputationFactory(),
   ):
     # pylint:disable=g-long-lambda
@@ -171,7 +172,7 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
       self,
       executor: federating_executor.FederatingExecutor,
       server_executor: executor_base.Executor,
-      target_executors: list[executor_base.Executor],
+      target_executors: Sequence[executor_base.Executor],
       local_computation_factory: local_computation_factory_base.LocalComputationFactory = tensorflow_computation_factory.TensorFlowComputationFactory(),
   ):
     """Creates a `FederatedComposingStrategy`.
@@ -182,7 +183,7 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
       server_executor: The parent executor to use for all processing at the
         parent, such as combining values from child executors, unplaced and
         server-side processing, etc.
-      target_executors: The list of executors that manage disjoint scopes to
+      target_executors: The sequence of executors that manage disjoint scopes to
         combine in this executor, delegate to and collect or aggregate from.
       local_computation_factory: An instance of `LocalComputationFactory` to use
         to construct local computations used as parameters in certain federated
@@ -195,7 +196,7 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
     """
     super().__init__(executor)
     py_typecheck.check_type(server_executor, executor_base.Executor)
-    py_typecheck.check_type(target_executors, list)
+    py_typecheck.check_type(target_executors, Sequence)
     py_typecheck.check_type(
         local_computation_factory,
         local_computation_factory_base.LocalComputationFactory,

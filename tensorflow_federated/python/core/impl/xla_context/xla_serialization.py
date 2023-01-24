@@ -243,7 +243,9 @@ def xla_computation_and_bindings_to_tff_type(
 
 def xla_shapes_and_binding_to_tff_type(
     xla_shapes: Sequence[xla_client.Shape], binding: Optional[pb.Xla.Binding]
-) -> Union[computation_types.TensorType, computation_types.StructType]:
+) -> Optional[
+    Union[computation_types.TensorType, computation_types.StructType]
+]:
   """Constructs the TFF type from a list of `xla_client.Shape` and a binding.
 
   Args:
@@ -263,7 +265,9 @@ def xla_shapes_and_binding_to_tff_type(
 
   def _get_type(
       binding: Optional[pb.Xla.Binding],
-  ) -> Union[computation_types.TensorType, computation_types.StructType]:
+  ) -> Optional[
+      Union[computation_types.TensorType, computation_types.StructType]
+  ]:
     if binding is None:
       return None
     kind = binding.WhichOneof('binding')

@@ -320,10 +320,6 @@ class ExecutorStacksTest(parameterized.TestCase):
 
 class UnplacedExecutorFactoryTest(parameterized.TestCase):
 
-  def test_constructs_executor_factory(self):
-    unplaced_factory = python_executor_stacks.UnplacedExecutorFactory()
-    self.assertIsInstance(unplaced_factory, executor_factory.ExecutorFactory)
-
   def test_create_executor_returns_executor(self):
     unplaced_factory = python_executor_stacks.UnplacedExecutorFactory()
     unplaced_executor = unplaced_factory.create_executor(cardinalities={})

@@ -11,11 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
-# pytype: skip-file
-# This modules disables the Pytype analyzer, see
-# https://github.com/tensorflow/federated/blob/main/docs/pytype.md for more
-# information.
 """A collection of constructors for basic types of executor stacks."""
 
 from collections.abc import Callable, Sequence
@@ -158,7 +153,7 @@ def _wrap_executor_in_threading_stack(
 # pylint: enable=missing-function-docstring
 
 
-class UnplacedExecutorFactory(executor_factory.ExecutorFactory):
+class UnplacedExecutorFactory:
   """ExecutorFactory to construct executors which cannot understand placement.
 
   This factory constructs executors which represent "local execution": work
@@ -197,6 +192,7 @@ class UnplacedExecutorFactory(executor_factory.ExecutorFactory):
       cardinalities: Optional[executor_factory.CardinalitiesType] = None,
       placement: Optional[placements.PlacementLiteral] = None,
   ) -> executor_base.Executor:
+    """Constructs instance of `executor_base.Executor`."""
     if cardinalities:
       raise ValueError(
           'Unplaced executors cannot accept nonempty cardinalities as '

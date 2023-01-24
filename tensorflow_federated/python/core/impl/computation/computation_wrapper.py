@@ -11,12 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
-# pytype: skip-file
-# This modules disables the Pytype analyzer, see
-# https://github.com/tensorflow/federated/blob/main/docs/pytype.md for more
-# information.
-"""Utilities for constructing decorators/wrappers for functions and tf.function."""
+"""Utilities for constructing decorators for functions and `tf.function`s."""
 
 import collections
 import functools
@@ -73,7 +68,7 @@ def _check_parameters(parameters):
 
 def _wrap_concrete(
     fn_name: Optional[str], wrapper_fn, parameter_type, unpack=None
-) -> computation_impl.ConcreteComputation:
+):
   """Wraps with `wrapper_fn` given the provided `parameter_type`."""
   del unpack  # Unused.
   generator = wrapper_fn(parameter_type, fn_name)

@@ -1222,7 +1222,7 @@ def deserialize_and_call_tf_computation(
     graph: tf.Graph,
     shared_names_suffix: str,
     session_token_tensor: tf.Tensor,
-) -> tuple[str, Any]:
+) -> tuple[Optional[str], Any]:
   """Deserializes a TF computation and inserts it into `graph`.
 
   This method performs an action that can be considered roughly the opposite of
