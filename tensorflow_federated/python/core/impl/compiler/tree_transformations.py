@@ -219,6 +219,94 @@ def uniquify_reference_names(comp, name_generator=None):
   )
 
 
+def normalize_all_equal_bit(comp):
+  """Normalizes the all equal bits under `comp`.
+
+  For any computation of `tff.FederatedType`, we rely on uniformity of the
+  `all_equal` bit to compile down to MapReduce form. For example, the values
+  processed on the clients can only be accessed through a `federated_zip`,
+  which produces a value with its `all_equal` bit set to `False`. Therefore
+  any client processing cannot rely on processing values with `True`
+  `all_equal` bits. This function forces all `tff.CLIENTS`-placed values
+  to have `all_equal` bits set to `False`, while all `tff.SERVER`-placed
+  values will have `all_equal` bits set to `True`.
+
+  Notice that `normalize_all_equal_bit` relies on the "normal" all_equal bit
+  being inserted in the construction of a new `tff.FederatedType`; the
+  constructor by default sets this bit to match the pattern above, so we simply
+  ask it to create a new `tff.FederatedType` for us.
+
+  Args:
+    comp: Instance of `building_blocks.ComputationBuildingBlock` whose placed
+      values will have their `all_equal` bits normalized.
+
+  Returns:
+    A modified version of `comp` with all `tff.CLIENTS`-placed values having
+    `all_equal False`, and all `tff.SERVER`-placed values having
+    `all_equal True`.
+  """
+  py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
+
+  def _normalize_reference_bit(comp):
+    if not comp.type_signature.is_federated():
+      return comp, False
+    return (
+        building_blocks.Reference(
+            comp.name,
+            computation_types.FederatedType(
+                comp.type_signature.member, comp.type_signature.placement
+            ),
+        ),
+        True,
+    )
+
+  def _normalize_lambda_bit(comp):
+    if not comp.parameter_type.is_federated():
+      return comp, False
+    return (
+        building_blocks.Lambda(
+            comp.parameter_name,
+            computation_types.FederatedType(
+                comp.parameter_type.member, comp.parameter_type.placement
+            ),
+            comp.result,
+        ),
+        True,
+    )
+
+  def _normalize_intrinsic_bit(comp):
+    """Replaces federated map all equal with federated map."""
+    if comp.uri != intrinsic_defs.FEDERATED_MAP_ALL_EQUAL.uri:
+      return comp, False
+    parameter_type = [
+        comp.type_signature.parameter[0],
+        computation_types.FederatedType(
+            comp.type_signature.parameter[1].member, placements.CLIENTS
+        ),
+    ]
+    intrinsic_type = computation_types.FunctionType(
+        parameter_type,
+        computation_types.FederatedType(
+            comp.type_signature.result.member, placements.CLIENTS
+        ),
+    )
+    new_intrinsic = building_blocks.Intrinsic(
+        intrinsic_defs.FEDERATED_MAP.uri, intrinsic_type
+    )
+    return new_intrinsic, True
+
+  def _transform_switch(comp):
+    if comp.is_reference():
+      return _normalize_reference_bit(comp)
+    elif comp.is_lambda():
+      return _normalize_lambda_bit(comp)
+    elif comp.is_intrinsic():
+      return _normalize_intrinsic_bit(comp)
+    return comp, False
+
+  return transformation_utils.transform_postorder(comp, _transform_switch)[0]
+
+
 def strip_placement(comp):
   """Strips `comp`'s placement, returning a non-federated computation.
 
