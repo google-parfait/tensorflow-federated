@@ -17,7 +17,7 @@ import os
 
 from absl import app
 from absl import flags
-import tensorflow_docs
+from tensorflow_docs import api_generator
 import tensorflow_federated as tff
 
 FLAGS = flags.FLAGS
@@ -42,7 +42,7 @@ flags.DEFINE_string(
 def main(argv):
   if len(argv) > 1:
     raise app.UsageError('Too many command-line arguments.')
-  doc_generator = tensorflow_docs.api_generator.generate_lib.DocGenerator(
+  doc_generator = api_generator.generate_lib.DocGenerator(
       root_title='TensorFlow Federated',
       py_modules=[('tff', tff)],
       base_dir=os.path.dirname(tff.__file__),
@@ -50,7 +50,7 @@ def main(argv):
       search_hints=FLAGS.search_hints,
       site_path=FLAGS.site_path,
       callbacks=[
-          tensorflow_docs.api_generator.public_api.explicit_package_contents_filter,
+          api_generator.public_api.explicit_package_contents_filter,
       ],
   )
   doc_generator.build(FLAGS.output_dir)
