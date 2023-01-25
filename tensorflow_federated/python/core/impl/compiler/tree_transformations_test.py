@@ -579,6 +579,104 @@ class NormalizedBitTest(absltest.TestCase):
         ),
     )
 
+  def test_converts_all_equal_at_clients_lambda_struct_parameter_to_not_equal(
+      self,
+  ):
+    fed_type_all_equal = computation_types.FederatedType(
+        tf.int32, placements.CLIENTS, all_equal=True
+    )
+    normalized_fed_type = computation_types.FederatedType(
+        tf.int32, placements.CLIENTS
+    )
+    lam = building_blocks.Lambda(
+        'x',
+        computation_types.StructType([fed_type_all_equal, fed_type_all_equal]),
+        building_blocks.Reference(
+            'x',
+            computation_types.StructType(
+                [fed_type_all_equal, fed_type_all_equal]
+            ),
+        ),
+    )
+    normalized_lambda = tree_transformations.normalize_all_equal_bit(lam)
+    self.assertEqual(
+        lam.type_signature,
+        computation_types.FunctionType(
+            computation_types.StructType(
+                [fed_type_all_equal, fed_type_all_equal]
+            ),
+            computation_types.StructType(
+                [fed_type_all_equal, fed_type_all_equal]
+            ),
+        ),
+    )
+    self.assertIsInstance(normalized_lambda, building_blocks.Lambda)
+    self.assertEqual(str(normalized_lambda), '(x -> x)')
+    self.assertEqual(
+        normalized_lambda.type_signature,
+        computation_types.FunctionType(
+            computation_types.StructType(
+                [normalized_fed_type, normalized_fed_type]
+            ),
+            computation_types.StructType(
+                [normalized_fed_type, normalized_fed_type]
+            ),
+        ),
+    )
+
+  def test_converts_all_equal_at_clients_lambda_nested_struct_parameter_to_not_equal(
+      self,
+  ):
+    fed_type_all_equal = computation_types.FederatedType(
+        tf.int32, placements.CLIENTS, all_equal=True
+    )
+    normalized_fed_type = computation_types.FederatedType(
+        tf.int32, placements.CLIENTS
+    )
+    lam = building_blocks.Lambda(
+        'x',
+        computation_types.StructType([
+            fed_type_all_equal,
+            computation_types.StructType([fed_type_all_equal]),
+        ]),
+        building_blocks.Reference(
+            'x',
+            computation_types.StructType([
+                fed_type_all_equal,
+                computation_types.StructType([fed_type_all_equal]),
+            ]),
+        ),
+    )
+    normalized_lambda = tree_transformations.normalize_all_equal_bit(lam)
+    self.assertEqual(
+        lam.type_signature,
+        computation_types.FunctionType(
+            computation_types.StructType([
+                fed_type_all_equal,
+                computation_types.StructType([fed_type_all_equal]),
+            ]),
+            computation_types.StructType([
+                fed_type_all_equal,
+                computation_types.StructType([fed_type_all_equal]),
+            ]),
+        ),
+    )
+    self.assertIsInstance(normalized_lambda, building_blocks.Lambda)
+    self.assertEqual(str(normalized_lambda), '(x -> x)')
+    self.assertEqual(
+        normalized_lambda.type_signature,
+        computation_types.FunctionType(
+            computation_types.StructType([
+                normalized_fed_type,
+                computation_types.StructType([normalized_fed_type]),
+            ]),
+            computation_types.StructType([
+                normalized_fed_type,
+                computation_types.StructType([normalized_fed_type]),
+            ]),
+        ),
+    )
+
   def test_converts_not_all_equal_at_server_lambda_parameter_to_equal(self):
     fed_type_not_all_equal = computation_types.FederatedType(
         tf.int32, placements.SERVER, all_equal=False

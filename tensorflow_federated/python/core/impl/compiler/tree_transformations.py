@@ -247,28 +247,35 @@ def normalize_all_equal_bit(comp):
   """
   py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
 
+  def _normalize_type_signature_helper(type_signature):
+    if type_signature.is_federated():
+      return computation_types.FederatedType(
+          type_signature.member, type_signature.placement
+      )
+    elif type_signature.is_struct():
+      new_elements = []
+      for element_name, element_type in structure.iter_elements(type_signature):
+        new_elements.append(
+            (element_name, _normalize_type_signature_helper(element_type))
+        )
+      return computation_types.StructType(new_elements)
+    return type_signature
+
   def _normalize_reference_bit(comp):
-    if not comp.type_signature.is_federated():
-      return comp, False
     return (
         building_blocks.Reference(
-            comp.name,
-            computation_types.FederatedType(
-                comp.type_signature.member, comp.type_signature.placement
-            ),
+            comp.name, _normalize_type_signature_helper(comp.type_signature)
         ),
         True,
     )
 
   def _normalize_lambda_bit(comp):
-    if not comp.parameter_type.is_federated():
-      return comp, False
+    # Note that the lambda result has already been normalized due to the post-
+    # order traversal.
     return (
         building_blocks.Lambda(
             comp.parameter_name,
-            computation_types.FederatedType(
-                comp.parameter_type.member, comp.parameter_type.placement
-            ),
+            _normalize_type_signature_helper(comp.parameter_type),
             comp.result,
         ),
         True,
