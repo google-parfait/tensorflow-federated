@@ -808,6 +808,30 @@ class ReplaceSelectionsTest(tf.test.TestCase):
     ):
       tree_transformations.replace_selections(comp, 'x', path_to_replacement)
 
+  def test_no_subsequent_replacement(self):
+    comp = building_blocks.Selection(
+        building_blocks.Selection(
+            building_blocks.Reference('x', [[tf.int32]]), index=0
+        ),
+        index=0,
+    )
+    replacement = building_blocks.Reference('x', [tf.int32])
+    path_to_replacement = {
+        (0,): replacement,
+    }
+    new_comp = tree_transformations.replace_selections(
+        comp, 'x', path_to_replacement
+    )
+    # The inner x[0] portion of x[0][0] should be replaced by x, yielding x[0].
+    # This resulting x[0] should not in turn be replaced by x because the
+    # type signatures would not be accurate.
+    self.assertEqual(
+        new_comp.proto,
+        building_blocks.Selection(
+            building_blocks.Reference('x', [tf.int32]), index=0
+        ).proto,
+    )
+
 
 class StripPlacementTest(parameterized.TestCase):
 

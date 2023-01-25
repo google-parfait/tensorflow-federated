@@ -333,13 +333,13 @@ def replace_selections(
   would eventually resolve to a part of a lambda's parameter instead refers to
   the parameter directly. Similarly, selections from tuples have been collapsed.
   The remaining concern would be selections via calls to opaque compiled
-  compuations, which we error on.
+  computations, which we error on.
 
   Args:
     bb: Instance of `building_blocks.ComputationBuildingBlock` in which we wish
       to replace the selections from reference `ref_name` with any path in
       `paths_to_replacement` with the corresponding building block.
-    ref_name: Name of the reference to look for selectiosn from.
+    ref_name: Name of the reference to look for selections from.
     path_to_replacement: A map from selection path to the building block with
       which to replace the selection. Note; it is not valid to specify
       overlapping selection paths (where one path encompasses another).
@@ -363,6 +363,9 @@ def replace_selections(
         selection.is_reference()
         and selection.name == ref_name
         and path in path_to_replacement
+        and path_to_replacement[path].type_signature.is_equivalent_to(
+            inner_bb.type_signature
+        )
     ):
       return path_to_replacement[path], True
     if (
@@ -381,6 +384,10 @@ def replace_selections(
       )
     return inner_bb, False
 
+  # TODO(b/266705611): Consider switching to preorder traversal to provide more
+  # protection against triggering multiple replacements for nested selections
+  # (the type signature check above does provide one layer of protection
+  # already).
   result, _ = transformation_utils.transform_postorder(bb, _replace)
   return result
 
