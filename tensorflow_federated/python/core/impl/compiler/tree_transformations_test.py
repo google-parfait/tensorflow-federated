@@ -736,6 +736,79 @@ class NormalizedBitTest(absltest.TestCase):
     )
 
 
+class ReplaceSelectionsTest(tf.test.TestCase):
+
+  def test_replace_selection(self):
+    comp = building_blocks.Selection(
+        building_blocks.Reference('x', [tf.int32, tf.int32]), index=1
+    )
+    y = building_blocks.Reference('y', tf.int32)
+    path_to_replacement = {
+        (1,): y,
+    }
+    new_comp = tree_transformations.replace_selections(
+        comp, 'x', path_to_replacement
+    )
+    self.assertEqual(new_comp.proto, y.proto)
+
+  def test_replace_multiple_instances_of_selection(self):
+    comp = building_blocks.Struct([
+        building_blocks.Selection(
+            building_blocks.Reference('x', [tf.int32, [tf.int32]]), index=1
+        ),
+        building_blocks.Selection(
+            building_blocks.Selection(
+                building_blocks.Reference('x', [tf.int32, [tf.int32]]),
+                index=1,
+            ),
+            index=0,
+        ),
+    ])
+    y = building_blocks.Reference('y', [tf.int32])
+    path_to_replacement = {
+        (1,): y,
+    }
+    new_comp = tree_transformations.replace_selections(
+        comp, 'x', path_to_replacement
+    )
+    self.assertEqual(
+        new_comp.proto,
+        building_blocks.Struct(
+            [y, building_blocks.Selection(y, index=0)]
+        ).proto,
+    )
+
+  def test_replace_selection_mismatching_ref_name(self):
+    comp = building_blocks.Selection(
+        building_blocks.Reference('x', [tf.int32, tf.int32]), index=1
+    )
+    y = building_blocks.Reference('y', tf.int32)
+    path_to_replacement = {
+        (1,): y,
+    }
+    new_comp = tree_transformations.replace_selections(
+        comp, 'z', path_to_replacement
+    )
+    self.assertEqual(new_comp.proto, comp.proto)
+
+  def test_fail_replace_compiled_comp(self):
+    arg_type = computation_types.StructType([tf.int32])
+    comp = building_blocks.Call(
+        building_block_factory.create_tensorflow_unary_operator(
+            lambda x: x, arg_type
+        ),
+        building_blocks.Reference('x', arg_type),
+    )
+    y = building_blocks.Reference('y', tf.int32)
+    path_to_replacement = {
+        (0,): y,
+    }
+    with self.assertRaisesWithPredicateMatch(
+        ValueError, 'Encountered called graph'
+    ):
+      tree_transformations.replace_selections(comp, 'x', path_to_replacement)
+
+
 class StripPlacementTest(parameterized.TestCase):
 
   def assert_has_no_intrinsics_nor_federated_types(self, comp):

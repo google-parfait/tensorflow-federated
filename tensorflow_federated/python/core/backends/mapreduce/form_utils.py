@@ -28,7 +28,6 @@ from tensorflow_federated.python.core.backends.mapreduce import compiler
 from tensorflow_federated.python.core.backends.mapreduce import forms
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
-from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.compiler import transformations
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
@@ -435,77 +434,6 @@ def _construct_selection_from_federated_tuple(
   )
 
 
-def _replace_selections(
-    bb: building_blocks.ComputationBuildingBlock,
-    ref_name: str,
-    path_to_replacement: dict[
-        tuple[int, ...], building_blocks.ComputationBuildingBlock
-    ],
-) -> building_blocks.ComputationBuildingBlock:
-  """Identifies selection pattern and replaces with new binding.
-
-  Note that this function is somewhat brittle in that it only replaces AST
-  fragments of exactly the form `ref_name[i][j][k]` (for path `(i, j, k)`).
-  That is, it will not detect `let x = ref_name[i][j] in x[k]` or similar.
-
-  This is only sufficient because, at the point this function has been called,
-  called lambdas have been replaced with blocks and blocks have been inlined,
-  so there are no reference chains that must be traced back. Any reference which
-  would eventually resolve to a part of a lambda's parameter instead refers to
-  the parameter directly. Similarly, selections from tuples have been collapsed.
-  The remaining concern would be selections via calls to opaque compiled
-  compuations, which we error on.
-
-  Args:
-    bb: Instance of `building_blocks.ComputationBuildingBlock` in which we wish
-      to replace the selections from reference `ref_name` with any path in
-      `paths_to_replacement` with the corresponding building block.
-    ref_name: Name of the reference to look for selectiosn from.
-    path_to_replacement: A map from selection path to the building block with
-      which to replace the selection. Note; it is not valid to specify
-      overlapping selection paths (where one path encompasses another).
-
-  Returns:
-    A possibly transformed version of `bb` with nodes matching the
-    selection patterns replaced.
-  """
-
-  def _replace(inner_bb):
-    # Start with an empty selection
-    path = []
-    selection = inner_bb
-    while selection.is_selection():
-      path.append(selection.as_index())
-      selection = selection.source
-    # In ASTs like x[0][1], we'll see the last (outermost) selection first.
-    path.reverse()
-    path = tuple(path)
-    if (
-        selection.is_reference()
-        and selection.name == ref_name
-        and path in path_to_replacement
-    ):
-      return path_to_replacement[path], True
-    if (
-        inner_bb.is_call()
-        and inner_bb.function.is_compiled_computation()
-        and inner_bb.argument is not None
-        and inner_bb.argument.is_reference()
-        and inner_bb.argument.name == ref_name
-    ):
-      raise ValueError(
-          'Encountered called graph on reference pattern in TFF '
-          'AST; this means relying on pattern-matching when '
-          'rebinding arguments may be insufficient. Ensure that '
-          'arguments are rebound before decorating references '
-          'with called identity graphs.'
-      )
-    return inner_bb, False
-
-  result, _ = transformation_utils.transform_postorder(bb, _replace)
-  return result
-
-
 def _as_function_of_single_subparameter(
     bb: building_blocks.Lambda, index: int
 ) -> building_blocks.Lambda:
@@ -516,7 +444,7 @@ def _as_function_of_single_subparameter(
   new_ref = building_blocks.Reference(
       new_name, bb.type_signature.parameter[index]
   )
-  new_lambda_body = _replace_selections(
+  new_lambda_body = tree_transformations.replace_selections(
       bb.result, bb.parameter_name, {(index,): new_ref}
   )
   new_lambda = building_blocks.Lambda(
@@ -600,7 +528,7 @@ def _as_function_of_some_federated_subparameters(
         ref_to_zip, i, name_generator
     )
 
-  new_lambda_body = _replace_selections(
+  new_lambda_body = tree_transformations.replace_selections(
       bb.result, bb.parameter_name, path_to_replacement
   )
   lambda_with_zipped_param = building_blocks.Lambda(
