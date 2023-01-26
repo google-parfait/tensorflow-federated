@@ -18,6 +18,7 @@ an AST either pointwise or serially.
 """
 
 import collections
+from collections.abc import Collection, Sequence
 
 import attr
 
@@ -25,6 +26,7 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
+from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
@@ -194,6 +196,67 @@ def to_call_dominant(
   return comp
 
 
+def get_normalized_call_dominant_lambda(
+    comp: building_blocks.Lambda,
+) -> building_blocks.Lambda:
+  """Creates normalized call dominant form for a lambda computation.
+
+  Args:
+    comp: A computation to normalize.
+
+  Returns:
+    A transformed but semantically-equivalent `comp`. The result will be a
+    lambda computation in CDF (call-dominant form) and the result component of
+    the lambda is guaranteed to be a block.
+  """
+  py_typecheck.check_type(comp, building_blocks.Lambda)
+
+  # Simplify the `comp` before transforming it to call-dominant form.
+  comp, _ = tree_transformations.remove_mapped_or_applied_identity(comp)
+
+  # Flatten `comp` to call-dominant form so that we're working with just a
+  # linear list of intrinsic calls with no indirection via tupling, selection,
+  # blocks, called lambdas, or references.
+  comp = to_call_dominant(comp)
+
+  # CDF can potentially return blocks if there are variables not dependent on
+  # the top-level parameter. We normalize these away.
+  if not comp.is_lambda():
+    comp.check_block()
+    comp.result.check_lambda()
+    if comp.result.result.is_block():
+      additional_locals = comp.result.result.locals
+      result = comp.result.result.result
+    else:
+      additional_locals = []
+      result = comp.result.result
+    # Note: without uniqueness, a local in `comp.locals` could potentially
+    # shadow `comp.result.parameter_name`. However, `to_call_dominant`
+    # above ensure that names are unique, as it ends in a call to
+    # `uniquify_reference_names`.
+    comp = building_blocks.Lambda(
+        comp.result.parameter_name,
+        comp.result.parameter_type,
+        building_blocks.Block(comp.locals + additional_locals, result),
+    )
+  comp.check_lambda()
+
+  # Simple computations with no intrinsic calls won't have a block.
+  # Normalize these as well.
+  if not comp.result.is_block():
+    comp = building_blocks.Lambda(
+        comp.parameter_name,
+        comp.parameter_type,
+        building_blocks.Block([], comp.result),
+    )
+  comp.result.check_block()
+
+  comp = tree_transformations.normalize_all_equal_bit(comp)
+  tree_analysis.check_contains_no_unbound_references(comp)
+
+  return comp
+
+
 _NamedBinding = tuple[str, building_blocks.ComputationBuildingBlock]
 
 
@@ -208,7 +271,7 @@ class _IntrinsicDependencies:
   )
 
 
-class _NonAlignableAlongIntrinsicError(ValueError):
+class NonAlignableAlongIntrinsicError(ValueError):
   pass
 
 
@@ -263,7 +326,7 @@ def _compute_intrinsic_dependencies(
     )
     if is_intrinsic_call:
       if intrinsic_dependencies:
-        raise _NonAlignableAlongIntrinsicError(
+        raise NonAlignableAlongIntrinsicError(
             'Cannot force-align intrinsics:\n'
             f'Call to intrinsic `{local_value.function.uri}` depends '
             f'on calls to intrinsics:\n`{intrinsic_dependencies}`.'
@@ -474,11 +537,12 @@ def _merge_args(
   raise TypeError(f'Cannot merge args of type: {abstract_parameter_type}')
 
 
+# TODO(b/266565233): Remove during MapReduceForm and BroadcastForm cleanup.
 def force_align_and_split_by_intrinsics(
     comp: building_blocks.Lambda,
     intrinsic_defaults: list[building_blocks.Call],
 ) -> tuple[building_blocks.Lambda, building_blocks.Lambda]:
-  """Divides `comp` into before-and-after of calls to one ore more intrinsics.
+  """Divides `comp` into before-and-after of calls to one or more intrinsics.
 
   The input computation `comp` must have the following properties:
 
@@ -903,3 +967,501 @@ def _augment_lambda_with_parameter_for_unbound_references(
   )
 
   return comp, list(new_input_comps.keys())
+
+
+class UnavailableRequiredInputsError(ValueError):
+  pass
+
+
+# Helper function to replace references with a given name with a different
+# computation.
+def _replace_references(
+    comp: building_blocks.ComputationBuildingBlock,
+    ref_name: str,
+    replacement: building_blocks.ComputationBuildingBlock,
+) -> building_blocks.ComputationBuildingBlock:
+  def _replace(comp):
+    if comp.is_reference() and comp.name == ref_name:
+      return replacement, True
+    return comp, False
+
+  return transformation_utils.transform_postorder(comp, _replace)[0]
+
+
+def divisive_force_align_and_split_by_intrinsics(
+    comp: building_blocks.Lambda,
+    intrinsic_defs_to_split: Collection[intrinsic_defs.IntrinsicDef],
+    before_comp_allowed_original_arg_subparameters: Sequence[Sequence[int]],
+    intrinsic_comp_allowed_original_arg_subparameters: Sequence[Sequence[int]],
+    after_comp_allowed_original_arg_subparameters: Sequence[Sequence[int]],
+) -> tuple[
+    building_blocks.Lambda, building_blocks.Lambda, building_blocks.Lambda
+]:
+  """Divides `comp` into three components (before, intrinsic, after).
+
+  The input computation `comp` must have the following properties:
+
+  1. It has a non-None input parameter. (This requirement allows the
+    implementation to be slightly simpler, but it can be removed in the future
+    if necessary.)
+
+  2. The computation `comp` is completely self-contained, i.e., there are no
+    unbound references in `comp`.
+
+  3. None of the calls to intrinsics in `intrinsic_defs_to_split` may be within
+    a lambda passed to another external function (intrinsic or compiled
+    computation).
+
+  4. No argument passed to an intrinsic in `intrinsic_defs_to_split` may be
+    dependent on the result of another call to an intrinsic in
+    `intrinsic_defs_to_split`.
+
+  Under these conditions, this function will return three
+  `building_blocks.Lambda`s `before`, `intrinsic`, and `after` such that
+  `comp` is semantically equivalent to the following expression:
+  ```
+  (arg -> (let
+    <"intrinsic_args_from_before_comp": x, "intermediate_state": temp> =
+          before(<before_subparam_0(arg), before_subparam_1(arg), ...>)
+    y = intrinsic(<intrinsic_subparam_0(arg), intrinsic_subparam_1(arg), ...,
+          "intrinsic_args_from_before_comp": x>)
+   in after(<after_subparam_0(arg), after_subparam_1(arg), ...,
+          "intrinsic_results": y, "intermediate_state": temp>)
+  ))
+  ```
+
+  The `*_allowed_original_arg_subparameters` arguments are used to specify which
+  parts of the original computation input each of the split computatations is
+  allowed to depend on. Each of these arguments takes a list of paths of integer
+  indices that describe selections of the original computation input. For
+  example, [(3,1,), (2,)] would mean that usage of arg[3][1] and arg[2] is
+  permitted in the applicable output comp. An empty path list means that no
+  part of the original computation input may be used, whereas [()] means that
+  all parts of the original computation input may be used.
+
+  The `before` computation will only use parts of `comp`'s input that are
+  permitted by `before_comp_allowed_original_arg_subparameters`. It returns a
+  tuple containing one of the inputs to the `intrinsic` computation and the
+  minimal temporary state that is needed in the `after` computation.
+
+  The `intrinsic` computation consists solely of calls to intrinsics in
+  `intrinsic_defs_to_split`. Each intrinsic call will only use parts of `comp`'s
+  input permitted by `intrinsic_comp_allowed_original_arg_subparameters` and/or
+  the first part of the `before` result. The i-th entry of the output struct
+  will be the result of the i-th intrinsic call. If the original computation
+  contains calls to intrinsics that are not in `intrinsic_defs_to_split`, these
+  calls will become part of either the `before` or `after` computations.
+
+  The `after` computation takes as input the parts of the original `comp`
+  argument allowed by `after_comp_allowed_original_arg_subparameters`, the
+  result of `intrinsic`, and the temporary state produced by `before`. It
+  returns the same output as the original computation.
+
+  The input computation will be partitioned without repetition across the three
+  output computations, meaning that no top-level call from the original input
+  computation's CDF will appear in more than of the output computations. This
+  is important since some calls may be non-deterministic and repeating them
+  across the output computations may cause unexpected results to be produced
+  when the output computations are executed. The link between the `before` and
+  `after` comps via `intermediate_state` exists to ensure that this non-
+  repetition guarantee can be met. The `intermediate_state` that is produced
+  is not guaranteed to minimal, however.
+
+  If it is not possible to split an input computation according to the allowed
+  subparameters and the available channels between the three output
+  computations, an error will be raised. If a valid split does exist, this
+  function is guaranteed to find it.
+
+  Args:
+    comp: The instance of `building_blocks.Lambda` that serves as the input to
+      this transformation, as described above.
+    intrinsic_defs_to_split: A list of intrinsics with which to split the
+      computation.
+    before_comp_allowed_original_arg_subparameters: A list of paths describing
+      the selections into the original comp input that can be used within the
+      `before` comp.
+    intrinsic_comp_allowed_original_arg_subparameters: A list of paths
+      describing the selections into the original comp input that can be used
+      within the `intrinsic` comp.
+    after_comp_allowed_original_arg_subparameters: A list of paths describing
+      the selections into the original comp input that can be used within the
+      `after` comp.
+
+  Returns:
+    A tuple of the form `(before, intrinsic, after)`, where each of `before`,
+    `intrinsic`, and `after` is a building_blocks.Lambda` instance with a
+    `building_blocks.Block` result.
+
+    Details about the inputs and outputs of the three computations as well as
+    the contents of the `intrinsic` comp are specified above.
+
+  Raises:
+    TypeError: If arguments are not the documented types.
+    NonAlignableAlongIntrinsicError: If the intrinsics to split on are not
+      independent of each other.
+    UnavailableRequiredInputsError: If the computation cannot be split due to
+      inputs that are required but not available based on the provided
+      subparameters.
+  """
+
+  # The following code attempts to construct a split using these steps:
+  # 1. Check that the inputs are valid and categorize the locals in the original
+  #    comp's result block.
+  # 2. Produce a preliminary intrinsic comp that returns the outputs of the
+  #    intrinsic calls and depends only on the allowed original input
+  #    subparameters.
+  # 3. Extend the input for the intrinsic comp to make it valid (i.e. resolve
+  #    any unbound references).
+  # 4. Produce a preliminary after comp that returns the original output and
+  #    depends only on the allowed original input subparameters and the output
+  #    from the intrinsic comp.
+  # 5. Extend the input for the after comp to make it valid (i.e. resolve any
+  #    unbound references).
+  # 6. Attempt to produce an input comp that returns the two extensions required
+  #    by steps 3 and 5 while only depending on the allowed original input
+  #    subparameters. If this fails (i.e. unbound references exist), a split is
+  #    not possible and an error is raised.
+  # 7. Remove any repetition across the before and after comps.
+  # 8. Normalize the output comps and check that their structure meets the
+  #    promised guarantees.
+
+  ############################### Step 1 ######################################
+  if not comp.is_lambda():
+    raise TypeError('Expected input computation to be a lambda computation.')
+
+  if not comp.parameter_name or not comp.parameter_type:
+    raise TypeError('Expected input lambda with a non-None input parameter.')
+
+  py_typecheck.check_type(intrinsic_defs_to_split, list)
+
+  # Normalize the input computation so that we are guaranteed to have a lambda
+  # computation with a result block before attempting to split.
+  comp = get_normalized_call_dominant_lambda(comp)
+
+  # Identify which locals in the result block represent intrinsic calls, which
+  # locals depend on intrinsic calls, and which locals are independent of
+  # intrinsic calls.
+  intrinsic_uris = set(
+      intrinsic_def.uri for intrinsic_def in intrinsic_defs_to_split
+  )
+  deps = _compute_intrinsic_dependencies(
+      intrinsic_uris,
+      comp.parameter_name,
+      comp.result.locals,
+      comp.compact_representation(),
+  )
+
+  ############################### Step 2 ######################################
+  # Generate a preliminary intrinsic comp.
+  intrinsic_locals: list[tuple[str, building_blocks.Call]] = []
+  for intrinsic_locals_for_uri in deps.uri_to_locals.values():
+    intrinsic_locals.extend(intrinsic_locals_for_uri)
+  intrinsic_results = [
+      building_blocks.Reference(local_name, local_value.type_signature)
+      for local_name, local_value in intrinsic_locals
+  ]
+  preliminary_intrinsic_comp = building_blocks.Lambda(
+      comp.parameter_name,
+      comp.parameter_type,
+      building_blocks.Block(
+          intrinsic_locals, building_blocks.Struct(intrinsic_results)
+      ),
+  )
+
+  # Attempt to rewrite the preliminary intrinsic comp as a function of the
+  # allowed subparameters.
+  preliminary_intrinsic_comp = (
+      tree_transformations.as_function_of_some_subparameters(
+          preliminary_intrinsic_comp,
+          intrinsic_comp_allowed_original_arg_subparameters,
+      )
+  )
+
+  ############################### Step 3 ######################################
+  # Determine the `intrinsic_args_from_before_comp` input extension that is
+  # needed to make the intrinsic comp valid. The additional input values will
+  # ultimately be returned by the before comp.
+  intrinsic_comp, intrinsic_args_from_before_comp_values = (
+      _augment_lambda_with_parameter_for_unbound_references(
+          preliminary_intrinsic_comp,
+          lambda_parameter_extension_name='intrinsic_args_from_before_comp',
+      )
+  )
+
+  # There should be an additional element in the input of the resulting
+  # intrinsic comp, which should also have no unbound references.
+  assert (
+      len(intrinsic_comp.parameter_type)
+      == len(preliminary_intrinsic_comp.parameter_type) + 1
+  )
+  tree_analysis.check_contains_no_unbound_references(intrinsic_comp)
+
+  ############################### Step 4 ######################################
+  # Generate a preliminary after comp.
+  name_generator = building_block_factory.unique_name_generator(comp)
+  after_param_name = next(name_generator)
+  after_param_type = [
+      ('original_arg', comp.parameter_type),
+      (
+          'intrinsic_results',
+          [local_value.type_signature for _, local_value in intrinsic_locals],
+      ),
+  ]
+  original_arg_index = 0
+  intrinsic_results_index = 1
+  intrinsic_result_bindings: list[tuple[str, building_blocks.Selection]] = []
+  for i, (local_name, _) in enumerate(intrinsic_locals):
+    intrinsic_result_bindings.append((
+        local_name,
+        building_blocks.Selection(
+            building_blocks.Selection(
+                building_blocks.Reference(after_param_name, after_param_type),
+                index=intrinsic_results_index,
+            ),
+            index=i,
+        ),
+    ))
+  preliminary_after_comp = building_blocks.Lambda(
+      after_param_name,
+      after_param_type,
+      _replace_references(
+          building_blocks.Block(
+              intrinsic_result_bindings
+              + deps.locals_not_dependent_on_intrinsics
+              + deps.locals_dependent_on_intrinsics,
+              comp.result.result,
+          ),
+          comp.parameter_name,
+          building_blocks.Selection(
+              building_blocks.Reference(after_param_name, after_param_type),
+              index=original_arg_index,
+          ),
+      ),
+  )
+
+  # Modify the allowed subparameters to accomodate the extra level of structure
+  # for the original arg and to also allow access to the intrinsic results.
+  original_arg_index = 0
+  intrinsic_results_index = 1
+  after_comp_allowed_subparameters = [
+      (original_arg_index, *x)
+      for x in after_comp_allowed_original_arg_subparameters
+  ] + [(intrinsic_results_index,)]
+
+  # Attempt to rewrite the preliminary after comp as a function of the allowed
+  # subparameters. Any unneeded locals will be pruned but local names will
+  # otherwise not be modified.
+  preliminary_after_comp = (
+      tree_transformations.as_function_of_some_subparameters(
+          preliminary_after_comp, after_comp_allowed_subparameters
+      )
+  )
+
+  ############################### Step 5 ######################################
+  # Determine the `intermediate_state` input extension that is needed to make
+  # the after comp valid. The additional input values will ultimately be
+  # returned by the before comp. Before we do this, reverse the extra level of
+  # indirection that was added to the original arg in the previous step in case
+  # there are portions of the original arg that are now unbound and need to be
+  # resolved via the new extension.
+  preliminary_after_comp = tree_transformations.replace_selections(
+      preliminary_after_comp,
+      after_param_name,
+      {
+          (0,): building_blocks.Reference(
+              comp.parameter_name, comp.parameter_type
+          )
+      },
+  )
+
+  preliminary_after_comp, intermediate_state = (
+      _augment_lambda_with_parameter_for_unbound_references(
+          preliminary_after_comp,
+          lambda_parameter_extension_name='intermediate_state',
+      )
+  )
+
+  # This next version of the after comp should have no unbound references.
+  tree_analysis.check_contains_no_unbound_references(preliminary_after_comp)
+
+  ############################### Step 6 ######################################
+  # Generate a preliminary before comp that produces the values required by the
+  # `intrinsic_args_from_before_comp` and `intermediate_state` extensions in
+  # steps 3 and 5 above.
+  before_result = [
+      (
+          'intrinsic_args_from_before_comp',
+          building_blocks.Struct(intrinsic_args_from_before_comp_values),
+      ),
+      ('intermediate_state', building_blocks.Struct(intermediate_state)),
+  ]
+  preliminary_before_comp = building_blocks.Lambda(
+      comp.parameter_name,
+      comp.parameter_type,
+      building_blocks.Block(
+          deps.locals_not_dependent_on_intrinsics,
+          building_blocks.Struct(before_result),
+      ),
+  )
+
+  # Attempt to rewrite the preliminary before comp as a function of the allowed
+  # subparameters. Any unneeded locals will be pruned but local names will
+  # otherwise not be modified.
+  preliminary_before_comp = (
+      tree_transformations.as_function_of_some_subparameters(
+          preliminary_before_comp,
+          before_comp_allowed_original_arg_subparameters,
+      )
+  )
+
+  # If the resulting comp is not valid (i.e. it contains no unbound
+  # references), then a split is not possible and we throw an error.
+  if not tree_analysis.contains_no_unbound_references(preliminary_before_comp):
+    raise UnavailableRequiredInputsError(
+        'The computation is not splittable given the allowed subparameters.'
+    )
+
+  ############################### Step 7 ######################################
+  # Remove any duplication that exists between the locals in the result blocks
+  # of the before comp and after comp by extending the `intermediate_state` link
+  # between the before and after comps that was established in step 5.
+  # Duplication may exist since locals_not_dependent_on_intrinsics was used in
+  # constructing both the preliminary before and after comps. Note that all
+  # unnecessary locals have already been pruned during the subparameter
+  # transformations. For this step to correctly detect duplication, the
+  # transformations applied in the previous steps must not have modified the
+  # original local names.
+  after_local_names = [
+      local_name for local_name, _ in preliminary_after_comp.result.locals
+  ]
+  duplicated_locals = [
+      (local_name, local_value)
+      for local_name, local_value in preliminary_before_comp.result.locals
+      if local_name in set(after_local_names)
+  ]
+
+  # Update the before comp result to produce the extended intermediate state.
+  before_result_elements = structure.to_elements(
+      preliminary_before_comp.result.result
+  )
+  intermediate_state_index_in_before_result = 1
+  intermediate_state_name, intermediate_state_vals = before_result_elements[
+      intermediate_state_index_in_before_result
+  ]
+  duplicate_intermediate_state_vals = [
+      (None, building_blocks.Reference(local_name, local_value.type_signature))
+      for local_name, local_value in duplicated_locals
+  ]
+  extended_intermediate_state_vals = building_blocks.Struct(
+      structure.to_elements(intermediate_state_vals)
+      + duplicate_intermediate_state_vals
+  )
+  before_result_elements[intermediate_state_index_in_before_result] = (
+      intermediate_state_name,
+      extended_intermediate_state_vals,
+  )
+
+  # Update the before comp to produce the result with the extended intermediate
+  # state. If we have reached this stage, this latest before comp should have
+  # no unbound references.
+  before_comp = building_blocks.Lambda(
+      preliminary_before_comp.parameter_name,
+      preliminary_before_comp.parameter_type,
+      building_blocks.Block(
+          preliminary_before_comp.result.locals,
+          building_blocks.Struct(before_result_elements),
+      ),
+  )
+  tree_analysis.check_contains_no_unbound_references(before_comp)
+
+  # Update the after comp parameter to represent the extended intermediate
+  # state. Also restore the name associated with the intrinsic results portion
+  # of the after comp parameter (it would have been lost by the earlier
+  # subparams transformation).
+  after_param_type_signature = structure.to_elements(
+      preliminary_after_comp.parameter_type
+  )
+  intrinsic_results_index_in_after_comp_param = -2
+  after_param_type_signature[intrinsic_results_index_in_after_comp_param] = (
+      'intrinsic_results',
+      after_param_type_signature[intrinsic_results_index_in_after_comp_param][
+          1
+      ],
+  )
+  intermediate_state_index_in_after_comp_param = -1
+  after_param_type_signature[intermediate_state_index_in_after_comp_param] = (
+      'intermediate_state',
+      [e.type_signature for e in extended_intermediate_state_vals],
+  )
+  preliminary_after_comp = building_blocks.Lambda(
+      preliminary_after_comp.parameter_name,
+      after_param_type_signature,
+      _replace_references(
+          preliminary_after_comp.result,
+          preliminary_after_comp.parameter_name,
+          building_blocks.Reference(
+              preliminary_after_comp.parameter_name, after_param_type_signature
+          ),
+      ),
+  )
+
+  # Replace the duplicated locals in the after comp with references to the
+  # extended intermediate state. Note when indexing into the extended
+  # intermediate state that it consists of the portion contructed in step 5
+  # followed by the duplicated locals portion.
+  block_locals: list[tuple[str, building_blocks.ComputationBuildingBlock]] = []
+  duplicated_local_names = [local_name for local_name, _ in duplicated_locals]
+  intermediate_state_index = (
+      len(preliminary_after_comp.type_signature.parameter) - 1
+  )
+  duplicated_local_index = len(intermediate_state)
+  for local_name, local_value in preliminary_after_comp.result.locals:
+    if local_name in duplicated_local_names:
+      block_locals.append((
+          local_name,
+          building_blocks.Selection(
+              building_blocks.Selection(
+                  building_blocks.Reference(
+                      preliminary_after_comp.parameter_name,
+                      preliminary_after_comp.parameter_type,
+                  ),
+                  index=intermediate_state_index,
+              ),
+              index=duplicated_local_index,
+          ),
+      ))
+      duplicated_local_index += 1
+    else:
+      block_locals.append((local_name, local_value))
+
+  # Update the after comp to use the de-duplicated block locals.
+  after_comp = building_blocks.Lambda(
+      preliminary_after_comp.parameter_name,
+      preliminary_after_comp.parameter_type,
+      building_blocks.Block(block_locals, preliminary_after_comp.result.result),
+  )
+  tree_analysis.check_contains_no_unbound_references(after_comp)
+
+  ############################### Step 8 ######################################
+  # Normalize all of the output computations.
+  before_comp = get_normalized_call_dominant_lambda(before_comp)
+  intrinsic_comp = get_normalized_call_dominant_lambda(intrinsic_comp)
+  after_comp = get_normalized_call_dominant_lambda(after_comp)
+
+  # Check that the intrinsic comp consists of a block containing locals that are
+  # exclusively calls for the allowed intrinsics and that the results are
+  # returned in the same order they are computed.
+  expected_intrinsic_comp_result_names: list[str] = []
+  for intrinsic_local, intrinsic_call in intrinsic_comp.result.locals:
+    assert intrinsic_call.is_call()
+    assert intrinsic_call.function.is_intrinsic()
+    assert intrinsic_call.function.uri in intrinsic_uris
+    expected_intrinsic_comp_result_names.append(intrinsic_local)
+  actual_intrinsic_comp_result_names = [
+      ref.name for ref in intrinsic_comp.result.result
+  ]
+  assert (
+      expected_intrinsic_comp_result_names == actual_intrinsic_comp_result_names
+  )
+
+  return (before_comp, intrinsic_comp, after_comp)

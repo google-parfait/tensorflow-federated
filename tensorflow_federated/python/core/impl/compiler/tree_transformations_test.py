@@ -119,6 +119,7 @@ class RemoveMappedOrAppliedIdentityTest(parameterized.TestCase):
        building_block_test_utils.create_whimsy_called_sequence_map),
   )
   # pyformat: enable
+
   def test_removes_intrinsic(self, uri, factory):
     call = factory(parameter_name='a')
     comp = call
@@ -831,6 +832,173 @@ class ReplaceSelectionsTest(tf.test.TestCase):
             building_blocks.Reference('x', [tf.int32]), index=0
         ).proto,
     )
+
+
+class AsFunctionOfSomeParametersTest(tf.test.TestCase):
+
+  def test_empty_path(self):
+    comp = building_blocks.Lambda(
+        'x', tf.int32, building_blocks.Reference('x', tf.int32)
+    )
+    new_comp = tree_transformations.as_function_of_some_subparameters(comp, [])
+    self.assertEqual(new_comp.parameter_type, computation_types.StructType([]))
+    unbound_references = transformation_utils.get_map_of_unbound_references(
+        new_comp
+    )[new_comp]
+    self.assertEqual(unbound_references, set(['x']))
+
+  def test_all_path(self):
+    comp = building_blocks.Lambda(
+        'x', tf.int32, building_blocks.Reference('x', tf.int32)
+    )
+    new_comp = tree_transformations.as_function_of_some_subparameters(
+        comp, [()]
+    )
+    self.assertEqual(
+        new_comp.parameter_type, computation_types.StructType([tf.int32])
+    )
+    unbound_references = transformation_utils.get_map_of_unbound_references(
+        new_comp
+    )[new_comp]
+    self.assertEmpty(unbound_references)
+
+  def test_selection_path(self):
+    arg_type = [[tf.int32]]
+    comp = building_blocks.Lambda(
+        'x',
+        arg_type,
+        building_blocks.Selection(
+            building_blocks.Selection(
+                building_blocks.Reference('x', arg_type), index=0
+            ),
+            index=0,
+        ),
+    )
+    new_comp = tree_transformations.as_function_of_some_subparameters(
+        comp, [(0, 0)]
+    )
+    self.assertEqual(
+        new_comp.parameter_type, computation_types.StructType([tf.int32])
+    )
+    unbound_references = transformation_utils.get_map_of_unbound_references(
+        new_comp
+    )[new_comp]
+    self.assertEmpty(unbound_references)
+
+  def test_partial_selection_path(self):
+    arg_type = [[tf.int32]]
+    comp = building_blocks.Lambda(
+        'x',
+        arg_type,
+        building_blocks.Selection(
+            building_blocks.Reference('x', arg_type), index=0
+        ),
+    )
+    new_comp = tree_transformations.as_function_of_some_subparameters(
+        comp, [(0,)]
+    )
+    self.assertEqual(
+        new_comp.parameter_type, computation_types.StructType([[tf.int32]])
+    )
+    unbound_references = transformation_utils.get_map_of_unbound_references(
+        new_comp
+    )[new_comp]
+    self.assertEmpty(unbound_references)
+
+  def test_invalid_selection_path(self):
+    arg_type = [[tf.int32]]
+    comp = building_blocks.Lambda(
+        'x',
+        arg_type,
+        building_blocks.Selection(
+            building_blocks.Selection(
+                building_blocks.Reference('x', arg_type), index=0
+            ),
+            index=0,
+        ),
+    )
+    with self.assertRaises(tree_transformations.ParameterSelectionError):
+      tree_transformations.as_function_of_some_subparameters(comp, [(0, 1)])
+
+  def test_multiple_selection_path(self):
+    arg_type = [tf.int32, tf.float32, [tf.int32, tf.string]]
+    comp = building_blocks.Lambda(
+        'x',
+        arg_type,
+        building_blocks.Struct([
+            building_blocks.Selection(
+                building_blocks.Reference('x', arg_type), index=1
+            ),
+            building_blocks.Selection(
+                building_blocks.Selection(
+                    building_blocks.Reference('x', arg_type), index=2
+                ),
+                index=0,
+            ),
+            building_blocks.Selection(
+                building_blocks.Reference('x', arg_type), index=2
+            ),
+        ]),
+    )
+    new_comp = tree_transformations.as_function_of_some_subparameters(
+        comp, [(1,), (2,)]
+    )
+    self.assertEqual(
+        new_comp.parameter_type,
+        computation_types.StructType([tf.float32, [tf.int32, tf.string]]),
+    )
+    unbound_references = transformation_utils.get_map_of_unbound_references(
+        new_comp
+    )[new_comp]
+    self.assertEmpty(unbound_references)
+
+  def test_unused_selection_path(self):
+    arg_type = [tf.int32, tf.float32, [tf.int32, tf.string]]
+    comp = building_blocks.Lambda(
+        'x',
+        arg_type,
+        building_blocks.Selection(
+            building_blocks.Reference('x', arg_type), index=1
+        ),
+    )
+    new_comp = tree_transformations.as_function_of_some_subparameters(
+        comp, [(1,), (2,)]
+    )
+    self.assertEqual(
+        new_comp.parameter_type,
+        computation_types.StructType([tf.float32, [tf.int32, tf.string]]),
+    )
+    unbound_references = transformation_utils.get_map_of_unbound_references(
+        new_comp
+    )[new_comp]
+    self.assertEmpty(unbound_references)
+
+  def test_paths_not_applied_sequentially(self):
+    arg_type = [tf.int32, tf.float32, [tf.int32, tf.string]]
+    comp = building_blocks.Lambda(
+        'x',
+        arg_type,
+        building_blocks.Selection(
+            building_blocks.Selection(
+                building_blocks.Reference('x', arg_type), index=2
+            ),
+            index=1,
+        ),
+    )
+
+    new_comp = tree_transformations.as_function_of_some_subparameters(
+        comp, [(2,), (1,)]
+    )
+    self.assertEqual(
+        new_comp.parameter_type,
+        computation_types.StructType([[tf.int32, tf.string], tf.float32]),
+    )
+    unbound_references = transformation_utils.get_map_of_unbound_references(
+        new_comp
+    )[new_comp]
+    self.assertEmpty(unbound_references)
+    self.assertTrue(new_comp.result.result.is_selection())
+    self.assertTrue(new_comp.result.result.source.is_selection())
 
 
 class StripPlacementTest(parameterized.TestCase):

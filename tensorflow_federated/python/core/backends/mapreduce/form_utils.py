@@ -454,17 +454,6 @@ def _as_function_of_single_subparameter(
   return new_lambda
 
 
-class _ParameterSelectionError(TypeError):
-
-  def __init__(self, path, bb):
-    message = (
-        'Attempted to rebind references to parameter selection path '
-        f'{path}, which is not a valid selection from type '
-        f'{bb.parameter_type}. Original AST:\n{bb}'
-    )
-    super().__init__(message)
-
-
 class _NonFederatedSelectionError(TypeError):
   pass
 
@@ -489,15 +478,15 @@ def _as_function_of_some_federated_subparameters(
     int_path = []
     for index in path:
       if not selected_type.is_struct():
-        raise _ParameterSelectionError(path, bb)
+        raise tree_transformations.ParameterSelectionError(path, bb)
       if isinstance(index, int):
-        if index > len(selected_type):
-          raise _ParameterSelectionError(path, bb)
+        if index >= len(selected_type):
+          raise tree_transformations.ParameterSelectionError(path, bb)
         int_path.append(index)
       else:
         py_typecheck.check_type(index, str)
         if not structure.has_field(selected_type, index):
-          raise _ParameterSelectionError(path, bb)
+          raise tree_transformations.ParameterSelectionError(path, bb)
         int_path.append(structure.name_to_index_map(selected_type)[index])
       selected_type = selected_type[index]
     if not selected_type.is_federated():

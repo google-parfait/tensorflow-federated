@@ -19,10 +19,13 @@ from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_block_test_utils
 from tensorflow_federated.python.core.impl.compiler import building_blocks
+from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.compiler import transformations
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
+from tensorflow_federated.python.core.impl.compiler import tree_transformations
 from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_test_utils
 
@@ -332,7 +335,7 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
         client_int_ref('b'),
     )
     comp = building_blocks.Lambda('param', client_int_type, body)
-    with self.assertRaises(transformations._NonAlignableAlongIntrinsicError):
+    with self.assertRaises(transformations.NonAlignableAlongIntrinsicError):
       transformations.force_align_and_split_by_intrinsics(
           comp, [building_block_factory.create_null_federated_map()]
       )
@@ -754,6 +757,1000 @@ class AugmentLambdaWithParameterForUnboundReferences(absltest.TestCase):
       transformations._augment_lambda_with_parameter_for_unbound_references(
           comp, lambda_parameter_extension_name
       )
+
+
+class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
+
+  def find_intrinsics_in_comp(self, comp):
+    found_intrinsics = []
+
+    def _find_intrinsics(building_block):
+      nonlocal found_intrinsics
+      if building_block.is_call() and building_block.function.is_intrinsic():
+        found_intrinsics.append(building_block.function.uri)
+
+    tree_analysis.visit_postorder(comp, _find_intrinsics)
+    return found_intrinsics
+
+  def check_split_signatures(self, original_comp, before, intrinsic, after):
+    for comp in (before, intrinsic, after):
+      comp.check_lambda()
+      comp.type_signature.parameter.is_struct()
+      comp.result.check_block()
+
+    original_comp = transformations.to_call_dominant(original_comp)
+    original_comp = tree_transformations.normalize_all_equal_bit(original_comp)
+
+    self.assertTrue(before.type_signature.result.is_struct())
+    self.assertEqual(
+        [x for x, _ in structure.to_elements(before.type_signature.result)],
+        ['intrinsic_args_from_before_comp', 'intermediate_state'],
+    )
+    self.assertTrue(before.result.result[0].is_struct())
+    self.assertTrue(before.result.result[1].is_struct())
+
+    intrinsic_args_from_before_comp_index = (
+        len(intrinsic.type_signature.parameter) - 1
+    )
+    intrinsic_arg_names = [
+        x for x, _ in structure.to_elements(intrinsic.type_signature.parameter)
+    ]
+    self.assertEqual(
+        intrinsic_arg_names[intrinsic_args_from_before_comp_index],
+        'intrinsic_args_from_before_comp',
+    )
+    self.assertEqual(
+        intrinsic.type_signature.parameter[
+            intrinsic_args_from_before_comp_index
+        ],
+        before.type_signature.result[0],
+    )
+    self.assertTrue(intrinsic.type_signature.result.is_struct())
+    self.assertLen(
+        intrinsic.result.locals, len(intrinsic.type_signature.result)
+    )
+
+    intrinsic_results_index = len(after.type_signature.parameter) - 2
+    intermediate_state_index = len(after.type_signature.parameter) - 1
+    after_comp_parameter_names = [
+        x for x, _ in structure.to_elements(after.type_signature.parameter)
+    ]
+    self.assertEqual(
+        after_comp_parameter_names[intrinsic_results_index], 'intrinsic_results'
+    )
+    self.assertEqual(
+        after_comp_parameter_names[intermediate_state_index],
+        'intermediate_state',
+    )
+    self.assertEqual(
+        after.type_signature.parameter[intrinsic_results_index],
+        intrinsic.type_signature.result,
+    )
+    self.assertEqual(
+        after.type_signature.parameter[intermediate_state_index],
+        before.type_signature.result[1],
+    )
+    self.assertEqual(
+        after.type_signature.result, original_comp.type_signature.result
+    )
+
+  def test_splits_on_intrinsic(self):
+    server_val_type = computation_types.FederatedType(
+        tf.int32, placements.SERVER
+    )
+    client_val_type = computation_types.FederatedType(
+        tf.float32, placements.CLIENTS
+    )
+    arg_type = [server_val_type, client_val_type]
+    server_data_index = 0
+    intrinsic_call = building_block_factory.create_federated_broadcast(
+        building_blocks.Selection(
+            building_blocks.Reference('arg', arg_type), index=server_data_index
+        )
+    )
+    comp = building_blocks.Lambda('arg', arg_type, intrinsic_call)
+
+    # Allow the before and after comps to depend on the entire original comp
+    # input. Do not allow the intrinsic comp to depend on the original comp
+    # input at all.
+    before, intrinsic, after = (
+        transformations.divisive_force_align_and_split_by_intrinsics(
+            comp,
+            [intrinsic_defs.FEDERATED_BROADCAST],
+            before_comp_allowed_original_arg_subparameters=[()],
+            intrinsic_comp_allowed_original_arg_subparameters=[],
+            after_comp_allowed_original_arg_subparameters=[()],
+        )
+    )
+
+    self.check_split_signatures(comp, before, intrinsic, after)
+
+    # Check that the federated_broadcast intrinsic is only present in the
+    # intrinsic comp.
+    self.assertEmpty(self.find_intrinsics_in_comp(before))
+    self.assertEqual(
+        self.find_intrinsics_in_comp(intrinsic),
+        [intrinsic_defs.FEDERATED_BROADCAST.uri],
+    )
+    self.assertEmpty(self.find_intrinsics_in_comp(after))
+
+    # Check that one intrinsic arg is passed from the before comp.
+    self.assertLen(before.result.result[0], 1)
+
+  def test_fails_split_with_unavailable_subparameters_to_before_comp(self):
+    server_val_type = computation_types.FederatedType(
+        tf.int32, placements.SERVER
+    )
+    client_val_type = computation_types.FederatedType(
+        tf.float32, placements.CLIENTS
+    )
+    arg_type = [server_val_type, client_val_type]
+    server_data_index = 0
+    intrinsic_call = building_block_factory.create_federated_broadcast(
+        building_blocks.Selection(
+            building_blocks.Reference('arg', arg_type), index=server_data_index
+        )
+    )
+    comp = building_blocks.Lambda('arg', arg_type, intrinsic_call)
+
+    # Do not allow the before or intrinsic comps to depend on the original comp
+    # input at all. This should fail when the before comp attempts to produce
+    # an output containing the args needed by the intrinsic comp.
+    with self.assertRaises(transformations.UnavailableRequiredInputsError):
+      transformations.divisive_force_align_and_split_by_intrinsics(
+          comp,
+          [intrinsic_defs.FEDERATED_BROADCAST],
+          before_comp_allowed_original_arg_subparameters=[],
+          intrinsic_comp_allowed_original_arg_subparameters=[],
+          after_comp_allowed_original_arg_subparameters=[()],
+      )
+
+  def test_splits_on_intrinsic_with_multiple_args(self):
+    server_val_type = computation_types.FederatedType(
+        tf.int32, placements.SERVER
+    )
+    client_val_type = computation_types.FederatedType(
+        tf.float32, placements.CLIENTS
+    )
+    arg_type = [server_val_type, client_val_type]
+    client_data_index = 1
+    intrinsic_call = building_block_factory.create_federated_mean(
+        building_blocks.Selection(
+            building_blocks.Reference('arg', arg_type), index=client_data_index
+        ),
+        building_blocks.Selection(
+            building_blocks.Reference('arg', arg_type), index=client_data_index
+        ),
+    )
+    comp = building_blocks.Lambda('arg', arg_type, intrinsic_call)
+
+    # Allow the before comp to depend on the client portion of the original
+    # comp input. Don't allow the intrinsic comp to depend on the original comp
+    # input at all.
+    before, intrinsic, after = (
+        transformations.divisive_force_align_and_split_by_intrinsics(
+            comp,
+            [intrinsic_defs.FEDERATED_WEIGHTED_MEAN],
+            before_comp_allowed_original_arg_subparameters=[
+                (client_data_index,)
+            ],
+            intrinsic_comp_allowed_original_arg_subparameters=[],
+            after_comp_allowed_original_arg_subparameters=[()],
+        )
+    )
+
+    self.check_split_signatures(comp, before, intrinsic, after)
+
+    # Check that the federated_weighted_mean intrinsic is only present in the
+    # intrinsic comp.
+    self.assertEmpty(self.find_intrinsics_in_comp(before))
+    self.assertEqual(
+        self.find_intrinsics_in_comp(intrinsic),
+        [intrinsic_defs.FEDERATED_WEIGHTED_MEAN.uri],
+    )
+    self.assertEmpty(self.find_intrinsics_in_comp(after))
+
+    # Check that both intrinsic args are passed from the before comp.
+    self.assertLen(before.result.result[0], 2)
+    # The intrinsic comp should consist of exactly one intrinsic call with
+    # two args.
+    self.assertLen(intrinsic.result.locals, 1)
+    self.assertTrue(intrinsic.result.locals[0][1].argument.is_struct())
+    self.assertLen(intrinsic.result.locals[0][1].argument, 2)
+
+  def test_splits_on_intrinsic_with_args_from_original_arg(self):
+    server_val_type = computation_types.FederatedType(
+        tf.int32, placements.SERVER
+    )
+    client_val_type = computation_types.FederatedType(
+        tf.int32, placements.CLIENTS
+    )
+    intermediate_state_type = [tf.int32]
+    server_data_index = 0
+    client_data_index = 1
+    intermediate_state_index = 2
+    arg_type = [
+        (None, server_val_type),
+        (None, client_val_type),
+        ('intermediate_state', intermediate_state_type),
+    ]
+    intrinsic_call = building_block_factory.create_federated_secure_modular_sum(
+        building_blocks.Selection(
+            building_blocks.Reference('arg', arg_type), index=client_data_index
+        ),
+        building_blocks.Selection(
+            building_blocks.Selection(
+                building_blocks.Reference('arg', arg_type),
+                index=intermediate_state_index,
+            ),
+            index=0,
+        ),
+        preapply_modulus=False,
+    )
+    comp = building_blocks.Lambda('arg', arg_type, intrinsic_call)
+
+    # Allow the before comp to depend on the client portion of the original
+    # comp input and the intrinsic comp to depend on the intermediate
+    # state portion of the original comp input. Allow the after comp to depend
+    # on the server and intermediate state portions of the original comp input.
+    before, intrinsic, after = (
+        transformations.divisive_force_align_and_split_by_intrinsics(
+            comp,
+            [intrinsic_defs.FEDERATED_SECURE_MODULAR_SUM],
+            before_comp_allowed_original_arg_subparameters=[
+                (client_data_index,)
+            ],
+            intrinsic_comp_allowed_original_arg_subparameters=[
+                (intermediate_state_index,)
+            ],
+            after_comp_allowed_original_arg_subparameters=[
+                (server_data_index,),
+                (intermediate_state_index,),
+            ],
+        )
+    )
+
+    self.check_split_signatures(comp, before, intrinsic, after)
+
+    # Check that the federated_secure_modular_sum intrinsic is only present in
+    # the intrinsic comp.
+    self.assertEmpty(self.find_intrinsics_in_comp(before))
+    self.assertEqual(
+        self.find_intrinsics_in_comp(intrinsic),
+        [intrinsic_defs.FEDERATED_SECURE_MODULAR_SUM.uri],
+    )
+    self.assertEmpty(self.find_intrinsics_in_comp(after))
+
+    # Check that one intrinsic arg is passed from the before comp and the other
+    # comes from the original arg.
+    self.assertLen(before.result.result[0], 1)
+    self.assertLen(intrinsic.result.locals, 1)
+    self.assertTrue(intrinsic.result.locals[0][1].argument.is_struct())
+    self.assertLen(intrinsic.result.locals[0][1].argument, 2)
+
+  def test_splits_with_non_empty_before_and_after_block_comps(self):
+    server_val_type = computation_types.FederatedType(
+        [tf.int32, tf.int32], placements.SERVER
+    )
+    client_val_type = computation_types.FederatedType(
+        tf.int32, placements.CLIENTS
+    )
+    arg_type = [server_val_type, client_val_type]
+    inner_server_val_type = computation_types.FederatedType(
+        tf.int32, placements.SERVER
+    )
+    server_data_index = 0
+
+    selecting_function = building_blocks.Lambda(
+        'inner_arg',
+        server_val_type.member,
+        building_blocks.Selection(
+            building_blocks.Reference('inner_arg', server_val_type.member),
+            index=0,
+        ),
+    )
+    block_locals = [
+        (
+            'inner_server_data_selection',
+            building_block_factory.create_federated_map_or_apply(
+                selecting_function,
+                building_blocks.Selection(
+                    building_blocks.Reference('arg', arg_type),
+                    index=server_data_index,
+                ),
+            ),
+        ),
+        (
+            'broadcast_result',
+            building_block_factory.create_federated_broadcast(
+                building_blocks.Reference(
+                    'inner_server_data_selection', inner_server_val_type
+                )
+            ),
+        ),
+        (
+            'another_inner_server_data_selection',
+            building_block_factory.create_federated_map_or_apply(
+                selecting_function,
+                building_blocks.Selection(
+                    building_blocks.Reference('arg', arg_type),
+                    index=server_data_index,
+                ),
+            ),
+        ),
+    ]
+    comp = building_blocks.Lambda(
+        'arg',
+        arg_type,
+        building_blocks.Block(
+            block_locals,
+            building_blocks.Struct([
+                building_blocks.Reference(
+                    'broadcast_result',
+                    computation_types.FederatedType(
+                        tf.int32, placements.CLIENTS
+                    ),
+                ),
+                building_blocks.Reference(
+                    'another_inner_server_data_selection',
+                    inner_server_val_type,
+                ),
+            ]),
+        ),
+    )
+
+    # Allow the before comp to depend on the server portion of the original comp
+    # input, the intrinsic comp to depend on none of it, and the after comp to
+    # depend on all of it.
+    before, intrinsic, after = (
+        transformations.divisive_force_align_and_split_by_intrinsics(
+            comp,
+            [intrinsic_defs.FEDERATED_BROADCAST],
+            before_comp_allowed_original_arg_subparameters=[
+                (server_data_index,)
+            ],
+            intrinsic_comp_allowed_original_arg_subparameters=[],
+            after_comp_allowed_original_arg_subparameters=[()],
+        )
+    )
+
+    self.check_split_signatures(comp, before, intrinsic, after)
+
+    # Check that the federated_broadcast intrinsic is only present in the
+    # intrinsic comp and that the before and after comps have a federated_apply
+    # intrinsic.
+    self.assertEqual(
+        self.find_intrinsics_in_comp(before),
+        [intrinsic_defs.FEDERATED_APPLY.uri],
+    )
+    self.assertEqual(
+        self.find_intrinsics_in_comp(intrinsic),
+        [intrinsic_defs.FEDERATED_BROADCAST.uri],
+    )
+    self.assertEqual(
+        self.find_intrinsics_in_comp(after),
+        [intrinsic_defs.FEDERATED_APPLY.uri],
+    )
+
+    # Check that the before and after comps have blocks with at least one local.
+    self.assertNotEmpty(before.result.locals)
+    self.assertNotEmpty(after.result.locals)
+
+  def test_splits_with_no_matching_intrinsics(self):
+    server_val_type = computation_types.FederatedType(
+        tf.int32, placements.SERVER
+    )
+    client_val_type = computation_types.FederatedType(
+        tf.float32, placements.CLIENTS
+    )
+    arg_type = [server_val_type, client_val_type]
+    client_data_index = 1
+
+    comp = building_blocks.Lambda(
+        'arg',
+        arg_type,
+        building_block_factory.create_federated_sum(
+            building_blocks.Selection(
+                building_blocks.Reference('arg', arg_type),
+                index=client_data_index,
+            )
+        ),
+    )
+
+    # Allow the output comps to depend on all portions of the original comp
+    # input.
+    before, intrinsic, after = (
+        transformations.divisive_force_align_and_split_by_intrinsics(
+            comp,
+            [intrinsic_defs.FEDERATED_BROADCAST],
+            before_comp_allowed_original_arg_subparameters=[()],
+            intrinsic_comp_allowed_original_arg_subparameters=[()],
+            after_comp_allowed_original_arg_subparameters=[()],
+        )
+    )
+
+    self.check_split_signatures(comp, before, intrinsic, after)
+
+    # Check that the federated_sum intrinsic is only present in the
+    # after comp.
+    self.assertEmpty(self.find_intrinsics_in_comp(before))
+    self.assertEmpty(self.find_intrinsics_in_comp(intrinsic))
+    self.assertEqual(
+        self.find_intrinsics_in_comp(after),
+        [intrinsic_defs.FEDERATED_SUM.uri],
+    )
+
+    # Check that the intermediate state is empty.
+    self.assertEmpty(before.result.result[1])
+
+  def test_splits_with_intermediate_state_for_unbound_refs(self):
+    server_val_type = computation_types.FederatedType(
+        tf.int32, placements.SERVER
+    )
+    client_val_type = computation_types.FederatedType(
+        tf.float32, placements.CLIENTS
+    )
+    arg_type = [server_val_type, client_val_type]
+    server_data_index = 0
+
+    comp = building_blocks.Lambda(
+        'arg',
+        arg_type,
+        building_blocks.Selection(
+            building_blocks.Reference('arg', arg_type), index=server_data_index
+        ),
+    )
+
+    # Allow the before and intrinsic comps to depend on all portions of the
+    # original comp input. Don't allow the after comp to depend on any of it
+    # (this will force the server_state portion of the return value to be
+    # passed through the intermediate state).
+    before, intrinsic, after = (
+        transformations.divisive_force_align_and_split_by_intrinsics(
+            comp,
+            [intrinsic_defs.FEDERATED_BROADCAST],
+            before_comp_allowed_original_arg_subparameters=[()],
+            intrinsic_comp_allowed_original_arg_subparameters=[()],
+            after_comp_allowed_original_arg_subparameters=[],
+        )
+    )
+
+    self.check_split_signatures(comp, before, intrinsic, after)
+
+    # Check that the intermediate state is non-empty and contains the expected
+    # value (note that there is an extra layer of indirection to access the
+    # original arg).
+    self.assertNotEmpty(before.result.result[1])
+    self.assertEqual(
+        before.result.result[1].proto,
+        building_blocks.Struct(
+            [
+                building_blocks.Selection(
+                    building_blocks.Selection(
+                        building_blocks.Reference(
+                            before.parameter_name, before.parameter_type
+                        ),
+                        index=0,
+                    ),
+                    index=server_data_index,
+                )
+            ]
+        ).proto,
+    )
+
+    # Allow all the output comps to depend on all portions of the original comp
+    # input. Intermediate state should no longer be needed.
+    before, intrinsic, after = (
+        transformations.divisive_force_align_and_split_by_intrinsics(
+            comp,
+            [intrinsic_defs.FEDERATED_BROADCAST],
+            before_comp_allowed_original_arg_subparameters=[()],
+            intrinsic_comp_allowed_original_arg_subparameters=[()],
+            after_comp_allowed_original_arg_subparameters=[()],
+        )
+    )
+
+    self.check_split_signatures(comp, before, intrinsic, after)
+
+    # Check that the intermediate state is empty.
+    self.assertEmpty(before.result.result[1])
+
+  def test_splits_with_intermediate_state_for_duplication(self):
+    server_val_type = computation_types.FederatedType(
+        tf.int32, placements.SERVER
+    )
+    client_val_type = computation_types.FederatedType(
+        tf.float32, placements.CLIENTS
+    )
+    arg_type = [server_val_type, client_val_type]
+
+    block_locals = []
+    # Create a local that will be needed in both the before and after comps.
+    server_state_val_call_1 = building_block_factory.create_federated_value(
+        building_block_factory.create_tensorflow_constant(
+            computation_types.TensorType(tf.int32, shape=[]), 5
+        ),
+        placements.SERVER,
+    )
+    block_locals.append(('server_state_val_1', server_state_val_call_1))
+    server_state_val_call_2 = building_block_factory.create_federated_value(
+        building_block_factory.create_tensorflow_constant(
+            computation_types.TensorType(tf.int32, shape=[]), 10
+        ),
+        placements.SERVER,
+    )
+    block_locals.append(('server_state_val_2', server_state_val_call_2))
+    broadcast_call_1 = building_block_factory.create_federated_broadcast(
+        building_blocks.Reference(
+            'server_state_val_1', server_state_val_call_1.type_signature
+        )
+    )
+    block_locals.append(('broadcast_result_1', broadcast_call_1))
+    broadcast_call_2 = building_block_factory.create_federated_broadcast(
+        building_blocks.Reference(
+            'server_state_val_2', server_state_val_call_2.type_signature
+        )
+    )
+    block_locals.append(('broadcast_result_2', broadcast_call_2))
+    federated_zip_call = building_block_factory.create_federated_zip(
+        building_blocks.Struct([
+            building_blocks.Reference(
+                'broadcast_result_1', broadcast_call_1.type_signature
+            ),
+            building_blocks.Reference(
+                'broadcast_result_2', broadcast_call_2.type_signature
+            ),
+        ])
+    )
+    block_locals.append(('federated_zip_result', federated_zip_call))
+    comp = building_blocks.Lambda(
+        'arg',
+        arg_type,
+        building_blocks.Block(
+            block_locals,
+            building_blocks.Struct([
+                building_blocks.Reference(
+                    'federated_zip_result',
+                    federated_zip_call.type_signature,
+                ),
+                building_blocks.Reference(
+                    'server_state_val_1',
+                    server_state_val_call_1.type_signature,
+                ),
+            ]),
+        ),
+    )
+
+    # Allow all the output comps to depend on all portions of the original comp
+    # input. Intermediate state should no longer be needed.
+    before, intrinsic, after = (
+        transformations.divisive_force_align_and_split_by_intrinsics(
+            comp,
+            [intrinsic_defs.FEDERATED_BROADCAST],
+            before_comp_allowed_original_arg_subparameters=[()],
+            intrinsic_comp_allowed_original_arg_subparameters=[()],
+            after_comp_allowed_original_arg_subparameters=[()],
+        )
+    )
+
+    self.check_split_signatures(comp, before, intrinsic, after)
+
+    # Check that the intermediate state is non-empty and contains the expected
+    # references (a renamed version of server_state_val_1 but nothing
+    # corresponding to server_state_val_2).
+    self.assertNotEmpty(before.result.result[1])
+    self.assertEqual(
+        tree_analysis.count(
+            before.result.result[1],
+            lambda bb: bb.is_reference() and bb.type_signature.is_federated(),
+        ),
+        1,
+    )
+
+    # Check that the before comp has two federated_value_at_server intrinsics.
+    self.assertEqual(
+        self.find_intrinsics_in_comp(before),
+        [intrinsic_defs.FEDERATED_VALUE_AT_SERVER.uri] * 2,
+    )
+    # Check that the intrinsic comp has two broadcast intrinsics.
+    self.assertEqual(
+        self.find_intrinsics_in_comp(intrinsic),
+        [intrinsic_defs.FEDERATED_BROADCAST.uri] * 2,
+    )
+    # Check that the after comp only has a federated_zip_at_clients intrinsic.
+    self.assertEqual(
+        self.find_intrinsics_in_comp(after),
+        [intrinsic_defs.FEDERATED_ZIP_AT_CLIENTS.uri],
+    )
+
+  def test_splits_with_intermediate_state_for_duplication_and_unbound_refs(
+      self,
+  ):
+    server_val_type = computation_types.FederatedType(
+        tf.int32, placements.SERVER
+    )
+    client_val_type = computation_types.FederatedType(
+        tf.float32, placements.CLIENTS
+    )
+    arg_type = [server_val_type, client_val_type]
+    server_data_index = 0
+
+    block_locals = []
+    # Create a local that will be needed in both the before and after comps.
+    server_state_val_call = building_block_factory.create_federated_value(
+        building_block_factory.create_tensorflow_constant(
+            computation_types.TensorType(tf.int32, shape=[]), 5
+        ),
+        placements.SERVER,
+    )
+    block_locals.append(('server_state_val', server_state_val_call))
+    broadcast_call = building_block_factory.create_federated_broadcast(
+        building_blocks.Reference(
+            'server_state_val', server_state_val_call.type_signature
+        )
+    )
+    block_locals.append(('broadcast_result', broadcast_call))
+    comp = building_blocks.Lambda(
+        'arg',
+        arg_type,
+        building_blocks.Block(
+            block_locals,
+            building_blocks.Struct([
+                building_blocks.Reference(
+                    'broadcast_result', broadcast_call.type_signature
+                ),
+                building_blocks.Reference(
+                    'server_state_val', server_state_val_call.type_signature
+                ),
+                building_blocks.Selection(
+                    building_blocks.Reference('arg', arg_type),
+                    index=server_data_index,
+                ),
+            ]),
+        ),
+    )
+
+    # Allow only the before and intrinsic comps to depend on all portions of the
+    # original comp. Force the intermediate state to be used to make the server
+    # data available to the after comp.
+    before, intrinsic, after = (
+        transformations.divisive_force_align_and_split_by_intrinsics(
+            comp,
+            [intrinsic_defs.FEDERATED_BROADCAST],
+            before_comp_allowed_original_arg_subparameters=[()],
+            intrinsic_comp_allowed_original_arg_subparameters=[()],
+            after_comp_allowed_original_arg_subparameters=[],
+        )
+    )
+
+    self.check_split_signatures(comp, before, intrinsic, after)
+
+    # Check that the intermediate state is non-empty and contains the expected
+    # values (the server data selection and a reference that is a renamed
+    # version of server_state_val).
+    self.assertNotEmpty(before.result.result[1])
+
+    def _server_data_selection_predicate(bb):
+      return bb.is_selection() and bb.source.name == before.parameter_name
+
+    def _server_state_val_predicate(bb):
+      return bb.is_reference() and bb.type_signature.is_federated()
+
+    self.assertEqual(
+        tree_analysis.count(
+            before.result.result[1], _server_data_selection_predicate
+        ),
+        1,
+    )
+    self.assertEqual(
+        tree_analysis.count(
+            before.result.result[1], _server_state_val_predicate
+        ),
+        1,
+    )
+
+    # Check that the before comp has only a federated_value_at_server intrinsic.
+    self.assertEqual(
+        self.find_intrinsics_in_comp(before),
+        [intrinsic_defs.FEDERATED_VALUE_AT_SERVER.uri],
+    )
+    # Check that the intrinsic comp has only a broadcast intrinsics.
+    self.assertEqual(
+        self.find_intrinsics_in_comp(intrinsic),
+        [intrinsic_defs.FEDERATED_BROADCAST.uri],
+    )
+    # Check that the after comp has no intrinsics.
+    self.assertEmpty(self.find_intrinsics_in_comp(after))
+
+  def test_splits_on_multiple_instances_of_intrinsic(self):
+    server_val_type = computation_types.FederatedType(
+        tf.int32, placements.SERVER
+    )
+    client_val_type = computation_types.FederatedType(
+        tf.float32, placements.CLIENTS
+    )
+    arg_type = [server_val_type, client_val_type]
+    server_data_index = 0
+    broadcast_result_type = computation_types.FederatedType(
+        tf.int32, placements.CLIENTS
+    )
+
+    block_locals = []
+    block_locals.append((
+        'broadcast_result_1',
+        building_block_factory.create_federated_broadcast(
+            building_blocks.Selection(
+                building_blocks.Reference('arg', arg_type),
+                index=server_data_index,
+            )
+        ),
+    ))
+    block_locals.append((
+        'broadcast_result_2',
+        building_block_factory.create_federated_broadcast(
+            building_blocks.Selection(
+                building_blocks.Reference('arg', arg_type),
+                index=server_data_index,
+            )
+        ),
+    ))
+    comp = building_blocks.Lambda(
+        'arg',
+        arg_type,
+        building_blocks.Block(
+            block_locals,
+            building_blocks.Struct([
+                building_blocks.Reference(
+                    'broadcast_result_1', broadcast_result_type
+                ),
+                building_blocks.Reference(
+                    'broadcast_result_2', broadcast_result_type
+                ),
+            ]),
+        ),
+    )
+
+    # Allow the before and after comps to depend on the entire original comp
+    # input, but do not allow the intrinsic comp to depend on the original comp
+    # input at all.
+    before, intrinsic, after = (
+        transformations.divisive_force_align_and_split_by_intrinsics(
+            comp,
+            [intrinsic_defs.FEDERATED_BROADCAST],
+            before_comp_allowed_original_arg_subparameters=[()],
+            intrinsic_comp_allowed_original_arg_subparameters=[],
+            after_comp_allowed_original_arg_subparameters=[()],
+        )
+    )
+
+    self.check_split_signatures(comp, before, intrinsic, after)
+
+    # Check that the federated_broadcast intrinsic is only present in the
+    # intrinsic comp, and that there are two instances of it.
+    self.assertEmpty(self.find_intrinsics_in_comp(before))
+    self.assertEqual(
+        self.find_intrinsics_in_comp(intrinsic),
+        [intrinsic_defs.FEDERATED_BROADCAST.uri] * 2,
+    )
+    self.assertEmpty(self.find_intrinsics_in_comp(after))
+
+    # Check that the two intrinsic args (one for each broadcast call) are
+    # passed from the before comp.
+    self.assertLen(before.result.result[0], 2)
+    self.assertLen(intrinsic.result.locals, 2)
+
+  def test_splits_on_multiple_intrinsics(self):
+    server_val_type = computation_types.FederatedType(
+        tf.int32, placements.SERVER
+    )
+    client_val_type = computation_types.FederatedType(
+        tf.int32, placements.CLIENTS
+    )
+    intermediate_state_type = [tf.int32]
+    server_data_index = 0
+    client_data_index = 1
+    intermediate_state_index = 2
+    arg_type = [
+        (None, server_val_type),
+        (None, client_val_type),
+        ('intermediate_state', intermediate_state_type),
+    ]
+
+    federated_sum_call = building_block_factory.create_federated_sum(
+        building_blocks.Selection(
+            building_blocks.Reference('arg', arg_type), index=client_data_index
+        )
+    )
+    federated_secure_modular_sum_call = (
+        building_block_factory.create_federated_secure_modular_sum(
+            building_blocks.Selection(
+                building_blocks.Reference('arg', arg_type),
+                index=client_data_index,
+            ),
+            building_blocks.Selection(
+                building_blocks.Selection(
+                    building_blocks.Reference('arg', arg_type),
+                    index=intermediate_state_index,
+                ),
+                index=0,
+            ),
+            preapply_modulus=False,
+        )
+    )
+    block_locals = [
+        ('federated_sum_result', federated_sum_call),
+        (
+            'federated_secure_modular_sum_result',
+            federated_secure_modular_sum_call,
+        ),
+    ]
+    comp = building_blocks.Lambda(
+        'arg',
+        arg_type,
+        building_blocks.Block(
+            block_locals,
+            building_blocks.Struct([
+                building_blocks.Reference(
+                    'federated_sum_result',
+                    federated_sum_call.type_signature,
+                ),
+                building_blocks.Reference(
+                    'federated_secure_modular_sum_result',
+                    federated_secure_modular_sum_call.type_signature,
+                ),
+                building_blocks.Selection(
+                    building_blocks.Reference('arg', arg_type),
+                    index=server_data_index,
+                ),
+            ]),
+        ),
+    )
+
+    # Allow the before comp to depend on the client portion of the original
+    # comp input, the intrinsic comp to depend on the intermediate state
+    # portion of the original comp input, and the after comp to depend on the
+    # server and intermediate state portions of the original comp input.
+    before, intrinsic, after = (
+        transformations.divisive_force_align_and_split_by_intrinsics(
+            comp,
+            [
+                intrinsic_defs.FEDERATED_SECURE_MODULAR_SUM,
+                intrinsic_defs.FEDERATED_SUM,
+                intrinsic_defs.FEDERATED_MEAN,
+            ],
+            before_comp_allowed_original_arg_subparameters=[
+                (client_data_index,)
+            ],
+            intrinsic_comp_allowed_original_arg_subparameters=[
+                (intermediate_state_index,)
+            ],
+            after_comp_allowed_original_arg_subparameters=[
+                (server_data_index,),
+                (intermediate_state_index,),
+            ],
+        )
+    )
+
+    self.check_split_signatures(comp, before, intrinsic, after)
+
+    # Check that the federated_sum and federated_secure_modular_sum intrinsics
+    # are only present in the intrinsic comp.
+    self.assertEmpty(self.find_intrinsics_in_comp(before))
+    self.assertEqual(
+        set(self.find_intrinsics_in_comp(intrinsic)),
+        set([
+            intrinsic_defs.FEDERATED_SUM.uri,
+            intrinsic_defs.FEDERATED_SECURE_MODULAR_SUM.uri,
+        ]),
+    )
+    self.assertEmpty(self.find_intrinsics_in_comp(after))
+
+    # Check that the intrinsic args are obtained correctly. There should be
+    # two intrinsic args passed directly from the before comp and one intrinsic
+    # arg (the modulus) that is retrieved from the intermediate state from the
+    # original comp input.
+    self.assertLen(before.result.result[0], 2)
+    # There should be two intrinsic calls.
+    self.assertLen(intrinsic.result.locals, 2)
+    # The federated_sum call takes one arg.
+    self.assertFalse(intrinsic.result.locals[0][1].argument.is_struct())
+    # The federated_secure_modular_sum call takes two args.
+    self.assertTrue(intrinsic.result.locals[1][1].argument.is_struct())
+    self.assertLen(intrinsic.result.locals[1][1].argument, 2)
+
+  def test_cannot_split_on_chained_intrinsic(self):
+    server_val_type = computation_types.FederatedType(
+        tf.int32, placements.SERVER
+    )
+    client_val_type = computation_types.FederatedType(
+        tf.float32, placements.CLIENTS
+    )
+    arg_type = [server_val_type, client_val_type]
+    server_data_index = 0
+
+    block_locals = [
+        (
+            'broadcast_result_at_clients',
+            building_block_factory.create_federated_broadcast(
+                building_blocks.Selection(
+                    building_blocks.Reference('arg', arg_type),
+                    index=server_data_index,
+                )
+            ),
+        ),
+        (
+            'federated_sum_result',
+            building_block_factory.create_federated_sum(
+                building_blocks.Reference(
+                    'broadcast_result_at_clients',
+                    computation_types.at_clients(tf.int32),
+                )
+            ),
+        ),
+    ]
+    comp = building_blocks.Lambda(
+        'arg',
+        arg_type,
+        building_blocks.Block(
+            block_locals,
+            building_blocks.Reference('federated_sum_result', server_val_type),
+        ),
+    )
+
+    # Allow all parts of the split to depend on the entire original comp input.
+    with self.assertRaises(transformations.NonAlignableAlongIntrinsicError):
+      transformations.divisive_force_align_and_split_by_intrinsics(
+          comp,
+          [
+              intrinsic_defs.FEDERATED_BROADCAST,
+              intrinsic_defs.FEDERATED_SUM,
+          ],
+          before_comp_allowed_original_arg_subparameters=[()],
+          intrinsic_comp_allowed_original_arg_subparameters=[()],
+          after_comp_allowed_original_arg_subparameters=[()],
+      )
+
+  def test_splits_on_nested_in_tuple_broadcast(self):
+    server_val_type = computation_types.FederatedType(
+        tf.int32, placements.SERVER
+    )
+    client_val_type = computation_types.FederatedType(
+        tf.float32, placements.CLIENTS
+    )
+    arg_type = [server_val_type, client_val_type]
+    server_data_index = 0
+
+    first_broadcast = building_block_factory.create_federated_broadcast(
+        building_blocks.Selection(
+            building_blocks.Reference('arg', arg_type), index=server_data_index
+        )
+    )
+    packed_broadcast = building_blocks.Struct(
+        [building_blocks.Data('a', server_val_type), first_broadcast]
+    )
+    sel = building_blocks.Selection(packed_broadcast, index=0)
+    second_broadcast = building_block_factory.create_federated_broadcast(sel)
+    comp = building_blocks.Lambda('arg', arg_type, second_broadcast)
+
+    # Allow all parts of the split to depend on the entire original comp input.
+    before, intrinsic, after = (
+        transformations.divisive_force_align_and_split_by_intrinsics(
+            comp,
+            [intrinsic_defs.FEDERATED_BROADCAST],
+            before_comp_allowed_original_arg_subparameters=[()],
+            intrinsic_comp_allowed_original_arg_subparameters=[()],
+            after_comp_allowed_original_arg_subparameters=[()],
+        )
+    )
+
+    # Check that there is only one federated_broadcast intrinsic present in the
+    # intrinsic comp.
+    self.assertEmpty(self.find_intrinsics_in_comp(before))
+    self.assertEqual(
+        self.find_intrinsics_in_comp(intrinsic),
+        [intrinsic_defs.FEDERATED_BROADCAST.uri],
+    )
+    self.assertEmpty(self.find_intrinsics_in_comp(after))
 
 
 if __name__ == '__main__':

@@ -25,6 +25,7 @@ from tensorflow_federated.python.core.backends.test import execution_contexts
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
+from tensorflow_federated.python.core.impl.compiler import tree_transformations
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
@@ -950,14 +951,14 @@ class AsFunctionOfSomeSubparametersTest(tf.test.TestCase):
     lam = building_blocks.Lambda(
         'x', tf.int32, building_blocks.Reference('x', tf.int32)
     )
-    with self.assertRaises(form_utils._ParameterSelectionError):
+    with self.assertRaises(tree_transformations.ParameterSelectionError):
       form_utils._as_function_of_some_federated_subparameters(lam, [(0,)])
 
   def test_raises_on_selection_from_non_tuple(self):
     lam = building_blocks.Lambda(
         'x', [tf.int32], building_blocks.Reference('x', [tf.int32])
     )
-    with self.assertRaises(form_utils._ParameterSelectionError):
+    with self.assertRaises(tree_transformations.ParameterSelectionError):
       form_utils._as_function_of_some_federated_subparameters(lam, [(0, 0)])
 
   def test_raises_on_non_federated_selection(self):

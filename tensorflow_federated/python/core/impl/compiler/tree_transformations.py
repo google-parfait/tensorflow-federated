@@ -14,7 +14,7 @@
 """A library of transformations for ASTs."""
 
 import collections
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 
 import tensorflow as tf
 
@@ -25,6 +25,7 @@ from tensorflow_federated.python.core.impl.compiler import building_block_factor
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
+from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
@@ -390,6 +391,104 @@ def replace_selections(
   # already).
   result, _ = transformation_utils.transform_postorder(bb, _replace)
   return result
+
+
+class ParameterSelectionError(TypeError):
+
+  def __init__(self, path, bb):
+    message = (
+        'Attempted to rebind references to parameter selection path '
+        f'{path}, which is not a valid selection from type '
+        f'{bb.parameter_type}. Original AST:\n{bb}'
+    )
+    super().__init__(message)
+
+
+def as_function_of_some_subparameters(
+    bb: building_blocks.Lambda,
+    paths: Sequence[Sequence[int]],
+) -> building_blocks.Lambda:
+  """Turns `x -> ...only uses parts of x...` into `parts_of_x -> ...`.
+
+  The names of locals in blocks are not modified, but unused block locals
+  are removed.
+
+  If the body of the computation requires more than the allowed subparameters,
+  the returned computation will have unbound references.
+
+  Args:
+    bb: Instance of `building_blocks.Lambda` that we wish to rewrite as a
+      function of some subparameters.
+    paths: List of the paths representing the input subparameters to use. Each
+      path is a tuple of ints (e.g. (5, 3) would represent a selection into the
+      original arg like arg[5][3]). Note; it is not valid to specify overlapping
+      selection paths (where one path encompasses another).
+
+  Returns:
+    An instance of `building_blocks.Lambda` with a struct input parameter where
+    the ith element in the input parameter corresponds to the ith provided path.
+
+  Raises:
+    ParameterSelectionError: If a requested path is not possible for the
+      original input parameter type.
+  """
+
+  def _get_block_local_names(comp):
+    names = []
+
+    def _visit(comp):
+      if comp.is_block():
+        for name, _ in comp.locals:
+          names.append(name)
+
+    tree_analysis.visit_postorder(comp, _visit)
+    return names
+
+  tree_analysis.check_has_unique_names(bb)
+  original_local_names = _get_block_local_names(bb)
+  bb, _ = remove_unused_block_locals(bb)
+
+  name_generator = building_block_factory.unique_name_generator(bb)
+
+  type_list = []
+  int_paths = []
+  for path in paths:
+    selected_type = bb.parameter_type
+    int_path = []
+    for index in path:
+      if not selected_type.is_struct():
+        raise ParameterSelectionError(path, bb)
+      py_typecheck.check_type(index, int)
+      if index >= len(selected_type):
+        raise ParameterSelectionError(path, bb)
+      int_path.append(index)
+      selected_type = selected_type[index]
+    int_paths.append(tuple(int_path))
+    type_list.append(selected_type)
+
+  ref_to_struct = building_blocks.Reference(
+      next(name_generator), computation_types.StructType(type_list)
+  )
+  path_to_replacement = {}
+  for i, path in enumerate(int_paths):
+    path_to_replacement[path] = building_blocks.Selection(
+        ref_to_struct, index=i
+    )
+
+  new_lambda_body = replace_selections(
+      bb.result, bb.parameter_name, path_to_replacement
+  )
+  # Normalize the body so that it is a block.
+  if not new_lambda_body.is_block():
+    new_lambda_body = building_blocks.Block([], new_lambda_body)
+  lambda_with_zipped_param = building_blocks.Lambda(
+      ref_to_struct.name, ref_to_struct.type_signature, new_lambda_body
+  )
+
+  new_local_names = _get_block_local_names(lambda_with_zipped_param)
+  assert set(new_local_names).issubset(set(original_local_names))
+
+  return lambda_with_zipped_param
 
 
 def strip_placement(comp):
