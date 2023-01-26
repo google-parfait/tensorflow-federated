@@ -42,16 +42,16 @@ class DistributionProcess(measured_process.MeasuredProcess):
   The `initialize_fn` and `next_fn` must have the following type signatures:
   ```
     - initialize_fn: ( -> S@SERVER)
-    - next_fn: (<S@SERVER, V@SERVER> ->
-                <state=S@SERVER, result=V'@CLIENTS, measurements=M@SERVER>)
+    - next_fn: (<S@SERVER, U@SERVER> ->
+                <state=S@SERVER, result=V@CLIENTS, measurements=M@SERVER>)
   ```
 
   `DistributionProcess` requires `next_fn` with a second input argument, which
   is a value placed at `SERVER` and to be distributed to `CLIENTS`.
 
   The `result` field of the returned `tff.templates.MeasuredProcessOutput` must
-  be placed at `CLIENTS`. Its type singature, `V'`, need not be the same as the
-  type signature of the second input argument, `V`. Note these will be
+  be placed at `CLIENTS`. Its type singature, `U'`, need not be the same as the
+  type signature of the second input argument, `U`. Note these will be
   equivalent for a number of implementations of this process, though.
   """
 
