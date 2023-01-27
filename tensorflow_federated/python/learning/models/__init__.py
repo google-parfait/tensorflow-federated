@@ -22,3 +22,5 @@ from tensorflow_federated.python.learning.models.serialization import load
 from tensorflow_federated.python.learning.models.serialization import load_functional_model
 from tensorflow_federated.python.learning.models.serialization import save
 from tensorflow_federated.python.learning.models.serialization import save_functional_model
+from tensorflow_federated.python.learning.models.variable import BatchOutput
+from tensorflow_federated.python.learning.models.variable import VariableModel

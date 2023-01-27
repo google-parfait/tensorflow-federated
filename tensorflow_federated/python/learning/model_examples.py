@@ -25,10 +25,10 @@ from typing import Union
 
 import tensorflow as tf
 
-from tensorflow_federated.python.learning import model
+from tensorflow_federated.python.learning.models import variable
 
 
-class LinearRegression(model.Model):
+class LinearRegression(variable.VariableModel):
   """Example of a simple linear regression implemented directly."""
 
   def __init__(self, feature_dim: int = 2):
@@ -74,7 +74,7 @@ class LinearRegression(model.Model):
     return tf.matmul(x, self._a) + self._b + self._c
 
   @tf.function
-  def forward_pass(self, batch_input, training=True) -> model.BatchOutput:
+  def forward_pass(self, batch_input, training=True) -> variable.BatchOutput:
     if not self._input_spec['y'].is_compatible_with(batch_input['y']):
       raise ValueError(
           "Expected batch_input['y'] to be compatible with "
@@ -95,7 +95,7 @@ class LinearRegression(model.Model):
     self._num_batches.assign_add(1)
 
     average_loss = total_loss / tf.cast(num_examples, tf.float32)
-    return model.BatchOutput(
+    return variable.BatchOutput(
         loss=average_loss, predictions=predictions, num_examples=num_examples
     )
 

@@ -22,3 +22,5 @@ from tensorflow_federated.python.learning.metrics.counters import NumBatchesCoun
 from tensorflow_federated.python.learning.metrics.counters import NumExamplesCounter
 from tensorflow_federated.python.learning.metrics.keras_finalizer import create_keras_metric_finalizer
 from tensorflow_federated.python.learning.metrics.keras_utils import create_functional_metric_fns
+from tensorflow_federated.python.learning.metrics.types import FunctionalMetricFinalizersType
+from tensorflow_federated.python.learning.metrics.types import MetricFinalizersType

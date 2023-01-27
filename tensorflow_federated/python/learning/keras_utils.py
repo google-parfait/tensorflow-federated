@@ -32,9 +32,9 @@ from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_conversions
-from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning.metrics import counters
 from tensorflow_federated.python.learning.metrics import keras_finalizer
+from tensorflow_federated.python.learning.models import variable
 
 Loss = Union[tf.keras.losses.Loss, list[tf.keras.losses.Loss]]
 
@@ -52,7 +52,7 @@ def from_keras_model(
             list[Callable[[], tf.keras.metrics.Metric]],
         ]
     ] = None,
-) -> model_lib.Model:
+) -> variable.VariableModel:
   """Builds a `tff.learning.Model` from a `tf.keras.Model`.
 
   The `tff.learning.Model` returned by this function uses `keras_model` for
@@ -121,7 +121,7 @@ def from_keras_model(
       exactly two elements, or if `input_spec` is a dictionary and does not
       contain keys `'x'` and `'y'`.
   """.format(
-      model_lib.MODEL_ARG_NAME, model_lib.MODEL_LABEL_NAME
+      variable.MODEL_ARG_NAME, variable.MODEL_LABEL_NAME
   )
   # Validate `keras_model`
   py_typecheck.check_type(keras_model, tf.keras.Model)
@@ -185,17 +185,17 @@ def from_keras_model(
         input_spec,
     )
   if isinstance(input_spec, Mapping):
-    if model_lib.MODEL_ARG_NAME not in input_spec:
+    if variable.MODEL_ARG_NAME not in input_spec:
       raise ValueError(
           'The `input_spec` is a collections.abc.Mapping (e.g., a dict), so it '
           "must contain an entry with key `'{}'`, representing the input(s) "
-          'to the Keras model.'.format(model_lib.MODEL_ARG_NAME)
+          'to the Keras model.'.format(variable.MODEL_ARG_NAME)
       )
-    if model_lib.MODEL_LABEL_NAME not in input_spec:
+    if variable.MODEL_LABEL_NAME not in input_spec:
       raise ValueError(
           'The `input_spec` is a collections.abc.Mapping (e.g., a dict), so it '
           "must contain an entry with key `'{}'`, representing the label(s) "
-          'to be used in the Keras loss(es).'.format(model_lib.MODEL_LABEL_NAME)
+          'to be used in the Keras loss(es).'.format(variable.MODEL_LABEL_NAME)
       )
 
   if metrics is None:
@@ -315,7 +315,7 @@ def federated_aggregate_keras_metric(
   )
 
 
-class _KerasModel(model_lib.Model):
+class _KerasModel(variable.VariableModel):
   """Internal wrapper class for tf.keras.Model objects."""
 
   def __init__(
@@ -497,7 +497,7 @@ class _KerasModel(model_lib.Model):
     def nrows(t):
       return t.nrows() if isinstance(t, tf.RaggedTensor) else tf.shape(t)[0]
 
-    return model_lib.BatchOutput(
+    return variable.BatchOutput(
         loss=batch_loss,
         predictions=predictions,
         num_examples=nrows(tf.nest.flatten(inputs)[0]),

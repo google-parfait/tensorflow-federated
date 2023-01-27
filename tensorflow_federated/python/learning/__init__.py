@@ -51,9 +51,9 @@ from tensorflow_federated.python.learning.federated_evaluation import build_loca
 from tensorflow_federated.python.learning.framework.optimizer_utils import state_with_new_model_weights
 from tensorflow_federated.python.learning.keras_utils import federated_aggregate_keras_metric
 from tensorflow_federated.python.learning.keras_utils import from_keras_model
-from tensorflow_federated.python.learning.model import BatchOutput
-from tensorflow_federated.python.learning.model import MetricFinalizersType
-from tensorflow_federated.python.learning.model import Model
+# TODO(b/267180026): Remove this once usages are migrated to
+# `tff.learning.metrics`
+from tensorflow_federated.python.learning.metrics.types import MetricFinalizersType
 from tensorflow_federated.python.learning.model_update_aggregator import compression_aggregator
 from tensorflow_federated.python.learning.model_update_aggregator import ddp_secure_aggregator
 from tensorflow_federated.python.learning.model_update_aggregator import dp_aggregator
@@ -61,4 +61,8 @@ from tensorflow_federated.python.learning.model_update_aggregator import entropy
 from tensorflow_federated.python.learning.model_update_aggregator import robust_aggregator
 from tensorflow_federated.python.learning.model_update_aggregator import secure_aggregator
 from tensorflow_federated.python.learning.models.model_weights import ModelWeights
+# TODO(b/259609586): Remove tff.learning.models.variable imports once all
+# callsites have been updated to `tff.learning.models`.
+from tensorflow_federated.python.learning.models.variable import BatchOutput
+from tensorflow_federated.python.learning.models.variable import VariableModel as Model
 from tensorflow_federated.python.learning.personalization_eval import build_personalization_eval

@@ -29,11 +29,11 @@ from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.learning import keras_utils
-from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning.metrics import aggregator
 from tensorflow_federated.python.learning.metrics import counters
 from tensorflow_federated.python.learning.models import model_weights
+from tensorflow_federated.python.learning.models import variable
 
 
 def _create_whimsy_types(feature_dims):
@@ -148,7 +148,7 @@ class KerasUtilsTest(tf.test.TestCase, parameterized.TestCase):
         input_spec=input_spec,
         loss=tf.keras.losses.MeanSquaredError(),
     )
-    self.assertIsInstance(tff_model, model_lib.Model)
+    self.assertIsInstance(tff_model, variable.VariableModel)
     tf.nest.map_structure(
         lambda x: self.assertIsInstance(x, tf.TensorSpec), tff_model.input_spec
     )
@@ -168,7 +168,7 @@ class KerasUtilsTest(tf.test.TestCase, parameterized.TestCase):
         input_spec=input_spec,
         loss=tf.keras.losses.MeanSquaredError(),
     )
-    self.assertIsInstance(tff_model, model_lib.Model)
+    self.assertIsInstance(tff_model, variable.VariableModel)
     self.assertIsInstance(tff_model.input_spec, collections.OrderedDict)
     tf.nest.map_structure(
         lambda x: self.assertIsInstance(x, tf.TensorSpec), tff_model.input_spec
@@ -185,7 +185,7 @@ class KerasUtilsTest(tf.test.TestCase, parameterized.TestCase):
         input_spec=input_spec,
         loss=tf.keras.losses.BinaryCrossentropy(from_logits=True),
     )
-    self.assertIsInstance(tff_model, model_lib.Model)
+    self.assertIsInstance(tff_model, variable.VariableModel)
     self.assertIsInstance(tff_model.input_spec['x'], tf.RaggedTensorSpec)
 
     batch = collections.OrderedDict(
@@ -278,7 +278,7 @@ class KerasUtilsTest(tf.test.TestCase, parameterized.TestCase):
         loss=tf.keras.losses.MeanSquaredError(),
         metrics=[tf.keras.metrics.MeanAbsoluteError()],
     )
-    self.assertIsInstance(tff_model, model_lib.Model)
+    self.assertIsInstance(tff_model, variable.VariableModel)
 
     # Metrics should be zero, though the model wrapper internally executes the
     # forward pass once.
@@ -329,7 +329,7 @@ class KerasUtilsTest(tf.test.TestCase, parameterized.TestCase):
         loss=tf.keras.losses.MeanSquaredError(),
         metrics=[tf.keras.metrics.MeanAbsoluteError()],
     )
-    self.assertIsInstance(tff_model, model_lib.Model)
+    self.assertIsInstance(tff_model, variable.VariableModel)
 
     # Metrics should be zero, though the model wrapper internally executes the
     # forward pass once.
@@ -381,7 +381,7 @@ class KerasUtilsTest(tf.test.TestCase, parameterized.TestCase):
         metrics=[tf.keras.metrics.MeanAbsoluteError()],
         input_spec=_create_whimsy_types(feature_dims),
     )
-    self.assertIsInstance(tff_model, model_lib.Model)
+    self.assertIsInstance(tff_model, variable.VariableModel)
 
     # Metrics should be zero, though the model wrapper internally executes the
     # forward pass once.
@@ -469,7 +469,7 @@ class KerasUtilsTest(tf.test.TestCase, parameterized.TestCase):
         loss=tf.keras.losses.MeanSquaredError(),
         input_spec=input_spec,
     )
-    self.assertIsInstance(tff_model, model_lib.Model)
+    self.assertIsInstance(tff_model, variable.VariableModel)
     self.assertEqual(tff_model.input_spec, input_spec)
 
     batch = _create_test_batch(feature_dims=5)
@@ -829,7 +829,7 @@ class KerasUtilsTest(tf.test.TestCase, parameterized.TestCase):
           ],
       )
 
-      self.assertIsInstance(tff_model, model_lib.Model)
+      self.assertIsInstance(tff_model, variable.VariableModel)
       example_batch = collections.OrderedDict(
           x=[
               np.zeros([1, 1], dtype=np.float32),
@@ -965,7 +965,7 @@ class KerasUtilsTest(tf.test.TestCase, parameterized.TestCase):
           ],
       )
 
-      self.assertIsInstance(tff_model, model_lib.Model)
+      self.assertIsInstance(tff_model, variable.VariableModel)
       example_batch = collections.OrderedDict(
           x=[
               np.zeros([1, 1], dtype=np.float32),
@@ -1246,7 +1246,7 @@ class KerasUtilsTest(tf.test.TestCase, parameterized.TestCase):
             lambda: CustomCounter(arg1=1),
         ],
     )
-    self.assertIsInstance(tff_model, model_lib.Model)
+    self.assertIsInstance(tff_model, variable.VariableModel)
 
     # Metrics should be zero, though the model wrapper internally executes the
     # forward pass once.
@@ -1299,7 +1299,7 @@ class KerasUtilsTest(tf.test.TestCase, parameterized.TestCase):
         input_spec=_create_whimsy_types(feature_dims),
         loss=tf.keras.losses.MeanSquaredError(),
     )
-    self.assertIsInstance(tff_model, model_lib.Model)
+    self.assertIsInstance(tff_model, variable.VariableModel)
 
     # Metrics should be zero, though the model wrapper internally executes the
     # forward pass once.
@@ -1400,7 +1400,7 @@ class KerasUtilsTest(tf.test.TestCase, parameterized.TestCase):
         loss=tf.keras.losses.MeanSquaredError(),
         metrics=[tf.keras.metrics.MeanAbsoluteError()],
     )
-    self.assertIsInstance(tff_model, model_lib.Model)
+    self.assertIsInstance(tff_model, variable.VariableModel)
 
     expected_initial_local_variables = [0.0, 0.0, 0.0, 0.0, 0, 0]
     self.assertSequenceEqual(
