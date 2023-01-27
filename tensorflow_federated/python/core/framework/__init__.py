@@ -48,7 +48,6 @@ from tensorflow_federated.python.core.impl.executors.eager_tf_executor import Ea
 from tensorflow_federated.python.core.impl.executors.executor_base import Executor
 from tensorflow_federated.python.core.impl.executors.executor_factory import CardinalitiesType
 from tensorflow_federated.python.core.impl.executors.executor_factory import ExecutorFactory
-from tensorflow_federated.python.core.impl.executors.executor_service import ExecutorService
 from tensorflow_federated.python.core.impl.executors.executor_value_base import ExecutorValue
 from tensorflow_federated.python.core.impl.executors.federated_composing_strategy import FederatedComposingStrategy
 from tensorflow_federated.python.core.impl.executors.federated_resolving_strategy import FederatedResolvingStrategy
