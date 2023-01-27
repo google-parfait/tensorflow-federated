@@ -35,10 +35,10 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning.metrics import keras_finalizer
 from tensorflow_federated.python.learning.metrics import keras_utils
 from tensorflow_federated.python.learning.metrics import types
+from tensorflow_federated.python.learning.models import variable
 from tensorflow_federated.python.tensorflow_libs import variable_utils
 
 Weight = Union[np.ndarray, int, float]
@@ -69,7 +69,7 @@ def empty_metrics_state() -> types.MetricsState:
 def noop_update_metrics(
     state: types.MetricsState,
     labels: Any,
-    batch_output: model_lib.BatchOutput,
+    batch_output: variable.BatchOutput,
     sample_weight: Optional[Any] = None,
 ) -> types.MetricsState:
   del state  # Unused.
@@ -93,7 +93,7 @@ class FunctionalModel:
       *,  # Require all arguments be named.
       initial_weights: ModelWeights,
       forward_pass_fn: Callable[
-          [ModelWeights, Any, bool], model_lib.BatchOutput
+          [ModelWeights, Any, bool], variable.BatchOutput
       ],
       predict_on_batch_fn: Callable[[ModelWeights, Any, bool], Any],
       metrics_fns: tuple[
@@ -201,7 +201,7 @@ class FunctionalModel:
   @tf.function
   def forward_pass(
       self, model_weights: ModelWeights, batch_input: Any, training: bool = True
-  ) -> model_lib.BatchOutput:
+  ) -> variable.BatchOutput:
     """Runs the forward pass and returns results."""
     return self._forward_pass_fn(model_weights, batch_input, training)
 
@@ -221,7 +221,7 @@ class FunctionalModel:
       self,
       state: GenericMetricsState,
       labels: Any,
-      batch_output: model_lib.BatchOutput,
+      batch_output: variable.BatchOutput,
       sample_weight: Optional[Any] = None,
   ) -> GenericMetricsState:
     return self._update_metrics_state(
@@ -242,7 +242,7 @@ class FunctionalModel:
     return self._input_spec
 
 
-class _ModelFromFunctional(model_lib.Model):
+class _ModelFromFunctional(variable.VariableModel):
   """A `tff.learning.Model` wrapping a `tff.learning.model.FunctionalModel`."""
 
   def __init__(
@@ -367,7 +367,7 @@ class _ModelFromFunctional(model_lib.Model):
 def model_from_functional(
     functional_model: FunctionalModel,
     metric_constructors: Sequence[Callable[[], tf.keras.metrics.Metric]] = (),
-) -> model_lib.Model:
+) -> variable.VariableModel:
   """Converts a `FunctionalModel` to a `tff.learning.Model`.
 
   WARNING: The `metrics_constructors` argument will *replace* any metrics that
@@ -598,7 +598,7 @@ def functional_model_from_keras(
   @tf.function
   def forward_pass(
       model_weights: ModelWeights, batch_input: Any, training: bool = True
-  ) -> model_lib.BatchOutput:
+  ) -> variable.BatchOutput:
     if isinstance(batch_input, Mapping):
       x = batch_input['x']
       y = batch_input['y']
@@ -618,7 +618,7 @@ def functional_model_from_keras(
     def nrows(t):
       return t.nrows() if isinstance(t, tf.RaggedTensor) else tf.shape(t)[0]
 
-    return model_lib.BatchOutput(
+    return variable.BatchOutput(
         loss=batch_loss,
         predictions=predictions,
         num_examples=nrows(tf.nest.flatten(batch_input)[0]),

@@ -25,11 +25,11 @@ py_library(
     srcs = ["model_weights.py"],
     srcs_version = "PY3",
     deps = [
+        ":variable",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
-        "//tensorflow_federated/python/learning:model",
     ],
 )
 
@@ -42,6 +42,7 @@ py_library(
         ":functional",
         ":model_weights",
         ":serialization",
+        ":variable",
     ],
 )
 
@@ -50,8 +51,8 @@ py_library(
     srcs = ["functional.py"],
     srcs_version = "PY3",
     deps = [
+        ":variable",
         "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/learning:model",
         "//tensorflow_federated/python/learning/metrics:keras_finalizer",
         "//tensorflow_federated/python/learning/metrics:keras_utils",
         "//tensorflow_federated/python/learning/metrics:types",
@@ -66,9 +67,9 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":functional",
+        ":variable",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
-        "//tensorflow_federated/python/learning:model",
         "//tensorflow_federated/python/learning/metrics:aggregator",
         "//tensorflow_federated/python/learning/metrics:types",
         "//tensorflow_federated/python/tensorflow_libs:variable_utils",
@@ -81,6 +82,7 @@ py_library(
     srcs_version = "PY3",
     deps = [
         ":functional",
+        ":variable",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
@@ -89,7 +91,6 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
-        "//tensorflow_federated/python/learning:model",
     ],
 )
 
@@ -100,9 +101,9 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":model_weights",
+        ":variable",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/learning:model",
     ],
 )
 
@@ -115,6 +116,7 @@ py_test(
         ":functional",
         ":serialization",
         ":test_models",
+        ":variable",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
         "//tensorflow_federated/python/core/impl/types:computation_types",
@@ -122,7 +124,6 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:type_serialization",
         "//tensorflow_federated/python/core/impl/types:type_test_utils",
         "//tensorflow_federated/python/learning:keras_utils",
-        "//tensorflow_federated/python/learning:model",
         "//tensorflow_federated/python/learning:model_examples",
     ],
 )
@@ -133,7 +134,13 @@ py_library(
     srcs = ["test_models.py"],
     deps = [
         ":functional",
-        "//tensorflow_federated/python/learning:model",
+        ":variable",
         "//tensorflow_federated/python/learning/metrics:types",
     ],
+)
+
+py_library(
+    name = "variable",
+    srcs = ["variable.py"],
+    deps = ["//tensorflow_federated/python/learning/metrics:types"],
 )

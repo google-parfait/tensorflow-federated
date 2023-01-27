@@ -29,7 +29,7 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_conversions
-from tensorflow_federated.python.learning import model as model_lib
+from tensorflow_federated.python.learning.models import variable
 
 
 @attr.s(eq=False, frozen=True, slots=True)
@@ -47,7 +47,7 @@ class ModelWeights:
 
   @classmethod
   def from_model(cls, model):
-    py_typecheck.check_type(model, (model_lib.Model, tf.keras.Model))
+    py_typecheck.check_type(model, (variable.VariableModel, tf.keras.Model))
     return cls(model.trainable_variables, model.non_trainable_variables)
 
   @classmethod
@@ -65,7 +65,7 @@ class ModelWeights:
       model: A `tf.keras.Model` or `tff.learning.Model` instance to assign the
         weights to.
     """
-    py_typecheck.check_type(model, (model_lib.Model, tf.keras.Model))
+    py_typecheck.check_type(model, (variable.VariableModel, tf.keras.Model))
     if isinstance(model, tf.keras.Model):
       tf.nest.map_structure(
           lambda var, t: var.assign(t), model.trainable_weights, self.trainable
@@ -110,7 +110,7 @@ class ModelWeights:
 
 
 def weights_type_from_model(
-    model: Union[model_lib.Model, Callable[[], model_lib.Model]]
+    model: Union[variable.VariableModel, Callable[[], variable.VariableModel]]
 ) -> computation_types.StructType:
   """Creates a `tff.Type` from a `tff.learning.Model` or callable that constructs a model.
 
@@ -127,5 +127,5 @@ def weights_type_from_model(
     # with variables created for this model.
     with tf.Graph().as_default():
       model = model()
-  py_typecheck.check_type(model, model_lib.Model)
+  py_typecheck.check_type(model, variable.VariableModel)
   return type_conversions.type_from_tensors(ModelWeights.from_model(model))
