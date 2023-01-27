@@ -85,32 +85,6 @@ py_test(
 )
 
 py_library(
-    name = "server_utils",
-    srcs = ["server_utils.py"],
-    srcs_version = "PY3",
-    deps = [
-        "//tensorflow_federated/proto/v0:executor_py_pb2_grpc",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/core/impl/executors:executor_factory",
-        "//tensorflow_federated/python/core/impl/executors:executor_service",
-    ],
-)
-
-py_test(
-    name = "server_utils_test",
-    size = "small",
-    srcs = ["server_utils_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        ":server_utils",
-        "//tensorflow_federated/python/core/impl/executor_stacks:python_executor_stacks",
-        "//tensorflow_federated/python/core/impl/executors:eager_tf_executor",
-        "//tensorflow_federated/python/core/impl/executors:executor_service",
-    ],
-)
-
-py_library(
     name = "training_loop",
     srcs = ["training_loop.py"],
     srcs_version = "PY3",

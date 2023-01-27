@@ -298,45 +298,6 @@ py_library(
 )
 
 py_library(
-    name = "executor_service",
-    srcs = ["executor_service.py"],
-    srcs_version = "PY3",
-    deps = [
-        ":executor_base",
-        ":executor_factory",
-        ":executors_errors",
-        ":value_serialization",
-        "//tensorflow_federated/proto/v0:executor_py_pb2",
-        "//tensorflow_federated/proto/v0:executor_py_pb2_grpc",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/common_libs:structure",
-        "//tensorflow_federated/python/common_libs:tracing",
-    ],
-)
-
-py_test(
-    name = "executor_service_test",
-    size = "small",
-    srcs = ["executor_service_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        ":eager_tf_executor",
-        ":executor_base",
-        ":executor_factory",
-        ":executor_service",
-        ":executor_test_utils",
-        ":executor_value_base",
-        ":value_serialization",
-        "//tensorflow_federated/proto/v0:executor_py_pb2",
-        "//tensorflow_federated/proto/v0:executor_py_pb2_grpc",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
-        "//tensorflow_federated/python/core/impl/types:placements",
-    ],
-)
-
-py_library(
     name = "executor_test_utils",
     testonly = True,
     srcs = ["executor_test_utils.py"],
@@ -648,18 +609,10 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
-        ":executor_service",
-        ":executor_test_utils",
-        ":reference_resolving_executor",
         ":remote_executor",
-        ":remote_executor_grpc_stub",
         ":remote_executor_stub",
         "//tensorflow_federated/proto/v0:executor_py_pb2",
-        "//tensorflow_federated/proto/v0:executor_py_pb2_grpc",
         "//tensorflow_federated/python/common_libs:structure",
-        "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
-        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
-        "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
         "@com_google_protobuf//:protobuf_python",
