@@ -30,15 +30,16 @@ py_library(
         ":debug_measurements",
         ":federated_evaluation",
         ":keras_utils",
-        ":model",
         ":model_update_aggregator",
         ":personalization_eval",
         "//tensorflow_federated/python/learning/algorithms",
         "//tensorflow_federated/python/learning/framework",
         "//tensorflow_federated/python/learning/framework:optimizer_utils",
         "//tensorflow_federated/python/learning/metrics",
+        "//tensorflow_federated/python/learning/metrics:types",
         "//tensorflow_federated/python/learning/models",
         "//tensorflow_federated/python/learning/models:model_weights",
+        "//tensorflow_federated/python/learning/models:variable",
         "//tensorflow_federated/python/learning/optimizers",
         "//tensorflow_federated/python/learning/programs",
         "//tensorflow_federated/python/learning/reconstruction",
@@ -100,7 +101,6 @@ py_library(
     srcs = ["keras_utils.py"],
     srcs_version = "PY3",
     deps = [
-        ":model",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
         "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
@@ -109,6 +109,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:type_conversions",
         "//tensorflow_federated/python/learning/metrics:counters",
         "//tensorflow_federated/python/learning/metrics:keras_finalizer",
+        "//tensorflow_federated/python/learning/models:variable",
     ],
 )
 
@@ -120,7 +121,6 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":keras_utils",
-        ":model",
         ":model_examples",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/impl/computation:computation_base",
@@ -130,6 +130,7 @@ py_test(
         "//tensorflow_federated/python/learning/metrics:aggregator",
         "//tensorflow_federated/python/learning/metrics:counters",
         "//tensorflow_federated/python/learning/models:model_weights",
+        "//tensorflow_federated/python/learning/models:variable",
     ],
 )
 
@@ -137,14 +138,17 @@ py_library(
     name = "model",
     srcs = ["model.py"],
     srcs_version = "PY3",
-    deps = ["//tensorflow_federated/python/learning/metrics:types"],
+    deps = [
+        "//tensorflow_federated/python/learning/metrics:types",
+        "//tensorflow_federated/python/learning/models:variable",
+    ],
 )
 
 py_library(
     name = "model_examples",
     srcs = ["model_examples.py"],
     srcs_version = "PY3",
-    deps = [":model"],
+    deps = ["//tensorflow_federated/python/learning/models:variable"],
 )
 
 py_test(

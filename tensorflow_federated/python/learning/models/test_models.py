@@ -24,9 +24,9 @@ from typing import Any, Optional
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning.metrics import types
 from tensorflow_federated.python.learning.models import functional
+from tensorflow_federated.python.learning.models import variable
 
 
 def build_functional_linear_regression(
@@ -57,7 +57,7 @@ def build_functional_linear_regression(
   @tf.function
   def forward_pass(
       weights: functional.ModelWeights, batch_input: Any, training: bool = True
-  ) -> model_lib.BatchOutput:
+  ) -> variable.BatchOutput:
     if isinstance(batch_input, collections.abc.Mapping):
       x = batch_input["x"]
       y = batch_input["y"]
@@ -83,7 +83,7 @@ def build_functional_linear_regression(
     num_examples = tf.gather(tf.shape(predictions), 0)
     total_loss = tf.math.reduce_sum(tf.math.pow(residuals, 2.0))
     average_loss = total_loss / tf.cast(num_examples, tf.float32)
-    return model_lib.BatchOutput(
+    return variable.BatchOutput(
         loss=average_loss, predictions=predictions, num_examples=num_examples
     )
 
@@ -97,7 +97,7 @@ def build_functional_linear_regression(
   def update_metrics_state(
       state: types.MetricsState,
       labels: Any,
-      batch_output: model_lib.BatchOutput,
+      batch_output: variable.BatchOutput,
       sample_weight: Optional[Any] = None,
   ) -> types.MetricsState:
     del sample_weight  # Unused.

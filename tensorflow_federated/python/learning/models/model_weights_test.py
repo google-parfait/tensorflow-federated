@@ -20,11 +20,11 @@ import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning.models import model_weights
+from tensorflow_federated.python.learning.models import variable
 
 
-class TestModel(model_lib.Model):
+class TestModel(variable.VariableModel):
   """A very simple test model for testing type signatures."""
 
   def __init__(self):
@@ -58,7 +58,7 @@ class TestModel(model_lib.Model):
     return 1.0
 
   def forward_pass(self, batch_input, training=True):
-    return model_lib.BatchOutput(
+    return variable.BatchOutput(
         loss=0.0, predictions=self.predict_on_batch, num_examples=0
     )
 

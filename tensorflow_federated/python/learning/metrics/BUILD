@@ -32,6 +32,7 @@ py_library(
         ":counters",
         ":keras_finalizer",
         ":keras_utils",
+        ":types",
     ],
 )
 
