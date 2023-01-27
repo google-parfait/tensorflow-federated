@@ -30,97 +30,8 @@ py_library(
         ":aggregation_factory",
         ":aggregator",
         ":counters",
-        ":finalizer",
+        ":keras_finalizer",
         ":keras_utils",
-    ],
-)
-
-py_library(
-    name = "aggregator",
-    srcs = ["aggregator.py"],
-    srcs_version = "PY3",
-    deps = [
-        ":aggregation_factory",
-        ":aggregation_utils",
-        "//tensorflow_federated/python/core/impl/computation:computation_base",
-        "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
-        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
-        "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/templates:iterative_process",
-        "//tensorflow_federated/python/learning:model",
-        "//tensorflow_federated/python/learning/models:functional",
-    ],
-)
-
-py_test(
-    name = "aggregator_test",
-    srcs = ["aggregator_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        ":aggregation_factory",
-        ":aggregator",
-        ":finalizer",
-        "//tensorflow_federated/python/core/backends/test:execution_contexts",
-        "//tensorflow_federated/python/core/impl/types:type_conversions",
-        "//tensorflow_federated/python/core/test:static_assert",
-    ],
-)
-
-py_library(
-    name = "counters",
-    srcs = ["counters.py"],
-    srcs_version = "PY3",
-)
-
-py_test(
-    name = "counters_test",
-    srcs = ["counters_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [":counters"],
-)
-
-py_library(
-    name = "finalizer",
-    srcs = ["finalizer.py"],
-    srcs_version = "PY3",
-    deps = ["//tensorflow_federated/python/common_libs:py_typecheck"],
-)
-
-py_test(
-    name = "finalizer_test",
-    srcs = ["finalizer_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        ":finalizer",
-        "//tensorflow_federated/python/core/backends/native:execution_contexts",
-        "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
-        "//tensorflow_federated/python/core/impl/types:type_conversions",
-    ],
-)
-
-py_library(
-    name = "keras_utils",
-    srcs = ["keras_utils.py"],
-    srcs_version = "PY3",
-    deps = [
-        "//tensorflow_federated/python/learning:model",
-        "//tensorflow_federated/python/tensorflow_libs:variable_utils",
-    ],
-)
-
-py_test(
-    name = "keras_utils_test",
-    srcs = ["keras_utils_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        ":counters",
-        ":keras_utils",
-        "//tensorflow_federated/python/learning:model",
     ],
 )
 
@@ -130,6 +41,7 @@ py_library(
     srcs_version = "PY3",
     deps = [
         ":aggregation_utils",
+        ":types",
         "//tensorflow_federated/python/aggregators:factory",
         "//tensorflow_federated/python/aggregators:quantile_estimation",
         "//tensorflow_federated/python/aggregators:secure",
@@ -145,8 +57,6 @@ py_library(
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:estimation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
-        "//tensorflow_federated/python/learning:model",
-        "//tensorflow_federated/python/learning/models:functional",
     ],
 )
 
@@ -176,11 +86,10 @@ py_library(
     srcs = ["aggregation_utils.py"],
     srcs_version = "PY3",
     deps = [
+        ":types",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/learning:model",
-        "//tensorflow_federated/python/learning/models:functional",
     ],
 )
 
@@ -191,8 +100,98 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":aggregation_utils",
-        ":finalizer",
+        ":keras_finalizer",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
     ],
+)
+
+py_library(
+    name = "aggregator",
+    srcs = ["aggregator.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":aggregation_factory",
+        ":aggregation_utils",
+        ":types",
+        "//tensorflow_federated/python/core/impl/computation:computation_base",
+        "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
+        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
+        "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/templates:iterative_process",
+    ],
+)
+
+py_test(
+    name = "aggregator_test",
+    srcs = ["aggregator_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":aggregation_factory",
+        ":aggregator",
+        ":keras_finalizer",
+        "//tensorflow_federated/python/core/backends/test:execution_contexts",
+        "//tensorflow_federated/python/core/impl/types:type_conversions",
+        "//tensorflow_federated/python/core/test:static_assert",
+    ],
+)
+
+py_library(
+    name = "counters",
+    srcs = ["counters.py"],
+    srcs_version = "PY3",
+)
+
+py_test(
+    name = "counters_test",
+    srcs = ["counters_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [":counters"],
+)
+
+py_library(
+    name = "keras_finalizer",
+    srcs = ["keras_finalizer.py"],
+    srcs_version = "PY3",
+    deps = ["//tensorflow_federated/python/common_libs:py_typecheck"],
+)
+
+py_test(
+    name = "keras_finalizer_test",
+    srcs = ["keras_finalizer_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":keras_finalizer",
+        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
+        "//tensorflow_federated/python/core/impl/types:type_conversions",
+    ],
+)
+
+py_library(
+    name = "keras_utils",
+    srcs = ["keras_utils.py"],
+    srcs_version = "PY3",
+    deps = ["//tensorflow_federated/python/tensorflow_libs:variable_utils"],
+)
+
+py_test(
+    name = "keras_utils_test",
+    srcs = ["keras_utils_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":counters",
+        ":keras_utils",
+        "//tensorflow_federated/python/learning:model",
+    ],
+)
+
+py_library(
+    name = "types",
+    srcs = ["types.py"],
 )

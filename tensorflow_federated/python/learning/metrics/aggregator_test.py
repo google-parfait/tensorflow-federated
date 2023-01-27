@@ -24,7 +24,7 @@ from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.test import static_assert
 from tensorflow_federated.python.learning.metrics import aggregation_factory
 from tensorflow_federated.python.learning.metrics import aggregator
-from tensorflow_federated.python.learning.metrics import finalizer
+from tensorflow_federated.python.learning.metrics import keras_finalizer
 
 _UNUSED_METRICS_FINALIZERS = collections.OrderedDict(
     accuracy=tf.function(func=lambda x: x[0] / x[1])
@@ -58,10 +58,12 @@ _TEST_ARGUMENTS_KERAS_METRICS = {
     # when the tensors in the unfinalized metrics have different numbers and
     # different shapes.
     'metric_finalizers': collections.OrderedDict(
-        accuracy=finalizer.create_keras_metric_finalizer(
+        accuracy=keras_finalizer.create_keras_metric_finalizer(
             tf.keras.metrics.SparseCategoricalAccuracy
         ),
-        custom_sum=finalizer.create_keras_metric_finalizer(CustomSumMetric),
+        custom_sum=keras_finalizer.create_keras_metric_finalizer(
+            CustomSumMetric
+        ),
     ),
     'local_unfinalized_metrics_at_clients': [
         collections.OrderedDict(
@@ -89,10 +91,10 @@ def _test_finalize_metrics(
     unfinalized_metrics: collections.OrderedDict[str, Any]
 ) -> collections.OrderedDict[str, Any]:
   return collections.OrderedDict(
-      accuracy=finalizer.create_keras_metric_finalizer(
+      accuracy=keras_finalizer.create_keras_metric_finalizer(
           tf.keras.metrics.SparseCategoricalAccuracy
       )(unfinalized_metrics['accuracy']),
-      custom_sum=finalizer.create_keras_metric_finalizer(CustomSumMetric)(
+      custom_sum=keras_finalizer.create_keras_metric_finalizer(CustomSumMetric)(
           unfinalized_metrics['custom_sum']
       ),
   )
@@ -345,10 +347,12 @@ class SecureSumThenFinalizeTest(parameterized.TestCase, tf.test.TestCase):
 
   def test_user_value_ranges_returns_correct_results(self):
     metric_finalizers = collections.OrderedDict(
-        accuracy=finalizer.create_keras_metric_finalizer(
+        accuracy=keras_finalizer.create_keras_metric_finalizer(
             tf.keras.metrics.SparseCategoricalAccuracy
         ),
-        custom_sum=finalizer.create_keras_metric_finalizer(CustomSumMetric),
+        custom_sum=keras_finalizer.create_keras_metric_finalizer(
+            CustomSumMetric
+        ),
     )
     local_unfinalized_metrics_at_clients = [
         collections.OrderedDict(
@@ -498,7 +502,9 @@ class SecureSumThenFinalizeTest(parameterized.TestCase, tf.test.TestCase):
         return self._value.read_value()
 
     metric_finalizers = collections.OrderedDict(
-        custom_sum=finalizer.create_keras_metric_finalizer(TestConcatMetric)
+        custom_sum=keras_finalizer.create_keras_metric_finalizer(
+            TestConcatMetric
+        )
     )
     local_unfinalized_metrics_at_clients = [
         collections.OrderedDict(custom_sum=[tf.constant('abc')])
@@ -513,7 +519,7 @@ class SecureSumThenFinalizeTest(parameterized.TestCase, tf.test.TestCase):
 
   def test_user_value_ranges_fails_not_2_tuple(self):
     metric_finalizers = collections.OrderedDict(
-        accuracy=finalizer.create_keras_metric_finalizer(
+        accuracy=keras_finalizer.create_keras_metric_finalizer(
             tf.keras.metrics.SparseCategoricalAccuracy
         )
     )

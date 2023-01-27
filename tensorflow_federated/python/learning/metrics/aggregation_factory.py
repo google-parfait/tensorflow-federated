@@ -42,15 +42,14 @@ from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import estimation_process
 from tensorflow_federated.python.core.templates import measured_process
-from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning.metrics import aggregation_utils
-from tensorflow_federated.python.learning.models import functional
+from tensorflow_federated.python.learning.metrics import types
 
 
 def _build_finalizer_computation(
     metric_finalizers: Union[
-        model_lib.MetricFinalizersType,
-        functional.FunctionalMetricFinalizersType,
+        types.MetricFinalizersType,
+        types.FunctionalMetricFinalizersType,
     ],
     local_unfinalized_metrics_type: computation_types.StructWithPythonType,
 ) -> computation_base.Computation:
@@ -61,7 +60,7 @@ def _build_finalizer_computation(
     )(metric_finalizers)
 
   @tensorflow_computation.tf_computation(local_unfinalized_metrics_type)
-  def finazlier_computation(unfinalized_metrics):
+  def finalizer_computation(unfinalized_metrics):
     finalized_metrics = collections.OrderedDict()
     for metric_name, metric_finalizer in metric_finalizers.items():
       finalized_metrics[metric_name] = metric_finalizer(
@@ -69,7 +68,7 @@ def _build_finalizer_computation(
       )
     return finalized_metrics
 
-  return finazlier_computation
+  return finalizer_computation
 
 
 def _intialize_unfinalized_metrics_accumulators(
@@ -132,7 +131,7 @@ class SumThenFinalizeFactory(factory.UnweightedAggregationFactory):
 
   def __init__(
       self,
-      metric_finalizers: model_lib.MetricFinalizersType,
+      metric_finalizers: types.MetricFinalizersType,
       initial_unfinalized_metrics: Optional[
           collections.OrderedDict[str, Any]
       ] = None,

@@ -27,10 +27,9 @@ from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.templates import iterative_process
-from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning.metrics import aggregation_factory
 from tensorflow_federated.python.learning.metrics import aggregation_utils
-from tensorflow_federated.python.learning.models import functional
+from tensorflow_federated.python.learning.metrics import types
 
 
 class InternalError(Exception):
@@ -39,8 +38,8 @@ class InternalError(Exception):
 
 def sum_then_finalize(
     metric_finalizers: Union[
-        model_lib.MetricFinalizersType,
-        functional.FunctionalMetricFinalizersType,
+        types.MetricFinalizersType,
+        types.FunctionalMetricFinalizersType,
     ],
     local_unfinalized_metrics_type: computation_types.StructWithPythonType,
 ) -> computation_base.Computation:
@@ -127,8 +126,8 @@ DEFAULT_SECURE_UPPER_BOUND = 2**20 - 1
 
 def secure_sum_then_finalize(
     metric_finalizers: Union[
-        model_lib.MetricFinalizersType,
-        functional.FunctionalMetricFinalizersType,
+        types.MetricFinalizersType,
+        types.FunctionalMetricFinalizersType,
     ],
     local_unfinalized_metrics_type: computation_types.StructWithPythonType,
     metric_value_ranges: Optional[

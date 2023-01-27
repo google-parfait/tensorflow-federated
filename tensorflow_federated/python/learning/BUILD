@@ -108,7 +108,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:type_analysis",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
         "//tensorflow_federated/python/learning/metrics:counters",
-        "//tensorflow_federated/python/learning/metrics:finalizer",
+        "//tensorflow_federated/python/learning/metrics:keras_finalizer",
     ],
 )
 
@@ -137,6 +137,7 @@ py_library(
     name = "model",
     srcs = ["model.py"],
     srcs_version = "PY3",
+    deps = ["//tensorflow_federated/python/learning/metrics:types"],
 )
 
 py_library(
@@ -280,6 +281,7 @@ py_library(
         "//tensorflow_federated/python/core/templates:iterative_process",
         "//tensorflow_federated/python/core/templates:measured_process",
         "//tensorflow_federated/python/learning/metrics:aggregator",
+        "//tensorflow_federated/python/learning/metrics:types",
         "//tensorflow_federated/python/learning/models:functional",
         "//tensorflow_federated/python/learning/models:model_weights",
     ],

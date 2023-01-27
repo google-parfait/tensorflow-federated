@@ -24,12 +24,11 @@ from typing import Union
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.learning import model as model_lib
-from tensorflow_federated.python.learning.models import functional
+from tensorflow_federated.python.learning.metrics import types
 
 
 def check_finalizers_matches_unfinalized_metrics(
-    metric_finalizers: model_lib.MetricFinalizersType,
+    metric_finalizers: types.MetricFinalizersType,
     local_unfinalized_metrics_type: computation_types.StructWithPythonType,
 ):
   """Verifies that compatibility of variables and finalizers.
@@ -73,8 +72,8 @@ def check_finalizers_matches_unfinalized_metrics(
 
 def check_metric_finalizers(
     metric_finalizers: Union[
-        model_lib.MetricFinalizersType,
-        functional.FunctionalMetricFinalizersType,
+        types.MetricFinalizersType,
+        types.FunctionalMetricFinalizersType,
     ]
 ):
   """Validates `metric_finalizers` raising error on failure.

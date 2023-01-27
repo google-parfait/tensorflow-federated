@@ -36,20 +36,20 @@ import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.learning import model as model_lib
-from tensorflow_federated.python.learning.metrics import finalizer
+from tensorflow_federated.python.learning.metrics import keras_finalizer
 from tensorflow_federated.python.learning.metrics import keras_utils
+from tensorflow_federated.python.learning.metrics import types
 from tensorflow_federated.python.tensorflow_libs import variable_utils
 
 Weight = Union[np.ndarray, int, float]
 WeightStruct = Union[Sequence[Weight], Mapping[str, Weight]]
 ModelWeights = tuple[WeightStruct, WeightStruct]
-MetricsState = TypeVar('MetricsState', bound=collections.OrderedDict[str, Any])
-FunctionalMetricFinalizersType = Callable[
-    [MetricsState], collections.OrderedDict[str, Any]
+InitializeMetricsStateFn = Callable[[], types.MetricsState]
+UpdateMetricsStateFn = Callable[
+    [types.MetricsState, Any, Any, Any], types.MetricsState
 ]
-InitializeMetricsStateFn = Callable[[], MetricsState]
-UpdateMetricsStateFn = Callable[[MetricsState, Any, Any, Any], MetricsState]
-FinalizeMetricsFn = Callable[[MetricsState], Any]
+FinalizeMetricsFn = Callable[[types.MetricsState], Any]
+GenericMetricsState = TypeVar('GenericMetricsState', bound=types.MetricsState)
 
 
 class CallableNotTensorFlowFunctionError(TypeError):
@@ -61,17 +61,17 @@ class ValueMustNotBeTFError(TypeError):
 
 
 @tf.function
-def empty_metrics_state() -> MetricsState:
+def empty_metrics_state() -> types.MetricsState:
   return collections.OrderedDict()
 
 
 @tf.function
 def noop_update_metrics(
-    state: MetricsState,
+    state: types.MetricsState,
     labels: Any,
     batch_output: model_lib.BatchOutput,
     sample_weight: Optional[Any] = None,
-) -> MetricsState:
+) -> types.MetricsState:
   del state  # Unused.
   del labels  # Unused.
   del batch_output  # Unused.
@@ -80,7 +80,7 @@ def noop_update_metrics(
 
 
 @tf.function
-def noop_finalize_metrics(state: MetricsState) -> tuple[Any, ...]:
+def noop_finalize_metrics(state: types.MetricsState) -> tuple[Any, ...]:
   del state  # Unused.
   return collections.OrderedDict()
 
@@ -213,17 +213,17 @@ class FunctionalModel:
     return self._predict_on_batch_fn(model_weights, x, training)
 
   @tf.function
-  def initialize_metrics_state(self) -> MetricsState:
+  def initialize_metrics_state(self) -> types.MetricsState:
     return self._initialize_metrics_state()
 
   @tf.function
   def update_metrics_state(
       self,
-      state: MetricsState,
+      state: GenericMetricsState,
       labels: Any,
       batch_output: model_lib.BatchOutput,
       sample_weight: Optional[Any] = None,
-  ) -> MetricsState:
+  ) -> GenericMetricsState:
     return self._update_metrics_state(
         state,
         labels=labels,
@@ -233,7 +233,7 @@ class FunctionalModel:
 
   @tf.function
   def finalize_metrics(
-      self, state: MetricsState
+      self, state: types.MetricsState
   ) -> collections.OrderedDict[str, Any]:
     return self._finalize_metrics(state)
 
@@ -341,14 +341,16 @@ class _ModelFromFunctional(model_lib.Model):
       outputs[metric.name] = [v.read_value() for v in metric.variables]
     return outputs
 
-  def metric_finalizers(self) -> dict[str, finalizer.KerasMetricFinalizer]:
+  def metric_finalizers(
+      self,
+  ) -> dict[str, keras_finalizer.KerasMetricFinalizer]:
     finalizers = collections.OrderedDict(
         # `loss` result is computed by `loss_sum` / `num_examples`.
         loss=tf.function(func=lambda x: x[0] / x[1])
     )
     for metric_builder in self._metric_builders:
       metric_name = metric_builder().name
-      finalizers[metric_name] = finalizer.create_keras_metric_finalizer(
+      finalizers[metric_name] = keras_finalizer.create_keras_metric_finalizer(
           metric_builder
       )
     return finalizers

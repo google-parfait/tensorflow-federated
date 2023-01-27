@@ -23,6 +23,7 @@ from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning.metrics import aggregator
+from tensorflow_federated.python.learning.metrics import types
 from tensorflow_federated.python.learning.models import functional
 from tensorflow_federated.python.tensorflow_libs import variable_utils
 
@@ -65,17 +66,17 @@ def forward_pass(model_weights, batch_input, training):
 
 
 @tf.function
-def initialize_metrics() -> functional.MetricsState:
+def initialize_metrics() -> types.MetricsState:
   return collections.OrderedDict(num_examples=(0.0,), accuracy=(0.0, 0.0))
 
 
 @tf.function
 def update_metrics_state(
-    state: functional.MetricsState,
+    state: types.MetricsState,
     labels: Any,
     batch_output: model_lib.BatchOutput,
     sample_weight: Optional[Any] = None,
-) -> functional.MetricsState:
+) -> types.MetricsState:
   del sample_weight  # Unused.
   batch_size = tf.cast(tf.shape(labels)[0], tf.float32)
 
@@ -98,7 +99,7 @@ def update_metrics_state(
 
 
 @tf.function
-def finalize_metrics(state: functional.MetricsState) -> Any:
+def finalize_metrics(state: types.MetricsState) -> Any:
   accuracy, num_examples = state['accuracy']
   return collections.OrderedDict(
       num_examples=state['num_examples'][0],

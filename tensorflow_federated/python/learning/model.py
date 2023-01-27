@@ -20,14 +20,17 @@
 
 import abc
 import collections
-from collections.abc import Callable, Sequence
-from typing import Any
+from collections.abc import Sequence
 
 import tensorflow as tf
 
+from tensorflow_federated.python.learning.metrics import types
+
+
 MODEL_ARG_NAME = 'x'
 MODEL_LABEL_NAME = 'y'
-MetricFinalizersType = collections.OrderedDict[str, Callable[[Any], Any]]
+MetricFinalizersType = types.MetricFinalizersType
+
 
 BatchOutput = collections.namedtuple(
     'BatchOutput',
@@ -204,7 +207,7 @@ class Model(metaclass=abc.ABCMeta):
   @abc.abstractmethod
   def report_local_unfinalized_metrics(
       self,
-  ) -> collections.OrderedDict[str, Any]:
+  ) -> types.MetricsState:
     """Creates an `collections.OrderedDict` of metric names to unfinalized values.
 
     For a metric, its unfinalized values are given as a structure (typically a

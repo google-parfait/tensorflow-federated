@@ -25,6 +25,7 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.learning import model as model_lib
+from tensorflow_federated.python.learning.metrics import types
 from tensorflow_federated.python.learning.models import functional
 
 
@@ -87,18 +88,18 @@ def build_functional_linear_regression(
     )
 
   @tf.function
-  def initialize_metrics() -> functional.MetricsState:
+  def initialize_metrics() -> types.MetricsState:
     return collections.OrderedDict(
         loss=tf.constant(0.0, tf.float32), num_examples=tf.constant(0, tf.int32)
     )
 
   @tf.function
   def update_metrics_state(
-      state: functional.MetricsState,
+      state: types.MetricsState,
       labels: Any,
       batch_output: model_lib.BatchOutput,
       sample_weight: Optional[Any] = None,
-  ) -> functional.MetricsState:
+  ) -> types.MetricsState:
     del sample_weight  # Unused.
     batch_size = tf.shape(labels)[0]
     predictions = batch_output.predictions
@@ -109,7 +110,7 @@ def build_functional_linear_regression(
     )
 
   @tf.function
-  def finalize_metrics(state: functional.MetricsState):
+  def finalize_metrics(state: types.MetricsState):
     return collections.OrderedDict(
         loss=tf.math.divide_no_nan(
             state["loss"], tf.cast(state["num_examples"], tf.float32)

@@ -34,7 +34,7 @@ from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning.metrics import counters
-from tensorflow_federated.python.learning.metrics import finalizer
+from tensorflow_federated.python.learning.metrics import keras_finalizer
 
 Loss = Union[tf.keras.losses.Loss, list[tf.keras.losses.Loss]]
 
@@ -290,7 +290,7 @@ def federated_aggregate_keras_metric(
       # If type(metric) is subclass of another tf.keras.metric arguments passed
       # to __init__ must include arguments expected by the superclass and
       # specified in superclass get_config().
-      keras_metric = finalizer.create_keras_metric(metric)
+      keras_metric = keras_finalizer.create_keras_metric(metric)
 
       assignments = []
       for v, a in zip(keras_metric.variables, values):
@@ -533,7 +533,7 @@ class _KerasModel(model_lib.Model):
 
   def metric_finalizers(
       self,
-  ) -> collections.OrderedDict[str, finalizer.KerasMetricFinalizer]:
+  ) -> collections.OrderedDict[str, keras_finalizer.KerasMetricFinalizer]:
     """Creates an `collections.OrderedDict` of metric names to finalizers.
 
     Returns:
@@ -549,12 +549,12 @@ class _KerasModel(model_lib.Model):
     finalizers = collections.OrderedDict()
     if self._metric_constructors:
       for metric_name, metric_constructor in self._metric_constructors.items():
-        finalizers[metric_name] = finalizer.create_keras_metric_finalizer(
+        finalizers[metric_name] = keras_finalizer.create_keras_metric_finalizer(
             metric_constructor
         )
     else:
       for metric in self.get_metrics():
-        finalizers[metric.name] = finalizer.create_keras_metric_finalizer(
+        finalizers[metric.name] = keras_finalizer.create_keras_metric_finalizer(
             metric
         )
     return finalizers

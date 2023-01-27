@@ -25,7 +25,6 @@ from typing import Any, OrderedDict, TypeVar, Union
 
 import tensorflow as tf
 
-from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.tensorflow_libs import variable_utils
 
 StateVar = TypeVar('StateVar')
@@ -41,7 +40,7 @@ def create_functional_metric_fns(
     ]
 ) -> tuple[
     Callable[[], StateVar],
-    Callable[[StateVar, Any, model_lib.BatchOutput, Any], StateVar],
+    Callable[[StateVar, Any, Any, Any], StateVar],
     Callable[[StateVar], Any],
 ]:
   """Turn a Keras metric construction method into a tuple of pure functions.
@@ -216,13 +215,19 @@ def create_functional_metric_fns(
     return fn
 
   @tf.function
-  def update(
-      state, labels, batch_output: model_lib.BatchOutput, sample_weight=None
-  ):
+  def update(state, labels, batch_output: Any, sample_weight=None):
     del sample_weight  # Unused.
     # Keras metrics operate on the model predictions, but TFF algorithms
     # pass the entire `BatchOutput` structure in case some custom metrics
     # want to operate on other values, such as the logits/loss.
+    # TODO(b/259609586) Remove this attribute access when `FunctionalModel`
+    # has an explicit loss function.
+    if not hasattr(batch_output, 'predictions'):
+      raise ValueError(
+          'The input to a functional metrics `update` method must'
+          'have a `predictions` attribute, such as when feeding in'
+          ' a `tff.learning.BatchOutput` structure.'
+      )
     predictions = batch_output.predictions
 
     def inner_update(metric: tf.keras.metrics.Metric) -> list[tf.Tensor]:

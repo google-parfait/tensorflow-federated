@@ -22,7 +22,7 @@ import tensorflow as tf
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.learning.metrics import aggregation_utils
-from tensorflow_federated.python.learning.metrics import finalizer
+from tensorflow_federated.python.learning.metrics import keras_finalizer
 
 
 @tf.function
@@ -34,7 +34,7 @@ def _test_finalize_metrics(
     unfinalized_metrics: OrderedDict[str, Any]
 ) -> OrderedDict[str, Any]:
   return collections.OrderedDict(
-      accuracy=finalizer.create_keras_metric_finalizer(
+      accuracy=keras_finalizer.create_keras_metric_finalizer(
           tf.keras.metrics.SparseCategoricalAccuracy
       )(unfinalized_metrics['accuracy'])
   )

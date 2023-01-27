@@ -52,8 +52,9 @@ py_library(
     deps = [
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/learning:model",
-        "//tensorflow_federated/python/learning/metrics:finalizer",
+        "//tensorflow_federated/python/learning/metrics:keras_finalizer",
         "//tensorflow_federated/python/learning/metrics:keras_utils",
+        "//tensorflow_federated/python/learning/metrics:types",
         "//tensorflow_federated/python/tensorflow_libs:variable_utils",
     ],
 )
@@ -69,6 +70,7 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:type_conversions",
         "//tensorflow_federated/python/learning:model",
         "//tensorflow_federated/python/learning/metrics:aggregator",
+        "//tensorflow_federated/python/learning/metrics:types",
         "//tensorflow_federated/python/tensorflow_libs:variable_utils",
     ],
 )
@@ -132,5 +134,6 @@ py_library(
     deps = [
         ":functional",
         "//tensorflow_federated/python/learning:model",
+        "//tensorflow_federated/python/learning/metrics:types",
     ],
 )

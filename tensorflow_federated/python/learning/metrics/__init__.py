@@ -20,5 +20,5 @@ from tensorflow_federated.python.learning.metrics.aggregator import secure_sum_t
 from tensorflow_federated.python.learning.metrics.aggregator import sum_then_finalize
 from tensorflow_federated.python.learning.metrics.counters import NumBatchesCounter
 from tensorflow_federated.python.learning.metrics.counters import NumExamplesCounter
-from tensorflow_federated.python.learning.metrics.finalizer import create_keras_metric_finalizer
+from tensorflow_federated.python.learning.metrics.keras_finalizer import create_keras_metric_finalizer
 from tensorflow_federated.python.learning.metrics.keras_utils import create_functional_metric_fns

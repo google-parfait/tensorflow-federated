@@ -19,7 +19,7 @@ import tensorflow as tf
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import type_conversions
-from tensorflow_federated.python.learning.metrics import finalizer
+from tensorflow_federated.python.learning.metrics import keras_finalizer
 
 
 # Wrapping the `tf.function` returned by `create_keras_metric_finalizer` as a
@@ -29,7 +29,7 @@ from tensorflow_federated.python.learning.metrics import finalizer
 def wrap_tf_function_in_tff_tf_computation(metric, unfinalized_metric_type):
   @tensorflow_computation.tf_computation(unfinalized_metric_type)
   def finalizer_computation(unfinalized_metric):
-    metric_finalizer = finalizer.create_keras_metric_finalizer(metric)
+    metric_finalizer = keras_finalizer.create_keras_metric_finalizer(metric)
     return metric_finalizer(unfinalized_metric)
 
   return finalizer_computation
