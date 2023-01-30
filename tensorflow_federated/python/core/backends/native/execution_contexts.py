@@ -101,55 +101,6 @@ def set_local_python_execution_context(
   context_stack_impl.context_stack.set_default_context(context)
 
 
-def create_local_async_python_execution_context(
-    default_num_clients: int = 0,
-    max_fanout: int = 100,
-    clients_per_thread: int = 1,
-    server_tf_device=None,
-    client_tf_devices=tuple(),
-    reference_resolving_clients: bool = False,
-) -> async_execution_context.AsyncExecutionContext:
-  """Creates a context that executes computations locally as coro functions."""
-  factory = python_executor_stacks.local_executor_factory(
-      default_num_clients=default_num_clients,
-      max_fanout=max_fanout,
-      clients_per_thread=clients_per_thread,
-      server_tf_device=server_tf_device,
-      client_tf_devices=client_tf_devices,
-      reference_resolving_clients=reference_resolving_clients,
-  )
-
-  def _compiler(comp):
-    native_form = compiler.transform_to_native_form(
-        comp, transform_math_to_tf=not reference_resolving_clients
-    )
-    return native_form
-
-  return async_execution_context.AsyncExecutionContext(
-      executor_fn=factory, compiler_fn=_compiler
-  )
-
-
-def set_local_async_python_execution_context(
-    default_num_clients: int = 0,
-    max_fanout: int = 100,
-    clients_per_thread: int = 1,
-    server_tf_device=None,
-    client_tf_devices=tuple(),
-    reference_resolving_clients: bool = False,
-):
-  """Sets a context that executes computations locally as coro functions."""
-  context = create_local_async_python_execution_context(
-      default_num_clients=default_num_clients,
-      max_fanout=max_fanout,
-      clients_per_thread=clients_per_thread,
-      server_tf_device=server_tf_device,
-      client_tf_devices=client_tf_devices,
-      reference_resolving_clients=reference_resolving_clients,
-  )
-  context_stack_impl.context_stack.set_default_context(context)
-
-
 def create_remote_python_execution_context(
     channels,
     thread_pool_executor=None,
