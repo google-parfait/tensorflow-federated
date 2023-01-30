@@ -81,10 +81,33 @@ py_library(
     srcs_version = "PY3",
 )
 
+py_library(
+    name = "count_distinct",
+    srcs = ["count_distinct.py"],
+    deps = [
+        "//tensorflow_federated/python/aggregators:primitives",
+        "//tensorflow_federated/python/core/impl/computation:computation_base",
+        "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
+        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
+        "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+    ],
+)
+
 py_test(
     name = "differential_privacy_test",
     srcs = ["differential_privacy_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [":differential_privacy"],
+)
+
+py_test(
+    name = "count_distinct_test",
+    srcs = ["count_distinct_test.py"],
+    deps = [
+        ":count_distinct",
+        "//tensorflow_federated/python/core/backends/test:execution_contexts",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+    ],
 )
