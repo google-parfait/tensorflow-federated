@@ -14,9 +14,10 @@
 """Custom exceptions and symbols for TFF executors."""
 
 import typing
-from typing import Any
+from typing import Any, Union
 
 import grpc
+from typing_extensions import TypeGuard
 
 
 class RetryableError(Exception):
@@ -26,21 +27,20 @@ class RetryableError(Exception):
 class RetryableGRPCError(RetryableError, grpc.RpcError, grpc.Call):
   """Raised when execution fails across a gRPC connection and can be retried."""
 
-  def __init__(self, e: grpc.Call):
-    self._grpc_error = e
-    super().__init__(e)
+  def __init__(self, call: grpc.Call):
+    self._grpc_call = call
 
   def code(self) -> grpc.StatusCode:
-    return self._grpc_error.code()
+    return self._grpc_call.code()
 
   def details(self) -> str:
-    return self._grpc_error.details()
+    return self._grpc_call.details()
 
   def initial_metadata(self) -> Any:
-    return self._grpc_error.initial_metadata()
+    return self._grpc_call.initial_metadata()
 
   def trailing_metadata(self) -> Any:
-    return self._grpc_error.trailing_metadata()
+    return self._grpc_call.trailing_metadata()
 
 
 def get_grpc_retryable_error_codes() -> set[grpc.StatusCode]:
@@ -63,13 +63,12 @@ def get_absl_status_retryable_error_codes() -> set[int]:
   ])
 
 
-def is_absl_status_retryable_error(exception: Exception) -> bool:
-  """Checks if the exception is an absl status error that can be retried."""
-  if (not hasattr(exception, 'status') or
-      not hasattr(exception.status, 'code_int')):
+def is_absl_status_retryable_error(error: Exception) -> TypeGuard[int]:
+  """Checks if the error is an absl status error that can be retried."""
+  if hasattr(error, 'status') and hasattr(error.status, 'code_int'):
+    return error.status.code_int() in get_absl_status_retryable_error_codes()
+  else:
     return False
-  code = exception.status.code_int()
-  return code in get_absl_status_retryable_error_codes()
 
 
 class CardinalityError(Exception):

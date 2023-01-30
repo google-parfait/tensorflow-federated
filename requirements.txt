@@ -45,3 +45,4 @@ tensorflow-privacy==0.8.6
 # https://github.com/tensorflow/federated/blob/main/WORKSPACE.
 tensorflow~=2.11.0
 tqdm~=4.64
+typing-extensions~=4.4.0

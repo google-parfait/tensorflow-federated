@@ -11,11 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
-# pytype: skip-file
-# This modules disables the Pytype analyzer, see
-# https://github.com/tensorflow/federated/blob/main/docs/pytype.md for more
-# information.
 """A stub connects to a remote executor over gRPC."""
 
 from absl import logging
@@ -28,14 +23,6 @@ from tensorflow_federated.python.core.impl.executors import executors_errors
 from tensorflow_federated.python.core.impl.executors import remote_executor_stub
 
 
-def _is_retryable_grpc_error(error):
-  """Predicate defining what is a retryable gRPC error."""
-  return (
-      isinstance(error, grpc.RpcError)
-      and error.code() in executors_errors.get_grpc_retryable_error_codes()
-  )
-
-
 @tracing.trace(span=True)
 def _request(rpc_func, request):
   """Populates trace context and reraises gRPC errors with retryable info."""
@@ -43,11 +30,14 @@ def _request(rpc_func, request):
     try:
       return rpc_func(request)
     except grpc.RpcError as e:
-      if _is_retryable_grpc_error(e):
+      if (
+          isinstance(e, grpc.Call)
+          and e.code() in executors_errors.get_grpc_retryable_error_codes()
+      ):
         logging.info("Received retryable gRPC error: %s", e)
         raise executors_errors.RetryableGRPCError(e)
       else:
-        raise
+        raise e
 
 
 class RemoteExecutorGrpcStub(remote_executor_stub.RemoteExecutorStub):

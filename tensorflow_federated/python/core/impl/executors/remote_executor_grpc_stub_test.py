@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for remote_executor_grpc_stub."""
 
 from unittest import mock
 
@@ -34,18 +33,22 @@ def create_stub():
   return remote_executor_grpc_stub.RemoteExecutorGrpcStub(channel)
 
 
-def _raise_grpc_error_unavailable(*args):
-  del args  # Unused
-  error = grpc.RpcError()
-  error.code = lambda: grpc.StatusCode.UNAVAILABLE
-  raise error
+class _StubRpcError(grpc.RpcError, grpc.Call):
 
+  def __init__(self, code: grpc.StatusCode):
+    self._code = code
 
-def _raise_non_retryable_grpc_error(*args):
-  del args  # Unused
-  error = grpc.RpcError()
-  error.code = lambda: grpc.StatusCode.ABORTED
-  raise error
+  def code(self):
+    return self._code
+
+  def details(self):
+    raise NotImplementedError()
+
+  def initial_metadata(self):
+    raise NotImplementedError()
+
+  def trailing_metadata(self):
+    raise NotImplementedError()
 
 
 class GrpcConnectivityTest(absltest.TestCase):
@@ -89,7 +92,9 @@ class RemoteExecutorGrpcStubTest(absltest.TestCase):
       self, mock_executor_grpc_stub
   ):
     instance = mock_executor_grpc_stub.return_value
-    instance.Compute = mock.Mock(side_effect=_raise_grpc_error_unavailable)
+    instance.Compute = mock.Mock(
+        side_effect=_StubRpcError(grpc.StatusCode.UNAVAILABLE)
+    )
     stub = create_stub()
 
     with self.assertRaises(executors_errors.RetryableError):
@@ -99,7 +104,9 @@ class RemoteExecutorGrpcStubTest(absltest.TestCase):
 
   def test_compute_reraises_grpc_error(self, grpc_stub):
     instance = grpc_stub.return_value
-    instance.Compute = mock.Mock(side_effect=_raise_non_retryable_grpc_error)
+    instance.Compute = mock.Mock(
+        side_effect=_StubRpcError(grpc.StatusCode.ABORTED)
+    )
 
     stub = create_stub()
     request = executor_pb2.ComputeRequest(
@@ -131,7 +138,9 @@ class RemoteExecutorGrpcStubTest(absltest.TestCase):
       self, mock_executor_grpc_stub
   ):
     instance = mock_executor_grpc_stub.return_value
-    instance.CreateValue = mock.Mock(side_effect=_raise_grpc_error_unavailable)
+    instance.CreateValue = mock.Mock(
+        side_effect=_StubRpcError(grpc.StatusCode.UNAVAILABLE)
+    )
     stub = create_stub()
 
     with self.assertRaises(executors_errors.RetryableError):
@@ -140,7 +149,7 @@ class RemoteExecutorGrpcStubTest(absltest.TestCase):
   def test_create_value_reraises_grpc_error(self, mock_executor_grpc_stub):
     instance = mock_executor_grpc_stub.return_value
     instance.CreateValue = mock.Mock(
-        side_effect=_raise_non_retryable_grpc_error
+        side_effect=_StubRpcError(grpc.StatusCode.ABORTED)
     )
     stub = create_stub()
 
@@ -171,7 +180,9 @@ class RemoteExecutorGrpcStubTest(absltest.TestCase):
       self, mock_executor_grpc_stub
   ):
     instance = mock_executor_grpc_stub.return_value
-    instance.CreateCall = mock.Mock(side_effect=_raise_grpc_error_unavailable)
+    instance.CreateCall = mock.Mock(
+        side_effect=_StubRpcError(grpc.StatusCode.UNAVAILABLE)
+    )
     stub = create_stub()
 
     with self.assertRaises(executors_errors.RetryableError):
@@ -179,7 +190,9 @@ class RemoteExecutorGrpcStubTest(absltest.TestCase):
 
   def test_create_call_reraises_grpc_error(self, mock_executor_grpc_stub):
     instance = mock_executor_grpc_stub.return_value
-    instance.CreateCall = mock.Mock(side_effect=_raise_non_retryable_grpc_error)
+    instance.CreateCall = mock.Mock(
+        side_effect=_StubRpcError(grpc.StatusCode.ABORTED)
+    )
     stub = create_stub()
 
     with self.assertRaises(grpc.RpcError) as context:
@@ -210,7 +223,9 @@ class RemoteExecutorGrpcStubTest(absltest.TestCase):
       self, mock_executor_grpc_stub
   ):
     instance = mock_executor_grpc_stub.return_value
-    instance.CreateStruct = mock.Mock(side_effect=_raise_grpc_error_unavailable)
+    instance.CreateStruct = mock.Mock(
+        side_effect=_StubRpcError(grpc.StatusCode.UNAVAILABLE)
+    )
     stub = create_stub()
 
     with self.assertRaises(executors_errors.RetryableError):
@@ -219,7 +234,7 @@ class RemoteExecutorGrpcStubTest(absltest.TestCase):
   def test_create_struct_reraises_grpc_error(self, mock_executor_grpc_stub):
     instance = mock_executor_grpc_stub.return_value
     instance.CreateStruct = mock.Mock(
-        side_effect=_raise_non_retryable_grpc_error
+        side_effect=_StubRpcError(grpc.StatusCode.ABORTED)
     )
     stub = create_stub()
 
@@ -254,7 +269,7 @@ class RemoteExecutorGrpcStubTest(absltest.TestCase):
   ):
     instance = mock_executor_grpc_stub.return_value
     instance.CreateSelection = mock.Mock(
-        side_effect=_raise_grpc_error_unavailable
+        side_effect=_StubRpcError(grpc.StatusCode.UNAVAILABLE)
     )
     stub = create_stub()
 
@@ -266,7 +281,7 @@ class RemoteExecutorGrpcStubTest(absltest.TestCase):
   ):
     instance = mock_executor_grpc_stub.return_value
     instance.CreateSelection = mock.Mock(
-        side_effect=_raise_non_retryable_grpc_error
+        side_effect=_StubRpcError(grpc.StatusCode.ABORTED)
     )
     stub = create_stub()
     with self.assertRaises(grpc.RpcError) as context:

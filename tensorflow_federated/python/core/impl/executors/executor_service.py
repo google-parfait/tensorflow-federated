@@ -11,11 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
-# pytype: skip-file
-# This modules disables the Pytype analyzer, see
-# https://github.com/tensorflow/federated/blob/main/docs/pytype.md for more
-# information.
 """A service wrapper around an executor that makes it accessible over gRPC."""
 
 import asyncio
@@ -42,28 +37,22 @@ from tensorflow_federated.python.core.impl.executors import executors_errors
 from tensorflow_federated.python.core.impl.executors import value_serialization
 
 
-def _set_invalid_arg_err(context: grpc.ServicerContext, err):
+def _set_invalid_arg_error(context: grpc.ServicerContext, error: Exception):
   logging.error(traceback.format_exc())
   context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
-  context.set_details(str(err))
+  context.set_details(str(error))
 
 
-def _set_unknown_err(context: grpc.ServicerContext, err):
-  logging.error(traceback.format_exc())
-  context.set_code(grpc.StatusCode.UNKNOWN)
-  context.set_details(str(err))
-
-
-def _set_unavailable_error(context: grpc.ServicerContext, err):
+def _set_unavailable_error(context: grpc.ServicerContext, error: Exception):
   logging.error(traceback.format_exc())
   context.set_code(grpc.StatusCode.UNAVAILABLE)
-  context.set_details(str(err))
+  context.set_details(str(error))
 
 
-def _propagate_grpc_code_err(context: grpc.ServicerContext, err: grpc.RpcError):
+def _propagate_grpc_code_error(context: grpc.ServicerContext, error: grpc.Call):
   logging.error(traceback.format_exc())
-  context.set_code(err.code())
-  context.set_details(str(err))
+  context.set_code(error.code())
+  context.set_details(str(error))
 
 
 def _get_hashable_key(cardinalities: executor_factory.CardinalitiesType) -> str:
@@ -140,17 +129,15 @@ class ExecutorService(executor_pb2_grpc.ExecutorGroupServicer):
     with self._try_handle_request_context(
         request, context, executor_pb2.GetExecutorResponse
     ):
-      cardinalities_dict = value_serialization.deserialize_cardinalities(
+      cardinalities = value_serialization.deserialize_cardinalities(
           request.cardinalities
       )
-      key = _get_hashable_key(cardinalities_dict)
+      key = _get_hashable_key(cardinalities)
       with self._lock:
         if key not in self._executors:
-          self._executors[key] = self._ex_factory.create_executor(
-              cardinalities_dict
-          )
+          self._executors[key] = self._ex_factory.create_executor(cardinalities)
         self._executor_ref_counts[key] += 1
-        self._ids_to_cardinalities[key] = cardinalities_dict
+        self._ids_to_cardinalities[key] = cardinalities
       return executor_pb2.GetExecutorResponse(
           executor=executor_pb2.ExecutorId(id=key)
       )
@@ -187,20 +174,23 @@ class ExecutorService(executor_pb2_grpc.ExecutorGroupServicer):
   def _try_handle_request_context(self, request, context, blank_response_fn):
     try:
       yield
-    except grpc.RpcError as grpc_err:
-      if grpc_err.code() in executors_errors.get_grpc_retryable_error_codes():
+    except grpc.RpcError as e:
+      if (
+          isinstance(e, grpc.Call)
+          and e.code() in executors_errors.get_grpc_retryable_error_codes()
+      ):
         # If an RPC error is raised to us directly, ensure we propagate the
         # proper code to the other side of the service.
-        _propagate_grpc_code_err(context, grpc_err)
+        _propagate_grpc_code_error(context, e)
         logging.info('Raised an RPC error')
-        if grpc_err.code() == grpc.StatusCode.FAILED_PRECONDITION:
+        if e.code() is grpc.StatusCode.FAILED_PRECONDITION:
           # Raised if a worker needs to be reconfigured.
           logging.info(
               'Executor underneath service raised FailedPrecondition; '
               'invalidating references to this executor.'
           )
           self.DestroyExecutor(request)
-        elif grpc_err.code() == grpc.StatusCode.UNAVAILABLE:
+        elif e.code() is grpc.StatusCode.UNAVAILABLE:
           # Raised if a worker goes down during invocation.
           logging.info(
               'Executor underneath service unavailable; preemptively '
@@ -210,13 +200,13 @@ class ExecutorService(executor_pb2_grpc.ExecutorGroupServicer):
         return blank_response_fn()
       else:
         # Unknown; just reraise, see if anyone else can handle.
-        raise grpc_err
-    except executors_errors.RetryableError as err:
+        raise e
+    except executors_errors.RetryableError as e:
       # Raised if no workers are available during executor construction.
-      _set_unavailable_error(context, err)
+      _set_unavailable_error(context, e)
       return blank_response_fn()
-    except (ValueError, TypeError) as err:
-      _set_invalid_arg_err(context, err)
+    except (ValueError, TypeError) as e:
+      _set_invalid_arg_error(context, e)
       return blank_response_fn()
 
   def CreateValue(
@@ -379,6 +369,6 @@ class ExecutorService(executor_pb2_grpc.ExecutorGroupServicer):
       with self._lock:
         for value_ref in request.value_ref:
           del self._values[value_ref.id]
-    except KeyError as err:
-      _set_invalid_arg_err(context, err)
+    except KeyError as e:
+      _set_invalid_arg_error(context, e)
     return executor_pb2.DisposeResponse()

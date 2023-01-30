@@ -75,6 +75,7 @@ REQUIRED_PACKAGES = [
     'tensorflow-privacy==0.8.6',
     'tensorflow~=2.11.0',
     'tqdm~=4.64',
+    'typing-extensions~=4.4.0',
 ]
 
 with open('tensorflow_federated/version.py') as fp:

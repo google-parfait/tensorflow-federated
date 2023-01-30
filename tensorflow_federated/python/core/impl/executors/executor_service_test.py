@@ -35,6 +35,24 @@ from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_
 from tensorflow_federated.python.core.impl.types import placements
 
 
+class _StubRpcError(grpc.RpcError, grpc.Call):
+
+  def __init__(self, code: grpc.StatusCode):
+    self._code = code
+
+  def code(self):
+    return self._code
+
+  def details(self):
+    raise NotImplementedError()
+
+  def initial_metadata(self):
+    raise NotImplementedError()
+
+  def trailing_metadata(self):
+    raise NotImplementedError()
+
+
 class TestEnv:
   """A test environment that consists of a single client and backend service."""
 
@@ -394,14 +412,8 @@ class ExecutorServiceTest(absltest.TestCase):
   def test_raising_failed_precondition_destroys_executor(self):
     """A simple clas to mock out the exceptions raised by GRPC."""
 
-    class GrpcFailedPrecondition(grpc.RpcError):
-      pass
-
-      def code(self):
-        return grpc.StatusCode.FAILED_PRECONDITION
-
     def _return_error():
-      return GrpcFailedPrecondition('Raising failed precondition')
+      return _StubRpcError(grpc.StatusCode.FAILED_PRECONDITION)
 
     raising_ex = executor_test_utils.RaisingExecutor(_return_error)
     ex_factory = executor_test_utils.BasicTestExFactory(raising_ex)

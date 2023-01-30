@@ -697,11 +697,8 @@ def deserialize_value(
     )
 
 
-CardinalitiesType = Mapping[placements.PlacementLiteral, int]
-
-
 def serialize_cardinalities(
-    cardinalities: CardinalitiesType,
+    cardinalities: Mapping[placements.PlacementLiteral, int],
 ) -> list[executor_pb2.Cardinality]:
   serialized_cardinalities = []
   for placement, cardinality in cardinalities.items():
@@ -715,11 +712,11 @@ def serialize_cardinalities(
 
 def deserialize_cardinalities(
     serialized_cardinalities: Collection[executor_pb2.Cardinality],
-) -> CardinalitiesType:
-  cardinalities_dict = {}
+) -> dict[placements.PlacementLiteral, int]:
+  cardinalities = {}
   for cardinality_spec in serialized_cardinalities:
     literal = placements.uri_to_placement_literal(
         cardinality_spec.placement.uri
     )
-    cardinalities_dict[literal] = cardinality_spec.cardinality
-  return cardinalities_dict
+    cardinalities[literal] = cardinality_spec.cardinality
+  return cardinalities
