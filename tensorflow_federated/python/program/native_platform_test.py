@@ -26,7 +26,6 @@ import tree
 from tensorflow_federated.python.common_libs import async_utils
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.backends.native import execution_contexts
-from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.execution_contexts import async_execution_context
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
@@ -416,15 +415,8 @@ class NativeFederatedContextTest(
     parameterized.TestCase, unittest.IsolatedAsyncioTestCase
 ):
 
-  # pyformat: disable
-  @parameterized.named_parameters(
-      ('async_cpp',
-       execution_contexts.create_local_async_python_execution_context()),
-      ('async_python',
-       execution_contexts.create_local_async_python_execution_context()),
-  )
-  # pyformat: enable
-  def test_init_does_not_raise_type_error_with_context(self, context):
+  def test_init_does_not_raise_type_error(self):
+    context = execution_contexts.create_local_async_cpp_execution_context()
     try:
       native_platform.NativeFederatedContext(context)
     except TypeError:
@@ -434,8 +426,6 @@ class NativeFederatedContextTest(
   @parameterized.named_parameters(
       ('sync_cpp',
        execution_contexts.create_sync_local_cpp_execution_context()),
-      ('sync_python',
-       execution_contexts.create_local_python_execution_context()),
   )
   # pyformat: enable
   def test_init_raises_type_error_with_context(self, context):
@@ -476,7 +466,7 @@ class NativeFederatedContextTest(
   async def test_invoke_returns_result_materialized_sequentially(
       self, comp, arg, expected_value
   ):
-    context = execution_contexts.create_local_async_python_execution_context()
+    context = execution_contexts.create_local_async_cpp_execution_context()
     mock_context = mock.Mock(
         spec=async_execution_context.AsyncExecutionContext, wraps=context
     )
@@ -525,7 +515,7 @@ class NativeFederatedContextTest(
   async def test_invoke_returns_result_materialized_concurrently(
       self, comp, arg, expected_value
   ):
-    context = execution_contexts.create_local_async_python_execution_context()
+    context = execution_contexts.create_local_async_cpp_execution_context()
     mock_context = mock.Mock(
         spec=async_execution_context.AsyncExecutionContext, wraps=context
     )
@@ -572,7 +562,7 @@ class NativeFederatedContextTest(
   async def test_invoke_returns_result_materialized_multiple(
       self, comp, arg, expected_value
   ):
-    context = execution_contexts.create_local_async_python_execution_context()
+    context = execution_contexts.create_local_async_cpp_execution_context()
     mock_context = mock.Mock(
         spec=async_execution_context.AsyncExecutionContext, wraps=context
     )
@@ -615,7 +605,7 @@ class NativeFederatedContextTest(
   async def test_invoke_returns_result_comp_not_called(
       self, comp, arg, expected_value
   ):
-    context = execution_contexts.create_local_async_python_execution_context()
+    context = execution_contexts.create_local_async_cpp_execution_context()
     mock_context = mock.Mock(
         spec=async_execution_context.AsyncExecutionContext, wraps=context
     )
@@ -636,14 +626,14 @@ class NativeFederatedContextTest(
       ('list', []),
   )
   def test_invoke_raises_type_error_with_comp(self, comp):
-    context = execution_contexts.create_local_async_python_execution_context()
+    context = execution_contexts.create_local_async_cpp_execution_context()
     context = native_platform.NativeFederatedContext(context)
 
     with self.assertRaises(TypeError):
       context.invoke(comp, None)
 
   def test_invoke_raises_value_error_with_comp(self):
-    context = execution_contexts.create_local_async_python_execution_context()
+    context = execution_contexts.create_local_async_cpp_execution_context()
     context = native_platform.NativeFederatedContext(context)
 
     @federated_computation.federated_computation()

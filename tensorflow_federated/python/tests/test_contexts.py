@@ -24,12 +24,12 @@ WORKER_PORTS = [portpicker.pick_unused_port() for _ in range(2)]
 AGGREGATOR_PORTS = [portpicker.pick_unused_port() for _ in range(2)]
 
 
-def _create_local_python_mergeable_comp_context():
-  async_context = (
-      tff.backends.native.create_local_async_python_execution_context()
-  )
+def _create_mergeable_comp_execution_context():
+  async_contexts = [
+      tff.backends.native.create_async_local_cpp_execution_context()
+  ]
   return tff.backends.native.create_mergeable_comp_execution_context(
-      [async_context]
+      async_contexts
   )
 
 
@@ -48,8 +48,8 @@ def get_all_contexts():
   return [
       ('native_local_python',
        tff.backends.native.create_local_python_execution_context),
-      ('native_mergeable_python',
-       _create_local_python_mergeable_comp_context),
+      ('native_mergeable',
+       _create_mergeable_comp_execution_context),
       ('native_remote',
        functools.partial(
            remote_runtime_test_utils.create_localhost_remote_context,
