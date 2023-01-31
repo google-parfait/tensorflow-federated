@@ -10,11 +10,6 @@
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # limitations under the License.
-#
-# pytype: skip-file
-# This modules disables the Pytype analyzer, see
-# https://github.com/tensorflow/federated/blob/main/docs/pytype.md for more
-# information.
 """A library of transformation functions for computation types."""
 
 from collections.abc import Callable
@@ -46,7 +41,7 @@ def transform_type_postorder(
     transform_fn: Callable[
         [computation_types.Type], tuple[computation_types.Type, bool]
     ],
-):
+) -> tuple[computation_types.Type, bool]:
   """Walks type tree of `type_signature` postorder, calling `transform_fn`.
 
   Args:
@@ -61,7 +56,7 @@ def transform_type_postorder(
     `type_signature`.
 
   Raises:
-    TypeError: If the types don't match the specification above.
+    NotImplementedError: If the types don't match the specification above.
   """
   py_typecheck.check_type(type_signature, computation_types.Type)
   py_typecheck.check_callable(transform_fn)
@@ -125,6 +120,8 @@ def transform_type_postorder(
       or type_signature.is_tensor()
   ):
     return transform_fn(type_signature)
+  else:
+    raise NotImplementedError(f'Unexpected type found: {type_signature}.')
 
 
 # TODO(b/134525440): Unifying the recursive methods in type_analysis.
