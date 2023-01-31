@@ -67,7 +67,7 @@ def set_sync_local_cpp_execution_context(
   set_default_context.set_default_context(context)
 
 
-def create_local_async_cpp_execution_context(
+def create_async_local_cpp_execution_context(
     default_num_clients: int = 0, max_concurrent_computation_calls: int = -1
 ):
   """Creates a local async execution context backed by TFF-C++ runtime.
@@ -93,7 +93,7 @@ def create_local_async_cpp_execution_context(
   return context
 
 
-def set_local_async_cpp_execution_context(
+def set_async_local_cpp_execution_context(
     default_num_clients: int = 0, max_concurrent_computation_calls: int = -1
 ):
   """Sets a local execution context backed by TFF-C++ runtime.
@@ -106,7 +106,7 @@ def set_local_async_cpp_execution_context(
       a single computation in the CPP runtime. If nonpositive, there is no
       limit.
   """
-  context = create_local_async_cpp_execution_context(
+  context = create_async_local_cpp_execution_context(
       default_num_clients=default_num_clients,
       max_concurrent_computation_calls=max_concurrent_computation_calls,
   )

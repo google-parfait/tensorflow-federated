@@ -133,7 +133,7 @@ class CPPExecutionContextTest(tf.test.TestCase):
           ordered_dict['x'] * ordered_dict['y'] * tf.math.minimum(n_iters, 10)
       )
 
-    context = cpp_execution_contexts.create_local_async_cpp_execution_context()
+    context = cpp_execution_contexts.create_async_local_cpp_execution_context()
 
     async def multiple_invocations():
       return await asyncio.gather(
@@ -201,10 +201,16 @@ class CPPExecutionContextTest(tf.test.TestCase):
         self.assertEqual([d.cardinality() for d in datasets], [5, 5])
 
 
-class AsyncCppContextInstallationTest(tf.test.TestCase):
+class CreateAsyncLocalCPPExecutionContextTest(tf.test.TestCase):
+
+  def test_has_same_signature(self):
+    _assert_signature_equal(
+        cpp_execution_contexts.create_async_local_cpp_execution_context,
+        execution_contexts.create_async_local_cpp_execution_context,
+    )
 
   def test_install_and_execute_in_context(self):
-    context = cpp_execution_contexts.create_local_async_cpp_execution_context()
+    context = cpp_execution_contexts.create_async_local_cpp_execution_context()
 
     @tensorflow_computation.tf_computation(tf.int32)
     def add_one(x):
@@ -216,7 +222,7 @@ class AsyncCppContextInstallationTest(tf.test.TestCase):
       self.assertEqual(asyncio.run(val_coro), 2)
 
   def test_install_and_execute_computations_with_different_cardinalities(self):
-    context = cpp_execution_contexts.create_local_async_cpp_execution_context()
+    context = cpp_execution_contexts.create_async_local_cpp_execution_context()
 
     @federated_computation.federated_computation(
         computation_types.FederatedType(tf.int32, placements.CLIENTS)
@@ -233,6 +239,15 @@ class AsyncCppContextInstallationTest(tf.test.TestCase):
           [asyncio.run(single_val_coro), asyncio.run(second_val_coro)],
           [[[1], [1]], [[1, 2], [1, 2]]],
       )
+
+
+class SetAsyncLocalCPPExecutionContextTest(tf.test.TestCase):
+
+  def test_has_same_signature(self):
+    _assert_signature_equal(
+        cpp_execution_contexts.set_async_local_cpp_execution_context,
+        execution_contexts.set_async_local_cpp_execution_context,
+    )
 
 
 if __name__ == '__main__':
