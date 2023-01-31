@@ -169,14 +169,13 @@ def _test_distribute_aggregate_form_computations():
     def server_prepare_state_tf():
       return 32
 
-    del server_state  # Unused
     return [
         [
             intrinsics.federated_value(
                 server_prepare_broadcast_tf(), placements.SERVER
             )
         ]
-    ], [server_prepare_state_tf()]
+    ], [server_prepare_state_tf(), server_state]
 
   @federated_computation.federated_computation(
       [[computation_types.at_server(tf.float32)]]
@@ -198,7 +197,7 @@ def _test_distribute_aggregate_form_computations():
     return [[intrinsics.federated_value(client_work_tf(), placements.CLIENTS)]]
 
   @federated_computation.federated_computation(
-      [tf.int32],
+      [tf.int32, computation_types.at_server(tf.int32)],
       [
           [
               computation_types.at_clients(
@@ -215,25 +214,18 @@ def _test_distribute_aggregate_form_computations():
     ]
 
   @federated_computation.federated_computation(
-      computation_types.at_server(tf.int32),
-      [tf.int32],
+      [tf.int32, computation_types.at_server(tf.int32)],
       [
           computation_types.at_server(
               computation_types.TensorType(tf.int32, [2])
           )
       ],
   )
-  def server_result(server_state, temp_server_state, aggregated_results):
-    @tensorflow_computation.tf_computation
-    def server_result_tf():
-      return tf.constant(1)
-
-    del server_state  # Unused
-    del temp_server_state  # Unused
+  def server_result(temp_server_state, aggregated_results):
     del aggregated_results  # Unused
-    return intrinsics.federated_value(
-        server_result_tf(), placements.SERVER
-    ), intrinsics.federated_value([], placements.SERVER)
+    return temp_server_state[1], intrinsics.federated_value(
+        [], placements.SERVER
+    )
 
   return (
       server_prepare,
@@ -262,7 +254,7 @@ def _build_test_distribute_aggregate_form_with_computations(
   type_signature = (
       type_signature
       or distribute_aggregate_test_utils.generate_unnamed_type_signature(
-          test_client_work, test_server_result
+          test_server_prepare, test_client_work, test_server_result
       )
   )
   return forms.DistributeAggregateForm(
@@ -618,8 +610,7 @@ class MapReduceFormTest(absltest.TestCase):
         'secure_sum_max_input      : ( -> <>)\n'
         'secure_modular_sum_modulus: ( -> <>)\n'
         'update                    : (<state=<num_rounds=int32>,update=<<ratio_over_threshold=float32>,<>,<>,<>>> -> <<num_rounds=int32>,<ratio_over_threshold=float32>>)\n'
-    )
-    # pyformat: enable
+    )  # pyformat: enable
 
 
 class DistributeAggregateFormTest(absltest.TestCase):
@@ -629,17 +620,19 @@ class DistributeAggregateFormTest(absltest.TestCase):
       daf = _build_test_distribute_aggregate_form_with_computations()
     except TypeError:
       self.fail('Raised TypeError unexpectedly.')
-    assert daf.type_signature == computation_types.FunctionType(
-        computation_types.StructType([
-            computation_types.at_server(tf.int32),
-            computation_types.at_clients(
-                computation_types.SequenceType(tf.float32)
-            ),
-        ]),
-        computation_types.StructType([
-            computation_types.at_server(tf.int32),
-            computation_types.at_server([]),
-        ]),
+    assert daf.type_signature.is_equivalent_to(
+        computation_types.FunctionType(
+            computation_types.StructType([
+                computation_types.at_server(tf.int32),
+                computation_types.at_clients(
+                    computation_types.SequenceType(tf.float32)
+                ),
+            ]),
+            computation_types.StructType([
+                computation_types.at_server(tf.int32),
+                computation_types.at_server([]),
+            ]),
+        )
     )
 
   def test_init_does_not_raise_type_error_with_unknown_dimensions(self):
@@ -653,7 +646,7 @@ class DistributeAggregateFormTest(absltest.TestCase):
           [
               server_state,
           ]
-      ], []
+      ], [server_state]
 
     @federated_computation.federated_computation(
         [[computation_types.at_server(state_type)]]
@@ -679,24 +672,23 @@ class DistributeAggregateFormTest(absltest.TestCase):
       ]
 
     @federated_computation.federated_computation(
-        [], [[computation_types.at_clients(tf.int32)]]
+        [computation_types.at_server(state_type)],
+        [[computation_types.at_clients(tf.int32)]],
     )
     def client_to_server_aggregation(temp_server_state, client_updates):
       del temp_server_state  # Unused
       return [intrinsics.federated_sum(client_updates[0][0])]
 
     @federated_computation.federated_computation(
-        computation_types.at_server(state_type),
-        [],
+        [computation_types.at_server(state_type)],
         [computation_types.at_server(tf.int32)],
     )
-    def server_result(server_state, temp_server_state, aggregated_results):
-      del temp_server_state  # Unused
-      return server_state, aggregated_results[0]
+    def server_result(temp_server_state, aggregated_results):
+      return temp_server_state[0], aggregated_results[0]
 
     type_signature = (
         distribute_aggregate_test_utils.generate_unnamed_type_signature(
-            client_work, server_result
+            server_prepare, client_work, server_result
         )
     )
     try:
@@ -717,9 +709,32 @@ class DistributeAggregateFormTest(absltest.TestCase):
         computation_types.at_server(tf.float32)
     )
     def server_prepare(server_state):
-      return server_state
+      del server_state  # Unused
 
-    with self.assertRaises(TypeError):
+      @tensorflow_computation.tf_computation
+      def server_prepare_broadcast_tf():
+        return tf.constant(1.0)
+
+      @tensorflow_computation.tf_computation
+      def server_prepare_state_tf():
+        return 32
+
+      return [
+          [
+              intrinsics.federated_value(
+                  server_prepare_broadcast_tf(), placements.SERVER
+              )
+          ]
+      ], [
+          server_prepare_state_tf(),
+          intrinsics.federated_value(
+              server_prepare_state_tf(), placements.SERVER
+          ),
+      ]
+
+    with self.assertRaisesRegex(
+        TypeError, 'the `server_prepare` computation argument type'
+    ):
       _build_test_distribute_aggregate_form_with_computations(
           server_prepare=server_prepare
       )
@@ -730,9 +745,17 @@ class DistributeAggregateFormTest(absltest.TestCase):
         computation_types.at_server(tf.int32)
     )
     def server_prepare(server_state):
-      return server_state, []
 
-    with self.assertRaises(TypeError):
+      @tensorflow_computation.tf_computation
+      def server_prepare_state_tf():
+        return 32
+
+      return [], [server_prepare_state_tf(), server_state]
+
+    with self.assertRaisesRegex(
+        TypeError,
+        'The `server_to_client_broadcast` computation expects an argument type',
+    ):
       _build_test_distribute_aggregate_form_with_computations(
           server_prepare=server_prepare
       )
@@ -756,7 +779,9 @@ class DistributeAggregateFormTest(absltest.TestCase):
           [intrinsics.federated_value(client_work_tf(), placements.CLIENTS)]
       ]
 
-    with self.assertRaises(TypeError):
+    with self.assertRaisesRegex(
+        TypeError, 'The `client_work` computation expects an argument type'
+    ):
       _build_test_distribute_aggregate_form_with_computations(
           client_work=client_work
       )
@@ -773,7 +798,9 @@ class DistributeAggregateFormTest(absltest.TestCase):
       a = intrinsics.federated_map(multiply_tf, context_at_server[0][0])
       return [intrinsics.federated_broadcast(a)]
 
-    with self.assertRaises(ValueError):
+    with self.assertRaisesRegex(
+        ValueError, 'Expected only broadcast intrinsics'
+    ):
       _build_test_distribute_aggregate_form_with_computations(
           server_to_client_broadcast=server_to_client_broadcast
       )
@@ -781,7 +808,8 @@ class DistributeAggregateFormTest(absltest.TestCase):
   def test_init_raises_type_error_with_aggregation_input_type_mismatch(self):
 
     @federated_computation.federated_computation(
-        [tf.int32], [[computation_types.at_clients(tf.int32)]]
+        [tf.int32, computation_types.at_server(tf.int32)],
+        [[computation_types.at_clients(tf.int32)]],
     )
     def client_to_server_aggregation(temp_server_state, client_updates):
       return [
@@ -790,7 +818,13 @@ class DistributeAggregateFormTest(absltest.TestCase):
           )
       ]
 
-    with self.assertRaises(TypeError):
+    with self.assertRaisesRegex(
+        TypeError,
+        (
+            'The `client_to_server_aggregation` computation expects an argument'
+            ' type'
+        ),
+    ):
       _build_test_distribute_aggregate_form_with_computations(
           client_to_server_aggregation=client_to_server_aggregation
       )
@@ -798,7 +832,7 @@ class DistributeAggregateFormTest(absltest.TestCase):
   def test_init_raises_type_error_with_aggregation_output_type_mismatch(self):
 
     @federated_computation.federated_computation(
-        [tf.int32],
+        [tf.int32, computation_types.at_server(tf.int32)],
         [
             [
                 computation_types.at_clients(
@@ -813,7 +847,9 @@ class DistributeAggregateFormTest(absltest.TestCase):
       b = intrinsics.federated_sum(client_updates[0][0])
       return [a, b]
 
-    with self.assertRaises(TypeError):
+    with self.assertRaisesRegex(
+        TypeError, 'The `server_result` computation expects an argument type'
+    ):
       _build_test_distribute_aggregate_form_with_computations(
           client_to_server_aggregation=client_to_server_aggregation
       )
@@ -821,7 +857,7 @@ class DistributeAggregateFormTest(absltest.TestCase):
   def test_init_raises_assertion_error_with_bad_aggregation_body(self):
 
     @federated_computation.federated_computation(
-        [tf.int32],
+        [tf.int32, computation_types.at_server(tf.int32)],
         [
             [
                 computation_types.at_clients(
@@ -838,8 +874,7 @@ class DistributeAggregateFormTest(absltest.TestCase):
       return [b, a]
 
     @federated_computation.federated_computation(
-        computation_types.at_server(tf.int32),
-        [tf.int32],
+        [tf.int32, computation_types.at_server(tf.int32)],
         [
             computation_types.at_server(
                 computation_types.TensorType(tf.int32, [2])
@@ -849,19 +884,15 @@ class DistributeAggregateFormTest(absltest.TestCase):
             ),
         ],
     )
-    def server_result(server_state, temp_server_state, aggregated_results):
-      @tensorflow_computation.tf_computation
-      def server_result_tf():
-        return tf.constant(1)
-
-      del server_state  # Unused
-      del temp_server_state  # Unused
+    def server_result(temp_server_state, aggregated_results):
       del aggregated_results  # Unused
-      return intrinsics.federated_value(
-          server_result_tf(), placements.SERVER
-      ), intrinsics.federated_value([], placements.SERVER)
+      return temp_server_state[1], intrinsics.federated_value(
+          [], placements.SERVER
+      )
 
-    with self.assertRaises(ValueError):
+    with self.assertRaisesRegex(
+        ValueError, 'Expected the aggregation function to return references'
+    ):
       _build_test_distribute_aggregate_form_with_computations(
           client_to_server_aggregation=client_to_server_aggregation,
           server_result=server_result,
@@ -870,7 +901,7 @@ class DistributeAggregateFormTest(absltest.TestCase):
   def test_init_raises_type_error_with_temporary_state_type_mismatch(self):
 
     @federated_computation.federated_computation(
-        [tf.int32, tf.int32],
+        [tf.int32, computation_types.at_server(tf.int32), tf.int32],
         [
             [
                 computation_types.at_clients(
@@ -887,43 +918,44 @@ class DistributeAggregateFormTest(absltest.TestCase):
       ]
 
     @federated_computation.federated_computation(
-        computation_types.at_server(tf.int32),
-        [tf.int32, tf.int32],
+        [tf.int32, computation_types.at_server(tf.int32), tf.int32],
         [
             computation_types.at_server(
                 computation_types.TensorType(tf.int32, [2])
             )
         ],
     )
-    def server_result(server_state, temp_server_state, aggregated_results):
-      @tensorflow_computation.tf_computation
-      def server_result_tf():
-        return tf.constant(1)
-
-      del server_state  # Unused
-      del temp_server_state  # Unused
+    def server_result(temp_server_state, aggregated_results):
       del aggregated_results  # Unused
-      return intrinsics.federated_value(
-          server_result_tf(), placements.SERVER
-      ), intrinsics.federated_value([], placements.SERVER)
+      return temp_server_state[1], intrinsics.federated_value(
+          [], placements.SERVER
+      )
 
-    with self.assertRaises(TypeError):
+    with self.assertRaisesRegex(
+        TypeError,
+        (
+            'The `client_to_server_aggregation` computation expects an argument'
+            ' type'
+        ),
+    ):
       _build_test_distribute_aggregate_form_with_computations(
           client_to_server_aggregation=client_to_server_aggregation
       )
 
-    with self.assertRaises(TypeError):
+    with self.assertRaisesRegex(
+        TypeError, 'the `server_result` computation expects an argument type'
+    ):
       _build_test_distribute_aggregate_form_with_computations(
           server_result=server_result
       )
 
   def test_init_raises_type_error_with_type_signature_mismatch(self):
-    (_, _, test_client_work, _, test_server_result) = (
+    (test_server_prepare, _, test_client_work, _, test_server_result) = (
         _test_distribute_aggregate_form_computations()
     )
     correct_type_signature = (
         distribute_aggregate_test_utils.generate_unnamed_type_signature(
-            test_client_work, test_server_result
+            test_server_prepare, test_client_work, test_server_result
         )
     )
 
@@ -946,28 +978,36 @@ class DistributeAggregateFormTest(absltest.TestCase):
         computation_types.at_server(tf.float32),
     ])
 
-    with self.assertRaises(TypeError):
+    with self.assertRaisesRegex(
+        TypeError, 'The original computation argument type'
+    ):
       _build_test_distribute_aggregate_form_with_computations(
           type_signature=computation_types.FunctionType(
               bad_server_state_parameter, correct_type_signature.result
           )
       )
 
-    with self.assertRaises(TypeError):
+    with self.assertRaisesRegex(
+        TypeError, 'The original computation argument type'
+    ):
       _build_test_distribute_aggregate_form_with_computations(
           type_signature=computation_types.FunctionType(
               bad_client_data_parameter, correct_type_signature.result
           )
       )
 
-    with self.assertRaises(TypeError):
+    with self.assertRaisesRegex(
+        TypeError, 'the original computation result type'
+    ):
       _build_test_distribute_aggregate_form_with_computations(
           type_signature=computation_types.FunctionType(
               correct_type_signature.parameter, bad_server_state_result
           )
       )
 
-    with self.assertRaises(TypeError):
+    with self.assertRaisesRegex(
+        TypeError, 'the original computation result type'
+    ):
       _build_test_distribute_aggregate_form_with_computations(
           type_signature=computation_types.FunctionType(
               correct_type_signature.parameter, bad_server_output_result
