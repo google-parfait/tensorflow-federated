@@ -14,7 +14,6 @@
 
 import collections
 import inspect
-import itertools
 
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -32,160 +31,22 @@ from tensorflow_federated.python.core.impl.types import type_serialization
 
 class FunctionUtilsTest(parameterized.TestCase):
 
-  def test_get_defun_argspec_with_typed_non_eager_defun(self):
-    # In a tf.function with a defined input signature, **kwargs or default
-    # values are not allowed, but *args are, and the input signature may overlap
-    # with *args.
-    fn = tf.function(
-        lambda x, y, *z: None,
-        (
-            tf.TensorSpec(None, tf.int32),
-            tf.TensorSpec(None, tf.bool),
-            tf.TensorSpec(None, tf.float32),
-            tf.TensorSpec(None, tf.float32),
-        ),
-    )
-    self.assertEqual(
-        collections.OrderedDict(function_utils.get_signature(fn).parameters),
-        collections.OrderedDict(
-            x=inspect.Parameter('x', inspect.Parameter.POSITIONAL_OR_KEYWORD),
-            y=inspect.Parameter('y', inspect.Parameter.POSITIONAL_OR_KEYWORD),
-            z=inspect.Parameter('z', inspect.Parameter.VAR_POSITIONAL),
-        ),
-    )
-
-  def test_get_defun_argspec_with_untyped_non_eager_defun(self):
-    # In a tf.function with no input signature, the same restrictions as in a
-    # typed eager function apply.
-    fn = tf.function(lambda x, y, *z: None)
-    self.assertEqual(
-        collections.OrderedDict(function_utils.get_signature(fn).parameters),
-        collections.OrderedDict(
-            x=inspect.Parameter('x', inspect.Parameter.POSITIONAL_OR_KEYWORD),
-            y=inspect.Parameter('y', inspect.Parameter.POSITIONAL_OR_KEYWORD),
-            z=inspect.Parameter('z', inspect.Parameter.VAR_POSITIONAL),
-        ),
-    )
-
-  def test_get_signature_with_class_instance_method(self):
-    class C:
-
-      def __init__(self, x):
-        self._x = x
-
-      def foo(self, y):
-        return self._x * y
-
-    c = C(5)
-    signature = function_utils.get_signature(c.foo)
-    self.assertEqual(
-        signature.parameters,
-        collections.OrderedDict(
-            y=inspect.Parameter('y', inspect.Parameter.POSITIONAL_OR_KEYWORD)
-        ),
-    )
-
-  def test_get_signature_with_class_property(self):
-    class C:
-
-      @property
-      def x(self):
-        return 99
-
-    c = C()
-    with self.assertRaises(TypeError):
-      function_utils.get_signature(c.x)
-
-  def test_as_wrapper_with_classmethod(self):
-    class C:
-
-      @classmethod
-      def foo(cls, x):
-        return x * 2
-
-    signature = function_utils.get_signature(C.foo)
-    self.assertEqual(
-        signature.parameters,
-        collections.OrderedDict(
-            x=inspect.Parameter('x', inspect.Parameter.POSITIONAL_OR_KEYWORD)
-        ),
-    )
-
-  # pyformat: disable
-  @parameterized.parameters(
-      itertools.product(
-          # Values of 'fn' to test.
-          [lambda: None,
-           lambda a: None,
-           lambda a, b: None,
-           lambda *a: None,
-           lambda **a: None,
-           lambda *a, **b: None,
-           lambda a, *b: None,
-           lambda a, **b: None,
-           lambda a, b, **c: None,
-           lambda a, b=10: None,
-           lambda a, b=10, c=20: None,
-           lambda a, b=10, *c: None,
-           lambda a, b=10, **c: None,
-           lambda a, b=10, *c, **d: None,
-           lambda a, b, c=10, *d: None,
-           lambda a=10, b=20, c=30, **d: None],
-          # Values of 'args' to test.
-          [[], [1], [1, 2], [1, 2, 3], [1, 2, 3, 4]],
-          # Values of 'kwargs' to test.
-          [{}, {'b': 100}, {'name': 'foo'}, {'b': 100, 'name': 'foo'}]))
-  # pyformat: enable
-  def test_get_callargs_for_signature(self, fn, args, kwargs):
-    signature = function_utils.get_signature(fn)
-    expected_error = None
-    try:
-      signature = inspect.signature(fn)
-      bound_arguments = signature.bind(*args, **kwargs)
-      expected_callargs = bound_arguments.arguments
-    except TypeError as e:
-      expected_error = e
-      expected_callargs = None
-
-    result_callargs = None
-    if expected_error is None:
-      try:
-        bound_args = signature.bind(*args, **kwargs).arguments
-        self.assertEqual(bound_args, expected_callargs)
-      except (TypeError, AssertionError) as test_err:
-        raise AssertionError(  # pylint: disable=raise-missing-from
-            'With signature `{!s}`, args {!s}, kwargs {!s}, expected bound '
-            'args {!s} and error {!s}, tested function returned {!s} and the '
-            'test has failed with message: {!s}'.format(
-                signature,
-                args,
-                kwargs,
-                expected_callargs,
-                expected_error,
-                result_callargs,
-                test_err,
-            )
-        )
-    else:
-      with self.assertRaises(TypeError):
-        _ = signature.bind(*args, **kwargs)
-
   # pyformat: disable
   @parameterized.named_parameters(
       ('args_only',
-       function_utils.get_signature(lambda a: None),
+       inspect.signature(lambda a: None),
        [tf.int32],
        collections.OrderedDict()),
       ('args_and_kwargs_unnamed',
-       function_utils.get_signature(lambda a, b=True: None),
+       inspect.signature(lambda a, b=True: None),
        [tf.int32, tf.bool],
        collections.OrderedDict()),
       ('args_and_kwargs_named',
-       function_utils.get_signature(lambda a, b=True: None),
+       inspect.signature(lambda a, b=True: None),
        [tf.int32],
        collections.OrderedDict(b=tf.bool)),
       ('args_and_kwargs_default_int',
-       function_utils.get_signature(lambda a=10, b=True: None),
+       inspect.signature(lambda a=10, b=True: None),
        [tf.int32],
        collections.OrderedDict(b=tf.bool)),
   )
@@ -202,11 +63,11 @@ class FunctionUtilsTest(parameterized.TestCase):
   # pyformat: disable
   @parameterized.named_parameters(
       ('args_only',
-       function_utils.get_signature(lambda a=True: None),
+       inspect.signature(lambda a=True: None),
        [tf.int32],
        collections.OrderedDict()),
       ('args_and_kwargs',
-       function_utils.get_signature(lambda a=10, b=True: None),
+       inspect.signature(lambda a=10, b=True: None),
        [tf.bool],
        collections.OrderedDict(b=tf.bool)),
   )

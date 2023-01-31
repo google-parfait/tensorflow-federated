@@ -11,18 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
-# pytype: skip-file
-# This modules disables the Pytype analyzer, see
-# https://github.com/tensorflow/federated/blob/main/docs/pytype.md for more
-# information.
 """Utilities for Python functions, defuns, and other types of callables."""
 
 from collections.abc import Callable, Mapping, Sequence
 import functools
 import inspect
 import types
-from typing import Any, Optional, Union
+from typing import Any, Optional
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
@@ -31,39 +26,6 @@ from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.types import typed_object
-from tensorflow_federated.python.tensorflow_libs import function
-
-
-def is_function(maybe_fn):
-  return isinstance(
-      maybe_fn, (types.FunctionType, types.MethodType, functools.partial)
-  ) or function.is_tf_function(maybe_fn)
-
-
-def get_signature(
-    fn: Union[types.FunctionType, types.MethodType]
-) -> inspect.Signature:
-  """Returns the `inspect.Signature` structure for the given function or method.
-
-  Args:
-    fn: The Python function or Tensorflow function to analyze.
-
-  Returns:
-    An `inspect.Signature`.
-
-  Raises:
-    TypeError: if the argument is not of a supported type.
-  """
-  if is_function(fn):
-    return inspect.signature(fn)
-  elif function.is_tf_function(fn):
-    return inspect.signature(fn.python_function)
-  else:
-    raise TypeError(
-        'Expected a Python function or a defun, found {}.'.format(
-            py_typecheck.type_string(type(fn))
-        )
-    )
 
 
 def is_signature_compatible_with_types(
@@ -355,7 +317,7 @@ def _infer_unpack_needed(
     )
   py_typecheck.check_type(parameter_type, computation_types.Type)
   unpack = should_unpack  # Default return value.
-  signature = get_signature(fn)
+  signature = inspect.signature(fn)
   unpack_required = not is_signature_compatible_with_types(
       signature, parameter_type
   )
