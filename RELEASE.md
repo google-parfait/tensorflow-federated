@@ -1,3 +1,26 @@
+# Release 0.48.0
+
+## Major Features and Improvements
+
+*   Implemented divisive split logic needed by DistributeAggregateForm, which is
+    currently under development and will replace MapReduceForm and BroadcastForm
+    in the future.
+
+## Breaking Changes
+
+*   Renamed the `cpp_execution_context.(create|set)_local_cpp_execution_context`
+    function to match the name of
+    `execution_context.(create|set)_(sync|async)_local_cpp_execution_context`.
+*   Deleted the sizing Python execution context and executor.
+*   Deleted the thread debugging Python execution context and executor.
+*   Removed `ExecutorService` from the public API.
+*   Deleted the local async python execution context.
+
+## Bug Fixes
+
+*   Enabled and fixed python type annotations in some modules in the
+    `executors`, `types`, and `core` package.
+
 # Release 0.47.0
 
 ## Major Features and Improvements
