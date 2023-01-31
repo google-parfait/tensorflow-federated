@@ -1196,7 +1196,7 @@ def to_type(
     )
 
 
-def _to_type_from_attrs(spec) -> Type:
+def _to_type_from_attrs(spec) -> StructWithPythonType:
   """Converts an `attr.s` class or instance to a `tff.Type`."""
   if isinstance(spec, type):
     # attrs class type
