@@ -539,12 +539,11 @@ class PolymorphicComputation:
       py_typecheck.check_type(
           concrete_fn, computation_base.Computation, 'computation'
       )
-      if concrete_fn.type_signature.parameter != arg_type:
+      if not concrete_fn.type_signature.parameter.is_assignable_from(arg_type):
         raise TypeError(
-            'Expected a concrete function that takes parameter {}, got one '
-            'that takes {}.'.format(
-                arg_type, concrete_fn.type_signature.parameter
-            )
+            'Expected a concrete function that takes parameter assignable from '
+            f'type {arg_type}, got one that takes '
+            f'{concrete_fn.type_signature.parameter}.'
         )
       self._concrete_function_cache[key] = concrete_fn
     return concrete_fn

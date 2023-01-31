@@ -27,6 +27,7 @@ from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.context_stack import context_stack_base
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_serialization
+from tensorflow_federated.python.core.impl.types import type_test_utils
 
 
 class FunctionUtilsTest(parameterized.TestCase):
@@ -245,34 +246,40 @@ class FunctionUtilsTest(parameterized.TestCase):
     self.assertEqual(actual_result, expected_result)
 
 
+class TestContext(context_base.SyncContext):
+
+  def ingest(self, val, type_spec):
+    return val
+
+  def invoke(self, comp, arg):
+    return 'name={},type={},arg={},unpack={}'.format(
+        comp.name, comp.type_signature.parameter, arg, comp.unpack
+    )
+
+
+class TestContextStack(context_stack_base.ContextStack):
+
+  def __init__(self):
+    super().__init__()
+    self._context = TestContext()
+
+  @property
+  def current(self):
+    return self._context
+
+  def install(self, ctx):
+    del ctx  # Unused
+    return self._context
+
+
 class PolymorphicComputationTest(absltest.TestCase):
 
+  def setUp(self):
+    self._context_stack = TestContextStack()
+    super().setUp()
+
   def test_call_returns_result(self):
-    class TestContext(context_base.SyncContext):
-
-      def ingest(self, val, type_spec):
-        return val
-
-      def invoke(self, comp, arg):
-        return 'name={},type={},arg={},unpack={}'.format(
-            comp.name, comp.type_signature.parameter, arg, comp.unpack
-        )
-
-    class TestContextStack(context_stack_base.ContextStack):
-
-      def __init__(self):
-        super().__init__()
-        self._context = TestContext()
-
-      @property
-      def current(self):
-        return self._context
-
-      def install(self, ctx):
-        del ctx  # Unused
-        return self._context
-
-    context_stack = TestContextStack()
+    context_stack = self._context_stack
 
     class TestFunction(computation_impl.ConcreteComputation):
 
@@ -332,6 +339,82 @@ class PolymorphicComputationTest(absltest.TestCase):
     self.assertEqual(
         fn(60, x=70), 'name=4,type=<int32,x=int32>,arg=<60,x=70>,unpack=True'
     )
+
+  def test_assignability_checked_in_concretization(self):
+    context_stack = self._context_stack
+
+    class TestFunction(computation_impl.ConcreteComputation):
+
+      def __init__(self, parameter_type):
+        type_signature = computation_types.FunctionType(
+            parameter_type, tf.string
+        )
+        test_proto = pb.Computation(
+            type=type_serialization.serialize_type(type_signature)
+        )
+        self.name = 'foo'
+        self.unpack = 'bar'
+        super().__init__(test_proto, context_stack, type_signature)
+
+    class MoreGeneralParamTestFunctionFactory:
+
+      def __init__(self):
+        self._count = 0
+
+      def __call__(self, parameter_type, unpack):
+        parameter_type.check_tensor()
+        # Return a test function which accepts a more general parameter--a
+        # tensor of any rank.
+        return TestFunction(
+            computation_types.to_type(
+                computation_types.TensorType(
+                    dtype=parameter_type.dtype, shape=None
+                )
+            )
+        )
+
+    class MoreSpecificParamTestFunctionFactory:
+
+      def __init__(self):
+        self._count = 0
+
+      def __call__(self, parameter_type, unpack):
+        parameter_type.check_tensor()
+        # Only accept parameter types which have shape unknown-length vector.
+        assert len(parameter_type.shape) == 1
+        assert parameter_type.shape[0] is None
+        # Return a test function which accepts a more specific parameter--a
+        # fixed-length vector.
+        return TestFunction(
+            computation_types.to_type(
+                computation_types.TensorType(
+                    dtype=parameter_type.dtype, shape=[10]
+                )
+            )
+        )
+
+    generalizing_fn = function_utils.PolymorphicComputation(
+        MoreGeneralParamTestFunctionFactory()
+    )
+    concrete_fn = generalizing_fn.fn_for_argument_type(
+        computation_types.to_type(tf.int32)
+    )
+    # This parameter has been promoted, but will still be safe to delegate to in
+    # all circumstances.
+    type_test_utils.assert_types_identical(
+        concrete_fn.type_signature,
+        computation_types.FunctionType(
+            computation_types.TensorType(dtype=tf.int32, shape=None), tf.string
+        ),
+    )
+
+    specializing_fn = function_utils.PolymorphicComputation(
+        MoreSpecificParamTestFunctionFactory()
+    )
+    with self.assertRaisesRegex(TypeError, 'assignable from'):
+      specializing_fn.fn_for_argument_type(
+          computation_types.TensorType(dtype=tf.int32, shape=[None])
+      )
 
 
 if __name__ == '__main__':
