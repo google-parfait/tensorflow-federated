@@ -11,11 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
-# pytype: skip-file
-# This modules disables the Pytype analyzer, see
-# https://github.com/tensorflow/federated/blob/main/docs/pytype.md for more
-# information.
 """A library of (de)serialization functions for computation types."""
 
 from typing import Optional
@@ -61,28 +56,23 @@ def _to_tensor_shape(tensor_type_proto: pb.TensorType) -> tf.TensorShape:
 _type_serialization_cache = weakref.WeakKeyDictionary({})
 
 
-def serialize_type(
-    type_spec: Optional[computation_types.Type],
-) -> Optional[pb.Type]:
+def serialize_type(type_spec: computation_types.Type) -> pb.Type:
   """Serializes 'type_spec' as a pb.Type.
 
   Note: Currently only serialization for tensor, named tuple, sequence, and
   function types is implemented.
 
   Args:
-    type_spec: A `computation_types.Type`, or `None`.
+    type_spec: A `computation_types.Type`.
 
   Returns:
-    The corresponding instance of `pb.Type`, or `None` if the argument was
-      `None`.
+    The corresponding instance of `pb.Type`.
 
   Raises:
     TypeError: if the argument is of the wrong type.
     NotImplementedError: for type variants for which serialization is not
       implemented.
   """
-  if type_spec is None:
-    return None
   cached_proto = _type_serialization_cache.get(type_spec, None)
   if cached_proto is not None:
     return cached_proto
@@ -102,9 +92,13 @@ def serialize_type(
         )
     )
   elif type_spec.is_function():
+    if type_spec.parameter is not None:
+      serialized_parameter = serialize_type(type_spec.parameter)
+    else:
+      serialized_parameter = None
     proto = pb.Type(
         function=pb.FunctionType(
-            parameter=serialize_type(type_spec.parameter),
+            parameter=serialized_parameter,
             result=serialize_type(type_spec.result),
         )
     )
