@@ -26,11 +26,11 @@ from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.types import type_serialization
 from tensorflow_federated.python.core.impl.types import type_test_utils
 from tensorflow_federated.python.learning import keras_utils
-from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning.models import functional
 from tensorflow_federated.python.learning.models import serialization
 from tensorflow_federated.python.learning.models import test_models
+from tensorflow_federated.python.learning.models import variable
 
 # Convenience aliases.
 TensorType = computation_types.TensorType
@@ -251,7 +251,7 @@ def _test_model_fn(keras_model_fn, loss_fn, test_input_spec):
   return model_fn
 
 
-class _TestModel(model_lib.Model):
+class _TestModel(variable.VariableModel):
   """Test model that returns different signatures when `training` value changes."""
 
   def __init__(self, has_reset_metrics_implemented=False):
@@ -281,12 +281,12 @@ class _TestModel(model_lib.Model):
       logits = self.predict_on_batch(batch_input['x'], training=True)
       loss = loss_fn(y_true=batch_input['y'], y_pred=logits)
       num_examples = tf.shape(logits)[0]
-      return model_lib.BatchOutput(
+      return variable.BatchOutput(
           loss=loss, predictions=(), num_examples=num_examples
       )
     else:
       predictions = self.predict_on_batch(batch_input['x'], training=False)
-      return model_lib.BatchOutput(
+      return variable.BatchOutput(
           loss=(), predictions=predictions, num_examples=()
       )
 
@@ -411,7 +411,7 @@ class SerializationTest(tf.test.TestCase, parameterized.TestCase):
       pass
     serialization.save(model, test_dir)
     loaded_model = serialization.load(test_dir)
-    self.assertIsInstance(loaded_model, model_lib.Model)
+    self.assertIsInstance(loaded_model, variable.VariableModel)
     self.assertEqual(model.input_spec, loaded_model.input_spec)
     # Assert we can save the loaded_model again.
     serialization.save(loaded_model, test_dir)
@@ -636,7 +636,7 @@ class FunctionalModelTest(tf.test.TestCase, parameterized.TestCase):
       del model_weights  # Unused.
       del batch_input  # Unused.
       del training  # Unused.
-      return model_lib.BatchOutput(
+      return variable.BatchOutput(
           loss=tf.zeros([]),
           predictions=tf.ones([1]),
           num_examples=tf.constant(10),
@@ -736,7 +736,7 @@ class FunctionalModelTest(tf.test.TestCase, parameterized.TestCase):
       tf.nest.map_structure(
           lambda x, y: self.assertAllClose(x, y, atol=1e-2, rtol=1e-2),
           tff_model.forward_pass(batch_input=example_batch, training=training),
-          model_lib.BatchOutput(
+          variable.BatchOutput(
               loss=74.250, predictions=np.zeros(shape=[5, 1]), num_examples=5
           ),
       )

@@ -31,11 +31,11 @@ from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.types import type_serialization
-from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning.models import functional
+from tensorflow_federated.python.learning.models import variable
 
 
-class _LoadedSavedModel(model_lib.Model):
+class _LoadedSavedModel(variable.VariableModel):
   """Private class for instantiating `tff.learning.Model` from a SavedModel."""
 
   def __init__(self, loaded_module):
@@ -47,12 +47,12 @@ class _LoadedSavedModel(model_lib.Model):
     self._forward_pass_training = _unflatten_fn(
         loaded_module.flat_forward_pass_training,
         loaded_module.forward_pass_training_type_spec,
-        model_lib.BatchOutput,
+        variable.BatchOutput,
     )
     self._forward_pass_inference = _unflatten_fn(
         loaded_module.flat_forward_pass_inference,
         loaded_module.forward_pass_inference_type_spec,
-        model_lib.BatchOutput,
+        variable.BatchOutput,
     )
 
     self._predict_on_batch_training = _unflatten_fn(
@@ -231,7 +231,7 @@ def _unflatten_fn(fn, serialized_type_variable, python_container=None):
   return tf.function(structured_output_fn)
 
 
-def save(model: model_lib.Model, path: str, input_type=None) -> None:
+def save(model: variable.VariableModel, path: str, input_type=None) -> None:
   """Serializes `model` as a TensorFlow SavedModel to `path`.
 
   The resulting SavedModel will contain the default serving signature, which
@@ -256,7 +256,7 @@ def save(model: model_lib.Model, path: str, input_type=None) -> None:
       `model.input_spec['x']` if the input_spec is a mapping, otherwise default
       to `model.input_spec[0]`.
   """
-  py_typecheck.check_type(model, model_lib.Model)
+  py_typecheck.check_type(model, variable.VariableModel)
   py_typecheck.check_type(path, str)
   if not path:
     raise ValueError(
@@ -368,7 +368,7 @@ def save(model: model_lib.Model, path: str, input_type=None) -> None:
   _save_tensorflow_module(m, path)
 
 
-def load(path: str) -> model_lib.Model:
+def load(path: str) -> variable.VariableModel:
   """Deserializes a TensorFlow SavedModel at `path` to a `tff.learning.Model`.
 
   Args:
@@ -586,7 +586,7 @@ class _LoadedFunctionalModel(functional.FunctionalModel):
         flat_forward_pass, serialized_result_type_variable
     ):
       result_tensor_specs = _deserialize_type_spec(
-          serialized_result_type_variable, model_lib.BatchOutput
+          serialized_result_type_variable, variable.BatchOutput
       )
 
       def forward_pass(model_weights, batch_input):
@@ -634,7 +634,7 @@ class _LoadedFunctionalModel(functional.FunctionalModel):
 
   def forward_pass(
       self, model_weights, batch_input, training=True
-  ) -> model_lib.BatchOutput:
+  ) -> variable.BatchOutput:
     """Runs the forward pass and returns results."""
     if training:
       return self._forward_pass_training(

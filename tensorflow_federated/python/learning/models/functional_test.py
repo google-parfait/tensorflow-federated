@@ -21,10 +21,10 @@ import tensorflow as tf
 
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.types import type_conversions
-from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning.metrics import aggregator
 from tensorflow_federated.python.learning.metrics import types
 from tensorflow_federated.python.learning.models import functional
+from tensorflow_federated.python.learning.models import variable
 from tensorflow_federated.python.tensorflow_libs import variable_utils
 
 
@@ -60,7 +60,7 @@ def forward_pass(model_weights, batch_input, training):
   num_examples = tf.shape(predictions)[0]
   total_loss = tf.reduce_sum(tf.pow(residuals, 2.0))
   average_loss = total_loss / tf.cast(num_examples, tf.float32)
-  return model_lib.BatchOutput(
+  return variable.BatchOutput(
       loss=average_loss, predictions=predictions, num_examples=num_examples
   )
 
@@ -74,7 +74,7 @@ def initialize_metrics() -> types.MetricsState:
 def update_metrics_state(
     state: types.MetricsState,
     labels: Any,
-    batch_output: model_lib.BatchOutput,
+    batch_output: variable.BatchOutput,
     sample_weight: Optional[Any] = None,
 ) -> types.MetricsState:
   del sample_weight  # Unused.
@@ -243,7 +243,7 @@ class FunctionalModelTest(tf.test.TestCase):
           collections.OrderedDict(num_examples=(0.0,), accuracy=(0.0, 0.0)),
       )
     with self.subTest('update'):
-      batch_output = model_lib.BatchOutput(predictions=np.asarray([0, 1, 1]))
+      batch_output = variable.BatchOutput(predictions=np.asarray([0, 1, 1]))
       labels = np.asarray([0, 0, 1])
       updated_state = functional_model.update_metrics_state(
           state, labels=labels, batch_output=batch_output
@@ -292,7 +292,7 @@ class FunctionalModelTest(tf.test.TestCase):
               fetches=functional_model.update_metrics_state(
                   state_placeholder,
                   labels=labels,
-                  batch_output=model_lib.BatchOutput(predictions=predictions),
+                  batch_output=variable.BatchOutput(predictions=predictions),
               ),
               feed_dict={
                   predictions: np.asarray([0, 1, 1]),
@@ -678,7 +678,7 @@ class FunctionalModelFromKerasTest(tf.test.TestCase):
           functional_model.update_metrics_state,
           state=metrics_state_tensor_spec,
           labels=tf.TensorSpec([1], tf.float32),
-          batch_output=model_lib.BatchOutput(
+          batch_output=variable.BatchOutput(
               predictions=tf.TensorSpec([1], tf.float32)
           ),
       )
