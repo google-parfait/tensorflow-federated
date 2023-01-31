@@ -99,9 +99,7 @@ evaluating algorithms (as simulation hardware isn't representative of real FL
 deployment environments), being able to run FL simulations quickly is critical
 for research productivity. Hence, TFF has invested heavily in providing
 high-performance single and multi-machine runtimes. Documentation is under
-development, but for now see the
-[High-performance simulations with Kubernetes](https://www.tensorflow.org/federated/tutorials/high_performance_simulation_with_kubernetes)
-tutorial, instructions on
+development, but for now see the instructions on
 [TFF simulations with accelerators](https://www.tensorflow.org/federated/tutorials/simulations_with_accelerators),
 and instructions on
 [setting up simulations with TFF on GCP](https://www.tensorflow.org/federated/gcp_setup).

@@ -44,8 +44,6 @@ upper_tabs:
         path: /federated/tutorials/custom_aggregators
 
       - heading: Simulation Runtime
-      - title: "High-performance Simulations with Kubernetes"
-        path: /federated/tutorials/high_performance_simulation_with_kubernetes
       - title: "TFF Simulation with Accelerators (GPU)"
         path: /federated/tutorials/simulations_with_accelerators
       - title: "Working with ClientData"
