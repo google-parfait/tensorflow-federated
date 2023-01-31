@@ -32,9 +32,13 @@ from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.types import type_serialization
 
 
-def _tf_wrapper_fn(parameter_type, name):
+def _tf_wrapper_fn(parameter_type, name, **kwargs):
   """Wrapper function to plug Tensorflow logic into the TFF framework."""
   del name  # Unused.
+  if 'layout_map' in kwargs:
+    layout_map = kwargs['layout_map']
+  else:
+    layout_map = None
   if not type_analysis.is_tensorflow_compatible_type(parameter_type):
     raise TypeError(
         '`tf_computation`s can accept only parameter types with '
@@ -44,7 +48,7 @@ def _tf_wrapper_fn(parameter_type, name):
     )
   ctx_stack = context_stack_impl.context_stack
   tf_serializer = tensorflow_serialization.tf_computation_serializer(
-      parameter_type, ctx_stack
+      parameter_type, ctx_stack, layout_map
   )
   arg = next(tf_serializer)
   try:
@@ -337,6 +341,7 @@ class _TensorFlowFunctionTracingStrategy:
       fn_name: Optional[str],
       parameter_type: Optional[computation_types.Type],
       unpack: Optional[bool],
+      **kwargs,
   ) -> computation_impl.ConcreteComputation:
     if not type_analysis.is_tensorflow_compatible_type(parameter_type):
       raise TypeError(
@@ -470,6 +475,10 @@ class _TensorFlowFunctionTracingStrategy:
     result_binding = _extract_bindings(
         type_signature.result, concrete_fn.function_def.signature.output_arg
     )
+    if 'layout_map' in kwargs:
+      layout_map = kwargs['layout_map']
+    else:
+      layout_map = None
     comp_pb = pb.Computation(
         type=type_serialization.serialize_type(type_signature),
         tensorflow_function=pb.TensorFlowFunction(
@@ -478,6 +487,9 @@ class _TensorFlowFunctionTracingStrategy:
             ),
             parameter=parameter_binding,
             result=result_binding,
+            layout_map=pb.TensorFlowFunction.LayoutMap(
+                name_to_sharding_spec=layout_map
+            ),
         ),
     )
     return computation_impl.ConcreteComputation(

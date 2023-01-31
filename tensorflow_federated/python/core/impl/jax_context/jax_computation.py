@@ -31,6 +31,7 @@ def _jax_strategy_fn(
         Union[computation_types.StructType, computation_types.TensorType]
     ],
     unpack: Optional[bool],
+    **kwargs,
 ) -> computation_impl.ConcreteComputation:
   """Serializes a Python function containing JAX code as a TFF computation.
 
@@ -41,12 +42,15 @@ def _jax_strategy_fn(
     parameter_type: An instance of `computation_types.Type` that represents the
       TFF type of the computation parameter, or `None` if there's none.
     unpack: See `unpack` in `function_utils.create_argument_unpacking_fn`.
+    **kwargs: Unused currently. A placeholder for passing Jax strategy specific
+      parameters.
 
   Returns:
     An instance of `computation_impl.ConcreteComputation` with the constructed
     computation.
   """
   del fn_name  # Unused.
+  del kwargs  # Unused.
   unpack_arguments_fn = function_utils.create_argument_unpacking_fn(
       fn_to_wrap, parameter_type, unpack=unpack
   )

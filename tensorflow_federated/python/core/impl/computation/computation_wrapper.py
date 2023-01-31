@@ -67,11 +67,11 @@ def _check_parameters(parameters):
 
 
 def _wrap_concrete(
-    fn_name: Optional[str], wrapper_fn, parameter_type, unpack=None
-):
+    fn_name: Optional[str], wrapper_fn, parameter_type, unpack=None, **kwargs
+) -> computation_impl.ConcreteComputation:
   """Wraps with `wrapper_fn` given the provided `parameter_type`."""
   del unpack  # Unused.
-  generator = wrapper_fn(parameter_type, fn_name)
+  generator = wrapper_fn(parameter_type, fn_name, **kwargs)
   arg = next(generator)
   try:
     result = yield arg
@@ -191,6 +191,9 @@ class PythonTracingStrategy:
     given the type of the computation parameter, understands how to prepare
     synthetic arguments for the function to be traced, process its result, and
     construct the serialized form of the computation.
+    `wrapper_fn` function could also be supplied extra keyword arguments passed
+    from the decorator. For example, in case of `tf_computation` decorator,
+    layout_map can be supplied as a kwarg.
 
   * The generator is first asked to yield synthetic arguments for the function
     being traced. These are unpacked as needed to match the Python function's
@@ -221,12 +224,12 @@ class PythonTracingStrategy:
     """
     self._wrapper_fn = wrapper_fn
 
-  def __call__(self, fn_to_wrap, fn_name, parameter_type, unpack):
+  def __call__(self, fn_to_wrap, fn_name, parameter_type, unpack, **kwargs):
     unpack_arguments_fn = function_utils.create_argument_unpacking_fn(
         fn_to_wrap, parameter_type, unpack=unpack
     )
     wrapped_fn_generator = _wrap_concrete(
-        fn_name, self._wrapper_fn, parameter_type
+        fn_name, self._wrapper_fn, parameter_type, **kwargs
     )
     packed_args = next(wrapped_fn_generator)
     try:
@@ -422,14 +425,14 @@ class ComputationWrapper:
     py_typecheck.check_callable(strategy)
     self._strategy = strategy
 
-  def __call__(self, *args, tff_internal_types=None):
+  def __call__(self, *args, tff_internal_types=None, **kwargs):
     """Handles the different modes of usage of the decorator/wrapper.
 
     Args:
-      *args: Positional arguments (the decorator at this point does not accept
-        keyword arguments, although that might change in the future).
+      *args: Positional arguments for the computation decorator.
       tff_internal_types: TFF internal usage only. This argument should be
         considered private.
+      **kwargs: Keyword arguments passed to individual computation strategies.
 
     Returns:
       Either a result of wrapping, or a callable that expects a function,
@@ -464,8 +467,9 @@ class ComputationWrapper:
           ) from e
         if len(args) > 1:
           provided_types.extend(map(computation_types.to_type, args[1:]))
-      return functools.partial(self.__call__, tff_internal_types=provided_types)
-    # If the first argument on the list is a Python function, instance method,
+      return functools.partial(
+          self.__call__, tff_internal_types=provided_types, kwargs=kwargs
+      )
     # or a tf.function, this is the one that's being wrapped. This is the case
     # of either a decorator invocation without arguments as "@xyz" applied to
     # a function definition, of an inline invocation as
@@ -500,7 +504,11 @@ class ComputationWrapper:
           parameter_type: computation_types.Type, unpack: Optional[bool]
       ):
         return self._strategy(
-            fn_to_wrap, fn_name, parameter_type, unpack=unpack
+            fn_to_wrap,
+            fn_name,
+            parameter_type,
+            unpack=unpack,
+            **kwargs,
         )
 
       wrapped_func = function_utils.PolymorphicComputation(_polymorphic_wrapper)
@@ -508,7 +516,11 @@ class ComputationWrapper:
       # Either we have a concrete parameter type, or this is no-arg function.
       parameter_type = _parameter_type(parameters, parameter_types)
       wrapped_func = self._strategy(
-          fn_to_wrap, fn_name, parameter_type, unpack=None
+          fn_to_wrap,
+          fn_name,
+          parameter_type,
+          unpack=None,
+          **kwargs,
       )
 
     # Copy the __doc__ attribute with the documentation in triple-quotes from

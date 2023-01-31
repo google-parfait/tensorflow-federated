@@ -19,8 +19,9 @@ from tensorflow_federated.python.core.impl.context_stack import context_stack_im
 from tensorflow_federated.python.core.impl.federated_context import federated_computation_utils
 
 
-def _federated_computation_wrapper_fn(parameter_type, name):
+def _federated_computation_wrapper_fn(parameter_type, name, **kwargs):
   """Wrapper function to plug orchestration logic into the TFF framework."""
+  del kwargs  # Unused.
   ctx_stack = context_stack_impl.context_stack
   if parameter_type is None:
     parameter_name = None

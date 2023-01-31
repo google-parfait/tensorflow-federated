@@ -29,7 +29,9 @@ from tensorflow_federated.python.tensorflow_libs import variable_utils
 
 
 def tf_computation_serializer(
-    parameter_type: Optional[computation_types.Type], context_stack
+    parameter_type: Optional[computation_types.Type],
+    context_stack,
+    layout_map=None,
 ):
   """Serializes a TF computation with a given parameter type.
 
@@ -38,6 +40,8 @@ def tf_computation_serializer(
       parameter, or `None` if the target doesn't declare any parameters. Either
       an instance of `computation_types.Type`.
     context_stack: The context stack to use.
+    layout_map: Sharding spec for variables or inputs when DTensor based
+      executor is used.
 
   Yields:
     The first yielded value will be a Python object (such as a dataset,
@@ -125,6 +129,7 @@ def tf_computation_serializer(
       result=result_binding,
       session_token_tensor_name=session_token_tensor.name,
       initialize_op=init_op_name,
+      layout_map=pb.TensorFlow.LayoutMap(name_to_sharding_spec=layout_map),
   )
   yield pb.Computation(
       type=type_serialization.serialize_type(type_signature),

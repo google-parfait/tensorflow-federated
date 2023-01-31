@@ -46,8 +46,10 @@ def build_zero_argument(parameter_type):
     raise NotImplementedError(f'Unsupported type: {parameter_type}')
 
 
-def _zero_tracer(parameter_type, name=None):
+def _zero_tracer(parameter_type, name=None, kwargs=None):
   del name
+  if kwargs:
+    raise TypeError('Test kwargs are passed, but unsupported in this tracer.')
   zero_argument = build_zero_argument(parameter_type)
   zero_result = yield zero_argument
   yield ZeroTracedFunction(parameter_type, zero_result)
