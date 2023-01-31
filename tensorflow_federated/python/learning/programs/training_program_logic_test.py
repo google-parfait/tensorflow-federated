@@ -90,7 +90,7 @@ class WaitForTasksToFinishTest(
 
 def _create_test_context() -> federated_context.FederatedContext:
   return native_platform.NativeFederatedContext(
-      execution_contexts.create_local_async_python_execution_context()
+      execution_contexts.create_async_local_cpp_execution_context()
   )
 
 

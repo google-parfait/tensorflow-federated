@@ -112,7 +112,7 @@ class CheckInFederatedContextTest(parameterized.TestCase):
   # pyformat: disable
   @parameterized.named_parameters(
       ('async_cpp',
-       execution_contexts.create_local_async_python_execution_context()),
+       execution_contexts.create_async_local_cpp_execution_context()),
       ('sync_cpp',
        execution_contexts.create_sync_local_cpp_execution_context()),
   )

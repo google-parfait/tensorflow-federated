@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import asyncio
 import collections
 import os.path
 import subprocess
@@ -152,29 +151,6 @@ class DatasetsTest(parameterized.TestCase):
         list(actual_result.as_numpy_iterator()),
         list(expected_result.as_numpy_iterator()),
     )
-
-
-class AsyncLocalExecutionContextTest(absltest.TestCase):
-  """Ensures that the context in the tested file integrates with asyncio."""
-
-  def setUp(self):
-    super().setUp()
-    execution_contexts.set_local_async_python_execution_context()
-
-  def test_single_coro_invocation(self):
-    result = asyncio.run(return_one())
-    self.assertEqual(result, 1)
-
-  def test_asyncio_gather(self):
-    @tensorflow_computation.tf_computation
-    def return_two():
-      return 2
-
-    async def await_comps():
-      return await asyncio.gather(return_one(), return_two())
-
-    result = asyncio.run(await_comps())
-    self.assertEqual(result, [1, 2])
 
 
 def _create_mock_remote_executor_grpc_stub(
