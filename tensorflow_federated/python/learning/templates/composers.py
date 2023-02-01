@@ -33,8 +33,8 @@ from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.learning import client_weight_lib
-from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning.models import model_weights as model_weights_lib
+from tensorflow_federated.python.learning.models import variable
 from tensorflow_federated.python.learning.optimizers import sgdm
 from tensorflow_federated.python.learning.templates import apply_optimizer_finalizer
 from tensorflow_federated.python.learning.templates import client_works
@@ -272,7 +272,7 @@ def _validate_args(initial_model_weights_fn, model_weights_distributor,
   global_model_weights_type.check_assignable_from(finalizer_result.result)
 
 
-def build_basic_fedavg_process(model_fn: Callable[[], model_lib.Model],
+def build_basic_fedavg_process(model_fn: Callable[[], variable.VariableModel],
                                client_learning_rate: float,
                                server_learning_rate: float = 1.0):
   """Builds vanilla Federated Averaging process.

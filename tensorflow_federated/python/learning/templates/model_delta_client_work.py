@@ -41,10 +41,11 @@ from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import client_weight_lib
 from tensorflow_federated.python.learning import dataset_reduce
-from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning.metrics import aggregator
+from tensorflow_federated.python.learning.metrics import types
 from tensorflow_federated.python.learning.models import functional
 from tensorflow_federated.python.learning.models import model_weights as model_weights_lib
+from tensorflow_federated.python.learning.models import variable
 from tensorflow_federated.python.learning.optimizers import optimizer as optimizer_base
 from tensorflow_federated.python.learning.templates import client_works
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
@@ -52,7 +53,7 @@ from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
 # TODO(b/213433744): Make this method private.
 def build_model_delta_update_with_tff_optimizer(
-    model_fn: Callable[[], model_lib.Model],
+    model_fn: Callable[[], variable.VariableModel],
     *,
     weighting: client_weight_lib.ClientWeighting,
     use_experimental_simulation_loop: bool = False,
@@ -249,7 +250,7 @@ def _choose_client_weight(weighting, has_non_finite_delta, num_examples):
 
 
 def build_model_delta_client_work(
-    model_fn: Callable[[], model_lib.Model],
+    model_fn: Callable[[], variable.VariableModel],
     optimizer: Union[
         optimizer_base.Optimizer, Callable[[], tf.keras.optimizers.Optimizer]
     ],
@@ -257,7 +258,7 @@ def build_model_delta_client_work(
     metrics_aggregator: Optional[
         Callable[
             [
-                model_lib.MetricFinalizersType,
+                types.MetricFinalizersType,
                 computation_types.StructWithPythonType,
             ],
             computation_base.Computation,
@@ -522,7 +523,7 @@ def build_functional_model_delta_client_work(
     metrics_aggregator: Optional[
         Callable[
             [
-                model_lib.MetricFinalizersType,
+                types.MetricFinalizersType,
                 computation_types.StructWithPythonType,
             ],
             computation_base.Computation,

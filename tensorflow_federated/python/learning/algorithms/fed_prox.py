@@ -39,10 +39,11 @@ from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.learning import client_weight_lib
-from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning.metrics import aggregator as metric_aggregator
+from tensorflow_federated.python.learning.metrics import types
 from tensorflow_federated.python.learning.models import functional
 from tensorflow_federated.python.learning.models import model_weights
+from tensorflow_federated.python.learning.models import variable
 from tensorflow_federated.python.learning.optimizers import optimizer as optimizer_base
 from tensorflow_federated.python.learning.templates import apply_optimizer_finalizer
 from tensorflow_federated.python.learning.templates import composers
@@ -54,7 +55,9 @@ DEFAULT_SERVER_OPTIMIZER_FN = lambda: tf.keras.optimizers.SGD(learning_rate=1.0)
 
 
 def build_weighted_fed_prox(
-    model_fn: Union[Callable[[], model_lib.Model], functional.FunctionalModel],
+    model_fn: Union[
+        Callable[[], variable.VariableModel], functional.FunctionalModel
+    ],
     proximal_strength: float,
     client_optimizer_fn: Union[
         optimizer_base.Optimizer, Callable[[], tf.keras.optimizers.Optimizer]
@@ -70,7 +73,7 @@ def build_weighted_fed_prox(
     metrics_aggregator: Optional[
         Callable[
             [
-                model_lib.MetricFinalizersType,
+                types.MetricFinalizersType,
                 computation_types.StructWithPythonType,
             ],
             computation_base.Computation,
@@ -205,7 +208,7 @@ def build_weighted_fed_prox(
     @tensorflow_computation.tf_computation()
     def initial_model_weights_fn():
       model = model_fn()
-      if not isinstance(model, model_lib.Model):
+      if not isinstance(model, variable.VariableModel):
         raise TypeError(
             'When `model_fn` is a callable, it returns instances of'
             ' tff.learning.Model. Instead callable returned type: '
@@ -268,7 +271,9 @@ def build_weighted_fed_prox(
 
 
 def build_unweighted_fed_prox(
-    model_fn: Union[Callable[[], model_lib.Model], functional.FunctionalModel],
+    model_fn: Union[
+        Callable[[], variable.VariableModel], functional.FunctionalModel
+    ],
     proximal_strength: float,
     client_optimizer_fn: Union[
         optimizer_base.Optimizer, Callable[[], tf.keras.optimizers.Optimizer]
@@ -280,7 +285,7 @@ def build_unweighted_fed_prox(
     model_aggregator: Optional[factory.UnweightedAggregationFactory] = None,
     metrics_aggregator: Callable[
         [
-            model_lib.MetricFinalizersType,
+            types.MetricFinalizersType,
             computation_types.StructWithPythonType,
         ],
         computation_base.Computation,

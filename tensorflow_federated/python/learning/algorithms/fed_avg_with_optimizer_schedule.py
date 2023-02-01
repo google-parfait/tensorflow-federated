@@ -36,10 +36,11 @@ from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import client_weight_lib
-from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning.algorithms import fed_avg
 from tensorflow_federated.python.learning.metrics import aggregator as metric_aggregator
+from tensorflow_federated.python.learning.metrics import types
 from tensorflow_federated.python.learning.models import model_weights
+from tensorflow_federated.python.learning.models import variable
 from tensorflow_federated.python.learning.optimizers import optimizer as optimizer_base
 from tensorflow_federated.python.learning.templates import apply_optimizer_finalizer
 from tensorflow_federated.python.learning.templates import client_works
@@ -54,12 +55,12 @@ TFFOrKerasOptimizer = Union[
 
 
 def build_scheduled_client_work(
-    model_fn: Callable[[], model_lib.Model],
+    model_fn: Callable[[], variable.VariableModel],
     learning_rate_fn: Callable[[int], float],
     optimizer_fn: Callable[[float], TFFOrKerasOptimizer],
     metrics_aggregator: Callable[
         [
-            model_lib.MetricFinalizersType,
+            types.MetricFinalizersType,
             computation_types.StructWithPythonType,
         ],
         computation_base.Computation,
@@ -163,7 +164,7 @@ def build_scheduled_client_work(
 
 
 def build_weighted_fed_avg_with_optimizer_schedule(
-    model_fn: Callable[[], model_lib.Model],
+    model_fn: Callable[[], variable.VariableModel],
     client_learning_rate_fn: Callable[[int], float],
     client_optimizer_fn: Callable[[float], TFFOrKerasOptimizer],
     server_optimizer_fn: Union[
@@ -174,7 +175,7 @@ def build_weighted_fed_avg_with_optimizer_schedule(
     metrics_aggregator: Optional[
         Callable[
             [
-                model_lib.MetricFinalizersType,
+                types.MetricFinalizersType,
                 computation_types.StructWithPythonType,
             ],
             computation_base.Computation,

@@ -19,7 +19,7 @@ from typing import Optional, Union
 import tensorflow as tf
 
 from tensorflow_federated.python.learning import keras_utils
-from tensorflow_federated.python.learning import model
+from tensorflow_federated.python.learning.models import variable
 from tensorflow_federated.python.simulation.baselines import baseline_task
 from tensorflow_federated.python.simulation.baselines import client_spec
 from tensorflow_federated.python.simulation.baselines import task_data
@@ -54,7 +54,7 @@ def _get_resnet_model(
   except ValueError as e:
     raise ValueError(
         'The model argument must be one of {}, found {}'.format(
-            model, ResnetModel
+            ResnetModel, model_id
         )
     ) from e
 
@@ -143,7 +143,7 @@ def create_image_classification_task_with_datasets(
       eval_preprocess_fn=eval_preprocess_fn,
   )
 
-  def model_fn() -> model.Model:
+  def model_fn() -> variable.VariableModel:
     return keras_utils.from_keras_model(
         keras_model=_get_resnet_model(model_id, crop_shape),
         loss=tf.keras.losses.SparseCategoricalCrossentropy(),

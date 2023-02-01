@@ -35,10 +35,10 @@ from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import federated_evaluation
-from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning.metrics import aggregation_factory
 from tensorflow_federated.python.learning.models import functional
 from tensorflow_federated.python.learning.models import model_weights as model_weights_lib
+from tensorflow_federated.python.learning.models import variable
 from tensorflow_federated.python.learning.templates import client_works
 from tensorflow_federated.python.learning.templates import composers
 from tensorflow_federated.python.learning.templates import distributors
@@ -50,7 +50,7 @@ _AggregationProcess = aggregation_process.AggregationProcess
 
 
 def _build_fed_eval_client_work(
-    model_fn: Callable[[], model_lib.Model],
+    model_fn: Callable[[], variable.VariableModel],
     metrics_aggregation_process: Optional[_AggregationProcess],
     model_weights_type: computation_types.StructType,
     use_experimental_simulation_loop: bool = False,
@@ -219,7 +219,9 @@ def _build_identity_finalizer(
 
 
 def build_fed_eval(
-    model_fn: Union[Callable[[], model_lib.Model], functional.FunctionalModel],
+    model_fn: Union[
+        Callable[[], variable.VariableModel], functional.FunctionalModel
+    ],
     model_distributor: Optional[distributors.DistributionProcess] = None,
     metrics_aggregation_process: Optional[
         aggregation_process.AggregationProcess

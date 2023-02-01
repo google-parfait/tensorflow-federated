@@ -188,7 +188,6 @@ py_test(
     deps = [
         ":counters",
         ":keras_utils",
-        "//tensorflow_federated/python/learning:model",
     ],
 )
 

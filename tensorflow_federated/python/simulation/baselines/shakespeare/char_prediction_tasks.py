@@ -18,7 +18,7 @@ from typing import Optional
 import tensorflow as tf
 
 from tensorflow_federated.python.learning import keras_utils
-from tensorflow_federated.python.learning import model
+from tensorflow_federated.python.learning.models import variable
 from tensorflow_federated.python.simulation.baselines import baseline_task
 from tensorflow_federated.python.simulation.baselines import client_spec
 from tensorflow_federated.python.simulation.baselines import keras_metrics
@@ -85,7 +85,7 @@ def create_character_prediction_task_from_datasets(
 
   pad_token, _, _, _ = char_prediction_preprocessing.get_special_tokens()
 
-  def model_fn() -> model.Model:
+  def model_fn() -> variable.VariableModel:
     return keras_utils.from_keras_model(
         keras_model=char_prediction_models.create_recurrent_model(
             vocab_size=VOCAB_LENGTH, sequence_length=sequence_length

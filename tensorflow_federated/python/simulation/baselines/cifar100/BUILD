@@ -47,7 +47,7 @@ py_library(
     deps = [
         ":image_classification_preprocessing",
         "//tensorflow_federated/python/learning:keras_utils",
-        "//tensorflow_federated/python/learning:model",
+        "//tensorflow_federated/python/learning/models:variable",
         "//tensorflow_federated/python/simulation/baselines:baseline_task",
         "//tensorflow_federated/python/simulation/baselines:client_spec",
         "//tensorflow_federated/python/simulation/baselines:task_data",

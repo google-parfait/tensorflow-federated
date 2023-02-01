@@ -18,7 +18,7 @@ from typing import Optional
 import tensorflow as tf
 
 from tensorflow_federated.python.learning import keras_utils
-from tensorflow_federated.python.learning import model
+from tensorflow_federated.python.learning.models import variable
 from tensorflow_federated.python.simulation.baselines import baseline_task
 from tensorflow_federated.python.simulation.baselines import client_spec
 from tensorflow_federated.python.simulation.baselines import keras_metrics
@@ -131,7 +131,7 @@ def create_word_prediction_task_from_datasets(
       vocab_size + special_tokens.get_number_of_special_tokens()
   )
 
-  def model_fn() -> model.Model:
+  def model_fn() -> variable.VariableModel:
     return keras_utils.from_keras_model(
         keras_model=word_prediction_models.create_recurrent_model(
             vocab_size=extended_vocab_size

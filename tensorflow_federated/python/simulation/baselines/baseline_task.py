@@ -18,7 +18,7 @@ from collections.abc import Callable
 import attr
 import tensorflow as tf
 
-from tensorflow_federated.python.learning import model
+from tensorflow_federated.python.learning.models import variable
 from tensorflow_federated.python.simulation.baselines import task_data
 
 
@@ -38,7 +38,7 @@ class BaselineTask:
   datasets: task_data.BaselineTaskDatasets = attr.ib(
       validator=attr.validators.instance_of(task_data.BaselineTaskDatasets)
   )
-  model_fn: Callable[[], model.Model] = attr.ib(
+  model_fn: Callable[[], variable.VariableModel] = attr.ib(
       validator=attr.validators.is_callable()
   )
 
@@ -47,7 +47,7 @@ class BaselineTask:
     # with variables created for this model.
     with tf.Graph().as_default():
       tff_model = self.model_fn()
-    if not isinstance(tff_model, model.Model):
+    if not isinstance(tff_model, variable.VariableModel):
       raise TypeError(
           'Expected model_fn to output a tff.learning.Model, '
           'found {} instead'.format(type(tff_model))

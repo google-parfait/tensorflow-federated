@@ -34,16 +34,16 @@ from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.templates import iterative_process
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import dataset_reduce
-from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning.metrics import aggregator
 from tensorflow_federated.python.learning.metrics import types
 from tensorflow_federated.python.learning.models import functional
 from tensorflow_federated.python.learning.models import model_weights as model_weights_lib
+from tensorflow_federated.python.learning.models import variable
 
 # Convenience aliases.
 _SequenceType = computation_types.SequenceType
 _MetricsAggregatorFirstArgType = Union[
-    model_lib.MetricFinalizersType, types.FunctionalMetricFinalizersType
+    types.MetricFinalizersType, types.FunctionalMetricFinalizersType
 ]
 _MetricsAggregator = Callable[
     [_MetricsAggregatorFirstArgType, computation_types.StructWithPythonType],
@@ -52,7 +52,7 @@ _MetricsAggregator = Callable[
 
 
 def build_local_evaluation(
-    model_fn: Callable[[], model_lib.Model],
+    model_fn: Callable[[], variable.VariableModel],
     model_weights_type: computation_types.StructType,
     batch_type: computation_types.Type,
     use_experimental_simulation_loop: bool = False,
@@ -183,7 +183,9 @@ def build_functional_local_evaluation(
     '`tff.learning.algorithms.build_fed_eval` insteand.'
 )
 def build_federated_evaluation(
-    model_fn: Union[Callable[[], model_lib.Model], functional.FunctionalModel],
+    model_fn: Union[
+        Callable[[], variable.VariableModel], functional.FunctionalModel
+    ],
     broadcast_process: Optional[measured_process.MeasuredProcess] = None,
     metrics_aggregator: Optional[_MetricsAggregator] = None,
     use_experimental_simulation_loop: bool = False,
@@ -259,7 +261,7 @@ def build_federated_evaluation(
 
 def _build_federated_evaluation(
     *,
-    model_fn: Callable[[], model_lib.Model],
+    model_fn: Callable[[], variable.VariableModel],
     broadcast_process: Optional[measured_process.MeasuredProcess],
     metrics_aggregator: _MetricsAggregator,
     use_experimental_simulation_loop: bool,

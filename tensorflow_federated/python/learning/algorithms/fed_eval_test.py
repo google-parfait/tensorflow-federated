@@ -32,7 +32,6 @@ from tensorflow_federated.python.core.impl.types import type_test_utils
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import keras_utils
-from tensorflow_federated.python.learning import model
 from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning.algorithms import fed_eval
 from tensorflow_federated.python.learning.metrics import aggregation_factory
@@ -40,6 +39,7 @@ from tensorflow_federated.python.learning.metrics import aggregator
 from tensorflow_federated.python.learning.metrics import counters
 from tensorflow_federated.python.learning.models import functional
 from tensorflow_federated.python.learning.models import model_weights as model_weights_lib
+from tensorflow_federated.python.learning.models import variable
 from tensorflow_federated.python.learning.templates import composers
 from tensorflow_federated.python.learning.templates import distributors
 from tensorflow_federated.python.learning.templates import learning_process
@@ -53,7 +53,7 @@ StructType = computation_types.StructType
 TensorType = computation_types.TensorType
 
 
-class TestModel(model.Model):
+class TestModel(variable.VariableModel):
 
   def __init__(self):
     self._variables = collections.namedtuple('Vars', 'max_temp num_over')(
@@ -95,7 +95,7 @@ class TestModel(model.Model):
     self._variables.num_over.assign_add(num_over)
     loss = tf.constant(0.0)
     predictions = self.predict_on_batch(batch, training)
-    return model.BatchOutput(
+    return variable.BatchOutput(
         loss=loss,
         predictions=predictions,
         num_examples=tf.shape(predictions)[0],

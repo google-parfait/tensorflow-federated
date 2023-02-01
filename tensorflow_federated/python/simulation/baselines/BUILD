@@ -34,7 +34,7 @@ py_library(
     srcs_version = "PY3",
     deps = [
         ":task_data",
-        "//tensorflow_federated/python/learning:model",
+        "//tensorflow_federated/python/learning/models:variable",
     ],
 )
 

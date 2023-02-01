@@ -48,10 +48,11 @@ from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import client_weight_lib
 from tensorflow_federated.python.learning import dataset_reduce
-from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning.metrics import aggregator as metric_aggregator
+from tensorflow_federated.python.learning.metrics import types
 from tensorflow_federated.python.learning.models import functional
 from tensorflow_federated.python.learning.models import model_weights as model_weights_lib
+from tensorflow_federated.python.learning.models import variable
 from tensorflow_federated.python.learning.optimizers import optimizer as optimizer_base
 from tensorflow_federated.python.learning.optimizers import sgdm
 from tensorflow_federated.python.learning.templates import apply_optimizer_finalizer
@@ -75,7 +76,7 @@ def _choose_client_weight(weighting, has_non_finite_delta, num_examples):
 
 
 def _build_client_update_fn_for_mime_lite(
-    model_fn: Callable[[], model_lib.Model],
+    model_fn: Callable[[], variable.VariableModel],
     optimizer: optimizer_base.Optimizer,
     client_weighting: client_weight_lib.ClientWeighting,
     use_experimental_simulation_loop: bool = False,
@@ -189,7 +190,7 @@ def _build_client_update_fn_for_mime_lite(
 
 
 def _build_mime_lite_client_work(
-    model_fn: Callable[[], model_lib.Model],
+    model_fn: Callable[[], variable.VariableModel],
     optimizer: optimizer_base.Optimizer,
     client_weighting: client_weight_lib.ClientWeighting,
     full_gradient_aggregator: Optional[
@@ -198,7 +199,7 @@ def _build_mime_lite_client_work(
     metrics_aggregator: Optional[
         Callable[
             [
-                model_lib.MetricFinalizersType,
+                types.MetricFinalizersType,
                 computation_types.StructWithPythonType,
             ],
             computation_base.Computation,
@@ -466,7 +467,7 @@ def _build_mime_lite_functional_client_work(
     metrics_aggregator: Optional[
         Callable[
             [
-                model_lib.MetricFinalizersType,
+                types.MetricFinalizersType,
                 computation_types.StructWithPythonType,
             ],
             computation_base.Computation,
@@ -595,7 +596,9 @@ def _build_mime_lite_functional_client_work(
 
 
 def _build_scheduled_mime_lite_client_work(
-    model_fn: Union[Callable[[], model_lib.Model], functional.FunctionalModel],
+    model_fn: Union[
+        Callable[[], variable.VariableModel], functional.FunctionalModel
+    ],
     learning_rate_fn: Callable[[int], float],
     optimizer: optimizer_base.Optimizer,
     client_weighting: client_weight_lib.ClientWeighting,
@@ -605,7 +608,7 @@ def _build_scheduled_mime_lite_client_work(
     metrics_aggregator: Optional[
         Callable[
             [
-                model_lib.MetricFinalizersType,
+                types.MetricFinalizersType,
                 computation_types.StructWithPythonType,
             ],
             computation_base.Computation,
@@ -725,7 +728,9 @@ def _build_scheduled_mime_lite_client_work(
 
 
 def build_weighted_mime_lite(
-    model_fn: Union[Callable[[], model_lib.Model], functional.FunctionalModel],
+    model_fn: Union[
+        Callable[[], variable.VariableModel], functional.FunctionalModel
+    ],
     base_optimizer: optimizer_base.Optimizer,
     server_optimizer: optimizer_base.Optimizer = sgdm.build_sgdm(1.0),
     client_weighting: Optional[
@@ -739,7 +744,7 @@ def build_weighted_mime_lite(
     metrics_aggregator: Optional[
         Callable[
             [
-                model_lib.MetricFinalizersType,
+                types.MetricFinalizersType,
                 computation_types.StructWithPythonType,
             ],
             computation_base.Computation,
@@ -862,7 +867,7 @@ def build_weighted_mime_lite(
     @tensorflow_computation.tf_computation
     def initial_model_weights_fn():
       model = model_fn()
-      if not isinstance(model, model_lib.Model):
+      if not isinstance(model, variable.VariableModel):
         raise TypeError(
             'When `model_fn` is a callable, it returns instances of'
             ' tff.learning.Model. Instead callable returned type: '
@@ -923,7 +928,7 @@ def build_weighted_mime_lite(
 
 
 def build_unweighted_mime_lite(
-    model_fn: Callable[[], model_lib.Model],
+    model_fn: Callable[[], variable.VariableModel],
     base_optimizer: optimizer_base.Optimizer,
     server_optimizer: optimizer_base.Optimizer = sgdm.build_sgdm(1.0),
     model_distributor: Optional[distributors.DistributionProcess] = None,
@@ -933,7 +938,7 @@ def build_unweighted_mime_lite(
     ] = None,
     metrics_aggregator: Callable[
         [
-            model_lib.MetricFinalizersType,
+            types.MetricFinalizersType,
             computation_types.StructWithPythonType,
         ],
         computation_base.Computation,
@@ -1053,7 +1058,9 @@ def build_unweighted_mime_lite(
 
 
 def build_mime_lite_with_optimizer_schedule(
-    model_fn: Union[Callable[[], model_lib.Model], functional.FunctionalModel],
+    model_fn: Union[
+        Callable[[], variable.VariableModel], functional.FunctionalModel
+    ],
     learning_rate_fn: Callable[[int], float],
     base_optimizer: optimizer_base.Optimizer,
     server_optimizer: optimizer_base.Optimizer = sgdm.build_sgdm(1.0),
@@ -1068,7 +1075,7 @@ def build_mime_lite_with_optimizer_schedule(
     metrics_aggregator: Optional[
         Callable[
             [
-                model_lib.MetricFinalizersType,
+                types.MetricFinalizersType,
                 computation_types.StructWithPythonType,
             ],
             computation_base.Computation,
@@ -1196,7 +1203,7 @@ def build_mime_lite_with_optimizer_schedule(
     @tensorflow_computation.tf_computation
     def initial_model_weights_fn():
       model = model_fn()
-      if not isinstance(model, model_lib.Model):
+      if not isinstance(model, variable.VariableModel):
         raise TypeError(
             'When `model_fn` is a callable, it returns instances of'
             ' tff.learning.Model. Instead callable returned type: '

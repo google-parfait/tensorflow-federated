@@ -18,7 +18,7 @@ from typing import Optional
 import tensorflow as tf
 
 from tensorflow_federated.python.learning import keras_utils
-from tensorflow_federated.python.learning import model
+from tensorflow_federated.python.learning.models import variable
 from tensorflow_federated.python.simulation.baselines import baseline_task
 from tensorflow_federated.python.simulation.baselines import client_spec
 from tensorflow_federated.python.simulation.baselines import task_data
@@ -70,7 +70,7 @@ def create_autoencoder_task_from_datasets(
       eval_preprocess_fn=eval_preprocess_fn,
   )
 
-  def model_fn() -> model.Model:
+  def model_fn() -> variable.VariableModel:
     return keras_utils.from_keras_model(
         keras_model=emnist_models.create_autoencoder_model(),
         loss=tf.keras.losses.MeanSquaredError(),

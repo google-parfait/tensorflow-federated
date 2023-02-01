@@ -32,13 +32,13 @@ from tensorflow_federated.python.core.test import static_assert
 from tensorflow_federated.python.learning import dataset_reduce
 from tensorflow_federated.python.learning import federated_evaluation
 from tensorflow_federated.python.learning import keras_utils
-from tensorflow_federated.python.learning import model
 from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning.metrics import aggregator
 from tensorflow_federated.python.learning.metrics import counters
 from tensorflow_federated.python.learning.models import functional
 from tensorflow_federated.python.learning.models import model_weights
 from tensorflow_federated.python.learning.models import test_models
+from tensorflow_federated.python.learning.models import variable
 from tensorflow_federated.python.tensorflow_libs import tensorflow_test_utils
 from tensorflow_model_optimization.python.core.internal import tensor_encoding as te
 
@@ -50,7 +50,7 @@ StructType = computation_types.StructType
 TensorType = computation_types.TensorType
 
 
-class TestModel(model.Model):
+class TestModel(variable.VariableModel):
 
   def __init__(self):
     self._variables = collections.namedtuple('Vars', 'max_temp num_over')(
@@ -92,7 +92,7 @@ class TestModel(model.Model):
     self._variables.num_over.assign_add(num_over)
     loss = tf.constant(0.0)
     predictions = self.predict_on_batch(batch, training)
-    return model.BatchOutput(
+    return variable.BatchOutput(
         loss=loss,
         predictions=predictions,
         num_examples=tf.shape(predictions)[0],
@@ -112,7 +112,7 @@ class TestModel(model.Model):
       var.assign(tf.zeros_like(var))
 
 
-class TestModelQuant(model.Model):
+class TestModelQuant(variable.VariableModel):
   """This model stores how much client data matches the input (num_same)."""
 
   def __init__(self):
@@ -158,7 +158,7 @@ class TestModelQuant(model.Model):
     # We're not actually training anything, so just use 0 loss and predictions.
     loss = tf.constant(0.0)
     predictions = self.predict_on_batch(batch, training)
-    return model.BatchOutput(
+    return variable.BatchOutput(
         loss=loss,
         predictions=predictions,
         num_examples=tf.shape(predictions)[0],

@@ -44,10 +44,11 @@ from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import dataset_reduce
-from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning.metrics import aggregator as metric_aggregator
+from tensorflow_federated.python.learning.metrics import types
 from tensorflow_federated.python.learning.models import functional
 from tensorflow_federated.python.learning.models import model_weights as model_weights_lib
+from tensorflow_federated.python.learning.models import variable
 from tensorflow_federated.python.learning.optimizers import optimizer as optimizer_base
 from tensorflow_federated.python.learning.templates import apply_optimizer_finalizer
 from tensorflow_federated.python.learning.templates import client_works
@@ -58,7 +59,7 @@ from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
 
 def _build_client_update(
-    model: model_lib.Model, use_experimental_simulation_loop: bool
+    model: variable.VariableModel, use_experimental_simulation_loop: bool
 ):
   """Creates client update logic for FedSGD.
 
@@ -137,10 +138,10 @@ def _build_client_update(
 
 
 def _build_fed_sgd_client_work(
-    model_fn: Callable[[], model_lib.Model],
+    model_fn: Callable[[], variable.VariableModel],
     metrics_aggregator: Callable[
         [
-            model_lib.MetricFinalizersType,
+            types.MetricFinalizersType,
             computation_types.StructWithPythonType,
         ],
         computation_base.Computation,
@@ -302,7 +303,7 @@ def _build_functional_fed_sgd_client_work(
     model: functional.FunctionalModel,
     metrics_aggregator: Callable[
         [
-            model_lib.MetricFinalizersType,
+            types.MetricFinalizersType,
             computation_types.StructWithPythonType,
         ],
         computation_base.Computation,
@@ -381,7 +382,9 @@ DEFAULT_SERVER_OPTIMIZER_FN = lambda: tf.keras.optimizers.SGD(learning_rate=0.1)
 
 
 def build_fed_sgd(
-    model_fn: Union[Callable[[], model_lib.Model], functional.FunctionalModel],
+    model_fn: Union[
+        Callable[[], variable.VariableModel], functional.FunctionalModel
+    ],
     server_optimizer_fn: Union[
         optimizer_base.Optimizer, Callable[[], tf.keras.optimizers.Optimizer]
     ] = DEFAULT_SERVER_OPTIMIZER_FN,
@@ -390,7 +393,7 @@ def build_fed_sgd(
     metrics_aggregator: Optional[
         Callable[
             [
-                model_lib.MetricFinalizersType,
+                types.MetricFinalizersType,
                 computation_types.StructWithPythonType,
             ],
             computation_base.Computation,
@@ -483,7 +486,7 @@ def build_fed_sgd(
     @tensorflow_computation.tf_computation()
     def initial_model_weights_fn():
       model = model_fn()
-      if not isinstance(model, model_lib.Model):
+      if not isinstance(model, variable.VariableModel):
         raise TypeError(
             'When `model_fn` is a callable, it returns instances of'
             ' tff.learning.Model. Instead callable returned type: '
