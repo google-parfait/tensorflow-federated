@@ -71,7 +71,6 @@ py_library(
     ],
     deps = [
         ":compiler",
-        "//tensorflow_federated/python/core/impl/context_stack:context_base",
         "//tensorflow_federated/python/core/impl/context_stack:set_default_context",
         "//tensorflow_federated/python/core/impl/execution_contexts:async_execution_context",
         "//tensorflow_federated/python/core/impl/execution_contexts:sync_execution_context",

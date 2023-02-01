@@ -466,7 +466,7 @@ def create_async_local_cpp_execution_context(
     default_num_clients: int = 0,
     max_concurrent_computation_calls: int = -1,
     stream_structs: bool = False,
-) -> context_base.AsyncContext:
+) -> async_execution_context.AsyncExecutionContext:
   """Returns an execution context backed by C++ runtime.
 
   This execution context starts a C++ worker assumed to be at path
@@ -512,7 +512,7 @@ def create_sync_local_cpp_execution_context(
     default_num_clients: int = 0,
     max_concurrent_computation_calls: int = -1,
     stream_structs: bool = False,
-) -> context_base.SyncContext:
+) -> sync_execution_context.SyncExecutionContext:
   """Returns an execution context backed by C++ runtime.
 
   This execution context starts a C++ worker assumed to be at path

@@ -16,7 +16,6 @@
 from collections.abc import Sequence
 
 from tensorflow_federated.python.core.backends.native import compiler
-from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.context_stack import set_default_context
 from tensorflow_federated.python.core.impl.execution_contexts import async_execution_context
 from tensorflow_federated.python.core.impl.execution_contexts import sync_execution_context
@@ -28,7 +27,7 @@ def create_sync_local_cpp_execution_context(
     default_num_clients: int = 0,
     max_concurrent_computation_calls: int = -1,
     stream_structs: bool = False,
-) -> context_base.SyncContext:
+) -> sync_execution_context.SyncExecutionContext:
   """Creates a local execution context backed by TFF-C++ runtime.
 
   Args:
@@ -67,9 +66,11 @@ def set_sync_local_cpp_execution_context(
   set_default_context.set_default_context(context)
 
 
-def create_local_async_cpp_execution_context(
-    default_num_clients: int = 0, max_concurrent_computation_calls: int = -1
-):
+def create_async_local_cpp_execution_context(
+    default_num_clients: int = 0,
+    max_concurrent_computation_calls: int = -1,
+    stream_structs: bool = False,
+) -> async_execution_context.AsyncExecutionContext:
   """Creates a local async execution context backed by TFF-C++ runtime.
 
   Args:
@@ -79,10 +80,12 @@ def create_local_async_cpp_execution_context(
     max_concurrent_computation_calls: The maximum number of concurrent calls to
       a single computation in the C++ runtime. If nonpositive, there is no
       limit.
+    stream_structs: The flag to enable decomposing and streaming struct values.
 
   Returns:
     An instance of `context_base.AsyncContext` representing the TFF-C++ runtime.
   """
+  del stream_structs  # Unused.
   factory = cpp_executor_factory.local_cpp_executor_factory(
       default_num_clients=default_num_clients,
       max_concurrent_computation_calls=max_concurrent_computation_calls,
@@ -93,9 +96,11 @@ def create_local_async_cpp_execution_context(
   return context
 
 
-def set_local_async_cpp_execution_context(
-    default_num_clients: int = 0, max_concurrent_computation_calls: int = -1
-):
+def set_async_local_cpp_execution_context(
+    default_num_clients: int = 0,
+    max_concurrent_computation_calls: int = -1,
+    stream_structs: bool = False,
+) -> None:
   """Sets a local execution context backed by TFF-C++ runtime.
 
   Args:
@@ -105,10 +110,12 @@ def set_local_async_cpp_execution_context(
     max_concurrent_computation_calls: The maximum number of concurrent calls to
       a single computation in the CPP runtime. If nonpositive, there is no
       limit.
+    stream_structs: The flag to enable decomposing and streaming struct values.
   """
-  context = create_local_async_cpp_execution_context(
+  context = create_async_local_cpp_execution_context(
       default_num_clients=default_num_clients,
       max_concurrent_computation_calls=max_concurrent_computation_calls,
+      stream_structs=stream_structs,
   )
   set_default_context.set_default_context(context)
 
