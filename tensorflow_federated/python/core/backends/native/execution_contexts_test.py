@@ -46,7 +46,7 @@ class DatasetsTest(parameterized.TestCase):
 
   def setUp(self):
     super().setUp()
-    execution_contexts.set_local_python_execution_context()
+    execution_contexts.set_sync_local_cpp_execution_context()
 
   @tensorflow_test_utils.skip_test_for_gpu
   def test_takes_dataset(self):
