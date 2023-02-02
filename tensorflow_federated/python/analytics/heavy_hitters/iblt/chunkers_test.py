@@ -110,7 +110,7 @@ class BinaryChunkerValidationTest(tf.test.TestCase, parameterized.TestCase):
   def test_encode_tensorflow_invalid_input_raises(self, input_strings: Any):
     chunker = chunkers.BinaryChunker(string_max_bytes=1234, dtype=tf.int32)
 
-    with self.assertRaisesRegex(ValueError, 'input_signature'):
+    with self.assertRaises(TypeError):
       chunker.encode_tensorflow(input_strings)
 
   @parameterized.named_parameters(

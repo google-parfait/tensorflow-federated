@@ -376,6 +376,7 @@ class TensorFlowComputationTest(parameterized.TestCase):
     with golden.check_raises_traceback(
         'tensorflow_computation_traceback.expected', DummyError
     ):
+
       @tensorflow_computation.tf_computation
       def _():
         raise DummyError()
@@ -933,8 +934,7 @@ class TensorFlowFunctionComputationTest(parameterized.TestCase):
   def test_raises_for_non_variant_for_sequence_type(self):
     # TensorFlow will complain that the tf.function is already concretized
     # to a type that is incompatible with the dataset.
-    with self.assertRaisesRegex(TypeError, 'Failed to convert elements'):
-
+    with self.assertRaises(TypeError):
       @tensorflow_computation.experimental_tf_fn_computation(
           computation_types.SequenceType(tf.int32)
       )
@@ -1001,6 +1001,7 @@ class TensorFlowFunctionComputationTest(parameterized.TestCase):
     with golden.check_raises_traceback(
         'tensorflow_function_computation_traceback.expected', DummyError
     ):
+
       @tensorflow_computation.experimental_tf_fn_computation
       def _():
         raise DummyError()
