@@ -1134,9 +1134,14 @@ def create_federated_secure_modular_sum(
   # In order to run `tf.math.floormod`, our modulus and value must be the same
   # type.
   casted_mod = _cast(mod_ref, value.type_signature.member)
+  # Since in the preapply_modulus case the modulus is expected to be available
+  # at the client as well as at the server for aggregation, we need to broadcast
+  # the modulus to be able to avoid repeating the modulus value (which could
+  # cause accuracy issues if the modulus is non-deterministic).
+  casted_mod_at_server = create_federated_value(casted_mod, placements.SERVER)
   value_with_mod = create_federated_zip(
       building_blocks.Struct(
-          [value, create_federated_value(casted_mod, placements.CLIENTS)]
+          [value, create_federated_broadcast(casted_mod_at_server)]
       )
   )
 

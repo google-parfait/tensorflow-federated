@@ -5,7 +5,7 @@
     some_compiled_comp,
     federated_zip_at_clients(<
       v,
-      federated_value_at_clients(some_compiled_comp(mod))
+      federated_broadcast(federated_value_at_server(some_compiled_comp(mod)))
     >)
   >),
   mod
