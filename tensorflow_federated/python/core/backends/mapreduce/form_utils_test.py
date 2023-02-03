@@ -18,6 +18,7 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
+from tensorflow_federated.python.core.backends.mapreduce import distribute_aggregate_test_utils
 from tensorflow_federated.python.core.backends.mapreduce import form_utils
 from tensorflow_federated.python.core.backends.mapreduce import forms
 from tensorflow_federated.python.core.backends.mapreduce import mapreduce_test_utils
@@ -540,7 +541,7 @@ def get_example_cf_compatible_iterative_processes():
   # pyformat: enable
 
 
-class MapReduceFormTestCase(tf.test.TestCase):
+class FederatedFormTestCase(tf.test.TestCase):
   """A base class that overrides evaluate to handle various executors."""
 
   def evaluate(self, value):
@@ -554,8 +555,177 @@ class MapReduceFormTestCase(tf.test.TestCase):
       )
 
 
+class GetComputationForDistributeAggregateFormTest(
+    FederatedFormTestCase, parameterized.TestCase
+):
+
+  @parameterized.named_parameters(
+      (
+          'temperature',
+          distribute_aggregate_test_utils.get_temperature_sensor_example(),
+      ),
+      ('mnist', distribute_aggregate_test_utils.get_mnist_training_example()),
+  )
+  def test_type_signature_matches_generated_computation(self, example):
+    comp = form_utils.get_computation_for_distribute_aggregate_form(example.daf)
+    self.assertTrue(
+        comp.type_signature.is_equivalent_to(example.daf.type_signature)
+    )
+
+  def test_with_temperature_sensor_example(self):
+    example = distribute_aggregate_test_utils.get_temperature_sensor_example()
+
+    state = example.initialize()
+
+    comp = form_utils.get_computation_for_distribute_aggregate_form(example.daf)
+    state, metrics = comp(state, [[28.0], [30.0, 33.0, 29.0]])
+    self.assertAllEqual(state, collections.OrderedDict(num_rounds=1))
+    self.assertAllClose(
+        metrics, collections.OrderedDict(ratio_over_threshold=0.5)
+    )
+
+    state, metrics = comp(state, [[33.0], [34.0], [35.0], [36.0]])
+    self.assertAllClose(
+        metrics, collections.OrderedDict(ratio_over_threshold=0.75)
+    )
+
+
+class GetDistributeAggregateFormTest(
+    FederatedFormTestCase, parameterized.TestCase
+):
+
+  def test_next_computation_returning_tensor_fails_well(self):
+    initialize = (
+        distribute_aggregate_test_utils.get_temperature_sensor_example().initialize
+    )
+    init_result = initialize.type_signature.result
+    lam = building_blocks.Lambda(
+        'x', init_result, building_blocks.Reference('x', init_result)
+    )
+    bad_comp = computation_impl.ConcreteComputation.from_building_block(lam)
+    with self.assertRaises(TypeError):
+      form_utils.get_distribute_aggregate_form_for_computation(bad_comp)
+
+  def test_broadcast_dependent_on_aggregate_fails_well(self):
+    example = distribute_aggregate_test_utils.get_mnist_training_example()
+    comp = form_utils.get_computation_for_distribute_aggregate_form(example.daf)
+    comp_bb = comp.to_building_block()
+    top_level_param = building_blocks.Reference(
+        comp_bb.parameter_name, comp_bb.parameter_type
+    )
+    first_result = building_blocks.Call(comp_bb, top_level_param)
+    middle_param = building_blocks.Struct([
+        building_blocks.Selection(first_result, index=0),
+        building_blocks.Selection(top_level_param, index=1),
+    ])
+    second_result = building_blocks.Call(comp_bb, middle_param)
+    not_reducible = building_blocks.Lambda(
+        comp_bb.parameter_name, comp_bb.parameter_type, second_result
+    )
+    bad_comp = computation_impl.ConcreteComputation.from_building_block(
+        not_reducible
+    )
+    with self.assertRaisesRegex(ValueError, 'broadcast dependent on aggregate'):
+      form_utils.get_distribute_aggregate_form_for_computation(bad_comp)
+
+  def test_gets_distribute_aggregate_form_for_nested_broadcast(self):
+    comp = get_computation_with_nested_broadcasts()
+    daf = form_utils.get_distribute_aggregate_form_for_computation(comp)
+    self.assertIsInstance(daf, forms.DistributeAggregateForm)
+
+  def test_constructs_distribute_aggregate_form_from_mnist_training_example(
+      self,
+  ):
+    comp = form_utils.get_computation_for_distribute_aggregate_form(
+        distribute_aggregate_test_utils.get_mnist_training_example().daf
+    )
+    daf = form_utils.get_distribute_aggregate_form_for_computation(comp)
+    self.assertIsInstance(daf, forms.DistributeAggregateForm)
+
+  def test_temperature_example_round_trip(self):
+    example = distribute_aggregate_test_utils.get_temperature_sensor_example()
+    comp = form_utils.get_computation_for_distribute_aggregate_form(example.daf)
+    new_initialize = form_utils.get_state_initialization_computation(
+        example.initialize
+    )
+    new_daf = form_utils.get_distribute_aggregate_form_for_computation(comp)
+    new_comp = form_utils.get_computation_for_distribute_aggregate_form(new_daf)
+
+    state = new_initialize()
+    self.assertEqual(state['num_rounds'], 0)
+
+    state, metrics = new_comp(state, [[28.0], [30.0, 33.0, 29.0]])
+    self.assertEqual(state['num_rounds'], 1)
+    self.assertAllClose(
+        metrics, collections.OrderedDict(ratio_over_threshold=0.5)
+    )
+
+    state, metrics = new_comp(state, [[33.0], [34.0], [35.0], [36.0]])
+    self.assertAllClose(
+        metrics, collections.OrderedDict(ratio_over_threshold=0.75)
+    )
+    # Check that no TF work has been unintentionally duplicated.
+    self.assertEqual(
+        tree_analysis.count_tensorflow_variables_under(
+            comp.to_building_block()
+        ),
+        tree_analysis.count_tensorflow_variables_under(
+            new_comp.to_building_block()
+        ),
+    )
+
+  def test_mnist_training_round_trip(self):
+    example = distribute_aggregate_test_utils.get_mnist_training_example()
+    comp = form_utils.get_computation_for_distribute_aggregate_form(example.daf)
+    new_initialize = form_utils.get_state_initialization_computation(
+        example.initialize
+    )
+    new_daf = form_utils.get_distribute_aggregate_form_for_computation(comp)
+    new_comp = form_utils.get_computation_for_distribute_aggregate_form(new_daf)
+
+    state1 = example.initialize()
+    state2 = new_initialize()
+    self.assertAllClose(state1, state2)
+    whimsy_x = np.array([[0.5] * 784], dtype=np.float32)
+    whimsy_y = np.array([1], dtype=np.int32)
+    client_data = [collections.OrderedDict(x=whimsy_x, y=whimsy_y)]
+    round_1 = new_comp(state1, [client_data])
+    state = round_1[0]
+    metrics = round_1[1]
+    alt_round_1 = new_comp(state2, [client_data])
+    alt_state = alt_round_1[0]
+    self.assertAllClose(state, alt_state)
+    alt_metrics = alt_round_1[1]
+    self.assertAllClose(metrics, alt_metrics)
+    # Check that no TF work has been unintentionally duplicated.
+    self.assertEqual(
+        tree_analysis.count_tensorflow_variables_under(
+            comp.to_building_block()
+        ),
+        tree_analysis.count_tensorflow_variables_under(
+            new_comp.to_building_block()
+        ),
+    )
+
+  @parameterized.named_parameters(
+      *get_example_cf_compatible_iterative_processes()
+  )
+  def test_returns_distribute_aggregate_form(self, ip):
+    daf = form_utils.get_distribute_aggregate_form_for_computation(ip.next)
+    self.assertIsInstance(daf, forms.DistributeAggregateForm)
+
+  def test_returns_distribute_aggregate_form_with_indirection_to_intrinsic(
+      self,
+  ):
+    ip = (
+        mapreduce_test_utils.get_iterative_process_for_example_with_lambda_returning_aggregation()
+    )
+    daf = form_utils.get_distribute_aggregate_form_for_computation(ip.next)
+    self.assertIsInstance(daf, forms.DistributeAggregateForm)
+
+
 class GetComputationForMapReduceFormTest(
-    MapReduceFormTestCase, parameterized.TestCase
+    FederatedFormTestCase, parameterized.TestCase
 ):
 
   @parameterized.named_parameters(
@@ -587,7 +757,7 @@ class GetComputationForMapReduceFormTest(
 
 
 class CheckMapReduceFormCompatibleWithComputationTest(
-    MapReduceFormTestCase, parameterized.TestCase
+    FederatedFormTestCase, parameterized.TestCase
 ):
 
   @parameterized.named_parameters(
@@ -616,7 +786,7 @@ class CheckMapReduceFormCompatibleWithComputationTest(
       form_utils.check_computation_compatible_with_map_reduce_form(comp)
 
 
-class GetMapReduceFormTest(MapReduceFormTestCase, parameterized.TestCase):
+class GetMapReduceFormTest(FederatedFormTestCase, parameterized.TestCase):
 
   def test_next_computation_returning_tensor_fails_well(self):
     initialize = (
@@ -670,10 +840,8 @@ class GetMapReduceFormTest(MapReduceFormTestCase, parameterized.TestCase):
     # to lose the python container annotations on the StructType.
     example = mapreduce_test_utils.get_temperature_sensor_example()
     comp = form_utils.get_computation_for_map_reduce_form(example.mrf)
-    new_initialize = (
-        form_utils.get_state_initialization_computation_for_map_reduce_form(
-            example.initialize
-        )
+    new_initialize = form_utils.get_state_initialization_computation(
+        example.initialize
     )
     new_mrf = form_utils.get_map_reduce_form_for_computation(comp)
     new_comp = form_utils.get_computation_for_map_reduce_form(new_mrf)
@@ -708,10 +876,8 @@ class GetMapReduceFormTest(MapReduceFormTestCase, parameterized.TestCase):
     # execution is C++-backed, this can go away.
     grappler_config = tf.compat.v1.ConfigProto()
     grappler_config.graph_options.rewrite_options.disable_meta_optimizer = True
-    new_initialize = (
-        form_utils.get_state_initialization_computation_for_map_reduce_form(
-            example.initialize
-        )
+    new_initialize = form_utils.get_state_initialization_computation(
+        example.initialize
     )
     new_mrf = form_utils.get_map_reduce_form_for_computation(
         comp, grappler_config

@@ -121,6 +121,8 @@ py_library(
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/compiler:building_block_factory",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
+        "//tensorflow_federated/python/core/impl/compiler:intrinsic_defs",
+        "//tensorflow_federated/python/core/impl/compiler:transformation_utils",
         "//tensorflow_federated/python/core/impl/compiler:transformations",
         "//tensorflow_federated/python/core/impl/compiler:tree_analysis",
         "//tensorflow_federated/python/core/impl/compiler:tree_transformations",
@@ -140,6 +142,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        ":distribute_aggregate_test_utils",
         ":form_utils",
         ":forms",
         ":mapreduce_test_utils",
@@ -165,8 +168,17 @@ py_library(
     srcs = ["distribute_aggregate_test_utils.py"],
     srcs_version = "PY3",
     deps = [
+        ":forms",
+        "//tensorflow_federated/python/core/impl/compiler:building_block_factory",
+        "//tensorflow_federated/python/core/impl/compiler:tree_transformations",
         "//tensorflow_federated/python/core/impl/computation:computation_impl",
+        "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
+        "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
+        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
+        "//tensorflow_federated/python/core/impl/federated_context:value_impl",
+        "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
         "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:placements",
     ],
 )
 

@@ -94,9 +94,7 @@ class CheckExtractionResultTest(absltest.TestCase):
     initialize = (
         mapreduce_test_utils.get_temperature_sensor_example().initialize
     )
-    init = form_utils.get_state_initialization_computation_for_map_reduce_form(
-        initialize
-    )
+    init = form_utils.get_state_initialization_computation(initialize)
     compiled_computation = self.compiled_computation_for_initialize(init)
     integer_ref = building_blocks.Reference('x', tf.int32)
     with self.assertRaisesRegex(
@@ -109,9 +107,7 @@ class CheckExtractionResultTest(absltest.TestCase):
     initialize = (
         mapreduce_test_utils.get_temperature_sensor_example().initialize
     )
-    init = form_utils.get_state_initialization_computation_for_map_reduce_form(
-        initialize
-    )
+    init = form_utils.get_state_initialization_computation(initialize)
     compiled_computation = self.compiled_computation_for_initialize(init)
     function = building_blocks.Reference(
         'f', computation_types.FunctionType(tf.int32, tf.int32)
@@ -136,9 +132,7 @@ class CheckExtractionResultTest(absltest.TestCase):
     initialize = (
         mapreduce_test_utils.get_temperature_sensor_example().initialize
     )
-    init = form_utils.get_state_initialization_computation_for_map_reduce_form(
-        initialize
-    )
+    init = form_utils.get_state_initialization_computation(initialize)
     compiled_computation = self.compiled_computation_for_initialize(init)
     function = building_blocks.Reference(
         'f', compiled_computation.type_signature
@@ -158,9 +152,7 @@ class ConsolidateAndExtractTest(absltest.TestCase):
     initialize = (
         mapreduce_test_utils.get_temperature_sensor_example().initialize
     )
-    init = form_utils.get_state_initialization_computation_for_map_reduce_form(
-        initialize
-    )
+    init = form_utils.get_state_initialization_computation(initialize)
 
     comp = init.to_building_block()
 

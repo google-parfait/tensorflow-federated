@@ -1014,6 +1014,30 @@ class DistributeAggregateFormTest(absltest.TestCase):
           )
       )
 
+  def test_summary(self):
+    daf = distribute_aggregate_test_utils.get_temperature_sensor_example().daf
+
+    class CapturePrint:
+
+      def __init__(self):
+        self.summary = ''
+
+      def __call__(self, msg):
+        self.summary += msg + '\n'
+
+    capture = CapturePrint()
+    daf.summary(print_fn=capture)
+    # pyformat: disable
+    self.assertEqual(
+        capture.summary,
+        'server_prepare              : (<num_rounds=int32>@SERVER -> <<<max_temperature=float32>@SERVER>,<<num_rounds=int32>@SERVER>>)\n'
+        'server_to_client_broadcast  : (<<max_temperature=float32>@SERVER> -> <<max_temperature=float32>@CLIENTS>)\n'
+        'client_work                 : (<data={float32*}@CLIENTS,context_at_client=<{<max_temperature=float32>}@CLIENTS>> -> <is_over={float32}@CLIENTS,weight={float32}@CLIENTS>)\n'
+        'client_to_server_aggregation: (<intermediate_server_state=<<num_rounds=int32>@SERVER>,client_updates=<is_over={float32}@CLIENTS,weight={float32}@CLIENTS>> -> <float32@SERVER>)\n'
+        'server_result               : (<intermediate_server_state=<<num_rounds=int32>@SERVER>,aggregation_result=<float32@SERVER>> -> <<num_rounds=int32>@SERVER,<ratio_over_threshold=float32@SERVER>>)\n'
+    )
+    # pyformat: enable
+
 
 if __name__ == '__main__':
   absltest.main()

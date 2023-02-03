@@ -293,7 +293,7 @@ from tensorflow_federated.python.core.backends.mapreduce.form_utils import get_b
 from tensorflow_federated.python.core.backends.mapreduce.form_utils import get_computation_for_broadcast_form
 from tensorflow_federated.python.core.backends.mapreduce.form_utils import get_computation_for_map_reduce_form
 from tensorflow_federated.python.core.backends.mapreduce.form_utils import get_map_reduce_form_for_computation
-from tensorflow_federated.python.core.backends.mapreduce.form_utils import get_state_initialization_computation_for_map_reduce_form
+from tensorflow_federated.python.core.backends.mapreduce.form_utils import get_state_initialization_computation
 from tensorflow_federated.python.core.backends.mapreduce.forms import BroadcastForm
 from tensorflow_federated.python.core.backends.mapreduce.forms import DistributeAggregateForm
 from tensorflow_federated.python.core.backends.mapreduce.forms import MapReduceForm

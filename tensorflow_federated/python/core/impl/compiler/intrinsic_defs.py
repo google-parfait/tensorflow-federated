@@ -659,3 +659,23 @@ SEQUENCE_SUM = IntrinsicDef(
 
 def uri_to_intrinsic_def(uri) -> Optional[IntrinsicDef]:
   return _intrinsic_registry.get(uri)
+
+
+# TODO(b/254770431): Add documentation explaining the implications of setting
+# broadcast_kind for an intrinsic.
+def get_broadcast_intrinsics() -> list[IntrinsicDef]:
+  return [
+      intrinsic
+      for intrinsic in _intrinsic_registry.values()
+      if intrinsic.broadcast_kind
+  ]
+
+
+# TODO(b/254770431): Add documentation explaining the implications of setting
+# aggregation_kind for an intrinsic.
+def get_aggregation_intrinsics() -> list[IntrinsicDef]:
+  return [
+      intrinsic
+      for intrinsic in _intrinsic_registry.values()
+      if intrinsic.aggregation_kind
+  ]

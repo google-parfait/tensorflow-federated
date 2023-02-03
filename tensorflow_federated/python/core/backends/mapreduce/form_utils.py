@@ -28,6 +28,8 @@ from tensorflow_federated.python.core.backends.mapreduce import compiler
 from tensorflow_federated.python.core.backends.mapreduce import forms
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
+from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
+from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.compiler import transformations
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
@@ -89,27 +91,26 @@ def get_computation_for_broadcast_form(
   return computation
 
 
-def get_state_initialization_computation_for_map_reduce_form(
+def get_state_initialization_computation(
     initialize_computation: computation_impl.ConcreteComputation,
     grappler_config: tf.compat.v1.ConfigProto = _GRAPPLER_DEFAULT_CONFIG,
 ) -> computation_base.Computation:
-  """Validates and transforms a computation to generate state for MapReduceForm.
+  """Validates and transforms a computation to generate state.
 
   Args:
     initialize_computation: A `computation_impl.ConcreteComputation` that should
-      generate initial state for a computation that is compatible with
-      MapReduceForm.
+      generate initial state for a computation that is compatible with a
+      federated learning system that implements the contract of a backend
+      defined in the backends/mapreduce directory.
     grappler_config: An optional instance of `tf.compat.v1.ConfigProto` to
-      configure Grappler graph optimization of the TensorFlow graphs backing the
-      resulting `tff.backends.mapreduce.MapReduceForm`. These options are
-      combined with a set of defaults that aggressively configure Grappler. If
-      the input `grappler_config` has
+      configure Grappler graph optimization of the TensorFlow graphs. These
+      options are combined with a set of defaults that aggressively configure
+      Grappler. If the input `grappler_config` has
       `graph_options.rewrite_options.disable_meta_optimizer=True`, Grappler is
       bypassed.
 
   Returns:
-    A `computation_base.Computation` that can generate state for a computation
-    that is compatible with MapReduceForm.
+    A `computation_base.Computation` that can generate state for a computation.
 
   Raises:
     TypeError: If the arguments are of the wrong types.
@@ -190,6 +191,40 @@ def get_computation_for_map_reduce_form(
     ))
     updated_server_state, server_output = intrinsics.federated_map(
         mrf.update, update_arg
+    )
+    return updated_server_state, server_output
+
+  return computation
+
+
+def get_computation_for_distribute_aggregate_form(
+    daf: forms.DistributeAggregateForm,
+) -> computation_base.Computation:
+  """Creates `tff.Computation` from a DistributeAggregate form.
+
+  Args:
+    daf: An instance of `tff.backends.mapreduce.DistributeAggregateForm`.
+
+  Returns:
+    An instance of `tff.Computation` that corresponds to `daf`.
+
+  Raises:
+    TypeError: If the arguments are of the wrong types.
+  """
+  py_typecheck.check_type(daf, forms.DistributeAggregateForm)
+
+  @federated_computation.federated_computation(daf.type_signature.parameter)
+  def computation(arg):
+    """The logic of a single federated computation round."""
+    server_state, client_data = arg
+    broadcast_input, temp_server_state = daf.server_prepare(server_state)
+    broadcast_output = daf.server_to_client_broadcast(broadcast_input)
+    aggregation_input = daf.client_work(client_data, broadcast_output)
+    aggregation_output = daf.client_to_server_aggregation(
+        temp_server_state, aggregation_input
+    )
+    updated_server_state, server_output = daf.server_result(
+        temp_server_state, aggregation_output
     )
     return updated_server_state, server_output
 
@@ -1006,3 +1041,307 @@ def get_map_reduce_form_for_computation(
       for bb in blocks
   )
   return forms.MapReduceForm(comp.type_signature, *comps)
+
+
+def get_distribute_aggregate_form_for_computation(
+    comp: computation_impl.ConcreteComputation,
+    *,
+    tff_internal_preprocessing: Optional[BuildingBlockFn] = None,
+) -> forms.DistributeAggregateForm:
+  """Constructs `DistributeAggregateForm` for a computation.
+
+  Args:
+    comp: An instance of `computation_impl.ConcreteComputation` that is
+      compatible with `DistributeAggregateForm`. The computation must take
+      exactly two arguments, and the first must be a state value placed at
+      `SERVER`. The computation must return exactly two values. The type of the
+      first element in the result must also be assignable to the first element
+      of the parameter.
+    tff_internal_preprocessing: An optional function to transform the AST of the
+      iterative process.
+
+  Returns:
+    An instance of `tff.backends.mapreduce.DistributeAggregateForm` equivalent
+    to the provided `computation_base.Computation`.
+
+  Raises:
+    TypeError: If the arguments are of the wrong types.
+  """
+  py_typecheck.check_type(comp, computation_base.Computation)
+
+  # Apply any requested preprocessing to the computation.
+  comp_tree = comp.to_building_block()
+  if tff_internal_preprocessing is not None:
+    comp_tree = tff_internal_preprocessing(comp_tree)
+
+  # Check that the computation has the expected structure.
+  comp_type = comp_tree.type_signature
+  _check_type_is_fn(comp_type, '`comp`', TypeError)
+  if not comp_type.parameter.is_struct() or len(comp_type.parameter) != 2:
+    raise TypeError(
+        'Expected `comp` to take two arguments, found parameter '
+        f' type:\n{comp_type.parameter}'
+    )
+  if not comp_type.result.is_struct() or len(comp_type.result) != 2:
+    raise TypeError(
+        'Expected `comp` to return two values, found result '
+        f'type:\n{comp_type.result}'
+    )
+  comp_tree = _replace_lambda_body_with_call_dominant_form(comp_tree)
+  comp_tree, _ = tree_transformations.uniquify_reference_names(comp_tree)
+  tree_analysis.check_broadcast_not_dependent_on_aggregate(comp_tree)
+
+  # To generate the DistributeAggregateForm for the computation, we will split
+  # the computation twice, first on broadcast intrinsics and then on aggregation
+  # intrinsics. To ensure that any non-client-placed unbound refs used by the
+  # aggregation intrinsics args are fed via the temporary state (as opposed to
+  # via the clients, which shouldn't be returning non-client-placed data), add a
+  # special broadcast call to the computation that depends on these args (if any
+  # exist). Examples of these args are the `modulus` for a
+  # federated_secure_modular_sum call or the `zero` for a federated_aggregate
+  # call. Note that this injected broadcast call will not actually broadcast
+  # these args to the clients (it broadcasts an empty struct). The sole purpose
+  # of the injected broadcast is to establish a dependency that forces the calls
+  # associated with these non-client-placed refs to appear in the *first* part
+  # of the split on broadcast intrinsics rather than potentially appearing in
+  # the *last* part of the split on broadcast intrinsics.
+  args_needing_broadcast_dependency = []
+  unbound_refs = transformation_utils.get_map_of_unbound_references(comp_tree)
+
+  def _find_non_client_placed_args(inner_comp):
+    # Examine the args of the aggregation intrinsic calls.
+    if (
+        inner_comp.is_call()
+        and inner_comp.function.is_intrinsic()
+        and inner_comp.function.intrinsic_def().aggregation_kind
+    ):
+      aggregation_args = (
+          inner_comp.argument
+          if inner_comp.argument.is_struct()
+          else [inner_comp.argument]
+      )
+      unbound_ref_names_for_intrinsic = unbound_refs[inner_comp.argument]
+
+      for aggregation_arg in aggregation_args:
+        if unbound_refs[aggregation_arg].issubset(
+            unbound_ref_names_for_intrinsic
+        ):
+          # If the arg is non-placed or server-placed, prepare to create a
+          # federated broadcast that depends on it by normalizing it to a
+          # server-placed value.
+          if not aggregation_arg.type_signature.is_federated():
+            has_placement_predicate = lambda x: x.type_signature.is_federated()
+            if (
+                tree_analysis.count(aggregation_arg, has_placement_predicate)
+                > 0
+            ):
+              raise TypeError(
+                  'DistributeAggregateForm cannot handle an aggregation '
+                  f'intrinsic arg with type {aggregation_arg.type_signature}'
+              )
+            args_needing_broadcast_dependency.append(
+                building_block_factory.create_federated_value(
+                    aggregation_arg, placements.SERVER
+                )
+            )
+          elif aggregation_arg.type_signature.placement == placements.SERVER:
+            args_needing_broadcast_dependency.append(aggregation_arg)
+
+      return inner_comp, True
+    return inner_comp, False
+
+  tree_analysis.visit_preorder(comp_tree, _find_non_client_placed_args)
+
+  # Add an injected broadcast call to the computation that depends on the
+  # identified non-client-placed args, if any exist. To avoid broadcasting the
+  # actual non-client-placed args (undesirable from both a privacy and
+  # efficiency standpoint), instead broadcast the empty struct result generated
+  # by an intermediate map call that takes the non-client-placed args as input.
+  # This approach should work as long as the intermediate map call does not get
+  # pruned by various tree transformations. Currently, tree transformations
+  # such as to_call_dominant do not recognize that our intermediate map call
+  # here can be drastically simplified.
+  if args_needing_broadcast_dependency:
+    zipped_args_needing_broadcast_dependency = (
+        building_block_factory.create_federated_zip(
+            building_blocks.Struct(args_needing_broadcast_dependency)
+        )
+    )
+    injected_broadcast = building_block_factory.create_federated_broadcast(
+        building_block_factory.create_federated_apply(
+            building_blocks.Lambda(
+                'ignored_param',
+                zipped_args_needing_broadcast_dependency.type_signature.member,
+                building_blocks.Struct([]),
+            ),
+            zipped_args_needing_broadcast_dependency,
+        )
+    )
+    # Add the injected broadcast call to the block locals.
+    revised_block_locals = comp_tree.result.locals + [(
+        'injected_broadcast_ref',
+        injected_broadcast,
+    )]
+    # Add a reference to the injected broadcast call in the result so that it
+    # does not get pruned by various tree transformations. We will remove this
+    # additional element in the result after the first split operation.
+    revised_block_result = structure.to_elements(comp_tree.result.result) + [
+        building_blocks.Reference(
+            'injected_broadcast_ref',
+            injected_broadcast.type_signature,
+        )
+    ]
+    comp_tree = building_blocks.Lambda(
+        comp_tree.parameter_name,
+        comp_tree.parameter_type,
+        building_blocks.Block(
+            revised_block_locals,
+            building_blocks.Struct(revised_block_result),
+        ),
+    )
+
+  # Split first on the broadcast intrinsics.
+  # - The "before" comp in this split (which will eventually become the
+  # server_prepare portion of the DAF) should only depend on the server portion
+  # of the original comp input.
+  # - The "intrinsic" comp in this split (which will eventually become the
+  # server_to_client_broadcast portion of the DAF) should not depend on any
+  # portion of the original comp.
+  # - The "after" comp in this split (which will eventually become the
+  # client_work, client_to_server_aggregation, and server_result portions of
+  # the DAF) should be allowed to depend only the client portion of the original
+  # comp. Any server-related or non-placed dependencies will be passed via the
+  # intermediate state.
+  server_state_index = 0
+  client_data_index = 1
+  server_prepare, server_to_client_broadcast, after_broadcast = (
+      transformations.divisive_force_align_and_split_by_intrinsics(
+          comp_tree,
+          intrinsic_defs.get_broadcast_intrinsics(),
+          before_comp_allowed_original_arg_subparameters=[
+              (server_state_index,)
+          ],
+          intrinsic_comp_allowed_original_arg_subparameters=[],
+          after_comp_allowed_original_arg_subparameters=[(client_data_index,)],
+      )
+  )
+
+  # Helper method to replace a lambda with parameter that is a single-element
+  # struct with a lambda that uses the element directly.
+  def _unnest_lambda_parameter(comp):
+    assert comp.is_lambda()
+    assert comp.parameter_type.is_struct()
+
+    name_generator = building_block_factory.unique_name_generator(comp)
+    new_param_name = next(name_generator)
+    replacement_ref = building_blocks.Reference(
+        new_param_name, comp.parameter_type[0]
+    )
+    modified_comp_body = tree_transformations.replace_selections(
+        comp.result, comp.parameter_name, {(0,): replacement_ref}
+    )
+    modified_comp = building_blocks.Lambda(
+        replacement_ref.name, replacement_ref.type_signature, modified_comp_body
+    )
+    tree_analysis.check_contains_no_unbound_references(modified_comp)
+
+    return modified_comp
+
+  # Finalize the server_prepare and server_to_client_broadcast comps by
+  # removing a layer of nesting from the input parameter.
+  server_prepare = _unnest_lambda_parameter(server_prepare)
+  server_to_client_broadcast = _unnest_lambda_parameter(
+      server_to_client_broadcast
+  )
+
+  # Next split on the aggregation intrinsics. If an injected broadcast was used
+  # in the previous step, drop the last element in the output (which held the
+  # output of the injected broadcast) before performing the second split.
+  # - The "before" comp in this split (which will eventually become the
+  # client_work portion of the DAF) should only depend on the client portion of
+  # the original comp input (i.e. the client portion of the "original_arg"
+  # portion of the after_broadcast input) and the portion of the after_broadcast
+  # input that represents the intrinsic output that was produced in the first
+  # split (i.e. the broadcast output).
+  # - The "intrinsic" comp in this split (which will eventually become the
+  # client_to_server_aggregation portion of the DAF) should only depend on the
+  # portion of the after_broadcast input that represents the intermediate state
+  # that was produced in the first split.
+  # - The "after" comp in this split (which will eventually become the
+  # server_result portion of the DAF) should only depend on the server portion
+  # of the original comp input (i.e. the server portion of the "original_arg"
+  # portion of the after_broadcast input) and the portion of the after_broadcast
+  # input that represents the intermediate state that was produced in the first
+  # split.
+  if args_needing_broadcast_dependency:
+    assert after_broadcast.result.result.is_struct()
+    # Check that the last element of the result is the expected empty struct
+    # associated with the injected broadcast call.
+    result_len = len(after_broadcast.result.result)
+    injected_broadcast_result = after_broadcast.result.result[result_len - 1]
+    assert injected_broadcast_result.type_signature.member.is_struct()
+    assert not injected_broadcast_result.type_signature.member
+    after_broadcast = building_blocks.Lambda(
+        after_broadcast.parameter_name,
+        after_broadcast.parameter_type,
+        building_blocks.Block(
+            after_broadcast.result.locals,
+            building_blocks.Struct(
+                structure.to_elements(after_broadcast.result.result)[:-1]
+            ),
+        ),
+    )
+  client_data_index_in_after_broadcast_param = 0
+  intrinsic_results_index_in_after_broadcast_param = 1
+  intermediate_state_index_in_after_broadcast_param = 2
+  client_work, client_to_server_aggregation, server_result = (
+      transformations.divisive_force_align_and_split_by_intrinsics(
+          after_broadcast,
+          intrinsic_defs.get_aggregation_intrinsics(),
+          before_comp_allowed_original_arg_subparameters=[
+              (client_data_index_in_after_broadcast_param,),
+              (intrinsic_results_index_in_after_broadcast_param,),
+          ],
+          intrinsic_comp_allowed_original_arg_subparameters=[
+              (intermediate_state_index_in_after_broadcast_param,)
+          ],
+          after_comp_allowed_original_arg_subparameters=[
+              (intermediate_state_index_in_after_broadcast_param,),
+          ],
+      )
+  )
+
+  # Drop the intermediate_state produced by the second split that is part of
+  # the client_work output.
+  index_of_intrinsic_args_in_client_work_result = 0
+  client_work = building_block_factory.select_output_from_lambda(
+      client_work, index_of_intrinsic_args_in_client_work_result
+  )
+
+  # Drop the intermediate_state param produced by the second split that is part
+  # of the server_result parameter (but keep the part of the param that
+  # corresponds to the intermediate_state produced by the first split).
+  intermediate_state_index_in_server_result_param = 0
+  aggregation_result_index_in_server_result_param = 1
+  server_result = tree_transformations.as_function_of_some_subparameters(
+      server_result,
+      [
+          (intermediate_state_index_in_server_result_param,),
+          (aggregation_result_index_in_server_result_param,),
+      ],
+  )
+
+  blocks = (
+      server_prepare,
+      server_to_client_broadcast,
+      client_work,
+      client_to_server_aggregation,
+      server_result,
+  )
+
+  comps = (
+      computation_impl.ConcreteComputation.from_building_block(bb)
+      for bb in blocks
+  )
+
+  return forms.DistributeAggregateForm(comp.type_signature, *comps)
