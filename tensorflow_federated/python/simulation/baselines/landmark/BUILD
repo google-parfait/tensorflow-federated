@@ -1,5 +1,56 @@
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
+package(default_visibility = [
+    ":landmark_packages",
+    "//tensorflow_federated/python/simulation:simulation_users",
+])
+
+package_group(
+    name = "landmark_packages",
+    packages = [
+        "//tensorflow_federated/python/simulation/baselines/landmark/...",
+    ],
+)
+
+licenses(["notice"])
+
+py_library(
+    name = "landmark",
+    srcs = ["__init__.py"],
+    srcs_version = "PY3",
+    visibility = ["//tensorflow_federated/python/simulation/baselines:__pkg__"],
+    deps = [
+        ":landmark_tasks",
+    ],
+)
+
+py_library(
+    name = "landmark_tasks",
+    srcs = ["landmark_tasks.py"],
+    deps = [
+        ":landmark_preprocessing",
+        "//tensorflow_federated/python/learning:keras_utils",
+        "//tensorflow_federated/python/learning/models:variable",
+        "//tensorflow_federated/python/simulation/baselines:baseline_task",
+        "//tensorflow_federated/python/simulation/baselines:client_spec",
+        "//tensorflow_federated/python/simulation/baselines:task_data",
+        "//tensorflow_federated/python/simulation/datasets:client_data",
+        "//tensorflow_federated/python/simulation/datasets:gldv2",
+        "//tensorflow_federated/python/simulation/models:mobilenet_v2",
+    ],
+)
+
+py_test(
+    name = "landmark_tasks_test",
+    srcs = ["landmark_tasks_test.py"],
+    deps = [
+        ":landmark_tasks",
+        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/simulation/baselines:baseline_task",
+        "//tensorflow_federated/python/simulation/baselines:client_spec",
+    ],
+)
+
 py_library(
     name = "landmark_preprocessing",
     srcs = ["landmark_preprocessing.py"],

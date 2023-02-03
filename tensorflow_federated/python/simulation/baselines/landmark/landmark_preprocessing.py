@@ -26,7 +26,7 @@ from tensorflow_federated.python.simulation.baselines import client_spec
 _MAX_CLIENT_DATASET_SIZE = 3500
 # We use 128 as the image size (not 224 as in https://arxiv.org/abs/2003.08082)
 # for faster experiments.
-_IMAGE_SIZE = 128
+IMAGE_SIZE = 128
 
 
 def _map_fn(
@@ -52,14 +52,14 @@ def _map_fn(
     The second tensor inherits the `class` of the input element.
   """
   preprocessing_image_for_train = tf.keras.Sequential([
-      tf.keras.layers.RandomCrop(_IMAGE_SIZE, _IMAGE_SIZE),
+      tf.keras.layers.RandomCrop(IMAGE_SIZE, IMAGE_SIZE),
       tf.keras.layers.RandomFlip('horizontal'),
       tf.keras.layers.Rescaling(
           scale=2.0 / 255, offset=-1.0
       ),  # rescale the values to the range of [-1.0, 1.0]
   ])
   preprocessing_image_for_eval = tf.keras.Sequential([
-      tf.keras.layers.CenterCrop(_IMAGE_SIZE, _IMAGE_SIZE),
+      tf.keras.layers.CenterCrop(IMAGE_SIZE, IMAGE_SIZE),
       tf.keras.layers.Rescaling(
           scale=2.0 / 255, offset=-1.0
       ),  # rescale the values to the range of [-1.0, 1.0]

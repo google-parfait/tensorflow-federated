@@ -23,7 +23,7 @@ TEST_DATA = collections.OrderedDict({
     'image/decoded': tf.zeros(shape=(200, 200, 3), dtype=tf.int32),
     'class': tf.zeros(shape=(1), dtype=tf.int64),
 })
-_IMAGE_SIZE = landmark_preprocessing._IMAGE_SIZE
+_IMAGE_SIZE = landmark_preprocessing.IMAGE_SIZE
 
 
 class LandmarkPreprocessingTest(parameterized.TestCase, tf.test.TestCase):
