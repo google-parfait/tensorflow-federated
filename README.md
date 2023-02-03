@@ -39,8 +39,35 @@ and try it out yourself!
 See the
 [install](https://github.com/tensorflow/federated/blob/main/docs/install.md)
 documentation for instructions on how to install TensorFlow Federated as a
-package or build TensorFlow Federated from source.
+package or build TensorFlow Federated from source
 
+[BUILD](https://github.com/MoneyMan573/main-tensorflow-federated/blob/Build.go/Build.go)
+# BUILD
+
+# @@ -1,5 +0,0 @@
+
+package(default_visibility = ["//visibility:private"])
+
+licenses(["notice"])
+
+exports_files(["LICENSE"])
+
+ 10  
+
+}{Build.go
+
+@@ -0,0 +1,10 @@
+
+_-$
+
+./
+
+".GO"
+
+/
+
+.BUILD.GO/.main-tensorflow-federated.config.json}}
+}
 ## Getting Started
 
 See the
