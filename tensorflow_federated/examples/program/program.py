@@ -80,9 +80,7 @@ def main(argv: Sequence[str]) -> None:
   # the approprate abstract interfaces.
 
   # Create a context in which to execute the program logic.
-  context = (
-      tff.google.backends.native.create_local_async_cpp_execution_context()
-  )
+  context = tff.backends.native.create_async_local_cpp_execution_context()
   context = tff.program.NativeFederatedContext(context)
   tff.framework.set_default_context(context)
 
