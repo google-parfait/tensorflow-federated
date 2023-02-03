@@ -11,11 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
-# pytype: skip-file
-# This modules disables the Pytype analyzer, see
-# https://github.com/tensorflow/federated/blob/main/docs/pytype.md for more
-# information.
 """Factories for secure summation."""
 
 import collections
@@ -87,7 +82,7 @@ class SecureModularSumFactory(factory.UnweightedAggregationFactory):
   equivalent to modular clip to range `[-(modulus-1), +(modulus-1)]`, and then
   representing `x` in that range as `(x + 2*modulus-1) % 2*modulus-1`, which is
   congruent with `x` under the desired modulus, thus compatible with secure
-  aggreagtion. This is reverted after summation by modular clip to the initial
+  aggregation. This is reverted after summation by modular clip to the initial
   range `[-(modulus-1), +(modulus-1)]`.
 
   NOTE: Unlike `tff.federated_secure_modular_sum`, the `modulus` cannot be a
@@ -142,7 +137,7 @@ class SecureModularSumFactory(factory.UnweightedAggregationFactory):
         # Delegation to `federated_secure_modular_sum` with modulus 2*M-1 is
         # equivalent to modular clip to range [-M+1, M-1]. Then, represent `x`
         # in that range as `(x + 2*M-1) % 2*M-1` which is congruent with `x`
-        # under the desired modulus, thus compatible with secure aggreagtion.
+        # under the desired modulus, thus compatible with secure aggregation.
         # This is reverted after summation by modular clip to the initial range.
         summed_value = intrinsics.federated_secure_modular_sum(
             value, 2 * self._modulus - 1
@@ -353,6 +348,9 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
       else:
         # Bounds specified as an EstimationProcess.
         _check_bound_process(upper_bound_threshold, 'upper_bound_threshold')
+        upper_bound_threshold = typing.cast(
+            estimation_process.EstimationProcess, upper_bound_threshold
+        )
         if lower_bound_threshold is None:
           self._init_fn = upper_bound_threshold.initialize
           self._update_state = _create_update_state_single_process(
@@ -360,6 +358,9 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
           )
         else:
           _check_bound_process(lower_bound_threshold, 'lower_bound_threshold')
+          lower_bound_threshold = typing.cast(
+              estimation_process.EstimationProcess, lower_bound_threshold
+          )
           self._init_fn = _create_initial_state_two_processes(
               upper_bound_threshold, lower_bound_threshold
           )
@@ -589,7 +590,8 @@ def _cast_bounds(upper_bound, lower_bound, dtype):
 
 
 def _create_initial_state_two_processes(
-    upper_bound_process, lower_bound_process
+    upper_bound_process: estimation_process.EstimationProcess,
+    lower_bound_process: estimation_process.EstimationProcess,
 ):
   @federated_computation.federated_computation()
   def initial_state():
@@ -616,7 +618,9 @@ def _create_get_bounds_const(upper_bound, lower_bound, bound_dtype):
   return get_bounds
 
 
-def _create_get_bounds_single_process(process, bound_dtype):
+def _create_get_bounds_single_process(
+    process: estimation_process.EstimationProcess, bound_dtype
+):
   """Gets TFF value bounds when specified as single estimation process."""
 
   def get_bounds(state):
@@ -633,7 +637,9 @@ def _create_get_bounds_single_process(process, bound_dtype):
 
 
 def _create_get_bounds_two_processes(
-    upper_bound_process, lower_bound_process, bound_dtype
+    upper_bound_process: estimation_process.EstimationProcess,
+    lower_bound_process: estimation_process.EstimationProcess,
+    bound_dtype,
 ):
   """Gets TFF value bounds when specified as two estimation processes."""
 
@@ -652,7 +658,9 @@ def _create_get_bounds_two_processes(
   return get_bounds
 
 
-def _create_update_state_single_process(process):
+def _create_update_state_single_process(
+    process: estimation_process.EstimationProcess,
+):
   """Updates state when bounds specified as single estimation process."""
 
   expected_dtype = process.next.type_signature.parameter[1].member.dtype
@@ -668,7 +676,8 @@ def _create_update_state_single_process(process):
 
 
 def _create_update_state_two_processes(
-    upper_bound_process, lower_bound_process
+    upper_bound_process: estimation_process.EstimationProcess,
+    lower_bound_process: estimation_process.EstimationProcess,
 ):
   """Updates state when bounds specified as two estimation processes."""
 

@@ -11,15 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
-# pytype: skip-file
-# This modules disables the Pytype analyzer, see
-# https://github.com/tensorflow/federated/blob/main/docs/pytype.md for more
-# information.
 """Aggregator for sampling of CLIENT placed values."""
 
 import collections
-from typing import Optional
+from typing import Any, Optional
 
 import tensorflow as tf
 
@@ -77,7 +72,7 @@ def _build_reservoir_type(
         sampling during aggregation.
       random_values: A 1-d tensor of `int32` values randomly generated from
         `tf.random.stateless_uniform`. The size of the tensor will be the
-        same as the first dimenion of each leaf in `samples` (these can be
+        same as the first dimension of each leaf in `samples` (these can be
         thought of as parallel lists). These values are used to determine
         whether a sample stays in the reservoir, or is evicted, as the values
         are aggregated. If the i-th value of this list is evicted, then the
@@ -85,7 +80,7 @@ def _build_reservoir_type(
         leaves must be evicted.
       samples: A tensor or structure of tensors representing the actual sampled
         values. If a structure, the shape of the structure matches that of
-        `sample_value_type`. All tensors have one additional dimenion prepended
+        `sample_value_type`. All tensors have one additional dimension prepended
         which has an unknown size. This will be used to concatenate samples and
         store them in the reservoir.
   """
@@ -119,7 +114,7 @@ def _build_reservoir_type(
 
 
 def _build_initial_sample_reservoir(
-    sample_value_type: computation_types.Type, seed: Optional[int] = None
+    sample_value_type: computation_types.Type, seed: Optional[Any] = None
 ):
   """Build up the initial state of the reservoir for sampling.
 
@@ -140,7 +135,7 @@ def _build_initial_sample_reservoir(
     if seed is None:
       real_seed = tf.convert_to_tensor(SEED_SENTINEL, dtype=tf.int64)
     elif tf.is_tensor(seed):
-      if seed.dtype != tf.int64:
+      if hasattr(seed, 'dtype') and seed.dtype != tf.int64:
         real_seed = tf.cast(seed, dtype=tf.int64)
     else:
       real_seed = tf.convert_to_tensor(seed, dtype=tf.int64)

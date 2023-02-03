@@ -11,14 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
-# pytype: skip-file
-# This modules disables the Pytype analyzer, see
-# https://github.com/tensorflow/federated/blob/main/docs/pytype.md for more
-# information.
 """Factory for concatenation of input to a single tensor."""
 
 import functools
+from typing import TypeVar
 
 import tensorflow as tf
 
@@ -33,6 +29,9 @@ from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
+
+
+_T = TypeVar('_T', bound=factory.AggregationFactory)
 
 
 def _concat_impl(struct):
@@ -185,9 +184,7 @@ def _weighted_concat_factory(inner_agg_factory):
   return WeightedConcatFactory()
 
 
-def concat_factory(
-    inner_agg_factory: factory.AggregationFactory,
-) -> factory.AggregationFactory:
+def concat_factory(inner_agg_factory: _T) -> _T:
   """Aggregation factory for concatenation of input to a single tensor.
 
   The created `tff.templates.AggregationProcess` takes the input structure,

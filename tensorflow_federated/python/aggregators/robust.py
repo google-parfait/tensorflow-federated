@@ -11,18 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
-# pytype: skip-file
-# This modules disables the Pytype analyzer, see
-# https://github.com/tensorflow/federated/blob/main/docs/pytype.md for more
-# information.
 """Factory for clipping/zeroing of large values."""
 
 import collections
 from collections.abc import Callable
 import math
 import typing
-from typing import Optional, Union
+from typing import Optional, Union, TypeVar
 
 import numpy as np
 import tensorflow as tf
@@ -43,6 +38,7 @@ from tensorflow_federated.python.core.templates import measured_process
 
 NORM_TF_TYPE = tf.float32
 COUNT_TF_TYPE = tf.int32
+_T = TypeVar('_T', bound=factory.AggregationFactory)
 
 
 def _constant_process(value):
@@ -185,12 +181,12 @@ def clipping_factory(
 
 def zeroing_factory(
     zeroing_norm: Union[float, estimation_process.EstimationProcess],
-    inner_agg_factory: factory.AggregationFactory,
+    inner_agg_factory: _T,
     norm_order: float = math.inf,
     zeroed_count_sum_factory: Optional[
         factory.UnweightedAggregationFactory
     ] = None,
-) -> factory.AggregationFactory:
+) -> _T:
   """Creates an aggregation factory to perform zeroing.
 
   The created `tff.templates.AggregationProcess` zeroes out any values whose
@@ -281,11 +277,11 @@ def zeroing_factory(
 
 def _make_wrapper(
     clipping_norm: Union[float, estimation_process.EstimationProcess],
-    inner_agg_factory: factory.AggregationFactory,
+    inner_agg_factory: _T,
     clipped_count_sum_factory: factory.UnweightedAggregationFactory,
     make_clip_fn: Callable[[factory.ValueType], computation_base.Computation],
     attribute_prefix: str,
-) -> factory.AggregationFactory:
+) -> _T:
   """Constructs an aggregation factory that applies clip_fn before aggregation.
 
   Args:
@@ -407,8 +403,7 @@ def _make_wrapper(
         return aggregation_process.AggregationProcess(init_fn, next_fn)
 
     return WeightedRobustFactory()
-  else:
-
+  elif isinstance(inner_agg_factory, factory.UnweightedAggregationFactory):
     class UnweightedRobustFactory(factory.UnweightedAggregationFactory):
       """`UnweightedAggregationFactory` factory for clipping large values."""
 
@@ -434,6 +429,8 @@ def _make_wrapper(
         return aggregation_process.AggregationProcess(init_fn, next_fn)
 
     return UnweightedRobustFactory()
+  else:
+    raise NotImplementedError(f'Unexpected factory found: {inner_agg_factory}.')
 
 
 def _check_value_type(value_type):
