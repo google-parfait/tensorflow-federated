@@ -41,8 +41,8 @@ See the
 documentation for instructions on how to install TensorFlow Federated as a
 package or build TensorFlow Federated from source
 
-[BUILD](https://github.com/MoneyMan573/main-tensorflow-federated/blob/Build.go/Build.go)
-# BUILD
+# [BUILD](https://github.com/MoneyMan573/main-tensorflow-federated/blob/Build.go/Build.go)
+# [Start Your Build](https://github.com/MoneyMan573/main-tensorflow-federated/blob/BUILD/Build)
 
 # @@ -1,5 +0,0 @@
 
