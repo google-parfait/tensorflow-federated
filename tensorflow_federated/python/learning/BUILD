@@ -29,7 +29,6 @@ py_library(
         ":client_weight_lib",
         ":debug_measurements",
         ":federated_evaluation",
-        ":keras_utils",
         ":model_update_aggregator",
         ":personalization_eval",
         "//tensorflow_federated/python/learning/algorithms",
@@ -38,6 +37,7 @@ py_library(
         "//tensorflow_federated/python/learning/metrics",
         "//tensorflow_federated/python/learning/metrics:types",
         "//tensorflow_federated/python/learning/models",
+        "//tensorflow_federated/python/learning/models:keras_utils",
         "//tensorflow_federated/python/learning/models:model_weights",
         "//tensorflow_federated/python/learning/models:variable",
         "//tensorflow_federated/python/learning/optimizers",
@@ -75,7 +75,6 @@ py_cpu_gpu_test(
     deps = [
         ":dataset_reduce",
         ":federated_evaluation",
-        ":keras_utils",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
@@ -88,49 +87,12 @@ py_cpu_gpu_test(
         "//tensorflow_federated/python/learning/metrics:aggregator",
         "//tensorflow_federated/python/learning/metrics:counters",
         "//tensorflow_federated/python/learning/models:functional",
+        "//tensorflow_federated/python/learning/models:keras_utils",
         "//tensorflow_federated/python/learning/models:model_examples",
         "//tensorflow_federated/python/learning/models:model_weights",
         "//tensorflow_federated/python/learning/models:test_models",
         "//tensorflow_federated/python/learning/models:variable",
         "//tensorflow_federated/python/tensorflow_libs:tensorflow_test_utils",
-    ],
-)
-
-py_library(
-    name = "keras_utils",
-    srcs = ["keras_utils.py"],
-    srcs_version = "PY3",
-    deps = [
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
-        "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:type_analysis",
-        "//tensorflow_federated/python/core/impl/types:type_conversions",
-        "//tensorflow_federated/python/learning/metrics:counters",
-        "//tensorflow_federated/python/learning/metrics:keras_finalizer",
-        "//tensorflow_federated/python/learning/models:variable",
-    ],
-)
-
-py_test(
-    name = "keras_utils_test",
-    size = "medium",
-    srcs = ["keras_utils_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        ":keras_utils",
-        "//tensorflow_federated/python/core/backends/native:execution_contexts",
-        "//tensorflow_federated/python/core/impl/computation:computation_base",
-        "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:type_conversions",
-        "//tensorflow_federated/python/learning/metrics:aggregator",
-        "//tensorflow_federated/python/learning/metrics:counters",
-        "//tensorflow_federated/python/learning/models:model_examples",
-        "//tensorflow_federated/python/learning/models:model_weights",
-        "//tensorflow_federated/python/learning/models:variable",
     ],
 )
 
@@ -202,10 +164,10 @@ py_cpu_gpu_test(
     tags = ["nokokoro"],
     deps = [
         ":dataset_reduce",
-        ":keras_utils",
         ":personalization_eval",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/learning/models:keras_utils",
         "//tensorflow_federated/python/learning/models:model_examples",
         "//tensorflow_federated/python/learning/models:model_weights",
     ],

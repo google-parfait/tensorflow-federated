@@ -61,7 +61,7 @@ py_library(
     deps = [
         ":char_prediction_models",
         ":char_prediction_preprocessing",
-        "//tensorflow_federated/python/learning:keras_utils",
+        "//tensorflow_federated/python/learning/models:keras_utils",
         "//tensorflow_federated/python/learning/models:variable",
         "//tensorflow_federated/python/simulation/baselines:baseline_task",
         "//tensorflow_federated/python/simulation/baselines:client_spec",
