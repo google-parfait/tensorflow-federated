@@ -8,9 +8,7 @@ package(default_visibility = [
 
 package_group(
     name = "learning_packages",
-    packages = [
-        "//tensorflow_federated/python/learning/...",
-    ],
+    packages = ["//tensorflow_federated/python/learning"],
 )
 
 package_group(
