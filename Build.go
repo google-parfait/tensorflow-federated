@@ -1,4 +1,9 @@
-package(default_visibility = ["//visibility:private"])
+_-$
+./
+".GO"
+/
+.BUILD.GO/.main-tensorflow-federated.config.json
+package(default_visibility = ["//visibility:open"])
 
 licenses(["notice"])
 
