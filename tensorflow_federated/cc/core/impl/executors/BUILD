@@ -246,7 +246,10 @@ cc_library(
     srcs = ["dtensor_executor.cc"],
     hdrs = ["dtensor_executor.h"],
     deps = [
+        ":dtensor_api",
+        ":eager_computation",
         ":executor",
+        ":status_macros",
         ":tensor_serialization",
         ":threading",
         "//tensorflow_federated/proto/v0:executor_cc_proto",

@@ -342,7 +342,7 @@ EagerComputation::EagerComputation(
 
 absl::Status EagerComputation::ExecuteFunction(
     TFE_Context* context, std::string func_name,
-    absl::Span<TFE_TensorHandle*> args,
+    std::optional<std::string> device_name, absl::Span<TFE_TensorHandle*> args,
     std::vector<TFE_TensorHandle*>* outputs) {
   std::unique_ptr<TF_Status, decltype(&TF_DeleteStatus)> status(
       TF_NewStatus(), TF_DeleteStatus);
@@ -351,6 +351,14 @@ absl::Status EagerComputation::ExecuteFunction(
   if (TF_GetCode(status.get()) != TF_OK) {
     return absl::InternalError(
         absl::StrCat("Failed to run computation: ", TF_Message(status.get())));
+  }
+
+  if (device_name.has_value()) {
+    TFE_OpSetDevice(func_op.get(), device_name.value().c_str(), status.get());
+    if (TF_GetCode(status.get()) != TF_OK) {
+      return absl::InternalError(absl::StrCat("Failed to use provided device: ",
+                                              TF_Message(status.get())));
+    }
   }
 
   for (auto arg : args) {
@@ -401,7 +409,8 @@ absl::Status EagerComputation::RemoveFunctions(TFE_Context* context) {
 }
 
 absl::StatusOr<std::vector<TFE_TensorHandle*>> EagerComputation::Call(
-    TFE_Context* context, std::optional<std::vector<TFE_TensorHandle*>> args) {
+    TFE_Context* context, std::optional<std::vector<TFE_TensorHandle*>> args,
+    std::optional<std::string> device_name) {
   std::unique_ptr<TF_Status, decltype(&TF_DeleteStatus)> status_ptr(
       TF_NewStatus(), TF_DeleteStatus);
 
@@ -416,7 +425,7 @@ absl::StatusOr<std::vector<TFE_TensorHandle*>> EagerComputation::Call(
   absl::Span<TFE_TensorHandle*> args_span(inputs);
 
   TFF_TRY(ExecuteFunction(context, main_function_def_.signature().name(),
-                          args_span, &outputs));
+                          device_name, args_span, &outputs));
 
   return outputs;
 }

@@ -71,7 +71,8 @@ class EagerComputation {
   // TODO(b/260640553): Allow register and call functions with same name but
   // different graphs in a thread safe manner.
   absl::StatusOr<std::vector<TFE_TensorHandle*>> Call(
-      TFE_Context* context, std::optional<std::vector<TFE_TensorHandle*>> args);
+      TFE_Context* context, std::optional<std::vector<TFE_TensorHandle*>> args,
+      std::optional<std::string> device_name = std::nullopt);
 
  private:
   // Registers the FunctionDefs owned by the class object with TF eager context
@@ -82,6 +83,7 @@ class EagerComputation {
   absl::Status RemoveFunctions(TFE_Context* context);
 
   absl::Status ExecuteFunction(TFE_Context* context, std::string func_name,
+                               std::optional<std::string> device_name,
                                absl::Span<TFE_TensorHandle*> args,
                                std::vector<TFE_TensorHandle*>* outputs);
 

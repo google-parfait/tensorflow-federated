@@ -431,9 +431,6 @@ TYPED_TEST(TensorFlowBasedExecutorsTest, CreateSelectionOOBImmediate) {
 }
 
 TYPED_TEST(TensorFlowBasedExecutorsTest, CallNoOutputTensors) {
-  if (this->Type() == kDTensorExecutor) {
-    GTEST_SKIP() << "Computation Call not implemented in DTensor Executor yet";
-  }
   tensorflow::Scope root = tensorflow::Scope::NewRootScope();
   tensorflow::ops::Placeholder x(root, tensorflow::DT_FLOAT);
   tensorflow::ops::Placeholder y(root, tensorflow::DT_FLOAT);
@@ -455,9 +452,6 @@ TYPED_TEST(TensorFlowBasedExecutorsTest, CallNoOutputTensors) {
 }
 
 TYPED_TEST(TensorFlowBasedExecutorsTest, CallNoArgOneOutWithInitialize) {
-  if (this->Type() == kDTensorExecutor) {
-    GTEST_SKIP() << "Computation Call not implemented in DTensor Executor yet";
-  }
   tensorflow::Scope root = tensorflow::Scope::NewRootScope();
   tensorflow::TensorShape shape({3});
   tensorflow::ops::VarHandleOp var(root, tensorflow::DT_INT32, shape);
@@ -476,9 +470,6 @@ TYPED_TEST(TensorFlowBasedExecutorsTest, CallNoArgOneOutWithInitialize) {
 }
 
 TYPED_TEST(TensorFlowBasedExecutorsTest, CallOneInOut) {
-  if (this->Type() == kDTensorExecutor) {
-    GTEST_SKIP() << "Computation Call not implemented in DTensor Executor yet";
-  }
   tensorflow::Scope root = tensorflow::Scope::NewRootScope();
   tensorflow::ops::Placeholder in(root, tensorflow::DT_DOUBLE);
   tensorflow::ops::Identity out(root, in);
@@ -489,9 +480,6 @@ TYPED_TEST(TensorFlowBasedExecutorsTest, CallOneInOut) {
 }
 
 TYPED_TEST(TensorFlowBasedExecutorsTest, CallStructSwapInOut) {
-  if (this->Type() == kDTensorExecutor) {
-    GTEST_SKIP() << "Computation Call not implemented in DTensor Executor yet";
-  }
   tensorflow::Scope root = tensorflow::Scope::NewRootScope();
   tensorflow::ops::Placeholder xin(root, tensorflow::DT_DOUBLE);
   tensorflow::ops::Placeholder yin(root, tensorflow::DT_INT32);
@@ -505,9 +493,6 @@ TYPED_TEST(TensorFlowBasedExecutorsTest, CallStructSwapInOut) {
 }
 
 TYPED_TEST(TensorFlowBasedExecutorsTest, CallNestedStructSwapInOut) {
-  if (this->Type() == kDTensorExecutor) {
-    GTEST_SKIP() << "Computation Call not implemented in DTensor Executor yet";
-  }
   tensorflow::Scope root = tensorflow::Scope::NewRootScope();
   tensorflow::ops::Placeholder xin(root, tensorflow::DT_DOUBLE);
   tensorflow::ops::Placeholder yin(root, tensorflow::DT_INT32);
@@ -522,9 +507,6 @@ TYPED_TEST(TensorFlowBasedExecutorsTest, CallNestedStructSwapInOut) {
 }
 
 TYPED_TEST(TensorFlowBasedExecutorsTest, CallAdd) {
-  if (this->Type() == kDTensorExecutor) {
-    GTEST_SKIP() << "Computation Call not implemented in DTensor Executor yet";
-  }
   tensorflow::Scope root = tensorflow::Scope::NewRootScope();
   tensorflow::ops::Placeholder x(root, tensorflow::DT_INT32);
   tensorflow::ops::Placeholder y(root, tensorflow::DT_INT32);
@@ -537,9 +519,6 @@ TYPED_TEST(TensorFlowBasedExecutorsTest, CallAdd) {
 }
 
 TYPED_TEST(TensorFlowBasedExecutorsTest, StatefulCallGetsReinitialized) {
-  if (this->Type() == kDTensorExecutor) {
-    GTEST_SKIP() << "Computation Call not implemented in DTensor Executor yet";
-  }
   tensorflow::Scope root = tensorflow::Scope::NewRootScope();
   tensorflow::TensorShape shape({});
   tensorflow::ops::VarHandleOp var(root, tensorflow::DT_INT32, shape);
@@ -558,9 +537,6 @@ TYPED_TEST(TensorFlowBasedExecutorsTest, StatefulCallGetsReinitialized) {
 }
 
 TYPED_TEST(TensorFlowBasedExecutorsTest, CallWithComputationId) {
-  if (this->Type() == kDTensorExecutor) {
-    GTEST_SKIP() << "Computation Call not implemented in DTensor Executor yet";
-  }
   tensorflow::Scope root = tensorflow::Scope::NewRootScope();
   tensorflow::ops::Placeholder x(root, tensorflow::DT_INT32);
   tensorflow::ops::Placeholder y(root, tensorflow::DT_INT32);

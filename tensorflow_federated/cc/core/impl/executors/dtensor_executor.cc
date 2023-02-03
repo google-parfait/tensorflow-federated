@@ -29,6 +29,7 @@ limitations under the License
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/str_split.h"
 #include "tensorflow/c/eager/c_api.h"
 #include "tensorflow/c/eager/tfe_tensorhandle_internal.h"
 #include "tensorflow/c/tf_status.h"
@@ -36,7 +37,10 @@ limitations under the License
 #include "tensorflow/c/tf_tensor_internal.h"
 #include "tensorflow/core/platform/status.h"
 #include "tensorflow/core/platform/statusor.h"
+#include "tensorflow_federated/cc/core/impl/executors/dtensor_api.h"
+#include "tensorflow_federated/cc/core/impl/executors/eager_computation.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
+#include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
 #include "tensorflow_federated/cc/core/impl/executors/tensor_serialization.h"
 #include "tensorflow_federated/cc/core/impl/executors/threading.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
@@ -134,7 +138,12 @@ class TensorValue : public Value {
   absl::Status Bind(TFE_Context* context, const v0::TensorFlow::Binding& shape,
                     std::vector<TFE_TensorHandle*>& bindings,
                     std::optional<std::string> device_name) override {
-    return absl::UnimplementedError("Bind method not implemented yet.");
+    if (!shape.has_tensor()) {
+      return absl::InvalidArgumentError(
+          "Attempted to bind tensor value to non-tensor Binding.");
+    }
+    bindings.emplace_back(value_.get());
+    return absl::OkStatus();
   }
 
   absl::StatusOr<std::shared_ptr<Value>> ElementAt(int index) override {
@@ -195,11 +204,122 @@ class StructValue : public Value {
   absl::Status Bind(TFE_Context* context, const v0::TensorFlow::Binding& shape,
                     std::vector<TFE_TensorHandle*>& bindings,
                     std::optional<std::string> device_name) override {
-    return absl::UnimplementedError("Bind method not implemented yet.");
+    if (!shape.has_struct_()) {
+      return absl::InvalidArgumentError(
+          "Attempted to bind struct value to non-struct Binding.");
+    }
+    if (shape.struct_().element_size() != values_.size()) {
+      return absl::InvalidArgumentError(
+          absl::StrCat("Attempted to bind struct with ", values_.size(),
+                       " fields to an argument struct with ",
+                       shape.struct_().element_size(), " fields."));
+    }
+    for (int i = 0; i < values_.size(); i++) {
+      TFF_TRY(values_[i]->Bind(context, shape.struct_().element(i), bindings,
+                               device_name));
+    }
+    return absl::OkStatus();
   }
 
  private:
   std::vector<ExecutorValue> values_;
+};
+
+// Returns Executor Value in flattened order as per bindings. This follows the
+// same semantics as used by Bind.
+// TODO(b/256948367): Extract this function to a common library, since used by
+// both tensorflow_executor and dtensor_executor.
+absl::StatusOr<ExecutorValue> FromTensorsAndBindingStructure(
+    const v0::TensorFlow::Binding& binding_structure,
+    absl::Span<TFE_TensorHandle*>* tensors) {
+  switch (binding_structure.binding_case()) {
+    case v0::TensorFlow::Binding::kTensor: {
+      if (tensors->empty()) {
+        return absl::InternalError(
+            "TensorFlow computation had fewer output tensors than expected.");
+      }
+      auto tensor_val = std::make_shared<TensorValue>(tensors->front());
+      tensors->remove_prefix(1);
+      return tensor_val;
+    }
+    case v0::TensorFlow::Binding::kStruct: {
+      auto elements = std::vector<ExecutorValue>();
+      elements.reserve(binding_structure.struct_().element_size());
+      for (const auto& e_structure : binding_structure.struct_().element()) {
+        elements.push_back(
+            TFF_TRY(FromTensorsAndBindingStructure(e_structure, tensors)));
+      }
+      return std::make_shared<StructValue>(elements);
+    }
+    default: {
+      return absl::UnimplementedError(absl::StrCat(
+          "Unknown output binding kind: ", binding_structure.binding_case()));
+    }
+  }
+}
+
+class ComputationValue : public Value {
+ public:
+  static absl::StatusOr<ExecutorValue> CreateValue(const v0::Value& value_pb) {
+    if (!value_pb.has_computation()) {
+      return absl::InvalidArgumentError(
+          "Creating ComputationValue from a non-computation value proto.");
+    }
+    auto eager_comp = TFF_TRY(
+        EagerComputation::FromProto(value_pb.computation().tensorflow()));
+    return std::make_shared<ComputationValue>(
+        eager_comp,
+        value_pb.computation().tensorflow().has_parameter()
+            ? std::optional(value_pb.computation().tensorflow().parameter())
+            : std::nullopt,
+        value_pb.computation().tensorflow().result());
+  }
+
+  ComputationValue(EagerComputation computation,
+                   std::optional<v0::TensorFlow::Binding> parameter_shape,
+                   v0::TensorFlow::Binding output_shape)
+      : computation_(computation),
+        parameter_shape_(parameter_shape),
+        output_shape_(output_shape) {}
+
+  absl::Status MaterializeValue(TFE_Context* context, v0::Value* value_pb,
+                                std::optional<std::string> device_name,
+                                ParallelTasks& tasks) override {
+    return absl::InvalidArgumentError(
+        "Cannot materialize uncalled computations");
+  }
+
+  absl::StatusOr<ExecutorValue> Call(
+      std::optional<ExecutorValue> arg, TFE_Context* context,
+      std::optional<std::string> device_name) override {
+    std::vector<TFE_TensorHandle*> flattened_inputs;
+    if (arg.has_value()) {
+      TFF_TRY(arg.value()->Bind(context, parameter_shape_.value(),
+                                flattened_inputs, device_name));
+    }
+    auto outputs =
+        TFF_TRY(computation_.Call(context, flattened_inputs, device_name));
+    absl::Span<TFE_TensorHandle*> outputs_span(outputs);
+    return FromTensorsAndBindingStructure(output_shape_, &outputs_span);
+  }
+
+  absl::Status Bind(TFE_Context* context, const v0::TensorFlow::Binding& shape,
+                    std::vector<TFE_TensorHandle*>& bindings,
+                    std::optional<std::string> device_name) override {
+    return absl::InvalidArgumentError(
+        "Attempted to bind computation value as argument to a TensorFlow "
+        "computation. This is not supported.");
+  }
+
+  absl::StatusOr<std::shared_ptr<Value>> ElementAt(int index) override {
+    return absl::InvalidArgumentError(
+        "Cannot create selection on non-struct value.");
+  }
+
+ private:
+  EagerComputation computation_;
+  std::optional<v0::TensorFlow::Binding> parameter_shape_;
+  v0::TensorFlow::Binding output_shape_;
 };
 
 absl::StatusOr<ExecutorValue> CreateValueAny(const v0::Value& value_pb) {
@@ -212,7 +332,7 @@ absl::StatusOr<ExecutorValue> CreateValueAny(const v0::Value& value_pb) {
       return StructValue::CreateValue(value_pb);
     }
     case v0::Value::kComputation: {
-      return absl::UnimplementedError("Computation is not implemented yet.");
+      return ComputationValue::CreateValue(value_pb);
     }
     case v0::Value::kSequence: {
       return absl::UnimplementedError("Sequence is not implemented yet.");
@@ -263,7 +383,18 @@ class DTensorExecutor : public ExecutorBase<ValueFuture> {
 
   absl::StatusOr<ValueFuture> CreateCall(
       ValueFuture function, std::optional<ValueFuture> argument) final {
-    return absl::UnimplementedError("Call is not implemented yet.");
+    return ThreadRun(
+        [this, function = std::move(function),
+         argument = std::move(argument)]() -> absl::StatusOr<ExecutorValue> {
+          ExecutorValue fn = TFF_TRY(Wait(function));
+          std::optional<ExecutorValue> arg = std::nullopt;
+          if (argument.has_value()) {
+            arg = TFF_TRY(Wait(argument.value()));
+          }
+          return fn->Call(arg, this->context_.get(),
+                          this->dtensor_device_name_);
+        },
+        &thread_pool_);
   }
 
   absl::StatusOr<ValueFuture> CreateStruct(
