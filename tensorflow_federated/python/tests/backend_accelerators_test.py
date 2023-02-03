@@ -78,35 +78,24 @@ class LocalExecutorMultiTPUTest(tf.test.TestCase, parameterized.TestCase):
   @parameterized.named_parameters(
       (
           'iter_server_on_cpu',
-          'CPU',
           _create_tff_parallel_clients_with_iter_dataset,
       ),
       (
           'iter_server_on_tpu',
-          'TPU',
           _create_tff_parallel_clients_with_iter_dataset,
       ),
       (
           'reduce_server_on_cpu',
-          'CPU',
           _create_tff_parallel_clients_with_dataset_reduce,
       ),
       (
           'reduce_server_on_tpu',
-          'TPU',
           _create_tff_parallel_clients_with_dataset_reduce,
       ),
   )
-  def test_local_executor_multi_tpus(
-      self, tf_device, create_tff_parallel_clients_fn
-  ):
+  def test_local_executor_multi_tpus(self, create_tff_parallel_clients_fn):
     self.skipTest('b/157625321')
-    tf_devices = tf.config.list_logical_devices(tf_device)
-    server_tf_device = None if not tf_devices else tf_devices[0]
-    client_devices = tf.config.list_logical_devices('TPU')
-    tff.backends.native.set_local_python_execution_context(
-        server_tf_device=server_tf_device, client_tf_devices=client_devices
-    )
+    tff.backends.native.set_sync_local_cpp_execution_context()
     parallel_client_run = create_tff_parallel_clients_fn()
     client_data = [
         tf.data.Dataset.range(10),

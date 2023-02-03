@@ -148,17 +148,7 @@ def client_optimizer_fn():
 def main(argv):
   if len(argv) > 1:
     raise app.UsageError('Too many command-line arguments.')
-  # If GPU is provided, TFF will by default use the first GPU like TF. The
-  # following lines will configure TFF to use multi-GPUs and distribute client
-  # computation on the GPUs. Note that we put server computatoin on CPU to avoid
-  # potential out of memory issue when a large number of clients is sampled per
-  # round. The client devices below can be an empty list when no GPU could be
-  # detected by TF.
-  client_devices = tf.config.list_logical_devices('GPU')
-  server_device = tf.config.list_logical_devices('CPU')[0]
-  tff.backends.native.set_local_python_execution_context(
-      server_tf_device=server_device, client_tf_devices=client_devices
-  )
+  tff.backends.native.set_sync_local_cpp_execution_context()
   train_data, test_data = get_emnist_dataset()
 
   def tff_model_fn():
