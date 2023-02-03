@@ -32,15 +32,14 @@ from tensorflow_federated.python.core.test import static_assert
 from tensorflow_federated.python.learning import dataset_reduce
 from tensorflow_federated.python.learning import federated_evaluation
 from tensorflow_federated.python.learning import keras_utils
-from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning.metrics import aggregator
 from tensorflow_federated.python.learning.metrics import counters
 from tensorflow_federated.python.learning.models import functional
+from tensorflow_federated.python.learning.models import model_examples
 from tensorflow_federated.python.learning.models import model_weights
 from tensorflow_federated.python.learning.models import test_models
 from tensorflow_federated.python.learning.models import variable
 from tensorflow_federated.python.tensorflow_libs import tensorflow_test_utils
-from tensorflow_model_optimization.python.core.internal import tensor_encoding as te
 
 # Convenience aliases.
 FederatedType = computation_types.FederatedType
@@ -196,72 +195,6 @@ def _model_fn_from_keras():
       ),
       loss=tf.keras.losses.MeanSquaredError(),
       metrics=[tf.keras.metrics.Accuracy()],
-  )
-
-
-def _build_simple_quant_encoder(quantization_bits):
-  """Returns a function to quantize an input tensor using quantization_bits."""
-
-  def simple_quant_encoder(value: tf.Tensor):
-    def quant_encoder(value: tf.Tensor):
-      assert value.dtype in [tf.float32, tf.float64]
-      return te.encoders.uniform_quantization(quantization_bits)
-
-    spec = tf.TensorSpec(value.shape, value.dtype)
-    return te.encoders.as_simple_encoder(quant_encoder(value), spec)
-
-  return simple_quant_encoder
-
-
-def _build_expected_broadcaster_next_signature():
-  """Returns signature of the broadcaster used in multiple tests below."""
-  state_type = computation_types.at_server(
-      computation_types.StructType([
-          (
-              'trainable',
-              [
-                  (),
-              ],
-          ),
-          ('non_trainable', []),
-      ])
-  )
-  value_type = computation_types.at_server(
-      model_weights.weights_type_from_model(TestModelQuant)
-  )
-  result_type = computation_types.at_clients(
-      model_weights.weights_type_from_model(TestModelQuant)
-  )
-  measurements_type = computation_types.at_server(())
-  return computation_types.FunctionType(
-      parameter=collections.OrderedDict(state=state_type, value=value_type),
-      result=collections.OrderedDict(
-          state=state_type, result=result_type, measurements=measurements_type
-      ),
-  )
-
-
-def _build_expected_test_quant_model_eval_signature():
-  """Returns signature for build_federated_evaluation using TestModelQuant."""
-  weights_parameter_type = computation_types.at_server(
-      model_weights.weights_type_from_model(TestModelQuant)
-  )
-  data_parameter_type = computation_types.at_clients(
-      computation_types.SequenceType(
-          collections.OrderedDict(
-              temp=computation_types.TensorType(shape=(None,), dtype=tf.float32)
-          )
-      )
-  )
-  return_type = computation_types.at_server(
-      collections.OrderedDict(eval=collections.OrderedDict(num_same=tf.float32))
-  )
-  return computation_types.FunctionType(
-      parameter=collections.OrderedDict(
-          server_model_weights=weights_parameter_type,
-          federated_dataset=data_parameter_type,
-      ),
-      result=return_type,
   )
 
 

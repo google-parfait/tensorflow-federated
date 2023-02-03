@@ -78,6 +78,26 @@ py_test(
 )
 
 py_library(
+    name = "model_examples",
+    srcs = ["model_examples.py"],
+    srcs_version = "PY3",
+    deps = [":variable"],
+)
+
+py_test(
+    name = "model_examples_test",
+    size = "small",
+    srcs = ["model_examples_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":model_examples",
+        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
+    ],
+)
+
+py_library(
     name = "serialization",
     srcs = ["serialization.py"],
     srcs_version = "PY3",
@@ -115,6 +135,7 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":functional",
+        ":model_examples",
         ":serialization",
         ":test_models",
         ":variable",
@@ -125,7 +146,6 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:type_serialization",
         "//tensorflow_federated/python/core/impl/types:type_test_utils",
         "//tensorflow_federated/python/learning:keras_utils",
-        "//tensorflow_federated/python/learning:model_examples",
     ],
 )
 

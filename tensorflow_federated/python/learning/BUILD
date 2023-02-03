@@ -76,7 +76,6 @@ py_cpu_gpu_test(
         ":dataset_reduce",
         ":federated_evaluation",
         ":keras_utils",
-        ":model_examples",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
@@ -89,6 +88,7 @@ py_cpu_gpu_test(
         "//tensorflow_federated/python/learning/metrics:aggregator",
         "//tensorflow_federated/python/learning/metrics:counters",
         "//tensorflow_federated/python/learning/models:functional",
+        "//tensorflow_federated/python/learning/models:model_examples",
         "//tensorflow_federated/python/learning/models:model_weights",
         "//tensorflow_federated/python/learning/models:test_models",
         "//tensorflow_federated/python/learning/models:variable",
@@ -121,7 +121,6 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":keras_utils",
-        ":model_examples",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/impl/computation:computation_base",
         "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
@@ -129,28 +128,9 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:type_conversions",
         "//tensorflow_federated/python/learning/metrics:aggregator",
         "//tensorflow_federated/python/learning/metrics:counters",
+        "//tensorflow_federated/python/learning/models:model_examples",
         "//tensorflow_federated/python/learning/models:model_weights",
         "//tensorflow_federated/python/learning/models:variable",
-    ],
-)
-
-py_library(
-    name = "model_examples",
-    srcs = ["model_examples.py"],
-    srcs_version = "PY3",
-    deps = ["//tensorflow_federated/python/learning/models:variable"],
-)
-
-py_test(
-    name = "model_examples_test",
-    size = "small",
-    srcs = ["model_examples_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        ":model_examples",
-        "//tensorflow_federated/python/core/backends/native:execution_contexts",
-        "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
     ],
 )
 
@@ -223,10 +203,10 @@ py_cpu_gpu_test(
     deps = [
         ":dataset_reduce",
         ":keras_utils",
-        ":model_examples",
         ":personalization_eval",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/learning/models:model_examples",
         "//tensorflow_federated/python/learning/models:model_weights",
     ],
 )

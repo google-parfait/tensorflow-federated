@@ -19,7 +19,7 @@ import tensorflow as tf
 
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
-from tensorflow_federated.python.learning import model_examples
+from tensorflow_federated.python.learning.models import model_examples
 
 
 class ModelExamplesTest(tf.test.TestCase, parameterized.TestCase):

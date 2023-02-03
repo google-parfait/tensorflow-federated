@@ -178,7 +178,7 @@ You can find examples of how to define your own custom `tff.learning.Model` in
 the second part of our
 [image classification](tutorials/federated_learning_for_image_classification.ipynb)
 tutorial, as well as in the example models we use for testing in
-[`model_examples.py`](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/learning/model_examples.py).
+[`model_examples.py`](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/learning/models/model_examples.py).
 
 ### Converters for Keras
 
@@ -351,7 +351,7 @@ input to the generated federated computations in eager mode.
 It should be noted that the ability to access client identities is a feature
 that's only provided by the datasets for use in simulations, where the ability
 to train on data from specific subsets of clients may be needed (e.g., to
-simulate the diurnal avaiablity of different types of clients). The compiled
+simulate the diurnal availability of different types of clients). The compiled
 computations and the underlying runtime do *not* involve any notion of client
 identity. Once data from a specific subset of clients has been selected as an
 input, e.g., in a call to `tff.templates.IterativeProcess.next`, client
