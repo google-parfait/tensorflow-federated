@@ -18,7 +18,7 @@ from typing import Optional, Union
 
 import tensorflow as tf
 
-from tensorflow_federated.python.learning.models import keras_utils
+from tensorflow_federated.python.learning import keras_utils
 from tensorflow_federated.python.learning.models import variable
 from tensorflow_federated.python.simulation.baselines import baseline_task
 from tensorflow_federated.python.simulation.baselines import client_spec

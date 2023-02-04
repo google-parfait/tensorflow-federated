@@ -46,7 +46,7 @@ py_test(
     deps = [
         ":baseline_task",
         ":task_data",
-        "//tensorflow_federated/python/learning/models:keras_utils",
+        "//tensorflow_federated/python/learning:keras_utils",
         "//tensorflow_federated/python/simulation/datasets:client_data",
     ],
 )

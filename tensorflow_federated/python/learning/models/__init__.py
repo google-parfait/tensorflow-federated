@@ -16,7 +16,6 @@
 from tensorflow_federated.python.learning.models.functional import functional_model_from_keras
 from tensorflow_federated.python.learning.models.functional import FunctionalModel
 from tensorflow_federated.python.learning.models.functional import model_from_functional
-from tensorflow_federated.python.learning.models.keras_utils import from_keras_model
 from tensorflow_federated.python.learning.models.model_weights import ModelWeights
 from tensorflow_federated.python.learning.models.model_weights import weights_type_from_model
 from tensorflow_federated.python.learning.models.serialization import load

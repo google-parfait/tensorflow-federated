@@ -62,7 +62,7 @@ py_library(
         ":model",
         "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
         "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/learning/models:keras_utils",
+        "//tensorflow_federated/python/learning:keras_utils",
     ],
 )
 

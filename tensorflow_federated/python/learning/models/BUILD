@@ -41,7 +41,6 @@ py_library(
     visibility = ["//tensorflow_federated/python/learning:__pkg__"],
     deps = [
         ":functional",
-        ":keras_utils",
         ":model_weights",
         ":serialization",
         ":variable",
@@ -75,44 +74,6 @@ py_test(
         "//tensorflow_federated/python/learning/metrics:aggregator",
         "//tensorflow_federated/python/learning/metrics:types",
         "//tensorflow_federated/python/tensorflow_libs:variable_utils",
-    ],
-)
-
-py_library(
-    name = "keras_utils",
-    srcs = ["keras_utils.py"],
-    srcs_version = "PY3",
-    deps = [
-        ":variable",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
-        "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:type_analysis",
-        "//tensorflow_federated/python/core/impl/types:type_conversions",
-        "//tensorflow_federated/python/learning/metrics:counters",
-        "//tensorflow_federated/python/learning/metrics:keras_finalizer",
-    ],
-)
-
-py_test(
-    name = "keras_utils_test",
-    size = "medium",
-    srcs = ["keras_utils_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        ":keras_utils",
-        ":model_examples",
-        ":model_weights",
-        ":variable",
-        "//tensorflow_federated/python/core/backends/native:execution_contexts",
-        "//tensorflow_federated/python/core/impl/computation:computation_base",
-        "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:type_conversions",
-        "//tensorflow_federated/python/learning/metrics:aggregator",
-        "//tensorflow_federated/python/learning/metrics:counters",
     ],
 )
 
@@ -174,7 +135,6 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":functional",
-        ":keras_utils",
         ":model_examples",
         ":serialization",
         ":test_models",
@@ -185,6 +145,7 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:type_conversions",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
         "//tensorflow_federated/python/core/impl/types:type_test_utils",
+        "//tensorflow_federated/python/learning:keras_utils",
     ],
 )
 
