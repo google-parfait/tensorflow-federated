@@ -39,21 +39,28 @@ limitations under the License
 #include "tensorflow/core/framework/tensor_types.h"
 #include "tensorflow/core/framework/types.pb.h"
 #include "tensorflow/core/platform/tstring.h"
+#include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/core/impl/executors/dataset_conversions.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/protobuf_matchers.h"
+#include "tensorflow_federated/cc/core/impl/executors/type_utils.h"
 #include "tensorflow_federated/proto/v0/computation.pb.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow_federated {
 namespace testing {
 
-inline v0::Value IntrinsicV(std::string_view uri) {
+inline v0::Value IntrinsicV(
+    std::string_view uri,
+    std::optional<v0::FunctionType> type_spec = std::nullopt) {
   v0::Value value_proto;
+  v0::Computation* computation_pb = value_proto.mutable_computation();
   // Construct an explicit string from this string-view; this silent conversion
   // is not present in OSS.
-  *value_proto.mutable_computation()->mutable_intrinsic()->mutable_uri() =
-      std::string(uri);
+  *computation_pb->mutable_intrinsic()->mutable_uri() = std::string(uri);
+  if (type_spec.has_value()) {
+    *computation_pb->mutable_type()->mutable_function() = type_spec.value();
+  }
   return value_proto;
 }
 
@@ -63,7 +70,7 @@ inline v0::Value ServerV(v0::Value server_val) {
   v0::FederatedType* type_proto =
       value_proto.mutable_federated()->mutable_type();
   type_proto->set_all_equal(true);
-  *type_proto->mutable_placement()->mutable_value()->mutable_uri() = "server";
+  *type_proto->mutable_placement()->mutable_value()->mutable_uri() = kServerUri;
   *value_proto.mutable_federated()->add_value() = server_val;
   return value_proto;
 }
@@ -75,7 +82,8 @@ inline v0::Value ClientsV(const absl::Span<const v0::Value> client_values,
   v0::FederatedType* type_proto =
       value_proto.mutable_federated()->mutable_type();
   type_proto->set_all_equal(all_equal);
-  *type_proto->mutable_placement()->mutable_value()->mutable_uri() = "clients";
+  *type_proto->mutable_placement()->mutable_value()->mutable_uri() =
+      kClientsUri;
   auto values_pb = value_proto.mutable_federated()->mutable_value();
   values_pb->Reserve(client_values.size());
   for (const auto& client_value : client_values) {
@@ -248,8 +256,11 @@ MATCHER(TensorsProtoEqual,
 
 namespace intrinsic {
 
-#define INTRINSIC_FUNC(name, uri) \
-  inline v0::Value name() { return IntrinsicV(#uri); }
+#define INTRINSIC_FUNC(name, uri)                                   \
+  inline v0::Value name(std::optional<v0::FunctionType> type_spec = \
+                            std::nullopt) {                         \
+    return IntrinsicV(#uri, type_spec);                             \
+  }
 
 INTRINSIC_FUNC(ArgsIntoSequenceV, args_into_sequence);
 INTRINSIC_FUNC(FederatedAggregateV, federated_aggregate);

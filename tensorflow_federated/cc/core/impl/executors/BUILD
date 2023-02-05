@@ -653,9 +653,11 @@ cc_library(
     deps = [
         ":cardinalities",
         ":executor",
+        ":federated_intrinsics",
         ":status_conversion",
         ":status_macros",
         ":threading",
+        ":type_utils",
         "//tensorflow_federated/proto/v0:computation_cc_proto",
         "//tensorflow_federated/proto/v0:executor_cc_grpc_proto",
         "//tensorflow_federated/proto/v0:executor_cc_proto",
@@ -945,13 +947,28 @@ cc_library(
 )
 
 cc_library(
+    name = "type_utils",
+    srcs = ["type_utils.cc"],
+    hdrs = ["type_utils.h"],
+    deps = [
+        ":status_macros",
+        "//tensorflow_federated/proto/v0:computation_cc_proto",
+        "//tensorflow_federated/proto/v0:executor_cc_proto",
+        "@com_google_absl//absl/status:statusor",
+        "@org_tensorflow//tensorflow/core:protos_all_cc",
+    ],
+)
+
+cc_library(
     name = "value_test_utils",
     testonly = True,
     hdrs = ["value_test_utils.h"],
     deps = [
+        ":cardinalities",
         ":dataset_conversions",
         ":executor",
         ":protobuf_matchers",
+        ":type_utils",
         "//tensorflow_federated/proto/v0:computation_cc_proto",
         "//tensorflow_federated/proto/v0:executor_cc_proto",
         "@com_google_absl//absl/status",
@@ -1057,18 +1074,22 @@ cc_test(
     srcs = ["remote_executor_stream_structs_test.cc"],
     deps = [
         ":executor",
+        ":federated_intrinsics",
         ":mock_grpc",
         ":protobuf_matchers",
         ":remote_executor",
         ":status_matchers",
         ":value_test_utils",
         "//tensorflow_federated/cc/common_libs:oss_test_main",
+        "//tensorflow_federated/proto/v0:computation_cc_proto",
         "//tensorflow_federated/proto/v0:executor_cc_grpc_proto",
         "//tensorflow_federated/proto/v0:executor_cc_proto",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
         "@com_google_absl//absl/synchronization",
         "@com_google_absl//absl/time",
+        "@com_google_protobuf//:protobuf",
     ],
 )
