@@ -127,46 +127,6 @@ def create_remote_python_execution_context(
   )
 
 
-def set_remote_python_execution_context(
-    channels,
-    thread_pool_executor=None,
-    dispose_batch_size=20,
-    max_fanout: int = 100,
-    default_num_clients: int = 0,
-):
-  """Installs context to execute computations with workers on `channels`.
-
-  Args:
-    channels: A list of `grpc.Channels` hosting services which can execute TFF
-      work. Assumes each channel connects to a valid endpoint.
-    thread_pool_executor: Optional concurrent.futures.Executor used to wait for
-      the reply to a streaming RPC message. Uses the default Executor if not
-      specified.
-    dispose_batch_size: The batch size for requests to dispose of remote worker
-      values. Lower values will result in more requests to the remote worker,
-      but will result in values being cleaned up sooner and therefore may result
-      in lower memory usage on the remote worker.
-    max_fanout: The maximum fanout at any point in the aggregation hierarchy. If
-      `num_clients > max_fanout`, the constructed executor stack will consist of
-      multiple levels of aggregators. The height of the stack will be on the
-      order of `log(default_num_clients) / log(max_fanout)`.
-    default_num_clients: The number of clients to use for simulations where the
-      number of clients cannot be inferred. Usually the number of clients will
-      be inferred from the number of values passed to computations which accept
-      client-placed values. However, when this inference isn't possible (such as
-      in the case of a no-argument or non-federated computation) this default
-      will be used instead.
-  """
-  context = create_remote_python_execution_context(
-      channels=channels,
-      thread_pool_executor=thread_pool_executor,
-      dispose_batch_size=dispose_batch_size,
-      max_fanout=max_fanout,
-      default_num_clients=default_num_clients,
-  )
-  context_stack_impl.context_stack.set_default_context(context)
-
-
 def create_remote_async_python_execution_context(
     channels: list[grpc.Channel],
     thread_pool_executor: Optional[futures.Executor] = None,
