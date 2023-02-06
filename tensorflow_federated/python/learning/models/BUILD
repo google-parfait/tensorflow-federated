@@ -184,6 +184,8 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:type_conversions",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
         "//tensorflow_federated/python/core/impl/types:type_test_utils",
+        "@org_tensorflow//tensorflow/lite/python:analyzer",
+        "@org_tensorflow//tensorflow/lite/python:lite",
     ],
 )
 
