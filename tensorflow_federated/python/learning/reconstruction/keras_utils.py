@@ -26,7 +26,7 @@ import tensorflow as tf
 
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.learning import keras_utils as base_utils
+from tensorflow_federated.python.learning.models import keras_utils as base_utils
 from tensorflow_federated.python.learning.reconstruction import model as model_lib
 
 
