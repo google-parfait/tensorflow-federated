@@ -35,7 +35,9 @@ class ClientSpec:
       client datasets.
     max_elements: An optional positive integer governing the maximum number of
       examples used by each client. By default, this is set to `None` in which
-      case clients use their full dataset.
+      case clients use their full dataset. The maximun number of examples is
+      taken after the entire local dataset is repeated for the number of passes
+      defined by `num_epochs`.
     shuffle_buffer_size: An optional positive integer specifying the shuffle
       buffer size to use. If set to `None`, a default value suitable for the
       task's dataset will be used. If set to `1`, no shuffling occurs.

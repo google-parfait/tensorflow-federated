@@ -15,6 +15,7 @@
 
 from tensorflow_federated.python.simulation.baselines import cifar100
 from tensorflow_federated.python.simulation.baselines import emnist
+from tensorflow_federated.python.simulation.baselines import landmark
 from tensorflow_federated.python.simulation.baselines import shakespeare
 from tensorflow_federated.python.simulation.baselines import stackoverflow
 from tensorflow_federated.python.simulation.baselines.baseline_task import BaselineTask

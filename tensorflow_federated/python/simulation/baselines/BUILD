@@ -23,6 +23,7 @@ py_library(
         ":task_data",
         "//tensorflow_federated/python/simulation/baselines/cifar100",
         "//tensorflow_federated/python/simulation/baselines/emnist",
+        "//tensorflow_federated/python/simulation/baselines/landmark",
         "//tensorflow_federated/python/simulation/baselines/shakespeare",
         "//tensorflow_federated/python/simulation/baselines/stackoverflow",
     ],
