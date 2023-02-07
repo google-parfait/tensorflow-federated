@@ -13,13 +13,14 @@
 # limitations under the License.
 
 from absl.testing import absltest
+from absl.testing import parameterized
 import tensorflow as tf
 
 from google.protobuf import any_pb2
 from tensorflow_federated.python.common_libs import serialization_utils
 
 
-class SerializationUtilsTest(absltest.TestCase):
+class SerializationUtilsTest(parameterized.TestCase):
 
   def test_pack_graph_def_returns_any_pb(self):
     input_value = tf.compat.v1.GraphDef()
@@ -34,13 +35,47 @@ class SerializationUtilsTest(absltest.TestCase):
     output_value = serialization_utils.unpack_graph_def(any_pb)
     self.assertEqual(input_value, output_value)
 
-  def test_pack_graph_seed_set_raises(self):
+  @parameterized.named_parameters([
+      {
+          'testcase_name': 'with_only_graph_level_seed',
+          'graph_level_seed': 1234,
+          'op_level_seed': None,
+      },
+      {
+          'testcase_name': 'with_graph_and_op_level_seeds',
+          'graph_level_seed': 1234,
+          'op_level_seed': 1234,
+      },
+  ])
+  def test_pack_graph_def_raises_error(self, graph_level_seed, op_level_seed):
     with tf.Graph().as_default() as g:
-      tf.random.set_seed(1234)
-      tf.random.normal([1])
+      tf.random.set_seed(graph_level_seed)
+      tf.random.normal([1], seed=op_level_seed)
     input_value = g.as_graph_def()
     with self.assertRaisesRegex(ValueError, 'graph-level random seed'):
       serialization_utils.pack_graph_def(input_value)
+
+  @parameterized.named_parameters([
+      {
+          'testcase_name': 'without_graph_and_op_level_seeds',
+          'graph_level_seed': None,
+          'op_level_seed': None,
+      },
+      {
+          'testcase_name': 'with_only_op_level_seed',
+          'graph_level_seed': None,
+          'op_level_seed': 1234,
+      },
+  ])
+  def test_pack_graph_def_does_not_raise_error(
+      self, graph_level_seed, op_level_seed
+  ):
+    with tf.Graph().as_default() as g:
+      tf.random.set_seed(graph_level_seed)
+      tf.random.normal([1], seed=op_level_seed)
+    input_value = g.as_graph_def()
+    any_pb = serialization_utils.pack_graph_def(input_value)
+    self.assertEqual(type(any_pb), any_pb2.Any)
 
   def test_pack_graph_def_fails_non_graph_def_arg(self):
     with self.assertRaisesRegex(TypeError, 'found str'):
