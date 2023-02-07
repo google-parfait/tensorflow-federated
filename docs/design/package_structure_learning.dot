@@ -22,12 +22,10 @@ digraph {
   algorithms -> metrics
   algorithms -> models
   algorithms -> optimizers
-  algorithms -> framework
   algorithms -> learning
   templates -> optimizers
   templates -> metrics
   templates -> models
-  templates -> framework
   templates -> learning
   reconstruction -> optimizers
   reconstruction -> metrics
@@ -36,18 +34,13 @@ digraph {
   reconstruction -> learning
   models -> metrics
   models -> learning
-  framework -> optimizers
   framework -> learning
-  framework -> metrics
   framework -> models
   optimizers -> learning
   metrics -> learning
 
   // TODO(b/151441025): This visibility is temporary and can be removed once the
   // circular dependencies between `learning` and its subpackages are removed.
-  framework -> learning [dir=back, color="#ff0000"]
-  optimizers -> learning [dir=back, color="#ff0000"]
   metrics -> learning [dir=back, color="#ff0000"]
   models -> learning [dir=back, color="#ff0000"]
-  metrics -> models [dir=back, color="#ff0000"]
 }

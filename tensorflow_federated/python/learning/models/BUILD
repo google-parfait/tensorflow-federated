@@ -4,14 +4,13 @@ package(default_visibility = [
     ":models_packages",
     "//tensorflow_federated/python/learning:learning_users",
     "//tensorflow_federated/python/learning/algorithms:algorithms_packages",
-    "//tensorflow_federated/python/learning/metrics:metrics_packages",
     "//tensorflow_federated/python/learning/programs:programs_packages",
     "//tensorflow_federated/python/learning/reconstruction:reconstruction_packages",
     "//tensorflow_federated/python/learning/templates:templates_packages",
+    "//tensorflow_federated/python/learning/framework:framework_packages",
 
     # TODO(b/151441025): remove these edges after moving the symbols into more appropriate locations.
     "//tensorflow_federated/python/learning:learning_packages",
-    "//tensorflow_federated/python/learning/framework:framework_packages",
 ])
 
 package_group(
