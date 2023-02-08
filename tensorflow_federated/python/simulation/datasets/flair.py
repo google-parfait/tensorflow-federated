@@ -85,7 +85,12 @@ def download_data(data_dir: str) -> None:
         cache_subdir=_IMAGE_SUBDIR,
     )
 
-  image_bucket_urls = [f'{x:02d}' for x in range(43)]
+  image_buckets = [
+      f'images/small/{_TAR_PREFIX}-{x:02d}.tar.gz' for x in range(43)
+  ]
+  image_bucket_urls = [
+      urllib.parse.urljoin(base_url, bucket) for bucket in image_buckets
+  ]
   logging.info('Downloading and unpacking images...')
   with multiprocessing.pool.ThreadPool(multiprocessing.cpu_count()) as pool:
     pool.map(download_image_bucket, image_bucket_urls)
