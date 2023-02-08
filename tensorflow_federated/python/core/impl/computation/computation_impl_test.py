@@ -24,7 +24,7 @@ from tensorflow_federated.python.core.impl.types import type_serialization
 from tensorflow_federated.python.core.impl.types import type_test_utils
 
 
-class ComputationImplTest(absltest.TestCase):
+class ConcreteComputationTest(absltest.TestCase):
 
   def test_something(self):
     # TODO(b/113112108): Revise these tests after a more complete implementation

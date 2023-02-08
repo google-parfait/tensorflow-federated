@@ -18,26 +18,29 @@ from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.execution_contexts import compiler_pipeline
 
 
+class _FakeComputation(computation_base.Computation):
+
+  def __init__(self, value: int):
+    self.value = value
+
+  def __call__(self):
+    raise NotImplementedError()
+
+  def __hash__(self):
+    return hash(self.value)
+
+  def type_signature(self):
+    raise NotImplementedError()
+
+
 class CompilerPipelineTest(absltest.TestCase):
 
   def test_compile_computation_with_identity(self):
-    class BogusComputation(computation_base.Computation):
+    comp = _FakeComputation(5)
+    pipeline = compiler_pipeline.CompilerPipeline(lambda x: x)
 
-      def __init__(self, v: int):
-        self.v = v
-
-      def __call__(self):
-        raise NotImplementedError()
-
-      def __hash__(self):
-        return hash(self.v)
-
-      def type_signature(self):
-        raise NotImplementedError()
-
-    id_pipeline = compiler_pipeline.CompilerPipeline(lambda x: x)
-    compiled_bogus = id_pipeline.compile(BogusComputation(5))
-    self.assertEqual(compiled_bogus.v, 5)
+    compiled_comp = pipeline.compile(comp)
+    self.assertEqual(compiled_comp.value, 5)
 
     # TODO(b/113123410): Expand the test with more structural invariants.
 

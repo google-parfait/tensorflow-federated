@@ -17,7 +17,7 @@ import asyncio
 from collections.abc import Awaitable, Sequence, Callable
 import functools
 import math
-from typing import Any, Optional, TypeVar, Union
+from typing import Any, Generic, Optional, TypeVar, Union
 
 import attr
 from tensorflow_federated.python.common_libs import async_utils
@@ -37,6 +37,7 @@ from tensorflow_federated.python.core.impl.types import typed_object
 
 # Type alias for the payload value in a partitioned data structure.
 Value = TypeVar('Value')
+_Computation = TypeVar('_Computation', bound=computation_base.Computation)
 
 
 class MergeTypeNotAssignableError(TypeError):
@@ -598,7 +599,9 @@ async def _invoke_mergeable_comp_form(
   return repackaged_values
 
 
-class MergeableCompExecutionContext(context_base.SyncContext):
+class MergeableCompExecutionContext(
+    context_base.SyncContext, Generic[_Computation]
+):
   """Context which executes mergeable computations in subrounds.
 
   This context relies on retrying behavior of the  underlying asynchronous
@@ -611,9 +614,7 @@ class MergeableCompExecutionContext(context_base.SyncContext):
   def __init__(
       self,
       async_contexts: Sequence[context_base.AsyncContext],
-      compiler_fn: Optional[
-          Callable[[computation_base.Computation], MergeableCompForm]
-      ] = None,
+      compiler_fn: Optional[Callable[[_Computation], MergeableCompForm]] = None,
       num_subrounds: Optional[int] = None,
   ):
     """Initializes a MergeableCompExecutionContext.
@@ -622,9 +623,10 @@ class MergeableCompExecutionContext(context_base.SyncContext):
       async_contexts: Sequence of TFF execution contexts. These contexts are
         assumed to implement their `invoke` method as a coroutine function,
         returning an awaitable.
-      compiler_fn: An optional callable which accepts a `tff.Computation` and
-        returns an instance of `MergeableCompForm`. If not provided, this
-        context will only execute instances of `MergeableCompForm` directly.
+      compiler_fn: An optional callable which accepts a
+        `tff.framework.ConcreteComputation` and returns an instance of
+        `MergeableCompForm`. If not provided, this context will only execute
+        instances of `MergeableCompForm` directly.
       num_subrounds: An optional integer, specifying total the number of
         subrounds desired. If unspecified, the length of `async_contexts` will
         determine the number of subrounds. If more subrounds are requested than

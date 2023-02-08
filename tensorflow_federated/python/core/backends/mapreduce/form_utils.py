@@ -962,7 +962,7 @@ def get_broadcast_form_for_computation(
 
 
 def get_map_reduce_form_for_computation(
-    comp: computation_base.Computation,
+    comp: computation_impl.ConcreteComputation,
     grappler_config: tf.compat.v1.ConfigProto = _GRAPPLER_DEFAULT_CONFIG,
     *,
     tff_internal_preprocessing: Optional[BuildingBlockFn] = None,
@@ -970,9 +970,9 @@ def get_map_reduce_form_for_computation(
   """Constructs `tff.backends.mapreduce.MapReduceForm` for a computation.
 
   Args:
-    comp: An instance of `computation_base.Computation` that is compatible with
-      MapReduce form. The computation must take exactly two arguments, and the
-      first must be a state value placed at `SERVER`. The computation must
+    comp: An instance of `tff.framework.ConcreteComputation` that is compatible
+      with MapReduce form. The computation must take exactly two arguments, and
+      the first must be a state value placed at `SERVER`. The computation must
       return exactly two values. The type of the first element in the result
       must also be assignable to the first element of the parameter.
     grappler_config: An optional instance of `tf.compat.v1.ConfigProto` to
@@ -987,13 +987,13 @@ def get_map_reduce_form_for_computation(
 
   Returns:
     An instance of `tff.backends.mapreduce.MapReduceForm` equivalent to the
-    provided `computation_base.Computation`.
+    provided `tff.framework.ConcreteComputation`.
 
   Raises:
     TypeError: If the arguments are of the wrong types.
     compiler.MapReduceFormCompilationError: If the compilation process fails.
   """
-  py_typecheck.check_type(comp, computation_base.Computation)
+  py_typecheck.check_type(comp, computation_impl.ConcreteComputation)
   comp_bb = check_computation_compatible_with_map_reduce_form(
       comp, tff_internal_preprocessing=tff_internal_preprocessing
   )

@@ -235,8 +235,7 @@ def create_mergeable_comp_execution_context(
   """
   return mergeable_comp_execution_context.MergeableCompExecutionContext(
       async_contexts=async_contexts,
-      # TODO(b/204258376): Enable this py-typecheck when possible.
-      compiler_fn=mergeable_comp_compiler.compile_to_mergeable_comp_form,  # pytype: disable=wrong-arg-types
+      compiler_fn=mergeable_comp_compiler.compile_to_mergeable_comp_form,
       num_subrounds=num_subrounds,
   )
 

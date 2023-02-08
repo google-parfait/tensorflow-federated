@@ -16,7 +16,7 @@
 import asyncio
 from collections.abc import Callable
 import contextlib
-from typing import Any, Optional
+from typing import Any, Generic, Optional, TypeVar
 
 import tensorflow as tf
 
@@ -36,6 +36,9 @@ from tensorflow_federated.python.core.impl.executors import ingestable_base
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.types import typed_object
+
+
+_Computation = TypeVar('_Computation', bound=computation_base.Computation)
 
 
 def _unwrap(value):
@@ -144,7 +147,7 @@ async def _invoke(executor, comp, arg, result_type: computation_types.Type):
   return type_conversions.type_to_py_container(result_val, result_type)
 
 
-class AsyncExecutionContext(context_base.AsyncContext):
+class AsyncExecutionContext(context_base.AsyncContext, Generic[_Computation]):
   """An asynchronous execution context backed by an `executor_base.Executor`.
 
   This context's `ingest` and `invoke` methods return Python coroutine objects
@@ -158,9 +161,7 @@ class AsyncExecutionContext(context_base.AsyncContext):
   def __init__(
       self,
       executor_fn: executor_factory.ExecutorFactory,
-      compiler_fn: Optional[
-          Callable[[computation_base.Computation], Any]
-      ] = None,
+      compiler_fn: Optional[Callable[[_Computation], Any]] = None,
       *,
       cardinality_inference_fn: cardinalities_utils.CardinalityInferenceFnType = cardinalities_utils.infer_cardinalities,
   ):

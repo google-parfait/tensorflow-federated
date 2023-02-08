@@ -90,7 +90,6 @@ py_library(
     ],
     deps = [
         "//tensorflow_federated/python/core/backends/native:compiler",
-        "//tensorflow_federated/python/core/impl/computation:computation_base",
         "//tensorflow_federated/python/core/impl/context_stack:set_default_context",
         "//tensorflow_federated/python/core/impl/execution_contexts:sync_execution_context",
         "//tensorflow_federated/python/core/impl/executor_stacks:cpp_executor_factory",

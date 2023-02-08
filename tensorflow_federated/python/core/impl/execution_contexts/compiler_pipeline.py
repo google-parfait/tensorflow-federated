@@ -15,39 +15,37 @@
 
 from collections.abc import Callable
 import functools
-from typing import Any
+from typing import Any, Generic, TypeVar
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl.computation import computation_base
 
+_Computation = TypeVar('_Computation', bound=computation_base.Computation)
 
-class CompilerPipeline:
+
+class CompilerPipeline(Generic[_Computation]):
   """An interface for generating executable artifacts.
 
   The `CompilerPipeline` holds very little logic; caching for the
   artifacts it generates and essentially nothing else. The `CompilerPipeline`
-  is initialized with a `compilation_function`, to which the pipeline itself
-  delegates all the actual work of compilation.
+  is initialized with a `compiler_fn`, to which the pipeline itself delegates
+  all the actual work of compilation.
 
   Different TFF backends may accept different executable artifacts; e.g. a
   backend that supports only a map-reduce execution model may accept instances
   of `tff.backends.mapreduce.MapReduceForm`. The TFF representation of such a
   backend takes the form of an instance of `tff.framework.SyncContext` or
-  `tff.framework.AsyncContext` , which would be initialized with a
-  `CompilerPipeline` whose `compilation_fn` accepts `tff.Computations` and
-  returns MapReduceForms.
+  `tff.framework.AsyncContext`, which would be initialized with a
+  `CompilerPipeline` whose `compilation_fn` accepts a `tff.Computation` and
+  returns `tff.backends.mapreduce.MapReduceForm`s.
   """
 
-  def __init__(
-      self, compilation_fn: Callable[[computation_base.Computation], Any]
-  ):
-    py_typecheck.check_callable(compilation_fn)
-    self._compilation_fn = compilation_fn
+  def __init__(self, compiler_fn: Callable[[_Computation], Any]):
+    py_typecheck.check_callable(compiler_fn)
+    self._compiler_fn = compiler_fn
 
   @functools.lru_cache()
-  def compile(self, computation_to_compile: computation_base.Computation):
-    """Generates executable for `computation_to_compile`."""
-    py_typecheck.check_type(
-        computation_to_compile, computation_base.Computation
-    )
-    return self._compilation_fn(computation_to_compile)
+  def compile(self, comp: _Computation) -> Any:
+    """Compiles `comp`."""
+    py_typecheck.check_type(comp, computation_base.Computation)
+    return self._compiler_fn(comp)

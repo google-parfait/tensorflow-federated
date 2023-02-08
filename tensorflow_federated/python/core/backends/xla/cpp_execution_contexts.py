@@ -13,8 +13,7 @@
 # limitations under the License.
 """Execution contexts for the XLA backend."""
 
-from tensorflow_federated.python.core.backends.native import compiler as native_compiler
-from tensorflow_federated.python.core.impl.computation import computation_base
+from tensorflow_federated.python.core.backends.native import compiler
 from tensorflow_federated.python.core.impl.context_stack import set_default_context
 from tensorflow_federated.python.core.impl.execution_contexts import sync_execution_context
 from tensorflow_federated.python.core.impl.executor_stacks import cpp_executor_factory
@@ -64,12 +63,9 @@ def create_local_cpp_execution_context(
       leaf_executor_fn=leaf_executor_fn,
   )
 
-  def compiler_fn(comp: computation_base.Computation):
-    # TODO(b/255978089): implement lowering to federated_aggregate to create
-    # JAX computations instead of TensorFlow, similar to "desugar intrinsics"
-    # in the native backend.
-    return native_compiler.transform_to_native_form(comp)
-
+  # TODO(b/255978089): implement lowering to federated_aggregate to create JAX
+  # computations instead of TensorFlow, similar to "desugar intrinsics" in the
+  # native backend.
   return sync_execution_context.SyncExecutionContext(
-      executor_fn=factory, compiler_fn=compiler_fn
+      executor_fn=factory, compiler_fn=compiler.transform_to_native_form
   )

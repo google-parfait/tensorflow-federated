@@ -14,7 +14,7 @@
 """A context for execution based on an embedded executor instance."""
 
 from collections.abc import Callable
-from typing import Any, Optional
+from typing import Any, Generic, Optional, TypeVar
 
 from tensorflow_federated.python.common_libs import async_utils
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -25,15 +25,16 @@ from tensorflow_federated.python.core.impl.executors import cardinalities_utils
 from tensorflow_federated.python.core.impl.executors import executor_factory
 
 
-class SyncExecutionContext(context_base.SyncContext):
+_Computation = TypeVar('_Computation', bound=computation_base.Computation)
+
+
+class SyncExecutionContext(context_base.SyncContext, Generic[_Computation]):
   """A synchronous execution context backed by an `executor_base.Executor`."""
 
   def __init__(
       self,
       executor_fn: executor_factory.ExecutorFactory,
-      compiler_fn: Optional[
-          Callable[[computation_base.Computation], Any]
-      ] = None,
+      compiler_fn: Optional[Callable[[_Computation], Any]] = None,
       *,
       cardinality_inference_fn: cardinalities_utils.CardinalityInferenceFnType = cardinalities_utils.infer_cardinalities,
   ):

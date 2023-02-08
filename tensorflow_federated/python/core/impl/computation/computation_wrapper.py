@@ -14,7 +14,7 @@
 """Utilities for constructing decorators for functions and `tf.function`s."""
 
 import collections
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 import functools
 import inspect
 import types
@@ -71,7 +71,7 @@ def _check_parameters(parameters):
 
 def _wrap_concrete(
     fn_name: Optional[str], wrapper_fn, parameter_type, unpack=None, **kwargs
-) -> computation_impl.ConcreteComputation:
+) -> Iterator[computation_impl.ConcreteComputation]:
   """Wraps with `wrapper_fn` given the provided `parameter_type`."""
   del unpack  # Unused.
   generator = wrapper_fn(parameter_type, fn_name, **kwargs)
