@@ -477,7 +477,7 @@ class ComputationWrapper:
         if len(args) > 1:
           provided_types.extend(map(computation_types.to_type, args[1:]))
       return functools.partial(
-          self.__call__, tff_internal_types=provided_types, kwargs=kwargs
+          self.__call__, tff_internal_types=provided_types, **kwargs
       )
     # or a tf.function, this is the one that's being wrapped. This is the case
     # of either a decorator invocation without arguments as "@xyz" applied to

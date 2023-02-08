@@ -859,6 +859,24 @@ class TensorFlowFunctionComputationTest(parameterized.TestCase):
         'unsharded',
     )
 
+  def test_experimental_tf_computation_decorator_with_variable_and_layout(self):
+    @tensorflow_computation.experimental_tf_fn_computation(
+        tf.int32, layout_map={'x': 'unsharded'}
+    )
+    def foo(x):
+      v = tf.Variable(0, name='x')
+      v.assign(1)
+      return v + x
+
+    concrete_foo = computation_impl.ConcreteComputation.get_proto(foo)
+    self.assertLen(
+        concrete_foo.tensorflow_function.layout_map.name_to_sharding_spec, 1
+    )
+    self.assertEqual(
+        concrete_foo.tensorflow_function.layout_map.name_to_sharding_spec['x'],
+        'unsharded',
+    )
+
   def test_with_local_variable_user_specified_lifting(self):
     def foo(x):
       # The user has explicitly asked for variable lifting, but the
@@ -912,6 +930,22 @@ class TensorFlowFunctionComputationTest(parameterized.TestCase):
     foo = tensorflow_computation.tf_computation(
         foo, tf.int32, layout_map={'x': 'unsharded'}
     )
+    concrete_foo = computation_impl.ConcreteComputation.get_proto(foo)
+    self.assertLen(concrete_foo.tensorflow.layout_map.name_to_sharding_spec, 1)
+    self.assertEqual(
+        concrete_foo.tensorflow.layout_map.name_to_sharding_spec['x'],
+        'unsharded',
+    )
+
+  def test_tf_computation_decorator_with_variable_and_layout(self):
+    @tensorflow_computation.tf_computation(
+        tf.int32, layout_map={'x': 'unsharded'}
+    )
+    def foo(x):
+      v = tf.Variable(0, name='x')
+      v.assign(1)
+      return v + x
+
     concrete_foo = computation_impl.ConcreteComputation.get_proto(foo)
     self.assertLen(concrete_foo.tensorflow.layout_map.name_to_sharding_spec, 1)
     self.assertEqual(
