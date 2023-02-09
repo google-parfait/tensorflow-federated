@@ -49,16 +49,8 @@ from tensorflow_federated.python.core.impl.executors.executor_base import Execut
 from tensorflow_federated.python.core.impl.executors.executor_factory import CardinalitiesType
 from tensorflow_federated.python.core.impl.executors.executor_factory import ExecutorFactory
 from tensorflow_federated.python.core.impl.executors.executor_value_base import ExecutorValue
-from tensorflow_federated.python.core.impl.executors.federated_composing_strategy import FederatedComposingStrategy
-from tensorflow_federated.python.core.impl.executors.federated_resolving_strategy import FederatedResolvingStrategy
-from tensorflow_federated.python.core.impl.executors.federating_executor import FederatingExecutor
-from tensorflow_federated.python.core.impl.executors.federating_executor import FederatingStrategy
 from tensorflow_federated.python.core.impl.executors.ingestable_base import Ingestable
-from tensorflow_federated.python.core.impl.executors.reference_resolving_executor import ReferenceResolvingExecutor
-from tensorflow_federated.python.core.impl.executors.remote_executor import RemoteExecutor
 from tensorflow_federated.python.core.impl.executors.remote_executor_stub import RemoteExecutorStub
-from tensorflow_federated.python.core.impl.executors.thread_delegating_executor import ThreadDelegatingExecutor
-from tensorflow_federated.python.core.impl.executors.transforming_executor import TransformingExecutor
 from tensorflow_federated.python.core.impl.executors.value_serialization import deserialize_value
 from tensorflow_federated.python.core.impl.executors.value_serialization import serialize_value
 from tensorflow_federated.python.core.impl.tensorflow_context.tensorflow_computation_context import get_session_token
