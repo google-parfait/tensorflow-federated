@@ -13,12 +13,18 @@
 # limitations under the License.
 """Execution contexts for the test backend."""
 
+from tensorflow_federated.python.common_libs import deprecation
 from tensorflow_federated.python.core.backends.test import compiler
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.execution_contexts import sync_execution_context
 from tensorflow_federated.python.core.impl.executor_stacks import python_executor_stacks
 
 
+# TODO(b/240972950): Remove deprecated API.
+@deprecation.deprecated(
+    '`create_test_python_execution_context` is deprecated, , currently there '
+    'is no alternative.'
+)
 def create_test_python_execution_context(
     default_num_clients=0, clients_per_thread=1
 ):
@@ -34,6 +40,11 @@ def create_test_python_execution_context(
   )
 
 
+# TODO(b/240972950): Remove deprecated API.
+@deprecation.deprecated(
+    '`set_test_python_execution_context` is deprecated, , currently there is '
+    'no alternative.'
+)
 def set_test_python_execution_context(
     default_num_clients=0, clients_per_thread=1
 ):

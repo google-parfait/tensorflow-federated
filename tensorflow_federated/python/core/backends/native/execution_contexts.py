@@ -29,6 +29,7 @@ import grpc
 import lzma  # pylint: disable=g-bad-import-order
 import portpicker
 
+from tensorflow_federated.python.common_libs import deprecation
 from tensorflow_federated.python.core.backends.native import compiler
 from tensorflow_federated.python.core.backends.native import mergeable_comp_compiler
 from tensorflow_federated.python.core.impl.context_stack import context_base
@@ -52,6 +53,11 @@ _GRPC_CHANNEL_OPTIONS = [
 ]
 
 
+# TODO(b/240972950): Remove deprecated API.
+@deprecation.deprecated(
+    '`create_local_python_execution_context` is deprecated, use '
+    '`create_async_local_cpp_execution_context` instead.'
+)
 def create_local_python_execution_context(
     default_num_clients: int = 0,
     max_fanout: int = 100,
@@ -81,6 +87,11 @@ def create_local_python_execution_context(
   )
 
 
+# TODO(b/240972950): Remove deprecated API.
+@deprecation.deprecated(
+    '`create_remote_python_execution_context` is deprecated, , currently '
+    'there is no alternative.'
+)
 def create_remote_python_execution_context(
     channels,
     thread_pool_executor=None,
@@ -127,6 +138,11 @@ def create_remote_python_execution_context(
   )
 
 
+# TODO(b/240972950): Remove deprecated API.
+@deprecation.deprecated(
+    '`create_remote_async_python_execution_context` is deprecated, currently '
+    'there is no alternative.'
+)
 def create_remote_async_python_execution_context(
     channels: list[grpc.Channel],
     thread_pool_executor: Optional[futures.Executor] = None,
@@ -173,6 +189,11 @@ def create_remote_async_python_execution_context(
   )
 
 
+# TODO(b/240972950): Remove deprecated API.
+@deprecation.deprecated(
+    '`set_remote_async_python_execution_context` is deprecated, currently '
+    'there is no alternative.'
+)
 def set_remote_async_python_execution_context(
     channels,
     thread_pool_executor=None,

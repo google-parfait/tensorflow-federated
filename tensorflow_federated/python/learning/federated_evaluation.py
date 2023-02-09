@@ -180,7 +180,7 @@ def build_functional_local_evaluation(
 
 @deprecation.deprecated(
     '`tff.learning.build_federated_evaluation` is deprecated, use '
-    '`tff.learning.algorithms.build_fed_eval` insteand.'
+    '`tff.learning.algorithms.build_fed_eval` instead.'
 )
 def build_federated_evaluation(
     model_fn: Union[
