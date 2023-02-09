@@ -106,7 +106,10 @@ class ClientScheduledFedAvgTest(parameterized.TestCase):
         client_optimizer_fn=optimizer_fn,
     )
 
-    self.assertEqual(mock_learning_rate_fn.call_count, 1)
+    # TODO(b/268530457): Investigate if we can/should reduce this to 1 call.
+    # Called twice, once at the clients (to build the relevant optimizer) and
+    # once at the server (to create the relevant measurement.)
+    self.assertEqual(mock_learning_rate_fn.call_count, 2)
 
   @parameterized.named_parameters([
       ('keras_optimizer', lambda x: tf.keras.optimizers.SGD()),
@@ -147,7 +150,7 @@ class ClientScheduledFedAvgTest(parameterized.TestCase):
   ])
   def test_constructs_with_non_constant_learning_rate(self, optimizer_fn):
     def learning_rate_fn(round_num):
-      tf.cond(tf.less(round_num, 2), lambda: 0.1, lambda: 0.01)
+      return tf.cond(tf.less(round_num, 2), lambda: 0.1, lambda: 0.01)
 
     fed_avg_with_optimizer_schedule.build_weighted_fed_avg_with_optimizer_schedule(
         model_fn=model_examples.LinearRegression,
@@ -176,6 +179,22 @@ class ClientScheduledFedAvgTest(parameterized.TestCase):
     )
     static_assert.assert_not_contains_unsecure_aggregation(
         learning_process.next
+    )
+
+  @parameterized.named_parameters([
+      ('keras_optimizer', lambda x: tf.keras.optimizers.SGD()),
+      ('tff_optimizer', lambda x: sgdm.build_sgdm()),
+  ])
+  def test_measurements_include_client_learning_rate(self, optimizer_fn):
+    client_work = fed_avg_with_optimizer_schedule.build_scheduled_client_work(
+        model_fn=model_examples.LinearRegression,
+        learning_rate_fn=lambda x: 1.0,
+        optimizer_fn=optimizer_fn,
+        metrics_aggregator=aggregator.sum_then_finalize,
+    )
+    output_type_signature = client_work.next.type_signature.result
+    self.assertTrue(
+        hasattr(output_type_signature[2].member, 'client_learning_rate')
     )
 
 
