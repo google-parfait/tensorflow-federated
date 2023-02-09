@@ -57,6 +57,7 @@ py_library(
     deps = [
         ":compiler",
         ":executor",
+        "//tensorflow_federated/python/common_libs:deprecation",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
         "//tensorflow_federated/python/core/impl/execution_contexts:sync_execution_context",
         "//tensorflow_federated/python/core/impl/executor_stacks:python_executor_stacks",
