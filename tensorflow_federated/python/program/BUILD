@@ -29,7 +29,6 @@ py_library(
         ":logging_release_manager",
         ":memory_release_manager",
         ":native_platform",
-        ":prefetching_data_source",
         ":program_state_manager",
         ":release_manager",
         ":tensorboard_release_manager",
@@ -292,6 +291,9 @@ py_test(
     name = "prefetching_data_source_test",
     srcs = ["prefetching_data_source_test.py"],
     srcs_version = "PY3",
+    tags = [
+        "nokokoro",  # b/268497846: Temporarily disable the `PrefetchingDataSource`.
+    ],
     deps = [
         ":data_source",
         ":prefetching_data_source",
