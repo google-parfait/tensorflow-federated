@@ -41,10 +41,8 @@ from tensorflow_federated.python.core.impl.executors.data_descriptor import Crea
 from tensorflow_federated.python.core.impl.executors.data_descriptor import DataDescriptor
 from tensorflow_federated.python.core.impl.executors.data_executor import DataExecutor
 from tensorflow_federated.python.core.impl.executors.eager_tf_executor import EagerTFExecutor
-from tensorflow_federated.python.core.impl.executors.executor_base import Executor
 from tensorflow_federated.python.core.impl.executors.executor_factory import CardinalitiesType
 from tensorflow_federated.python.core.impl.executors.executor_factory import ExecutorFactory
-from tensorflow_federated.python.core.impl.executors.executor_value_base import ExecutorValue
 from tensorflow_federated.python.core.impl.executors.ingestable_base import Ingestable
 from tensorflow_federated.python.core.impl.executors.remote_executor_stub import RemoteExecutorStub
 from tensorflow_federated.python.core.impl.executors.value_serialization import deserialize_value
