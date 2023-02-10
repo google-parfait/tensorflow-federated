@@ -64,7 +64,7 @@ def sum_then_finalize(
       `OrderedDict` as the Python container) of a client's local unfinalized
       metrics. Let `local_unfinalized_metrics` be the output of
       `tff.learning.Model.report_local_unfinalized_metrics()`. Its type can be
-      obtained by `tff.framework.type_from_tensors(local_unfinalized_metrics)`.
+      obtained by `tff.types.type_from_tensors(local_unfinalized_metrics)`.
 
   Returns:
     A federated TFF computation that sums the unfinalized metrics from
@@ -191,7 +191,7 @@ def secure_sum_then_finalize(
       `OrderedDict` as the Python container) of a client's local unfinalized
       metrics. Let `local_unfinalized_metrics` be the output of
       `tff.learning.Model.report_local_unfinalized_metrics()`. Its type can be
-      obtained by `tff.framework.type_from_tensors(local_unfinalized_metrics)`.
+      obtained by `tff.types.type_from_tensors(local_unfinalized_metrics)`.
     metric_value_ranges: A `collections.OrderedDict` that matches the structure
       of `local_unfinalized_metrics_type` (a value for each
       `tff.types.TensorType` in the type tree). Each leaf in the tree should

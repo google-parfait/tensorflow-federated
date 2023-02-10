@@ -53,7 +53,7 @@ def main(_: Sequence[str]) -> None:
 
   # Type of the data returned by the DataBackend.
   element_type = tff.types.TensorType(tf.int32)
-  element_type_proto = tff.framework.serialize_type(element_type)
+  element_type_proto = tff.types.serialize_type(element_type)
   # We construct a list of uri's as our references to the dataset.
   uris = [f'uri://{i}' for i in range(3)]
   # The uris are embedded in TFF computation protos so they can be processed by

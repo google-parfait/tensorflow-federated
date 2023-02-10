@@ -191,7 +191,7 @@ class SumThenFinalizeFactory(factory.UnweightedAggregationFactory):
         unfinalized metrics. Let `local_unfinalized_metrics` be the output of
         `tff.learning.Model.report_local_unfinalized_metrics()`, its type can be
         obtained by
-        `tff.framework.type_from_tensors(local_unfinalized_metrics)`.
+        `tff.types.type_from_tensors(local_unfinalized_metrics)`.
 
     Returns:
       An instance of `tff.templates.AggregationProcess`.
@@ -613,7 +613,7 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
         unfinalized metrics. Let `local_unfinalized_metrics` be the output of
         `tff.learning.Model.report_local_unfinalized_metrics()`, its type can be
         obtained by
-        `tff.framework.type_from_tensors(local_unfinalized_metrics)`.
+        `tff.types.type_from_tensors(local_unfinalized_metrics)`.
 
     Returns:
       An instance of `tff.templates.AggregationProcess`.

@@ -41,7 +41,7 @@ class DataBackendExample(tff.framework.DataBackend):
     """
 
     def blocking_materialize():
-      type_spec_proto = tff.framework.serialize_type(type_spec)
+      type_spec_proto = tff.types.serialize_type(type_spec)
       proto = self.cc_.resolve_to_value(data, type_spec_proto)
       value, _ = tff.framework.deserialize_value(proto)
       return value

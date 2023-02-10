@@ -46,7 +46,5 @@ py_library(
         "//tensorflow_federated/python/core/impl/executors:value_serialization",
         "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation_context",
         "//tensorflow_federated/python/core/impl/types:placements",
-        "//tensorflow_federated/python/core/impl/types:type_conversions",
-        "//tensorflow_federated/python/core/impl/types:type_serialization",
     ],
 )
