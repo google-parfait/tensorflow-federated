@@ -81,6 +81,7 @@ class FederatingStrategy(abc.ABC):
   * which placements are implemented
   """
 
+  @executor_utils.python_executors_deprecated
   def __init__(self, executor: 'FederatingExecutor'):
     """Creates a `FederatingStrategy`.
 
@@ -290,6 +291,7 @@ class FederatingExecutor(executor_base.Executor):
       intrinsic_defs.SEQUENCE_SUM.uri,
   ]
 
+  @executor_utils.python_executors_deprecated
   def __init__(
       self,
       strategy_factory: Callable[['FederatingExecutor'], FederatingStrategy],

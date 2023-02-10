@@ -93,6 +93,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/executors:eager_tf_executor",
         "//tensorflow_federated/python/core/impl/executors:executor_base",
         "//tensorflow_federated/python/core/impl/executors:executor_factory",
+        "//tensorflow_federated/python/core/impl/executors:executor_utils",
         "//tensorflow_federated/python/core/impl/executors:executors_errors",
         "//tensorflow_federated/python/core/impl/executors:federated_composing_strategy",
         "//tensorflow_federated/python/core/impl/executors:federated_resolving_strategy",

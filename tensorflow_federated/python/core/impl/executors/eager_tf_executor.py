@@ -619,6 +619,7 @@ def to_representation_for_type(
 class EagerValue(executor_value_base.ExecutorValue):
   """A representation of an eager value managed by the eager executor."""
 
+  @executor_utils.python_executors_deprecated
   def __init__(self, value, type_spec):
     """Creates an instance of a value in this executor.
 
@@ -688,6 +689,7 @@ class EagerTFExecutor(executor_base.Executor):
   other methods this executor exposes.
   """
 
+  @executor_utils.python_executors_deprecated
   def __init__(self, device=None):
     """Creates a new instance of an eager executor.
 

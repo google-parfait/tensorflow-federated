@@ -19,6 +19,7 @@ import grpc
 from tensorflow_federated.proto.v0 import executor_pb2
 from tensorflow_federated.proto.v0 import executor_pb2_grpc
 from tensorflow_federated.python.common_libs import tracing
+from tensorflow_federated.python.core.impl.executors import executor_utils
 from tensorflow_federated.python.core.impl.executors import executors_errors
 from tensorflow_federated.python.core.impl.executors import remote_executor_stub
 
@@ -43,6 +44,7 @@ def _request(rpc_func, request):
 class RemoteExecutorGrpcStub(remote_executor_stub.RemoteExecutorStub):
   """A stub connects to a remote executor service over gRPC."""
 
+  @executor_utils.python_executors_deprecated
   def __init__(self, channel: grpc.Channel):
     """Initialize the stub by establishing the connection.
 

@@ -17,6 +17,7 @@ import abc
 from collections.abc import MutableMapping
 
 from tensorflow_federated.python.core.impl.executors import executor_base
+from tensorflow_federated.python.core.impl.executors import executor_utils
 from tensorflow_federated.python.core.impl.types import placements
 
 CardinalitiesType = MutableMapping[placements.PlacementLiteral, int]
@@ -36,6 +37,7 @@ class ExecutorFactory(metaclass=abc.ABCMeta):
   that the returned executor is safe for use.
   """
 
+  @executor_utils.python_executors_deprecated
   @abc.abstractmethod
   def create_executor(
       self, cardinalities: CardinalitiesType
@@ -55,6 +57,7 @@ class ExecutorFactory(metaclass=abc.ABCMeta):
     """
     pass
 
+  @executor_utils.python_executors_deprecated
   @abc.abstractmethod
   def clean_up_executor(self, cardinalities: CardinalitiesType):
     """Releases any resources associated to the given cardinalities.

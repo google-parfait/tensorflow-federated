@@ -20,6 +20,7 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.common_libs import tracing
 from tensorflow_federated.python.core.impl.executors import executor_base as eb
+from tensorflow_federated.python.core.impl.executors import executor_utils
 from tensorflow_federated.python.core.impl.executors import executor_value_base as evb
 
 
@@ -31,6 +32,7 @@ def _delegate_with_trace_ctx(coro, async_runner):
 class ThreadDelegatingExecutorValue(evb.ExecutorValue):
   """An ExecutorValue which delegates `compute` to an external event loop."""
 
+  @executor_utils.python_executors_deprecated
   def __init__(
       self,
       value: evb.ExecutorValue,
@@ -63,6 +65,7 @@ class ThreadDelegatingExecutor(eb.Executor):
   # TODO(b/134543154): Upgrade this to a threadpool with multiple workers,
   # possibly one that could be shared among multiple of these executors.
 
+  @executor_utils.python_executors_deprecated
   def __init__(self, target_executor: eb.Executor):
     """Creates a concurrent executor backed by a target executor.
 

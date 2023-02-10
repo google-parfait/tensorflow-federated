@@ -70,6 +70,7 @@ from tensorflow_federated.python.core.impl.types import type_transformations
 class FederatedComposingStrategyValue(executor_value_base.ExecutorValue):
   """A value embedded in a `FederatedExecutor`."""
 
+  @executor_utils.python_executors_deprecated
   def __init__(self, value, type_signature):
     """Creates a `FederatedComposingStrategyValue` embedding the given `value`.
 
@@ -168,6 +169,7 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
     )
     # pylint:enable=g-long-lambda
 
+  @executor_utils.python_executors_deprecated
   def __init__(
       self,
       executor: federating_executor.FederatingExecutor,

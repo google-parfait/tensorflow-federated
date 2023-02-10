@@ -14,12 +14,14 @@
 """An executor responsible for the `data` building block."""
 
 import asyncio
+
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.common_libs import tracing
 from tensorflow_federated.python.core.impl.executors import data_backend_base
 from tensorflow_federated.python.core.impl.executors import executor_base
+from tensorflow_federated.python.core.impl.executors import executor_utils
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_serialization
 
@@ -27,6 +29,7 @@ from tensorflow_federated.python.core.impl.types import type_serialization
 class DataExecutor(executor_base.Executor):
   """The data executor is responsible for the `data` building block."""
 
+  @executor_utils.python_executors_deprecated
   def __init__(
       self,
       target_executor: executor_base.Executor,

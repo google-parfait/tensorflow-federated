@@ -171,6 +171,7 @@ LambdaValueInner = Union[
 class ReferenceResolvingExecutorValue(executor_value_base.ExecutorValue):
   """Represents a value embedded in the lambda executor."""
 
+  @executor_utils.python_executors_deprecated
   def __init__(self, value: LambdaValueInner, type_spec=None):
     """Creates an instance of a value embedded in a lambda executor.
 
@@ -259,6 +260,7 @@ class ReferenceResolvingExecutor(executor_base.Executor):
   the target executor.
   """
 
+  @executor_utils.python_executors_deprecated
   def __init__(self, target_executor):
     """Creates a lambda executor backed by a target executor.
 

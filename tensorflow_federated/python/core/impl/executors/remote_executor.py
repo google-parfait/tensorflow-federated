@@ -14,7 +14,6 @@
 """A local proxy for a remote executor service hosted on a separate machine."""
 
 import asyncio
-
 from collections.abc import Mapping
 import weakref
 
@@ -26,6 +25,7 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.common_libs import tracing
 from tensorflow_federated.python.core.impl.executors import executor_base
+from tensorflow_federated.python.core.impl.executors import executor_utils
 from tensorflow_federated.python.core.impl.executors import executor_value_base
 from tensorflow_federated.python.core.impl.executors import executors_errors
 from tensorflow_federated.python.core.impl.executors import remote_executor_stub
@@ -39,6 +39,7 @@ _STREAM_CLOSE_WAIT_SECONDS = 10
 class RemoteValue(executor_value_base.ExecutorValue):
   """A reference to a value embedded in a remotely deployed executor service."""
 
+  @executor_utils.python_executors_deprecated
   def __init__(
       self,
       value_ref: executor_pb2.ValueRef,
@@ -92,6 +93,7 @@ class RemoteExecutor(executor_base.Executor):
   # TODO(b/134543154): Switch to using an asynchronous gRPC client so we don't
   # have to block on all those calls.
 
+  @executor_utils.python_executors_deprecated
   def __init__(
       self,
       stub: remote_executor_stub.RemoteExecutorStub,

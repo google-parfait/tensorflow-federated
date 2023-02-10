@@ -30,6 +30,7 @@ from tensorflow_federated.python.core.impl.compiler import tensorflow_computatio
 from tensorflow_federated.python.core.impl.executors import eager_tf_executor
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_factory
+from tensorflow_federated.python.core.impl.executors import executor_utils
 from tensorflow_federated.python.core.impl.executors import executors_errors
 from tensorflow_federated.python.core.impl.executors import federated_composing_strategy
 from tensorflow_federated.python.core.impl.executors import federated_resolving_strategy
@@ -55,6 +56,7 @@ def _get_hashable_key(cardinalities: executor_factory.CardinalitiesType):
 class ResourceManagingExecutorFactory(executor_factory.ExecutorFactory):
   """Implementation of executor factory holding an executor per cardinality."""
 
+  @executor_utils.python_executors_deprecated
   def __init__(
       self,
       executor_stack_fn: Callable[
@@ -161,6 +163,7 @@ class UnplacedExecutorFactory:
   this executor manages the placement of work on local executors.
   """
 
+  @executor_utils.python_executors_deprecated
   def __init__(
       self,
       *,
@@ -241,6 +244,7 @@ class FederatingExecutorFactory(executor_factory.ExecutorFactory):
       (such as `tff.federated_sum`, etc.). Defaults to a TensorFlow factory.
   """
 
+  @executor_utils.python_executors_deprecated
   def __init__(
       self,
       *,
@@ -370,6 +374,7 @@ class ComposingExecutorFactory(executor_factory.ExecutorFactory):
   compositional hierarchy based on the `max_fanout` parameter.
   """
 
+  @executor_utils.python_executors_deprecated
   def __init__(
       self,
       *,
@@ -489,6 +494,7 @@ def normalize_num_clients_and_default_num_clients(
   return default_num_clients
 
 
+@executor_utils.python_executors_deprecated
 def local_executor_factory(
     default_num_clients: int = 0,
     max_fanout=100,
@@ -588,6 +594,7 @@ class ReconstructOnChangeExecutorFactory(executor_factory.ExecutorFactory):
   any previously constructed executors.
   """
 
+  @executor_utils.python_executors_deprecated
   def __init__(
       self,
       underlying_stack: executor_factory.ExecutorFactory,
@@ -698,6 +705,7 @@ def _configure_remote_workers(
   ]
 
 
+@executor_utils.python_executors_deprecated
 def remote_executor_factory(
     channels: list[grpc.Channel],
     thread_pool_executor: Optional[futures.Executor] = None,
@@ -757,6 +765,7 @@ def remote_executor_factory(
   )
 
 
+@executor_utils.python_executors_deprecated
 def remote_executor_factory_from_stubs(
     stubs: list[
         Union[

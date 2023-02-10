@@ -157,6 +157,7 @@ py_library(
     deps = [
         ":data_backend_base",
         ":executor_base",
+        ":executor_utils",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
@@ -293,6 +294,7 @@ py_library(
     srcs_version = "PY3",
     deps = [
         ":executor_base",
+        ":executor_utils",
         "//tensorflow_federated/python/core/impl/types:placements",
     ],
 )
@@ -304,6 +306,7 @@ py_library(
     deps = [
         ":executor_base",
         ":executor_factory",
+        ":executor_utils",
         ":executors_errors",
         ":value_serialization",
         "//tensorflow_federated/proto/v0:executor_py_pb2",
@@ -391,6 +394,7 @@ py_library(
         ":executor_base",
         ":executor_value_base",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
+        "//tensorflow_federated/python/common_libs:deprecation",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/compiler:building_block_factory",
@@ -628,6 +632,7 @@ py_library(
     srcs_version = "PY3",
     deps = [
         ":executor_base",
+        ":executor_utils",
         ":executor_value_base",
         ":executors_errors",
         ":remote_executor_stub",
@@ -672,6 +677,7 @@ py_library(
     srcs_version = "PY3",
     deps = [
         ":executor_base",
+        ":executor_utils",
         ":executor_value_base",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -712,6 +718,7 @@ py_library(
     srcs_version = "PY3",
     deps = [
         ":executor_base",
+        ":executor_utils",
         ":executor_value_base",
         "//tensorflow_federated/python/common_libs:async_utils",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -820,6 +827,7 @@ py_library(
     srcs = ["remote_executor_grpc_stub.py"],
     srcs_version = "PY3",
     deps = [
+        ":executor_utils",
         ":executors_errors",
         ":remote_executor_stub",
         "//tensorflow_federated/proto/v0:executor_py_pb2",

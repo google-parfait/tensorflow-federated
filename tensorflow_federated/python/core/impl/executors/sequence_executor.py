@@ -22,6 +22,7 @@ from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.common_libs import tracing
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.executors import executor_base
+from tensorflow_federated.python.core.impl.executors import executor_utils
 from tensorflow_federated.python.core.impl.executors import executor_value_base
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_analysis
@@ -299,6 +300,7 @@ class SequenceExecutorValue(executor_value_base.ExecutorValue):
       structure.Struct,
   )
 
+  @executor_utils.python_executors_deprecated
   def __init__(self, value, type_spec):
     """Creates an instance of `SequenceExecutorValue` to represent `value`.
 
@@ -370,6 +372,7 @@ class SequenceExecutor(executor_base.Executor):
   - tff.sequence_reduce
   """
 
+  @executor_utils.python_executors_deprecated
   def __init__(self, target_executor: executor_base.Executor):
     """Creates a new instance of this executor.
 

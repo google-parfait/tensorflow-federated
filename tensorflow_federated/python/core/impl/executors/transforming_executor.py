@@ -28,6 +28,7 @@ class TransformingExecutor(executor_base.Executor):
   are delegated to the underlying target executor.
   """
 
+  @executor_utils.python_executors_deprecated
   def __init__(self, transformation_fn, target_executor):
     """Creates a transforming executor backed by a given target executor.
 

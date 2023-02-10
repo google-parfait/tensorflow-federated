@@ -33,6 +33,7 @@ from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.common_libs import tracing
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_factory
+from tensorflow_federated.python.core.impl.executors import executor_utils
 from tensorflow_federated.python.core.impl.executors import executors_errors
 from tensorflow_federated.python.core.impl.executors import value_serialization
 
@@ -62,6 +63,7 @@ def _get_hashable_key(cardinalities: executor_factory.CardinalitiesType) -> str:
 class ExecutorService(executor_pb2_grpc.ExecutorGroupServicer):
   """A wrapper around a target executor that makes it into a gRPC service."""
 
+  @executor_utils.python_executors_deprecated
   def __init__(
       self, ex_factory: executor_factory.ExecutorFactory, *args, **kwargs
   ):
