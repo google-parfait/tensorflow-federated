@@ -69,10 +69,11 @@ class TestCheckEquivalentTypesTest(absltest.TestCase):
 class TensorTypeTest(absltest.TestCase):
 
   def test_constructor_argument_normalization_error(self):
-    if (
-        sys.version_info[0] == 3 and sys.version_info[1] > 9
-    ) or sys.version_info[0] > 3:
-      self.skipTest('b/248295968')
+    if sys.version_info[0] == 3 and sys.version_info[1] == 9:
+      self.skipTest(
+          'Disable this test for Python 3.9, the message of the error is '
+          'different for this version of Python.'
+      )
     with golden.check_raises_traceback(
         'constructor_argument_normalization_error.expected', TypeError
     ):

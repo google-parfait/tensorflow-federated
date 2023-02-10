@@ -4,4 +4,4 @@ Traceback (most recent call last):
   File "python/core/impl/types/computation_types.py", in __call__
     raise TypeError(
 TypeError: Invalid arguments to `TensorType` constructor:
-TensorType() missing 1 required positional argument: 'dtype'
+TensorType.TensorType() missing 1 required positional argument: 'dtype'
