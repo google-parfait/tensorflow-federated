@@ -23,6 +23,7 @@ py_library(
     srcs_version = "PY3",
     visibility = ["//tensorflow_federated:__pkg__"],
     deps = [
+        ":count_distinct",
         ":data_processing",
         ":differential_privacy",
         ":histogram_processing",

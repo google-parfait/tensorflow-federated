@@ -44,128 +44,164 @@ def _log2(u: tf.Tensor) -> tf.Tensor:
   return tf.cast(tf.experimental.numpy.log2(tf.cast(u, tf.float64)), tf.int64)
 
 
-@tensorflow_computation.tf_computation(
-    computation_types.SequenceType(tf.string)
-)
-@tf.function
-def _hash_client_data(client_data: tf.data.Dataset) -> tf.data.Dataset:
-  # Ideally we'd like to use to_hash_bucket_strong here for cryptographically
-  # secure hashing.  Unfortunately, it doesn't work in because the seed needs
-  # to be a list of python ints which are baked into the graph rather than a
-  # tensor, however we want to be able to parameterize the seed by an external
-  # input so that it can change, which requires using tensors.
-  return client_data.map(
-      lambda item: tf.strings.to_hash_bucket_fast(item, 2**HLL_SKETCH_SIZE)
+def build_client_hyperloglog_computation() -> computation_base.Computation:
+  """Builds a `tff.Computation` for computing client hyperloglog sketches.
+
+  Specifically, the returned computation consumes a dataset of integer hashes
+  and returns the HyperLogLog sketch of size HLL_SKETCH_SIZE.
+
+  Returns:
+    A `tff.Computation` for computing client hyperloglog sketches.
+  """
+
+  @tensorflow_computation.tf_computation(
+      computation_types.SequenceType(tf.int64)
   )
-
-
-@tensorflow_computation.tf_computation(computation_types.SequenceType(tf.int64))
-@tf.function
-def client_hyperloglog(client_data: tf.data.Dataset) -> tf.Tensor:
-  """Computes a (one-hot encoding of a) HyperLogLog sketch on a client dataset.
-
-  Args:
-    client_data: a dataset of integer hashes.
-
-  Returns:
-    A one hot encoding of the HyperLogLog sketch of size 64.
-  """
-
-  initial_state = tf.zeros(HLL_SKETCH_SIZE, dtype=tf.int64)
-
-  def reduce_func(state, hash_value):
-    j = tf.bitwise.right_shift(hash_value, HLL_BIT_INDEX_TAIL)
-    w = tf.bitwise.bitwise_and(hash_value, 2**HLL_BIT_INDEX_TAIL - 1)
-    rho = HLL_BIT_INDEX_TAIL - _log2(w)
-    sketch = tf.one_hot(j, HLL_SKETCH_SIZE, dtype=tf.int64) * rho
-    return tf.maximum(sketch, state)
-
-  return client_data.reduce(initial_state, reduce_func)
-
-
-@federated_computation.federated_computation(
-    computation_types.at_clients(
-        computation_types.TensorType(tf.int64, shape=[HLL_SKETCH_SIZE])
-    )
-)
-def federated_secure_max(sketch):
-  """Computes the max of client sketches in a secure federated manner.
-
-  Note: this function assumes the values to be maxed are in the range
-  [0, HLL_BIT_INDEX_TAIL+1].  This function works by onehot encoding the values
-  which allows us to sum the values securely and then infer the max based on the
-  non-zero entries of the sum.  This approach is feasible because the inputs are
-  small non-negative integers.  Generalizations of this function would require
-  communication proportional to (upper_bound - lower_bound).
-
-  Args:
-    sketch: sketches at clients
-
-  Returns:
-    the element-wise max of the input sketches at the server.
-  """
-
-  @tensorflow_computation.tf_computation
   @tf.function
-  def _onehot_sketch(sketch: tf.Tensor) -> tf.Tensor:
-    return tf.one_hot(sketch, HLL_BIT_INDEX_TAIL + 1, dtype=tf.int32)
+  def _client_hyperloglog(client_data: tf.data.Dataset) -> tf.Tensor:
+    """Computes a HyperLogLog sketch on a client dataset.
 
-  @tensorflow_computation.tf_computation
-  @tf.function
-  def maxes_from_onehots(x):
-    mult = tf.reshape(
-        tf.range(HLL_BIT_INDEX_TAIL + 1, dtype=tf.int64),
-        (-1, HLL_BIT_INDEX_TAIL + 1),
-    )
-    return tf.reduce_max(tf.cast(x > 0, tf.int64) * mult, axis=1)
+    Args:
+      client_data: a dataset of integer hashes.
 
-  onehot_sketches = intrinsics.federated_map(_onehot_sketch, sketch)
-  server_sketch = intrinsics.federated_secure_sum(onehot_sketches, 1)
-  maxes = intrinsics.federated_map(maxes_from_onehots, server_sketch)
-  return maxes
+    Returns:
+      The HyperLogLog sketch of size HLL_SKETCH_SIZE.
+    """
+    initial_state = tf.zeros(HLL_SKETCH_SIZE, dtype=tf.int64)
+
+    def reduce_func(state, hash_value):
+      j = tf.bitwise.right_shift(hash_value, HLL_BIT_INDEX_TAIL)
+      w = tf.bitwise.bitwise_and(hash_value, 2**HLL_BIT_INDEX_TAIL - 1)
+      rho = HLL_BIT_INDEX_TAIL - _log2(w)
+      sketch = tf.one_hot(j, HLL_SKETCH_SIZE, dtype=tf.int64) * rho
+      return tf.maximum(sketch, state)
+
+    return client_data.reduce(initial_state, reduce_func)
+
+  return _client_hyperloglog
 
 
-@tensorflow_computation.tf_computation(
-    computation_types.TensorType(tf.int64, shape=[HLL_SKETCH_SIZE])
-)
-@tf.function
-def _estimate_count_from_sketch(sketch: tf.Tensor) -> tf.int64:
-  """Estimate the number of unique items from a HyperLogLog sketch.
+def build_federated_secure_max_computation() -> computation_base.Computation:
+  """Builds a `tff.Computation` for computing max in a secure fashion.
 
-  Args:
-    sketch: The HyperLogLog sketch.
+    Specifically, the returned computation consumes sketches at @CLIENTS and
+    returns the element-wise max of the inpt sketches @SERVER.
+
+    Note: this returned computation assumes the values to be maxed are
+    in the range [0, HLL_BIT_INDEX_TAIL+1].  This function works by onehot
+    encoding the values which allows us to sum the values securely and then
+    infer the max based on the non-zero entries of the sum.  This approach is
+    feasible because the inputs are small non-negative integers.
+    Generalizations of this function would require communication proportional to
+    (upper_bound - lower_bound).
 
   Returns:
-    The estimated count for the number of distinct items.
+    A `tff.Computation` for computing max of client vectors.
   """
-  z = 1 / tf.math.reduce_sum(0.5 ** tf.cast(sketch, tf.float64))
-  return tf.cast(HLL_ALPHA * HLL_SKETCH_SIZE**2 * z, tf.int64)
+
+  @federated_computation.federated_computation(
+      computation_types.at_clients(
+          computation_types.TensorType(tf.int64, shape=[HLL_SKETCH_SIZE])
+      )
+  )
+  def federated_secure_max(sketch):
+    """Computes the max of client sketches in a secure federated manner.
+
+    Note: this function assumes the values to be maxed are in the range
+    [0, HLL_BIT_INDEX_TAIL+1].  This function works by onehot encoding the
+    values which allows us to sum the values securely and then infer the max
+    based on the non-zero entries of the sum.  This approach is feasible because
+    the inputs are small non-negative integers.  Generalizations of this
+    function would require communication proportional to
+    (upper_bound - lower_bound).
+
+    Args:
+      sketch: sketches at clients
+
+    Returns:
+      the element-wise max of the input sketches at the server.
+    """
+
+    @tensorflow_computation.tf_computation
+    @tf.function
+    def _onehot_sketch(sketch: tf.Tensor) -> tf.Tensor:
+      return tf.one_hot(sketch, HLL_BIT_INDEX_TAIL + 1, dtype=tf.int32)
+
+    @tensorflow_computation.tf_computation
+    @tf.function
+    def maxes_from_onehots(x):
+      mult = tf.reshape(
+          tf.range(HLL_BIT_INDEX_TAIL + 1, dtype=tf.int64),
+          (-1, HLL_BIT_INDEX_TAIL + 1),
+      )
+      return tf.reduce_max(tf.cast(x > 0, tf.int64) * mult, axis=1)
+
+    onehot_sketches = intrinsics.federated_map(_onehot_sketch, sketch)
+    server_sketch = intrinsics.federated_secure_sum(onehot_sketches, 1)
+    maxes = intrinsics.federated_map(maxes_from_onehots, server_sketch)
+    return maxes
+
+  return federated_secure_max
 
 
 def create_federated_hyperloglog_computation(
-    *, secagg: bool = False
+    *, use_secagg: bool = False
 ) -> computation_base.Computation:
-  """Creates a federated_computation to estimate the number of distinct strings.
+  """Creates a `tff.Computation` to estimate the number of distinct strings.
+
+  The returned computation consumes data @CLIENTS and produces an estimate of
+  the number of unique words across all clients @SERVER.
 
   Args:
-    secagg: Flag to specify if secure aggregation is necessary when computing
-      the hyperloglog sketch.
+    use_secagg: Flag to specify if secure aggregation is necessary when
+      computing the hyperloglog sketch.
 
   Returns:
-    A tff.federated_computation for running the HyperLogLog algorithm.
+    A `tff.Computation` for running the HyperLogLog algorithm.
   """
+
+  @tensorflow_computation.tf_computation
+  @tf.function
+  def hash_client_data(client_data: tf.data.Dataset) -> tf.data.Dataset:
+    # Ideally we'd like to use to_hash_bucket_strong here for cryptographically
+    # secure hashing.  Unfortunately, it doesn't work in the contet of a
+    # tf.function because the seed needs to be a list of python ints which are
+    # baked into the graph rather than a tensor, however we want to be able to
+    # parameterize the seed by an external input so that it can change, which
+    # requires using tensors.
+    return client_data.map(
+        lambda item: tf.strings.to_hash_bucket_fast(item, 2**HLL_SKETCH_SIZE)
+    )
+
+  @tensorflow_computation.tf_computation
+  @tf.function
+  def estimate_count_from_sketch(sketch: tf.Tensor) -> tf.int64:
+    """Estimate the number of unique items from a HyperLogLog sketch.
+
+    Args:
+      sketch: The HyperLogLog sketch.
+
+    Returns:
+      The estimated count for the number of distinct items.
+    """
+    z = 1 / tf.math.reduce_sum(0.5 ** tf.cast(sketch, tf.float64))
+    return tf.cast(HLL_ALPHA * HLL_SKETCH_SIZE**2 * z, tf.int64)
+
+  client_hyperloglog = build_client_hyperloglog_computation()
+  federated_secure_max = build_federated_secure_max_computation()
 
   @federated_computation.federated_computation(
       computation_types.at_clients(computation_types.SequenceType(tf.string))
   )
   def federated_hyperloglog(client_data):
-    client_hash = intrinsics.federated_map(_hash_client_data, client_data)
+
+    client_hash = intrinsics.federated_map(hash_client_data, client_data)
     sketches = intrinsics.federated_map(client_hyperloglog, client_hash)
-    if secagg:
+    if use_secagg:
       server_sketch = federated_secure_max(sketches)
     else:
       server_sketch = primitives.federated_max(sketches)
 
-    return intrinsics.federated_map(_estimate_count_from_sketch, server_sketch)
+    return intrinsics.federated_map(estimate_count_from_sketch, server_sketch)
 
   return federated_hyperloglog

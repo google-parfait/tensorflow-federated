@@ -66,15 +66,8 @@ class CountDistinctComputationTest(tf.test.TestCase):
     self.assertEqual(count_distinct.HLL_BIT_INDEX_HEAD, head)
 
   def test_type_properties(self):
-    expected_type_signature = computation_types.FunctionType(
-        computation_types.SequenceType(computation_types.TensorType(tf.string)),
-        computation_types.SequenceType(computation_types.TensorType(tf.int64)),
-    )
-    self.assertTrue(
-        count_distinct._hash_client_data.type_signature.is_identical_to(
-            expected_type_signature
-        )
-    )
+
+    client_hyperloglog = count_distinct.build_client_hyperloglog_computation()
 
     expected_type_signature = computation_types.FunctionType(
         computation_types.SequenceType(computation_types.TensorType(tf.int64)),
@@ -83,19 +76,7 @@ class CountDistinctComputationTest(tf.test.TestCase):
         ),
     )
     self.assertTrue(
-        count_distinct.client_hyperloglog.type_signature.is_identical_to(
-            expected_type_signature
-        )
-    )
-
-    expected_type_signature = computation_types.FunctionType(
-        computation_types.TensorType(
-            tf.int64, [count_distinct.HLL_SKETCH_SIZE]
-        ),
-        computation_types.TensorType(tf.int64),
-    )
-    self.assertTrue(
-        count_distinct._estimate_count_from_sketch.type_signature.is_identical_to(
+        client_hyperloglog.type_signature.is_identical_to(
             expected_type_signature
         )
     )
@@ -110,7 +91,9 @@ class CountDistinctExecutionTest(tf.test.TestCase, parameterized.TestCase):
   @parameterized.named_parameters(('default', False), ('secure', True))
   def test_runs_end_to_end_without_error(self, secagg=False):
     data = [['a', 'b', 'c', 'a', 'c'], ['c', 'd', 'd', 'c'], ['a', 'd']]
-    hll = count_distinct.create_federated_hyperloglog_computation(secagg=secagg)
+    hll = count_distinct.create_federated_hyperloglog_computation(
+        use_secagg=secagg
+    )
     count = hll(data)
     self.assertShapeEqual(count, np.empty(()))
 
@@ -118,152 +101,26 @@ class CountDistinctExecutionTest(tf.test.TestCase, parameterized.TestCase):
     prng = np.random.RandomState(12345)
     hashed_data = prng.randint(0, 2**count_distinct.HLL_SKETCH_SIZE, size=100)
     fake_hashed_data = tf.data.Dataset.from_tensor_slices(hashed_data)
-    sketch = count_distinct.client_hyperloglog(fake_hashed_data)
+    client_hyperloglog = count_distinct.build_client_hyperloglog_computation()
+
+    sketch = client_hyperloglog(fake_hashed_data)
     true_sketch = hll_sketch_python(hashed_data)
     self.assertEqual(sketch.shape, (count_distinct.HLL_SKETCH_SIZE,))
     self.assertAllEqual(sketch, true_sketch)
 
   def test_federated_secure_max(self):
     # pylint: disable=bad-whitespace
-    input1 = [
-        3,
-        1,
-        4,
-        1,
-        5,
-        9,
-        2,
-        6,
-        5,
-        3,
-        5,
-        8,
-        9,
-        7,
-        9,
-        3,
-        2,
-        3,
-        8,
-        4,
-        6,
-        2,
-        6,
-        4,
-        3,
-        3,
-        8,
-        0,
-        0,
-        0,
-        0,
-        0,
-    ]
-    input2 = [
-        2,
-        7,
-        1,
-        8,
-        2,
-        8,
-        1,
-        8,
-        2,
-        8,
-        4,
-        5,
-        9,
-        0,
-        4,
-        5,
-        2,
-        3,
-        5,
-        3,
-        6,
-        0,
-        2,
-        8,
-        7,
-        4,
-        7,
-        0,
-        0,
-        0,
-        0,
-        0,
-    ]
-    input3 = [
-        1,
-        6,
-        1,
-        8,
-        0,
-        3,
-        3,
-        9,
-        8,
-        8,
-        7,
-        4,
-        9,
-        8,
-        9,
-        4,
-        8,
-        4,
-        8,
-        2,
-        0,
-        4,
-        5,
-        8,
-        6,
-        8,
-        3,
-        0,
-        0,
-        0,
-        0,
-        0,
-    ]
-    expect = [
-        3,
-        7,
-        4,
-        8,
-        5,
-        9,
-        3,
-        9,
-        8,
-        8,
-        7,
-        8,
-        9,
-        8,
-        9,
-        5,
-        8,
-        4,
-        8,
-        4,
-        6,
-        4,
-        6,
-        8,
-        7,
-        8,
-        8,
-        0,
-        0,
-        0,
-        0,
-        0,
-    ]
+    # pyformat: disable
+    input1 = [3,1,4,1,5,9,2,6,5,3,5,8,9,7,9,3,2,3,8,4,6,2,6,4,3,3,8,0,0,0,0,0]
+    input2 = [2,7,1,8,2,8,1,8,2,8,4,5,9,0,4,5,2,3,5,3,6,0,2,8,7,4,7,0,0,0,0,0]
+    input3 = [1,6,1,8,0,3,3,9,8,8,7,4,9,8,9,4,8,4,8,2,0,4,5,8,6,8,3,0,0,0,0,0]
+    expect = [3,7,4,8,5,9,3,9,8,8,7,8,9,8,9,5,8,4,8,4,6,4,6,8,7,8,8,0,0,0,0,0]
+    # pyformat: enable
     # pylint: enable=bad-whitespace
 
-    answer = count_distinct.federated_secure_max([input1, input2, input3])
+    federated_max = count_distinct.build_federated_secure_max_computation()
+
+    answer = federated_max([input1, input2, input3])
     self.assertAllEqual(answer, expect)
 
 
