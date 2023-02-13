@@ -11,11 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
-# pytype: skip-file
-# This modules disables the Pytype analyzer, see
-# https://github.com/tensorflow/federated/blob/main/docs/pytype.md for more
-# information.
 """Helper class for representing fully-specified data-yeilding computations."""
 
 import asyncio
@@ -23,7 +18,6 @@ from collections.abc import Mapping
 from typing import Any, Optional
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
-from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.executors import cardinality_carrying_base
 from tensorflow_federated.python.core.impl.executors import ingestable_base
@@ -177,13 +171,17 @@ class DataDescriptor(
       ValueError: if the arguments don't satisfy the constraints listed above.
     """
     super().__init__(comp, arg, arg_type)
-    self._cardinality = {}
+    self._cardinality: dict[placements.PlacementLiteral, int] = {}
     if self._type_signature.is_federated():
       if self._type_signature.placement is placements.CLIENTS:
-        py_typecheck.check_not_none(cardinality)
+        if cardinality is None:
+          raise ValueError('Expected `cardinality` to not be `None`.')
         self._cardinality[placements.CLIENTS] = cardinality
       else:
-        py_typecheck.check_none(cardinality)
+        if cardinality is not None:
+          raise ValueError(
+              f'Expected `cardinality` to be `None`, found: {cardinality}.'
+          )
 
   @property
   def cardinality(self) -> Mapping[placements.PlacementLiteral, int]:

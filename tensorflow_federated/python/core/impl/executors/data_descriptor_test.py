@@ -76,7 +76,7 @@ class DataDescriptorTest(absltest.TestCase):
     self.assertEqual(result, 3000)
 
   def test_raises_with_server_cardinality_specified(self):
-    with self.assertRaises(TypeError):
+    with self.assertRaises(ValueError):
       data_descriptor.DataDescriptor(
           federated_computation.federated_computation(
               lambda x: intrinsics.federated_value(x, placements.SERVER),
