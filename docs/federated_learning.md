@@ -17,8 +17,8 @@ The interfaces offered by this layer consist of the following three key parts:
 *   **Models**. Classes and helper functions that allow you to wrap your
     existing models for use with TFF. Wrapping a model can be as simple as
     calling a single wrapping function (e.g., `tff.learning.from_keras_model`),
-    or defining a subclass of the `tff.learning.Model` interface for full
-    customizability.
+    or defining a subclass of the `tff.learning.models.VariableModel` interface
+    for full customizability.
 
 *   **Federated Computation Builders**. Helper functions that construct
     federated computations for training or evaluation, using your existing
@@ -77,10 +77,10 @@ eager-mode TensorFlow. Thus, serialization in TFF currently follows the TF 1.0
 pattern, where all code must be constructed inside a `tf.Graph` that TFF
 controls. This means currently TFF cannot consume an already-constructed model;
 instead, the model definition logic is packaged in a no-arg function that
-returns a `tff.learning.Model`. This function is then called by TFF to ensure
-all components of the model are serialized. In addition, being a strongly-typed
-environment, TFF will require a little bit of additional *metadata*, such as a
-specification of your model's input type.
+returns a `tff.learning.models.VariableModel`. This function is then called by
+TFF to ensure all components of the model are serialized. In addition, being a
+strongly-typed environment, TFF will require a little bit of additional
+*metadata*, such as a specification of your model's input type.
 
 #### Aggregation
 
@@ -88,7 +88,7 @@ We strongly recommend most users construct models using Keras, see the
 [Converters for Keras](#converters-for-keras) section below. These wrappers
 handle the aggregation of model updates as well as any metrics defined for the
 model automatically. However, it may still be useful to understand how
-aggregation is handled for a general `tff.learning.Model`.
+aggregation is handled for a general `tff.learning.models.VariableModel`.
 
 There are always at least two layers of aggregation in federated learning: local
 on-device aggregation, and cross-device (or federated) aggregation:
@@ -149,7 +149,7 @@ on-device aggregation, and cross-device (or federated) aggregation:
 ### Abstract interfaces
 
 This basic *constructor* + *metadata* interface is represented by the interface
-`tff.learning.Model`, as follows:
+`tff.learning.models.VariableModel`, as follows:
 
 *   The constructor, `forward_pass`, and `report_local_unfinalized_metrics`
     methods should construct model variables, forward pass, and statistics you
@@ -164,18 +164,18 @@ This basic *constructor* + *metadata* interface is represented by the interface
     system (so that your model cannot be instantiated over data that does not
     match what the model is designed to consume).
 
-In addition, the abstract interface `tff.learning.Model` exposes a property
-`metric_finalizers` that takes in a metric's unfinalized values (returned by
-`report_local_unfinalized_metrics()`) and returns the finalized metric values.
-The `metric_finalizers` and `report_local_unfinalized_metrics()` method will be
-used together to build a cross-client metrics aggregator when defining the
-federated training processes or evaluation computations. For example, a simple
-`tff.learning.metrics.sum_then_finalize` aggregator will first sum the
-unfinalized metric values from clients, and then call the finalizer functions at
-the server.
+In addition, the abstract interface `tff.learning.models.VariableModel` exposes
+a property `metric_finalizers` that takes in a metric's unfinalized values
+(returned by `report_local_unfinalized_metrics()`) and returns the finalized
+metric values. The `metric_finalizers` and `report_local_unfinalized_metrics()`
+method will be used together to build a cross-client metrics aggregator when
+defining the federated training processes or evaluation computations. For
+example, a simple `tff.learning.metrics.sum_then_finalize` aggregator will first
+sum the unfinalized metric values from clients, and then call the finalizer
+functions at the server.
 
-You can find examples of how to define your own custom `tff.learning.Model` in
-the second part of our
+You can find examples of how to define your own custom
+`tff.learning.models.VariableModel` in the second part of our
 [image classification](tutorials/federated_learning_for_image_classification.ipynb)
 tutorial, as well as in the example models we use for testing in
 [`model_examples.py`](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/learning/models/model_examples.py).
@@ -184,7 +184,8 @@ tutorial, as well as in the example models we use for testing in
 
 Nearly all the information that's required by TFF can be derived by calling
 `tf.keras` interfaces, so if you have a Keras model, you can rely on
-`tff.learning.from_keras_model` to construct a `tff.learning.Model`.
+`tff.learning.from_keras_model` to construct a
+`tff.learning.models.VariableModel`.
 
 Note that TFF still wants you to provide a constructor - a no-argument *model
 function* such as the following:

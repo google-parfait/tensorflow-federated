@@ -586,7 +586,7 @@ class KerasUtilsTest(tf.test.TestCase, parameterized.TestCase):
 
     with warnings.catch_warnings(record=True) as warning:
       warnings.simplefilter('always')
-      # Build a `tff.learning.Model` from a `tf.keras.Model`
+      # Build a `tff.learning.models.VariableModel` from a `tf.keras.Model`
       tff_model = keras_utils.from_keras_model(
           keras_model=model,
           input_spec=input_spec,

@@ -23,7 +23,7 @@ import tensorflow_federated as tff
 # pylint: disable=invalid-name
 _OPTIMIZER_FN_TYPE = Callable[[], tf.keras.optimizers.Optimizer]
 _PERSONALIZE_FN_TYPE = Callable[
-    [tff.learning.Model, tf.data.Dataset, tf.data.Dataset, Any],
+    [tff.learning.models.VariableModel, tf.data.Dataset, tf.data.Dataset, Any],
     collections.OrderedDict[str, tf.Tensor],
 ]
 _EVAL_BATCH_SIZE = 1  # Batch size used when evaluating a dataset.
@@ -42,13 +42,13 @@ def build_personalize_fn(
 
   The returned `tf.function` represents the optimization algorithm to run on
   a client in order to personalize a given model. It takes a
-  `tff.learning.Model` (with weights already initialized to the desired initial
-  model weights), an unbatched training dataset, an unbatched test dataset, and
-  an optional `context` (e.g., extra datasets) as input, trains a personalized
-  model on the training dataset for `num_epochs`, evaluates the model on the
-  test dataset every `num_epochs_per_eval`, and returns the evaluation metrics.
-  The evaluation metrics are computed by `evaluate_fn` (see its docstring for
-  more details).
+  `tff.learning.models.VariableModel` (with weights already initialized to the
+  desired initial model weights), an unbatched training dataset, an unbatched
+  test dataset, and an optional `context` (e.g., extra datasets) as input,
+  trains a personalized model on the training dataset for `num_epochs`,
+  evaluates the model on the test dataset every `num_epochs_per_eval`, and
+  returns the evaluation metrics. The evaluation metrics are computed by
+  `evaluate_fn` (see its docstring for more details).
 
   This builder function only serves as an example. Customers are allowed to
   write any personalization strategy as long as it satisfies the function
@@ -74,7 +74,7 @@ def build_personalize_fn(
 
   @tf.function
   def personalize_fn(
-      model: tff.learning.Model,
+      model: tff.learning.models.VariableModel,
       train_data: tf.data.Dataset,
       test_data: tf.data.Dataset,
       context: Optional[Any] = None,
@@ -82,7 +82,7 @@ def build_personalize_fn(
     """A personalization strategy that trains a model and returns the metrics.
 
     Args:
-      model: A `tff.learning.Model`.
+      model: A `tff.learning.models.VariableModel`.
       train_data: An unbatched `tf.data.Dataset` used for training.
       test_data: An unbatched `tf.data.Dataset` used for evaluation.
       context: An optional object (e.g., extra dataset) used in personalization.
@@ -129,7 +129,7 @@ def build_personalize_fn(
 
 @tf.function
 def evaluate_fn(
-    model: tff.learning.Model, dataset: tf.data.Dataset
+    model: tff.learning.models.VariableModel, dataset: tf.data.Dataset
 ) -> collections.OrderedDict[str, tf.Tensor]:
   """Evaluates a model on the given dataset.
 
@@ -140,7 +140,8 @@ def evaluate_fn(
   metric with name 'num_test_examples'.
 
   Args:
-    model: A `tff.learning.Model` created by `tff.learning.from_keras_model`.
+    model: A `tff.learning.models.VariableModel` created by
+      `tff.learning.from_keras_model`.
     dataset: An unbatched `tf.data.Dataset`.
 
   Returns:

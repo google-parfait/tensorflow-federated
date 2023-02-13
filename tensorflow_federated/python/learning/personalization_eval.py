@@ -47,29 +47,30 @@ def build_personalization_eval(
   applying batching, if any, to the provided input datasets.
 
   Args:
-    model_fn: A no-arg function that returns a `tff.learning.Model`. This method
-      must *not* capture TensorFlow tensors or variables and use them. The model
-      must be constructed entirely from scratch on each invocation, returning
-      the same pre-constructed model each call will result in an error.
+    model_fn: A no-arg function that returns a
+      `tff.learning.models.VariableModel`. This method must *not* capture
+      TensorFlow tensors or variables and use them. The model must be
+      constructed entirely from scratch on each invocation, returning the same
+      pre-constructed model each call will result in an error.
     personalize_fn_dict: An `OrderedDict` that maps a `string` (representing a
       strategy name) to a no-argument function that returns a `tf.function`.
       Each `tf.function` represents a personalization strategy - it accepts a
-      `tff.learning.Model` (with weights already initialized to the given model
-      weights when users invoke the returned TFF computation), an unbatched
-      `tf.data.Dataset` for train, an unbatched `tf.data.Dataset` for test, and
-      an arbitrary context object (which is used to hold any extra information
-      that a personalization strategy may use), trains a personalized model, and
-      returns the evaluation metrics. The evaluation metrics are represented as
-      an `OrderedDict` (or a nested `OrderedDict`) of `string` metric names to
-      scalar `tf.Tensor`s.
-    baseline_evaluate_fn: A `tf.function` that accepts a `tff.learning.Model`
-      (with weights already initialized to the provided model weights when users
-      invoke the returned TFF computation), and an unbatched `tf.data.Dataset`,
-      evaluates the model on the dataset, and returns the evaluation metrics.
-      The evaluation metrics are represented as an `OrderedDict` (or a nested
-      `OrderedDict`) of `string` metric names to scalar `tf.Tensor`s. This
-      function is *only* used to compute the baseline metrics of the initial
-      model.
+      `tff.learning.models.VariableModel` (with weights already initialized to
+      the given model weights when users invoke the returned TFF computation),
+      an unbatched `tf.data.Dataset` for train, an unbatched `tf.data.Dataset`
+      for test, and an arbitrary context object (which is used to hold any extra
+      information that a personalization strategy may use), trains a
+      personalized model, and returns the evaluation metrics. The evaluation
+      metrics are represented as an `OrderedDict` (or a nested `OrderedDict`) of
+      `string` metric names to scalar `tf.Tensor`s.
+    baseline_evaluate_fn: A `tf.function` that accepts a
+      `tff.learning.models.VariableModel` (with weights already initialized to
+      the provided model weights when users invoke the returned TFF
+      computation), and an unbatched `tf.data.Dataset`, evaluates the model on
+      the dataset, and returns the evaluation metrics. The evaluation metrics
+      are represented as an `OrderedDict` (or a nested `OrderedDict`) of
+      `string` metric names to scalar `tf.Tensor`s. This function is *only* used
+      to compute the baseline metrics of the initial model.
     max_num_clients: A positive `int` specifying the maximum number of clients
       to collect metrics in a round (default is 100). The clients are sampled
       without replacement. For each sampled client, all the personalization

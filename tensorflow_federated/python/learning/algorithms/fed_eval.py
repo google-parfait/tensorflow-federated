@@ -258,12 +258,13 @@ def build_fed_eval(
   evaluation process.
 
   Args:
-    model_fn: A no-arg function that returns a `tff.learning.Model`, or an
-      instance of a `tff.learning.models.FunctionalModel`. When passing a
-      callable, the callable must *not* capture TensorFlow tensors or variables
-      and use them.  The model must be constructed entirely from scratch on each
-      invocation, returning the same pre-constructed model each call will result
-      in an error.
+    model_fn: A no-arg function that returns a
+      `tff.learning.models.VariableModel`, or an instance of a
+      `tff.learning.models.FunctionalModel`. When passing a callable, the
+      callable must *not* capture TensorFlow tensors or variables and use them.
+      The model must be constructed entirely from scratch on each invocation,
+      returning the same pre-constructed model each call will result in an
+      error.
     model_distributor: An optional `tff.learning.templates.DistributionProcess`
       that broadcasts the model weights on the server to the clients. It must
       support the signature `(input_values@SERVER -> output_values@CLIENTS)` and

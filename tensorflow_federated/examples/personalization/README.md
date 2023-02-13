@@ -34,10 +34,10 @@ clients into two groups: one has 2500 clients and the other has 900 clients.
 ## Personalization Strategies
 
 A personalization strategy is a `tf.function`-decorated function that takes a
-`tff.learning.Model`, an unbatched `tf.data.Dataset` for train, an unbatched
-`tf.data.Dataset` for test, and an extra `context` object, trains a personalized
-model, and returns the evaluation metrics. Users can define whatever
-personalization strategies they like. An example of fine-tuning based
+`tff.learning.models.VariableModel`, an unbatched `tf.data.Dataset` for train,
+an unbatched `tf.data.Dataset` for test, and an extra `context` object, trains a
+personalized model, and returns the evaluation metrics. Users can define
+whatever personalization strategies they like. An example of fine-tuning based
 personalization strategy is given by `build_personalize_fn` in
 [`p13n_utils`](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/examples/personalization/p13n_utils.py).
 

@@ -65,7 +65,7 @@ def build_model_delta_update_with_tff_optimizer(
   modify the model weight in place using `optimizer.apply_gradients`).
 
   Args:
-    model_fn: A no-arg callable returning a `tff.learning.Model`.
+    model_fn: A no-arg callable returning a `tff.learning.models.VariableModel`.
     weighting: A `tff.learning.ClientWeighting` value.
     delta_l2_regularizer: A nonnegative float, L2 regularization strength of the
       model delta.
@@ -88,7 +88,7 @@ def build_model_delta_update_with_tff_optimizer(
     )
 
     def reduce_fn(state, batch):
-      """Trains a `tff.learning.Model` on a batch of data."""
+      """Trains a `tff.learning.models.VariableModel` on a batch of data."""
       num_examples_sum, optimizer_state = state
       with tf.GradientTape() as tape:
         output = model.forward_pass(batch, training=True)
@@ -174,7 +174,7 @@ def build_model_delta_update_with_keras_optimizer(
   place by using `optimizer.apply_gradients`).
 
   Args:
-    model_fn: A no-arg callable returning a `tff.learning.Model`.
+    model_fn: A no-arg callable returning a `tff.learning.models.VariableModel`.
     weighting: A `tff.learning.ClientWeighting` value.
     delta_l2_regularizer: A nonnegative float, L2 regularization strength of the
       model delta.
@@ -197,7 +197,7 @@ def build_model_delta_update_with_keras_optimizer(
     )
 
     def reduce_fn(num_examples_sum, batch):
-      """Trains a `tff.learning.Model` on a batch of data."""
+      """Trains a `tff.learning.models.VariableModel` on a batch of data."""
       with tf.GradientTape() as tape:
         output = model.forward_pass(batch, training=True)
 
@@ -282,7 +282,7 @@ def _build_functional_model_delta_update(
     trainable_weights = initial_trainable_weights
 
     def reduce_fn(state, batch):
-      """Trains a `tff.learning.Model` on a batch of data."""
+      """Trains a `tff.learning.models.VariableModel` on a batch of data."""
       num_examples_sum, model_weights, metrics_state, optimizer_state = state
       trainable_weights, non_trainable_weights = model_weights
       with tf.GradientTape() as tape:
@@ -405,10 +405,11 @@ def build_model_delta_client_work(
   server model, the strength of which is governed by the `delta_l2_regularizer`.
 
   Args:
-    model_fn: A no-arg function that returns a `tff.learning.Model`. This method
-      must *not* capture TensorFlow tensors or variables and use them. The model
-      must be constructed entirely from scratch on each invocation, returning
-      the same pre-constructed model each call will result in an error.
+    model_fn: A no-arg function that returns a
+      `tff.learning.models.VariableModel`. This method must *not* capture
+      TensorFlow tensors or variables and use them. The model must be
+      constructed entirely from scratch on each invocation, returning the same
+      pre-constructed model each call will result in an error.
     optimizer: A `tff.learning.optimizers.Optimizer`, or a no-arg callable that
       returns a `tf.keras.Optimizer`.
     client_weighting:  A `tff.learning.ClientWeighting` value.
@@ -417,11 +418,12 @@ def build_model_delta_client_work(
       during training. Values larger than 0.0 prevent clients from moving too
       far from the server model during local training.
     metrics_aggregator: A function that takes in the metric finalizers (i.e.,
-      `tff.learning.Model.metric_finalizers()`) and a
+      `tff.learning.models.VariableModel.metric_finalizers()`) and a
       `tff.types.StructWithPythonType` of the unfinalized metrics (i.e., the TFF
-      type of `tff.learning.Model.report_local_unfinalized_metrics()`), and
-      returns a `tff.Computation` for aggregating the unfinalized metrics. If
-      `None`, this is set to `tff.learning.metrics.sum_then_finalize`.
+      type of
+      `tff.learning.models.VariableModel.report_local_unfinalized_metrics()`),
+      and returns a `tff.Computation` for aggregating the unfinalized metrics.
+      If `None`, this is set to `tff.learning.metrics.sum_then_finalize`.
     use_experimental_simulation_loop: Controls the reduce loop function for
       input dataset. An experimental reduce loop is used for simulation. It is
       currently necessary to set this flag to True for performant GPU
@@ -543,11 +545,12 @@ def build_functional_model_delta_client_work(
       during training. Values larger than 0.0 prevent clients from moving too
       far from the server model during local training.
     metrics_aggregator: A function that takes in the metric finalizers (i.e.,
-      `tff.learning.Model.metric_finalizers()`) and a
+      `tff.learning.models.VariableModel.metric_finalizers()`) and a
       `tff.types.StructWithPythonType` of the unfinalized metrics (i.e., the TFF
-      type of `tff.learning.Model.report_local_unfinalized_metrics()`), and
-      returns a `tff.Computation` for aggregating the unfinalized metrics. If
-      `None`, this is set to `tff.learning.metrics.sum_then_finalize`.
+      type of
+      `tff.learning.models.VariableModel.report_local_unfinalized_metrics()`),
+      and returns a `tff.Computation` for aggregating the unfinalized metrics.
+      If `None`, this is set to `tff.learning.metrics.sum_then_finalize`.
 
   Returns:
     A `ClientWorkProcess`.

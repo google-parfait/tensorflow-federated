@@ -127,12 +127,13 @@ def build_weighted_fed_avg(
   [Reddi et al., 2021](https://arxiv.org/abs/2003.00295)).
 
   Args:
-    model_fn: A no-arg function that returns a `tff.learning.Model`, or an
-      instance of a `tff.learning.models.FunctionalModel`. When passing a
-      callable, the callable must *not* capture TensorFlow tensors or variables
-      and use them.  The model must be constructed entirely from scratch on each
-      invocation, returning the same pre-constructed model each call will result
-      in an error.
+    model_fn: A no-arg function that returns a
+      `tff.learning.models.VariableModel`, or an instance of a
+      `tff.learning.models.FunctionalModel`. When passing a callable, the
+      callable must *not* capture TensorFlow tensors or variables and use them.
+      The model must be constructed entirely from scratch on each invocation,
+      returning the same pre-constructed model each call will result in an
+      error.
     client_optimizer_fn: A `tff.learning.optimizers.Optimizer`, or a no-arg
       callable that returns a `tf.keras.Optimizer`. If `model_fn` is a
       `tff.learning.models.FunctionalModel`, _must_ be a
@@ -153,11 +154,12 @@ def build_weighted_fed_avg(
       used to aggregate client updates on the server. If `None`, this is set to
       `tff.aggregators.MeanFactory`.
     metrics_aggregator: A function that takes in the metric finalizers (i.e.,
-      `tff.learning.Model.metric_finalizers()`) and a
+      `tff.learning.models.VariableModel.metric_finalizers()`) and a
       `tff.types.StructWithPythonType` of the unfinalized metrics (i.e., the TFF
-      type of `tff.learning.Model.report_local_unfinalized_metrics()`), and
-      returns a `tff.Computation` for aggregating the unfinalized metrics. If
-      `None`, this is set to `tff.learning.metrics.sum_then_finalize`.
+      type of
+      `tff.learning.models.VariableModel.report_local_unfinalized_metrics()`),
+      and returns a `tff.Computation` for aggregating the unfinalized metrics.
+      If `None`, this is set to `tff.learning.metrics.sum_then_finalize`.
     use_experimental_simulation_loop: Controls the reduce loop function for
       input dataset. An experimental reduce loop is used for simulation. It is
       currently necessary to set this flag to True for performant GPU
@@ -212,9 +214,9 @@ def build_weighted_fed_avg(
       model = model_fn()  # pytype: disable=not-callable
       if not isinstance(model, variable.VariableModel):
         raise TypeError(
-            'When `model_fn` is a callable, it return instances of '
-            'tff.learning.Model. Instead callable returned type: '
-            f'{type(model)}'
+            'When `model_fn` is a callable, it return instances of'
+            ' tff.learning.models.VariableModel. Instead callable returned'
+            f' type: {type(model)}'
         )
       return model_weights.ModelWeights.from_model(model)
 
@@ -343,12 +345,13 @@ def build_unweighted_fed_avg(
   or server optimizers.
 
   Args:
-    model_fn: A no-arg function that returns a `tff.learning.Model`, or an
-      instance of a `tff.learning.models.FunctionalModel`. When passing a
-      callable, the callable must *not* capture TensorFlow tensors or variables
-      and use them.  The model must be constructed entirely from scratch on each
-      invocation, returning the same pre-constructed model each call will result
-      in an error.
+    model_fn: A no-arg function that returns a
+      `tff.learning.models.VariableModel`, or an instance of a
+      `tff.learning.models.FunctionalModel`. When passing a callable, the
+      callable must *not* capture TensorFlow tensors or variables and use them.
+      The model must be constructed entirely from scratch on each invocation,
+      returning the same pre-constructed model each call will result in an
+      error.
     client_optimizer_fn: A `tff.learning.optimizers.Optimizer`, or a no-arg
       callable that returns a `tf.keras.Optimizer`. If `model_fn` is a
       `tff.learning.models.FunctionalModel`, _must_ be a
@@ -365,11 +368,12 @@ def build_unweighted_fed_avg(
       used to aggregate client updates on the server. If `None`, this is set to
       `tff.aggregators.UnweightedMeanFactory`.
     metrics_aggregator: A function that takes in the metric finalizers (i.e.,
-      `tff.learning.Model.metric_finalizers()`) and a
+      `tff.learning.models.VariableModel.metric_finalizers()`) and a
       `tff.types.StructWithPythonType` of the unfinalized metrics (i.e., the TFF
-      type of `tff.learning.Model.report_local_unfinalized_metrics()`), and
-      returns a `tff.Computation` for aggregating the unfinalized metrics. If
-      `None`, this is set to `tff.learning.metrics.sum_then_finalize`.
+      type of
+      `tff.learning.models.VariableModel.report_local_unfinalized_metrics()`),
+      and returns a `tff.Computation` for aggregating the unfinalized metrics.
+      If `None`, this is set to `tff.learning.metrics.sum_then_finalize`.
     use_experimental_simulation_loop: Controls the reduce loop function for
       input dataset. An experimental reduce loop is used for simulation. It is
       currently necessary to set this flag to True for performant GPU

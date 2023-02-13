@@ -48,9 +48,9 @@ def from_keras_model(
         ]
     ] = None,
 ) -> variable.VariableModel:
-  """Builds a `tff.learning.Model` from a `tf.keras.Model`.
+  """Builds a `tff.learning.models.VariableModel` from a `tf.keras.Model`.
 
-  The `tff.learning.Model` returned by this function uses `keras_model` for
+  The `tff.learning.models.VariableModel` returned by this function uses `keras_model` for
   its forward pass and autodifferentiation steps. The returned model will have
   three additional metrics including: loss, num_examples, and num_batches.
 
@@ -60,7 +60,7 @@ def from_keras_model(
   produces predictions of type `p`; the loss function `L` takes inputs of type
   `<p, y>` (where `y` is the ground truth label type) and produces a scalar.
   Therefore in order to fully specify the type signatures for computations in
-  which the generated `tff.learning.Model` will appear, TFF needs the type `y`
+  which the generated `tff.learning.models.VariableModel` will appear, TFF needs the type `y`
   in addition to the type `x`.
 
   Note: This function does not currently accept subclassed `tf.keras.Models`,
@@ -101,7 +101,7 @@ def from_keras_model(
       and `tff.learning.metrics.NumBatchesCounter` respectively.
 
   Returns:
-    A `tff.learning.Model` object.
+    A `tff.learning.models.VariableModel` object.
 
   Raises:
     TypeError: If `keras_model` is not an instance of `tf.keras.Model`, if

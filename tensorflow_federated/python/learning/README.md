@@ -56,10 +56,10 @@ classes of users:
     automatically generated Python
     [API documentation](https://www.tensorflow.org/federated/api_docs/python/tff).
     Typically, a user will wrap their ML model as a subclass of
-    `tff.learning.Model`, and then invoke one of the constructors listed in the
-    API to create one or more `tff.Computation`s that implement pre-defined
-    federated tasks (such as training or evaluation), and that can be invoked to
-    run on their data sets.
+    `tff.learning.models.VariableModel`, and then invoke one of the constructors
+    listed in the API to create one or more `tff.Computation`s that implement
+    predefined federated tasks (such as training or evaluation), and that can be
+    invoked to run on their data sets.
 
 *   **Federated Learning Researchers**. Users who will develop new federated
     learning algorithms, and may selectively reuse or extend a subset of the
@@ -76,9 +76,10 @@ classes of users:
 
 *   **TensorFlow Federated Contributors**. Users who will contribute federated
     learning algorithms to TensorFlow Federated should nest their code within
-    the `learning` directory, and may link directly against all the modules and
-    symbols contained herein. If you are interested in contributing, but need to
-    validate the algorithm's design and performance, we recommend checking out
     the
+    [federated research repository](https://github.com/google-research/federated)
+    and potentially contributing there first. symbols contained herein. If you
+    are interested in contributing, but need to validate the algorithm's design
+    and performance, we recommend checking out the
     [federated research repository](https://github.com/google-research/federated)
     and potentially contributing there first.

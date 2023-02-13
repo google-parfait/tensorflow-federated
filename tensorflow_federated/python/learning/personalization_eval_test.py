@@ -33,7 +33,7 @@ dataset_reduce_fn = dataset_reduce.build_dataset_reduce_fn(simulation_flag=True)
 
 @tf.function
 def _evaluate_fn(model, dataset, batch_size=1):
-  """Evaluates a `tff.learning.Model` on the given dataset."""
+  """Evaluates a `tff.learning.models.VariableModel` on the given dataset."""
   # Reset the local variables so that the returned metrics are computed using
   # the given data. Similar to the `reset_states` method of `tf.metrics.Metric`.
   for var in model.local_variables:
@@ -160,7 +160,8 @@ class PersonalizationEvalTest(tf.test.TestCase, parameterized.TestCase):
       )
 
     with self.assertRaises(TypeError):
-      # `model_fn` should be a callable that returns a `tff.learning.Model`.
+      # `model_fn` should be a callable that returns a
+      # `tff.learning.models.VariableModel`.
       bad_model_fn = lambda: 6
       p13n_eval.build_personalization_eval(
           bad_model_fn, p13n_fn_dict, _evaluate_fn

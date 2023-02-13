@@ -54,7 +54,8 @@ def build_local_evaluation(
 ) -> computation_base.Computation:
   """Builds the local TFF computation for evaluation of the given model.
 
-  This produces an unplaced function that evaluates a `tff.learning.Model`
+  This produces an unplaced function that evaluates a
+  `tff.learning.models.VariableModel`
   on a `tf.data.Dataset`. This function can be mapped to placed data, i.e.
   is mapped to client placed data in `build_federated_evaluation`.
 
@@ -68,7 +69,8 @@ def build_local_evaluation(
   single data point, and `N` is the type structure of the local metrics.
 
   Args:
-    model_fn: A no-arg function that returns a `tff.learning.Model`.
+    model_fn: A no-arg function that returns a
+      `tff.learning.models.VariableModel`.
     model_weights_type: The `tff.Type` of the model parameters that will be used
       to initialize the model during evaluation.
     batch_type: The type of one entry in the dataset.
@@ -188,22 +190,24 @@ def build_federated_evaluation(
   """Builds the TFF computation for federated evaluation of the given model.
 
   Args:
-    model_fn: A no-arg function that returns a `tff.learning.Model`, or an
-      instance of a `tff.learning.models.FunctionalModel`. When passing a
-      callable, the callable must *not* capture TensorFlow tensors or variables
-      and use them.  The model must be constructed entirely from scratch on each
-      invocation, returning the same pre-constructed model each call will result
-      in an error.
+    model_fn: A no-arg function that returns a
+      `tff.learning.models.VariableModel`, or an instance of a
+      `tff.learning.models.FunctionalModel`. When passing a callable, the
+      callable must *not* capture TensorFlow tensors or variables and use them.
+      The model must be constructed entirely from scratch on each invocation,
+      returning the same pre-constructed model each call will result in an
+      error.
     broadcast_process: A `tff.templates.MeasuredProcess` that broadcasts the
       model weights on the server to the clients. It must support the signature
       `(input_values@SERVER -> output_values@CLIENTS)` and have empty state. If
       set to default None, the server model is broadcast to the clients using
       the default tff.federated_broadcast.
     metrics_aggregator: An optional function that takes in the metric finalizers
-      (i.e., `tff.learning.Model.metric_finalizers()`) and a
+      (i.e., `tff.learning.models.VariableModel.metric_finalizers()`) and a
       `tff.types.StructWithPythonType` of the unfinalized metrics (i.e., the TFF
-      type of `tff.learning.Model.report_local_unfinalized_metrics()`), and
-      returns a federated TFF computation of the following type signature
+      type of
+      `tff.learning.models.VariableModel.report_local_unfinalized_metrics()`),
+      and returns a federated TFF computation of the following type signature
       `local_unfinalized_metrics@CLIENTS -> aggregated_metrics@SERVER`. If
       `None`, uses `tff.learning.metrics.sum_then_finalize`, which returns a
       federated TFF computation that sums the unfinalized metrics from
@@ -261,7 +265,7 @@ def _build_federated_evaluation(
     metrics_aggregator: _MetricsAggregator,
     use_experimental_simulation_loop: bool,
 ) -> computation_base.Computation:
-  """Builds a federated evaluation computation for a `tff.learning.Model`."""
+  """Builds a federated evaluation computation for a `tff.learning.models.VariableModel`."""
   # Construct the model first just to obtain the metadata and define all the
   # types needed to define the computations that follow.
   # TODO(b/124477628): Ideally replace the need for stamping throwaway models

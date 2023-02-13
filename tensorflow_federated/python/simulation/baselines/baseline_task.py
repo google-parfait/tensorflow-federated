@@ -30,8 +30,8 @@ class BaselineTask:
     datasets: A `tff.simulation.baselines.BaselineTaskDatasets` object
       specifying dataset-related aspects of the task, including training data
       and preprocessing functions.
-    model_fn: A no-arg callable returning a `tff.learning.Model` used for the
-      task. Note that `model_fn().input_spec` must match
+    model_fn: A no-arg callable returning a `tff.learning.models.VariableModel`
+      used for the task. Note that `model_fn().input_spec` must match
       `datasets.element_type_structure`.
   """
 
@@ -49,7 +49,7 @@ class BaselineTask:
       tff_model = self.model_fn()
     if not isinstance(tff_model, variable.VariableModel):
       raise TypeError(
-          'Expected model_fn to output a tff.learning.Model, '
+          'Expected model_fn to output a tff.learning.models.VariableModel, '
           'found {} instead'.format(type(tff_model))
       )
 

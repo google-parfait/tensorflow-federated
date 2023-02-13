@@ -57,8 +57,8 @@ class ModelWeights:
     """Assign these TFF model weights to the weights of a model.
 
     Args:
-      model: A `tf.keras.Model` or `tff.learning.Model` instance to assign the
-        weights to.
+      model: A `tf.keras.Model` or `tff.learning.models.VariableModel` instance
+        to assign the weights to.
     """
     py_typecheck.check_type(model, (variable.VariableModel, tf.keras.Model))
     if isinstance(model, tf.keras.Model):
@@ -107,11 +107,11 @@ class ModelWeights:
 def weights_type_from_model(
     model: Union[variable.VariableModel, Callable[[], variable.VariableModel]]
 ) -> computation_types.StructType:
-  """Creates a `tff.Type` from a `tff.learning.Model` or callable that constructs a model.
+  """Creates a `tff.Type` from a `tff.learning.models.VariableModel` or callable that constructs a model.
 
   Args:
-    model: A `tff.learning.Model` instance, or a no-arg callable that returns a
-      model.
+    model: A `tff.learning.models.VariableModel` instance, or a no-arg callable
+      that returns a model.
 
   Returns:
     A `tff.StructType` representing the TFF type of the `ModelWeights`
