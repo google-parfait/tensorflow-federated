@@ -64,7 +64,7 @@ TFF ecosystem.
 
 ### Coding Style
 
-#### Fromat your changes
+#### Format your changes
 
 *   Install [yapf](https://pypi.org/project/yapf/).
 
