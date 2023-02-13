@@ -64,18 +64,6 @@ TFF ecosystem.
 
 ### Coding Style
 
-#### Fromat your changes
-
-*   Install [yapf](https://pypi.org/project/yapf/).
-
-*   Format unstaged changes, to Python files, in place.
-
-```shell
-git diff --name-only \
-    | sed '/.*\.py/!d' \
-    | xargs yapf --in-place
-```
-
 #### Lint your changes
 
 *   Install [pylint](https://pypi.org/project/pylint/).
