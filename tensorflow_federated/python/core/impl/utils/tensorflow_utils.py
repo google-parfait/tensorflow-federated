@@ -11,18 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
-# pytype: skip-file
-# This modules disables the Pytype analyzer, see
-# https://github.com/tensorflow/federated/blob/main/docs/pytype.md for more
-# information.
 """Utilities for interacting with and manipulating TensorFlow graphs."""
 
 import collections
 from collections.abc import Iterable, Mapping
 import itertools
 import typing
-from typing import Any, Optional
+from typing import Any, Optional, Protocol
 
 import numpy as np
 import tensorflow as tf
@@ -715,6 +710,16 @@ def make_whimsy_element_for_type_spec(type_spec, none_dim_replacement=0):
     return elem_list
 
 
+@typing.runtime_checkable
+class _NamedTuple(Protocol):
+
+  def _asdict(self) -> dict[str, Any]:
+    ...
+
+  def _fields(self) -> tuple[str, ...]:
+    ...
+
+
 def append_to_list_structure_for_element_type_spec(nested, value, type_spec):
   """Adds an element `value` to `nested` lists for `type_spec`.
 
@@ -752,7 +757,8 @@ def append_to_list_structure_for_element_type_spec(nested, value, type_spec):
           'all unnamed, got {}.'.format(value)
       )
   if type_spec.is_tensor():
-    py_typecheck.check_type(nested, list)
+    if not isinstance(nested, list):
+      raise TypeError(f'Expected `nested` to be a `list`, found {type(nested)}')
     # Convert the members to tensors to ensure that they are properly
     # typed and grouped before being passed to
     # tf.data.Dataset.from_tensor_slices.
@@ -760,7 +766,7 @@ def append_to_list_structure_for_element_type_spec(nested, value, type_spec):
   elif type_spec.is_struct():
     elements = structure.to_elements(type_spec)
     if isinstance(nested, collections.OrderedDict):
-      if py_typecheck.is_named_tuple(value):
+      if isinstance(value, _NamedTuple):
         # In Python 3.8 and later `_asdict` no longer return OrdereDict, rather
         # a regular `dict`.
         value = collections.OrderedDict(value._asdict())
