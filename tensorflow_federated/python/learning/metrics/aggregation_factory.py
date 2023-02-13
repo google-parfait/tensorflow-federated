@@ -11,17 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
-# pytype: skip-file
-# This modules disables the Pytype analyzer, see
-# https://github.com/tensorflow/federated/blob/main/docs/pytype.md for more
-# information.
 """AggregationFactory for Federated Learning metrics."""
 
 import collections
 from collections.abc import Mapping
 import dataclasses
 import math
+import typing
 from typing import Any, Optional, Union
 
 import tensorflow as tf
@@ -58,6 +54,7 @@ def _build_finalizer_computation(
     return tensorflow_computation.tf_computation(
         local_unfinalized_metrics_type
     )(metric_finalizers)
+  metric_finalizers = typing.cast(types.MetricFinalizersType, metric_finalizers)
 
   @tensorflow_computation.tf_computation(local_unfinalized_metrics_type)
   def finalizer_computation(unfinalized_metrics):
@@ -351,6 +348,9 @@ def _check_user_metric_value_range(value_range: UserMetricValueRange):
     ValueError: If the value has length other than two.
   """
   py_typecheck.check_type(value_range, tuple, 'range')
+  value_range = typing.cast(
+      Union[tuple[float, float], tuple[int, int]], value_range
+  )
   if len(value_range) != 2:
     raise ValueError(
         'Ranges must be defined as a 2-tuple, got a tuple of '
@@ -371,8 +371,8 @@ def _check_user_metric_value_range(value_range: UserMetricValueRange):
 # TODO(b/233054212): re-enable lint
 def create_default_secure_sum_quantization_ranges(
     local_unfinalized_metrics_type: computation_types.StructWithPythonType,
-    lower_bound: Optional[Union[int, float]] = DEFAULT_FIXED_SECURE_LOWER_BOUND,
-    upper_bound: Optional[Union[int, float]] = DEFAULT_FIXED_SECURE_UPPER_BOUND,
+    lower_bound: Union[int, float] = DEFAULT_FIXED_SECURE_LOWER_BOUND,
+    upper_bound: Union[int, float] = DEFAULT_FIXED_SECURE_UPPER_BOUND,
     use_auto_tuned_bounds_for_float_values: Optional[bool] = True,
 ) -> MetricValueRangeDict:  # pylint: disable=g-bare-generic
   """Create a nested structure of quantization ranges for secure sum encoding.
@@ -722,11 +722,11 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
         tensor_type_list,
     ) in tensor_type_list_by_factory_key.items():
       value_range = value_range_by_factory_key[factory_key]
-      aggregation_process_by_factory_key[factory_key] = (
-          aggregator_factories.get(value_range).create(
-              computation_types.to_type(tensor_type_list)
-          )
-      )
+      aggregation_process_by_factory_key[
+          factory_key
+      ] = aggregator_factories.get(value_range).create(
+          computation_types.to_type(tensor_type_list)
+      )  # pytype: disable=attribute-error
 
     @federated_computation.federated_computation
     def init_fn():

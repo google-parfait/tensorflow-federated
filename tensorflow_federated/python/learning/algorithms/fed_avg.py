@@ -11,11 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
-# pytype: skip-file
-# This modules disables the Pytype analyzer, see
-# https://github.com/tensorflow/federated/blob/main/docs/pytype.md for more
-# information.
 """An implementation of the Federated Averaging algorithm.
 
 The original Federated Averaging algorithm is proposed by the paper:
@@ -214,7 +209,7 @@ def build_weighted_fed_avg(
 
     @tensorflow_computation.tf_computation()
     def initial_model_weights_fn():
-      model = model_fn()
+      model = model_fn()  # pytype: disable=not-callable
       if not isinstance(model, variable.VariableModel):
         raise TypeError(
             'When `model_fn` is a callable, it return instances of '

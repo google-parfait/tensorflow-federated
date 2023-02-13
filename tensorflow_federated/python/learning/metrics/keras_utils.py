@@ -11,11 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
-# pytype: skip-file
-# This modules disables the Pytype analyzer, see
-# https://github.com/tensorflow/federated/blob/main/docs/pytype.md for more
-# information.
 """Module for Keras metrics integration."""
 
 import collections
@@ -230,7 +225,7 @@ def create_functional_metric_fns(
       )
     predictions = batch_output.predictions
 
-    def inner_update(metric: tf.keras.metrics.Metric) -> list[tf.Tensor]:
+    def inner_update(metric: tf.keras.metrics.Metric) -> tuple[tf.Tensor]:
       # We must unwrap `update_state` here because the `TensorVariable` is
       # created in the outer `update` FuncGraph and since it is not constant
       # it can't be closed over in the `update_state` FuncGraph. The

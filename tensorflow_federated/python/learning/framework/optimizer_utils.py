@@ -11,11 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
-# pytype: skip-file
-# This modules disables the Pytype analyzer, see
-# https://github.com/tensorflow/federated/blob/main/docs/pytype.md for more
-# information.
 """Common building blocks for federated optimization algorithms."""
 
 from collections.abc import Sequence
@@ -106,7 +101,9 @@ def state_with_new_model_weights(
     if isinstance(old_value, python_leaf_types) and isinstance(
         new_value, tensor_leaf_types
     ):
-      old_value = np.add(old_value, 0, dtype=new_value.dtype)
+      old_value = np.add(
+          old_value, 0, dtype=new_value.dtype  # pytype: disable=attribute-error
+      )
     elif isinstance(old_value, tensor_leaf_types) and isinstance(
         new_value, python_leaf_types
     ):
@@ -124,6 +121,7 @@ def state_with_new_model_weights(
     elif isinstance(new_value, tensor_leaf_types) and isinstance(
         old_value, tensor_leaf_types
     ):
+      # pytype: disable=attribute-error
       if (
           old_value.dtype != new_value.dtype
           or old_value.shape != new_value.shape
@@ -133,6 +131,7 @@ def state_with_new_model_weights(
             f'({old_value.dtype}, {old_value.shape}) != '
             f'new ({new_value.dtype}, {new_value.shape})'
         )
+      # pytype: enable=attribute-error
     elif isinstance(new_value, Sequence) and isinstance(old_value, Sequence):
       if len(old_value) != len(new_value):
         raise TypeError(

@@ -11,11 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
-# pytype: skip-file
-# This modules disables the Pytype analyzer, see
-# https://github.com/tensorflow/federated/blob/main/docs/pytype.md for more
-# information.
 """An implementation of model delta `ClientWork` template.
 
 The term 'model delta' refers to difference between the model weights at the
@@ -138,7 +133,7 @@ def build_model_delta_update_with_tff_optimizer(
       )
 
     num_examples, _ = dataset_reduce_fn(
-        reduce_fn, data, initial_state_fn=initial_state_for_reduce_fn
+        reduce_fn, data, initial_state_for_reduce_fn
     )
     client_update = tf.nest.map_structure(
         tf.subtract, initial_weights.trainable, model_weights.trainable
@@ -230,7 +225,7 @@ def build_model_delta_update_with_keras_optimizer(
       return tf.zeros(shape=[], dtype=tf.int64)
 
     num_examples = dataset_reduce_fn(
-        reduce_fn, data, initial_state_fn=initial_state_for_reduce_fn
+        reduce_fn, data, initial_state_for_reduce_fn
     )
     client_update = tf.nest.map_structure(
         tf.subtract, initial_weights.trainable, model_weights.trainable
@@ -338,7 +333,7 @@ def _build_functional_model_delta_update(
       )
 
     num_examples, model_weights, metrics_state, _ = dataset_reduce_fn(
-        reduce_fn, data, initial_state_fn=initial_state_for_reduce_fn
+        reduce_fn, data, initial_state_for_reduce_fn
     )
     trainable_weights, _ = model_weights
     client_update = tf.nest.map_structure(

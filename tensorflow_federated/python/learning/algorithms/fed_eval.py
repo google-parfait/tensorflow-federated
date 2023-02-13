@@ -11,11 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
-# pytype: skip-file
-# This modules disables the Pytype analyzer, see
-# https://github.com/tensorflow/federated/blob/main/docs/pytype.md for more
-# information.
 """An implementation of stateful federated evaluation."""
 
 import collections
@@ -311,7 +306,9 @@ def build_fed_eval(
 
     @tensorflow_computation.tf_computation()
     def initial_model_weights_fn():
-      return model_weights_lib.ModelWeights.from_model(model_fn())
+      return model_weights_lib.ModelWeights.from_model(
+          model_fn()  # pytype: disable=not-callable
+      )
 
   model_weights_type = initial_model_weights_fn.type_signature.result
 

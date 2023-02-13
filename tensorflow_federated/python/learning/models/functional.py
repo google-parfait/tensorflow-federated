@@ -11,11 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
-# pytype: skip-file
-# This modules disables the Pytype analyzer, see
-# https://github.com/tensorflow/federated/blob/main/docs/pytype.md for more
-# information.
 """Module for creating functional implementations of a `tff.learning.Model`.
 
 This version of the model parameterizes its `forward_pass` and
@@ -80,7 +75,9 @@ def noop_update_metrics(
 
 
 @tf.function
-def noop_finalize_metrics(state: types.MetricsState) -> tuple[Any, ...]:
+def noop_finalize_metrics(
+    state: types.MetricsState,
+) -> collections.OrderedDict[str, Any]:
   del state  # Unused.
   return collections.OrderedDict()
 
@@ -162,7 +159,7 @@ class FunctionalModel:
         corresponds to batched labels for those inputs.
     """
 
-    def check_tf_function_decorated(fn, arg_name):
+    def check_tf_function_decorated(fn: Any, arg_name: str) -> None:
       if not hasattr(fn, 'get_concrete_function'):
         type_string = py_typecheck.type_string(type(fn))
         raise CallableNotTensorFlowFunctionError(
@@ -343,7 +340,7 @@ class _ModelFromFunctional(variable.VariableModel):
 
   def metric_finalizers(
       self,
-  ) -> dict[str, keras_finalizer.KerasMetricFinalizer]:
+  ) -> collections.OrderedDict[str, keras_finalizer.KerasMetricFinalizer]:
     finalizers = collections.OrderedDict(
         # `loss` result is computed by `loss_sum` / `num_examples`.
         loss=tf.function(func=lambda x: x[0] / x[1])

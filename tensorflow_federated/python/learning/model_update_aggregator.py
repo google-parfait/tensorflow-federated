@@ -11,16 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
-# pytype: skip-file
-# This modules disables the Pytype analyzer, see
-# https://github.com/tensorflow/federated/blob/main/docs/pytype.md for more
-# information.
 """Generic aggregator for model updates in federated averaging."""
 
 from collections.abc import Callable
 import math
-from typing import Optional
+from typing import Optional, TypeVar
 
 from tensorflow_federated.python.aggregators import differential_privacy
 from tensorflow_federated.python.aggregators import distributed_dp
@@ -34,9 +29,14 @@ from tensorflow_federated.python.aggregators import secure
 from tensorflow_federated.python.aggregators import stochastic_discretization
 
 
+_AggregationFactory = TypeVar(
+    '_AggregationFactory', bound=factory.AggregationFactory
+)
+
+
 def _default_zeroing(
-    inner_factory: factory.AggregationFactory, secure_estimation: bool = False
-) -> factory.AggregationFactory:
+    inner_factory: _AggregationFactory, secure_estimation: bool = False
+) -> _AggregationFactory:
   """The default adaptive zeroing wrapper."""
 
   # Adapts very quickly to a value somewhat higher than the highest values so

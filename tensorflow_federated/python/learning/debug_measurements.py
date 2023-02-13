@@ -11,16 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
-# pytype: skip-file
-# This modules disables the Pytype analyzer, see
-# https://github.com/tensorflow/federated/blob/main/docs/pytype.md for more
-# information.
 """Library of aggregator measurements useful for debugging learning processes."""
 
 import collections
 from collections.abc import Callable
-from typing import Any
+from typing import Any, TypeVar
 
 import tensorflow as tf
 
@@ -29,6 +24,11 @@ from tensorflow_federated.python.aggregators import measurements
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import placements
+
+
+_AggregationFactory = TypeVar(
+    '_AggregationFactory', bound=factory.AggregationFactory
+)
 
 
 @tensorflow_computation.tf_computation
@@ -246,8 +246,8 @@ def _build_aggregator_measurement_fns(
 
 
 def add_debug_measurements(
-    aggregation_factory: factory.AggregationFactory,
-) -> factory.AggregationFactory:
+    aggregation_factory: _AggregationFactory,
+) -> _AggregationFactory:
   """Adds measurements suitable for debugging learning processes.
 
   This will wrap a `tff.aggregator.AggregationFactory` as a new factory that
@@ -309,8 +309,8 @@ def add_debug_measurements(
 
 
 def add_debug_measurements_with_mixed_dtype(
-    aggregation_factory: factory.AggregationFactory,
-) -> factory.AggregationFactory:
+    aggregation_factory: _AggregationFactory,
+) -> _AggregationFactory:
   """Adds measurements suitable for debugging learning processes.
 
   WARNING: This method works for model updates with mixed, non-`tf.float32`

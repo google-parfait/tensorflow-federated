@@ -11,11 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
-# pytype: skip-file
-# This modules disables the Pytype analyzer, see
-# https://github.com/tensorflow/federated/blob/main/docs/pytype.md for more
-# information.
 """Shared utils for Federated Reconstruction training and evaluation."""
 
 from collections.abc import Callable
@@ -36,7 +31,7 @@ from tensorflow_federated.python.learning.reconstruction import model as model_l
 # also specify their own `DatasetSplitFn`s (see `simple_dataset_split_fn` for an
 # example).
 DatasetSplitFn = Callable[
-    [tf.data.Dataset, tf.Tensor], tuple[tf.data.Dataset, tf.data.Dataset]
+    [tf.data.Dataset], tuple[tf.data.Dataset, tf.data.Dataset]
 ]
 
 

@@ -11,11 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
-# pytype: skip-file
-# This modules disables the Pytype analyzer, see
-# https://github.com/tensorflow/federated/blob/main/docs/pytype.md for more
-# information.
 """Simple examples implementing the Model interface."""
 
 import collections
@@ -303,7 +298,8 @@ def build_linear_regression_keras_subclass_model(feature_dims=2):
       super().__init__()
       self._weights = _dense_all_zeros_layer()
 
-    def call(self, inputs, training=True):
+    def call(self, inputs, training=None, mask=None):
+      del training, mask  # Unused.
       return self._weights(inputs)
 
   return _KerasLinearRegression()

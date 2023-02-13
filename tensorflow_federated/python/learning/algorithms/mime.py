@@ -11,11 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
-# pytype: skip-file
-# This modules disables the Pytype analyzer, see
-# https://github.com/tensorflow/federated/blob/main/docs/pytype.md for more
-# information.
 """An implementation of Mime Lite algorithm.
 
 The algorithm is proposed by the paper:
@@ -160,9 +155,8 @@ def _build_client_update_fn_for_mime_lite(
         return state
 
       # Performs local training, updating `tf.Variable`s in `model_weights`.
-      dataset_reduce_fn(
-          train_reduce_fn, data, initial_state_fn=lambda: tf.zeros(shape=[0])
-      )
+      initial_state_fn = lambda: tf.zeros(shape=[0])
+      dataset_reduce_fn(train_reduce_fn, data, initial_state_fn)
 
       client_weights_delta = tf.nest.map_structure(
           tf.subtract, initial_weights.trainable, model_weights.trainable
@@ -350,7 +344,7 @@ def _build_functional_client_update_fn_for_mime_lite(
         incoming_weights: model_weights_lib.ModelWeights,
         data: tf.data.Dataset,
     ) -> Any:
-      trainable_weights, _ = incoming_weights
+      trainable_weights, _ = incoming_weights  # pytype: disable=attribute-error
 
       def full_gradient_reduce_fn(state, batch):
         """Sums individual gradients, to be later divided by num_examples."""
@@ -423,10 +417,12 @@ def _build_functional_client_update_fn_for_mime_lite(
         return incoming_weights, model.initialize_metrics_state()
 
       model_weights, unfinalized_metrics = dataset_reduce_fn(
-          train_reduce_fn, data, initial_state_fn=initial_training_weights
+          train_reduce_fn, data, initial_training_weights
       )
 
-      incoming_training_weights, _ = incoming_weights
+      incoming_training_weights, _ = (
+          incoming_weights  # pytype: disable=attribute-error
+      )
       trainable_weights, _ = model_weights
       client_weights_delta = tf.nest.map_structure(
           tf.subtract, incoming_training_weights, trainable_weights
@@ -866,7 +862,7 @@ def build_weighted_mime_lite(
 
     @tensorflow_computation.tf_computation
     def initial_model_weights_fn():
-      model = model_fn()
+      model = model_fn()  # pytype: disable=not-callable
       if not isinstance(model, variable.VariableModel):
         raise TypeError(
             'When `model_fn` is a callable, it returns instances of'
@@ -1202,7 +1198,7 @@ def build_mime_lite_with_optimizer_schedule(
 
     @tensorflow_computation.tf_computation
     def initial_model_weights_fn():
-      model = model_fn()
+      model = model_fn()  # pytype: disable=not-callable
       if not isinstance(model, variable.VariableModel):
         raise TypeError(
             'When `model_fn` is a callable, it returns instances of'

@@ -11,11 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
-# pytype: skip-file
-# This modules disables the Pytype analyzer, see
-# https://github.com/tensorflow/federated/blob/main/docs/pytype.md for more
-# information.
 """An implementation of the Federated SGD algorithm.
 
 This is the baseline algorithm from:
@@ -108,9 +103,7 @@ def _build_client_update(
       ), tf.constant(0, dtype=tf.float32)
 
     gradient_sums, num_examples_sum = dataset_reduce_fn(
-        reduce_fn=reduce_fn,
-        dataset=dataset,
-        initial_state_fn=_zero_initial_state,
+        reduce_fn, dataset, _zero_initial_state
     )
 
     # We now normalize to compute the average gradient over all examples.
@@ -274,9 +267,7 @@ def _build_functional_client_update(
       )
 
     gradient_sums, metrics_state, num_examples_sum = dataset_reduce_fn(
-        reduce_fn=reduce_fn,
-        dataset=dataset,
-        initial_state_fn=_zero_initial_state,
+        reduce_fn, dataset, _zero_initial_state
     )
     # We now normalize to compute the average gradient over all examples.
     average_gradient = tf.nest.map_structure(
@@ -485,7 +476,7 @@ def build_fed_sgd(
 
     @tensorflow_computation.tf_computation()
     def initial_model_weights_fn():
-      model = model_fn()
+      model = model_fn()  # pytype: disable=not-callable
       if not isinstance(model, variable.VariableModel):
         raise TypeError(
             'When `model_fn` is a callable, it returns instances of'

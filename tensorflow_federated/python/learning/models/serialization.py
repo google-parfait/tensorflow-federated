@@ -11,11 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
-# pytype: skip-file
-# This modules disables the Pytype analyzer, see
-# https://github.com/tensorflow/federated/blob/main/docs/pytype.md for more
-# information.
 """Module for model serialization."""
 
 import collections
@@ -325,7 +320,7 @@ def save(model: variable.VariableModel, path: str, input_type=None) -> None:
 
   # Serialize the report_local_unfinalized_metrics tf.function.
   m.report_local_unfinalized_metrics = (
-      model.report_local_unfinalized_metrics.get_concrete_function()
+      model.report_local_unfinalized_metrics.get_concrete_function()  # pytype: disable=attribute-error
   )
 
   # Serialize the metric_finalizers as `tf.Variable`s.
@@ -361,7 +356,7 @@ def save(model: variable.VariableModel, path: str, input_type=None) -> None:
 
   # Serialize the reset_metrics tf.function.
   try:
-    m.reset_metrics = model.reset_metrics.get_concrete_function()
+    m.reset_metrics = model.reset_metrics.get_concrete_function()  # pytype: disable=attribute-error
   except NotImplementedError:
     m.reset_metrics = None
 

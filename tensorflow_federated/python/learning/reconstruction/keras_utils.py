@@ -11,11 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
-# pytype: skip-file
-# This modules disables the Pytype analyzer, see
-# https://github.com/tensorflow/federated/blob/main/docs/pytype.md for more
-# information.
 """Utilities for constructing reconstruction models from Keras models."""
 
 import collections
@@ -222,7 +217,7 @@ class MeanLossMetric(tf.keras.metrics.Mean):
     super().__init__(name, dtype)
     self._loss_fn = loss_fn
 
-  def update_state(self, y_true, y_pred, sample_weight=None):
+  def update_state(self, y_true, y_pred, sample_weight=None):  # pytype: disable=signature-mismatch
     batch_size = tf.cast(tf.shape(y_pred)[0], self._dtype)
     y_true = tf.cast(y_true, self._dtype)
     y_pred = tf.cast(y_pred, self._dtype)
@@ -251,7 +246,7 @@ def read_metric_variables(
 # the FedRecon to use the new composable APIs.
 def federated_output_computation_from_metrics(
     metrics: list[tf.keras.metrics.Metric],
-) -> federated_computation.federated_computation:
+):
   """Produces a federated computation for aggregating Keras metrics.
 
   This can be used to evaluate both Keras and non-Keras models using Keras
