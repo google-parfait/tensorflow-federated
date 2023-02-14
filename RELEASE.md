@@ -1,3 +1,57 @@
+# Release 0.49.0
+
+## Major Features and Improvements
+
+*   Created the Baselines API of the GLDv2 (landmark) dataset for simulation,
+    with a GLDv2 preprocessing function, a GLDv2 tasks function, and a Google
+    mirror of the GLDv2 baselines tasks.
+
+## Breaking Changes
+
+*   Temporarily removed `tff.program.PrefetchingDataSource`, the
+    PrefetchingDataSourceIterator tests are flaky and it's not immediately clear
+    if this is due to the implementation of the PrefetchingDataSourceIterator or
+    due to a bug in the test.
+*   Deprecated the following API, Python execution is deprecated instead use CPP
+    execution:
+    *   `tff.backends.native.create_local_python_execution_context`
+    *   `tff.backends.native.create_remote_python_execution_context`
+    *   `tff.backends.native.create_remote_async_python_execution_context`
+    *   `tff.backends.native.set_remote_async_python_execution_context`
+*   Removed the following API, Python execution is deprecated instead use CPP
+    execution:
+    *   `tff.backends.native.set_local_python_execution_context`
+    *   `tff.backends.native.set_remote_python_execution_context`
+    *   `tff.frameowrk.FederatingExecutor`
+    *   `tff.framework.ComposingExecutorFactory`
+    *   `tff.framework.ExecutorValue`
+    *   `tff.framework.Executor`
+    *   `tff.framework.FederatedComposingStrategy`
+    *   `tff.framework.FederatedResolvingStrategy`
+    *   `tff.framework.FederatingStrategy`
+    *   `tff.framework.ReconstructOnChangeExecutorFactory`
+    *   `tff.framework.ReferenceResolvingExecutor`
+    *   `tff.framework.RemoteExecutor`
+    *   `tff.framework.ResourceManagingExecutorFactory`
+    *   `tff.framework.ThreadDelegatingExecutor`
+    *   `tff.framework.TransformingExecutor`
+    *   `tff.framework.UnplacedExecutorFactory`
+*   Removed duplicate API from `tff.framework`, instead use:
+    *   `tff.types.type_from_tensors`
+    *   `tff.types.type_to_tf_tensor_specs`
+    *   `tff.types.deserialize_type`
+    *   `tff.types.serialize_type`
+*   Renamed `tff.learning.Model` to `tff.learning.models.VariableModel`.
+*   Renamed the
+    `cpp_execution_context.(create|set)_local_async_cpp_execution_context`
+    function to match the name of
+    `execution_context.(create|set)_(sync|async)_local_cpp_execution_context`.
+
+## Bug Fixes
+
+*   Fixed bug in FLAIR download URLs.
+*   Enabled and fixed python type annotations in many packages.
+
 # Release 0.48.0
 
 ## Major Features and Improvements
