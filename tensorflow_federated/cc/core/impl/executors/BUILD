@@ -289,6 +289,7 @@ cc_test(
         "@org_tensorflow//tensorflow/cc:array_ops",
         "@org_tensorflow//tensorflow/cc:math_ops",
         "@org_tensorflow//tensorflow/cc:ops",
+        "@org_tensorflow//tensorflow/cc:resource_variable_ops",
         "@org_tensorflow//tensorflow/cc:scope",
         "@org_tensorflow//tensorflow/core:protos_all_cc",
         "@org_tensorflow//tensorflow/dtensor/cc:tensor_layout",
@@ -304,6 +305,8 @@ cc_library(
     deps = [
         ":status_macros",
         "//tensorflow_federated/proto/v0:computation_cc_proto",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/container:node_hash_map",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
@@ -312,10 +315,12 @@ cc_library(
         "@org_tensorflow//tensorflow/c:tf_status_headers",
         "@org_tensorflow//tensorflow/c/eager:c_api",
         "@org_tensorflow//tensorflow/c/eager:tfe_tensorhandle_internal",
+        "@org_tensorflow//tensorflow/compiler/mlir/python:mlir",
         "@org_tensorflow//tensorflow/core:core_cpu_base",
         "@org_tensorflow//tensorflow/core:framework",
         "@org_tensorflow//tensorflow/core:protos_all_cc",
         "@org_tensorflow//tensorflow/core/common_runtime:core",
+        "@org_tensorflow//tensorflow/dtensor/cc:tensor_layout",
     ],
 )
 
@@ -323,6 +328,7 @@ tff_cc_cpu_gpu_test(
     name = "eager_computation_test",
     srcs = ["eager_computation_test.cc"],
     deps = [
+        ":dtensor_api",
         ":eager_computation",
         ":status_matchers",
         "//tensorflow_federated/cc/common_libs:oss_test_main",
@@ -331,12 +337,14 @@ tff_cc_cpu_gpu_test(
         "@org_tensorflow//tensorflow/c:tf_status_headers",
         "@org_tensorflow//tensorflow/c:tf_tensor",
         "@org_tensorflow//tensorflow/c/eager:c_api",
+        "@org_tensorflow//tensorflow/c/eager:c_api_internal",
         "@org_tensorflow//tensorflow/cc:cc_ops",
         "@org_tensorflow//tensorflow/cc:functional_ops",
         "@org_tensorflow//tensorflow/cc:scope",
         "@org_tensorflow//tensorflow/core:core_cpu_base",
         "@org_tensorflow//tensorflow/core:protos_all_cc",
         "@org_tensorflow//tensorflow/core:tensorflow",
+        "@org_tensorflow//tensorflow/dtensor/cc:mesh_type",
     ],
 )
 

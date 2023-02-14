@@ -26,6 +26,7 @@ limitations under the License
 #include "tensorflow/c/eager/c_api.h"
 #include "tensorflow/c/eager/tfe_tensorhandle_internal.h"
 #include "tensorflow/core/framework/function.pb.h"
+#include "tensorflow/dtensor/cc/tensor_layout.h"
 #include "tensorflow_federated/proto/v0/computation.pb.h"
 
 namespace tensorflow_federated {
@@ -41,12 +42,34 @@ class EagerComputation {
  public:
   // Converts GraphDef defined in Computation->Tensorflow into a FunctionDef
   // And instantiates EagerComputation class.
+  // If non-empty Layout map is passed, a Relayout op is inserted after each
+  // VarHandleOp node which has sharding spec specified.
+  //
+  // The placeholder inputs are expected to be sharded by the caller.
+  // In DTensorExecutor, sharding for input bindings are applied before invoking
+  // EagerComputation->Call.
+  //
+  // Note that Layout Map should only be specified when running EagerComputation
+  // on a DTensor Mesh or with a DTensor device. "Relayout" op is only
+  // recognized by DTensor device.
   static absl::StatusOr<EagerComputation> FromProto(
-      const v0::TensorFlow& comp_pb);
+      const v0::TensorFlow& comp_pb,
+      std::map<std::string, tensorflow::dtensor::Layout> layout_map = {});
   // Extracts FunctionDef defined in Computation->TensorFlowFunction and
   // instantiates EagerComputation class.
+  // If non-empty Layout map is passed, a Relayout op is inserted after each
+  // VarHandleOp node which has sharding spec specified.
+  //
+  // The placeholder inputs are expected to be sharded by the caller.
+  // In DTensorExecutor, sharding for input bindings are applied before invoking
+  // EagerComputation->Call.
+  //
+  // Note that Layout Map should only be specified when running EagerComputation
+  // on a DTensor Mesh or with a DTensor device. "Relayout" op is only
+  // recognized by DTensor device.
   static absl::StatusOr<EagerComputation> FromProto(
-      const v0::TensorFlowFunction& comp_pb);
+      const v0::TensorFlowFunction& comp_pb,
+      std::map<std::string, tensorflow::dtensor::Layout> layout_map = {});
 
   EagerComputation(
       tensorflow::FunctionDef main_function_def,

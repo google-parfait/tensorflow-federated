@@ -37,6 +37,7 @@ limitations under the License
 #include "tensorflow/cc/framework/scope.h"
 #include "tensorflow/cc/ops/array_ops.h"
 #include "tensorflow/cc/ops/math_ops.h"
+#include "tensorflow/cc/ops/resource_variable_ops.h"
 #include "tensorflow/core/framework/tensor.pb.h"
 #include "tensorflow/dtensor/cc/tensor_layout.h"
 #include "tensorflow/dtensor/proto/layout.pb.h"
@@ -203,6 +204,23 @@ class DTensorExecutorTest : public ::testing::Test {
                              test_executor_->Materialize(result));
     EXPECT_THAT(result_proto, EqualsProto(expected));
   }
+  void CheckCallRepeatedlyEqualsProto(const v0::Value& fn,
+                                      const absl::optional<v0::Value>& arg,
+                                      const v0::Value& expected) {
+    TFF_ASSERT_OK_AND_ASSIGN(auto fn_id, test_executor_->CreateValue(fn));
+    std::optional<OwnedValueId> arg_id;
+    if (arg.has_value()) {
+      TFF_ASSERT_OK_AND_ASSIGN(arg_id,
+                               test_executor_->CreateValue(arg.value()));
+    }
+    for (int i = 0; i < 3; i++) {
+      TFF_ASSERT_OK_AND_ASSIGN(auto result,
+                               test_executor_->CreateCall(fn_id, arg_id));
+      TFF_ASSERT_OK_AND_ASSIGN(auto result_proto,
+                               test_executor_->Materialize(result));
+      EXPECT_THAT(result_proto, EqualsProto(expected));
+    }
+  }
 };
 
 TEST_F(DTensorExecutorTest, CallAddShardedLayout) {
@@ -318,6 +336,33 @@ TEST_F(DTensorExecutorTest, CallAddNoLayoutSpecified) {
               AllOf(::testing::HasSubstr("dtype=DT_INT32"),
                     ::testing::HasSubstr("TensorHandle([3 4 5 7]"),
                     ::testing::HasSubstr("sharding_specs:unsharded")));
+}
+
+TEST_F(DTensorExecutorTest, CallNoArgOneOutWithInitialize) {
+  tensorflow::Scope root = tensorflow::Scope::NewRootScope();
+  tensorflow::TensorShape shape({4});
+  tensorflow::ops::VarHandleOp var(root, tensorflow::DT_INT32, shape);
+  auto var_init = tensorflow::ops::AssignVariableOp(
+      root, var, tensorflow::ops::Const(root, {1, 2, 3, 4}, shape));
+  tensorflow::ops::ReadVariableOp read_var(root, var, tensorflow::DT_INT32);
+  v0::Value fn = ComputationV(
+      /*in_binding=*/std::nullopt,
+      /*out_binding=*/TensorB(read_var), root,
+      /*init_op=*/var_init);
+  (*fn.mutable_computation()
+        ->mutable_tensorflow()
+        ->mutable_layout_map()
+        ->mutable_name_to_sharding_spec())["VarHandleOp"] = MESH_DIM_X;
+  v0::Value expected = TensorVFromIntList({1, 2, 3, 4});
+  this->CheckCallEqualsProto(fn, std::nullopt, expected);
+  EXPECT_THAT(
+      dtensor_converter_->result_dtensors_[0],
+      AllOf(::testing::HasSubstr("dtype=DT_INT32"),
+            ::testing::HasSubstr("{\"CPU:0\": [1 2], \"CPU:1\": [3 4]}"),
+            ::testing::HasSubstr("sharding_specs:x")));
+  // Ensure that repeatedly using the same session from the session provider
+  // works correctly.
+  this->CheckCallRepeatedlyEqualsProto(fn, std::nullopt, expected);
 }
 }  // namespace
 }  // namespace tensorflow_federated

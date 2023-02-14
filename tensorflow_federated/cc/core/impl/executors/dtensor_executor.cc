@@ -29,7 +29,6 @@ limitations under the License
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
-#include "absl/strings/str_split.h"
 #include "tensorflow/c/eager/c_api.h"
 #include "tensorflow/c/eager/tfe_tensorhandle_internal.h"
 #include "tensorflow/c/tf_status.h"
@@ -377,8 +376,8 @@ class ComputationValue : public Value {
         }
       }
 
-      auto eager_comp = TFF_TRY(
-          EagerComputation::FromProto(value_pb.computation().tensorflow()));
+      auto eager_comp = TFF_TRY(EagerComputation::FromProto(
+          value_pb.computation().tensorflow(), layout_map));
       return std::make_shared<ComputationValue>(
           eager_comp,
           value_pb.computation().tensorflow().has_parameter()

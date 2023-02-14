@@ -27,18 +27,28 @@ limitations under the License
 #include <vector>
 
 #include "google/protobuf/any.pb.h"
+#include "absl/container/flat_hash_map.h"
+#include "absl/container/node_hash_map.h"
+#include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/types/span.h"
 #include "tensorflow/c/eager/c_api.h"
 #include "tensorflow/c/tf_status.h"
+#include "tensorflow/compiler/mlir/python/mlir.h"
 #include "tensorflow/core/common_runtime/graph_constructor.h"
+#include "tensorflow/core/framework/attr_value.pb.h"
+#include "tensorflow/core/framework/function.h"
 #include "tensorflow/core/framework/function.pb.h"
 #include "tensorflow/core/framework/graph.pb.h"
 #include "tensorflow/core/framework/graph_to_functiondef.h"
 #include "tensorflow/core/framework/node_def.pb.h"
 #include "tensorflow/core/framework/node_def_builder.h"
 #include "tensorflow/core/framework/op_def.pb.h"
+#include "tensorflow/core/framework/op_def_builder.h"
 #include "tensorflow/core/framework/resource_handle.h"
+#include "tensorflow/core/framework/types.pb.h"
+#include "tensorflow/core/graph/graph.h"
+#include "tensorflow/dtensor/cc/tensor_layout.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
 
 namespace tensorflow_federated {
@@ -118,16 +128,16 @@ absl::Status AddInputArgNodesToFunction(
                       .Attr("index", index++)
                       .Finalize(&arg_node_def, /*consume=*/true);
     if (!status.ok()) {
-      return absl::InternalError(
-          absl::StrCat("Failed to import graph def ", status.ToString()));
+      return absl::InternalError(absl::StrCat(
+          "Failed to create input argument node: ", status.ToString()));
     }
 
     // Replace placeholder input node with the new Arg node. Since, the name of
     // node is same, the graph already has correct out edges.
     graph->AddNode(arg_node_def, &status);
     if (!status.ok()) {
-      return absl::InternalError(
-          absl::StrCat("Failed to convert graph def ", status.ToString()));
+      return absl::InternalError(absl::StrCat(
+          "Failed to add input argument node: ", status.ToString()));
     }
 
     // Remove the placeholder input node.
@@ -167,6 +177,52 @@ void AddControlEdgeForInitOp(tensorflow::Graph* graph,
     graph->AddControlEdge(initialize_op, dest);
   }
 }
+absl::StatusOr<tensorflow::NodeDef> CreateRelayoutNodeDef(
+    const std::string varop_node_name,
+    tensorflow::dtensor::Layout varop_node_layout) {
+  tensorflow::NodeDefBuilder builder(absl::StrCat(varop_node_name, "Relayout"),
+                                     "Relayout");
+  builder.Input(varop_node_name, 0, tensorflow::DT_RESOURCE);
+  builder.Attr("layout", varop_node_layout.ToString());
+  builder.Attr("T", tensorflow::DT_RESOURCE);
+  tensorflow::NodeDef relayout_node_def;
+  auto tf_status = builder.Finalize(&relayout_node_def);
+  if (!tf_status.ok()) {
+    return absl::InternalError(
+        absl::StrCat("Failed to create Relayout node.", tf_status.ToString()));
+  }
+  return relayout_node_def;
+}
+
+absl::Status InsertRelayoutNodeForVariable(
+    tensorflow::Node* var_node, tensorflow::dtensor::Layout var_node_layout,
+    tensorflow::Graph* graph) {
+  auto relayout_node_def_or =
+      CreateRelayoutNodeDef(var_node->name(), var_node_layout);
+  if (!relayout_node_def_or.ok()) {
+    return absl::InternalError(relayout_node_def_or.status().ToString());
+  }
+  tensorflow::Status tf_status;
+  auto relayout_node = graph->AddNode(relayout_node_def_or.value(), &tf_status);
+  if (!tf_status.ok()) {
+    return absl::InternalError(absl::StrCat(
+        "Failed to insert Relayout node in graph.", tf_status.ToString()));
+  }
+  absl::flat_hash_map<tensorflow::Node*, int> out_nodes_with_dest_indx;
+
+  for (auto* e : var_node->out_edges()) {
+    out_nodes_with_dest_indx.insert(std::make_pair(e->dst(), e->dst_input()));
+  }
+  for (auto e : out_nodes_with_dest_indx) {
+    tf_status = graph->UpdateEdge(relayout_node, 0, e.first, e.second);
+
+    if (!tf_status.ok()) {
+      return absl::InternalError(absl::StrCat(
+          "Failed to updated relayout edges ", tf_status.ToString()));
+    }
+  }
+  return absl::OkStatus();
+}
 
 absl::Status PopulateBindingNames(
     const v0::TensorFlow::Binding& binding,
@@ -199,7 +255,8 @@ absl::Status PopulateBindingNames(
 absl::StatusOr<tensorflow::FunctionDef> ConvertToFunctionDef(
     std::string init_op, const tensorflow::GraphDef& graphdef_pb,
     const v0::TensorFlow::Binding& input_binding,
-    const v0::TensorFlow::Binding& output_binding) {
+    const v0::TensorFlow::Binding& output_binding,
+    std::map<std::string, tensorflow::dtensor::Layout> layout_map) {
   tensorflow::FunctionDef func_def;
   std::vector<bool> visited(graphdef_pb.node_size());
   std::deque<const tensorflow::Node*> queue;
@@ -261,6 +318,19 @@ absl::StatusOr<tensorflow::FunctionDef> ConvertToFunctionDef(
     TFF_TRY(AddInputArgNodesToFunction(graph.get(), input_args));
   }
 
+  // Update Node layout for variable
+  for (auto& node_layout : layout_map) {
+    if (node_map.find(node_layout.first) != node_map.end()) {
+      const auto& node = node_map[node_layout.first];
+      if (node->IsOp() && node->op_def().name() == "VarHandleOp") {
+        TFF_TRY(InsertRelayoutNodeForVariable(node, node_layout.second,
+                                              graph.get()));
+      } else {
+        // Only Variable layouts supported for now, until we discover a
+        // requirement for other nodes.
+      }
+    }
+  }
   // NOTE: Check if there is a C++ API to prune the graph based on input
   // and output args.
   std::vector<std::string> output_names(output_bindings.begin(),
@@ -272,6 +342,7 @@ absl::StatusOr<tensorflow::FunctionDef> ConvertToFunctionDef(
     return absl::InternalError(absl::StrCat(
         "Failed to convert graph def to function def: ", status.ToString()));
   }
+  VLOG(2) << "Converted func def " << func_def.DebugString();
   return func_def;
 }
 
@@ -283,10 +354,65 @@ void UpdateVarHandleOpNodesAsAnonymous(tensorflow::FunctionDef& func_def) {
     }
   }
 }
+absl::Status UpdateVariableLayouts(
+    tensorflow::FunctionDef& func_def,
+    std::map<std::string, tensorflow::dtensor::Layout> layout_map) {
+  std::unordered_map<std::string, tensorflow::NodeDef> node_map;
+  std::unordered_map<std::string, std::string>
+      replace_input_from_var_to_relayout;
+  std::vector<tensorflow::NodeDef> relayout_nodes;
+  for (const auto& node_def : func_def.node_def()) {
+    if (node_def.op() == std::string("VarHandleOp")) {
+      if (layout_map.find(node_def.name()) != layout_map.end()) {
+        auto node_def_or =
+            CreateRelayoutNodeDef(node_def.name(), layout_map[node_def.name()]);
+        if (node_def_or.ok()) {
+          tensorflow::NodeDef relayout_node = node_def_or.value();
+          // NodeDefBuilder does not insert output type and index for the
+          // inputs. i.e. input to relayout_def is "VarHandleOp" instead of
+          // "VarHandleOp:resource:0".
+          // Manually set it here, since with FunctionDef as input, there is no
+          // Graph to FunctionDef conversion in this path.
+          *relayout_node.mutable_input(0) =
+              absl::StrCat(node_def.name(), ":resource:0");
+          relayout_nodes.push_back(relayout_node);
+          replace_input_from_var_to_relayout[absl::StrCat(node_def.name(),
+                                                          ":resource:0")] =
+              absl::StrCat(node_def_or.value().name(), ":output:0");
+        } else {
+          return absl::InternalError(node_def_or.status().ToString());
+        }
+      }
+    } else {
+      // Layouts for Other node types than VarHandleOp not supported right
+      // now.
+    }
+  }
+
+  // Change inputs to all ops consuming varHandleOp to Relayout/
+  for (auto& node_def : *func_def.mutable_node_def()) {
+    for (int i = 0; i < node_def.input_size(); i++) {
+      auto input = node_def.input(i);
+      if (replace_input_from_var_to_relayout.find(input) !=
+          replace_input_from_var_to_relayout.end()) {
+        *node_def.mutable_input(i) = replace_input_from_var_to_relayout[input];
+      }
+    }
+  }
+
+  // Insert Relayout Nodes in the graph.
+  for (auto& node_def : relayout_nodes) {
+    func_def.add_node_def()->Swap(&node_def);
+  }
+
+  return absl::OkStatus();
+}
+
 }  // namespace
 
 absl::StatusOr<EagerComputation> EagerComputation::FromProto(
-    const v0::TensorFlowFunction& comp_pb) {
+    const v0::TensorFlowFunction& comp_pb,
+    std::map<std::string, tensorflow::dtensor::Layout> layout_map) {
   if (!comp_pb.function_def().Is<tensorflow::FunctionDef>()) {
     return absl::InvalidArgumentError(absl::StrCat(
         "Unsupported type in function def proto: ",
@@ -299,12 +425,15 @@ absl::StatusOr<EagerComputation> EagerComputation::FromProto(
     return absl::InternalError("Could not unpack FunctionDef proto");
   }
 
+  TFF_TRY(UpdateVariableLayouts(func_def, layout_map));
   UpdateVarHandleOpNodesAsAnonymous(func_def);
+  // Note: Nested function defs should be passed here for second argument.
   return EagerComputation(func_def, {});
 }
 
 absl::StatusOr<EagerComputation> EagerComputation::FromProto(
-    const v0::TensorFlow& comp_pb) {
+    const v0::TensorFlow& comp_pb,
+    std::map<std::string, tensorflow::dtensor::Layout> layout_map) {
   if (!(comp_pb.graph_def().Is<tensorflow::GraphDef>())) {
     return absl::InvalidArgumentError(absl::StrCat(
         "Unsupported type in Graph def proto: ", comp_pb.graph_def().type_url(),
@@ -318,9 +447,9 @@ absl::StatusOr<EagerComputation> EagerComputation::FromProto(
     return absl::InternalError("Could not unpack graphdef proto");
   }
 
-  tensorflow::FunctionDef main_func_def =
-      TFF_TRY(ConvertToFunctionDef(comp_pb.initialize_op(), graphdef_pb,
-                                   comp_pb.parameter(), comp_pb.result()));
+  tensorflow::FunctionDef main_func_def = TFF_TRY(
+      ConvertToFunctionDef(comp_pb.initialize_op(), graphdef_pb,
+                           comp_pb.parameter(), comp_pb.result(), layout_map));
 
   UpdateVarHandleOpNodesAsAnonymous(main_func_def);
   // Register Function defs present in library, since these may be invoked from
