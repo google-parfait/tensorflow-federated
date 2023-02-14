@@ -20,10 +20,30 @@ limitations under the License
 #include <optional>
 #include <string>
 
+#include "absl/status/statusor.h"
 #include "tensorflow/c/eager/c_api.h"
+#include "tensorflow/dtensor/cc/mesh_type.h"
+#include "tensorflow/dtensor/cc/tensor_layout.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 
 namespace tensorflow_federated {
+// A converter interface introduced for testing so that the API can be mocked.
+class DTensorConverter {
+ public:
+  virtual ~DTensorConverter() = default;
+  // Wrapper for Tensor to DTensor conversion
+  virtual TFE_TensorHandle* TensorToDTensor(TFE_Context* context,
+                                            TFE_TensorHandle* tensor_handle,
+                                            const tensorflow::TF_Layout* layout,
+                                            const char* device_name,
+                                            TF_Status* status) = 0;
+  // Wrapper for DTensor to Tensor conversion
+  virtual TFE_TensorHandle* DTensorToTensor(TFE_Context* context,
+                                            TFE_TensorHandle* tensor_handle,
+                                            const char* device_name,
+                                            TF_Status* status) = 0;
+};
+
 // Returns an executor that will use provided device for tensorflow computation.
 // The device_name can be a registered DTensor device.
 // max_concurrent_computation_calls can be used to control maximum number
@@ -31,6 +51,12 @@ namespace tensorflow_federated {
 std::shared_ptr<Executor> CreateDTensorExecutor(
     std::optional<std::string> dtensor_device_name,
     std::unique_ptr<TFE_Context, decltype(&TFE_DeleteContext)> context,
+    std::optional<tensorflow::dtensor::Mesh> mesh = std::nullopt,
+    std::unique_ptr<DTensorConverter> dtensor_converter =
+        nullptr,  // Uses
+                  // default when null.
+                  //  Used only when mesh is
+                  // specified.
     int32_t max_concurrent_computation_calls = -1);
 
 }  // namespace tensorflow_federated

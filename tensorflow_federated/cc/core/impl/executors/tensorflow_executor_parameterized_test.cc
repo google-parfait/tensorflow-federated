@@ -116,7 +116,8 @@ std::shared_ptr<Executor> CreateExecutor<DTensorExecutor>() {
   std::unique_ptr<TFE_Context, decltype(&TFE_DeleteContext)> context(
       TFE_NewContext(opts.get(), status), TFE_DeleteContext);
   TF_DeleteStatus(status);
-  return CreateDTensorExecutor(std::nullopt, std::move(context),
+  return CreateDTensorExecutor(std::nullopt, std::move(context), std::nullopt,
+                               /*DTensor converter=*/nullptr,
                                /*max_concurrent_computation_calls=*/10);
 }
 

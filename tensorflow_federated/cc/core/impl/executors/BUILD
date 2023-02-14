@@ -266,6 +266,34 @@ cc_library(
         "@org_tensorflow//tensorflow/core/common_runtime:core",
         "@org_tensorflow//tensorflow/core/platform:status",
         "@org_tensorflow//tensorflow/core/platform:statusor",
+        "@org_tensorflow//tensorflow/dtensor/cc:mesh_type",
+        "@org_tensorflow//tensorflow/dtensor/cc:tensor_layout",
+    ],
+)
+
+cc_test(
+    name = "dtensor_executor_test",
+    srcs = ["dtensor_executor_test.cc"],
+    deps = [
+        ":dtensor_api",
+        ":dtensor_executor",
+        ":status_matchers",
+        ":value_test_utils",
+        "//tensorflow_federated/cc/common_libs:oss_test_main",
+        "@com_google_absl//absl/log",
+        "@com_google_absl//absl/log:check",
+        "@org_tensorflow//tensorflow/c:tf_status_headers",
+        "@org_tensorflow//tensorflow/c/eager:c_api",
+        "@org_tensorflow//tensorflow/c/eager:c_api_internal",
+        "@org_tensorflow//tensorflow/c/eager:tfe_tensorhandle_internal",
+        "@org_tensorflow//tensorflow/cc:array_ops",
+        "@org_tensorflow//tensorflow/cc:math_ops",
+        "@org_tensorflow//tensorflow/cc:ops",
+        "@org_tensorflow//tensorflow/cc:scope",
+        "@org_tensorflow//tensorflow/core:protos_all_cc",
+        "@org_tensorflow//tensorflow/dtensor/cc:tensor_layout",
+        "@org_tensorflow//tensorflow/dtensor/proto:layout_proto_cc",
+        "@org_tensorflow//tensorflow/tsl/platform:status",
     ],
 )
 
