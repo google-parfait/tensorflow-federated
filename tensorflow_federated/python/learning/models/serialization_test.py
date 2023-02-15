@@ -324,10 +324,10 @@ class _TestModel(variable.VariableModel):
         var.assign(tf.zeros_like(var))
     else:
       raise NotImplementedError(
-          "The `reset_metrics` method isn't implemented for your custom "
-          '`tff.learning.Model`. Please implement it before using this method. '
-          "You can leave this method unimplemented if you won't use this "
-          'method.'
+          "The `reset_metrics` method isn't implemented for your custom"
+          ' `tff.learning.models.VariableModel`. Please implement it before'
+          ' using this method. You can leave this method unimplemented if you'
+          " won't use this method."
       )
 
 

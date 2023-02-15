@@ -75,7 +75,8 @@ class TaskUtilsTest(tf.test.TestCase):
 
   def test_construct_raises_on_non_tff_model(self):
     with self.assertRaisesRegex(
-        TypeError, 'Expected model_fn to output a tff.learning.Model'
+        TypeError,
+        'Expected model_fn to output a tff.learning.models.VariableModel',
     ):
       baseline_task.BaselineTask(create_task_data(), keras_model_builder)
 

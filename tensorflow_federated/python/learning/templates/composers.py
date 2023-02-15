@@ -314,7 +314,7 @@ def build_basic_fedavg_process(model_fn: Callable[[], variable.VariableModel],
   ```
 
   Args:
-    model_fn: A no-arg function that returns a `tff.learning.Model`.
+    model_fn: A no-arg function that returns a `tff.learning.models.VariableModel`.
     client_learning_rate: A float. Learning rate for the SGD at clients.
     server_learning_rate: A float representing the learning rate for the SGD
       step occuring at the server. Defaults to 1.0.

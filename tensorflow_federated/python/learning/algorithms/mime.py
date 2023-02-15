@@ -204,10 +204,11 @@ def _build_mime_lite_client_work(
   """Creates a `ClientWorkProcess` for Mime Lite.
 
   Args:
-    model_fn: A no-arg function that returns a `tff.learning.Model`. This method
-      must *not* capture TensorFlow tensors or variables and use them. The model
-      must be constructed entirely from scratch on each invocation, returning
-      the same pre-constructed model each call will result in an error.
+    model_fn: A no-arg function that returns a
+      `tff.learning.models.VariableModel`. This method must *not* capture
+      TensorFlow tensors or variables and use them. The model must be
+      constructed entirely from scratch on each invocation, returning the same
+      pre-constructed model each call will result in an error.
     optimizer: A `tff.learning.optimizers.Optimizer` which will be used for both
       creating and updating a global optimizer state, as well as optimization at
       clients given the global state, which is fixed during the optimization.
@@ -218,11 +219,12 @@ def _build_mime_lite_client_work(
       gradients on client datasets. If `None`, this is set to
       `tff.aggregators.MeanFactory`.
     metrics_aggregator: A function that takes in the metric finalizers (i.e.,
-      `tff.learning.Model.metric_finalizers()`) and a
+      `tff.learning.models.VariableModel.metric_finalizers()`) and a
       `tff.types.StructWithPythonType` of the unfinalized metrics (i.e., the TFF
-      type of `tff.learning.Model.report_local_unfinalized_metrics()`), and
-      returns a `tff.Computation` for aggregating the unfinalized metrics. If
-      `None`, this is set to `tff.learning.metrics.sum_then_finalize`.
+      type of
+      `tff.learning.models.VariableModel.report_local_unfinalized_metrics()`),
+      and returns a `tff.Computation` for aggregating the unfinalized metrics.
+      If `None`, this is set to `tff.learning.metrics.sum_then_finalize`.
     use_experimental_simulation_loop: Controls the reduce loop function for
       input dataset. An experimental reduce loop is used for simulation. It is
       currently necessary to set this flag to True for performant GPU
@@ -485,11 +487,12 @@ def _build_mime_lite_functional_client_work(
       gradients on client datasets. If `None`, this is set to
       `tff.aggregators.MeanFactory`.
     metrics_aggregator: A function that takes in the metric finalizers (i.e.,
-      `tff.learning.Model.metric_finalizers()`) and a
+      `tff.learning.models.VariableModel.metric_finalizers()`) and a
       `tff.types.StructWithPythonType` of the unfinalized metrics (i.e., the TFF
-      type of `tff.learning.Model.report_local_unfinalized_metrics()`), and
-      returns a `tff.Computation` for aggregating the unfinalized metrics. If
-      `None`, this is set to `tff.learning.metrics.sum_then_finalize`.
+      type of
+      `tff.learning.models.VariableModel.report_local_unfinalized_metrics()`),
+      and returns a `tff.Computation` for aggregating the unfinalized metrics.
+      If `None`, this is set to `tff.learning.metrics.sum_then_finalize`.
     use_experimental_simulation_loop: Controls the reduce loop function for
       input dataset. An experimental reduce loop is used for simulation. It is
       currently necessary to set this flag to True for performant GPU
@@ -615,12 +618,13 @@ def _build_scheduled_mime_lite_client_work(
   """Creates `ClientWorkProcess` for Mimelite with learning rate schedule.
 
   Args:
-    model_fn: A no-arg function that returns a `tff.learning.Model`, or an
-      instance of a `tff.learning.models.FunctionalModel`. When passing a
-      callable, the callable must *not* capture TensorFlow tensors or variables
-      and use them.  The model must be constructed entirely from scratch on each
-      invocation, returning the same pre-constructed model each call will result
-      in an error.
+    model_fn: A no-arg function that returns a
+      `tff.learning.models.VariableModel`, or an instance of a
+      `tff.learning.models.FunctionalModel`. When passing a callable, the
+      callable must *not* capture TensorFlow tensors or variables and use them.
+      The model must be constructed entirely from scratch on each invocation,
+      returning the same pre-constructed model each call will result in an
+      error.
     learning_rate_fn: A callable accepting an integer round number and returning
       a float to be used as a learning rate for the optimizer.
     optimizer: A `tff.learning.optimizers.Optimizer` which will be used for both
@@ -633,11 +637,12 @@ def _build_scheduled_mime_lite_client_work(
       gradients on client datasets. If `None`, this is set to
       `tff.aggregators.MeanFactory`.
     metrics_aggregator: A function that takes in the metric finalizers (i.e.,
-      `tff.learning.Model.metric_finalizers()`) and a
+      `tff.learning.models.VariableModel.metric_finalizers()`) and a
       `tff.types.StructWithPythonType` of the unfinalized metrics (i.e., the TFF
-      type of `tff.learning.Model.report_local_unfinalized_metrics()`), and
-      returns a `tff.Computation` for aggregating the unfinalized metrics. If
-      `None`, this is set to `tff.learning.metrics.sum_then_finalize`.
+      type of
+      `tff.learning.models.VariableModel.report_local_unfinalized_metrics()`),
+      and returns a `tff.Computation` for aggregating the unfinalized metrics.
+      If `None`, this is set to `tff.learning.metrics.sum_then_finalize`.
     use_experimental_simulation_loop: Controls the reduce loop function for
       input dataset. An experimental reduce loop is used for simulation. It is
       currently necessary to set this flag to True for performant GPU
@@ -801,12 +806,13 @@ def build_weighted_mime_lite(
   incurring additional computation and memory cost at clients.
 
   Args:
-    model_fn: A no-arg function that returns a `tff.learning.Model`, or an
-      instance of a `tff.learning.models.FunctionalModel`. When passing a
-      callable, the callable must *not* capture TensorFlow tensors or variables
-      and use them.  The model must be constructed entirely from scratch on each
-      invocation, returning the same pre-constructed model each call will result
-      in an error.
+    model_fn: A no-arg function that returns a
+      `tff.learning.models.VariableModel`, or an instance of a
+      `tff.learning.models.FunctionalModel`. When passing a callable, the
+      callable must *not* capture TensorFlow tensors or variables and use them.
+      The model must be constructed entirely from scratch on each invocation,
+      returning the same pre-constructed model each call will result in an
+      error.
     base_optimizer: A `tff.learning.optimizers.Optimizer` which will be used for
       both creating and updating a global optimizer state, as well as
       optimization at clients given the global state, which is fixed during the
@@ -827,11 +833,12 @@ def build_weighted_mime_lite(
       gradients on client datasets. If `None`, this is set to
       `tff.aggregators.MeanFactory`.
     metrics_aggregator: A function that takes in the metric finalizers (i.e.,
-      `tff.learning.Model.metric_finalizers()`) and a
+      `tff.learning.models.VariableModel.metric_finalizers()`) and a
       `tff.types.StructWithPythonType` of the unfinalized metrics (i.e., the TFF
-      type of `tff.learning.Model.report_local_unfinalized_metrics()`), and
-      returns a `tff.Computation` for aggregating the unfinalized metrics. If
-      `None`, this is set to `tff.learning.metrics.sum_then_finalize`.
+      type of
+      `tff.learning.models.VariableModel.report_local_unfinalized_metrics()`),
+      and returns a `tff.Computation` for aggregating the unfinalized metrics.
+      If `None`, this is set to `tff.learning.metrics.sum_then_finalize`.
     use_experimental_simulation_loop: Controls the reduce loop function for
       input dataset. An experimental reduce loop is used for simulation. It is
       currently necessary to set this flag to True for performant GPU
@@ -866,8 +873,8 @@ def build_weighted_mime_lite(
       if not isinstance(model, variable.VariableModel):
         raise TypeError(
             'When `model_fn` is a callable, it returns instances of'
-            ' tff.learning.Model. Instead callable returned type: '
-            f'{type(model)}'
+            ' tff.learning.models.VariableModel. Instead callable returned'
+            f' type: {type(model)}'
         )
       return model_weights_lib.ModelWeights.from_model(model)
 
@@ -993,10 +1000,11 @@ def build_unweighted_mime_lite(
   incurring additional computation and memory cost at clients.
 
   Args:
-    model_fn: A no-arg function that returns a `tff.learning.Model`. This method
-      must *not* capture TensorFlow tensors or variables and use them. The model
-      must be constructed entirely from scratch on each invocation, returning
-      the same pre-constructed model each call will result in an error.
+    model_fn: A no-arg function that returns a
+      `tff.learning.models.VariableModel`. This method must *not* capture
+      TensorFlow tensors or variables and use them. The model must be
+      constructed entirely from scratch on each invocation, returning the same
+      pre-constructed model each call will result in an error.
     base_optimizer: A `tff.learning.optimizers.Optimizer` which will be used for
       both creating and updating a global optimizer state, as well as
       optimization at clients given the global state, which is fixed during the
@@ -1014,11 +1022,12 @@ def build_unweighted_mime_lite(
       gradients on client datasets. If `None`, this is set to
       `tff.aggregators.UnweightedMeanFactory`.
     metrics_aggregator: A function that takes in the metric finalizers (i.e.,
-      `tff.learning.Model.metric_finalizers()`) and a
+      `tff.learning.models.VariableModel.metric_finalizers()`) and a
       `tff.types.StructWithPythonType` of the unfinalized metrics (i.e., the TFF
-      type of `tff.learning.Model.report_local_unfinalized_metrics()`), and
-      returns a `tff.Computation` for aggregating the unfinalized metrics. If
-      `None`, this is set to `tff.learning.metrics.sum_then_finalize`.
+      type of
+      `tff.learning.models.VariableModel.report_local_unfinalized_metrics()`),
+      and returns a `tff.Computation` for aggregating the unfinalized metrics.
+      If `None`, this is set to `tff.learning.metrics.sum_then_finalize`.
     use_experimental_simulation_loop: Controls the reduce loop function for
       input dataset. An experimental reduce loop is used for simulation. It is
       currently necessary to set this flag to True for performant GPU
@@ -1132,12 +1141,13 @@ def build_mime_lite_with_optimizer_schedule(
   incurring additional computation and memory cost at clients.
 
   Args:
-    model_fn: A no-arg function that returns a `tff.learning.Model`, or an
-      instance of a `tff.learning.models.FunctionalModel`. When passing a
-      callable, the callable must *not* capture TensorFlow tensors or variables
-      and use them.  The model must be constructed entirely from scratch on each
-      invocation, returning the same pre-constructed model each call will result
-      in an error.
+    model_fn: A no-arg function that returns a
+      `tff.learning.models.VariableModel`, or an instance of a
+      `tff.learning.models.FunctionalModel`. When passing a callable, the
+      callable must *not* capture TensorFlow tensors or variables and use them.
+      The model must be constructed entirely from scratch on each invocation,
+      returning the same pre-constructed model each call will result in an
+      error.
     learning_rate_fn: A callable accepting an integer round number and returning
       a float to be used as a learning rate for the optimizer.
       `learning_rate_fn` must be serializable by Tensorflow (e.g. via
@@ -1162,11 +1172,12 @@ def build_mime_lite_with_optimizer_schedule(
       gradients on client datasets. If `None`, this is set to
       `tff.aggregators.MeanFactory`.
     metrics_aggregator: A function that takes in the metric finalizers (i.e.,
-      `tff.learning.Model.metric_finalizers()`) and a
+      `tff.learning.models.VariableModel.metric_finalizers()`) and a
       `tff.types.StructWithPythonType` of the unfinalized metrics (i.e., the TFF
-      type of `tff.learning.Model.report_local_unfinalized_metrics()`), and
-      returns a `tff.Computation` for aggregating the unfinalized metrics. If
-      `None`, this is set to `tff.learning.metrics.sum_then_finalize`.
+      type of
+      `tff.learning.models.VariableModel.report_local_unfinalized_metrics()`),
+      and returns a `tff.Computation` for aggregating the unfinalized metrics.
+      If `None`, this is set to `tff.learning.metrics.sum_then_finalize`.
     use_experimental_simulation_loop: Controls the reduce loop function for
       input dataset. An experimental reduce loop is used for simulation. It is
       currently necessary to set this flag to True for performant GPU
@@ -1202,8 +1213,8 @@ def build_mime_lite_with_optimizer_schedule(
       if not isinstance(model, variable.VariableModel):
         raise TypeError(
             'When `model_fn` is a callable, it returns instances of'
-            ' tff.learning.Model. Instead callable returned type: '
-            f'{type(model)}'
+            ' tff.learning.models.VariableModel. Instead callable returned'
+            f' type: {type(model)}'
         )
       return model_weights_lib.ModelWeights.from_model(model)
 

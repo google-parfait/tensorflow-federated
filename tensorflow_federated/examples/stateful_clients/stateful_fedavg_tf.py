@@ -28,10 +28,10 @@ ModelOutputs = collections.namedtuple('ModelOutputs', 'loss')
 
 
 def get_model_weights(
-    model: Union[tff.learning.Model, 'KerasModelWrapper']
+    model: Union[tff.learning.models.VariableModel, 'KerasModelWrapper']
 ) -> Union[tff.learning.models.ModelWeights, ModelWeights]:
   """Gets the appropriate ModelWeights object based on the model type."""
-  if isinstance(model, tff.learning.Model):
+  if isinstance(model, tff.learning.models.VariableModel):
     return tff.learning.models.ModelWeights.from_model(model)
   else:
     # Using simple_fedavg custom Keras wrapper.
@@ -123,7 +123,8 @@ class ClientOutput:
   -   `client_weight`: Weight to be used in a weighted mean when
        aggregating `weights_delta`.
   -   `model_output`: A structure matching
-      `tff.learning.Model.report_local_unfinalized_metrics`, reflecting the
+      `tff.learning.models.VariableModel.report_local_unfinalized_metrics`,
+      reflecting the
        results of training on the input dataset.
   -   `client_state`: The updated `ClientState`.
   """
@@ -174,7 +175,7 @@ def server_update(
   """Updates `server_state` based on `weights_delta`.
 
   Args:
-    model: A `KerasModelWrapper` or `tff.learning.Model`.
+    model: A `KerasModelWrapper` or `tff.learning.models.VariableModel`.
     server_optimizer: A `tf.keras.optimizers.Optimizer`. If the optimizer
       creates variables, they must have already been created.
     server_state: A `ServerState`, the state to be updated.
@@ -238,7 +239,7 @@ def client_update(
   """Performans client local training of `model` on `dataset`.
 
   Args:
-    model: A `tff.learning.Model`.
+    model: A `tff.learning.models.VariableModel`.
     dataset: A 'tf.data.Dataset'.
     client_state: A 'ClientState'.
     server_message: A `BroadcastMessage` from server.

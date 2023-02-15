@@ -144,7 +144,7 @@ def _mnist_forward_pass(variables, batch):
   )
 
 
-class MnistModel(tff.learning.Model):
+class MnistModel(tff.learning.models.VariableModel):
 
   def __init__(self):
     self._variables = _create_mnist_variables()
@@ -237,7 +237,7 @@ class FedAvgTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('simple_model_wrapper', _simple_model_fn),
-      ('tff.learning.Model_wrapper', _tff_learning_model_fn),
+      ('tff.learning.models.VariableModel_wrapper', _tff_learning_model_fn),
   )
   def test_something(self, model_fn):
     it_process = stateful_fedavg_tff.build_federated_averaging_process(
@@ -251,7 +251,7 @@ class FedAvgTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('simple_model_wrapper', _simple_model_fn),
-      ('tff.learning.Model_wrapper', _tff_learning_model_fn),
+      ('tff.learning.models.VariableModel_wrapper', _tff_learning_model_fn),
   )
   def test_simple_training(self, model_fn):
     it_process = stateful_fedavg_tff.build_federated_averaging_process(
@@ -349,7 +349,7 @@ def _server_init(model, optimizer):
   """Returns initial `ServerState`.
 
   Args:
-    model: A `tff.learning.Model`.
+    model: A `tff.learning.models.VariableModel`.
     optimizer: A `tf.train.Optimizer`.
 
   Returns:

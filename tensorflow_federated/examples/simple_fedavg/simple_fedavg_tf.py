@@ -40,8 +40,8 @@ class ClientOutput:
     client_weight: Weight to be used in a weighted mean when aggregating
       `weights_delta`.
     model_output: A structure matching
-      `tff.learning.Model.report_local_unfinalized_metrics`, reflecting the
-      results of training on the input dataset.
+      `tff.learning.models.VariableModel.report_local_unfinalized_metrics`,
+      reflecting the results of training on the input dataset.
   """
 
   weights_delta = attr.ib()
@@ -87,7 +87,7 @@ def server_update(model, server_optimizer, server_state, weights_delta):
   """Updates `server_state` based on `weights_delta`.
 
   Args:
-    model: A `KerasModelWrapper` or `tff.learning.Model`.
+    model: A `KerasModelWrapper` or `tff.learning.models.VariableModel`.
     server_optimizer: A `tf.keras.optimizers.Optimizer`. If the optimizer
       creates variables, they must have already been created.
     server_state: A `ServerState`, the state to be updated.
@@ -147,7 +147,7 @@ def client_update(model, dataset, server_message, client_optimizer):
   """Performans client local training of `model` on `dataset`.
 
   Args:
-    model: A `tff.learning.Model` to train locally on the client.
+    model: A `tff.learning.models.VariableModel` to train locally on the client.
     dataset: A 'tf.data.Dataset' representing the clients local dataset.
     server_message: A `BroadcastMessage` from serve containing the initial model
       weights to train.

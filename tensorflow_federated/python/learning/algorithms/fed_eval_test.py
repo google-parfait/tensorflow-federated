@@ -463,7 +463,7 @@ class FunctionalFedEvalProcessTest(tf.test.TestCase):
         feature_dims=2,
     )
 
-    # Defining artifacts using `tff.learning.Model`
+    # Defining artifacts using `tff.learning.models.VariableModel`
     def tff_model_fn():
       keras_model = keras_model_fn()
       return keras_utils.from_keras_model(

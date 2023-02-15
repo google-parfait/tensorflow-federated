@@ -42,24 +42,26 @@ def sum_then_finalize(
 
   The returned federated TFF computation has the following type signature:
   `local_unfinalized_metrics@CLIENTS -> aggregated_metrics@SERVER`, where the
-  input is given by `tff.learning.Model.report_local_unfinalized_metrics()` at
+  input is given by
+  `tff.learning.models.VariableModel.report_local_unfinalized_metrics()` at
   `CLIENTS`, and the output is computed by first summing the unfinalized metrics
   from `CLIENTS`, followed by applying the finalizers at `SERVER`.
 
   Args:
     metric_finalizers: Either the result of
-      `tff.learning.Model.metric_finalizers` (an `OrderedDict` of callables) or
-      the `tff.learning.models.FunctionalModel.finalize_metrics` method (a
-      callable that takes an `OrderedDict` argument). If the former, the keys
-      must be the same as the `OrderedDict` returned by
-      `tff.learning.Model.report_local_unfinalized_metrics`. If the later, the
-      callable must compute over the same keyspace of the result returned by
-      `tff.learning.models.FunctionalModel.update_metrics_state`.
+      `tff.learning.models.VariableModel.metric_finalizers` (an `OrderedDict` of
+      callables) or the `tff.learning.models.FunctionalModel.finalize_metrics`
+      method (a callable that takes an `OrderedDict` argument). If the former,
+      the keys must be the same as the `OrderedDict` returned by
+      `tff.learning.models.VariableModel.report_local_unfinalized_metrics`. If
+      the later, the callable must compute over the same keyspace of the result
+      returned by `tff.learning.models.FunctionalModel.update_metrics_state`.
     local_unfinalized_metrics_type: A `tff.types.StructWithPythonType` (with
       `OrderedDict` as the Python container) of a client's local unfinalized
       metrics. Let `local_unfinalized_metrics` be the output of
-      `tff.learning.Model.report_local_unfinalized_metrics()`. Its type can be
-      obtained by `tff.types.type_from_tensors(local_unfinalized_metrics)`.
+      `tff.learning.models.VariableModel.report_local_unfinalized_metrics()`.
+      Its type can be obtained by
+      `tff.types.type_from_tensors(local_unfinalized_metrics)`.
 
   Returns:
     A federated TFF computation that sums the unfinalized metrics from
@@ -139,7 +141,8 @@ def secure_sum_then_finalize(
   ```
 
   where the input is given by
-  `tff.learning.Model.report_local_unfinalized_metrics()` at `CLIENTS`, and the
+  `tff.learning.models.VariableModel.report_local_unfinalized_metrics()` at
+  `CLIENTS`, and the
   first output (`aggregated_metrics`) is computed by first securely summing the
   unfinalized metrics from `CLIENTS`, followed by applying the finalizers at
   `SERVER`. The second output (`secure_sum_measurements`) is an `OrderedDict`
@@ -175,18 +178,19 @@ def secure_sum_then_finalize(
 
   Args:
     metric_finalizers: Either the result of
-      `tff.learning.Model.metric_finalizers` (an `OrderedDict` of callables) or
-      the `tff.learning.models.FunctionalModel.finalize_metrics` method (a
-      callable that takes an `OrderedDict` argument). If the former, the keys
-      must be the same as the `OrderedDict` returned by
-      `tff.learning.Model.report_local_unfinalized_metrics`. If the later, the
-      callable must compute over the same keyspace of the result returned by
-      `tff.learning.models.FunctionalModel.update_metrics_state`.
+      `tff.learning.models.VariableModel.metric_finalizers` (an `OrderedDict` of
+      callables) or the `tff.learning.models.FunctionalModel.finalize_metrics`
+      method (a callable that takes an `OrderedDict` argument). If the former,
+      the keys must be the same as the `OrderedDict` returned by
+      `tff.learning.models.VariableModel.report_local_unfinalized_metrics`. If
+      the later, the callable must compute over the same keyspace of the result
+      returned by `tff.learning.models.FunctionalModel.update_metrics_state`.
     local_unfinalized_metrics_type: A `tff.types.StructWithPythonType` (with
       `OrderedDict` as the Python container) of a client's local unfinalized
       metrics. Let `local_unfinalized_metrics` be the output of
-      `tff.learning.Model.report_local_unfinalized_metrics()`. Its type can be
-      obtained by `tff.types.type_from_tensors(local_unfinalized_metrics)`.
+      `tff.learning.models.VariableModel.report_local_unfinalized_metrics()`.
+      Its type can be obtained by
+      `tff.types.type_from_tensors(local_unfinalized_metrics)`.
     metric_value_ranges: A `collections.OrderedDict` that matches the structure
       of `local_unfinalized_metrics_type` (a value for each
       `tff.types.TensorType` in the type tree). Each leaf in the tree should

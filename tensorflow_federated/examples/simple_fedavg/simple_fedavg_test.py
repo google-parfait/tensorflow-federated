@@ -63,7 +63,7 @@ def _create_random_batch():
 
 
 def _tff_learning_model_fn():
-  """Constructs a test `tff.learning.Model`."""
+  """Constructs a test `tff.learning.models.VariableModel`."""
   keras_model = _create_test_cnn_model()
   loss = tf.keras.losses.SparseCategoricalCrossentropy()
   metrics = [tf.keras.metrics.SparseCategoricalAccuracy()]
@@ -125,7 +125,7 @@ def _mnist_forward_pass(variables, batch):
   )
 
 
-class MnistModel(tff.learning.Model):
+class MnistModel(tff.learning.models.VariableModel):
 
   def __init__(self):
     self._variables = _create_mnist_variables()
@@ -280,7 +280,7 @@ def _server_init(model, optimizer):
   """Returns initial `ServerState`.
 
   Args:
-    model: A `tff.learning.Model`.
+    model: A `tff.learning.models.VariableModel`.
     optimizer: A `tf.train.Optimizer`.
 
   Returns:
@@ -370,7 +370,7 @@ def _create_test_rnn_model(
   return model
 
 
-def _rnn_model_fn() -> tff.learning.Model:
+def _rnn_model_fn() -> tff.learning.models.VariableModel:
   keras_model = _create_test_rnn_model()
   loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
   input_spec = collections.OrderedDict(

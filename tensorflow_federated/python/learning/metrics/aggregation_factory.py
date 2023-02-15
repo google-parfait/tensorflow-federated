@@ -144,7 +144,8 @@ class SumThenFinalizeFactory(factory.UnweightedAggregationFactory):
         finalizer is a function (typically a `tf.function` decorated callable or
         a `tff.tf_computation` decoreated TFF Computation) that takes in a
         metric's unfinalized values, and returns the finalized metric values.
-        This can be obtained from `tff.learning.Model.metric_finalizers()`.
+        This can be obtained from
+        `tff.learning.models.VariableModel.metric_finalizers()`.
       initial_unfinalized_metrics: Optional. An `collections.OrderedDict` of
         metric names to the initial values of local unfinalized metrics, its
         structure should match that of `local_unfinalized_metrics_type`. If not
@@ -186,8 +187,8 @@ class SumThenFinalizeFactory(factory.UnweightedAggregationFactory):
       local_unfinalized_metrics_type: A `tff.types.StructWithPythonType` (with
         `collections.OrderedDict` as the Python container) of a client's local
         unfinalized metrics. Let `local_unfinalized_metrics` be the output of
-        `tff.learning.Model.report_local_unfinalized_metrics()`, its type can be
-        obtained by
+        `tff.learning.models.VariableModel.report_local_unfinalized_metrics()`,
+        its type can be obtained by
         `tff.types.type_from_tensors(local_unfinalized_metrics)`.
 
     Returns:
@@ -611,8 +612,8 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
       local_unfinalized_metrics_type: A `tff.types.StructWithPythonType` (with
         `collections.OrderedDict` as the Python container) of a client's local
         unfinalized metrics. Let `local_unfinalized_metrics` be the output of
-        `tff.learning.Model.report_local_unfinalized_metrics()`, its type can be
-        obtained by
+        `tff.learning.models.VariableModel.report_local_unfinalized_metrics()`,
+        its type can be obtained by
         `tff.types.type_from_tensors(local_unfinalized_metrics)`.
 
     Returns:

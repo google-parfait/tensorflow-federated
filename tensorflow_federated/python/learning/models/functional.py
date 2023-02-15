@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Module for creating functional implementations of a `tff.learning.Model`.
+"""Module for creating functional implementations of a `tff.learning.models.VariableModel`.
 
 This version of the model parameterizes its `forward_pass` and
 `predict_on_batch` methods by model weights, rather than storing them in the
@@ -240,7 +240,7 @@ class FunctionalModel:
 
 
 class _ModelFromFunctional(variable.VariableModel):
-  """A `tff.learning.Model` wrapping a `tff.learning.model.FunctionalModel`."""
+  """A `tff.learning.models.VariableModel` wrapping a `tff.learning.model.FunctionalModel`."""
 
   def __init__(
       self,
@@ -365,7 +365,7 @@ def model_from_functional(
     functional_model: FunctionalModel,
     metric_constructors: Sequence[Callable[[], tf.keras.metrics.Metric]] = (),
 ) -> variable.VariableModel:
-  """Converts a `FunctionalModel` to a `tff.learning.Model`.
+  """Converts a `FunctionalModel` to a `tff.learning.models.VariableModel`.
 
   WARNING: The `metrics_constructors` argument will *replace* any metrics that
   were originally attached to the `FunctionalModel` with new metrics.
@@ -374,10 +374,11 @@ def model_from_functional(
       functional_model: A `tff.learning.models.FunctionalModel` to convert.
       metric_constructors: An optional sequence of callables that return newly
         constructed `tf.keras.metrics.Metric` objects to attached to the output
-        `tff.learning.Model`.
+        `tff.learning.models.VariableModel`.
 
   Returns:
-    A new `tff.learning.Model` with the same behavior as `functional_model`.
+    A new `tff.learning.models.VariableModel` with the same behavior as
+    `functional_model`.
   """
   return _ModelFromFunctional(functional_model, metric_constructors)
 

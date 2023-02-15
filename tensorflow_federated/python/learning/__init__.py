@@ -31,7 +31,8 @@ Currently, `tff.learning` provides a few types of functionality.
     aggregators, such as `tff.learning.robust_aggregator`.
 
 The library also contains classes of models that are used for the purposes of
-model training. See `tff.learning.Model` for the overall base class, and
+model training. See `tff.learning.models.VariableModel` for the overall base
+class, and
 `tff.learning.models` for related model classes.
 """
 

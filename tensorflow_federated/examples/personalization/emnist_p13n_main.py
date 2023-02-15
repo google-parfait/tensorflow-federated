@@ -137,8 +137,8 @@ def main(argv):
   # Create datasets for training global and personalized models.
   federated_train_data, federated_p13n_data = _get_emnist_datasets()
 
-  def model_fn() -> tff.learning.Model:
-    """Build a `tff.learning.Model` for training EMNIST."""
+  def model_fn() -> tff.learning.models.VariableModel:
+    """Build a `tff.learning.models.VariableModel` for training EMNIST."""
     keras_model = _create_conv_dropout_model(only_digits=False)
     return tff.learning.from_keras_model(
         keras_model=keras_model,
@@ -166,9 +166,10 @@ def main(argv):
   # a no-argument function which, when being called, returns a `tf.function`
   # that represents a personalization strategy. Customers can define arbitrary
   # personalization strategis (i.e., `tf.function`s) that take a
-  # `tff.learning.Model`, an unbatched `tf.data.Dataset` for train, an unbatched
-  # `tf.data.Dataset` for test, (and an extra `context` object), and returns the
-  # personalization metrics (see `build_personalize_fn` for an example).
+  # `tff.learning.models.VariableModel`, an unbatched `tf.data.Dataset` for
+  # train, an unbatched `tf.data.Dataset` for test, (and an extra `context`
+  # object), and returns the personalization metrics (see `build_personalize_fn`
+  # for an example).
   personalize_fn_dict = collections.OrderedDict()
   sgd_opt = lambda: tf.keras.optimizers.SGD(learning_rate=0.02)
   personalize_fn_dict['sgd'] = functools.partial(

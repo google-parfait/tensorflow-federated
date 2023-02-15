@@ -21,7 +21,7 @@ import tensorflow_federated as tff
 
 
 def learning_process_builder(
-    model_fn: Callable[[], tff.learning.Model]
+    model_fn: Callable[[], tff.learning.models.VariableModel]
 ) -> tff.learning.templates.LearningProcess:
   return tff.learning.algorithms.build_weighted_fed_avg(
       model_fn=model_fn,

@@ -70,10 +70,11 @@ def build_scheduled_client_work(
   the proper optimizer.
 
   Args:
-    model_fn: A no-arg function that returns a `tff.learning.Model`. This method
-      must *not* capture TensorFlow tensors or variables and use them. The model
-      must be constructed entirely from scratch on each invocation, returning
-      the same pre-constructed model each call will result in an error.
+    model_fn: A no-arg function that returns a
+      `tff.learning.models.VariableModel`. This method must *not* capture
+      TensorFlow tensors or variables and use them. The model must be
+      constructed entirely from scratch on each invocation, returning the same
+      pre-constructed model each call will result in an error.
     learning_rate_fn: A callable accepting an integer round number and returning
       a float to be used as a learning rate for the optimizer. That is, the
       client work will call `optimizer_fn(learning_rate_fn(round_num))` where
@@ -81,10 +82,11 @@ def build_scheduled_client_work(
     optimizer_fn: A callable accepting a float learning rate, and returning a
       `tff.learning.optimizers.Optimizer` or a `tf.keras.Optimizer`.
     metrics_aggregator: A function that takes in the metric finalizers (i.e.,
-      `tff.learning.Model.metric_finalizers()`) and a
+      `tff.learning.models.VariableModel.metric_finalizers()`) and a
       `tff.types.StructWithPythonType` of the unfinalized metrics (i.e., the TFF
-      type of `tff.learning.Model.report_local_unfinalized_metrics()`), and
-      returns a `tff.Computation` for aggregating the unfinalized metrics.
+      type of
+      `tff.learning.models.VariableModel.report_local_unfinalized_metrics()`),
+      and returns a `tff.Computation` for aggregating the unfinalized metrics.
     use_experimental_simulation_loop: Controls the reduce loop function for
       input dataset. An experimental reduce loop is used for simulation. It is
       currently necessary to set this flag to True for performant GPU
@@ -229,10 +231,11 @@ def build_weighted_fed_avg_with_optimizer_schedule(
   or server optimizers.
 
   Args:
-    model_fn: A no-arg function that returns a `tff.learning.Model`. This method
-      must *not* capture TensorFlow tensors or variables and use them. The model
-      must be constructed entirely from scratch on each invocation, returning
-      the same pre-constructed model each call will result in an error.
+    model_fn: A no-arg function that returns a
+      `tff.learning.models.VariableModel`. This method must *not* capture
+      TensorFlow tensors or variables and use them. The model must be
+      constructed entirely from scratch on each invocation, returning the same
+      pre-constructed model each call will result in an error.
     client_learning_rate_fn: A callable accepting an integer round number and
       returning a float to be used as a learning rate for the optimizer. The
       client work will call `optimizer_fn(learning_rate_fn(round_num))` where
@@ -252,11 +255,12 @@ def build_weighted_fed_avg_with_optimizer_schedule(
       used to aggregate client updates on the server. If `None`, this is set to
       `tff.aggregators.MeanFactory`.
     metrics_aggregator: A function that takes in the metric finalizers (i.e.,
-      `tff.learning.Model.metric_finalizers()`) and a
+      `tff.learning.models.VariableModel.metric_finalizers()`) and a
       `tff.types.StructWithPythonType` of the unfinalized metrics (i.e., the TFF
-      type of `tff.learning.Model.report_local_unfinalized_metrics()`), and
-      returns a `tff.Computation` for aggregating the unfinalized metrics. If
-      `None`, this is set to `tff.learning.metrics.sum_then_finalize`.
+      type of
+      `tff.learning.models.VariableModel.report_local_unfinalized_metrics()`),
+      and returns a `tff.Computation` for aggregating the unfinalized metrics.
+      If `None`, this is set to `tff.learning.metrics.sum_then_finalize`.
     use_experimental_simulation_loop: Controls the reduce loop function for
       input dataset. An experimental reduce loop is used for simulation. It is
       currently necessary to set this flag to True for performant GPU

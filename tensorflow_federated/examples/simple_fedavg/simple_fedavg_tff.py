@@ -36,7 +36,8 @@ from tensorflow_federated.examples.simple_fedavg.simple_fedavg_tf import ServerS
 
 
 def _initialize_optimizer_vars(
-    model: tff.learning.Model, optimizer: tf.keras.optimizers.Optimizer
+    model: tff.learning.models.VariableModel,
+    optimizer: tf.keras.optimizers.Optimizer,
 ):
   """Creates optimizer variables to assign the optimizer's state."""
   # Create zero gradients to force an update that doesn't modify.
@@ -58,7 +59,8 @@ def build_federated_averaging_process(
   """Builds the TFF computations for optimization using federated averaging.
 
   Args:
-    model_fn: A no-arg function that returns a `tff.learning.Model`.
+    model_fn: A no-arg function that returns a
+      `tff.learning.models.VariableModel`.
     server_optimizer_fn: A no-arg function that returns a
       `tf.keras.optimizers.Optimizer` for server update.
     client_optimizer_fn: A no-arg function that returns a

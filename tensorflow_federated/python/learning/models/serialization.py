@@ -31,7 +31,7 @@ from tensorflow_federated.python.learning.models import variable
 
 
 class _LoadedSavedModel(variable.VariableModel):
-  """Private class for instantiating `tff.learning.Model` from a SavedModel."""
+  """Private class for instantiating `tff.learning.models.VariableModel` from a SavedModel."""
 
   def __init__(self, loaded_module):
     self._loaded_module = loaded_module
@@ -74,10 +74,10 @@ class _LoadedSavedModel(variable.VariableModel):
 
     def raise_not_implemented_error():
       raise NotImplementedError(
-          "The `reset_metrics` method isn't implemented for your custom "
-          '`tff.learning.Model`. Please implement it before using this method. '
-          "You can leave this method unimplemented if you won't use this "
-          'method.'
+          "The `reset_metrics` method isn't implemented for your custom"
+          ' `tff.learning.models.VariableModel`. Please implement it before'
+          ' using this method. You can leave this method unimplemented if you'
+          " won't use this method."
       )
 
     if hasattr(loaded_module, 'reset_metrics'):
@@ -235,14 +235,15 @@ def save(model: variable.VariableModel, path: str, input_type=None) -> None:
 
   NOTE: The model returned by `tff.learning.models.load` will _not_ be the same
   Python type as the saved model. If the model serialized using this method is
-  a subclass of `tff.learning.Model`, that subclass is _not_ returned. All
+  a subclass of `tff.learning.models.VariableModel`, that subclass is _not_
+  returned. All
   method behavior is retained, but the Python type does not cross serialization
   boundaries. The return type of `metric_finalizers` will be an OrderedDict of
   str to `tff.tf_computation` (annotated TFF computations) which could be
   different from that of the model before serialization.
 
   Args:
-    model: The `tff.learning.Model` to save.
+    model: The `tff.learning.models.VariableModel` to save.
     path: The `str` directory path to serialize the model to.
     input_type: An optional structure of `tf.TensorSpec`s representing the
       expected input of `model.predict_on_batch`, to override reading from
@@ -364,13 +365,13 @@ def save(model: variable.VariableModel, path: str, input_type=None) -> None:
 
 
 def load(path: str) -> variable.VariableModel:
-  """Deserializes a TensorFlow SavedModel at `path` to a `tff.learning.Model`.
+  """Deserializes a TensorFlow SavedModel at `path` to a `tff.learning.models.VariableModel`.
 
   Args:
     path: The `str` path pointing to a SavedModel.
 
   Returns:
-    A `tff.learning.Model`.
+    A `tff.learning.models.VariableModel`.
   """
   py_typecheck.check_type(path, str)
   if not path:
