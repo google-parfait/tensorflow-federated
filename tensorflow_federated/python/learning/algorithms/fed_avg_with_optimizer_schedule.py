@@ -138,6 +138,11 @@ def build_scheduled_client_work(
   def add_one(x):
     return x + 1
 
+  @tensorflow_computation.tf_computation(tf.int32)
+  @tf.function
+  def tf_learning_rate_fn(x):
+    return learning_rate_fn(x)
+
   @federated_computation.federated_computation(
       init_fn.type_signature.result,
       computation_types.at_clients(weights_type),
@@ -145,13 +150,19 @@ def build_scheduled_client_work(
   )
   def next_fn(state, weights, client_data):
     round_num_at_clients = intrinsics.federated_broadcast(state)
+    # We also compute the learning rate at the server, in order to expose the
+    # measurement to the user.
+    learning_rate = intrinsics.federated_map(tf_learning_rate_fn, state)
+    # TODO(b/268530457): Determine if we can broadcast the learning rate.
     client_result, model_outputs = intrinsics.federated_map(
         client_update_computation, (weights, client_data, round_num_at_clients)
     )
     updated_state = intrinsics.federated_map(add_one, state)
     train_metrics = metrics_aggregation_fn(model_outputs)
     measurements = intrinsics.federated_zip(
-        collections.OrderedDict(train=train_metrics)
+        collections.OrderedDict(
+            train=train_metrics, client_learning_rate=learning_rate
+        )
     )
     return measured_process.MeasuredProcessOutput(
         updated_state, client_result, measurements
