@@ -13,71 +13,103 @@
 # limitations under the License.
 """A module for utilities to notify users of deprecated APIs."""
 
-from collections.abc import Callable
 import functools
-from typing import TypeVar
+from typing import Optional
 import warnings
 
-from absl import logging
-
-R = TypeVar('R')
+import pytype_extensions
 
 
-def _add_decorator(fn: Callable[..., R], message: str) -> Callable[..., R]:
-  @functools.wraps(fn)
-  def wrapper(*args, **kwargs) -> R:
-    warnings.warn(message=message, category=DeprecationWarning)
-    logging.warning('Deprecation: %s', message)
-    return fn(*args, **kwargs)
+# TODO(b/269491402): Delete this decorator and use
+# `typing_extensions.deprecated`, when it is available.
+def deprecated(
+    msg: str,
+    *,
+    category: Optional[type[Warning]] = DeprecationWarning,
+    stacklevel: int = 1,
+) -> pytype_extensions.Decorator:
+  """Indicate that a class, function or overload is deprecated.
 
-  return wrapper
+  Usage:
 
+  ```
+  @deprecated("Use B instead")
+  class A:
+      pass
 
-def deprecated(*args):
-  """Annotates a method as deprecated.
+  @deprecated("Use g instead")
+  def f():
+      pass
 
-  Supports two different usages:
+  @overload
+  @deprecated("int support is deprecated")
+  def g(x: int) -> int: ...
 
-  1. Decorate an existing function, taking only a single string argument:
+  @overload
+  def g(x: str) -> int: ...
+  ```
 
-     ```
-     @deprecated('this method is deprecated')
-     def foo():
-       ...
-     ```
+  When this decorator is applied to an object, the type checker
+  will generate a diagnostic on usage of the deprecated object.
 
-  2. Called directly on an exist function, taking the function first and the
-     string message as a second argument:
+  No runtime warning is issued. The decorator sets the ``__deprecated__``
+  attribute on the decorated object to the deprecation message
+  passed to the decorator. If applied to an overload, the decorator
+  must be after the ``@overload`` decorator for the attribute to
+  exist on the overload as returned by ``get_overloads()``.
 
-     ```
-     def foo():
-       ...
-
-     foo = deprecated(foo, 'this method is deprecated')
-     ```
+  See PEP 702 for details.
 
   Args:
-    *args: A tuple of one `str` argument that is the message to display when
-      calling the decorated method, or a 2-tuple of `callable` and `str`.
+    msg: The deprecation message.
+    category: A warning class. Defaults to `DeprecationWarning`. If this is set
+      to `None`, no warning is issued at runtime and the decorator returns the
+      original object, except for setting the `__deprecated__` attribute.
+    stacklevel: The number of stack frames to skip when issuing the warning.
+      Defaults to 1, indicating that the warning should be issued at the site
+      where the deprecated object is called. Internally, the implementation will
+      add the number of stack frames it uses in wrapper code.
 
   Returns:
-    A decorating method for single argument calls, or a wrapped function for
-    two argument calls.
+    A decorated function.
   """
 
-  if len(args) == 1:
-    message = args[0]
-    if not isinstance(message, str):
-      raise ValueError(
-          'When using `deprecated` as a decorator, the first '
-          f'argument must be a `str`, got a: {type(message)}.'
+  @pytype_extensions.Decorator
+  def decorator(arg):
+    if category is None:
+      arg.__deprecated__ = msg
+      return arg
+    elif isinstance(arg, type):
+      original_new = arg.__new__
+      has_init = arg.__init__ is not object.__init__
+
+      @functools.wraps(original_new)
+      def wrapped_new(cls, *args, **kwargs):
+        warnings.warn(msg, category=category, stacklevel=stacklevel + 1)
+        # Mirrors a similar check in object.__new__.
+        if not has_init and (args or kwargs):
+          raise TypeError(f'{cls.__name__}() takes no arguments')
+        if original_new is not object.__new__:
+          return original_new(cls, *args, **kwargs)
+        else:
+          return original_new(cls)
+
+      arg.__new__ = staticmethod(wrapped_new)
+      arg.__deprecated__ = wrapped_new.__deprecated__ = msg
+      return arg
+    elif callable(arg):
+
+      @functools.wraps(arg)
+      def wrapper(*args, **kwargs):
+        warnings.warn(msg, category=category, stacklevel=stacklevel + 1)
+        return arg(*args, **kwargs)
+
+      arg.__deprecated__ = wrapper.__deprecated__ = msg
+      return wrapper
+    else:
+      raise TypeError(
+          '@deprecated decorator with non-None category must be applied to '
+          f'a class or callable, not {arg!r}'
       )
-    return functools.partial(_add_decorator, message=message)
-  elif len(args) == 2:
-    fn, message = args
-    return _add_decorator(fn, message)
-  else:
-    raise ValueError(
-        '`deprecated` only takes one or two positional arguments. '
-        f'Got arguments: {args}'
-    )
+
+  return decorator

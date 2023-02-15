@@ -22,25 +22,47 @@ from tensorflow_federated.python.common_libs import deprecation
 
 class DeprecationTest(absltest.TestCase):
 
-  def test_wraps_method(self):
-    mock_method = mock.Mock()
-    test_message = 'test warning'
-    wrapped_mock_method = deprecation.deprecated(mock_method, test_message)
-    with self.assertWarnsRegex(DeprecationWarning, test_message):
-      wrapped_mock_method(1, 2, c=3)
-    self.assertSequenceEqual(mock_method.call_args_list, [mock.call(1, 2, c=3)])
+  def test_deprecated_class(self):
+    message = 'test warning'
+    mock_fn = mock.Mock()
 
-  def test_decorates_method(self):
-    test_message = 'test warning'
-    mock_method = mock.Mock()
+    @deprecation.deprecated(message)
+    class Foo:
 
-    @deprecation.deprecated(test_message)
+      def __init__(self):
+        mock_fn()
+
+    with self.assertWarnsRegex(DeprecationWarning, message):
+      foo = Foo()
+    mock_fn.assert_called_once()
+    self.assertIsNotNone(foo)
+
+  def test_deprecated_method(self):
+    message = 'test warning'
+    mock_fn = mock.Mock()
+
+    class Foo:
+
+      @deprecation.deprecated(message)
+      def bar(self):
+        mock_fn()
+
+    foo = Foo()
+    with self.assertWarnsRegex(DeprecationWarning, message):
+      foo.bar()
+    mock_fn.assert_called_once()
+
+  def test_deprecated_function(self):
+    message = 'test warning'
+    mock_fn = mock.Mock()
+
+    @deprecation.deprecated(message)
     def foo():
-      mock_method()
+      mock_fn()
 
-    with self.assertWarnsRegex(DeprecationWarning, test_message):
+    with self.assertWarnsRegex(DeprecationWarning, message):
       foo()
-    mock_method.assert_called_once()
+    mock_fn.assert_called_once()
 
 
 if __name__ == '__main__':
