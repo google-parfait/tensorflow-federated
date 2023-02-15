@@ -179,7 +179,7 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
       manager.release.return_value = None
 
     # Setup the meta evaluation manager to have no previous state, and launch
-    # evaluations on the second and fourth rounds (indexes 1 and 3).
+    # evaluations on the second, fourth, and last rounds (indexes 2, 4, and 5).
     mock_evaluation_manager = mock.create_autospec(
         evaluation_program_logic.EvaluationManager, instance=True, spec_set=True
     )
@@ -194,7 +194,7 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
       return asyncio.create_task(return_round_num())
 
     mock_evaluation_coros = tuple(
-        fake_evaluation(train_round) for train_round in (2, 4)
+        fake_evaluation(train_round) for train_round in (2, 4, 5)
     )
 
     mock_evaluation_manager.start_evaluation.side_effect = list(
@@ -259,10 +259,10 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
         mock_model_output_manager.release.call_args_list,
     )
 
-    # Assert that evaluation were started in round 2 and 4.
+    # Assert that evaluation were started in round 2, 4, and 5.
     mock_evaluation_manager.resume_from_previous_state.assert_called_once()
     self.assertSequenceEqual(
-        [mock.call(round_num, mock.ANY, mock.ANY) for round_num in (2, 4)],
+        [mock.call(round_num, mock.ANY, mock.ANY) for round_num in (2, 4, 5)],
         mock_evaluation_manager.start_evaluation.call_args_list,
     )
     mock_evaluation_manager.wait_for_evaluations_to_finish.assert_called_once()

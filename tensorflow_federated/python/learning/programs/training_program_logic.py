@@ -197,7 +197,7 @@ async def train_model(
   def should_evaluate_round(
       round_num: int, train_round_finished_time: datetime.datetime
   ) -> bool:
-    is_last_round = round_num == train_total_rounds + 1
+    is_last_round = round_num == train_total_rounds
     if is_last_round:
       return True
     elif isinstance(evaluation_periodicity, int):
