@@ -55,41 +55,6 @@ _GRPC_CHANNEL_OPTIONS = [
 
 # TODO(b/240972950): Remove deprecated API.
 @deprecation.deprecated(
-    '`tff.backends.native.create_local_python_execution_context` is '
-    'deprecated, use '
-    '`tff.backends.native.create_sync_local_cpp_execution_context` instead.'
-)
-def create_local_python_execution_context(
-    default_num_clients: int = 0,
-    max_fanout: int = 100,
-    clients_per_thread: int = 1,
-    server_tf_device=None,
-    client_tf_devices=tuple(),
-    reference_resolving_clients=False,
-) -> sync_execution_context.SyncExecutionContext:
-  """Creates an execution context that executes computations locally."""
-  factory = python_executor_stacks.local_executor_factory(
-      default_num_clients=default_num_clients,
-      max_fanout=max_fanout,
-      clients_per_thread=clients_per_thread,
-      server_tf_device=server_tf_device,
-      client_tf_devices=client_tf_devices,
-      reference_resolving_clients=reference_resolving_clients,
-  )
-
-  def _compiler(comp):
-    native_form = compiler.transform_to_native_form(
-        comp, transform_math_to_tf=not reference_resolving_clients
-    )
-    return native_form
-
-  return sync_execution_context.SyncExecutionContext(
-      executor_fn=factory, compiler_fn=_compiler
-  )
-
-
-# TODO(b/240972950): Remove deprecated API.
-@deprecation.deprecated(
     '`tff.backends.native.create_remote_python_execution_context` is '
     'deprecated, currently there is no alternative.'
 )

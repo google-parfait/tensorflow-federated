@@ -46,8 +46,6 @@ def create_sequence_op_supporting_context():
 def get_all_contexts():
   """Returns a list containing a (name, context_fn) tuple for each context."""
   return [
-      ('native_local_python',
-       tff.backends.native.create_local_python_execution_context),
       ('native_mergeable',
        _create_mergeable_comp_execution_context),
       ('native_remote',
