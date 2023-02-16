@@ -66,7 +66,7 @@ def select_output_from_lambda(
     if not isinstance(path, tuple):
       path = (path,)
     for index in path:
-      if result.is_struct():
+      if isinstance(result, building_blocks.Struct):
         result = result[index]
       elif isinstance(index, str):
         result = building_blocks.Selection(result, name=index)
@@ -1782,69 +1782,6 @@ def create_named_tuple(
   return building_blocks.Call(fn, comp)
 
 
-def create_zip(
-    comp: building_blocks.ComputationBuildingBlock,
-) -> building_blocks.Block:
-  r"""Returns a computation which zips `comp`.
-
-  Returns the following computation where `x` is `comp` unless `comp` is a
-  Reference, in which case the Reference is inlined and the Tuple is returned.
-
-           Block
-          /     \
-  [comp=x]       Tuple
-                 |
-                 [Tuple,                    Tuple]
-                  |                         |
-                  [Sel(0),      Sel(0)]     [Sel(1),      Sel(1)]
-                   |            |            |            |
-                   Sel(0)       Sel(1)       Sel(0)       Sel(1)
-                   |            |            |            |
-                   Ref(comp)    Ref(comp)    Ref(comp)    Ref(comp)
-
-  The returned computation intentionally drops names from the tuples, otherwise
-  it would be possible for the resulting type signature to contain a Tuple where
-  two elements have the same name and this is not allowed. It is left up to the
-  caller to descide if and where to add the names back.
-
-  Args:
-    comp: The computation building block in which to perform the merges.
-  """
-  py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
-  py_typecheck.check_type(comp.type_signature, computation_types.StructType)
-  named_type_signatures = structure.to_elements(comp.type_signature)
-  _, first_type_signature = named_type_signatures[0]
-  py_typecheck.check_type(first_type_signature, computation_types.StructType)
-  length = len(first_type_signature)
-  for _, type_signature in named_type_signatures:
-    py_typecheck.check_type(type_signature, computation_types.StructType)
-    if len(type_signature) != length:
-      raise TypeError(
-          'Expected a StructType containing StructTypes with the same '
-          'length, found: {}'.format(comp.type_signature)
-      )
-  if not comp.is_reference():
-    name_generator = unique_name_generator(comp)
-    name = next(name_generator)
-    ref = building_blocks.Reference(name, comp.type_signature)
-  else:
-    ref = comp
-  rows = []
-  for column in range(len(first_type_signature)):
-    columns = []
-    for row in range(len(named_type_signatures)):
-      sel_row = building_blocks.Selection(ref, index=row)
-      sel_column = building_blocks.Selection(sel_row, index=column)
-      columns.append(sel_column)
-    tup = building_blocks.Struct(columns)
-    rows.append(tup)
-  tup = building_blocks.Struct(rows)
-  if not comp.is_reference():
-    return building_blocks.Block(((ref.name, comp),), tup)
-  else:
-    return tup
-
-
 def _check_generic_operator_type(type_spec):
   """Checks that `type_spec` can be the signature of args to a generic op."""
   if not type_analysis.contains_only(
@@ -2058,7 +1995,7 @@ def zip_to_match_type(
       *,
       source: building_blocks.ComputationBuildingBlock,
       target_type: computation_types.Type,
-  ) -> building_blocks.ComputationBuildingBlock:
+  ):
     if target_type.is_federated() and source.type_signature.is_struct():
       return create_federated_zip(source)
     elif target_type.is_struct() and source.type_signature.is_struct():

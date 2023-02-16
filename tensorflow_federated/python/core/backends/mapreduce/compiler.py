@@ -103,7 +103,7 @@ def check_extraction_result(before_extraction, extracted):
           )
       )
   else:
-    if not extracted.is_call():
+    if not isinstance(extracted, building_blocks.Call):
       raise MapReduceFormCompilationError(
           'We expect to parse down to a `building_blocks.Call`, since we have '
           'the non-functional type {} after unwrapping placement. Instead we '
@@ -113,7 +113,7 @@ def check_extraction_result(before_extraction, extracted):
               extracted.type_signature,
           )
       )
-    if not extracted.function.is_compiled_computation():
+    if not isinstance(extracted.function, building_blocks.CompiledComputation):
       raise MapReduceFormCompilationError(
           'We expect to parse a computation of the non-functional type {} down '
           'to a called TensorFlow block. Instead we hav a call to the '
@@ -309,11 +309,11 @@ def _evaluate_to_tensorflow(
     ValueError: If `comp` contains `CompiledCompilations` other than
       TensorFlow or XLA.
   """
-  if comp.is_block():
+  if isinstance(comp, building_blocks.Block):
     for name, value in comp.locals:
       bindings[name] = _evaluate_to_tensorflow(value, bindings)
     return _evaluate_to_tensorflow(comp.result, bindings)
-  if comp.is_compiled_computation():
+  if isinstance(comp, building_blocks.CompiledComputation):
     kind = comp.proto.WhichOneof('computation')
     if kind == 'tensorflow':
 
@@ -332,13 +332,13 @@ def _evaluate_to_tensorflow(
           f'Cannot compile XLA subcomptation to TensorFlow:\n{comp}'
       )
     raise ValueError(f'Unexpected compiled computation kind:\n{kind}')
-  if comp.is_call():
+  if isinstance(comp, building_blocks.Call):
     function = _evaluate_to_tensorflow(comp.function, bindings)
     if comp.argument is None:
       return function()
     else:
       return function(_evaluate_to_tensorflow(comp.argument, bindings))
-  if comp.is_lambda():
+  if isinstance(comp, building_blocks.Lambda):
     if comp.parameter_type is None:
       return lambda: _evaluate_to_tensorflow(comp.result, bindings)
     else:
@@ -348,11 +348,11 @@ def _evaluate_to_tensorflow(
         return _evaluate_to_tensorflow(comp.result, bindings)
 
       return lambda_function
-  if comp.is_reference():
+  if isinstance(comp, building_blocks.Reference):
     return bindings[comp.name]
-  if comp.is_selection():
+  if isinstance(comp, building_blocks.Selection):
     return _evaluate_to_tensorflow(comp.source, bindings)[comp.as_index()]
-  if comp.is_struct():
+  if isinstance(comp, building_blocks.Struct):
     elements = []
     for name, element in structure.iter_elements(comp):
       elements.append((name, _evaluate_to_tensorflow(element, bindings)))

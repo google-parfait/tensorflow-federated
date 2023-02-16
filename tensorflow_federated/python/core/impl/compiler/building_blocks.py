@@ -11,11 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
-# pytype: skip-file
-# This modules disables the Pytype analyzer, see
-# https://github.com/tensorflow/federated/blob/main/docs/pytype.md for more
-# information.
 """A library of classes representing computations in a deserialized form."""
 
 import abc
@@ -1263,7 +1258,7 @@ def _string_representation(
       formatted: A boolean indicating if the returned string should be
         formatted.
     """
-    if comp.is_block():
+    if isinstance(comp, Block):
       lines = []
       variables_lines = _lines_for_named_comps(comp.locals, formatted)
       if formatted:
@@ -1275,31 +1270,31 @@ def _string_representation(
       lines.append(result_lines)
       lines.append([')'])
       return _join(lines)
-    elif comp.is_reference():
+    elif isinstance(comp, Reference):
       if comp.context is not None:
         return ['{}@{}'.format(comp.name, comp.context)]
       else:
         return [comp.name]
-    elif comp.is_selection():
+    elif isinstance(comp, Selection):
       source_lines = _lines_for_comp(comp.source, formatted)
       if comp.name is not None:
         return _join([source_lines, ['.{}'.format(comp.name)]])
       else:
         return _join([source_lines, ['[{}]'.format(comp.index)]])
-    elif comp.is_call():
+    elif isinstance(comp, Call):
       function_lines = _lines_for_comp(comp.function, formatted)
       if comp.argument is not None:
         argument_lines = _lines_for_comp(comp.argument, formatted)
         return _join([function_lines, ['('], argument_lines, [')']])
       else:
         return _join([function_lines, ['()']])
-    elif comp.is_compiled_computation():
+    elif isinstance(comp, CompiledComputation):
       return ['comp#{}'.format(comp.name)]
-    elif comp.is_data():
+    elif isinstance(comp, Data):
       return [comp.uri]
-    elif comp.is_intrinsic():
+    elif isinstance(comp, Intrinsic):
       return [comp.uri]
-    elif comp.is_lambda():
+    elif isinstance(comp, Lambda):
       result_lines = _lines_for_comp(comp.result, formatted)
       if comp.parameter_type is None:
         param_name = ''
@@ -1307,9 +1302,9 @@ def _string_representation(
         param_name = comp.parameter_name
       lines = [['({} -> '.format(param_name)], result_lines, [')']]
       return _join(lines)
-    elif comp.is_placement():
+    elif isinstance(comp, Placement):
       return [comp._literal.name]  # pylint: disable=protected-access
-    elif comp.is_struct():
+    elif isinstance(comp, Struct):
       if len(comp) == 0:  # pylint: disable=g-explicit-length-test
         return ['<>']
       elements = structure.to_elements(comp)

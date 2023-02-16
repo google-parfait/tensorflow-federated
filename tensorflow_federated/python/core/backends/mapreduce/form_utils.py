@@ -299,10 +299,7 @@ def check_computation_compatible_with_map_reduce_form(
     comp: computation_impl.ConcreteComputation,
     *,
     tff_internal_preprocessing: Optional[BuildingBlockFn] = None,
-) -> tuple[
-    building_blocks.ComputationBuildingBlock,
-    building_blocks.ComputationBuildingBlock,
-]:
+) -> building_blocks.ComputationBuildingBlock:
   """Tests compatibility with `tff.backends.mapreduce.MapReduceForm`.
 
   Note: the conditions here are specified in the documentation for
@@ -875,7 +872,10 @@ def _replace_lambda_body_with_call_dominant_form(
   """
   comp.check_lambda()
   transformed = transformations.to_call_dominant(comp)
-  transformed.check_lambda()
+  if not isinstance(transformed, building_blocks.Lambda):
+    raise building_blocks.UnexpectedBlockError(
+        building_blocks.Lambda, transformed
+    )
   return transformed
 
 
@@ -1086,6 +1086,10 @@ def get_distribute_aggregate_form_for_computation(
     raise TypeError(
         'Expected `comp` to return two values, found result '
         f'type:\n{comp_type.result}'
+    )
+  if not isinstance(comp_tree, building_blocks.Lambda):
+    raise building_blocks.UnexpectedBlockError(
+        building_blocks.Lambda, comp_tree
     )
   comp_tree = _replace_lambda_body_with_call_dominant_form(comp_tree)
   comp_tree, _ = tree_transformations.uniquify_reference_names(comp_tree)

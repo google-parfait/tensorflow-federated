@@ -207,7 +207,7 @@ class MergeableCompForm:
     def _aggregation_predicate(
         comp: building_blocks.ComputationBuildingBlock,
     ) -> bool:
-      if not comp.is_intrinsic():
+      if not isinstance(comp, building_blocks.Intrinsic):
         return False
       if not comp.type_signature.is_function():
         return False

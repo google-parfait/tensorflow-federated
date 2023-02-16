@@ -72,13 +72,13 @@ def transform_postorder(comp, transform):
       or comp.is_reference()
   ):
     return transform(comp)
-  elif comp.is_selection():
+  elif isinstance(comp, building_blocks.Selection):
     source, source_modified = transform_postorder(comp.source, transform)
     if source_modified:
       comp = building_blocks.Selection(source, comp.name, comp.index)
     comp, comp_modified = transform(comp)
     return comp, comp_modified or source_modified
-  elif comp.is_struct():
+  elif isinstance(comp, building_blocks.Struct):
     elements = []
     elements_modified = False
     for key, value in structure.iter_elements(comp):
@@ -91,7 +91,7 @@ def transform_postorder(comp, transform):
       )
     comp, comp_modified = transform(comp)
     return comp, comp_modified or elements_modified
-  elif comp.is_call():
+  elif isinstance(comp, building_blocks.Call):
     fn, fn_modified = transform_postorder(comp.function, transform)
     if comp.argument is not None:
       arg, arg_modified = transform_postorder(comp.argument, transform)
@@ -101,7 +101,7 @@ def transform_postorder(comp, transform):
       comp = building_blocks.Call(fn, arg)
     comp, comp_modified = transform(comp)
     return comp, comp_modified or fn_modified or arg_modified
-  elif comp.is_lambda():
+  elif isinstance(comp, building_blocks.Lambda):
     result, result_modified = transform_postorder(comp.result, transform)
     if result_modified:
       comp = building_blocks.Lambda(
@@ -109,7 +109,7 @@ def transform_postorder(comp, transform):
       )
     comp, comp_modified = transform(comp)
     return comp, comp_modified or result_modified
-  elif comp.is_block():
+  elif isinstance(comp, building_blocks.Block):
     variables = []
     variables_modified = False
     for key, value in comp.locals:
@@ -179,7 +179,7 @@ def transform_preorder(
       or inner_comp.is_reference()
   ):
     return inner_comp, modified
-  elif inner_comp.is_lambda():
+  elif isinstance(inner_comp, building_blocks.Lambda):
     transformed_result, result_modified = transform_preorder(
         inner_comp.result, transform
     )
@@ -193,7 +193,7 @@ def transform_preorder(
         ),
         True,
     )
-  elif inner_comp.is_struct():
+  elif isinstance(inner_comp, building_blocks.Struct):
     elements_modified = False
     elements = []
     for name, val in structure.iter_elements(inner_comp):
@@ -203,7 +203,7 @@ def transform_preorder(
     if not (modified or elements_modified):
       return inner_comp, False
     return building_blocks.Struct(elements), True
-  elif inner_comp.is_selection():
+  elif isinstance(inner_comp, building_blocks.Selection):
     transformed_source, source_modified = transform_preorder(
         inner_comp.source, transform
     )
@@ -215,7 +215,7 @@ def transform_preorder(
         ),
         True,
     )
-  elif inner_comp.is_call():
+  elif isinstance(inner_comp, building_blocks.Call):
     transformed_fn, fn_modified = transform_preorder(
         inner_comp.function, transform
     )
@@ -229,7 +229,7 @@ def transform_preorder(
     if not (modified or fn_modified or arg_modified):
       return inner_comp, False
     return building_blocks.Call(transformed_fn, transformed_arg), True
-  elif inner_comp.is_block():
+  elif isinstance(inner_comp, building_blocks.Block):
     transformed_variables = []
     values_modified = False
     for key, value in inner_comp.locals:

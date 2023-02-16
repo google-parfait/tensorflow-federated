@@ -64,7 +64,7 @@ def _check_flattened_intrinsic_args_are_selections(
     inner_values = [value]
 
   for inner_value in inner_values:
-    if not inner_value.is_selection():
+    if not isinstance(inner_value, building_blocks.Selection):
       raise TypeError(
           'Expected that all arguments to an intrinsic call are selections or '
           '(potentially nested) structs of selections, but found {}'.format(
@@ -72,7 +72,7 @@ def _check_flattened_intrinsic_args_are_selections(
           )
       )
     if (
-        inner_value.source.is_reference()
+        isinstance(inner_value.source, building_blocks.Reference)
         and inner_value.source.name != expected_reference_name
     ):
       raise TypeError(
@@ -617,7 +617,7 @@ class DistributeAggregateForm(typed_object.TypedObject):
     for (
         local_name,
         local_value,
-    ) in server_to_client_broadcast.to_building_block().result.locals:
+    ) in server_to_client_broadcast.to_building_block().result.locals:  # pytype: disable=attribute-error
       local_value.check_call()
       local_value.function.check_intrinsic()
       if not local_value.function.intrinsic_def().broadcast_kind:
@@ -628,13 +628,13 @@ class DistributeAggregateForm(typed_object.TypedObject):
         )
       _check_flattened_intrinsic_args_are_selections(
           local_value.argument,
-          server_to_client_broadcast.to_building_block().parameter_name,
+          server_to_client_broadcast.to_building_block().parameter_name,  # pytype: disable=attribute-error
       )
       expected_return_references.append(local_name)
-    server_to_client_broadcast.to_building_block().result.result.check_struct()
+    server_to_client_broadcast.to_building_block().result.result.check_struct()  # pytype: disable=attribute-error
     return_references = [
         reference.name
-        for reference in server_to_client_broadcast.to_building_block().result.result
+        for reference in server_to_client_broadcast.to_building_block().result.result  # pytype: disable=attribute-error
     ]
     if expected_return_references != return_references:
       raise ValueError(
@@ -662,7 +662,7 @@ class DistributeAggregateForm(typed_object.TypedObject):
     for (
         local_name,
         local_value,
-    ) in client_to_server_aggregation.to_building_block().result.locals:
+    ) in client_to_server_aggregation.to_building_block().result.locals:  # pytype: disable=attribute-error
       local_value.check_call()
       local_value.function.check_intrinsic()
       if not local_value.function.intrinsic_def().aggregation_kind:
@@ -673,13 +673,13 @@ class DistributeAggregateForm(typed_object.TypedObject):
         )
       _check_flattened_intrinsic_args_are_selections(
           local_value.argument,
-          client_to_server_aggregation.to_building_block().parameter_name,
+          client_to_server_aggregation.to_building_block().parameter_name,  # pytype: disable=attribute-error
       )
       expected_return_references.append(local_name)
-    client_to_server_aggregation.to_building_block().result.result.check_struct()
+    client_to_server_aggregation.to_building_block().result.result.check_struct()  # pytype: disable=attribute-error
     return_references = [
         reference.name
-        for reference in client_to_server_aggregation.to_building_block().result.result
+        for reference in client_to_server_aggregation.to_building_block().result.result  # pytype: disable=attribute-error
     ]
     if expected_return_references != return_references:
       raise ValueError(

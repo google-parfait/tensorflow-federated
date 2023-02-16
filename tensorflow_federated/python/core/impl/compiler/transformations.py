@@ -129,24 +129,24 @@ def to_call_dominant(
     # The structure returned by this function is a generalized version of
     # call-dominant form. This function may result in the patterns specified in
     # the top-level function's docstring.
-    if comp.is_reference():
+    if isinstance(comp, building_blocks.Reference):
       result = scope.resolve(comp.name)
       if result is None:
         # If `comp.name` is only bound outside of `comp`, we can't resolve it.
         return comp
       return result
-    elif comp.is_selection():
+    elif isinstance(comp, building_blocks.Selection):
       source = _build(comp.source, scope)
       if source.is_struct():
         return source[comp.as_index()]
       return building_blocks.Selection(source, index=comp.as_index())
-    elif comp.is_struct():
+    elif isinstance(comp, building_blocks.Struct):
       elements = []
       for name, value in structure.iter_elements(comp):
         value = _build(value, scope)
         elements.append((name, value))
       return building_blocks.Struct(elements)
-    elif comp.is_call():
+    elif isinstance(comp, building_blocks.Call):
       function = _build(comp.function, scope)
       argument = None if comp.argument is None else _build(comp.argument, scope)
       if function.is_lambda():
@@ -156,7 +156,7 @@ def to_call_dominant(
         return _build(function.result, scope)
       else:
         return scope.create_binding(building_blocks.Call(function, argument))
-    elif comp.is_lambda():
+    elif isinstance(comp, building_blocks.Lambda):
       scope = scope.new_child_with_bindings()
       if comp.parameter_name:
         scope.add_local(
@@ -168,16 +168,19 @@ def to_call_dominant(
       return building_blocks.Lambda(
           comp.parameter_name, comp.parameter_type, block
       )
-    elif comp.is_block():
+    elif isinstance(comp, building_blocks.Block):
       scope = scope.new_child()
       for name, value in comp.locals:
         scope.add_local(name, _build(value, scope))
       return _build(comp.result, scope)
-    elif (
-        comp.is_intrinsic()
-        or comp.is_data()
-        or comp.is_compiled_computation()
-        or comp.is_placement()
+    elif isinstance(
+        comp,
+        (
+            building_blocks.Intrinsic,
+            building_blocks.Data,
+            building_blocks.CompiledComputation,
+            building_blocks.Placement,
+        ),
     ):
       return comp
     else:
@@ -221,10 +224,14 @@ def get_normalized_call_dominant_lambda(
 
   # CDF can potentially return blocks if there are variables not dependent on
   # the top-level parameter. We normalize these away.
-  if not comp.is_lambda():
-    comp.check_block()
-    comp.result.check_lambda()
-    if comp.result.result.is_block():
+  if not isinstance(comp, building_blocks.Lambda):
+    if not isinstance(comp, building_blocks.Block):
+      raise building_blocks.UnexpectedBlockError(building_blocks.Block, comp)
+    if not isinstance(comp.result, building_blocks.Lambda):
+      raise building_blocks.UnexpectedBlockError(
+          building_blocks.Lambda, comp.result
+      )
+    if isinstance(comp.result.result, building_blocks.Block):
       additional_locals = comp.result.result.locals
       result = comp.result.result.result
     else:
@@ -257,7 +264,7 @@ def get_normalized_call_dominant_lambda(
   return comp
 
 
-_NamedBinding = tuple[str, building_blocks.ComputationBuildingBlock]
+_NamedBinding = tuple[str, building_blocks.Call]
 
 
 @attr.s
@@ -319,12 +326,11 @@ def _compute_intrinsic_dependencies(
     tree_analysis.visit_preorder(local_value, record_dependencies)
 
     # All intrinsic calls are guaranteed to be top-level in call-dominant form.
-    is_intrinsic_call = (
-        local_value.is_call()
-        and local_value.function.is_intrinsic()
+    if (
+        isinstance(local_value, building_blocks.Call)
+        and isinstance(local_value.function, building_blocks.Intrinsic)
         and local_value.function.uri in intrinsic_uris
-    )
-    if is_intrinsic_call:
+    ):
       if intrinsic_dependencies:
         raise NonAlignableAlongIntrinsicError(
             'Cannot force-align intrinsics:\n'
@@ -637,10 +643,14 @@ def force_align_and_split_by_intrinsics(
 
   # CDF can potentially return blocks if there are variables not dependent on
   # the top-level parameter. We normalize these away.
-  if not comp.is_lambda():
-    comp.check_block()
-    comp.result.check_lambda()
-    if comp.result.result.is_block():
+  if not isinstance(comp, building_blocks.Lambda):
+    if not isinstance(comp, building_blocks.Block):
+      raise building_blocks.UnexpectedBlockError(building_blocks.Block, comp)
+    if not isinstance(comp.result, building_blocks.Lambda):
+      raise building_blocks.UnexpectedBlockError(
+          building_blocks.Lambda, comp.result
+      )
+    if isinstance(comp.result.result, building_blocks.Block):
       additional_locals = comp.result.result.locals
       result = comp.result.result.result
     else:
@@ -1144,6 +1154,10 @@ def divisive_force_align_and_split_by_intrinsics(
   intrinsic_uris = set(
       intrinsic_def.uri for intrinsic_def in intrinsic_defs_to_split
   )
+  if not isinstance(comp.result, building_blocks.Block):
+    raise building_blocks.UnexpectedBlockError(
+        building_blocks.Block, comp.result
+    )
   deps = _compute_intrinsic_dependencies(
       intrinsic_uris,
       comp.parameter_name,
