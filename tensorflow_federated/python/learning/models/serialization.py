@@ -579,14 +579,14 @@ class _LoadedFunctionalModel(functional.FunctionalModel):
     )
 
     def unflatten_forward_pass_fn(
-        flat_forward_pass, serialized_result_type_variable
+        flat_forward_pass, serialized_result_type_variable, training
     ):
       result_tensor_specs = _deserialize_type_spec(
           serialized_result_type_variable, variable.BatchOutput
       )
 
       def forward_pass(model_weights, batch_input):
-        result = flat_forward_pass(model_weights, batch_input)
+        result = flat_forward_pass(model_weights, batch_input, training)
         return tf.nest.pack_sequence_as(result_tensor_specs, result)
 
       return forward_pass
@@ -594,21 +594,25 @@ class _LoadedFunctionalModel(functional.FunctionalModel):
     self._forward_pass_training = unflatten_forward_pass_fn(
         loaded_module.flat_forward_pass_training,
         loaded_module.forward_pass_training_type_spec,
+        True,
     )
     self._forward_pass_inference = unflatten_forward_pass_fn(
         loaded_module.flat_forward_pass_inference,
         loaded_module.forward_pass_inference_type_spec,
+        False,
     )
 
     def unflatten_predict_on_batch_fn(
-        flat_predict_on_batch, serialized_result_type_variable
+        flat_predict_on_batch, serialized_result_type_variable, training
     ):
       result_tensor_specs = _deserialize_type_spec(
           serialized_result_type_variable, tuple
       )
 
       def predict_on_batch(model_weights, x):
-        result = flat_predict_on_batch(model_weights=model_weights, x=x)
+        result = flat_predict_on_batch(
+            model_weights=model_weights, x=x, training=training
+        )
         if tf.is_tensor(result):
           return result
         return tf.nest.pack_sequence_as(result_tensor_specs, result)
@@ -618,10 +622,12 @@ class _LoadedFunctionalModel(functional.FunctionalModel):
     self._predict_on_batch_training = unflatten_predict_on_batch_fn(
         loaded_module.predict_on_batch_training,
         loaded_module.predict_on_batch_training_type_spec,
+        True,
     )
     self._predict_on_batch_inference = unflatten_predict_on_batch_fn(
         loaded_module.predict_on_batch_inference,
         loaded_module.predict_on_batch_inference_type_spec,
+        False,
     )
 
   @property
