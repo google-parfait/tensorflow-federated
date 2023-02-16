@@ -32,7 +32,6 @@ from tensorflow_federated.python.core.impl.execution_contexts.sync_execution_con
 from tensorflow_federated.python.core.impl.executor_stacks.python_executor_stacks import local_executor_factory
 from tensorflow_federated.python.core.impl.executor_stacks.python_executor_stacks import remote_executor_factory
 from tensorflow_federated.python.core.impl.executor_stacks.python_executor_stacks import remote_executor_factory_from_stubs
-from tensorflow_federated.python.core.impl.executors import executors_errors
 from tensorflow_federated.python.core.impl.executors.cardinalities_utils import merge_cardinalities
 from tensorflow_federated.python.core.impl.executors.cardinality_carrying_base import CardinalityCarrying
 from tensorflow_federated.python.core.impl.executors.data_backend_base import DataBackend
@@ -43,6 +42,7 @@ from tensorflow_federated.python.core.impl.executors.data_executor import DataEx
 from tensorflow_federated.python.core.impl.executors.eager_tf_executor import EagerTFExecutor
 from tensorflow_federated.python.core.impl.executors.executor_factory import CardinalitiesType
 from tensorflow_federated.python.core.impl.executors.executor_factory import ExecutorFactory
+from tensorflow_federated.python.core.impl.executors.executors_errors import RetryableError
 from tensorflow_federated.python.core.impl.executors.ingestable_base import Ingestable
 from tensorflow_federated.python.core.impl.executors.remote_executor_stub import RemoteExecutorStub
 from tensorflow_federated.python.core.impl.executors.value_serialization import deserialize_value
