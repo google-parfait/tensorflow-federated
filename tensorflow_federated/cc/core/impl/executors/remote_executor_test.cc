@@ -236,19 +236,21 @@ TEST_F(RemoteExecutorTest, CreateValueWithError) {
   ExpectGetAndDisposeExecutor(dispose_notification);
   v0::Value tensor_two = testing::TensorV(2.0f);
 
-  EXPECT_CALL(*mock_executor_service_,
-              CreateValue(::testing::_, ::testing::_, ::testing::_))
-      .WillOnce(::testing::Return(UnimplementedPlaceholder()));
+  {
+    EXPECT_CALL(*mock_executor_service_,
+                CreateValue(::testing::_, ::testing::_, ::testing::_))
+        .WillOnce(::testing::Return(UnimplementedPlaceholder()));
 
-  OwnedValueId value_ref =
-      TFF_ASSERT_OK(test_executor_->CreateValue(tensor_two));
-  v0::Value materialized_value;
-  // If the CreateValue fails we dont expect a Compute call on the other side.
-  // Nor do we expect a dispose, because no value has been created.
-  absl::Status materialize_status =
-      test_executor_->Materialize(value_ref, &materialized_value);
-  EXPECT_THAT(materialize_status,
-              StatusIs(absl::StatusCode::kUnimplemented, "Test"));
+    OwnedValueId value_ref =
+        TFF_ASSERT_OK(test_executor_->CreateValue(tensor_two));
+    v0::Value materialized_value;
+    // If the CreateValue fails we dont expect a Compute call on the other side.
+    // Nor do we expect a dispose, because no value has been created.
+    absl::Status materialize_status =
+        test_executor_->Materialize(value_ref, &materialized_value);
+    EXPECT_THAT(materialize_status,
+                StatusIs(absl::StatusCode::kUnimplemented, "Test"));
+  }
   WaitForDisposeExecutor(dispose_notification);
 }
 
@@ -500,23 +502,25 @@ TEST_F(RemoteExecutorTest, CreateStructWithNoElements) {
 TEST_F(RemoteExecutorTest, CreateStructWithError) {
   absl::Notification dispose_notification;
   ExpectGetAndDisposeExecutor(dispose_notification);
-  v0::CreateStructRequest expected_request;
-  expected_request.mutable_executor()->set_id(kExecutorId);
-  EXPECT_CALL(
-      *mock_executor_service_,
-      CreateStruct(::testing::_, EqualsProto(expected_request), ::testing::_))
-      .WillOnce(::testing::Return(UnimplementedPlaceholder()));
+  {
+    v0::CreateStructRequest expected_request;
+    expected_request.mutable_executor()->set_id(kExecutorId);
+    EXPECT_CALL(
+        *mock_executor_service_,
+        CreateStruct(::testing::_, EqualsProto(expected_request), ::testing::_))
+        .WillOnce(::testing::Return(UnimplementedPlaceholder()));
 
-  std::vector<ValueId> struct_to_create = {};
-  OwnedValueId struct_result =
-      TFF_ASSERT_OK(test_executor_->CreateStruct(struct_to_create));
+    std::vector<ValueId> struct_to_create = {};
+    OwnedValueId struct_result =
+        TFF_ASSERT_OK(test_executor_->CreateStruct(struct_to_create));
 
-  // If the CreateStruct fails we dont expect a Compute call on the other side
-  v0::Value materialized_value;
-  absl::Status materialize_status =
-      test_executor_->Materialize(struct_result, &materialized_value);
-  EXPECT_THAT(materialize_status,
-              StatusIs(absl::StatusCode::kUnimplemented, "Test"));
+    // If the CreateStruct fails we dont expect a Compute call on the other side
+    v0::Value materialized_value;
+    absl::Status materialize_status =
+        test_executor_->Materialize(struct_result, &materialized_value);
+    EXPECT_THAT(materialize_status,
+                StatusIs(absl::StatusCode::kUnimplemented, "Test"));
+  }
   WaitForDisposeExecutor(dispose_notification);
 }
 

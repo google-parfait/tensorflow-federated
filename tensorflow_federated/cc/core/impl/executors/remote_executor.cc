@@ -18,6 +18,7 @@ limitations under the License
 #include <cstdint>
 #include <future>  // NOLINT
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -28,7 +29,6 @@ limitations under the License
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/synchronization/mutex.h"
-#include "absl/types/optional.h"
 #include "grpcpp/grpcpp.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
@@ -56,7 +56,7 @@ using ValueFuture =
 // the given executor after the `RemoteExecutor` has already been destroyed.
 class StubDeleter {
  public:
-  StubDeleter() {}
+  StubDeleter() = default;
   void SetExecutorId(v0::ExecutorId executor_pb) {
     executor_pb_ = std::move(executor_pb);
   }
@@ -82,7 +82,7 @@ class StubDeleter {
   }
 
  private:
-  absl::optional<v0::ExecutorId> executor_pb_;
+  std::optional<v0::ExecutorId> executor_pb_;
 };
 
 class RemoteExecutor : public ExecutorBase<ValueFuture> {
@@ -94,7 +94,7 @@ class RemoteExecutor : public ExecutorBase<ValueFuture> {
         cardinalities_(cardinalities),
         stream_structs_(stream_structs) {}
 
-  ~RemoteExecutor() override {}
+  ~RemoteExecutor() override = default;
 
   absl::string_view ExecutorName() final {
     static constexpr absl::string_view kExecutorName = "RemoteExecutor";
@@ -105,13 +105,13 @@ class RemoteExecutor : public ExecutorBase<ValueFuture> {
       const v0::Value& value_pb) final;
 
   absl::StatusOr<ValueFuture> CreateCall(
-      ValueFuture function, absl::optional<ValueFuture> argument) final;
+      ValueFuture function, std::optional<ValueFuture> argument) final;
 
   absl::StatusOr<ValueFuture> CreateStruct(
       std::vector<ValueFuture> members) final;
 
   absl::StatusOr<ValueFuture> CreateSelection(ValueFuture value,
-                                              const uint32_t index) final;
+                                              uint32_t index) final;
 
   absl::Status Materialize(ValueFuture value, v0::Value* value_pb) final;
 
@@ -243,25 +243,26 @@ absl::StatusOr<ValueFuture> RemoteExecutor::CreateExecutorValue(
   *request.mutable_executor() = executor_pb_;
   *request.mutable_value() = value_pb;
 
-  return ThreadRun(
-      [request = std::move(request), executor_pb = executor_pb_,
-       stub = this->stub_]() -> absl::StatusOr<std::shared_ptr<ExecutorValue>> {
-        v0::CreateValueResponse response;
-        grpc::ClientContext client_context;
-        grpc::Status status =
-            stub->CreateValue(&client_context, request, &response);
-        TFF_TRY(grpc_to_absl(status));
-        return std::make_shared<ExecutorValue>(std::move(response.value_ref()),
-                                               executor_pb, stub);
-      });
+  return ThreadRun([request = std::move(request), executor_pb = executor_pb_,
+                    this, this_keepalive = shared_from_this()]()
+                       -> absl::StatusOr<std::shared_ptr<ExecutorValue>> {
+    v0::CreateValueResponse response;
+    grpc::ClientContext client_context;
+    grpc::Status status =
+        this->stub_->CreateValue(&client_context, request, &response);
+    TFF_TRY(grpc_to_absl(status));
+    return std::make_shared<ExecutorValue>(std::move(response.value_ref()),
+                                           executor_pb, this->stub_);
+  });
 }
 
 absl::StatusOr<ValueFuture> RemoteExecutor::CreateCall(
-    ValueFuture function, absl::optional<ValueFuture> argument) {
+    ValueFuture function, std::optional<ValueFuture> argument) {
   TFF_TRY(EnsureInitialized());
   return ThreadRun([function = std::move(function),
                     argument = std::move(argument), executor_pb = executor_pb_,
-                    this]() -> absl::StatusOr<std::shared_ptr<ExecutorValue>> {
+                    this, this_keepalive = shared_from_this()]()
+                       -> absl::StatusOr<std::shared_ptr<ExecutorValue>> {
     v0::CreateCallRequest request;
     v0::CreateCallResponse response;
     grpc::ClientContext context;
@@ -289,8 +290,9 @@ absl::StatusOr<ValueFuture> RemoteExecutor::CreateCall(
 absl::StatusOr<ValueFuture> RemoteExecutor::CreateStruct(
     std::vector<ValueFuture> members) {
   TFF_TRY(EnsureInitialized());
-  return ThreadRun([futures = std::move(members),
-                    this]() -> absl::StatusOr<std::shared_ptr<ExecutorValue>> {
+  return ThreadRun([futures = std::move(members), this,
+                    this_keepalive = shared_from_this()]()
+                       -> absl::StatusOr<std::shared_ptr<ExecutorValue>> {
     v0::CreateStructRequest request;
     *request.mutable_executor() = this->executor_pb_;
     v0::CreateStructResponse response;
@@ -315,22 +317,23 @@ absl::StatusOr<ValueFuture> RemoteExecutor::CreateStruct(
 absl::StatusOr<ValueFuture> RemoteExecutor::CreateSelection(
     ValueFuture value, const uint32_t index) {
   TFF_TRY(EnsureInitialized());
-  return ThreadRun(
-      [source = std::move(value), index = index, executor_pb = executor_pb_,
-       stub = this->stub_]() -> absl::StatusOr<std::shared_ptr<ExecutorValue>> {
-        v0::CreateSelectionRequest request;
-        v0::CreateSelectionResponse response;
-        grpc::ClientContext context;
-        std::shared_ptr<ExecutorValue> source_value = TFF_TRY(Wait(source));
-        *request.mutable_executor() = executor_pb;
-        *request.mutable_source_ref() = source_value->Get();
-        request.set_index(index);
-        grpc::Status status =
-            stub->CreateSelection(&context, request, &response);
-        TFF_TRY(grpc_to_absl(status));
-        return std::make_shared<ExecutorValue>(std::move(response.value_ref()),
-                                               executor_pb, stub);
-      });
+  return ThreadRun([source = std::move(value), index = index,
+                    executor_pb = executor_pb_, this,
+                    this_keepalive = shared_from_this()]()
+                       -> absl::StatusOr<std::shared_ptr<ExecutorValue>> {
+    v0::CreateSelectionRequest request;
+    v0::CreateSelectionResponse response;
+    grpc::ClientContext context;
+    std::shared_ptr<ExecutorValue> source_value = TFF_TRY(Wait(source));
+    *request.mutable_executor() = executor_pb;
+    *request.mutable_source_ref() = source_value->Get();
+    request.set_index(index);
+    grpc::Status status =
+        this->stub_->CreateSelection(&context, request, &response);
+    TFF_TRY(grpc_to_absl(status));
+    return std::make_shared<ExecutorValue>(std::move(response.value_ref()),
+                                           executor_pb, this->stub_);
+  });
 }
 
 absl::Status RemoteExecutor::Materialize(ValueFuture value,
