@@ -55,7 +55,6 @@ cc_test(
         "//tensorflow_federated/cc/core/impl/executors:executor",
         "//tensorflow_federated/cc/core/impl/executors:mock_executor",
         "//tensorflow_federated/cc/core/impl/executors:status_matchers",
-        "@com_google_absl//absl/strings",
     ],
 )
 

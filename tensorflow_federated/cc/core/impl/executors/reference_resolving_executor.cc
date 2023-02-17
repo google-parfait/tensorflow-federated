@@ -19,17 +19,16 @@ limitations under the License
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <tuple>
 #include <utility>
+#include <variant>
 #include <vector>
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
-#include "absl/strings/string_view.h"
-#include "absl/types/optional.h"
-#include "absl/types/variant.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
 #include "tensorflow_federated/proto/v0/computation.pb.h"
@@ -63,7 +62,7 @@ class ScopedLambda {
 
   absl::StatusOr<std::shared_ptr<ExecutorValue>> Call(
       const ReferenceResolvingExecutor& rre,
-      absl::optional<std::shared_ptr<ExecutorValue>> arg) const;
+      std::optional<std::shared_ptr<ExecutorValue>> arg) const;
 
   v0::Value as_value_pb() const {
     v0::Value value_pb;
@@ -96,7 +95,7 @@ class Scope {
   // Otherwise, returns a `NotFound` error if the `name` is not present in any
   // ancestor scope.
   absl::StatusOr<std::shared_ptr<ExecutorValue>> Resolve(
-      absl::string_view name) const;
+      std::string_view name) const;
 
   // Returns a human readable string for debugging the current scope.
   //
@@ -111,10 +110,10 @@ class Scope {
  private:
   Scope(const Scope& scope) = delete;
 
-  absl::optional<NamedValue> binding_;
+  std::optional<NamedValue> binding_;
   // Pointer to enclosing scope. `nullopt` iff this is the root scope.
   // If a value is present, it must not be `nullptr`.
-  absl::optional<std::shared_ptr<Scope>> parent_;
+  std::optional<std::shared_ptr<Scope>> parent_;
 };
 
 // A value object for the ReferenceResolvingExecutor.
@@ -147,14 +146,14 @@ class ExecutorValue {
   }
 
   const OwnedValueId& embedded() const {
-    return absl::get<OwnedValueId>(value_);
+    return std::get<OwnedValueId>(value_);
   }
 
   const std::vector<std::shared_ptr<ExecutorValue>>& structure() const {
-    return absl::get<std::vector<std::shared_ptr<ExecutorValue>>>(value_);
+    return std::get<std::vector<std::shared_ptr<ExecutorValue>>>(value_);
   }
 
-  const ScopedLambda& lambda() const { return absl::get<ScopedLambda>(value_); }
+  const ScopedLambda& lambda() const { return std::get<ScopedLambda>(value_); }
 
   // Returns a human readable debugging string for error messages.
   std::string DebugString() const;
@@ -168,8 +167,8 @@ class ExecutorValue {
  private:
   ExecutorValue() = delete;
 
-  absl::variant<OwnedValueId, std::vector<std::shared_ptr<ExecutorValue>>,
-                ScopedLambda>
+  std::variant<OwnedValueId, std::vector<std::shared_ptr<ExecutorValue>>,
+               ScopedLambda>
       value_;
 };
 
@@ -201,8 +200,8 @@ class ReferenceResolvingExecutor
       const std::shared_ptr<Scope>& scope) const;
 
  protected:
-  absl::string_view ExecutorName() final {
-    static constexpr absl::string_view kExecutorName =
+  std::string_view ExecutorName() final {
+    static constexpr std::string_view kExecutorName =
         "ReferenceResolvingExecutor";
     return kExecutorName;
   }
@@ -212,10 +211,10 @@ class ReferenceResolvingExecutor
 
   absl::StatusOr<std::shared_ptr<ExecutorValue>> CreateCall(
       std::shared_ptr<ExecutorValue> function,
-      absl::optional<std::shared_ptr<ExecutorValue>> argument) final;
+      std::optional<std::shared_ptr<ExecutorValue>> argument) final;
   absl::StatusOr<std::shared_ptr<ExecutorValue>> CreateCallInternal(
       std::shared_ptr<ExecutorValue> function,
-      absl::optional<std::shared_ptr<ExecutorValue>> argument) const;
+      std::optional<std::shared_ptr<ExecutorValue>> argument) const;
 
   absl::StatusOr<std::shared_ptr<ExecutorValue>> CreateStruct(
       std::vector<std::shared_ptr<ExecutorValue>> members) final;
@@ -237,7 +236,7 @@ class ReferenceResolvingExecutor
   // case of a struct, first call `CreateStruct` on the elements and return
   // the `ValueId` of the new struct.
   absl::StatusOr<ValueId> Embed(const ExecutorValue& value,
-                                absl::optional<OwnedValueId>* slot) const;
+                                std::optional<OwnedValueId>* slot) const;
 
   // Evaluates a block.
   //
@@ -296,7 +295,7 @@ class ReferenceResolvingExecutor
 
 absl::StatusOr<std::shared_ptr<ExecutorValue>> ScopedLambda::Call(
     const ReferenceResolvingExecutor& rre,
-    absl::optional<std::shared_ptr<ExecutorValue>> arg) const {
+    std::optional<std::shared_ptr<ExecutorValue>> arg) const {
   if (arg.has_value()) {
     NamedValue named_value =
         std::make_tuple(lambda_pb_.parameter_name(), std::move(arg.value()));
@@ -308,7 +307,7 @@ absl::StatusOr<std::shared_ptr<ExecutorValue>> ScopedLambda::Call(
 }
 
 absl::StatusOr<std::shared_ptr<ExecutorValue>> Scope::Resolve(
-    absl::string_view name) const {
+    std::string_view name) const {
   if (binding_.has_value()) {
     if (std::get<0>(*binding_) == name) {
       return std::get<1>(*binding_);
@@ -378,18 +377,18 @@ ReferenceResolvingExecutor::CreateExecutorValue(const v0::Value& value_pb) {
 absl::StatusOr<std::shared_ptr<ExecutorValue>>
 ReferenceResolvingExecutor::CreateCall(
     std::shared_ptr<ExecutorValue> function,
-    absl::optional<std::shared_ptr<ExecutorValue>> argument) {
+    std::optional<std::shared_ptr<ExecutorValue>> argument) {
   return CreateCallInternal(std::move(function), std::move(argument));
 }
 
 absl::StatusOr<std::shared_ptr<ExecutorValue>>
 ReferenceResolvingExecutor::CreateCallInternal(
     std::shared_ptr<ExecutorValue> function,
-    absl::optional<std::shared_ptr<ExecutorValue>> argument) const {
+    std::optional<std::shared_ptr<ExecutorValue>> argument) const {
   switch (function->type()) {
     case ExecutorValue::EMBEDDED: {
-      absl::optional<OwnedValueId> slot;
-      absl::optional<ValueId> embedded_arg;
+      std::optional<OwnedValueId> slot;
+      std::optional<ValueId> embedded_arg;
       if (argument.has_value()) {
         embedded_arg = TFF_TRY(Embed(*argument.value(), &slot));
       }
@@ -460,13 +459,13 @@ absl::Status ReferenceResolvingExecutor::Materialize(
   // only knows about the individual elements.  In this case we must create a
   // struct of the elements in the child executor first, and then materialize
   // that struct.
-  absl::optional<OwnedValueId> slot;
+  std::optional<OwnedValueId> slot;
   ValueId child_value_id = TFF_TRY(Embed(*value, &slot));
   return child_executor_->Materialize(child_value_id, value_pb);
 }
 
 absl::StatusOr<ValueId> ReferenceResolvingExecutor::Embed(
-    const ExecutorValue& value, absl::optional<OwnedValueId>* slot) const {
+    const ExecutorValue& value, std::optional<OwnedValueId>* slot) const {
   switch (value.type()) {
     case ExecutorValue::ValueType::EMBEDDED: {
       return value.embedded();
@@ -477,7 +476,7 @@ absl::StatusOr<ValueId> ReferenceResolvingExecutor::Embed(
       std::vector<OwnedValueId> field_slots;
       std::vector<ValueId> field_ids;
       for (const auto& field_value : value.structure()) {
-        absl::optional<OwnedValueId> field_slot;
+        std::optional<OwnedValueId> field_slot;
         ValueId child_field_value_id =
             TFF_TRY(Embed(*field_value, &field_slot));
         if (field_slot.has_value()) {
@@ -598,7 +597,7 @@ ReferenceResolvingExecutor::EvaluateCall(
     const v0::Call& call_pb, const std::shared_ptr<Scope>& scope) const {
   std::shared_ptr<ExecutorValue> function =
       TFF_TRY(Evaluate(call_pb.function(), scope));
-  absl::optional<std::shared_ptr<ExecutorValue>> argument;
+  std::optional<std::shared_ptr<ExecutorValue>> argument;
   if (call_pb.has_argument()) {
     argument = TFF_TRY(Evaluate(call_pb.argument(), scope));
   }

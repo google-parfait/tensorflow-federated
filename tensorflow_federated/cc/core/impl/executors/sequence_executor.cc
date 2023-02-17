@@ -21,8 +21,11 @@ limitations under the License
 #include <future>  // NOLINT
 #include <memory>
 #include <numeric>
+#include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
+#include <variant>
 
 #include "absl/base/attributes.h"
 #include "absl/status/status.h"
@@ -49,10 +52,10 @@ Embedded ShareValueId(OwnedValueId id) {
 
 class SequenceIterator {
  public:
-  // Returns next element of a data stream, or absl::nullopt if no such element
+  // Returns next element of a data stream, or std::nullopt if no such element
   // exists. Returns a non-OK absl::Status if an unexpected issue occurs pulling
   // the next element from the stream.
-  virtual absl::StatusOr<absl::optional<Embedded>> GetNextEmbedded(
+  virtual absl::StatusOr<std::optional<Embedded>> GetNextEmbedded(
       Executor&) = 0;
   virtual ~SequenceIterator() {}
 };
@@ -131,12 +134,12 @@ class MappedIterator : public SequenceIterator {
 
   ~MappedIterator() final {}
 
-  absl::StatusOr<absl::optional<Embedded>> GetNextEmbedded(
+  absl::StatusOr<std::optional<Embedded>> GetNextEmbedded(
       Executor& target) final {
-    absl::optional<Embedded> unmapped_value =
+    std::optional<Embedded> unmapped_value =
         TFF_TRY(existing_iterator_->GetNextEmbedded(target));
     if (!unmapped_value.has_value()) {
-      return absl::nullopt;
+      return std::nullopt;
     }
     return ShareValueId(TFF_TRY(
         target.CreateCall(mapping_fn_->ref(), unmapped_value.value()->ref())));
@@ -157,7 +160,7 @@ class DatasetIterator : public SequenceIterator {
 
   ~DatasetIterator() final {}
 
-  absl::StatusOr<absl::optional<Embedded>> GetNextEmbedded(
+  absl::StatusOr<std::optional<Embedded>> GetNextEmbedded(
       Executor& target) final {
     v0::Value next_value;
     std::vector<tensorflow::Tensor> output_tensors;
@@ -168,7 +171,7 @@ class DatasetIterator : public SequenceIterator {
           "error pulling elements from dataset: ", status.error_message()));
     }
     if (end_of_data) {
-      return absl::nullopt;
+      return std::nullopt;
     }
     return TFF_TRY(EmbedTensorsAsType(output_tensors, target, element_type_));
   }
@@ -184,7 +187,7 @@ class SequenceIterator;
 using IteratorFactory =
     std::function<absl::StatusOr<std::unique_ptr<SequenceIterator>>()>;
 
-using SequenceVariant = absl::variant<v0::Value, IteratorFactory>;
+using SequenceVariant = std::variant<v0::Value, IteratorFactory>;
 
 // Internal interface representing an iterable value embedded
 // in the sequence executor.
@@ -202,7 +205,7 @@ class Sequence {
     }
   }
 
-  inline v0::Value& proto() { return absl::get<v0::Value>(value_); }
+  inline v0::Value& proto() { return std::get<v0::Value>(value_); }
 
   absl::StatusOr<Embedded> Embed(Executor& target_executor) {
     if (type() != SequenceValueType::VALUE_PROTO) {
@@ -262,23 +265,23 @@ class Sequence {
 
  private:
   inline IteratorFactory iterator_factory() {
-    return absl::get<IteratorFactory>(value_);
+    return std::get<IteratorFactory>(value_);
   }
   SequenceVariant value_;
   absl::Mutex dataset_mutex_;
-  absl::optional<std::unique_ptr<tensorflow::data::standalone::Dataset>> ds_
-      ABSL_GUARDED_BY(dataset_mutex_) = absl::nullopt;
+  std::optional<std::unique_ptr<tensorflow::data::standalone::Dataset>> ds_
+      ABSL_GUARDED_BY(dataset_mutex_) = std::nullopt;
   std::shared_ptr<Executor> executor_;
   absl::Mutex embedded_mutex_;
-  absl::optional<Embedded> embedded_sequence_ ABSL_GUARDED_BY(embedded_mutex_) =
-      absl::nullopt;
+  std::optional<Embedded> embedded_sequence_ ABSL_GUARDED_BY(embedded_mutex_) =
+      std::nullopt;
 };
 
 class SequenceExecutorValue;
 
 using ValueVariant =
-    absl::variant<Embedded, SequenceIntrinsic, std::shared_ptr<Sequence>,
-                  std::shared_ptr<std::vector<SequenceExecutorValue>>>;
+    std::variant<Embedded, SequenceIntrinsic, std::shared_ptr<Sequence>,
+                 std::shared_ptr<std::vector<SequenceExecutorValue>>>;
 
 class SequenceExecutorValue {
  public:
@@ -311,9 +314,9 @@ class SequenceExecutorValue {
       return ValueType::STRUCT;
     }
   }
-  absl::Status CheckTypeForArgument(
-      ValueType expected_type, absl::string_view fn_name,
-      absl::optional<int32_t> position_in_struct) {
+  absl::Status CheckTypeForArgument(ValueType expected_type,
+                                    std::string_view fn_name,
+                                    std::optional<int32_t> position_in_struct) {
     if (type() != expected_type) {
       if (position_in_struct.has_value()) {
         return absl::InvalidArgumentError(
@@ -330,19 +333,17 @@ class SequenceExecutorValue {
     return absl::OkStatus();
   }
 
-  inline const Embedded& embedded() const {
-    return absl::get<Embedded>(value_);
-  }
+  inline const Embedded& embedded() const { return std::get<Embedded>(value_); }
   inline const std::shared_ptr<Sequence>& sequence_value() const {
-    return absl::get<std::shared_ptr<Sequence>>(value_);
+    return std::get<std::shared_ptr<Sequence>>(value_);
   }
   inline const std::shared_ptr<std::vector<SequenceExecutorValue>>&
   struct_value() const {
-    return absl::get<std::shared_ptr<std::vector<SequenceExecutorValue>>>(
+    return std::get<std::shared_ptr<std::vector<SequenceExecutorValue>>>(
         value_);
   }
   inline SequenceIntrinsic intrinsic() {
-    return absl::get<SequenceIntrinsic>(value_);
+    return std::get<SequenceIntrinsic>(value_);
   }
   explicit SequenceExecutorValue(ValueVariant value)
       : value_(std::move(value)) {}
@@ -353,7 +354,7 @@ class SequenceExecutorValue {
 };
 
 absl::Status CheckLenForUseAsArgument(const SequenceExecutorValue& value,
-                                      absl::string_view function_name,
+                                      std::string_view function_name,
                                       size_t len) {
   if (value.type() != SequenceExecutorValue::ValueType::STRUCT) {
     return absl::InvalidArgumentError(
@@ -379,7 +380,7 @@ class SequenceExecutor : public ExecutorBase<ValueFuture> {
       : target_executor_(target_executor) {}
   ~SequenceExecutor() override {}
 
-  absl::string_view ExecutorName() final { return "SequenceExecutor"; }
+  std::string_view ExecutorName() final { return "SequenceExecutor"; }
 
   absl::StatusOr<ValueFuture> CreateExecutorValue(
       const v0::Value& value_pb) final {
@@ -394,7 +395,7 @@ class SequenceExecutor : public ExecutorBase<ValueFuture> {
       }
       case v0::Value::kComputation: {
         if (value_pb.computation().has_intrinsic()) {
-          absl::string_view intrinsic_uri =
+          std::string_view intrinsic_uri =
               value_pb.computation().intrinsic().uri();
           absl::StatusOr<SequenceIntrinsic> intrinsic_or_status =
               SequenceIntrinsicFromUri(intrinsic_uri);
@@ -414,7 +415,7 @@ class SequenceExecutor : public ExecutorBase<ValueFuture> {
   }
 
   absl::StatusOr<ValueFuture> CreateCall(
-      ValueFuture function, absl::optional<ValueFuture> argument) final {
+      ValueFuture function, std::optional<ValueFuture> argument) final {
     std::function<absl::StatusOr<SequenceExecutorValue>()> thread_fn =
         [function = std::move(function), argument = std::move(argument), this,
          this_keepalive =
@@ -422,7 +423,7 @@ class SequenceExecutor : public ExecutorBase<ValueFuture> {
       auto fn = TFF_TRY(Wait(function));
       if (fn.type() != SequenceExecutorValue::ValueType::INTRINSIC) {
         Embedded arg_owner;
-        absl::optional<ValueId> embedded_arg = absl::nullopt;
+        std::optional<ValueId> embedded_arg = std::nullopt;
         if (argument.has_value()) {
           arg_owner = TFF_TRY(Embed(TFF_TRY(Wait(argument.value()))));
           embedded_arg = arg_owner->ref();
@@ -579,7 +580,7 @@ class SequenceExecutor : public ExecutorBase<ValueFuture> {
     std::unique_ptr<SequenceIterator> iterator =
         TFF_TRY(sequence->CreateIterator());
     OwnedValueId accumulator = std::move(*initial_value);
-    absl::optional<Embedded> embedded_value =
+    std::optional<Embedded> embedded_value =
         TFF_TRY(iterator->GetNextEmbedded(*target_executor_));
     while (embedded_value.has_value()) {
       OwnedValueId arg_struct = TFF_TRY(target_executor_->CreateStruct(

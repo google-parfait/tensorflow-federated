@@ -28,7 +28,9 @@ limitations under the License
 
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
+#include <string_view>
 #include <tuple>
 #include <utility>
 #include <vector>
@@ -39,8 +41,6 @@ limitations under the License
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
-#include "absl/strings/string_view.h"
-#include "absl/types/optional.h"
 #include "absl/types/span.h"
 #include "tensorflow/cc/framework/scope.h"
 #include "tensorflow/cc/ops/array_ops.h"
@@ -310,7 +310,7 @@ TEST_F(ReferenceResolvingExecutorTest, CreateValueComputationPlacement) {
 
 TEST_F(ReferenceResolvingExecutorTest, NoArgLambda) {
   v0::Computation data_pb = DataComputation("test_data_uri");
-  v0::Value lambda_pb = ComputationV(LambdaComputation(absl::nullopt, data_pb));
+  v0::Value lambda_pb = ComputationV(LambdaComputation(std::nullopt, data_pb));
   auto create_result = test_executor_->CreateValue(lambda_pb);
   EXPECT_THAT(create_result, IsOkAndHolds(HasValueId(0)));
   // Expect that the CreateCall causes the lambda to be evaluated and embedded
@@ -318,7 +318,7 @@ TEST_F(ReferenceResolvingExecutorTest, NoArgLambda) {
   ValueId mock_value_id =
       mock_executor_->ExpectCreateValue(ComputationV(data_pb));
   auto call_result =
-      test_executor_->CreateCall(create_result.value().ref(), absl::nullopt);
+      test_executor_->CreateCall(create_result.value().ref(), std::nullopt);
   EXPECT_THAT(call_result, IsOkAndHolds(HasValueId(1)));
   // Expect the materialize fetches the computation result from the child
   // executor.
@@ -572,7 +572,7 @@ TEST_F(ReferenceResolvingExecutorTest, CreateCallFailsNonFunction) {
   auto result = test_executor_->CreateValue(struct_value_pb);
   ASSERT_THAT(result, IsOkAndHolds(HasValueId(0)));
   EXPECT_THAT(
-      test_executor_->CreateCall(result.value(), absl::nullopt),
+      test_executor_->CreateCall(result.value(), std::nullopt),
       StatusIs(StatusCode::kInvalidArgument,
                HasSubstr(
                    "Received value type [STRUCTURE] which is not a function")));
@@ -585,10 +585,10 @@ TEST_F(ReferenceResolvingExecutorTest, CreateCallNoArgComp) {
   EXPECT_CALL(*mock_executor_, Dispose(0));
   auto result = test_executor_->CreateValue(no_arg_computation_pb);
   ASSERT_THAT(result, IsOkAndHolds(HasValueId(0)));
-  EXPECT_CALL(*mock_executor_, CreateCall(0, Eq(absl::nullopt)))
+  EXPECT_CALL(*mock_executor_, CreateCall(0, Eq(std::nullopt)))
       .WillOnce([this]() { return OwnedValueId(mock_executor_, 1); });
   EXPECT_CALL(*mock_executor_, Dispose(1));
-  EXPECT_THAT(test_executor_->CreateCall(result.value().ref(), absl::nullopt),
+  EXPECT_THAT(test_executor_->CreateCall(result.value().ref(), std::nullopt),
               IsOkAndHolds(HasValueId(1)));
 }
 
@@ -793,9 +793,9 @@ TEST_F(ReferenceResolvingExecutorTest, EvaluateSelectionOfEmbeddStruct) {
   EXPECT_THAT(intrinsic_result, IsOkAndHolds(HasValueId(0)));
   // Now setup the call on the intrinsic.
   ValueId result_child_id =
-      mock_executor_->ExpectCreateCall(comp_child_id, absl::nullopt);
+      mock_executor_->ExpectCreateCall(comp_child_id, std::nullopt);
   auto call_result =
-      test_executor_->CreateCall(intrinsic_result.value(), absl::nullopt);
+      test_executor_->CreateCall(intrinsic_result.value(), std::nullopt);
   EXPECT_THAT(call_result, IsOkAndHolds(HasValueId(1)));
   // Create a selection on the call result.
   mock_executor_->ExpectCreateSelection(result_child_id, 2);
@@ -814,9 +814,9 @@ TEST_F(ReferenceResolvingExecutorTest,
   EXPECT_THAT(intrinsic_result, IsOkAndHolds(HasValueId(0)));
   // Now setup the call on the intrinsic.
   ValueId call_result_child_id =
-      mock_executor_->ExpectCreateCall(intrinsic_child_id, absl::nullopt);
+      mock_executor_->ExpectCreateCall(intrinsic_child_id, std::nullopt);
   auto call_result =
-      test_executor_->CreateCall(intrinsic_result.value(), absl::nullopt);
+      test_executor_->CreateCall(intrinsic_result.value(), std::nullopt);
   EXPECT_THAT(call_result, IsOkAndHolds(HasValueId(1)));
   // Create a selection on the call result.
   EXPECT_CALL(*mock_executor_, CreateSelection(call_result_child_id, 2))

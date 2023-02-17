@@ -16,11 +16,11 @@ limitations under the License
 #include "tensorflow_federated/cc/simulation/servers.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
-#include "absl/types/optional.h"
 #include "include/grpcpp/security/server_credentials.h"
 #include "include/grpcpp/server.h"
 #include "include/grpcpp/server_builder.h"

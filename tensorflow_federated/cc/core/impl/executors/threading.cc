@@ -17,6 +17,7 @@ limitations under the License
 
 #include <functional>
 #include <future>  // NOLINT
+#include <string_view>
 #include <thread>  // NOLINT
 #include <utility>
 
@@ -27,7 +28,7 @@ limitations under the License
 
 namespace tensorflow_federated {
 
-ThreadPool::ThreadPool(int32_t num_threads, absl::string_view name)
+ThreadPool::ThreadPool(int32_t num_threads, std::string_view name)
     : pool_name_(name) {
   if (num_threads < 1) {
     LOG(QFATAL) << "num_threads must be positive";

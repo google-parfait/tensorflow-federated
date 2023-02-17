@@ -15,11 +15,12 @@ limitations under the License
 
 #include "tensorflow_federated/cc/core/impl/executor_stacks/local_stacks.h"
 
+#include <optional>
 #include <string>
+#include <string_view>
 
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
-#include "absl/strings/string_view.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/mock_executor.h"
@@ -40,7 +41,7 @@ class LocalStacksTest : public ::testing::Test {
 };
 
 TEST_F(LocalStacksTest, CustomLeafExecutorIsCalled) {
-  MockFunction<absl::StatusOr<std::shared_ptr<Executor>>(absl::optional<int>)>
+  MockFunction<absl::StatusOr<std::shared_ptr<Executor>>(std::optional<int>)>
       mock_executor_fn;
   EXPECT_CALL(mock_executor_fn, Call(::testing::_))
       .WillOnce(Return(test_executor_));

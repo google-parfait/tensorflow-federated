@@ -28,7 +28,7 @@ namespace tensorflow_federated {
 // e.g. by including appropriate build dependencies. This string is
 // case-insensitive. The default value of "Host" is guaranteed to be valid.
 absl::StatusOr<std::shared_ptr<Executor>> CreateXLAExecutor(
-    absl::string_view platform_name = "Host");
+    std::string_view platform_name = "Host");
 
 }  // namespace tensorflow_federated
 

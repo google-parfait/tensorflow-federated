@@ -18,18 +18,18 @@ limitations under the License
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
+#include <variant>
 #include <vector>
 
 #include "absl/container/flat_hash_set.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
-#include "absl/strings/string_view.h"
-#include "absl/types/optional.h"
 #include "absl/types/span.h"
-#include "absl/types/variant.h"
 #include "tensorflow/core/framework/types.pb.h"
 #include "tensorflow/core/platform/macros.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
@@ -53,8 +53,8 @@ class ExecutorValue;
 using UnplacedOrServer = std::shared_ptr<OwnedValueId>;
 using Clients = std::shared_ptr<std::vector<std::shared_ptr<OwnedValueId>>>;
 using Structure = std::shared_ptr<std::vector<ExecutorValue>>;
-using ValueVariant = absl::variant<UnplacedOrServer, Clients, Structure,
-                                   enum FederatedIntrinsic>;
+using ValueVariant =
+    std::variant<UnplacedOrServer, Clients, Structure, enum FederatedIntrinsic>;
 
 inline std::shared_ptr<OwnedValueId> ShareValueId(OwnedValueId&& id) {
   return std::make_shared<OwnedValueId>(std::move(id));
@@ -78,16 +78,16 @@ class ExecutorValue {
     return ExecutorValue(std::move(id), ValueType::UNPLACED);
   }
   inline const UnplacedOrServer& unplaced() const {
-    return absl::get<UnplacedOrServer>(value_);
+    return std::get<UnplacedOrServer>(value_);
   }
   inline static ExecutorValue CreateServerPlaced(UnplacedOrServer id) {
     return ExecutorValue(std::move(id), ValueType::SERVER);
   }
   inline const UnplacedOrServer& server() const {
-    return absl::get<UnplacedOrServer>(value_);
+    return std::get<UnplacedOrServer>(value_);
   }
   inline const Clients& clients() const {
-    return absl::get<::tensorflow_federated::Clients>(value_);
+    return std::get<::tensorflow_federated::Clients>(value_);
   }
   inline static ExecutorValue CreateClientsPlaced(Clients client_values) {
     return ExecutorValue(std::move(client_values), ValueType::CLIENTS);
@@ -100,7 +100,7 @@ class ExecutorValue {
             std::move(client_values)));
   }
   inline const Structure& structure() const {
-    return absl::get<::tensorflow_federated::Structure>(value_);
+    return std::get<::tensorflow_federated::Structure>(value_);
   }
   inline static ExecutorValue CreateStructure(Structure elements) {
     return ExecutorValue(std::move(elements), ValueType::STRUCTURE);
@@ -110,13 +110,13 @@ class ExecutorValue {
     return ExecutorValue(intrinsic, ValueType::INTRINSIC);
   }
   inline enum FederatedIntrinsic intrinsic() const {
-    return absl::get<enum FederatedIntrinsic>(value_);
+    return std::get<enum FederatedIntrinsic>(value_);
   }
 
   inline ValueType type() const { return type_; }
 
   absl::Status CheckArgumentType(ValueType expected_type,
-                                 absl::string_view argument_identifier) const {
+                                 std::string_view argument_identifier) const {
     if (type() == expected_type) {
       return absl::OkStatus();
     } else {
@@ -137,7 +137,7 @@ class ExecutorValue {
 };
 
 absl::Status CheckLenForUseAsArgument(const ExecutorValue& value,
-                                      absl::string_view function_name,
+                                      std::string_view function_name,
                                       size_t len) {
   TFF_TRY(value.CheckArgumentType(ExecutorValue::ValueType::STRUCTURE,
                                   function_name));
@@ -164,8 +164,8 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
   std::shared_ptr<Executor> child_;
   uint32_t num_clients_;
 
-  absl::string_view ExecutorName() final {
-    static constexpr absl::string_view kExecutorName = "FederatingExecutor";
+  std::string_view ExecutorName() final {
+    static constexpr std::string_view kExecutorName = "FederatingExecutor";
     return kExecutorName;
   }
 
@@ -274,7 +274,7 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
   }
 
   absl::StatusOr<ExecutorValue> CreateCall(
-      ExecutorValue function, absl::optional<ExecutorValue> argument) final {
+      ExecutorValue function, std::optional<ExecutorValue> argument) final {
     switch (function.type()) {
       case ExecutorValue::ValueType::CLIENTS:
       case ExecutorValue::ValueType::SERVER: {
@@ -285,8 +285,8 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
       }
       case ExecutorValue::ValueType::UNPLACED: {
         ValueId fn_id = function.unplaced()->ref();
-        absl::optional<std::shared_ptr<OwnedValueId>> arg_owner;
-        absl::optional<ValueId> arg_id = absl::nullopt;
+        std::optional<std::shared_ptr<OwnedValueId>> arg_owner;
+        std::optional<ValueId> arg_id = std::nullopt;
         if (argument.has_value()) {
           arg_owner = TFF_TRY(Embed(argument.value()));
           arg_id = arg_owner.value()->ref();
@@ -377,14 +377,14 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
       case FederatedIntrinsic::EVAL_AT_SERVER: {
         auto embedded = TFF_TRY(Embed(arg));
         return ExecutorValue::CreateServerPlaced(ShareValueId(
-            TFF_TRY(child_->CreateCall(embedded->ref(), absl::nullopt))));
+            TFF_TRY(child_->CreateCall(embedded->ref(), std::nullopt))));
       }
       case FederatedIntrinsic::EVAL_AT_CLIENTS: {
         auto embedded = TFF_TRY(Embed(arg));
         Clients client_values = NewClients();
         for (int i = 0; i < num_clients_; i++) {
           client_values->emplace_back(ShareValueId(
-              TFF_TRY(child_->CreateCall(embedded->ref(), absl::nullopt))));
+              TFF_TRY(child_->CreateCall(embedded->ref(), std::nullopt))));
         }
         return ExecutorValue::CreateClientsPlaced(std::move(client_values));
       }
@@ -401,7 +401,7 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
         auto report_child_id = TFF_TRY(Embed(report));
         TFF_TRY(value.CheckArgumentType(ExecutorValue::ValueType::CLIENTS,
                                         "`federated_aggregate`'s `value`"));
-        absl::optional<OwnedValueId> current_owner = absl::nullopt;
+        std::optional<OwnedValueId> current_owner = std::nullopt;
         ValueId current = zero_child_id->ref();
         for (const auto& client_val_id : *value.clients()) {
           auto acc_arg =
