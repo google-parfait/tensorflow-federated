@@ -135,7 +135,7 @@ class ExecutorService : public v0::ExecutorGroup::Service {
   // Writes the `std::shared_ptr<Executor>` corresponding to `executor_id` into
   // `executor_out`. `method name` is the name of the caller that requested
   // access to this executor, and is used for debug purposes only.
-  grpc::Status RequireExecutor(absl::string_view method_name,
+  grpc::Status RequireExecutor(std::string_view method_name,
                                const v0::ExecutorId& executor_id,
                                std::shared_ptr<Executor>& executor_out);
 

@@ -17,8 +17,8 @@ limitations under the License
 #define THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTORS_TENSORFLOW_EXECUTOR_H_
 
 #include <memory>
+#include <optional>
 
-#include "absl/types/optional.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 
 namespace tensorflow_federated {

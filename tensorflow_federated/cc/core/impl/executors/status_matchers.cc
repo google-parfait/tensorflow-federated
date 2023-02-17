@@ -17,11 +17,11 @@ limitations under the License
 #include <cstdint>
 #include <ostream>
 #include <string>
+#include <string_view>
 
 #include "googlemock/include/gmock/gmock.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
-#include "absl/strings/string_view.h"
 
 namespace tensorflow_federated {
 namespace internal_status {
@@ -93,7 +93,7 @@ bool CanonicalStatusIsMatcherCommonImpl::MatchAndExplain(
   return true;
 }
 
-void AddFatalFailure(absl::string_view expression, const char* file,
+void AddFatalFailure(std::string_view expression, const char* file,
                      uint32_t line, absl::Status status) {
   GTEST_MESSAGE_AT_(
       file, line,

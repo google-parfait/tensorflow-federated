@@ -18,7 +18,9 @@ limitations under the License
 #include <grpcpp/support/status.h>
 
 #include <algorithm>
+#include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -28,9 +30,7 @@ limitations under the License
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
 #include "absl/strings/str_split.h"
-#include "absl/strings/string_view.h"
 #include "absl/synchronization/mutex.h"
-#include "absl/types/optional.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_conversion.h"
@@ -209,7 +209,7 @@ grpc::Status ExecutorService::GetExecutor(grpc::ServerContext* context,
 }
 
 grpc::Status ExecutorService::RequireExecutor(
-    absl::string_view method_name, const v0::ExecutorId& executor,
+    std::string_view method_name, const v0::ExecutorId& executor,
     std::shared_ptr<Executor>& executor_out) {
   absl::StatusOr<ExecutorEntry> ex =
       executor_resolver_.ExecutorForId({executor.id()});
@@ -262,7 +262,7 @@ grpc::Status ExecutorService::CreateCall(grpc::ServerContext* context,
   TFF_TRYLOG_GRPC(RequireExecutor("CreateCall", request->executor(), executor));
   ValueId embedded_fn;
   TFF_TRYLOG_GRPC(RemoteValueToId(request->function_ref(), embedded_fn));
-  absl::optional<ValueId> embedded_arg;
+  std::optional<ValueId> embedded_arg;
   if (request->has_argument_ref()) {
     embedded_arg = 0;
     TFF_TRYLOG_GRPC(

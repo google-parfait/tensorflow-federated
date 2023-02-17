@@ -18,15 +18,15 @@ limitations under the License
 
 #include <cstdint>
 #include <functional>
+#include <optional>
 #include <string>
+#include <string_view>
 #include <tuple>
 #include <utility>
 #include <vector>
 
 #include "google/protobuf/any.pb.h"
 #include "absl/status/status.h"
-#include "absl/strings/string_view.h"
-#include "absl/types/optional.h"
 #include "absl/types/span.h"
 #include "tensorflow/cc/client/client_session.h"
 #include "tensorflow/cc/framework/ops.h"
@@ -48,7 +48,7 @@ limitations under the License
 namespace tensorflow_federated {
 namespace testing {
 
-inline v0::Value IntrinsicV(absl::string_view uri) {
+inline v0::Value IntrinsicV(std::string_view uri) {
   v0::Value value_proto;
   // Construct an explicit string from this string-view; this silent conversion
   // is not present in OSS.
@@ -295,11 +295,11 @@ inline v0::Computation StructComputation(
 }
 
 inline v0::Computation LambdaComputation(
-    absl::optional<absl::string_view> parameter_name,
+    std::optional<std::string_view> parameter_name,
     v0::Computation result_computation_value) {
   v0::Computation computation_pb;
   v0::Lambda* lambda_pb = computation_pb.mutable_lambda();
-  if (parameter_name != absl::nullopt) {
+  if (parameter_name != std::nullopt) {
     lambda_pb->mutable_parameter_name()->assign(parameter_name.value().data(),
                                                 parameter_name.value().size());
   }
@@ -321,27 +321,27 @@ inline v0::Computation BlockComputation(
   return computation_pb;
 }
 
-inline v0::Computation ReferenceComputation(absl::string_view reference_name) {
+inline v0::Computation ReferenceComputation(std::string_view reference_name) {
   v0::Computation computation_pb;
   computation_pb.mutable_reference()->mutable_name()->assign(
       reference_name.data(), reference_name.size());
   return computation_pb;
 }
 
-inline v0::Computation IntrinsicComputation(absl::string_view uri) {
+inline v0::Computation IntrinsicComputation(std::string_view uri) {
   v0::Computation computation_pb;
   computation_pb.mutable_intrinsic()->mutable_uri()->assign(uri.data(),
                                                             uri.size());
   return computation_pb;
 }
 
-inline v0::Computation DataComputation(absl::string_view uri) {
+inline v0::Computation DataComputation(std::string_view uri) {
   v0::Computation computation_pb;
   computation_pb.mutable_data()->mutable_uri()->assign(uri.data(), uri.size());
   return computation_pb;
 }
 
-inline v0::Computation PlacementComputation(absl::string_view uri) {
+inline v0::Computation PlacementComputation(std::string_view uri) {
   v0::Computation computation_pb;
   computation_pb.mutable_placement()->mutable_uri()->assign(uri.data(),
                                                             uri.size());

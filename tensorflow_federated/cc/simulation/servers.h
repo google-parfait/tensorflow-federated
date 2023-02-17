@@ -18,9 +18,9 @@ limitations under the License
 
 #include <functional>
 #include <memory>
+#include <optional>
 
 #include "absl/status/statusor.h"
-#include "absl/types/optional.h"
 #include "grpcpp/grpcpp.h"
 #include "include/grpcpp/security/server_credentials.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"

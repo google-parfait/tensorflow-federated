@@ -19,7 +19,9 @@ limitations under the License
 #include <cstdint>
 #include <limits>
 #include <memory>
+#include <optional>
 #include <string>
+#include <string_view>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -29,9 +31,7 @@ limitations under the License
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
-#include "absl/strings/string_view.h"
 #include "absl/synchronization/mutex.h"
-#include "absl/types/optional.h"
 #include "absl/types/span.h"
 #include "tensorflow/core/profiler/lib/traceme.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
@@ -110,7 +110,7 @@ class Executor {
   // computation or IO-bound work, instead kicking off that work to run
   // asynchronously.
   virtual absl::StatusOr<OwnedValueId> CreateCall(
-      const ValueId function, const absl::optional<const ValueId> argument) = 0;
+      const ValueId function, const std::optional<const ValueId> argument) = 0;
 
   // Creates a structure with ordered `members`.
   //
@@ -262,13 +262,13 @@ class ExecutorBase : public Executor,
 
  protected:
   // Logs the current method and records its trace to the TensorFlow profiler.
-  absl::optional<tensorflow::profiler::TraceMe> Trace(const char* method_name) {
+  std::optional<tensorflow::profiler::TraceMe> Trace(const char* method_name) {
     bool enabled = VLOG_IS_ON(1) || tensorflow::profiler::TraceMe::Active();
     if (!enabled) {
-      return absl::nullopt;
+      return std::nullopt;
     }
     std::string path = absl::StrCat(ExecutorName(), "::", method_name);
-    absl::string_view path_view(path);
+    std::string_view path_view(path);
     VLOG(1) << path_view;
     // Safe to pass in a view here: `TraceMe` internally copies to an owned
     // `std::string`.
@@ -285,11 +285,11 @@ class ExecutorBase : public Executor,
   }
 
   // Returns the string name of the current executor.
-  virtual absl::string_view ExecutorName() = 0;
+  virtual std::string_view ExecutorName() = 0;
   virtual absl::StatusOr<ExecutorValue> CreateExecutorValue(
       const v0::Value& value_pb) = 0;
   virtual absl::StatusOr<ExecutorValue> CreateCall(
-      ExecutorValue function, absl::optional<ExecutorValue> argument) = 0;
+      ExecutorValue function, std::optional<ExecutorValue> argument) = 0;
   virtual absl::StatusOr<ExecutorValue> CreateStruct(
       std::vector<ExecutorValue> members) = 0;
   virtual absl::StatusOr<ExecutorValue> CreateSelection(
@@ -306,10 +306,10 @@ class ExecutorBase : public Executor,
 
   absl::StatusOr<OwnedValueId> CreateCall(
       const ValueId function,
-      const absl::optional<const ValueId> argument) final {
+      const std::optional<const ValueId> argument) final {
     auto trace = Trace("CreateCall");
     ExecutorValue function_val = TFF_TRY(GetTracked(function));
-    absl::optional<ExecutorValue> argument_val;
+    std::optional<ExecutorValue> argument_val;
     if (argument.has_value()) {
       argument_val = TFF_TRY(GetTracked(argument.value()));
     }

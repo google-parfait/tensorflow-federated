@@ -20,6 +20,7 @@ limitations under the License
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -96,8 +97,8 @@ class RemoteExecutor : public ExecutorBase<ValueFuture> {
 
   ~RemoteExecutor() override = default;
 
-  absl::string_view ExecutorName() final {
-    static constexpr absl::string_view kExecutorName = "RemoteExecutor";
+  std::string_view ExecutorName() final {
+    static constexpr std::string_view kExecutorName = "RemoteExecutor";
     return kExecutorName;
   }
 

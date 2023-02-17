@@ -45,7 +45,7 @@ namespace tensorflow_federated {
 // in such cases.
 class ThreadPool {
  public:
-  ThreadPool(int32_t num_threads, absl::string_view name);
+  ThreadPool(int32_t num_threads, std::string_view name);
   ~ThreadPool();
 
   // Restrict copying and moving.

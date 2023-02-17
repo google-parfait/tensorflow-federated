@@ -19,16 +19,16 @@ limitations under the License
 // TODO(b/199461150) remove this file and the associated .cc file.
 
 #include <cstdint>
+#include <optional>
 #include <ostream>
 #include <string>
+#include <string_view>
 #include <type_traits>
 #include <utility>
 
 #include "googlemock/include/gmock/gmock.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "absl/strings/string_view.h"
-#include "absl/types/optional.h"
 #include "grpcpp/grpcpp.h"
 
 namespace tensorflow_federated {
@@ -289,7 +289,7 @@ class IsOkMatcher {
   }
 };
 
-void AddFatalFailure(absl::string_view expression, const char* file,
+void AddFatalFailure(std::string_view expression, const char* file,
                      uint32_t line, absl::Status status);
 
 inline absl::Status GetStatus(absl::Status&& status) { return status; }
@@ -427,7 +427,7 @@ inline internal_status::IsOkMatcher IsOk() {
 class GrpcStatusMatcher {
  public:
   explicit GrpcStatusMatcher(grpc::StatusCode code,
-                             absl::optional<std::string> message)
+                             std::optional<std::string> message)
       : expected_code_(code), expected_message_(std::move(message)) {}
 
   using is_gtest_matcher = void;
@@ -462,12 +462,11 @@ class GrpcStatusMatcher {
 
  private:
   grpc::StatusCode expected_code_;
-  absl::optional<std::string> expected_message_;
+  std::optional<std::string> expected_message_;
 };
 
 inline ::testing::Matcher<grpc::Status> GrpcStatusIs(
-    grpc::StatusCode code,
-    absl::optional<std::string> message = absl::nullopt) {
+    grpc::StatusCode code, std::optional<std::string> message = std::nullopt) {
   return GrpcStatusMatcher(code, message);
 }
 

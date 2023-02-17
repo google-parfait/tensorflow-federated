@@ -17,6 +17,8 @@ limitations under the License
 
 #include <future>  // NOLINT
 #include <memory>
+#include <optional>
+#include <string_view>
 #include <utility>
 
 #include "absl/status/status.h"
@@ -38,8 +40,8 @@ class DataExecutor : public ExecutorBase<ValueFuture> {
       : child_(std::move(child)), data_backend_(std::move(data_backend)) {}
 
  protected:
-  absl::string_view ExecutorName() final {
-    static constexpr absl::string_view kExecutorName = "DataExecutor";
+  std::string_view ExecutorName() final {
+    static constexpr std::string_view kExecutorName = "DataExecutor";
     return kExecutorName;
   }
 
@@ -70,7 +72,7 @@ class DataExecutor : public ExecutorBase<ValueFuture> {
 
   absl::StatusOr<ValueFuture> CreateCall(
       ValueFuture function_future,
-      absl::optional<ValueFuture> argument_future) final {
+      std::optional<ValueFuture> argument_future) final {
     std::vector<ValueFuture> futures = {function_future};
     if (argument_future.has_value()) {
       futures.push_back(std::move(*argument_future));
@@ -82,7 +84,7 @@ class DataExecutor : public ExecutorBase<ValueFuture> {
           // `values` holds the resolved `futures`, either
           // `{function}` or `{function, argument}`.
           ValueId function_id = values[0]->ref();
-          absl::optional<ValueId> argument_id = absl::nullopt;
+          std::optional<ValueId> argument_id = std::nullopt;
           if (values.size() == 2) {
             argument_id = values[1]->ref();
           }

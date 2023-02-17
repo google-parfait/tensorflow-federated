@@ -15,6 +15,7 @@ limitations under the License
 
 #include "tensorflow_federated/cc/core/impl/executors/data_executor.h"
 
+#include <optional>
 #include <string>
 
 #include "googlemock/include/gmock/gmock.h"
@@ -125,9 +126,9 @@ TEST_F(DataExecutorTest, CreateCallNoArgDelegatesToChild) {
   OwnedValueId fn_id = TFF_ASSERT_OK(test_executor_->CreateValue(fn));
 
   ValueId result_child_id =
-      mock_executor_child_->ExpectCreateCall(fn_child_id, absl::nullopt);
+      mock_executor_child_->ExpectCreateCall(fn_child_id, std::nullopt);
   OwnedValueId result_id =
-      TFF_ASSERT_OK(test_executor_->CreateCall(fn_id, absl::nullopt));
+      TFF_ASSERT_OK(test_executor_->CreateCall(fn_id, std::nullopt));
 
   v0::Value result = TensorV("result");
   mock_executor_child_->ExpectMaterialize(result_child_id, result);
