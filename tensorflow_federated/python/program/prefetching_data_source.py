@@ -16,7 +16,7 @@
 import asyncio
 from collections.abc import Awaitable, Callable, Mapping
 import threading
-from typing import Any, Optional
+from typing import Optional
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl.execution_contexts import async_execution_context
@@ -38,7 +38,7 @@ class FetchedValue(
       self,
       executor: executor_base.Executor,
       executor_value: executor_value_base.ExecutorValue,
-      cardinality: Mapping[Any, int],
+      cardinality: Mapping[placements.PlacementLiteral, int],
       defining_coro_fn: Callable[
           [executor_base.Executor], Awaitable[executor_value_base.ExecutorValue]
       ],
@@ -66,7 +66,7 @@ class FetchedValue(
     return self._executor_value.type_signature
 
   @property
-  def cardinality(self) -> Mapping[Any, int]:
+  def cardinality(self) -> Mapping[placements.PlacementLiteral, int]:
     return self._cardinality
 
   async def ingest(self, executor):
@@ -224,7 +224,7 @@ class PrefetchingDataSourceIterator(
     """The type of the data returned by calling `select`."""
     return self._iterator.federated_type
 
-  def select(self, num_clients: Optional[int] = None) -> Any:
+  def select(self, num_clients: Optional[int] = None) -> object:
     """Returns a new selection of data from this iterator.
 
     Args:

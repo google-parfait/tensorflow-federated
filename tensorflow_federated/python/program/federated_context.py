@@ -14,7 +14,7 @@
 """Defines an abstract interface for representing a federated context."""
 
 import abc
-from typing import Any, Optional, Union
+from typing import Optional, Union
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl.computation import computation_base
@@ -25,6 +25,13 @@ from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.program import structure_utils
 from tensorflow_federated.python.program import value_reference
+
+
+ComputationArgValue = Union[
+    value_reference.MaterializableStructure,
+    object,
+    computation_base.Computation,
+]
 
 
 def contains_only_server_placed_data(
@@ -132,13 +139,7 @@ class FederatedContext(context_base.SyncContext):
   def invoke(
       self,
       comp: computation_base.Computation,
-      arg: Optional[
-          Union[
-              value_reference.MaterializableStructure,
-              Any,
-              computation_base.Computation,
-          ]
-      ],
+      arg: Optional[ComputationArgValue],
   ) -> structure_utils.Structure[value_reference.MaterializableValueReference]:
     """Invokes the `comp` with the argument `arg`.
 

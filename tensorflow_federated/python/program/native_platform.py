@@ -244,13 +244,7 @@ class NativeFederatedContext(federated_context.FederatedContext):
   def invoke(
       self,
       comp: computation_base.Computation,
-      arg: Optional[
-          Union[
-              value_reference.MaterializableStructure,
-              Any,
-              computation_base.Computation,
-          ]
-      ],
+      arg: Optional[federated_context.ComputationArgValue],
   ) -> structure_utils.Structure[AwaitableValueReference]:
     """Invokes the `comp` with the argument `arg`.
 

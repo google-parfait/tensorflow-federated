@@ -15,7 +15,7 @@
 
 from collections.abc import Sequence
 import random
-from typing import Any, Optional
+from typing import Optional
 
 import tensorflow as tf
 
@@ -73,7 +73,7 @@ class DatasetDataSourceIterator(data_source.FederatedDataSourceIterator):
     """The type of the data returned by calling `select`."""
     return self._federated_type
 
-  def select(self, num_clients: Optional[int] = None) -> Any:
+  def select(self, num_clients: Optional[int] = None) -> object:
     """Returns a new selection of data from this iterator.
 
     Args:

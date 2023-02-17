@@ -15,7 +15,7 @@
 
 import abc
 import enum
-from typing import Any, Optional
+from typing import Optional
 
 from tensorflow_federated.python.core.impl.types import computation_types
 
@@ -80,7 +80,7 @@ class FederatedDataSourceIterator(abc.ABC):
     raise NotImplementedError
 
   @abc.abstractmethod
-  def select(self, num_clients: Optional[int] = None) -> Any:
+  def select(self, num_clients: Optional[int] = None) -> object:
     """Returns a new selection of federated data from this iterator.
 
     The selection contains data distributed across a cohort of logical clients.
