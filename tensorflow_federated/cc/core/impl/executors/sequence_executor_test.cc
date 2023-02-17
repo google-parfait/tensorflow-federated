@@ -211,14 +211,17 @@ TEST_F(SequenceExecutorTest, CallPassThroughNoArg) {
   v0::Value tensor_value = TensorV(2);
   v0::Value passthru_fn = IntrinsicV("some_passthru_intrinsic");
 
-  auto embedded_fn_id = mock_executor_->ExpectCreateValue(passthru_fn);
-  auto embedded_call_id =
-      mock_executor_->ExpectCreateCall(embedded_fn_id, std::nullopt);
-  mock_executor_->ExpectMaterialize(embedded_call_id, tensor_value);
+  {
+    auto embedded_fn_id = mock_executor_->ExpectCreateValue(passthru_fn);
+    auto embedded_call_id =
+        mock_executor_->ExpectCreateCall(embedded_fn_id, std::nullopt);
+    mock_executor_->ExpectMaterialize(embedded_call_id, tensor_value);
 
-  auto fn_id = TFF_ASSERT_OK(test_executor_->CreateValue(passthru_fn));
-  auto call_id = TFF_ASSERT_OK(test_executor_->CreateCall(fn_id, std::nullopt));
-  ExpectMaterialize(call_id, tensor_value);
+    auto fn_id = TFF_ASSERT_OK(test_executor_->CreateValue(passthru_fn));
+    auto call_id =
+        TFF_ASSERT_OK(test_executor_->CreateCall(fn_id, std::nullopt));
+    ExpectMaterialize(call_id, tensor_value);
+  }
 }
 
 TEST_F(SequenceExecutorTest, CallSequenceReduceNoargFails) {
