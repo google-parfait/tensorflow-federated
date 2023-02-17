@@ -303,7 +303,7 @@ def _load_tfrecords(filename: str) -> tf.data.Dataset:
 def _get_client_ids_to_files(cache_dir: str, split: str) -> dict[str, str]:
   """Get the dataset filename for a each client in a given split."""
   split_dir = os.path.join(cache_dir, split)
-  split_files = os.listdir(split_dir)
+  split_files = tf.io.gfile.listdir(split_dir)
   client_id_file_pairs = []
   for file in split_files:
     client_id = os.path.splitext(file)[0]
