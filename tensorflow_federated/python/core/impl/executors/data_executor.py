@@ -14,7 +14,9 @@
 """An executor responsible for the `data` building block."""
 
 import asyncio
+
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
+from tensorflow_federated.python.common_libs import deprecation
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.common_libs import tracing
@@ -24,6 +26,11 @@ from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_serialization
 
 
+# TODO(b/240972950): Remove deprecated API.
+@deprecation.deprecated(
+    'The Python executors and execution stacks are deprecated, use the C++ '
+    'executors instead.'
+)
 class DataExecutor(executor_base.Executor):
   """The data executor is responsible for the `data` building block."""
 

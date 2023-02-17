@@ -87,6 +87,7 @@ py_library(
     srcs = ["python_executor_stacks.py"],
     srcs_version = "PY3",
     deps = [
+        "//tensorflow_federated/python/common_libs:deprecation",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/impl/compiler:local_computation_factory_base",
         "//tensorflow_federated/python/core/impl/compiler:tensorflow_computation_factory",

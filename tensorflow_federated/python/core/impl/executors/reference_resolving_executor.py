@@ -19,6 +19,7 @@ from typing import Union
 import cachetools
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
+from tensorflow_federated.python.common_libs import deprecation
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.common_libs import tracing
@@ -168,6 +169,11 @@ LambdaValueInner = Union[
 ]
 
 
+# TODO(b/240972950): Remove deprecated API.
+@deprecation.deprecated(
+    'The Python executors and execution stacks are deprecated, use the C++ '
+    'executors instead.'
+)
 class ReferenceResolvingExecutorValue(executor_value_base.ExecutorValue):
   """Represents a value embedded in the lambda executor."""
 
@@ -240,6 +246,11 @@ class ReferenceResolvingExecutorValue(executor_value_base.ExecutorValue):
       return structure.Struct(zip([k for k, _ in elem], vals))
 
 
+# TODO(b/240972950): Remove deprecated API.
+@deprecation.deprecated(
+    'The Python executors and execution stacks are deprecated, use the C++ '
+    'executors instead.'
+)
 class ReferenceResolvingExecutor(executor_base.Executor):
   """The lambda executor handles lambda expressions and related abstractions.
 

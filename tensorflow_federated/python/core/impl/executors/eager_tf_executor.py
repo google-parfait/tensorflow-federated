@@ -23,6 +23,7 @@ import cachetools
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
+from tensorflow_federated.python.common_libs import deprecation
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import serialization_utils
 from tensorflow_federated.python.common_libs import structure
@@ -616,6 +617,11 @@ def to_representation_for_type(
     )
 
 
+# TODO(b/240972950): Remove deprecated API.
+@deprecation.deprecated(
+    'The Python executors and execution stacks are deprecated, use the C++ '
+    'executors instead.'
+)
 class EagerValue(executor_value_base.ExecutorValue):
   """A representation of an eager value managed by the eager executor."""
 
@@ -647,6 +653,11 @@ class EagerValue(executor_value_base.ExecutorValue):
     return self._value
 
 
+# TODO(b/240972950): Remove deprecated API.
+@deprecation.deprecated(
+    'The Python executors and execution stacks are deprecated, use the C++ '
+    'executors instead.'
+)
 class EagerTFExecutor(executor_base.Executor):
   """The eager executor only runs TensorFlow, synchronously, in eager mode.
 

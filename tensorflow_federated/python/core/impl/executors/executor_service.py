@@ -28,6 +28,7 @@ import grpc
 
 from tensorflow_federated.proto.v0 import executor_pb2
 from tensorflow_federated.proto.v0 import executor_pb2_grpc
+from tensorflow_federated.python.common_libs import deprecation
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.common_libs import tracing
@@ -59,6 +60,11 @@ def _get_hashable_key(cardinalities: executor_factory.CardinalitiesType) -> str:
   return str(tuple(sorted((str(k), v) for k, v in cardinalities.items())))
 
 
+# TODO(b/240972950): Remove deprecated API.
+@deprecation.deprecated(
+    'The Python executors and execution stacks are deprecated, use the C++ '
+    'executors instead.'
+)
 class ExecutorService(executor_pb2_grpc.ExecutorGroupServicer):
   """A wrapper around a target executor that makes it into a gRPC service."""
 

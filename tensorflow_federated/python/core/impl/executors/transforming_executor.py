@@ -14,6 +14,7 @@
 """An executor that transforms computations prior to executing them."""
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
+from tensorflow_federated.python.common_libs import deprecation
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.computation import computation_impl
@@ -21,6 +22,11 @@ from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_utils
 
 
+# TODO(b/240972950): Remove deprecated API.
+@deprecation.deprecated(
+    'The Python executors and execution stacks are deprecated, use the C++ '
+    'executors instead.'
+)
 class TransformingExecutor(executor_base.Executor):
   """This executor transforms computations prior to executing them.
 

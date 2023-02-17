@@ -50,6 +50,7 @@ from typing import Any
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
+from tensorflow_federated.python.common_libs import deprecation
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.common_libs import tracing
@@ -67,6 +68,11 @@ from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_transformations
 
 
+# TODO(b/240972950): Remove deprecated API.
+@deprecation.deprecated(
+    'The Python executors and execution stacks are deprecated, use the C++ '
+    'executors instead.'
+)
 class FederatedComposingStrategyValue(executor_value_base.ExecutorValue):
   """A value embedded in a `FederatedExecutor`."""
 
@@ -137,6 +143,11 @@ class FederatedComposingStrategyValue(executor_value_base.ExecutorValue):
       )
 
 
+# TODO(b/240972950): Remove deprecated API.
+@deprecation.deprecated(
+    'The Python executors and execution stacks are deprecated, use the C++ '
+    'executors instead.'
+)
 class FederatedComposingStrategy(federating_executor.FederatingStrategy):
   """A strategy for composing federated types and intrinsics in disjoint scopes.
 

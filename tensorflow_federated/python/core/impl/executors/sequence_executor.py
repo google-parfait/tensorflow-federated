@@ -17,6 +17,7 @@ import abc
 import asyncio
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
+from tensorflow_federated.python.common_libs import deprecation
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.common_libs import tracing
@@ -289,6 +290,11 @@ async def _delegate(
   return await target_executor.create_value(val, type_spec)
 
 
+# TODO(b/240972950): Remove deprecated API.
+@deprecation.deprecated(
+    'The Python executors and execution stacks are deprecated, use the C++ '
+    'executors instead.'
+)
 class SequenceExecutorValue(executor_value_base.ExecutorValue):
   """A representation of a value owned and managed by the `SequenceExecutor`."""
 
@@ -350,6 +356,11 @@ class SequenceExecutorValue(executor_value_base.ExecutorValue):
     return await _comp(self._value)
 
 
+# TODO(b/240972950): Remove deprecated API.
+@deprecation.deprecated(
+    'The Python executors and execution stacks are deprecated, use the C++ '
+    'executors instead.'
+)
 class SequenceExecutor(executor_base.Executor):
   """The sequence executor is responsible for operations on sequences.
 

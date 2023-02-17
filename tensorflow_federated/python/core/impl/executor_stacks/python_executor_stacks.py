@@ -24,6 +24,7 @@ import cachetools
 import grpc
 import tensorflow as tf
 
+from tensorflow_federated.python.common_libs import deprecation
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl.compiler import local_computation_factory_base
 from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_factory
@@ -52,6 +53,11 @@ def _get_hashable_key(cardinalities: executor_factory.CardinalitiesType):
   return tuple(sorted((str(k), v) for k, v in cardinalities.items()))
 
 
+# TODO(b/240972950): Remove deprecated API.
+@deprecation.deprecated(
+    'The Python executors and execution stacks are deprecated, use the C++ '
+    'executors instead.'
+)
 class ResourceManagingExecutorFactory(executor_factory.ExecutorFactory):
   """Implementation of executor factory holding an executor per cardinality."""
 
@@ -153,6 +159,11 @@ def _wrap_executor_in_threading_stack(
 # pylint: enable=missing-function-docstring
 
 
+# TODO(b/240972950): Remove deprecated API.
+@deprecation.deprecated(
+    'The Python executors and execution stacks are deprecated, use the C++ '
+    'executors instead.'
+)
 class UnplacedExecutorFactory:
   """ExecutorFactory to construct executors which cannot understand placement.
 
@@ -218,6 +229,11 @@ class UnplacedExecutorFactory:
     pass
 
 
+# TODO(b/240972950): Remove deprecated API.
+@deprecation.deprecated(
+    'The Python executors and execution stacks are deprecated, use the C++ '
+    'executors instead.'
+)
 class FederatingExecutorFactory(executor_factory.ExecutorFactory):
   """Executor factory for stacks which delegate placed computations.
 
@@ -363,6 +379,11 @@ def create_minimal_length_flat_stack_fn(
   return create_executor_list
 
 
+# TODO(b/240972950): Remove deprecated API.
+@deprecation.deprecated(
+    'The Python executors and execution stacks are deprecated, use the C++ '
+    'executors instead.'
+)
 class ComposingExecutorFactory(executor_factory.ExecutorFactory):
   """Factory class encapsulating executor compositional logic.
 
@@ -489,6 +510,11 @@ def normalize_num_clients_and_default_num_clients(
   return default_num_clients
 
 
+# TODO(b/240972950): Remove deprecated API.
+@deprecation.deprecated(
+    'The Python executors and execution stacks are deprecated, use the C++ '
+    'executors instead.'
+)
 def local_executor_factory(
     default_num_clients: int = 0,
     max_fanout=100,
@@ -580,6 +606,11 @@ def local_executor_factory(
   return ResourceManagingExecutorFactory(_factory_fn)
 
 
+# TODO(b/240972950): Remove deprecated API.
+@deprecation.deprecated(
+    'The Python executors and execution stacks are deprecated, use the C++ '
+    'executors instead.'
+)
 class ReconstructOnChangeExecutorFactory(executor_factory.ExecutorFactory):
   """ExecutorFactory exposing hook to construct executors on environment change.
 
@@ -698,6 +729,11 @@ def _configure_remote_workers(
   ]
 
 
+# TODO(b/240972950): Remove deprecated API.
+@deprecation.deprecated(
+    'The Python executors and execution stacks are deprecated, use the C++ '
+    'executors instead.'
+)
 def remote_executor_factory(
     channels: list[grpc.Channel],
     thread_pool_executor: Optional[futures.Executor] = None,
@@ -757,6 +793,11 @@ def remote_executor_factory(
   )
 
 
+# TODO(b/240972950): Remove deprecated API.
+@deprecation.deprecated(
+    'The Python executors and execution stacks are deprecated, use the C++ '
+    'executors instead.'
+)
 def remote_executor_factory_from_stubs(
     stubs: list[
         Union[

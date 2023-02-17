@@ -53,7 +53,9 @@ import abc
 from collections.abc import Callable
 from typing import Any, Optional
 
+
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
+from tensorflow_federated.python.common_libs import deprecation
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.common_libs import tracing
@@ -68,6 +70,11 @@ from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_serialization
 
 
+# TODO(b/240972950): Remove deprecated API.
+@deprecation.deprecated(
+    'The Python executors and execution stacks are deprecated, use the C++ '
+    'executors instead.'
+)
 class FederatingStrategy(abc.ABC):
   """The abstract interface federating strategies must implement.
 
@@ -260,6 +267,11 @@ class FederatingStrategy(abc.ABC):
     raise NotImplementedError()
 
 
+# TODO(b/240972950): Remove deprecated API.
+@deprecation.deprecated(
+    'The Python executors and execution stacks are deprecated, use the C++ '
+    'executors instead.'
+)
 class FederatingExecutor(executor_base.Executor):
   """An executor for handling federated types and intrinsics.
 
