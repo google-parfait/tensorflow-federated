@@ -14,25 +14,25 @@
 """Utilities for working with structured data."""
 
 from collections.abc import Iterable, Mapping, Sequence
-from typing import Any, TypeVar, Union
+from typing import TypeVar, Union
 
 import pytype_extensions
 import tree
 
 
-_T = TypeVar('_T')
+T = TypeVar('T')
 # This type defines the structures supported by the `tff.program` API, meaning
-# values of type `_T` nested in structures defined by this type. For an example
+# values of type `T` nested in structures defined by this type. For an example
 # of how to use this type see `tff.program.MaterializedStructure`.
 Structure = Union[
-    _T,
-    Sequence['Structure[_T]'],
-    Mapping[str, 'Structure[_T]'],
-    pytype_extensions.Attrs['Structure[_T]'],
+    T,
+    Sequence['Structure[T]'],
+    Mapping[str, 'Structure[T]'],
+    pytype_extensions.Attrs['Structure[T]'],
 ]
 
 
-def flatten_with_name(structure: Any) -> list[tuple[str, Any]]:
+def flatten_with_name(structure: Structure[T]) -> list[tuple[str, T]]:
   """Creates a flattened representation of the `structure` with names.
 
   Args:
