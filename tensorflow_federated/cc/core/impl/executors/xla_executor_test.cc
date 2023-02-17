@@ -16,6 +16,7 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/xla_executor.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <tuple>
 #include <utility>
@@ -82,7 +83,7 @@ inline absl::StatusOr<std::tuple<v0::Xla::Binding, int>> BindingFromType(
   }
 }
 
-inline v0::Value ComputationV(absl::optional<v0::Xla::Binding> in_binding,
+inline v0::Value ComputationV(std::optional<v0::Xla::Binding> in_binding,
                               v0::Xla::Binding out_binding,
                               xla::XlaComputation xla_comp,
                               v0::Type computation_type) {
@@ -414,16 +415,15 @@ TEST_F(XLAExecutorTest, CreateAndMaterializeNoArgCallSingleTensor) {
   ASSERT_TRUE(xla_computation.ok());
   auto tensor_type = TensorT(v0::TensorType::DT_FLOAT);
   v0::Type function_type = NoArgFunctionT(tensor_type);
-  v0::Value computation =
-      ComputationV(absl::nullopt,
-                   std::get<0>(TFF_ASSERT_OK(BindingFromType(tensor_type, 0))),
-                   std::move(*xla_computation), function_type);
+  v0::Value computation = ComputationV(
+      std::nullopt, std::get<0>(TFF_ASSERT_OK(BindingFromType(tensor_type, 0))),
+      std::move(*xla_computation), function_type);
 
   TFF_ASSERT_OK_AND_ASSIGN(OwnedValueId embedded_fn,
                            test_executor_->CreateValue(computation));
   TFF_ASSERT_OK_AND_ASSIGN(
       OwnedValueId called_fn,
-      test_executor_->CreateCall(embedded_fn.ref(), absl::nullopt));
+      test_executor_->CreateCall(embedded_fn.ref(), std::nullopt));
   v0::Value expected_result = TensorV(2.0f);
 
   CheckMaterializeEqual(called_fn, expected_result);
@@ -440,16 +440,15 @@ TEST_F(XLAExecutorTest, CreateAndMaterializeNoArgCallTensorStructure) {
   v0::Type return_type = FlatStructT(v0::TensorType::DT_FLOAT, 2);
   v0::Type function_type = NoArgFunctionT(return_type);
 
-  v0::Value computation =
-      ComputationV(absl::nullopt,
-                   std::get<0>(TFF_ASSERT_OK(BindingFromType(return_type, 0))),
-                   std::move(*xla_computation), function_type);
+  v0::Value computation = ComputationV(
+      std::nullopt, std::get<0>(TFF_ASSERT_OK(BindingFromType(return_type, 0))),
+      std::move(*xla_computation), function_type);
 
   TFF_ASSERT_OK_AND_ASSIGN(OwnedValueId embedded_fn,
                            test_executor_->CreateValue(computation));
   TFF_ASSERT_OK_AND_ASSIGN(
       OwnedValueId called_fn,
-      test_executor_->CreateCall(embedded_fn.ref(), absl::nullopt));
+      test_executor_->CreateCall(embedded_fn.ref(), std::nullopt));
   v0::Value expected_result = StructV({TensorV(1.0f), TensorV(2.0f)});
   CheckMaterializeEqual(called_fn, expected_result);
 }
@@ -468,7 +467,7 @@ TEST_F(XLAExecutorTest, CreateAndMaterializeNoArgCallNestedTensorStructure) {
   v0::Type function_type = NoArgFunctionT(nested_struct_type);
 
   v0::Value computation = ComputationV(
-      absl::nullopt,
+      std::nullopt,
       std::get<0>(TFF_ASSERT_OK(BindingFromType(nested_struct_type, 0))),
       std::move(*xla_computation), function_type);
 
@@ -476,7 +475,7 @@ TEST_F(XLAExecutorTest, CreateAndMaterializeNoArgCallNestedTensorStructure) {
                            test_executor_->CreateValue(computation));
   TFF_ASSERT_OK_AND_ASSIGN(
       OwnedValueId called_fn,
-      test_executor_->CreateCall(embedded_fn.ref(), absl::nullopt));
+      test_executor_->CreateCall(embedded_fn.ref(), std::nullopt));
   v0::Value expected_result =
       StructV({TensorV(1.0f), StructV({TensorV(2.0f), TensorV(3.0f)})});
 

@@ -15,6 +15,8 @@ limitations under the License
 
 #include "tensorflow_federated/cc/core/impl/executors/session_provider.h"
 
+#include <string_view>
+
 #include "absl/container/flat_hash_set.h"
 #include "absl/strings/str_join.h"
 #include "absl/strings/str_split.h"
@@ -92,8 +94,8 @@ const AcceleratorDevices& GetAcceleratorDevices() {
     }
     LOG_FIRST_N(INFO, 1) << "Found devices: [" << absl::StrJoin(devices, ",")
                          << "]";
-    for (absl::string_view device : devices) {
-      std::vector<absl::string_view> device_parts = absl::StrSplit(device, ':');
+    for (std::string_view device : devices) {
+      std::vector<std::string_view> device_parts = absl::StrSplit(device, ':');
       if (device_parts.size() != 3) {
         LOG(ERROR) << "Unknown device name format: [" << device << "]";
         continue;
@@ -114,7 +116,7 @@ const AcceleratorDevices& GetAcceleratorDevices() {
   return *accelerator_devices;
 }
 
-void SetDevice(absl::string_view device, tensorflow::GraphDef* graph_def,
+void SetDevice(std::string_view device, tensorflow::GraphDef* graph_def,
                const char* device_type) {
   for (tensorflow::NodeDef& node_pb : *graph_def->mutable_node()) {
     // Annotating ReduceDataset with _xla_compile_device_type will denote to
@@ -249,7 +251,7 @@ SessionProvider::CreateSession(const int16_t session_id) {
   auto status = session->Create(graph_def);
   if (!status.ok()) {
     LOG(ERROR) << status;
-    for (absl::string_view line :
+    for (std::string_view line :
          absl::StrSplit(graph_def.Utf8DebugString(), '\n')) {
       LOG(ERROR) << line;
     }

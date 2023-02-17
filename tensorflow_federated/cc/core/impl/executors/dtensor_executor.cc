@@ -20,6 +20,7 @@ limitations under the License
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <thread>  // NOLINT
 #include <tuple>
 #include <utility>
@@ -507,7 +508,7 @@ class DTensorExecutor : public ExecutorBase<ValueFuture> {
   }
 
  protected:
-  absl::string_view ExecutorName() final { return "DTensorExecutor"; }
+  std::string_view ExecutorName() final { return "DTensorExecutor"; }
   absl::StatusOr<ValueFuture> CreateExecutorValue(
       const v0::Value& value_pb) final {
     VLOG(2) << "Creating value: " << value_pb.Utf8DebugString();

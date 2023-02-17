@@ -17,7 +17,9 @@ limitations under the License
 
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -25,8 +27,6 @@ limitations under the License
 #include "googletest/include/gtest/gtest.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "absl/strings/string_view.h"
-#include "absl/types/optional.h"
 #include "absl/types/span.h"
 #include "grpcpp/grpcpp.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
@@ -125,12 +125,12 @@ class ExecutorServiceTest : public ::testing::Test {
   }
 
   v0::CreateCallRequest CreateCallRequestForIds(
-      std::string function_id, absl::optional<std::string> argument_id) {
+      std::string function_id, std::optional<std::string> argument_id) {
     v0::CreateCallRequest create_call_request_pb;
     *create_call_request_pb.mutable_executor() = executor_pb_;
     create_call_request_pb.mutable_function_ref()->mutable_id()->assign(
         function_id);
-    if (argument_id != absl::nullopt) {
+    if (argument_id != std::nullopt) {
       create_call_request_pb.mutable_argument_ref()->mutable_id()->assign(
           *argument_id);
     }
@@ -138,10 +138,10 @@ class ExecutorServiceTest : public ::testing::Test {
   }
 
   v0::CreateStructRequest CreateStructForIds(
-      const absl::Span<const absl::string_view> ids_for_struct) {
+      const absl::Span<const std::string_view> ids_for_struct) {
     v0::CreateStructRequest create_struct_request_pb;
     *create_struct_request_pb.mutable_executor() = executor_pb_;
-    for (absl::string_view id : ids_for_struct) {
+    for (std::string_view id : ids_for_struct) {
       v0::CreateStructRequest::Element elem;
       elem.mutable_value_ref()->mutable_id()->append(id.data(), id.size());
       create_struct_request_pb.mutable_element()->Add(std::move(elem));
@@ -150,13 +150,13 @@ class ExecutorServiceTest : public ::testing::Test {
   }
 
   v0::CreateStructRequest CreateNamedStructForIds(
-      const absl::Span<const absl::string_view> ids_for_struct) {
+      const absl::Span<const std::string_view> ids_for_struct) {
     v0::CreateStructRequest create_struct_request_pb;
     *create_struct_request_pb.mutable_executor() = executor_pb_;
     // Assign an integer index as name internally. Names are dropped on the C++
     // side, but a caller may supply them.
     int idx = 0;
-    for (const absl::string_view& id : ids_for_struct) {
+    for (const std::string_view& id : ids_for_struct) {
       v0::CreateStructRequest::Element elem;
       elem.mutable_value_ref()->mutable_id()->assign(id.data(), id.size());
       elem.mutable_name()->assign(std::to_string(idx));
@@ -229,7 +229,7 @@ TEST_F(ExecutorServiceTest, CreateValueFailedPreconditionDestroysExecutor) {
 }
 
 TEST_F(ExecutorServiceTest, CreateCallFailedPreconditionDestroysExecutor) {
-  auto request_pb = CreateCallRequestForIds("0", absl::nullopt);
+  auto request_pb = CreateCallRequestForIds("0", std::nullopt);
   v0::CreateCallResponse response_pb;
   grpc::ServerContext server_context;
 
@@ -594,13 +594,13 @@ TEST_F(ExecutorServiceTest, CreateCallNoArgFnArgumentSetToEmptyString) {
 
 TEST_F(ExecutorServiceTest, CreateCallNoArgFn) {
   v0::CreateCallRequest call_request =
-      CreateCallRequestForIds("0", absl::nullopt);
+      CreateCallRequestForIds("0", std::nullopt);
   v0::CreateCallResponse create_call_response_pb;
   grpc::ServerContext server_context;
 
   // We expect the ID returned from this call to be set reflected in the
   // returned value.
-  EXPECT_CALL(*executor_ptr_, CreateCall(0, ::testing::Eq(absl::nullopt)))
+  EXPECT_CALL(*executor_ptr_, CreateCall(0, ::testing::Eq(std::nullopt)))
       .WillOnce([this] { return TestId(1); });
 
   TFF_ASSERT_OK(grpc_to_absl(executor_service_.CreateCall(

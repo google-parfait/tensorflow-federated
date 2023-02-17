@@ -15,6 +15,7 @@ limitations under the License
 
 #include "tensorflow_federated/cc/core/impl/executors/sequence_executor.h"
 
+#include <optional>
 #include <string>
 
 #include "googlemock/include/gmock/gmock.h"
@@ -211,12 +212,11 @@ TEST_F(SequenceExecutorTest, CallPassThroughNoArg) {
 
   auto embedded_fn_id = mock_executor_->ExpectCreateValue(passthru_fn);
   auto embedded_call_id =
-      mock_executor_->ExpectCreateCall(embedded_fn_id, absl::nullopt);
+      mock_executor_->ExpectCreateCall(embedded_fn_id, std::nullopt);
   mock_executor_->ExpectMaterialize(embedded_call_id, tensor_value);
 
   auto fn_id = TFF_ASSERT_OK(test_executor_->CreateValue(passthru_fn));
-  auto call_id =
-      TFF_ASSERT_OK(test_executor_->CreateCall(fn_id, absl::nullopt));
+  auto call_id = TFF_ASSERT_OK(test_executor_->CreateCall(fn_id, std::nullopt));
   ExpectMaterialize(call_id, tensor_value);
 }
 
@@ -227,7 +227,7 @@ TEST_F(SequenceExecutorTest, CallSequenceReduceNoargFails) {
   auto sequence_reduce_id = TFF_ASSERT_OK(
       test_executor_->CreateValue(IntrinsicV(kSequenceReduceUri)));
   auto reduce_call_id = TFF_ASSERT_OK(
-      test_executor_->CreateCall(sequence_reduce_id, absl::nullopt));
+      test_executor_->CreateCall(sequence_reduce_id, std::nullopt));
   EXPECT_THAT(test_executor_->Materialize(reduce_call_id),
               StatusIs(StatusCode::kInvalidArgument));
 }

@@ -39,6 +39,7 @@
 #include <memory>
 #include <ostream>
 #include <string>
+#include <string_view>
 #include <type_traits>
 #include <vector>
 
@@ -50,7 +51,6 @@
 #include "absl/memory/memory.h"
 #include "absl/strings/str_format.h"
 #include "absl/strings/str_join.h"
-#include "absl/strings/string_view.h"
 #include "google/protobuf/io/tokenizer.h"
 
 namespace tensorflow_federated {
@@ -252,7 +252,7 @@ class ProtoMatcher : public ProtoMatcherBase {
 // as a (text format) string.
 class ProtoStringMatcher : public ProtoMatcherBase {
  public:
-  explicit ProtoStringMatcher(absl::string_view expected)
+  explicit ProtoStringMatcher(std::string_view expected)
       : expected_(expected) {}
 
  private:
@@ -317,7 +317,7 @@ inline ::testing::PolymorphicMatcher<internal_proto::ProtoMatcher> EqualsProto(
   return ::testing::MakePolymorphicMatcher(internal_proto::ProtoMatcher(x));
 }
 inline ::testing::PolymorphicMatcher<internal_proto::ProtoStringMatcher>
-EqualsProto(absl::string_view x) {
+EqualsProto(std::string_view x) {
   return ::testing::MakePolymorphicMatcher(
       internal_proto::ProtoStringMatcher(x));
 }

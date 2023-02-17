@@ -18,7 +18,9 @@ limitations under the License
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <string>
+#include <string_view>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -28,10 +30,8 @@ limitations under the License
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "absl/strings/string_view.h"
 #include "absl/synchronization/notification.h"
 #include "absl/time/time.h"
-#include "absl/types/optional.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/mock_grpc.h"
 #include "tensorflow_federated/cc/core/impl/executors/protobuf_matchers.h"
@@ -363,7 +363,7 @@ TEST_F(RemoteExecutorTest, CreateCallNoArgFn) {
         .WillOnce(ReturnOkWithResponseId<v0::CreateCallResponse>("call_ref"));
 
     OwnedValueId call_result =
-        TFF_ASSERT_OK(test_executor_->CreateCall(fn, absl::nullopt));
+        TFF_ASSERT_OK(test_executor_->CreateCall(fn, std::nullopt));
 
     // We need to call Materialize to force synchronization of the calls above.
     EXPECT_CALL(
@@ -399,7 +399,7 @@ TEST_F(RemoteExecutorTest, CreateCallError) {
         .WillOnce(::testing::Return(UnimplementedPlaceholder()));
 
     OwnedValueId call_result =
-        TFF_ASSERT_OK(test_executor_->CreateCall(fn, absl::nullopt));
+        TFF_ASSERT_OK(test_executor_->CreateCall(fn, std::nullopt));
 
     // We expect the executor to shortcircuit and never call Compute if an
     // intermediate result errors out.

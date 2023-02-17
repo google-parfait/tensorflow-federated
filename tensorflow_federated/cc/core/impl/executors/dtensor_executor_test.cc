@@ -75,7 +75,7 @@ inline v0::TensorFlow::Binding StructB(
 inline v0::Value ComputationV(
     std::optional<v0::TensorFlow::Binding> in_binding,
     v0::TensorFlow::Binding out_binding, const tensorflow::Scope& scope,
-    const absl::optional<const tensorflow::Operation>& init_op = std::nullopt) {
+    const std::optional<const tensorflow::Operation>& init_op = std::nullopt) {
   v0::Value value_pb;
   v0::Computation* comp_pb = value_pb.mutable_computation();
   // NOTE: we do not fill in the `type` field of `comp` because it is not needed
@@ -190,7 +190,7 @@ class DTensorExecutorTest : public ::testing::Test {
   }
 
   void CheckCallEqualsProto(const v0::Value& fn,
-                            const absl::optional<v0::Value>& arg,
+                            const std::optional<v0::Value>& arg,
                             const v0::Value& expected) {
     TFF_ASSERT_OK_AND_ASSIGN(auto fn_id, test_executor_->CreateValue(fn));
     std::optional<OwnedValueId> arg_id;
@@ -205,7 +205,7 @@ class DTensorExecutorTest : public ::testing::Test {
     EXPECT_THAT(result_proto, EqualsProto(expected));
   }
   void CheckCallRepeatedlyEqualsProto(const v0::Value& fn,
-                                      const absl::optional<v0::Value>& arg,
+                                      const std::optional<v0::Value>& arg,
                                       const v0::Value& expected) {
     TFF_ASSERT_OK_AND_ASSIGN(auto fn_id, test_executor_->CreateValue(fn));
     std::optional<OwnedValueId> arg_id;

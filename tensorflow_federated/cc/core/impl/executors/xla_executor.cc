@@ -17,7 +17,9 @@ limitations under the License
 
 #include <future>  // NOLINT
 #include <memory>
+#include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <variant>
 #include <vector>
@@ -141,20 +143,20 @@ class XLAExecutorValue {
   // type. Requires that type() is ValueType::TENSOR. The pointer is guaranteed
   // to be valid as long as the XLAExecutorValue exists.
   std::shared_ptr<ServiceTensor> tensor() const {
-    return absl::get<std::shared_ptr<ServiceTensor>>(value_);
+    return std::get<std::shared_ptr<ServiceTensor>>(value_);
   }
   const std::vector<XLAExecutorValue>& structure() const {
-    return absl::get<std::vector<XLAExecutorValue>>(value_);
+    return std::get<std::vector<XLAExecutorValue>>(value_);
   }
   std::shared_ptr<Computation> computation() const {
-    return absl::get<std::shared_ptr<Computation>>(value_);
+    return std::get<std::shared_ptr<Computation>>(value_);
   }
 
  private:
   XLAExecutorValue() = delete;
-  using ValueVariant = absl::variant<std::shared_ptr<ServiceTensor>,
-                                     std::vector<XLAExecutorValue>,
-                                     std::shared_ptr<Computation>>;
+  using ValueVariant =
+      std::variant<std::shared_ptr<ServiceTensor>,
+                   std::vector<XLAExecutorValue>, std::shared_ptr<Computation>>;
   ValueVariant value_;
 };
 
@@ -399,7 +401,7 @@ class XLAExecutor : public ExecutorBase<ValueFuture> {
  public:
   explicit XLAExecutor(xla::Client* xla_client) : xla_client_(xla_client) {}
 
-  absl::string_view ExecutorName() final { return "XLAExecutor"; }
+  std::string_view ExecutorName() final { return "XLAExecutor"; }
   absl::StatusOr<ValueFuture> CreateExecutorValue(
       const v0::Value& value_pb) final {
     return ThreadRun([value_pb, this_shared = shared_from_this()]() {
@@ -410,8 +412,8 @@ class XLAExecutor : public ExecutorBase<ValueFuture> {
     });
   }
 
-  absl::StatusOr<ValueFuture> CreateCall(
-      ValueFuture fn, absl::optional<ValueFuture> arg) final {
+  absl::StatusOr<ValueFuture> CreateCall(ValueFuture fn,
+                                         std::optional<ValueFuture> arg) final {
     return ThreadRun([fn, arg, this_shared = shared_from_this()]()
                          -> absl::StatusOr<XLAExecutorValue> {
       // shared_from_this() returns the base Executor* type, so we must
@@ -427,7 +429,7 @@ class XLAExecutor : public ExecutorBase<ValueFuture> {
       if (arg.has_value()) {
         return this_executor->CallComputation(comp, TFF_TRY(Wait(arg.value())));
       }
-      return this_executor->CallComputation(comp, absl::nullopt);
+      return this_executor->CallComputation(comp, std::nullopt);
     });
   }
 
@@ -610,7 +612,7 @@ class XLAExecutor : public ExecutorBase<ValueFuture> {
   }
 
   absl::StatusOr<XLAExecutorValue> CallComputation(
-      std::shared_ptr<Computation> fn, absl::optional<XLAExecutorValue> arg) {
+      std::shared_ptr<Computation> fn, std::optional<XLAExecutorValue> arg) {
     int num_parameter_elements =
         ComputeNumElementsFromBinding(fn->arg_binding());
     std::vector<xla::GlobalData*> arg_vector(num_parameter_elements);
@@ -687,7 +689,7 @@ class XLAExecutor : public ExecutorBase<ValueFuture> {
   }
 };
 
-absl::StatusOr<xla::Client*> GetXLAClient(absl::string_view platform_name) {
+absl::StatusOr<xla::Client*> GetXLAClient(std::string_view platform_name) {
   tensorflow::StatusOr<xla::se::Platform*> platform =
       xla::se::MultiPlatformManager::PlatformWithName(platform_name);
   if (!platform.ok()) {
@@ -712,7 +714,7 @@ absl::StatusOr<xla::Client*> GetXLAClient(absl::string_view platform_name) {
 }  // namespace
 
 absl::StatusOr<std::shared_ptr<Executor>> CreateXLAExecutor(
-    absl::string_view platform_name) {
+    std::string_view platform_name) {
   LOG(INFO) << "Creating XLAExecutor for platform: " << platform_name;
   xla::Client* client = TFF_TRY(GetXLAClient(platform_name));
   return std::make_shared<XLAExecutor>(client);

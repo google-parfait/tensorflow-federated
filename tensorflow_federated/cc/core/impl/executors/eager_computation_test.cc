@@ -67,7 +67,7 @@ inline v0::Computation ComputationV(
     const tensorflow::Scope& scope,
     std::optional<v0::TensorFlow::Binding> in_binding,
     v0::TensorFlow::Binding out_binding,
-    const absl::optional<const tensorflow::Operation>& init_op = std::nullopt,
+    const std::optional<const tensorflow::Operation>& init_op = std::nullopt,
     const std::vector<tensorflow::FunctionDef> function_defs = {}) {
   v0::Computation comp_pb;
   v0::TensorFlow* tensorflow_pb = comp_pb.mutable_tensorflow();

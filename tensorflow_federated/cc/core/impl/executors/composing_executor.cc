@@ -19,20 +19,20 @@ limitations under the License
 #include <functional>
 #include <future>  // NOLINT
 #include <memory>
+#include <optional>
 #include <string>
+#include <string_view>
 #include <tuple>
 #include <utility>
+#include <variant>
 
 #include "google/protobuf/repeated_field.h"
 #include "absl/base/thread_annotations.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
-#include "absl/strings/string_view.h"
 #include "absl/synchronization/mutex.h"
-#include "absl/types/optional.h"
 #include "absl/types/span.h"
-#include "absl/types/variant.h"
 #include "tensorflow/core/platform/macros.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/core/impl/executors/computations.h"
@@ -78,7 +78,7 @@ class UnplacedInner {
 
   // Returns the underlying `Proto` value without attempting to create one via
   // a `Materialize` call.
-  absl::optional<absl::StatusOr<std::shared_ptr<v0::Value>>> GetProto() {
+  std::optional<absl::StatusOr<std::shared_ptr<v0::Value>>> GetProto() {
     absl::ReaderMutexLock lock(&mutex_);
     return proto_;
   }
@@ -161,9 +161,9 @@ class UnplacedInner {
   }
 
   absl::Mutex mutex_;
-  absl::optional<absl::StatusOr<std::shared_ptr<v0::Value>>> proto_
+  std::optional<absl::StatusOr<std::shared_ptr<v0::Value>>> proto_
       ABSL_GUARDED_BY(mutex_);
-  absl::optional<absl::StatusOr<std::shared_ptr<OwnedValueId>>> embedded_
+  std::optional<absl::StatusOr<std::shared_ptr<OwnedValueId>>> embedded_
       ABSL_GUARDED_BY(mutex_);
 };
 
@@ -173,8 +173,8 @@ using Unplaced = std::shared_ptr<UnplacedInner>;
 using Server = std::shared_ptr<OwnedValueId>;
 using Clients = std::shared_ptr<std::vector<std::shared_ptr<OwnedValueId>>>;
 using Structure = std::shared_ptr<std::vector<ExecutorValue>>;
-using ValueVariant = absl::variant<Unplaced, Server, Clients, Structure,
-                                   enum FederatedIntrinsic>;
+using ValueVariant =
+    std::variant<Unplaced, Server, Clients, Structure, enum FederatedIntrinsic>;
 
 inline Clients NewClients(uint32_t num_clients) {
   auto v = std::make_shared<std::vector<std::shared_ptr<OwnedValueId>>>();
@@ -191,20 +191,20 @@ class ExecutorValue {
   enum class ValueType { UNPLACED, SERVER, CLIENTS, STRUCTURE, INTRINSIC };
 
   inline const Unplaced& unplaced() const {
-    return absl::get<::tensorflow_federated::Unplaced>(value_);
+    return std::get<::tensorflow_federated::Unplaced>(value_);
   }
   inline static ExecutorValue CreateUnplaced(
       ::tensorflow_federated::Unplaced id) {
     return ExecutorValue(std::move(id), ValueType::UNPLACED);
   }
   inline const Server& server() const {
-    return absl::get<::tensorflow_federated::Server>(value_);
+    return std::get<::tensorflow_federated::Server>(value_);
   }
   inline static ExecutorValue CreateServerPlaced(Server id) {
     return ExecutorValue(std::move(id), ValueType::SERVER);
   }
   inline const Clients& clients() const {
-    return absl::get<::tensorflow_federated::Clients>(value_);
+    return std::get<::tensorflow_federated::Clients>(value_);
   }
   inline static ExecutorValue CreateClientsPlaced(Clients client_values) {
     return ExecutorValue(std::move(client_values), ValueType::CLIENTS);
@@ -217,7 +217,7 @@ class ExecutorValue {
             std::move(client_values)));
   }
   inline const Structure& structure() const {
-    return absl::get<::tensorflow_federated::Structure>(value_);
+    return std::get<::tensorflow_federated::Structure>(value_);
   }
   inline static ExecutorValue CreateStructure(Structure elements) {
     return ExecutorValue(std::move(elements), ValueType::STRUCTURE);
@@ -226,10 +226,10 @@ class ExecutorValue {
     return ExecutorValue(intrinsic, ValueType::INTRINSIC);
   }
   inline enum FederatedIntrinsic intrinsic() const {
-    return absl::get<enum FederatedIntrinsic>(value_);
+    return std::get<enum FederatedIntrinsic>(value_);
   }
 
-  absl::Status CheckLenForUseAsArgument(absl::string_view function_name,
+  absl::Status CheckLenForUseAsArgument(std::string_view function_name,
                                         size_t len) const {
     if (type() != ExecutorValue::ValueType::STRUCTURE) {
       return absl::InvalidArgumentError(absl::StrCat(
@@ -247,7 +247,7 @@ class ExecutorValue {
   // Fetches an unplaced functional value as a proto, ensuring that no
   // underlying `Materialize` call occurs.
   absl::StatusOr<std::shared_ptr<v0::Value>> GetUnplacedFunctionProto(
-      absl::string_view name) const {
+      std::string_view name) const {
     if (type() != ExecutorValue::ValueType::UNPLACED) {
       return absl::InvalidArgumentError(
           absl::StrCat("`", name, "` must be an unplaced functional value, ",
@@ -358,8 +358,8 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
   }
 
  protected:
-  absl::string_view ExecutorName() final {
-    static constexpr absl::string_view kExecutorName = "ComposingExecutor";
+  std::string_view ExecutorName() final {
+    static constexpr std::string_view kExecutorName = "ComposingExecutor";
     return kExecutorName;
   }
 
@@ -372,13 +372,13 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
   }
 
   absl::StatusOr<ValueFuture> CreateCall(
-      ValueFuture function, absl::optional<ValueFuture> argument) final {
+      ValueFuture function, std::optional<ValueFuture> argument) final {
     return ThreadRun([function = std::move(function),
                       argument = std::move(argument), this,
                       this_keepalive = shared_from_this()]()
                          -> absl::StatusOr<ExecutorValue> {
       ExecutorValue fn = TFF_TRY(Wait(function));
-      absl::optional<ExecutorValue> arg = absl::nullopt;
+      std::optional<ExecutorValue> arg = std::nullopt;
       if (argument.has_value()) {
         arg = TFF_TRY(Wait(argument.value()));
       }
@@ -395,8 +395,8 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
           // We need to materialize functions into the server
           // executor in order to execute them.
           auto fn_id = TFF_TRY(fn.unplaced()->Embedded(*server_));
-          absl::optional<std::shared_ptr<OwnedValueId>> arg_owner;
-          absl::optional<ValueId> arg_id = absl::nullopt;
+          std::optional<std::shared_ptr<OwnedValueId>> arg_owner;
+          std::optional<ValueId> arg_id = std::nullopt;
           if (arg.has_value()) {
             arg_owner = TFF_TRY(arg.value().Embed(*server_));
             arg_id = arg_owner.value()->ref();
@@ -560,7 +560,7 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
     auto traceme = Trace("CallIntrinsicEvalAtServer");
     auto embedded = TFF_TRY(arg.Embed(*server_));
     return ExecutorValue::CreateServerPlaced(ShareValueId(
-        TFF_TRY(server_->CreateCall(embedded->ref(), absl::nullopt))));
+        TFF_TRY(server_->CreateCall(embedded->ref(), std::nullopt))));
   }
 
   absl::StatusOr<ExecutorValue> CallIntrinsicEvalAtClients(
@@ -640,7 +640,7 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
 
     // Materialize and merge the results from each child executor.
     absl::Mutex mutex;
-    absl::optional<OwnedValueId> current ABSL_GUARDED_BY(mutex) = absl::nullopt;
+    std::optional<OwnedValueId> current ABSL_GUARDED_BY(mutex) = std::nullopt;
 
     ParallelTasks materialize_tasks;
 

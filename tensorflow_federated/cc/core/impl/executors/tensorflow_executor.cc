@@ -19,9 +19,12 @@ limitations under the License
 #include <cstdint>
 #include <future>  // NOLINT
 #include <memory>
+#include <optional>
 #include <string>
+#include <string_view>
 #include <thread>  // NOLINT
 #include <utility>
+#include <variant>
 #include <vector>
 
 #include "absl/base/thread_annotations.h"
@@ -30,11 +33,8 @@ limitations under the License
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
-#include "absl/strings/string_view.h"
 #include "absl/synchronization/mutex.h"
-#include "absl/types/optional.h"
 #include "absl/types/span.h"
-#include "absl/types/variant.h"
 #include "tensorflow/core/framework/attr_value.pb.h"
 #include "tensorflow/core/framework/graph.pb.h"
 #include "tensorflow/core/framework/node_def.pb.h"
@@ -76,9 +76,9 @@ constexpr char kDatasetToGraphOp[] = "DatasetToGraphV2";
 constexpr char kDatasetFromGraphOp[] = "DatasetFromGraph";
 constexpr char kArgsIntoSequenceUri[] = "args_into_sequence";
 
-std::string GetNodeName(absl::string_view tensor_name) {
-  absl::string_view::size_type pos = tensor_name.find(':');
-  if (pos == absl::string_view::npos) {
+std::string GetNodeName(std::string_view tensor_name) {
+  std::string_view::size_type pos = tensor_name.find(':');
+  if (pos == std::string_view::npos) {
     return std::string(tensor_name);
   } else {
     return std::string(tensor_name.substr(0, pos));
@@ -99,8 +99,8 @@ struct NamesForBindingRewrite {
 // Computes the names for the nodes and tensors we will add to the graph when
 // wrapping sequence bindings in datset serialization ops.
 NamesForBindingRewrite GetVariantTensorNodeNameAndReplacement(
-    absl::string_view variant_tensor_name,
-    absl::string_view replace_node_suffix, absl::string_view node_prefix) {
+    std::string_view variant_tensor_name, std::string_view replace_node_suffix,
+    std::string_view node_prefix) {
   NamesForBindingRewrite names;
   names.variant_node_name = GetNodeName(variant_tensor_name);
   names.graph_def_node_name = absl::StrCat(
@@ -168,7 +168,7 @@ void AddDatasetToGraphOp(tensorflow::GraphDef& graphdef_pb,
 // bindings of the function.
 absl::Status AddDeserializationOpsForParameters(
     tensorflow::GraphDef& graphdef_pb, v0::TensorFlow::Binding& binding,
-    absl::string_view prefix = "root") {
+    std::string_view prefix = "root") {
   switch (binding.binding_case()) {
     case v0::TensorFlow::Binding::kSequence: {
       // Get a copy of the name of the placeholder we're operating on. We're
@@ -264,7 +264,7 @@ absl::Status AddDeserializationOpsForParameters(
 // parameter bindings of the function.
 absl::Status AddSerializationOpsForResults(tensorflow::GraphDef& graphdef_pb,
                                            v0::TensorFlow::Binding& binding,
-                                           absl::string_view prefix = "root") {
+                                           std::string_view prefix = "root") {
   switch (binding.binding_case()) {
     case v0::TensorFlow::Binding::kSequence: {
       if (binding.sequence().binding_case() ==
@@ -308,9 +308,9 @@ absl::Status AddSerializationOpsForResults(tensorflow::GraphDef& graphdef_pb,
 
 absl::Status AddDatasetSerializationToSequenceBindings(
     tensorflow::GraphDef& graphdef_pb,
-    absl::optional<v0::TensorFlow::Binding>& parameter_binding,
+    std::optional<v0::TensorFlow::Binding>& parameter_binding,
     v0::TensorFlow::Binding& result_binding) {
-  if (parameter_binding != absl::nullopt) {
+  if (parameter_binding != std::nullopt) {
     TFF_TRY(AddDeserializationOpsForParameters(graphdef_pb,
                                                parameter_binding.value()));
   }
@@ -328,7 +328,7 @@ class Computation {
     if (!comp_pb.graph_def().UnpackTo(&graphdef_pb)) {
       return absl::InternalError(ERR_LOG("Could not unpack graphdef proto"));
     }
-    absl::optional<v0::TensorFlow::Binding> parameter_shape;
+    std::optional<v0::TensorFlow::Binding> parameter_shape;
     if (comp_pb.has_parameter()) {
       parameter_shape = comp_pb.parameter();
     }
@@ -343,10 +343,10 @@ class Computation {
         std::move(output_tensor_names));
   }
 
-  absl::StatusOr<ExecutorValue> Call(absl::optional<ExecutorValue> arg);
+  absl::StatusOr<ExecutorValue> Call(std::optional<ExecutorValue> arg);
 
   Computation(tensorflow::GraphDef graph, std::string init_op,
-              absl::optional<v0::TensorFlow::Binding> parameter_shape,
+              std::optional<v0::TensorFlow::Binding> parameter_shape,
               v0::TensorFlow::Binding output_shape,
               std::vector<std::string> output_tensor_names)
       : session_provider_(std::move(graph)),
@@ -397,7 +397,7 @@ class Computation {
 
   SessionProvider session_provider_;
   std::string init_op_;
-  absl::optional<v0::TensorFlow::Binding> parameter_shape_;
+  std::optional<v0::TensorFlow::Binding> parameter_shape_;
   v0::TensorFlow::Binding output_shape_;
   std::vector<std::string> output_tensor_names_;
 };
@@ -415,7 +415,7 @@ class SequenceTensor {
 
 enum class Intrinsic { kArgsIntoSequence };
 
-absl::StatusOr<Intrinsic> IntrinsicFromUri(absl::string_view uri) {
+absl::StatusOr<Intrinsic> IntrinsicFromUri(std::string_view uri) {
   if (uri == kArgsIntoSequenceUri) {
     return Intrinsic::kArgsIntoSequence;
   } else {
@@ -424,7 +424,7 @@ absl::StatusOr<Intrinsic> IntrinsicFromUri(absl::string_view uri) {
   }
 }
 
-absl::string_view IntrinsicToUri(Intrinsic intrinsic) {
+std::string_view IntrinsicToUri(Intrinsic intrinsic) {
   switch (intrinsic) {
     case Intrinsic::kArgsIntoSequence: {
       return kArgsIntoSequenceUri;
@@ -493,26 +493,26 @@ class ExecutorValue {
   // Returns a reference to the inner tensor.
   // Requires that `type()` is `ValueType::TENSOR`.
   const tensorflow::Tensor& tensor() const {
-    return absl::get<tensorflow::Tensor>(value_);
+    return std::get<tensorflow::Tensor>(value_);
   }
 
   // Returns a reference to the inner elements list.
   // Requires that `type()` is `ValueType::STRUCT`.
   absl::Span<const ExecutorValue> elements() const {
-    return *absl::get<std::shared_ptr<std::vector<ExecutorValue>>>(value_);
+    return *std::get<std::shared_ptr<std::vector<ExecutorValue>>>(value_);
   }
 
   const std::shared_ptr<Computation>& computation() const {
-    return absl::get<std::shared_ptr<Computation>>(value_);
+    return std::get<std::shared_ptr<Computation>>(value_);
   }
 
   const tensorflow::Tensor& sequence() const {
-    return absl::get<SequenceTensor>(value_).as_tensor();
+    return std::get<SequenceTensor>(value_).as_tensor();
   }
 
-  const Intrinsic intrinsic() const { return absl::get<Intrinsic>(value_); }
+  Intrinsic intrinsic() const { return std::get<Intrinsic>(value_); }
 
-  const absl::Status Bind(
+  absl::Status Bind(
       const v0::TensorFlow::Binding& shape,
       std::vector<std::pair<std::string, tensorflow::Tensor>>* bindings) const {
     switch (type()) {
@@ -652,12 +652,11 @@ class ExecutorValue {
  private:
   ExecutorValue() = delete;
 
-  absl::variant<tensorflow::Tensor, SequenceTensor,
-                std::shared_ptr<Computation>,
-                std::shared_ptr<std::vector<ExecutorValue>>, Intrinsic>
+  std::variant<tensorflow::Tensor, SequenceTensor, std::shared_ptr<Computation>,
+               std::shared_ptr<std::vector<ExecutorValue>>, Intrinsic>
       value_;
 
-  static absl::Status BindKindMismatch(const absl::string_view value_kind,
+  static absl::Status BindKindMismatch(const std::string_view value_kind,
                                        const v0::TensorFlow::Binding& shape) {
     return absl::InvalidArgumentError(
         absl::StrCat("Attempted to bind ", value_kind,
@@ -666,7 +665,7 @@ class ExecutorValue {
 };
 
 absl::StatusOr<ExecutorValue> Computation::Call(
-    absl::optional<ExecutorValue> arg) {
+    std::optional<ExecutorValue> arg) {
   // Skip everything if there are no outputs.
   // If `output_tensor_names` is empty, TF raises an error, so we must bypass it
   // entirely.
@@ -717,7 +716,7 @@ absl::StatusOr<ExecutorValue> Computation::Call(
 }
 
 absl::StatusOr<ExecutorValue> CallIntrinsic(Intrinsic intrinsic,
-                                            absl::optional<ExecutorValue> arg) {
+                                            std::optional<ExecutorValue> arg) {
   switch (intrinsic) {
     case Intrinsic::kArgsIntoSequence: {
       if (!arg.has_value()) {
@@ -927,8 +926,8 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
   }
 
  protected:
-  absl::string_view ExecutorName() final {
-    static constexpr absl::string_view kExecutorName = "TensorFlowExecutor";
+  std::string_view ExecutorName() final {
+    static constexpr std::string_view kExecutorName = "TensorFlowExecutor";
     return kExecutorName;
   }
 
@@ -942,12 +941,12 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
   }
 
   absl::StatusOr<ValueFuture> CreateCall(
-      ValueFuture function, absl::optional<ValueFuture> argument) final {
+      ValueFuture function, std::optional<ValueFuture> argument) final {
     return ThreadRun(
         [function = std::move(function),
          argument = std::move(argument)]() -> absl::StatusOr<ExecutorValue> {
           ExecutorValue fn = TFF_TRY(Wait(function));
-          absl::optional<ExecutorValue> arg = absl::nullopt;
+          std::optional<ExecutorValue> arg = std::nullopt;
           if (argument.has_value()) {
             arg = TFF_TRY(Wait(argument.value()));
           }
