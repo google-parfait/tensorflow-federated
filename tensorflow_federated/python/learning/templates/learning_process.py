@@ -13,7 +13,11 @@
 # limitations under the License.
 """Defines a template for stateful processes used for learning-oriented tasks."""
 
-from typing import Any, NamedTuple, Optional
+import abc
+from collections.abc import Callable, Iterable, Mapping, Sequence
+from typing import Any, Generic, NamedTuple, Optional, TypeVar, Union
+
+import numpy as np
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl.computation import computation_base
@@ -49,7 +53,34 @@ class SetModelWeightsTypeSignatureError(Error):
   """Raises when the type signature of `set_model_weights` is not correct."""
 
 
-class LearningProcessOutput(NamedTuple):
+State = TypeVar('State')
+ModelWeights = TypeVar('ModelWeights')
+Hparams = TypeVar('Hparams')
+
+# This type defines the structures supported by the `tff.program` API. For an
+# example of how to use this type see `tff.program.MaterializedStructure`.
+MetricsLeaf = Union[
+    np.generic,
+    np.ndarray,
+    Iterable[Union[np.generic, np.ndarray]],
+]
+MetricsStructure = Union[
+    MetricsLeaf,
+    Sequence['MetricsStructure'],
+    Mapping[str, 'MetricsStructure'],
+]
+Metrics = TypeVar('Metrics', bound=MetricsStructure)
+
+
+# We first inherit directly from NamedTuple with `Any` attributes. We then
+# mix-in to get generic typing. This is necessary since NamedTuple does not
+# support multiple inheritance (https://bugs.python.org/issue43923).
+class _LearningProcessOutput(NamedTuple):
+  state: Any
+  metrics: Any
+
+
+class LearningProcessOutput(_LearningProcessOutput, Generic[State, Metrics]):
   """A structure containing the output of a `LearningProcess.next` computation.
 
   Attributes:
@@ -66,11 +97,47 @@ class LearningProcessOutput(NamedTuple):
       (eg. timing information and the amount of communication occurring between
       clients and server).
   """
-  state: Any
-  metrics: Any
+  state: State
+  metrics: Metrics
 
 
-class LearningProcess(iterative_process.IterativeProcess):
+class LearningProcess_(abc.ABC, Generic[State, Metrics, ModelWeights, Hparams]):  # pylint: disable=invalid-name
+  """An abstract base class for processes that iterative learn parameters."""
+
+  @property
+  @abc.abstractmethod
+  def initialize(self) -> Callable[[], State]:
+    """A no-arg `tff.Computation` that initializes learning process state."""
+
+  @property
+  @abc.abstractmethod
+  def next(
+      self,
+  ) -> Callable[[State, Any], LearningProcessOutput[State, Metrics]]:
+    """A `tff.Computation` that updates the learning process state."""
+
+  @property
+  @abc.abstractmethod
+  def get_model_weights(self) -> Callable[[State], ModelWeights]:
+    """A `tff.Computation` that extracts model weights from the state."""
+
+  @property
+  @abc.abstractmethod
+  def set_model_weights(self) -> Callable[[State, ModelWeights], State]:
+    """A `tff.Computation` that updates the model weights of the state."""
+
+  @property
+  @abc.abstractmethod
+  def get_hparams(self) -> Callable[[State], Hparams]:
+    """A `tff.Computation` that extracts hyperparameters from the state."""
+
+  @property
+  @abc.abstractmethod
+  def set_hparams(self) -> Callable[[State, Hparams], State]:
+    """A `tff.Computation` that updates the hyperparameters of the state."""
+
+
+class LearningProcess(iterative_process.IterativeProcess, LearningProcess_):
   """A stateful process for learning tasks that produces metrics.
 
   This class inherits the constraints documented by
