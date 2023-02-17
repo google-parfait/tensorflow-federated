@@ -17,7 +17,7 @@ import abc
 import asyncio
 import collections
 from collections.abc import Callable, Sequence
-from typing import Any, Generic, Optional, TypeVar, Union
+from typing import Generic, Optional, TypeVar, Union
 
 import tree
 
@@ -27,11 +27,10 @@ from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.program import structure_utils
 from tensorflow_federated.python.program import value_reference
 
-# ReleaseManager's may release any value (including materialized values) in
-# addition to materializable values.
+# ReleaseManager's may release any value in addition to materializable values.
 ReleasableValue = Union[
-    Any,
-    value_reference.MaterializableValueReference,
+    object,
+    value_reference.MaterializableValue,
 ]
 ReleasableStructure = TypeVar(
     'ReleasableStructure',

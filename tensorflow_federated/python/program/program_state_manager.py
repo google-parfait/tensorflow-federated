@@ -14,16 +14,15 @@
 """Utilities for saving and loading program state in a federated program."""
 
 import abc
-from typing import Any, Generic, Optional, Union, TypeVar
+from typing import Generic, Optional, Union, TypeVar
 
 from tensorflow_federated.python.program import structure_utils
 from tensorflow_federated.python.program import value_reference
 
-# ProgramStateManager's may save any value (including materialized values) in
-# addition to materializable values.
+# ProgramStateManager's may save any value in addition to materializable values.
 ProgramStateValue = Union[
-    Any,
-    value_reference.MaterializableValueReference,
+    object,
+    value_reference.MaterializableValue,
 ]
 ProgramStateStructure = TypeVar(
     'ProgramStateStructure',
