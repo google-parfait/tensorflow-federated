@@ -93,6 +93,7 @@ class FunctionalModel:
           [ModelWeights, Any, bool], variable.BatchOutput
       ],
       predict_on_batch_fn: Callable[[ModelWeights, Any, bool], Any],
+      loss_fn: Callable[[Any, Any, Optional[Any]], Any],
       metrics_fns: tuple[
           InitializeMetricsStateFn, UpdateMetricsStateFn, FinalizeMetricsFn
       ] = (empty_metrics_state, noop_update_metrics, noop_finalize_metrics),
@@ -148,6 +149,10 @@ class FunctionalModel:
         the first element of `batch_input` (or `input_spec`), and `training` a
         boolean determinig whether the call is during a training pass (e.g. for
         Dropout, BatchNormalization, etc).
+      loss_fn: A callable that takes three arguments, `output` tensor(s) as
+        output of `predict_on_batch` that is interpretable by the loss function,
+        `label` the second element of `batch_input`, and optional
+        `sample_weight` as coefficient of the loss.
       metrics_fns: A 3-tuple of callables that initialize the metrics state,
         update the metrics state, and finalize the metrics values respectively.
         This can be the result of `
@@ -184,6 +189,7 @@ class FunctionalModel:
     self._forward_pass_fn = forward_pass_fn
     check_tf_function_decorated(predict_on_batch_fn, 'predict_on_batch_fn')
     self._predict_on_batch_fn = predict_on_batch_fn
+    self._loss_fn = loss_fn
     self._input_spec = input_spec
     (
         self._initialize_metrics_state,
@@ -208,6 +214,12 @@ class FunctionalModel:
   ):
     """Returns tensor(s) interpretable by the loss function."""
     return self._predict_on_batch_fn(model_weights, x, training)
+
+  def loss(
+      self, output: Any, label: Any, sample_weight: Optional[Any] = None
+  ) -> float:
+    """Returns the loss value based on the model output and the label."""
+    return self._loss_fn(output, label, sample_weight)
 
   @tf.function
   def initialize_metrics_state(self) -> types.MetricsState:
@@ -404,7 +416,7 @@ def functional_model_from_keras(
   NOTE: This method only supports models where calling that model with
   `training=True` and `training=False` produce the same graph. Keras layers
   such as batch normalization will fail because they require updating internal
-  state when `training=True` which is not suported.
+  state when `training=True` which is not supported.
 
   IMPORTANT: The returned model must only be used in a graph context (for
   example inside a `tff.tf_computation` decorated callable). It will raise an
@@ -622,6 +634,11 @@ def functional_model_from_keras(
         num_examples=nrows(tf.nest.flatten(batch_input)[0]),
     )
 
+  def loss(
+      output: Any, label: Any, sample_weight: Optional[Any] = None
+  ) -> float:
+    return loss_fn(y_true=label, y_pred=output, sample_weight=sample_weight)
+
   if metrics_constructor is not None:
     metrics_fns = keras_utils.create_functional_metric_fns(metrics_constructor)
   else:
@@ -635,6 +652,7 @@ def functional_model_from_keras(
       initial_weights=initial_weights,
       forward_pass_fn=forward_pass,
       predict_on_batch_fn=predict_on_batch,
+      loss_fn=loss,
       metrics_fns=metrics_fns,
       input_spec=input_spec,
   )

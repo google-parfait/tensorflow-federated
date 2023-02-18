@@ -642,6 +642,12 @@ class FunctionalModelTest(tf.test.TestCase, parameterized.TestCase):
           num_examples=tf.constant(10),
       )
 
+    def loss(output, label, sample_weight=None):
+      del output  # Unused.
+      del label  # Unused.
+      del sample_weight  # Unused.
+      return 0.0
+
     # Test functional model whose weights are too big to seralize as a single
     # proto.
     functional_model = functional.FunctionalModel(
@@ -655,6 +661,7 @@ class FunctionalModelTest(tf.test.TestCase, parameterized.TestCase):
         ),
         forward_pass_fn=forward_pass,
         predict_on_batch_fn=predict_on_batch,
+        loss_fn=loss,
         input_spec=(tf.TensorSpec(shape=[]), tf.TensorSpec(shape=[])),
     )
     path = self.get_temp_dir()

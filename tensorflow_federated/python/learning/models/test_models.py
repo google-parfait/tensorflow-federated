@@ -82,6 +82,10 @@ def build_functional_linear_regression(
         loss=average_loss, predictions=predictions, num_examples=num_examples
     )
 
+  def loss(output: Any, label: Any, sample_weight: Any) -> float:
+    del sample_weight
+    return tf.math.reduce_sum(tf.math.pow(output - label, 2.0))
+
   @tf.function
   def initialize_metrics() -> types.MetricsState:
     return collections.OrderedDict(
@@ -117,6 +121,7 @@ def build_functional_linear_regression(
       initial_weights=initial_weights,
       forward_pass_fn=forward_pass,
       predict_on_batch_fn=predict_on_batch,
+      loss_fn=loss,
       metrics_fns=(initialize_metrics, update_metrics_state, finalize_metrics),
       input_spec=input_spec,
   )
