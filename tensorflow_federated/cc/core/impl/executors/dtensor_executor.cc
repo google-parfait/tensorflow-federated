@@ -424,6 +424,20 @@ class ComputationValue : public Value {
     }
     auto outputs =
         TFF_TRY(computation_.Call(context, flattened_inputs, device_name));
+
+    if (mesh_.has_value() && device_name.has_value()) {
+      // When mesh and device are present, a DTensor handle corresponding to
+      // input tensor value is created. These should be deleted after the
+      // execution.
+      //
+      // Tensor handles inside TensorValue are deleted at the destruction.
+      // However, DTensor handles are only created based on layouts specified in
+      // the computation proto just before executing Computation->Call. These
+      // should be cleaned up explicitly after the call is complete.
+      for (TFE_TensorHandle* handle : flattened_inputs) {
+        TFE_DeleteTensorHandle(handle);
+      }
+    }
     absl::Span<TFE_TensorHandle*> outputs_span(outputs);
     return FromTensorsAndBindingStructure(output_shape_, &outputs_span,
                                           converter_);
