@@ -730,6 +730,43 @@ class FunctionalModelFromKerasTest(tf.test.TestCase):
           functional_model.initial_weights, example_batch[0]
       )
 
+  def test_keras_model_with_non_none_sample_weights_fails(self):
+    keras_model = create_test_keras_model()
+
+    def loss_fn_with_non_none_sample_weight(y_true, y_pred, sample_weight=2.0):
+      return (
+          tf.math.reduce_sum(tf.math.pow(y_pred - y_true, 2.0)) * sample_weight
+      )
+
+    with self.assertRaisesRegex(
+        functional.KerasFunctionalModelError,
+        'non-None model_weight',
+    ):
+      functional.functional_model_from_keras(
+          keras_model=keras_model,
+          loss_fn=loss_fn_with_non_none_sample_weight,
+          input_spec=(
+              tf.TensorSpec(shape=[None, 1]),
+              tf.TensorSpec(shape=[None, 1]),
+          ),
+      )
+
+    def loss_fn_with_none_sample_weight(y_true, y_pred, sample_weight=None):
+      del sample_weight
+      return tf.math.reduce_sum(tf.math.pow(y_pred - y_true, 2.0))
+
+    self.assertIsInstance(
+        functional.functional_model_from_keras(
+            keras_model=keras_model,
+            loss_fn=loss_fn_with_none_sample_weight,
+            input_spec=(
+                tf.TensorSpec(shape=[None, 1]),
+                tf.TensorSpec(shape=[None, 1]),
+            ),
+        ),
+        functional.FunctionalModel,
+    )
+
   def test_construct_from_keras_converges(self):
     functional_model = functional.functional_model_from_keras(
         keras_model=create_test_keras_model(),
