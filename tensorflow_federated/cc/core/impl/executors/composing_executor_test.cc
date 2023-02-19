@@ -16,6 +16,7 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/composing_executor.h"
 
 #include <cstddef>
+#include <memory>
 #include <optional>
 #include <utility>
 #include <vector>
@@ -64,7 +65,7 @@ class ComposingExecutorTest : public ExecutorTestBase {
     // Extra method required in order to use `TFF_ASSERT_OK_AND_ASSIGN`.
     Initialize();
   }
-  ~ComposingExecutorTest() override {}
+  ~ComposingExecutorTest() override = default;
 
   void Initialize() {
     // Test with a few different sizes of client to ensure they're all handled

@@ -36,7 +36,7 @@ using ::testing::SetArgReferee;
 
 class MockDataBackend : public DataBackend {
  public:
-  ~MockDataBackend() override {}
+  ~MockDataBackend() override = default;
   MOCK_METHOD(absl::Status, ResolveToValue,
               (const v0::Data& data_reference, const v0::Type& type_reference,
                v0::Value& data_out),

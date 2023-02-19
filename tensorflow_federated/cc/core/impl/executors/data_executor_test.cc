@@ -15,6 +15,7 @@ limitations under the License
 
 #include "tensorflow_federated/cc/core/impl/executors/data_executor.h"
 
+#include <memory>
 #include <optional>
 #include <string>
 
@@ -42,7 +43,7 @@ class DataExecutorTest : public ExecutorTestBase {
         CreateDataExecutor(mock_executor_child_, mock_data_backend_);
   }
 
-  ~DataExecutorTest() override {}
+  ~DataExecutorTest() override = default;
 
  protected:
   std::shared_ptr<::testing::StrictMock<MockDataBackend>> mock_data_backend_ =

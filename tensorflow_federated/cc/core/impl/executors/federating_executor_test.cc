@@ -76,7 +76,7 @@ class FederatingExecutorTest : public ExecutorTestBase {
     Initialize();
   }
 
-  ~FederatingExecutorTest() override {}
+  ~FederatingExecutorTest() override = default;
 
   void Initialize() {
     TFF_ASSERT_OK_AND_ASSIGN(test_executor_,

@@ -128,11 +128,11 @@ class XLAExecutorValue {
       : value_(std::move(xla_comp)) {}
 
   ValueType type() const {
-    if (absl::holds_alternative<std::shared_ptr<ServiceTensor>>(value_)) {
+    if (std::holds_alternative<std::shared_ptr<ServiceTensor>>(value_)) {
       return ValueType::TENSOR;
-    } else if (absl::holds_alternative<std::vector<XLAExecutorValue>>(value_)) {
+    } else if (std::holds_alternative<std::vector<XLAExecutorValue>>(value_)) {
       return ValueType::STRUCT;
-    } else if (absl::holds_alternative<std::shared_ptr<Computation>>(value_)) {
+    } else if (std::holds_alternative<std::shared_ptr<Computation>>(value_)) {
       return ValueType::COMPUTATION;
     } else {
       return ValueType::UNKNOWN;

@@ -19,6 +19,7 @@ limitations under the License
 
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"

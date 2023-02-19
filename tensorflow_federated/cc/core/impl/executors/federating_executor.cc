@@ -659,7 +659,7 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
     }
   }
 
-  absl::Status Materialize(ExecutorValue value, v0::Value* value_pb) {
+  absl::Status Materialize(ExecutorValue value, v0::Value* value_pb) override {
     ParallelTasks tasks;
     TFF_TRY(CreateMaterializeTasks(value, value_pb, tasks));
     TFF_TRY(tasks.WaitAll());

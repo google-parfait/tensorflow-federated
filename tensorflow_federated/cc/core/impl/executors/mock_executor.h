@@ -38,7 +38,7 @@ class MockExecutor : public Executor,
                      public std::enable_shared_from_this<Executor> {
  public:
   MockExecutor() { next_id_ = 0; }
-  ~MockExecutor() override {}
+  ~MockExecutor() override = default;
 
   MOCK_METHOD(absl::StatusOr<OwnedValueId>, CreateValue,
               (const v0::Value& value_pb), (override));

@@ -14,6 +14,8 @@ limitations under the License
 ==============================================================================*/
 #include "tensorflow_federated/cc/core/impl/executors/dataset_conversions.h"
 
+#include <memory>
+
 #include "absl/status/status.h"
 
 namespace tensorflow_federated {
