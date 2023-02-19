@@ -30,7 +30,7 @@ namespace tensorflow_federated {
 
 class ExecutorTestBase : public ::testing::Test {
  public:
-  ~ExecutorTestBase() override {}
+  ~ExecutorTestBase() override = default;
 
  protected:
   std::shared_ptr<Executor> test_executor_;

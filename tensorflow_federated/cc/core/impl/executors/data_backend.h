@@ -46,7 +46,7 @@ class DataBackend {
     return out;
   }
 
-  virtual ~DataBackend() {}
+  virtual ~DataBackend() = default;
 };
 
 }  // namespace tensorflow_federated

@@ -26,6 +26,7 @@ limitations under the License
 #include <string_view>
 #include <utility>
 #include <variant>
+#include <vector>
 
 #include "absl/base/attributes.h"
 #include "absl/status/status.h"
@@ -57,7 +58,7 @@ class SequenceIterator {
   // the next element from the stream.
   virtual absl::StatusOr<std::optional<Embedded>> GetNextEmbedded(
       Executor&) = 0;
-  virtual ~SequenceIterator() {}
+  virtual ~SequenceIterator() = default;
 };
 
 // Computes the number of tensors in a nested tensor type, returning an error
@@ -132,7 +133,7 @@ class MappedIterator : public SequenceIterator {
       : existing_iterator_(std::move(existing_iterator)),
         mapping_fn_(std::move(mapping_fn)) {}
 
-  ~MappedIterator() final {}
+  ~MappedIterator() final = default;
 
   absl::StatusOr<std::optional<Embedded>> GetNextEmbedded(
       Executor& target) final {
@@ -158,7 +159,7 @@ class DatasetIterator : public SequenceIterator {
       v0::Type element_type)
       : ds_iterator_(std::move(iter)), element_type_(std::move(element_type)) {}
 
-  ~DatasetIterator() final {}
+  ~DatasetIterator() final = default;
 
   absl::StatusOr<std::optional<Embedded>> GetNextEmbedded(
       Executor& target) final {
@@ -198,7 +199,7 @@ class Sequence {
       : value_(std::move(value)), executor_(executor) {}
 
   inline SequenceValueType type() const {
-    if (absl::holds_alternative<v0::Value>(value_)) {
+    if (std::holds_alternative<v0::Value>(value_)) {
       return SequenceValueType::VALUE_PROTO;
     } else {
       return SequenceValueType::ITERATOR_FACTORY;
@@ -304,11 +305,11 @@ class SequenceExecutorValue {
   }
 
   inline ValueType type() const {
-    if (absl::holds_alternative<Embedded>(value_)) {
+    if (std::holds_alternative<Embedded>(value_)) {
       return ValueType::EMBEDDED;
-    } else if (absl::holds_alternative<SequenceIntrinsic>(value_)) {
+    } else if (std::holds_alternative<SequenceIntrinsic>(value_)) {
       return ValueType::INTRINSIC;
-    } else if (absl::holds_alternative<std::shared_ptr<Sequence>>(value_)) {
+    } else if (std::holds_alternative<std::shared_ptr<Sequence>>(value_)) {
       return ValueType::SEQUENCE;
     } else {
       return ValueType::STRUCT;
@@ -378,7 +379,7 @@ class SequenceExecutor : public ExecutorBase<ValueFuture> {
  public:
   explicit SequenceExecutor(std::shared_ptr<Executor> target_executor)
       : target_executor_(target_executor) {}
-  ~SequenceExecutor() override {}
+  ~SequenceExecutor() override = default;
 
   std::string_view ExecutorName() final { return "SequenceExecutor"; }
 

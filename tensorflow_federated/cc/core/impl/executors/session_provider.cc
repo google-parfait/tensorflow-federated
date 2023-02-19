@@ -15,7 +15,9 @@ limitations under the License
 
 #include "tensorflow_federated/cc/core/impl/executors/session_provider.h"
 
+#include <string>
 #include <string_view>
+#include <vector>
 
 #include "absl/container/flat_hash_set.h"
 #include "absl/strings/str_join.h"

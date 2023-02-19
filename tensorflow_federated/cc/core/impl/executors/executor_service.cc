@@ -18,6 +18,7 @@ limitations under the License
 #include <grpcpp/support/status.h>
 
 #include <algorithm>
+#include <memory>
 #include <optional>
 #include <string>
 #include <string_view>

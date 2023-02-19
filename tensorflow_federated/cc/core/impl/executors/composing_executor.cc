@@ -25,6 +25,7 @@ limitations under the License
 #include <tuple>
 #include <utility>
 #include <variant>
+#include <vector>
 
 #include "google/protobuf/repeated_field.h"
 #include "absl/base/thread_annotations.h"

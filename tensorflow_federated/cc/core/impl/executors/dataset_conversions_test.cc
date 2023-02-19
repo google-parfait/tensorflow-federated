@@ -15,6 +15,7 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/dataset_conversions.h"
 
 #include <memory>
+#include <vector>
 
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"

@@ -82,7 +82,7 @@ class ScopedLambda {
 // root scope, which is identified by `parent_ == nullopt`.
 class Scope {
  public:
-  Scope() {}
+  Scope() = default;
   Scope(NamedValue binding, std::shared_ptr<Scope> parent)
       : binding_(std::move(binding)), parent_(std::move(parent)) {}
   Scope(Scope&& other)
@@ -133,12 +133,12 @@ class ExecutorValue {
       : value_(std::move(scoped_lambda)) {}
 
   ValueType type() const {
-    if (absl::holds_alternative<OwnedValueId>(value_)) {
+    if (std::holds_alternative<OwnedValueId>(value_)) {
       return EMBEDDED;
-    } else if (absl::holds_alternative<
+    } else if (std::holds_alternative<
                    std::vector<std::shared_ptr<ExecutorValue>>>(value_)) {
       return STRUCTURE;
-    } else if (absl::holds_alternative<ScopedLambda>(value_)) {
+    } else if (std::holds_alternative<ScopedLambda>(value_)) {
       return LAMBDA;
     } else {
       return UNKNOWN;
@@ -182,7 +182,7 @@ class ExecutorValue {
 class ReferenceResolvingExecutor
     : public ExecutorBase<std::shared_ptr<ExecutorValue>> {
  public:
-  ReferenceResolvingExecutor(std::shared_ptr<Executor> child)
+  explicit ReferenceResolvingExecutor(std::shared_ptr<Executor> child)
       : child_executor_(std::move(child)) {}
   ~ReferenceResolvingExecutor() override {
     // We must make sure to delete all of our `OwnedValueId`s, releasing them
@@ -220,9 +220,9 @@ class ReferenceResolvingExecutor
       std::vector<std::shared_ptr<ExecutorValue>> members) final;
 
   absl::StatusOr<std::shared_ptr<ExecutorValue>> CreateSelection(
-      std::shared_ptr<ExecutorValue> value, const uint32_t index) final;
+      std::shared_ptr<ExecutorValue> value, uint32_t index) final;
   absl::StatusOr<std::shared_ptr<ExecutorValue>> CreateSelectionInternal(
-      std::shared_ptr<ExecutorValue> source, const uint32_t index) const;
+      std::shared_ptr<ExecutorValue> source, uint32_t index) const;
 
   absl::Status Materialize(std::shared_ptr<ExecutorValue> value,
                            v0::Value* value_pb) final;
@@ -336,9 +336,9 @@ std::string Scope::DebugString() const {
 }
 
 std::string ExecutorValue::DebugString() const {
-  if (absl::holds_alternative<OwnedValueId>(value_)) {
+  if (std::holds_alternative<OwnedValueId>(value_)) {
     return "V";
-  } else if (absl::holds_alternative<
+  } else if (std::holds_alternative<
                  std::vector<std::shared_ptr<ExecutorValue>>>(value_)) {
     return "<V>";
   } else {
@@ -404,7 +404,7 @@ ReferenceResolvingExecutor::CreateCallInternal(
     }
     case ExecutorValue::UNKNOWN: {
       return absl::InternalError(
-          absl::StrCat("Unknown function type passed to CreateCall [UNKNOWN]"));
+          "Unknown function type passed to CreateCall [UNKNOWN]");
     }
   }
 }
@@ -497,8 +497,7 @@ absl::StatusOr<ValueId> ReferenceResolvingExecutor::Embed(
       return value_id;
     }
     case ExecutorValue::ValueType::UNKNOWN: {
-      return absl::InternalError(
-          absl::StrCat("Tried to embed unknown ValueType [UNKNOWN]"));
+      return absl::InternalError("Tried to embed unknown ValueType [UNKNOWN]");
     }
   }
 }
