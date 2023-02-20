@@ -82,6 +82,17 @@ v0::CreateValueRequest CreateValueRequestForValue(
   return request;
 }
 
+v0::CreateStructRequest CreateStructRequestForValues(
+    const std::vector<std::string_view>& ref_names) {
+  v0::CreateStructRequest create_struct_request;
+  create_struct_request.mutable_executor()->set_id(kExecutorId);
+  for (std::string_view ref_name : ref_names) {
+    create_struct_request.add_element()->mutable_value_ref()->set_id(
+        std::string(ref_name));
+  }
+  return create_struct_request;
+}
+
 v0::ComputeRequest ComputeRequestForId(std::string ref) {
   v0::ComputeRequest request;
   request.mutable_executor()->set_id(kExecutorId);
@@ -533,17 +544,19 @@ TEST_F(RemoteExecutorTest, CreateSelection) {
   {
     EXPECT_CALL(*mock_executor_service_,
                 CreateValue(::testing::_,
-                            EqualsProto(CreateValueRequestForValue(tensor_two)),
+                            EqualsProto(CreateValueRequestForValue(
+                                testing::StructV({tensor_two}))),
                             ::testing::_))
         .WillOnce(
             ReturnOkWithResponseId<v0::CreateValueResponse>("source_ref"));
-    OwnedValueId source_value =
-        TFF_ASSERT_OK(test_executor_->CreateValue(tensor_two));
+
+    OwnedValueId source_value = TFF_ASSERT_OK(
+        test_executor_->CreateValue(testing::StructV({tensor_two})));
 
     v0::CreateSelectionRequest expected_request;
     expected_request.mutable_executor()->set_id(kExecutorId);
     expected_request.mutable_source_ref()->set_id("source_ref");
-    expected_request.set_index(2);
+    expected_request.set_index(0);
 
     EXPECT_CALL(*mock_executor_service_,
                 CreateSelection(::testing::_, EqualsProto(expected_request),
@@ -552,7 +565,7 @@ TEST_F(RemoteExecutorTest, CreateSelection) {
             "selection_ref"));
 
     OwnedValueId selection_result =
-        TFF_ASSERT_OK(test_executor_->CreateSelection(source_value, 2));
+        TFF_ASSERT_OK(test_executor_->CreateSelection(source_value, 0));
 
     EXPECT_CALL(
         *mock_executor_service_,
@@ -586,10 +599,6 @@ TEST_F(RemoteExecutorTest, CreateSelectionWithError) {
     expected_request.mutable_source_ref()->set_id("source_ref");
     expected_request.set_index(1);
 
-    EXPECT_CALL(*mock_executor_service_,
-                CreateSelection(::testing::_, EqualsProto(expected_request),
-                                ::testing::_))
-        .WillOnce(::testing::Return(UnimplementedPlaceholder()));
     OwnedValueId source_value =
         TFF_ASSERT_OK(test_executor_->CreateValue(tensor_two));
     OwnedValueId selection_result =
@@ -600,8 +609,10 @@ TEST_F(RemoteExecutorTest, CreateSelectionWithError) {
     materialize_status =
         test_executor_->Materialize(selection_result, &materialized_value);
   }
-  EXPECT_THAT(materialize_status,
-              StatusIs(absl::StatusCode::kUnimplemented, "Test"));
+  EXPECT_THAT(
+      materialize_status,
+      StatusIs(absl::StatusCode::kInvalidArgument,
+               ::testing::HasSubstr("Error selecting from non-Struct value")));
   WaitForDisposeExecutor(dispose_notification);
 }
 

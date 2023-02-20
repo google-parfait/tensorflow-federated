@@ -23,6 +23,7 @@ limitations under the License
 namespace tensorflow_federated {
 
 const std::string_view kFederatedMapAtClientsUri = "federated_map";
+const std::string_view kFederatedMapAtServerUri = "federated_apply";
 const std::string_view kFederatedEvalAtClientsUri = "federated_eval_at_clients";
 const std::string_view kFederatedZipAtClientsUri = "federated_zip_at_clients";
 const std::string_view kFederatedZipAtServerUri = "federated_zip_at_server";
