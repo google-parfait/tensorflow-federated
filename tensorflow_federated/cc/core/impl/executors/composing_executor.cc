@@ -22,6 +22,7 @@ limitations under the License
 #include <optional>
 #include <string>
 #include <string_view>
+#include <thread>  // NOLINT
 #include <tuple>
 #include <utility>
 #include <variant>
@@ -51,7 +52,7 @@ namespace {
 class ExecutorValue;
 
 using ValueFuture = std::shared_future<absl::StatusOr<ExecutorValue>>;
-using Children = std::tuple<uint32_t>;
+using Children = std::tuple<int32_t>;
 
 inline std::shared_ptr<OwnedValueId> ShareValueId(OwnedValueId&& id) {
   return std::make_shared<OwnedValueId>(std::move(id));
@@ -176,7 +177,7 @@ using Structure = std::shared_ptr<std::vector<ExecutorValue>>;
 using ValueVariant =
     std::variant<Unplaced, Server, Clients, Structure, enum FederatedIntrinsic>;
 
-inline Clients NewClients(uint32_t num_clients) {
+inline Clients NewClients(int32_t num_clients) {
   auto v = std::make_shared<std::vector<std::shared_ptr<OwnedValueId>>>();
   v->reserve(num_clients);
   return v;
@@ -298,7 +299,7 @@ class ExecutorValue {
   // of federated values to `create_federated` and creating unrecognized
   // values inside of the `unplaced_child` executor.
   static absl::StatusOr<ExecutorValue> FromProto(
-      const v0::Value& value_pb, Executor& unplaced_child, uint32_t num_clients,
+      const v0::Value& value_pb, Executor& unplaced_child, int32_t num_clients,
       const std::function<absl::StatusOr<ExecutorValue>(
           FederatedKind, const v0::Value_Federated&)>& create_federated) {
     switch (value_pb.value_case()) {
@@ -347,10 +348,22 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
  public:
   explicit ComposingExecutor(std::shared_ptr<Executor> server,
                              std::vector<ComposingChild> children,
-                             uint32_t total_clients)
+                             int32_t total_clients,
+                             int32_t threadpool_size = -1)
       : server_(std::move(server)),
         children_(std::move(children)),
-        total_clients_(total_clients) {}
+        total_clients_(total_clients),
+        thread_pool_(
+            // Use a threadpool with CPU * 4 or the user specified
+            // maximum.
+            ((threadpool_size > 0) ? threadpool_size
+                                   : std::thread::hardware_concurrency() * 4),
+            ExecutorName()) {
+    VLOG(2) << "thread pool size: "
+            << ((threadpool_size > 0)
+                    ? threadpool_size
+                    : std::thread::hardware_concurrency() * 4);
+  }
   ~ComposingExecutor() override {
     // Delete `OwnedValueId` and release them from the child executor before
     // destroying it.
@@ -373,47 +386,49 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
 
   absl::StatusOr<ValueFuture> CreateCall(
       ValueFuture function, std::optional<ValueFuture> argument) final {
-    return ThreadRun([function = std::move(function),
-                      argument = std::move(argument), this,
-                      this_keepalive = shared_from_this()]()
-                         -> absl::StatusOr<ExecutorValue> {
-      ExecutorValue fn = TFF_TRY(Wait(function));
-      std::optional<ExecutorValue> arg = std::nullopt;
-      if (argument.has_value()) {
-        arg = TFF_TRY(Wait(argument.value()));
-      }
+    return ThreadRun(
+        [function = std::move(function), argument = std::move(argument),
+         this]() -> absl::StatusOr<ExecutorValue> {
+          ExecutorValue fn = TFF_TRY(Wait(function));
+          std::optional<ExecutorValue> arg = std::nullopt;
+          if (argument.has_value()) {
+            arg = TFF_TRY(Wait(argument.value()));
+          }
 
-      switch (fn.type()) {
-        case ExecutorValue::ValueType::CLIENTS:
-        case ExecutorValue::ValueType::SERVER: {
-          return absl::InvalidArgumentError("Cannot call a federated value.");
-        }
-        case ExecutorValue::ValueType::STRUCTURE: {
-          return absl::InvalidArgumentError("Cannot call a structure.");
-        }
-        case ExecutorValue::ValueType::UNPLACED: {
-          // We need to materialize functions into the server
-          // executor in order to execute them.
-          auto fn_id = TFF_TRY(fn.unplaced()->Embedded(*server_));
-          std::optional<std::shared_ptr<OwnedValueId>> arg_owner;
-          std::optional<ValueId> arg_id = std::nullopt;
-          if (arg.has_value()) {
-            arg_owner = TFF_TRY(arg.value().Embed(*server_));
-            arg_id = arg_owner.value()->ref();
+          switch (fn.type()) {
+            case ExecutorValue::ValueType::CLIENTS:
+            case ExecutorValue::ValueType::SERVER: {
+              return absl::InvalidArgumentError(
+                  "Cannot call a federated value.");
+            }
+            case ExecutorValue::ValueType::STRUCTURE: {
+              return absl::InvalidArgumentError("Cannot call a structure.");
+            }
+            case ExecutorValue::ValueType::UNPLACED: {
+              // We need to materialize functions into the server
+              // executor in order to execute them.
+              auto fn_id = TFF_TRY(fn.unplaced()->Embedded(*server_));
+              std::optional<std::shared_ptr<OwnedValueId>> arg_owner;
+              std::optional<ValueId> arg_id = std::nullopt;
+              if (arg.has_value()) {
+                arg_owner = TFF_TRY(arg.value().Embed(*server_));
+                arg_id = arg_owner.value()->ref();
+              }
+              return ExecutorValue::CreateUnplaced(
+                  std::make_shared<UnplacedInner>(
+                      TFF_TRY(server_->CreateCall(fn_id->ref(), arg_id))));
+            }
+            case ExecutorValue::ValueType::INTRINSIC: {
+              if (!arg.has_value()) {
+                return absl::InvalidArgumentError(
+                    "no argument provided for federated intrinsic");
+              }
+              return this->CallFederatedIntrinsic(fn.intrinsic(),
+                                                  std::move(arg.value()));
+            }
           }
-          return ExecutorValue::CreateUnplaced(std::make_shared<UnplacedInner>(
-              TFF_TRY(server_->CreateCall(fn_id->ref(), arg_id))));
-        }
-        case ExecutorValue::ValueType::INTRINSIC: {
-          if (!arg.has_value()) {
-            return absl::InvalidArgumentError(
-                "no argument provided for federated intrinsic");
-          }
-          return this->CallFederatedIntrinsic(fn.intrinsic(),
-                                              std::move(arg.value()));
-        }
-      }
-    });
+        },
+        &thread_pool_);
   }
 
   absl::StatusOr<ValueFuture> CreateStruct(
@@ -424,7 +439,8 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
             -> absl::StatusOr<ExecutorValue> {
           return ExecutorValue::CreateStructure(
               std::make_shared<std::vector<ExecutorValue>>(std::move(members)));
-        });
+        },
+        &thread_pool_);
   }
 
   absl::StatusOr<ValueFuture> CreateSelection(ValueFuture value,
@@ -458,22 +474,19 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
               return value.structure()->at(index);
             }
           }
-        });
+        },
+        &thread_pool_);
   }
 
   absl::Status Materialize(ValueFuture value_fut, v0::Value* value_pb) final {
     ExecutorValue value = TFF_TRY(Wait(std::move(value_fut)));
-    ParallelTasks tasks;
+    ParallelTasks tasks(&thread_pool_);
     TFF_TRY(MaterializeValue(value, value_pb, tasks));
     TFF_TRY(tasks.WaitAll());
     return absl::OkStatus();
   }
 
  private:
-  std::shared_ptr<Executor> server_;
-  std::vector<ComposingChild> children_;
-  uint32_t total_clients_;
-
   Clients NewClients() const {
     return ::tensorflow_federated::NewClients(children_.size());
   }
@@ -488,14 +501,14 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
       }
       case FederatedKind::CLIENTS: {
         auto clients = NewClients();
-        uint32_t next_client_index = 0;
-        for (uint32_t i = 0; i < children_.size(); i++) {
+        int32_t next_client_index = 0;
+        for (int32_t i = 0; i < children_.size(); i++) {
           auto child = children_[i];
           v0::Value child_value;
           v0::Value_Federated* child_value_fed =
               child_value.mutable_federated();
           *child_value_fed->mutable_type() = federated.type();
-          uint32_t stop_index = next_client_index + child.num_clients();
+          int32_t stop_index = next_client_index + child.num_clients();
           for (; next_client_index < stop_index; next_client_index++) {
             *child_value_fed->add_value() = federated.value(next_client_index);
           }
@@ -619,7 +632,7 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
     // Initiate the aggregation in each child.
     std::vector<OwnedValueId> child_result_ids;
     child_result_ids.reserve(children_.size());
-    for (uint32_t i = 0; i < children_.size(); i++) {
+    for (int32_t i = 0; i < children_.size(); i++) {
       const auto& child = children_[i].executor();
       ValueId child_val = value.clients()->at(i)->ref();
       std::vector<OwnedValueId> arg_owners;
@@ -644,7 +657,7 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
 
     ParallelTasks materialize_tasks;
 
-    for (uint32_t i = 0; i < children_.size(); i++) {
+    for (int32_t i = 0; i < children_.size(); i++) {
       TFF_TRY(materialize_tasks.add_task(
           [this, &child = children_[i].executor(),
            &child_result_id = child_result_ids[i], &merge_id, &current,
@@ -706,7 +719,7 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
       v0::Value map_val;
       map_val.mutable_computation()->mutable_intrinsic()->mutable_uri()->assign(
           kFederatedMapAtClientsUri.data(), kFederatedMapAtClientsUri.size());
-      for (uint32_t i = 0; i < children_.size(); i++) {
+      for (int32_t i = 0; i < children_.size(); i++) {
         const auto& child = children_[i].executor();
         auto child_map = TFF_TRY(child->CreateValue(map_val));
         auto child_fn = TFF_TRY(child->CreateValue(fn_val));
@@ -757,7 +770,7 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
 
     std::vector<std::shared_ptr<OwnedValueId>> child_result_ids;
     child_result_ids.reserve(children_.size());
-    for (uint32_t i = 0; i < children_.size(); i++) {
+    for (int32_t i = 0; i < children_.size(); i++) {
       const std::shared_ptr<Executor>& child = children_[i].executor();
       ValueId child_keys = keys_child_ids->at(i)->ref();
       std::vector<OwnedValueId> arg_owners;
@@ -782,7 +795,7 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
   // Pushes `arg` containing structs of client-placed values into
   // the `children_[i]` executor.
   absl::StatusOr<std::shared_ptr<OwnedValueId>> ZipStructIntoChild(
-      const ExecutorValue& arg, uint32_t child_index) const {
+      const ExecutorValue& arg, int32_t child_index) const {
     switch (arg.type()) {
       case ExecutorValue::ValueType::CLIENTS: {
         return (*arg.clients())[child_index];
@@ -820,7 +833,7 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
         ->assign(kFederatedZipAtClientsUri.data(),
                  kFederatedZipAtClientsUri.size());
     Clients pairs = NewClients();
-    for (uint32_t i = 0; i < children_.size(); i++) {
+    for (int32_t i = 0; i < children_.size(); i++) {
       const std::shared_ptr<Executor>& child = children_[i].executor();
       OwnedValueId zip = TFF_TRY(child->CreateValue(zip_at_clients));
       std::shared_ptr<OwnedValueId> arg_struct_in_child =
@@ -903,7 +916,7 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
 
   // Creates tasks to materialize values into the addresses pointed to by
   // `protos_out`.
-  absl::Status MaterializeChildClientValues(uint32_t child_index,
+  absl::Status MaterializeChildClientValues(int32_t child_index,
                                             ValueId child_id,
                                             absl::Span<v0::Value*> protos_out,
                                             ParallelTasks& tasks) const {
@@ -925,7 +938,7 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
               child_value.federated().value_size(),
               ", but all-equal values must have only one value."));
         }
-        for (uint32_t j = 0; j < child.num_clients(); j++) {
+        for (int32_t j = 0; j < child.num_clients(); j++) {
           *(protos_out[j]) = child_value.federated().value(0);
         }
       } else {
@@ -935,7 +948,7 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
               " clients returned ", child_value.federated().value_size(),
               " client values."));
         }
-        for (uint32_t j = 0; j < child.num_clients(); j++) {
+        for (int32_t j = 0; j < child.num_clients(); j++) {
           *(protos_out[j]) =
               std::move(*child_value.mutable_federated()->mutable_value(j));
         }
@@ -958,7 +971,7 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
         // Note: we'd like to use `AddNAlreadyReserved`, but unfortunately that
         // method only exists for `RepeatedField`, not `RepeatedPtrField`.
         v0::Value null_value;
-        for (uint32_t i = 0; i < total_clients_; i++) {
+        for (int32_t i = 0; i < total_clients_; i++) {
           *values_pb->Add() = null_value;
         }
         v0::FederatedType* type_pb = federated_pb->mutable_type();
@@ -969,7 +982,7 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
         type_pb->mutable_placement()->mutable_value()->mutable_uri()->assign(
             kClientsUri.data(), kClientsUri.size());
         v0::Value** client_start = values_pb->mutable_data();
-        for (uint32_t i = 0; i < children_.size(); i++) {
+        for (int32_t i = 0; i < children_.size(); i++) {
           absl::Span<v0::Value*> client_value_pointers(
               client_start, children_[i].num_clients());
           ValueId child_value_id = value.clients()->at(i)->ref();
@@ -1014,13 +1027,24 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
       }
     }
   }
+
+  std::shared_ptr<Executor> server_;
+  std::vector<ComposingChild> children_;
+  int32_t total_clients_;
+
+  // IMPORTANT: The thread_pool_ must be the member of the class. This way the
+  // thread_pool_ will be the first destructed, which will wait prevent new
+  // work from being scheduled (closing the pool) and waiting for inflight
+  // threads to finish, which might hold `this` pointers to the executor and
+  // otherwise could cause issues.
+  ThreadPool thread_pool_;
 };
 
 }  // namespace
 
 std::shared_ptr<Executor> CreateComposingExecutor(
     std::shared_ptr<Executor> server, std::vector<ComposingChild> children) {
-  uint32_t total_clients = 0;
+  int32_t total_clients = 0;
   for (const auto& child : children) {
     total_clients += child.num_clients();
   }
