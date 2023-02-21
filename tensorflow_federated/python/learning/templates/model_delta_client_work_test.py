@@ -16,7 +16,6 @@ import collections
 from unittest import mock
 
 from absl.testing import parameterized
-import attr
 import numpy as np
 import tensorflow as tf
 
@@ -718,13 +717,13 @@ class FunctionalModelDeltaClientWorkExecutionTest(
       self.assertAllClose(
           model_fn_output.update_weight, functional_model_output.update_weight
       )
-      model_fn_weights = attr.evolve(
-          model_fn_weights,
+      model_fn_weights = model_weights_lib.ModelWeights(
           trainable=tf.nest.map_structure(
               lambda u, v: u + v * model_fn_output.update_weight,
               model_fn_weights.trainable,
               model_fn_output.update,
           ),
+          non_trainable=model_fn_weights.non_trainable,
       )
       functional_model_weights = (
           tf.nest.map_structure(
@@ -735,9 +734,7 @@ class FunctionalModelDeltaClientWorkExecutionTest(
           functional_model_weights[1],
       )
       # pylint: enable=cell-var-from-loop
-    self.assertAllClose(
-        attr.astuple(model_fn_weights), functional_model_weights
-    )
+    self.assertAllClose(tuple(model_fn_weights), functional_model_weights)
 
   def test_metrics_output(self):
     keras_model = model_examples.build_linear_regression_keras_functional_model(

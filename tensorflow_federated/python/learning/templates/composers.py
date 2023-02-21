@@ -15,8 +15,7 @@
 
 import collections
 from collections.abc import Callable
-
-import attr
+from typing import Any, NamedTuple
 
 from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -40,8 +39,7 @@ from tensorflow_federated.python.learning.templates import model_delta_client_wo
 
 
 # TODO(b/190334722): Add SLO guarantees / backwards compatibility guarantees.
-@attr.s(eq=True, order=False, frozen=True, slots=True)
-class LearningAlgorithmState:
+class LearningAlgorithmState(NamedTuple):
   """A structure representing the state of a learning process.
 
   Attributes:
@@ -52,12 +50,11 @@ class LearningAlgorithmState:
     aggregator: State of the aggregator component.
     finalizer: State of the finalizer component.
   """
-
-  global_model_weights = attr.ib()
-  distributor = attr.ib()
-  client_work = attr.ib()
-  aggregator = attr.ib()
-  finalizer = attr.ib()
+  global_model_weights: Any
+  distributor: Any
+  client_work: Any
+  aggregator: Any
+  finalizer: Any
 
 
 # pyformat: disable
@@ -186,7 +183,12 @@ def compose_learning_process(
   @tensorflow_computation.tf_computation(
       state_parameter_type, state_parameter_type.global_model_weights)
   def set_model_weights_fn(state, model_weights):
-    return attr.evolve(state, global_model_weights=model_weights)
+    return LearningAlgorithmState(
+        global_model_weights=model_weights,
+        distributor=state.distributor,
+        client_work=state.client_work,
+        aggregator=state.aggregator,
+        finalizer=state.finalizer)
 
   @tensorflow_computation.tf_computation(state_parameter_type)
   def get_hparams_fn(state):

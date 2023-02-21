@@ -35,7 +35,9 @@ CLIENTS_FLOAT_SEQUENCE = computation_types.FederatedType(
 CLIENTS_FLOAT = computation_types.FederatedType(tf.float32, placements.CLIENTS)
 CLIENTS_INT = computation_types.FederatedType(tf.int32, placements.CLIENTS)
 MODEL_WEIGHTS_TYPE = computation_types.at_clients(
-    computation_types.to_type(model_weights.ModelWeights(tf.float32, ()))
+    computation_types.to_type(
+        model_weights.ModelWeights(tf.float32, tf.float32)
+    )
 )
 HPARAMS_TYPE = computation_types.to_type(collections.OrderedDict(a=tf.int32))
 MeasuredProcessOutput = measured_process.MeasuredProcessOutput

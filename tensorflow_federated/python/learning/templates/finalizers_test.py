@@ -31,7 +31,9 @@ SERVER_FLOAT = computation_types.FederatedType(tf.float32, placements.SERVER)
 CLIENTS_INT = computation_types.FederatedType(tf.int32, placements.CLIENTS)
 CLIENTS_FLOAT = computation_types.FederatedType(tf.float32, placements.CLIENTS)
 MODEL_WEIGHTS_TYPE = computation_types.at_server(
-    computation_types.to_type(model_weights.ModelWeights(tf.float32, ()))
+    computation_types.to_type(
+        model_weights.ModelWeights(tf.float32, tf.float32)
+    )
 )
 MeasuredProcessOutput = measured_process.MeasuredProcessOutput
 
@@ -54,7 +56,9 @@ def test_initialize_fn():
 
 def test_finalizer_result(weights, update):
   return intrinsics.federated_zip(
-      model_weights.ModelWeights(federated_add(weights.trainable, update), ())
+      model_weights.ModelWeights(
+          federated_add(weights.trainable, update), weights.non_trainable
+      )
   )
 
 
@@ -81,9 +85,16 @@ class FinalizerTest(tf.test.TestCase):
     initialize_fn = federated_computation.federated_computation()(
         lambda: intrinsics.federated_value((), placements.SERVER)
     )
+    model_weights_type = computation_types.StructWithPythonType(
+        [('trainable', tf.float32), ('non_trainable', ())],
+        model_weights.ModelWeights,
+    )
+    server_model_weights_type = computation_types.at_server(model_weights_type)
 
     @federated_computation.federated_computation(
-        initialize_fn.type_signature.result, MODEL_WEIGHTS_TYPE, SERVER_FLOAT
+        initialize_fn.type_signature.result,
+        server_model_weights_type,
+        SERVER_FLOAT,
     )
     def next_fn(state, weights, update):
       return MeasuredProcessOutput(
@@ -181,10 +192,14 @@ class FinalizerTest(tf.test.TestCase):
 
   def test_non_federated_init_next_raises(self):
     initialize_fn = tensorflow_computation.tf_computation(lambda: 0)
+    model_weights_type = computation_types.StructWithPythonType(
+        [('trainable', tf.float32), ('non_trainable', ())],
+        model_weights.ModelWeights,
+    )
 
     @tensorflow_computation.tf_computation(
         tf.int32,
-        computation_types.to_type(model_weights.ModelWeights(tf.float32, ())),
+        model_weights_type,
         tf.float32,
     )
     def next_fn(state, weights, update):

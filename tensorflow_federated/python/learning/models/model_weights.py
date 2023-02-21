@@ -14,9 +14,8 @@
 """Utility methods for working with TensorFlow Federated Model objects."""
 
 from collections.abc import Callable
-from typing import Union
+from typing import Any, NamedTuple, Union
 
-import attr
 import numpy as np
 import tensorflow as tf
 
@@ -27,8 +26,7 @@ from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.learning.models import variable
 
 
-@attr.s(eq=False, frozen=True, slots=True)
-class ModelWeights:
+class ModelWeights(NamedTuple):
   """A container for the trainable and non-trainable variables of a `Model`.
 
   Note this does not include the model's local variables.
@@ -36,9 +34,8 @@ class ModelWeights:
   It may also be used to hold other values that are parallel to these variables,
   e.g., tensors corresponding to variable values, or updates to model variables.
   """
-
-  trainable = attr.ib()
-  non_trainable = attr.ib()
+  trainable: Any
+  non_trainable: Any
 
   @classmethod
   def from_model(cls, model):

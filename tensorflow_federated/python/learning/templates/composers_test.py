@@ -15,7 +15,6 @@
 import collections
 
 from absl.testing import parameterized
-import attr
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import mean
@@ -447,9 +446,11 @@ class VanillaFedAvgTest(tf.test.TestCase, parameterized.TestCase):
     expected_finalizer_state = finalizer_process.set_hparams(
         state.finalizer, finalizer_hparams
     )
-    expected_state = attr.evolve(
-        state,
+    expected_state = composers.LearningAlgorithmState(
+        global_model_weights=state.global_model_weights,
+        distributor=state.distributor,
         client_work=expected_client_work_state,
+        aggregator=state.aggregator,
         finalizer=expected_finalizer_state,
     )
     self.assertIsInstance(updated_state, composers.LearningAlgorithmState)

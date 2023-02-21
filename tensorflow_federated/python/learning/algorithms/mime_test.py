@@ -16,7 +16,6 @@ import collections
 from unittest import mock
 
 from absl.testing import parameterized
-import attr
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory_utils
@@ -721,8 +720,8 @@ class FunctionalMimeLiteTest(tf.test.TestCase, parameterized.TestCase):
           msg=f'Round {round_num}',
       )
       self.assertAllClose(
-          attr.asdict(variable_state),
-          attr.asdict(functional_state),
+          variable_state,
+          functional_state,
           msg=f'Round {round_num}',
       )
 

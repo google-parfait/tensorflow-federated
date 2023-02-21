@@ -13,9 +13,7 @@
 # limitations under the License.
 """Defines a template for stateful processes used for learning-oriented tasks."""
 
-from typing import Optional
-
-import attr
+from typing import Any, NamedTuple, Optional
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl.computation import computation_base
@@ -34,8 +32,6 @@ class Error(Exception):
 class LearningProcessPlacementError(Error):
   """Raises when a learning process does not have expected placements."""
 
-  pass
-
 
 class LearningProcessSequenceTypeError(Error):
   """Raises when a learning process does not have the expected sequence type."""
@@ -53,8 +49,7 @@ class SetModelWeightsTypeSignatureError(Error):
   """Raises when the type signature of `set_model_weights` is not correct."""
 
 
-@attr.s(frozen=True, eq=True, order=False, slots=True)
-class LearningProcessOutput:
+class LearningProcessOutput(NamedTuple):
   """A structure containing the output of a `LearningProcess.next` computation.
 
   Attributes:
@@ -71,9 +66,8 @@ class LearningProcessOutput:
       (eg. timing information and the amount of communication occurring between
       clients and server).
   """
-
-  state = attr.ib()
-  metrics = attr.ib()
+  state: Any
+  metrics: Any
 
 
 class LearningProcess(iterative_process.IterativeProcess):
