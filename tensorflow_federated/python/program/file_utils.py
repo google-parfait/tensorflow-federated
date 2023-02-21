@@ -18,7 +18,7 @@ from collections.abc import Callable
 import functools
 import os
 import random
-from typing import Any, Union
+from typing import Any, Union, TypeVar
 
 import tensorflow as tf
 import tree
@@ -26,11 +26,14 @@ import tree
 from tensorflow_federated.python.common_libs import py_typecheck
 
 
+_T = TypeVar('_T')
+
+
 class FileAlreadyExistsError(Exception):
   pass
 
 
-def _create_async_def(fn: Callable[..., Any]) -> Callable[..., Any]:
+def _create_async_def(fn: Callable[..., _T]) -> Callable[..., _T]:
   """A decorator for creating async defs from synchronous functions."""
 
   @functools.wraps(fn)

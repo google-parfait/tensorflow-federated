@@ -1159,8 +1159,8 @@ class SavedModelFileReleaseManagerReleaseTest(
       program_test_utils.assert_types_equal(actual_value, expected_value)
 
       def _normalize(
-          value: release_manager.ReleasableStructure,
-      ) -> release_manager.ReleasableStructure:
+          value: release_manager.ReleasableValue,
+      ) -> release_manager.ReleasableValue:
         if isinstance(value, tf.data.Dataset):
           return list(value)
         return value

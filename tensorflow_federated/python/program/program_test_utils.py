@@ -17,7 +17,6 @@ import collections
 from collections.abc import Iterable, Iterator
 import contextlib
 import sys
-from typing import Any
 import warnings
 
 import attr
@@ -68,7 +67,7 @@ class TestMaterializableValueReference(
   async def get_value(self) -> value_reference.MaterializedValue:
     return self._value
 
-  def __eq__(self, other: Any) -> bool:
+  def __eq__(self, other: object) -> bool:
     if self is other:
       return True
     elif not isinstance(other, TestMaterializableValueReference):

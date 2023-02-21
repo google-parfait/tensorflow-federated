@@ -197,8 +197,8 @@ class FileProgramStateManager(
       ) from e
 
     def _normalize(
-        value: program_state_manager.ProgramStateStructure,
-    ) -> program_state_manager.ProgramStateStructure:
+        value: program_state_manager.ProgramStateValue,
+    ) -> program_state_manager.ProgramStateValue:
       """Returns a normalize the value.
 
       Because this implementation saves program state to the file system using

@@ -708,8 +708,8 @@ class FileProgramStateManagerSaveTest(
       program_test_utils.assert_types_equal(actual_value, expected_value)
 
       def _normalize(
-          value: program_state_manager.ProgramStateStructure,
-      ) -> program_state_manager.ProgramStateStructure:
+          value: program_state_manager.ProgramStateValue,
+      ) -> program_state_manager.ProgramStateValue:
         if isinstance(value, tf.data.Dataset):
           return list(value)
         return value
