@@ -95,7 +95,8 @@ class FunctionalModel:
           [ModelWeights, Any, bool], variable.BatchOutput
       ],
       predict_on_batch_fn: Callable[[ModelWeights, Any, bool], Any],
-      loss_fn: Callable[[Any, Any, Any], Any],
+      # TODO(b/270179203): Make this non-optional
+      loss_fn: Optional[Callable[[Any, Any, Any], Any]] = None,
       metrics_fns: tuple[
           InitializeMetricsStateFn, UpdateMetricsStateFn, FinalizeMetricsFn
       ] = (empty_metrics_state, noop_update_metrics, noop_finalize_metrics),
@@ -221,6 +222,9 @@ class FunctionalModel:
       self, output: Any, label: Any, sample_weight: Optional[Any] = None
   ) -> float:
     """Returns the loss value based on the model output and the label."""
+    # TODO(b/270179203): Remove this error.
+    if self._loss_fn is None:
+      raise NotImplementedError('loss_fn has not been added to this model.')
     return self._loss_fn(output, label, sample_weight)
 
   @tf.function
