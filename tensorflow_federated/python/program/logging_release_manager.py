@@ -13,7 +13,7 @@
 # limitations under the License.
 """Utilities for releasing values from a federated program to logs."""
 
-from typing import Any, Optional
+from typing import Optional
 
 from absl import logging
 
@@ -25,7 +25,7 @@ from tensorflow_federated.python.program import value_reference
 
 class LoggingReleaseManager(
     release_manager.ReleaseManager[
-        release_manager.ReleasableStructure, Optional[Any]
+        release_manager.ReleasableStructure, Optional[object]
     ]
 ):
   """A `tff.program.ReleaseManager` that releases values to logs.
@@ -43,7 +43,7 @@ class LoggingReleaseManager(
       self,
       value: release_manager.ReleasableStructure,
       type_signature: computation_types.Type,
-      key: Optional[Any],
+      key: Optional[object],
   ) -> None:
     """Releases `value` from a federated program.
 
