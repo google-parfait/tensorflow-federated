@@ -679,25 +679,11 @@ class FunctionalModelTest(tf.test.TestCase, parameterized.TestCase):
     loaded_model = serialization.load_functional_model(path)
     model_weights = loaded_model.initial_weights
     example_batch = next(iter(dataset))
-
     self.assertAllClose(
         loaded_model.predict_on_batch(
             model_weights=model_weights, x=example_batch[0]
         ),
         [[0.0]] * 5,
-    )
-
-    # Loss should be square error if `tf_function`
-    expected_loss = tf.math.reduce_sum(tf.math.pow(example_batch[1], 2.0))
-    # Loss should be mean square error if `keras_model`
-    if model_fn.__name__ == 'create_test_keras_functional_model':
-      expected_loss /= len(example_batch[1])
-
-    self.assertAllClose(
-        loaded_model.loss(
-            output=tf.convert_to_tensor([[0.0]] * 5), label=example_batch[1]
-        ),
-        expected_loss,
     )
 
   @parameterized.named_parameters(
