@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License
 ==============================================================================*/
 
-#ifndef THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_REMOTE_EXECUTOR_H_
-#define THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_REMOTE_EXECUTOR_H_
+#ifndef THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_STREAMING_REMOTE_EXECUTOR_H_
+#define THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_STREAMING_REMOTE_EXECUTOR_H_
 
 #include <memory>
 
@@ -26,12 +26,16 @@ limitations under the License
 namespace tensorflow_federated {
 
 // Returns an executor which communicates with a remote executor service.
-std::shared_ptr<Executor> CreateRemoteExecutor(
+//
+// This executor differs from `RemoteExecutor` by "streaming" structures of
+// tensors one-by-one, avoiding the 2 GB size limit of serialization protocol
+// buffers for very large Struct values with many intermediate sized tensors.
+std::shared_ptr<Executor> CreateStreamingRemoteExecutor(
     std::shared_ptr<grpc::ChannelInterface> channel,
     const CardinalityMap& cardinalities);
-std::shared_ptr<Executor> CreateRemoteExecutor(
+std::shared_ptr<Executor> CreateStreamingRemoteExecutor(
     std::unique_ptr<v0::ExecutorGroup::StubInterface> stub,
     const CardinalityMap& cardinalities);
 }  // namespace tensorflow_federated
 
-#endif  // THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_REMOTE_EXECUTOR_H_
+#endif  // THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_STREAMING_REMOTE_EXECUTOR_H_

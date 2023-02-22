@@ -53,6 +53,7 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/remote_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/sequence_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
+#include "tensorflow_federated/cc/core/impl/executors/streaming_remote_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/tensor_serialization.h"
 #include "tensorflow_federated/cc/core/impl/executors/tensorflow_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/xla_executor.h"
@@ -168,10 +169,15 @@ PYBIND11_MODULE(executor_bindings, m) {
         py::arg("server"), py::arg("children"), "Creates a ComposingExecutor.");
   m.def("create_remote_executor",
         py::overload_cast<std::shared_ptr<grpc::ChannelInterface>,
-                          const CardinalityMap&, const bool>(
-            &CreateRemoteExecutor),
+                          const CardinalityMap&>(&CreateRemoteExecutor),
         py::arg("channel"), py::arg("cardinalities"),
-        py::arg("stream_structs") = false, "Creates a RemoteExecutor.");
+        "Creates a RemoteExecutor.");
+  m.def(
+      "create_streaming_remote_executor",
+      py::overload_cast<std::shared_ptr<grpc::ChannelInterface>,
+                        const CardinalityMap&>(&CreateStreamingRemoteExecutor),
+      py::arg("channel"), py::arg("cardinalities"),
+      "Creates a StreamingRemoteExecutor.");
   m.def("create_xla_executor", &CreateXLAExecutor,
         py::arg("platform_name") = "Host", "Creates an XlaExecutor.");
   m.def("create_sequence_executor", &CreateSequenceExecutor,

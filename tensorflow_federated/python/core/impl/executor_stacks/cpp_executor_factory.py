@@ -177,9 +177,14 @@ def remote_cpp_executor_factory(
     if cardinalities.get(placements.CLIENTS) is None:
       cardinalities[placements.CLIENTS] = default_num_clients
     try:
-      return executor_stack_bindings.create_remote_executor_stack(
-          channels, cardinalities, stream_structs=stream_structs
-      )
+      if stream_structs:
+        return executor_stack_bindings.create_streaming_remote_executor_stack(
+            channels, cardinalities
+        )
+      else:
+        return executor_stack_bindings.create_remote_executor_stack(
+            channels, cardinalities
+        )
     except Exception as e:  # pylint: disable=broad-except
       _handle_error(e)
 

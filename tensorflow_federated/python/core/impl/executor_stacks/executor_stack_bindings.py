@@ -27,12 +27,24 @@ from tensorflow_federated.python.core.impl.types import placements
 def create_remote_executor_stack(
     channels: Sequence[executor_bindings.GRPCChannel],
     cardinalities: Mapping[placements.PlacementLiteral, int],
-    stream_structs: bool = False,
 ) -> executor_bindings.Executor:
   """Constructs a RemoteExecutor proxying services on `targets`."""
   uri_cardinalities = (
       data_conversions.convert_cardinalities_dict_to_string_keyed(cardinalities)
   )
   return executor_stack_bindings.create_remote_executor_stack(
-      channels, uri_cardinalities, stream_structs
+      channels, uri_cardinalities
+  )
+
+
+def create_streaming_remote_executor_stack(
+    channels: Sequence[executor_bindings.GRPCChannel],
+    cardinalities: Mapping[placements.PlacementLiteral, int],
+) -> executor_bindings.Executor:
+  """Constructs a RemoteExecutor proxying services on `targets`."""
+  uri_cardinalities = (
+      data_conversions.convert_cardinalities_dict_to_string_keyed(cardinalities)
+  )
+  return executor_stack_bindings.create_streaming_remote_executor_stack(
+      channels, uri_cardinalities
   )

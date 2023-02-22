@@ -30,6 +30,7 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/reference_resolving_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/remote_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
+#include "tensorflow_federated/cc/core/impl/executors/streaming_remote_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/tensorflow_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/threading.h"
 
@@ -83,17 +84,34 @@ std::vector<std::shared_ptr<grpc::ChannelInterface>> FilterToLiveChannels_(
 
 absl::StatusOr<std::shared_ptr<Executor>> CreateRemoteExecutorStack(
     const std::vector<std::shared_ptr<grpc::ChannelInterface>>& channels,
-    const CardinalityMap& cardinalities, const bool stream_structs) {
+    const CardinalityMap& cardinalities) {
   auto rre_tf_leaf_executor = []() {
     return CreateReferenceResolvingExecutor(CreateTensorFlowExecutor());
   };
   ComposingChildFn composing_child_factory =
-      [&stream_structs](std::shared_ptr<grpc::ChannelInterface> channel,
-                        const CardinalityMap& cardinalities)
+      [](std::shared_ptr<grpc::ChannelInterface> channel,
+         const CardinalityMap& cardinalities)
       -> absl::StatusOr<ComposingChild> {
     return TFF_TRY(ComposingChild::Make(
-        CreateRemoteExecutor(channel, cardinalities, stream_structs),
-        cardinalities));
+        CreateRemoteExecutor(channel, cardinalities), cardinalities));
+  };
+
+  return CreateRemoteExecutorStack(
+      channels, cardinalities, rre_tf_leaf_executor, composing_child_factory);
+}
+
+absl::StatusOr<std::shared_ptr<Executor>> CreateStreamingRemoteExecutorStack(
+    const std::vector<std::shared_ptr<grpc::ChannelInterface>>& channels,
+    const CardinalityMap& cardinalities) {
+  auto rre_tf_leaf_executor = []() {
+    return CreateReferenceResolvingExecutor(CreateTensorFlowExecutor());
+  };
+  ComposingChildFn composing_child_factory =
+      [](std::shared_ptr<grpc::ChannelInterface> channel,
+         const CardinalityMap& cardinalities)
+      -> absl::StatusOr<ComposingChild> {
+    return TFF_TRY(ComposingChild::Make(
+        CreateStreamingRemoteExecutor(channel, cardinalities), cardinalities));
   };
 
   return CreateRemoteExecutorStack(

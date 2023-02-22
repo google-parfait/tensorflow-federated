@@ -70,6 +70,19 @@ def create_remote_executor(
   return executor_bindings.create_remote_executor(channel, uri_cardinalities)
 
 
+def create_streaming_remote_executor(
+    channel: GRPCChannel,
+    cardinalities: Mapping[placements.PlacementLiteral, int],
+) -> executor_bindings.Executor:
+  """Constructs a StreamingRemoteExecutor proxying service on `channel`."""
+  uri_cardinalities = (
+      data_conversions.convert_cardinalities_dict_to_string_keyed(cardinalities)
+  )
+  return executor_bindings.create_streaming_remote_executor(
+      channel, uri_cardinalities
+  )
+
+
 def create_composing_child(
     executor: executor_bindings.Executor,
     cardinalities: Mapping[placements.PlacementLiteral, int],

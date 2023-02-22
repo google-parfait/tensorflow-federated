@@ -52,7 +52,13 @@ using ComposingChildFn = std::function<absl::StatusOr<ComposingChild>(
 // it is healthy.
 absl::StatusOr<std::shared_ptr<Executor>> CreateRemoteExecutorStack(
     const std::vector<std::shared_ptr<grpc::ChannelInterface>>& channels,
-    const CardinalityMap& cardinalities, const bool stream_structs = false);
+    const CardinalityMap& cardinalities);
+
+// Creates an executor stack with StreamingRemoteExecuotrs, otherwise the same
+// as `CreateRemoteExecutorStack` above.
+absl::StatusOr<std::shared_ptr<Executor>> CreateStreamingRemoteExecutorStack(
+    const std::vector<std::shared_ptr<grpc::ChannelInterface>>& channels,
+    const CardinalityMap& cardinalities);
 
 // Creates an executor stack which proxies for a group of remote workers.
 //

@@ -70,6 +70,7 @@ cc_library(
         "//tensorflow_federated/cc/core/impl/executors:reference_resolving_executor",
         "//tensorflow_federated/cc/core/impl/executors:remote_executor",
         "//tensorflow_federated/cc/core/impl/executors:status_macros",
+        "//tensorflow_federated/cc/core/impl/executors:streaming_remote_executor",
         "//tensorflow_federated/cc/core/impl/executors:tensorflow_executor",
         "//tensorflow_federated/cc/core/impl/executors:threading",
         "@com_github_grpc_grpc//:grpc++",

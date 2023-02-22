@@ -583,6 +583,8 @@ TEST_F(RemoteExecutorTest, CreateSelection) {
 TEST_F(RemoteExecutorTest, CreateSelectionWithError) {
   absl::Notification dispose_notification;
   ExpectGetAndDisposeExecutor(dispose_notification);
+
+  constexpr char kTestErrorMessage[] = "test error message";
   v0::Value tensor_two = testing::TensorV(2.0f);
   v0::Value materialized_value;
   absl::Status materialize_status;
@@ -598,6 +600,11 @@ TEST_F(RemoteExecutorTest, CreateSelectionWithError) {
     expected_request.mutable_executor()->set_id(kExecutorId);
     expected_request.mutable_source_ref()->set_id("source_ref");
     expected_request.set_index(1);
+    EXPECT_CALL(*mock_executor_service_,
+                CreateSelection(::testing::_, EqualsProto(expected_request),
+                                ::testing::_))
+        .WillOnce(::testing::Return(grpc::Status(
+            grpc::StatusCode::INVALID_ARGUMENT, kTestErrorMessage)));
 
     OwnedValueId source_value =
         TFF_ASSERT_OK(test_executor_->CreateValue(tensor_two));
@@ -609,10 +616,9 @@ TEST_F(RemoteExecutorTest, CreateSelectionWithError) {
     materialize_status =
         test_executor_->Materialize(selection_result, &materialized_value);
   }
-  EXPECT_THAT(
-      materialize_status,
-      StatusIs(absl::StatusCode::kInvalidArgument,
-               ::testing::HasSubstr("Error selecting from non-Struct value")));
+  EXPECT_THAT(materialize_status,
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       ::testing::HasSubstr(kTestErrorMessage)));
   WaitForDisposeExecutor(dispose_notification);
 }
 

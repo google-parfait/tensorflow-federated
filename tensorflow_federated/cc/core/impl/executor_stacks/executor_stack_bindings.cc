@@ -34,8 +34,14 @@ PYBIND11_MODULE(executor_stack_bindings, m) {
   m.def("create_remote_executor_stack",
         py::overload_cast<
             const std::vector<std::shared_ptr<grpc::ChannelInterface>>&,
-            const CardinalityMap&, const bool>(&CreateRemoteExecutorStack),
+            const CardinalityMap&>(&CreateRemoteExecutorStack),
         "Creates a C++ remote execution stack.");
+
+  m.def("create_streaming_remote_executor_stack",
+        py::overload_cast<
+            const std::vector<std::shared_ptr<grpc::ChannelInterface>>&,
+            const CardinalityMap&>(&CreateStreamingRemoteExecutorStack),
+        "Creates a C++ streaming remote execution stack.");
 }
 
 }  // namespace
