@@ -20,6 +20,7 @@ limitations under the License
 #include <optional>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 #include "absl/status/status.h"
 #include "tensorflow_federated/cc/core/impl/executors/data_backend.h"

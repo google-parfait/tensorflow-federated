@@ -27,6 +27,7 @@ limitations under the License
 #include <variant>
 #include <vector>
 
+#include "google/protobuf/any.pb.h"
 #include "absl/base/thread_annotations.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/meta/type_traits.h"
@@ -465,7 +466,7 @@ class ExecutorValue {
   //
   // Copies are shallow: we only have to bump the reference count for either
   // the elements list or the `tensorflow::Tensor`.
-  explicit ExecutorValue(const ExecutorValue& other) : value_(other.value_) {}
+  ExecutorValue(const ExecutorValue& other) = default;
 
   // Move constructor.
   ExecutorValue(ExecutorValue&& other) : value_(std::move(other.value_)) {}
@@ -477,13 +478,13 @@ class ExecutorValue {
 
   // Returns whether this value is a structure or a single tensor.
   ValueType type() const {
-    if (absl::holds_alternative<tensorflow::Tensor>(value_)) {
+    if (std::holds_alternative<tensorflow::Tensor>(value_)) {
       return ValueType::TENSOR;
-    } else if (absl::holds_alternative<std::shared_ptr<Computation>>(value_)) {
+    } else if (std::holds_alternative<std::shared_ptr<Computation>>(value_)) {
       return ValueType::COMPUTATION;
-    } else if (absl::holds_alternative<SequenceTensor>(value_)) {
+    } else if (std::holds_alternative<SequenceTensor>(value_)) {
       return ValueType::SEQUENCE;
-    } else if (absl::holds_alternative<Intrinsic>(value_)) {
+    } else if (std::holds_alternative<Intrinsic>(value_)) {
       return ValueType::INTRINSIC;
     } else {
       return ValueType::STRUCT;
@@ -630,15 +631,15 @@ class ExecutorValue {
   }
 
   std::string DebugString() const {
-    if (absl::holds_alternative<tensorflow::Tensor>(value_)) {
+    if (std::holds_alternative<tensorflow::Tensor>(value_)) {
       return absl::StrCat(tensorflow::DataTypeString(tensor().dtype()),
                           tensor().shape().DebugString());
-    } else if (absl::holds_alternative<std::shared_ptr<Computation>>(value_)) {
+    } else if (std::holds_alternative<std::shared_ptr<Computation>>(value_)) {
       return computation()->DebugString();
-    } else if (absl::holds_alternative<SequenceTensor>(value_)) {
+    } else if (std::holds_alternative<SequenceTensor>(value_)) {
       return absl::StrCat(tensorflow::DataTypeString(tensor().dtype()),
                           tensor().shape().DebugString(), "*");
-    } else if (absl::holds_alternative<Intrinsic>(value_)) {
+    } else if (std::holds_alternative<Intrinsic>(value_)) {
       return absl::StrCat("Intrinsic(\"", IntrinsicToUri(intrinsic()), "\")");
     } else {
       auto element_formatter = [](std::string* out, const ExecutorValue& v) {

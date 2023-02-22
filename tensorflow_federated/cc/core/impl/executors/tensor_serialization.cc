@@ -15,6 +15,7 @@ limitations under the License
 
 #include "tensorflow_federated/cc/core/impl/executors/tensor_serialization.h"
 
+#include "google/protobuf/any.pb.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "tensorflow/core/framework/tensor.h"

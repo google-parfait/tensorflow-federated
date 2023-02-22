@@ -15,6 +15,7 @@ limitations under the License
 
 #include "tensorflow_federated/cc/core/impl/executors/sequence_executor.h"
 
+#include <memory>
 #include <optional>
 #include <string>
 
@@ -53,7 +54,7 @@ class SequenceExecutorTest : public ExecutorTestBase {
             std::make_shared<::testing::StrictMock<MockExecutor>>()) {
     test_executor_ = CreateSequenceExecutor(mock_executor_);
   }
-  ~SequenceExecutorTest() override {}
+  ~SequenceExecutorTest() override = default;
 
   std::shared_ptr<::testing::StrictMock<MockExecutor>> mock_executor_;
 };
@@ -88,7 +89,7 @@ TEST_F(SequenceExecutorTest, CreateMaterializeLocalComputation) {
 }
 
 TEST_F(SequenceExecutorTest, MaterializeSequenceIntrinsicFails) {
-  v0::Value value_pb = IntrinsicV(std::string(kSequenceReduceUri));
+  v0::Value value_pb = IntrinsicV(kSequenceReduceUri);
   TFF_ASSERT_OK_AND_ASSIGN(auto id, test_executor_->CreateValue(value_pb));
   EXPECT_THAT(test_executor_->Materialize(id),
               StatusIs(StatusCode::kUnimplemented));
