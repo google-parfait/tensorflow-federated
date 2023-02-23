@@ -57,7 +57,7 @@ class MemoryReleaseManagerTest(
        computation_types.TensorType(tf.int32, [3]),
        np.ones([3], np.int32)),
 
-      # value references
+      # materializable value references
       ('value_reference_tensor',
        program_test_utils.TestMaterializableValueReference(1),
        computation_types.TensorType(tf.int32),
@@ -70,30 +70,34 @@ class MemoryReleaseManagerTest(
 
       # structures
       ('list',
-       [True, program_test_utils.TestMaterializableValueReference(1), 'a'],
+       [True, 1, 'a', program_test_utils.TestMaterializableValueReference(2)],
        computation_types.StructWithPythonType(
-           [tf.bool, tf.int32, tf.string], list),
-       [True, 1, 'a']),
+           [tf.bool, tf.int32, tf.string, tf.int32], list),
+       [True, 1, 'a', 2]),
       ('list_empty', [], computation_types.StructWithPythonType([], list), []),
       ('list_nested',
-       [[True, program_test_utils.TestMaterializableValueReference(1)], ['a']],
+       [[True, 1, 'a', program_test_utils.TestMaterializableValueReference(2)],
+        [3]],
        computation_types.StructWithPythonType([
-           computation_types.StructWithPythonType([tf.bool, tf.int32], list),
-           computation_types.StructWithPythonType([tf.string], list)
+           computation_types.StructWithPythonType(
+               [tf.bool, tf.int32, tf.string, tf.int32], list),
+           computation_types.StructWithPythonType([tf.int32], list),
        ], list),
-       [[True, 1], ['a']]),
+       [[True, 1, 'a', 2], [3]]),
       ('dict',
        {
            'a': True,
-           'b': program_test_utils.TestMaterializableValueReference(1),
+           'b': 1,
            'c': 'a',
+           'd': program_test_utils.TestMaterializableValueReference(2),
        },
        computation_types.StructWithPythonType([
            ('a', tf.bool),
            ('b', tf.int32),
            ('c', tf.string),
+           ('d', tf.int32),
        ], collections.OrderedDict),
-       {'a': True, 'b': 1, 'c': 'a'}),
+       {'a': True, 'b': 1, 'c': 'a', 'd': 2}),
       ('dict_empty',
        {},
        computation_types.StructWithPythonType([], collections.OrderedDict),
@@ -102,72 +106,96 @@ class MemoryReleaseManagerTest(
        {
            'x': {
                'a': True,
-               'b': program_test_utils.TestMaterializableValueReference(1),
+               'b': 1,
+               'c': 'a',
+               'd': program_test_utils.TestMaterializableValueReference(2),
            },
            'y': {
-               'c': 'a',
+               'a': 3,
            },
        },
        computation_types.StructWithPythonType([
            ('x', computation_types.StructWithPythonType([
                ('a', tf.bool),
                ('b', tf.int32),
+               ('c', tf.string),
+               ('d', tf.int32),
            ], collections.OrderedDict)),
            ('y', computation_types.StructWithPythonType([
-               ('c', tf.string),
+               ('a', tf.int32),
            ], collections.OrderedDict)),
        ], collections.OrderedDict),
-       {'x': {'a': True, 'b': 1}, 'y': {'c': 'a'}}),
-      ('attr',
-       program_test_utils.TestAttrObj2(
-           True, program_test_utils.TestMaterializableValueReference(1)),
+       {'x': {'a': True, 'b': 1, 'c': 'a', 'd': 2}, 'y': {'a': 3}}),
+      ('named_tuple',
+       program_test_utils.TestNamedTuple1(
+           a=True,
+           b=1,
+           c='a',
+           d=program_test_utils.TestMaterializableValueReference(2)),
        computation_types.StructWithPythonType([
            ('a', tf.bool),
            ('b', tf.int32),
-       ], program_test_utils.TestAttrObj2),
-       program_test_utils.TestAttrObj2(True, 1)),
-      ('attr_nested',
-       program_test_utils.TestAttrObj2(
-           program_test_utils.TestAttrObj2(
-               True, program_test_utils.TestMaterializableValueReference(1)),
-           program_test_utils.TestAttrObj1('a')),
-       computation_types.StructWithPythonType([
-           ('a', computation_types.StructWithPythonType([
-               ('a', tf.bool),
-               ('b', tf.int32),
-           ], program_test_utils.TestAttrObj2)),
-           ('b', computation_types.StructWithPythonType([
-               ('c', tf.string),
-           ], program_test_utils.TestAttrObj1)),
-       ], program_test_utils.TestAttrObj2),
-       program_test_utils.TestAttrObj2(
-           program_test_utils.TestAttrObj2(True, 1),
-           program_test_utils.TestAttrObj1('a'))),
-      ('namedtuple',
-       program_test_utils.TestNamedtupleObj2(
-           True, program_test_utils.TestMaterializableValueReference(1)),
-       computation_types.StructWithPythonType([
-           ('a', tf.bool),
-           ('b', tf.int32),
-       ], program_test_utils.TestNamedtupleObj2),
-       program_test_utils.TestNamedtupleObj2(True, 1)),
-      ('namedtuple_nested',
-       program_test_utils.TestNamedtupleObj2(
-           program_test_utils.TestNamedtupleObj2(
-               True, program_test_utils.TestMaterializableValueReference(1)),
-           program_test_utils.TestNamedtupleObj1('a')),
+           ('c', tf.string),
+           ('d', tf.int32),
+       ], program_test_utils.TestNamedTuple1),
+       program_test_utils.TestNamedTuple1(a=True, b=1, c='a', d=2)),
+      ('named_tuple_nested',
+       program_test_utils.TestNamedTuple3(
+           x=program_test_utils.TestNamedTuple1(
+               a=True,
+               b=1,
+               c='a',
+               d=program_test_utils.TestMaterializableValueReference(2)),
+           y=program_test_utils.TestNamedTuple2(3)),
        computation_types.StructWithPythonType([
            ('x', computation_types.StructWithPythonType([
                ('a', tf.bool),
                ('b', tf.int32),
-           ], program_test_utils.TestNamedtupleObj2)),
-           ('y', computation_types.StructWithPythonType([
                ('c', tf.string),
-           ], program_test_utils.TestNamedtupleObj1)),
-       ], program_test_utils.TestNamedtupleObj2),
-       program_test_utils.TestNamedtupleObj2(
-           program_test_utils.TestNamedtupleObj2(True, 1),
-           program_test_utils.TestNamedtupleObj1('a'))),
+               ('d', tf.int32),
+           ], program_test_utils.TestNamedTuple1)),
+           ('y', computation_types.StructWithPythonType([
+               ('c', tf.int32),
+           ], program_test_utils.TestNamedTuple2)),
+       ], program_test_utils.TestNamedTuple3),
+       program_test_utils.TestNamedTuple3(
+           x=program_test_utils.TestNamedTuple1(a=True, b=1, c='a', d=2),
+           y=program_test_utils.TestNamedTuple2(3))),
+      ('attrs',
+       program_test_utils.TestAttrs1(
+           a=True,
+           b=1,
+           c='a',
+           d=program_test_utils.TestMaterializableValueReference(2)),
+       computation_types.StructWithPythonType([
+           ('a', tf.bool),
+           ('b', tf.int32),
+           ('c', tf.string),
+           ('d', tf.int32),
+       ], program_test_utils.TestAttrs1),
+       program_test_utils.TestAttrs1(a=True, b=1, c='a', d=2)),
+      ('attr_nested',
+       program_test_utils.TestAttrs3(
+           x=program_test_utils.TestAttrs1(
+               a=True,
+               b=1,
+               c='a',
+               d=program_test_utils.TestMaterializableValueReference(2)),
+           y=program_test_utils.TestAttrs2(3)),
+       computation_types.StructWithPythonType([
+           ('x', computation_types.StructWithPythonType([
+               ('a', tf.bool),
+               ('b', tf.int32),
+               ('c', tf.string),
+               ('d', tf.int32),
+           ], program_test_utils.TestAttrs1)),
+           ('y', computation_types.StructWithPythonType([
+               ('c', tf.int32),
+           ], program_test_utils.TestAttrs2)),
+       ], program_test_utils.TestAttrs3),
+       program_test_utils.TestAttrs3(
+           x=program_test_utils.TestAttrs1(a=True, b=1, c='a', d=2),
+           y=program_test_utils.TestAttrs2(3))),
   )
   # pyformat: enable
   async def test_release_saves_value_and_type_signature(

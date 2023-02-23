@@ -13,33 +13,18 @@
 # limitations under the License.
 """Utilities for testing the program library."""
 
-import collections
 from collections.abc import Iterable, Iterator
 import contextlib
 import sys
+from typing import NamedTuple
 import warnings
 
-import attr
+import attrs
 import tensorflow as tf
 import tree
 
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.program import value_reference
-
-
-@attr.s
-class TestAttrObj1:
-  a = attr.ib()
-
-
-@attr.s
-class TestAttrObj2:
-  a = attr.ib()
-  b = attr.ib()
-
-
-TestNamedtupleObj1 = collections.namedtuple('TestNamedtupleObj1', ['a'])
-TestNamedtupleObj2 = collections.namedtuple('TestNamedtupleObj1', ['a', 'b'])
 
 
 class TestMaterializableValueReference(
@@ -48,10 +33,10 @@ class TestMaterializableValueReference(
   """A test implementation of `tff.program.MaterializableValueReference`."""
 
   def __init__(self, value: value_reference.MaterializedValue):
-    if isinstance(value, int):
-      self._type_signature = computation_types.TensorType(tf.int32)
-    elif isinstance(value, bool):
+    if isinstance(value, bool):
       self._type_signature = computation_types.TensorType(tf.bool)
+    elif isinstance(value, int):
+      self._type_signature = computation_types.TensorType(tf.int32)
     elif isinstance(value, str):
       self._type_signature = computation_types.TensorType(tf.string)
     elif isinstance(value, tf.data.Dataset):
@@ -78,6 +63,41 @@ class TestMaterializableValueReference(
       return list(self._value) == list(other._value)
     else:
       return self._value == other._value
+
+
+class TestNamedTuple1(NamedTuple):
+  a: bool
+  b: int
+  c: str
+  d: value_reference.MaterializableValueReference
+
+
+class TestNamedTuple2(NamedTuple):
+  a: int
+
+
+class TestNamedTuple3(NamedTuple):
+  x: TestNamedTuple1
+  y: TestNamedTuple2
+
+
+@attrs.define
+class TestAttrs1:
+  a: bool
+  b: int
+  c: str
+  d: value_reference.MaterializableValueReference
+
+
+@attrs.define
+class TestAttrs2:
+  a: int
+
+
+@attrs.define
+class TestAttrs3:
+  x: TestAttrs1
+  y: TestAttrs2
 
 
 def assert_types_equal(a, b):

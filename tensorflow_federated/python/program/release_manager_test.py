@@ -83,7 +83,7 @@ class FilteringReleaseManager(
        np.ones([3], np.int32),
        computation_types.TensorType(tf.int32, [3])),
 
-      # value references
+      # materializable value references
       ('value_reference_tensor',
        program_test_utils.TestMaterializableValueReference(1),
        computation_types.TensorType(tf.int32)),
@@ -94,45 +94,53 @@ class FilteringReleaseManager(
 
       # structures
       ('list',
-       [True, program_test_utils.TestMaterializableValueReference(1), 'a'],
+       [True, 1, 'a', program_test_utils.TestMaterializableValueReference(2)],
        computation_types.StructWithPythonType(
-           [tf.bool, tf.int32, tf.string], list)),
+           [tf.bool, tf.int32, tf.string, tf.int32], list)),
       ('list_empty', [], computation_types.StructWithPythonType([], list)),
       ('list_nested',
-       [[True, program_test_utils.TestMaterializableValueReference(1)], ['a']],
+       [[True, 1, 'a', program_test_utils.TestMaterializableValueReference(2)],
+        [3]],
        computation_types.StructWithPythonType([
-           computation_types.StructWithPythonType([tf.bool, tf.int32], list),
-           computation_types.StructWithPythonType([tf.string], list)
+           computation_types.StructWithPythonType(
+               [tf.bool, tf.int32, tf.string, tf.int32], list),
+           computation_types.StructWithPythonType([tf.int32], list),
        ], list)),
       ('dict',
        {
            'a': True,
-           'b': program_test_utils.TestMaterializableValueReference(1),
+           'b': 1,
            'c': 'a',
+           'd': program_test_utils.TestMaterializableValueReference(2),
        },
        computation_types.StructWithPythonType([
            ('a', tf.bool),
            ('b', tf.int32),
            ('c', tf.string),
+           ('d', tf.int32),
        ], collections.OrderedDict)),
       ('dict_empty', {}, computation_types.StructWithPythonType([], list)),
       ('dict_nested',
        {
            'x': {
                'a': True,
-               'b': program_test_utils.TestMaterializableValueReference(1),
+               'b': 1,
+               'c': 'a',
+               'd': program_test_utils.TestMaterializableValueReference(2),
            },
            'y': {
-               'c': 'a',
+               'a': 3,
            },
        },
        computation_types.StructWithPythonType([
            ('x', computation_types.StructWithPythonType([
                ('a', tf.bool),
                ('b', tf.int32),
+               ('c', tf.string),
+               ('d', tf.int32),
            ], collections.OrderedDict)),
            ('y', computation_types.StructWithPythonType([
-               ('c', tf.string),
+               ('a', tf.int32),
            ], collections.OrderedDict)),
        ], collections.OrderedDict)),
   )
@@ -152,18 +160,18 @@ class FilteringReleaseManager(
 
   async def test_release_filters_value_and_type_signature(self):
     def _filter_fn(path: tuple[Union[str, int], ...]) -> bool:
-      return path == (0,) or path == (3, 0) or path == (4, 'a')
+      return path == (0, 1) or path == (2, 'b')
 
     mock_release_mngr = mock.AsyncMock(spec=release_manager.ReleaseManager)
     release_mngr = release_manager.FilteringReleaseManager(
         mock_release_mngr, _filter_fn
     )
-    value = [True, 1, 'a', [True, 1, 'a'], {'a': True, 'b': 1, 'c': 'a'}]
+    value = [[True, 1, 'a'], [True, 1, 'a'], {'a': True, 'b': 1, 'c': 'a'}]
     type_signature = computation_types.StructWithPythonType(
         [
-            tf.bool,
-            tf.int32,
-            tf.string,
+            computation_types.StructWithPythonType(
+                [tf.bool, tf.int32, tf.string], list
+            ),
             computation_types.StructWithPythonType(
                 [tf.bool, tf.int32, tf.string], list
             ),
@@ -181,14 +189,14 @@ class FilteringReleaseManager(
 
     await release_mngr.release(value, type_signature, key=1)
 
-    expected_value = [True, [True], {'a': True}]
+    expected_value = [[1], [], {'b': 1}]
     expected_type_signature = computation_types.StructWithPythonType(
         [
-            tf.bool,
-            computation_types.StructWithPythonType([tf.bool], list),
+            computation_types.StructWithPythonType([tf.int32], list),
+            computation_types.StructWithPythonType([], list),
             computation_types.StructWithPythonType(
                 [
-                    ('a', tf.bool),
+                    ('b', tf.int32),
                 ],
                 collections.OrderedDict,
             ),
@@ -207,14 +215,16 @@ class FilteringReleaseManager(
     )
     value = {
         'a': True,
-        'b': program_test_utils.TestMaterializableValueReference(1),
+        'b': 1,
         'c': 'a',
+        'd': program_test_utils.TestMaterializableValueReference(2),
     }
     type_signature = computation_types.StructWithPythonType(
         [
             ('a', tf.bool),
             ('b', tf.int32),
             ('c', tf.string),
+            ('d', tf.int32),
         ],
         list,
     )
@@ -226,6 +236,7 @@ class FilteringReleaseManager(
             ('a', tf.bool),
             ('b', tf.int32),
             ('c', tf.string),
+            ('d', tf.int32),
         ],
         collections.OrderedDict,
     )
@@ -235,17 +246,30 @@ class FilteringReleaseManager(
 
   # pyformat: disable
   @parameterized.named_parameters(
-      ('attr',
-       program_test_utils.TestAttrObj2(
-           True, program_test_utils.TestMaterializableValueReference(1)),
-       computation_types.SequenceType([('a', tf.bool), ('b', tf.int32)])),
-      ('namedtuple',
-       program_test_utils.TestNamedtupleObj2(
-           True, program_test_utils.TestMaterializableValueReference(1)),
-       computation_types.StructType([
+      ('named_tuple',
+       program_test_utils.TestNamedTuple1(
+           a=True,
+           b=1,
+           c='a',
+           d=program_test_utils.TestMaterializableValueReference(2)),
+       computation_types.StructWithPythonType([
            ('a', tf.bool),
            ('b', tf.int32),
-       ])),
+           ('c', tf.string),
+           ('d', tf.int32),
+       ], program_test_utils.TestNamedTuple1)),
+      ('attrs',
+       program_test_utils.TestAttrs1(
+           a=True,
+           b=1,
+           c='a',
+           d=program_test_utils.TestMaterializableValueReference(2)),
+       computation_types.StructWithPythonType([
+           ('a', tf.bool),
+           ('b', tf.int32),
+           ('c', tf.string),
+           ('d', tf.int32),
+       ], program_test_utils.TestAttrs1)),
   )
   # pyformat: enable
   async def test_release_raises_not_implemented_error_with_value_and_type_signature(

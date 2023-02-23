@@ -78,14 +78,8 @@ class TensorBoardReleaseManagerReleaseTest(
   # pyformat: disable
   @parameterized.named_parameters(
       # materialized values
-      ('bool',
-       True,
-       computation_types.TensorType(tf.bool),
-       [('', True)]),
-      ('int',
-       1,
-       computation_types.TensorType(tf.int32),
-       [('', 1)]),
+      ('bool', True, computation_types.TensorType(tf.bool), [('', True)]),
+      ('int', 1, computation_types.TensorType(tf.int32), [('', 1)]),
       ('tensor_int',
        tf.constant(1),
        computation_types.TensorType(tf.int32),
@@ -95,7 +89,7 @@ class TensorBoardReleaseManagerReleaseTest(
        computation_types.TensorType(tf.int32),
        [('', np.int32(1))]),
 
-      # value references
+      # materializable value references
       ('materializable_value_reference_tensor',
        program_test_utils.TestMaterializableValueReference(1),
        computation_types.TensorType(tf.int32),
@@ -103,95 +97,123 @@ class TensorBoardReleaseManagerReleaseTest(
 
       # structures
       ('list',
-       [True, program_test_utils.TestMaterializableValueReference(1), 'a'],
+       [True, 1, 'a', program_test_utils.TestMaterializableValueReference(2)],
        computation_types.StructWithPythonType(
-           [tf.bool, tf.int32, tf.string], list),
-       [('0', True), ('1', 1)]),
+           [tf.bool, tf.int32, tf.string, tf.int32], list),
+       [('0', True), ('1', 1), ('3', 2)]),
       ('list_nested',
-       [[True, program_test_utils.TestMaterializableValueReference(1)], ['a']],
+       [[True, 1, 'a', program_test_utils.TestMaterializableValueReference(2)],
+        [3]],
        computation_types.StructWithPythonType([
-           computation_types.StructWithPythonType([tf.bool, tf.int32], list),
-           computation_types.StructWithPythonType([tf.string], list)
+           computation_types.StructWithPythonType(
+               [tf.bool, tf.int32, tf.string, tf.int32], list),
+           computation_types.StructWithPythonType([tf.int32], list),
        ], list),
-       [('0/0', True), ('0/1', 1)]),
+       [('0/0', True), ('0/1', 1), ('0/3', 2), ('1/0', 3)]),
       ('dict',
        {
            'a': True,
-           'b': program_test_utils.TestMaterializableValueReference(1),
+           'b': 1,
            'c': 'a',
+           'd': program_test_utils.TestMaterializableValueReference(2),
        },
        computation_types.StructWithPythonType([
            ('a', tf.bool),
            ('b', tf.int32),
            ('c', tf.string),
+           ('d', tf.int32),
        ], collections.OrderedDict),
-       [('a', True), ('b', 1)]),
+       [('a', True), ('b', 1), ('d', 2)]),
       ('dict_nested',
        {
            'x': {
                'a': True,
-               'b': program_test_utils.TestMaterializableValueReference(1),
+               'b': 1,
+               'c': 'a',
+               'd': program_test_utils.TestMaterializableValueReference(2),
            },
            'y': {
-               'c': 'a',
+               'a': 3,
            },
        },
        computation_types.StructWithPythonType([
            ('x', computation_types.StructWithPythonType([
                ('a', tf.bool),
                ('b', tf.int32),
+               ('c', tf.string),
+               ('d', tf.int32),
            ], collections.OrderedDict)),
            ('y', computation_types.StructWithPythonType([
-               ('c', tf.string),
+               ('a', tf.int32),
            ], collections.OrderedDict)),
        ], collections.OrderedDict),
-       [('x/a', True), ('x/b', 1)]),
-      ('attr',
-       program_test_utils.TestAttrObj2(
-           True, program_test_utils.TestMaterializableValueReference(1)),
+       [('x/a', True), ('x/b', 1), ('x/d', 2), ('y/a', 3)]),
+      ('named_tuple',
+       program_test_utils.TestNamedTuple1(
+           a=True,
+           b=1,
+           c='a',
+           d=program_test_utils.TestMaterializableValueReference(2)),
        computation_types.StructWithPythonType([
            ('a', tf.bool),
            ('b', tf.int32),
-       ], program_test_utils.TestAttrObj2),
-       [('a', True), ('b', 1)]),
-      ('attr_nested',
-       program_test_utils.TestAttrObj2(
-           program_test_utils.TestAttrObj2(
-               True, program_test_utils.TestMaterializableValueReference(1)),
-           program_test_utils.TestAttrObj1('a')),
-       computation_types.StructWithPythonType([
-           ('a', computation_types.StructWithPythonType([
-               ('a', tf.bool),
-               ('b', tf.int32),
-           ], program_test_utils.TestAttrObj2)),
-           ('b', computation_types.StructWithPythonType([
-               ('c', tf.string),
-           ], program_test_utils.TestAttrObj1)),
-       ], program_test_utils.TestAttrObj2),
-       [('a/a', True), ('a/b', 1)]),
-      ('namedtuple',
-       program_test_utils.TestNamedtupleObj2(
-           True, program_test_utils.TestMaterializableValueReference(1)),
-       computation_types.StructWithPythonType([
-           ('a', tf.bool),
-           ('b', tf.int32),
-       ], program_test_utils.TestNamedtupleObj2),
-       [('a', True), ('b', 1)]),
-      ('namedtuple_nested',
-       program_test_utils.TestNamedtupleObj2(
-           program_test_utils.TestNamedtupleObj2(
-               True, program_test_utils.TestMaterializableValueReference(1)),
-           program_test_utils.TestNamedtupleObj1('a')),
+           ('c', tf.string),
+           ('d', tf.int32),
+       ], program_test_utils.TestNamedTuple1),
+       [('a', True), ('b', 1), ('d', 2)]),
+      ('named_tuple_nested',
+       program_test_utils.TestNamedTuple3(
+           x=program_test_utils.TestNamedTuple1(
+               a=True,
+               b=1,
+               c='a',
+               d=program_test_utils.TestMaterializableValueReference(2)),
+           y=program_test_utils.TestNamedTuple2(3)),
        computation_types.StructWithPythonType([
            ('x', computation_types.StructWithPythonType([
                ('a', tf.bool),
                ('b', tf.int32),
-           ], program_test_utils.TestNamedtupleObj2)),
-           ('y', computation_types.StructWithPythonType([
                ('c', tf.string),
-           ], program_test_utils.TestNamedtupleObj1)),
-       ], program_test_utils.TestNamedtupleObj2),
-       [('a/a', True), ('a/b', 1)]),
+               ('d', tf.int32),
+           ], program_test_utils.TestNamedTuple1)),
+           ('y', computation_types.StructWithPythonType([
+               ('c', tf.int32),
+           ], program_test_utils.TestNamedTuple2)),
+       ], program_test_utils.TestNamedTuple3),
+       [('x/a', True), ('x/b', 1), ('x/d', 2), ('y/a', 3)]),
+      ('attrs',
+       program_test_utils.TestAttrs1(
+           a=True,
+           b=1,
+           c='a',
+           d=program_test_utils.TestMaterializableValueReference(2)),
+       computation_types.StructWithPythonType([
+           ('a', tf.bool),
+           ('b', tf.int32),
+           ('c', tf.string),
+           ('d', tf.int32),
+       ], program_test_utils.TestAttrs1),
+       [('a', True), ('b', 1), ('d', 2)]),
+      ('attrs_nested',
+       program_test_utils.TestAttrs3(
+           x=program_test_utils.TestAttrs1(
+               a=True,
+               b=1,
+               c='a',
+               d=program_test_utils.TestMaterializableValueReference(2)),
+           y=program_test_utils.TestAttrs2(3)),
+       computation_types.StructWithPythonType([
+           ('x', computation_types.StructWithPythonType([
+               ('a', tf.bool),
+               ('b', tf.int32),
+               ('c', tf.string),
+               ('d', tf.int32),
+           ], program_test_utils.TestAttrs1)),
+           ('y', computation_types.StructWithPythonType([
+               ('c', tf.int32),
+           ], program_test_utils.TestAttrs2)),
+       ], program_test_utils.TestAttrs3),
+       [('x/a', True), ('x/b', 1), ('x/d', 2), ('y/a', 3)]),
   )
   # pyformat: enable
   async def test_writes_value_scalar(
@@ -226,7 +248,7 @@ class TensorBoardReleaseManagerReleaseTest(
        computation_types.TensorType(tf.int32, [3]),
        [('', np.ones([3], np.int32))]),
 
-      # value references
+      # materializable value references
       ('materializable_value_reference_sequence',
        program_test_utils.TestMaterializableValueReference(
            tf.data.Dataset.from_tensor_slices([1, 2, 3])),

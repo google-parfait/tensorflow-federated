@@ -310,7 +310,7 @@ class FileProgramStateManagerLoadTest(
       ('numpy_int', np.int32(1), np.int32(1)),
       ('numpy_array', np.ones([3], np.int32), np.ones([3], np.int32)),
 
-      # value references
+      # materializable value references
       ('materializable_value_reference_tensor',
        program_test_utils.TestMaterializableValueReference(1),
        np.int32(1)),
@@ -321,55 +321,97 @@ class FileProgramStateManagerLoadTest(
 
       # structures
       ('list',
-       [True, program_test_utils.TestMaterializableValueReference(1), 'a'],
-       [np.bool_(True), np.int32(1), b'a']),
+       [True, 1, 'a', program_test_utils.TestMaterializableValueReference(2)],
+       [np.bool_(True), np.int32(1), b'a', np.int32(2)]),
       ('list_empty', [], []),
       ('list_nested',
-       [[True, program_test_utils.TestMaterializableValueReference(1)], ['a']],
-       [[np.bool_(True), np.int32(1)], [b'a']]),
+       [[True, 1, 'a', program_test_utils.TestMaterializableValueReference(2)],
+        [3]],
+       [[np.bool_(True), np.int32(1), b'a', np.int32(2)], [np.int32(3)]]),
       ('dict',
        {
            'a': True,
-           'b': program_test_utils.TestMaterializableValueReference(1),
-           'c': b'a',
+           'b': 1,
+           'c': 'a',
+           'd': program_test_utils.TestMaterializableValueReference(2),
        },
-       {'a': np.bool_(True), 'b': np.int32(1), 'c': b'a'}),
+       {'a': np.bool_(True), 'b': np.int32(1), 'c': b'a', 'd': np.int32(2)}),
       ('dict_empty', {}, {}),
       ('dict_nested',
        {
            'x': {
                'a': True,
-               'b': program_test_utils.TestMaterializableValueReference(1),
+               'b': 1,
+               'c': 'a',
+               'd': program_test_utils.TestMaterializableValueReference(2),
            },
            'y': {
-               'c': 'a',
+               'a': 3,
            },
        },
-       {'x': {'a': np.bool_(True), 'b': np.int32(1)}, 'y': {'c': b'a'}}),
-      ('attr',
-       program_test_utils.TestAttrObj2(
-           True, program_test_utils.TestMaterializableValueReference(1)),
-       program_test_utils.TestAttrObj2(np.bool_(True), np.int32(1))),
-      ('attr_nested',
-       program_test_utils.TestAttrObj2(
-           program_test_utils.TestAttrObj2(
-               True, program_test_utils.TestMaterializableValueReference(1)),
-           program_test_utils.TestAttrObj1('a')),
-       program_test_utils.TestAttrObj2(
-           program_test_utils.TestAttrObj2(np.bool_(True), np.int32(1)),
-           program_test_utils.TestAttrObj1(b'a'))),
-      ('namedtuple',
-       program_test_utils.TestNamedtupleObj2(
-           True, program_test_utils.TestMaterializableValueReference(1)),
-       program_test_utils.TestNamedtupleObj2(np.bool_(True), np.int32(1))),
-      ('namedtuple_nested',
-       program_test_utils.TestNamedtupleObj2(
-           program_test_utils.TestNamedtupleObj2(
-               True, program_test_utils.TestMaterializableValueReference(1)),
-           program_test_utils.TestNamedtupleObj1('a')),
-       program_test_utils.TestNamedtupleObj2(
-           program_test_utils.TestNamedtupleObj2(np.bool_(True), np.int32(1)),
-           program_test_utils.TestNamedtupleObj1(b'a'))),
+       {
+           'x': {
+               'a': np.bool_(True),
+               'b': np.int32(1),
+               'c': b'a',
+               'd': np.int32(2),
+           },
+           'y': {
+               'a': np.int32(3),
+           }
+       }),
+      ('named_tuple',
+       program_test_utils.TestNamedTuple1(
+           a=True,
+           b=1,
+           c='a',
+           d=program_test_utils.TestMaterializableValueReference(2)),
+       program_test_utils.TestNamedTuple1(
+           a=np.bool_(True),
+           b=np.int32(1),
+           c=b'a',
+           d=np.int32(2))),
+      ('named_tuple_nested',
+       program_test_utils.TestNamedTuple3(
+           x=program_test_utils.TestNamedTuple1(
+               a=True,
+               b=1,
+               c='a',
+               d=program_test_utils.TestMaterializableValueReference(2)),
+           y=program_test_utils.TestNamedTuple2(3)),
+       program_test_utils.TestNamedTuple3(
+           x=program_test_utils.TestNamedTuple1(
+               a=np.bool_(True),
+               b=np.int32(1),
+               c=b'a',
+               d=np.int32(2)),
+           y=program_test_utils.TestNamedTuple2(a=np.int32(3)))),
+      ('attrs',
+       program_test_utils.TestAttrs1(
+           a=True,
+           b=1,
+           c='a',
+           d=program_test_utils.TestMaterializableValueReference(2)),
+       program_test_utils.TestAttrs1(
+           a=np.bool_(True),
+           b=np.int32(1),
+           c=b'a',
+           d=np.int32(2))),
+      ('attrs_nested',
+       program_test_utils.TestAttrs3(
+           x=program_test_utils.TestAttrs1(
+               a=True,
+               b=1,
+               c='a',
+               d=program_test_utils.TestMaterializableValueReference(2)),
+           y=program_test_utils.TestAttrs2(3)),
+       program_test_utils.TestAttrs3(
+           x=program_test_utils.TestAttrs1(
+               a=np.bool_(True),
+               b=np.int32(1),
+               c=b'a',
+               d=np.int32(2)),
+           y=program_test_utils.TestAttrs2(a=np.int32(3)))),
   )
   # pyformat: enable
   async def test_returns_saved_program_state(
@@ -633,9 +675,10 @@ class FileProgramStateManagerSaveTest(
       ('numpy_int', np.int32(1), [np.int32(1)]),
       ('numpy_array', np.ones([3], np.int32), [np.ones([3], np.int32)]),
 
-      # value references
+      # materializable value references
       ('materializable_value_reference_tensor',
-       program_test_utils.TestMaterializableValueReference(1), [1]),
+       program_test_utils.TestMaterializableValueReference(1),
+       [1]),
       ('materializable_value_reference_sequence',
        program_test_utils.TestMaterializableValueReference(
            tf.data.Dataset.from_tensor_slices([1, 2, 3])),
@@ -643,51 +686,67 @@ class FileProgramStateManagerSaveTest(
 
       # structures
       ('list',
-       [True, program_test_utils.TestMaterializableValueReference(1), 'a'],
-       [True, 1, 'a']),
+       [True, 1, 'a', program_test_utils.TestMaterializableValueReference(2)],
+       [True, 1, 'a', 2]),
       ('list_empty', [], []),
       ('list_nested',
-       [[True, program_test_utils.TestMaterializableValueReference(1)], ['a']],
-       [True, 1, 'a']),
+       [[True, 1, 'a', program_test_utils.TestMaterializableValueReference(2)],
+        [3]],
+       [True, 1, 'a', 2, 3]),
       ('dict',
        {
            'a': True,
-           'b': program_test_utils.TestMaterializableValueReference(1),
+           'b': 1,
            'c': 'a',
+           'd': program_test_utils.TestMaterializableValueReference(2),
        },
-       [True, 1, 'a']),
+       [True, 1, 'a', 2]),
       ('dict_empty', {}, []),
       ('dict_nested',
        {
            'x': {
                'a': True,
-               'b': program_test_utils.TestMaterializableValueReference(1),
+               'b': 1,
+               'c': 'a',
+               'd': program_test_utils.TestMaterializableValueReference(2),
            },
            'y': {
-               'c': 'a',
+               'a': 3,
            },
        },
-       [True, 1, 'a']),
-      ('attr',
-       program_test_utils.TestAttrObj2(
-           True, program_test_utils.TestMaterializableValueReference(1)),
-       [True, 1]),
+       [True, 1, 'a', 2, 3]),
+      ('named_tuple',
+       program_test_utils.TestNamedTuple1(
+           a=True,
+           b=1,
+           c='a',
+           d=program_test_utils.TestMaterializableValueReference(2)),
+       [True, 1, 'a', 2]),
+      ('named_tuple_nested',
+       program_test_utils.TestNamedTuple3(
+           x=program_test_utils.TestNamedTuple1(
+               a=True,
+               b=1,
+               c='a',
+               d=program_test_utils.TestMaterializableValueReference(2)),
+           y=program_test_utils.TestNamedTuple2(3)),
+       [True, 1, 'a', 2, 3]),
+      ('attrs',
+       program_test_utils.TestAttrs1(
+           a=True,
+           b=1,
+           c='a',
+           d=program_test_utils.TestMaterializableValueReference(2)),
+       [True, 1, 'a', 2]),
       ('attr_nested',
-       program_test_utils.TestAttrObj2(
-           program_test_utils.TestAttrObj2(
-               True, program_test_utils.TestMaterializableValueReference(1)),
-           program_test_utils.TestAttrObj1('a')),
-       [True, 1, 'a']),
-      ('namedtuple',
-       program_test_utils.TestNamedtupleObj2(
-           True, program_test_utils.TestMaterializableValueReference(1)),
-       [True, 1]),
-      ('namedtuple_nested',
-       program_test_utils.TestNamedtupleObj2(
-           program_test_utils.TestNamedtupleObj2(
-               True, program_test_utils.TestMaterializableValueReference(1)),
-           program_test_utils.TestNamedtupleObj1('a')),
-       [True, 1, 'a']),
+       program_test_utils.TestAttrs3(
+           x=program_test_utils.TestAttrs1(
+               a=True,
+               b=1,
+               c='a',
+               d=program_test_utils.TestMaterializableValueReference(2)),
+           y=program_test_utils.TestAttrs2(3)),
+       [True, 1, 'a', 2, 3]),
   )
   # pyformat: enable
   async def test_writes_program_state(self, program_state, expected_value):
