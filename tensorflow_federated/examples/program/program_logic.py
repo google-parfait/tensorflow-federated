@@ -21,7 +21,7 @@ therefore this program logic is portable across platforms.
 """
 
 import functools
-from typing import Any, Optional
+from typing import Optional
 
 from absl import logging
 import tensorflow_federated as tff
@@ -32,6 +32,7 @@ class TrainFederatedModelUnexpectedTypeSingatureError(Exception):
 
 
 def _check_expected_type_signatures(
+    *,
     initialize: tff.Computation,
     train: tff.Computation,
     train_data_source: tff.program.FederatedDataSource,
@@ -207,6 +208,7 @@ def _check_expected_type_signatures(
 
 
 async def train_federated_model(
+    *,
     initialize: tff.Computation,
     train: tff.Computation,
     train_data_source: tff.program.FederatedDataSource,
@@ -221,7 +223,9 @@ async def train_federated_model(
         tff.program.ReleaseManager[tff.program.ReleasableStructure, int]
     ] = None,
     model_output_manager: Optional[
-        tff.program.ReleaseManager[tff.program.ReleasableStructure, Any]
+        tff.program.ReleaseManager[
+            tff.program.ReleasableStructure, Optional[object]
+        ]
     ] = None,
     program_state_manager: Optional[
         tff.program.ProgramStateManager[tff.program.ProgramStateStructure]
@@ -289,7 +293,11 @@ async def train_federated_model(
   """
   tff.program.check_in_federated_context()
   _check_expected_type_signatures(
-      initialize, train, train_data_source, evaluation, evaluation_data_source
+      initialize=initialize,
+      train=train,
+      train_data_source=train_data_source,
+      evaluation=evaluation,
+      evaluation_data_source=evaluation_data_source,
   )
   logging.info('Running program logic')
 
