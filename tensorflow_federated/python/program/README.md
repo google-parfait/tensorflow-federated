@@ -70,7 +70,7 @@ For example:
 # Parameters set by the customer.
 flags.DEFINE_string('output_dir', None, 'The output path.')
 
-def main():
+def main() -> None:
 
   # Parameters set by the program.
   total_rounds = 10

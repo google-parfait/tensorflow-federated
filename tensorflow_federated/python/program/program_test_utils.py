@@ -100,8 +100,8 @@ class TestAttrs3:
   y: TestAttrs2
 
 
-def assert_types_equal(a, b):
-  def _assert_type_equal(a, b):
+def assert_types_equal(a: object, b: object) -> None:
+  def _assert_type_equal(a: object, b: object) -> None:
     if not isinstance(a, type(b)):
       raise AssertionError(f'{type(a)} != {type(b)}')
 

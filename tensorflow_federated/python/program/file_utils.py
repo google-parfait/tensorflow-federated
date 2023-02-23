@@ -37,7 +37,7 @@ def _create_async_def(fn: Callable[..., _T]) -> Callable[..., _T]:
   """A decorator for creating async defs from synchronous functions."""
 
   @functools.wraps(fn)
-  async def wrapper(*args, **kwargs):
+  async def wrapper(*args: object, **kwargs: object) -> _T:
     loop = asyncio.get_running_loop()
     return await loop.run_in_executor(None, fn, *args, **kwargs)
 
@@ -50,33 +50,31 @@ makedirs = _create_async_def(tf.io.gfile.makedirs)
 rmtree = _create_async_def(tf.io.gfile.rmtree)
 
 
-def _wrap_as_variable(value):
-  """Wraps a value as a `tf.Variable`, if possible."""
-  try:
-    variable = tf.Variable(initial_value=value)
-    return variable
-  except ValueError:  # Raised if x is not compatible with `tf.Variable`
-    return value
-
-
-def _read_value(value):
-  if isinstance(value, tf.Variable):
-    return value.read_value()
-  else:
-    return value
-
-
 class _ValueModule(tf.Module):
   """A `tf.Module` wrapping a structure."""
 
   def __init__(self, value: Any):
     super().__init__()
+
     # We push leaf values to `tf.Variable` if possible so that they are
     # serialized separately, instead of as a single large proto.
+    def _wrap_as_variable(value: _T) -> Union[tf.Variable, _T]:
+      try:
+        return tf.Variable(initial_value=value)
+      except ValueError:
+        return value
+
     self._values = tree.map_structure(_wrap_as_variable, value)
 
   @tf.function(input_signature=())
   def __call__(self) -> Any:
+
+    def _read_value(value: object) -> object:
+      if isinstance(value, tf.Variable):
+        return value.read_value()
+      else:
+        return value
+
     return tree.map_structure(_read_value, self._values)
 
 

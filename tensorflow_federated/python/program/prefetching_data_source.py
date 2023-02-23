@@ -69,7 +69,9 @@ class FetchedValue(
   def cardinality(self) -> Mapping[placements.PlacementLiteral, int]:
     return self._cardinality
 
-  async def ingest(self, executor):
+  async def ingest(
+      self, executor: executor_base.Executor
+  ) -> executor_value_base.ExecutorValue:
     if self._executor is executor:
       # We are addressing the same executor we already embedded this value in;
       # we can shortcut, since this executor has already ingested this value.
@@ -143,7 +145,7 @@ class PrefetchingDataSourceIterator(
 
     self._start_prefetching()
 
-  def _single_round_fn(self):
+  def _single_round_fn(self) -> None:
     data = self._iterator.select(
         self._num_clients_to_prefetch
     )  # gen-stub-imports
@@ -161,7 +163,9 @@ class PrefetchingDataSourceIterator(
     if isinstance(data, ingestable_base.Ingestable):
       executor_value_coro = data.ingest(executor_at_invocation)
 
-      async def defining_coro_fn(executor):
+      async def defining_coro_fn(
+          executor: executor_base.Executor,
+      ) -> executor_value_base.ExecutorValue:
         return await data.ingest(executor)
 
     else:
@@ -169,7 +173,9 @@ class PrefetchingDataSourceIterator(
           data, self._iterator.federated_type
       )
 
-      async def defining_coro_fn(executor):
+      async def defining_coro_fn(
+          executor: executor_base.Executor,
+      ) -> executor_value_base.ExecutorValue:
         return await executor.create_value(data, self._iterator.federated_type)
 
     event_loop = asyncio.new_event_loop()
@@ -178,7 +184,7 @@ class PrefetchingDataSourceIterator(
         executor_at_invocation,
         executor_value,
         self._cardinality,
-        defining_coro_fn,
+        defining_coro_fn,  # pytype: disable=wrong-arg-types  # b/150782658
     )
 
     with self._lock:
