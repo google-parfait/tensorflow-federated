@@ -28,7 +28,6 @@ import grpc
 import lzma  # pylint: disable=g-bad-import-order
 import portpicker
 
-from tensorflow_federated.python.common_libs import deprecation
 from tensorflow_federated.python.core.backends.native import compiler
 from tensorflow_federated.python.core.backends.native import mergeable_comp_compiler
 from tensorflow_federated.python.core.impl.context_stack import context_base
@@ -50,57 +49,6 @@ _GRPC_CHANNEL_OPTIONS = [
     ('grpc.max_receive_message_length', _GRPC_MAX_MESSAGE_LENGTH_BYTES),
     ('grpc.max_send_message_length', _GRPC_MAX_MESSAGE_LENGTH_BYTES),
 ]
-
-
-# TODO(b/240972950): Remove deprecated API.
-@deprecation.deprecated(
-    '`tff.backends.native.create_remote_python_execution_context` is '
-    'deprecated, currently there is no alternative.'
-)
-def create_remote_python_execution_context(
-    channels,
-    thread_pool_executor=None,
-    dispose_batch_size=20,
-    max_fanout: int = 100,
-    default_num_clients: int = 0,
-) -> sync_execution_context.SyncExecutionContext:
-  """Creates context to execute computations with workers on `channels`.
-
-  Args:
-    channels: A list of `grpc.Channels` hosting services which can execute TFF
-      work. Assumes each channel connects to a valid endpoint.
-    thread_pool_executor: Optional concurrent.futures.Executor used to wait for
-      the reply to a streaming RPC message. Uses the default Executor if not
-      specified.
-    dispose_batch_size: The batch size for requests to dispose of remote worker
-      values. Lower values will result in more requests to the remote worker,
-      but will result in values being cleaned up sooner and therefore may result
-      in lower memory usage on the remote worker.
-    max_fanout: The maximum fanout at any point in the aggregation hierarchy. If
-      `num_clients > max_fanout`, the constructed executor stack will consist of
-      multiple levels of aggregators. The height of the stack will be on the
-      order of `log(default_num_clients) / log(max_fanout)`.
-    default_num_clients: The number of clients to use for simulations where the
-      number of clients cannot be inferred. Usually the number of clients will
-      be inferred from the number of values passed to computations which accept
-      client-placed values. However, when this inference isn't possible (such as
-      in the case of a no-argument or non-federated computation) this default
-      will be used instead.
-
-  Returns:
-    An instance of `sync_execution_context.SyncExecutionContext`.
-  """
-  factory = python_executor_stacks.remote_executor_factory(
-      channels=channels,
-      thread_pool_executor=thread_pool_executor,
-      dispose_batch_size=dispose_batch_size,
-      max_fanout=max_fanout,
-      default_num_clients=default_num_clients,
-  )
-
-  return sync_execution_context.SyncExecutionContext(
-      executor_fn=factory, compiler_fn=compiler.transform_to_native_form
-  )
 
 
 def create_mergeable_comp_execution_context(

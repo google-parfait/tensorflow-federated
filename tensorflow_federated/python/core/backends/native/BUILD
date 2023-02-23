@@ -144,7 +144,6 @@ py_library(
     deps = [
         ":compiler",
         ":mergeable_comp_compiler",
-        "//tensorflow_federated/python/common_libs:deprecation",
         "//tensorflow_federated/python/core/impl/context_stack:context_base",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
         "//tensorflow_federated/python/core/impl/execution_contexts:async_execution_context",

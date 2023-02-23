@@ -13,15 +13,7 @@
 # limitations under the License.
 """Contexts and constructors for integration testing."""
 
-import functools
-
-import portpicker
 import tensorflow_federated as tff
-
-from tensorflow_federated.python.tests import remote_runtime_test_utils
-
-WORKER_PORTS = [portpicker.pick_unused_port() for _ in range(2)]
-AGGREGATOR_PORTS = [portpicker.pick_unused_port() for _ in range(2)]
 
 
 def _create_mergeable_comp_execution_context():
@@ -48,20 +40,6 @@ def get_all_contexts():
   return [
       ('native_mergeable',
        _create_mergeable_comp_execution_context),
-      ('native_remote',
-       functools.partial(
-           remote_runtime_test_utils.create_localhost_remote_context,
-           WORKER_PORTS),
-       functools.partial(
-           remote_runtime_test_utils.create_inprocess_worker_contexts,
-           WORKER_PORTS)),
-      ('native_remote_intermediate_aggregator',
-       functools.partial(
-           remote_runtime_test_utils.create_localhost_remote_context,
-           AGGREGATOR_PORTS),
-       functools.partial(
-           remote_runtime_test_utils.create_inprocess_aggregator_contexts,
-           WORKER_PORTS, AGGREGATOR_PORTS)),
       ('native_sync_local_cpp',
        tff.backends.native.create_sync_local_cpp_execution_context),
       ('test_python',
