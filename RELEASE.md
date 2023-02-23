@@ -1,3 +1,37 @@
+# Release 0.50.0
+
+## Major Features and Improvements
+
+*   Added client learning rate measurements to
+    `tff.learning.algorithms.build_weighted_fed_avg_with_optimizer_schedule`
+*   Added support for streaming federated structure values to the C++
+    RemoteExecutor.
+*   Added a C++ executor for executing TF graphs using TF2 DTensor APIs when
+    layout information is specified for input parameters or variables in the
+    graph.
+
+## Breaking Changes
+
+*   Deprecated the following API, Python execution is deprecated instead use CPP
+    execution:
+    *   `tff.framework.local_executor_factory`
+    *   `tff.framework.remote_executor_factory_from_stubs`
+    *   `tff.framework.DataExecutor`
+    *   `tff.framework.EagerTFExecutor`
+*   Removed the following API, Python execution is deprecated instead use CPP
+    execution:
+    *   `tff.backends.native.create_local_python_execution_context`
+    *   `tff.backends.native.create_remote_python_execution_context
+    *   `tff.framework.remote_executor_factory`
+*   Remove the `executors_errors` module from the `tff.framework` API, use
+    `tff.framework.RetryableError` instead.
+
+## Bug Fixes
+
+*   Fixed potential lifetime issue in C++ RemoteExecutor
+*   Enabled and fixed python type annotations in many packages.
+*   Fixed one-off error in evaluation criteria in training program logic.
+
 # Release 0.49.0
 
 ## Major Features and Improvements
