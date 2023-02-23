@@ -45,7 +45,7 @@ class DPAggregatorState(NamedTuple):
   query_state: Any
   agg_state: Any
   dp_event: dp_accounting.DpEvent
-  is_init_state: bool
+  is_init_state: Any
 
 
 def adaptive_clip_noise_params(

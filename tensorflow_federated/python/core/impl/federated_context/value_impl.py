@@ -11,11 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
-# pytype: skip-file
-# This modules disables the Pytype analyzer, see
-# https://github.com/tensorflow/federated/blob/main/docs/pytype.md for more
-# information.
 """Representation of values inside a federated computation."""
 
 import abc
@@ -189,7 +184,7 @@ class Value(typed_object.TypedObject, metaclass=abc.ABCMeta):
         raise IndexError(
             'The index of the selected element {} is out of range.'.format(key)
         )
-      if self._comp.is_struct():
+      if isinstance(self._comp, building_blocks.Struct):
         return Value(self._comp[key])
       else:
         return Value(building_blocks.Selection(self._comp, index=key))
