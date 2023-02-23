@@ -80,11 +80,11 @@ class _ValueModule(tf.Module):
     return tree.map_structure(_read_value, self._values)
 
 
-async def read_saved_model(path: Union[str, os.PathLike[str]]) -> Any:
+async def read_saved_model(path: Union[str, os.PathLike[str]]) -> object:
   """Reads a SavedModel from `path`."""
   py_typecheck.check_type(path, (str, os.PathLike))
 
-  def _read_saved_model(path: Union[str, os.PathLike[str]]) -> Any:
+  def _read_saved_model(path: Union[str, os.PathLike[str]]) -> object:
     if isinstance(path, os.PathLike):
       path = os.fspath(path)
     module = tf.saved_model.load(path)
@@ -95,14 +95,14 @@ async def read_saved_model(path: Union[str, os.PathLike[str]]) -> Any:
 
 
 async def write_saved_model(
-    value: Any, path: Union[str, os.PathLike[str]], overwrite: bool = False
+    value: object, path: Union[str, os.PathLike[str]], overwrite: bool = False
 ) -> None:
   """Writes `value` to `path` using the SavedModel format."""
   py_typecheck.check_type(path, (str, os.PathLike))
   py_typecheck.check_type(overwrite, bool)
 
   def _write_saved_model(
-      value: Any, path: Union[str, os.PathLike[str]], overwrite: bool = False
+      value: object, path: Union[str, os.PathLike[str]], overwrite: bool = False
   ) -> None:
     if isinstance(path, os.PathLike):
       path = os.fspath(path)

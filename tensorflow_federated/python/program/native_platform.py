@@ -17,7 +17,7 @@ import asyncio
 from collections.abc import Awaitable, Callable
 import functools
 import typing
-from typing import Any, Optional, TypeVar, Union
+from typing import Optional, TypeVar, Union
 
 from tensorflow_federated.python.common_libs import async_utils
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -85,7 +85,7 @@ class AwaitableValueReference(value_reference.MaterializableValueReference):
       self._value = await self._fn()
     return self._value
 
-  def __eq__(self, other: Any) -> bool:
+  def __eq__(self, other: object) -> bool:
     if self is other:
       return True
     elif not isinstance(other, AwaitableValueReference):
@@ -96,7 +96,7 @@ class AwaitableValueReference(value_reference.MaterializableValueReference):
 
 
 def _wrap_in_shared_awaitable(
-    fn: Callable[..., Awaitable[Any]]
+    fn: Callable[..., Awaitable[object]]
 ) -> Callable[..., async_utils.SharedAwaitable]:
   """Wraps the returned awaitable in a `tff.async_utils.SharedAwaitable`.
 
@@ -112,7 +112,7 @@ def _wrap_in_shared_awaitable(
     )
 
   @functools.cache
-  def wrapper(*args: Any, **kwargs: Any) -> async_utils.SharedAwaitable:
+  def wrapper(*args: object, **kwargs: object) -> async_utils.SharedAwaitable:
     awaitable = fn(*args, **kwargs)
     return async_utils.SharedAwaitable(awaitable)
 
