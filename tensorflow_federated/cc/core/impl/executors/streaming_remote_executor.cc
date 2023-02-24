@@ -28,6 +28,7 @@ limitations under the License
 #include <vector>
 
 #include "absl/base/thread_annotations.h"
+#include "absl/container/inlined_vector.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/match.h"
@@ -123,6 +124,28 @@ absl::StatusOr<v0::Value> CreateFederatedZipComputation(
   return intrinsic_pb;
 }
 
+v0::Call CreateCalledFederatedMappedSelection(absl::string_view intrinsic_uri,
+                                              absl::string_view arg_ref_name,
+                                              int32_t index) {
+  v0::Call call_pb;
+  call_pb.mutable_function()->mutable_intrinsic()->set_uri(
+      intrinsic_uri.data(), intrinsic_uri.size());
+  v0::Struct* arg_struct = call_pb.mutable_argument()->mutable_struct_();
+
+  v0::Lambda* local_lambda_pb =
+      arg_struct->add_element()->mutable_value()->mutable_lambda();
+  constexpr char kMapArg[] = "map_arg";
+  local_lambda_pb->set_parameter_name(kMapArg);
+  v0::Selection* selection_pb =
+      local_lambda_pb->mutable_result()->mutable_selection();
+  selection_pb->mutable_source()->mutable_reference()->set_name(kMapArg);
+  selection_pb->set_index(index);
+
+  arg_struct->add_element()->mutable_value()->mutable_reference()->set_name(
+      arg_ref_name.data(), arg_ref_name.size());
+  return call_pb;
+}
+
 // Creates a selection computation that is federated mapped to a federated
 // value, selecting all the leaves.
 //
@@ -133,8 +156,19 @@ absl::StatusOr<v0::Value> CreateFederatedZipComputation(
 //
 // The computation created is a federated_map that applies a multi-selection
 // computation to a federated structure structure. In TFF computation shorthand,
-// this would look like:
-//   (map_arg -> federated_map((selection_arg -> (let ... in z)), map_arg)
+// a simple example of this would look like:
+//
+//   (map_arg -> (let
+//      local_0=federated_map(<
+//        (select_arg -> select_arg[0]),
+//        map_arg
+//      >),
+//      local_1=federated_map(<
+//        (select_arg -> select_arg[1]),
+//        map_arg
+//      >)
+//     in <local_0, local_1>
+//   ))
 absl::StatusOr<v0::Value> CreateSelectionFederatedStructComputation(
     const v0::FederatedType& parameter_type_pb) {
   if (!parameter_type_pb.member().has_struct_()) {
@@ -157,56 +191,39 @@ absl::StatusOr<v0::Value> CreateSelectionFederatedStructComputation(
   federated_type_template_pb.set_all_equal(parameter_type_pb.all_equal());
 
   v0::Lambda* lambda_pb = value_pb.mutable_computation()->mutable_lambda();
-  constexpr char kMapArgName[] = "map_arg";
-  lambda_pb->set_parameter_name(kMapArgName);
+  constexpr char kFederatedStructArg[] = "federated_struct_arg";
+  lambda_pb->set_parameter_name(kFederatedStructArg);
 
-  v0::Call* call_pb = lambda_pb->mutable_result()->mutable_call();
-  v0::Intrinsic* intrinsic_pb =
-      call_pb->mutable_function()->mutable_intrinsic();
+  absl::string_view intrinsic_uri;
   if (parameter_type_pb.placement().value().uri() == kClientsUri) {
-    intrinsic_pb->mutable_uri()->assign(kFederatedMapAtClientsUri.data(),
-                                        kFederatedMapAtClientsUri.length());
+    intrinsic_uri = kFederatedMapAtClientsUri;
   } else if (parameter_type_pb.placement().value().uri() == kServerUri) {
-    intrinsic_pb->mutable_uri()->assign(kFederatedMapAtServerUri.data(),
-                                        kFederatedMapAtServerUri.length());
+    intrinsic_uri = kFederatedMapAtServerUri;
   } else {
     return absl::UnimplementedError(
         absl::StrCat("Cannot create federated map for placement: [",
                      parameter_type_pb.placement().value().uri(), "]"));
   }
 
-  constexpr char kSelectionArgName[] = "selection_arg";
-  v0::Computation* arg_pb = call_pb->mutable_argument();
-  v0::Struct* arg_struct_pb = arg_pb->mutable_struct_();
-  v0::Lambda* inner_lambda_pb =
-      arg_struct_pb->add_element()->mutable_value()->mutable_lambda();
-  inner_lambda_pb->set_parameter_name(kSelectionArgName);
-  v0::Block* selection_block_comp =
-      inner_lambda_pb->mutable_result()->mutable_block();
-  arg_struct_pb->add_element()->mutable_value()->mutable_reference()->set_name(
-      kMapArgName);
-
-  using SelectionPath = std::string;
   // A list of elements to iteratively process as the method descends into a
   // nested structure. We perform a breadth-first-traversal of the nested
   // structure.
-  std::list<std::tuple<v0::Block*, const v0::StructType*, v0::StructType*,
-                       SelectionPath>>
-      structs_to_process = {{selection_block_comp,
-                             &parameter_type_pb.member().struct_(),
-                             &result_type_pb, kSelectionArgName}};
+  std::list<std::tuple<v0::Block*, std::string, const v0::StructType*,
+                       v0::StructType*>>
+      structs_to_process = {{
+          lambda_pb->mutable_result()->mutable_block(),
+          kFederatedStructArg,
+          &parameter_type_pb.member().struct_(),
+          &result_type_pb,
+      }};
 
-  v0::Block* block_pb;
-  const v0::StructType* incoming_struct_type_pb;
-  v0::StructType* output_struct_type_pb;
-  SelectionPath selection_path;
   while (!structs_to_process.empty()) {
-    std::tie(block_pb, incoming_struct_type_pb, output_struct_type_pb,
-             selection_path) = structs_to_process.front();
+    auto [block_pb, parent_ref_name, parent_struct_type_pb,
+          output_struct_type_pb] = structs_to_process.front();
     structs_to_process.pop_front();
-    for (int32_t i = 0; i < incoming_struct_type_pb->element_size(); ++i) {
+    for (int32_t i = 0; i < parent_struct_type_pb->element_size(); ++i) {
       const v0::StructType::Element& element_type_pb =
-          incoming_struct_type_pb->element(i);
+          parent_struct_type_pb->element(i);
       v0::StructType::Element* output_element_type_pb =
           output_struct_type_pb->add_element();
       switch (element_type_pb.value().type_case()) {
@@ -214,11 +231,9 @@ absl::StatusOr<v0::Value> CreateSelectionFederatedStructComputation(
         case v0::Type::kSequence: {
           v0::Block::Local* local_pb = block_pb->add_local();
           local_pb->set_name(absl::StrCat("elem_", i));
-          v0::Selection* selection_pb =
-              local_pb->mutable_value()->mutable_selection();
-          selection_pb->mutable_source()->mutable_reference()->set_name(
-              selection_path);
-          selection_pb->set_index(i);
+          *local_pb->mutable_value()->mutable_call() =
+              CreateCalledFederatedMappedSelection(intrinsic_uri,
+                                                   parent_ref_name, i);
           *output_element_type_pb->mutable_value()->mutable_federated() =
               federated_type_template_pb;
           *output_element_type_pb->mutable_value()
@@ -229,23 +244,21 @@ absl::StatusOr<v0::Value> CreateSelectionFederatedStructComputation(
         case v0::Type::kStruct: {
           // Add a local to select the nested structure, and give it a name with
           // the selection path.
-          std::string nested_selection_path = absl::StrCat(selection_path, i);
+          std::string nested_struct_ref_name =
+              absl::StrCat("nested_struct_", i);
           v0::Block::Local* nested_struct_local_pb = block_pb->add_local();
-          nested_struct_local_pb->set_name(nested_selection_path);
-          v0::Selection* selection_pb =
-              nested_struct_local_pb->mutable_value()->mutable_selection();
-          selection_pb->mutable_source()->mutable_reference()->set_name(
-              selection_path);
-          selection_pb->set_index(i);
+          nested_struct_local_pb->set_name(nested_struct_ref_name);
+          *nested_struct_local_pb->mutable_value()->mutable_call() =
+              CreateCalledFederatedMappedSelection(intrinsic_uri,
+                                                   parent_ref_name, i);
           // We now need to descend into this struct, add it to the list to
           // process.
           v0::Block::Local* nested_block_pb = block_pb->add_local();
           nested_block_pb->set_name(absl::StrCat("elem_", i));
           structs_to_process.emplace_back(
               nested_block_pb->mutable_value()->mutable_block(),
-              &element_type_pb.value().struct_(),
-              output_element_type_pb->mutable_value()->mutable_struct_(),
-              nested_selection_path);
+              nested_struct_ref_name, &element_type_pb.value().struct_(),
+              output_element_type_pb->mutable_value()->mutable_struct_());
           break;
         }
         default:
@@ -514,6 +527,11 @@ absl::StatusOr<ValueFuture> StreamingRemoteExecutor::CreateExecutorValue(
 
 absl::StatusOr<ValueFuture> StreamingRemoteExecutor::CreateValueRPC(
     const v0::Value& value_pb) {
+  v0::Type type_pb = TFF_TRY(InferTypeFromValue(value_pb));
+  VLOG(5) << "CreateValueRPC: [" << type_pb.ShortDebugString() << "]";
+  if (type_pb.has_function() || type_pb.ShortDebugString().empty()) {
+    VLOG(5) << value_pb.Utf8DebugString();
+  }
   v0::CreateValueRequest request;
   *request.mutable_executor() = executor_pb_;
   *request.mutable_value() = value_pb;
@@ -521,9 +539,9 @@ absl::StatusOr<ValueFuture> StreamingRemoteExecutor::CreateValueRPC(
   grpc::ClientContext client_context;
   grpc::Status status = stub_->CreateValue(&client_context, request, &response);
   TFF_TRY(grpc_to_absl(status));
-  return ReadyFuture(std::make_shared<ExecutorValue>(
-      std::move(response.value_ref()), TFF_TRY(InferTypeFromValue(value_pb)),
-      executor_pb_, stub_));
+  return ReadyFuture(
+      std::make_shared<ExecutorValue>(std::move(response.value_ref()),
+                                      std::move(type_pb), executor_pb_, stub_));
 }
 
 absl::StatusOr<ValueFuture> StreamingRemoteExecutor::CreateCall(
@@ -694,6 +712,8 @@ absl::Status StreamingRemoteExecutor::Materialize(ValueFuture value,
 absl::Status StreamingRemoteExecutor::MaterializeRPC(ValueFuture value,
                                                      v0::Value* value_pb) {
   std::shared_ptr<ExecutorValue> value_ref = TFF_TRY(Wait(value));
+  VLOG(5) << "MaterializeRPC (" << value_ref->Get().ShortDebugString() << "): ["
+          << value_ref->Type().ShortDebugString() << "]";
   v0::ComputeRequest request;
   *request.mutable_executor() = executor_pb_;
   *request.mutable_value_ref() = value_ref->Get();
