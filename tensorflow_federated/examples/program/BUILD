@@ -1,4 +1,4 @@
-load("@rules_python//python:defs.bzl", "py_binary", "py_library")
+load("@rules_python//python:defs.bzl", "py_binary", "py_library", "py_test")
 
 licenses(["notice"])
 
@@ -19,6 +19,15 @@ py_binary(
     srcs = ["program.py"],
     deps = [
         ":computations",
+        ":program_logic",
+        "//tensorflow_federated",
+    ],
+)
+
+py_test(
+    name = "program_logic_test",
+    srcs = ["program_logic_test.py"],
+    deps = [
         ":program_logic",
         "//tensorflow_federated",
     ],
