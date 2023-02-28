@@ -13,6 +13,7 @@
 # limitations under the License.
 """Utilities for testing context stacks."""
 
+import asyncio
 from collections.abc import Callable, Iterable
 import contextlib
 import functools
@@ -58,8 +59,12 @@ def with_context(
   """
 
   def decorator(fn):
-    @functools.wraps(fn)
-    def wrapper(*args, **kwargs):
+
+    @contextlib.contextmanager
+    def install_context(
+        context_fn: _ContextFactory,
+        environment_fn: Optional[_EnvironmentFactory] = None,
+    ):
       context = context_fn()
       with context_stack_impl.context_stack.install(context):
         if environment_fn is not None:
@@ -67,8 +72,22 @@ def with_context(
             context_managers = environment_fn()
             for context_manager in context_managers:
               stack.enter_context(context_manager)
-            return fn(*args, **kwargs)
+            yield
         else:
+          yield
+
+    if asyncio.iscoroutinefunction(fn):
+
+      @functools.wraps(fn)
+      async def wrapper(*args, **kwargs):
+        with install_context(context_fn, environment_fn):
+          return await fn(*args, **kwargs)
+
+    else:
+
+      @functools.wraps(fn)
+      def wrapper(*args, **kwargs):
+        with install_context(context_fn, environment_fn):
           return fn(*args, **kwargs)
 
     return wrapper
@@ -90,16 +109,32 @@ def with_contexts(*named_contexts):
     raise ValueError('Expected at least one named parameter, found none.')
 
   def decorator(fn):
-    @functools.wraps(fn)
-    @parameterized.named_parameters(*named_contexts)
-    def wrapper(
-        self,
-        context_fn: _ContextFactory,
-        environment_fn: Optional[_EnvironmentFactory] = None,
-    ):
-      with_context_decorator = with_context(context_fn, environment_fn)
-      decorated_fn = with_context_decorator(fn)
-      decorated_fn(self)
+
+    if asyncio.iscoroutinefunction(fn):
+
+      @functools.wraps(fn)
+      @parameterized.named_parameters(*named_contexts)
+      async def wrapper(
+          self,
+          context_fn: _ContextFactory,
+          environment_fn: Optional[_EnvironmentFactory] = None,
+      ):
+        decorator = with_context(context_fn, environment_fn)
+        decorated_fn = decorator(fn)
+        await decorated_fn(self)
+
+    else:
+
+      @functools.wraps(fn)
+      @parameterized.named_parameters(*named_contexts)
+      def wrapper(
+          self,
+          context_fn: _ContextFactory,
+          environment_fn: Optional[_EnvironmentFactory] = None,
+      ):
+        decorator = with_context(context_fn, environment_fn)
+        decorated_fn = decorator(fn)
+        decorated_fn(self)
 
     return wrapper
 
