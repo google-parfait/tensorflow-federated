@@ -1018,63 +1018,76 @@ TEST_P(StreamingRemoteExecutorFederatedStructsTest, RoundTripFederatedStruct) {
                     }
                   }
                   lambda {
-                    parameter_name: "map_arg"
+                    parameter_name: "federated_struct_arg"
                     result {
-                      call {
-                        function { intrinsic { uri: "$2" } }
-                        argument {
-                          struct {
-                            element {
-                              value {
-                                lambda {
-                                  parameter_name: "selection_arg"
-                                  result {
-                                    block {
-                                      local {
-                                        name: "elem_0"
-                                        value {
+                      block {
+                        local {
+                          name: "elem_0"
+                          value {
+                            call {
+                              function { intrinsic { uri: "$2" } }
+                              argument {
+                                struct {
+                                  element {
+                                    value {
+                                      lambda {
+                                        parameter_name: "map_arg"
+                                        result {
                                           selection {
                                             source {
-                                              reference {
-                                                name: "selection_arg"
-                                              }
-                                            }
-                                          }
-                                        }
-                                      }
-                                      local {
-                                        name: "elem_1"
-                                        value {
-                                          selection {
-                                            source {
-                                              reference {
-                                                name: "selection_arg"
-                                              }
-                                            }
-                                            index: 1
-                                          }
-                                        }
-                                      }
-                                      result {
-                                        struct {
-                                          element {
-                                            value {
-                                              reference { name: "elem_0" }
-                                            }
-                                          }
-                                          element {
-                                            value {
-                                              reference { name: "elem_1" }
+                                              reference { name: "map_arg" }
                                             }
                                           }
                                         }
                                       }
                                     }
                                   }
+                                  element {
+                                    value {
+                                      reference { name: "federated_struct_arg" }
+                                    }
+                                  }
                                 }
                               }
                             }
-                            element { value { reference { name: "map_arg" } } }
+                          }
+                        }
+                        local {
+                          name: "elem_1"
+                          value {
+                            call {
+                              function { intrinsic { uri: "$2" } }
+                              argument {
+                                struct {
+                                  element {
+                                    value {
+                                      lambda {
+                                        parameter_name: "map_arg"
+                                        result {
+                                          selection {
+                                            source {
+                                              reference { name: "map_arg" }
+                                            }
+                                            index: 1
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }
+                                  element {
+                                    value {
+                                      reference { name: "federated_struct_arg" }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                        result {
+                          struct {
+                            element { value { reference { name: "elem_0" } } }
+                            element { value { reference { name: "elem_1" } } }
                           }
                         }
                       }
@@ -1296,63 +1309,71 @@ TEST_P(StreamingRemoteExecutorFederatedStructsTest,
                     }
                   }
                   lambda {
-                    parameter_name: "map_arg"
+                    parameter_name: "federated_struct_arg"
                     result {
-                      call {
-                        function { intrinsic { uri: "$2" } }
-                        argument {
-                          struct {
-                            element {
-                              value {
-                                lambda {
-                                  parameter_name: "selection_arg"
-                                  result {
-                                    block {
-                                      local {
-                                        name: "selection_arg0"
-                                        value {
+                      block {
+                        local {
+                          name: "nested_struct_0"
+                          value {
+                            call {
+                              function { intrinsic { uri: "$2" } }
+                              argument {
+                                struct {
+                                  element {
+                                    value {
+                                      lambda {
+                                        parameter_name: "map_arg"
+                                        result {
                                           selection {
                                             source {
-                                              reference {
-                                                name: "selection_arg"
-                                              }
+                                              reference { name: "map_arg" }
                                             }
                                           }
                                         }
                                       }
-                                      local {
-                                        name: "elem_0"
-                                        value {
-                                          block {
-                                            local {
-                                              name: "elem_0"
-                                              value {
+                                    }
+                                  }
+                                  element {
+                                    value {
+                                      reference { name: "federated_struct_arg" }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                        local {
+                          name: "elem_0"
+                          value {
+                            block {
+                              local {
+                                name: "elem_0"
+                                value {
+                                  call {
+                                    function { intrinsic { uri: "$2" } }
+                                    argument {
+                                      struct {
+                                        element {
+                                          value {
+                                            lambda {
+                                              parameter_name: "map_arg"
+                                              result {
                                                 selection {
                                                   source {
                                                     reference {
-                                                      name: "selection_arg0"
+                                                      name: "map_arg"
                                                     }
                                                   }
                                                 }
                                               }
                                             }
-                                            result {
-                                              struct {
-                                                element {
-                                                  value {
-                                                    reference { name: "elem_0" }
-                                                  }
-                                                }
-                                              }
-                                            }
                                           }
                                         }
-                                      }
-                                      result {
-                                        struct {
-                                          element {
-                                            value {
-                                              reference { name: "elem_0" }
+                                        element {
+                                          value {
+                                            reference {
+                                              name: "nested_struct_0"
                                             }
                                           }
                                         }
@@ -1361,8 +1382,19 @@ TEST_P(StreamingRemoteExecutorFederatedStructsTest,
                                   }
                                 }
                               }
+                              result {
+                                struct {
+                                  element {
+                                    value { reference { name: "elem_0" } }
+                                  }
+                                }
+                              }
                             }
-                            element { value { reference { name: "map_arg" } } }
+                          }
+                        }
+                        result {
+                          struct {
+                            element { value { reference { name: "elem_0" } } }
                           }
                         }
                       }
