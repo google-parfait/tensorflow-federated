@@ -57,6 +57,7 @@ cc_test(
     name = "composing_executor_test",
     srcs = ["composing_executor_test.cc"],
     deps = [
+        ":cardinalities",
         ":composing_executor",
         ":computations",
         ":executor",
@@ -64,6 +65,7 @@ cc_test(
         ":federated_intrinsics",
         ":mock_executor",
         ":status_matchers",
+        ":type_utils",
         ":value_test_utils",
         "//tensorflow_federated/cc/common_libs:oss_test_main",
         "//tensorflow_federated/proto/v0:computation_cc_proto",

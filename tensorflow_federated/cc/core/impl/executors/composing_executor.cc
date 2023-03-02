@@ -175,8 +175,10 @@ using Unplaced = std::shared_ptr<UnplacedInner>;
 using Server = std::shared_ptr<OwnedValueId>;
 using Clients = std::shared_ptr<std::vector<std::shared_ptr<OwnedValueId>>>;
 using Structure = std::shared_ptr<std::vector<ExecutorValue>>;
+using TypedFederatedIntrinsic =
+    std::tuple<enum FederatedIntrinsic, v0::FunctionType>;
 using ValueVariant =
-    std::variant<Unplaced, Server, Clients, Structure, enum FederatedIntrinsic>;
+    std::variant<Unplaced, Server, Clients, Structure, TypedFederatedIntrinsic>;
 
 inline Clients NewClients(int32_t num_clients) {
   auto v = std::make_shared<std::vector<std::shared_ptr<OwnedValueId>>>();
@@ -224,11 +226,12 @@ class ExecutorValue {
   inline static ExecutorValue CreateStructure(Structure elements) {
     return ExecutorValue(std::move(elements), ValueType::STRUCTURE);
   }
-  inline static ExecutorValue FederatedIntrinsic(FederatedIntrinsic intrinsic) {
-    return ExecutorValue(intrinsic, ValueType::INTRINSIC);
+  inline static ExecutorValue FederatedIntrinsic(
+      TypedFederatedIntrinsic typed_intrinsic) {
+    return ExecutorValue(std::move(typed_intrinsic), ValueType::INTRINSIC);
   }
-  inline enum FederatedIntrinsic intrinsic() const {
-    return std::get<enum FederatedIntrinsic>(value_);
+  inline TypedFederatedIntrinsic intrinsic() const {
+    return std::get<TypedFederatedIntrinsic>(value_);
   }
 
   absl::Status CheckLenForUseAsArgument(std::string_view function_name,
@@ -321,9 +324,10 @@ class ExecutorValue {
       }
       case v0::Value::kComputation: {
         if (value_pb.computation().has_intrinsic()) {
-          return ExecutorValue::FederatedIntrinsic(
+          return ExecutorValue::FederatedIntrinsic(TypedFederatedIntrinsic{
               TFF_TRY(FederatedIntrinsicFromUri(
-                  value_pb.computation().intrinsic().uri())));
+                  value_pb.computation().intrinsic().uri())),
+              value_pb.computation().type().function()});
         }
       }
         TF_FALLTHROUGH_INTENDED;
@@ -578,18 +582,20 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
   }
 
   absl::StatusOr<ExecutorValue> CallIntrinsicEvalAtClients(
-      ExecutorValue&& arg) {
+      ExecutorValue&& arg, const v0::FunctionType& type_pb) {
     auto traceme = Trace("CallIntrinsicEvalAtClients");
     auto fn_to_eval =
         TFF_TRY(arg.GetUnplacedFunctionProto("federated_eval_at_clients_fn"));
     auto clients = NewClients();
+    v0::Value eval_at_clients;
+    eval_at_clients.mutable_computation()
+        ->mutable_intrinsic()
+        ->mutable_uri()
+        ->assign(kFederatedEvalAtClientsUri.data(),
+                 kFederatedEvalAtClientsUri.size());
+    *eval_at_clients.mutable_computation()->mutable_type()->mutable_function() =
+        type_pb;
     for (const auto& child : children_) {
-      v0::Value eval_at_clients;
-      eval_at_clients.mutable_computation()
-          ->mutable_intrinsic()
-          ->mutable_uri()
-          ->assign(kFederatedEvalAtClientsUri.data(),
-                   kFederatedEvalAtClientsUri.size());
       auto eval_id = TFF_TRY(child.executor()->CreateValue(eval_at_clients));
       auto fn_id = TFF_TRY(child.executor()->CreateValue(*fn_to_eval));
       auto res_id = TFF_TRY(child.executor()->CreateCall(eval_id, fn_id));
@@ -598,7 +604,8 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
     return ExecutorValue::CreateClientsPlaced(std::move(clients));
   }
 
-  absl::StatusOr<ExecutorValue> CallIntrinsicAggregate(ExecutorValue&& arg) {
+  absl::StatusOr<ExecutorValue> CallIntrinsicAggregate(
+      ExecutorValue&& arg, const v0::FunctionType& type_pb) {
     auto traceme = Trace("CallIntrinsicAggregate");
     TFF_TRY(arg.CheckLenForUseAsArgument("federated_aggregate", 5));
     const auto& value = arg.structure()->at(0);
@@ -629,6 +636,8 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
     v0::Value aggregate;
     aggregate.mutable_computation()->mutable_intrinsic()->mutable_uri()->assign(
         kFederatedAggregateUri.data(), kFederatedAggregateUri.size());
+    *aggregate.mutable_computation()->mutable_type()->mutable_function() =
+        type_pb;
 
     // Initiate the aggregation in each child.
     std::vector<OwnedValueId> child_result_ids;
@@ -706,7 +715,8 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
     return AllEqualToAll(value);
   }
 
-  absl::StatusOr<ExecutorValue> CallIntrinsicMap(ExecutorValue&& arg) {
+  absl::StatusOr<ExecutorValue> CallIntrinsicMap(
+      ExecutorValue&& arg, const v0::FunctionType& type_pb) {
     auto traceme = Trace("CallIntrinsicMap");
     TFF_TRY(arg.CheckLenForUseAsArgument("federated_map", 2));
     const auto& fn = arg.structure()->at(0);
@@ -720,6 +730,8 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
       v0::Value map_val;
       map_val.mutable_computation()->mutable_intrinsic()->mutable_uri()->assign(
           kFederatedMapAtClientsUri.data(), kFederatedMapAtClientsUri.size());
+      *map_val.mutable_computation()->mutable_type()->mutable_function() =
+          type_pb;
       for (int32_t i = 0; i < children_.size(); i++) {
         const auto& child = children_[i].executor();
         auto child_map = TFF_TRY(child->CreateValue(map_val));
@@ -741,7 +753,8 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
     }
   }
 
-  absl::StatusOr<ExecutorValue> CallIntrinsicSelect_(ExecutorValue&& arg) {
+  absl::StatusOr<ExecutorValue> CallIntrinsicSelect_(
+      ExecutorValue&& arg, const v0::FunctionType& type_pb) {
     auto traceme = Trace("CallIntrinsicSelect_");
     TFF_TRY(arg.CheckLenForUseAsArgument("federated_select", 4));
     const ExecutorValue& keys = arg.structure()->at(0);
@@ -768,6 +781,7 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
     v0::Value select;
     select.mutable_computation()->mutable_intrinsic()->mutable_uri()->assign(
         kFederatedSelectUri.data(), kFederatedSelectUri.size());
+    *select.mutable_computation()->mutable_type()->mutable_function() = type_pb;
 
     std::vector<std::shared_ptr<OwnedValueId>> child_result_ids;
     child_result_ids.reserve(children_.size());
@@ -825,7 +839,8 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
     }
   }
 
-  absl::StatusOr<ExecutorValue> CallIntrinsicZipAtClients(ExecutorValue&& arg) {
+  absl::StatusOr<ExecutorValue> CallIntrinsicZipAtClients(
+      ExecutorValue&& arg, const v0::FunctionType& type_pb) {
     auto traceme = Trace("CallIntrinsicZipAtClients");
     v0::Value zip_at_clients;
     zip_at_clients.mutable_computation()
@@ -833,6 +848,9 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
         ->mutable_uri()
         ->assign(kFederatedZipAtClientsUri.data(),
                  kFederatedZipAtClientsUri.size());
+    *zip_at_clients.mutable_computation()->mutable_type()->mutable_function() =
+        type_pb;
+
     Clients pairs = NewClients();
     for (int32_t i = 0; i < children_.size(); i++) {
       const std::shared_ptr<Executor>& child = children_[i].executor();
@@ -880,37 +898,43 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
   }
 
   absl::StatusOr<ExecutorValue> CallFederatedIntrinsic(
-      FederatedIntrinsic function, ExecutorValue arg) {
+      TypedFederatedIntrinsic typed_intrinsic, ExecutorValue arg) {
+    FederatedIntrinsic function = std::get<FederatedIntrinsic>(typed_intrinsic);
+    const v0::FunctionType& type_pb =
+        std::get<v0::FunctionType>(typed_intrinsic);
     switch (function) {
-      case FederatedIntrinsic::VALUE_AT_CLIENTS: {
-        return CallIntrinsicValueAtClients(std::move(arg));
-      }
       case FederatedIntrinsic::VALUE_AT_SERVER: {
         return CallIntrinsicValueAtServer(std::move(arg));
       }
       case FederatedIntrinsic::EVAL_AT_SERVER: {
         return CallIntrinsicEvalAtServer(std::move(arg));
       }
-      case FederatedIntrinsic::EVAL_AT_CLIENTS: {
-        return CallIntrinsicEvalAtClients(std::move(arg));
+      case FederatedIntrinsic::ZIP_AT_SERVER: {
+        return CallIntrinsicZipAtServer(std::move(arg));
       }
-      case FederatedIntrinsic::AGGREGATE: {
-        return CallIntrinsicAggregate(std::move(arg));
+      case FederatedIntrinsic::VALUE_AT_CLIENTS: {
+        return CallIntrinsicValueAtClients(std::move(arg));
       }
       case FederatedIntrinsic::BROADCAST: {
         return CallIntrinsicBroadcast(std::move(arg));
       }
+      // The following intrinsics are sent as computation values down to child
+      // executors. These children might be StreamingRemoteExecutors, whcih need
+      // to have the type information so this is added back to the intrinsic.
+      case FederatedIntrinsic::AGGREGATE: {
+        return CallIntrinsicAggregate(std::move(arg), type_pb);
+      }
       case FederatedIntrinsic::MAP: {
-        return CallIntrinsicMap(std::move(arg));
+        return CallIntrinsicMap(std::move(arg), type_pb);
       }
       case FederatedIntrinsic::SELECT: {
-        return CallIntrinsicSelect_(std::move(arg));
+        return CallIntrinsicSelect_(std::move(arg), type_pb);
       }
       case FederatedIntrinsic::ZIP_AT_CLIENTS: {
-        return CallIntrinsicZipAtClients(std::move(arg));
+        return CallIntrinsicZipAtClients(std::move(arg), type_pb);
       }
-      case FederatedIntrinsic::ZIP_AT_SERVER: {
-        return CallIntrinsicZipAtServer(std::move(arg));
+      case FederatedIntrinsic::EVAL_AT_CLIENTS: {
+        return CallIntrinsicEvalAtClients(std::move(arg), type_pb);
       }
     }
   }
