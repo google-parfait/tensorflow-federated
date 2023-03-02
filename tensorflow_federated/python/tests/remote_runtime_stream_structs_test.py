@@ -21,22 +21,36 @@ import tensorflow as tf
 import tensorflow_federated as tff
 
 
-# b/263157965 : Extend this test to cover the C++ remote executor as well.
-# pyformat: disable
 _CONTEXTS = [
-    ('native_sync_local_cpp',
-     functools.partial(
-         tff.backends.native.create_sync_local_cpp_execution_context,
-         stream_structs=True)),
+    (
+        'native_sync_local_cpp',
+        functools.partial(
+            tff.backends.native.create_sync_local_cpp_execution_context,
+            stream_structs=True,
+        ),
+    ),
 ]
-# pyformat: enable
+
+
+def _make_federated(computation: tff.Computation) -> tff.Computation:
+  """Construct a federate computation that maps comptuation to CLIENTS."""
+
+  @tff.federated_computation(
+      tff.types.at_clients(computation.type_signature.parameter)
+  )
+  def compute(a):
+    return tff.federated_map(computation, a)
+
+  return compute
 
 
 class RemoteRuntimeStreamStructsTest(parameterized.TestCase):
 
   @tff.test.with_contexts(*_CONTEXTS)
-  def test_large_struct_identity0(self):
+  def test_large_unnamed_struct_identity(self):
+    # Expect ~400 MB per small tensor (100_000_000 * 4 bytes)
     small_tensor_shape = (100_000_000, 1)
+    # Expect 2.4 GB in total for the entire structure.
     large_struct = tff.structure.Struct(
         [(None, tf.zeros(shape=small_tensor_shape, dtype=tf.float32))] * 6
     )
@@ -48,16 +62,16 @@ class RemoteRuntimeStreamStructsTest(parameterized.TestCase):
         )
     )
     def identity(s):
-      with tf.compat.v1.control_dependencies(
-          [tf.print(t) for t in tff.structure.flatten(s)]
-      ):
-        return tff.structure.map_structure(tf.identity, s)
+      return tff.structure.map_structure(tf.identity, s)
 
-    identity(large_struct)
+    with self.subTest('local'):
+      identity(large_struct)
 
   @tff.test.with_contexts(*_CONTEXTS)
-  def test_large_struct_identity1(self):
+  def test_large_named_struct_identity(self):
+    # Expect ~400 MB per small tensor (100_000_000 * 4 bytes)
     small_tensor_shape = (100_000, 1000)
+    # Expect 2.4 GB in total for the entire structure.
     large_struct = tff.structure.Struct([
         ('a', tf.zeros(shape=small_tensor_shape, dtype=tf.float32)),
         ('b', tf.zeros(shape=small_tensor_shape, dtype=tf.float32)),
@@ -96,16 +110,16 @@ class RemoteRuntimeStreamStructsTest(parameterized.TestCase):
         ])
     )
     def identity(s):
-      with tf.compat.v1.control_dependencies(
-          [tf.print(t) for t in tff.structure.flatten(s)]
-      ):
-        return tff.structure.map_structure(tf.identity, s)
+      return tff.structure.map_structure(tf.identity, s)
 
-    identity(large_struct)
+    with self.subTest('local'):
+      identity(large_struct)
 
   @tff.test.with_contexts(*_CONTEXTS)
-  def test_large_struct_identity2(self):
+  def test_small_struct_identity(self):
+    # Expect ~4KB per small tensor.
     small_tensor_shape = (100, 10)
+    # Expect ~24KB for the entire structure.
     small_struct = tff.structure.Struct([
         ('a', tf.zeros(shape=small_tensor_shape, dtype=tf.float32)),
         (
@@ -164,12 +178,10 @@ class RemoteRuntimeStreamStructsTest(parameterized.TestCase):
         ])
     )
     def identity(s):
-      with tf.compat.v1.control_dependencies(
-          [tf.print(t) for t in tff.structure.flatten(s)]
-      ):
-        return tff.structure.map_structure(tf.identity, s)
+      return tff.structure.map_structure(tf.identity, s)
 
-    identity(small_struct)
+    with self.subTest('local'):
+      identity(small_struct)
 
 
 if __name__ == '__main__':
