@@ -139,7 +139,9 @@ class ValueSerializationtest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('numpy', np.str_('abc')),
+      ('numpy_null_termianted_bytes', np.bytes_(b'abc\x00\x00')),
       ('tensorflow', tf.constant('abc')),
+      ('tensorflow_null_terminated_bytes', tf.constant(b'abc\x00\x00')),
   )
   def test_serialize_deserialize_string_value(self, x):
     tf_type = tf.as_dtype(x.dtype)
