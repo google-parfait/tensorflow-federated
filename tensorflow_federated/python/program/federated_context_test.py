@@ -95,7 +95,9 @@ class ContainsOnlyServerPlacedDataTest(parameterized.TestCase):
 class CheckInFederatedContextTest(parameterized.TestCase):
 
   def test_does_not_raise_value_error_with_context(self):
-    context = mock.Mock(spec=federated_context.FederatedContext)
+    context = mock.create_autospec(
+        federated_context.FederatedContext, spec_set=True, instance=True
+    )
 
     with self.assertRaises(ValueError):
       federated_context.check_in_federated_context()
@@ -132,7 +134,9 @@ class CheckInFederatedContextTest(parameterized.TestCase):
     with self.assertRaises(ValueError):
       federated_context.check_in_federated_context()
 
-    context = mock.Mock(spec=federated_context.FederatedContext)
+    context = mock.create_autospec(
+        federated_context.FederatedContext, spec_set=True, instance=True
+    )
     with context_stack_impl.context_stack.install(context):
       try:
         federated_context.check_in_federated_context()
