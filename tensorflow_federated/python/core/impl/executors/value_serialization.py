@@ -109,10 +109,8 @@ def _serialize_tensor_value(
         value = sess.run(value)
   # If we got a string or bytes scalar, wrap it in numpy so it has a dtype and
   # shape.
-  if isinstance(value, bytes):
-    value = np.asarray(value, np.bytes_)
-  elif isinstance(value, str):
-    value = np.asarray(value, np.string_)
+  if isinstance(value, (np.bytes_, np.string_, bytes, str)):
+    value = np.asarray(value, np.object_)
   else:
     value = np.asarray(value)
   if not tf.TensorShape(value.shape).is_compatible_with(type_spec.shape):
@@ -120,7 +118,7 @@ def _serialize_tensor_value(
         f'Cannot serialize tensor with shape {value.shape} to '
         f'shape {type_spec.shape}.'
     )
-  if value.dtype != type_spec.dtype.as_numpy_dtype:
+  if tf.dtypes.as_dtype(value.dtype) != type_spec.dtype:
     try:
       value = value.astype(type_spec.dtype.as_numpy_dtype, casting='same_kind')
     except TypeError as te:
