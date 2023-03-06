@@ -24,6 +24,7 @@ model with `tff.learning.models.model_from_functional`.
 
 import collections
 from collections.abc import Callable, Mapping, Sequence
+import inspect
 from typing import Any, Optional, TypeVar, Union
 
 import numpy as np
@@ -35,6 +36,7 @@ from tensorflow_federated.python.learning.metrics import keras_utils
 from tensorflow_federated.python.learning.metrics import types
 from tensorflow_federated.python.learning.models import variable
 from tensorflow_federated.python.tensorflow_libs import variable_utils
+
 
 Weight = Union[np.ndarray, int, float]
 WeightStruct = Union[Sequence[Weight], Mapping[str, Weight]]
@@ -93,6 +95,7 @@ class FunctionalModel:
           [ModelWeights, Any, bool], variable.BatchOutput
       ],
       predict_on_batch_fn: Callable[[ModelWeights, Any, bool], Any],
+      loss_fn: Callable[[Any, Any, Any], Any],
       metrics_fns: tuple[
           InitializeMetricsStateFn, UpdateMetricsStateFn, FinalizeMetricsFn
       ] = (empty_metrics_state, noop_update_metrics, noop_finalize_metrics),
@@ -148,6 +151,10 @@ class FunctionalModel:
         the first element of `batch_input` (or `input_spec`), and `training` a
         boolean determinig whether the call is during a training pass (e.g. for
         Dropout, BatchNormalization, etc).
+      loss_fn: A callable that takes three arguments, `output` tensor(s) as
+        output of `predict_on_batch` that is interpretable by the loss function,
+        `label` the second element of `batch_input`, and optional
+        `sample_weight` that weights the output.
       metrics_fns: A 3-tuple of callables that initialize the metrics state,
         update the metrics state, and finalize the metrics values respectively.
         This can be the result of `
@@ -184,6 +191,7 @@ class FunctionalModel:
     self._forward_pass_fn = forward_pass_fn
     check_tf_function_decorated(predict_on_batch_fn, 'predict_on_batch_fn')
     self._predict_on_batch_fn = predict_on_batch_fn
+    self._loss_fn = loss_fn
     self._input_spec = input_spec
     (
         self._initialize_metrics_state,
@@ -208,6 +216,12 @@ class FunctionalModel:
   ):
     """Returns tensor(s) interpretable by the loss function."""
     return self._predict_on_batch_fn(model_weights, x, training)
+
+  def loss(
+      self, output: Any, label: Any, sample_weight: Optional[Any] = None
+  ) -> float:
+    """Returns the loss value based on the model output and the label."""
+    return self._loss_fn(output, label, sample_weight)
 
   @tf.function
   def initialize_metrics_state(self) -> types.MetricsState:
@@ -404,7 +418,11 @@ def functional_model_from_keras(
   NOTE: This method only supports models where calling that model with
   `training=True` and `training=False` produce the same graph. Keras layers
   such as batch normalization will fail because they require updating internal
-  state when `training=True` which is not suported.
+  state when `training=True` which is not supported.
+
+  This method doesn't support loss functions scaled by sample weights at the
+  current state. Keras models with non-None sample weights will fail because
+  sample weights aren't supported in model serialization and deserialization.
 
   IMPORTANT: The returned model must only be used in a graph context (for
   example inside a `tff.tf_computation` decorated callable). It will raise an
@@ -423,7 +441,12 @@ def functional_model_from_keras(
     A `tff.learning.models.FunctionalModel`.
 
   Raises:
-    KerasFunctionalModelError: the model has a batch normalization layer.
+    KerasFunctionalModelError: If the following conditions: 1) the Keras model
+    contains a batch normalization layer, 2) the Keras model is with
+    non-trainable variable, 3) error occurs when converting the Keras model, 4)
+    the Keras model shares variable across layers, 5) the FunctionalModel is
+    used outside of a tff.tf_computation decorated callable or a graph context,
+    6) the Keras model contains a loss function with non-None sample weights.
   """
   # We're going to do something fancy here:
   #
@@ -474,6 +497,17 @@ def functional_model_from_keras(
     raise ValueError(
         '`keras_model` must be a `tf.keras.Model` or a no-arg '
         'callable that returns a `tf.keras.Model`.'
+    )
+
+  # TODO(b/269671316): more work needed to support non-None sample_weight during
+  # model serialization and deserialization.
+  keras_sample_weight = (
+      inspect.signature(loss_fn).parameters['sample_weight'].default
+  )
+  if keras_sample_weight is not None:
+    raise KerasFunctionalModelError(
+        'Received a non-None model_weight. Non-None model_weight is not'
+        'supported in the current model serialization and deserialization.'
     )
 
   # Clone the keras model inside a graph context so that we only get the
@@ -622,6 +656,11 @@ def functional_model_from_keras(
         num_examples=nrows(tf.nest.flatten(batch_input)[0]),
     )
 
+  def loss(
+      output: Any, label: Any, sample_weight: Optional[Any] = None
+  ) -> float:
+    return loss_fn(y_true=label, y_pred=output, sample_weight=sample_weight)
+
   if metrics_constructor is not None:
     metrics_fns = keras_utils.create_functional_metric_fns(metrics_constructor)
   else:
@@ -635,6 +674,7 @@ def functional_model_from_keras(
       initial_weights=initial_weights,
       forward_pass_fn=forward_pass,
       predict_on_batch_fn=predict_on_batch,
+      loss_fn=loss,
       metrics_fns=metrics_fns,
       input_spec=input_spec,
   )

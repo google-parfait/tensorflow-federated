@@ -479,9 +479,9 @@ def save_functional_model(
       trainable=False,
   )
 
-  # Serialize predict_on_batch, once for training, once for non-training.
-  x_type = functional_model.input_spec[0]
+  x_spec, y_spec = functional_model.input_spec
 
+  # Serialize predict_on_batch, once for training, once for non-training.
   # TODO(b/198150431): try making `training` a `tf.Tensor` parameter to remove
   # the need to for serializing two different function graphs.
   def make_concrete_flat_predict_on_batch(training: bool):
@@ -494,8 +494,7 @@ def save_functional_model(
     Returns:
       A 2-tuple of concrete `tf.function` instance and a `tff.Type` protocol
       buffer message documenting the the result structure returned by the
-      concrete
-      function.
+      concrete function.
     """
     # Save the un-flattened type spec for deserialization later.
     # Note: `training` is a Python boolean, which gets "curried", in a sense,
@@ -506,7 +505,7 @@ def save_functional_model(
         functional_model.predict_on_batch
     ).get_concrete_function(
         model_weights_tensor_specs,
-        x_type,
+        x_spec,
         # Note: training does not appear in the resulting concrete function.
         training=training,
     )
@@ -525,7 +524,7 @@ def save_functional_model(
 
     flat_concrete_fn = tf.function(flat_predict_on_batch).get_concrete_function(
         model_weights_tensor_specs,
-        x_type,
+        x_spec,
         # Note: training does not appear in the resulting concrete function.
         training=training,
     )
@@ -548,6 +547,56 @@ def save_functional_model(
   m.predict_on_batch_inference = predict_inference
   m.predict_on_batch_inference_type_spec = tf.Variable(
       predict_inference_type_spec.SerializeToString(deterministic=True),
+      trainable=False,
+  )
+
+  output_tensor_specs = _deserialize_type_spec(
+      m.predict_on_batch_training_type_spec, tuple
+  )
+
+  # Serialize the functional graph of loss.
+  def make_concrete_flat_loss():
+    """Create a concrete loss function that has flattened output.
+
+    Returns:
+      A 2-tuple of concrete `tf.function` instance and a `tff.Type` protocol
+      buffer message documenting the result structure returned by the concrete
+      function.
+    """
+    # Save the un-flattened type spec for deserialization later.
+    concrete_structured_fn = tf.function(
+        functional_model.loss
+    ).get_concrete_function(
+        output_tensor_specs,
+        y_spec,
+        sample_weight=None,
+    )
+    output_tensor_spec_structure = tf.nest.map_structure(
+        tf.TensorSpec.from_tensor, concrete_structured_fn.structured_outputs
+    )
+    result_type_spec = type_serialization.serialize_type(
+        computation_types.to_type(output_tensor_spec_structure)
+    )
+
+    @tf.function
+    def flat_loss(output, label, sample_weight=None):
+      return tf.nest.flatten(
+          functional_model.loss(output, label, sample_weight)
+      )
+
+    flat_concrete_fn = tf.function(flat_loss).get_concrete_function(
+        output_tensor_specs,
+        y_spec,
+        sample_weight=None,
+    )
+    return flat_concrete_fn, result_type_spec
+
+  with tf.Graph().as_default():
+    loss_fn, loss_type_spec = make_concrete_flat_loss()
+
+  m.loss = loss_fn
+  m.loss_type_spec = tf.Variable(
+      loss_type_spec.SerializeToString(deterministic=True),
       trainable=False,
   )
 
@@ -628,6 +677,23 @@ class _LoadedFunctionalModel(functional.FunctionalModel):
         loaded_module.predict_on_batch_inference,
         loaded_module.predict_on_batch_inference_type_spec,
         False,
+    )
+
+    def unflattern_loss_fn(flat_loss, serialized_result_type_variable):
+      result_tensor_specs = _deserialize_type_spec(
+          serialized_result_type_variable, float
+      )
+
+      def loss(output, label, sample_weight=None):
+        result = flat_loss(output, label, sample_weight)
+        if tf.is_tensor(result):
+          return result
+        return tf.nest.pack_sequence_as(result_tensor_specs, result)
+
+      return loss
+
+    self._loss_fn = unflattern_loss_fn(
+        loaded_module.loss, loaded_module.loss_type_spec
     )
 
   @property
