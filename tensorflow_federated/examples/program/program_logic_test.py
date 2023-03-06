@@ -98,7 +98,7 @@ def _create_mock_evaluation(
 
 
 def _create_mock_program_state_manager(
-    latest_program_state: Optional[tuple[object, int]] = None
+    latest_program_state: Optional[program_logic._ProgramState] = None,
 ) -> mock.Mock:
   mock_program_state_manager = mock.create_autospec(
       tff.program.ProgramStateManager, spec_set=True, instance=True
@@ -216,13 +216,18 @@ class TrainFederatedModelTest(
     parameterized.TestCase, unittest.IsolatedAsyncioTestCase
 ):
 
+  # pyformat: disable
   @parameterized.named_parameters(
       ('program_state_manager_none', None, None),
       ('program_state_none', None),
-      ('program_state_less_than_rounds', ('state_5', 5)),
-      ('program_state_equal_to_rounds', ('state_10', 10)),
-      ('program_state_greater_than_rounds', ('state_100', 100)),
+      ('program_state_less_than_rounds',
+       program_logic._ProgramState('state_5', 5)),
+      ('program_state_equal_to_rounds',
+       program_logic._ProgramState('state_10', 10)),
+      ('program_state_greater_than_rounds',
+       program_logic._ProgramState('state_100', 100)),
   )
+  # pyformat: enable
   @tff.test.with_context(_create_mock_context)
   async def test_calls_program_components(
       self,

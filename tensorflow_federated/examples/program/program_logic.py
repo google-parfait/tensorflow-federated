@@ -25,7 +25,7 @@ federated learning training loop.
 """
 
 import functools
-from typing import Optional
+from typing import NamedTuple, Optional
 
 from absl import logging
 import tensorflow_federated as tff
@@ -215,6 +215,25 @@ def _check_expected_type_signatures(
     raise UnexpectedTypeSignatureError() from e
 
 
+class _ProgramState(NamedTuple):
+  """Defines the intermediate program state of the program logic.
+
+  The program logic is responsible for defining the data required to restore the
+  execution of the program logic after a failure.
+
+  Important: Updating the fields of this program state will impact the ability
+  of the program logic to load previously saved program state. If this is
+  required it may be useful to version the structure of the program state.
+
+  Attributes:
+    state: The server state produced at `round_num`.
+    round_num: The training round.
+  """
+
+  state: object
+  round_num: int
+
+
 async def train_federated_model(
     *,
     initialize: tff.Computation,
@@ -289,7 +308,8 @@ async def train_federated_model(
     evaluation_data_source: A `tff.program.FederatedDataSource` which returns
       client data used during evaluation.
     total_rounds: The number of training rounds to run.
-    num_clients: The number of clients per round of training.
+    num_clients: The number of clients for each round of training and for
+      evaluation.
     train_metrics_manager: An optional `tff.program.ReleaseManager` used to
       release training metrics.
     evaluation_metrics_manager: An optional `tff.program.ReleaseManager` used to
@@ -316,7 +336,7 @@ async def train_federated_model(
   # this program logic and skip unnecessary steps.
   if program_state_manager is not None:
     initial_state = await tff.program.materialize_value(initial_state)
-    structure = (initial_state, 0)
+    structure = _ProgramState(initial_state, 0)
     program_state, version = await program_state_manager.load_latest(structure)
   else:
     program_state = None
@@ -326,13 +346,8 @@ async def train_federated_model(
   # available or the initialized state.
   if program_state is not None:
     logging.info('Loaded program state at version %d', version)
-    # Unpack the program state; the program logic is responsible for determining
-    # how to pack and unpack program state and these functions are dependent on
-    # each other. In this example the logic is simple, the unpacking logic is
-    # inlined here and the packing logic is inlined below. If the logic is more
-    # complicated it may be helpful to express these as dedicated functions.
-    state, round_number = program_state
-    start_round = round_number + 1
+    state = program_state.state
+    start_round = program_state.round_num + 1
   else:
     logging.info('Initialized state')
     state = initial_state
@@ -351,11 +366,11 @@ async def train_federated_model(
     # `start_round` are inputs to this loop and are saved using the
     # `program_state_manager`. This means that if there is a failure during
     # training, previously trained rounds will be skipped.
-    for round_number in range(start_round, total_rounds + 1):
+    for round_num in range(start_round, total_rounds + 1):
       # Run one round of training.
       tasks.add_callable(
           functools.partial(
-              logging.info, 'Running round %d of training', round_number
+              logging.info, 'Running round %d of training', round_num
           )
       )
       train_data = train_data_iterator.select(num_clients)
@@ -366,16 +381,13 @@ async def train_federated_model(
         _, metrics_type = train.type_signature.result
         metrics_type = metrics_type.member
         tasks.add(
-            train_metrics_manager.release(metrics, metrics_type, round_number)
+            train_metrics_manager.release(metrics, metrics_type, round_num)
         )
 
       # Save the current program state.
       if program_state_manager is not None:
-        # Pack the program state; the program logic should save only what is
-        # required to restore the exection of this program logic after a
-        # failure.
-        program_state = (state, round_number)
-        version = round_number
+        program_state = _ProgramState(state, round_num)
+        version = version + 1
         tasks.add(program_state_manager.save(program_state, version))
 
     # Run one round of evaluation; similar to running one round of training
