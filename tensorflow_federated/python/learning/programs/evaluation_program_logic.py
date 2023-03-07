@@ -72,6 +72,7 @@ import numpy as np
 
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_conversions
+from tensorflow_federated.python.learning.models import model_weights as model_weights_lib
 from tensorflow_federated.python.learning.templates import learning_process
 from tensorflow_federated.python.program import data_source as data_source_lib
 from tensorflow_federated.python.program import federated_context
@@ -288,7 +289,10 @@ class EvaluationManager:
     self._pending_tasks.add(asyncio.create_task(run_and_record_completion()))
 
   async def start_evaluation(
-      self, train_round: int, start_timestamp_seconds: int, model_weights: Any
+      self,
+      train_round: int,
+      start_timestamp_seconds: int,
+      model_weights: model_weights_lib.ModelWeights,
   ) -> None:
     """Starts a new evaluation loop for the incoming model_weights."""
     await self._cleanup_finished_tasks()

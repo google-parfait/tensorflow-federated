@@ -25,6 +25,7 @@ py_library(
     deps = [
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
+        "//tensorflow_federated/python/learning/models:model_weights",
         "//tensorflow_federated/python/learning/templates:learning_process",
         "//tensorflow_federated/python/program:data_source",
         "//tensorflow_federated/python/program:federated_context",
