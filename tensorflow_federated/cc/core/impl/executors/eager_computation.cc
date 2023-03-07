@@ -50,10 +50,22 @@ limitations under the License
 #include "tensorflow/core/graph/graph.h"
 #include "tensorflow/dtensor/cc/tensor_layout.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
+#include "tensorflow_federated/cc/core/impl/executors/tensorflow_utils.h"
 
 namespace tensorflow_federated {
 
 namespace {
+
+// A process level counter for suffixing name of tf_function created from
+// GraphDef. This ensures that each tf function registered is unique and does
+// not override an existing function def.
+ABSL_CONST_INIT static absl::Mutex function_counter_mutex(absl::kConstInit);
+int32_t GetNextFunctionId() {
+  absl::MutexLock function_id_lock(&function_counter_mutex);
+  static int32_t function_id = 0;
+  return function_id++;
+}
+
 absl::Status AddFunctionDef(const tensorflow::FunctionDef& function,
                             TFE_Context* context, TF_Status* status) {
   if (TFE_ContextHasFunction(context, function.signature().name().c_str())) {
@@ -232,7 +244,9 @@ absl::Status PopulateBindingNames(
       if (!binding.tensor().has_tensor_name()) {
         return absl::InternalError("Tensor binding does not have a name.");
       }
-      tensor_names_from_binding.push_back(binding.tensor().tensor_name());
+      // Binding names have suffix ":N" in them, remove that to look up nodes.
+      tensor_names_from_binding.push_back(
+          GetNodeName(binding.tensor().tensor_name()));
       break;
     }
     case v0::TensorFlow::Binding::kStruct: {
@@ -335,8 +349,9 @@ absl::StatusOr<tensorflow::FunctionDef> ConvertToFunctionDef(
   // and output args.
   std::vector<std::string> output_names(output_bindings.begin(),
                                         output_bindings.end());
-  const std::string init_function_name = "initialization_function";
-  status = tensorflow::GraphToFunctionDef(*graph.get(), init_function_name,
+  const std::string function_name =
+      absl::StrCat("tf_computation_function", GetNextFunctionId());
+  status = tensorflow::GraphToFunctionDef(*graph.get(), function_name,
                                           output_names, &func_def);
   if (!status.ok()) {
     return absl::InternalError(absl::StrCat(

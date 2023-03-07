@@ -49,8 +49,7 @@ class DTensorConverter {
 // max_concurrent_computation_calls can be used to control maximum number
 // of active threads executing tensorflow functions.
 std::shared_ptr<Executor> CreateDTensorExecutor(
-    std::optional<std::string> dtensor_device_name,
-    std::unique_ptr<TFE_Context, decltype(&TFE_DeleteContext)> context,
+    TFE_Context* context, std::optional<std::string> dtensor_device_name,
     std::optional<tensorflow::dtensor::Mesh> mesh = std::nullopt,
     std::unique_ptr<DTensorConverter> dtensor_converter =
         nullptr,  // Uses

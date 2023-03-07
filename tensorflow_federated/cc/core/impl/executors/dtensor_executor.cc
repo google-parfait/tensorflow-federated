@@ -43,8 +43,10 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
 #include "tensorflow_federated/cc/core/impl/executors/tensor_serialization.h"
+#include "tensorflow_federated/cc/core/impl/executors/tensorflow_utils.h"
 #include "tensorflow_federated/cc/core/impl/executors/threading.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
+
 namespace tensorflow_federated {
 namespace {
 
@@ -204,7 +206,8 @@ class TensorValue : public Value {
     if (mesh.has_value() && device_name.has_value()) {
       std::unique_ptr<TF_Status, decltype(&TF_DeleteStatus)> status(
           TF_NewStatus(), TF_DeleteStatus);
-      auto it = layout_map.find(shape.tensor().tensor_name());
+      // Binding names have suffix ":N" in them, remove that to look up nodes.
+      auto it = layout_map.find(GetNodeName(shape.tensor().tensor_name()));
       tensorflow::dtensor::Layout layout;
       if (it != layout_map.end() && device_name.has_value()) {
         layout = it->second;
@@ -219,6 +222,10 @@ class TensorValue : public Value {
       auto* dtensor_value = converter_->TensorToDTensor(
           context, value_.get(), tensorflow::wrap(&layout),
           device_name.value().c_str(), status.get());
+      if (TF_GetCode(status.get()) != TF_OK) {
+        return absl::InternalError(absl::StrCat("dtensor creation failed.. ",
+                                                TF_Message(status.get())));
+      }
       bindings.emplace_back(dtensor_value);
     } else {
       // If not running on a DTensor device, copy the tensor handle into binding
@@ -495,12 +502,11 @@ using ValueFuture = std::shared_future<absl::StatusOr<ExecutorValue>>;
 
 class DTensorExecutor : public ExecutorBase<ValueFuture> {
  public:
-  DTensorExecutor(
-      std::optional<std::string> dtensor_device_name,
-      std::unique_ptr<TFE_Context, decltype(&TFE_DeleteContext)> context,
-      std::optional<tensorflow::dtensor::Mesh> mesh,
-      std::unique_ptr<DTensorConverter> converter,
-      int32_t max_concurrent_computation_calls)
+  DTensorExecutor(TFE_Context* context,
+                  std::optional<std::string> dtensor_device_name,
+                  std::optional<tensorflow::dtensor::Mesh> mesh,
+                  std::unique_ptr<DTensorConverter> converter,
+                  int32_t max_concurrent_computation_calls)
       : context_(std::move(context)),
         dtensor_device_name_(dtensor_device_name),
         max_concurrent_computation_calls_(max_concurrent_computation_calls),
@@ -543,8 +549,7 @@ class DTensorExecutor : public ExecutorBase<ValueFuture> {
           if (argument.has_value()) {
             arg = TFF_TRY(Wait(argument.value()));
           }
-          return fn->Call(arg, this->context_.get(),
-                          this->dtensor_device_name_);
+          return fn->Call(arg, this->context_, this->dtensor_device_name_);
         },
         &thread_pool_);
   }
@@ -580,14 +585,14 @@ class DTensorExecutor : public ExecutorBase<ValueFuture> {
   absl::Status Materialize(ValueFuture value_fut, v0::Value* value_pb) final {
     ExecutorValue value = TFF_TRY(Wait(std::move(value_fut)));
     ParallelTasks tasks(&thread_pool_);
-    TFF_TRY(value->MaterializeValue(context_.get(), value_pb,
-                                    dtensor_device_name_, tasks));
+    TFF_TRY(value->MaterializeValue(context_, value_pb, dtensor_device_name_,
+                                    tasks));
     TFF_TRY(tasks.WaitAll());
     return absl::OkStatus();
   }
 
  private:
-  std::unique_ptr<TFE_Context, decltype(&TFE_DeleteContext)> context_;
+  TFE_Context* context_ = nullptr;
   std::optional<std::string> dtensor_device_name_;
   int32_t max_concurrent_computation_calls_;
   std::optional<tensorflow::dtensor::Mesh> mesh_;
@@ -600,13 +605,12 @@ class DTensorExecutor : public ExecutorBase<ValueFuture> {
 }  // namespace
 
 std::shared_ptr<Executor> CreateDTensorExecutor(
-    std::optional<std::string> dtensor_device_name,
-    std::unique_ptr<TFE_Context, decltype(&TFE_DeleteContext)> context,
+    TFE_Context* context, std::optional<std::string> dtensor_device_name,
     std::optional<tensorflow::dtensor::Mesh> mesh,
     std::unique_ptr<DTensorConverter> dtensor_converter,
     int32_t max_concurrent_computation_calls) {
   return std::make_shared<DTensorExecutor>(
-      dtensor_device_name, std::move(context), mesh,
+      std::move(context), dtensor_device_name, mesh,
       dtensor_converter == nullptr ? std::make_unique<DTensorConverterImpl>()
                                    : std::move(dtensor_converter),
       max_concurrent_computation_calls);

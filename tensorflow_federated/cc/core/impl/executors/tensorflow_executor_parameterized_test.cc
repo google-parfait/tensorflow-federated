@@ -100,22 +100,18 @@ class TensorflowExecutor {};
 class DTensorExecutor {};
 
 template <class T>
-std::shared_ptr<Executor> CreateExecutor();
+std::shared_ptr<Executor> CreateExecutor(TFE_Context* context);
 
 template <>
-std::shared_ptr<Executor> CreateExecutor<TensorflowExecutor>() {
+std::shared_ptr<Executor> CreateExecutor<TensorflowExecutor>(
+    TFE_Context* context) {
   return CreateTensorFlowExecutor(/*max_concurrent_computation_calls=*/10);
 }
 
 template <>
-std::shared_ptr<Executor> CreateExecutor<DTensorExecutor>() {
-  TF_Status* status = TF_NewStatus();
-  std::unique_ptr<TFE_ContextOptions, decltype(&TFE_DeleteContextOptions)> opts(
-      TFE_NewContextOptions(), TFE_DeleteContextOptions);
-  std::unique_ptr<TFE_Context, decltype(&TFE_DeleteContext)> context(
-      TFE_NewContext(opts.get(), status), TFE_DeleteContext);
-  TF_DeleteStatus(status);
-  return CreateDTensorExecutor(std::nullopt, std::move(context), std::nullopt,
+std::shared_ptr<Executor> CreateExecutor<DTensorExecutor>(
+    TFE_Context* context) {
+  return CreateDTensorExecutor(context, std::nullopt, std::nullopt,
                                /*DTensor converter=*/nullptr,
                                /*max_concurrent_computation_calls=*/10);
 }
@@ -161,8 +157,20 @@ inline v0::Value ComputationV(
 template <class T>
 class TensorFlowBasedExecutorsTest : public ::testing::Test {
  public:
-  TensorFlowBasedExecutorsTest() { test_executor_ = CreateExecutor<T>(); }
+  TensorFlowBasedExecutorsTest() {
+    TF_Status* status = TF_NewStatus();
+    std::unique_ptr<TFE_ContextOptions, decltype(&TFE_DeleteContextOptions)>
+        opts(TFE_NewContextOptions(), TFE_DeleteContextOptions);
+    context_ = TFE_NewContext(opts.get(), status);
+    TF_DeleteStatus(status);
+    test_executor_ = CreateExecutor<T>(context_);
+  }
+
+  ~TensorFlowBasedExecutorsTest() override { TFE_DeleteContext(context_); }
+
   std::shared_ptr<Executor> test_executor_;
+  TFE_Context* context_;
+
   void CheckRoundTrip(const v0::Value& input_pb) {
     TFF_ASSERT_OK_AND_ASSIGN(OwnedValueId id,
                              test_executor_->CreateValue(input_pb));

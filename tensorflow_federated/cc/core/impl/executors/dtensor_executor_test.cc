@@ -152,11 +152,10 @@ class DTensorExecutorTest : public ::testing::Test {
     TF_Status* status = TF_NewStatus();
     std::unique_ptr<TFE_ContextOptions, decltype(&TFE_DeleteContextOptions)>
         opts(TFE_NewContextOptions(), TFE_DeleteContextOptions);
-    std::unique_ptr<TFE_Context, decltype(&TFE_DeleteContext)> context(
-        TFE_NewContext(opts.get(), status), TFE_DeleteContext);
+    context_ = TFE_NewContext(opts.get(), status);
 
-    TFE_SetLogicalCpuDevices(context.get(), 2,
-                             "/job:localhost/replica:0/task:0", status);
+    TFE_SetLogicalCpuDevices(context_, 2, "/job:localhost/replica:0/task:0",
+                             status);
     mesh_ = CreateMeshForTest();
     device_name_ = "/job:localhost/replica:0/task:0/device:CUSTOM:1";
     auto mesh_or =
@@ -164,19 +163,21 @@ class DTensorExecutorTest : public ::testing::Test {
     CHECK(mesh_or.status().ok());
 
     auto mesh = mesh_or.value();
-    TFE_DTENSOR_RegisterDTensorDevice(context.get(), tensorflow::wrap(&mesh),
+    TFE_DTENSOR_RegisterDTensorDevice(context_, tensorflow::wrap(&mesh),
                                       device_name_.c_str(), status);
     auto dtensor_converter = std::make_unique<DTensorConverterTestImpl>();
     // Keep a copy of pointer for testing before transferring ownership to
     // executor.
     dtensor_converter_ = dtensor_converter.get();
-    test_executor_ =
-        CreateDTensorExecutor(device_name_, std::move(context), mesh,
-                              std::move(dtensor_converter), 10);
+    test_executor_ = CreateDTensorExecutor(context_, device_name_, mesh,
+                                           std::move(dtensor_converter), 10);
 
     TF_DeleteStatus(status);
   }
 
+  ~DTensorExecutorTest() override { TFE_DeleteContext(context_); }
+
+  TFE_Context* context_;
   tensorflow::dtensor::MeshProto mesh_;
   std::string device_name_;
   std::shared_ptr<Executor> test_executor_;

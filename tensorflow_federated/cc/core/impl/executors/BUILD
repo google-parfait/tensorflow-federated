@@ -248,6 +248,7 @@ cc_library(
         ":executor",
         ":status_macros",
         ":tensor_serialization",
+        ":tensorflow_utils",
         ":threading",
         "//tensorflow_federated/proto/v0:executor_cc_proto",
         "@com_google_absl//absl/status",
@@ -301,6 +302,7 @@ cc_library(
     hdrs = ["eager_computation.h"],
     deps = [
         ":status_macros",
+        ":tensorflow_utils",
         "//tensorflow_federated/proto/v0:computation_cc_proto",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:node_hash_map",
@@ -1090,6 +1092,13 @@ cc_library(
         "@org_tensorflow//tensorflow/core:framework",
         "@org_tensorflow//tensorflow/core:protos_all_cc",
     ],
+)
+
+cc_library(
+    name = "tensorflow_utils",
+    srcs = ["tensorflow_utils.cc"],
+    hdrs = ["tensorflow_utils.h"],
+    deps = ["@com_google_absl//absl/strings"],
 )
 
 tff_cc_cpu_gpu_test(
