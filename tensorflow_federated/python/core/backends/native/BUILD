@@ -139,7 +139,10 @@ py_test(
 py_library(
     name = "execution_contexts",
     srcs = ["execution_contexts.py"],
-    data = ["//tensorflow_federated/data:worker_binary"],
+    data = select({
+        "//tensorflow_federated/python:staticly_linked_tf_binary": ["//tensorflow_federated/data:worker_binary"],
+        "//conditions:default": [],
+    }),
     srcs_version = "PY3",
     deps = [
         ":compiler",
@@ -160,6 +163,7 @@ py_library(
 py_test(
     name = "execution_contexts_test",
     srcs = ["execution_contexts_test.py"],
+    data = ["//tensorflow_federated/data:worker_binary"],
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [

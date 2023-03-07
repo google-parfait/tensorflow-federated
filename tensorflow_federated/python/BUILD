@@ -20,6 +20,12 @@ package_group(
 
 licenses(["notice"])
 
+config_setting(
+    name = "staticly_linked_tf_binary",
+    define_values = {"staticly_linked_tf_binary": "true"},
+    visibility = ["//tensorflow_federated:__subpackages__"],
+)
+
 py_library(
     name = "python",
     srcs = ["__init__.py"],

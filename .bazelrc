@@ -26,6 +26,9 @@ build --compilation_mode=opt
 build --define=use_fast_cpp_protos=true
 build --define=allow_oversize_protos=true
 
+# Build a staticly link a .so binary to include in the Python libraries.
+build --define=staticly_linked_tf_binary=true
+
 # pybind_abseil does not include a __init__.py, which breaks dependencies when
 # bazel produces an empty __init__.py and hides the symbols from the `.so`
 # python extension. We must ask bazel not to generate these and rely on
