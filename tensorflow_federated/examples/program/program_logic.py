@@ -25,6 +25,7 @@ federated learning training loop.
 """
 
 import functools
+import typing
 from typing import NamedTuple, Optional
 
 from absl import logging
@@ -328,6 +329,18 @@ async def train_federated_model(
       evaluation_data_source=evaluation_data_source,
   )
   logging.info('Running program logic')
+
+  # Cast the `program_state_manager` to a more specific type; a manager that
+  # loads and saves `_ProgramState`s instead of a manager that loads and saves
+  # `tff.program.ProgramStateStructure`s. This allows the program logic to:
+  # *   Keep `_ProgramState` private.
+  # *   Have static typing within the program logic.
+  # *   Require callers to provide a `program_state_manager` capable of handling
+  #     any `tff.program.ProgramStateStructure`.
+  program_state_manager = typing.cast(
+      Optional[tff.program.ProgramStateManager[_ProgramState]],
+      program_state_manager,
+  )
 
   initial_state = initialize()
 
