@@ -852,3 +852,19 @@ py_test(
         "@com_google_protobuf//:protobuf_python",
     ],
 )
+
+py_test(
+    name = "dtensor_executor_binding_test",
+    srcs = ["dtensor_executor_binding_test.py"],
+    tags = [
+        # Similar to executor_bindings_tests which are disabled for kokoro as well.
+        "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
+    ],
+    deps = [
+        ":executor_bindings",
+        ":value_serialization",
+        "//tensorflow_federated/proto/v0:executor_py_pb2",
+        "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+    ],
+)

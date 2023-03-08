@@ -32,6 +32,8 @@ Executor = executor_bindings.Executor
 
 # Import executor constructors.
 create_tensorflow_executor = executor_bindings.create_tensorflow_executor
+create_dtensor_executor = executor_bindings.create_dtensor_executor
+
 create_reference_resolving_executor = (
     executor_bindings.create_reference_resolving_executor
 )

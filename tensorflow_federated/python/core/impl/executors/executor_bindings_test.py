@@ -47,16 +47,32 @@ def _test_map_integers(tensor):
   return table.lookup(tensor)
 
 
+def get_executor(use_tf_executor):
+  if use_tf_executor:
+    return executor_bindings.create_tensorflow_executor()
+  else:
+    # Empty string for device name and mesh
+    return executor_bindings.create_dtensor_executor('', '', -1)
+
+
 class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
 
-  def test_create(self):
+  @parameterized.named_parameters(
+      ('tf_executor', True),
+      ('dtensor_executor', False),
+  )
+  def test_create(self, use_tf_executor):
     try:
-      executor_bindings.create_tensorflow_executor()
+      get_executor(use_tf_executor)
     except Exception as e:  # pylint: disable=broad-except
       self.fail(f'Exception: {e}')
 
-  def test_create_value(self):
-    executor = executor_bindings.create_tensorflow_executor()
+  @parameterized.named_parameters(
+      ('tf_executor', True),
+      ('dtensor_executor', False),
+  )
+  def test_create_value(self, use_tf_executor):
+    executor = get_executor(use_tf_executor)
     # 1. Test a simple tensor.
     expected_type_spec = TensorType(shape=[3], dtype=tf.int64)
     value_pb, _ = value_serialization.serialize_value(
@@ -191,8 +207,12 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
         result_type_spec, struct_of_sequence_type
     )
 
-  def test_create_struct(self):
-    executor = executor_bindings.create_tensorflow_executor()
+  @parameterized.named_parameters(
+      ('tf_executor', True),
+      ('dtensor_executor', False),
+  )
+  def test_create_struct(self, use_tf_executor):
+    executor = get_executor(use_tf_executor)
     expected_type_spec = TensorType(shape=[3], dtype=tf.int64)
     value_pb, _ = value_serialization.serialize_value(
         tf.constant([1, 2, 3]), expected_type_spec
@@ -229,8 +249,12 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
     )
     self.assertAllClose([[(1, 2, 3), (1, 2, 3)], (1, 2, 3)], deserialized_value)
 
-  def test_create_selection(self):
-    executor = executor_bindings.create_tensorflow_executor()
+  @parameterized.named_parameters(
+      ('tf_executor', True),
+      ('dtensor_executor', False),
+  )
+  def test_create_selection(self, use_tf_executor):
+    executor = get_executor(use_tf_executor)
     expected_type_spec = TensorType(shape=[3], dtype=tf.int64)
     value_pb, _ = value_serialization.serialize_value(
         tf.constant([1, 2, 3]), expected_type_spec
@@ -264,8 +288,12 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
     )
     self.assertAllClose((1, 2, 3), deserialized_value)
 
-  def test_call_with_arg(self):
-    executor = executor_bindings.create_tensorflow_executor()
+  @parameterized.named_parameters(
+      ('tf_executor', True),
+      ('dtensor_executor', False),
+  )
+  def test_call_with_arg(self, use_tf_executor):
+    executor = get_executor(use_tf_executor)
     value_pb, _ = value_serialization.serialize_value(
         tf.constant([1, 2, 3]), TensorType(shape=[3], dtype=tf.int64)
     )
@@ -283,8 +311,12 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
     result_tensor, _ = value_serialization.deserialize_value(result_value_pb)
     self.assertAllEqual(result_tensor, [2, 4, 6])
 
-  def test_call_no_arg(self):
-    executor = executor_bindings.create_tensorflow_executor()
+  @parameterized.named_parameters(
+      ('tf_executor', True),
+      ('dtensor_executor', False),
+  )
+  def test_call_no_arg(self, use_tf_executor=True):
+    executor = get_executor(use_tf_executor)
 
     @tensorflow_computation.tf_computation
     def foo():
@@ -303,19 +335,29 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
       executor.materialize(0)
 
 
-class ReferenceResolvingExecutorBindingsTest(tf.test.TestCase):
+class ReferenceResolvingExecutorBindingsTest(
+    parameterized.TestCase, tf.test.TestCase
+):
 
-  def test_create(self):
+  @parameterized.named_parameters(
+      ('tf_executor', True),
+      ('dtensor_executor', False),
+  )
+  def test_create(self, use_tf_executor):
     try:
       executor_bindings.create_reference_resolving_executor(
-          executor_bindings.create_tensorflow_executor()
+          get_executor(use_tf_executor)
       )
     except Exception as e:  # pylint: disable=broad-except
       self.fail(f'Exception: {e}')
 
-  def test_create_value(self):
+  @parameterized.named_parameters(
+      ('tf_executor', True),
+      ('dtensor_executor', False),
+  )
+  def test_create_value(self, use_tf_executor):
     executor = executor_bindings.create_reference_resolving_executor(
-        executor_bindings.create_tensorflow_executor()
+        get_executor(use_tf_executor)
     )
     # 1. Test a simple tensor.
     expected_type_spec = TensorType(shape=[3], dtype=tf.int64)
@@ -376,9 +418,13 @@ class ReferenceResolvingExecutorBindingsTest(tf.test.TestCase):
     self.assertEqual(repr(value), '<OwnedValueId: 2>')
     # Note: functions are not materializable, no addition assertions.
 
-  def test_create_struct(self):
+  @parameterized.named_parameters(
+      ('tf_executor', True),
+      ('dtensor_executor', False),
+  )
+  def test_create_struct(self, use_tf_executor):
     executor = executor_bindings.create_reference_resolving_executor(
-        executor_bindings.create_tensorflow_executor()
+        get_executor(use_tf_executor)
     )
     expected_type_spec = TensorType(shape=[3], dtype=tf.int64)
     value_pb, _ = value_serialization.serialize_value(
@@ -416,9 +462,13 @@ class ReferenceResolvingExecutorBindingsTest(tf.test.TestCase):
     )
     self.assertAllClose([[(1, 2, 3), (1, 2, 3)], (1, 2, 3)], deserialized_value)
 
-  def test_create_selection(self):
+  @parameterized.named_parameters(
+      ('tf_executor', True),
+      ('dtensor_executor', False),
+  )
+  def test_create_selection(self, use_tf_executor):
     executor = executor_bindings.create_reference_resolving_executor(
-        executor_bindings.create_tensorflow_executor()
+        get_executor(use_tf_executor)
     )
     expected_type_spec = TensorType(shape=[3], dtype=tf.int64)
     value_pb, _ = value_serialization.serialize_value(
@@ -453,9 +503,13 @@ class ReferenceResolvingExecutorBindingsTest(tf.test.TestCase):
     )
     self.assertAllClose((1, 2, 3), deserialized_value)
 
-  def test_call_with_arg(self):
+  @parameterized.named_parameters(
+      ('tf_executor', True),
+      ('dtensor_executor', False),
+  )
+  def test_call_with_arg(self, use_tf_executor):
     executor = executor_bindings.create_reference_resolving_executor(
-        executor_bindings.create_tensorflow_executor()
+        get_executor(use_tf_executor)
     )
     value_pb, _ = value_serialization.serialize_value(
         tf.constant([1, 2, 3]), TensorType(shape=[3], dtype=tf.int64)
@@ -474,9 +528,13 @@ class ReferenceResolvingExecutorBindingsTest(tf.test.TestCase):
     result_tensor, _ = value_serialization.deserialize_value(result_value_pb)
     self.assertAllEqual(result_tensor, [2, 4, 6])
 
-  def test_call_no_arg(self):
+  @parameterized.named_parameters(
+      ('tf_executor', True),
+      ('dtensor_executor', False),
+  )
+  def test_call_no_arg(self, use_tf_executor):
     executor = executor_bindings.create_reference_resolving_executor(
-        executor_bindings.create_tensorflow_executor()
+        get_executor(use_tf_executor)
     )
 
     @tensorflow_computation.tf_computation
@@ -496,13 +554,17 @@ class ReferenceResolvingExecutorBindingsTest(tf.test.TestCase):
       executor.materialize(0)
 
 
-class FederatingExecutorBindingsTest(tf.test.TestCase):
+class FederatingExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
 
-  def test_construction_placements_casters(self):
+  @parameterized.named_parameters(
+      ('tf_executor', True),
+      ('dtensor_executor', False),
+  )
+  def test_construction_placements_casters(self, use_tf_executor):
     with self.subTest('placement_literal_keys'):
       try:
         executor_bindings.create_federating_executor(
-            executor_bindings.create_tensorflow_executor(),
+            get_executor(use_tf_executor),
             {placements.CLIENTS: 10},
         )
       except Exception as e:  # pylint: disable=broad-except
@@ -510,22 +572,22 @@ class FederatingExecutorBindingsTest(tf.test.TestCase):
     with self.subTest('fails_non_dict'):
       with self.assertRaisesRegex(TypeError, 'must be a `Mapping`'):
         executor_bindings.create_federating_executor(
-            executor_bindings.create_tensorflow_executor(),
+            get_executor(use_tf_executor),
             [(placements.CLIENTS, 10)],
         )
     with self.subTest('fails_non_placement_keys'):
       with self.assertRaisesRegex(TypeError, '`PlacementLiteral`'):
         executor_bindings.create_federating_executor(
-            executor_bindings.create_tensorflow_executor(), {'clients': 10}
+            get_executor(use_tf_executor), {'clients': 10}
         )
       with self.assertRaisesRegex(TypeError, '`PlacementLiteral`'):
         executor_bindings.create_federating_executor(
-            executor_bindings.create_tensorflow_executor(), {10: 10}
+            get_executor(use_tf_executor), {10: 10}
         )
     with self.subTest('fails_non_int_value'):
       with self.assertRaisesRegex(TypeError, r'`int` values'):
         executor_bindings.create_federating_executor(
-            executor_bindings.create_tensorflow_executor(),
+            get_executor(use_tf_executor),
             {placements.CLIENTS: 0.5},
         )
 
@@ -542,13 +604,21 @@ class RemoteExecutorBindingsTest(tf.test.TestCase):
     self.assertIsInstance(remote_ex, executor_bindings.Executor)
 
 
-class ComposingExecutorBindingsTest(tf.test.TestCase):
+class ComposingExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
 
-  def test_construction(self):
-    server = executor_bindings.create_tensorflow_executor()
+  @parameterized.named_parameters(
+      ('server_client_both_tf_executor', True, True),
+      ('server_client_both_dtensor_executor', False, False),
+      ('server_tf_client_dtensor_executor', True, False),
+      ('server_dtensor_client_tf_executor', False, True),
+  )
+  def test_construction(
+      self, use_tf_executor_for_server, use_tf_executor_for_client
+  ):
+    server = get_executor(use_tf_executor_for_server)
     children = [
         executor_bindings.create_composing_child(
-            executor_bindings.create_tensorflow_executor(),
+            get_executor(use_tf_executor_for_client),
             {placements.CLIENTS: 0},
         )
     ]

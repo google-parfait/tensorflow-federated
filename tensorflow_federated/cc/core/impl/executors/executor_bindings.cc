@@ -25,12 +25,15 @@ limitations under the License
 #include <cstdint>
 #include <limits>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
+#include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "grpcpp/grpcpp.h"
+#include "include/pybind11/cast.h"
 #include "include/pybind11/detail/common.h"
 #include "include/pybind11/pybind11.h"
 #include "include/pybind11/pytypes.h"
@@ -42,11 +45,14 @@ limitations under the License
 #include "tensorflow/c/tf_tensor.h"
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/platform/status.h"
+#include "tensorflow/dtensor/cc/tensor_layout.h"
+#include "tensorflow/python/eager/pywrap_tfe.h"
 #include "tensorflow/python/lib/core/ndarray_tensor.h"
 #include "tensorflow/python/lib/core/ndarray_tensor_bridge.h"
 #include "tensorflow/python/lib/core/safe_ptr.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/core/impl/executors/composing_executor.h"
+#include "tensorflow_federated/cc/core/impl/executors/dtensor_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/federating_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/reference_resolving_executor.h"
@@ -69,6 +75,33 @@ namespace tensorflow_federated {
 namespace py = ::pybind11;
 
 namespace {
+
+TFE_Context* GetContextHandle(PyObject* py_context) {
+  tensorflow::Safe_PyObjectPtr py_context_handle(
+      PyObject_GetAttrString(py_context, "_handle"));
+  if (py_context_handle == nullptr) {
+    // Current Python code makes sure this never happens. If it does, or
+    // becomes hard to maintain, we can call the ensure_initialized() method
+    // here.
+    PyErr_SetString(
+        PyExc_TypeError,
+        "Expected `context` argument in EagerTensor constructor to have a "
+        "`_handle` attribute but it did not. Was eager Context initialized?");
+    return nullptr;
+  }
+
+  auto* ctx = reinterpret_cast<TFE_Context*>(
+      PyCapsule_GetPointer(py_context_handle.get(), nullptr));
+  if (ctx == nullptr) {
+    PyErr_SetString(PyExc_TypeError,
+                    tensorflow::strings::StrCat(
+                        "Expected context._handle to contain a PyCapsule "
+                        "encoded pointer to TFE_Context. Got ",
+                        Py_TYPE(py_context_handle.get())->tp_name)
+                        .c_str());
+  }
+  return ctx;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // The Python module defintion `executor_bindings`.
@@ -157,6 +190,33 @@ PYBIND11_MODULE(executor_bindings, m) {
   m.def("create_tensorflow_executor", &CreateTensorFlowExecutor,
         py::arg("max_concurrent_computation_calls") = -1,
         "Creates a TensorFlowExecutor.");
+  m.def(
+      "create_dtensor_executor",
+      [](const std::string& device_name = "", std::string serialized_mesh = "",
+         int max_concurrent_computation_calls =
+             -1) -> absl::StatusOr<std::shared_ptr<Executor>> {
+        PyObject* context = GetPyEagerContext();
+        std::optional<tensorflow::dtensor::Mesh> mesh_opt = std::nullopt;
+        if (!serialized_mesh.empty()) {
+          auto mesh = tensorflow::dtensor::Mesh::FromString(serialized_mesh);
+          if (!mesh.ok()) {
+            return absl::InvalidArgumentError(mesh.status().ToString());
+          }
+          mesh_opt = mesh.value();
+        }
+
+        auto executor = CreateDTensorExecutor(
+            /*context=*/GetContextHandle(context),
+            /*dtensor_device_name=*/device_name.empty()
+                ? std::nullopt
+                : std::optional<std::string>(device_name),
+            /*mesh=*/mesh_opt,
+            /*dtensor_converter=*/nullptr,  // Use default converter.
+            /*max_concurrent_computation_calls=*/
+            max_concurrent_computation_calls);
+        return executor;
+      },
+      "Creates a DTensorExecutor.");
   m.def("create_reference_resolving_executor",
         &CreateReferenceResolvingExecutor,
         "Creates a ReferenceResolvingExecutor", py::arg("inner_executor"));
