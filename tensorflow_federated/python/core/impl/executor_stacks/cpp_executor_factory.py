@@ -16,6 +16,7 @@
 from collections.abc import Callable, Sequence
 import concurrent
 import math
+import typing
 
 from absl import logging
 import cachetools
@@ -131,6 +132,9 @@ def local_cpp_executor_factory(
     leaf_executor_fn: Callable[
         [int], executor_bindings.Executor
     ] = _default_leaf_executor_fn,
+    client_leaf_executor_fn: typing.Optional[
+        Callable[[int], executor_bindings.Executor]
+    ] = None,
 ) -> executor_factory.ExecutorFactory:
   """Local ExecutorFactory backed by C++ Executor bindings."""
   _check_num_clients_is_valid(default_num_clients)
@@ -154,12 +158,30 @@ def local_cpp_executor_factory(
           expected_concurrency_factor,
       )
 
-    leaf_executor = leaf_executor_fn(max_concurrent_computation_calls)
-    sub_federating_reference_resolving_executor = (
-        executor_bindings.create_reference_resolving_executor(leaf_executor)
+    server_leaf_executor = leaf_executor_fn(max_concurrent_computation_calls)
+    sub_federating_reference_resolving_server_executor = (
+        executor_bindings.create_reference_resolving_executor(
+            server_leaf_executor
+        )
     )
+    if client_leaf_executor_fn is None:
+      sub_federating_reference_resolving_client_executor = (
+          sub_federating_reference_resolving_server_executor
+      )
+    else:
+      client_leaf_executor = client_leaf_executor_fn(
+          max_concurrent_computation_calls
+      )
+
+      sub_federating_reference_resolving_client_executor = (
+          executor_bindings.create_reference_resolving_executor(
+              client_leaf_executor
+          )
+      )
     federating_ex = executor_bindings.create_federating_executor(
-        sub_federating_reference_resolving_executor, cardinalities
+        sub_federating_reference_resolving_server_executor,
+        sub_federating_reference_resolving_client_executor,
+        cardinalities,
     )
     top_level_reference_resolving_ex = (
         executor_bindings.create_reference_resolving_executor(federating_ex)

@@ -221,8 +221,8 @@ PYBIND11_MODULE(executor_bindings, m) {
         &CreateReferenceResolvingExecutor,
         "Creates a ReferenceResolvingExecutor", py::arg("inner_executor"));
   m.def("create_federating_executor", &CreateFederatingExecutor,
-        py::arg("inner_executor"), py::arg("cardinalities"),
-        "Creates a FederatingExecutor.");
+        py::arg("inner_server_executor"), py::arg("inner_client_executor"),
+        py::arg("cardinalities"), "Creates a FederatingExecutor.");
   m.def("create_composing_child", &ComposingChild::Make, py::arg("executor"),
         py::arg("cardinalities"), "Creates a ComposingExecutor.");
   m.def("create_composing_executor", &CreateComposingExecutor,

@@ -557,14 +557,21 @@ class ReferenceResolvingExecutorBindingsTest(
 class FederatingExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
 
   @parameterized.named_parameters(
-      ('tf_executor', True),
-      ('dtensor_executor', False),
+      ('server_client_both_tf_executor', True, True),
+      ('server_client_both_dtensor_executor', False, False),
+      ('server_tf_client_dtensor_executor', True, False),
+      ('server_dtensor_client_tf_executor', False, True),
   )
-  def test_construction_placements_casters(self, use_tf_executor):
+  def test_construction_placements_casters(
+      self, use_tf_executor_for_server, use_tf_executor_for_client
+  ):
+    server_executor = get_executor(use_tf_executor_for_server)
+    client_executor = get_executor(use_tf_executor_for_client)
     with self.subTest('placement_literal_keys'):
       try:
         executor_bindings.create_federating_executor(
-            get_executor(use_tf_executor),
+            server_executor,
+            client_executor,
             {placements.CLIENTS: 10},
         )
       except Exception as e:  # pylint: disable=broad-except
@@ -572,22 +579,24 @@ class FederatingExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
     with self.subTest('fails_non_dict'):
       with self.assertRaisesRegex(TypeError, 'must be a `Mapping`'):
         executor_bindings.create_federating_executor(
-            get_executor(use_tf_executor),
+            server_executor,
+            client_executor,
             [(placements.CLIENTS, 10)],
         )
     with self.subTest('fails_non_placement_keys'):
       with self.assertRaisesRegex(TypeError, '`PlacementLiteral`'):
         executor_bindings.create_federating_executor(
-            get_executor(use_tf_executor), {'clients': 10}
+            server_executor, client_executor, {'clients': 10}
         )
       with self.assertRaisesRegex(TypeError, '`PlacementLiteral`'):
         executor_bindings.create_federating_executor(
-            get_executor(use_tf_executor), {10: 10}
+            server_executor, client_executor, {10: 10}
         )
     with self.subTest('fails_non_int_value'):
       with self.assertRaisesRegex(TypeError, r'`int` values'):
         executor_bindings.create_federating_executor(
-            get_executor(use_tf_executor),
+            server_executor,
+            client_executor,
             {placements.CLIENTS: 0.5},
         )
 

@@ -26,7 +26,9 @@ namespace tensorflow_federated {
 
 // Returns an executor that can resolve federated values and intrinsics.
 absl::StatusOr<std::shared_ptr<Executor>> CreateFederatingExecutor(
-    std::shared_ptr<Executor> child, const CardinalityMap& cardinalities);
+    std::shared_ptr<Executor> server_child,
+    std::shared_ptr<Executor> client_child,
+    const CardinalityMap& cardinalities);
 
 }  // namespace tensorflow_federated
 

@@ -49,7 +49,8 @@ GRPCChannel = executor_bindings.GRPCChannelInterface
 # Wrap any construction requiring cardinalities arguments to convert placement
 # literals to strings.
 def create_federating_executor(
-    inner_executor: executor_bindings.Executor,
+    inner_server_executor: executor_bindings.Executor,
+    inner_client_executor: executor_bindings.Executor,
     cardinalities: Mapping[placements.PlacementLiteral, int],
 ) -> executor_bindings.Executor:
   """Constructs a FederatingExecutor with a specified placement."""
@@ -57,7 +58,7 @@ def create_federating_executor(
       data_conversions.convert_cardinalities_dict_to_string_keyed(cardinalities)
   )
   return executor_bindings.create_federating_executor(
-      inner_executor, uri_cardinalities
+      inner_server_executor, inner_client_executor, uri_cardinalities
   )
 
 
