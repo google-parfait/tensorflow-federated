@@ -14,10 +14,17 @@
 """Abstract interface for data backends."""
 
 import abc
+
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
+from tensorflow_federated.python.common_libs import deprecation
 from tensorflow_federated.python.core.impl.types import computation_types
 
 
+# TODO(b/240972950): Remove deprecated API.
+@deprecation.deprecated(
+    'The Python executors and execution stacks are deprecated, use '
+    '`tensorflow_federated::DataBackend` instead.'
+)
 class DataBackend(metaclass=abc.ABCMeta):
   """Abstract interface for data backends.
 
@@ -26,6 +33,9 @@ class DataBackend(metaclass=abc.ABCMeta):
   used in tandem with the `data_executor` that queries them as it encounters
   the `data` building block.
   """
+
+  def __init__(self):
+    pass
 
   @abc.abstractmethod
   async def materialize(self, data: pb.Data, type_spec: computation_types.Type):

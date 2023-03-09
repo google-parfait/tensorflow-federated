@@ -93,6 +93,7 @@ py_library(
     srcs_version = "PY3",
     deps = [
         "//tensorflow_federated/proto/v0:computation_py_pb2",
+        "//tensorflow_federated/python/common_libs:deprecation",
         "//tensorflow_federated/python/core/impl/types:computation_types",
     ],
 )
