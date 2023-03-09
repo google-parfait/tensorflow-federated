@@ -833,7 +833,6 @@ py_library(
         ":remote_executor_stub",
         "//tensorflow_federated/proto/v0:executor_py_pb2",
         "//tensorflow_federated/proto/v0:executor_py_pb2_grpc",
-        "//tensorflow_federated/python/common_libs:deprecation",
         "//tensorflow_federated/python/common_libs:tracing",
     ],
 )

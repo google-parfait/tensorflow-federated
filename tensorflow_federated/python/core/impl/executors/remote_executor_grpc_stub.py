@@ -18,7 +18,6 @@ import grpc
 
 from tensorflow_federated.proto.v0 import executor_pb2
 from tensorflow_federated.proto.v0 import executor_pb2_grpc
-from tensorflow_federated.python.common_libs import deprecation
 from tensorflow_federated.python.common_libs import tracing
 from tensorflow_federated.python.core.impl.executors import executors_errors
 from tensorflow_federated.python.core.impl.executors import remote_executor_stub
@@ -41,11 +40,6 @@ def _request(rpc_func, request):
         raise e
 
 
-# TODO(b/240972950): Remove deprecated API.
-@deprecation.deprecated(
-    'The Python executors and execution stacks are deprecated, use the C++ '
-    'executors instead.'
-)
 class RemoteExecutorGrpcStub(remote_executor_stub.RemoteExecutorStub):
   """A stub connects to a remote executor service over gRPC."""
 
