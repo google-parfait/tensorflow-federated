@@ -90,9 +90,6 @@ will need to use a
     demonstrates how to use TFF to train models with user-level differential
     privacy.
 
-*   [Loading Remote Data with TFF](loading_remote_data.ipynb) describes how to
-    embed custom logic in the TFF runtime to load data on remote machines.
-
 *   [Support for JAX in TFF](../tutorials/jax_support.ipynb) shows how
     [JAX](https://github.com/google/jax) computations can be used in TFF,
     demonstrating how TFF is designed to be able to interoperate with other
