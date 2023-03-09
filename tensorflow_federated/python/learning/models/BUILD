@@ -1,17 +1,20 @@
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
-package(default_visibility = [
-    ":models_packages",
-    "//tensorflow_federated/python/learning:learning_users",
-    "//tensorflow_federated/python/learning/algorithms:algorithms_packages",
-    "//tensorflow_federated/python/learning/programs:programs_packages",
-    "//tensorflow_federated/python/learning/reconstruction:reconstruction_packages",
-    "//tensorflow_federated/python/learning/templates:templates_packages",
-    "//tensorflow_federated/python/learning/framework:framework_packages",
+package(
+    default_applicable_licenses = ["//:package_license"],
+    default_visibility = [
+        ":models_packages",
+        "//tensorflow_federated/python/learning:learning_users",
+        "//tensorflow_federated/python/learning/algorithms:algorithms_packages",
+        "//tensorflow_federated/python/learning/programs:programs_packages",
+        "//tensorflow_federated/python/learning/reconstruction:reconstruction_packages",
+        "//tensorflow_federated/python/learning/templates:templates_packages",
+        "//tensorflow_federated/python/learning/framework:framework_packages",
 
-    # TODO(b/151441025): remove these edges after moving the symbols into more appropriate locations.
-    "//tensorflow_federated/python/learning:learning_packages",
-])
+        # TODO(b/151441025): remove these edges after moving the symbols into more appropriate locations.
+        "//tensorflow_federated/python/learning:learning_packages",
+    ],
+)
 
 package_group(
     name = "models_packages",

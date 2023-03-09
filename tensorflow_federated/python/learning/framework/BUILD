@@ -1,15 +1,18 @@
 load("//tensorflow_federated/tools:build_defs.bzl", "py_cpu_gpu_test")
 load("@rules_python//python:defs.bzl", "py_library")
 
-package(default_visibility = [
-    ":framework_packages",
-    "//tensorflow_federated/python/learning:learning_users",
-    "//tensorflow_federated/python/learning/reconstruction:reconstruction_packages",
+package(
+    default_applicable_licenses = ["//:package_license"],
+    default_visibility = [
+        ":framework_packages",
+        "//tensorflow_federated/python/learning:learning_users",
+        "//tensorflow_federated/python/learning/reconstruction:reconstruction_packages",
 
-    # TODO(b/151441025): This visibility is temporary and can be removed when there are no longer
-    # modules from this package being referenced in the `learning/__init__.py` module.
-    "//tensorflow_federated/python/learning:__pkg__",
-])
+        # TODO(b/151441025): This visibility is temporary and can be removed when there are no longer
+        # modules from this package being referenced in the `learning/__init__.py` module.
+        "//tensorflow_federated/python/learning:__pkg__",
+    ],
+)
 
 package_group(
     name = "framework_packages",

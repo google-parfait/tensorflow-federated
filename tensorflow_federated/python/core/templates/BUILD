@@ -1,10 +1,13 @@
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
-package(default_visibility = [
-    ":templates_packages",
-    "//tensorflow_federated/python/core:core_users",
-    "//tensorflow_federated/python/core/backends:backends_packages",
-])
+package(
+    default_applicable_licenses = ["//:package_license"],
+    default_visibility = [
+        ":templates_packages",
+        "//tensorflow_federated/python/core:core_users",
+        "//tensorflow_federated/python/core/backends:backends_packages",
+    ],
+)
 
 package_group(
     name = "templates_packages",

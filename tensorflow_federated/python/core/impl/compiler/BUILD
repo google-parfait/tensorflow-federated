@@ -1,15 +1,18 @@
 load("//tensorflow_federated/tools:build_defs.bzl", "py_cpu_gpu_test")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
-package(default_visibility = [
-    ":compiler_packages",
-    "//tensorflow_federated/python/core/impl:impl_users",
-    "//tensorflow_federated/python/core/impl/computation:computation_packages",
-    "//tensorflow_federated/python/core/impl/execution_contexts:execution_contexts_packages",
-    "//tensorflow_federated/python/core/impl/executor_stacks:executor_stacks_packages",
-    "//tensorflow_federated/python/core/impl/executors:executors_packages",
-    "//tensorflow_federated/python/core/impl/federated_context:federated_context_packages",
-])
+package(
+    default_applicable_licenses = ["//:package_license"],
+    default_visibility = [
+        ":compiler_packages",
+        "//tensorflow_federated/python/core/impl:impl_users",
+        "//tensorflow_federated/python/core/impl/computation:computation_packages",
+        "//tensorflow_federated/python/core/impl/execution_contexts:execution_contexts_packages",
+        "//tensorflow_federated/python/core/impl/executor_stacks:executor_stacks_packages",
+        "//tensorflow_federated/python/core/impl/executors:executors_packages",
+        "//tensorflow_federated/python/core/impl/federated_context:federated_context_packages",
+    ],
+)
 
 package_group(
     name = "compiler_packages",

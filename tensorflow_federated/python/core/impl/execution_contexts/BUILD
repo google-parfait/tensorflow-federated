@@ -1,9 +1,12 @@
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
-package(default_visibility = [
-    ":execution_contexts_packages",
-    "//tensorflow_federated/python/core/impl:impl_users",
-])
+package(
+    default_applicable_licenses = ["//:package_license"],
+    default_visibility = [
+        ":execution_contexts_packages",
+        "//tensorflow_federated/python/core/impl:impl_users",
+    ],
+)
 
 package_group(
     name = "execution_contexts_packages",

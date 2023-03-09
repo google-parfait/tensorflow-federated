@@ -1,10 +1,13 @@
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
-package(default_visibility = [
-    ":xla_packages",
-    "//tensorflow_federated/python/core:core_users",
-    "//third_party/py/tensorflow_federated:__subpackages__",
-])
+package(
+    default_applicable_licenses = ["//:package_license"],
+    default_visibility = [
+        ":xla_packages",
+        "//tensorflow_federated/python/core:core_users",
+        "//third_party/py/tensorflow_federated:__subpackages__",
+    ],
+)
 
 package_group(
     name = "xla_packages",

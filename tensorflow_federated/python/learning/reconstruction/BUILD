@@ -1,9 +1,12 @@
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
-package(default_visibility = [
-    ":reconstruction_packages",
-    "//tensorflow_federated/python/learning:learning_users",
-])
+package(
+    default_applicable_licenses = ["//:package_license"],
+    default_visibility = [
+        ":reconstruction_packages",
+        "//tensorflow_federated/python/learning:learning_users",
+    ],
+)
 
 package_group(
     name = "reconstruction_packages",

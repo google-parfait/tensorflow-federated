@@ -1,12 +1,15 @@
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
-package(default_visibility = [
-    ":optimizers_packages",
-    "//tensorflow_federated/python/learning:learning_users",
-    "//tensorflow_federated/python/learning/algorithms:algorithms_packages",
-    "//tensorflow_federated/python/learning/reconstruction:reconstruction_packages",
-    "//tensorflow_federated/python/learning/templates:templates_packages",
-])
+package(
+    default_applicable_licenses = ["//:package_license"],
+    default_visibility = [
+        ":optimizers_packages",
+        "//tensorflow_federated/python/learning:learning_users",
+        "//tensorflow_federated/python/learning/algorithms:algorithms_packages",
+        "//tensorflow_federated/python/learning/reconstruction:reconstruction_packages",
+        "//tensorflow_federated/python/learning/templates:templates_packages",
+    ],
+)
 
 package_group(
     name = "optimizers_packages",

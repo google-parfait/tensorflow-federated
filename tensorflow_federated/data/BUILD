@@ -1,9 +1,12 @@
 load("@bazel_skylib//rules:copy_file.bzl", "copy_file")
 
-package(default_visibility = [
-    ":data_packages",
-    ":data_users",
-])
+package(
+    default_applicable_licenses = ["//:package_license"],
+    default_visibility = [
+        ":data_packages",
+        ":data_users",
+    ],
+)
 
 package_group(
     name = "data_packages",

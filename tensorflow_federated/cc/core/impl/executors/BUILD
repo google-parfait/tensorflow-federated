@@ -2,11 +2,14 @@ load("//tensorflow_federated/tools:build_defs.bzl", "tff_cc_cpu_gpu_test")
 load("@pybind11_bazel//:build_defs.bzl", "pybind_extension")
 load("@rules_python//python:defs.bzl", "py_binary")
 
-package(default_visibility = [
-    ":executors_packages",
-    "//tensorflow_federated/cc/core/impl:impl_users",
-    "//tensorflow_federated/cc/core/impl/executor_stacks:executor_stacks_packages",
-])
+package(
+    default_applicable_licenses = ["//:package_license"],
+    default_visibility = [
+        ":executors_packages",
+        "//tensorflow_federated/cc/core/impl:impl_users",
+        "//tensorflow_federated/cc/core/impl/executor_stacks:executor_stacks_packages",
+    ],
+)
 
 package_group(
     name = "executors_packages",

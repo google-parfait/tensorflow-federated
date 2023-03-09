@@ -1,7 +1,10 @@
-package(default_visibility = [
-    ":simulation_packages",
-    ":simulation_users",
-])
+package(
+    default_applicable_licenses = ["//:package_license"],
+    default_visibility = [
+        ":simulation_packages",
+        ":simulation_users",
+    ],
+)
 
 package_group(
     name = "simulation_packages",

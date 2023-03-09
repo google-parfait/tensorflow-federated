@@ -1,6 +1,9 @@
 load("@rules_python//python:defs.bzl", "py_library")
 
-package(default_visibility = ["//visibility:private"])
+package(
+    default_applicable_licenses = ["//:package_license"],
+    default_visibility = ["//visibility:private"],
+)
 
 package_group(
     name = "impl_packages",

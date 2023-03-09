@@ -1,10 +1,13 @@
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
-package(default_visibility = [
-    ":models_packages",
-    "//tensorflow_federated/python/simulation:simulation_users",
-    "//tensorflow_federated/python/simulation/baselines:baselines_packages",
-])
+package(
+    default_applicable_licenses = ["//:package_license"],
+    default_visibility = [
+        ":models_packages",
+        "//tensorflow_federated/python/simulation:simulation_users",
+        "//tensorflow_federated/python/simulation/baselines:baselines_packages",
+    ],
+)
 
 package_group(
     name = "models_packages",

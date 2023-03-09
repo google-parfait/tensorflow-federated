@@ -1,6 +1,9 @@
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
-package(default_visibility = [":programs_packages"])
+package(
+    default_applicable_licenses = ["//:package_license"],
+    default_visibility = [":programs_packages"],
+)
 
 package_group(
     name = "programs_packages",

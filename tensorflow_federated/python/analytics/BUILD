@@ -1,9 +1,12 @@
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
-package(default_visibility = [
-    ":analytics_packages",
-    ":analytics_users",
-])
+package(
+    default_applicable_licenses = ["//:package_license"],
+    default_visibility = [
+        ":analytics_packages",
+        ":analytics_users",
+    ],
+)
 
 package_group(
     name = "analytics_packages",

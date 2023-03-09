@@ -1,9 +1,12 @@
 load("@pybind11_bazel//:build_defs.bzl", "pybind_extension")
 
-package(default_visibility = [
-    ":executor_stacks_packages",
-    "//tensorflow_federated/cc/core/impl:impl_users",
-])
+package(
+    default_applicable_licenses = ["//:package_license"],
+    default_visibility = [
+        ":executor_stacks_packages",
+        "//tensorflow_federated/cc/core/impl:impl_users",
+    ],
+)
 
 package_group(
     name = "executor_stacks_packages",

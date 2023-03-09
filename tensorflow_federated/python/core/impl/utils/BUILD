@@ -1,13 +1,16 @@
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
-package(default_visibility = [
-    ":utils_packages",
-    "//tensorflow_federated/python/core/impl:impl_users",
-    "//tensorflow_federated/python/core/impl/compiler:compiler_packages",
-    "//tensorflow_federated/python/core/impl/executors:executors_packages",
-    "//tensorflow_federated/python/core/impl/federated_context:federated_context_packages",
-    "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_context_packages",
-])
+package(
+    default_applicable_licenses = ["//:package_license"],
+    default_visibility = [
+        ":utils_packages",
+        "//tensorflow_federated/python/core/impl:impl_users",
+        "//tensorflow_federated/python/core/impl/compiler:compiler_packages",
+        "//tensorflow_federated/python/core/impl/executors:executors_packages",
+        "//tensorflow_federated/python/core/impl/federated_context:federated_context_packages",
+        "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_context_packages",
+    ],
+)
 
 package_group(
     name = "utils_packages",
