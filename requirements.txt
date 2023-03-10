@@ -40,7 +40,7 @@ pytype==2022.12.15
 semantic-version~=2.6
 tensorflow-compression~=2.11.0
 tensorflow-model-optimization==0.7.3
-tensorflow-privacy==0.8.6
+tensorflow-privacy==0.8.8
 # The version of this dependency should match the version in
 # https://github.com/tensorflow/federated/blob/main/WORKSPACE.
 tensorflow~=2.11.0

@@ -72,7 +72,7 @@ REQUIRED_PACKAGES = [
     'semantic-version~=2.6',
     'tensorflow-compression~=2.11.0',  # Requires TF x.y.* for ABI compatibility
     'tensorflow-model-optimization==0.7.3',
-    'tensorflow-privacy==0.8.6',
+    'tensorflow-privacy==0.8.8',
     'tensorflow~=2.11.0',
     'tqdm~=4.64',
     'typing-extensions~=4.4.0',
