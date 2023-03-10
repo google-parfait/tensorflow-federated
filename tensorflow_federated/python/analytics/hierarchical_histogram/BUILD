@@ -1,12 +1,15 @@
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
-package(default_visibility = [
-    ":hierarchical_histogram_packages",
-    "//tensorflow_federated/python/analytics:analytics_users",
+package(
+    default_applicable_licenses = ["//:package_license"],
+    default_visibility = [
+        ":hierarchical_histogram_packages",
+        "//tensorflow_federated/python/analytics:analytics_users",
 
-    # Python package namespace
-    "//tensorflow_federated/python/analytics:__pkg__",
-])
+        # Python package namespace
+        "//tensorflow_federated/python/analytics:__pkg__",
+    ],
+)
 
 package_group(
     name = "hierarchical_histogram_packages",

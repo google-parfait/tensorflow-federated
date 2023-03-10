@@ -1,10 +1,13 @@
 load("//tensorflow_federated/tools:build_defs.bzl", "py_cpu_gpu_test")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
-package(default_visibility = [
-    ":learning_packages",
-    ":learning_users",
-])
+package(
+    default_applicable_licenses = ["//:package_license"],
+    default_visibility = [
+        ":learning_packages",
+        ":learning_users",
+    ],
+)
 
 package_group(
     name = "learning_packages",

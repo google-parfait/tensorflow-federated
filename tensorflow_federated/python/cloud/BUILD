@@ -1,6 +1,9 @@
 load("@rules_python//python:defs.bzl", "py_library")
 
-package(default_visibility = [":cloud_packages"])
+package(
+    default_applicable_licenses = ["//:package_license"],
+    default_visibility = [":cloud_packages"],
+)
 
 package_group(
     name = "cloud_packages",

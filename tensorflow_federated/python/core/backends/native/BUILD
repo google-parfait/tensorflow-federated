@@ -1,18 +1,21 @@
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
-package(default_visibility = [
-    ":native_packages",
-    "//tensorflow_federated/python/core:core_users",
-    "//tensorflow_federated/python/core/backends/xla:xla_packages",
+package(
+    default_applicable_licenses = ["//:package_license"],
+    default_visibility = [
+        ":native_packages",
+        "//tensorflow_federated/python/core:core_users",
+        "//tensorflow_federated/python/core/backends/xla:xla_packages",
 
-    # TODO(b/193543632): Remove this visibility once C++ execution is fully
-    # supported in OSS.
-    # Python package namespace
-    "//tensorflow_federated:__pkg__",
+        # TODO(b/193543632): Remove this visibility once C++ execution is fully
+        # supported in OSS.
+        # Python package namespace
+        "//tensorflow_federated:__pkg__",
 
-    # TODO(b/233800373): Remove dependency from `test` to `native`.
-    "//tensorflow_federated/python/core/backends/test:test_packages",
-])
+        # TODO(b/233800373): Remove dependency from `test` to `native`.
+        "//tensorflow_federated/python/core/backends/test:test_packages",
+    ],
+)
 
 package_group(
     name = "native_packages",

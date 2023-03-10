@@ -1,12 +1,15 @@
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
-package(default_visibility = [
-    ":common_libs_packages",
-    "//tensorflow_federated/python:internal_packages",
+package(
+    default_applicable_licenses = ["//:package_license"],
+    default_visibility = [
+        ":common_libs_packages",
+        "//tensorflow_federated/python:internal_packages",
 
-    # Python package namespace
-    "//tensorflow_federated:__pkg__",
-])
+        # Python package namespace
+        "//tensorflow_federated:__pkg__",
+    ],
+)
 
 package_group(
     name = "common_libs_packages",

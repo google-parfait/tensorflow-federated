@@ -1,7 +1,10 @@
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("@rules_python//python:defs.bzl", "py_binary")
 
-package(default_visibility = [":tools_packages"])
+package(
+    default_applicable_licenses = ["//:package_license"],
+    default_visibility = [":tools_packages"],
+)
 
 package_group(
     name = "tools_packages",

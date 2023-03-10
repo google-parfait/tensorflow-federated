@@ -1,7 +1,10 @@
 load("//tensorflow_federated/tools:build_defs.bzl", "py_cpu_gpu_test")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
-package(default_visibility = [":tests_packages"])
+package(
+    default_applicable_licenses = ["//:package_license"],
+    default_visibility = [":tests_packages"],
+)
 
 package_group(
     name = "tests_packages",
