@@ -1,3 +1,26 @@
+# Release 0.51.0
+
+## Major Features and Improvements
+
+*   Enabled, improved, and fixed Python type annotations in some modules.
+*   Added the interface of `loss_fn` to `tff.learning.models.FunctionalModel`,
+    along with serialization and deserialization methods.
+*   Updated the composing executor to forward the `type` field of `Intrinsic`
+    protos that are sent to child executors.
+*   Added an executor binding for `DTensor` based executor.
+
+## Breaking Changes
+
+*   Deprecated `tff.framework.DataBackend`. Python execution is deprecated
+    instead use CPP Execution.
+
+## Bug Fixes
+
+*   Fixed the formulation of the JIT constructed mapped selection computation
+    that is sent to the remote machine in streaming mode.
+*   Fixed the usage of `np.bytes_` types that incorrectly truncate byte string
+    with null terminator.
+
 # Release 0.50.0
 
 ## Major Features and Improvements
