@@ -524,7 +524,7 @@ genrule(
     srcs = [],
     outs = ["reduce_lambda_test.pbtxt"],
     cmd = "$(location :make_reduce_lambda_test_graph) --output \"$@\"",
-    exec_tools = [":make_reduce_lambda_test_graph"],
+    tools = [":make_reduce_lambda_test_graph"],
 )
 
 # Python target which generates an example GraphDef for testing `reduce`
@@ -543,7 +543,7 @@ genrule(
     srcs = [],
     outs = ["structural_reduce_test.pbtxt"],
     cmd = "$(location :make_structural_reduce_test_graph) --output \"$@\"",
-    exec_tools = [":make_structural_reduce_test_graph"],
+    tools = [":make_structural_reduce_test_graph"],
 )
 
 # Python target which generates an example GraphDef for testing structural
