@@ -687,11 +687,8 @@ class FunctionalModelTest(tf.test.TestCase, parameterized.TestCase):
         [[0.0]] * 5,
     )
 
-    # Loss should be square error if `tf_function`
-    expected_loss = tf.math.reduce_sum(tf.math.pow(example_batch[1], 2.0))
-    # Loss should be mean square error if `keras_model`
-    if model_fn.__name__ == 'create_test_keras_functional_model':
-      expected_loss /= len(example_batch[1])
+    # Loss should be mean square error
+    expected_loss = tf.math.reduce_mean(tf.math.pow(example_batch[1], 2.0))
 
     self.assertAllClose(
         loaded_model.loss(

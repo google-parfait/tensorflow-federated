@@ -84,7 +84,7 @@ def build_functional_linear_regression(
 
   def loss(output: Any, label: Any, sample_weight: Any) -> float:
     del sample_weight
-    return tf.math.reduce_sum(tf.math.pow(output - label, 2.0))
+    return tf.math.reduce_mean(tf.math.pow(output - label, 2.0))
 
   @tf.function
   def initialize_metrics() -> types.MetricsState:

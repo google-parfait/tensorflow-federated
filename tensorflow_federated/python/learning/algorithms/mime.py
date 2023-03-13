@@ -24,7 +24,7 @@ Breaking the centralized barrier for cross-device federated learning.
 """
 
 import collections
-from collections.abc import Callable
+from collections.abc import Callable, Mapping, Sequence
 from typing import Any, Optional, Union
 
 import tensorflow as tf
@@ -328,7 +328,7 @@ def _build_functional_client_update_fn_for_mime_lite(
     client_weighting: client_weight_lib.ClientWeighting,
     use_experimental_simulation_loop: bool = False,
 ) -> Callable[..., Any]:
-  """Builds the `tf_computation` for Mime Lite client training for FunctionalModels."""
+  """Builds the `tf_computation` for client training for FunctionalModels."""
 
   @tensorflow_computation.tf_computation
   def client_update_fn(global_optimizer_state, incoming_weights, data):
@@ -351,20 +351,33 @@ def _build_functional_client_update_fn_for_mime_lite(
       def full_gradient_reduce_fn(state, batch):
         """Sums individual gradients, to be later divided by num_examples."""
         gradient_sum, num_examples_sum = state
+        if isinstance(batch, Mapping):
+          x = batch['x']
+          y = batch['y']
+        elif isinstance(batch, Sequence):
+          x, y = batch
+        else:
+          raise TypeError(
+              'Examples yielded from the dataset must be either a '
+              '`collections.abc.Mapping` or a `collections.abc.Sequence`. Got '
+              f'{type(batch)}'
+          )
+
         with tf.GradientTape() as tape:
           tape.watch(trainable_weights)
-          output = model.forward_pass(incoming_weights, batch, training=True)
-        if output.num_examples is None:
-          num_examples = tf.shape(output.predictions, out_type=tf.int64)[0]
-        else:
-          num_examples = tf.cast(output.num_examples, tf.int64)
-        gradients = tape.gradient(output.loss, trainable_weights)
+          batch_output = model.predict_on_batch(
+              model_weights=incoming_weights, x=x, training=True
+          )
+          batch_loss = model.loss(output=batch_output, label=y)
+
+        batch_num_examples = tf.shape(batch_output)[0]
+        gradients = tape.gradient(batch_loss, trainable_weights)
         gradient_sum = tf.nest.map_structure(
-            lambda g_sum, g: g_sum + g * tf.cast(num_examples, g.dtype),
+            lambda g_sum, g: g_sum + g * tf.cast(batch_num_examples, g.dtype),
             gradient_sum,
             gradients,
         )
-        num_examples_sum += num_examples
+        num_examples_sum += tf.cast(batch_num_examples, tf.int64)
         return gradient_sum, num_examples_sum
 
       def initial_state_for_full_gradient_reduce_fn():
@@ -390,24 +403,37 @@ def _build_functional_client_update_fn_for_mime_lite(
       def train_reduce_fn(state, batch):
         model_weights, metrics_state = state
         trainable_weights, non_trainable_weights = model_weights
-        with tf.GradientTape() as tape:
-          tape.watch(trainable_weights)
-          output = model.forward_pass(
-              model_weights=model_weights, batch_input=batch, training=True
-          )
-        gradients = tape.gradient(output.loss, trainable_weights)
-        if isinstance(batch, collections.abc.Mapping):
-          labels = batch['y']
-        elif isinstance(batch, collections.abc.Sequence):
-          _, labels = batch
+        if isinstance(batch, Mapping):
+          x = batch['x']
+          y = batch['y']
+        elif isinstance(batch, Sequence):
+          x, y = batch
         else:
           raise TypeError(
               'Examples yielded from the dataset must be either a '
               '`collections.abc.Mapping` or a `collections.abc.Sequence`. Got '
               f'{type(batch)}'
           )
+
+        with tf.GradientTape() as tape:
+          tape.watch(trainable_weights)
+          batch_output = model.predict_on_batch(
+              model_weights=model_weights, x=x, training=True
+          )
+          batch_loss = model.loss(output=batch_output, label=y)
+
+        gradients = tape.gradient(batch_loss, trainable_weights)
+        batch_num_examples = tf.shape(batch_output)[0]
+
+        # TODO(b/272099796): Update `update_metrics_state` of FunctionalModel
         metrics_state = model.update_metrics_state(
-            metrics_state, labels=labels, batch_output=output
+            metrics_state,
+            batch_output=variable.BatchOutput(
+                loss=batch_loss,
+                predictions=batch_output,
+                num_examples=tf.cast(batch_num_examples, tf.int64),
+            ),
+            labels=y,
         )
         # Mime Lite keeps optimizer state unchanged during local training.
         _, updated_weights = optimizer.next(

@@ -22,7 +22,7 @@ Communication-Efficient Learning of Deep Networks from Decentralized Data
 """
 
 import collections
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from typing import Any, Optional, Union
 
 import tensorflow as tf
@@ -232,27 +232,40 @@ def _build_functional_client_update(
     )
 
     def reduce_fn(state, batch):
-      """Runs forward_pass on batch and sums the weighted gradients."""
+      """Runs prediction and loss on batch and sums the weighted gradients."""
       accumulated_gradients, metrics_state, num_examples_sum = state
+      if isinstance(batch, Mapping):
+        x = batch['x']
+        y = batch['y']
+      else:
+        x, y = batch
+
       with tf.GradientTape() as tape:
         tape.watch(trainable_weights)
-        output = model.forward_pass(
+        batch_output = model.predict_on_batch(
             model_weights=(trainable_weights, non_trainable_weights),
-            batch_input=batch,
+            x=x,
             training=True,
         )
-        gradients = tape.gradient(output.loss, trainable_weights)
-        num_examples = tf.cast(output.num_examples, tf.float32)
+        batch_loss = model.loss(output=batch_output, label=y)
+        batch_num_examples = tf.shape(batch_output)[0]
+
+        gradients = tape.gradient(batch_loss, trainable_weights)
+        num_examples = tf.cast(batch_num_examples, tf.float32)
         accumulated_gradients = tuple(
             accumulator + num_examples * gradient
             for accumulator, gradient in zip(accumulated_gradients, gradients)
         )
-      if isinstance(batch, collections.abc.Mapping):
-        labels = batch['y']
-      else:
-        _, labels = batch
+
+      # TODO(b/272099796): Update `update_metrics_state` of FunctionalModel
       metrics_state = model.update_metrics_state(
-          metrics_state, labels=labels, batch_output=output
+          metrics_state,
+          batch_output=variable.BatchOutput(
+              loss=batch_loss,
+              predictions=batch_output,
+              num_examples=batch_num_examples,
+          ),
+          labels=y,
       )
       return (
           accumulated_gradients,

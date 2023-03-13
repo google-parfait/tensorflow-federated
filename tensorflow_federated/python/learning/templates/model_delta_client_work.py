@@ -20,7 +20,7 @@ implementation of the generalized FedAvg algorithm implemented in
 """
 
 import collections
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from typing import Any, Optional, Union
 
 import tensorflow as tf
@@ -460,22 +460,35 @@ def build_functional_model_delta_update(
           training_state
       )
       trainable_weights, non_trainable_weights = model_weights
+      if isinstance(batch, Mapping):
+        x = batch['x']
+        y = batch['y']
+      else:
+        x, y = batch
+
       with tf.GradientTape() as tape:
         # Must explicitly watch non-tf.Variable tensors.
         tape.watch(trainable_weights)
-        output = model.forward_pass(model_weights, batch, training=True)
-      gradients = tape.gradient(output.loss, trainable_weights)
+        batch_output = model.predict_on_batch(model_weights, x, training=True)
+        batch_loss = model.loss(output=batch_output, label=y)
+
+      gradients = tape.gradient(batch_loss, trainable_weights)
       optimizer_state, trainable_weights = optimizer.next(
           optimizer_state, trainable_weights, gradients
       )
-      num_examples += tf.cast(output.num_examples, tf.int64)
+      batch_num_examples = tf.shape(batch_output)[0]
+      num_examples += tf.cast(batch_num_examples, tf.int64)
       model_weights = (trainable_weights, non_trainable_weights)
-      if isinstance(batch, collections.abc.Mapping):
-        labels = batch['y']
-      else:
-        _, labels = batch
+
+      # TODO(b/272099796): Update `update_metrics_state` of FunctionalModel
       metrics_state = model.update_metrics_state(
-          metrics_state, batch_output=output, labels=labels
+          metrics_state,
+          batch_output=variable.BatchOutput(
+              loss=batch_loss,
+              predictions=batch_output,
+              num_examples=batch_num_examples,
+          ),
+          labels=y,
       )
       return model_weights, optimizer_state, metrics_state, num_examples
 

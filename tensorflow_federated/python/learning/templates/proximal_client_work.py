@@ -20,7 +20,7 @@ implementation of the generalized FedAvg algorithm implemented in
 """
 
 import collections
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from typing import Any, Optional, Union
 
 from absl import logging
@@ -282,13 +282,21 @@ def _build_functional_model_delta_update(
     trainable_weights = initial_trainable_weights
 
     def reduce_fn(state, batch):
-      """Trains a `tff.learning.models.VariableModel` on a batch of data."""
+      """Trains a `tff.learning.models.FunctionalModel` on a batch of data."""
       num_examples_sum, model_weights, metrics_state, optimizer_state = state
       trainable_weights, non_trainable_weights = model_weights
+      if isinstance(batch, Mapping):
+        x = batch['x']
+        y = batch['y']
+      else:
+        x, y = batch
+
       with tf.GradientTape() as tape:
         tape.watch(trainable_weights)
-        output = model.forward_pass(model_weights, batch, training=True)
-      gradients = tape.gradient(output.loss, trainable_weights)
+        batch_output = model.predict_on_batch(model_weights, x, training=True)
+        batch_loss = model.loss(output=batch_output, label=y)
+
+      gradients = tape.gradient(batch_loss, trainable_weights)
       if delta_l2_regularizer > 0.0:
         proximal_term = tf.nest.map_structure(
             lambda x, y: delta_l2_regularizer * (y - x),
@@ -302,17 +310,20 @@ def _build_functional_model_delta_update(
       trainable_weights = tf.nest.pack_sequence_as(
           trainable_weights, updated_weights
       )
-      if isinstance(batch, collections.abc.Mapping):
-        labels = batch['y']
-      else:
-        _, labels = batch
+      batch_num_examples = tf.shape(batch_output)[0]
+      num_examples_sum += tf.cast(batch_num_examples, tf.int64)
+
+      # TODO(b/272099796): Update `update_metrics_state` of FunctionalModel
       metrics_state = model.update_metrics_state(
-          metrics_state, batch_output=output, labels=labels
+          metrics_state,
+          batch_output=variable.BatchOutput(
+              loss=batch_loss,
+              predictions=batch_output,
+              num_examples=batch_num_examples,
+          ),
+          labels=y,
       )
-      if output.num_examples is None:
-        num_examples_sum += tf.shape(output.predictions, out_type=tf.int64)[0]
-      else:
-        num_examples_sum += tf.cast(output.num_examples, tf.int64)
+
       return (
           num_examples_sum,
           (trainable_weights, non_trainable_weights),

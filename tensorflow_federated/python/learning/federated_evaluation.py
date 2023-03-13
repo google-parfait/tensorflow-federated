@@ -14,7 +14,7 @@
 """A simple implementation of federated evaluation."""
 
 import collections
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from typing import Optional, Union
 
 import tensorflow as tf
@@ -160,15 +160,29 @@ def build_functional_local_evaluation(
   @tf.function
   def local_eval(weights, dataset):
     metrics_state = model.initialize_metrics_state()
+
     for batch in iter(dataset):
-      output = model.forward_pass(weights, batch, training=False)
-      if isinstance(batch, collections.abc.Mapping):
-        labels = batch['y']
+      if isinstance(batch, Mapping):
+        x = batch['x']
+        y = batch['y']
       else:
-        _, labels = batch
+        x, y = batch
+
+      batch_output = model.predict_on_batch(weights, x, training=False)
+      batch_loss = model.loss(output=batch_output, label=y)
+      batch_num_examples = tf.shape(batch_output)[0]
+
+      # TODO(b/272099796): Update `update_metrics_state` of FunctionalModel
       metrics_state = model.update_metrics_state(
-          metrics_state, labels=labels, batch_output=output
+          metrics_state,
+          batch_output=variable.BatchOutput(
+              loss=batch_loss,
+              predictions=batch_output,
+              num_examples=batch_num_examples,
+          ),
+          labels=y,
       )
+
     unfinalized_metrics = metrics_state
     return unfinalized_metrics
 
