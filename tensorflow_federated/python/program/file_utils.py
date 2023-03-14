@@ -18,12 +18,12 @@ from collections.abc import Callable
 import functools
 import os
 import random
-from typing import Any, Union, TypeVar
+from typing import Union, TypeVar
 
 import tensorflow as tf
-import tree
 
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.program import structure_utils
 
 
 _T = TypeVar('_T')
@@ -53,29 +53,13 @@ rmtree = _create_async_def(tf.io.gfile.rmtree)
 class _ValueModule(tf.Module):
   """A `tf.Module` wrapping a structure."""
 
-  def __init__(self, value: Any):
+  def __init__(self, value: object):
     super().__init__()
-
-    # We push leaf values to `tf.Variable` if possible so that they are
-    # serialized separately, instead of as a single large proto.
-    def _wrap_as_variable(value: _T) -> Union[tf.Variable, _T]:
-      try:
-        return tf.Variable(initial_value=value)
-      except ValueError:
-        return value
-
-    self._values = tree.map_structure(_wrap_as_variable, value)
+    self._value = value
 
   @tf.function(input_signature=())
-  def __call__(self) -> Any:
-
-    def _read_value(value: object) -> object:
-      if isinstance(value, tf.Variable):
-        return value.read_value()
-      else:
-        return value
-
-    return tree.map_structure(_read_value, self._values)
+  def __call__(self) -> object:
+    return self._value
 
 
 async def read_saved_model(path: Union[str, os.PathLike[str]]) -> object:
@@ -85,8 +69,17 @@ async def read_saved_model(path: Union[str, os.PathLike[str]]) -> object:
   def _read_saved_model(path: Union[str, os.PathLike[str]]) -> object:
     if isinstance(path, os.PathLike):
       path = os.fspath(path)
+
     module = tf.saved_model.load(path)
-    return module()
+    value = module()
+
+    def _read_value(value: Union[tf.Variable, _T]) -> Union[object, _T]:
+      if isinstance(value, tf.Variable):
+        return value.read_value()
+      else:
+        return value
+
+    return structure_utils.map_structure(_read_value, value)
 
   loop = asyncio.get_running_loop()
   return await loop.run_in_executor(None, _read_saved_model, path)
@@ -110,6 +103,16 @@ async def write_saved_model(
     if tf.io.gfile.exists(temp_path):
       tf.io.gfile.rmtree(temp_path)
     tf.io.gfile.makedirs(temp_path)
+
+    # Wrap leaf values to `tf.Variable` so that they are serialized separately,
+    # instead of as a single large proto.
+    def _wrap_as_variable(value: _T) -> Union[tf.Variable, _T]:
+      try:
+        return tf.Variable(initial_value=value)
+      except ValueError:
+        return value
+
+    value = structure_utils.map_structure(_wrap_as_variable, value)
 
     # Write to the temporary directory.
     module = _ValueModule(value)

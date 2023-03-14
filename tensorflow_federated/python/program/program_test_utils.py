@@ -21,9 +21,9 @@ import warnings
 
 import attrs
 import tensorflow as tf
-import tree
 
 from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.program import structure_utils
 from tensorflow_federated.python.program import value_reference
 
 
@@ -106,7 +106,7 @@ def assert_types_equal(a: object, b: object) -> None:
       raise AssertionError(f'{type(a)} != {type(b)}')
 
   try:
-    tree.map_structure(_assert_type_equal, a, b)
+    structure_utils.map_structure(_assert_type_equal, a, b)
   except (TypeError, ValueError) as e:
     raise AssertionError(
         "The two structures don't have the same nested structure."

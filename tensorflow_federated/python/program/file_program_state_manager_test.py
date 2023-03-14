@@ -23,12 +23,12 @@ from absl.testing import absltest
 from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
-import tree
 
 from tensorflow_federated.python.program import file_program_state_manager
 from tensorflow_federated.python.program import file_utils
 from tensorflow_federated.python.program import program_state_manager
 from tensorflow_federated.python.program import program_test_utils
+from tensorflow_federated.python.program import structure_utils
 
 
 class FileProgramStateManagerInitTest(parameterized.TestCase):
@@ -773,8 +773,8 @@ class FileProgramStateManagerSaveTest(
           return list(value)
         return value
 
-      actual_value = tree.map_structure(_normalize, actual_value)
-      expected_value = tree.map_structure(_normalize, expected_value)
+      actual_value = structure_utils.map_structure(_normalize, actual_value)
+      expected_value = structure_utils.map_structure(_normalize, expected_value)
       self.assertAllEqual(actual_value, expected_value)
       expected_path = os.path.join(root_dir, 'a_1')
       self.assertEqual(actual_path, expected_path)
