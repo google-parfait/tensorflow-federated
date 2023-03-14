@@ -21,6 +21,153 @@ from tensorflow_federated.python.program import program_test_utils
 from tensorflow_federated.python.program import structure_utils
 
 
+class FilterStructureTest(parameterized.TestCase, tf.test.TestCase):
+
+  # pyformat: disable
+  @parameterized.named_parameters(
+      # materialized values
+      ('none', None, None),
+      ('bool', True, None),
+      ('int', 1, None),
+      ('str', 'a', None),
+      ('tensor_int', tf.constant(1), None),
+      ('tensor_str', tf.constant('a'), None),
+      ('tensor_array', tf.ones([3]), None),
+      ('numpy_int', np.int32(1), None),
+      ('numpy_array', np.ones([3]), None),
+
+      # materializable value references
+      ('materializable_value_reference_tensor',
+       program_test_utils.TestMaterializableValueReference(1),
+       None),
+      ('materializable_value_reference_sequence',
+       program_test_utils.TestMaterializableValueReference(
+           tf.data.Dataset.from_tensor_slices([1, 2, 3])),
+       None),
+
+      # structures
+      ('list',
+       [True, 1, 'a', program_test_utils.TestMaterializableValueReference(2)],
+       [None, None, None, None]),
+      ('list_empty', [], []),
+      ('list_nested',
+       [
+           [
+               True,
+               1,
+               'a',
+               program_test_utils.TestMaterializableValueReference(2),
+           ],
+           [3],
+       ],
+       [[None, None, None, None], [None]]),
+      ('dict',
+       {
+           'a': True,
+           'b': 1,
+           'c': 'a',
+           'd': program_test_utils.TestMaterializableValueReference(2),
+       },
+       {'a': None, 'b': None, 'c': None, 'd': None}),
+      ('dict_empty', {}, {}),
+      ('dict_nested',
+       {
+           'x': {
+               'a': True,
+               'b': 1,
+               'c': 'a',
+               'd': program_test_utils.TestMaterializableValueReference(2),
+           },
+           'y': {'a': 3},
+       },
+       {
+           'x': {'a': None, 'b': None, 'c': None, 'd': None},
+           'y': {'a': None},
+       }),
+      ('named_tuple',
+       program_test_utils.TestNamedTuple1(
+           a=True,
+           b=1,
+           c='a',
+           d=program_test_utils.TestMaterializableValueReference(2),
+       ),
+       program_test_utils.TestNamedTuple1(
+           a=None,
+           b=None,
+           c=None,
+           d=None,
+       )),
+      ('named_tuple_nested',
+       program_test_utils.TestNamedTuple3(
+           x=program_test_utils.TestNamedTuple1(
+               a=True,
+               b=1,
+               c='a',
+               d=program_test_utils.TestMaterializableValueReference(2),
+           ),
+           y=program_test_utils.TestNamedTuple2(a=3),
+       ),
+       program_test_utils.TestNamedTuple3(
+           x=program_test_utils.TestNamedTuple1(
+               a=None,
+               b=None,
+               c=None,
+               d=None,
+           ),
+           y=program_test_utils.TestNamedTuple2(a=None),
+       )),
+  )
+  # pyformat: enable
+  def test_returns_result(self, structure, expected_result):
+    actual_result = structure_utils._filter_structure(structure)
+    self.assertEqual(actual_result, expected_result)
+
+  # pyformat: disable
+  @parameterized.named_parameters(
+      # structures
+      ('attrs',
+       program_test_utils.TestAttrs1(
+           a=True,
+           b=1,
+           c='a',
+           d=program_test_utils.TestMaterializableValueReference(2),
+       ),
+       program_test_utils.TestAttrs1(
+           a=None,
+           b=None,
+           c=None,
+           d=None,
+       )),
+      ('attrs_nested',
+       program_test_utils.TestAttrs3(
+           x=program_test_utils.TestAttrs1(
+               a=True,
+               b=1,
+               c='a',
+               d=program_test_utils.TestMaterializableValueReference(2),
+           ),
+           y=program_test_utils.TestAttrs2(a=3),
+       ),
+       program_test_utils.TestAttrs3(
+           x=program_test_utils.TestAttrs1(
+               a=None,
+               b=None,
+               c=None,
+               d=None,
+           ),
+           y=program_test_utils.TestAttrs2(a=None),
+       )),
+  )
+  # pyformat: enable
+  def test_returns_result_and_warns_deprecation_warning(
+      self, structure, expected_result
+  ):
+    with self.assertWarns(DeprecationWarning):
+      actual_result = structure_utils._filter_structure(structure)
+
+    self.assertEqual(actual_result, expected_result)
+
+
 class FlattenWithNameTest(parameterized.TestCase, tf.test.TestCase):
 
   # pyformat: disable

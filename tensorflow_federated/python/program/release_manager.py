@@ -15,9 +15,9 @@
 
 import abc
 import asyncio
-import collections
-from collections.abc import Callable, Sequence
-from typing import Generic, Optional, TypeVar, Union
+from collections.abc import Callable, Mapping, Sequence
+import typing
+from typing import Generic, Optional, Protocol, TypeVar, Union
 
 import tree
 
@@ -69,6 +69,17 @@ class ReleaseManager(abc.ABC, Generic[ReleasableStructure, Key]):
       key: A value used to reference the released `value`.
     """
     raise NotImplementedError
+
+
+@typing.runtime_checkable
+class _NamedTuple(Protocol):
+
+  @property
+  def _fields(self) -> tuple[str, ...]:
+    ...
+
+  def _asdict(self) -> dict[str, object]:
+    ...
 
 
 _FILTERED_SUBTREE = object()
@@ -132,27 +143,31 @@ class FilteringReleaseManager(ReleaseManager[ReleasableStructure, Key]):
     """
 
     def _fn(
-        path: tuple[Union[str, int], ...], subtree: tree.Structure
-    ) -> Optional[tree.Structure]:
-      if not tree.is_nested(subtree):
+        path: tuple[Union[str, int], ...],
+        subtree: structure_utils.Structure[object],
+    ) -> Optional[structure_utils.Structure[object]]:
+      if tree.is_nested(subtree):
+        # TODO(b/224484886): Downcasting to all handled types.
+        subtree = typing.cast(
+            Union[Sequence[object], Mapping[str, object]], subtree
+        )
+        if isinstance(subtree, Sequence) and not isinstance(
+            subtree, _NamedTuple
+        ):
+          return [x for x in subtree if x is not _FILTERED_SUBTREE]
+        elif isinstance(subtree, Mapping):
+          items = [
+              (k, v) for k, v in subtree.items() if v is not _FILTERED_SUBTREE
+          ]
+          mapping_type = type(subtree)  # pytype: disable=invalid-annotation
+          return mapping_type(items)
+        else:
+          raise NotImplementedError(f'Unexpected type found: {type(subtree)}.')
+      else:
         if self._filter_fn(path):
           return None
         else:
           return _FILTERED_SUBTREE
-      else:
-        if isinstance(subtree, collections.OrderedDict):
-          return collections.OrderedDict(
-              [(k, v) for k, v in subtree.items() if v is not _FILTERED_SUBTREE]
-          )
-        elif isinstance(subtree, dict):
-          items = sorted(subtree.items())
-          return {k: v for k, v in items if v is not _FILTERED_SUBTREE}
-        elif isinstance(
-            subtree, (list, tuple)
-        ) and not py_typecheck.is_named_tuple(subtree):
-          return [x for x in subtree if x is not _FILTERED_SUBTREE]
-        else:
-          raise NotImplementedError(f'Unexpected type found: {type(subtree)}.')
 
     filtered_value = tree.traverse_with_path(_fn, value, top_down=False)
 

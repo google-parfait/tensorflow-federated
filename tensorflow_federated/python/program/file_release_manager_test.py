@@ -26,13 +26,13 @@ from absl.testing import absltest
 from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
-import tree
 
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.program import file_release_manager
 from tensorflow_federated.python.program import file_utils
 from tensorflow_federated.python.program import program_test_utils
 from tensorflow_federated.python.program import release_manager
+from tensorflow_federated.python.program import structure_utils
 
 
 def _read_values_from_csv(
@@ -236,7 +236,7 @@ class CSVFileReleaseManagerReadValuesTest(parameterized.TestCase):
     actual_fieldnames, actual_values = release_mngr._read_values()
 
     self.assertEqual(actual_fieldnames, fieldnames)
-    expected_values = tree.map_structure(str, values)
+    expected_values = structure_utils.map_structure(str, values)
     self.assertEqual(actual_values, expected_values)
 
 
@@ -262,7 +262,7 @@ class CSVFileReleaseManagerWriteValuesTest(parameterized.TestCase):
 
     actual_fieldnames, actual_values = _read_values_from_csv(file_path)
     self.assertEqual(actual_fieldnames, fieldnames)
-    expected_values = tree.map_structure(str, values)
+    expected_values = structure_utils.map_structure(str, values)
     self.assertEqual(actual_values, expected_values)
 
   # pyformat: disable
@@ -289,7 +289,7 @@ class CSVFileReleaseManagerWriteValuesTest(parameterized.TestCase):
 
     actual_fieldnames, actual_values = _read_values_from_csv(file_path)
     self.assertEqual(actual_fieldnames, fieldnames)
-    expected_values = tree.map_structure(str, values)
+    expected_values = structure_utils.map_structure(str, values)
     self.assertEqual(actual_values, expected_values)
 
   @parameterized.named_parameters(
@@ -360,7 +360,7 @@ class CSVFileReleaseManagerWriteValueTest(
     expected_value = {name: '' for name in expected_fieldnames}
     expected_value.update(value)
     expected_values = [expected_value]
-    expected_values = tree.map_structure(str, expected_values)
+    expected_values = structure_utils.map_structure(str, expected_values)
     self.assertEqual(actual_values, expected_values)
 
   @parameterized.named_parameters(
@@ -395,7 +395,7 @@ class CSVFileReleaseManagerWriteValueTest(
     expected_value2 = {name: '' for name in expected_fieldnames}
     expected_value2.update(value)
     expected_values = [expected_value1, expected_value2]
-    expected_values = tree.map_structure(str, expected_values)
+    expected_values = structure_utils.map_structure(str, expected_values)
     self.assertEqual(actual_values, expected_values)
 
   @parameterized.named_parameters(
@@ -442,7 +442,7 @@ class CSVFileReleaseManagerAppendValueTest(
     expected_value = {name: '' for name in expected_fieldnames}
     expected_value.update(value)
     expected_values = [expected_value]
-    expected_values = tree.map_structure(str, expected_values)
+    expected_values = structure_utils.map_structure(str, expected_values)
     self.assertEqual(actual_values, expected_values)
 
   @parameterized.named_parameters(
@@ -477,7 +477,7 @@ class CSVFileReleaseManagerAppendValueTest(
     expected_value2 = {name: '' for name in expected_fieldnames}
     expected_value2.update(value)
     expected_values = [expected_value1, expected_value2]
-    expected_values = tree.map_structure(str, expected_values)
+    expected_values = structure_utils.map_structure(str, expected_values)
     self.assertEqual(actual_values, expected_values)
 
   @parameterized.named_parameters(
@@ -564,7 +564,7 @@ class CSVFileReleaseManagerRemoveValuesGreaterThanTest(
       expected_fieldnames = existing_fieldnames
     self.assertEqual(actual_fieldnames, expected_fieldnames)
     expected_values = existing_values[0:key]
-    expected_values = tree.map_structure(str, expected_values)
+    expected_values = structure_utils.map_structure(str, expected_values)
     self.assertEqual(actual_values, expected_values)
 
   @parameterized.named_parameters(
@@ -1249,8 +1249,8 @@ class SavedModelFileReleaseManagerReleaseTest(
           return list(value)
         return value
 
-      actual_value = tree.map_structure(_normalize, actual_value)
-      expected_value = tree.map_structure(_normalize, expected_value)
+      actual_value = structure_utils.map_structure(_normalize, actual_value)
+      expected_value = structure_utils.map_structure(_normalize, expected_value)
       self.assertAllEqual(actual_value, expected_value)
       expected_path = os.path.join(root_dir, 'a_1')
       self.assertEqual(actual_path, expected_path)

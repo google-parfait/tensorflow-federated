@@ -21,7 +21,6 @@ from unittest import mock
 from absl.testing import absltest
 from absl.testing import parameterized
 import tensorflow as tf
-import tree
 
 from tensorflow_federated.python.common_libs import async_utils
 from tensorflow_federated.python.common_libs import structure
@@ -35,6 +34,7 @@ from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.program import native_platform
 from tensorflow_federated.python.program import program_test_utils
+from tensorflow_federated.python.program import structure_utils
 from tensorflow_federated.python.program import value_reference
 
 
@@ -474,9 +474,9 @@ class NativeFederatedContextTest(
 
     with program_test_utils.assert_not_warns(RuntimeWarning):
       result = context.invoke(comp, arg)
-      flattened = tree.flatten(result)
+      flattened = structure_utils.flatten(result)
       materialized = [await v.get_value() for v in flattened]
-      actual_value = tree.unflatten_as(result, materialized)
+      actual_value = structure_utils.unflatten_as(result, materialized)
 
     self.assertEqual(actual_value, expected_value)
     mock_context.invoke.assert_called_once()

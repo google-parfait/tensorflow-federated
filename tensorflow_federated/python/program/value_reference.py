@@ -26,7 +26,6 @@ from collections.abc import Iterable
 from typing import Union
 
 import numpy as np
-import tree
 
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import typed_object
@@ -87,8 +86,8 @@ async def materialize_value(
     else:
       return value
 
-  flattened_value = tree.flatten(value)
+  flattened_value = structure_utils.flatten(value)
   materialized_value = await asyncio.gather(
       *[_materialize(v) for v in flattened_value]
   )
-  return tree.unflatten_as(value, materialized_value)
+  return structure_utils.unflatten_as(value, materialized_value)

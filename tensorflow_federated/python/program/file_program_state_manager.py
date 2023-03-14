@@ -28,11 +28,11 @@ from typing import Optional, Union
 from absl import logging
 import numpy as np
 import tensorflow as tf
-import tree
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.program import file_utils
 from tensorflow_federated.python.program import program_state_manager
+from tensorflow_federated.python.program import structure_utils
 from tensorflow_federated.python.program import value_reference
 
 
@@ -187,7 +187,7 @@ class FileProgramStateManager(
       )
     flattened_state = await file_utils.read_saved_model(path)
     try:
-      program_state = tree.unflatten_as(structure, flattened_state)
+      program_state = structure_utils.unflatten_as(structure, flattened_state)
     except ValueError as e:
       raise program_state_manager.ProgramStateManagerStructureError(
           f'The structure of type {type(structure)}:\n'
@@ -214,7 +214,7 @@ class FileProgramStateManager(
         return value.numpy()
       return value
 
-    normalized_value = tree.map_structure(_normalize, program_state)
+    normalized_value = structure_utils.map_structure(_normalize, program_state)
     logging.info('Program state loaded: %s', path)
     return normalized_value
 
@@ -267,7 +267,7 @@ class FileProgramStateManager(
           f'Program state already exists for version: {version}'
       )
     materialized_state = await value_reference.materialize_value(program_state)
-    flattened_state = tree.flatten(materialized_state)
+    flattened_state = structure_utils.flatten(materialized_state)
     await file_utils.write_saved_model(flattened_state, path)
     logging.info('Program state saved: %s', path)
     await self._remove_old_program_state()

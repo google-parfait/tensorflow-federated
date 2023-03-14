@@ -123,6 +123,7 @@ py_library(
     deps = [
         ":file_utils",
         ":program_state_manager",
+        ":structure_utils",
         ":value_reference",
         "//tensorflow_federated/python/common_libs:py_typecheck",
     ],
@@ -138,6 +139,7 @@ py_test(
         ":file_utils",
         ":program_state_manager",
         ":program_test_utils",
+        ":structure_utils",
     ],
 )
 
@@ -165,6 +167,7 @@ py_test(
         ":file_utils",
         ":program_test_utils",
         ":release_manager",
+        ":structure_utils",
         "//tensorflow_federated/python/core/impl/types:computation_types",
     ],
 )
@@ -173,7 +176,10 @@ py_library(
     name = "file_utils",
     srcs = ["file_utils.py"],
     srcs_version = "PY3",
-    deps = ["//tensorflow_federated/python/common_libs:py_typecheck"],
+    deps = [
+        ":structure_utils",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+    ],
 )
 
 py_test(
@@ -259,6 +265,7 @@ py_test(
     deps = [
         ":native_platform",
         ":program_test_utils",
+        ":structure_utils",
         ":value_reference",
         "//tensorflow_federated/python/common_libs:async_utils",
         "//tensorflow_federated/python/common_libs:structure",
@@ -331,6 +338,7 @@ py_library(
     srcs = ["program_test_utils.py"],
     srcs_version = "PY3",
     deps = [
+        ":structure_utils",
         ":value_reference",
         "//tensorflow_federated/python/core/impl/types:computation_types",
     ],

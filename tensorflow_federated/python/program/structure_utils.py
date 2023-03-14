@@ -13,9 +13,12 @@
 # limitations under the License.
 """Utilities for working with structured data."""
 
-from collections.abc import Iterable, Mapping, Sequence
-from typing import TypeVar, Union
+from collections.abc import Callable, Iterable, Mapping, Sequence
+import typing
+from typing import Optional, TypeVar, Union
+import warnings
 
+import attrs
 import pytype_extensions
 import tree
 
@@ -28,24 +31,93 @@ Structure = Union[
     T,
     Sequence['Structure[T]'],
     Mapping[str, 'Structure[T]'],
+    # TODO(b/273555440): Handling `attrs` classes as containers is deprecated,
+    # please use `typing.NamedTuple` instead if you intended for this object to
+    # be a container.
     pytype_extensions.Attrs['Structure[T]'],
 ]
+
+
+def _filter_structure(structure: Structure[object]) -> Structure[object]:
+  """Returns a filtered `tff.program.Structure`.
+
+  Containers that are not explicity supported by `tff.program.Structure` are
+  filtered out (by converting them to `None`) and objects are converted to
+  `None`.
+
+  Args:
+    structure: A `tff.program.Structure`.
+  """
+
+  supported_types = []
+  for arg in typing.get_args(Structure):
+    origin_type = typing.get_origin(arg)
+    if origin_type is not None:
+      supported_types.append(origin_type)
+
+  # TODO(b/273555440): Remove the special handling of `pytype_extensions.Attrs`.
+  supported_types.remove(pytype_extensions.Attrs)
+
+  def _fn(structure: Structure[object]) -> Optional[object]:
+    if tree.is_nested(structure):
+      if isinstance(structure, tuple(supported_types)):
+        return None
+      elif attrs.has(type(structure)):
+        # TODO(b/273555440): Remove the warning and return `tree.MAP_TO_NONE`.
+        warnings.warn(
+            (
+                'Handling `attrs` classes as containers is deprecated, please'
+                ' use `typing.NamedTuple` instead if you intended for this'
+                ' object to be container.'
+            ),
+            category=DeprecationWarning,
+        )
+        return None
+      else:
+        return tree.MAP_TO_NONE
+    else:
+      return tree.MAP_TO_NONE
+
+  return tree.traverse(_fn, structure)
 
 
 def flatten_with_name(structure: Structure[T]) -> list[tuple[str, T]]:
   """Creates a flattened representation of the `structure` with names.
 
   Args:
-    structure: A potentially nested structure.
+    structure: A `tff.program.Structure`.
 
   Returns:
     A `list` of `(name, value)` `tuples` representing the flattened `structure`,
     where `name` uniquely identifies the position of the `value` in the
     `structure`.
   """
-  flattened = tree.flatten_with_path(structure)
+  filtered_structure = _filter_structure(structure)
+  flattened = tree.flatten_with_path_up_to(filtered_structure, structure)
 
   def _name(path: Iterable[Union[int, str]]) -> str:
     return '/'.join(map(str, path))
 
   return [(_name(path), value) for path, value in flattened]
+
+
+def flatten(structure: Structure[T]) -> list[T]:
+  """Flattens a `tff.program.Structure` into a `list`."""
+  filtered_structure = _filter_structure(structure)
+  return tree.flatten_up_to(filtered_structure, structure)
+
+
+def unflatten_as(
+    structure: Structure[T], flat_sequence: Sequence[T]
+) -> Structure[T]:
+  """Unflattens a sequence into a `tff.program.Structure`."""
+  filtered_structure = _filter_structure(structure)
+  return tree.unflatten_as(filtered_structure, flat_sequence)
+
+
+def map_structure(
+    fn: Callable[..., T], *structures: Structure[T], **kwargs: object
+) -> Structure[T]:
+  """Maps `fn` through the `tff.program.Structure`s."""
+  filtered_structure = _filter_structure(structures[0])
+  return tree.map_structure_up_to(filtered_structure, fn, *structures, **kwargs)
