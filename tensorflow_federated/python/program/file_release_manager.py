@@ -32,7 +32,6 @@ from typing import Union
 
 import numpy as np
 import tensorflow as tf
-import tree
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -398,5 +397,5 @@ class SavedModelFileReleaseManager(
 
     path = self._get_path_for_key(key)
     materialized_value = await value_reference.materialize_value(value)
-    flattened_value = tree.flatten(materialized_value)
+    flattened_value = structure_utils.flatten(materialized_value)
     await file_utils.write_saved_model(flattened_value, path, overwrite=True)
