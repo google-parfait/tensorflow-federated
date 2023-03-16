@@ -42,6 +42,7 @@ cc_library(
         "//tensorflow_federated/cc/core/impl/executors:executor",
         "//tensorflow_federated/cc/core/impl/executors:federating_executor",
         "//tensorflow_federated/cc/core/impl/executors:reference_resolving_executor",
+        "//tensorflow_federated/cc/core/impl/executors:sequence_executor",
         "//tensorflow_federated/cc/core/impl/executors:status_macros",
         "//tensorflow_federated/cc/core/impl/executors:tensorflow_executor",
         "@com_google_absl//absl/status:statusor",

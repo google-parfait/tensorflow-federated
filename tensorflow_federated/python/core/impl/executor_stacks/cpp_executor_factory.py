@@ -112,12 +112,25 @@ def _check_num_clients_is_valid(default_num_clients: int):
     raise ValueError('Default number of clients must be nonnegative.')
 
 
+def _default_leaf_executor_fn(
+    max_concurrent_computation_calls: int,
+) -> executor_bindings.Executor:
+  """Constructs the default leaf executor stack."""
+  return executor_bindings.create_sequence_executor(
+      executor_bindings.create_reference_resolving_executor(
+          executor_bindings.create_tensorflow_executor(
+              max_concurrent_computation_calls
+          )
+      )
+  )
+
+
 def local_cpp_executor_factory(
     default_num_clients: int = 0,
     max_concurrent_computation_calls: int = -1,
     leaf_executor_fn: Callable[
         [int], executor_bindings.Executor
-    ] = executor_bindings.create_tensorflow_executor,
+    ] = _default_leaf_executor_fn,
 ) -> executor_factory.ExecutorFactory:
   """Local ExecutorFactory backed by C++ Executor bindings."""
   _check_num_clients_is_valid(default_num_clients)
