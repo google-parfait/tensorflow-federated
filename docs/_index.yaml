@@ -78,7 +78,7 @@ landing_page:
               tf.keras.layers.Dense(10, tf.nn.softmax, input_shape=(784,),
                                     kernel_initializer='zeros')
           ])
-          return tff.learning.from_keras_model(
+          return tff.learning.models.from_keras_model(
               model,
               input_spec=train_data[0].element_spec,
               loss=tf.keras.losses.SparseCategoricalCrossentropy(),
@@ -93,7 +93,7 @@ landing_page:
           result = trainer.next(state, train_data)
           state = result.state
           metrics = result.metrics
-          print(metrics['train']['loss'])
+          print(metrics['client_work']['train']['loss'])
         </pre>
 
   - classname: devsite-landing-row-cards
