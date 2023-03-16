@@ -91,7 +91,9 @@ class SecureModularSumFactory(factory.UnweightedAggregationFactory):
   """
 
   def __init__(
-      self, modulus: Union[int, np.ndarray], symmetric_range: bool = False
+      self,
+      modulus: Union[int, np.integer, np.ndarray],
+      symmetric_range: bool = False,
   ):
     """Initializes `SecureModularSumFactory`.
 

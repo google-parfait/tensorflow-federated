@@ -23,7 +23,7 @@ means that this library:
 import asyncio
 import os
 import os.path
-from typing import Optional, Union
+from typing import Optional, Union, cast
 
 from absl import logging
 import numpy as np
@@ -212,7 +212,7 @@ class FileProgramStateManager(
         value: The value to normalize.
       """
       if tf.is_tensor(value):
-        value = value.numpy()
+        return cast(tf.Tensor, value).numpy()
       return value
 
     normalized_state = structure_utils.map_structure(_normalize, program_state)
