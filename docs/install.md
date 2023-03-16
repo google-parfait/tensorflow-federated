@@ -79,7 +79,7 @@ build tool used to compile Tensorflow Federated.
 ### 4. Create a virtual environment.
 
 <pre class="prettyprint lang-bsh">
-<code class="devsite-terminal">python3.9 -m venv "venv"</code>
+<code class="devsite-terminal">python3 -m venv "venv"</code>
 <code class="devsite-terminal">source "venv/bin/activate"</code>
 <code class="devsite-terminal tfo-terminal-venv">pip install --upgrade "pip"</code>
 <code class="devsite-terminal tfo-terminal-venv">pip install numpy</code>
@@ -109,7 +109,7 @@ build tool used to compile Tensorflow Federated.
 ### 8. Create a new virtual environment.
 
 <pre class="prettyprint lang-bsh">
-<code class="devsite-terminal">python3.9 -m venv "venv"</code>
+<code class="devsite-terminal">python3 -m venv "venv"</code>
 <code class="devsite-terminal">source "venv/bin/activate"</code>
 <code class="devsite-terminal tfo-terminal-venv">pip install --upgrade "pip"</code>
 </pre>
