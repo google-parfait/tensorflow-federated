@@ -748,46 +748,111 @@ class CSVFileReleaseManagerReleaseTest(
        computation_types.SequenceType(tf.int32),
        [{'key': '1', '': '[1, 2, 3]'}]),
 
+      # serializable values
+      ('serializable_value',
+       program_test_utils.TestSerializable(1, 2),
+       computation_types.StructWithPythonType([
+           ('a', tf.int32),
+           ('b', tf.int32),
+       ], collections.OrderedDict),
+       [{'key': '1', '': 'TestSerializable(a=1, b=2)'}]),
+
       # structures
       ('list',
-       [True, 1, 'a', program_test_utils.TestMaterializableValueReference(2)],
-       computation_types.StructWithPythonType(
-           [tf.bool, tf.int32, tf.string, tf.int32], list),
-       [{'key': '1', '0': 'True', '1': '1', '2': 'a', '3': '2'}]),
+       [
+           True,
+           1,
+           'a',
+           program_test_utils.TestMaterializableValueReference(2),
+           program_test_utils.TestSerializable(3, 4),
+       ],
+       computation_types.StructWithPythonType([
+           tf.bool,
+           tf.int32,
+           tf.string,
+           tf.int32,
+           computation_types.StructWithPythonType([
+               ('a', tf.int32),
+               ('b', tf.int32),
+           ], collections.OrderedDict),
+       ], list),
+       [
+           {
+               'key': '1',
+               '0': 'True',
+               '1': '1',
+               '2': 'a',
+               '3': '2',
+               '4': 'TestSerializable(a=3, b=4)',
+           },
+       ]),
       ('list_empty',
        [],
        computation_types.StructWithPythonType([], list),
        [{'key': '1'}]),
       ('list_nested',
-       [[True, 1, 'a', program_test_utils.TestMaterializableValueReference(2)],
-        [3]],
+       [
+           [
+               True,
+               1,
+               'a',
+               program_test_utils.TestMaterializableValueReference(2),
+               program_test_utils.TestSerializable(3, 4),
+           ],
+           [5],
+       ],
        computation_types.StructWithPythonType([
-           computation_types.StructWithPythonType(
-               [tf.bool, tf.int32, tf.string, tf.int32], list),
+           computation_types.StructWithPythonType([
+               tf.bool,
+               tf.int32,
+               tf.string,
+               tf.int32,
+               computation_types.StructWithPythonType([
+                   ('a', tf.int32),
+                   ('b', tf.int32),
+               ], collections.OrderedDict),
+           ], list),
            computation_types.StructWithPythonType([tf.int32], list),
        ], list),
-       [{
-           'key': '1',
-           '0/0': 'True',
-           '0/1': '1',
-           '0/2': 'a',
-           '0/3': '2',
-           '1/0': '3',
-       }]),
+       [
+           {
+               'key': '1',
+               '0/0': 'True',
+               '0/1': '1',
+               '0/2': 'a',
+               '0/3': '2',
+               '0/4': 'TestSerializable(a=3, b=4)',
+               '1/0': '5',
+           },
+       ]),
       ('dict',
        {
            'a': True,
            'b': 1,
            'c': 'a',
            'd': program_test_utils.TestMaterializableValueReference(2),
+           'e': program_test_utils.TestSerializable(3, 4),
        },
        computation_types.StructWithPythonType([
            ('a', tf.bool),
            ('b', tf.int32),
            ('c', tf.string),
            ('d', tf.int32),
+           ('e', computation_types.StructWithPythonType([
+               ('a', tf.int32),
+               ('b', tf.int32),
+           ], collections.OrderedDict)),
        ], collections.OrderedDict),
-       [{'key': '1', 'a': 'True', 'b': '1', 'c': 'a', 'd': '2'}]),
+       [
+           {
+               'key': '1',
+               'a': 'True',
+               'b': '1',
+               'c': 'a',
+               'd': '2',
+               'e': 'TestSerializable(a=3, b=4)',
+           },
+       ]),
       ('dict_empty',
        {},
        computation_types.StructWithPythonType([], collections.OrderedDict),
@@ -799,10 +864,9 @@ class CSVFileReleaseManagerReleaseTest(
                'b': 1,
                'c': 'a',
                'd': program_test_utils.TestMaterializableValueReference(2),
+               'e': program_test_utils.TestSerializable(3, 4),
            },
-           'y': {
-               'a': 3,
-           },
+           'y': {'a': 5},
        },
        computation_types.StructWithPythonType([
            ('x', computation_types.StructWithPythonType([
@@ -810,99 +874,156 @@ class CSVFileReleaseManagerReleaseTest(
                ('b', tf.int32),
                ('c', tf.string),
                ('d', tf.int32),
+               ('e', computation_types.StructWithPythonType([
+                   ('a', tf.int32),
+                   ('b', tf.int32),
+               ], collections.OrderedDict)),
            ], collections.OrderedDict)),
            ('y', computation_types.StructWithPythonType([
                ('a', tf.int32),
            ], collections.OrderedDict)),
        ], collections.OrderedDict),
-       [{
-           'key': '1',
-           'x/a': 'True',
-           'x/b': '1',
-           'x/c': 'a',
-           'x/d': '2',
-           'y/a': '3',
-       }]),
+       [
+           {
+               'key': '1',
+               'x/a': 'True',
+               'x/b': '1',
+               'x/c': 'a',
+               'x/d': '2',
+               'x/e': 'TestSerializable(a=3, b=4)',
+               'y/a': '5',
+           },
+       ]),
       ('named_tuple',
        program_test_utils.TestNamedTuple1(
            a=True,
            b=1,
            c='a',
-           d=program_test_utils.TestMaterializableValueReference(2)),
+           d=program_test_utils.TestMaterializableValueReference(2),
+           e=program_test_utils.TestSerializable(3, 4),
+       ),
        computation_types.StructWithPythonType([
            ('a', tf.bool),
            ('b', tf.int32),
            ('c', tf.string),
            ('d', tf.int32),
+           ('e', computation_types.StructWithPythonType([
+               ('a', tf.int32),
+               ('b', tf.int32),
+           ], collections.OrderedDict)),
        ], program_test_utils.TestNamedTuple1),
-       [{'key': '1', 'a': 'True', 'b': '1', 'c': 'a', 'd': '2'}]),
+       [
+           {
+               'key': '1',
+               'a': 'True',
+               'b': '1',
+               'c': 'a',
+               'd': '2',
+               'e': 'TestSerializable(a=3, b=4)',
+           },
+       ]),
       ('named_tuple_nested',
        program_test_utils.TestNamedTuple3(
            x=program_test_utils.TestNamedTuple1(
                a=True,
                b=1,
                c='a',
-               d=program_test_utils.TestMaterializableValueReference(2)),
-           y=program_test_utils.TestNamedTuple2(3)),
+               d=program_test_utils.TestMaterializableValueReference(2),
+               e=program_test_utils.TestSerializable(3, 4),
+           ),
+           y=program_test_utils.TestNamedTuple2(a=5),
+       ),
        computation_types.StructWithPythonType([
            ('x', computation_types.StructWithPythonType([
                ('a', tf.bool),
                ('b', tf.int32),
                ('c', tf.string),
                ('d', tf.int32),
+               ('e', computation_types.StructWithPythonType([
+                   ('a', tf.int32),
+                   ('b', tf.int32),
+               ], collections.OrderedDict)),
            ], program_test_utils.TestNamedTuple1)),
            ('y', computation_types.StructWithPythonType([
-               ('c', tf.int32),
+               ('a', tf.int32),
            ], program_test_utils.TestNamedTuple2)),
        ], program_test_utils.TestNamedTuple3),
-       [{
-           'key': '1',
-           'x/a': 'True',
-           'x/b': '1',
-           'x/c': 'a',
-           'x/d': '2',
-           'y/a': '3',
-       }]),
+       [
+           {
+               'key': '1',
+               'x/a': 'True',
+               'x/b': '1',
+               'x/c': 'a',
+               'x/d': '2',
+               'x/e': 'TestSerializable(a=3, b=4)',
+               'y/a': '5',
+           },
+       ]),
       ('attrs',
        program_test_utils.TestAttrs1(
            a=True,
            b=1,
            c='a',
-           d=program_test_utils.TestMaterializableValueReference(2)),
+           d=program_test_utils.TestMaterializableValueReference(2),
+           e=program_test_utils.TestSerializable(3, 4),
+       ),
        computation_types.StructWithPythonType([
            ('a', tf.bool),
            ('b', tf.int32),
            ('c', tf.string),
            ('d', tf.int32),
+           ('e', computation_types.StructWithPythonType([
+               ('a', tf.int32),
+               ('b', tf.int32),
+           ], collections.OrderedDict)),
        ], program_test_utils.TestAttrs1),
-       [{'key': '1', 'a': 'True', 'b': '1', 'c': 'a', 'd': '2'}]),
+       [
+           {
+               'key': '1',
+               'a': 'True',
+               'b': '1',
+               'c': 'a',
+               'd': '2',
+               'e': 'TestSerializable(a=3, b=4)',
+           },
+       ]),
       ('attrs_nested',
        program_test_utils.TestAttrs3(
            x=program_test_utils.TestAttrs1(
                a=True,
                b=1,
                c='a',
-               d=program_test_utils.TestMaterializableValueReference(2)),
-           y=program_test_utils.TestAttrs2(3)),
+               d=program_test_utils.TestMaterializableValueReference(2),
+               e=program_test_utils.TestSerializable(3, 4),
+           ),
+           y=program_test_utils.TestAttrs2(a=5),
+       ),
        computation_types.StructWithPythonType([
            ('x', computation_types.StructWithPythonType([
                ('a', tf.bool),
                ('b', tf.int32),
                ('c', tf.string),
                ('d', tf.int32),
+               ('e', computation_types.StructWithPythonType([
+                   ('a', tf.int32),
+                   ('b', tf.int32),
+               ], collections.OrderedDict)),
            ], program_test_utils.TestAttrs1)),
            ('y', computation_types.StructWithPythonType([
-               ('c', tf.int32),
+               ('a', tf.int32),
            ], program_test_utils.TestAttrs2)),
        ], program_test_utils.TestAttrs3),
-       [{
-           'key': '1',
-           'x/a': 'True',
-           'x/b': '1',
-           'x/c': 'a',
-           'x/d': '2',
-           'y/a': '3',
-       }]),
+       [
+           {
+               'key': '1',
+               'x/a': 'True',
+               'x/b': '1',
+               'x/c': 'a',
+               'x/d': '2',
+               'x/e': 'TestSerializable(a=3, b=4)',
+               'y/a': '5',
+           },
+       ]),
   )
   # pyformat: enable
   async def test_writes_value(self, value, type_signature, expected_value):
@@ -1099,36 +1220,99 @@ class SavedModelFileReleaseManagerReleaseTest(
        computation_types.SequenceType(tf.int32),
        [tf.data.Dataset.from_tensor_slices([1, 2, 3])]),
 
+      # serializable values
+      ('serializable_value',
+       program_test_utils.TestSerializable(1, 2),
+       computation_types.StructWithPythonType([
+           ('a', tf.int32),
+           ('b', tf.int32),
+       ], collections.OrderedDict),
+       [program_test_utils.TestSerializable(1, 2)]),
+
       # structures
       ('list',
-       [True, 1, 'a', program_test_utils.TestMaterializableValueReference(2)],
-       computation_types.StructWithPythonType(
-           [tf.bool, tf.int32, tf.string, tf.int32], list),
-       [True, 1, 'a', 2]),
+       [
+           True,
+           1,
+           'a',
+           program_test_utils.TestMaterializableValueReference(2),
+           program_test_utils.TestSerializable(3, 4),
+       ],
+       computation_types.StructWithPythonType([
+           tf.bool,
+           tf.int32,
+           tf.string,
+           tf.int32,
+           computation_types.StructWithPythonType([
+               ('a', tf.int32),
+               ('b', tf.int32),
+           ], collections.OrderedDict),
+       ], list),
+       [
+           True,
+           1,
+           'a',
+           2,
+           program_test_utils.TestSerializable(3, 4),
+       ]),
       ('list_empty', [], computation_types.StructWithPythonType([], list), []),
       ('list_nested',
-       [[True, 1, 'a', program_test_utils.TestMaterializableValueReference(2)],
-        [3]],
+       [
+           [
+               True,
+               1,
+               'a',
+               program_test_utils.TestMaterializableValueReference(2),
+               program_test_utils.TestSerializable(3, 4),
+           ],
+           [5],
+       ],
        computation_types.StructWithPythonType([
-           computation_types.StructWithPythonType(
-               [tf.bool, tf.int32, tf.string, tf.int32], list),
+           computation_types.StructWithPythonType([
+               tf.bool,
+               tf.int32,
+               tf.string,
+               tf.int32,
+               computation_types.StructWithPythonType([
+                   ('a', tf.int32),
+                   ('b', tf.int32),
+               ], collections.OrderedDict),
+           ], list),
            computation_types.StructWithPythonType([tf.int32], list),
        ], list),
-       [True, 1, 'a', 2, 3]),
+       [
+           True,
+           1,
+           'a',
+           2,
+           program_test_utils.TestSerializable(3, 4),
+           5,
+       ]),
       ('dict',
        {
            'a': True,
            'b': 1,
            'c': 'a',
            'd': program_test_utils.TestMaterializableValueReference(2),
+           'e': program_test_utils.TestSerializable(3, 4),
        },
        computation_types.StructWithPythonType([
            ('a', tf.bool),
            ('b', tf.int32),
            ('c', tf.string),
            ('d', tf.int32),
+           ('e', computation_types.StructWithPythonType([
+               ('a', tf.int32),
+               ('b', tf.int32),
+           ], collections.OrderedDict)),
        ], collections.OrderedDict),
-       [True, 1, 'a', 2]),
+       [
+           True,
+           1,
+           'a',
+           2,
+           program_test_utils.TestSerializable(3, 4),
+       ]),
       ('dict_empty',
        {},
        computation_types.StructWithPythonType([], collections.OrderedDict),
@@ -1140,10 +1324,9 @@ class SavedModelFileReleaseManagerReleaseTest(
                'b': 1,
                'c': 'a',
                'd': program_test_utils.TestMaterializableValueReference(2),
+               'e': program_test_utils.TestSerializable(3, 4),
            },
-           'y': {
-               'a': 3,
-           },
+           'y': {'a': 5},
        },
        computation_types.StructWithPythonType([
            ('x', computation_types.StructWithPythonType([
@@ -1151,78 +1334,141 @@ class SavedModelFileReleaseManagerReleaseTest(
                ('b', tf.int32),
                ('c', tf.string),
                ('d', tf.int32),
+               ('e', computation_types.StructWithPythonType([
+                   ('a', tf.int32),
+                   ('b', tf.int32),
+               ], collections.OrderedDict)),
            ], collections.OrderedDict)),
            ('y', computation_types.StructWithPythonType([
                ('a', tf.int32),
            ], collections.OrderedDict)),
        ], collections.OrderedDict),
-       [True, 1, 'a', 2, 3]),
+       [
+           True,
+           1,
+           'a',
+           2,
+           program_test_utils.TestSerializable(3, 4),
+           5,
+       ]),
       ('named_tuple',
        program_test_utils.TestNamedTuple1(
            a=True,
            b=1,
            c='a',
-           d=program_test_utils.TestMaterializableValueReference(2)),
+           d=program_test_utils.TestMaterializableValueReference(2),
+           e=program_test_utils.TestSerializable(3, 4),
+       ),
        computation_types.StructWithPythonType([
            ('a', tf.bool),
            ('b', tf.int32),
            ('c', tf.string),
            ('d', tf.int32),
+           ('e', computation_types.StructWithPythonType([
+               ('a', tf.int32),
+               ('b', tf.int32),
+           ], collections.OrderedDict)),
        ], program_test_utils.TestNamedTuple1),
-       [True, 1, 'a', 2]),
+       [
+           True,
+           1,
+           'a',
+           2,
+           program_test_utils.TestSerializable(3, 4),
+       ]),
       ('named_tuple_nested',
        program_test_utils.TestNamedTuple3(
            x=program_test_utils.TestNamedTuple1(
                a=True,
                b=1,
                c='a',
-               d=program_test_utils.TestMaterializableValueReference(2)),
-           y=program_test_utils.TestNamedTuple2(3)),
+               d=program_test_utils.TestMaterializableValueReference(2),
+               e=program_test_utils.TestSerializable(3, 4),
+           ),
+           y=program_test_utils.TestNamedTuple2(a=5),
+       ),
        computation_types.StructWithPythonType([
            ('x', computation_types.StructWithPythonType([
                ('a', tf.bool),
                ('b', tf.int32),
                ('c', tf.string),
                ('d', tf.int32),
+               ('e', computation_types.StructWithPythonType([
+                   ('a', tf.int32),
+                   ('b', tf.int32),
+               ], collections.OrderedDict)),
            ], program_test_utils.TestNamedTuple1)),
            ('y', computation_types.StructWithPythonType([
-               ('c', tf.int32),
+               ('a', tf.int32),
            ], program_test_utils.TestNamedTuple2)),
        ], program_test_utils.TestNamedTuple3),
-       [True, 1, 'a', 2, 3]),
+       [
+           True,
+           1,
+           'a',
+           2,
+           program_test_utils.TestSerializable(3, 4),
+           5,
+       ]),
       ('attrs',
        program_test_utils.TestAttrs1(
            a=True,
            b=1,
            c='a',
-           d=program_test_utils.TestMaterializableValueReference(2)),
+           d=program_test_utils.TestMaterializableValueReference(2),
+           e=program_test_utils.TestSerializable(3, 4),
+       ),
        computation_types.StructWithPythonType([
            ('a', tf.bool),
            ('b', tf.int32),
            ('c', tf.string),
            ('d', tf.int32),
+           ('e', computation_types.StructWithPythonType([
+               ('a', tf.int32),
+               ('b', tf.int32),
+           ], collections.OrderedDict)),
        ], program_test_utils.TestAttrs1),
-       [True, 1, 'a', 2]),
-      ('attr_nested',
+       [
+           True,
+           1,
+           'a',
+           2,
+           program_test_utils.TestSerializable(3, 4),
+       ]),
+      ('attrs_nested',
        program_test_utils.TestAttrs3(
            x=program_test_utils.TestAttrs1(
                a=True,
                b=1,
                c='a',
-               d=program_test_utils.TestMaterializableValueReference(2)),
-           y=program_test_utils.TestAttrs2(3)),
+               d=program_test_utils.TestMaterializableValueReference(2),
+               e=program_test_utils.TestSerializable(3, 4),
+           ),
+           y=program_test_utils.TestAttrs2(a=5),
+       ),
        computation_types.StructWithPythonType([
            ('x', computation_types.StructWithPythonType([
                ('a', tf.bool),
                ('b', tf.int32),
                ('c', tf.string),
                ('d', tf.int32),
+               ('e', computation_types.StructWithPythonType([
+                   ('a', tf.int32),
+                   ('b', tf.int32),
+               ], collections.OrderedDict)),
            ], program_test_utils.TestAttrs1)),
            ('y', computation_types.StructWithPythonType([
-               ('c', tf.int32),
+               ('a', tf.int32),
            ], program_test_utils.TestAttrs2)),
        ], program_test_utils.TestAttrs3),
-       [True, 1, 'a', 2, 3]),
+       [
+           True,
+           1,
+           'a',
+           2,
+           program_test_utils.TestSerializable(3, 4),
+           5,
+       ]),
   )
   # pyformat: enable
   async def test_writes_value(self, value, type_signature, expected_value):
@@ -1246,7 +1492,7 @@ class SavedModelFileReleaseManagerReleaseTest(
           value: release_manager.ReleasableValue,
       ) -> release_manager.ReleasableValue:
         if isinstance(value, tf.data.Dataset):
-          return list(value)
+          value = list(value)
         return value
 
       actual_value = structure_utils.map_structure(_normalize, actual_value)

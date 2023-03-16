@@ -137,6 +137,11 @@ py_test(
 )
 
 py_library(
+    name = "serializable",
+    srcs = ["serializable.py"],
+)
+
+py_library(
     name = "serialization_utils",
     srcs = ["serialization_utils.py"],
     srcs_version = "PY3",

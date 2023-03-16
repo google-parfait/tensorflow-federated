@@ -15,6 +15,7 @@
 
 from collections.abc import Iterable, Iterator
 import contextlib
+import struct
 import sys
 from typing import NamedTuple
 import warnings
@@ -22,6 +23,7 @@ import warnings
 import attrs
 import tensorflow as tf
 
+from tensorflow_federated.python.common_libs import serializable
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.program import structure_utils
 from tensorflow_federated.python.program import value_reference
@@ -59,10 +61,36 @@ class TestMaterializableValueReference(
       return NotImplemented
     if self._type_signature != other._type_signature:
       return False
-    if self._type_signature.is_sequence():
+    if isinstance(self._type_signature, computation_types.SequenceType):
       return list(self._value) == list(other._value)
     else:
       return self._value == other._value
+
+
+class TestSerializable(serializable.Serializable):
+  """A test implementation of `tff.Serializable`."""
+
+  def __init__(self, a: int, b: int) -> None:
+    self._a = a
+    self._b = b
+
+  @classmethod
+  def from_bytes(cls, data: bytes) -> 'TestSerializable':
+    a, b = struct.unpack('>ii', data)
+    return TestSerializable(a, b)
+
+  def to_bytes(self) -> bytes:
+    return struct.pack('>ii', self._a, self._b)
+
+  def __eq__(self, other) -> bool:
+    if self is other:
+      return True
+    elif not isinstance(other, TestSerializable):
+      return NotImplemented
+    return (self._a, self._b) == (other._a, other._b)
+
+  def __repr__(self):
+    return f'{self.__class__.__name__}(a={self._a}, b={self._b})'
 
 
 class TestNamedTuple1(NamedTuple):
@@ -70,6 +98,7 @@ class TestNamedTuple1(NamedTuple):
   b: int
   c: str
   d: value_reference.MaterializableValueReference
+  e: TestSerializable
 
 
 class TestNamedTuple2(NamedTuple):
@@ -87,6 +116,7 @@ class TestAttrs1:
   b: int
   c: str
   d: value_reference.MaterializableValueReference
+  e: TestSerializable
 
 
 @attrs.define

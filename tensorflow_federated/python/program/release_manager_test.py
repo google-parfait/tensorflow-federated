@@ -92,18 +92,56 @@ class FilteringReleaseManager(
            tf.data.Dataset.from_tensor_slices([1, 2, 3])),
        computation_types.SequenceType(tf.int32)),
 
+      # serializable values
+      ('serializable_value',
+       program_test_utils.TestSerializable(1, 2),
+       computation_types.StructWithPythonType([
+           ('a', tf.int32),
+           ('b', tf.int32),
+       ], collections.OrderedDict)),
+
       # structures
       ('list',
-       [True, 1, 'a', program_test_utils.TestMaterializableValueReference(2)],
-       computation_types.StructWithPythonType(
-           [tf.bool, tf.int32, tf.string, tf.int32], list)),
+       [
+           True,
+           1,
+           'a',
+           program_test_utils.TestMaterializableValueReference(2),
+           program_test_utils.TestSerializable(3, 4),
+       ],
+       computation_types.StructWithPythonType([
+           tf.bool,
+           tf.int32,
+           tf.string,
+           tf.int32,
+           computation_types.StructWithPythonType([
+               ('a', tf.int32),
+               ('b', tf.int32),
+           ], collections.OrderedDict),
+       ], list)),
       ('list_empty', [], computation_types.StructWithPythonType([], list)),
       ('list_nested',
-       [[True, 1, 'a', program_test_utils.TestMaterializableValueReference(2)],
-        [3]],
+       [
+           [
+               True,
+               1,
+               'a',
+               program_test_utils.TestMaterializableValueReference(2),
+               program_test_utils.TestSerializable(3, 4),
+           ],
+           [5],
+       ],
        computation_types.StructWithPythonType([
-           computation_types.StructWithPythonType(
-               [tf.bool, tf.int32, tf.string, tf.int32], list),
+           computation_types.StructWithPythonType([
+               tf.bool,
+               tf.int32,
+               tf.string,
+               tf.int32,
+               computation_types.StructWithPythonType([
+                   ('a', tf.int32),
+                   ('b', tf.int32),
+               ], collections.OrderedDict),
+           ], list),
            computation_types.StructWithPythonType([tf.int32], list),
        ], list)),
       ('dict',
@@ -112,12 +150,17 @@ class FilteringReleaseManager(
            'b': 1,
            'c': 'a',
            'd': program_test_utils.TestMaterializableValueReference(2),
+           'e': program_test_utils.TestSerializable(3, 4),
        },
        computation_types.StructWithPythonType([
            ('a', tf.bool),
            ('b', tf.int32),
            ('c', tf.string),
            ('d', tf.int32),
+           ('e', computation_types.StructWithPythonType([
+               ('a', tf.int32),
+               ('b', tf.int32),
+           ], collections.OrderedDict)),
        ], collections.OrderedDict)),
       ('dict_empty', {}, computation_types.StructWithPythonType([], list)),
       ('dict_nested',
@@ -127,10 +170,9 @@ class FilteringReleaseManager(
                'b': 1,
                'c': 'a',
                'd': program_test_utils.TestMaterializableValueReference(2),
+               'e': program_test_utils.TestSerializable(3, 4),
            },
-           'y': {
-               'a': 3,
-           },
+           'y': {'a': 5},
        },
        computation_types.StructWithPythonType([
            ('x', computation_types.StructWithPythonType([
@@ -138,6 +180,10 @@ class FilteringReleaseManager(
                ('b', tf.int32),
                ('c', tf.string),
                ('d', tf.int32),
+               ('e', computation_types.StructWithPythonType([
+                   ('a', tf.int32),
+                   ('b', tf.int32),
+               ], collections.OrderedDict)),
            ], collections.OrderedDict)),
            ('y', computation_types.StructWithPythonType([
                ('a', tf.int32),
@@ -218,6 +264,7 @@ class FilteringReleaseManager(
         'b': 1,
         'c': 'a',
         'd': program_test_utils.TestMaterializableValueReference(2),
+        'e': program_test_utils.TestSerializable(3, 4),
     }
     type_signature = computation_types.StructWithPythonType(
         [
@@ -225,6 +272,16 @@ class FilteringReleaseManager(
             ('b', tf.int32),
             ('c', tf.string),
             ('d', tf.int32),
+            (
+                'e',
+                computation_types.StructWithPythonType(
+                    [
+                        ('a', tf.int32),
+                        ('b', tf.int32),
+                    ],
+                    collections.OrderedDict,
+                ),
+            ),
         ],
         list,
     )
@@ -237,6 +294,16 @@ class FilteringReleaseManager(
             ('b', tf.int32),
             ('c', tf.string),
             ('d', tf.int32),
+            (
+                'e',
+                computation_types.StructWithPythonType(
+                    [
+                        ('a', tf.int32),
+                        ('b', tf.int32),
+                    ],
+                    collections.OrderedDict,
+                ),
+            ),
         ],
         collections.OrderedDict,
     )
@@ -251,24 +318,36 @@ class FilteringReleaseManager(
            a=True,
            b=1,
            c='a',
-           d=program_test_utils.TestMaterializableValueReference(2)),
+           d=program_test_utils.TestMaterializableValueReference(2),
+           e=program_test_utils.TestSerializable(3, 4),
+       ),
        computation_types.StructWithPythonType([
            ('a', tf.bool),
            ('b', tf.int32),
            ('c', tf.string),
            ('d', tf.int32),
+           ('e', computation_types.StructWithPythonType([
+               ('a', tf.int32),
+               ('b', tf.int32),
+           ], collections.OrderedDict)),
        ], program_test_utils.TestNamedTuple1)),
       ('attrs',
        program_test_utils.TestAttrs1(
            a=True,
            b=1,
            c='a',
-           d=program_test_utils.TestMaterializableValueReference(2)),
+           d=program_test_utils.TestMaterializableValueReference(2),
+           e=program_test_utils.TestSerializable(3, 4),
+       ),
        computation_types.StructWithPythonType([
            ('a', tf.bool),
            ('b', tf.int32),
            ('c', tf.string),
            ('d', tf.int32),
+           ('e', computation_types.StructWithPythonType([
+               ('a', tf.int32),
+               ('b', tf.int32),
+           ], collections.OrderedDict)),
        ], program_test_utils.TestAttrs1)),
   )
   # pyformat: enable

@@ -68,36 +68,101 @@ class MemoryReleaseManagerTest(
        computation_types.SequenceType(tf.int32),
        tf.data.Dataset.from_tensor_slices([1, 2, 3])),
 
+      # serializable values
+      ('serializable_value',
+       program_test_utils.TestSerializable(1, 2),
+       computation_types.StructWithPythonType([
+           ('a', tf.int32),
+           ('b', tf.int32),
+       ], collections.OrderedDict),
+       program_test_utils.TestSerializable(1, 2)),
+
       # structures
       ('list',
-       [True, 1, 'a', program_test_utils.TestMaterializableValueReference(2)],
-       computation_types.StructWithPythonType(
-           [tf.bool, tf.int32, tf.string, tf.int32], list),
-       [True, 1, 'a', 2]),
+       [
+           True,
+           1,
+           'a',
+           program_test_utils.TestMaterializableValueReference(2),
+           program_test_utils.TestSerializable(3, 4),
+       ],
+       computation_types.StructWithPythonType([
+           tf.bool,
+           tf.int32,
+           tf.string,
+           tf.int32,
+           computation_types.StructWithPythonType([
+               ('a', tf.int32),
+               ('b', tf.int32),
+           ], collections.OrderedDict),
+       ], list),
+       [
+           True,
+           1,
+           'a',
+           2,
+           program_test_utils.TestSerializable(3, 4),
+       ]),
       ('list_empty', [], computation_types.StructWithPythonType([], list), []),
       ('list_nested',
-       [[True, 1, 'a', program_test_utils.TestMaterializableValueReference(2)],
-        [3]],
+       [
+           [
+               True,
+               1,
+               'a',
+               program_test_utils.TestMaterializableValueReference(2),
+               program_test_utils.TestSerializable(3, 4),
+           ],
+           [5],
+       ],
        computation_types.StructWithPythonType([
-           computation_types.StructWithPythonType(
-               [tf.bool, tf.int32, tf.string, tf.int32], list),
+           computation_types.StructWithPythonType([
+               tf.bool,
+               tf.int32,
+               tf.string,
+               tf.int32,
+               computation_types.StructWithPythonType([
+                   ('a', tf.int32),
+                   ('b', tf.int32),
+               ], collections.OrderedDict),
+           ], list),
            computation_types.StructWithPythonType([tf.int32], list),
        ], list),
-       [[True, 1, 'a', 2], [3]]),
+       [
+           [
+               True,
+               1,
+               'a',
+               2,
+               program_test_utils.TestSerializable(3, 4),
+           ],
+           [5],
+       ]),
       ('dict',
        {
            'a': True,
            'b': 1,
            'c': 'a',
            'd': program_test_utils.TestMaterializableValueReference(2),
+           'e': program_test_utils.TestSerializable(3, 4),
        },
        computation_types.StructWithPythonType([
            ('a', tf.bool),
            ('b', tf.int32),
            ('c', tf.string),
            ('d', tf.int32),
+           ('e', computation_types.StructWithPythonType([
+               ('a', tf.int32),
+               ('b', tf.int32),
+           ], collections.OrderedDict)),
        ], collections.OrderedDict),
-       {'a': True, 'b': 1, 'c': 'a', 'd': 2}),
+       {
+           'a': True,
+           'b': 1,
+           'c': 'a',
+           'd': 2,
+           'e': program_test_utils.TestSerializable(3, 4),
+       }),
       ('dict_empty',
        {},
        computation_types.StructWithPythonType([], collections.OrderedDict),
@@ -109,10 +174,9 @@ class MemoryReleaseManagerTest(
                'b': 1,
                'c': 'a',
                'd': program_test_utils.TestMaterializableValueReference(2),
+               'e': program_test_utils.TestSerializable(3, 4),
            },
-           'y': {
-               'a': 3,
-           },
+           'y': {'a': 5},
        },
        computation_types.StructWithPythonType([
            ('x', computation_types.StructWithPythonType([
@@ -120,82 +184,147 @@ class MemoryReleaseManagerTest(
                ('b', tf.int32),
                ('c', tf.string),
                ('d', tf.int32),
+               ('e', computation_types.StructWithPythonType([
+                   ('a', tf.int32),
+                   ('b', tf.int32),
+               ], collections.OrderedDict)),
            ], collections.OrderedDict)),
            ('y', computation_types.StructWithPythonType([
                ('a', tf.int32),
            ], collections.OrderedDict)),
        ], collections.OrderedDict),
-       {'x': {'a': True, 'b': 1, 'c': 'a', 'd': 2}, 'y': {'a': 3}}),
+       {
+           'x': {
+               'a': True,
+               'b': 1,
+               'c': 'a',
+               'd': 2,
+               'e': program_test_utils.TestSerializable(3, 4),
+           },
+           'y': {'a': 5},
+       }),
       ('named_tuple',
        program_test_utils.TestNamedTuple1(
            a=True,
            b=1,
            c='a',
-           d=program_test_utils.TestMaterializableValueReference(2)),
+           d=program_test_utils.TestMaterializableValueReference(2),
+           e=program_test_utils.TestSerializable(3, 4),
+       ),
        computation_types.StructWithPythonType([
            ('a', tf.bool),
            ('b', tf.int32),
            ('c', tf.string),
            ('d', tf.int32),
+           ('e', computation_types.StructWithPythonType([
+               ('a', tf.int32),
+               ('b', tf.int32),
+           ], collections.OrderedDict)),
        ], program_test_utils.TestNamedTuple1),
-       program_test_utils.TestNamedTuple1(a=True, b=1, c='a', d=2)),
+       program_test_utils.TestNamedTuple1(
+           a=True,
+           b=1,
+           c='a',
+           d=2,
+           e=program_test_utils.TestSerializable(3, 4),
+       )),
       ('named_tuple_nested',
        program_test_utils.TestNamedTuple3(
            x=program_test_utils.TestNamedTuple1(
                a=True,
                b=1,
                c='a',
-               d=program_test_utils.TestMaterializableValueReference(2)),
-           y=program_test_utils.TestNamedTuple2(3)),
+               d=program_test_utils.TestMaterializableValueReference(2),
+               e=program_test_utils.TestSerializable(3, 4),
+           ),
+           y=program_test_utils.TestNamedTuple2(a=5),
+       ),
        computation_types.StructWithPythonType([
            ('x', computation_types.StructWithPythonType([
                ('a', tf.bool),
                ('b', tf.int32),
                ('c', tf.string),
                ('d', tf.int32),
+               ('e', computation_types.StructWithPythonType([
+                   ('a', tf.int32),
+                   ('b', tf.int32),
+               ], collections.OrderedDict)),
            ], program_test_utils.TestNamedTuple1)),
            ('y', computation_types.StructWithPythonType([
                ('c', tf.int32),
            ], program_test_utils.TestNamedTuple2)),
        ], program_test_utils.TestNamedTuple3),
        program_test_utils.TestNamedTuple3(
-           x=program_test_utils.TestNamedTuple1(a=True, b=1, c='a', d=2),
-           y=program_test_utils.TestNamedTuple2(3))),
+           x=program_test_utils.TestNamedTuple1(
+               a=True,
+               b=1,
+               c='a',
+               d=2,
+               e=program_test_utils.TestSerializable(3, 4),
+           ),
+           y=program_test_utils.TestNamedTuple2(a=5),
+       )),
       ('attrs',
        program_test_utils.TestAttrs1(
            a=True,
            b=1,
            c='a',
-           d=program_test_utils.TestMaterializableValueReference(2)),
+           d=program_test_utils.TestMaterializableValueReference(2),
+           e=program_test_utils.TestSerializable(3, 4),
+       ),
        computation_types.StructWithPythonType([
            ('a', tf.bool),
            ('b', tf.int32),
            ('c', tf.string),
            ('d', tf.int32),
+           ('e', computation_types.StructWithPythonType([
+               ('a', tf.int32),
+               ('b', tf.int32),
+           ], collections.OrderedDict)),
        ], program_test_utils.TestAttrs1),
-       program_test_utils.TestAttrs1(a=True, b=1, c='a', d=2)),
+       program_test_utils.TestAttrs1(
+           a=True,
+           b=1,
+           c='a',
+           d=2,
+           e=program_test_utils.TestSerializable(3, 4),
+       )),
       ('attr_nested',
        program_test_utils.TestAttrs3(
            x=program_test_utils.TestAttrs1(
                a=True,
                b=1,
                c='a',
-               d=program_test_utils.TestMaterializableValueReference(2)),
-           y=program_test_utils.TestAttrs2(3)),
+               d=program_test_utils.TestMaterializableValueReference(2),
+               e=program_test_utils.TestSerializable(3, 4),
+           ),
+           y=program_test_utils.TestAttrs2(a=5),
+       ),
        computation_types.StructWithPythonType([
            ('x', computation_types.StructWithPythonType([
                ('a', tf.bool),
                ('b', tf.int32),
                ('c', tf.string),
                ('d', tf.int32),
+               ('e', computation_types.StructWithPythonType([
+                   ('a', tf.int32),
+                   ('b', tf.int32),
+               ], collections.OrderedDict)),
            ], program_test_utils.TestAttrs1)),
            ('y', computation_types.StructWithPythonType([
                ('c', tf.int32),
            ], program_test_utils.TestAttrs2)),
        ], program_test_utils.TestAttrs3),
        program_test_utils.TestAttrs3(
-           x=program_test_utils.TestAttrs1(a=True, b=1, c='a', d=2),
-           y=program_test_utils.TestAttrs2(3))),
+           x=program_test_utils.TestAttrs1(
+               a=True,
+               b=1,
+               c='a',
+               d=2,
+               e=program_test_utils.TestSerializable(3, 4),
+           ),
+           y=program_test_utils.TestAttrs2(a=5),
+       )),
   )
   # pyformat: enable
   async def test_release_saves_value_and_type_signature(

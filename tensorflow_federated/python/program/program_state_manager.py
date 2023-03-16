@@ -16,6 +16,7 @@
 import abc
 from typing import Generic, Optional, Union, TypeVar
 
+from tensorflow_federated.python.common_libs import serializable
 from tensorflow_federated.python.program import structure_utils
 from tensorflow_federated.python.program import value_reference
 
@@ -23,6 +24,10 @@ from tensorflow_federated.python.program import value_reference
 ProgramStateValue = Union[
     object,
     value_reference.MaterializableValue,
+    # `tff.Serializable` objects are intended to be impemented by platform
+    # authors and used by program logic authors; it should not be common for
+    # program logic authors to implement `tff.Serializable` objects.
+    serializable.Serializable,
 ]
 ProgramStateStructure = TypeVar(
     'ProgramStateStructure',

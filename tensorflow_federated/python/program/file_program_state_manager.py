@@ -30,6 +30,7 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.common_libs import serializable
 from tensorflow_federated.python.program import file_utils
 from tensorflow_federated.python.program import program_state_manager
 from tensorflow_federated.python.program import structure_utils
@@ -199,24 +200,35 @@ class FileProgramStateManager(
     def _normalize(
         value: program_state_manager.ProgramStateValue,
     ) -> program_state_manager.ProgramStateValue:
-      """Returns a normalize the value.
+      """Returns a normalized value.
 
-      Because this implementation saves program state to the file system using
-      the SavedModel format, when the program state is loaded, the values will
-      be TF-native types. This function normalizes those values as numpy values
-      so that when program state is loaded, those values can be used more
-      naturally.
+      Because `tff.program.FileProgramStateManager` saves and loads program
+      state to the file system using the SavedModel format, when the program
+      state is loaded, the values will be TF-native types. This function
+      normalizes those values as numpy values so that when program state is
+      returned, those values can be used more naturally.
 
       Args:
         value: The value to normalize.
       """
       if tf.is_tensor(value):
-        return value.numpy()
+        value = value.numpy()
       return value
 
-    normalized_value = structure_utils.map_structure(_normalize, program_state)
+    normalized_state = structure_utils.map_structure(_normalize, program_state)
+
+    def _deserialize_as(structure, value):
+      if isinstance(structure, serializable.Serializable):
+        structure_type = type(structure)
+        value = structure_type.from_bytes(value)
+      return value
+
+    deserialized_state = structure_utils.map_structure(
+        _deserialize_as, structure, normalized_state
+    )
+
     logging.info('Program state loaded: %s', path)
-    return normalized_value
+    return deserialized_state
 
   async def _remove(self, version: int) -> None:
     """Removes program state for the given `version`."""
@@ -267,7 +279,16 @@ class FileProgramStateManager(
           f'Program state already exists for version: {version}'
       )
     materialized_state = await value_reference.materialize_value(program_state)
-    flattened_state = structure_utils.flatten(materialized_state)
+
+    def _serialize(value):
+      if isinstance(value, serializable.Serializable):
+        value = value.to_bytes()
+      return value
+
+    serialized_state = structure_utils.map_structure(
+        _serialize, materialized_state
+    )
+    flattened_state = structure_utils.flatten(serialized_state)
     await file_utils.write_saved_model(flattened_state, path)
     logging.info('Program state saved: %s', path)
     await self._remove_old_program_state()

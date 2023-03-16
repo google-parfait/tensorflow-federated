@@ -74,10 +74,13 @@ class MaterializableValueReference(abc.ABC, typed_object.TypedObject):
 async def materialize_value(
     value: MaterializableStructure,
 ) -> MaterializedStructure:
-  """Returns a `tff.program.MaterializedStructure`.
+  """Materializes the `tff.program.MaterializableValueReference`s in `value`.
 
   Args:
     value: A `tff.program.MaterializableStructure` to materialize.
+
+  Returns:
+    A `tff.program.MaterializedStructure`.
   """
 
   async def _materialize(value: MaterializableValue) -> MaterializedValue:

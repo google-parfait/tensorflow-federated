@@ -126,6 +126,7 @@ py_library(
         ":structure_utils",
         ":value_reference",
         "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/common_libs:serializable",
     ],
 )
 
@@ -321,6 +322,7 @@ py_library(
     deps = [
         ":structure_utils",
         ":value_reference",
+        "//tensorflow_federated/python/common_libs:serializable",
     ],
 )
 
@@ -340,6 +342,7 @@ py_library(
     deps = [
         ":structure_utils",
         ":value_reference",
+        "//tensorflow_federated/python/common_libs:serializable",
         "//tensorflow_federated/python/core/impl/types:computation_types",
     ],
 )
