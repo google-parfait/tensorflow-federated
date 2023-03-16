@@ -171,6 +171,8 @@ def consolidate_and_extract_local_processing(comp, grappler_config_proto):
      * Either `federated_zip_at_server` or `federated_zip_at_clients`, again
        placement-dependent.
 
+     * GENERIC_* intrinsic calls.
+
      Anything else, including `sequence_*` operators, should have been reduced
      already prior to calling this function.
 
@@ -245,6 +247,8 @@ def consolidate_and_extract_local_processing(comp, grappler_config_proto):
   """
   py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
   comp.type_signature.check_function()
+  # Replace any GENERIC_* intrinsic calls with TF function calls.
+  comp, _ = tree_transformations.replace_intrinsics_with_bodies(comp)
   # Drop any unused subcomputations which may reference placements different
   # from the result.
   simplified = transformations.to_call_dominant(comp)

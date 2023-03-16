@@ -21,6 +21,7 @@ from tensorflow_federated.python.core.backends.mapreduce import form_utils
 from tensorflow_federated.python.core.backends.mapreduce import mapreduce_test_utils
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
+from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.computation import computation_impl
@@ -317,6 +318,30 @@ class ConsolidateAndExtractTest(absltest.TestCase):
         extracted_tf
     )
     self.assertEqual(executable_tf(), 0)
+
+  def test_reduces_generic_intrinsic_to_equivalent_tf_op(self):
+    arg_type = computation_types.FederatedType(tf.int32, placements.SERVER)
+    arg = building_blocks.Reference('arg', arg_type)
+    multiply_intrinsic = building_blocks.Intrinsic(
+        intrinsic_defs.GENERIC_MULTIPLY.uri,
+        computation_types.FunctionType([arg_type, arg_type], arg_type),
+    )
+    multiply_fn = building_blocks.Lambda(
+        'arg',
+        arg_type,
+        building_blocks.Call(
+            multiply_intrinsic, building_blocks.Struct([arg, arg])
+        ),
+    )
+    extracted_tf = compiler.consolidate_and_extract_local_processing(
+        multiply_fn, DEFAULT_GRAPPLER_CONFIG
+    )
+    self.assertIsInstance(extracted_tf, building_blocks.CompiledComputation)
+    executable_tf = computation_impl.ConcreteComputation.from_building_block(
+        extracted_tf
+    )
+    for k in range(10):
+      self.assertEqual(executable_tf(k), k * k)
 
   def test_reduces_lambda_returning_empty_tuple_to_tf(self):
     empty_tuple = building_blocks.Struct([])
