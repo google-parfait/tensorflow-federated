@@ -116,6 +116,9 @@ class DisableGrapplerForPartitionedCalls(absltest.TestCase):
       result_type, result_binding = tensorflow_utils.capture_result_from_graph(
           test(), graph
       )
+      layout_map = computation_pb2.TensorFlow.LayoutMap(
+          name_to_sharding_spec={'v': 'unsharded'}
+      )
 
     function_type = computation_types.FunctionType(None, result_type)
     serialized_function_type = type_serialization.serialize_type(function_type)
@@ -125,6 +128,7 @@ class DisableGrapplerForPartitionedCalls(absltest.TestCase):
             graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
             parameter=None,
             result=result_binding,
+            layout_map=layout_map,
         ),
     )
 
@@ -133,6 +137,10 @@ class DisableGrapplerForPartitionedCalls(absltest.TestCase):
         proto
     )
     self.assertCallOpsGrapplerDisabled(transformed_proto)
+    self.assertEqual(
+        transformed_proto.tensorflow.layout_map.name_to_sharding_spec.get('v'),
+        'unsharded',
+    )
 
 
 class CheckAllowedOps(absltest.TestCase):
