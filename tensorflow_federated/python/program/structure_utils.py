@@ -66,9 +66,9 @@ def _filter_structure(structure: Structure[object]) -> Structure[object]:
         # TODO(b/273555440): Remove the warning and return `tree.MAP_TO_NONE`.
         warnings.warn(
             (
-                'Handling `attrs` classes as containers is deprecated, please'
-                ' use `typing.NamedTuple` instead if you intended for this'
-                ' object to be container.'
+                'Handling `attrs` classes as containers is deprecated, please '
+                'use `typing.NamedTuple` instead if you intended for this '
+                'object to be a container.'
             ),
             category=DeprecationWarning,
         )
