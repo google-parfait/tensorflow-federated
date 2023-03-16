@@ -20,6 +20,7 @@ limitations under the License
 #include "absl/status/statusor.h"
 #include "tensorflow_federated/cc/core/impl/executors/federating_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/reference_resolving_executor.h"
+#include "tensorflow_federated/cc/core/impl/executors/sequence_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
 #include "tensorflow_federated/cc/core/impl/executors/tensorflow_executor.h"
 
@@ -30,7 +31,8 @@ absl::StatusOr<std::shared_ptr<Executor>> CreateLocalExecutor(
     std::function<absl::StatusOr<std::shared_ptr<Executor>>(int32_t)>
         leaf_executor_fn) {
   return CreateReferenceResolvingExecutor(TFF_TRY(CreateFederatingExecutor(
-      CreateReferenceResolvingExecutor(TFF_TRY(leaf_executor_fn(-1))),
+      CreateReferenceResolvingExecutor(CreateSequenceExecutor(
+          CreateReferenceResolvingExecutor(TFF_TRY(leaf_executor_fn(-1))))),
       cardinalities)));
 }
 }  // namespace tensorflow_federated

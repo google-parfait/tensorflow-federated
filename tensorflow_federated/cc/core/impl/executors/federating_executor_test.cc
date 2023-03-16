@@ -138,9 +138,11 @@ TEST_F(FederatingExecutorTest, CreateValueIntrinsic) {
   EXPECT_THAT(test_executor_->CreateValue(FederatedMapV()), IsOk());
 }
 
-TEST_F(FederatingExecutorTest, CreateValueBadIntrinsic) {
-  EXPECT_THAT(test_executor_->CreateValue(IntrinsicV("blech")),
-              StatusIs(StatusCode::kUnimplemented));
+TEST_F(FederatingExecutorTest,
+       CreateValueNonFederatedIntrinsicForwardedToChild) {
+  const v0::Value intrinsic_pb = IntrinsicV("sequence_reduce");
+  mock_executor_->ExpectCreateValue(intrinsic_pb);
+  TFF_ASSERT_OK(test_executor_->CreateValue(intrinsic_pb));
 }
 
 TEST_F(FederatingExecutorTest, MaterializeIntrinsicFails) {

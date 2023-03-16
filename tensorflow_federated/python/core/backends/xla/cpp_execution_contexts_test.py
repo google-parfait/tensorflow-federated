@@ -89,14 +89,7 @@ class CppExecutionContextsTest(absltest.TestCase):
 
       return intrinsics.sequence_reduce(x, _zero(), _add)
 
-    # TODO(b/266303055): the FederatingExecutor raises an error when it sees
-    # a non-federated intrinsic rather than forwarding to the child unplaced
-    # executor, this should be fixed.
-    with self.assertRaisesRegex(
-        Exception, 'Unsupported intrinsic URI: sequence_reduce'
-    ):
-      # self.assertEqual(comp(sequence), sum(range(10)))
-      comp(sequence)
+    self.assertEqual(comp(sequence), sum(range(10)))
 
   def test_federated_sequence_reduce(self):
     sequence = list(range(10))
@@ -130,9 +123,9 @@ class CppExecutionContextsTest(absltest.TestCase):
     def comp(x):
       return intrinsics.federated_sum(x)
 
-    with self.assertRaisesRegex(
-        Exception, 'Unsupported intrinsic URI: federated_sum'
-    ):
+    # TODO(b/27340091): use a TFF specific error message after converting the
+    # result coming out of the execution stack.
+    with self.assertRaisesRegex(Exception, 'Cannot embed a federated value'):
       # TODO(b/255978089): implement intrinsic lowering using JAX computations,
       # the compiler currently generates TF logic which will fail.
       # self.assertEqual(comp([1, 2, 3]), 6)
@@ -145,9 +138,9 @@ class CppExecutionContextsTest(absltest.TestCase):
     def comp(x):
       return intrinsics.federated_mean(x)
 
-    with self.assertRaisesRegex(
-        Exception, 'Unsupported intrinsic URI: federated_mean'
-    ):
+    # TODO(b/27340091): use a TFF specific error message after converting the
+    # result coming out of the execution stack.
+    with self.assertRaisesRegex(Exception, 'Cannot embed a federated value'):
       # TODO(b/255978089): implement intrinsic lowering using JAX computations,
       # the compiler currently generates TF logic which will fail.
       # self.assertEqual(comp([1.0, 2.0, 3.0]), 2.0)
