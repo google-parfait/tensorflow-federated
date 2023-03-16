@@ -177,8 +177,25 @@ def _create_local_cpp_executor_factory(
         f'--port={port}',
         f'--max_concurrent_computation_calls={max_concurrent_computation_calls}',
     ]
+
+    def is_notebook():
+      try:
+        # `get_ipython` is automatically present in the environment when
+        # running in a notebook.
+        get_ipython()  # pytype: disable=name-error
+        return True
+      except NameError:
+        return False
+
+    if is_notebook():
+      stdout = None
+      stderr = None
+    else:
+      stdout = sys.stdout
+      stderr = sys.stderr
+
     logging.debug('Starting TFF C++ server on port: %s', port)
-    return subprocess.Popen(args, stdout=sys.stdout, stderr=sys.stderr), port
+    return subprocess.Popen(args, stdout=stdout, stderr=stderr), port
 
   class ServiceManager:
     """Class responsible for managing a local TFF executor service."""

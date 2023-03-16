@@ -144,6 +144,7 @@ py_library(
     srcs = ["execution_contexts.py"],
     data = ["//tensorflow_federated/data:worker_binary"],
     srcs_version = "PY3",
+    tags = ["ignore_for_dep=third_party.py.IPython.get_ipython"],
     deps = [
         ":compiler",
         ":mergeable_comp_compiler",
