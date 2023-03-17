@@ -224,6 +224,7 @@ py_test(
         ":tensorflow_computation_factory",
         ":tensorflow_computation_test_utils",
         ":tensorflow_computation_transformations",
+        "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/core/impl/types:computation_types",
     ],
 )
