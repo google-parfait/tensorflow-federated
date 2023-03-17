@@ -1,9 +1,8 @@
-/* Copyright 2021, The TensorFlow Federated Authors.
 
+/* Copyright 2021, The TensorFlow Federated Authors.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
      http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
@@ -33,9 +32,7 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/streaming_remote_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/tensorflow_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/threading.h"
-
 namespace tensorflow_federated {
-
 // This function queries the state of the incoming channels, filtering to those
 // which are ready or idle. This function blocks up to
 // `wait_connected_duration_millis` milliseconds, awaiting all channels in
@@ -56,7 +53,6 @@ std::vector<std::shared_ptr<grpc::ChannelInterface>> FilterToLiveChannels_(
       return absl::UnavailableError("Channel not ready.");
     }
   };
-
   ParallelTasks wait_connected_tasks;
   for (const std::shared_ptr<grpc::ChannelInterface>& channel : channels) {
     wait_connected_tasks.add_task(std::bind(wait_connected, channel))
@@ -81,7 +77,6 @@ std::vector<std::shared_ptr<grpc::ChannelInterface>> FilterToLiveChannels_(
   }
   return live_channels;
 }
-
 absl::StatusOr<std::shared_ptr<Executor>> CreateRemoteExecutorStack(
     const std::vector<std::shared_ptr<grpc::ChannelInterface>>& channels,
     const CardinalityMap& cardinalities) {
@@ -135,8 +130,11 @@ absl::StatusOr<std::shared_ptr<Executor>> CreateRemoteExecutorStack(
   if (remaining_clients == 0) {
     auto federated_cardinalities = cardinalities;
     federated_cardinalities.insert_or_assign(kClientsUri, 0);
-    return CreateReferenceResolvingExecutor(
-        TFF_TRY(CreateFederatingExecutor(server, federated_cardinalities)));
+    // TODO(b/256948367): Expose separate ExecutorFn for client side leaf
+    // executor.
+    return CreateReferenceResolvingExecutor(TFF_TRY(CreateFederatingExecutor(
+        /*server_child=*/server, /*client_child=*/server,
+        federated_cardinalities)));
   } else if (channels.empty()) {
     return absl::InvalidArgumentError(absl::StrCat(
         "A remote executor stack with nonzero number of clients must be "
