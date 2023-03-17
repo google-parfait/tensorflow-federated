@@ -165,7 +165,9 @@ class CSVFileReleaseManager(
     """Writes `fieldnames` and `values` to the managed CSV."""
     py_typecheck.check_type(fieldnames, Sequence)
     if isinstance(fieldnames, str):
-      raise TypeError('Expected `Sequence` of `str`, found `str`')
+      raise TypeError(
+          'Expected `fieldnames` to be a `Sequence` of `str`, found `str`.'
+      )
     for fieldname in fieldnames:
       py_typecheck.check_type(fieldname, str)
     py_typecheck.check_type(values, Iterable)

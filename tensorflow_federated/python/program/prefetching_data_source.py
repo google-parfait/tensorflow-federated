@@ -15,6 +15,7 @@
 
 import asyncio
 from collections.abc import Awaitable, Callable, Mapping
+import struct
 import threading
 from typing import Optional
 
@@ -28,6 +29,7 @@ from tensorflow_federated.python.core.impl.executors import ingestable_base
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.program import data_source as data_source_lib
+from tensorflow_federated.python.program import serialization_utils
 
 
 class FetchedValue(
@@ -154,6 +156,46 @@ class PrefetchingDataSourceIterator(
 
     self._start_prefetching()
 
+  @classmethod
+  def from_bytes(cls, buffer: bytes) -> 'PrefetchingDataSourceIterator':
+    """Deserializes the object from bytes."""
+    offset = 0
+    iterator, iterator_size = serialization_utils.unpack_serializable_from(
+        buffer, offset=offset
+    )
+    if not isinstance(iterator, data_source_lib.FederatedDataSourceIterator):
+      raise TypeError(
+          'Expected `iterator` to be a '
+          '`tff.program.FederatedDataSourceIterator`, found '
+          f'`{type(iterator)}`.'
+      )
+    offset += iterator_size
+    (
+        total_rounds,
+        num_rounds_to_prefetch,
+        num_clients_to_prefetch,
+        prefetch_threshold,
+    ) = struct.unpack_from('!QQQQ', buffer, offset=offset)
+    return PrefetchingDataSourceIterator(
+        iterator=iterator,
+        total_rounds=total_rounds,
+        num_rounds_to_prefetch=num_rounds_to_prefetch,
+        num_clients_to_prefetch=num_clients_to_prefetch,
+        prefetch_threshold=prefetch_threshold,
+    )
+
+  def to_bytes(self) -> bytes:
+    """Serializes the object to bytes."""
+    iterator_bytes = serialization_utils.pack_serializable(self._iterator)
+    data_bytes = struct.pack(
+        '!QQQQ',
+        self._total_rounds,
+        self._num_rounds_to_prefetch,
+        self._num_clients_to_prefetch,
+        self._prefetch_threshold,
+    )
+    return iterator_bytes + data_bytes
+
   def _single_round_fn(self) -> None:
     data = self._iterator.select(
         self._num_clients_to_prefetch
@@ -269,6 +311,28 @@ class PrefetchingDataSourceIterator(
       self._prefetched_data = self._prefetched_data[1:]
     self._start_prefetching()
     return data
+
+  def __eq__(self, other: object) -> bool:
+    if self is other:
+      return True
+    elif not isinstance(other, PrefetchingDataSourceIterator):
+      return NotImplemented
+    # The prefetched data should not be considered to determine equality.
+    return (
+        self._iterator,
+        self._total_rounds,
+        self._num_rounds_to_prefetch,
+        self._num_clients_to_prefetch,
+        self._prefetch_threshold,
+        self._executor_factory,
+    ) == (
+        other._iterator,
+        other._total_rounds,
+        other._num_rounds_to_prefetch,
+        other._num_clients_to_prefetch,
+        other._prefetch_threshold,
+        other._executor_factory,
+    )
 
 
 class PrefetchingDataSource(data_source_lib.FederatedDataSource):

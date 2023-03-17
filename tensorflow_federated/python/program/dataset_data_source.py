@@ -23,6 +23,7 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.program import data_source
+from tensorflow_federated.python.program import serialization_utils
 
 
 class DatasetDataSourceIterator(data_source.FederatedDataSourceIterator):
@@ -68,6 +69,31 @@ class DatasetDataSourceIterator(data_source.FederatedDataSourceIterator):
     self._datasets = datasets
     self._federated_type = federated_type
 
+  @classmethod
+  def from_bytes(cls, buffer: bytes) -> 'DatasetDataSourceIterator':
+    """Deserializes the object from bytes."""
+    offset = 0
+    datasets, datasets_size = serialization_utils.unpack_sequence_from(
+        serialization_utils.unpack_dataset_from, buffer, offset=offset
+    )
+    offset += datasets_size
+    federated_type, _ = serialization_utils.unpack_type_spec_from(
+        buffer, offset=offset
+    )
+    return DatasetDataSourceIterator(
+        datasets=datasets, federated_type=federated_type
+    )
+
+  def to_bytes(self) -> bytes:
+    """Serializes the object to bytes."""
+    datasets_bytes = serialization_utils.pack_sequence(
+        serialization_utils.pack_dataset, self._datasets
+    )
+    federated_type_bytes = serialization_utils.pack_type_spec(
+        self._federated_type
+    )
+    return datasets_bytes + federated_type_bytes
+
   @property
   def federated_type(self) -> computation_types.FederatedType:
     """The type of the data returned by calling `select`."""
@@ -98,6 +124,18 @@ class DatasetDataSourceIterator(data_source.FederatedDataSourceIterator):
       )
 
     return random.sample(self._datasets, num_clients)
+
+  def __eq__(self, other: object) -> bool:
+    if self is other:
+      return True
+    elif not isinstance(other, DatasetDataSourceIterator):
+      return NotImplemented
+    if self._federated_type != other._federated_type:
+      return False
+    for self_dataset, other_dataset in zip(self._datasets, other._datasets):
+      if list(self_dataset) != list(other_dataset):
+        return False
+    return True
 
 
 class DatasetDataSource(data_source.FederatedDataSource):

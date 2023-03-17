@@ -23,6 +23,7 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.program import data_source
+from tensorflow_federated.python.program import serialization_utils
 
 
 class ClientIdDataSourceIterator(data_source.FederatedDataSourceIterator):
@@ -55,6 +56,21 @@ class ClientIdDataSourceIterator(data_source.FederatedDataSourceIterator):
         tf.string, placements.CLIENTS
     )
 
+  @classmethod
+  def from_bytes(cls, buffer: bytes) -> 'ClientIdDataSourceIterator':
+    """Deserializes the object from bytes."""
+    client_ids, _ = serialization_utils.unpack_sequence_from(
+        serialization_utils.unpack_str_from, buffer
+    )
+    return ClientIdDataSourceIterator(client_ids=client_ids)
+
+  def to_bytes(self) -> bytes:
+    """Serializes the object to bytes."""
+    client_ids_bytes = serialization_utils.pack_sequence(
+        serialization_utils.pack_str, self._client_ids
+    )
+    return client_ids_bytes
+
   @property
   def federated_type(self) -> computation_types.FederatedType:
     """The type of the data returned by calling `select`."""
@@ -85,6 +101,13 @@ class ClientIdDataSourceIterator(data_source.FederatedDataSourceIterator):
       )
 
     return random.sample(self._client_ids, num_clients)
+
+  def __eq__(self, other: object) -> bool:
+    if self is other:
+      return True
+    elif not isinstance(other, ClientIdDataSourceIterator):
+      return NotImplemented
+    return self._client_ids == other._client_ids
 
 
 class ClientIdDataSource(data_source.FederatedDataSource):

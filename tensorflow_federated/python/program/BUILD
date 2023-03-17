@@ -44,6 +44,7 @@ py_library(
     srcs = ["client_id_data_source.py"],
     deps = [
         ":data_source",
+        ":serialization_utils",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
@@ -64,7 +65,10 @@ py_library(
     name = "data_source",
     srcs = ["data_source.py"],
     srcs_version = "PY3",
-    deps = ["//tensorflow_federated/python/core/impl/types:computation_types"],
+    deps = [
+        "//tensorflow_federated/python/common_libs:serializable",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+    ],
 )
 
 py_library(
@@ -72,6 +76,7 @@ py_library(
     srcs = ["dataset_data_source.py"],
     deps = [
         ":data_source",
+        ":serialization_utils",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
@@ -287,6 +292,7 @@ py_library(
     srcs_version = "PY3",
     deps = [
         ":data_source",
+        ":serialization_utils",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/impl/context_stack:get_context_stack",
         "//tensorflow_federated/python/core/impl/execution_contexts:async_execution_context",
@@ -368,6 +374,28 @@ py_test(
     deps = [
         ":program_test_utils",
         ":release_manager",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+    ],
+)
+
+py_library(
+    name = "serialization_utils",
+    srcs = ["serialization_utils.py"],
+    deps = [
+        ":structure_utils",
+        "//tensorflow_federated/proto/v0:computation_py_pb2",
+        "//tensorflow_federated/python/common_libs:serializable",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:type_serialization",
+    ],
+)
+
+py_test(
+    name = "serialization_utils_test",
+    srcs = ["serialization_utils_test.py"],
+    deps = [
+        ":program_test_utils",
+        ":serialization_utils",
         "//tensorflow_federated/python/core/impl/types:computation_types",
     ],
 )

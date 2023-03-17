@@ -17,6 +17,7 @@ import abc
 import enum
 from typing import Optional
 
+from tensorflow_federated.python.common_libs import serializable
 from tensorflow_federated.python.core.impl.types import computation_types
 
 
@@ -54,7 +55,7 @@ class Capability(enum.Enum):
   SUPPORTS_REUSE = 4
 
 
-class FederatedDataSourceIterator(abc.ABC):
+class FederatedDataSourceIterator(serializable.Serializable, abc.ABC):
   """An abstract interface for representing federated data source iterators.
 
   This interface abstracts away the specifics of iterating over data in a data
