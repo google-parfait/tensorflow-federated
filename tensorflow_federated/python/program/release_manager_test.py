@@ -27,7 +27,7 @@ from tensorflow_federated.python.program import program_test_utils
 from tensorflow_federated.python.program import release_manager
 
 
-class FilteringReleaseManager(
+class FilteringReleaseManagerTest(
     parameterized.TestCase, unittest.IsolatedAsyncioTestCase
 ):
 
@@ -364,7 +364,7 @@ class FilteringReleaseManager(
       await release_mngr.release(value, type_signature, key=1)
 
 
-class GroupingReleaseManager(
+class GroupingReleaseManagerTest(
     parameterized.TestCase, unittest.IsolatedAsyncioTestCase
 ):
 
