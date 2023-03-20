@@ -19,7 +19,6 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
-from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.templates import errors
 from tensorflow_federated.python.core.templates import iterative_process
 from tensorflow_federated.python.learning.templates import hparams_base
@@ -31,10 +30,6 @@ class Error(Exception):
 
 class LearningProcessPlacementError(Error):
   """Raises when a learning process does not have expected placements."""
-
-
-class LearningProcessSequenceTypeError(Error):
-  """Raises when a learning process does not have the expected sequence type."""
 
 
 class LearningProcessOutputError(Error):
@@ -213,24 +208,6 @@ class LearningProcess(iterative_process.IterativeProcess):
           f' but found placement {next_fn_param[1].placement}.'
       )
 
-    def is_allowed_client_data_type(type_spec: computation_types.Type) -> bool:
-      """Returns `True` if the type is a valid client dataset type."""
-      if type_spec.is_sequence():
-        return type_analysis.is_tensorflow_compatible_type(type_spec.element)
-      elif type_spec.is_struct():
-        return all(
-            is_allowed_client_data_type(element_type)
-            for element_type in type_spec.children()
-        )
-      else:
-        return False
-
-    if not is_allowed_client_data_type(next_fn_param[1].member):
-      raise LearningProcessSequenceTypeError(
-          'The member type of the second input argument to `next_fn` must be a'
-          ' `tff.SequenceType` or a nested `tff.StructType` of sequence types '
-          f'but found {next_fn_param[1].member} instead.'
-      )
     next_fn_result = next_fn.type_signature.result
     if next_fn_result.metrics.placement != placements.SERVER:
       raise LearningProcessPlacementError(
