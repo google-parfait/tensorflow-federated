@@ -1,3 +1,26 @@
+# Release 0.52.0
+
+## Major Features and Improvements
+
+*   Exposed `tff.backends.mapreduce.consolidate_and_extract_local_processing` as
+    public API.
+*   Updated the federated program API to be able to handle `tff.Serializable`
+    objects.
+
+## Breaking Changes
+
+*   Deprecated handling `attrs` classes as containers in the `tff.program` API.
+*   Updated `tff.learning.algorithms` implementations to use
+    `tff.learning.models.FunctionalModel.loss` instead of
+    `FunctionalModel.forward_pass`.
+
+## Bug Fixes
+
+*   Avoid using `sys.stdout` and `sys.stderr` in `subprocess.Popen` when
+    executing inside an IPython context.
+*   Added a `SequenceExecutor` to the C++ execution stack to handle `sequence_*`
+    intrinsics.
+
 # Release 0.51.0
 
 ## Major Features and Improvements
