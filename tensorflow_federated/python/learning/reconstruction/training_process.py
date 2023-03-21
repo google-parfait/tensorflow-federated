@@ -44,9 +44,8 @@ import collections
 from collections.abc import Callable
 import functools
 import typing
-from typing import Optional, Union
+from typing import Any, NamedTuple, Optional, Union
 
-import attr
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory
@@ -84,8 +83,7 @@ OptimizerFn = Union[
 ]
 
 
-@attr.s(eq=False, frozen=True)
-class ClientOutput:
+class ClientOutput(NamedTuple):
   """Structure for outputs returned from clients during training.
 
   Attributes:
@@ -96,10 +94,9 @@ class ClientOutput:
     model_output: A structure reflecting the losses and metrics produced during
       training on the input dataset.
   """
-
-  weights_delta = attr.ib()
-  client_weight = attr.ib()
-  model_output = attr.ib()
+  weights_delta: Any
+  client_weight: Any
+  model_output: Any
 
 
 def _build_server_init_fn(

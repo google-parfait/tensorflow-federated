@@ -14,9 +14,8 @@
 """Common building blocks for federated optimization algorithms."""
 
 from collections.abc import Sequence
-from typing import Union
+from typing import Any, NamedTuple, Optional, Union
 
-import attr
 import numpy as np
 import tensorflow as tf
 
@@ -29,8 +28,7 @@ from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning.models import model_weights as model_weights_lib
 
 
-@attr.s(eq=False, frozen=True)
-class ClientOutput:
+class ClientOutput(NamedTuple):
   """Structure for outputs returned from clients during federated optimization.
 
   Attributes:
@@ -43,15 +41,13 @@ class ClientOutput:
     optimizer_output: Additional metrics or other outputs defined by the
       optimizer.
   """
+  weights_delta: Any
+  weights_delta_weight: Any
+  model_output: Any
+  optimizer_output: Optional[Any] = None
 
-  weights_delta = attr.ib()
-  weights_delta_weight = attr.ib()
-  model_output = attr.ib()
-  optimizer_output = attr.ib(default=None)
 
-
-@attr.s(eq=False, frozen=True)
-class ServerState:
+class ServerState(NamedTuple):
   """Represents the state of the server carried between rounds.
 
   Attributes:
@@ -61,11 +57,10 @@ class ServerState:
     delta_aggregate_state: State (possibly empty) of the delta_aggregate_fn.
     model_broadcast_state: State (possibly empty) of the model_broadcast_fn.
   """
-
-  model = attr.ib()
-  optimizer_state = attr.ib()
-  delta_aggregate_state = attr.ib()
-  model_broadcast_state = attr.ib()
+  model: Any
+  optimizer_state: Any
+  delta_aggregate_state: Any
+  model_broadcast_state: Any
 
 
 def state_with_new_model_weights(

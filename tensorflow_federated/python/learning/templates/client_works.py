@@ -13,9 +13,7 @@
 # limitations under the License.
 """Abstractions for client work in learning algorithms."""
 
-from typing import Optional
-
-import attr
+from typing import Any, NamedTuple, Optional
 
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.computation import computation_base
@@ -27,17 +25,15 @@ from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning.templates import hparams_base
 
 
-@attr.s(frozen=True)
-class ClientResult:
+class ClientResult(NamedTuple):
   """A structure containing the result of `ClientWorkProcess.next` computation.
 
   Attributes:
     update: The local update to model weights produced by clients.
     update_weight: A weight for weighted aggregation of the `update`.
   """
-
-  update = attr.ib()
-  update_weight = attr.ib()
+  update: Any
+  update_weight: Any
 
 
 class ClientDataTypeError(TypeError):

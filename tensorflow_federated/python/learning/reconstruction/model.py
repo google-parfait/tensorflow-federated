@@ -14,12 +14,10 @@
 """Abstractions for Federated Reconstruction Models."""
 
 import abc
+from typing import Any, NamedTuple
 
-import attr
 
-
-@attr.s(eq=False, frozen=True, slots=True)
-class BatchOutput:
+class BatchOutput(NamedTuple):
   """A structure that holds the output of a `tff.learning.reconstruction.Model`.
 
   Note: All fields are optional (may be None).
@@ -29,10 +27,9 @@ class BatchOutput:
     labels: A `tf.Tensor` of labels for the examples.
     num_examples: A `tf.int32` scalar number of examples seen in the batch.
   """
-
-  predictions = attr.ib()
-  labels = attr.ib()
-  num_examples = attr.ib()
+  predictions: Any
+  labels: Any
+  num_examples: Any
 
 
 class Model(metaclass=abc.ABCMeta):
