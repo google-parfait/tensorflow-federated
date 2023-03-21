@@ -126,7 +126,7 @@ class FunctionalModel:
       total_loss = tf.reduce_sum(tf.pow(residuals, 2.))
       num_examples = tf.shape(predictions)[0]
       average_loss = total_loss / tf.cast(num_examples, tf.float32)
-      return tff.learning.BatchOutput(
+      return tff.learning.models.BatchOutput(
         loss=average_loss, predictions=predictions, num_examples=num_examples)
 
     model = FunctionalModel(

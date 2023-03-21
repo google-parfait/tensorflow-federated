@@ -139,7 +139,7 @@ def _mnist_forward_pass(variables, batch):
   variables.loss_sum.assign_add(loss * num_examples)
   variables.accuracy_sum.assign_add(accuracy * num_examples)
 
-  return tff.learning.BatchOutput(
+  return tff.learning.models.BatchOutput(
       loss=loss, predictions=predictions, num_examples=num_examples
   )
 

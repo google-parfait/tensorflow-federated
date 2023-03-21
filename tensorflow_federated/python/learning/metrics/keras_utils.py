@@ -75,10 +75,10 @@ def create_functional_metric_fns(
     `initialize` is a no-arg function used to create the algrebraic "zero"
     before reducing the metric over batches of examples. `update` is a function
     that takes three arguments, the state, labels, and the
-    `tff.learning.BatchOutput` structure from the model's forward pass, and is
-    used to add an observation to the metric. `finalize` only takes a `state`
-    argument and returns the final metric value based on observations previously
-    added.
+    `tff.learning.models.BatchOutput` structure from the model's forward pass,
+    and is used to add an observation to the metric. `finalize` only takes a
+    `state` argument and returns the final metric value based on observations
+    previously added.
 
   Raises:
     TypeError: If `metrics_constructor` is not a callable or `OrderedDict`, or
@@ -221,7 +221,7 @@ def create_functional_metric_fns(
       raise ValueError(
           'The input to a functional metrics `update` method must'
           'have a `predictions` attribute, such as when feeding in'
-          ' a `tff.learning.BatchOutput` structure.'
+          ' a `tff.learning.models.BatchOutput` structure.'
       )
     predictions = batch_output.predictions
 
