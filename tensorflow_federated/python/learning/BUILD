@@ -41,7 +41,6 @@ py_library(
         "//tensorflow_federated/python/learning/metrics:types",
         "//tensorflow_federated/python/learning/models",
         "//tensorflow_federated/python/learning/models:keras_utils",
-        "//tensorflow_federated/python/learning/models:model_weights",
         "//tensorflow_federated/python/learning/models:variable",
         "//tensorflow_federated/python/learning/optimizers",
         "//tensorflow_federated/python/learning/programs",
