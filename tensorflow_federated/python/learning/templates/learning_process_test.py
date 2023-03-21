@@ -398,20 +398,6 @@ class LearningProcessTest(absltest.TestCase):
           test_set_model_weights_fn,
       )
 
-  def test_next_fn_with_nonsequence_second_arg_raises(self):
-    @federated_computation(at_server(tf.int32), at_clients(tf.int32))
-    def next_fn(state, client_values):
-      metrics = intrinsics.federated_sum(client_values)
-      return LearningProcessOutput(state, metrics)
-
-    with self.assertRaises(learning_process.LearningProcessSequenceTypeError):
-      learning_process.LearningProcess(
-          test_init_fn,
-          next_fn,
-          test_get_model_weights_fn,
-          test_set_model_weights_fn,
-      )
-
   def test_next_fn_with_client_placed_metrics_result_raises(self):
     @federated_computation(
         at_server(tf.int32), at_clients(SequenceType(tf.int32))

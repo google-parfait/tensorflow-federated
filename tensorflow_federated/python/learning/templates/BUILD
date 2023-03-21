@@ -118,6 +118,7 @@ py_library(
         ":finalizers",
         ":learning_process",
         ":model_delta_client_work",
+        ":type_checks",
         "//tensorflow_federated/python/aggregators:mean",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/impl/computation:computation_base",
@@ -268,7 +269,6 @@ py_library(
         "//tensorflow_federated/python/core/impl/computation:computation_base",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
-        "//tensorflow_federated/python/core/impl/types:type_analysis",
         "//tensorflow_federated/python/core/templates:errors",
         "//tensorflow_federated/python/core/templates:iterative_process",
     ],
@@ -396,5 +396,27 @@ py_test(
         "//tensorflow_federated/python/learning/models:model_weights",
         "//tensorflow_federated/python/learning/models:test_models",
         "//tensorflow_federated/python/learning/optimizers:sgdm",
+    ],
+)
+
+py_library(
+    name = "type_checks",
+    srcs = ["type_checks.py"],
+    srcs_version = "PY3",
+    deps = [
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:placements",
+        "//tensorflow_federated/python/core/impl/types:type_analysis",
+    ],
+)
+
+py_test(
+    name = "type_checks_test",
+    srcs = ["type_checks_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":type_checks",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
     ],
 )

@@ -36,6 +36,7 @@ from tensorflow_federated.python.learning.templates import distributors
 from tensorflow_federated.python.learning.templates import finalizers
 from tensorflow_federated.python.learning.templates import learning_process
 from tensorflow_federated.python.learning.templates import model_delta_client_work
+from tensorflow_federated.python.learning.templates import type_checks
 
 
 # TODO(b/190334722): Add SLO guarantees / backwards compatibility guarantees.
@@ -125,6 +126,11 @@ def compose_learning_process(
 
   Returns:
     A `tff.learning.templates.LearningProcess`.
+
+  Raises:
+    ClientSequenceTypeError: If the first arg of the `next` method of the
+    resulting `LearningProcess` is not a structure of sequences placed at
+    `tff.CLIENTS`.
   """
   # pyformat: enable
   _validate_args(initial_model_weights_fn, model_weights_distributor,
@@ -212,13 +218,27 @@ def compose_learning_process(
         aggregator=state.aggregator,
         finalizer=updated_finalizer_state)
 
-  return learning_process.LearningProcess(
+  composed_learning_process = learning_process.LearningProcess(
       init_fn,
       next_fn,
       get_model_weights_fn,
       set_model_weights_fn,
       get_hparams_fn=get_hparams_fn,
       set_hparams_fn=set_hparams_fn)
+
+  # LearningProcess.__init__ does some basic type checking. Here we do more
+  # specific type checking to validate that the second arg of `next` is a
+  # CLIENTS-placed structure of sequences.
+  next_fn = composed_learning_process.next
+  next_fn_param = next_fn.type_signature.parameter
+  try:
+    type_checks.check_is_client_placed_structure_of_sequences(next_fn_param[1])
+  except type_checks.ClientSequenceTypeError as type_error:
+    raise TypeError(
+        'The learning process composition produced a `next` function with type '
+        f'signature {next_fn.type_signature}. However, the second arg of `next`'
+        ' must be a CLIENTS-placed structure of sequences.') from type_error
+  return composed_learning_process
 
 
 def _validate_args(initial_model_weights_fn, model_weights_distributor,

@@ -378,16 +378,17 @@ def compose_dataset_computation_with_learning_process(
       `dataset_computation`).
 
   Returns:
-    A `tff.templates.IterativeProcess`.
+    A `tff.learning.templates.LearningProcess`.
   """
-  new_process = compose_dataset_computation_with_iterative_process(
+  new_iterative_process = compose_dataset_computation_with_iterative_process(
       dataset_computation, process
   )
-  for attribute in dir(process):
-    # We need to ensure that we do not call `setattr` on non-public attributes
-    # or attributes already posessed by the iterative process (eg. 'next')
-    if attribute.startswith('_') or hasattr(new_process, attribute):
-      continue
-    setattr(new_process, attribute, getattr(process, attribute))
-
-  return new_process
+  new_learning_process = learning_process.LearningProcess(
+      initialize_fn=new_iterative_process.initialize,
+      next_fn=new_iterative_process.next,
+      get_model_weights=process.get_model_weights,
+      set_model_weights=process.set_model_weights,
+      get_hparams_fn=process.get_hparams,
+      set_hparams_fn=process.set_hparams,
+  )
+  return new_learning_process
