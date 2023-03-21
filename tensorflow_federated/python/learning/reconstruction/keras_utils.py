@@ -252,8 +252,7 @@ def federated_output_computation_from_metrics(
   This can be used to evaluate both Keras and non-Keras models using Keras
   metrics. Aggregates metrics across clients by summing their internal
   variables, producing new metrics with summed internal variables, and calling
-  metric.result() on each. See `tff.learning.federated_aggregate_keras_metric`
-  for details.
+  metric.result() on each.
 
   Args:
     metrics: A List of `tf.keras.metrics.Metric` to aggregate.
