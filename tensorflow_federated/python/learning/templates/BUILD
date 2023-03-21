@@ -298,7 +298,6 @@ py_library(
     deps = [
         ":client_works",
         "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/core/impl/computation:computation_base",
         "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
         "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
@@ -353,7 +352,6 @@ py_library(
     deps = [
         ":client_works",
         "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/core/impl/computation:computation_base",
         "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
         "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",

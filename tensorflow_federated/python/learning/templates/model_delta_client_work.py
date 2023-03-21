@@ -26,7 +26,6 @@ from typing import Any, Optional, Union
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
@@ -250,15 +249,7 @@ def build_model_delta_client_work(
         optimizer_base.Optimizer, Callable[[], tf.keras.optimizers.Optimizer]
     ],
     client_weighting: client_weight_lib.ClientWeighting,
-    metrics_aggregator: Optional[
-        Callable[
-            [
-                types.MetricFinalizersType,
-                computation_types.StructWithPythonType,
-            ],
-            computation_base.Computation,
-        ]
-    ] = None,
+    metrics_aggregator: Optional[types.MetricsAggregatorType] = None,
     *,
     use_experimental_simulation_loop: bool = False,
 ) -> client_works.ClientWorkProcess:
@@ -530,15 +521,7 @@ def build_functional_model_delta_client_work(
     model: functional.FunctionalModel,
     optimizer: optimizer_base.Optimizer,
     client_weighting: client_weight_lib.ClientWeighting,
-    metrics_aggregator: Optional[
-        Callable[
-            [
-                types.MetricFinalizersType,
-                computation_types.StructWithPythonType,
-            ],
-            computation_base.Computation,
-        ]
-    ] = None,
+    metrics_aggregator: Optional[types.MetricsAggregatorType] = None,
 ) -> client_works.ClientWorkProcess:
   """Creates a `ClientWorkProcess` for federated averaging.
 

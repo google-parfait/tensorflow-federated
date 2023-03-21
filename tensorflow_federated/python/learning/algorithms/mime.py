@@ -33,7 +33,6 @@ from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import factory_utils
 from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
@@ -190,15 +189,7 @@ def _build_mime_lite_client_work(
     full_gradient_aggregator: Optional[
         factory.WeightedAggregationFactory
     ] = None,
-    metrics_aggregator: Optional[
-        Callable[
-            [
-                types.MetricFinalizersType,
-                computation_types.StructWithPythonType,
-            ],
-            computation_base.Computation,
-        ]
-    ] = None,
+    metrics_aggregator: Optional[types.MetricsAggregatorType] = None,
     use_experimental_simulation_loop: bool = False,
 ) -> client_works.ClientWorkProcess:
   """Creates a `ClientWorkProcess` for Mime Lite.
@@ -488,15 +479,7 @@ def _build_mime_lite_functional_client_work(
     full_gradient_aggregator: Optional[
         factory.WeightedAggregationFactory
     ] = None,
-    metrics_aggregator: Optional[
-        Callable[
-            [
-                types.MetricFinalizersType,
-                computation_types.StructWithPythonType,
-            ],
-            computation_base.Computation,
-        ]
-    ] = None,
+    metrics_aggregator: Optional[types.MetricsAggregatorType] = None,
     use_experimental_simulation_loop: bool = False,
 ) -> client_works.ClientWorkProcess:
   """Creates a `ClientWorkProcess` for MimeLite with FunctionalModels.
@@ -630,15 +613,7 @@ def _build_scheduled_mime_lite_client_work(
     full_gradient_aggregator: Optional[
         factory.WeightedAggregationFactory
     ] = None,
-    metrics_aggregator: Optional[
-        Callable[
-            [
-                types.MetricFinalizersType,
-                computation_types.StructWithPythonType,
-            ],
-            computation_base.Computation,
-        ]
-    ] = None,
+    metrics_aggregator: Optional[types.MetricsAggregatorType] = None,
     use_experimental_simulation_loop: bool = False,
 ) -> client_works.ClientWorkProcess:
   """Creates `ClientWorkProcess` for Mimelite with learning rate schedule.
@@ -768,15 +743,7 @@ def build_weighted_mime_lite(
     full_gradient_aggregator: Optional[
         factory.WeightedAggregationFactory
     ] = None,
-    metrics_aggregator: Optional[
-        Callable[
-            [
-                types.MetricFinalizersType,
-                computation_types.StructWithPythonType,
-            ],
-            computation_base.Computation,
-        ]
-    ] = None,
+    metrics_aggregator: Optional[types.MetricsAggregatorType] = None,
     use_experimental_simulation_loop: bool = False,
 ) -> learning_process.LearningProcess:
   """Builds a learning process that performs Mime Lite.
@@ -965,13 +932,7 @@ def build_unweighted_mime_lite(
     full_gradient_aggregator: Optional[
         factory.UnweightedAggregationFactory
     ] = None,
-    metrics_aggregator: Callable[
-        [
-            types.MetricFinalizersType,
-            computation_types.StructWithPythonType,
-        ],
-        computation_base.Computation,
-    ] = metric_aggregator.sum_then_finalize,
+    metrics_aggregator: types.MetricsAggregatorType = metric_aggregator.sum_then_finalize,
     use_experimental_simulation_loop: bool = False,
 ) -> learning_process.LearningProcess:
   """Builds a learning process that performs Mime Lite.
@@ -1103,15 +1064,7 @@ def build_mime_lite_with_optimizer_schedule(
     full_gradient_aggregator: Optional[
         factory.WeightedAggregationFactory
     ] = None,
-    metrics_aggregator: Optional[
-        Callable[
-            [
-                types.MetricFinalizersType,
-                computation_types.StructWithPythonType,
-            ],
-            computation_base.Computation,
-        ]
-    ] = None,
+    metrics_aggregator: Optional[types.MetricsAggregatorType] = None,
     use_experimental_simulation_loop: bool = False,
 ) -> learning_process.LearningProcess:
   """Builds a learning process for Mime Lite with optimizer scheduling.

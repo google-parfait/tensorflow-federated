@@ -30,7 +30,6 @@ import tensorflow as tf
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
@@ -132,13 +131,7 @@ def _build_client_update(
 
 def _build_fed_sgd_client_work(
     model_fn: Callable[[], variable.VariableModel],
-    metrics_aggregator: Callable[
-        [
-            types.MetricFinalizersType,
-            computation_types.StructWithPythonType,
-        ],
-        computation_base.Computation,
-    ],
+    metrics_aggregator: types.MetricsAggregatorType,
     use_experimental_simulation_loop: bool = False,
 ) -> client_works.ClientWorkProcess:
   """Creates a `tff.learning.templates.ClientWorkProcess` for federated SGD.
@@ -307,13 +300,7 @@ def _build_functional_client_update(
 
 def _build_functional_fed_sgd_client_work(
     model: functional.FunctionalModel,
-    metrics_aggregator: Callable[
-        [
-            types.MetricFinalizersType,
-            computation_types.StructWithPythonType,
-        ],
-        computation_base.Computation,
-    ],
+    metrics_aggregator: types.MetricsAggregatorType,
     use_experimental_simulation_loop: bool = False,
 ) -> client_works.ClientWorkProcess:
   """Creates a `tff.learning.templates.ClientWorkProcess` for federated SGD.
@@ -397,15 +384,7 @@ def build_fed_sgd(
     ] = DEFAULT_SERVER_OPTIMIZER_FN,
     model_distributor: Optional[distributors.DistributionProcess] = None,
     model_aggregator: Optional[factory.WeightedAggregationFactory] = None,
-    metrics_aggregator: Optional[
-        Callable[
-            [
-                types.MetricFinalizersType,
-                computation_types.StructWithPythonType,
-            ],
-            computation_base.Computation,
-        ]
-    ] = None,
+    metrics_aggregator: Optional[types.MetricsAggregatorType] = None,
     use_experimental_simulation_loop: bool = False,
 ) -> learning_process.LearningProcess:
   """Builds a learning process that performs federated SGD.

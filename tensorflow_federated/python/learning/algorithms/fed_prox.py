@@ -30,7 +30,6 @@ from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import factory_utils
 from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.learning import client_weight_lib
@@ -65,15 +64,7 @@ def build_weighted_fed_prox(
     ] = client_weight_lib.ClientWeighting.NUM_EXAMPLES,
     model_distributor: Optional[distributors.DistributionProcess] = None,
     model_aggregator: Optional[factory.WeightedAggregationFactory] = None,
-    metrics_aggregator: Optional[
-        Callable[
-            [
-                types.MetricFinalizersType,
-                computation_types.StructWithPythonType,
-            ],
-            computation_base.Computation,
-        ]
-    ] = None,
+    metrics_aggregator: Optional[types.MetricsAggregatorType] = None,
     use_experimental_simulation_loop: bool = False,
 ) -> learning_process.LearningProcess:
   """Builds a learning process that performs the FedProx algorithm.
@@ -280,13 +271,7 @@ def build_unweighted_fed_prox(
     ] = DEFAULT_SERVER_OPTIMIZER_FN,
     model_distributor: Optional[distributors.DistributionProcess] = None,
     model_aggregator: Optional[factory.UnweightedAggregationFactory] = None,
-    metrics_aggregator: Callable[
-        [
-            types.MetricFinalizersType,
-            computation_types.StructWithPythonType,
-        ],
-        computation_base.Computation,
-    ] = metric_aggregator.sum_then_finalize,
+    metrics_aggregator: types.MetricsAggregatorType = metric_aggregator.sum_then_finalize,
     use_experimental_simulation_loop: bool = False,
 ) -> learning_process.LearningProcess:
   """Builds a learning process that performs the FedProx algorithm.
