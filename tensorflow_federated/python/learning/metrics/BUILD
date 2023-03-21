@@ -196,4 +196,8 @@ py_test(
 py_library(
     name = "types",
     srcs = ["types.py"],
+    deps = [
+        "//tensorflow_federated/python/core/impl/computation:computation_base",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+    ],
 )

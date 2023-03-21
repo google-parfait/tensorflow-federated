@@ -24,3 +24,4 @@ from tensorflow_federated.python.learning.metrics.keras_finalizer import create_
 from tensorflow_federated.python.learning.metrics.keras_utils import create_functional_metric_fns
 from tensorflow_federated.python.learning.metrics.types import FunctionalMetricFinalizersType
 from tensorflow_federated.python.learning.metrics.types import MetricFinalizersType
+from tensorflow_federated.python.learning.metrics.types import MetricsAggregatorType

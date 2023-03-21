@@ -17,7 +17,17 @@ import collections
 from collections.abc import Callable
 from typing import Any
 
+from tensorflow_federated.python.core.impl.computation import computation_base
+from tensorflow_federated.python.core.impl.types import computation_types
+
 
 MetricFinalizersType = collections.OrderedDict[str, Callable[[Any], Any]]
+MetricsAggregatorType = Callable[
+    [
+        MetricFinalizersType,
+        computation_types.StructWithPythonType,
+    ],
+    computation_base.Computation,
+]
 MetricsState = collections.OrderedDict[str, Any]
 FunctionalMetricFinalizersType = Callable[[MetricsState], MetricsState]
