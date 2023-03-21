@@ -20,6 +20,7 @@ from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.python.core.backends.native import execution_contexts
+from tensorflow_federated.python.core.impl.context_stack import context_stack_test_utils
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
@@ -31,18 +32,19 @@ class PrefetchingDataSourceIteratorTest(
     parameterized.TestCase, unittest.IsolatedAsyncioTestCase
 ):
 
+  @context_stack_test_utils.with_context(
+      cpp_execution_contexts.create_async_local_cpp_execution_context
+  )
   def test_init_does_not_raise_type_error(self):
     mock_iterator = mock.create_autospec(
         data_source_lib.FederatedDataSourceIterator,
         spec_set=True,
         instance=True,
     )
-    context = execution_contexts.create_async_local_cpp_execution_context()
 
     try:
       prefetching_data_source.PrefetchingDataSourceIterator(
           iterator=mock_iterator,
-          context=context,
           total_rounds=5,
           num_rounds_to_prefetch=3,
           num_clients_to_prefetch=3,
@@ -58,36 +60,14 @@ class PrefetchingDataSourceIteratorTest(
       ('str', 'a'),
       ('list', [True, 1, 'a']),
   )
+  @context_stack_test_utils.with_context(
+      cpp_execution_contexts.create_async_local_cpp_execution_context
+  )
   def test_init_raises_type_error_with_iterator(self, iterator):
-    context = execution_contexts.create_async_local_cpp_execution_context()
 
     with self.assertRaises(TypeError):
       prefetching_data_source.PrefetchingDataSourceIterator(
           iterator=iterator,
-          context=context,
-          total_rounds=5,
-          num_rounds_to_prefetch=3,
-          num_clients_to_prefetch=3,
-          prefetch_threshold=1,
-      )
-
-  # pyformat: disable
-  @parameterized.named_parameters(
-      ('sync_cpp',
-       execution_contexts.create_sync_local_cpp_execution_context()),
-  )
-  # pyformat: enable
-  def test_init_raises_type_error_with_context(self, context):
-    mock_iterator = mock.create_autospec(
-        data_source_lib.FederatedDataSourceIterator,
-        spec_set=True,
-        instance=True,
-    )
-
-    with self.assertRaises(TypeError):
-      prefetching_data_source.PrefetchingDataSourceIterator(
-          iterator=mock_iterator,
-          context=context,
           total_rounds=5,
           num_rounds_to_prefetch=3,
           num_clients_to_prefetch=3,
@@ -99,18 +79,19 @@ class PrefetchingDataSourceIteratorTest(
       ('str', 'a'),
       ('list', [True, 1, 'a']),
   )
+  @context_stack_test_utils.with_context(
+      cpp_execution_contexts.create_async_local_cpp_execution_context
+  )
   def test_init_raises_type_error_with_total_rounds(self, total_rounds):
     mock_iterator = mock.create_autospec(
         data_source_lib.FederatedDataSourceIterator,
         spec_set=True,
         instance=True,
     )
-    context = execution_contexts.create_async_local_cpp_execution_context()
 
     with self.assertRaises(TypeError):
       prefetching_data_source.PrefetchingDataSourceIterator(
           iterator=mock_iterator,
-          context=context,
           total_rounds=total_rounds,
           num_rounds_to_prefetch=3,
           num_clients_to_prefetch=3,
@@ -122,6 +103,9 @@ class PrefetchingDataSourceIteratorTest(
       ('str', 'a'),
       ('list', [True, 1, 'a']),
   )
+  @context_stack_test_utils.with_context(
+      cpp_execution_contexts.create_async_local_cpp_execution_context
+  )
   def test_init_raises_type_error_with_num_rounds_to_prefetch(
       self, num_rounds_to_prefetch
   ):
@@ -130,12 +114,10 @@ class PrefetchingDataSourceIteratorTest(
         spec_set=True,
         instance=True,
     )
-    context = execution_contexts.create_async_local_cpp_execution_context()
 
     with self.assertRaises(TypeError):
       prefetching_data_source.PrefetchingDataSourceIterator(
           iterator=mock_iterator,
-          context=context,
           total_rounds=5,
           num_rounds_to_prefetch=num_rounds_to_prefetch,
           num_clients_to_prefetch=3,
@@ -147,6 +129,9 @@ class PrefetchingDataSourceIteratorTest(
       ('str', 'a'),
       ('list', [True, 1, 'a']),
   )
+  @context_stack_test_utils.with_context(
+      cpp_execution_contexts.create_async_local_cpp_execution_context
+  )
   def test_init_raises_type_error_with_num_clients_to_prefetch(
       self, num_clients_to_prefetch
   ):
@@ -155,12 +140,10 @@ class PrefetchingDataSourceIteratorTest(
         spec_set=True,
         instance=True,
     )
-    context = execution_contexts.create_async_local_cpp_execution_context()
 
     with self.assertRaises(TypeError):
       prefetching_data_source.PrefetchingDataSourceIterator(
           iterator=mock_iterator,
-          context=context,
           total_rounds=5,
           num_rounds_to_prefetch=10,
           num_clients_to_prefetch=num_clients_to_prefetch,
@@ -172,6 +155,9 @@ class PrefetchingDataSourceIteratorTest(
       ('str', 'a'),
       ('list', [True, 1, 'a']),
   )
+  @context_stack_test_utils.with_context(
+      cpp_execution_contexts.create_async_local_cpp_execution_context
+  )
   def test_init_raises_type_error_with_prefetch_threshold(
       self, prefetch_threshold
   ):
@@ -180,12 +166,10 @@ class PrefetchingDataSourceIteratorTest(
         spec_set=True,
         instance=True,
     )
-    context = execution_contexts.create_async_local_cpp_execution_context()
 
     with self.assertRaises(TypeError):
       prefetching_data_source.PrefetchingDataSourceIterator(
           iterator=mock_iterator,
-          context=context,
           total_rounds=5,
           num_rounds_to_prefetch=10,
           num_clients_to_prefetch=3,
@@ -196,6 +180,9 @@ class PrefetchingDataSourceIteratorTest(
       ('zero', 0),
       ('negative', -1),
   )
+  @context_stack_test_utils.with_context(
+      cpp_execution_contexts.create_async_local_cpp_execution_context
+  )
   def test_init_raises_value_error_with_num_clients_to_prefetch(
       self, num_clients_to_prefetch
   ):
@@ -204,21 +191,41 @@ class PrefetchingDataSourceIteratorTest(
         spec_set=True,
         instance=True,
     )
-    context = execution_contexts.create_async_local_cpp_execution_context()
 
     with self.assertRaises(ValueError):
       prefetching_data_source.PrefetchingDataSourceIterator(
           iterator=mock_iterator,
-          context=context,
           total_rounds=5,
           num_rounds_to_prefetch=3,
           num_clients_to_prefetch=num_clients_to_prefetch,
           prefetch_threshold=1,
       )
 
+  @context_stack_test_utils.with_context(
+      cpp_execution_contexts.create_sync_local_cpp_execution_context
+  )
+  def test_init_raises_runtime_error_with_context(self):
+    mock_iterator = mock.create_autospec(
+        data_source_lib.FederatedDataSourceIterator,
+        spec_set=True,
+        instance=True,
+    )
+
+    with self.assertRaises(RuntimeError):
+      prefetching_data_source.PrefetchingDataSourceIterator(
+          iterator=mock_iterator,
+          total_rounds=5,
+          num_rounds_to_prefetch=3,
+          num_clients_to_prefetch=3,
+          prefetch_threshold=1,
+      )
+
   @parameterized.named_parameters(
       ('one', 1),
       ('two', 2),
+  )
+  @context_stack_test_utils.with_context(
+      cpp_execution_contexts.create_async_local_cpp_execution_context
   )
   async def test_select_returns_data_with_num_clients(self, num_clients):
     mock_iterator = mock.create_autospec(
@@ -230,10 +237,8 @@ class PrefetchingDataSourceIteratorTest(
     mock_iterator.federated_type = computation_types.FederatedType(
         tf.int32, placements.CLIENTS
     )
-    context = execution_contexts.create_async_local_cpp_execution_context()
     iterator = prefetching_data_source.PrefetchingDataSourceIterator(
         iterator=mock_iterator,
-        context=context,
         total_rounds=5,
         num_rounds_to_prefetch=3,
         num_clients_to_prefetch=num_clients,  # Must be the same.
@@ -246,39 +251,13 @@ class PrefetchingDataSourceIteratorTest(
     def _identity(value):
       return value
 
-    actual_value = await context.invoke(_identity, data)
+    actual_value = await _identity(data)
     expected_value = list(range(num_clients))
     self.assertEqual(actual_value, expected_value)
 
-  async def test_select_returns_data(self):
-    mock_iterator = mock.create_autospec(
-        data_source_lib.FederatedDataSourceIterator,
-        spec_set=True,
-        instance=True,
-    )
-    mock_iterator.select.return_value = [1, 2, 3]
-    mock_iterator.federated_type = computation_types.FederatedType(
-        tf.int32, placements.CLIENTS
-    )
-    context = execution_contexts.create_async_local_cpp_execution_context()
-    iterator = prefetching_data_source.PrefetchingDataSourceIterator(
-        iterator=mock_iterator,
-        context=context,
-        total_rounds=5,
-        num_rounds_to_prefetch=3,
-        num_clients_to_prefetch=3,
-        prefetch_threshold=1,
-    )
-
-    data = iterator.select(num_clients=3)
-
-    @federated_computation.federated_computation(iterator.federated_type)
-    def _identity(value):
-      return value
-
-    actual_value = await context.invoke(_identity, data)
-    self.assertEqual(actual_value, [1, 2, 3])
-
+  @context_stack_test_utils.with_context(
+      cpp_execution_contexts.create_async_local_cpp_execution_context
+  )
   def test_select_prefetches_data(self):
     mock_iterator = mock.create_autospec(
         data_source_lib.FederatedDataSourceIterator,
@@ -289,10 +268,8 @@ class PrefetchingDataSourceIteratorTest(
     mock_iterator.federated_type = computation_types.FederatedType(
         tf.int32, placements.CLIENTS
     )
-    context = execution_contexts.create_async_local_cpp_execution_context()
     iterator = prefetching_data_source.PrefetchingDataSourceIterator(
         iterator=mock_iterator,
-        context=context,
         total_rounds=5,
         num_rounds_to_prefetch=3,
         num_clients_to_prefetch=3,
@@ -326,16 +303,17 @@ class PrefetchingDataSourceIteratorTest(
       ('str', 'a'),
       ('list', []),
   )
+  @context_stack_test_utils.with_context(
+      cpp_execution_contexts.create_async_local_cpp_execution_context
+  )
   def test_select_raises_type_error_with_num_clients(self, num_clients):
     mock_iterator = mock.create_autospec(
         data_source_lib.FederatedDataSourceIterator,
         spec_set=True,
         instance=True,
     )
-    context = execution_contexts.create_async_local_cpp_execution_context()
     iterator = prefetching_data_source.PrefetchingDataSourceIterator(
         iterator=mock_iterator,
-        context=context,
         total_rounds=5,
         num_rounds_to_prefetch=3,
         num_clients_to_prefetch=3,
@@ -350,16 +328,17 @@ class PrefetchingDataSourceIteratorTest(
       ('negative', -1),
       ('different', 4),
   )
+  @context_stack_test_utils.with_context(
+      cpp_execution_contexts.create_async_local_cpp_execution_context
+  )
   def test_select_raises_value_error_with_num_clients(self, num_clients):
     mock_iterator = mock.create_autospec(
         data_source_lib.FederatedDataSourceIterator,
         spec_set=True,
         instance=True,
     )
-    context = execution_contexts.create_async_local_cpp_execution_context()
     iterator = prefetching_data_source.PrefetchingDataSourceIterator(
         iterator=mock_iterator,
-        context=context,
         total_rounds=5,
         num_rounds_to_prefetch=3,
         num_clients_to_prefetch=3,
@@ -369,6 +348,9 @@ class PrefetchingDataSourceIteratorTest(
     with self.assertRaises(ValueError):
       iterator.select(num_clients)
 
+  @context_stack_test_utils.with_context(
+      cpp_execution_contexts.create_async_local_cpp_execution_context
+  )
   def test_select_raises_runtime_error_with_to_many_rounds(self):
     mock_iterator = mock.create_autospec(
         data_source_lib.FederatedDataSourceIterator,
@@ -379,10 +361,8 @@ class PrefetchingDataSourceIteratorTest(
     mock_iterator.federated_type = computation_types.FederatedType(
         tf.int32, placements.CLIENTS
     )
-    context = execution_contexts.create_async_local_cpp_execution_context()
     iterator = prefetching_data_source.PrefetchingDataSourceIterator(
         iterator=mock_iterator,
-        context=context,
         total_rounds=5,
         num_rounds_to_prefetch=3,
         num_clients_to_prefetch=3,
@@ -398,16 +378,17 @@ class PrefetchingDataSourceIteratorTest(
 
 class PrefetchingDataSourceTest(parameterized.TestCase):
 
+  @context_stack_test_utils.with_context(
+      cpp_execution_contexts.create_async_local_cpp_execution_context
+  )
   def test_init_does_not_raise_type_error(self):
     mock_data_source = mock.create_autospec(
         data_source_lib.FederatedDataSource, spec_set=True, instance=True
     )
-    context = execution_contexts.create_async_local_cpp_execution_context()
 
     try:
       prefetching_data_source.PrefetchingDataSource(
           data_source=mock_data_source,
-          context=context,
           total_rounds=5,
           num_rounds_to_prefetch=3,
           num_clients_to_prefetch=3,
@@ -423,34 +404,14 @@ class PrefetchingDataSourceTest(parameterized.TestCase):
       ('str', 'a'),
       ('list', [True, 1, 'a']),
   )
+  @context_stack_test_utils.with_context(
+      cpp_execution_contexts.create_async_local_cpp_execution_context
+  )
   def test_init_raises_type_error_with_data_source(self, data_source):
-    context = execution_contexts.create_async_local_cpp_execution_context()
 
     with self.assertRaises(TypeError):
       prefetching_data_source.PrefetchingDataSource(
           data_source=data_source,
-          context=context,
-          total_rounds=5,
-          num_rounds_to_prefetch=3,
-          num_clients_to_prefetch=3,
-          prefetch_threshold=1,
-      )
-
-  # pyformat: disable
-  @parameterized.named_parameters(
-      ('sync_cpp',
-       execution_contexts.create_sync_local_cpp_execution_context()),
-  )
-  # pyformat: enable
-  def test_init_raises_type_error_with_context(self, context):
-    mock_data_source = mock.create_autospec(
-        data_source_lib.FederatedDataSource, spec_set=True, instance=True
-    )
-
-    with self.assertRaises(TypeError):
-      prefetching_data_source.PrefetchingDataSource(
-          data_source=mock_data_source,
-          context=context,
           total_rounds=5,
           num_rounds_to_prefetch=3,
           num_clients_to_prefetch=3,
@@ -462,16 +423,17 @@ class PrefetchingDataSourceTest(parameterized.TestCase):
       ('str', 'a'),
       ('list', [True, 1, 'a']),
   )
+  @context_stack_test_utils.with_context(
+      cpp_execution_contexts.create_async_local_cpp_execution_context
+  )
   def test_init_raises_type_error_with_total_rounds(self, total_rounds):
     mock_data_source = mock.create_autospec(
         data_source_lib.FederatedDataSource, spec_set=True, instance=True
     )
-    context = execution_contexts.create_async_local_cpp_execution_context()
 
     with self.assertRaises(TypeError):
       prefetching_data_source.PrefetchingDataSource(
           data_source=mock_data_source,
-          context=context,
           total_rounds=total_rounds,
           num_rounds_to_prefetch=3,
           num_clients_to_prefetch=3,
@@ -483,18 +445,19 @@ class PrefetchingDataSourceTest(parameterized.TestCase):
       ('str', 'a'),
       ('list', [True, 1, 'a']),
   )
+  @context_stack_test_utils.with_context(
+      cpp_execution_contexts.create_async_local_cpp_execution_context
+  )
   def test_init_raises_type_error_with_num_rounds_to_prefetch(
       self, num_rounds_to_prefetch
   ):
     mock_data_source = mock.create_autospec(
         data_source_lib.FederatedDataSource, spec_set=True, instance=True
     )
-    context = execution_contexts.create_async_local_cpp_execution_context()
 
     with self.assertRaises(TypeError):
       prefetching_data_source.PrefetchingDataSource(
           data_source=mock_data_source,
-          context=context,
           total_rounds=5,
           num_rounds_to_prefetch=num_rounds_to_prefetch,
           num_clients_to_prefetch=3,
@@ -506,18 +469,19 @@ class PrefetchingDataSourceTest(parameterized.TestCase):
       ('str', 'a'),
       ('list', [True, 1, 'a']),
   )
+  @context_stack_test_utils.with_context(
+      cpp_execution_contexts.create_async_local_cpp_execution_context
+  )
   def test_init_raises_type_error_with_num_clients_to_prefetch(
       self, num_clients_to_prefetch
   ):
     mock_data_source = mock.create_autospec(
         data_source_lib.FederatedDataSource, spec_set=True, instance=True
     )
-    context = execution_contexts.create_async_local_cpp_execution_context()
 
     with self.assertRaises(TypeError):
       prefetching_data_source.PrefetchingDataSource(
           data_source=mock_data_source,
-          context=context,
           total_rounds=5,
           num_rounds_to_prefetch=3,
           num_clients_to_prefetch=num_clients_to_prefetch,
@@ -529,18 +493,19 @@ class PrefetchingDataSourceTest(parameterized.TestCase):
       ('str', 'a'),
       ('list', [True, 1, 'a']),
   )
+  @context_stack_test_utils.with_context(
+      cpp_execution_contexts.create_async_local_cpp_execution_context
+  )
   def test_init_raises_type_error_with_prefetch_threshold(
       self, prefetch_threshold
   ):
     mock_data_source = mock.create_autospec(
         data_source_lib.FederatedDataSource, spec_set=True, instance=True
     )
-    context = execution_contexts.create_async_local_cpp_execution_context()
 
     with self.assertRaises(TypeError):
       prefetching_data_source.PrefetchingDataSource(
           data_source=mock_data_source,
-          context=context,
           total_rounds=5,
           num_rounds_to_prefetch=3,
           num_clients_to_prefetch=3,
@@ -551,18 +516,19 @@ class PrefetchingDataSourceTest(parameterized.TestCase):
       ('zero', 0),
       ('negative', -1),
   )
+  @context_stack_test_utils.with_context(
+      cpp_execution_contexts.create_async_local_cpp_execution_context
+  )
   def test_init_raises_value_error_with_num_clients_to_prefetch(
       self, num_clients_to_prefetch
   ):
     mock_data_source = mock.create_autospec(
         data_source_lib.FederatedDataSource, spec_set=True, instance=True
     )
-    context = execution_contexts.create_async_local_cpp_execution_context()
 
     with self.assertRaises(ValueError):
       prefetching_data_source.PrefetchingDataSource(
           data_source=mock_data_source,
-          context=context,
           total_rounds=5,
           num_rounds_to_prefetch=3,
           num_clients_to_prefetch=num_clients_to_prefetch,

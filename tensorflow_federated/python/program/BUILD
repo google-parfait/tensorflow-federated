@@ -288,6 +288,7 @@ py_library(
     deps = [
         ":data_source",
         "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/impl/context_stack:get_context_stack",
         "//tensorflow_federated/python/core/impl/execution_contexts:async_execution_context",
         "//tensorflow_federated/python/core/impl/executors:cardinality_carrying_base",
         "//tensorflow_federated/python/core/impl/executors:executor_base",
@@ -309,6 +310,7 @@ py_test(
         ":data_source",
         ":prefetching_data_source",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/core/impl/context_stack:context_stack_test_utils",
         "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
