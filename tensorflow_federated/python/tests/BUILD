@@ -101,15 +101,6 @@ py_test(
     deps = ["//tensorflow_federated"],
 )
 
-py_test(
-    name = "remote_runtime_stream_structs_test",
-    size = "large",
-    timeout = "moderate",
-    srcs = ["remote_runtime_stream_structs_test.py"],
-    tags = ["requires-mem:20g"],
-    deps = ["//tensorflow_federated"],
-)
-
 py_library(
     name = "temperature_sensor_example",
     srcs = ["temperature_sensor_example.py"],
