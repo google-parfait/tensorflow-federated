@@ -38,7 +38,7 @@ void* TFE_DTENSOR_RegisterDTensorDevice(TFE_Context* context,
   void* device_info;
   tensorflow::dtensor::AllocateDTensorDevice(
       /*device_name=*/dtensor_device_name, &device, &device_info);
-
+  if (TF_GetCode(status) != TF_OK) return nullptr;
   std::string mesh_string = tensorflow::unwrap(mesh)->ToString();
   TFE_RegisterCustomDevice(context, device, dtensor_device_name, device_info,
                            status);
@@ -47,6 +47,7 @@ void* TFE_DTENSOR_RegisterDTensorDevice(TFE_Context* context,
   tensorflow::dtensor::AddMesh(mesh_string, device_info, /*is_async=*/false,
                                /*is_host_mesh=*/false,
                                /*in_flight_nodes_limit=*/0, status);
+
   if (TF_GetCode(status) != TF_OK) return nullptr;
 
   return device_info;
