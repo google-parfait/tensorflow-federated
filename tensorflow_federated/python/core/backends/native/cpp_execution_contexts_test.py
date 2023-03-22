@@ -115,6 +115,71 @@ class CPPExecutionContextTest(tf.test.TestCase):
     self.assertEqual(zero, 0)
     self.assertEqual(one, 1)
 
+  def test_runs_tensorflow_on_dtensor_on_server(self):
+    # Create a single device mesh for testing.
+    mesh = tf.experimental.dtensor.create_mesh(
+        devices=['CPU:0'], mesh_dims=[('test_dim', 1)]
+    )
+
+    @tensorflow_computation.tf_computation(
+        collections.OrderedDict(x=tf.int32, y=tf.int32)
+    )
+    def multiply(ordered_dict):
+      return ordered_dict['x'] * ordered_dict['y']
+
+    context = cpp_execution_contexts.create_sync_experimental_distributed_cpp_execution_context(
+        distributed_config=cpp_execution_contexts.DistributedConfiguration(
+            server_mesh=mesh
+        )
+    )
+    with get_context_stack.get_context_stack().install(context):
+      zero = multiply(collections.OrderedDict(x=0, y=1))
+      one = multiply(collections.OrderedDict(x=1, y=1))
+
+    self.assertEqual(zero, 0)
+    self.assertEqual(one, 1)
+
+  def test_runs_tensorflow_on_dtensor_on_client(self):
+    # Create a single device mesh for testing.
+    mesh = tf.experimental.dtensor.create_mesh(
+        devices=['CPU:0'], mesh_dims=[('test_dim', 1)]
+    )
+
+    @tensorflow_computation.tf_computation(
+        collections.OrderedDict(x=tf.int32, y=tf.int32)
+    )
+    def multiply(ordered_dict):
+      return ordered_dict['x'] * ordered_dict['y']
+
+    context = cpp_execution_contexts.create_sync_experimental_distributed_cpp_execution_context(
+        distributed_config=cpp_execution_contexts.DistributedConfiguration(
+            client_mesh=mesh
+        )
+    )
+    with get_context_stack.get_context_stack().install(context):
+      zero = multiply(collections.OrderedDict(x=0, y=1))
+      one = multiply(collections.OrderedDict(x=1, y=1))
+
+    self.assertEqual(zero, 0)
+    self.assertEqual(one, 1)
+
+  def test_error_on_distributed_context_creation(self):
+    with self.assertRaisesRegex(
+        ValueError,
+        (
+            'Both server side and client side mesh are unspecified'
+            ' in distributed configuration.'
+        ),
+    ):
+      cpp_execution_contexts.create_sync_experimental_distributed_cpp_execution_context(
+          distributed_config=cpp_execution_contexts.DistributedConfiguration()
+      )
+    with self.assertRaisesRegex(
+        ValueError,
+        'Distributed configuration is unspecified.',
+    ):
+      cpp_execution_contexts.create_sync_experimental_distributed_cpp_execution_context()
+
   def test_async_execution_context_runs_in_parallel(self):
     n_parallel_calls = 10
     sleep_time = 5
