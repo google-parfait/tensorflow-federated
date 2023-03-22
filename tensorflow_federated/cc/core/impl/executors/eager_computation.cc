@@ -28,6 +28,7 @@ limitations under the License
 
 #include "google/protobuf/any.pb.h"
 #include "absl/container/flat_hash_map.h"
+#include "absl/container/flat_hash_set.h"
 #include "absl/container/node_hash_map.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
@@ -163,24 +164,39 @@ absl::Status AddInputArgNodesToFunction(
 
 void AddControlEdgeForInitOp(tensorflow::Graph* graph,
                              tensorflow::Node* initialize_op) {
-  // This function introduces a control edge from Initialization ops to all
-  // Nodes reading the variables to ensure correct ordering of execution.
+  // This function introduces a control edge from Initialization ops inputs
+  // to all the nodes in graph with same input. This is to ensure variable
+  // initialization ops are run before all nodes reading the variable to get
+  // correct ordering of execution.
   //
   // Auto control dependencies introduce a control dependency between 2 ops if
   // they have the same input in the program order.
   // This follows similar logic.
   std::vector<tensorflow::Node*> destinations;
-  for (const auto& dest : graph->nodes()) {
-    if (dest == initialize_op) {
+  absl::flat_hash_set<tensorflow::Node*> init_ops;
+  for (auto* input : initialize_op->in_nodes()) {
+    init_ops.insert(input);
+  }
+  absl::flat_hash_set<tensorflow::Node*> init_requirements;
+  for (auto* node : graph->nodes()) {
+    if (init_ops.contains(node)) {
+      init_requirements.insert(node);
+      for (auto input : node->in_nodes()) {
+        init_requirements.insert(input);
+      }
+    }
+  }
+
+  for (auto* dest : graph->nodes()) {
+    if (dest == initialize_op || init_ops.contains(dest)) {
       continue;
     }
+
     // Check if node has same input as initialization op, introduce a control
     // edge.
     for (auto input : dest->in_nodes()) {
-      for (auto input1 : initialize_op->in_nodes()) {
-        if (input == input1) {
-          destinations.push_back(dest);
-        }
+      if (init_requirements.contains(input)) {
+        destinations.push_back(dest);
       }
     }
   }
@@ -189,6 +205,7 @@ void AddControlEdgeForInitOp(tensorflow::Graph* graph,
     graph->AddControlEdge(initialize_op, dest);
   }
 }
+
 absl::StatusOr<tensorflow::NodeDef> CreateRelayoutNodeDef(
     const std::string varop_node_name,
     tensorflow::dtensor::Layout varop_node_layout) {

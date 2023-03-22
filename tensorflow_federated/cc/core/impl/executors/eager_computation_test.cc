@@ -33,6 +33,7 @@ limitations under the License
 #include "tensorflow/cc/ops/const_op.h"
 #include "tensorflow/cc/ops/functional_ops.h"
 #include "tensorflow/cc/ops/math_ops.h"
+#include "tensorflow/cc/ops/no_op.h"
 #include "tensorflow/cc/ops/resource_variable_ops.h"
 #include "tensorflow/core/framework/function.pb.h"
 #include "tensorflow/core/framework/tensor.pb.h"
@@ -134,6 +135,50 @@ TEST_F(EagerComputationTest, CallNoArgOneOutWithInitialize) {
   auto fn = ComputationV(root, /*in_binding=*/std::nullopt,
                          /*out_binding=*/TensorB(read_var),
                          /*init_op=*/var_init);
+  TFF_ASSERT_OK_AND_ASSIGN(auto comp,
+                           EagerComputation::FromProto(fn.tensorflow()));
+  TFF_ASSERT_OK_AND_ASSIGN(auto result, comp.Call(context.get(), std::nullopt));
+
+  ASSERT_EQ(1, result.size());
+  TFE_TensorHandle* result_tensor_handle = result[0];
+
+  TF_Tensor* result_tensor =
+      TFE_TensorHandleResolve(result_tensor_handle, status);
+  EXPECT_EQ(TF_GetCode(status), TF_OK) << TF_Message(status);
+
+  int32_t expected[3];
+  memcpy(&expected[0], TF_TensorData(result_tensor),
+         TF_TensorByteSize(result_tensor));
+  TF_DeleteTensor(result_tensor);
+  TFE_DeleteTensorHandle(result_tensor_handle);
+  EXPECT_EQ(1, expected[0]);
+  EXPECT_EQ(2, expected[1]);
+  EXPECT_EQ(3, expected[2]);
+
+  TF_DeleteStatus(status);
+}
+
+TEST_F(EagerComputationTest, CallNoArgOneOutWithGroupedInitialize) {
+  TF_Status* status = TF_NewStatus();
+  std::unique_ptr<TFE_ContextOptions, decltype(&TFE_DeleteContextOptions)> opts(
+      TFE_NewContextOptions(), TFE_DeleteContextOptions);
+  std::unique_ptr<TFE_Context, decltype(&TFE_DeleteContext)> context(
+      TFE_NewContext(opts.get(), status), TFE_DeleteContext);
+  EXPECT_EQ(TF_GetCode(status), TF_OK) << TF_Message(status);
+
+  tensorflow::Scope root = tensorflow::Scope::NewRootScope();
+  tensorflow::TensorShape shape({3});
+  tensorflow::ops::VarHandleOp var(root, tensorflow::DT_INT32, shape);
+  auto var_init = tensorflow::ops::AssignVariableOp(
+      root, var, tensorflow::ops::Const(root, {1, 2, 3}, shape));
+  tensorflow::ops::ReadVariableOp read_var(root, var, tensorflow::DT_INT32);
+
+  auto grouped_initializer =
+      tensorflow::ops::NoOp(root.WithOpName("grouped_initializer")
+                                .WithControlDependencies({var_init}));
+  auto fn = ComputationV(root, /*in_binding=*/std::nullopt,
+                         /*out_binding=*/TensorB(read_var),
+                         /*init_op=*/grouped_initializer);
   TFF_ASSERT_OK_AND_ASSIGN(auto comp,
                            EagerComputation::FromProto(fn.tensorflow()));
   TFF_ASSERT_OK_AND_ASSIGN(auto result, comp.Call(context.get(), std::nullopt));
