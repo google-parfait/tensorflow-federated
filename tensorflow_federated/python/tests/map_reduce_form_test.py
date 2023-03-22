@@ -41,7 +41,7 @@ def construct_example_training_comp() -> tff.learning.templates.LearningProcess:
         ]
     )
 
-    return tff.learning.from_keras_model(
+    return tff.learning.models.from_keras_model(
         keras_model,
         input_spec=input_spec,
         loss=tf.keras.losses.SparseCategoricalCrossentropy(),

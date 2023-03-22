@@ -43,7 +43,7 @@ def _model_fn():
       ('x', tf.TensorSpec([None, _INPUT_DIM], dtype=tf.float32)),
       ('y', tf.TensorSpec([None, _OUTPUT_DIM], dtype=tf.float32)),
   ])
-  return tff.learning.from_keras_model(
+  return tff.learning.models.from_keras_model(
       keras_model=keras_model,
       input_spec=input_spec,
       loss=tf.keras.losses.MeanSquaredError(),

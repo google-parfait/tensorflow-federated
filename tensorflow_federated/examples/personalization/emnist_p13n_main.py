@@ -140,7 +140,7 @@ def main(argv):
   def model_fn() -> tff.learning.models.VariableModel:
     """Build a `tff.learning.models.VariableModel` for training EMNIST."""
     keras_model = _create_conv_dropout_model(only_digits=False)
-    return tff.learning.from_keras_model(
+    return tff.learning.models.from_keras_model(
         keras_model=keras_model,
         loss=tf.keras.losses.SparseCategoricalCrossentropy(),
         input_spec=federated_train_data[0].element_spec,

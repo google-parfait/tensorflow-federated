@@ -136,12 +136,12 @@ def evaluate_fn(
   The returned metrics include those given by
   `model.report_local_unfinalized_metrics`. These are specified by the `loss`
   and `metrics` arguments when the model is created by
-  `tff.learning.from_keras_model`. The returned metrics also contain an integer
-  metric with name 'num_test_examples'.
+  `tff.learning.models.from_keras_model`. The returned metrics also contain an
+  integer metric with name 'num_test_examples'.
 
   Args:
     model: A `tff.learning.models.VariableModel` created by
-      `tff.learning.from_keras_model`.
+      `tff.learning.models.from_keras_model`.
     dataset: An unbatched `tf.data.Dataset`.
 
   Returns:

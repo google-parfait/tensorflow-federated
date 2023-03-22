@@ -16,9 +16,9 @@ The interfaces offered by this layer consist of the following three key parts:
 
 *   **Models**. Classes and helper functions that allow you to wrap your
     existing models for use with TFF. Wrapping a model can be as simple as
-    calling a single wrapping function (e.g., `tff.learning.from_keras_model`),
-    or defining a subclass of the `tff.learning.models.VariableModel` interface
-    for full customizability.
+    calling a single wrapping function (e.g.,
+    `tff.learning.models.from_keras_model`), or defining a subclass of the
+    `tff.learning.models.VariableModel` interface for full customizability.
 
 *   **Federated Computation Builders**. Helper functions that construct
     federated computations for training or evaluation, using your existing
@@ -184,7 +184,7 @@ tutorial, as well as in the example models we use for testing in
 
 Nearly all the information that's required by TFF can be derived by calling
 `tf.keras` interfaces, so if you have a Keras model, you can rely on
-`tff.learning.from_keras_model` to construct a
+`tff.learning.models.from_keras_model` to construct a
 `tff.learning.models.VariableModel`.
 
 Note that TFF still wants you to provide a constructor - a no-argument *model
@@ -193,7 +193,7 @@ function* such as the following:
 ```python
 def model_fn():
   keras_model = ...
-  return tff.learning.from_keras_model(keras_model, sample_batch, loss=...)
+  return tff.learning.models.from_keras_model(keras_model, sample_batch, loss=...)
 ```
 
 In addition to the model itself, you supply a sample batch of data which TFF

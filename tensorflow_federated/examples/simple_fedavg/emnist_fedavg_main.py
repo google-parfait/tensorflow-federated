@@ -156,7 +156,7 @@ def main(argv):
     keras_model = create_original_fedavg_cnn_model(only_digits=True)
     loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
     metrics = [tf.keras.metrics.SparseCategoricalAccuracy()]
-    return tff.learning.from_keras_model(
+    return tff.learning.models.from_keras_model(
         keras_model,
         loss=loss,
         metrics=metrics,

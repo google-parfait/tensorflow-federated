@@ -573,7 +573,7 @@ class KerasIntegrationTest(parameterized.TestCase):
           ),
           tf.keras.layers.Dense(input_dim, activation='sigmoid'),
       ])
-      tff_model = tff.learning.from_keras_model(
+      tff_model = tff.learning.models.from_keras_model(
           keras_model=model,
           input_spec=input_spec,
           loss=tf.keras.losses.MeanSquaredError(),

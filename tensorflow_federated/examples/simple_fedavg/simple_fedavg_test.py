@@ -71,7 +71,7 @@ def _tff_learning_model_fn():
       x=tf.TensorSpec([None, 28, 28, 1], tf.float32),
       y=tf.TensorSpec([None], tf.int32),
   )
-  return tff.learning.from_keras_model(
+  return tff.learning.models.from_keras_model(
       keras_model=keras_model, input_spec=input_spec, loss=loss, metrics=metrics
   )
 
@@ -376,7 +376,7 @@ def _rnn_model_fn() -> tff.learning.models.VariableModel:
   input_spec = collections.OrderedDict(
       x=tf.TensorSpec([None, 5], tf.int32), y=tf.TensorSpec([None, 5], tf.int32)
   )
-  return tff.learning.from_keras_model(
+  return tff.learning.models.from_keras_model(
       keras_model=keras_model, input_spec=input_spec, loss=loss
   )
 
