@@ -13,13 +13,16 @@
 # limitations under the License.
 """Module for creating functional implementations of a `tff.learning.models.VariableModel`.
 
-This version of the model parameterizes its `forward_pass` and
-`predict_on_batch` methods by model weights, rather than storing them in the
-model. This allows for greater flexibility in model portability.
+This version of the model parameterizes its `predict_on_batch` method by model
+weights, rather than storing them in the model. This allows for greater
+flexibility in model portability. In addition, the `loss` function is added and
+decoupled from the `forward_pass` method. This improves non-supervised
+techniques and integration with Jax ML frameworks. The `forward_pass` method is
+removed from the `FunctionalModel` interface.
 
-To use with `tff.learning.algorithms` and other APIs that
-construct learning processes expecting stateful models, wrap the functional
-model with `tff.learning.models.model_from_functional`.
+To use with `tff.learning.algorithms` and other APIs that construct learning
+processes expecting stateful models, wrap the functional model with
+`tff.learning.models.model_from_functional`.
 """
 
 import collections
@@ -91,9 +94,6 @@ class FunctionalModel:
       self,
       *,  # Require all arguments be named.
       initial_weights: ModelWeights,
-      forward_pass_fn: Callable[
-          [ModelWeights, Any, bool], variable.BatchOutput
-      ],
       predict_on_batch_fn: Callable[[ModelWeights, Any, bool], Any],
       loss_fn: Callable[[Any, Any, Any], Any],
       metrics_fns: tuple[
@@ -118,19 +118,12 @@ class FunctionalModel:
       w, b = trainable
       return tf.matmul(x, w, transpose_b=True) + b
 
-    @tf.function
-    def forward_pass(model_weights, batch_input, training):
-      x, y = batch_input
-      predictions = predict_on_batch(model_weights, , training)
-      residuals = predictions - y
-      total_loss = tf.reduce_sum(tf.pow(residuals, 2.))
-      num_examples = tf.shape(predictions)[0]
-      average_loss = total_loss / tf.cast(num_examples, tf.float32)
-      return tff.learning.models.BatchOutput(
-        loss=average_loss, predictions=predictions, num_examples=num_examples)
+    def loss(output, label, sample_weight=None):
+      del sample_weight
+      return tf.math.reduce_mean(tf.math.pow(output - label, 2.))
 
     model = FunctionalModel(
-      initial_weights, forward_pass, predict_on_batch,
+      initial_weights, predict_on_batch, loss
       (tf.TensorSpec(shape=[None, 3], dtype=tf.float32),
        tf.TensorSpec(shape=[None, 1], dtype=tf.float32))
     )
@@ -141,11 +134,6 @@ class FunctionalModel:
         elements are sequences of weights. Weights must be values convertable to
         `tf.Tensor` (e.g. `numpy.ndarray`, Python sequences, etc), but _not_
         `tf.Tensor` values.
-      forward_pass_fn: A `tf.function` decorated callable that takes three
-        arguments, `model_weights` the same structure as `initial_weights`,
-        `batch_input` a nested structure of tensors matching `input_spec`, and
-        `training` a boolean determinig whether the call is during a training
-        pass (e.g. for Dropout, BatchNormalization, etc).
       predict_on_batch_fn: A `tf.function` decorated callable that takes three
         arguments, `model_weights` the same structure as `initial_weights`, `x`
         the first element of `batch_input` (or `input_spec`), and `training` a
@@ -161,9 +149,10 @@ class FunctionalModel:
         tff.learning.metrics.create_functional_metric_fns`or custom user written
         callables.
       input_spec: A 2-tuple of `(x, y)` where each element is a nested structure
-        of `tf.TensorSpec` that defines the shape and dtypes of `batch_input` to
-        `forward_pass_fn`. `x` corresponds to batched model inputs and `y`
-        corresponds to batched labels for those inputs.
+        of `tf.TensorSpec`. `x` corresponds to batched model inputs that define
+        the shape and dtype of `x` to `predict_on_batch_fn`, while `y`
+        corresponds to batched labels for those inputs that define the shape and
+        dtype of `label` to `loss_fn`.
     """
 
     def check_tf_function_decorated(fn: Any, arg_name: str) -> None:
@@ -187,8 +176,6 @@ class FunctionalModel:
 
     tf.nest.map_structure(check_non_tf_value, initial_weights)
     self._initial_weights = initial_weights
-    check_tf_function_decorated(forward_pass_fn, 'forward_pass_fn')
-    self._forward_pass_fn = forward_pass_fn
     check_tf_function_decorated(predict_on_batch_fn, 'predict_on_batch_fn')
     self._predict_on_batch_fn = predict_on_batch_fn
     self._loss_fn = loss_fn
@@ -202,13 +189,6 @@ class FunctionalModel:
   @property
   def initial_weights(self) -> ModelWeights:
     return self._initial_weights
-
-  @tf.function
-  def forward_pass(
-      self, model_weights: ModelWeights, batch_input: Any, training: bool = True
-  ) -> variable.BatchOutput:
-    """Runs the forward pass and returns results."""
-    return self._forward_pass_fn(model_weights, batch_input, training)
 
   @tf.function
   def predict_on_batch(
@@ -312,24 +292,32 @@ class _ModelFromFunctional(variable.VariableModel):
 
   @tf.function
   def forward_pass(self, batch_input, training=True):
-    batch_output = self._functional_model.forward_pass(
+    if isinstance(batch_input, Mapping):
+      x = batch_input['x']
+      y = batch_input['y']
+    else:
+      x, y = batch_input
+    batch_output = self._functional_model.predict_on_batch(
         model_weights=tf.nest.map_structure(
             lambda v: v.read_value(), self._model_weights
         ),
-        batch_input=batch_input,
+        x=x,
         training=training,
     )
-    self._num_examples.assign_add(batch_output.num_examples)
+    batch_loss = self._functional_model.loss(output=batch_output, label=y)
+    batch_num_examples = tf.shape(batch_output)[0]
+    self._num_examples.assign_add(batch_num_examples)
     self._loss_sum.assign_add(
-        batch_output.loss * tf.cast(batch_output.num_examples, tf.float32)
+        batch_loss * tf.cast(batch_num_examples, tf.float32)
     )
-    if isinstance(batch_input, Mapping):
-      y_true = batch_input.get('y')
-    else:
-      y_true = batch_input[1]
     for metric in self._metrics:
-      metric.update_state(y_true=y_true, y_pred=batch_output.predictions)
-    return batch_output
+      metric.update_state(y_true=y, y_pred=batch_output)
+    forward_pass_output = variable.BatchOutput(
+        loss=batch_loss,
+        predictions=batch_output,
+        num_examples=batch_num_examples,
+    )
+    return forward_pass_output
 
   @tf.function
   def predict_on_batch(self, x, training=True):
@@ -627,35 +615,6 @@ def functional_model_from_keras(
         variableless_model = keras_model()
     return variableless_model(x, training)
 
-  @tf.function
-  def forward_pass(
-      model_weights: ModelWeights, batch_input: Any, training: bool = True
-  ) -> variable.BatchOutput:
-    if isinstance(batch_input, Mapping):
-      x = batch_input['x']
-      y = batch_input['y']
-    elif isinstance(batch_input, Sequence):
-      x, y = batch_input
-    else:
-      raise ValueError(
-          '`batch_input` must be either a mapping with keys `x` '
-          f'and `y` or a sequence of `(x, y)`. Got: {batch_input!r}'
-      )
-    predictions = predict_on_batch(model_weights, x, training)
-    batch_loss = loss_fn(y_true=y, y_pred=predictions)
-
-    # TODO(b/207033265): more work needed to support models with multiple loss
-    # functions.
-
-    def nrows(t):
-      return t.nrows() if isinstance(t, tf.RaggedTensor) else tf.shape(t)[0]
-
-    return variable.BatchOutput(
-        loss=batch_loss,
-        predictions=predictions,
-        num_examples=nrows(tf.nest.flatten(batch_input)[0]),
-    )
-
   def loss(
       output: Any, label: Any, sample_weight: Optional[Any] = None
   ) -> float:
@@ -672,7 +631,6 @@ def functional_model_from_keras(
 
   return FunctionalModel(
       initial_weights=initial_weights,
-      forward_pass_fn=forward_pass,
       predict_on_batch_fn=predict_on_batch,
       loss_fn=loss,
       metrics_fns=metrics_fns,

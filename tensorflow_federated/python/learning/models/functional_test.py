@@ -51,22 +51,9 @@ def predict_on_batch(model_weights, x, training):
     return tf.matmul(x, w, transpose_b=True)
 
 
-@tf.function
-def forward_pass(model_weights, batch_input, training):
-  """Test forward_pass implementing linear regression on MSE."""
-  x, y = batch_input
-  predictions = predict_on_batch(model_weights, x, training)
-  residuals = predictions - y
-  num_examples = tf.shape(predictions)[0]
-  total_loss = tf.reduce_sum(tf.pow(residuals, 2.0))
-  average_loss = total_loss / tf.cast(num_examples, tf.float32)
-  return variable.BatchOutput(
-      loss=average_loss, predictions=predictions, num_examples=num_examples
-  )
-
-
-def loss(output, label) -> float:
-  return tf.math.reduce_sum(tf.math.pow(output - label, 2.0))
+def loss(output, label, sample_weight=None) -> float:
+  del sample_weight
+  return tf.math.reduce_mean(tf.math.pow(output - label, 2.0))
 
 
 @tf.function
@@ -151,7 +138,6 @@ class FunctionalModelErrorsTest(tf.test.TestCase):
     ):
       functional.FunctionalModel(
           initial_weights=(tf.constant(1.0), ()),
-          forward_pass_fn=forward_pass,
           predict_on_batch_fn=predict_on_batch,
           loss_fn=loss,
           input_spec=input_spec,
@@ -161,7 +147,6 @@ class FunctionalModelErrorsTest(tf.test.TestCase):
     ):
       functional.FunctionalModel(
           initial_weights=(tf.Variable(1.0), ()),
-          forward_pass_fn=forward_pass,
           predict_on_batch_fn=predict_on_batch,
           loss_fn=loss,
           input_spec=input_spec,
@@ -172,22 +157,10 @@ class FunctionalModelErrorsTest(tf.test.TestCase):
     input_spec = dataset.element_spec
     with self.assertRaisesRegex(
         functional.CallableNotTensorFlowFunctionError,
-        'forward_pass_fn does not have a `get_concrete_function`',
-    ):
-      functional.FunctionalModel(
-          initial_weights=(),
-          forward_pass_fn=forward_pass.python_function,
-          predict_on_batch_fn=predict_on_batch,
-          loss_fn=loss,
-          input_spec=input_spec,
-      )
-    with self.assertRaisesRegex(
-        functional.CallableNotTensorFlowFunctionError,
         'predict_on_batch_fn does not have a `get_concrete_function`',
     ):
       functional.FunctionalModel(
           initial_weights=(),
-          forward_pass_fn=forward_pass,
           predict_on_batch_fn=predict_on_batch.python_function,
           loss_fn=loss,
           input_spec=input_spec,
@@ -202,7 +175,6 @@ class FunctionalModelTest(tf.test.TestCase):
     input_spec = dataset.element_spec
     functional_model = functional.FunctionalModel(
         initial_weights=initial_weights(),
-        forward_pass_fn=forward_pass,
         predict_on_batch_fn=predict_on_batch,
         loss_fn=loss,
         input_spec=input_spec,
@@ -214,30 +186,27 @@ class FunctionalModelTest(tf.test.TestCase):
         [[0.0]] * 5,
     )
 
-  def test_forward_pass(self):
+  def test_loss(self):
     dataset = create_test_dataset()
     example_batch = next(iter(dataset))
     input_spec = dataset.element_spec
     functional_model = functional.FunctionalModel(
         initial_weights=initial_weights(),
-        forward_pass_fn=forward_pass,
         predict_on_batch_fn=predict_on_batch,
         loss_fn=loss,
         input_spec=input_spec,
     )
-    self.assertAllClose(
-        functional_model.predict_on_batch(
-            functional_model.initial_weights, example_batch[0]
-        ),
-        [[0.0]] * 5,
+    batch_output = functional_model.predict_on_batch(
+        functional_model.initial_weights, example_batch[0]
     )
+    batch_loss = functional_model.loss(batch_output, example_batch[1])
+    self.assertAllClose(batch_loss, 74.250, rtol=1e-03, atol=1e-03)
 
   def test_metrics_eager(self):
     dataset = create_test_dataset()
     input_spec = dataset.element_spec
     functional_model = functional.FunctionalModel(
         initial_weights=initial_weights(),
-        forward_pass_fn=forward_pass,
         predict_on_batch_fn=predict_on_batch,
         loss_fn=loss,
         metrics_fns=(
@@ -278,7 +247,6 @@ class FunctionalModelTest(tf.test.TestCase):
       with tf.compat.v1.Session(graph=g) as sess:
         functional_model = functional.FunctionalModel(
             initial_weights=initial_weights(),
-            forward_pass_fn=forward_pass,
             predict_on_batch_fn=predict_on_batch,
             loss_fn=loss,
             metrics_fns=(
@@ -345,7 +313,6 @@ class FunctionalModelTest(tf.test.TestCase):
     input_spec = dataset.element_spec
     functional_model = functional.FunctionalModel(
         initial_weights=initial_weights(),
-        forward_pass_fn=forward_pass,
         predict_on_batch_fn=predict_on_batch,
         loss_fn=loss,
         input_spec=input_spec,
@@ -359,12 +326,15 @@ class FunctionalModelTest(tf.test.TestCase):
     num_epochs = 50
     for batch in dataset.repeat(num_epochs):
       with tf.GradientTape() as tape:
-        batch_output = functional_model.forward_pass(
-            variables, batch, training=True
+        batch_output = functional_model.predict_on_batch(
+            model_weights=variables, x=batch[0], training=True
         )
-      gradients = tape.gradient(batch_output.loss, trainable)
+        batch_loss = functional_model.loss(output=batch_output, label=batch[1])
+      gradients = tape.gradient(batch_loss, trainable)
       optimizer.apply_gradients(zip(gradients, trainable))
-      loss_value = batch_output.loss
+      loss_value = batch_loss
+      optimizer.apply_gradients(zip(gradients, trainable))
+      loss_value = batch_loss
     # Expect some amount of convergence after a few epochs of the dataset.
     self.assertLess(loss_value, 0.1)
     self.assertAllClose(trainable, ([[1.0, 2.0, 3.0]], [5.0]), atol=0.5)
@@ -377,7 +347,6 @@ class ModelFromFunctionalModelTest(tf.test.TestCase):
     input_spec = dataset.element_spec
     functional_model = functional.FunctionalModel(
         initial_weights=initial_weights(),
-        forward_pass_fn=forward_pass,
         predict_on_batch_fn=predict_on_batch,
         loss_fn=loss,
         input_spec=input_spec,
@@ -386,18 +355,26 @@ class ModelFromFunctionalModelTest(tf.test.TestCase):
 
     for training in [True, False]:
       for batch in dataset:
-        self.assertAllClose(
-            tff_model.predict_on_batch(batch[0], training),
-            functional_model.predict_on_batch(
-                functional_model.initial_weights, batch[0], training
-            ),
+        tff_model_batch_output = tff_model.predict_on_batch(batch[0], training)
+        tff_model_batch_loss, _, tff_model_batch_num_examples = (
+            tff_model.forward_pass(batch, training)
         )
-        tf.nest.map_structure(
-            self.assertAllClose,
-            tff_model.forward_pass(batch, training),
-            functional_model.forward_pass(
-                functional_model.initial_weights, batch, training
-            ),
+        functional_model_batch_output = functional_model.predict_on_batch(
+            functional_model.initial_weights, batch[0], training
+        )
+        functional_model_batch_loss = functional_model.loss(
+            output=functional_model_batch_output, label=batch[1]
+        )
+        functional_model_batch_num_examples = tf.shape(
+            functional_model_batch_output
+        )[0]
+
+        self.assertAllClose(
+            tff_model_batch_output, functional_model_batch_output
+        )
+        self.assertAllClose(tff_model_batch_loss, functional_model_batch_loss)
+        self.assertAllClose(
+            tff_model_batch_num_examples, functional_model_batch_num_examples
         )
 
   def test_tff_model_from_functional_converges(self):
@@ -405,7 +382,6 @@ class ModelFromFunctionalModelTest(tf.test.TestCase):
     input_spec = dataset.element_spec
     functional_model = functional.FunctionalModel(
         initial_weights=initial_weights(),
-        forward_pass_fn=forward_pass,
         predict_on_batch_fn=predict_on_batch,
         loss_fn=loss,
         input_spec=input_spec,
@@ -437,7 +413,6 @@ class ModelFromFunctionalModelTest(tf.test.TestCase):
     input_spec = dataset.element_spec
     functional_model = functional.FunctionalModel(
         initial_weights=initial_weights(),
-        forward_pass_fn=forward_pass,
         predict_on_batch_fn=predict_on_batch,
         loss_fn=loss,
         input_spec=input_spec,
@@ -456,7 +431,6 @@ class ModelFromFunctionalModelTest(tf.test.TestCase):
     input_spec = dataset.element_spec
     functional_model = functional.FunctionalModel(
         initial_weights=initial_weights(),
-        forward_pass_fn=forward_pass,
         predict_on_batch_fn=predict_on_batch,
         loss_fn=loss,
         input_spec=input_spec,
@@ -501,7 +475,6 @@ class ModelFromFunctionalModelTest(tf.test.TestCase):
     input_spec = dataset.element_spec
     functional_model = functional.FunctionalModel(
         initial_weights=initial_weights(),
-        forward_pass_fn=forward_pass,
         predict_on_batch_fn=predict_on_batch,
         loss_fn=loss,
         metrics_fns=(
@@ -551,7 +524,6 @@ class ModelFromFunctionalModelTest(tf.test.TestCase):
     input_spec = dataset.element_spec
     functional_model = functional.FunctionalModel(
         initial_weights=initial_weights(),
-        forward_pass_fn=forward_pass,
         predict_on_batch_fn=predict_on_batch,
         loss_fn=loss,
         input_spec=input_spec,
@@ -592,7 +564,6 @@ class ModelFromFunctionalModelTest(tf.test.TestCase):
     input_spec = dataset.element_spec
     functional_model = functional.FunctionalModel(
         initial_weights=initial_weights(),
-        forward_pass_fn=forward_pass,
         predict_on_batch_fn=predict_on_batch,
         loss_fn=loss,
         input_spec=input_spec,
@@ -681,15 +652,26 @@ class FunctionalModelFromKerasTest(tf.test.TestCase):
       metrics_state_tensor_spec = tf.nest.map_structure(
           tf.TensorSpec.from_tensor, functional_model.initialize_metrics_state()
       )
+      predict_on_batch_concrete_structured_fn = tf.function(
+          functional_model.predict_on_batch
+      ).get_concrete_function(
+          model_weights=model_weights_tensor_spec,
+          x=x_spec,
+          training=True,
+      )
+      batch_output_tensor_spec_structure = tf.nest.map_structure(
+          tf.TensorSpec.from_tensor,
+          predict_on_batch_concrete_structured_fn.structured_outputs,
+      )
       self.assert_variableless_function(
           functional_model.predict_on_batch,
           model_weights=model_weights_tensor_spec,
           x=x_spec,
       )
       self.assert_variableless_function(
-          functional_model.forward_pass,
-          model_weights=model_weights_tensor_spec,
-          batch_input=(x_spec, y_spec),
+          tf.function(functional_model.loss),
+          output=batch_output_tensor_spec_structure,
+          label=y_spec,
       )
       self.assert_variableless_function(
           functional_model.initialize_metrics_state
@@ -795,9 +777,13 @@ class FunctionalModelFromKerasTest(tf.test.TestCase):
         @tf.function
         def train():
           weights = tf.nest.map_structure(lambda v: v.read_value(), variables)
-          initial_loss = loss_value = functional_model.forward_pass(
-              weights, next(iter(dataset)), training=True
-          ).loss
+          batch_input = next(iter(dataset))
+          batch_output = functional_model.predict_on_batch(
+              weights, batch_input[0], training=True
+          )
+          initial_loss = loss_value = functional_model.loss(
+              batch_output, batch_input[1]
+          )
           trainable = variables[0]
           for batch in dataset.repeat(30):
             with tf.GradientTape() as tape:
@@ -805,12 +791,13 @@ class FunctionalModelFromKerasTest(tf.test.TestCase):
                   lambda v: v.read_value(), variables
               )
               tape.watch(weights[0])
-              batch_output = functional_model.forward_pass(
-                  weights, batch, training=True
+              batch_output = functional_model.predict_on_batch(
+                  weights, batch[0], training=True
               )
-            gradients = tape.gradient(batch_output.loss, weights[0])
+              batch_loss = functional_model.loss(batch_output, batch[1])
+            gradients = tape.gradient(batch_loss, weights[0])
             optimizer.apply_gradients(zip(gradients, trainable))
-            loss_value = batch_output.loss
+            loss_value = batch_loss
           return initial_loss, loss_value
 
         initial_loss, final_loss = train()

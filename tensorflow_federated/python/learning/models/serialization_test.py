@@ -631,17 +631,6 @@ class FunctionalModelTest(tf.test.TestCase, parameterized.TestCase):
       del training  # Unused.
       return tf.ones([1])
 
-    @tf.function
-    def forward_pass(model_weights, batch_input, training=True):
-      del model_weights  # Unused.
-      del batch_input  # Unused.
-      del training  # Unused.
-      return variable.BatchOutput(
-          loss=tf.zeros([]),
-          predictions=tf.ones([1]),
-          num_examples=tf.constant(10),
-      )
-
     def loss(output, label, sample_weight=None):
       del output  # Unused.
       del label  # Unused.
@@ -659,7 +648,6 @@ class FunctionalModelTest(tf.test.TestCase, parameterized.TestCase):
             ),
             (),
         ),
-        forward_pass_fn=forward_pass,
         predict_on_batch_fn=predict_on_batch,
         loss_fn=loss,
         input_spec=(tf.TensorSpec(shape=[]), tf.TensorSpec(shape=[])),

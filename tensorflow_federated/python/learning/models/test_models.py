@@ -49,39 +49,6 @@ def build_functional_linear_regression(
     del training  # Unused.
     return x @ kernel + bias
 
-  @tf.function
-  def forward_pass(
-      weights: functional.ModelWeights, batch_input: Any, training: bool = True
-  ) -> variable.BatchOutput:
-    if isinstance(batch_input, collections.abc.Mapping):
-      x = batch_input["x"]
-      y = batch_input["y"]
-    elif isinstance(batch_input, collections.abc.Sequence):
-      x, y = batch_input
-    else:
-      raise TypeError(
-          "`batch_input` must be a mapping with keys `x` and `y`, "
-          f"or a sequence of two elements. Got: {batch_input!r}."
-      )
-    if not input_spec[1].is_compatible_with(y):
-      raise ValueError(
-          "Expected batch_input[1] to be compatible with "
-          f"{input_spec[1]} but found {y}"
-      )
-    if not input_spec[0].is_compatible_with(x):
-      raise ValueError(
-          "Expected batch_input[0] to be compatible with "
-          "{input_spec[0]} but found {x}"
-      )
-    predictions = predict_on_batch(weights, x=x, training=training)
-    residuals = predictions - y
-    num_examples = tf.gather(tf.shape(predictions), 0)
-    total_loss = tf.math.reduce_sum(tf.math.pow(residuals, 2.0))
-    average_loss = total_loss / tf.cast(num_examples, tf.float32)
-    return variable.BatchOutput(
-        loss=average_loss, predictions=predictions, num_examples=num_examples
-    )
-
   def loss(output: Any, label: Any, sample_weight: Any) -> float:
     del sample_weight
     return tf.math.reduce_mean(tf.math.pow(output - label, 2.0))
@@ -119,7 +86,6 @@ def build_functional_linear_regression(
 
   return functional.FunctionalModel(
       initial_weights=initial_weights,
-      forward_pass_fn=forward_pass,
       predict_on_batch_fn=predict_on_batch,
       loss_fn=loss,
       metrics_fns=(initialize_metrics, update_metrics_state, finalize_metrics),

@@ -411,74 +411,6 @@ def save_functional_model(
       tf.TensorSpec.from_tensor, concrete_structured_fn.structured_outputs
   )
 
-  # Serialize forward pass concretely, once for training and once for
-  # non-training.
-  # TODO(b/198150431): try making `training` a `tf.Tensor` parameter to remove
-  # the need to for serializing two different function graphs.
-  def make_concrete_flat_forward_pass(training: bool):
-    """Create a concrete forward_pass function that has flattened output.
-
-    Args:
-      training: A boolean indicating whether this is a call in a training loop,
-        or evaluation loop.
-
-    Returns:
-      A 2-tuple of concrete `tf.function` instance and a `tff.Type` protocol
-      buffer message documenting the the result structure returned by the
-      concrete function.
-    """
-    # Save the un-flattened type spec for deserialization later.
-    # Note: `training` is a Python boolean, which gets "curried", in a sense,
-    # during function conretization. The resulting concrete function only has
-    # parameters for `model_weights` and `batch_input`, which are
-    # `tf.TensorSpec` structures here.
-    with tf.Graph().as_default():
-      concrete_structured_fn = functional_model.forward_pass.get_concrete_function(
-          model_weights_tensor_specs,
-          functional_model.input_spec,
-          # Note: training does not appear in the resulting concrete function.
-          training=training,
-      )
-    output_tensor_spec_structure = tf.nest.map_structure(
-        tf.TensorSpec.from_tensor, concrete_structured_fn.structured_outputs
-    )
-    result_type_spec = type_serialization.serialize_type(
-        computation_types.to_type(output_tensor_spec_structure)
-    )
-
-    @tf.function
-    def flat_forward_pass(model_weights, batch_input, training):
-      return tf.nest.flatten(
-          functional_model.forward_pass(model_weights, batch_input, training)
-      )
-
-    with tf.Graph().as_default():
-      flat_concrete_fn = flat_forward_pass.get_concrete_function(
-          model_weights_tensor_specs,
-          functional_model.input_spec,
-          # Note: training does not appear in the resulting concrete function.
-          training=training,
-      )
-    return flat_concrete_fn, result_type_spec
-
-  fw_pass_training, fw_pass_training_type_spec = (
-      make_concrete_flat_forward_pass(training=True)
-  )
-  m.flat_forward_pass_training = fw_pass_training
-  m.forward_pass_training_type_spec = tf.Variable(
-      fw_pass_training_type_spec.SerializeToString(deterministic=True),
-      trainable=False,
-  )
-
-  fw_pass_inference, fw_pass_inference_type_spec = (
-      make_concrete_flat_forward_pass(training=False)
-  )
-  m.flat_forward_pass_inference = fw_pass_inference
-  m.forward_pass_inference_type_spec = tf.Variable(
-      fw_pass_inference_type_spec.SerializeToString(deterministic=True),
-      trainable=False,
-  )
-
   x_spec, y_spec = functional_model.input_spec
 
   # Serialize predict_on_batch, once for training, once for non-training.
@@ -627,30 +559,6 @@ class _LoadedFunctionalModel(functional.FunctionalModel):
         lambda x: x.numpy(), loaded_module()
     )
 
-    def unflatten_forward_pass_fn(
-        flat_forward_pass, serialized_result_type_variable, training
-    ):
-      result_tensor_specs = _deserialize_type_spec(
-          serialized_result_type_variable, variable.BatchOutput
-      )
-
-      def forward_pass(model_weights, batch_input):
-        result = flat_forward_pass(model_weights, batch_input, training)
-        return tf.nest.pack_sequence_as(result_tensor_specs, result)
-
-      return forward_pass
-
-    self._forward_pass_training = unflatten_forward_pass_fn(
-        loaded_module.flat_forward_pass_training,
-        loaded_module.forward_pass_training_type_spec,
-        True,
-    )
-    self._forward_pass_inference = unflatten_forward_pass_fn(
-        loaded_module.flat_forward_pass_inference,
-        loaded_module.forward_pass_inference_type_spec,
-        False,
-    )
-
     def unflatten_predict_on_batch_fn(
         flat_predict_on_batch, serialized_result_type_variable, training
     ):
@@ -699,19 +607,6 @@ class _LoadedFunctionalModel(functional.FunctionalModel):
   @property
   def initial_weights(self):
     return self._initial_weights
-
-  def forward_pass(
-      self, model_weights, batch_input, training=True
-  ) -> variable.BatchOutput:
-    """Runs the forward pass and returns results."""
-    if training:
-      return self._forward_pass_training(
-          model_weights=model_weights, batch_input=batch_input
-      )
-    else:
-      return self._forward_pass_inference(
-          model_weights=model_weights, batch_input=batch_input
-      )
 
   def predict_on_batch(self, model_weights, x, training=True):
     """Returns tensor(s) interpretable by the loss function."""
