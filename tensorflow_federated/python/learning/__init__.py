@@ -50,9 +50,6 @@ from tensorflow_federated.python.learning.debug_measurements import add_debug_me
 from tensorflow_federated.python.learning.federated_evaluation import build_federated_evaluation
 from tensorflow_federated.python.learning.federated_evaluation import build_local_evaluation
 from tensorflow_federated.python.learning.framework.optimizer_utils import state_with_new_model_weights
-# TODO(b/267180026): Remove this once usages are migrated to
-# `tff.learning.metrics`
-from tensorflow_federated.python.learning.metrics.types import MetricFinalizersType
 from tensorflow_federated.python.learning.model_update_aggregator import compression_aggregator
 from tensorflow_federated.python.learning.model_update_aggregator import ddp_secure_aggregator
 from tensorflow_federated.python.learning.model_update_aggregator import dp_aggregator

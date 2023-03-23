@@ -38,7 +38,6 @@ py_library(
         "//tensorflow_federated/python/learning/framework",
         "//tensorflow_federated/python/learning/framework:optimizer_utils",
         "//tensorflow_federated/python/learning/metrics",
-        "//tensorflow_federated/python/learning/metrics:types",
         "//tensorflow_federated/python/learning/models",
         "//tensorflow_federated/python/learning/models:keras_utils",
         "//tensorflow_federated/python/learning/optimizers",
