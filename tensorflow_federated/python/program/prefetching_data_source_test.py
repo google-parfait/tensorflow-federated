@@ -12,8 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import Optional
 import unittest
 from unittest import mock
+import uuid
 
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -26,6 +28,43 @@ from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.program import data_source as data_source_lib
 from tensorflow_federated.python.program import prefetching_data_source
+
+
+class _TestDataSourceIterator(data_source_lib.FederatedDataSourceIterator):
+  """A test implementation of `tff.program.FederatedDataSourceIterator`.
+
+  A `tff.program.ProgramStateManager` can not be constructed directly because it
+  has abstract methods, this implementation exists to make it possible to
+  construct instances of `tff.program.ProgramStateManager` that can used as
+  stubs or mocked.
+  """
+
+  def __init__(self):
+    self._uuid = uuid.uuid4()
+
+  @classmethod
+  def from_bytes(cls, buffer: bytes) -> '_TestDataSourceIterator':
+    instance = _TestDataSourceIterator()
+    instance._uuid = uuid.UUID(bytes=buffer)
+    return instance
+
+  def to_bytes(self) -> bytes:
+    uuid_bytes = self._uuid.bytes
+    return uuid_bytes
+
+  @property
+  def federated_type(self) -> computation_types.FederatedType:
+    return computation_types.FederatedType(tf.int32, placements.CLIENTS)
+
+  def select(self, num_clients: Optional[int] = None) -> object:
+    return [1, 2, 3]
+
+  def __eq__(self, other: object) -> bool:
+    if self is other:
+      return True
+    elif not isinstance(other, _TestDataSourceIterator):
+      return NotImplemented
+    return self._uuid == other._uuid
 
 
 class PrefetchingDataSourceIteratorTest(
@@ -374,6 +413,28 @@ class PrefetchingDataSourceIteratorTest(
 
     with self.assertRaises(RuntimeError):
       iterator.select(num_clients=3)
+
+  @context_stack_test_utils.with_context(
+      cpp_execution_contexts.create_async_local_cpp_execution_context
+  )
+  def test_serializable(self):
+    stub_iterator = _TestDataSourceIterator()
+    iterator = prefetching_data_source.PrefetchingDataSourceIterator(
+        iterator=stub_iterator,
+        total_rounds=5,
+        num_rounds_to_prefetch=3,
+        num_clients_to_prefetch=3,
+        prefetch_threshold=1,
+    )
+
+    iterator_bytes = iterator.to_bytes()
+    actual_iterator = (
+        prefetching_data_source.PrefetchingDataSourceIterator.from_bytes(
+            iterator_bytes
+        )
+    )
+    self.assertIsNot(actual_iterator, iterator)
+    self.assertEqual(actual_iterator, iterator)
 
 
 class PrefetchingDataSourceTest(parameterized.TestCase):

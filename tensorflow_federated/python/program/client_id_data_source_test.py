@@ -95,6 +95,22 @@ class ClientIdDataSourceIteratorTest(parameterized.TestCase):
     with self.assertRaises(ValueError):
       iterator.select(num_clients)
 
+  def test_serializable_with_client_ids(self):
+    client_ids = ['a', 'b', 'c']
+    iterator = client_id_data_source.ClientIdDataSourceIterator(
+        client_ids=client_ids
+    )
+
+    iterator_bytes = iterator.to_bytes()
+    actual_iterator = (
+        client_id_data_source.ClientIdDataSourceIterator.from_bytes(
+            iterator_bytes
+        )
+    )
+
+    self.assertIsNot(actual_iterator, iterator)
+    self.assertEqual(actual_iterator, iterator)
+
 
 class ClientIdDataSourceTest(parameterized.TestCase):
 

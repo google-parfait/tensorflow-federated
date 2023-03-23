@@ -75,12 +75,12 @@ class TestSerializable(serializable.Serializable):
     self._b = b
 
   @classmethod
-  def from_bytes(cls, data: bytes) -> 'TestSerializable':
-    a, b = struct.unpack('>ii', data)
+  def from_bytes(cls, buffer: bytes) -> 'TestSerializable':
+    a, b = struct.unpack('!ii', buffer)
     return TestSerializable(a, b)
 
   def to_bytes(self) -> bytes:
-    return struct.pack('>ii', self._a, self._b)
+    return struct.pack('!ii', self._a, self._b)
 
   def __eq__(self, other) -> bool:
     if self is other:

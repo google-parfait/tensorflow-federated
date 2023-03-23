@@ -20,7 +20,7 @@ class Serializable(abc.ABC):
 
   @classmethod
   @abc.abstractmethod
-  def from_bytes(cls, data: bytes) -> 'Serializable':
+  def from_bytes(cls, buffer: bytes) -> 'Serializable':
     """Deserializes the object from bytes."""
     raise NotImplementedError
 
