@@ -59,6 +59,20 @@ py_test(
 )
 
 py_library(
+    name = "executor_factory",
+    srcs = ["executor_factory.py"],
+    data = ["//tensorflow_federated/data:worker_binary"],
+    tags = ["ignore_for_dep=third_party.py.IPython.get_ipython"],
+    deps = [
+        ":python_executor_stacks",
+        "//tensorflow_federated/python/core/impl/executors:executor_factory",
+        "//tensorflow_federated/python/core/impl/executors:remote_executor",
+        "//tensorflow_federated/python/core/impl/executors:remote_executor_grpc_stub",
+        "//tensorflow_federated/python/core/impl/types:placements",
+    ],
+)
+
+py_library(
     name = "executor_stack_bindings",
     srcs = ["executor_stack_bindings.py"],
     srcs_version = "PY3",

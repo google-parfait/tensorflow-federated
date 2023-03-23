@@ -56,7 +56,7 @@ class CountDistinctComputationTest(tf.test.TestCase):
 
   def setUp(self):
     super().setUp()
-    execution_contexts.set_test_python_execution_context()
+    execution_contexts.set_sync_test_cpp_execution_context()
 
   def test_constants(self):
     self.assertIn(count_distinct.HLL_SKETCH_SIZE, [16, 32, 64])
@@ -86,7 +86,7 @@ class CountDistinctExecutionTest(tf.test.TestCase, parameterized.TestCase):
 
   def setUp(self):
     super().setUp()
-    execution_contexts.set_test_python_execution_context()
+    execution_contexts.set_sync_test_cpp_execution_context()
 
   @parameterized.named_parameters(('default', False), ('secure', True))
   def test_runs_end_to_end_without_error(self, secagg=False):
