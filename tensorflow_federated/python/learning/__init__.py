@@ -56,7 +56,4 @@ from tensorflow_federated.python.learning.model_update_aggregator import dp_aggr
 from tensorflow_federated.python.learning.model_update_aggregator import entropy_compression_aggregator
 from tensorflow_federated.python.learning.model_update_aggregator import robust_aggregator
 from tensorflow_federated.python.learning.model_update_aggregator import secure_aggregator
-# TODO(b/267780360): Remove models/keras_utils imports once usages are migrated
-# to `tff.learning.models`.
-from tensorflow_federated.python.learning.models.keras_utils import from_keras_model
 from tensorflow_federated.python.learning.personalization_eval import build_personalization_eval
