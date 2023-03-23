@@ -62,7 +62,4 @@ from tensorflow_federated.python.learning.model_update_aggregator import secure_
 # TODO(b/267780360): Remove models/keras_utils imports once usages are migrated
 # to `tff.learning.models`.
 from tensorflow_federated.python.learning.models.keras_utils import from_keras_model
-# TODO(b/259609586): Remove tff.learning.models.variable imports once all
-# callsites have been updated to `tff.learning.models`.
-from tensorflow_federated.python.learning.models.variable import BatchOutput
 from tensorflow_federated.python.learning.personalization_eval import build_personalization_eval
