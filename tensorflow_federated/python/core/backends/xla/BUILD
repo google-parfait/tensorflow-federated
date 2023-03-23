@@ -21,7 +21,6 @@ py_library(
     srcs = ["__init__.py"],
     srcs_version = "PY3",
     visibility = ["//tensorflow_federated/python/core/backends:__pkg__"],
-    deps = [":execution_contexts"],
 )
 
 py_library(
@@ -50,38 +49,6 @@ py_test(
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/types:computation_types",
-    ],
-)
-
-py_library(
-    name = "execution_contexts",
-    srcs = ["execution_contexts.py"],
-    srcs_version = "PY3",
-    deps = [
-        ":compiler",
-        ":executor",
-        "//tensorflow_federated/python/common_libs:deprecation",
-        "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
-        "//tensorflow_federated/python/core/impl/execution_contexts:sync_execution_context",
-        "//tensorflow_federated/python/core/impl/executor_stacks:python_executor_stacks",
-    ],
-)
-
-py_test(
-    name = "execution_contexts_test",
-    srcs = ["execution_contexts_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        ":execution_contexts",
-        "//tensorflow_federated/python/core/impl/computation:computation_impl",
-        "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
-        "//tensorflow_federated/python/core/impl/execution_contexts:sync_execution_context",
-        "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
-        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:placements",
-        "//tensorflow_federated/python/core/impl/xla_context:xla_serialization",
     ],
 )
 
