@@ -22,7 +22,7 @@ from tensorflow_federated.python.core.impl.executor_stacks import python_executo
 
 # TODO(b/240972950): Remove deprecated API.
 @deprecation.deprecated(
-    '`tff.backends.test.create_test_python_execution_context` is deprecated, '
+    '`create_test_python_execution_context` is deprecated, '
     'currently there is no alternative.'
 )
 def create_test_python_execution_context(
@@ -42,7 +42,7 @@ def create_test_python_execution_context(
 
 # TODO(b/240972950): Remove deprecated API.
 @deprecation.deprecated(
-    '`tff.backends.test.set_test_python_execution_context` is deprecated, '
+    '`set_test_python_execution_context` is deprecated, '
     'currently there is no alternative.'
 )
 def set_test_python_execution_context(
