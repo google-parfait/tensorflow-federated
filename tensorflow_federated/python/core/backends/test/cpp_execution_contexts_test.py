@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
 from absl.testing import absltest
 from absl.testing import parameterized
 import numpy as np
@@ -19,6 +20,7 @@ import tensorflow as tf
 
 from tensorflow_federated.python.core.backends.test import cpp_execution_contexts
 from tensorflow_federated.python.core.impl.context_stack import context_base
+from tensorflow_federated.python.core.impl.execution_contexts import async_execution_context
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -30,8 +32,16 @@ class CreateTestExecutionTest(tf.test.TestCase):
     context = cpp_execution_contexts.create_test_cpp_execution_context()
     self.assertIsInstance(context, context_base.SyncContext)
 
+  def test_returns_async_cpp_context(self):
+    context = cpp_execution_contexts.create_async_test_cpp_execution_context()
+    self.assertIsInstance(
+        context, async_execution_context.AsyncExecutionContext
+    )
 
-class SecureModularSumTest(parameterized.TestCase, tf.test.TestCase):
+
+class SecureModularSumTest(
+    parameterized.TestCase, tf.test.TestCase, unittest.IsolatedAsyncioTestCase
+):
 
   # pyformat: disable
   @parameterized.named_parameters(
@@ -63,6 +73,31 @@ class SecureModularSumTest(parameterized.TestCase, tf.test.TestCase):
     # assertAllClose with no tolerance here.
     self.assertAllClose(
         expected_result, modular_sum_by_five(arg), atol=0.0, rtol=0.0
+    )
+
+  # pyformat: disable
+  @parameterized.named_parameters(
+      ('one_client_not_divisible', [1], 1,
+       computation_types.at_clients(tf.int32)),
+      ('two_clients_none_divisible', [1, 2], 3,
+       computation_types.at_clients(tf.int32)),
+  )
+  # pyformat: enable
+  async def test_async_executes_computation_with_modular_secure_sum_integer_modulus(
+      self, arg, expected_result, tff_type
+  ):
+    cpp_execution_contexts.set_async_test_cpp_execution_context()
+
+    modulus = 5
+
+    @federated_computation.federated_computation(tff_type)
+    def modular_sum_by_five(arg):
+      return intrinsics.federated_secure_modular_sum(arg, modulus)
+
+    # assertAllEqual doesnt handle nested structures well, so we use
+    # assertAllClose with no tolerance here.
+    self.assertAllClose(
+        expected_result, await modular_sum_by_five(arg), atol=0.0, rtol=0.0
     )
 
   @parameterized.named_parameters(
@@ -104,7 +139,9 @@ class SecureModularSumTest(parameterized.TestCase, tf.test.TestCase):
     self.assertEqual(expected_result, modular_sum_by_five(arg))
 
 
-class SecureSumBitwidthTest(tf.test.TestCase, parameterized.TestCase):
+class SecureSumBitwidthTest(
+    tf.test.TestCase, parameterized.TestCase, unittest.IsolatedAsyncioTestCase
+):
 
   @parameterized.named_parameters(
       ('one_client', [1]),
@@ -125,6 +162,22 @@ class SecureSumBitwidthTest(tf.test.TestCase, parameterized.TestCase):
       return intrinsics.federated_secure_sum_bitwidth(arg, bitwidth)
 
     self.assertEqual(expected_result, sum_with_bitwidth(arg))
+
+  async def test_async_executes_computation_with_bitwidth_secure_sum_large_bitwidth(
+      self,
+  ):
+    arg = [1, 2, 10]
+    cpp_execution_contexts.set_async_test_cpp_execution_context()
+    bitwidth = 32
+    expected_result = sum(arg)
+
+    @federated_computation.federated_computation(
+        computation_types.at_clients(tf.int32)
+    )
+    def sum_with_bitwidth(arg):
+      return intrinsics.federated_secure_sum_bitwidth(arg, bitwidth)
+
+    self.assertEqual(expected_result, await sum_with_bitwidth(arg))
 
   # pyformat: disable
   @parameterized.named_parameters(
@@ -153,7 +206,9 @@ class SecureSumBitwidthTest(tf.test.TestCase, parameterized.TestCase):
     self.assertAllClose(expected_result, sum_with_bitwidth(arg))
 
 
-class SecureSumMaxValueTest(tf.test.TestCase, parameterized.TestCase):
+class SecureSumMaxValueTest(
+    tf.test.TestCase, parameterized.TestCase, unittest.IsolatedAsyncioTestCase
+):
 
   def test_raises_with_arguments_over_max_value(self):
     cpp_execution_contexts.set_test_cpp_execution_context()
@@ -190,6 +245,23 @@ class SecureSumMaxValueTest(tf.test.TestCase, parameterized.TestCase):
       return intrinsics.federated_secure_sum(arg, max_value)
 
     self.assertEqual(expected_result, secure_sum(arg))
+
+  async def test_async_executes_computation_with_secure_sum_under_max_values(
+      self,
+  ):
+    cpp_execution_contexts.set_async_test_cpp_execution_context()
+    arg = [x * 5 for x in range(5)]
+    max_value = 30
+
+    expected_result = sum(arg)
+
+    @federated_computation.federated_computation(
+        computation_types.at_clients(tf.int32)
+    )
+    def secure_sum(arg):
+      return intrinsics.federated_secure_sum(arg, max_value)
+
+    self.assertEqual(expected_result, await secure_sum(arg))
 
   # pyformat: disable
   @parameterized.named_parameters(
