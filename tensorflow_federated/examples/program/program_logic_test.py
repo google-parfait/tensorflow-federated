@@ -113,19 +113,15 @@ def _create_mock_program_state_manager(
 class CheckExpectedTypeSignaturesTest(parameterized.TestCase):
 
   def test_does_not_raise_unexpected_type_singature_error(self):
-    state_type = tff.FederatedType(tff.TensorType(tf.string), tff.SERVER)
+    state_type = tff.FederatedType(tf.string, tff.SERVER)
     train_data_type = tff.FederatedType(
-        tff.SequenceType(tff.TensorType(tf.string)), tff.CLIENTS
+        tff.SequenceType(tf.string), tff.CLIENTS
     )
-    train_metrics_type = tff.FederatedType(
-        tff.TensorType(tf.string), tff.SERVER
-    )
+    train_metrics_type = tff.FederatedType(tf.string, tff.SERVER)
     evaluation_data_type = tff.FederatedType(
-        tff.SequenceType(tff.TensorType(tf.int32)), tff.CLIENTS
+        tff.SequenceType(tf.int32), tff.CLIENTS
     )
-    evaluation_metrics_type = tff.FederatedType(
-        tff.TensorType(tf.string), tff.SERVER
-    )
+    evaluation_metrics_type = tff.FederatedType(tf.string, tff.SERVER)
 
     mock_initialize = _create_mock_initialize(state_type=state_type)
     mock_train = _create_mock_train(
@@ -159,30 +155,26 @@ class CheckExpectedTypeSignaturesTest(parameterized.TestCase):
   # pyformat: disable
   @parameterized.named_parameters(
       ('mismatch_initialize_train_state_type',
-       tff.FederatedType(tff.TensorType(tf.int32), tff.SERVER),
-       tff.FederatedType(tff.TensorType(tf.string), tff.SERVER),
-       tff.FederatedType(tff.TensorType(tf.string), tff.SERVER)),
+       tff.FederatedType(tf.int32, tff.SERVER),
+       tff.FederatedType(tf.string, tff.SERVER),
+       tff.FederatedType(tf.string, tff.SERVER)),
       ('mismatch_train_evaluation_type_signatures',
-       tff.FederatedType(tff.TensorType(tf.string), tff.SERVER),
-       tff.FederatedType(tff.TensorType(tf.string), tff.SERVER),
-       tff.FederatedType(tff.TensorType(tf.int32), tff.SERVER)),
+       tff.FederatedType(tf.string, tff.SERVER),
+       tff.FederatedType(tf.string, tff.SERVER),
+       tff.FederatedType(tf.int32, tff.SERVER)),
   )
   # pyformat: enable
   def test_raise_unexpected_type_singature_error(
       self, initialize_state_type, train_state_type, evaluation_state_type
   ):
     train_data_type = tff.FederatedType(
-        tff.SequenceType(tff.TensorType(tf.string)), tff.CLIENTS
+        tff.SequenceType(tf.string), tff.CLIENTS
     )
-    train_metrics_type = tff.FederatedType(
-        tff.TensorType(tf.string), tff.SERVER
-    )
+    train_metrics_type = tff.FederatedType(tf.string, tff.SERVER)
     evaluation_data_type = tff.FederatedType(
-        tff.SequenceType(tff.TensorType(tf.int32)), tff.CLIENTS
+        tff.SequenceType(tf.int32), tff.CLIENTS
     )
-    evaluation_metrics_type = tff.FederatedType(
-        tff.TensorType(tf.string), tff.SERVER
-    )
+    evaluation_metrics_type = tff.FederatedType(tf.string, tff.SERVER)
 
     mock_initialize = _create_mock_initialize(state_type=initialize_state_type)
     mock_train = _create_mock_train(
@@ -245,27 +237,19 @@ class TrainFederatedModelTest(
     rounds = range(start_round, total_rounds + 1)
     initial_state = 'initial_state'
     states = [f'state_{x}' for x in rounds]
-    state_type = tff.FederatedType(tff.TensorType(tf.string), tff.SERVER)
+    state_type = tff.FederatedType(tf.string, tff.SERVER)
 
     train_data = [f'train_data_{x}' for x in rounds]
-    train_data_type = tff.FederatedType(
-        tff.SequenceType(tff.TensorType(tf.string)), tff.CLIENTS
-    )
+    train_data_type = tff.FederatedType(tff.SequenceType(tf.string), tff.CLIENTS)
 
     train_metrics = [f'train_metrics_{x}' for x in rounds]
-    train_metrics_type = tff.FederatedType(
-        tff.TensorType(tf.string), tff.SERVER
-    )
+    train_metrics_type = tff.FederatedType(tf.string, tff.SERVER)
 
     evaluation_data = 'evaluation_data_1'
-    evaluation_data_type = tff.FederatedType(
-        tff.SequenceType(tff.TensorType(tf.int32)), tff.CLIENTS
-    )
+    evaluation_data_type = tff.FederatedType(tff.SequenceType(tf.int32), tff.CLIENTS)
 
     evaluation_metrics = 'evaluation_metrics_1'
-    evaluation_metrics_type = tff.FederatedType(
-        tff.TensorType(tf.string), tff.SERVER
-    )
+    evaluation_metrics_type = tff.FederatedType(tf.string, tff.SERVER)
 
     mock_initialize = _create_mock_initialize(
         state_type=state_type, side_effect=[initial_state]
