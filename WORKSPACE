@@ -85,7 +85,7 @@ git_repository(
     remote = "https://github.com/tensorflow/compression.git",
     # The version of this dependency should match the version in
     # https://github.com/tensorflow/federated/blob/main/requirements.txt.
-    tag = "v2.11.0",
+    tag = "v2.12.0",
 )
 
 #
