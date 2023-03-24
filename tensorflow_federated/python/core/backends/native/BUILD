@@ -143,9 +143,7 @@ py_test(
 py_library(
     name = "execution_contexts",
     srcs = ["execution_contexts.py"],
-    data = ["//tensorflow_federated/data:worker_binary"],
     srcs_version = "PY3",
-    tags = ["ignore_for_dep=third_party.py.IPython.get_ipython"],
     deps = [
         ":compiler",
         ":mergeable_comp_compiler",
@@ -154,11 +152,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/execution_contexts:async_execution_context",
         "//tensorflow_federated/python/core/impl/execution_contexts:mergeable_comp_execution_context",
         "//tensorflow_federated/python/core/impl/execution_contexts:sync_execution_context",
-        "//tensorflow_federated/python/core/impl/executor_stacks:python_executor_stacks",
-        "//tensorflow_federated/python/core/impl/executors:executor_factory",
-        "//tensorflow_federated/python/core/impl/executors:remote_executor",
-        "//tensorflow_federated/python/core/impl/executors:remote_executor_grpc_stub",
-        "//tensorflow_federated/python/core/impl/types:placements",
+        "//tensorflow_federated/python/core/impl/executor_stacks:executor_factory",
     ],
 )
 

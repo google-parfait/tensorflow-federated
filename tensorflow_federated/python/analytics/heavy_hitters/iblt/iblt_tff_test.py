@@ -252,7 +252,7 @@ class SecAggIbltTffExecutionTest(parameterized.TestCase):
 
   def setUp(self):
     super().setUp()
-    execution_contexts.set_test_python_execution_context()
+    execution_contexts.set_sync_test_cpp_execution_context()
 
   @parameterized.named_parameters(
       ('lower_cap_seed_0_batch_1', 10, 20, 3, 0, 1, None, False),
@@ -423,7 +423,7 @@ class SecAggIbltUniqueCountsTffTest(parameterized.TestCase):
 
   def setUp(self):
     super().setUp()
-    execution_contexts.set_test_python_execution_context()
+    execution_contexts.set_sync_test_cpp_execution_context()
 
   @parameterized.named_parameters(
       ('lower_cap_seed_0_batch_1', 10, 20, 3, 0, 1, None, False),

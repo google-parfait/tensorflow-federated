@@ -28,6 +28,7 @@ py_library(
     srcs = ["__init__.py"],
     srcs_version = "PY3",
     visibility = ["//tensorflow_federated/python/core/backends:__pkg__"],
+    deps = [":execution_contexts"],
 )
 
 py_library(
@@ -83,10 +84,11 @@ py_library(
     srcs_version = "PY3",
     deps = [
         ":compiler",
-        "//tensorflow_federated/python/common_libs:deprecation",
+        "//tensorflow_federated/python/core/backends/native:compiler",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
+        "//tensorflow_federated/python/core/impl/execution_contexts:async_execution_context",
         "//tensorflow_federated/python/core/impl/execution_contexts:sync_execution_context",
-        "//tensorflow_federated/python/core/impl/executor_stacks:python_executor_stacks",
+        "//tensorflow_federated/python/core/impl/executor_stacks:executor_factory",
     ],
 )
 

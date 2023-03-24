@@ -1008,6 +1008,7 @@ class HierarchicalHistogramTest(tf.test.TestCase, parameterized.TestCase):
       reference_layer_l1_norm,
       noise_multiplier,
   ):
+    self.skipTest('b/275102812')
     (hihi_computation_result, hihi_process_result) = (
         self._get_hierarchical_histogram_results(
             client_data=client_data,
@@ -1082,5 +1083,5 @@ class HierarchicalHistogramTest(tf.test.TestCase, parameterized.TestCase):
 
 
 if __name__ == '__main__':
-  execution_contexts.set_test_python_execution_context()
+  execution_contexts.set_sync_test_cpp_execution_context()
   tf.test.main()

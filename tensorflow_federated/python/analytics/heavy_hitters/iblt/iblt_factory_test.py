@@ -11,12 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for iblt_factory.py."""
+
 import collections
 from typing import Optional, Union
 
 from absl import logging
 from absl.testing import parameterized
+import grpc
 
 import tensorflow as tf
 from tensorflow_federated.python.aggregators import factory
@@ -89,7 +90,7 @@ class IbltFactoryTest(tf.test.TestCase, parameterized.TestCase):
 
   def setUp(self):
     super().setUp()
-    execution_contexts.set_test_python_execution_context()
+    execution_contexts.set_sync_test_cpp_execution_context()
 
   def test_capacity_validation(self):
     with self.assertRaisesRegex(ValueError, 'capacity'):
@@ -222,7 +223,7 @@ class IbltFactoryTest(tf.test.TestCase, parameterized.TestCase):
         capacity=10, string_max_bytes=5, repetitions=3, seed=0
     )
     iblt_agg_process = iblt_agg_factory.create(value_type)
-    with self.assertRaises(tf.errors.InvalidArgumentError):
+    with self.assertRaises(grpc.RpcError):
       iblt_agg_process.next(iblt_agg_process.initialize(), client_data)
 
   @parameterized.named_parameters(

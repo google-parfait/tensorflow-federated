@@ -14,6 +14,7 @@
 
 from absl.testing import absltest
 from absl.testing import parameterized
+import grpc
 import numpy as np
 import tensorflow as tf
 
@@ -30,7 +31,7 @@ class SecureModularSumTest(parameterized.TestCase, tf.test.TestCase):
 
   def setUp(self):
     super().setUp()
-    execution_contexts.set_test_python_execution_context()
+    execution_contexts.set_sync_test_cpp_execution_context()
 
   @parameterized.named_parameters(
       ('one_client_not_divisible', [1], 1, _CLIENTS_INT),
@@ -101,7 +102,7 @@ class SecureSumBitwidthTest(tf.test.TestCase, parameterized.TestCase):
 
   def setUp(self):
     super().setUp()
-    execution_contexts.set_test_python_execution_context()
+    execution_contexts.set_sync_test_cpp_execution_context()
 
   @parameterized.named_parameters(
       ('one_client', [1]),
@@ -162,7 +163,7 @@ class SecureSumMaxValueTest(tf.test.TestCase, parameterized.TestCase):
 
   def setUp(self):
     super().setUp()
-    execution_contexts.set_test_python_execution_context()
+    execution_contexts.set_sync_test_cpp_execution_context()
 
   def test_raises_with_arguments_over_max_value(self):
     max_value = 1
@@ -173,7 +174,7 @@ class SecureSumMaxValueTest(tf.test.TestCase, parameterized.TestCase):
     def secure_sum(arg):
       return intrinsics.federated_secure_sum(arg, max_value)
 
-    with self.assertRaises(tf.errors.InvalidArgumentError):
+    with self.assertRaises(grpc.RpcError):
       secure_sum([2, 4])
 
   @parameterized.named_parameters(

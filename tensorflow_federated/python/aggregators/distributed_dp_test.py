@@ -568,5 +568,5 @@ class DistributedDpExecutionTest(tf.test.TestCase, parameterized.TestCase):
 
 
 if __name__ == '__main__':
-  execution_contexts.set_test_python_execution_context()
+  execution_contexts.set_sync_test_cpp_execution_context()
   tf.test.main()
