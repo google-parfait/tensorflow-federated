@@ -53,6 +53,15 @@ py_test(
 )
 
 py_test(
+    name = "map_reduce_form_test",
+    size = "medium",
+    srcs = ["map_reduce_form_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = ["//tensorflow_federated"],
+)
+
+py_test(
     name = "simulation_test",
     size = "medium",
     timeout = "long",
