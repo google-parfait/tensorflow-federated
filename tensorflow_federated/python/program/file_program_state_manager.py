@@ -212,7 +212,7 @@ class FileProgramStateManager(
         value: The value to normalize.
       """
       if tf.is_tensor(value):
-        value = value.numpy()
+        value = value.numpy()  # pytype: disable=attribute-error  # numpy-scalars
       return value
 
     normalized_state = structure_utils.map_structure(_normalize, program_state)

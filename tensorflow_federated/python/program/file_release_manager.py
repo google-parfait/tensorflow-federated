@@ -137,7 +137,7 @@ class CSVFileReleaseManager(
             'different `key_fieldname`.'
         )
       if values:
-        self._latest_key = int(values[-1][self._key_fieldname])
+        self._latest_key = int(values[-1][self._key_fieldname])  # pytype: disable=wrong-arg-types  # numpy-scalars
       else:
         self._latest_key = None
     else:

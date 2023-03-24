@@ -49,10 +49,10 @@ class TestMaterializableValueReference(
 
   @property
   def type_signature(self) -> value_reference.MaterializableTypeSignature:
-    return self._type_signature
+    return self._type_signature  # pytype: disable=attribute-error  # numpy-scalars
 
   async def get_value(self) -> value_reference.MaterializedValue:
-    return self._value
+    return self._value  # pytype: disable=attribute-error  # numpy-scalars
 
   def __eq__(self, other: object) -> bool:
     if self is other:

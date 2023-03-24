@@ -69,7 +69,7 @@ class TensorBoardReleaseManager(
       summary_dir = os.fspath(summary_dir)
     self._summary_writer = tf.summary.create_file_writer(summary_dir)
 
-  async def release(
+  async def release(  # pytype: disable=signature-mismatch  # numpy-scalars
       self,
       value: value_reference.MaterializableStructure,
       type_signature: computation_types.Type,
