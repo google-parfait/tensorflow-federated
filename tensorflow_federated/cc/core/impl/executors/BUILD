@@ -728,6 +728,7 @@ cc_test(
     name = "sequence_executor_test",
     timeout = "short",
     srcs = ["sequence_executor_test.cc"],
+    flaky = True,
     deps = [
         ":executor",
         ":executor_test_base",

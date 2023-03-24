@@ -27,7 +27,7 @@ git_repository(
 git_repository(
     name = "com_google_protobuf",
     remote = "https://github.com/protocolbuffers/protobuf.git",
-    tag = "v3.19.0",
+    tag = "v3.21.9",
 )
 
 git_repository(
@@ -38,6 +38,12 @@ git_repository(
 
 git_repository(
     name = "org_tensorflow",
+    # TODO(b/256948367): Temporarily updating the version of TF past the version
+    # in https://github.com/tensorflow/federated/blob/main/requirements.txt.
+    #
+    # The version of this dependency should match the version in
+    # https://github.com/tensorflow/federated/blob/main/requirements.txt.
+    commit = "b517bde1f9e9231e4816b98522f2d2851840b743",
     patches = [
         # Depending on restricted visibility BUILD target om external git
         # repository does not seem to be supported.
@@ -48,12 +54,6 @@ git_repository(
         "//third_party/tensorflow:tf2xla_visibility.patch",
     ],
     remote = "https://github.com/tensorflow/tensorflow.git",
-    # TODO(b/256948367): Temporarily updating the version of TF past the version
-    # in https://github.com/tensorflow/federated/blob/main/requirements.txt.
-    #
-    # The version of this dependency should match the version in
-    # https://github.com/tensorflow/federated/blob/main/requirements.txt.
-   commit = "b517bde1f9e9231e4816b98522f2d2851840b743"
 )
 
 git_repository(
@@ -64,7 +64,7 @@ git_repository(
 
 git_repository(
     name = "pybind11_protobuf",
-    commit = "a3d93a93387af7fa57d72d56cfc0a4ba7f4a60e4",
+    commit = "80f3440cd8fee124e077e2e47a8a17b78b451363",
     remote = "https://github.com/pybind/pybind11_protobuf.git",
 )
 
@@ -146,7 +146,7 @@ protobuf_deps()
 git_repository(
     name = "com_github_grpc_grpc",
     remote = "https://github.com/grpc/grpc.git",
-    tag = "v1.38.1",
+    tag = "v1.43.0",
 )
 
 load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps")
