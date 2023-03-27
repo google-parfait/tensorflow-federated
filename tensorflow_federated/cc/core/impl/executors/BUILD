@@ -403,7 +403,7 @@ pybind_extension(
         "@org_tensorflow//tensorflow/python/eager:pywrap_tfe_lib",
         "@pybind11_abseil//pybind11_abseil:absl_casters",
         "@pybind11_abseil//pybind11_abseil:status_casters",
-        "@pybind11_protobuf//pybind11_protobuf:wrapped_proto_caster",
+        "@pybind11_protobuf//pybind11_protobuf:native_proto_caster",
     ],
 )
 

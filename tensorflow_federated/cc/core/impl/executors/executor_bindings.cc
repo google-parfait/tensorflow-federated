@@ -40,7 +40,7 @@ limitations under the License
 #include "include/pybind11/stl.h"
 #include "pybind11_abseil/absl_casters.h"
 #include "pybind11_abseil/status_casters.h"
-#include "pybind11_protobuf/wrapped_proto_caster.h"
+#include "pybind11_protobuf/native_proto_caster.h"
 #include "tensorflow/c/safe_ptr.h"
 #include "tensorflow/c/tf_status.h"
 #include "tensorflow/c/tf_tensor.h"
@@ -113,21 +113,17 @@ TFE_Context* GetContextHandle(PyObject* py_context) {
 ////////////////////////////////////////////////////////////////////////////////
 PYBIND11_MODULE(executor_bindings, m) {
   py::google::ImportStatusModule();
-  pybind11_protobuf::ImportWrappedProtoCasters();
-
-  using pybind11_protobuf::WithWrappedProtos;
 
   m.doc() = "Bindings for the C++ ";
 
   // v0::Value serialization methods.
   m.def("serialize_tensor_value",
-        WithWrappedProtos(
-            [](const tensorflow::Tensor& tensor) -> absl::StatusOr<v0::Value> {
-              v0::Value value_pb;
-              TFF_TRY(SerializeTensorValue(tensor, &value_pb));
-              return value_pb;
-            }));
-  m.def("deserialize_tensor_value", WithWrappedProtos(&DeserializeTensorValue));
+        [](const tensorflow::Tensor& tensor) -> absl::StatusOr<v0::Value> {
+          v0::Value value_pb;
+          TFF_TRY(SerializeTensorValue(tensor, &value_pb));
+          return value_pb;
+        });
+  m.def("deserialize_tensor_value", &DeserializeTensorValue);
 
   // Provide an `OwnedValueId` class to handle return values from the
   // `Executor` interface.
@@ -161,8 +157,8 @@ PYBIND11_MODULE(executor_bindings, m) {
   py::class_<Executor,
              // PyExecutor trampoline goes here when ready
              std::shared_ptr<Executor>>(m, "Executor")
-      .def("create_value", WithWrappedProtos(&Executor::CreateValue),
-           py::arg("value_pb"), py::return_value_policy::move,
+      .def("create_value", &Executor::CreateValue, py::arg("value_pb"),
+           py::return_value_policy::move,
            py::call_guard<py::gil_scoped_release>())
       .def("create_struct", &Executor::CreateStruct,
            py::return_value_policy::move,
@@ -174,18 +170,19 @@ PYBIND11_MODULE(executor_bindings, m) {
            // Allow `argument` to be `None`.
            py::arg("argument").none(true), py::return_value_policy::move,
            py::call_guard<py::gil_scoped_release>())
-      .def("materialize",
-           WithWrappedProtos([](Executor& e, const ValueId& value_id)
-                                 -> absl::StatusOr<v0::Value> {
-             // Construct a new `v0::Value` to write to and return it to Python.
-             v0::Value value_pb;
-             absl::Status result = e.Materialize(value_id, &value_pb);
-             if (!result.ok()) {
-               return result;
-             }
-             return value_pb;
-           }),
-           py::call_guard<py::gil_scoped_release>());
+      .def(
+          "materialize",
+          [](Executor& e,
+             const ValueId& value_id) -> absl::StatusOr<v0::Value> {
+            // Construct a new `v0::Value` to write to and return it to Python.
+            v0::Value value_pb;
+            absl::Status result = e.Materialize(value_id, &value_pb);
+            if (!result.ok()) {
+              return result;
+            }
+            return value_pb;
+          },
+          py::call_guard<py::gil_scoped_release>());
 
   // Executor construction methods.
   m.def("create_tensorflow_executor", &CreateTensorFlowExecutor,
