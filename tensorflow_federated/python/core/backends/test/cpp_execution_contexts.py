@@ -25,7 +25,6 @@ import portpicker
 
 from tensorflow_federated.python.core.backends.native import compiler as native_compiler
 from tensorflow_federated.python.core.backends.test import compiler as test_compiler
-from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.execution_contexts import async_execution_context
 from tensorflow_federated.python.core.impl.execution_contexts import sync_execution_context
@@ -36,76 +35,11 @@ from tensorflow_federated.python.core.impl.executors import executor_bindings
 FLAGS = flags.FLAGS
 
 
-def create_test_cpp_execution_context(
-    *, default_num_clients: int = 0, max_concurrent_computation_calls: int = -1
-) -> context_base.SyncContext:
-  """Creates an execution context for local testing of computations.
-
-  Test execution contexts are useful for simulating the behavior of secure
-  aggregation (e.g. `secure_sum`, `secure_modular_sum`) without actually
-  performing secure aggregation.
-
-  Args:
-    default_num_clients: The number of clients to be used if the number of
-      clients cannot be inferred from the arguments to a computation.
-    max_concurrent_computation_calls: The maximum number of concurrent calls to
-      a single computation in the C++ runtime. If nonpositive, there is no
-      limit.
-
-  Returns:
-    An execution context for local testing of computations.
-
-  Raises:
-    ValueError: If invalid parameters are provided to either the C++ or Python
-      runtimes, as detailed above.
-  """
-
-  def _compile(comp):
-    # Compile secure_sum and secure_sum_bitwidth intrinsics to insecure
-    # TensorFlow computations for testing purposes.
-    comp = test_compiler.replace_secure_intrinsics_with_bodies(comp)
-    comp = native_compiler.desugar_and_transform_to_native(comp)
-    return comp
-
-  factory = cpp_executor_factory.local_cpp_executor_factory(
-      default_num_clients=default_num_clients,
-      max_concurrent_computation_calls=max_concurrent_computation_calls,
-  )
-  context = sync_execution_context.SyncExecutionContext(
-      executor_fn=factory, compiler_fn=_compile
-  )
-  return context
-
-
-def set_test_cpp_execution_context(
-    *, default_num_clients: int = 0, max_concurrent_computation_calls: int = -1
-):
-  """Sets an execution context for local testing of computations.
-
-  Test execution contexts are useful for simulating the behavior of secure
-  aggregation (e.g. `secure_sum`, `secure_modular_sum`) without actually
-  performing secure aggregation.
-
-  Args:
-    default_num_clients: The number of clients to be used if the number of
-      clients cannot be inferred from the arguments to a computation.
-    max_concurrent_computation_calls: The maximum number of concurrent calls to
-      a single computation in the C++ runtime. If nonpositive, there is no
-      limit.
-
-  Raises:
-    ValueError: If invalid parameters are provided to either the C++ or Python
-      runtimes, as detailed above.
-  """
-  context = create_test_cpp_execution_context(
-      default_num_clients=default_num_clients,
-      max_concurrent_computation_calls=max_concurrent_computation_calls,
-  )
-  context_stack_impl.context_stack.set_default_context(context)
-
-
 def create_async_test_cpp_execution_context(
-    *, default_num_clients: int = 0, max_concurrent_computation_calls: int = -1
+    *,
+    default_num_clients: int = 0,
+    max_concurrent_computation_calls: int = -1,
+    stream_structs: bool = False,
 ) -> async_execution_context.AsyncExecutionContext:
   """Creates an async execution context for local testing of computations.
 
@@ -119,6 +53,7 @@ def create_async_test_cpp_execution_context(
     max_concurrent_computation_calls: The maximum number of concurrent calls to
       a single computation in the C++ runtime. If nonpositive, there is no
       limit.
+    stream_structs: The flag to enable decomposing and streaming struct values.
 
   Returns:
     An instance of `AsyncExecutionContext` for local testing of computations.
@@ -127,6 +62,7 @@ def create_async_test_cpp_execution_context(
     ValueError: If invalid parameters are provided to either the C++ or Python
       runtimes, as detailed above.
   """
+  del stream_structs  # Unused.
 
   def _compile(comp):
     # Compile secure_sum and secure_sum_bitwidth intrinsics to insecure
@@ -146,8 +82,11 @@ def create_async_test_cpp_execution_context(
 
 
 def set_async_test_cpp_execution_context(
-    *, default_num_clients: int = 0, max_concurrent_computation_calls: int = -1
-):
+    *,
+    default_num_clients: int = 0,
+    max_concurrent_computation_calls: int = -1,
+    stream_structs: bool = False,
+) -> None:
   """Sets an async execution context for local testing of computations.
 
   Test execution contexts are useful for simulating the behavior of secure
@@ -160,6 +99,7 @@ def set_async_test_cpp_execution_context(
     max_concurrent_computation_calls: The maximum number of concurrent calls to
       a single computation in the C++ runtime. If nonpositive, there is no
       limit.
+    stream_structs: The flag to enable decomposing and streaming struct values.
 
   Raises:
     ValueError: If invalid parameters are provided to either the C++ or Python
@@ -168,6 +108,7 @@ def set_async_test_cpp_execution_context(
   context = create_async_test_cpp_execution_context(
       default_num_clients=default_num_clients,
       max_concurrent_computation_calls=max_concurrent_computation_calls,
+      stream_structs=stream_structs,
   )
   context_stack_impl.context_stack.set_default_context(context)
 
@@ -271,3 +212,81 @@ def create_sync_interprocess_cpp_execution_context(
       executor_fn=ManagedServiceContext(),
       compiler_fn=native_compiler.desugar_and_transform_to_native,
   )
+
+
+def create_sync_test_cpp_execution_context(
+    *,
+    default_num_clients: int = 0,
+    max_concurrent_computation_calls: int = -1,
+    stream_structs: bool = False,
+) -> sync_execution_context.SyncExecutionContext:
+  """Creates an execution context for local testing of computations.
+
+  Test execution contexts are useful for simulating the behavior of secure
+  aggregation (e.g. `secure_sum`, `secure_modular_sum`) without actually
+  performing secure aggregation.
+
+  Args:
+    default_num_clients: The number of clients to be used if the number of
+      clients cannot be inferred from the arguments to a computation.
+    max_concurrent_computation_calls: The maximum number of concurrent calls to
+      a single computation in the C++ runtime. If nonpositive, there is no
+      limit.
+    stream_structs: The flag to enable decomposing and streaming struct values.
+
+  Returns:
+    An execution context for local testing of computations.
+
+  Raises:
+    ValueError: If invalid parameters are provided to either the C++ or Python
+      runtimes, as detailed above.
+  """
+  del stream_structs  # Unused.
+
+  def _compile(comp):
+    # Compile secure_sum and secure_sum_bitwidth intrinsics to insecure
+    # TensorFlow computations for testing purposes.
+    comp = test_compiler.replace_secure_intrinsics_with_bodies(comp)
+    comp = native_compiler.desugar_and_transform_to_native(comp)
+    return comp
+
+  factory = cpp_executor_factory.local_cpp_executor_factory(
+      default_num_clients=default_num_clients,
+      max_concurrent_computation_calls=max_concurrent_computation_calls,
+  )
+  context = sync_execution_context.SyncExecutionContext(
+      executor_fn=factory, compiler_fn=_compile
+  )
+  return context
+
+
+def set_sync_test_cpp_execution_context(
+    *,
+    default_num_clients: int = 0,
+    max_concurrent_computation_calls: int = -1,
+    stream_structs: bool = False,
+) -> None:
+  """Sets an execution context for local testing of computations.
+
+  Test execution contexts are useful for simulating the behavior of secure
+  aggregation (e.g. `secure_sum`, `secure_modular_sum`) without actually
+  performing secure aggregation.
+
+  Args:
+    default_num_clients: The number of clients to be used if the number of
+      clients cannot be inferred from the arguments to a computation.
+    max_concurrent_computation_calls: The maximum number of concurrent calls to
+      a single computation in the C++ runtime. If nonpositive, there is no
+      limit.
+    stream_structs: The flag to enable decomposing and streaming struct values.
+
+  Raises:
+    ValueError: If invalid parameters are provided to either the C++ or Python
+      runtimes, as detailed above.
+  """
+  context = create_sync_test_cpp_execution_context(
+      default_num_clients=default_num_clients,
+      max_concurrent_computation_calls=max_concurrent_computation_calls,
+      stream_structs=stream_structs,
+  )
+  context_stack_impl.context_stack.set_default_context(context)

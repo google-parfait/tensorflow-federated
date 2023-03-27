@@ -92,8 +92,9 @@ py_test(
     deps = [
         ":cpp_execution_contexts",
         ":execution_contexts",
-        "//tensorflow_federated/python/core/impl/context_stack:context_base",
         "//tensorflow_federated/python/core/impl/context_stack:get_context_stack",
+        "//tensorflow_federated/python/core/impl/execution_contexts:async_execution_context",
+        "//tensorflow_federated/python/core/impl/execution_contexts:sync_execution_context",
         "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
         "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
