@@ -22,8 +22,9 @@ import tensorflow as tf
 
 from tensorflow_federated.python.core.backends.native import cpp_execution_contexts
 from tensorflow_federated.python.core.backends.native import execution_contexts
-from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.context_stack import get_context_stack
+from tensorflow_federated.python.core.impl.execution_contexts import async_execution_context
+from tensorflow_federated.python.core.impl.execution_contexts import sync_execution_context
 from tensorflow_federated.python.core.impl.executors import executor_bindings
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
@@ -33,21 +34,73 @@ from tensorflow_federated.python.core.impl.types import placements
 
 
 def _assert_signature_equal(first_obj, second_obj):
-  internal_signature = inspect.signature(first_obj)
-  external_signature = inspect.signature(second_obj)
+  first_signature = inspect.signature(first_obj)
+  second_signature = inspect.signature(second_obj)
   # Only assert that the parameters and return type annotations are equal, the
   # entire signature (e.g. the docstring) is not expected to be equal.
-  if internal_signature.parameters != external_signature.parameters:
+  if first_signature.parameters != second_signature.parameters:
     raise AssertionError(
-        f'{internal_signature.parameters} != {external_signature.parameters}'
+        f'{first_signature.parameters} != {second_signature.parameters}'
     )
-  if (
-      internal_signature.return_annotation
-      != external_signature.return_annotation
-  ):
+  if first_signature.return_annotation != second_signature.return_annotation:
     raise AssertionError(
-        f'{internal_signature.return_annotation} !='
-        f' {external_signature.return_annotation}'
+        f'{first_signature.return_annotation} != '
+        f'{second_signature.return_annotation}'
+    )
+
+
+class CreateAsyncLocalCPPExecutionContextTest(tf.test.TestCase):
+
+  def test_has_same_signature(self):
+    _assert_signature_equal(
+        cpp_execution_contexts.create_async_local_cpp_execution_context,
+        execution_contexts.create_async_local_cpp_execution_context,
+    )
+
+  def test_returns_async_context(self):
+    context = cpp_execution_contexts.create_async_local_cpp_execution_context()
+    self.assertIsInstance(
+        context, async_execution_context.AsyncExecutionContext
+    )
+
+  def test_install_and_execute_in_context(self):
+    context = cpp_execution_contexts.create_async_local_cpp_execution_context()
+
+    @tensorflow_computation.tf_computation(tf.int32)
+    def add_one(x):
+      return x + 1
+
+    with get_context_stack.get_context_stack().install(context):
+      val_coro = add_one(1)
+      self.assertTrue(asyncio.iscoroutine(val_coro))
+      self.assertEqual(asyncio.run(val_coro), 2)
+
+  def test_install_and_execute_computations_with_different_cardinalities(self):
+    context = cpp_execution_contexts.create_async_local_cpp_execution_context()
+
+    @federated_computation.federated_computation(
+        computation_types.FederatedType(tf.int32, placements.CLIENTS)
+    )
+    def repackage_arg(x):
+      return [x, x]
+
+    with get_context_stack.get_context_stack().install(context):
+      single_val_coro = repackage_arg([1])
+      second_val_coro = repackage_arg([1, 2])
+      self.assertTrue(asyncio.iscoroutine(single_val_coro))
+      self.assertTrue(asyncio.iscoroutine(second_val_coro))
+      self.assertEqual(
+          [asyncio.run(single_val_coro), asyncio.run(second_val_coro)],
+          [[[1], [1]], [[1, 2], [1, 2]]],
+      )
+
+
+class SetAsyncLocalCPPExecutionContextTest(tf.test.TestCase):
+
+  def test_has_same_signature(self):
+    _assert_signature_equal(
+        cpp_execution_contexts.set_async_local_cpp_execution_context,
+        execution_contexts.set_async_local_cpp_execution_context,
     )
 
 
@@ -59,9 +112,9 @@ class CreateSyncLocalCPPExecutionContextTest(absltest.TestCase):
         execution_contexts.create_sync_local_cpp_execution_context,
     )
 
-  def test_constructs_local_context(self):
+  def test_returns_sync_context(self):
     context = cpp_execution_contexts.create_sync_local_cpp_execution_context()
-    self.assertIsInstance(context, context_base.SyncContext)
+    self.assertIsInstance(context, sync_execution_context.SyncExecutionContext)
 
 
 class SetSyncLocalCPPExecutionContextTest(absltest.TestCase):
@@ -73,9 +126,9 @@ class SetSyncLocalCPPExecutionContextTest(absltest.TestCase):
     )
 
 
-class CPPExecutionContextTest(tf.test.TestCase):
+class LocalCPPExecutionContextTest(tf.test.TestCase):
 
-  def test_constructs_remote_context(self):
+  def test_returns_sync_context(self):
     targets = ['fake_target']
     channels = [
         executor_bindings.create_insecure_grpc_channel(t) for t in targets
@@ -83,7 +136,7 @@ class CPPExecutionContextTest(tf.test.TestCase):
     context = cpp_execution_contexts.create_remote_cpp_execution_context(
         channels=channels
     )
-    self.assertIsInstance(context, context_base.SyncContext)
+    self.assertIsInstance(context, sync_execution_context.SyncExecutionContext)
 
   def test_returns_same_python_structure(self):
 
@@ -264,55 +317,6 @@ class CPPExecutionContextTest(tf.test.TestCase):
             ],
         )
         self.assertEqual([d.cardinality() for d in datasets], [5, 5])
-
-
-class CreateAsyncLocalCPPExecutionContextTest(tf.test.TestCase):
-
-  def test_has_same_signature(self):
-    _assert_signature_equal(
-        cpp_execution_contexts.create_async_local_cpp_execution_context,
-        execution_contexts.create_async_local_cpp_execution_context,
-    )
-
-  def test_install_and_execute_in_context(self):
-    context = cpp_execution_contexts.create_async_local_cpp_execution_context()
-
-    @tensorflow_computation.tf_computation(tf.int32)
-    def add_one(x):
-      return x + 1
-
-    with get_context_stack.get_context_stack().install(context):
-      val_coro = add_one(1)
-      self.assertTrue(asyncio.iscoroutine(val_coro))
-      self.assertEqual(asyncio.run(val_coro), 2)
-
-  def test_install_and_execute_computations_with_different_cardinalities(self):
-    context = cpp_execution_contexts.create_async_local_cpp_execution_context()
-
-    @federated_computation.federated_computation(
-        computation_types.FederatedType(tf.int32, placements.CLIENTS)
-    )
-    def repackage_arg(x):
-      return [x, x]
-
-    with get_context_stack.get_context_stack().install(context):
-      single_val_coro = repackage_arg([1])
-      second_val_coro = repackage_arg([1, 2])
-      self.assertTrue(asyncio.iscoroutine(single_val_coro))
-      self.assertTrue(asyncio.iscoroutine(second_val_coro))
-      self.assertEqual(
-          [asyncio.run(single_val_coro), asyncio.run(second_val_coro)],
-          [[[1], [1]], [[1, 2], [1, 2]]],
-      )
-
-
-class SetAsyncLocalCPPExecutionContextTest(tf.test.TestCase):
-
-  def test_has_same_signature(self):
-    _assert_signature_equal(
-        cpp_execution_contexts.set_async_local_cpp_execution_context,
-        execution_contexts.set_async_local_cpp_execution_context,
-    )
 
 
 if __name__ == '__main__':

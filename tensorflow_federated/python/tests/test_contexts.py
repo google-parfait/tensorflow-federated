@@ -30,8 +30,8 @@ def get_all_contexts():
   return [
       ('native_mergeable',
        _create_mergeable_comp_execution_context),
-      ('native_sync_local_cpp',
+      ('native_sync_local',
        tff.backends.native.create_sync_local_cpp_execution_context),
-      ('test_python',
+      ('test_sync',
        tff.backends.test.create_sync_test_cpp_execution_context),
   ]  # pyformat: disable

@@ -12,30 +12,82 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import inspect
 import unittest
+
 from absl.testing import absltest
 from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.core.backends.test import cpp_execution_contexts
-from tensorflow_federated.python.core.impl.context_stack import context_base
+from tensorflow_federated.python.core.backends.test import execution_contexts
 from tensorflow_federated.python.core.impl.execution_contexts import async_execution_context
+from tensorflow_federated.python.core.impl.execution_contexts import sync_execution_context
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 
 
-class CreateTestExecutionTest(tf.test.TestCase):
+def _assert_signature_equal(first_obj, second_obj):
+  first_signature = inspect.signature(first_obj)
+  second_signature = inspect.signature(second_obj)
+  # Only assert that the parameters and return type annotations are equal, the
+  # entire signature (e.g. the docstring) is not expected to be equal.
+  if first_signature.parameters != second_signature.parameters:
+    raise AssertionError(
+        f'{first_signature.parameters} != {second_signature.parameters}'
+    )
+  if first_signature.return_annotation != second_signature.return_annotation:
+    raise AssertionError(
+        f'{first_signature.return_annotation} != '
+        f'{second_signature.return_annotation}'
+    )
 
-  def test_returns_cpp_context(self):
-    context = cpp_execution_contexts.create_test_cpp_execution_context()
-    self.assertIsInstance(context, context_base.SyncContext)
 
-  def test_returns_async_cpp_context(self):
+class CreateAsyncTestCPPExecutionContextTest(absltest.TestCase):
+
+  def test_has_same_signature(self):
+    _assert_signature_equal(
+        cpp_execution_contexts.create_async_test_cpp_execution_context,
+        execution_contexts.create_async_test_cpp_execution_context,
+    )
+
+  def test_returns_async_context(self):
     context = cpp_execution_contexts.create_async_test_cpp_execution_context()
     self.assertIsInstance(
         context, async_execution_context.AsyncExecutionContext
+    )
+
+
+class SetAsyncTestCPPExecutionContextTest(absltest.TestCase):
+
+  def test_has_same_signature(self):
+    _assert_signature_equal(
+        cpp_execution_contexts.set_async_test_cpp_execution_context,
+        execution_contexts.set_async_test_cpp_execution_context,
+    )
+
+
+class CreateSyncTestCPPExecutionContextTest(absltest.TestCase):
+
+  def test_has_same_signature(self):
+    _assert_signature_equal(
+        cpp_execution_contexts.create_sync_test_cpp_execution_context,
+        execution_contexts.create_sync_test_cpp_execution_context,
+    )
+
+  def test_returns_sync_context(self):
+    context = cpp_execution_contexts.create_sync_test_cpp_execution_context()
+    self.assertIsInstance(context, sync_execution_context.SyncExecutionContext)
+
+
+class SetSyncTestCPPExecutionContextTest(absltest.TestCase):
+
+  def test_has_same_signature(self):
+    _assert_signature_equal(
+        cpp_execution_contexts.set_sync_test_cpp_execution_context,
+        execution_contexts.set_sync_test_cpp_execution_context,
     )
 
 
@@ -61,7 +113,7 @@ class SecureModularSumTest(
   def test_executes_computation_with_modular_secure_sum_integer_modulus(
       self, arg, expected_result, tff_type
   ):
-    cpp_execution_contexts.set_test_cpp_execution_context()
+    cpp_execution_contexts.set_sync_test_cpp_execution_context()
 
     modulus = 5
 
@@ -129,7 +181,7 @@ class SecureModularSumTest(
   def test_executes_computation_with_modular_secure_sum_struct_modulus(
       self, arg, expected_result, tff_type
   ):
-    cpp_execution_contexts.set_test_cpp_execution_context()
+    cpp_execution_contexts.set_sync_test_cpp_execution_context()
     modulus = [5, 7]
 
     @federated_computation.federated_computation(tff_type)
@@ -151,7 +203,7 @@ class SecureSumBitwidthTest(
   def test_executes_computation_with_bitwidth_secure_sum_large_bitwidth(
       self, arg
   ):
-    cpp_execution_contexts.set_test_cpp_execution_context()
+    cpp_execution_contexts.set_sync_test_cpp_execution_context()
     bitwidth = 32
     expected_result = sum(arg)
 
@@ -195,7 +247,7 @@ class SecureSumBitwidthTest(
   def test_executes_computation_with_argument_structure(
       self, arg, expected_result, tff_type
   ):
-    cpp_execution_contexts.set_test_cpp_execution_context()
+    cpp_execution_contexts.set_sync_test_cpp_execution_context()
 
     bitwidth = 32
 
@@ -211,7 +263,7 @@ class SecureSumMaxValueTest(
 ):
 
   def test_raises_with_arguments_over_max_value(self):
-    cpp_execution_contexts.set_test_cpp_execution_context()
+    cpp_execution_contexts.set_sync_test_cpp_execution_context()
 
     max_value = 1
 
@@ -232,7 +284,7 @@ class SecureSumMaxValueTest(
       ('five_clients', [x * 5 for x in range(5)]),
   )
   def test_executes_computation_with_secure_sum_under_max_values(self, arg):
-    cpp_execution_contexts.set_test_cpp_execution_context()
+    cpp_execution_contexts.set_sync_test_cpp_execution_context()
 
     max_value = 30
 
@@ -279,7 +331,7 @@ class SecureSumMaxValueTest(
   def test_executes_computation_with_argument_structure(
       self, arg, expected_result, tff_type
   ):
-    cpp_execution_contexts.set_test_cpp_execution_context()
+    cpp_execution_contexts.set_sync_test_cpp_execution_context()
 
     max_value = 100
 

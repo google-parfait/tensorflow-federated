@@ -22,10 +22,11 @@ from tensorflow_federated.python.core.impl.executor_stacks import executor_facto
 
 
 def create_async_test_cpp_execution_context(
+    *,
     default_num_clients: int = 0,
     max_concurrent_computation_calls: int = -1,
     stream_structs: bool = False,
-):
+) -> async_execution_context.AsyncExecutionContext:
   """Creates an execution context that executes computations locally."""
   factory = executor_factory.local_cpp_executor_factory(
       default_num_clients=default_num_clients,
@@ -47,10 +48,11 @@ def create_async_test_cpp_execution_context(
 
 
 def set_async_test_cpp_execution_context(
+    *,
     default_num_clients: int = 0,
     max_concurrent_computation_calls: int = -1,
     stream_structs: bool = False,
-):
+) -> None:
   """Sets an execution context that executes computations locally."""
   context = create_async_test_cpp_execution_context(
       default_num_clients=default_num_clients,
@@ -61,10 +63,11 @@ def set_async_test_cpp_execution_context(
 
 
 def create_sync_test_cpp_execution_context(
+    *,
     default_num_clients: int = 0,
     max_concurrent_computation_calls: int = -1,
     stream_structs: bool = False,
-):
+) -> sync_execution_context.SyncExecutionContext:
   """Creates an execution context that executes computations locally."""
   factory = executor_factory.local_cpp_executor_factory(
       default_num_clients=default_num_clients,
@@ -86,10 +89,11 @@ def create_sync_test_cpp_execution_context(
 
 
 def set_sync_test_cpp_execution_context(
+    *,
     default_num_clients: int = 0,
     max_concurrent_computation_calls: int = -1,
     stream_structs: bool = False,
-):
+) -> None:
   """Sets an execution context that executes computations locally."""
   context = create_sync_test_cpp_execution_context(
       default_num_clients=default_num_clients,
