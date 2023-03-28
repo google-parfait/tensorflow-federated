@@ -4,6 +4,6 @@ authors:
   - affiliation: Google
     given-names: "The TensorFlow Federated Authors"
 title: "TensorFlow Federated"
-version: 0.52.0
+version: 0.53.0
 date-released: 2018-12-12
 url: "https://github.com/tensorflow/federated"

@@ -1,3 +1,29 @@
+# Release 0.53.0
+
+## Major Features and Improvements
+
+*   Updated TF version to 2.12.0.
+*   Relaxed runtime type checks on `tff.learning.templates.LearningProcess` to
+    allow non-sequence CLIENTS arguments.
+*   `tff.simulation.compose_dataset_computation_with_learning_process` now
+    returns a `tff.learning.templates.LearningProcess`.
+*   Updated the `tff.program.FederatedDataSourceIterator`s so that they can be
+    serialized.
+
+## Breaking Changes
+
+*   Deleted the `forward_pass` attribute from the `FunctionalModel` interface.
+*   Removed `from_keras_model`, `MetricsFinalizersType`, `BatchOutput`, `Model`,
+    and `ModelWeights` symbols from the `tff.learning` package. Users should
+    instead use the `tff.learning.models` package for these symbols.
+*   Removed deprecated `tff.learning.federated_aggregate_keras_metric` function.
+*   Removed implicit attribute forwarding on
+    `tff.simulation.compose_dataset_computation_with_learning_process`.
+*   Removed deprecated `tff.framework.remote_executor_factory_from_stubs`.
+*   Removed deprecated `tff.backends.xla` APIs.
+*   Renamed the `tff.backends.test` APIs to:
+    `tff.backends.test.(create|set)_(sync|async)_test_cpp_execution_context`.
+
 # Release 0.52.0
 
 ## Major Features and Improvements
