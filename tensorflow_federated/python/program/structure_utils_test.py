@@ -50,6 +50,9 @@ class FilterStructureTest(parameterized.TestCase, tf.test.TestCase):
        program_test_utils.TestSerializable(1, 2),
        None),
 
+      # other values
+      ('attrs', program_test_utils.TestAttrs(1, 2), None),
+
       # structures
       ('list',
        [
@@ -70,7 +73,7 @@ class FilterStructureTest(parameterized.TestCase, tf.test.TestCase):
                program_test_utils.TestMaterializableValueReference(2),
                program_test_utils.TestSerializable(3, 4),
            ],
-           [3],
+           [5],
        ],
        [[None, None, None, None, None], [None]]),
       ('dict',
@@ -92,7 +95,7 @@ class FilterStructureTest(parameterized.TestCase, tf.test.TestCase):
                'd': program_test_utils.TestMaterializableValueReference(2),
                'e': program_test_utils.TestSerializable(3, 4),
            },
-           'y': {'a': 3},
+           'y': {'a': 5},
        },
        {
            'x': {'a': None, 'b': None, 'c': None, 'd': None, 'e': None},
@@ -122,7 +125,7 @@ class FilterStructureTest(parameterized.TestCase, tf.test.TestCase):
                d=program_test_utils.TestMaterializableValueReference(2),
                e=program_test_utils.TestSerializable(3, 4),
            ),
-           y=program_test_utils.TestNamedTuple2(a=3),
+           y=program_test_utils.TestNamedTuple2(a=5),
        ),
        program_test_utils.TestNamedTuple3(
            x=program_test_utils.TestNamedTuple1(
@@ -138,55 +141,6 @@ class FilterStructureTest(parameterized.TestCase, tf.test.TestCase):
   # pyformat: enable
   def test_returns_result(self, structure, expected_result):
     actual_result = structure_utils._filter_structure(structure)
-    self.assertEqual(actual_result, expected_result)
-
-  # pyformat: disable
-  @parameterized.named_parameters(
-      # structures
-      ('attrs',
-       program_test_utils.TestAttrs1(
-           a=True,
-           b=1,
-           c='a',
-           d=program_test_utils.TestMaterializableValueReference(2),
-           e=program_test_utils.TestSerializable(3, 4),
-       ),
-       program_test_utils.TestAttrs1(
-           a=None,
-           b=None,
-           c=None,
-           d=None,
-           e=None,
-       )),
-      ('attrs_nested',
-       program_test_utils.TestAttrs3(
-           x=program_test_utils.TestAttrs1(
-               a=True,
-               b=1,
-               c='a',
-               d=program_test_utils.TestMaterializableValueReference(2),
-               e=program_test_utils.TestSerializable(3, 4),
-           ),
-           y=program_test_utils.TestAttrs2(a=3),
-       ),
-       program_test_utils.TestAttrs3(
-           x=program_test_utils.TestAttrs1(
-               a=None,
-               b=None,
-               c=None,
-               d=None,
-               e=None,
-           ),
-           y=program_test_utils.TestAttrs2(a=None),
-       )),
-  )
-  # pyformat: enable
-  def test_returns_result_and_warns_deprecation_warning(
-      self, structure, expected_result
-  ):
-    with self.assertWarns(DeprecationWarning):
-      actual_result = structure_utils._filter_structure(structure)
-
     self.assertEqual(actual_result, expected_result)
 
 
@@ -219,6 +173,11 @@ class FlattenWithNameTest(parameterized.TestCase, tf.test.TestCase):
       ('serializable_value',
        program_test_utils.TestSerializable(1, 2),
        [('', program_test_utils.TestSerializable(1, 2))]),
+
+      # other values
+      ('attrs',
+       program_test_utils.TestAttrs(1, 2),
+       [('', program_test_utils.TestAttrs(1, 2))]),
 
       # structures
       ('list',
@@ -281,9 +240,7 @@ class FlattenWithNameTest(parameterized.TestCase, tf.test.TestCase):
                'd': program_test_utils.TestMaterializableValueReference(2),
                'e': program_test_utils.TestSerializable(3, 4),
            },
-           'y': {
-               'a': 5,
-           },
+           'y': {'a': 5},
        },
        [
            ('x/a', True),
@@ -318,40 +275,6 @@ class FlattenWithNameTest(parameterized.TestCase, tf.test.TestCase):
                e=program_test_utils.TestSerializable(3, 4),
            ),
            y=program_test_utils.TestNamedTuple2(a=5),
-       ),
-       [
-           ('x/a', True),
-           ('x/b', 1),
-           ('x/c', 'a'),
-           ('x/d', program_test_utils.TestMaterializableValueReference(2)),
-           ('x/e', program_test_utils.TestSerializable(3, 4)),
-           ('y/a', 5),
-       ]),
-      ('attrs',
-       program_test_utils.TestAttrs1(
-           a=True,
-           b=1,
-           c='a',
-           d=program_test_utils.TestMaterializableValueReference(2),
-           e=program_test_utils.TestSerializable(3, 4),
-       ),
-       [
-           ('a', True),
-           ('b', 1),
-           ('c', 'a'),
-           ('d', program_test_utils.TestMaterializableValueReference(2)),
-           ('e', program_test_utils.TestSerializable(3, 4)),
-       ]),
-      ('attrs_nested',
-       program_test_utils.TestAttrs3(
-           x=program_test_utils.TestAttrs1(
-               a=True,
-               b=1,
-               c='a',
-               d=program_test_utils.TestMaterializableValueReference(2),
-               e=program_test_utils.TestSerializable(3, 4),
-           ),
-           y=program_test_utils.TestAttrs2(a=5),
        ),
        [
            ('x/a', True),

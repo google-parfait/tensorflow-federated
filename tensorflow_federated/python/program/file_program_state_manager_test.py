@@ -435,42 +435,6 @@ class FileProgramStateManagerLoadTest(
            ),
            y=program_test_utils.TestNamedTuple2(a=np.int32(5)),
        )),
-      ('attrs',
-       program_test_utils.TestAttrs1(
-           a=True,
-           b=1,
-           c='a',
-           d=program_test_utils.TestMaterializableValueReference(2),
-           e=program_test_utils.TestSerializable(3, 4),
-       ),
-       program_test_utils.TestAttrs1(
-           a=np.bool_(True),
-           b=np.int32(1),
-           c=b'a',
-           d=np.int32(2),
-           e=program_test_utils.TestSerializable(3, 4),
-       )),
-      ('attrs_nested',
-       program_test_utils.TestAttrs3(
-           x=program_test_utils.TestAttrs1(
-               a=True,
-               b=1,
-               c='a',
-               d=program_test_utils.TestMaterializableValueReference(2),
-               e=program_test_utils.TestSerializable(3, 4),
-           ),
-           y=program_test_utils.TestAttrs2(a=5),
-       ),
-       program_test_utils.TestAttrs3(
-           x=program_test_utils.TestAttrs1(
-               a=np.bool_(True),
-               b=np.int32(1),
-               c=b'a',
-               d=np.int32(2),
-               e=program_test_utils.TestSerializable(3, 4),
-           ),
-           y=program_test_utils.TestAttrs2(a=np.int32(5)),
-       )),
   )
   # pyformat: enable
   async def test_returns_saved_program_state(
@@ -853,40 +817,6 @@ class FileProgramStateManagerSaveTest(
            program_test_utils.TestSerializable(3, 4).to_bytes(),
            5,
        ]),
-      ('attrs',
-       program_test_utils.TestAttrs1(
-           a=True,
-           b=1,
-           c='a',
-           d=program_test_utils.TestMaterializableValueReference(2),
-           e=program_test_utils.TestSerializable(3, 4),
-       ),
-       [
-           True,
-           1,
-           'a',
-           2,
-           program_test_utils.TestSerializable(3, 4).to_bytes(),
-       ]),
-      ('attr_nested',
-       program_test_utils.TestAttrs3(
-           x=program_test_utils.TestAttrs1(
-               a=True,
-               b=1,
-               c='a',
-               d=program_test_utils.TestMaterializableValueReference(2),
-               e=program_test_utils.TestSerializable(3, 4),
-           ),
-           y=program_test_utils.TestAttrs2(a=5),
-       ),
-       [
-           True,
-           1,
-           'a',
-           2,
-           program_test_utils.TestSerializable(3, 4).to_bytes(),
-           5,
-       ]),
   )
   # pyformat: enable
   async def test_writes_program_state(self, program_state, expected_value):
@@ -919,6 +849,16 @@ class FileProgramStateManagerSaveTest(
       expected_path = os.path.join(root_dir, 'a_1')
       self.assertEqual(actual_path, expected_path)
       self.assertEqual(kwargs, {})
+
+  async def test_raises_not_encodable_error_program_state_attrs(self):
+    program_state = program_test_utils.TestAttrs(1, 2)
+    root_dir = self.create_tempdir()
+    program_state_mngr = file_program_state_manager.FileProgramStateManager(
+        root_dir=root_dir, prefix='a_', keep_total=0
+    )
+
+    with self.assertRaises(Exception):
+      await program_state_mngr.save(program_state, 1)
 
   async def test_removes_saved_program_state(self):
     root_dir = self.create_tempdir()
