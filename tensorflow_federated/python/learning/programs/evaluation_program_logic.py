@@ -294,7 +294,13 @@ class EvaluationManager:
         'Resuming previous evaluations found for training rounds: %s',
         train_round_nums,
     )
-    for train_round_num in train_round_nums:
+    evaluation_end_times = [
+        datetime.datetime.fromtimestamp(start_timestamp) + self._duration
+        for start_timestamp in self._evaluation_start_timestamp_seconds
+    ]
+    for train_round_num, evaluation_end_time in zip(
+        train_round_nums, evaluation_end_times
+    ):
       evaluation_name = _EVAL_NAME_PATTERN.format(round_num=train_round_num)
       # Note: `start_evaluation` has already created the initial evaluation
       # state and set the training model weights, saving it to version 0 of the
@@ -304,7 +310,11 @@ class EvaluationManager:
           evaluation_name
       )
       self._start_evaluation_from_saved_model_weights(
-          train_round_num, evaluation_process, metrics_manager, state_manager
+          train_round_num,
+          evaluation_process,
+          metrics_manager,
+          state_manager,
+          evaluation_end_time,
       )
 
   def _start_evaluation_from_saved_model_weights(
@@ -317,6 +327,7 @@ class EvaluationManager:
           ]
       ],
       state_manager: file_program_state_manager.FileProgramStateManager,
+      evaluation_end_time: datetime.datetime,
   ) -> None:
     """Starts an asyncio.Task, adding it to self._pending_tasks.
 
@@ -329,6 +340,7 @@ class EvaluationManager:
       state_manager: The evaluation state manager. This *must* have already had
         version zero saved, which contains the training checkpoint to be
         evaluated.
+      evaluation_end_time: The expected end time of the evaluation.
     """
 
     async def run_and_record_completion():
@@ -340,7 +352,7 @@ class EvaluationManager:
           evaluation_name=_EVAL_NAME_PATTERN.format(round_num=train_round_num),
           evaluation_data_source=self._data_source,
           evaluation_per_round_clients_number=self._cohort_size,
-          evaluation_period=self._duration,
+          evaluation_end_time=evaluation_end_time,
           per_round_metrics_manager=per_round_metrics_manager,
           aggregated_metrics_manager=self._aggregated_metrics_manager,
       )
@@ -384,8 +396,16 @@ class EvaluationManager:
         evaluation_process.set_model_weights(eval_state, model_weights)
     )
     await state_manager.save(eval_state, version=0)
+    evaluation_end_time = (
+        datetime.datetime.fromtimestamp(start_timestamp_seconds)
+        + self._duration
+    )
     self._start_evaluation_from_saved_model_weights(
-        train_round, evaluation_process, metrics_manager, state_manager
+        train_round,
+        evaluation_process,
+        metrics_manager,
+        state_manager,
+        evaluation_end_time,
     )
     # Record that the evaluation process has started.
     await self._state_manager.save(
@@ -520,7 +540,7 @@ async def run_evaluation(
     evaluation_name: str,
     evaluation_data_source: data_source_lib.FederatedDataSource,
     evaluation_per_round_clients_number: int,
-    evaluation_period: datetime.timedelta,
+    evaluation_end_time: datetime.datetime,
     per_round_metrics_manager: Optional[
         release_manager.ReleaseManager[release_manager.ReleasableStructure, int]
     ],
@@ -544,11 +564,9 @@ async def run_evaluation(
       client data used during evaluation.
     evaluation_per_round_clients_number: Number of clients to evaluate in each
       round.
-    evaluation_period: Time duration for running the evaluation. Multiple
-      evaluation rounds will be run until evaluation_period has elapsed
-      (counting from the time this method starts executing). A time duration of
-      zero seconds will result in only one evaluation round being run, negative
-      durations are an error.
+    evaluation_end_time: Expected end time for running the evaluation. Multiple
+      evaluation rounds will be run until the `evaluation_end_time` has reached.
+      If the `evaluation_end_time` has passed, only one round will be run.
     per_round_metrics_manager: A `tff.program.ReleaseManager` that releases the
       per-round evaluation metrics from platform to user storage. Use a
       `tff.programs.GroupingReleaseManager` to utilize multiple release
@@ -560,24 +578,12 @@ async def run_evaluation(
       metrics are not released.
 
   Raises:
-    ValueError: If `evaluation_period` is a negative `datetime.timedelta`.
     TypeError: If result of `evaluation_process` is not a value of
       `tff.learning.templates.LearningProcessOutput` type.
   """
   federated_context.check_in_federated_context()
 
-  if evaluation_period < datetime.timedelta(seconds=0):
-    raise ValueError(
-        '`evaluation_period` must be a non-negative duration, got '
-        f'{evaluation_period}.'
-    )
-
   evaluation_data_iterator = evaluation_data_source.iterator()
-  # TODO(b/262257624): in the case of preemption, its possbile this should
-  # resume from when the evaluation started, rather than "now". Alternatively,
-  # something like implement a "minimum participation amount" per hour-of-day
-  # or other more sophisticated stopping critiera.
-  deadline = datetime.datetime.now() + evaluation_period
 
   async def invoke_evaluation(evaluation_state, eval_round_num):
     round_start = time.monotonic()
@@ -649,16 +655,16 @@ async def run_evaluation(
   version += 1
   await state_manager.save(evaluation_state, version=version)
   # Now run evaluations over the entire evaluation period.
-  while datetime.datetime.now() < deadline:
+  while datetime.datetime.now() < evaluation_end_time:
     evaluation_state, evaluation_metrics, eval_round_num = (
         await invoke_evaluation(evaluation_state, eval_round_num)
     )
     version += 1
     await state_manager.save(evaluation_state, version=version)
   _logging.info(
-      'Finished evaluation of %s over duration %s',
+      'Finished evaluation of %s at end time %s',
       evaluation_name,
-      evaluation_period,
+      evaluation_end_time,
   )
   if aggregated_metrics_manager is not None:
     total_rounds_eval_metrics, total_rounds_eval_metrics_type = (

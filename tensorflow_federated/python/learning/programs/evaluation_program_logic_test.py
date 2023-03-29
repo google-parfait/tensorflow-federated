@@ -558,31 +558,6 @@ class RunEvaluationTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     self.maxDiff = None  # pylint: disable=invalid-name
     context_stack_impl.context_stack.set_default_context(_create_test_context())
 
-  async def test_negative_evaluation_period_raises(self):
-    eval_process = _create_mock_eval_process()
-    state_manager = mock.create_autospec(
-        file_program_state_manager.FileProgramStateManager, instance=True
-    )
-    num_clients = 3
-    with self.assertRaisesRegex(
-        ValueError, '`evaluation_period` must be a non-negative duration'
-    ):
-      await evaluation_program_logic.run_evaluation(
-          train_round_num=1,
-          state_manager=state_manager,
-          evaluation_process=eval_process,
-          evaluation_name='test_evaluation',
-          evaluation_data_source=_create_mock_datasource(),
-          evaluation_per_round_clients_number=num_clients,
-          evaluation_period=datetime.timedelta(hours=-1),
-          per_round_metrics_manager=mock.create_autospec(
-              release_manager.ReleaseManager, instance=True
-          ),
-          aggregated_metrics_manager=mock.create_autospec(
-              release_manager.ReleaseManager, instance=True
-          ),
-      )
-
   async def test_invalid_process_rasies(self):
     @federated_computation.federated_computation
     def empty_initialize():
@@ -612,7 +587,7 @@ class RunEvaluationTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
           evaluation_name='test_evaluation',
           evaluation_data_source=_create_mock_datasource(),
           evaluation_per_round_clients_number=num_clients,
-          evaluation_period=datetime.timedelta(hours=1),
+          evaluation_end_time=datetime.datetime(2023, 4, 2, 5, 15),
           per_round_metrics_manager=mock.create_autospec(
               release_manager.ReleaseManager, instance=True
           ),
@@ -646,12 +621,12 @@ class RunEvaluationTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
           evaluation_name='test_evaluation',
           evaluation_data_source=_create_mock_datasource(),
           evaluation_per_round_clients_number=num_clients,
-          evaluation_period=datetime.timedelta(seconds=0),
+          evaluation_end_time=datetime.datetime(2023, 4, 2, 5, 15),
           per_round_metrics_manager=mock_per_round_metrics_manager,
           aggregated_metrics_manager=mock_aggregated_metrics_manager,
       )
 
-  async def test_zero_duration_runs_one_evaluation_round(self):
+  async def test_passed_end_time_runs_one_round(self):
     eval_process = _create_mock_eval_process()
     state_manager = mock.create_autospec(
         file_program_state_manager.FileProgramStateManager, instance=True
@@ -672,7 +647,7 @@ class RunEvaluationTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
         evaluation_name='test_evaluation',
         evaluation_data_source=_create_mock_datasource(),
         evaluation_per_round_clients_number=num_clients,
-        evaluation_period=datetime.timedelta(seconds=0),
+        evaluation_end_time=datetime.datetime(2023, 4, 2, 5, 15),
         per_round_metrics_manager=mock_per_round_metrics_manager,
         aggregated_metrics_manager=mock_aggregated_metrics_manager,
     )
@@ -685,8 +660,9 @@ class RunEvaluationTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
         state_manager.save.call_args_list, [mock.call(mock.ANY, version=1)]
     )
     state_manager.remove_all.assert_called_once()
-    # With a zero second deadline, we should expect exactly one evaluation to
-    # have occurred for the training round.
+    # The evaluation end time should be passed when invoking the evaluation, we
+    # should expect exactly one evaluation to have occurred for the training
+    # round.
     self.assertSequenceEqual(
         [_create_per_round_eval_metrics_release_call(key=train_round_num)],
         mock_per_round_metrics_manager.release.call_args_list,
@@ -697,7 +673,7 @@ class RunEvaluationTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
         [mock.call(mock.ANY, mock.ANY, key=train_round_num)],
     )
 
-  async def test_positive_duration_runs_atleast_one_evaluation_round(self):
+  async def test_future_end_time_runs_atleast_one_evaluation_round(self):
     eval_process = _create_mock_eval_process()
     state_manager = mock.create_autospec(
         file_program_state_manager.FileProgramStateManager, instance=True
@@ -718,7 +694,9 @@ class RunEvaluationTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
         evaluation_name='test_evaluation',
         evaluation_data_source=_create_mock_datasource(),
         evaluation_per_round_clients_number=num_clients,
-        evaluation_period=datetime.timedelta(seconds=10),
+        evaluation_end_time=(
+            datetime.datetime.now() + datetime.timedelta(seconds=1)
+        ),
         per_round_metrics_manager=mock_per_round_metrics_manager,
         aggregated_metrics_manager=mock_aggregated_metrics_manager,
     )
@@ -732,7 +710,7 @@ class RunEvaluationTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
         mock.call(mock.ANY, version=2),
     ])
     state_manager.remove_all.assert_called_once()
-    # With a ten second deadline, we should expect at least two evaluations.
+    # With a one second deadline, we should expect at least two evaluations.
     mock_per_round_metrics_manager.release.assert_has_calls([
         _create_per_round_eval_metrics_release_call(key=train_round_num),
         _create_per_round_eval_metrics_release_call(key=train_round_num + 1),
@@ -769,7 +747,9 @@ class RunEvaluationTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
         evaluation_name='test_evaluation',
         evaluation_data_source=_create_mock_datasource(),
         evaluation_per_round_clients_number=num_clients,
-        evaluation_period=datetime.timedelta(seconds=1),
+        evaluation_end_time=(
+            datetime.datetime.now() + datetime.timedelta(seconds=1)
+        ),
         per_round_metrics_manager=mock_per_round_metrics_manager,
         aggregated_metrics_manager=mock_aggregated_metrics_manager,
     )
@@ -794,6 +774,59 @@ class RunEvaluationTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     ])
     # Assert the aggregated metrics are output once at the end.
     self.assertSequenceEqual(
+        mock_aggregated_metrics_manager.release.call_args_list,
+        [mock.call(mock.ANY, mock.ANY, key=train_round_num)],
+    )
+
+  async def test_resume_evaluation_uses_correct_end_time(self):
+    eval_process = _create_mock_eval_process()
+    state_manager = mock.create_autospec(
+        file_program_state_manager.FileProgramStateManager, instance=True
+    )
+    # Setup a state with a version later than zero.
+    latest_version = 5
+    state_manager.load_latest.return_value = (
+        eval_process.initialize(),
+        latest_version,
+    )
+    num_clients = 3
+    mock_per_round_metrics_manager = mock.create_autospec(
+        release_manager.ReleaseManager, instance=True
+    )
+    mock_aggregated_metrics_manager = mock.create_autospec(
+        release_manager.ReleaseManager, instance=True
+    )
+    train_round_num = 10
+    await evaluation_program_logic.run_evaluation(
+        train_round_num=train_round_num,
+        state_manager=state_manager,
+        evaluation_process=eval_process,
+        evaluation_name='test_evaluation',
+        evaluation_data_source=_create_mock_datasource(),
+        evaluation_per_round_clients_number=num_clients,
+        evaluation_end_time=datetime.datetime(2023, 4, 2, 5, 15),
+        per_round_metrics_manager=mock_per_round_metrics_manager,
+        aggregated_metrics_manager=mock_aggregated_metrics_manager,
+    )
+    # Assert the evaluation state was loaded from the state manager, then the
+    # first round of evaluation was saved.
+    self.assertEqual(
+        state_manager.load_latest.call_args_list, [mock.call(mock.ANY)]
+    )
+    state_manager.remove_all.assert_called_once()
+    # The evaluation end time should be passed when invoking the evaluation, we
+    # should expect exactly one evaluation to have occurred for the training
+    # round.
+    state_manager.save.assert_has_calls([
+        mock.call(mock.ANY, version=latest_version + 1),
+    ])
+    mock_per_round_metrics_manager.release.assert_has_calls([
+        _create_per_round_eval_metrics_release_call(
+            key=train_round_num + latest_version
+        ),
+    ])
+    # Assert the aggregated metrics are output once at the end.
+    self.assertEqual(
         mock_aggregated_metrics_manager.release.call_args_list,
         [mock.call(mock.ANY, mock.ANY, key=train_round_num)],
     )
