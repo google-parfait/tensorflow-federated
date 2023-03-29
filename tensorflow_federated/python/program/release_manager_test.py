@@ -100,14 +100,6 @@ class FilteringReleaseManagerTest(
            ('b', tf.int32),
        ], collections.OrderedDict)),
 
-      # other values
-      ('attrs',
-       program_test_utils.TestAttrs(1, 2),
-       computation_types.StructWithPythonType([
-           ('a', tf.int32),
-           ('b', tf.int32),
-       ], collections.OrderedDict)),
-
       # structures
       ('list',
        [
@@ -321,7 +313,6 @@ class FilteringReleaseManagerTest(
 
   # pyformat: disable
   @parameterized.named_parameters(
-      # structures
       ('named_tuple',
        program_test_utils.TestNamedTuple1(
            a=True,
@@ -340,6 +331,24 @@ class FilteringReleaseManagerTest(
                ('b', tf.int32),
            ], collections.OrderedDict)),
        ], program_test_utils.TestNamedTuple1)),
+      ('attrs',
+       program_test_utils.TestAttrs1(
+           a=True,
+           b=1,
+           c='a',
+           d=program_test_utils.TestMaterializableValueReference(2),
+           e=program_test_utils.TestSerializable(3, 4),
+       ),
+       computation_types.StructWithPythonType([
+           ('a', tf.bool),
+           ('b', tf.int32),
+           ('c', tf.string),
+           ('d', tf.int32),
+           ('e', computation_types.StructWithPythonType([
+               ('a', tf.int32),
+               ('b', tf.int32),
+           ], collections.OrderedDict)),
+       ], program_test_utils.TestAttrs1)),
   )
   # pyformat: enable
   async def test_release_raises_not_implemented_error_with_value_and_type_signature(
