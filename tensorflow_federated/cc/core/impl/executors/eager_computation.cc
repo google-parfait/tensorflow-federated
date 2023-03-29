@@ -240,7 +240,10 @@ absl::Status InsertRelayoutNodeForVariable(
   absl::flat_hash_map<tensorflow::Node*, int> out_nodes_with_dest_indx;
 
   for (auto* e : var_node->out_edges()) {
-    out_nodes_with_dest_indx.insert(std::make_pair(e->dst(), e->dst_input()));
+    if (!e->IsControlEdge()) {
+      // Layouts are not required for control edge.
+      out_nodes_with_dest_indx.insert(std::make_pair(e->dst(), e->dst_input()));
+    }
   }
   for (auto e : out_nodes_with_dest_indx) {
     tf_status = graph->UpdateEdge(relayout_node, 0, e.first, e.second);
