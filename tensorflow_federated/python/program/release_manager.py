@@ -64,7 +64,7 @@ class ReleaseManager(abc.ABC, Generic[ReleasableStructure, Key]):
     `Mapping[str, ReleasableValue]` and a `key` type of `int`.
 
     Args:
-      value: A `tff.program.MaterializableStructure` to release.
+      value: A `tff.program.ReleasableStructure` to release.
       type_signature: The `tff.Type` of `value`.
       key: A value used to reference the released `value`.
     """
@@ -137,7 +137,7 @@ class FilteringReleaseManager(ReleaseManager[ReleasableStructure, Key]):
     """Releases `value` from a federated program.
 
     Args:
-      value: A `tff.program.MaterializableStructure` to release.
+      value: A `tff.program.ReleasableStructure` to release.
       type_signature: The `tff.Type` of `value`.
       key: A value used to reference the released `value`.
     """
@@ -221,7 +221,7 @@ class GroupingReleaseManager(ReleaseManager[ReleasableStructure, Key]):
     """Releases `value` from a federated program.
 
     Args:
-      value: A `tff.program.MaterializableStructure` to release.
+      value: A `tff.program.ReleasableStructure` to release.
       type_signature: The `tff.Type` of `value`.
       key: A value used to reference the released `value`.
     """

@@ -147,7 +147,11 @@ class EvaluationManager:
   def __init__(
       self,
       data_source: data_source_lib.FederatedDataSource,
-      aggregated_metrics_manager: Optional[release_manager.ReleaseManager],
+      aggregated_metrics_manager: Optional[
+          release_manager.ReleaseManager[
+              release_manager.ReleasableStructure, int
+          ]
+      ],
       create_state_manager_fn: Callable[
           [str], file_program_state_manager.FileProgramStateManager
       ],
@@ -155,7 +159,11 @@ class EvaluationManager:
           [str],
           tuple[
               learning_process.LearningProcess,
-              Optional[release_manager.ReleaseManager],
+              Optional[
+                  release_manager.ReleaseManager[
+                      release_manager.ReleasableStructure, int
+                  ]
+              ],
           ],
       ],
       cohort_size: int,
@@ -255,7 +263,11 @@ class EvaluationManager:
       self,
       train_round_num: int,
       eval_process: learning_process.LearningProcess,
-      per_round_metrics_manager: Optional[release_manager.ReleaseManager],
+      per_round_metrics_manager: Optional[
+          release_manager.ReleaseManager[
+              release_manager.ReleasableStructure, int
+          ]
+      ],
       state_manager: file_program_state_manager.FileProgramStateManager,
   ) -> None:
     """Starts an asyncio.Task, adding it to self._pending_tasks.
@@ -461,8 +473,12 @@ async def run_evaluation(
     evaluation_data_source: data_source_lib.FederatedDataSource,
     evaluation_per_round_clients_number: int,
     evaluation_period: datetime.timedelta,
-    per_round_metrics_manager: Optional[release_manager.ReleaseManager],
-    aggregated_metrics_manager: Optional[release_manager.ReleaseManager],
+    per_round_metrics_manager: Optional[
+        release_manager.ReleaseManager[release_manager.ReleasableStructure, int]
+    ],
+    aggregated_metrics_manager: Optional[
+        release_manager.ReleaseManager[release_manager.ReleasableStructure, int]
+    ],
 ) -> None:
   """Runs evaluation for one training state.
 

@@ -44,18 +44,18 @@ from tensorflow_federated.python.program import structure_utils
 _MAX_SERIALIZED_DATASET_SIZE = 100 * (1024**2)  # 100 MB
 
 
-T = TypeVar('T')
+_T = TypeVar('_T')
 
 
-class PackFn(Protocol[T]):
+class PackFn(Protocol[_T]):
 
-  def __call__(self, _: T) -> bytes:
+  def __call__(self, _: _T) -> bytes:
     ...
 
 
-class UnpackFn(Protocol[T]):
+class UnpackFn(Protocol[_T]):
 
-  def __call__(self, buffer: bytes, offset: int = 0) -> tuple[T, int]:
+  def __call__(self, buffer: bytes, offset: int = 0) -> tuple[_T, int]:
     ...
 
 
@@ -105,7 +105,7 @@ def unpack_str_from(buffer: bytes, offset: int = 0) -> tuple[str, int]:
   return value, length_size + length
 
 
-def pack_sequence(fn: PackFn[T], sequence: Sequence[T]) -> bytes:
+def pack_sequence(fn: PackFn[_T], sequence: Sequence[_T]) -> bytes:
   """Packs a `Sequence` as bytes using `fn` to pack each item."""
   sequence_bytes = bytearray()
   for item in sequence:
@@ -116,8 +116,8 @@ def pack_sequence(fn: PackFn[T], sequence: Sequence[T]) -> bytes:
 
 
 def unpack_sequence_from(
-    fn: UnpackFn[T], buffer: bytes, offset: int = 0
-) -> tuple[Sequence[T], int]:
+    fn: UnpackFn[_T], buffer: bytes, offset: int = 0
+) -> tuple[Sequence[_T], int]:
   """Unpacks a `Sequence` from bytes using `fn` to unpack each item.
 
   Args:

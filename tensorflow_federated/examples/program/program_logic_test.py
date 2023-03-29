@@ -330,7 +330,7 @@ class TrainFederatedModelTest(
     )
     mock_train_data_source_iterator.select.assert_has_calls(expected_calls)
 
-    # Assert that the train computation is invokes for each train round.
+    # Assert that the `train` computation is invoked for each train round.
     expected_calls = []
     if rounds:
       if program_state is not None:
@@ -389,7 +389,7 @@ class TrainFederatedModelTest(
     else:
       expected_final_state = initial_state
 
-    # Assert that the evaluation computation is invoked once.
+    # Assert that the `evaluation` computation is invoked once.
     mock_evaluation.assert_called_once_with(
         expected_final_state, evaluation_data
     )

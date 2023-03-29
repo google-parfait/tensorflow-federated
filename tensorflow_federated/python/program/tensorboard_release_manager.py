@@ -71,14 +71,14 @@ class TensorBoardReleaseManager(
 
   async def release(  # pytype: disable=signature-mismatch  # numpy-scalars
       self,
-      value: value_reference.MaterializableStructure,
+      value: release_manager.ReleasableStructure,
       type_signature: computation_types.Type,
       key: int,
   ) -> None:
     """Releases `value` from a federated program.
 
     Args:
-      value: A `tff.program.MaterializableStructure` to release.
+      value: A `tff.program.ReleasableStructure` to release.
       type_signature: The `tff.Type` of `value`.
       key: A integer used to reference the released `value`; `key` represents a
         step in a federated program.

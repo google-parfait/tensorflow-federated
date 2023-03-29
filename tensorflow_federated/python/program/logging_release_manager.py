@@ -25,7 +25,7 @@ from tensorflow_federated.python.program import value_reference
 
 class LoggingReleaseManager(
     release_manager.ReleaseManager[
-        release_manager.ReleasableStructure, Optional[object]
+        release_manager.ReleasableStructure, release_manager.Key
     ]
 ):
   """A `tff.program.ReleaseManager` that releases values to logs.
@@ -43,12 +43,12 @@ class LoggingReleaseManager(
       self,
       value: release_manager.ReleasableStructure,
       type_signature: computation_types.Type,
-      key: Optional[object],
+      key: Optional[release_manager.Key],
   ) -> None:
     """Releases `value` from a federated program.
 
     Args:
-      value: A `tff.program.MaterializableStructure` to release.
+      value: A `tff.program.ReleasableStructure` to release.
       type_signature: The `tff.Type` of `value`.
       key: An optional value used to reference the released `value`.
     """

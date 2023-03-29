@@ -93,8 +93,12 @@ async def train_model(
     train_per_round_clients: int,
     train_total_rounds: int,
     program_state_manager: program_state_manager_lib.ProgramStateManager,
-    model_output_manager: release_manager.ReleaseManager,
-    train_metrics_manager: Optional[release_manager.ReleaseManager] = None,
+    model_output_manager: release_manager.ReleaseManager[
+        release_manager.ReleasableStructure, str
+    ],
+    train_metrics_manager: Optional[
+        release_manager.ReleaseManager[release_manager.ReleasableStructure, int]
+    ] = None,
     evaluation_manager: Optional[evaluation_program_logic.EvaluationManager],
     evaluation_periodicity: Union[int, datetime.timedelta],
 ) -> None:

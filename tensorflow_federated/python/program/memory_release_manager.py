@@ -51,7 +51,7 @@ class MemoryReleaseManager(
     """Releases `value` from a federated program.
 
     Args:
-      value: A `tff.program.MaterializableStructure` to release.
+      value: A `tff.program.ReleasableStructure` to release.
       type_signature: The `tff.Type` of `value`.
       key: A hashable value used to reference the released `value`.
     """
