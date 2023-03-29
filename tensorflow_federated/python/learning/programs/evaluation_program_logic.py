@@ -190,15 +190,63 @@ class EvaluationManager:
     """
     self._data_source = data_source
     self._aggregated_metrics_manager = aggregated_metrics_manager
-    self._duration = duration
-    self._cohort_size = cohort_size
     self._create_state_manager_fn = create_state_manager_fn
     self._create_evaluation_process_fn = create_process_fn
+    self._cohort_size = cohort_size
+    self._duration = duration
     self._state_manager = create_state_manager_fn(_EVAL_MANAGER_KEY)
     self._next_version = 0
     self._evaluating_training_checkpoints = np.zeros([0], np.int32)
     self._evaluation_start_timestamp_seconds = np.zeros([0], np.int32)
     self._pending_tasks: set[asyncio.Task] = set()
+
+  @property
+  def data_source(self) -> data_source_lib.FederatedDataSource:
+    """A data source used to create iterators each evaluation loop."""
+    return self._data_source
+
+  @property
+  def aggregated_metrics_manager(
+      self,
+  ) -> Optional[
+      release_manager.ReleaseManager[release_manager.ReleasableStructure, int]
+  ]:
+    """A manager for releasing metrics at the end of each evaluation loop."""
+    return self._aggregated_metrics_manager
+
+  @property
+  def create_state_manager_fn(
+      self,
+  ) -> Callable[[str], file_program_state_manager.FileProgramStateManager]:
+    """A callable that returns a program state manager each evaluation loop."""
+    return self._create_state_manager_fn
+
+  @property
+  def create_process_fn(
+      self,
+  ) -> Callable[
+      [str],
+      tuple[
+          learning_process.LearningProcess,
+          Optional[
+              release_manager.ReleaseManager[
+                  release_manager.ReleasableStructure, int
+              ]
+          ],
+      ],
+  ]:
+    """A callable that returns a process and manager each evaluation loop."""
+    return self._create_evaluation_process_fn
+
+  @property
+  def cohort_size(self) -> int:
+    """The size of each evaluation round to select from the iterator."""
+    return self._cohort_size
+
+  @property
+  def duration(self) -> datetime.timedelta:
+    """The duration to run each evaluation loop."""
+    return self._duration
 
   async def wait_for_evaluations_to_finish(self) -> None:
     """Creates an awaitable that blocks until all evaluations are finished."""
