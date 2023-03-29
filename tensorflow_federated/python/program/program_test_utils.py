@@ -93,12 +93,6 @@ class TestSerializable(serializable.Serializable):
     return f'{self.__class__.__name__}(a={self._a}, b={self._b})'
 
 
-@attrs.define
-class TestAttrs:
-  a: int
-  b: int
-
-
 class TestNamedTuple1(NamedTuple):
   a: bool
   b: int
@@ -114,6 +108,26 @@ class TestNamedTuple2(NamedTuple):
 class TestNamedTuple3(NamedTuple):
   x: TestNamedTuple1
   y: TestNamedTuple2
+
+
+@attrs.define
+class TestAttrs1:
+  a: bool
+  b: int
+  c: str
+  d: value_reference.MaterializableValueReference
+  e: TestSerializable
+
+
+@attrs.define
+class TestAttrs2:
+  a: int
+
+
+@attrs.define
+class TestAttrs3:
+  x: TestAttrs1
+  y: TestAttrs2
 
 
 def assert_types_equal(a: object, b: object) -> None:

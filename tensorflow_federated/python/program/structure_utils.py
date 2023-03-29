@@ -16,8 +16,10 @@
 from collections.abc import Callable, Iterable, Mapping, Sequence
 import typing
 from typing import Optional, TypeVar, Union
+import warnings
 
 import attrs
+import pytype_extensions
 import tree
 
 
@@ -29,6 +31,10 @@ Structure = Union[
     T,
     Sequence['Structure[T]'],
     Mapping[str, 'Structure[T]'],
+    # TODO(b/273555440): Handling `attrs` classes as containers is deprecated,
+    # please use `typing.NamedTuple` instead if you intended for this object to
+    # be a container.
+    pytype_extensions.Attrs['Structure[T]'],
 ]
 
 
@@ -43,15 +49,29 @@ def _filter_structure(structure: Structure[object]) -> Structure[object]:
     structure: A `tff.program.Structure`.
   """
 
-  structure_types = []
+  supported_types = []
   for arg in typing.get_args(Structure):
     origin_type = typing.get_origin(arg)
     if origin_type is not None:
-      structure_types.append(origin_type)
+      supported_types.append(origin_type)
+
+  # TODO(b/273555440): Remove the special handling of `pytype_extensions.Attrs`.
+  supported_types.remove(pytype_extensions.Attrs)
 
   def _fn(structure: Structure[object]) -> Optional[object]:
-    if tree.is_nested(structure) and not attrs.has(type(structure)):
-      if isinstance(structure, tuple(structure_types)):
+    if tree.is_nested(structure):
+      if isinstance(structure, tuple(supported_types)):
+        return None
+      elif attrs.has(type(structure)):
+        # TODO(b/273555440): Remove the warning and return `tree.MAP_TO_NONE`.
+        warnings.warn(
+            (
+                'Handling `attrs` classes as containers is deprecated, please '
+                'use `typing.NamedTuple` instead if you intended for this '
+                'object to be a container.'
+            ),
+            category=DeprecationWarning,
+        )
         return None
       else:
         return tree.MAP_TO_NONE
