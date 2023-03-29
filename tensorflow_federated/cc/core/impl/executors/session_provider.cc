@@ -104,15 +104,18 @@ const AcceleratorDevices& GetAcceleratorDevices() {
       }
       auto device_type = device_parts[1];
       if (device_type == tensorflow::DEVICE_GPU) {
-        LOG_FIRST_N(INFO, 1) << "Found GPU device: [" << device << "]";
+        LOG_FIRST_N(INFO, 1) << "Found first GPU device: [" << device << "]";
         ++num_gpus;
       } else if (device_type == tensorflow::DEVICE_TPU) {
-        LOG_FIRST_N(INFO, 1) << "Found TPU device: [" << device << "]";
+        LOG_FIRST_N(INFO, 1) << "Found first TPU device: [" << device << "]";
         ++num_tpus;
       } else {
         LOG_FIRST_N(INFO, 1) << "Skipping device: [" << device << "]";
       }
     }
+    LOG_FIRST_N(INFO, 1) << "Found:\n\t" << num_gpus << " GPUs\n\t" << num_tpus
+                         << " TPUS"
+                         << "\nin total";
     return new AcceleratorDevices{num_gpus, num_tpus};
   }();
   return *accelerator_devices;
