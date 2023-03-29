@@ -359,8 +359,8 @@ async def train_federated_model(
   # available or the initialized state.
   if program_state is not None:
     logging.info('Loaded program state at version %d', version)
-    state = program_state.state
-    start_round = program_state.round_num + 1
+    state = program_state.state  # pytype: disable=attribute-error  # numpy-scalars
+    start_round = program_state.round_num + 1  # pytype: disable=attribute-error  # numpy-scalars
   else:
     logging.info('Initialized state')
     state = initial_state
