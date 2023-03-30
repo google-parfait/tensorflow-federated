@@ -13,7 +13,8 @@
 # limitations under the License.
 """A package of primitive (stateless) aggregations."""
 
-import attr
+from typing import Any, NamedTuple
+
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -152,8 +153,7 @@ def federated_max(value):
   return _federated_reduce_with_func(value, tf.maximum, zeros)
 
 
-@attr.s
-class _Samples:
+class _Samples(NamedTuple):
   """Class representing internal sample data structure.
 
   The class contains two parts, `accumulators` and `rands`, that are parallel
@@ -162,8 +162,8 @@ class _Samples:
   probability.
   """
 
-  accumulators = attr.ib()
-  rands = attr.ib()
+  accumulators: Any
+  rands: Any
 
 
 def _zeros_for_sample(member_type):
