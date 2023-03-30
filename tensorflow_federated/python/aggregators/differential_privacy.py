@@ -15,11 +15,12 @@
 
 import collections
 from collections.abc import Collection
+import re
 import typing
 from typing import Any, NamedTuple, Optional
 import warnings
-from absl import logging
 
+from absl import logging
 import dp_accounting
 import tensorflow as tf
 import tensorflow_privacy as tfp
@@ -44,7 +45,7 @@ class ExtractingDpEventFromInitialStateError(ValueError):
 class DPAggregatorState(NamedTuple):
   query_state: Any
   agg_state: Any
-  dp_event: dp_accounting.DpEvent
+  dp_event: Any
   is_init_state: Any
 
 
@@ -105,6 +106,94 @@ def adaptive_clip_noise_params(
     value_noise_multiplier = 0.0
 
   return value_noise_multiplier, clipped_count_stddev
+
+
+@tensorflow_computation.tf_computation
+def _dp_event_to_str(event: dp_accounting.DpEvent) -> str:
+  return repr(event)
+
+
+def _split_args(arg_str: str) -> list[str]:
+  """Takes a method-call-like string and returns substrings of the args.
+
+  In particular, given a string containing nested parentheses, this method
+  extracts the substring contained in the outermost pair of parentheses, and
+  then splits the remainder of the string by commas not contained in
+  parentheses.
+
+  For example, on input 'a(b, c, (d, e))', this method will return the list
+  ['b', 'c', '(d, e)'].
+
+  Args:
+    arg_str: The string to split.
+
+  Returns:
+    A list of substrings corresponding to arguments.
+  """
+  return re.split(
+      r',\s*(?![^()]*\))', arg_str[arg_str.index('(') + 1 : arg_str.rindex(')')]
+  )
+
+
+def _str_to_dp_event(event_str: str) -> dp_accounting.DpEvent:
+  """Turns a string created using dp_event_to_str into a DpEvent.
+
+  Args:
+    event_str: A string created using dp_event_to_str.
+
+  Returns:
+    The original DpEvent used to generate the string.
+  """
+  if event_str == 'NoOpDpEvent()':
+    return dp_accounting.NoOpDpEvent()
+  elif event_str == 'NonPrivateDpEvent()':
+    return dp_accounting.NonPrivateDpEvent()
+  elif event_str == 'UnsupportedDpEvent()':
+    return dp_accounting.UnsupportedDpEvent()
+  elif event_str.startswith('GaussianDpEvent'):
+    args = _split_args(event_str)
+    return dp_accounting.GaussianDpEvent(float(args[0]))
+  elif event_str.startswith('LaplaceDpEvent'):
+    args = _split_args(event_str)
+    return dp_accounting.LaplaceDpEvent(float(args[0]))
+  elif event_str.startswith('SelfComposedDpEvent'):
+    args = _split_args(event_str)
+    return dp_accounting.SelfComposedDpEvent(
+        _str_to_dp_event(args[0]), int(args[1])
+    )
+  elif event_str.startswith('ComposedDpEvent'):
+    args = _split_args(event_str)
+    return dp_accounting.ComposedDpEvent(
+        [_str_to_dp_event(arg) for arg in args]
+    )
+  elif event_str.startswith('PoissonSampledDpEvent'):
+    args = _split_args(event_str)
+    return dp_accounting.PoissonSampledDpEvent(
+        float(args[0]), _str_to_dp_event(args[1])
+    )
+  elif event_str.startswith('SampledWithReplacementDpEvent'):
+    args = _split_args(event_str)
+    return dp_accounting.SampledWithReplacementDpEvent(
+        int(args[0]), int(args[1]), _str_to_dp_event(args[2])
+    )
+  elif event_str.startswith('SampledWithoutReplacementDpEvent'):
+    args = _split_args(event_str)
+    return dp_accounting.SampledWithoutReplacementDpEvent(
+        int(args[0]), int(args[1]), _str_to_dp_event(args[2])
+    )
+  elif event_str.startswith('SingleEpochTreeAggregationDpEvent'):
+    args = _split_args(event_str)
+    if args[1].startswith('('):
+      counts = [int(arg) for arg in _split_args(args[1])]
+      return dp_accounting.SingleEpochTreeAggregationDpEvent(
+          float(args[0]), counts
+      )
+    else:
+      return dp_accounting.SingleEpochTreeAggregationDpEvent(
+          float(args[0]), int(args[1])
+      )
+  else:
+    raise ValueError('Unrecognized input string.')
 
 
 class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
@@ -406,6 +495,7 @@ class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
       _, _, dp_event = intrinsics.federated_map(
           get_noised_result, (query_sample_state, query_initial_state)
       )
+      dp_event = intrinsics.federated_map(_dp_event_to_str, (dp_event))
       is_init_state = intrinsics.federated_value(True, placements.SERVER)
       init_state = DPAggregatorState(
           query_initial_state,
@@ -432,11 +522,10 @@ class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
       result, new_query_state, dp_event = intrinsics.federated_map(
           get_noised_result, (record_agg_output.result, query_state)
       )
-
+      dp_event = intrinsics.federated_map(_dp_event_to_str, (dp_event))
       is_init_state = intrinsics.federated_value(False, placements.SERVER)
 
       query_metrics = intrinsics.federated_map(derive_metrics, new_query_state)
-
       new_state = DPAggregatorState(
           new_query_state,
           record_agg_output.state,
@@ -487,7 +576,7 @@ def extract_dp_event_from_state(
         'is a placeholder. extract_dp_event_from_state only accepts states '
         'from calls to process.next().'
     )
-  return state.dp_event
+  return _str_to_dp_event(state.dp_event)
 
 
 def _check_float_positive(value, label):
