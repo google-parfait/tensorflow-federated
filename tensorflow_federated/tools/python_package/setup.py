@@ -63,6 +63,7 @@ REQUIRED_PACKAGES = [
     'dm-tree==0.1.7',
     'dp-accounting==0.3.0',
     'farmhashpy==0.4.0',
+    'google-vizier==0.1.4',
     'grpcio~=1.46',
     'jaxlib==0.3.15',
     'jax==0.3.15',

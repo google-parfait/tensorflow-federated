@@ -1,4 +1,4 @@
-# Copyright 2022, The TensorFlow Federated Authors.
+# Copyright 2023, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,8 +11,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Package of methods for compositional federated program logic."""
+"""Utilities for interacting with the Vizier service."""
 
-from tensorflow_federated.python.learning.programs.evaluation_program_logic import EvaluationManager
-from tensorflow_federated.python.learning.programs.training_program_logic import train_model
-from tensorflow_federated.python.learning.programs.vizier_program_logic import train_model_with_vizier
+from vizier.service import clients
+from vizier.service import pyvizier
+
+
+def create_vizier_study(
+    problem: pyvizier.ProblemStatement, name: str, owner: str
+) -> clients.Study:
+  """Creates a Vizier Study for the problem."""
+  study_config = pyvizier.StudyConfig().from_problem(problem)
+  return clients.Study.from_config(
+      config=study_config, owner=owner, study_id=name
+  )
