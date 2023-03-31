@@ -205,3 +205,18 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:computation_types",
     ],
 )
+
+py_library(
+    name = "subsample_process",
+    srcs = ["subsample_process.py"],
+    deps = [":iblt_factory"],
+)
+
+py_test(
+    name = "subsample_process_test",
+    srcs = ["subsample_process_test.py"],
+    deps = [
+        ":iblt_factory",
+        ":subsample_process",
+    ],
+)
