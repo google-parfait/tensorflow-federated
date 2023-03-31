@@ -40,15 +40,11 @@ from tensorflow_federated.python.core.impl.execution_contexts.async_execution_co
 from tensorflow_federated.python.core.impl.execution_contexts.mergeable_comp_execution_context import MergeableCompExecutionContext
 from tensorflow_federated.python.core.impl.execution_contexts.mergeable_comp_execution_context import MergeableCompForm
 from tensorflow_federated.python.core.impl.execution_contexts.sync_execution_context import SyncExecutionContext
-from tensorflow_federated.python.core.impl.executor_stacks.python_executor_stacks import local_executor_factory
 from tensorflow_federated.python.core.impl.executors.cardinalities_utils import merge_cardinalities
 from tensorflow_federated.python.core.impl.executors.cardinality_carrying_base import CardinalityCarrying
-from tensorflow_federated.python.core.impl.executors.data_backend_base import DataBackend
 from tensorflow_federated.python.core.impl.executors.data_descriptor import CardinalityFreeDataDescriptor
 from tensorflow_federated.python.core.impl.executors.data_descriptor import CreateDataDescriptor
 from tensorflow_federated.python.core.impl.executors.data_descriptor import DataDescriptor
-from tensorflow_federated.python.core.impl.executors.data_executor import DataExecutor
-from tensorflow_federated.python.core.impl.executors.eager_tf_executor import EagerTFExecutor
 from tensorflow_federated.python.core.impl.executors.executor_factory import CardinalitiesType
 from tensorflow_federated.python.core.impl.executors.executor_factory import ExecutorFactory
 from tensorflow_federated.python.core.impl.executors.executors_errors import RetryableError
