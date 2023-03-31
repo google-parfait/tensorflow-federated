@@ -18,7 +18,6 @@ import asyncio
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
-from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import serialization_utils
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.compiler import computation_factory
@@ -27,58 +26,15 @@ from tensorflow_federated.python.core.impl.compiler import tensorflow_computatio
 from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.executors import cardinalities_utils
-from tensorflow_federated.python.core.impl.executors import eager_tf_executor
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_factory
-from tensorflow_federated.python.core.impl.executors import executor_value_base
-from tensorflow_federated.python.core.impl.executors import federated_resolving_strategy
-from tensorflow_federated.python.core.impl.executors import federating_executor
 from tensorflow_federated.python.core.impl.executors import ingestable_base
-from tensorflow_federated.python.core.impl.executors import reference_resolving_executor
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.types import type_factory
 from tensorflow_federated.python.core.impl.types import type_serialization
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
-
-
-class LocalTestExecutorFactory(executor_factory.ExecutorFactory):
-  """Minimal implementation of a full local executor factory."""
-
-  def __init__(
-      self,
-      default_num_clients: int = 0,
-      leaf_executor_fn=eager_tf_executor.EagerTFExecutor,
-  ):
-    self._default_num_clients = default_num_clients
-    self._leaf_executor_fn = leaf_executor_fn
-
-  def create_executor(self, cardinalities):
-    device = tf.config.list_logical_devices(device_type='CPU')[0]
-    num_requested_clients = cardinalities.get(placements.CLIENTS)
-    if num_requested_clients is None:
-      num_clients = self._default_num_clients
-    else:
-      num_clients = num_requested_clients
-    client_stacks = [
-        self._leaf_executor_fn(device=device) for _ in range(num_clients)
-    ]
-
-    federating_strategy_factory = federated_resolving_strategy.FederatedResolvingStrategy.factory(
-        {
-            placements.CLIENTS: client_stacks,
-            placements.SERVER: self._leaf_executor_fn(device=device),
-        },
-        local_computation_factory=tensorflow_computation_factory.TensorFlowComputationFactory(),
-    )
-    executor = federating_executor.FederatingExecutor(
-        federating_strategy_factory, self._leaf_executor_fn(device=device)
-    )
-    return reference_resolving_executor.ReferenceResolvingExecutor(executor)
-
-  def clean_up_executor(self, cardinalities):
-    pass
 
 
 class BasicTestExFactory(executor_factory.ExecutorFactory):
@@ -150,126 +106,6 @@ class TestExecutionContext(context_base.SyncContext):
 def install_executor(executor_factory_instance):
   context = TestExecutionContext(executor_factory_instance)
   return context_stack_impl.context_stack.install(context)
-
-
-class TracingExecutor(executor_base.Executor):
-  """Tracing executor keeps a log of all calls for use in testing."""
-
-  def __init__(self, target):
-    """Creates a new instance of a tracing executor.
-
-    The tracing executor keeps the trace of all calls. Entries in the trace
-    consist of the method name followed by arguments and the returned result,
-    with the executor values represented as integer indexes starting from 1.
-
-    Args:
-      target: An instance of `executor_base.Executor`.
-    """
-    py_typecheck.check_type(target, executor_base.Executor)
-    self._target = target
-    self._last_used_index = 0
-    self._trace = []
-
-  @property
-  def trace(self):
-    return self._trace
-
-  def _get_new_value_index(self):
-    val_index = self._last_used_index + 1
-    self._last_used_index = val_index
-    return val_index
-
-  async def create_value(self, value, type_spec=None):
-    target_val = await self._target.create_value(value, type_spec)
-    wrapped_val = TracingExecutorValue(
-        self, self._get_new_value_index(), target_val
-    )
-    if type_spec is not None:
-      self._trace.append(('create_value', value, type_spec, wrapped_val.index))
-    else:
-      self._trace.append(('create_value', value, wrapped_val.index))
-    return wrapped_val
-
-  async def create_call(self, comp, arg=None):
-    if arg is not None:
-      target_val = await self._target.create_call(comp.reference, arg.reference)
-      wrapped_val = TracingExecutorValue(
-          self, self._get_new_value_index(), target_val
-      )
-      self._trace.append(
-          ('create_call', comp.index, arg.index, wrapped_val.index)
-      )
-      return wrapped_val
-    else:
-      target_val = await self._target.create_call(comp.reference)
-      wrapped_val = TracingExecutorValue(
-          self, self._get_new_value_index(), target_val
-      )
-      self._trace.append(('create_call', comp.index, wrapped_val.index))
-      return wrapped_val
-
-  async def create_struct(self, elements):
-    target_val = await self._target.create_struct(
-        structure.map_structure(lambda x: x.reference, elements)
-    )
-    wrapped_val = TracingExecutorValue(
-        self, self._get_new_value_index(), target_val
-    )
-    self._trace.append((
-        'create_struct',
-        structure.map_structure(lambda x: x.index, elements),
-        wrapped_val.index,
-    ))
-    return wrapped_val
-
-  def close(self):
-    self._target.close()
-
-  async def create_selection(self, source, index):
-    target_val = await self._target.create_selection(source.reference, index)
-    wrapped_val = TracingExecutorValue(
-        self, self._get_new_value_index(), target_val
-    )
-    self._trace.append(
-        ('create_selection', source.index, index, wrapped_val.index)
-    )
-    return wrapped_val
-
-
-class TracingExecutorValue(executor_value_base.ExecutorValue):
-  """A value managed by `TracingExecutor`."""
-
-  def __init__(self, owner, index, value):
-    """Creates an instance of a value in the tracing executor.
-
-    Args:
-      owner: An instance of `TracingExecutor`.
-      index: An integer identifying the value.
-      value: An embedded value from the target executor.
-    """
-    py_typecheck.check_type(owner, TracingExecutor)
-    py_typecheck.check_type(index, int)
-    py_typecheck.check_type(value, executor_value_base.ExecutorValue)
-    self._owner = owner
-    self._index = index
-    self._value = value
-
-  @property
-  def index(self):
-    return self._index
-
-  @property
-  def reference(self):
-    return self._value
-
-  @property
-  def type_signature(self):
-    return self._value.type_signature
-
-  async def compute(self):
-    result = await self._value.compute()
-    self._owner.trace.append(('compute', self._index, result))
-    return result
 
 
 def create_whimsy_intrinsic_def_federated_aggregate():  # pylint: disable=missing-function-docstring
@@ -728,20 +564,3 @@ def create_whimsy_value_unplaced():
 
 def _return_assertion_error():
   return AssertionError
-
-
-class RaisingExecutor(eager_tf_executor.EagerTFExecutor):
-  """An executor which can be configured to raise on `create_value`."""
-
-  def __init__(self, error_fn=_return_assertion_error):
-    self._should_raise = True
-    self._error_fn = error_fn
-    super().__init__()
-
-  def stop_raising(self):
-    self._should_raise = False
-
-  async def create_value(self, *args, **kwargs):
-    if self._should_raise:
-      raise self._error_fn()
-    return await super().create_value(*args, **kwargs)

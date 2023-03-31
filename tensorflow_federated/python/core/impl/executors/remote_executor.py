@@ -21,7 +21,6 @@ from absl import logging
 import grpc
 
 from tensorflow_federated.proto.v0 import executor_pb2
-from tensorflow_federated.python.common_libs import deprecation
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.common_libs import tracing
@@ -36,11 +35,6 @@ from tensorflow_federated.python.core.impl.types import placements
 _STREAM_CLOSE_WAIT_SECONDS = 10
 
 
-# TODO(b/240972950): Remove deprecated API.
-@deprecation.deprecated(
-    'The Python executors and execution stacks are deprecated, use the C++ '
-    'executors instead.'
-)
 class RemoteValue(executor_value_base.ExecutorValue):
   """A reference to a value embedded in a remotely deployed executor service."""
 
@@ -91,11 +85,6 @@ class RemoteValue(executor_value_base.ExecutorValue):
     return await self._executor._compute(self._value_ref, self._type_signature)  # pylint: disable=protected-access
 
 
-# TODO(b/240972950): Remove deprecated API.
-@deprecation.deprecated(
-    'The Python executors and execution stacks are deprecated, use the C++ '
-    'executors instead.'
-)
 class RemoteExecutor(executor_base.Executor):
   """The remote executor is a local proxy for a remote executor instance."""
 

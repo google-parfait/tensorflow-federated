@@ -13,98 +13,20 @@
 # limitations under the License.
 
 import asyncio
-import collections
-import contextlib
 from unittest import mock
 
 from absl.testing import absltest
 from absl.testing import parameterized
 import grpc
-from grpc.framework.foundation import logging_pool
-import portpicker
 import tensorflow as tf
 
 from google.protobuf import any_pb2
 from tensorflow_federated.proto.v0 import executor_pb2
-from tensorflow_federated.proto.v0 import executor_pb2_grpc
 from tensorflow_federated.python.common_libs import structure
-from tensorflow_federated.python.core.impl.executors import executor_service
-from tensorflow_federated.python.core.impl.executors import executor_test_utils
-from tensorflow_federated.python.core.impl.executors import reference_resolving_executor
 from tensorflow_federated.python.core.impl.executors import remote_executor
-from tensorflow_federated.python.core.impl.executors import remote_executor_grpc_stub
 from tensorflow_federated.python.core.impl.executors import remote_executor_stub
-from tensorflow_federated.python.core.impl.federated_context import federated_computation
-from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
-
-
-@contextlib.contextmanager
-def test_context(stream_structs: bool = False):
-  port = portpicker.pick_unused_port()
-  server_pool = logging_pool.pool(max_workers=1)
-  server = grpc.server(server_pool)
-  server.add_insecure_port('[::]:{}'.format(port))
-  target_factory = executor_test_utils.LocalTestExecutorFactory(
-      default_num_clients=3
-  )
-  tracers = []
-
-  def _tracer_fn(cardinalities):
-    tracer = executor_test_utils.TracingExecutor(
-        target_factory.create_executor(cardinalities)
-    )
-    tracers.append(tracer)
-    return tracer
-
-  service = executor_service.ExecutorService(
-      executor_test_utils.BasicTestExFactory(_tracer_fn)
-  )
-  executor_pb2_grpc.add_ExecutorGroupServicer_to_server(service, server)
-  server.start()
-
-  channel = grpc.insecure_channel('localhost:{}'.format(port))
-
-  stub = remote_executor_grpc_stub.RemoteExecutorGrpcStub(channel)
-  remote_exec = remote_executor.RemoteExecutor(
-      stub, stream_structs=stream_structs
-  )
-  remote_exec.set_cardinalities({placements.CLIENTS: 3})
-  executor = reference_resolving_executor.ReferenceResolvingExecutor(
-      remote_exec
-  )
-  try:
-    yield collections.namedtuple('_', 'executor tracers')(executor, tracers)
-  finally:
-    executor.close()
-    for tracer in tracers:
-      tracer.close()
-    try:
-      channel.close()
-    except AttributeError:
-      pass  # Public gRPC channel doesn't support close()
-    finally:
-      server.stop(None)
-
-
-def _invoke(ex, comp, arg=None):
-  v1 = asyncio.run(ex.create_value(comp))
-  if arg is not None:
-    type_spec = v1.type_signature.parameter
-    v2 = asyncio.run(ex.create_value(arg, type_spec))
-  else:
-    v2 = None
-  v3 = asyncio.run(ex.create_call(v1, v2))
-  return asyncio.run(v3.compute())
-
-
-def _raise_grpc_error_unavailable(*args):
-  del args  # Unused
-  error = grpc.RpcError()
-  error.code = lambda: grpc.StatusCode.UNAVAILABLE
-  raise error
 
 
 def _raise_non_retryable_grpc_error(*args):
@@ -561,136 +483,6 @@ class RemoteExecutorTest(parameterized.TestCase):
 
     with self.assertRaises(TypeError):
       asyncio.run(executor.create_selection(source, 0))
-
-
-class RemoteExecutorIntegrationTest(parameterized.TestCase):
-
-  @parameterized.named_parameters(
-      ('false', False),
-      ('true', True),
-  )
-  def test_no_arg_tf_computation_with_stream_structs(self, stream_structs):
-    with test_context(stream_structs) as context:
-
-      @tensorflow_computation.tf_computation
-      def comp():
-        return 10
-
-      result = _invoke(context.executor, comp)
-      self.assertEqual(result, 10)
-
-  @parameterized.named_parameters(
-      ('false', False),
-      ('true', True),
-  )
-  def test_one_arg_tf_computation_with_stream_structs(self, stream_structs):
-    with test_context(stream_structs) as context:
-
-      @tensorflow_computation.tf_computation(tf.int32)
-      def comp(x):
-        return x + 1
-
-      result = _invoke(context.executor, comp, 10)
-      self.assertEqual(result, 11)
-
-  @parameterized.named_parameters(
-      ('false', False),
-      ('true', True),
-  )
-  def test_two_arg_tf_computation_with_stream_structs(self, stream_structs):
-    with test_context(stream_structs) as context:
-
-      @tensorflow_computation.tf_computation(tf.int32, tf.int32)
-      def comp(x, y):
-        return x + y
-
-      result = _invoke(context.executor, comp, (10, 20))
-      self.assertEqual(result, 30)
-
-  @parameterized.named_parameters(
-      ('false', False),
-      ('true', True),
-  )
-  def test_with_selection_with_stream_structs(self, stream_structs):
-    with test_context(stream_structs) as context:
-      self._test_with_selection(context)
-
-  def _test_with_selection(self, context):
-    @tensorflow_computation.tf_computation(tf.int32)
-    def foo(x):
-      return collections.OrderedDict([('A', x + 10), ('B', x + 20)])
-
-    @tensorflow_computation.tf_computation(tf.int32, tf.int32)
-    def bar(x, y):
-      return x + y
-
-    @federated_computation.federated_computation(tf.int32)
-    def baz(x):
-      return bar(foo(x).A, foo(x).B)
-
-    result = _invoke(context.executor, baz, 100)
-    self.assertEqual(result, 230)
-
-    # Make sure exactly two selections happened.
-    seletions = [
-        x for x in context.tracers[0].trace if x[0] == 'create_selection'
-    ]
-    self.assertLen(seletions, 2)
-
-  @parameterized.named_parameters(
-      ('false', False),
-      ('true', True),
-  )
-  def test_execution_of_tensorflow_with_stream_structs(self, stream_structs):
-    @tensorflow_computation.tf_computation
-    def comp():
-      return tf.math.add(5, 5)
-
-    with test_context(stream_structs) as context:
-      result = _invoke(context.executor, comp)
-
-    self.assertEqual(result, 10)
-
-  @parameterized.named_parameters(
-      ('false', False),
-      ('true', True),
-  )
-  def test_with_federated_computations_with_stream_structs(
-      self, stream_structs
-  ):
-    with test_context(stream_structs) as context:
-
-      @federated_computation.federated_computation(
-          computation_types.FederatedType(tf.int32, placements.CLIENTS)
-      )
-      def foo(x):
-        return intrinsics.federated_sum(x)
-
-      result = _invoke(context.executor, foo, [10, 20, 30])
-      self.assertEqual(result, 60)
-
-      @federated_computation.federated_computation(
-          computation_types.FederatedType(tf.int32, placements.SERVER)
-      )
-      def bar(x):
-        return intrinsics.federated_broadcast(x)
-
-      result = _invoke(context.executor, bar, 50)
-      self.assertEqual(result, 50)
-
-      @tensorflow_computation.tf_computation(tf.int32)
-      def add_one(x):
-        return x + 1
-
-      @federated_computation.federated_computation(
-          computation_types.FederatedType(tf.int32, placements.SERVER)
-      )
-      def baz(x):
-        value = intrinsics.federated_broadcast(x)
-        return intrinsics.federated_map(add_one, value)
-
-      result = _invoke(context.executor, baz, 50)
-      self.assertEqual(result, [51, 51, 51])
 
 
 if __name__ == '__main__':

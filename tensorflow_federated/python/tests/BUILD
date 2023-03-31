@@ -62,6 +62,14 @@ py_test(
 )
 
 py_test(
+    name = "mergeable_comp_execution_context_integration_test",
+    size = "small",
+    timeout = "long",
+    srcs = ["mergeable_comp_execution_context_integration_test.py"],
+    deps = ["//tensorflow_federated"],
+)
+
+py_test(
     name = "simulation_test",
     size = "medium",
     timeout = "long",

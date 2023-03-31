@@ -1,4 +1,3 @@
-load("//tensorflow_federated/tools:build_defs.bzl", "py_cpu_gpu_test")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package(
@@ -104,28 +103,13 @@ py_library(
     srcs = ["python_executor_stacks.py"],
     srcs_version = "PY3",
     deps = [
-        "//tensorflow_federated/python/common_libs:deprecation",
         "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/core/impl/compiler:local_computation_factory_base",
-        "//tensorflow_federated/python/core/impl/compiler:tensorflow_computation_factory",
-        "//tensorflow_federated/python/core/impl/executors:eager_tf_executor",
         "//tensorflow_federated/python/core/impl/executors:executor_base",
         "//tensorflow_federated/python/core/impl/executors:executor_factory",
-        "//tensorflow_federated/python/core/impl/executors:executors_errors",
-        "//tensorflow_federated/python/core/impl/executors:federated_composing_strategy",
-        "//tensorflow_federated/python/core/impl/executors:federated_resolving_strategy",
-        "//tensorflow_federated/python/core/impl/executors:federating_executor",
-        "//tensorflow_federated/python/core/impl/executors:reference_resolving_executor",
-        "//tensorflow_federated/python/core/impl/executors:remote_executor",
-        "//tensorflow_federated/python/core/impl/executors:remote_executor_grpc_stub",
-        "//tensorflow_federated/python/core/impl/executors:remote_executor_stub",
-        "//tensorflow_federated/python/core/impl/executors:sequence_executor",
-        "//tensorflow_federated/python/core/impl/executors:thread_delegating_executor",
-        "//tensorflow_federated/python/core/impl/types:placements",
     ],
 )
 
-py_cpu_gpu_test(
+py_test(
     name = "python_executor_stacks_test",
     size = "small",
     srcs = ["python_executor_stacks_test.py"],
@@ -134,37 +118,12 @@ py_cpu_gpu_test(
     srcs_version = "PY3",
     deps = [
         ":python_executor_stacks",
-        "//tensorflow_federated/python/core/impl/executors:eager_tf_executor",
         "//tensorflow_federated/python/core/impl/executors:executor_base",
         "//tensorflow_federated/python/core/impl/executors:executor_factory",
-        "//tensorflow_federated/python/core/impl/executors:executor_test_utils",
-        "//tensorflow_federated/python/core/impl/executors:federated_composing_strategy",
-        "//tensorflow_federated/python/core/impl/executors:federating_executor",
-        "//tensorflow_federated/python/core/impl/executors:remote_executor",
-        "//tensorflow_federated/python/core/impl/executors:remote_executor_grpc_stub",
         "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
         "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
-        "//tensorflow_federated/python/tensorflow_libs:tensorflow_test_utils",
-    ],
-)
-
-py_test(
-    name = "python_executor_stacks_multi_gpu_test",
-    srcs = ["python_executor_stacks_multi_gpu_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    tags = ["requires-gpu-nvidia"],
-    deps = [
-        ":python_executor_stacks",
-        "//tensorflow_federated/python/core/impl/executors:executor_base",
-        "//tensorflow_federated/python/core/impl/executors:executor_test_utils",
-        "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
-        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
-        "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/tensorflow_libs:tensorflow_test_utils",
     ],
 )
