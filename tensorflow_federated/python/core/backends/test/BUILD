@@ -13,6 +13,7 @@ package(
 
         # TODO(b/233801300): Remove dependency from `mapreduce` to `test`.
         "//tensorflow_federated/python/core/backends/mapreduce:mapreduce_packages",
+        "//tensorflow_federated/python/core/backends/native:native_packages",
     ],
 )
 
