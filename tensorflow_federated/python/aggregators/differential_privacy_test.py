@@ -403,6 +403,33 @@ class DPFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
           noise_seed=1,
       )
 
+  def test_tree_adaptive_factory_estimate_clip(self):
+    factory_ = differential_privacy.DifferentiallyPrivateFactory.tree_adaptive(
+        noise_multiplier=0.0,
+        clients_per_round=3,
+        record_specs=tf.TensorSpec([]),
+        initial_l2_norm_clip=1.0,
+        restart_warmup=None,
+        restart_frequency=1,
+        target_unclipped_quantile=1.0,
+        clip_learning_rate=1.0,
+        clipped_count_stddev=0.0,
+        noise_seed=1,
+    )
+    process = factory_.create(computation_types.to_type(tf.float32))
+
+    state = process.initialize()
+
+    client_data = [0.5, 1.5, 2.5]  # Two clipped on first round.
+    expected_result = (0.5 + 1.0 + 1.0) / 3.0
+    output = process.next(state, client_data)
+    self.assertAllClose(expected_result, output.result)
+
+    # Clip is increased to np.exp(2./3)~1.95.
+    expected_result = (0.5 + 1.5 + np.exp(2.0 / 3)) / 3.0
+    output = process.next(output.state, client_data)
+    self.assertAllClose(expected_result, output.result)
+
 
 if __name__ == '__main__':
   execution_contexts.set_sync_local_cpp_execution_context()

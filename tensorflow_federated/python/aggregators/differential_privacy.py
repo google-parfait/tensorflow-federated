@@ -321,6 +321,113 @@ class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
         mean_query, record_aggregation_factory=record_aggregation_factory
     )
 
+  @classmethod
+  def tree_adaptive(
+      cls,
+      noise_multiplier: float,
+      clients_per_round: float,
+      record_specs: Collection[tf.TensorSpec],
+      initial_l2_norm_clip: float = 0.1,
+      restart_warmup: int = 128,
+      restart_frequency: int = 1024,
+      target_unclipped_quantile: float = 0.5,
+      clip_learning_rate: float = 0.2,
+      clipped_count_stddev: Optional[float] = None,
+      noise_seed: Optional[int] = None,
+  ) -> factory.UnweightedAggregationFactory:
+    """`DifferentiallyPrivateFactory` with adaptive clipping and tree aggregation.
+
+    Performs clipping on client, averages clients records, and adds noise for
+    differential privacy. The noise is estimated based on tree aggregation for
+    the cumulative summation over rounds, and then take the residual between the
+    current round and the previous round. Combining this aggregator with a SGD
+    optimizer on server can be used to implement the DP-FTRL algorithm in
+    "Practical and Private (Deep) Learning without Sampling or Shuffling"
+    (https://arxiv.org/abs/2103.00039).
+
+    The standard deviation of the Gaussian noise added at each tree node is
+    `l2_norm_clip * noise_multiplier`. Note that noise is added during summation
+    of client model updates per round, *before* normalization (the noise will be
+    scaled down when dividing by `clients_per_round`). Thus `noise_multiplier`
+    can be used to compute the (epsilon, delta) privacy guarantee as described
+    in the paper.
+
+    The `l2_norm_clip` is estimated and periodically reset for tree aggregation
+    based on "Differentially Private Learning with Adaptive Clipping"
+    (https://arxiv.org/abs/1905.03871).
+
+    Args:
+      noise_multiplier: Noise multiplier for the Gaussian noise in tree
+        aggregation. Must be non-negative, zero means no noise is applied.
+      clients_per_round: A positive number specifying the expected number of
+        clients per round.
+      record_specs: The specs of client results to be aggregated.
+      initial_l2_norm_clip: The value of the initial clipping norm. Must be
+        positive.
+      restart_warmup: Restart the tree and adopt the estimated clip norm at the
+        end of `restart_warmup` times of calling `next`.
+      restart_frequency: Restart the tree and adopt the estimated clip norm
+        every `restart_frequency` times of calling `next`.
+      target_unclipped_quantile: The desired quantile of updates which should be
+        unclipped.
+      clip_learning_rate: The learning rate for the clipping norm adaptation.
+        With geometric updating, a rate of r means that the clipping norm will
+        change by a maximum factor of exp(r) at each round.
+      clipped_count_stddev: The stddev of the noise added to the clipped_count.
+        If `None`, set to `clients_per_round / 20`.
+      noise_seed: Random seed for the Gaussian noise generator. If `None`, a
+        nondeterministic seed based on system time will be generated when
+        `initialize`.
+
+    Returns:
+      A `DifferentiallyPrivateFactory` with Gaussian noise by tree aggregation.
+    """
+    if isinstance(clients_per_round, int):
+      clients_per_round = float(clients_per_round)
+
+    _check_float_nonnegative(noise_multiplier, 'noise_multiplier')
+    _check_float_positive(clients_per_round, 'clients_per_round')
+    _check_float_positive(initial_l2_norm_clip, 'initial_l2_norm_clip')
+    _check_float_nonnegative(clip_learning_rate, 'clip_learning_rate')
+    _check_float_probability(
+        target_unclipped_quantile, 'target_unclipped_quantile'
+    )
+    if clipped_count_stddev is None:
+      clipped_count_stddev = clients_per_round / 20.0
+    else:
+      _check_float_nonnegative(clipped_count_stddev, 'clipped_count_stddev')
+
+    value_noise_multiplier, clipped_count_stddev = adaptive_clip_noise_params(
+        noise_multiplier, clients_per_round, clipped_count_stddev
+    )
+    logging.info(
+        (
+            'Adaptive clipping, value noise multiplier: %s -> %s,'
+            'clipped_count_stddev: %s.'
+        ),
+        noise_multiplier,
+        value_noise_multiplier,
+        clipped_count_stddev,
+    )
+
+    sum_query = tfp.QAdaClipTreeResSumQuery(
+        initial_l2_norm_clip,
+        value_noise_multiplier,
+        record_specs,
+        target_unclipped_quantile,
+        clip_learning_rate,
+        clipped_count_stddev,
+        clients_per_round,
+        geometric_update=True,
+        noise_seed=noise_seed,
+    )
+    restart_indicator = tfp.restart_query.PeriodicRoundRestartIndicator(
+        period=restart_frequency, warmup=restart_warmup
+    )
+    sum_query = tfp.RestartQuery(sum_query, restart_indicator)
+    mean_query = tfp.NormalizedQuery(sum_query, denominator=clients_per_round)
+    return cls(mean_query)
+
   def __init__(
       self,
       query: tfp.DPQuery,
