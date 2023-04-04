@@ -1,3 +1,29 @@
+# Release 0.54.0
+
+## Major Features and Improvements
+
+*   Added attributes to `tff.learning.programs.EvaluationManager`, this enables
+    constructing new `EvaluationManager`s from existing ones.
+*   Added Subsample Process abstract class and the implementation of Threshold
+    Sampling Process Remove introducing dependency on relayout op for control
+    edges.
+*   Replaced usage of `attrs` in `tff.aggregators` with `typing.NamedTuple`.
+*   Removed introducing dependency on relayout op for control edges.
+
+## Breaking Changes
+
+*   Removed `run_server` and `server_context` from the `tff.simulation` API.
+*   Removed the following symbols from the `tff.framework` API:
+    *   `tff.framework.local_executor_factory`
+    *   `tff.framework.DataBackend`
+    *   `tff.framework.DataExecutor`
+    *   `tff.framework.EagerTFExecutor`
+
+## Bug Fixes
+
+*   Removed use of deprecated tff.learning symbols, and clear cell image
+    outputs.
+
 # Release 0.53.0
 
 ## Major Features and Improvements
