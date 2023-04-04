@@ -33,6 +33,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/execution_contexts:async_execution_context",
         "//tensorflow_federated/python/core/impl/execution_contexts:mergeable_comp_execution_context",
         "//tensorflow_federated/python/core/impl/execution_contexts:sync_execution_context",
+        "//tensorflow_federated/python/core/impl/executor_stacks:executor_factory",
         "//tensorflow_federated/python/core/impl/executors:cardinalities_utils",
         "//tensorflow_federated/python/core/impl/executors:cardinality_carrying_base",
         "//tensorflow_federated/python/core/impl/executors:data_descriptor",
