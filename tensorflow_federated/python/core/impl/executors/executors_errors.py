@@ -69,7 +69,3 @@ def is_absl_status_retryable_error(error: Exception) -> TypeGuard[int]:
     return error.status.code_int() in get_absl_status_retryable_error_codes()
   else:
     return False
-
-
-class CardinalityError(Exception):
-  """Raised when a value in a stack does not match the stack's cardinality."""

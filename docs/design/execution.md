@@ -25,10 +25,8 @@ An external runtime is any system that the TFF runtime delegates execution to.
 
 [TensorFlow](https://www.tensorflow.org/) is an open source platform for machine
 learning. Today the TFF runtime delegates mathematical computations to
-TensorFlow using an
-[eager_tf_executor.EagerTFExecutor](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/executors/eager_tf_executor.py)
-that can be composed into a hierarchy, referred to as an
-[execution stack](#execution-stack).
+TensorFlow using an [Executor](#Executor) that can be composed into a hierarchy,
+referred to as an [execution stack](#execution-stack).
 
 ## `Executor`
 
@@ -53,17 +51,3 @@ is to infer the number of clients at execution time.
 An execution stack is a hierarchy of [Executors](#executor). The
 [executor_stacks](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/executor_stacks)
 package contains logic for constructing and composing specific execution stacks.
-
-### Local Execution Stack
-
-The
-[python_executor_stacks.local_executor_factory](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/executor_stacks/python_executor_stacks.py)
-function constructs a local execution stack that executes an
-[AST](compilation.md#ast) on some number of clients.
-
-### Remote Execution Stack
-
-The
-[python_executor_stacks.remote_executor_factory](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/executor_stacks/python_executor_stacks.py)
-function constructs a remote execution stack that executes an
-[AST](compilation.md#ast) on some service.

@@ -67,9 +67,9 @@ def _decompress_file(compressed_path, output_path):
 
 def local_cpp_executor_factory(
     *,
-    default_num_clients: int,
-    max_concurrent_computation_calls: int,
-    stream_structs: bool,
+    default_num_clients: int = 0,
+    max_concurrent_computation_calls: int = -1,
+    stream_structs: bool = False,
 ) -> executor_factory.ExecutorFactory:
   """Returns an execution context backed by C++ runtime.
 

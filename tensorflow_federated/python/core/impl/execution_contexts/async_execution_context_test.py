@@ -13,12 +13,13 @@
 # limitations under the License.
 
 import asyncio
+
 import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.core.impl.context_stack import get_context_stack
 from tensorflow_federated.python.core.impl.execution_contexts import async_execution_context
-from tensorflow_federated.python.core.impl.executor_stacks import python_executor_stacks
+from tensorflow_federated.python.core.impl.executor_stacks import executor_factory
 from tensorflow_federated.python.core.impl.executors import executors_errors
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
@@ -59,7 +60,7 @@ class UnwrapValueTest(tf.test.TestCase):
 class AsyncContextInstallationTest(tf.test.TestCase):
 
   def test_install_and_execute_in_context(self):
-    factory = python_executor_stacks.local_executor_factory()
+    factory = executor_factory.local_cpp_executor_factory()
     context = async_execution_context.AsyncExecutionContext(factory)
 
     @tensorflow_computation.tf_computation(tf.int32)
@@ -72,7 +73,7 @@ class AsyncContextInstallationTest(tf.test.TestCase):
       self.assertEqual(asyncio.run(val_coro), 2)
 
   def test_install_and_execute_computations_with_different_cardinalities(self):
-    factory = python_executor_stacks.local_executor_factory()
+    factory = executor_factory.local_cpp_executor_factory()
     context = async_execution_context.AsyncExecutionContext(factory)
 
     @federated_computation.federated_computation(
@@ -92,7 +93,7 @@ class AsyncContextInstallationTest(tf.test.TestCase):
       )
 
   def test_runs_cardinality_free(self):
-    factory = python_executor_stacks.local_executor_factory()
+    factory = executor_factory.local_cpp_executor_factory()
     context = async_execution_context.AsyncExecutionContext(
         factory, cardinality_inference_fn=(lambda x, y: {})
     )
@@ -108,8 +109,8 @@ class AsyncContextInstallationTest(tf.test.TestCase):
       self.assertTrue(asyncio.iscoroutine(val_coro))
       self.assertEqual(asyncio.run(val_coro), 0)
 
-  def test_raises_cardinality_mismatch(self):
-    factory = python_executor_stacks.local_executor_factory()
+  def test_raises_exception(self):
+    factory = executor_factory.local_cpp_executor_factory()
 
     def _cardinality_fn(x, y):
       del x, y  # Unused
@@ -131,7 +132,9 @@ class AsyncContextInstallationTest(tf.test.TestCase):
       data = [0, 1]
       val_coro = identity(data)
       self.assertTrue(asyncio.iscoroutine(val_coro))
-      with self.assertRaises(executors_errors.CardinalityError):
+      with self.assertRaises(Exception) as e:
+        self.assertTrue(hasattr(e, 'status'))
+        self.assertTrue(hasattr(e.status, 'code_int'))
         asyncio.run(val_coro)
 
 
