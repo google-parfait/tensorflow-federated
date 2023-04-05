@@ -26,7 +26,6 @@ licenses(["notice"])
 py_library(
     name = "test",
     srcs = ["__init__.py"],
-    srcs_version = "PY3",
     visibility = ["//tensorflow_federated/python/core/backends:__pkg__"],
     deps = [
         ":compiler",
@@ -37,7 +36,6 @@ py_library(
 py_library(
     name = "compiler",
     srcs = ["compiler.py"],
-    srcs_version = "PY3",
     deps = [
         "//tensorflow_federated/python/core/impl/compiler:tree_transformations",
         "//tensorflow_federated/python/core/impl/computation:computation_impl",
@@ -47,7 +45,6 @@ py_library(
 py_library(
     name = "cpp_execution_contexts",
     srcs = ["cpp_execution_contexts.py"],
-    srcs_version = "PY3",
     tags = [
         "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
     ],
@@ -65,8 +62,6 @@ py_library(
 py_test(
     name = "cpp_execution_contexts_test",
     srcs = ["cpp_execution_contexts_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     tags = [
         "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
     ],
@@ -84,7 +79,6 @@ py_test(
 py_library(
     name = "execution_contexts",
     srcs = ["execution_contexts.py"],
-    srcs_version = "PY3",
     deps = [
         ":compiler",
         "//tensorflow_federated/python/core/backends/native:compiler",
@@ -98,8 +92,6 @@ py_library(
 py_test(
     name = "execution_contexts_test",
     srcs = ["execution_contexts_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":execution_contexts",
         "//tensorflow_federated/python/core/impl/federated_context:federated_computation",

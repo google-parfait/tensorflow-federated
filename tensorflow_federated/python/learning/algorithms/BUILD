@@ -19,7 +19,6 @@ licenses(["notice"])
 py_library(
     name = "algorithms",
     srcs = ["__init__.py"],
-    srcs_version = "PY3",
     visibility = ["//tensorflow_federated/python/learning:__pkg__"],
     deps = [
         ":fed_avg",
@@ -35,7 +34,6 @@ py_library(
 py_library(
     name = "fed_avg",
     srcs = ["fed_avg.py"],
-    srcs_version = "PY3",
     deps = [
         "//tensorflow_federated/python/aggregators:factory",
         "//tensorflow_federated/python/aggregators:factory_utils",
@@ -62,9 +60,7 @@ py_cpu_gpu_test(
     name = "fed_avg_test",
     timeout = "long",
     srcs = ["fed_avg_test.py"],
-    python_version = "PY3",
     shard_count = 10,
-    srcs_version = "PY3",
     deps = [
         ":fed_avg",
         "//tensorflow_federated/python/aggregators:factory_utils",
@@ -81,7 +77,6 @@ py_cpu_gpu_test(
 py_library(
     name = "fed_avg_with_optimizer_schedule",
     srcs = ["fed_avg_with_optimizer_schedule.py"],
-    srcs_version = "PY3",
     deps = [
         ":fed_avg",
         "//tensorflow_federated/python/aggregators:factory",
@@ -113,9 +108,7 @@ py_cpu_gpu_test(
     name = "fed_avg_with_optimizer_schedule_test",
     timeout = "long",
     srcs = ["fed_avg_with_optimizer_schedule_test.py"],
-    python_version = "PY3",
     shard_count = 10,
-    srcs_version = "PY3",
     deps = [
         ":fed_avg_with_optimizer_schedule",
         "//tensorflow_federated/python/core/test:static_assert",
@@ -130,7 +123,6 @@ py_cpu_gpu_test(
 py_library(
     name = "fed_prox",
     srcs = ["fed_prox.py"],
-    srcs_version = "PY3",
     deps = [
         "//tensorflow_federated/python/aggregators:factory",
         "//tensorflow_federated/python/aggregators:factory_utils",
@@ -157,9 +149,7 @@ py_cpu_gpu_test(
     name = "fed_prox_test",
     timeout = "long",
     srcs = ["fed_prox_test.py"],
-    python_version = "PY3",
     shard_count = 10,
-    srcs_version = "PY3",
     deps = [
         ":fed_prox",
         "//tensorflow_federated/python/aggregators:factory_utils",
@@ -180,7 +170,6 @@ py_cpu_gpu_test(
 py_library(
     name = "fed_sgd",
     srcs = ["fed_sgd.py"],
-    srcs_version = "PY3",
     deps = [
         "//tensorflow_federated/python/aggregators:factory",
         "//tensorflow_federated/python/aggregators:mean",
@@ -212,9 +201,7 @@ py_cpu_gpu_test(
     name = "fed_sgd_test",
     timeout = "long",
     srcs = ["fed_sgd_test.py"],
-    python_version = "PY3",
     shard_count = 10,
-    srcs_version = "PY3",
     deps = [
         ":fed_sgd",
         "//tensorflow_federated/python/core/test:static_assert",
@@ -232,7 +219,6 @@ py_cpu_gpu_test(
 py_library(
     name = "kmeans_clustering",
     srcs = ["kmeans_clustering.py"],
-    srcs_version = "PY3",
     deps = [
         "//tensorflow_federated/python/aggregators:factory",
         "//tensorflow_federated/python/aggregators:factory_utils",
@@ -254,8 +240,6 @@ py_library(
 py_test(
     name = "kmeans_clustering_test",
     srcs = ["kmeans_clustering_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":kmeans_clustering",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
@@ -266,7 +250,6 @@ py_test(
 py_library(
     name = "mime",
     srcs = ["mime.py"],
-    srcs_version = "PY3",
     deps = [
         "//tensorflow_federated/python/aggregators:factory",
         "//tensorflow_federated/python/aggregators:factory_utils",
@@ -301,9 +284,7 @@ py_cpu_gpu_test(
     name = "mime_test",
     timeout = "long",
     srcs = ["mime_test.py"],
-    python_version = "PY3",
     shard_count = 10,
-    srcs_version = "PY3",
     deps = [
         ":fed_avg",
         ":mime",
@@ -343,7 +324,6 @@ py_cpu_gpu_test(
 py_library(
     name = "fed_eval",
     srcs = ["fed_eval.py"],
-    srcs_version = "PY3",
     deps = [
         "//tensorflow_federated/python/aggregators:mean",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -371,8 +351,6 @@ py_library(
 py_cpu_gpu_test(
     name = "fed_eval_test",
     srcs = ["fed_eval_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":fed_eval",
         "//tensorflow_federated/python/aggregators:primitives",

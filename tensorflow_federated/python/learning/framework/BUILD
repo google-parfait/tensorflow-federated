@@ -24,7 +24,6 @@ licenses(["notice"])
 py_library(
     name = "framework",
     srcs = ["__init__.py"],
-    srcs_version = "PY3",
     visibility = ["//tensorflow_federated/python/learning:__pkg__"],
     deps = [":optimizer_utils"],
 )
@@ -32,7 +31,6 @@ py_library(
 py_library(
     name = "optimizer_utils",
     srcs = ["optimizer_utils.py"],
-    srcs_version = "PY3",
     deps = [
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
@@ -47,9 +45,7 @@ py_library(
 py_cpu_gpu_test(
     name = "optimizer_utils_test",
     srcs = ["optimizer_utils_test.py"],
-    python_version = "PY3",
     shard_count = 10,
-    srcs_version = "PY3",
     deps = [
         ":optimizer_utils",
         "//tensorflow_federated/python/core/impl/federated_context:federated_computation",

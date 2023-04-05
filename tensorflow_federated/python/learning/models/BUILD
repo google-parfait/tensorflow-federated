@@ -26,7 +26,6 @@ licenses(["notice"])
 py_library(
     name = "model_weights",
     srcs = ["model_weights.py"],
-    srcs_version = "PY3",
     deps = [
         ":variable",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -39,7 +38,6 @@ py_library(
 py_library(
     name = "models",
     srcs = ["__init__.py"],
-    srcs_version = "PY3",
     visibility = ["//tensorflow_federated/python/learning:__pkg__"],
     deps = [
         ":functional",
@@ -53,7 +51,6 @@ py_library(
 py_library(
     name = "functional",
     srcs = ["functional.py"],
-    srcs_version = "PY3",
     deps = [
         ":variable",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -67,8 +64,6 @@ py_library(
 py_test(
     name = "functional_test",
     srcs = ["functional_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":functional",
         ":variable",
@@ -83,7 +78,6 @@ py_test(
 py_library(
     name = "keras_utils",
     srcs = ["keras_utils.py"],
-    srcs_version = "PY3",
     deps = [
         ":variable",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -101,8 +95,6 @@ py_test(
     name = "keras_utils_test",
     size = "medium",
     srcs = ["keras_utils_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":keras_utils",
         ":model_examples",
@@ -121,7 +113,6 @@ py_test(
 py_library(
     name = "model_examples",
     srcs = ["model_examples.py"],
-    srcs_version = "PY3",
     deps = [":variable"],
 )
 
@@ -129,8 +120,6 @@ py_test(
     name = "model_examples_test",
     size = "small",
     srcs = ["model_examples_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":model_examples",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
@@ -141,7 +130,6 @@ py_test(
 py_library(
     name = "serialization",
     srcs = ["serialization.py"],
-    srcs_version = "PY3",
     deps = [
         ":functional",
         ":variable",
@@ -159,8 +147,6 @@ py_library(
 py_test(
     name = "model_weights_test",
     srcs = ["model_weights_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":model_weights",
         ":variable",
@@ -172,8 +158,6 @@ py_test(
 py_test(
     name = "serialization_test",
     srcs = ["serialization_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":functional",
         ":keras_utils",

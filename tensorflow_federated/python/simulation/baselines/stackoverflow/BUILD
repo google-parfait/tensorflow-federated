@@ -18,7 +18,6 @@ licenses(["notice"])
 py_library(
     name = "stackoverflow",
     srcs = ["__init__.py"],
-    srcs_version = "PY3",
     visibility = ["//tensorflow_federated/python/simulation/baselines:__pkg__"],
     deps = [
         ":constants",
@@ -30,13 +29,11 @@ py_library(
 py_library(
     name = "constants",
     srcs = ["constants.py"],
-    srcs_version = "PY3",
 )
 
 py_library(
     name = "tag_prediction_preprocessing",
     srcs = ["tag_prediction_preprocessing.py"],
-    srcs_version = "PY3",
     deps = [
         ":constants",
         "//tensorflow_federated/python/simulation/baselines:client_spec",
@@ -47,8 +44,6 @@ py_test(
     name = "tag_prediction_preprocessing_test",
     size = "medium",
     srcs = ["tag_prediction_preprocessing_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":tag_prediction_preprocessing",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
@@ -59,7 +54,6 @@ py_test(
 py_library(
     name = "tag_prediction_tasks",
     srcs = ["tag_prediction_tasks.py"],
-    srcs_version = "PY3",
     deps = [
         ":constants",
         ":tag_prediction_preprocessing",
@@ -76,8 +70,6 @@ py_library(
 py_test(
     name = "tag_prediction_tasks_test",
     srcs = ["tag_prediction_tasks_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":tag_prediction_tasks",
         "//tensorflow_federated/python/simulation/baselines:baseline_task",
@@ -88,21 +80,17 @@ py_test(
 py_library(
     name = "word_prediction_models",
     srcs = ["word_prediction_models.py"],
-    srcs_version = "PY3",
 )
 
 py_test(
     name = "word_prediction_models_test",
     srcs = ["word_prediction_models_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [":word_prediction_models"],
 )
 
 py_library(
     name = "word_prediction_preprocessing",
     srcs = ["word_prediction_preprocessing.py"],
-    srcs_version = "PY3",
     deps = [
         ":constants",
         "//tensorflow_federated/python/simulation/baselines:client_spec",
@@ -113,8 +101,6 @@ py_test(
     name = "word_prediction_preprocessing_test",
     size = "medium",
     srcs = ["word_prediction_preprocessing_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":word_prediction_preprocessing",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
@@ -125,7 +111,6 @@ py_test(
 py_library(
     name = "word_prediction_tasks",
     srcs = ["word_prediction_tasks.py"],
-    srcs_version = "PY3",
     deps = [
         ":constants",
         ":word_prediction_models",
@@ -144,8 +129,6 @@ py_library(
 py_test(
     name = "word_prediction_tasks_test",
     srcs = ["word_prediction_tasks_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":word_prediction_tasks",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",

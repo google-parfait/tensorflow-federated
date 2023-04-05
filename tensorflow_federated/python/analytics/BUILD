@@ -23,7 +23,6 @@ licenses(["notice"])
 py_library(
     name = "analytics",
     srcs = ["__init__.py"],
-    srcs_version = "PY3",
     visibility = ["//tensorflow_federated:__pkg__"],
     deps = [
         ":count_distinct",
@@ -40,15 +39,12 @@ py_library(
 py_library(
     name = "data_processing",
     srcs = ["data_processing.py"],
-    srcs_version = "PY3",
     deps = ["//tensorflow_federated/python/common_libs:py_typecheck"],
 )
 
 py_test(
     name = "data_processing_test",
     srcs = ["data_processing_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":data_processing",
         ":histogram_test_utils",
@@ -59,20 +55,16 @@ py_library(
     name = "histogram_test_utils",
     testonly = True,
     srcs = ["histogram_test_utils.py"],
-    srcs_version = "PY3",
 )
 
 py_library(
     name = "histogram_processing",
     srcs = ["histogram_processing.py"],
-    srcs_version = "PY3",
 )
 
 py_test(
     name = "histogram_processing_test",
     srcs = ["histogram_processing_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":histogram_processing",
         ":histogram_test_utils",
@@ -82,7 +74,6 @@ py_test(
 py_library(
     name = "differential_privacy",
     srcs = ["differential_privacy.py"],
-    srcs_version = "PY3",
 )
 
 py_library(
@@ -101,8 +92,6 @@ py_library(
 py_test(
     name = "differential_privacy_test",
     srcs = ["differential_privacy_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [":differential_privacy"],
 )
 

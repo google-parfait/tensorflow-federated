@@ -20,7 +20,6 @@ licenses(["notice"])
 py_library(
     name = "program",
     srcs = ["__init__.py"],
-    srcs_version = "PY3",
     visibility = ["//tensorflow_federated:__pkg__"],
     deps = [
         ":client_id_data_source",
@@ -64,7 +63,6 @@ py_test(
 py_library(
     name = "data_source",
     srcs = ["data_source.py"],
-    srcs_version = "PY3",
     deps = [
         "//tensorflow_federated/python/common_libs:serializable",
         "//tensorflow_federated/python/core/impl/types:computation_types",
@@ -124,7 +122,6 @@ py_test(
 py_library(
     name = "file_program_state_manager",
     srcs = ["file_program_state_manager.py"],
-    srcs_version = "PY3",
     deps = [
         ":file_utils",
         ":program_state_manager",
@@ -138,8 +135,6 @@ py_library(
 py_test(
     name = "file_program_state_manager_test",
     srcs = ["file_program_state_manager_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":file_program_state_manager",
         ":file_utils",
@@ -152,7 +147,6 @@ py_test(
 py_library(
     name = "file_release_manager",
     srcs = ["file_release_manager.py"],
-    srcs_version = "PY3",
     deps = [
         ":file_utils",
         ":release_manager",
@@ -166,8 +160,6 @@ py_library(
 py_test(
     name = "file_release_manager_test",
     srcs = ["file_release_manager_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":file_release_manager",
         ":file_utils",
@@ -181,7 +173,6 @@ py_test(
 py_library(
     name = "file_utils",
     srcs = ["file_utils.py"],
-    srcs_version = "PY3",
     deps = [
         ":structure_utils",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -191,15 +182,12 @@ py_library(
 py_test(
     name = "file_utils_test",
     srcs = ["file_utils_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [":file_utils"],
 )
 
 py_library(
     name = "logging_release_manager",
     srcs = ["logging_release_manager.py"],
-    srcs_version = "PY3",
     deps = [
         ":release_manager",
         ":value_reference",
@@ -211,8 +199,6 @@ py_library(
 py_test(
     name = "logging_release_manager_test",
     srcs = ["logging_release_manager_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":logging_release_manager",
         ":program_test_utils",
@@ -223,7 +209,6 @@ py_test(
 py_library(
     name = "memory_release_manager",
     srcs = ["memory_release_manager.py"],
-    srcs_version = "PY3",
     deps = [
         ":release_manager",
         ":value_reference",
@@ -235,8 +220,6 @@ py_library(
 py_test(
     name = "memory_release_manager_test",
     srcs = ["memory_release_manager_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":memory_release_manager",
         ":program_test_utils",
@@ -247,7 +230,6 @@ py_test(
 py_library(
     name = "native_platform",
     srcs = ["native_platform.py"],
-    srcs_version = "PY3",
     deps = [
         ":federated_context",
         ":structure_utils",
@@ -266,8 +248,6 @@ py_library(
 py_test(
     name = "native_platform_test",
     srcs = ["native_platform_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":native_platform",
         ":program_test_utils",
@@ -289,7 +269,6 @@ py_test(
 py_library(
     name = "prefetching_data_source",
     srcs = ["prefetching_data_source.py"],
-    srcs_version = "PY3",
     deps = [
         ":data_source",
         ":serialization_utils",
@@ -308,7 +287,6 @@ py_library(
 py_test(
     name = "prefetching_data_source_test",
     srcs = ["prefetching_data_source_test.py"],
-    srcs_version = "PY3",
     tags = [
         "nokokoro",  # b/268497846: Temporarily disable the `PrefetchingDataSource`.
     ],
@@ -326,7 +304,6 @@ py_test(
 py_library(
     name = "program_state_manager",
     srcs = ["program_state_manager.py"],
-    srcs_version = "PY3",
     deps = [
         ":structure_utils",
         ":value_reference",
@@ -337,8 +314,6 @@ py_library(
 py_test(
     name = "program_state_manager_test",
     srcs = ["program_state_manager_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [":program_state_manager"],
 )
 
@@ -346,7 +321,6 @@ py_library(
     name = "program_test_utils",
     testonly = True,
     srcs = ["program_test_utils.py"],
-    srcs_version = "PY3",
     deps = [
         ":structure_utils",
         ":value_reference",
@@ -358,7 +332,6 @@ py_library(
 py_library(
     name = "release_manager",
     srcs = ["release_manager.py"],
-    srcs_version = "PY3",
     deps = [
         ":structure_utils",
         ":value_reference",
@@ -403,14 +376,11 @@ py_test(
 py_library(
     name = "structure_utils",
     srcs = ["structure_utils.py"],
-    srcs_version = "PY3",
 )
 
 py_test(
     name = "structure_utils_test",
     srcs = ["structure_utils_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":program_test_utils",
         ":structure_utils",
@@ -420,7 +390,6 @@ py_test(
 py_library(
     name = "tensorboard_release_manager",
     srcs = ["tensorboard_release_manager.py"],
-    srcs_version = "PY3",
     deps = [
         ":release_manager",
         ":structure_utils",
@@ -433,8 +402,6 @@ py_library(
 py_test(
     name = "tensorboard_release_manager_test",
     srcs = ["tensorboard_release_manager_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":program_test_utils",
         ":tensorboard_release_manager",
@@ -445,7 +412,6 @@ py_test(
 py_library(
     name = "value_reference",
     srcs = ["value_reference.py"],
-    srcs_version = "PY3",
     deps = [
         ":structure_utils",
         "//tensorflow_federated/python/core/impl/types:computation_types",
@@ -456,8 +422,6 @@ py_library(
 py_test(
     name = "value_reference_test",
     srcs = ["value_reference_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":program_test_utils",
         ":value_reference",

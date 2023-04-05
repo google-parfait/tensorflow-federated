@@ -21,14 +21,12 @@ licenses(["notice"])
 py_library(
     name = "tensorflow_context",
     srcs = ["__init__.py"],
-    srcs_version = "PY3",
     visibility = ["//tensorflow_federated/tools/python_package:python_package_tool"],
 )
 
 py_library(
     name = "tensorflow_computation",
     srcs = ["tensorflow_computation.py"],
-    srcs_version = "PY3",
     deps = [
         ":tensorflow_serialization",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
@@ -68,8 +66,6 @@ py_test(
         "tensorflow_computation_test_goldens/tensorflow_computation_traceback.expected",
         "tensorflow_computation_test_goldens/tensorflow_function_computation_traceback.expected",
     ],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":tensorflow_computation",
         "//tensorflow_federated/python/common_libs:golden",
@@ -87,7 +83,6 @@ py_test(
 py_library(
     name = "tensorflow_computation_context",
     srcs = ["tensorflow_computation_context.py"],
-    srcs_version = "PY3",
     deps = [
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/impl/computation:computation_impl",
@@ -103,8 +98,6 @@ py_test(
     name = "tensorflow_computation_context_test",
     size = "small",
     srcs = ["tensorflow_computation_context_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":tensorflow_computation",
         ":tensorflow_computation_context",
@@ -119,7 +112,6 @@ py_test(
 py_library(
     name = "tensorflow_serialization",
     srcs = ["tensorflow_serialization.py"],
-    srcs_version = "PY3",
     deps = [
         ":tensorflow_computation_context",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
@@ -137,8 +129,6 @@ py_test(
     name = "tensorflow_serialization_test",
     size = "small",
     srcs = ["tensorflow_serialization_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":tensorflow_serialization",
         "//tensorflow_federated/python/common_libs:serialization_utils",

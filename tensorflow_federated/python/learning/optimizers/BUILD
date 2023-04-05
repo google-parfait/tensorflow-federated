@@ -21,7 +21,6 @@ licenses(["notice"])
 py_library(
     name = "adagrad",
     srcs = ["adagrad.py"],
-    srcs_version = "PY3",
     deps = [
         ":optimizer",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -32,8 +31,6 @@ py_library(
 py_test(
     name = "adagrad_test",
     srcs = ["adagrad_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":adagrad",
         ":optimizer",
@@ -44,7 +41,6 @@ py_test(
 py_library(
     name = "adam",
     srcs = ["adam.py"],
-    srcs_version = "PY3",
     deps = [
         ":optimizer",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -55,8 +51,6 @@ py_library(
 py_test(
     name = "adam_test",
     srcs = ["adam_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":adam",
         ":optimizer",
@@ -67,7 +61,6 @@ py_test(
 py_library(
     name = "optimizers",
     srcs = ["__init__.py"],
-    srcs_version = "PY3",
     visibility = ["//tensorflow_federated/python/learning:__pkg__"],
     deps = [
         ":adagrad",
@@ -83,15 +76,12 @@ py_library(
 py_library(
     name = "keras_optimizer",
     srcs = ["keras_optimizer.py"],
-    srcs_version = "PY3",
     deps = [":optimizer"],
 )
 
 py_test(
     name = "keras_optimizer_test",
     srcs = ["keras_optimizer_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":keras_optimizer",
         ":optimizer",
@@ -105,8 +95,6 @@ py_test(
 py_test(
     name = "integration_test",
     srcs = ["integration_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":adagrad",
         ":adam",
@@ -126,14 +114,11 @@ py_test(
 py_library(
     name = "optimizer",
     srcs = ["optimizer.py"],
-    srcs_version = "PY3",
 )
 
 py_test(
     name = "optimizer_test",
     srcs = ["optimizer_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [":optimizer"],
 )
 
@@ -141,22 +126,18 @@ py_library(
     name = "optimizer_test_utils",
     testonly = True,
     srcs = ["optimizer_test_utils.py"],
-    srcs_version = "PY3",
     deps = [":optimizer"],
 )
 
 py_test(
     name = "optimizer_test_utils_test",
     srcs = ["optimizer_test_utils_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [":optimizer_test_utils"],
 )
 
 py_library(
     name = "rmsprop",
     srcs = ["rmsprop.py"],
-    srcs_version = "PY3",
     deps = [
         ":optimizer",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -167,8 +148,6 @@ py_library(
 py_test(
     name = "rmsprop_test",
     srcs = ["rmsprop_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":optimizer",
         ":optimizer_test_utils",
@@ -179,7 +158,6 @@ py_test(
 py_library(
     name = "scheduling",
     srcs = ["scheduling.py"],
-    srcs_version = "PY3",
     deps = [
         ":optimizer",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -189,8 +167,6 @@ py_library(
 py_test(
     name = "scheduling_test",
     srcs = ["scheduling_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":adagrad",
         ":adam",
@@ -205,7 +181,6 @@ py_test(
 py_library(
     name = "sgdm",
     srcs = ["sgdm.py"],
-    srcs_version = "PY3",
     deps = [
         ":optimizer",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -216,8 +191,6 @@ py_library(
 py_test(
     name = "sgdm_test",
     srcs = ["sgdm_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":optimizer",
         ":optimizer_test_utils",
@@ -228,7 +201,6 @@ py_test(
 py_library(
     name = "yogi",
     srcs = ["yogi.py"],
-    srcs_version = "PY3",
     deps = [
         ":optimizer",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -239,8 +211,6 @@ py_library(
 py_test(
     name = "yogi_test",
     srcs = ["yogi_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":optimizer",
         ":optimizer_test_utils",

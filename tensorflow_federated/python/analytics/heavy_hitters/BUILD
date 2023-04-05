@@ -15,7 +15,6 @@ licenses(["notice"])
 py_library(
     name = "heavy_hitters",
     srcs = ["__init__.py"],
-    srcs_version = "PY3",
     visibility = ["//tensorflow_federated/python/analytics:__pkg__"],
     deps = ["//tensorflow_federated/python/analytics/heavy_hitters/iblt"],
 )

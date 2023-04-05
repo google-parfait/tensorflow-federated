@@ -40,8 +40,6 @@ py_library(
 py_test(
     name = "cardinalities_utils_test",
     srcs = ["cardinalities_utils_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":cardinalities_utils",
         "//tensorflow_federated/python/common_libs:structure",
@@ -99,8 +97,6 @@ py_library(
 py_test(
     name = "data_conversions_test",
     srcs = ["data_conversions_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":data_conversions",
         "//tensorflow_federated/python/core/impl/types:placements",
@@ -125,8 +121,6 @@ py_library(
 py_test(
     name = "data_descriptor_test",
     srcs = ["data_descriptor_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":data_descriptor",
         "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
@@ -160,8 +154,6 @@ py_test(
     name = "executor_bindings_test",
     timeout = "moderate",
     srcs = ["executor_bindings_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     tags = [
         "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
     ],
@@ -229,8 +221,6 @@ py_test(
     name = "executor_utils_test",
     size = "small",
     srcs = ["executor_utils_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":executor_utils",
         "//tensorflow_federated/python/core/impl/compiler:building_block_factory",
@@ -281,8 +271,6 @@ py_test(
     name = "remote_executor_test",
     size = "small",
     srcs = ["remote_executor_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":remote_executor",
         ":remote_executor_stub",
@@ -321,8 +309,6 @@ py_test(
     name = "value_serialization_test",
     size = "small",
     srcs = ["value_serialization_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":value_serialization",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
@@ -359,8 +345,6 @@ py_library(
 py_test(
     name = "remote_executor_grpc_stub_test",
     srcs = ["remote_executor_grpc_stub_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":executors_errors",
         ":remote_executor_grpc_stub",

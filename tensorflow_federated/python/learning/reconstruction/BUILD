@@ -18,7 +18,6 @@ licenses(["notice"])
 py_library(
     name = "reconstruction",
     srcs = ["__init__.py"],
-    srcs_version = "PY3",
     visibility = ["//tensorflow_federated/python/learning:__pkg__"],
     deps = [
         ":evaluation_computation",
@@ -32,13 +31,11 @@ py_library(
 py_library(
     name = "model",
     srcs = ["model.py"],
-    srcs_version = "PY3",
 )
 
 py_library(
     name = "reconstruction_utils",
     srcs = ["reconstruction_utils.py"],
-    srcs_version = "PY3",
     deps = [
         ":model",
         "//tensorflow_federated/python/learning/models:model_weights",
@@ -48,8 +45,6 @@ py_library(
 py_test(
     name = "reconstruction_utils_test",
     srcs = ["reconstruction_utils_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":keras_utils",
         ":reconstruction_utils",
@@ -60,7 +55,6 @@ py_test(
 py_library(
     name = "keras_utils",
     srcs = ["keras_utils.py"],
-    srcs_version = "PY3",
     deps = [
         ":model",
         "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
@@ -72,8 +66,6 @@ py_library(
 py_test(
     name = "keras_utils_test",
     srcs = ["keras_utils_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":keras_utils",
         ":model",
@@ -83,7 +75,6 @@ py_test(
 py_library(
     name = "training_process",
     srcs = ["training_process.py"],
-    srcs_version = "PY3",
     deps = [
         ":keras_utils",
         ":model",
@@ -114,8 +105,6 @@ py_test(
     name = "training_process_test",
     timeout = "long",
     srcs = ["training_process_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":keras_utils",
         ":model",
@@ -146,7 +135,6 @@ py_test(
 py_library(
     name = "evaluation_computation",
     srcs = ["evaluation_computation.py"],
-    srcs_version = "PY3",
     deps = [
         ":keras_utils",
         ":reconstruction_utils",
@@ -166,8 +154,6 @@ py_library(
 py_test(
     name = "evaluation_computation_test",
     srcs = ["evaluation_computation_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":evaluation_computation",
         ":keras_utils",

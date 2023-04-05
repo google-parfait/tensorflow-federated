@@ -26,7 +26,6 @@ licenses(["notice"])
 py_library(
     name = "learning",
     srcs = ["__init__.py"],
-    srcs_version = "PY3",
     visibility = ["//tensorflow_federated:__pkg__"],
     deps = [
         ":client_weight_lib",
@@ -49,28 +48,22 @@ py_library(
 py_library(
     name = "client_weight_lib",
     srcs = ["client_weight_lib.py"],
-    srcs_version = "PY3",
 )
 
 py_library(
     name = "dataset_reduce",
     srcs = ["dataset_reduce.py"],
-    srcs_version = "PY3",
 )
 
 py_cpu_gpu_test(
     name = "dataset_reduce_test",
     srcs = ["dataset_reduce_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [":dataset_reduce"],
 )
 
 py_cpu_gpu_test(
     name = "federated_evaluation_test",
     srcs = ["federated_evaluation_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":dataset_reduce",
         ":federated_evaluation",
@@ -98,7 +91,6 @@ py_cpu_gpu_test(
 py_library(
     name = "model_update_aggregator",
     srcs = ["model_update_aggregator.py"],
-    srcs_version = "PY3",
     deps = [
         "//tensorflow_federated/python/aggregators:differential_privacy",
         "//tensorflow_federated/python/aggregators:distributed_dp",
@@ -117,8 +109,6 @@ py_test(
     name = "model_update_aggregator_test",
     timeout = "long",
     srcs = ["model_update_aggregator_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":debug_measurements",
         ":model_update_aggregator",
@@ -141,7 +131,6 @@ py_test(
 py_library(
     name = "personalization_eval",
     srcs = ["personalization_eval.py"],
-    srcs_version = "PY3",
     deps = [
         "//tensorflow_federated/python/aggregators:sampling",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -158,8 +147,6 @@ py_library(
 py_cpu_gpu_test(
     name = "personalization_eval_test",
     srcs = ["personalization_eval_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     tags = ["nokokoro"],
     deps = [
         ":dataset_reduce",
@@ -175,7 +162,6 @@ py_cpu_gpu_test(
 py_library(
     name = "debug_measurements",
     srcs = ["debug_measurements.py"],
-    srcs_version = "PY3",
     deps = [
         "//tensorflow_federated/python/aggregators:factory",
         "//tensorflow_federated/python/aggregators:measurements",
@@ -188,8 +174,6 @@ py_library(
 py_test(
     name = "debug_measurements_test",
     srcs = ["debug_measurements_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":debug_measurements",
         "//tensorflow_federated/python/aggregators:mean",
@@ -202,7 +186,6 @@ py_test(
 py_library(
     name = "federated_evaluation",
     srcs = ["federated_evaluation.py"],
-    srcs_version = "PY3",
     deps = [
         ":dataset_reduce",
         "//tensorflow_federated/python/common_libs:deprecation",

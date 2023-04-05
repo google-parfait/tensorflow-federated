@@ -22,14 +22,12 @@ licenses(["notice"])
 py_library(
     name = "utils",
     srcs = ["__init__.py"],
-    srcs_version = "PY3",
     visibility = ["//tensorflow_federated/tools/python_package:python_package_tool"],
 )
 
 py_library(
     name = "tensorflow_utils",
     srcs = ["tensorflow_utils.py"],
-    srcs_version = "PY3",
     deps = [
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:named_containers",
@@ -55,8 +53,6 @@ py_test(
     data = [
         "tensorflow_utils_test_goldens/capture_result_with_sequence_of_dicts.expected",
     ],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":tensorflow_utils",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
