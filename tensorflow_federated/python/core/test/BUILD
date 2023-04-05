@@ -18,7 +18,6 @@ licenses(["notice"])
 py_library(
     name = "test",
     srcs = ["__init__.py"],
-    srcs_version = "PY3",
     visibility = ["//tensorflow_federated:__pkg__"],
     deps = [
         ":static_assert",
@@ -32,7 +31,6 @@ py_library(
 py_library(
     name = "static_assert",
     srcs = ["static_assert.py"],
-    srcs_version = "PY3",
     deps = [
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
@@ -45,8 +43,6 @@ py_test(
     name = "static_assert_test",
     size = "small",
     srcs = ["static_assert_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":static_assert",
         "//tensorflow_federated/python/core/impl/federated_context:federated_computation",

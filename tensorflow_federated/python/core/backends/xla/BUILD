@@ -19,14 +19,12 @@ licenses(["notice"])
 py_library(
     name = "xla",
     srcs = ["__init__.py"],
-    srcs_version = "PY3",
     visibility = ["//tensorflow_federated/python/core/backends:__pkg__"],
 )
 
 py_library(
     name = "compiler",
     srcs = ["compiler.py"],
-    srcs_version = "PY3",
     deps = [
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
@@ -41,8 +39,6 @@ py_test(
     name = "compiler_test",
     size = "small",
     srcs = ["compiler_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":compiler",
         ":runtime",
@@ -55,7 +51,6 @@ py_test(
 py_library(
     name = "cpp_execution_contexts",
     srcs = ["cpp_execution_contexts.py"],
-    srcs_version = "PY3",
     tags = [
         "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
     ],
@@ -70,7 +65,6 @@ py_library(
 py_test(
     name = "cpp_execution_contexts_test",
     srcs = ["cpp_execution_contexts_test.py"],
-    srcs_version = "PY3",
     tags = [
         "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
     ],
@@ -87,7 +81,6 @@ py_test(
 py_library(
     name = "executor",
     srcs = ["executor.py"],
-    srcs_version = "PY3",
     deps = [
         ":runtime",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
@@ -107,8 +100,6 @@ py_library(
 py_test(
     name = "executor_test",
     srcs = ["executor_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":executor",
         "//tensorflow_federated/python/common_libs:structure",
@@ -120,7 +111,6 @@ py_test(
 py_library(
     name = "runtime",
     srcs = ["runtime.py"],
-    srcs_version = "PY3",
     deps = [
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -135,8 +125,6 @@ py_library(
 py_test(
     name = "runtime_test",
     srcs = ["runtime_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":runtime",
         "//tensorflow_federated/python/common_libs:structure",

@@ -18,14 +18,12 @@ licenses(["notice"])
 py_library(
     name = "execution_contexts",
     srcs = ["__init__.py"],
-    srcs_version = "PY3",
     visibility = ["//tensorflow_federated/tools/python_package:python_package_tool"],
 )
 
 py_library(
     name = "async_execution_context",
     srcs = ["async_execution_context.py"],
-    srcs_version = "PY3",
     deps = [
         ":compiler_pipeline",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -50,8 +48,6 @@ py_test(
     name = "async_execution_context_test",
     size = "small",
     srcs = ["async_execution_context_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":async_execution_context",
         "//tensorflow_federated/python/core/impl/context_stack:get_context_stack",
@@ -67,7 +63,6 @@ py_test(
 py_library(
     name = "compiler_pipeline",
     srcs = ["compiler_pipeline.py"],
-    srcs_version = "PY3",
     deps = [
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/impl/computation:computation_base",
@@ -78,8 +73,6 @@ py_test(
     name = "compiler_pipeline_test",
     size = "small",
     srcs = ["compiler_pipeline_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":compiler_pipeline",
         "//tensorflow_federated/python/core/impl/computation:computation_base",
@@ -89,7 +82,6 @@ py_test(
 py_library(
     name = "mergeable_comp_execution_context",
     srcs = ["mergeable_comp_execution_context.py"],
-    srcs_version = "PY3",
     deps = [
         ":compiler_pipeline",
         "//tensorflow_federated/python/common_libs:async_utils",
@@ -113,8 +105,6 @@ py_test(
     size = "small",
     timeout = "moderate",
     srcs = ["mergeable_comp_execution_context_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":async_execution_context",
         ":mergeable_comp_execution_context",
@@ -133,7 +123,6 @@ py_test(
 py_library(
     name = "sync_execution_context",
     srcs = ["sync_execution_context.py"],
-    srcs_version = "PY3",
     deps = [
         ":async_execution_context",
         "//tensorflow_federated/python/common_libs:async_utils",
@@ -149,8 +138,6 @@ py_test(
     name = "sync_execution_context_test",
     size = "small",
     srcs = ["sync_execution_context_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":sync_execution_context",
         "//tensorflow_federated/python/common_libs:structure",

@@ -28,7 +28,6 @@ licenses(["notice"])
 py_library(
     name = "types",
     srcs = ["__init__.py"],
-    srcs_version = "PY3",
     visibility = ["//tensorflow_federated:__pkg__"],
     deps = [
         ":computation_types",
@@ -41,7 +40,6 @@ py_library(
 py_library(
     name = "computation_types",
     srcs = ["computation_types.py"],
-    srcs_version = "PY3",
     deps = [
         ":placements",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -70,8 +68,6 @@ py_test(
         "computation_types_test_goldens/long_formatted_with_diff.expected",
         "computation_types_test_goldens/short_compact_repr.expected",
     ],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":computation_types",
         ":placements",
@@ -84,22 +80,18 @@ py_test(
 py_library(
     name = "placements",
     srcs = ["placements.py"],
-    srcs_version = "PY3",
 )
 
 py_test(
     name = "placements_test",
     size = "small",
     srcs = ["placements_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [":placements"],
 )
 
 py_library(
     name = "type_analysis",
     srcs = ["type_analysis.py"],
-    srcs_version = "PY3",
     deps = [
         ":computation_types",
         ":placements",
@@ -114,8 +106,6 @@ py_test(
     name = "type_analysis_test",
     size = "small",
     srcs = ["type_analysis_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":computation_types",
         ":placements",
@@ -127,7 +117,6 @@ py_test(
 py_library(
     name = "type_conversions",
     srcs = ["type_conversions.py"],
-    srcs_version = "PY3",
     deps = [
         ":computation_types",
         ":typed_object",
@@ -141,8 +130,6 @@ py_test(
     name = "type_conversions_test",
     size = "small",
     srcs = ["type_conversions_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":computation_types",
         ":placements",
@@ -156,7 +143,6 @@ py_test(
 py_library(
     name = "type_factory",
     srcs = ["type_factory.py"],
-    srcs_version = "PY3",
     deps = [":computation_types"],
 )
 
@@ -164,8 +150,6 @@ py_test(
     name = "type_factory_test",
     size = "small",
     srcs = ["type_factory_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":computation_types",
         ":type_factory",
@@ -175,7 +159,6 @@ py_test(
 py_library(
     name = "type_serialization",
     srcs = ["type_serialization.py"],
-    srcs_version = "PY3",
     deps = [
         ":computation_types",
         ":placements",
@@ -188,8 +171,6 @@ py_test(
     name = "type_serialization_test",
     size = "small",
     srcs = ["type_serialization_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":computation_types",
         ":placements",
@@ -201,14 +182,12 @@ py_test(
 py_library(
     name = "type_test_utils",
     srcs = ["type_test_utils.py"],
-    srcs_version = "PY3",
     deps = [":computation_types"],
 )
 
 py_library(
     name = "type_transformations",
     srcs = ["type_transformations.py"],
-    srcs_version = "PY3",
     deps = [
         ":computation_types",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -220,8 +199,6 @@ py_test(
     name = "type_transformations_test",
     size = "small",
     srcs = ["type_transformations_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":computation_types",
         ":placements",
@@ -232,6 +209,5 @@ py_test(
 py_library(
     name = "typed_object",
     srcs = ["typed_object.py"],
-    srcs_version = "PY3",
     deps = [":computation_types"],
 )

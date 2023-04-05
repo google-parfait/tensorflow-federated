@@ -20,14 +20,12 @@ licenses(["notice"])
 py_library(
     name = "jax_context",
     srcs = ["__init__.py"],
-    srcs_version = "PY3",
     visibility = ["//tensorflow_federated/tools/python_package:python_package_tool"],
 )
 
 py_library(
     name = "jax_computation",
     srcs = ["jax_computation.py"],
-    srcs_version = "PY3",
     deps = [
         ":jax_serialization",
         "//tensorflow_federated/python/core/impl/computation:computation_impl",
@@ -42,8 +40,6 @@ py_test(
     name = "jax_computation_test",
     size = "small",
     srcs = ["jax_computation_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":jax_computation",
         "//tensorflow_federated/python/core/impl/computation:computation_impl",
@@ -54,7 +50,6 @@ py_test(
 py_library(
     name = "jax_computation_context",
     srcs = ["jax_computation_context.py"],
-    srcs_version = "PY3",
     deps = ["//tensorflow_federated/python/core/impl/context_stack:context_base"],
 )
 
@@ -62,8 +57,6 @@ py_test(
     name = "jax_computation_context_test",
     size = "small",
     srcs = ["jax_computation_context_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":jax_computation",
         ":jax_computation_context",
@@ -73,7 +66,6 @@ py_test(
 py_library(
     name = "jax_serialization",
     srcs = ["jax_serialization.py"],
-    srcs_version = "PY3",
     deps = [
         ":jax_computation_context",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
@@ -91,8 +83,6 @@ py_test(
     name = "jax_serialization_test",
     size = "small",
     srcs = ["jax_serialization_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":jax_serialization",
         "//tensorflow_federated/proto/v0:computation_py_pb2",

@@ -21,7 +21,6 @@ licenses(["notice"])
 py_library(
     name = "mapreduce",
     srcs = ["__init__.py"],
-    srcs_version = "PY3",
     visibility = ["//tensorflow_federated/python/core/backends:__pkg__"],
     deps = [
         ":compiler",
@@ -33,7 +32,6 @@ py_library(
 py_library(
     name = "compiler",
     srcs = ["compiler.py"],
-    srcs_version = "PY3",
     deps = [
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
@@ -54,8 +52,6 @@ py_library(
 py_test(
     name = "compiler_test",
     srcs = ["compiler_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":compiler",
         ":form_utils",
@@ -82,7 +78,6 @@ py_test(
 py_library(
     name = "forms",
     srcs = ["forms.py"],
-    srcs_version = "PY3",
     deps = [
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
@@ -100,8 +95,6 @@ py_library(
 py_test(
     name = "forms_test",
     srcs = ["forms_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":distribute_aggregate_test_utils",
         ":forms",
@@ -117,7 +110,6 @@ py_test(
 py_library(
     name = "form_utils",
     srcs = ["form_utils.py"],
-    srcs_version = "PY3",
     deps = [
         ":compiler",
         ":forms",
@@ -143,8 +135,6 @@ py_test(
     name = "form_utils_test",
     size = "medium",
     srcs = ["form_utils_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":distribute_aggregate_test_utils",
         ":form_utils",
@@ -170,7 +160,6 @@ py_library(
     name = "distribute_aggregate_test_utils",
     testonly = True,
     srcs = ["distribute_aggregate_test_utils.py"],
-    srcs_version = "PY3",
     deps = [
         ":forms",
         "//tensorflow_federated/python/core/impl/compiler:building_block_factory",
@@ -190,7 +179,6 @@ py_library(
     name = "mapreduce_test_utils",
     testonly = True,
     srcs = ["mapreduce_test_utils.py"],
-    srcs_version = "PY3",
     deps = [
         ":forms",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",

@@ -21,41 +21,35 @@ licenses(["notice"])
 py_library(
     name = "common_libs",
     srcs = ["__init__.py"],
-    srcs_version = "PY3",
     visibility = ["//tensorflow_federated/tools/python_package:python_package_tool"],
 )
 
 py_library(
     name = "async_utils",
     srcs = ["async_utils.py"],
-    srcs_version = "PY3",
     deps = [":tracing"],
 )
 
 py_test(
     name = "async_utils_test",
     srcs = ["async_utils_test.py"],
-    srcs_version = "PY3",
     deps = [":async_utils"],
 )
 
 py_library(
     name = "deprecation",
     srcs = ["deprecation.py"],
-    srcs_version = "PY3",
 )
 
 py_test(
     name = "deprecation_test",
     srcs = ["deprecation_test.py"],
-    srcs_version = "PY3",
     deps = [":deprecation"],
 )
 
 py_library(
     name = "named_containers",
     srcs = ["named_containers.py"],
-    srcs_version = "PY3",
     deps = [":py_typecheck"],
 )
 
@@ -63,8 +57,6 @@ py_test(
     name = "named_containers_test",
     size = "small",
     srcs = ["named_containers_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [":named_containers"],
 )
 
@@ -72,7 +64,6 @@ py_library(
     name = "golden",
     testonly = True,
     srcs = ["golden.py"],
-    srcs_version = "PY3",
 )
 
 py_test(
@@ -95,23 +86,18 @@ py_test(
         "golden_test_goldens/test_check_string_succeeds.expected",
         "golden_test_goldens/test_check_string_updates.expected",
     ],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [":golden"],
 )
 
 py_library(
     name = "py_typecheck",
     srcs = ["py_typecheck.py"],
-    srcs_version = "PY3",
 )
 
 py_test(
     name = "py_typecheck_test",
     size = "small",
     srcs = ["py_typecheck_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":py_typecheck",
         ":structure",
@@ -121,7 +107,6 @@ py_test(
 py_library(
     name = "retrying",
     srcs = ["retrying.py"],
-    srcs_version = "PY3",
     deps = [
         ":py_typecheck",
     ],
@@ -131,8 +116,6 @@ py_test(
     name = "retrying_test",
     size = "small",
     srcs = ["retrying_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [":retrying"],
 )
 
@@ -144,7 +127,6 @@ py_library(
 py_library(
     name = "serialization_utils",
     srcs = ["serialization_utils.py"],
-    srcs_version = "PY3",
     deps = [
         ":py_typecheck",
         "@com_google_protobuf//:protobuf_python",
@@ -155,8 +137,6 @@ py_test(
     name = "serialization_utils_test",
     size = "small",
     srcs = ["serialization_utils_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":serialization_utils",
         "@com_google_protobuf//:protobuf_python",
@@ -166,7 +146,6 @@ py_test(
 py_library(
     name = "structure",
     srcs = ["structure.py"],
-    srcs_version = "PY3",
     deps = [":py_typecheck"],
 )
 
@@ -174,15 +153,12 @@ py_test(
     name = "structure_test",
     size = "small",
     srcs = ["structure_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [":structure"],
 )
 
 py_library(
     name = "tracing",
     srcs = ["tracing.py"],
-    srcs_version = "PY3",
     deps = [":py_typecheck"],
 )
 
@@ -190,7 +166,5 @@ py_test(
     name = "tracing_test",
     size = "small",
     srcs = ["tracing_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [":tracing"],
 )

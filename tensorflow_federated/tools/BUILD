@@ -27,6 +27,4 @@ bzl_library(
 py_binary(
     name = "build_docs",
     srcs = ["build_docs.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
 )

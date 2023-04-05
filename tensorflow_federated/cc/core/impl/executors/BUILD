@@ -534,8 +534,6 @@ py_binary(
     name = "make_reduce_lambda_test_graph",
     testonly = True,
     srcs = ["make_reduce_lambda_test_graph.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
 )
 
 genrule(
@@ -553,8 +551,6 @@ py_binary(
     name = "make_structural_reduce_test_graph",
     testonly = True,
     srcs = ["make_structural_reduce_test_graph.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
 )
 
 cc_library(

@@ -23,21 +23,18 @@ licenses(["notice"])
 py_library(
     name = "computation",
     srcs = ["__init__.py"],
-    srcs_version = "PY3",
     visibility = ["//tensorflow_federated/tools/python_package:python_package_tool"],
 )
 
 py_library(
     name = "computation_base",
     srcs = ["computation_base.py"],
-    srcs_version = "PY3",
     deps = ["//tensorflow_federated/python/core/impl/types:typed_object"],
 )
 
 py_library(
     name = "computation_impl",
     srcs = ["computation_impl.py"],
-    srcs_version = "PY3",
     deps = [
         ":computation_base",
         ":function_utils",
@@ -55,8 +52,6 @@ py_test(
     name = "computation_impl_test",
     size = "small",
     srcs = ["computation_impl_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":computation_impl",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
@@ -71,7 +66,6 @@ py_test(
 py_library(
     name = "computation_serialization",
     srcs = ["computation_serialization.py"],
-    srcs_version = "PY3",
     deps = [
         ":computation_base",
         ":computation_impl",
@@ -85,8 +79,6 @@ py_test(
     name = "computation_serialization_test",
     size = "small",
     srcs = ["computation_serialization_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":computation_base",
         ":computation_impl",
@@ -100,7 +92,6 @@ py_test(
 py_library(
     name = "computation_wrapper",
     srcs = ["computation_wrapper.py"],
-    srcs_version = "PY3",
     deps = [
         ":computation_impl",
         ":function_utils",
@@ -116,8 +107,6 @@ py_test(
     name = "computation_wrapper_test",
     size = "small",
     srcs = ["computation_wrapper_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":computation_impl",
         ":computation_wrapper",
@@ -133,7 +122,6 @@ py_test(
 py_library(
     name = "function_utils",
     srcs = ["function_utils.py"],
-    srcs_version = "PY3",
     deps = [
         ":computation_base",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -149,8 +137,6 @@ py_test(
     name = "function_utils_test",
     size = "small",
     srcs = ["function_utils_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":computation_impl",
         ":function_utils",

@@ -18,7 +18,6 @@ licenses(["notice"])
 py_library(
     name = "landmark",
     srcs = ["__init__.py"],
-    srcs_version = "PY3",
     visibility = ["//tensorflow_federated/python/simulation/baselines:__pkg__"],
     deps = [
         ":landmark_tasks",
@@ -28,7 +27,6 @@ py_library(
 py_library(
     name = "landmark_tasks",
     srcs = ["landmark_tasks.py"],
-    srcs_version = "PY3",
     deps = [
         ":landmark_preprocessing",
         "//tensorflow_federated/python/learning/models:keras_utils",
@@ -45,7 +43,6 @@ py_library(
 py_test(
     name = "landmark_tasks_test",
     srcs = ["landmark_tasks_test.py"],
-    srcs_version = "PY3",
     deps = [
         ":landmark_tasks",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
@@ -57,14 +54,12 @@ py_test(
 py_library(
     name = "landmark_preprocessing",
     srcs = ["landmark_preprocessing.py"],
-    srcs_version = "PY3",
     deps = ["//tensorflow_federated/python/simulation/baselines:client_spec"],
 )
 
 py_test(
     name = "landmark_preprocessing_test",
     srcs = ["landmark_preprocessing_test.py"],
-    srcs_version = "PY3",
     deps = [
         ":landmark_preprocessing",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",

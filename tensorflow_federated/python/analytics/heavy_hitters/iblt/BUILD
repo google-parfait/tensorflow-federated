@@ -21,7 +21,6 @@ licenses(["notice"])
 py_library(
     name = "iblt",
     srcs = ["__init__.py"],
-    srcs_version = "PY3",
     visibility = ["//tensorflow_federated/python/analytics/heavy_hitters:__pkg__"],
     deps = [
         ":chunkers",
@@ -36,7 +35,6 @@ py_library(
 py_library(
     name = "iblt_clipping",
     srcs = ["iblt_clipping.py"],
-    srcs_version = "PY3",
     deps = [
         ":iblt_factory",
         "//tensorflow_federated/python/aggregators:factory",
@@ -52,8 +50,6 @@ py_library(
 py_test(
     name = "iblt_clipping_test",
     srcs = ["iblt_clipping_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":iblt_clipping",
         ":iblt_factory",
@@ -67,7 +63,6 @@ py_library(
     srcs = [
         "iblt_lib.py",
     ],
-    srcs_version = "PY3",
     deps = [
         ":chunkers",
         ":hyperedge_hashers",
@@ -79,7 +74,6 @@ py_library(
     srcs = [
         "chunkers.py",
     ],
-    srcs_version = "PY3",
     deps = ["//tensorflow_federated/python/common_libs:py_typecheck"],
 )
 
@@ -88,7 +82,6 @@ py_library(
     srcs = [
         "hyperedge_hashers.py",
     ],
-    srcs_version = "PY3",
 )
 
 py_test(
@@ -96,17 +89,13 @@ py_test(
     size = "medium",
     timeout = "long",
     srcs = ["iblt_lib_test.py"],
-    python_version = "PY3",
     shard_count = 4,
-    srcs_version = "PY3",
     deps = [":iblt_lib"],
 )
 
 py_test(
     name = "chunkers_test",
     srcs = ["chunkers_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [":chunkers"],
 )
 
@@ -114,15 +103,12 @@ py_test(
     name = "hyperedge_hashers_test",
     size = "medium",
     srcs = ["hyperedge_hashers_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [":hyperedge_hashers"],
 )
 
 py_library(
     name = "iblt_tff",
     srcs = ["iblt_tff.py"],
-    srcs_version = "PY3",
     deps = [
         ":chunkers",
         ":iblt_lib",
@@ -141,9 +127,7 @@ py_test(
     name = "iblt_tff_test",
     timeout = "long",
     srcs = ["iblt_tff_test.py"],
-    python_version = "PY3",
     shard_count = 10,
-    srcs_version = "PY3",
     deps = [
         ":iblt_tff",
         "//tensorflow_federated/python/core/backends/test:execution_contexts",
@@ -156,7 +140,6 @@ py_test(
 py_library(
     name = "iblt_tensor",
     srcs = ["iblt_tensor.py"],
-    srcs_version = "PY3",
     deps = [
         ":chunkers",
         ":iblt_lib",
@@ -166,8 +149,6 @@ py_library(
 py_test(
     name = "iblt_tensor_test",
     srcs = ["iblt_tensor_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":iblt_lib",
         ":iblt_tensor",

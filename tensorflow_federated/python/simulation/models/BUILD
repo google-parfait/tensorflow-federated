@@ -19,7 +19,6 @@ licenses(["notice"])
 py_library(
     name = "models",
     srcs = ["__init__.py"],
-    srcs_version = "PY3",
     visibility = ["//tensorflow_federated/python/simulation:__pkg__"],
     deps = [":mnist"],
 )
@@ -27,34 +26,27 @@ py_library(
 py_library(
     name = "mnist",
     srcs = ["mnist.py"],
-    srcs_version = "PY3",
     deps = ["//tensorflow_federated/python/learning/metrics:counters"],
 )
 
 py_library(
     name = "mobilenet_v2",
     srcs = ["mobilenet_v2.py"],
-    srcs_version = "PY3",
 )
 
 py_test(
     name = "mobilenet_v2_test",
     srcs = ["mobilenet_v2_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [":mobilenet_v2"],
 )
 
 py_library(
     name = "resnet_models",
     srcs = ["resnet_models.py"],
-    srcs_version = "PY3",
 )
 
 py_test(
     name = "resnet_models_test",
     srcs = ["resnet_models_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [":resnet_models"],
 )

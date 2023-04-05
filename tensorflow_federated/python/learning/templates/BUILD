@@ -20,7 +20,6 @@ licenses(["notice"])
 py_library(
     name = "templates",
     srcs = ["__init__.py"],
-    srcs_version = "PY3",
     visibility = ["//tensorflow_federated/python/learning:__pkg__"],
     deps = [
         ":apply_optimizer_finalizer",
@@ -36,7 +35,6 @@ py_library(
 py_library(
     name = "apply_optimizer_finalizer",
     srcs = ["apply_optimizer_finalizer.py"],
-    srcs_version = "PY3",
     deps = [
         ":finalizers",
         "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
@@ -57,8 +55,6 @@ py_library(
 py_test(
     name = "apply_optimizer_finalizer_test",
     srcs = ["apply_optimizer_finalizer_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":apply_optimizer_finalizer",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
@@ -75,7 +71,6 @@ py_test(
 py_library(
     name = "client_works",
     srcs = ["client_works.py"],
-    srcs_version = "PY3",
     deps = [
         ":hparams_base",
         "//tensorflow_federated/python/common_libs:structure",
@@ -92,8 +87,6 @@ py_test(
     name = "client_works_test",
     size = "small",
     srcs = ["client_works_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":client_works",
         "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
@@ -110,7 +103,6 @@ py_test(
 py_library(
     name = "composers",
     srcs = ["composers.py"],
-    srcs_version = "PY3",
     deps = [
         ":apply_optimizer_finalizer",
         ":client_works",
@@ -140,8 +132,6 @@ py_test(
     size = "small",
     timeout = "moderate",
     srcs = ["composers_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":apply_optimizer_finalizer",
         ":client_works",
@@ -171,7 +161,6 @@ py_test(
 py_library(
     name = "distributors",
     srcs = ["distributors.py"],
-    srcs_version = "PY3",
     deps = [
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
@@ -189,8 +178,6 @@ py_test(
     name = "distributors_test",
     size = "small",
     srcs = ["distributors_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":distributors",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
@@ -207,7 +194,6 @@ py_test(
 py_library(
     name = "finalizers",
     srcs = ["finalizers.py"],
-    srcs_version = "PY3",
     deps = [
         ":hparams_base",
         "//tensorflow_federated/python/common_libs:structure",
@@ -222,8 +208,6 @@ py_test(
     name = "finalizers_test",
     size = "small",
     srcs = ["finalizers_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":finalizers",
         "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
@@ -262,7 +246,6 @@ py_test(
 py_library(
     name = "learning_process",
     srcs = ["learning_process.py"],
-    srcs_version = "PY3",
     deps = [
         ":hparams_base",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -278,8 +261,6 @@ py_test(
     name = "learning_process_test",
     size = "small",
     srcs = ["learning_process_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":learning_process",
         "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
@@ -294,7 +275,6 @@ py_test(
 py_library(
     name = "model_delta_client_work",
     srcs = ["model_delta_client_work.py"],
-    srcs_version = "PY3",
     deps = [
         ":client_works",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -322,8 +302,6 @@ py_test(
     size = "small",
     timeout = "moderate",
     srcs = ["model_delta_client_work_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":client_works",
         ":model_delta_client_work",
@@ -348,7 +326,6 @@ py_test(
 py_library(
     name = "proximal_client_work",
     srcs = ["proximal_client_work.py"],
-    srcs_version = "PY3",
     deps = [
         ":client_works",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -376,8 +353,6 @@ py_test(
     size = "small",
     timeout = "moderate",
     srcs = ["proximal_client_work_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":client_works",
         ":proximal_client_work",
@@ -400,7 +375,6 @@ py_test(
 py_library(
     name = "type_checks",
     srcs = ["type_checks.py"],
-    srcs_version = "PY3",
     deps = [
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
@@ -411,8 +385,6 @@ py_library(
 py_test(
     name = "type_checks_test",
     srcs = ["type_checks_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":type_checks",
         "//tensorflow_federated/python/core/impl/types:computation_types",

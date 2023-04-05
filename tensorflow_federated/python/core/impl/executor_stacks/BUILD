@@ -44,8 +44,6 @@ py_library(
 py_test(
     name = "cpp_executor_factory_test",
     srcs = ["cpp_executor_factory_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     tags = [
         "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
     ],
@@ -87,8 +85,6 @@ py_library(
 py_test(
     name = "executor_stack_bindings_test",
     srcs = ["executor_stack_bindings_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     tags = [
         "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
     ],
@@ -113,9 +109,7 @@ py_test(
     name = "python_executor_stacks_test",
     size = "small",
     srcs = ["python_executor_stacks_test.py"],
-    python_version = "PY3",
     shard_count = 5,
-    srcs_version = "PY3",
     deps = [
         ":python_executor_stacks",
         "//tensorflow_federated/python/core/impl/executors:executor_base",

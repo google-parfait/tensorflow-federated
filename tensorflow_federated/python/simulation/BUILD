@@ -23,7 +23,6 @@ licenses(["notice"])
 py_library(
     name = "simulation",
     srcs = ["__init__.py"],
-    srcs_version = "PY3",
     visibility = ["//tensorflow_federated:__pkg__"],
     deps = [
         ":iterative_process_compositions",
@@ -38,7 +37,6 @@ py_library(
 py_library(
     name = "iterative_process_compositions",
     srcs = ["iterative_process_compositions.py"],
-    srcs_version = "PY3",
     deps = [
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
@@ -57,8 +55,6 @@ py_test(
     name = "iterative_process_compositions_test",
     size = "small",
     srcs = ["iterative_process_compositions_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":iterative_process_compositions",
         "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
@@ -74,22 +70,18 @@ py_test(
 py_library(
     name = "sampling_utils",
     srcs = ["sampling_utils.py"],
-    srcs_version = "PY3",
 )
 
 py_test(
     name = "sampling_utils_test",
     size = "small",
     srcs = ["sampling_utils_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [":sampling_utils"],
 )
 
 py_library(
     name = "training_loop",
     srcs = ["training_loop.py"],
-    srcs_version = "PY3",
     deps = [
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/computation:computation_base",
@@ -104,8 +96,6 @@ py_test(
     name = "training_loop_test",
     size = "medium",
     srcs = ["training_loop_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":training_loop",
         "//tensorflow_federated/python/core/impl/computation:computation_base",

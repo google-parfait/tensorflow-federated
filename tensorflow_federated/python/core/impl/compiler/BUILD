@@ -24,14 +24,12 @@ licenses(["notice"])
 py_library(
     name = "compiler",
     srcs = ["__init__.py"],
-    srcs_version = "PY3",
     visibility = ["//tensorflow_federated/tools/python_package:python_package_tool"],
 )
 
 py_library(
     name = "building_block_analysis",
     srcs = ["building_block_analysis.py"],
-    srcs_version = "PY3",
     deps = [
         ":building_blocks",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -43,8 +41,6 @@ py_test(
     name = "building_block_analysis_test",
     size = "small",
     srcs = ["building_block_analysis_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":building_block_analysis",
         ":building_blocks",
@@ -59,7 +55,6 @@ py_test(
 py_library(
     name = "building_block_factory",
     srcs = ["building_block_factory.py"],
-    srcs_version = "PY3",
     deps = [
         ":building_blocks",
         ":intrinsic_defs",
@@ -129,8 +124,6 @@ py_test(
         "building_block_factory_test_goldens/zips_tuple_named.expected",
         "building_block_factory_test_goldens/zips_tuple_unnamed.expected",
     ],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":building_block_factory",
         ":building_blocks",
@@ -149,7 +142,6 @@ py_library(
     name = "building_block_test_utils",
     testonly = True,
     srcs = ["building_block_test_utils.py"],
-    srcs_version = "PY3",
     deps = [
         ":building_block_factory",
         ":building_blocks",
@@ -161,7 +153,6 @@ py_library(
 py_library(
     name = "building_blocks",
     srcs = ["building_blocks.py"],
-    srcs_version = "PY3",
     deps = [
         ":intrinsic_defs",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
@@ -179,8 +170,6 @@ py_test(
     name = "building_blocks_test",
     size = "small",
     srcs = ["building_blocks_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":building_block_factory",
         ":building_block_test_utils",
@@ -197,7 +186,6 @@ py_test(
 py_library(
     name = "compiled_computation_transformations",
     srcs = ["compiled_computation_transformations.py"],
-    srcs_version = "PY3",
     deps = [
         ":building_blocks",
         ":tensorflow_computation_transformations",
@@ -215,8 +203,6 @@ py_test(
     name = "compiled_computation_transformations_test",
     size = "small",
     srcs = ["compiled_computation_transformations_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":building_block_factory",
         ":building_blocks",
@@ -232,7 +218,6 @@ py_test(
 py_library(
     name = "computation_factory",
     srcs = ["computation_factory.py"],
-    srcs_version = "PY3",
     deps = [
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/core/impl/types:computation_types",
@@ -244,8 +229,6 @@ py_library(
 py_test(
     name = "computation_factory_test",
     srcs = ["computation_factory_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":computation_factory",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
@@ -258,7 +241,6 @@ py_test(
 py_library(
     name = "intrinsic_defs",
     srcs = ["intrinsic_defs.py"],
-    srcs_version = "PY3",
     deps = [
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/impl/types:computation_types",
@@ -270,15 +252,12 @@ py_test(
     name = "intrinsic_defs_test",
     size = "small",
     srcs = ["intrinsic_defs_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [":intrinsic_defs"],
 )
 
 py_library(
     name = "local_computation_factory_base",
     srcs = ["local_computation_factory_base.py"],
-    srcs_version = "PY3",
     deps = [
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/core/impl/types:computation_types",
@@ -288,7 +267,6 @@ py_library(
 py_library(
     name = "tensorflow_computation_factory",
     srcs = ["tensorflow_computation_factory.py"],
-    srcs_version = "PY3",
     deps = [
         ":local_computation_factory_base",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
@@ -307,8 +285,6 @@ py_library(
 py_cpu_gpu_test(
     name = "tensorflow_computation_factory_test",
     srcs = ["tensorflow_computation_factory_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":tensorflow_computation_factory",
         ":tensorflow_computation_test_utils",
@@ -323,7 +299,6 @@ py_cpu_gpu_test(
 py_library(
     name = "tensorflow_computation_transformations",
     srcs = ["tensorflow_computation_transformations.py"],
-    srcs_version = "PY3",
     deps = [
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -348,8 +323,6 @@ py_test(
     name = "tensorflow_computation_transformations_test",
     size = "small",
     srcs = ["tensorflow_computation_transformations_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":building_block_factory",
         ":tensorflow_computation_transformations",
@@ -364,7 +337,6 @@ py_test(
 py_library(
     name = "transformations",
     srcs = ["transformations.py"],
-    srcs_version = "PY3",
     deps = [
         ":building_block_factory",
         ":building_blocks",
@@ -381,8 +353,6 @@ py_library(
 py_test(
     name = "transformations_test",
     srcs = ["transformations_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":building_block_factory",
         ":building_block_test_utils",
@@ -403,7 +373,6 @@ py_test(
 py_library(
     name = "transformation_utils",
     srcs = ["transformation_utils.py"],
-    srcs_version = "PY3",
     deps = [
         ":building_blocks",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -415,8 +384,6 @@ py_test(
     name = "transformation_utils_test",
     size = "small",
     srcs = ["transformation_utils_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":building_block_factory",
         ":building_block_test_utils",
@@ -431,7 +398,6 @@ py_test(
 py_library(
     name = "tree_analysis",
     srcs = ["tree_analysis.py"],
-    srcs_version = "PY3",
     deps = [
         ":building_block_analysis",
         ":building_blocks",
@@ -447,8 +413,6 @@ py_library(
 py_test(
     name = "tree_analysis_test",
     srcs = ["tree_analysis_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":building_block_analysis",
         ":building_block_factory",
@@ -468,7 +432,6 @@ py_test(
 py_library(
     name = "tree_transformations",
     srcs = ["tree_transformations.py"],
-    srcs_version = "PY3",
     deps = [
         ":building_block_analysis",
         ":building_block_factory",
@@ -497,8 +460,6 @@ py_test(
     data = [
         "tree_transformations_test_goldens/uniquify_names_blocks_nested_inside_of_locals.expected",
     ],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":building_block_factory",
         ":building_block_test_utils",
@@ -519,7 +480,6 @@ py_library(
     name = "compiler_test_utils",
     testonly = True,
     srcs = ["compiler_test_utils.py"],
-    srcs_version = "PY3",
     deps = [
         ":building_blocks",
         ":transformation_utils",
@@ -539,8 +499,6 @@ py_test(
     data = [
         "compiler_test_utils_test_goldens/test_check_computations.expected",
     ],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":building_block_test_utils",
         ":compiler_test_utils",

@@ -14,7 +14,6 @@ licenses(["notice"])
 py_library(
     name = "v0",
     srcs = ["__init__.py"],
-    srcs_version = "PY3",
     visibility = ["//tensorflow_federated/tools/python_package:python_package_tool"],
 )
 
@@ -32,8 +31,6 @@ py_proto_library(
 py_test(
     name = "computation_pb2_test",
     srcs = ["computation_pb2_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     tags = [
         "nofixdeps",
         "nokokoro",

@@ -21,14 +21,12 @@ licenses(["notice"])
 py_library(
     name = "federated_context",
     srcs = ["__init__.py"],
-    srcs_version = "PY3",
     visibility = ["//tensorflow_federated/tools/python_package:python_package_tool"],
 )
 
 py_library(
     name = "data",
     srcs = ["data.py"],
-    srcs_version = "PY3",
     deps = [
         ":value_impl",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -40,8 +38,6 @@ py_library(
 py_test(
     name = "data_test",
     srcs = ["data_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":data",
         ":value_impl",
@@ -53,7 +49,6 @@ py_test(
 py_library(
     name = "federated_computation",
     srcs = ["federated_computation.py"],
-    srcs_version = "PY3",
     deps = [
         ":federated_computation_utils",
         "//tensorflow_federated/python/core/impl/computation:computation_impl",
@@ -73,8 +68,6 @@ py_test(
     data = [
         "federated_computation_test_goldens/federated_computation_traceback.expected",
     ],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":federated_computation",
         "//tensorflow_federated/python/common_libs:golden",
@@ -89,7 +82,6 @@ py_test(
 py_library(
     name = "federated_computation_context",
     srcs = ["federated_computation_context.py"],
-    srcs_version = "PY3",
     deps = [
         ":value_impl",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -105,8 +97,6 @@ py_test(
     name = "federated_computation_context_test",
     size = "small",
     srcs = ["federated_computation_context_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":federated_computation",
         ":federated_computation_context",
@@ -123,7 +113,6 @@ py_test(
 py_library(
     name = "federated_computation_utils",
     srcs = ["federated_computation_utils.py"],
-    srcs_version = "PY3",
     deps = [
         ":federated_computation_context",
         ":value_impl",
@@ -139,8 +128,6 @@ py_test(
     name = "federated_computation_utils_test",
     size = "small",
     srcs = ["federated_computation_utils_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":federated_computation_utils",
         "//tensorflow_federated/python/core/impl/computation:function_utils",
@@ -152,7 +139,6 @@ py_test(
 py_library(
     name = "intrinsics",
     srcs = ["intrinsics.py"],
-    srcs_version = "PY3",
     deps = [
         ":value_impl",
         ":value_utils",
@@ -174,8 +160,6 @@ py_library(
 py_test(
     name = "intrinsics_test",
     srcs = ["intrinsics_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":federated_computation_context",
         ":intrinsics",
@@ -198,7 +182,6 @@ py_test(
 py_library(
     name = "value_impl",
     srcs = ["value_impl.py"],
-    srcs_version = "PY3",
     deps = [
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:named_containers",
@@ -225,8 +208,6 @@ py_test(
     name = "value_impl_test",
     size = "small",
     srcs = ["value_impl_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":federated_computation_context",
         ":value_impl",
@@ -243,7 +224,6 @@ py_test(
 py_library(
     name = "value_utils",
     srcs = ["value_utils.py"],
-    srcs_version = "PY3",
     deps = [
         ":value_impl",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -257,8 +237,6 @@ py_test(
     name = "value_utils_test",
     size = "small",
     srcs = ["value_utils_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":federated_computation",
         ":federated_computation_context",

@@ -17,6 +17,5 @@ licenses(["notice"])
 py_library(
     name = "cloud",
     srcs = ["__init__.py"],
-    srcs_version = "PY3",
     visibility = ["//tensorflow_federated:__pkg__"],
 )

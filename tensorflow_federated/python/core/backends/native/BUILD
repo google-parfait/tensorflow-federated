@@ -27,7 +27,6 @@ licenses(["notice"])
 py_library(
     name = "native",
     srcs = ["__init__.py"],
-    srcs_version = "PY3",
     visibility = ["//tensorflow_federated/python/core/backends:__pkg__"],
     deps = [
         ":compiler",
@@ -39,7 +38,6 @@ py_library(
 py_library(
     name = "compiler",
     srcs = ["compiler.py"],
-    srcs_version = "PY3",
     deps = [
         "//tensorflow_federated/python/common_libs:tracing",
         "//tensorflow_federated/python/core/backends/mapreduce:compiler",
@@ -54,8 +52,6 @@ py_library(
 py_test(
     name = "compiler_test",
     srcs = ["compiler_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":compiler",
         "//tensorflow_federated/python/core/impl/compiler:transformation_utils",
@@ -68,7 +64,6 @@ py_test(
 py_library(
     name = "cpp_execution_contexts",
     srcs = ["cpp_execution_contexts.py"],
-    srcs_version = "PY3",
     tags = [
         "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
     ],
@@ -85,7 +80,6 @@ py_library(
 py_test(
     name = "cpp_execution_contexts_test",
     srcs = ["cpp_execution_contexts_test.py"],
-    srcs_version = "PY3",
     tags = [
         "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
     ],
@@ -106,7 +100,6 @@ py_test(
 py_library(
     name = "mergeable_comp_compiler",
     srcs = ["mergeable_comp_compiler.py"],
-    srcs_version = "PY3",
     deps = [
         "//tensorflow_federated/python/core/backends/mapreduce:compiler",
         "//tensorflow_federated/python/core/impl/compiler:building_block_factory",
@@ -125,8 +118,6 @@ py_library(
 py_test(
     name = "mergeable_comp_compiler_test",
     srcs = ["mergeable_comp_compiler_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":mergeable_comp_compiler",
         "//tensorflow_federated/python/core/impl/execution_contexts:async_execution_context",
@@ -144,7 +135,6 @@ py_test(
 py_library(
     name = "execution_contexts",
     srcs = ["execution_contexts.py"],
-    srcs_version = "PY3",
     deps = [
         ":compiler",
         ":mergeable_comp_compiler",
@@ -160,8 +150,6 @@ py_library(
 py_test(
     name = "execution_contexts_test",
     srcs = ["execution_contexts_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":execution_contexts",
         "//tensorflow_federated/proto/v0:executor_py_pb2",

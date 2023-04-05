@@ -18,7 +18,6 @@ licenses(["notice"])
 py_library(
     name = "cifar100",
     srcs = ["__init__.py"],
-    srcs_version = "PY3",
     visibility = ["//tensorflow_federated/python/simulation/baselines:__pkg__"],
     deps = [":image_classification_tasks"],
 )
@@ -26,7 +25,6 @@ py_library(
 py_library(
     name = "image_classification_preprocessing",
     srcs = ["image_classification_preprocessing.py"],
-    srcs_version = "PY3",
     deps = ["//tensorflow_federated/python/simulation/baselines:client_spec"],
 )
 
@@ -34,8 +32,6 @@ py_test(
     name = "image_classification_preprocessing_test",
     size = "medium",
     srcs = ["image_classification_preprocessing_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":image_classification_preprocessing",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
@@ -46,7 +42,6 @@ py_test(
 py_library(
     name = "image_classification_tasks",
     srcs = ["image_classification_tasks.py"],
-    srcs_version = "PY3",
     deps = [
         ":image_classification_preprocessing",
         "//tensorflow_federated/python/learning/models:keras_utils",
@@ -63,8 +58,6 @@ py_library(
 py_test(
     name = "image_classification_tasks_test",
     srcs = ["image_classification_tasks_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":image_classification_tasks",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
