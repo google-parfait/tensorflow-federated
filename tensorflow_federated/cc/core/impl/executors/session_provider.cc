@@ -20,6 +20,7 @@ limitations under the License
 #include <vector>
 
 #include "absl/container/flat_hash_set.h"
+#include "absl/strings/match.h"
 #include "absl/strings/str_join.h"
 #include "absl/strings/str_split.h"
 #include "absl/synchronization/mutex.h"
@@ -137,13 +138,22 @@ void SetDevice(std::string_view device, tensorflow::GraphDef* graph_def,
               << ") on device [" << device << "]"
               << "and marking for compilation on device type [" << device_type
               << "]";
-    }
-    if (!node_pb.device().empty()) {
+    } else if (absl::StartsWith(node_pb.op(), "IteratorGetNext") ||
+               node_pb.op() == "MakeIterator" ||
+               absl::StartsWith(node_pb.op(), "AnonymousIteratorV")) {
+      // TODO(b/276782974): We must avoid forcing the Iterator ops on the GPU,
+      // which will happen below because GPU kernels exist. TF will determine
+      // that the iterator is on the host and correctly place the node for us,
+      // but this will cause issues if we eagerly put the GetNext on the
+      // accelerator divce here.
+      VLOG(5) << "Forcing iterator op to CPU [" << node_pb.name() << "]";
+      node_pb.set_device(
+          absl::StrCat("/device:", tensorflow::DEVICE_CPU, ":0"));
+    } else if (!node_pb.device().empty()) {
       VLOG(5) << "Skipping already placed node [" << node_pb.name() << "] ("
               << node_pb.op() << ") on " << node_pb.device();
-      continue;
-      // Note: Don't place general ops directly on TPU.
     } else if (tensorflow::KernelDefAvailable(device_type, node_pb) &&
+               // Note: Don't place general ops directly on TPU.
                strcmp(device_type, tensorflow::DEVICE_TPU) != 0) {
       VLOG(5) << "Placing node [" << node_pb.name() << "] (" << node_pb.op()
               << ") on device [" << device << "]";
