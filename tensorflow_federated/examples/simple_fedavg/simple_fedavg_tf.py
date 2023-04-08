@@ -143,6 +143,54 @@ def build_server_broadcast_message(server_state):
 
 
 @tf.function
+def batch_client_update(
+    model, batch, initial_weights, num_examples, client_optimizer
+):
+  """Performs client local training of `model` on `dataset`.
+
+  Args:
+    model: A `tff.learning.models.VariableModel` to train locally on the client.
+    batch: A batch from 'tf.data.Dataset' representing the clients local data.
+    initial_weights: initial model weights to use for update. weights to train.
+    num_examples: Number of examples observed so far.
+    client_optimizer: A `tf.keras.optimizers.Optimizer` used to update the local
+      model during training.
+
+  Returns:
+    A `ClientOutput` instance with a model update to aggregate on the server.
+  """
+  model_weights = tff.learning.models.ModelWeights.from_model(model)
+  tf.nest.map_structure(
+      lambda v, t: v.assign(t), model_weights.trainable, initial_weights
+  )
+
+  num_examples = tf.cast(num_examples, tf.int32)
+  with tf.GradientTape() as tape:
+    outputs = model.forward_pass(batch)
+  grads = tape.gradient(outputs.loss, model_weights.trainable)
+  client_optimizer.apply_gradients(zip(grads, model_weights.trainable))
+  batch_size = tf.shape(batch['y'])[0]
+  num_examples += batch_size
+
+  weights_delta = tf.nest.map_structure(
+      lambda a, b: a - b, model_weights.trainable, initial_weights
+  )
+  client_weight = tf.cast(num_examples, tf.float32)
+  model_outputs = model.report_local_unfinalized_metrics()
+  return ClientOutput(weights_delta, client_weight, model_outputs)
+
+
+@tf.function
+def init_client_ouput(model, server_message):
+  client_weight = tf.constant(0, dtype=tf.float32)
+  return ClientOutput(
+      server_message.model_weights.trainable,
+      client_weight,
+      model.report_local_unfinalized_metrics(),
+  )
+
+
+@tf.function
 def client_update(model, dataset, server_message, client_optimizer):
   """Performans client local training of `model` on `dataset`.
 

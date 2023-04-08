@@ -16,7 +16,6 @@
 import collections
 from collections.abc import Callable
 import functools
-
 from absl.testing import parameterized
 import attr
 import numpy as np
@@ -53,6 +52,57 @@ def _create_test_cnn_model():
   ])
 
   return model
+
+
+NUM_LOGICAL_DEVICES = 8
+
+
+# Initialize logical devices only once for the module.
+def setUpModule():
+  gpu_devices = tf.config.list_physical_devices('GPU')
+  if gpu_devices:
+    tf.config.set_logical_device_configuration(
+        gpu_devices[0],
+        [
+            tf.config.LogicalDeviceConfiguration(memory_limit=200),
+        ]
+        * NUM_LOGICAL_DEVICES,
+    )
+    tf.experimental.dtensor.initialize_accelerator_system('GPU')
+  else:
+    devices = tf.config.list_physical_devices('CPU')
+    tf.config.set_logical_device_configuration(
+        devices[0],
+        [
+            tf.config.LogicalDeviceConfiguration(),
+        ]
+        * NUM_LOGICAL_DEVICES,
+    )
+
+
+def _setup_local_context(
+    use_dtensor_stack_on_server=False, use_dtensor_stack_on_client=False
+):
+  device_name = tf.experimental.dtensor.preferred_device_type()
+  if not use_dtensor_stack_on_server and not use_dtensor_stack_on_client:
+    #  Use Tensorflow executor path
+    tff.backends.native.set_sync_local_cpp_execution_context()
+    return
+
+  # Go through DTENSOR path
+  mesh_dim_name = 'batch'
+  mesh = tf.experimental.dtensor.create_mesh(
+      devices=[device_name + ':%d' % i for i in range(NUM_LOGICAL_DEVICES)],
+      mesh_dims=[(mesh_dim_name, NUM_LOGICAL_DEVICES)],
+  )
+  server_mesh = mesh if use_dtensor_stack_on_server else None
+  client_mesh = mesh if use_dtensor_stack_on_client else None
+  tff._native_cpp_execution_contexts.set_sync_experimental_distributed_cpp_execution_context(
+      distributed_config=tff._native_cpp_execution_contexts.DistributedConfiguration(
+          server_mesh=server_mesh,
+          client_mesh=client_mesh,
+      )
+  )
 
 
 def _create_random_batch():
@@ -214,11 +264,43 @@ def _create_client_data():
   return client_data
 
 
+@parameterized.named_parameters(
+    (
+        'dtensor_on_both_server_client',
+        True,
+        True,
+        True,
+    ),  # DTensor on client can only be used with sequence_reduce
+    (
+        'dtensor_server_side_use_dataset_iteration',
+        True,
+        False,
+        False,
+    ),
+    (
+        'dtensor_on_only_client',
+        False,
+        True,
+        True,
+    ),  # DTensor on client can only be used with sequence_reduce
+    ('tensorflow_use_sequence_reduce', False, False, True),
+    ('tensorflow_use_dataset_iteration', False, False, False),
+)
 class SimpleFedAvgTest(tf.test.TestCase, parameterized.TestCase):
 
-  def test_process_construction(self):
+  def test_process_construction(
+      self,
+      use_dtensor_stack_on_server,
+      use_dtensor_stack_on_client,
+      use_sequence_reduce,
+  ):
+    _setup_local_context(
+        use_dtensor_stack_on_server=use_dtensor_stack_on_server,
+        use_dtensor_stack_on_client=use_dtensor_stack_on_client,
+    )
     it_process = simple_fedavg_tff.build_federated_averaging_process(
-        _tff_learning_model_fn
+        _tff_learning_model_fn,
+        use_sequence_reduce=use_sequence_reduce,
     )
     self.assertIsInstance(it_process, tff.templates.IterativeProcess)
     federated_data_type = it_process.next.type_signature.parameter[1]
@@ -236,9 +318,18 @@ class SimpleFedAvgTest(tf.test.TestCase, parameterized.TestCase):
         ),
     )
 
-  def test_training_keras_model_converges(self):
+  def test_training_keras_model_converges(
+      self,
+      use_dtensor_stack_on_server,
+      use_dtensor_stack_on_client,
+      use_sequence_reduce,
+  ):
+    _setup_local_context(
+        use_dtensor_stack_on_server=use_dtensor_stack_on_server,
+        use_dtensor_stack_on_client=use_dtensor_stack_on_client,
+    )
     it_process = simple_fedavg_tff.build_federated_averaging_process(
-        _tff_learning_model_fn
+        _tff_learning_model_fn, use_sequence_reduce=use_sequence_reduce
     )
     server_state = it_process.initialize()
 
@@ -260,11 +351,22 @@ class SimpleFedAvgTest(tf.test.TestCase, parameterized.TestCase):
       previous_loss = loss
     self.assertLess(loss, 0.1)
 
-  def test_training_custom_model_converges(self):
+  def test_training_custom_model_converges(
+      self,
+      use_dtensor_stack_on_server,
+      use_dtensor_stack_on_client,
+      use_sequence_reduce,
+  ):
+    _setup_local_context(
+        use_dtensor_stack_on_server=use_dtensor_stack_on_server,
+        use_dtensor_stack_on_client=use_dtensor_stack_on_client,
+    )
     client_data = _create_client_data()
     train_data = [client_data()]
 
-    trainer = simple_fedavg_tff.build_federated_averaging_process(MnistModel)
+    trainer = simple_fedavg_tff.build_federated_averaging_process(
+        MnistModel, use_sequence_reduce=use_sequence_reduce
+    )
     state = trainer.initialize()
     previous_loss = None
     for _ in range(10):
@@ -418,11 +520,24 @@ class RNNTest(tf.test.TestCase, parameterized.TestCase):
         ),
     )
 
-  def test_client_adagrad_train(self):
+  @parameterized.named_parameters(
+      (
+          'dtensor_server_side_use_dataset_iteration',
+          True,
+          False,
+      ),  # DTensor can only be used on server side for RNNs, since there is a
+      # # loop inside tf function on client side which is not supported with
+      # # DTensor.
+      ('tensorflow_use_dataset_iteration', False, False),
+  )
+  def test_client_adagrad_train(
+      self, use_dtensor_on_server, use_dtensor_on_client
+  ):
+    _setup_local_context(use_dtensor_on_server, use_dtensor_on_client)
     it_process = simple_fedavg_tff.build_federated_averaging_process(
         _rnn_model_fn,
         client_optimizer_fn=functools.partial(
-            tf.keras.optimizers.legacy.Adagrad, learning_rate=0.01
+            tf.keras.optimizers.SGD, learning_rate=0.01
         ),
     )
     server_state = it_process.initialize()

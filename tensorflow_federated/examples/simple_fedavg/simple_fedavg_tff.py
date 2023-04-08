@@ -29,8 +29,10 @@ Communication-Efficient Learning of Deep Networks from Decentralized Data
 import tensorflow as tf
 import tensorflow_federated as tff
 
+from tensorflow_federated.examples.simple_fedavg.simple_fedavg_tf import batch_client_update
 from tensorflow_federated.examples.simple_fedavg.simple_fedavg_tf import build_server_broadcast_message
 from tensorflow_federated.examples.simple_fedavg.simple_fedavg_tf import client_update
+from tensorflow_federated.examples.simple_fedavg.simple_fedavg_tf import init_client_ouput
 from tensorflow_federated.examples.simple_fedavg.simple_fedavg_tf import server_update
 from tensorflow_federated.examples.simple_fedavg.simple_fedavg_tf import ServerState
 
@@ -51,10 +53,63 @@ def _initialize_optimizer_vars(
   assert optimizer.variables()
 
 
+def _build_client_update_fn(
+    tf_dataset_type,
+    server_message_type,
+    model_fn,
+    client_optimizer_fn,
+    use_sequence_reduce,
+):
+  """Returns computatoin for client update."""
+
+  @tff.tf_computation(server_message_type, tf_dataset_type)
+  def client_update_fn(server_message, tf_dataset):
+    model = model_fn()
+    client_optimizer = client_optimizer_fn()
+    return client_update(model, tf_dataset, server_message, client_optimizer)
+
+  if not use_sequence_reduce:
+    # Use client update fn with dataset iteration inside tf function.
+    return client_update_fn
+  else:
+    # Use client update function with dataset iteration lifter out of tf
+    # function, using tff.sequenece_reduce.
+
+    client_update_type_spec = client_update_fn.type_signature.result
+    batch_type = model_fn().input_spec
+
+    @tff.tf_computation(client_update_type_spec, batch_type)
+    def client_update_batch_fn(client_data, batch):
+      model = model_fn()
+      client_optimizer = client_optimizer_fn()
+      return batch_client_update(
+          model,
+          batch,
+          client_data.weights_delta,
+          client_data.client_weight,
+          client_optimizer,
+      )
+
+    @tff.tf_computation(server_message_type)
+    def initialize_client_data(server_message):
+      model = model_fn()
+      return init_client_ouput(model, server_message)
+
+    @tff.federated_computation(
+        server_message_type, tff.SequenceType(batch_type)
+    )
+    def client_update_weights_fn(server_message, batches):
+      client_data = initialize_client_data(server_message)
+      return tff.sequence_reduce(batches, client_data, client_update_batch_fn)
+
+    return client_update_weights_fn
+
+
 def build_federated_averaging_process(
     model_fn,
     server_optimizer_fn=lambda: tf.keras.optimizers.SGD(learning_rate=1.0),
     client_optimizer_fn=lambda: tf.keras.optimizers.SGD(learning_rate=0.02),
+    use_sequence_reduce=False,
 ):
   """Builds the TFF computations for optimization using federated averaging.
 
@@ -65,6 +120,9 @@ def build_federated_averaging_process(
       `tf.keras.optimizers.Optimizer` for server update.
     client_optimizer_fn: A no-arg function that returns a
       `tf.keras.optimizers.Optimizer` for client update.
+    use_sequence_reduce: If true, uses tff.sequence_reduce to perform reduction
+      across batches of dataset, instead of a for-loop inside client update
+      method.
 
   Returns:
     A `tff.templates.IterativeProcess`.
@@ -78,7 +136,12 @@ def build_federated_averaging_process(
       whimsy_model.metric_finalizers(), unfinalized_metrics_type
   )
 
-  @tff.tf_computation
+  @tff.tf_computation(
+      layout_map={
+          'weights': 'batch,unsharded',
+          'SGD/m/weights': 'batch,unsharded',
+      },
+  )
   def server_init_tf():
     model = model_fn()
     model_weights = tff.learning.models.ModelWeights.from_model(model)
@@ -93,7 +156,14 @@ def build_federated_averaging_process(
   server_state_type = server_init_tf.type_signature.result
   model_weights_type = server_state_type.model
 
-  @tff.tf_computation(server_state_type, model_weights_type.trainable)
+  @tff.tf_computation(
+      server_state_type,
+      model_weights_type.trainable,
+      layout_map={
+          'weights': 'batch,unsharded',
+          'SGD/m/weights': 'batch,unsharded',
+      },
+  )
   def server_update_fn(server_state, model_delta):
     model = model_fn()
     server_optimizer = server_optimizer_fn()
@@ -106,12 +176,6 @@ def build_federated_averaging_process(
 
   server_message_type = server_message_fn.type_signature.result
   tf_dataset_type = tff.SequenceType(whimsy_model.input_spec)
-
-  @tff.tf_computation(tf_dataset_type, server_message_type)
-  def client_update_fn(tf_dataset, server_message):
-    model = model_fn()
-    client_optimizer = client_optimizer_fn()
-    return client_update(model, tf_dataset, server_message, client_optimizer)
 
   federated_server_state_type = tff.type_at_server(server_state_type)
   federated_dataset_type = tff.type_at_clients(tf_dataset_type)
@@ -132,10 +196,21 @@ def build_federated_averaging_process(
       A tuple of updated `ServerState` and `tf.Tensor` of average loss.
     """
     server_message = tff.federated_map(server_message_fn, server_state)
+    client_update_fn = _build_client_update_fn(
+        tf_dataset_type,
+        server_message_type,
+        model_fn,
+        client_optimizer_fn,
+        use_sequence_reduce,
+    )
     server_message_at_client = tff.federated_broadcast(server_message)
 
     client_outputs = tff.federated_map(
-        client_update_fn, (federated_dataset, server_message_at_client)
+        client_update_fn,
+        (
+            server_message_at_client,
+            federated_dataset,
+        ),
     )
 
     weight_denom = client_outputs.client_weight

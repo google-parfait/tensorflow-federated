@@ -36,6 +36,7 @@ py_cpu_gpu_test(
     name = "simple_fedavg_test",
     size = "medium",
     srcs = ["simple_fedavg_test.py"],
+    shard_count = 3,
     tags = ["nokokoro"],
     deps = [
         ":simple_fedavg_tf",
