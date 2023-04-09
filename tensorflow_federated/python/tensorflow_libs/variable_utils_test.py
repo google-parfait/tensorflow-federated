@@ -250,7 +250,7 @@ class TensorVariableTest(tf.test.TestCase, parameterized.TestCase):
     value = tf.convert_to_tensor(value)
     tensor_variable = variable_utils.TensorVariable(value)
     with self.assertRaisesRegex(
-        tf.errors.InvalidArgumentError, 'Index out of range'
+        tf.errors.InvalidArgumentError, 'Attempting to slice scalar input'
     ):
       tensor_variable[0]  # pylint: disable=pointless-statement
 
