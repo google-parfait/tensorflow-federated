@@ -29,16 +29,11 @@ _IMAGE_SIZE = landmark_preprocessing.IMAGE_SIZE
 class LandmarkPreprocessingTest(parameterized.TestCase, tf.test.TestCase):
 
   @parameterized.named_parameters(
-      (
-          'train',
-          lambda data: landmark_preprocessing._map_fn(data, is_training=True),
-      ),
-      (
-          'test',
-          lambda data: landmark_preprocessing._map_fn(data, is_training=False),
-      ),
+      ('train', landmark_preprocessing._create_model(is_training=True)),
+      ('test', landmark_preprocessing._create_model(is_training=False)),
   )
-  def test_map_fn_returns_correct_output_shape_and_dtype(self, map_fn):
+  def test_map_fn_returns_correct_output_shape_and_dtype(self, model):
+    map_fn = lambda element: landmark_preprocessing._map_fn(element, model)
     ds = tf.data.Dataset.from_tensors(TEST_DATA)
     image, label = iter(ds.map(map_fn)).next()
     self.assertListEqual(
