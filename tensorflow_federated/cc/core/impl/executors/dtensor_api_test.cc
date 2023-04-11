@@ -59,19 +59,20 @@ tensorflow::StatusOr<tensorflow::dtensor::Layout> ShardedOnFirstDimLayout(
 
 tensorflow::dtensor::MeshProto CreateMeshForTest() {
   tensorflow::dtensor::MeshProto mesh;
+  auto& tile_data = *mesh.mutable_tile_data();
 
   tensorflow::dtensor::MeshDimensionProto* dimension =
-      mesh.add_mesh_dimensions();
+      tile_data.add_mesh_dimensions();
   dimension->set_name("x");
   dimension->set_size(2);
-  mesh.add_local_devices("/job:localhost/replica:0/task:0/device:CPU:0");
-  mesh.add_local_devices("/job:localhost/replica:0/task:0/device:CPU:1");
-  mesh.add_global_devices("/job:localhost/replica:0/task:0/device:CPU:0");
-  mesh.add_global_devices("/job:localhost/replica:0/task:0/device:CPU:0");
-  mesh.add_local_device_ids(0);
-  mesh.add_local_device_ids(1);
-  mesh.add_global_device_ids(0);
-  mesh.add_global_device_ids(1);
+  tile_data.add_local_devices("/job:localhost/replica:0/task:0/device:CPU:0");
+  tile_data.add_local_devices("/job:localhost/replica:0/task:0/device:CPU:1");
+  tile_data.add_global_devices("/job:localhost/replica:0/task:0/device:CPU:0");
+  tile_data.add_global_devices("/job:localhost/replica:0/task:0/device:CPU:0");
+  tile_data.add_local_device_ids(0);
+  tile_data.add_local_device_ids(1);
+  tile_data.add_global_device_ids(0);
+  tile_data.add_global_device_ids(1);
   return mesh;
 }
 
