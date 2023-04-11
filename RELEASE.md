@@ -1,3 +1,23 @@
+# Release 0.55.0
+
+## Major Features and Improvements
+
+*   Removed `nest_asyncio` dependency from tutorials.
+*   Added a new
+    aggregatorr`tff.aggregators.DifferentiallyPrivateFactory.tree_adaptive` for
+    combining DP-FTRL (https://arxiv.org/abs/2103.00039) and adaptive clipping
+    (https://arxiv.org/abs/1905.03871).
+*   Updated `tff.learning.programs.EvaluationManager` to set the evaluation
+    deadline from the start time.
+
+## Breaking Changes
+
+*   Python runtime deleted; C++ runtime covers all known use-cases.
+
+## Bug Fixes
+
+*   Fixed a bug attempting to push `tf.data.Dataset` iterator ops onto GPUs.
+
 # Release 0.54.0
 
 ## Major Features and Improvements
