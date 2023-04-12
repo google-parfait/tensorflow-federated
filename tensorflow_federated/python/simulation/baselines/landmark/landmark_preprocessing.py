@@ -29,10 +29,8 @@ _MAX_CLIENT_DATASET_SIZE = 3500
 IMAGE_SIZE = 128
 
 
-def _map_fn(
-    element: collections.OrderedDict[str, tf.Tensor], is_training: bool
-) -> tuple[tf.Tensor, tf.Tensor]:
-  """Preprocesses an image for training/eval using Keras data augmentation.
+def _create_model(is_training):
+  """Creates a keras model for transforming the images.
 
   The original GLD images have various image size. We map a single image at a
   time instead of a batch to the target image size. For training images, we
@@ -42,34 +40,43 @@ def _map_fn(
   and rescale the input values to the range of [-1.0, 1.0].
 
   Args:
+    is_training: Whether to create a training model or not.
+
+  Returns:
+    A keras model that can do random transformations on the images.
+  """
+  if is_training:
+    return tf.keras.Sequential([
+        tf.keras.layers.RandomCrop(IMAGE_SIZE, IMAGE_SIZE),
+        tf.keras.layers.RandomFlip('horizontal'),
+        tf.keras.layers.Rescaling(
+            scale=2.0 / 255, offset=-1.0
+        ),  # rescale the values to the range of [-1.0, 1.0]
+    ])
+  else:
+    return tf.keras.Sequential([
+        tf.keras.layers.CenterCrop(IMAGE_SIZE, IMAGE_SIZE),
+        tf.keras.layers.Rescaling(
+            scale=2.0 / 255, offset=-1.0
+        ),  # rescale the values to the range of [-1.0, 1.0]
+    ])
+
+
+def _map_fn(
+    element: collections.OrderedDict[str, tf.Tensor], model: tf.keras.Model
+) -> tuple[tf.Tensor, tf.Tensor]:
+  """Preprocesses an image for training/eval using Keras data augmentation.
+
+  Args:
     element: An OrderedDict with the keys of `image/decoded` and `class`
       representing an image.
-    is_training: Boolean. If true it would preprocess an image for train,
-      otherwise it would preprocess it for evaluation.
+    model: A keras model to use for transformation.
 
   Returns:
     A tuple or two tensors. The first tensor represents the processed image.
     The second tensor inherits the `class` of the input element.
   """
-  preprocessing_image_for_train = tf.keras.Sequential([
-      tf.keras.layers.RandomCrop(IMAGE_SIZE, IMAGE_SIZE),
-      tf.keras.layers.RandomFlip('horizontal'),
-      tf.keras.layers.Rescaling(
-          scale=2.0 / 255, offset=-1.0
-      ),  # rescale the values to the range of [-1.0, 1.0]
-  ])
-  preprocessing_image_for_eval = tf.keras.Sequential([
-      tf.keras.layers.CenterCrop(IMAGE_SIZE, IMAGE_SIZE),
-      tf.keras.layers.Rescaling(
-          scale=2.0 / 255, offset=-1.0
-      ),  # rescale the values to the range of [-1.0, 1.0]
-  ])
-
-  if is_training:
-    image = preprocessing_image_for_train(element['image/decoded'])
-  else:
-    image = preprocessing_image_for_eval(element['image/decoded'])
-
+  image = model(element['image/decoded'])
   label = element['class']
   return image, label
 
@@ -121,11 +128,8 @@ def create_preprocess_fn(
     Returns:
       `tf.data.Dataset` preprocessed according to the input arguments.
     """
-    if is_training:
-      data_map_fn = lambda element: _map_fn(element, is_training=True)
-    else:
-      data_map_fn = lambda element: _map_fn(element, is_training=False)
-
+    model = _create_model(is_training)
+    data_map_fn = lambda element: _map_fn(element, model)
     dataset = dataset.map(data_map_fn, num_parallel_calls=num_parallel_calls)
     if shuffle_buffer_size > 1:
       dataset = dataset.shuffle(shuffle_buffer_size, seed=debug_seed)
