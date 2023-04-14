@@ -55,6 +55,7 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/session_provider.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
 #include "tensorflow_federated/cc/core/impl/executors/tensor_serialization.h"
+#include "tensorflow_federated/cc/core/impl/executors/tensorflow_status_compat.h"
 #include "tensorflow_federated/cc/core/impl/executors/threading.h"
 #include "tensorflow_federated/proto/v0/computation.pb.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
@@ -699,7 +700,7 @@ absl::StatusOr<ExecutorValue> Computation::Call(
                                              /*outputs=*/nullptr);
     if (!status.ok()) {
       return absl::InternalError(ERR_LOG(absl::StrCat(
-          "Failed to initialize the computation: ", status.error_message())));
+          "Failed to initialize the computation: ", ToMessage(status))));
     }
   }
   std::vector<tensorflow::Tensor> outputs;
@@ -708,7 +709,7 @@ absl::StatusOr<ExecutorValue> Computation::Call(
                    /*target_tensor_names=*/{}, &outputs);
   if (!status.ok()) {
     return absl::InternalError(ERR_LOG(
-        absl::StrCat("Failed to run computation: ", status.error_message())));
+        absl::StrCat("Failed to run computation: ", ToMessage(status))));
   }
   // Return the session rental before computing the final ExecutorValue.
   session.ReturnRental();

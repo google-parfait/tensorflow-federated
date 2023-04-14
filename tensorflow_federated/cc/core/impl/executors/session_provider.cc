@@ -33,6 +33,7 @@ limitations under the License
 #include "tensorflow/core/framework/types.h"
 #include "tensorflow/core/graph/default_device.h"
 #include "tensorflow/core/public/session_options.h"
+#include "tensorflow_federated/cc/core/impl/executors/tensorflow_status_compat.h"
 
 namespace tensorflow_federated {
 
@@ -230,7 +231,7 @@ SessionProvider::CreateSession(const int16_t session_id) {
         tensorflow::NewSession(get_session_options(), &raw_session);
     if (!status.ok()) {
       return absl::InternalError(absl::StrCat(
-          "Failed to create TensorFlow session: ", status.error_message()));
+          "Failed to create TensorFlow session: ", ToMessage(status)));
     }
     session.reset(raw_session);
   }
@@ -270,8 +271,8 @@ SessionProvider::CreateSession(const int16_t session_id) {
          absl::StrSplit(graph_def.Utf8DebugString(), '\n')) {
       LOG(ERROR) << line;
     }
-    return absl::InternalError(absl::StrCat(
-        "Failed to create graph in session: ", status.error_message()));
+    return absl::InternalError(
+        absl::StrCat("Failed to create graph in session: ", ToMessage(status)));
   }
   return std::move(session);
 }

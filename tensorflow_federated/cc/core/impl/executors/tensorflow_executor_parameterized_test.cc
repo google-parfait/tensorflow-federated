@@ -142,7 +142,7 @@ inline v0::Value ComputationV(
   v0::TensorFlow* tensorflow_pb = comp_pb->mutable_tensorflow();
   tensorflow::GraphDef graphdef_pb;
   tensorflow::Status status = scope.ToGraphDef(&graphdef_pb);
-  CHECK(status.ok()) << status.error_message();
+  CHECK(status.ok()) << status;
   tensorflow_pb->mutable_graph_def()->PackFrom(graphdef_pb);
   if (in_binding.has_value()) {
     *tensorflow_pb->mutable_parameter() = in_binding.value();

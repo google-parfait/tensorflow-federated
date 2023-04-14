@@ -43,6 +43,7 @@ limitations under the License
 #include "tensorflow/core/framework/types.pb.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/tensor_serialization.h"
+#include "tensorflow_federated/cc/core/impl/executors/tensorflow_status_compat.h"
 #include "tensorflow_federated/cc/core/impl/executors/threading.h"
 #include "tensorflow_federated/proto/v0/computation.pb.h"
 
@@ -249,7 +250,7 @@ absl::StatusOr<xla::Shape> XLAShapeFromTensorType(
   if (!dtype_status.ok()) {
     return absl::InvalidArgumentError(absl::StrCat(
         "Failure converting TFF's tensor DType to XLA primitive. Message: ",
-        dtype_status.error_message()));
+        ToMessage(dtype_status)));
   }
   if (tensor_type.unknown_rank()) {
     return absl::InvalidArgumentError(
@@ -484,7 +485,7 @@ class XLAExecutor : public ExecutorBase<ValueFuture> {
     if (!to_literal_status.ok()) {
       return absl::InvalidArgumentError(absl::StrCat(
           "Failed to convert v0::Value proto to XLA literal. Message: ",
-          to_literal_status.error_message()));
+          ToMessage(to_literal_status)));
     }
     tensorflow::StatusOr<std::unique_ptr<xla::GlobalData>> data_in_server =
         xla_client_->TransferToServer(tensor_literal);
@@ -493,7 +494,7 @@ class XLAExecutor : public ExecutorBase<ValueFuture> {
     } else {
       return absl::InvalidArgumentError(absl::StrCat(
           "Failed to transfer XLA literal to local server. Message: ",
-          to_literal_status.error_message()));
+          ToMessage(to_literal_status)));
     }
   }
 
@@ -546,7 +547,7 @@ class XLAExecutor : public ExecutorBase<ValueFuture> {
         if (!computation_handle.ok()) {
           return absl::InternalError(
               absl::StrCat("Failed to compile XLA computation. Message: ",
-                           computation_handle.status().error_message()));
+                           ToMessage(computation_handle.status())));
         }
         // Finally, construct the representation of this computation in the XLA
         // executor.
@@ -580,7 +581,7 @@ class XLAExecutor : public ExecutorBase<ValueFuture> {
           if (!result_literal.ok()) {
             return absl::InternalError(absl::StrCat(
                 "Error transferring tensor from XLA service to host. Message: ",
-                result_literal.status().error_message()));
+                ToMessage(result_literal.status())));
           }
           tensorflow::Tensor tensor_out;
           tensorflow::Status tensor_conversion =
@@ -589,7 +590,7 @@ class XLAExecutor : public ExecutorBase<ValueFuture> {
           if (!tensor_conversion.ok()) {
             return absl::InternalError(absl::StrCat(
                 "Error converting XLA literal to tensor. Message: ",
-                tensor_conversion.error_message()));
+                ToMessage(tensor_conversion)));
           }
           TFF_TRY(SerializeTensorValue(tensor_out, value_pb));
           return absl::OkStatus();
@@ -625,7 +626,7 @@ class XLAExecutor : public ExecutorBase<ValueFuture> {
     if (!result.ok()) {
       return absl::InternalError(
           absl::StrCat("Error calling XLA computation. Message: ",
-                       result.status().error_message()));
+                       ToMessage(result.status())));
     }
     const v0::Xla::Binding& result_binding = fn->result_binding();
     switch (result_binding.binding_case()) {
@@ -637,7 +638,7 @@ class XLAExecutor : public ExecutorBase<ValueFuture> {
         if (!maybe_global_data_vector.ok()) {
           return absl::InternalError(absl::StrCat(
               "Error destructuring tuple in XLA executor. Message: ",
-              maybe_global_data_vector.status().error_message()));
+              ToMessage(maybe_global_data_vector.status())));
         }
         if (maybe_global_data_vector->size() != 1) {
           return absl::InternalError(
@@ -655,7 +656,7 @@ class XLAExecutor : public ExecutorBase<ValueFuture> {
         if (!global_data_vector.ok()) {
           return absl::InternalError(absl::StrCat(
               "Error destructuring tuple in XLA executor. Message: ",
-              global_data_vector.status().error_message()));
+              ToMessage(global_data_vector.status())));
         }
         // We begin by constructing a vector of tensor-backed XLAExecutorValues.
         // For this purpose, we must compute the datatypes of the GlobalData
@@ -697,7 +698,7 @@ absl::StatusOr<xla::Client*> GetXLAClient(std::string_view platform_name) {
         absl::StrCat("Failed to find specified platform ", platform_name,
                      " in MultiPlatformManager. You may be missing a build "
                      "dependency to register the platform. Message: ",
-                     platform.status().error_message()));
+                     ToMessage(platform.status())));
   }
   xla::LocalClientOptions options;
   options.set_platform(*platform);
@@ -706,7 +707,7 @@ absl::StatusOr<xla::Client*> GetXLAClient(std::string_view platform_name) {
   if (!constructed_client.ok()) {
     return absl::InternalError(
         absl::StrCat("Failed to construct XLA client. Message: ",
-                     constructed_client.status().error_message()));
+                     ToMessage(constructed_client.status())));
   }
   return *constructed_client;
 }

@@ -43,6 +43,7 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
 #include "tensorflow_federated/cc/core/impl/executors/tensor_serialization.h"
+#include "tensorflow_federated/cc/core/impl/executors/tensorflow_status_compat.h"
 #include "tensorflow_federated/cc/core/impl/executors/tensorflow_utils.h"
 #include "tensorflow_federated/cc/core/impl/executors/threading.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
@@ -178,8 +179,8 @@ class TensorValue : public Value {
       tensorflow::Tensor tensor;
       auto tf_status = tensorflow::TF_TensorToTensor(tf_tensor.get(), &tensor);
       if (!tf_status.ok()) {
-        return absl::InternalError(absl::StrCat("Tensor materialize failed: ",
-                                                tf_status.error_message()));
+        return absl::InternalError(
+            absl::StrCat("Tensor materialize failed: ", ToMessage(tf_status)));
       }
 
       return SerializeTensorValue(tensor, value_pb);

@@ -76,7 +76,7 @@ inline v0::Computation ComputationV(
   tensorflow::GraphDef graphdef_pb;
 
   tensorflow::Status status = scope.ToGraphDef(&graphdef_pb);
-  CHECK(status.ok()) << status.error_message();
+  CHECK(status.ok()) << status;
 
   if (!function_defs.empty()) {
     for (const auto& f : function_defs) {
