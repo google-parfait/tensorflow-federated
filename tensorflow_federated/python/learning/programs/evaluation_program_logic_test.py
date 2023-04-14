@@ -548,6 +548,7 @@ class EvaluationManagerTest(tf.test.TestCase, unittest.IsolatedAsyncioTestCase):
           mock_resumed_eval_manager.save.call_args_list[0],
           mock.call(mock.ANY, version=(index * 10) + 1),
       )
+      mock_resumed_eval_manager.remove_all.assert_called_once()
 
 
 class RunEvaluationTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
@@ -593,7 +594,7 @@ class RunEvaluationTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     with self.assertRaisesRegex(
         TypeError, 'Expected a `tff.learning.templates.LearningProcessOutput`'
     ):
-      await evaluation_program_logic.run_evaluation(
+      await evaluation_program_logic._run_evaluation(
           train_round_num=1,
           state_manager=state_manager,
           evaluation_process=eval_process,
@@ -627,7 +628,7 @@ class RunEvaluationTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     with self.assertRaisesRegex(
         ValueError, 'No previous state found for evaluation'
     ):
-      await evaluation_program_logic.run_evaluation(
+      await evaluation_program_logic._run_evaluation(
           train_round_num=train_round_num,
           state_manager=state_manager,
           evaluation_process=eval_process,
@@ -653,7 +654,7 @@ class RunEvaluationTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
         release_manager.ReleaseManager, instance=True
     )
     train_round_num = 1
-    await evaluation_program_logic.run_evaluation(
+    await evaluation_program_logic._run_evaluation(
         train_round_num=train_round_num,
         state_manager=state_manager,
         evaluation_process=eval_process,
@@ -672,7 +673,6 @@ class RunEvaluationTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     self.assertSequenceEqual(
         state_manager.save.call_args_list, [mock.call(mock.ANY, version=1)]
     )
-    state_manager.remove_all.assert_called_once()
     # The evaluation end time should be passed when invoking the evaluation, we
     # should expect exactly one evaluation to have occurred for the training
     # round.
@@ -703,7 +703,7 @@ class RunEvaluationTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     with mock.patch.object(datetime, 'datetime') as m_datetime:
       m_datetime.now.side_effect = self._mock_return_time_fn
       self.time_now_called = [False]
-      await evaluation_program_logic.run_evaluation(
+      await evaluation_program_logic._run_evaluation(
           train_round_num=train_round_num,
           state_manager=state_manager,
           evaluation_process=eval_process,
@@ -728,7 +728,6 @@ class RunEvaluationTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
             mock.call(mock.ANY, version=2),
         ],
     )
-    state_manager.remove_all.assert_called_once()
     self.assertEqual(
         mock_per_round_metrics_manager.release.call_args_list,
         [
@@ -766,7 +765,7 @@ class RunEvaluationTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     with mock.patch.object(datetime, 'datetime') as m_datetime:
       m_datetime.now.side_effect = self._mock_return_time_fn
       self.time_now_called = [False]
-      await evaluation_program_logic.run_evaluation(
+      await evaluation_program_logic._run_evaluation(
           train_round_num=train_round_num,
           state_manager=state_manager,
           evaluation_process=eval_process,
@@ -782,7 +781,6 @@ class RunEvaluationTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     self.assertEqual(
         state_manager.load_latest.call_args_list, [mock.call(mock.ANY)]
     )
-    state_manager.remove_all.assert_called_once()
     # Assert the evaluation runs two rounds: it always runs one round before
     # checking the current time, and the datatime.now() is called once.
     self.assertEqual(
@@ -828,7 +826,7 @@ class RunEvaluationTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
         release_manager.ReleaseManager, instance=True
     )
     train_round_num = 10
-    await evaluation_program_logic.run_evaluation(
+    await evaluation_program_logic._run_evaluation(
         train_round_num=train_round_num,
         state_manager=state_manager,
         evaluation_process=eval_process,
@@ -844,7 +842,6 @@ class RunEvaluationTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     self.assertEqual(
         state_manager.load_latest.call_args_list, [mock.call(mock.ANY)]
     )
-    state_manager.remove_all.assert_called_once()
     # The evaluation end time should be passed when invoking the evaluation, we
     # should expect exactly one evaluation to have occurred for the training
     # round.

@@ -14,13 +14,12 @@
 """Program logic for evaluating federated learning.
 
 This package contains program logic and abstractions for
-managing federated model evaluation. It exposed two symbols:
+managing federated model evaluation. It exposed following symbols:
 
 *   `EvaluationManager` which manages "forking off" side evaluation loops that
     run the evaluation loop for a duration of time based on the
     `evaluation_period` parameter. It keeps track of evaluation state enabling
     resumption of evaluations in the case the program exits prematurely.
-*   `run_evaluation` which is the program logic for a single evaluation loop.
 
 This logic is intended to be paired with another set of program logic that
 produces model weights to evaluate, typically a training program. For example
@@ -345,7 +344,7 @@ class EvaluationManager:
 
     async def run_and_record_completion():
       # TODO(b/150782658): re-enable pytype when fixed.
-      await run_evaluation(  # pytype: disable=bad-return-type
+      await _run_evaluation(  # pytype: disable=bad-return-type
           train_round_num,
           state_manager,
           evaluation_process=eval_process,
@@ -357,6 +356,8 @@ class EvaluationManager:
           aggregated_metrics_manager=self._aggregated_metrics_manager,
       )
       await self.record_evaluations_finished(train_round_num)
+      # Clean-up the statemanager output, which will no longer be used.
+      await state_manager.remove_all()
 
     self._pending_tasks.add(asyncio.create_task(run_and_record_completion()))
 
@@ -533,7 +534,7 @@ def extract_and_rewrap_metrics(
   return structure_copy, type_conversions.infer_type(structure_copy)
 
 
-async def run_evaluation(
+async def _run_evaluation(
     train_round_num: int,
     state_manager: file_program_state_manager.FileProgramStateManager,
     evaluation_process: learning_process.LearningProcess,
@@ -580,6 +581,7 @@ async def run_evaluation(
   Raises:
     TypeError: If result of `evaluation_process` is not a value of
       `tff.learning.templates.LearningProcessOutput` type.
+    ValueError: If no previous state found for evaluation.
   """
   federated_context.check_in_federated_context()
 
@@ -678,5 +680,3 @@ async def run_evaluation(
         total_rounds_eval_metrics_type,
         key=train_round_num,
     )
-  # Clean-up the statemanager output, which will no longer be used.
-  await state_manager.remove_all()
