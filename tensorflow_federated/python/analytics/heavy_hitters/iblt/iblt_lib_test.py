@@ -60,7 +60,9 @@ class IbltTest(tf.test.TestCase, parameterized.TestCase):
     )
 
     decoding_graph = iblt_decoder.get_freq_estimates_tf()
-    out_strings, out_counts, num_not_decoded = self.evaluate(decoding_graph)
+    out_strings, out_counts, num_not_decoded, num_nonempty_bucket = (
+        self.evaluate(decoding_graph)
+    )
     counter = dict(
         zip(
             [
@@ -75,7 +77,8 @@ class IbltTest(tf.test.TestCase, parameterized.TestCase):
         )
     )
     if num_not_decoded:
-      counter[None] = num_not_decoded
+      counter[iblt_lib.KEY_NUM_NOT_DECODED] = num_not_decoded
+      counter[iblt_lib.KEY_NONEMPTY] = num_nonempty_bucket
     return counter
 
   def _get_decoded_results(
@@ -100,7 +103,9 @@ class IbltTest(tf.test.TestCase, parameterized.TestCase):
         hash_family_params=hash_family_params,
         field_size=field_size,
     )
-    out_strings, out_counts, num_not_decoded = self.evaluate(decoding_graph)
+    out_strings, out_counts, num_not_decoded, num_nonempty_bucket = (
+        self.evaluate(decoding_graph)
+    )
     counter = dict(
         zip(
             [
@@ -115,7 +120,8 @@ class IbltTest(tf.test.TestCase, parameterized.TestCase):
         )
     )
     if num_not_decoded:
-      counter[None] = num_not_decoded
+      counter[iblt_lib.KEY_NUM_NOT_DECODED] = num_not_decoded
+      counter[iblt_lib.KEY_NONEMPTY] = num_nonempty_bucket
 
     counter_by_get_freq_estimates_tf = (
         self._get_decoded_results_by_get_freq_estimates_tf(

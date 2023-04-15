@@ -67,9 +67,13 @@ class IbltTensorTest(tf.test.TestCase, parameterized.TestCase):
       # `get_freq_estimates` only works in eager mode.
       return iblt_decoder.get_freq_estimates()
     else:
-      out_strings, out_counts, out_tensor_values, num_not_decoded = (
-          self.evaluate(iblt_decoder.get_freq_estimates_tf())
-      )
+      (
+          out_strings,
+          out_counts,
+          out_tensor_values,
+          undecoded_bucket_count_sum,
+          num_nonempty_bucket,
+      ) = self.evaluate(iblt_decoder.get_freq_estimates_tf())
 
       out_strings = [
           string.decode('utf-8', 'ignore') for string in out_strings.tolist()
@@ -77,8 +81,9 @@ class IbltTensorTest(tf.test.TestCase, parameterized.TestCase):
       string_counts = dict(zip(out_strings, out_counts.tolist()))
       string_tensor_values = dict(zip(out_strings, out_tensor_values.tolist()))
 
-      if num_not_decoded:
-        string_counts[None] = num_not_decoded
+      if undecoded_bucket_count_sum:
+        string_counts[iblt_lib.KEY_NUM_NOT_DECODED] = undecoded_bucket_count_sum
+        string_counts[iblt_lib.KEY_NONEMPTY] = num_nonempty_bucket
       return string_counts, string_tensor_values
 
   def _get_decoded_results(
@@ -107,17 +112,22 @@ class IbltTensorTest(tf.test.TestCase, parameterized.TestCase):
         hash_family_params=hash_family_params,
         field_size=field_size,
     )
-    out_strings, out_counts, out_tensor_values, num_not_decoded = self.evaluate(
-        decoding_graph
-    )
+    (
+        out_strings,
+        out_counts,
+        out_tensor_values,
+        undecoded_bucket_count_sum,
+        num_nonempty_bucket,
+    ) = self.evaluate(decoding_graph)
     out_strings = [
         string.decode('utf-8', 'ignore') for string in out_strings.tolist()
     ]
     string_counts = dict(zip(out_strings, out_counts.tolist()))
     string_tensor_values = dict(zip(out_strings, out_tensor_values.tolist()))
 
-    if num_not_decoded:
-      string_counts[None] = num_not_decoded
+    if undecoded_bucket_count_sum:
+      string_counts[iblt_lib.KEY_NUM_NOT_DECODED] = undecoded_bucket_count_sum
+      string_counts[iblt_lib.KEY_NONEMPTY] = num_nonempty_bucket
 
     (counts_by_get_freq_estimates_tf, tensor_value_by_get_freq_estimates_tf) = (
         self._get_decoded_results_by_get_freq_estimates_tf(

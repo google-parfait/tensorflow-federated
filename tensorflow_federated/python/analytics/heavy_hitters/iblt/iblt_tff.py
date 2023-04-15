@@ -46,7 +46,8 @@ class ServerOutput:
     heavy_hitters_unique_counts: A 1-d tensor of the number of unique users
       contributed to the decoded heavy hitters.
     heavy_hitters_counts: A 1-d tensor of the counts for decoded heavy hitters.
-    num_not_decoded: An int32 scalar number of strings that are not decoded.
+    undecoded_bucket_count_sum: An int32 scalar of the sum of the number of
+      clients contributed each undecodable key.
     round_timestamp: An int64 scalar of the timestamp of the beginning of the
       round. The value is in seconds since the epoch, in UTC.
   """
@@ -55,7 +56,7 @@ class ServerOutput:
   heavy_hitters = attr.ib()
   heavy_hitters_unique_counts = attr.ib()
   heavy_hitters_counts = attr.ib()
-  num_not_decoded = attr.ib()
+  undecoded_bucket_count_sum = attr.ib()
   round_timestamp = attr.ib()
 
 
@@ -70,7 +71,9 @@ def build_iblt_computation(
     string_postprocessor: Optional[Callable[[tf.Tensor], tf.Tensor]] = None,
     secure_sum_bitwidth: Optional[int] = None,
     decode_iblt_fn: Optional[
-        Callable[..., tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]]
+        Callable[
+            ..., tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]
+        ]
     ] = None,
     seed: int = 0,
     batch_size: int = 1,
@@ -235,7 +238,8 @@ def build_iblt_computation(
         heavy_hitters,
         heavy_hitters_unique_counts,
         heavy_hitters_counts,
-        num_not_decoded,
+        undecoded_bucket_count_sum,
+        _,
     ) = iblt_decoded
 
     heavy_hitters_counts = tf.squeeze(heavy_hitters_counts, axis=1)
@@ -270,7 +274,7 @@ def build_iblt_computation(
         heavy_hitters,
         heavy_hitters_unique_counts,
         heavy_hitters_counts,
-        num_not_decoded,
+        undecoded_bucket_count_sum,
     )
 
   def secure_sum(x):
@@ -311,7 +315,7 @@ def build_iblt_computation(
         heavy_hitters,
         heavy_hitters_unique_counts,
         heavy_hitters_counts,
-        num_not_decoded,
+        undecoded_bucket_count_sum,
     ) = intrinsics.federated_map(decode_heavy_hitters, (sketch, count_tensor))
     server_output = intrinsics.federated_zip(
         ServerOutput(
@@ -319,7 +323,7 @@ def build_iblt_computation(
             heavy_hitters=heavy_hitters,
             heavy_hitters_unique_counts=heavy_hitters_unique_counts,
             heavy_hitters_counts=heavy_hitters_counts,
-            num_not_decoded=num_not_decoded,
+            undecoded_bucket_count_sum=undecoded_bucket_count_sum,
             round_timestamp=round_timestamp,
         )
     )

@@ -121,7 +121,7 @@ def _execute_computation(
   Returns:
     A tuple, with elements:
       1. A dictionary containing the heavy hitter results
-      2. The count of undecoded strings
+      2. Sum of the number of clients contributed each undecodable key
       3. The round timestamp
   """
   one_round_computation = iblt_tff.build_iblt_computation(
@@ -151,7 +151,11 @@ def _execute_computation(
       zip(heavy_hitters, zip(heavy_hitters_unique_counts, heavy_hitters_counts))
   )
 
-  return dict(iteration_results), output.num_not_decoded, output.round_timestamp
+  return (
+      dict(iteration_results),
+      output.undecoded_bucket_count_sum,
+      output.round_timestamp,
+  )
 
 
 class IbltTffConstructionTest(absltest.TestCase):
@@ -179,7 +183,7 @@ class IbltTffConstructionTest(absltest.TestCase):
                     heavy_hitters_counts=computation_types.TensorType(
                         shape=[None], dtype=tf.int64
                     ),
-                    num_not_decoded=tf.int64,
+                    undecoded_bucket_count_sum=tf.int64,
                     round_timestamp=tf.int64,
                 )
             ),
@@ -274,7 +278,7 @@ class SecAggIbltTffExecutionTest(parameterized.TestCase):
       secure_sum_bitwidth,
       postprocess,
   ):
-    (results, num_not_decoded, _) = _execute_computation(
+    (results, undecoded_bucket_count_sum, _) = _execute_computation(
         DATA,
         capacity=capacity,
         string_max_bytes=string_max_bytes,
@@ -287,7 +291,7 @@ class SecAggIbltTffExecutionTest(parameterized.TestCase):
         else SamplePostProcessor().postprocess,
     )
 
-    self.assertEqual(num_not_decoded, 0)
+    self.assertEqual(undecoded_bucket_count_sum, 0)
 
     all_strings = list(itertools.chain.from_iterable(DATA))
 
@@ -445,7 +449,7 @@ class SecAggIbltUniqueCountsTffTest(parameterized.TestCase):
       secure_sum_bitwidth,
       postprocess,
   ):
-    (results, num_not_decoded, _) = _execute_computation(
+    (results, undecoded_bucket_count_sum, _) = _execute_computation(
         DATA,
         capacity=capacity,
         string_max_bytes=string_max_bytes,
@@ -459,7 +463,7 @@ class SecAggIbltUniqueCountsTffTest(parameterized.TestCase):
         else SamplePostProcessor().postprocess,
     )
 
-    self.assertEqual(num_not_decoded, 0)
+    self.assertEqual(undecoded_bucket_count_sum, 0)
 
     all_strings = list(itertools.chain.from_iterable(DATA))
 

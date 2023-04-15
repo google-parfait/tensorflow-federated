@@ -42,7 +42,7 @@ DATASET_VALUE = 'value'
 class ServerOutput:
   output_strings = attr.ib()
   string_values = attr.ib()
-  num_not_decoded = attr.ib()
+  undecoded_bucket_count_sum = attr.ib()
 
 
 @tf.function
@@ -221,11 +221,20 @@ class IbltFactory(factory.UnweightedAggregationFactory):
           repetitions=self._repetitions,
           seed=self._seed,
       )
-      (output_strings, _, string_values, num_not_decoded) = (
-          iblt_decoder.get_freq_estimates_tf()
-      )
+      (
+          output_strings,
+          _,
+          string_values,
+          undecoded_bucket_count_sum,
+          num_nonempty_bucket,
+      ) = iblt_decoder.get_freq_estimates_tf()
 
-      return (output_strings, string_values, num_not_decoded)
+      return (
+          output_strings,
+          string_values,
+          undecoded_bucket_count_sum,
+          num_nonempty_bucket,
+      )
 
     inner_aggregator_sketch = self._sketch_agg_factory.create(
         encode_iblt.type_signature.result[0]
@@ -252,16 +261,19 @@ class IbltFactory(factory.UnweightedAggregationFactory):
       )
       summed_sketch = sketch_output.result
       summed_value_tensor = value_tensor_output.result
-      (output_strings, string_values, num_not_decoded) = (
-          intrinsics.federated_map(
-              decode_iblt, (summed_sketch, summed_value_tensor)
-          )
+      (
+          output_strings,
+          string_values,
+          undecoded_bucket_count_sum,
+          num_nonempty_bucket,
+      ) = intrinsics.federated_map(
+          decode_iblt, (summed_sketch, summed_value_tensor)
       )
       result = intrinsics.federated_zip(
           ServerOutput(
               output_strings=output_strings,
               string_values=string_values,
-              num_not_decoded=num_not_decoded,
+              undecoded_bucket_count_sum=undecoded_bucket_count_sum,
           )
       )
       updated_state = intrinsics.federated_zip(
@@ -269,7 +281,8 @@ class IbltFactory(factory.UnweightedAggregationFactory):
       )
       updated_measurements = intrinsics.federated_zip(
           collections.OrderedDict(
-              num_not_decoded=num_not_decoded,
+              undecoded_bucket_count_sum=undecoded_bucket_count_sum,
+              num_nonempty_bucket=num_nonempty_bucket,
               sketch=sketch_output.measurements,
               value_tensor=value_tensor_output.measurements,
           )
