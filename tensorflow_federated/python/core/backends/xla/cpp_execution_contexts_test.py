@@ -27,10 +27,10 @@ class CppExecutionContextsTest(absltest.TestCase):
 
   def setUp(self):
     super().setUp()
-    cpp_execution_contexts.set_local_cpp_execution_context()
+    cpp_execution_contexts.set_sync_local_cpp_execution_context()
 
   def test_create_local_execution_context(self):
-    context = cpp_execution_contexts.create_local_cpp_execution_context()
+    context = cpp_execution_contexts.create_sync_local_cpp_execution_context()
     self.assertIsInstance(context, context_base.SyncContext)
 
   def test_run_simple_jax_computation(self):

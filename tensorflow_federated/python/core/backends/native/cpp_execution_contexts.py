@@ -334,17 +334,7 @@ def set_async_experimental_distributed_cpp_execution_context(
   set_default_context.set_default_context(context)
 
 
-def set_remote_cpp_execution_context(
-    channels: Sequence[executor_bindings.GRPCChannel],
-    default_num_clients: int = 0,
-):
-  context = create_remote_cpp_execution_context(
-      channels=channels, default_num_clients=default_num_clients
-  )
-  set_default_context.set_default_context(context)
-
-
-def create_remote_cpp_execution_context(
+def create_sync_remote_cpp_execution_context(
     channels: Sequence[executor_bindings.GRPCChannel],
     default_num_clients: int = 0,
 ) -> sync_execution_context.SyncExecutionContext:
@@ -358,7 +348,17 @@ def create_remote_cpp_execution_context(
   return context
 
 
-def create_remote_async_cpp_execution_context(
+def set_sync_remote_cpp_execution_context(
+    channels: Sequence[executor_bindings.GRPCChannel],
+    default_num_clients: int = 0,
+):
+  context = create_sync_remote_cpp_execution_context(
+      channels=channels, default_num_clients=default_num_clients
+  )
+  set_default_context.set_default_context(context)
+
+
+def create_async_remote_cpp_execution_context(
     channels: Sequence[executor_bindings.GRPCChannel],
     default_num_clients: int = 0,
 ) -> async_execution_context.AsyncExecutionContext:

@@ -133,7 +133,7 @@ class LocalCPPExecutionContextTest(tf.test.TestCase):
     channels = [
         executor_bindings.create_insecure_grpc_channel(t) for t in targets
     ]
-    context = cpp_execution_contexts.create_remote_cpp_execution_context(
+    context = cpp_execution_contexts.create_sync_remote_cpp_execution_context(
         channels=channels
     )
     self.assertIsInstance(context, sync_execution_context.SyncExecutionContext)

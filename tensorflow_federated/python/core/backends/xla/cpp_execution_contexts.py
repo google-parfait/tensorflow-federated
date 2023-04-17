@@ -20,17 +20,7 @@ from tensorflow_federated.python.core.impl.executor_stacks import cpp_executor_f
 from tensorflow_federated.python.core.impl.executors import executor_bindings
 
 
-def set_local_cpp_execution_context(
-    default_num_clients: int = 0, max_concurrent_computation_calls: int = -1
-):
-  context = create_local_cpp_execution_context(
-      default_num_clients=default_num_clients,
-      max_concurrent_computation_calls=max_concurrent_computation_calls,
-  )
-  set_default_context.set_default_context(context)
-
-
-def create_local_cpp_execution_context(
+def create_sync_local_cpp_execution_context(
     default_num_clients: int = 0, max_concurrent_computation_calls: int = -1
 ):
   """Creates a local execution context backed by TFF-C++ runtime.
@@ -69,3 +59,13 @@ def create_local_cpp_execution_context(
   return sync_execution_context.SyncExecutionContext(
       executor_fn=factory, compiler_fn=compiler.transform_to_native_form
   )
+
+
+def set_sync_local_cpp_execution_context(
+    default_num_clients: int = 0, max_concurrent_computation_calls: int = -1
+):
+  context = create_sync_local_cpp_execution_context(
+      default_num_clients=default_num_clients,
+      max_concurrent_computation_calls=max_concurrent_computation_calls,
+  )
+  set_default_context.set_default_context(context)
