@@ -19,6 +19,7 @@ py_library(
     deps = [
         ":evaluation_program_logic",
         ":training_program_logic",
+        ":vizier_program_logic",
     ],
 )
 
@@ -65,6 +66,18 @@ py_test(
 )
 
 py_library(
+    name = "program_logic",
+    srcs = ["program_logic.py"],
+    deps = [
+        ":evaluation_program_logic",
+        "//tensorflow_federated/python/learning/templates:learning_process",
+        "//tensorflow_federated/python/program:data_source",
+        "//tensorflow_federated/python/program:program_state_manager",
+        "//tensorflow_federated/python/program:release_manager",
+    ],
+)
+
+py_library(
     name = "training_program_logic",
     srcs = ["training_program_logic.py"],
     deps = [
@@ -84,14 +97,51 @@ py_test(
     srcs = ["training_program_logic_test.py"],
     deps = [
         ":evaluation_program_logic",
+        ":program_logic",
         ":training_program_logic",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
-        "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
+        "//tensorflow_federated/python/core/impl/context_stack:context_stack_test_utils",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/learning/templates:composers",
         "//tensorflow_federated/python/learning/templates:learning_process",
         "//tensorflow_federated/python/program:data_source",
         "//tensorflow_federated/python/program:federated_context",
+        "//tensorflow_federated/python/program:native_platform",
+        "//tensorflow_federated/python/program:program_state_manager",
+        "//tensorflow_federated/python/program:release_manager",
+    ],
+)
+
+py_library(
+    name = "vizier_program_logic",
+    srcs = ["vizier_program_logic.py"],
+    deps = [
+        ":evaluation_program_logic",
+        ":program_logic",
+        "//tensorflow_federated/python/core/impl/computation:computation_base",
+        "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
+        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:placements",
+        "//tensorflow_federated/python/learning/templates:learning_process",
+        "//tensorflow_federated/python/program:data_source",
+        "//tensorflow_federated/python/program:program_state_manager",
+        "//tensorflow_federated/python/program:release_manager",
+        "//tensorflow_federated/python/program:structure_utils",
+        "//tensorflow_federated/python/program:value_reference",
+    ],
+)
+
+py_test(
+    name = "vizier_program_logic_test",
+    srcs = ["vizier_program_logic_test.py"],
+    deps = [
+        ":evaluation_program_logic",
+        ":vizier_program_logic",
+        "//tensorflow_federated/python/core/impl/computation:computation_base",
+        "//tensorflow_federated/python/core/impl/context_stack:context_stack_test_utils",
+        "//tensorflow_federated/python/learning/templates:learning_process",
+        "//tensorflow_federated/python/program:data_source",
         "//tensorflow_federated/python/program:native_platform",
         "//tensorflow_federated/python/program:program_state_manager",
         "//tensorflow_federated/python/program:release_manager",

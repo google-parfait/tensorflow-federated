@@ -22,9 +22,10 @@ from absl.testing import absltest
 import tensorflow as tf
 
 from tensorflow_federated.python.core.backends.native import execution_contexts
-from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
+from tensorflow_federated.python.core.impl.context_stack import context_stack_test_utils
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.learning.programs import evaluation_program_logic
+from tensorflow_federated.python.learning.programs import program_logic
 from tensorflow_federated.python.learning.programs import training_program_logic
 from tensorflow_federated.python.learning.templates import composers
 from tensorflow_federated.python.learning.templates import learning_process
@@ -153,8 +154,13 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     super().setUp()
     # Print all failure explanations.
     self.maxDiff = None  # pylint: disable=invalid-name
-    context_stack_impl.context_stack.set_default_context(_create_test_context())
 
+  def test_is_train_model_program_logic(self):
+    self.assertIsInstance(
+        training_program_logic.train_model, program_logic.TrainModelProgramLogic
+    )
+
+  @context_stack_test_utils.with_context(_create_test_context)
   async def test_integration_runs_5_training_rounds_two_eval_rounds_from_scratch(
       self,
   ):
@@ -267,6 +273,7 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     )
     mock_evaluation_manager.wait_for_evaluations_to_finish.assert_called_once()
 
+  @context_stack_test_utils.with_context(_create_test_context)
   async def test_integration_runs_training_rounds_evaluates_on_time(self):
     train_num_clients = 5
     training_rounds = 5
@@ -386,6 +393,7 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     )
     mock_evaluation_manager.wait_for_evaluations_to_finish.assert_called_once()
 
+  @context_stack_test_utils.with_context(_create_test_context)
   async def test_integration_runs_5_training_rounds_no_eval_manager(self):
     train_num_clients = 5
     training_rounds = 5
@@ -464,6 +472,7 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
         mock_model_output_manager.release.call_args_list,
     )
 
+  @context_stack_test_utils.with_context(_create_test_context)
   async def test_resumes_from_previous_version_10_runs_one_round(self):
     train_num_clients = 5
     training_rounds = 11
@@ -554,6 +563,7 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     mock_evaluation_manager.resume_from_previous_state.assert_called_once()
     mock_evaluation_manager.wait_for_evaluations_to_finish.assert_called_once()
 
+  @context_stack_test_utils.with_context(_create_test_context)
   async def test_resumes_from_previous_runs_no_train_rounds(self):
     train_num_clients = 5
     training_rounds = 10
