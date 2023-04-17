@@ -695,6 +695,26 @@ TEST_F(FederatingExecutorTest, CreateCallFederatedValueAtClients) {
                     ClientsV(std::vector<v0::Value>(NUM_CLIENTS, tensor_pb)));
 }
 
+TEST_F(FederatingExecutorTest,
+       CreateCallFederatedValueAtClientsFromEmbeddedValue) {
+  v0::Value tensor_pb = TensorV(5);
+  IdPair fn = TFF_ASSERT_OK(CreatePassthroughValue(tensor_pb));
+  ValueId fn_result_child_id =
+      ExpectCreateCallInServerChild(fn.child_id, std::nullopt);
+  TFF_ASSERT_OK_AND_ASSIGN(auto fn_result_id,
+                           test_executor_->CreateCall(fn.id, std::nullopt));
+
+  TFF_ASSERT_OK_AND_ASSIGN(
+      auto fed_val_id, test_executor_->CreateValue(FederatedValueAtClientsV()));
+  auto result_tensor_id = ExpectCreateInClientChild(tensor_pb);
+  ExpectMaterializeInServerChild(fn_result_child_id, tensor_pb);
+  TFF_ASSERT_OK_AND_ASSIGN(
+      auto result_id, test_executor_->CreateCall(fed_val_id, fn_result_id));
+  ExpectMaterializeInClientChild(result_tensor_id, tensor_pb, ONCE_PER_CLIENT);
+  ExpectMaterialize(result_id,
+                    ClientsV(std::vector<v0::Value>(NUM_CLIENTS, tensor_pb)));
+}
+
 TEST_F(FederatingExecutorTest, CreateCallFederatedValueAtServer) {
   v0::Value tensor = TensorV(1);
   ValueId tensor_child_id = ExpectCreateInServerChild(tensor);
