@@ -133,6 +133,7 @@ cc_library(
     hdrs = ["dataset_conversions.h"],
     deps = [
         ":status_macros",
+        ":tensorflow_status_compat",
         "//tensorflow_federated/proto/v0:executor_cc_proto",
         "@com_google_absl//absl/status",
         "@org_tensorflow//tensorflow/core/data:standalone",
@@ -162,6 +163,7 @@ cc_library(
     deps = [
         ":session_provider",
         ":status_macros",
+        ":tensorflow_status_compat",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
@@ -251,6 +253,7 @@ cc_library(
         ":executor",
         ":status_macros",
         ":tensor_serialization",
+        ":tensorflow_status_compat",
         ":tensorflow_utils",
         ":threading",
         "//tensorflow_federated/proto/v0:executor_cc_proto",
@@ -710,6 +713,7 @@ cc_library(
         ":sequence_intrinsics",
         ":struct_traversal_order",
         ":tensor_serialization",
+        ":tensorflow_status_compat",
         ":threading",
         "//tensorflow_federated/proto/v0:computation_cc_proto",
         "//tensorflow_federated/proto/v0:executor_cc_proto",
@@ -753,6 +757,7 @@ cc_library(
     hdrs = ["session_provider.h"],
     deps = [
         ":status_macros",
+        ":tensorflow_status_compat",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/status",
@@ -909,6 +914,7 @@ cc_library(
         ":session_provider",
         ":status_macros",
         ":tensor_serialization",
+        ":tensorflow_status_compat",
         ":threading",
         "//tensorflow_federated/proto/v0:computation_cc_proto",
         "//tensorflow_federated/proto/v0:executor_cc_proto",
@@ -1027,6 +1033,7 @@ cc_library(
         ":dataset_conversions",
         ":executor",
         ":protobuf_matchers",
+        ":tensorflow_status_compat",
         ":type_utils",
         "//tensorflow_federated/proto/v0:computation_cc_proto",
         "//tensorflow_federated/proto/v0:executor_cc_proto",
@@ -1082,6 +1089,7 @@ cc_library(
     deps = [
         ":executor",
         ":tensor_serialization",
+        ":tensorflow_status_compat",
         ":threading",
         "//tensorflow_federated/proto/v0:computation_cc_proto",
         "@com_google_absl//absl/status",
@@ -1096,6 +1104,17 @@ cc_library(
         "@org_tensorflow//tensorflow/compiler/xla/stream_executor/host:host_platform",  # buildcleaner: keep # Linking in the host platform here ensures that the stream executor can execute on CPU.
         "@org_tensorflow//tensorflow/core:framework",
         "@org_tensorflow//tensorflow/core:protos_all_cc",
+    ],
+)
+
+cc_library(
+    name = "tensorflow_status_compat",
+    srcs = ["tensorflow_status_compat.cc"],
+    hdrs = ["tensorflow_status_compat.h"],
+    deps = [
+        "@com_google_absl//absl/strings",
+        "@org_tensorflow//tensorflow/core:framework",
+        "@org_tensorflow//tensorflow/core/platform:status",
     ],
 )
 

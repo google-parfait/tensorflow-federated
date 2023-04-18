@@ -17,6 +17,7 @@ limitations under the License
 #include <memory>
 
 #include "absl/status/status.h"
+#include "tensorflow_federated/cc/core/impl/executors/tensorflow_status_compat.h"
 
 namespace tensorflow_federated {
 
@@ -41,7 +42,7 @@ SequenceValueToDataset(const v0::Value::Sequence& sequence_pb) {
     return absl::InternalError(
         absl::StrCat("Dataset FromGraph creation failed while converting "
                      "TFF Value to tf data Dataset. Error: ",
-                     status.error_message()));
+                     ToMessage(status)));
   }
 
   return std::move(dataset);

@@ -31,6 +31,7 @@ limitations under the License
 #include "tensorflow/core/graph/node_builder.h"
 #include "tensorflow_federated/cc/core/impl/executors/session_provider.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
+#include "tensorflow_federated/cc/core/impl/executors/tensorflow_status_compat.h"
 
 namespace tensorflow_federated {
 
@@ -192,8 +193,8 @@ absl::StatusOr<GraphWithOutput> DatasetFromTensorStructuresGraph(
   tf::GraphDef graph_def;
   tf::Status status = scope.ToGraphDef(&graph_def);
   if (!status.ok()) {
-    return absl::InternalError(absl::StrCat("Failure to create dataset graph: ",
-                                            status.error_message()));
+    return absl::InternalError(
+        absl::StrCat("Failure to create dataset graph: ", ToMessage(status)));
   }
   return GraphWithOutput{std::move(graph_def), std::string(output_tensor_name)};
 }
@@ -225,7 +226,7 @@ absl::StatusOr<tf::Tensor> DatasetFromTensorStructures(
   if (!status.ok()) {
     return absl::InternalError(
         absl::StrCat("Failed to run DatasetFromTensorStructures computation: ",
-                     status.error_message()));
+                     ToMessage(status)));
   }
   if (outputs.size() != 1) {
     return absl::InternalError(
