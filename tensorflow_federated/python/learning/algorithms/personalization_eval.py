@@ -20,6 +20,7 @@ import tensorflow as tf
 from tensorflow_federated.python.aggregators import sampling
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
+from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
@@ -34,7 +35,7 @@ def build_personalization_eval(
     baseline_evaluate_fn,
     max_num_clients=100,
     context_tff_type=None,
-):
+) -> computation_base.Computation:
   """Builds the TFF computation for evaluating personalization strategies.
 
   The returned TFF computation broadcasts model weights from `tff.SERVER` to

@@ -191,7 +191,7 @@ def main(argv):
   # Build the `tff.Computation` for evaluating the personalization strategies.
   # Here `p13n_eval` is a `tff.Computation` with the following type signature:
   # <model_weights@SERVER, datasets@CLIENTS> -> personalization_metrics@SERVER.
-  p13n_eval = tff.learning.build_personalization_eval(
+  p13n_eval = tff.learning.algorithms.build_personalization_eval(
       model_fn=model_fn,
       personalize_fn_dict=personalize_fn_dict,
       baseline_evaluate_fn=evaluate_fn,

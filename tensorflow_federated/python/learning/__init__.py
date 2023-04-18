@@ -55,4 +55,3 @@ from tensorflow_federated.python.learning.model_update_aggregator import dp_aggr
 from tensorflow_federated.python.learning.model_update_aggregator import entropy_compression_aggregator
 from tensorflow_federated.python.learning.model_update_aggregator import robust_aggregator
 from tensorflow_federated.python.learning.model_update_aggregator import secure_aggregator
-from tensorflow_federated.python.learning.personalization_eval import build_personalization_eval

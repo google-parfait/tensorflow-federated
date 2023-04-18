@@ -22,7 +22,7 @@ import tensorflow as tf
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.learning import dataset_reduce
-from tensorflow_federated.python.learning import personalization_eval as p13n_eval
+from tensorflow_federated.python.learning.algorithms import personalization_eval as p13n_eval
 from tensorflow_federated.python.learning.models import keras_utils
 from tensorflow_federated.python.learning.models import model_examples
 from tensorflow_federated.python.learning.models import model_weights
