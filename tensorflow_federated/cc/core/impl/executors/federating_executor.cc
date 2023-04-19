@@ -319,7 +319,9 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
       }
     }
   }
-
+  bool is_server_child(Executor* child) const {
+    return child == server_child_.get();
+  }
   absl::StatusOr<std::shared_ptr<OwnedValueId>> Embed(
       const ExecutorValue& value, std::shared_ptr<Executor> child) {
     switch (value.type()) {
@@ -328,7 +330,19 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
         return absl::InvalidArgumentError("Cannot embed a federated value.");
       }
       case ExecutorValue::ValueType::UNPLACED: {
-        return TFF_TRY(value.unplaced()->Embedded(*child));
+        // server_child_ also handles all unplaced value processing, it is not
+        // strictly only the server placed value executor. Thus, extract proto
+        // from the value using server_child.
+        if (is_server_child(child.get())) {
+          return TFF_TRY(value.unplaced()->Embedded(*child));
+        } else {
+          // In some cases Unplaced value could have only embedded value id on
+          // the server. E.g. when result of CreateCall.
+          // Use value.unplaced()->Proto to materialize value on server to
+          // create a new value on the passed child executer.
+          auto value_pb = TFF_TRY(value.unplaced()->Proto(*server_child_));
+          return ShareValueId(TFF_TRY(child->CreateValue(*value_pb)));
+        }
       }
       case ExecutorValue::ValueType::INTRINSIC: {
         return absl::InvalidArgumentError(
@@ -739,8 +753,9 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
       }
       case ExecutorValue::ValueType::UNPLACED: {
         auto id = TFF_TRY(value.unplaced()->Embedded(*server_child_));
-        return ExecutorValue::CreateUnplaced(std::make_shared<UnplacedInner>(
-            TFF_TRY(server_child_->CreateSelection(id->ref(), index))));
+        return ExecutorValue::CreateUnplaced(
+            std::make_shared<UnplacedInner>(ShareValueId(
+                TFF_TRY(server_child_->CreateSelection(id->ref(), index)))));
       }
       case ExecutorValue::ValueType::INTRINSIC: {
         return absl::InvalidArgumentError("Cannot select from intrinsic");
