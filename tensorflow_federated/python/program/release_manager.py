@@ -17,7 +17,7 @@ import abc
 import asyncio
 from collections.abc import Callable, Mapping, Sequence
 import typing
-from typing import Generic, Optional, Protocol, TypeVar, Union
+from typing import Generic, Optional, TypeVar, Union
 
 import tree
 
@@ -69,17 +69,6 @@ class ReleaseManager(abc.ABC, Generic[ReleasableStructure, Key]):
       key: A value used to reference the released `value`.
     """
     raise NotImplementedError
-
-
-@typing.runtime_checkable
-class _NamedTuple(Protocol):
-
-  @property
-  def _fields(self) -> tuple[str, ...]:
-    ...
-
-  def _asdict(self) -> dict[str, object]:
-    ...
 
 
 _FILTERED_SUBTREE = object()
@@ -151,8 +140,8 @@ class FilteringReleaseManager(ReleaseManager[ReleasableStructure, Key]):
         subtree = typing.cast(
             Union[Sequence[object], Mapping[str, object]], subtree
         )
-        if isinstance(subtree, Sequence) and not isinstance(
-            subtree, _NamedTuple
+        if isinstance(subtree, Sequence) and not py_typecheck.is_named_tuple(
+            subtree
         ):
           return [x for x in subtree if x is not _FILTERED_SUBTREE]
         elif isinstance(subtree, Mapping):

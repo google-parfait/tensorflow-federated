@@ -17,7 +17,7 @@ import collections
 from collections.abc import Iterable, Mapping
 import itertools
 import typing
-from typing import Any, Optional, Protocol
+from typing import Any, Optional
 
 import numpy as np
 import tensorflow as tf
@@ -710,16 +710,6 @@ def make_whimsy_element_for_type_spec(type_spec, none_dim_replacement=0):
     return elem_list
 
 
-@typing.runtime_checkable
-class _NamedTuple(Protocol):
-
-  def _asdict(self) -> dict[str, Any]:
-    ...
-
-  def _fields(self) -> tuple[str, ...]:
-    ...
-
-
 def append_to_list_structure_for_element_type_spec(nested, value, type_spec):
   """Adds an element `value` to `nested` lists for `type_spec`.
 
@@ -766,7 +756,7 @@ def append_to_list_structure_for_element_type_spec(nested, value, type_spec):
   elif type_spec.is_struct():
     elements = structure.to_elements(type_spec)
     if isinstance(nested, collections.OrderedDict):
-      if isinstance(value, _NamedTuple):
+      if py_typecheck.is_named_tuple(value):
         # In Python 3.8 and later `_asdict` no longer return OrdereDict, rather
         # a regular `dict`.
         value = collections.OrderedDict(value._asdict())
