@@ -123,6 +123,8 @@ def desugar_and_transform_to_native(comp):
   # otherwise variant placeholders that received datasets will be placed on GPUs
   # which don't have kernels for datastes, causing TF to error.
   grappler_config = tf.compat.v1.ConfigProto()
+  # This disables lowering control ops, which is needed for dtensor.
+  grappler_config.experimental.use_tfrt = True
   aggressive = grappler_config.graph_options.rewrite_options.AGGRESSIVE
   rewrite_options = grappler_config.graph_options.rewrite_options
   rewrite_options.memory_optimization = aggressive
