@@ -71,7 +71,7 @@ from tensorflow_federated.python.core.impl.types.type_conversions import structu
 from tensorflow_federated.python.core.impl.types.typed_object import TypedObject
 
 if sys.version_info[0] < 3 or sys.version_info[1] < 9:
-  raise Exception('TFF only supports Python versions 3.9 or later.')
+  raise RuntimeError('TFF only supports Python versions 3.9 or later.')
 
 # Initialize a default execution context. This is implicitly executed the
 # first time a module in the `core` package is imported.

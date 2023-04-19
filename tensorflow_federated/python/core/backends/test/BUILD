@@ -6,11 +6,6 @@ package(
         ":test_packages",
         "//tensorflow_federated/python/core:core_users",
 
-        # TODO(b/193543632): Remove this visibility once C++ execution is fully
-        # supported in OSS.
-        # Python package namespace
-        "//tensorflow_federated:__pkg__",
-
         # TODO(b/233801300): Remove dependency from `mapreduce` to `test`.
         "//tensorflow_federated/python/core/backends/mapreduce:mapreduce_packages",
     ],
