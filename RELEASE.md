@@ -1,3 +1,15 @@
+# Release 0.56.0
+
+## Major Features and Improvements
+
+*   Added Vizier backed tuning program logic to `tff.learning`.
+*   Updated the `tff.learning.programs.EvaluationManager` to clean up states
+    after recording the evaluation is completed.
+
+## Breaking Changes
+
+*   Removed deprecated `tff.learning.framework.ServerState` symbol.
+
 # Release 0.55.0
 
 ## Major Features and Improvements
