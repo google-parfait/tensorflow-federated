@@ -44,7 +44,7 @@ class ExtractingDpEventFromInitialStateError(ValueError):
 class DPAggregatorState(NamedTuple):
   query_state: Any
   agg_state: Any
-  dp_event: Any
+  dp_event: dp_accounting.DpEvent
   is_init_state: Any
 
 
@@ -502,11 +502,6 @@ class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
         self._query.derive_metrics, query_state_type
     )
 
-    dp_event_type = get_noised_result.type_signature.result[2]
-    convert_dp_event = tensorflow_computation.tf_computation(
-        lambda event: event.to_named_tuple(), dp_event_type
-    )
-
     @federated_computation.federated_computation()
     def init_fn():
       query_initial_state = intrinsics.federated_eval(
@@ -518,7 +513,6 @@ class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
       _, _, dp_event = intrinsics.federated_map(
           get_noised_result, (query_sample_state, query_initial_state)
       )
-      dp_event = intrinsics.federated_map(convert_dp_event, dp_event)
       is_init_state = intrinsics.federated_value(True, placements.SERVER)
       init_state = DPAggregatorState(
           query_initial_state,
@@ -545,7 +539,6 @@ class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
       result, new_query_state, dp_event = intrinsics.federated_map(
           get_noised_result, (record_agg_output.result, query_state)
       )
-      dp_event = intrinsics.federated_map(convert_dp_event, dp_event)
 
       is_init_state = intrinsics.federated_value(False, placements.SERVER)
 
@@ -601,7 +594,7 @@ def extract_dp_event_from_state(
         'is a placeholder. extract_dp_event_from_state only accepts states '
         'from calls to process.next().'
     )
-  return dp_accounting.DpEvent.from_named_tuple(state.dp_event)
+  return state.dp_event
 
 
 def _check_float_positive(value, label):
