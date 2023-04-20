@@ -24,7 +24,6 @@ import collections
 from collections.abc import Iterable, Mapping, Sequence
 import difflib
 import enum
-import typing
 from typing import Any, Optional, TypeVar, Union
 import weakref
 
@@ -218,7 +217,7 @@ class Type(metaclass=abc.ABCMeta):
   def check_tensor(self) -> None:
     """Check that this is a `tff.TensorType`."""
     if not self.is_tensor():
-      UnexpectedTypeError(TensorType, self)
+      raise UnexpectedTypeError(TensorType, self)
 
   def is_tensor(self) -> bool:
     """Returns whether or not this type is a `tff.TensorType`."""
@@ -314,7 +313,7 @@ class _ValueWithHash:
 # stored as a field of each class because some class objects themselves would
 # begin destruction before the map fields of other classes, causing errors
 # during destruction.
-_intern_pool: dict[typing.Type[Any], dict[Any, Any]] = collections.defaultdict(
+_intern_pool: dict[type[Any], dict[Any, Any]] = collections.defaultdict(
     lambda: {}
 )
 
@@ -360,7 +359,7 @@ class _Intern(abc.ABCMeta):
   """
 
   @classmethod
-  def _hash_normalized_args(cls, *args):
+  def _hash_normalized_args(mcs, *args):
     """Default implementation of `_hash_normalized_args`."""
     return hash(args)
 
@@ -567,7 +566,6 @@ class StructType(structure.Struct, Type, metaclass=_Intern):
     py_typecheck.check_type(elements, Iterable)
     if convert:
       if py_typecheck.is_named_tuple(elements):
-        elements = typing.cast(Any, elements)
         # In Python 3.8 and later `_asdict` no longer return OrderedDict, rather
         # a regular `dict`.
         elements = collections.OrderedDict(elements._asdict())
