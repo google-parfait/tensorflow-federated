@@ -52,7 +52,7 @@ def _is_federated_named_tuple(vimpl: 'Value') -> bool:
 
 
 def _is_named_tuple(vimpl: 'Value') -> bool:
-  return vimpl.type_signature.is_struct()  # pylint: disable=protected-access
+  return vimpl.type_signature.is_struct()
 
 
 def _check_struct_or_federated_struct(

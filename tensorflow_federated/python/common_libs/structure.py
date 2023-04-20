@@ -172,13 +172,15 @@ class Struct:
   def __eq__(self, other):
     if self is other:
       return True
-    # pylint: disable=protected-access
+    elif not isinstance(other, Struct):
+      return NotImplemented
     return (
-        isinstance(other, Struct)
-        and (self._element_array == other._element_array)
-        and (self._name_array == other._name_array)
+        self._element_array,
+        self._name_array,
+    ) == (
+        other._element_array,
+        other._name_array,
     )
-    # pylint: enable=protected-access
 
   def __ne__(self, other):
     return not self == other
@@ -253,9 +255,7 @@ def to_elements(struct: Struct) -> list[tuple[Optional[str], Any]]:
     TypeError: if the argument is not an `Struct`.
   """
   py_typecheck.check_type(struct, Struct)
-  # pylint: disable=protected-access
-  return struct._elements().copy()
-  # pylint: enable=protected-access
+  return struct._elements().copy()  # pylint: disable=protected-access
 
 
 def iter_elements(struct: Struct) -> Iterator[tuple[Optional[str], Any]]:
@@ -276,9 +276,7 @@ def iter_elements(struct: Struct) -> Iterator[tuple[Optional[str], Any]]:
     TypeError: if the argument is not an `Struct`.
   """
   py_typecheck.check_type(struct, Struct)
-  # pylint: disable=protected-access
-  return iter(struct._elements())
-  # pylint: enable=protected-access
+  return iter(struct._elements())  # pylint: disable=protected-access
 
 
 def to_odict(

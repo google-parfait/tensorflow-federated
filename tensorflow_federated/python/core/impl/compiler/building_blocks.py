@@ -69,8 +69,6 @@ class ComputationBuildingBlock(typed_object.TypedObject, metaclass=abc.ABCMeta):
   of TensorFlow code (it's represented by `tff.framework.CompiledComputation`).
   """
 
-  _deserializer_dict = None  # Defined at the end of this file.
-
   @classmethod
   def from_proto(
       cls: type['ComputationBuildingBlock'],
@@ -92,7 +90,7 @@ class ComputationBuildingBlock(typed_object.TypedObject, metaclass=abc.ABCMeta):
     """
     py_typecheck.check_type(computation_proto, pb.Computation)
     computation_oneof = computation_proto.WhichOneof('computation')
-    deserializer = cls._deserializer_dict.get(computation_oneof)
+    deserializer = _deserializer_dict.get(computation_oneof)
     if deserializer is not None:
       deserialized = deserializer(computation_proto)
       type_spec = type_serialization.deserialize_type(computation_proto.type)
@@ -1303,7 +1301,8 @@ def _string_representation(
       lines = [['({} -> '.format(param_name)], result_lines, [')']]
       return _join(lines)
     elif isinstance(comp, Placement):
-      return [comp._literal.name]  # pylint: disable=protected-access
+      literal = placements.uri_to_placement_literal(comp.uri)
+      return [literal.name]
     elif isinstance(comp, Struct):
       if len(comp) == 0:  # pylint: disable=g-explicit-length-test
         return ['<>']
@@ -1687,8 +1686,7 @@ def _structural_representation(comp):
   return '\n'.join(lines)
 
 
-# pylint: disable=protected-access
-ComputationBuildingBlock._deserializer_dict = {
+_deserializer_dict = {
     'reference': Reference.from_proto,
     'selection': Selection.from_proto,
     'struct': Struct.from_proto,
@@ -1701,4 +1699,3 @@ ComputationBuildingBlock._deserializer_dict = {
     'tensorflow': CompiledComputation,
     'xla': CompiledComputation,
 }
-# pylint: enable=protected-access

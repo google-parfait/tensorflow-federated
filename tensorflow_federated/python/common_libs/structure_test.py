@@ -198,7 +198,7 @@ class StructTest(tf.test.TestCase, parameterized.TestCase):
     self.assertTrue(t1.__eq__(t1))
     self.assertFalse(t1.__ne__(t1))
     # different type
-    self.assertFalse(t1.__eq__(None))
+    self.assertIs(t1.__eq__(None), NotImplemented)
     self.assertTrue(t1.__ne__(None))
     # copy
     t2 = structure.Struct([(None, 1), (None, 2)])
@@ -231,7 +231,7 @@ class StructTest(tf.test.TestCase, parameterized.TestCase):
     self.assertTrue(t1.__eq__(t1))
     self.assertFalse(t1.__ne__(t1))
     # different type
-    self.assertFalse(t1.__eq__(None))
+    self.assertIs(t1.__eq__(None), NotImplemented)
     self.assertTrue(t1.__ne__(None))
     # copy
     t2 = structure.Struct.named(a=1, b=2)
