@@ -28,6 +28,7 @@ py_library(
         ":fed_sgd",
         ":kmeans_clustering",
         ":mime",
+        ":personalization_eval",
     ],
 )
 
@@ -376,5 +377,37 @@ py_cpu_gpu_test(
         "//tensorflow_federated/python/learning/templates:distributors",
         "//tensorflow_federated/python/learning/templates:learning_process",
         "//tensorflow_federated/python/tensorflow_libs:tensorflow_test_utils",
+    ],
+)
+
+py_library(
+    name = "personalization_eval",
+    srcs = ["personalization_eval.py"],
+    deps = [
+        "//tensorflow_federated/python/aggregators:sampling",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/common_libs:structure",
+        "//tensorflow_federated/python/core/impl/computation:computation_base",
+        "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
+        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
+        "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:placements",
+        "//tensorflow_federated/python/learning/models:model_weights",
+    ],
+)
+
+py_cpu_gpu_test(
+    name = "personalization_eval_test",
+    srcs = ["personalization_eval_test.py"],
+    tags = ["nokokoro"],
+    deps = [
+        ":personalization_eval",
+        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/learning:dataset_reduce",
+        "//tensorflow_federated/python/learning/models:keras_utils",
+        "//tensorflow_federated/python/learning/models:model_examples",
+        "//tensorflow_federated/python/learning/models:model_weights",
     ],
 )

@@ -24,3 +24,4 @@ from tensorflow_federated.python.learning.algorithms.kmeans_clustering import bu
 from tensorflow_federated.python.learning.algorithms.mime import build_mime_lite_with_optimizer_schedule
 from tensorflow_federated.python.learning.algorithms.mime import build_unweighted_mime_lite
 from tensorflow_federated.python.learning.algorithms.mime import build_weighted_mime_lite
+from tensorflow_federated.python.learning.algorithms.personalization_eval import build_personalization_eval
