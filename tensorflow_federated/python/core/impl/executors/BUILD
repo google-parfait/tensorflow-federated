@@ -146,6 +146,7 @@ py_library(
     ],
     deps = [
         ":data_conversions",
+        "//tensorflow_federated/cc/core/impl/executors:executor_bindings",
         "//tensorflow_federated/python/core/impl/types:placements",
     ],
 )
