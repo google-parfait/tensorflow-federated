@@ -15,8 +15,6 @@
 
 import sys
 
-from tensorflow_federated.version import __version__  # pylint: disable=g-bad-import-order
-
 from tensorflow_federated.python import aggregators
 from tensorflow_federated.python import analytics
 from tensorflow_federated.python import learning
@@ -69,6 +67,7 @@ from tensorflow_federated.python.core.impl.types.placements import CLIENTS
 from tensorflow_federated.python.core.impl.types.placements import SERVER
 from tensorflow_federated.python.core.impl.types.type_conversions import structure_from_tensor_type_tree
 from tensorflow_federated.python.core.impl.types.typed_object import TypedObject
+from tensorflow_federated.version import __version__
 
 if sys.version_info[0] < 3 or sys.version_info[1] < 9:
   raise RuntimeError('TFF only supports Python versions 3.9 or later.')

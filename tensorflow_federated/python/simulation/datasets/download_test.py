@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import lzma
 import os
 from unittest import mock
 import urllib
@@ -19,7 +20,6 @@ import urllib
 from absl import flags
 from absl.testing import absltest
 import tensorflow as tf
-import lzma  # pylint: disable=g-bad-import-order
 
 from tensorflow_federated.python.simulation.datasets import download
 

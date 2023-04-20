@@ -13,6 +13,7 @@
 # limitations under the License.
 """Execution contexts for the native backend."""
 
+import lzma
 import os
 import os.path
 import signal
@@ -23,7 +24,6 @@ import time
 
 from absl import logging
 import grpc
-import lzma  # pylint: disable=g-bad-import-order
 import portpicker
 
 from tensorflow_federated.python.core.impl.executor_stacks import python_executor_stacks
