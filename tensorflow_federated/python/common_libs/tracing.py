@@ -140,9 +140,6 @@ class LoggingTracingProvider(TracingProvider):
   so most methods are no-ops.
   """
 
-  def __init__(self):  # pylint: disable=super-init-not-called
-    pass
-
   def span(
       self,
       scope: str,

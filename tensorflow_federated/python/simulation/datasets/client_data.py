@@ -385,7 +385,7 @@ class PreprocessClientData(ClientData):
   where necessary.
   """
 
-  def __init__(  # pylint: disable=super-init-not-called
+  def __init__(
       self,
       underlying_client_data: ClientData,
       preprocess_fn: Callable[[tf.data.Dataset], tf.data.Dataset],
