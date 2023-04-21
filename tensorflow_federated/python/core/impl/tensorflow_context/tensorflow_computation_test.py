@@ -340,7 +340,6 @@ class TensorFlowComputationTest(parameterized.TestCase):
     ):
       tensorflow_computation.tf_computation(foo, federated)
 
-    # pylint: disable=anomalous-backslash-in-string
     with self.assertRaisesRegex(
         TypeError,
         r'you have attempted to create one with the type \( -> int32\)',
@@ -364,10 +363,9 @@ class TensorFlowComputationTest(parameterized.TestCase):
     with self.assertRaisesRegex(
         TypeError,
         r'you have attempted to create one with the type <{int32}@CLIENTS,\( '
-        '-> int32\)>',
+        r'-> int32\)>',
     ):
       tensorflow_computation.tf_computation(foo, tuple_on_function)
-    # pylint: enable=anomalous-backslash-in-string
 
   def test_stackframes_in_errors(self):
     class DummyError(RuntimeError):
