@@ -175,8 +175,8 @@ def _get_distributed_executor_factory(
     distributed_config: Optional[DistributedConfiguration] = None,
 ) -> executor_factory.ExecutorFactory:
   """Return an execution factory which constructs DTensor based executor."""
-  server_leaf_executor_fn = executor_bindings.create_tensorflow_executor
-  client_leaf_executor_fn = executor_bindings.create_tensorflow_executor
+  server_leaf_executor_fn = cpp_executor_factory.default_leaf_executor_fn
+  client_leaf_executor_fn = cpp_executor_factory.default_leaf_executor_fn
   if distributed_config is None:
     raise ValueError("Distributed configuration is unspecified.")
 
