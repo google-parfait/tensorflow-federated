@@ -281,12 +281,9 @@ def _extract_bindings(
       def field_iterator(
           struct_type: computation_types.StructType,
       ) -> Generator[computation_types.Type, None, None]:
-        if struct_type.is_struct_with_python() and issubclass(
-            computation_types.StructWithPythonType.get_container_type(
-                struct_type
-            ),
-            Mapping,
-        ):
+        if isinstance(
+            struct_type, computation_types.StructWithPythonType
+        ) and issubclass(struct_type.python_container, Mapping):
           for field_name in sorted(structure.name_list(struct_type)):
             yield struct_type[field_name]
         else:

@@ -695,10 +695,6 @@ class StructWithPythonType(StructType, metaclass=_Intern):
         and structure.Struct.__eq__(self, other)
     )
 
-  @classmethod
-  def get_container_type(cls, value):
-    return value._container_type  # pylint: disable=protected-access
-
 
 class SequenceType(Type, metaclass=_Intern):
   """An implementation of `tff.Type` representing types of sequences in TFF.
@@ -724,9 +720,9 @@ class SequenceType(Type, metaclass=_Intern):
           (name, convert_struct_with_list_to_struct_with_tuple(value))
           for name, value in structure.iter_elements(type_spec)
       ]
-      if not type_spec.is_struct_with_python():
+      if not isinstance(type_spec, StructWithPythonType):
         return StructType(elements=elements)
-      container_cls = StructWithPythonType.get_container_type(type_spec)
+      container_cls = type_spec.python_container
       return StructWithPythonType(
           elements=elements,
           container_type=tuple if container_cls is list else container_cls,

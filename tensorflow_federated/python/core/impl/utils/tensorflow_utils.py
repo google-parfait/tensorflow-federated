@@ -292,9 +292,7 @@ def capture_result_from_graph(
     # anything in the way of a shared base class. Note we don't want to rely on
     # the fact that collections.namedtuples inherit from 'tuple' because we'd be
     # failing to retain the information about naming of tuple members.
-    # pylint: disable=protected-access
     name_value_pairs = result._asdict().items()
-    # pylint: enable=protected-access
     return _get_bindings_for_elements(name_value_pairs, graph, type(result))
   elif py_typecheck.is_attrs(result):
     name_value_pairs = named_containers.attrs_class_to_odict(result).items()
@@ -1123,10 +1121,8 @@ def coerce_dataset_elements_to_tff_type_spec(
   py_typecheck.check_type(element_type, computation_types.Type)
   if element_type.is_tensor():
     return dataset
-  elif element_type.is_struct_with_python():
-    py_type = computation_types.StructWithPythonType.get_container_type(
-        element_type
-    )
+  elif isinstance(element_type, computation_types.StructWithPythonType):
+    py_type = element_type.python_container
     if py_type is tf.RaggedTensor or py_type is tf.sparse.SparseTensor:
       return dataset
 
@@ -1136,14 +1132,12 @@ def coerce_dataset_elements_to_tff_type_spec(
     """Convert to a container to a type understood by TF and TFF."""
     if type_spec.is_tensor():
       return elements
-    elif type_spec.is_struct_with_python():
+    elif isinstance(type_spec, computation_types.StructWithPythonType):
       if tf.is_tensor(elements):
         # In this case we have a singleton tuple tensor that may have been
         # unwrapped by tf.data.
         elements = [elements]
-      py_type = computation_types.StructWithPythonType.get_container_type(
-          type_spec
-      )
+      py_type = type_spec.python_container
       if py_type is tf.RaggedTensor or py_type is tf.sparse.SparseTensor:
         return elements
 

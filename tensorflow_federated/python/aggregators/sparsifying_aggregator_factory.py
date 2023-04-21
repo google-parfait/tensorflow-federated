@@ -42,11 +42,9 @@ def _empty_state_initialize():
 def _is_sparse_tensor_structure(
     value_type_spec: computation_types.Type,
 ) -> bool:
-  container = computation_types.StructWithPythonType.get_container_type(
-      value_type_spec
-  )
-  return value_type_spec.is_struct_with_python() and (
-      container is tf.SparseTensor
+  return (
+      isinstance(value_type_spec, computation_types.StructWithPythonType)
+      and value_type_spec.python_container is tf.SparseTensor
   )
 
 
@@ -215,12 +213,9 @@ class SparsifyingSumFactory(factory.UnweightedAggregationFactory):
               (name, replace_zero_dimensions_with_none(element))
               for name, element in structure.iter_elements(type_spec)
           ]
-          if type_spec.is_struct_with_python():
+          if isinstance(type_spec, computation_types.StructWithPythonType):
             return computation_types.StructWithPythonType(
-                elements,
-                computation_types.StructWithPythonType.get_container_type(
-                    type_spec
-                ),
+                elements, type_spec.python_container
             )
           return computation_types.StructType(elements)
         else:

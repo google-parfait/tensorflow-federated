@@ -192,7 +192,7 @@ def _check_container_compat_with_tf_nest(type_spec: computation_types.Type):
       # other hand, if there are no names, sequence order is the only method of
       # traversal, so there is no ambiguity here either.
       return type_to_check, False
-    elif not type_to_check.is_struct_with_python():
+    elif not isinstance(type_to_check, computation_types.StructWithPythonType):
       raise ValueError(
           'Attempting to serialize a named struct type with '
           'ambiguous traversal order (sequence order distinct '
@@ -202,14 +202,14 @@ def _check_container_compat_with_tf_nest(type_spec: computation_types.Type):
           'proto due to inconsistent behavior of tf.nest.'
       )
 
-    container_type = computation_types.StructWithPythonType.get_container_type(
-        type_to_check
-    )
-    if (not names_are_sorted) and container_type is not collections.OrderedDict:
+    if (
+        not names_are_sorted
+        and type_to_check.python_container is not collections.OrderedDict
+    ):
       raise ValueError(
           'Attempted to serialize a dataset yielding named '
           'elements in non-sorted sequence order with '
-          f'non-OrderedDict container (type {container_type}). '
+          f'non-OrderedDict container (type {type_to_check.python_container}). '
           'This is an ambiguous operation; `tf.nest` behaves in '
           'a manner which depends on the Python type of this '
           'container, so coercing the dataset reconstructed '
