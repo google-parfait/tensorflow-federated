@@ -191,7 +191,7 @@ def pack_args_into_struct(
     )
   else:
     py_typecheck.check_type(type_spec, computation_types.StructType)
-    if not is_argument_struct(type_spec):  # pylint: disable=attribute-error
+    if not is_argument_struct(type_spec):
       raise TypeError(
           'Parameter type {} does not have a structure of an argument struct, '
           'and cannot be populated from multiple positional and keyword '
