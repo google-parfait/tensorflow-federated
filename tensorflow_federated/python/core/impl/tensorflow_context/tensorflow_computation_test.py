@@ -409,8 +409,7 @@ class TensorFlowComputationTest(parameterized.TestCase):
       return x
 
   def test_check_returns_type_with_tensorflow_computation_fails(self):
-    with self.assertRaises(TypeError):  # pylint: disable=g-error-prone-assert-raises
-
+    with self.assertRaises(TypeError):
       @tensorflow_computation.tf_computation(tf.int32)
       @computation_wrapper.check_returns_type(tf.int32)
       def _(x):
@@ -447,8 +446,7 @@ class TensorFlowComputationTest(parameterized.TestCase):
     type_with_known_shape = computation_types.TensorType(tf.int32, [1])
     type_with_unknown_shape = computation_types.TensorType(tf.int32, [None])
 
-    with self.assertRaises(TypeError):  # pylint: disable=g-error-prone-assert-raises
-
+    with self.assertRaises(TypeError):
       @tensorflow_computation.tf_computation(type_with_known_shape)
       @computation_wrapper.check_returns_type(type_with_unknown_shape)
       def _(a):
@@ -1068,8 +1066,7 @@ class TensorFlowFunctionComputationTest(parameterized.TestCase):
       return x
 
   def test_check_returns_type_with_tensorflow_computation_fails(self):
-    with self.assertRaises(TypeError):  # pylint: disable=g-error-prone-assert-raises
-
+    with self.assertRaises(TypeError):
       @tensorflow_computation.experimental_tf_fn_computation(tf.int32)
       @computation_wrapper.check_returns_type(tf.int32)
       def _(x):
@@ -1110,8 +1107,7 @@ class TensorFlowFunctionComputationTest(parameterized.TestCase):
     type_with_known_shape = computation_types.TensorType(tf.int32, [1])
     type_with_unknown_shape = computation_types.TensorType(tf.int32, [None])
 
-    with self.assertRaises(TypeError):  # pylint: disable=g-error-prone-assert-raises
-
+    with self.assertRaises(TypeError):
       @tensorflow_computation.experimental_tf_fn_computation(
           type_with_known_shape
       )
