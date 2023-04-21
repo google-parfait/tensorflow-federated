@@ -249,13 +249,8 @@ class CreateFunctionalMetricTest(tf.test.TestCase, parameterized.TestCase):
     )
 
   @parameterized.named_parameters(
-      # pylint: disable=g-complex-comprehension
-      (name, getattr(tf.keras.metrics, name))
-      for name in [
-          'Sum',
-          'Mean',
-      ]
-      # pylint: enable=g-complex-comprehension
+      ('sum', tf.keras.metrics.Sum),
+      ('mean', tf.keras.metrics.Mean),
   )
   def test_unary_metrics(self, metric_constructor):
     initialize, update, _ = keras_utils.create_functional_metric_fns(

@@ -120,7 +120,6 @@ class FederatedSgdTest(tf.test.TestCase, parameterized.TestCase):
     with self.assertRaisesRegex(TypeError, 'must be an instance'):
       fed_sgd.build_fed_sgd(non_callable_model_fn)
 
-  # pylint: disable=g-complex-comprehension
   @parameterized.named_parameters(
       ('robust_aggregator', model_update_aggregator.robust_aggregator),
       (
@@ -129,7 +128,6 @@ class FederatedSgdTest(tf.test.TestCase, parameterized.TestCase):
       ),
       ('secure_aggreagtor', model_update_aggregator.secure_aggregator),
   )
-  # pylint: enable=g-complex-comprehension
   def test_construction_calls_model_fn(self, aggregation_factory):
     # Assert that the process building does not call `model_fn` too many times.
     # `model_fn` can potentially be expensive (loading weights, processing, etc

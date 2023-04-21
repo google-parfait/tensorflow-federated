@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import itertools
 from unittest import mock
 
 from absl.testing import absltest
@@ -30,31 +29,17 @@ from tensorflow_federated.python.learning.optimizers import sgdm
 
 class ClientScheduledFedAvgTest(parameterized.TestCase):
 
-  # pylint: disable=g-complex-comprehension
-  @parameterized.named_parameters(
-      (
-          '_'.join(name for name, _ in named_params),
-          *(param for _, param in named_params),
-      )
-      for named_params in itertools.product(
-          [
-              (
-                  'keras_optimizer',
-                  lambda x: tf.keras.optimizers.SGD(learning_rate=x),
-              ),
-              ('tff_optimizer', lambda x: sgdm.build_sgdm(learning_rate=x)),
-          ],
-          [
-              ('robust_aggregator', model_update_aggregator.robust_aggregator),
-              (
-                  'compression_aggregator',
-                  model_update_aggregator.compression_aggregator,
-              ),
-              ('secure_aggreagtor', model_update_aggregator.secure_aggregator),
-          ],
-      )
+  @parameterized.product(
+      optimizer_fn=[
+          lambda x: tf.keras.optimizers.SGD(learning_rate=x),
+          lambda x: sgdm.build_sgdm(learning_rate=x),
+      ],
+      aggregation_factory=[
+          model_update_aggregator.robust_aggregator,
+          model_update_aggregator.compression_aggregator,
+          model_update_aggregator.secure_aggregator,
+      ],
   )
-  # pylint: enable=g-complex-comprehension
   def test_construction_calls_model_fn(self, optimizer_fn, aggregation_factory):
     # Assert that the process building does not call `model_fn` too many times.
     # `model_fn` can potentially be expensive (loading weights, processing, etc

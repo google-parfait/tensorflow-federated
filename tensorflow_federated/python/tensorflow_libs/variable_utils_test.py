@@ -13,7 +13,6 @@
 """Tests for tensorflow_federated.python.tensorflow_libs.variable_utils."""
 
 import functools
-import itertools
 import operator
 
 from absl.testing import parameterized
@@ -124,40 +123,35 @@ class TensorVariableTest(tf.test.TestCase, parameterized.TestCase):
     self.assertAllClose(-1.0, v.read_value())
     self.assertAllClose(-1.0, v.value())
 
-  @parameterized.named_parameters(
-      # pylint: disable=g-complex-comprehension,undefined-variable
-      ('_'.join([value[0], operator_fn[0]]), value[1], operator_fn[1])
-      for value, operator_fn in itertools.product(
-          [
-              ('scalar_int', 1),
-              ('tensor_int', [1, 2, 3]),
-              ('scalar_float', 1.0),
-              ('tensor_float', [1.0, 2.0, 3.0]),
-          ],
-          [
-              ('__add__', operator.__add__),
-              ('__eq__', operator.__eq__),
-              ('__floordiv__', operator.__floordiv__),
-              ('__ge__', operator.__ge__),
-              ('__gt__', operator.__gt__),
-              ('__le__', operator.__le__),
-              ('__lt__', operator.__lt__),
-              ('__mul__', operator.__mul__),
-              ('__ne__', operator.__ne__),
-              ('__truediv__', operator.__truediv__),
-              ('add', operator.add),
-              ('eq', operator.eq),
-              ('floordiv', operator.floordiv),
-              ('ge', operator.ge),
-              ('gt', operator.gt),
-              ('le', operator.le),
-              ('lt', operator.lt),
-              ('mul', operator.mul),
-              ('ne', operator.ne),
-              ('truediv', operator.truediv),
-          ],
-      )
-      # pylint: enable=g-complex-comprehension,undefined-variable
+  @parameterized.product(
+      value=[
+          1,
+          [1, 2, 3],
+          1.0,
+          [1.0, 2.0, 3.0],
+      ],
+      operator_fn=[
+          operator.__add__,
+          operator.__eq__,
+          operator.__floordiv__,
+          operator.__ge__,
+          operator.__gt__,
+          operator.__le__,
+          operator.__lt__,
+          operator.__mul__,
+          operator.__ne__,
+          operator.__truediv__,
+          operator.add,
+          operator.eq,
+          operator.floordiv,
+          operator.ge,
+          operator.gt,
+          operator.le,
+          operator.lt,
+          operator.mul,
+          operator.ne,
+          operator.truediv,
+      ],
   )
   def test_binary_operators(self, value, operator_fn):
     value = tf.convert_to_tensor(value)
@@ -168,24 +162,14 @@ class TensorVariableTest(tf.test.TestCase, parameterized.TestCase):
     tensor_variable_result = operator_fn(tensor_variable, value)
     self.assertAllEqual(variable_result, tensor_variable_result)
 
-  @parameterized.named_parameters(
-      # pylint: disable=g-complex-comprehension,undefined-variable
-      ('_'.join([value[0], operator_fn[0]]), value[1], operator_fn[1])
-      for value, operator_fn in itertools.product(
-          [
-              ('scalar_int', 1),
-              ('tensor_int', [1, 2, 3]),
-              ('scalar_bool', True),
-              ('tensor_bool', [True, False, True]),
-          ],
-          [
-              ('__and__', operator.__and__),
-              ('and', operator.and_),
-              ('__or__', operator.__and__),
-              ('or', operator.and_),
-          ],
-      )
-      # pylint: enable=g-complex-comprehension,undefined-variable
+  @parameterized.product(
+      value=[1, [1, 2, 3], True, [True, False, True]],
+      operator_fn=[
+          operator.__and__,
+          operator.and_,
+          operator.__and__,
+          operator.and_,
+      ],
   )
   def test_non_float_binary_operators(self, value, operator_fn):
     value = tf.convert_to_tensor(value)
@@ -196,24 +180,16 @@ class TensorVariableTest(tf.test.TestCase, parameterized.TestCase):
     tensor_variable_result = operator_fn(tensor_variable, value)
     self.assertAllEqual(variable_result, tensor_variable_result)
 
-  @parameterized.named_parameters(
-      # pylint: disable=g-complex-comprehension,undefined-variable
-      ('_'.join([value[0], operator_fn[0]]), value[1], operator_fn[1])
-      for value, operator_fn in itertools.product(
-          [
-              ('scalar_int', -1),
-              ('tensor_int', [1, -2, 3]),
-          ],
-          [
-              ('__neg__', operator.__neg__),
-              ('neg', operator.neg),
-              ('__invert__', operator.__invert__),
-              ('invert', operator.invert),
-              ('__abs__', operator.__abs__),
-              ('abs', operator.abs),
-          ],
-      )
-      # pylint: enable=g-complex-comprehension,undefined-variable
+  @parameterized.product(
+      value=[-1, [1, -2, 3]],
+      operator_fn=[
+          operator.__neg__,
+          operator.neg,
+          operator.__invert__,
+          operator.invert,
+          operator.__abs__,
+          operator.abs,
+      ],
   )
   def test_unary_operators(self, value, operator_fn):
     value = tf.convert_to_tensor(value)
