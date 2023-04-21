@@ -61,9 +61,7 @@ class StructTest(tf.test.TestCase, parameterized.TestCase):
   def test_empty(self):
     v = []
     x = structure.Struct(v)
-    # Explicitly test the implementation of __len__() here so use, assertLen()
-    # instead of assertEmpty().
-    self.assertLen(x, 0)  # pylint: disable=g-generic-assert
+    self.assertEmpty(x)
     self.assertRaises(IndexError, lambda _: x[0], None)
     self.assertEqual(list(iter(x)), [])
     self.assertEqual(dir(x), [])
