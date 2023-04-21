@@ -658,9 +658,7 @@ class SymbolTree:
         or that we have a symbol tree instance that does not match the
         computation we are currently processing.
     """
-    # pylint: disable=g-explicit-bool-comparison
-    if (name is None or name == '') and value is None:
-      # pylint: enable=g-explicit-bool-comparison
+    if (name is None or not name) and value is None:
       return
     py_typecheck.check_type(name, str)
     if value is not None:

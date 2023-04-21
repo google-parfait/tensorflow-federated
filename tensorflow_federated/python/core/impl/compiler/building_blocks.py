@@ -720,7 +720,7 @@ class Lambda(ComputationBuildingBlock):
     Raises:
       TypeError: if the arguments are of the wrong types.
     """
-    if parameter_name == '':  # pylint: disable=g-explicit-bool-comparison
+    if not parameter_name:
       parameter_name = None
     if (parameter_name is None) != (parameter_type is None):
       raise TypeError(

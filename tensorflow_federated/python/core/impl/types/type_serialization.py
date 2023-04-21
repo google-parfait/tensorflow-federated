@@ -160,7 +160,7 @@ def deserialize_type(
   elif type_variant == 'struct':
 
     def empty_str_to_none(s):
-      if s == '':  # pylint: disable=g-explicit-bool-comparison
+      if not s:
         return None
       return s
 
