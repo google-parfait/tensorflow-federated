@@ -108,7 +108,8 @@ def install_executor(executor_factory_instance):
   return context_stack_impl.context_stack.install(context)
 
 
-def create_whimsy_intrinsic_def_federated_aggregate():  # pylint: disable=missing-function-docstring
+def create_whimsy_intrinsic_def_federated_aggregate():
+  """Creates a test federated aggregate intrinsic and type."""
   value = intrinsic_defs.FEDERATED_AGGREGATE
   type_signature = computation_types.FunctionType(
       [
