@@ -100,7 +100,7 @@ class ComputationWrapperTest(absltest.TestCase):
     with self.assertRaises(TypeError):
 
       @test_wrap(foo=1)
-      def fn():  # pylint: disable=unused-variable
+      def _():
         pass
 
   def test_as_wrapper_with_kwargs(self):
@@ -199,7 +199,7 @@ class ComputationWrapperTest(absltest.TestCase):
     with self.assertRaises(TypeError):
 
       @test_wrap(tf.int32)
-      def my_fn():  # pylint: disable=unused-variable
+      def _():
         pass
 
   def test_as_wrapper_with_one_argument_on_no_parameter_lambda(self):
@@ -222,7 +222,7 @@ class ComputationWrapperTest(absltest.TestCase):
     with self.assertRaises(TypeError):
 
       @test_wrap(tf.int32)
-      def my_fn(x, y):  # pylint: disable=unused-variable
+      def _(x, y):
         del x, y  # Unused.
         pass
 
@@ -239,7 +239,7 @@ class ComputationWrapperTest(absltest.TestCase):
     with self.assertRaises(TypeError):
 
       @test_wrap((tf.int32, tf.int32))
-      def my_fn(x, y, z):  # pylint: disable=unused-variable
+      def _(x, y, z):
         del x, y, z  # Unused.
         pass
 
@@ -251,7 +251,7 @@ class ComputationWrapperTest(absltest.TestCase):
     with self.assertRaises(TypeError):
 
       @test_wrap([('x', tf.int32), ('y', tf.int32)])
-      def my_fn(x, z):  # pylint: disable=unused-variable
+      def _(x, z):
         del x, z  # Unused.
         pass
 

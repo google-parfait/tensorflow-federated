@@ -318,7 +318,7 @@ class TensorFlowComputationTest(parameterized.TestCase):
       @tensorflow_computation.tf_computation(
           computation_types.SequenceType(tf.int32)
       )
-      def foo(x):  # pylint: disable=unused-variable
+      def _(x):
         return x
 
     except TypeError:
@@ -331,7 +331,7 @@ class TensorFlowComputationTest(parameterized.TestCase):
     federated = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     tuple_on_function = computation_types.StructType([federated, function])
 
-    def foo(x):  # pylint: disable=unused-variable
+    def foo(x):
       del x  # Unused.
 
     with self.assertRaisesRegex(
@@ -981,7 +981,7 @@ class TensorFlowFunctionComputationTest(parameterized.TestCase):
     federated = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     tuple_on_function = computation_types.StructType([federated, function])
 
-    def foo(x):  # pylint: disable=unused-variable
+    def foo(x):
       del x  # Unused.
 
     with self.assertRaisesRegex(

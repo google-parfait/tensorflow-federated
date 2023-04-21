@@ -1403,7 +1403,7 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
       @federated_computation.federated_computation(
           computation_types.FederatedType(tf.int32, placements.CLIENTS)
       )
-      def call_secure_sum(value):  # pylint: disable=unused-variable
+      def _(value):
         lower_bound = intrinsics.federated_value(0, placements.SERVER)
         upper_bound = 1
         summed_value = primitives.secure_quantized_sum(
@@ -1417,7 +1417,7 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
       @federated_computation.federated_computation(
           computation_types.FederatedType(tf.int32, placements.CLIENTS)
       )
-      def call_secure_sum(value):  # pylint: disable=unused-variable
+      def _(value):
         lower_bound = intrinsics.federated_value(0, placements.CLIENTS)
         upper_bound = intrinsics.federated_value(1, placements.CLIENTS)
         summed_value = primitives.secure_quantized_sum(
