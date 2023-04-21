@@ -311,7 +311,7 @@ def get_mnist_training_example():
 
   # Start with a model filled with zeros, and the round counter set to zero.
   @federated_computation.federated_computation()
-  def initialize():
+  def _initialize():
     @tensorflow_computation.tf_computation
     def initialize_tf():
       return server_state_nt(
@@ -330,7 +330,7 @@ def get_mnist_training_example():
   # Pass the model to the client, along with a dynamically adjusted learning
   # rate that starts at 0.1 and decays exponentially by a factor of 0.9.
   @tensorflow_computation.tf_computation(server_state_tff_type)
-  def prepare(state):
+  def _prepare(state):
     learning_rate = 0.1 * tf.pow(0.9, tf.cast(state.num_rounds, tf.float32))
     return client_state_nt(model=state.model, learning_rate=learning_rate)
 
@@ -352,7 +352,7 @@ def get_mnist_training_example():
   @tensorflow_computation.tf_computation(
       dataset_tff_type, client_state_tff_type
   )
-  def work(data, state):  # pylint: disable=missing-docstring
+  def _work(data, state):
     model_vars = model_nt(
         weights=tf.Variable(initial_value=state.model.weights, name='weights'),
         bias=tf.Variable(initial_value=state.model.bias, name='bias'),
@@ -402,7 +402,7 @@ def get_mnist_training_example():
 
   # Initialize accumulators for aggregation with zero model and zero examples.
   @tensorflow_computation.tf_computation
-  def zero():
+  def _zero():
     return accumulator_nt(
         model=model_nt(weights=tf.zeros([784, 10]), bias=tf.zeros([10])),
         num_examples=tf.constant(0),
@@ -417,7 +417,7 @@ def get_mnist_training_example():
   # We add an update to an accumulator with the update's model multipled by the
   # number of examples, so we can compute a weighted average in the end.
   @tensorflow_computation.tf_computation(accumulator_tff_type, update_tff_type)
-  def accumulate(accumulator, update):
+  def _accumulate(accumulator, update):
     scaling_factor = tf.cast(update.num_examples, tf.float32)
     scaled_model = tf.nest.map_structure(
         lambda x: x * scaling_factor, update.model
@@ -432,7 +432,7 @@ def get_mnist_training_example():
   @tensorflow_computation.tf_computation(
       accumulator_tff_type, accumulator_tff_type
   )
-  def merge(accumulator1, accumulator2):
+  def _merge(accumulator1, accumulator2):
     return accumulator_nt(
         model=tf.nest.map_structure(
             tf.add, accumulator1.model, accumulator2.model
@@ -446,7 +446,7 @@ def get_mnist_training_example():
   # The result of aggregation is produced by dividing the accumulated model by
   # the total number of examples. Same for loss.
   @tensorflow_computation.tf_computation(accumulator_tff_type)
-  def report(accumulator):
+  def _report(accumulator):
     scaling_factor = 1.0 / tf.cast(accumulator.num_examples, tf.float32)
     scaled_model = model_nt(
         weights=accumulator.model.weights * scaling_factor,
@@ -469,7 +469,7 @@ def get_mnist_training_example():
   # Pass the newly averaged model along with an incremented round counter over
   # to the next round, and output the counters and loss as server metrics.
   @tensorflow_computation.tf_computation(server_state_tff_type, update_type)
-  def update(state, update):
+  def _update(state, update):
     report = update[0]
     num_rounds = state.num_rounds + 1
     return (
@@ -481,22 +481,22 @@ def get_mnist_training_example():
         ),
     )
 
-  type_signature = generate_unnamed_type_signature(update, work)
+  type_signature = generate_unnamed_type_signature(_update, _work)
   return MapReduceFormExample(
       mrf=forms.MapReduceForm(
           type_signature,
-          prepare,
-          work,
-          zero,
-          accumulate,
-          merge,
-          report,
+          _prepare,
+          _work,
+          _zero,
+          _accumulate,
+          _merge,
+          _report,
           secure_sum_bitwidth,
           secure_sum_max_input,
           secure_sum_modulus,
-          update,
+          _update,
       ),
-      initialize=initialize,
+      initialize=_initialize,
   )
 
 

@@ -917,7 +917,7 @@ def make_data_set_from_elements(graph, elements, element_type):
     )
     return tf.data.Dataset.from_tensor_slices(tensor_slices)
 
-  def _work():  # pylint: disable=missing-docstring
+  def _work():
     if not elements:
       # Just return an empty data set with the appropriate types.
       whimsy_element = make_whimsy_element_for_type_spec(element_type)
