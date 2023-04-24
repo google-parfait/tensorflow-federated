@@ -12,32 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import tensorflow as tf
+from unittest import mock
+
+from absl.testing import absltest
 
 from tensorflow_federated.python.tensorflow_libs import version_check
 
 
-class _FakeTFModule:
-  """A class that fakes the tensorflow.version.VERSION attribute."""
-
-  def __init__(self, version: str):
-    self._version = version
-
-  @property
-  def version(self) -> '_FakeTFModule':
-    # This is a bit of trickery to get `self.version.VERSION` to give what we
-    # want.
-    return self
-
-  @property
-  def VERSION(self) -> str:  # pylint: disable=invalid-name
-    return self._version
+def _create_mock_tf_module(version: str) -> mock.Mock:
+  mock_tf_module = mock.Mock()
+  type(mock_tf_module).version = mock.PropertyMock(return_value=mock_tf_module)
+  type(mock_tf_module).VERSION = mock.PropertyMock(return_value=version)
+  return mock_tf_module
 
 
-class VersionCheckTest(tf.test.TestCase):
+class VersionCheckTest(absltest.TestCase):
 
   def test_is_tf_release(self):
-    mock_tf_module = _FakeTFModule('2.2.2')
+    mock_tf_module = _create_mock_tf_module('2.2.2')
     self.assertTrue(
         version_check.is_tensorflow_version_newer('2.2.1', mock_tf_module)
     )
@@ -53,7 +45,7 @@ class VersionCheckTest(tf.test.TestCase):
 
   def test_is_tf_release_candidate(self):
     # Release candidates behave the same as regular releases.
-    mock_tf_module = _FakeTFModule('2.2.2-rc2')
+    mock_tf_module = _create_mock_tf_module('2.2.2-rc2')
     self.assertTrue(
         version_check.is_tensorflow_version_newer('2.2.1', mock_tf_module)
     )
@@ -69,7 +61,7 @@ class VersionCheckTest(tf.test.TestCase):
 
   def test_is_tf_nightly(self):
     # TF-nightly modules are always true.
-    mock_tf_module = _FakeTFModule('2.2.2-dev202004016')
+    mock_tf_module = _create_mock_tf_module('2.2.2-dev202004016')
     self.assertTrue(
         version_check.is_tensorflow_version_newer('2.2.4', mock_tf_module)
     )
@@ -85,4 +77,4 @@ class VersionCheckTest(tf.test.TestCase):
 
 
 if __name__ == '__main__':
-  tf.test.main()
+  absltest.main()

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import collections
+from typing import Any, NamedTuple
 import warnings
 
 from absl.testing import absltest
@@ -887,7 +888,10 @@ class FederatedAggregateTest(IntrinsicTestBase):
     # The representation used during the aggregation process will be a named
     # tuple with 2 elements - the integer 'total' that represents the sum of
     # elements encountered, and the integer element 'count'.
-    Accumulator = collections.namedtuple('Accumulator', 'total count')  # pylint: disable=invalid-name
+    class Accumulator(NamedTuple):
+      total: Any
+      count: Any
+
     accumulator_type = computation_types.to_type(
         Accumulator(
             total=computation_types.TensorType(dtype=tf.int32),
@@ -974,7 +978,10 @@ class FederatedAggregateTest(IntrinsicTestBase):
       intrinsics.federated_aggregate(x, zero, accumulate, merge, report)
 
   def test_federated_aggregate_with_unknown_dimension(self):
-    Accumulator = collections.namedtuple('Accumulator', ['samples'])  # pylint: disable=invalid-name
+
+    class Accumulator(NamedTuple):
+      samples: Any
+
     accumulator_type = computation_types.to_type(
         Accumulator(
             samples=computation_types.TensorType(dtype=tf.int32, shape=[None])
