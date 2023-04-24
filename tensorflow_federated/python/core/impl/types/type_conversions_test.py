@@ -43,7 +43,9 @@ def _assert_structure_eq(x, y):
   try:
     tf.nest.assert_same_structure(x, y)
   except ValueError:
-    raise AssertionError('Expected structures to have the same shape.')  # pylint: disable=raise-missing-from
+    raise AssertionError(
+        'Expected structures to have the same shape.'
+    ) from None
   xl = tf.nest.flatten(x)
   yl = tf.nest.flatten(y)
   for xe, ye in zip(xl, yl):
