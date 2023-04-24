@@ -20,24 +20,22 @@ from typing import Any, Optional
 import tensorflow as tf
 import tensorflow_federated as tff
 
-# pylint: disable=invalid-name
-_OPTIMIZER_FN_TYPE = Callable[[], tf.keras.optimizers.Optimizer]
-_PERSONALIZE_FN_TYPE = Callable[
+_OptimizerFn = Callable[[], tf.keras.optimizers.Optimizer]
+_PersonalizeFn = Callable[
     [tff.learning.models.VariableModel, tf.data.Dataset, tf.data.Dataset, Any],
     collections.OrderedDict[str, tf.Tensor],
 ]
 _EVAL_BATCH_SIZE = 1  # Batch size used when evaluating a dataset.
 _SHUFFLE_BUFFER_SIZE = 1000  # Buffer size used when shuffling a dataset.
-# pylint: enable=invalid-name
 
 
 def build_personalize_fn(
-    optimizer_fn: _OPTIMIZER_FN_TYPE,
+    optimizer_fn: _OptimizerFn,
     batch_size: int,
     num_epochs: int,
     num_epochs_per_eval: int,
     shuffle: bool = True,
-) -> _PERSONALIZE_FN_TYPE:
+) -> _PersonalizeFn:
   """Builds a `tf.function` that represents a personalization strategy.
 
   The returned `tf.function` represents the optimization algorithm to run on

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import collections
+from typing import NamedTuple
 
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -122,7 +122,10 @@ class PyTypeCheckTest(parameterized.TestCase):
     self.assertFalse(py_typecheck.is_attrs(TestClass()))
 
   def test_is_named_tuple(self):
-    T = collections.namedtuple('T', ['a', 'b'])  # pylint: disable=invalid-name
+
+    class T(NamedTuple):
+      a: int
+      b: int
 
     class U(T):
       pass

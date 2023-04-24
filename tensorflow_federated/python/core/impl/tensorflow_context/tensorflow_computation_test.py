@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import collections
-from typing import NamedTuple
+from typing import Any, NamedTuple
 
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -155,7 +155,10 @@ class TensorFlowComputationTest(parameterized.TestCase):
     )
 
   def test_takes_structured_tuple_typed(self):
-    MyType = collections.namedtuple('MyType', ['x', 'y'])  # pylint: disable=invalid-name
+
+    class MyType(NamedTuple):
+      x: Any
+      y: Any
 
     @tf.function
     def foo(x, t, l, odict, my_type):
@@ -185,7 +188,10 @@ class TensorFlowComputationTest(parameterized.TestCase):
     )
 
   def test_takes_structured_tuple_polymorphic(self):
-    MyType = collections.namedtuple('MyType', ['x', 'y'])  # pylint: disable=invalid-name
+
+    class MyType(NamedTuple):
+      x: Any
+      y: Any
 
     @tf.function
     def foo(x, t, l, odict, my_type):
@@ -232,7 +238,10 @@ class TensorFlowComputationTest(parameterized.TestCase):
     )
 
   def test_returns_tuple_structured(self):
-    MyType = collections.namedtuple('MyType', ['x', 'y'])  # pylint: disable=invalid-name
+
+    class MyType(NamedTuple):
+      x: Any
+      y: Any
 
     @tf.function
     def foo():
@@ -254,7 +263,10 @@ class TensorFlowComputationTest(parameterized.TestCase):
     # pyformat: enable
 
   def test_takes_namedtuple_typed(self):
-    MyType = collections.namedtuple('MyType', ['x', 'y'])  # pylint: disable=invalid-name
+
+    class MyType(NamedTuple):
+      x: Any
+      y: Any
 
     @tf.function
     def foo(x):
@@ -268,7 +280,10 @@ class TensorFlowComputationTest(parameterized.TestCase):
     )
 
   def test_takes_namedtuple_polymorphic(self):
-    MyType = collections.namedtuple('MyType', ['x', 'y'])  # pylint: disable=invalid-name
+
+    class MyType(NamedTuple):
+      x: Any
+      y: Any
 
     @tf.function
     def foo(t):
@@ -624,7 +639,10 @@ class TensorFlowFunctionComputationTest(parameterized.TestCase):
     )
 
   def test_takes_structured_tuple_typed(self):
-    MyType = collections.namedtuple('MyType', ['x', 'y'])  # pylint: disable=invalid-name
+
+    class MyType(NamedTuple):
+      x: Any
+      y: Any
 
     @tf.function
     def foo(x, t, l, odict, my_type):
@@ -654,7 +672,10 @@ class TensorFlowFunctionComputationTest(parameterized.TestCase):
     )
 
   def test_takes_structured_tuple_polymorphic(self):
-    MyType = collections.namedtuple('MyType', ['x', 'y'])  # pylint: disable=invalid-name
+
+    class MyType(NamedTuple):
+      x: Any
+      y: Any
 
     @tf.function
     def foo(x, t, l, odict, my_type):
@@ -701,7 +722,10 @@ class TensorFlowFunctionComputationTest(parameterized.TestCase):
     )
 
   def test_returns_tuple_structured(self):
-    MyType = collections.namedtuple('MyType', ['x', 'y'])  # pylint: disable=invalid-name
+
+    class MyType(NamedTuple):
+      x: Any
+      y: Any
 
     @tf.function
     def foo():
@@ -782,7 +806,10 @@ class TensorFlowFunctionComputationTest(parameterized.TestCase):
     )
 
   def test_takes_namedtuple_typed(self):
-    MyType = collections.namedtuple('MyType', ['x', 'y'])  # pylint: disable=invalid-name
+
+    class MyType(NamedTuple):
+      x: Any
+      y: Any
 
     @tf.function
     def foo(x):
@@ -798,7 +825,10 @@ class TensorFlowFunctionComputationTest(parameterized.TestCase):
     )
 
   def test_takes_namedtuple_polymorphic(self):
-    MyType = collections.namedtuple('MyType', ['x', 'y'])  # pylint: disable=invalid-name
+
+    class MyType(NamedTuple):
+      x: Any
+      y: Any
 
     @tf.function
     def foo(t):
