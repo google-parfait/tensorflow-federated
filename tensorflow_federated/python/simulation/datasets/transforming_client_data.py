@@ -76,9 +76,7 @@ class TransformingClientData(client_data.ClientData):
 
     if expand_client_id is None:
       self._client_ids = raw_client_ids
-      # pylint: disable=unnecessary-lambda
-      self._reduce_client_id = lambda s: tf.convert_to_tensor(s)
-      # pylint: enable=unnecessary-lambda
+      self._reduce_client_id = tf.convert_to_tensor
     else:
       self._client_ids = []
       for client_id in raw_client_ids:

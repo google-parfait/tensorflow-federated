@@ -695,7 +695,7 @@ class DatasetSerializationTest(tf.test.TestCase):
     )
 
     ds = tf.data.Dataset.from_tensors(tensors)
-    ds = ds.map(lambda i, v, s: tf.SparseTensor(i, v, s))  # pylint: disable=unnecessary-lambda
+    ds = ds.map(tf.SparseTensor)
 
     serialized_value, _ = value_serialization.serialize_value(
         ds, computation_types.SequenceType(ds.element_spec)

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import collections
+import functools
 import os
 
 from absl.testing import parameterized
@@ -122,6 +123,13 @@ class FlattenTest(tf.test.TestCase, parameterized.TestCase):
               [('a', TensorType(tf.int32)), ('b', TensorType(tf.float32))],
               collections.OrderedDict,
           ),
+      ),
+      (
+          'identity_partial',
+          functools.partial(lambda x: x, 1),
+          (),
+          {},
+          TensorType(tf.int32),
       ),
   )
   def test_flatten_tf_function(self, fn, args, kwargs, expected_type_spec):

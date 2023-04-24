@@ -209,9 +209,10 @@ class TransformationUtilsTest(parameterized.TestCase):
         yield _fn
 
     transformation_fn_sequence = _transformation_fn_generator()
-    # pylint: disable=unnecessary-lambda
-    tx_fn = lambda x: next(transformation_fn_sequence)(x)
-    # pylint: enable=unnecessary-lambda
+
+    def tx_fn(x):
+      return next(transformation_fn_sequence)(x)
+
     transfomed_comp, modified = transformation_utils.transform_postorder(
         comp, tx_fn
     )
@@ -1773,9 +1774,10 @@ class TransformPreorderTest(parameterized.TestCase):
         yield _fn
 
     transformation_fn_sequence = _transformation_fn_generator()
-    # pylint: disable=unnecessary-lambda
-    tx_fn = lambda x: next(transformation_fn_sequence)(x)
-    # pylint: enable=unnecessary-lambda
+
+    def tx_fn(x):
+      return next(transformation_fn_sequence)(x)
+
     transfomed_comp, modified = transformation_utils.transform_preorder(
         comp, tx_fn
     )

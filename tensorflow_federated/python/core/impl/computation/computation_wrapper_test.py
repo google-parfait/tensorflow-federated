@@ -105,7 +105,11 @@ class ComputationWrapperTest(absltest.TestCase):
 
   def test_as_wrapper_with_kwargs(self):
     with self.assertRaises(TypeError):
-      test_wrap(lambda: 5, foo=1)  # pylint: disable=unnecessary-lambda
+
+      def fn():
+        pass
+
+      test_wrap(fn, foo=1)
 
   def assert_is_return_ten_fn(self, fn):
     self.assertEqual(fn(), Result(arg=None, arg_type=None, zero_result=10))

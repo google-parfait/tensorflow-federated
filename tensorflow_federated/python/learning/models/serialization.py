@@ -162,13 +162,7 @@ def _make_concrete_flat_output_fn(fn, *args, **kwargs):
     buffer message documenting the the result structure returned by the concrete
     function.
   """
-  # Save the un-flattened type spec for deserialization later. Wrap in a lambda
-  # because `tf.function` doesn't know how to deal with functools.Partial types
-  # that we may have created earlier.
-  structured_fn = lambda *args, **kwargs: fn(*args, **kwargs)  # pylint: disable=unnecessary-lambda
-  concrete_fn = tf.function(structured_fn).get_concrete_function(
-      *args, **kwargs
-  )
+  concrete_fn = tf.function(fn).get_concrete_function(*args, **kwargs)
   tensor_types = tf.nest.map_structure(
       computation_types.TensorType,
       concrete_fn.output_dtypes,
