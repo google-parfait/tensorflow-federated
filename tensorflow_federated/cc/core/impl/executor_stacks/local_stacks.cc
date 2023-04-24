@@ -24,12 +24,17 @@ namespace tensorflow_federated {
 absl::StatusOr<std::shared_ptr<Executor>> CreateLocalExecutor(
     const CardinalityMap& cardinalities,
     std::function<absl::StatusOr<std::shared_ptr<Executor>>(int32_t)>
-        leaf_executor_fn) {
+        leaf_executor_fn,
+    std::function<absl::StatusOr<std::shared_ptr<Executor>>(int32_t)>
+        client_leaf_executor_fn) {
   std::shared_ptr<Executor> server = CreateReferenceResolvingExecutor(
       CreateSequenceExecutor(TFF_TRY(leaf_executor_fn(-1))));
-  // TODO(b/256948367): Expose separate ExecutorFn for client side leaf
-  // executor.
+  std::shared_ptr<Executor> client = server;
+  if (client_leaf_executor_fn != nullptr) {
+    client = CreateReferenceResolvingExecutor(
+        CreateSequenceExecutor(TFF_TRY(client_leaf_executor_fn(-1))));
+  }
   return CreateReferenceResolvingExecutor(TFF_TRY(CreateFederatingExecutor(
-      /*server_child=*/server, /*client_child=*/server, cardinalities)));
+      /*server_child=*/server, /*client_child=*/client, cardinalities)));
 }
 }  // namespace tensorflow_federated

@@ -31,11 +31,21 @@ namespace tensorflow_federated {
 // to execute non-federated computations embedded in TFF's computation protos,
 // e.g. TensorFlow graphs or Jax computations.
 //
+// If client_leaf_executor_fn is specified, an executor will be constructed
+// using this function to evaluate client placed computations. Executor
+// constructed from leaf_executor_fn will be used for unplaced or server side
+// computations.
+// If client_leaf_executor_fn is unspecified, the executor constructed from
+// leaf_executor_fn will be used for both server side and client side
+// computations.
+
 // Returns an absl::Status if construction fails, and a shared_ptr to an
 // instance of Executor if construction succeeds.
 absl::StatusOr<std::shared_ptr<Executor>> CreateLocalExecutor(
     const CardinalityMap& cardinalities,
     std::function<absl::StatusOr<std::shared_ptr<Executor>>(int32_t)>
-        leaf_executor_fn = CreateTensorFlowExecutor);
+        leaf_executor_fn = CreateTensorFlowExecutor,
+    std::function<absl::StatusOr<std::shared_ptr<Executor>>(int32_t)>
+        client_leaf_executor_fn = nullptr);
 }  // namespace tensorflow_federated
 #endif  // THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTOR_STACKS_LOCAL_STACKS_H_
