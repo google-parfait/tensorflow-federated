@@ -437,7 +437,7 @@ class ConcreteClientData(ClientData):
   used to wrap another `ClientData` with an additional preprocessing function.
   """
 
-  def __init__(  # pylint: disable=super-init-not-called
+  def __init__(
       self,
       client_ids: Iterable[str],
       serializable_dataset_fn: Callable[[str], tf.data.Dataset],
@@ -454,6 +454,7 @@ class ConcreteClientData(ClientData):
     """
     py_typecheck.check_type(client_ids, Iterable)
     py_typecheck.check_callable(serializable_dataset_fn)
+    super().__init__()
 
     if not client_ids:
       raise ValueError('At least one client_id is required.')
