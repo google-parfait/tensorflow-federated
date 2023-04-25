@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import collections
+import inspect
 import sys
 
 from absl.testing import absltest
@@ -26,6 +27,18 @@ from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_test_utils
+
+
+_ALL_TYPES = [
+    computation_types.TensorType,
+    computation_types.StructType,
+    computation_types.StructWithPythonType,
+    computation_types.SequenceType,
+    computation_types.FunctionType,
+    computation_types.AbstractType,
+    computation_types.PlacementType,
+    computation_types.FederatedType,
+]
 
 
 class TypeMismatchErrorTest(absltest.TestCase):
@@ -580,6 +593,19 @@ class FederatedTypeTest(absltest.TestCase):
         type_spec, placements.CLIENTS
     )
     self.assertEqual(actual_type, expected_type)
+
+
+class InternTest(parameterized.TestCase):
+
+  @parameterized.named_parameters([(x.__name__, x) for x in _ALL_TYPES])
+  def test_hash_init_args_and_init_parameters_equal(self, type_spec):
+    hash_init_args_signature = inspect.signature(type_spec._hash_init_args)
+    hash_init_args_parameters = hash_init_args_signature.parameters
+    init_signature = inspect.signature(type_spec.__init__)
+    # Make a copy because `MappingProxyType` does not support item deletion.
+    init_parameters = init_signature.parameters.copy()
+    del init_parameters['self']
+    self.assertEqual(hash_init_args_parameters, init_parameters)
 
 
 class ToTypeTest(absltest.TestCase):
