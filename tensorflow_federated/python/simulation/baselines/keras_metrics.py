@@ -34,7 +34,7 @@ class NumTokensCounter(tf.keras.metrics.Sum):
     self._masked_tokens = masked_tokens or []
     super().__init__(name, dtype)
 
-  def update_state(self, y_true, y_pred, sample_weight=None):
+  def update_state(self, y_true, y_pred, sample_weight=None):  # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
     sample_weight = _apply_mask(
         y_true, sample_weight, self._masked_tokens, self._dtype
     )
