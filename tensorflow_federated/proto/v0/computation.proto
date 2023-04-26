@@ -111,7 +111,7 @@ message Computation {
     // A built-in federated communication operator such as broadcast, federated
     // sum, etc., or one of the custom operators added to the framework, and
     // recognized by the compiler pipeline. Intrinsics have functional types,
-    // and most are defined as templates that can opperate on abstract types,
+    // and most are defined as templates that can operate on abstract types,
     // and/or federated values with arbitrary placements.
     Intrinsic intrinsic = 3;
 

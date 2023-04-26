@@ -153,7 +153,7 @@ components below correspond directly to the parameters of that operator).
 
 * `accumulate` is the TensorFlow computation that updates the state of an
   update accumulator (initialized with `zero` above) with a single client's
-  update. Its type signature is `(<A,U> -> A)`. Typically, a single acumulator
+  update. Its type signature is `(<A,U> -> A)`. Typically, a single accumulator
   would be used to combine the updates from multiple clients, but this does
   not have to be the case (it's up to the target deployment platform to choose
   how to use this logic in a particular deployment scenario).
