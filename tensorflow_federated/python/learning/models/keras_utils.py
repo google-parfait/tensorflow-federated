@@ -380,10 +380,8 @@ class _KerasModel(variable.VariableModel):
         self._loss_weights = loss_weights
 
       def update_state(self, y_true, y_pred, sample_weight=None):  # pytype: disable=signature-mismatch
-        if isinstance(y_pred, list):
-          batch_size = tf.shape(y_pred[0])[0]
-        else:
-          batch_size = tf.shape(y_pred)[0]
+        first_prediction = tf.nest.flatten(y_pred)[0]
+        batch_size = tf.shape(first_prediction)[0]
 
         if len(self._loss_fns) == 1:
           batch_loss = self._loss_fns[0](y_true, y_pred)

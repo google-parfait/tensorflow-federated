@@ -577,6 +577,81 @@ class KerasUtilsTest(tf.test.TestCase, parameterized.TestCase):
     loaded_model_output = loaded_model.forward_pass(real_batch)
     self.assertAlmostEqual(orig_model_output.loss, loaded_model_output.loss)
 
+  def test_keras_model_tupled_dict_outputs(self):
+    class CustomLoss(tf.keras.losses.Loss):
+
+      def __init__(self):
+        super().__init__(name='custom_loss')
+
+      def call(self, y_true, y_pred):
+        del y_true
+        pred_input, pred_output = y_pred
+        total_loss = tf.zeros(())
+        for key in pred_input.keys():
+          total_loss += tf.keras.losses.MeanSquaredError()(
+              pred_input[key], pred_output[key]
+          )
+        return total_loss
+
+    input_spec = collections.OrderedDict(
+        x=[
+            tf.TensorSpec(shape=[None, 1], dtype=tf.float32),
+            tf.TensorSpec(shape=[None, 1], dtype=tf.float32),
+        ],
+        y=(
+            collections.OrderedDict(
+                output_a=tf.TensorSpec(shape=[None, 1], dtype=tf.float32),
+            ),
+            collections.OrderedDict(
+                output_b=tf.TensorSpec(shape=[None, 1], dtype=tf.float32),
+            ),
+        ),
+    )
+    keras_model = model_examples.build_tupled_dict_outputs_keras_model()
+    tff_model = keras_utils.from_keras_model(
+        keras_model=keras_model, input_spec=input_spec, loss=CustomLoss()
+    )
+
+    batch_size = 2
+    real_batch = collections.OrderedDict(
+        x=[
+            np.zeros(shape=[batch_size, 1], dtype=np.float32),
+            np.ones(shape=[batch_size, 1], dtype=np.float32),
+        ],
+        y=(
+            collections.OrderedDict(
+                output_a=np.ones(shape=[batch_size, 1], dtype=np.float32),
+            ),
+            collections.OrderedDict(
+                output_b=np.ones(shape=[batch_size, 1], dtype=np.float32),
+            ),
+        ),
+    )
+
+    num_train_steps = 2
+    for _ in range(num_train_steps):
+      tff_model.forward_pass(real_batch)
+
+    m = tff_model.report_local_unfinalized_metrics()
+    self.assertEqual(m['num_batches'], [num_train_steps])
+    self.assertEqual(m['num_examples'], [batch_size * num_train_steps])
+    self.assertGreater(m['loss'][0], 0.0)
+    self.assertEqual(m['loss'][1], batch_size * num_train_steps)
+
+    # Ensure we can assign the FL trained model weights to a new model.
+    tff_weights = model_weights.ModelWeights.from_model(tff_model)
+    keras_model = model_examples.build_tupled_dict_outputs_keras_model()
+    tff_weights.assign_weights_to(keras_model)
+    loaded_model = keras_utils.from_keras_model(
+        keras_model=keras_model,
+        input_spec=input_spec,
+        loss=CustomLoss(),
+    )
+
+    orig_model_output = tff_model.forward_pass(real_batch)
+    loaded_model_output = loaded_model.forward_pass(real_batch)
+    self.assertAlmostEqual(orig_model_output.loss, loaded_model_output.loss)
+
   def test_keras_model_using_batch_norm_gets_warning(self):
     model = model_examples.build_conv_batch_norm_keras_model()
     input_spec = collections.OrderedDict(

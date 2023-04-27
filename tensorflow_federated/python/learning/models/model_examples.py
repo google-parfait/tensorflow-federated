@@ -388,6 +388,21 @@ def build_multiple_outputs_keras_model():
   return tf.keras.Model(inputs=[a, b], outputs=[output_a, output_b, output_c])
 
 
+def build_tupled_dict_outputs_keras_model():
+  """Builds a test model with three outputs."""
+  l = tf.keras.layers
+  a = l.Input((1,))
+  b = l.Input((1,))
+
+  output_a = l.Dense(1)(a)
+  output_b = l.Dense(1)(b)
+
+  return tf.keras.Model(
+      inputs=[a, b],
+      outputs=({'output_1': output_a}, {'output_1': output_b}),
+  )
+
+
 def build_multiple_outputs_regularized_keras_model(
     regularization_constant=0.01,
 ):
