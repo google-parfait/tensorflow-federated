@@ -17,6 +17,9 @@ from typing import Optional
 
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.computation import computation_base
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
+from tensorflow_federated.python.core.impl.federated_context import intrinsics
+from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import errors
 from tensorflow_federated.python.core.templates import measured_process
@@ -203,3 +206,31 @@ class FinalizerProcess(measured_process.MeasuredProcess):
   @property
   def set_hparams(self) -> computation_base.Computation:
     return self._set_hparams_fn
+
+
+def build_identity_finalizer(
+    model_weights_type: computation_types.StructType,
+    update_type: computation_types.StructType,
+) -> FinalizerProcess:
+  """Builds a `FinalizerProcess` that performs no update on model weights."""
+
+  @federated_computation.federated_computation
+  def init_fn():
+    return intrinsics.federated_value((), placements.SERVER)
+
+  # The type signature of `next` function is defined so that the created
+  # `tff.learning.templates.FinalizerProcess` can be used in
+  # `tff.learning.templates.compose_learning_process`.
+  @federated_computation.federated_computation(
+      init_fn.type_signature.result,
+      computation_types.at_server(model_weights_type),
+      computation_types.at_server(update_type),
+  )
+  def next_fn(state, weights, update):
+    del update
+    empty_measurements = intrinsics.federated_value((), placements.SERVER)
+    return measured_process.MeasuredProcessOutput(
+        state, weights, empty_measurements
+    )
+
+  return FinalizerProcess(init_fn, next_fn)

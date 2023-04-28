@@ -6,7 +6,6 @@ package(
     default_visibility = [
         ":framework_packages",
         "//tensorflow_federated/python/learning:learning_users",
-        "//tensorflow_federated/python/learning/reconstruction:reconstruction_packages",
     ],
 )
 

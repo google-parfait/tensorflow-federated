@@ -7,7 +7,6 @@ package(
         "//tensorflow_federated/python/learning:learning_users",
         "//tensorflow_federated/python/learning/algorithms:algorithms_packages",
         "//tensorflow_federated/python/learning/models:models_packages",
-        "//tensorflow_federated/python/learning/reconstruction:reconstruction_packages",
         "//tensorflow_federated/python/learning/templates:templates_packages",
 
         # TODO(b/151441025): This visibility is temporary and can be removed once
