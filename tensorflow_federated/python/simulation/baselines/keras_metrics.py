@@ -27,19 +27,24 @@ def _apply_mask(y_true, sample_weight, masked_tokens, dtype):
   return sample_weight
 
 
-class NumTokensCounter(tf.keras.metrics.Sum):
+class NumTokensCounter(tf.keras.metrics.Metric):
   """A `tf.keras.metrics.Metric` that counts tokens seen after masking."""
 
   def __init__(self, masked_tokens=None, name='num_tokens', dtype=tf.int64):
-    self._masked_tokens = masked_tokens or []
     super().__init__(name, dtype)
+    self._sum = self.add_weight('sum', initializer='zeros', dtype=dtype)
+    self._masked_tokens = masked_tokens or []
+
+  def result(self):
+    return self._sum.read_value()
 
   def update_state(self, y_true, y_pred, sample_weight=None):
     sample_weight = _apply_mask(
         y_true, sample_weight, self._masked_tokens, self._dtype
     )
     sample_weight = tf.reshape(sample_weight, [-1])
-    super().update_state(sample_weight)
+    sample_weight = tf.reduce_sum(sample_weight)
+    self._sum.assign_add(sample_weight)
 
   def get_config(self):
     config = super().get_config()
