@@ -19,6 +19,7 @@ from collections.abc import Callable, Mapping, Sequence
 import typing
 from typing import Generic, Optional, Protocol, TypeVar, Union
 
+import attrs
 import tree
 
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -146,7 +147,7 @@ class FilteringReleaseManager(ReleaseManager[ReleasableStructure, Key]):
         path: tuple[Union[str, int], ...],
         subtree: structure_utils.Structure[object],
     ) -> Optional[structure_utils.Structure[object]]:
-      if tree.is_nested(subtree):
+      if tree.is_nested(subtree) and not attrs.has(type(subtree)):
         # TODO(b/224484886): Downcasting to all handled types.
         subtree = typing.cast(
             Union[Sequence[object], Mapping[str, object]], subtree

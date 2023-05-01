@@ -54,6 +54,11 @@ class MaterializeValueTest(
        program_test_utils.TestSerializable(1, 2),
        program_test_utils.TestSerializable(1, 2)),
 
+      # other values
+      ('attrs',
+       program_test_utils.TestAttrs(1, 2),
+       program_test_utils.TestAttrs(1, 2)),
+
       # structures
       ('list',
        [
@@ -164,42 +169,6 @@ class MaterializeValueTest(
                e=program_test_utils.TestSerializable(3, 4),
            ),
            y=program_test_utils.TestNamedTuple2(a=5),
-       )),
-      ('attrs',
-       program_test_utils.TestAttrs1(
-           a=True,
-           b=1,
-           c='a',
-           d=program_test_utils.TestMaterializableValueReference(2),
-           e=program_test_utils.TestSerializable(3, 4),
-       ),
-       program_test_utils.TestAttrs1(
-           a=True,
-           b=1,
-           c='a',
-           d=2,
-           e=program_test_utils.TestSerializable(3, 4),
-       )),
-      ('attrs_nested',
-       program_test_utils.TestAttrs3(
-           x=program_test_utils.TestAttrs1(
-               a=True,
-               b=1,
-               c='a',
-               d=program_test_utils.TestMaterializableValueReference(2),
-               e=program_test_utils.TestSerializable(3, 4),
-           ),
-           y=program_test_utils.TestAttrs2(a=5),
-       ),
-       program_test_utils.TestAttrs3(
-           x=program_test_utils.TestAttrs1(
-               a=True,
-               b=1,
-               c='a',
-               d=2,
-               e=program_test_utils.TestSerializable(3, 4),
-           ),
-           y=program_test_utils.TestAttrs2(a=5),
        )),
   )
   # pyformat: enable

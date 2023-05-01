@@ -422,7 +422,7 @@ class TensorType(Type, metaclass=_Intern):
   """An implementation of `tff.Type` representing types of tensors in TFF."""
 
   @classmethod
-  def _normalize_init_args(cls, dtype, shape=None):
+  def _normalize_init_args(cls, dtype, shape=tf.TensorShape([])):
     """Checks init arguments and converts to a normalized representation."""
     if not isinstance(dtype, tf.dtypes.DType):
       if _is_dtype_spec(dtype):
@@ -430,9 +430,7 @@ class TensorType(Type, metaclass=_Intern):
       else:
         raise TypeError('Unrecognized dtype {}.'.format(str(dtype)))
 
-    if shape is None:
-      shape = tf.TensorShape([])
-    elif not isinstance(shape, tf.TensorShape):
+    if not isinstance(shape, tf.TensorShape):
       shape = tf.TensorShape(shape)
 
     if shape.rank is None:

@@ -63,8 +63,11 @@ class DPFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
     initial_sample_state = _test_dp_query.initial_sample_state(
         type_conversions.type_to_tf_tensor_specs(value_type)
     )
+    _, _, dp_event = _test_dp_query.get_noised_result(
+        initial_sample_state, query_state
+    )
     dp_event_type = type_conversions.type_from_tensors(
-        _test_dp_query.get_noised_result(initial_sample_state, query_state)[2]
+        dp_event.to_named_tuple()
     )
 
     server_state_type = computation_types.at_server(

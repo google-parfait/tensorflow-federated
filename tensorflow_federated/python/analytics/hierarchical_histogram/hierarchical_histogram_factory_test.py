@@ -68,9 +68,8 @@ class TreeAggregationFactoryComputationTest(
 
     template_type = type_conversions.type_to_tf_tensor_specs(value_type)
     initial_sample_state = query.initial_sample_state(template_type)
-    dp_event_type = type_conversions.type_from_tensors(
-        query.get_noised_result(initial_sample_state, query_state)[2]
-    )
+    _, _, dp_event = query.get_noised_result(initial_sample_state, query_state)
+    dp_event_type = type_conversions.infer_type(dp_event.to_named_tuple())
 
     server_state_type = computation_types.at_server(
         differential_privacy.DPAggregatorState(
@@ -165,9 +164,8 @@ class TreeAggregationFactoryComputationTest(
     inner_value_type = computation_types.to_type((tf.float32, (value_shape,)))
     template_type = type_conversions.type_to_tf_tensor_specs(inner_value_type)
     initial_sample_state = query.initial_sample_state(template_type)
-    dp_event_type = type_conversions.type_from_tensors(
-        query.get_noised_result(initial_sample_state, query_state)[2]
-    )
+    _, _, dp_event = query.get_noised_result(initial_sample_state, query_state)
+    dp_event_type = type_conversions.infer_type(dp_event.to_named_tuple())
 
     server_state_type = computation_types.at_server(
         differential_privacy.DPAggregatorState(
@@ -261,9 +259,8 @@ class TreeAggregationFactoryComputationTest(
 
     template_type = type_conversions.type_to_tf_tensor_specs(value_type)
     initial_sample_state = query.initial_sample_state(template_type)
-    dp_event_type = type_conversions.type_from_tensors(
-        query.get_noised_result(initial_sample_state, query_state)[2]
-    )
+    _, _, dp_event = query.get_noised_result(initial_sample_state, query_state)
+    dp_event_type = type_conversions.infer_type(dp_event.to_named_tuple())
 
     server_state_type = computation_types.at_server(
         differential_privacy.DPAggregatorState(
