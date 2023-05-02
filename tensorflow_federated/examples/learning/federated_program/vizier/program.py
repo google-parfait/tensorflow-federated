@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-r"""An example of a federated program using TFFs native platform with vizier.
+r"""An example of a federated program using `tff.learning` and Vizier.
 
 Usage:
 
@@ -40,14 +40,20 @@ from tensorflow_federated.examples.learning.federated_program.vizier import data
 from tensorflow_federated.examples.learning.federated_program.vizier import learning_process
 from tensorflow_federated.examples.learning.federated_program.vizier import vizier_service
 
-_TOTAL_ROUNDS = 10
+
+_TOTAL_ROUNDS = 2
 _NUM_CLIENTS = 3
 _EVALUATION_PERIODICITY = 2
 _EVALUATION_DURATION = datetime.timedelta(seconds=30)
 
-_MIN_LEARNING_RATE = 0.001
-_MAX_LEARNING_RATE = 2.0
-_MAX_NUM_TRIALS = 3
+_MAX_NUM_TRIALS = 10
+_PROBLEM_STATEMENT_PARAMETERS = ['finalizer/learning_rate']
+_PROBLEM_STATEMENT_METRICS = ['eval/loss']
+
+_STUDY_CONFIG_PATH = os.path.join(
+    os.path.dirname(__file__),
+    'study_spec.textproto',
+)
 
 _STUDY_OWNER = flags.DEFINE_string(
     name='study_owner',
@@ -64,20 +70,19 @@ _OUTPUT_DIR = flags.DEFINE_string(
 )
 
 
-def _create_problem_statement() -> pyvizier.ProblemStatement:
-  """Creates the Vizier ProblemStatement for this program."""
-  problem = pyvizier.ProblemStatement()
-  problem.search_space.root.add_float_param(
-      'finalizer/learning_rate',
-      _MIN_LEARNING_RATE,
-      _MAX_LEARNING_RATE,
-      scale_type=pyvizier.ScaleType.LOG,
-  )
-  metric_information = pyvizier.MetricInformation(
-      name='eval/loss', goal=pyvizier.ObjectiveMetricGoal.MINIMIZE
-  )
-  problem.metric_information.append(metric_information)
-  return problem
+def _check_problem_statement(problem: pyvizier.ProblemStatement):
+  actual_parameters = list(problem.search_space.parameter_names)
+  if actual_parameters != _PROBLEM_STATEMENT_PARAMETERS:
+    raise ValueError(
+        'Expected the problem statement to define exactly the parameters'
+        f'`{_PROBLEM_STATEMENT_PARAMETERS}`, found `{actual_parameters}`.'
+    )
+  actual_metrics = [x.name for x in problem.metric_information]
+  if actual_metrics != _PROBLEM_STATEMENT_METRICS:
+    raise ValueError(
+        'Expected the problem statement to define exactly the metrics'
+        f'`{_PROBLEM_STATEMENT_METRICS}`, found `{actual_metrics}`.'
+    )
 
 
 @tff.tf_computation
@@ -97,9 +102,12 @@ def main(argv: Sequence[str]) -> None:
   timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
   experiment_name = f'vizier_example_{timestamp}'
 
-  problem = _create_problem_statement()
-  study = vizier_service.create_vizier_study(
-      problem, experiment_name, _STUDY_OWNER.value
+  study_config = vizier_service.create_study_config(_STUDY_CONFIG_PATH)
+  _check_problem_statement(study_config)
+  study = vizier_service.create_study(
+      study_config=study_config,
+      name=experiment_name,
+      owner=_STUDY_OWNER.value,
   )
   logging.info(
       'Created Vizier Study at http://vizier/#/study/%s', study.resource_name
