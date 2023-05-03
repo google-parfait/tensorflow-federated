@@ -57,6 +57,26 @@ def loss(output, label, sample_weight=None) -> float:
 
 
 @tf.function
+def predict_on_batch_with_structure(model_weights, x, training):
+  """Test predict_on_batch returning a structure."""
+  trainable = model_weights[0]
+  w, b = trainable
+  # Return a tuple whose first element is our prediction.
+  # For the sake of testing, only add the bias term when training so that
+  # we get different outputs.
+  if training:
+    return (tf.matmul(x, w, transpose_b=True) + b, x)
+  else:
+    return (tf.matmul(x, w, transpose_b=True), x)
+
+
+def loss_with_structure(output, label, sample_weight=None) -> float:
+  del sample_weight
+  predictions = output[0]  # Since we return a tuple above.
+  return tf.math.reduce_mean(tf.math.pow(predictions - label, 2.0))
+
+
+@tf.function
 def initialize_metrics() -> types.MetricsState:
   return collections.OrderedDict(num_examples=(0.0,), accuracy=(0.0, 0.0))
 
@@ -194,6 +214,39 @@ class FunctionalModelTest(tf.test.TestCase):
         initial_weights=initial_weights(),
         predict_on_batch_fn=predict_on_batch,
         loss_fn=loss,
+        input_spec=input_spec,
+    )
+    batch_output = functional_model.predict_on_batch(
+        functional_model.initial_weights, example_batch[0]
+    )
+    batch_loss = functional_model.loss(batch_output, example_batch[1])
+    self.assertAllClose(batch_loss, 74.250, rtol=1e-03, atol=1e-03)
+
+  def test_predict_on_batch_with_structure(self):
+    dataset = create_test_dataset()
+    example_batch = next(iter(dataset))
+    input_spec = dataset.element_spec
+    functional_model = functional.FunctionalModel(
+        initial_weights=initial_weights(),
+        predict_on_batch_fn=predict_on_batch_with_structure,
+        loss_fn=loss_with_structure,
+        input_spec=input_spec,
+    )
+    self.assertAllClose(
+        functional_model.predict_on_batch(
+            functional_model.initial_weights, example_batch[0]
+        ),
+        ([[0.0]] * 5, example_batch[0]),  # our test returns predictions and x
+    )
+
+  def test_loss_with_structure(self):
+    dataset = create_test_dataset()
+    example_batch = next(iter(dataset))
+    input_spec = dataset.element_spec
+    functional_model = functional.FunctionalModel(
+        initial_weights=initial_weights(),
+        predict_on_batch_fn=predict_on_batch_with_structure,
+        loss_fn=loss_with_structure,
         input_spec=input_spec,
     )
     batch_output = functional_model.predict_on_batch(
@@ -351,6 +404,26 @@ class ModelFromFunctionalModelTest(tf.test.TestCase):
         loss_fn=loss,
         input_spec=input_spec,
     )
+    self.assert_variable_model_from_functional_same_result(
+        dataset, functional_model
+    )
+
+  def test_tff_model_from_functional_with_structure_same_result(self):
+    dataset = create_test_dataset()
+    input_spec = dataset.element_spec
+    functional_model = functional.FunctionalModel(
+        initial_weights=initial_weights(),
+        predict_on_batch_fn=predict_on_batch_with_structure,
+        loss_fn=loss_with_structure,
+        input_spec=input_spec,
+    )
+    self.assert_variable_model_from_functional_same_result(
+        dataset, functional_model
+    )
+
+  def assert_variable_model_from_functional_same_result(
+      self, dataset, functional_model
+  ):
     tff_model = functional.model_from_functional(functional_model)
 
     for training in [True, False]:
@@ -366,7 +439,7 @@ class ModelFromFunctionalModelTest(tf.test.TestCase):
             output=functional_model_batch_output, label=batch[1]
         )
         functional_model_batch_num_examples = tf.shape(
-            functional_model_batch_output
+            tf.nest.flatten(functional_model_batch_output)[0]
         )[0]
 
         self.assertAllClose(
