@@ -1,0 +1,15 @@
+# proto-file: https://github.com/google/vizier/blob/main/vizier/_src/service/study.proto
+# proto-message: StudySpec
+
+metrics: {
+  metric_id: "eval/loss"
+  goal: MINIMIZE
+}
+parameters: {
+  parameter_id: "finalizer/learning_rate"
+  double_value_spec: {
+    min_value: 0.001
+    max_value: 2.0
+  }
+  scale_type: UNIT_LOG_SCALE
+}

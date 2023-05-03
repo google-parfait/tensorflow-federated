@@ -21,7 +21,7 @@
 import abc
 import atexit
 import collections
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Iterable, Mapping
 import difflib
 import enum
 from typing import Any, Optional, TypeVar, Union
@@ -409,15 +409,6 @@ def _is_dtype_spec(dtype):
   )
 
 
-@attr.s(auto_attribs=True, frozen=True, slots=True, eq=True)
-class _TensorShapeContainer:
-  """Container type to hold normalized TensorShape information."""
-
-  has_rank: bool
-  # shape_tuple must be non-None if has_rank is True.
-  shape_tuple: Optional[Sequence[int]] = None
-
-
 class TensorType(Type, metaclass=_Intern):
   """An implementation of `tff.Type` representing types of tensors in TFF."""
 
@@ -435,17 +426,11 @@ class TensorType(Type, metaclass=_Intern):
     elif not isinstance(shape, tf.TensorShape):
       shape = tf.TensorShape(shape)
 
-    if shape.rank is None:
-      shape_container = _TensorShapeContainer(has_rank=False)
-    else:
-      shape_container = _TensorShapeContainer(
-          has_rank=True, shape_tuple=tuple(shape.as_list())
-      )
-    return (dtype, shape_container)
+    return (dtype, shape)
 
   @classmethod
-  def _hash_normalized_args(cls, dtype, shape_container):
-    return hash((dtype, shape_container))
+  def _hash_normalized_args(cls, dtype, shape):
+    return hash((dtype, shape))
 
   def __init__(self, dtype, shape=None):
     """Constructs a new instance from the given `dtype` and `shape`.
@@ -460,13 +445,6 @@ class TensorType(Type, metaclass=_Intern):
       TypeError: if arguments are of the wrong types.
     """
     self._dtype = dtype
-    # We mapped the `shape` argument to a `_TensorShapeContainer` in
-    # `_normalize_init_args`.
-    if not shape.has_rank:
-      shape = tf.TensorShape(None)
-    else:
-      shape = tf.TensorShape(shape.shape_tuple)
-
     self._shape = shape
     self._hash = None
     _check_well_formed(self)

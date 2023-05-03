@@ -13,15 +13,29 @@
 # limitations under the License.
 """Utilities for interacting with the Vizier service."""
 
+import getpass
+
+import tensorflow as tf
+
+from google.protobuf import text_format  # pylint: disable=g-bad-import-order
+
 from vizier.service import clients
 from vizier.service import pyvizier
+from vizier.service import study_pb2
 
 
-def create_vizier_study(
-    problem: pyvizier.ProblemStatement, name: str, owner: str
+def create_study_config(config_path: str) -> pyvizier.StudyConfig:
+  with tf.io.gfile.GFile(config_path) as f:
+    proto = text_format.Parse(f.read(), study_pb2.StudySpec())
+  return pyvizier.StudyConfig.from_proto(proto)
+
+
+def create_study(
+    study_config: pyvizier.StudyConfig,
+    name: str,
+    owner: str = getpass.getuser(),
 ) -> clients.Study:
   """Creates a Vizier Study for the problem."""
-  study_config = pyvizier.StudyConfig().from_problem(problem)
-  return clients.Study.from_config(
+  return clients.Study.from_study_config(
       config=study_config, owner=owner, study_id=name
   )

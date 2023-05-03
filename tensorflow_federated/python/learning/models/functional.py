@@ -138,7 +138,9 @@ class FunctionalModel:
         arguments, `model_weights` the same structure as `initial_weights`, `x`
         the first element of `batch_input` (or `input_spec`), and `training` a
         boolean determinig whether the call is during a training pass (e.g. for
-        Dropout, BatchNormalization, etc).
+        Dropout, BatchNormalization, etc). It must return either a tensor of
+        predictions or a structure whose first element (as determined by
+        `tf.nest.flatten()`) is a tensor of predictions.
       loss_fn: A callable that takes three arguments, `output` tensor(s) as
         output of `predict_on_batch` that is interpretable by the loss function,
         `label` the second element of `batch_input`, and optional
@@ -305,7 +307,8 @@ class _ModelFromFunctional(variable.VariableModel):
         training=training,
     )
     batch_loss = self._functional_model.loss(output=batch_output, label=y)
-    batch_num_examples = tf.shape(batch_output)[0]
+    predictions = tf.nest.flatten(batch_output)[0]
+    batch_num_examples = tf.shape(predictions)[0]
     self._num_examples.assign_add(batch_num_examples)
     self._loss_sum.assign_add(
         batch_loss * tf.cast(batch_num_examples, tf.float32)
