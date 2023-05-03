@@ -15,7 +15,6 @@ package_group(
     includes = [
         "//tensorflow_federated/python/aggregators:aggregators_packages",
         "//tensorflow_federated/python/analytics:analytics_packages",
-        "//tensorflow_federated/python/cloud:cloud_packages",
         "//tensorflow_federated/python/core/backends:backends_packages",
         "//tensorflow_federated/python/core/framework:framework_packages",
         "//tensorflow_federated/python/core/templates:templates_packages",
