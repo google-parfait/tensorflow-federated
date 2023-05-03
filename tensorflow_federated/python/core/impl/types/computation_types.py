@@ -21,10 +21,10 @@
 import abc
 import atexit
 import collections
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Hashable, Iterable, Mapping, Sequence
 import difflib
 import enum
-from typing import Any, Optional, TypeVar, Union
+from typing import Optional, TypeVar, Union
 import weakref
 
 import attr
@@ -303,36 +303,6 @@ class _ValueWithHash:
     return self._hashcode
 
 
-# A per-`typing.Type` map from `__init__` arguments to object instances.
-#
-# This is used by the `_Intern` metaclass to allow reuse of object instances
-# when new objects are requested with the same `__init__` arguments as
-# existing object instances.
-#
-# Implementation note: this double-map is used rather than a single map
-# stored as a field of each class because some class objects themselves would
-# begin destruction before the map fields of other classes, causing errors
-# during destruction.
-_intern_pool: dict[type[Any], dict[Any, Any]] = collections.defaultdict(
-    lambda: {}
-)
-
-
-def _clear_intern_pool():
-  # We must clear our `WeakKeyValueDictionary`s at the end of the program to
-  # prevent Python from deleting the standard library out from under us before
-  # removing the  entries from the dictionary. Yes, this is cursed.
-  #
-  # If this isn't done, Python will call `__eq__` on our types after
-  # `abc.ABCMeta` has already been deleted from the world, resulting in
-  # exceptions after main.
-  global _intern_pool
-  _intern_pool = None
-
-
-atexit.register(_clear_intern_pool)
-
-
 class _Intern(abc.ABCMeta):
   """A metaclass which interns instances.
 
@@ -385,6 +355,36 @@ class _Intern(abc.ABCMeta):
       return interned
 
 
+# A per-`typing.Type` map from `__init__` arguments to object instances.
+#
+# This is used by the `_Intern` metaclass to allow reuse of object instances
+# when new objects are requested with the same `__init__` arguments as
+# existing object instances.
+#
+# Implementation note: this double-map is used rather than a single map
+# stored as a field of each class because some class objects themselves would
+# begin destruction before the map fields of other classes, causing errors
+# during destruction.
+_intern_pool: dict[type[_Intern], dict[Hashable, _Intern]] = (
+    collections.defaultdict(dict)
+)
+
+
+def _clear_intern_pool() -> None:
+  # We must clear our `WeakKeyValueDictionary`s at the end of the program to
+  # prevent Python from deleting the standard library out from under us before
+  # removing the  entries from the dictionary. Yes, this is cursed.
+  #
+  # If this isn't done, Python will call `__eq__` on our types after
+  # `abc.ABCMeta` has already been deleted from the world, resulting in
+  # exceptions after main.
+  global _intern_pool
+  _intern_pool = None
+
+
+atexit.register(_clear_intern_pool)
+
+
 def _hash_dtype_and_shape(dtype: tf.dtypes.DType, shape: tf.TensorShape) -> int:
   if shape.rank is not None:
     # as_list is not defined on unknown tensorshapes
@@ -422,7 +422,9 @@ class TensorType(Type, metaclass=_Intern):
   """An implementation of `tff.Type` representing types of tensors in TFF."""
 
   @classmethod
-  def _normalize_init_args(cls, dtype, shape=None):
+  def _normalize_init_args(
+      cls, dtype: object, shape: Optional[object] = None
+  ) -> tuple[tf.dtypes.DType, _TensorShapeContainer]:
     """Checks init arguments and converts to a normalized representation."""
     if not isinstance(dtype, tf.dtypes.DType):
       if _is_dtype_spec(dtype):
@@ -444,10 +446,12 @@ class TensorType(Type, metaclass=_Intern):
     return (dtype, shape_container)
 
   @classmethod
-  def _hash_normalized_args(cls, dtype, shape_container):
+  def _hash_normalized_args(
+      cls, dtype: object, shape_container: _TensorShapeContainer
+  ) -> int:
     return hash((dtype, shape_container))
 
-  def __init__(self, dtype, shape=None):
+  def __init__(self, dtype: object, shape: Optional[object] = None):
     """Constructs a new instance from the given `dtype` and `shape`.
 
     Args:
@@ -478,11 +482,11 @@ class TensorType(Type, metaclass=_Intern):
     return True
 
   @property
-  def dtype(self):
+  def dtype(self) -> tf.dtypes.DType:
     return self._dtype
 
   @property
-  def shape(self):
+  def shape(self) -> tf.TensorShape:
     return self._shape
 
   def __repr__(self):
@@ -562,7 +566,9 @@ class StructType(structure.Struct, Type, metaclass=_Intern):
   """
 
   @classmethod
-  def _normalize_init_args(cls, elements, convert=True):
+  def _normalize_init_args(
+      cls, elements: Iterable[object], convert: bool = True
+  ) -> tuple[Iterable[Type]]:
     py_typecheck.check_type(elements, Iterable)
     if convert:
       if py_typecheck.is_named_tuple(elements):
@@ -590,10 +596,10 @@ class StructType(structure.Struct, Type, metaclass=_Intern):
     return (elements,)
 
   @classmethod
-  def _hash_normalized_args(cls, elements):
+  def _hash_normalized_args(cls, elements: Iterable[object]) -> int:
     return hash(tuple(elements))
 
-  def __init__(self, elements, enable_wf_check=True):
+  def __init__(self, elements: Iterable[object], enable_wf_check: bool = True):
     """Constructs a new instance from the given element types.
 
     Args:
@@ -615,7 +621,7 @@ class StructType(structure.Struct, Type, metaclass=_Intern):
     return (element for _, element in structure.iter_elements(self))
 
   @property
-  def python_container(self) -> Optional[type[Any]]:
+  def python_container(self) -> Optional[type[object]]:
     return None
 
   def is_struct(self) -> bool:
@@ -654,17 +660,23 @@ class StructWithPythonType(StructType, metaclass=_Intern):
   """A representation of a structure paired with a Python container type."""
 
   @classmethod
-  def _normalize_init_args(cls, elements, container_type):  # pylint: disable=arguments-renamed
+  def _normalize_init_args(
+      cls,
+      elements: Iterable[object],
+      container_type: type[object],
+  ):  # pylint: disable=arguments-renamed
     py_typecheck.check_type(container_type, type)
     # TODO(b/161561250): check the `container_type` for validity.
     elements = StructType._normalize_init_args(elements)[0]
     return (elements, container_type)
 
   @classmethod
-  def _hash_normalized_args(cls, elements, container_type):
+  def _hash_normalized_args(
+      cls, elements: Iterable[object], container_type: type[object]
+  ):
     return hash((tuple(elements), container_type))
 
-  def __init__(self, elements, container_type):
+  def __init__(self, elements: Iterable[object], container_type: type[object]):
     # We don't want to check our type for well-formedness until after we've
     # set `_container_type`.
     super().__init__(elements, enable_wf_check=False)
@@ -675,7 +687,7 @@ class StructWithPythonType(StructType, metaclass=_Intern):
     return True
 
   @property
-  def python_container(self) -> type[Any]:
+  def python_container(self) -> type[object]:
     return self._container_type
 
   def __repr__(self):
@@ -706,7 +718,7 @@ class SequenceType(Type, metaclass=_Intern):
   """
 
   @classmethod
-  def _normalize_init_args(cls, element) -> tuple[Type]:
+  def _normalize_init_args(cls, element: object) -> tuple[Type]:
     """Normalizes arguments by converting `list` to `tuple` in struct types."""
     T = TypeVar('T')
 
@@ -731,7 +743,7 @@ class SequenceType(Type, metaclass=_Intern):
     type_spec = convert_struct_with_list_to_struct_with_tuple(to_type(element))
     return (type_spec,)
 
-  def __init__(self, element):
+  def __init__(self, element: object):
     """Constructs a new instance from the given `element` type.
 
     Args:
@@ -774,10 +786,12 @@ class FunctionType(Type, metaclass=_Intern):
   """An implementation of `tff.Type` representing functional types in TFF."""
 
   @classmethod
-  def _normalize_init_args(cls, parameter, result):
+  def _normalize_init_args(
+      cls, parameter: Optional[object], result: object
+  ) -> tuple[Type, Type]:
     return (to_type(parameter), to_type(result))
 
-  def __init__(self, parameter, result):
+  def __init__(self, parameter: Optional[object], result: object):
     """Constructs a new instance from the given `parameter` and `result` types.
 
     Args:
@@ -800,7 +814,7 @@ class FunctionType(Type, metaclass=_Intern):
     return True
 
   @property
-  def parameter(self) -> Type:
+  def parameter(self) -> Optional[Type]:
     return self._parameter
 
   @property
@@ -840,11 +854,11 @@ class AbstractType(Type, metaclass=_Intern):
   """An implementation of `tff.Type` representing abstract types in TFF."""
 
   @classmethod
-  def _normalize_init_args(cls, label):
+  def _normalize_init_args(cls, label: str) -> tuple[str]:
     py_typecheck.check_type(label, str)
-    return (str(label),)
+    return (label,)
 
-  def __init__(self, label):
+  def __init__(self, label: str):
     """Constructs a new instance from the given string `label`.
 
     Args:
@@ -861,7 +875,7 @@ class AbstractType(Type, metaclass=_Intern):
     return True
 
   @property
-  def label(self):
+  def label(self) -> str:
     return self._label
 
   def __repr__(self):
@@ -891,7 +905,7 @@ class PlacementType(Type, metaclass=_Intern):
   """
 
   @classmethod
-  def _normalize_init_args(cls):
+  def _normalize_init_args(cls) -> tuple[()]:
     return ()
 
   def __init__(self):
@@ -922,7 +936,12 @@ class FederatedType(Type, metaclass=_Intern):
   """An implementation of `tff.Type` representing federated types in TFF."""
 
   @classmethod
-  def _normalize_init_args(cls, member, placement, all_equal=None):
+  def _normalize_init_args(
+      cls,
+      member: object,
+      placement: placements.PlacementLiteral,
+      all_equal: Optional[bool] = None,
+  ) -> tuple[Type, placements.PlacementLiteral, Optional[bool]]:
     py_typecheck.check_type(placement, placements.PlacementLiteral)
     member = to_type(member)
     if all_equal is None:
@@ -931,7 +950,7 @@ class FederatedType(Type, metaclass=_Intern):
 
   def __init__(
       self,
-      member: Any,
+      member: object,
       placement: placements.PlacementLiteral,
       all_equal: Optional[bool] = None,
   ):
@@ -968,11 +987,11 @@ class FederatedType(Type, metaclass=_Intern):
     return True
 
   @property
-  def member(self):
+  def member(self) -> Type:
     return self._member
 
   @property
-  def placement(self):
+  def placement(self) -> placements.PlacementLiteral:
     return self._placement
 
   @property
@@ -1006,7 +1025,7 @@ class FederatedType(Type, metaclass=_Intern):
     )
 
 
-def at_server(type_spec: Any) -> FederatedType:
+def at_server(type_spec: object) -> FederatedType:
   """Constructs a federated type of the form `T@SERVER`.
 
   Args:
@@ -1018,7 +1037,7 @@ def at_server(type_spec: Any) -> FederatedType:
   return FederatedType(type_spec, placements.SERVER, all_equal=True)
 
 
-def at_clients(type_spec: Any, all_equal: bool = False) -> FederatedType:
+def at_clients(type_spec: object, all_equal: bool = False) -> FederatedType:
   """Constructs a federated type of the form `{T}@CLIENTS`.
 
   Args:
