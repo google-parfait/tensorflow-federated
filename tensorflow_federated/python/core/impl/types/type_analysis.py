@@ -550,7 +550,8 @@ class NotConcreteTypeError(TypeError):
     super().__init__(message)
 
 
-class MismatchedConcreteTypesError(TypeError):  # pylint: disable=missing-class-docstring
+class MismatchedConcreteTypesError(TypeError):
+  """Raised when there is a mismatch between two types."""
 
   def __init__(
       self,
@@ -569,7 +570,8 @@ class MismatchedConcreteTypesError(TypeError):  # pylint: disable=missing-class-
     super().__init__(message)
 
 
-class UnassignableConcreteTypesError(TypeError):  # pylint: disable=missing-class-docstring
+class UnassignableConcreteTypesError(TypeError):
+  """Raised when one type can not be assigned to another type."""
 
   def __init__(
       self,
@@ -583,12 +585,13 @@ class UnassignableConcreteTypesError(TypeError):  # pylint: disable=missing-clas
         f'Expected concrete type {full_concrete} to be a valid substitution '
         f'for generic type {full_generic}, but abstract type {abstract_label} '
         f'was defined as {definition}, and later used as {not_assignable_from} '
-        ' which cannot be assigned from the former.'
+        'which cannot be assigned from the former.'
     )
     super().__init__(message)
 
 
-class MismatchedStructureError(TypeError):  # pylint: disable=missing-class-docstring
+class MismatchedStructureError(TypeError):
+  """Raised when there is a mismatch between the structures of two types."""
 
   def __init__(
       self,
