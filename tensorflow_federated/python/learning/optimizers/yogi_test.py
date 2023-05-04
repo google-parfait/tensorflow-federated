@@ -124,37 +124,6 @@ class YogiTest(optimizer_test_utils.TestCase, parameterized.TestCase):
     optimizer = yogi.build_yogi(0.01)
     self.assertIsInstance(optimizer, optimizer_base.Optimizer)
 
-  # pylint: disable=pointless-string-statement
-  # Following test works but commented out as depending on tensorflow_addons
-  # is lot of extra work for OSS.
-  """Uncomment to run.
-
-  def test_match_keras(self):
-
-    # f#r#o#m tensorflow_addons i#m#p#o#r#t optimizers as tfa_optimizers
-    weight_spec = [
-        tf.TensorSpec([10, 2], tf.float32),
-        tf.TensorSpec([2], tf.float32)
-    ]
-    steps = 10
-    genarator = tf.random.Generator.from_seed(2021)
-
-    def random_vector():
-      return [
-          genarator.normal(shape=s.shape, dtype=s.dtype) for s in weight_spec
-      ]
-
-    intial_weight = random_vector()
-    model_variables_fn = lambda: [tf.Variable(v) for v in intial_weight]
-    gradients = [random_vector() for _ in range(steps)]
-    tff_optimizer_fn = lambda: yogi.build_yogi(0.01, 0.9, 0.999)
-    keras_optimizer_fn = lambda: tfa_optimizers.Yogi(0.01, 0.9, 0.999)
-
-    self.assert_optimizers_numerically_close(model_variables_fn, gradients,
-                                             tff_optimizer_fn,
-                                             keras_optimizer_fn)
-  """
-
   @parameterized.named_parameters(
       ('negative_lr', -1.0, 0.9, 0.999, 1e-7, 'learning rate'),
       ('negative_beta_1', 1.0, -0.9, 0.999, 1e-7, 'Beta'),
