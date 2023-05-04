@@ -129,7 +129,7 @@ def main(argv: Sequence[str]) -> None:
   def _program_state_manager_factory(
       trial: client_abc.TrialInterface,
   ) -> tff.program.ProgramStateManager:
-    trial_name = f'trial_{str(trial.id)}'
+    trial_name = f'trial_{trial.id}'
     root_dir = os.path.join(_OUTPUT_DIR.value, experiment_name, trial_name)
     return tff.program.FileProgramStateManager(root_dir)
 
@@ -141,7 +141,7 @@ def main(argv: Sequence[str]) -> None:
     def _create_state_manager_fn(
         name: str,
     ) -> tff.program.FileProgramStateManager:
-      trial_name = f'trial_{str(trial.id)}'
+      trial_name = f'trial_{trial.id}'
       root_dir = os.path.join(
           _OUTPUT_DIR.value,
           experiment_name,
