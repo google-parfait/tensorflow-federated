@@ -382,7 +382,6 @@ def _check_secure_quantized_sum_dtype(dtype):
     raise UnsupportedDTypeError(dtype)
 
 
-# pylint: disable=g-doc-exception
 def _normalize_secure_quantized_sum_args(
     client_value, lower_bound, upper_bound
 ):
@@ -409,6 +408,22 @@ def _normalize_secure_quantized_sum_args(
 
   Returns:
     Normalized `(client_value, lower_bound, upper_bound)` tuple.
+
+  Raises:
+    BoundsDifferentTypesError: If `lower_bound` and `upper_bound` are not both
+      `tff.Value`s or both not `tff.Value`s.
+    BoundsDifferentSignaturesError: If `lower_bound.type_signature` and
+      `upper_bound.type_signature` are not equal.
+    BoundsNotPlacedAtServerError: If `lower_bound.type_signature` and
+      `upper_bound.type_signature` are not placed at `tff.SERVER`.
+    StructuredBoundsTypeMismatchError: If `lower_bound` and `upper_bound` are
+      structures and do not match the structure and dtypes of `client_value`.
+    ScalarBoundStructValueDTypeError: If `lower_bound` and `upper_bound` are
+      scalars and `client_value` is a structure and all dtypes in `client_value`
+      are not equal to the dtype of the bounds.
+    ScalarBoundSimpleValueDTypeError: If `lower_bound` and `upper_bound` are
+      scalars and `client_value` is a scalars and the dtype fo `client_value`
+      is not equal to the dtype of the bounds.
   """
   # Validation of client_value.
   _validate_value_on_clients(client_value)
