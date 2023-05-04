@@ -385,13 +385,6 @@ def _clear_intern_pool() -> None:
 atexit.register(_clear_intern_pool)
 
 
-def _hash_dtype_and_shape(dtype: tf.dtypes.DType, shape: tf.TensorShape) -> int:
-  if shape.rank is not None:
-    # as_list is not defined on unknown tensorshapes
-    return hash((dtype.name, tuple(shape.as_list())))
-  return hash((dtype.name, None))
-
-
 def _is_dtype_spec(dtype):
   """Determines whether `dtype` is a representation of a TF or Numpy dtype.
 
@@ -450,7 +443,6 @@ class TensorType(Type, metaclass=_Intern):
     """
     self._dtype = dtype
     self._shape = shape
-    self._hash = None
     _check_well_formed(self)
 
   def children(self):
@@ -477,9 +469,7 @@ class TensorType(Type, metaclass=_Intern):
       return 'TensorType({!r})'.format(self._dtype)
 
   def __hash__(self):
-    if self._hash is None:
-      self._hash = _hash_dtype_and_shape(self._dtype, self._shape)
-    return self._hash
+    return hash((self._dtype, self._shape))
 
   def __eq__(self, other):
     return (self is other) or (
