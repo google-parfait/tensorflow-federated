@@ -255,7 +255,7 @@ py_library(
     ],
 )
 
-py_cpu_gpu_test(
+py_test(
     name = "fed_recon_eval_test",
     srcs = ["fed_recon_eval_test.py"],
     deps = [
