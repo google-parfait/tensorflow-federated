@@ -836,7 +836,7 @@ def replace_empty_leaf_lists_with_numpy_arrays(lists, type_spec):
   py_typecheck.check_type(type_spec, computation_types.Type)
   if type_spec.is_tensor():
     py_typecheck.check_type(lists, list)
-    if len(lists) > 0:  # pylint: disable=g-explicit-length-test
+    if lists:
       return lists
     else:
       return np.array([], dtype=type_spec.dtype.as_numpy_dtype)

@@ -1304,7 +1304,7 @@ def _string_representation(
       literal = placements.uri_to_placement_literal(comp.uri)
       return [literal.name]
     elif isinstance(comp, Struct):
-      if len(comp) == 0:  # pylint: disable=g-explicit-length-test
+      if not comp:
         return ['<>']
       elements = structure.to_elements(comp)
       elements_lines = _lines_for_named_comps(elements, formatted)

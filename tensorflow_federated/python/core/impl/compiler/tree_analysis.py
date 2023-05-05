@@ -596,7 +596,8 @@ def contains_no_unbound_references(tree, excluding=None):
     names = unbound_references[tree] - excluding
   else:
     names = unbound_references[tree]
-  return len(names) == 0  # pylint: disable=g-explicit-length-test
+  num_unbound_references = len(names)
+  return num_unbound_references == 0
 
 
 # Repeated calls to `_compiled_comp_equal` can become a bottleneck on some

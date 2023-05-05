@@ -119,7 +119,7 @@ def to_call_dominant(
 
     def bindings_to_block_with_result(self, result):
       # Don't create unnecessary blocks if there aren't any locals.
-      if len(self._newly_bound_values) == 0:  # pylint: disable=g-explicit-length-test
+      if not self._newly_bound_values:
         return result
       else:
         return building_blocks.Block(self._newly_bound_values, result)

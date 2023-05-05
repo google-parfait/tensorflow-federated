@@ -1397,7 +1397,7 @@ def _string_representation(type_spec, formatted: bool) -> str:
       result_lines = _lines_for_type(type_spec.result, formatted)
       return _combine([['('], parameter_lines, [' -> '], result_lines, [')']])
     elif type_spec.is_struct():
-      if len(type_spec) == 0:  # pylint: disable=g-explicit-length-test
+      if not type_spec:
         return ['<>']
       elements = structure.to_elements(type_spec)
       elements_lines = _lines_for_named_types(elements, formatted)

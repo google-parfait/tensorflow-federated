@@ -143,12 +143,12 @@ class ComputationCallable(typed_object.TypedObject):
       raise ValueError('Not expecting more than one positional argument.')
     param_type = self.type_signature.parameter
     if param_type is None:
-      if len(args) > 0:  # pylint: disable=g-explicit-length-test
+      if args:
         raise ValueError('Not expecting any arguments.')
       else:
         flat_py_args = []
     else:
-      if len(args) == 0:  # pylint: disable=g-explicit-length-test
+      if not args:
         raise ValueError('Positional argument missing.')
       positional_arg = args[0]
       if isinstance(param_type, computation_types.TensorType):
