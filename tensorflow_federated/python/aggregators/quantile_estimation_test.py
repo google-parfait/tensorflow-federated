@@ -201,12 +201,7 @@ class PrivateQEExecutionTest(tf.test.TestCase, parameterized.TestCase):
         learning_rate=1.0,
         secure_estimation=True,
     )
-    try:
-      static_assert.assert_not_contains_unsecure_aggregation(
-          secure_process.next
-      )
-    except:  # pylint: disable=bare-except
-      self.fail('Computation contains non-secure aggregation.')
+    static_assert.assert_not_contains_unsecure_aggregation(secure_process.next)
 
 
 if __name__ == '__main__':

@@ -25,6 +25,7 @@ from tensorflow_federated.python.core.templates import errors
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning.models import model_weights
 from tensorflow_federated.python.learning.templates import finalizers
+from tensorflow_federated.python.learning.templates import hparams_base
 
 SERVER_INT = computation_types.FederatedType(tf.int32, placements.SERVER)
 SERVER_FLOAT = computation_types.FederatedType(tf.float32, placements.SERVER)
@@ -36,6 +37,15 @@ MODEL_WEIGHTS_TYPE = computation_types.at_server(
     )
 )
 MeasuredProcessOutput = measured_process.MeasuredProcessOutput
+
+_FinalizerProcessConstructionError = (
+    errors.TemplateNextFnNumArgsError,
+    errors.TemplateNotFederatedError,
+    errors.TemplatePlacementError,
+    finalizers.FinalizerResultTypeError,
+    hparams_base.GetHparamsTypeError,
+    hparams_base.SetHparamsTypeError,
+)
 
 
 def server_zero():
@@ -78,7 +88,7 @@ class FinalizerTest(tf.test.TestCase):
   def test_construction_does_not_raise(self):
     try:
       finalizers.FinalizerProcess(test_initialize_fn, test_next_fn)
-    except:  # pylint: disable=bare-except
+    except _FinalizerProcessConstructionError:
       self.fail('Could not construct a valid FinalizerProcess.')
 
   def test_construction_with_empty_state_does_not_raise(self):
@@ -105,7 +115,7 @@ class FinalizerTest(tf.test.TestCase):
 
     try:
       finalizers.FinalizerProcess(initialize_fn, next_fn)
-    except:  # pylint: disable=bare-except
+    except _FinalizerProcessConstructionError:
       self.fail('Could not construct an FinalizerProcess with empty state.')
 
   def test_init_not_tff_computation_raises(self):
@@ -281,7 +291,7 @@ class FinalizerTest(tf.test.TestCase):
 
     try:
       finalizers.FinalizerProcess(test_initialize_fn, next_fn)
-    except:  # pylint: disable=bare-except
+    except _FinalizerProcessConstructionError:
       self.fail('Could not construct a valid FinalizerProcess.')
 
   def test_non_server_placed_next_update_param_raises(self):

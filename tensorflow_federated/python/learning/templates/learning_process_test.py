@@ -34,6 +34,17 @@ at_server = computation_types.at_server
 federated_computation = federated_computation.federated_computation
 tf_computation = tensorflow_computation.tf_computation
 
+_LearningProcessConstructionError = (
+    TypeError,
+    errors.TemplateInitFnParamNotEmptyError,
+    errors.TemplateNextFnNumArgsError,
+    errors.TemplateStateNotAssignableError,
+    learning_process.GetModelWeightsTypeSignatureError,
+    learning_process.LearningProcessOutputError,
+    learning_process.LearningProcessPlacementError,
+    learning_process.SetModelWeightsTypeSignatureError,
+)
+
 
 def create_pass_through_get_model_weights(state_type):
   @federated_computation(state_type)
@@ -100,7 +111,7 @@ class LearningProcessTest(absltest.TestCase):
           test_get_model_weights_fn,
           test_set_model_weights_fn,
       )
-    except:  # pylint: disable=bare-except
+    except _LearningProcessConstructionError:
       self.fail('Could not construct a valid LearningProcess.')
 
   def test_learning_process_can_be_reconstructed(self):
@@ -117,7 +128,7 @@ class LearningProcessTest(absltest.TestCase):
           process.get_model_weights,
           process.set_model_weights,
       )
-    except:  # pylint: disable=bare-except
+    except _LearningProcessConstructionError:
       self.fail('Could not reconstruct the LearningProcess.')
 
   def test_construction_with_empty_state_does_not_raise(self):
@@ -144,7 +155,7 @@ class LearningProcessTest(absltest.TestCase):
           create_pass_through_get_model_weights(empty_tuple),
           create_take_arg_set_model_weights(empty_tuple, empty_tuple),
       )
-    except:  # pylint: disable=bare-except
+    except _LearningProcessConstructionError:
       self.fail('Could not construct a LearningProcess with empty state.')
 
   def test_construction_with_unknown_dimension_does_not_raise(self):
@@ -178,7 +189,7 @@ class LearningProcessTest(absltest.TestCase):
               none_dimension_string_type, none_dimension_string_type
           ),
       )
-    except:  # pylint: disable=bare-except
+    except _LearningProcessConstructionError:
       self.fail(
           'Could not construct a LearningProcess with state type having '
           'statically unknown shape.'

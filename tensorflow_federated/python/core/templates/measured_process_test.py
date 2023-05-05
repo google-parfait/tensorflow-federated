@@ -31,6 +31,13 @@ from tensorflow_federated.python.core.templates import measured_process
 
 MeasuredProcessOutput = measured_process.MeasuredProcessOutput
 
+_MeasuredProcessConstructionError = (
+    TypeError,
+    errors.TemplateInitFnParamNotEmptyError,
+    errors.TemplateStateNotAssignableError,
+    errors.TemplateNotMeasuredProcessOutputError,
+)
+
 
 @tensorflow_computation.tf_computation()
 def test_initialize_fn():
@@ -47,7 +54,7 @@ class MeasuredProcessTest(absltest.TestCase):
   def test_construction_does_not_raise(self):
     try:
       measured_process.MeasuredProcess(test_initialize_fn, test_next_fn)
-    except:  # pylint: disable=bare-except
+    except _MeasuredProcessConstructionError:
       self.fail('Could not construct a valid MeasuredProcess.')
 
   def test_construction_with_empty_state_does_not_raise(self):
@@ -57,7 +64,7 @@ class MeasuredProcessTest(absltest.TestCase):
     )
     try:
       measured_process.MeasuredProcess(initialize_fn, next_fn)
-    except:  # pylint: disable=bare-except
+    except _MeasuredProcessConstructionError:
       self.fail('Could not construct an MeasuredProcess with empty state.')
 
   def test_construction_with_unknown_dimension_does_not_raise(self):
@@ -75,7 +82,7 @@ class MeasuredProcessTest(absltest.TestCase):
 
     try:
       measured_process.MeasuredProcess(initialize_fn, next_fn)
-    except:  # pylint: disable=bare-except
+    except _MeasuredProcessConstructionError:
       self.fail(
           'Could not construct an MeasuredProcess with parameter types '
           'with statically unknown shape.'

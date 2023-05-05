@@ -275,7 +275,7 @@ class TensorVariableTest(tf.test.TestCase, parameterized.TestCase):
         v = variable_utils.TensorVariable(1.0)
         try:
           hash(v)
-        except:  # pylint: disable=bare-except
+        except TypeError:
           self.fail('Failed to compute hash of variable in a graph context.')
 
   def test_name(self):

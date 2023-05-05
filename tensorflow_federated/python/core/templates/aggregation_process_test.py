@@ -32,6 +32,16 @@ CLIENTS_INT = computation_types.FederatedType(tf.int32, placements.CLIENTS)
 CLIENTS_FLOAT = computation_types.FederatedType(tf.float32, placements.CLIENTS)
 MeasuredProcessOutput = measured_process.MeasuredProcessOutput
 
+_AggregationProcessConstructionError = (
+    TypeError,
+    errors.TemplateInitFnParamNotEmptyError,
+    errors.TemplateStateNotAssignableError,
+    errors.TemplateNotMeasuredProcessOutputError,
+    errors.TemplateNextFnNumArgsError,
+    aggregation_process.AggregationNotFederatedError,
+    aggregation_process.AggregationPlacementError,
+)
+
 
 def server_zero():
   """Returns zero integer placed at SERVER."""
@@ -60,7 +70,7 @@ class AggregationProcessTest(absltest.TestCase):
   def test_construction_does_not_raise(self):
     try:
       aggregation_process.AggregationProcess(test_initialize_fn, test_next_fn)
-    except:  # pylint: disable=bare-except
+    except _AggregationProcessConstructionError:
       self.fail('Could not construct a valid AggregationProcess.')
 
   def test_construction_with_empty_state_does_not_raise(self):
@@ -76,7 +86,7 @@ class AggregationProcessTest(absltest.TestCase):
 
     try:
       aggregation_process.AggregationProcess(initialize_fn, next_fn)
-    except:  # pylint: disable=bare-except
+    except _AggregationProcessConstructionError:
       self.fail('Could not construct an AggregationProcess with empty state.')
 
   def test_construction_with_unknown_dimension_does_not_raise(self):
@@ -108,7 +118,7 @@ class AggregationProcessTest(absltest.TestCase):
 
     try:
       aggregation_process.AggregationProcess(initialize_fn, next_fn)
-    except:  # pylint: disable=bare-except
+    except _AggregationProcessConstructionError:
       self.fail(
           'Could not construct an AggregationProcess with parameter '
           'types with statically unknown shape.'
@@ -122,7 +132,7 @@ class AggregationProcessTest(absltest.TestCase):
 
     try:
       aggregation_process.AggregationProcess(test_initialize_fn, next_fn)
-    except:  # pylint: disable=bare-except
+    except _AggregationProcessConstructionError:
       self.fail(
           'Could not construct an AggregationProcess with different '
           'client and server placed types.'

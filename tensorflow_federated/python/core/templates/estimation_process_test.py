@@ -23,6 +23,12 @@ from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import errors
 from tensorflow_federated.python.core.templates import estimation_process
 
+_EstimationProcessConstructionError = (
+    TypeError,
+    errors.TemplateInitFnParamNotEmptyError,
+    errors.TemplateStateNotAssignableError,
+)
+
 
 @tensorflow_computation.tf_computation()
 def test_initialize_fn():
@@ -51,7 +57,7 @@ class EstimationProcessTest(absltest.TestCase):
       estimation_process.EstimationProcess(
           test_initialize_fn, test_next_fn, test_report_fn
       )
-    except:  # pylint: disable=bare-except
+    except _EstimationProcessConstructionError:
       self.fail('Could not construct a valid EstimationProcess.')
 
   def test_construction_with_empty_state_does_not_raise(self):
@@ -60,7 +66,7 @@ class EstimationProcessTest(absltest.TestCase):
     report_fn = tensorflow_computation.tf_computation(())(lambda x: x)
     try:
       estimation_process.EstimationProcess(initialize_fn, next_fn, report_fn)
-    except:  # pylint: disable=bare-except
+    except _EstimationProcessConstructionError:
       self.fail('Could not construct an EstimationProcess with empty state.')
 
   def test_construction_with_unknown_dimension_does_not_raise(self):
@@ -82,7 +88,7 @@ class EstimationProcessTest(absltest.TestCase):
 
     try:
       estimation_process.EstimationProcess(initialize_fn, next_fn, report_fn)
-    except:  # pylint: disable=bare-except
+    except _EstimationProcessConstructionError:
       self.fail(
           'Could not construct an EstimationProcess with parameter types '
           'with statically unknown shape.'

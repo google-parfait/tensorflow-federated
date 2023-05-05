@@ -89,6 +89,7 @@ py_test(
     srcs = ["client_works_test.py"],
     deps = [
         ":client_works",
+        ":hparams_base",
         "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
         "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
@@ -213,6 +214,7 @@ py_test(
     srcs = ["finalizers_test.py"],
     deps = [
         ":finalizers",
+        ":hparams_base",
         "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
         "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",

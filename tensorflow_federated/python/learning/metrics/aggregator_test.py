@@ -290,12 +290,9 @@ class SecureSumThenFinalizeTest(parameterized.TestCase, tf.test.TestCase):
             local_unfinalized_metrics_at_clients[0]
         ),
     )
-    try:
-      static_assert.assert_not_contains_unsecure_aggregation(
-          aggregator_computation
-      )
-    except:  # pylint: disable=bare-except
-      self.fail('Metric aggregation contains non-secure summation aggregation')
+    static_assert.assert_not_contains_unsecure_aggregation(
+        aggregator_computation
+    )
 
     aggregated_metrics = aggregator_computation(
         local_unfinalized_metrics_at_clients

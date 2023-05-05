@@ -31,6 +31,12 @@ StructType = computation_types.StructType
 StructWithPythonType = computation_types.StructWithPythonType
 TensorType = computation_types.TensorType
 
+_IterativeProcessConstructionError = (
+    TypeError,
+    errors.TemplateInitFnParamNotEmptyError,
+    errors.TemplateStateNotAssignableError,
+)
+
 
 @tensorflow_computation.tf_computation()
 def test_initialize_fn():
@@ -47,7 +53,7 @@ class IterativeProcessTest(absltest.TestCase):
   def test_construction_does_not_raise(self):
     try:
       iterative_process.IterativeProcess(test_initialize_fn, test_next_fn)
-    except:  # pylint: disable=bare-except
+    except _IterativeProcessConstructionError:
       self.fail('Could not construct a valid IterativeProcess.')
 
   def test_construction_with_empty_state_does_not_raise(self):
@@ -55,7 +61,7 @@ class IterativeProcessTest(absltest.TestCase):
     next_fn = tensorflow_computation.tf_computation(())(lambda x: (x, 1.0))
     try:
       iterative_process.IterativeProcess(initialize_fn, next_fn)
-    except:  # pylint: disable=bare-except
+    except _IterativeProcessConstructionError:
       self.fail('Could not construct an IterativeProcess with empty state.')
 
   def test_construction_with_unknown_dimension_does_not_raise(self):
@@ -71,7 +77,7 @@ class IterativeProcessTest(absltest.TestCase):
 
     try:
       iterative_process.IterativeProcess(initialize_fn, next_fn)
-    except:  # pylint: disable=bare-except
+    except _IterativeProcessConstructionError:
       self.fail(
           'Could not construct an IterativeProcess with parameter types '
           'with statically unknown shape.'

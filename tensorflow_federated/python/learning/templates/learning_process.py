@@ -168,8 +168,6 @@ class LearningProcess(iterative_process.IterativeProcess):
         `next_fn` do not match the expected type placements.
       LearningProcessOutputError: If `next_fn` does not return a
         `LearningProcessOutput`.
-      LearningProcessSequenceTypeError: If the second argument to `next_fn` is
-        not a sequence type.
       GetModelWeightsTypeSignatureError: If the input type of get_model_weights
         does not match the process state type.
       SetModelWeightsTypeSignatureError: If the type of the first input or the

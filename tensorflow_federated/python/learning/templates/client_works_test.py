@@ -26,6 +26,7 @@ from tensorflow_federated.python.core.templates import errors
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning.models import model_weights
 from tensorflow_federated.python.learning.templates import client_works
+from tensorflow_federated.python.learning.templates import hparams_base
 
 SERVER_INT = computation_types.FederatedType(tf.int32, placements.SERVER)
 SERVER_FLOAT = computation_types.FederatedType(tf.float32, placements.SERVER)
@@ -41,6 +42,17 @@ MODEL_WEIGHTS_TYPE = computation_types.at_clients(
 )
 HPARAMS_TYPE = computation_types.to_type(collections.OrderedDict(a=tf.int32))
 MeasuredProcessOutput = measured_process.MeasuredProcessOutput
+
+_IterativeProcessConstructionError = (
+    TypeError,
+    client_works.ClientDataTypeError,
+    client_works.ClientResultTypeError,
+    errors.TemplateNextFnNumArgsError,
+    errors.TemplateNotFederatedError,
+    errors.TemplatePlacementError,
+    hparams_base.GetHparamsTypeError,
+    hparams_base.SetHparamsTypeError,
+)
 
 
 def server_zero():
@@ -104,7 +116,7 @@ class ClientWorkTest(absltest.TestCase):
   def test_construction_does_not_raise(self):
     try:
       client_works.ClientWorkProcess(test_initialize_fn, test_next_fn)
-    except:  # pylint: disable=bare-except
+    except _IterativeProcessConstructionError:
       self.fail('Could not construct a valid ClientWorkProcess.')
 
   def test_construction_with_empty_state_does_not_raise(self):
@@ -126,7 +138,7 @@ class ClientWorkTest(absltest.TestCase):
 
     try:
       client_works.ClientWorkProcess(initialize_fn, next_fn)
-    except:  # pylint: disable=bare-except
+    except _IterativeProcessConstructionError:
       self.fail('Could not construct an ClientWorkProcess with empty state.')
 
   def test_init_not_tff_computation_raises(self):

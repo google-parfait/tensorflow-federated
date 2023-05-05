@@ -32,6 +32,12 @@ SERVER_FLOAT = computation_types.FederatedType(tf.float32, placements.SERVER)
 CLIENTS_INT = computation_types.FederatedType(tf.int32, placements.CLIENTS)
 MeasuredProcessOutput = measured_process.MeasuredProcessOutput
 
+_DistributionProcessConstructionError = (
+    errors.TemplateNotFederatedError,
+    errors.TemplatePlacementError,
+    errors.TemplateNextFnNumArgsError,
+)
+
 
 def server_zero():
   return intrinsics.federated_value(0, placements.SERVER)
@@ -56,7 +62,7 @@ class DistributionProcessTest(tf.test.TestCase):
   def test_construction_does_not_raise(self):
     try:
       distributors.DistributionProcess(test_initialize_fn, test_next_fn)
-    except:  # pylint: disable=bare-except
+    except _DistributionProcessConstructionError:
       self.fail('Could not construct a valid DistributionProcess.')
 
   def test_construction_with_empty_state_does_not_raise(self):
@@ -76,7 +82,7 @@ class DistributionProcessTest(tf.test.TestCase):
 
     try:
       distributors.DistributionProcess(initialize_fn, next_fn)
-    except:  # pylint: disable=bare-except
+    except _DistributionProcessConstructionError:
       self.fail('Could not construct an DistributionProcess with empty state.')
 
   def test_init_not_tff_computation_raises(self):
@@ -171,7 +177,7 @@ class DistributionProcessTest(tf.test.TestCase):
 
     try:
       distributors.DistributionProcess(test_initialize_fn, next_fn)
-    except:  # pylint: disable=bare-except
+    except _DistributionProcessConstructionError:
       self.fail(
           'Could not construct an DistributionProcess with different '
           'client and server placed types.'

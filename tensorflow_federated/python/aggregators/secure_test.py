@@ -134,13 +134,7 @@ class SecureModularSumFactoryComputationTest(
     self.assertTrue(
         process.next.type_signature.is_equivalent_to(expected_next_type)
     )
-    try:
-      static_assert.assert_not_contains_unsecure_aggregation(process.next)
-    except:  # pylint: disable=bare-except
-      self.fail(
-          'Factory returned an AggregationProcess containing '
-          'non-secure aggregation.'
-      )
+    static_assert.assert_not_contains_unsecure_aggregation(process.next)
 
   def test_float_modulus_raises(self):
     with self.assertRaises(TypeError):
@@ -310,13 +304,7 @@ class SecureSumFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
     self.assertTrue(
         process.next.type_signature.is_equivalent_to(expected_next_type)
     )
-    try:
-      static_assert.assert_not_contains_unsecure_aggregation(process.next)
-    except:  # pylint: disable=bare-except
-      self.fail(
-          'Factory returned an AggregationProcess containing '
-          'non-secure aggregation.'
-      )
+    static_assert.assert_not_contains_unsecure_aggregation(process.next)
 
   @parameterized.named_parameters(
       ('float32_scalar', tf.float32, tf.float32),
@@ -363,13 +351,7 @@ class SecureSumFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
     self.assertTrue(
         process.next.type_signature.is_equivalent_to(expected_next_type)
     )
-    try:
-      static_assert.assert_not_contains_unsecure_aggregation(process.next)
-    except:  # pylint: disable=bare-except
-      self.fail(
-          'Factory returned an AggregationProcess containing '
-          'non-secure aggregation.'
-      )
+    static_assert.assert_not_contains_unsecure_aggregation(process.next)
 
   @parameterized.named_parameters(
       ('float32_scalar', tf.float32, tf.float32),
@@ -418,13 +400,7 @@ class SecureSumFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
     self.assertTrue(
         process.next.type_signature.is_equivalent_to(expected_next_type)
     )
-    try:
-      static_assert.assert_not_contains_unsecure_aggregation(process.next)
-    except:  # pylint: disable=bare-except
-      self.fail(
-          'Factory returned an AggregationProcess containing '
-          'non-secure aggregation.'
-      )
+    static_assert.assert_not_contains_unsecure_aggregation(process.next)
 
   @parameterized.named_parameters(
       ('int_smaller', -1, 1),

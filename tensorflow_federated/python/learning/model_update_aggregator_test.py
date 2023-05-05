@@ -202,28 +202,19 @@ class ModelUpdateAggregatorTest(parameterized.TestCase):
     aggregator = model_update_aggregator.secure_aggregator(
         weighted=True
     ).create(_FLOAT_MATRIX_TYPE, _FLOAT_TYPE)
-    try:
-      static_assert.assert_not_contains_unsecure_aggregation(aggregator.next)
-    except:  # pylint: disable=bare-except
-      self.fail('Secure aggregator contains non-secure aggregation.')
+    static_assert.assert_not_contains_unsecure_aggregation(aggregator.next)
 
   def test_unweighted_secure_aggregator_only_contains_secure_aggregation(self):
     aggregator = model_update_aggregator.secure_aggregator(
         weighted=False
     ).create(_FLOAT_MATRIX_TYPE)
-    try:
-      static_assert.assert_not_contains_unsecure_aggregation(aggregator.next)
-    except:  # pylint: disable=bare-except
-      self.fail('Secure aggregator contains non-secure aggregation.')
+    static_assert.assert_not_contains_unsecure_aggregation(aggregator.next)
 
   def test_ddp_secure_aggregator_only_contains_secure_aggregation(self):
     aggregator = model_update_aggregator.ddp_secure_aggregator(
         noise_multiplier=1e-2, expected_clients_per_round=10
     ).create(_FLOAT_MATRIX_TYPE)
-    try:
-      static_assert.assert_not_contains_unsecure_aggregation(aggregator.next)
-    except:  # pylint: disable=bare-except
-      self.fail('Secure aggregator contains non-secure aggregation.')
+    static_assert.assert_not_contains_unsecure_aggregation(aggregator.next)
 
   @parameterized.named_parameters(
       ('zeroing_float', True, _FLOAT_TYPE),

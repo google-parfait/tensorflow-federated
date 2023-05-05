@@ -192,13 +192,7 @@ class DistributedDpComputationTest(tf.test.TestCase, parameterized.TestCase):
     )
     actual_next_type = process.next.type_signature
     self.assertTrue(actual_next_type.is_equivalent_to(expected_next_type))
-    try:
-      static_assert.assert_not_contains_unsecure_aggregation(process.next)
-    except:  # pylint: disable=bare-except
-      self.fail(
-          'Factory returned an AggregationProcess containing '
-          'non-secure aggregation.'
-      )
+    static_assert.assert_not_contains_unsecure_aggregation(process.next)
 
   @parameterized.named_parameters(
       ('negative', -1, ValueError),

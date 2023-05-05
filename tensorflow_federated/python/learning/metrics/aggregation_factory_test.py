@@ -231,11 +231,7 @@ class SumThenFinalizeFactoryComputationTest(
     self.assertTrue(
         process.next.type_signature.is_equivalent_to(expected_next_type)
     )
-
-    try:
-      static_assert.assert_not_contains_unsecure_aggregation(process.next)
-    except:  # pylint: disable=bare-except
-      self.fail('Metric aggregation contains non-secure summation aggregation')
+    static_assert.assert_not_contains_unsecure_aggregation(process.next)
 
   @parameterized.named_parameters(
       ('float', 1.0),
@@ -456,10 +452,7 @@ class SumThenFinalizeFactoryExecutionTest(tf.test.TestCase):
 
     client_data = [local_unfinalized_metrics, local_unfinalized_metrics]
     output = process.next(state, client_data)
-    try:
-      static_assert.assert_not_contains_unsecure_aggregation(process.next)
-    except:  # pylint: disable=bare-except
-      self.fail('Metric aggregation contains non-secure summation aggregation')
+    static_assert.assert_not_contains_unsecure_aggregation(process.next)
 
     _, unfinalized_metrics_accumulators = output.state
     # Inital clippling bounds for float values are [-100.0, 100.0], metric
@@ -528,10 +521,7 @@ class SecureSumFactoryTest(tf.test.TestCase, parameterized.TestCase):
         local_unfinalized_metrics
     )
     process = aggregate_factory.create(local_unfinalized_metrics_type)
-    try:
-      static_assert.assert_not_contains_unsecure_aggregation(process.next)
-    except:  # pylint: disable=bare-except
-      self.fail('Metric aggregation contains non-secure summation aggregation')
+    static_assert.assert_not_contains_unsecure_aggregation(process.next)
 
     state = process.initialize()
 
@@ -606,10 +596,7 @@ class SecureSumFactoryTest(tf.test.TestCase, parameterized.TestCase):
         metric_value_ranges
     )
     process = aggregate_factory.create(local_unfinalized_metrics_type)
-    try:
-      static_assert.assert_not_contains_unsecure_aggregation(process.next)
-    except:  # pylint: disable=bare-except
-      self.fail('Metric aggregation contains non-secure summation aggregation')
+    static_assert.assert_not_contains_unsecure_aggregation(process.next)
 
     state = process.initialize()
     custom_float_factory_key = aggregation_factory.create_factory_key(
