@@ -228,7 +228,7 @@ class TensorVariableTest(tf.test.TestCase, parameterized.TestCase):
     with self.assertRaisesRegex(
         tf.errors.InvalidArgumentError, 'Index out of range'
     ):
-      tensor_variable[0]  # pylint: disable=pointless-statement
+      _ = tensor_variable[0]
 
   def test_shape_validation_eager(self):
     v = variable_utils.TensorVariable(1.0)
