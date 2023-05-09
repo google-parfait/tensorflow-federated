@@ -297,46 +297,176 @@ class PrefetchingDataSourceIteratorTest(
   @context_stack_test_utils.with_context(
       cpp_execution_contexts.create_async_local_cpp_execution_context
   )
-  def test_select_prefetches_data(self):
+  def test_init_prefetches_data(self):
+    num_rounds_to_prefetch = 3
+    num_clients_to_prefetch = 5
+
     mock_iterator = mock.create_autospec(
         data_source_lib.FederatedDataSourceIterator,
         spec_set=True,
         instance=True,
     )
-    mock_iterator.select.return_value = [1, 2, 3]
+    mock_iterator.select.return_value = [1, 2, 3, 4, 5]
     mock_iterator.federated_type = computation_types.FederatedType(
         tf.int32, placements.CLIENTS
     )
     iterator = prefetching_data_source.PrefetchingDataSourceIterator(
         iterator=mock_iterator,
         total_rounds=5,
-        num_rounds_to_prefetch=3,
-        num_clients_to_prefetch=3,
+        num_rounds_to_prefetch=num_rounds_to_prefetch,
+        num_clients_to_prefetch=num_clients_to_prefetch,
         prefetch_threshold=1,
     )
 
-    self.assertEmpty(iterator._prefetched_data)
-    self.assertEqual(mock_iterator.select.call_count, 3)
+    # Should prefetch data worth num_rounds_to_prefetch, making one select
+    # call to the underlying data source per round (in parallel).
+    self.assertEqual(iterator._num_rounds_prefetched, num_rounds_to_prefetch)
 
-    iterator.select(num_clients=3)
-    self.assertLen(iterator._prefetched_data, 2)
-    self.assertEqual(mock_iterator.select.call_count, 3)
+    # Finish the async fetching of data, and verify the prefetched cache.
+    iterator._finish_prefetching()
+    self.assertEqual(mock_iterator.select.call_count, num_rounds_to_prefetch)
+    self.assertLen(iterator._prefetched_data, num_rounds_to_prefetch)
 
-    iterator.select(num_clients=3)
-    self.assertLen(iterator._prefetched_data, 1)
-    self.assertEqual(mock_iterator.select.call_count, 5)
+  @context_stack_test_utils.with_context(
+      cpp_execution_contexts.create_async_local_cpp_execution_context
+  )
+  def test_data_is_prefetched_when_at_or_below_threshold(self):
+    num_rounds_to_prefetch = 3
+    num_clients_to_prefetch = 5
 
-    iterator.select(num_clients=3)
-    self.assertLen(iterator._prefetched_data, 2)
-    self.assertEqual(mock_iterator.select.call_count, 5)
+    mock_iterator = mock.create_autospec(
+        data_source_lib.FederatedDataSourceIterator,
+        spec_set=True,
+        instance=True,
+    )
+    mock_iterator.select.return_value = [1, 2, 3, 4, 5]
+    mock_iterator.federated_type = computation_types.FederatedType(
+        tf.int32, placements.CLIENTS
+    )
+    iterator = prefetching_data_source.PrefetchingDataSourceIterator(
+        iterator=mock_iterator,
+        total_rounds=10,
+        num_rounds_to_prefetch=num_rounds_to_prefetch,
+        num_clients_to_prefetch=num_clients_to_prefetch,
+        prefetch_threshold=2,
+    )
+    expected_rounds_prefetched = num_rounds_to_prefetch
+    self.assertEqual(
+        iterator._num_rounds_prefetched, expected_rounds_prefetched
+    )
 
-    iterator.select(num_clients=3)
-    self.assertLen(iterator._prefetched_data, 1)
-    self.assertEqual(mock_iterator.select.call_count, 5)
+    # Selecting one round worth of data, would drop the cache below threshold
+    # i.e. 2, and trigger a replenishing of the cache.
+    expected_rounds_prefetched = expected_rounds_prefetched + 1
+    iterator.select(num_clients=num_clients_to_prefetch)
+    self.assertEqual(
+        iterator._num_rounds_prefetched, expected_rounds_prefetched
+    )
 
-    iterator.select(num_clients=3)
-    self.assertEmpty(iterator._prefetched_data)
-    self.assertEqual(mock_iterator.select.call_count, 5)
+    # Finish the async fetching of data, and verify the prefetched cache.
+    iterator._finish_prefetching()
+    self.assertEqual(
+        mock_iterator.select.call_count, expected_rounds_prefetched
+    )
+    self.assertLen(iterator._prefetched_data, num_rounds_to_prefetch)
+
+  @context_stack_test_utils.with_context(
+      cpp_execution_contexts.create_async_local_cpp_execution_context
+  )
+  def test_data_is_not_prefetched_when_not_below_threshold(self):
+    num_rounds_to_prefetch = 3
+    num_clients_to_prefetch = 5
+
+    mock_iterator = mock.create_autospec(
+        data_source_lib.FederatedDataSourceIterator,
+        spec_set=True,
+        instance=True,
+    )
+    mock_iterator.select.return_value = [1, 2, 3, 4, 5]
+    mock_iterator.federated_type = computation_types.FederatedType(
+        tf.int32, placements.CLIENTS
+    )
+    iterator = prefetching_data_source.PrefetchingDataSourceIterator(
+        iterator=mock_iterator,
+        total_rounds=10,
+        num_rounds_to_prefetch=num_rounds_to_prefetch,
+        num_clients_to_prefetch=num_clients_to_prefetch,
+        prefetch_threshold=1,
+    )
+    expected_rounds_prefetched = num_rounds_to_prefetch
+    expected_prefetched_data_size = num_rounds_to_prefetch
+    self.assertEqual(
+        iterator._num_rounds_prefetched, expected_rounds_prefetched
+    )
+    iterator._finish_prefetching()
+    self.assertLen(iterator._prefetched_data, expected_prefetched_data_size)
+    self.assertEqual(
+        mock_iterator.select.call_count, expected_rounds_prefetched
+    )
+
+    # Selecting one round worth of data, would still leave enough rounds of data
+    # in the prefetched cache, so no new prefetches would be triggered.
+    expected_prefetched_data_size -= 1
+    iterator.select(num_clients=num_clients_to_prefetch)
+    self.assertEqual(
+        iterator._num_rounds_prefetched, expected_rounds_prefetched
+    )  # No additional calls.
+
+    # Finish the async fetching of data, and verify the prefetched cache.
+    iterator._finish_prefetching()
+    self.assertEqual(
+        mock_iterator.select.call_count, expected_rounds_prefetched
+    )  # No additional calls.
+    self.assertLen(iterator._prefetched_data, expected_prefetched_data_size)
+
+  @context_stack_test_utils.with_context(
+      cpp_execution_contexts.create_async_local_cpp_execution_context
+  )
+  def test_data_is_prefeched_only_for_rounds_remaining(self):
+    num_rounds_to_prefetch = 3
+    num_clients_to_prefetch = 5
+    total_rounds = 2
+
+    mock_iterator = mock.create_autospec(
+        data_source_lib.FederatedDataSourceIterator,
+        spec_set=True,
+        instance=True,
+    )
+    mock_iterator.select.return_value = [1, 2, 3, 4, 5]
+    mock_iterator.federated_type = computation_types.FederatedType(
+        tf.int32, placements.CLIENTS
+    )
+    iterator = prefetching_data_source.PrefetchingDataSourceIterator(
+        iterator=mock_iterator,
+        total_rounds=total_rounds,
+        num_rounds_to_prefetch=num_rounds_to_prefetch,
+        num_clients_to_prefetch=num_clients_to_prefetch,
+        prefetch_threshold=2,
+    )
+
+    # Only 2 rounds worth of data should be prefetched, though
+    # num_rounds_to_prefetch is 3.
+    expected_rounds_prefetched = total_rounds
+    expected_prefetched_data_size = total_rounds
+    self.assertEqual(
+        iterator._num_rounds_prefetched, expected_rounds_prefetched
+    )
+
+    # Finish the async fetching of data, and verify the prefetched cache.
+    iterator._finish_prefetching()
+    self.assertEqual(
+        mock_iterator.select.call_count, expected_rounds_prefetched
+    )
+    self.assertLen(iterator._prefetched_data, expected_prefetched_data_size)
+
+    # Selecting one round of data should use up one round from the prefetched
+    # cache but should not trigger any additional prefetches.
+    expected_prefetched_data_size -= 1
+    iterator.select(num_clients=num_clients_to_prefetch)
+    self.assertEqual(
+        mock_iterator.select.call_count, expected_rounds_prefetched
+    )
+    self.assertLen(iterator._prefetched_data, expected_prefetched_data_size)
 
   @parameterized.named_parameters(
       ('str', 'a'),
@@ -390,7 +520,7 @@ class PrefetchingDataSourceIteratorTest(
   @context_stack_test_utils.with_context(
       cpp_execution_contexts.create_async_local_cpp_execution_context
   )
-  def test_select_raises_runtime_error_with_to_many_rounds(self):
+  def test_select_raises_runtime_error_with_too_many_rounds(self):
     mock_iterator = mock.create_autospec(
         data_source_lib.FederatedDataSourceIterator,
         spec_set=True,
