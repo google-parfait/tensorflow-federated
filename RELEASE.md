@@ -1,3 +1,20 @@
+# Release 0.57.0
+
+## Major Features and Improvements
+
+*   Allow functional models to return a structure.
+
+## Breaking Changes
+
+*   Removed support for handling `attrs` as containers in the `tff.program` API.
+*   Migrated the `personalization_eval` module to the algorithms package.
+*   Deleted the `tff.learning.build_local_evaluation` API.
+*   Migrated `tff.learning.reconstruction` to the `tff.learning.algorithms`
+    package.
+*   Updated to `dm-tree` version `0.1.8`.
+*   Updated to `dp-accounting` version `0.4.1`.
+*   Updated to `tensorflow-privacy` version `0.8.9`.
+
 # Release 0.56.0
 
 ## Major Features and Improvements
