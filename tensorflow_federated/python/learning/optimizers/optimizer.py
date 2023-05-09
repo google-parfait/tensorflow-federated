@@ -136,12 +136,18 @@ def check_weights_gradients_match(weights, gradients):
     tf.nest.assert_same_structure(weights, gradients, check_types=True)
     tf.nest.map_structure(_check_shape_dtype_match, weights, gradients)
   except (TypeError, ValueError) as e:
+
+    def _type_and_shape(nest):
+      return tf.nest.map_structure(lambda x: (x.shape, x.dtype), nest)
+
     # Raises a more informative error message specific for optimizers.
     raise ValueError(
         'Provided weights and gradients must be collections of tensors of the '
         'same structure and the tensors must have the same shapes and dtypes.\n'
-        f'Provided weights: {weights}\n'
-        f'Provided gradients: {gradients}'
+        'Provided weights have type '
+        f'{_type_and_shape(weights)}, value {weights}\n'
+        'Provided gradients have type '
+        f'{_type_and_shape(gradients)}, value {gradients}\n'
     ) from e
 
 
