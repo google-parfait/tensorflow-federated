@@ -361,8 +361,8 @@ def compose_dataset_computation_with_iterative_process(
 def compose_dataset_computation_with_learning_process(
     dataset_computation: computation_base.Computation,
     process: learning_process.LearningProcess,
-) -> iterative_process.IterativeProcess:
-  """Builds a new iterative process which constructs datasets on clients.
+) -> learning_process.LearningProcess:
+  """Builds a new learning process which constructs datasets on clients.
 
   This functionality is identical to
   `tff.simulation.compose_dataset_computation_with_iterative_process`, except
