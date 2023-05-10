@@ -479,22 +479,25 @@ class SerializationTest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(finalized_metrics, loaded_model_finalized_metrics)
 
     # Assert that the loaded model has the same `reset_metrics` method.
-    # If this method is implemented in the original model, assert that it works
+    # If this method does not raise an NotImplementedError, assert that it works
     # the same in the loaded model; otherwise, assert that it raises a
     # `NotImplementedError` in the loaded model.
     try:
       model.reset_metrics()
+      loaded_model_should_raise = False
     except NotImplementedError:
-      # pylint: disable=g-assert-in-except
-      with self.assertRaisesRegex(NotImplementedError, "isn't implemented"):
+      loaded_model_should_raise = True
+
+    if loaded_model_should_raise:
+      with self.assertRaises(NotImplementedError):
         loaded_model.reset_metrics()
-      return
-    loaded_model.reset_metrics()
-    self.assertEqual(model.local_variables, loaded_model.local_variables)
-    self.assertEqual(
-        model.report_local_unfinalized_metrics(),
-        loaded_model.report_local_unfinalized_metrics(),
-    )
+    else:
+      loaded_model.reset_metrics()
+      self.assertEqual(model.local_variables, loaded_model.local_variables)
+      self.assertEqual(
+          model.report_local_unfinalized_metrics(),
+          loaded_model.report_local_unfinalized_metrics(),
+      )
 
   @parameterized.named_parameters(_TEST_MODEL_FNS)
   def test_saved_model_to_tflite(self, model_fn):

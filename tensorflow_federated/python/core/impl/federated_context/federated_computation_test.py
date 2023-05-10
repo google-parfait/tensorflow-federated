@@ -78,16 +78,14 @@ class FederatedComputationWrapperTest(absltest.TestCase):
         stack.current, runtime_error_context.RuntimeErrorContext
     )
 
-    try:
-
+    with self.assertRaises(computation_wrapper.ComputationReturnedNoneError):
       @federated_computation.federated_computation()
       def _():
         pass
 
-    except computation_wrapper.ComputationReturnedNoneError:
-      self.assertIsInstance(  # pylint: disable=g-assert-in-except
-          stack.current, runtime_error_context.RuntimeErrorContext
-      )
+    self.assertIsInstance(
+        stack.current, runtime_error_context.RuntimeErrorContext
+    )
 
 
 if __name__ == '__main__':

@@ -406,16 +406,14 @@ class TensorFlowComputationTest(parameterized.TestCase):
         stack.current, runtime_error_context.RuntimeErrorContext
     )
 
-    try:
-
+    with self.assertRaises(computation_wrapper.ComputationReturnedNoneError):
       @tensorflow_computation.tf_computation()
       def _():
         pass
 
-    except computation_wrapper.ComputationReturnedNoneError:
-      self.assertIsInstance(  # pylint: disable=g-assert-in-except
-          stack.current, runtime_error_context.RuntimeErrorContext
-      )
+    self.assertIsInstance(
+        stack.current, runtime_error_context.RuntimeErrorContext
+    )
 
   def test_check_returns_type_with_tensorflow_computation_succeeds(self):
     @tensorflow_computation.tf_computation(tf.int32)
@@ -1076,16 +1074,14 @@ class TensorFlowFunctionComputationTest(parameterized.TestCase):
         stack.current, runtime_error_context.RuntimeErrorContext
     )
 
-    try:
-
+    with self.assertRaises(computation_wrapper.ComputationReturnedNoneError):
       @tensorflow_computation.experimental_tf_fn_computation()
       def _():
         pass
 
-    except computation_wrapper.ComputationReturnedNoneError:
-      self.assertIsInstance(  # pylint: disable=g-assert-in-except
-          stack.current, runtime_error_context.RuntimeErrorContext
-      )
+    self.assertIsInstance(
+        stack.current, runtime_error_context.RuntimeErrorContext
+    )
 
   def test_check_returns_type_with_tensorflow_computation_succeeds(self):
     @tensorflow_computation.experimental_tf_fn_computation(tf.int32)
