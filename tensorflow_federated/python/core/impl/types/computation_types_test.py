@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import collections
-import sys
+import inspect
 
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -26,6 +26,18 @@ from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_test_utils
+
+
+_ALL_INTERNED_TYPES = [
+    computation_types.AbstractType,
+    computation_types.FederatedType,
+    computation_types.FunctionType,
+    computation_types.PlacementType,
+    computation_types.SequenceType,
+    computation_types.StructType,
+    computation_types.StructWithPythonType,
+    computation_types.TensorType,
+]
 
 
 class TypeMismatchErrorTest(absltest.TestCase):
@@ -66,18 +78,35 @@ class TestCheckEquivalentTypesTest(absltest.TestCase):
       int_type.check_equivalent_to(bool_type)
 
 
-class TensorTypeTest(absltest.TestCase):
+class InternTest(parameterized.TestCase):
 
-  def test_constructor_argument_normalization_error(self):
-    if sys.version_info[0] == 3 and sys.version_info[1] == 9:
-      self.skipTest(
-          'Disable this test for Python 3.9, the message of the error is '
-          'different for this version of Python.'
-      )
-    with golden.check_raises_traceback(
-        'constructor_argument_normalization_error.expected', TypeError
-    ):
-      computation_types.TensorType()
+  @parameterized.named_parameters(
+      [(cls.__name__, cls) for cls in _ALL_INTERNED_TYPES]
+  )
+  def test_hashable_from_init_args_has_correct_parameters(self, cls):
+    hashable_from_init_args_signature = inspect.signature(
+        cls._hashable_from_init_args
+    )
+    actual_parameters = hashable_from_init_args_signature.parameters
+    init_signature = inspect.signature(cls.__init__)
+    # A copy of the parameters is created because `mappingproxy` object does not
+    # support item deletion.
+    expected_parameters = init_signature.parameters.copy()
+    del expected_parameters['self']
+    self.assertEqual(actual_parameters, expected_parameters)
+
+  def test_call_raises_type_error_with_unhashable_key(self):
+    class Test(computation_types._Intern):
+
+      @classmethod
+      def _hashable_from_init_args(cls, *args, **kwargs):
+        return []
+
+    with self.assertRaises(TypeError):
+      _ = Test()
+
+
+class TensorTypeTest(absltest.TestCase):
 
   def test_unknown_tensorshape(self):
     t = computation_types.TensorType(tf.int32, tf.TensorShape(None))

@@ -102,14 +102,18 @@ class FlattenTest(tf.test.TestCase, parameterized.TestCase):
           lambda *args: args,
           (tf.TensorSpec([], tf.int32), tf.TensorSpec([], tf.float32)),
           {},
-          StructType([TensorType(tf.int32), TensorType(tf.float32)], tuple),
+          StructWithPythonType(
+              [TensorType(tf.int32), TensorType(tf.float32)], tuple
+          ),
       ),
       (
           'identity_list',
           lambda *args: args,
           [tf.TensorSpec([], tf.int32), tf.TensorSpec([], tf.float32)],
           {},
-          StructType([TensorType(tf.int32), TensorType(tf.float32)], list),
+          StructWithPythonType(
+              [TensorType(tf.int32), TensorType(tf.float32)], list
+          ),
       ),
       (
           'identity_odict',
@@ -119,7 +123,7 @@ class FlattenTest(tf.test.TestCase, parameterized.TestCase):
               'a': tf.TensorSpec([], tf.int32),
               'b': tf.TensorSpec([], tf.float32),
           },
-          StructType(
+          StructWithPythonType(
               [('a', TensorType(tf.int32)), ('b', TensorType(tf.float32))],
               collections.OrderedDict,
           ),
