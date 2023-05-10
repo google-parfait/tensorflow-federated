@@ -264,15 +264,16 @@ class TracingProviderInterfaceTest(absltest.TestCase):
     class MyClass:
 
       @tracing.trace(options='some_option')
-      def my_func(a, b, kw=None):  # pylint: disable=no-self-argument
+      def my_func(self, a, b, kw=None):
         del a, b, kw
         return 5
 
-    MyClass.my_func(1, 2, kw=3)
+    obj = MyClass()
+    obj.my_func(1, 2, kw=3)
     self.assertEqual(mock.scopes[0], 'MyClass')
     self.assertEqual(mock.sub_scopes[0], 'my_func')
     self.assertIsNone(mock.parent_span_yields[0])
-    self.assertEqual(mock.fn_argss[0], (1, 2))
+    self.assertEqual(mock.fn_argss[0], (obj, 1, 2))
     self.assertEqual(mock.fn_kwargss[0], {'kw': 3})
     self.assertEqual(mock.trace_optss[0], {'options': 'some_option'})
     self.assertIsInstance(mock.trace_results[0], tracing.TracedFunctionReturned)
@@ -284,14 +285,12 @@ class TracingProviderInterfaceTest(absltest.TestCase):
     class MyClass:
 
       @tracing.trace
-      def my_func():  # pylint: disable=no-method-argument
+      def my_func(self):
         raise ValueError(5)
 
-    try:
-      MyClass.my_func()
-      raise AssertionError('should have thrown')
-    except ValueError:
-      pass
+    obj = MyClass()
+    with self.assertRaises(ValueError):
+      obj.my_func()
 
     self.assertIsInstance(mock.trace_results[0], tracing.TracedFunctionThrew)
     self.assertEqual(mock.trace_results[0].error_type, ValueError)
