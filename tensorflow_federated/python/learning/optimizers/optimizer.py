@@ -15,7 +15,8 @@
 
 import abc
 import collections
-from typing import Any, Generic, TypeVar
+from collections.abc import Mapping, Sequence
+from typing import Any, Generic, TypeVar, Union
 
 import tensorflow as tf
 
@@ -23,7 +24,14 @@ LEARNING_RATE_KEY = 'learning_rate'
 
 State = TypeVar('State')
 Weights = TypeVar('Weights')
+Gradients = Any
 Hparams = TypeVar('Hparams', bound=collections.OrderedDict[str, Any])
+T = TypeVar('T')
+_Structure = Union[
+    T,
+    Sequence['_Structure[T]'],
+    Mapping[str, '_Structure[T]'],
+]
 
 
 class Optimizer(abc.ABC, Generic[State, Weights, Hparams]):
@@ -112,12 +120,14 @@ class Optimizer(abc.ABC, Generic[State, Weights, Hparams]):
     return state
 
 
-def _check_shape_dtype_match(x, y):
+def _check_shape_dtype_match(x: tf.Tensor, y: tf.Tensor) -> None:
   if not x.shape.is_compatible_with(y.shape) or x.dtype != y.dtype:
     raise TypeError('Provided tensors do not have the same shapes and dtypes.')
 
 
-def check_weights_gradients_match(weights, gradients):
+def check_weights_gradients_match(
+    weights: _Structure[tf.Tensor], gradients: _Structure[tf.Tensor]
+) -> None:
   """Checks that weights and gradients match.
 
   This check is meant to be used in the `next` method of implemented
@@ -151,7 +161,9 @@ def check_weights_gradients_match(weights, gradients):
     ) from e
 
 
-def check_weights_state_match(weights, state, name):
+def check_weights_state_match(
+    weights: _Structure[tf.Tensor], state: _Structure[tf.Tensor], name: str
+) -> None:
   try:
     tf.nest.assert_same_structure(state, weights, check_types=True)
     tf.nest.map_structure(_check_shape_dtype_match, weights, state)
@@ -168,7 +180,9 @@ def check_weights_state_match(weights, state, name):
     ) from e
 
 
-def handle_indexed_slices_gradients(gradients):
+def handle_indexed_slices_gradients(
+    gradients: _Structure[T],
+) -> _Structure[Union[T, tf.IndexedSlices]]:
   """Converts any `tf.IndexedSlices` to tensors.
 
   The `tf.IndexedSlices` class is used principally in the definition of
@@ -189,7 +203,7 @@ def handle_indexed_slices_gradients(gradients):
     The same collection with `tf.IndexedSlices` replaced by tensors.
   """
 
-  def slices_to_tensor(value):
+  def slices_to_tensor(value: T) -> Union[T, tf.IndexedSlices]:
     if isinstance(value, tf.IndexedSlices):
       return tf.convert_to_tensor(value)
     return value
