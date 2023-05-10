@@ -467,7 +467,8 @@ def build_functional_model_delta_update(
       optimizer_state, trainable_weights = optimizer.next(
           optimizer_state, trainable_weights, gradients
       )
-      batch_num_examples = tf.shape(batch_output)[0]
+      predictions = tf.nest.flatten(batch_output)[0]
+      batch_num_examples = tf.shape(predictions)[0]
       num_examples += tf.cast(batch_num_examples, tf.int64)
       model_weights = (trainable_weights, non_trainable_weights)
 

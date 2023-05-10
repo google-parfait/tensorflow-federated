@@ -170,7 +170,8 @@ def build_functional_local_evaluation(
 
       batch_output = model.predict_on_batch(weights, x, training=False)
       batch_loss = model.loss(output=batch_output, label=y)
-      batch_num_examples = tf.shape(batch_output)[0]
+      predictions = tf.nest.flatten(batch_output)[0]
+      batch_num_examples = tf.shape(predictions)[0]
 
       # TODO(b/272099796): Update `update_metrics_state` of FunctionalModel
       metrics_state = model.update_metrics_state(

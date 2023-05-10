@@ -309,7 +309,8 @@ def _build_functional_model_delta_update(
       trainable_weights = tf.nest.pack_sequence_as(
           trainable_weights, updated_weights
       )
-      batch_num_examples = tf.shape(batch_output)[0]
+      predictions = tf.nest.flatten(batch_output)[0]
+      batch_num_examples = tf.shape(predictions)[0]
       num_examples_sum += tf.cast(batch_num_examples, tf.int64)
 
       # TODO(b/272099796): Update `update_metrics_state` of FunctionalModel

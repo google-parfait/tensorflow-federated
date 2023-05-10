@@ -241,7 +241,8 @@ def _build_functional_client_update(
             training=True,
         )
         batch_loss = model.loss(output=batch_output, label=y)
-        batch_num_examples = tf.shape(batch_output)[0]
+        predictions = tf.nest.flatten(batch_output)[0]
+        batch_num_examples = tf.shape(predictions)[0]
 
         gradients = tape.gradient(batch_loss, trainable_weights)
         num_examples = tf.cast(batch_num_examples, tf.float32)

@@ -361,7 +361,8 @@ def _build_functional_client_update_fn_for_mime_lite(
           )
           batch_loss = model.loss(output=batch_output, label=y)
 
-        batch_num_examples = tf.shape(batch_output)[0]
+        predictions = tf.nest.flatten(batch_output)[0]
+        batch_num_examples = tf.shape(predictions)[0]
         gradients = tape.gradient(batch_loss, trainable_weights)
         gradient_sum = tf.nest.map_structure(
             lambda g_sum, g: g_sum + g * tf.cast(batch_num_examples, g.dtype),
@@ -414,7 +415,8 @@ def _build_functional_client_update_fn_for_mime_lite(
           batch_loss = model.loss(output=batch_output, label=y)
 
         gradients = tape.gradient(batch_loss, trainable_weights)
-        batch_num_examples = tf.shape(batch_output)[0]
+        predictions = tf.nest.flatten(batch_output)[0]
+        batch_num_examples = tf.shape(predictions)[0]
 
         # TODO(b/272099796): Update `update_metrics_state` of FunctionalModel
         metrics_state = model.update_metrics_state(
