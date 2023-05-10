@@ -155,7 +155,7 @@ _TEST_METRICS_MIXED_DTYPES = {
     'metric_finalizers': collections.OrderedDict(
         divide=tf.function(func=lambda x: x[0] / tf.cast(x[1], tf.float32)),
         sum=tf.function(
-            func=lambda x: tf.cast(x['count_1'], tf.float32) + x['count_2']  # pylint:disable=g-long-lambda
+            func=lambda x: tf.cast(x['count_1'], tf.float32) + x['count_2']
         ),
     ),
     'local_unfinalized_metrics_at_clients': [
@@ -416,7 +416,7 @@ class SecureSumThenFinalizeTest(parameterized.TestCase, tf.test.TestCase):
     metric_finalizers = collections.OrderedDict(
         divide=tf.function(func=lambda x: x[0] / tf.cast(x[1], tf.float32)),
         sum=tf.function(
-            func=lambda x: tf.cast(x['count_1'], tf.float32) + x['count_2']  # pylint:disable=g-long-lambda
+            func=lambda x: tf.cast(x['count_1'], tf.float32) + x['count_2']
         ),
     )
     local_unfinalized_metrics_at_clients = [

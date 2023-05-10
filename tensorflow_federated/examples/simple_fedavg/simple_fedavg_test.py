@@ -486,14 +486,17 @@ def _rnn_model_fn() -> tff.learning.models.VariableModel:
 class RNNTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_build_fedavg_process(self):
+
+    def server_optimizer_fn():
+      return tf.keras.optimizers.legacy.SGD(learning_rate=1.0)
+
+    def client_optimizer_fn():
+      return tf.keras.optimizers.legacy.SGD(learning_rate=0.02)
+
     it_process = simple_fedavg_tff.build_federated_averaging_process(
         _rnn_model_fn,
-        server_optimizer_fn=lambda: tf.keras.optimizers.legacy.SGD(  # pylint: disable=g-long-lambda
-            learning_rate=1.0
-        ),
-        client_optimizer_fn=lambda: tf.keras.optimizers.legacy.SGD(  # pylint: disable=g-long-lambda
-            learning_rate=0.02
-        ),
+        server_optimizer_fn=server_optimizer_fn,
+        client_optimizer_fn=client_optimizer_fn,
     )
     self.assertIsInstance(it_process, tff.templates.IterativeProcess)
     global_model_type, client_datasets_type = (

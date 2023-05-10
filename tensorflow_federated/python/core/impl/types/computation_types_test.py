@@ -1119,7 +1119,7 @@ class CheckWellFormedTest(parameterized.TestCase):
           ),
       ),
   ])
-  # pylint: disable=g-long-lambda
+  # pylint: enable=g-long-lambda
   def test_raises_type_error(self, create_type_signature):
     with self.assertRaises(TypeError):
       create_type_signature()
