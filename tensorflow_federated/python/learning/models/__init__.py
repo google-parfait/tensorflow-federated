@@ -19,6 +19,7 @@ from tensorflow_federated.python.learning.models.functional import model_from_fu
 from tensorflow_federated.python.learning.models.keras_utils import from_keras_model
 from tensorflow_federated.python.learning.models.model_weights import ModelWeights
 from tensorflow_federated.python.learning.models.model_weights import weights_type_from_model
+from tensorflow_federated.python.learning.models.reconstruction_model import ReconstructionDatasetSplitFn
 from tensorflow_federated.python.learning.models.reconstruction_model import ReconstructionModel
 from tensorflow_federated.python.learning.models.serialization import load
 from tensorflow_federated.python.learning.models.serialization import load_functional_model

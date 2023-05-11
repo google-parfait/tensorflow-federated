@@ -24,6 +24,20 @@ from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.learning.models import model_weights
 
 
+# Type alias for a function that takes in a TF dataset and produces two TF
+# datasets. This is consumed by training and evaluation computation builders.
+# The first is iterated over during reconstruction and the second is iterated
+# over post-reconstruction, for both training and evaluation. This can be
+# useful for e.g. splitting the dataset into disjoint halves for each stage,
+# doing multiple local epochs of reconstruction/training, skipping
+# reconstruction entirely, etc. See `build_dataset_split_fn` for a builder,
+# although users can also specify their own `ReconstructionDatasetSplitFn`s (see
+# `ReconstructionModel.simple_dataset_split_fn` for an example).
+ReconstructionDatasetSplitFn = Callable[
+    [tf.data.Dataset], tuple[tf.data.Dataset, tf.data.Dataset]
+]
+
+
 class ReconstructionBatchOutput(NamedTuple):
   """A structure for the output of a `tff.learning.models.ReconstructionModel`.
 
@@ -176,26 +190,11 @@ class ReconstructionModel(metaclass=abc.ABCMeta):
         model.local_non_trainable_variables
     )
 
-  # Type alias for a function that takes in a TF dataset and produces two TF
-  # datasets. This is consumed by training and evaluation computation builders.
-  # The first is iterated over during reconstruction and the second is iterated
-  # over post-reconstruction, for both training and evaluation. This can be
-  # useful for e.g. splitting the dataset into disjoint halves for each stage,
-  # doing multiple local epochs of reconstruction/training, skipping
-  # reconstruction entirely, etc. See `build_dataset_split_fn` for a builder,
-  # although users can also specify their own `DatasetSplitFn`s (see
-  # `simple_dataset_split_fn` for an example).
-  # pylint: disable=invalid-name
-  DatasetSplitFn = Callable[
-      [tf.data.Dataset], tuple[tf.data.Dataset, tf.data.Dataset]
-  ]
-  # pylint: enable=invalid-name
-
   @classmethod
   def simple_dataset_split_fn(
       cls, client_dataset: tf.data.Dataset
   ) -> tuple[tf.data.Dataset, tf.data.Dataset]:
-    """An example of a `DatasetSplitFn` that returns the original client data.
+    """A `ReconstructionDatasetSplitFn` that returns the original client data.
 
     Both the reconstruction data and post-reconstruction data will result from
     iterating over the same tf.data.Dataset. Note that depending on any
@@ -224,13 +223,14 @@ class ReconstructionModel(metaclass=abc.ABCMeta):
       post_recon_epochs: int = 1,
       post_recon_steps_max: Optional[int] = None,
       split_dataset: bool = False,
-  ) -> DatasetSplitFn:
-    """Builds a `DatasetSplitFn` for Federated Reconstruction training/evaluation.
+  ) -> ReconstructionDatasetSplitFn:
+    """Builds a `ReconstructionDatasetSplitFn` for training/evaluation.
 
-    Returned `DatasetSplitFn` parameterizes training and evaluation computations
-    and enables reconstruction for multiple local epochs, multiple epochs of
-    post-reconstruction training, limiting the number of steps for both stages,
-    and splitting client datasets into disjoint halves for each stage.
+    The returned `ReconstructionDatasetSplitFn` parameterizes training and
+    evaluation computations and enables reconstruction for multiple local
+    epochs, multiple epochs of post-reconstruction training, limiting the number
+    of steps for both stages, and splitting client datasets into disjoint halves
+    for each stage.
 
     Note that the returned function is used during both training and evaluation:
     during training, "post-reconstruction" refers to training of global
@@ -273,7 +273,7 @@ class ReconstructionModel(metaclass=abc.ABCMeta):
     def dataset_split_fn(
         client_dataset: tf.data.Dataset,
     ) -> tuple[tf.data.Dataset, tf.data.Dataset]:
-      """A `DatasetSplitFn` built with the given arguments.
+      """A `ReconstructionDatasetSplitFn` built with the given arguments.
 
       Args:
         client_dataset: `tf.data.Dataset` representing client data.

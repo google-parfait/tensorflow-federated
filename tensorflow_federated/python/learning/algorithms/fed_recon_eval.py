@@ -60,7 +60,7 @@ def build_fed_recon_eval(
         tf.keras.optimizers.SGD, learning_rate=0.1
     ),
     dataset_split_fn: Optional[
-        reconstruction_model.ReconstructionModel.DatasetSplitFn
+        reconstruction_model.ReconstructionDatasetSplitFn
     ] = None,
     model_distributor: Optional[distributors.DistributionProcess] = None,
     metrics_aggregator: Callable[
@@ -103,7 +103,7 @@ def build_fed_recon_eval(
     reconstruction_optimizer_fn: A no-arg function that returns a
       `tf.keras.optimizers.Optimizer` used to reconstruct the local variables
       with the global ones frozen.
-    dataset_split_fn: A `tff.learning.models.ReconstructionModel.DatasetSplitFn`
+    dataset_split_fn: A `tff.learning.models.ReconstructionDatasetSplitFn`
       taking in a single TF dataset and producing two TF datasets. The first is
       iterated over during reconstruction, and the second is iterated over
       during evaluation. This can be used to preprocess datasets to e.g. iterate

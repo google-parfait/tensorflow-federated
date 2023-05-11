@@ -100,7 +100,7 @@ def _build_reconstruction_client_work(
     metrics_fn: Optional[MetricsFn],
     client_optimizer_fn: OptimizerFn,
     reconstruction_optimizer_fn: OptimizerFn,
-    dataset_split_fn: ReconstructionModel.DatasetSplitFn,
+    dataset_split_fn: reconstruction_model.ReconstructionDatasetSplitFn,
     client_weighting: client_weight_lib.ClientWeightType,
     metrics_aggregator: Callable[
         [MetricFinalizersType, computation_types.StructWithPythonType],
@@ -130,9 +130,9 @@ def _build_reconstruction_client_work(
       no-arg function that returns a `tf.keras.optimizers.Optimizer` for
       reconstructing the local variables with global variables frozen. This
       optimizer is used before the one given by `client_optimizer_fn`.
-    dataset_split_fn: A `tff.learning.reconstruction.DatasetSplitFn` taking in a
-      client dataset and producing two TF datasets. The first is iterated over
-      during reconstruction, and the second is iterated over
+    dataset_split_fn: A `tff.learning.models.ReconstructionDatasetSplitFn`
+      taking in aclient dataset and producing two TF datasets. The first is
+      iterated overduring reconstruction, and the second is iterated over
       post-reconstruction. This can be used to preprocess datasets to e.g.
       iterate over them for multiple epochs or use disjoint data for
       reconstruction and post-reconstruction.
@@ -397,7 +397,9 @@ def build_fed_recon(
     reconstruction_optimizer_fn: OptimizerFn = functools.partial(
         tf.keras.optimizers.SGD, 0.1
     ),
-    dataset_split_fn: Optional[ReconstructionModel.DatasetSplitFn] = None,
+    dataset_split_fn: Optional[
+        reconstruction_model.ReconstructionDatasetSplitFn
+    ] = None,
     client_weighting: Optional[client_weight_lib.ClientWeightType] = None,
     model_distributor: Optional[distributors.DistributionProcess] = None,
     model_aggregator_factory: Optional[AggregationFactory] = None,
@@ -441,9 +443,9 @@ def build_fed_recon(
       no-arg function that returns a `tf.keras.optimizers.Optimizer` used to
       reconstruct the local variables, with the global ones frozen, or the first
       stage described above.
-    dataset_split_fn: A `tff.learning.reconstruction.DatasetSplitFn` taking in a
-      single TF dataset and producing two TF datasets. The first is iterated
-      over during reconstruction, and the second is iterated over
+    dataset_split_fn: A `tff.learning.models.ReconstructionDatasetSplitFn`
+      taking in asingle TF dataset and producing two TF datasets. The first is
+      iteratedover during reconstruction, and the second is iterated over
       post-reconstruction. This can be used to preprocess datasets to e.g.
       iterate over them for multiple epochs or use disjoint data for
       reconstruction and post-reconstruction. If None, split client data in half
