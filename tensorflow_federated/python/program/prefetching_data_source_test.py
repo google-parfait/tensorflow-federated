@@ -72,7 +72,7 @@ class PrefetchingDataSourceIteratorTest(
 ):
 
   @context_stack_test_utils.with_context(
-      cpp_execution_contexts.create_async_local_cpp_execution_context
+      execution_contexts.create_async_local_cpp_execution_context
   )
   def test_init_does_not_raise_type_error(self):
     mock_iterator = mock.create_autospec(
@@ -100,7 +100,7 @@ class PrefetchingDataSourceIteratorTest(
       ('list', [True, 1, 'a']),
   )
   @context_stack_test_utils.with_context(
-      cpp_execution_contexts.create_async_local_cpp_execution_context
+      execution_contexts.create_async_local_cpp_execution_context
   )
   def test_init_raises_type_error_with_iterator(self, iterator):
 
@@ -119,7 +119,7 @@ class PrefetchingDataSourceIteratorTest(
       ('list', [True, 1, 'a']),
   )
   @context_stack_test_utils.with_context(
-      cpp_execution_contexts.create_async_local_cpp_execution_context
+      execution_contexts.create_async_local_cpp_execution_context
   )
   def test_init_raises_type_error_with_total_rounds(self, total_rounds):
     mock_iterator = mock.create_autospec(
@@ -143,7 +143,7 @@ class PrefetchingDataSourceIteratorTest(
       ('list', [True, 1, 'a']),
   )
   @context_stack_test_utils.with_context(
-      cpp_execution_contexts.create_async_local_cpp_execution_context
+      execution_contexts.create_async_local_cpp_execution_context
   )
   def test_init_raises_type_error_with_num_rounds_to_prefetch(
       self, num_rounds_to_prefetch
@@ -169,7 +169,7 @@ class PrefetchingDataSourceIteratorTest(
       ('list', [True, 1, 'a']),
   )
   @context_stack_test_utils.with_context(
-      cpp_execution_contexts.create_async_local_cpp_execution_context
+      execution_contexts.create_async_local_cpp_execution_context
   )
   def test_init_raises_type_error_with_num_clients_to_prefetch(
       self, num_clients_to_prefetch
@@ -195,7 +195,7 @@ class PrefetchingDataSourceIteratorTest(
       ('list', [True, 1, 'a']),
   )
   @context_stack_test_utils.with_context(
-      cpp_execution_contexts.create_async_local_cpp_execution_context
+      execution_contexts.create_async_local_cpp_execution_context
   )
   def test_init_raises_type_error_with_prefetch_threshold(
       self, prefetch_threshold
@@ -220,7 +220,7 @@ class PrefetchingDataSourceIteratorTest(
       ('negative', -1),
   )
   @context_stack_test_utils.with_context(
-      cpp_execution_contexts.create_async_local_cpp_execution_context
+      execution_contexts.create_async_local_cpp_execution_context
   )
   def test_init_raises_value_error_with_num_clients_to_prefetch(
       self, num_clients_to_prefetch
@@ -241,7 +241,7 @@ class PrefetchingDataSourceIteratorTest(
       )
 
   @context_stack_test_utils.with_context(
-      cpp_execution_contexts.create_sync_local_cpp_execution_context
+      execution_contexts.create_sync_local_cpp_execution_context
   )
   def test_init_raises_runtime_error_with_context(self):
     mock_iterator = mock.create_autospec(
@@ -264,7 +264,7 @@ class PrefetchingDataSourceIteratorTest(
       ('two', 2),
   )
   @context_stack_test_utils.with_context(
-      cpp_execution_contexts.create_async_local_cpp_execution_context
+      execution_contexts.create_async_local_cpp_execution_context
   )
   async def test_select_returns_data_with_num_clients(self, num_clients):
     mock_iterator = mock.create_autospec(
@@ -295,7 +295,7 @@ class PrefetchingDataSourceIteratorTest(
     self.assertEqual(actual_value, expected_value)
 
   @context_stack_test_utils.with_context(
-      cpp_execution_contexts.create_async_local_cpp_execution_context
+      execution_contexts.create_async_local_cpp_execution_context
   )
   def test_init_prefetches_data(self):
     num_rounds_to_prefetch = 3
@@ -328,7 +328,7 @@ class PrefetchingDataSourceIteratorTest(
     self.assertLen(iterator._prefetched_data, num_rounds_to_prefetch)
 
   @context_stack_test_utils.with_context(
-      cpp_execution_contexts.create_async_local_cpp_execution_context
+      execution_contexts.create_async_local_cpp_execution_context
   )
   def test_data_is_prefetched_when_at_or_below_threshold(self):
     num_rounds_to_prefetch = 3
@@ -371,7 +371,7 @@ class PrefetchingDataSourceIteratorTest(
     self.assertLen(iterator._prefetched_data, num_rounds_to_prefetch)
 
   @context_stack_test_utils.with_context(
-      cpp_execution_contexts.create_async_local_cpp_execution_context
+      execution_contexts.create_async_local_cpp_execution_context
   )
   def test_data_is_not_prefetched_when_not_below_threshold(self):
     num_rounds_to_prefetch = 3
@@ -420,7 +420,7 @@ class PrefetchingDataSourceIteratorTest(
     self.assertLen(iterator._prefetched_data, expected_prefetched_data_size)
 
   @context_stack_test_utils.with_context(
-      cpp_execution_contexts.create_async_local_cpp_execution_context
+      execution_contexts.create_async_local_cpp_execution_context
   )
   def test_data_is_prefeched_only_for_rounds_remaining(self):
     num_rounds_to_prefetch = 3
@@ -473,7 +473,7 @@ class PrefetchingDataSourceIteratorTest(
       ('list', []),
   )
   @context_stack_test_utils.with_context(
-      cpp_execution_contexts.create_async_local_cpp_execution_context
+      execution_contexts.create_async_local_cpp_execution_context
   )
   def test_select_raises_type_error_with_num_clients(self, num_clients):
     mock_iterator = mock.create_autospec(
@@ -498,7 +498,7 @@ class PrefetchingDataSourceIteratorTest(
       ('different', 4),
   )
   @context_stack_test_utils.with_context(
-      cpp_execution_contexts.create_async_local_cpp_execution_context
+      execution_contexts.create_async_local_cpp_execution_context
   )
   def test_select_raises_value_error_with_num_clients(self, num_clients):
     mock_iterator = mock.create_autospec(
@@ -518,7 +518,7 @@ class PrefetchingDataSourceIteratorTest(
       iterator.select(num_clients)
 
   @context_stack_test_utils.with_context(
-      cpp_execution_contexts.create_async_local_cpp_execution_context
+      execution_contexts.create_async_local_cpp_execution_context
   )
   def test_select_raises_runtime_error_with_too_many_rounds(self):
     mock_iterator = mock.create_autospec(
@@ -545,7 +545,7 @@ class PrefetchingDataSourceIteratorTest(
       iterator.select(num_clients=3)
 
   @context_stack_test_utils.with_context(
-      cpp_execution_contexts.create_async_local_cpp_execution_context
+      execution_contexts.create_async_local_cpp_execution_context
   )
   def test_serializable(self):
     stub_iterator = _TestDataSourceIterator()
@@ -570,7 +570,7 @@ class PrefetchingDataSourceIteratorTest(
 class PrefetchingDataSourceTest(parameterized.TestCase):
 
   @context_stack_test_utils.with_context(
-      cpp_execution_contexts.create_async_local_cpp_execution_context
+      execution_contexts.create_async_local_cpp_execution_context
   )
   def test_init_does_not_raise_type_error(self):
     mock_data_source = mock.create_autospec(
@@ -596,7 +596,7 @@ class PrefetchingDataSourceTest(parameterized.TestCase):
       ('list', [True, 1, 'a']),
   )
   @context_stack_test_utils.with_context(
-      cpp_execution_contexts.create_async_local_cpp_execution_context
+      execution_contexts.create_async_local_cpp_execution_context
   )
   def test_init_raises_type_error_with_data_source(self, data_source):
 
@@ -615,7 +615,7 @@ class PrefetchingDataSourceTest(parameterized.TestCase):
       ('list', [True, 1, 'a']),
   )
   @context_stack_test_utils.with_context(
-      cpp_execution_contexts.create_async_local_cpp_execution_context
+      execution_contexts.create_async_local_cpp_execution_context
   )
   def test_init_raises_type_error_with_total_rounds(self, total_rounds):
     mock_data_source = mock.create_autospec(
@@ -637,7 +637,7 @@ class PrefetchingDataSourceTest(parameterized.TestCase):
       ('list', [True, 1, 'a']),
   )
   @context_stack_test_utils.with_context(
-      cpp_execution_contexts.create_async_local_cpp_execution_context
+      execution_contexts.create_async_local_cpp_execution_context
   )
   def test_init_raises_type_error_with_num_rounds_to_prefetch(
       self, num_rounds_to_prefetch
@@ -661,7 +661,7 @@ class PrefetchingDataSourceTest(parameterized.TestCase):
       ('list', [True, 1, 'a']),
   )
   @context_stack_test_utils.with_context(
-      cpp_execution_contexts.create_async_local_cpp_execution_context
+      execution_contexts.create_async_local_cpp_execution_context
   )
   def test_init_raises_type_error_with_num_clients_to_prefetch(
       self, num_clients_to_prefetch
@@ -685,7 +685,7 @@ class PrefetchingDataSourceTest(parameterized.TestCase):
       ('list', [True, 1, 'a']),
   )
   @context_stack_test_utils.with_context(
-      cpp_execution_contexts.create_async_local_cpp_execution_context
+      execution_contexts.create_async_local_cpp_execution_context
   )
   def test_init_raises_type_error_with_prefetch_threshold(
       self, prefetch_threshold
@@ -708,7 +708,7 @@ class PrefetchingDataSourceTest(parameterized.TestCase):
       ('negative', -1),
   )
   @context_stack_test_utils.with_context(
-      cpp_execution_contexts.create_async_local_cpp_execution_context
+      execution_contexts.create_async_local_cpp_execution_context
   )
   def test_init_raises_value_error_with_num_clients_to_prefetch(
       self, num_clients_to_prefetch
