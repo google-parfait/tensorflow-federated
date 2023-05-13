@@ -33,14 +33,9 @@ from tensorflow_federated.python.program.logging_release_manager import LoggingR
 from tensorflow_federated.python.program.memory_release_manager import MemoryReleaseManager
 from tensorflow_federated.python.program.native_platform import AwaitableValueReference
 from tensorflow_federated.python.program.native_platform import NativeFederatedContext
-# TODO(b/268497846): Temporarily disable the `PrefetchingDataSource`, this can
-# be added back to the API surface once the source of the flaky tests can be
-# resolved.
-# pylint: disable=line-too-long
-# from tensorflow_federated.python.program.prefetching_data_source import FetchedValue
-# from tensorflow_federated.python.program.prefetching_data_source import PrefetchingDataSource
-# from tensorflow_federated.python.program.prefetching_data_source import PrefetchingDataSourceIterator
-# pylint: enable=line-too-long
+from tensorflow_federated.python.program.prefetching_data_source import FetchedValue
+from tensorflow_federated.python.program.prefetching_data_source import PrefetchingDataSource
+from tensorflow_federated.python.program.prefetching_data_source import PrefetchingDataSourceIterator
 from tensorflow_federated.python.program.program_state_manager import ProgramStateManager
 from tensorflow_federated.python.program.program_state_manager import ProgramStateManagerStateAlreadyExistsError
 from tensorflow_federated.python.program.program_state_manager import ProgramStateManagerStateNotFoundError
