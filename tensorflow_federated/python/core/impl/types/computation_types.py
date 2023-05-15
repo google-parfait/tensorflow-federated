@@ -1036,7 +1036,7 @@ def at_clients(type_spec: object, all_equal: bool = False) -> FederatedType:
 
 
 def to_type(
-    spec: ...,
+    spec: object,
 ) -> Union[TensorType, StructType, StructWithPythonType, SequenceType]:
   """Converts the argument into an instance of `tff.Type`.
 
