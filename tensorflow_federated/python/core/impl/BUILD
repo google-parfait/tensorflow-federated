@@ -24,7 +24,6 @@ package_group(
         "//tensorflow_federated/python/simulation:simulation_packages",
     ],
     packages = [
-        # Namespace visibility
         "//tensorflow_federated",
     ],
 )
