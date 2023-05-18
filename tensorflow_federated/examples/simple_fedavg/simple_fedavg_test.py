@@ -97,7 +97,7 @@ def _setup_local_context(
   )
   server_mesh = mesh if use_dtensor_stack_on_server else None
   client_mesh = mesh if use_dtensor_stack_on_client else None
-  tff._native_cpp_execution_contexts.set_sync_experimental_distributed_cpp_execution_context(
+  tff.google.backends.native.set_sync_experimental_distributed_cpp_execution_context(
       distributed_config=tff._native_cpp_execution_contexts.DistributedConfiguration(
           server_mesh=server_mesh,
           client_mesh=client_mesh,
