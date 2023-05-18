@@ -74,23 +74,21 @@ main() {
   pip --version
   ldd --version
 
-  # Compress the worker binary.
-  xz --version
-  xz --extreme --keep "tensorflow_federated/data/worker_binary"
-  xz --list "tensorflow_federated/data/worker_binary.xz"
-
-  local actual_size="$(du "tensorflow_federated/data/worker_binary.xz" | sed $'s/\t.*//')"
-  local maximum_size=50000
-  if ["${actual_size}" -ge "${maximum_size}"]; then
-    echo "Expected the file size of the worker_binary to be less than ${maximum_size}, it was ${actual_size}." 1>&2
-  fi
-
   # Build the Python package.
   pip install --upgrade setuptools wheel
   # The manylinux tag should match GLIBC version returned by `ldd --version`.
   python "tensorflow_federated/tools/python_package/setup.py" bdist_wheel \
       --plat-name=manylinux_2_31_x86_64
   cp "${temp_dir}/dist/"* "${output_dir}"
+
+  # Check wheel file sizes.
+  local maximum_size=80000000  # 80 MiB
+  for package_file in "${temp_dir}"/dist/tensorflow_federated-*.whl; do
+    local actual_size="$(du -b "${package_file}" | cut -f1)"
+    if [ "${actual_size}" -ge "${maximum_size}" ]; then
+      echo "Expected $(basename ${package_file}) to be less than ${maximum_size} bytes; it was ${actual_size}." 1>&2
+    fi
+  done
 
   # Cleanup.
   deactivate

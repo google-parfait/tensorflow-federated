@@ -13,11 +13,9 @@
 # limitations under the License.
 """Execution contexts for the native backend."""
 
-import lzma
 import os
 import os.path
 import signal
-import stat
 import subprocess
 import sys
 import time
@@ -40,29 +38,6 @@ _GRPC_CHANNEL_OPTIONS = [
     ('grpc.max_receive_message_length', _GRPC_MAX_MESSAGE_LENGTH_BYTES),
     ('grpc.max_send_message_length', _GRPC_MAX_MESSAGE_LENGTH_BYTES),
 ]
-
-
-def _decompress_file(compressed_path, output_path):
-  """Decompresses a compressed file to the given `output_path`."""
-  if not os.path.isfile(compressed_path):
-    raise FileNotFoundError(
-        f'Did not find a compressed file at: {compressed_path}'
-    )
-
-  with lzma.open(compressed_path) as compressed_file:
-    contents = compressed_file.read()
-
-  with open(output_path, 'wb') as binary_file:
-    binary_file.write(contents)
-
-  os.chmod(
-      output_path,
-      stat.S_IRUSR |
-      stat.S_IWUSR |
-      stat.S_IXUSR |
-      stat.S_IRGRP |
-      stat.S_IXGRP |
-      stat.S_IXOTH)  # pyformat: disable
 
 
 def local_cpp_executor_factory(
@@ -97,18 +72,7 @@ def local_cpp_executor_factory(
 
   if not os.path.isfile(binary_path):
     logging.debug('Did not find a worker binary at: %s', binary_path)
-    compressed_path = os.path.join(data_dir, f'{binary_name}.xz')
-
-    try:
-      _decompress_file(compressed_path, binary_path)
-      logging.debug(
-          'Did not find a compressed worker binary at: %s', compressed_path
-      )
-    except FileNotFoundError as e:
-      raise RuntimeError(
-          f'Expected either a worker binary at {binary_path} or a compressed '
-          f'worker binary at {compressed_path}, found neither.'
-      ) from e
+    raise RuntimeError(f'Expected a worker binary at {binary_path}.')
   else:
     logging.debug('Found a worker binary at: %s', binary_path)
 

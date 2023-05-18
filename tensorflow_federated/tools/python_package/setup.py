@@ -98,7 +98,7 @@ setuptools.setup(
     name=PROJECT_NAME,
     version=VERSION,
     package_data={
-        'tensorflow_federated': ['data/worker_binary.xz'],
+        'tensorflow_federated': ['data/worker_binary'],
     },
     description=DOCLINES[0],
     long_description='\n'.join(DOCLINES[2:]),
