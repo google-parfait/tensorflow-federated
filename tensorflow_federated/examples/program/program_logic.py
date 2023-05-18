@@ -381,7 +381,7 @@ async def train_federated_model(
   # this program logic and skip unnecessary steps.
   if program_state_manager is not None:
     initial_state = await tff.program.materialize_value(initial_state)
-    structure = _ProgramState(initial_state, 0)
+    structure = _ProgramState(initial_state, round_num=0)
     program_state, version = await program_state_manager.load_latest(structure)
 
     # TODO(b/271445312): Cast `program_state` to `_ProgramState`. `TypeVar`s are
