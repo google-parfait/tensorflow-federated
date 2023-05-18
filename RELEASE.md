@@ -1,3 +1,22 @@
+# Release 0.58.0
+
+## Major Features and Improvements
+
+*   Updated algorithms built from `tff.learning.models.FunctionalModel` to allow
+    nested outputs.
+*   Added the `PrefetchingDataSource` back to the `tff.program` API now that the
+    flakiness has been fixed.
+
+## Bug Fixes
+
+*   Changed return type of
+    `tff.simulation.compose_dataset_computation_with_learning_process` to be a
+    `tff.learning.templates.LearningProcess`.
+*   Fixed flaky tests in `prefetching_data_source_test`.
+*   Fixed type annotations and lint errors.
+*   Cleaned up error messages and typing information in
+    `tff.learning.optimizers`.
+
 # Release 0.57.0
 
 ## Major Features and Improvements
