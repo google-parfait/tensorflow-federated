@@ -140,8 +140,14 @@ class AdagradTest(optimizer_test_utils.TestCase, parameterized.TestCase):
     )
 
   @parameterized.named_parameters(
-      ('negative_lr', -1.0, 0.1, 1e-7, 'learning rate'),
-      ('negative_preconditioner', 1.0, -0.1, 1e-7, 'preconditioner'),
+      ('negative_lr', -1.0, 0.1, 1e-7, 'learning_rate'),
+      (
+          'negative_preconditioner',
+          1.0,
+          -0.1,
+          1e-7,
+          'initial_preconditioner_value',
+      ),
       ('negative_epsilon', 1.0, 0.1, -1e-7, 'epsilon'),
   )
   def test_invalid_args_raises(self, lr, preconditioner, epsilon, regex):

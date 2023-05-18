@@ -18,7 +18,6 @@ from typing import Any, Optional, TypeVar
 
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.learning.optimizers import optimizer
 
@@ -32,13 +31,22 @@ Hparams = TypeVar('Hparams', bound=collections.OrderedDict[str, float])
 class _SGD(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
   """Gradient descent optimizer, see `build_sgdm` for details."""
 
-  def __init__(self, learning_rate: float, momentum: Optional[float] = None):
+  def __init__(
+      self,
+      learning_rate: optimizer.Float,
+      momentum: Optional[optimizer.Float] = None,
+  ):
     """Initializes SGD optimizer."""
-    py_typecheck.check_non_negative_float(learning_rate, 'learning rate')
+    if learning_rate < 0.0:
+      raise ValueError(
+          f'SGD `learning_rate` must be nonnegative, found {learning_rate}.'
+      )
     if momentum is not None:
-      _check_momentum(momentum)
-
-    if momentum is not None and momentum > 0:
+      if momentum < 0.0 or momentum > 1.0:
+        raise ValueError(
+            'SGD `momentum` must be `None` or in the range [0, 1], found '
+            f'{momentum}.'
+        )
       self._hparams_keys = [optimizer.LEARNING_RATE_KEY, _MOMENTUM_KEY]
     else:
       self._hparams_keys = [optimizer.LEARNING_RATE_KEY]
@@ -97,14 +105,9 @@ class _SGD(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
     return structure.update_struct(state, **hparams)
 
 
-def _check_momentum(momentum):
-  py_typecheck.check_type(momentum, float)
-  if momentum < 0.0 or momentum >= 1.0:
-    raise ValueError(f'Momentum must be between 0.0 and 1.0, found {momentum}')
-
-
 def build_sgdm(
-    learning_rate: float = 0.01, momentum: Optional[float] = None
+    learning_rate: optimizer.Float = 0.01,
+    momentum: Optional[optimizer.Float] = None,
 ) -> optimizer.Optimizer:
   """Returns a `tff.learning.optimizers.Optimizer` for momentum SGD.
 
@@ -128,6 +131,7 @@ def build_sgdm(
 
   Args:
     learning_rate: A positive float for learning rate, default to 0.01.
-    momentum: A float between 0.0 and 1.0 for momentum.
+    momentum: An optional float between 0.0 and 1.0. If `None`, no momentum is
+      used.
   """
   return _SGD(learning_rate=learning_rate, momentum=momentum)

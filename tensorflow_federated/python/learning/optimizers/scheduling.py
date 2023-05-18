@@ -18,14 +18,14 @@ from collections.abc import Callable
 
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.learning.optimizers import optimizer as optimizer_base
 
 _LEARNING_RATE_KEY = optimizer_base.LEARNING_RATE_KEY
 
 
 def schedule_learning_rate(
-    optimizer: optimizer_base.Optimizer, schedule_fn: Callable[[int], float]
+    optimizer: optimizer_base.Optimizer,
+    schedule_fn: Callable[[optimizer_base.Int], optimizer_base.Float],
 ) -> optimizer_base.Optimizer:
   """Returns an optimizer with scheduled learning rate.
 
@@ -46,6 +46,11 @@ def schedule_learning_rate(
       learning rate stored under the `tff.learning.optimizers.LEARNING_RATE_KEY`
       key.
   """
+  if not isinstance(optimizer, optimizer_base.Optimizer):
+    raise TypeError(
+        f'Found optimizer {optimizer}. To apply `schedule_learning_rate`, you '
+        'must pass a `tff.learning.optimizers.Optimizer`.'
+    )
   return _ScheduledLROptimizer(optimizer, schedule_fn)
 
 
@@ -55,10 +60,8 @@ class _ScheduledLROptimizer(optimizer_base.Optimizer):
   def __init__(
       self,
       optimizer: optimizer_base.Optimizer,
-      schedule_fn: Callable[[int], float],
+      schedule_fn: Callable[[optimizer_base.Int], optimizer_base.Float],
   ):
-    py_typecheck.check_type(optimizer, optimizer_base.Optimizer)
-    py_typecheck.check_callable(schedule_fn)
     self._optimizer = optimizer
     self._schedule_fn = schedule_fn
 

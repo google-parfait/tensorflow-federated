@@ -18,10 +18,12 @@ import collections
 from collections.abc import Mapping, Sequence
 from typing import Any, Generic, TypeVar, Union
 
+import numpy as np
 import tensorflow as tf
 
-LEARNING_RATE_KEY = 'learning_rate'
-
+# Types related to optimizer hyperparameters
+Int = Union[int, tf.Tensor, np.number]
+Float = Union[float, tf.Tensor, np.number]
 State = TypeVar('State')
 Weights = TypeVar('Weights')
 Gradients = Any
@@ -32,6 +34,9 @@ _Structure = Union[
     Sequence['_Structure[T]'],
     Mapping[str, '_Structure[T]'],
 ]
+
+# Common attribute names for optimizers
+LEARNING_RATE_KEY = 'learning_rate'
 
 
 class Optimizer(abc.ABC, Generic[State, Weights, Hparams]):
@@ -68,7 +73,6 @@ class Optimizer(abc.ABC, Generic[State, Weights, Hparams]):
     Returns:
       Initial state of the optimizer. A (possibly nested) structure of tensors.
     """
-    pass
 
   @abc.abstractmethod
   def next(
@@ -89,7 +93,6 @@ class Optimizer(abc.ABC, Generic[State, Weights, Hparams]):
     Returns:
       A (state, weights) tuple representing the updated `state` and `weights`.
     """
-    pass
 
   def get_hparams(self, state: State) -> Hparams:
     """Returns a dictionary containing the optimizer state hyperparameters.

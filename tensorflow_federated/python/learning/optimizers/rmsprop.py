@@ -18,7 +18,6 @@ from typing import Any, TypeVar
 
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.learning.optimizers import optimizer
 
@@ -35,12 +34,24 @@ class _RmsProp(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
   """RMSprop optimizer, see `build_rmsprop` for details."""
 
   def __init__(
-      self, learning_rate: float, decay: float = 0.9, epsilon: float = 1e-7
+      self,
+      learning_rate: optimizer.Float,
+      decay: optimizer.Float = 0.9,
+      epsilon: optimizer.Float = 1e-7,
   ):
     """Initializes RMSprop optimizer."""
-    py_typecheck.check_non_negative_float(learning_rate, 'learning rate')
-    _check_decay(decay)
-    py_typecheck.check_non_negative_float(epsilon, 'epsilon')
+    if learning_rate < 0.0:
+      raise ValueError(
+          f'RMSProp `learning_rate` must be nonnegative, found {learning_rate}.'
+      )
+    if decay < 0.0 or decay > 1.0:
+      raise ValueError(
+          f'RMSProp `decay` must be in the interval [0.0, 1.0], found {decay}.'
+      )
+    if epsilon < 0.0:
+      raise ValueError(
+          f'RMSProp `epsilon` must be nonnegative, found {epsilon}.'
+      )
     self._lr = learning_rate
     self._decay = decay
     self._epsilon = epsilon
@@ -102,14 +113,10 @@ class _RmsProp(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
     return structure.update_struct(state, **hparams)
 
 
-def _check_decay(decay):
-  py_typecheck.check_type(decay, float)
-  if decay < 0.0 or decay >= 1.0:
-    raise ValueError('Decay must be equal to 0.0 or more, and less than 1.0.')
-
-
 def build_rmsprop(
-    learning_rate: float, decay: float = 0.9, epsilon: float = 1e-7
+    learning_rate: optimizer.Float,
+    decay: optimizer.Float = 0.9,
+    epsilon: optimizer.Float = 1e-7,
 ) -> optimizer.Optimizer:
   """Returns a `tff.learning.optimizers.Optimizer` for RMSprop.
 

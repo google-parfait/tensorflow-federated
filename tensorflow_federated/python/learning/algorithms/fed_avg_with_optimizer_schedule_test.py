@@ -143,6 +143,24 @@ class ClientScheduledFedAvgTest(parameterized.TestCase):
         client_optimizer_fn=optimizer_fn,
     )
 
+  @parameterized.named_parameters([
+      ('keras_optimizer', lambda x: tf.keras.optimizers.SGD()),
+      ('tff_optimizer', lambda x: sgdm.build_sgdm()),
+  ])
+  def test_constructs_with_tf_function(self, optimizer_fn):
+    @tf.function
+    def learning_rate_fn(round_num):
+      if round_num < 2:
+        return 0.1
+      else:
+        return 0.01
+
+    fed_avg_with_optimizer_schedule.build_weighted_fed_avg_with_optimizer_schedule(
+        model_fn=model_examples.LinearRegression,
+        client_learning_rate_fn=learning_rate_fn,
+        client_optimizer_fn=optimizer_fn,
+    )
+
   def test_raises_on_non_callable_model_fn(self):
     with self.assertRaises(TypeError):
       fed_avg_with_optimizer_schedule.build_weighted_fed_avg_with_optimizer_schedule(

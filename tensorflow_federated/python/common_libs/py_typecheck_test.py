@@ -213,28 +213,6 @@ class PyTypeCheckTest(parameterized.TestCase):
     self.assertFalse(py_typecheck.is_name_value_pair((None, 1), value_type=int))
     self.assertFalse(py_typecheck.is_name_value_pair((1, 1), value_type=int))
 
-  @parameterized.named_parameters(('0_0', 0.0), ('1_0', 1.0))
-  def test_check_non_negative_float_success(self, value):
-    try:
-      py_typecheck.check_non_negative_float(value)
-    except ValueError:
-      self.fail(
-          f'Function {py_typecheck.check_non_negative_float.__name__} '
-          'raised TypeError unexpectedly.'
-      )
-
-  def test_check_non_negative_float_raises_integer(self):
-    with self.assertRaises(TypeError):
-      py_typecheck.check_non_negative_float(1)
-
-  def test_check_non_negative_float_raises_negative_float(self):
-    with self.assertRaises(ValueError):
-      py_typecheck.check_non_negative_float(-1.0)
-
-  def test_check_non_negative_float_raises_label_in_message(self):
-    with self.assertRaisesRegex(ValueError, 'foo'):
-      py_typecheck.check_non_negative_float(-1.0, 'foo')
-
 
 if __name__ == '__main__':
   absltest.main()

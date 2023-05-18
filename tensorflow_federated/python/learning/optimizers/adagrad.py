@@ -18,7 +18,6 @@ from typing import Any, TypeVar
 
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.learning.optimizers import optimizer
 
@@ -35,16 +34,22 @@ class _Adagrad(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
 
   def __init__(
       self,
-      learning_rate: float,
-      initial_preconditioner_value: float = 0.1,
-      epsilon: float = 1e-7,
+      learning_rate: optimizer.Float,
+      initial_preconditioner_value: optimizer.Float = 0.1,
+      epsilon: optimizer.Float = 1e-7,
   ):
     """Initializes SGD optimizer."""
-    py_typecheck.check_non_negative_float(learning_rate, 'learning rate')
-    py_typecheck.check_non_negative_float(
-        initial_preconditioner_value, 'initial preconditioner value'
-    )
-    py_typecheck.check_non_negative_float(epsilon, 'epsilon')
+    if learning_rate < 0.0:
+      raise ValueError(
+          f'Adagrad `learning_rate` must be nonnegative, found {learning_rate}.'
+      )
+    if initial_preconditioner_value < 0.0:
+      raise ValueError(
+          'Adagrad `initial_preconditioner_value` must be nonnegative, found '
+          f'{initial_preconditioner_value}.'
+      )
+    if epsilon < 0.0:
+      raise ValueError(f'Adagrad epsilon must be nonnegative, found {epsilon}.')
     self._lr = learning_rate
     self._initial_precond = initial_preconditioner_value
     self._epsilon = epsilon
@@ -102,9 +107,9 @@ class _Adagrad(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
 
 
 def build_adagrad(
-    learning_rate: float,
-    initial_preconditioner_value: float = 0.1,
-    epsilon: float = 1e-7,
+    learning_rate: optimizer.Float,
+    initial_preconditioner_value: optimizer.Float = 0.1,
+    epsilon: optimizer.Float = 1e-7,
 ) -> optimizer.Optimizer:
   """Returns a `tff.learning.optimizers.Optimizer` for Adagrad.
 

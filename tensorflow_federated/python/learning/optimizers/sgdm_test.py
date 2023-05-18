@@ -162,9 +162,9 @@ class SGDTest(optimizer_test_utils.TestCase, parameterized.TestCase):
     )
 
   @parameterized.named_parameters(
-      ('negative_lr', -1.0, 0.9, 'learning rate'),
-      ('negative_momentum', 1.0, -0.9, 'Momentum'),
-      ('momentum_one', 1.0, 1.0, 'Momentum'),
+      ('negative_lr', -1.0, 0.9, 'learning_rate'),
+      ('negative_momentum', 1.0, -0.9, 'momentum'),
+      ('momentum_larger_than_one', 1.0, 1.1, 'momentum'),
   )
   def test_invalid_args_raises(self, lr, momentum, regex):
     with self.assertRaisesRegex(ValueError, regex):

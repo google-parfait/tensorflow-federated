@@ -22,7 +22,6 @@ py_library(
     srcs = ["adagrad.py"],
     deps = [
         ":optimizer",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
     ],
 )
@@ -42,7 +41,6 @@ py_library(
     srcs = ["adam.py"],
     deps = [
         ":optimizer",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
     ],
 )
@@ -139,7 +137,6 @@ py_library(
     srcs = ["rmsprop.py"],
     deps = [
         ":optimizer",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
     ],
 )
@@ -157,10 +154,7 @@ py_test(
 py_library(
     name = "scheduling",
     srcs = ["scheduling.py"],
-    deps = [
-        ":optimizer",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-    ],
+    deps = [":optimizer"],
 )
 
 py_test(
@@ -182,7 +176,6 @@ py_library(
     srcs = ["sgdm.py"],
     deps = [
         ":optimizer",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
     ],
 )
@@ -202,7 +195,6 @@ py_library(
     srcs = ["yogi.py"],
     deps = [
         ":optimizer",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
     ],
 )

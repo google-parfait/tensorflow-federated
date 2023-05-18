@@ -136,11 +136,11 @@ class AdamTest(optimizer_test_utils.TestCase, parameterized.TestCase):
     )
 
   @parameterized.named_parameters(
-      ('negative_lr', -1.0, 0.9, 0.999, 1e-7, 'learning rate'),
-      ('negative_beta_1', 1.0, -0.9, 0.999, 1e-7, 'Beta'),
-      ('beta_1_one', 1.0, 1.0, 0.999, 1e-7, 'Beta'),
-      ('negative_beta_2', 1.0, 0.9, -0.999, 1e-7, 'Beta'),
-      ('beta_2_one', 1.0, 0.9, 1.0, 1e-7, 'Beta'),
+      ('negative_lr', -1.0, 0.9, 0.999, 1e-7, 'learning_rate'),
+      ('negative_beta_1', 1.0, -0.9, 0.999, 1e-7, 'beta_1'),
+      ('beta_1_greater_than_1', 1.0, 1.1, 0.999, 1e-7, 'beta_1'),
+      ('negative_beta_2', 1.0, 0.9, -0.999, 1e-7, 'beta_2'),
+      ('beta_2_greater_than_1', 1.0, 0.9, 1.1, 1e-7, 'beta_2'),
       ('negative_epsilon', 1.0, 0.9, 0.999, -1e-7, 'epsilon'),
   )
   def test_invalid_args_raises(self, lr, beta_1, beta_2, epsilon, regex):

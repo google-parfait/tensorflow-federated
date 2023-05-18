@@ -18,7 +18,6 @@ from typing import Any, TypeVar
 
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.learning.optimizers import optimizer
 
@@ -45,17 +44,32 @@ class _Yogi(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
 
   def __init__(
       self,
-      learning_rate: float,
-      beta_1: float = 0.9,
-      beta_2: float = 0.999,
-      epsilon: float = 1e-3,
+      learning_rate: optimizer.Float,
+      beta_1: optimizer.Float = 0.9,
+      beta_2: optimizer.Float = 0.999,
+      epsilon: optimizer.Float = 1e-3,
       initial_preconditioner_value=1e-6,
   ):
     """Initializes Yogi optimizer."""
-    py_typecheck.check_non_negative_float(learning_rate, 'learning rate')
-    _check_beta(beta_1)
-    _check_beta(beta_2)
-    py_typecheck.check_non_negative_float(epsilon, 'epsilon')
+    if learning_rate < 0.0:
+      raise ValueError(
+          f'Yogi `learning_rate` must be nonnegative, found {learning_rate}.'
+      )
+    if beta_1 < 0.0 or beta_1 > 1.0:
+      raise ValueError(
+          f'Yogi `beta_1` must be in the range [0, 1], found {beta_1}.'
+      )
+    if beta_2 < 0.0 or beta_2 > 1.0:
+      raise ValueError(
+          f'Yogi `beta_2` must be in the range [0, 1], found {beta_2}.'
+      )
+    if epsilon < 0.0:
+      raise ValueError(f'Yogi `epsilon` must be nonnegative, found {epsilon}.')
+    if initial_preconditioner_value < 0.0:
+      raise ValueError(
+          'Yogi `initial_preconditioner_value` must be nonnegative, found '
+          f'{initial_preconditioner_value}.'
+      )
     self._lr = learning_rate
     self._beta_1 = beta_1
     self._beta_2 = beta_2
@@ -150,18 +164,12 @@ class _Yogi(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
     return structure.update_struct(state, **hparams)
 
 
-def _check_beta(beta):
-  py_typecheck.check_type(beta, float)
-  if beta < 0.0 or beta >= 1.0:
-    raise ValueError('Beta must be equal to 0.0 or more, and less than 1.0.')
-
-
 def build_yogi(
-    learning_rate: float,
-    beta_1: float = 0.9,
-    beta_2: float = 0.999,
-    epsilon: float = 1e-3,
-    initial_preconditioner_value=1e-6,
+    learning_rate: optimizer.Float,
+    beta_1: optimizer.Float = 0.9,
+    beta_2: optimizer.Float = 0.999,
+    epsilon: optimizer.Float = 1e-3,
+    initial_preconditioner_value: optimizer.Float = 1e-6,
 ) -> optimizer.Optimizer:
   """Returns a `tff.learning.optimizers.Optimizer` for Yogi.
 
