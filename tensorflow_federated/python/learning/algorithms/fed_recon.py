@@ -444,13 +444,14 @@ def build_fed_recon(
       reconstruct the local variables, with the global ones frozen, or the first
       stage described above.
     dataset_split_fn: A `tff.learning.models.ReconstructionDatasetSplitFn`
-      taking in asingle TF dataset and producing two TF datasets. The first is
-      iteratedover during reconstruction, and the second is iterated over
+      taking in a single TF dataset and producing two TF datasets. The first is
+      iterated over during reconstruction, and the second is iterated over
       post-reconstruction. This can be used to preprocess datasets to e.g.
       iterate over them for multiple epochs or use disjoint data for
       reconstruction and post-reconstruction. If None, split client data in half
       for each user, using one half for reconstruction and the other for
-      evaluation. See `tff.learning.reconstruction.build_dataset_split_fn` for
+      evaluation. See
+      `tff.learning.models.ReconstructionModel.build_dataset_split_fn` for
       options.
     client_weighting: A value of `tff.learning.ClientWeighting` that specifies a
       built-in weighting method, or a callable that takes the local metrics of
