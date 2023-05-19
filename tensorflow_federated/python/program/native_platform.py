@@ -223,7 +223,7 @@ async def _materialize_structure_of_value_references(
   elif type_signature.is_tensor():
     return await _materialize(value)
   else:
-    return value  # pytype: disable=bad-return-type  # numpy-scalars
+    raise NotImplementedError(f'Unexpected type found: {type_signature}.')
 
 
 class NativeFederatedContext(federated_context.FederatedContext):
