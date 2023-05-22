@@ -137,16 +137,14 @@ class CSVFileReleaseManager(
             'different `key_fieldname`.'
         )
       if values:
-        self._latest_key = int(values[-1][self._key_fieldname])  # pytype: disable=wrong-arg-types  # numpy-scalars
+        self._latest_key = int(values[-1][self._key_fieldname])
       else:
         self._latest_key = None
     else:
       self._write_values([self._key_fieldname], [])
       self._latest_key = None
 
-  def _read_values(
-      self,
-  ) -> tuple[list[str], list[dict[str, release_manager.ReleasableStructure]]]:
+  def _read_values(self) -> tuple[list[str], list[dict[str, str]]]:
     """Returns a tuple of fieldnames and values from the managed CSV."""
     with tf.io.gfile.GFile(self._file_path, 'r') as file:
       reader = csv.DictReader(file)

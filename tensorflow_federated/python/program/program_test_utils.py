@@ -29,30 +29,37 @@ from tensorflow_federated.python.program import structure_utils
 from tensorflow_federated.python.program import value_reference
 
 
+def _materialized_value_to_type(
+    value: value_reference.MaterializedValue,
+) -> computation_types.Type:
+  """Returns a `tff.Type` for the `value`."""
+  if isinstance(value, bool):
+    return computation_types.TensorType(tf.bool)
+  elif isinstance(value, int):
+    return computation_types.TensorType(tf.int32)
+  elif isinstance(value, str):
+    return computation_types.TensorType(tf.string)
+  elif isinstance(value, tf.data.Dataset):
+    return computation_types.SequenceType(tf.int32)
+  else:
+    raise NotImplementedError(f'Unexpected type found: {type(value)}.')
+
+
 class TestMaterializableValueReference(
     value_reference.MaterializableValueReference
 ):
   """A test implementation of `tff.program.MaterializableValueReference`."""
 
   def __init__(self, value: value_reference.MaterializedValue):
-    if isinstance(value, bool):
-      self._type_signature = computation_types.TensorType(tf.bool)
-    elif isinstance(value, int):
-      self._type_signature = computation_types.TensorType(tf.int32)
-    elif isinstance(value, str):
-      self._type_signature = computation_types.TensorType(tf.string)
-    elif isinstance(value, tf.data.Dataset):
-      self._type_signature = computation_types.SequenceType(tf.int32)
-    else:
-      raise NotImplementedError(f'Unexpected type found: {type(value)}.')
     self._value = value
+    self._type_signature = _materialized_value_to_type(value)
 
   @property
   def type_signature(self) -> value_reference.MaterializableTypeSignature:
-    return self._type_signature  # pytype: disable=attribute-error  # numpy-scalars
+    return self._type_signature
 
   async def get_value(self) -> value_reference.MaterializedValue:
-    return self._value  # pytype: disable=attribute-error  # numpy-scalars
+    return self._value
 
   def __eq__(self, other: object) -> bool:
     if self is other:
