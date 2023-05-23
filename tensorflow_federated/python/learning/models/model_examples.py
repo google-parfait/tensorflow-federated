@@ -26,7 +26,7 @@ from tensorflow_federated.python.learning.models import variable
 class LinearRegression(variable.VariableModel):
   """Example of a simple linear regression implemented directly."""
 
-  def __init__(self, feature_dim: int = 2):
+  def __init__(self, feature_dim: int = 2, has_unconnected: bool = False):
     # Define all the variables, similar to what Keras Layers and Models
     # do in build().
     self._feature_dim = feature_dim
@@ -45,9 +45,14 @@ class LinearRegression(variable.VariableModel):
         x=tf.TensorSpec([None, self._feature_dim], tf.float32),
         y=tf.TensorSpec([None, 1], tf.float32),
     )
+    self.has_unconnected = has_unconnected
+    if has_unconnected:
+      self._unconnected = tf.Variable(0.0, trainable=True)
 
   @property
   def trainable_variables(self) -> list[tf.Variable]:
+    if self.has_unconnected:
+      return [self._a, self._b, self._unconnected]
     return [self._a, self._b]
 
   @property
