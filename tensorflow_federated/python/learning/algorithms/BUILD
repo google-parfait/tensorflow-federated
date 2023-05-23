@@ -304,6 +304,7 @@ py_library(
         "//tensorflow_federated/python/learning/templates:distributors",
         "//tensorflow_federated/python/learning/templates:learning_process",
         "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
+        "//third_party/tensorflow/python:unconnected_gradients",
     ],
 )
 

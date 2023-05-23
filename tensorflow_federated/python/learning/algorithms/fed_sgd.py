@@ -27,6 +27,7 @@ from typing import Any, Optional, Union
 
 import tensorflow as tf
 
+from tensorflow.python.ops.unconnected_gradients import UnconnectedGradients
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -82,7 +83,11 @@ def _build_client_update(
 
       with tf.GradientTape() as tape:
         output = model.forward_pass(batch)
-      gradients = tape.gradient(output.loss, model_weights.trainable)
+      gradients = tape.gradient(
+          output.loss,
+          model_weights.trainable,
+          unconnected_gradients=UnconnectedGradients.ZERO,
+      )
       num_examples = tf.cast(output.num_examples, tf.float32)
       accumulated_gradients = tuple(
           accumulator + num_examples * gradient
@@ -244,7 +249,11 @@ def _build_functional_client_update(
         predictions = tf.nest.flatten(batch_output)[0]
         batch_num_examples = tf.shape(predictions)[0]
 
-        gradients = tape.gradient(batch_loss, trainable_weights)
+        gradients = tape.gradient(
+            batch_loss,
+            trainable_weights,
+            unconnected_gradients=UnconnectedGradients.ZERO,
+        )
         num_examples = tf.cast(batch_num_examples, tf.float32)
         accumulated_gradients = tuple(
             accumulator + num_examples * gradient
