@@ -36,9 +36,9 @@ class MaterializeValueTest(
       ('str', 'a', 'a'),
       ('tensor_int', tf.constant(1), tf.constant(1)),
       ('tensor_str', tf.constant('a'), tf.constant('a')),
-      ('tensor_array', tf.ones([3]), tf.ones([3])),
+      ('tensor_array', tf.constant([1] * 3), tf.constant([1] * 3)),
       ('numpy_int', np.int32(1), np.int32(1)),
-      ('numpy_array', np.ones([3]), np.ones([3])),
+      ('numpy_array', np.array([1] * 3, np.int32), np.array([1] * 3, np.int32)),
 
       # materializable value references
       ('materializable_value_reference_tensor',

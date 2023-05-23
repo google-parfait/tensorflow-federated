@@ -76,11 +76,11 @@ class FilteringReleaseManagerTest(
       ('tensor_int', tf.constant(1), computation_types.TensorType(tf.int32)),
       ('tensor_str', tf.constant('a'), computation_types.TensorType(tf.string)),
       ('tensor_array',
-       tf.ones([3], tf.int32),
+       tf.constant([1] * 3),
        computation_types.TensorType(tf.int32, [3])),
       ('numpy_int', np.int32(1), computation_types.TensorType(tf.int32)),
       ('numpy_array',
-       np.ones([3], np.int32),
+       np.array([1] * 3, np.int32),
        computation_types.TensorType(tf.int32, [3])),
 
       # materializable value references

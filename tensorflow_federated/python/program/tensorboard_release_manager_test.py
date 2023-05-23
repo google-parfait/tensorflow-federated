@@ -258,13 +258,13 @@ class TensorBoardReleaseManagerReleaseTest(
   @parameterized.named_parameters(
       # materialized values
       ('tensor_array',
-       tf.ones([3], tf.int32),
+       tf.constant([1] * 3),
        computation_types.TensorType(tf.int32, [3]),
-       [('', tf.ones([3], tf.int32))]),
+       [('', tf.constant([1] * 3))]),
       ('numpy_array',
-       np.ones([3], np.int32),
+       np.array([1] * 3, np.int32),
        computation_types.TensorType(tf.int32, [3]),
-       [('', np.ones([3], np.int32))]),
+       [('', np.array([1] * 3, np.int32))]),
 
       # materializable value references
       ('materializable_value_reference_sequence',
@@ -299,7 +299,7 @@ class TensorBoardReleaseManagerReleaseTest(
     release_mngr = tensorboard_release_manager.TensorBoardReleaseManager(
         summary_dir=summary_dir
     )
-    value = [1, tf.ones([3], tf.int32)]
+    value = [1, tf.constant([1] * 3)]
     type_signature = computation_types.StructWithPythonType(
         [
             tf.int32,
@@ -318,7 +318,7 @@ class TensorBoardReleaseManagerReleaseTest(
       call = mock_histogram.mock_calls[0]
       _, args, kwargs = call
       actual_name, actual_value = args
-      expected_name, expected_value = '1', tf.ones([3], tf.int32)
+      expected_name, expected_value = '1', tf.constant([1] * 3)
       self.assertEqual(actual_name, expected_name)
       self.assertAllEqual(actual_value, expected_value)
       self.assertEqual(kwargs, {'step': 1})

@@ -69,8 +69,8 @@ class CSVFileReleaseManager(
   structure containing value references, each value reference is materialized.
   The value is then flattened, converted to a `numpy.ndarray`, and then
   converted to a nested list of Python scalars, and released as a CSV file.
-  For example, `1` will be written as `'1'` and `tf.ones([2, 2])` will be
-  written as `'[[1.0, 1.0], [1.0, 1.0]'`.
+  For example, `1` will be written as `'1'` and `tf.constant([[1, 1], [1, 1])`
+  will be written as `'[[1, 1], [1, 1]'`.
 
   This manager can be configured to release values using a `save_mode` of either
   `CSVSaveMode.APPEND` or `CSVSaveMode.WRITE`.
