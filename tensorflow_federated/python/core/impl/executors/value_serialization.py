@@ -349,7 +349,8 @@ def serialize_value(
     TypeError: If the arguments are of the wrong types.
     ValueError: If the value is malformed.
   """
-  type_spec = computation_types.to_type(type_spec)
+  if type_spec is not None:
+    type_spec = computation_types.to_type(type_spec)
   if isinstance(value, computation_pb2.Computation):
     return _serialize_computation(value, type_spec)
   elif isinstance(value, computation_impl.ConcreteComputation):

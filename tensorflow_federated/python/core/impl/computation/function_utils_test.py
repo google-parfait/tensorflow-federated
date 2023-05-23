@@ -220,23 +220,41 @@ class FunctionUtilsTest(parameterized.TestCase):
   @parameterized.named_parameters(
       ('const', lambda: 10, None, None, None, 10),
       ('add_const', lambda x=1: x + 10, None, None, None, 11),
-      ('add_const_with_type', lambda x=1: x + 10, tf.int32, None, 20, 30),
-      ('add', lambda x, y: x + y, [tf.int32, tf.int32], None,
-       structure.Struct([('x', 5), ('y', 6)]), 11),
-      ('str_tuple', lambda *args: str(args), [tf.int32, tf.int32], True,
-       structure.Struct([(None, 5), (None, 6)]), '(5, 6)'),
-      ('str_tuple_with_named_type', lambda *args: str(args),
-       [('x', tf.int32), ('y', tf.int32)], False,
+      ('add_const_with_type',
+       lambda x=1: x + 10,
+       computation_types.TensorType(tf.int32),
+       None,
+       20,
+       30),
+      ('add',
+       lambda x, y: x + y,
+       computation_types.StructType([tf.int32, tf.int32]),
+       None,
+       structure.Struct([('x', 5), ('y', 6)]),
+       11),
+      ('str_tuple',
+       lambda *args: str(args),
+       computation_types.StructType([tf.int32, tf.int32]),
+       True,
+       structure.Struct([(None, 5), (None, 6)]),
+       '(5, 6)'),
+      ('str_tuple_with_named_type',
+       lambda *args: str(args),
+       computation_types.StructType([('x', tf.int32), ('y', tf.int32)]),
+       False,
        structure.Struct([('x', 5), ('y', 6)]),
        '(Struct([(\'x\', 5), (\'y\', 6)]),)'),
-      ('str_ing', lambda x: str(x),  # pylint: disable=unnecessary-lambda
-       [tf.int32], None, structure.Struct([(None, 10)]), '[10]'),
+      ('str_ing',
+       lambda x: str(x),  # pylint: disable=unnecessary-lambda
+       computation_types.StructWithPythonType([tf.int32], list),
+       None,
+       structure.Struct([(None, 10)]),
+       '[10]'),
   )
   # pyformat: enable
   def test_wrap_as_zero_or_one_arg_callable(
       self, fn, parameter_type, unpack, arg, expected_result
   ):
-    parameter_type = computation_types.to_type(parameter_type)
     unpack_arguments = function_utils.create_argument_unpacking_fn(
         fn, parameter_type, unpack
     )
