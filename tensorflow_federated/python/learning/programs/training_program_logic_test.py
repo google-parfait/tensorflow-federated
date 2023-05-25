@@ -152,8 +152,7 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
 
   def setUp(self):
     super().setUp()
-    # Print all failure explanations.
-    self.maxDiff = None  # pylint: disable=invalid-name
+    self.maxDiff = None
 
   def test_is_train_model_program_logic(self):
     self.assertIsInstance(

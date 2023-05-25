@@ -555,8 +555,7 @@ class RunEvaluationTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
 
   def setUp(self):
     super().setUp()
-    # Do not truncate failure explanations by setting maxDiff = None.
-    self.maxDiff = None  # pylint: disable=invalid-name
+    self.maxDiff = None
     self.time_now_called = [False]
     self.end_time = datetime.datetime(2023, 4, 2, 5, 15)
     self.time_before_end = self.end_time - datetime.timedelta(seconds=1)
