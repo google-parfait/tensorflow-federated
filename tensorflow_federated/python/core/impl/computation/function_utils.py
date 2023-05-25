@@ -184,7 +184,8 @@ def pack_args_into_struct(
   Raises:
     TypeError: if the arguments are of the wrong computation_types.
   """
-  type_spec = computation_types.to_type(type_spec)
+  if type_spec is not None:
+    type_spec = computation_types.to_type(type_spec)
   if not type_spec:
     return structure.Struct(
         [(None, arg) for arg in args] + list(kwargs.items())

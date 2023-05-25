@@ -611,7 +611,7 @@ class FederatedTypeTest(absltest.TestCase):
     self.assertEqual(actual_type, expected_type)
 
 
-class ToTypeTest(absltest.TestCase):
+class ToTypeTest(parameterized.TestCase):
 
   def test_tensor_type(self):
     s = computation_types.TensorType(tf.int32)
@@ -853,6 +853,14 @@ class ToTypeTest(absltest.TestCase):
     )
     self.assertEqual(t.values, computation_types.TensorType(tf.int32, [None]))
     self.assertEqual(t.dense_shape, computation_types.TensorType(tf.int64, [1]))
+
+  @parameterized.named_parameters(
+      ('none', None),
+      ('object', object()),
+  )
+  def test_raises_type_error(self, obj):
+    with self.assertRaises(TypeError):
+      _ = computation_types.to_type(obj)
 
 
 class RepresentationTest(absltest.TestCase):

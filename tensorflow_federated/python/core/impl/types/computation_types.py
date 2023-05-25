@@ -24,7 +24,7 @@ import collections
 from collections.abc import Hashable, Iterable, Iterator, Mapping
 import difflib
 import enum
-from typing import Optional, TypeVar, Union
+from typing import Optional, TypeVar
 import weakref
 
 import attr
@@ -1035,9 +1035,7 @@ def at_clients(type_spec: object, all_equal: bool = False) -> FederatedType:
   return FederatedType(type_spec, placements.CLIENTS, all_equal=all_equal)
 
 
-def to_type(
-    spec: object,
-) -> Union[TensorType, StructType, StructWithPythonType, SequenceType]:
+def to_type(obj: object) -> Type:
   """Converts the argument into an instance of `tff.Type`.
 
   Examples of arguments convertible to tensor types:
@@ -1090,31 +1088,31 @@ def to_type(
   ```
 
   Args:
-    spec: Either an instance of `tff.Type`, or an argument convertible to
+    obj: Either an instance of `tff.Type`, or an argument convertible to
       `tff.Type`.
 
   Returns:
-    An instance of `tff.Type` corresponding to the given `spec`.
+    An instance of `tff.Type` corresponding to the given `obj`.
   """
   # TODO(b/113112108): Add multiple examples of valid type specs here in the
   # comments, in addition to the unit test.
-  if spec is None or isinstance(spec, Type):
-    return spec
-  elif _is_dtype_spec(spec):
-    return TensorType(spec)
-  elif isinstance(spec, tf.TensorSpec):
-    return TensorType(spec.dtype, spec.shape)
-  elif isinstance(spec, tf.data.DatasetSpec):
-    return SequenceType(element=to_type(spec.element_spec))
+  if isinstance(obj, Type):
+    return obj
+  elif _is_dtype_spec(obj):
+    return TensorType(obj)
+  elif isinstance(obj, tf.TensorSpec):
+    return TensorType(obj.dtype, obj.shape)
+  elif isinstance(obj, tf.data.DatasetSpec):
+    return SequenceType(element=to_type(obj.element_spec))
   elif (
-      isinstance(spec, tuple)
-      and (len(spec) == 2)
-      and _is_dtype_spec(spec[0])
+      isinstance(obj, tuple)
+      and (len(obj) == 2)
+      and _is_dtype_spec(obj[0])
       and (
-          isinstance(spec[1], tf.TensorShape)
+          isinstance(obj[1], tf.TensorShape)
           or (
-              isinstance(spec[1], (list, tuple))
-              and all((isinstance(x, int) or x is None) for x in spec[1])
+              isinstance(obj[1], (list, tuple))
+              and all((isinstance(x, int) or x is None) for x in obj[1])
           )
       )
   ):
@@ -1122,47 +1120,44 @@ def to_type(
     # instance of tf.dtypes.DType, and shape is either an instance of
     # tf.TensorShape, or a list, or a tuple that can be fed as argument into a
     # tf.TensorShape. We thus convert this into a TensorType.
-    return TensorType(spec[0], spec[1])
-  elif isinstance(spec, (list, tuple)):
-    if any(py_typecheck.is_name_value_pair(e) for e in spec):
+    return TensorType(obj[0], obj[1])
+  elif isinstance(obj, (list, tuple)):
+    if any(py_typecheck.is_name_value_pair(e) for e in obj):
       # The sequence has a (name, value) elements, the whole sequence is most
       # likely intended to be a `Struct`, do not store the Python
       # container.
-      return StructType(spec)
+      return StructType(obj)
     else:
-      return StructWithPythonType(spec, type(spec))
-  elif isinstance(spec, collections.OrderedDict):
-    return StructWithPythonType(spec, type(spec))
-  elif py_typecheck.is_attrs(spec):
-    return _to_type_from_attrs(spec)
-  elif isinstance(spec, Mapping):
+      return StructWithPythonType(obj, type(obj))
+  elif isinstance(obj, collections.OrderedDict):
+    return StructWithPythonType(obj, type(obj))
+  elif py_typecheck.is_attrs(obj):
+    return _to_type_from_attrs(obj)
+  elif isinstance(obj, Mapping):
     # This is an unsupported mapping, likely a `dict`. StructType adds an
     # ordering, which the original container did not have.
     raise TypeError(
         'Unsupported mapping type {}. Use collections.OrderedDict for '
-        'mappings.'.format(py_typecheck.type_string(type(spec)))
+        'mappings.'.format(py_typecheck.type_string(type(obj)))
     )
-  elif isinstance(spec, structure.Struct):
-    return StructType(structure.to_elements(spec))
-  elif isinstance(spec, tf.RaggedTensorSpec):
-    if spec.flat_values_spec is not None:
-      flat_values_type = to_type(spec.flat_values_spec)
+  elif isinstance(obj, structure.Struct):
+    return StructType(structure.to_elements(obj))
+  elif isinstance(obj, tf.RaggedTensorSpec):
+    if obj.flat_values_spec is not None:
+      flat_values_type = to_type(obj.flat_values_spec)
     else:
-      # We could provide a more specific shape here if `spec.shape is not None`:
-      # `flat_values_shape = [None] + spec.shape[spec.ragged_rank + 1:]`
+      # We could provide a more specific shape here if `obj.shape is not None`:
+      # `flat_values_shape = [None] + obj.shape[obj.ragged_rank + 1:]`
       # However, we can't go back from this type into a `tf.RaggedTensorSpec`,
       # meaning that round-tripping a `tf.RaggedTensorSpec` through
-      # `type_conversions.type_to_tf_structure(to_type(spec))`
+      # `type_conversions.type_to_tf_structure(to_type(obj))`
       # would *not* be a no-op: it would clear away the extra shape information,
       # leading to compilation errors. This round-trip is tested in
       # `type_conversions_test.py` to ensure correctness.
       flat_values_shape = tf.TensorShape(None)
-      flat_values_type = TensorType(spec.dtype, flat_values_shape)
+      flat_values_type = TensorType(obj.dtype, flat_values_shape)
     nested_row_splits_type = StructWithPythonType(
-        (
-            [(None, TensorType(spec.row_splits_dtype, [None]))]
-            * spec.ragged_rank
-        ),
+        ([(None, TensorType(obj.row_splits_dtype, [None]))] * obj.ragged_rank),
         tuple,
     )
     return StructWithPythonType(
@@ -1172,9 +1167,9 @@ def to_type(
         ],
         tf.RaggedTensor,
     )
-  elif isinstance(spec, tf.SparseTensorSpec):
-    dtype = spec.dtype
-    shape = spec.shape
+  elif isinstance(obj, tf.SparseTensorSpec):
+    dtype = obj.dtype
+    shape = obj.shape
     unknown_num_values = None
     rank = None if shape is None else shape.rank
     return StructWithPythonType(
@@ -1188,7 +1183,7 @@ def to_type(
   else:
     raise TypeError(
         'Unable to interpret an argument of type {} as a type spec.'.format(
-            py_typecheck.type_string(type(spec))
+            py_typecheck.type_string(type(obj))
         )
     )
 

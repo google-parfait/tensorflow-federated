@@ -485,9 +485,16 @@ class ComputationWrapper:
     # `... = xyz(lambda....).`
     # Any of the following arguments, if present, are the arguments to the
     # wrapper that are to be interpreted as the type specification.
-    fn_to_wrap = args[0]
+    fn_to_wrap, *fn_args = args
     if not tff_internal_types:
-      tff_internal_types = tuple(map(computation_types.to_type, args[1:]))
+      tff_internal_types = []
+      for arg in fn_args:
+        if arg is not None:
+          arg_type = computation_types.to_type(arg)
+        else:
+          arg_type = None
+        tff_internal_types.append(arg_type)
+      tff_internal_types = tuple(tff_internal_types)
     else:
       if len(args) > 1:
         raise TypeError(f'Expected no further arguments, found {args[1:]}.')
