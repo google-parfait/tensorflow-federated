@@ -179,7 +179,7 @@ class CreateStructureOfAwaitableReferencesTest(
        computation_types.TensorType(tf.int32),
        native_platform.AwaitableValueReference(
            _value_fn_factory(1), computation_types.TensorType(tf.int32))),
-      ('federated',
+      ('federated_server',
        _value_fn_factory(1),
        computation_types.FederatedType(tf.int32, placements.SERVER),
        native_platform.AwaitableValueReference(
@@ -290,7 +290,7 @@ class CreateStructureOfAwaitableReferencesTest(
 
   # pyformat: disable
   @parameterized.named_parameters(
-      ('federated', computation_types.FederatedType(
+      ('federated_clients', computation_types.FederatedType(
           tf.int32, placements.CLIENTS)),
       ('function', computation_types.FunctionType(tf.int32, tf.int32)),
       ('placement', computation_types.PlacementType()),
@@ -318,10 +318,15 @@ class MaterializeStructureOfValueReferencesTest(
            _value_fn_factory(1), computation_types.TensorType(tf.int32)),
        computation_types.TensorType(tf.int32),
        1),
-      ('federated',
+      ('federated_server',
        native_platform.AwaitableValueReference(
            _value_fn_factory(1), computation_types.TensorType(tf.int32)),
        computation_types.FederatedType(tf.int32, placements.SERVER),
+       1),
+      ('federated_clients',
+       native_platform.AwaitableValueReference(
+           _value_fn_factory(1), computation_types.TensorType(tf.int32)),
+       computation_types.FederatedType(tf.int32, placements.CLIENTS),
        1),
       ('struct_unnamed',
        [
@@ -410,6 +415,22 @@ class MaterializeStructureOfValueReferencesTest(
           value, type_signature
       )
 
+  # pyformat: disable
+  @parameterized.named_parameters(
+      ('function', computation_types.FunctionType(tf.int32, tf.int32)),
+      ('placement', computation_types.PlacementType()),
+  )
+  # pyformat: enable
+  async def test_raises_not_implemented_error_with_type_signature(
+      self, type_signature
+  ):
+    value = 1
+
+    with self.assertRaises(NotImplementedError):
+      await native_platform._materialize_structure_of_value_references(
+          value, type_signature
+      )
+
 
 class NativeFederatedContextTest(
     parameterized.TestCase, unittest.IsolatedAsyncioTestCase
@@ -431,6 +452,44 @@ class NativeFederatedContextTest(
   def test_init_raises_type_error_with_context(self, context):
     with self.assertRaises(TypeError):
       native_platform.NativeFederatedContext(context)
+
+  # pyformat: disable
+  @parameterized.named_parameters(
+      ('tensor',
+       computation_types.TensorType(tf.int32),
+       1),
+      ('sequence',
+       computation_types.SequenceType(tf.int32),
+       [1, 2, 3]),
+      ('federated_server',
+       computation_types.FederatedType(tf.int32, placements.SERVER),
+       1),
+      ('federated_clients',
+       computation_types.FederatedType(
+           tf.int32, placements.CLIENTS, all_equal=True
+       ),
+       1),
+      ('struct',
+       computation_types.StructWithPythonType([], list),
+       []),
+  )
+  # pyformat: enable
+  async def test_invoke_accepts_argument(self, type_signature, arg):
+    context = execution_contexts.create_async_local_cpp_execution_context()
+    context = native_platform.NativeFederatedContext(context)
+
+    @federated_computation.federated_computation(type_signature)
+    def _comp(value):
+      del value  # Unused.
+      return 1
+
+    try:
+      result = context.invoke(_comp, arg)
+      actual_value = await result.get_value()
+    except NotImplementedError:
+      self.fail('Raised `NotImplementedError` unexpectedly.')
+
+    self.assertEqual(actual_value, 1)
 
   # pyformat: disable
   @parameterized.named_parameters(

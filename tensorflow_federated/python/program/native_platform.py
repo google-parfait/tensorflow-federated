@@ -201,7 +201,7 @@ async def _materialize_structure_of_value_references(
     else:
       return value
 
-  if type_signature.is_struct():
+  if isinstance(type_signature, computation_types.StructType):
     value = structure.from_container(value)
     element_types = list(structure.iter_elements(type_signature))
     element_awaitables = [
@@ -211,16 +211,13 @@ async def _materialize_structure_of_value_references(
     elements = await asyncio.gather(*element_awaitables)
     elements = [(n, v) for v, (n, _) in zip(elements, element_types)]
     return structure.Struct(elements)
-  elif (
-      type_signature.is_federated()
-      and type_signature.placement == placements.SERVER
-  ):
+  elif isinstance(type_signature, computation_types.FederatedType):
     return await _materialize_structure_of_value_references(
         value, type_signature.member
     )
-  elif type_signature.is_sequence():
+  elif isinstance(type_signature, computation_types.SequenceType):
     return await _materialize(value)
-  elif type_signature.is_tensor():
+  elif isinstance(type_signature, computation_types.TensorType):
     return await _materialize(value)
   else:
     raise NotImplementedError(f'Unexpected type found: {type_signature}.')
