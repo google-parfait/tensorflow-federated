@@ -28,6 +28,7 @@ from typing import Optional, Union
 from absl import logging
 
 from tensorflow_federated.python.learning.programs import evaluation_program_logic
+from tensorflow_federated.python.learning.templates import composers
 from tensorflow_federated.python.learning.templates import learning_process
 from tensorflow_federated.python.program import data_source
 from tensorflow_federated.python.program import federated_context
@@ -86,9 +87,12 @@ async def _clear_finished_tasks(
   return pending_tasks
 
 
+# TODO(b/284509457): Revisit this API when `initialize` is changed to be a value
+# instead of `tff.Computation`.
 async def train_model(
     *,
     train_process: learning_process.LearningProcess,
+    initial_train_state: Optional[composers.LearningAlgorithmState] = None,
     train_data_source: data_source.FederatedDataSource,
     train_per_round_clients: int,
     train_total_rounds: int,
@@ -109,15 +113,26 @@ async def train_model(
   on the configuration of `evaluation_manager`, asynchronous evaluation loops
   will be spawned and executed in parallel.
 
-  This method will save the initial state (result of `train_process.initialize`)
-  using `program_state_manager`. If the state manager is  configured to keep the
-  first version (e.g.  `tff.program.FileStateProgramManager`'s `keep_first`
-  parameter), then round zero (the initialization) will be retained so that
-  future experiments can use the same starting point.
+  This method will save the initial state (result of `train_process.initialize`
+  or passed via `initial_train_state`) using `program_state_manager`. If the
+  state manager is  configured to keep the first version (e.g.
+  `tff.program.FileStateProgramManager`'s `keep_first` parameter), then round
+  zero (the initialization) will be retained so that future experiments can use
+  the same starting point.
+
+  If the `initial_train_state` is not None, its type signature should be the
+  same as the type_signature of the result of `train_process.initialize`.
 
   Args:
     train_process: A `tff.learning.templates.LearningProcess` to run for
-      training.
+      training. The state type of the `train_process` should be a
+      `tff.learning.templates.LearningAlgorithmState`, and the initial train
+      state can be provided using the `initial_train_state` argument.
+    initial_train_state: (Optional) A
+      `tff.learning.templates.LearningAlgorithmState` of the initial state of
+      the train process. Its type signature should match the `type_signature` of
+      the result of `train_process.initialize`. If not specified, use the
+      retsult of `train_process.initialize`.
     train_data_source: A `tff.program.FederatedDataSource` which returns client
       data used during training.
     train_per_round_clients: The number of clients per round of training.
@@ -136,6 +151,9 @@ async def train_model(
       `datetime.timedelta` to await before sending a new training checkpoint to
       `evaluation_manager.start_evaluation`. Note that the last training round
       will always be evaluated even if it does not satisfy the periodicity.
+
+  Raises:
+    ValueError: If the train state is None.
   """
   federated_context.check_in_federated_context()
 
@@ -151,9 +169,13 @@ async def train_model(
   # Try to load the latest program state; if the program logic failed on a
   # previous run, this program state can be used to restore the execution of
   # this program logic and skip unnecessary steps.
-  train_state = await value_reference.materialize_value(
-      train_process.initialize()
-  )
+  if initial_train_state is None:
+    initial_train_state = await value_reference.materialize_value(
+        train_process.initialize()
+    )
+  train_state = initial_train_state
+  if train_state is None:
+    raise ValueError('The initial train state is None.')
   program_state, version = await program_state_manager.load_latest(
       (train_state, 0)
   )

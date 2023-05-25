@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import collections
 import unittest
 from unittest import mock
 
@@ -23,6 +24,7 @@ from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.context_stack import context_stack_test_utils
 from tensorflow_federated.python.learning.programs import evaluation_program_logic
 from tensorflow_federated.python.learning.programs import vizier_program_logic
+from tensorflow_federated.python.learning.templates import composers
 from tensorflow_federated.python.learning.templates import learning_process
 from tensorflow_federated.python.program import data_source
 from tensorflow_federated.python.program import native_platform
@@ -34,6 +36,32 @@ def _create_mock_context() -> mock.Mock:
   return mock.create_autospec(
       native_platform.NativeFederatedContext, spec_set=True, instance=True
   )
+
+
+def _create_mock_train_process() -> mock.Mock:
+  mock_process = mock.create_autospec(
+      learning_process.LearningProcess, instance=True, spec_set=True
+  )
+  empty_state = composers.LearningAlgorithmState(
+      global_model_weights=(),
+      distributor=(),
+      client_work=(),
+      aggregator=(),
+      finalizer=(),
+  )
+  mock_process.initialize.return_value = empty_state
+  mock_process.next.return_value = learning_process.LearningProcessOutput(
+      state=empty_state,
+      metrics=collections.OrderedDict(
+          distributor=(),
+          client_work=collections.OrderedDict(train=collections.OrderedDict()),
+          aggregator=(),
+          finalizer=(),
+      ),
+  )
+  mock_process.get_hparams.return_value = collections.OrderedDict()
+  mock_process.set_hparams.return_value = empty_state
+  return mock_process
 
 
 class TrainModelWithVizierTest(
@@ -64,9 +92,7 @@ class TrainModelWithVizierTest(
         computation_base.Computation, spec_set=True
     )
     mock_train_model_program_logic = mock.AsyncMock()
-    mock_train_process = mock.create_autospec(
-        learning_process.LearningProcess, spec_set=True, instance=True
-    )
+    mock_train_process = _create_mock_train_process()
     mock_train_data_source = mock.create_autospec(
         data_source.FederatedDataSource, spec_set=True, instance=True
     )
@@ -78,6 +104,9 @@ class TrainModelWithVizierTest(
     )
     mock_model_output_manager = mock.create_autospec(
         release_manager.ReleaseManager, spec_set=True, instance=True
+    )
+    mock_model_output_manager_factory = mock.Mock(
+        return_value=mock_model_output_manager
     )
     mock_train_metrics_manager = mock.create_autospec(
         release_manager.ReleaseManager, spec_set=True, instance=True
@@ -97,61 +126,28 @@ class TrainModelWithVizierTest(
     mock_evaluation_manager_factory = mock.Mock(
         return_value=mock_evaluation_manager
     )
-    mock_initialize = mock.create_autospec(
-        computation_base.Computation, spec_set=True
-    )
-    mock_initialize_factory = mock.Mock(return_value=mock_initialize)
-    patched_vizier_program_logic = mock.patch.object(
-        vizier_program_logic,
-        '_create_initialize_factory',
-        return_value=mock_initialize_factory,
-    )
-    patched_learning_process = mock.patch.object(
-        learning_process,
-        'LearningProcess',
-        return_value=mock_train_process,
+
+    await vizier_program_logic.train_model_with_vizier(
+        study=mock_study,
+        total_trials=total_trials,
+        update_hparams=mock_update_hparams,
+        train_model_program_logic=mock_train_model_program_logic,
+        train_process=mock_train_process,
+        train_data_source=mock_train_data_source,
+        total_rounds=total_rounds,
+        num_clients=num_clients,
+        program_state_manager_factory=mock_program_state_manager_factory,
+        model_output_manager_factory=mock_model_output_manager_factory,
+        train_metrics_manager_factory=mock_train_metrics_manager_factory,
+        evaluation_manager_factory=mock_evaluation_manager_factory,
+        evaluation_periodicity=evaluation_periodicity,
     )
 
-    with (
-        patched_vizier_program_logic,
-        patched_learning_process as mock_learning_process,
-    ):
-      await vizier_program_logic.train_model_with_vizier(
-          study=mock_study,
-          total_trials=total_trials,
-          update_hparams=mock_update_hparams,
-          train_model_program_logic=mock_train_model_program_logic,
-          train_process=mock_train_process,
-          train_data_source=mock_train_data_source,
-          total_rounds=total_rounds,
-          num_clients=num_clients,
-          program_state_manager_factory=mock_program_state_manager_factory,
-          model_output_manager=mock_model_output_manager,
-          train_metrics_manager_factory=mock_train_metrics_manager_factory,
-          evaluation_manager_factory=mock_evaluation_manager_factory,
-          evaluation_periodicity=evaluation_periodicity,
-      )
-
-    # Assert that the `initialize_factory` is invoked for each trial.
-    expected_calls = [mock.call(x) for x in mock_trials]
-    self.assertLen(mock_initialize_factory.mock_calls, len(expected_calls))
-    mock_initialize_factory.assert_has_calls(expected_calls)
-
-    # Assert that a `LearningProcess` is constructed with a new initialize for
-    # each trial.
-    expected_calls = []
-    for _ in range(total_trials):
-      call = mock.call(
-          initialize_fn=mock_initialize,
-          next_fn=mock.ANY,
-          get_model_weights=mock.ANY,
-          set_model_weights=mock.ANY,
-          get_hparams_fn=mock.ANY,
-          set_hparams_fn=mock.ANY,
-      )
-      expected_calls.append(call)
-    self.assertLen(mock_learning_process.mock_calls, len(expected_calls))
-    mock_learning_process.assert_has_calls(expected_calls)
+    # Assert that `get_hparams`, `set_hparams`, and `update_hparams` are called
+    # for each trial.
+    self.assertLen(mock_train_process.get_hparams.mock_calls, total_trials)
+    self.assertLen(mock_train_process.set_hparams.mock_calls, total_trials)
+    self.assertLen(mock_update_hparams.mock_calls, total_trials)
 
     # Assert that the `program_state_manager_factory` is invoked for each trial.
     # expected_calls = [mock.call(x) for x in mock_trials]
@@ -181,6 +177,7 @@ class TrainModelWithVizierTest(
     expected_calls = []
     for _ in range(total_trials):
       call = mock.call(
+          initial_train_state=mock_train_process.set_hparams.return_value,
           train_process=mock_train_process,
           train_data_source=mock_train_data_source,
           train_per_round_clients=num_clients,

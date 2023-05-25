@@ -14,11 +14,11 @@
 """An example of program logic to use in a federated program."""
 
 import datetime
-
 import typing
 from typing import Optional, Protocol, Union
 
 from tensorflow_federated.python.learning.programs import evaluation_program_logic
+from tensorflow_federated.python.learning.templates import composers
 from tensorflow_federated.python.learning.templates import learning_process
 from tensorflow_federated.python.program import data_source
 from tensorflow_federated.python.program import program_state_manager as program_state_manager_lib
@@ -38,6 +38,7 @@ class TrainModelProgramLogic(Protocol):
       self,
       *,
       train_process: learning_process.LearningProcess,
+      initial_train_state: composers.LearningAlgorithmState,
       train_data_source: data_source.FederatedDataSource,
       train_per_round_clients: int,
       train_total_rounds: int,

@@ -21,10 +21,7 @@ from vizier import pyvizier
 from vizier.client import client_abc
 
 from tensorflow_federated.python.core.impl.computation import computation_base
-from tensorflow_federated.python.core.impl.federated_context import federated_computation
-from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.learning.programs import evaluation_program_logic
 from tensorflow_federated.python.learning.programs import program_logic
 from tensorflow_federated.python.learning.templates import learning_process
@@ -35,11 +32,19 @@ from tensorflow_federated.python.program import structure_utils
 from tensorflow_federated.python.program import value_reference
 
 
-class InitializeFactory(Protocol):
+class IntReleaseManagerFactory(Protocol):
 
   def __call__(
       self, trial: client_abc.TrialInterface
-  ) -> computation_base.Computation:
+  ) -> release_manager.ReleaseManager[release_manager.ReleasableStructure, int]:
+    pass
+
+
+class StrReleaseManagerFactory(Protocol):
+
+  def __call__(
+      self, trial: client_abc.TrialInterface
+  ) -> release_manager.ReleaseManager[release_manager.ReleasableStructure, str]:
     pass
 
 
@@ -51,14 +56,6 @@ class ProgramStateManagerFactory(Protocol):
     pass
 
 
-class ReleaseManagerFactory(Protocol):
-
-  def __call__(
-      self, trial: client_abc.TrialInterface
-  ) -> release_manager.ReleaseManager[release_manager.ReleasableStructure, int]:
-    pass
-
-
 class EvaluationManagerFactory(Protocol):
 
   def __call__(
@@ -66,29 +63,6 @@ class EvaluationManagerFactory(Protocol):
       trial: client_abc.TrialInterface,
   ) -> evaluation_program_logic.EvaluationManager:
     pass
-
-
-def _create_initialize_factory(
-    process: learning_process.LearningProcess,
-    update_hparams: computation_base.Computation,
-) -> InitializeFactory:
-  """Creates an `InitializeFactory`."""
-
-  def _initialize_factory(
-      trial: client_abc.TrialInterface,
-  ) -> computation_base.Computation:
-    @federated_computation.federated_computation
-    def _initialize():
-      state = process.initialize()
-      hparams = intrinsics.federated_map(process.get_hparams, state)
-      parameters = collections.OrderedDict(trial.parameters)
-      parameters = intrinsics.federated_value(parameters, placements.SERVER)
-      hparams = intrinsics.federated_map(update_hparams, (hparams, parameters))
-      return intrinsics.federated_map(process.set_hparams, (state, hparams))
-
-    return _initialize
-
-  return _initialize_factory
 
 
 async def _create_measurement(
@@ -179,10 +153,8 @@ async def train_model_with_vizier(
     total_rounds: int,
     num_clients: int,
     program_state_manager_factory: ProgramStateManagerFactory,
-    model_output_manager: release_manager.ReleaseManager[
-        release_manager.ReleasableStructure, str
-    ],
-    train_metrics_manager_factory: Optional[ReleaseManagerFactory] = None,
+    model_output_manager_factory: StrReleaseManagerFactory,
+    train_metrics_manager_factory: Optional[IntReleaseManagerFactory] = None,
     evaluation_manager_factory: EvaluationManagerFactory,
     evaluation_periodicity: Union[int, datetime.timedelta],
 ) -> None:
@@ -203,8 +175,8 @@ async def train_model_with_vizier(
     num_clients: The number of clients per round of training.
     program_state_manager_factory: A factory for creating
       `tff.program.ProgramStateManager`s for each trail.
-    model_output_manager: A `tff.program.ReleaseManager` used to release the
-      model.
+    model_output_manager_factory: A factory for creating
+      `tff.program.ReleaseManager`s used to release the model.
     train_metrics_manager_factory: A factory for creating
       `tff.program.ReleaseManager`s used to release training metrics for each
       trail.
@@ -214,8 +186,6 @@ async def train_model_with_vizier(
       `datetime.timedelta` to await before sending a new training checkpoint to
       `evaluation_manager.start_evaluation`.
   """
-  initialize_factory = _create_initialize_factory(train_process, update_hparams)
-
   # TODO(b/238909797): Vizier does not support `StudyStoppingConfig` in OSS. For
   # now, this program logic only supports stopping the study when the
   # `total_trials` have been completed.
@@ -225,21 +195,15 @@ async def train_model_with_vizier(
       break
     trial = list(trials)[0]
 
-    # The `initialize_factory` was constructed by composing the
-    # `train_process.initialize` with the provided `update_hparams` function,
-    # for each `trail` a new `initialize` function is constructed updating the
-    # models hparams using the trials parameters.
-    initialize = initialize_factory(trial)
-    train_process = learning_process.LearningProcess(
-        initialize_fn=initialize,
-        next_fn=train_process.next,
-        get_model_weights=train_process.get_model_weights,
-        set_model_weights=train_process.set_model_weights,
-        get_hparams_fn=train_process.get_hparams,
-        set_hparams_fn=train_process.set_hparams,
+    initial_train_state = train_process.initialize()
+    hparams = train_process.get_hparams(initial_train_state)
+    hparams = update_hparams(hparams, collections.OrderedDict(trial.parameters))
+    initial_train_state = train_process.set_hparams(
+        initial_train_state, hparams
     )
 
     program_state_manager = program_state_manager_factory(trial)
+    model_output_manager = model_output_manager_factory(trial)
 
     intermediate_release_manager = _IntermediateMeasurementReleaseManager(trial)
     if train_metrics_manager_factory is not None:
@@ -270,6 +234,7 @@ async def train_model_with_vizier(
     )
 
     await train_model_program_logic(
+        initial_train_state=initial_train_state,
         train_process=train_process,
         train_data_source=train_data_source,
         train_per_round_clients=num_clients,
