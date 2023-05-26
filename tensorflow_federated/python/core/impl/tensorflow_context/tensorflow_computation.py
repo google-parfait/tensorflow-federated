@@ -228,7 +228,7 @@ TensorStructureType = Union[
 def _extract_bindings(
     type_spec: Optional[TensorStructureType],
     arg_defs: Sequence[ArgDef],
-) -> pb.TensorFlowFunction.Binding:
+) -> Optional[pb.TensorFlowFunction.Binding]:
   """Constructs a Binding given a type and function arguments."""
 
   def extract(

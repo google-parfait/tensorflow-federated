@@ -565,8 +565,10 @@ class SymbolTree:
     """
     scope_sentinel = _BeginScopePointer()
     self.active_node = typing.cast(SequentialBindingNode, self.active_node)
+    assert self.active_node is not None
     while self.active_node.payload != scope_sentinel:
       self.active_node = self.active_node.older_sibling
+      assert self.active_node is not None
 
   def pop_scope_up(self):
     """Moves `active_node` up one level in the `SymbolTree`.
