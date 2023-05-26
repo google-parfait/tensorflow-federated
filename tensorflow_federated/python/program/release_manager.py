@@ -16,6 +16,8 @@
 import abc
 import asyncio
 from collections.abc import Callable, Mapping, Sequence
+import functools
+import operator
 import typing
 from typing import Generic, Optional, Protocol, TypeVar, Union
 
@@ -72,6 +74,14 @@ class ReleaseManager(abc.ABC, Generic[ReleasableStructure, Key]):
     raise NotImplementedError
 
 
+class NotFilterableError(Exception):
+  """Raised when the structure can not be filtered."""
+
+
+class FilterMismatchError(Exception):
+  """Raised when there is a mismatch filtering the value and type signature."""
+
+
 @typing.runtime_checkable
 class _NamedTuple(Protocol):
 
@@ -83,6 +93,9 @@ class _NamedTuple(Protocol):
     ...
 
 
+# Sentinel object used by the `tff.program.FilteringReleaseManager` to indicate
+# that a subtree can be filtered when traversing structures of values and type
+# signatures.
 _FILTERED_SUBTREE = object()
 
 
@@ -93,7 +106,47 @@ class FilteringReleaseManager(ReleaseManager[ReleasableStructure, Key]):
   before releasing the values and is used to release values from platform
   storage to customer storage in a federated program.
 
-  Values are filtered and released using the given `release_manager`.
+  Values are filtered using a `filter_fn` and released to the `release_manager`.
+
+  The `filter_fn` is a `Callable` that has a single parameter `path` and returns
+  a `bool`, and is used to filter values before they are released. A `path` is a
+  tuple of indices and/or keys which uniquely identifies the position of the
+  corresponding item in the `value`; `path` matches the expectations of the
+  `tree` library.
+
+  The `filter_fn` is applied to the items in the structure but not the structure
+  itself. If all the items in a structure are filtered out, then the structure
+  will be filtered out as well.
+
+  For example:
+
+  ```
+  filtering_manager = tff.program.FilteringReleaseManager(
+      release_manager=...,
+      filter_fn=...,
+  )
+
+  value = {
+    'loss': 1.0,
+    'accuracy': 0.5,
+  }
+  await filtering_manager.release(value, ...)
+  ```
+
+  If `filter_fn` is:
+
+  * `lambda _: True` then the entire structure is released.
+  * `lambda _: False` then nothing is released.
+  * `lambda path: path == ('loss',)` then `{'loss': 1.0}` is released.
+
+  Note: The path `()` corresponds to the root of the structure; because the
+  `filter_fn` is applied to the items in the structure but not the structure
+  itself, this path can be used to filter individual values from structures of
+  values.
+
+  Important: Most `tff.program.ReleasableStructure` can be filtered, including
+  individual values, structures, and structures nested in `NamedTuple`s.
+  However, the fields of a `NamedTuple` can not be filtered.
   """
 
   def __init__(
@@ -102,21 +155,6 @@ class FilteringReleaseManager(ReleaseManager[ReleasableStructure, Key]):
       filter_fn: Callable[[tuple[Union[str, int], ...]], bool],
   ):
     """Returns an initialized `tff.program.FilteringReleaseManager`.
-
-    The `filter_fn` is a `Callable` that has a single parameter `path` and
-    returns a `bool`, and is used to filter values before they are released. A
-    `path` is a tuple of indices and/or keys which uniquely identifies the
-    position of the corresponding item in the `value`; `path` matches the
-    expectations of the `dm-tree` library. For example, this function could be
-    used to release a single metric with the name 'loss':
-
-    ```
-    def filter_fn(path) -> bool:
-      if path == ('loss', ):
-        return True
-      else:
-        return False
-    ```
 
     Args:
       release_manager: A `tff.program.ReleaseManager` used to release values to.
@@ -141,27 +179,79 @@ class FilteringReleaseManager(ReleaseManager[ReleasableStructure, Key]):
       value: A `tff.program.ReleasableStructure` to release.
       type_signature: The `tff.Type` of `value`.
       key: A value used to reference the released `value`.
+
+    Raises:
+      NotFilterableError: If the `value` can not be filtered.
+      FilterMismatchError: If there is a mismatch filtering the `value` and
+        `type_signature`.
     """
 
-    def _fn(
+    def _filter_value(
         path: tuple[Union[str, int], ...],
-        subtree: structure_utils.Structure[object],
-    ) -> Optional[structure_utils.Structure[object]]:
+        subtree: ReleasableStructure,
+    ) -> Optional[Union[ReleasableStructure, type(_FILTERED_SUBTREE)]]:
+      """The function to apply when filtering the `value`.
+
+      This function is meant to be used with `tree.traverse_with_path` to filter
+      the `value`. The function `tree.traverse_with_path` is used because the
+      traversal functions from `tree` apply a function to the structure and
+      the leaves, whereas the map functions only apply a function to the leaves.
+      Additionally, `path` is used to determine which parts of the structure to
+      filter.
+
+      See https://tree.readthedocs.io/en/latest/api.html#tree.traverse for more
+      information.
+
+      Args:
+        path: A tuple of indices and/or keys which uniquely identifies the
+          position of `subtree` in the `value`.
+        subtree: A substructure in `value`.
+
+      Returns:
+        A filtered value or `_FILTERED_SUBTREE` if the entire structure was
+        filtered.
+
+      Raises:
+        NotFilterableError: If `subtree` can not be filtered.
+      """
       if tree.is_nested(subtree) and not attrs.has(type(subtree)):
         # TODO(b/224484886): Downcasting to all handled types.
         subtree = typing.cast(
             Union[Sequence[object], Mapping[str, object]], subtree
         )
-        if isinstance(subtree, Sequence) and not isinstance(
-            subtree, _NamedTuple
-        ):
-          return [x for x in subtree if x is not _FILTERED_SUBTREE]
+        if isinstance(subtree, Sequence):
+          elements = [x for x in subtree if x is not _FILTERED_SUBTREE]
+          if not elements:
+            return _FILTERED_SUBTREE
+          elif isinstance(subtree, _NamedTuple):
+            if len(subtree) != len(elements):
+              fields = list(type(subtree)._fields)
+              missing_fields = [
+                  k
+                  for k, v in subtree._asdict().items()
+                  if v is _FILTERED_SUBTREE
+              ]
+              raise NotFilterableError(
+                  'The fields of a `NamedTuple` can not be filtered. Expected '
+                  f'`{type(subtree)}` to have fields `{fields}`, found it was '
+                  f'missing fields `{missing_fields}`.'
+              )
+
+            return type(subtree)(*elements)
+          else:
+            # Assumes the `Sequence` has a constructor that accepts `elements`,
+            #  this is safe because `tree` makes the same assumption.
+            return type(subtree)(elements)  # pytype: disable=wrong-arg-count
         elif isinstance(subtree, Mapping):
           items = [
               (k, v) for k, v in subtree.items() if v is not _FILTERED_SUBTREE
           ]
-          mapping_type = type(subtree)  # pytype: disable=invalid-annotation
-          return mapping_type(items)
+          if not items:
+            return _FILTERED_SUBTREE
+          else:
+            # Assumes the `Mapping` has a constructor that accepts `items`,
+            # this is safe because `tree` makes the same assumption.
+            return type(subtree)(items)  # pytype: disable=wrong-arg-count
         else:
           raise NotImplementedError(f'Unexpected type found: {type(subtree)}.')
       else:
@@ -170,15 +260,92 @@ class FilteringReleaseManager(ReleaseManager[ReleasableStructure, Key]):
         else:
           return _FILTERED_SUBTREE
 
-    filtered_value = tree.traverse_with_path(_fn, value, top_down=False)
+    filtered_value = tree.traverse_with_path(
+        _filter_value, value, top_down=False
+    )
 
-    if type_signature.is_struct():
-      type_signature = structure.to_odict_or_tuple(type_signature)
-    filtered_type = tree.traverse_with_path(_fn, type_signature, top_down=False)
-    if tree.is_nested(filtered_type):
-      filtered_type = computation_types.to_type(filtered_type)
+    def _create_filtered_type(
+        type_spec: computation_types.Type,
+        path: tuple[Union[str, int], ...] = (),
+    ) -> Union[computation_types.Type, type(_FILTERED_SUBTREE)]:
+      """Creates a `tff.Type` from the `type_signature`.
 
-    await self._release_manager.release(filtered_value, filtered_type, key)
+      This function mirrors `_filter_value` in the way the way `path` and
+      `_FILTERED_SUBTREE` are used ; however, it does not use `tree` to do the
+      traversal because `tree` does not know how to traverse `tff.Type`s.
+      Instead the traversal is performed manually.
+
+      Args:
+        type_spec: A `tff.Type` in `type_signature`.
+        path: A tuple of indices and/or keys which uniquely identifies the
+          position of `subtree` in the `value`.
+
+      Returns:
+        A filtered value or `_FILTERED_SUBTREE` if the entire structure was
+        filtered.
+      """
+      if isinstance(type_spec, computation_types.StructType) and not attrs.has(
+          type(type_spec.python_container)
+      ):
+        # An empty tuple may represent the type signature for the value `None`.
+        # If that is the case, do not filter the empty structure, instead treat
+        # `type_spec` as a leaf and apply the filter function.
+        if type_spec == computation_types.StructType([]):
+          value_at_path = functools.reduce(operator.getitem, path, value)
+          if value_at_path is None:
+            if self._filter_fn(path):
+              return type_spec
+            else:
+              return _FILTERED_SUBTREE
+
+        elements = []
+        element_types = structure.iter_elements(type_spec)
+        for index, (name, element_type) in enumerate(element_types):
+          element_path = path + (name or index,)
+          filtered_element_type = _create_filtered_type(
+              element_type, element_path
+          )
+          if filtered_element_type is not _FILTERED_SUBTREE:
+            elements.append((name, filtered_element_type))
+
+        if not elements:
+          return _FILTERED_SUBTREE
+        elif isinstance(type_spec, computation_types.StructWithPythonType):
+          # Note: The fields of a `NamedTuple` can not be filtered. However,
+          # raising an error here can be skipped, because the appropriate error
+          # is raised when filtering the `value`.
+          return computation_types.StructWithPythonType(
+              elements, type_spec.python_container
+          )
+        else:
+          return computation_types.StructType(elements)
+      else:
+        if self._filter_fn(path):
+          return type_spec
+        else:
+          return _FILTERED_SUBTREE
+
+    filtered_type = _create_filtered_type(type_signature)
+
+    if (
+        filtered_value is not _FILTERED_SUBTREE
+        and filtered_type is not _FILTERED_SUBTREE
+    ):
+      await self._release_manager.release(filtered_value, filtered_type, key)
+    elif filtered_value is not filtered_type:
+      if filtered_value is _FILTERED_SUBTREE:
+        value_label = 'empty'
+      else:
+        value_label = 'not empty'
+      if filtered_type is _FILTERED_SUBTREE:
+        type_signature_label = 'empty'
+      else:
+        type_signature_label = 'not empty'
+      raise FilterMismatchError(
+          'Expected `value` and `type_signature` to be filtered consistently, '
+          f'found the filtered `value` was {value_label} and the filtered '
+          f'`type_signature` was {type_signature_label}.'
+      )
 
 
 class GroupingReleaseManager(ReleaseManager[ReleasableStructure, Key]):

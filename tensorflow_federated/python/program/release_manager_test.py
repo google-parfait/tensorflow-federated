@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import collections
-from typing import Union
 import unittest
 from unittest import mock
 
@@ -28,7 +27,7 @@ from tensorflow_federated.python.program import release_manager
 
 
 class FilteringReleaseManagerTest(
-    parameterized.TestCase, unittest.IsolatedAsyncioTestCase
+    parameterized.TestCase, unittest.IsolatedAsyncioTestCase, tf.test.TestCase
 ):
 
   def test_init_does_not_raise_type_error(self):
@@ -69,7 +68,276 @@ class FilteringReleaseManagerTest(
   # pyformat: disable
   @parameterized.named_parameters(
       # materialized values
-      ('none', None, computation_types.StructWithPythonType([], list)),
+      ('none_filter_none',
+       None,
+       computation_types.StructType([]),
+       lambda _: True,
+       None,
+       computation_types.StructType([])),
+      ('bool_filter_none',
+       True,
+       computation_types.TensorType(tf.bool),
+       lambda _: True,
+       True,
+       computation_types.TensorType(tf.bool)),
+      ('int_filter_none',
+       1,
+       computation_types.TensorType(tf.int32),
+       lambda _: True,
+       1,
+       computation_types.TensorType(tf.int32)),
+      ('str_filter_none',
+       'a',
+       computation_types.TensorType(tf.string),
+       lambda _: True,
+       'a',
+       computation_types.TensorType(tf.string)),
+      ('tensor_int_filter_none',
+       tf.constant(1),
+       computation_types.TensorType(tf.int32),
+       lambda _: True,
+       tf.constant(1),
+       computation_types.TensorType(tf.int32)),
+      ('tensor_array_filter_none',
+       tf.constant([1] * 3),
+       computation_types.TensorType(tf.int32, [3]),
+       lambda _: True,
+       tf.constant([1] * 3),
+       computation_types.TensorType(tf.int32, [3])),
+      ('numpy_int_filter_none',
+       np.int32(1),
+       computation_types.TensorType(tf.int32),
+       lambda _: True,
+       np.int32(1),
+       computation_types.TensorType(tf.int32)),
+      ('numpy_array_filter_none',
+       np.array([1] * 1, np.int32),
+       computation_types.TensorType(tf.int32, [3]),
+       lambda _: True,
+       np.array([1] * 1, np.int32),
+       computation_types.TensorType(tf.int32, [3])),
+
+      # materializable value references
+      ('value_reference_tensor_filter_none',
+       program_test_utils.TestMaterializableValueReference(1),
+       computation_types.TensorType(tf.int32),
+       lambda _: True,
+       program_test_utils.TestMaterializableValueReference(1),
+       computation_types.TensorType(tf.int32)),
+
+      # serializable values
+      ('serializable_value_filter_none',
+       program_test_utils.TestSerializable(1, 2),
+       computation_types.StructWithPythonType([
+           ('a', tf.int32),
+           ('b', tf.int32),
+       ], collections.OrderedDict),
+       lambda _: True,
+       program_test_utils.TestSerializable(1, 2),
+       computation_types.StructWithPythonType([
+           ('a', tf.int32),
+           ('b', tf.int32),
+       ], collections.OrderedDict)),
+
+      # other values
+      ('attrs_filter_none',
+       program_test_utils.TestAttrs(1, 2),
+       computation_types.StructWithPythonType([
+           ('a', tf.int32),
+           ('b', tf.int32),
+       ], collections.OrderedDict),
+       lambda _: True,
+       program_test_utils.TestAttrs(1, 2),
+       computation_types.StructWithPythonType([
+           ('a', tf.int32),
+           ('b', tf.int32),
+       ], collections.OrderedDict)),
+
+      # structures
+      ('list_filter_none',
+       [
+           True,
+           1,
+           'a',
+           program_test_utils.TestMaterializableValueReference(2),
+           program_test_utils.TestSerializable(3, 4),
+       ],
+       computation_types.StructWithPythonType([
+           tf.bool,
+           tf.int32,
+           tf.string,
+           tf.int32,
+           computation_types.StructWithPythonType([
+               ('a', tf.int32),
+               ('b', tf.int32),
+           ], collections.OrderedDict),
+       ], list),
+       lambda _: True,
+       [
+           True,
+           1,
+           'a',
+           program_test_utils.TestMaterializableValueReference(2),
+           program_test_utils.TestSerializable(3, 4),
+       ],
+       computation_types.StructWithPythonType([
+           tf.bool,
+           tf.int32,
+           tf.string,
+           tf.int32,
+           computation_types.StructWithPythonType([
+               ('a', tf.int32),
+               ('b', tf.int32),
+           ], collections.OrderedDict),
+       ], list)),
+      ('list_filter_some',
+       [
+           True,
+           1,
+           'a',
+           program_test_utils.TestMaterializableValueReference(2),
+           program_test_utils.TestSerializable(3, 4),
+       ],
+       computation_types.StructWithPythonType([
+           tf.bool,
+           tf.int32,
+           tf.string,
+           tf.int32,
+           computation_types.StructWithPythonType([
+               ('a', tf.int32),
+               ('b', tf.int32),
+           ], collections.OrderedDict),
+       ], list),
+       lambda path: path == (1,) or path == (2,),
+       [1, 'a'],
+       computation_types.StructWithPythonType([tf.int32, tf.string], list)),
+      ('dict_filter_none',
+       {
+           'a': True,
+           'b': 1,
+           'c': 'a',
+           'd': program_test_utils.TestMaterializableValueReference(2),
+           'e': program_test_utils.TestSerializable(3, 4),
+       },
+       computation_types.StructWithPythonType([
+           ('a', tf.bool),
+           ('b', tf.int32),
+           ('c', tf.string),
+           ('d', tf.int32),
+           ('e', computation_types.StructWithPythonType([
+               ('a', tf.int32),
+               ('b', tf.int32),
+           ], collections.OrderedDict)),
+       ], collections.OrderedDict),
+       lambda _: True,
+       {
+           'a': True,
+           'b': 1,
+           'c': 'a',
+           'd': program_test_utils.TestMaterializableValueReference(2),
+           'e': program_test_utils.TestSerializable(3, 4),
+       },
+       computation_types.StructWithPythonType([
+           ('a', tf.bool),
+           ('b', tf.int32),
+           ('c', tf.string),
+           ('d', tf.int32),
+           ('e', computation_types.StructWithPythonType([
+               ('a', tf.int32),
+               ('b', tf.int32),
+           ], collections.OrderedDict)),
+       ], collections.OrderedDict)),
+      ('dict_filter_some',
+       {
+           'a': True,
+           'b': 1,
+           'c': 'a',
+           'd': program_test_utils.TestMaterializableValueReference(2),
+           'e': program_test_utils.TestSerializable(3, 4),
+       },
+       computation_types.StructWithPythonType([
+           ('a', tf.bool),
+           ('b', tf.int32),
+           ('c', tf.string),
+           ('d', tf.int32),
+           ('e', computation_types.StructWithPythonType([
+               ('a', tf.int32),
+               ('b', tf.int32),
+           ], collections.OrderedDict)),
+       ], collections.OrderedDict),
+       lambda path: path == ('b',) or path == ('c',),
+       {'b': 1, 'c': 'a'},
+       computation_types.StructWithPythonType([
+           ('b', tf.int32),
+           ('c', tf.string),
+       ], collections.OrderedDict)),
+      ('named_tuple_filter_none',
+       program_test_utils.TestNamedTuple1(
+           a=True,
+           b=1,
+           c='a',
+           d=program_test_utils.TestMaterializableValueReference(2),
+           e=program_test_utils.TestSerializable(3, 4),
+       ),
+       computation_types.StructWithPythonType([
+           ('a', tf.bool),
+           ('b', tf.int32),
+           ('c', tf.string),
+           ('d', tf.int32),
+           ('e', computation_types.StructWithPythonType([
+               ('a', tf.int32),
+               ('b', tf.int32),
+           ], collections.OrderedDict)),
+       ], program_test_utils.TestNamedTuple1),
+       lambda _: True,
+       program_test_utils.TestNamedTuple1(
+           a=True,
+           b=1,
+           c='a',
+           d=program_test_utils.TestMaterializableValueReference(2),
+           e=program_test_utils.TestSerializable(3, 4),
+       ),
+       computation_types.StructWithPythonType([
+           ('a', tf.bool),
+           ('b', tf.int32),
+           ('c', tf.string),
+           ('d', tf.int32),
+           ('e', computation_types.StructWithPythonType([
+               ('a', tf.int32),
+               ('b', tf.int32),
+           ], collections.OrderedDict)),
+       ], program_test_utils.TestNamedTuple1)),
+  )
+  # pyformat: enable
+  async def test_release_filters_and_delegates_value_and_type_signature(
+      self,
+      value,
+      type_signature,
+      filter_fn,
+      expected_value,
+      expected_type_signature,
+  ):
+    mock_release_mngr = mock.AsyncMock(spec=release_manager.ReleaseManager)
+    release_mngr = release_manager.FilteringReleaseManager(
+        mock_release_mngr, filter_fn
+    )
+
+    await release_mngr.release(value, type_signature, key=1)
+
+    mock_release_mngr.release.assert_called_once()
+    call = mock_release_mngr.release.mock_calls[0]
+    _, args, kwargs = call
+    actual_value, actual_type_signature, actual_key = args
+    program_test_utils.assert_types_equal(actual_value, expected_value)
+    self.assertAllEqual(actual_value, expected_value)
+    self.assertEqual(actual_type_signature, expected_type_signature)
+    self.assertEqual(actual_key, 1)
+    self.assertEqual(kwargs, {})
+
+  # pyformat: disable
+  @parameterized.named_parameters(
+      # materialized values
+      ('none', None, computation_types.StructType([])),
       ('bool', True, computation_types.TensorType(tf.bool)),
       ('int', 1, computation_types.TensorType(tf.int32)),
       ('str', 'a', computation_types.TensorType(tf.string)),
@@ -197,131 +465,6 @@ class FilteringReleaseManagerTest(
                ('a', tf.int32),
            ], collections.OrderedDict)),
        ], collections.OrderedDict)),
-  )
-  # pyformat: enable
-  async def test_release_delegates_value_and_type_signature(
-      self, value, type_signature
-  ):
-    mock_release_mngr = mock.AsyncMock(spec=release_manager.ReleaseManager)
-    filter_fn = lambda _: True
-    release_mngr = release_manager.FilteringReleaseManager(
-        mock_release_mngr, filter_fn
-    )
-
-    await release_mngr.release(value, type_signature, key=1)
-
-    mock_release_mngr.release.assert_called_once_with(value, type_signature, 1)
-
-  async def test_release_filters_value_and_type_signature(self):
-    def _filter_fn(path: tuple[Union[str, int], ...]) -> bool:
-      return path == (0, 1) or path == (2, 'b')
-
-    mock_release_mngr = mock.AsyncMock(spec=release_manager.ReleaseManager)
-    release_mngr = release_manager.FilteringReleaseManager(
-        mock_release_mngr, _filter_fn
-    )
-    value = [[True, 1, 'a'], [True, 1, 'a'], {'a': True, 'b': 1, 'c': 'a'}]
-    type_signature = computation_types.StructWithPythonType(
-        [
-            computation_types.StructWithPythonType(
-                [tf.bool, tf.int32, tf.string], list
-            ),
-            computation_types.StructWithPythonType(
-                [tf.bool, tf.int32, tf.string], list
-            ),
-            computation_types.StructWithPythonType(
-                [
-                    ('a', tf.bool),
-                    ('b', tf.int32),
-                    ('c', tf.string),
-                ],
-                collections.OrderedDict,
-            ),
-        ],
-        list,
-    )
-
-    await release_mngr.release(value, type_signature, key=1)
-
-    expected_value = [[1], [], {'b': 1}]
-    expected_type_signature = computation_types.StructWithPythonType(
-        [
-            computation_types.StructWithPythonType([tf.int32], list),
-            computation_types.StructWithPythonType([], list),
-            computation_types.StructWithPythonType(
-                [
-                    ('b', tf.int32),
-                ],
-                collections.OrderedDict,
-            ),
-        ],
-        list,
-    )
-    mock_release_mngr.release.assert_called_once_with(
-        expected_value, expected_type_signature, 1
-    )
-
-  async def test_release_converts_named_struct_types_to_ordered_dict(self):
-    mock_release_mngr = mock.AsyncMock(spec=release_manager.ReleaseManager)
-    filter_fn = lambda _: True
-    release_mngr = release_manager.FilteringReleaseManager(
-        mock_release_mngr, filter_fn
-    )
-    value = {
-        'a': True,
-        'b': 1,
-        'c': 'a',
-        'd': program_test_utils.TestMaterializableValueReference(2),
-        'e': program_test_utils.TestSerializable(3, 4),
-    }
-    type_signature = computation_types.StructWithPythonType(
-        [
-            ('a', tf.bool),
-            ('b', tf.int32),
-            ('c', tf.string),
-            ('d', tf.int32),
-            (
-                'e',
-                computation_types.StructWithPythonType(
-                    [
-                        ('a', tf.int32),
-                        ('b', tf.int32),
-                    ],
-                    collections.OrderedDict,
-                ),
-            ),
-        ],
-        list,
-    )
-
-    await release_mngr.release(value, type_signature, key=1)
-
-    expected_type_signature = computation_types.StructWithPythonType(
-        [
-            ('a', tf.bool),
-            ('b', tf.int32),
-            ('c', tf.string),
-            ('d', tf.int32),
-            (
-                'e',
-                computation_types.StructWithPythonType(
-                    [
-                        ('a', tf.int32),
-                        ('b', tf.int32),
-                    ],
-                    collections.OrderedDict,
-                ),
-            ),
-        ],
-        collections.OrderedDict,
-    )
-    mock_release_mngr.release.assert_called_once_with(
-        value, expected_type_signature, 1
-    )
-
-  # pyformat: disable
-  @parameterized.named_parameters(
-      # structures
       ('named_tuple',
        program_test_utils.TestNamedTuple1(
            a=True,
@@ -340,18 +483,200 @@ class FilteringReleaseManagerTest(
                ('b', tf.int32),
            ], collections.OrderedDict)),
        ], program_test_utils.TestNamedTuple1)),
+      ('named_tuple_nested',
+       program_test_utils.TestNamedTuple3(
+           x=program_test_utils.TestNamedTuple1(
+               a=True,
+               b=1,
+               c='a',
+               d=program_test_utils.TestMaterializableValueReference(2),
+               e=program_test_utils.TestSerializable(3, 4),
+           ),
+           y=program_test_utils.TestNamedTuple2(a=5),
+       ),
+       computation_types.StructWithPythonType([
+           ('x', computation_types.StructWithPythonType([
+               ('a', tf.bool),
+               ('b', tf.int32),
+               ('c', tf.string),
+               ('d', tf.int32),
+               ('e', computation_types.StructWithPythonType([
+                   ('a', tf.int32),
+                   ('b', tf.int32),
+               ], collections.OrderedDict)),
+           ], program_test_utils.TestNamedTuple1)),
+           ('y', computation_types.StructWithPythonType([
+               ('c', tf.int32),
+           ], program_test_utils.TestNamedTuple2)),
+       ], program_test_utils.TestNamedTuple3)),
   )
   # pyformat: enable
-  async def test_release_raises_not_implemented_error_with_value_and_type_signature(
-      self, value, type_signature
+  async def test_release_filters_and_does_not_delegate_value_and_type_signature(
+      self,
+      value,
+      type_signature,
   ):
     mock_release_mngr = mock.AsyncMock(spec=release_manager.ReleaseManager)
-    filter_fn = lambda _: True
+    filter_fn = lambda _: False
     release_mngr = release_manager.FilteringReleaseManager(
         mock_release_mngr, filter_fn
     )
 
-    with self.assertRaises(NotImplementedError):
+    await release_mngr.release(value, type_signature, key=1)
+
+    mock_release_mngr.release.assert_not_called()
+
+  # pyformat: disable
+  @parameterized.named_parameters(
+      ('list_filter_none',
+       [True, 1, 'a', [], [2]],
+       computation_types.StructWithPythonType([
+           tf.bool,
+           tf.int32,
+           tf.string,
+           computation_types.StructWithPythonType([], list),
+           computation_types.StructWithPythonType([tf.int32], list),
+       ], list),
+       lambda _: True,
+       [True, 1, 'a', [2]],
+       computation_types.StructWithPythonType([
+           tf.bool,
+           tf.int32,
+           tf.string,
+           computation_types.StructWithPythonType([tf.int32], list),
+       ], list)),
+      ('list_filter_some',
+       [True, 1, 'a', [], [2]],
+       computation_types.StructWithPythonType([
+           tf.bool,
+           tf.int32,
+           tf.string,
+           computation_types.StructWithPythonType([], list),
+           computation_types.StructWithPythonType([tf.int32], list),
+       ], list),
+       lambda path: path != (4, 0),
+       [True, 1, 'a'],
+       computation_types.StructWithPythonType([
+           tf.bool,
+           tf.int32,
+           tf.string,
+       ], list)),
+      ('dict_filter_none',
+       {'a': True, 'b': 1, 'c': 'a', 'd': {}, 'e': {'a': 2}},
+       computation_types.StructWithPythonType([
+           ('a', tf.bool),
+           ('b', tf.int32),
+           ('c', tf.string),
+           ('d', computation_types.StructWithPythonType([
+           ], collections.OrderedDict)),
+           ('e', computation_types.StructWithPythonType([
+               ('a', tf.int32),
+           ], collections.OrderedDict)),
+       ], collections.OrderedDict),
+       lambda _: True,
+       {'a': True, 'b': 1, 'c': 'a', 'e': {'a': 2}},
+       computation_types.StructWithPythonType([
+           ('a', tf.bool),
+           ('b', tf.int32),
+           ('c', tf.string),
+           ('e', computation_types.StructWithPythonType([
+               ('a', tf.int32),
+           ], collections.OrderedDict)),
+       ], collections.OrderedDict)),
+      ('dict_filter_some',
+       {'a': True, 'b': 1, 'c': 'a', 'd': {}, 'e': {'a': 2}},
+       computation_types.StructWithPythonType([
+           ('a', tf.bool),
+           ('b', tf.int32),
+           ('c', tf.string),
+           ('d', computation_types.StructWithPythonType([
+           ], collections.OrderedDict)),
+           ('e', computation_types.StructWithPythonType([
+               ('a', tf.int32),
+           ], collections.OrderedDict)),
+       ], collections.OrderedDict),
+       lambda path: path != ('e', 'a'),
+       {'a': True, 'b': 1, 'c': 'a'},
+       computation_types.StructWithPythonType([
+           ('a', tf.bool),
+           ('b', tf.int32),
+           ('c', tf.string),
+       ], collections.OrderedDict)),
+  )
+  # pyformat: enable
+  async def test_release_filters_and_does_not_delegate_empty_structures(
+      self,
+      value,
+      type_signature,
+      filter_fn,
+      expected_value,
+      expected_type_signature,
+  ):
+    mock_release_mngr = mock.AsyncMock(spec=release_manager.ReleaseManager)
+    release_mngr = release_manager.FilteringReleaseManager(
+        mock_release_mngr, filter_fn
+    )
+
+    await release_mngr.release(value, type_signature, key=1)
+
+    mock_release_mngr.release.assert_called_once()
+    call = mock_release_mngr.release.mock_calls[0]
+    _, args, kwargs = call
+    actual_value, actual_type_signature, actual_key = args
+    program_test_utils.assert_types_equal(actual_value, expected_value)
+    self.assertAllEqual(actual_value, expected_value)
+    self.assertEqual(actual_type_signature, expected_type_signature)
+    self.assertEqual(actual_key, 1)
+    self.assertEqual(kwargs, {})
+
+  # pyformat: disable
+  @parameterized.named_parameters(
+      # structures
+      ('named_tuple_filter_some',
+       program_test_utils.TestNamedTuple1(
+           a=True,
+           b=1,
+           c='a',
+           d=program_test_utils.TestMaterializableValueReference(2),
+           e=program_test_utils.TestSerializable(3, 4),
+       ),
+       computation_types.StructWithPythonType([
+           ('a', tf.bool),
+           ('b', tf.int32),
+           ('c', tf.string),
+           ('d', tf.int32),
+           ('e', computation_types.StructWithPythonType([
+               ('a', tf.int32),
+               ('b', tf.int32),
+           ], collections.OrderedDict)),
+       ], program_test_utils.TestNamedTuple1),
+       lambda path: path == ('b',) or path == ('c',)),
+  )
+  # pyformat: enable
+  async def test_release_raises_not_filterable_error(
+      self, value, type_signature, filter_fn
+  ):
+    mock_release_mngr = mock.AsyncMock(spec=release_manager.ReleaseManager)
+    release_mngr = release_manager.FilteringReleaseManager(
+        mock_release_mngr, filter_fn
+    )
+
+    with self.assertRaises(release_manager.NotFilterableError):
+      await release_mngr.release(value, type_signature, key=1)
+
+  async def test_release_raises_filter_mismatch_error(self):
+    value = {'a': 1}
+    type_signature = computation_types.StructWithPythonType(
+        [('b', tf.int32)], collections.OrderedDict
+    )
+    filter_fn = lambda path: path == ('a',)
+
+    mock_release_mngr = mock.AsyncMock(spec=release_manager.ReleaseManager)
+    release_mngr = release_manager.FilteringReleaseManager(
+        mock_release_mngr, filter_fn
+    )
+
+    with self.assertRaises(release_manager.FilterMismatchError):
       await release_mngr.release(value, type_signature, key=1)
 
 
