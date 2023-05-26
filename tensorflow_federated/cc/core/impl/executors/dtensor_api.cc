@@ -20,6 +20,7 @@ limitations under the License
 #include <string>
 
 #include "absl/strings/str_cat.h"
+#include "absl/strings/str_replace.h"
 #include "tensorflow/c/eager/c_api.h"
 #include "tensorflow/c/eager/tfe_op_internal.h"
 #include "tensorflow/c/tf_status.h"
@@ -43,11 +44,13 @@ void* TFE_DTENSOR_RegisterDTensorDevice(TFE_Context* context,
   TFE_RegisterCustomDevice(context, device, dtensor_device_name, device_info,
                            status);
   if (TF_GetCode(status) != TF_OK) return nullptr;
-
+  std::string cpu_mesh = absl::StrReplaceAll(mesh_string, {{"TPU", "CPU"}});
   tensorflow::dtensor::AddMesh(mesh_string, device_info, /*is_async=*/false,
                                /*is_host_mesh=*/false,
                                /*in_flight_nodes_limit=*/0, status);
 
+  tensorflow::dtensor::ExperimentalSetDefaultMesh(mesh_string, device_info,
+                                                  status);
   if (TF_GetCode(status) != TF_OK) return nullptr;
 
   return device_info;
@@ -132,22 +135,17 @@ TFE_TensorHandle* TFE_DTENSOR_CopyToMesh(TFE_Context* context,
   std::unique_ptr<TFE_Op, decltype(&TFE_DeleteOp)> op(
       TFE_NewOp(context, "CopyToMesh", status), TFE_DeleteOp);
   if (TF_GetCode(status) != TF_OK) return nullptr;
-
   TFE_OpSetDevice(op.get(), device_name, status);
   if (TF_GetCode(status) != TF_OK) return nullptr;
-
   std::string serialized_layout = tensorflow::unwrap(layout)->ToString();
   TFE_OpSetAttrString(op.get(), "layout", serialized_layout.data(),
                       serialized_layout.length());
   TFE_OpAddInput(op.get(), tensor_handle, status);
   if (TF_GetCode(status) != TF_OK) return nullptr;
-
   int num_results = 1;
   TFE_TensorHandle* replicated_result;
   TFE_Execute(op.get(), &replicated_result, &num_results, status);
-
   if (TF_GetCode(status) != TF_OK) return nullptr;
-
   return replicated_result;
 }
 

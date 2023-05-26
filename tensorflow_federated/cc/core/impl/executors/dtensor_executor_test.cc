@@ -20,6 +20,7 @@ limitations under the License
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
@@ -29,6 +30,8 @@ limitations under the License
 #include "googletest/include/gtest/gtest.h"
 #include "absl/log/check.h"
 #include "absl/log/log.h"
+#include "absl/strings/str_cat.h"
+#include "absl/strings/str_format.h"
 #include "tensorflow/c/eager/c_api.h"
 #include "tensorflow/c/eager/c_api_experimental.h"
 #include "tensorflow/c/eager/tfe_tensorhandle_internal.h"
@@ -38,6 +41,7 @@ limitations under the License
 #include "tensorflow/cc/ops/array_ops.h"
 #include "tensorflow/cc/ops/math_ops.h"
 #include "tensorflow/cc/ops/resource_variable_ops.h"
+#include "tensorflow/core/framework/device_factory.h"
 #include "tensorflow/core/framework/tensor.pb.h"
 #include "tensorflow/dtensor/cc/tensor_layout.h"
 #include "tensorflow/dtensor/proto/layout.pb.h"
@@ -95,21 +99,25 @@ inline v0::Value ComputationV(
   return value_pb;
 }
 
-tensorflow::dtensor::MeshProto CreateMeshForTest() {
+tensorflow::dtensor::MeshProto CreateMeshForTest(
+    std::vector<std::string> devices = {}) {
   tensorflow::dtensor::MeshProto mesh;
 
   tensorflow::dtensor::MeshDimensionProto* dimension =
       mesh.add_mesh_dimensions();
   dimension->set_name(MESH_DIM_X);
-  dimension->set_size(2);
-  mesh.add_local_devices("/job:localhost/replica:0/task:0/device:CPU:0");
-  mesh.add_local_devices("/job:localhost/replica:0/task:0/device:CPU:1");
-  mesh.add_global_devices("/job:localhost/replica:0/task:0/device:CPU:0");
-  mesh.add_global_devices("/job:localhost/replica:0/task:0/device:CPU:0");
-  mesh.add_local_device_ids(0);
-  mesh.add_local_device_ids(1);
-  mesh.add_global_device_ids(0);
-  mesh.add_global_device_ids(1);
+  dimension->set_size(devices.size());
+  int device_id = 0;
+  for (const auto& device : devices) {
+    mesh.add_local_devices(device);
+    mesh.add_global_devices(device);
+    mesh.add_global_device_ids(device_id);
+    mesh.add_local_device_ids(device_id++);
+  }
+  // mesh.add_local_device_ids(0);
+  // mesh.add_local_device_ids(1);
+  // mesh.add_global_device_ids(0);
+  // mesh.add_global_device_ids(1);
   return mesh;
 }
 
@@ -122,8 +130,13 @@ class DTensorConverterTestImpl : public DTensorConverter {
                                     const tensorflow::TF_Layout* layout,
                                     const char* device_name,
                                     TF_Status* status) override {
+    LOG(INFO) << "Creating dtensor handle from tensor handle";
+    LOG(INFO) << "Device name " << device_name;
     auto* dtensor_input = TFE_DTENSOR_TensorToDTensor(
         context, tensor_handle, layout, device_name, status);
+    if (TF_GetCode(status) != TF_OK) {
+      LOG(INFO) << "Failure to create dtensor " << TF_Message(status);
+    }
     tensorflow::ImmediateExecutionTensorHandle* dtensor =
         tensorflow::unwrap(dtensor_input);
 
@@ -149,22 +162,58 @@ class DTensorConverterTestImpl : public DTensorConverter {
 class DTensorExecutorTest : public ::testing::Test {
  public:
   DTensorExecutorTest() {
+    std::vector<std::string> devices;
+    tensorflow::Status s =
+        tensorflow::DeviceFactory::ListAllPhysicalDevices(&devices);
+    CHECK(s.ok()) << s;
+    LOG(INFO) << "Found devices: [" << absl::StrJoin(devices, ",") << "]";
+
+    for (std::string device : devices) {
+      std::vector<std::string_view> device_parts = absl::StrSplit(device, ':');
+      if (device_parts.size() != 3) {
+        LOG(ERROR) << "Unknown device name format: [" << device << "]";
+        continue;
+      }
+      auto device_type = device_parts[1];
+      if (device_type == tensorflow::DEVICE_TPU) {
+        LOG(INFO) << "Found TPU device: [" << device << "]";
+        ++num_tpus_;
+      }
+    }
     TF_Status* status = TF_NewStatus();
     std::unique_ptr<TFE_ContextOptions, decltype(&TFE_DeleteContextOptions)>
         opts(TFE_NewContextOptions(), TFE_DeleteContextOptions);
     context_ = TFE_NewContext(opts.get(), status);
 
-    TFE_SetLogicalCpuDevices(context_, 2, "/job:localhost/replica:0/task:0",
-                             status);
-    mesh_ = CreateMeshForTest();
+    std::vector<std::string> device_names;
+    if (num_tpus_ > 0) {
+      device_type_ = "TPU";
+      for (int i = 0; i < num_tpus_; i++) {
+        device_names.push_back(
+            absl::StrCat("/job:localhost/replica:0/task:0/device:TPU:", i));
+      }
+      // TPUs require same number of logical CPU devices corresponding to each
+      // TPU device.
+      TFE_SetLogicalCpuDevices(context_, num_tpus_,
+                               "/job:localhost/replica:0/task:0", status);
+    } else {
+      TFE_SetLogicalCpuDevices(context_, 2, "/job:localhost/replica:0/task:0",
+                               status);
+      device_names = {"/job:localhost/replica:0/task:0/device:CPU:0",
+                      "/job:localhost/replica:0/task:0/device:CPU:1"};
+      device_type_ = "CPU";
+    }
+
+    mesh_ = CreateMeshForTest(device_names);
+    LOG(INFO) << "Created mesh  " << mesh_.DebugString();
     device_name_ = "/job:localhost/replica:0/task:0/device:CUSTOM:1";
-    auto mesh_or =
-        tensorflow::dtensor::Mesh::ParseFromProto(CreateMeshForTest());
-    CHECK(mesh_or.status().ok());
+    auto mesh_or = tensorflow::dtensor::Mesh::ParseFromProto(mesh_);
+    CHECK(mesh_or.status().ok()) << mesh_or.status();
 
     auto mesh = mesh_or.value();
     TFE_DTENSOR_RegisterDTensorDevice(context_, tensorflow::wrap(&mesh),
                                       device_name_.c_str(), status);
+    CHECK(TF_GetCode(status) == TF_OK) << TF_Message(status);
     auto dtensor_converter = std::make_unique<DTensorConverterTestImpl>();
     // Keep a copy of pointer for testing before transferring ownership to
     // executor.
@@ -222,6 +271,8 @@ class DTensorExecutorTest : public ::testing::Test {
       EXPECT_THAT(result_proto, EqualsProto(expected));
     }
   }
+  int32_t num_tpus_ = 0;
+  std::string device_type_ = "CPU";
 };
 
 TEST_F(DTensorExecutorTest, CallAddShardedLayout) {
@@ -249,20 +300,24 @@ TEST_F(DTensorExecutorTest, CallAddShardedLayout) {
 
   // Input 0 is x sharded.
   EXPECT_THAT(dtensor_converter_->input_dtensors_[0],
-              ::testing::HasSubstr("TensorHandle({\"CPU:0\": [1 2], \"CPU:1\": "
-                                   "[3 5]}, layout=\"sharding_specs:x"));
+              ::testing::HasSubstr(
+                  absl::StrFormat("TensorHandle({\"%s:0\": [1 2], \"%s:1\": "
+                                  "[3 5]}, layout=\"sharding_specs:x",
+                                  device_type_, device_type_)));
   // Input 1 is scalar. No sharding.
   EXPECT_THAT(
       dtensor_converter_->input_dtensors_[1],
-      ::testing::HasSubstr(
+      ::testing::HasSubstr(absl::StrFormat(
           "TensorHandle(2, layout=\"sharding_specs: "
-          "mesh:|x=2|0,1|0,1|/job:localhost/replica:0/task:0/device:CPU:0"));
+          "mesh:|x=2|0,1|0,1|/job:localhost/replica:0/task:0/device:%s:0",
+          device_type_)));
 
-  EXPECT_THAT(
-      dtensor_converter_->result_dtensors_[0],
-      AllOf(::testing::HasSubstr("dtype=DT_INT32"),
-            ::testing::HasSubstr("{\"CPU:0\": [3 4], \"CPU:1\": [5 7]}"),
-            ::testing::HasSubstr("sharding_specs:x")));
+  EXPECT_THAT(dtensor_converter_->result_dtensors_[0],
+              AllOf(::testing::HasSubstr("dtype=DT_INT32"),
+                    ::testing::HasSubstr(
+                        absl::StrFormat("{\"%s:0\": [3 4], \"%s:1\": [5 7]}",
+                                        device_type_, device_type_)),
+                    ::testing::HasSubstr("sharding_specs:x")));
 }
 
 TEST_F(DTensorExecutorTest, CallAddReplicatedLayout) {
@@ -294,9 +349,10 @@ TEST_F(DTensorExecutorTest, CallAddReplicatedLayout) {
   // Input 1 is scalar. No sharding.
   EXPECT_THAT(
       dtensor_converter_->input_dtensors_[1],
-      ::testing::HasSubstr(
+      ::testing::HasSubstr(absl::StrFormat(
           "TensorHandle(2, layout=\"sharding_specs: "
-          "mesh:|x=2|0,1|0,1|/job:localhost/replica:0/task:0/device:CPU:0"));
+          "mesh:|x=2|0,1|0,1|/job:localhost/replica:0/task:0/device:%s:0",
+          device_type_)));
 
   EXPECT_THAT(dtensor_converter_->result_dtensors_[0],
               AllOf(::testing::HasSubstr("dtype=DT_INT32"),
@@ -329,9 +385,10 @@ TEST_F(DTensorExecutorTest, CallAddNoLayoutSpecified) {
   // Input 1 is scalar. No sharding.
   EXPECT_THAT(
       dtensor_converter_->input_dtensors_[1],
-      ::testing::HasSubstr(
+      ::testing::HasSubstr(absl::StrFormat(
           "TensorHandle(2, layout=\"sharding_specs: "
-          "mesh:|x=2|0,1|0,1|/job:localhost/replica:0/task:0/device:CPU:0"));
+          "mesh:|x=2|0,1|0,1|/job:localhost/replica:0/task:0/device:%s:0",
+          device_type_)));
 
   EXPECT_THAT(dtensor_converter_->result_dtensors_[0],
               AllOf(::testing::HasSubstr("dtype=DT_INT32"),
@@ -356,14 +413,16 @@ TEST_F(DTensorExecutorTest, CallNoArgOneOutWithInitialize) {
         ->mutable_name_to_sharding_spec())["VarHandleOp"] = MESH_DIM_X;
   v0::Value expected = TensorVFromIntList({1, 2, 3, 4});
   this->CheckCallEqualsProto(fn, std::nullopt, expected);
-  EXPECT_THAT(
-      dtensor_converter_->result_dtensors_[0],
-      AllOf(::testing::HasSubstr("dtype=DT_INT32"),
-            ::testing::HasSubstr("{\"CPU:0\": [1 2], \"CPU:1\": [3 4]}"),
-            ::testing::HasSubstr("sharding_specs:x")));
+  EXPECT_THAT(dtensor_converter_->result_dtensors_[0],
+              AllOf(::testing::HasSubstr("dtype=DT_INT32"),
+                    ::testing::HasSubstr(
+                        absl::StrFormat("{\"%s:0\": [1 2], \"%s:1\": [3 4]}",
+                                        device_type_, device_type_)),
+                    ::testing::HasSubstr("sharding_specs:x")));
   // Ensure that repeatedly using the same session from the session provider
   // works correctly.
   this->CheckCallRepeatedlyEqualsProto(fn, std::nullopt, expected);
 }
+
 }  // namespace
 }  // namespace tensorflow_federated
