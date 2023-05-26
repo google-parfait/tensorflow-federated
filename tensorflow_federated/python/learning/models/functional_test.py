@@ -834,7 +834,8 @@ class FunctionalModelFromKerasTest(tf.test.TestCase):
     with tf.Graph().as_default() as test_graph:
       # Capture all the variables for later initialization in the session,
       # otherwise it's hard to get our hands on the Keras-owned variables.
-      with variable_utils.record_variable_creation_scope() as captured_variables:  # pylint: disable=line-too-long
+      variable_creation_scope = variable_utils.record_variable_creation_scope()
+      with variable_creation_scope as captured_variables:
         # Create data satisfying y = 2*x + 1
         dataset = tf.data.Dataset.from_tensor_slices((
             # Features
