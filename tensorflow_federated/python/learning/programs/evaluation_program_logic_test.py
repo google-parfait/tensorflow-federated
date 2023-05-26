@@ -240,7 +240,7 @@ class EvaluationManagerTest(tf.test.TestCase, unittest.IsolatedAsyncioTestCase):
   def setUp(self):
     super().setUp()
     # Do not truncate failure explanations by setting maxDiff = None.
-    self.maxDiff = None  # pylint: disable=invalid-name
+    self.maxDiff = None
     context_stack_impl.context_stack.set_default_context(_create_test_context())
 
   async def test_resume_nothing(self):
