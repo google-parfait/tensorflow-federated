@@ -322,8 +322,7 @@ def _infer_unpack_needed(
   unpack_required = not is_signature_compatible_with_types(
       signature, parameter_type
   )
-  # Boolean identity comparison becaue unpack can have a non-boolean value.
-  if unpack_required and should_unpack is False:  # pylint: disable=g-bool-id-comparison
+  if unpack_required and should_unpack is not None and not should_unpack:
     raise TypeError(
         "The supplied function '{}' with signature {} cannot accept a "
         "value of type '{}' as a single argument.".format(
@@ -337,8 +336,7 @@ def _infer_unpack_needed(
     )
   else:
     unpack_possible = False
-  # Boolean identity comparison becaue unpack can have a non-boolean value.
-  if not unpack_possible and should_unpack is True:  # pylint: disable=g-bool-id-comparison
+  if not unpack_possible and should_unpack is not None and should_unpack:
     raise TypeError(
         'The supplied function with signature {} cannot accept a value of type '
         '{} as multiple positional and/or keyword arguments. That is, the '
