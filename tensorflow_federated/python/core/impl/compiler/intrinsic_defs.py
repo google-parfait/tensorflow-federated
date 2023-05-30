@@ -90,11 +90,11 @@ class IntrinsicDef:
     return self._type_signature
 
   @property
-  def aggregation_kind(self) -> AggregationKind:
+  def aggregation_kind(self) -> Optional[AggregationKind]:
     return self._aggregation_kind
 
   @property
-  def broadcast_kind(self) -> BroadcastKind:
+  def broadcast_kind(self) -> Optional[BroadcastKind]:
     return self._broadcast_kind
 
   def __str__(self):

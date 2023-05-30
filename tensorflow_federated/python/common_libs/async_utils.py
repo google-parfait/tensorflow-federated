@@ -161,6 +161,7 @@ class SharedAwaitable:
         except:  # pylint: disable=bare-except
           self._exception = sys.exc_info()
         finally:
+          assert self._event is not None
           self._event.set()
 
       asyncio.create_task(get_result())
@@ -168,6 +169,7 @@ class SharedAwaitable:
     # Then wait for the result to be reported back.
 
     async def waiter():
+      assert self._event is not None
       await self._event.wait()
       if self._exception is not None:
         _, exception, traceback = self._exception

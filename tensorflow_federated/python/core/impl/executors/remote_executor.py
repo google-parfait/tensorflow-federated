@@ -147,6 +147,8 @@ class RemoteExecutor(executor_base.Executor):
       # The executor this value corresponds to was already disposed, so we can
       # skip disposing this value.
       return
+
+    assert self._dispose_request is not None
     self._dispose_request.value_ref.append(value_ref)
     if len(self._dispose_request.value_ref) < self._dispose_batch_size:
       return
