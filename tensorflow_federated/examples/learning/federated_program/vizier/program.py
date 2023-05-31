@@ -43,7 +43,6 @@ from tensorflow_federated.examples.learning.federated_program.vizier import vizi
 
 _TOTAL_ROUNDS = 2
 _NUM_CLIENTS = 3
-_EVALUATION_PERIODICITY = 2
 _EVALUATION_DURATION = datetime.timedelta(seconds=30)
 
 _MAX_NUM_TRIALS = 10
@@ -118,7 +117,11 @@ def main(argv: Sequence[str]) -> None:
       learning_process.create_learning_processes(input_spec)
   )
 
-  model_output_manager = tff.program.LoggingReleaseManager()
+  def _model_output_manager_factory(
+      trial: client_abc.TrialInterface,
+  ) -> tff.program.ReleaseManager[tff.program.ReleasableStructure, str]:
+    del trial  # Unused.
+    return tff.program.LoggingReleaseManager()
 
   def _metrics_manager_factory(
       trial: client_abc.TrialInterface,
@@ -182,7 +185,7 @@ def main(argv: Sequence[str]) -> None:
           total_rounds=_TOTAL_ROUNDS,
           num_clients=_NUM_CLIENTS,
           program_state_manager_factory=_program_state_manager_factory,
-          model_output_manager=model_output_manager,
+          model_output_manager_factory=_model_output_manager_factory,
           train_metrics_manager_factory=_metrics_manager_factory,
           evaluation_manager_factory=_evaluation_manager_factory,
           evaluation_periodicity=1,

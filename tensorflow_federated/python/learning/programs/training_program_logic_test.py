@@ -472,6 +472,56 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     )
 
   @context_stack_test_utils.with_context(_create_test_context)
+  async def test_program_state_manager_work_with_initial_state(self):
+    initial_train_state = composers.LearningAlgorithmState(
+        global_model_weights=(),
+        distributor=(),
+        client_work=(),
+        aggregator=(),
+        finalizer=(0.1,),
+    )
+
+    # Create a mock state manager that returns no previous state, starting
+    # training from scratch.
+    mock_program_state_manager = mock.create_autospec(
+        program_state_manager.ProgramStateManager, instance=True, spec_set=True
+    )
+    mock_program_state_manager.load_latest.side_effect = [(None, 0)]
+
+    mock_model_output_manager = mock.create_autospec(
+        release_manager.ReleaseManager, instance=True, spec_set=True
+    )
+    mock_train_metrics_manager = mock.create_autospec(
+        release_manager.ReleaseManager, instance=True, spec_set=True
+    )
+    for manager in (mock_model_output_manager, mock_train_metrics_manager):
+      manager.release.return_value = None
+
+    await training_program_logic.train_model(
+        initial_train_state=initial_train_state,
+        train_process=_create_mock_train_process(),
+        train_data_source=_create_mock_datasource(),
+        train_per_round_clients=5,
+        train_total_rounds=5,
+        program_state_manager=mock_program_state_manager,
+        model_output_manager=mock_model_output_manager,
+        evaluation_manager=None,
+        train_metrics_manager=mock_train_metrics_manager,
+        evaluation_periodicity=100,
+    )
+
+    # Assert that the program attempted to load a previous checkpoint using the
+    # given initial state and save it as version 0.
+    self.assertEqual(
+        mock_program_state_manager.load_latest.call_args_list,
+        [mock.call((initial_train_state, 0))],
+    )
+    self.assertEqual(
+        mock_program_state_manager.save.call_args_list[0],
+        mock.call((initial_train_state, 0), version=0),
+    )
+
+  @context_stack_test_utils.with_context(_create_test_context)
   async def test_resumes_from_previous_version_10_runs_one_round(self):
     train_num_clients = 5
     training_rounds = 11
