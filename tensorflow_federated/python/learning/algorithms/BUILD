@@ -493,6 +493,7 @@ py_library(
     name = "personalization_eval",
     srcs = ["personalization_eval.py"],
     deps = [
+        "//tensorflow_federated/python/aggregators:mean",
         "//tensorflow_federated/python/aggregators:sampling",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
@@ -502,8 +503,15 @@ py_library(
         "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
+        "//tensorflow_federated/python/core/templates:measured_process",
         "//tensorflow_federated/python/learning/models:model_weights",
+        "//tensorflow_federated/python/learning/models:reconstruction_model",
         "//tensorflow_federated/python/learning/models:variable",
+        "//tensorflow_federated/python/learning/templates:client_works",
+        "//tensorflow_federated/python/learning/templates:composers",
+        "//tensorflow_federated/python/learning/templates:distributors",
+        "//tensorflow_federated/python/learning/templates:finalizers",
+        "//tensorflow_federated/python/learning/templates:learning_process",
     ],
 )
 
