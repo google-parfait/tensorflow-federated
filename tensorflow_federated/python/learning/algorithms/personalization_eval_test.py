@@ -155,7 +155,7 @@ class PersonalizationEvalTest(tf.test.TestCase, parameterized.TestCase):
     with self.assertRaises(TypeError):
       # `model_fn` should be a callable.
       bad_model_fn = 6
-      p13n_eval.build_personalization_eval(
+      p13n_eval.build_personalization_eval_computation(
           bad_model_fn, p13n_fn_dict, _evaluate_fn
       )
 
@@ -163,7 +163,7 @@ class PersonalizationEvalTest(tf.test.TestCase, parameterized.TestCase):
       # `model_fn` should be a callable that returns a
       # `tff.learning.models.VariableModel`.
       bad_model_fn = lambda: 6
-      p13n_eval.build_personalization_eval(
+      p13n_eval.build_personalization_eval_computation(
           bad_model_fn, p13n_fn_dict, _evaluate_fn
       )
 
@@ -174,7 +174,7 @@ class PersonalizationEvalTest(tf.test.TestCase, parameterized.TestCase):
     with self.assertRaises(TypeError):
       # `personalize_fn_dict` should be a `OrderedDict`.
       bad_p13n_fn_dict = {'a': 6}
-      p13n_eval.build_personalization_eval(
+      p13n_eval.build_personalization_eval_computation(
           model_fn, bad_p13n_fn_dict, _evaluate_fn
       )
 
@@ -182,7 +182,7 @@ class PersonalizationEvalTest(tf.test.TestCase, parameterized.TestCase):
       # `personalize_fn_dict` should be a `OrderedDict` that maps a `string` to
       # a `callable`.
       bad_p13n_fn_dict = collections.OrderedDict(a=6)
-      p13n_eval.build_personalization_eval(
+      p13n_eval.build_personalization_eval_computation(
           model_fn, bad_p13n_fn_dict, _evaluate_fn
       )
 
@@ -190,14 +190,14 @@ class PersonalizationEvalTest(tf.test.TestCase, parameterized.TestCase):
       # `personalize_fn_dict` should be a `OrderedDict` that maps a `string` to
       # a `callable` that when called, gives another `callable`.
       bad_p13n_fn_dict = collections.OrderedDict(x=lambda: 2)
-      p13n_eval.build_personalization_eval(
+      p13n_eval.build_personalization_eval_computation(
           model_fn, bad_p13n_fn_dict, _evaluate_fn
       )
 
     with self.assertRaises(ValueError):
       # `personalize_fn_dict` should not use `baseline_metrics` as a key.
       bad_p13n_fn_dict = collections.OrderedDict(baseline_metrics=lambda: 2)
-      p13n_eval.build_personalization_eval(
+      p13n_eval.build_personalization_eval_computation(
           model_fn, bad_p13n_fn_dict, _evaluate_fn
       )
 
@@ -210,7 +210,7 @@ class PersonalizationEvalTest(tf.test.TestCase, parameterized.TestCase):
     with self.assertRaises(TypeError):
       # `baseline_evaluate_fn` should be a callable.
       bad_baseline_evaluate_fn = 6
-      p13n_eval.build_personalization_eval(
+      p13n_eval.build_personalization_eval_computation(
           model_fn, p13n_fn_dict, bad_baseline_evaluate_fn
       )
 
@@ -221,7 +221,7 @@ class PersonalizationEvalTest(tf.test.TestCase, parameterized.TestCase):
     zero_model_weights = _create_zero_model_weights(model_fn)
     p13n_fn_dict = _create_p13n_fn_dict(learning_rate=1.0)
 
-    federated_p13n_eval = p13n_eval.build_personalization_eval(
+    federated_p13n_eval = p13n_eval.build_personalization_eval_computation(
         model_fn, p13n_fn_dict, _evaluate_fn
     )
 
@@ -314,7 +314,7 @@ class PersonalizationEvalTest(tf.test.TestCase, parameterized.TestCase):
     zero_model_weights = _create_zero_model_weights(model_fn)
     p13n_fn_dict = _create_p13n_fn_dict(learning_rate=0.5)
 
-    federated_p13n_eval = p13n_eval.build_personalization_eval(
+    federated_p13n_eval = p13n_eval.build_personalization_eval_computation(
         model_fn, p13n_fn_dict, _evaluate_fn
     )
 
@@ -360,7 +360,7 @@ class PersonalizationEvalTest(tf.test.TestCase, parameterized.TestCase):
     zero_model_weights = _create_zero_model_weights(model_fn)
     p13n_fn_dict = _create_p13n_fn_dict(learning_rate=1.0)
 
-    federated_p13n_eval = p13n_eval.build_personalization_eval(
+    federated_p13n_eval = p13n_eval.build_personalization_eval_computation(
         model_fn, p13n_fn_dict, _evaluate_fn
     )
 
@@ -382,7 +382,7 @@ class PersonalizationEvalTest(tf.test.TestCase, parameterized.TestCase):
     with self.assertRaises(TypeError):
       # `tf.int32` is not a `tff.Type`.
       bad_context_tff_type = tf.int32
-      federated_p13n_eval = p13n_eval.build_personalization_eval(
+      p13n_eval.build_personalization_eval_computation(
           model_fn,
           p13n_fn_dict,
           _evaluate_fn,
@@ -392,7 +392,7 @@ class PersonalizationEvalTest(tf.test.TestCase, parameterized.TestCase):
     with self.assertRaises(TypeError):
       # `context_tff_type` is provided but `context` is not provided.
       context_tff_type = computation_types.to_type(tf.int32)
-      federated_p13n_eval = p13n_eval.build_personalization_eval(
+      federated_p13n_eval = p13n_eval.build_personalization_eval_computation(
           model_fn,
           p13n_fn_dict,
           _evaluate_fn,
@@ -419,7 +419,7 @@ class PersonalizationEvalTest(tf.test.TestCase, parameterized.TestCase):
 
     # Build the p13n eval with an extra `context` argument.
     context_tff_type = computation_types.to_type(tf.int32)
-    federated_p13n_eval = p13n_eval.build_personalization_eval(
+    federated_p13n_eval = p13n_eval.build_personalization_eval_computation(
         model_fn, p13n_fn_dict, _evaluate_fn, context_tff_type=context_tff_type
     )
 
@@ -452,14 +452,14 @@ class PersonalizationEvalTest(tf.test.TestCase, parameterized.TestCase):
     with self.assertRaises(TypeError):
       # `max_num_clients` should be an `int`.
       bad_num_clients = 1.0
-      p13n_eval.build_personalization_eval(
+      p13n_eval.build_personalization_eval_computation(
           model_fn, p13n_fn_dict, _evaluate_fn, max_num_clients=bad_num_clients
       )
 
     with self.assertRaises(ValueError):
       # `max_num_clients` should be a positive `int`.
       bad_num_clients = 0
-      p13n_eval.build_personalization_eval(
+      p13n_eval.build_personalization_eval_computation(
           model_fn, p13n_fn_dict, _evaluate_fn, max_num_clients=bad_num_clients
       )
 
@@ -470,7 +470,7 @@ class PersonalizationEvalTest(tf.test.TestCase, parameterized.TestCase):
     zero_model_weights = _create_zero_model_weights(model_fn)
     p13n_fn_dict = _create_p13n_fn_dict(learning_rate=1.0)
 
-    federated_p13n_eval = p13n_eval.build_personalization_eval(
+    federated_p13n_eval = p13n_eval.build_personalization_eval_computation(
         model_fn, p13n_fn_dict, _evaluate_fn, max_num_clients=1
     )
 
@@ -493,7 +493,7 @@ class PersonalizationEvalTest(tf.test.TestCase, parameterized.TestCase):
     # processing, etc).
     mock_model_fn = mock.Mock(side_effect=model_examples.LinearRegression)
     p13n_fn_dict = _create_p13n_fn_dict(learning_rate=1.0)
-    p13n_eval.build_personalization_eval(
+    p13n_eval.build_personalization_eval_computation(
         mock_model_fn, p13n_fn_dict, _evaluate_fn, max_num_clients=1
     )
     # TODO(b/186451541): reduce the number of calls to model_fn.

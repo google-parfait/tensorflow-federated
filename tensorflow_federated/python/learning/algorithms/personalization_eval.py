@@ -39,7 +39,7 @@ _FinetuneEvalFnType = Callable[
 ]
 
 
-def build_personalization_eval(
+def build_personalization_eval_computation(
     model_fn: Callable[[], variable.VariableModel],
     personalize_fn_dict: Mapping[str, Callable[[], _FinetuneEvalFnType]],
     baseline_evaluate_fn: Callable[

@@ -1,7 +1,7 @@
 # Simple Personalization Experiment on EMNIST-62
 
 This directory shows an example of how to use the
-[`tff.learning.build_personalization_eval`](https://www.tensorflow.org/federated/api_docs/python/tff/learning/build_personalization_eval)
+[`tff.learning.build_personalization_eval_computation`](https://www.tensorflow.org/federated/api_docs/python/tff/learning/build_personalization_eval_computation)
 API in experiments.
 
 ## Summary
@@ -28,7 +28,7 @@ clients into two groups: one has 2500 clients and the other has 900 clients.
     the local test data. The metrics of every personalization strategy are
     returned (more about evaluation metrics can be found below). This step is
     done by the
-    [`tff.learning.build_personalization_eval`](https://www.tensorflow.org/federated/api_docs/python/tff/learning/build_personalization_eval)
+    [`tff.learning.build_personalization_eval_computation`](https://www.tensorflow.org/federated/api_docs/python/tff/learning/build_personalization_eval_computation)
     API.
 
 ## Personalization Strategies
@@ -42,7 +42,7 @@ personalization strategy is given by `build_personalize_fn` in
 [`p13n_utils`](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/examples/personalization/p13n_utils.py).
 
 The
-[`tff.learning.build_personalization_eval`](https://www.tensorflow.org/federated/api_docs/python/tff/learning/build_personalization_eval)
+[`tff.learning.build_personalization_eval_computation`](https://www.tensorflow.org/federated/api_docs/python/tff/learning/build_personalization_eval_computation)
 API allows users to evaluate multiple personalization strategies at the same
 time, starting from the same global model. Specifically, users define a
 `collections.OrderedDict` that maps string names to personalization strategies,
@@ -56,7 +56,7 @@ uses SGD and other other uses Adam optimizer.
 ## Returned Metrics
 
 The
-[`tff.learning.build_personalization_eval`](https://www.tensorflow.org/federated/api_docs/python/tff/learning/build_personalization_eval)
+[`tff.learning.build_personalization_eval_computation`](https://www.tensorflow.org/federated/api_docs/python/tff/learning/build_personalization_eval_computation)
 API has an argument `max_num_samples` with a default value 100. Metrics from at
 most `max_num_samples` clients (the clients are sampled without replacement)
 will be collected and returned. In

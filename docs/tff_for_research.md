@@ -229,7 +229,7 @@ To explore and compare different personalization strategies, you can:
 *   Define an `OrderedDict` that maps strategy names to the corresponding
     personalization strategies, and use it as the `personalize_fn_dict` argument
     in
-    [`tff.learning.build_personalization_eval`](https://www.tensorflow.org/federated/api_docs/python/tff/learning/build_personalization_eval).
+    [`tff.learning.build_personalization_eval_computation`](https://www.tensorflow.org/federated/api_docs/python/tff/learning/build_personalization_eval_computation).
 
 Another approach is to avoid training a fully global model by training part of a
 model entirely locally. An instantiation of this approach is described in
