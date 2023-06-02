@@ -14,6 +14,8 @@
 """An implementation of federated personalization evaluation."""
 
 import collections
+from collections.abc import Callable, Mapping
+from typing import Any
 
 import tensorflow as tf
 
@@ -27,14 +29,24 @@ from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.learning.models import model_weights as model_weights_lib
+from tensorflow_federated.python.learning.models import variable
+
+
+_MetricsType = Mapping[str, Any]
+_FinetuneEvalFnType = Callable[
+    [variable.VariableModel, tf.data.Dataset, tf.data.Dataset, Any],
+    _MetricsType,
+]
 
 
 def build_personalization_eval(
-    model_fn,
-    personalize_fn_dict,
-    baseline_evaluate_fn,
-    max_num_clients=100,
-    context_tff_type=None,
+    model_fn: Callable[[], variable.VariableModel],
+    personalize_fn_dict: Mapping[str, Callable[[], _FinetuneEvalFnType]],
+    baseline_evaluate_fn: Callable[
+        [variable.VariableModel, tf.data.Dataset], _MetricsType
+    ],
+    max_num_clients: int = 100,
+    context_tff_type: computation_types.Type = None,
 ) -> computation_base.Computation:
   """Builds the TFF computation for evaluating personalization strategies.
 
@@ -95,7 +107,7 @@ def build_personalization_eval(
         `personalize_fn_dict`, then client input has a third key `context` that
         is mapped to a object whose `tff.Type` is provided by the
         `context_tff_type` argument.
-    *   `personazliation_metrics` is an `OrderedDict` that maps a key
+    *   `personalization_metrics` is an `OrderedDict` that maps a key
         'baseline_metrics' to the evaluation metrics of the initial model
         (computed by `baseline_evaluate_fn`), and maps keys (strategy names) in
         `personalize_fn_dict` to the evaluation metrics of the corresponding
