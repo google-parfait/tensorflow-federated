@@ -24,11 +24,10 @@ domain specific APIs (e.g. `tff.learning`), though it is an example of a
 federated learning training loop.
 """
 
-import functools
+import asyncio
 import typing
 from typing import NamedTuple, Optional
 
-from absl import logging
 import tensorflow_federated as tff
 
 
@@ -50,7 +49,7 @@ def _check_expected_type_signatures(
   example, if you are using a `tff.learning.templates.LearningProcess` as an
   input to the program logic, then these checks might not make sense because the
   the `tff.learning.templates.LearningProcess` has already validated that those
-  `tff.Computaiton` have the expected type signatures.
+  `tff.Computation` have the expected type signatures.
 
   See `train_federated_model` for more information on the expected type
   signatures of the computations and data sources.
@@ -216,6 +215,40 @@ def _check_expected_type_signatures(
     raise UnexpectedTypeSignatureError() from e
 
 
+class _TaskGroup:
+  """An asynchronous context manager holding a group of tasks.
+
+  Tasks are used to schedule coroutines concurrently. Tasks can be added to the
+  group using `_TaskGroup.create_task()`. All tasks are awaited when the context
+  manager exits.
+
+  This is a simplified version of
+  [`asyncio.TaskGroup`](https://docs.python.org/3/library/asyncio-task.html#task-groups)
+  with less sophisticated error handling. It can be removed once Python 3.11 is
+  the minimum supported version of Python.
+  """
+
+  def __init__(self):
+    self._tasks = set()
+
+  async def __aenter__(self):
+    return self
+
+  async def __aexit__(self, exc_type, exc_value, traceback):
+    if self._tasks:
+      await asyncio.wait(self._tasks)
+
+  def create_task(self, coro):
+    task = asyncio.create_task(coro)
+    self._tasks.add(task)
+
+    def _task_done(task):
+      self._tasks.discard(task)
+
+    task.add_done_callback(_task_done)
+    return task
+
+
 class _ProgramState(NamedTuple):
   """Defines the intermediate program state of the program logic.
 
@@ -328,9 +361,8 @@ async def train_federated_model(
       evaluation=evaluation,
       evaluation_data_source=evaluation_data_source,
   )
-  logging.info('Running program logic')
 
-  # Cast the `program_state_manager` to a more specific type; a manager that
+  # Cast the `program_state_manager` to a more specific type: a manager that
   # loads and saves `_ProgramState`s instead of a manager that loads and saves
   # `tff.program.ProgramStateStructure`s. This allows the program logic to:
   # *   Keep `_ProgramState` private.
@@ -344,7 +376,7 @@ async def train_federated_model(
 
   initial_state = initialize()
 
-  # Try to load the latest program state; if the program logic failed on a
+  # Try to load the latest program state. If the program logic failed on a
   # previous run, this program state can be used to restore the execution of
   # this program logic and skip unnecessary steps.
   if program_state_manager is not None:
@@ -358,34 +390,29 @@ async def train_federated_model(
   # Assign the inputs to the program logic using the loaded program state if
   # available or the initialized state.
   if program_state is not None:
-    logging.info('Loaded program state at version %d', version)
     state = program_state.state  # pytype: disable=attribute-error  # numpy-scalars
     start_round = program_state.round_num + 1  # pytype: disable=attribute-error  # numpy-scalars
   else:
-    logging.info('Initialized state')
     state = initial_state
     start_round = 1
 
-  # Construct a context manager to group and run tasks sequentially; often
-  # program logic will release values and save program state, asynchronous and
-  # synchronous functions (e.g. logging) can be executed sequentially using a
-  # `tff.async_utils.OrderedTasks` context manager.
-  async with tff.async_utils.ordered_tasks() as tasks:
+  # Construct a async context manager to group and run tasks concurrently.
+  # Program logic will release values and save program state, these functions
+  # are asynchronous and can be run concurrently. However, it is possible to
+  # schedule these functions differently using
+  # [asyncio](https://docs.python.org/3/library/asyncio.html).
+  async with _TaskGroup() as task_group:
     # Construct an iterator from the `train_data_source` which returns client
     # data used during training.
     train_data_iterator = train_data_source.iterator()
 
-    # Train `state` for some number of rounds; note that both `state` and
-    # `start_round` are inputs to this loop and are saved using the
-    # `program_state_manager`. This means that if there is a failure during
-    # training, previously trained rounds will be skipped.
+    # Train `state` for some number of rounds. Both `state` and `start_round`
+    # are inputs to this loop and are saved using the `program_state_manager`.
+    # This means that if there is a failure during training, previously trained
+    # rounds will be skipped.
     for round_num in range(start_round, total_rounds + 1):
+
       # Run one round of training.
-      tasks.add_callable(
-          functools.partial(
-              logging.info, 'Running round %d of training', round_num
-          )
-      )
       train_data = train_data_iterator.select(num_clients)
       state, metrics = train(state, train_data)
 
@@ -393,7 +420,7 @@ async def train_federated_model(
       if train_metrics_manager is not None:
         _, metrics_type = train.type_signature.result
         metrics_type = metrics_type.member
-        tasks.add(
+        task_group.create_task(
             train_metrics_manager.release(metrics, metrics_type, round_num)
         )
 
@@ -401,14 +428,13 @@ async def train_federated_model(
       if program_state_manager is not None:
         program_state = _ProgramState(state, round_num)
         version = version + 1
-        tasks.add(program_state_manager.save(program_state, version))
+        task_group.create_task(
+            program_state_manager.save(program_state, version)
+        )
 
-    # Run one round of evaluation; similar to running one round of training
-    # above, except using the `evaluation` computaiton and the
+    # Run one round of evaluation. This is similar to running one round of
+    # training above, except using the `evaluation` computation and the
     # `evaluation_data_source`.
-    tasks.add_callable(
-        functools.partial(logging.info, 'Running one round of evaluation')
-    )
     evaluation_data_iterator = evaluation_data_source.iterator()
     evaluation_data = evaluation_data_iterator.select(num_clients)
     evaluation_metrics = evaluation(state, evaluation_data)
@@ -416,7 +442,7 @@ async def train_federated_model(
     # Release the evaluation metrics.
     if evaluation_metrics_manager is not None:
       evaluation_metrics_type = evaluation.type_signature.result.member
-      tasks.add(
+      task_group.create_task(
           evaluation_metrics_manager.release(
               evaluation_metrics, evaluation_metrics_type, total_rounds + 1
           )
@@ -426,4 +452,6 @@ async def train_federated_model(
     if model_output_manager is not None:
       _, state_type = train.type_signature.result
       state_type = state_type.member
-      tasks.add(model_output_manager.release(state, state_type, None))
+      task_group.create_task(
+          model_output_manager.release(state, state_type, None)
+      )
