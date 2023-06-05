@@ -799,7 +799,7 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
       ABSL_GUARDED_BY(function_cache_mutex_);
   absl::Mutex function_cache_mutex_;
   // TODO(b/254454077): now that TensorFlowExecutor has a thread pool, clean-up
-  // the usage of `max_concurrent_computaiton_calls` to move all parallellism
+  // the usage of `max_concurrent_computation_calls` to move all parallellism
   // limits ot the thread pool.
   int32_t max_concurrent_computation_calls_;
   ThreadPool thread_pool_;

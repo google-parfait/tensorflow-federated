@@ -919,7 +919,7 @@ def _get_secure_intrinsic_reductions() -> (
   of the intrinsic call which has been reduced to a smaller, more fundamental
   set of intrinsics.
 
-  WARNING: the reductions returned here will produce computaiton bodies that do
+  WARNING: the reductions returned here will produce computation bodies that do
   **NOT** perform the crypto protocol. This method is intended only for testing
   settings.
 

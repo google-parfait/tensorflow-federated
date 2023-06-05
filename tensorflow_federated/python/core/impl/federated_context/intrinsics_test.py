@@ -881,9 +881,6 @@ class FederatedMeanTest(IntrinsicTestBase):
 
 class FederatedAggregateTest(IntrinsicTestBase):
 
-  # def _create_federated_aggregate_computaitons(self):
-  #   return None
-
   def test_federated_aggregate_with_client_int(self):
     # The representation used during the aggregation process will be a named
     # tuple with 2 elements - the integer 'total' that represents the sum of
