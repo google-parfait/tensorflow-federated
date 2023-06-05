@@ -1,3 +1,24 @@
+# Release 0.59.0
+
+## Major Features and Improvements
+
+*   Removed compression for `worker_binary`.
+*   Allowed tensor and numpy float-like objects in optimizer hyperparameters.
+*   Improved API/filtering logic in `FilteringReleaseManager`.
+
+## Breaking Changes
+
+*   Renamed `build_personalization_eval` to
+    `build_personalization_eval_computation`.
+*   Updated `tff.to_type` implementation and type annotation to not
+    accept/return `None`.
+
+## Bug Fixes
+
+*   Fixed and documented pytype errors in the `program` package.
+*   Fixed bug in how `tff.program.NativeFederatedContext` handles arguments of
+    various types.
+
 # Release 0.58.0
 
 ## Major Features and Improvements
