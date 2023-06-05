@@ -593,7 +593,7 @@ TEST_F(ReferenceResolvingExecutorTest, CreateCallNoArgComp) {
 }
 
 TEST_F(ReferenceResolvingExecutorTest, CreateCallNoArgCompWithArg) {
-  // Create a no-arg computaiton.
+  // Create a no-arg computation.
   v0::Value no_arg_computation_pb = NoArgConstantTfComputationV();
   EXPECT_CALL(*mock_executor_, CreateValue(EqualsProto(no_arg_computation_pb)))
       .WillOnce([this]() { return OwnedValueId(mock_executor_, 0); });
@@ -620,7 +620,7 @@ TEST_F(ReferenceResolvingExecutorTest, CreateCallNoArgCompWithArg) {
 }
 
 TEST_F(ReferenceResolvingExecutorTest, CreateCallSingleArg) {
-  // Create a one-arg computaiton.
+  // Create a one-arg computation.
   v0::Value no_arg_computation_pb = UnarySquareTfComputationV();
   EXPECT_CALL(*mock_executor_, CreateValue(EqualsProto(no_arg_computation_pb)))
       .WillOnce([this]() { return OwnedValueId(mock_executor_, 0); });
@@ -645,7 +645,7 @@ TEST_F(ReferenceResolvingExecutorTest, CreateCallSingleArg) {
 }
 
 TEST_F(ReferenceResolvingExecutorTest, CreateCallLazyStructMultiArg) {
-  // Create a one-arg computaiton.
+  // Create a one-arg computation.
   v0::Value no_arg_computation_pb = BinaryAddTfComputationV();
   EXPECT_CALL(*mock_executor_, CreateValue(EqualsProto(no_arg_computation_pb)))
       .WillOnce([this]() { return OwnedValueId(mock_executor_, 0); });
