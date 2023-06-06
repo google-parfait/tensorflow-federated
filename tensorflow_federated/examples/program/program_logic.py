@@ -383,6 +383,10 @@ async def train_federated_model(
     initial_state = await tff.program.materialize_value(initial_state)
     structure = _ProgramState(initial_state, 0)
     program_state, version = await program_state_manager.load_latest(structure)
+
+    # TODO(b/271445312): Cast `program_state` to `_ProgramState`. `TypeVar`s are
+    # lost from async function signatures.
+    program_state = typing.cast(_ProgramState, program_state)
   else:
     program_state = None
     version = 0
@@ -390,8 +394,8 @@ async def train_federated_model(
   # Assign the inputs to the program logic using the loaded program state if
   # available or the initialized state.
   if program_state is not None:
-    state = program_state.state  # pytype: disable=attribute-error  # numpy-scalars
-    start_round = program_state.round_num + 1  # pytype: disable=attribute-error  # numpy-scalars
+    state = program_state.state
+    start_round = program_state.round_num + 1
   else:
     state = initial_state
     start_round = 1
