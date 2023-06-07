@@ -30,6 +30,8 @@ cc_library(
     deps = [
         "//tensorflow_federated/cc/core/impl/executor_stacks:local_stacks",
         "//tensorflow_federated/cc/core/impl/executors:cardinalities",
+        "//tensorflow_federated/cc/core/impl/executors:dtensor_api",
+        "//tensorflow_federated/cc/core/impl/executors:dtensor_executor",
         "//tensorflow_federated/cc/core/impl/executors:executor",
         "//tensorflow_federated/cc/core/impl/executors:executor_service",
         "//tensorflow_federated/cc/core/impl/executors:status_macros",
