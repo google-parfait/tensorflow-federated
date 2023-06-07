@@ -1094,6 +1094,7 @@ class SavedModelFileReleaseManagerGetPathForKeyTest(parameterized.TestCase):
       ('1', 1),
       ('negative', -1),
       ('numpy', np.int32(1)),
+      ('str', 'a'),
   )
   async def test_does_not_raise_type_error_with_key(self, key):
     root_dir = self.create_tempdir()
@@ -1105,20 +1106,6 @@ class SavedModelFileReleaseManagerGetPathForKeyTest(parameterized.TestCase):
       release_mngr._get_path_for_key(key)
     except TypeError:
       self.fail('Raised `TypeError` unexpectedly.')
-
-  @parameterized.named_parameters(
-      ('none', None),
-      ('str', 'a'),
-      ('list', []),
-  )
-  def test_raises_type_error_with_key(self, key):
-    root_dir = self.create_tempdir()
-    release_mngr = file_release_manager.SavedModelFileReleaseManager(
-        root_dir=root_dir, prefix='a_'
-    )
-
-    with self.assertRaises(TypeError):
-      release_mngr._get_path_for_key(key)
 
 
 class SavedModelFileReleaseManagerReleaseTest(
@@ -1401,6 +1388,7 @@ class SavedModelFileReleaseManagerReleaseTest(
       ('1', 1),
       ('negative', -1),
       ('numpy', np.int32(1)),
+      ('str', 'a'),
   )
   async def test_does_not_raise_type_error_with_key(self, key):
     root_dir = self.create_tempdir()
@@ -1414,22 +1402,6 @@ class SavedModelFileReleaseManagerReleaseTest(
       await release_mngr.release(value, type_signature, key)
     except TypeError:
       self.fail('Raised `TypeError` unexpectedly.')
-
-  @parameterized.named_parameters(
-      ('none', None),
-      ('str', 'a'),
-      ('list', []),
-  )
-  async def test_raises_type_error_with_key(self, key):
-    root_dir = self.create_tempdir()
-    release_mngr = file_release_manager.SavedModelFileReleaseManager(
-        root_dir=root_dir, prefix='a_'
-    )
-    value = 1
-    type_signature = computation_types.TensorType(tf.int32)
-
-    with self.assertRaises(TypeError):
-      await release_mngr.release(value, type_signature, key)
 
 
 if __name__ == '__main__':

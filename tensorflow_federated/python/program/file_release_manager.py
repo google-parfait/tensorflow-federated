@@ -319,7 +319,9 @@ class CSVFileReleaseManager(
 
 
 class SavedModelFileReleaseManager(
-    release_manager.ReleaseManager[release_manager.ReleasableStructure, int]
+    release_manager.ReleaseManager[
+        release_manager.ReleasableStructure, release_manager.Key
+    ]
 ):
   """A `tff.program.ReleaseManager` that releases values to a file system.
 
@@ -364,7 +366,7 @@ class SavedModelFileReleaseManager(
     self._root_dir = root_dir
     self._prefix = prefix
 
-  def _get_path_for_key(self, key: int) -> str:
+  def _get_path_for_key(self, key: release_manager.Key) -> str:
     """Returns the path for the given `key`.
 
     This method does not assert that the given `key` or the returned path
@@ -373,28 +375,23 @@ class SavedModelFileReleaseManager(
     Args:
       key: The key used to construct the path.
     """
-    py_typecheck.check_type(key, (int, np.integer))
-
-    basename = f'{self._prefix}{key}'
+    basename = f'{self._prefix}{str(key)}'
     return os.path.join(self._root_dir, basename)
 
   async def release(
       self,
       value: release_manager.ReleasableStructure,
       type_signature: computation_types.Type,
-      key: int,
+      key: release_manager.Key,
   ) -> None:
     """Releases `value` from a federated program.
 
     Args:
       value: A `tff.program.ReleasableStructure` to release.
       type_signature: The `tff.Type` of `value`.
-      key: An integer used to reference the released `value`; `key` represents a
-        step in a federated program.
+      key: An optional value used to reference the released `value`.
     """
     del type_signature  # Unused.
-    py_typecheck.check_type(key, (int, np.integer))
-
     path = self._get_path_for_key(key)
     materialized_value = await value_reference.materialize_value(value)
     flattened_value = structure_utils.flatten(materialized_value)
