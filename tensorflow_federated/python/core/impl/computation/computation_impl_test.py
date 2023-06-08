@@ -46,7 +46,7 @@ class ConcreteComputationTest(absltest.TestCase):
 
     # This should fail, as the proto is not well-formed.
     self.assertRaises(
-        TypeError,
+        NotImplementedError,
         computation_impl.ConcreteComputation,
         pb.Computation(),
         context_stack_impl.context_stack,

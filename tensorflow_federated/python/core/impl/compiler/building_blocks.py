@@ -691,11 +691,16 @@ class Lambda(ComputationBuildingBlock):
   ) -> 'Lambda':
     _check_computation_oneof(computation_proto, 'lambda')
     the_lambda = getattr(computation_proto, 'lambda')
+    if computation_proto.type.function.HasField('parameter'):
+      parameter_type = type_serialization.deserialize_type(
+          computation_proto.type.function.parameter
+      )
+    else:
+      parameter_type = None
+
     return cls(
         str(the_lambda.parameter_name),
-        type_serialization.deserialize_type(
-            computation_proto.type.function.parameter
-        ),
+        parameter_type,
         ComputationBuildingBlock.from_proto(the_lambda.result),
     )
 

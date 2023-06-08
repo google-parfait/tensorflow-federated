@@ -13,7 +13,6 @@
 # limitations under the License.
 """A library of (de)serialization functions for computation types."""
 
-from typing import Optional
 import weakref
 
 import tensorflow as tf
@@ -121,33 +120,25 @@ def serialize_type(type_spec: computation_types.Type) -> pb.Type:
   return proto
 
 
-def deserialize_type(
-    type_proto: Optional[pb.Type],
-) -> Optional[computation_types.Type]:
-  """Deserializes 'type_proto' as a computation_types.Type.
+def deserialize_type(type_proto: pb.Type) -> computation_types.Type:
+  """Deserializes 'type_proto' as a `tff.Type`.
 
   Note: Currently only deserialization for tensor, named tuple, sequence, and
   function types is implemented.
 
   Args:
-    type_proto: An object that supports same interface as `pb.Type` (e.g. pybind
-      backend C++ `Type` protocol buffer messages), or `None`.
+    type_proto: A `pb.Type` to deserialize.
 
   Returns:
-    The corresponding instance of computation_types.Type (or None if the
-    argument was None).
+    The corresponding instance of `tff.Type`.
 
   Raises:
-    TypeError: if the argument is of the wrong type.
-    NotImplementedError: for type variants for which deserialization is not
+    TypeError: If the argument is of the wrong type.
+    NotImplementedError: For type variants for which deserialization is not
       implemented.
   """
-  if type_proto is None:
-    return None
   type_variant = type_proto.WhichOneof('type')
-  if type_variant is None:
-    return None
-  elif type_variant == 'tensor':
+  if type_variant == 'tensor':
     tensor_proto = type_proto.tensor
     return computation_types.TensorType(
         dtype=tf.dtypes.as_dtype(tensor_proto.dtype),
@@ -172,9 +163,13 @@ def deserialize_type(
         convert=False,
     )
   elif type_variant == 'function':
+    if type_proto.function.HasField('parameter'):
+      parameter_type = deserialize_type(type_proto.function.parameter)
+    else:
+      parameter_type = None
+    result_type = deserialize_type(type_proto.function.result)
     return computation_types.FunctionType(
-        parameter=deserialize_type(type_proto.function.parameter),
-        result=deserialize_type(type_proto.function.result),
+        parameter=parameter_type, result=result_type
     )
   elif type_variant == 'placement':
     return computation_types.PlacementType()
