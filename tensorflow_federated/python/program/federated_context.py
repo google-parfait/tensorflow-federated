@@ -55,14 +55,16 @@ def contains_only_server_placed_data(
   py_typecheck.check_type(type_signature, computation_types.Type)
 
   def predicate(type_spec: computation_types.Type) -> bool:
-    return (
-        type_spec.is_struct()
-        or (
-            type_spec.is_federated()
-            and type_spec.placement is placements.SERVER
-        )
-        or type_spec.is_sequence()
-        or type_spec.is_tensor()
+    return isinstance(
+        type_spec,
+        (
+            computation_types.StructType,
+            computation_types.SequenceType,
+            computation_types.TensorType,
+        ),
+    ) or (
+        isinstance(type_spec, computation_types.FederatedType)
+        and type_spec.placement is placements.SERVER
     )
 
   return type_analysis.contains_only(type_signature, predicate)

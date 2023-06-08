@@ -31,7 +31,7 @@ from tensorflow_federated.python.program import value_reference
 
 def _materialized_value_to_type(
     value: value_reference.MaterializedValue,
-) -> computation_types.Type:
+) -> value_reference.MaterializableTypeSignature:
   """Returns a `tff.Type` for the `value`."""
   if isinstance(value, bool):
     return computation_types.TensorType(tf.bool)

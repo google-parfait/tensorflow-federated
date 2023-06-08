@@ -241,9 +241,9 @@ class CreateStructureOfAwaitableReferencesTest(
         fn, type_signature
     )
 
-    if type_signature.is_struct() and not structure.is_same_structure(
-        actual_value, expected_value
-    ):
+    if isinstance(
+        type_signature, computation_types.StructType
+    ) and not structure.is_same_structure(actual_value, expected_value):
       self.fail(
           'Expected the structures to be the same, found '
           f'{actual_value} and {expected_value}'

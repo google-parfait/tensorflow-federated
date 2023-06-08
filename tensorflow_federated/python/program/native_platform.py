@@ -144,8 +144,7 @@ def _create_structure_of_awaitable_references(
   # `tff.program.ReleaseManager`s.
   fn = _wrap_in_shared_awaitable(fn)
 
-  if type_signature.is_struct():
-
+  if isinstance(type_signature, computation_types.StructType):
     async def _to_structure(fn: _MaterializedValueFn) -> structure.Struct:
       value = await fn()
       return structure.from_container(value)
@@ -174,13 +173,13 @@ def _create_structure_of_awaitable_references(
       elements.append((name, element))
     return structure.Struct(elements)
   elif (
-      type_signature.is_federated()
+      isinstance(type_signature, computation_types.FederatedType)
       and type_signature.placement == placements.SERVER
   ):
     return _create_structure_of_awaitable_references(fn, type_signature.member)
-  elif type_signature.is_sequence():
+  elif isinstance(type_signature, computation_types.SequenceType):
     return AwaitableValueReference(fn, type_signature)
-  elif type_signature.is_tensor():
+  elif isinstance(type_signature, computation_types.TensorType):
     return AwaitableValueReference(fn, type_signature)
   else:
     raise NotImplementedError(f'Unexpected type found: {type_signature}.')

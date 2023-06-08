@@ -80,6 +80,11 @@ class DatasetDataSourceIterator(data_source.FederatedDataSourceIterator):
     federated_type, _ = serialization_utils.unpack_type_spec_from(
         buffer, offset=offset
     )
+    if not isinstance(federated_type, computation_types.FederatedType):
+      raise TypeError(
+          'Expected `federated_type` to be a `tff.FederatedType`, found '
+          f'`{type(federated_type)}`.'
+      )
     return DatasetDataSourceIterator(
         datasets=datasets, federated_type=federated_type
     )
