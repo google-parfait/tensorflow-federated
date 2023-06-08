@@ -33,10 +33,17 @@ from tensorflow_federated.python.learning.models import variable
 
 
 _MetricsType = Mapping[str, Any]
+_SplitFnType = Callable[
+    [tf.data.Dataset], tuple[tf.data.Dataset, tf.data.Dataset]
+]
 _FinetuneEvalFnType = Callable[
     [variable.VariableModel, tf.data.Dataset, tf.data.Dataset, Any],
     _MetricsType,
 ]
+
+_TRAIN_DATA_KEY = 'train_data'
+_EVAL_DATA_KEY = 'test_data'
+_CONTEXT_KEY = 'context'
 
 
 def build_personalization_eval_computation(
@@ -143,27 +150,81 @@ def build_personalization_eval_computation(
   )
   if context_tff_type is not None:
     py_typecheck.check_type(context_tff_type, computation_types.Type)
-    client_input_type['context'] = context_tff_type
+    client_input_type[_CONTEXT_KEY] = context_tff_type
   client_input_type = computation_types.to_type(client_input_type)
 
-  @tensorflow_computation.tf_computation(model_weights_type, client_input_type)
+  py_typecheck.check_type(max_num_clients, int)
+  if max_num_clients <= 0:
+    raise ValueError('max_num_clients must be a positive integer.')
+
+  client_computation = _build_client_computation(
+      model_weights_type=model_weights_type,
+      client_data_type=client_input_type,
+      model_fn=model_fn,
+      personalize_fn_dict=personalize_fn_dict,
+      baseline_evaluate_fn=baseline_evaluate_fn,
+  )
+
+  reservoir_sampling_factory = sampling.UnweightedReservoirSamplingFactory(
+      sample_size=max_num_clients
+  )
+  aggregation_process = reservoir_sampling_factory.create(
+      client_computation.type_signature.result
+  )
+
+  @federated_computation.federated_computation(
+      computation_types.FederatedType(model_weights_type, placements.SERVER),
+      computation_types.FederatedType(client_input_type, placements.CLIENTS),
+  )
+  def personalization_eval(server_model_weights, federated_client_input):
+    """TFF orchestration logic."""
+    client_init_weights = intrinsics.federated_broadcast(server_model_weights)
+    client_final_metrics = intrinsics.federated_map(
+        client_computation, (client_init_weights, federated_client_input)
+    )
+
+    # WARNING: Collecting information from clients can be risky. Users have to
+    # make sure that it is proper to collect those metrics from clients.
+    # TODO(b/147889283): Add a link to the TFF doc once it exists.
+    sampling_output = aggregation_process.next(
+        aggregation_process.initialize(), client_final_metrics  # No state.
+    )
+    # In the future we may want to output `sampling_output.measurements` also
+    # but currently it is empty.
+    return sampling_output.result
+
+  return personalization_eval
+
+
+def _build_client_computation(
+    model_weights_type: computation_types.Type,
+    client_data_type: computation_types.Type,
+    model_fn: Callable[[], variable.VariableModel],
+    personalize_fn_dict: Mapping[str, Callable[[], _FinetuneEvalFnType]],
+    baseline_evaluate_fn: Callable[
+        [variable.VariableModel, tf.data.Dataset], _MetricsType
+    ],
+):
+  """Return an unplaced tff.Computation representing the client computation."""
+
+  py_typecheck.check_type(personalize_fn_dict, collections.OrderedDict)
+  if 'baseline_metrics' in personalize_fn_dict:
+    raise ValueError(
+        'baseline_metrics should not be used as a key in personalize_fn_dict.'
+    )
+
+  @tensorflow_computation.tf_computation(model_weights_type, client_data_type)
   def _client_computation(initial_model_weights, client_input):
-    """TFF computation that runs on each client."""
-    train_data = client_input['train_data']
-    test_data = client_input['test_data']
-    context = client_input.get('context', None)
+    """A computation performing personalization evaluation on a client."""
+    train_data = client_input[_TRAIN_DATA_KEY]
+    test_data = client_input[_EVAL_DATA_KEY]
+    context = client_input.get(_CONTEXT_KEY)
 
     final_metrics = collections.OrderedDict()
     # Compute the evaluation metrics of the initial model.
     final_metrics['baseline_metrics'] = _compute_baseline_metrics(
         model_fn, initial_model_weights, test_data, baseline_evaluate_fn
     )
-
-    py_typecheck.check_type(personalize_fn_dict, collections.OrderedDict)
-    if 'baseline_metrics' in personalize_fn_dict:
-      raise ValueError(
-          'baseline_metrics should not be used as a key in personalize_fn_dict.'
-      )
 
     # Compute the evaluation metrics of the personalized models. The returned
     # `p13n_metrics` is an `OrderedDict` that maps keys (strategy names) in
@@ -180,39 +241,7 @@ def build_personalization_eval_computation(
     final_metrics.update(p13n_metrics)
     return final_metrics
 
-  py_typecheck.check_type(max_num_clients, int)
-  if max_num_clients <= 0:
-    raise ValueError('max_num_clients must be a positive integer.')
-
-  reservoir_sampling_factory = sampling.UnweightedReservoirSamplingFactory(
-      sample_size=max_num_clients
-  )
-  aggregation_process = reservoir_sampling_factory.create(
-      _client_computation.type_signature.result
-  )
-
-  @federated_computation.federated_computation(
-      computation_types.FederatedType(model_weights_type, placements.SERVER),
-      computation_types.FederatedType(client_input_type, placements.CLIENTS),
-  )
-  def personalization_eval(server_model_weights, federated_client_input):
-    """TFF orchestration logic."""
-    client_init_weights = intrinsics.federated_broadcast(server_model_weights)
-    client_final_metrics = intrinsics.federated_map(
-        _client_computation, (client_init_weights, federated_client_input)
-    )
-
-    # WARNING: Collecting information from clients can be risky. Users have to
-    # make sure that it is proper to collect those metrics from clients.
-    # TODO(b/147889283): Add a link to the TFF doc once it exists.
-    sampling_output = aggregation_process.next(
-        aggregation_process.initialize(), client_final_metrics  # No state.
-    )
-    # In the future we may want to output `sampling_output.measurements` also
-    # but currently it is empty.
-    return sampling_output.result
-
-  return personalization_eval
+  return _client_computation
 
 
 def _remove_batch_dim(
