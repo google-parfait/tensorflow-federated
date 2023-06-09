@@ -33,8 +33,8 @@ From the perspective of roles/ownership:
 *   This example is the author of the program and the program logic
 
 Please read
-https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/program/README.md for
-more documentation about this example.
+https://github.com/tensorflow/federated/blob/main/docs/program/federated_program.md
+for more information.
 
 Usage:
 
@@ -77,7 +77,7 @@ def main(argv: Sequence[str]) -> None:
 
   # Configure the platform-specific components; in this example, the TFF native
   # platform is used, but this example could use any platform that conforms to
-  # the approprate abstract interfaces.
+  # the appropriate abstract interfaces.
 
   # Create a context in which to execute the program logic.
   context = tff.backends.native.create_async_local_cpp_execution_context()
