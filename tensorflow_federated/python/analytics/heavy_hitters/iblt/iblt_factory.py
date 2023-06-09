@@ -159,7 +159,7 @@ class IbltFactory(factory.UnweightedAggregationFactory):
 
   def create(
       self, value_type: computation_types.SequenceType
-  ) -> aggregation_process.AggregationProcess:
+  ) -> aggregation_process.AggregationProcess:  # pytype: disable=signature-mismatch
     """Creates an AggregationProcess using IBLT to aggregate strings.
 
     Args:
@@ -189,7 +189,7 @@ class IbltFactory(factory.UnweightedAggregationFactory):
           'value_shape must be compatible with '
           f'{expected_value_type}. Found {value_type} instead.'
       )
-    self._value_shape = tuple(value_type.element[DATASET_VALUE].shape)
+    self._value_shape = tuple(value_type.element[DATASET_VALUE].shape)  # pytype: disable=unsupported-operands
 
     @tensorflow_computation.tf_computation(value_type)
     def encode_iblt(dataset):

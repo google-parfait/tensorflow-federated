@@ -118,7 +118,7 @@ class HistogramClippingSumFactory(factory.UnweightedAggregationFactory):
 
     tff_clip_fn = tensorflow_computation.tf_computation(clip_fn)
     tff_cast_fn = tensorflow_computation.tf_computation(
-        lambda x: tf.cast(x, inner_value_type.dtype)
+        lambda x: tf.cast(x, inner_value_type.dtype)  # pytype: disable=attribute-error
     )
 
     @federated_computation.federated_computation(
