@@ -202,18 +202,19 @@ class FileProgramStateManager(
     ) -> program_state_manager.ProgramStateValue:
       """Returns a normalized value.
 
-      Because `tff.program.FileProgramStateManager` saves and loads program
-      state to the file system using the SavedModel format, when the program
-      state is loaded, the values will be TF-native types. This function
-      normalizes those values as numpy values so that when program state is
-      returned, those values can be used more naturally.
+      The `tff.program.FileProgramStateManager` saves and loads program state to
+      the file system using the SavedModel format. When the program state is
+      loaded, the values will be TF-native types. This function normalizes those
+      values as numpy values so that when program state is returned, those
+      values can be used more naturally.
 
       Args:
         value: The value to normalize.
       """
-      if tf.is_tensor(value):
-        value = value.numpy()  # pytype: disable=attribute-error  # numpy-scalars
-      return value
+      if isinstance(value, tf.Tensor):
+        return value.numpy()
+      else:
+        return value
 
     normalized_state = structure_utils.map_structure(_normalize, program_state)
 

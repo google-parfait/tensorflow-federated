@@ -21,7 +21,7 @@ from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.program import dataset_data_source
 
 
-class DatasetDataSourceIteratorTest(parameterized.TestCase, tf.test.TestCase):
+class DatasetDataSourceIteratorTest(parameterized.TestCase):
 
   def test_init_does_not_raise_type_error(self):
     datasets = [tf.data.Dataset.from_tensor_slices([1, 2, 3])] * 3
