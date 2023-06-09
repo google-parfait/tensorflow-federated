@@ -118,7 +118,9 @@ def compose_dataset_computation_with_computation(
   comp_body_param_type = computation_body.type_signature.parameter
 
   def is_desired_federated_sequence(t):
-    return t.is_federated() and t.member.is_assignable_from(dataset_return_type)
+    if not isinstance(t, computation_types.FederatedType):
+      return False
+    return t.member.is_assignable_from(dataset_return_type)
 
   if is_desired_federated_sequence(comp_body_param_type):
     # Single argument that matches, we compose in a straightforward manner.
@@ -132,7 +134,7 @@ def compose_dataset_computation_with_computation(
       return computation_body(datasets_on_clients)
 
     return new_computation
-  elif comp_body_param_type.is_struct():
+  elif isinstance(comp_body_param_type, computation_types.StructType):
     # If the computation has multiple arguments we need to search over them
     # recursively to find the one that matches the type signature of
     # dataset_computation's result.
@@ -149,7 +151,9 @@ def compose_dataset_computation_with_computation(
     # error message in case the desired argument is not found.
     sequence_types = []
 
-    def build_new_param_type(struct_param_type, index_path):
+    def build_new_param_type(
+        struct_param_type: computation_types.StructType, index_path
+    ):
       """Builds a new struct parameter type.
 
       By recursively finding the field that matches the type signature of
