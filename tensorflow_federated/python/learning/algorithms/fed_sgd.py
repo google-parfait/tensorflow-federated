@@ -82,7 +82,11 @@ def _build_client_update(
 
       with tf.GradientTape() as tape:
         output = model.forward_pass(batch)
-      gradients = tape.gradient(output.loss, model_weights.trainable)
+      gradients = tape.gradient(
+          output.loss,
+          model_weights.trainable,
+          unconnected_gradients=tf.UnconnectedGradients.ZERO,
+      )
       num_examples = tf.cast(output.num_examples, tf.float32)
       accumulated_gradients = tuple(
           accumulator + num_examples * gradient
@@ -244,7 +248,11 @@ def _build_functional_client_update(
         predictions = tf.nest.flatten(batch_output)[0]
         batch_num_examples = tf.shape(predictions)[0]
 
-        gradients = tape.gradient(batch_loss, trainable_weights)
+        gradients = tape.gradient(
+            batch_loss,
+            trainable_weights,
+            unconnected_gradients=tf.UnconnectedGradients.ZERO,
+        )
         num_examples = tf.cast(batch_num_examples, tf.float32)
         accumulated_gradients = tuple(
             accumulator + num_examples * gradient

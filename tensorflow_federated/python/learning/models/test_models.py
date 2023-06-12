@@ -26,6 +26,7 @@ from tensorflow_federated.python.learning.models import variable
 
 def build_functional_linear_regression(
     feature_dim: int = 2,
+    has_unconnected: bool = False,
 ) -> functional.FunctionalModel:
   """Build a linear regression FunctionalModel for testing."""
   input_spec = (
@@ -33,10 +34,21 @@ def build_functional_linear_regression(
       tf.TensorSpec([None, 1], tf.float32),
   )
 
-  initial_trainable_weights = (
-      np.reshape(np.zeros([feature_dim]), [feature_dim, 1]).astype(np.float32),
-      np.zeros([1]).astype(np.float32),
-  )
+  if has_unconnected:
+    initial_trainable_weights = (
+        np.reshape(np.zeros([feature_dim]), [feature_dim, 1]).astype(
+            np.float32
+        ),
+        np.zeros([1]).astype(np.float32),
+        np.zeros([1]).astype(np.float32),
+    )
+  else:
+    initial_trainable_weights = (
+        np.reshape(np.zeros([feature_dim]), [feature_dim, 1]).astype(
+            np.float32
+        ),
+        np.zeros([1]).astype(np.float32),
+    )
   initial_non_trainable_weights = ()
   initial_weights = (initial_trainable_weights, initial_non_trainable_weights)
 
@@ -45,7 +57,11 @@ def build_functional_linear_regression(
       weights: functional.ModelWeights, x: Any, training: bool = True
   ) -> Any:
     trainable_weights, _ = weights
-    kernel, bias = trainable_weights
+    if has_unconnected:
+      kernel, bias, unconnected = trainable_weights
+      del unconnected  # Unconnected weights
+    else:
+      kernel, bias = trainable_weights
     del training  # Unused.
     return x @ kernel + bias
 

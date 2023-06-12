@@ -50,13 +50,37 @@ def _model_fn() -> model_examples.LinearRegression:
   return model_examples.LinearRegression(feature_dim=2)
 
 
+def _model_fn_unconnected() -> model_examples.LinearRegression:
+  return model_examples.LinearRegression(feature_dim=2, has_unconnected=True)
+
+
 def _build_functional_model() -> functional.FunctionalModel:
   return test_models.build_functional_linear_regression(feature_dim=2)
 
 
+def _build_functional_model_unconnected() -> functional.FunctionalModel:
+  return test_models.build_functional_linear_regression(
+      feature_dim=2, has_unconnected=True
+  )
+
+
 def _initial_weights() -> model_weights.ModelWeights:
   return model_weights.ModelWeights(
-      trainable=[tf.constant([[0.0], [0.0]]), tf.constant(0.0)],
+      trainable=[
+          tf.constant([[0.0], [0.0]]),
+          tf.constant(0.0),
+      ],
+      non_trainable=[0.0],
+  )
+
+
+def _initial_weights_unconnected() -> model_weights.ModelWeights:
+  return model_weights.ModelWeights(
+      trainable=[
+          tf.constant([[0.0], [0.0]]),
+          tf.constant(0.0),
+          tf.constant(0.0),
+      ],
       non_trainable=[0.0],
   )
 
@@ -78,6 +102,26 @@ class FederatedSgdTest(tf.test.TestCase, parameterized.TestCase):
     # Both trainable parameters should have gradients, and we don't return the
     # non-trainable 'c'. Model deltas for squared error:
     self.assertAllClose(client_result.update, [[[-1.0], [0.0]], -1.0])
+    self.assertAllClose(client_result.update_weight, 8.0)
+    self.assertDictContainsSubset({'num_examples': 8}, model_output)
+
+  @parameterized.named_parameters(
+      ('non-simulation', False),
+      ('simulation', True),
+  )
+  @tensorflow_test_utils.skip_test_for_multi_gpu
+  def test_client_update_with_unconnected_weights(self, simulation):
+    dataset = _dataset()
+    client_update = fed_sgd._build_client_update(
+        _model_fn_unconnected(), use_experimental_simulation_loop=simulation
+    )
+    client_result, model_output = client_update(
+        _initial_weights_unconnected(), dataset
+    )
+
+    # Both trainable parameters should have gradients, and we don't return the
+    # non-trainable 'c'. Model deltas for squared error:
+    self.assertAllClose(client_result.update, [[[-1.0], [0.0]], -1.0, 0.0])
     self.assertAllClose(client_result.update_weight, 8.0)
     self.assertDictContainsSubset({'num_examples': 8}, model_output)
 
@@ -168,6 +212,26 @@ class FunctionalFederatedSgdTest(tf.test.TestCase, parameterized.TestCase):
     # Both trainable parameters should have gradients. Model deltas for squared
     # error:
     self.assertAllClose(client_result.update, [[[-2.0], [0.0]], -2.0])
+    self.assertAllClose(client_result.update_weight, 8.0)
+    self.assertDictContainsSubset({'num_examples': 8}, model_output)
+
+  @parameterized.named_parameters(
+      ('non-simulation', False),
+      ('simulation', True),
+  )
+  @tensorflow_test_utils.skip_test_for_multi_gpu
+  def test_client_update_with_unconnected_weights(self, simulation):
+    dataset = _dataset()
+    model = _build_functional_model_unconnected()
+    client_update = fed_sgd._build_functional_client_update(
+        model, use_experimental_simulation_loop=simulation
+    )
+    client_result, model_output = client_update(
+        _initial_weights_unconnected(), dataset
+    )
+    # Both trainable parameters should have gradients. Model deltas for squared
+    # error:
+    self.assertAllClose(client_result.update, [[[-2.0], [0.0]], -2.0, 0.0])
     self.assertAllClose(client_result.update_weight, 8.0)
     self.assertDictContainsSubset({'num_examples': 8}, model_output)
 
