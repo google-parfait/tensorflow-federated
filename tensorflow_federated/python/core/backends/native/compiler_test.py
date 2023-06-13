@@ -16,6 +16,7 @@ from absl.testing import absltest
 import tensorflow as tf
 
 from tensorflow_federated.python.core.backends.native import compiler
+from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
@@ -37,7 +38,7 @@ class DesugarAndTransformTest(tf.test.TestCase):
 
     def _check_tf_computations_have_ids(comp):
       if (
-          comp.is_compiled_computation()
+          isinstance(comp, building_blocks.CompiledComputation)
           and comp.proto.WhichOneof('computation') == 'tensorflow'
           and not comp.proto.tensorflow.cache_key.id
       ):

@@ -137,7 +137,7 @@ def to_call_dominant(
       return result
     elif isinstance(comp, building_blocks.Selection):
       source = _build(comp.source, scope)
-      if source.is_struct():
+      if isinstance(source, building_blocks.Struct):
         return source[comp.as_index()]
       return building_blocks.Selection(source, index=comp.as_index())
     elif isinstance(comp, building_blocks.Struct):
@@ -149,7 +149,7 @@ def to_call_dominant(
     elif isinstance(comp, building_blocks.Call):
       function = _build(comp.function, scope)
       argument = None if comp.argument is None else _build(comp.argument, scope)
-      if function.is_lambda():
+      if isinstance(function, building_blocks.Lambda):
         if argument is not None:
           scope = scope.new_child()
           scope.add_local(function.parameter_name, argument)
@@ -250,7 +250,7 @@ def get_normalized_call_dominant_lambda(
 
   # Simple computations with no intrinsic calls won't have a block.
   # Normalize these as well.
-  if not comp.result.is_block():
+  if not isinstance(comp.result, building_blocks.Block):
     comp = building_blocks.Lambda(
         comp.parameter_name,
         comp.parameter_type,
@@ -297,7 +297,7 @@ def _compute_intrinsic_dependencies(
     intrinsic_dependencies = set()
 
     def record_dependencies(subvalue):
-      if subvalue.is_reference():
+      if isinstance(subvalue, building_blocks.Reference):
         if subvalue.name not in intrinsic_dependencies_for_ref:
           names = [(n, v.compact_representation()) for n, v in locals_list]
           raise ValueError(
@@ -308,14 +308,14 @@ def _compute_intrinsic_dependencies(
         intrinsic_dependencies.update(  # pylint: disable=cell-var-from-loop
             intrinsic_dependencies_for_ref[subvalue.name]
         )
-      elif subvalue.is_lambda():
+      elif isinstance(subvalue, building_blocks.Lambda):
         # We treat the lambdas that appear in CDF (inside intrinsic invocations)
         # as though their parameters are independent of the rest of the
         # computation. Note that we're not careful about saving and then
         # restoring old variables here: this is okay because call-dominant form
         # guarantees unique variable names.
         intrinsic_dependencies_for_ref[subvalue.parameter_name] = set()
-      elif subvalue.is_block():
+      elif isinstance(subvalue, building_blocks.Block):
         # Since we're in CDF, the only blocks inside the bodies of arguments
         # are within lambda arguments to intrinsics. We don't need to record
         # dependencies of these since they can't rely on the results of other
@@ -669,7 +669,7 @@ def force_align_and_split_by_intrinsics(
 
   # Simple computations with no intrinsic calls won't have a block.
   # Normalize these as well.
-  if not comp.result.is_block():
+  if not isinstance(comp.result, building_blocks.Block):
     comp = building_blocks.Lambda(
         comp.parameter_name,
         comp.parameter_type,
@@ -849,8 +849,8 @@ def _augment_lambda_with_parameter_for_unbound_references(
     # "transformed" so that we skip traversal of the inner reference subtree
     # below.
     if (
-        inner_comp.is_selection()
-        and inner_comp.source.is_reference()
+        isinstance(inner_comp, building_blocks.Selection)
+        and isinstance(inner_comp.source, building_blocks.Reference)
         and inner_comp.source.name == comp_parameter_name
     ):
       return inner_comp, True
@@ -860,7 +860,10 @@ def _augment_lambda_with_parameter_for_unbound_references(
     # because we will not be able to satisfy type signature requirements in a
     # later step when we attempt to replace the input parameter with an
     # augmented one.
-    if inner_comp.is_reference() and inner_comp.name == comp_parameter_name:
+    if (
+        isinstance(inner_comp, building_blocks.Reference)
+        and inner_comp.name == comp_parameter_name
+    ):
       raise ValueError(
           'Computation accesses input parameter without an immediate selection.'
       )
@@ -884,16 +887,16 @@ def _augment_lambda_with_parameter_for_unbound_references(
   def _is_replacement_candidate(inner_comp):
     # A replacement is needed if the subtree represents a reference to an top-
     # level unbound ref.
-    if inner_comp.is_reference() and unbound_refs[inner_comp].issubset(
-        top_level_unbound_refs
-    ):
+    if isinstance(inner_comp, building_blocks.Reference) and unbound_refs[
+        inner_comp
+    ].issubset(top_level_unbound_refs):
       return True
 
     # A replacement is also needed if the subtree represents a selection into
     # a top-level unbound ref. We trigger the replacement on selections at this
     # level so that we can pass the minimal amount of information possible
     # through the extended input parameter.
-    if inner_comp.is_selection():
+    if isinstance(inner_comp, building_blocks.Selection):
       return _is_replacement_candidate(inner_comp.source)
 
     return False
@@ -947,8 +950,8 @@ def _augment_lambda_with_parameter_for_unbound_references(
     # Replace selections into the original input parameter with selections into
     # the extended input parameter to maintain type signature correctness.
     if (
-        inner_comp.is_selection()
-        and inner_comp.source.is_reference()
+        isinstance(inner_comp, building_blocks.Selection)
+        and isinstance(inner_comp, building_blocks.Reference)
         and inner_comp.source.name == comp_parameter_name
     ):
       return (
@@ -991,7 +994,7 @@ def _replace_references(
     replacement: building_blocks.ComputationBuildingBlock,
 ) -> building_blocks.ComputationBuildingBlock:
   def _replace(comp):
-    if comp.is_reference() and comp.name == ref_name:
+    if isinstance(comp, building_blocks.Reference) and comp.name == ref_name:
       return replacement, True
     return comp, False
 
@@ -1136,7 +1139,7 @@ def divisive_force_align_and_split_by_intrinsics(
   #    promised guarantees.
 
   ############################### Step 1 ######################################
-  if not comp.is_lambda():
+  if not isinstance(comp, building_blocks.Lambda):
     raise TypeError('Expected input computation to be a lambda computation.')
 
   if not comp.parameter_name or not comp.parameter_type:
@@ -1467,8 +1470,8 @@ def divisive_force_align_and_split_by_intrinsics(
   # returned in the same order they are computed.
   expected_intrinsic_comp_result_names: list[str] = []
   for intrinsic_local, intrinsic_call in intrinsic_comp.result.locals:
-    assert intrinsic_call.is_call()
-    assert intrinsic_call.function.is_intrinsic()
+    assert isinstance(intrinsic_call, building_blocks.Call)
+    assert isinstance(intrinsic_call.function, building_blocks.Intrinsic)
     assert intrinsic_call.function.uri in intrinsic_uris
     expected_intrinsic_comp_result_names.append(intrinsic_local)
   actual_intrinsic_comp_result_names = [

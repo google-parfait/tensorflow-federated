@@ -64,12 +64,15 @@ def transform_postorder(comp, transform):
       that is currently not recognized.
   """
   py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
-  if (
-      comp.is_compiled_computation()
-      or comp.is_data()
-      or comp.is_intrinsic()
-      or comp.is_placement()
-      or comp.is_reference()
+  if isinstance(
+      comp,
+      (
+          building_blocks.CompiledComputation,
+          building_blocks.Data,
+          building_blocks.Intrinsic,
+          building_blocks.Placement,
+          building_blocks.Reference,
+      ),
   ):
     return transform(comp)
   elif isinstance(comp, building_blocks.Selection):
@@ -171,12 +174,15 @@ def transform_preorder(
   inner_comp, modified = transform(comp)
   if modified:
     return inner_comp, modified
-  if (
-      inner_comp.is_compiled_computation()
-      or inner_comp.is_data()
-      or inner_comp.is_intrinsic()
-      or inner_comp.is_placement()
-      or inner_comp.is_reference()
+  if isinstance(
+      inner_comp,
+      (
+          building_blocks.CompiledComputation,
+          building_blocks.Data,
+          building_blocks.Intrinsic,
+          building_blocks.Placement,
+          building_blocks.Reference,
+      ),
   ):
     return inner_comp, modified
   elif isinstance(inner_comp, building_blocks.Lambda):
@@ -315,25 +321,28 @@ def transform_postorder_with_symbol_bindings(comp, transform, symbol_tree):
       comp, transform_fn, ctxt_tree, identifier_sequence
   ):
     """Recursive helper function delegated to after binding comp_id sequence."""
-    if (
-        comp.is_compiled_computation()
-        or comp.is_data()
-        or comp.is_intrinsic()
-        or comp.is_placement()
-        or comp.is_reference()
+    if isinstance(
+        comp,
+        (
+            building_blocks.CompiledComputation,
+            building_blocks.Data,
+            building_blocks.Intrinsic,
+            building_blocks.Placement,
+            building_blocks.Reference,
+        ),
     ):
       return _traverse_leaf(comp, transform_fn, ctxt_tree, identifier_sequence)
-    elif comp.is_selection():
+    elif isinstance(comp, building_blocks.Selection):
       return _traverse_selection(
           comp, transform, ctxt_tree, identifier_sequence
       )
-    elif comp.is_struct():
+    elif isinstance(comp, building_blocks.Struct):
       return _traverse_tuple(comp, transform, ctxt_tree, identifier_sequence)
-    elif comp.is_call():
+    elif isinstance(comp, building_blocks.Call):
       return _traverse_call(comp, transform, ctxt_tree, identifier_sequence)
-    elif comp.is_lambda():
+    elif isinstance(comp, building_blocks.Lambda):
       return _traverse_lambda(comp, transform, ctxt_tree, identifier_sequence)
-    elif comp.is_block():
+    elif isinstance(comp, building_blocks.Block):
       return _traverse_block(comp, transform, ctxt_tree, identifier_sequence)
     else:
       raise NotImplementedError(
@@ -1135,7 +1144,7 @@ def get_count_of_references_to_variables(comp):
 
   def _should_transform(comp, context_tree):
     del context_tree  # Unused
-    return comp.is_reference()
+    return isinstance(comp, building_blocks.Reference)
 
   def transform_fn(comp, context_tree):
     if _should_transform(comp, context_tree):
@@ -1154,9 +1163,9 @@ def get_unique_names(comp):
   names = set()
 
   def _update(comp):
-    if comp.is_block():
+    if isinstance(comp, building_blocks.Block):
       names.update([name for name, _ in comp.locals])
-    elif comp.is_lambda():
+    elif isinstance(comp, building_blocks.Lambda):
       if comp.parameter_type is not None:
         names.add(comp.parameter_name)
     elif isinstance(comp, building_blocks.Reference):
@@ -1189,9 +1198,9 @@ def get_map_of_unbound_references(
 
   def _update(comp):
     """Updates the Python dict of references."""
-    if comp.is_reference():
+    if isinstance(comp, building_blocks.Reference):
       references[comp] = set((comp.name,))
-    elif comp.is_block():
+    elif isinstance(comp, building_blocks.Block):
       references[comp] = set()
       names = []
       for name, variable in comp.locals:
@@ -1200,17 +1209,17 @@ def get_map_of_unbound_references(
         names.append(name)
       elements = references[comp.result]
       references[comp].update([e for e in elements if e not in names])
-    elif comp.is_call():
+    elif isinstance(comp, building_blocks.Call):
       elements = references[comp.function].copy()
       if comp.argument is not None:
         elements.update(references[comp.argument])
       references[comp] = elements
-    elif comp.is_lambda():
+    elif isinstance(comp, building_blocks.Lambda):
       elements = references[comp.result]
       references[comp] = set([e for e in elements if e != comp.parameter_name])
-    elif comp.is_selection():
+    elif isinstance(comp, building_blocks.Selection):
       references[comp] = references[comp.source]
-    elif comp.is_struct():
+    elif isinstance(comp, building_blocks.Struct):
       elements = [references[e] for e in comp]
       references[comp] = set(itertools.chain.from_iterable(elements))
     else:

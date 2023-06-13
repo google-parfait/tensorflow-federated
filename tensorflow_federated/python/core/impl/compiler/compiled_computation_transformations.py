@@ -120,7 +120,7 @@ class TensorFlowOptimizer(transformation_utils.TransformSpec):
     self._config_proto = config_proto
 
   def should_transform(self, comp):
-    return comp.is_compiled_computation()
+    return isinstance(comp, building_blocks.CompiledComputation)
 
   def transform(self, comp):
     if not self.should_transform(comp):
@@ -148,7 +148,7 @@ class DisableCallOpGrappler(transformation_utils.TransformSpec):
 
   def should_transform(self, comp):
     return (
-        comp.is_compiled_computation()
+        isinstance(comp, building_blocks.CompiledComputation)
         and comp.proto.WhichOneof('computation') == 'tensorflow'
     )
 
@@ -194,7 +194,7 @@ class VerifyAllowedOps(transformation_utils.TransformSpec):
       self, comp: building_blocks.ComputationBuildingBlock
   ) -> bool:
     return (
-        comp.is_compiled_computation()
+        isinstance(comp, building_blocks.CompiledComputation)
         and comp.proto.WhichOneof('computation') == 'tensorflow'
     )
 
@@ -240,7 +240,7 @@ class RaiseOnDisallowedOp(transformation_utils.TransformSpec):
       self, comp: building_blocks.ComputationBuildingBlock
   ) -> bool:
     return (
-        comp.is_compiled_computation()
+        isinstance(comp, building_blocks.CompiledComputation)
         and comp.proto.WhichOneof('computation') == 'tensorflow'
     )
 
@@ -280,7 +280,7 @@ class AddUniqueIDs(transformation_utils.TransformSpec):
 
   def should_transform(self, comp):
     return (
-        comp.is_compiled_computation()
+        isinstance(comp, building_blocks.CompiledComputation)
         and comp.proto.WhichOneof('computation') == 'tensorflow'
     )
 

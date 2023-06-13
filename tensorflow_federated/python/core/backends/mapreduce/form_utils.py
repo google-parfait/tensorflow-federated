@@ -1115,13 +1115,13 @@ def get_distribute_aggregate_form_for_computation(
   def _find_non_client_placed_args(inner_comp):
     # Examine the args of the aggregation intrinsic calls.
     if (
-        inner_comp.is_call()
-        and inner_comp.function.is_intrinsic()
+        isinstance(inner_comp, building_blocks.Call)
+        and isinstance(inner_comp.function, building_blocks.Intrinsic)
         and inner_comp.function.intrinsic_def().aggregation_kind
     ):
       aggregation_args = (
           inner_comp.argument
-          if inner_comp.argument.is_struct()
+          if isinstance(inner_comp.argument, building_blocks.Struct)
           else [inner_comp.argument]
       )
       unbound_ref_names_for_intrinsic = unbound_refs[inner_comp.argument]
@@ -1233,7 +1233,7 @@ def get_distribute_aggregate_form_for_computation(
   # Helper method to replace a lambda with parameter that is a single-element
   # struct with a lambda that uses the element directly.
   def _unnest_lambda_parameter(comp):
-    assert comp.is_lambda()
+    assert isinstance(comp, building_blocks.Lambda)
     assert comp.parameter_type.is_struct()
 
     name_generator = building_block_factory.unique_name_generator(comp)
@@ -1278,7 +1278,7 @@ def get_distribute_aggregate_form_for_computation(
   # input that represents the intermediate state that was produced in the first
   # split.
   if args_needing_broadcast_dependency:
-    assert after_broadcast.result.result.is_struct()
+    assert isinstance(after_broadcast.result.result, building_blocks.Struct)
     # Check that the last element of the result is the expected empty struct
     # associated with the injected broadcast call.
     result_len = len(after_broadcast.result.result)

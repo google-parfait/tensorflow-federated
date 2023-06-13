@@ -49,6 +49,7 @@ py_test(
     srcs = ["compiler_test.py"],
     deps = [
         ":compiler",
+        "//tensorflow_federated/python/core/impl/compiler:building_blocks",
         "//tensorflow_federated/python/core/impl/compiler:transformation_utils",
         "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",

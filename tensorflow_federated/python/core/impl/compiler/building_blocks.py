@@ -144,93 +144,53 @@ class ComputationBuildingBlock(typed_object.TypedObject, metaclass=abc.ABCMeta):
 
   def check_reference(self):
     """Check that this is a 'Reference'."""
-    if not self.is_reference():
+    if not isinstance(self, Reference):
       raise UnexpectedBlockError(Reference, self)
-
-  def is_reference(self):
-    """Returns whether or not this block is a `Reference`."""
-    return False
 
   def check_selection(self):
     """Check that this is a 'Selection'."""
-    if not self.is_selection():
+    if not isinstance(self, Selection):
       raise UnexpectedBlockError(Selection, self)
-
-  def is_selection(self):
-    """Returns whether or not this block is a `Selection`."""
-    return False
 
   def check_struct(self):
     """Check that this is a `Struct`."""
-    if not self.is_struct():
+    if not isinstance(self, Struct):
       raise UnexpectedBlockError(Struct, self)
-
-  def is_struct(self):
-    """Returns whether or not this block is a `Struct`."""
-    return False
 
   def check_call(self):
     """Check that this is a 'Call'."""
-    if not self.is_call():
+    if not isinstance(self, Call):
       raise UnexpectedBlockError(Call, self)
-
-  def is_call(self):
-    """Returns whether or not this block is a `Call`."""
-    return False
 
   def check_lambda(self):
     """Check that this is a 'Lambda'."""
-    if not self.is_lambda():
+    if not isinstance(self, Lambda):
       raise UnexpectedBlockError(Lambda, self)
-
-  def is_lambda(self):
-    """Returns whether or not this block is a `Lambda`."""
-    return False
 
   def check_block(self):
     """Check that this is a 'Block'."""
-    if not self.is_block():
+    if not isinstance(self, Block):
       raise UnexpectedBlockError(Block, self)
-
-  def is_block(self):
-    """Returns whether or not this block is a `Block`."""
-    return False
 
   def check_intrinsic(self):
     """Check that this is an 'Intrinsic'."""
-    if not self.is_intrinsic():
+    if not isinstance(self, Intrinsic):
       raise UnexpectedBlockError(Intrinsic, self)
-
-  def is_intrinsic(self):
-    """Returns whether or not this block is an `Intrinsic`."""
-    return False
 
   def check_data(self):
     """Check that this is a 'Data'."""
-    if not self.is_data():
+    if not isinstance(self, Data):
       raise UnexpectedBlockError(Data, self)
-
-  def is_data(self):
-    """Returns whether or not this block is a `Data`."""
-    return False
 
   def check_compiled_computation(self):
     """Check that this is a 'CompiledComputation'."""
-    if not self.is_compiled_computation():
+    if not isinstance(self, CompiledComputation):
       raise UnexpectedBlockError(CompiledComputation, self)
-
-  def is_compiled_computation(self):
-    """Returns whether or not this block is a `CompiledComputation`."""
-    return False
 
   def check_placement(self):
     """Check that this is a 'Placement'."""
-    if not self.is_placement():
+    if not isinstance(self, Placement):
       raise UnexpectedBlockError(Placement, self)
-
-  def is_placement(self):
-    """Returns whether or not this block is a `Placement`."""
-    return False
 
   @property
   def proto(self):
@@ -320,9 +280,6 @@ class Reference(ComputationBuildingBlock):
   def children(self) -> Iterator[ComputationBuildingBlock]:
     del self
     return iter(())
-
-  def is_reference(self):
-    return True
 
   @property
   def name(self):
@@ -432,9 +389,6 @@ class Selection(ComputationBuildingBlock):
 
   def children(self) -> Iterator[ComputationBuildingBlock]:
     yield self._source
-
-  def is_selection(self):
-    return True
 
   @property
   def source(self) -> ComputationBuildingBlock:
@@ -556,9 +510,6 @@ class Struct(ComputationBuildingBlock, structure.Struct):
   def children(self) -> Iterator[ComputationBuildingBlock]:
     return (element for _, element in structure.iter_elements(self))
 
-  def is_struct(self):
-    return True
-
   def __repr__(self):
     def _element_repr(element):
       name, value = element
@@ -656,9 +607,6 @@ class Call(ComputationBuildingBlock):
     yield self._function
     if self._argument is not None:
       yield self._argument
-
-  def is_call(self):
-    return True
 
   @property
   def function(self):
@@ -762,9 +710,6 @@ class Lambda(ComputationBuildingBlock):
 
   def children(self) -> Iterator[ComputationBuildingBlock]:
     yield self._result
-
-  def is_lambda(self):
-    return True
 
   @property
   def parameter_name(self) -> Optional[str]:
@@ -900,9 +845,6 @@ class Block(ComputationBuildingBlock):
       yield value
     yield self._result
 
-  def is_block(self):
-    return True
-
   @property
   def locals(self) -> list[tuple[str, ComputationBuildingBlock]]:
     return list(self._locals)
@@ -984,9 +926,6 @@ class Intrinsic(ComputationBuildingBlock):
     del self
     return iter(())
 
-  def is_intrinsic(self):
-    return True
-
   @property
   def uri(self) -> str:
     return self._uri
@@ -1050,9 +989,6 @@ class Data(ComputationBuildingBlock):
     del self
     return iter(())
 
-  def is_data(self):
-    return True
-
   @property
   def uri(self) -> str:
     return self._uri
@@ -1115,9 +1051,6 @@ class CompiledComputation(ComputationBuildingBlock):
     del self
     return iter(())
 
-  def is_compiled_computation(self):
-    return True
-
   @property
   def name(self) -> str:
     return self._name
@@ -1171,9 +1104,6 @@ class Placement(ComputationBuildingBlock):
   def children(self) -> Iterator[ComputationBuildingBlock]:
     del self
     return iter(())
-
-  def is_placement(self):
-    return True
 
   @property
   def uri(self) -> str:
@@ -1550,26 +1480,26 @@ def _structural_representation(comp):
 
   def _get_node_label(comp):
     """Returns a string for node in the structure of the given `comp`."""
-    if comp.is_block():
+    if isinstance(comp, Block):
       return 'Block'
-    elif comp.is_call():
+    elif isinstance(comp, Call):
       return 'Call'
-    elif comp.is_compiled_computation():
+    elif isinstance(comp, CompiledComputation):
       return 'Compiled({})'.format(comp.name)
-    elif comp.is_data():
+    elif isinstance(comp, Data):
       return comp.uri
-    elif comp.is_intrinsic():
+    elif isinstance(comp, Intrinsic):
       return comp.uri
-    elif comp.is_lambda():
+    elif isinstance(comp, Lambda):
       return 'Lambda({})'.format(comp.parameter_name)
-    elif comp.is_reference():
+    elif isinstance(comp, Reference):
       return 'Ref({})'.format(comp.name)
-    elif comp.is_placement():
+    elif isinstance(comp, Placement):
       return 'Placement'
-    elif comp.is_selection():
+    elif isinstance(comp, Selection):
       key = comp.name if comp.name is not None else comp.index
       return 'Sel({})'.format(key)
-    elif comp.is_struct():
+    elif isinstance(comp, Struct):
       return 'Struct'
     else:
       raise TypeError('Unexpected type found: {}.'.format(type(comp)))
@@ -1603,15 +1533,18 @@ def _structural_representation(comp):
     """
     node_label = _get_node_label(comp)
 
-    if (
-        comp.is_compiled_computation()
-        or comp.is_data()
-        or comp.is_intrinsic()
-        or comp.is_placement()
-        or comp.is_reference()
+    if isinstance(
+        comp,
+        (
+            CompiledComputation,
+            Data,
+            Intrinsic,
+            Placement,
+            Reference,
+        ),
     ):
       return [node_label]
-    elif comp.is_block():
+    elif isinstance(comp, Block):
       variables_lines = _lines_for_named_comps(comp.locals)
       variables_width = len(variables_lines[0])
       variables_trailing_padding = _get_trailing_padding(variables_lines[0])
@@ -1635,7 +1568,7 @@ def _structural_representation(comp):
       leading_padding = _get_leading_padding(lines[0]) + 1
       node_line = '{}{}'.format(padding_char * leading_padding, node_label)
       return _concatenate([node_line], lines, Alignment.LEFT)
-    elif comp.is_call():
+    elif isinstance(comp, Call):
       function_lines = _lines_for_comp(comp.function)
       function_width = len(function_lines[0])
       function_trailing_padding = _get_trailing_padding(function_lines[0])
@@ -1662,19 +1595,19 @@ def _structural_representation(comp):
       leading_padding = _get_leading_padding(lines[0]) + 1
       node_line = '{}{}'.format(padding_char * leading_padding, node_label)
       return _concatenate([node_line], lines, Alignment.LEFT)
-    elif comp.is_lambda():
+    elif isinstance(comp, Lambda):
       result_lines = _lines_for_comp(comp.result)
       leading_padding = _get_leading_padding(result_lines[0])
       node_line = '{}{}'.format(padding_char * leading_padding, node_label)
       edge_line = '{}|'.format(padding_char * leading_padding)
       return _concatenate([node_line, edge_line], result_lines, Alignment.LEFT)
-    elif comp.is_selection():
+    elif isinstance(comp, Selection):
       source_lines = _lines_for_comp(comp.source)
       leading_padding = _get_leading_padding(source_lines[0])
       node_line = '{}{}'.format(padding_char * leading_padding, node_label)
       edge_line = '{}|'.format(padding_char * leading_padding)
       return _concatenate([node_line, edge_line], source_lines, Alignment.LEFT)
-    elif comp.is_struct():
+    elif isinstance(comp, Struct):
       elements = structure.to_elements(comp)
       elements_lines = _lines_for_named_comps(elements)
       leading_padding = _get_leading_padding(elements_lines[0])

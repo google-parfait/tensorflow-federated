@@ -70,8 +70,8 @@ def remove_mapped_or_applied_identity(comp):
   def _should_transform(comp):
     """Returns `True` if `comp` is a mapped or applied identity function."""
     if (
-        comp.is_call()
-        and comp.function.is_intrinsic()
+        isinstance(comp, building_blocks.Call)
+        and isinstance(comp.function, building_blocks.Intrinsic)
         and comp.function.uri
         in (
             intrinsic_defs.FEDERATED_MAP.uri,
@@ -97,7 +97,7 @@ class RemoveUnusedBlockLocals(transformation_utils.TransformSpec):
   """Removes block local variables which are not used in the result."""
 
   def should_transform(self, comp):
-    return comp.is_block()
+    return isinstance(comp, building_blocks.Block)
 
   def transform(self, comp):
     if not self.should_transform(comp):
@@ -177,7 +177,7 @@ def uniquify_reference_names(comp, name_generator=None):
 
   def _transform(comp, context_tree):
     """Renames References in `comp` to unique names."""
-    if comp.is_reference():
+    if isinstance(comp, building_blocks.Reference):
       payload = context_tree.get_payload_with_name(comp.name)
       if payload is None:
         return comp, False
@@ -190,7 +190,7 @@ def uniquify_reference_names(comp, name_generator=None):
           ),
           True,
       )
-    elif comp.is_block():
+    elif isinstance(comp, building_blocks.Block):
       new_locals = []
       modified = False
       for name, val in comp.locals:
@@ -199,7 +199,7 @@ def uniquify_reference_names(comp, name_generator=None):
         modified = modified or (new_name is not name)
         new_locals.append((new_name, val))
       return building_blocks.Block(new_locals, comp.result), modified
-    elif comp.is_lambda():
+    elif isinstance(comp, building_blocks.Lambda):
       if comp.parameter_type is None:
         return comp, False
       context_tree.walk_down_one_variable_binding()
@@ -304,11 +304,11 @@ def normalize_all_equal_bit(comp):
     return new_intrinsic, True
 
   def _transform_switch(comp):
-    if comp.is_reference():
+    if isinstance(comp, building_blocks.Reference):
       return _normalize_reference_bit(comp)
-    elif comp.is_lambda():
+    elif isinstance(comp, building_blocks.Lambda):
       return _normalize_lambda_bit(comp)
-    elif comp.is_intrinsic():
+    elif isinstance(comp, building_blocks.Intrinsic):
       return _normalize_intrinsic_bit(comp)
     return comp, False
 
@@ -354,14 +354,14 @@ def replace_selections(
     # Start with an empty selection
     path = []
     selection = inner_bb
-    while selection.is_selection():
+    while isinstance(selection, building_blocks.Selection):
       path.append(selection.as_index())
       selection = selection.source
     # In ASTs like x[0][1], we'll see the last (outermost) selection first.
     path.reverse()
     path = tuple(path)
     if (
-        selection.is_reference()
+        isinstance(selection, building_blocks.Reference)
         and selection.name == ref_name
         and path in path_to_replacement
         and path_to_replacement[path].type_signature.is_equivalent_to(
@@ -370,10 +370,10 @@ def replace_selections(
     ):
       return path_to_replacement[path], True
     if (
-        inner_bb.is_call()
-        and inner_bb.function.is_compiled_computation()
+        isinstance(inner_bb, building_blocks.Call)
+        and isinstance(inner_bb.function, building_blocks.CompiledComputation)
         and inner_bb.argument is not None
-        and inner_bb.argument.is_reference()
+        and isinstance(inner_bb.argument, building_blocks.Reference)
         and inner_bb.argument.name == ref_name
     ):
       raise ValueError(
@@ -437,7 +437,7 @@ def as_function_of_some_subparameters(
     names = []
 
     def _visit(comp):
-      if comp.is_block():
+      if isinstance(comp, building_blocks.Block):
         for name, _ in comp.locals:
           names.append(name)
 
@@ -479,7 +479,7 @@ def as_function_of_some_subparameters(
       bb.result, bb.parameter_name, path_to_replacement
   )
   # Normalize the body so that it is a block.
-  if not new_lambda_body.is_block():
+  if not isinstance(new_lambda_body, building_blocks.Block):
     new_lambda_body = building_blocks.Block([], new_lambda_body)
   lambda_with_zipped_param = building_blocks.Lambda(
       ref_to_struct.name, ref_to_struct.type_signature, new_lambda_body
@@ -617,25 +617,33 @@ def strip_placement(comp):
   def _simplify_calls(comp):
     """Unwraps structures introduced by removing intrinsics."""
     zip_or_value_removed = (
-        comp.function.result.is_reference()
+        isinstance(comp.function.result, building_blocks.Reference)
         and comp.function.result.name == comp.function.parameter_name
     )
     if zip_or_value_removed:
       return comp.argument
     else:
       map_removed = (
-          comp.function.result.is_call()
-          and comp.function.result.function.is_selection()
+          isinstance(comp.function.result, building_blocks.Call)
+          and isinstance(
+              comp.function.result.function, building_blocks.Selection
+          )
           and comp.function.result.function.index == 0
-          and comp.function.result.argument.is_selection()
+          and isinstance(
+              comp.function.result.argument, building_blocks.Selection
+          )
           and comp.function.result.argument.index == 1
-          and comp.function.result.function.source.is_reference()
+          and isinstance(
+              comp.function.result.function.source, building_blocks.Reference
+          )
           and comp.function.result.function.source.name
           == comp.function.parameter_name
-          and comp.function.result.function.source.is_reference()
+          and isinstance(
+              comp.function.result.function.source, building_blocks.Reference
+          )
           and comp.function.result.function.source.name
           == comp.function.parameter_name
-          and comp.argument.is_struct()
+          and isinstance(comp.argument, building_blocks.Struct)
       )
       if map_removed:
         return building_blocks.Call(comp.argument[0], comp.argument[1])
@@ -643,15 +651,19 @@ def strip_placement(comp):
 
   def _transform(comp):
     """Dispatches to helpers above."""
-    if comp.is_reference():
+    if isinstance(comp, building_blocks.Reference):
       return _remove_reference_placement(comp), True
-    elif comp.is_intrinsic():
+    elif isinstance(comp, building_blocks.Intrinsic):
       return _replace_intrinsics_with_functions(comp), True
-    elif comp.is_lambda():
+    elif isinstance(comp, building_blocks.Lambda):
       return _remove_lambda_placement(comp), True
-    elif comp.is_call() and comp.function.is_lambda():
+    elif isinstance(comp, building_blocks.Call) and isinstance(
+        comp.function, building_blocks.Lambda
+    ):
       return _simplify_calls(comp), True
-    elif comp.is_data() and comp.type_signature.is_federated():
+    elif isinstance(comp, building_blocks.Data) and isinstance(
+        comp.type_signature, computation_types.FederatedType
+    ):
       raise ValueError(f'Cannot strip placement from federated data: {comp}')
     return comp, False
 
@@ -671,7 +683,7 @@ def _reduce_intrinsic(
   py_typecheck.check_type(uri, str)
 
   def _should_transform(comp):
-    return comp.is_intrinsic() and comp.uri == uri
+    return isinstance(comp, building_blocks.Intrinsic) and comp.uri == uri
 
   def _transform(comp):
     if not _should_transform(comp):

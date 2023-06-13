@@ -142,7 +142,7 @@ class Value(typed_object.TypedObject, metaclass=abc.ABCMeta):
           f"There is no such attribute '{name}' in this tuple. Valid "
           f'attributes: ({attributes})'
       )
-    if self._comp.is_struct():
+    if isinstance(self._comp, building_blocks.Struct):
       return Value(getattr(self._comp, name))
     return Value(building_blocks.Selection(self._comp, name=name))
 

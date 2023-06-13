@@ -57,8 +57,7 @@ def _check_flattened_intrinsic_args_are_selections(
     expected_reference_name: str,
 ):
   """Checks that the flattened args of an intrinsic call are all Selections."""
-  inner_values = []
-  if value.is_struct():
+  if isinstance(value, building_blocks.Struct):
     inner_values = structure.flatten(value)
   else:
     inner_values = [value]
