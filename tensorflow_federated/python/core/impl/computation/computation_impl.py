@@ -97,13 +97,16 @@ class ConcreteComputation(computation_base.Computation):
         that replaces the information in `computation_proto.type`.
 
     Raises:
-      TypeError: if `annotated_type` is not `None` and is not compatible with
-      `computation_proto.type`.
+      TypeError: If `annotated_type` is not `None` and is not compatible with
+        `computation_proto.type`.
+      ValueError: If `computation_proto.type` is `None`.
     """
     py_typecheck.check_type(computation_proto, pb.Computation)
     py_typecheck.check_type(context_stack, context_stack_base.ContextStack)
+    if computation_proto.type is None:
+      raise ValueError('Expected `computation_proto.type` to not be `None`.')
     type_spec = type_serialization.deserialize_type(computation_proto.type)
-    py_typecheck.check_type(type_spec, computation_types.Type)
+
     if annotated_type is not None:
       if not type_spec.is_assignable_from(annotated_type):
         raise TypeError(
