@@ -13,11 +13,12 @@
 # limitations under the License.
 """A module for utilities to notify users of deprecated APIs."""
 
+from collections.abc import Callable
 import functools
-from typing import Optional
+from typing import Optional, TypeVar
 import warnings
 
-import pytype_extensions
+_T = TypeVar('_T')
 
 
 # TODO(b/269491402): Delete this decorator and use
@@ -27,7 +28,7 @@ def deprecated(
     *,
     category: Optional[type[Warning]] = DeprecationWarning,
     stacklevel: int = 1,
-) -> pytype_extensions.Decorator:
+) -> Callable[[_T], _T]:
   """Indicate that a class, function or overload is deprecated.
 
   Usage:
@@ -74,7 +75,6 @@ def deprecated(
     A decorated function.
   """
 
-  @pytype_extensions.Decorator
   def decorator(arg):
     if category is None:
       arg.__deprecated__ = msg
