@@ -92,7 +92,7 @@ def check_extraction_result(before_extraction, extracted):
   )
   py_typecheck.check_type(extracted, building_blocks.ComputationBuildingBlock)
   if before_extraction.type_signature.is_function():
-    if not extracted.is_compiled_computation():
+    if not isinstance(extracted, building_blocks.CompiledComputation):
       raise MapReduceFormCompilationError(
           'We expect to parse down to a `building_blocks.CompiledComputation`, '
           'since we have the functional type {} after unwrapping placement. '
@@ -264,7 +264,7 @@ def unpack_compiled_computations(
   """Deserializes compiled computations into building blocks where possible."""
 
   def _unpack(subcomp):
-    if not subcomp.is_compiled_computation():
+    if not isinstance(subcomp, building_blocks.CompiledComputation):
       return subcomp, False
     kind = subcomp.proto.WhichOneof('computation')
     if kind == 'tensorflow' or kind == 'xla':
@@ -361,7 +361,14 @@ def _evaluate_to_tensorflow(
     for name, element in structure.iter_elements(comp):
       elements.append((name, _evaluate_to_tensorflow(element, bindings)))
     return structure.Struct(elements)
-  if comp.is_intrinsic() or comp.is_data() or comp.is_placement():
+  if isinstance(
+      comp,
+      (
+          building_blocks.Intrinsic,
+          building_blocks.Data,
+          building_blocks.Placement,
+      ),
+  ):
     raise ExternalBlockToTensorFlowError(
         'Cannot evaluate intrinsic, data, or placement blocks to tensorflow,'
         f' found {comp}'
@@ -397,7 +404,7 @@ def compile_local_computation_to_tensorflow(
   type_analysis.check_tensorflow_compatible_type(comp.type_signature.result)
 
   if (
-      comp.is_compiled_computation()
+      isinstance(comp, building_blocks.CompiledComputation)
       and comp.proto.WhichOneof('computation') == 'tensorflow'
   ):
     return comp
@@ -441,16 +448,18 @@ def compile_local_subcomputations_to_tensorflow(
     cached = local_cache.get(comp, None)
     if cached is not None:
       return cached
-    if (
-        comp.is_intrinsic()
-        or comp.is_data()
-        or comp.is_placement()
-        or type_analysis.contains_federated_types(comp.type_signature)
-    ):
+    if isinstance(
+        comp,
+        (
+            building_blocks.Intrinsic,
+            building_blocks.Data,
+            building_blocks.Placement,
+        ),
+    ) or type_analysis.contains_federated_types(comp.type_signature):
       local_cache[comp] = False
       return False
     if (
-        comp.is_compiled_computation()
+        isinstance(comp, building_blocks.CompiledComputation)
         and comp.proto.WhichOneof('computation') == 'xla'
     ):
       local_cache[comp] = False
@@ -559,7 +568,10 @@ def concatenate_function_outputs(first_function, second_function):
     )
 
   def _rename_first_function_arg(comp):
-    if comp.is_reference() and comp.name == first_function.parameter_name:
+    if (
+        isinstance(comp, building_blocks.Reference)
+        and comp.name == first_function.parameter_name
+    ):
       if comp.type_signature != second_function.parameter_type:
         raise AssertionError(
             '{}, {}'.format(comp.type_signature, second_function.parameter_type)

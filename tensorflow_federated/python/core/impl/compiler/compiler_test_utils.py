@@ -32,7 +32,7 @@ def _name_compiled_computations(
 
   def _transform(building_block):
     nonlocal counter
-    if building_block.is_compiled_computation():
+    if isinstance(building_block, building_blocks.CompiledComputation):
       new_name = str(counter)
       counter += 1
       return (

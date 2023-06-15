@@ -997,8 +997,10 @@ class AsFunctionOfSomeParametersTest(tf.test.TestCase):
         new_comp
     )[new_comp]
     self.assertEmpty(unbound_references)
-    self.assertTrue(new_comp.result.result.is_selection())
-    self.assertTrue(new_comp.result.result.source.is_selection())
+    self.assertIsInstance(new_comp.result.result, building_blocks.Selection)
+    self.assertIsInstance(
+        new_comp.result.result.source, building_blocks.Selection
+    )
 
 
 class StripPlacementTest(parameterized.TestCase):
@@ -1007,7 +1009,7 @@ class StripPlacementTest(parameterized.TestCase):
     def _check(x):
       if x.type_signature.is_federated():
         raise AssertionError(f'Unexpected federated type: {x.type_signature}')
-      if x.is_intrinsic():
+      if isinstance(x, building_blocks.Intrinsic):
         raise AssertionError(f'Unexpected intrinsic: {x}')
 
     tree_analysis.visit_postorder(comp, _check)

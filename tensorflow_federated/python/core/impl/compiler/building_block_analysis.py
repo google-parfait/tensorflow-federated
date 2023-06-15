@@ -35,8 +35,8 @@ def is_called_intrinsic(comp, uri=None):
   if isinstance(uri, str):
     uri = [uri]
   return (
-      comp.is_call()
-      and comp.function.is_intrinsic()
+      isinstance(comp, building_blocks.Call)
+      and isinstance(comp.function, building_blocks.Intrinsic)
       and (uri is None or comp.function.uri in uri)
   )
 
@@ -44,8 +44,8 @@ def is_called_intrinsic(comp, uri=None):
 def is_identity_function(comp):
   """Returns `True` if `comp` is an identity function, otherwise `False`."""
   return (
-      comp.is_lambda()
-      and comp.result.is_reference()
+      isinstance(comp, building_blocks.Lambda)
+      and isinstance(comp.result, building_blocks.Reference)
       and comp.parameter_name == comp.result.name
   )
 
@@ -53,8 +53,9 @@ def is_identity_function(comp):
 def count_tensorflow_ops_in(comp):
   """Counts TF ops in `comp` if `comp` is a TF block."""
   py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
-  if (not comp.is_compiled_computation()) or (
-      comp.proto.WhichOneof('computation') != 'tensorflow'
+  if (
+      not isinstance(comp, building_blocks.CompiledComputation)
+      or comp.proto.WhichOneof('computation') != 'tensorflow'
   ):
     raise ValueError(
         'Please pass a '
@@ -72,8 +73,9 @@ def count_tensorflow_ops_in(comp):
 def count_tensorflow_variables_in(comp):
   """Counts TF Variables in `comp` if `comp` is a TF block."""
   py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
-  if (not comp.is_compiled_computation()) or (
-      comp.proto.WhichOneof('computation') != 'tensorflow'
+  if (
+      not isinstance(comp, building_blocks.CompiledComputation)
+      or comp.proto.WhichOneof('computation') != 'tensorflow'
   ):
     raise ValueError(
         'Please pass a '
@@ -108,8 +110,9 @@ def count_tensorflow_variables_in(comp):
 def get_device_placement_in(comp):
   """Gets counter of device placement for tensorflow compuation `comp`."""
   py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
-  if (not comp.is_compiled_computation()) or (
-      comp.proto.WhichOneof('computation') != 'tensorflow'
+  if (
+      not isinstance(comp, building_blocks.CompiledComputation)
+      or comp.proto.WhichOneof('computation') != 'tensorflow'
   ):
     raise ValueError(
         'Please pass a '

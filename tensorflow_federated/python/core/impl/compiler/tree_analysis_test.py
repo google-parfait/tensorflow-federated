@@ -63,7 +63,9 @@ class TestCheckContainsOnlyReducibleIntrinsics(absltest.TestCase):
 
 
 def whimsy_intrinsic_predicate(x):
-  return x.is_intrinsic() and x.uri == 'whimsy_intrinsic'
+  return (
+      isinstance(x, building_blocks.Intrinsic) and x.uri == 'whimsy_intrinsic'
+  )
 
 
 class NodesDependentOnPredicateTest(absltest.TestCase):
@@ -172,7 +174,10 @@ class NodesDependentOnPredicateTest(absltest.TestCase):
     )
 
     def federated_zero_predicate(x):
-      return x.is_intrinsic() and x.uri == intrinsic_defs.GENERIC_ZERO.uri
+      return (
+          isinstance(x, building_blocks.Intrinsic)
+          and x.uri == intrinsic_defs.GENERIC_ZERO.uri
+      )
 
     block = building_blocks.Block([('x', federated_zero)], ref_to_x)
     dependent_nodes = tree_analysis.extract_nodes_consuming(

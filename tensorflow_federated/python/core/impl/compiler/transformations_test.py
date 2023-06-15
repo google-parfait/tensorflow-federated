@@ -766,7 +766,9 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
 
     def _find_intrinsics(building_block):
       nonlocal found_intrinsics
-      if building_block.is_call() and building_block.function.is_intrinsic():
+      if isinstance(building_block, building_blocks.Call) and isinstance(
+          building_block.function, building_blocks.Intrinsic
+      ):
         found_intrinsics.append(building_block.function.uri)
 
     tree_analysis.visit_postorder(comp, _find_intrinsics)
@@ -786,8 +788,8 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
         [x for x, _ in structure.to_elements(before.type_signature.result)],
         ['intrinsic_args_from_before_comp', 'intermediate_state'],
     )
-    self.assertTrue(before.result.result[0].is_struct())
-    self.assertTrue(before.result.result[1].is_struct())
+    self.assertIsInstance(before.result.result[0], building_blocks.Struct)
+    self.assertIsInstance(before.result.result[1], building_blocks.Struct)
 
     intrinsic_args_from_before_comp_index = (
         len(intrinsic.type_signature.parameter) - 1
@@ -955,7 +957,9 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
     # The intrinsic comp should consist of exactly one intrinsic call with
     # two args.
     self.assertLen(intrinsic.result.locals, 1)
-    self.assertTrue(intrinsic.result.locals[0][1].argument.is_struct())
+    self.assertIsInstance(
+        intrinsic.result.locals[0][1].argument, building_blocks.Struct
+    )
     self.assertLen(intrinsic.result.locals[0][1].argument, 2)
 
   def test_splits_on_intrinsic_with_args_from_original_arg(self):
@@ -1025,7 +1029,9 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
     # comes from the original arg.
     self.assertLen(before.result.result[0], 1)
     self.assertLen(intrinsic.result.locals, 1)
-    self.assertTrue(intrinsic.result.locals[0][1].argument.is_struct())
+    self.assertIsInstance(
+        intrinsic.result.locals[0][1].argument, building_blocks.Struct
+    )
     self.assertLen(intrinsic.result.locals[0][1].argument, 2)
 
   def test_splits_with_non_empty_before_and_after_block_comps(self):
@@ -1339,12 +1345,18 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
     # references (a renamed version of server_state_val_1 but nothing
     # corresponding to server_state_val_2).
     self.assertNotEmpty(before.result.result[1])
+
+    def _predicate(
+        building_block: building_blocks.ComputationBuildingBlock,
+    ) -> bool:
+      return isinstance(
+          building_block, building_blocks.Reference
+      ) and isinstance(
+          building_block.type_signature, computation_types.FederatedType
+      )
+
     self.assertEqual(
-        tree_analysis.count(
-            before.result.result[1],
-            lambda bb: bb.is_reference() and bb.type_signature.is_federated(),
-        ),
-        1,
+        tree_analysis.count(before.result.result[1], _predicate), 1
     )
 
     # Check that the before comp has two federated_value_at_server intrinsics.
@@ -1431,10 +1443,15 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
     self.assertNotEmpty(before.result.result[1])
 
     def _server_data_selection_predicate(bb):
-      return bb.is_selection() and bb.source.name == before.parameter_name
+      return (
+          isinstance(bb, building_blocks.Selection)
+          and bb.source.name == before.parameter_name
+      )
 
     def _server_state_val_predicate(bb):
-      return bb.is_reference() and bb.type_signature.is_federated()
+      return isinstance(bb, building_blocks.Reference) and isinstance(
+          bb.type_signature, computation_types.FederatedType
+      )
 
     self.assertEqual(
         tree_analysis.count(
@@ -1653,9 +1670,13 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
     # There should be two intrinsic calls.
     self.assertLen(intrinsic.result.locals, 2)
     # The federated_sum call takes one arg.
-    self.assertFalse(intrinsic.result.locals[0][1].argument.is_struct())
+    self.assertNotIsInstance(
+        intrinsic.result.locals[0][1].argument, building_blocks.Struct
+    )
     # The federated_secure_modular_sum call takes two args.
-    self.assertTrue(intrinsic.result.locals[1][1].argument.is_struct())
+    self.assertIsInstance(
+        intrinsic.result.locals[1][1].argument, building_blocks.Struct
+    )
     self.assertLen(intrinsic.result.locals[1][1].argument, 2)
 
   def test_cannot_split_on_chained_intrinsic(self):
