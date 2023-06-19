@@ -39,54 +39,49 @@ from tensorflow_federated.python.program import release_manager
 TensorType = computation_types.TensorType
 
 
-class WaitForTasksToFinishTest(
-    absltest.TestCase, unittest.IsolatedAsyncioTestCase
-):
+class TaskManagerTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
 
   async def test_empty_tasks_does_not_raise(self):
+    task_manager = training_program_logic.TaskManager()
     try:
-      await training_program_logic._wait_for_tasks_to_finish(set())
+      await task_manager.wait_for_all_tasks()
     except Exception as e:  # pylint: disable=broad-except
       self.fail(f'Test failed, expected no exceptions but got: {e}')
 
   async def test_one_task(self):
     with self.subTest('non_eval_task'):
+      task_manager = training_program_logic.TaskManager()
 
-      async def not_eval_task():
-        return None
+      async def task():
+        return
 
-      tasks = set([asyncio.create_task(not_eval_task())])
-      with mock.patch.object(
-          training_program_logic, '_finalize_tasks'
-      ) as mock_finalize:
-        await training_program_logic._wait_for_tasks_to_finish(tasks)
-        mock_finalize.assert_called_once_with(tasks)
+      # Assert the task runs while this function waits.
+      task_manager.add_task(task())
+      self.assertLen(task_manager._pending_tasks, 1)
+      # We need to await some other coroutine from this method to ensure that
+      # the event loop will run the task started above in the mean time.
+      await asyncio.sleep(delay=0.1)
+      self.assertEmpty(task_manager._pending_tasks)
 
-    with self.subTest('eval_task'):
-      train_round_num = 10
-
-      async def eval_task():
-        return train_round_num
-
-      tasks = set([asyncio.create_task(eval_task())])
-      with mock.patch.object(
-          training_program_logic, '_finalize_tasks'
-      ) as mock_finalize:
-        await training_program_logic._wait_for_tasks_to_finish(tasks)
-        mock_finalize.assert_called_once_with(tasks)
+      # Assert the task runs when all tasks are awaited to finish.
+      task_manager.add_task(task())
+      self.assertLen(task_manager._pending_tasks, 1)
+      await task_manager.wait_for_all_tasks()
+      self.assertEmpty(task_manager._pending_tasks)
 
   async def test_multiple_tasks(self):
-    results = [None, 5, None, None, 15, None]
+    task_manager = training_program_logic.TaskManager()
 
-    async def task(result):
-      return result
+    async def task():
+      return None
 
-    tasks = set([asyncio.create_task(task(r)) for r in results])
-    with mock.patch.object(
-        training_program_logic, '_finalize_tasks'
-    ) as mock_finalize:
-      await training_program_logic._wait_for_tasks_to_finish(tasks)
-      mock_finalize.assert_called_once_with(tasks)
+    num_tasks = 5
+    for _ in range(num_tasks):
+      task_manager.add_task(task())
+
+    self.assertLen(task_manager._pending_tasks, num_tasks)
+    await task_manager.wait_for_all_tasks()
+    self.assertEmpty(task_manager._pending_tasks)
 
 
 def _create_test_context() -> federated_context.FederatedContext:

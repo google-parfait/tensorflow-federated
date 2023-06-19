@@ -107,13 +107,6 @@ _EVAL_MANAGER_KEY = 'eval_manager'
 _EVAL_NAME_PATTERN = 'evaluation_of_train_round_{round_num:05d}'
 
 
-def _finalize_tasks(tasks: set[asyncio.Task]):
-  """Calls result() on tasks to ensure errors are propagated."""
-  _logging.vlog(5, 'Finalizing tasks: %s', tasks)
-  for task in tasks:
-    task.result()
-
-
 class EvaluationManager:
   """A manager for facilitating multiple in-progress evaluations.
 
@@ -251,7 +244,7 @@ class EvaluationManager:
     """Creates an awaitable that blocks until all evaluations are finished."""
     if not self._pending_tasks:
       return
-    done_tasks, self._pending_tasks = await asyncio.wait(
+    _, self._pending_tasks = await asyncio.wait(
         self._pending_tasks, timeout=None, return_when=asyncio.ALL_COMPLETED
     )
     if self._pending_tasks:
@@ -260,19 +253,12 @@ class EvaluationManager:
           'Expected all tasks to be complete, but wait() returned with still '
           'unfinished tasks.'
       )
-    _finalize_tasks(done_tasks)
 
-  async def _cleanup_finished_tasks(self) -> None:
-    """Removes finished tasks from self._pending_tasks."""
-    if not self._pending_tasks:
-      return
-    one_second = 1
-    done_tasks, self._pending_tasks = await asyncio.wait(
-        self._pending_tasks,
-        timeout=one_second,
-        return_when=asyncio.FIRST_COMPLETED,
-    )
-    _finalize_tasks(done_tasks)
+  def _finalize_task(self, task: asyncio.Task):
+    """Calls result() on tasks to ensure errors are propagated."""
+    _logging.info('Finalizing task: %s', task)
+    task.result()  # Trigger any potentially stored exceptions.
+    self._pending_tasks.remove(task)
 
   async def resume_from_previous_state(self) -> None:
     """Load the most recent state and restart in-progress evaluations."""
@@ -356,10 +342,14 @@ class EvaluationManager:
           aggregated_metrics_manager=self._aggregated_metrics_manager,
       )
       await self.record_evaluations_finished(train_round_num)
-      # Clean-up the statemanager output, which will no longer be used.
+      # Clean-up the statemanager output, which will no longer be used. This
+      # must happy only after this evaluation has been removed from the
+      # evaluation managers state during `record_evaluations_finished`.
       await state_manager.remove_all()
 
-    self._pending_tasks.add(asyncio.create_task(run_and_record_completion()))
+    new_task = asyncio.create_task(run_and_record_completion())
+    new_task.add_done_callback(self._finalize_task)
+    self._pending_tasks.add(new_task)
 
   async def start_evaluation(
       self,
@@ -368,7 +358,6 @@ class EvaluationManager:
       model_weights: model_weights_lib.ModelWeights,
   ) -> None:
     """Starts a new evaluation loop for the incoming model_weights."""
-    await self._cleanup_finished_tasks()
     self._evaluating_training_checkpoints = _append_integer(
         self._evaluating_training_checkpoints, train_round
     )
@@ -441,7 +430,7 @@ class EvaluationManager:
     except ValueError as e:
       raise RuntimeError(
           'An internal error occurred where the EvaluationManager is trying to '
-          f'record an evaluation for train round [{train_round}] finished that '
+          f'record an evaluation for train round [{train_round}] finished '
           'but also has no state about in-progress evaluation rounds.'
       ) from e
     await self._state_manager.save(

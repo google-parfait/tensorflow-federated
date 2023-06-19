@@ -22,6 +22,7 @@ duration of time based on the `evaluation_period` parameter.
 """
 
 import asyncio
+from collections.abc import Coroutine
 import datetime
 from typing import Optional, Union
 
@@ -37,54 +38,36 @@ from tensorflow_federated.python.program import release_manager
 from tensorflow_federated.python.program import value_reference
 
 
-async def _finalize_tasks(tasks: set[asyncio.Task]):
-  """Finalize asynchronous tasks."""
-  # Calling `result()` will rasie an error if the underlying task raised an
-  # error, otherwise the error is silently swallowed.
-  for task in tasks:
-    task.result()
+class TaskManager:
+  """A manager for inflight tasks.
 
+  This object holds references to asyncio Tasks so that they are not garbage
+  collected. It registers a callback to remove the reference when the task
+  finishes, and provides an interface to wait for all inflight tasks to finish
+  before proceeding.
 
-async def _wait_for_tasks_to_finish(pending_tasks: set[asyncio.Task]):
-  if not pending_tasks:
-    return
-  done_tasks, _ = await asyncio.wait(
-      pending_tasks, timeout=None, return_when=asyncio.ALL_COMPLETED
-  )
-  await _finalize_tasks(done_tasks)
-
-
-async def _clear_finished_tasks(
-    pending_tasks: set[asyncio.Task],
-) -> set[asyncio.Task]:
-  """Removes finished tasks, returns the set of futures that are still pending.
-
-  This is intended as a "clean-up" method that will remove items from
-  `pending_tasks` that are complete which frees the associated memory and
-  also surfaces any errors that may have occur in that task. Without this, the
-  Python runtime will need to hold onto all memory for every round until the
-  end of the program.
-
-  This method does _not_ wait for tasks to complete, its alright to check back
-  on a task later.
-
-  Args:
-    pending_tasks: A set of futures for in-progress tasks.
-
-  Returns:
-    A set of tasks containing only the tasks in `pending_tasks` that are not
-    ready yet.
+  This is very similar to the `asyncio.TaskGroup` method, which will be availabe
+  in Python 3.11.
   """
-  if not pending_tasks:
-    # Nothing to do.
-    return pending_tasks
-  # Wait 1 second for any potentially finished task.
-  one_second = 1
-  done_tasks, pending_tasks = await asyncio.wait(
-      pending_tasks, timeout=one_second, return_when=asyncio.FIRST_COMPLETED
-  )
-  await _finalize_tasks(done_tasks)
-  return pending_tasks
+
+  def __init__(self):
+    self._pending_tasks: set[asyncio.Task] = set()
+
+  async def wait_for_all_tasks(self):
+    if not self._pending_tasks:
+      return
+    await asyncio.wait(
+        self._pending_tasks, timeout=None, return_when=asyncio.ALL_COMPLETED
+    )
+
+  def _finalize_task(self, task: asyncio.Task) -> None:
+    self._pending_tasks.remove(task)
+    task.result()  # Trigger any potentially stored exceptions.
+
+  def add_task(self, coro: Coroutine[None, None, None]) -> None:
+    new_task = asyncio.create_task(coro)
+    new_task.add_done_callback(self._finalize_task)
+    self._pending_tasks.add(new_task)
 
 
 # TODO(b/284509457): Revisit this API when `initialize` is changed to be a value
@@ -159,7 +142,7 @@ async def train_model(
 
   # A list of pending tasks (evaluation, value releases, etc) that we must await
   # before shutting down the program.
-  pending_tasks: set[asyncio.Task] = set([])
+  task_manager = TaskManager()
 
   # If this job is restarting, resume any previous evaluations.
   if evaluation_manager is not None:
@@ -255,7 +238,9 @@ async def train_model(
     round_participants_data = train_data_iterator.select(
         train_per_round_clients
     )
-    train_result = train_process.next(train_state, round_participants_data)
+    train_result = await value_reference.materialize_value(
+        train_process.next(train_state, round_participants_data)
+    )
     logging.info('Finished train round %d', round_num)
     if not isinstance(train_result, learning_process.LearningProcessOutput):
       raise TypeError(
@@ -266,12 +251,8 @@ async def train_model(
       )
     train_state = train_result.state
     train_metrics = train_result.metrics
-    # Save the current program state. We await here to avoid the situation
-    # were we start the next round, but saving fails, and we end up rolling
-    # back to an even earlier round on resumption (a trade-off of speed for
-    # potential wasted work).
-    await program_state_manager.save(
-        (train_state, round_num), version=round_num
+    task_manager.add_task(
+        program_state_manager.save((train_state, round_num), version=round_num)
     )
     if train_metrics_manager is not None:
       try:
@@ -288,13 +269,11 @@ async def train_model(
             '`tff.Computation` whose result signature was: '
             f'{train_process.next.type_signature.result}'
         ) from e
-      pending_tasks.add(
-          asyncio.create_task(
-              train_metrics_manager.release(
-                  released_train_metrics,
-                  released_train_metrics_type,
-                  key=round_num,
-              )
+      task_manager.add_task(
+          train_metrics_manager.release(
+              released_train_metrics,
+              released_train_metrics_type,
+              key=round_num,
           )
       )
     train_round_finished_time = datetime.datetime.now()
@@ -305,24 +284,16 @@ async def train_model(
       await evaluation_manager.start_evaluation(
           round_num, int(train_round_finished_time.timestamp()), model_weights
       )
-      logging.info(
-          'Added evaluation for training round %d. Pending tasks: %s',
-          round_num,
-          pending_tasks,
-      )
-    # Clean-up any tasks that have finished in the meantime.
-    pending_tasks = await _clear_finished_tasks(pending_tasks)
+      logging.info('Added evaluation for training round %d', round_num)
 
-  pending_tasks.add(
-      asyncio.create_task(
-          model_output_manager.release(
-              train_state,
-              train_state_type,
-              key=f'final_training_checkpoint_round_{train_total_rounds}',
-          )
+  task_manager.add_task(
+      model_output_manager.release(
+          train_state,
+          train_state_type,
+          key=f'final_training_checkpoint_round_{train_total_rounds}',
       )
   )
   # Wait for all pending tasks to complete before exiting the program.
-  await _wait_for_tasks_to_finish(pending_tasks)
+  await task_manager.wait_for_all_tasks()
   if evaluation_manager is not None:
     await evaluation_manager.wait_for_evaluations_to_finish()
