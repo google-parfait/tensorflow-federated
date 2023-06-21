@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import asyncio
 import collections
 import datetime
 import unittest
@@ -43,14 +42,6 @@ from tensorflow_federated.python.program import release_manager
 
 # Convenience aliases.
 TensorType = computation_types.TensorType
-
-
-class FinalizeTasksTest(tf.test.TestCase):
-
-  def test_calls_result(self):
-    mock_task = mock.create_autospec(asyncio.Task, instance=True, spec_set=True)
-    evaluation_program_logic._finalize_tasks({mock_task})
-    mock_task.result.assert_called_once()
 
 
 class _NumpyMatcher:
@@ -266,7 +257,9 @@ class EvaluationManagerTest(tf.test.TestCase, unittest.IsolatedAsyncioTestCase):
         cohort_size=10,
     )
     await manager.resume_from_previous_state()
+    self.assertEmpty(manager._pending_tasks)
     await manager.wait_for_evaluations_to_finish()
+    self.assertEmpty(manager._pending_tasks)
     mock_create_process_fn.assert_not_called()
     self.assertSequenceEqual(
         mock_create_state_manager.call_args_list,
@@ -344,7 +337,9 @@ class EvaluationManagerTest(tf.test.TestCase, unittest.IsolatedAsyncioTestCase):
         evaluation_program_logic._EVAL_MANAGER_KEY
     )
     mock_create_state_manager.reset_mock()
+    self.assertEmpty(manager._pending_tasks)
     await manager.resume_from_previous_state()
+    self.assertEmpty(manager._pending_tasks)
     mock_create_process_fn.assert_not_called()
     test_model_weights = model_weights.ModelWeights([], [])
     for train_round, train_time in zip(test_train_rounds, test_train_times):
@@ -366,7 +361,13 @@ class EvaluationManagerTest(tf.test.TestCase, unittest.IsolatedAsyncioTestCase):
           mock_create_process_fn.call_args_list, [mock.call(eval_name)]
       )
       mock_create_process_fn.reset_mock()
+    # Expect that there are one or two pending evaluations. Its possible that
+    # the first evaluation has completed during `await`s while starting the
+    # second evaluation, so we can't explicitly check for two pending tasks
+    # here.
+    self.assertNotEmpty(manager._pending_tasks)
     await manager.wait_for_evaluations_to_finish()
+    self.assertEmpty(manager._pending_tasks)
     # Assert that two meta-state-manager save calls, each one adding the new
     # evaluations.
     self.assertSequenceEqual(
@@ -445,6 +446,7 @@ class EvaluationManagerTest(tf.test.TestCase, unittest.IsolatedAsyncioTestCase):
     ):
       await manager.record_evaluations_finished(7)
     await manager.wait_for_evaluations_to_finish()
+    self.assertEmpty(manager._pending_tasks)
 
   async def test_resume_previous_evaluations(self):
     mock_data_source = mock.create_autospec(
@@ -519,8 +521,11 @@ class EvaluationManagerTest(tf.test.TestCase, unittest.IsolatedAsyncioTestCase):
         cohort_size=10,
         duration=datetime.timedelta(milliseconds=10),
     )
+    self.assertEmpty(manager._pending_tasks)
     await manager.resume_from_previous_state()
+    self.assertLen(manager._pending_tasks, len(test_train_rounds))
     await manager.wait_for_evaluations_to_finish()
+    self.assertEmpty(manager._pending_tasks)
     eval_names = [
         evaluation_program_logic._EVAL_NAME_PATTERN.format(round_num=round_num)
         for round_num in test_train_rounds
