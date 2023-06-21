@@ -19,10 +19,12 @@ import signal
 import subprocess
 import sys
 import time
+from typing import Optional
 
 from absl import logging
 import grpc
 import portpicker
+import tensorflow as tf
 
 from tensorflow_federated.python.core.impl.executor_stacks import python_executor_stacks
 from tensorflow_federated.python.core.impl.executors import executor_factory
@@ -45,6 +47,8 @@ def local_cpp_executor_factory(
     default_num_clients: int = 0,
     max_concurrent_computation_calls: int = -1,
     stream_structs: bool = False,
+    server_mesh: Optional[tf.experimental.dtensor.Mesh] = None,
+    client_mesh: Optional[tf.experimental.dtensor.Mesh] = None,
 ) -> executor_factory.ExecutorFactory:
   """Returns an execution context backed by C++ runtime.
 
@@ -56,6 +60,10 @@ def local_cpp_executor_factory(
       a single computation in the C++ runtime. If nonpositive, there is no
       limit.
     stream_structs: The flag to enable decomposing and streaming struct values.
+    server_mesh: If present, worker binary will create DTensor based executor on
+      the server side using given serialized DTensor Mesh.
+    client_mesh: If present, worker binary will create DTensor based executor on
+      the client side using given serialized DTensor Mesh.
 
   Raises:
     RuntimeError: If an internal C++ worker binary can not be found.
@@ -83,6 +91,10 @@ def local_cpp_executor_factory(
         f'--port={port}',
         f'--max_concurrent_computation_calls={max_concurrent_computation_calls}',
     ]
+    if server_mesh is not None:
+      args.append(f'--serialized_server_mesh={server_mesh.to_string()}')
+    if client_mesh is not None:
+      args.append(f'--serialized_client_mesh={client_mesh.to_string()}')
 
     def is_notebook():
       try:

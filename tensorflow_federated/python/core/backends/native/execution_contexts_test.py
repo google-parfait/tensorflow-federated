@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import collections
 import os.path
 import subprocess
@@ -27,6 +28,7 @@ import tensorflow as tf
 from tensorflow_federated.proto.v0 import executor_pb2
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.computation import computation_impl
+from tensorflow_federated.python.core.impl.context_stack import context_stack_test_utils
 from tensorflow_federated.python.core.impl.executors import remote_executor_grpc_stub
 from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.tensorflow_libs import tensorflow_test_utils
@@ -232,6 +234,75 @@ class SyncLocalCPPExecutionContextTest(absltest.TestCase):
     mock_popen.assert_called_once_with(
         expected_args, stdout=sys.stdout, stderr=sys.stderr
     )
+
+
+class DistributedExecutionContextIntegrationTest(
+    tf.test.TestCase, parameterized.TestCase
+):
+
+  @parameterized.named_parameters(
+      ('async_context_on_server', True, False, False),
+      ('sync_context_on_server', True, False, True),
+      ('async_context_on_client', False, True, True),
+      ('sync_context_on_client', False, True, True),
+      ('async_context_on_server_client', True, True, False),
+      ('sync_context_on_server_client', True, True, True),
+  )
+  def test_runs_tensorflow_on_dtensor_on_server(
+      self, dtensor_on_server, dtensor_on_client, is_sync_context
+  ):
+    mesh = tf.experimental.dtensor.create_mesh(
+        devices=['CPU:0'], mesh_dims=[('test_dim', 1)]
+    )
+
+    def _create_context():
+      server_mesh = mesh if dtensor_on_server else None
+      client_mesh = mesh if dtensor_on_client else None
+      distributed_config = execution_contexts.DistributedConfiguration(
+          server_mesh=server_mesh,
+          client_mesh=client_mesh,
+      )
+      if is_sync_context:
+        return execution_contexts.create_sync_experimental_distributed_cpp_execution_context(
+            distributed_config=distributed_config
+        )
+      return execution_contexts.create_async_experimental_distributed_cpp_execution_context(
+          distributed_config=distributed_config
+      )
+
+    @context_stack_test_utils.with_context(_create_context)
+    def test_dtensor_stack():
+      @tensorflow_computation.tf_computation(
+          collections.OrderedDict(x=tf.int32, y=tf.int32)
+      )
+      def multiply(ordered_dict):
+        return ordered_dict['x'] * ordered_dict['y']
+
+      zero = multiply(collections.OrderedDict(x=0, y=1))
+      one = multiply(collections.OrderedDict(x=1, y=1))
+
+      if not is_sync_context:
+        self.assertTrue(asyncio.iscoroutine(zero))
+        self.assertTrue(asyncio.iscoroutine(one))
+        zero = asyncio.run(zero)
+        one = asyncio.run(one)
+
+      self.assertEqual(zero, 0)
+      self.assertEqual(one, 1)
+
+    test_dtensor_stack()
+
+  def test_error_on_distributed_context_creation(self):
+    with self.assertRaisesRegex(
+        ValueError,
+        (
+            'Both server side and client side mesh are unspecified'
+            ' in distributed configuration.'
+        ),
+    ):
+      execution_contexts.create_sync_experimental_distributed_cpp_execution_context(
+          distributed_config=execution_contexts.DistributedConfiguration()
+      )
 
 
 if __name__ == '__main__':

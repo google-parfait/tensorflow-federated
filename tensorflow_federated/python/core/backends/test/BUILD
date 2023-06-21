@@ -81,6 +81,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/execution_contexts:async_execution_context",
         "//tensorflow_federated/python/core/impl/execution_contexts:sync_execution_context",
         "//tensorflow_federated/python/core/impl/executor_stacks:executor_factory",
+        "//tensorflow_federated/python/core/impl/executors:executor_factory",
     ],
 )
 
@@ -89,8 +90,10 @@ py_test(
     srcs = ["execution_contexts_test.py"],
     deps = [
         ":execution_contexts",
+        "//tensorflow_federated/python/core/impl/context_stack:context_stack_test_utils",
         "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
+        "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
         "//tensorflow_federated/python/core/impl/types:computation_types",
     ],
 )
