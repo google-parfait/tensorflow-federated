@@ -460,11 +460,7 @@ def type_to_py_container(value, type_spec):
     return value
 
   if not isinstance(value, structure.Struct):
-    # NOTE: When encountering non-`structure.Struct`s, we assume that
-    # this means that we're attempting to re-convert a value that
-    # already has the proper containers, and we short-circuit to
-    # avoid re-converting. This is a possibly dangerous assumption.
-    return value
+    value = structure.from_container(value, recursive=True)
 
   container_type = structure_type_spec.python_container
 

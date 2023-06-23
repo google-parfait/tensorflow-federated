@@ -14,7 +14,7 @@
 
 import collections
 import dataclasses
-from typing import Any, OrderedDict
+from typing import Any, NamedTuple
 
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -28,6 +28,8 @@ from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.types import type_test_utils
 from tensorflow_federated.python.core.impl.types import typed_object
+
+OrderedDict = collections.OrderedDict
 
 
 def _assert_structure_eq(x, y):
@@ -51,6 +53,11 @@ def _assert_structure_eq(x, y):
   for xe, ye in zip(xl, yl):
     if xe != ye:
       raise AssertionError(f'Mismatching elements {xe} and {ye}.')
+
+
+class TestTuple(NamedTuple):
+  field_a: Any
+  field_b: Any
 
 
 class InferTypeTest(parameterized.TestCase, tf.test.TestCase):
@@ -639,10 +646,37 @@ class TypeToPyContainerTest(tf.test.TestCase):
     result = type_conversions.type_to_py_container(
         (1, 2.0),
         computation_types.StructWithPythonType(
-            [tf.int32, tf.float32], container_type=list
+            [tf.int32, tf.float32], container_type=tuple
         ),
     )
     self.assertEqual(result, value)
+
+  def test_nested_odict(self):
+    value = collections.OrderedDict({
+        'field_a': collections.OrderedDict({'field_a': 1.0, 'field_b': 2.0}),
+        'field_b': 3.0,
+    })
+    expected_result = TestTuple(
+        field_a=TestTuple(field_a=1.0, field_b=2.0), field_b=3.0
+    )
+
+    result = type_conversions.type_to_py_container(
+        value,
+        computation_types.StructWithPythonType(
+            [
+                (
+                    'field_a',
+                    computation_types.StructWithPythonType(
+                        [('field_a', tf.float32), ('field_b', tf.float32)],
+                        container_type=TestTuple,
+                    ),
+                ),
+                ('field_b', tf.float32),
+            ],
+            container_type=TestTuple,
+        ),
+    )
+    self.assertEqual(result, expected_result)
 
   def test_represents_unnamed_fields_as_tuple(self):
     input_value = structure.Struct([(None, 1), (None, 2.0)])
