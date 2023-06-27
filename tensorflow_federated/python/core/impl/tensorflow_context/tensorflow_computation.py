@@ -55,7 +55,7 @@ def _tf_wrapper_fn(parameter_type, name, **kwargs):
     result = yield arg
   except Exception as e:  # pylint: disable=broad-except
     tf_serializer.throw(e)
-  comp_pb, extra_type_spec = tf_serializer.send(result)
+  comp_pb, extra_type_spec = tf_serializer.send(result)  # pytype: disable=attribute-error
   tf_serializer.close()
   yield computation_impl.ConcreteComputation(
       comp_pb, ctx_stack, extra_type_spec
@@ -240,11 +240,11 @@ def _extract_bindings(
       return None, 0
     elif type_spec.is_tensor():
       arg_def = function_args[arg_index]
-      if arg_def.type != type_spec.dtype.as_datatype_enum:
+      if arg_def.type != type_spec.dtype.as_datatype_enum:  # pytype: disable=attribute-error
         raise TypeError(
             f'Argument at position {arg_index} had binding type '
-            f'{tf.dtypes.as_dtype(arg_def.type)}, but '
-            f'type signature expected type {type_spec.dtype}.'
+            f'{tf.dtypes.as_dtype(arg_def.type)}, but '  # pytype: disable=attribute-error
+            f'type signature expected type {type_spec.dtype}.'  # pytype: disable=attribute-error
         )
       return (
           pb.TensorFlowFunction.Binding(
@@ -296,7 +296,9 @@ def _extract_bindings(
       elements = []
       for field in field_iterator(type_spec):
         element, args_used = extract(
-            field, function_args, arg_index + args_consumed
+            field,  # pytype: disable=wrong-arg-types
+            function_args,
+            arg_index + args_consumed,
         )
         elements.append(element)
         args_consumed += args_used
@@ -385,23 +387,23 @@ class _TensorFlowFunctionTracingStrategy:
         TensorFlowSpec, Sequence[TensorFlowSpec], Mapping[str, TensorFlowSpec]
     ]:
       if type_spec.is_tensor():
-        return tf.TensorSpec(shape=type_spec.shape, dtype=type_spec.dtype)
+        return tf.TensorSpec(shape=type_spec.shape, dtype=type_spec.dtype)  # pytype: disable=attribute-error
       elif type_spec.is_sequence():
-        return tf.data.DatasetSpec(_tf_spec_from_tff_type(type_spec.element))
+        return tf.data.DatasetSpec(_tf_spec_from_tff_type(type_spec.element))  # pytype: disable=attribute-error
       elif type_spec.is_struct():
-        container_type = type_spec.python_container
+        container_type = type_spec.python_container  # pytype: disable=attribute-error,unsupported-operands
         if container_type is tf.SparseTensor:
-          [rank] = type_spec['dense_shape'].shape
+          [rank] = type_spec['dense_shape'].shape  # pytype: disable=unsupported-operands
           return tf.SparseTensorSpec(
-              shape=[None] * rank, dtype=type_spec['values'].dtype
+              shape=[None] * rank, dtype=type_spec['values'].dtype  # pytype: disable=unsupported-operands
           )
         elif container_type is tf.RaggedTensor:
-          flat_values_type_spec = type_spec['flat_values']
+          flat_values_type_spec = type_spec['flat_values']  # pytype: disable=unsupported-operands
           flat_values_spec = tf.TensorSpec(
               shape=flat_values_type_spec.shape,
               dtype=flat_values_type_spec.dtype,
           )
-          nested_row_splits_type_spec = type_spec['nested_row_splits']
+          nested_row_splits_type_spec = type_spec['nested_row_splits']  # pytype: disable=unsupported-operands
           row_splits_dtype = nested_row_splits_type_spec[0].dtype
           return tf.RaggedTensorSpec(
               dtype=flat_values_spec.dtype,
@@ -413,7 +415,7 @@ class _TensorFlowFunctionTracingStrategy:
           structure_of_type_specs = structure.Struct(
               [
                   (name, _tf_spec_from_tff_type(child_type))
-                  for name, child_type in structure.iter_elements(type_spec)
+                  for name, child_type in structure.iter_elements(type_spec)  # pytype: disable=wrong-arg-types
               ]
           )
           return type_conversions.type_to_py_container(
@@ -470,7 +472,8 @@ class _TensorFlowFunctionTracingStrategy:
         type_signature.parameter, concrete_fn.function_def.signature.input_arg
     )
     result_binding = _extract_bindings(
-        type_signature.result, concrete_fn.function_def.signature.output_arg
+        type_signature.result,  # pytype: disable=wrong-arg-types
+        concrete_fn.function_def.signature.output_arg,
     )
     if 'layout_map' in kwargs:
       layout_map = kwargs['layout_map']
