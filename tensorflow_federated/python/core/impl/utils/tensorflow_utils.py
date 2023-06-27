@@ -84,8 +84,8 @@ def stamp_parameter_in_graph(parameter_name, parameter_type, graph):
   if parameter_type.is_tensor():
     with graph.as_default():
       placeholder = tf.compat.v1.placeholder(
-          dtype=parameter_type.dtype,
-          shape=parameter_type.shape,
+          dtype=parameter_type.dtype,  # pytype: disable=attribute-error
+          shape=parameter_type.shape,  # pytype: disable=attribute-error
           name=parameter_name,
       )
       binding = pb.TensorFlow.Binding(
@@ -103,7 +103,7 @@ def stamp_parameter_in_graph(parameter_name, parameter_type, graph):
       del whimsy_tensor  # Unused
     element_name_value_pairs = []
     element_bindings = []
-    for e in structure.iter_elements(parameter_type):
+    for e in structure.iter_elements(parameter_type):  # pytype: disable=wrong-arg-types
       e_val, e_binding = stamp_parameter_in_graph(
           '{}_{}'.format(parameter_name, e[0]), e[1], graph
       )
@@ -120,7 +120,8 @@ def stamp_parameter_in_graph(parameter_name, parameter_type, graph):
       with tf.device('/device:cpu:0'):
         variant_tensor = tf.compat.v1.placeholder(tf.variant, shape=[])
         ds = make_dataset_from_variant_tensor(
-            variant_tensor, parameter_type.element
+            variant_tensor,
+            parameter_type.element,  # pytype: disable=attribute-error
         )
     return (
         ds,
@@ -536,7 +537,7 @@ def assemble_result_from_graph(type_spec, binding, output_map):
           'Expected a struct binding, found {}.'.format(binding_oneof)
       )
     else:
-      type_elements = structure.to_elements(type_spec)
+      type_elements = structure.to_elements(type_spec)  # pytype: disable=wrong-arg-types
       if len(binding.struct.element) != len(type_elements):
         raise ValueError(
             'Mismatching tuple sizes in type ({}) and binding ({}).'.format(
@@ -551,9 +552,9 @@ def assemble_result_from_graph(type_spec, binding, output_map):
             element_type, element_binding, output_map
         )
         result_elements.append((element_name, element_object))
-      if type_spec.python_container is None:
+      if type_spec.python_container is None:  # pytype: disable=attribute-error
         return structure.Struct(result_elements)
-      container_type = type_spec.python_container
+      container_type = type_spec.python_container  # pytype: disable=attribute-error
       if py_typecheck.is_named_tuple(container_type) or py_typecheck.is_attrs(
           container_type
       ):
@@ -569,7 +570,8 @@ def assemble_result_from_graph(type_spec, binding, output_map):
       if sequence_oneof == 'variant_tensor_name':
         variant_tensor = output_map[binding.sequence.variant_tensor_name]
         return make_dataset_from_variant_tensor(
-            variant_tensor, type_spec.element
+            variant_tensor,
+            type_spec.element,  # pytype: disable=attribute-error
         )
       else:
         raise ValueError(
@@ -621,7 +623,7 @@ def make_empty_list_structure_for_element_type_spec(type_spec):
   if type_spec.is_tensor():
     return []
   elif type_spec.is_struct():
-    elements = structure.to_elements(type_spec)
+    elements = structure.to_elements(type_spec)  # pytype: disable=wrong-arg-types
     if all(k is not None for k, _ in elements):
       return collections.OrderedDict(
           [
@@ -696,12 +698,12 @@ def make_whimsy_element_for_type_spec(type_spec, none_dim_replacement=0):
     return x
 
   if type_spec.is_tensor():
-    whimsy_shape = [_handle_none_dimension(x) for x in type_spec.shape]
-    if type_spec.dtype == tf.string:
+    whimsy_shape = [_handle_none_dimension(x) for x in type_spec.shape]  # pytype: disable=attribute-error
+    if type_spec.dtype == tf.string:  # pytype: disable=attribute-error
       return np.empty(whimsy_shape, dtype=str)
-    return np.zeros(whimsy_shape, type_spec.dtype.as_numpy_dtype)
+    return np.zeros(whimsy_shape, type_spec.dtype.as_numpy_dtype)  # pytype: disable=attribute-error
   elif type_spec.is_struct():
-    elements = structure.to_elements(type_spec)
+    elements = structure.to_elements(type_spec)  # pytype: disable=wrong-arg-types
     elem_list = []
     for _, elem_type in elements:
       elem_list.append(make_whimsy_element_for_type_spec(elem_type))
@@ -760,9 +762,9 @@ def append_to_list_structure_for_element_type_spec(nested, value, type_spec):
     # Convert the members to tensors to ensure that they are properly
     # typed and grouped before being passed to
     # tf.data.Dataset.from_tensor_slices.
-    nested.append(tf.convert_to_tensor(value, type_spec.dtype))
+    nested.append(tf.convert_to_tensor(value, type_spec.dtype))  # pytype: disable=attribute-error
   elif type_spec.is_struct():
-    elements = structure.to_elements(type_spec)
+    elements = structure.to_elements(type_spec)  # pytype: disable=wrong-arg-types
     if isinstance(nested, collections.OrderedDict):
       if isinstance(value, _NamedTuple):
         # In Python 3.8 and later `_asdict` no longer return OrdereDict, rather
@@ -839,9 +841,9 @@ def replace_empty_leaf_lists_with_numpy_arrays(lists, type_spec):
     if lists:
       return lists
     else:
-      return np.array([], dtype=type_spec.dtype.as_numpy_dtype)
+      return np.array([], dtype=type_spec.dtype.as_numpy_dtype)  # pytype: disable=attribute-error
   elif type_spec.is_struct():
-    elements = structure.to_elements(type_spec)
+    elements = structure.to_elements(type_spec)  # pytype: disable=wrong-arg-types
     if isinstance(lists, collections.OrderedDict):
       to_return = []
       for elem_name, elem_type in elements:
@@ -944,7 +946,7 @@ def make_data_set_from_elements(graph, elements, element_type):
           singleton_ds = _make(elements[i : i + 1])
           ds = singleton_ds if ds is None else ds.concatenate(singleton_ds)
     ds_element_type = computation_types.to_type(ds.element_spec)
-    if not element_type.is_assignable_from(ds_element_type):
+    if not element_type.is_assignable_from(ds_element_type):  # pytype: disable=attribute-error
       raise TypeError(
           'Failure during data set construction, expected elements of type {}, '
           'but the constructed data set has elements of type {}.'.format(
@@ -1157,7 +1159,7 @@ def coerce_dataset_elements_to_tff_type_spec(
           return py_type(*values)
         return py_type(values)
     elif type_spec.is_struct():
-      field_types = structure.to_elements(type_spec)
+      field_types = structure.to_elements(type_spec)  # pytype: disable=wrong-arg-types
       is_all_named = all([name is not None for name, _ in field_types])
       if is_all_named:
         if py_typecheck.is_named_tuple(elements):
@@ -1174,7 +1176,7 @@ def coerce_dataset_elements_to_tff_type_spec(
           return collections.OrderedDict(values)
       else:
         return tuple(
-            _to_representative_value(t, e) for t, e in zip(type_spec, elements)
+            _to_representative_value(t, e) for t, e in zip(type_spec, elements)  # pytype: disable=wrong-arg-types
         )
     else:
       raise ValueError(
@@ -1268,7 +1270,7 @@ def deserialize_and_call_tf_computation(
   py_typecheck.check_type(graph, tf.Graph)
   with graph.as_default():
     type_spec = type_serialization.deserialize_type(computation_proto.type)
-    if type_spec.parameter is None:
+    if type_spec.parameter is None:  # pytype: disable=attribute-error
       if arg is None:
         input_map = {}
       else:
@@ -1279,14 +1281,19 @@ def deserialize_and_call_tf_computation(
     elif arg is None:
       raise TypeError(
           'The computation declared a parameter of type {}, but the argument '
-          'was not supplied.'.format(type_spec.parameter)
+          'was not supplied.'.format(
+              type_spec.parameter,  # pytype: disable=attribute-error
+          )
       )
     else:
       arg_type, arg_binding = capture_result_from_graph(arg, graph)
-      if not type_spec.parameter.is_assignable_from(arg_type):
+      if not type_spec.parameter.is_assignable_from(arg_type):  # pytype: disable=attribute-error
         raise TypeError(
             'The computation declared a parameter of type {}, but the argument '
-            'is of a mismatching type {}.'.format(type_spec.parameter, arg_type)
+            'is of a mismatching type {}.'.format(
+                type_spec.parameter,  # pytype: disable=attribute-error
+                arg_type,
+            )
         )
       else:
         input_map = {
@@ -1338,6 +1345,8 @@ def deserialize_and_call_tf_computation(
     return (
         new_init_op_name,
         assemble_result_from_graph(
-            type_spec.result, computation_proto.tensorflow.result, output_map
+            type_spec.result,  # pytype: disable=attribute-error
+            computation_proto.tensorflow.result,
+            output_map,
         ),
     )
