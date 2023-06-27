@@ -81,10 +81,10 @@ def _check_expected_type_signatures(
 
     # Check initialize result type.
     initialize.type_signature.result.check_federated()
-    if initialize.type_signature.result.placement is not tff.SERVER:
+    if initialize.type_signature.result.placement is not tff.SERVER:  # pytype: disable=attribute-error
       raise UnexpectedTypeSignatureError(
           'Expected the result of `initialize` to be placed at `tff.SERVER`, '
-          f'found {initialize.type_signature.result.placement}.'
+          f'found {initialize.type_signature.result.placement}.'  # pytype: disable=attribute-error
       )
 
     # Check train data source type.
@@ -100,14 +100,14 @@ def _check_expected_type_signatures(
 
     # Check train result type.
     train.type_signature.result.check_struct()
-    if len(train.type_signature.result) != 2:
+    if len(train.type_signature.result) != 2:  # pytype: disable=wrong-arg-types
       raise UnexpectedTypeSignatureError(
           'Expected `train` to return two values, found '
           f'{train.type_signature.result}.'
       )
     train_result_state_type, train_result_metrics_type = (
         train.type_signature.result
-    )
+    )  # pytype: disable=attribute-error
 
     # Check train result state type.
     train_result_state_type.check_federated()
@@ -126,15 +126,15 @@ def _check_expected_type_signatures(
       )
 
     # Check train parameter type.
-    train.type_signature.parameter.check_struct()
-    if len(train.type_signature.parameter) != 2:
+    train.type_signature.parameter.check_struct()  # pytype: disable=attribute-error
+    if len(train.type_signature.parameter) != 2:  # pytype: disable=wrong-arg-types
       raise UnexpectedTypeSignatureError(
           'Expected `train` to have two parameters, found '
           f'{train.type_signature.parameter}.'
       )
     train_parameter_state_type, train_parameter_client_data_type = (
         train.type_signature.parameter
-    )
+    )  # pytype: disable=attribute-error
 
     # Check train parameter state type.
     train_parameter_state_type.check_federated()
@@ -172,22 +172,22 @@ def _check_expected_type_signatures(
 
     # Check evaluation result type.
     evaluation.type_signature.result.check_federated()
-    if evaluation.type_signature.result.placement is not tff.SERVER:
+    if evaluation.type_signature.result.placement is not tff.SERVER:  # pytype: disable=attribute-error
       raise UnexpectedTypeSignatureError(
           'Expected the result of `evaluation` to be placed at `tff.SERVER`, '
-          f'found {evaluation.type_signature.result.placement}.'
+          f'found {evaluation.type_signature.result.placement}.'  # pytype: disable=attribute-error
       )
 
     # Check evaluation parameter type.
-    evaluation.type_signature.parameter.check_struct()
-    if len(evaluation.type_signature.parameter) != 2:
+    evaluation.type_signature.parameter.check_struct()  # pytype: disable=attribute-error
+    if len(evaluation.type_signature.parameter) != 2:  # pytype: disable=wrong-arg-types
       raise UnexpectedTypeSignatureError(
           'Expected `evaluation` to have two parameters, found '
           f'{evaluation.type_signature.parameter}.'
       )
     evaluation_parameter_state_type, evaluation_parameter_client_data_type = (
         evaluation.type_signature.parameter
-    )
+    )  # pytype: disable=attribute-error
 
     # Check evaluation parameter state type.
     evaluation_parameter_state_type.check_federated()
@@ -422,7 +422,7 @@ async def train_federated_model(
 
       # Release the training metrics.
       if train_metrics_manager is not None:
-        _, metrics_type = train.type_signature.result
+        _, metrics_type = train.type_signature.result  # pytype: disable=attribute-error
         metrics_type = metrics_type.member
         task_group.create_task(
             train_metrics_manager.release(metrics, metrics_type, round_num)
@@ -445,7 +445,7 @@ async def train_federated_model(
 
     # Release the evaluation metrics.
     if evaluation_metrics_manager is not None:
-      evaluation_metrics_type = evaluation.type_signature.result.member
+      evaluation_metrics_type = evaluation.type_signature.result.member  # pytype: disable=attribute-error
       task_group.create_task(
           evaluation_metrics_manager.release(
               evaluation_metrics, evaluation_metrics_type, total_rounds + 1
@@ -454,7 +454,7 @@ async def train_federated_model(
 
     # Release the model output.
     if model_output_manager is not None:
-      _, state_type = train.type_signature.result
+      _, state_type = train.type_signature.result  # pytype: disable=attribute-error
       state_type = state_type.member
       task_group.create_task(
           model_output_manager.release(state, state_type, None)

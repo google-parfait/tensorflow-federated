@@ -133,7 +133,8 @@ def build_federated_averaging_process(
       whimsy_model.report_local_unfinalized_metrics()
   )
   metrics_aggregation_computation = tff.learning.metrics.sum_then_finalize(
-      whimsy_model.metric_finalizers(), unfinalized_metrics_type
+      whimsy_model.metric_finalizers(),
+      unfinalized_metrics_type,  # pytype: disable=wrong-arg-types
   )
 
   @tff.tf_computation(
