@@ -147,8 +147,8 @@ def _remove_struct_element_names_from_tff_type(type_spec: _T) -> _T:
     return None
   if isinstance(type_spec, computation_types.FunctionType):
     return computation_types.FunctionType(
-        _remove_struct_element_names_from_tff_type(type_spec.parameter),
-        _remove_struct_element_names_from_tff_type(type_spec.result),
+        _remove_struct_element_names_from_tff_type(type_spec.parameter),  # pytype: disable=wrong-arg-types
+        _remove_struct_element_names_from_tff_type(type_spec.result),  # pytype: disable=wrong-arg-types
     )
   if isinstance(type_spec, computation_types.TensorType):
     return type_spec
