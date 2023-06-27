@@ -727,7 +727,7 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
           factory_key
       ] = aggregator_factories.get(value_range).create(
           computation_types.to_type(tensor_type_list)
-      )  # pytype: disable=attribute-error
+      )  # pytype: disable=attribute-error,wrong-arg-types
 
     @federated_computation.federated_computation
     def init_fn():
@@ -758,7 +758,7 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
       )
 
       @tensorflow_computation.tf_computation(
-          metrics_aggregation_output.type_signature.member
+          metrics_aggregation_output.type_signature.member  # pytype: disable=attribute-error
       )
       def flatten_aggregation_output(grouped_aggregation_output):
         secure_sum_measurements = collections.OrderedDict(

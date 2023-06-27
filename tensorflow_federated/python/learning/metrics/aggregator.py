@@ -260,14 +260,14 @@ def secure_sum_then_finalize(
 
     unfinalized_metrics = output.result
     unfinalized_metrics_type = (
-        secure_sum_process.next.type_signature.result.result.member
+        secure_sum_process.next.type_signature.result.result.member  # pytype: disable=attribute-error
     )
     # One minor downside of grouping the inner aggregation processes is that the
     # SecAgg measurements (e.g., clipped_count) are computed at a group level
     # (a group means all metric values belonging to the same `factory_key`).
     secure_sum_measurements = output.measurements
     secure_sum_measurements_type = (
-        secure_sum_process.next.type_signature.result.measurements.member
+        secure_sum_process.next.type_signature.result.measurements.member  # pytype: disable=attribute-error
     )
 
     @tensorflow_computation.tf_computation(
