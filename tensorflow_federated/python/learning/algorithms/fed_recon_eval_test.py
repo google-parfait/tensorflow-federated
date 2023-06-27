@@ -33,6 +33,7 @@ from tensorflow_federated.python.core.templates import measured_process as measu
 from tensorflow_federated.python.learning.algorithms import fed_recon_eval
 from tensorflow_federated.python.learning.metrics import counters
 from tensorflow_federated.python.learning.models import reconstruction_model
+from tensorflow_federated.python.learning.optimizers import sgdm
 from tensorflow_federated.python.learning.templates import composers
 from tensorflow_federated.python.learning.templates import distributors
 from tensorflow_federated.python.learning.templates import learning_process as learning_process_lib
@@ -177,12 +178,27 @@ def create_client_data():
   return [client1_dataset, client2_dataset]
 
 
+def _get_tff_optimizer(learning_rate=0.1):
+  return sgdm.build_sgdm(learning_rate=learning_rate, momentum=0.5)
+
+
+def _get_keras_optimizer_fn(learning_rate=0.1):
+  return lambda: tf.keras.optimizers.SGD(learning_rate=learning_rate)
+
+
 class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
-      ('non_keras_model', LinearModel), ('keras_model', keras_linear_model_fn)
+      ('non_keras_model_with_keras_opt', LinearModel, _get_keras_optimizer_fn),
+      ('non_keras_model_with_tff_opt', LinearModel, _get_tff_optimizer),
+      (
+          'keras_model_with_keras_opt',
+          keras_linear_model_fn,
+          _get_keras_optimizer_fn,
+      ),
+      ('keras_model_with_tff_opt', keras_linear_model_fn, _get_tff_optimizer),
   )
-  def test_federated_reconstruction_no_split_data(self, model_fn):
+  def test_federated_reconstruction_no_split_data(self, model_fn, optimizer_fn):
     def loss_fn():
       return tf.keras.losses.MeanSquaredError()
 
@@ -197,7 +213,7 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
         model_fn,
         loss_fn=loss_fn,
         metrics_fn=metrics_fn,
-        reconstruction_optimizer_fn=lambda: tf.keras.optimizers.SGD(0.1),
+        reconstruction_optimizer_fn=optimizer_fn(),
         dataset_split_fn=dataset_split_fn,
     )
     state_type = at_server(
@@ -259,7 +275,7 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
             trainable=(tf.convert_to_tensor([[1.0]]),), non_trainable=()
         ),
     )
-    state, result = evaluate.next(state, create_client_data())
+    _, result = evaluate.next(state, create_client_data())
     eval_result = result['client_work']['eval']
 
     # Ensure loss isn't equal to the value we'd expect if no reconstruction
@@ -271,9 +287,16 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
     self.assertAlmostEqual(eval_result['num_over'], 3.0)
 
   @parameterized.named_parameters(
-      ('non_keras_model', LinearModel), ('keras_model', keras_linear_model_fn)
+      ('non_keras_model_with_keras_opt', LinearModel, _get_keras_optimizer_fn),
+      ('non_keras_model_with_tff_opt', LinearModel, _get_tff_optimizer),
+      (
+          'keras_model_with_keras_opt',
+          keras_linear_model_fn,
+          _get_keras_optimizer_fn,
+      ),
+      ('keras_model_with_tff_opt', keras_linear_model_fn, _get_tff_optimizer),
   )
-  def test_federated_reconstruction_split_data(self, model_fn):
+  def test_federated_reconstruction_split_data(self, model_fn, optimizer_fn):
     def loss_fn():
       return tf.keras.losses.MeanSquaredError()
 
@@ -284,7 +307,7 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
         model_fn,
         loss_fn=loss_fn,
         metrics_fn=metrics_fn,
-        reconstruction_optimizer_fn=lambda: tf.keras.optimizers.SGD(0.1),
+        reconstruction_optimizer_fn=optimizer_fn(),
     )
 
     state_type = at_server(
@@ -339,16 +362,25 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
     )
 
     state = evaluate.initialize()
-    state, result = evaluate.next(state, create_client_data())
+    _, result = evaluate.next(state, create_client_data())
     eval_result = result['client_work']['eval']
 
     self.assertAlmostEqual(eval_result['num_examples'], 2.0)
     self.assertAlmostEqual(eval_result['num_over'], 1.0)
 
   @parameterized.named_parameters(
-      ('non_keras_model', LinearModel), ('keras_model', keras_linear_model_fn)
+      ('non_keras_model_with_keras_opt', LinearModel, _get_keras_optimizer_fn),
+      ('non_keras_model_with_tff_opt', LinearModel, _get_tff_optimizer),
+      (
+          'keras_model_with_keras_opt',
+          keras_linear_model_fn,
+          _get_keras_optimizer_fn,
+      ),
+      ('keras_model_with_tff_opt', keras_linear_model_fn, _get_tff_optimizer),
   )
-  def test_federated_reconstruction_split_data_multiple_epochs(self, model_fn):
+  def test_federated_reconstruction_split_data_multiple_epochs(
+      self, model_fn, optimizer_fn
+  ):
     def loss_fn():
       return tf.keras.losses.MeanSquaredError()
 
@@ -368,7 +400,7 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
         model_fn,
         loss_fn=loss_fn,
         metrics_fn=metrics_fn,
-        reconstruction_optimizer_fn=lambda: tf.keras.optimizers.SGD(0.1),
+        reconstruction_optimizer_fn=optimizer_fn(),
         dataset_split_fn=dataset_split_fn,
     )
     state_type = at_server(
@@ -423,16 +455,23 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
     )
 
     state = evaluate.initialize()
-    state, result = evaluate.next(state, create_client_data())
+    _, result = evaluate.next(state, create_client_data())
     eval_result = result['client_work']['eval']
 
     self.assertAlmostEqual(eval_result['num_examples'], 14.0)
     self.assertAlmostEqual(eval_result['num_over'], 7.0)
 
   @parameterized.named_parameters(
-      ('non_keras_model', LinearModel), ('keras_model', keras_linear_model_fn)
+      ('non_keras_model_with_keras_opt', LinearModel, _get_keras_optimizer_fn),
+      ('non_keras_model_with_tff_opt', LinearModel, _get_tff_optimizer),
+      (
+          'keras_model_with_keras_opt',
+          keras_linear_model_fn,
+          _get_keras_optimizer_fn,
+      ),
+      ('keras_model_with_tff_opt', keras_linear_model_fn, _get_tff_optimizer),
   )
-  def test_federated_reconstruction_recon_lr_0(self, model_fn):
+  def test_federated_reconstruction_recon_lr_0(self, model_fn, optimizer_fn):
     def loss_fn():
       return tf.keras.losses.MeanSquaredError()
 
@@ -448,7 +487,7 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
         loss_fn=loss_fn,
         metrics_fn=metrics_fn,
         # Set recon optimizer LR to 0 so reconstruction has no effect.
-        reconstruction_optimizer_fn=lambda: tf.keras.optimizers.SGD(0.0),
+        reconstruction_optimizer_fn=optimizer_fn(0.0),
         dataset_split_fn=dataset_split_fn,
     )
     state_type = at_server(
@@ -509,7 +548,7 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
             trainable=(tf.convert_to_tensor([[1.0]]),), non_trainable=()
         ),
     )
-    state, result = evaluate.next(state, create_client_data())
+    _, result = evaluate.next(state, create_client_data())
     eval_result = result['client_work']['eval']
 
     # Now have an expectation for loss since the local bias is initialized at 0
@@ -520,9 +559,16 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
     self.assertAlmostEqual(eval_result['num_over'], 3.0)
 
   @parameterized.named_parameters(
-      ('non_keras_model', LinearModel), ('keras_model', keras_linear_model_fn)
+      ('non_keras_model_with_keras_opt', LinearModel, _get_keras_optimizer_fn),
+      ('non_keras_model_with_tff_opt', LinearModel, _get_tff_optimizer),
+      (
+          'keras_model_with_keras_opt',
+          keras_linear_model_fn,
+          _get_keras_optimizer_fn,
+      ),
+      ('keras_model_with_tff_opt', keras_linear_model_fn, _get_tff_optimizer),
   )
-  def test_federated_reconstruction_skip_recon(self, model_fn):
+  def test_federated_reconstruction_skip_recon(self, model_fn, optimizer_fn):
     def loss_fn():
       return tf.keras.losses.MeanSquaredError()
 
@@ -536,7 +582,7 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
         model_fn,
         loss_fn=loss_fn,
         metrics_fn=metrics_fn,
-        reconstruction_optimizer_fn=lambda: tf.keras.optimizers.SGD(0.1),
+        reconstruction_optimizer_fn=optimizer_fn(),
         dataset_split_fn=dataset_split_fn,
     )
     state_type = at_server(
@@ -597,7 +643,7 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
             trainable=(tf.convert_to_tensor([[1.0]]),), non_trainable=()
         ),
     )
-    state, result = evaluate.next(state, create_client_data())
+    _, result = evaluate.next(state, create_client_data())
     eval_result = result['client_work']['eval']
 
     # Now have an expectation for loss since the local bias is initialized at 0
@@ -608,9 +654,18 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
     self.assertAlmostEqual(eval_result['num_over'], 6.0)
 
   @parameterized.named_parameters(
-      ('non_keras_model', LinearModel), ('keras_model', keras_linear_model_fn)
+      ('non_keras_model_with_keras_opt', LinearModel, _get_keras_optimizer_fn),
+      ('non_keras_model_with_tff_opt', LinearModel, _get_tff_optimizer),
+      (
+          'keras_model_with_keras_opt',
+          keras_linear_model_fn,
+          _get_keras_optimizer_fn,
+      ),
+      ('keras_model_with_tff_opt', keras_linear_model_fn, _get_tff_optimizer),
   )
-  def test_federated_reconstruction_metrics_none_loss_decreases(self, model_fn):
+  def test_federated_reconstruction_metrics_none_loss_decreases(
+      self, model_fn, optimizer_fn
+  ):
     def loss_fn():
       return tf.keras.losses.MeanSquaredError()
 
@@ -623,7 +678,7 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
     evaluate = fed_recon_eval.build_fed_recon_eval(
         model_fn,
         loss_fn=loss_fn,
-        reconstruction_optimizer_fn=lambda: tf.keras.optimizers.SGD(0.01),
+        reconstruction_optimizer_fn=optimizer_fn(0.01),
         dataset_split_fn=dataset_split_fn,
     )
     state_type = at_server(
@@ -680,7 +735,7 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
             trainable=(tf.convert_to_tensor([[1.0]]),), non_trainable=()
         ),
     )
-    state, result = evaluate.next(state, create_client_data())
+    _, result = evaluate.next(state, create_client_data())
     eval_result = result['client_work']['eval']
 
     # Ensure loss decreases from reconstruction vs. initializing the bias to 0.
@@ -740,7 +795,6 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
         model_fn,
         loss_fn=loss_fn,
         metrics_fn=metrics_fn,
-        reconstruction_optimizer_fn=lambda: tf.keras.optimizers.SGD(0.1),
         model_distributor=build_custom_distributor(
             model_weights_type=model_weights_type
         ),
@@ -797,7 +851,7 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
     )
 
     state = evaluate.initialize()
-    state, result = evaluate.next(state, create_client_data())
+    _, result = evaluate.next(state, create_client_data())
 
     self.assertEqual(result['distributor'], 3.0)
 

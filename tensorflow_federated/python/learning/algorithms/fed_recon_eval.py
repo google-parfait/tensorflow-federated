@@ -44,6 +44,7 @@ from tensorflow_federated.python.learning.algorithms import fed_recon
 from tensorflow_federated.python.learning.metrics import aggregator as metrics_aggregators
 from tensorflow_federated.python.learning.metrics import keras_finalizer as metrics_finalizers_lib
 from tensorflow_federated.python.learning.models import reconstruction_model
+from tensorflow_federated.python.learning.optimizers import keras_optimizer
 from tensorflow_federated.python.learning.templates import client_works
 from tensorflow_federated.python.learning.templates import composers
 from tensorflow_federated.python.learning.templates import distributors
@@ -100,9 +101,9 @@ def build_fed_recon_eval(
       during the evaluation stage. Final metric values are the example-weighted
       mean of metric values across batches (and across clients). If None, no
       metrics are applied.
-    reconstruction_optimizer_fn: A no-arg function that returns a
-      `tf.keras.optimizers.Optimizer` used to reconstruct the local variables
-      with the global ones frozen.
+    reconstruction_optimizer_fn: A `tff.learning.optimizers.Optimizer`, or a
+      no-arg function that returns a `tf.keras.optimizers.Optimizer` used to
+      reconstruct the local variables with the global ones frozen.
     dataset_split_fn: A `tff.learning.models.ReconstructionDatasetSplitFn`
       taking in a single TF dataset and producing two TF datasets. The first is
       iterated over during reconstruction, and the second is iterated over
@@ -198,11 +199,17 @@ def build_fed_recon_eval(
       )
     # To be used to calculate batch loss for model updates.
     client_loss = loss_fn()
-    reconstruction_optimizer = reconstruction_optimizer_fn()
+
+    reconstruction_optimizer = keras_optimizer.build_or_verify_tff_optimizer(
+        reconstruction_optimizer_fn,
+        client_local_weights.trainable,
+        disjoint_init_and_next=False,
+    )
 
     @tf.function
-    def reconstruction_reduce_fn(num_examples_sum, batch):
+    def reconstruction_reduce_fn(state, batch):
       """Runs reconstruction training on local client batch."""
+      num_examples_sum, optimizer_state = state
       with tf.GradientTape() as tape:
         output = client_model.forward_pass(batch, training=True)
         batch_loss = client_loss(
@@ -210,10 +217,25 @@ def build_fed_recon_eval(
         )
 
       gradients = tape.gradient(batch_loss, client_local_weights.trainable)
-      reconstruction_optimizer.apply_gradients(
-          zip(gradients, client_local_weights.trainable)
+      updated_optimizer_state, updated_weights = reconstruction_optimizer.next(
+          optimizer_state,
+          tuple(client_local_weights.trainable),
+          tuple(gradients),
       )
-      return num_examples_sum + output.num_examples
+      if not isinstance(
+          reconstruction_optimizer, keras_optimizer.KerasOptimizer
+      ):
+        # TFF optimizers require assigning the updated tensors back into the
+        # model variables. (With Keras optimizers we don't need to do this,
+        # because Keras optimizers mutate the model variables within the `next`
+        # step.)
+        tf.nest.map_structure(
+            lambda a, b: a.assign(b),
+            client_local_weights.trainable,
+            list(updated_weights),
+        )
+
+      return num_examples_sum + output.num_examples, updated_optimizer_state
 
     @tf.function
     def evaluation_reduce_fn(num_examples_sum, batch):
@@ -236,7 +258,28 @@ def build_fed_recon_eval(
           incoming_model_weights,
       )
 
-      recon_dataset.reduce(tf.constant(0), reconstruction_reduce_fn)
+      # If needed, do reconstruction, training the local variables while keeping
+      # the global ones frozen.
+      if client_local_weights.trainable:
+        # Ignore output number of examples used in reconstruction, since this
+        # isn't included in `client_weight`.
+        def initial_state_reconstruction_reduce():
+          trainable_tensor_specs = tf.nest.map_structure(
+              lambda v: tf.TensorSpec(v.shape, v.dtype),
+              client_local_weights.trainable,
+          )
+          # We convert the trainable specs to tuple, as the data iteration
+          # pattern might try to stack the tensors in a list.
+          initial_num_examples = tf.constant(0)
+          return initial_num_examples, reconstruction_optimizer.initialize(
+              tuple(trainable_tensor_specs)
+          )
+
+        recon_dataset.reduce(
+            initial_state=initial_state_reconstruction_reduce(),
+            reduce_func=reconstruction_reduce_fn,
+        )
+
       eval_dataset.reduce(tf.constant(0), evaluation_reduce_fn)
 
       eval_local_outputs = (
