@@ -493,7 +493,7 @@ class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
     )
 
     agg_output_type = (
-        record_agg_process.next.type_signature.result.result.member
+        record_agg_process.next.type_signature.result.result.member  # pytype: disable=attribute-error
     )
     get_noised_result = tensorflow_computation.tf_computation(
         self._query.get_noised_result, agg_output_type, query_state_type

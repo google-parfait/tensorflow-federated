@@ -50,12 +50,12 @@ def _is_int32_or_structure_of_int32s(type_spec: computation_types.Type) -> bool:
     structures of int32s, otherwise `False`.
   """
   if type_spec.is_tensor():
-    py_typecheck.check_type(type_spec.dtype, tf.dtypes.DType)
-    return type_spec.dtype == tf.int32
+    py_typecheck.check_type(type_spec.dtype, tf.dtypes.DType)  # pytype: disable=attribute-error
+    return type_spec.dtype == tf.int32  # pytype: disable=attribute-error
   elif type_spec.is_struct():
     return all(
         _is_int32_or_structure_of_int32s(v)
-        for _, v in structure.iter_elements(type_spec)
+        for _, v in structure.iter_elements(type_spec)  # pytype: disable=wrong-arg-types
     )
   else:
     return False
@@ -125,7 +125,7 @@ class EliasGammaEncodedSumFactory(factory.UnweightedAggregationFactory):
     if self._bitrate_mean_factory is not None:
       bitrate_mean_process = self._bitrate_mean_factory.create(
           computation_types.to_type(tf.float64)
-      )
+      )  # pytype: disable=wrong-arg-types
 
     @tensorflow_computation.tf_computation(value_type)
     def encode(value):

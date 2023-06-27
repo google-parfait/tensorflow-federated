@@ -93,7 +93,7 @@ def _build_value_zeros(
   if value_type_spec.is_tensor():
     return tf.zeros(shape=value_type_spec.shape, dtype=value_type_spec.dtype)
   elif _is_sparse_tensor_structure(value_type_spec):
-    return _build_sparse_zero(value_type_spec, dense_shapes)
+    return _build_sparse_zero(value_type_spec, dense_shapes)  # pytype: disable=wrong-arg-types
   elif value_type_spec.is_struct():
     zipped_names_types_shapes = zip(
         structure.iter_elements(value_type_spec), dense_shapes
@@ -176,7 +176,7 @@ class SparsifyingSumFactory(factory.UnweightedAggregationFactory):
       # the type_signature of the _dense_ client tensors coming in (extracted
       # above) so we also pass in the `dense_shapes` structure with this
       # information.
-      sparse_client_values_type = sparse_client_values.type_signature.member
+      sparse_client_values_type = sparse_client_values.type_signature.member  # pytype: disable=attribute-error
 
       @tensorflow_computation.tf_computation
       def zero_values():
@@ -205,13 +205,13 @@ class SparsifyingSumFactory(factory.UnweightedAggregationFactory):
       ) -> computation_types.Type:
         if type_spec.is_tensor():
           return computation_types.TensorType(
-              dtype=type_spec.dtype,
-              shape=[None if dim == 0 else dim for dim in type_spec.shape],
+              dtype=type_spec.dtype,  # pytype: disable=attribute-error
+              shape=[None if dim == 0 else dim for dim in type_spec.shape],  # pytype: disable=attribute-error
           )
         elif type_spec.is_struct():
           elements = [
               (name, replace_zero_dimensions_with_none(element))
-              for name, element in structure.iter_elements(type_spec)
+              for name, element in structure.iter_elements(type_spec)  # pytype: disable=wrong-arg-types
           ]
           if isinstance(type_spec, computation_types.StructWithPythonType):
             return computation_types.StructWithPythonType(

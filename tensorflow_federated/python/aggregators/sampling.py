@@ -110,7 +110,7 @@ def _build_reservoir_type(
               sample_value_type, add_unknown_dimension
           )[0],
       )
-  )
+  )  # pytype: disable=bad-return-type
 
 
 def _build_initial_sample_reservoir(
