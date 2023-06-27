@@ -190,7 +190,8 @@ def _deserialize_type_spec(serialize_type_variable, python_container=None):
   )
   if type_spec.is_struct() and python_container is not None:
     type_spec = computation_types.StructWithPythonType(
-        structure.iter_elements(type_spec), python_container
+        structure.iter_elements(type_spec),  # pytype: disable=wrong-arg-types
+        python_container,
     )
   return type_conversions.type_to_tf_structure(type_spec)
 
@@ -605,9 +606,9 @@ class _LoadedFunctionalModel(functional.FunctionalModel):
   def predict_on_batch(self, model_weights, x, training=True):
     """Returns tensor(s) interpretable by the loss function."""
     if training:
-      return self._predict_on_batch_training(model_weights=model_weights, x=x)
+      return self._predict_on_batch_training(model_weights=model_weights, x=x)  # pytype: disable=attribute-error
     else:
-      return self._predict_on_batch_inference(model_weights=model_weights, x=x)
+      return self._predict_on_batch_inference(model_weights=model_weights, x=x)  # pytype: disable=attribute-error
 
   @property
   def input_spec(self):

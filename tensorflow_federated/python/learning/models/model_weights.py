@@ -120,4 +120,4 @@ def weights_type_from_model(
     with tf.Graph().as_default():
       model = model()
   py_typecheck.check_type(model, variable.VariableModel)
-  return type_conversions.type_from_tensors(ModelWeights.from_model(model))
+  return type_conversions.type_from_tensors(ModelWeights.from_model(model))  # pytype: disable=bad-return-type
