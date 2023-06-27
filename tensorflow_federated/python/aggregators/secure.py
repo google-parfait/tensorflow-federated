@@ -196,17 +196,17 @@ def _check_bound_process(
   py_typecheck.check_type(bound_process, estimation_process.EstimationProcess)
 
   next_parameter_type = bound_process.next.type_signature.parameter
-  if not next_parameter_type.is_struct() or len(next_parameter_type) != 2:
+  if not next_parameter_type.is_struct() or len(next_parameter_type) != 2:  # pytype: disable=attribute-error,wrong-arg-types
     raise TypeError(
         f'`{name}.next` must take two arguments but found:\n'
         f'{next_parameter_type}'
     )
 
   float_type_at_clients = computation_types.at_clients(NORM_TF_TYPE)
-  if not next_parameter_type[1].is_assignable_from(float_type_at_clients):
+  if not next_parameter_type[1].is_assignable_from(float_type_at_clients):  # pytype: disable=unsupported-operands
     raise TypeError(
         f'Second argument of `{name}.next` must be assignable from '
-        f'{float_type_at_clients} but found {next_parameter_type[1]}'
+        f'{float_type_at_clients} but found {next_parameter_type[1]}'  # pytype: disable=unsupported-operands
     )
 
   next_result_type = bound_process.next.type_signature.result
@@ -219,7 +219,7 @@ def _check_bound_process(
 
   report_type = bound_process.report.type_signature.result
   estimated_value_type_at_server = computation_types.at_server(
-      next_parameter_type[1].member
+      next_parameter_type[1].member  # pytype: disable=unsupported-operands
   )
   if not report_type.is_assignable_from(estimated_value_type_at_server):
     raise TypeError(
@@ -382,7 +382,7 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
       value_max = intrinsics.federated_map(_reduce_nest_max, value)
       value_min = intrinsics.federated_map(_reduce_nest_min, value)
       upper_bound, lower_bound = self._get_bounds_from_state(
-          state, value_max.type_signature.member.dtype
+          state, value_max.type_signature.member.dtype  # pytype: disable=attribute-error
       )
 
       new_state = self._update_state(state, value_min, value_max)
@@ -663,7 +663,7 @@ def _create_update_state_single_process(
 ):
   """Updates state when bounds specified as single estimation process."""
 
-  expected_dtype = process.next.type_signature.parameter[1].member.dtype
+  expected_dtype = process.next.type_signature.parameter[1].member.dtype  # pytype: disable=unsupported-operands
 
   def update_state(state, value_min, value_max):
     abs_max_fn = tensorflow_computation.tf_computation(
@@ -681,8 +681,8 @@ def _create_update_state_two_processes(
 ):
   """Updates state when bounds specified as two estimation processes."""
 
-  max_dtype = upper_bound_process.next.type_signature.parameter[1].member.dtype
-  min_dtype = lower_bound_process.next.type_signature.parameter[1].member.dtype
+  max_dtype = upper_bound_process.next.type_signature.parameter[1].member.dtype  # pytype: disable=unsupported-operands
+  min_dtype = lower_bound_process.next.type_signature.parameter[1].member.dtype  # pytype: disable=unsupported-operands
 
   def update_state(state, value_min, value_max):
     value_min = intrinsics.federated_map(
@@ -714,8 +714,8 @@ def _unique_dtypes_in_structure(
   """
   py_typecheck.check_type(type_spec, computation_types.Type)
   if type_spec.is_tensor():
-    py_typecheck.check_type(type_spec.dtype, tf.dtypes.DType)
-    return set([type_spec.dtype])
+    py_typecheck.check_type(type_spec.dtype, tf.dtypes.DType)  # pytype: disable=attribute-error
+    return set([type_spec.dtype])  # pytype: disable=attribute-error
   elif type_spec.is_struct():
     return set(
         tf.nest.flatten(
@@ -725,7 +725,7 @@ def _unique_dtypes_in_structure(
         )
     )
   elif type_spec.is_federated():
-    return _unique_dtypes_in_structure(type_spec.member)
+    return _unique_dtypes_in_structure(type_spec.member)  # pytype: disable=attribute-error
   else:
     return set()
 

@@ -75,17 +75,17 @@ def _check_norm_process(
   py_typecheck.check_type(norm_process, estimation_process.EstimationProcess)
 
   next_parameter_type = norm_process.next.type_signature.parameter
-  if not next_parameter_type.is_struct() or len(next_parameter_type) != 2:
+  if not next_parameter_type.is_struct() or len(next_parameter_type) != 2:  # pytype: disable=attribute-error,wrong-arg-types
     raise TypeError(
         f'`{name}.next` must take two arguments but found:\n'
         f'{next_parameter_type}'
     )
 
   norm_type_at_clients = computation_types.at_clients(NORM_TF_TYPE)
-  if not next_parameter_type[1].is_assignable_from(norm_type_at_clients):
+  if not next_parameter_type[1].is_assignable_from(norm_type_at_clients):  # pytype: disable=unsupported-operands
     raise TypeError(
         f'Second argument of `{name}.next` must be assignable from '
-        f'{norm_type_at_clients} but found {next_parameter_type[1]}'
+        f'{norm_type_at_clients} but found {next_parameter_type[1]}'  # pytype: disable=unsupported-operands
     )
 
   next_result_type = norm_process.next.type_signature.result
@@ -319,7 +319,7 @@ def _make_wrapper(
   _check_norm_process(clipping_norm_process, 'clipping_norm_process')
 
   clipped_count_agg_process = clipped_count_sum_factory.create(
-      computation_types.to_type(COUNT_TF_TYPE)
+      computation_types.to_type(COUNT_TF_TYPE)  # pytype: disable=wrong-arg-types
   )
 
   prefix = lambda s: attribute_prefix + s

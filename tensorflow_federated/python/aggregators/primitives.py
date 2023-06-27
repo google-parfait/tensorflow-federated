@@ -450,11 +450,11 @@ def _normalize_secure_quantized_sum_args(
     raise BoundsDifferentSignaturesError(lower_bound, upper_bound)
   # The remaining type checks only use lower_bound as the upper_bound has
   # itendical type_signature.
-  if lower_bound.type_signature.placement != placements.SERVER:
-    raise BoundsNotPlacedAtServerError(lower_bound.type_signature.placement)
+  if lower_bound.type_signature.placement != placements.SERVER:  # pytype: disable=attribute-error
+    raise BoundsNotPlacedAtServerError(lower_bound.type_signature.placement)  # pytype: disable=attribute-error
 
   # Validation of client_value and bounds compatibility.
-  bound_member = lower_bound.type_signature.member
+  bound_member = lower_bound.type_signature.member  # pytype: disable=attribute-error
   if bound_member.is_struct():
     if not client_value_member.is_struct() or (
         structure.map_structure(lambda v: v.dtype, bound_member)
@@ -756,7 +756,7 @@ def secure_quantized_sum(client_value, lower_bound, upper_bound):
       client_one, bitwidth=1
   )
 
-  secagg_value_type = value.type_signature.member
+  secagg_value_type = value.type_signature.member  # pytype: disable=attribute-error
   assert secagg_value_type.is_tensor() or secagg_value_type.is_struct()
   if secagg_value_type.is_tensor():
     bitwidths = 32
