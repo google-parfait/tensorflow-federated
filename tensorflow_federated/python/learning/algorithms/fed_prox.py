@@ -216,8 +216,8 @@ def build_weighted_fed_prox(
       model_update_type, computation_types.TensorType(tf.float32)
   )
   process_signature = aggregator.next.type_signature
-  input_client_value_type = process_signature.parameter[1]
-  result_server_value_type = process_signature.result[1]
+  input_client_value_type = process_signature.parameter[1]  # pytype: disable=unsupported-operands
+  result_server_value_type = process_signature.result[1]  # pytype: disable=unsupported-operands
   if input_client_value_type.member != result_server_value_type.member:
     raise TypeError(
         '`model_update_aggregation_factory` does not produce a '

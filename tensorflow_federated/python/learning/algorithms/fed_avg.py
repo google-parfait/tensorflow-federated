@@ -229,8 +229,8 @@ def build_weighted_fed_avg(
   )
 
   process_signature = aggregator.next.type_signature
-  input_client_value_type = process_signature.parameter[1]
-  result_server_value_type = process_signature.result[1]
+  input_client_value_type = process_signature.parameter[1]  # pytype: disable=unsupported-operands
+  result_server_value_type = process_signature.result[1]  # pytype: disable=unsupported-operands
   if input_client_value_type.member != result_server_value_type.member:
     raise TypeError(
         '`model_aggregator` does not produce a compatible '

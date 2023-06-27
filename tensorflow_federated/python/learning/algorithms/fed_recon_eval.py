@@ -348,9 +348,9 @@ def build_fed_recon_eval(
   empty_client_work_result_type = computation_types.at_clients(
       client_works.ClientResult(update=(), update_weight=())
   )
-  empty_model_update_type = empty_client_work_result_type.member.update
+  empty_model_update_type = empty_client_work_result_type.member.update  # pytype: disable=attribute-error
   empty_model_update_weight_type = (
-      empty_client_work_result_type.member.update_weight
+      empty_client_work_result_type.member.update_weight  # pytype: disable=attribute-error
   )
   empty_model_aggregator = mean.MeanFactory().create(
       empty_model_update_type, empty_model_update_weight_type

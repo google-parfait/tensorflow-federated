@@ -348,7 +348,8 @@ def build_fed_kmeans(
   weighted_aggregator = factory_utils.as_weighted_aggregator(sum_aggregator)
   value_type = computation_types.to_type((centroids_type, weights_type))
   aggregator = weighted_aggregator.create(
-      value_type, computation_types.to_type(())
+      value_type,
+      computation_types.to_type(()),  # pytype: disable=wrong-arg-types
   )
 
   finalizer = _build_kmeans_finalizer(centroids_type, num_clusters)

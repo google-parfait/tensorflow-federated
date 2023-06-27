@@ -168,7 +168,8 @@ def _build_fed_sgd_client_work(
         model.report_local_unfinalized_metrics()
     )
     metrics_aggregation_fn = metrics_aggregator(
-        model.metric_finalizers(), unfinalized_metrics_type
+        model.metric_finalizers(),
+        unfinalized_metrics_type,  # pytype: disable=wrong-arg-types
     )
   data_type = computation_types.SequenceType(model.input_spec)
   weights_type = model_weights_lib.weights_type_from_model(model)

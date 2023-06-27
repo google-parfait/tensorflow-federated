@@ -243,7 +243,8 @@ def _build_mime_lite_client_work(
         model.report_local_unfinalized_metrics()
     )
     metrics_aggregation_fn = metrics_aggregator(
-        model.metric_finalizers(), unfinalized_metrics_type
+        model.metric_finalizers(),
+        unfinalized_metrics_type,  # pytype: disable=wrong-arg-types
     )
   data_type = computation_types.SequenceType(model.input_spec)
   weights_type = model_weights_lib.weights_type_from_model(model)
@@ -533,7 +534,8 @@ def _build_mime_lite_functional_client_work(
   weight_tensor_specs = type_conversions.type_to_tf_tensor_specs(weights_type)
 
   full_gradient_aggregator = full_gradient_aggregator.create(
-      weights_type.trainable, computation_types.TensorType(tf.float32)
+      weights_type.trainable,  # pytype: disable=attribute-error
+      computation_types.TensorType(tf.float32),
   )
 
   @federated_computation.federated_computation
@@ -557,7 +559,8 @@ def _build_mime_lite_functional_client_work(
   aggregator_state_type, _ = init_fn.type_signature.result.member
 
   @tensorflow_computation.tf_computation(
-      aggregator_state_type, weights_type.trainable
+      aggregator_state_type,
+      weights_type.trainable,  # pytype: disable=attribute-error
   )
   def update_optimizer_state(state, aggregate_gradient):
     whimsy_weights = tf.nest.map_structure(
@@ -681,7 +684,7 @@ def _build_scheduled_mime_lite_client_work(
 
   federated_mime_state_type, federated_weights_type, federated_data_type = (
       client_work.next.type_signature.parameter
-  )
+  )  # pytype: disable=attribute-error
   data_type = federated_data_type.member
   weights_type = federated_weights_type.member
   mime_state_type = federated_mime_state_type.member

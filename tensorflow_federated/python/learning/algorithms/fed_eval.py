@@ -60,9 +60,10 @@ def _build_fed_eval_client_work(
       local_unfinalized_metrics_type = type_conversions.type_from_tensors(
           model.report_local_unfinalized_metrics()
       )
-      metrics_aggregation_process = aggregation_factory.SumThenFinalizeFactory(
-          metrics_finalizers
-      ).create(local_unfinalized_metrics_type)
+      factory = aggregation_factory.SumThenFinalizeFactory(metrics_finalizers)
+      metrics_aggregation_process = factory.create(
+          local_unfinalized_metrics_type
+      )  # pytype: disable=wrong-arg-types
     else:
       py_typecheck.check_type(
           metrics_aggregation_process,
@@ -131,7 +132,9 @@ def _build_functional_fed_eval_client_work(
   tuple_weights_type = (weights_type.trainable, weights_type.non_trainable)
   batch_type = computation_types.to_type(model.input_spec)
   local_eval = federated_evaluation.build_functional_local_evaluation(
-      model, tuple_weights_type, batch_type
+      model,
+      tuple_weights_type,  # pytype: disable=wrong-arg-types
+      batch_type,
   )
 
   if metrics_aggregation_process is None:
@@ -307,8 +310,8 @@ def build_fed_eval(
   client_work_result_type = computation_types.at_clients(
       client_works.ClientResult(update=(), update_weight=())
   )
-  model_update_type = client_work_result_type.member.update
-  model_update_weight_type = client_work_result_type.member.update_weight
+  model_update_type = client_work_result_type.member.update  # pytype: disable=attribute-error
+  model_update_weight_type = client_work_result_type.member.update_weight  # pytype: disable=attribute-error
   model_aggregator_factory = mean.MeanFactory()
   model_aggregator = model_aggregator_factory.create(
       model_update_type, model_update_weight_type
@@ -317,7 +320,7 @@ def build_fed_eval(
   # The finalizer performs no update on model weights.
   finalizer = finalizers.build_identity_finalizer(
       model_weights_type,
-      model_aggregator.next.type_signature.result.result.member,
+      model_aggregator.next.type_signature.result.result.member,  # pytype: disable=attribute-error
   )
 
   return composers.compose_learning_process(

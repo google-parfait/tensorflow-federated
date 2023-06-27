@@ -97,7 +97,8 @@ def build_scheduled_client_work(
         whimsy_model.report_local_unfinalized_metrics()
     )
     metrics_aggregation_fn = metrics_aggregator(
-        whimsy_model.metric_finalizers(), unfinalized_metrics_type
+        whimsy_model.metric_finalizers(),
+        unfinalized_metrics_type,  # pytype: disable=wrong-arg-types
     )
   data_type = computation_types.SequenceType(whimsy_model.input_spec)
   weights_type = model_weights.weights_type_from_model(whimsy_model)
@@ -283,8 +284,8 @@ def build_weighted_fed_avg_with_optimizer_schedule(
       model_weights_type.trainable, computation_types.TensorType(tf.float32)
   )
   process_signature = aggregator.next.type_signature
-  input_client_value_type = process_signature.parameter[1]
-  result_server_value_type = process_signature.result[1]
+  input_client_value_type = process_signature.parameter[1]  # pytype: disable=unsupported-operands
+  result_server_value_type = process_signature.result[1]  # pytype: disable=unsupported-operands
   if input_client_value_type.member != result_server_value_type.member:
     raise TypeError(
         '`model_update_aggregation_factory` does not produce a '
