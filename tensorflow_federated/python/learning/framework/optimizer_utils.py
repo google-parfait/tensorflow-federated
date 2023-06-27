@@ -181,10 +181,10 @@ def _is_valid_stateful_process(
   init_type = process.initialize.type_signature
   next_type = process.next.type_signature
   return (
-      init_type.result.placement is placements.SERVER
-      and next_type.parameter[0].placement is placements.SERVER
-      and next_type.result.state.placement is placements.SERVER
-      and next_type.result.measurements.placement is placements.SERVER
+      init_type.result.placement is placements.SERVER  # pytype: disable=attribute-error
+      and next_type.parameter[0].placement is placements.SERVER  # pytype: disable=unsupported-operands
+      and next_type.result.state.placement is placements.SERVER  # pytype: disable=attribute-error
+      and next_type.result.measurements.placement is placements.SERVER  # pytype: disable=attribute-error
   )
 
 
@@ -206,8 +206,8 @@ def is_valid_broadcast_process(
   return (
       isinstance(process, measured_process.MeasuredProcess)
       and _is_valid_stateful_process(process)
-      and next_type.parameter[1].placement is placements.SERVER
-      and next_type.result.result.placement is placements.CLIENTS
+      and next_type.parameter[1].placement is placements.SERVER  # pytype: disable=unsupported-operands
+      and next_type.result.result.placement is placements.CLIENTS  # pytype: disable=attribute-error
   )
 
 
