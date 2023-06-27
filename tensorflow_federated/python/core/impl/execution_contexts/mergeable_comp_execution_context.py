@@ -121,7 +121,7 @@ class MergeableCompForm:
   ):
     if not (
         up_to_merge.type_signature.result.is_federated()
-        and up_to_merge.type_signature.result.placement.is_server()
+        and up_to_merge.type_signature.result.placement.is_server()  # pytype: disable=attribute-error
     ):
       raise UpToMergeTypeError(
           'Expected `up_to_merge` to return a single `tff.SERVER`-placed '
@@ -131,12 +131,12 @@ class MergeableCompForm:
     # TFF's StructType assignability relation ensures that an unnamed struct can
     # be assigned to any struct with names.
     expected_merge_param_type = computation_types.StructType([
-        (None, up_to_merge.type_signature.result.member),
-        (None, up_to_merge.type_signature.result.member),
+        (None, up_to_merge.type_signature.result.member),  # pytype: disable=attribute-error
+        (None, up_to_merge.type_signature.result.member),  # pytype: disable=attribute-error
     ])
     if not merge.type_signature.parameter.is_assignable_from(
         expected_merge_param_type
-    ):
+    ):  # pytype: disable=attribute-error
       raise MergeTypeNotAssignableError(
           'Type mismatch checking `merge` type signature.\n'
           + computation_types.type_mismatch_error_message(
@@ -149,10 +149,10 @@ class MergeableCompForm:
     if not (
         merge.type_signature.parameter[0].is_assignable_from(
             merge.type_signature.result
-        )
+        )  # pytype: disable=unsupported-operands
         and merge.type_signature.parameter[1].is_assignable_from(
             merge.type_signature.result
-        )
+        )  # pytype: disable=unsupported-operands
     ):
       raise MergeTypeNotAssignableError(
           'Expected `merge` to have result which is assignable to '
@@ -175,7 +175,7 @@ class MergeableCompForm:
 
     after_merge.type_signature.parameter.check_assignable_from(
         expected_after_merge_arg_type
-    )
+    )  # pytype: disable=attribute-error
 
     def _federated_type_predicate(
         type_signature: computation_types.Type,
@@ -183,18 +183,18 @@ class MergeableCompForm:
     ) -> bool:
       return (
           type_signature.is_federated()
-          and type_signature.placement == placement
+          and type_signature.placement == placement  # pytype: disable=attribute-error
       )
 
     def _moves_clients_to_server_predicate(
         intrinsic: building_blocks.Intrinsic,
     ):
       parameter_contains_clients_placement = type_analysis.contains(
-          intrinsic.type_signature.parameter,
+          intrinsic.type_signature.parameter,  # pytype: disable=attribute-error
           lambda x: _federated_type_predicate(x, placements.CLIENTS),
       )
       result_contains_server_placement = type_analysis.contains(
-          intrinsic.type_signature.result,
+          intrinsic.type_signature.result,  # pytype: disable=attribute-error
           lambda x: _federated_type_predicate(x, placements.SERVER),
       )
       return (
@@ -257,7 +257,7 @@ def _partition_value(
     result_container = []
     for (_, val_elem), (name, type_elem) in zip(
         structure.iter_elements(struct_val),
-        structure.iter_elements(type_signature),
+        structure.iter_elements(type_signature),  # pytype: disable=wrong-arg-types
     ):
       partitioning_val_elem = _PartitioningValue(
           val_elem,
@@ -273,8 +273,8 @@ def _partition_value(
         partition_result.num_remaining_partitions,
         partition_result.last_client_index,
     )
-  elif type_signature.is_federated() and type_signature.placement.is_clients():
-    if type_signature.all_equal:
+  elif type_signature.is_federated() and type_signature.placement.is_clients():  # pytype: disable=attribute-error
+    if type_signature.all_equal:  # pytype: disable=attribute-error
       # In this case we simply replicate the argument for every subround.
       return val
 
@@ -374,7 +374,7 @@ def _repackage_partitioned_values(
     ]
     result_container = []
     for idx, (name, elem_type) in enumerate(
-        structure.iter_elements(result_type_spec)
+        structure.iter_elements(result_type_spec)  # pytype: disable=wrong-arg-types
     ):
       result_container.append((
           name,
@@ -385,9 +385,9 @@ def _repackage_partitioned_values(
     return structure.Struct(result_container)
   elif (
       result_type_spec.is_federated()
-      and result_type_spec.placement.is_clients()
+      and result_type_spec.placement.is_clients()  # pytype: disable=attribute-error
   ):
-    if result_type_spec.all_equal:
+    if result_type_spec.all_equal:  # pytype: disable=attribute-error
       return after_merge_results[0]
     for x in after_merge_results:
       py_typecheck.check_type(x, (list, tuple))
@@ -423,7 +423,10 @@ class MergeableCompExecutionContextValue(typed_object.TypedObject):
 async def _invoke_up_to_merge_and_return_context(
     comp: MergeableCompForm, arg, context: context_base.AsyncContext
 ):
-  return await context.invoke(comp.up_to_merge, arg)
+  return await context.invoke(
+      comp.up_to_merge,  # pytype: disable=attribute-error
+      arg,
+  )
 
 
 async def _merge_results(
@@ -433,7 +436,8 @@ async def _merge_results(
     context: context_base.AsyncContext,
 ):
   return await context.invoke(
-      comp.merge, structure.Struct.unnamed(merge_partial, value_to_merge)
+      comp.merge,  # pytype: disable=attribute-error
+      structure.Struct.unnamed(merge_partial, value_to_merge),
   )
 
 
@@ -447,7 +451,10 @@ async def _compute_after_merged(
     arg = structure.Struct.unnamed(original_arg, merge_result)
   else:
     arg = merge_result
-  return await context.invoke(comp.after_merge, arg)
+  return await context.invoke(
+      comp.after_merge,  # pytype: disable=attribute-error
+      arg,
+  )
 
 
 async def _run_in_async_context_pool(
@@ -576,7 +583,7 @@ async def _invoke_mergeable_comp_form(
   )
 
   if type_analysis.contains_only(
-      comp.after_merge.type_signature.result,
+      comp.after_merge.type_signature.result,  # pytype: disable=attribute-error
       lambda x: not x.is_federated() or x.all_equal,
   ):
     # In this case, all contexts must return the same result, which must
@@ -594,7 +601,7 @@ async def _invoke_mergeable_comp_form(
 
   repackaged_values = _repackage_partitioned_values(
       after_merge_results,
-      result_type_spec=comp.after_merge.type_signature.result,
+      result_type_spec=comp.after_merge.type_signature.result,  # pytype: disable=attribute-error
   )
   return repackaged_values
 
@@ -671,7 +678,9 @@ class MergeableCompExecutionContext(
 
     if arg is not None:
       arg = MergeableCompExecutionContextValue(
-          arg, comp.up_to_merge.type_signature.parameter, self._num_subrounds
+          arg,
+          comp.up_to_merge.type_signature.parameter,  # pytype: disable=attribute-error
+          self._num_subrounds,
       )
 
     return type_conversions.type_to_py_container(
@@ -680,5 +689,5 @@ class MergeableCompExecutionContext(
                 comp, arg, self._async_execution_contexts
             )
         ),
-        comp.after_merge.type_signature.result,
+        comp.after_merge.type_signature.result,  # pytype: disable=attribute-error
     )
