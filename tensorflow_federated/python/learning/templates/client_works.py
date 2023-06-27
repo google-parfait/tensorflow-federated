@@ -48,7 +48,7 @@ class ClientResultTypeError(TypeError):
 def _is_allowed_client_data_type(type_spec: computation_types.Type) -> bool:
   """Determines whether a given type is a (possibly nested) sequence type."""
   if type_spec.is_sequence():
-    return type_analysis.is_tensorflow_compatible_type(type_spec.element)
+    return type_analysis.is_tensorflow_compatible_type(type_spec.element)  # pytype: disable=attribute-error
   elif type_spec.is_struct():
     return all(
         _is_allowed_client_data_type(element_type)
@@ -67,7 +67,7 @@ def _type_check_initialize_fn(initialize_fn: computation_base.Computation):
         'see a collection of federated types, try wrapping the returned '
         'value in `tff.federated_zip` before returning.'
     )
-  if initialize_fn.type_signature.result.placement != placements.SERVER:
+  if initialize_fn.type_signature.result.placement != placements.SERVER:  # pytype: disable=attribute-error
     raise errors.TemplatePlacementError(
         'The state controlled by a `ClientWorkProcess` must be placed at '
         f'the SERVER, but found type: {initialize_fn.type_signature.result}.'
@@ -96,19 +96,19 @@ def _check_next_fn_is_federated(next_fn: computation_base.Computation):
 def _type_check_next_fn_parameters(next_fn: computation_base.Computation):
   """Validates the input types of `next_fn` in a `ClientWorkProcess`."""
   next_fn_param = next_fn.type_signature.parameter
-  if not next_fn_param.is_struct():
+  if not next_fn_param.is_struct():  # pytype: disable=attribute-error
     raise errors.TemplateNextFnNumArgsError(
         'The `next_fn` must have exactly three input arguments, but found '
         f'the following input type which is not a Struct: {next_fn_param}.'
     )
-  if len(next_fn_param) != 3:
-    next_param_str = '\n- '.join([str(t) for t in next_fn_param])
+  if len(next_fn_param) != 3:  # pytype: disable=wrong-arg-types
+    next_param_str = '\n- '.join([str(t) for t in next_fn_param])  # pytype: disable=attribute-error
     raise errors.TemplateNextFnNumArgsError(
         'The `next_fn` must have exactly three input arguments, but found '
-        f'{len(next_fn_param)} input arguments:\n{next_param_str}'
+        f'{len(next_fn_param)} input arguments:\n{next_param_str}'  # pytype: disable=wrong-arg-types
     )
-  second_next_param = next_fn_param[1]
-  client_data_param = next_fn_param[2]
+  second_next_param = next_fn_param[1]  # pytype: disable=unsupported-operands
+  client_data_param = next_fn_param[2]  # pytype: disable=unsupported-operands
   if second_next_param.placement != placements.CLIENTS:
     raise errors.TemplatePlacementError(
         'The second input argument of `next_fn` must be placed at CLIENTS '
@@ -131,25 +131,25 @@ def _type_check_next_fn_result(next_fn: computation_base.Computation):
   """Validates the output types of `next_fn` in a `ClientWorkProcess`."""
   next_fn_result = next_fn.type_signature.result
   if (
-      not next_fn_result.result.is_federated()
-      or next_fn_result.result.placement != placements.CLIENTS
+      not next_fn_result.result.is_federated()  # pytype: disable=attribute-error
+      or next_fn_result.result.placement != placements.CLIENTS  # pytype: disable=attribute-error
   ):
     raise errors.TemplatePlacementError(
         'The "result" attribute of the return type of `next_fn` must be '
-        f'placed at CLIENTS, but found {next_fn_result.result}.'
+        f'placed at CLIENTS, but found {next_fn_result.result}.'  # pytype: disable=attribute-error
     )
   if (
-      not next_fn_result.result.member.is_struct_with_python()
-      or next_fn_result.result.member.python_container is not ClientResult
+      not next_fn_result.result.member.is_struct_with_python()  # pytype: disable=attribute-error
+      or next_fn_result.result.member.python_container is not ClientResult  # pytype: disable=attribute-error
   ):
     raise ClientResultTypeError(
         'The "result" attribute of the return type of `next_fn` must have '
-        f'the `ClientResult` container, but found {next_fn_result.result}.'
+        f'the `ClientResult` container, but found {next_fn_result.result}.'  # pytype: disable=attribute-error
     )
-  if next_fn_result.measurements.placement != placements.SERVER:
+  if next_fn_result.measurements.placement != placements.SERVER:  # pytype: disable=attribute-error
     raise errors.TemplatePlacementError(
         'The "measurements" attribute of return type of `next_fn` must be '
-        f'placed at SERVER, but found {next_fn_result.measurements}.'
+        f'placed at SERVER, but found {next_fn_result.measurements}.'  # pytype: disable=attribute-error
     )
 
 
@@ -258,8 +258,8 @@ class ClientWorkProcess(measured_process.MeasuredProcess):
 
   @property
   def get_hparams(self) -> computation_base.Computation:
-    return self._get_hparams_fn
+    return self._get_hparams_fn  # pytype: disable=attribute-error
 
   @property
   def set_hparams(self) -> computation_base.Computation:
-    return self._set_hparams_fn
+    return self._set_hparams_fn  # pytype: disable=attribute-error

@@ -135,7 +135,7 @@ def compose_learning_process(
   # pyformat: enable
   _validate_args(initial_model_weights_fn, model_weights_distributor,
                  client_work, model_update_aggregator, model_finalizer)
-  client_data_type = client_work.next.type_signature.parameter[2]
+  client_data_type = client_work.next.type_signature.parameter[2]  # pytype: disable=unsupported-operands
 
   @federated_computation.federated_computation()
   def init_fn():
@@ -232,7 +232,9 @@ def compose_learning_process(
   next_fn = composed_learning_process.next
   next_fn_param = next_fn.type_signature.parameter
   try:
-    type_checks.check_is_client_placed_structure_of_sequences(next_fn_param[1])
+    type_checks.check_is_client_placed_structure_of_sequences(
+        next_fn_param[1],  # pytype: disable=unsupported-operands
+    )
   except type_checks.ClientSequenceTypeError as type_error:
     raise TypeError(
         'The learning process composition produced a `next` function with type '
@@ -278,15 +280,23 @@ def _validate_args(initial_model_weights_fn, model_weights_distributor,
   finalizer_param = model_finalizer.next.type_signature.parameter
   finalizer_result = model_finalizer.next.type_signature.result
 
-  distributor_param[1].check_assignable_from(global_model_weights_type)
-  client_work_param[1].check_assignable_from(distributor_result.result)
+  distributor_param[1].check_assignable_from(global_model_weights_type)  # pytype: disable=unsupported-operands
+  client_work_param[1].check_assignable_from(
+      distributor_result.result,  # pytype: disable=attribute-error
+  )  # pytype: disable=unsupported-operands
   aggregator_param[1].member.check_assignable_from(
-      client_work_result.result.member.update)
+      client_work_result.result.member.update,  # pytype: disable=attribute-error
+  )  # pytype: disable=unsupported-operands
   aggregator_param[2].member.check_assignable_from(
-      client_work_result.result.member.update_weight)
-  finalizer_param[1].check_assignable_from(global_model_weights_type)
-  finalizer_param[2].check_assignable_from(aggregator_result.result)
-  global_model_weights_type.check_assignable_from(finalizer_result.result)
+      client_work_result.result.member.update_weight,  # pytype: disable=attribute-error
+  )  # pytype: disable=unsupported-operands
+  finalizer_param[1].check_assignable_from(global_model_weights_type)  # pytype: disable=unsupported-operands
+  finalizer_param[2].check_assignable_from(
+      aggregator_result.result,  # pytype: disable=attribute-error
+  )  # pytype: disable=unsupported-operands
+  global_model_weights_type.check_assignable_from(
+      finalizer_result.result,   # pytype: disable=attribute-error
+  )
 
 
 def build_basic_fedavg_process(model_fn: Callable[[], variable.VariableModel],
@@ -359,8 +369,9 @@ def build_basic_fedavg_process(model_fn: Callable[[], variable.VariableModel],
       sgdm.build_sgdm(client_learning_rate),
       client_weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES)
   aggregator = mean.MeanFactory().create(
-      client_work.next.type_signature.result.result.member.update,
-      client_work.next.type_signature.result.result.member.update_weight)
+      client_work.next.type_signature.result.result.member.update,  # pytype: disable=attribute-error
+      client_work.next.type_signature.result.result.member.update_weight,  # pytype: disable=attribute-error
+  )
   finalizer = apply_optimizer_finalizer.build_apply_optimizer_finalizer(
       sgdm.build_sgdm(server_learning_rate), model_weights_type)
 

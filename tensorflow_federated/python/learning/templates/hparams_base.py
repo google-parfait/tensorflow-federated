@@ -36,7 +36,10 @@ def type_check_get_hparams_fn(
   """Validates the type signature of `get_hparams_fn` in `ClientWorkProcess`."""
   py_typecheck.check_type(get_hparams_fn, computation_base.Computation)
   get_hparams_state_type = get_hparams_fn.type_signature.parameter
-  if not get_hparams_state_type.is_assignable_from(state_type):
+  if (
+      get_hparams_state_type is None
+      or not get_hparams_state_type.is_assignable_from(state_type)
+  ):
     raise GetHparamsTypeError(
         'The input to get_hparams must be compatible with the state type '
         f'{state_type}, but found type {get_hparams_state_type}.'
@@ -50,12 +53,12 @@ def type_check_set_hparams_fn(
   """Validates the type signature of `set_hparams_fn` in `ClientWorkProcess`."""
   py_typecheck.check_type(set_hparams_fn, computation_base.Computation)
   set_hparams_parameter = set_hparams_fn.type_signature.parameter
-  if not set_hparams_parameter.is_struct() or len(set_hparams_parameter) != 2:
+  if not set_hparams_parameter.is_struct() or len(set_hparams_parameter) != 2:  # pytype: disable=attribute-error,wrong-arg-types
     raise SetHparamsTypeError(
         'Expected two input arguments to set_hparams, but found '
         f'{set_hparams_parameter}.'
     )
-  set_hparams_state_type = set_hparams_parameter[0]
+  set_hparams_state_type = set_hparams_parameter[0]  # pytype: disable=unsupported-operands
   if not set_hparams_state_type.is_assignable_from(state_type):
     raise SetHparamsTypeError(
         'The first input to set_hparams must be compatible with the state '
