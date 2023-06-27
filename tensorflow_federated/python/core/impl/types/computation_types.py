@@ -352,8 +352,8 @@ class _Intern(abc.ABCMeta):
 # stored as a field of each class because some class objects themselves would
 # begin destruction before the map fields of other classes, causing errors
 # during destruction.
-_intern_pool: dict[type[_Intern], dict[Hashable, _Intern]] = (
-    collections.defaultdict(dict)
+_intern_pool: dict[type[Type], dict[Hashable, Type]] = collections.defaultdict(
+    dict
 )
 
 
@@ -372,7 +372,7 @@ def _clear_intern_pool() -> None:
 atexit.register(_clear_intern_pool)
 
 
-def _is_dtype_spec(dtype):
+def _is_dtype_spec(dtype: object) -> bool:
   """Determines whether `dtype` is a representation of a TF or Numpy dtype.
 
   Args:
@@ -541,13 +541,13 @@ def _to_named_types(
   if py_typecheck.is_name_value_pair(elements, name_required=False):
     elements = [elements]
   elif py_typecheck.is_named_tuple(elements):
-    elements = elements._asdict().items()
+    elements = elements._asdict().items()  # pytype: disable=attribute-error
   elif isinstance(elements, Mapping):
     elements = elements.items()
 
   def _to_named_value_pair(element: object) -> tuple[Optional[str], Type]:
     if py_typecheck.is_name_value_pair(element, name_required=False):
-      name, value = element
+      name, value = element  # pytype: disable=attribute-error
     else:
       name = None
       value = element
@@ -719,7 +719,7 @@ class SequenceType(Type, metaclass=_Intern):
         return type_spec
       elements = [
           (name, convert_struct_with_list_to_struct_with_tuple(value))
-          for name, value in structure.iter_elements(type_spec)
+          for name, value in structure.iter_elements(type_spec)  # pytype: disable=wrong-arg-types
       ]
       if not isinstance(type_spec, StructWithPythonType):
         return StructType(elements=elements)
@@ -1248,7 +1248,7 @@ def _possibly_disallowed_children(
     type_signature: Type,
 ) -> _PossiblyDisallowedChildren:
   """Returns possibly disallowed child types appearing in `type_signature`."""
-  cached = _possibly_disallowed_children_cache.get(type_signature, None)
+  cached = _possibly_disallowed_children_cache.get(type_signature, None)  # pytype: disable=attribute-error
   if cached:
     return cached
   disallowed = _PossiblyDisallowedChildren(None, None, None)
@@ -1267,7 +1267,9 @@ def _possibly_disallowed_children(
         function=disallowed.function or from_grandchildren.function,
         sequence=disallowed.sequence or from_grandchildren.sequence,
     )
-  _possibly_disallowed_children_cache[type_signature] = disallowed
+  _possibly_disallowed_children_cache[type_signature] = (
+      disallowed  # pytype: disable=unsupported-operands
+  )
   return disallowed
 
 

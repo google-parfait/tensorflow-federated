@@ -76,29 +76,29 @@ def serialize_type(type_spec: computation_types.Type) -> pb.Type:
   if cached_proto is not None:
     return cached_proto
   if type_spec.is_tensor():
-    proto = pb.Type(tensor=_to_tensor_type_proto(type_spec))
+    proto = pb.Type(tensor=_to_tensor_type_proto(type_spec))  # pytype: disable=wrong-arg-types
   elif type_spec.is_sequence():
     proto = pb.Type(
-        sequence=pb.SequenceType(element=serialize_type(type_spec.element))
+        sequence=pb.SequenceType(element=serialize_type(type_spec.element))  # pytype: disable=attribute-error
     )
   elif type_spec.is_struct():
     proto = pb.Type(
         struct=pb.StructType(
             element=[
                 pb.StructType.Element(name=e[0], value=serialize_type(e[1]))
-                for e in structure.iter_elements(type_spec)
+                for e in structure.iter_elements(type_spec)  # pytype: disable=wrong-arg-types
             ]
         )
     )
   elif type_spec.is_function():
-    if type_spec.parameter is not None:
-      serialized_parameter = serialize_type(type_spec.parameter)
+    if type_spec.parameter is not None:  # pytype: disable=attribute-error
+      serialized_parameter = serialize_type(type_spec.parameter)  # pytype: disable=attribute-error
     else:
       serialized_parameter = None
     proto = pb.Type(
         function=pb.FunctionType(
             parameter=serialized_parameter,
-            result=serialize_type(type_spec.result),
+            result=serialize_type(type_spec.result),  # pytype: disable=attribute-error
         )
     )
   elif type_spec.is_placement():
@@ -106,11 +106,13 @@ def serialize_type(type_spec: computation_types.Type) -> pb.Type:
   elif type_spec.is_federated():
     proto = pb.Type(
         federated=pb.FederatedType(
-            member=serialize_type(type_spec.member),
+            member=serialize_type(type_spec.member),  # pytype: disable=attribute-error
             placement=pb.PlacementSpec(
-                value=pb.Placement(uri=type_spec.placement.uri)
+                value=pb.Placement(
+                    uri=type_spec.placement.uri  # pytype: disable=attribute-error
+                )
             ),
-            all_equal=type_spec.all_equal,
+            all_equal=type_spec.all_equal,  # pytype: disable=attribute-error
         )
     )
   else:
