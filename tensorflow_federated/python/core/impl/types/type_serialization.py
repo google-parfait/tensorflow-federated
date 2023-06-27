@@ -75,13 +75,13 @@ def serialize_type(type_spec: computation_types.Type) -> pb.Type:
   cached_proto = _type_serialization_cache.get(type_spec, None)
   if cached_proto is not None:
     return cached_proto
-  if type_spec.is_tensor():
+  if isinstance(type_spec, computation_types.TensorType):
     proto = pb.Type(tensor=_to_tensor_type_proto(type_spec))
-  elif type_spec.is_sequence():
+  elif isinstance(type_spec, computation_types.SequenceType):
     proto = pb.Type(
         sequence=pb.SequenceType(element=serialize_type(type_spec.element))
     )
-  elif type_spec.is_struct():
+  elif isinstance(type_spec, computation_types.StructType):
     proto = pb.Type(
         struct=pb.StructType(
             element=[
@@ -90,7 +90,7 @@ def serialize_type(type_spec: computation_types.Type) -> pb.Type:
             ]
         )
     )
-  elif type_spec.is_function():
+  elif isinstance(type_spec, computation_types.FunctionType):
     if type_spec.parameter is not None:
       serialized_parameter = serialize_type(type_spec.parameter)
     else:
@@ -101,9 +101,9 @@ def serialize_type(type_spec: computation_types.Type) -> pb.Type:
             result=serialize_type(type_spec.result),
         )
     )
-  elif type_spec.is_placement():
+  elif isinstance(type_spec, computation_types.PlacementType):
     proto = pb.Type(placement=pb.PlacementType())
-  elif type_spec.is_federated():
+  elif isinstance(type_spec, computation_types.FederatedType):
     proto = pb.Type(
         federated=pb.FederatedType(
             member=serialize_type(type_spec.member),

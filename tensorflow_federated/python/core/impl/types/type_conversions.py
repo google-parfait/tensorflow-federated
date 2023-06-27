@@ -195,9 +195,9 @@ def type_to_tf_dtypes_and_shapes(type_spec: computation_types.Type):
       tuples and tensors, or if any of the elements in named tuples are unnamed.
   """
   py_typecheck.check_type(type_spec, computation_types.Type)
-  if type_spec.is_tensor():
+  if isinstance(type_spec, computation_types.TensorType):
     return (type_spec.dtype, type_spec.shape)
-  elif type_spec.is_struct():
+  elif isinstance(type_spec, computation_types.StructType):
     elements = structure.to_elements(type_spec)
     if not elements:
       output_dtypes = []
@@ -303,9 +303,9 @@ def type_to_tf_structure(type_spec: computation_types.Type):
       tuples and tensors, or if any of the elements in named tuples are unnamed.
   """
   py_typecheck.check_type(type_spec, computation_types.Type)
-  if type_spec.is_tensor():
+  if isinstance(type_spec, computation_types.TensorType):
     return tf.TensorSpec(type_spec.shape, type_spec.dtype)
-  elif type_spec.is_struct():
+  elif isinstance(type_spec, computation_types.StructType):
     elements = structure.to_elements(type_spec)
     if not elements:
       return ()
@@ -425,7 +425,7 @@ def type_to_py_container(value, type_spec):
       and unnamed values, or if `value` contains names that are mismatched or
       not present in the corresponding index of `type_spec`.
   """
-  if type_spec.is_federated():
+  if isinstance(type_spec, computation_types.FederatedType):
     if type_spec.all_equal:
       structure_type_spec = type_spec.member
     else:
@@ -440,7 +440,7 @@ def type_to_py_container(value, type_spec):
   else:
     structure_type_spec = type_spec
 
-  if structure_type_spec.is_sequence():
+  if isinstance(structure_type_spec, computation_types.SequenceType):
     element_type = structure_type_spec.element
     if isinstance(value, list):
       return [type_to_py_container(element, element_type) for element in value]
@@ -456,7 +456,7 @@ def type_to_py_container(value, type_spec):
         )
     )
 
-  if not structure_type_spec.is_struct():
+  if not isinstance(structure_type_spec, computation_types.StructType):
     return value
 
   if not isinstance(value, structure.Struct):
@@ -556,10 +556,11 @@ def type_to_py_container(value, type_spec):
     return container_type(elements)
 
 
-def _structure_from_tensor_type_tree_inner(fn, type_spec):
+def _structure_from_tensor_type_tree_inner(
+    fn, type_spec: computation_types.Type
+):
   """Helper for `structure_from_tensor_type_tree`."""
-  if type_spec.is_struct():
-
+  if isinstance(type_spec, computation_types.StructType):
     def _map_element(element):
       name, nested_type = element
       return (name, _structure_from_tensor_type_tree_inner(fn, nested_type))
@@ -567,7 +568,7 @@ def _structure_from_tensor_type_tree_inner(fn, type_spec):
     return structure.Struct(
         map(_map_element, structure.iter_elements(type_spec))
     )
-  elif type_spec.is_tensor():
+  elif isinstance(type_spec, computation_types.TensorType):
     return fn(type_spec)
   else:
     raise ValueError(

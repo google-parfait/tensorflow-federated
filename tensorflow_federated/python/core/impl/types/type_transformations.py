@@ -60,7 +60,7 @@ def transform_type_postorder(
   """
   py_typecheck.check_type(type_signature, computation_types.Type)
   py_typecheck.check_callable(transform_fn)
-  if type_signature.is_federated():
+  if isinstance(type_signature, computation_types.FederatedType):
     transformed_member, member_mutated = transform_type_postorder(
         type_signature.member, transform_fn
     )
@@ -70,7 +70,7 @@ def transform_type_postorder(
       )
     type_signature, type_signature_mutated = transform_fn(type_signature)
     return type_signature, type_signature_mutated or member_mutated
-  elif type_signature.is_sequence():
+  elif isinstance(type_signature, computation_types.SequenceType):
     transformed_element, element_mutated = transform_type_postorder(
         type_signature.element, transform_fn
     )
@@ -78,7 +78,7 @@ def transform_type_postorder(
       type_signature = computation_types.SequenceType(transformed_element)
     type_signature, type_signature_mutated = transform_fn(type_signature)
     return type_signature, type_signature_mutated or element_mutated
-  elif type_signature.is_function():
+  elif isinstance(type_signature, computation_types.FunctionType):
     if type_signature.parameter is not None:
       transformed_parameter, parameter_mutated = transform_type_postorder(
           type_signature.parameter, transform_fn
@@ -96,7 +96,7 @@ def transform_type_postorder(
     return type_signature, (
         type_signature_mutated or parameter_mutated or result_mutated
     )
-  elif type_signature.is_struct():
+  elif isinstance(type_signature, computation_types.StructType):
     elements = []
     elements_mutated = False
     for element in structure.iter_elements(type_signature):
@@ -106,7 +106,7 @@ def transform_type_postorder(
       elements_mutated = elements_mutated or element_mutated
       elements.append((element[0], transformed_element))
     if elements_mutated:
-      if type_signature.is_struct_with_python():
+      if isinstance(type_signature, computation_types.StructWithPythonType):
         type_signature = computation_types.StructWithPythonType(
             elements, type_signature.python_container
         )
@@ -114,10 +114,13 @@ def transform_type_postorder(
         type_signature = computation_types.StructType(elements)
     type_signature, type_signature_mutated = transform_fn(type_signature)
     return type_signature, type_signature_mutated or elements_mutated
-  elif (
-      type_signature.is_abstract()
-      or type_signature.is_placement()
-      or type_signature.is_tensor()
+  elif isinstance(
+      type_signature,
+      (
+          computation_types.AbstractType,
+          computation_types.PlacementType,
+          computation_types.TensorType,
+      ),
   ):
     return transform_fn(type_signature)
   else:

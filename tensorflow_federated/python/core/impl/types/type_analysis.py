@@ -167,7 +167,8 @@ def is_binary_op_with_upcast_compatible_pair(
   if possibly_nested_type.is_equivalent_to(type_to_upcast):
     return True
   if not (
-      type_to_upcast.is_tensor() and type_to_upcast.shape == tf.TensorShape(())
+      isinstance(type_to_upcast, computation_types.TensorType)
+      and type_to_upcast.shape == tf.TensorShape(())
   ):
     return False
 
@@ -380,14 +381,14 @@ def is_structure_of_floats(type_spec: computation_types.Type) -> bool:
     `True` iff `type_spec` is a structure of floats, otherwise `False`.
   """
   py_typecheck.check_type(type_spec, computation_types.Type)
-  if type_spec.is_tensor():
+  if isinstance(type_spec, computation_types.TensorType):
     py_typecheck.check_type(type_spec.dtype, tf.dtypes.DType)
     return type_spec.dtype.is_floating
-  elif type_spec.is_struct():
+  elif isinstance(type_spec, computation_types.StructType):
     return all(
         is_structure_of_floats(v) for _, v in structure.iter_elements(type_spec)
     )
-  elif type_spec.is_federated():
+  elif isinstance(type_spec, computation_types.FederatedType):
     return is_structure_of_floats(type_spec.member)
   else:
     return False
@@ -415,15 +416,15 @@ def is_structure_of_integers(type_spec: computation_types.Type) -> bool:
     `True` iff `type_spec` is a structure of integers, otherwise `False`.
   """
   py_typecheck.check_type(type_spec, computation_types.Type)
-  if type_spec.is_tensor():
+  if isinstance(type_spec, computation_types.TensorType):
     py_typecheck.check_type(type_spec.dtype, tf.dtypes.DType)
     return type_spec.dtype.is_integer
-  elif type_spec.is_struct():
+  elif isinstance(type_spec, computation_types.StructType):
     return all(
         is_structure_of_integers(v)
         for _, v in structure.iter_elements(type_spec)
     )
-  elif type_spec.is_federated():
+  elif isinstance(type_spec, computation_types.FederatedType):
     return is_structure_of_integers(type_spec.member)
   else:
     return False
@@ -446,11 +447,13 @@ def is_single_integer_or_matches_structure(
   py_typecheck.check_type(type_sig, computation_types.Type)
   py_typecheck.check_type(shape_type, computation_types.Type)
 
-  if type_sig.is_tensor():
+  if isinstance(type_sig, computation_types.TensorType):
     # This condition applies to both `shape_type` being a tensor or structure,
     # as the same integer bitwidth can be used for all values in the structure.
     return type_sig.dtype.is_integer and (type_sig.shape.num_elements() == 1)
-  elif shape_type.is_struct() and type_sig.is_struct():
+  elif isinstance(shape_type, computation_types.StructType) and isinstance(
+      type_sig, computation_types.StructType
+  ):
     bitwidth_name_and_types = list(structure.iter_elements(type_sig))
     shape_name_and_types = list(structure.iter_elements(shape_type))
     if len(type_sig) != len(shape_name_and_types):
@@ -522,22 +525,22 @@ def is_average_compatible(type_spec: computation_types.Type) -> bool:
     `True` iff `type_spec` is average-compatible, `False` otherwise.
   """
   py_typecheck.check_type(type_spec, computation_types.Type)
-  if type_spec.is_tensor():
+  if isinstance(type_spec, computation_types.TensorType):
     return type_spec.dtype.is_floating or type_spec.dtype.is_complex
-  elif type_spec.is_struct():
+  elif isinstance(type_spec, computation_types.StructType):
     return all(
         is_average_compatible(v) for _, v in structure.iter_elements(type_spec)
     )
-  elif type_spec.is_federated():
+  elif isinstance(type_spec, computation_types.FederatedType):
     return is_average_compatible(type_spec.member)
   else:
     return False
 
 
 def is_struct_with_py_container(value, type_spec):
-  return type_spec.is_struct_with_python() and isinstance(
-      value, structure.Struct
-  )
+  return isinstance(
+      type_spec, computation_types.StructWithPythonType
+  ) and isinstance(value, structure.Struct)
 
 
 class NotConcreteTypeError(TypeError):
@@ -681,7 +684,7 @@ def check_concrete_instance_of(
       else:
         return False
 
-    if generic_type_member.is_abstract():
+    if isinstance(generic_type_member, computation_types.AbstractType):
       label = str(generic_type_member.label)
       if not defining:
         non_defining_usages[label].append(concrete_type_member)
@@ -705,8 +708,8 @@ def check_concrete_instance_of(
       if generic_type_member != concrete_type_member:
         _raise_structural('placements')
     elif _both_are(lambda t: t.is_struct()):
-      generic_elements = structure.to_elements(generic_type_member)
-      concrete_elements = structure.to_elements(concrete_type_member)
+      generic_elements = structure.to_elements(generic_type_member)  # pytype: disable=wrong-arg-types
+      concrete_elements = structure.to_elements(concrete_type_member)  # pytype: disable=wrong-arg-types
       if len(generic_elements) != len(concrete_elements):
         _raise_structural('length')
       for k in range(len(generic_elements)):
@@ -715,28 +718,34 @@ def check_concrete_instance_of(
         _check_helper(generic_elements[k][1], concrete_elements[k][1], defining)
     elif _both_are(lambda t: t.is_sequence()):
       _check_helper(
-          generic_type_member.element, concrete_type_member.element, defining
+          generic_type_member.element,  # pytype: disable=attribute-error
+          concrete_type_member.element,  # pytype: disable=attribute-error
+          defining,
       )
     elif _both_are(lambda t: t.is_function()):
-      if generic_type_member.parameter is None:
-        if concrete_type_member.parameter is not None:
+      if generic_type_member.parameter is None:  # pytype: disable=attribute-error
+        if concrete_type_member.parameter is not None:  # pytype: disable=attribute-error
           _raise_structural('parameter')
       else:
         _check_helper(
-            generic_type_member.parameter,
-            concrete_type_member.parameter,
+            generic_type_member.parameter,  # pytype: disable=attribute-error
+            concrete_type_member.parameter,  # pytype: disable=attribute-error
             not defining,
         )
       _check_helper(
-          generic_type_member.result, concrete_type_member.result, defining
+          generic_type_member.result,  # pytype: disable=attribute-error
+          concrete_type_member.result,  # pytype: disable=attribute-error
+          defining,
       )
     elif _both_are(lambda t: t.is_federated()):
-      if generic_type_member.placement != concrete_type_member.placement:
+      if generic_type_member.placement != concrete_type_member.placement:  # pytype: disable=attribute-error
         _raise_structural('placement')
-      if generic_type_member.all_equal != concrete_type_member.all_equal:
+      if generic_type_member.all_equal != concrete_type_member.all_equal:  # pytype: disable=attribute-error
         _raise_structural('all equal')
       _check_helper(
-          generic_type_member.member, concrete_type_member.member, defining
+          generic_type_member.member,  # pytype: disable=attribute-error
+          concrete_type_member.member,  # pytype: disable=attribute-error
+          defining,
       )
     else:
       raise TypeError(f'Unexpected type kind {generic_type}.')
