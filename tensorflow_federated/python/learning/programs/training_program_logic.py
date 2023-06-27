@@ -196,7 +196,7 @@ async def train_model(
         (train_state, start_round), version=start_round
     )
 
-  train_state_type, _ = train_process.next.type_signature.result
+  train_state_type, _ = train_process.next.type_signature.result  # pytype: disable=attribute-error
   train_data_iterator = train_data_source.iterator()
 
   # Track a future time after which an evaluation should be started. This will

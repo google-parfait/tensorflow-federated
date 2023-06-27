@@ -520,7 +520,7 @@ def extract_and_rewrap_metrics(
   # because the `metrics_structure` input to this function also is not a
   # federated value with placement. This type is intended for use by
   # `tff.program.ReleaseManager` downstream.
-  return structure_copy, type_conversions.infer_type(structure_copy)
+  return structure_copy, type_conversions.infer_type(structure_copy)  # pytype: disable=bad-return-type
 
 
 async def _run_evaluation(
