@@ -119,13 +119,13 @@ def get_state_initialization_computation(
   init_type = initialize_tree.type_signature
   _check_type_is_no_arg_fn(init_type, '`initialize`', TypeError)
   if (
-      not init_type.result.is_federated()
-      or init_type.result.placement != placements.SERVER
+      not init_type.result.is_federated()  # pytype: disable=attribute-error
+      or init_type.result.placement != placements.SERVER  # pytype: disable=attribute-error
   ):
     raise TypeError(
         'Expected `initialize` to return a single federated value '
         'placed at server (type `T@SERVER`), found return type:\n'
-        f'{init_type.result}'
+        f'{init_type.result}'  # pytype: disable=attribute-error
     )
   initialize_tree, _ = tree_transformations.replace_intrinsics_with_bodies(
       initialize_tree
@@ -248,10 +248,10 @@ def _check_type_is_no_arg_fn(
     err_fn: Callable[[str], Exception] = compiler.MapReduceFormCompilationError,
 ):
   _check_type_is_fn(target, name, err_fn)
-  if target.parameter is not None:
+  if target.parameter is not None:  # pytype: disable=attribute-error
     raise err_fn(
         f'Expected {name} to take no argument, but found '
-        f'parameter of type {target.parameter}.'
+        f'parameter of type {target.parameter}.'  # pytype: disable=attribute-error
     )
 
 
@@ -261,14 +261,14 @@ def _check_function_signature_compatible_with_broadcast_form(
   """Tests compatibility with `tff.backends.mapreduce.BroadcastForm`."""
   py_typecheck.check_type(function_type, computation_types.FunctionType)
   if not (
-      function_type.parameter.is_struct() and len(function_type.parameter) == 2
+      function_type.parameter.is_struct() and len(function_type.parameter) == 2  # pytype: disable=attribute-error,wrong-arg-types
   ):
     raise TypeError(
         '`BroadcastForm` requires a computation which accepts two arguments '
         '(server data and client data) but found parameter type:\n'
         f'{function_type.parameter}'
     )
-  server_data_type, client_data_type = function_type.parameter
+  server_data_type, client_data_type = function_type.parameter  # pytype: disable=attribute-error
   if not (
       server_data_type.is_federated() and server_data_type.placement.is_server()
   ):
@@ -287,7 +287,7 @@ def _check_function_signature_compatible_with_broadcast_form(
         f'of type:\n{client_data_type}'
     )
   result_type = function_type.result
-  if not (result_type.is_federated() and result_type.placement.is_clients()):
+  if not (result_type.is_federated() and result_type.placement.is_clients()):  # pytype: disable=attribute-error
     raise TypeError(
         '`BroadcastForm` expects a computation whose result is client data '
         '(a federated type placed at clients) but found result type:\n'
@@ -326,15 +326,15 @@ def check_computation_compatible_with_map_reduce_form(
 
   comp_type = comp_tree.type_signature
   _check_type_is_fn(comp_type, '`comp`', TypeError)
-  if not comp_type.parameter.is_struct() or len(comp_type.parameter) != 2:
+  if not comp_type.parameter.is_struct() or len(comp_type.parameter) != 2:  # pytype: disable=attribute-error
     raise TypeError(
         'Expected `comp` to take two arguments, found parameter '
-        f' type:\n{comp_type.parameter}'
+        f' type:\n{comp_type.parameter}'  # pytype: disable=attribute-error
     )
-  if not comp_type.result.is_struct() or len(comp_type.result) != 2:
+  if not comp_type.result.is_struct() or len(comp_type.result) != 2:  # pytype: disable=attribute-error
     raise TypeError(
         'Expected `comp` to return two values, found result '
-        f'type:\n{comp_type.result}'
+        f'type:\n{comp_type.result}'  # pytype: disable=attribute-error
     )
 
   comp_tree, _ = tree_transformations.replace_intrinsics_with_bodies(comp_tree)
@@ -355,10 +355,10 @@ def _untuple_broadcast_only_before_after(before, after):
   )
   after_param_name = next(building_block_factory.unique_name_generator(after))
   after_param_type = computation_types.StructType([
-      ('original_arg', after.parameter_type.original_arg),
+      ('original_arg', after.parameter_type.original_arg),  # pytype: disable=attribute-error
       (
           'federated_broadcast_result',
-          after.parameter_type.intrinsic_results.federated_broadcast_result,
+          after.parameter_type.intrinsic_results.federated_broadcast_result,  # pytype: disable=attribute-error
       ),
   ])
   after_param_ref = building_blocks.Reference(
@@ -450,7 +450,7 @@ def _construct_selection_from_federated_tuple(
 ) -> building_blocks.ComputationBuildingBlock:
   """Selects the index `selected_index` from `federated_tuple`."""
   federated_tuple.type_signature.check_federated()
-  member_type = federated_tuple.type_signature.member
+  member_type = federated_tuple.type_signature.member  # pytype: disable=attribute-error
   member_type.check_struct()
   param_name = next(name_generator)
   selecting_function = building_blocks.Lambda(
@@ -811,7 +811,7 @@ def _extract_update(after_aggregate, grappler_config):
       update_with_flat_inputs
   )
   unpack_param_name = next(name_generator)
-  original_param_type = update_with_flat_inputs.parameter_type.member
+  original_param_type = update_with_flat_inputs.parameter_type.member  # pytype: disable=attribute-error
   unpack_param_type = computation_types.StructType([
       original_param_type[0],
       computation_types.StructType(original_param_type[1:]),
@@ -950,7 +950,7 @@ def get_broadcast_form_for_computation(
   )
 
   comp_param_names = structure.name_list_with_nones(
-      comp.type_signature.parameter
+      comp.type_signature.parameter  # pytype: disable=wrong-arg-types
   )
   server_data_label, client_data_label = comp_param_names
   return forms.BroadcastForm(
@@ -1077,15 +1077,15 @@ def get_distribute_aggregate_form_for_computation(
   # Check that the computation has the expected structure.
   comp_type = comp_tree.type_signature
   _check_type_is_fn(comp_type, '`comp`', TypeError)
-  if not comp_type.parameter.is_struct() or len(comp_type.parameter) != 2:
+  if not comp_type.parameter.is_struct() or len(comp_type.parameter) != 2:  # pytype: disable=attribute-error
     raise TypeError(
         'Expected `comp` to take two arguments, found parameter '
-        f' type:\n{comp_type.parameter}'
+        f' type:\n{comp_type.parameter}'  # pytype: disable=attribute-error
     )
-  if not comp_type.result.is_struct() or len(comp_type.result) != 2:
+  if not comp_type.result.is_struct() or len(comp_type.result) != 2:  # pytype: disable=attribute-error
     raise TypeError(
         'Expected `comp` to return two values, found result '
-        f'type:\n{comp_type.result}'
+        f'type:\n{comp_type.result}'  # pytype: disable=attribute-error
     )
   if not isinstance(comp_tree, building_blocks.Lambda):
     raise building_blocks.UnexpectedBlockError(

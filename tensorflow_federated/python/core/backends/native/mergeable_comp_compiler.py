@@ -102,13 +102,14 @@ def _ensure_lambda(
   """Wraps a functional building block as a lambda if necessary."""
   building_block.type_signature.check_function()
   if not isinstance(building_block, building_blocks.Lambda):
-    if building_block.type_signature.parameter is not None:
+    if building_block.type_signature.parameter is not None:  # pytype: disable=attribute-error
       name_generator = building_block_factory.unique_name_generator(
           building_block
       )
       parameter_name = next(name_generator)
       argument = building_blocks.Reference(
-          parameter_name, building_block.type_signature.parameter
+          parameter_name,
+          building_block.type_signature.parameter,  # pytype: disable=attribute-error
       )
       parameter_type = argument.type_signature
     else:
@@ -174,7 +175,7 @@ def compile_to_mergeable_comp_form(
   # Construct a report function which accepts the result of merge.
   merge_fn_type = before_agg.type_signature.result['federated_aggregate_param'][
       3
-  ]
+  ]  # pytype: disable=unsupported-operands
   identity_report = computation_impl.ConcreteComputation.from_building_block(
       building_block_factory.create_compiled_identity(merge_fn_type.result)
   )

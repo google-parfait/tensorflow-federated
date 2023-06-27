@@ -70,8 +70,8 @@ def to_representation_for_type(value, type_spec, backend=None):
   if isinstance(value, pb.Computation):
     comp_type = type_serialization.deserialize_type(value.type)
     if type_spec is not None:
-      comp_type.check_equivalent_to(type_spec)
-    return runtime.ComputationCallable(value, comp_type, backend)
+      comp_type.check_equivalent_to(type_spec)  # pytype: disable=attribute-error
+    return runtime.ComputationCallable(value, comp_type, backend)  # pytype: disable=wrong-arg-types
   if isinstance(type_spec, computation_types.StructType):
     return structure.map_structure(
         lambda v, t: to_representation_for_type(v, t, backend),
