@@ -103,20 +103,20 @@ class FederatedComputationContext(symbol_binding_context.SymbolBindingContext):
     tys = fn.type_signature
     py_typecheck.check_type(tys, computation_types.FunctionType)
     if arg is not None:
-      if tys.parameter is None:
+      if tys.parameter is None:  # pytype: disable=attribute-error
         raise ValueError(
             'A computation of type {} does not expect any arguments, but got '
             'an argument {}.'.format(tys, arg)
         )
-      arg = value_impl.to_value(arg, tys.parameter, zip_if_needed=True)
-      type_analysis.check_type(arg, tys.parameter)
+      arg = value_impl.to_value(arg, tys.parameter, zip_if_needed=True)  # pytype: disable=attribute-error
+      type_analysis.check_type(arg, tys.parameter)  # pytype: disable=attribute-error
       ret_val = fn(arg)
     else:
-      if tys.parameter is not None:
+      if tys.parameter is not None:  # pytype: disable=attribute-error
         raise ValueError(
             'A computation of type {} expects an argument of type {}, but got '
-            ' no argument.'.format(tys, tys.parameter)
+            ' no argument.'.format(tys, tys.parameter)  # pytype: disable=attribute-error
         )
       ret_val = fn()
-    type_analysis.check_type(ret_val, tys.result)
+    type_analysis.check_type(ret_val, tys.result)  # pytype: disable=attribute-error
     return ret_val

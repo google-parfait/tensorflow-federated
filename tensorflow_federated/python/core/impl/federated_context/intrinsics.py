@@ -104,19 +104,23 @@ def federated_aggregate(
   accumulate = value_impl.to_value(
       accumulate,
       None,
-      parameter_type_hint=computation_types.StructType(
-          [zero.type_signature, value.type_signature.member]
-      ),
+      parameter_type_hint=computation_types.StructType([
+          zero.type_signature,
+          value.type_signature.member,  # pytype: disable=attribute-error
+      ]),
   )
   merge = value_impl.to_value(
       merge,
       None,
       parameter_type_hint=computation_types.StructType(
-          [accumulate.type_signature.result] * 2
+          [accumulate.type_signature.result]  # pytype: disable=attribute-error
+          * 2
       ),
   )
   report = value_impl.to_value(
-      report, None, parameter_type_hint=merge.type_signature.result
+      report,
+      None,
+      parameter_type_hint=merge.type_signature.result,  # pytype: disable=attribute-error
   )
   for op in [accumulate, merge, report]:
     py_typecheck.check_type(op, value_impl.Value)
@@ -124,22 +128,25 @@ def federated_aggregate(
 
   if not accumulate.type_signature.parameter[0].is_assignable_from(
       zero.type_signature
-  ):
+  ):  # pytype: disable=attribute-error
     raise TypeError(
         'Expected `zero` to be assignable to type {}, '
         'but was of incompatible type {}.'.format(
-            accumulate.type_signature.parameter[0], zero.type_signature
+            accumulate.type_signature.parameter[0], zero.type_signature  # pytype: disable=attribute-error
         )
     )
 
   accumulate_type_expected = type_factory.reduction_op(
-      accumulate.type_signature.result, value.type_signature.member
+      accumulate.type_signature.result,  # pytype: disable=attribute-error
+      value.type_signature.member,  # pytype: disable=attribute-error
   )
   merge_type_expected = type_factory.reduction_op(
-      accumulate.type_signature.result, accumulate.type_signature.result
+      accumulate.type_signature.result,  # pytype: disable=attribute-error
+      accumulate.type_signature.result,  # pytype: disable=attribute-error
   )
   report_type_expected = computation_types.FunctionType(
-      merge.type_signature.result, report.type_signature.result
+      merge.type_signature.result,  # pytype: disable=attribute-error
+      report.type_signature.result,  # pytype: disable=attribute-error
   )
   for op_name, op, type_expected in [
       ('accumulate', accumulate, accumulate_type_expected),
@@ -180,7 +187,7 @@ def federated_broadcast(value):
       value, placements.SERVER, 'value to be broadcasted'
   )
 
-  if not value.type_signature.all_equal:
+  if not value.type_signature.all_equal:  # pytype: disable=attribute-error
     raise TypeError('The broadcasted value should be equal at all locations.')
 
   comp = building_block_factory.create_federated_broadcast(value.comp)
@@ -209,11 +216,11 @@ def federated_eval(fn, placement):
   py_typecheck.check_type(fn, value_impl.Value)
   py_typecheck.check_type(fn.type_signature, computation_types.FunctionType)
 
-  if fn.type_signature.parameter is not None:
+  if fn.type_signature.parameter is not None:  # pytype: disable=attribute-error
     raise TypeError(
         '`federated_eval` expects a `fn` that accepts no arguments, but '
         'the `fn` provided has a parameter of type {}.'.format(
-            fn.type_signature.parameter
+            fn.type_signature.parameter  # pytype: disable=attribute-error
         )
     )
 
@@ -256,38 +263,39 @@ def federated_map(fn, arg):
   arg = value_utils.ensure_federated_value(arg, label='value to be mapped')
 
   fn = value_impl.to_value(
-      fn, None, parameter_type_hint=arg.type_signature.member
+      fn, None, parameter_type_hint=arg.type_signature.member  # pytype: disable=attribute-error
   )
 
   py_typecheck.check_type(fn, value_impl.Value)
   py_typecheck.check_type(fn.type_signature, computation_types.FunctionType)
-  if not fn.type_signature.parameter.is_assignable_from(
-      arg.type_signature.member
+  if not fn.type_signature.parameter.is_assignable_from(  # pytype: disable=attribute-error
+      arg.type_signature.member  # pytype: disable=attribute-error
   ):
     raise TypeError(
         'The mapping function expects a parameter of type {}, but member '
         'constituents of the mapped value are of incompatible type {}.'.format(
-            fn.type_signature.parameter, arg.type_signature.member
+            fn.type_signature.parameter,  # pytype: disable=attribute-error
+            arg.type_signature.member,  # pytype: disable=attribute-error
         )
     )
 
   # TODO(b/144384398): Change structure to one that maps the placement type
   # to the building_block function that fits it, in a way that allows the
   # appropriate type checks.
-  if arg.type_signature.placement is placements.SERVER:
-    if not arg.type_signature.all_equal:
+  if arg.type_signature.placement is placements.SERVER:  # pytype: disable=attribute-error
+    if not arg.type_signature.all_equal:  # pytype: disable=attribute-error
       raise TypeError(
           'Arguments placed at {} should be equal at all locations.'.format(
               placements.SERVER
           )
       )
     comp = building_block_factory.create_federated_apply(fn.comp, arg.comp)
-  elif arg.type_signature.placement is placements.CLIENTS:
+  elif arg.type_signature.placement is placements.CLIENTS:  # pytype: disable=attribute-error
     comp = building_block_factory.create_federated_map(fn.comp, arg.comp)
   else:
     raise TypeError(
         'Expected `arg` to have a type with a supported placement, '
-        'found {}.'.format(arg.type_signature.placement)
+        'found {}.'.format(arg.type_signature.placement)  # pytype: disable=attribute-error
     )
 
   comp = _bind_comp_as_reference(comp)
@@ -307,18 +315,19 @@ def federated_map_all_equal(fn, arg):
   )
 
   fn = value_impl.to_value(
-      fn, None, parameter_type_hint=arg.type_signature.member
+      fn, None, parameter_type_hint=arg.type_signature.member  # pytype: disable=attribute-error
   )
 
   py_typecheck.check_type(fn, value_impl.Value)
   py_typecheck.check_type(fn.type_signature, computation_types.FunctionType)
   if not fn.type_signature.parameter.is_assignable_from(
-      arg.type_signature.member
-  ):
+      arg.type_signature.member  # pytype: disable=attribute-error
+  ):  # pytype: disable=attribute-error
     raise TypeError(
         'The mapping function expects a parameter of type {}, but member '
         'constituents of the mapped value are of incompatible type {}.'.format(
-            fn.type_signature.parameter, arg.type_signature.member
+            fn.type_signature.parameter,  # pytype: disable=attribute-error
+            arg.type_signature.member,  # pytype: disable=attribute-error
         )
     )
 
@@ -382,17 +391,18 @@ def federated_mean(value, weight=None):
         weight, placements.CLIENTS, 'weight to use in averaging'
     )
     py_typecheck.check_type(
-        weight.type_signature.member, computation_types.TensorType
+        weight.type_signature.member,  # pytype: disable=attribute-error
+        computation_types.TensorType,
     )
-    if weight.type_signature.member.shape.ndims != 0:
+    if weight.type_signature.member.shape.ndims != 0:  # pytype: disable=attribute-error
       raise TypeError(
           'The weight type {} is not a federated scalar.'.format(
               weight.type_signature
           )
       )
     if not (
-        weight.type_signature.member.dtype.is_integer
-        or weight.type_signature.member.dtype.is_floating
+        weight.type_signature.member.dtype.is_integer  # pytype: disable=attribute-error
+        or weight.type_signature.member.dtype.is_floating  # pytype: disable=attribute-error
     ):
       raise TypeError(
           'The weight type {} is not a federated integer or floating-point '
@@ -532,18 +542,18 @@ def _select_parameter_mismatch(
 
 
 def _check_select_keys_type(keys_type, secure):
-  if not (keys_type.is_federated and keys_type.placement.is_clients()):
+  if not (keys_type.is_federated and keys_type.placement.is_clients()):  # pytype: disable=attribute-error
     _select_parameter_mismatch(
         keys_type, 'a federated value placed at clients', 'client_keys', secure
     )
   if not (
-      keys_type.member.is_tensor()
-      and keys_type.member.dtype == tf.int32
-      and keys_type.member.shape.rank == 1
-      and keys_type.member.shape.dims[0].value is not None
+      keys_type.member.is_tensor()  # pytype: disable=attribute-error
+      and keys_type.member.dtype == tf.int32  # pytype: disable=attribute-error
+      and keys_type.member.shape.rank == 1  # pytype: disable=attribute-error
+      and keys_type.member.shape.dims[0].value is not None  # pytype: disable=attribute-error
   ):
     _select_parameter_mismatch(
-        keys_type.member,
+        keys_type.member,  # pytype: disable=attribute-error
         'a rank-1 tensor with statically known shape and tf.int32 dtype',
         'client_keys.type_signature.member',
         secure,
@@ -638,7 +648,7 @@ def _federated_select(client_keys, max_key, server_val, select_fn, secure):
   )
   if (
       not server_val.type_signature.is_federated()
-      or not server_val.type_signature.placement.is_server()
+      or not server_val.type_signature.placement.is_server()  # pytype: disable=attribute-error
   ):
     _select_parameter_mismatch(
         server_val.type_signature,
@@ -648,7 +658,7 @@ def _federated_select(client_keys, max_key, server_val, select_fn, secure):
         expected_type=expected_server_val_type,
     )
   select_fn_param_type = computation_types.to_type(
-      [server_val.type_signature.member, tf.int32]
+      [server_val.type_signature.member, tf.int32]  # pytype: disable=attribute-error
   )
   select_fn = value_impl.to_value(
       select_fn, None, parameter_type_hint=select_fn_param_type
@@ -660,7 +670,7 @@ def _federated_select(client_keys, max_key, server_val, select_fn, secure):
       not select_fn.type_signature.is_function()
       or not select_fn.type_signature.parameter.is_assignable_from(
           select_fn_param_type
-      )
+      )  # pytype: disable=attribute-error
   ):
     _select_parameter_mismatch(
         select_fn.type_signature,
@@ -732,7 +742,7 @@ def federated_secure_modular_sum(value, modulus):
   )
   type_analysis.check_is_structure_of_integers(value.type_signature)
   modulus_value = value_impl.to_value(modulus, None)
-  value_member_type = value.type_signature.member
+  value_member_type = value.type_signature.member  # pytype: disable=attribute-error
   modulus_type = modulus_value.type_signature
   if not type_analysis.is_single_integer_or_matches_structure(
       modulus_type, value_member_type
@@ -807,7 +817,7 @@ def federated_secure_sum(value, max_input):
   )
   type_analysis.check_is_structure_of_integers(value.type_signature)
   max_input_value = value_impl.to_value(max_input, None)
-  value_member_type = value.type_signature.member
+  value_member_type = value.type_signature.member  # pytype: disable=attribute-error
   max_input_type = max_input_value.type_signature
   if not type_analysis.is_single_integer_or_matches_structure(
       max_input_type, value_member_type
@@ -885,7 +895,7 @@ def federated_secure_sum_bitwidth(value, bitwidth):
   )
   type_analysis.check_is_structure_of_integers(value.type_signature)
   bitwidth_value = value_impl.to_value(bitwidth, None)
-  value_member_type = value.type_signature.member
+  value_member_type = value.type_signature.member  # pytype: disable=attribute-error
   bitwidth_type = bitwidth_value.type_signature
   if not type_analysis.is_single_integer_or_matches_structure(
       bitwidth_type, value_member_type
@@ -954,8 +964,8 @@ def sequence_map(fn, arg):
     comp = _bind_comp_as_reference(comp)
     return value_impl.Value(comp)
   elif arg.type_signature.is_federated():
-    parameter_type = computation_types.SequenceType(fn.type_signature.parameter)
-    result_type = computation_types.SequenceType(fn.type_signature.result)
+    parameter_type = computation_types.SequenceType(fn.type_signature.parameter)  # pytype: disable=attribute-error
+    result_type = computation_types.SequenceType(fn.type_signature.result)  # pytype: disable=attribute-error
     intrinsic_type = computation_types.FunctionType(
         (fn.type_signature, parameter_type), result_type
     )
@@ -1018,9 +1028,9 @@ def sequence_reduce(value, zero, op):
   # under a `federated_map`.
   if value.type_signature.is_federated():
     is_federated_sequence = True
-    value_member_type = value.type_signature.member
+    value_member_type = value.type_signature.member  # pytype: disable=attribute-error
     value_member_type.check_sequence()
-    zero_member_type = zero.type_signature.member
+    zero_member_type = zero.type_signature.member  # pytype: disable=attribute-error
   else:
     is_federated_sequence = False
     value.type_signature.check_sequence()
@@ -1062,15 +1072,17 @@ def sequence_sum(value):
   """
   value = value_impl.to_value(value, None)
   if value.type_signature.is_sequence():
-    element_type = value.type_signature.element
+    element_type = value.type_signature.element  # pytype: disable=attribute-error
   else:
     py_typecheck.check_type(
-        value.type_signature, computation_types.FederatedType
+        value.type_signature,  # pytype: disable=attribute-error
+        computation_types.FederatedType,
     )
     py_typecheck.check_type(
-        value.type_signature.member, computation_types.SequenceType
+        value.type_signature.member,  # pytype: disable=attribute-error
+        computation_types.SequenceType,
     )
-    element_type = value.type_signature.member.element
+    element_type = value.type_signature.member.element  # pytype: disable=attribute-error
   type_analysis.check_is_sum_compatible(element_type)
 
   if value.type_signature.is_sequence():
@@ -1079,7 +1091,8 @@ def sequence_sum(value):
     return value_impl.Value(comp)
   elif value.type_signature.is_federated():
     intrinsic_type = computation_types.FunctionType(
-        value.type_signature.member, value.type_signature.member.element
+        value.type_signature.member,  # pytype: disable=attribute-error
+        value.type_signature.member.element,  # pytype: disable=attribute-error
     )
     intrinsic = building_blocks.Intrinsic(
         intrinsic_defs.SEQUENCE_SUM.uri, intrinsic_type

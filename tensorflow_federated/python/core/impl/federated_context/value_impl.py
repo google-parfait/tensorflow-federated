@@ -42,13 +42,13 @@ from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
 def _unfederated(type_signature):
   if type_signature.is_federated():
-    return type_signature.member
+    return type_signature.member  # pytype: disable=attribute-error
   return type_signature
 
 
 def _is_federated_named_tuple(vimpl: 'Value') -> bool:
   comp_ty = vimpl.type_signature
-  return comp_ty.is_federated() and comp_ty.member.is_struct()
+  return comp_ty.is_federated() and comp_ty.member.is_struct()  # pytype: disable=attribute-error
 
 
 def _is_named_tuple(vimpl: 'Value') -> bool:
@@ -125,11 +125,11 @@ class Value(typed_object.TypedObject, metaclass=abc.ABCMeta):
     py_typecheck.check_type(name, str)
     _check_struct_or_federated_struct(self, name)
     if _is_federated_named_tuple(self):
-      if name not in structure.name_list(self.type_signature.member):
+      if name not in structure.name_list(self.type_signature.member):  # pytype: disable=attribute-error
         raise AttributeError(
             "There is no such attribute '{}' in this federated tuple. Valid "
             'attributes: ({})'.format(
-                name, ', '.join(dir(self.type_signature.member))
+                name, ', '.join(dir(self.type_signature.member))  # pytype: disable=attribute-error
             )
         )
 
@@ -178,7 +178,7 @@ class Value(typed_object.TypedObject, metaclass=abc.ABCMeta):
               self.type_signature
           )
       )
-    elem_length = len(self.type_signature)
+    elem_length = len(self.type_signature)  # pytype: disable=wrong-arg-types
     if isinstance(key, int):
       if key < 0 or key >= elem_length:
         raise IndexError(
@@ -218,7 +218,9 @@ class Value(typed_object.TypedObject, metaclass=abc.ABCMeta):
       args = [to_value(x, None) for x in args]
       kwargs = {k: to_value(v, None) for k, v in kwargs.items()}
       arg = function_utils.pack_args(
-          self.type_signature.parameter, args, kwargs
+          self.type_signature.parameter,  # pytype: disable=attribute-error
+          args,
+          kwargs,
       )
       arg = to_value(arg, None).comp
     else:
@@ -316,7 +318,7 @@ def _wrap_sequence_as_value(elements, element_type) -> Value:
 def _dictlike_items_to_value(items, type_spec, container_type) -> Value:
   elements = []
   for i, (k, v) in enumerate(items):
-    element_type = None if type_spec is None else type_spec[i]
+    element_type = None if type_spec is None else type_spec[i]  # pytype: disable=unsupported-operands
     element_value = to_value(v, element_type)
     elements.append((k, element_value.comp))
   return Value(building_blocks.Struct(elements, container_type))
