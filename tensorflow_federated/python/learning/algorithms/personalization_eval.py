@@ -15,7 +15,7 @@
 
 import collections
 from collections.abc import Callable, Mapping
-from typing import Any
+from typing import Any, Optional
 
 import tensorflow as tf
 
@@ -53,7 +53,7 @@ def build_personalization_eval_computation(
         [variable.VariableModel, tf.data.Dataset], _MetricsType
     ],
     max_num_clients: int = 100,
-    context_tff_type: computation_types.Type = None,
+    context_tff_type: Optional[computation_types.Type] = None,
 ) -> computation_base.Computation:
   """Builds the TFF computation for evaluating personalization strategies.
 
@@ -272,7 +272,10 @@ def _remove_batch_dim(
     else:
       raise ValueError('Provided shape must have rank 1 or higher.')
 
-  return structure.map_structure(_remove_first_dim_in_tensortype, type_spec)
+  return structure.map_structure(
+      _remove_first_dim_in_tensortype,
+      type_spec,  # pytype: disable=wrong-arg-types
+  )
 
 
 def _compute_baseline_metrics(
