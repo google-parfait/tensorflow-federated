@@ -294,7 +294,8 @@ def _build_federated_evaluation(
         model.report_local_unfinalized_metrics()
     )
     metrics_aggregation_computation = metrics_aggregator(
-        model.metric_finalizers(), unfinalized_metrics_type
+        model.metric_finalizers(),
+        unfinalized_metrics_type,  # pytype: disable=wrong-arg-types
     )
 
   local_eval = build_local_evaluation(
@@ -352,7 +353,9 @@ def _build_functional_federated_evaluation(
   )
   batch_type = computation_types.to_type(model.input_spec)
   local_eval = build_functional_local_evaluation(
-      model, weights_type, batch_type
+      model,
+      weights_type,
+      batch_type,  # pytype: disable=wrong-arg-types
   )
 
   @federated_computation.federated_computation(
@@ -373,7 +376,8 @@ def _build_functional_federated_evaluation(
         local_eval, (client_weights, client_data)
     )
     metrics_aggregation_fn = metrics_aggregator(
-        model.finalize_metrics, unfinalized_metrics.type_signature.member
+        model.finalize_metrics,
+        unfinalized_metrics.type_signature.member,  # pytype: disable=attribute-error
     )
     finalized_metrics = metrics_aggregation_fn(unfinalized_metrics)
     return intrinsics.federated_zip(
