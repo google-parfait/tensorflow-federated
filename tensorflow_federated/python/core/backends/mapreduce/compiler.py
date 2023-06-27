@@ -399,9 +399,11 @@ def compile_local_computation_to_tensorflow(
         compile_local_computation_to_tensorflow(lambda_wrapped), None
     )
 
-  parameter_type = comp.type_signature.parameter
+  parameter_type = comp.type_signature.parameter  # pytype: disable=attribute-error
   type_analysis.check_tensorflow_compatible_type(parameter_type)
-  type_analysis.check_tensorflow_compatible_type(comp.type_signature.result)
+  type_analysis.check_tensorflow_compatible_type(
+      comp.type_signature.result  # pytype: disable=attribute-error
+  )
 
   if (
       isinstance(comp, building_blocks.CompiledComputation)

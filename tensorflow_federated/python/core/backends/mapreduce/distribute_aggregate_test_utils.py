@@ -43,7 +43,7 @@ def generate_unnamed_type_signature(
   """Generates a type signature for the DistributeAggregateForm."""
   parameter = computation_types.StructType([
       server_prepare.type_signature.parameter,
-      client_work.type_signature.parameter[0],
+      client_work.type_signature.parameter[0],  # pytype: disable=unsupported-operands
   ])
   result = server_result.type_signature.result
   return computation_types.FunctionType(parameter, result)

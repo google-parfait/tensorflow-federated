@@ -559,7 +559,8 @@ def get_iterative_process_for_example_with_unused_tf_computation_arg():
     tf_wrapper = tf.function(lambda _: tf_func())
     input_federated_type = unused_input.type_signature
     wrapper = tensorflow_computation.tf_computation(
-        tf_wrapper, input_federated_type.member
+        tf_wrapper,
+        input_federated_type.member,  # pytype: disable=attribute-error
     )
     return intrinsics.federated_map(wrapper, unused_input)
 

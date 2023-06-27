@@ -88,7 +88,7 @@ def _is_assignable_from_or_both_none(first, second):
 
 
 def _is_tuple(type_signature: computation_types.Type, length: int) -> bool:
-  return type_signature.is_struct() and len(type_signature) == length
+  return type_signature.is_struct() and len(type_signature) == length  # pytype: disable=wrong-arg-types
 
 
 def _check_accepts_tuple(
@@ -329,7 +329,7 @@ class MapReduceForm(typed_object.TypedObject):
     prepare_arg_type = prepare.type_signature.parameter
 
     _check_accepts_tuple('work', work, 2)
-    work_2nd_arg_type = work.type_signature.parameter[1]
+    work_2nd_arg_type = work.type_signature.parameter[1]  # pytype: disable=unsupported-operands
     prepare_result_type = prepare.type_signature.result
     if not _is_assignable_from_or_both_none(
         work_2nd_arg_type, prepare_result_type
@@ -347,9 +347,9 @@ class MapReduceForm(typed_object.TypedObject):
     py_typecheck.check_len(accumulate.type_signature.parameter, 2)
     accumulate.type_signature.parameter[0].check_assignable_from(
         zero.type_signature.result
-    )
-    accumulate_2nd_arg_type = accumulate.type_signature.parameter[1]
-    work_client_update_type = work.type_signature.result[WORK_UPDATE_INDEX]
+    )  # pytype: disable=unsupported-operands
+    accumulate_2nd_arg_type = accumulate.type_signature.parameter[1]  # pytype: disable=unsupported-operands
+    work_client_update_type = work.type_signature.result[WORK_UPDATE_INDEX]  # pytype: disable=unsupported-operands
     if not _is_assignable_from_or_both_none(
         accumulate_2nd_arg_type, work_client_update_type
     ):
@@ -362,31 +362,31 @@ class MapReduceForm(typed_object.TypedObject):
       )
     accumulate.type_signature.parameter[0].check_assignable_from(
         accumulate.type_signature.result
-    )
+    )  # pytype: disable=unsupported-operands
 
     py_typecheck.check_len(merge.type_signature.parameter, 2)
     merge.type_signature.parameter[0].check_assignable_from(
         accumulate.type_signature.result
-    )
+    )  # pytype: disable=unsupported-operands
     merge.type_signature.parameter[1].check_assignable_from(
         accumulate.type_signature.result
-    )
+    )  # pytype: disable=unsupported-operands
     merge.type_signature.parameter[0].check_assignable_from(
         merge.type_signature.result
-    )
+    )  # pytype: disable=unsupported-operands
 
     report.type_signature.parameter.check_assignable_from(
         merge.type_signature.result
-    )
+    )  # pytype: disable=attribute-error
 
     expected_update_parameter_type = computation_types.to_type([
-        type_signature.parameter[0].member,
+        type_signature.parameter[0].member,  # pytype: disable=unsupported-operands
         [
             report.type_signature.result,
             # Update takes in the post-summation values of secure aggregation.
-            work.type_signature.result[WORK_SECAGG_BITWIDTH_INDEX],
-            work.type_signature.result[WORK_SECAGG_MAX_INPUT_INDEX],
-            work.type_signature.result[WORK_SECAGG_MODULUS_INDEX],
+            work.type_signature.result[WORK_SECAGG_BITWIDTH_INDEX],  # pytype: disable=unsupported-operands
+            work.type_signature.result[WORK_SECAGG_MAX_INPUT_INDEX],  # pytype: disable=unsupported-operands
+            work.type_signature.result[WORK_SECAGG_MODULUS_INDEX],  # pytype: disable=unsupported-operands
         ],
     ])
     # The first part of the parameter should align with any initial state that
@@ -401,15 +401,15 @@ class MapReduceForm(typed_object.TypedObject):
           'The `update` computation expects arguments of type {}, '
           'which does not match the expected {} as implied by the type '
           'signatures of `report` and `work`.'.format(
-              computation_types.to_type(update.type_signature.parameter[1:]),
+              computation_types.to_type(update.type_signature.parameter[1:]),  # pytype: disable=unsupported-operands
               expected_update_parameter_type,
           )
       )
 
     _check_returns_tuple('update', update, 2)
 
-    updated_state_type = update.type_signature.result[0]
-    if not prepare_arg_type.is_assignable_from(updated_state_type):
+    updated_state_type = update.type_signature.result[0]  # pytype: disable=unsupported-operands
+    if not prepare_arg_type.is_assignable_from(updated_state_type):  # pytype: disable=attribute-error
       raise TypeError(
           'The `update` computation returns a result tuple whose first element '
           '(the updated state type of the server) is type:\n'
@@ -430,7 +430,7 @@ class MapReduceForm(typed_object.TypedObject):
     self._secure_modular_sum_modulus = secure_modular_sum_modulus
     self._update = update
 
-    parameter_names = structure.name_list_with_nones(type_signature.parameter)
+    parameter_names = structure.name_list_with_nones(type_signature.parameter)  # pytype: disable=wrong-arg-types
     self._server_state_label, self._client_data_label = parameter_names
 
   @property
@@ -493,7 +493,7 @@ class MapReduceForm(typed_object.TypedObject):
     # of `work`.
     _, secagg_bitwidth_type, secagg_max_input_type, secagg_modulus_type = (
         self.work.type_signature.result
-    )
+    )  # pytype: disable=attribute-error
     for secagg_type in [
         secagg_bitwidth_type,
         secagg_max_input_type,
@@ -699,28 +699,28 @@ class DistributeAggregateForm(typed_object.TypedObject):
     # 'server_to_client_broadcast' argument should match.
     if not _is_assignable_from_or_both_none(
         server_to_client_broadcast.type_signature.parameter,
-        server_prepare.type_signature.result[0],
+        server_prepare.type_signature.result[0],  # pytype: disable=unsupported-operands
     ):
       raise TypeError(
           'The `server_to_client_broadcast` computation expects an argument '
           'type {} that does not match the corresponding result type {} of '
           '`server_prepare`.'.format(
               server_to_client_broadcast.type_signature.parameter,
-              server_prepare.type_signature.result[0],
+              server_prepare.type_signature.result[0],  # pytype: disable=unsupported-operands
           )
       )
 
     # The broadcast output data types in the 'server_to_client_broadcast' result
     # and 'client_work' argument should match.
     if not _is_assignable_from_or_both_none(
-        client_work.type_signature.parameter[1],
+        client_work.type_signature.parameter[1],  # pytype: disable=unsupported-operands
         server_to_client_broadcast.type_signature.result,
     ):
       raise TypeError(
           'The `client_work` computation expects an argument type {} '
           'that does not match the corresponding result type {} of '
           '`server_to_client_broadcast`.'.format(
-              client_work.type_signature.parameter[1],
+              client_work.type_signature.parameter[1],  # pytype: disable=unsupported-operands
               server_to_client_broadcast.type_signature.result,
           )
       )
@@ -728,14 +728,14 @@ class DistributeAggregateForm(typed_object.TypedObject):
     # The aggregation input data types in the 'client_work' result and
     # 'client_to_server_aggregation' argument should match.
     if not _is_assignable_from_or_both_none(
-        client_to_server_aggregation.type_signature.parameter[1],
+        client_to_server_aggregation.type_signature.parameter[1],  # pytype: disable=unsupported-operands
         client_work.type_signature.result,
     ):
       raise TypeError(
           'The `client_to_server_aggregation` computation expects an argument '
           'type {} that does not match the corresponding result type {} of '
           '`client_work`.'.format(
-              client_to_server_aggregation.type_signature.parameter[1],
+              client_to_server_aggregation.type_signature.parameter[1],  # pytype: disable=unsupported-operands
               client_work.type_signature.result,
           )
       )
@@ -743,14 +743,14 @@ class DistributeAggregateForm(typed_object.TypedObject):
     # The aggregation output data types in the 'client_to_server_aggregation'
     # result and 'server_result' argument should match.
     if not _is_assignable_from_or_both_none(
-        server_result.type_signature.parameter[1],
+        server_result.type_signature.parameter[1],  # pytype: disable=unsupported-operands
         client_to_server_aggregation.type_signature.result,
     ):
       raise TypeError(
           'The `server_result` computation expects an argument type {} '
           'that does not match the corresponding result type {} of '
           '`client_to_server_aggregation`.'.format(
-              server_result.type_signature.parameter[1],
+              server_result.type_signature.parameter[1],  # pytype: disable=unsupported-operands
               client_to_server_aggregation.type_signature.result,
           )
       )
@@ -759,20 +759,20 @@ class DistributeAggregateForm(typed_object.TypedObject):
     # 'client_to_server_aggregation' argument, and 'server_result' argument
     # should match.
     if not _is_assignable_from_or_both_none(
-        client_to_server_aggregation.type_signature.parameter[0],
-        server_prepare.type_signature.result[1],
+        client_to_server_aggregation.type_signature.parameter[0],  # pytype: disable=unsupported-operands
+        server_prepare.type_signature.result[1],  # pytype: disable=unsupported-operands
     ) or not _is_assignable_from_or_both_none(
-        server_result.type_signature.parameter[0],
-        server_prepare.type_signature.result[1],
+        server_result.type_signature.parameter[0],  # pytype: disable=unsupported-operands
+        server_prepare.type_signature.result[1],  # pytype: disable=unsupported-operands
     ):
       raise TypeError(
           'The `client_to_server_aggregation` computation expects an argument '
           'type {} and the `server_result` computation expects an argument '
           'type {} that does not match the corresponding result type {} of '
           '`server_prepare`.'.format(
-              client_to_server_aggregation.type_signature.parameter[0],
-              server_result.type_signature.parameter[0],
-              server_prepare.type_signature.result[1],
+              client_to_server_aggregation.type_signature.parameter[0],  # pytype: disable=unsupported-operands
+              server_result.type_signature.parameter[0],  # pytype: disable=unsupported-operands
+              server_prepare.type_signature.result[1],  # pytype: disable=unsupported-operands
           )
       )
 
@@ -781,13 +781,16 @@ class DistributeAggregateForm(typed_object.TypedObject):
     # computation result should match.
     if (
         not _is_assignable_from_or_both_none(
-            server_prepare.type_signature.parameter, type_signature.parameter[0]
+            server_prepare.type_signature.parameter,
+            type_signature.parameter[0],  # pytype: disable=unsupported-operands
         )
         or not _is_assignable_from_or_both_none(
-            server_result.type_signature.result[0], type_signature.parameter[0]
+            server_result.type_signature.result[0],  # pytype: disable=unsupported-operands
+            type_signature.parameter[0],  # pytype: disable=unsupported-operands
         )
         or not _is_assignable_from_or_both_none(
-            type_signature.result[0], type_signature.parameter[0]
+            type_signature.result[0],  # pytype: disable=unsupported-operands
+            type_signature.parameter[0],  # pytype: disable=unsupported-operands
         )
     ):
       raise TypeError(
@@ -796,36 +799,39 @@ class DistributeAggregateForm(typed_object.TypedObject):
           'the `server_result` computation result type {}, '
           'and the original computation result type {} should all match.'
           .format(
-              type_signature.parameter[0],
+              type_signature.parameter[0],  # pytype: disable=unsupported-operands
               server_prepare.type_signature.parameter,
-              server_result.type_signature.result[0],
-              type_signature.result[0],
+              server_result.type_signature.result[0],  # pytype: disable=unsupported-operands
+              type_signature.result[0],  # pytype: disable=unsupported-operands
           )
       )
 
     # The data types of the client data in the original computation argument
     # and the 'client_work' argument should match.
     if not _is_assignable_from_or_both_none(
-        client_work.type_signature.parameter[0], type_signature.parameter[1]
+        client_work.type_signature.parameter[0],  # pytype: disable=unsupported-operands
+        type_signature.parameter[1],  # pytype: disable=unsupported-operands
     ):
       raise TypeError(
           'The `client_work` computation expects an argument type {} '
           'that does not match the original computation argument type {}.'
           .format(
-              client_work.type_signature.parameter[0],
-              type_signature.parameter[1],
+              client_work.type_signature.parameter[0],  # pytype: disable=unsupported-operands
+              type_signature.parameter[1],  # pytype: disable=unsupported-operands
           )
       )
 
     # The server-side output data types in the original computation result and
     # the 'server_result' result should match.
     if not _is_assignable_from_or_both_none(
-        server_result.type_signature.result[1], type_signature.result[1]
+        server_result.type_signature.result[1],  # pytype: disable=unsupported-operands
+        type_signature.result[1],  # pytype: disable=unsupported-operands
     ):
       raise TypeError(
           'The `server_result` computation expects an result type {} '
           'that does not match the original computation result type {}.'.format(
-              server_result.type_signature.result[1], type_signature.result[1]
+              server_result.type_signature.result[1],  # pytype: disable=unsupported-operands
+              type_signature.result[1],  # pytype: disable=unsupported-operands
           )
       )
 
