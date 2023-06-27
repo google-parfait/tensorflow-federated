@@ -87,10 +87,6 @@ OptimizerFn = Union[
 ]
 
 
-def _flat_tuple(struct):
-  return tuple(tf.nest.flatten(struct))
-
-
 # TODO(b/230109170) re-enable pylint after fixing bug.
 # pylint: disable=g-bare-generic
 def _build_reconstruction_client_work(
@@ -227,25 +223,25 @@ def _build_reconstruction_client_work(
         )
 
       gradients = tape.gradient(batch_loss, local_model_weights.trainable)
-      optimizer_state, updated_weights = reconstruction_optimizer.next(
+      updated_optimizer_state, updated_weights = reconstruction_optimizer.next(
           optimizer_state,
-          _flat_tuple(local_model_weights.trainable),
-          _flat_tuple(gradients),
-      )
-      updated_weights = tf.nest.pack_sequence_as(
-          local_model_weights.trainable, updated_weights
+          tuple(local_model_weights.trainable),
+          tuple(gradients),
       )
       if not isinstance(
           reconstruction_optimizer, keras_optimizer.KerasOptimizer
       ):
-        # Keras optimizer mutates model variables within the `next` step.
+        # TFF optimizers require assigning the updated tensors back into the
+        # model variables. (With Keras optimizers we don't need to do this,
+        # because Keras optimizers mutate the model variables within the `next`
+        # step.)
         tf.nest.map_structure(
             lambda a, b: a.assign(b),
             local_model_weights.trainable,
-            updated_weights,
+            list(updated_weights),
         )
 
-      return num_examples_sum + output.num_examples, optimizer_state
+      return num_examples_sum + output.num_examples, updated_optimizer_state
 
     @tf.function
     def train_reduce_fn(state, batch):
@@ -257,25 +253,22 @@ def _build_reconstruction_client_work(
             y_true=output.labels, y_pred=output.predictions
         )
       gradients = tape.gradient(batch_loss, global_model_weights.trainable)
-      optimizer_state, updated_weights = client_optimizer.next(
+      updated_optimizer_state, updated_weights = client_optimizer.next(
           optimizer_state,
-          _flat_tuple(global_model_weights.trainable),
-          _flat_tuple(gradients),
-      )
-      updated_weights = tf.nest.pack_sequence_as(
-          global_model_weights.trainable, updated_weights
+          tuple(global_model_weights.trainable),
+          tuple(gradients),
       )
       if not isinstance(client_optimizer, keras_optimizer.KerasOptimizer):
         # Keras optimizer mutates model variables within the `next` step.
         tf.nest.map_structure(
             lambda a, b: a.assign(b),
             global_model_weights.trainable,
-            updated_weights,
+            list(updated_weights),
         )
       # Update each metric.
       for metric in metrics:
         metric.update_state(y_true=output.labels, y_pred=output.predictions)
-      return num_examples_sum + output.num_examples, optimizer_state
+      return num_examples_sum + output.num_examples, updated_optimizer_state
 
     recon_dataset, post_recon_dataset = dataset_split_fn(dataset)
 
@@ -289,11 +282,11 @@ def _build_reconstruction_client_work(
             lambda v: tf.TensorSpec(v.shape, v.dtype),
             local_model_weights.trainable,
         )
-        # TODO(b/161529310): We flatten and convert the trainable specs to
-        # tuple, as the data iteration pattern would try to stack the tensors
-        # in a list.
-        return tf.constant(0), reconstruction_optimizer.initialize(
-            _flat_tuple(trainable_tensor_specs)
+        # We convert the trainable specs to tuple, as the data iteration pattern
+        # might try to stack the tensors in a list.
+        initial_num_examples = tf.constant(0)
+        return initial_num_examples, reconstruction_optimizer.initialize(
+            tuple(trainable_tensor_specs)
         )
 
       recon_dataset.reduce(
@@ -307,11 +300,11 @@ def _build_reconstruction_client_work(
           lambda v: tf.TensorSpec(v.shape, v.dtype),
           global_model_weights.trainable,
       )
-      # TODO(b/161529310): We flatten and convert the trainable specs to
-      # tuple, as the data iteration pattern would try to stack the tensors
-      # in a list.
-      return tf.constant(0), client_optimizer.initialize(
-          _flat_tuple(trainable_tensor_specs)
+      # We convert the trainable specs to tuple, as the data iteration pattern
+      # might try to stack the tensors in a list.
+      initial_num_examples = tf.constant(0)
+      return initial_num_examples, client_optimizer.initialize(
+          tuple(trainable_tensor_specs)
       )
 
     num_examples_sum, _ = post_recon_dataset.reduce(
