@@ -69,7 +69,9 @@ def _value_proto_for_np_array(
 ) -> executor_pb2.Value:
   """Creates value proto for np array, assumed to be assignable to type_spec."""
   tensor_proto = tf.make_tensor_proto(
-      value, dtype=type_spec.dtype, verify_shape=True
+      value,
+      dtype=type_spec.dtype,  # pytype: disable=attribute-error
+      verify_shape=True,
   )
   any_pb = any_pb2.Any()
   any_pb.Pack(tensor_proto)
@@ -280,7 +282,7 @@ def _serialize_sequence_value(
 def _serialize_struct_type(
     struct_typed_value: Any,
     type_spec: computation_types.StructType,
-) -> computation_types.StructType:
+) -> tuple[executor_pb2.Value, computation_types.StructType]:
   """Serializes a value of tuple type."""
   value_structure = structure.from_container(struct_typed_value)
   if len(value_structure) != len(type_spec):
@@ -309,7 +311,7 @@ def _serialize_struct_type(
 @tracing.trace
 def _serialize_federated_value(
     federated_value: Any, type_spec: computation_types.FederatedType
-) -> computation_types.FederatedType:
+) -> tuple[executor_pb2.Value, computation_types.FederatedType]:
   """Serializes a value of federated type."""
   if type_spec.all_equal:
     value = [federated_value]
@@ -388,7 +390,7 @@ def _deserialize_computation(
   """Deserializes a TFF computation."""
   return (
       value_proto.computation,
-      type_serialization.deserialize_type(value_proto.computation.type),
+      type_serialization.deserialize_type(value_proto.computation.type),  # pytype: disable=bad-return-type
   )
 
 
@@ -451,14 +453,14 @@ def _deserialize_dataset_from_graph_def(
     """Transforms `StructType` to `StructWithPythonType`."""
     if type_spec.is_struct() and not type_spec.is_struct_with_python():
       field_is_named = tuple(
-          name is not None for name, _ in structure.iter_elements(type_spec)
+          name is not None for name, _ in structure.iter_elements(type_spec)  # pytype: disable=wrong-arg-types
       )
       has_names = any(field_is_named)
       is_all_named = all(field_is_named)
       if is_all_named:
         return (
             computation_types.StructWithPythonType(
-                elements=structure.iter_elements(type_spec),
+                elements=structure.iter_elements(type_spec),  # pytype: disable=wrong-arg-types
                 container_type=collections.OrderedDict,
             ),
             True,
@@ -466,7 +468,7 @@ def _deserialize_dataset_from_graph_def(
       elif not has_names:
         return (
             computation_types.StructWithPythonType(
-                elements=structure.iter_elements(type_spec),
+                elements=structure.iter_elements(type_spec),  # pytype: disable=wrong-arg-types
                 container_type=tuple,
             ),
             True,
@@ -533,7 +535,7 @@ def _deserialize_sequence_value(
         sequence_value_proto.element_type
     )
   elif type_hint is not None:
-    element_type = type_hint.element
+    element_type = type_hint.element  # pytype: disable=attribute-error
   else:
     raise ValueError(
         'Cannot deserialize a sequence Value proto that without one of '
@@ -565,7 +567,7 @@ def _deserialize_struct_value(
   val_elems = []
   type_elems = []
   if type_hint is not None:
-    element_types = tuple(type_hint)
+    element_types = tuple(type_hint)  # pytype: disable=wrong-arg-types
   else:
     element_types = [None] * len(value_proto.struct.element)
   for e, e_type in zip(value_proto.struct.element, element_types):
@@ -620,14 +622,14 @@ def _deserialize_federated_value(
   # in returned values), however the type_hint on the computation may contain
   # it.
   if type_hint is not None:
-    all_equal = type_hint.all_equal
+    all_equal = type_hint.all_equal  # pytype: disable=attribute-error
   else:
     all_equal = value_proto.federated.type.all_equal
   placement_uri = value_proto.federated.type.placement.value.uri
   # item_type will represent a supertype of all deserialized member types in the
   # federated value. This will be the hint used for deserialize member values.
   if type_hint is not None:
-    item_type_hint = type_hint.member
+    item_type_hint = type_hint.member  # pytype: disable=attribute-error
   else:
     item_type_hint = None
   item_type = None

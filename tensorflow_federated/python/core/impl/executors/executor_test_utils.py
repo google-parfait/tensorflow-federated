@@ -429,7 +429,7 @@ def create_whimsy_computation_tensorflow_add():
   type_signature = computation_types.FunctionType(parameter_type, result_type)
   struct_binding = pb.TensorFlow.StructBinding(
       element=[parameter_1_binding, parameter_2_binding]
-  )
+  )  # pytype: disable=wrong-arg-types
   parameter_binding = pb.TensorFlow.Binding(struct=struct_binding)
   tensorflow = pb.TensorFlow(
       graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),

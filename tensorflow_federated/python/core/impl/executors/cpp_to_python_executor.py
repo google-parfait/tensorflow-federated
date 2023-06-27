@@ -137,7 +137,7 @@ class CppToPythonExecutorBridge(executor_base.Executor):
       _handle_error(e)
     return CppToPythonExecutorValue(
         owned_call_id,
-        fn.type_signature.result,
+        fn.type_signature.result,  # pytype: disable=attribute-error
         self._cpp_executor,
         self._futures_executor,
     )
@@ -173,7 +173,7 @@ class CppToPythonExecutorBridge(executor_base.Executor):
       )
     except Exception as e:  # pylint: disable=broad-except
       _handle_error(e)
-    selection_type = source.type_signature[index]
+    selection_type = source.type_signature[index]  # pytype: disable=unsupported-operands
     return CppToPythonExecutorValue(
         selection_id, selection_type, self._cpp_executor, self._futures_executor
     )

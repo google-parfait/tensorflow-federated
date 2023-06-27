@@ -99,8 +99,11 @@ class CardinalityFreeDataDescriptor(ingestable_base.Ingestable):
     self._arg = arg
     self._arg_type = computation_types.to_type(arg_type)
     if self._comp is not None:
-      if not self._comp.type_signature.parameter.is_assignable_from(
-          self._arg_type
+      if (
+          self._comp.type_signature.parameter is None
+          or not self._comp.type_signature.parameter.is_assignable_from(
+              self._arg_type
+          )
       ):
         raise ValueError(
             'Argument type {} incompatible with the computation '
@@ -173,7 +176,7 @@ class DataDescriptor(
     super().__init__(comp, arg, arg_type)
     self._cardinality: dict[placements.PlacementLiteral, int] = {}
     if self._type_signature.is_federated():
-      if self._type_signature.placement is placements.CLIENTS:
+      if self._type_signature.placement is placements.CLIENTS:  # pytype: disable=attribute-error
         if cardinality is None:
           raise ValueError('Expected `cardinality` to not be `None`.')
         self._cardinality[placements.CLIENTS] = cardinality
