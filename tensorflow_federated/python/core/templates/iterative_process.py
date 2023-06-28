@@ -166,8 +166,8 @@ class IterativeProcess:
     elif _is_nonempty_struct(
         next_result_type
     ) and state_type.is_assignable_from(
-        next_result_type[0]
-    ):  # pytype: disable=attribute-error,unsupported-operands
+        next_result_type[0]  # pytype: disable=unsupported-operands
+    ):  # pytype: disable=attribute-error
       # The first return value is state type
       pass
     else:
