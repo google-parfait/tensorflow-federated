@@ -73,7 +73,7 @@ def is_signature_compatible_with_types(
       continue
     arg_type = computation_types.to_type(arg_value)
     default_type = type_conversions.infer_type(p.default)
-    if not arg_type.is_assignable_from(default_type):
+    if not arg_type.is_assignable_from(default_type):  # pytype: disable=attribute-error
       return False
   return True
 
@@ -100,7 +100,7 @@ def is_argument_struct(arg) -> bool:
   else:
     arg = computation_types.to_type(arg)
     if arg.is_struct():
-      elements = structure.to_elements(arg)
+      elements = structure.to_elements(arg)  # pytype: disable=wrong-arg-types
     else:
       return False
   max_unnamed = -1
@@ -144,8 +144,8 @@ def unpack_args_from_struct(
         elements.append((None, struct_with_args[index]))
   else:
     struct_with_args = computation_types.to_type(struct_with_args)
-    struct_with_args.check_struct()
-    elements = structure.to_elements(struct_with_args)
+    struct_with_args.check_struct()  # pytype: disable=attribute-error
+    elements = structure.to_elements(struct_with_args)  # pytype: disable=wrong-arg-types
   args = []
   kwargs = {}
   for name, value in elements:
@@ -203,7 +203,7 @@ def pack_args_into_struct(
       positions_used = set()
       keywords_used = set()
       for index, (name, elem_type) in enumerate(
-          structure.to_elements(type_spec)
+          structure.to_elements(type_spec)  # pytype: disable=wrong-arg-types
       ):
         if index < len(args):
           # This argument is present in `args`.

@@ -15,11 +15,18 @@
 
 import abc
 
+from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import typed_object
 
 
 class Computation(typed_object.TypedObject, metaclass=abc.ABCMeta):
   """An abstract interface for all classes that represent computations."""
+
+  @property
+  @abc.abstractmethod
+  def type_signature(self) -> computation_types.FunctionType:
+    """Returns the TFF type of this object."""
+    raise NotImplementedError
 
   @abc.abstractmethod
   def __call__(self, *args, **kwargs):

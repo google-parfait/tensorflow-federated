@@ -43,7 +43,9 @@ class ConcreteComputation(computation_base.Computation):
 
   @classmethod
   def with_type(
-      cls, value: 'ConcreteComputation', type_spec: computation_types.Type
+      cls,
+      value: 'ConcreteComputation',
+      type_spec: computation_types.FunctionType,
   ) -> 'ConcreteComputation':
     py_typecheck.check_type(value, cls)
     py_typecheck.check_type(type_spec, computation_types.Type)
@@ -66,7 +68,7 @@ class ConcreteComputation(computation_base.Computation):
     return cls(
         building_block.proto,
         context_stack_impl.context_stack,
-        annotated_type=building_block.type_signature,
+        annotated_type=building_block.type_signature,  # pytype: disable=wrong-arg-types
     )
 
   def to_building_block(self):
@@ -108,7 +110,7 @@ class ConcreteComputation(computation_base.Computation):
     type_spec = type_serialization.deserialize_type(computation_proto.type)
 
     if annotated_type is not None:
-      if not type_spec.is_assignable_from(annotated_type):
+      if type_spec is None or not type_spec.is_assignable_from(annotated_type):
         raise TypeError(
             'annotated_type not compatible with computation_proto.type\n'
             f'computation_proto.type: {type_spec}\n'
@@ -116,7 +118,7 @@ class ConcreteComputation(computation_base.Computation):
         )
       type_spec = annotated_type
 
-    if not type_spec.is_function():
+    if not isinstance(type_spec, computation_types.FunctionType):
       raise TypeError(
           f'{type_spec} is not a functional type, from proto: '
           f'{computation_proto}'
@@ -138,7 +140,11 @@ class ConcreteComputation(computation_base.Computation):
     return self._type_signature
 
   def __call__(self, *args, **kwargs):
-    arg = function_utils.pack_args(self._type_signature.parameter, args, kwargs)
+    arg = function_utils.pack_args(
+        self._type_signature.parameter,  # pytype: disable=attribute-error
+        args,
+        kwargs,
+    )
     return self._context_stack.current.invoke(self, arg)
 
   def __hash__(self) -> int:
