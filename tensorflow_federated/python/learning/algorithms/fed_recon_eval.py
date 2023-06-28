@@ -308,7 +308,8 @@ def build_fed_recon_eval(
         client_computation, (model_weights, client_dataset)
     )
     metrics_aggregation_computation = metrics_aggregator(
-        metric_finalizers, unfinalized_metrics.type_signature.member
+        metric_finalizers,
+        unfinalized_metrics.type_signature.member,  # pytype: disable=attribute-error
     )
     finalized_metrics = intrinsics.federated_zip(
         collections.OrderedDict(
