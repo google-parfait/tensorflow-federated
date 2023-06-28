@@ -186,8 +186,9 @@ class ReconstructionModel(metaclass=abc.ABCMeta):
   def has_only_global_variables(cls, model: 'ReconstructionModel') -> bool:
     """Returns `True` if the model has no local variables."""
     del cls  # Unused.
-    return bool(model.local_trainable_variables) or bool(
-        model.local_non_trainable_variables
+    return not (
+        bool(model.local_trainable_variables)
+        or bool(model.local_non_trainable_variables)
     )
 
   @classmethod
