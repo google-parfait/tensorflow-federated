@@ -61,7 +61,7 @@ REQUIRED_PACKAGES = [
     'attrs~=21.4',
     'cachetools~=3.1',
     'dm-tree==0.1.8',
-    'dp-accounting==0.4.1',
+    'dp-accounting==0.4.2',
     'farmhashpy==0.4.0',
     'google-vizier==0.1.4',
     'grpcio~=1.46',
