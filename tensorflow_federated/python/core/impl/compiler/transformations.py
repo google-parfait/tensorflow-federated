@@ -398,20 +398,20 @@ def _compute_merged_intrinsics(
       )
     else:
       calls = [local[1] for local in locals_for_uri]
-      result_placement = calls[0].type_signature.placement
-      result_all_equal = calls[0].type_signature.all_equal
+      result_placement = calls[0].type_signature.placement  # pytype: disable=attribute-error
+      result_all_equal = calls[0].type_signature.all_equal  # pytype: disable=attribute-error
       for call in calls:
-        if call.type_signature.all_equal != result_all_equal:
+        if call.type_signature.all_equal != result_all_equal:  # pytype: disable=attribute-error
           raise ValueError(
               'Encountered intrinsics to be merged with '
               f'mismatched all_equal bits. Intrinsic of URI {uri} '
               f'first call had all_equal bit {result_all_equal}, '
               'encountered call with all_equal value '
-              f'{call.type_signature.all_equal}'
+              f'{call.type_signature.all_equal}'  # pytype: disable=attribute-error
           )
       return_type = computation_types.FederatedType(
           computation_types.StructType(
-              [(None, call.type_signature.member) for call in calls]
+              [(None, call.type_signature.member) for call in calls]  # pytype: disable=attribute-error
           ),
           placement=result_placement,
           all_equal=result_all_equal,
@@ -487,10 +487,10 @@ def _merge_args(
     param_name = next(name_generator)
     if abstract_parameter_type.parameter.is_struct():
       num_args = len(abstract_parameter_type.parameter)
-      parameter_types = [[] for i in range(num_args)]
+      parameter_types = [[] for _ in range(num_args)]
       for arg in args:
         for i in range(num_args):
-          parameter_types[i].append(arg.type_signature.parameter[i])
+          parameter_types[i].append(arg.type_signature.parameter[i])  # pytype: disable=attribute-error
       param_type = computation_types.StructType(parameter_types)
       param_ref = building_blocks.Reference(param_name, param_type)
       calls = []
@@ -509,7 +509,7 @@ def _merge_args(
         )
     else:
       param_type = computation_types.StructType(
-          [arg.type_signature.parameter for arg in args]
+          [arg.type_signature.parameter for arg in args]  # pytype: disable=attribute-error
       )
       param_ref = building_blocks.Reference(param_name, param_type)
       calls = [
@@ -922,7 +922,7 @@ def _augment_lambda_with_parameter_for_unbound_references(
 
   # Update the comp parameter type to include the new extension.
   new_parameter_type = computation_types.StructType(
-      structure.to_elements(comp.type_signature.parameter)
+      structure.to_elements(comp.type_signature.parameter)  # pytype: disable=wrong-arg-types
       + [(
           lambda_parameter_extension_name,
           [e.type_signature for e in new_input_comps.keys()],

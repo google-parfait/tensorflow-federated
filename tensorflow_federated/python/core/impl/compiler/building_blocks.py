@@ -365,13 +365,13 @@ class Selection(ComputationBuildingBlock):
       type_signature = source_type[name]
     else:
       py_typecheck.check_type(index, int)
-      length = len(source_type)
+      length = len(source_type)  # pytype: disable=wrong-arg-types
       if index < 0 or index >= length:
         raise ValueError(
             f'The index `{index}` does not fit into the valid range in the '
             f'struct type: 0..{length}'
         )
-      type_signature = source_type[index]
+      type_signature = source_type[index]  # pytype: disable=unsupported-operands
     super().__init__(type_signature)
     self._source = source
     self._name = name
@@ -406,7 +406,7 @@ class Selection(ComputationBuildingBlock):
     if self._index is not None:
       return self._index
     else:
-      field_to_index = structure.name_to_index_map(self.source.type_signature)
+      field_to_index = structure.name_to_index_map(self.source.type_signature)  # pytype: disable=wrong-arg-types
       return field_to_index[self._name]
 
   def __repr__(self):
@@ -490,6 +490,11 @@ class Struct(ComputationBuildingBlock, structure.Struct):
       )
     ComputationBuildingBlock.__init__(self, type_signature)
     structure.Struct.__init__(self, elements)
+    self._type_signature = type_signature
+
+  @property
+  def type_signature(self) -> computation_types.StructType:
+    return self._type_signature
 
   def _proto(self):
     elements = []
@@ -566,26 +571,24 @@ class Call(ComputationBuildingBlock):
           'Expected fn to be of a functional type, '
           'but found that its type is {}.'.format(fn.type_signature)
       )
-    if fn.type_signature.parameter is not None:
+    if fn.type_signature.parameter is not None:  # pytype: disable=attribute-error
       if arg is None:
         raise TypeError(
             'The invoked function expects an argument of type {}, '
             'but got None instead.'.format(fn.type_signature.parameter)
         )
-      if not fn.type_signature.parameter.is_assignable_from(arg.type_signature):
+      if not fn.type_signature.parameter.is_assignable_from(arg.type_signature):  # pytype: disable=attribute-error
         raise TypeError(
             'The parameter of the invoked function is expected to be of '
             'type {}, but the supplied argument is of an incompatible '
-            'type {}.'.format(fn.type_signature.parameter, arg.type_signature)
+            'type {}.'.format(fn.type_signature.parameter, arg.type_signature)  # pytype: disable=attribute-error
         )
     elif arg is not None:
       raise TypeError(
           'The invoked function does not expect any parameters, but got '
           'an argument of type {}.'.format(py_typecheck.type_string(type(arg)))
       )
-    super().__init__(fn.type_signature.result)
-    # By now, this condition should hold, so we only double-check in debug mode.
-    assert (arg is not None) == (fn.type_signature.parameter is not None)
+    super().__init__(fn.type_signature.result)  # pytype: disable=attribute-error
     self._function = fn
     self._argument = arg
 
@@ -687,12 +690,18 @@ class Lambda(ComputationBuildingBlock):
       py_typecheck.check_type(parameter_name, str)
       parameter_type = computation_types.to_type(parameter_type)
     py_typecheck.check_type(result, ComputationBuildingBlock)
-    super().__init__(
-        computation_types.FunctionType(parameter_type, result.type_signature)
+    type_signature = computation_types.FunctionType(
+        parameter_type, result.type_signature
     )
+    super().__init__(type_signature)
     self._parameter_name = parameter_name
     self._parameter_type = parameter_type
     self._result = result
+    self._type_signature = type_signature
+
+  @property
+  def type_signature(self) -> computation_types.FunctionType:
+    return self._type_signature
 
   def _proto(self) -> pb.Computation:
     type_signature = type_serialization.serialize_type(self.type_signature)
