@@ -201,11 +201,11 @@ class FinalizerProcess(measured_process.MeasuredProcess):
 
   @property
   def get_hparams(self) -> computation_base.Computation:
-    return self._get_hparams_fn
+    return self._get_hparams_fn  # pytype: disable=attribute-error
 
   @property
   def set_hparams(self) -> computation_base.Computation:
-    return self._set_hparams_fn
+    return self._set_hparams_fn  # pytype: disable=attribute-error
 
 
 def build_identity_finalizer(

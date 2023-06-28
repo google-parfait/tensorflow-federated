@@ -13,7 +13,8 @@
 # limitations under the License.
 """Defines a template for stateful processes used for learning-oriented tasks."""
 
-from typing import Any, NamedTuple, Optional
+import typing
+from typing import Any, NamedTuple, Optional, Union
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl.computation import computation_base
@@ -177,13 +178,17 @@ class LearningProcess(iterative_process.IterativeProcess):
     super().__init__(initialize_fn, next_fn)
 
     init_fn_result = initialize_fn.type_signature.result
-    if init_fn_result.placement != placements.SERVER:
+    if init_fn_result.placement != placements.SERVER:  # pytype: disable=attribute-error
       raise LearningProcessPlacementError(
           'The result of `initialize_fn` must be placed at `SERVER` but found '
-          f'placement {init_fn_result.placement}.'
+          f'placement {init_fn_result.placement}.'  # pytype: disable=attribute-error
       )
 
     next_result_type = next_fn.type_signature.result
+    # TODO(b/224484886): Downcasting to all handled types.
+    next_result_type = typing.cast(
+        Union[computation_types.StructWithPythonType], next_result_type
+    )
     if not (
         isinstance(next_result_type, computation_types.StructWithPythonType)
         and next_result_type.python_container is LearningProcessOutput
@@ -194,7 +199,10 @@ class LearningProcess(iterative_process.IterativeProcess):
       )
     # We perform a more strict type check on the inputs to `next_fn` than in the
     # base class.
-    next_fn_param = next_fn.type_signature.parameter
+    # TODO(b/224484886): Downcasting to all handled types.
+    next_fn_param = typing.cast(
+        Union[computation_types.StructType], next_fn.type_signature.parameter
+    )
     if not next_fn_param.is_struct() or len(next_fn_param) != 2:
       raise errors.TemplateNextFnNumArgsError(
           'The `next_fn` must have two input arguments, but found an input '
@@ -207,17 +215,20 @@ class LearningProcess(iterative_process.IterativeProcess):
       )
 
     next_fn_result = next_fn.type_signature.result
-    if next_fn_result.metrics.placement != placements.SERVER:
+    if next_fn_result.metrics.placement != placements.SERVER:  # pytype: disable=attribute-error
       raise LearningProcessPlacementError(
           'The result of `next_fn` must be placed at `SERVER` but found '
-          f'placement {next_fn_result.metrics.placement} for `metrics`.'
+          f'placement {next_fn_result.metrics.placement} for `metrics`.'  # pytype: disable=attribute-error
       )
 
     py_typecheck.check_type(get_model_weights, computation_base.Computation)
     get_model_weights_type = get_model_weights.type_signature
     get_model_weights_param = get_model_weights_type.parameter
-    next_fn_state_param = next_fn.type_signature.parameter[0].member
-    if not get_model_weights_param.is_equivalent_to(next_fn_state_param):
+    next_fn_state_param = next_fn.type_signature.parameter[0].member  # pytype: disable=unsupported-operands
+    if (
+        get_model_weights_param is None
+        or not get_model_weights_param.is_equivalent_to(next_fn_state_param)
+    ):
       raise GetModelWeightsTypeSignatureError(
           'The input type of `get_model_weights` must be assignable from '
           'the member type of the output of `initialize_fn`, but found input '
@@ -228,7 +239,7 @@ class LearningProcess(iterative_process.IterativeProcess):
 
     py_typecheck.check_type(set_model_weights, computation_base.Computation)
     set_model_weights_type = set_model_weights.type_signature
-    set_model_weights_state_param = set_model_weights_type.parameter[0]
+    set_model_weights_state_param = set_model_weights_type.parameter[0]  # pytype: disable=unsupported-operands
     if not set_model_weights_state_param.is_equivalent_to(next_fn_state_param):
       raise SetModelWeightsTypeSignatureError(
           'The input type of `set_model_weights` must be assignable from '
@@ -246,7 +257,7 @@ class LearningProcess(iterative_process.IterativeProcess):
       )
     self._set_model_weights = set_model_weights
 
-    state_type = initialize_fn.type_signature.result.member
+    state_type = initialize_fn.type_signature.result.member  # pytype: disable=attribute-error
     if get_hparams_fn is not None:
       hparams_base.type_check_get_hparams_fn(get_hparams_fn, state_type)
     else:

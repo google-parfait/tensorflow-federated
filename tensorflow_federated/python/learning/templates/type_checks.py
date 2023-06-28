@@ -41,7 +41,7 @@ def check_is_client_placed_structure_of_sequences(
 
   def is_structure_of_sequences(member_spec: computation_types.Type) -> bool:
     if member_spec.is_sequence():
-      return type_analysis.is_tensorflow_compatible_type(member_spec.element)
+      return type_analysis.is_tensorflow_compatible_type(member_spec.element)  # pytype: disable=attribute-error
     elif member_spec.is_struct():
       return all(
           is_structure_of_sequences(element_type)
@@ -59,7 +59,7 @@ def check_is_client_placed_structure_of_sequences(
 
   if (
       not type_spec.is_federated()
-      or type_spec.placement != placements.CLIENTS
-      or not is_structure_of_sequences(type_spec.member)
+      or type_spec.placement != placements.CLIENTS  # pytype: disable=attribute-error
+      or not is_structure_of_sequences(type_spec.member)  # pytype: disable=attribute-error
   ):
     raise ClientSequenceTypeError(error_message)
