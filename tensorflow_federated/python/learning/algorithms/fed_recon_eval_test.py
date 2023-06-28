@@ -224,14 +224,7 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
                 )
             ),
             distributor=(),
-            client_work=(
-                (),
-                collections.OrderedDict(
-                    num_examples=[tf.int64],
-                    num_over=[tf.float32],
-                    loss=[tf.float32, tf.float32],
-                ),
-            ),
+            client_work=(),
             aggregator=collections.OrderedDict(
                 value_sum_process=(), weight_sum_process=()
             ),
@@ -259,16 +252,9 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
                         distributor=(),
                         client_work=collections.OrderedDict(
                             eval=collections.OrderedDict(
-                                current_round_metrics=collections.OrderedDict(
-                                    num_examples=tf.int64,
-                                    num_over=tf.float32,
-                                    loss=tf.float32,
-                                ),
-                                total_rounds_metrics=collections.OrderedDict(
-                                    num_examples=tf.int64,
-                                    num_over=tf.float32,
-                                    loss=tf.float32,
-                                ),
+                                num_examples=tf.int64,
+                                num_over=tf.float32,
+                                loss=tf.float32,
                             )
                         ),
                         aggregator=collections.OrderedDict(
@@ -290,7 +276,7 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
         ),
     )
     _, result = evaluate.next(state, create_client_data())
-    eval_result = result['client_work']['eval']['current_round_metrics']
+    eval_result = result['client_work']['eval']
 
     # Ensure loss isn't equal to the value we'd expect if no reconstruction
     # happens. We can calculate this since the local bias is initialized at 0
@@ -332,14 +318,7 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
                 )
             ),
             distributor=(),
-            client_work=(
-                (),
-                collections.OrderedDict(
-                    num_examples=[tf.int64],
-                    num_over=[tf.float32],
-                    loss=[tf.float32, tf.float32],
-                ),
-            ),
+            client_work=(),
             aggregator=collections.OrderedDict(
                 value_sum_process=(), weight_sum_process=()
             ),
@@ -367,16 +346,9 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
                         distributor=(),
                         client_work=collections.OrderedDict(
                             eval=collections.OrderedDict(
-                                current_round_metrics=collections.OrderedDict(
-                                    num_examples=tf.int64,
-                                    num_over=tf.float32,
-                                    loss=tf.float32,
-                                ),
-                                total_rounds_metrics=collections.OrderedDict(
-                                    num_examples=tf.int64,
-                                    num_over=tf.float32,
-                                    loss=tf.float32,
-                                ),
+                                num_examples=tf.int64,
+                                num_over=tf.float32,
+                                loss=tf.float32,
                             )
                         ),
                         aggregator=collections.OrderedDict(
@@ -391,7 +363,7 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
 
     state = evaluate.initialize()
     _, result = evaluate.next(state, create_client_data())
-    eval_result = result['client_work']['eval']['current_round_metrics']
+    eval_result = result['client_work']['eval']
 
     self.assertAlmostEqual(eval_result['num_examples'], 2.0)
     self.assertAlmostEqual(eval_result['num_over'], 1.0)
@@ -439,14 +411,7 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
                 )
             ),
             distributor=(),
-            client_work=(
-                (),
-                collections.OrderedDict(
-                    num_examples=[tf.int64],
-                    num_over=[tf.float32],
-                    loss=[tf.float32, tf.float32],
-                ),
-            ),
+            client_work=(),
             aggregator=collections.OrderedDict(
                 value_sum_process=(), weight_sum_process=()
             ),
@@ -474,16 +439,9 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
                         distributor=(),
                         client_work=collections.OrderedDict(
                             eval=collections.OrderedDict(
-                                current_round_metrics=collections.OrderedDict(
-                                    num_examples=tf.int64,
-                                    num_over=tf.float32,
-                                    loss=tf.float32,
-                                ),
-                                total_rounds_metrics=collections.OrderedDict(
-                                    num_examples=tf.int64,
-                                    num_over=tf.float32,
-                                    loss=tf.float32,
-                                ),
+                                num_examples=tf.int64,
+                                num_over=tf.float32,
+                                loss=tf.float32,
                             )
                         ),
                         aggregator=collections.OrderedDict(
@@ -498,7 +456,7 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
 
     state = evaluate.initialize()
     _, result = evaluate.next(state, create_client_data())
-    eval_result = result['client_work']['eval']['current_round_metrics']
+    eval_result = result['client_work']['eval']
 
     self.assertAlmostEqual(eval_result['num_examples'], 14.0)
     self.assertAlmostEqual(eval_result['num_over'], 7.0)
@@ -540,14 +498,7 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
                 )
             ),
             distributor=(),
-            client_work=(
-                (),
-                collections.OrderedDict(
-                    num_examples=[tf.int64],
-                    num_over=[tf.float32],
-                    loss=[tf.float32, tf.float32],
-                ),
-            ),
+            client_work=(),
             aggregator=collections.OrderedDict(
                 value_sum_process=(), weight_sum_process=()
             ),
@@ -575,16 +526,9 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
                         distributor=(),
                         client_work=collections.OrderedDict(
                             eval=collections.OrderedDict(
-                                current_round_metrics=collections.OrderedDict(
-                                    num_examples=tf.int64,
-                                    num_over=tf.float32,
-                                    loss=tf.float32,
-                                ),
-                                total_rounds_metrics=collections.OrderedDict(
-                                    num_examples=tf.int64,
-                                    num_over=tf.float32,
-                                    loss=tf.float32,
-                                ),
+                                num_examples=tf.int64,
+                                num_over=tf.float32,
+                                loss=tf.float32,
                             )
                         ),
                         aggregator=collections.OrderedDict(
@@ -605,7 +549,7 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
         ),
     )
     _, result = evaluate.next(state, create_client_data())
-    eval_result = result['client_work']['eval']['current_round_metrics']
+    eval_result = result['client_work']['eval']
 
     # Now have an expectation for loss since the local bias is initialized at 0
     # and not reconstructed. MSE is (y - 1 * x)^2 for each example, for a mean
@@ -649,14 +593,7 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
                 )
             ),
             distributor=(),
-            client_work=(
-                (),
-                collections.OrderedDict(
-                    num_examples=[tf.int64],
-                    num_over=[tf.float32],
-                    loss=[tf.float32, tf.float32],
-                ),
-            ),
+            client_work=(),
             aggregator=collections.OrderedDict(
                 value_sum_process=(), weight_sum_process=()
             ),
@@ -684,16 +621,9 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
                         distributor=(),
                         client_work=collections.OrderedDict(
                             eval=collections.OrderedDict(
-                                current_round_metrics=collections.OrderedDict(
-                                    num_examples=tf.int64,
-                                    num_over=tf.float32,
-                                    loss=tf.float32,
-                                ),
-                                total_rounds_metrics=collections.OrderedDict(
-                                    num_examples=tf.int64,
-                                    num_over=tf.float32,
-                                    loss=tf.float32,
-                                ),
+                                num_examples=tf.int64,
+                                num_over=tf.float32,
+                                loss=tf.float32,
                             )
                         ),
                         aggregator=collections.OrderedDict(
@@ -714,7 +644,7 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
         ),
     )
     _, result = evaluate.next(state, create_client_data())
-    eval_result = result['client_work']['eval']['current_round_metrics']
+    eval_result = result['client_work']['eval']
 
     # Now have an expectation for loss since the local bias is initialized at 0
     # and not reconstructed. MSE is (y - 1 * x)^2 for each example, for a mean
@@ -759,12 +689,7 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
                 )
             ),
             distributor=(),
-            client_work=(
-                (),
-                collections.OrderedDict(
-                    loss=[tf.float32, tf.float32],
-                ),
-            ),
+            client_work=(),
             aggregator=collections.OrderedDict(
                 value_sum_process=(), weight_sum_process=()
             ),
@@ -791,14 +716,7 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
                     collections.OrderedDict(
                         distributor=(),
                         client_work=collections.OrderedDict(
-                            eval=collections.OrderedDict(
-                                current_round_metrics=collections.OrderedDict(
-                                    loss=tf.float32,
-                                ),
-                                total_rounds_metrics=collections.OrderedDict(
-                                    loss=tf.float32,
-                                ),
-                            )
+                            eval=collections.OrderedDict(loss=tf.float32)
                         ),
                         aggregator=collections.OrderedDict(
                             mean_value=(), mean_weight=()
@@ -818,7 +736,7 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
         ),
     )
     _, result = evaluate.next(state, create_client_data())
-    eval_result = result['client_work']['eval']['current_round_metrics']
+    eval_result = result['client_work']['eval']
 
     # Ensure loss decreases from reconstruction vs. initializing the bias to 0.
     # MSE is (y - 1 * x)^2 for each example, for a mean of
@@ -889,14 +807,7 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
                 )
             ),
             distributor=tf.int32,
-            client_work=(
-                (),
-                collections.OrderedDict(
-                    num_examples=[tf.int64],
-                    num_over=[tf.float32],
-                    loss=[tf.float32, tf.float32],
-                ),
-            ),
+            client_work=(),
             aggregator=collections.OrderedDict(
                 value_sum_process=(), weight_sum_process=()
             ),
@@ -924,16 +835,9 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
                         distributor=tf.float32,
                         client_work=collections.OrderedDict(
                             eval=collections.OrderedDict(
-                                current_round_metrics=collections.OrderedDict(
-                                    num_examples=tf.int64,
-                                    num_over=tf.float32,
-                                    loss=tf.float32,
-                                ),
-                                total_rounds_metrics=collections.OrderedDict(
-                                    num_examples=tf.int64,
-                                    num_over=tf.float32,
-                                    loss=tf.float32,
-                                ),
+                                num_examples=tf.int64,
+                                num_over=tf.float32,
+                                loss=tf.float32,
                             )
                         ),
                         aggregator=collections.OrderedDict(
