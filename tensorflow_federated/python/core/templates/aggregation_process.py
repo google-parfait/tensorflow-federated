@@ -185,4 +185,4 @@ class AggregationProcess(measured_process.MeasuredProcess):
   @property
   def is_weighted(self) -> bool:
     """True if `next` takes a third argument for weights."""
-    return len(self.next.type_signature.parameter) == 3
+    return len(self.next.type_signature.parameter) == 3  # pytype: disable=wrong-arg-types

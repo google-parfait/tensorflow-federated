@@ -79,7 +79,9 @@ class EstimationProcess(iterative_process.IterativeProcess):
 
     py_typecheck.check_type(report_fn, computation_base.Computation)
     report_fn_arg_type = report_fn.type_signature.parameter
-    if not report_fn_arg_type.is_assignable_from(self.state_type):
+    if report_fn_arg_type is None or not report_fn_arg_type.is_assignable_from(
+        self.state_type
+    ):
       raise errors.TemplateStateNotAssignableError(
           'The state type of the process must be assignable to the '
           'input argument of `report_fn`, but the state type is: '
@@ -125,7 +127,9 @@ class EstimationProcess(iterative_process.IterativeProcess):
     estimate_type = self.report.type_signature.result
     map_fn_arg_type = map_fn.type_signature.parameter
 
-    if not map_fn_arg_type.is_assignable_from(estimate_type):
+    if map_fn_arg_type is None or not map_fn_arg_type.is_assignable_from(
+        estimate_type
+    ):
       raise EstimateNotAssignableError(
           'The return type of `report` of this process must be '
           'assignable to the input argument of `map_fn`, but '
