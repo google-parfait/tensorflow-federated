@@ -61,7 +61,7 @@ REQUIRED_PACKAGES = [
     'attrs~=21.4',
     'cachetools~=3.1',
     'dm-tree==0.1.8',
-    'dp-accounting==0.4.1',
+    'dp-accounting==0.4.2',
     'farmhashpy==0.4.0',
     'google-vizier==0.1.4',
     'grpcio~=1.46',
@@ -72,7 +72,7 @@ REQUIRED_PACKAGES = [
     'semantic-version~=2.6',
     'tensorflow-compression~=2.12.0',  # Requires TF x.y.* for ABI compatibility
     'tensorflow-model-optimization==0.7.3',
-    'tensorflow-privacy==0.8.9',
+    'tensorflow-privacy==0.8.10',
     'tensorflow~=2.12.0',
     'tqdm~=4.64',
     'typing-extensions~=4.4.0',
