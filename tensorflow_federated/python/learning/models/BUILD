@@ -165,6 +165,12 @@ py_library(
 )
 
 py_test(
+    name = "reconstruction_model_test",
+    srcs = ["reconstruction_model_test.py"],
+    deps = [":reconstruction_model"],
+)
+
+py_test(
     name = "serialization_test",
     srcs = ["serialization_test.py"],
     deps = [
