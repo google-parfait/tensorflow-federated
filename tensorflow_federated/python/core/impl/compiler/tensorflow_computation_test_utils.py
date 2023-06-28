@@ -53,20 +53,24 @@ def _stamp_value_into_graph(
     else:
       with graph.as_default():
         return tf.constant(
-            value, dtype=type_signature.dtype, shape=type_signature.shape
+            value,
+            dtype=type_signature.dtype,  # pytype: disable=attribute-error
+            shape=type_signature.shape,  # pytype: disable=attribute-error
         )
   elif type_signature.is_struct():
     if isinstance(value, (list, dict)):
       value = structure.from_container(value)
     stamped_elements = []
-    named_type_signatures = structure.to_elements(type_signature)
+    named_type_signatures = structure.to_elements(type_signature)  # pytype: disable=wrong-arg-types
     for (name, type_signature), element in zip(named_type_signatures, value):
       stamped_element = _stamp_value_into_graph(element, type_signature, graph)
       stamped_elements.append((name, stamped_element))
     return structure.Struct(stamped_elements)
   elif type_signature.is_sequence():
     return tensorflow_utils.make_data_set_from_elements(
-        graph, value, type_signature.element
+        graph,
+        value,
+        type_signature.element,  # pytype: disable=attribute-error
     )
   else:
     raise NotImplementedError(
@@ -87,9 +91,11 @@ def run_tensorflow(computation_proto: pb.Computation, arg: Any = None) -> Any:
   """
   with tf.Graph().as_default() as graph:
     type_signature = type_serialization.deserialize_type(computation_proto.type)
-    if type_signature.parameter is not None:
+    if type_signature.parameter is not None:  # pytype: disable=attribute-error
       stamped_arg = _stamp_value_into_graph(
-          arg, type_signature.parameter, graph
+          arg,
+          type_signature.parameter,  # pytype: disable=attribute-error
+          graph,
       )
     else:
       stamped_arg = None

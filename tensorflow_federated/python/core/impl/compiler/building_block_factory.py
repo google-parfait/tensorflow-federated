@@ -225,7 +225,7 @@ class SelectionSpec:
 def _extract_selections(parameter_value, output_spec):
   results = []
   for selection_spec in output_spec:
-    result_element = parameter_value[selection_spec.tuple_index]
+    result_element = parameter_value[selection_spec.tuple_index]  # pytype: disable=unsupported-operands
     for selection in selection_spec.selection_sequence:
       py_typecheck.check_type(selection, int)
       result_element = result_element[selection]
@@ -493,7 +493,8 @@ def create_federated_getitem_call(
   py_typecheck.check_type(idx, (int, slice))
   py_typecheck.check_type(arg.type_signature, computation_types.FederatedType)
   py_typecheck.check_type(
-      arg.type_signature.member, computation_types.StructType
+      arg.type_signature.member,  # pytype: disable=attribute-error
+      computation_types.StructType,
   )
   getitem_comp = create_federated_getitem_comp(arg, idx)
   return create_federated_map_or_apply(getitem_comp, arg)
@@ -521,7 +522,8 @@ def create_federated_getattr_call(
   py_typecheck.check_type(name, str)
   py_typecheck.check_type(arg.type_signature, computation_types.FederatedType)
   py_typecheck.check_type(
-      arg.type_signature.member, computation_types.StructType
+      arg.type_signature.member,  # pytype: disable=attribute-error
+      computation_types.StructType,
   )
   getattr_comp = create_federated_getattr_comp(arg, name)
   return create_federated_map_or_apply(getattr_comp, arg)
@@ -549,11 +551,12 @@ def create_federated_getattr_comp(
   py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
   py_typecheck.check_type(comp.type_signature, computation_types.FederatedType)
   py_typecheck.check_type(
-      comp.type_signature.member, computation_types.StructType
+      comp.type_signature.member,  # pytype: disable=attribute-error
+      computation_types.StructType,
   )
   py_typecheck.check_type(name, str)
   element_names = [
-      x for x, _ in structure.iter_elements(comp.type_signature.member)
+      x for x, _ in structure.iter_elements(comp.type_signature.member)  # pytype: disable=attribute-error
   ]
   if name not in element_names:
     raise ValueError(
@@ -561,7 +564,7 @@ def create_federated_getattr_comp(
             name, comp.formatted_representation()
         )
     )
-  apply_input = building_blocks.Reference('x', comp.type_signature.member)
+  apply_input = building_blocks.Reference('x', comp.type_signature.member)  # pytype: disable=attribute-error
   selected = building_blocks.Selection(apply_input, name=name)
   apply_lambda = building_blocks.Lambda(
       'x', apply_input.type_signature, selected
@@ -593,14 +596,15 @@ def create_federated_getitem_comp(
   py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
   py_typecheck.check_type(comp.type_signature, computation_types.FederatedType)
   py_typecheck.check_type(
-      comp.type_signature.member, computation_types.StructType
+      comp.type_signature.member,  # pytype: disable=attribute-error
+      computation_types.StructType,
   )
   py_typecheck.check_type(key, (int, slice))
-  apply_input = building_blocks.Reference('x', comp.type_signature.member)
+  apply_input = building_blocks.Reference('x', comp.type_signature.member)  # pytype: disable=attribute-error
   if isinstance(key, int):
     selected = building_blocks.Selection(apply_input, index=key)
   else:
-    elems = structure.to_elements(comp.type_signature.member)
+    elems = structure.to_elements(comp.type_signature.member)  # pytype: disable=attribute-error
     index_range = range(*key.indices(len(elems)))
     elem_list = []
     for k in index_range:
@@ -658,7 +662,7 @@ def create_computation_appending(
   ref = building_blocks.Reference('comps', comps.type_signature)
   sel_0 = building_blocks.Selection(ref, index=0)
   elements = []
-  named_type_signatures = structure.to_elements(comp1.type_signature)
+  named_type_signatures = structure.to_elements(comp1.type_signature)  # pytype: disable=wrong-arg-types
   for index, (name, _) in enumerate(named_type_signatures):
     sel = building_blocks.Selection(sel_0, index=index)
     elements.append((name, sel))
@@ -671,7 +675,7 @@ def create_computation_appending(
 
 def _unname_fn_parameter(fn, unnamed_parameter_type):
   """Coerces `fn` to a comp whose parameter type is `unnamed_parameter_type`."""
-  if structure.name_list(fn.type_signature.parameter):
+  if structure.name_list(fn.type_signature.parameter):  # pytype: disable=attribute-error
     return building_blocks.Lambda(
         'a',
         unnamed_parameter_type,
@@ -735,15 +739,17 @@ def create_federated_aggregate(
   # Its okay if the first argument of accumulate is assignable from the zero,
   # without being the exact type. This occurs when accumulate has a type like
   # (<int32[?], int32> -> int32[?]) but zero is int32[0].
-  zero_arg_type = accumulate.type_signature.parameter[0]
+  zero_arg_type = accumulate.type_signature.parameter[0]  # pytype: disable=attribute-error
   zero_arg_type.check_assignable_from(zero.type_signature)
   result_type = computation_types.FederatedType(
-      report.type_signature.result, placements.SERVER
+      report.type_signature.result,  # pytype: disable=attribute-error
+      placements.SERVER,
   )
 
-  accumulate_parameter_type = computation_types.StructType(
-      [zero_arg_type, value.type_signature.member]
-  )
+  accumulate_parameter_type = computation_types.StructType([
+      zero_arg_type,
+      value.type_signature.member,  # pytype: disable=attribute-error
+  ])
   accumulate = _unname_fn_parameter(accumulate, accumulate_parameter_type)
   merge_parameter_type = computation_types.StructType(
       [zero_arg_type, zero_arg_type]
@@ -792,7 +798,8 @@ def create_federated_apply(
   py_typecheck.check_type(fn, building_blocks.ComputationBuildingBlock)
   py_typecheck.check_type(arg, building_blocks.ComputationBuildingBlock)
   result_type = computation_types.FederatedType(
-      fn.type_signature.result, placements.SERVER
+      fn.type_signature.result,  # pytype: disable=attribute-error
+      placements.SERVER,
   )
   intrinsic_type = computation_types.FunctionType(
       (fn.type_signature, arg.type_signature), result_type
@@ -830,7 +837,9 @@ def create_federated_broadcast(
   """
   py_typecheck.check_type(value, building_blocks.ComputationBuildingBlock)
   result_type = computation_types.FederatedType(
-      value.type_signature.member, placements.CLIENTS, all_equal=True
+      value.type_signature.member,  # pytype: disable=attribute-error
+      placements.CLIENTS,
+      all_equal=True,
   )
   intrinsic_type = computation_types.FunctionType(
       value.type_signature, result_type
@@ -872,7 +881,9 @@ def create_federated_eval(
   else:
     raise TypeError('Unsupported placement {}.'.format(placement))
   result_type = computation_types.FederatedType(
-      fn.type_signature.result, placement, all_equal=all_equal
+      fn.type_signature.result,  # pytype: disable=attribute-error
+      placement,
+      all_equal=all_equal,
   )
   intrinsic_type = computation_types.FunctionType(
       fn.type_signature, result_type
@@ -913,10 +924,12 @@ def create_federated_map(
   py_typecheck.check_type(fn, building_blocks.ComputationBuildingBlock)
   py_typecheck.check_type(arg, building_blocks.ComputationBuildingBlock)
   parameter_type = computation_types.FederatedType(
-      arg.type_signature.member, placements.CLIENTS
+      arg.type_signature.member,  # pytype: disable=attribute-error
+      placements.CLIENTS,
   )
   result_type = computation_types.FederatedType(
-      fn.type_signature.result, placements.CLIENTS
+      fn.type_signature.result,  # pytype: disable=attribute-error
+      placements.CLIENTS,
   )
   intrinsic_type = computation_types.FunctionType(
       (fn.type_signature, parameter_type), result_type
@@ -956,10 +969,14 @@ def create_federated_map_all_equal(
   py_typecheck.check_type(fn, building_blocks.ComputationBuildingBlock)
   py_typecheck.check_type(arg, building_blocks.ComputationBuildingBlock)
   parameter_type = computation_types.FederatedType(
-      arg.type_signature.member, placements.CLIENTS, all_equal=True
+      arg.type_signature.member,  # pytype: disable=attribute-error
+      placements.CLIENTS,
+      all_equal=True,
   )
   result_type = computation_types.FederatedType(
-      fn.type_signature.result, placements.CLIENTS, all_equal=True
+      fn.type_signature.result,  # pytype: disable=attribute-error
+      placements.CLIENTS,
+      all_equal=True,
   )
   intrinsic_type = computation_types.FunctionType(
       (fn.type_signature, parameter_type), result_type
@@ -995,16 +1012,16 @@ def create_federated_map_or_apply(
   """
   py_typecheck.check_type(fn, building_blocks.ComputationBuildingBlock)
   py_typecheck.check_type(arg, building_blocks.ComputationBuildingBlock)
-  if arg.type_signature.placement is placements.CLIENTS:
-    if arg.type_signature.all_equal:
+  if arg.type_signature.placement is placements.CLIENTS:  # pytype: disable=attribute-error
+    if arg.type_signature.all_equal:  # pytype: disable=attribute-error
       return create_federated_map_all_equal(fn, arg)
     else:
       return create_federated_map(fn, arg)
-  elif arg.type_signature.placement is placements.SERVER:
+  elif arg.type_signature.placement is placements.SERVER:  # pytype: disable=attribute-error
     return create_federated_apply(fn, arg)
   else:
     raise TypeError(
-        'Unsupported placement {}.'.format(arg.type_signature.placement)
+        'Unsupported placement {}.'.format(arg.type_signature.placement)  # pytype: disable=attribute-error
     )
 
 
@@ -1035,7 +1052,8 @@ def create_federated_mean(
   if weight is not None:
     py_typecheck.check_type(weight, building_blocks.ComputationBuildingBlock)
   result_type = computation_types.FederatedType(
-      value.type_signature.member, placements.SERVER
+      value.type_signature.member,  # pytype: disable=attribute-error
+      placements.SERVER,
   )
   if weight is not None:
     intrinsic_type = computation_types.FunctionType(
@@ -1078,9 +1096,9 @@ def _cast(
   def cast_fn(value):
     def cast_element(element, type_signature: computation_types.Type):
       type_signature.check_tensor()
-      return tf.cast(element, type_signature.dtype)
+      return tf.cast(element, type_signature.dtype)  # pytype: disable=attribute-error
 
-    if comp.type_signature.is_struct():
+    if isinstance(comp.type_signature, computation_types.StructType):
       return structure.map_structure(cast_element, value, type_signature)
     return cast_element(value, type_signature)
 
@@ -1111,7 +1129,8 @@ def create_federated_secure_modular_sum(
   py_typecheck.check_type(value, building_blocks.ComputationBuildingBlock)
   py_typecheck.check_type(modulus, building_blocks.ComputationBuildingBlock)
   result_type = computation_types.FederatedType(
-      value.type_signature.member, placements.SERVER
+      value.type_signature.member,  # pytype: disable=attribute-error
+      placements.SERVER,
   )
   intrinsic_type = computation_types.FunctionType(
       [
@@ -1133,7 +1152,10 @@ def create_federated_secure_modular_sum(
 
   # In order to run `tf.math.floormod`, our modulus and value must be the same
   # type.
-  casted_mod = _cast(mod_ref, value.type_signature.member)
+  casted_mod = _cast(
+      mod_ref,
+      value.type_signature.member,  # pytype: disable=attribute-error
+  )
   # Since in the preapply_modulus case the modulus is expected to be available
   # at the client as well as at the server for aggregation, we need to broadcast
   # the modulus to be able to avoid repeating the modulus value (which could
@@ -1149,7 +1171,9 @@ def create_federated_secure_modular_sum(
     return structure.map_structure(tf.math.floormod, value, mod)
 
   structural_modulus_tf = create_tensorflow_binary_operator(
-      structural_modulus, value.type_signature.member, casted_mod.type_signature
+      structural_modulus,
+      value.type_signature.member,  # pytype: disable=attribute-error
+      casted_mod.type_signature,
   )
   value_modded = create_federated_map_or_apply(
       structural_modulus_tf, value_with_mod
@@ -1191,7 +1215,8 @@ def create_federated_secure_sum(
   py_typecheck.check_type(value, building_blocks.ComputationBuildingBlock)
   py_typecheck.check_type(max_input, building_blocks.ComputationBuildingBlock)
   result_type = computation_types.FederatedType(
-      value.type_signature.member, placements.SERVER
+      value.type_signature.member,  # pytype: disable=attribute-error
+      placements.SERVER,
   )
   intrinsic_type = computation_types.FunctionType(
       [
@@ -1238,7 +1263,8 @@ def create_federated_secure_sum_bitwidth(
   py_typecheck.check_type(value, building_blocks.ComputationBuildingBlock)
   py_typecheck.check_type(bitwidth, building_blocks.ComputationBuildingBlock)
   result_type = computation_types.FederatedType(
-      value.type_signature.member, placements.SERVER
+      value.type_signature.member,  # pytype: disable=attribute-error
+      placements.SERVER,
   )
   intrinsic_type = computation_types.FunctionType(
       [
@@ -1314,7 +1340,8 @@ def create_federated_sum(
   """
   py_typecheck.check_type(value, building_blocks.ComputationBuildingBlock)
   result_type = computation_types.FederatedType(
-      value.type_signature.member, placements.SERVER
+      value.type_signature.member,  # pytype: disable=attribute-error
+      placements.SERVER,
   )
   intrinsic_type = computation_types.FunctionType(
       type_conversions.type_to_non_all_equal(value.type_signature), result_type
@@ -1359,7 +1386,7 @@ def create_federated_unzip(
     ValueError: If `value` does not contain any elements.
   """
   py_typecheck.check_type(value, building_blocks.ComputationBuildingBlock)
-  named_type_signatures = structure.to_elements(value.type_signature.member)
+  named_type_signatures = structure.to_elements(value.type_signature.member)  # pytype: disable=attribute-error
   length = len(named_type_signatures)
   if length == 0:
     raise ValueError('federated_zip is only supported on non-empty tuples.')
@@ -1372,7 +1399,8 @@ def create_federated_unzip(
     intrinsic = create_federated_map_or_apply(fn, value_ref)
     elements.append((name, intrinsic))
   result = building_blocks.Struct(
-      elements, value.type_signature.member.python_container
+      elements,
+      value.type_signature.member.python_container,  # pytype: disable=attribute-error
   )
   symbols = ((value_ref.name, value),)
   return building_blocks.Block(symbols, result)
@@ -1467,10 +1495,10 @@ def create_federated_zip(
   def _record_placements(type_signature: computation_types.Type):
     """Records the placements in `type_signature` to `all_placements`."""
     if type_signature.is_federated():
-      all_placements.add(type_signature.placement)
+      all_placements.add(type_signature.placement)  # pytype: disable=attribute-error
     elif type_signature.is_struct():
-      for i in range(len(type_signature)):
-        _record_placements(type_signature[i])
+      for i in range(len(type_signature)):  # pytype: disable=wrong-arg-types
+        _record_placements(type_signature[i])  # pytype: disable=unsupported-operands
     else:
       raise TypeError(
           'Expected type signatures consisting of structures of StructType '
@@ -1536,8 +1564,8 @@ def create_generic_constant(
   py_typecheck.check_type(type_spec, computation_types.Type)
   inferred_scalar_value_type = type_conversions.infer_type(scalar_value)
   if (
-      not inferred_scalar_value_type.is_tensor()
-      or inferred_scalar_value_type.shape != tf.TensorShape(())
+      not inferred_scalar_value_type.is_tensor()  # pytype: disable=attribute-error
+      or inferred_scalar_value_type.shape != tf.TensorShape(())  # pytype: disable=attribute-error
   ):
     raise TypeError(
         'Must pass a scalar value to `create_generic_constant`; encountered a '
@@ -1552,23 +1580,29 @@ def create_generic_constant(
   ):
     return create_tensorflow_constant(type_spec, scalar_value)
   elif type_spec.is_federated():
-    unplaced_zero = create_tensorflow_constant(type_spec.member, scalar_value)
-    if type_spec.placement == placements.CLIENTS:
+    unplaced_zero = create_tensorflow_constant(type_spec.member, scalar_value)  # pytype: disable=attribute-error
+    if type_spec.placement == placements.CLIENTS:  # pytype: disable=attribute-error
       placement_federated_type = computation_types.FederatedType(
-          type_spec.member, type_spec.placement, all_equal=True
+          type_spec.member,  # pytype: disable=attribute-error
+          type_spec.placement,  # pytype: disable=attribute-error
+          all_equal=True,
       )
       placement_fn_type = computation_types.FunctionType(
-          type_spec.member, placement_federated_type
+          type_spec.member,  # pytype: disable=attribute-error
+          placement_federated_type,
       )
       placement_function = building_blocks.Intrinsic(
           intrinsic_defs.FEDERATED_VALUE_AT_CLIENTS.uri, placement_fn_type
       )
-    elif type_spec.placement == placements.SERVER:
+    elif type_spec.placement == placements.SERVER:  # pytype: disable=attribute-error
       placement_federated_type = computation_types.FederatedType(
-          type_spec.member, type_spec.placement, all_equal=True
+          type_spec.member,  # pytype: disable=attribute-error
+          type_spec.placement,  # pytype: disable=attribute-error
+          all_equal=True,
       )
       placement_fn_type = computation_types.FunctionType(
-          type_spec.member, placement_federated_type
+          type_spec.member,  # pytype: disable=attribute-error
+          placement_federated_type,
       )
       placement_function = building_blocks.Intrinsic(
           intrinsic_defs.FEDERATED_VALUE_AT_SERVER.uri, placement_fn_type
@@ -1576,12 +1610,14 @@ def create_generic_constant(
     return building_blocks.Call(placement_function, unplaced_zero)
   elif type_spec.is_struct():
     elements = []
-    for k in range(len(type_spec)):
-      elements.append(create_generic_constant(type_spec[k], scalar_value))
-    names = [name for name, _ in structure.iter_elements(type_spec)]
+    for k in range(len(type_spec)):  # pytype: disable=wrong-arg-types
+      elements.append(create_generic_constant(type_spec[k], scalar_value))  # pytype: disable=unsupported-operands
+    names = [name for name, _ in structure.iter_elements(type_spec)]  # pytype: disable=wrong-arg-types
     packed_elements = building_blocks.Struct(elements)
     named_tuple = create_named_tuple(
-        packed_elements, names, type_spec.python_container
+        packed_elements,
+        names,
+        type_spec.python_container,  # pytype: disable=attribute-error
     )
     return named_tuple
   else:
@@ -1615,7 +1651,7 @@ def create_sequence_map(
   """
   py_typecheck.check_type(fn, building_blocks.ComputationBuildingBlock)
   py_typecheck.check_type(arg, building_blocks.ComputationBuildingBlock)
-  result_type = computation_types.SequenceType(fn.type_signature.result)
+  result_type = computation_types.SequenceType(fn.type_signature.result)  # pytype: disable=attribute-error
   intrinsic_type = computation_types.FunctionType(
       (fn.type_signature, arg.type_signature), result_type
   )
@@ -1654,9 +1690,10 @@ def create_sequence_reduce(
   py_typecheck.check_type(value, building_blocks.ComputationBuildingBlock)
   py_typecheck.check_type(zero, building_blocks.ComputationBuildingBlock)
   py_typecheck.check_type(op, building_blocks.ComputationBuildingBlock)
-  op_parameter_type = computation_types.StructType(
-      [zero.type_signature, value.type_signature.element]
-  )
+  op_parameter_type = computation_types.StructType([
+      zero.type_signature,
+      value.type_signature.element,  # pytype: disable=attribute-error
+  ])
   op = _unname_fn_parameter(op, op_parameter_type)
   intrinsic_type = computation_types.FunctionType(
       (
@@ -1664,7 +1701,7 @@ def create_sequence_reduce(
           zero.type_signature,
           op.type_signature,
       ),
-      op.type_signature.result,
+      op.type_signature.result,  # pytype: disable=attribute-error
   )
   intrinsic = building_blocks.Intrinsic(
       intrinsic_defs.SEQUENCE_REDUCE.uri, intrinsic_type
@@ -1693,7 +1730,8 @@ def create_sequence_sum(
   """
   py_typecheck.check_type(value, building_blocks.ComputationBuildingBlock)
   intrinsic_type = computation_types.FunctionType(
-      value.type_signature, value.type_signature.element
+      value.type_signature,
+      value.type_signature.element,  # pytype: disable=attribute-error
   )
   intrinsic = building_blocks.Intrinsic(
       intrinsic_defs.SEQUENCE_SUM.uri, intrinsic_type
@@ -1722,12 +1760,13 @@ def _create_naming_function(tuple_type_to_name, names_to_add, container_type):
     lengths.
   """
   py_typecheck.check_type(tuple_type_to_name, computation_types.StructType)
-  if len(names_to_add) != len(tuple_type_to_name):
+  if len(names_to_add) != len(tuple_type_to_name):  # pytype: disable=wrong-arg-types
     raise ValueError(
         'Number of elements in `names_to_add` must match number of element in '
         'the named tuple type `tuple_type_to_name`; here, `names_to_add` has '
         '{} elements and `tuple_type_to_name` has {}.'.format(
-            len(names_to_add), len(tuple_type_to_name)
+            len(names_to_add),  # pytype: disable=wrong-arg-types
+            len(tuple_type_to_name),  # pytype: disable=wrong-arg-types
         )
     )
   naming_lambda_arg = building_blocks.Reference('x', tuple_type_to_name)
@@ -1792,13 +1831,14 @@ def _check_generic_operator_type(type_spec):
         'only federated, tuple and tensor types; you have passed an argument '
         'of type {} '.format(type_spec)
     )
-  if not (type_spec.is_struct() and len(type_spec) == 2):
+  if not (type_spec.is_struct() and len(type_spec) == 2):  # pytype: disable=wrong-arg-types
     raise TypeError(
         'We are trying to construct a generic operator declaring argument that '
         'is not a two-tuple, the type {}.'.format(type_spec)
     )
   if not type_analysis.is_binary_op_with_upcast_compatible_pair(
-      type_spec[0], type_spec[1]
+      type_spec[0],  # pytype: disable=unsupported-operands
+      type_spec[1],  # pytype: disable=unsupported-operands
   ):
     raise TypeError(
         'The two-tuple you have passed in is incompatible with upcasted '
@@ -1837,7 +1877,7 @@ def create_tensorflow_binary_operator_with_upcast(
   tf_proto, type_signature = (
       tensorflow_computation_factory.create_binary_operator_with_upcast(
           type_signature, operator
-      )
+      )  # pytype: disable=wrong-arg-types
   )
   compiled = building_blocks.CompiledComputation(
       tf_proto, type_signature=type_signature
@@ -1882,7 +1922,7 @@ def apply_binary_operator_with_upcast(
   py_typecheck.check_type(arg, building_blocks.ComputationBuildingBlock)
   py_typecheck.check_callable(operator)
   if arg.type_signature.is_federated():
-    tuple_type = arg.type_signature.member
+    tuple_type = arg.type_signature.member  # pytype: disable=attribute-error
     assert tuple_type.is_struct()
   elif arg.type_signature.is_struct():
     tuple_type = arg.type_signature
@@ -1949,8 +1989,8 @@ def zip_to_match_type(
           subtype: computation_types.Type,
       ) -> tuple[computation_types.Type, bool]:
         if subtype.is_federated():
-          placements_encountered.add(subtype.placement)
-          return subtype.member, True
+          placements_encountered.add(subtype.placement)  # pytype: disable=attribute-error
+          return subtype.member, True  # pytype: disable=attribute-error
         return subtype, False
 
       unplaced_struct, _ = type_transformations.transform_type_postorder(
@@ -1977,12 +2017,12 @@ def zip_to_match_type(
 
     if source_type.is_struct():
       if target_type.is_federated():
-        return _struct_can_be_zipped_to_federated(source_type, target_type)
+        return _struct_can_be_zipped_to_federated(source_type, target_type)  # pytype: disable=wrong-arg-types
       elif target_type.is_struct():
         elements_zippable = []
         for (s_name, s_el), (t_name, t_el) in zip(
-            structure.iter_elements(source_type),
-            structure.iter_elements(target_type),
+            structure.iter_elements(source_type),  # pytype: disable=wrong-arg-types
+            structure.iter_elements(target_type),  # pytype: disable=wrong-arg-types
         ):
           elements_zippable.append(
               _struct_elem_zippable(s_name, s_el, t_name, t_el)
@@ -2005,8 +2045,8 @@ def zip_to_match_type(
       ref_to_source = building_blocks.Reference(ref_name, source.type_signature)
       for idx, ((_, t_el), (s_name, _)) in enumerate(
           zip(
-              structure.iter_elements(target_type),
-              structure.iter_elements(source.type_signature),
+              structure.iter_elements(target_type),  # pytype: disable=wrong-arg-types
+              structure.iter_elements(source.type_signature),  # pytype: disable=wrong-arg-types
           )
       ):
         s_selection = building_blocks.Selection(ref_to_source, index=idx)

@@ -16,7 +16,7 @@
 from collections.abc import Callable
 import functools
 import types
-from typing import Any, Optional
+from typing import Any, Optional, TypeVar
 
 import tensorflow as tf
 
@@ -39,6 +39,7 @@ from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 # within the factory.
 
 ComputationProtoAndType = local_computation_factory_base.ComputationProtoAndType
+T = TypeVar('T', bound=computation_types.Type)
 
 
 class TensorFlowComputationFactory(
@@ -92,8 +93,8 @@ class TensorFlowComputationFactory(
 
 def _tensorflow_comp(
     tensorflow_proto: pb.TensorFlow,
-    type_signature: computation_types.Type,
-) -> ComputationProtoAndType:
+    type_signature: T,
+) -> tuple[pb.Computation, T]:
   serialized_type = type_serialization.serialize_type(type_signature)
   comp = pb.Computation(type=serialized_type, tensorflow=tensorflow_proto)
   return (comp, type_signature)
@@ -101,7 +102,7 @@ def _tensorflow_comp(
 
 def create_constant(
     value, type_spec: computation_types.Type
-) -> ComputationProtoAndType:
+) -> tuple[pb.Computation, computation_types.FunctionType]:
   """Returns a tensorflow computation returning a constant `value`.
 
   The returned computation has the type signature `( -> T)`, where `T` is
@@ -128,7 +129,7 @@ def create_constant(
   inferred_value_type = type_conversions.infer_type(value)
   if inferred_value_type.is_struct() and not type_spec.is_assignable_from(
       inferred_value_type
-  ):
+  ):  # pytype: disable=attribute-error
     raise TypeError(
         'Must pass a only tensor or structure of tensor values to '
         '`create_tensorflow_constant`; encountered a value {v} with inferred '
@@ -136,7 +137,7 @@ def create_constant(
             v=value, t=inferred_value_type, s=type_spec
         )
     )
-  if inferred_value_type.is_struct():
+  if inferred_value_type.is_struct():  # pytype: disable=attribute-error
     value = structure.from_container(value, recursive=True)
   tensor_dtypes_in_type_spec = []
 
@@ -149,13 +150,13 @@ def create_constant(
   type_transformations.transform_type_postorder(type_spec, _pack_dtypes)
 
   if any(x.is_integer for x in tensor_dtypes_in_type_spec) and (
-      inferred_value_type.is_tensor()
-      and not inferred_value_type.dtype.is_integer
+      inferred_value_type.is_tensor()  # pytype: disable=attribute-error
+      and not inferred_value_type.dtype.is_integer  # pytype: disable=attribute-error
   ):
     raise TypeError(
         'Only integers can be used as scalar values if our desired constant '
         'type spec contains any integer tensors; passed scalar {} of dtype {} '
-        'for type spec {}.'.format(value, inferred_value_type.dtype, type_spec)
+        'for type spec {}.'.format(value, inferred_value_type.dtype, type_spec)  # pytype: disable=attribute-error
     )
 
   result_type = type_spec
@@ -163,19 +164,20 @@ def create_constant(
   def _create_result_tensor(type_spec, value):
     """Packs `value` into `type_spec` recursively."""
     if type_spec.is_tensor():
-      type_spec.shape.assert_is_fully_defined()
-      result = tf.constant(value, dtype=type_spec.dtype, shape=type_spec.shape)
+      type_spec.shape.assert_is_fully_defined()  # pytype: disable=attribute-error
+      result = tf.constant(value, dtype=type_spec.dtype, shape=type_spec.shape)  # pytype: disable=attribute-error
     else:
       elements = []
-      if inferred_value_type.is_struct():
+      if inferred_value_type.is_struct():  # pytype: disable=attribute-error
         # Copy the leaf values according to the type_spec structure.
         for (name, elem_type), value in zip(
-            structure.iter_elements(type_spec), value
+            structure.iter_elements(type_spec),  # pytype: disable=wrong-arg-types
+            value,
         ):
           elements.append((name, _create_result_tensor(elem_type, value)))
       else:
         # "Broadcast" the value to each level of the type_spec structure.
-        for _, elem_type in structure.iter_elements(type_spec):
+        for _, elem_type in structure.iter_elements(type_spec):  # pytype: disable=wrong-arg-types
           elements.append((None, _create_result_tensor(elem_type, value)))
       result = structure.Struct(elements)
     return result
@@ -317,7 +319,7 @@ def create_binary_operator(
   parameter_binding = pb.TensorFlow.Binding(
       struct=pb.TensorFlow.StructBinding(
           element=[operand_1_binding, operand_2_binding]
-      )
+      )  # pytype: disable=wrong-arg-types
   )
   tensorflow = pb.TensorFlow(
       graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
@@ -369,7 +371,7 @@ def create_binary_operator_with_upcast(
   def _pack_into_type(to_pack: tf.Tensor, type_spec: computation_types.Type):
     """Pack Tensor value `to_pack` into the nested structure `type_spec`."""
     if type_spec.is_struct():
-      elem_iter = structure.iter_elements(type_spec)
+      elem_iter = structure.iter_elements(type_spec)  # pytype: disable=wrong-arg-types
       return structure.Struct(
           [
               (elem_name, _pack_into_type(to_pack, elem_type))
@@ -380,7 +382,7 @@ def create_binary_operator_with_upcast(
       value_tensor_type = type_conversions.type_from_tensors(to_pack)
       if type_spec.is_assignable_from(value_tensor_type):
         return to_pack
-      elif not type_spec.shape.is_fully_defined():
+      elif not type_spec.shape.is_fully_defined():  # pytype: disable=attribute-error
         raise TypeError(
             'Cannot generate TensorFlow creating binary operator '
             'with first type not assignable from second, and '
@@ -389,7 +391,7 @@ def create_binary_operator_with_upcast(
             f'Packing value {to_pack} into this type is '
             'undefined.'
         )
-      return tf.cast(tf.broadcast_to(to_pack, type_spec.shape), type_spec.dtype)
+      return tf.cast(tf.broadcast_to(to_pack, type_spec.shape), type_spec.dtype)  # pytype: disable=attribute-error
 
   with tf.Graph().as_default() as graph:
     first_arg, operand_1_binding = tensorflow_utils.stamp_parameter_in_graph(
@@ -414,12 +416,19 @@ def create_binary_operator_with_upcast(
     elif type_signature[0].is_assignable_from(type_signature[1]):
       second_arg = operand_2_value
     else:
-      second_arg = _pack_into_type(operand_2_value, type_signature[0])
+      second_arg = _pack_into_type(
+          operand_2_value,
+          type_signature[0],  # pytype: disable=wrong-arg-types
+      )
 
     if type_signature[0].is_tensor():
       result_value = operator(first_arg, second_arg)
     elif type_signature[0].is_struct():
-      result_value = structure.map_structure(operator, first_arg, second_arg)
+      result_value = structure.map_structure(
+          operator,
+          first_arg,  # pytype: disable=wrong-arg-types
+          second_arg,  # pytype: disable=wrong-arg-types
+      )
     else:
       raise TypeError(
           'Encountered unexpected type {t}; can only handle Tensor '
@@ -434,7 +443,7 @@ def create_binary_operator_with_upcast(
   parameter_binding = pb.TensorFlow.Binding(
       struct=pb.TensorFlow.StructBinding(
           element=[operand_1_binding, operand_2_binding]
-      )
+      )  # pytype: disable=wrong-arg-types
   )
   tensorflow = pb.TensorFlow(
       graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
@@ -470,7 +479,7 @@ def create_indexing_operator(
   parameter_binding = pb.TensorFlow.Binding(
       struct=pb.TensorFlow.StructBinding(
           element=[operand_binding, index_binding]
-      )
+      )  # pytype: disable=wrong-arg-types
   )
   tensorflow = pb.TensorFlow(
       graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),

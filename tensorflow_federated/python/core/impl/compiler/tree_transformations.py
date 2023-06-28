@@ -788,7 +788,7 @@ def get_intrinsic_reductions() -> (
 
   def federated_sum(x):
     py_typecheck.check_type(x, building_blocks.ComputationBuildingBlock)
-    operand_type = x.type_signature.member
+    operand_type = x.type_signature.member  # pytype: disable=attribute-error
     zero = building_block_factory.create_generic_constant(operand_type, 0)
     plus_op = (
         building_block_factory.create_tensorflow_binary_operator_with_upcast(
@@ -944,7 +944,7 @@ def _get_secure_intrinsic_reductions() -> (
   def federated_secure_sum(arg):
     py_typecheck.check_type(arg, building_blocks.ComputationBuildingBlock)
     summand_arg = building_blocks.Selection(arg, index=0)
-    summand_type = summand_arg.type_signature.member
+    summand_type = summand_arg.type_signature.member  # pytype: disable=attribute-error
     max_input_arg = building_blocks.Selection(arg, index=1)
     max_input_type = max_input_arg.type_signature
 
@@ -1084,14 +1084,14 @@ def _get_secure_intrinsic_reductions() -> (
       modulus = _ensure_structure(
           modulus,
           unplaced_modulus.type_signature,
-          raw_summed_values.type_signature.member,
+          raw_summed_values.type_signature.member,  # pytype: disable=attribute-error
       )
       return structure.map_structure(tf.math.mod, summed_values, modulus)
 
     modulus_fn = building_block_factory.create_tensorflow_binary_operator(
         map_structure_mod,
-        operand_type=raw_summed_values.type_signature.member,
-        second_operand_type=placed_modulus.type_signature.member,
+        operand_type=raw_summed_values.type_signature.member,  # pytype: disable=attribute-error
+        second_operand_type=placed_modulus.type_signature.member,  # pytype: disable=attribute-error
     )
     modulus_computed = building_block_factory.create_federated_apply(
         modulus_fn, modulus_arg
