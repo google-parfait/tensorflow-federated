@@ -62,31 +62,37 @@ def transform_type_postorder(
   py_typecheck.check_callable(transform_fn)
   if type_signature.is_federated():
     transformed_member, member_mutated = transform_type_postorder(
-        type_signature.member, transform_fn
+        type_signature.member,  # pytype: disable=attribute-error
+        transform_fn,
     )
     if member_mutated:
       type_signature = computation_types.FederatedType(
-          transformed_member, type_signature.placement, type_signature.all_equal
+          transformed_member,
+          type_signature.placement,  # pytype: disable=attribute-error
+          type_signature.all_equal,  # pytype: disable=attribute-error
       )
     type_signature, type_signature_mutated = transform_fn(type_signature)
     return type_signature, type_signature_mutated or member_mutated
   elif type_signature.is_sequence():
     transformed_element, element_mutated = transform_type_postorder(
-        type_signature.element, transform_fn
+        type_signature.element,  # pytype: disable=attribute-error
+        transform_fn,
     )
     if element_mutated:
       type_signature = computation_types.SequenceType(transformed_element)
     type_signature, type_signature_mutated = transform_fn(type_signature)
     return type_signature, type_signature_mutated or element_mutated
   elif type_signature.is_function():
-    if type_signature.parameter is not None:
+    if type_signature.parameter is not None:  # pytype: disable=attribute-error
       transformed_parameter, parameter_mutated = transform_type_postorder(
-          type_signature.parameter, transform_fn
+          type_signature.parameter,  # pytype: disable=attribute-error
+          transform_fn,
       )
     else:
       transformed_parameter, parameter_mutated = (None, False)
     transformed_result, result_mutated = transform_type_postorder(
-        type_signature.result, transform_fn
+        type_signature.result,  # pytype: disable=attribute-error
+        transform_fn,
     )
     if parameter_mutated or result_mutated:
       type_signature = computation_types.FunctionType(
@@ -99,7 +105,7 @@ def transform_type_postorder(
   elif type_signature.is_struct():
     elements = []
     elements_mutated = False
-    for element in structure.iter_elements(type_signature):
+    for element in structure.iter_elements(type_signature):  # pytype: disable=wrong-arg-types
       transformed_element, element_mutated = transform_type_postorder(
           element[1], transform_fn
       )
@@ -108,7 +114,8 @@ def transform_type_postorder(
     if elements_mutated:
       if type_signature.is_struct_with_python():
         type_signature = computation_types.StructWithPythonType(
-            elements, type_signature.python_container
+            elements,
+            type_signature.python_container,  # pytype: disable=attribute-error
         )
       else:
         type_signature = computation_types.StructType(elements)

@@ -196,9 +196,9 @@ def type_to_tf_dtypes_and_shapes(type_spec: computation_types.Type):
   """
   py_typecheck.check_type(type_spec, computation_types.Type)
   if type_spec.is_tensor():
-    return (type_spec.dtype, type_spec.shape)
+    return (type_spec.dtype, type_spec.shape)  # pytype: disable=attribute-error
   elif type_spec.is_struct():
-    elements = structure.to_elements(type_spec)
+    elements = structure.to_elements(type_spec)  # pytype: disable=wrong-arg-types
     if not elements:
       output_dtypes = []
       output_shapes = []
@@ -238,8 +238,8 @@ def type_to_tf_dtypes_and_shapes(type_spec: computation_types.Type):
         element_output = type_to_tf_dtypes_and_shapes(element_spec)
         output_dtypes.append(element_output[0])
         output_shapes.append(element_output[1])
-    if type_spec.python_container is not None:
-      container_type = type_spec.python_container
+    if type_spec.python_container is not None:  # pytype: disable=attribute-error
+      container_type = type_spec.python_container  # pytype: disable=attribute-error
 
       def build_py_container(elements):
         if py_typecheck.is_named_tuple(container_type) or py_typecheck.is_attrs(
@@ -304,29 +304,29 @@ def type_to_tf_structure(type_spec: computation_types.Type):
   """
   py_typecheck.check_type(type_spec, computation_types.Type)
   if type_spec.is_tensor():
-    return tf.TensorSpec(type_spec.shape, type_spec.dtype)
+    return tf.TensorSpec(type_spec.shape, type_spec.dtype)  # pytype: disable=attribute-error
   elif type_spec.is_struct():
-    elements = structure.to_elements(type_spec)
+    elements = structure.to_elements(type_spec)  # pytype: disable=wrong-arg-types
     if not elements:
       return ()
     element_outputs = [(k, type_to_tf_structure(v)) for k, v in elements]
     named = element_outputs[0][0] is not None
     if not all((e[0] is not None) == named for e in element_outputs):
       raise ValueError('Tuple elements inconsistently named.')
-    if type_spec.python_container is None:
+    if type_spec.python_container is None:  # pytype: disable=attribute-error
       if named:
         return collections.OrderedDict(element_outputs)
       else:
         return tuple(v for _, v in element_outputs)
     else:
-      container_type = type_spec.python_container
+      container_type = type_spec.python_container  # pytype: disable=attribute-error
       if py_typecheck.is_named_tuple(container_type) or py_typecheck.is_attrs(
           container_type
       ):
         return container_type(**dict(element_outputs))
       elif container_type is tf.RaggedTensor:
-        flat_values = type_spec.flat_values
-        nested_row_splits = type_spec.nested_row_splits
+        flat_values = type_spec.flat_values  # pytype: disable=attribute-error
+        nested_row_splits = type_spec.nested_row_splits  # pytype: disable=attribute-error
         ragged_rank = len(nested_row_splits)
         return tf.RaggedTensorSpec(
             shape=tf.TensorShape([None] * (ragged_rank + 1)),
@@ -340,20 +340,23 @@ def type_to_tf_structure(type_spec: computation_types.Type):
         # we *can* infer the rank based on the shapes of `indices` or
         # `dense_shape`.
         if (
-            type_spec.indices.shape is not None
-            and type_spec.indices.shape.dims[1] is not None
+            type_spec.indices.shape is not None  # pytype: disable=attribute-error
+            and type_spec.indices.shape.dims[1] is not None  # pytype: disable=attribute-error
         ):
-          rank = type_spec.indices.shape.dims[1]
+          rank = type_spec.indices.shape.dims[1]  # pytype: disable=attribute-error
           shape = tf.TensorShape([None] * rank)
         elif (
-            type_spec.dense_shape.shape is not None
-            and type_spec.dense_shape.shape.dims[0] is not None
+            type_spec.dense_shape.shape is not None  # pytype: disable=attribute-error
+            and type_spec.dense_shape.shape.dims[0] is not None  # pytype: disable=attribute-error
         ):
-          rank = type_spec.dense_shape.shape.dims[0]
+          rank = type_spec.dense_shape.shape.dims[0]  # pytype: disable=attribute-error
           shape = tf.TensorShape([None] * rank)
         else:
           shape = None
-        return tf.SparseTensorSpec(shape=shape, dtype=type_spec.values.dtype)
+        return tf.SparseTensorSpec(
+            shape=shape,
+            dtype=type_spec.values.dtype,  # pytype: disable=attribute-error
+        )
       elif named:
         return container_type(element_outputs)
       else:
@@ -426,8 +429,8 @@ def type_to_py_container(value, type_spec):
       not present in the corresponding index of `type_spec`.
   """
   if type_spec.is_federated():
-    if type_spec.all_equal:
-      structure_type_spec = type_spec.member
+    if type_spec.all_equal:  # pytype: disable=attribute-error
+      structure_type_spec = type_spec.member  # pytype: disable=attribute-error
     else:
       if not isinstance(value, list):
         raise TypeError(
@@ -441,7 +444,7 @@ def type_to_py_container(value, type_spec):
     structure_type_spec = type_spec
 
   if structure_type_spec.is_sequence():
-    element_type = structure_type_spec.element
+    element_type = structure_type_spec.element  # pytype: disable=attribute-error
     if isinstance(value, list):
       return [type_to_py_container(element, element_type) for element in value]
     if isinstance(value, tf.data.Dataset):
@@ -466,7 +469,7 @@ def type_to_py_container(value, type_spec):
     # avoid re-converting. This is a possibly dangerous assumption.
     return value
 
-  container_type = structure_type_spec.python_container
+  container_type = structure_type_spec.python_container  # pytype: disable=attribute-error
 
   # Ensure that names are only added, not mismatched or removed
   names_from_value = structure.name_list_with_nones(value)
@@ -556,7 +559,9 @@ def type_to_py_container(value, type_spec):
     return container_type(elements)
 
 
-def _structure_from_tensor_type_tree_inner(fn, type_spec):
+def _structure_from_tensor_type_tree_inner(
+    fn, type_spec: computation_types.Type
+):
   """Helper for `structure_from_tensor_type_tree`."""
   if type_spec.is_struct():
 
@@ -565,10 +570,10 @@ def _structure_from_tensor_type_tree_inner(fn, type_spec):
       return (name, _structure_from_tensor_type_tree_inner(fn, nested_type))
 
     return structure.Struct(
-        map(_map_element, structure.iter_elements(type_spec))
+        map(_map_element, structure.iter_elements(type_spec))  # pytype: disable=wrong-arg-types
     )
   elif type_spec.is_tensor():
-    return fn(type_spec)
+    return fn(type_spec)  # pytype: disable=wrong-arg-types
   else:
     raise ValueError(
         'Expected tensor or structure type, found type:\n'
