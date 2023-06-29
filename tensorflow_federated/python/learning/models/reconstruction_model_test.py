@@ -14,7 +14,9 @@
 """Tests for reconstruction_model.py."""
 
 import collections
+from typing import Optional
 
+from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.python.learning.models import reconstruction_model
@@ -38,6 +40,57 @@ def _build_two_layer_model() -> tf.keras.Model:
   ])
 
 
+def _build_encapsulated_layer_model() -> tf.keras.Model:
+  class _EncapsulatingLayer(tf.keras.layers.Layer):
+
+    def __init__(self, layer_to_encapsulate: tf.keras.layers.Layer):
+      super().__init__()
+      self._layer_to_encapsulate = layer_to_encapsulate
+
+    def call(self, x: tf.Tensor) -> tf.Tensor:
+      return self._layer_to_encapsulate(x)
+
+  class _EncapsulatedLayerModel(tf.keras.Model):
+    """A Keras model with more complex layer interaction, useful for testing."""
+
+    def __init__(self):
+      super().__init__(name='encapsulated_layer_model')
+      # Note: By making the following Layer a class variable of this Keras
+      # model, it will be added to the layers being tracked by this Keras model.
+      # If the Layer is used in other Layers of this Keras model, the variables
+      # will be shared. This all works from the Keras perspective, but it does
+      # illuminate complications in separating Reconstruction global and local
+      # variables purely via layer. These complications are shown via tests
+      # below.
+      self.dense_to_encapsulate = tf.keras.layers.Dense(
+          5,
+          input_shape=(5,),
+          activation=tf.nn.relu,
+          kernel_initializer='zeros',
+          bias_initializer='zeros',
+      )
+      self.encapsulated_dense = _EncapsulatingLayer(self.dense_to_encapsulate)
+      self.regular_dense = tf.keras.layers.Dense(
+          2,
+          activation=tf.nn.relu,
+          kernel_initializer='zeros',
+          bias_initializer='zeros',
+      )
+
+    def call(
+        self,
+        inputs: tf.Tensor,
+        training: bool = True,
+        mask: Optional[tf.Tensor] = None,
+    ) -> tf.Tensor:
+      del training  # Unused.
+      del mask  # Unused.
+      intermediate = self.encapsulated_dense(inputs)
+      return self.regular_dense(intermediate)
+
+  return _EncapsulatedLayerModel()
+
+
 def _get_input_spec() -> collections.OrderedDict[str, tf.TensorSpec]:
   return collections.OrderedDict(
       x=tf.TensorSpec(shape=[None, 5], dtype=tf.float32),
@@ -45,7 +98,7 @@ def _get_input_spec() -> collections.OrderedDict[str, tf.TensorSpec]:
   )
 
 
-class ReconstructionModelTest(tf.test.TestCase):
+class ReconstructionModelTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_from_keras_model_with_global_and_local_layers(self):
     keras_model = _build_two_layer_model()
@@ -184,6 +237,96 @@ class ReconstructionModelTest(tf.test.TestCase):
         batch_output_global_local.num_examples,
         batch_output_only_global.num_examples,
     )
+
+  @parameterized.named_parameters(
+      (
+          'more_than_two_elements',
+          [
+              tf.TensorSpec(shape=[None, 1], dtype=tf.float32),
+              tf.TensorSpec(shape=[None, 1], dtype=tf.float32),
+              tf.TensorSpec(shape=[None, 1], dtype=tf.float32),
+          ],
+      ),
+      (
+          'dict_with_key_not_named_x',
+          collections.OrderedDict(
+              foo=tf.TensorSpec(shape=[None, 1], dtype=tf.float32),
+              y=tf.TensorSpec(shape=[None, 1], dtype=tf.float32),
+          ),
+      ),
+      (
+          'dict_with_key_not_named_y',
+          collections.OrderedDict(
+              x=tf.TensorSpec(shape=[None, 1], dtype=tf.float32),
+              bar=tf.TensorSpec(shape=[None, 1], dtype=tf.float32),
+          ),
+      ),
+  )
+  def test_bad_input_spec_raises_error(self, input_spec):
+    keras_model = _build_two_layer_model()
+
+    with self.assertRaises(ValueError):
+      reconstruction_model.ReconstructionModel.from_keras_model(
+          keras_model,
+          global_layers=keras_model.layers[1:],
+          local_layers=keras_model.layers[:1],
+          input_spec=input_spec,
+      )
+
+  def test_from_keras_model_with_local_layer_not_in_model_raises_error(self):
+    keras_model = _build_two_layer_model()
+    input_spec = _get_input_spec()
+
+    # A layer that is *not* in the above Keras model.
+    random_other_layer = tf.keras.layers.Dense(42)
+    random_other_layer.build((42))
+
+    with self.assertRaises(ValueError):
+      reconstruction_model.ReconstructionModel.from_keras_model(
+          keras_model,
+          global_layers=keras_model.layers[1:],
+          local_layers=[random_other_layer] + keras_model.layers[:1],
+          input_spec=input_spec,
+      )
+
+  def test_from_keras_model_with_global_layer_not_in_model_raises_error(self):
+    keras_model = _build_two_layer_model()
+    input_spec = _get_input_spec()
+
+    # A layer that is *not* in the above Keras model.
+    random_other_layer = tf.keras.layers.Dense(42)
+    random_other_layer.build((42))
+
+    with self.assertRaises(ValueError):
+      reconstruction_model.ReconstructionModel.from_keras_model(
+          keras_model,
+          global_layers=[random_other_layer] + keras_model.layers[1:],
+          local_layers=keras_model.layers[:1],
+          input_spec=input_spec,
+      )
+
+  def test_from_keras_model_non_disjoint_global_and_local_vars_raises_error(
+      self,
+  ):
+    keras_model = _build_encapsulated_layer_model()
+    input_spec = _get_input_spec()
+
+    # Confirm that first two layers of the model have same trainable variables.
+    for layer_0_var, layer_1_var in zip(
+        keras_model.layers[0].trainable_variables,
+        keras_model.layers[1].trainable_variables,
+    ):
+      self.assertIs(layer_0_var, layer_1_var)
+
+    # This will cause problems, because the global layers and local layers have
+    # overlapping variables. Test that this is caught and raises a ValueError.
+    with self.assertRaises(ValueError):
+      reconstruction_model.ReconstructionModel.from_keras_model(
+          keras_model,
+          global_layers=keras_model.layers[1:],
+          local_layers=keras_model.layers[:1],
+          input_spec=input_spec,
+      )
 
 
 if __name__ == '__main__':

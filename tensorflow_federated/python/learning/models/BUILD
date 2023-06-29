@@ -160,6 +160,7 @@ py_library(
     srcs = ["reconstruction_model.py"],
     deps = [
         ":model_weights",
+        ":variable",
         "//tensorflow_federated/python/core/impl/types:computation_types",
     ],
 )
