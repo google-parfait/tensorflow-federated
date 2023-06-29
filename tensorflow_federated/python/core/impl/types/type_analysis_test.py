@@ -679,48 +679,6 @@ class CheckConcreteInstanceOf(absltest.TestCase):
     type_analysis.check_concrete_instance_of(concrete, generic)
 
 
-def _convert_tensor_to_float(type_spec):
-  if type_spec.is_tensor():
-    return computation_types.TensorType(tf.float32, shape=type_spec.shape), True
-  return type_spec, False
-
-
-def _convert_abstract_type_to_tensor(type_spec):
-  if type_spec.is_abstract():
-    return computation_types.TensorType(tf.float32), True
-  return type_spec, False
-
-
-def _convert_placement_type_to_tensor(type_spec):
-  if type_spec.is_placement():
-    return computation_types.TensorType(tf.float32), True
-  return type_spec, False
-
-
-def _convert_function_to_tensor(type_spec):
-  if type_spec.is_function():
-    return computation_types.TensorType(tf.float32), True
-  return type_spec, False
-
-
-def _convert_federated_to_tensor(type_spec):
-  if type_spec.is_federated():
-    return computation_types.TensorType(tf.float32), True
-  return type_spec, False
-
-
-def _convert_sequence_to_tensor(type_spec):
-  if type_spec.is_sequence():
-    return computation_types.TensorType(tf.float32), True
-  return type_spec, False
-
-
-def _convert_tuple_to_tensor(type_spec):
-  if type_spec.is_struct():
-    return computation_types.TensorType(tf.float32), True
-  return type_spec, False
-
-
 class IsBinaryOpWithUpcastCompatibleTest(absltest.TestCase):
 
   def test_fails_on_none(self):
