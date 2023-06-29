@@ -39,9 +39,17 @@ HLL_BIT_INDEX_TAIL = HLL_SKETCH_SIZE - HLL_BIT_INDEX_HEAD
 HLL_ALPHA = 0.697
 
 
+@tf.function
 def _log2(u: tf.Tensor) -> tf.Tensor:
-  """Integer log_2."""
-  return tf.cast(tf.experimental.numpy.log2(tf.cast(u, tf.float64)), tf.int64)
+  """Compute integer log base 2."""
+  # Implemented in terms of bit-wise operations instead of
+  # tf.numpy.experimental.log so that it works with large integers up to 2^63.
+  ans = tf.constant(0, dtype=tf.int64)
+  u = tf.cast(u, dtype=tf.int64)
+  while u > 0:
+    ans += 1
+    u = u // 2
+  return ans - 1
 
 
 def build_client_hyperloglog_computation() -> computation_base.Computation:
@@ -70,11 +78,11 @@ def build_client_hyperloglog_computation() -> computation_base.Computation:
     initial_state = tf.zeros(HLL_SKETCH_SIZE, dtype=tf.int64)
 
     def reduce_func(state, hash_value):
-      j = tf.bitwise.right_shift(hash_value, HLL_BIT_INDEX_TAIL)
+      j = hash_value // 2**HLL_BIT_INDEX_TAIL
       w = tf.bitwise.bitwise_and(hash_value, 2**HLL_BIT_INDEX_TAIL - 1)
       rho = HLL_BIT_INDEX_TAIL - _log2(w)
-      sketch = tf.one_hot(j, HLL_SKETCH_SIZE, dtype=tf.int64) * rho
-      return tf.maximum(sketch, state)
+      sketch = tf.one_hot(tf.cast(j, tf.int32), HLL_SKETCH_SIZE, dtype=tf.int64)
+      return tf.maximum(sketch * rho, state)
 
     return client_data.reduce(initial_state, reduce_func)
 
@@ -125,7 +133,12 @@ def build_federated_secure_max_computation() -> computation_base.Computation:
     @tensorflow_computation.tf_computation
     @tf.function
     def _onehot_sketch(sketch: tf.Tensor) -> tf.Tensor:
-      return tf.one_hot(sketch, HLL_BIT_INDEX_TAIL + 1, dtype=tf.int32)
+      return tf.cast(
+          tf.one_hot(
+              tf.cast(sketch, tf.int32), HLL_BIT_INDEX_TAIL + 1, dtype=tf.int64
+          ),
+          tf.int32,
+      )
 
     @tensorflow_computation.tf_computation
     @tf.function
