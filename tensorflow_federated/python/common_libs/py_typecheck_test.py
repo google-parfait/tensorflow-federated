@@ -67,20 +67,6 @@ class PyTypeCheckTest(parameterized.TestCase):
         (int, bool, float),
     )
 
-  def test_check_none(self):
-    py_typecheck.check_none(None)
-    with self.assertRaises(TypeError):
-      py_typecheck.check_none(10)
-    with self.assertRaisesRegex(TypeError, 'foo'):
-      py_typecheck.check_none(10, 'foo')
-
-  def test_check_not_none(self):
-    py_typecheck.check_not_none(10)
-    with self.assertRaises(TypeError):
-      py_typecheck.check_not_none(None)
-    with self.assertRaisesRegex(TypeError, 'foo'):
-      py_typecheck.check_not_none(None, 'foo')
-
   def test_check_subclass(self):
     py_typecheck.check_subclass(PyTypeCheckTest, parameterized.TestCase)
     py_typecheck.check_subclass(PyTypeCheckTest, (parameterized.TestCase, int))
