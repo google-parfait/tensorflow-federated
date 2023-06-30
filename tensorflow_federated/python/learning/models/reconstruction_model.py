@@ -399,7 +399,7 @@ class ReconstructionModel(metaclass=abc.ABCMeta):
 
 def _validate_input_spec(input_spec):
   """Checks and raises errors if `input_spec` is not as expected."""
-  if len(input_spec) != 2:
+  if len(input_spec) != 2:  # pytype: disable=wrong-arg-types
     raise ValueError(
         'The top-level structure in `input_spec` must contain '
         'exactly two top-level elements, as it must specify type '
@@ -452,7 +452,7 @@ class _KerasReconstructionModel(ReconstructionModel):
     if isinstance(input_spec, Mapping):
       model_argument_spec = input_spec[variable.MODEL_ARG_NAME]
     else:
-      model_argument_spec = input_spec[0]
+      model_argument_spec = input_spec[0]  # pytype: disable=unsupported-operands
     self._keras_model.build(model_argument_spec)
 
     self._global_trainable_variables = []
