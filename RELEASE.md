@@ -1,3 +1,27 @@
+# Release 0.60.0
+
+## Major Features and Improvements
+
+*   DTensor TF executor is now integrated with the default TFF C++ worker.
+*   Added federated program documentation and guidelines.
+*   Removed the `pytype` dependency from TFF.
+*   `tff.learning.algorithms.build_fed_recon_eval` now supports TFF optimizers.
+
+## Breaking Changes
+
+*   Updated `tff.types.deserialize_type` to not accept/return `None`.
+*   Removed the `tff.framework.ComputationBuildingBlock.is_foo` methods.
+*   Renamed `tff.learning.algorithms.build_personalization_eval` to
+    `tff.learning.algorithms.build_personalization_eval_computation`
+*   `tff.learning.models.ReconstructionModel.from_keras_model` will now check
+    that global and local variables are disjoint, raise ValueError if they are
+    not.
+
+## Bug Fixes
+
+*   Fixed `tff.learning.models.ReconstructionModel.has_only_global_variables`
+    (it was returning incorrect value).
+
 # Release 0.59.0
 
 ## Major Features and Improvements
