@@ -22,7 +22,7 @@ import tensorflow as tf
 from tensorflow_federated.python.learning.models import reconstruction_model
 
 
-def _build_two_layer_model() -> tf.keras.Model:
+def _get_two_layer_model() -> tf.keras.Model:
   return tf.keras.models.Sequential([
       tf.keras.layers.Dense(
           5,
@@ -40,7 +40,7 @@ def _build_two_layer_model() -> tf.keras.Model:
   ])
 
 
-def _build_encapsulated_layer_model() -> tf.keras.Model:
+def _get_encapsulated_layer_model() -> tf.keras.Model:
   class _EncapsulatingLayer(tf.keras.layers.Layer):
 
     def __init__(self, layer_to_encapsulate: tf.keras.layers.Layer):
@@ -91,6 +91,11 @@ def _build_encapsulated_layer_model() -> tf.keras.Model:
   return _EncapsulatedLayerModel()
 
 
+def _get_unbuilt_model() -> tf.keras.Model:
+  """Gets Keras model instance that has not yet had it's `build()` method called."""
+  return _get_encapsulated_layer_model()
+
+
 def _get_input_spec() -> collections.OrderedDict[str, tf.TensorSpec]:
   return collections.OrderedDict(
       x=tf.TensorSpec(shape=[None, 5], dtype=tf.float32),
@@ -100,8 +105,8 @@ def _get_input_spec() -> collections.OrderedDict[str, tf.TensorSpec]:
 
 class ReconstructionModelTest(tf.test.TestCase, parameterized.TestCase):
 
-  def test_from_keras_model_with_global_and_local_layers(self):
-    keras_model = _build_two_layer_model()
+  def test_from_keras_model_and_layers_with_global_and_local_layers(self):
+    keras_model = _get_two_layer_model()
     local_layers = keras_model.layers[:1]
     global_layers = keras_model.layers[1:]
     input_spec = _get_input_spec()
@@ -114,11 +119,13 @@ class ReconstructionModelTest(tf.test.TestCase, parameterized.TestCase):
     for global_layer in global_layers:
       expected_global_trainable_vars.extend(global_layer.trainable_variables)
 
-    recon_model = reconstruction_model.ReconstructionModel.from_keras_model(
-        keras_model,
-        global_layers=global_layers,
-        local_layers=local_layers,
-        input_spec=input_spec,
+    recon_model = (
+        reconstruction_model.ReconstructionModel.from_keras_model_and_layers(
+            keras_model,
+            global_layers=global_layers,
+            local_layers=local_layers,
+            input_spec=input_spec,
+        )
     )
 
     self.assertFalse(
@@ -155,8 +162,8 @@ class ReconstructionModelTest(tf.test.TestCase, parameterized.TestCase):
     ):
       self.assertIs(var, expected_var)
 
-  def test_from_keras_model_with_only_global_layers(self):
-    keras_model = _build_two_layer_model()
+  def test_from_keras_model_and_layers_with_only_global_layers(self):
+    keras_model = _get_two_layer_model()
     local_layers = []
     global_layers = keras_model.layers
     input_spec = _get_input_spec()
@@ -165,11 +172,13 @@ class ReconstructionModelTest(tf.test.TestCase, parameterized.TestCase):
     for global_layer in global_layers:
       expected_global_trainable_vars.extend(global_layer.trainable_variables)
 
-    recon_model = reconstruction_model.ReconstructionModel.from_keras_model(
-        keras_model,
-        global_layers=global_layers,
-        local_layers=local_layers,
-        input_spec=input_spec,
+    recon_model = (
+        reconstruction_model.ReconstructionModel.from_keras_model_and_layers(
+            keras_model,
+            global_layers=global_layers,
+            local_layers=local_layers,
+            input_spec=input_spec,
+        )
     )
 
     self.assertTrue(
@@ -199,11 +208,11 @@ class ReconstructionModelTest(tf.test.TestCase, parameterized.TestCase):
       self.assertIs(var, expected_var)
 
   def test_forward_pass_is_same_regardless_of_global_local_layer_split(self):
-    keras_model = _build_two_layer_model()
+    keras_model = _get_two_layer_model()
     input_spec = _get_input_spec()
 
     model_global_local = (
-        reconstruction_model.ReconstructionModel.from_keras_model(
+        reconstruction_model.ReconstructionModel.from_keras_model_and_layers(
             keras_model,
             global_layers=keras_model.layers[1:],
             local_layers=keras_model.layers[:1],
@@ -212,7 +221,7 @@ class ReconstructionModelTest(tf.test.TestCase, parameterized.TestCase):
     )
 
     model_only_global = (
-        reconstruction_model.ReconstructionModel.from_keras_model(
+        reconstruction_model.ReconstructionModel.from_keras_model_and_layers(
             keras_model,
             global_layers=keras_model.layers[1:],
             local_layers=keras_model.layers[:1],
@@ -263,18 +272,20 @@ class ReconstructionModelTest(tf.test.TestCase, parameterized.TestCase):
       ),
   )
   def test_bad_input_spec_raises_error(self, input_spec):
-    keras_model = _build_two_layer_model()
+    keras_model = _get_two_layer_model()
 
     with self.assertRaises(ValueError):
-      reconstruction_model.ReconstructionModel.from_keras_model(
+      reconstruction_model.ReconstructionModel.from_keras_model_and_layers(
           keras_model,
           global_layers=keras_model.layers[1:],
           local_layers=keras_model.layers[:1],
           input_spec=input_spec,
       )
 
-  def test_from_keras_model_with_local_layer_not_in_model_raises_error(self):
-    keras_model = _build_two_layer_model()
+  def test_from_keras_model_and_layers_with_local_layer_not_in_model_raises_error(
+      self,
+  ):
+    keras_model = _get_two_layer_model()
     input_spec = _get_input_spec()
 
     # A layer that is *not* in the above Keras model.
@@ -282,15 +293,17 @@ class ReconstructionModelTest(tf.test.TestCase, parameterized.TestCase):
     random_other_layer.build((42))
 
     with self.assertRaises(ValueError):
-      reconstruction_model.ReconstructionModel.from_keras_model(
+      reconstruction_model.ReconstructionModel.from_keras_model_and_layers(
           keras_model,
           global_layers=keras_model.layers[1:],
           local_layers=[random_other_layer] + keras_model.layers[:1],
           input_spec=input_spec,
       )
 
-  def test_from_keras_model_with_global_layer_not_in_model_raises_error(self):
-    keras_model = _build_two_layer_model()
+  def test_from_keras_model_and_layers_with_global_layer_not_in_model_raises_error(
+      self,
+  ):
+    keras_model = _get_two_layer_model()
     input_spec = _get_input_spec()
 
     # A layer that is *not* in the above Keras model.
@@ -298,17 +311,17 @@ class ReconstructionModelTest(tf.test.TestCase, parameterized.TestCase):
     random_other_layer.build((42))
 
     with self.assertRaises(ValueError):
-      reconstruction_model.ReconstructionModel.from_keras_model(
+      reconstruction_model.ReconstructionModel.from_keras_model_and_layers(
           keras_model,
           global_layers=[random_other_layer] + keras_model.layers[1:],
           local_layers=keras_model.layers[:1],
           input_spec=input_spec,
       )
 
-  def test_from_keras_model_non_disjoint_global_and_local_vars_raises_error(
+  def test_from_keras_model_and_layers_non_disjoint_global_and_local_vars_raises_error(
       self,
   ):
-    keras_model = _build_encapsulated_layer_model()
+    keras_model = _get_encapsulated_layer_model()
     input_spec = _get_input_spec()
 
     # Confirm that first two layers of the model have same trainable variables.
@@ -321,10 +334,192 @@ class ReconstructionModelTest(tf.test.TestCase, parameterized.TestCase):
     # This will cause problems, because the global layers and local layers have
     # overlapping variables. Test that this is caught and raises a ValueError.
     with self.assertRaises(ValueError):
-      reconstruction_model.ReconstructionModel.from_keras_model(
+      reconstruction_model.ReconstructionModel.from_keras_model_and_layers(
           keras_model,
           global_layers=keras_model.layers[1:],
           local_layers=keras_model.layers[:1],
+          input_spec=input_spec,
+      )
+
+  def test_from_keras_model_and_variables_with_global_and_local_variables(self):
+    keras_model = _get_two_layer_model()
+    input_spec = _get_input_spec()
+
+    local_trainable_vars = keras_model.layers[0].trainable_variables
+    global_trainable_vars = keras_model.layers[1].trainable_variables
+    recon_model = (
+        reconstruction_model.ReconstructionModel.from_keras_model_and_variables(
+            keras_model,
+            global_trainable_variables=global_trainable_vars,
+            global_non_trainable_variables=[],
+            local_trainable_variables=local_trainable_vars,
+            local_non_trainable_variables=[],
+            input_spec=input_spec,
+        )
+    )
+
+    self.assertFalse(
+        reconstruction_model.ReconstructionModel.has_only_global_variables(
+            recon_model
+        )
+    )
+
+    self.assertLen(
+        reconstruction_model.ReconstructionModel.get_local_variables(
+            recon_model
+        ).trainable,
+        len(local_trainable_vars),
+    )
+    for var, expected_var in zip(
+        reconstruction_model.ReconstructionModel.get_local_variables(
+            recon_model
+        ).trainable,
+        local_trainable_vars,
+    ):
+      self.assertIs(var, expected_var)
+
+    self.assertLen(
+        reconstruction_model.ReconstructionModel.get_global_variables(
+            recon_model
+        ).trainable,
+        len(global_trainable_vars),
+    )
+    for var, expected_var in zip(
+        reconstruction_model.ReconstructionModel.get_global_variables(
+            recon_model
+        ).trainable,
+        global_trainable_vars,
+    ):
+      self.assertIs(var, expected_var)
+
+  def test_from_keras_model_and_variables_with_only_global_variables(self):
+    keras_model = _get_two_layer_model()
+    input_spec = _get_input_spec()
+
+    global_trainable_vars = []
+    for layer in keras_model.layers:
+      global_trainable_vars.extend(layer.trainable_variables)
+    recon_model = (
+        reconstruction_model.ReconstructionModel.from_keras_model_and_variables(
+            keras_model,
+            global_trainable_variables=global_trainable_vars,
+            global_non_trainable_variables=[],
+            local_trainable_variables=[],
+            local_non_trainable_variables=[],
+            input_spec=input_spec,
+        )
+    )
+
+    self.assertTrue(
+        reconstruction_model.ReconstructionModel.has_only_global_variables(
+            recon_model
+        )
+    )
+
+    self.assertEmpty(
+        reconstruction_model.ReconstructionModel.get_local_variables(
+            recon_model
+        ).trainable
+    )
+
+    self.assertLen(
+        reconstruction_model.ReconstructionModel.get_global_variables(
+            recon_model
+        ).trainable,
+        len(global_trainable_vars),
+    )
+    for var, expected_var in zip(
+        reconstruction_model.ReconstructionModel.get_global_variables(
+            recon_model
+        ).trainable,
+        global_trainable_vars,
+    ):
+      self.assertIs(var, expected_var)
+
+  def test_from_keras_model_and_variables_with_local_variable_not_in_model_raises_error(
+      self,
+  ):
+    keras_model = _get_two_layer_model()
+    input_spec = _get_input_spec()
+
+    # A variable that is *not* in the above Keras model.
+    random_other_variable = tf.Variable(42)
+
+    with self.assertRaises(ValueError):
+      reconstruction_model.ReconstructionModel.from_keras_model_and_variables(
+          keras_model,
+          global_trainable_variables=keras_model.layers[1].trainable_variables,
+          global_non_trainable_variables=[],
+          local_trainable_variables=[random_other_variable]
+          + keras_model.layers[0].trainable_variables,
+          local_non_trainable_variables=[],
+          input_spec=input_spec,
+      )
+
+  def test_from_keras_model_and_variables_with_global_variable_not_in_model_raises_error(
+      self,
+  ):
+    keras_model = _get_two_layer_model()
+    input_spec = _get_input_spec()
+
+    # A variable that is *not* in the above Keras model.
+    random_other_variable = tf.Variable(42)
+
+    with self.assertRaises(ValueError):
+      reconstruction_model.ReconstructionModel.from_keras_model_and_variables(
+          keras_model,
+          global_trainable_variables=[random_other_variable]
+          + keras_model.layers[1].trainable_variables,
+          global_non_trainable_variables=[],
+          local_trainable_variables=keras_model.layers[0].trainable_variables,
+          local_non_trainable_variables=[],
+          input_spec=input_spec,
+      )
+
+  def test_from_keras_model_and_variables_non_disjoint_global_and_local_variables_raises_error(
+      self,
+  ):
+    keras_model = _get_encapsulated_layer_model()
+    input_spec = _get_input_spec()
+
+    # Confirm that first two layers of the model have same trainable variables.
+    for layer_0_var, layer_1_var in zip(
+        keras_model.layers[0].trainable_variables,
+        keras_model.layers[1].trainable_variables,
+    ):
+      self.assertIs(layer_0_var, layer_1_var)
+
+    # This will cause problems, because the global variables and local variables
+    # have overlapping variables. Test this is caught and raises a ValueError.
+    global_trainable_vars = []
+    for layer in keras_model.layers[1:]:
+      global_trainable_vars.extend(layer.trainable_variables)
+    local_trainable_vars = keras_model.layers[0].trainable_variables
+    with self.assertRaises(ValueError):
+      reconstruction_model.ReconstructionModel.from_keras_model_and_variables(
+          keras_model,
+          global_trainable_variables=global_trainable_vars,
+          global_non_trainable_variables=[],
+          local_trainable_variables=local_trainable_vars,
+          local_non_trainable_variables=[],
+          input_spec=input_spec,
+      )
+
+  def test_from_keras_model_and_variables_raises_error_if_model_not_built(self):
+    keras_model = _get_unbuilt_model()
+    global_trainable_vars = keras_model.layers[1].trainable_variables
+    global_non_trainable_vars = keras_model.layers[1].non_trainable_variables
+    local_trainable_vars = keras_model.layers[0].trainable_variables
+    local_non_trainable_vars = keras_model.layers[0].non_trainable_variables
+    input_spec = _get_input_spec()
+
+    with self.assertRaises(ValueError):
+      reconstruction_model.ReconstructionModel.from_keras_model_and_variables(
+          keras_model,
+          global_trainable_variables=global_trainable_vars,
+          global_non_trainable_variables=global_non_trainable_vars,
+          local_trainable_variables=local_trainable_vars,
+          local_non_trainable_variables=local_non_trainable_vars,
           input_spec=input_spec,
       )
 

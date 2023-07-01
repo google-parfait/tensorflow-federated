@@ -331,7 +331,7 @@ class ReconstructionModel(metaclass=abc.ABCMeta):
     return metric_variables
 
   @classmethod
-  def from_keras_model(
+  def from_keras_model_and_layers(
       cls,
       keras_model: tf.keras.Model,
       *,  # Caller passes below args by name.
@@ -372,27 +372,100 @@ class ReconstructionModel(metaclass=abc.ABCMeta):
         `local_layers` contains layers that are not in `keras_model`, or if
         `global_layers` and `local_layers` are not disjoint in their variables.
     """
+    if not keras_model.built:
+      # Build the Keras model so that its variables are created.
+      _validate_input_spec(input_spec)
+      if isinstance(input_spec, Mapping):
+        model_argument_spec = input_spec[variable.MODEL_ARG_NAME]
+      else:
+        model_argument_spec = input_spec[0]  # pytype: disable=unsupported-operands
+      keras_model.build(model_argument_spec)
+
+    global_trainable_variables = []
+    global_non_trainable_variables = []
+    for layer in global_layers:
+      global_trainable_variables.extend(layer.trainable_variables)
+      global_non_trainable_variables.extend(layer.non_trainable_variables)
+
+    local_trainable_variables = []
+    local_non_trainable_variables = []
+    for layer in local_layers:
+      local_trainable_variables.extend(layer.trainable_variables)
+      local_non_trainable_variables.extend(layer.non_trainable_variables)
+
+    return cls.from_keras_model_and_variables(
+        keras_model=keras_model,
+        global_trainable_variables=global_trainable_variables,
+        global_non_trainable_variables=global_non_trainable_variables,
+        local_trainable_variables=local_trainable_variables,
+        local_non_trainable_variables=local_non_trainable_variables,
+        input_spec=input_spec,
+    )
+
+  from_keras_model = from_keras_model_and_layers
+
+  @classmethod
+  def from_keras_model_and_variables(
+      cls,
+      keras_model: tf.keras.Model,
+      *,  # Caller passes below args by name.
+      global_trainable_variables: Iterable[tf.Variable],
+      global_non_trainable_variables: Iterable[tf.Variable],
+      local_trainable_variables: Iterable[tf.Variable],
+      local_non_trainable_variables: Iterable[tf.Variable],
+      input_spec: Any,
+  ) -> 'ReconstructionModel':
+    """Builds a `tff.learning.models.ReconstructionModel` from a `tf.keras.Model`.
+
+    The `tff.learning.models.ReconstructionModel` returned by this function uses
+    `keras_model` for its forward pass and autodifferentiation steps. During
+    reconstruction, variables in `local_trainable_variables` are initialized
+    and trained, and variables in `local_non_trainable_variables` are
+    initialized. Post-reconstruction, variables in `global_trainable_variables`
+    are trained and aggregated on the server. All keras_model variables must be
+    partitioned between global_trainable_variables,
+    global_non_trainable_variables, local_trainable_variables, and
+    local_non_trainable_variables, without overlap.
+
+    Note: If the global and local variables are easily partitioned by layer of
+    the `keras_model`, a more convenient alternative is the
+    `from_keras_model_and_layers`
+    factory method.
+
+    Args:
+      keras_model: A `tf.keras.Model` object that is not compiled.
+      global_trainable_variables: The trainable variables to associate with the
+        post-reconstruction phase.
+      global_non_trainable_variables: The non-trainable variables to associate
+        with the post-reconstruction phase.
+      local_trainable_variables: The trainable variables to associate with the
+        reconstruction phase.
+      local_non_trainable_variables: The non-trainable variables to associate
+        with the reconstruction phase.
+      input_spec: A structure of `tf.TensorSpec`s specifying the type of
+        arguments the model expects. Notice this must be a compound structure of
+        two elements, specifying both the data fed into the model to generate
+        predictions, as its first element, as well as the expected type of the
+        ground truth as its second.
+
+    Returns:
+      A `tff.learning.models.ReconstructionModel` object.
+
+    Raises:
+      TypeError: If `keras_model` is not an instance of `tf.keras.Model`.
+      ValueError: If `keras_model` was compiled, if `keras_model` is not already
+        built, if `input_spec` has unexpected structure (e.g., has more than two
+        elements), if `global_layers` or `local_layers` contains layers that are
+        not in `keras_model`, or if `global_layers` and `local_layers` are not
+        disjoint in their variables.
+    """
     del cls  # Unused.
-    if not isinstance(keras_model, tf.keras.Model):
-      raise TypeError(
-          'Expected `keras_model` to be type `tf.keras.Model`, '
-          f'found {type(keras_model)}'
-      )
-    if len(input_spec) != 2:
-      raise ValueError(
-          'The top-level structure in `input_spec` must contain '
-          'exactly two elements, as it must specify type '
-          'information for both inputs to and predictions from the '
-          'model.'
-      )
-
-    if keras_model._is_compiled:  # pylint: disable=protected-access
-      raise ValueError('`keras_model` must not be compiled.')
-
     return _KerasReconstructionModel(
         inner_model=keras_model,
-        global_layers=global_layers,
-        local_layers=local_layers,
+        global_trainable_variables=global_trainable_variables,
+        global_non_trainable_variables=global_non_trainable_variables,
+        local_trainable_variables=local_trainable_variables,
+        local_non_trainable_variables=local_non_trainable_variables,
         input_spec=input_spec,
     )
 
@@ -438,37 +511,36 @@ class _KerasReconstructionModel(ReconstructionModel):
   def __init__(
       self,
       inner_model: tf.keras.Model,
-      global_layers: Iterable[tf.keras.layers.Layer],
-      local_layers: Iterable[tf.keras.layers.Layer],
+      global_trainable_variables: Iterable[tf.Variable],
+      global_non_trainable_variables: Iterable[tf.Variable],
+      local_trainable_variables: Iterable[tf.Variable],
+      local_non_trainable_variables: Iterable[tf.Variable],
       input_spec: computation_types.Type,
   ):
+    if not isinstance(inner_model, tf.keras.Model):
+      raise TypeError(
+          'Expected `inner_model` to be type `tf.keras.Model`, '
+          f'found {type(inner_model)}'
+      )
+    if inner_model._is_compiled:  # pylint: disable=protected-access
+      raise ValueError('`inner_model` must not be compiled.')
+    if not inner_model.built:
+      raise ValueError(
+          "`inner_model` must be built. Please add a call to the Keras model's "
+          '`build()` method before using the Keras model to construct a '
+          '`ReconstructionModel`.'
+      )
     _validate_input_spec(input_spec)
+
     self._keras_model = inner_model
+    self._global_trainable_variables = list(global_trainable_variables)
+    self._global_non_trainable_variables = list(global_non_trainable_variables)
+    self._local_trainable_variables = list(local_trainable_variables)
+    self._local_non_trainable_variables = list(local_non_trainable_variables)
     self._input_spec = input_spec
 
-    # Build the Keras model so that variables are created; we need the variables
-    # for the next part, to validate properties of the global and local
-    # variables.
-    if isinstance(input_spec, Mapping):
-      model_argument_spec = input_spec[variable.MODEL_ARG_NAME]
-    else:
-      model_argument_spec = input_spec[0]  # pytype: disable=unsupported-operands
-    self._keras_model.build(model_argument_spec)
-
-    self._global_trainable_variables = []
-    self._global_non_trainable_variables = []
-    for layer in global_layers:
-      self._global_trainable_variables.extend(layer.trainable_variables)
-      self._global_non_trainable_variables.extend(layer.non_trainable_variables)
-
-    self._local_trainable_variables = []
-    self._local_non_trainable_variables = []
-    for layer in local_layers:
-      self._local_trainable_variables.extend(layer.trainable_variables)
-      self._local_non_trainable_variables.extend(layer.non_trainable_variables)
-
-    # Ensure global/local layers' trainable/non-trainable variables are disjoint
-    # from each other.
+    # Ensure global/local trainable/non-trainable variables are disjoint from
+    # each other.
     var_refs_sets = {
         'global_trainable_variables': set(
             [var.ref() for var in self._global_trainable_variables]
@@ -494,7 +566,7 @@ class _KerasReconstructionModel(ReconstructionModel):
               f'{variables_intersection}.'
           )
 
-    # Ensure global_layers and local_layers include exactly the Keras model's
+    # Ensure the variable lists arguments include exactly the Keras model's
     # trainable and non-trainable variables. Use hashable refs to uniquely
     # compare variables, and track variable names for informative error
     # messages.
@@ -518,9 +590,9 @@ class _KerasReconstructionModel(ReconstructionModel):
       # set may include variables not present in the other.
       variables_difference = global_and_local_variables ^ keras_variables
       raise ValueError(
-          'Global and local layers must include all trainable '
+          'Global and local variables must include all trainable '
           'and non-trainable variables in the Keras model. '
-          'Difference: {d}, Global and local layers vars: {v}, '
+          'Difference: {d}, Global and local vars: {v}, '
           'Keras vars: {k}'.format(
               d=variables_difference,
               v=global_and_local_variables,
