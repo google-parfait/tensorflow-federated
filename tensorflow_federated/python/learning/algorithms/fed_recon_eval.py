@@ -26,22 +26,22 @@ then (2) with the reconstructed local variables.
 """
 
 import collections
-from collections.abc import Callable
 import functools
 from typing import Any, Optional
 
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import mean
-from tensorflow_federated.python.core.impl.computation import computation_base
+from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
+from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process as measured_process_lib
 from tensorflow_federated.python.learning.algorithms import fed_recon
-from tensorflow_federated.python.learning.metrics import aggregator as metrics_aggregators
+from tensorflow_federated.python.learning.metrics import aggregation_factory
 from tensorflow_federated.python.learning.metrics import keras_finalizer as metrics_finalizers_lib
 from tensorflow_federated.python.learning.models import reconstruction_model
 from tensorflow_federated.python.learning.optimizers import keras_optimizer
@@ -50,6 +50,9 @@ from tensorflow_federated.python.learning.templates import composers
 from tensorflow_federated.python.learning.templates import distributors
 from tensorflow_federated.python.learning.templates import finalizers
 from tensorflow_federated.python.learning.templates import learning_process as learning_process_lib
+
+
+_AggregationProcess = aggregation_process.AggregationProcess
 
 
 def build_fed_recon_eval(
@@ -64,13 +67,9 @@ def build_fed_recon_eval(
         reconstruction_model.ReconstructionDatasetSplitFn
     ] = None,
     model_distributor: Optional[distributors.DistributionProcess] = None,
-    metrics_aggregator: Callable[
-        [
-            fed_recon.MetricFinalizersType,
-            computation_types.StructWithPythonType,
-        ],
-        computation_base.Computation,
-    ] = metrics_aggregators.sum_then_finalize,
+    metrics_aggregation_process: Optional[
+        aggregation_process.AggregationProcess
+    ] = None,
 ) -> learning_process_lib.LearningProcess:
   """Builds a `tff.Computation` for evaluating a reconstruction `Model`.
 
@@ -117,12 +116,14 @@ def build_fed_recon_eval(
       that distributes the model weights on the server to the clients. If set to
       `None`, the distributor is constructed via
       `tff.learning.templates.build_broadcast_process`.
-    metrics_aggregator: A function that takes in the metric finalizers (i.e.,
-      `tff.learning.Model.metric_finalizers()`) and a
-      `tff.types.StructWithPythonType` of the unfinalized metrics (i.e., the TFF
-      type of `tff.learning.Model.report_local_unfinalized_metrics()`), and
-      returns a `tff.Computation` for aggregating the unfinalized metrics. If
-      `None`, this is set to `tff.learning.metrics.sum_then_finalize`.
+    metrics_aggregation_process: An optional `tff.templates.AggregationProcess`
+      which aggregates the local unfinalized metrics at clients to server and
+      finalizes the metrics at server. The `tff.templates.AggregationProcess`
+      accumulates unfinalized metrics across round in the state, and produces a
+      `tuple` of current round metrics and total rounds metrics in the result.
+      If `None`, the `tff.templates.AggregationProcess` created by the
+      `SumThenFinalizeFactory` with metric finalizers defined in the model is
+      used.
 
   Raises:
     TypeError: if `model_distributor` does not have the expected signature.
@@ -146,8 +147,6 @@ def build_fed_recon_eval(
     batch_type = model.input_spec
     return reconstruction_model.ReconstructionModel.get_global_variables(model)
 
-  model_weights_type = build_initial_model_weights.type_signature.result
-
   if dataset_split_fn is None:
     dataset_split_fn = (
         reconstruction_model.ReconstructionModel.build_dataset_split_fn(
@@ -155,10 +154,12 @@ def build_fed_recon_eval(
         )
     )
 
+  model_weights_type = build_initial_model_weights.type_signature.result
+  dataset_type = computation_types.SequenceType(batch_type)
+
   if model_distributor is None:
     model_distributor = distributors.build_broadcast_process(model_weights_type)
 
-  dataset_type = computation_types.SequenceType(batch_type)
   # Metric finalizer functions that will be populated while tracing
   # `client_update` and used later in the federated computation.
   metric_finalizers: collections.OrderedDict[
@@ -291,38 +292,51 @@ def build_fed_recon_eval(
 
     return tf_client_computation(incoming_model_weights, client_dataset)
 
-  empty_state = ()
+  if metrics_aggregation_process is None:
+    metrics_aggregation_process = aggregation_factory.SumThenFinalizeFactory(
+        metric_finalizers
+    ).create(client_computation.type_signature.result)
+  else:
+    py_typecheck.check_type(
+        metrics_aggregation_process,
+        _AggregationProcess,
+        'metrics_aggregation_process',
+    )
 
   @federated_computation.federated_computation
   def client_initialize():
-    return intrinsics.federated_value(empty_state, placements.SERVER)
+    return metrics_aggregation_process.initialize()
 
   @federated_computation.federated_computation(
-      computation_types.at_server(empty_state),
+      client_initialize.type_signature.result,
       computation_types.at_clients(model_weights_type),
       computation_types.at_clients(dataset_type),
   )
-  def client_work(empty_state, model_weights, client_dataset):
-    del empty_state
+  def client_work(state, model_weights, client_dataset):
     unfinalized_metrics = intrinsics.federated_map(
         client_computation, (model_weights, client_dataset)
     )
-    metrics_aggregation_computation = metrics_aggregator(
-        metric_finalizers,
-        unfinalized_metrics.type_signature.member,  # pytype: disable=attribute-error
+    metrics_output = metrics_aggregation_process.next(
+        state, unfinalized_metrics
     )
-    finalized_metrics = intrinsics.federated_zip(
+    current_round_metrics, total_rounds_metrics = metrics_output.result
+    measurements = intrinsics.federated_zip(
         collections.OrderedDict(
-            eval=metrics_aggregation_computation(unfinalized_metrics)
+            eval=collections.OrderedDict(
+                current_round_metrics=current_round_metrics,
+                total_rounds_metrics=total_rounds_metrics,
+            )
         )
     )
+    # Return empty result as no model update will be performed for evaluation.
+    empty_client_result = intrinsics.federated_value(
+        client_works.ClientResult(update=(), update_weight=()),
+        placements.CLIENTS,
+    )
     return measured_process_lib.MeasuredProcessOutput(
-        state=intrinsics.federated_value((), placements.SERVER),
-        result=intrinsics.federated_value(
-            client_works.ClientResult(update=(), update_weight=()),
-            placements.CLIENTS,
-        ),
-        measurements=finalized_metrics,
+        metrics_output.state,
+        empty_client_result,
+        measurements,
     )
 
   client_work = client_works.ClientWorkProcess(
