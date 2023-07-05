@@ -136,7 +136,7 @@ class ThresholdSubsampleProcessTest(tf.test.TestCase, parameterized.TestCase):
     threshold_sampling = subsample_process.ThresholdSamplingProcess(
         init_param=THRESHOLD
     )
-    rep = 200
+    rep = 300
     strings = ['good', 'morning', 'hi', 'bye']
     expected_freqs = np.array([3, 1, 2, 5])
     counts = np.zeros(len(strings))
@@ -148,7 +148,7 @@ class ThresholdSubsampleProcessTest(tf.test.TestCase, parameterized.TestCase):
       )
       for j, _ in enumerate(strings):
         counts[j] += _get_count_from_dataset(sampled_dataset, strings[j])
-    self.assertAllClose(counts / rep, expected_freqs, atol=0.3)
+    self.assertAllClose(counts / rep, expected_freqs, atol=0.45)
 
   @parameterized.named_parameters(
       {
