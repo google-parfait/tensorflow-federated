@@ -715,12 +715,6 @@ def _check_integer(value, label):
     raise TypeError(f'{label} must be an integer. Found {repr(value)}.')
 
 
-def _check_float(value, label):
-  _check_scalar(value, label)
-  if not isinstance(value, (float, np.floating)):
-    raise TypeError(f'{label} must be a float. Found {repr(value)}.')
-
-
 def _check_bool(value, label):
   if not isinstance(value, bool):
     raise TypeError(f'{label} must be a bool. Found {repr(value)}.')

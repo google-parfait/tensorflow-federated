@@ -49,8 +49,6 @@ _DEFAULT_MAX_SERIALIZED_SEQUENCE_SIZE_BYTES = 100 * (1024**2)  # 100 MB
 class DatasetSerializationError(Exception):
   """Error raised during Dataset serialization or deserialization."""
 
-  pass
-
 
 @tracing.trace
 def _serialize_computation(
