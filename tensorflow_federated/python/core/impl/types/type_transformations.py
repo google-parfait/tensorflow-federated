@@ -72,10 +72,9 @@ def transform_type_postorder(
       )
     type_signature, type_signature_mutated = transform_fn(type_signature)
     return type_signature, type_signature_mutated or member_mutated
-  elif type_signature.is_sequence():
+  elif isinstance(type_signature, computation_types.SequenceType):
     transformed_element, element_mutated = transform_type_postorder(
-        type_signature.element,  # pytype: disable=attribute-error
-        transform_fn,
+        type_signature.element, transform_fn
     )
     if element_mutated:
       type_signature = computation_types.SequenceType(transformed_element)

@@ -117,13 +117,12 @@ def stamp_parameter_in_graph(parameter_name, parameter_type, graph):
             struct=pb.TensorFlow.StructBinding(element=element_bindings)
         ),
     )
-  elif parameter_type.is_sequence():
+  elif isinstance(parameter_type, computation_types.SequenceType):
     with graph.as_default():
       with tf.device('/device:cpu:0'):
         variant_tensor = tf.compat.v1.placeholder(tf.variant, shape=[])
         ds = make_dataset_from_variant_tensor(
-            variant_tensor,
-            parameter_type.element,  # pytype: disable=attribute-error
+            variant_tensor, parameter_type.element
         )
     return (
         ds,
@@ -562,7 +561,7 @@ def assemble_result_from_graph(type_spec, binding, output_map):
       ):
         return container_type(**dict(result_elements))
       return container_type(result_elements)
-  elif type_spec.is_sequence():
+  elif isinstance(type_spec, computation_types.SequenceType):
     if binding_oneof != 'sequence':
       raise ValueError(
           'Expected a sequence binding, found {}.'.format(binding_oneof)
@@ -572,8 +571,7 @@ def assemble_result_from_graph(type_spec, binding, output_map):
       if sequence_oneof == 'variant_tensor_name':
         variant_tensor = output_map[binding.sequence.variant_tensor_name]
         return make_dataset_from_variant_tensor(
-            variant_tensor,
-            type_spec.element,  # pytype: disable=attribute-error
+            variant_tensor, type_spec.element
         )
       else:
         raise ValueError(

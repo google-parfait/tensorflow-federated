@@ -77,9 +77,9 @@ def serialize_type(type_spec: computation_types.Type) -> pb.Type:
     return cached_proto
   if type_spec.is_tensor():
     proto = pb.Type(tensor=_to_tensor_type_proto(type_spec))  # pytype: disable=wrong-arg-types
-  elif type_spec.is_sequence():
+  elif isinstance(type_spec, computation_types.SequenceType):
     proto = pb.Type(
-        sequence=pb.SequenceType(element=serialize_type(type_spec.element))  # pytype: disable=attribute-error
+        sequence=pb.SequenceType(element=serialize_type(type_spec.element))
     )
   elif type_spec.is_struct():
     proto = pb.Type(

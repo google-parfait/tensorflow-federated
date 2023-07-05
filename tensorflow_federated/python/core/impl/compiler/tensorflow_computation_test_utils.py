@@ -66,11 +66,9 @@ def _stamp_value_into_graph(
       stamped_element = _stamp_value_into_graph(element, type_signature, graph)
       stamped_elements.append((name, stamped_element))
     return structure.Struct(stamped_elements)
-  elif type_signature.is_sequence():
+  elif isinstance(type_signature, computation_types.SequenceType):
     return tensorflow_utils.make_data_set_from_elements(
-        graph,
-        value,
-        type_signature.element,  # pytype: disable=attribute-error
+        graph, value, type_signature.element
     )
   else:
     raise NotImplementedError(

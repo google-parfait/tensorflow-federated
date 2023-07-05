@@ -212,7 +212,7 @@ class Type(metaclass=abc.ABCMeta):
   )
   def check_sequence(self) -> None:
     """Check that this is a `tff.SequenceType`."""
-    if not self.is_sequence():
+    if not isinstance(self, SequenceType):
       raise UnexpectedTypeError(SequenceType, self)
 
   @deprecation.deprecated(
@@ -1278,7 +1278,7 @@ def _possibly_disallowed_children(
       disallowed = attrs.evolve(disallowed, federated=child_type)
     elif child_type.is_function():
       disallowed = attrs.evolve(disallowed, function=child_type)
-    elif child_type.is_sequence():
+    elif isinstance(child_type, SequenceType):
       disallowed = attrs.evolve(disallowed, sequence=child_type)
     from_grandchildren = _possibly_disallowed_children(child_type)
     disallowed = _PossiblyDisallowedChildren(
@@ -1317,7 +1317,7 @@ def _check_well_formed(type_signature: Type):
         (children.function, _FUNCTION_TYPES),
     ):
       _check_disallowed(child_type, kind, _FEDERATED_TYPES)
-  elif type_signature.is_sequence():
+  elif isinstance(type_signature, SequenceType):
     # Sequence types cannot have federated, functional, or sequence children.
     for child_type, kind in (
         (children.federated, _FEDERATED_TYPES),
@@ -1441,7 +1441,7 @@ def _string_representation(type_spec, formatted: bool) -> str:
       return _combine(lines)
     elif isinstance(type_spec, PlacementType):
       return ['placement']
-    elif type_spec.is_sequence():
+    elif isinstance(type_spec, SequenceType):
       element_lines = _lines_for_type(type_spec.element, formatted)
       return _combine([element_lines, ['*']])
     elif type_spec.is_tensor():

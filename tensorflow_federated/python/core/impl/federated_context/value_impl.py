@@ -417,7 +417,9 @@ def to_value(
       arg = arg.fn_for_argument_type(parameter_type_hint)
     py_typecheck.check_type(arg, computation_impl.ConcreteComputation)
     result = Value(arg.to_compiled_building_block())
-  elif type_spec is not None and type_spec.is_sequence():
+  elif type_spec is not None and isinstance(
+      type_spec, computation_types.SequenceType
+  ):
     result = _wrap_sequence_as_value(arg, type_spec.element)
   elif isinstance(arg, structure.Struct):
     items = structure.iter_elements(arg)

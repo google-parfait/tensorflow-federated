@@ -446,7 +446,7 @@ def type_to_py_container(value, type_spec: computation_types.Type):
     structure_type_spec = type_spec
 
   if isinstance(structure_type_spec, computation_types.SequenceType):
-    element_type = structure_type_spec.element  # pytype: disable=attribute-error
+    element_type = structure_type_spec.element
     if isinstance(value, list):
       return [type_to_py_container(element, element_type) for element in value]
     if isinstance(value, tf.data.Dataset):

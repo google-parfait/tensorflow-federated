@@ -366,7 +366,7 @@ def serialize_value(
     )
   elif type_spec.is_tensor():
     return _serialize_tensor_value(value, type_spec)
-  elif type_spec.is_sequence():
+  elif isinstance(type_spec, computation_types.SequenceType):
     return _serialize_sequence_value(value, type_spec)
   elif type_spec.is_struct():
     return _serialize_struct_type(value, type_spec)
