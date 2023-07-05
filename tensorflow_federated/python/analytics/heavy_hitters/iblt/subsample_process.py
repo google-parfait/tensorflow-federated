@@ -23,10 +23,64 @@ updated at each round to obtain instance-dependent algorithm.
 
 import abc
 import collections
+import math
+from typing import NamedTuple
 
+import scipy
 import tensorflow as tf
 
 from tensorflow_federated.python.analytics.heavy_hitters.iblt import iblt_factory
+
+
+class AggregationMeasurements(NamedTuple):
+  iblt_size: int
+  num_nonempty_buckets: int
+  num_recovered: int
+  capacity: int
+  repetition: int
+
+
+def _predict_num_unique_rep_is_3(
+    num_nonempty_buckets: int, iblt_size: int
+) -> float:
+  """Predict the number of unique keys in a failed IBLT with repetition = 3.
+
+  The prediction formula is based on Theorem 1 in
+  https://tspace.library.utoronto.ca/bitstream/1807/9523/3/cores%20.pdf, which
+  studies the process of generating a random hypergraph (IBLT encoding process),
+  and dervies a formula that relates the core size (`num_nonempty_buckets`), the
+  size of the hypergraph (`iblt_size`), and the number of random edges
+  (number of unique keys, `num_unique`). To be more specific, for and IBLT with
+  repetition = 3, the formula states that:
+
+  Let x be the solution to "1 - e^{-x}(1+x) = num_nonempty_buckets/iblt_size",
+  then num_unique is approximately iblt_size * x / (1 - e^{-x})^2 / 3.
+
+  Based on the paper, the approximation is tight when `iblt_size` tends to
+  infnity. Numerical experiments show that the approximation is fairly good
+  when iblt_size > 3000 (relative error within 10%).
+
+  Args:
+    num_nonempty_buckets: the number of nonzero locations after decoding.
+    iblt_size: size of the iblt table (table_size * repetition).
+
+  Returns:
+    Predicted number of unique inserted elements.
+  """
+  if num_nonempty_buckets <= 0 or num_nonempty_buckets > iblt_size:
+    raise ValueError('num_nonempty_buckets must be in (0, iblt_size].')
+  # If all hash buckets are nonempty, we use the prediction when (iblt_size - 1)
+  # buckets are nonempty as an conservative approximate.
+  if num_nonempty_buckets == iblt_size:
+    return _predict_num_unique_rep_is_3(num_nonempty_buckets - 1, iblt_size)
+  ratio = num_nonempty_buckets / iblt_size
+
+  def func(x: float) -> float:
+    return math.exp(x) * (1 - ratio) - (1 + x)
+
+  root = scipy.optimize.fsolve(func, 100)  # 100 is an upper estimate for root
+  x_sol = float(root[0])
+  return iblt_size * x_sol / ((1 - math.exp(-x_sol)) ** 2) / 3
 
 
 class SubsampleProcess(abc.ABC):
@@ -66,30 +120,31 @@ class SubsampleProcess(abc.ABC):
                                                             sampling_param)
       subsampled_datasets.append(subsampled_dataset)
     measurements, _ = iblt_aggregation.next(..., subsampled_datasets)
-    if threshold_sampling.is_adaptive():
+    if threshold_sampling.is_process_adaptive():
       sampling_param = threshold_sampling.update(sampling_param, measurements)
   ```
   """
 
+  @property
   @abc.abstractmethod
-  def is_adaptive(self) -> bool:
+  def is_process_adaptive(self) -> bool:
     """Return whether the process is adaptive."""
 
   @abc.abstractmethod
   def update(
-      self, subsampling_param_old: float, measurements: tf.Tensor
+      self, subsampling_param_old: float, measurements: AggregationMeasurements
   ) -> float:
     """Update the sample parameter based on the return of an IBLT round.
 
     Args:
       subsampling_param_old: subsampling parameter for the current round.
-      measurements: a tf.Tensor containing the returned measurements of an IBLT
-        aggregation process in the current round.
+      measurements: a `AggregationMeasurements` containing the returned
+        measurements of an IBLT aggregation process in the current round.
 
     Returns:
       The subsampling parameter to use in the next round.
     """
-    raise NotImplementedError('Not an adaptive process!')
+    raise NotImplementedError('Not an adaptive process.')
 
   @abc.abstractmethod
   def get_init_param(self):
@@ -111,7 +166,7 @@ class SubsampleProcess(abc.ABC):
 
 
 class ThresholdSamplingProcess(SubsampleProcess):
-  """Implements threshold sampling without tuning.
+  """Implements threshold sampling.
 
   Threshold sampling performs the following randomization of the user's local
   histogram. Let h(x) be the count of element x at user's local dataset.
@@ -134,21 +189,57 @@ class ThresholdSamplingProcess(SubsampleProcess):
   https://nickduffield.net/download/papers/DLT05-optimal.pdf
   """
 
-  def __init__(self, init_param: float):
-    """See base class. Raise ValueError if init_param is less than 1."""
-    if init_param < 1:
-      raise ValueError('Threshold must be at least 1!')
-    self._init_param = init_param
+  def __init__(
+      self, init_param: float, is_adaptive: bool = False, beta: float = 0.5
+  ):
+    """Initialize the subsamping precoess.
 
-  def is_adaptive(self) -> bool:
+    Args:
+      init_param: initial threshold to use.
+      is_adaptive: whether the process is adaptive.
+      beta: the memory coefficient for the tuning process.
+
+    Raises:
+      ValueError if init_param < 1 or beta is not in (0, 1).
+    """
+    if init_param < 1:
+      raise ValueError('Threshold must be at least 1.')
+    if beta >= 1 or beta <= 0:
+      raise ValueError('Beta must be in (0,1).')
+    self._init_param = init_param
+    self._is_adaptive = is_adaptive
+    self._beta = beta
+
+  @property
+  def is_process_adaptive(self) -> bool:
     """Return whether the process is adaptive."""
-    return False
+    return self._is_adaptive
 
   def update(
-      self, subsampling_param_old: float, measurements: tf.Tensor
+      self, subsampling_param_old: float, measurements: AggregationMeasurements
   ) -> float:
     """See base class."""
-    raise NotImplementedError('Not an adaptive process!')
+    if not self.is_process_adaptive:
+      raise NotImplementedError('Not an adaptive process.')
+    iblt_size = measurements.iblt_size
+    num_nonempty_buckets = measurements.num_nonempty_buckets
+    num_recovered = measurements.num_recovered
+    capacity = measurements.capacity
+    if measurements.repetition != 3:
+      raise ValueError('Current implementation only supports repetition = 3.')
+    if num_nonempty_buckets == 0:
+      num_unique_pred = num_recovered
+    else:
+      num_unique_pred = _predict_num_unique_rep_is_3(
+          num_nonempty_buckets, iblt_size
+      )
+    subsampling_param = (
+        self._beta * subsampling_param_old
+        + (1 - self._beta)
+        * (num_unique_pred / capacity)
+        * subsampling_param_old
+    )
+    return max(subsampling_param, 1)
 
   def get_init_param(self):
     """Returns the initial subsampling parameter."""
@@ -165,7 +256,7 @@ class ThresholdSamplingProcess(SubsampleProcess):
     def threshold_sampling(element):
       count = element[iblt_factory.DATASET_VALUE]
       tf.debugging.assert_non_negative(
-          count, 'Current implementation only supports positive values!'
+          count, 'Current implementation only supports positive values.'
       )
       if count >= subsampling_param:
         return element

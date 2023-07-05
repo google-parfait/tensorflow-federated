@@ -198,6 +198,7 @@ py_test(
     srcs = ["subsample_process_test.py"],
     deps = [
         ":iblt_factory",
+        ":iblt_lib",
         ":subsample_process",
     ],
 )

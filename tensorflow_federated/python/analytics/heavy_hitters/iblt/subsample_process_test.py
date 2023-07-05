@@ -11,15 +11,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for subsample_process.py."""
 import collections
 from typing import Union
-import numpy as np
 
+from absl.testing import parameterized
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.analytics.heavy_hitters.iblt import iblt_factory
+from tensorflow_federated.python.analytics.heavy_hitters.iblt import iblt_lib
 from tensorflow_federated.python.analytics.heavy_hitters.iblt import subsample_process
+
+# Repetition to be used throughout the tests
+REPETITION = 3
 
 
 def _get_count_from_dataset(dataset: tf.data.Dataset, key: str) -> int:
@@ -60,12 +64,12 @@ DATA_SOME_IN_BETWEEN = _generate_client_local_data(
 DATA_ALL_ZERO = _generate_client_local_data((['new', 'york'], [[0], [0]]))
 
 
-class ThresholdSubsampleProcessTest(tf.test.TestCase):
+class ThresholdSubsampleProcessTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_threshold_at_least_one(self):
-    with self.assertRaisesRegex(ValueError, 'Threshold must be at least 1!'):
+    with self.assertRaisesRegex(ValueError, 'Threshold must be at least 1.'):
       subsample_process.ThresholdSamplingProcess(init_param=0)
-    with self.assertRaisesRegex(ValueError, 'Threshold must be at least 1!'):
+    with self.assertRaisesRegex(ValueError, 'Threshold must be at least 1.'):
       subsample_process.ThresholdSamplingProcess(init_param=-1)
     # Should not raise
     subsample_process.ThresholdSamplingProcess(init_param=THRESHOLD)
@@ -74,17 +78,18 @@ class ThresholdSubsampleProcessTest(tf.test.TestCase):
     threshold_sampling = subsample_process.ThresholdSamplingProcess(
         init_param=2
     )
-    self.assertEqual(threshold_sampling.is_adaptive(), False)
+    self.assertEqual(threshold_sampling.is_process_adaptive, False)
 
   def test_tuning_not_implemented(self):
     threshold_sampling = subsample_process.ThresholdSamplingProcess(
         init_param=2
     )
     with self.assertRaisesRegex(
-        NotImplementedError, 'Not an adaptive process!'
+        NotImplementedError, 'Not an adaptive process.'
     ):
       threshold_sampling.update(
-          subsampling_param_old=2, measurements=tf.zeros((1,))
+          subsampling_param_old=2,
+          measurements=subsample_process.AggregationMeasurements(0, 0, 0, 0, 3),
       )
 
   def test_get_init_param(self):
@@ -99,7 +104,7 @@ class ThresholdSubsampleProcessTest(tf.test.TestCase):
     )
     with self.assertRaisesRegex(
         tf.errors.InvalidArgumentError,
-        'Current implementation only supports positive values!',
+        'Current implementation only supports positive values.',
     ):
       subsample_param = threshold_sampling.get_init_param()
       list(threshold_sampling.subsample_fn(DATA_WITH_NEGATIVE, subsample_param))
@@ -144,6 +149,98 @@ class ThresholdSubsampleProcessTest(tf.test.TestCase):
       for j, _ in enumerate(strings):
         counts[j] += _get_count_from_dataset(sampled_dataset, strings[j])
     self.assertAllClose(counts / rep, expected_freqs, atol=0.3)
+
+  @parameterized.named_parameters(
+      {
+          'testcase_name': 'init_threshold_one',
+          'init_threshold': 1,
+          'beta': 0.5,
+          'capacity': 100,
+          'num_recovered': 40,
+      },
+      {
+          'testcase_name': 'init_threshold_larger_than_one',
+          'init_threshold': 4,
+          'beta': 0.3,
+          'capacity': 200,
+          'num_recovered': 100,
+      },
+  )
+  def test_update_when_decoding_succeeds(
+      self,
+      init_threshold,
+      beta,
+      capacity,
+      num_recovered,
+  ):
+    threshold_sampling = subsample_process.ThresholdSamplingProcess(
+        init_param=init_threshold, is_adaptive=True, beta=beta
+    )
+    repetition = REPETITION
+    num_nonempty_buckets = 0
+    iblt_size = (
+        iblt_lib._internal_parameters(capacity, repetition)[0] * repetition
+    )
+    measurements = subsample_process.AggregationMeasurements(
+        iblt_size=iblt_size,
+        capacity=capacity,
+        num_nonempty_buckets=num_nonempty_buckets,
+        num_recovered=num_recovered,
+        repetition=3,
+    )
+    expected_new_threshold = max(
+        init_threshold * beta
+        + (1 - beta) * (num_recovered / capacity) * init_threshold,
+        1,
+    )
+    self.assertAlmostEqual(
+        threshold_sampling.update(init_threshold, measurements),
+        expected_new_threshold,
+    )
+
+  @parameterized.named_parameters(
+      {
+          'testcase_name': 'num_nonempty_equal_iblt_size',
+          'init_threshold': 5,
+          'beta': 0.5,
+          'capacity': 100,
+          'num_recovered': 0,
+          'num_nonempty_buckets': (
+              iblt_lib._internal_parameters(100, REPETITION)[0] * REPETITION
+          ),
+      },
+      {
+          'testcase_name': 'num_nonempty_below_iblt_size',
+          'init_threshold': 5,
+          'beta': 0.3,
+          'capacity': 200,
+          'num_recovered': 40,
+          'num_nonempty_buckets': int(
+              iblt_lib._internal_parameters(100, REPETITION)[0] * REPETITION / 2
+          ),
+      },
+  )
+  def test_update_when_decoding_fails(
+      self, init_threshold, beta, capacity, num_recovered, num_nonempty_buckets
+  ):
+    threshold_sampling = subsample_process.ThresholdSamplingProcess(
+        init_param=init_threshold, is_adaptive=True, beta=beta
+    )
+    repetition = REPETITION
+    iblt_size = (
+        iblt_lib._internal_parameters(capacity, repetition)[0] * repetition
+    )
+    measurements = subsample_process.AggregationMeasurements(
+        iblt_size=iblt_size,
+        capacity=capacity,
+        num_nonempty_buckets=num_nonempty_buckets,
+        num_recovered=num_recovered,
+        repetition=3,
+    )
+    self.assertGreaterEqual(
+        threshold_sampling.update(init_threshold, measurements),
+        init_threshold,
+    )
 
 
 if __name__ == '__main__':
