@@ -662,11 +662,6 @@ class TransformationUtilsTest(parameterized.TestCase):
     self.assertIsInstance(
         symbol_tree.active_node.payload, transformation_utils._BeginScopePointer
     )
-    self.assertTrue(
-        py_typecheck.check_subclass(
-            symbol_tree.payload_type, transformation_utils.BoundVariableTracker
-        )
-    )
 
   def test_symbol_tree_node_reuse_fails(self):
     fake_tracker_node_one = transformation_utils.SequentialBindingNode(
@@ -684,13 +679,6 @@ class TransformationUtilsTest(parameterized.TestCase):
       symbol_tree._add_child(1, fake_tracker_node_one)
     with self.assertRaisesRegex(ValueError, 'can only appear once'):
       symbol_tree._add_younger_sibling(fake_tracker_node_one)
-
-  def test_bad_mock_class_fails_symbol_tree(self):
-    class BadMock:
-      pass
-
-    with self.assertRaisesRegex(TypeError, 'subclass'):
-      transformation_utils.SymbolTree(BadMock)
 
   def test_symbol_tree_get_payload_resolves_child_parent_name_conflict(self):
     def _construct_symbol_tree():

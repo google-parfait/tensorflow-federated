@@ -47,28 +47,6 @@ def check_type(target, type_spec, label=None):
   return target
 
 
-def check_subclass(target_class, parent_class):
-  """Tests that `target_class` subclasses `parent_class`, that both are classes.
-
-  Args:
-    target_class: A class to check for inheritence from `parent_class`.
-    parent_class: A python class or tuple of classes.
-
-  Returns:
-    The `target_class`, unchanged.
-
-  Raises:
-    TypeError if the `target_class` doesn't subclass a class in `parent_class`.
-  """
-  if not issubclass(target_class, parent_class):
-    raise TypeError(
-        'Expected {} to subclass {}, but it does not.'.format(
-            target_class, parent_class
-        )
-    )
-  return target_class
-
-
 def check_callable(target, label=None):
   """Checks target is callable and then returns it."""
   if not callable(target):

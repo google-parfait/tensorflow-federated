@@ -451,6 +451,109 @@ def transform_postorder_with_symbol_bindings(comp, transform, symbol_tree):
   )
 
 
+class BoundVariableTracker(metaclass=abc.ABCMeta):
+  """Abstract class representing a mutable variable binding."""
+
+  def __init__(self, name, value):
+    """Initializes `BoundVariableTracker`.
+
+    The initializer is likely to be overwritten by subclasses in order to
+    attach more state to the `BoundVariableTracker`. Each of them must
+    satisfy the same interface, however. This is simply because the
+    `BoundVariableTracker` represents a variable binding in a TFF AST;
+    no more information is avaiable to it than the `name`-`value` pair
+    being bound together.
+
+    Args:
+      name: String name of variable to be bound.
+      value: Value to bind to this name. Can be instance of
+        `building_blocks.ComputationBuildingBlock` if this
+        `BoundVariableTracker` represents a concrete binding to a variable (e.g.
+        in a block locals declaration), or `None`, if this
+        `BoundVariableTracker` represents merely a variable declaration (e.g. in
+        a lambda).
+    """
+    py_typecheck.check_type(name, str)
+    if value is not None:
+      py_typecheck.check_type(value, building_blocks.ComputationBuildingBlock)
+    self.name = name
+    self.value = value
+
+  def update(self, value=None):
+    """Defines the way information is read into this node.
+
+    Defaults to no-op.
+
+    Args:
+      value: Similar to `value` argument in initializer.
+    """
+    del value  # Unused
+
+  @abc.abstractmethod
+  def __str__(self):
+    """Abstract string method required as context tree will delegate."""
+    pass
+
+  def __eq__(self, other):
+    """Base class equality checks names and values equal."""
+    # TODO(b/130890785): Delegate value-checking to
+    # `building_blocks.ComputationBuildingBlock`.
+    if self is other:
+      return True
+    if not isinstance(other, BoundVariableTracker):
+      return NotImplemented
+    if self.name != other.name:
+      return False
+    if isinstance(
+        self.value, building_blocks.ComputationBuildingBlock
+    ) and isinstance(other.value, building_blocks.ComputationBuildingBlock):
+      return (
+          self.value.compact_representation()
+          == other.value.compact_representation()
+          and self.value.type_signature.is_equivalent_to(
+              other.value.type_signature
+          )
+      )
+    return self.value is other.value
+
+  def __ne__(self, other):
+    """Implementing __ne__ to enforce in Python2 the Python3 standard."""
+    return not self == other
+
+
+class _BeginScopePointer(BoundVariableTracker):
+  """Sentinel representing the beginning of a scope defined by an AST node."""
+
+  def __init__(self, name=None, value=None):
+    if name is not None or value is not None:
+      raise ValueError(
+          "Please don't pass a name or value to "
+          '_BeginScopePointer; it will simply be ignored.'
+      )
+    super().__init__('BeginScope', None)
+
+  def update(self, value=None):
+    del value  # Unused.
+    raise RuntimeError("We shouldn't be trying to update the outer context.")
+
+  def __str__(self):
+    return self.name
+
+  def __eq__(self, other):
+    """Returns `True` iff `other` is also a `_BeginScopePointer`.
+
+    Args:
+      other: Value for equality comparison.
+
+    Returns:
+      Returns true iff `other` is also an instance of `_BeginScopePointer`.
+    """
+    # Using explicit type comparisons here to prevent a subclass from passing.
+    # pylint: disable=unidiomatic-typecheck
+    return type(other) is _BeginScopePointer
+    # pylint: enable=unidiomatic-typecheck
+
+
 class SymbolTree:
   """Data structure to hold variable bindings as we walk an AST.
 
@@ -470,7 +573,7 @@ class SymbolTree:
   could cause an infinite loop in recursive equality testing or printing.
   """
 
-  def __init__(self, payload_type):
+  def __init__(self, payload_type: type[BoundVariableTracker]):
     """Initializes `SymbolTree` with its payload type.
 
     Args:
@@ -478,7 +581,6 @@ class SymbolTree:
         payloads to be constructed and held in this SymbolTree.
     """
     initial_node = SequentialBindingNode(_BeginScopePointer())
-    py_typecheck.check_subclass(payload_type, BoundVariableTracker)
     self.active_node = initial_node
     self.payload_type = payload_type
     self._node_ids = {id(initial_node): 1}
@@ -956,109 +1058,6 @@ class SequentialBindingNode:
       exists, or `None`.
     """
     return self._children.get(comp_id)
-
-
-class BoundVariableTracker(metaclass=abc.ABCMeta):
-  """Abstract class representing a mutable variable binding."""
-
-  def __init__(self, name, value):
-    """Initializes `BoundVariableTracker`.
-
-    The initializer is likely to be overwritten by subclasses in order to
-    attach more state to the `BoundVariableTracker`. Each of them must
-    satisfy the same interface, however. This is simply because the
-    `BoundVariableTracker` represents a variable binding in a TFF AST;
-    no more information is avaiable to it than the `name`-`value` pair
-    being bound together.
-
-    Args:
-      name: String name of variable to be bound.
-      value: Value to bind to this name. Can be instance of
-        `building_blocks.ComputationBuildingBlock` if this
-        `BoundVariableTracker` represents a concrete binding to a variable (e.g.
-        in a block locals declaration), or `None`, if this
-        `BoundVariableTracker` represents merely a variable declaration (e.g. in
-        a lambda).
-    """
-    py_typecheck.check_type(name, str)
-    if value is not None:
-      py_typecheck.check_type(value, building_blocks.ComputationBuildingBlock)
-    self.name = name
-    self.value = value
-
-  def update(self, value=None):
-    """Defines the way information is read into this node.
-
-    Defaults to no-op.
-
-    Args:
-      value: Similar to `value` argument in initializer.
-    """
-    del value  # Unused
-
-  @abc.abstractmethod
-  def __str__(self):
-    """Abstract string method required as context tree will delegate."""
-    pass
-
-  def __eq__(self, other):
-    """Base class equality checks names and values equal."""
-    # TODO(b/130890785): Delegate value-checking to
-    # `building_blocks.ComputationBuildingBlock`.
-    if self is other:
-      return True
-    if not isinstance(other, BoundVariableTracker):
-      return NotImplemented
-    if self.name != other.name:
-      return False
-    if isinstance(
-        self.value, building_blocks.ComputationBuildingBlock
-    ) and isinstance(other.value, building_blocks.ComputationBuildingBlock):
-      return (
-          self.value.compact_representation()
-          == other.value.compact_representation()
-          and self.value.type_signature.is_equivalent_to(
-              other.value.type_signature
-          )
-      )
-    return self.value is other.value
-
-  def __ne__(self, other):
-    """Implementing __ne__ to enforce in Python2 the Python3 standard."""
-    return not self == other
-
-
-class _BeginScopePointer(BoundVariableTracker):
-  """Sentinel representing the beginning of a scope defined by an AST node."""
-
-  def __init__(self, name=None, value=None):
-    if name is not None or value is not None:
-      raise ValueError(
-          "Please don't pass a name or value to "
-          '_BeginScopePointer; it will simply be ignored.'
-      )
-    super().__init__('BeginScope', None)
-
-  def update(self, value=None):
-    del value  # Unused.
-    raise RuntimeError("We shouldn't be trying to update the outer context.")
-
-  def __str__(self):
-    return self.name
-
-  def __eq__(self, other):
-    """Returns `True` iff `other` is also a `_BeginScopePointer`.
-
-    Args:
-      other: Value for equality comparison.
-
-    Returns:
-      Returns true iff `other` is also an instance of `_BeginScopePointer`.
-    """
-    # Using explicit type comparisons here to prevent a subclass from passing.
-    # pylint: disable=unidiomatic-typecheck
-    return type(other) is _BeginScopePointer
-    # pylint: enable=unidiomatic-typecheck
 
 
 def list_comp_names(comp):

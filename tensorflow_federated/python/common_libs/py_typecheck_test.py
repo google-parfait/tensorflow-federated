@@ -67,15 +67,6 @@ class PyTypeCheckTest(parameterized.TestCase):
         (int, bool, float),
     )
 
-  def test_check_subclass(self):
-    py_typecheck.check_subclass(PyTypeCheckTest, parameterized.TestCase)
-    py_typecheck.check_subclass(PyTypeCheckTest, (parameterized.TestCase, int))
-    py_typecheck.check_subclass(int, (int, float))
-    py_typecheck.check_subclass(float, float)
-    with self.assertRaisesRegex(TypeError, 'Expected .* to subclass '):
-      py_typecheck.check_subclass(int, float)
-      py_typecheck.check_subclass(int, (float, float))
-
   def test_check_callable(self):
     try:
       f = lambda x: x + 10
