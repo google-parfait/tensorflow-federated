@@ -26,6 +26,7 @@ import attr
 import numpy as np
 import tensorflow as tf
 
+from tensorflow_federated.python.common_libs import deprecation
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.types import placements
@@ -146,77 +147,127 @@ class Type(metaclass=abc.ABCMeta):
     """Returns a generator yielding immediate child types."""
     raise NotImplementedError
 
+  @deprecation.deprecated(
+      '`tff.Type.check_abstract()` is deprecated, use `isinstance` instead.'
+  )
   def check_abstract(self) -> None:
     """Check that this is a `tff.AbstractType`."""
     if not self.is_abstract():
       raise UnexpectedTypeError(AbstractType, self)
 
+  @deprecation.deprecated(
+      '`tff.Type.is_abstract()` is deprecated, use `isinstance` instead.'
+  )
   def is_abstract(self) -> bool:
     """Returns whether or not this type is a `tff.AbstractType`."""
-    return False
+    return isinstance(self, AbstractType)
 
+  @deprecation.deprecated(
+      '`tff.Type.check_federated()` is deprecated, use `isinstance` instead.'
+  )
   def check_federated(self) -> None:
     """Check that this is a `tff.FederatedType`."""
     if not self.is_federated():
       raise UnexpectedTypeError(FederatedType, self)
 
+  @deprecation.deprecated(
+      '`tff.Type.is_federated()` is deprecated, use `isinstance` instead.'
+  )
   def is_federated(self) -> bool:
     """Returns whether or not this type is a `tff.FederatedType`."""
-    return False
+    return isinstance(self, FederatedType)
 
+  @deprecation.deprecated(
+      '`tff.Type.check_function()` is deprecated, use `isinstance` instead.'
+  )
   def check_function(self) -> None:
     """Check that this is a `tff.FunctionType`."""
     if not self.is_function():
       raise UnexpectedTypeError(FunctionType, self)
 
+  @deprecation.deprecated(
+      '`tff.Type.is_function()` is deprecated, use `isinstance` instead.'
+  )
   def is_function(self) -> bool:
     """Returns whether or not this type is a `tff.FunctionType`."""
-    return False
+    return isinstance(self, FunctionType)
 
+  @deprecation.deprecated(
+      '`tff.Type.check_placement()` is deprecated, use `isinstance` instead.'
+  )
   def check_placement(self) -> None:
     """Check that this is a `tff.PlacementType`."""
     if not self.is_placement():
       raise UnexpectedTypeError(PlacementType, self)
 
+  @deprecation.deprecated(
+      '`tff.Type.is_placement()` is deprecated, use `isinstance` instead.'
+  )
   def is_placement(self) -> bool:
     """Returns whether or not this type is a `tff.PlacementType`."""
-    return False
+    return isinstance(self, PlacementType)
 
+  @deprecation.deprecated(
+      '`tff.Type.check_sequence()` is deprecated, use `isinstance` instead.'
+  )
   def check_sequence(self) -> None:
     """Check that this is a `tff.SequenceType`."""
     if not self.is_sequence():
       raise UnexpectedTypeError(SequenceType, self)
 
+  @deprecation.deprecated(
+      '`tff.Type.is_sequence()` is deprecated, use `isinstance` instead.'
+  )
   def is_sequence(self) -> bool:
     """Returns whether or not this type is a `tff.SequenceType`."""
-    return False
+    return isinstance(self, SequenceType)
 
+  @deprecation.deprecated(
+      '`tff.Type.check_struct()` is deprecated, use `isinstance` instead.'
+  )
   def check_struct(self) -> None:
     """Check that this is a `tff.StructType`."""
     if not self.is_struct():
       raise UnexpectedTypeError(StructType, self)
 
+  @deprecation.deprecated(
+      '`tff.Type.is_struct()` is deprecated, use `isinstance` instead.'
+  )
   def is_struct(self) -> bool:
     """Returns whether or not this type is a `tff.StructType`."""
-    return False
+    return isinstance(self, StructType)
 
+  @deprecation.deprecated(
+      '`tff.Type.check_struct_with_python()` is deprecated, use `isinstance` '
+      'instead.'
+  )
   def check_struct_with_python(self) -> None:
     """Check that this is a `tff.StructWithPythonType`."""
     if not self.is_struct_with_python():
       raise UnexpectedTypeError(StructWithPythonType, self)
 
+  @deprecation.deprecated(
+      '`tff.Type.is_struct_with_python()` is deprecated, use `isinstance` '
+      'instead.'
+  )
   def is_struct_with_python(self) -> bool:
     """Returns whether or not this type is a `tff.StructWithPythonType`."""
-    return False
+    return isinstance(self, StructWithPythonType)
 
+  @deprecation.deprecated(
+      '`tff.Type.check_tensor()` is deprecated, use `isinstance` instead.'
+  )
   def check_tensor(self) -> None:
     """Check that this is a `tff.TensorType`."""
     if not self.is_tensor():
       raise UnexpectedTypeError(TensorType, self)
 
+  @deprecation.deprecated(
+      '`tff.Type.is_tensor()` is deprecated, use `isinstance` instead.'
+  )
   def is_tensor(self) -> bool:
     """Returns whether or not this type is a `tff.TensorType`."""
-    return False
+    return isinstance(self, TensorType)
 
   @abc.abstractmethod
   def __repr__(self):
@@ -426,9 +477,6 @@ class TensorType(Type, metaclass=_Intern):
   def children(self):
     return iter(())
 
-  def is_tensor(self) -> bool:
-    return True
-
   @property
   def dtype(self) -> tf.dtypes.DType:
     return self._dtype
@@ -609,9 +657,6 @@ class StructType(structure.Struct, Type, metaclass=_Intern):
   def python_container(self) -> Optional[type[object]]:
     return None
 
-  def is_struct(self) -> bool:
-    return True
-
   def __repr__(self):
     members = _format_struct_type_members(self)
     return f'StructType([{members}])'
@@ -657,9 +702,6 @@ class StructWithPythonType(StructType, metaclass=_Intern):
     super().__init__(elements, enable_well_formed_check=False)
     self._container_type = container_type
     _check_well_formed(self)
-
-  def is_struct_with_python(self) -> bool:
-    return True
 
   @property
   def python_container(self) -> type[object]:
@@ -730,9 +772,6 @@ class SequenceType(Type, metaclass=_Intern):
   def children(self):
     yield self._element
 
-  def is_sequence(self) -> bool:
-    return True
-
   @property
   def element(self) -> Type:
     return self._element
@@ -788,9 +827,6 @@ class FunctionType(Type, metaclass=_Intern):
     if self._parameter is not None:
       yield self._parameter
     yield self._result
-
-  def is_function(self) -> bool:
-    return True
 
   @property
   def parameter(self) -> Optional[Type]:
@@ -850,9 +886,6 @@ class AbstractType(Type, metaclass=_Intern):
   def children(self):
     return iter(())
 
-  def is_abstract(self) -> bool:
-    return True
-
   @property
   def label(self) -> str:
     return self._label
@@ -892,9 +925,6 @@ class PlacementType(Type, metaclass=_Intern):
 
   def children(self):
     return iter(())
-
-  def is_placement(self) -> bool:
-    return True
 
   def __repr__(self):
     return 'PlacementType()'
@@ -960,9 +990,6 @@ class FederatedType(Type, metaclass=_Intern):
 
   def children(self):
     yield self._member
-
-  def is_federated(self) -> bool:
-    return True
 
   @property
   def member(self) -> Type:

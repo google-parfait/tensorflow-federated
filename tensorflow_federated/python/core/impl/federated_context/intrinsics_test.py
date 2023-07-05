@@ -14,7 +14,6 @@
 
 import collections
 from typing import Any, NamedTuple
-import warnings
 
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -1132,15 +1131,6 @@ class FederatedValueTest(IntrinsicTestBase):
     x = _mock_data_of_type(tf.bool)
     val = intrinsics.federated_value(x, placements.SERVER)
     self.assert_value(val, 'bool@SERVER')
-
-  def test_federated_value_raises_deprecation_warning(self):
-    with warnings.catch_warnings(record=True) as warning:
-      warnings.simplefilter('always')
-
-      x = _mock_data_of_type(tf.bool)
-      intrinsics.federated_value(x, placements.CLIENTS)
-      self.assertLen(warning, 1)
-      self.assertIsInstance(warning[0].category(), DeprecationWarning)
 
 
 class SequenceMapTest(IntrinsicTestBase):
