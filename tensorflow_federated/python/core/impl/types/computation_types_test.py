@@ -747,18 +747,6 @@ class ToTypeTest(parameterized.TestCase):
     self.assertIsInstance(a, computation_types.TensorType)
     self.assertIsInstance(b, computation_types.TensorType)
 
-  def test_attrs_type_raises_deprecation_error(self):
-    @attr.s
-    class TestFoo:
-      a = attr.ib(type=tf.int32)
-      b = attr.ib(type=(tf.float32, [2]))
-
-    with self.assertRaisesRegex(
-        TypeError,
-        'Converting `attr` classes to a federated type is no longer supported.',
-    ):
-      computation_types.to_type(TestFoo)
-
   def test_attrs_instance(self):
     @attr.s
     class TestFoo:

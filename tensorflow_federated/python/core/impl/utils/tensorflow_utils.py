@@ -19,6 +19,7 @@ import itertools
 import typing
 from typing import Any, Optional, Protocol
 
+import attrs
 import numpy as np
 import tensorflow as tf
 
@@ -295,7 +296,7 @@ def capture_result_from_graph(
     # failing to retain the information about naming of tuple members.
     name_value_pairs = result._asdict().items()
     return _get_bindings_for_elements(name_value_pairs, graph, type(result))
-  elif py_typecheck.is_attrs(result):
+  elif attrs.has(type(result)):
     name_value_pairs = named_containers.attrs_class_to_odict(result).items()
     return _get_bindings_for_elements(name_value_pairs, graph, type(result))
   elif py_typecheck.is_dataclass(result):
@@ -555,7 +556,7 @@ def assemble_result_from_graph(type_spec, binding, output_map):
       if type_spec.python_container is None:  # pytype: disable=attribute-error
         return structure.Struct(result_elements)
       container_type = type_spec.python_container  # pytype: disable=attribute-error
-      if py_typecheck.is_named_tuple(container_type) or py_typecheck.is_attrs(
+      if py_typecheck.is_named_tuple(container_type) or attrs.has(
           container_type
       ):
         return container_type(**dict(result_elements))
@@ -1144,7 +1145,7 @@ def coerce_dataset_elements_to_tff_type_spec(
         return elements
 
       field_types = structure.iter_elements(type_spec)
-      if issubclass(py_type, Mapping) or py_typecheck.is_attrs(py_type):
+      if issubclass(py_type, Mapping) or attrs.has(py_type):
         values = collections.OrderedDict(
             (name, _to_representative_value(field_type, elements[name]))
             for name, field_type in field_types

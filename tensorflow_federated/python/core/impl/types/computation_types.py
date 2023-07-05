@@ -22,7 +22,7 @@ import enum
 from typing import Optional, TypeVar
 import weakref
 
-import attr
+import attrs
 import numpy as np
 import tensorflow as tf
 
@@ -1152,7 +1152,7 @@ def to_type(obj: object) -> Type:
       return StructWithPythonType(obj, type(obj))
   elif isinstance(obj, collections.OrderedDict):
     return StructWithPythonType(obj, type(obj))
-  elif py_typecheck.is_attrs(obj):
+  elif attrs.has(type(obj)):
     return _to_type_from_attrs(obj)
   elif isinstance(obj, Mapping):
     # This is an unsupported mapping, likely a `dict`. StructType adds an
@@ -1222,15 +1222,13 @@ def _to_type_from_attrs(spec) -> StructWithPythonType:
   else:
     # attrs class instance, inspect the field values for instances convertible
     # to types.
-    elements = attr.asdict(
-        spec, dict_factory=collections.OrderedDict, recurse=False
-    )
+    elements = collections.OrderedDict(attrs.asdict(spec, recurse=False))
     the_type = type(spec)
 
   return StructWithPythonType(elements, the_type)
 
 
-@attr.s(auto_attribs=True, slots=True)
+@attrs.define(auto_attribs=True)
 class _PossiblyDisallowedChildren:
   """A set of possibly disallowed types contained within a type.
 
@@ -1277,11 +1275,11 @@ def _possibly_disallowed_children(
     if child_type is None:
       raise ValueError(type_signature)
     if child_type.is_federated():
-      disallowed = attr.evolve(disallowed, federated=child_type)
+      disallowed = attrs.evolve(disallowed, federated=child_type)
     elif child_type.is_function():
-      disallowed = attr.evolve(disallowed, function=child_type)
+      disallowed = attrs.evolve(disallowed, function=child_type)
     elif child_type.is_sequence():
-      disallowed = attr.evolve(disallowed, sequence=child_type)
+      disallowed = attrs.evolve(disallowed, sequence=child_type)
     from_grandchildren = _possibly_disallowed_children(child_type)
     disallowed = _PossiblyDisallowedChildren(
         federated=disallowed.federated or from_grandchildren.federated,

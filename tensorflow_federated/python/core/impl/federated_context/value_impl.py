@@ -18,6 +18,7 @@ import collections
 import itertools
 from typing import Any, Optional, Union
 
+import attrs
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
@@ -423,7 +424,7 @@ def to_value(
   elif py_typecheck.is_named_tuple(arg):
     items = arg._asdict().items()
     result = _dictlike_items_to_value(items, type_spec, type(arg))
-  elif py_typecheck.is_attrs(arg):
+  elif attrs.has(type(arg)):
     items = named_containers.attrs_class_to_odict(arg).items()
     result = _dictlike_items_to_value(items, type_spec, type(arg))
   elif py_typecheck.is_dataclass(arg):

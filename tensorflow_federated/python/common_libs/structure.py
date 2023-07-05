@@ -18,7 +18,7 @@ from collections.abc import Callable, Iterable, Iterator, Mapping
 import typing
 from typing import Any, Optional, Union
 
-import attr
+import attrs
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -402,7 +402,7 @@ def pack_sequence_as(structure, flat_sequence: list[Any]):
       if (
           isinstance(structure, (list, dict))
           or py_typecheck.is_named_tuple(structure)
-          or py_typecheck.is_attrs(structure)
+          or attrs.has(type(structure))
       ):
         raise TypeError(
             'Cannot pack sequence into type {!s}, only structures of '
@@ -544,11 +544,9 @@ def from_container(value: Any, recursive=False) -> Struct:
         return Struct((k, _convert(v, True)) for k, v in iter_elements(value))
       else:
         return value
-    elif py_typecheck.is_attrs(value):
+    elif attrs.has(type(value)):
       return _convert(
-          attr.asdict(
-              value, dict_factory=collections.OrderedDict, recurse=False
-          ),
+          collections.OrderedDict(attrs.asdict(value, recurse=False)),
           recursive,
           must_be_container,
       )
@@ -691,7 +689,7 @@ def update_struct(structure, **kwargs):
   """
   if not (
       py_typecheck.is_named_tuple(structure)
-      or py_typecheck.is_attrs(structure)
+      or attrs.has(type(structure))
       or isinstance(structure, (Struct, Mapping))
   ):
     raise TypeError(
@@ -712,8 +710,8 @@ def update_struct(structure, **kwargs):
     # regular `dict`, so we wrap here to get consistent types across Python
     # version.s
     dictionary = collections.OrderedDict(structure._asdict())
-  elif py_typecheck.is_attrs(structure):
-    dictionary = attr.asdict(structure, dict_factory=collections.OrderedDict)
+  elif attrs.has(type(structure)):
+    dictionary = collections.OrderedDict(attrs.asdict(structure, recurse=False))
   else:
     for key in kwargs:
       if key not in structure:

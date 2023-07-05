@@ -16,6 +16,7 @@ import collections
 from collections.abc import Callable
 from typing import Any, Optional
 
+import attrs
 import numpy as np
 import tensorflow as tf
 
@@ -92,7 +93,7 @@ def infer_type(arg: Any) -> Optional[computation_types.Type]:
             for k, v in structure.iter_elements(arg)
         ]
     )
-  elif py_typecheck.is_attrs(arg):
+  elif attrs.has(type(arg)):
     items = named_containers.attrs_class_to_odict(arg).items()
     return computation_types.StructWithPythonType(
         [(k, infer_type(v)) for k, v in items], type(arg)
@@ -242,7 +243,7 @@ def type_to_tf_dtypes_and_shapes(type_spec: computation_types.Type):
       container_type = type_spec.python_container  # pytype: disable=attribute-error
 
       def build_py_container(elements):
-        if py_typecheck.is_named_tuple(container_type) or py_typecheck.is_attrs(
+        if py_typecheck.is_named_tuple(container_type) or attrs.has(
             container_type
         ):
           return container_type(**dict(elements))
@@ -320,7 +321,7 @@ def type_to_tf_structure(type_spec: computation_types.Type):
         return tuple(v for _, v in element_outputs)
     else:
       container_type = type_spec.python_container  # pytype: disable=attribute-error
-      if py_typecheck.is_named_tuple(container_type) or py_typecheck.is_attrs(
+      if py_typecheck.is_named_tuple(container_type) or attrs.has(
           container_type
       ):
         return container_type(**dict(element_outputs))
@@ -402,7 +403,7 @@ def is_container_type_with_names(container_type: type[Any]) -> bool:
   """Returns whether `container_type`'s elements are named."""
   return (
       py_typecheck.is_named_tuple(container_type)
-      or py_typecheck.is_attrs(container_type)
+      or attrs.has(container_type)
       or issubclass(container_type, dict)
   )
 
@@ -538,7 +539,7 @@ def type_to_py_container(value, type_spec):
 
   if (
       py_typecheck.is_named_tuple(container_type)
-      or py_typecheck.is_attrs(container_type)
+      or attrs.has(container_type)
       or py_typecheck.is_dataclass(container_type)
       or container_type is tf.SparseTensor
   ):

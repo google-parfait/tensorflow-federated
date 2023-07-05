@@ -16,7 +16,6 @@ from typing import NamedTuple
 
 from absl.testing import absltest
 from absl.testing import parameterized
-import attr
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
@@ -83,20 +82,6 @@ class PyTypeCheckTest(parameterized.TestCase):
         py_typecheck.check_callable,
         10,
     )
-
-  def test_is_attr(self):
-    @attr.s
-    class TestAttrClass:
-      a = attr.ib(default=0)
-
-    class TestClass:
-      a = 0
-
-    self.assertTrue(py_typecheck.is_attrs(TestAttrClass))
-    self.assertTrue(py_typecheck.is_attrs(TestAttrClass()))
-    self.assertFalse(py_typecheck.is_attrs(0))
-    self.assertFalse(py_typecheck.is_attrs(TestClass))
-    self.assertFalse(py_typecheck.is_attrs(TestClass()))
 
   def test_is_named_tuple(self):
 

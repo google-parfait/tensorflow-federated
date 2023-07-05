@@ -17,7 +17,7 @@ import builtins
 import collections
 import dataclasses
 
-import attr
+import attrs
 
 
 def check_type(target, type_spec, label=None):
@@ -88,14 +88,9 @@ def type_string(type_spec):
       return ', '.join(type_names[0:-1] + ['or {}'.format(type_names[-1])])
 
 
-def is_attrs(value):
-  """Determines whether `value` is an attrs decorated class or instance of."""
-  return attr.has(value)
-
-
 def check_attrs(value):
   """Checks that `value` is an attrs decorated class or an instance thereof."""
-  if not is_attrs(value):
+  if not attrs.has(type(value)):
     raise TypeError(
         'Expected an instance of an attrs decorated class, or an '
         'attrs-decorated class type; found a value of type '

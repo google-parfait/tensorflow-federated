@@ -285,7 +285,7 @@ class FilteringReleaseManager(ReleaseManager[ReleasableStructure, Key]):
         filtered.
       """
       if isinstance(type_spec, computation_types.StructType) and not attrs.has(
-          type(type_spec.python_container)
+          type_spec.python_container
       ):
         # An empty tuple may represent the type signature for the value `None`.
         # If that is the case, do not filter the empty structure, instead treat
