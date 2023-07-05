@@ -197,7 +197,7 @@ class Type(metaclass=abc.ABCMeta):
   )
   def check_placement(self) -> None:
     """Check that this is a `tff.PlacementType`."""
-    if not self.is_placement():
+    if not isinstance(self, PlacementType):
       raise UnexpectedTypeError(PlacementType, self)
 
   @deprecation.deprecated(
@@ -1441,7 +1441,7 @@ def _string_representation(type_spec, formatted: bool) -> str:
       else:
         lines = [['<'], elements_lines, ['>']]
       return _combine(lines)
-    elif type_spec.is_placement():
+    elif isinstance(type_spec, PlacementType):
       return ['placement']
     elif type_spec.is_sequence():
       element_lines = _lines_for_type(type_spec.element, formatted)

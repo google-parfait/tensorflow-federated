@@ -701,7 +701,7 @@ def check_concrete_instance_of(
     elif _both_are(lambda t: t.is_tensor()):
       if generic_type_member != concrete_type_member:
         _raise_structural('tensor types')
-    elif _both_are(lambda t: t.is_placement()):
+    elif _both_are(lambda t: isinstance(t, computation_types.PlacementType)):
       if generic_type_member != concrete_type_member:
         _raise_structural('placements')
     elif _both_are(lambda t: t.is_struct()):

@@ -34,7 +34,7 @@ def _convert_abstract_type_to_tensor(type_spec):
 
 
 def _convert_placement_type_to_tensor(type_spec):
-  if type_spec.is_placement():
+  if isinstance(type_spec, computation_types.PlacementType):
     return computation_types.TensorType(tf.float32), True
   return type_spec, False
 

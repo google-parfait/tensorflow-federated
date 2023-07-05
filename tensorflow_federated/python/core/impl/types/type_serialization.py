@@ -101,7 +101,7 @@ def serialize_type(type_spec: computation_types.Type) -> pb.Type:
             result=serialize_type(type_spec.result),  # pytype: disable=attribute-error
         )
     )
-  elif type_spec.is_placement():
+  elif isinstance(type_spec, computation_types.PlacementType):
     proto = pb.Type(placement=pb.PlacementType())
   elif type_spec.is_federated():
     proto = pb.Type(
