@@ -483,7 +483,7 @@ def _check_value_type(value_type):
   if not (
       value_type.is_tensor()
       or (
-          value_type.is_struct_with_python()
+          isinstance(value_type, computation_types.StructWithPythonType)
           and type_analysis.is_structure_of_tensors(value_type)
       )
   ):

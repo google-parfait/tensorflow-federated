@@ -1063,7 +1063,7 @@ def _get_secure_intrinsic_reductions() -> (
   def federated_secure_modular_sum(arg):
     py_typecheck.check_type(arg, building_blocks.ComputationBuildingBlock)
     arg.type_signature.check_struct()
-    if arg.type_signature.is_struct_with_python():
+    if isinstance(arg.type_signature, computation_types.StructWithPythonType):
       container_type = arg.type_signature.python_container
     else:
       container_type = None

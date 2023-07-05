@@ -243,7 +243,7 @@ class Type(metaclass=abc.ABCMeta):
   )
   def check_struct_with_python(self) -> None:
     """Check that this is a `tff.StructWithPythonType`."""
-    if not self.is_struct_with_python():
+    if not isinstance(self, StructWithPythonType):
       raise UnexpectedTypeError(StructWithPythonType, self)
 
   @deprecation.deprecated(

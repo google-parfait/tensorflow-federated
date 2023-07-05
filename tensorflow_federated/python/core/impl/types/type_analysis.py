@@ -535,8 +535,8 @@ def is_average_compatible(type_spec: computation_types.Type) -> bool:
 
 
 def is_struct_with_py_container(value, type_spec):
-  return type_spec.is_struct_with_python() and isinstance(
-      value, structure.Struct
+  return isinstance(value, structure.Struct) and isinstance(
+      type_spec, computation_types.StructWithPythonType
   )
 
 

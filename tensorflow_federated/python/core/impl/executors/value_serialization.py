@@ -449,16 +449,18 @@ def _deserialize_dataset_from_graph_def(
       type_spec: computation_types.Type,
   ) -> tuple[computation_types.Type, bool]:
     """Transforms `StructType` to `StructWithPythonType`."""
-    if type_spec.is_struct() and not type_spec.is_struct_with_python():
+    if isinstance(type_spec, computation_types.StructType) and not isinstance(
+        type_spec, computation_types.StructWithPythonType
+    ):
       field_is_named = tuple(
-          name is not None for name, _ in structure.iter_elements(type_spec)  # pytype: disable=wrong-arg-types
+          name is not None for name, _ in structure.iter_elements(type_spec)
       )
       has_names = any(field_is_named)
       is_all_named = all(field_is_named)
       if is_all_named:
         return (
             computation_types.StructWithPythonType(
-                elements=structure.iter_elements(type_spec),  # pytype: disable=wrong-arg-types
+                elements=structure.iter_elements(type_spec),
                 container_type=collections.OrderedDict,
             ),
             True,
@@ -466,7 +468,7 @@ def _deserialize_dataset_from_graph_def(
       elif not has_names:
         return (
             computation_types.StructWithPythonType(
-                elements=structure.iter_elements(type_spec),  # pytype: disable=wrong-arg-types
+                elements=structure.iter_elements(type_spec),
                 container_type=tuple,
             ),
             True,
