@@ -98,14 +98,9 @@ def check_attrs(value):
     )
 
 
-def is_dataclass(value):
-  """Determines whether `value` is a Python dataclass or instance thereof."""
-  return dataclasses.is_dataclass(value)
-
-
 def check_dataclass(value):
   """Checks that `value` is a Python dataclass or an instance thereof."""
-  if not is_dataclass(value):
+  if not dataclasses.is_dataclass(value):
     raise TypeError(
         'Expected an instance of a Python dataclass, or a '
         f'dataclass type; found a value of type {type(value)}'

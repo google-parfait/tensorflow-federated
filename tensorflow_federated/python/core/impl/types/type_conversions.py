@@ -14,6 +14,7 @@
 
 import collections
 from collections.abc import Callable
+import dataclasses
 from typing import Any, Optional
 
 import attrs
@@ -98,7 +99,7 @@ def infer_type(arg: Any) -> Optional[computation_types.Type]:
     return computation_types.StructWithPythonType(
         [(k, infer_type(v)) for k, v in items], type(arg)
     )
-  elif py_typecheck.is_dataclass(arg):
+  elif dataclasses.is_dataclass(arg):
     items = named_containers.dataclass_to_odict(arg).items()
     return computation_types.StructWithPythonType(
         [(k, infer_type(v)) for k, v in items], type(arg)
@@ -408,7 +409,7 @@ def is_container_type_with_names(container_type: type[Any]) -> bool:
   )
 
 
-def type_to_py_container(value, type_spec):
+def type_to_py_container(value, type_spec: computation_types.Type):
   """Recursively convert `structure.Struct`s to Python containers.
 
   This is in some sense the inverse operation to
@@ -429,7 +430,7 @@ def type_to_py_container(value, type_spec):
       and unnamed values, or if `value` contains names that are mismatched or
       not present in the corresponding index of `type_spec`.
   """
-  if type_spec.is_federated():
+  if isinstance(type_spec, computation_types.FederatedType):
     if type_spec.all_equal:  # pytype: disable=attribute-error
       structure_type_spec = type_spec.member  # pytype: disable=attribute-error
     else:
@@ -444,7 +445,7 @@ def type_to_py_container(value, type_spec):
   else:
     structure_type_spec = type_spec
 
-  if structure_type_spec.is_sequence():
+  if isinstance(structure_type_spec, computation_types.SequenceType):
     element_type = structure_type_spec.element  # pytype: disable=attribute-error
     if isinstance(value, list):
       return [type_to_py_container(element, element_type) for element in value]
@@ -460,7 +461,7 @@ def type_to_py_container(value, type_spec):
         )
     )
 
-  if not structure_type_spec.is_struct():
+  if not isinstance(structure_type_spec, computation_types.StructType):
     return value
 
   if not isinstance(value, structure.Struct):
@@ -540,7 +541,7 @@ def type_to_py_container(value, type_spec):
   if (
       py_typecheck.is_named_tuple(container_type)
       or attrs.has(container_type)
-      or py_typecheck.is_dataclass(container_type)
+      or dataclasses.is_dataclass(container_type)
       or container_type is tf.SparseTensor
   ):
     # The namedtuple and attr.s class constructors cannot interpret a list of
@@ -557,7 +558,7 @@ def type_to_py_container(value, type_spec):
     # E.g., tuple and list when elements only has values, but also `dict`,
     # `collections.OrderedDict`, or `structure.Struct` when
     # elements has (name, value) tuples.
-    return container_type(elements)
+    return container_type(elements)  # pytype: disable=wrong-arg-count
 
 
 def _structure_from_tensor_type_tree_inner(
