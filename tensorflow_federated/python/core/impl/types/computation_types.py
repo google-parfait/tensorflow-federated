@@ -152,7 +152,7 @@ class Type(metaclass=abc.ABCMeta):
   )
   def check_abstract(self) -> None:
     """Check that this is a `tff.AbstractType`."""
-    if not self.is_abstract():
+    if not isinstance(self, AbstractType):
       raise UnexpectedTypeError(AbstractType, self)
 
   @deprecation.deprecated(
@@ -1412,7 +1412,7 @@ def _string_representation(type_spec, formatted: bool) -> str:
       formatted: A boolean indicating if the returned string should be
         formatted.
     """
-    if type_spec.is_abstract():
+    if isinstance(type_spec, AbstractType):
       return [type_spec.label]
     elif type_spec.is_federated():
       member_lines = _lines_for_type(type_spec.member, formatted)

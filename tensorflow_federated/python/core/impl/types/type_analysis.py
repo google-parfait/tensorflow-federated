@@ -266,7 +266,7 @@ def check_all_abstract_types_are_bound(type_spec):
               for _, v in structure.iter_elements(type_spec)
           ]
       )
-    elif type_spec.is_abstract():
+    elif isinstance(type_spec, computation_types.AbstractType):
       if type_spec.label in bound_labels:
         return set()
       elif not check:
@@ -650,7 +650,7 @@ def check_concrete_instance_of(
   py_typecheck.check_type(generic_type, computation_types.Type)
 
   for t in preorder_types(concrete_type):
-    if t.is_abstract():
+    if isinstance(t, computation_types.AbstractType):
       raise NotConcreteTypeError(concrete_type, t)
 
   type_bindings = {}
@@ -681,8 +681,8 @@ def check_concrete_instance_of(
       else:
         return False
 
-    if generic_type_member.is_abstract():
-      label = str(generic_type_member.label)  # pytype: disable=attribute-error
+    if isinstance(generic_type_member, computation_types.AbstractType):
+      label = str(generic_type_member.label)
       if not defining:
         non_defining_usages[label].append(concrete_type_member)
       else:

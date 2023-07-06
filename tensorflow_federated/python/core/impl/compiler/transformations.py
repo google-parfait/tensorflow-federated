@@ -460,9 +460,12 @@ def _merge_args(
         zip_args, name_generator
     )
     return zip_args
-  if (
-      abstract_parameter_type.is_tensor()
-      or abstract_parameter_type.is_abstract()
+  if isinstance(
+      abstract_parameter_type,
+      (
+          computation_types.AbstractType,
+          computation_types.TensorType,
+      ),
   ):
     return building_blocks.Struct([(None, arg) for arg in args])
   if abstract_parameter_type.is_function():

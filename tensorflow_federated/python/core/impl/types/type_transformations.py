@@ -121,10 +121,13 @@ def transform_type_postorder(
         type_signature = computation_types.StructType(elements)
     type_signature, type_signature_mutated = transform_fn(type_signature)
     return type_signature, type_signature_mutated or elements_mutated
-  elif (
-      type_signature.is_abstract()
-      or type_signature.is_placement()
-      or type_signature.is_tensor()
+  elif isinstance(
+      type_signature,
+      (
+          computation_types.AbstractType,
+          computation_types.PlacementType,
+          computation_types.TensorType,
+      ),
   ):
     return transform_fn(type_signature)
   else:
