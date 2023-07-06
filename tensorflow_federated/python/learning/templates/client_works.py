@@ -47,8 +47,8 @@ class ClientResultTypeError(TypeError):
 # TODO(b/240314933): Move this (or refactor this) to a more general location.
 def _is_allowed_client_data_type(type_spec: computation_types.Type) -> bool:
   """Determines whether a given type is a (possibly nested) sequence type."""
-  if type_spec.is_sequence():
-    return type_analysis.is_tensorflow_compatible_type(type_spec.element)  # pytype: disable=attribute-error
+  if isinstance(type_spec, computation_types.SequenceType):
+    return type_analysis.is_tensorflow_compatible_type(type_spec.element)
   elif type_spec.is_struct():
     return all(
         _is_allowed_client_data_type(element_type)

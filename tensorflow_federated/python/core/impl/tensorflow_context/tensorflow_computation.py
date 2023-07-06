@@ -252,7 +252,7 @@ def _extract_bindings(
           ),
           1,
       )
-    elif type_spec.is_sequence():
+    elif isinstance(type_spec, computation_types.SequenceType):
       arg_def = function_args[arg_index]
       if arg_def.type != tf.variant:
         raise TypeError(
@@ -388,8 +388,8 @@ class _TensorFlowFunctionTracingStrategy:
     ]:
       if type_spec.is_tensor():
         return tf.TensorSpec(shape=type_spec.shape, dtype=type_spec.dtype)  # pytype: disable=attribute-error
-      elif type_spec.is_sequence():
-        return tf.data.DatasetSpec(_tf_spec_from_tff_type(type_spec.element))  # pytype: disable=attribute-error
+      elif isinstance(type_spec, computation_types.SequenceType):
+        return tf.data.DatasetSpec(_tf_spec_from_tff_type(type_spec.element))
       elif type_spec.is_struct():
         container_type = type_spec.python_container  # pytype: disable=attribute-error,unsupported-operands
         if container_type is tf.SparseTensor:

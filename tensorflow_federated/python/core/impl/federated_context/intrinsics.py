@@ -965,7 +965,7 @@ def sequence_map(fn, arg):
   py_typecheck.check_type(fn.type_signature, computation_types.FunctionType)
   arg = value_impl.to_value(arg, None)
 
-  if arg.type_signature.is_sequence():
+  if isinstance(arg.type_signature, computation_types.SequenceType):
     comp = building_block_factory.create_sequence_map(fn.comp, arg.comp)
     comp = _bind_comp_as_reference(comp)
     return value_impl.Value(comp)
@@ -1077,8 +1077,8 @@ def sequence_sum(value):
     TypeError: If the arguments are of wrong or unsupported types.
   """
   value = value_impl.to_value(value, None)
-  if value.type_signature.is_sequence():
-    element_type = value.type_signature.element  # pytype: disable=attribute-error
+  if isinstance(value.type_signature, computation_types.SequenceType):
+    element_type = value.type_signature.element
   else:
     py_typecheck.check_type(
         value.type_signature,  # pytype: disable=attribute-error
@@ -1091,7 +1091,7 @@ def sequence_sum(value):
     element_type = value.type_signature.member.element  # pytype: disable=attribute-error
   type_analysis.check_is_sum_compatible(element_type)
 
-  if value.type_signature.is_sequence():
+  if isinstance(value.type_signature, computation_types.SequenceType):
     comp = building_block_factory.create_sequence_sum(value.comp)
     comp = _bind_comp_as_reference(comp)
     return value_impl.Value(comp)

@@ -358,7 +358,9 @@ def create_binary_operator_with_upcast(
             t=type_signature
         )
     )
-  if type_analysis.contains(type_signature, lambda t: t.is_sequence()):
+  if type_analysis.contains(
+      type_signature, lambda t: isinstance(t, computation_types.SequenceType)
+  ):
     raise TypeError(
         'Applying binary operators in TensorFlow is only '
         'supported on Tensors and StructTypes; you '
@@ -521,7 +523,13 @@ def create_identity(
     raise TypeError('TensorFlow identity cannot be created for NoneType.')
 
   # TF relies on feeds not-identical to fetches in certain circumstances.
-  if type_signature.is_tensor() or type_signature.is_sequence():
+  if isinstance(
+      type_signature,
+      (
+          computation_types.SequenceType,
+          computation_types.TensorType,
+      ),
+  ):
     identity_fn = tf.identity
   elif type_signature.is_struct():
     identity_fn = functools.partial(structure.map_structure, tf.identity)

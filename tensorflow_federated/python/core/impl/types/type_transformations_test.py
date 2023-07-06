@@ -52,7 +52,7 @@ def _convert_federated_to_tensor(type_spec):
 
 
 def _convert_sequence_to_tensor(type_spec):
-  if type_spec.is_sequence():
+  if isinstance(type_spec, computation_types.SequenceType):
     return computation_types.TensorType(tf.float32), True
   return type_spec, False
 

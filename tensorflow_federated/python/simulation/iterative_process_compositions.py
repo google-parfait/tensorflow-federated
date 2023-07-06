@@ -100,7 +100,7 @@ def compose_dataset_computation_with_computation(
   py_typecheck.check_type(computation_body, computation_base.Computation)
 
   dataset_return_type = dataset_computation.type_signature.result
-  if not dataset_return_type.is_sequence():
+  if not isinstance(dataset_return_type, computation_types.SequenceType):
     raise TypeError(
         'Expected a `tff.SequenceType` to be returned from '
         '`dataset_computation`; found {} instead.'.format(dataset_return_type)
@@ -177,7 +177,9 @@ def compose_dataset_computation_with_computation(
       for idx, (elem_name, elem_type) in enumerate(
           structure.iter_elements(struct_param_type)
       ):
-        if elem_type.is_federated() and elem_type.member.is_sequence():
+        if elem_type.is_federated() and isinstance(
+            elem_type.member, computation_types.SequenceType
+        ):
           sequence_types.append(elem_type.member)
 
         if is_desired_federated_sequence(elem_type):
@@ -329,7 +331,7 @@ def compose_dataset_computation_with_iterative_process(
   py_typecheck.check_type(process, iterative_process.IterativeProcess)
 
   dataset_return_type = dataset_computation.type_signature.result
-  if not dataset_return_type.is_sequence():
+  if not isinstance(dataset_return_type, computation_types.SequenceType):
     raise TypeError(
         'Expected a `tff.SequenceType` to be returned from '
         '`dataset_computation`; found {} instead.'.format(dataset_return_type)
@@ -346,7 +348,8 @@ def compose_dataset_computation_with_iterative_process(
 
   init_fn = process.initialize
   if type_analysis.contains(
-      init_fn.type_signature.result, lambda x: x.is_sequence()
+      init_fn.type_signature.result,
+      lambda x: isinstance(x, computation_types.SequenceType),
   ):
     raise TypeError(
         'Cannot construct a new iterative process if a dataset is '

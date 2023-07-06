@@ -106,9 +106,18 @@ def is_tensorflow_compatible_type(type_spec):
   """Checks `type_spec` against an explicit list of `tf_computation`."""
   if type_spec is None:
     return True
-  return contains_only(
-      type_spec, lambda t: t.is_struct() or t.is_sequence() or t.is_tensor()
-  )
+
+  def _predicate(type_spec: computation_types.Type) -> bool:
+    return isinstance(
+        type_spec,
+        (
+            computation_types.SequenceType,
+            computation_types.StructType,
+            computation_types.TensorType,
+        ),
+    )
+
+  return contains_only(type_spec, _predicate)
 
 
 def is_structure_of_tensors(type_spec):
@@ -251,7 +260,7 @@ def check_all_abstract_types_are_bound(type_spec):
     py_typecheck.check_type(type_spec, computation_types.Type)
     if type_spec.is_tensor():
       return set()
-    elif type_spec.is_sequence():
+    elif isinstance(type_spec, computation_types.SequenceType):
       return _check_or_get_unbound_abstract_type_labels(
           type_spec.element, bound_labels, check
       )
@@ -713,7 +722,7 @@ def check_concrete_instance_of(
         if generic_elements[k][0] != concrete_elements[k][0]:
           _raise_structural('element names')
         _check_helper(generic_elements[k][1], concrete_elements[k][1], defining)
-    elif _both_are(lambda t: t.is_sequence()):
+    elif _both_are(lambda t: isinstance(t, computation_types.SequenceType)):
       _check_helper(
           generic_type_member.element,  # pytype: disable=attribute-error
           concrete_type_member.element,  # pytype: disable=attribute-error
