@@ -19,6 +19,7 @@ from typing import Any, Optional
 
 import tensorflow as tf
 
+from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.aggregators import sampling
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
@@ -28,14 +29,22 @@ from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
+from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning.models import model_weights as model_weights_lib
+from tensorflow_federated.python.learning.models import reconstruction_model
 from tensorflow_federated.python.learning.models import variable
+from tensorflow_federated.python.learning.templates import client_works
+from tensorflow_federated.python.learning.templates import composers
+from tensorflow_federated.python.learning.templates import distributors
+from tensorflow_federated.python.learning.templates import finalizers
+from tensorflow_federated.python.learning.templates import learning_process
 
 
 _MetricsType = Mapping[str, Any]
 _SplitFnType = Callable[
     [tf.data.Dataset], tuple[tf.data.Dataset, tf.data.Dataset]
 ]
+_MetricsProcessFnType = Callable[[_MetricsType], _MetricsType]
 _FinetuneEvalFnType = Callable[
     [variable.VariableModel, tf.data.Dataset, tf.data.Dataset, Any],
     _MetricsType,
@@ -332,3 +341,315 @@ def _compute_p13n_metrics(
     return p13n_metrics
 
   return loop_and_compute()
+
+
+def _build_personalization_eval_client_work(
+    model_fn: Callable[[], variable.VariableModel],
+    personalize_fn_dict: Mapping[str, Callable[[], _FinetuneEvalFnType]],
+    baseline_evaluate_fn: Callable[
+        [variable.VariableModel, tf.data.Dataset], _MetricsType
+    ],
+    max_num_clients: int,
+    split_data_fn: _SplitFnType,
+    derived_metrics_processing_fn: _MetricsProcessFnType,
+) -> client_works.ClientWorkProcess:
+  """Builds a `ClientWorkProcess` that performs model evaluation at clients."""
+
+  with tf.Graph().as_default():
+    model = model_fn()
+    model_weights_type = model_weights_lib.weights_type_from_model(model)
+    batch_type = computation_types.to_type(model.input_spec)
+
+  unsplit_client_data_type = computation_types.SequenceType(batch_type)
+
+  # Define the `tff.Type` of each client's input. Since batching (as well as
+  # other preprocessing of datasets) is done within each personalization
+  # strategy (i.e., by functions in `personalize_fn_dict`), the client-side
+  # input should contain unbatched elements.
+  element_type = _remove_batch_dim(batch_type)
+  unbatched_split_client_data_type = collections.OrderedDict(
+      train_data=computation_types.SequenceType(element_type),
+      test_data=computation_types.SequenceType(element_type),
+  )
+  unbatched_split_client_data_type = computation_types.to_type(
+      unbatched_split_client_data_type
+  )
+
+  py_typecheck.check_type(max_num_clients, int)
+  if max_num_clients <= 0:
+    raise ValueError('max_num_clients must be a positive integer.')
+
+  @federated_computation.federated_computation
+  def init_fn() -> Any:  # Returns a federated value.
+    return intrinsics.federated_value((), placements.SERVER)  # No state.
+
+  client_computation = _build_client_computation(
+      model_weights_type=model_weights_type,
+      client_data_type=unbatched_split_client_data_type,
+      model_fn=model_fn,
+      personalize_fn_dict=personalize_fn_dict,
+      baseline_evaluate_fn=baseline_evaluate_fn,
+  )
+
+  @tensorflow_computation.tf_computation(unsplit_client_data_type)
+  def split_data_for_client(
+      unsplit_dataset: tf.data.Dataset,
+  ) -> Mapping[str, Any]:
+    train_dataset, test_dataset = split_data_fn(unsplit_dataset)
+    return collections.OrderedDict(
+        train_data=train_dataset,
+        test_data=test_dataset,
+    )
+
+  reservoir_sampling_factory = sampling.UnweightedReservoirSamplingFactory(
+      sample_size=max_num_clients
+  )
+  aggregation_process = reservoir_sampling_factory.create(
+      client_computation.type_signature.result
+  )
+
+  @tensorflow_computation.tf_computation()
+  def _metrics_postprocessing(
+      raw_sampling_metrics: _MetricsType,
+  ) -> _MetricsType:
+    return derived_metrics_processing_fn(raw_sampling_metrics)
+
+  @federated_computation.federated_computation(
+      init_fn.type_signature.result,
+      computation_types.at_clients(model_weights_type),
+      computation_types.at_clients(unsplit_client_data_type),
+  )
+  def next_fn(
+      state: Any,
+      model_weights: model_weights_lib.ModelWeights,
+      unsplit_client_data: tf.data.Dataset,
+  ) -> measured_process.MeasuredProcessOutput:
+    del state
+
+    unbatched_split_client_data = intrinsics.federated_map(
+        split_data_for_client, unsplit_client_data
+    )
+
+    client_final_metrics = intrinsics.federated_map(
+        client_computation, (model_weights, unbatched_split_client_data)
+    )
+
+    # These are the 'raw' metrics, where the values are lists showing numbers
+    # from each selected client (so with cardinality of `max_num_clients`).
+    raw_sampling_metrics = aggregation_process.next(
+        aggregation_process.initialize(), client_final_metrics  # No state.
+    ).result
+    # These are additional metrics derived from the 'raw' per-client metrics.
+    derived_metrics = intrinsics.federated_map(
+        _metrics_postprocessing, raw_sampling_metrics
+    )
+
+    measurements = intrinsics.federated_zip(
+        collections.OrderedDict(
+            # Note: This key name ('eval'), and the 'current_round_metrics'
+            # and 'total_rounds_metrics' key names in the associated dictionary
+            # value, are necessary to match the expectations of the
+            # `tff.learning.programs.EvaluationManager` class, which may consume
+            # and use this learning process.
+            eval=collections.OrderedDict(
+                current_round_metrics=collections.OrderedDict(
+                    raw=raw_sampling_metrics,
+                    derived=derived_metrics,
+                ),
+                total_rounds_metrics=(),
+            )
+        )
+    )
+
+    # Return empty state as no state is tracked round-over-round.
+    empty_state = intrinsics.federated_value((), placements.SERVER)
+    # Return empty result as no model update will be performed for evaluation.
+    empty_client_result = intrinsics.federated_value(
+        client_works.ClientResult(update=(), update_weight=()),
+        placements.CLIENTS,
+    )
+    return measured_process.MeasuredProcessOutput(
+        empty_state, empty_client_result, measurements
+    )
+
+  return client_works.ClientWorkProcess(init_fn, next_fn)
+
+
+def build_personalization_eval(
+    model_fn: Callable[[], variable.VariableModel],
+    personalize_fn_dict: Mapping[str, Callable[[], _FinetuneEvalFnType]],
+    baseline_evaluate_fn: Callable[
+        [variable.VariableModel, tf.data.Dataset], _MetricsType
+    ],
+    max_num_clients: int = 100,
+    split_data_fn: Optional[_SplitFnType] = None,
+    derived_metrics_processing_fn: Optional[_MetricsProcessFnType] = None,
+    model_distributor: Optional[distributors.DistributionProcess] = None,
+) -> learning_process.LearningProcess:
+  """Builds a learning process that performs personalization evaluation.
+
+  This function creates a `tff.learning.templates.LearningProcess` that performs
+  personalization evaluation on clients. The learning process has the following
+  methods inherited from `tff.learning.templates.LearningProcess`:
+
+  *   `initialize`: A `tff.Computation` with type signature `( -> S@SERVER)`,
+      where `S` is a `tff.learning.templates.LearningAlgorithmState`
+      representing the initial state of the server. In the case of
+      personalization evaluation, this state as unused and empty.
+  *   `next`: A `tff.Computation` with type signature
+      `(<S@SERVER, {B*}@CLIENTS> -> <L@SERVER>)` where `S` is a
+      `LearningAlgorithmState` whose type matches that of the output
+      of `initialize`, and `{B*}@CLIENTS` represents the client datasets, where
+      `B` is the type of a single batch. The output `L` contains an (empty)
+      server state, as well as the aggregated personalization evaluation metrics
+      at the server.
+  *   `get_model_weights`: A `tff.Computation` with type signature `(S -> M)`,
+      where `S` is a `tff.learning.templates.LearningAlgorithmState` whose type
+      matches the output of `initialize` and `next`, and `M` represents the type
+      of the model weights used during evaluation.
+  *   `set_model_weights`: A `tff.Computation` with type signature
+      `(<S, M> -> S)`, where `S` is a
+      `tff.learning.templates.LearningAlgorithmState` whose type matches the
+      output of `initialize` and `M` represents the type of the model weights
+      used during evaluation.
+
+  Each time `next` is called, the server model is broadcast to each client using
+  a distributor. Each client personalizes the model, evaluates both the
+  baseline model and the personalized model, and then reports these local
+  unfinalized metrics. The local unfinalized metrics are then aggregated and
+  finalized at server. Both current round and total rounds
+  metrics will be produced. There are no updates of the server model during the
+  evaluation process.
+
+  Each client evaluates the personalization strategies given in
+  `personalize_fn_dict`. Evaluation metrics from at most `max_num_clients`
+  participating clients are collected to the server.
+
+  NOTE: The functions in `personalize_fn_dict` and `baseline_evaluate_fn` are
+  expected to take as input *unbatched* datasets, and are responsible for
+  applying batching, if any, to the provided input datasets.
+
+  Args:
+    model_fn: A no-arg function that returns a
+      `tff.learning.models.VariableModel`. This method must *not* capture
+      TensorFlow tensors or variables and use them. The model must be
+      constructed entirely from scratch on each invocation, returning the same
+      pre-constructed model each call will result in an error.
+    personalize_fn_dict: An `OrderedDict` that maps a `string` (representing a
+      strategy name) to a no-argument function that returns a `tf.function`.
+      Each `tf.function` represents a personalization strategy - it accepts a
+      `tff.learning.models.VariableModel` (with weights already initialized to
+      the given model weights when users invoke the returned TFF computation),
+      an unbatched `tf.data.Dataset` for train, an unbatched `tf.data.Dataset`
+      for test, trains a personalized model, and returns the evaluation metrics.
+      The evaluation metrics are represented as an `OrderedDict` (or a nested
+      `OrderedDict`) of `string` metric names to scalar `tf.Tensor`s.
+    baseline_evaluate_fn: A `tf.function` that accepts a
+      `tff.learning.models.VariableModel` (with weights already initialized to
+      the provided model weights when users invoke the returned TFF
+      computation), and an unbatched `tf.data.Dataset`, evaluates the model on
+      the dataset, and returns the evaluation metrics. The evaluation metrics
+      are represented as an `OrderedDict` (or a nested `OrderedDict`) of
+      `string` metric names to scalar `tf.Tensor`s. This function is *only* used
+      to compute the baseline metrics of the initial model.
+    max_num_clients: A positive `int` specifying the maximum number of clients
+      to collect metrics in a round (default is 100). The clients are sampled
+      without replacement. For each sampled client, all the personalization
+      metrics from this client will be collected. If the number of participating
+      clients in a round is smaller than this value, then metrics from all
+      clients will be collected.
+    split_data_fn: An optional function which takes a single dataset and returns
+      a tuple of two datasets, to be used for splitting each client's dataset
+      into train and test datasets. The first dataset in the returned tuple will
+      be used for training, and the second will be used for evaluation. Note
+      that both train and test datasets are expected to be *unbatched*, so that
+      batching is under the control of the personalization strategies specified
+      via the `personalize_fn_dict` argument. Consequently, if this learning
+      process will be used as part of a script or higher order abstraction which
+      passes client datasets in batched form, then this argument needs to
+      perform the unbatching. If unspecified, the default function used will
+      unbatch an (assumed batched) input dataset and then split the examples
+      into halves.
+    derived_metrics_processing_fn: An optional function which takes a dictionary
+      of 'raw' personalization evaluation metrics for a round (i.e., metrics
+      which are lists of per-client values), and calculates additional metrics
+      derived from the 'raw' metrics. This could be used e.g. to aggregate
+      per-client values to scalars: one could take the per-client difference in
+      accuracy between a personalization strategy and the baseline, and
+      calculate two 'derived' scalar metrics which are the counts of clients
+      which saw improvement/no improvement via personalization. Note that the
+      processing performed here is dependent on the raw metrics defined in the
+      the `personalize_fn_dict` and `baseline_evaluate_fn` arguments; errors
+      will occur e.g. if a raw metrics is expected to exist here but was not
+      defined in `personalize_fn_dict`/`baseline_evaluate_fn`. If unspecified,
+      *no* derived metrics will be calculated.
+    model_distributor: An optional `tff.learning.templates.DistributionProcess`
+      that broadcasts the model weights on the server to the clients. It must
+      support the signature `(input_values@SERVER -> output_values@CLIENTS)` and
+      have empty state. If None, the server model is broadcast to the clients
+      using the default `tff.federated_broadcast`.
+
+  Returns:
+    A `tff.learning.templates.LearningProcess` that performs personalization
+    evaluation on clients, and returns metrics.
+
+  Raises:
+    TypeError: If arguments are of the wrong types.
+    ValueError: If `baseline_metrics` is used as a key in `personalize_fn_dict`.
+    ValueError: If `max_num_clients` is not positive.
+  """
+
+  @tensorflow_computation.tf_computation()
+  def initial_model_weights_fn():
+    return model_weights_lib.ModelWeights.from_model(model_fn())
+
+  model_weights_type = initial_model_weights_fn.type_signature.result
+
+  if split_data_fn is None:
+    split_data_fn_after_unbatching = (
+        reconstruction_model.ReconstructionModel.build_dataset_split_fn(
+            split_dataset=True
+        )
+    )
+    split_data_fn = lambda ds: split_data_fn_after_unbatching(ds.unbatch())
+
+  if derived_metrics_processing_fn is None:
+    derived_metrics_processing_fn = lambda x: collections.OrderedDict()
+
+  if model_distributor is None:
+    model_distributor = distributors.build_broadcast_process(model_weights_type)
+  else:
+    py_typecheck.check_type(model_distributor, distributors.DistributionProcess)
+
+  client_work = _build_personalization_eval_client_work(
+      model_fn=model_fn,
+      personalize_fn_dict=personalize_fn_dict,
+      baseline_evaluate_fn=baseline_evaluate_fn,
+      max_num_clients=max_num_clients,
+      split_data_fn=split_data_fn,
+      derived_metrics_processing_fn=derived_metrics_processing_fn,
+  )
+
+  client_work_result_type = computation_types.at_clients(
+      client_works.ClientResult(update=(), update_weight=())
+  )
+  model_update_type = client_work_result_type.member.update
+  model_update_weight_type = client_work_result_type.member.update_weight
+  model_aggregator_factory = mean.MeanFactory()
+  model_aggregator = model_aggregator_factory.create(
+      model_update_type, model_update_weight_type
+  )
+
+  # The finalizer performs no update on model weights.
+  finalizer = finalizers.build_identity_finalizer(
+      model_weights_type,
+      model_aggregator.next.type_signature.result.result.member,
+  )
+
+  return composers.compose_learning_process(
+      initial_model_weights_fn,
+      model_distributor,
+      client_work,
+      model_aggregator,
+      finalizer,
+  )
