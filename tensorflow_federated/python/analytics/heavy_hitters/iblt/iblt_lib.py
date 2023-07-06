@@ -69,6 +69,8 @@ from tensorflow_federated.python.analytics.heavy_hitters.iblt import hyperedge_h
 # Convenience Aliases
 _CharacterEncoding = chunkers.CharacterEncoding
 
+KEY_NONEMPTY = 0
+KEY_NUM_NOT_DECODED = None
 DEFAULT_FIELD_SIZE = 2**31 - 1
 DEFAULT_REPETITIONS = 3
 # Theoretical IBLT space bounds, Table 1 in https://arxiv.org/pdf/1101.2245.pdf
@@ -439,14 +441,18 @@ class IbltDecoder:
     return iblt, hash_indices, data_string, count
 
   @tf.function
-  def get_freq_estimates_tf(self) -> tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
+  def get_freq_estimates_tf(
+      self,
+  ) -> tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]:
     """Decodes key-value pairs from an IBLT.
 
     Returns:
-      (out_strings, out_counts, num_not_decoded) where out_strings is tf.Tensor
-      containing all the decoded strings, out_counts is a tf.Tensor containing
-      the counts of each string and num_not_decoded is tf.Tensor with the number
-      of items not decoded in the IBLT.
+      (out_strings, out_counts, num_not_decoded, num_nonempty_bucket) where
+      out_strings is tf.Tensor containing all the decoded strings, out_counts is
+      a tf.Tensor containing the counts of each string and num_not_decoded is
+      tf.Tensor with the number of items not decoded in the IBLT,
+      num_nonempty_bucket a tf.Tensor containing the number of undecoded hash
+      buckets.
     """
     iblt = tf.math.floormod(
         tf.cast(self.iblt, dtype=self._dtype),
@@ -497,7 +503,15 @@ class IbltDecoder:
     num_not_decoded = tf.reduce_sum(iblt[:, :, self.count]) / self.repetitions
     num_not_decoded = tf.cast(num_not_decoded, dtype=self._dtype)
 
-    return out_strings.stack(), out_counts.stack(), num_not_decoded
+    num_nonempty_bucket = tf.math.count_nonzero(iblt[:, :, self.count])
+    num_nonempty_bucket = tf.cast(num_nonempty_bucket, dtype=self._dtype)
+
+    return (
+        out_strings.stack(),
+        out_counts.stack(),
+        num_not_decoded,
+        num_nonempty_bucket,
+    )
 
   def get_freq_estimates(self):
     """Decodes key-value pairs from an IBLT.
@@ -511,7 +525,9 @@ class IbltDecoder:
     if not tf.compat.v1.executing_eagerly():
       raise NotImplementedError("This method only works with Eager execution.")
 
-    out_strings, out_counts, num_not_decoded = self.get_freq_estimates_tf()
+    out_strings, out_counts, num_not_decoded, num_nonempty_bucket = (
+        self.get_freq_estimates_tf()
+    )
     counter = dict(
         zip(
             [
@@ -527,7 +543,8 @@ class IbltDecoder:
     )
     num_not_decoded = num_not_decoded.numpy()
     if num_not_decoded:
-      counter[None] = num_not_decoded
+      counter[KEY_NUM_NOT_DECODED] = num_not_decoded
+      counter[KEY_NONEMPTY] = num_nonempty_bucket
     return counter
 
 
@@ -846,10 +863,12 @@ def decode_iblt_tf(
     field_size: The field size for all values in IBLT. Defaults to 2**31 - 1.
 
   Returns:
-    `(out_strings, out_counts, num_not_decoded)` where `out_strings` is
-    a `tf.Tensor` containing all the decoded strings, `out_counts` is a
-    `tf.Tensor` containing the counts of each string and `num_not_decoded` is
-    a `tf.Tensor` with the number of items not decoded in the IBLT.
+    `(out_strings, out_counts, num_not_decoded, num_nonempty_bucket)` where
+    `out_strings` is a `tf.Tensor` containing all the decoded strings,
+    `out_counts` is a `tf.Tensor` containing the counts of each string and
+    `num_not_decoded` is a `tf.Tensor` with the number of items not decoded in
+    the IBLT, num_nonempty_bucket a tf.Tensor containing the number of undecoded
+    hash buckets.
   """
   iblt_decoder = IbltDecoder(
       iblt=iblt,

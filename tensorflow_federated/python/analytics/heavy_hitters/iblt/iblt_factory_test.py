@@ -292,9 +292,12 @@ class IbltFactoryTest(tf.test.TestCase, parameterized.TestCase):
 
     self.assertCountEqual(result, AGGREGATED_DATA)
 
-    expected_measurements = collections.OrderedDict(
-        [('num_not_decoded', 0), ('sketch', ()), ('value_tensor', ())]
-    )
+    expected_measurements = collections.OrderedDict([
+        ('undecoded_bucket_count_sum', 0),
+        ('num_nonempty_bucket', 0),
+        ('sketch', ()),
+        ('value_tensor', ()),
+    ])
     self.assertCountEqual(process_output.measurements, expected_measurements)
 
   def test_binary_string_aggregation(self):
@@ -336,7 +339,9 @@ class IbltFactoryTest(tf.test.TestCase, parameterized.TestCase):
     )
     logging.info('process_output: %s', process_output)
 
-    self.assertEqual(process_output.measurements['num_not_decoded'], 0)
+    self.assertEqual(
+        process_output.measurements['undecoded_bucket_count_sum'], 0
+    )
     result = dict(
         zip(
             process_output.result.output_strings,
