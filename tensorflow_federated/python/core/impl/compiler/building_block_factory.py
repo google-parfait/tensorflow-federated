@@ -1871,7 +1871,6 @@ def create_tensorflow_binary_operator_with_upcast(
     upcasts the second element of its argument and applies the binary
     operator.
   """
-  py_typecheck.check_callable(operator)
   _check_generic_operator_type(type_signature)
   type_analysis.check_tensorflow_compatible_type(type_signature)
   tf_proto, type_signature = (
@@ -1920,7 +1919,6 @@ def apply_binary_operator_with_upcast(
     TypeError: If the types don't match.
   """
   py_typecheck.check_type(arg, building_blocks.ComputationBuildingBlock)
-  py_typecheck.check_callable(operator)
   if arg.type_signature.is_federated():
     tuple_type = arg.type_signature.member  # pytype: disable=attribute-error
     assert tuple_type.is_struct()

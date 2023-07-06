@@ -435,7 +435,6 @@ def build_model_delta_client_work(
   Returns:
     A `ClientWorkProcess`.
   """
-  py_typecheck.check_callable(model_fn)
   py_typecheck.check_type(client_weighting, client_weight_lib.ClientWeighting)
   py_typecheck.check_type(delta_l2_regularizer, float)
   if delta_l2_regularizer < 0.0:

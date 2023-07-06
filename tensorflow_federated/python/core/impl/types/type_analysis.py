@@ -823,7 +823,6 @@ def count_tensors_in_type(
   py_typecheck.check_type(type_spec, computation_types.Type)
   if tensor_filter is None:
     tensor_filter = lambda _: True
-  py_typecheck.check_callable(tensor_filter)
 
   tensors_and_params = collections.OrderedDict(
       num_tensors=0, parameters=0, num_unspecified_tensors=0

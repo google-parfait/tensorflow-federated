@@ -47,18 +47,6 @@ def check_type(target, type_spec, label=None):
   return target
 
 
-def check_callable(target, label=None):
-  """Checks target is callable and then returns it."""
-  if not callable(target):
-    raise TypeError(
-        'Expected {} callable, found non-callable {}.'.format(
-            '{} to be'.format(label) if label is not None else 'a',
-            type_string(type(target)),
-        )
-    )
-  return target
-
-
 def type_string(type_spec):
   """Creates a string representation of `type_spec` for error reporting.
 

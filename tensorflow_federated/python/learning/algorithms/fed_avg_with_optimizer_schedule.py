@@ -266,7 +266,6 @@ def build_weighted_fed_avg_with_optimizer_schedule(
   Returns:
     A `LearningProcess`.
   """
-  py_typecheck.check_callable(model_fn)
 
   @tensorflow_computation.tf_computation()
   def initial_model_weights_fn():

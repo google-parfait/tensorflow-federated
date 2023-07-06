@@ -134,7 +134,6 @@ def build_personalization_eval_computation(
   # Obtain the types by constructing the model first.
   # TODO(b/124477628): Replace it with other ways of handling metadata.
   with tf.Graph().as_default():
-    py_typecheck.check_callable(model_fn)
     model = model_fn()
     model_weights_type = model_weights_lib.weights_type_from_model(model)
     batch_tff_type = computation_types.to_type(model.input_spec)
@@ -279,7 +278,10 @@ def _remove_batch_dim(
 
 
 def _compute_baseline_metrics(
-    model_fn, initial_model_weights, test_data, baseline_evaluate_fn
+    model_fn,
+    initial_model_weights,
+    test_data,
+    baseline_evaluate_fn: Callable[..., object],
 ):
   """Evaluate the model with weights being the `initial_model_weights`."""
   model = model_fn()
@@ -290,7 +292,6 @@ def _compute_baseline_metrics(
     tf.nest.map_structure(
         lambda v, t: v.assign(t), model_weights, initial_model_weights
     )
-    py_typecheck.check_callable(baseline_evaluate_fn)
     return baseline_evaluate_fn(model, test_data)
 
   return assign_and_compute()
@@ -301,7 +302,7 @@ def _compute_p13n_metrics(
     initial_model_weights,
     train_data,
     test_data,
-    personalize_fn_dict,
+    personalize_fn_dict: Mapping[str, Callable[[], Callable[..., object]]],
     context,
 ):
   """Train and evaluate the personalized models."""
@@ -314,10 +315,9 @@ def _compute_p13n_metrics(
   # than already built `tf.function`s. Note that this has to be done outside the
   # `tf.function` `loop_and_compute` below, because `tf.function` usually does
   # not allow creation of new variables.
-  personalize_fns = collections.OrderedDict()
+  personalize_fns: dict[str, Callable[..., object]] = collections.OrderedDict()
   for name, personalize_fn_builder in personalize_fn_dict.items():
     py_typecheck.check_type(name, str)
-    py_typecheck.check_callable(personalize_fn_builder)
     personalize_fns[name] = personalize_fn_builder()
 
   @tf.function
@@ -327,7 +327,6 @@ def _compute_p13n_metrics(
       tf.nest.map_structure(
           lambda v, t: v.assign(t), model_weights, initial_model_weights
       )
-      py_typecheck.check_callable(personalize_fn)
       p13n_metrics[name] = personalize_fn(model, train_data, test_data, context)
     return p13n_metrics
 

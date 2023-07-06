@@ -266,7 +266,7 @@ def check_has_unique_names(comp):
   visit_postorder(comp, _visit)
 
 
-def extract_nodes_consuming(tree, predicate):
+def extract_nodes_consuming(tree, predicate: _BuildingBlockPredicate):
   """Returns the set of AST nodes which consume nodes matching `predicate`.
 
   Notice we adopt the convention that a node which itself satisfies the
@@ -286,7 +286,6 @@ def extract_nodes_consuming(tree, predicate):
     representing the nodes in `tree` dependent on nodes matching `predicate`.
   """
   py_typecheck.check_type(tree, building_blocks.ComputationBuildingBlock)
-  py_typecheck.check_callable(predicate)
 
   class _NodeSet:
 

@@ -198,7 +198,7 @@ def create_constant(
 
 
 def create_unary_operator(
-    operator, operand_type: computation_types.Type
+    operator: Callable[..., object], operand_type: computation_types.Type
 ) -> ComputationProtoAndType:
   """Returns a tensorflow computation computing a unary operation.
 
@@ -225,7 +225,6 @@ def create_unary_operator(
         '`computation_types.TensorType` and `computation_types.StructType`; '
         f'this is disallowed in the generic operators. Got: {operand_type} '
     )
-  py_typecheck.check_callable(operator)
 
   with tf.Graph().as_default() as graph:
     operand_value, operand_binding = tensorflow_utils.stamp_parameter_in_graph(
@@ -247,7 +246,7 @@ def create_unary_operator(
 
 
 def create_binary_operator(
-    operator,
+    operator: Callable[..., object],
     operand_type: computation_types.Type,
     second_operand_type: Optional[computation_types.Type] = None,
 ) -> ComputationProtoAndType:
@@ -296,7 +295,6 @@ def create_binary_operator(
       )
   elif second_operand_type is None:
     second_operand_type = operand_type
-  py_typecheck.check_callable(operator)
 
   with tf.Graph().as_default() as graph:
     operand_1_value, operand_1_binding = (
@@ -351,7 +349,6 @@ def create_binary_operator_with_upcast(
     Same as `create_binary_operator()`.
   """
   py_typecheck.check_type(type_signature, computation_types.StructType)
-  py_typecheck.check_callable(operator)
   type_analysis.check_tensorflow_compatible_type(type_signature)
   if not type_signature.is_struct() or len(type_signature) != 2:
     raise TypeError(

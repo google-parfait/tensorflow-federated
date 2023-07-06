@@ -46,7 +46,6 @@ class FilePerUserClientData(client_data.ClientData):
     py_typecheck.check_type(client_ids_to_files, Mapping)
     if not client_ids_to_files:
       raise ValueError('`client_ids` must have at least one client ID')
-    py_typecheck.check_callable(dataset_fn)
     self._client_ids = sorted(client_ids_to_files.keys())
 
     # Creates a dataset in a manner that can be serialized by TF.

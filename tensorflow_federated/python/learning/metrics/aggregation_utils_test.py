@@ -56,11 +56,6 @@ class CheckMetricFinalizersTest(tf.test.TestCase, parameterized.TestCase):
           collections.OrderedDict([(1.0, _tf_mean)]),
           'metric_finalizers key',
       ),
-      (
-          'non_callable',
-          collections.OrderedDict(mean=_tf_mean([2.0, 1.0])),
-          'metric_finalizers value',
-      ),
   )
   def test_invalid_finalizers_raises(self, metric_finalizers, expected_regex):
     with self.assertRaisesRegex(TypeError, expected_regex):

@@ -65,14 +65,13 @@ def add_measurements(
   type_args = typing.get_args(factory.AggregationFactory)
   py_typecheck.check_type(inner_agg_factory, type_args)
 
-  if not (client_measurement_fn or server_measurement_fn):
+  if client_measurement_fn is None and server_measurement_fn is None:
     raise ValueError(
         'Must specify one or both of `client_measurement_fn` or '
         '`server_measurement_fn`.'
     )
 
-  if client_measurement_fn:
-    py_typecheck.check_callable(client_measurement_fn)
+  if client_measurement_fn is not None:
     if isinstance(inner_agg_factory, factory.UnweightedAggregationFactory):
       if len(inspect.signature(client_measurement_fn).parameters) != 1:
         raise ValueError(
@@ -86,8 +85,7 @@ def add_measurements(
             '`inner_agg_factory` is weighted.'
         )
 
-  if server_measurement_fn:
-    py_typecheck.check_callable(server_measurement_fn)
+  if server_measurement_fn is not None:
     if len(inspect.signature(server_measurement_fn).parameters) != 1:
       raise ValueError('`server_measurement_fn` must take a single parameter.')
 

@@ -59,7 +59,6 @@ def transform_type_postorder(
     NotImplementedError: If the types don't match the specification above.
   """
   py_typecheck.check_type(type_signature, computation_types.Type)
-  py_typecheck.check_callable(transform_fn)
   if type_signature.is_federated():
     transformed_member, member_mutated = transform_type_postorder(
         type_signature.member,  # pytype: disable=attribute-error

@@ -147,14 +147,6 @@ class FilePerUserClientDataTest(tf.test.TestCase):
         fake_user_data.create_test_dataset_fn,
     )
 
-  def test_construct_with_non_callable(self):
-    fake_user_data = FilePerUserClientDataTest.fake_user_data
-    with self.assertRaisesRegex(TypeError, r'found non-callable'):
-      file_per_user_client_data.FilePerUserClientData(
-          client_ids_to_files=fake_user_data.client_data_file_dict,
-          dataset_fn=None,
-      )
-
   def test_construct_with_non_dict(self):
     with self.assertRaisesRegex(TypeError, r'Expected collections.abc.Mapping'):
       file_per_user_client_data.FilePerUserClientData(

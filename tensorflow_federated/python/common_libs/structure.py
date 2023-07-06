@@ -460,7 +460,7 @@ def is_same_structure(a: Struct, b: Struct) -> bool:
   return True
 
 
-def map_structure(fn, *structures: Struct):
+def map_structure(fn: Callable[..., object], *structures: Struct):
   """Applies `fn` to each entry in `structure` and returns a new structure.
 
   This is a special implementation of `tf.nest.map_structure`
@@ -481,7 +481,6 @@ def map_structure(fn, *structures: Struct):
       all `tf.Tensor` typed values.
     ValueError: if `*structure` is empty.
   """
-  py_typecheck.check_callable(fn)
   if not structures:
     raise ValueError('Must provide at least one structure')
 
@@ -628,7 +627,6 @@ def to_container_recursive(
     A nested container of the type returned by `container_fn`.
   """
   py_typecheck.check_type(value, Struct)
-  py_typecheck.check_callable(container_fn)
 
   def recurse(v):
     if isinstance(v, Struct):

@@ -224,7 +224,6 @@ def _build_mime_lite_client_work(
   Returns:
     A `ClientWorkProcess`.
   """
-  py_typecheck.check_callable(model_fn)
   py_typecheck.check_type(optimizer, optimizer_base.Optimizer)
   py_typecheck.check_type(client_weighting, client_weight_lib.ClientWeighting)
   if full_gradient_aggregator is None:
@@ -1172,7 +1171,6 @@ def build_mime_lite_with_optimizer_schedule(
   """
   py_typecheck.check_type(base_optimizer, optimizer_base.Optimizer)
   py_typecheck.check_type(server_optimizer, optimizer_base.Optimizer)
-  py_typecheck.check_callable(learning_rate_fn)
   py_typecheck.check_type(client_weighting, client_weight_lib.ClientWeighting)
   if not callable(model_fn):
     if not isinstance(model_fn, functional.FunctionalModel):

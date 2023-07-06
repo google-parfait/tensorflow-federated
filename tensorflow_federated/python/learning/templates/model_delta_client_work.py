@@ -294,7 +294,6 @@ def build_model_delta_client_work(
   Returns:
     A `ClientWorkProcess`.
   """
-  py_typecheck.check_callable(model_fn)
   py_typecheck.check_type(client_weighting, client_weight_lib.ClientWeighting)
   if not (
       isinstance(optimizer, optimizer_base.Optimizer) or callable(optimizer)

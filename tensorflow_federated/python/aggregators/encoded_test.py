@@ -107,13 +107,6 @@ class EncodedSumFactoryComputationTest(
         process.next.type_signature.is_equivalent_to(expected_next_type)
     )
 
-  def test_encoder_fn_not_callable_raises(self):
-    encoder = te.encoders.as_gather_encoder(
-        te.encoders.identity(), tf.TensorSpec((), tf.float32)
-    )
-    with self.assertRaises(TypeError):
-      encoded.EncodedSumFactory(encoder)
-
   def test_quantize_above_threshold_negative_threshold_raises(self):
     with self.assertRaises(ValueError):
       encoded.EncodedSumFactory.quantize_above_threshold(

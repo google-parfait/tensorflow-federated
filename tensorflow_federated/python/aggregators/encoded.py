@@ -82,7 +82,6 @@ class EncodedSumFactory(factory.UnweightedAggregationFactory):
       encoder_fn: A one-arg callable, mapping a `tf.TensorSpec`, to a
         `GatherEncoder`.
     """
-    py_typecheck.check_callable(encoder_fn)
     self._encoder_fn = encoder_fn
 
   @classmethod

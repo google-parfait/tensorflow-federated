@@ -354,7 +354,6 @@ def build_basic_fedavg_process(model_fn: Callable[[], variable.VariableModel],
   Returns:
     A `LearningProcess`.
   """
-  py_typecheck.check_callable(model_fn)
   py_typecheck.check_type(client_learning_rate, float)
 
   @tensorflow_computation.tf_computation()

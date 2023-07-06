@@ -66,23 +66,6 @@ class PyTypeCheckTest(parameterized.TestCase):
         (int, bool, float),
     )
 
-  def test_check_callable(self):
-    try:
-      f = lambda x: x + 10
-      self.assertEqual(py_typecheck.check_callable(f), f)
-    except TypeError:
-      self.fail(
-          'Function {} raised TypeError unexpectedly.'.format(
-              py_typecheck.check_callable.__name__
-          )
-      )
-    self.assertRaisesRegex(
-        TypeError,
-        'Expected a callable, found non-callable int.',
-        py_typecheck.check_callable,
-        10,
-    )
-
   def test_is_named_tuple(self):
 
     class T(NamedTuple):

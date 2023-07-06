@@ -52,8 +52,6 @@ class ResourceManagingExecutorFactory(executor_factory.ExecutorFactory):
         `executor_base.Executor`. The returned executor will be configured to
         handle these cardinalities.
     """
-
-    py_typecheck.check_callable(executor_stack_fn)
     self._executor_stack_fn = executor_stack_fn
     self._executors = cachetools.LRUCache(_EXECUTOR_CACHE_SIZE)
 

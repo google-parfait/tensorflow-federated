@@ -179,11 +179,9 @@ class AsyncExecutionContext(context_base.AsyncContext, Generic[_Computation]):
     py_typecheck.check_type(executor_fn, executor_factory.ExecutorFactory)
     self._executor_factory = executor_fn
     if compiler_fn is not None:
-      py_typecheck.check_callable(compiler_fn)
       self._compiler_pipeline = compiler_pipeline.CompilerPipeline(compiler_fn)
     else:
       self._compiler_pipeline = None
-    py_typecheck.check_callable(cardinality_inference_fn)
     self._cardinality_inference_fn = cardinality_inference_fn
 
   @contextlib.contextmanager

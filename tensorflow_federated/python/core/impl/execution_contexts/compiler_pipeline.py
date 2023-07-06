@@ -41,7 +41,6 @@ class CompilerPipeline(Generic[_Computation]):
   """
 
   def __init__(self, compiler_fn: Callable[[_Computation], Any]):
-    py_typecheck.check_callable(compiler_fn)
     self._compiler_fn = compiler_fn
 
   @functools.lru_cache()

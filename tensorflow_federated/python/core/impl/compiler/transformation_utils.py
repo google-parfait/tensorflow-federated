@@ -170,7 +170,6 @@ def transform_preorder(
   """
 
   py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
-  py_typecheck.check_callable(transform)
   inner_comp, modified = transform(comp)
   if modified:
     return inner_comp, modified

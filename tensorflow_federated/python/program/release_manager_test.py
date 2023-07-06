@@ -52,19 +52,6 @@ class FilteringReleaseManagerTest(
     with self.assertRaises(TypeError):
       release_manager.FilteringReleaseManager(release_mngr, filter_fn)
 
-  @parameterized.named_parameters(
-      ('none', None),
-      ('bool', True),
-      ('int', 1),
-      ('str', 'a'),
-      ('list', []),
-  )
-  def test_init_raises_type_error_with_filter_fn(self, filter_fn):
-    mock_release_mngr = mock.AsyncMock(spec=release_manager.ReleaseManager)
-
-    with self.assertRaises(TypeError):
-      release_manager.FilteringReleaseManager(mock_release_mngr, filter_fn)
-
   # pyformat: disable
   @parameterized.named_parameters(
       # materialized values

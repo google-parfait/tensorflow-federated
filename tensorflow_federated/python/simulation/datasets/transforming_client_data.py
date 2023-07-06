@@ -59,7 +59,6 @@ class TransformingClientData(client_data.ClientData):
         if and only if `expand_client_id` is.
     """
     py_typecheck.check_type(base_client_data, client_data.ClientData)
-    py_typecheck.check_callable(make_transform_fn)
 
     raw_client_ids = base_client_data.client_ids
     if not raw_client_ids:

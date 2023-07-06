@@ -159,11 +159,6 @@ class FederatedSgdTest(tf.test.TestCase, parameterized.TestCase):
     else:
       mock_method.assert_called()
 
-  def test_raises_on_non_callable_non_functional_model_fn(self):
-    non_callable_model_fn = model_examples.LinearRegression()
-    with self.assertRaisesRegex(TypeError, 'must be an instance'):
-      fed_sgd.build_fed_sgd(non_callable_model_fn)
-
   @parameterized.named_parameters(
       ('robust_aggregator', model_update_aggregator.robust_aggregator),
       (

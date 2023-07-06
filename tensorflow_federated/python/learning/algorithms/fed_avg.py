@@ -168,7 +168,7 @@ def build_weighted_fed_avg(
       label='client_weighting',
   )
 
-  if not callable(model_fn):
+  if not isinstance(model_fn, Callable):
     if not isinstance(model_fn, functional.FunctionalModel):
       raise TypeError(
           'If `model_fn` is not a callable, it must be an instance of '
@@ -198,7 +198,6 @@ def build_weighted_fed_avg(
       )
 
   else:
-    py_typecheck.check_callable(model_fn)
 
     @tensorflow_computation.tf_computation()
     def initial_model_weights_fn():

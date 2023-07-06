@@ -193,13 +193,6 @@ _TEST_ARGUMENTS_INVALID_INPUTS = [
         'error_message': 'Expected .*str',
     },
     {
-        'testcase_name': 'metric_finalizers_value_not_callable',
-        'metric_finalizers': collections.OrderedDict(accuracy=tf.constant(1.0)),
-        'local_unfinalized_metrics': _UNUSED_UNFINALIZED_METRICS,
-        'error_type': TypeError,
-        'error_message': 'Expected .*callable',
-    },
-    {
         'testcase_name': 'unfinalized_metrics_not_structure_type',
         'metric_finalizers': _UNUSED_METRICS_FINALIZERS,
         'local_unfinalized_metrics': tf.constant(1.0),

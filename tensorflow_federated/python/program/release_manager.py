@@ -162,7 +162,6 @@ class FilteringReleaseManager(ReleaseManager[ReleasableStructure, Key]):
         this function has a single parameter `path` and returns a `bool`.
     """
     py_typecheck.check_type(release_manager, ReleaseManager)
-    py_typecheck.check_callable(filter_fn)
 
     self._release_manager = release_manager
     self._filter_fn = filter_fn

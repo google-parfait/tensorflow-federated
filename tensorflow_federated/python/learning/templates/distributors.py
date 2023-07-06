@@ -138,7 +138,7 @@ def build_broadcast_process(value_type: computation_types.Type):
         f'but found: {value_type}'
     )
 
-  @federated_computation.federated_computation
+  @federated_computation.federated_computation()
   def init_fn():
     return intrinsics.federated_value((), placements.SERVER)
 

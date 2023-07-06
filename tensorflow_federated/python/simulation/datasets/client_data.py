@@ -252,7 +252,6 @@ class ClientData(metaclass=abc.ABCMeta):
     Raises:
       IncompatiblePreprocessFnError: If `preprocess_fn` is a `tff.Computation`.
     """
-    py_typecheck.check_callable(preprocess_fn)
     if isinstance(preprocess_fn, computation_base.Computation):
       raise IncompatiblePreprocessFnError()
     return PreprocessClientData(self, preprocess_fn)
@@ -391,7 +390,6 @@ class PreprocessClientData(ClientData):
       preprocess_fn: Callable[[tf.data.Dataset], tf.data.Dataset],
   ):
     py_typecheck.check_type(underlying_client_data, ClientData)
-    py_typecheck.check_callable(preprocess_fn)
     self._underlying_client_data = underlying_client_data
     self._preprocess_fn = preprocess_fn
     example_dataset = self._preprocess_fn(
@@ -453,7 +451,6 @@ class ConcreteClientData(ClientData):
         wrappers.
     """
     py_typecheck.check_type(client_ids, Iterable)
-    py_typecheck.check_callable(serializable_dataset_fn)
     super().__init__()
 
     if not client_ids:

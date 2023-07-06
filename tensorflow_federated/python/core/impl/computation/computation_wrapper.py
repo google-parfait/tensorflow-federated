@@ -410,7 +410,7 @@ class ComputationWrapper:
   For more examples of usage, see `computation_wrapper_test`.
   """
 
-  def __init__(self, strategy):
+  def __init__(self, strategy: Callable[..., Any]):
     """Construct a new wrapper/decorator for the given wrapper callable.
 
     Args:
@@ -431,7 +431,6 @@ class ComputationWrapper:
     Raises:
       TypeError: if the arguments are of the wrong types.
     """
-    py_typecheck.check_callable(strategy)
     self._strategy = strategy
 
   def __call__(self, *args, tff_internal_types=None, **kwargs):

@@ -170,7 +170,7 @@ def _jax_shape_dtype_struct_to_tff_tensor(
 
 
 def serialize_jax_computation(
-    traced_fn: Callable[..., Any],
+    traced_fn: Callable[..., object],
     arg_fn: Callable[
         [Union[_XlaSerializerStructArg, _XlaSerializerTensorArg]],
         tuple[Sequence[Any], Mapping[str, Any]],
@@ -201,8 +201,6 @@ def serialize_jax_computation(
   Raises:
     TypeError: if the arguments are of the wrong types.
   """
-  py_typecheck.check_callable(traced_fn)
-  py_typecheck.check_callable(arg_fn)
   py_typecheck.check_type(context_stack, context_stack_base.ContextStack)
 
   if parameter_type is not None:

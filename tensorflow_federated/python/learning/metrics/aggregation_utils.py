@@ -84,9 +84,8 @@ def check_metric_finalizers(
     py_typecheck.check_type(
         metric_finalizers, collections.OrderedDict, 'metric_finalizers'
     )
-    for key, value in metric_finalizers.items():
+    for key, _ in metric_finalizers.items():
       py_typecheck.check_type(key, str, f'metric_finalizers key {key}')
-      py_typecheck.check_callable(value, f'metric_finalizers value {value}')
 
 
 def check_local_unfinalzied_metrics_type(
