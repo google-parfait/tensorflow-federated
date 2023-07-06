@@ -541,8 +541,14 @@ def _select_parameter_mismatch(
     )
 
 
-def _check_select_keys_type(keys_type, secure):
-  if not (keys_type.is_federated and keys_type.placement.is_clients()):  # pytype: disable=attribute-error
+def _check_select_keys_type(
+    keys_type: computation_types.Type, secure: bool
+) -> None:
+  """Checks the federated select keys types."""
+  if (
+      not isinstance(keys_type, computation_types.FederatedType)
+      or keys_type.placement is not placements.CLIENTS
+  ):
     _select_parameter_mismatch(
         keys_type, 'a federated value placed at clients', 'client_keys', secure
     )
