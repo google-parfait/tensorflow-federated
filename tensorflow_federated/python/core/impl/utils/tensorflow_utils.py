@@ -15,6 +15,7 @@
 
 import collections
 from collections.abc import Iterable, Mapping
+import dataclasses
 import itertools
 import typing
 from typing import Any, Optional, Protocol
@@ -299,7 +300,7 @@ def capture_result_from_graph(
   elif attrs.has(type(result)):
     name_value_pairs = named_containers.attrs_class_to_odict(result).items()
     return _get_bindings_for_elements(name_value_pairs, graph, type(result))
-  elif py_typecheck.is_dataclass(result):
+  elif dataclasses.is_dataclass(result):
     name_value_pairs = named_containers.dataclass_to_odict(result).items()
     return _get_bindings_for_elements(name_value_pairs, graph, type(result))
   elif isinstance(result, structure.Struct):
