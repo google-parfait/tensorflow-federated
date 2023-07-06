@@ -77,10 +77,9 @@ def create_concat_fns(
   """Creates the forward and backward flattening/concatenation functions."""
   # As the factory alters the tensor specs, we compute the Python structure
   # of the types for the unconcat procedure.
-  if (
-      value_type.is_struct_with_python()
-      and type_analysis.is_structure_of_tensors(value_type)
-  ):
+  if isinstance(
+      value_type, computation_types.StructWithPythonType
+  ) and type_analysis.is_structure_of_tensors(value_type):
     original_structure = type_conversions.structure_from_tensor_type_tree(
         lambda x: tf.TensorSpec(x.shape, x.dtype), value_type
     )

@@ -180,7 +180,7 @@ def build_apply_optimizer_finalizer(
       )
 
   if (
-      not model_weights_type.is_struct_with_python()
+      not isinstance(model_weights_type, computation_types.StructWithPythonType)
       or model_weights_type.python_container != model_weights.ModelWeights
       or type_analysis.contains_federated_types(model_weights_type)
   ):

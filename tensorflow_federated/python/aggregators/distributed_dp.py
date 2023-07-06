@@ -573,10 +573,9 @@ class DistributedDpSumFactory(factory.UnweightedAggregationFactory):
 
   def create(self, value_type):
     # Checks value_type and compute client data dimension.
-    if (
-        value_type.is_struct_with_python()
-        and type_analysis.is_structure_of_tensors(value_type)
-    ):
+    if isinstance(
+        value_type, computation_types.StructWithPythonType
+    ) and type_analysis.is_structure_of_tensors(value_type):
       num_elements_struct = type_conversions.structure_from_tensor_type_tree(
           lambda x: x.shape.num_elements(), value_type
       )

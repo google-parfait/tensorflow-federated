@@ -139,7 +139,10 @@ def _type_check_next_fn_result(next_fn: computation_base.Computation):
         f'placed at CLIENTS, but found {next_fn_result.result}.'  # pytype: disable=attribute-error
     )
   if (
-      not next_fn_result.result.member.is_struct_with_python()  # pytype: disable=attribute-error
+      not isinstance(
+          next_fn_result.result.member,  # pytype: disable=attribute-error
+          computation_types.StructWithPythonType,
+      )
       or next_fn_result.result.member.python_container is not ClientResult  # pytype: disable=attribute-error
   ):
     raise ClientResultTypeError(

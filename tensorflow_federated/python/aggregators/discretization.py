@@ -139,10 +139,9 @@ class DiscretizationFactory(factory.UnweightedAggregationFactory):
     # Validate input args and value_type and parse out the TF dtypes.
     if value_type.is_tensor():
       tf_dtype = value_type.dtype
-    elif (
-        value_type.is_struct_with_python()
-        and type_analysis.is_structure_of_tensors(value_type)
-    ):
+    elif isinstance(
+        value_type, computation_types.StructWithPythonType
+    ) and type_analysis.is_structure_of_tensors(value_type):
       if self._prior_norm_bound:
         raise TypeError(
             'If `prior_norm_bound` is specified, `value_type` must '

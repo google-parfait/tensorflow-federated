@@ -45,8 +45,16 @@ def _is_tensor_or_structure_of_tensors(
 
   # TODO(b/181365504): relax this to allow `StructType` once a `Struct` can be
   # returned from `tf.function` decorated methods.
-  def is_tensor_or_struct_with_py_type(t: computation_types.Type) -> bool:
-    return t.is_tensor() or t.is_struct_with_python()
+  def is_tensor_or_struct_with_py_type(
+      type_spec: computation_types.Type,
+  ) -> bool:
+    return isinstance(
+        type_spec,
+        (
+            computation_types.TensorType,
+            computation_types.StructWithPythonType,
+        ),
+    )
 
   return type_analysis.contains_only(
       value_type, is_tensor_or_struct_with_py_type

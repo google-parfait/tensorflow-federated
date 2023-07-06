@@ -112,10 +112,10 @@ def transform_type_postorder(
       elements_mutated = elements_mutated or element_mutated
       elements.append((element[0], transformed_element))
     if elements_mutated:
-      if type_signature.is_struct_with_python():
+      if isinstance(type_signature, computation_types.StructWithPythonType):
         type_signature = computation_types.StructWithPythonType(
             elements,
-            type_signature.python_container,  # pytype: disable=attribute-error
+            type_signature.python_container,
         )
       else:
         type_signature = computation_types.StructType(elements)
