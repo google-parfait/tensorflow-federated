@@ -468,7 +468,7 @@ def _merge_args(
       ),
   ):
     return building_blocks.Struct([(None, arg) for arg in args])
-  if abstract_parameter_type.is_function():
+  if isinstance(abstract_parameter_type, computation_types.FunctionType):
     # For functions, we must compose them differently depending on whether the
     # abstract function (from the intrinsic definition) takes more than one
     # parameter.

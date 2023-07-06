@@ -209,7 +209,7 @@ class MergeableCompForm:
     ) -> bool:
       if not isinstance(comp, building_blocks.Intrinsic):
         return False
-      if not comp.type_signature.is_function():
+      if not isinstance(comp.type_signature, computation_types.FunctionType):
         return False
       if _moves_clients_to_server_predicate(comp):
         aggregations.add((comp.uri, comp.type_signature))

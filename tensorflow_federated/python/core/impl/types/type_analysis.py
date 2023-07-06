@@ -282,7 +282,7 @@ def check_all_abstract_types_are_bound(type_spec):
         return set([type_spec.label])
       else:
         raise TypeError("Unbound type label '{}'.".format(type_spec.label))
-    elif type_spec.is_function():
+    elif isinstance(type_spec, computation_types.FunctionType):
       if type_spec.parameter is None:
         parameter_labels = set()
       else:
@@ -728,7 +728,7 @@ def check_concrete_instance_of(
           concrete_type_member.element,  # pytype: disable=attribute-error
           defining,
       )
-    elif _both_are(lambda t: t.is_function()):
+    elif _both_are(lambda t: isinstance(t, computation_types.FunctionType)):
       if generic_type_member.parameter is None:  # pytype: disable=attribute-error
         if concrete_type_member.parameter is not None:  # pytype: disable=attribute-error
           _raise_structural('parameter')

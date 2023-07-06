@@ -210,7 +210,7 @@ class Value(typed_object.TypedObject, metaclass=abc.ABCMeta):
       yield self[index]
 
   def __call__(self, *args, **kwargs):
-    if not self.type_signature.is_function():
+    if not isinstance(self.type_signature, computation_types.FunctionType):
       raise SyntaxError(
           'Function-like invocation is only supported for values of functional '
           'types, but the value being invoked is of type {} that does not '
