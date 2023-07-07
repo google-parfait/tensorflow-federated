@@ -95,7 +95,7 @@ class DeterministicDiscretizationFactory(factory.UnweightedAggregationFactory):
       self, value_type: factory.ValueType
   ) -> aggregation_process.AggregationProcess:
     # Validate input args and value_type and parse out the TF dtypes.
-    if value_type.is_tensor():
+    if isinstance(value_type, computation_types.TensorType):
       tf_dtype = value_type.dtype
     elif isinstance(
         value_type, computation_types.StructWithPythonType

@@ -713,9 +713,9 @@ def _unique_dtypes_in_structure(
     A `set` containing unique dtypes found in `type_spec`.
   """
   py_typecheck.check_type(type_spec, computation_types.Type)
-  if type_spec.is_tensor():
-    py_typecheck.check_type(type_spec.dtype, tf.dtypes.DType)  # pytype: disable=attribute-error
-    return set([type_spec.dtype])  # pytype: disable=attribute-error
+  if isinstance(type_spec, computation_types.TensorType):
+    py_typecheck.check_type(type_spec.dtype, tf.dtypes.DType)
+    return set([type_spec.dtype])
   elif type_spec.is_struct():
     return set(
         tf.nest.flatten(

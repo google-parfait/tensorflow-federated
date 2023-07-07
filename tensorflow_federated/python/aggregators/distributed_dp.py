@@ -580,7 +580,7 @@ class DistributedDpSumFactory(factory.UnweightedAggregationFactory):
           lambda x: x.shape.num_elements(), value_type
       )
       self._client_dim = sum(tf.nest.flatten(num_elements_struct))
-    elif value_type.is_tensor():
+    elif isinstance(value_type, computation_types.TensorType):
       self._client_dim = value_type.shape.num_elements()
     else:
       raise TypeError(

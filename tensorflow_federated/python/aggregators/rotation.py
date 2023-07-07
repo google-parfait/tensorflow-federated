@@ -481,7 +481,7 @@ def _pad_zeros_even(x):
 def _check_value_type(value_type):
   """Check value_type meets documented criteria."""
   if not (
-      value_type.is_tensor()
+      isinstance(value_type, computation_types.TensorType)
       or (
           isinstance(value_type, computation_types.StructWithPythonType)
           and type_analysis.is_structure_of_tensors(value_type)

@@ -83,7 +83,7 @@ def create_concat_fns(
     original_structure = type_conversions.structure_from_tensor_type_tree(
         lambda x: tf.TensorSpec(x.shape, x.dtype), value_type
     )
-  elif value_type.is_tensor():
+  elif isinstance(value_type, computation_types.TensorType):
     original_structure = tf.TensorSpec(value_type.shape, value_type.dtype)
   else:
     raise TypeError(

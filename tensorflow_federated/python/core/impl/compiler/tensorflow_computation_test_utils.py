@@ -42,7 +42,7 @@ def _stamp_value_into_graph(
   """
   if value is None:
     return None
-  if type_signature.is_tensor():
+  if isinstance(type_signature, computation_types.TensorType):
     if isinstance(value, np.ndarray) or tf.is_tensor(value):
       value_type = computation_types.TensorType(
           tf.dtypes.as_dtype(value.dtype), tf.TensorShape(value.shape)

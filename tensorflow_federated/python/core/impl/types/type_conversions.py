@@ -197,8 +197,8 @@ def type_to_tf_dtypes_and_shapes(type_spec: computation_types.Type):
       tuples and tensors, or if any of the elements in named tuples are unnamed.
   """
   py_typecheck.check_type(type_spec, computation_types.Type)
-  if type_spec.is_tensor():
-    return (type_spec.dtype, type_spec.shape)  # pytype: disable=attribute-error
+  if isinstance(type_spec, computation_types.TensorType):
+    return (type_spec.dtype, type_spec.shape)
   elif type_spec.is_struct():
     elements = structure.to_elements(type_spec)  # pytype: disable=wrong-arg-types
     if not elements:
@@ -305,8 +305,8 @@ def type_to_tf_structure(type_spec: computation_types.Type):
       tuples and tensors, or if any of the elements in named tuples are unnamed.
   """
   py_typecheck.check_type(type_spec, computation_types.Type)
-  if type_spec.is_tensor():
-    return tf.TensorSpec(type_spec.shape, type_spec.dtype)  # pytype: disable=attribute-error
+  if isinstance(type_spec, computation_types.TensorType):
+    return tf.TensorSpec(type_spec.shape, type_spec.dtype)
   elif type_spec.is_struct():
     elements = structure.to_elements(type_spec)  # pytype: disable=wrong-arg-types
     if not elements:
@@ -574,8 +574,8 @@ def _structure_from_tensor_type_tree_inner(
     return structure.Struct(
         map(_map_element, structure.iter_elements(type_spec))  # pytype: disable=wrong-arg-types
     )
-  elif type_spec.is_tensor():
-    return fn(type_spec)  # pytype: disable=wrong-arg-types
+  elif isinstance(type_spec, computation_types.TensorType):
+    return fn(type_spec)
   else:
     raise ValueError(
         'Expected tensor or structure type, found type:\n'

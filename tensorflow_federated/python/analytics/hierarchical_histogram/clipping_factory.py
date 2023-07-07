@@ -226,7 +226,7 @@ def _check_is_integer_struct(value_type, label):
 
 
 def _check_is_tensor_type(value, label):
-  if not value.is_tensor():
+  if not isinstance(value, computation_types.TensorType):
     raise TypeError(
         f'Expected `{label}` to be `TensorType`. Found type: {repr(value)}'
     )

@@ -1563,21 +1563,37 @@ def create_generic_constant(
     return create_tensorflow_constant(type_spec, scalar_value)
   py_typecheck.check_type(type_spec, computation_types.Type)
   inferred_scalar_value_type = type_conversions.infer_type(scalar_value)
-  if (
-      not inferred_scalar_value_type.is_tensor()  # pytype: disable=attribute-error
-      or inferred_scalar_value_type.shape != tf.TensorShape(())  # pytype: disable=attribute-error
-  ):
+  if not isinstance(
+      inferred_scalar_value_type, computation_types.TensorType
+  ) or inferred_scalar_value_type.shape != tf.TensorShape(()):
     raise TypeError(
         'Must pass a scalar value to `create_generic_constant`; encountered a '
         'value {}'.format(scalar_value)
     )
-  if not type_analysis.contains_only(
-      type_spec, lambda t: t.is_federated() or t.is_struct() or t.is_tensor()
-  ):
+
+  def _check_parameters(type_spec: computation_types.Type) -> bool:
+    return isinstance(
+        type_spec,
+        (
+            computation_types.FederatedType,
+            computation_types.StructType,
+            computation_types.TensorType,
+        ),
+    )
+
+  if not type_analysis.contains_only(type_spec, _check_parameters):
     raise TypeError
-  if type_analysis.contains_only(
-      type_spec, lambda t: t.is_struct() or t.is_tensor()
-  ):
+
+  def _predicate(type_spec: computation_types.Type) -> bool:
+    return isinstance(
+        type_spec,
+        (
+            computation_types.StructType,
+            computation_types.TensorType,
+        ),
+    )
+
+  if type_analysis.contains_only(type_spec, _predicate):
     return create_tensorflow_constant(type_spec, scalar_value)
   elif type_spec.is_federated():
     unplaced_zero = create_tensorflow_constant(type_spec.member, scalar_value)  # pytype: disable=attribute-error
@@ -1823,9 +1839,18 @@ def create_named_tuple(
 
 def _check_generic_operator_type(type_spec):
   """Checks that `type_spec` can be the signature of args to a generic op."""
-  if not type_analysis.contains_only(
-      type_spec, lambda t: t.is_federated() or t.is_struct() or t.is_tensor()
-  ):
+
+  def _predicate(type_spec: computation_types.Type) -> bool:
+    return isinstance(
+        type_spec,
+        (
+            computation_types.FederatedType,
+            computation_types.StructType,
+            computation_types.TensorType,
+        ),
+    )
+
+  if not type_analysis.contains_only(type_spec, _predicate):
     raise TypeError(
         'Generic operators are only implemented for arguments both containing '
         'only federated, tuple and tensor types; you have passed an argument '

@@ -90,7 +90,7 @@ def _build_value_zeros(
     dense_shapes: Union[structure.Struct, tf.TensorShape],
 ) -> Any:
   """Construct a potentially sparse `zero` value for a computation_types.Type."""
-  if value_type_spec.is_tensor():
+  if isinstance(value_type_spec, computation_types.TensorType):
     return tf.zeros(shape=value_type_spec.shape, dtype=value_type_spec.dtype)
   elif _is_sparse_tensor_structure(value_type_spec):
     return _build_sparse_zero(value_type_spec, dense_shapes)  # pytype: disable=wrong-arg-types
@@ -193,7 +193,7 @@ class SparsifyingSumFactory(factory.UnweightedAggregationFactory):
               lambda *_: tf.zeros(dtype=tf.int64, shape=[]),
               client_values_type,
           )
-        elif client_values_type.is_tensor():
+        elif isinstance(client_values_type, computation_types.TensorType):
           return tf.zeros(dtype=tf.int64, shape=[])
         else:
           raise TypeError('Internal type error, code is incorrect.')
@@ -203,7 +203,7 @@ class SparsifyingSumFactory(factory.UnweightedAggregationFactory):
       def replace_zero_dimensions_with_none(
           type_spec: computation_types.Type,
       ) -> computation_types.Type:
-        if type_spec.is_tensor():
+        if isinstance(value_type, computation_types.TensorType):
           return computation_types.TensorType(
               dtype=type_spec.dtype,  # pytype: disable=attribute-error
               shape=[None if dim == 0 else dim for dim in type_spec.shape],  # pytype: disable=attribute-error

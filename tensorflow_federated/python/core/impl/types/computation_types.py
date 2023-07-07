@@ -259,7 +259,7 @@ class Type(metaclass=abc.ABCMeta):
   )
   def check_tensor(self) -> None:
     """Check that this is a `tff.TensorType`."""
-    if not self.is_tensor():
+    if not isinstance(self, TensorType):
       raise UnexpectedTypeError(TensorType, self)
 
   @deprecation.deprecated(
@@ -1444,7 +1444,7 @@ def _string_representation(type_spec, formatted: bool) -> str:
     elif isinstance(type_spec, SequenceType):
       element_lines = _lines_for_type(type_spec.element, formatted)
       return _combine([element_lines, ['*']])
-    elif type_spec.is_tensor():
+    elif isinstance(type_spec, TensorType):
       if type_spec.shape.ndims is None:
         return ['{!r}(shape=None)'.format(type_spec.dtype.name)]
       elif type_spec.shape.ndims > 0:
