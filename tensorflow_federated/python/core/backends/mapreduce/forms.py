@@ -347,7 +347,17 @@ class MapReduceForm(typed_object.TypedObject):
 
     _check_returns_tuple('work', work, WORK_RESULT_LEN)
 
-    py_typecheck.check_len(accumulate.type_signature.parameter, 2)
+    if (
+        isinstance(
+            accumulate.type_signature.parameter, computation_types.StructType
+        )
+        and len(accumulate.type_signature.parameter) != 2
+    ):
+      raise ValueError(
+          'Expected the parameter to `accumulate` to be a `tff.StructType` of '
+          f'length 2, found {len(accumulate.type_signature.parameter)}.'
+      )
+
     accumulate.type_signature.parameter[0].check_assignable_from(
         zero.type_signature.result
     )  # pytype: disable=unsupported-operands
@@ -367,7 +377,15 @@ class MapReduceForm(typed_object.TypedObject):
         accumulate.type_signature.result
     )  # pytype: disable=unsupported-operands
 
-    py_typecheck.check_len(merge.type_signature.parameter, 2)
+    if (
+        isinstance(merge.type_signature.parameter, computation_types.StructType)
+        and len(merge.type_signature.parameter) != 2
+    ):
+      raise ValueError(
+          'Expected the parameter to `merge` to be a `tff.StructType` of '
+          f'length 2, found {len(merge.type_signature.parameter)}.'
+      )
+
     merge.type_signature.parameter[0].check_assignable_from(
         accumulate.type_signature.result
     )  # pytype: disable=unsupported-operands
