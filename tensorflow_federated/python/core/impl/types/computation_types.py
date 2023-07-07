@@ -504,7 +504,7 @@ class TensorType(Type, metaclass=_Intern):
         and tensor_utils.same_shape(self._shape, other.shape)
     )
 
-  def is_assignable_from(self, source_type: 'Type') -> bool:
+  def is_assignable_from(self, source_type: Type) -> bool:
     if self is source_type:
       return True
     if (
@@ -643,7 +643,6 @@ class StructType(structure.Struct, Type, metaclass=_Intern):
         type won't be well-formed until the subclass has finished its own
         initialization.
     """
-    py_typecheck.check_type(elements, Iterable)
     if convert:
       elements = _to_named_types(elements)
     structure.Struct.__init__(self, elements)
@@ -670,7 +669,7 @@ class StructType(structure.Struct, Type, metaclass=_Intern):
         isinstance(other, StructType) and structure.Struct.__eq__(self, other)
     )
 
-  def is_assignable_from(self, source_type: 'Type') -> bool:
+  def is_assignable_from(self, source_type: Type) -> bool:
     if self is source_type:
       return True
     if not isinstance(source_type, StructType):
@@ -787,7 +786,7 @@ class SequenceType(Type, metaclass=_Intern):
         isinstance(other, SequenceType) and self._element == other.element
     )
 
-  def is_assignable_from(self, source_type: 'Type') -> bool:
+  def is_assignable_from(self, source_type: Type) -> bool:
     if self is source_type:
       return True
     return isinstance(
@@ -849,7 +848,7 @@ class FunctionType(Type, metaclass=_Intern):
         and self._result == other.result
     )
 
-  def is_assignable_from(self, source_type: 'Type') -> bool:
+  def is_assignable_from(self, source_type: Type) -> bool:
     if self is source_type:
       return True
     if not isinstance(source_type, FunctionType):
@@ -879,7 +878,6 @@ class AbstractType(Type, metaclass=_Intern):
       label: A string label of an abstract type. All occurences of the label
         within a computation's type signature refer to the same concrete type.
     """
-    py_typecheck.check_type(label, str)
     self._label = label
     _check_well_formed(self)
 
@@ -901,7 +899,7 @@ class AbstractType(Type, metaclass=_Intern):
         isinstance(other, AbstractType) and self._label == other.label
     )
 
-  def is_assignable_from(self, source_type: 'Type') -> bool:
+  def is_assignable_from(self, source_type: Type) -> bool:
     del source_type  # Unused.
     # TODO(b/113112108): Revise this to extend the relation of assignability to
     # abstract types.
@@ -935,7 +933,7 @@ class PlacementType(Type, metaclass=_Intern):
   def __eq__(self, other):
     return (self is other) or isinstance(other, PlacementType)
 
-  def is_assignable_from(self, source_type: 'Type') -> bool:
+  def is_assignable_from(self, source_type: Type) -> bool:
     if self is source_type:
       return True
     return isinstance(source_type, PlacementType)
@@ -1019,7 +1017,7 @@ class FederatedType(Type, metaclass=_Intern):
         and self._all_equal == other.all_equal
     )
 
-  def is_assignable_from(self, source_type: 'Type') -> bool:
+  def is_assignable_from(self, source_type: Type) -> bool:
     if self is source_type:
       return True
     return (
@@ -1153,7 +1151,7 @@ def to_type(obj: object) -> Type:
   elif isinstance(obj, collections.OrderedDict):
     return StructWithPythonType(obj, type(obj))
   elif attrs.has(type(obj)):
-    return _to_type_from_attrs(obj)
+    return StructWithPythonType(attrs.asdict(obj, recurse=False), type(obj))
   elif isinstance(obj, Mapping):
     # This is an unsupported mapping, likely a `dict`. StructType adds an
     # ordering, which the original container did not have.
@@ -1207,25 +1205,6 @@ def to_type(obj: object) -> Type:
             py_typecheck.type_string(type(obj))
         )
     )
-
-
-def _to_type_from_attrs(spec) -> StructWithPythonType:
-  """Converts an `attr.s` class or instance to a `tff.Type`."""
-  if isinstance(spec, type):
-    # attrs class type
-    raise TypeError(
-        'Converting `attr` classes to a federated type is no longer supported. '
-        'Either populate an instance of the `attr.s` class with the '
-        'appropriate field types, or use one of the other forms described in '
-        '`tff.types.to_type()` instead.'
-    )
-  else:
-    # attrs class instance, inspect the field values for instances convertible
-    # to types.
-    elements = collections.OrderedDict(attrs.asdict(spec, recurse=False))
-    the_type = type(spec)
-
-  return StructWithPythonType(elements, the_type)
 
 
 @attrs.define(auto_attribs=True)
@@ -1327,7 +1306,7 @@ def _check_well_formed(type_signature: Type):
       _check_disallowed(child_type, kind, _SEQUENCE_TYPES)
 
 
-def _string_representation(type_spec, formatted: bool) -> str:
+def _string_representation(type_spec: Type, formatted: bool) -> str:
   """Returns the string representation of a TFF `Type`.
 
   This function creates a `list` of strings representing the given `type_spec`;
@@ -1341,7 +1320,6 @@ def _string_representation(type_spec, formatted: bool) -> str:
   Raises:
     TypeError: If `type_spec` has an unexpected type.
   """
-  py_typecheck.check_type(type_spec, Type)
 
   def _combine(components):
     """Returns a `list` of strings by combining `components`.
@@ -1428,7 +1406,7 @@ def _string_representation(type_spec, formatted: bool) -> str:
         parameter_lines = ['']
       result_lines = _lines_for_type(type_spec.result, formatted)
       return _combine([['('], parameter_lines, [' -> '], result_lines, [')']])
-    elif type_spec.is_struct():
+    elif isinstance(type_spec, StructType):
       if not type_spec:
         return ['<>']
       elements = structure.to_elements(type_spec)
@@ -1444,7 +1422,7 @@ def _string_representation(type_spec, formatted: bool) -> str:
     elif isinstance(type_spec, SequenceType):
       element_lines = _lines_for_type(type_spec.element, formatted)
       return _combine([element_lines, ['*']])
-    elif type_spec.is_tensor():
+    elif isinstance(type_spec, TensorType):
       if type_spec.shape.ndims is None:
         return ['{!r}(shape=None)'.format(type_spec.dtype.name)]
       elif type_spec.shape.ndims > 0:
