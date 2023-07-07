@@ -236,7 +236,7 @@ def _check_type_is_fn(
     name: str,
     err_fn: Callable[[str], Exception] = compiler.MapReduceFormCompilationError,
 ):
-  if not target.is_function():
+  if not isinstance(target, computation_types.FunctionType):
     raise err_fn(
         f'Expected {name} to be a function, but {name} had type {target}.'
     )

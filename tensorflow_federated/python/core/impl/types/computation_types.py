@@ -182,7 +182,7 @@ class Type(metaclass=abc.ABCMeta):
   )
   def check_function(self) -> None:
     """Check that this is a `tff.FunctionType`."""
-    if not self.is_function():
+    if not isinstance(self, FunctionType):
       raise UnexpectedTypeError(FunctionType, self)
 
   @deprecation.deprecated(
@@ -1276,7 +1276,7 @@ def _possibly_disallowed_children(
       raise ValueError(type_signature)
     if child_type.is_federated():
       disallowed = attrs.evolve(disallowed, federated=child_type)
-    elif child_type.is_function():
+    elif isinstance(child_type, FunctionType):
       disallowed = attrs.evolve(disallowed, function=child_type)
     elif isinstance(child_type, SequenceType):
       disallowed = attrs.evolve(disallowed, sequence=child_type)
@@ -1421,7 +1421,7 @@ def _string_representation(type_spec, formatted: bool) -> str:
         return _combine([member_lines, [placement_line]])
       else:
         return _combine([['{'], member_lines, ['}'], [placement_line]])
-    elif type_spec.is_function():
+    elif isinstance(type_spec, FunctionType):
       if type_spec.parameter is not None:
         parameter_lines = _lines_for_type(type_spec.parameter, formatted)
       else:

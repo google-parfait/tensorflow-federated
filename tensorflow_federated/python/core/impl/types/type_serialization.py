@@ -90,15 +90,15 @@ def serialize_type(type_spec: computation_types.Type) -> pb.Type:
             ]
         )
     )
-  elif type_spec.is_function():
-    if type_spec.parameter is not None:  # pytype: disable=attribute-error
-      serialized_parameter = serialize_type(type_spec.parameter)  # pytype: disable=attribute-error
+  elif isinstance(type_spec, computation_types.FunctionType):
+    if type_spec.parameter is not None:
+      serialized_parameter = serialize_type(type_spec.parameter)
     else:
       serialized_parameter = None
     proto = pb.Type(
         function=pb.FunctionType(
             parameter=serialized_parameter,
-            result=serialize_type(type_spec.result),  # pytype: disable=attribute-error
+            result=serialize_type(type_spec.result),
         )
     )
   elif isinstance(type_spec, computation_types.PlacementType):

@@ -672,11 +672,10 @@ def _federated_select(client_keys, max_key, server_val, select_fn, secure):
   expected_select_fn_type = computation_types.FunctionType(
       select_fn_param_type, computation_types.AbstractType('U')
   )
-  if (
-      not select_fn.type_signature.is_function()
-      or not select_fn.type_signature.parameter.is_assignable_from(
-          select_fn_param_type
-      )  # pytype: disable=attribute-error
+  if not isinstance(
+      select_fn.type_signature, computation_types.FunctionType
+  ) or not select_fn.type_signature.parameter.is_assignable_from(
+      select_fn_param_type
   ):
     _select_parameter_mismatch(
         select_fn.type_signature,

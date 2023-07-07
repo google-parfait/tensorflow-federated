@@ -78,6 +78,7 @@ from tensorflow_federated.python.core.impl.compiler import tree_transformations
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
+from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_analysis
 
 
@@ -91,7 +92,9 @@ def check_extraction_result(before_extraction, extracted):
       before_extraction, building_blocks.ComputationBuildingBlock
   )
   py_typecheck.check_type(extracted, building_blocks.ComputationBuildingBlock)
-  if before_extraction.type_signature.is_function():
+  if isinstance(
+      before_extraction.type_signature, computation_types.FunctionType
+  ):
     if not isinstance(extracted, building_blocks.CompiledComputation):
       raise MapReduceFormCompilationError(
           'We expect to parse down to a `building_blocks.CompiledComputation`, '
@@ -393,7 +396,7 @@ def compile_local_computation_to_tensorflow(
     a `building_blocks.CompiledComputation`. Otherwise, it will be a
     `building_blocks.Call` which wraps a `building_blocks.CompiledComputation`.
   """
-  if not comp.type_signature.is_function():
+  if not isinstance(comp.type_signature, computation_types.FunctionType):
     lambda_wrapped = building_blocks.Lambda(None, None, comp)
     return building_blocks.Call(
         compile_local_computation_to_tensorflow(lambda_wrapped), None

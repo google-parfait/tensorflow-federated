@@ -358,7 +358,7 @@ class CompileLocalComputationToTensorFlow(absltest.TestCase):
       self, comp: building_blocks.ComputationBuildingBlock
   ):
     result = compiler.compile_local_computation_to_tensorflow(comp)
-    if comp.type_signature.is_function():
+    if isinstance(comp.type_signature, computation_types.FunctionType):
       result.check_compiled_computation()
     else:
       result.check_call()

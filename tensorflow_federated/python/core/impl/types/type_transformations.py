@@ -80,17 +80,15 @@ def transform_type_postorder(
       type_signature = computation_types.SequenceType(transformed_element)
     type_signature, type_signature_mutated = transform_fn(type_signature)
     return type_signature, type_signature_mutated or element_mutated
-  elif type_signature.is_function():
-    if type_signature.parameter is not None:  # pytype: disable=attribute-error
+  elif isinstance(type_signature, computation_types.FunctionType):
+    if type_signature.parameter is not None:
       transformed_parameter, parameter_mutated = transform_type_postorder(
-          type_signature.parameter,  # pytype: disable=attribute-error
-          transform_fn,
+          type_signature.parameter, transform_fn
       )
     else:
       transformed_parameter, parameter_mutated = (None, False)
     transformed_result, result_mutated = transform_type_postorder(
-        type_signature.result,  # pytype: disable=attribute-error
-        transform_fn,
+        type_signature.result, transform_fn
     )
     if parameter_mutated or result_mutated:
       type_signature = computation_types.FunctionType(

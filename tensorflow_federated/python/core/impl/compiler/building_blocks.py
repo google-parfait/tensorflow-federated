@@ -566,29 +566,29 @@ class Call(ComputationBuildingBlock):
     py_typecheck.check_type(fn, ComputationBuildingBlock)
     if arg is not None:
       py_typecheck.check_type(arg, ComputationBuildingBlock)
-    if not fn.type_signature.is_function():
+    if not isinstance(fn.type_signature, computation_types.FunctionType):
       raise TypeError(
           'Expected fn to be of a functional type, '
           'but found that its type is {}.'.format(fn.type_signature)
       )
-    if fn.type_signature.parameter is not None:  # pytype: disable=attribute-error
+    if fn.type_signature.parameter is not None:
       if arg is None:
         raise TypeError(
             'The invoked function expects an argument of type {}, '
             'but got None instead.'.format(fn.type_signature.parameter)
         )
-      if not fn.type_signature.parameter.is_assignable_from(arg.type_signature):  # pytype: disable=attribute-error
+      if not fn.type_signature.parameter.is_assignable_from(arg.type_signature):
         raise TypeError(
             'The parameter of the invoked function is expected to be of '
             'type {}, but the supplied argument is of an incompatible '
-            'type {}.'.format(fn.type_signature.parameter, arg.type_signature)  # pytype: disable=attribute-error
+            'type {}.'.format(fn.type_signature.parameter, arg.type_signature)
         )
     elif arg is not None:
       raise TypeError(
           'The invoked function does not expect any parameters, but got '
           'an argument of type {}.'.format(py_typecheck.type_string(type(arg)))
       )
-    super().__init__(fn.type_signature.result)  # pytype: disable=attribute-error
+    super().__init__(fn.type_signature.result)
     self._function = fn
     self._argument = arg
 
