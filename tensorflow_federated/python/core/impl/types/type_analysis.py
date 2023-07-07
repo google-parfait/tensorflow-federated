@@ -69,7 +69,9 @@ def contains_federated_types(type_signature):
 
 def contains_tensor_types(type_signature):
   """Returns whether or not `type_signature` contains a tensor type."""
-  return contains(type_signature, lambda t: t.is_tensor())
+  return contains(
+      type_signature, lambda t: isinstance(t, computation_types.TensorType)
+  )
 
 
 def contains_only(
@@ -122,8 +124,17 @@ def is_tensorflow_compatible_type(type_spec):
   return contains_only(type_spec, _predicate)
 
 
-def is_structure_of_tensors(type_spec):
-  return contains_only(type_spec, lambda t: t.is_struct() or t.is_tensor())
+def is_structure_of_tensors(type_spec: computation_types.Type) -> bool:
+  def _predicate(type_spec: computation_types.Type) -> bool:
+    return isinstance(
+        type_spec,
+        (
+            computation_types.StructType,
+            computation_types.TensorType,
+        ),
+    )
+
+  return contains_only(type_spec, _predicate)
 
 
 def check_tensorflow_compatible_type(type_spec):
@@ -138,7 +149,17 @@ def is_generic_op_compatible_type(type_spec):
   """Checks `type_spec` against an explicit list of generic operators."""
   if type_spec is None:
     return False
-  return contains_only(type_spec, lambda t: t.is_struct() or t.is_tensor())
+
+  def _predicate(type_spec: computation_types.Type) -> bool:
+    return isinstance(
+        type_spec,
+        (
+            computation_types.TensorType,
+            computation_types.StructType,
+        ),
+    )
+
+  return contains_only(type_spec, _predicate)
 
 
 def is_binary_op_with_upcast_compatible_pair(
@@ -178,7 +199,8 @@ def is_binary_op_with_upcast_compatible_pair(
   if possibly_nested_type.is_equivalent_to(type_to_upcast):
     return True
   if not (
-      type_to_upcast.is_tensor() and type_to_upcast.shape == tf.TensorShape(())  # pytype: disable=attribute-error
+      isinstance(type_to_upcast, computation_types.TensorType)
+      and type_to_upcast.shape == tf.TensorShape(())
   ):
     return False
 
@@ -187,7 +209,10 @@ def is_binary_op_with_upcast_compatible_pair(
   only_allowed_dtype = type_to_upcast.dtype  # pytype: disable=attribute-error
 
   def _check_tensor_types(type_spec):
-    if type_spec.is_tensor() and type_spec.dtype != only_allowed_dtype:  # pytype: disable=attribute-error
+    if (
+        isinstance(type_spec, computation_types.TensorType)
+        and type_spec.dtype != only_allowed_dtype
+    ):  # pytype: disable=attribute-error
       types_are_ok[0] = False
     return type_spec, False
 
@@ -260,7 +285,7 @@ def check_all_abstract_types_are_bound(type_spec):
       TypeError: if unbound labels are found and check is True.
     """
     py_typecheck.check_type(type_spec, computation_types.Type)
-    if type_spec.is_tensor():
+    if isinstance(type_spec, computation_types.TensorType):
       return set()
     elif isinstance(type_spec, computation_types.SequenceType):
       return _check_or_get_unbound_abstract_type_labels(
@@ -342,7 +367,7 @@ def check_is_sum_compatible(type_spec, type_spec_context=None):
   if type_spec_context is None:
     type_spec_context = type_spec
   py_typecheck.check_type(type_spec_context, computation_types.Type)
-  if type_spec.is_tensor():
+  if isinstance(type_spec, computation_types.TensorType):
     if not is_numeric_dtype(type_spec.dtype):
       raise SumIncompatibleError(
           type_spec, type_spec_context, f'{type_spec.dtype} is not numeric'
@@ -391,9 +416,9 @@ def is_structure_of_floats(type_spec: computation_types.Type) -> bool:
     `True` iff `type_spec` is a structure of floats, otherwise `False`.
   """
   py_typecheck.check_type(type_spec, computation_types.Type)
-  if type_spec.is_tensor():
-    py_typecheck.check_type(type_spec.dtype, tf.dtypes.DType)  # pytype: disable=attribute-error
-    return type_spec.dtype.is_floating  # pytype: disable=attribute-error
+  if isinstance(type_spec, computation_types.TensorType):
+    py_typecheck.check_type(type_spec.dtype, tf.dtypes.DType)
+    return type_spec.dtype.is_floating
   elif type_spec.is_struct():
     return all(
         is_structure_of_floats(v) for _, v in structure.iter_elements(type_spec)  # pytype: disable=wrong-arg-types
@@ -426,7 +451,7 @@ def is_structure_of_integers(type_spec: computation_types.Type) -> bool:
     `True` iff `type_spec` is a structure of integers, otherwise `False`.
   """
   py_typecheck.check_type(type_spec, computation_types.Type)
-  if type_spec.is_tensor():
+  if isinstance(type_spec, computation_types.TensorType):
     py_typecheck.check_type(type_spec.dtype, tf.dtypes.DType)  # pytype: disable=attribute-error
     return type_spec.dtype.is_integer  # pytype: disable=attribute-error
   elif type_spec.is_struct():
@@ -457,10 +482,10 @@ def is_single_integer_or_matches_structure(
   py_typecheck.check_type(type_sig, computation_types.Type)
   py_typecheck.check_type(shape_type, computation_types.Type)
 
-  if type_sig.is_tensor():
+  if isinstance(type_sig, computation_types.TensorType):
     # This condition applies to both `shape_type` being a tensor or structure,
     # as the same integer bitwidth can be used for all values in the structure.
-    return type_sig.dtype.is_integer and (type_sig.shape.num_elements() == 1)  # pytype: disable=attribute-error
+    return type_sig.dtype.is_integer and (type_sig.shape.num_elements() == 1)
   elif shape_type.is_struct() and type_sig.is_struct():
     bitwidth_name_and_types = list(structure.iter_elements(type_sig))  # pytype: disable=wrong-arg-types
     shape_name_and_types = list(structure.iter_elements(shape_type))  # pytype: disable=wrong-arg-types
@@ -533,7 +558,7 @@ def is_average_compatible(type_spec: computation_types.Type) -> bool:
     `True` iff `type_spec` is average-compatible, `False` otherwise.
   """
   py_typecheck.check_type(type_spec, computation_types.Type)
-  if type_spec.is_tensor():
+  if isinstance(type_spec, computation_types.TensorType):
     return type_spec.dtype.is_floating or type_spec.dtype.is_complex  # pytype: disable=attribute-error
   elif type_spec.is_struct():
     return all(
@@ -709,7 +734,7 @@ def check_concrete_instance_of(
             )
         else:
           type_bindings[label] = concrete_type_member
-    elif _both_are(lambda t: t.is_tensor()):
+    elif _both_are(lambda t: isinstance(t, computation_types.TensorType)):
       if generic_type_member != concrete_type_member:
         _raise_structural('tensor types')
     elif _both_are(lambda t: isinstance(t, computation_types.PlacementType)):
@@ -840,7 +865,9 @@ def count_tensors_in_type(
   )
 
   def _capture_tensors(type_signature):
-    if type_signature.is_tensor() and tensor_filter(type_signature):
+    if isinstance(
+        type_signature, computation_types.TensorType
+    ) and tensor_filter(type_signature):
       tensors_and_params['num_tensors'] += 1
       num_parameters = type_signature.shape.num_elements()
       if num_parameters is not None:

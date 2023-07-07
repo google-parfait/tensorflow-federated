@@ -29,15 +29,15 @@ class CountTypesTest(parameterized.TestCase):
   @parameterized.named_parameters([
       ('one',
        computation_types.TensorType(tf.int32),
-       lambda t: t.is_tensor(),
+       lambda t: isinstance(t, computation_types.TensorType),
        1),
       ('three',
        computation_types.StructType([tf.int32] * 3),
-       lambda t: t.is_tensor(),
+       lambda t: isinstance(t, computation_types.TensorType),
        3),
       ('nested',
        computation_types.StructType([[tf.int32] * 3] * 3),
-       lambda t: t.is_tensor(),
+       lambda t: isinstance(t, computation_types.TensorType),
        9),
   ])
   # pyformat: enable

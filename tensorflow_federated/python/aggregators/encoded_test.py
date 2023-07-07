@@ -29,7 +29,7 @@ from tensorflow_model_optimization.python.core.internal import tensor_encoding a
 
 
 def _tff_spec_to_encoder(encoder, tff_type):
-  assert tff_type.is_tensor()
+  assert isinstance(tff_type, computation_types.TensorType)
   return te.encoders.as_gather_encoder(
       encoder, tf.TensorSpec(tff_type.shape, tff_type.dtype)
   )

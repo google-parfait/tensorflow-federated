@@ -109,8 +109,8 @@ def _tff_type_to_xla_serializer_arg(
   """
 
   def _undefined_shape_predicate(type_element: computation_types.Type) -> bool:
-    if type_element.is_tensor():
-      if not type_element.shape.is_fully_defined():  # pytype: disable=attribute-error
+    if isinstance(type_element, computation_types.TensorType):
+      if not type_element.shape.is_fully_defined():
         return True
     return False
 
@@ -129,8 +129,8 @@ def _tff_type_to_xla_serializer_arg(
   def _make(
       type_spec: computation_types.Type, next_unused_tensor_index: int
   ) -> tuple[Union[_XlaSerializerStructArg, _XlaSerializerTensorArg], int]:
-    if type_spec.is_tensor():
-      obj = _XlaSerializerTensorArg(type_spec, next_unused_tensor_index)  # pytype: disable=wrong-arg-types
+    if isinstance(type_spec, computation_types.TensorType):
+      obj = _XlaSerializerTensorArg(type_spec, next_unused_tensor_index)
       next_unused_tensor_index = next_unused_tensor_index + 1
       return obj, next_unused_tensor_index
     elif type_spec.is_struct():

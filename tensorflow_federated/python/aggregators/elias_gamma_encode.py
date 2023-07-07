@@ -49,9 +49,9 @@ def _is_int32_or_structure_of_int32s(type_spec: computation_types.Type) -> bool:
     `True` if `type_spec` is an int32 or a structure containing only other
     structures of int32s, otherwise `False`.
   """
-  if type_spec.is_tensor():
-    py_typecheck.check_type(type_spec.dtype, tf.dtypes.DType)  # pytype: disable=attribute-error
-    return type_spec.dtype == tf.int32  # pytype: disable=attribute-error
+  if isinstance(type_spec, computation_types.TensorType):
+    py_typecheck.check_type(type_spec.dtype, tf.dtypes.DType)
+    return type_spec.dtype == tf.int32
   elif type_spec.is_struct():
     return all(
         _is_int32_or_structure_of_int32s(v)

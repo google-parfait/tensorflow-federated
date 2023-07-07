@@ -143,29 +143,30 @@ def create_constant(
 
   def _pack_dtypes(type_signature):
     """Appends dtype of `type_signature` to nonlocal variable."""
-    if type_signature.is_tensor():
+    if isinstance(type_signature, computation_types.TensorType):
       tensor_dtypes_in_type_spec.append(type_signature.dtype)
     return type_signature, False
 
   type_transformations.transform_type_postorder(type_spec, _pack_dtypes)
 
-  if any(x.is_integer for x in tensor_dtypes_in_type_spec) and (
-      inferred_value_type.is_tensor()  # pytype: disable=attribute-error
-      and not inferred_value_type.dtype.is_integer  # pytype: disable=attribute-error
+  if (
+      any(x.is_integer for x in tensor_dtypes_in_type_spec)
+      and isinstance(inferred_value_type, computation_types.TensorType)
+      and not inferred_value_type.dtype.is_integer
   ):
     raise TypeError(
         'Only integers can be used as scalar values if our desired constant '
         'type spec contains any integer tensors; passed scalar {} of dtype {} '
-        'for type spec {}.'.format(value, inferred_value_type.dtype, type_spec)  # pytype: disable=attribute-error
+        'for type spec {}.'.format(value, inferred_value_type.dtype, type_spec)
     )
 
   result_type = type_spec
 
   def _create_result_tensor(type_spec, value):
     """Packs `value` into `type_spec` recursively."""
-    if type_spec.is_tensor():
-      type_spec.shape.assert_is_fully_defined()  # pytype: disable=attribute-error
-      result = tf.constant(value, dtype=type_spec.dtype, shape=type_spec.shape)  # pytype: disable=attribute-error
+    if isinstance(type_spec, computation_types.TensorType):
+      type_spec.shape.assert_is_fully_defined()
+      result = tf.constant(value, dtype=type_spec.dtype, shape=type_spec.shape)
     else:
       elements = []
       if inferred_value_type.is_struct():  # pytype: disable=attribute-error
@@ -377,7 +378,7 @@ def create_binary_operator_with_upcast(
               for elem_name, elem_type in elem_iter
           ]
       )
-    elif type_spec.is_tensor():
+    elif isinstance(type_spec, computation_types.TensorType):
       value_tensor_type = type_conversions.type_from_tensors(to_pack)
       if type_spec.is_assignable_from(value_tensor_type):
         return to_pack
@@ -420,7 +421,7 @@ def create_binary_operator_with_upcast(
           type_signature[0],  # pytype: disable=wrong-arg-types
       )
 
-    if type_signature[0].is_tensor():
+    if isinstance(type_signature[0], computation_types.TensorType):
       result_value = operator(first_arg, second_arg)
     elif type_signature[0].is_struct():
       result_value = structure.map_structure(

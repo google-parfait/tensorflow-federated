@@ -757,8 +757,11 @@ def secure_quantized_sum(client_value, lower_bound, upper_bound):
   )
 
   secagg_value_type = value.type_signature.member  # pytype: disable=attribute-error
-  assert secagg_value_type.is_tensor() or secagg_value_type.is_struct()
-  if secagg_value_type.is_tensor():
+  assert (
+      isinstance(secagg_value_type, computation_types.TensorType)
+      or secagg_value_type.is_struct()
+  )
+  if isinstance(secagg_value_type, computation_types.TensorType):
     bitwidths = 32
   else:
     bitwidths = structure.map_structure(lambda t: 32, secagg_value_type)

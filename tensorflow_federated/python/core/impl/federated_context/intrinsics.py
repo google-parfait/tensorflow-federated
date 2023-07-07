@@ -556,7 +556,7 @@ def _check_select_keys_type(
         keys_type, 'a federated value placed at clients', 'client_keys', secure
     )
   if not (
-      keys_type.member.is_tensor()  # pytype: disable=attribute-error
+      isinstance(keys_type.member, computation_types.TensorType)  # pytype: disable=attribute-error
       and keys_type.member.dtype == tf.int32  # pytype: disable=attribute-error
       and keys_type.member.shape.rank == 1  # pytype: disable=attribute-error
       and keys_type.member.shape.dims[0].value is not None  # pytype: disable=attribute-error
@@ -762,7 +762,10 @@ def federated_secure_modular_sum(value, modulus):
             value_member_type, modulus_type
         )
     )
-  if modulus_type.is_tensor() and value_member_type.is_struct():
+  if (
+      isinstance(modulus_type, computation_types.TensorType)
+      and value_member_type.is_struct()
+  ):
     modulus_value = value_impl.to_value(
         structure.map_structure(lambda _: modulus, value_member_type), None
     )
@@ -837,7 +840,9 @@ def federated_secure_sum(value, max_input):
             value_member_type, max_input_type
         )
     )
-  if max_input_type.is_tensor() and value_member_type.is_struct():
+  if isinstance(max_input_type, computation_types.TensorType) and isinstance(
+      value_member_type, computation_types.StructType
+  ):
     max_input_value = value_impl.to_value(
         structure.map_structure(lambda _: max_input, value_member_type), None
     )
@@ -915,7 +920,9 @@ def federated_secure_sum_bitwidth(value, bitwidth):
             value_member_type, bitwidth_type
         )
     )
-  if bitwidth_type.is_tensor() and value_member_type.is_struct():
+  if isinstance(bitwidth_type, computation_types.TensorType) and isinstance(
+      value_member_type, computation_types.StructType
+  ):
     bitwidth_value = value_impl.to_value(
         structure.map_structure(lambda _: bitwidth, value_member_type), None
     )

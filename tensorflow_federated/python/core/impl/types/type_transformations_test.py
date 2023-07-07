@@ -22,7 +22,7 @@ from tensorflow_federated.python.core.impl.types import type_transformations
 
 
 def _convert_tensor_to_float(type_spec):
-  if type_spec.is_tensor():
+  if isinstance(type_spec, computation_types.TensorType):
     return computation_types.TensorType(tf.float32, shape=type_spec.shape), True
   return type_spec, False
 

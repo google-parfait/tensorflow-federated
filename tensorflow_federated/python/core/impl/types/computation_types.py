@@ -259,7 +259,7 @@ class Type(metaclass=abc.ABCMeta):
   )
   def check_tensor(self) -> None:
     """Check that this is a `tff.TensorType`."""
-    if not self.is_tensor():
+    if not isinstance(self, TensorType):
       raise UnexpectedTypeError(TensorType, self)
 
   @deprecation.deprecated(

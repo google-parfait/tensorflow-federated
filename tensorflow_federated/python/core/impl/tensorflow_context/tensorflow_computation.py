@@ -238,7 +238,7 @@ def _extract_bindings(
   ) -> tuple[Optional[pb.TensorFlowFunction.Binding], int]:
     if type_spec is None:
       return None, 0
-    elif type_spec.is_tensor():
+    elif isinstance(type_spec, computation_types.TensorType):
       arg_def = function_args[arg_index]
       if arg_def.type != type_spec.dtype.as_datatype_enum:  # pytype: disable=attribute-error
         raise TypeError(
@@ -386,8 +386,8 @@ class _TensorFlowFunctionTracingStrategy:
     ) -> Union[
         TensorFlowSpec, Sequence[TensorFlowSpec], Mapping[str, TensorFlowSpec]
     ]:
-      if type_spec.is_tensor():
-        return tf.TensorSpec(shape=type_spec.shape, dtype=type_spec.dtype)  # pytype: disable=attribute-error
+      if isinstance(type_spec, computation_types.TensorType):
+        return tf.TensorSpec(shape=type_spec.shape, dtype=type_spec.dtype)
       elif isinstance(type_spec, computation_types.SequenceType):
         return tf.data.DatasetSpec(_tf_spec_from_tff_type(type_spec.element))
       elif type_spec.is_struct():

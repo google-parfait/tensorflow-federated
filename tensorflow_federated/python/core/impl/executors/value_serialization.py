@@ -364,7 +364,7 @@ def serialize_value(
         'is not a TFF computation. Asked to serialized value {v} '
         ' of type {t} with None type spec.'.format(v=value, t=type(value))
     )
-  elif type_spec.is_tensor():
+  elif isinstance(type_spec, computation_types.TensorType):
     return _serialize_tensor_value(value, type_spec)
   elif isinstance(type_spec, computation_types.SequenceType):
     return _serialize_sequence_value(value, type_spec)

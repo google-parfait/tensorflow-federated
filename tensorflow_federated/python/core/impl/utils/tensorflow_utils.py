@@ -83,11 +83,11 @@ def stamp_parameter_in_graph(parameter_name, parameter_type, graph):
   if parameter_type is None:
     return (None, None)
   parameter_type = computation_types.to_type(parameter_type)
-  if parameter_type.is_tensor():
+  if isinstance(parameter_type, computation_types.TensorType):
     with graph.as_default():
       placeholder = tf.compat.v1.placeholder(
-          dtype=parameter_type.dtype,  # pytype: disable=attribute-error
-          shape=parameter_type.shape,  # pytype: disable=attribute-error
+          dtype=parameter_type.dtype,
+          shape=parameter_type.shape,
           name=parameter_name,
       )
       binding = pb.TensorFlow.Binding(
@@ -508,7 +508,7 @@ def assemble_result_from_graph(type_spec, binding, output_map):
       )
 
   binding_oneof = binding.WhichOneof('binding')
-  if type_spec.is_tensor():
+  if isinstance(type_spec, computation_types.TensorType):
     if binding_oneof != 'tensor':
       raise ValueError(
           'Expected a tensor binding, found {}.'.format(binding_oneof)
@@ -620,7 +620,7 @@ def make_empty_list_structure_for_element_type_spec(type_spec):
   """
   type_spec = computation_types.to_type(type_spec)
   py_typecheck.check_type(type_spec, computation_types.Type)
-  if type_spec.is_tensor():
+  if isinstance(type_spec, computation_types.TensorType):
     return []
   elif type_spec.is_struct():
     elements = structure.to_elements(type_spec)  # pytype: disable=wrong-arg-types
@@ -677,9 +677,17 @@ def make_whimsy_element_for_type_spec(type_spec, none_dim_replacement=0):
     compatible with `type_spec`.
   """
   type_spec = computation_types.to_type(type_spec)
-  if not type_analysis.contains_only(
-      type_spec, lambda t: t.is_struct() or t.is_tensor()
-  ):
+
+  def _predicate(type_spec: computation_types.Type) -> bool:
+    return isinstance(
+        type_spec,
+        (
+            computation_types.TensorType,
+            computation_types.StructType,
+        ),
+    )
+
+  if not type_analysis.contains_only(type_spec, _predicate):
     raise ValueError(
         'Cannot construct array for TFF type containing anything '
         'other than `computation_types.TensorType` or '
@@ -697,11 +705,11 @@ def make_whimsy_element_for_type_spec(type_spec, none_dim_replacement=0):
       return none_dim_replacement
     return x
 
-  if type_spec.is_tensor():
-    whimsy_shape = [_handle_none_dimension(x) for x in type_spec.shape]  # pytype: disable=attribute-error
-    if type_spec.dtype == tf.string:  # pytype: disable=attribute-error
+  if isinstance(type_spec, computation_types.TensorType):
+    whimsy_shape = [_handle_none_dimension(x) for x in type_spec.shape]
+    if type_spec.dtype == tf.string:
       return np.empty(whimsy_shape, dtype=str)
-    return np.zeros(whimsy_shape, type_spec.dtype.as_numpy_dtype)  # pytype: disable=attribute-error
+    return np.zeros(whimsy_shape, type_spec.dtype.as_numpy_dtype)
   elif type_spec.is_struct():
     elements = structure.to_elements(type_spec)  # pytype: disable=wrong-arg-types
     elem_list = []
@@ -756,7 +764,7 @@ def append_to_list_structure_for_element_type_spec(nested, value, type_spec):
           'Expected an anonymous tuple to either have all elements named or '
           'all unnamed, got {}.'.format(value)
       )
-  if type_spec.is_tensor():
+  if isinstance(type_spec, computation_types.TensorType):
     if not isinstance(nested, list):
       raise TypeError(f'Expected `nested` to be a `list`, found {type(nested)}')
     # Convert the members to tensors to ensure that they are properly
@@ -836,7 +844,7 @@ def replace_empty_leaf_lists_with_numpy_arrays(lists, type_spec):
   """
   type_spec = computation_types.to_type(type_spec)
   py_typecheck.check_type(type_spec, computation_types.Type)
-  if type_spec.is_tensor():
+  if isinstance(type_spec, computation_types.TensorType):
     py_typecheck.check_type(lists, list)
     if lists:
       return lists
@@ -1121,7 +1129,7 @@ def coerce_dataset_elements_to_tff_type_spec(
       dataset, type_conversions.TF_DATASET_REPRESENTATION_TYPES
   )
   py_typecheck.check_type(element_type, computation_types.Type)
-  if element_type.is_tensor():
+  if isinstance(element_type, computation_types.TensorType):
     return dataset
   elif isinstance(element_type, computation_types.StructWithPythonType):
     py_type = element_type.python_container
@@ -1132,7 +1140,7 @@ def coerce_dataset_elements_to_tff_type_spec(
   # look for opportunities to consolidate?
   def _to_representative_value(type_spec, elements):
     """Convert to a container to a type understood by TF and TFF."""
-    if type_spec.is_tensor():
+    if isinstance(type_spec, computation_types.TensorType):
       return elements
     elif isinstance(type_spec, computation_types.StructWithPythonType):
       if tf.is_tensor(elements):
