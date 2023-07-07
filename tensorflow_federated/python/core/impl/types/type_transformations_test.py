@@ -46,7 +46,7 @@ def _convert_function_to_tensor(type_spec):
 
 
 def _convert_federated_to_tensor(type_spec):
-  if type_spec.is_federated():
+  if isinstance(type_spec, computation_types.FederatedType):
     return computation_types.TensorType(tf.float32), True
   return type_spec, False
 

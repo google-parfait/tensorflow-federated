@@ -167,7 +167,7 @@ class Type(metaclass=abc.ABCMeta):
   )
   def check_federated(self) -> None:
     """Check that this is a `tff.FederatedType`."""
-    if not self.is_federated():
+    if not isinstance(self, FederatedType):
       raise UnexpectedTypeError(FederatedType, self)
 
   @deprecation.deprecated(
@@ -1274,7 +1274,7 @@ def _possibly_disallowed_children(
   for child_type in type_signature.children():
     if child_type is None:
       raise ValueError(type_signature)
-    if child_type.is_federated():
+    if isinstance(child_type, FederatedType):
       disallowed = attrs.evolve(disallowed, federated=child_type)
     elif isinstance(child_type, FunctionType):
       disallowed = attrs.evolve(disallowed, function=child_type)
@@ -1310,7 +1310,7 @@ def _check_well_formed(type_signature: Type):
 
   children = _possibly_disallowed_children(type_signature)
 
-  if type_signature.is_federated():
+  if isinstance(type_signature, FederatedType):
     # Federated types cannot have federated or functional children.
     for child_type, kind in (
         (children.federated, _FEDERATED_TYPES),
@@ -1414,7 +1414,7 @@ def _string_representation(type_spec, formatted: bool) -> str:
     """
     if isinstance(type_spec, AbstractType):
       return [type_spec.label]
-    elif type_spec.is_federated():
+    elif isinstance(type_spec, FederatedType):
       member_lines = _lines_for_type(type_spec.member, formatted)
       placement_line = '@{}'.format(type_spec.placement)
       if type_spec.all_equal:

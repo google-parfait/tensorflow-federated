@@ -175,8 +175,8 @@ class DataDescriptor(
     """
     super().__init__(comp, arg, arg_type)
     self._cardinality: dict[placements.PlacementLiteral, int] = {}
-    if self._type_signature.is_federated():
-      if self._type_signature.placement is placements.CLIENTS:  # pytype: disable=attribute-error
+    if isinstance(self._type_signature, computation_types.FederatedType):
+      if self._type_signature.placement is placements.CLIENTS:
         if cardinality is None:
           raise ValueError('Expected `cardinality` to not be `None`.')
         self._cardinality[placements.CLIENTS] = cardinality

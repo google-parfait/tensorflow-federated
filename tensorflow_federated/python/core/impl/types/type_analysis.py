@@ -62,7 +62,9 @@ def contains(
 
 def contains_federated_types(type_signature):
   """Returns whether or not `type_signature` contains a federated type."""
-  return contains(type_signature, lambda t: t.is_federated())
+  return contains(
+      type_signature, lambda t: isinstance(t, computation_types.FederatedType)
+  )
 
 
 def contains_tensor_types(type_signature):
@@ -264,7 +266,7 @@ def check_all_abstract_types_are_bound(type_spec):
       return _check_or_get_unbound_abstract_type_labels(
           type_spec.element, bound_labels, check
       )
-    elif type_spec.is_federated():
+    elif isinstance(type_spec, computation_types.FederatedType):
       return _check_or_get_unbound_abstract_type_labels(
           type_spec.member, bound_labels, check
       )
@@ -366,7 +368,7 @@ def check_is_sum_compatible(type_spec, type_spec_context=None):
       )
     for _, element_type in structure.iter_elements(type_spec):
       check_is_sum_compatible(element_type, type_spec_context)
-  elif type_spec.is_federated():
+  elif isinstance(type_spec, computation_types.FederatedType):
     check_is_sum_compatible(type_spec.member, type_spec_context)
   else:
     raise SumIncompatibleError(
@@ -396,8 +398,8 @@ def is_structure_of_floats(type_spec: computation_types.Type) -> bool:
     return all(
         is_structure_of_floats(v) for _, v in structure.iter_elements(type_spec)  # pytype: disable=wrong-arg-types
     )
-  elif type_spec.is_federated():
-    return is_structure_of_floats(type_spec.member)  # pytype: disable=attribute-error
+  elif isinstance(type_spec, computation_types.FederatedType):
+    return is_structure_of_floats(type_spec.member)
   else:
     return False
 
@@ -432,8 +434,8 @@ def is_structure_of_integers(type_spec: computation_types.Type) -> bool:
         is_structure_of_integers(v)
         for _, v in structure.iter_elements(type_spec)  # pytype: disable=wrong-arg-types
     )
-  elif type_spec.is_federated():
-    return is_structure_of_integers(type_spec.member)  # pytype: disable=attribute-error
+  elif isinstance(type_spec, computation_types.FederatedType):
+    return is_structure_of_integers(type_spec.member)
   else:
     return False
 
@@ -537,8 +539,8 @@ def is_average_compatible(type_spec: computation_types.Type) -> bool:
     return all(
         is_average_compatible(v) for _, v in structure.iter_elements(type_spec)  # pytype: disable=wrong-arg-types
     )
-  elif type_spec.is_federated():
-    return is_average_compatible(type_spec.member)  # pytype: disable=attribute-error
+  elif isinstance(type_spec, computation_types.FederatedType):
+    return is_average_compatible(type_spec.member)
   else:
     return False
 
@@ -743,7 +745,7 @@ def check_concrete_instance_of(
           concrete_type_member.result,  # pytype: disable=attribute-error
           defining,
       )
-    elif _both_are(lambda t: t.is_federated()):
+    elif _both_are(lambda t: isinstance(t, computation_types.FederatedType)):
       if generic_type_member.placement != concrete_type_member.placement:  # pytype: disable=attribute-error
         _raise_structural('placement')
       if generic_type_member.all_equal != concrete_type_member.all_equal:  # pytype: disable=attribute-error

@@ -1494,8 +1494,8 @@ def create_federated_zip(
 
   def _record_placements(type_signature: computation_types.Type):
     """Records the placements in `type_signature` to `all_placements`."""
-    if type_signature.is_federated():
-      all_placements.add(type_signature.placement)  # pytype: disable=attribute-error
+    if isinstance(type_signature, computation_types.FederatedType):
+      all_placements.add(type_signature.placement)
     elif type_signature.is_struct():
       for i in range(len(type_signature)):  # pytype: disable=wrong-arg-types
         _record_placements(type_signature[i])  # pytype: disable=unsupported-operands
@@ -1517,8 +1517,8 @@ def create_federated_zip(
 
   def normalize_all_equals(element_type):
     if (
-        element_type.is_federated()
-        and element_type.placement.is_clients()
+        isinstance(element_type, computation_types.FederatedType)
+        and element_type.placement is placements.CLIENTS
         and element_type.all_equal
     ):
       return computation_types.at_clients(element_type.member), True
@@ -1571,38 +1571,41 @@ def create_generic_constant(
         'Must pass a scalar value to `create_generic_constant`; encountered a '
         'value {}'.format(scalar_value)
     )
-  if not type_analysis.contains_only(
-      type_spec, lambda t: t.is_federated() or t.is_struct() or t.is_tensor()
-  ):
+
+  def _predicate(type_spec: computation_types.Type) -> bool:
+    return isinstance(
+        type_spec,
+        (
+            computation_types.FederatedType,
+            computation_types.StructType,
+            computation_types.TensorType,
+        ),
+    )
+
+  if not type_analysis.contains_only(type_spec, _predicate):
     raise TypeError
   if type_analysis.contains_only(
       type_spec, lambda t: t.is_struct() or t.is_tensor()
   ):
     return create_tensorflow_constant(type_spec, scalar_value)
-  elif type_spec.is_federated():
-    unplaced_zero = create_tensorflow_constant(type_spec.member, scalar_value)  # pytype: disable=attribute-error
-    if type_spec.placement == placements.CLIENTS:  # pytype: disable=attribute-error
+  elif isinstance(type_spec, computation_types.FederatedType):
+    unplaced_zero = create_tensorflow_constant(type_spec.member, scalar_value)
+    if type_spec.placement is placements.CLIENTS:
       placement_federated_type = computation_types.FederatedType(
-          type_spec.member,  # pytype: disable=attribute-error
-          type_spec.placement,  # pytype: disable=attribute-error
-          all_equal=True,
+          type_spec.member, type_spec.placement, all_equal=True
       )
       placement_fn_type = computation_types.FunctionType(
-          type_spec.member,  # pytype: disable=attribute-error
-          placement_federated_type,
+          type_spec.member, placement_federated_type
       )
       placement_function = building_blocks.Intrinsic(
           intrinsic_defs.FEDERATED_VALUE_AT_CLIENTS.uri, placement_fn_type
       )
-    elif type_spec.placement == placements.SERVER:  # pytype: disable=attribute-error
+    elif type_spec.placement is placements.SERVER:
       placement_federated_type = computation_types.FederatedType(
-          type_spec.member,  # pytype: disable=attribute-error
-          type_spec.placement,  # pytype: disable=attribute-error
-          all_equal=True,
+          type_spec.member, type_spec.placement, all_equal=True
       )
       placement_fn_type = computation_types.FunctionType(
-          type_spec.member,  # pytype: disable=attribute-error
-          placement_federated_type,
+          type_spec.member, placement_federated_type
       )
       placement_function = building_blocks.Intrinsic(
           intrinsic_defs.FEDERATED_VALUE_AT_SERVER.uri, placement_fn_type
@@ -1823,9 +1826,18 @@ def create_named_tuple(
 
 def _check_generic_operator_type(type_spec):
   """Checks that `type_spec` can be the signature of args to a generic op."""
-  if not type_analysis.contains_only(
-      type_spec, lambda t: t.is_federated() or t.is_struct() or t.is_tensor()
-  ):
+
+  def _predicate(type_spec: computation_types.Type) -> bool:
+    return isinstance(
+        type_spec,
+        (
+            computation_types.FederatedType,
+            computation_types.StructType,
+            computation_types.TensorType,
+        ),
+    )
+
+  if not type_analysis.contains_only(type_spec, _predicate):
     raise TypeError(
         'Generic operators are only implemented for arguments both containing '
         'only federated, tuple and tensor types; you have passed an argument '
@@ -1919,8 +1931,8 @@ def apply_binary_operator_with_upcast(
     TypeError: If the types don't match.
   """
   py_typecheck.check_type(arg, building_blocks.ComputationBuildingBlock)
-  if arg.type_signature.is_federated():
-    tuple_type = arg.type_signature.member  # pytype: disable=attribute-error
+  if isinstance(arg.type_signature, computation_types.FederatedType):
+    tuple_type = arg.type_signature.member
     assert tuple_type.is_struct()
   elif arg.type_signature.is_struct():
     tuple_type = arg.type_signature
@@ -1934,7 +1946,7 @@ def apply_binary_operator_with_upcast(
       operator, tuple_type
   )
 
-  if arg.type_signature.is_federated():
+  if isinstance(arg.type_signature, computation_types.FederatedType):
     called = create_federated_map_or_apply(tf_representing_op, arg)
   else:
     called = building_blocks.Call(tf_representing_op, arg)
@@ -1986,9 +1998,9 @@ def zip_to_match_type(
       def _remove_placement(
           subtype: computation_types.Type,
       ) -> tuple[computation_types.Type, bool]:
-        if subtype.is_federated():
-          placements_encountered.add(subtype.placement)  # pytype: disable=attribute-error
-          return subtype.member, True  # pytype: disable=attribute-error
+        if isinstance(subtype, computation_types.FederatedType):
+          placements_encountered.add(subtype.placement)
+          return subtype.member, True
         return subtype, False
 
       unplaced_struct, _ = type_transformations.transform_type_postorder(
@@ -2014,8 +2026,8 @@ def zip_to_match_type(
       ) and source_name in (target_name, None)
 
     if source_type.is_struct():
-      if target_type.is_federated():
-        return _struct_can_be_zipped_to_federated(source_type, target_type)  # pytype: disable=wrong-arg-types
+      if isinstance(target_type, computation_types.FederatedType):
+        return _struct_can_be_zipped_to_federated(source_type, target_type)
       elif target_type.is_struct():
         elements_zippable = []
         for (s_name, s_el), (t_name, t_el) in zip(
@@ -2034,7 +2046,9 @@ def zip_to_match_type(
       source: building_blocks.ComputationBuildingBlock,
       target_type: computation_types.Type,
   ):
-    if target_type.is_federated() and source.type_signature.is_struct():
+    if isinstance(target_type, computation_types.FederatedType) and isinstance(
+        source.type_signature, computation_types.StructType
+    ):
       return create_federated_zip(source)
     elif target_type.is_struct() and source.type_signature.is_struct():
       zipped_elements = []

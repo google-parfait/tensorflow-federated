@@ -18,6 +18,7 @@ from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.federated_context import value_impl
+from tensorflow_federated.python.core.impl.types import computation_types
 
 
 def get_curried(fn):
@@ -74,7 +75,7 @@ def ensure_federated_value(value, placement=None, label=None):
   if label is not None:
     py_typecheck.check_type(label, str)
 
-  if not value.type_signature.is_federated():
+  if not isinstance(value.type_signature, computation_types.FederatedType):
     comp = value.comp
     try:
       zipped = building_block_factory.create_federated_zip(comp)
@@ -87,7 +88,7 @@ def ensure_federated_value(value, placement=None, label=None):
       ) from e
     value = value_impl.Value(zipped)
 
-  if placement and value.type_signature.placement is not placement:  # pytype: disable=attribute-error
+  if placement is not None and value.type_signature.placement is not placement:  # pytype: disable=attribute-error
     raise TypeError(
         'The {} should be placed at {}, but it is placed at {}.'.format(
             label if label else 'value',

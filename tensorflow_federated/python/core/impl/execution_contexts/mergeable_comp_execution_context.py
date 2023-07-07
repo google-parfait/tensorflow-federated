@@ -120,8 +120,10 @@ class MergeableCompForm:
       after_merge: computation_base.Computation,
   ):
     if not (
-        up_to_merge.type_signature.result.is_federated()
-        and up_to_merge.type_signature.result.placement.is_server()  # pytype: disable=attribute-error
+        isinstance(
+            up_to_merge.type_signature.result, computation_types.FederatedType
+        )
+        and up_to_merge.type_signature.result.placement is placements.SERVER
     ):
       raise UpToMergeTypeError(
           'Expected `up_to_merge` to return a single `tff.SERVER`-placed '
@@ -182,8 +184,8 @@ class MergeableCompForm:
         placement: placements.PlacementLiteral,
     ) -> bool:
       return (
-          type_signature.is_federated()
-          and type_signature.placement == placement  # pytype: disable=attribute-error
+          isinstance(type_signature, computation_types.FederatedType)
+          and type_signature.placement is placement
       )
 
     def _moves_clients_to_server_predicate(
@@ -273,8 +275,11 @@ def _partition_value(
         partition_result.num_remaining_partitions,
         partition_result.last_client_index,
     )
-  elif type_signature.is_federated() and type_signature.placement.is_clients():  # pytype: disable=attribute-error
-    if type_signature.all_equal:  # pytype: disable=attribute-error
+  elif (
+      isinstance(type_signature, computation_types.FederatedType)
+      and type_signature.placement is placements.CLIENTS
+  ):
+    if type_signature.all_equal:
       # In this case we simply replicate the argument for every subround.
       return val
 
@@ -384,10 +389,10 @@ def _repackage_partitioned_values(
       ))
     return structure.Struct(result_container)
   elif (
-      result_type_spec.is_federated()
-      and result_type_spec.placement.is_clients()  # pytype: disable=attribute-error
+      isinstance(result_type_spec, computation_types.FederatedType)
+      and result_type_spec.placement is placements.CLIENTS
   ):
-    if result_type_spec.all_equal:  # pytype: disable=attribute-error
+    if result_type_spec.all_equal:
       return after_merge_results[0]
     for x in after_merge_results:
       py_typecheck.check_type(x, (list, tuple))
@@ -582,9 +587,15 @@ async def _invoke_mergeable_comp_form(
       comp, arg_list, execution_contexts
   )
 
+  def _predicate(type_spec: computation_types.Type) -> bool:
+    return (
+        not isinstance(type_spec, computation_types.FederatedType)
+        or type_spec.all_equal
+    )
+
   if type_analysis.contains_only(
       comp.after_merge.type_signature.result,  # pytype: disable=attribute-error
-      lambda x: not x.is_federated() or x.all_equal,
+      _predicate,
   ):
     # In this case, all contexts must return the same result, which must
     # therefore be independent of which element in the arg_list is passed--so we

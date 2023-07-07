@@ -1007,7 +1007,7 @@ class StripPlacementTest(parameterized.TestCase):
 
   def assert_has_no_intrinsics_nor_federated_types(self, comp):
     def _check(x):
-      if x.type_signature.is_federated():
+      if isinstance(x.type_signature, computation_types.FederatedType):
         raise AssertionError(f'Unexpected federated type: {x.type_signature}')
       if isinstance(x, building_blocks.Intrinsic):
         raise AssertionError(f'Unexpected intrinsic: {x}')

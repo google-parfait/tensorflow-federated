@@ -451,7 +451,7 @@ def _merge_args(
   Returns:
     A building block to use as the new (merged) argument.
   """
-  if abstract_parameter_type.is_federated():
+  if isinstance(abstract_parameter_type, computation_types.FederatedType):
     zip_args = building_block_factory.create_federated_zip(
         building_blocks.Struct(args)
     )

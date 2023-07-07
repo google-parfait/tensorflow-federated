@@ -25,6 +25,7 @@ from tensorflow_federated.python.core.impl.compiler import building_block_analys
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
+from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
 
@@ -161,8 +162,8 @@ def check_has_single_placement(comp, single_placement):
   def _check_single_placement(comp):
     """Checks that the placement in `type_spec` matches `single_placement`."""
     if (
-        comp.type_signature.is_federated()
-        and comp.type_signature.placement != single_placement
+        isinstance(comp.type_signature, computation_types.FederatedType)
+        and comp.type_signature.placement is not single_placement
     ):
       raise ValueError(
           'Comp contains a placement other than {}; '

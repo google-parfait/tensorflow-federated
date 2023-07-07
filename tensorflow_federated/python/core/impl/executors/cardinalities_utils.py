@@ -95,7 +95,7 @@ def infer_cardinalities(value, type_spec):
   py_typecheck.check_type(type_spec, computation_types.Type)
   if isinstance(value, cardinality_carrying_base.CardinalityCarrying):
     return value.cardinality
-  if type_spec.is_federated():
+  if isinstance(type_spec, computation_types.FederatedType):
     if type_spec.all_equal:
       return {}
     if not isinstance(value, (list, tuple)):

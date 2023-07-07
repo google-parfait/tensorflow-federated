@@ -96,7 +96,9 @@ async def _ingest(executor, val, type_spec):
     py_typecheck.check_type(val_type, computation_types.Type)
     type_spec.check_assignable_from(val_type)
     return await val.ingest(executor)
-  elif isinstance(val, structure.Struct) and not type_spec.is_federated():
+  elif isinstance(val, structure.Struct) and not isinstance(
+      type_spec, computation_types.FederatedType
+  ):
     type_spec.check_struct()
     v_elem = structure.to_elements(val)
     t_elem = structure.to_elements(type_spec)

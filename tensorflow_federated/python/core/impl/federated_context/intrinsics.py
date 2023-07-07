@@ -471,7 +471,10 @@ def federated_value(value, placement):
         DeprecationWarning,
     )
   value = value_impl.to_value(value, None)
-  if type_analysis.contains(value.type_signature, lambda t: t.is_federated()):
+  if type_analysis.contains(
+      value.type_signature,
+      lambda t: isinstance(t, computation_types.FederatedType),
+  ):
     raise TypeError(
         'Cannot place value {} containing federated types at '
         'another placement; requested to be placed at {}.'.format(
@@ -653,8 +656,8 @@ def _federated_select(client_keys, max_key, server_val, select_fn, secure):
       computation_types.AbstractType('T')
   )
   if (
-      not server_val.type_signature.is_federated()
-      or not server_val.type_signature.placement.is_server()  # pytype: disable=attribute-error
+      not isinstance(server_val.type_signature, computation_types.FederatedType)
+      or server_val.type_signature.placement is not placements.SERVER
   ):
     _select_parameter_mismatch(
         server_val.type_signature,
@@ -968,7 +971,7 @@ def sequence_map(fn, arg):
     comp = building_block_factory.create_sequence_map(fn.comp, arg.comp)
     comp = _bind_comp_as_reference(comp)
     return value_impl.Value(comp)
-  elif arg.type_signature.is_federated():
+  elif isinstance(arg.type_signature, computation_types.FederatedType):
     parameter_type = computation_types.SequenceType(fn.type_signature.parameter)  # pytype: disable=attribute-error
     result_type = computation_types.SequenceType(fn.type_signature.result)  # pytype: disable=attribute-error
     intrinsic_type = computation_types.FunctionType(
@@ -1031,9 +1034,9 @@ def sequence_reduce(value, zero, op):
   op = value_impl.to_value(op, None)
   # Check if the value is a federated sequence that should be reduced
   # under a `federated_map`.
-  if value.type_signature.is_federated():
+  if isinstance(value.type_signature, computation_types.FederatedType):
     is_federated_sequence = True
-    value_member_type = value.type_signature.member  # pytype: disable=attribute-error
+    value_member_type = value.type_signature.member
     value_member_type.check_sequence()
     zero_member_type = zero.type_signature.member  # pytype: disable=attribute-error
   else:
@@ -1094,10 +1097,9 @@ def sequence_sum(value):
     comp = building_block_factory.create_sequence_sum(value.comp)
     comp = _bind_comp_as_reference(comp)
     return value_impl.Value(comp)
-  elif value.type_signature.is_federated():
+  elif isinstance(value.type_signature, computation_types.FederatedType):
     intrinsic_type = computation_types.FunctionType(
-        value.type_signature.member,  # pytype: disable=attribute-error
-        value.type_signature.member.element,  # pytype: disable=attribute-error
+        value.type_signature.member, value.type_signature.member.element
     )
     intrinsic = building_blocks.Intrinsic(
         intrinsic_defs.SEQUENCE_SUM.uri, intrinsic_type

@@ -249,7 +249,7 @@ def normalize_all_equal_bit(comp):
   py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
 
   def _normalize_type_signature_helper(type_signature):
-    if type_signature.is_federated():
+    if isinstance(type_signature, computation_types.FederatedType):
       return computation_types.FederatedType(
           type_signature.member, type_signature.placement
       )
@@ -528,7 +528,7 @@ def strip_placement(comp):
       )
 
   def _remove_placement_from_type(type_spec):
-    if type_spec.is_federated():
+    if isinstance(type_spec, computation_types.FederatedType):
       _ensure_single_placement(type_spec.placement)
       return type_spec.member, True
     else:
@@ -703,7 +703,7 @@ def _reduce_intrinsic(
 
 def _apply_generic_op(op, arg):
   if not (
-      arg.type_signature.is_federated()
+      isinstance(arg.type_signature, computation_types.FederatedType)
       or type_analysis.is_structure_of_tensors(arg.type_signature)
   ):
     # If there are federated elements nested in a struct, we need to zip these

@@ -43,14 +43,15 @@ from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
 
 def _unfederated(type_signature):
-  if type_signature.is_federated():
-    return type_signature.member  # pytype: disable=attribute-error
+  if isinstance(type_signature, computation_types.FederatedType):
+    return type_signature.member
   return type_signature
 
 
 def _is_federated_named_tuple(vimpl: 'Value') -> bool:
-  comp_ty = vimpl.type_signature
-  return comp_ty.is_federated() and comp_ty.member.is_struct()  # pytype: disable=attribute-error
+  return isinstance(
+      vimpl.type_signature, computation_types.FederatedType
+  ) and isinstance(vimpl.type_signature.member, computation_types.StructType)
 
 
 def _is_named_tuple(vimpl: 'Value') -> bool:
@@ -119,7 +120,7 @@ class Value(typed_object.TypedObject, metaclass=abc.ABCMeta):
   def __dir__(self):
     attributes = ['type_signature', 'comp']
     type_signature = _unfederated(self.type_signature)
-    if type_signature.is_struct():
+    if isinstance(type_signature, computation_types.StructType):
       attributes.extend(dir(type_signature))
     return attributes
 
@@ -157,7 +158,7 @@ class Value(typed_object.TypedObject, metaclass=abc.ABCMeta):
 
   def __len__(self):
     type_signature = _unfederated(self.type_signature)
-    if not type_signature.is_struct():
+    if not isinstance(type_signature, computation_types.StructType):
       raise TypeError(
           'Operator len() is only supported for (possibly federated) structure '
           'types, but the object on which it has been invoked is of type {}.'
@@ -200,7 +201,7 @@ class Value(typed_object.TypedObject, metaclass=abc.ABCMeta):
 
   def __iter__(self):
     type_signature = _unfederated(self.type_signature)
-    if not type_signature.is_struct():
+    if not isinstance(type_signature, computation_types.StructType):
       raise TypeError(
           'Operator iter() is only supported for (possibly federated) '
           'structure types, but the object on which it has been invoked is of '

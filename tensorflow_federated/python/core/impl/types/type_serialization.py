@@ -103,16 +103,14 @@ def serialize_type(type_spec: computation_types.Type) -> pb.Type:
     )
   elif isinstance(type_spec, computation_types.PlacementType):
     proto = pb.Type(placement=pb.PlacementType())
-  elif type_spec.is_federated():
+  elif isinstance(type_spec, computation_types.FederatedType):
     proto = pb.Type(
         federated=pb.FederatedType(
-            member=serialize_type(type_spec.member),  # pytype: disable=attribute-error
+            member=serialize_type(type_spec.member),
             placement=pb.PlacementSpec(
-                value=pb.Placement(
-                    uri=type_spec.placement.uri  # pytype: disable=attribute-error
-                )
+                value=pb.Placement(uri=type_spec.placement.uri)
             ),
-            all_equal=type_spec.all_equal,  # pytype: disable=attribute-error
+            all_equal=type_spec.all_equal,
         )
     )
   else:

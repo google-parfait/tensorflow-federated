@@ -370,7 +370,7 @@ def serialize_value(
     return _serialize_sequence_value(value, type_spec)
   elif type_spec.is_struct():
     return _serialize_struct_type(value, type_spec)
-  elif type_spec.is_federated():
+  elif isinstance(type_spec, computation_types.FederatedType):
     return _serialize_federated_value(value, type_spec)
   else:
     raise ValueError(

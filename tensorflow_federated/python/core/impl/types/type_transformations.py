@@ -28,7 +28,7 @@ def strip_placement(
   """Removes instances of `FederatedType` from `type_signature`."""
 
   def _remove_placement(type_signature):
-    if type_signature.is_federated():
+    if isinstance(type_signature, computation_types.FederatedType):
       return type_signature.member, True
     return type_signature, False
 
@@ -59,16 +59,13 @@ def transform_type_postorder(
     NotImplementedError: If the types don't match the specification above.
   """
   py_typecheck.check_type(type_signature, computation_types.Type)
-  if type_signature.is_federated():
+  if isinstance(type_signature, computation_types.FederatedType):
     transformed_member, member_mutated = transform_type_postorder(
-        type_signature.member,  # pytype: disable=attribute-error
-        transform_fn,
+        type_signature.member, transform_fn
     )
     if member_mutated:
       type_signature = computation_types.FederatedType(
-          transformed_member,
-          type_signature.placement,  # pytype: disable=attribute-error
-          type_signature.all_equal,  # pytype: disable=attribute-error
+          transformed_member, type_signature.placement, type_signature.all_equal
       )
     type_signature, type_signature_mutated = transform_fn(type_signature)
     return type_signature, type_signature_mutated or member_mutated
