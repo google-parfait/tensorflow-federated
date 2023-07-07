@@ -58,7 +58,7 @@ def _convert_sequence_to_tensor(type_spec):
 
 
 def _convert_tuple_to_tensor(type_spec):
-  if type_spec.is_struct():
+  if isinstance(type_spec, computation_types.StructType):
     return computation_types.TensorType(tf.float32), True
   return type_spec, False
 

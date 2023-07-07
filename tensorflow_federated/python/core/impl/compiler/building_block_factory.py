@@ -1496,9 +1496,9 @@ def create_federated_zip(
     """Records the placements in `type_signature` to `all_placements`."""
     if isinstance(type_signature, computation_types.FederatedType):
       all_placements.add(type_signature.placement)
-    elif type_signature.is_struct():
-      for i in range(len(type_signature)):  # pytype: disable=wrong-arg-types
-        _record_placements(type_signature[i])  # pytype: disable=unsupported-operands
+    elif isinstance(type_signature, computation_types.StructType):
+      for i, _ in enumerate(type_signature):
+        _record_placements(type_signature[i])
     else:
       raise TypeError(
           'Expected type signatures consisting of structures of StructType '
@@ -1618,16 +1618,16 @@ def create_generic_constant(
           intrinsic_defs.FEDERATED_VALUE_AT_SERVER.uri, placement_fn_type
       )
     return building_blocks.Call(placement_function, unplaced_zero)
-  elif type_spec.is_struct():
+  elif isinstance(type_spec, computation_types.StructType):
     elements = []
-    for k in range(len(type_spec)):  # pytype: disable=wrong-arg-types
-      elements.append(create_generic_constant(type_spec[k], scalar_value))  # pytype: disable=unsupported-operands
-    names = [name for name, _ in structure.iter_elements(type_spec)]  # pytype: disable=wrong-arg-types
+    for i, _ in enumerate(type_spec):
+      elements.append(create_generic_constant(type_spec[i], scalar_value))
+    names = [name for name, _ in structure.iter_elements(type_spec)]
     packed_elements = building_blocks.Struct(elements)
     named_tuple = create_named_tuple(
         packed_elements,
         names,
-        type_spec.python_container,  # pytype: disable=attribute-error
+        type_spec.python_container,
     )
     return named_tuple
   else:
@@ -1850,7 +1850,10 @@ def _check_generic_operator_type(type_spec):
         'only federated, tuple and tensor types; you have passed an argument '
         'of type {} '.format(type_spec)
     )
-  if not (type_spec.is_struct() and len(type_spec) == 2):  # pytype: disable=wrong-arg-types
+  if (
+      not isinstance(type_spec, computation_types.StructType)
+      or len(type_spec) != 2
+  ):
     raise TypeError(
         'We are trying to construct a generic operator declaring argument that '
         'is not a two-tuple, the type {}.'.format(type_spec)
@@ -1940,8 +1943,8 @@ def apply_binary_operator_with_upcast(
   py_typecheck.check_type(arg, building_blocks.ComputationBuildingBlock)
   if isinstance(arg.type_signature, computation_types.FederatedType):
     tuple_type = arg.type_signature.member
-    assert tuple_type.is_struct()
-  elif arg.type_signature.is_struct():
+    assert isinstance(tuple_type, computation_types.StructType)
+  elif isinstance(arg.type_signature, computation_types.StructType):
     tuple_type = arg.type_signature
   else:
     raise TypeError(
@@ -2032,14 +2035,14 @@ def zip_to_match_type(
           source_element, target_element
       ) and source_name in (target_name, None)
 
-    if source_type.is_struct():
+    if isinstance(source_type, computation_types.StructType):
       if isinstance(target_type, computation_types.FederatedType):
         return _struct_can_be_zipped_to_federated(source_type, target_type)
-      elif target_type.is_struct():
+      elif isinstance(target_type, computation_types.StructType):
         elements_zippable = []
         for (s_name, s_el), (t_name, t_el) in zip(
-            structure.iter_elements(source_type),  # pytype: disable=wrong-arg-types
-            structure.iter_elements(target_type),  # pytype: disable=wrong-arg-types
+            structure.iter_elements(source_type),
+            structure.iter_elements(target_type),
         ):
           elements_zippable.append(
               _struct_elem_zippable(s_name, s_el, t_name, t_el)
@@ -2057,7 +2060,9 @@ def zip_to_match_type(
         source.type_signature, computation_types.StructType
     ):
       return create_federated_zip(source)
-    elif target_type.is_struct() and source.type_signature.is_struct():
+    elif isinstance(target_type, computation_types.StructType) and isinstance(
+        source.type_signature, computation_types.StructType
+    ):
       zipped_elements = []
       # Bind a reference to the source to prevent duplication in the AST.
       ref_name = next(unique_name_generator(source))

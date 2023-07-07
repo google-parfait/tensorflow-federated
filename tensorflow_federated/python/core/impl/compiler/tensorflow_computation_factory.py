@@ -127,9 +127,9 @@ def create_constant(
         ' only nested tuples and tensors are permitted.'.format(type_spec)
     )
   inferred_value_type = type_conversions.infer_type(value)
-  if inferred_value_type.is_struct() and not type_spec.is_assignable_from(
-      inferred_value_type
-  ):  # pytype: disable=attribute-error
+  if isinstance(
+      inferred_value_type, computation_types.StructType
+  ) and not type_spec.is_assignable_from(inferred_value_type):
     raise TypeError(
         'Must pass a only tensor or structure of tensor values to '
         '`create_tensorflow_constant`; encountered a value {v} with inferred '
@@ -137,7 +137,7 @@ def create_constant(
             v=value, t=inferred_value_type, s=type_spec
         )
     )
-  if inferred_value_type.is_struct():  # pytype: disable=attribute-error
+  if isinstance(inferred_value_type, computation_types.StructType):
     value = structure.from_container(value, recursive=True)
   tensor_dtypes_in_type_spec = []
 
@@ -169,10 +169,10 @@ def create_constant(
       result = tf.constant(value, dtype=type_spec.dtype, shape=type_spec.shape)
     else:
       elements = []
-      if inferred_value_type.is_struct():  # pytype: disable=attribute-error
+      if isinstance(inferred_value_type, computation_types.StructType):
         # Copy the leaf values according to the type_spec structure.
         for (name, elem_type), value in zip(
-            structure.iter_elements(type_spec),  # pytype: disable=wrong-arg-types
+            structure.iter_elements(type_spec),
             value,
         ):
           elements.append((name, _create_result_tensor(elem_type, value)))
@@ -351,7 +351,10 @@ def create_binary_operator_with_upcast(
   """
   py_typecheck.check_type(type_signature, computation_types.StructType)
   type_analysis.check_tensorflow_compatible_type(type_signature)
-  if not type_signature.is_struct() or len(type_signature) != 2:
+  if (
+      not isinstance(type_signature, computation_types.StructType)
+      or len(type_signature) != 2
+  ):
     raise TypeError(
         'To apply a binary operator, we must by definition have an '
         'argument which is a `StructType` with 2 elements; '
@@ -370,8 +373,8 @@ def create_binary_operator_with_upcast(
 
   def _pack_into_type(to_pack: tf.Tensor, type_spec: computation_types.Type):
     """Pack Tensor value `to_pack` into the nested structure `type_spec`."""
-    if type_spec.is_struct():
-      elem_iter = structure.iter_elements(type_spec)  # pytype: disable=wrong-arg-types
+    if isinstance(type_spec, computation_types.StructType):
+      elem_iter = structure.iter_elements(type_spec)
       return structure.Struct(
           [
               (elem_name, _pack_into_type(to_pack, elem_type))
@@ -401,7 +404,9 @@ def create_binary_operator_with_upcast(
         tensorflow_utils.stamp_parameter_in_graph('y', type_signature[1], graph)
     )
 
-    if type_signature[0].is_struct() and type_signature[1].is_struct():
+    if isinstance(
+        type_signature[0], computation_types.StructType
+    ) and isinstance(type_signature[1], computation_types.StructType):
       # If both the first and second arguments are structs with the same
       # structure, simply re-use operand_2_value as. `tf.nest.map_structure`
       # below will map the binary operator pointwise to the leaves of the
@@ -423,7 +428,7 @@ def create_binary_operator_with_upcast(
 
     if isinstance(type_signature[0], computation_types.TensorType):
       result_value = operator(first_arg, second_arg)
-    elif type_signature[0].is_struct():
+    elif isinstance(type_signature[0], computation_types.StructType):
       result_value = structure.map_structure(
           operator,
           first_arg,  # pytype: disable=wrong-arg-types
@@ -532,7 +537,7 @@ def create_identity(
       ),
   ):
     identity_fn = tf.identity
-  elif type_signature.is_struct():
+  elif isinstance(type_signature, computation_types.StructType):
     identity_fn = functools.partial(structure.map_structure, tf.identity)
   else:
     raise NotImplementedError(

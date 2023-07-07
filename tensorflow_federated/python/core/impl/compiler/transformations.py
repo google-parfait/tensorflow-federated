@@ -488,7 +488,9 @@ def _merge_args(
     #   fnN(arg[0][n], arg[1][n]),
     # )`
     param_name = next(name_generator)
-    if abstract_parameter_type.parameter.is_struct():
+    if isinstance(
+        abstract_parameter_type.parameter, computation_types.StructType
+    ):
       num_args = len(abstract_parameter_type.parameter)
       parameter_types = [[] for _ in range(num_args)]
       for arg in args:
@@ -526,7 +528,7 @@ def _merge_args(
         parameter_type=param_type,
         result=building_blocks.Struct([(None, call) for call in calls]),
     )
-  if abstract_parameter_type.is_struct():
+  if isinstance(abstract_parameter_type, computation_types.StructType):
     # Bind each argument to a name so that we can reference them multiple times.
     arg_locals = []
     arg_refs = []

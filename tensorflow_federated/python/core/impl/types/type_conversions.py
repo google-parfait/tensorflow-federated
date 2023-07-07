@@ -199,8 +199,8 @@ def type_to_tf_dtypes_and_shapes(type_spec: computation_types.Type):
   py_typecheck.check_type(type_spec, computation_types.Type)
   if isinstance(type_spec, computation_types.TensorType):
     return (type_spec.dtype, type_spec.shape)
-  elif type_spec.is_struct():
-    elements = structure.to_elements(type_spec)  # pytype: disable=wrong-arg-types
+  elif isinstance(type_spec, computation_types.StructType):
+    elements = structure.to_elements(type_spec)
     if not elements:
       output_dtypes = []
       output_shapes = []
@@ -240,8 +240,8 @@ def type_to_tf_dtypes_and_shapes(type_spec: computation_types.Type):
         element_output = type_to_tf_dtypes_and_shapes(element_spec)
         output_dtypes.append(element_output[0])
         output_shapes.append(element_output[1])
-    if type_spec.python_container is not None:  # pytype: disable=attribute-error
-      container_type = type_spec.python_container  # pytype: disable=attribute-error
+    if type_spec.python_container is not None:
+      container_type = type_spec.python_container
 
       def build_py_container(elements):
         if py_typecheck.is_named_tuple(container_type) or attrs.has(
@@ -307,21 +307,21 @@ def type_to_tf_structure(type_spec: computation_types.Type):
   py_typecheck.check_type(type_spec, computation_types.Type)
   if isinstance(type_spec, computation_types.TensorType):
     return tf.TensorSpec(type_spec.shape, type_spec.dtype)
-  elif type_spec.is_struct():
-    elements = structure.to_elements(type_spec)  # pytype: disable=wrong-arg-types
+  elif isinstance(type_spec, computation_types.StructType):
+    elements = structure.to_elements(type_spec)
     if not elements:
       return ()
     element_outputs = [(k, type_to_tf_structure(v)) for k, v in elements]
     named = element_outputs[0][0] is not None
     if not all((e[0] is not None) == named for e in element_outputs):
       raise ValueError('Tuple elements inconsistently named.')
-    if type_spec.python_container is None:  # pytype: disable=attribute-error
+    if type_spec.python_container is None:
       if named:
         return collections.OrderedDict(element_outputs)
       else:
         return tuple(v for _, v in element_outputs)
     else:
-      container_type = type_spec.python_container  # pytype: disable=attribute-error
+      container_type = type_spec.python_container
       if py_typecheck.is_named_tuple(container_type) or attrs.has(
           container_type
       ):
@@ -565,14 +565,13 @@ def _structure_from_tensor_type_tree_inner(
     fn, type_spec: computation_types.Type
 ):
   """Helper for `structure_from_tensor_type_tree`."""
-  if type_spec.is_struct():
-
+  if isinstance(type_spec, computation_types.StructType):
     def _map_element(element):
       name, nested_type = element
       return (name, _structure_from_tensor_type_tree_inner(fn, nested_type))
 
     return structure.Struct(
-        map(_map_element, structure.iter_elements(type_spec))  # pytype: disable=wrong-arg-types
+        map(_map_element, structure.iter_elements(type_spec))
     )
   elif isinstance(type_spec, computation_types.TensorType):
     return fn(type_spec)

@@ -93,7 +93,7 @@ class DistributionProcess(measured_process.MeasuredProcess):
 
     next_fn_param = next_fn.type_signature.parameter
     next_fn_result = next_fn.type_signature.result
-    if not next_fn_param.is_struct():
+    if not isinstance(next_fn_param, computation_types.StructType):
       raise errors.TemplateNextFnNumArgsError(
           'The `next_fn` must have exactly two input arguments, but found '
           f'the following input type which is not a Struct: {next_fn_param}.'

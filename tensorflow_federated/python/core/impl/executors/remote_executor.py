@@ -228,7 +228,9 @@ class RemoteExecutor(executor_base.Executor):
     def serialize_value():
       return value_serialization.serialize_value(value, type_spec)
 
-    if self._stream_structs and type_spec is not None and type_spec.is_struct():
+    if self._stream_structs and isinstance(
+        type_spec, computation_types.StructType
+    ):
       return await self.create_value_stream_structs(value, type_spec)
 
     value_proto, type_spec = serialize_value()
@@ -320,7 +322,9 @@ class RemoteExecutor(executor_base.Executor):
     self._check_has_executor_id()
     py_typecheck.check_type(value_ref, executor_pb2.ValueRef)
 
-    if self._stream_structs and type_spec is not None and type_spec.is_struct():
+    if self._stream_structs and isinstance(
+        type_spec, computation_types.StructType
+    ):
       return await self._compute_stream_structs(value_ref, type_spec)
 
     request = executor_pb2.ComputeRequest(

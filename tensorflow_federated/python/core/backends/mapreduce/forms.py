@@ -88,7 +88,10 @@ def _is_assignable_from_or_both_none(first, second):
 
 
 def _is_tuple(type_signature: computation_types.Type, length: int) -> bool:
-  return type_signature.is_struct() and len(type_signature) == length  # pytype: disable=wrong-arg-types
+  return (
+      isinstance(type_signature, computation_types.StructType)
+      and len(type_signature) == length
+  )
 
 
 def _check_accepts_tuple(

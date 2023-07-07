@@ -188,9 +188,12 @@ def _deserialize_type_spec(serialize_type_variable, python_container=None):
           serialize_type_variable.read_value().numpy()
       )
   )
-  if type_spec.is_struct() and python_container is not None:
+  if (
+      isinstance(type_spec, computation_types.StructType)
+      and python_container is not None
+  ):
     type_spec = computation_types.StructWithPythonType(
-        structure.iter_elements(type_spec),  # pytype: disable=wrong-arg-types
+        structure.iter_elements(type_spec),
         python_container,
     )
   return type_conversions.type_to_tf_structure(type_spec)

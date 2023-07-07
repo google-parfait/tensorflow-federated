@@ -49,7 +49,7 @@ def _is_allowed_client_data_type(type_spec: computation_types.Type) -> bool:
   """Determines whether a given type is a (possibly nested) sequence type."""
   if isinstance(type_spec, computation_types.SequenceType):
     return type_analysis.is_tensorflow_compatible_type(type_spec.element)
-  elif type_spec.is_struct():
+  elif isinstance(type_spec, computation_types.StructType):
     return all(
         _is_allowed_client_data_type(element_type)
         for element_type in type_spec.children()
@@ -104,19 +104,19 @@ def _check_next_fn_is_federated(next_fn: computation_base.Computation):
 def _type_check_next_fn_parameters(next_fn: computation_base.Computation):
   """Validates the input types of `next_fn` in a `ClientWorkProcess`."""
   next_fn_param = next_fn.type_signature.parameter
-  if not next_fn_param.is_struct():  # pytype: disable=attribute-error
+  if not isinstance(next_fn_param, computation_types.StructType):
     raise errors.TemplateNextFnNumArgsError(
         'The `next_fn` must have exactly three input arguments, but found '
         f'the following input type which is not a Struct: {next_fn_param}.'
     )
-  if len(next_fn_param) != 3:  # pytype: disable=wrong-arg-types
-    next_param_str = '\n- '.join([str(t) for t in next_fn_param])  # pytype: disable=attribute-error
+  if len(next_fn_param) != 3:
+    next_param_str = '\n- '.join([str(t) for t in next_fn_param])
     raise errors.TemplateNextFnNumArgsError(
         'The `next_fn` must have exactly three input arguments, but found '
-        f'{len(next_fn_param)} input arguments:\n{next_param_str}'  # pytype: disable=wrong-arg-types
+        f'{len(next_fn_param)} input arguments:\n{next_param_str}'
     )
-  second_next_param = next_fn_param[1]  # pytype: disable=unsupported-operands
-  client_data_param = next_fn_param[2]  # pytype: disable=unsupported-operands
+  second_next_param = next_fn_param[1]
+  client_data_param = next_fn_param[2]
   if second_next_param.placement != placements.CLIENTS:
     raise errors.TemplatePlacementError(
         'The second input argument of `next_fn` must be placed at CLIENTS '

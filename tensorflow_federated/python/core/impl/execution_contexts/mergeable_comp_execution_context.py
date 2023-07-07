@@ -254,12 +254,12 @@ def _partition_value(
     val: _PartitioningValue, type_signature: computation_types.Type
 ) -> _PartitioningValue:
   """Partitions value as specified in _split_value_into_subrounds."""
-  if type_signature.is_struct():
+  if isinstance(type_signature, computation_types.StructType):
     struct_val = structure.from_container(val.payload)
     result_container = []
     for (_, val_elem), (name, type_elem) in zip(
         structure.iter_elements(struct_val),
-        structure.iter_elements(type_signature),  # pytype: disable=wrong-arg-types
+        structure.iter_elements(type_signature),
     ):
       partitioning_val_elem = _PartitioningValue(
           val_elem,
@@ -373,13 +373,13 @@ def _repackage_partitioned_values(
 ) -> Value:
   """Inverts `_split_value_into_subrounds` above."""
   py_typecheck.check_type(after_merge_results, (tuple, list))
-  if result_type_spec.is_struct():
+  if isinstance(result_type_spec, computation_types.StructType):
     after_merge_structs = [
         structure.from_container(x) for x in after_merge_results
     ]
     result_container = []
     for idx, (name, elem_type) in enumerate(
-        structure.iter_elements(result_type_spec)  # pytype: disable=wrong-arg-types
+        structure.iter_elements(result_type_spec)
     ):
       result_container.append((
           name,

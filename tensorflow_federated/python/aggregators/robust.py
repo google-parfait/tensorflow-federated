@@ -75,7 +75,10 @@ def _check_norm_process(
   py_typecheck.check_type(norm_process, estimation_process.EstimationProcess)
 
   next_parameter_type = norm_process.next.type_signature.parameter
-  if not next_parameter_type.is_struct() or len(next_parameter_type) != 2:  # pytype: disable=attribute-error,wrong-arg-types
+  if (
+      not isinstance(next_parameter_type, computation_types.StructType)
+      or len(next_parameter_type) != 2
+  ):
     raise TypeError(
         f'`{name}.next` must take two arguments but found:\n'
         f'{next_parameter_type}'

@@ -114,15 +114,17 @@ def _parameter_type(
     if len(parameters) == 1:
       return parameter_type
     # There is a single parameter type but multiple parameters.
-    if not parameter_type.is_struct() or len(parameter_type) != len(parameters):  # pytype: disable=wrong-arg-types
+    if not isinstance(parameter_type, computation_types.StructType) or len(
+        parameter_type
+    ) != len(parameters):
       raise TypeError(
           f'Function with {len(parameters)} parameters must have a parameter '
           'type with the same number of parameters. Found parameter type '
           f'{parameter_type}.'
       )
-    name_list_from_types = structure.name_list(parameter_type)  # pytype: disable=wrong-arg-types
+    name_list_from_types = structure.name_list(parameter_type)
     if name_list_from_types:
-      if len(name_list_from_types) != len(parameter_type):  # pytype: disable=wrong-arg-types
+      if len(name_list_from_types) != len(parameter_type):
         raise TypeError(
             'Types with both named and unnamed fields cannot be unpacked into '
             f'argument lists. Found parameter type {parameter_type}.'
@@ -140,7 +142,7 @@ def _parameter_type(
     else:
       # The provided parameter type has no named fields. Apply the names from
       # the function parameters.
-      parameter_types = (v for (_, v) in structure.to_elements(parameter_type))  # pytype: disable=wrong-arg-types
+      parameter_types = (v for (_, v) in structure.to_elements(parameter_type))
       return computation_types.StructWithPythonType(
           list(zip(parameter_names, parameter_types)), collections.OrderedDict
       )

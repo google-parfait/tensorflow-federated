@@ -36,7 +36,7 @@ tffstring = computation_types.TensorType(tf.string)
 def build_zero_argument(parameter_type):
   if parameter_type is None:
     return None
-  elif parameter_type.is_struct():
+  elif isinstance(parameter_type, computation_types.StructType):
     return structure.map_structure(build_zero_argument, parameter_type)
   elif parameter_type == tffint32:
     return 0

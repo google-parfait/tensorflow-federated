@@ -269,7 +269,7 @@ def _extract_bindings(
           1,
       )
 
-    elif type_spec.is_struct():
+    elif isinstance(type_spec, computation_types.StructType):
       # tf.function tracing uses tf.nest.flatten to destructure input arguments.
       # The `GetValueIterator` method in tensorflow/python/util/util.cc sorts
       # the keys in Mapping types (note: namedtuple is not a mapping), though
@@ -367,7 +367,7 @@ class _TensorFlowFunctionTracingStrategy:
       if (
           packed_args is not None
           and parameter_type is not None
-          and parameter_type.is_struct()
+          and isinstance(parameter_type, computation_types.StructType)
       ):
         packed_args = structure.from_container(packed_args, recursive=False)
       args, kwargs = unpack_arguments_fn(packed_args)
@@ -390,20 +390,20 @@ class _TensorFlowFunctionTracingStrategy:
         return tf.TensorSpec(shape=type_spec.shape, dtype=type_spec.dtype)
       elif isinstance(type_spec, computation_types.SequenceType):
         return tf.data.DatasetSpec(_tf_spec_from_tff_type(type_spec.element))
-      elif type_spec.is_struct():
-        container_type = type_spec.python_container  # pytype: disable=attribute-error,unsupported-operands
+      elif isinstance(type_spec, computation_types.StructType):
+        container_type = type_spec.python_container
         if container_type is tf.SparseTensor:
-          [rank] = type_spec['dense_shape'].shape  # pytype: disable=unsupported-operands
+          [rank] = type_spec['dense_shape'].shape
           return tf.SparseTensorSpec(
-              shape=[None] * rank, dtype=type_spec['values'].dtype  # pytype: disable=unsupported-operands
+              shape=[None] * rank, dtype=type_spec['values'].dtype
           )
         elif container_type is tf.RaggedTensor:
-          flat_values_type_spec = type_spec['flat_values']  # pytype: disable=unsupported-operands
+          flat_values_type_spec = type_spec['flat_values']
           flat_values_spec = tf.TensorSpec(
               shape=flat_values_type_spec.shape,
               dtype=flat_values_type_spec.dtype,
           )
-          nested_row_splits_type_spec = type_spec['nested_row_splits']  # pytype: disable=unsupported-operands
+          nested_row_splits_type_spec = type_spec['nested_row_splits']
           row_splits_dtype = nested_row_splits_type_spec[0].dtype
           return tf.RaggedTensorSpec(
               dtype=flat_values_spec.dtype,
@@ -415,7 +415,7 @@ class _TensorFlowFunctionTracingStrategy:
           structure_of_type_specs = structure.Struct(
               [
                   (name, _tf_spec_from_tff_type(child_type))
-                  for name, child_type in structure.iter_elements(type_spec)  # pytype: disable=wrong-arg-types
+                  for name, child_type in structure.iter_elements(type_spec)
               ]
           )
           return type_conversions.type_to_py_container(

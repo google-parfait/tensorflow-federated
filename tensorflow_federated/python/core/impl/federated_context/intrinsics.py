@@ -762,9 +762,8 @@ def federated_secure_modular_sum(value, modulus):
             value_member_type, modulus_type
         )
     )
-  if (
-      isinstance(modulus_type, computation_types.TensorType)
-      and value_member_type.is_struct()
+  if isinstance(modulus_type, computation_types.TensorType) and isinstance(
+      value_member_type, computation_types.StructType
   ):
     modulus_value = value_impl.to_value(
         structure.map_structure(lambda _: modulus, value_member_type), None

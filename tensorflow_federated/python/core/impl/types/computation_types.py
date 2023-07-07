@@ -227,7 +227,7 @@ class Type(metaclass=abc.ABCMeta):
   )
   def check_struct(self) -> None:
     """Check that this is a `tff.StructType`."""
-    if not self.is_struct():
+    if not isinstance(self, StructType):
       raise UnexpectedTypeError(StructType, self)
 
   @deprecation.deprecated(
@@ -750,7 +750,7 @@ class SequenceType(Type, metaclass=_Intern):
       """Convert any StructWithPythonType using lists to use tuples."""
       # We ignore non-struct, non-tensor types, these are not well formed types
       # for sequence elements.
-      if not type_spec.is_struct():
+      if not isinstance(type_spec, StructType):
         return type_spec
       elements = [
           (name, convert_struct_with_list_to_struct_with_tuple(value))

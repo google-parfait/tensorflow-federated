@@ -94,7 +94,7 @@ def stamp_parameter_in_graph(parameter_name, parameter_type, graph):
           tensor=pb.TensorFlow.TensorBinding(tensor_name=placeholder.name)
       )
       return (placeholder, binding)
-  elif parameter_type.is_struct():
+  elif isinstance(parameter_type, computation_types.StructType):
     # The parameter_type could be a StructTypeWithPyContainer, however, we
     # ignore that for now. Instead, the proper containers will be inserted at
     # call time by function_utils.wrap_as_zero_or_one_arg_callable.
@@ -105,7 +105,7 @@ def stamp_parameter_in_graph(parameter_name, parameter_type, graph):
       del whimsy_tensor  # Unused
     element_name_value_pairs = []
     element_bindings = []
-    for e in structure.iter_elements(parameter_type):  # pytype: disable=wrong-arg-types
+    for e in structure.iter_elements(parameter_type):
       e_val, e_binding = stamp_parameter_in_graph(
           '{}_{}'.format(parameter_name, e[0]), e[1], graph
       )
@@ -532,13 +532,13 @@ def assemble_result_from_graph(type_spec, binding, output_map):
             'Prefer usage of `tf.ensure_shape` to `tf.set_shape`.'
         ) from te
       return tensor
-  elif type_spec.is_struct():
+  elif isinstance(type_spec, computation_types.StructType):
     if binding_oneof != 'struct':
       raise ValueError(
           'Expected a struct binding, found {}.'.format(binding_oneof)
       )
     else:
-      type_elements = structure.to_elements(type_spec)  # pytype: disable=wrong-arg-types
+      type_elements = structure.to_elements(type_spec)
       if len(binding.struct.element) != len(type_elements):
         raise ValueError(
             'Mismatching tuple sizes in type ({}) and binding ({}).'.format(
@@ -553,9 +553,9 @@ def assemble_result_from_graph(type_spec, binding, output_map):
             element_type, element_binding, output_map
         )
         result_elements.append((element_name, element_object))
-      if type_spec.python_container is None:  # pytype: disable=attribute-error
+      if type_spec.python_container is None:
         return structure.Struct(result_elements)
-      container_type = type_spec.python_container  # pytype: disable=attribute-error
+      container_type = type_spec.python_container
       if py_typecheck.is_named_tuple(container_type) or attrs.has(
           container_type
       ):
@@ -622,8 +622,8 @@ def make_empty_list_structure_for_element_type_spec(type_spec):
   py_typecheck.check_type(type_spec, computation_types.Type)
   if isinstance(type_spec, computation_types.TensorType):
     return []
-  elif type_spec.is_struct():
-    elements = structure.to_elements(type_spec)  # pytype: disable=wrong-arg-types
+  elif isinstance(type_spec, computation_types.StructType):
+    elements = structure.to_elements(type_spec)
     if all(k is not None for k, _ in elements):
       return collections.OrderedDict(
           [
@@ -710,8 +710,8 @@ def make_whimsy_element_for_type_spec(type_spec, none_dim_replacement=0):
     if type_spec.dtype == tf.string:
       return np.empty(whimsy_shape, dtype=str)
     return np.zeros(whimsy_shape, type_spec.dtype.as_numpy_dtype)
-  elif type_spec.is_struct():
-    elements = structure.to_elements(type_spec)  # pytype: disable=wrong-arg-types
+  elif isinstance(type_spec, computation_types.StructType):
+    elements = structure.to_elements(type_spec)
     elem_list = []
     for _, elem_type in elements:
       elem_list.append(make_whimsy_element_for_type_spec(elem_type))
@@ -771,8 +771,8 @@ def append_to_list_structure_for_element_type_spec(nested, value, type_spec):
     # typed and grouped before being passed to
     # tf.data.Dataset.from_tensor_slices.
     nested.append(tf.convert_to_tensor(value, type_spec.dtype))  # pytype: disable=attribute-error
-  elif type_spec.is_struct():
-    elements = structure.to_elements(type_spec)  # pytype: disable=wrong-arg-types
+  elif isinstance(type_spec, computation_types.StructType):
+    elements = structure.to_elements(type_spec)
     if isinstance(nested, collections.OrderedDict):
       if isinstance(value, _NamedTuple):
         # In Python 3.8 and later `_asdict` no longer return OrdereDict, rather
@@ -850,8 +850,8 @@ def replace_empty_leaf_lists_with_numpy_arrays(lists, type_spec):
       return lists
     else:
       return np.array([], dtype=type_spec.dtype.as_numpy_dtype)  # pytype: disable=attribute-error
-  elif type_spec.is_struct():
-    elements = structure.to_elements(type_spec)  # pytype: disable=wrong-arg-types
+  elif isinstance(type_spec, computation_types.StructType):
+    elements = structure.to_elements(type_spec)
     if isinstance(lists, collections.OrderedDict):
       to_return = []
       for elem_name, elem_type in elements:
@@ -1166,8 +1166,8 @@ def coerce_dataset_elements_to_tff_type_spec(
         if py_typecheck.is_named_tuple(py_type):
           return py_type(*values)
         return py_type(values)
-    elif type_spec.is_struct():
-      field_types = structure.to_elements(type_spec)  # pytype: disable=wrong-arg-types
+    elif isinstance(type_spec, computation_types.StructType):
+      field_types = structure.to_elements(type_spec)
       is_all_named = all([name is not None for name, _ in field_types])
       if is_all_named:
         if py_typecheck.is_named_tuple(elements):
@@ -1184,7 +1184,7 @@ def coerce_dataset_elements_to_tff_type_spec(
           return collections.OrderedDict(values)
       else:
         return tuple(
-            _to_representative_value(t, e) for t, e in zip(type_spec, elements)  # pytype: disable=wrong-arg-types
+            _to_representative_value(t, e) for t, e in zip(type_spec, elements)
         )
     else:
       raise ValueError(
