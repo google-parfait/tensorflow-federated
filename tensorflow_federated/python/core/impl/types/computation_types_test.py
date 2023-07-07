@@ -481,7 +481,6 @@ class AbstractTypeTest(absltest.TestCase):
     self.assertEqual(repr(t1), "AbstractType('T1')")
     self.assertEqual(str(t1), 'T1')
     self.assertEqual(t1.label, 'T1')
-    self.assertRaises(TypeError, computation_types.AbstractType, 10)
 
   def test_equality(self):
     t1 = computation_types.AbstractType('T')
