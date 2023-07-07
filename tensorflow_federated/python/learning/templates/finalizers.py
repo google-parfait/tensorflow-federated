@@ -105,7 +105,9 @@ class FinalizerProcess(measured_process.MeasuredProcess):
     """
     super().__init__(initialize_fn, next_fn, next_is_multi_arg=True)
 
-    if not initialize_fn.type_signature.result.is_federated():
+    if not isinstance(
+        initialize_fn.type_signature.result, computation_types.FederatedType
+    ):
       raise errors.TemplateNotFederatedError(
           'Provided `initialize_fn` must return a federated type, but found '
           f'return type:\n{initialize_fn.type_signature.result}\nTip: If you '
@@ -115,9 +117,15 @@ class FinalizerProcess(measured_process.MeasuredProcess):
     next_types = structure.flatten(
         next_fn.type_signature.parameter
     ) + structure.flatten(next_fn.type_signature.result)
-    if not all([t.is_federated() for t in next_types]):
+    if not all(
+        [isinstance(t, computation_types.FederatedType) for t in next_types]
+    ):
       offending_types = '\n- '.join(
-          [t for t in next_types if not t.is_federated()]
+          [
+              t
+              for t in next_types
+              if not isinstance(t, computation_types.FederatedType)
+          ]
       )
       raise errors.TemplateNotFederatedError(
           'Provided `next_fn` must be a *federated* computation, that is, '

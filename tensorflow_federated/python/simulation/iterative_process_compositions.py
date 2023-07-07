@@ -177,9 +177,9 @@ def compose_dataset_computation_with_computation(
       for idx, (elem_name, elem_type) in enumerate(
           structure.iter_elements(struct_param_type)
       ):
-        if elem_type.is_federated() and isinstance(
-            elem_type.member, computation_types.SequenceType
-        ):
+        if isinstance(
+            elem_type, computation_types.FederatedType
+        ) and isinstance(elem_type.member, computation_types.SequenceType):
           sequence_types.append(elem_type.member)
 
         if is_desired_federated_sequence(elem_type):

@@ -724,8 +724,8 @@ def _unique_dtypes_in_structure(
             )
         )
     )
-  elif type_spec.is_federated():
-    return _unique_dtypes_in_structure(type_spec.member)  # pytype: disable=attribute-error
+  elif isinstance(type_spec, computation_types.FederatedType):
+    return _unique_dtypes_in_structure(type_spec.member)
   else:
     return set()
 

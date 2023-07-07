@@ -254,7 +254,7 @@ def _validate_args(initial_model_weights_fn, model_weights_distributor,
         f'Found input parameter: '
         f'{initial_model_weights_fn.type_signature.parameter}')
   global_model_weights_type = initial_model_weights_fn.type_signature.result
-  if global_model_weights_type.is_federated():
+  if isinstance(global_model_weights_type, computation_types.FederatedType):
     raise TypeError(
         f'Provided initial_model_weights_fn must be a tff.Computation with '
         f'unplaced return type.\n'

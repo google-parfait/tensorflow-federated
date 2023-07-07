@@ -58,8 +58,8 @@ def check_is_client_placed_structure_of_sequences(
     )
 
   if (
-      not type_spec.is_federated()
-      or type_spec.placement != placements.CLIENTS  # pytype: disable=attribute-error
-      or not is_structure_of_sequences(type_spec.member)  # pytype: disable=attribute-error
+      not isinstance(type_spec, computation_types.FederatedType)
+      or type_spec.placement is not placements.CLIENTS
+      or not is_structure_of_sequences(type_spec.member)
   ):
     raise ClientSequenceTypeError(error_message)

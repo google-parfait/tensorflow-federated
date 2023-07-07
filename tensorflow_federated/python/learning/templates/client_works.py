@@ -60,7 +60,9 @@ def _is_allowed_client_data_type(type_spec: computation_types.Type) -> bool:
 
 # TODO(b/240314933): Move this (or refactor this) to a more general location.
 def _type_check_initialize_fn(initialize_fn: computation_base.Computation):
-  if not initialize_fn.type_signature.result.is_federated():
+  if not isinstance(
+      initialize_fn.type_signature.result, computation_types.FederatedType
+  ):
     raise errors.TemplateNotFederatedError(
         'Provided `initialize_fn` must return a federated type, but found '
         f'return type:\n{initialize_fn.type_signature.result}\nTip: If you '
@@ -80,9 +82,15 @@ def _check_next_fn_is_federated(next_fn: computation_base.Computation):
   next_types = structure.flatten(
       next_fn.type_signature.parameter
   ) + structure.flatten(next_fn.type_signature.result)
-  if not all([t.is_federated() for t in next_types]):
+  if not all(
+      [isinstance(t, computation_types.FederatedType) for t in next_types]
+  ):
     offending_types = '\n- '.join(
-        [t for t in next_types if not t.is_federated()]
+        [
+            t
+            for t in next_types
+            if not isinstance(t, computation_types.FederatedType)
+        ]
     )
     raise errors.TemplateNotFederatedError(
         'Provided `next_fn` must be a *federated* computation, that is, '
@@ -131,8 +139,8 @@ def _type_check_next_fn_result(next_fn: computation_base.Computation):
   """Validates the output types of `next_fn` in a `ClientWorkProcess`."""
   next_fn_result = next_fn.type_signature.result
   if (
-      not next_fn_result.result.is_federated()  # pytype: disable=attribute-error
-      or next_fn_result.result.placement != placements.CLIENTS  # pytype: disable=attribute-error
+      not isinstance(next_fn_result.result, computation_types.FederatedType)  # pytype: disable=attribute-error
+      or next_fn_result.result.placement is not placements.CLIENTS  # pytype: disable=attribute-error
   ):
     raise errors.TemplatePlacementError(
         'The "result" attribute of the return type of `next_fn` must be '
