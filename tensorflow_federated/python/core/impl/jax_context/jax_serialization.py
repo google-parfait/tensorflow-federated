@@ -133,12 +133,12 @@ def _tff_type_to_xla_serializer_arg(
       obj = _XlaSerializerTensorArg(type_spec, next_unused_tensor_index)
       next_unused_tensor_index = next_unused_tensor_index + 1
       return obj, next_unused_tensor_index
-    elif type_spec.is_struct():
+    elif isinstance(type_spec, computation_types.StructType):
       elements = []
-      for k, v in structure.to_elements(type_spec):  # pytype: disable=wrong-arg-types
+      for k, v in structure.to_elements(type_spec):
         obj, next_unused_tensor_index = _make(v, next_unused_tensor_index)
         elements.append((k, obj))
-      obj = _XlaSerializerStructArg(type_spec, elements)  # pytype: disable=wrong-arg-types
+      obj = _XlaSerializerStructArg(type_spec, elements)
       return obj, next_unused_tensor_index
     else:
       raise TypeError(

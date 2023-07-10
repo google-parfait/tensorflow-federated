@@ -193,7 +193,7 @@ def compose_dataset_computation_with_computation(
             )
           dataset_index_path = index_path + [idx]
           new_param_elements.append((elem_name, federated_param_type))
-        elif elem_type.is_struct():
+        elif isinstance(elem_type, computation_types.StructType):
           new_param_elements.append(
               (elem_name, build_new_param_type(elem_type, index_path + [idx]))
           )

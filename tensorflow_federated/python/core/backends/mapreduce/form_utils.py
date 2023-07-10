@@ -261,7 +261,8 @@ def _check_function_signature_compatible_with_broadcast_form(
   """Tests compatibility with `tff.backends.mapreduce.BroadcastForm`."""
   py_typecheck.check_type(function_type, computation_types.FunctionType)
   if not (
-      function_type.parameter.is_struct() and len(function_type.parameter) == 2  # pytype: disable=attribute-error,wrong-arg-types
+      isinstance(function_type.parameter, computation_types.StructType)
+      and len(function_type.parameter) == 2
   ):
     raise TypeError(
         '`BroadcastForm` requires a computation which accepts two arguments '
@@ -326,12 +327,18 @@ def check_computation_compatible_with_map_reduce_form(
 
   comp_type = comp_tree.type_signature
   _check_type_is_fn(comp_type, '`comp`', TypeError)
-  if not comp_type.parameter.is_struct() or len(comp_type.parameter) != 2:  # pytype: disable=attribute-error
+  if (
+      not isinstance(comp_type.parameter, computation_types.StructType)
+      or len(comp_type.parameter) != 2
+  ):  # pytype: disable=attribute-error
     raise TypeError(
         'Expected `comp` to take two arguments, found parameter '
         f' type:\n{comp_type.parameter}'  # pytype: disable=attribute-error
     )
-  if not comp_type.result.is_struct() or len(comp_type.result) != 2:  # pytype: disable=attribute-error
+  if (
+      not isinstance(comp_type.result, computation_types.StructType)
+      or len(comp_type.result) != 2
+  ):  # pytype: disable=attribute-error
     raise TypeError(
         'Expected `comp` to return two values, found result '
         f'type:\n{comp_type.result}'  # pytype: disable=attribute-error
@@ -509,7 +516,7 @@ def _as_function_of_some_federated_subparameters(
     selected_type = bb.parameter_type
     int_path = []
     for index in path:
-      if not selected_type.is_struct():
+      if not isinstance(selected_type, computation_types.StructType):
         raise tree_transformations.ParameterSelectionError(path, bb)
       if isinstance(index, int):
         if index >= len(selected_type):
@@ -1077,12 +1084,18 @@ def get_distribute_aggregate_form_for_computation(
   # Check that the computation has the expected structure.
   comp_type = comp_tree.type_signature
   _check_type_is_fn(comp_type, '`comp`', TypeError)
-  if not comp_type.parameter.is_struct() or len(comp_type.parameter) != 2:  # pytype: disable=attribute-error
+  if (
+      not isinstance(comp_type.parameter, computation_types.StructType)
+      or len(comp_type.parameter) != 2
+  ):  # pytype: disable=attribute-error
     raise TypeError(
         'Expected `comp` to take two arguments, found parameter '
         f' type:\n{comp_type.parameter}'  # pytype: disable=attribute-error
     )
-  if not comp_type.result.is_struct() or len(comp_type.result) != 2:  # pytype: disable=attribute-error
+  if (
+      not isinstance(comp_type.result, computation_types.StructType)
+      or len(comp_type.result) != 2
+  ):  # pytype: disable=attribute-error
     raise TypeError(
         'Expected `comp` to return two values, found result '
         f'type:\n{comp_type.result}'  # pytype: disable=attribute-error
@@ -1234,7 +1247,7 @@ def get_distribute_aggregate_form_for_computation(
   # struct with a lambda that uses the element directly.
   def _unnest_lambda_parameter(comp):
     assert isinstance(comp, building_blocks.Lambda)
-    assert comp.parameter_type.is_struct()
+    assert isinstance(comp.parameter_type, computation_types.StructType)
 
     name_generator = building_block_factory.unique_name_generator(comp)
     new_param_name = next(name_generator)
@@ -1283,7 +1296,10 @@ def get_distribute_aggregate_form_for_computation(
     # associated with the injected broadcast call.
     result_len = len(after_broadcast.result.result)
     injected_broadcast_result = after_broadcast.result.result[result_len - 1]
-    assert injected_broadcast_result.type_signature.member.is_struct()
+    assert isinstance(
+        injected_broadcast_result.type_signature.member,
+        computation_types.StructType,
+    )
     assert not injected_broadcast_result.type_signature.member
     after_broadcast = building_blocks.Lambda(
         after_broadcast.parameter_name,

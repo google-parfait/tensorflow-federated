@@ -53,12 +53,15 @@ def type_check_set_hparams_fn(
   """Validates the type signature of `set_hparams_fn` in `ClientWorkProcess`."""
   py_typecheck.check_type(set_hparams_fn, computation_base.Computation)
   set_hparams_parameter = set_hparams_fn.type_signature.parameter
-  if not set_hparams_parameter.is_struct() or len(set_hparams_parameter) != 2:  # pytype: disable=attribute-error,wrong-arg-types
+  if (
+      not isinstance(set_hparams_parameter, computation_types.StructType)
+      or len(set_hparams_parameter) != 2
+  ):
     raise SetHparamsTypeError(
         'Expected two input arguments to set_hparams, but found '
         f'{set_hparams_parameter}.'
     )
-  set_hparams_state_type = set_hparams_parameter[0]  # pytype: disable=unsupported-operands
+  set_hparams_state_type = set_hparams_parameter[0]
   if not set_hparams_state_type.is_assignable_from(state_type):
     raise SetHparamsTypeError(
         'The first input to set_hparams must be compatible with the state '

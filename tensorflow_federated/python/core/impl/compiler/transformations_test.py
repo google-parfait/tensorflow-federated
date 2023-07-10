@@ -777,13 +777,15 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
   def check_split_signatures(self, original_comp, before, intrinsic, after):
     for comp in (before, intrinsic, after):
       comp.check_lambda()
-      comp.type_signature.parameter.is_struct()
+      comp.type_signature.parameter.check_struct()
       comp.result.check_block()
 
     original_comp = transformations.to_call_dominant(original_comp)
     original_comp = tree_transformations.normalize_all_equal_bit(original_comp)
 
-    self.assertTrue(before.type_signature.result.is_struct())
+    self.assertIsInstance(
+        before.type_signature.result, computation_types.StructType
+    )
     self.assertEqual(
         [x for x, _ in structure.to_elements(before.type_signature.result)],
         ['intrinsic_args_from_before_comp', 'intermediate_state'],
@@ -807,7 +809,9 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
         ],
         before.type_signature.result[0],
     )
-    self.assertTrue(intrinsic.type_signature.result.is_struct())
+    self.assertIsInstance(
+        intrinsic.type_signature.result, computation_types.StructType
+    )
     self.assertLen(
         intrinsic.result.locals, len(intrinsic.type_signature.result)
     )

@@ -253,7 +253,7 @@ def normalize_all_equal_bit(comp):
       return computation_types.FederatedType(
           type_signature.member, type_signature.placement
       )
-    elif type_signature.is_struct():
+    elif isinstance(type_signature, computation_types.StructType):
       new_elements = []
       for element_name, element_type in structure.iter_elements(type_signature):
         new_elements.append(
@@ -456,7 +456,7 @@ def as_function_of_some_subparameters(
     selected_type = bb.parameter_type
     int_path = []
     for index in path:
-      if not selected_type.is_struct():
+      if not isinstance(selected_type, computation_types.StructType):
         raise ParameterSelectionError(path, bb)
       py_typecheck.check_type(index, int)
       if index >= len(selected_type):
@@ -906,7 +906,9 @@ def replace_intrinsics_with_bodies(comp):
 def _ensure_structure(
     int_or_structure, int_or_structure_type, possible_struct_type
 ):
-  if int_or_structure_type.is_struct() or not possible_struct_type.is_struct():
+  if isinstance(
+      int_or_structure_type, computation_types.StructType
+  ) or not isinstance(possible_struct_type, computation_types.StructType):
     return int_or_structure
   else:
     # Broadcast int_or_structure to the same structure as the struct type

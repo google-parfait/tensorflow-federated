@@ -81,12 +81,12 @@ def serialize_type(type_spec: computation_types.Type) -> pb.Type:
     proto = pb.Type(
         sequence=pb.SequenceType(element=serialize_type(type_spec.element))
     )
-  elif type_spec.is_struct():
+  elif isinstance(type_spec, computation_types.StructType):
     proto = pb.Type(
         struct=pb.StructType(
             element=[
                 pb.StructType.Element(name=e[0], value=serialize_type(e[1]))
-                for e in structure.iter_elements(type_spec)  # pytype: disable=wrong-arg-types
+                for e in structure.iter_elements(type_spec)
             ]
         )
     )

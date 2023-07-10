@@ -23,7 +23,10 @@ from tensorflow_federated.python.core.templates import errors
 
 
 def _is_nonempty_struct(type_signature) -> bool:
-  return type_signature.is_struct() and type_signature  # pytype: disable=bad-return-type
+  return (
+      isinstance(type_signature, computation_types.StructType)
+      and type_signature
+  )
 
 
 def _infer_state_type(
@@ -226,4 +229,6 @@ def is_stateful(process: IterativeProcess) -> bool:
   state_type = process.state_type
   if state_type.is_federated():
     state_type = state_type.member  # pytype: disable=attribute-error
-  return not type_analysis.contains_only(state_type, lambda t: t.is_struct())
+  return not type_analysis.contains_only(
+      state_type, lambda t: isinstance(t, computation_types.StructType)
+  )

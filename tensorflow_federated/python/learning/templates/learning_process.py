@@ -203,7 +203,10 @@ class LearningProcess(iterative_process.IterativeProcess):
     next_fn_param = typing.cast(
         Union[computation_types.StructType], next_fn.type_signature.parameter
     )
-    if not next_fn_param.is_struct() or len(next_fn_param) != 2:
+    if (
+        not isinstance(next_fn_param, computation_types.StructType)
+        or len(next_fn_param) != 2
+    ):
       raise errors.TemplateNextFnNumArgsError(
           'The `next_fn` must have two input arguments, but found an input '
           f'of type {next_fn_param}.'

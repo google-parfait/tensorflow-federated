@@ -94,7 +94,7 @@ def _build_value_zeros(
     return tf.zeros(shape=value_type_spec.shape, dtype=value_type_spec.dtype)
   elif _is_sparse_tensor_structure(value_type_spec):
     return _build_sparse_zero(value_type_spec, dense_shapes)  # pytype: disable=wrong-arg-types
-  elif value_type_spec.is_struct():
+  elif isinstance(value_type_spec, computation_types.StructType):
     zipped_names_types_shapes = zip(
         structure.iter_elements(value_type_spec), dense_shapes
     )
@@ -164,7 +164,9 @@ class SparsifyingSumFactory(factory.UnweightedAggregationFactory):
       dense_shapes = type_conversions.structure_from_tensor_type_tree(
           lambda t: t.shape, client_values.type_signature.member
       )
-      if client_values.type_signature.member.is_struct():
+      if isinstance(
+          client_values.type_signature.member, computation_types.StructType
+      ):
         dense_shape_structure = structure.from_container(
             dense_shapes, recursive=True
         )
@@ -188,7 +190,7 @@ class SparsifyingSumFactory(factory.UnweightedAggregationFactory):
 
       @tensorflow_computation.tf_computation
       def build_count_zeros():
-        if client_values_type.is_struct():
+        if isinstance(client_values_type, computation_types.StructType):
           return type_conversions.structure_from_tensor_type_tree(
               lambda *_: tf.zeros(dtype=tf.int64, shape=[]),
               client_values_type,
@@ -205,13 +207,13 @@ class SparsifyingSumFactory(factory.UnweightedAggregationFactory):
       ) -> computation_types.Type:
         if isinstance(type_spec, computation_types.TensorType):
           return computation_types.TensorType(
-              dtype=type_spec.dtype,  # pytype: disable=attribute-error
-              shape=[None if dim == 0 else dim for dim in type_spec.shape],  # pytype: disable=attribute-error
+              dtype=type_spec.dtype,
+              shape=[None if dim == 0 else dim for dim in type_spec.shape],
           )
-        elif type_spec.is_struct():
+        elif isinstance(type_spec, computation_types.StructType):
           elements = [
               (name, replace_zero_dimensions_with_none(element))
-              for name, element in structure.iter_elements(type_spec)  # pytype: disable=wrong-arg-types
+              for name, element in structure.iter_elements(type_spec)
           ]
           if isinstance(type_spec, computation_types.StructWithPythonType):
             return computation_types.StructWithPythonType(

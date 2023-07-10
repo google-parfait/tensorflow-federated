@@ -101,7 +101,7 @@ def infer_cardinalities(value, type_spec):
     if not isinstance(value, (list, tuple)):
       raise InvalidNonAllEqualValueError(value, type_spec)
     return {type_spec.placement: len(value)}
-  elif type_spec.is_struct():
+  elif isinstance(type_spec, computation_types.StructType):
     structure_value = structure.from_container(value, recursive=False)
     cardinality_dict = {}
     for idx, (_, elem_type) in enumerate(structure.to_elements(type_spec)):

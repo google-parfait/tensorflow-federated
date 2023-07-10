@@ -329,7 +329,7 @@ def _evaluate_to_tensorflow(
             comp.proto, context_stack_impl.context_stack
         )
         result = concrete(*args)
-        if comp.type_signature.result.is_struct():
+        if isinstance(comp.type_signature.result, computation_types.StructType):
           return structure.from_container(result, recursive=True)
         return result
 
@@ -435,7 +435,7 @@ def compile_local_computation_to_tensorflow(
 
     @tensorflow_computation.tf_computation(parameter_type)
     def result_computation(arg):
-      if parameter_type.is_struct():
+      if isinstance(parameter_type, computation_types.StructType):
         arg = structure.from_container(arg, recursive=True)
       return _evaluate_to_tensorflow(to_evaluate, {parameter_name: arg})
 

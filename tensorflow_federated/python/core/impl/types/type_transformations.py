@@ -95,10 +95,10 @@ def transform_type_postorder(
     return type_signature, (
         type_signature_mutated or parameter_mutated or result_mutated
     )
-  elif type_signature.is_struct():
+  elif isinstance(type_signature, computation_types.StructType):
     elements = []
     elements_mutated = False
-    for element in structure.iter_elements(type_signature):  # pytype: disable=wrong-arg-types
+    for element in structure.iter_elements(type_signature):
       transformed_element, element_mutated = transform_type_postorder(
           element[1], transform_fn
       )

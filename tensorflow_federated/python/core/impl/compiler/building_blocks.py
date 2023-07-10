@@ -346,7 +346,7 @@ class Selection(ComputationBuildingBlock):
           'Cannot simultaneously specify a name and an index, choose one.'
       )
     source_type = source.type_signature
-    if not source_type.is_struct():
+    if not isinstance(source_type, computation_types.StructType):
       raise TypeError(
           'Expected the source of selection to be a TFF struct, '
           'instead found it to be of type {}.'.format(source_type)
@@ -365,13 +365,13 @@ class Selection(ComputationBuildingBlock):
       type_signature = source_type[name]
     else:
       py_typecheck.check_type(index, int)
-      length = len(source_type)  # pytype: disable=wrong-arg-types
+      length = len(source_type)
       if index < 0 or index >= length:
         raise ValueError(
             f'The index `{index}` does not fit into the valid range in the '
             f'struct type: 0..{length}'
         )
-      type_signature = source_type[index]  # pytype: disable=unsupported-operands
+      type_signature = source_type[index]
     super().__init__(type_signature)
     self._source = source
     self._name = name

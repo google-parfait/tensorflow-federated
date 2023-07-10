@@ -295,7 +295,7 @@ def check_all_abstract_types_are_bound(type_spec):
       return _check_or_get_unbound_abstract_type_labels(
           type_spec.member, bound_labels, check
       )
-    elif type_spec.is_struct():
+    elif isinstance(type_spec, computation_types.StructType):
       return set().union(
           *[
               _check_or_get_unbound_abstract_type_labels(v, bound_labels, check)
@@ -378,7 +378,7 @@ def check_is_sum_compatible(type_spec, type_spec_context=None):
           type_spec_context,
           f'{type_spec.shape} is not fully defined',
       )
-  elif type_spec.is_struct():
+  elif isinstance(type_spec, computation_types.StructType):
     if (
         type_spec.python_container is tf.RaggedTensor
         or type_spec.python_container is tf.sparse.SparseTensor
@@ -419,9 +419,9 @@ def is_structure_of_floats(type_spec: computation_types.Type) -> bool:
   if isinstance(type_spec, computation_types.TensorType):
     py_typecheck.check_type(type_spec.dtype, tf.dtypes.DType)
     return type_spec.dtype.is_floating
-  elif type_spec.is_struct():
+  elif isinstance(type_spec, computation_types.StructType):
     return all(
-        is_structure_of_floats(v) for _, v in structure.iter_elements(type_spec)  # pytype: disable=wrong-arg-types
+        is_structure_of_floats(v) for _, v in structure.iter_elements(type_spec)
     )
   elif isinstance(type_spec, computation_types.FederatedType):
     return is_structure_of_floats(type_spec.member)
@@ -454,10 +454,10 @@ def is_structure_of_integers(type_spec: computation_types.Type) -> bool:
   if isinstance(type_spec, computation_types.TensorType):
     py_typecheck.check_type(type_spec.dtype, tf.dtypes.DType)  # pytype: disable=attribute-error
     return type_spec.dtype.is_integer  # pytype: disable=attribute-error
-  elif type_spec.is_struct():
+  elif isinstance(type_spec, computation_types.StructType):
     return all(
         is_structure_of_integers(v)
-        for _, v in structure.iter_elements(type_spec)  # pytype: disable=wrong-arg-types
+        for _, v in structure.iter_elements(type_spec)
     )
   elif isinstance(type_spec, computation_types.FederatedType):
     return is_structure_of_integers(type_spec.member)
@@ -486,10 +486,12 @@ def is_single_integer_or_matches_structure(
     # This condition applies to both `shape_type` being a tensor or structure,
     # as the same integer bitwidth can be used for all values in the structure.
     return type_sig.dtype.is_integer and (type_sig.shape.num_elements() == 1)
-  elif shape_type.is_struct() and type_sig.is_struct():
-    bitwidth_name_and_types = list(structure.iter_elements(type_sig))  # pytype: disable=wrong-arg-types
-    shape_name_and_types = list(structure.iter_elements(shape_type))  # pytype: disable=wrong-arg-types
-    if len(type_sig) != len(shape_name_and_types):  # pytype: disable=wrong-arg-types
+  elif isinstance(shape_type, computation_types.StructType) and isinstance(
+      type_sig, computation_types.StructType
+  ):
+    bitwidth_name_and_types = list(structure.iter_elements(type_sig))
+    shape_name_and_types = list(structure.iter_elements(shape_type))
+    if len(type_sig) != len(shape_name_and_types):
       return False
     for (inner_name, type_sig), (inner_shape_name, inner_shape_type) in zip(
         bitwidth_name_and_types, shape_name_and_types
@@ -560,9 +562,9 @@ def is_average_compatible(type_spec: computation_types.Type) -> bool:
   py_typecheck.check_type(type_spec, computation_types.Type)
   if isinstance(type_spec, computation_types.TensorType):
     return type_spec.dtype.is_floating or type_spec.dtype.is_complex  # pytype: disable=attribute-error
-  elif type_spec.is_struct():
+  elif isinstance(type_spec, computation_types.StructType):
     return all(
-        is_average_compatible(v) for _, v in structure.iter_elements(type_spec)  # pytype: disable=wrong-arg-types
+        is_average_compatible(v) for _, v in structure.iter_elements(type_spec)
     )
   elif isinstance(type_spec, computation_types.FederatedType):
     return is_average_compatible(type_spec.member)
@@ -740,7 +742,7 @@ def check_concrete_instance_of(
     elif _both_are(lambda t: isinstance(t, computation_types.PlacementType)):
       if generic_type_member != concrete_type_member:
         _raise_structural('placements')
-    elif _both_are(lambda t: t.is_struct()):
+    elif _both_are(lambda t: isinstance(t, computation_types.StructType)):
       generic_elements = structure.to_elements(generic_type_member)  # pytype: disable=wrong-arg-types
       concrete_elements = structure.to_elements(concrete_type_member)  # pytype: disable=wrong-arg-types
       if len(generic_elements) != len(concrete_elements):

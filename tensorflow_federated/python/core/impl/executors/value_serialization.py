@@ -179,7 +179,7 @@ def _check_container_compat_with_tf_nest(type_spec: computation_types.Type):
     return sorted(name_sequence) == name_sequence
 
   def _check_ordereddict_container_for_struct(type_to_check):
-    if not type_to_check.is_struct():
+    if not isinstance(type_to_check, computation_types.StructType):
       return type_to_check, False
     # We can't use `dir` here, since it sorts the names before returning. We
     # also must filter to names which are actually present.
@@ -368,7 +368,7 @@ def serialize_value(
     return _serialize_tensor_value(value, type_spec)
   elif isinstance(type_spec, computation_types.SequenceType):
     return _serialize_sequence_value(value, type_spec)
-  elif type_spec.is_struct():
+  elif isinstance(type_spec, computation_types.StructType):
     return _serialize_struct_type(value, type_spec)
   elif isinstance(type_spec, computation_types.FederatedType):
     return _serialize_federated_value(value, type_spec)
@@ -480,7 +480,7 @@ def _deserialize_dataset_from_graph_def(
         )
     return type_spec, False
 
-  if element_type.is_struct():
+  if isinstance(element_type, computation_types.StructType):
     # TF doesn't support `structure.Struct` types, so we must transform the
     # `StructType` into a `StructWithPythonType` for use as the
     # `tf.data.Dataset.element_spec` later.

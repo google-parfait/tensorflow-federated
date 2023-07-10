@@ -52,10 +52,10 @@ def _is_int32_or_structure_of_int32s(type_spec: computation_types.Type) -> bool:
   if isinstance(type_spec, computation_types.TensorType):
     py_typecheck.check_type(type_spec.dtype, tf.dtypes.DType)
     return type_spec.dtype == tf.int32
-  elif type_spec.is_struct():
+  elif isinstance(type_spec, computation_types.StructType):
     return all(
         _is_int32_or_structure_of_int32s(v)
-        for _, v in structure.iter_elements(type_spec)  # pytype: disable=wrong-arg-types
+        for _, v in structure.iter_elements(type_spec)
     )
   else:
     return False

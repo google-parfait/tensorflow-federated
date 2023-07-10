@@ -196,7 +196,10 @@ def _check_bound_process(
   py_typecheck.check_type(bound_process, estimation_process.EstimationProcess)
 
   next_parameter_type = bound_process.next.type_signature.parameter
-  if not next_parameter_type.is_struct() or len(next_parameter_type) != 2:  # pytype: disable=attribute-error,wrong-arg-types
+  if (
+      not isinstance(next_parameter_type, computation_types.StructType)
+      or len(next_parameter_type) != 2
+  ):
     raise TypeError(
         f'`{name}.next` must take two arguments but found:\n'
         f'{next_parameter_type}'
@@ -716,7 +719,7 @@ def _unique_dtypes_in_structure(
   if isinstance(type_spec, computation_types.TensorType):
     py_typecheck.check_type(type_spec.dtype, tf.dtypes.DType)
     return set([type_spec.dtype])
-  elif type_spec.is_struct():
+  elif isinstance(type_spec, computation_types.StructType):
     return set(
         tf.nest.flatten(
             type_conversions.structure_from_tensor_type_tree(

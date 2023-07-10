@@ -99,8 +99,8 @@ def is_argument_struct(arg) -> bool:
     return is_argument_struct(arg.type_signature)
   else:
     arg = computation_types.to_type(arg)
-    if arg.is_struct():
-      elements = structure.to_elements(arg)  # pytype: disable=wrong-arg-types
+    if isinstance(arg, computation_types.StructType):
+      elements = structure.to_elements(arg)
     else:
       return False
   max_unnamed = -1
@@ -271,7 +271,7 @@ def pack_args(parameter_type, args: Sequence[Any], kwargs: Mapping[str, Any]):
   single_positional_arg = len(args) == 1 and not kwargs
   if single_positional_arg:
     return args[0]
-  if not parameter_type.is_struct():
+  if not isinstance(parameter_type, computation_types.StructType):
     # If not a `StructType`, a single positional argument is the only
     # supported call style.
     raise TypeError(

@@ -428,7 +428,9 @@ def _normalize_secure_quantized_sum_args(
   # Validation of client_value.
   _validate_value_on_clients(client_value)
   client_value_member = client_value.type_signature.member
-  if client_value.type_signature.member.is_struct():
+  if isinstance(
+      client_value.type_signature.member, computation_types.StructType
+  ):
     dtypes = [v.dtype for v in structure.flatten(client_value_member)]
     for dtype in dtypes:
       _check_secure_quantized_sum_dtype(dtype)
@@ -455,15 +457,15 @@ def _normalize_secure_quantized_sum_args(
 
   # Validation of client_value and bounds compatibility.
   bound_member = lower_bound.type_signature.member  # pytype: disable=attribute-error
-  if bound_member.is_struct():
-    if not client_value_member.is_struct() or (
+  if isinstance(bound_member, computation_types.StructType):
+    if not isinstance(client_value_member, computation_types.StructType) or (
         structure.map_structure(lambda v: v.dtype, bound_member)
         != structure.map_structure(lambda v: v.dtype, client_value_member)
     ):
       raise StructuredBoundsTypeMismatchError(client_value_member, bound_member)
   else:
     # If bounds are scalar, must be compatible with all tensors in client_value.
-    if client_value_member.is_struct():
+    if isinstance(client_value_member, computation_types.StructType):
       if len(set(dtypes)) > 1 or (bound_member.dtype != dtypes[0]):
         raise ScalarBoundStructValueDTypeError(
             client_value_member, bound_member
@@ -757,10 +759,9 @@ def secure_quantized_sum(client_value, lower_bound, upper_bound):
   )
 
   secagg_value_type = value.type_signature.member  # pytype: disable=attribute-error
-  assert (
-      isinstance(secagg_value_type, computation_types.TensorType)
-      or secagg_value_type.is_struct()
-  )
+  assert isinstance(
+      secagg_value_type, computation_types.TensorType
+  ) or isinstance(secagg_value_type, computation_types.StructType)
   if isinstance(secagg_value_type, computation_types.TensorType):
     bitwidths = 32
   else:
