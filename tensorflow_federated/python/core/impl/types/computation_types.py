@@ -19,12 +19,13 @@ import collections
 from collections.abc import Hashable, Iterable, Iterator, Mapping
 import difflib
 import enum
-from typing import Optional, TypeVar
+from typing import Optional, TypeVar, Union
 import weakref
 
 import attrs
 import numpy as np
 import tensorflow as tf
+from typing_extensions import TypeGuard
 
 from tensorflow_federated.python.common_libs import deprecation
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -295,8 +296,8 @@ class Type(metaclass=abc.ABCMeta):
       other: The other type to compare against.
 
     Returns:
-      `True` iff type definitions are syntatically identical (as defined above),
-      or `False` otherwise.
+      `True` if type definitions are syntactically identical (as defined above),
+      otherwise `False`.
 
     Raises:
       NotImplementedError: If not implemented in the derived class.
@@ -417,20 +418,17 @@ def _clear_intern_pool() -> None:
 atexit.register(_clear_intern_pool)
 
 
-def _is_dtype_spec(dtype: object) -> bool:
-  """Determines whether `dtype` is a representation of a TF or Numpy dtype.
+_Dtype = Union[
+    type[np.number],
+    np.dtype,
+    tf.dtypes.DType,
+]
 
-  Args:
-    dtype: The representation to check.
 
-  Returns:
-    Boolean result indicating whether `dtype` is a Numpy or TF dtype.
-  """
-  return (
-      isinstance(dtype, tf.dtypes.DType)
-      or isinstance(dtype, type)
-      and issubclass(dtype, np.number)
-      or isinstance(dtype, np.dtype)
+def _is_dtype(obj: object) -> TypeGuard[_Dtype]:
+  """Returns `True` if `obj` is a dtype, otherwise `False`."""
+  return isinstance(obj, (tf.dtypes.DType, np.dtype)) or (
+      isinstance(obj, type) and issubclass(obj, np.number)
   )
 
 
@@ -439,7 +437,7 @@ class TensorType(Type, metaclass=_Intern):
 
   @classmethod
   def _hashable_from_init_args(
-      cls, dtype: object, shape: Optional[object] = None
+      cls, dtype: _Dtype, shape: Optional[object] = None
   ) -> Hashable:
     if not isinstance(dtype, tf.dtypes.DType):
       dtype = tf.dtypes.as_dtype(dtype)
@@ -449,7 +447,7 @@ class TensorType(Type, metaclass=_Intern):
       shape = tf.TensorShape(shape)
     return (dtype, shape)
 
-  def __init__(self, dtype: object, shape: Optional[object] = None):
+  def __init__(self, dtype: _Dtype, shape: Optional[object] = None):
     """Constructs a new instance from the given `dtype` and `shape`.
 
     Args:
@@ -461,9 +459,6 @@ class TensorType(Type, metaclass=_Intern):
     Raises:
       TypeError: if arguments are of the wrong types.
     """
-    if not _is_dtype_spec(dtype):
-      raise TypeError('Unrecognized dtype {}.'.format(str(dtype)))
-
     if not isinstance(dtype, tf.dtypes.DType):
       dtype = tf.dtypes.as_dtype(dtype)
     self._dtype = dtype
@@ -574,7 +569,7 @@ def _to_named_types(
 
   Args:
     elements: An iterable of named or unamed objects to convert to `tff.Types`.
-      See `tff.types.to_type` for more infomration.
+      See `tff.types.to_type` for more information.
 
   Returns:
     An `Iterable` where each each element is `tuple[Optional[str], Type]`.
@@ -875,7 +870,7 @@ class AbstractType(Type, metaclass=_Intern):
     """Constructs a new instance from the given string `label`.
 
     Args:
-      label: A string label of an abstract type. All occurences of the label
+      label: A string label of an abstract type. All occurrences of the label
         within a computation's type signature refer to the same concrete type.
     """
     self._label = label
@@ -1117,16 +1112,16 @@ def to_type(obj: object) -> Type:
   # comments, in addition to the unit test.
   if isinstance(obj, Type):
     return obj
-  elif _is_dtype_spec(obj):
-    return TensorType(obj)
+  elif _is_dtype(obj):
+    return TensorType(obj)  # pytype: disable=wrong-arg-types  # b/290661340
   elif isinstance(obj, tf.TensorSpec):
     return TensorType(obj.dtype, obj.shape)
   elif isinstance(obj, tf.data.DatasetSpec):
     return SequenceType(element=to_type(obj.element_spec))
   elif (
       isinstance(obj, tuple)
-      and (len(obj) == 2)
-      and _is_dtype_spec(obj[0])
+      and len(obj) == 2
+      and _is_dtype(obj[0])
       and (
           isinstance(obj[1], tf.TensorShape)
           or (
@@ -1360,7 +1355,7 @@ def _string_representation(type_spec: Type, formatted: bool) -> str:
     """Returns a `list` of strings representing the given `named_type_specs`.
 
     Args:
-      named_type_specs: A `list` of named comutations, each being a pair
+      named_type_specs: A `list` of named computations, each being a pair
         consisting of a name (either a string, or `None`) and a
         `ComputationBuildingBlock`.
       formatted: A boolean indicating if the returned string should be
