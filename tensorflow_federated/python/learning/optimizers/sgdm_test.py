@@ -38,6 +38,18 @@ class SGDTest(optimizer_test_utils.TestCase, parameterized.TestCase):
     self.assertLen(state, 1)
     self.assertIn(optimizer_base.LEARNING_RATE_KEY, state)
 
+  @parameterized.named_parameters(('none', None), ('zero', 0.0))
+  def test_get_hparams_momentum(self, momentum_value):
+    optimizer = sgdm.build_sgdm(0.01, momentum=momentum_value)
+    state = optimizer.initialize(_SCALAR_SPEC)
+    hparams = optimizer.get_hparams(state)
+    # Whether we specify None momentum or momentum 0.0, we shouldnt track the
+    # extra accumulator state. The implementation of next checks for the
+    # presence or absence of momentum key--it should not be there in either
+    # case.
+    self.assertNotIn(sgdm._MOMENTUM_KEY, state)
+    self.assertLen(hparams, 1)
+
   def test_state_structure_momentum(self):
     optimizer = sgdm.build_sgdm(0.01, momentum=0.9)
     state = optimizer.initialize(_SCALAR_SPEC)

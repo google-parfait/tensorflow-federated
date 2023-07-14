@@ -41,7 +41,9 @@ class _SGD(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
       raise ValueError(
           f'SGD `learning_rate` must be nonnegative, found {learning_rate}.'
       )
-    if momentum is not None:
+    if momentum:
+      # We should only track momentum as a hparam in the case that it is both
+      # specified and nonzero.
       if momentum < 0.0 or momentum > 1.0:
         raise ValueError(
             'SGD `momentum` must be `None` or in the range [0, 1], found '
