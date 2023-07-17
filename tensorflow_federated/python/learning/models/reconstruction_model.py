@@ -402,8 +402,6 @@ class ReconstructionModel(metaclass=abc.ABCMeta):
         input_spec=input_spec,
     )
 
-  from_keras_model = from_keras_model_and_layers
-
   @classmethod
   def from_keras_model_and_variables(
       cls,

@@ -97,7 +97,7 @@ def global_recon_model_fn():
   """Keras MNIST model with no local variables."""
   keras_model = _create_keras_model()
   input_spec = _create_input_spec()
-  return ReconstructionModel.from_keras_model(
+  return ReconstructionModel.from_keras_model_and_layers(
       keras_model=keras_model,
       global_layers=keras_model.layers,
       local_layers=[],
@@ -109,7 +109,7 @@ def local_recon_model_fn():
   """Keras MNIST model with final dense layer local."""
   keras_model = _create_keras_model()
   input_spec = _create_input_spec()
-  return ReconstructionModel.from_keras_model(
+  return ReconstructionModel.from_keras_model_and_layers(
       keras_model=keras_model,
       global_layers=keras_model.layers[:-1],
       local_layers=keras_model.layers[-1:],
@@ -1157,9 +1157,9 @@ class TrainingProcessTest(tf.test.TestCase, parameterized.TestCase):
       )
 
   def test_process_construction_calls_model_fn(self):
-    # Assert that the the process building does not call `model_fn` too many
-    # times. `model_fn` can potentially be expensive (loading weights,
-    # processing, etc).
+    # Assert that the process building does not call `model_fn` too many times.
+    # `model_fn` can potentially be expensive (loading weights, processing,
+    # etc).
     mock_model_fn = mock.Mock(side_effect=local_recon_model_fn)
     fed_recon.build_fed_recon(
         model_fn=mock_model_fn,

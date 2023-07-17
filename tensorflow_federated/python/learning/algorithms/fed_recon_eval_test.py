@@ -132,7 +132,7 @@ def keras_linear_model_fn():
   outputs = BiasLayer()(scaled_input)
   keras_model = tf.keras.Model(inputs=inputs, outputs=outputs)
   input_spec = _create_input_spec()
-  return reconstruction_model.ReconstructionModel.from_keras_model(
+  return reconstruction_model.ReconstructionModel.from_keras_model_and_layers(
       keras_model=keras_model,
       global_layers=keras_model.layers[:-1],
       local_layers=keras_model.layers[-1:],
@@ -952,7 +952,7 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(result['distributor'], 3.0)
 
   def test_evaluation_construction_calls_model_fn(self):
-    # Assert that the the evaluation building does not call `model_fn` too many
+    # Assert that the evaluation building does not call `model_fn` too many
     # times. `model_fn` can potentially be expensive (loading weights,
     # processing, etc).
     mock_model_fn = mock.Mock(side_effect=keras_linear_model_fn)
