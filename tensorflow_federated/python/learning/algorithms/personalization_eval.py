@@ -15,7 +15,7 @@
 
 import collections
 from collections.abc import Callable, Mapping
-from typing import Any, Optional
+from typing import Any
 
 import tensorflow as tf
 
@@ -37,13 +37,12 @@ _SplitFnType = Callable[
     [tf.data.Dataset], tuple[tf.data.Dataset, tf.data.Dataset]
 ]
 _FinetuneEvalFnType = Callable[
-    [variable.VariableModel, tf.data.Dataset, tf.data.Dataset, Any],
+    [variable.VariableModel, tf.data.Dataset, tf.data.Dataset],
     _MetricsType,
 ]
 
 _TRAIN_DATA_KEY = 'train_data'
 _EVAL_DATA_KEY = 'test_data'
-_CONTEXT_KEY = 'context'
 
 
 def build_personalization_eval_computation(
@@ -53,7 +52,6 @@ def build_personalization_eval_computation(
         [variable.VariableModel, tf.data.Dataset], _MetricsType
     ],
     max_num_clients: int = 100,
-    context_tff_type: Optional[computation_types.Type] = None,
 ) -> computation_base.Computation:
   """Builds the TFF computation for evaluating personalization strategies.
 
@@ -77,12 +75,11 @@ def build_personalization_eval_computation(
       Each `tf.function` represents a personalization strategy - it accepts a
       `tff.learning.models.VariableModel` (with weights already initialized to
       the given model weights when users invoke the returned TFF computation),
-      an unbatched `tf.data.Dataset` for train, an unbatched `tf.data.Dataset`
-      for test, and an arbitrary context object (which is used to hold any extra
-      information that a personalization strategy may use), trains a
-      personalized model, and returns the evaluation metrics. The evaluation
-      metrics are represented as an `OrderedDict` (or a nested `OrderedDict`) of
-      `string` metric names to scalar `tf.Tensor`s.
+      an unbatched `tf.data.Dataset` for train, and an unbatched
+      `tf.data.Dataset` for test, trains a personalized model, and returns the
+      evaluation metrics. The evaluation metrics are represented as an
+      `OrderedDict` (or a nested `OrderedDict`) of `string` metric names to
+      scalar `tf.Tensor`s.
     baseline_evaluate_fn: A `tf.function` that accepts a
       `tff.learning.models.VariableModel` (with weights already initialized to
       the provided model weights when users invoke the returned TFF
@@ -97,11 +94,6 @@ def build_personalization_eval_computation(
       metrics from this client will be collected. If the number of participating
       clients in a round is smaller than this value, then metrics from all
       clients will be collected.
-    context_tff_type: A `tff.Type` of the optional context object used by the
-      personalization strategies defined in `personalization_fn_dict`. We use a
-      context object to hold any extra information (in addition to the training
-      dataset) that personalization may use. If context is used in
-      `personalization_fn_dict`, its `tff.Type` must be provided here.
 
   Returns:
     A federated `tff.Computation` with the functional type signature
@@ -110,10 +102,7 @@ def build_personalization_eval_computation(
     *   `model_weights` is a `tff.learning.models.ModelWeights`.
     *   Each client's input is an `OrderedDict` of two required keys
         `train_data` and `test_data`; each key is mapped to an unbatched
-        `tf.data.Dataset`. If extra context (e.g., extra datasets) is used in
-        `personalize_fn_dict`, then client input has a third key `context` that
-        is mapped to a object whose `tff.Type` is provided by the
-        `context_tff_type` argument.
+        `tf.data.Dataset`.
     *   `personalization_metrics` is an `OrderedDict` that maps a key
         'baseline_metrics' to the evaluation metrics of the initial model
         (computed by `baseline_evaluate_fn`), and maps keys (strategy names) in
@@ -147,9 +136,6 @@ def build_personalization_eval_computation(
       train_data=computation_types.SequenceType(element_tff_type),
       test_data=computation_types.SequenceType(element_tff_type),
   )
-  if context_tff_type is not None:
-    py_typecheck.check_type(context_tff_type, computation_types.Type)
-    client_input_type[_CONTEXT_KEY] = context_tff_type
   client_input_type = computation_types.to_type(client_input_type)
 
   py_typecheck.check_type(max_num_clients, int)
@@ -217,7 +203,6 @@ def _build_client_computation(
     """A computation performing personalization evaluation on a client."""
     train_data = client_input[_TRAIN_DATA_KEY]
     test_data = client_input[_EVAL_DATA_KEY]
-    context = client_input.get(_CONTEXT_KEY)
 
     final_metrics = collections.OrderedDict()
     # Compute the evaluation metrics of the initial model.
@@ -235,7 +220,6 @@ def _build_client_computation(
         train_data,
         test_data,
         personalize_fn_dict,
-        context,
     )
     final_metrics.update(p13n_metrics)
     return final_metrics
@@ -303,7 +287,6 @@ def _compute_p13n_metrics(
     train_data,
     test_data,
     personalize_fn_dict: Mapping[str, Callable[[], Callable[..., object]]],
-    context,
 ):
   """Train and evaluate the personalized models."""
   model = model_fn()
@@ -327,7 +310,7 @@ def _compute_p13n_metrics(
       tf.nest.map_structure(
           lambda v, t: v.assign(t), model_weights, initial_model_weights
       )
-      p13n_metrics[name] = personalize_fn(model, train_data, test_data, context)
+      p13n_metrics[name] = personalize_fn(model, train_data, test_data)
     return p13n_metrics
 
   return loop_and_compute()

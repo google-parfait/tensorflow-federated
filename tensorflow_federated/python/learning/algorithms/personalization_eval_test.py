@@ -74,7 +74,7 @@ def _build_personalize_fn(optimizer_fn, train_batch_size, test_batch_size):
   optimizer = optimizer_fn()
 
   @tf.function
-  def personalize_fn(model, train_data, test_data, context=None):
+  def personalize_fn(model, train_data, test_data):
     def train_fn(num_examples_sum, batch):
       """Runs gradient descent on a batch."""
       with tf.GradientTape() as tape:
@@ -95,10 +95,6 @@ def _build_personalize_fn(optimizer_fn, train_batch_size, test_batch_size):
         dataset=batched_train_data,
         initial_state_fn=lambda: tf.constant(0),
     )
-
-    # For test coverage, this example uses an optional `int32` as `context`.
-    if context is not None:
-      num_examples_sum = num_examples_sum + context
 
     results = collections.OrderedDict()
     results['num_examples'] = num_examples_sum
@@ -130,13 +126,11 @@ def _create_dataset(scale):
   return tf.data.Dataset.from_tensor_slices(ds)
 
 
-def _create_client_input(train_scale, test_scale, context=None):
+def _create_client_input(train_scale, test_scale):
   """Constructs client datasets for personalization."""
   client_input = collections.OrderedDict()
   client_input['train_data'] = _create_dataset(train_scale)
   client_input['test_data'] = _create_dataset(test_scale)
-  if context is not None:
-    client_input['context'] = context
   return client_input
 
 
@@ -371,77 +365,6 @@ class PersonalizationEvalTest(tf.test.TestCase, parameterized.TestCase):
           test_data=_create_dataset(scale=1.0).batch(1),
       )
       federated_p13n_eval(zero_model_weights, [bad_client_input])
-
-  def test_failure_with_invalid_context_type(self):
-    def model_fn():
-      return model_examples.LinearRegression(feature_dim=2)
-
-    zero_model_weights = _create_zero_model_weights(model_fn)
-    p13n_fn_dict = _create_p13n_fn_dict(learning_rate=1.0)
-
-    with self.assertRaises(TypeError):
-      # `tf.int32` is not a `tff.Type`.
-      bad_context_tff_type = tf.int32
-      p13n_eval.build_personalization_eval_computation(
-          model_fn,
-          p13n_fn_dict,
-          _evaluate_fn,
-          context_tff_type=bad_context_tff_type,
-      )
-
-    with self.assertRaises(TypeError):
-      # `context_tff_type` is provided but `context` is not provided.
-      context_tff_type = computation_types.to_type(tf.int32)
-      federated_p13n_eval = p13n_eval.build_personalization_eval_computation(
-          model_fn,
-          p13n_fn_dict,
-          _evaluate_fn,
-          context_tff_type=context_tff_type,
-      )
-      federated_p13n_eval(
-          zero_model_weights,
-          [
-              _create_client_input(
-                  train_scale=1.0, test_scale=1.0, context=None
-              ),
-              _create_client_input(
-                  train_scale=1.0, test_scale=2.0, context=None
-              ),
-          ],
-      )
-
-  def test_success_with_valid_context(self):
-    def model_fn():
-      return model_examples.LinearRegression(feature_dim=2)
-
-    zero_model_weights = _create_zero_model_weights(model_fn)
-    p13n_fn_dict = _create_p13n_fn_dict(learning_rate=1.0)
-
-    # Build the p13n eval with an extra `context` argument.
-    context_tff_type = computation_types.to_type(tf.int32)
-    federated_p13n_eval = p13n_eval.build_personalization_eval_computation(
-        model_fn, p13n_fn_dict, _evaluate_fn, context_tff_type=context_tff_type
-    )
-
-    # Perform p13n eval on two clients with different `context` values.
-    results = federated_p13n_eval(
-        zero_model_weights,
-        [
-            _create_client_input(train_scale=1.0, test_scale=1.0, context=2),
-            _create_client_input(train_scale=1.0, test_scale=2.0, context=5),
-        ],
-    )
-
-    bs1_metrics = results['batch_size_1']
-    bs2_metrics = results['batch_size_2']
-
-    # Number of training examples is `3 + context` for both clients.
-    # Note: the order is not preserved due to `federated_sample`, but the order
-    # should be consistent across different personalization strategies.
-    self.assertAllEqual(sorted(bs1_metrics['num_examples']), [5, 8])
-    self.assertAllEqual(
-        bs1_metrics['num_examples'], bs2_metrics['num_examples']
-    )
 
   def test_failure_with_invalid_sample_size(self):
     def model_fn():
