@@ -1,3 +1,31 @@
+# Release 0.61.0
+
+## Major Features and Improvements
+
+*   Updated the type annotation for the `dtype` parameter to `tff.TensorType`.
+*   Added adaptive tuning function to `ThresholdSampling` class.
+*   Added
+    `tff.learning.models.ReconstructionModel.from_keras_model_and_variables`,
+    which provides a way to get a `ReconstructionModel` from a Keras model and
+    lists of global and local trainable/non_trainable *variables*.
+*   Switched `tff.learning.algorithms.build_fed_recon_eval` to use a stateful
+    metrics aggregator.
+
+## Breaking Changes
+
+*   Removed `tff.learning.models.ReconstructionModel.from_keras_model`, which
+    has been replaced by
+    `tff.learning.models.ReconstructionModel.from_keras_model_and_layers`.
+*   Removed the following functions from the py_typecheck module: `check_len`,
+    `check_callable`, `is_dataclass`,`is_attrs`, `check_subclass` and
+    `check_not_none`. They are unused or can be replaced by Python type
+    annotations.
+
+## Bug Fixes
+
+*   Fixed a small bug in the TFF SGDM optimizer, to only track momentum as a
+    hparam if it is both specified and nonzero.
+
 # Release 0.60.0
 
 ## Major Features and Improvements
