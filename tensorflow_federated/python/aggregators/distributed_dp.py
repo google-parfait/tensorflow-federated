@@ -108,7 +108,7 @@ class DistributedDpSumFactory(factory.UnweightedAggregationFactory):
       bits: int,
       l2_clip: float,
       modclip_prob: float = 1e-4,
-      beta: float = math.exp(-0.5),
+      beta: float = 0.0,
       mechanism: str = 'distributed_skellam',
       rotation_type: str = 'dft',
       auto_l2_clip: bool = False,
@@ -147,17 +147,23 @@ class DistributedDpSumFactory(factory.UnweightedAggregationFactory):
         operations. Default to 0.01% (roughly 3.9 standard deviations of the
         mean assuming roughly normally distributed aggregates at the server).
       beta: (Optional) The conditional randomized rounding bias. Must be a float
-        in the range [0, 1). The larger the value, the less post-rounding L2
-        sensitivity inflation. Defaults to exp(-0.5). Please see Sections 4 of
-          https://arxiv.org/pdf/2102.06387.pdf for a detailed explanation of
-            conditional randomized rounding.
+        in the range [0, 1). If `beta > 0`, we recommend using `exp(-0.5)` as it
+        has been shown to be a good choice in
+        https://arxiv.org/pdf/2102.06387.pdf. The larger the value, the less
+          post-rounding L2 sensitivity inflation. Defaults to 0, indicating that
+          (unconditional) randomized rounding is used. Please see Sections 4 of
+        https://arxiv.org/pdf/2102.06387.pdf for a detailed explanation of
+          conditional randomized rounding. However, note that in some cases
+          (e.g. when using TF Lite), a beta greater than 0 (e.g. exp(-0.5)) can
+          cause instabilities leading to infinite loops. We recommend keeping
+          the default.
       mechanism: (Optional) The distributed DP mechanism to use. Possible
         options are 'distributed_dgauss' (distributed discrete Gaussian
         mechanism) or 'distributed_skellam' (distributed Skellam mechanism; the
         default).
       rotation_type: (Optional) The rotation operation used to spread out input
         values across vector dimensions. Possible options are 'hd' (randomized
-        Hadamard transform) or 'dft' (discrete Fourier transform; the defaut).
+        Hadamard transform) or 'dft' (discrete Fourier transform; the default).
       auto_l2_clip: (Optional) A bool indicating whether to adaptively adjust
         the L2 norm clipping (i.e., `l2_clip`) after each round. Note that this
         involves private quantile estimation which would result in a larger
@@ -169,7 +175,7 @@ class DistributedDpSumFactory(factory.UnweightedAggregationFactory):
         adapt. A value of 0.8 means a clipping norm should be chosen such that
         80% of the client values have norm below it. Defaults to 0.5. Ignored if
         `auto_l2_clip` is `False`.
-      auto_l2_lr: (Optional) A float specifying the the learning rate for the
+      auto_l2_lr: (Optional) A float specifying the learning rate for the
         adaptive L2 clipping process. Default to 0.2. Ignored if `auto_l2_clip`
         is `False`.
       auto_l2_clip_count_stddev: (Optional) The stddev of the noise added to the
@@ -190,11 +196,19 @@ class DistributedDpSumFactory(factory.UnweightedAggregationFactory):
     _check_integer(bits, 'bits')
     _check_positive(l2_clip, 'l2_clip')
     _check_in_range(modclip_prob, 'modclip_prob', 0, 1, False, False)
-    _check_in_range(beta, 'beta', 0, 1, True, False)
+    _check_in_range(beta, 'beta', 0.0, 1.0, True, False)
     _check_str(mechanism, 'mechanism', DP_MECHANISMS)
     _check_str(rotation_type, 'rotation_type', ROTATION_TYPES)
     _check_bool(auto_l2_clip, 'auto_l2_clip')
 
+    if beta > 0.0:
+      warnings.warn(
+          f'The selected beta {beta} is greater than zero. This indicates that'
+          ' conditional randomized rounding is used. Instabilities have been'
+          ' observed with low-precision arithmetic or when running with'
+          ' TFLite. Consider setting beta to 0 if you would like to avoid'
+          ' those issues.'
+      )
     if auto_l2_clip:
       _check_in_range(
           auto_l2_target_quantile, 'auto_l2_target_quantile', 0, 1, True, True
@@ -355,7 +369,7 @@ class DistributedDpSumFactory(factory.UnweightedAggregationFactory):
         * min(math.sqrt(self._padded_dim), scaled_inflated_l2)
     )
 
-    # Build nested aggregtion factory.
+    # Build nested aggregation factory.
     # 1. Secure Aggregation. In particular, we have 4 modular clips from
     #    nesting two modular clip aggregators:
     #    #1. outer-client: clips to [-2^(b-1), 2^(b-1)]
