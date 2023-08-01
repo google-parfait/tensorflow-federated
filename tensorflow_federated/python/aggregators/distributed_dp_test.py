@@ -348,52 +348,32 @@ class DistributedDpExecutionTest(tf.test.TestCase, parameterized.TestCase):
         test_factory._l2_clip, estimation_process.EstimationProcess
     )
 
-  @parameterized.named_parameters(
-      ('set_1', 'scalar', tf.float32, [-1.0, 2.0, 3.0], 4.0, 'hd'),
-      ('set_2', 'scalar', tf.float32, [-1.0, 2.0, 3.0], 4.0, 'dft'),
-      (
-          'set_3',
-          'rank_2',
-          (tf.float32, [2, 2]),
-          [[[1.0, 2.0], [1.0, 2.0]], [[2.0, 1.0], [2.0, 1.0]]],
-          [[3.0, 3.0], [3.0, 3.0]],
-          'hd',
-      ),
-      (
-          'set_4',
-          'rank_2',
-          (tf.float32, [2, 2]),
-          [[[1.0, 2.0], [1.0, 2.0]], [[2.0, 1.0], [2.0, 1.0]]],
-          [[3.0, 3.0], [3.0, 3.0]],
-          'dft',
-      ),
-      (
-          'set_5',
-          'struct',
-          _test_nested_struct_type,
-          [_make_test_nested_struct(-1), _make_test_nested_struct(-2)],
-          _make_test_nested_struct(-3),
-          'hd',
-      ),
-      (
-          'set_6',
-          'struct',
-          _test_nested_struct_type,
-          [_make_test_nested_struct(-1), _make_test_nested_struct(-2)],
-          _make_test_nested_struct(-3),
-          'dft',
-      ),
+  @parameterized.product(
+      name=['scalar', 'rank_2', 'struct'],
+      rotation_type=['hd', 'dft'],
+      beta=[0, np.exp(-0.5)],
   )
-  def test_sum(
-      self, name, value_type, client_values, expected_sum, rotation_type
-  ):
-    del name  # Unused.
+  def test_sum(self, name, rotation_type, beta):
+    if name == 'scalar':
+      value_type = tf.float32
+      client_values = [-1.0, 2.0, 3.0]
+      expected_sum = 4.0
+    elif name == 'rank_2':
+      value_type = (tf.float32, [2, 2])
+      client_values = [[[1.0, 2.0], [1.0, 2.0]], [[2.0, 1.0], [2.0, 1.0]]]
+      expected_sum = [[3.0, 3.0], [3.0, 3.0]]
+    else:  # name == 'struct'
+      value_type = _test_nested_struct_type
+      client_values = [_make_test_nested_struct(i) for i in [-1, -2]]
+      expected_sum = _make_test_nested_struct(-3)
+
     ddp_factory = _make_test_factory(
         noise_multiplier=0,
         expected_clients_per_round=len(client_values),
         rotation_type=rotation_type,
         bits=20,
         l2_clip=10.0,
+        beta=beta,
     )
     process = ddp_factory.create(computation_types.to_type(value_type))
     state = process.initialize()
