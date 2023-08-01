@@ -371,6 +371,17 @@ class StochasticRoundingTest(tf.test.TestCase, parameterized.TestCase):
     rounded_x = discretization._stochastic_rounding(x, beta=beta)
     self.assertEqual(rounded_x.dtype, dtype)
 
+  def test_fails_with_too_many_tries(self):
+    # Seeds chosen to induce greater than two tries.
+    x = tf.random.stateless_uniform(
+        [100], [0xBAD5EED, 21], -100, 100, dtype=tf.float32
+    )
+    with self.assertRaisesRegex(
+        tf.errors.InvalidArgumentError,
+        'Stochastic rounding failed for 2 tries.',
+    ):
+      discretization._stochastic_rounding(x, beta=0.99, seed=21, max_tries=2)
+
 
 class InflatedNormTest(tf.test.TestCase, parameterized.TestCase):
 

@@ -317,7 +317,14 @@ def inflated_l2_norm_bound(l2_norm_bound, gamma, beta, dim):
 
 
 @tf.function
-def _stochastic_rounding(x, l2_norm_bound=None, scale=1.0, beta=0.0):
+def _stochastic_rounding(
+    x,
+    l2_norm_bound=None,
+    scale=1.0,
+    beta=0.0,
+    seed=None,
+    max_tries=1000,
+):
   """Stochastically (and conditionally) round a vector's values to integers.
 
   Args:
@@ -329,13 +336,23 @@ def _stochastic_rounding(x, l2_norm_bound=None, scale=1.0, beta=0.0):
       Defaults to 1.0 (rounding granularity is the integer grid).
     beta: A float constant in [0, 1). See the initializer docstring of the
       aggregator for more details. Defaults to 0.0 (unconditional rounding).
+    seed: An integer seed for the randomness.
+    max_tries: When beta > 0, the number of stochastic rounding tries before
+      raising an exception.
 
   Returns:
     The input vector with coordinates stochastically (possibly conditionally
     according to beta) rounded to the integer grid.
+
+  Raises:
+    InvalidArgumentError: If stochastic rounding fails `max_tries` times.
   """
   if l2_norm_bound is None or l2_norm_bound == 0:
     l2_norm_bound = tf.norm(x, ord=2)
+
+  if seed is None:
+    seed = tf.timestamp() * 1e6
+  seed = tf.cast(seed, tf.int64)
 
   # Compute norm inflation in the unscaled domain to improve stability.
   gamma = 1.0 / scale  # Equivalent rounding granularity.
@@ -347,16 +364,24 @@ def _stochastic_rounding(x, l2_norm_bound=None, scale=1.0, beta=0.0):
   decimal_x = x - floored_x
   shape = tf.shape(x)
 
-  def try_rounding():
-    # Use stateless randomness with scaled fractional seconds as seed following
-    # https://www.tensorflow.org/federated/tutorials/random_noise_generation.
-    # 64-bit seed space should be sufficient.
-    seed = [tf.cast(tf.timestamp() * 1e6, tf.int64), 0]
-    uniform = tf.random.stateless_uniform(shape, seed, maxval=1, dtype=x.dtype)
+  @tf.function
+  def try_rounding(tries):
+    uniform = tf.random.stateless_uniform(
+        shape, seed=[seed, tf.cast(tries, tf.int64)], maxval=1, dtype=x.dtype
+    )
     return floored_x + tf.cast(uniform < decimal_x, x.dtype)
 
-  rounded_x = try_rounding()
+  tries = 1
+  rounded_x = try_rounding(tries)
   while beta > 0 and tf.norm(rounded_x, ord=2) > threshold:
-    rounded_x = try_rounding()
+    message = (
+        f'Stochastic rounding failed for {max_tries} tries. This can happen '
+        'when beta > 0.0 and low-precision arithmetic is used. Try setting '
+        'beta to 0.0. See the initializer docstring of the aggregator for '
+        'more details.'
+    )
+    tf.debugging.assert_less_equal(tries, max_tries, message)
+    tries += 1
+    rounded_x = try_rounding(tries)
 
   return rounded_x
