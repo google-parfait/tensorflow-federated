@@ -492,11 +492,13 @@ class TensorType(Type, metaclass=_Intern):
   def __hash__(self):
     return hash((self._dtype, self._shape))
 
-  def __eq__(self, other):
-    return (self is other) or (
-        isinstance(other, TensorType)
-        and self._dtype == other.dtype
-        and tensor_utils.same_shape(self._shape, other.shape)
+  def __eq__(self, other: object) -> bool:
+    if self is other:
+      return True
+    elif not isinstance(other, TensorType):
+      return NotImplemented
+    return self._dtype == other.dtype and tensor_utils.same_shape(
+        self._shape, other.shape
     )
 
   def is_assignable_from(self, source_type: Type) -> bool:
@@ -659,10 +661,12 @@ class StructType(structure.Struct, Type, metaclass=_Intern):
     # Salt to avoid overlap.
     return hash((structure.Struct.__hash__(self), 'NTT'))
 
-  def __eq__(self, other):
-    return (self is other) or (
-        isinstance(other, StructType) and structure.Struct.__eq__(self, other)
-    )
+  def __eq__(self, other: object) -> bool:
+    if self is other:
+      return True
+    elif not isinstance(other, StructType):
+      return NotImplemented
+    return super().__eq__(other)
 
   def is_assignable_from(self, source_type: Type) -> bool:
     if self is source_type:
@@ -711,11 +715,13 @@ class StructWithPythonType(StructType, metaclass=_Intern):
     # Salt to avoid overlap.
     return hash((structure.Struct.__hash__(self), 'NTTWPCT'))
 
-  def __eq__(self, other):
-    return (self is other) or (
-        isinstance(other, StructWithPythonType)
-        and (self._container_type == other._container_type)
-        and structure.Struct.__eq__(self, other)
+  def __eq__(self, other: object) -> bool:
+    if self is other:
+      return True
+    elif not isinstance(other, StructWithPythonType):
+      return NotImplemented
+    return (
+        super().__eq__(other) and self._container_type == other._container_type
     )
 
 
@@ -776,10 +782,12 @@ class SequenceType(Type, metaclass=_Intern):
   def __hash__(self):
     return hash(self._element)
 
-  def __eq__(self, other):
-    return (self is other) or (
-        isinstance(other, SequenceType) and self._element == other.element
-    )
+  def __eq__(self, other: object) -> bool:
+    if self is other:
+      return True
+    elif not isinstance(other, SequenceType):
+      return NotImplemented
+    return self._element == other.element
 
   def is_assignable_from(self, source_type: Type) -> bool:
     if self is source_type:
@@ -836,12 +844,12 @@ class FunctionType(Type, metaclass=_Intern):
   def __hash__(self):
     return hash((self._parameter, self._result))
 
-  def __eq__(self, other):
-    return (self is other) or (
-        isinstance(other, FunctionType)
-        and self._parameter == other.parameter
-        and self._result == other.result
-    )
+  def __eq__(self, other: object) -> bool:
+    if self is other:
+      return True
+    elif not isinstance(other, FunctionType):
+      return NotImplemented
+    return self._parameter == other.parameter and self._result == other.result
 
   def is_assignable_from(self, source_type: Type) -> bool:
     if self is source_type:
@@ -889,10 +897,12 @@ class AbstractType(Type, metaclass=_Intern):
   def __hash__(self):
     return hash(self._label)
 
-  def __eq__(self, other):
-    return (self is other) or (
-        isinstance(other, AbstractType) and self._label == other.label
-    )
+  def __eq__(self, other: object) -> bool:
+    if self is other:
+      return True
+    elif not isinstance(other, AbstractType):
+      return NotImplemented
+    return self._label == other.label
 
   def is_assignable_from(self, source_type: Type) -> bool:
     del source_type  # Unused.
@@ -925,8 +935,12 @@ class PlacementType(Type, metaclass=_Intern):
   def __hash__(self):
     return 0
 
-  def __eq__(self, other):
-    return (self is other) or isinstance(other, PlacementType)
+  def __eq__(self, other: object) -> bool:
+    if self is other:
+      return True
+    elif not isinstance(other, PlacementType):
+      return NotImplemented
+    return True
 
   def is_assignable_from(self, source_type: Type) -> bool:
     if self is source_type:
@@ -1004,10 +1018,13 @@ class FederatedType(Type, metaclass=_Intern):
   def __hash__(self):
     return hash((self._member, self._placement, self._all_equal))
 
-  def __eq__(self, other):
-    return (self is other) or (
-        isinstance(other, FederatedType)
-        and self._member == other.member
+  def __eq__(self, other: object) -> bool:
+    if self is other:
+      return True
+    elif not isinstance(other, FederatedType):
+      return NotImplemented
+    return (
+        self._member == other.member
         and self._placement == other.placement
         and self._all_equal == other.all_equal
     )

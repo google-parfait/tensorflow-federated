@@ -41,6 +41,12 @@ _ALL_INTERNED_TYPES = [
 ]
 
 
+class AnyObj:
+
+  def __eq__(self, other: object) -> bool:
+    return True
+
+
 @attrs.define
 class TestAttrs:
   a: int = 1
@@ -209,6 +215,12 @@ class TensorTypeTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
       (
+          'any',
+          computation_types.TensorType(tf.int32),
+          AnyObj(),
+          True,
+      ),
+      (
           'same_dtype_and_shape',
           computation_types.TensorType(tf.int32),
           computation_types.TensorType(tf.int32),
@@ -313,6 +325,12 @@ class StructTypeTest(parameterized.TestCase):
     self.assertEqual(actual_repr, expected_repr)
 
   @parameterized.named_parameters(
+      (
+          'any',
+          computation_types.StructType([tf.int32, tf.bool]),
+          AnyObj(),
+          True,
+      ),
       (
           'same_elements_unnamed',
           computation_types.StructType([tf.int32, tf.bool]),
@@ -537,6 +555,12 @@ class StructWithPythonTypeTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
       (
+          'any',
+          computation_types.StructWithPythonType([tf.int32, tf.bool], list),
+          AnyObj(),
+          True,
+      ),
+      (
           'same_elements_and_container_type_unnamed',
           computation_types.StructWithPythonType([tf.int32, tf.bool], list),
           computation_types.StructWithPythonType([tf.int32, tf.bool], list),
@@ -655,6 +679,12 @@ class SequenceTypeTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
       (
+          'any',
+          computation_types.SequenceType(tf.int32),
+          AnyObj(),
+          True,
+      ),
+      (
           'same_element',
           computation_types.SequenceType(tf.int32),
           computation_types.SequenceType(tf.int32),
@@ -731,6 +761,12 @@ class FunctionTypeTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
       (
+          'any',
+          computation_types.FunctionType(tf.int32, tf.bool),
+          AnyObj(),
+          True,
+      ),
+      (
           'same_parameter_and_result',
           computation_types.FunctionType(tf.int32, tf.bool),
           computation_types.FunctionType(tf.int32, tf.bool),
@@ -797,6 +833,12 @@ class AbstractTypeTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
       (
+          'any',
+          computation_types.AbstractType('T'),
+          AnyObj(),
+          True,
+      ),
+      (
           'same_label',
           computation_types.AbstractType('T'),
           computation_types.AbstractType('T'),
@@ -848,6 +890,12 @@ class PlacementTypeTest(parameterized.TestCase):
     self.assertEqual(actual_str, 'PlacementType()')
 
   @parameterized.named_parameters(
+      (
+          'any',
+          computation_types.PlacementType(),
+          AnyObj(),
+          True,
+      ),
       (
           'placement_type',
           computation_types.PlacementType(),
@@ -959,6 +1007,12 @@ class FederatedTypeTest(parameterized.TestCase):
     self.assertEqual(actual_repr, expected_repr)
 
   @parameterized.named_parameters(
+      (
+          'any',
+          computation_types.FederatedType(tf.int32, placements.CLIENTS),
+          AnyObj(),
+          True,
+      ),
       (
           'same_member_and_placement_and_all_equal',
           computation_types.FederatedType(tf.int32, placements.CLIENTS),
