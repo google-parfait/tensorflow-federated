@@ -413,7 +413,7 @@ class DistributedDpExecutionTest(tf.test.TestCase, parameterized.TestCase):
     value_type = (tf.float32, _make_onehot(0.0, dim).shape.as_list())
     process = ddp_factory.create(computation_types.to_type(value_type))
     state = process.initialize()
-    _, discrete_state, dp_state = ddp_factory._unpack_state(state)
+    _, discrete_state, _ = ddp_factory._unpack_state(state)
     cur_scale = discrete_state['scale_factor']
 
     # Two clipped on first round.

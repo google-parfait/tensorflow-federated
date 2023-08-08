@@ -16,51 +16,11 @@ from unittest import mock
 
 from absl.testing import absltest
 from absl.testing import parameterized
-import numpy as np
-import tensorflow as tf
 
 from tensorflow_federated.python.core.impl.executor_stacks import python_executor_stacks
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_factory
-from tensorflow_federated.python.core.impl.federated_context import federated_computation
-from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
-from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
-
-
-def _temperature_sensor_example_next_fn():
-
-  @tensorflow_computation.tf_computation(
-      computation_types.SequenceType(tf.float32), tf.float32
-  )
-  def count_over(ds, t):
-    return ds.reduce(
-        np.float32(0), lambda n, x: n + tf.cast(tf.greater(x, t), tf.float32)
-    )
-
-  @tensorflow_computation.tf_computation(
-      computation_types.SequenceType(tf.float32)
-  )
-  def count_total(ds):
-    return ds.reduce(np.float32(0.0), lambda n, _: n + 1.0)
-
-  @federated_computation.federated_computation(
-      computation_types.at_clients(computation_types.SequenceType(tf.float32)),
-      computation_types.at_server(tf.float32),
-  )
-  def comp(temperatures, threshold):
-    return intrinsics.federated_mean(
-        intrinsics.federated_map(
-            count_over,
-            intrinsics.federated_zip(
-                [temperatures, intrinsics.federated_broadcast(threshold)]
-            ),
-        ),
-        intrinsics.federated_map(count_total, temperatures),
-    )
-
-  return comp
 
 
 class ExecutorMock(mock.MagicMock, executor_base.Executor):
