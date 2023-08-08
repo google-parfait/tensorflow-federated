@@ -537,7 +537,7 @@ def _merge_args(
       arg_locals.append((arg_name, arg))
       arg_refs.append(building_blocks.Reference(arg_name, arg.type_signature))
     merged_args = []
-    for i in range(len(abstract_parameter_type)):
+    for i, _ in enumerate(abstract_parameter_type):
       ith_args = [building_blocks.Selection(ref, index=i) for ref in arg_refs]
       merged_args.append(
           _merge_args(abstract_parameter_type[i], ith_args, name_generator)

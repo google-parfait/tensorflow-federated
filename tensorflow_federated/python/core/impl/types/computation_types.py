@@ -671,13 +671,16 @@ class StructType(structure.Struct, Type, metaclass=_Intern):
       return False
     target_elements = structure.to_elements(self)
     source_elements = structure.to_elements(source_type)
-    return (len(target_elements) == len(source_elements)) and all(
-        (
-            (source_elements[k][0] in [target_elements[k][0], None])
-            and target_elements[k][1].is_assignable_from(source_elements[k][1])
-        )
-        for k in range(len(target_elements))
-    )
+    if len(target_elements) != len(source_elements):
+      return False
+    for (target_name, target_element), (source_name, source_element) in zip(
+        target_elements, source_elements
+    ):
+      if source_name is not None and source_name != target_name:
+        return False
+      if not target_element.is_assignable_from(source_element):
+        return False
+    return True
 
 
 class StructWithPythonType(StructType, metaclass=_Intern):

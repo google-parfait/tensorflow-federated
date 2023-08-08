@@ -49,11 +49,6 @@ class MeasuredProcessOutput:
   measurements = attr.ib()
 
 
-# The type signature of the result of MeasuredProcess must be a named tuple with
-# the following names in the same order.
-_RESULT_FIELD_NAMES = [f.name for f in attr.fields(MeasuredProcessOutput)]
-
-
 class MeasuredProcess(iterative_process.IterativeProcess):
   """A stateful process that produces metrics.
 
