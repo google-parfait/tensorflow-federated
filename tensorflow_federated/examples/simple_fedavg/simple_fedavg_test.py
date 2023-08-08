@@ -105,13 +105,6 @@ def _setup_local_context(
   )
 
 
-def _create_random_batch():
-  return collections.OrderedDict(
-      x=tf.random.uniform(tf.TensorShape([1, 28, 28, 1]), dtype=tf.float32),
-      y=tf.constant(1, dtype=tf.int32, shape=[1]),
-  )
-
-
 def _tff_learning_model_fn():
   """Constructs a test `tff.learning.models.VariableModel`."""
   keras_model = _create_test_cnn_model()
@@ -342,6 +335,7 @@ class SimpleFedAvgTest(tf.test.TestCase, parameterized.TestCase):
     batch = tff.tf_computation(deterministic_batch)()
     federated_data = [tf.data.Dataset.from_tensor_slices(batch).batch(1)]
 
+    loss = 1.0
     previous_loss = None
     for _ in range(10):
       server_state, outputs = it_process.next(server_state, federated_data)
@@ -368,6 +362,8 @@ class SimpleFedAvgTest(tf.test.TestCase, parameterized.TestCase):
         MnistModel, use_sequence_reduce=use_sequence_reduce
     )
     state = trainer.initialize()
+
+    loss = 1.0
     previous_loss = None
     for _ in range(10):
       state, outputs = trainer.next(state, train_data)

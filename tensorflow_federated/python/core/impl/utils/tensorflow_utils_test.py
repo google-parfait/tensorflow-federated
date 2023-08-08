@@ -695,13 +695,13 @@ class GraphUtilsTest(tf.test.TestCase):
         np.zeros([10, 0, 10], np.int32),
     ]
     self.assertEqual(len(elem), len(correct_list))
-    for k in range(len(elem)):
+    for k, _ in enumerate(elem):
       self.assertAllClose(elem[k], correct_list[k])
     unnamed_elem = tensorflow_utils.make_whimsy_element_for_type_spec(
         unnamedtuple
     )
     self.assertEqual(len(unnamed_elem), len(correct_list))
-    for k in range(len(unnamed_elem)):
+    for k, _ in enumerate(unnamed_elem):
       self.assertAllClose(unnamed_elem[k], correct_list[k])
 
   def test_nested_structures_equal(self):

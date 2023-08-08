@@ -927,7 +927,7 @@ class TensorFlowFunctionComputationTest(parameterized.TestCase):
       return v
 
     with self.subTest('variable_scope'):
-      bar = tensorflow_computation.experimental_tf_fn_computation(bar, tf.int32)
+      _ = tensorflow_computation.experimental_tf_fn_computation(bar, tf.int32)
       self.assertEqual(
           foo.type_signature.compact_representation(), '(int32 -> int32)'
       )
@@ -983,7 +983,7 @@ class TensorFlowFunctionComputationTest(parameterized.TestCase):
       @tensorflow_computation.experimental_tf_fn_computation(
           computation_types.SequenceType(tf.int32)
       )
-      def foo(x):
+      def _(x):
         return x
 
     except TypeError:
@@ -997,7 +997,7 @@ class TensorFlowFunctionComputationTest(parameterized.TestCase):
           computation_types.SequenceType(tf.int32)
       )
       @tf.function(input_signature=[tf.TensorSpec(shape=[], dtype=tf.int32)])
-      def foo(x):
+      def _(x):
         return x
 
   def test_fails_with_bad_types(self):
