@@ -16,8 +16,9 @@
 import collections
 from collections.abc import Callable
 import functools
+
 from absl.testing import parameterized
-import attr
+import attrs
 import numpy as np
 import tensorflow as tf
 import tensorflow_federated as tff
@@ -119,13 +120,13 @@ def _tff_learning_model_fn():
   )
 
 
-@attr.s
+@attrs.define
 class MnistVariables:
-  weights = attr.ib()
-  bias = attr.ib()
-  num_examples = attr.ib()
-  loss_sum = attr.ib()
-  accuracy_sum = attr.ib()
+  weights: float
+  bias: float
+  num_examples: int
+  loss_sum: float
+  accuracy_sum: float
 
 
 def _create_mnist_variables():

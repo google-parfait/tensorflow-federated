@@ -17,9 +17,9 @@ The TF functions for sever and client udpates.
 """
 
 import collections
-from typing import Union
+from typing import Any, Union
 
-import attr
+import attrs
 import tensorflow as tf
 import tensorflow_federated as tff
 
@@ -98,7 +98,7 @@ def keras_evaluate(model, test_data, metric):
   return metric.result()
 
 
-@attr.s(eq=False, frozen=True, slots=True)
+@attrs.define(eq=False, frozen=True)
 class ClientState:
   """Structure for state on the client.
 
@@ -109,11 +109,11 @@ class ClientState:
       the total rounds so far.
   """
 
-  client_index = attr.ib()
-  iters_count = attr.ib()
+  client_index: int
+  iters_count: int
 
 
-@attr.s(eq=False, frozen=True, slots=True)
+@attrs.define(eq=False, frozen=True)
 class ClientOutput:
   """Structure for outputs returned from clients during federated optimization.
 
@@ -129,13 +129,13 @@ class ClientOutput:
   -   `client_state`: The updated `ClientState`.
   """
 
-  weights_delta = attr.ib()
-  client_weight = attr.ib()
-  model_output = attr.ib()
-  client_state = attr.ib()
+  weights_delta: Any
+  client_weight: float
+  model_output: Any
+  client_state: ClientState
 
 
-@attr.s(eq=False, frozen=True, slots=True)
+@attrs.define(eq=False, frozen=True)
 class ServerState:
   """Structure for state on the server.
 
@@ -146,13 +146,13 @@ class ServerState:
   -   `total_iters_count`: The total number of iterations run on seen clients
   """
 
-  model_weights = attr.ib()
-  optimizer_state = attr.ib()
-  round_num = attr.ib()
-  total_iters_count = attr.ib()
+  model_weights: Any
+  optimizer_state: Any
+  round_num: int
+  total_iters_count: int
 
 
-@attr.s(eq=False, frozen=True, slots=True)
+@attrs.define(eq=False, frozen=True)
 class BroadcastMessage:
   """Structure for tensors broadcasted by server during federated optimization.
 
@@ -164,8 +164,8 @@ class BroadcastMessage:
        learning rate scheduling.
   """
 
-  model_weights = attr.ib()
-  round_num = attr.ib()
+  model_weights: Any
+  round_num: int
 
 
 @tf.function

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import attr
+import attrs
 import tensorflow as tf
 
 from tensorflow_federated.python.learning.models import keras_utils
@@ -70,7 +70,7 @@ class TaskUtilsTest(tf.test.TestCase):
       baseline_task.BaselineTask(create_dataset(0), tff_model_builder)
 
   def test_construct_raises_on_non_callable_model_fn(self):
-    with self.assertRaises(attr.exceptions.NotCallableError):
+    with self.assertRaises(attrs.exceptions.NotCallableError):
       baseline_task.BaselineTask(create_task_data(), 'bad_input')
 
   def test_construct_raises_on_non_tff_model(self):

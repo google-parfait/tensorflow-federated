@@ -15,7 +15,7 @@
 from collections.abc import Sequence
 from typing import Optional
 
-import attr
+import attrs
 import tensorflow as tf
 
 
@@ -29,7 +29,7 @@ def _check_names_are_strings(instance, attribute, value):
       )
 
 
-@attr.s(frozen=True, eq=False)
+@attrs.define(frozen=True, eq=False)
 class GraphSpec:
   """Container class for validating input to graph merging functions.
 
@@ -47,14 +47,14 @@ class GraphSpec:
       subject to the same restrictions as `in_names`.
   """
 
-  graph_def: tf.compat.v1.GraphDef = attr.ib(
-      validator=attr.validators.instance_of(tf.compat.v1.GraphDef)
+  graph_def: tf.compat.v1.GraphDef = attrs.field(
+      validator=attrs.validators.instance_of(tf.compat.v1.GraphDef)
   )
-  init_op: Optional[str] = attr.ib(
-      validator=attr.validators.instance_of((str, type(None)))
+  init_op: Optional[str] = attrs.field(
+      validator=attrs.validators.instance_of((str, type(None)))
   )
-  in_names: Sequence[str] = attr.ib(validator=_check_names_are_strings)
-  out_names: Sequence[str] = attr.ib(validator=_check_names_are_strings)
+  in_names: Sequence[str] = attrs.field(validator=_check_names_are_strings)
+  out_names: Sequence[str] = attrs.field(validator=_check_names_are_strings)
 
   def to_meta_graph_def(self):
     """Packs `GraphSpec` into a `tf.compat.v1.MetaGraphDef`.

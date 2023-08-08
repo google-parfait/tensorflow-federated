@@ -17,7 +17,7 @@ from typing import Any, NamedTuple
 
 from absl.testing import absltest
 from absl.testing import parameterized
-import attr
+import attrs
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import golden
@@ -466,10 +466,11 @@ class TensorFlowComputationTest(parameterized.TestCase):
         return a
 
   def test_check_returns_type_attrs_type(self):
-    @attr.s(frozen=True, eq=False, slots=True)
+
+    @attrs.define
     class MyAttrs:
-      a = attr.ib()
-      b = attr.ib()
+      a: int
+      b: int
 
     expected_return_type = MyAttrs(a=tf.int32, b=tf.int32)
 
@@ -755,10 +756,10 @@ class TensorFlowFunctionComputationTest(parameterized.TestCase):
     fields will not match up and this test will fail
     """
 
-    @attr.s
+    @attrs.define
     class TestAttrs:
-      q = attr.ib()
-      p = attr.ib()
+      q: Any
+      p: Any
 
     class TestTuple(NamedTuple):
       y: str
@@ -1140,10 +1141,11 @@ class TensorFlowFunctionComputationTest(parameterized.TestCase):
         return a
 
   def test_check_returns_type_attrs_type(self):
-    @attr.s(frozen=True, eq=False, slots=True)
+
+    @attrs.define(frozen=True, eq=False)
     class MyAttrs:
-      a = attr.ib()
-      b = attr.ib()
+      a: int
+      b: int
 
     expected_return_type = MyAttrs(a=tf.int32, b=tf.int32)
 

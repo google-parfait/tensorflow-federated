@@ -10,14 +10,14 @@
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # limitations under the License.
-"""Tests for container_utils."""
+
 import collections
 import dataclasses
 from typing import Any
 
 from absl.testing import absltest
 from absl.testing import parameterized
-import attr
+import attrs
 
 from tensorflow_federated.python.common_libs import named_containers
 
@@ -27,7 +27,7 @@ class TestDataclass:
   x: Any
 
 
-@attr.s(auto_attribs=True)
+@attrs.define
 class TestAttrClass:
   x: Any
 

@@ -18,7 +18,7 @@ from typing import Any
 
 from absl.testing import absltest
 from absl.testing import parameterized
-import attr
+import attrs
 import numpy as np
 import tensorflow as tf
 
@@ -39,7 +39,7 @@ class TestDataclass:
   y: Any
 
 
-@attr.s(auto_attribs=True)
+@attrs.define
 class TestAttrClass:
   x: Any
   y: Any

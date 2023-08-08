@@ -14,15 +14,16 @@
 """Preprocessing library for Stack Overflow next-word prediction tasks."""
 
 from collections.abc import Callable
+from typing import Any
 
-import attr
+import attrs
 import tensorflow as tf
 
 from tensorflow_federated.python.simulation.baselines import client_spec
 from tensorflow_federated.python.simulation.baselines.stackoverflow import constants
 
 
-@attr.s(eq=False, frozen=True)
+@attrs.define(eq=False, frozen=True)
 class SpecialTokens:
   """Structure for Special tokens.
 
@@ -33,10 +34,10 @@ class SpecialTokens:
     end_of_sentence: int - Special token for end of sentence.
   """
 
-  padding = attr.ib()
-  out_of_vocab = attr.ib()
-  beginning_of_sentence = attr.ib()
-  end_of_sentence = attr.ib()
+  padding: int
+  out_of_vocab: list[Any]
+  beginning_of_sentence: int
+  end_of_sentence: int
 
   def get_number_of_special_tokens(self):
     return 3 + len(self.out_of_vocab)

@@ -20,7 +20,7 @@ an AST either pointwise or serially.
 import collections
 from collections.abc import Collection, Sequence
 
-import attr
+import attrs
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
@@ -267,13 +267,15 @@ def get_normalized_call_dominant_lambda(
 _NamedBinding = tuple[str, building_blocks.Call]
 
 
-@attr.s
+@attrs.define
 class _IntrinsicDependencies:
-  uri_to_locals: dict[str, list[_NamedBinding]] = attr.ib(
+  uri_to_locals: dict[str, list[_NamedBinding]] = attrs.field(
       factory=lambda: collections.defaultdict(list)
   )
-  locals_dependent_on_intrinsics: list[_NamedBinding] = attr.ib(factory=list)
-  locals_not_dependent_on_intrinsics: list[_NamedBinding] = attr.ib(
+  locals_dependent_on_intrinsics: list[_NamedBinding] = attrs.field(
+      factory=list
+  )
+  locals_not_dependent_on_intrinsics: list[_NamedBinding] = attrs.field(
       factory=list
   )
 
@@ -354,12 +356,12 @@ def _compute_intrinsic_dependencies(
   return result
 
 
-@attr.s
+@attrs.define
 class _MergedIntrinsic:
-  uri: str = attr.ib()
-  args: building_blocks.ComputationBuildingBlock = attr.ib()
-  return_type: computation_types.Type = attr.ib()
-  unpack_to_locals: list[str] = attr.ib()
+  uri: str
+  args: building_blocks.ComputationBuildingBlock
+  return_type: computation_types.Type
+  unpack_to_locals: list[str]
 
 
 def _compute_merged_intrinsics(

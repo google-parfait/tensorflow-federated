@@ -14,12 +14,13 @@
 """Execution context for single-aggregation computations."""
 
 import asyncio
-from collections.abc import Awaitable, Sequence, Callable
+from collections.abc import Awaitable, Callable, Sequence
 import functools
 import math
 from typing import Any, Generic, Optional, TypeVar, Union
 
-import attr
+import attrs
+
 from tensorflow_federated.python.common_libs import async_utils
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
@@ -240,14 +241,14 @@ class MergeableCompForm:
     self.after_merge = after_merge
 
 
-@attr.s
+@attrs.define
 class _PartitioningValue:
   """Data class to hold info on traversal while partitioning into subrounds."""
 
-  payload = attr.ib()
-  num_remaining_clients = attr.ib()
-  num_remaining_partitions = attr.ib()
-  last_client_index = attr.ib()
+  payload: Any
+  num_remaining_clients: int
+  num_remaining_partitions: int
+  last_client_index: int
 
 
 def _partition_value(

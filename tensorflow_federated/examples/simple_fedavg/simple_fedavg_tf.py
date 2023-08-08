@@ -26,12 +26,15 @@ Communication-Efficient Learning of Deep Networks from Decentralized Data
     https://arxiv.org/abs/1602.05629
 """
 
-import attr
+from typing import Any
+
+import attrs
 import tensorflow as tf
 import tensorflow_federated as tff
 
 
-@attr.s(eq=False, frozen=True, slots=True)
+# TODO(b/295181362): Update from `Any` to a more specific type.
+@attrs.define(eq=False, frozen=True)
 class ClientOutput:
   """Structure for outputs returned from clients during federated optimization.
 
@@ -44,12 +47,12 @@ class ClientOutput:
       reflecting the results of training on the input dataset.
   """
 
-  weights_delta = attr.ib()
-  client_weight = attr.ib()
-  model_output = attr.ib()
+  weights_delta: Any
+  client_weight: tf.float32
+  model_output: Any
 
 
-@attr.s(eq=False, frozen=True, slots=True)
+@attrs.define(eq=False, frozen=True)
 class ServerState:
   """Structure for state on the server.
 
@@ -60,12 +63,12 @@ class ServerState:
     round_num: The current round in the training process.
   """
 
-  model = attr.ib()
-  optimizer_state = attr.ib()
-  round_num = attr.ib()
+  model: tff.learning.models.ModelWeights
+  optimizer_state: Any
+  round_num: int
 
 
-@attr.s(eq=False, frozen=True, slots=True)
+@attrs.define(eq=False, frozen=True)
 class BroadcastMessage:
   """Structure for tensors broadcasted by server during federated optimization.
 
@@ -78,8 +81,8 @@ class BroadcastMessage:
       rate scheduling.
   """
 
-  model_weights = attr.ib()
-  round_num = attr.ib()
+  model_weights: tff.learning.models.ModelWeights
+  round_num: int
 
 
 @tf.function

@@ -15,12 +15,10 @@
 import collections
 
 from absl.testing import parameterized
-import attr
+import attrs
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import structure
-
-ODict = collections.OrderedDict
 
 
 class StructTest(tf.test.TestCase, parameterized.TestCase):
@@ -452,10 +450,11 @@ class StructTest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(str(x), '<x=1,y=2>')
 
   def test_from_container_with_attrs_class(self):
-    @attr.s
+
+    @attrs.define
     class TestFoo:
-      x = attr.ib()
-      y = attr.ib()
+      x: int
+      y: int
 
     x = structure.from_container(TestFoo(1, 2))
     self.assertIsInstance(x, structure.Struct)
@@ -495,9 +494,18 @@ class StructTest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(str(x), '<indices=[[1]],values=[2],dense_shape=[5]>')
 
   @parameterized.named_parameters(
-      ('empty', ODict()),
-      ('flat', ODict(a=1, b=2)),
-      ('nested', ODict(a=1, b=2, c=ODict(d=3, e=ODict(f=4, g=5)))),
+      ('empty', collections.OrderedDict()),
+      ('flat', collections.OrderedDict(a=1, b=2)),
+      (
+          'nested',
+          collections.OrderedDict(
+              a=1,
+              b=2,
+              c=collections.OrderedDict(
+                  d=3, e=collections.OrderedDict(f=4, g=5)
+              ),
+          ),
+      ),
   )
   def test_from_container_asdict_roundtrip(self, dict_in):
     structure_repr = structure.from_container(dict_in, recursive=True)
@@ -589,11 +597,12 @@ class StructTest(tf.test.TestCase, parameterized.TestCase):
     )
 
   def test_update_struct_attrs(self):
-    @attr.s
+
+    @attrs.define
     class TestAttrsClass:
-      a = attr.ib()
-      b = attr.ib()
-      c = attr.ib()
+      a: int
+      b: int
+      c: int
 
     state = TestAttrsClass(1, 2, 3)
     state2 = structure.update_struct(state, c=7)
@@ -613,9 +622,23 @@ class StructTest(tf.test.TestCase, parameterized.TestCase):
       ('empty_tuple', ()),
       ('flat_tuple', (1, 2)),
       ('nested_tuple', (1, 2, (3, (4, 5)))),
-      ('flat_dict', ODict(a=1, b=2)),
-      ('nested_dict', ODict(a=1, b=2, c=ODict(d=3, e=ODict(f=4, g=5)))),
-      ('mixed', ODict(a=1, b=2, c=(3, ODict(d=4, e=5)))),
+      ('flat_dict', collections.OrderedDict(a=1, b=2)),
+      (
+          'nested_dict',
+          collections.OrderedDict(
+              a=1,
+              b=2,
+              c=collections.OrderedDict(
+                  d=3, e=collections.OrderedDict(f=4, g=5)
+              ),
+          ),
+      ),
+      (
+          'mixed',
+          collections.OrderedDict(
+              a=1, b=2, c=(3, collections.OrderedDict(d=4, e=5))
+          ),
+      ),
   )
   def test_to_odict_or_tuple_from_container_roundtrip(self, original):
     structure_repr = structure.from_container(original, recursive=True)
@@ -628,7 +651,9 @@ class StructTest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(structure.to_odict_or_tuple(x), ())
 
   def test_to_odict_or_tuple_mixed_nonrecursive(self):
-    s = ODict(a=1, b=2, c=(3, ODict(d=4, e=5)))
+    s = collections.OrderedDict(
+        a=1, b=2, c=(3, collections.OrderedDict(d=4, e=5))
+    )
     x = structure.from_container(s, recursive=False)
     self.assertEqual(s, structure.to_odict_or_tuple(x, recursive=False))
 

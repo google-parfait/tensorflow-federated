@@ -16,7 +16,7 @@ import collections
 import dataclasses
 from typing import Any
 
-import attr
+import attrs
 import numpy as np
 import tensorflow as tf
 
@@ -417,10 +417,11 @@ class GraphUtilsTest(tf.test.TestCase):
 
   @tensorflow_test_utils.graph_mode_test
   def test_capture_result_with_attrs_of_constants(self):
-    @attr.s
+
+    @attrs.define
     class TestFoo:
-      x = attr.ib()
-      y = attr.ib()
+      x: int
+      y: bool
 
     graph = tf.compat.v1.get_default_graph()
     type_spec, _ = tensorflow_utils.capture_result_from_graph(

@@ -14,9 +14,9 @@
 """Heavy hitters discovery using IBLT."""
 
 from collections.abc import Callable
-from typing import Optional
+from typing import Any, Optional
 
-import attr
+import attrs
 import numpy as np
 import tensorflow as tf
 
@@ -35,7 +35,7 @@ from tensorflow_federated.python.core.impl.types import placements
 _CharacterEncoding = chunkers.CharacterEncoding
 
 
-@attr.s(eq=False, frozen=True)
+@attrs.define(eq=False, frozen=True)
 class ServerOutput:
   """The container of results.
 
@@ -51,12 +51,12 @@ class ServerOutput:
       round. The value is in seconds since the epoch, in UTC.
   """
 
-  clients = attr.ib()
-  heavy_hitters = attr.ib()
-  heavy_hitters_unique_counts = attr.ib()
-  heavy_hitters_counts = attr.ib()
-  num_not_decoded = attr.ib()
-  round_timestamp = attr.ib()
+  clients: Any
+  heavy_hitters: Any
+  heavy_hitters_unique_counts: Any
+  heavy_hitters_counts: Any
+  num_not_decoded: Any
+  round_timestamp: Any
 
 
 def build_iblt_computation(
