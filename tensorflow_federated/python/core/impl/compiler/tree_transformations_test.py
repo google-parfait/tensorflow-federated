@@ -69,34 +69,6 @@ def _create_chained_whimsy_federated_maps(functions, arg):
   return call
 
 
-def _create_complex_computation():
-  tensor_type = computation_types.TensorType(tf.int32)
-  compiled = building_block_factory.create_compiled_identity(tensor_type, 'a')
-  federated_type = computation_types.FederatedType(tf.int32, placements.SERVER)
-  arg_ref = building_blocks.Reference('arg', federated_type)
-  bindings = []
-  results = []
-
-  def _bind(name, value):
-    bindings.append((name, value))
-    return building_blocks.Reference(name, value.type_signature)
-
-  for i in range(2):
-    called_federated_broadcast = (
-        building_block_factory.create_federated_broadcast(arg_ref)
-    )
-    called_federated_map = building_block_factory.create_federated_map(
-        compiled, _bind(f'broadcast_{i}', called_federated_broadcast)
-    )
-    called_federated_mean = building_block_factory.create_federated_mean(
-        _bind(f'map_{i}', called_federated_map), None
-    )
-    results.append(_bind(f'mean_{i}', called_federated_mean))
-  result = building_blocks.Struct(results)
-  block = building_blocks.Block(bindings, result)
-  return building_blocks.Lambda('arg', tf.int32, block)
-
-
 class RemoveMappedOrAppliedIdentityTest(parameterized.TestCase):
 
   def test_raises_type_error(self):

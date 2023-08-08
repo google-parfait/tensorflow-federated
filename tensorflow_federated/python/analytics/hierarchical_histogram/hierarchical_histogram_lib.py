@@ -419,11 +419,6 @@ def _check_positive(value, label):
     raise ValueError(f'{label} must be positive. Found {value}.')
 
 
-def _check_non_negative(value, label):
-  if value < 0:
-    raise ValueError(f'{label} must be non-negative. Found {value}.')
-
-
 def _check_membership(value, valid_set, label):
   if value not in valid_set:
     raise ValueError(f'`{label}` must be one of {valid_set}. Found {value}.')

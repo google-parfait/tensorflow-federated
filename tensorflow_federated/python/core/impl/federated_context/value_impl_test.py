@@ -52,7 +52,7 @@ class ValueTest(parameterized.TestCase):
         context_stack_impl.context_stack
     )
     with context_stack_impl.context_stack.install(fc_context):
-      super(ValueTest, self).run(result)
+      super().run(result)
 
   def bound_symbols(self):
     return context_stack_impl.context_stack.current.symbol_bindings
