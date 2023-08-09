@@ -26,13 +26,9 @@ _INPUT_PARAM_INDEX = 1
 class AggregationNotFederatedError(TypeError):
   """`TypeError` for aggregation functions not being federated."""
 
-  pass
-
 
 class AggregationPlacementError(TypeError):
   """`TypeError` for aggregation types not being placed as expected."""
-
-  pass
 
 
 class AggregationProcess(measured_process.MeasuredProcess):
