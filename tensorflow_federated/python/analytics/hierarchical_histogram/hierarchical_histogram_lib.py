@@ -14,8 +14,9 @@
 """The functions for creating the federated computation for hierarchical histogram aggregation."""
 
 import math
+from typing import Any
 
-import attr
+import attrs
 import numpy as np
 import tensorflow as tf
 
@@ -29,7 +30,7 @@ from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import iterative_process
 
 
-@attr.s(eq=False, frozen=True)
+@attrs.define(eq=False, frozen=True)
 class ServerOutput:
   """The container of results.
 
@@ -41,8 +42,8 @@ class ServerOutput:
       00:00:00 UTC).
   """
 
-  aggregated_hierarchical_histogram = attr.ib()
-  round_timestamp = attr.ib()
+  aggregated_hierarchical_histogram: tf.RaggedTensor
+  round_timestamp: Any
 
 
 def _discretized_histogram_counts(

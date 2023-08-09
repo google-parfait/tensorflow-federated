@@ -18,7 +18,7 @@ from typing import Any
 from unittest import mock
 
 from absl.testing import parameterized
-import attr
+import attrs
 import numpy as np
 import tensorflow as tf
 import tensorflow_privacy as tfp
@@ -117,12 +117,12 @@ def local_recon_model_fn():
   )
 
 
-@attr.s(eq=False, frozen=True)
+@attrs.define(eq=False, frozen=True)
 class MnistVariables:
   """Structure for variables in an MNIST model."""
 
-  weights = attr.ib()
-  bias = attr.ib()
+  weights: float
+  bias: float
 
 
 class MnistModel(reconstruction_model.ReconstructionModel):

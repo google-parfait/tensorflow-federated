@@ -14,9 +14,10 @@
 
 import collections
 import functools
+from typing import Any
 
 from absl.testing import absltest
-import attr
+import attrs
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
@@ -75,11 +76,11 @@ class ContextForTest(context_base.SyncContext):
     )
 
 
-@attr.s
+@attrs.define
 class Result:
-  arg = attr.ib()
-  arg_type = attr.ib()
-  zero_result = attr.ib()
+  arg: Any
+  arg_type: Any
+  zero_result: Any
 
 
 test_wrap = computation_wrapper.ComputationWrapper(

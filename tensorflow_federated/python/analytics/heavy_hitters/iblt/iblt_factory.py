@@ -14,9 +14,9 @@
 """Factory for string aggregation using IBLT."""
 
 import collections
-from typing import Optional
+from typing import Any, Optional
 
-import attr
+import attrs
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory
@@ -38,11 +38,11 @@ DATASET_KEY = 'key'
 DATASET_VALUE = 'value'
 
 
-@attr.s(eq=False, frozen=True)
+@attrs.define(eq=False, frozen=True)
 class ServerOutput:
-  output_strings = attr.ib()
-  string_values = attr.ib()
-  num_not_decoded = attr.ib()
+  output_strings: Any
+  string_values: Any
+  num_not_decoded: Any
 
 
 @tf.function

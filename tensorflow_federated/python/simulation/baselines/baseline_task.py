@@ -15,14 +15,14 @@
 
 from collections.abc import Callable
 
-import attr
+import attrs
 import tensorflow as tf
 
 from tensorflow_federated.python.learning.models import variable
 from tensorflow_federated.python.simulation.baselines import task_data
 
 
-@attr.s(frozen=True, init=True)
+@attrs.define(frozen=True, init=True)
 class BaselineTask:
   """Specification for a baseline learning simulation.
 
@@ -35,11 +35,11 @@ class BaselineTask:
       `datasets.element_type_structure`.
   """
 
-  datasets: task_data.BaselineTaskDatasets = attr.ib(
-      validator=attr.validators.instance_of(task_data.BaselineTaskDatasets)
+  datasets: task_data.BaselineTaskDatasets = attrs.field(
+      validator=attrs.validators.instance_of(task_data.BaselineTaskDatasets)
   )
-  model_fn: Callable[[], variable.VariableModel] = attr.ib(
-      validator=attr.validators.is_callable()
+  model_fn: Callable[[], variable.VariableModel] = attrs.field(
+      validator=attrs.validators.is_callable()
   )
 
   def __attrs_post_init__(self):

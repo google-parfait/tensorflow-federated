@@ -16,7 +16,7 @@
 import collections
 from typing import Any, Optional
 
-import attr
+import attrs
 import tensorflow as tf
 
 from tensorflow_federated.python.core.impl.computation import computation_base
@@ -27,7 +27,7 @@ from tensorflow_federated.python.core.templates import errors
 from tensorflow_federated.python.core.templates import iterative_process
 
 
-@attr.s(frozen=True, eq=False, slots=True)
+@attrs.define(frozen=True, eq=False)
 class MeasuredProcessOutput:
   """A structure containing the output of a `MeasuredProcess.next` computation.
 
@@ -44,9 +44,9 @@ class MeasuredProcessOutput:
       chained `MeasuredProcess`es.
   """
 
-  state = attr.ib()
-  result = attr.ib()
-  measurements = attr.ib()
+  state: Any
+  result: Any
+  measurements: Any
 
 
 class MeasuredProcess(iterative_process.IterativeProcess):

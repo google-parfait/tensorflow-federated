@@ -18,7 +18,7 @@ from unittest import mock
 
 from absl.testing import absltest
 from absl.testing import parameterized
-import attr
+import attrs
 import tensorflow as tf
 
 from tensorflow_federated.python.core.backends.native import execution_contexts
@@ -56,12 +56,12 @@ def _create_input_spec():
   )
 
 
-@attr.s(eq=False, frozen=True)
+@attrs.define(eq=False, frozen=True)
 class LinearModelVariables:
   """Structure for variables in `LinearModel`."""
 
-  weights = attr.ib()
-  bias = attr.ib()
+  weights: float
+  bias: float
 
 
 class LinearModel(reconstruction_model.ReconstructionModel):

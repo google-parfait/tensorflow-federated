@@ -13,12 +13,13 @@
 # limitations under the License.
 
 import collections
+from collections.abc import Mapping
 import dataclasses
 from typing import Any, OrderedDict
 
 from absl.testing import absltest
 from absl.testing import parameterized
-import attr
+import attrs
 import numpy as np
 import tensorflow as tf
 
@@ -276,10 +277,11 @@ class InferTypeTest(parameterized.TestCase, tf.test.TestCase):
     self.assertIs(t.b.python_container, collections.OrderedDict)
 
   def test_with_nested_attrs_class(self):
-    @attr.s
+
+    @attrs.define
     class TestAttrClass:
-      a = attr.ib()
-      b = attr.ib()
+      a: int
+      b: Mapping[str, object]
 
     t = type_conversions.infer_type(
         TestAttrClass(a=0, b=collections.OrderedDict(x=True, y=0.0))
@@ -769,10 +771,10 @@ class TypeToPyContainerTest(tf.test.TestCase):
         test_named_tuple(a=1, b=2.0),
     )
 
-    @attr.s
+    @attrs.define
     class TestFoo:
-      a = attr.ib()
-      b = attr.ib()
+      a: int
+      b: float
 
     self.assertEqual(
         type_conversions.type_to_py_container(
@@ -798,10 +800,10 @@ class TypeToPyContainerTest(tf.test.TestCase):
         computation_types.StructWithPythonType(types, test_named_tuple),
     )
 
-    @attr.s
+    @attrs.define
     class TestFoo:
-      a = attr.ib()
-      b = attr.ib()
+      a: object
+      b: object
 
     attr_converted_value = type_conversions.type_to_py_container(
         anon_tuple, computation_types.StructWithPythonType(types, TestFoo)

@@ -16,7 +16,7 @@ import collections
 import dataclasses
 from typing import Any
 
-import attr
+import attrs
 
 from tensorflow_federated.python.common_libs import py_typecheck
 
@@ -37,7 +37,5 @@ def attrs_class_to_odict(
 ) -> collections.OrderedDict[Any, Any]:
   """Shallow-copies an attr-class object to an ordered dict."""
   py_typecheck.check_attrs(attr_class_obj)
-  odict = attr.asdict(
-      attr_class_obj, dict_factory=collections.OrderedDict, recurse=False
-  )
-  return odict  # pytype:disable=bad-return-type
+  odict = collections.OrderedDict(attrs.asdict(attr_class_obj, recurse=False))
+  return odict

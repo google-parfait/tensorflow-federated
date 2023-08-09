@@ -15,7 +15,7 @@
 
 from typing import Optional
 
-import attr
+import attrs
 
 
 def _check_positive(instance, attribute, value):
@@ -24,7 +24,7 @@ def _check_positive(instance, attribute, value):
     raise ValueError(f'{attribute.name} must be positive. Found {value}.')
 
 
-@attr.s(eq=False, order=False, frozen=True)
+@attrs.define(eq=False, frozen=True)
 class ClientSpec:
   """Contains information for configuring clients within a training task.
 
@@ -43,25 +43,25 @@ class ClientSpec:
       task's dataset will be used. If set to `1`, no shuffling occurs.
   """
 
-  num_epochs: int = attr.ib(
-      validator=[attr.validators.instance_of(int), _check_positive],
+  num_epochs: int = attrs.field(
+      validator=[attrs.validators.instance_of(int), _check_positive],
       converter=int,
   )
-  batch_size: int = attr.ib(
-      validator=[attr.validators.instance_of(int), _check_positive],
+  batch_size: int = attrs.field(
+      validator=[attrs.validators.instance_of(int), _check_positive],
       converter=int,
   )
-  max_elements: Optional[int] = attr.ib(
+  max_elements: Optional[int] = attrs.field(
       default=None,
       validator=[
-          attr.validators.optional(attr.validators.instance_of(int)),
-          attr.validators.optional(_check_positive),
+          attrs.validators.optional(attrs.validators.instance_of(int)),
+          attrs.validators.optional(_check_positive),
       ],
   )
-  shuffle_buffer_size: Optional[int] = attr.ib(
+  shuffle_buffer_size: Optional[int] = attrs.field(
       default=None,
       validator=[
-          attr.validators.optional(attr.validators.instance_of(int)),
-          attr.validators.optional(_check_positive),
+          attrs.validators.optional(attrs.validators.instance_of(int)),
+          attrs.validators.optional(_check_positive),
       ],
   )

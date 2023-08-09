@@ -15,7 +15,7 @@
 
 from typing import Optional
 
-import attr
+import attrs
 import tensorflow as tf
 
 from tensorflow_federated.python.core.backends.native import compiler as native_compiler
@@ -109,12 +109,12 @@ def set_sync_test_cpp_execution_context(
   context_stack_impl.context_stack.set_default_context(context)
 
 
-@attr.s
+@attrs.define
 class DistributedConfiguration:
   """Class for distributed runtime configuration."""
 
-  server_mesh: Optional[tf.experimental.dtensor.Mesh] = attr.ib(default=None)
-  client_mesh: Optional[tf.experimental.dtensor.Mesh] = attr.ib(default=None)
+  server_mesh: Optional[tf.experimental.dtensor.Mesh] = None
+  client_mesh: Optional[tf.experimental.dtensor.Mesh] = None
 
   def __attrs_post_init__(self):
     if self.server_mesh is None and self.client_mesh is None:
