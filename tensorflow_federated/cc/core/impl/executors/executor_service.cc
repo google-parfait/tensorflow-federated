@@ -15,8 +15,6 @@ limitations under the License
 
 #include "tensorflow_federated/cc/core/impl/executors/executor_service.h"
 
-#include <grpcpp/support/status.h>
-
 #include <algorithm>
 #include <memory>
 #include <optional>
@@ -32,6 +30,7 @@ limitations under the License
 #include "absl/strings/str_join.h"
 #include "absl/strings/str_split.h"
 #include "absl/synchronization/mutex.h"
+#include "include/grpcpp/support/status.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_conversion.h"
