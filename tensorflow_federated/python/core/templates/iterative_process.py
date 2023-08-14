@@ -227,8 +227,8 @@ def is_stateful(process: IterativeProcess) -> bool:
     contains types other than `tff.types.StructType`, `False` otherwise.
   """
   state_type = process.state_type
-  if state_type.is_federated():
-    state_type = state_type.member  # pytype: disable=attribute-error
+  if isinstance(state_type, computation_types.FederatedType):
+    state_type = state_type.member
   return not type_analysis.contains_only(
       state_type, lambda t: isinstance(t, computation_types.StructType)
   )

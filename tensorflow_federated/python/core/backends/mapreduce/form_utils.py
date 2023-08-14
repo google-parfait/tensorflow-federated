@@ -115,18 +115,18 @@ def get_state_initialization_computation(
   Raises:
     TypeError: If the arguments are of the wrong types.
   """
-  initialize_tree = initialize_computation.to_building_block()
-  init_type = initialize_tree.type_signature
+  init_type = initialize_computation.type_signature
   _check_type_is_no_arg_fn(init_type, '`initialize`', TypeError)
   if (
-      not init_type.result.is_federated()  # pytype: disable=attribute-error
-      or init_type.result.placement != placements.SERVER  # pytype: disable=attribute-error
+      not isinstance(init_type.result, computation_types.FederatedType)
+      or init_type.result.placement is not placements.SERVER
   ):
     raise TypeError(
         'Expected `initialize` to return a single federated value '
         'placed at server (type `T@SERVER`), found return type:\n'
         f'{init_type.result}'  # pytype: disable=attribute-error
     )
+  initialize_tree = initialize_computation.to_building_block()
   initialize_tree, _ = tree_transformations.replace_intrinsics_with_bodies(
       initialize_tree
   )
@@ -270,17 +270,18 @@ def _check_function_signature_compatible_with_broadcast_form(
         f'{function_type.parameter}'
     )
   server_data_type, client_data_type = function_type.parameter  # pytype: disable=attribute-error
-  if not (
-      server_data_type.is_federated() and server_data_type.placement.is_server()
+  if (
+      not isinstance(server_data_type, computation_types.FederatedType)
+      or server_data_type.placement is not placements.SERVER
   ):
     raise TypeError(
         '`BroadcastForm` expects a computation whose first parameter is server '
         'data (a federated type placed at server) but found first parameter of '
         f'type:\n{server_data_type}'
     )
-  if not (
-      client_data_type.is_federated()
-      and client_data_type.placement.is_clients()
+  if (
+      not isinstance(client_data_type, computation_types.FederatedType)
+      or client_data_type.placement is not placements.CLIENTS
   ):
     raise TypeError(
         '`BroadcastForm` expects a computation whose first parameter is client '
@@ -288,7 +289,10 @@ def _check_function_signature_compatible_with_broadcast_form(
         f'of type:\n{client_data_type}'
     )
   result_type = function_type.result
-  if not (result_type.is_federated() and result_type.placement.is_clients()):  # pytype: disable=attribute-error
+  if (
+      not isinstance(result_type, computation_types.FederatedType)
+      or result_type.placement is not placements.CLIENTS
+  ):
     raise TypeError(
         '`BroadcastForm` expects a computation whose result is client data '
         '(a federated type placed at clients) but found result type:\n'
@@ -528,7 +532,7 @@ def _as_function_of_some_federated_subparameters(
           raise tree_transformations.ParameterSelectionError(path, bb)
         int_path.append(structure.name_to_index_map(selected_type)[index])
       selected_type = selected_type[index]
-    if not selected_type.is_federated():
+    if not isinstance(selected_type, computation_types.FederatedType):
       raise _NonFederatedSelectionError(
           'Attempted to rebind references to parameter selection path '
           f'{path} from type {bb.parameter_type}, but the value at that path '
@@ -1146,12 +1150,16 @@ def get_distribute_aggregate_form_for_computation(
           # If the arg is non-placed or server-placed, prepare to create a
           # federated broadcast that depends on it by normalizing it to a
           # server-placed value.
-          if not aggregation_arg.type_signature.is_federated():
-            has_placement_predicate = lambda x: x.type_signature.is_federated()
-            if (
-                tree_analysis.count(aggregation_arg, has_placement_predicate)
-                > 0
-            ):
+          if not isinstance(
+              aggregation_arg.type_signature, computation_types.FederatedType
+          ):
+
+            def _has_placement(type_spec):
+              return isinstance(
+                  type_spec.type_signature, computation_types.FederatedType
+              )
+
+            if tree_analysis.count(aggregation_arg, _has_placement) > 0:
               raise TypeError(
                   'DistributeAggregateForm cannot handle an aggregation '
                   f'intrinsic arg with type {aggregation_arg.type_signature}'

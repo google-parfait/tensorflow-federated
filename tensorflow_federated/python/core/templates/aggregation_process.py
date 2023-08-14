@@ -15,6 +15,7 @@
 
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.computation import computation_base
+from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import errors
 from tensorflow_federated.python.core.templates import measured_process
@@ -110,7 +111,9 @@ class AggregationProcess(measured_process.MeasuredProcess):
     # validation here easier as that must be true.
     super().__init__(initialize_fn, next_fn, next_is_multi_arg=True)
 
-    if not initialize_fn.type_signature.result.is_federated():
+    if not isinstance(
+        initialize_fn.type_signature.result, computation_types.FederatedType
+    ):
       raise AggregationNotFederatedError(
           'Provided `initialize_fn` must return a federated type, but found '
           f'return type:\n{initialize_fn.type_signature.result}\nTip: If you '
@@ -120,7 +123,11 @@ class AggregationProcess(measured_process.MeasuredProcess):
     next_types = structure.flatten(
         next_fn.type_signature.parameter
     ) + structure.flatten(next_fn.type_signature.result)
-    non_federated_types = [t for t in next_types if not t.is_federated()]
+    non_federated_types = [
+        t
+        for t in next_types
+        if not isinstance(t, computation_types.FederatedType)
+    ]
     if non_federated_types:
       offending_types_str = '\n- '.join(str(t) for t in non_federated_types)
       raise AggregationNotFederatedError(

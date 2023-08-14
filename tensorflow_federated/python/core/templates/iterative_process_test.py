@@ -147,14 +147,18 @@ def create_test_process(
 ) -> iterative_process.IterativeProcess:
   @tensorflow_computation.tf_computation
   def create_value():
+    if isinstance(type_spec, computation_types.FederatedType):
+      converted_type = type_spec.member
+    else:
+      converted_type = type_spec
     return type_conversions.structure_from_tensor_type_tree(
         lambda t: tf.zeros(dtype=t.dtype, shape=t.shape),
-        type_spec.member if type_spec.is_federated() else type_spec,
+        converted_type,
     )
 
   @federated_computation.federated_computation
   def init_fn():
-    if type_spec.is_federated():
+    if isinstance(type_spec, computation_types.FederatedType):
       return intrinsics.federated_eval(create_value, type_spec.placement)
     else:
       return create_value()
