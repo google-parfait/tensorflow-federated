@@ -1,3 +1,17 @@
+# Release 0.62.0
+
+## Breaking Changes
+
+*   Removed `context` argument from
+    `tff.learning.algorithms.build_personalization_eval_computation`. Now a
+    personalization function only takes a model, a train dataset, and a test
+    dataset as arguments.
+
+## Bug Fixes
+
+*   Fix a rare infinite loop issue caused by very small float values when using
+    `tff.learning.ddp_secure_aggregator`.
+
 # Release 0.61.0
 
 ## Major Features and Improvements
