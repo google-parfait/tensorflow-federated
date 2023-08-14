@@ -387,6 +387,12 @@ def _compute_merged_intrinsics(
   """
   results = []
   for default_call in intrinsic_defaults:
+    if not isinstance(default_call.function, building_blocks.Intrinsic):
+      raise ValueError(
+          "Expected 'default_call.function' to be a "
+          '`building_blocks.Intrinsic`, found '
+          f'`{type(default_call.function)}`.'
+      )
     uri = default_call.function.uri
     locals_for_uri = uri_to_locals[uri]
     if not locals_for_uri:
