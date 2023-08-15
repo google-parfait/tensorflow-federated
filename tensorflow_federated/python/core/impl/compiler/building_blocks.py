@@ -72,8 +72,7 @@ class ComputationBuildingBlock(typed_object.TypedObject, metaclass=abc.ABCMeta):
 
   @classmethod
   def from_proto(
-      cls: type['ComputationBuildingBlock'],
-      computation_proto: pb.Computation,
+      cls, computation_proto: pb.Computation
   ) -> 'ComputationBuildingBlock':
     """Returns an instance of a derived class based on 'computation_proto'.
 
@@ -307,10 +306,7 @@ class Selection(ComputationBuildingBlock):
   """
 
   @classmethod
-  def from_proto(
-      cls: type['Selection'],
-      computation_proto: pb.Computation,
-  ) -> 'Selection':
+  def from_proto(cls, computation_proto: pb.Computation) -> 'Selection':
     _check_computation_oneof(computation_proto, 'selection')
     selection = ComputationBuildingBlock.from_proto(
         computation_proto.selection.source
@@ -435,10 +431,7 @@ class Struct(ComputationBuildingBlock, structure.Struct):
   """
 
   @classmethod
-  def from_proto(
-      cls: type['Struct'],
-      computation_proto: pb.Computation,
-  ) -> 'Struct':
+  def from_proto(cls, computation_proto: pb.Computation) -> 'Struct':
     _check_computation_oneof(computation_proto, 'struct')
 
     def _element(
@@ -548,10 +541,7 @@ class Call(ComputationBuildingBlock):
   """
 
   @classmethod
-  def from_proto(
-      cls: type['Call'],
-      computation_proto: pb.Computation,
-  ) -> 'Call':
+  def from_proto(cls, computation_proto: pb.Computation) -> 'Call':
     _check_computation_oneof(computation_proto, 'call')
     fn = ComputationBuildingBlock.from_proto(computation_proto.call.function)
     arg_proto = computation_proto.call.argument
