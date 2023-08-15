@@ -491,7 +491,6 @@ class BoundVariableTracker(metaclass=abc.ABCMeta):
   @abc.abstractmethod
   def __str__(self):
     """Abstract string method required as context tree will delegate."""
-    pass
 
   def __eq__(self, other):
     """Base class equality checks names and values equal."""

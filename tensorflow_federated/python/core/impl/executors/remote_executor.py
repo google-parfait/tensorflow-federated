@@ -32,8 +32,6 @@ from tensorflow_federated.python.core.impl.executors import value_serialization
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 
-_STREAM_CLOSE_WAIT_SECONDS = 10
-
 
 class RemoteValue(executor_value_base.ExecutorValue):
   """A reference to a value embedded in a remotely deployed executor service."""
@@ -94,7 +92,6 @@ class RemoteExecutor(executor_base.Executor):
   def __init__(
       self,
       stub: remote_executor_stub.RemoteExecutorStub,
-      thread_pool_executor=None,
       dispose_batch_size=20,
       stream_structs: bool = False,
   ):
@@ -103,9 +100,6 @@ class RemoteExecutor(executor_base.Executor):
     Args:
       stub: An instance of stub used for communication with the remote executor
         service.
-      thread_pool_executor: Optional concurrent.futures.Executor used to wait
-        for the reply to a streaming RPC message. Uses the default Executor if
-        not specified.
       dispose_batch_size: The batch size for requests to dispose of remote
         worker values. Lower values will result in more requests to the remote
         worker, but will result in values being cleaned up sooner and therefore
