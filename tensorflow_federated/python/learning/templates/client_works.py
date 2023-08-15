@@ -44,7 +44,7 @@ class ClientResultTypeError(TypeError):
   """`TypeError` for incorrect structure of result of client work."""
 
 
-# TODO(b/240314933): Move this (or refactor this) to a more general location.
+# TODO: b/240314933 - Move this (or refactor this) to a more general location.
 def _is_allowed_client_data_type(type_spec: computation_types.Type) -> bool:
   """Determines whether a given type is a (possibly nested) sequence type."""
   if isinstance(type_spec, computation_types.SequenceType):
@@ -58,7 +58,7 @@ def _is_allowed_client_data_type(type_spec: computation_types.Type) -> bool:
     return False
 
 
-# TODO(b/240314933): Move this (or refactor this) to a more general location.
+# TODO: b/240314933 - Move this (or refactor this) to a more general location.
 def _type_check_initialize_fn(initialize_fn: computation_base.Computation):
   if not isinstance(
       initialize_fn.type_signature.result, computation_types.FederatedType
@@ -76,7 +76,7 @@ def _type_check_initialize_fn(initialize_fn: computation_base.Computation):
     )
 
 
-# TODO(b/240314933): Move this (or refactor this) to a more general location.
+# TODO: b/240314933 - Move this (or refactor this) to a more general location.
 def _check_next_fn_is_federated(next_fn: computation_base.Computation):
   """Checks that a given `next_fn` has federated inputs and outputs."""
   next_types = structure.flatten(
@@ -100,7 +100,7 @@ def _check_next_fn_is_federated(next_fn: computation_base.Computation):
     )
 
 
-# TODO(b/240314933): Move this (or refactor this) to a more general location.
+# TODO: b/240314933 - Move this (or refactor this) to a more general location.
 def _type_check_next_fn_parameters(next_fn: computation_base.Computation):
   """Validates the input types of `next_fn` in a `ClientWorkProcess`."""
   next_fn_param = next_fn.type_signature.parameter
@@ -134,7 +134,7 @@ def _type_check_next_fn_parameters(next_fn: computation_base.Computation):
     )
 
 
-# TODO(b/240314933): Move this (or refactor this) to a more general location.
+# TODO: b/240314933 - Move this (or refactor this) to a more general location.
 def _type_check_next_fn_result(next_fn: computation_base.Computation):
   """Validates the output types of `next_fn` in a `ClientWorkProcess`."""
   next_fn_result = next_fn.type_signature.result

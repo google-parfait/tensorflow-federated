@@ -39,7 +39,7 @@ from tensorflow_federated.python.learning.templates import model_delta_client_wo
 from tensorflow_federated.python.learning.templates import type_checks
 
 
-# TODO(b/190334722): Add SLO guarantees / backwards compatibility guarantees.
+# TODO: b/190334722 - Add SLO guarantees / backwards compatibility guarantees.
 class LearningAlgorithmState(NamedTuple):
   """A structure representing the state of a learning process.
 
@@ -270,7 +270,7 @@ def _validate_args(initial_model_weights_fn, model_weights_distributor,
     raise TypeError('Provided model_update_aggregator must be weighted.')
   py_typecheck.check_type(model_finalizer, finalizers.FinalizerProcess)
 
-  # TODO(b/190334722): Consider adding custom error messages.
+  # TODO: b/190334722 - Consider adding custom error messages.
   distributor_param = model_weights_distributor.next.type_signature.parameter
   distributor_result = model_weights_distributor.next.type_signature.result
   client_work_param = client_work.next.type_signature.parameter

@@ -7,7 +7,7 @@ package(
         "//tensorflow_federated/python/core:core_users",
         "//tensorflow_federated/python/core/backends/xla:xla_packages",
 
-        # TODO(b/233800373): Remove dependency from `test` to `native`.
+        # TODO: b/233800373 - Remove dependency from `test` to `native`.
         "//tensorflow_federated/python/core/backends/test:test_packages",
     ],
 )

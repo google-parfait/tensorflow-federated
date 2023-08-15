@@ -140,7 +140,7 @@ def _calculate_client_update_statistics_with_norm(client_norms, client_weights):
       client_norms_squared, client_weights
   )
 
-  # TODO(b/197972289): Add SecAgg compatibility to these measurements
+  # TODO: b/197972289 - Add SecAgg compatibility to these measurements
   sum_of_client_weights = intrinsics.federated_sum(client_weights)
   client_weights_squared = intrinsics.federated_map(
       _square_value, client_weights

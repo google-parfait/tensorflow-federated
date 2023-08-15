@@ -1,6 +1,6 @@
 # TensorFlow Federated Research
 
-<!-- TODO(b/161814368): After other documentation in TFF about Research -->
+<!-- TODO: b/161814368 - After other documentation in TFF about Research -->
 
 This directory contained research projects that use TFF. This directory is
 deprecated. Please check out the new

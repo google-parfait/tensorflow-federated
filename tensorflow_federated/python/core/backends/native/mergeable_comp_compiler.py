@@ -192,7 +192,7 @@ def compile_to_mergeable_comp_form(
   )
 
   if before_agg.type_signature.parameter is not None:
-    # TODO(b/147499373): If None-arguments were uniformly represented as empty
+    # TODO: b/147499373 - If None-arguments were uniformly represented as empty
     # tuples, we would be able to avoid this (and related) ugly casing.
 
     @federated_computation.federated_computation(

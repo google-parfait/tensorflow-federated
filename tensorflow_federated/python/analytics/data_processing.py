@@ -296,7 +296,7 @@ def get_unique_elements(
   return unique_element_list
 
 
-# TODO(b/192336690): Improve the efficiency of get_unique_elements_with_counts.
+# TODO: b/192336690 - Improve the efficiency of get_unique_elements_with_counts.
 # The current implementation iterates `dataset` twice, which is not optimal.
 def get_unique_elements_with_counts(
     dataset: tf.data.Dataset, string_max_bytes: Optional[int] = None

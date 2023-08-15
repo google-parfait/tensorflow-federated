@@ -67,7 +67,7 @@ ROTATION_TYPES = [
 # and/or minimizing the inflation of the l1/l2 norms upon rounding). Capping the
 # scaling factor to 1e6 avoids these overflow issues without compromising
 # utility.
-# TODO(b/223427213): Adapt the bitwidth whenever the scale is too high.
+# TODO: b/223427213 - Adapt the bitwidth whenever the scale is too high.
 MAX_SCALE_FACTOR = 1e6
 
 
@@ -94,7 +94,7 @@ class DistributedDpSumFactory(factory.UnweightedAggregationFactory):
   This aggregator accepts tensors or structures of tensors with integer or
   floating dtypes, and keeps the value type/structure after aggregation.
 
-  TODO(b/221465205): Add exact privacy accounting for DDP using new accounting
+  TODO: b/221465205 - Add exact privacy accounting for DDP using new accounting
   APIs.
 
   To obtain concrete (epsilon, delta) guarantees, one could use the analysis
@@ -452,7 +452,7 @@ class DistributedDpSumFactory(factory.UnweightedAggregationFactory):
     # aggregator. Please print it to figure out how to correctly unpack the
     # needed states. This is especially needed when you add, remove, or change
     # any of the core composed aggregators.
-    # TODO(b/222162205): Simplify how we compose states of nested aggregators.
+    # TODO: b/222162205 - Simplify how we compose states of nested aggregators.
     rotation_state = agg_state  # Concat has no states.
     l2_clip_state, _ = rotation_state
     discrete_state = l2_clip_state['inner_agg']

@@ -495,7 +495,7 @@ class BoundVariableTracker(metaclass=abc.ABCMeta):
 
   def __eq__(self, other):
     """Base class equality checks names and values equal."""
-    # TODO(b/130890785): Delegate value-checking to
+    # TODO: b/130890785 - Delegate value-checking to
     # `building_blocks.ComputationBuildingBlock`.
     if self is other:
       return True

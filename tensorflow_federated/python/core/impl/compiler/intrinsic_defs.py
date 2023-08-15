@@ -72,7 +72,7 @@ class IntrinsicDef:
     self._broadcast_kind = broadcast_kind
     _intrinsic_registry[str(uri)] = self
 
-  # TODO(b/113112885): Add support for an optional type checking function that
+  # TODO: b/113112885 - Add support for an optional type checking function that
   # can verify whether this intrinsic is applicable to given kinds of arguments,
   # e.g., to allow sum-like functions to be applied only to arguments that are
   # composed of tensors as leaves of a possible nested structure.
@@ -104,11 +104,11 @@ class IntrinsicDef:
     return "IntrinsicDef('{}')".format(self._uri)
 
 
-# TODO(b/113112885): Perhaps add a way for these to get auto-registered to
+# TODO: b/113112885 - Perhaps add a way for these to get auto-registered to
 # enable things like lookup by URI, etc., similarly to how it's handled in the
 # placements.py.
 
-# TODO(b/113112885): Define the generic equivalents of all operators below,
+# TODO: b/113112885 - Define the generic equivalents of all operators below,
 # i.e., intrinsics that support arbitrary placements, to allow the federated
 # operators to be decomposed into expressions that might involve one or more
 # layers of intermediate aggregators. The type signatures of these generic
@@ -539,7 +539,7 @@ FEDERATED_ZIP_AT_SERVER = IntrinsicDef(
     ),
 )
 
-# TODO(b/122728050): Define GENERIC_DIVIDE, GENERIC_MULTIPLY, and GENERIC_ONE
+# TODO: b/122728050 - Define GENERIC_DIVIDE, GENERIC_MULTIPLY, and GENERIC_ONE
 # to support intrinsic reductions (see the uses in intrinsic_bodies.py for
 # the motivation and usage in support of which we need to define semantics).
 
@@ -548,7 +548,7 @@ FEDERATED_ZIP_AT_SERVER = IntrinsicDef(
 # natural manner for tensors, tuples, federated types, possibly sequences, and
 # maybe even functions (although it's unclear if such generality is desirable).
 #
-# TODO(b/113123410): Define the range of supported computation_types.
+# TODO: b/113123410 - Define the range of supported computation_types.
 #
 # Type signature: <T,T> -> T
 GENERIC_PLUS = IntrinsicDef(
@@ -588,7 +588,7 @@ GENERIC_MULTIPLY = IntrinsicDef(
 # Generic zero operator that represents zero-filled values of diverse types (to
 # be defined, but generally similar to that supported by GENERIC_ADD).
 #
-# TODO(b/113123410): Define the range of supported computation_types.
+# TODO: b/113123410 - Define the range of supported computation_types.
 #
 # Type signature: T
 GENERIC_ZERO = IntrinsicDef(
@@ -661,7 +661,7 @@ def uri_to_intrinsic_def(uri) -> Optional[IntrinsicDef]:
   return _intrinsic_registry.get(uri)
 
 
-# TODO(b/254770431): Add documentation explaining the implications of setting
+# TODO: b/254770431 - Add documentation explaining the implications of setting
 # broadcast_kind for an intrinsic.
 def get_broadcast_intrinsics() -> list[IntrinsicDef]:
   return [
@@ -671,7 +671,7 @@ def get_broadcast_intrinsics() -> list[IntrinsicDef]:
   ]
 
 
-# TODO(b/254770431): Add documentation explaining the implications of setting
+# TODO: b/254770431 - Add documentation explaining the implications of setting
 # aggregation_kind for an intrinsic.
 def get_aggregation_intrinsics() -> list[IntrinsicDef]:
   return [

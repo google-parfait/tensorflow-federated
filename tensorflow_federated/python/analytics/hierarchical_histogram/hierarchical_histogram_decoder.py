@@ -21,9 +21,9 @@ import tensorflow as tf
 
 from tensorflow_federated.python.analytics.hierarchical_histogram import build_tree_from_leaf
 
-# TODO(b/194028367): Re-organize the below class into several functions.
+# TODO: b/194028367 - Re-organize the below class into several functions.
 
-# TODO(b/193976902): Add lazy tag to the hierarchical histogram when it is not
+# TODO: b/193976902 - Add lazy tag to the hierarchical histogram when it is not
 # consistent and `use_efficient` is `True` to improve amortized performance on
 # multiple queries.
 
@@ -411,7 +411,7 @@ class HierarchicalHistogramDecoder:
     if layer == self._num_layers - 1:
       return index
 
-    # TODO(b/193976080): make this a binary search to improve performance when
+    # TODO: b/193976080 - make this a binary search to improve performance when
     # arity is large.
     exclusive_left_children_sum = 0.0
     for child_index in range(index * self._arity, (index + 1) * self._arity):

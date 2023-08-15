@@ -59,7 +59,7 @@ def tf_computation_serializer(
     ValueError: If the signature of the target is not compatible with the given
       parameter type.
   """
-  # TODO(b/113112108): Support a greater variety of target type signatures,
+  # TODO: b/113112108 - Support a greater variety of target type signatures,
   # with keyword args or multiple args corresponding to elements of a tuple.
   # Document all accepted forms with examples in the API, and point to there
   # from here.

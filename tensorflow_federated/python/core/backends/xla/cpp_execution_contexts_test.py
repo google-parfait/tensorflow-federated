@@ -123,10 +123,10 @@ class CppExecutionContextsTest(absltest.TestCase):
     def comp(x):
       return intrinsics.federated_sum(x)
 
-    # TODO(b/27340091): use a TFF specific error message after converting the
+    # TODO: b/27340091 - use a TFF specific error message after converting the
     # result coming out of the execution stack.
     with self.assertRaisesRegex(Exception, 'Cannot embed a federated value'):
-      # TODO(b/255978089): implement intrinsic lowering using JAX computations,
+      # TODO: b/255978089 - implement intrinsic lowering using JAX computations,
       # the compiler currently generates TF logic which will fail.
       # self.assertEqual(comp([1, 2, 3]), 6)
       comp([1, 2, 3])
@@ -138,10 +138,10 @@ class CppExecutionContextsTest(absltest.TestCase):
     def comp(x):
       return intrinsics.federated_mean(x)
 
-    # TODO(b/27340091): use a TFF specific error message after converting the
+    # TODO: b/27340091 - use a TFF specific error message after converting the
     # result coming out of the execution stack.
     with self.assertRaisesRegex(Exception, 'Cannot embed a federated value'):
-      # TODO(b/255978089): implement intrinsic lowering using JAX computations,
+      # TODO: b/255978089 - implement intrinsic lowering using JAX computations,
       # the compiler currently generates TF logic which will fail.
       # self.assertEqual(comp([1.0, 2.0, 3.0]), 2.0)
       comp([1.0, 2.0, 3.0])

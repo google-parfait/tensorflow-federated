@@ -412,7 +412,7 @@ def save_functional_model(
   x_spec, y_spec = functional_model.input_spec
 
   # Serialize predict_on_batch, once for training, once for non-training.
-  # TODO(b/198150431): try making `training` a `tf.Tensor` parameter to remove
+  # TODO: b/198150431 - try making `training` a `tf.Tensor` parameter to remove
   # the need to for serializing two different function graphs.
   def make_concrete_flat_predict_on_batch(training: bool):
     """Create a concrete predict_on_batch function that has flattened output.

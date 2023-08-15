@@ -60,4 +60,4 @@ values = add_one_to_all_clients(values)
 >>> [3, 4, 5]
 ```
 
-TODO(b/153500547): Describe TF vs TFF vs Python example.
+TODO: b/153500547 - Describe TF vs TFF vs Python example.

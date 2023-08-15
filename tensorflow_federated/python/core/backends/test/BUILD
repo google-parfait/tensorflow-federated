@@ -6,7 +6,7 @@ package(
         ":test_packages",
         "//tensorflow_federated/python/core:core_users",
 
-        # TODO(b/233801300): Remove dependency from `mapreduce` to `test`.
+        # TODO: b/233801300 - Remove dependency from `mapreduce` to `test`.
         "//tensorflow_federated/python/core/backends/mapreduce:mapreduce_packages",
     ],
 )

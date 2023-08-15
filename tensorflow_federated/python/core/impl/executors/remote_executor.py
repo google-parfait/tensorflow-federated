@@ -88,7 +88,7 @@ class RemoteValue(executor_value_base.ExecutorValue):
 class RemoteExecutor(executor_base.Executor):
   """The remote executor is a local proxy for a remote executor instance."""
 
-  # TODO(b/134543154): Switch to using an asynchronous gRPC client so we don't
+  # TODO: b/134543154 - Switch to using an asynchronous gRPC client so we don't
   # have to block on all those calls.
 
   def __init__(

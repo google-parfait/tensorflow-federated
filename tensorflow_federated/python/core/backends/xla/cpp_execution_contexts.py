@@ -53,7 +53,7 @@ def create_sync_local_cpp_execution_context(
       leaf_executor_fn=leaf_executor_fn,
   )
 
-  # TODO(b/255978089): implement lowering to federated_aggregate to create JAX
+  # TODO: b/255978089 - implement lowering to federated_aggregate to create JAX
   # computations instead of TensorFlow, similar to "desugar intrinsics" in the
   # native backend.
   return sync_execution_context.SyncExecutionContext(

@@ -127,7 +127,7 @@ def test_finalizer():
 
 class ComposeLearningProcessTest(tf.test.TestCase):
 
-  # TODO(b/246395691): Use mocks to test `compose_learning_process`, instead
+  # TODO: b/246395691 - Use mocks to test `compose_learning_process`, instead
   # of actual execution using the basic FedAvg composer below.
 
   def test_learning_process_composes(self):
@@ -271,8 +271,8 @@ class ComposeLearningProcessTest(tf.test.TestCase):
           bad_finalizer,
       )
 
-  # TODO(b/190334722): Add more tests that assert early errors are raised in the
-  # _validate_args method, when adding custom error messages.
+  # TODO: b/190334722 - Add more tests that assert early errors are raised in
+  # the _validate_args method, when adding custom error messages.
 
 
 class VanillaFedAvgTest(tf.test.TestCase, parameterized.TestCase):

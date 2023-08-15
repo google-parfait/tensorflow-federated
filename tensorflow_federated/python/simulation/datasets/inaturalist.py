@@ -329,7 +329,7 @@ def load_data(
     return _generate_data_from_image_dir(image_dir, cache_dir, split)
 
 
-# TODO(b/231165858): Rename to create_synthetic
+# TODO: b/231165858 - Rename to create_synthetic
 def get_synthetic() -> ClientData:
   """Returns a small synthetic dataset for testing.
 

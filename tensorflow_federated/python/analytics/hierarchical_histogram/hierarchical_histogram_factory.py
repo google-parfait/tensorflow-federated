@@ -170,7 +170,7 @@ def create_hierarchical_histogram_aggregation_factory(
     # (3) If `dp_mechanism` is in `DISTRIBUTED_DP_MECHANISMS`, should be
     #     `SecureModularSumFactory`, with modulus = 2**(bits-1).
     elif dp_mechanism in ['distributed-discrete-gaussian']:
-      # TODO(b/196312838): Please add scaling to the distributed case once we
+      # TODO: b/196312838 - Please add scaling to the distributed case once we
       # have a stable guideline for setting scaling factor to improve
       # performance and avoid overflow. The below test is to make sure that
       # modular clipping happens with small probability so the accuracy of the

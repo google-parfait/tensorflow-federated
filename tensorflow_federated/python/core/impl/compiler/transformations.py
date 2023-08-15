@@ -550,7 +550,7 @@ def _merge_args(
   raise TypeError(f'Cannot merge args of type: {abstract_parameter_type}')
 
 
-# TODO(b/266565233): Remove during MapReduceForm and BroadcastForm cleanup.
+# TODO: b/266565233 - Remove during MapReduceForm and BroadcastForm cleanup.
 def force_align_and_split_by_intrinsics(
     comp: building_blocks.Lambda,
     intrinsic_defaults: list[building_blocks.Call],
@@ -712,7 +712,7 @@ def force_align_and_split_by_intrinsics(
 
   after_param_name = next(name_generator)
   if comp.parameter_type is not None:
-    # TODO(b/147499373): If None-arguments were uniformly represented as empty
+    # TODO: b/147499373 - If None-arguments were uniformly represented as empty
     # tuples, we would be able to avoid this (and related) ugly casing.
     after_param_type = computation_types.StructType([
         ('original_arg', comp.parameter_type),

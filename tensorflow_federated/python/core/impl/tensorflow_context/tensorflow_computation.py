@@ -275,7 +275,7 @@ def _extract_bindings(
       # the keys in Mapping types (note: namedtuple is not a mapping), though
       # TFF does _NOT_ sort when constructing StructType. Here we need to change
       # the method of iteration depending on the container type.
-      # TODO(b/257258116): Refactor to a generic component that can be used
+      # TODO: b/257258116 - Refactor to a generic component that can be used
       # across TFF when needing to reconcile TFF Struct traversal with
       # tf.nest.flatten.
       def field_iterator(
@@ -356,7 +356,7 @@ class _TensorFlowFunctionTracingStrategy:
 
     # Disabling variable lifting does not work on XLA devices so it is required
     # that the `tf.function` tracing _NOT_ jit compile.
-    # TODO(b/210930091): remove explicit jit_compile=False after local
+    # TODO: b/210930091 - remove explicit jit_compile=False after local
     # (non-lifted) variables are supported in TF2XLA Bridge.
     @tf.function(jit_compile=False)
     def fn_without_variable_lifting(packed_args=None):

@@ -246,7 +246,7 @@ def capture_result_from_graph(
     )
     return type_spec, binding
 
-  # TODO(b/113112885): The emerging extensions for serializing SavedModels may
+  # TODO: b/113112885 - The emerging extensions for serializing SavedModels may
   # end up introducing similar concepts of bindings, etc., we should look here
   # into the possibility of reusing some of that code when it's available.
   if isinstance(result, TENSOR_REPRESENTATION_TYPES):
@@ -751,7 +751,7 @@ def append_to_list_structure_for_element_type_spec(nested, value, type_spec):
   if value is None:
     return
   type_spec = computation_types.to_type(type_spec)
-  # TODO(b/113116813): This could be made more efficient, but for now we won't
+  # TODO: b/113116813 - This could be made more efficient, but for now we won't
   # need to worry about it as this is an odd corner case.
   if isinstance(value, structure.Struct):
     elements = structure.to_elements(value)
@@ -989,7 +989,7 @@ def fetch_value_in_session(sess, value):
       tensors and anonoymous tuples.
   """
   py_typecheck.check_type(sess, tf.compat.v1.Session)
-  # TODO(b/113123634): Investigate handling `list`s and `tuple`s of
+  # TODO: b/113123634 - Investigate handling `list`s and `tuple`s of
   # `tf.data.Dataset`s and what the API would look like to support this.
   if isinstance(value, type_conversions.TF_DATASET_REPRESENTATION_TYPES):
     with sess.graph.as_default():
@@ -1210,7 +1210,7 @@ def uniquify_shared_names_with_suffix(
     graph_def: tf.compat.v1.GraphDef, suffix: str
 ) -> tf.compat.v1.GraphDef:
   """Appends unique identifier to any shared names present in `graph`."""
-  # TODO(b/117428091): Upgrade our TF serialization mechanisms in order to
+  # TODO: b/117428091 - Upgrade our TF serialization mechanisms in order to
   # unblock using more modern TF compositional constructs, and avoid direct
   # proto manipulation as is happening here.
   num_empty_shared_names = 0

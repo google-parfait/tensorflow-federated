@@ -204,7 +204,7 @@ class ComputationBuildingBlock(typed_object.TypedObject, metaclass=abc.ABCMeta):
     """Uncached, internal version of `proto`."""
     raise NotImplementedError
 
-  # TODO(b/113112885): Add memoization after identifying a suitable externally
+  # TODO: b/113112885 - Add memoization after identifying a suitable externally
   # available standard library that works in Python 2/3.
 
   @abc.abstractmethod

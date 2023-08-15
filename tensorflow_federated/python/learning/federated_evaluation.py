@@ -173,7 +173,7 @@ def build_functional_local_evaluation(
       predictions = tf.nest.flatten(batch_output)[0]
       batch_num_examples = tf.shape(predictions)[0]
 
-      # TODO(b/272099796): Update `update_metrics_state` of FunctionalModel
+      # TODO: b/272099796 - Update `update_metrics_state` of FunctionalModel
       metrics_state = model.update_metrics_state(
           metrics_state,
           batch_output=variable.BatchOutput(
@@ -283,7 +283,7 @@ def _build_federated_evaluation(
   """Builds a federated evaluation computation for a `tff.learning.models.VariableModel`."""
   # Construct the model first just to obtain the metadata and define all the
   # types needed to define the computations that follow.
-  # TODO(b/124477628): Ideally replace the need for stamping throwaway models
+  # TODO: b/124477628 - Ideally replace the need for stamping throwaway models
   # with some other mechanism.
   with tf.Graph().as_default():
     model = model_fn()
@@ -311,7 +311,7 @@ def _build_federated_evaluation(
   )
   def server_eval(server_model_weights, federated_dataset):
     if broadcast_process is not None:
-      # TODO(b/179091838): Zip the measurements from the broadcast_process with
+      # TODO: b/179091838 - Zip the measurements from the broadcast_process with
       # the result of `model_metrics` below to avoid dropping these metrics.
       broadcast_output = broadcast_process.next(
           broadcast_process.initialize(), server_model_weights
@@ -364,7 +364,7 @@ def _build_functional_federated_evaluation(
   )
   def federated_eval(server_weights, client_data):
     if broadcast_process is not None:
-      # TODO(b/179091838): Zip the measurements from the broadcast_process with
+      # TODO: b/179091838 - Zip the measurements from the broadcast_process with
       # the result of `model_metrics` below to avoid dropping these metrics.
       broadcast_output = broadcast_process.next(
           broadcast_process.initialize(), server_weights

@@ -61,7 +61,7 @@ class NoClientAggregationsTest(parameterized.TestCase):
   @tff.test.with_contexts(*test_contexts.get_all_contexts())
   def test_empty_mean_returns_nan(self):
     self.skipTest('b/200970992')
-    # TODO(b/200970992): Standardize handling of this case. We currently have a
+    # TODO: b/200970992 - Standardize handling of this case. We currently have a
     # ZeroDivisionError, a RuntimeError, and a context that returns nan.
 
     @tff.federated_computation(tff.type_at_clients(tf.float32))

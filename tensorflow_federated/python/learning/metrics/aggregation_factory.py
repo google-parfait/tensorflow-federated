@@ -99,7 +99,7 @@ def _intialize_unfinalized_metrics_accumulators(
   )
 
 
-# TODO(b/227811468): Support other inner aggregators for SecAgg and DP.
+# TODO: b/227811468 - Support other inner aggregators for SecAgg and DP.
 class SumThenFinalizeFactory(factory.UnweightedAggregationFactory):
   """Aggregation Factory that sums and then finalizes the metrics.
 
@@ -369,7 +369,7 @@ def _check_user_metric_value_range(value_range: UserMetricValueRange):
     )
 
 
-# TODO(b/233054212): re-enable lint
+# TODO: b/233054212 - re-enable lint
 def create_default_secure_sum_quantization_ranges(
     local_unfinalized_metrics_type: computation_types.StructWithPythonType,
     lower_bound: Union[int, float] = DEFAULT_FIXED_SECURE_LOWER_BOUND,
@@ -455,7 +455,7 @@ def create_default_secure_sum_quantization_ranges(
   )
 
 
-# TODO(b/233054212): re-enable lint
+# TODO: b/233054212 - re-enable lint
 # pylint: disable=g-bare-generic
 def fill_missing_values_with_defaults(
     default_values: MetricValueRangeDict, user_values: UserMetricValueRangeDict
@@ -508,7 +508,8 @@ def fill_missing_values_with_defaults(
 _DELIMITER = '/'
 
 
-# TODO(b/222112465): Avoid converting floats to strings as it may cause problem.
+# TODO: b/222112465 - Avoid converting floats to strings as it may cause
+# problem.
 # Helper function for factory keys used in secure summation.
 # A factory key is uniquely defined by three values: lower bound, upper bound,
 # and tensor dtype. In secure summation, we will create a aggregation process
@@ -553,7 +554,7 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
       secure aggregation processes.
   """
 
-  # TODO(b/233054212): re-enable lint
+  # TODO: b/233054212 - re-enable lint
   # pylint: disable=g-bare-generic
   def __init__(
       self, metric_value_ranges: Optional[UserMetricValueRangeDict] = None

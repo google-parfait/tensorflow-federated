@@ -63,7 +63,7 @@ TFE_TensorHandle* TFE_DTENSOR_CopyToMesh(TFE_Context* context,
 // DTensor handle.
 // Note that input handle is expected to be DTensor handle, passing a regular
 // tensor to Relayout will result in a invalid argument status.
-// TODO(b/256948367): Relayout does not support complex dtypes and some dtypes
+// TODO: b/256948367 - Relayout does not support complex dtypes and some dtypes
 // on GPU. Add documentation on supported types and fix the support for dtypes.
 TFE_TensorHandle* TFE_DTENSOR_Relayout(TFE_Context* context,
                                        TFE_TensorHandle* handle,

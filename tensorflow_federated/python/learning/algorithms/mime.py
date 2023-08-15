@@ -103,7 +103,7 @@ def _build_client_update_fn_for_mime_lite(
           num_examples = tf.shape(output.predictions, out_type=tf.int64)[0]
         else:
           num_examples = tf.cast(output.num_examples, tf.int64)
-        # TODO(b/161529310): We flatten and convert to tuple, as tf.data
+        # TODO: b/161529310 - We flatten and convert to tuple, as tf.data
         # iterators would try to stack the tensors in list into a single tensor.
         gradients = tuple(
             tf.nest.flatten(tape.gradient(output.loss, model_weights.trainable))
@@ -162,7 +162,7 @@ def _build_client_update_fn_for_mime_lite(
       )
       model_output = model.report_local_unfinalized_metrics()
 
-      # TODO(b/122071074): Consider moving this functionality into aggregation.
+      # TODO: b/122071074 - Consider moving this functionality into aggregation.
       client_weights_delta, has_non_finite_delta = (
           tensor_utils.zero_all_if_any_non_finite(client_weights_delta)
       )
@@ -418,7 +418,7 @@ def _build_functional_client_update_fn_for_mime_lite(
         predictions = tf.nest.flatten(batch_output)[0]
         batch_num_examples = tf.shape(predictions)[0]
 
-        # TODO(b/272099796): Update `update_metrics_state` of FunctionalModel
+        # TODO: b/272099796 - Update `update_metrics_state` of FunctionalModel
         metrics_state = model.update_metrics_state(
             metrics_state,
             batch_output=variable.BatchOutput(

@@ -635,7 +635,7 @@ class FunctionalModelTest(tf.test.TestCase, parameterized.TestCase):
     path = self.get_temp_dir()
     serialization.save_functional_model(functional_model, path)
 
-  # TODO(b/261852229): move this test model to `test_save_functional_model`
+  # TODO: b/261852229 - move this test model to `test_save_functional_model`
   # above once FunctionalModel serialization is fixed to not back constant
   # tensors into the initialization graph.
   def test_save_too_large_functional_model_fails(self):

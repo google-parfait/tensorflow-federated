@@ -273,7 +273,7 @@ class CreateBinaryOperatorTest(parameterized.TestCase):
 
 class CreateBinaryOperatorWithUpcastTest(parameterized.TestCase):
 
-  # TODO(b/142795960): arguments in parameterized are called before test main.
+  # TODO: b/142795960 - arguments in parameterized are called before test main.
   # `tf.constant` will error out on GPU and TPU without proper initialization.
   # A suggested workaround is to use numpy as argument and transform to TF
   # tensor inside the function.

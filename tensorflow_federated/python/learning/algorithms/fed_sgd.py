@@ -260,7 +260,7 @@ def _build_functional_client_update(
             for accumulator, gradient in zip(accumulated_gradients, gradients)
         )
 
-      # TODO(b/272099796): Update `update_metrics_state` of FunctionalModel
+      # TODO: b/272099796 - Update `update_metrics_state` of FunctionalModel
       metrics_state = model.update_metrics_state(
           metrics_state,
           batch_output=variable.BatchOutput(

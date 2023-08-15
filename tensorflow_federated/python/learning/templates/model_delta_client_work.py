@@ -45,7 +45,7 @@ from tensorflow_federated.python.learning.templates import client_works
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
 
-# TODO(b/213433744): Make this method private.
+# TODO: b/213433744 - Make this method private.
 def build_model_delta_update_with_tff_optimizer(
     model_fn: Callable[[], variable.VariableModel],
     *,
@@ -110,13 +110,13 @@ def build_model_delta_update_with_tff_optimizer(
 
     def initial_state_for_reduce_fn():
       initial_num_examples = tf.zeros(shape=[], dtype=tf.int64)
-      # TODO(b/161529310): We flatten and convert the trainable specs to tuple,
+      # TODO: b/161529310 - We flatten and convert the trainable specs to tuple,
       # as "for batch in data:" pattern would try to stack the tensors in list.
       trainable_tensor_specs = tf.nest.map_structure(
           lambda v: tf.TensorSpec(v.shape, v.dtype),
           tuple(tf.nest.flatten(model_weights.trainable)),
       )
-      # TODO(b/245968233): Reduce to a single `initialize` call once TFF
+      # TODO: b/245968233 - Reduce to a single `initialize` call once TFF
       # optimizers can inject hyperparameters upon initialization.
       optimizer_state = optimizer.initialize(trainable_tensor_specs)
       if optimizer_hparams is not None:
@@ -133,7 +133,7 @@ def build_model_delta_update_with_tff_optimizer(
     )
     model_output = model.report_local_unfinalized_metrics()
 
-    # TODO(b/122071074): Consider moving this functionality into
+    # TODO: b/122071074 - Consider moving this functionality into
     # tff.federated_mean?
     client_update, has_non_finite_delta = (
         tensor_utils.zero_all_if_any_non_finite(client_update)
@@ -152,7 +152,7 @@ def build_model_delta_update_with_tff_optimizer(
   return client_update
 
 
-# TODO(b/213433744): Make this method private.
+# TODO: b/213433744 - Make this method private.
 def build_model_delta_update_with_keras_optimizer(
     model_fn, weighting, use_experimental_simulation_loop: bool = False
 ):
@@ -193,7 +193,7 @@ def build_model_delta_update_with_keras_optimizer(
       grads_and_vars = zip(gradients, model_weights.trainable)
       optimizer.apply_gradients(grads_and_vars)
 
-      # TODO(b/199782787): Add a unit test for a model that does not compute
+      # TODO: b/199782787 - Add a unit test for a model that does not compute
       # `num_examples` in its forward pass.
       if output.num_examples is None:
         num_examples_sum += tf.shape(output.predictions, out_type=tf.int64)[0]
@@ -213,7 +213,7 @@ def build_model_delta_update_with_keras_optimizer(
     )
     model_output = model.report_local_unfinalized_metrics()
 
-    # TODO(b/122071074): Consider moving this functionality into
+    # TODO: b/122071074 - Consider moving this functionality into
     # tff.federated_mean?
     client_update, has_non_finite_delta = (
         tensor_utils.zero_all_if_any_non_finite(client_update)
@@ -472,7 +472,7 @@ def build_functional_model_delta_update(
       num_examples += tf.cast(batch_num_examples, tf.int64)
       model_weights = (trainable_weights, non_trainable_weights)
 
-      # TODO(b/272099796): Update `update_metrics_state` of FunctionalModel
+      # TODO: b/272099796 - Update `update_metrics_state` of FunctionalModel
       metrics_state = model.update_metrics_state(
           metrics_state,
           batch_output=variable.BatchOutput(

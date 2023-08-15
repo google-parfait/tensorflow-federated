@@ -871,7 +871,7 @@ class GetMapReduceFormTest(FederatedFormTestCase, parameterized.TestCase):
     example = mapreduce_test_utils.get_mnist_training_example()
     comp = form_utils.get_computation_for_map_reduce_form(example.mrf)
 
-    # TODO(b/208887729): We disable grappler to work around attempting to hoist
+    # TODO: b/208887729 - We disable grappler to work around attempting to hoist
     # transformed functions of the same name into the eager context. When this
     # execution is C++-backed, this can go away.
     grappler_config = tf.compat.v1.ConfigProto()

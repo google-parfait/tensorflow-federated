@@ -140,11 +140,11 @@ class XlaExecutor(executor_base.Executor):
   the use of this executor is limited to incubation and testing.
   """
 
-  # TODO(b/175888145): Reach full functional parity with the eager TF executor.
+  # TODO: b/175888145 - Reach full functional parity with the eager TF executor.
 
-  # TODO(b/175888145): Add support for explicitly specifying devices.
+  # TODO: b/175888145 - Add support for explicitly specifying devices.
 
-  # TODO(b/175888145): There's a dependency here on the caller knowing what if
+  # TODO: b/175888145 - There's a dependency here on the caller knowing what if
   # any are the valid device names, and since executor construction in some
   # configurations (e.g., in simulations) can be lazy (e.g., because it can be
   # a function of cardinality), errors can manifest at runtime. Consider ways

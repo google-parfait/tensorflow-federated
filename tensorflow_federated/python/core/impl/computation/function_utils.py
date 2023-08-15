@@ -308,7 +308,7 @@ def _infer_unpack_needed(
   Returns:
     A `bool` indicating whether or not to unpack.
   """
-  # TODO(b/113112885): Revisit whether the 3-way 'unpack' knob is sufficient
+  # TODO: b/113112885 - Revisit whether the 3-way 'unpack' knob is sufficient
   # for our needs, or more options are needed.
   if should_unpack not in [True, False, None]:
     raise TypeError(
@@ -563,7 +563,7 @@ class PolymorphicComputation:
       TypeError: if the concrete functions created by the factory are of the
         wrong computation_types.
     """
-    # TODO(b/113112885): We may need to normalize individuals args, such that
+    # TODO: b/113112885 - We may need to normalize individuals args, such that
     # the type is more predictable and uniform (e.g., if someone supplies an
     # unordered dictionary), possibly by converting dict-like and tuple-like
     # containers into `Struct`s.

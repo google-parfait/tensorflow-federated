@@ -323,7 +323,7 @@ class StructValue : public Value {
 
 // Returns Executor Value in flattened order as per bindings. This follows the
 // same semantics as used by Bind.
-// TODO(b/256948367): Extract this function to a common library, since used by
+// TODO: b/256948367 - Extract this function to a common library, since used by
 // both tensorflow_executor and dtensor_executor.
 absl::StatusOr<ExecutorValue> FromTensorsAndBindingStructure(
     const v0::TensorFlow::Binding& binding_structure,
@@ -395,7 +395,7 @@ class ComputationValue : public Value {
           value_pb.computation().tensorflow().result(), layout_map, mesh,
           converter);
     }
-    // TODO(b/256948367): Add creating eager_computation object from
+    // TODO: b/256948367 - Add creating eager_computation object from
     // Computation->tensorflow_function.
     return absl::InvalidArgumentError(
         "Only tensorflow Computation type is supported.");
@@ -576,7 +576,7 @@ class DTensorExecutor : public ExecutorBase<ValueFuture> {
           // nested structure, etc). So I think this implies that we will need
           // to implement Call to respect this invariant (if your function
           // returns a structure, you will need to create a StructValue)
-          // TODO(b/256948367): Confirm that createSelection from result of
+          // TODO: b/256948367 - Confirm that createSelection from result of
           // CreateCall works as expected.
           return values[0]->ElementAt(index);
         },

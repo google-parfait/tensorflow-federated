@@ -72,7 +72,7 @@ class ConcreteComputation(computation_base.Computation):
     )
 
   def to_building_block(self):
-    # TODO(b/161560999): currently destroys annotated type.
+    # TODO: b/161560999 - currently destroys annotated type.
     # This should perhaps be fixed by adding `type_parameter` to `from_proto`.
     return building_blocks.ComputationBuildingBlock.from_proto(
         self._computation_proto

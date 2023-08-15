@@ -218,7 +218,7 @@ class CoupledHyperEdgeHasher:
     `hash_range` is evenly divided into a number of buckets. The hashed value of
     `input_string` is mapped to one of the bucket.
 
-    TODO(b/158684105): Update this function to directly map the hash to the
+    TODO: b/158684105 - Update this function to directly map the hash to the
     index rather than converting hash -> float -> index.
 
     Args:

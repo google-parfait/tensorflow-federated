@@ -87,7 +87,7 @@ def count_tensorflow_variables_in(comp):
   )
 
   def _node_is_variable(node):
-    # TODO(b/137887596): Follow up on ways to count Variables on the GraphDef
+    # TODO: b/137887596 - Follow up on ways to count Variables on the GraphDef
     # level.
     op_name = str(node.op).lower()
     return (

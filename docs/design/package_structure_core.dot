@@ -19,11 +19,11 @@ digraph {
   backends -> templates
   templates -> execution_contexts [arrowhead="none", style="invisible"]
 
-  // TODO(b/233800075): Remove dependency from `native` to `mapreduce`.
+  // TODO: b/233800075 - Remove dependency from `native` to `mapreduce`.
   mapreduce -> native [dir=back, color="#ff0000"]
-  // TODO(b/233800373): Remove dependency from `test` to `native`.
+  // TODO: b/233800373 - Remove dependency from `test` to `native`.
   native -> backends_test [dir=back, color="#ff0000"]
-  // TODO(b/233801300): Remove dependency from `mapreduce` to `test`.
+  // TODO: b/233801300 - Remove dependency from `mapreduce` to `test`.
   mapreduce -> backends_test [color="#ff0000"]
 
   subgraph cluster_core_1 {

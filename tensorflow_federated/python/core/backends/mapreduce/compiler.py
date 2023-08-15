@@ -515,7 +515,7 @@ def parse_tff_to_tf(comp, grappler_config_proto):
   """
   tf_parsed = compile_local_computation_to_tensorflow(comp)
 
-  # TODO(b/184883078): Remove this check and trust Grappler to disable itself
+  # TODO: b/184883078 - Remove this check and trust Grappler to disable itself
   # based on the `disable_meta_optimizer` config.
   should_skip_grappler = (
       grappler_config_proto.HasField('graph_options')

@@ -122,7 +122,7 @@ class DistributionProcess(measured_process.MeasuredProcess):
       )
 
 
-# TODO(b/190334722): Replace with a factory pattern similar to tff.aggregators.
+# TODO: b/190334722 - Replace with a factory pattern similar to tff.aggregators.
 def build_broadcast_process(value_type: computation_types.Type):
   """Builds `DistributionProcess` directly broadcasting values.
 

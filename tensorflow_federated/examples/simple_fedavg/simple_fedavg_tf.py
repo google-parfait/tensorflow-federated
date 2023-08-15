@@ -33,7 +33,7 @@ import tensorflow as tf
 import tensorflow_federated as tff
 
 
-# TODO(b/295181362): Update from `Any` to a more specific type.
+# TODO: b/295181362 - Update from `Any` to a more specific type.
 @attrs.define(eq=False, frozen=True)
 class ClientOutput:
   """Structure for outputs returned from clients during federated optimization.

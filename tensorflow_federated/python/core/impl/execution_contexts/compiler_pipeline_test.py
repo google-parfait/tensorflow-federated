@@ -42,7 +42,7 @@ class CompilerPipelineTest(absltest.TestCase):
     compiled_comp = pipeline.compile(comp)
     self.assertEqual(compiled_comp.value, 5)
 
-    # TODO(b/113123410): Expand the test with more structural invariants.
+    # TODO: b/113123410 - Expand the test with more structural invariants.
 
 
 if __name__ == '__main__':
