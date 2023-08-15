@@ -60,6 +60,14 @@ main() {
     usage
   fi
 
+  # Check Python package sizes.
+  local actual_size="$(du -b "${package}" | cut -f1)"
+  local maximum_size=80000000  # 80 MiB
+  if [ "${actual_size}" -ge "${maximum_size}" ]; then
+    echo "Error: expected $(basename ${package}) to be less than ${maximum_size} bytes; it was ${actual_size}." 1>&2
+    exit 1
+  fi
+
   # Create a working directory.
   local temp_dir="$(mktemp -d)"
   trap "rm -rf ${temp_dir}" EXIT

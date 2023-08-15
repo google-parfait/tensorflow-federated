@@ -81,14 +81,14 @@ main() {
       --plat-name=manylinux_2_31_x86_64
   cp "${temp_dir}/dist/"* "${output_dir}"
 
-  # Check wheel file sizes.
+  # Check Python package sizes.
+  local package="$(ls "${output_dir}/tensorflow_federated-"*".whl" | head -n1)"
+  local actual_size="$(du -b "${package}" | cut -f1)"
   local maximum_size=80000000  # 80 MiB
-  for package_file in "${temp_dir}"/dist/tensorflow_federated-*.whl; do
-    local actual_size="$(du -b "${package_file}" | cut -f1)"
-    if [ "${actual_size}" -ge "${maximum_size}" ]; then
-      echo "Expected $(basename ${package_file}) to be less than ${maximum_size} bytes; it was ${actual_size}." 1>&2
-    fi
-  done
+  if [ "${actual_size}" -ge "${maximum_size}" ]; then
+    echo "Error: expected $(basename ${package}) to be less than ${maximum_size} bytes; it was ${actual_size}." 1>&2
+    exit 1
+  fi
 
   # Cleanup.
   deactivate
