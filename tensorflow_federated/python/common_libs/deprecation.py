@@ -21,7 +21,7 @@ import warnings
 _T = TypeVar('_T')
 
 
-# TODO(b/269491402): Delete this decorator and use
+# TODO: b/269491402 - Delete this decorator and use
 # `typing_extensions.deprecated`, when it is available.
 def deprecated(
     msg: str,

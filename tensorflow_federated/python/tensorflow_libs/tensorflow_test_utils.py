@@ -42,7 +42,7 @@ def graph_mode_test(test_fn):
   return wrapped_test_fn
 
 
-# TODO(b/137602785): bring GPU test back after the fix for `wrap_function`.
+# TODO: b/137602785 - bring GPU test back after the fix for `wrap_function`.
 def skip_test_for_gpu(test_fn):
   """Decorator for a test to be skipped in GPU tests.
 
@@ -82,7 +82,7 @@ def create_logical_multi_gpus(memory_limit=128):
     )
 
 
-# TODO(b/160896627): Kokoro GPU tests provide multi-GPU environment by default,
+# TODO: b/160896627 - Kokoro GPU tests provide multi-GPU environment by default,
 # we use this decorator to skip dataset.reduce in multi-GPU environment.
 def skip_test_for_multi_gpu(test_fn):
   """Decorator for a test to be skipped in multi GPU environment.

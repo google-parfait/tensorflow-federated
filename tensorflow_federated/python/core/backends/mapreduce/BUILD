@@ -6,7 +6,7 @@ package(
         ":mapreduce_packages",
         "//tensorflow_federated/python/core:core_users",
 
-        # TODO(b/233800075): Remove dependency from `native` to `mapreduce`.
+        # TODO: b/233800075 - Remove dependency from `native` to `mapreduce`.
         "//tensorflow_federated/python/core/backends/native:native_packages",
     ],
 )

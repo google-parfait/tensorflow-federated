@@ -268,7 +268,7 @@ def create_mobilenet_v2(
       input_shape, alpha, pooling, num_groups, dropout_prob, num_classes
   )
 
-  # TODO(b/265363369): Support `channels_first` image format once the
+  # TODO: b/265363369 - Support `channels_first` image format once the
   # GroupNormalizaiton index issue is fixed.
   if tf.keras.backend.image_data_format() == 'channels_last':
     row_axis, col_axis = (0, 1)

@@ -121,7 +121,7 @@ def build_personalization_eval_computation(
     ValueError: If `max_num_clients` is not positive.
   """
   # Obtain the types by constructing the model first.
-  # TODO(b/124477628): Replace it with other ways of handling metadata.
+  # TODO: b/124477628 - Replace it with other ways of handling metadata.
   with tf.Graph().as_default():
     model = model_fn()
     model_weights_type = model_weights_lib.weights_type_from_model(model)
@@ -170,7 +170,7 @@ def build_personalization_eval_computation(
 
     # WARNING: Collecting information from clients can be risky. Users have to
     # make sure that it is proper to collect those metrics from clients.
-    # TODO(b/147889283): Add a link to the TFF doc once it exists.
+    # TODO: b/147889283 - Add a link to the TFF doc once it exists.
     sampling_output = aggregation_process.next(
         aggregation_process.initialize(), client_final_metrics  # No state.
     )

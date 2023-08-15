@@ -23,7 +23,7 @@ def is_tf_function(fn):
   Returns:
     True iff `fn` is a function wrapped with a `tf.function` decorator.
   """
-  # TODO(b/113112885): Add a cleaner way to check for
+  # TODO: b/113112885 - Add a cleaner way to check for
   # `tensorflow.python.eager.def_function.Function`, or whether a function is
   # wrapped in `tf.function`.
   return hasattr(fn, 'python_function')

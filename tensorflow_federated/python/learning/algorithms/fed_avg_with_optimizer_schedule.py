@@ -147,7 +147,7 @@ def build_scheduled_client_work(
     # We also compute the learning rate at the server, in order to expose the
     # measurement to the user.
     learning_rate = intrinsics.federated_map(tf_learning_rate_fn, state)
-    # TODO(b/268530457): Determine if we can broadcast the learning rate.
+    # TODO: b/268530457 - Determine if we can broadcast the learning rate.
     client_result, model_outputs = intrinsics.federated_map(
         client_update_computation, (weights, client_data, round_num_at_clients)
     )

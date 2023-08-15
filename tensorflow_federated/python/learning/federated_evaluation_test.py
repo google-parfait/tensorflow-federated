@@ -187,7 +187,7 @@ def _model_fn_from_keras():
           bias_initializer='zeros',
           activation=None)
   ], name='my_model')  # pyformat: disable
-  # TODO(b/165666045): pyformat would create a big gap here
+  # TODO: b/165666045 - pyformat would create a big gap here
   return keras_utils.from_keras_model(
       keras_model,
       input_spec=collections.OrderedDict(
@@ -434,7 +434,7 @@ class FederatedEvaluationTest(parameterized.TestCase):
     # processing, etc).
     mock_model_fn = mock.Mock(side_effect=TestModel)
     federated_evaluation.build_federated_evaluation(mock_model_fn)
-    # TODO(b/186451541): reduce the number of calls to model_fn.
+    # TODO: b/186451541 - reduce the number of calls to model_fn.
     self.assertEqual(mock_model_fn.call_count, 2)
 
   def test_no_unsecure_aggregation_with_secure_metrics_finalizer(self):

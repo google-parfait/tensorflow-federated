@@ -285,7 +285,8 @@ abstract types in addition to those defined earlier:
 * `T` is the type of the temporary state.
 """
 
-# TODO(b/138261370): Cover this in the general set of guidelines for deployment.
+# TODO: b/138261370 - Cover this in the general set of guidelines for
+# deployment.
 
 from tensorflow_federated.python.core.backends.mapreduce.compiler import consolidate_and_extract_local_processing
 from tensorflow_federated.python.core.backends.mapreduce.compiler import parse_tff_to_tf

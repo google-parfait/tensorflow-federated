@@ -376,7 +376,7 @@ def create_resnet(
         'only positive integers.'
     )
 
-  # TODO(b/265363369): Support `channels_first` image format once the
+  # TODO: b/265363369 - Support `channels_first` image format once the
   # GroupNormalizaiton index issue is fixed.
   if tf.keras.backend.image_data_format() != 'channels_last':
     raise ValueError(

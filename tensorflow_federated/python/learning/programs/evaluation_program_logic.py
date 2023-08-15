@@ -329,7 +329,7 @@ class EvaluationManager:
     """
 
     async def run_and_record_completion():
-      # TODO(b/150782658): re-enable pytype when fixed.
+      # TODO: b/150782658 - re-enable pytype when fixed.
       await _run_evaluation(  # pytype: disable=bad-return-type
           train_round_num,
           state_manager,

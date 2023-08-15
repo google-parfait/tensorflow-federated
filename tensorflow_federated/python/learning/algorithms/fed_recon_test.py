@@ -1166,7 +1166,7 @@ class TrainingProcessTest(tf.test.TestCase, parameterized.TestCase):
         loss_fn=tf.keras.losses.SparseCategoricalCrossentropy,
         client_optimizer_fn=_get_keras_optimizer_fn(),
     )
-    # TODO(b/186451541): Reduce the number of calls to model_fn.
+    # TODO: b/186451541 - Reduce the number of calls to model_fn.
     self.assertEqual(mock_model_fn.call_count, 3)
 
 

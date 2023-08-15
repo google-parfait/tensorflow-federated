@@ -46,7 +46,7 @@ def check_nested_equal(nested_x, nested_y, eq_fn=operator.eq):
       raise ValueError('{x} != {y}'.format(x=x, y=y))
 
 
-# TODO(b/124544593): Rename to_var_odict for consistency.
+# TODO: b/124544593 - Rename to_var_odict for consistency.
 def to_var_dict(variables):
   """Returns an `OrderedDict` of `vars`, keyed by names.
 

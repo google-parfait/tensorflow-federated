@@ -130,7 +130,7 @@ absl::StatusOr<std::shared_ptr<Executor>> CreateRemoteExecutorStack(
   if (remaining_clients == 0) {
     auto federated_cardinalities = cardinalities;
     federated_cardinalities.insert_or_assign(kClientsUri, 0);
-    // TODO(b/256948367): Expose separate ExecutorFn for client side leaf
+    // TODO: b/256948367 - Expose separate ExecutorFn for client side leaf
     // executor.
     return CreateReferenceResolvingExecutor(TFF_TRY(CreateFederatingExecutor(
         /*server_child=*/server, /*client_child=*/server,

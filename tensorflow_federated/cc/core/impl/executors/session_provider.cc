@@ -129,7 +129,7 @@ void SetDevice(std::string_view device, tensorflow::GraphDef* graph_def,
     // Annotating ReduceDataset with _xla_compile_device_type will denote to
     // Tensorflow to decompose the op into dataset iteration and reduce_fn and
     // compile the reduce_fn.
-    // TODO(b/233627338): Currently only supported for TPU.  Enable for CPU/GPU
+    // TODO: b/233627338 - Currently only supported for TPU.  Enable for CPU/GPU
     // once MLIR-based TF2XLA bridge supports CPU/GPU.
     if (node_pb.op() == "ReduceDataset" &&
         !(strcmp(device_type, tensorflow::DEVICE_TPU))) {
@@ -142,7 +142,7 @@ void SetDevice(std::string_view device, tensorflow::GraphDef* graph_def,
     } else if (absl::StartsWith(node_pb.op(), "IteratorGetNext") ||
                node_pb.op() == "MakeIterator" ||
                absl::StartsWith(node_pb.op(), "AnonymousIteratorV")) {
-      // TODO(b/276782974): We must avoid forcing the Iterator ops on the GPU,
+      // TODO: b/276782974 - We must avoid forcing the Iterator ops on the GPU,
       // which will happen below because GPU kernels exist. TF will determine
       // that the iterator is on the host and correctly place the node for us,
       // but this will cause issues if we eagerly put the GetNext on the

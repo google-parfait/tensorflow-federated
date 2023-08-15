@@ -79,7 +79,7 @@ def _binding_to_tensor_indexes(binding):
 class ComputationCallable(typed_object.TypedObject):
   """An executor callable that encapsulates the logic of an XLA computation."""
 
-  # TODO(b/175888145): It may be more efficient for internal representation of
+  # TODO: b/175888145 - It may be more efficient for internal representation of
   # any structured values to be a flat list to avoid the unnecessary overheads
   # of packing and unpacking during calls, etc. To discuss and institute this
   # in a follow-up, possibly applying the same ideas across all the leaf-level

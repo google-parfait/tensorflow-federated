@@ -91,7 +91,7 @@ class ClientScheduledFedAvgTest(parameterized.TestCase):
         client_optimizer_fn=optimizer_fn,
     )
 
-    # TODO(b/268530457): Investigate if we can/should reduce this to 1 call.
+    # TODO: b/268530457 - Investigate if we can/should reduce this to 1 call.
     # Called twice, once at the clients (to build the relevant optimizer) and
     # once at the server (to create the relevant measurement.)
     self.assertEqual(mock_learning_rate_fn.call_count, 2)

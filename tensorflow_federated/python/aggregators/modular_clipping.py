@@ -33,7 +33,7 @@ from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
 
 
-# TODO(b/195870431): The below factory will be removed in the near future.
+# TODO: b/195870431 - The below factory will be removed in the near future.
 class ModularClippingSumFactory(factory.UnweightedAggregationFactory):
   """An `UnweightedAggregationFactory` for element-wise modular clipping.
 

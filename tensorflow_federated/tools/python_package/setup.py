@@ -47,7 +47,7 @@ could be deployed to diverse runtime environments. Included with TFF is a
 single-machine simulation runtime for experiments. Please visit the
 tutorials and try it out yourself!
 """
-# TODO(b/124800187): Keep in sync with the contents of README.
+# TODO: b/124800187 - Keep in sync with the contents of README.
 
 import setuptools
 

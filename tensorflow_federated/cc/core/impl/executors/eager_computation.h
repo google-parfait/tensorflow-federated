@@ -91,7 +91,7 @@ class EagerComputation {
   //
   // Expected input to Call method is flattened list of input arguments, in the
   // iteration order of Parameter binding in `Computation` proto.
-  // TODO(b/260640553): Allow register and call functions with same name but
+  // TODO: b/260640553 - Allow register and call functions with same name but
   // different graphs in a thread safe manner.
   absl::StatusOr<std::vector<TFE_TensorHandle*>> Call(
       TFE_Context* context, std::optional<std::vector<TFE_TensorHandle*>> args,

@@ -38,7 +38,7 @@ git_repository(
 
 git_repository(
     name = "org_tensorflow",
-    # TODO(b/256948367): Temporarily updating the version of TF past the version
+    # TODO: b/256948367 - Temporarily updating the version of TF past the version
     # in https://github.com/tensorflow/federated/blob/main/requirements.txt.
     #
     # The version of this dependency should match the version in
@@ -48,7 +48,7 @@ git_repository(
         # Depending on restricted visibility BUILD target om external git
         # repository does not seem to be supported.
         # E.g. issue: https://github.com/bazelbuild/bazel/issues/3744
-        # TODO(b/263201501): Make DTensor C++ API public and remove this patch.
+        # TODO: b/263201501 - Make DTensor C++ API public and remove this patch.
         "//third_party/tensorflow:dtensor_internal_visibility.patch",
         "//third_party/tensorflow:internal_visibility.patch",
         "//third_party/tensorflow:tf2xla_visibility.patch",
@@ -124,7 +124,7 @@ load("@io_bazel_rules_go//go:deps.bzl", "go_rules_dependencies")
 
 go_rules_dependencies()
 
-# TODO(b/260612484): Temporarily disable the direct dependency on
+# TODO: b/260612484 - Temporarily disable the direct dependency on
 # `go_register_toolchains`, for now we pick this dependency up via TensorFlows
 # workspace.
 # go_register_toolchains(version = "1.17.1")
@@ -153,7 +153,7 @@ load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps")
 
 grpc_deps()
 
-# TODO(b/260598663): Temporarily disable the direct dependency on
+# TODO: b/260598663 - Temporarily disable the direct dependency on
 # `grpc_extra_deps`, for now we pick this dependency up via TensorFlows
 # workspace.
 # load("@com_github_grpc_grpc//bazel:grpc_extra_deps.bzl", "grpc_extra_deps")

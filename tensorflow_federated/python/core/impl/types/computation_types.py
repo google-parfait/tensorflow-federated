@@ -842,7 +842,7 @@ class AbstractType(Type, metaclass=_Intern):
 
   def is_assignable_from(self, source_type: Type) -> bool:
     del source_type  # Unused.
-    # TODO(b/113112108): Revise this to extend the relation of assignability to
+    # TODO: b/113112108 - Revise this to extend the relation of assignability to
     # abstract types.
     raise TypeError('Abstract types are not comparable.')
 
@@ -923,7 +923,7 @@ class FederatedType(Type, metaclass=_Intern):
     self._all_equal = all_equal
     _check_well_formed(self)
 
-  # TODO(b/113112108): Extend this to support federated types parameterized
+  # TODO: b/113112108 - Extend this to support federated types parameterized
   # by abstract placement labels, such as those used in generic types of
   # federated operators.
 
@@ -1054,7 +1054,7 @@ def to_type(obj: object) -> Type:
   Returns:
     An instance of `tff.Type` corresponding to the given `obj`.
   """
-  # TODO(b/113112108): Add multiple examples of valid type specs here in the
+  # TODO: b/113112108 - Add multiple examples of valid type specs here in the
   # comments, in addition to the unit test.
   if isinstance(obj, Type):
     return obj

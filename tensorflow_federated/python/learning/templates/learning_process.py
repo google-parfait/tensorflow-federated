@@ -185,7 +185,7 @@ class LearningProcess(iterative_process.IterativeProcess):
       )
 
     next_result_type = next_fn.type_signature.result
-    # TODO(b/224484886): Downcasting to all handled types.
+    # TODO: b/224484886 - Downcasting to all handled types.
     next_result_type = typing.cast(
         Union[computation_types.StructWithPythonType], next_result_type
     )
@@ -199,7 +199,7 @@ class LearningProcess(iterative_process.IterativeProcess):
       )
     # We perform a more strict type check on the inputs to `next_fn` than in the
     # base class.
-    # TODO(b/224484886): Downcasting to all handled types.
+    # TODO: b/224484886 - Downcasting to all handled types.
     next_fn_param = typing.cast(
         Union[computation_types.StructType], next_fn.type_signature.parameter
     )

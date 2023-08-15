@@ -160,7 +160,7 @@ def infer_type(arg: Any) -> Optional[computation_types.Type]:
       # how TensorFlow is handling values (e.g., recognizing int as int32, as
       # opposed to int64 as in NumPy).
       try:
-        # TODO(b/113112885): Find something more lightweight we could use here.
+        # TODO: b/113112885 - Find something more lightweight we could use here.
         tensor_proto = tf.make_tensor_proto(arg)
         return computation_types.TensorType(
             tf.dtypes.as_dtype(tensor_proto.dtype),

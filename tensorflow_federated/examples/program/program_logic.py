@@ -384,8 +384,8 @@ async def train_federated_model(
     structure = _ProgramState(initial_state, round_num=0)
     program_state, version = await program_state_manager.load_latest(structure)
 
-    # TODO(b/271445312): Cast `program_state` to `_ProgramState`. `TypeVar`s are
-    # lost from async function signatures.
+    # TODO: b/271445312 - Cast `program_state` to `_ProgramState`. `TypeVar`s
+    # are lost from async function signatures.
     program_state = typing.cast(_ProgramState, program_state)
   else:
     program_state = None

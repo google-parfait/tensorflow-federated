@@ -367,7 +367,7 @@ def _build_reconstruction_client_work(
   return client_works.ClientWorkProcess(
       initialize_fn=initialize,
       next_fn=next_fn,
-      # TODO(b/257966299): expose get/set_hparams functions to that FedRecon
+      # TODO: b/257966299 - expose get/set_hparams functions to that FedRecon
       # parameters can be explored in black-box hparam tuners.
       get_hparams_fn=None,
       set_hparams_fn=None,

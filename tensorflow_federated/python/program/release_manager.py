@@ -214,7 +214,7 @@ class FilteringReleaseManager(ReleaseManager[ReleasableStructure, Key]):
         NotFilterableError: If `subtree` can not be filtered.
       """
       if tree.is_nested(subtree) and not attrs.has(type(subtree)):
-        # TODO(b/224484886): Downcasting to all handled types.
+        # TODO: b/224484886 - Downcasting to all handled types.
         subtree = typing.cast(
             Union[Sequence[object], Mapping[str, object]], subtree
         )

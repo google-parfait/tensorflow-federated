@@ -175,7 +175,7 @@ class FederatedSgdTest(tf.test.TestCase, parameterized.TestCase):
     fed_sgd.build_fed_sgd(
         model_fn=mock_model_fn, model_aggregator=aggregation_factory()
     )
-    # TODO(b/186451541): reduce the number of calls to model_fn.
+    # TODO: b/186451541 - reduce the number of calls to model_fn.
     self.assertEqual(mock_model_fn.call_count, 3)
 
   def test_no_unsecure_aggregation_with_secure_aggregator(self):

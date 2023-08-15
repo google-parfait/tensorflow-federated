@@ -35,7 +35,7 @@ def strip_placement(
   return transform_type_postorder(type_signature, _remove_placement)[0]
 
 
-# TODO(b/134525440): Unifying the recursive methods in type_analysis.
+# TODO: b/134525440 - Unifying the recursive methods in type_analysis.
 def transform_type_postorder(
     type_signature: computation_types.Type,
     transform_fn: Callable[
@@ -127,7 +127,7 @@ def transform_type_postorder(
     raise NotImplementedError(f'Unexpected type found: {type_signature}.')
 
 
-# TODO(b/134525440): Unifying the recursive methods in type_analysis.
+# TODO: b/134525440 - Unifying the recursive methods in type_analysis.
 def visit_preorder(
     type_signature: computation_types.Type,
     fn: Callable[[computation_types.Type, T], T],

@@ -28,7 +28,7 @@ from tensorflow_federated.python.common_libs import py_typecheck
 KerasMetricFinalizer = Callable[[list[tf.Tensor]], Any]
 
 
-# TODO(b/197746608): removes the code path that takes in a constructed Keras
+# TODO: b/197746608 - removes the code path that takes in a constructed Keras
 # metric, because reconstructing metric via `from_config` can cause problems.
 def create_keras_metric_finalizer(
     metric: Union[
@@ -107,7 +107,7 @@ def _check_keras_metric_config_constructable(metric: tf.keras.metrics.Metric):
     get_config_args = metric.get_config().keys()
     extra_args = [arg for arg in init_args if arg not in get_config_args]
     if extra_args:
-      # TODO(b/197746608): Remove the suggestion of updating `get_config` if
+      # TODO: b/197746608 - Remove the suggestion of updating `get_config` if
       # that code path is removed.
       raise TypeError(
           f'Metric {metric_type_str} is not constructable from the '

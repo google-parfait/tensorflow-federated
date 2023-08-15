@@ -81,7 +81,7 @@ using ExecutorId = std::string;
 absl::StatusOr<ExecutorId>
 ExecutorService::ExecutorResolver::ExecutorIDForRequirements(
     const ExecutorRequirements& requirements) {
-  // TODO(b/236264677): This direct executor caching can cause unevenly
+  // TODO: b/236264677 - This direct executor caching can cause unevenly
   // partitioned work in the presence of aggregators. The TFF RemoteExecutor
   // currently proxies for a physical (as opposed to logical) machine; therefore
   // this caching essentially 'freezes' the remote machines available at the
@@ -226,7 +226,7 @@ grpc::Status ExecutorService::RequireExecutor(
 grpc::Status ExecutorService::HandleNotOK(const absl::Status& status,
                                           const v0::ExecutorId& executor_id) {
   if (status.code() == absl::StatusCode::kFailedPrecondition) {
-    // TODO(b/193900393): With increased reliance on the semantics of
+    // TODO: b/193900393 - With increased reliance on the semantics of
     // FAILED_PRECONDITION, we would likely prefer to define a custom error code
     // for Executors to declare that they are missing semantically necessary
     // requirements.

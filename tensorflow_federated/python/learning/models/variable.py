@@ -245,7 +245,7 @@ class VariableModel(metaclass=abc.ABCMeta):
     """
     pass
 
-  # TODO(b/233054212): re-enable lint
+  # TODO: b/233054212 - re-enable lint
   @abc.abstractmethod
   def metric_finalizers(self) -> types.MetricFinalizersType:  # pylint: disable=g-bare-generic
     """Creates an `collections.OrderedDict` of metric names to finalizers.

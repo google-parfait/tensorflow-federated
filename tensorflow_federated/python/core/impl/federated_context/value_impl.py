@@ -296,7 +296,7 @@ def _wrap_sequence_as_value(elements, element_type) -> Value:
   Raises:
     TypeError: If `elements` and `element_type` are of incompatible types.
   """
-  # TODO(b/113116813): Add support for other representations of sequences.
+  # TODO: b/113116813 - Add support for other representations of sequences.
   py_typecheck.check_type(elements, list)
   for element in elements:
     inferred_type = type_conversions.infer_type(element)

@@ -27,7 +27,7 @@ from tensorflow_federated.python.learning.models import keras_utils
 from tensorflow_federated.python.learning.models import model_examples
 from tensorflow_federated.python.learning.models import model_weights
 
-# TODO(b/160896627): Switch to `dataset.reduce` once multi-GPU supports it.
+# TODO: b/160896627 - Switch to `dataset.reduce` once multi-GPU supports it.
 dataset_reduce_fn = dataset_reduce.build_dataset_reduce_fn(simulation_flag=True)
 
 
@@ -419,7 +419,7 @@ class PersonalizationEvalTest(tf.test.TestCase, parameterized.TestCase):
     p13n_eval.build_personalization_eval_computation(
         mock_model_fn, p13n_fn_dict, _evaluate_fn, max_num_clients=1
     )
-    # TODO(b/186451541): reduce the number of calls to model_fn.
+    # TODO: b/186451541 - reduce the number of calls to model_fn.
     self.assertEqual(mock_model_fn.call_count, 3)
 
 

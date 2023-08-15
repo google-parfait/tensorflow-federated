@@ -812,7 +812,7 @@ def _extract_update(after_aggregate, grappler_config):
       ),
   )
 
-  # TODO(b/148942011): The transformation
+  # TODO: b/148942011 - The transformation
   # `zip_selection_as_argument_to_lower_level_lambda` does not support selecting
   # from nested structures, therefore we need to transform the input from
   # <server_state, <aggregation_results...>> into

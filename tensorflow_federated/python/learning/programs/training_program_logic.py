@@ -70,8 +70,8 @@ class TaskManager:
     self._pending_tasks.add(new_task)
 
 
-# TODO(b/284509457): Revisit this API when `initialize` is changed to be a value
-# instead of `tff.Computation`.
+# TODO: b/284509457 - Revisit this API when `initialize` is changed to be a
+# value instead of `tff.Computation`.
 async def train_model(
     *,
     train_process: learning_process.LearningProcess,

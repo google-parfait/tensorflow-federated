@@ -99,8 +99,8 @@ class _SGD(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
     return collections.OrderedDict([(k, state[k]) for k in self._hparams_keys])
 
   def set_hparams(self, state: State, hparams: Hparams) -> State:
-    # TODO(b/245962555): Find an alternative to `update_struct` if it interferes
-    # with typing guarantees.
+    # TODO: b/245962555 - Find an alternative to `update_struct` if it
+    # interferes with typing guarantees.
     # We use `tff.structure.update_struct` (rather than something like
     # `copy.deepcopy`) to ensure that this can be called within a
     # `tff.Computation`.

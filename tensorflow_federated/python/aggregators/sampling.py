@@ -43,7 +43,7 @@ def _is_tensor_or_structure_of_tensors(
 ) -> bool:
   """Return True if `value_type` is a TensorType or structure of TensorTypes."""
 
-  # TODO(b/181365504): relax this to allow `StructType` once a `Struct` can be
+  # TODO: b/181365504 - relax this to allow `StructType` once a `Struct` can be
   # returned from `tf.function` decorated methods.
   def is_tensor_or_struct_with_py_type(
       type_spec: computation_types.Type,
@@ -107,7 +107,7 @@ def _build_reservoir_type(
       )
     return t, False
 
-  # TODO(b/181155367): creating a value from a type for the `zero` is a common
+  # TODO: b/181155367 - creating a value from a type for the `zero` is a common
   # pattern for users of `tff.federated_aggregate` that could be made easier
   # for TFF users. Replace this once such helper exists.
   return computation_types.to_type(
@@ -381,7 +381,7 @@ def _build_check_non_finite_leaves_computation(
       # because the type of `np.nan` or `np.inf` is float, so it only exists in
       # tensors of float dtype.
       if leaf_tensor.dtype.is_floating:
-        # TODO(b/201213657): replaces `tf.math.is_finite` by a memory-efficient
+        # TODO: b/201213657 - replaces `tf.math.is_finite` by a memory-efficient
         # way of checking finite tensors.
         return tf.math.logical_not(
             tf.reduce_all(tf.math.is_finite(leaf_tensor))

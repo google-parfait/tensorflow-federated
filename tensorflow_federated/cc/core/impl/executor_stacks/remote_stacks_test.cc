@@ -52,7 +52,7 @@ MockFunction<absl::StatusOr<ComposingChild>(
     std::shared_ptr<grpc::ChannelInterface>, const CardinalityMap&)>
     mock_composing_child_factory_;
 
-// TODO(b/191092505): Follow up and investigate removing the need to mock the
+// TODO: b/191092505 - Follow up and investigate removing the need to mock the
 // entire grpc ChannelInterface interface.
 class MockGrpcChannelInterface : public grpc::ChannelInterface {
  public:

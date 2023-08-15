@@ -65,7 +65,7 @@ def keras_dataset_from_emnist(dataset):
   return dataset.map(map_fn)
 
 
-# TODO(b/235837441): Move this functionality to a more general location.
+# TODO: b/235837441 - Move this functionality to a more general location.
 class _DeterministicInitializer:
   """Wrapper to produce different deterministic initialization values."""
 
@@ -98,7 +98,7 @@ def create_keras_model(compile_model=False):
   Returns:
     A `tf.keras.Model`.
   """
-  # TODO(b/120157713): Find a way to import this code.
+  # TODO: b/120157713 - Find a way to import this code.
   data_format = 'channels_last'
   input_shape = [28, 28, 1]
   initializer = _DeterministicInitializer(

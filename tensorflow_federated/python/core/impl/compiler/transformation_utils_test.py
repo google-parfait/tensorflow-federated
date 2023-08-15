@@ -358,7 +358,7 @@ class TransformationUtilsTest(parameterized.TestCase):
 
     self.assertEqual(leaf_name_order, list(postorder_nodes))
 
-  # TODO(b/113123410): Add more tests for corner cases of `transform_preorder`.
+  # TODO: b/113123410 - Add more tests for corner cases of `transform_preorder`.
 
   def test_transform_postorder_with_symbol_bindings_fails_on_none_comp(self):
     empty_context_tree = transformation_utils.SymbolTree(FakeTracker)

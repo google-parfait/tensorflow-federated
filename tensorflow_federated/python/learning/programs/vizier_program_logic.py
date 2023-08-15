@@ -186,8 +186,8 @@ async def train_model_with_vizier(
       `datetime.timedelta` to await before sending a new training checkpoint to
       `evaluation_manager.start_evaluation`.
   """
-  # TODO(b/238909797): Vizier does not support `StudyStoppingConfig` in OSS. For
-  # now, this program logic only supports stopping the study when the
+  # TODO: b/238909797 - Vizier does not support `StudyStoppingConfig` in OSS.
+  # For now, this program logic only supports stopping the study when the
   # `total_trials` have been completed.
   while len(list(study.trials().get())) < total_trials:
     trials = study.suggest(count=1, client_id='single_client')

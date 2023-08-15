@@ -490,8 +490,8 @@ def functional_model_from_keras(
         'callable that returns a `tf.keras.Model`.'
     )
 
-  # TODO(b/269671316): more work needed to support non-None sample_weight during
-  # model serialization and deserialization.
+  # TODO: b/269671316 - more work needed to support non-None sample_weight
+  # during model serialization and deserialization.
   keras_sample_weight = (
       inspect.signature(loss_fn).parameters['sample_weight'].default
   )

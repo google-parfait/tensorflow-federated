@@ -34,7 +34,7 @@ from tensorflow_federated.python.learning.models import variable
 Loss = Union[tf.keras.losses.Loss, list[tf.keras.losses.Loss]]
 
 
-# TODO(b/197746608): Remove the code path that takes in constructed Keras
+# TODO: b/197746608 - Remove the code path that takes in constructed Keras
 # metrics, because reconstructing metrics via `from_config` can cause problems.
 def from_keras_model(
     keras_model: tf.keras.Model,
@@ -482,7 +482,7 @@ class _KerasModel(variable.VariableModel):
     else:
       batch_loss = None
 
-    # TODO(b/145308951): Follow up here to pass through sample_weight in the
+    # TODO: b/145308951 - Follow up here to pass through sample_weight in the
     # case that we have a model supporting masking.
     for metric in self.get_metrics():
       metric.update_state(y_true=y_true, y_pred=predictions)  # pytype: disable=attribute-error

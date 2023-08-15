@@ -45,7 +45,7 @@ ABSL_FLAG(std::string, serialized_client_mesh, "",
           "serialized with to_string(). "
           "If empty string, dtensor executor will not be used.");
 
-// TODO(b/234160632): Add option for secure server connections here.
+// TODO: b/234160632 - Add option for secure server connections here.
 
 namespace tff = ::tensorflow_federated;
 

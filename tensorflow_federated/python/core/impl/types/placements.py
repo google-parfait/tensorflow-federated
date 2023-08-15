@@ -63,8 +63,9 @@ class PlacementLiteral:
     return hash(self._uri)
 
 
-# TODO(b/113112108): Define the remaining placement literals (e.g., intermediate
-# coordinators). Possibly rename SERVER to COORDINATOR or some such if desired.
+# TODO: b/113112108 - Define the remaining placement literals (e.g.,
+# intermediate coordinators). Possibly rename SERVER to COORDINATOR or some such
+# if desired.
 
 CLIENTS = PlacementLiteral(
     'CLIENTS',

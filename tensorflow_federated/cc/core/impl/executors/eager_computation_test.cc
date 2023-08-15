@@ -45,7 +45,7 @@ limitations under the License
 namespace tensorflow_federated {
 namespace {
 
-// TODO(b/256948367): Move these common methods to a base test utility file.
+// TODO: b/256948367 - Move these common methods to a base test utility file.
 template <class TfOp>
 inline v0::TensorFlow::Binding TensorB(const TfOp& op) {
   const tensorflow::Node* node = op.node();

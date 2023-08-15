@@ -105,7 +105,7 @@ def compose_dataset_computation_with_computation(
         'Expected a `tff.SequenceType` to be returned from '
         '`dataset_computation`; found {} instead.'.format(dataset_return_type)
     )
-  # TODO(b/226637447): This restriction seems unnecessary, and can be removed.
+  # TODO: b/226637447 - This restriction seems unnecessary, and can be removed.
   if dataset_computation.type_signature.parameter is None:
     raise TypeError(
         'Can only construct a new iterative process if '
@@ -336,7 +336,7 @@ def compose_dataset_computation_with_iterative_process(
         'Expected a `tff.SequenceType` to be returned from '
         '`dataset_computation`; found {} instead.'.format(dataset_return_type)
     )
-  # TODO(b/226637447): This restriction seems unnecessary, and can be removed.
+  # TODO: b/226637447 - This restriction seems unnecessary, and can be removed.
   if dataset_computation.type_signature.parameter is None:
     raise TypeError(
         'Can only construct a new iterative process if '

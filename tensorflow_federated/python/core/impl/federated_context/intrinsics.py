@@ -209,7 +209,7 @@ def federated_eval(fn, placement):
   Raises:
     TypeError: If the arguments are not of the appropriate types.
   """
-  # TODO(b/113112108): Verify that neither the value, nor any of its parts
+  # TODO: b/113112108 - Verify that neither the value, nor any of its parts
   # are of a federated type.
 
   fn = value_impl.to_value(fn, None)
@@ -253,7 +253,7 @@ def federated_map(fn, arg):
   Raises:
     TypeError: If the arguments are not of the appropriate types.
   """
-  # TODO(b/113112108): Possibly lift the restriction that the mapped value
+  # TODO: b/113112108 - Possibly lift the restriction that the mapped value
   # must be placed at the server or clients. Would occur after adding support
   # for placement labels in the federated types, and expanding the type
   # specification of the intrinsic this is based on to work with federated
@@ -279,7 +279,7 @@ def federated_map(fn, arg):
         )
     )
 
-  # TODO(b/144384398): Change structure to one that maps the placement type
+  # TODO: b/144384398 - Change structure to one that maps the placement type
   # to the building_block function that fits it, in a way that allows the
   # appropriate type checks.
   if arg.type_signature.placement is placements.SERVER:  # pytype: disable=attribute-error
@@ -304,7 +304,7 @@ def federated_map(fn, arg):
 
 def federated_map_all_equal(fn, arg):
   """`federated_map` with the `all_equal` bit set in the `arg` and return."""
-  # TODO(b/113112108): Possibly lift the restriction that the mapped value
+  # TODO: b/113112108 - Possibly lift the restriction that the mapped value
   # must be placed at the clients after adding support for placement labels
   # in the federated types, and expanding the type specification of the
   # intrinsic this is based on to work with federated values of arbitrary
@@ -362,13 +362,13 @@ def federated_mean(value, weight=None):
       or if `weight` is not a federated integer or a floating-point tensor with
       the matching placement.
   """
-  # TODO(b/113112108): Possibly relax the constraints on numeric types, and
+  # TODO: b/113112108 - Possibly relax the constraints on numeric types, and
   # inject implicit casts where appropriate. For instance, we might want to
   # allow `tf.int32` values as the input, and automatically cast them to
   # `tf.float321 before invoking the average, thus producing a floating-point
   # result.
 
-  # TODO(b/120439632): Possibly allow the weight to be either structured or
+  # TODO: b/120439632 - Possibly allow the weight to be either structured or
   # non-scalar, e.g., for the case of averaging a convolutional layer, when
   # we would want to use a different weight for every filter, and where it
   # might be cumbersome for users to have to manually slice and assemble a
@@ -503,7 +503,7 @@ def federated_zip(value):
     TypeError: If the argument is not a named tuple of federated values with the
       same placement.
   """
-  # TODO(b/113112108): We use the iterate/unwrap approach below because
+  # TODO: b/113112108 - We use the iterate/unwrap approach below because
   # our type system is not powerful enough to express the concept of
   # "an operation that takes tuples of T of arbitrary length", and therefore
   # the intrinsic federated_zip must only take a fixed number of arguments,

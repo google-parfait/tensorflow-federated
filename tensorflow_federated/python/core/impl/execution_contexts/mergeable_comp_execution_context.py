@@ -165,8 +165,8 @@ class MergeableCompForm:
       )
 
     if up_to_merge.type_signature.parameter is not None:
-      # TODO(b/147499373): If None arguments were uniformly represented as empty
-      # tuples, we could avoid this and related ugly if/else casing.
+      # TODO: b/147499373 - If None arguments were uniformly represented as
+      # empty tuples, we could avoid this and related ugly if/else casing.
       expected_after_merge_arg_type = computation_types.StructType([
           (None, up_to_merge.type_signature.parameter),
           (None, computation_types.at_server(merge.type_signature.result)),

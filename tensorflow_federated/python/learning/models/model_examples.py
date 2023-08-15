@@ -30,7 +30,7 @@ class LinearRegression(variable.VariableModel):
     # Define all the variables, similar to what Keras Layers and Models
     # do in build().
     self._feature_dim = feature_dim
-    # TODO(b/124070381): Support for integers in num_examples, etc., is handled
+    # TODO: b/124070381 - Support for integers in num_examples, etc., is handled
     # here in learning, by adding an explicit cast to a float where necessary in
     # order to pass typechecking in the reference executor.
     self._num_examples = tf.Variable(0, trainable=False)

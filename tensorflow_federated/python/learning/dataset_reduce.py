@@ -35,7 +35,7 @@ def _for_iter_dataset_fn(
     initial_state_fn: Callable[[], Any] = lambda: tf.constant(0),
 ) -> Any:
   """Performs dataset reduce for simulation performance."""
-  # TODO(b/155208489): this is a workaround for GPU simulation because
+  # TODO: b/155208489 - this is a workaround for GPU simulation because
   # `tf.device` does not cross the boundary of dataset ops. TF use a different
   # set of ops when we explicitly use `iter` for dataset.
   update_state = initial_state_fn()
@@ -49,7 +49,7 @@ def build_dataset_reduce_fn(
 ) -> Callable[
     [_ReduceFnCallable, Union[tf.data.Dataset, Iterable[Any]], Any], tf.Tensor
 ]:
-  # TODO(b/162683412): remove `Iterable` after pytype fix.
+  # TODO: b/162683412 - remove `Iterable` after pytype fix.
   """Returns a reduce loop function on input dataset."""
   if simulation_flag:
     return _for_iter_dataset_fn

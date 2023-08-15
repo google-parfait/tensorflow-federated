@@ -5,7 +5,7 @@
 Tracing the the process of constructing a [AST](compilation.md#ast) from a
 Python function.
 
-TODO(b/153500547): Describe and link the individual components of the tracing
+TODO: b/153500547 - Describe and link the individual components of the tracing
 system.
 
 ## Tracing a Federated Computation
@@ -80,7 +80,7 @@ returned as a Python object that fully represents the user’s Python function.
 
 ## Tracing a TensorFlow Computation
 
-TODO(b/153500547): Describe the process of tracing a TensorFlow compuation.
+TODO: b/153500547 - Describe the process of tracing a TensorFlow compuation.
 
 ## Clean Error Messages from Exceptions During Tracing
 

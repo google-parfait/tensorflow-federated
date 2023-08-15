@@ -35,7 +35,7 @@ from tensorflow_model_optimization.python.core.internal import tensor_encoding a
 _EncoderConstructor = Callable[[tf.TensorSpec], te.core.GatherEncoder]
 
 
-# TODO(b/173001046): Enable parameterization by an inner aggregation factory.
+# TODO: b/173001046 - Enable parameterization by an inner aggregation factory.
 # This will only be possible when the encoders fully commute with sum and
 # requires different implementation of the core logic, not directly using
 # `intrinsics.federated_aggregate`.
@@ -198,7 +198,7 @@ def _encoded_next_fn(server_state_type, value_type, encoders):
   decode_before_sum_params_type = get_params_fn.type_signature.result[1]
   decode_after_sum_params_type = get_params_fn.type_signature.result[2]
 
-  # TODO(b/139844355): Get rid of decode_before_sum_params.
+  # TODO: b/139844355 - Get rid of decode_before_sum_params.
   # We pass decode_before_sum_params to the encode method, because TFF currently
   # does not have a mechanism to make a tff.SERVER placed value available inside
   # of intrinsics.federated_aggregate - in production, this could mean an

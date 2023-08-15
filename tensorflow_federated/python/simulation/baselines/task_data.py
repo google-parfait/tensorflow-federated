@@ -121,7 +121,7 @@ class BaselineTaskDatasets:
     else:
       self._preprocess_train_data = train_data.preprocess(train_preprocess_fn)
 
-    # TODO(b/249818282): Add validation to ensure that this is compatible with
+    # TODO: b/249818282 - Add validation to ensure that this is compatible with
     # the post-processed test dataset.
     self._element_type_structure = post_preprocess_train_type
 

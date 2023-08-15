@@ -393,7 +393,7 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
       # Clips value to [lower_bound, upper_bound] and securely sums it.
       summed_value = self._sum_securely(value, upper_bound, lower_bound)
 
-      # TODO(b/163880757): pass upper_bound and lower_bound through clients.
+      # TODO: b/163880757 - pass upper_bound and lower_bound through clients.
       measurements = self._compute_measurements(
           upper_bound, lower_bound, value_max, value_min
       )

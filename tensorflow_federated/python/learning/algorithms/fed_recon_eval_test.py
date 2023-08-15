@@ -961,7 +961,7 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
       return tf.keras.losses.MeanSquaredError()
 
     fed_recon_eval.build_fed_recon_eval(model_fn=mock_model_fn, loss_fn=loss_fn)
-    # TODO(b/186451541): Reduce the number of calls to model_fn.
+    # TODO: b/186451541 - Reduce the number of calls to model_fn.
     self.assertEqual(mock_model_fn.call_count, 2)
 
 

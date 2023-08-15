@@ -385,7 +385,7 @@ def replace_selections(
       )
     return inner_bb, False
 
-  # TODO(b/266705611): Consider switching to preorder traversal to provide more
+  # TODO: b/266705611 - Consider switching to preorder traversal to provide more
   # protection against triggering multiple replacements for nested selections
   # (the type signature check above does provide one layer of protection
   # already).
@@ -734,7 +734,7 @@ def get_intrinsic_reductions() -> (
   the map of intrinsics, substituting calls to each.
   """
 
-  # TODO(b/122728050): Implement reductions that follow roughly the following
+  # TODO: b/122728050 - Implement reductions that follow roughly the following
   # breakdown in order to minimize the number of intrinsics that backends need
   # to support and maximize opportunities for merging processing logic to keep
   # the number of communication phases as small as it is practical. Perform
