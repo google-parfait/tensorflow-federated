@@ -157,26 +157,12 @@ class Type(metaclass=abc.ABCMeta):
       raise UnexpectedTypeError(AbstractType, self)
 
   @deprecation.deprecated(
-      '`tff.Type.is_abstract()` is deprecated, use `isinstance` instead.'
-  )
-  def is_abstract(self) -> bool:
-    """Returns whether or not this type is a `tff.AbstractType`."""
-    return isinstance(self, AbstractType)
-
-  @deprecation.deprecated(
       '`tff.Type.check_federated()` is deprecated, use `isinstance` instead.'
   )
   def check_federated(self) -> None:
     """Check that this is a `tff.FederatedType`."""
     if not isinstance(self, FederatedType):
       raise UnexpectedTypeError(FederatedType, self)
-
-  @deprecation.deprecated(
-      '`tff.Type.is_federated()` is deprecated, use `isinstance` instead.'
-  )
-  def is_federated(self) -> bool:
-    """Returns whether or not this type is a `tff.FederatedType`."""
-    return isinstance(self, FederatedType)
 
   @deprecation.deprecated(
       '`tff.Type.check_function()` is deprecated, use `isinstance` instead.'
@@ -187,26 +173,12 @@ class Type(metaclass=abc.ABCMeta):
       raise UnexpectedTypeError(FunctionType, self)
 
   @deprecation.deprecated(
-      '`tff.Type.is_function()` is deprecated, use `isinstance` instead.'
-  )
-  def is_function(self) -> bool:
-    """Returns whether or not this type is a `tff.FunctionType`."""
-    return isinstance(self, FunctionType)
-
-  @deprecation.deprecated(
       '`tff.Type.check_placement()` is deprecated, use `isinstance` instead.'
   )
   def check_placement(self) -> None:
     """Check that this is a `tff.PlacementType`."""
     if not isinstance(self, PlacementType):
       raise UnexpectedTypeError(PlacementType, self)
-
-  @deprecation.deprecated(
-      '`tff.Type.is_placement()` is deprecated, use `isinstance` instead.'
-  )
-  def is_placement(self) -> bool:
-    """Returns whether or not this type is a `tff.PlacementType`."""
-    return isinstance(self, PlacementType)
 
   @deprecation.deprecated(
       '`tff.Type.check_sequence()` is deprecated, use `isinstance` instead.'
@@ -217,26 +189,12 @@ class Type(metaclass=abc.ABCMeta):
       raise UnexpectedTypeError(SequenceType, self)
 
   @deprecation.deprecated(
-      '`tff.Type.is_sequence()` is deprecated, use `isinstance` instead.'
-  )
-  def is_sequence(self) -> bool:
-    """Returns whether or not this type is a `tff.SequenceType`."""
-    return isinstance(self, SequenceType)
-
-  @deprecation.deprecated(
       '`tff.Type.check_struct()` is deprecated, use `isinstance` instead.'
   )
   def check_struct(self) -> None:
     """Check that this is a `tff.StructType`."""
     if not isinstance(self, StructType):
       raise UnexpectedTypeError(StructType, self)
-
-  @deprecation.deprecated(
-      '`tff.Type.is_struct()` is deprecated, use `isinstance` instead.'
-  )
-  def is_struct(self) -> bool:
-    """Returns whether or not this type is a `tff.StructType`."""
-    return isinstance(self, StructType)
 
   @deprecation.deprecated(
       '`tff.Type.check_struct_with_python()` is deprecated, use `isinstance` '
@@ -248,27 +206,12 @@ class Type(metaclass=abc.ABCMeta):
       raise UnexpectedTypeError(StructWithPythonType, self)
 
   @deprecation.deprecated(
-      '`tff.Type.is_struct_with_python()` is deprecated, use `isinstance` '
-      'instead.'
-  )
-  def is_struct_with_python(self) -> bool:
-    """Returns whether or not this type is a `tff.StructWithPythonType`."""
-    return isinstance(self, StructWithPythonType)
-
-  @deprecation.deprecated(
       '`tff.Type.check_tensor()` is deprecated, use `isinstance` instead.'
   )
   def check_tensor(self) -> None:
     """Check that this is a `tff.TensorType`."""
     if not isinstance(self, TensorType):
       raise UnexpectedTypeError(TensorType, self)
-
-  @deprecation.deprecated(
-      '`tff.Type.is_tensor()` is deprecated, use `isinstance` instead.'
-  )
-  def is_tensor(self) -> bool:
-    """Returns whether or not this type is a `tff.TensorType`."""
-    return isinstance(self, TensorType)
 
   @abc.abstractmethod
   def __repr__(self):
