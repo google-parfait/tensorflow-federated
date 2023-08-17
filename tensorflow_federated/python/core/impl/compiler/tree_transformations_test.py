@@ -1300,6 +1300,60 @@ class ReplaceIntrinsicsWithBodiesTest(parameterized.TestCase):
     self.assertEqual(count_means_after_reduction, 0)
     self.assertGreater(count_aggregations, 0)
 
+  def test_federated_min_reduces_to_aggregate(self):
+    uri = intrinsic_defs.FEDERATED_MIN.uri
+
+    comp = building_blocks.Intrinsic(
+        uri,
+        computation_types.FunctionType(
+            computation_types.at_clients(tf.float32),
+            computation_types.at_server(tf.float32),
+        ),
+    )
+
+    count_min_before_reduction = _count_intrinsics(comp, uri)
+    reduced, modified = tree_transformations.replace_intrinsics_with_bodies(
+        comp
+    )
+    count_min_after_reduction = _count_intrinsics(reduced, uri)
+    count_aggregations = _count_intrinsics(
+        reduced, intrinsic_defs.FEDERATED_AGGREGATE.uri
+    )
+    self.assertTrue(modified)
+    type_test_utils.assert_types_identical(
+        comp.type_signature, reduced.type_signature
+    )
+    self.assertGreater(count_min_before_reduction, 0)
+    self.assertEqual(count_min_after_reduction, 0)
+    self.assertGreater(count_aggregations, 0)
+
+  def test_federated_max_reduces_to_aggregate(self):
+    uri = intrinsic_defs.FEDERATED_MAX.uri
+
+    comp = building_blocks.Intrinsic(
+        uri,
+        computation_types.FunctionType(
+            computation_types.at_clients(tf.float32),
+            computation_types.at_server(tf.float32),
+        ),
+    )
+
+    count_max_before_reduction = _count_intrinsics(comp, uri)
+    reduced, modified = tree_transformations.replace_intrinsics_with_bodies(
+        comp
+    )
+    count_max_after_reduction = _count_intrinsics(reduced, uri)
+    count_aggregations = _count_intrinsics(
+        reduced, intrinsic_defs.FEDERATED_AGGREGATE.uri
+    )
+    self.assertTrue(modified)
+    type_test_utils.assert_types_identical(
+        comp.type_signature, reduced.type_signature
+    )
+    self.assertGreater(count_max_before_reduction, 0)
+    self.assertEqual(count_max_after_reduction, 0)
+    self.assertGreater(count_aggregations, 0)
+
   def test_federated_sum_reduces_to_aggregate(self):
     uri = intrinsic_defs.FEDERATED_SUM.uri
 

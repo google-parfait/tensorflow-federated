@@ -572,6 +572,30 @@ def is_average_compatible(type_spec: computation_types.Type) -> bool:
     return False
 
 
+def is_min_max_compatible(type_spec: computation_types.Type) -> bool:
+  """Determines if `type_spec` is min/max compatible.
+
+  Types that are min/max-compatible are composed of integer or floating tensor
+  types, possibly packaged into nested tuples and possibly federated.
+
+  Args:
+    type_spec: a `computation_types.Type`.
+
+  Returns:
+    `True` iff `type_spec` is min/max compatible, `False` otherwise.
+  """
+  if isinstance(type_spec, computation_types.TensorType):
+    return type_spec.dtype.is_integer or type_spec.dtype.is_floating
+  elif isinstance(type_spec, computation_types.StructType):
+    return all(
+        is_min_max_compatible(v) for _, v in structure.iter_elements(type_spec)
+    )
+  elif isinstance(type_spec, computation_types.FederatedType):
+    return is_min_max_compatible(type_spec.member)
+  else:
+    return False
+
+
 def is_struct_with_py_container(value, type_spec):
   return isinstance(value, structure.Struct) and isinstance(
       type_spec, computation_types.StructWithPythonType

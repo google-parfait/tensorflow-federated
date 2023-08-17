@@ -17,6 +17,7 @@ from typing import Any, NamedTuple
 
 import tensorflow as tf
 
+from tensorflow_federated.python.common_libs import deprecation
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
@@ -45,64 +46,10 @@ def _validate_dtype_is_min_max_compatible(dtype):
     )
 
 
-def _federated_reduce_with_func(value, tf_func, zeros):
-  """Applies to `tf_func` to accumulated `value`s.
-
-  This utility provides a generic aggregation for accumulating a value and
-  applying a simple aggregation (like minimum or maximum aggregations).
-
-  Args:
-    value: A `tff.Value` placed on the `tff.CLIENTS`.
-    tf_func: A function to be applied to the accumulated values. Must be a
-      binary operation where both parameters are of type `U` and the return type
-      is also `U`.
-    zeros: The zero of the same type as `value` in the algebra of reduction
-      operators.
-
-  Returns:
-    A representation on the `tff.SERVER` of the result of aggregating `value`.
-  """
-  value_type = value.type_signature.member
-
-  @tensorflow_computation.tf_computation(value_type, value_type)
-  def accumulate(current, value):
-    return tf.nest.map_structure(tf_func, current, value)
-
-  @tensorflow_computation.tf_computation(value_type)
-  def report(value):
-    return value
-
-  return intrinsics.federated_aggregate(
-      value, zeros, accumulate, accumulate, report
-  )
-
-
-def _initial_values(initial_value_fn, member_type):
-  """Create a nested structure of initial values for the reduction.
-
-  Args:
-    initial_value_fn: A function that maps a tff.TensorType to a specific value
-      constant for initialization.
-    member_type: A `tff.Type` representing the member components of the
-      federated type.
-
-  Returns:
-    A function of the result of reducing a value with no constituents.
-  """
-
-  def validate_and_fill(type_spec: computation_types.TensorType) -> tf.Tensor:
-    _validate_dtype_is_min_max_compatible(type_spec.dtype)
-    return tf.fill(dims=type_spec.shape, value=initial_value_fn(type_spec))
-
-  @tensorflow_computation.tf_computation
-  def zeros_fn():
-    return type_conversions.structure_from_tensor_type_tree(
-        validate_and_fill, member_type
-    )
-
-  return zeros_fn()
-
-
+@deprecation.deprecated(
+    '`tff.aggregators.federated_min` is deprecated, use `tff.federated_min`'
+    ' instead.'
+)
 def federated_min(value):
   """Computes the minimum at `tff.SERVER` of a `value` placed at `tff.CLIENTS`.
 
@@ -120,14 +67,13 @@ def federated_min(value):
     A representation of the min of the member constituents of `value` placed at
     `tff.SERVER`.
   """
-  _validate_value_on_clients(value)
-  member_type = value.type_signature.member
-  # Explicit cast because v.dtype.max returns a Python constant, which could be
-  # implicitly converted to a tensor of different dtype by TensorFlow.
-  zeros = _initial_values(lambda v: tf.cast(v.dtype.max, v.dtype), member_type)
-  return _federated_reduce_with_func(value, tf.minimum, zeros)
+  return intrinsics.federated_min(value_impl.to_value(value, type_spec=None))
 
 
+@deprecation.deprecated(
+    '`tff.aggregators.federated_max` is deprecated, use `tff.federated_max`'
+    ' instead.'
+)
 def federated_max(value):
   """Computes the maximum at `tff.SERVER` of a `value` placed at `tff.CLIENTS`.
 
@@ -145,12 +91,7 @@ def federated_max(value):
     A representation of the max of the member constituents of `value` placed at
     `tff.SERVER`.
   """
-  _validate_value_on_clients(value)
-  member_type = value.type_signature.member
-  # Explicit cast because v.dtype.min returns a Python constant, which could be
-  # implicitly converted to a tensor of different dtype by TensorFlow.
-  zeros = _initial_values(lambda v: tf.cast(v.dtype.min, v.dtype), member_type)
-  return _federated_reduce_with_func(value, tf.maximum, zeros)
+  return intrinsics.federated_max(value_impl.to_value(value, type_spec=None))
 
 
 class _Samples(NamedTuple):

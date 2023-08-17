@@ -360,6 +360,38 @@ FEDERATED_MEAN = IntrinsicDef(
     aggregation_kind=AggregationKind.DEFAULT,
 )
 
+# Computes the min of client values on the server. Only supported for numeric
+# types, or nested structures made up of numeric computation_types.
+#
+# Type signature: {T}@CLIENTS -> T@SERVER
+FEDERATED_MIN = IntrinsicDef(
+    'FEDERATED_MIN',
+    'federated_min',
+    computation_types.FunctionType(
+        parameter=computation_types.at_clients(
+            computation_types.AbstractType('T')
+        ),
+        result=computation_types.at_server(computation_types.AbstractType('T')),
+    ),
+    aggregation_kind=AggregationKind.DEFAULT,
+)
+
+# Computes the max of client values on the server. Only supported for numeric
+# types, or nested structures made up of numeric computation_types.
+#
+# Type signature: {T}@CLIENTS -> T@SERVER
+FEDERATED_MAX = IntrinsicDef(
+    'FEDERATED_MAX',
+    'federated_max',
+    computation_types.FunctionType(
+        parameter=computation_types.at_clients(
+            computation_types.AbstractType('T')
+        ),
+        result=computation_types.at_server(computation_types.AbstractType('T')),
+    ),
+    aggregation_kind=AggregationKind.DEFAULT,
+)
+
 # Computes the modular sum of client values on the server, securely. Only
 # supported for integers or nested structures of integers.
 #

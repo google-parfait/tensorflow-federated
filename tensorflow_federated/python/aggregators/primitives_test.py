@@ -126,8 +126,7 @@ class FederatedMinTest(tf.test.TestCase, parameterized.TestCase):
     self.assertAllClose(value, [[1.0, -1.0], -12.0])
 
   def test_federated_min_wrong_type(self):
-    with self.assertRaisesRegex(TypeError, 'Unsupported dtype.'):
-
+    with self.assertRaises(ValueError):
       @federated_computation.federated_computation(
           computation_types.at_clients(tf.bool)
       )
@@ -137,10 +136,7 @@ class FederatedMinTest(tf.test.TestCase, parameterized.TestCase):
       call_federated_min([False])
 
   def test_federated_min_wrong_placement(self):
-    with self.assertRaisesRegex(
-        TypeError, r'.* argument must be a tff.Value placed at CLIENTS'
-    ):
-
+    with self.assertRaises(TypeError):
       @federated_computation.federated_computation(
           computation_types.at_server(tf.int32)
       )
@@ -239,8 +235,7 @@ class FederatedMaxTest(tf.test.TestCase, parameterized.TestCase):
     self.assertAllClose(value, [[5.0, 6.0], 8.0])
 
   def test_federated_max_wrong_type(self):
-    with self.assertRaisesRegex(TypeError, 'Unsupported dtype.'):
-
+    with self.assertRaises(ValueError):
       @federated_computation.federated_computation(
           computation_types.at_clients(tf.bool)
       )
@@ -250,10 +245,7 @@ class FederatedMaxTest(tf.test.TestCase, parameterized.TestCase):
       call_federated_max([True, False])
 
   def test_federated_max_wrong_placement(self):
-    with self.assertRaisesRegex(
-        TypeError, r'.*argument must be a tff.Value placed at CLIENTS.*'
-    ):
-
+    with self.assertRaises(TypeError):
       @federated_computation.federated_computation(
           computation_types.at_server(tf.float32)
       )
