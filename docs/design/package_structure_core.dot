@@ -58,10 +58,7 @@ digraph {
   execution_contexts -> compiler
   execution_contexts -> types
   execution_contexts -> context_stack
-  executor_stacks -> federated_context
-  executor_stacks -> tensorflow_context
   executor_stacks -> executors
-  executor_stacks -> compiler
   executor_stacks -> types
   executors -> federated_context
   executors -> tensorflow_context
