@@ -59,7 +59,7 @@ PROJECT_NAME = 'tensorflow_federated'
 REQUIRED_PACKAGES = [
     'absl-py>=1.0,==1.*',
     'attrs~=21.4',
-    'cachetools~=3.1',
+    'cachetools~=5.3',
     'dm-tree==0.1.8',
     'dp-accounting==0.4.2',
     'farmhashpy==0.4.0',
