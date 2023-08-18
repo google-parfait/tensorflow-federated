@@ -878,6 +878,40 @@ class FederatedMeanTest(IntrinsicTestBase):
       intrinsics.federated_mean(values, weights)
 
 
+class FederatedMinTest(parameterized.TestCase, IntrinsicTestBase):
+
+  def test_federated_min_with_client_int(self):
+    x = _mock_data_of_type(computation_types.at_clients(tf.int32))
+    val = intrinsics.federated_min(x)
+    self.assert_value(val, 'int32@SERVER')
+
+  @parameterized.named_parameters(
+      ('client_string', computation_types.at_clients(tf.string)),
+      ('server_int', computation_types.at_server(tf.int32)),
+  )
+  def test_federated_min_with_invalid_type(self, data_type):
+    x = _mock_data_of_type(data_type)
+    with self.assertRaises(Exception):
+      intrinsics.federated_min(x)
+
+
+class FederatedMaxTest(parameterized.TestCase, IntrinsicTestBase):
+
+  def test_federated_max_with_client_int(self):
+    x = _mock_data_of_type(computation_types.at_clients(tf.int32))
+    val = intrinsics.federated_max(x)
+    self.assert_value(val, 'int32@SERVER')
+
+  @parameterized.named_parameters(
+      ('client_string', computation_types.at_clients(tf.string)),
+      ('server_int', computation_types.at_server(tf.int32)),
+  )
+  def test_federated_max_with_invalid_type(self, data_type):
+    x = _mock_data_of_type(data_type)
+    with self.assertRaises(Exception):
+      intrinsics.federated_max(x)
+
+
 class FederatedAggregateTest(IntrinsicTestBase):
 
   def test_federated_aggregate_with_client_int(self):

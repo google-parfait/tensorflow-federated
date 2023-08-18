@@ -678,6 +678,30 @@ class CreateFederatedMeanTest(absltest.TestCase):
     self.assertEqual(str(comp.type_signature), 'int32@SERVER')
 
 
+class CreateFederatedMinTest(absltest.TestCase):
+
+  def test_returns_federated_min(self):
+    value_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
+    value = building_blocks.Data('v', value_type)
+    comp = building_block_factory.create_federated_min(value)
+    self.assertEqual(comp.compact_representation(), 'federated_min(v)')
+    self.assertEqual(
+        comp.type_signature.compact_representation(), 'int32@SERVER'
+    )
+
+
+class CreateFederatedMaxTest(absltest.TestCase):
+
+  def test_returns_federated_max(self):
+    value_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
+    value = building_blocks.Data('v', value_type)
+    comp = building_block_factory.create_federated_max(value)
+    self.assertEqual(comp.compact_representation(), 'federated_max(v)')
+    self.assertEqual(
+        comp.type_signature.compact_representation(), 'int32@SERVER'
+    )
+
+
 class CreateFederatedSecureModularSumTest(absltest.TestCase):
 
   def test_raises_type_error_with_none_value(self):

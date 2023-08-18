@@ -267,6 +267,33 @@ class IsAverageCompatibleTest(parameterized.TestCase):
     self.assertFalse(type_analysis.is_average_compatible(type_spec))
 
 
+class IsMinMaxCompatibleTest(parameterized.TestCase):
+
+  @parameterized.named_parameters([
+      ('tensor_type_int32', computation_types.TensorType(tf.int32)),
+      ('tensor_type_int64', computation_types.TensorType(tf.int64)),
+      ('tensor_type_float32', computation_types.TensorType(tf.float32)),
+      ('tensor_type_float64', computation_types.TensorType(tf.float64)),
+      (
+          'tuple_type',
+          computation_types.StructType([('x', tf.float32), ('y', tf.int64)]),
+      ),
+      (
+          'federated_type',
+          computation_types.FederatedType(tf.float32, placements.CLIENTS),
+      ),
+  ])
+  def test_returns_true(self, type_spec):
+    self.assertTrue(type_analysis.is_min_max_compatible(type_spec))
+
+  @parameterized.named_parameters([
+      ('tensor_type_complex', computation_types.TensorType(tf.complex128)),
+      ('sequence_type', computation_types.SequenceType(tf.float32)),
+  ])
+  def test_returns_false(self, type_spec):
+    self.assertFalse(type_analysis.is_min_max_compatible(type_spec))
+
+
 class CheckTypeTest(absltest.TestCase):
 
   def test_raises_type_error(self):

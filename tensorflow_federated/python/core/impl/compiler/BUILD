@@ -437,6 +437,7 @@ py_library(
         ":building_block_factory",
         ":building_blocks",
         ":intrinsic_defs",
+        ":tensorflow_computation_factory",
         ":transformation_utils",
         ":tree_analysis",
         "//tensorflow_federated/python/common_libs:py_typecheck",

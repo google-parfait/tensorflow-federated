@@ -1079,6 +1079,72 @@ def create_federated_mean(
     return building_blocks.Call(intrinsic, value)
 
 
+def create_federated_min(
+    value: building_blocks.ComputationBuildingBlock,
+) -> building_blocks.Call:
+  r"""Creates a called federated min.
+
+            Call
+           /    \
+  Intrinsic      Comp
+
+  Args:
+    value: A `building_blocks.ComputationBuildingBlock` to use as the value.
+
+  Returns:
+    A `building_blocks.Call`.
+
+  Raises:
+    ValueError: If any of the types do not match.
+  """
+  if not isinstance(value.type_signature, computation_types.FederatedType):
+    raise ValueError('Expected a federated value.')
+  result_type = computation_types.FederatedType(
+      value.type_signature.member,
+      placements.SERVER,
+  )
+  intrinsic_type = computation_types.FunctionType(
+      type_conversions.type_to_non_all_equal(value.type_signature), result_type
+  )
+  intrinsic = building_blocks.Intrinsic(
+      intrinsic_defs.FEDERATED_MIN.uri, intrinsic_type
+  )
+  return building_blocks.Call(intrinsic, value)
+
+
+def create_federated_max(
+    value: building_blocks.ComputationBuildingBlock,
+) -> building_blocks.Call:
+  r"""Creates a called federated max.
+
+            Call
+           /    \
+  Intrinsic      Comp
+
+  Args:
+    value: A `building_blocks.ComputationBuildingBlock` to use as the value.
+
+  Returns:
+    A `building_blocks.Call`.
+
+  Raises:
+    ValueError: If any of the types do not match.
+  """
+  if not isinstance(value.type_signature, computation_types.FederatedType):
+    raise ValueError('Expected a federated value.')
+  result_type = computation_types.FederatedType(
+      value.type_signature.member,
+      placements.SERVER,
+  )
+  intrinsic_type = computation_types.FunctionType(
+      type_conversions.type_to_non_all_equal(value.type_signature), result_type
+  )
+  intrinsic = building_blocks.Intrinsic(
+      intrinsic_defs.FEDERATED_MAX.uri, intrinsic_type
+  )
+  return building_blocks.Call(intrinsic, value)
+
+
 def create_null_federated_secure_modular_sum():
   return create_federated_secure_modular_sum(
       create_federated_value(building_blocks.Struct([]), placements.CLIENTS),

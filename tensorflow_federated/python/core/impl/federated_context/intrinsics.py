@@ -13,6 +13,7 @@
 # limitations under the License.
 """A factory of intrinsics for use in composing federated computations."""
 
+from typing import Any
 import warnings
 
 import tensorflow as tf
@@ -411,6 +412,64 @@ def federated_mean(value, weight=None):
 
   weight_comp = None if weight is None else weight.comp
   comp = building_block_factory.create_federated_mean(value.comp, weight_comp)
+  comp = _bind_comp_as_reference(comp)
+  return value_impl.Value(comp)
+
+
+def federated_min(value: Any) -> value_impl.Value:
+  """Computes a min at `tff.SERVER` of a `value` placed on the `tff.CLIENTS`.
+
+  Args:
+    value: A value of a TFF federated type placed at the `tff.CLIENTS`.
+
+  Returns:
+    A representation of the min of the member constituents of `value` placed on
+    the `tff.SERVER`.
+
+  Raises:
+    ValueError: If the argument is not a federated TFF value placed at
+      `tff.CLIENTS` compatible with min.
+  """
+  value = value_impl.to_value(value, type_spec=None)
+  value = value_utils.ensure_federated_value(
+      value, placements.CLIENTS, 'value to take min of'
+  )
+  if not type_analysis.is_min_max_compatible(value.type_signature):
+    raise ValueError(
+        'The value type {} is not compatible with the min operator.'.format(
+            value.type_signature
+        )
+    )
+  comp = building_block_factory.create_federated_min(value.comp)
+  comp = _bind_comp_as_reference(comp)
+  return value_impl.Value(comp)
+
+
+def federated_max(value: Any) -> value_impl.Value:
+  """Computes a max at `tff.SERVER` of a `value` placed on the `tff.CLIENTS`.
+
+  Args:
+    value: A value of a TFF federated type placed at the `tff.CLIENTS`.
+
+  Returns:
+    A representation of the max of the member constituents of `value` placed on
+    the `tff.SERVER`.
+
+  Raises:
+    ValueError: If the argument is not a federated TFF value placed at
+      `tff.CLIENTS` compatible with max.
+  """
+  value = value_impl.to_value(value, type_spec=None)
+  value = value_utils.ensure_federated_value(
+      value, placements.CLIENTS, 'value to take max of'
+  )
+  if not type_analysis.is_min_max_compatible(value.type_signature):
+    raise ValueError(
+        'The value type {} is not compatible with the max operator.'.format(
+            value.type_signature
+        )
+    )
+  comp = building_block_factory.create_federated_max(value.comp)
   comp = _bind_comp_as_reference(comp)
   return value_impl.Value(comp)
 
