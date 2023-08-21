@@ -31,12 +31,6 @@ git_repository(
 )
 
 git_repository(
-    name = "io_bazel_rules_go",
-    remote = "https://github.com/bazelbuild/rules_go.git",
-    tag = "v0.29.0",
-)
-
-git_repository(
     name = "org_tensorflow",
     # TODO: b/256948367 - Temporarily updating the version of TF past the version
     # in https://github.com/tensorflow/federated/blob/main/requirements.txt.
@@ -119,25 +113,6 @@ tf_workspace1()
 load("@org_tensorflow//tensorflow:workspace0.bzl", "tf_workspace0")
 
 tf_workspace0()
-
-load("@io_bazel_rules_go//go:deps.bzl", "go_rules_dependencies")
-
-go_rules_dependencies()
-
-# TODO: b/260612484 - Temporarily disable the direct dependency on
-# `go_register_toolchains`, for now we pick this dependency up via TensorFlows
-# workspace.
-# go_register_toolchains(version = "1.17.1")
-
-git_repository(
-    name = "bazel_gazelle",
-    remote = "https://github.com/bazelbuild/bazel-gazelle.git",
-    tag = "v0.24.0",
-)
-
-load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies")
-
-gazelle_dependencies()
 
 load("@com_google_protobuf//:protobuf_deps.bzl", "protobuf_deps")
 
