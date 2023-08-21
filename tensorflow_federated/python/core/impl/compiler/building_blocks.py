@@ -470,7 +470,7 @@ class Struct(ComputationBuildingBlock, structure.Struct):
       if isinstance(e, ComputationBuildingBlock):
         return (None, e)
       elif py_typecheck.is_name_value_pair(
-          e, name_required=False, value_type=ComputationBuildingBlock
+          e, value_type=ComputationBuildingBlock
       ):
         if e[0] is not None and not e[0]:
           raise ValueError('Unexpected struct element with empty string name.')

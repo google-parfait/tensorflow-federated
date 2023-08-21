@@ -92,7 +92,7 @@ class Struct:
     name_to_index = {}
     reserved_names = frozenset(('_asdict',) + Struct.__slots__)
     for idx, e in enumerate(elements):
-      if not py_typecheck.is_name_value_pair(e, name_required=False):
+      if not py_typecheck.is_name_value_pair(e):
         raise TypeError(
             'Expected every item on the list to be a pair in which the first '
             'element is a string, found {!r}.'.format(e)

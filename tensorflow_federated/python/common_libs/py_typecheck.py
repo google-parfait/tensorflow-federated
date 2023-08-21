@@ -14,10 +14,14 @@
 """Utility functions for checking Python types."""
 
 import builtins
-import collections
+from collections.abc import Sequence
 import dataclasses
+import sys
+import typing
+from typing import Optional, TypeVar, Union
 
 import attrs
+from typing_extensions import TypeGuard
 
 
 def check_type(target, type_spec, label=None):
@@ -116,28 +120,43 @@ def is_named_tuple(value):
     return is_named_tuple(type(value))
 
 
-def is_name_value_pair(element, name_required=True, value_type=None):
-  """Determines whether `element` can be considered a name and value pair.
+_NT = TypeVar('_NT', bound=Optional[str])
+_VT = TypeVar('_VT', bound=object)
 
-  In TFF a named field is a `collection.Sequence` of two elements, a `name`
-  (which can optionally be `None`) and a `value`.
+
+def is_name_value_pair(
+    obj: object,
+    name_type: type[_NT] = Optional[str],
+    value_type: type[_VT] = object,
+) -> TypeGuard[tuple[_NT, _VT]]:
+  """Returns `True` if `obj` is a name value pair, otherwise `False`.
+
+  In TFF, a name value pair (or named field) is a `collection.abc.Sequence` of
+  exactly two elements, a `name` (which can be `None`) and a `value`.
 
   Args:
-    element: The Python object to test.
-    name_required: Optional, a boolean specifying if the `name` of the pair can
-      be `None`.
-    value_type: Optional, either a Python type, or a tuple of Python types; the
-      same as what's accepted by isinstance.
-
-  Returns:
-    `True` if `element` is a named tuple element, otherwise `False`.
+    obj: The object to test.
+    name_type: The type of the name.
+    value_type: The type of the value.
   """
-  if not isinstance(element, collections.abc.Sequence) or len(element) != 2:
+  if not isinstance(obj, Sequence) or len(obj) != 2:
     return False
-  if (name_required or element[0] is not None) and not isinstance(
-      element[0], str
-  ):
-    return False
-  if value_type is not None and not isinstance(element[1], value_type):
-    return False
-  return True
+  name, value = obj
+
+  # Before Python 3.10, you could not pass a `Union Type` to isinstance, see
+  # https://docs.python.org/3/library/functions.html#isinstance.
+  if sys.version_info < (3, 10):
+
+    def _unpack_type(x):
+      origin = typing.get_origin(x)
+      if origin is Union:
+        return typing.get_args(name_type)
+      elif origin is not None:
+        return origin
+      else:
+        return x
+
+    name_type = _unpack_type(name_type)
+    value_type = _unpack_type(value_type)
+
+  return isinstance(name, name_type) and isinstance(value, value_type)
