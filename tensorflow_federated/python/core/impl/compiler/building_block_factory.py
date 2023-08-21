@@ -652,7 +652,6 @@ def create_computation_appending(
     name2 = None
   elif py_typecheck.is_name_value_pair(
       comp2,
-      name_required=False,
       value_type=building_blocks.ComputationBuildingBlock,
   ):
     name2, comp2 = comp2
