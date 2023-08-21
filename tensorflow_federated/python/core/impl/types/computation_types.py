@@ -517,7 +517,7 @@ def _to_named_types(
     An `Iterable` where each each element is `tuple[Optional[str], Type]`.
   """
 
-  if py_typecheck.is_name_value_pair(elements, name_required=False):
+  if py_typecheck.is_name_value_pair(elements):
     elements = [elements]
   elif py_typecheck.is_named_tuple(elements):
     elements = elements._asdict().items()  # pytype: disable=attribute-error
@@ -525,8 +525,8 @@ def _to_named_types(
     elements = elements.items()
 
   def _to_named_value_pair(element: object) -> tuple[Optional[str], Type]:
-    if py_typecheck.is_name_value_pair(element, name_required=False):
-      name, value = element  # pytype: disable=attribute-error
+    if py_typecheck.is_name_value_pair(element):
+      name, value = element
     else:
       name = None
       value = element
@@ -1080,7 +1080,7 @@ def to_type(obj: object) -> Type:
     # tf.TensorShape. We thus convert this into a TensorType.
     return TensorType(obj[0], obj[1])
   elif isinstance(obj, (list, tuple)):
-    if any(py_typecheck.is_name_value_pair(e) for e in obj):
+    if any(py_typecheck.is_name_value_pair(e, name_type=str) for e in obj):
       # The sequence has a (name, value) elements, the whole sequence is most
       # likely intended to be a `Struct`, do not store the Python
       # container.
