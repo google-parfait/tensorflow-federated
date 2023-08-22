@@ -36,7 +36,7 @@ grpcio~=1.46
 jaxlib==0.4.14
 jax==0.4.14
 numpy~=1.21
-portpicker~=1.5
+portpicker~=1.6
 scipy~=1.9.3
 semantic-version~=2.6
 tensorflow-compression~=2.12.0
