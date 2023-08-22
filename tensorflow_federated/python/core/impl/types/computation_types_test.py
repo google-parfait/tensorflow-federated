@@ -614,6 +614,46 @@ class SequenceTypeTest(parameterized.TestCase):
     self.assertIs(first_element.python_container, tuple)
     self.assertIs(second_element.python_container, tuple)
 
+  @parameterized.named_parameters([
+      ('abstract_type', computation_types.AbstractType('T')),
+      ('struct_type', computation_types.StructType([tf.int32] * 3)),
+      (
+          'struct_with_python_type',
+          computation_types.StructWithPythonType([tf.int32] * 3, list),
+      ),
+      ('placement_type', computation_types.PlacementType()),
+      ('tensor_type', computation_types.TensorType(tf.int32)),
+  ])
+  def test_init_does_not_raise_value_error(self, element):
+    try:
+      computation_types.SequenceType(element)
+    except ValueError:
+      self.fail('Raised `ValueError` unexpectedly.')
+
+  @parameterized.named_parameters([
+      (
+          'federated_type',
+          computation_types.FederatedType(tf.int32, placements.CLIENTS),
+      ),
+      (
+          'function_type',
+          computation_types.FunctionType(tf.int32, tf.int32),
+      ),
+      (
+          'function_type_nested',
+          computation_types.StructType([
+              computation_types.FunctionType(tf.int32, tf.int32),
+          ]),
+      ),
+      (
+          'sequence_type',
+          computation_types.SequenceType([tf.int32]),
+      ),
+  ])
+  def test_init_raises_value_error(self, element):
+    with self.assertRaises(ValueError):
+      computation_types.SequenceType(element)
+
   @parameterized.named_parameters(
       (
           'tensor_type',
@@ -880,19 +920,49 @@ class FederatedTypeTest(parameterized.TestCase):
     self.assertIs(type_spec_1, type_spec_2)
 
   @parameterized.named_parameters(
-      (
-          'clients',
-          computation_types.FederatedType(tf.int32, placements.CLIENTS),
-          False,
-      ),
-      (
-          'server',
-          computation_types.FederatedType(tf.int32, placements.SERVER),
-          True,
-      ),
+      ('clients', placements.CLIENTS, False),
+      ('server', placements.SERVER, True),
   )
-  def test_init_infers_all_equal(self, type_spec, expected_all_equal):
+  def test_init_infers_all_equal(self, placement, expected_all_equal):
+    type_spec = computation_types.FederatedType(tf.int32, placement)
     self.assertEqual(type_spec.all_equal, expected_all_equal)
+
+  @parameterized.named_parameters([
+      ('abstract_type', computation_types.AbstractType('T')),
+      ('placement_type', computation_types.PlacementType()),
+      ('sequence_type', computation_types.SequenceType([tf.int32])),
+      ('struct_type', computation_types.StructType([tf.int32] * 3)),
+      (
+          'struct_with_python_type',
+          computation_types.StructWithPythonType([tf.int32] * 3, list),
+      ),
+      ('tensor_type', computation_types.TensorType(tf.int32)),
+  ])
+  def test_init_does_not_raise_value_error(self, member):
+    try:
+      computation_types.FederatedType(member, placements.CLIENTS)
+    except ValueError:
+      self.fail('Raised `ValueError` unexpectedly.')
+
+  @parameterized.named_parameters([
+      (
+          'federated_type',
+          computation_types.FederatedType(tf.int32, placements.CLIENTS),
+      ),
+      (
+          'function_type',
+          computation_types.FunctionType(tf.int32, tf.int32),
+      ),
+      (
+          'function_type_nested',
+          computation_types.StructType([
+              computation_types.FunctionType(tf.int32, tf.int32),
+          ]),
+      ),
+  ])
+  def test_init_raises_value_error(self, member):
+    with self.assertRaises(ValueError):
+      computation_types.FederatedType(member, placements.CLIENTS)
 
   @parameterized.named_parameters(
       (
@@ -1486,100 +1556,6 @@ class RepresentationTest(absltest.TestCase):
 
     self.assertEqual(type_spec.compact_representation(), 'float32')
     self.assertEqual(type_spec.formatted_representation(), 'float32')
-
-
-class CheckWellFormedTest(parameterized.TestCase):
-
-  # pyformat: disable
-  @parameterized.named_parameters([
-      ('abstract_type',
-       lambda: computation_types.AbstractType('T')),
-      ('federated_type',
-       lambda: computation_types.FederatedType(tf.int32, placements.CLIENTS)),
-      ('function_type',
-       lambda: computation_types.FunctionType(tf.int32, tf.int32)),
-      ('named_tuple_type',
-       lambda: computation_types.StructType([tf.int32] * 3)),
-      ('placement_type',
-       computation_types.PlacementType),
-      ('sequence_type',
-       lambda: computation_types.SequenceType(tf.int32)),
-      ('tensor_type',
-       lambda: computation_types.TensorType(tf.int32)),
-  ])
-  # pyformat: enable
-  def test_does_not_raise_type_error(self, create_type_signature):
-    try:
-      create_type_signature()
-    except TypeError:
-      self.fail('Raised TypeError unexpectedly.')
-
-  # pylint: disable=g-long-lambda
-  @parameterized.named_parameters([
-      (
-          'federated_function_type',
-          lambda: computation_types.FederatedType(
-              computation_types.FunctionType(tf.int32, tf.int32),
-              placements.CLIENTS,
-          ),
-      ),
-      (
-          'federated_federated_type',
-          lambda: computation_types.FederatedType(
-              computation_types.FederatedType(tf.int32, placements.CLIENTS),
-              placements.CLIENTS,
-          ),
-      ),
-      (
-          'sequence_sequence_type',
-          lambda: computation_types.SequenceType(
-              computation_types.SequenceType([tf.int32])
-          ),
-      ),
-      (
-          'sequence_federated_type',
-          lambda: computation_types.SequenceType(
-              computation_types.FederatedType(tf.int32, placements.CLIENTS)
-          ),
-      ),
-      (
-          'tuple_federated_function_type',
-          lambda: computation_types.StructType(
-              [
-                  computation_types.FederatedType(
-                      computation_types.FunctionType(tf.int32, tf.int32),
-                      placements.CLIENTS,
-                  )
-              ]
-          ),
-      ),
-      (
-          'tuple_federated_federated_type',
-          lambda: computation_types.StructType(
-              [
-                  computation_types.FederatedType(
-                      computation_types.FederatedType(
-                          tf.int32, placements.CLIENTS
-                      ),
-                      placements.CLIENTS,
-                  )
-              ]
-          ),
-      ),
-      (
-          'federated_tuple_function_type',
-          lambda: computation_types.FederatedType(
-              computation_types.StructType(
-                  [computation_types.FunctionType(tf.int32, tf.int32)]
-              ),
-              placements.CLIENTS,
-          ),
-      ),
-  ])
-  # pylint: enable=g-long-lambda
-  def test_raises_type_error(self, create_type_signature):
-    with self.assertRaises(TypeError):
-      create_type_signature()
 
 
 if __name__ == '__main__':
