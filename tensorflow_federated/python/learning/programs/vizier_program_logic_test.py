@@ -74,6 +74,7 @@ class TrainModelWithVizierTest(
     total_rounds = 10
     num_clients = 3
     evaluation_periodicity = 1
+    num_parallel_trials = 2
 
     mock_trials = [
         mock.create_autospec(
@@ -84,10 +85,19 @@ class TrainModelWithVizierTest(
     mock_study = mock.create_autospec(
         client_abc.StudyInterface, spec_set=True, instance=True
     )
-    mock_study.trials().get.side_effect = [
-        mock_trials[0:i] for i in range(total_trials + 1)
-    ]
-    mock_study.suggest.side_effect = [[x] for x in mock_trials]
+
+    suggested_trials = []
+
+    def suggest(*args, **kwargs):
+      del args, kwargs
+      for mock_trial in mock_trials:
+        suggested_trials.append(mock_trial)
+        yield [mock_trial]
+      return []
+
+    mock_study.suggest.side_effect = suggest()
+
+    mock_study.trials().get.side_effect = lambda: suggested_trials
     mock_update_hparams = mock.create_autospec(
         computation_base.Computation, spec_set=True
     )
@@ -130,6 +140,7 @@ class TrainModelWithVizierTest(
     await vizier_program_logic.train_model_with_vizier(
         study=mock_study,
         total_trials=total_trials,
+        num_parallel_trials=num_parallel_trials,
         update_hparams=mock_update_hparams,
         train_model_program_logic=mock_train_model_program_logic,
         train_process=mock_train_process,
