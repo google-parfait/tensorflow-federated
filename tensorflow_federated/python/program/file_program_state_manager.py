@@ -170,7 +170,7 @@ class FileProgramStateManager(
     Args:
       version: A integer representing the version of a saved program state.
       structure: The structure of the saved program state for the given
-        `version` used to support serialization and deserailization of
+        `version` used to support serialization and deserialization of
         user-defined classes in the structure.
 
     Raises:
