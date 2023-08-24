@@ -13,6 +13,7 @@
 # limitations under the License.
 """Program logic for tuning other program logic using Vizier."""
 
+import asyncio
 import collections
 import datetime
 from typing import Optional, Protocol, Union
@@ -146,6 +147,7 @@ async def train_model_with_vizier(
     *,
     study: client_abc.StudyInterface,
     total_trials: int,
+    num_parallel_trials: int = 1,
     update_hparams: computation_base.Computation,
     train_model_program_logic: program_logic.TrainModelProgramLogic,
     train_process: learning_process.LearningProcess,
@@ -163,6 +165,8 @@ async def train_model_with_vizier(
   Args:
     study: The Vizier study to use to to tune `train_model_program_logic`.
     total_trials: The number of Vizier trials.
+    num_parallel_trials: The number of Vizier trials to be evaluated in
+      parallel. Default is 1.
     update_hparams: A `tff.Computation` to use to update the models hparams
       using a trials parameters.
     train_model_program_logic: The program logic to use for training and
@@ -186,62 +190,77 @@ async def train_model_with_vizier(
       `datetime.timedelta` to await before sending a new training checkpoint to
       `evaluation_manager.start_evaluation`.
   """
+
   # TODO: b/238909797 - Vizier does not support `StudyStoppingConfig` in OSS.
   # For now, this program logic only supports stopping the study when the
   # `total_trials` have been completed.
-  while len(list(study.trials().get())) < total_trials:
-    trials = study.suggest(count=1, client_id='single_client')
-    if not trials:
-      break
-    trial = list(trials)[0]
+  async def train_model_with_vizier_one_worker(vizier_worker_name):
+    while len(list(study.trials().get())) < total_trials:
+      trials = study.suggest(count=1, client_id=vizier_worker_name)
+      if not trials:
+        break
+      trial = list(trials)[0]
 
-    initial_train_state = train_process.initialize()
-    hparams = train_process.get_hparams(initial_train_state)
-    hparams = update_hparams(hparams, collections.OrderedDict(trial.parameters))
-    initial_train_state = train_process.set_hparams(
-        initial_train_state, hparams
-    )
+      initial_train_state = train_process.initialize()
+      hparams = train_process.get_hparams(initial_train_state)
+      hparams = update_hparams(
+          hparams, collections.OrderedDict(trial.parameters)
+      )
+      initial_train_state = train_process.set_hparams(
+          initial_train_state, hparams
+      )
 
-    program_state_manager = program_state_manager_factory(trial)
-    model_output_manager = model_output_manager_factory(trial)
+      program_state_manager = program_state_manager_factory(trial)
+      model_output_manager = model_output_manager_factory(trial)
 
-    intermediate_release_manager = _IntermediateMeasurementReleaseManager(trial)
-    if train_metrics_manager_factory is not None:
-      manager = train_metrics_manager_factory(trial)
-      train_metrics_manager = release_manager.GroupingReleaseManager([
-          manager,
-          intermediate_release_manager,
-      ])
-    else:
-      train_metrics_manager = intermediate_release_manager
+      intermediate_release_manager = _IntermediateMeasurementReleaseManager(
+          trial
+      )
+      if train_metrics_manager_factory is not None:
+        manager = train_metrics_manager_factory(trial)
+        train_metrics_manager = release_manager.GroupingReleaseManager([
+            manager,
+            intermediate_release_manager,
+        ])
+      else:
+        train_metrics_manager = intermediate_release_manager
 
-    final_release_manager = _FinalMeasurementReleaseManager(trial)
-    evaluation_manager = evaluation_manager_factory(trial)
-    if evaluation_manager.aggregated_metrics_manager is not None:
-      aggregated_metrics_manager = release_manager.GroupingReleaseManager([
-          evaluation_manager.aggregated_metrics_manager,
-          final_release_manager,
-      ])
-    else:
-      aggregated_metrics_manager = final_release_manager
-    evaluation_manager = evaluation_program_logic.EvaluationManager(
-        data_source=evaluation_manager.data_source,
-        aggregated_metrics_manager=aggregated_metrics_manager,
-        create_state_manager_fn=evaluation_manager.create_state_manager_fn,
-        create_process_fn=evaluation_manager.create_process_fn,
-        cohort_size=evaluation_manager.cohort_size,
-        duration=evaluation_manager.duration,
-    )
+      final_release_manager = _FinalMeasurementReleaseManager(trial)
+      evaluation_manager = evaluation_manager_factory(trial)
+      if evaluation_manager.aggregated_metrics_manager is not None:
+        aggregated_metrics_manager = release_manager.GroupingReleaseManager([
+            evaluation_manager.aggregated_metrics_manager,
+            final_release_manager,
+        ])
+      else:
+        aggregated_metrics_manager = final_release_manager
+      evaluation_manager = evaluation_program_logic.EvaluationManager(
+          data_source=evaluation_manager.data_source,
+          aggregated_metrics_manager=aggregated_metrics_manager,
+          create_state_manager_fn=evaluation_manager.create_state_manager_fn,
+          create_process_fn=evaluation_manager.create_process_fn,
+          cohort_size=evaluation_manager.cohort_size,
+          duration=evaluation_manager.duration,
+      )
 
-    await train_model_program_logic(
-        initial_train_state=initial_train_state,
-        train_process=train_process,
-        train_data_source=train_data_source,
-        train_per_round_clients=num_clients,
-        train_total_rounds=total_rounds,
-        program_state_manager=program_state_manager,
-        model_output_manager=model_output_manager,
-        train_metrics_manager=train_metrics_manager,
-        evaluation_manager=evaluation_manager,
-        evaluation_periodicity=evaluation_periodicity,
-    )
+      await train_model_program_logic(
+          initial_train_state=initial_train_state,
+          train_process=train_process,
+          train_data_source=train_data_source,
+          train_per_round_clients=num_clients,
+          train_total_rounds=total_rounds,
+          program_state_manager=program_state_manager,
+          model_output_manager=model_output_manager,
+          train_metrics_manager=train_metrics_manager,
+          evaluation_manager=evaluation_manager,
+          evaluation_periodicity=evaluation_periodicity,
+      )
+
+  await asyncio.gather(
+      *[
+          train_model_with_vizier_one_worker(
+              vizier_worker_name=f'vizier_worker_{i}'
+          )
+          for i in range(num_parallel_trials)
+      ]
+  )
