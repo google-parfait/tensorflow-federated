@@ -18,7 +18,7 @@ import csv
 import os
 import os.path
 import shutil
-from typing import Union
+from typing import NamedTuple, Union
 import unittest
 from unittest import mock
 
@@ -28,11 +28,13 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.program import file_release_manager
 from tensorflow_federated.python.program import file_utils
 from tensorflow_federated.python.program import program_test_utils
 from tensorflow_federated.python.program import release_manager
 from tensorflow_federated.python.program import structure_utils
+from tensorflow_federated.python.program import value_reference
 
 
 def _read_values_from_csv(
@@ -1402,6 +1404,234 @@ class SavedModelFileReleaseManagerReleaseTest(
       await release_mngr.release(value, type_signature, key)
     except TypeError:
       self.fail('Raised `TypeError` unexpectedly.')
+
+
+class _TestNamedTuple1(NamedTuple):
+  a: bool
+  b: int
+  c: str
+  d: value_reference.MaterializableValueReference
+
+
+class _TestNamedTuple2(NamedTuple):
+  a: int
+
+
+class _TestNamedTuple3(NamedTuple):
+  x: _TestNamedTuple1
+  y: _TestNamedTuple2
+
+
+class SavedModelFileReleaseManagerGetValueTest(
+    parameterized.TestCase, unittest.IsolatedAsyncioTestCase, tf.test.TestCase
+):
+
+  # pyformat: disable
+  @parameterized.named_parameters(
+      # materialized values
+      ('none', None, None),
+      ('bool', True, np.bool_(True)),
+      ('int', 1, np.int32(1)),
+      ('str', 'a', b'a'),
+      ('tensor_int', tf.constant(1), np.int32(1)),
+      ('tensor_str', tf.constant('a'), b'a'),
+      ('tensor_array', tf.constant([1] * 3), np.array([1] * 3, np.int32)),
+      ('numpy_int', np.int32(1), np.int32(1)),
+      ('numpy_array', np.array([1] * 3, np.int32), np.array([1] * 3, np.int32)),
+
+      # materializable value references
+      ('materializable_value_reference_tensor',
+       program_test_utils.TestMaterializableValueReference(1),
+       np.int32(1)),
+      ('materializable_value_reference_sequence',
+       program_test_utils.TestMaterializableValueReference(
+           tf.data.Dataset.from_tensor_slices([1, 2, 3])),
+       tf.data.Dataset.from_tensor_slices([1, 2, 3])),
+
+      # structures
+      ('list',
+       [
+           True,
+           1,
+           'a',
+           program_test_utils.TestMaterializableValueReference(2),
+       ],
+       [
+           np.bool_(True),
+           np.int32(1),
+           b'a',
+           np.int32(2),
+       ]),
+      ('list_empty', [], []),
+      ('list_nested',
+       [
+           [
+               True,
+               1,
+               'a',
+               program_test_utils.TestMaterializableValueReference(2),
+           ],
+           [5],
+       ],
+       [
+           [
+               np.bool_(True),
+               np.int32(1),
+               b'a',
+               np.int32(2),
+           ],
+           [np.int32(5)],
+       ]),
+      ('dict',
+       {
+           'a': True,
+           'b': 1,
+           'c': 'a',
+           'd': program_test_utils.TestMaterializableValueReference(2),
+       },
+       {
+           'a': np.bool_(True),
+           'b': np.int32(1),
+           'c': b'a',
+           'd': np.int32(2),
+       }),
+      ('dict_empty', {}, {}),
+      ('dict_nested',
+       {
+           'x': {
+               'a': True,
+               'b': 1,
+               'c': 'a',
+               'd': program_test_utils.TestMaterializableValueReference(2),
+           },
+           'y': {'a': 5},
+       },
+       {
+           'x': {
+               'a': np.bool_(True),
+               'b': np.int32(1),
+               'c': b'a',
+               'd': np.int32(2),
+           },
+           'y': {'a': np.int32(5)}
+       }),
+      ('named_tuple',
+       _TestNamedTuple1(
+           a=True,
+           b=1,
+           c='a',
+           d=program_test_utils.TestMaterializableValueReference(2),
+       ),
+       _TestNamedTuple1(
+           a=np.bool_(True),
+           b=np.int32(1),
+           c=b'a',
+           d=np.int32(2),
+       )),
+      ('named_tuple_nested',
+       _TestNamedTuple3(
+           x=_TestNamedTuple1(
+               a=True,
+               b=1,
+               c='a',
+               d=program_test_utils.TestMaterializableValueReference(2),
+           ),
+           y=_TestNamedTuple2(a=5),
+       ),
+       _TestNamedTuple3(
+           x=_TestNamedTuple1(
+               a=np.bool_(True),
+               b=np.int32(1),
+               c=b'a',
+               d=np.int32(2),
+           ),
+           y=_TestNamedTuple2(a=np.int32(5)),
+       )),
+  )
+  # pyformat: enable
+  async def test_returns_saved_value(self, value, expected_value):
+    value_type = type_conversions.infer_type(value)
+
+    root_dir = self.create_tempdir()
+    saved_model_mngr = file_release_manager.SavedModelFileReleaseManager(
+        root_dir=root_dir, prefix='a_'
+    )
+    await saved_model_mngr.release(value, value_type, 1)
+    structure = value
+
+    actual_value = await saved_model_mngr.get_value(1, structure)
+
+    if isinstance(actual_value, tf.data.Dataset) and isinstance(
+        expected_value, tf.data.Dataset
+    ):
+      actual_value = list(actual_value)
+      expected_value = list(expected_value)
+    else:
+      program_test_utils.assert_types_equal(actual_value, expected_value)
+    if isinstance(actual_value, np.ndarray) and isinstance(
+        expected_value, np.ndarray
+    ):
+      np.testing.assert_equal(actual_value, expected_value)
+    else:
+      self.assertEqual(actual_value, expected_value)
+
+  @parameterized.named_parameters(
+      ('0', 0),
+      ('1', 1),
+      ('2', 2),
+  )
+  async def test_returns_saved_value_with_key(self, key):
+    structure = 'value'
+    value_type = type_conversions.infer_type(structure)
+
+    root_dir = self.create_tempdir()
+    saved_model_mngr = file_release_manager.SavedModelFileReleaseManager(
+        root_dir=root_dir, prefix='a_'
+    )
+    for i in range(3):
+      await saved_model_mngr.release(f'value_{i}', value_type, i)
+
+    actual_value = await saved_model_mngr.get_value(key, structure)
+
+    expected_value = f'value_{key}'.encode()
+    self.assertEqual(actual_value, expected_value)
+
+  async def test_raises_file_not_found_error_with_no_saved_value(
+      self,
+  ):
+    root_dir = self.create_tempdir()
+    saved_model_mngr = file_release_manager.SavedModelFileReleaseManager(
+        root_dir=root_dir, prefix='a_'
+    )
+
+    with self.assertRaises(file_release_manager.ValueNotFoundError):
+      await saved_model_mngr.get_value(key=0, structure=None)
+
+  async def test_raises_file_not_found_error_with_incorrect_key(self):
+    structure = 'value'
+    value_type = type_conversions.infer_type(structure)
+
+    root_dir = self.create_tempdir()
+    saved_model_mngr = file_release_manager.SavedModelFileReleaseManager(
+        root_dir=root_dir, prefix='a_'
+    )
+    await saved_model_mngr.release('value_1', value_type, key=1)
+
+    with self.assertRaises(file_release_manager.ValueNotFoundError):
+      await saved_model_mngr.get_value(key=10, structure=structure)
+
+  async def test_raises_structure_error_with_incorrect_structure(self):
+    structure = []
+    value_type = type_conversions.infer_type(structure)
+
+    root_dir = self.create_tempdir()
+    saved_model_mngr = file_release_manager.SavedModelFileReleaseManager(
+        root_dir=root_dir, prefix='a_'
+    )
+    await saved_model_mngr.release('state_1', value_type, key=1)
+
+    with self.assertRaises(release_manager.StructureError):
+      await saved_model_mngr.get_value(key=1, structure=structure)
 
 
 if __name__ == '__main__':

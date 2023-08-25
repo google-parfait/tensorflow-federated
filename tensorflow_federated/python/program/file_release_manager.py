@@ -318,6 +318,10 @@ class CSVFileReleaseManager(
     self._latest_key = key
 
 
+class ValueNotFoundError(Exception):
+  """Raised when a FileReleaseManager cannot find value in file system."""
+
+
 class SavedModelFileReleaseManager(
     release_manager.ReleaseManager[
         release_manager.ReleasableStructure, release_manager.Key
@@ -389,10 +393,69 @@ class SavedModelFileReleaseManager(
     Args:
       value: A `tff.program.ReleasableStructure` to release.
       type_signature: The `tff.Type` of `value`.
-      key: An optional value used to reference the released `value`.
+      key: Used to reference (in the file system) the released `value`.
     """
     del type_signature  # Unused.
     path = self._get_path_for_key(key)
     materialized_value = await value_reference.materialize_value(value)
     flattened_value = structure_utils.flatten(materialized_value)
     await file_utils.write_saved_model(flattened_value, path, overwrite=True)
+
+  async def get_value(
+      self,
+      key: release_manager.Key,
+      structure: release_manager.ReleasableStructure,
+  ) -> release_manager.ReleasableStructure:
+    """Returns the value for the given `key`.
+
+    Args:
+      key: Used to reference the released `value`.
+      structure: The structure of the saved program state for the given `key`
+        used to support serialization and deserialization of user-defined
+        classes in the structure.
+
+    Returns:
+      A retrieved value matching `structure`.
+
+    Raises:
+      ValueNotFoundError: If there is no value for the given `key`.
+      StructureError: If the value retrieved from the file system cannot be
+        unflattened into `structure`.
+    """
+    path = self._get_path_for_key(key)
+    if not await file_utils.exists(path):
+      raise ValueNotFoundError(
+          f'No value found for prefix and key: {self._prefix} and {key}'
+      )
+    flattened_value = await file_utils.read_saved_model(path)
+    try:
+      value = structure_utils.unflatten_as(structure, flattened_value)
+    except ValueError as e:
+      raise release_manager.StructureError(
+          f'The structure of type {type(structure)}:\n'
+          f'{structure}\n'
+          f'does not match the value of type {type(flattened_value)}:\n'
+          f'{flattened_value}\n'
+      ) from e
+
+    def _normalize(
+        value: release_manager.ReleasableValue,
+    ) -> release_manager.ReleasableValue:
+      """Returns a normalized value.
+
+      The `tff.program.SavedModelFileReleaseManager` releases and gets values
+      to/from file system using the SavedModel format. When the values are first
+      loaded, they will be TF-native types. This function normalizes those
+      values as numpy values so that, when returned, they can be used more
+      naturally.
+
+      Args:
+        value: The value to normalize.
+      """
+      if isinstance(value, tf.Tensor):
+        return value.numpy()
+      else:
+        return value
+
+    normalized_value = structure_utils.map_structure(_normalize, value)
+    return normalized_value

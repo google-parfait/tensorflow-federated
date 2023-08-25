@@ -82,6 +82,10 @@ class FilterMismatchError(Exception):
   """Raised when there is a mismatch filtering the value and type signature."""
 
 
+class StructureError(Exception):
+  """Raised when there is an error relating to the structure of a value."""
+
+
 @typing.runtime_checkable
 class _NamedTuple(Protocol):
 
