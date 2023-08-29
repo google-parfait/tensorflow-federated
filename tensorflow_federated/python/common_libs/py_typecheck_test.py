@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import NamedTuple
+from typing import NamedTuple, Optional
 
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -91,72 +91,62 @@ class PyTypeCheckTest(parameterized.TestCase):
     self.assertFalse(py_typecheck.is_named_tuple([]))
     self.assertFalse(py_typecheck.is_named_tuple(tuple()))
 
-  def test_is_name_value_pair(self):
-    self.assertTrue(py_typecheck.is_name_value_pair(('a', 1)))
-    self.assertTrue(py_typecheck.is_name_value_pair(['a', 1]))
-    self.assertTrue(py_typecheck.is_name_value_pair(('a', 'b')))
-    self.assertFalse(py_typecheck.is_name_value_pair({'a': 1}))
-    self.assertFalse(py_typecheck.is_name_value_pair({'a': 1, 'b': 2}))
-    self.assertFalse(py_typecheck.is_name_value_pair('a'))
-    self.assertFalse(py_typecheck.is_name_value_pair(('a', 'b', 'c')))
-    self.assertFalse(py_typecheck.is_name_value_pair((None, 1)))
-    self.assertFalse(py_typecheck.is_name_value_pair((1, 1)))
 
-  def test_is_name_value_pair_with_no_name_required(self):
-    self.assertTrue(
-        py_typecheck.is_name_value_pair(('a', 1), name_required=False)
-    )
-    self.assertTrue(
-        py_typecheck.is_name_value_pair(['a', 1], name_required=False)
-    )
-    self.assertTrue(
-        py_typecheck.is_name_value_pair(('a', 'b'), name_required=False)
-    )
-    self.assertFalse(
-        py_typecheck.is_name_value_pair({'a': 1}, name_required=False)
-    )
-    self.assertFalse(
-        py_typecheck.is_name_value_pair(
-            {
-                'a': 1,
-                'b': 2,
-            },
-            name_required=False,
-        )
-    )
-    self.assertFalse(py_typecheck.is_name_value_pair('a', name_required=False))
-    self.assertFalse(
-        py_typecheck.is_name_value_pair(('a', 'b', 'c'), name_required=False)
-    )
-    self.assertTrue(
-        py_typecheck.is_name_value_pair((None, 1), name_required=False)
-    )
-    self.assertFalse(
-        py_typecheck.is_name_value_pair((1, 1), name_required=False)
-    )
+class IsNameValuePairTest(parameterized.TestCase):
 
-  def test_is_name_value_pair_with_value_type(self):
-    self.assertTrue(py_typecheck.is_name_value_pair(('a', 1), value_type=int))
-    self.assertTrue(py_typecheck.is_name_value_pair(['a', 1], value_type=int))
-    self.assertFalse(
-        py_typecheck.is_name_value_pair(('a', 'b'), value_type=int)
-    )
-    self.assertFalse(py_typecheck.is_name_value_pair({'a': 1}, value_type=int))
-    self.assertFalse(
-        py_typecheck.is_name_value_pair(
-            {
-                'a': 1,
-                'b': 2,
-            },
-            value_type=int,
-        )
-    )
-    self.assertFalse(py_typecheck.is_name_value_pair('a', value_type=int))
-    self.assertFalse(
-        py_typecheck.is_name_value_pair(('a', 'b', 'c'), value_type=int)
-    )
-    self.assertFalse(py_typecheck.is_name_value_pair((None, 1), value_type=int))
-    self.assertFalse(py_typecheck.is_name_value_pair((1, 1), value_type=int))
+  @parameterized.named_parameters([
+      ('tuple_unnamed', (None, 1)),
+      ('tuple_named', ('a', 1)),
+      ('list_unnamed', [None, 1]),
+      ('list_named', ['a', 1]),
+  ])
+  def test_returns_true_with_obj(self, obj):
+    actual_result = py_typecheck.is_name_value_pair(obj)
+    self.assertTrue(actual_result)
+
+  @parameterized.named_parameters([
+      ('sequence_short', ('a',)),
+      ('sequence_long', ('a', 'b', 'c')),
+      ('sequence_wrong_name_type', (1, 2)),
+      ('int', 1),
+      ('str', 'a'),
+      ('dict', {'a': 1}),
+  ])
+  def test_returns_false_with_obj(self, obj):
+    actual_result = py_typecheck.is_name_value_pair(obj)
+    self.assertFalse(actual_result)
+
+  @parameterized.named_parameters([
+      ('optional_str_unnamed', (None, 1), Optional[str]),
+      ('optional_str_named', ('a', 1), Optional[str]),
+      ('str', ('a', 1), str),
+      ('none', (None, 1), type(None)),
+  ])
+  def test_returns_true_with_name_type(self, obj, name_type):
+    actual_result = py_typecheck.is_name_value_pair(obj, name_type=name_type)
+    self.assertTrue(actual_result)
+
+  @parameterized.named_parameters([
+      ('wrong_name_type_str', (None, 1), str),
+      ('wrong_name_type_none', ('a', 1), type(None)),
+  ])
+  def test_returns_false_with_name_type(self, obj, name_type):
+    actual_result = py_typecheck.is_name_value_pair(obj, name_type=name_type)
+    self.assertFalse(actual_result)
+
+  @parameterized.named_parameters([
+      ('int', (None, 1), int),
+  ])
+  def test_returns_true_with_value_type(self, obj, value_type):
+    actual_result = py_typecheck.is_name_value_pair(obj, value_type=value_type)
+    self.assertTrue(actual_result)
+
+  @parameterized.named_parameters([
+      ('wrong_value_type_str', (None, 1), str),
+  ])
+  def test_returns_false_with_value_type(self, obj, value_type):
+    actual_result = py_typecheck.is_name_value_pair(obj, value_type=value_type)
+    self.assertFalse(actual_result)
 
 
 if __name__ == '__main__':
