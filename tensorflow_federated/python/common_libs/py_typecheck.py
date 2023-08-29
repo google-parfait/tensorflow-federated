@@ -18,7 +18,7 @@ from collections.abc import Sequence
 import dataclasses
 import sys
 import typing
-from typing import Optional, TypeVar, Union
+from typing import Optional, Protocol, TypeVar, Union
 
 import attrs
 from typing_extensions import TypeGuard
@@ -99,25 +99,16 @@ def check_dataclass(value):
     )
 
 
-def is_named_tuple(value):
-  """Determines whether `value` can be considered a `collections.namedtuple`.
+@typing.runtime_checkable
+class SupportsNamedTuple(Protocol):
+  """A `typing.Protocol` with two abstract method `_fields` and `_asdict`."""
 
-  As `collections.namedtuple` creates a new class with no common a base for each
-  named tuple, there is no simple way to check the type with `isintance(T)`.
-  Instead, this method looks to see if `value` has an `_fields` attribute (which
-  all namedtuple subclasses support).
+  @property
+  def _fields(self) -> tuple[str, ...]:
+    ...
 
-  Args:
-    value: an instance of a Python class or a Python type object.
-
-  Returns:
-    True iff `value` can be considered an instance or type of
-    `collections.namedtuple`.
-  """
-  if isinstance(value, type):
-    return issubclass(value, tuple) and hasattr(value, '_fields')
-  else:
-    return is_named_tuple(type(value))
+  def _asdict(self) -> dict[str, object]:
+    ...
 
 
 _NT = TypeVar('_NT', bound=Optional[str])

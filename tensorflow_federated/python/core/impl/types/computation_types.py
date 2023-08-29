@@ -519,8 +519,8 @@ def _to_named_types(
 
   if py_typecheck.is_name_value_pair(elements):
     elements = [elements]
-  elif py_typecheck.is_named_tuple(elements):
-    elements = elements._asdict().items()  # pytype: disable=attribute-error
+  elif isinstance(elements, py_typecheck.SupportsNamedTuple):
+    elements = elements._asdict().items()
   elif isinstance(elements, Mapping):
     elements = elements.items()
 

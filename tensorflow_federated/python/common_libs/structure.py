@@ -399,11 +399,9 @@ def pack_sequence_as(structure, flat_sequence: list[Any]):
     """Pack a leaf element or recurvisely iterate over an `Struct`."""
     if not isinstance(structure, Struct):
       # Ensure that our leaf values are not structures.
-      if (
-          isinstance(structure, (list, dict))
-          or py_typecheck.is_named_tuple(structure)
-          or attrs.has(type(structure))
-      ):
+      if isinstance(
+          structure, (list, dict, py_typecheck.SupportsNamedTuple)
+      ) or attrs.has(type(structure)):
         raise TypeError(
             'Cannot pack sequence into type {!s}, only structures of '
             '`Struct` are supported, found a structure with types '
@@ -549,7 +547,7 @@ def from_container(value: Any, recursive=False) -> Struct:
           recursive,
           must_be_container,
       )
-    elif py_typecheck.is_named_tuple(value):
+    elif isinstance(value, py_typecheck.SupportsNamedTuple):
       return _convert(
           # In Python 3.8 and later `_asdict` no longer return OrdereDict,
           # rather a regular `dict`.
@@ -685,11 +683,9 @@ def update_struct(structure, **kwargs):
     KeyError: If kwargs contains a field that is not in structure.
     TypeError: If structure is not a structure with named fields.
   """
-  if not (
-      py_typecheck.is_named_tuple(structure)
-      or attrs.has(type(structure))
-      or isinstance(structure, (Struct, Mapping))
-  ):
+  if not isinstance(
+      structure, (Struct, Mapping, py_typecheck.SupportsNamedTuple)
+  ) and not attrs.has(type(structure)):
     raise TypeError(
         '`structure` must be a structure with named fields (e.g. '
         'dict, attrs class, collections.namedtuple, '
@@ -703,7 +699,7 @@ def update_struct(structure, **kwargs):
     if kwargs:
       raise KeyError(f'`structure` does not contain fields named {kwargs}')
     return Struct(elements)
-  elif py_typecheck.is_named_tuple(structure):
+  elif isinstance(structure, py_typecheck.SupportsNamedTuple):
     # In Python 3.8 and later `_asdict` no longer return OrdereDict, rather a
     # regular `dict`, so we wrap here to get consistent types across Python
     # version.s
