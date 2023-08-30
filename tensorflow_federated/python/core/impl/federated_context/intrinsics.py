@@ -1100,20 +1100,9 @@ def sequence_reduce(value, zero, op):
   # Check if the value is a federated sequence that should be reduced
   # under a `federated_map`.
   if isinstance(value.type_signature, computation_types.FederatedType):
-    is_federated_sequence = True
     value_member_type = value.type_signature.member
     value_member_type.check_sequence()
-    zero_member_type = zero.type_signature.member  # pytype: disable=attribute-error
-  else:
-    is_federated_sequence = False
-    value.type_signature.check_sequence()
-  if not is_federated_sequence:
-    comp = building_block_factory.create_sequence_reduce(
-        value.comp, zero.comp, op.comp
-    )
-    comp = _bind_comp_as_reference(comp)
-    return value_impl.Value(comp)
-  else:
+    zero_member_type = zero.type_signature.member
     ref_type = computation_types.StructType(
         [value_member_type, zero_member_type]
     )
@@ -1125,6 +1114,13 @@ def sequence_reduce(value, zero, op):
     fn_value_impl = value_impl.Value(fn)
     args = building_blocks.Struct([value.comp, zero.comp])
     return federated_map(fn_value_impl, args)
+  else:
+    value.type_signature.check_sequence()
+    comp = building_block_factory.create_sequence_reduce(
+        value.comp, zero.comp, op.comp
+    )
+    comp = _bind_comp_as_reference(comp)
+    return value_impl.Value(comp)
 
 
 def sequence_sum(value):
