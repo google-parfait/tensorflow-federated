@@ -96,7 +96,7 @@ class SharedAwaitable:
       await self._event.wait()
       if self._exception is not None:
         _, exception, traceback = self._exception
-        raise exception.with_traceback(traceback)
+        raise exception.with_traceback(traceback)  # pytype: disable=attribute-error
       return self._result
 
     return waiter().__await__()
