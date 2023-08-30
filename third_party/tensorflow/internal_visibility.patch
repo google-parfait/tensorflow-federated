@@ -1,28 +1,13 @@
 diff --git tensorflow/BUILD tensorflow/BUILD
-index b7199470078..1ccd3788f3d 100644
+index b5b076847b6..5f9938d42f2 100644
 --- tensorflow/BUILD
 +++ tensorflow/BUILD
-@@ -950,22 +950,7 @@ config_setting(
- package_group(
-     name = "internal",
-     packages = [
--        "//devtools/python/indexer/...",
--        "//learning/brain/keras/...",
--        "//learning/brain/mlir/...",
--        "//learning/brain/tfrt/...",
--        "//learning/lib/ami/simple_ml/...",
--        "//learning/pathways/...",
--        "//smartass/brain/configure/...",
--        "//tensorflow/...",
--        "//tensorflow_decision_forests/...",
+@@ -1045,7 +1045,7 @@ package_group(
+         "//smartass/brain/configure/...",
+         "//tensorflow/...",
+         "//tensorflow_decision_forests/...",
 -        "//tensorflow_federated/...",
--        "//third_party/cloud_tpu/convergence_tools/sdc_monitoring/...",
--        "//third_party/cloud_tpu/inference_converter/...",
--        "//third_party/py/cloud_ml_autoflow/...",
--        "//third_party/py/envlogger/...",
--        "//third_party/py/keras/...",
--        "//third_party/yggdrasil_decision_forests/...",
 +        "//...",
-     ],
- )
-
+         "//third_party/cloud_tpu/convergence_tools/sdc_monitoring/...",
+         "//third_party/cloud_tpu/inference_converter/...",
+         "//third_party/py/cloud_ml_autoflow/...",
