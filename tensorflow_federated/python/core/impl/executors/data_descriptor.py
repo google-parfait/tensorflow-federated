@@ -23,7 +23,7 @@ from tensorflow_federated.python.core.impl.executors import cardinality_carrying
 from tensorflow_federated.python.core.impl.executors import ingestable_base
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
-from tensorflow_federated.python.core.impl.types.type_serialization import serialize_type
+from tensorflow_federated.python.core.impl.types import type_serialization
 
 
 def CreateDataDescriptor(arg_uris: list[str], arg_type: computation_types.Type):
@@ -38,7 +38,7 @@ def CreateDataDescriptor(arg_uris: list[str], arg_type: computation_types.Type):
   Returns:
     Instance of `DataDescriptor`
   """
-  arg_type_proto = serialize_type(arg_type)
+  arg_type_proto = type_serialization.serialize_type(arg_type)
   args = [
       pb.Computation(data=pb.Data(uri=uri), type=arg_type_proto)
       for uri in arg_uris
