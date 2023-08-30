@@ -1682,6 +1682,10 @@ def create_generic_constant(
       placement_function = building_blocks.Intrinsic(
           intrinsic_defs.FEDERATED_VALUE_AT_SERVER.uri, placement_fn_type
       )
+    else:
+      raise NotImplementedError(
+          f'Unexpected placement found: {type_spec.placement}.'
+      )
     return building_blocks.Call(placement_function, unplaced_zero)
   elif isinstance(type_spec, computation_types.StructType):
     elements = []
