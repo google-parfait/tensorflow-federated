@@ -1,4 +1,4 @@
-load("@rules_license//rules:license.bzl", "license")
+load("//tools/build_defs/license:license.bzl", "license")
 
 package(
     default_applicable_licenses = [":package_license"],
