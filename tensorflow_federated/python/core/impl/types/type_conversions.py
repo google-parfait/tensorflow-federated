@@ -104,7 +104,7 @@ def infer_type(arg: Any) -> Optional[computation_types.Type]:
     return computation_types.StructWithPythonType(
         [(k, infer_type(v)) for k, v in items], type(arg)
     )
-  elif py_typecheck.is_named_tuple(arg):
+  elif isinstance(arg, py_typecheck.SupportsNamedTuple):
     # In Python 3.8 and later `_asdict` no longer return OrderedDict, rather a
     # regular `dict`.
     items = collections.OrderedDict(arg._asdict())
@@ -246,9 +246,9 @@ def type_to_tf_dtypes_and_shapes(type_spec: computation_types.Type):
       container_type = type_spec.python_container
 
       def build_py_container(elements):
-        if py_typecheck.is_named_tuple(container_type) or attrs.has(
-            container_type
-        ):
+        if isinstance(
+            container_type, py_typecheck.SupportsNamedTuple
+        ) or attrs.has(container_type):
           return container_type(**dict(elements))
         else:
           return container_type(elements)
@@ -324,9 +324,9 @@ def type_to_tf_structure(type_spec: computation_types.Type):
         return tuple(v for _, v in element_outputs)
     else:
       container_type = type_spec.python_container
-      if py_typecheck.is_named_tuple(container_type) or attrs.has(
-          container_type
-      ):
+      if isinstance(
+          container_type, py_typecheck.SupportsNamedTuple
+      ) or attrs.has(container_type):
         return container_type(**dict(element_outputs))
       elif container_type is tf.RaggedTensor:
         flat_values = type_spec.flat_values  # pytype: disable=attribute-error
@@ -395,17 +395,17 @@ def type_from_tensors(tensors):
   return computation_types.to_type(type_spec)
 
 
-def is_container_type_without_names(container_type: type[Any]) -> bool:
+def is_container_type_without_names(container_type: type[object]) -> bool:
   """Returns whether `container_type`'s elements are unnamed."""
-  return issubclass(
-      container_type, (list, tuple)
-  ) and not py_typecheck.is_named_tuple(container_type)
+  return issubclass(container_type, (list, tuple)) and not isinstance(
+      container_type, py_typecheck.SupportsNamedTuple
+  )
 
 
-def is_container_type_with_names(container_type: type[Any]) -> bool:
+def is_container_type_with_names(container_type: type[object]) -> bool:
   """Returns whether `container_type`'s elements are named."""
   return (
-      py_typecheck.is_named_tuple(container_type)
+      isinstance(container_type, py_typecheck.SupportsNamedTuple)
       or attrs.has(container_type)
       or issubclass(container_type, dict)
   )
@@ -541,7 +541,7 @@ def type_to_py_container(value, type_spec: computation_types.Type):
       elements.append((elem_name, element))
 
   if (
-      py_typecheck.is_named_tuple(container_type)
+      isinstance(container_type, py_typecheck.SupportsNamedTuple)
       or attrs.has(container_type)
       or dataclasses.is_dataclass(container_type)
       or container_type is tf.SparseTensor

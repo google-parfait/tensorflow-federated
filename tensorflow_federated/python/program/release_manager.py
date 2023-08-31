@@ -19,7 +19,7 @@ from collections.abc import Callable, Mapping, Sequence
 import functools
 import operator
 import typing
-from typing import Generic, Optional, Protocol, TypeVar, Union
+from typing import Generic, Optional, TypeVar, Union
 
 import attrs
 import tree
@@ -84,17 +84,6 @@ class FilterMismatchError(Exception):
 
 class StructureError(Exception):
   """Raised when there is an error relating to the structure of a value."""
-
-
-@typing.runtime_checkable
-class _NamedTuple(Protocol):
-
-  @property
-  def _fields(self) -> tuple[str, ...]:
-    ...
-
-  def _asdict(self) -> dict[str, object]:
-    ...
 
 
 # Sentinel object used by the `tff.program.FilteringReleaseManager` to indicate
@@ -226,7 +215,7 @@ class FilteringReleaseManager(ReleaseManager[ReleasableStructure, Key]):
           elements = [x for x in subtree if x is not _FILTERED_SUBTREE]
           if not elements:
             return _FILTERED_SUBTREE
-          elif isinstance(subtree, _NamedTuple):
+          elif isinstance(subtree, py_typecheck.SupportsNamedTuple):
             if len(subtree) != len(elements):
               fields = list(type(subtree)._fields)
               missing_fields = [

@@ -54,15 +54,13 @@ def _is_federated_named_tuple(vimpl: 'Value') -> bool:
   ) and isinstance(vimpl.type_signature.member, computation_types.StructType)
 
 
-def _is_named_tuple(vimpl: 'Value') -> bool:
-  return isinstance(vimpl.type_signature, computation_types.StructType)
-
-
 def _check_struct_or_federated_struct(
     vimpl: 'Value',
     attribute: str,
 ):
-  if not (_is_named_tuple(vimpl) or _is_federated_named_tuple(vimpl)):
+  if not isinstance(
+      vimpl.type_signature, computation_types.StructType
+  ) and not _is_federated_named_tuple(vimpl):
     raise AttributeError(
         f'`tff.Value` of non-structural type {vimpl.type_signature} has no '
         f'attribute {attribute}'
@@ -174,14 +172,14 @@ class Value(typed_object.TypedObject, metaclass=abc.ABCMeta):
       return Value(
           building_block_factory.create_federated_getitem_call(self._comp, key),
       )
-    if not _is_named_tuple(self):
+    if not isinstance(self.type_signature, computation_types.StructType):
       raise TypeError(
           'Operator getitem() is only supported for structure types, but the '
           'object on which it has been invoked is of type {}.'.format(
               self.type_signature
           )
       )
-    elem_length = len(self.type_signature)  # pytype: disable=wrong-arg-types
+    elem_length = len(self.type_signature)
     if isinstance(key, int):
       if key < 0 or key >= elem_length:
         raise IndexError(
@@ -425,7 +423,7 @@ def to_value(
   elif isinstance(arg, structure.Struct):
     items = structure.iter_elements(arg)
     result = _dictlike_items_to_value(items, type_spec, None)
-  elif py_typecheck.is_named_tuple(arg):
+  elif isinstance(arg, py_typecheck.SupportsNamedTuple):
     items = arg._asdict().items()
     result = _dictlike_items_to_value(items, type_spec, type(arg))
   elif attrs.has(type(arg)):

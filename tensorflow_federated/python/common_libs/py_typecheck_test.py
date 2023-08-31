@@ -12,13 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import NamedTuple, Optional
+from typing import Optional
 
 from absl.testing import absltest
 from absl.testing import parameterized
 
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.common_libs import structure
 
 
 class PyTypeCheckTest(parameterized.TestCase):
@@ -65,31 +64,6 @@ class PyTypeCheckTest(parameterized.TestCase):
         'a',
         (int, bool, float),
     )
-
-  def test_is_named_tuple(self):
-
-    class T(NamedTuple):
-      a: int
-      b: int
-
-    class U(T):
-      pass
-
-    t = T(1, 2)
-    self.assertIn('_asdict', vars(type(t)))
-    self.assertTrue(py_typecheck.is_named_tuple(t))
-    self.assertTrue(py_typecheck.is_named_tuple(T))
-    u = U(3, 4)
-    self.assertNotIn('_asdict', vars(type(u)))
-    self.assertTrue(py_typecheck.is_named_tuple(u))
-    self.assertTrue(py_typecheck.is_named_tuple(U))
-
-    # Not named tuples
-    self.assertFalse(
-        py_typecheck.is_named_tuple(structure.Struct([(None, 10)]))
-    )
-    self.assertFalse(py_typecheck.is_named_tuple([]))
-    self.assertFalse(py_typecheck.is_named_tuple(tuple()))
 
 
 class IsNameValuePairTest(parameterized.TestCase):

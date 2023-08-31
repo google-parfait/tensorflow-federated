@@ -18,7 +18,7 @@ from collections.abc import Iterable, Mapping
 import dataclasses
 import itertools
 import typing
-from typing import Any, Optional, Protocol
+from typing import Any, Optional
 
 import attrs
 import numpy as np
@@ -289,7 +289,7 @@ def capture_result_from_graph(
               tensor=pb.TensorFlow.TensorBinding(tensor_name=result.name)
           ),
       )
-  elif py_typecheck.is_named_tuple(result):
+  elif isinstance(result, py_typecheck.SupportsNamedTuple):
     # Special handling needed for collections.namedtuples since they do not have
     # anything in the way of a shared base class. Note we don't want to rely on
     # the fact that collections.namedtuples inherit from 'tuple' because we'd be
@@ -556,9 +556,9 @@ def assemble_result_from_graph(type_spec, binding, output_map):
       if type_spec.python_container is None:
         return structure.Struct(result_elements)
       container_type = type_spec.python_container
-      if py_typecheck.is_named_tuple(container_type) or attrs.has(
-          container_type
-      ):
+      if isinstance(
+          container_type, py_typecheck.SupportsNamedTuple
+      ) or attrs.has(container_type):
         return container_type(**dict(result_elements))
       return container_type(result_elements)
   elif isinstance(type_spec, computation_types.SequenceType):
@@ -718,16 +718,6 @@ def make_whimsy_element_for_type_spec(type_spec, none_dim_replacement=0):
     return elem_list
 
 
-@typing.runtime_checkable
-class _NamedTuple(Protocol):
-
-  def _asdict(self) -> dict[str, Any]:
-    ...
-
-  def _fields(self) -> tuple[str, ...]:
-    ...
-
-
 def append_to_list_structure_for_element_type_spec(nested, value, type_spec):
   """Adds an element `value` to `nested` lists for `type_spec`.
 
@@ -774,7 +764,7 @@ def append_to_list_structure_for_element_type_spec(nested, value, type_spec):
   elif isinstance(type_spec, computation_types.StructType):
     elements = structure.to_elements(type_spec)
     if isinstance(nested, collections.OrderedDict):
-      if isinstance(value, _NamedTuple):
+      if isinstance(value, py_typecheck.SupportsNamedTuple):
         # In Python 3.8 and later `_asdict` no longer return OrdereDict, rather
         # a regular `dict`.
         value = collections.OrderedDict(value._asdict())
@@ -1163,14 +1153,14 @@ def coerce_dataset_elements_to_tff_type_spec(
             _to_representative_value(field_type, e)
             for (_, field_type), e in zip(field_types, elements)
         ]
-        if py_typecheck.is_named_tuple(py_type):
+        if isinstance(py_type, py_typecheck.SupportsNamedTuple):
           return py_type(*values)
-        return py_type(values)
+        return py_type(values)  # pylint: disable=too-many-function-args
     elif isinstance(type_spec, computation_types.StructType):
       field_types = structure.to_elements(type_spec)
       is_all_named = all([name is not None for name, _ in field_types])
       if is_all_named:
-        if py_typecheck.is_named_tuple(elements):
+        if isinstance(elements, py_typecheck.SupportsNamedTuple):
           values = collections.OrderedDict(
               (name, _to_representative_value(field_type, e))
               for (name, field_type), e in zip(field_types, elements)

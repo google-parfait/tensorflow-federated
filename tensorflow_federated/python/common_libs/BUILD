@@ -98,10 +98,7 @@ py_test(
     name = "py_typecheck_test",
     size = "small",
     srcs = ["py_typecheck_test.py"],
-    deps = [
-        ":py_typecheck",
-        ":structure",
-    ],
+    deps = [":py_typecheck"],
 )
 
 py_library(
