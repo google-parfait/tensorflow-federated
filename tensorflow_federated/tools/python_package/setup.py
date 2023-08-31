@@ -67,7 +67,7 @@ REQUIRED_PACKAGES = [
     'grpcio~=1.46',
     'jaxlib==0.4.14',
     'jax==0.4.14',
-    'numpy~=1.21',
+    'numpy~=1.25',
     'portpicker~=1.6',
     'scipy~=1.9.3',
     'semantic-version~=2.6',
