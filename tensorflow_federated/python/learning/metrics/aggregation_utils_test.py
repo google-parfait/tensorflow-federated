@@ -14,7 +14,7 @@
 """Tests for aggregation_utils."""
 
 import collections
-from typing import Any, OrderedDict
+from typing import Any
 
 from absl.testing import parameterized
 import tensorflow as tf
@@ -31,8 +31,8 @@ def _tf_mean(x):
 
 
 def _test_finalize_metrics(
-    unfinalized_metrics: OrderedDict[str, Any]
-) -> OrderedDict[str, Any]:
+    unfinalized_metrics: collections.OrderedDict[str, Any]
+) -> collections.OrderedDict[str, Any]:
   return collections.OrderedDict(
       accuracy=keras_finalizer.create_keras_metric_finalizer(
           tf.keras.metrics.SparseCategoricalAccuracy

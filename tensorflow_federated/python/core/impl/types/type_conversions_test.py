@@ -15,7 +15,7 @@
 import collections
 from collections.abc import Mapping
 import dataclasses
-from typing import Any, OrderedDict
+from typing import Any
 
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -266,7 +266,7 @@ class InferTypeTest(parameterized.TestCase, tf.test.TestCase):
     @dataclasses.dataclass
     class TestDataclass:
       a: int
-      b: OrderedDict[str, Any]
+      b: collections.OrderedDict[str, Any]
 
     t = type_conversions.infer_type(
         TestDataclass(a=0, b=collections.OrderedDict(x=True, y=0.0))

@@ -16,7 +16,7 @@
 import collections
 from collections.abc import Callable
 import functools
-from typing import Any, OrderedDict, TypeVar, Union
+from typing import Any, TypeVar, Union
 
 import tensorflow as tf
 
@@ -24,8 +24,8 @@ from tensorflow_federated.python.tensorflow_libs import variable_utils
 
 StateVar = TypeVar('StateVar')
 MetricConstructor = Callable[[], tf.keras.metrics.Metric]
-MetricConstructors = OrderedDict[str, MetricConstructor]
-MetricStructure = OrderedDict[str, tf.keras.metrics.Metric]
+MetricConstructors = collections.OrderedDict[str, MetricConstructor]
+MetricStructure = collections.OrderedDict[str, tf.keras.metrics.Metric]
 MetricsConstructor = Callable[[], MetricStructure]
 
 
