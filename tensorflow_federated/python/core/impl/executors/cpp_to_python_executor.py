@@ -16,7 +16,7 @@
 import asyncio
 from collections.abc import Sequence
 import concurrent
-from typing import Any, Optional
+from typing import Any, NoReturn, Optional
 
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.common_libs import tracing
@@ -28,7 +28,7 @@ from tensorflow_federated.python.core.impl.executors import value_serialization
 from tensorflow_federated.python.core.impl.types import computation_types
 
 
-def _handle_error(exception: Exception):
+def _handle_error(exception: Exception) -> NoReturn:
   if executors_errors.is_absl_status_retryable_error(exception):
     raise executors_errors.RetryableAbslStatusError() from exception
   else:
