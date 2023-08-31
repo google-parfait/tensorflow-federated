@@ -225,7 +225,7 @@ def create_functional_metric_fns(
       )
     predictions = batch_output.predictions
 
-    def inner_update(metric: tf.keras.metrics.Metric) -> tuple[tf.Tensor]:
+    def inner_update(metric: tf.keras.metrics.Metric) -> tuple[tf.Tensor, ...]:
       # We must unwrap `update_state` here because the `TensorVariable` is
       # created in the outer `update` FuncGraph and since it is not constant
       # it can't be closed over in the `update_state` FuncGraph. The
