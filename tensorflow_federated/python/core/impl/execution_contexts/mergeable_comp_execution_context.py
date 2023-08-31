@@ -257,6 +257,7 @@ def _partition_value(
   """Partitions value as specified in _split_value_into_subrounds."""
   if isinstance(type_signature, computation_types.StructType):
     struct_val = structure.from_container(val.payload)
+    partition_result: Optional[_PartitioningValue] = None
     result_container = []
     for (_, val_elem), (name, type_elem) in zip(
         structure.iter_elements(struct_val),
@@ -270,6 +271,8 @@ def _partition_value(
       )
       partition_result = _partition_value(partitioning_val_elem, type_elem)
       result_container.append((name, partition_result.payload))
+    if partition_result is None:
+      raise ValueError(f'Expected the value to not be empty, found {val}.')
     return _PartitioningValue(
         structure.Struct(result_container),
         partition_result.num_remaining_clients,
@@ -499,6 +502,7 @@ async def _run_in_async_context_pool(
   }
   arg_list_index = len(execution_contexts)
   result = initial_result
+  context = None
   pending_tasks = set(contexts_by_task.keys())
 
   while pending_tasks:
