@@ -55,7 +55,7 @@ def _tf_wrapper_fn(parameter_type, name, **kwargs):
     result = yield arg
   except Exception as e:  # pylint: disable=broad-except
     tf_serializer.throw(e)
-  comp_pb, extra_type_spec = tf_serializer.send(result)  # pytype: disable=attribute-error
+  comp_pb, extra_type_spec = tf_serializer.send(result)  # pylint: disable=undefined-variable  # pytype: disable=attribute-error
   tf_serializer.close()
   yield computation_impl.ConcreteComputation(
       comp_pb, ctx_stack, extra_type_spec
