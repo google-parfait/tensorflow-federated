@@ -65,6 +65,10 @@ upper_tabs:
       - title: "Experimental support for JAX in TFF"
         path: /federated/tutorials/jax_support
 
+      - heading: Resources
+      - title: "FAQ"
+        path: /federated/faq
+
 
     - name: Guide
       contents:
