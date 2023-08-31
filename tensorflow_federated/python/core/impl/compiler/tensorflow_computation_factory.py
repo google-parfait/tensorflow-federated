@@ -15,7 +15,7 @@
 
 from collections.abc import Callable
 import functools
-from typing import Any, Optional, TypeVar
+from typing import Optional, TypeVar
 
 import tensorflow as tf
 
@@ -329,7 +329,7 @@ def create_binary_operator(
 
 def create_binary_operator_with_upcast(
     type_signature: computation_types.StructType,
-    operator: Callable[[Any, Any], Any],
+    operator: Callable[[object, object], object],
 ) -> ComputationProtoAndType:
   """Creates TF computation upcasting its argument and applying `operator`.
 
