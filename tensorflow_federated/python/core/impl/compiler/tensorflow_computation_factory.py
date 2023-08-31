@@ -15,7 +15,6 @@
 
 from collections.abc import Callable
 import functools
-import types
 from typing import Any, Optional, TypeVar
 
 import tensorflow as tf
@@ -600,7 +599,7 @@ def create_replicate_input(
 
 
 def create_computation_for_py_fn(
-    fn: types.FunctionType,
+    fn: Callable[..., object],
     parameter_type: Optional[computation_types.Type],
     layout_map: Optional[pb.TensorFlow.LayoutMap] = None,
 ) -> ComputationProtoAndType:
