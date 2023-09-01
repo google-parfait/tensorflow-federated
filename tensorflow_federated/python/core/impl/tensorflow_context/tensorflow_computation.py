@@ -13,8 +13,8 @@
 # limitations under the License.
 """Definition of a tensorflow computation."""
 
-from collections.abc import Generator, Mapping, Sequence
-from typing import Any, Callable, Optional, Union
+from collections.abc import Callable, Generator, Mapping, Sequence
+from typing import Any, Optional, Union
 
 import tensorflow as tf
 
