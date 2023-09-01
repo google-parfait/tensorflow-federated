@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import collections
-from typing import Any, NamedTuple
+from typing import NamedTuple
 
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -157,8 +157,8 @@ class TensorFlowComputationTest(parameterized.TestCase):
   def test_takes_structured_tuple_typed(self):
 
     class MyType(NamedTuple):
-      x: Any
-      y: Any
+      x: object
+      y: object
 
     @tf.function
     def foo(x, t, l, odict, my_type):
@@ -190,8 +190,8 @@ class TensorFlowComputationTest(parameterized.TestCase):
   def test_takes_structured_tuple_polymorphic(self):
 
     class MyType(NamedTuple):
-      x: Any
-      y: Any
+      x: object
+      y: object
 
     @tf.function
     def foo(x, t, l, odict, my_type):
@@ -240,8 +240,8 @@ class TensorFlowComputationTest(parameterized.TestCase):
   def test_returns_tuple_structured(self):
 
     class MyType(NamedTuple):
-      x: Any
-      y: Any
+      x: object
+      y: object
 
     @tf.function
     def foo():
@@ -265,8 +265,8 @@ class TensorFlowComputationTest(parameterized.TestCase):
   def test_takes_namedtuple_typed(self):
 
     class MyType(NamedTuple):
-      x: Any
-      y: Any
+      x: object
+      y: object
 
     @tf.function
     def foo(x):
@@ -282,8 +282,8 @@ class TensorFlowComputationTest(parameterized.TestCase):
   def test_takes_namedtuple_polymorphic(self):
 
     class MyType(NamedTuple):
-      x: Any
-      y: Any
+      x: object
+      y: object
 
     @tf.function
     def foo(t):
@@ -640,8 +640,8 @@ class TensorFlowFunctionComputationTest(parameterized.TestCase):
   def test_takes_structured_tuple_typed(self):
 
     class MyType(NamedTuple):
-      x: Any
-      y: Any
+      x: object
+      y: object
 
     @tf.function
     def foo(x, t, l, odict, my_type):
@@ -673,8 +673,8 @@ class TensorFlowFunctionComputationTest(parameterized.TestCase):
   def test_takes_structured_tuple_polymorphic(self):
 
     class MyType(NamedTuple):
-      x: Any
-      y: Any
+      x: object
+      y: object
 
     @tf.function
     def foo(x, t, l, odict, my_type):
@@ -723,8 +723,8 @@ class TensorFlowFunctionComputationTest(parameterized.TestCase):
   def test_returns_tuple_structured(self):
 
     class MyType(NamedTuple):
-      x: Any
-      y: Any
+      x: object
+      y: object
 
     @tf.function
     def foo():
@@ -758,8 +758,8 @@ class TensorFlowFunctionComputationTest(parameterized.TestCase):
 
     @attrs.define
     class TestAttrs:
-      q: Any
-      p: Any
+      q: object
+      p: object
 
     class TestTuple(NamedTuple):
       y: str
@@ -807,8 +807,8 @@ class TensorFlowFunctionComputationTest(parameterized.TestCase):
   def test_takes_namedtuple_typed(self):
 
     class MyType(NamedTuple):
-      x: Any
-      y: Any
+      x: object
+      y: object
 
     @tf.function
     def foo(x):
@@ -826,8 +826,8 @@ class TensorFlowFunctionComputationTest(parameterized.TestCase):
   def test_takes_namedtuple_polymorphic(self):
 
     class MyType(NamedTuple):
-      x: Any
-      y: Any
+      x: object
+      y: object
 
     @tf.function
     def foo(t):

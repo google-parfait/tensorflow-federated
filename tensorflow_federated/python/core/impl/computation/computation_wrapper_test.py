@@ -14,7 +14,6 @@
 
 import collections
 import functools
-from typing import Any
 
 from absl.testing import absltest
 import attrs
@@ -78,9 +77,9 @@ class ContextForTest(context_base.SyncContext):
 
 @attrs.define
 class Result:
-  arg: Any
-  arg_type: Any
-  zero_result: Any
+  arg: object
+  arg_type: object
+  zero_result: object
 
 
 test_wrap = computation_wrapper.ComputationWrapper(

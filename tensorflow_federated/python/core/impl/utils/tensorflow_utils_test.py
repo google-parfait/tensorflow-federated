@@ -14,7 +14,6 @@
 
 import collections
 import dataclasses
-from typing import Any
 
 import attrs
 import numpy as np
@@ -434,8 +433,8 @@ class GraphUtilsTest(tf.test.TestCase):
   def test_capture_result_with_dataclass_of_constants(self):
     @dataclasses.dataclass
     class TestFoo:
-      x: Any
-      y: Any
+      x: object
+      y: object
 
     graph = tf.compat.v1.get_default_graph()
     type_spec, _ = tensorflow_utils.capture_result_from_graph(

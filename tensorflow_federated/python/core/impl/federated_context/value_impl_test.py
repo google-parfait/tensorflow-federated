@@ -14,7 +14,6 @@
 
 import collections
 import dataclasses
-from typing import Any
 
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -35,14 +34,14 @@ from tensorflow_federated.python.core.impl.types import placements
 
 @dataclasses.dataclass
 class TestDataclass:
-  x: Any
-  y: Any
+  x: object
+  y: object
 
 
 @attrs.define
 class TestAttrClass:
-  x: Any
-  y: Any
+  x: object
+  y: object
 
 
 class ValueTest(parameterized.TestCase):
