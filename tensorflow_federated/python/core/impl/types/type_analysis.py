@@ -15,7 +15,7 @@
 
 import collections
 from collections.abc import Callable
-from typing import Any, Optional, OrderedDict
+from typing import Any, Optional
 
 import tensorflow as tf
 
@@ -863,7 +863,7 @@ def count_tensors_in_type(
     tensor_filter: Optional[
         Callable[[computation_types.TensorType], bool]
     ] = None,
-) -> OrderedDict[str, Any]:
+) -> collections.OrderedDict[str, Any]:
   """Counts tensors and fully-specified elements under `type_spec`.
 
   Args:
