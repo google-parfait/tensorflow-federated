@@ -656,9 +656,7 @@ def federated_select(client_keys, max_key, server_val, select_fn):
       server-placed value (`S@SERVER`), or if `select_fn` is not a function
       of type `<S, int32> -> RESULT`.
   """
-  return _federated_select(
-      client_keys, max_key, server_val, select_fn, secure=False
-  )
+  raise ValueError('dalyk failing federated_select')
 
 
 def federated_secure_select(client_keys, max_key, server_val, select_fn):
