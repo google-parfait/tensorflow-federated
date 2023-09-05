@@ -15,7 +15,6 @@
 
 import collections
 from collections.abc import Callable, Sequence
-from typing import Any
 
 import tensorflow as tf
 
@@ -715,7 +714,7 @@ def _apply_generic_op(op, arg):
 
 
 def _initial_values(
-    initial_value_fn: Callable[[computation_types.TensorType], Any],
+    initial_value_fn: Callable[[computation_types.TensorType], object],
     member_type: computation_types.Type,
 ) -> building_blocks.ComputationBuildingBlock:
   """Create a nested structure of initial values.
@@ -742,7 +741,7 @@ def _initial_values(
     return building_blocks.Call(compiled)
 
   def _structify_bb(
-      inner_value: Any,
+      inner_value: object,
   ) -> building_blocks.ComputationBuildingBlock:
     if isinstance(inner_value, dict):
       return building_blocks.Struct(

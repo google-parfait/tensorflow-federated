@@ -14,7 +14,7 @@
 """Definition of a tensorflow computation."""
 
 from collections.abc import Callable, Generator, Mapping, Sequence
-from typing import Any, Optional, Union
+from typing import Optional, Union
 
 import tensorflow as tf
 
@@ -336,7 +336,7 @@ class _TensorFlowFunctionTracingStrategy:
 
   def __call__(
       self,
-      fn_to_wrap: Callable[..., Any],
+      fn_to_wrap: Callable[..., object],
       fn_name: Optional[str],
       parameter_type: Optional[computation_types.Type],
       unpack: Optional[bool],
