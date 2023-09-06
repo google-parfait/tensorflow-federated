@@ -88,6 +88,7 @@ async def train_model(
     ] = None,
     evaluation_manager: Optional[evaluation_program_logic.EvaluationManager],
     evaluation_periodicity: Union[int, datetime.timedelta],
+    train_metrics_periodicity: int = 1,
 ) -> None:
   """Runs specified rounds of training and optionally evaluates the model.
 
@@ -131,9 +132,18 @@ async def train_model(
     evaluation_manager: An `EvaluationManager` used to create a state manager
       for each evaluation loop that is forked off from the training loop.
     evaluation_periodicity: Either a integer number of rounds or
-      `datetime.timedelta` to await before sending a new training checkpoint to
-      `evaluation_manager.start_evaluation`. Note that the last training round
-      will always be evaluated even if it does not satisfy the periodicity.
+      `datetime.timedelta` to wait before sending a new training checkpoint to
+      `evaluation_manager.start_evaluation`. The last training round will always
+      be evaluated even if it does not satisfy this periodicity. Note that the
+      release of *training* metrics data is throttled via a separate argument,
+      `train_metrics_periodicity`.
+    train_metrics_periodicity: An integer number of rounds to wait before
+      releasing training metrics via `train_metrics_manager`. This is useful as
+      a means to reduce the volume of metrics data produced (by setting to some
+      value greater than the default of 1). The last training round will always
+      have its training metrics released even if it does not satisfy this
+      periodicity. Note that evaluation data is throttled via a separate
+      argument, `evaluation_periodicity`.
 
   Raises:
     ValueError: If the train state is None.
@@ -199,6 +209,13 @@ async def train_model(
   train_state_type, _ = train_process.next.type_signature.result  # pytype: disable=attribute-error
   train_data_iterator = train_data_source.iterator()
 
+  def should_release_train_metrics_for_round(round_num: int) -> bool:
+    is_last_round = round_num == train_total_rounds
+    if is_last_round:
+      return True
+    else:
+      return round_num % train_metrics_periodicity == 0
+
   # Track a future time after which an evaluation should be started. This will
   # be `evaluation_periodicity` after the most recent evaluation time.
   next_evaluation_time = None
@@ -254,7 +271,10 @@ async def train_model(
     task_manager.add_task(
         program_state_manager.save((train_state, round_num), version=round_num)
     )
-    if train_metrics_manager is not None:
+    if (
+        train_metrics_manager is not None
+        and should_release_train_metrics_for_round(round_num)
+    ):
       try:
         released_train_metrics, released_train_metrics_type = (
             evaluation_program_logic.extract_and_rewrap_metrics(

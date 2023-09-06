@@ -155,6 +155,86 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     )
 
   @context_stack_test_utils.with_context(_create_test_context)
+  async def test_integration_runs_5_training_rounds_releases_metrics_every_2_rounds(
+      self,
+  ):
+    train_num_clients = 5
+    training_rounds = 5
+    training_process = _create_mock_train_process()
+
+    # Create a mock state manager that returns no previous state, starting
+    # training from scratch.
+    mock_program_state_manager = mock.create_autospec(
+        program_state_manager.ProgramStateManager, instance=True, spec_set=True
+    )
+    mock_program_state_manager.load_latest.side_effect = [(None, 0)]
+
+    mock_model_output_manager = mock.create_autospec(
+        release_manager.ReleaseManager, instance=True, spec_set=True
+    )
+    mock_train_metrics_manager = mock.create_autospec(
+        release_manager.ReleaseManager, instance=True, spec_set=True
+    )
+
+    await training_program_logic.train_model(
+        train_process=training_process,
+        train_data_source=_create_mock_datasource(),
+        train_per_round_clients=train_num_clients,
+        train_total_rounds=training_rounds,
+        program_state_manager=mock_program_state_manager,
+        model_output_manager=mock_model_output_manager,
+        train_metrics_manager=mock_train_metrics_manager,
+        train_metrics_periodicity=2,
+        evaluation_manager=None,
+        evaluation_periodicity=100,
+    )
+
+    # Assert that the program attempted to load a previous checkpoint and then
+    # released the model state every round.
+    any_algorithm_state = composers.LearningAlgorithmState(
+        global_model_weights=mock.ANY,
+        distributor=mock.ANY,
+        client_work=mock.ANY,
+        aggregator=mock.ANY,
+        finalizer=mock.ANY,
+    )
+    self.assertEqual(
+        mock_program_state_manager.load_latest.call_args_list,
+        [mock.call((any_algorithm_state, 0))],
+    )
+    self.assertEqual(
+        mock_program_state_manager.save.call_args_list,
+        # Expect saving the initial state (version 0) and training rounds 1
+        # through training_rounds.
+        [
+            mock.call((any_algorithm_state, round_num), version=round_num)
+            for round_num in range(0, training_rounds + 1)
+        ],
+    )
+
+    # Assert that training metrics were released every two rounds.
+    train_state_type, _ = training_process.next.type_signature.result
+    self.assertSequenceEqual(
+        [
+            _create_metrics_release_call(key=round_num)
+            for round_num in (2, 4, 5)
+        ],
+        mock_train_metrics_manager.release.call_args_list,
+    )
+
+    # Assert the model was output once at the end of training.
+    self.assertSequenceEqual(
+        [
+            mock.call(
+                any_algorithm_state,
+                train_state_type,
+                key=f'final_training_checkpoint_round_{training_rounds}',
+            )
+        ],
+        mock_model_output_manager.release.call_args_list,
+    )
+
+  @context_stack_test_utils.with_context(_create_test_context)
   async def test_integration_runs_5_training_rounds_two_eval_rounds_from_scratch(
       self,
   ):
