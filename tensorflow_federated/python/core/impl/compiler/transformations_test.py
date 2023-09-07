@@ -785,7 +785,9 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
       comp.result.check_block()
 
     original_comp = transformations.to_call_dominant(original_comp)
-    original_comp = tree_transformations.normalize_all_equal_bit(original_comp)
+    original_comp = tree_transformations.normalize_types(
+        original_comp, normalize_all_equal_bit=False
+    )
 
     self.assertIsInstance(
         before.type_signature.result, computation_types.StructType
