@@ -44,6 +44,7 @@ from tensorflow_federated.python.program.release_manager import FilteringRelease
 from tensorflow_federated.python.program.release_manager import FilterMismatchError
 from tensorflow_federated.python.program.release_manager import GroupingReleaseManager
 from tensorflow_federated.python.program.release_manager import NotFilterableError
+from tensorflow_federated.python.program.release_manager import PeriodicReleaseManager
 from tensorflow_federated.python.program.release_manager import ReleasableStructure
 from tensorflow_federated.python.program.release_manager import ReleasableValue
 from tensorflow_federated.python.program.release_manager import ReleaseManager
