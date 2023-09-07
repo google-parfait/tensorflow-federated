@@ -35,16 +35,18 @@ ProgramStateStructure = TypeVar(
 )
 
 
-class ProgramStateManagerStateAlreadyExistsError(Exception):
-  pass
+class ProgramStateExistsError(Exception):
+  """Raised when the program state already exists."""
+
+  def __init__(self, version: int):
+    super().__init__(f'Program state already exists for version: {version}.')
 
 
-class ProgramStateManagerStateNotFoundError(Exception):
-  pass
+class ProgramStateNotFoundError(Exception):
+  """Raised when the program state cannot be found."""
 
-
-class ProgramStateManagerStructureError(Exception):
-  pass
+  def __init__(self, version: int):
+    super().__init__(f'No program state found for version: {version}.')
 
 
 class ProgramStateManager(abc.ABC, Generic[ProgramStateStructure]):
@@ -77,10 +79,8 @@ class ProgramStateManager(abc.ABC, Generic[ProgramStateStructure]):
         user-defined classes in the structure.
 
     Raises:
-      ProgramStateManagerStateNotFoundError: If there is no program state for
-        the given `version`.
-      ProgramStateManagerStructureError: If `structure` does not match the value
-        loaded for the given `version`.
+      ProgramStateNotFoundError: If there is no program state for the given
+        `version`.
     """
     raise NotImplementedError
 
@@ -104,7 +104,7 @@ class ProgramStateManager(abc.ABC, Generic[ProgramStateStructure]):
     latest_version = max(versions)
     try:
       return await self.load(latest_version, structure), latest_version
-    except ProgramStateManagerStateNotFoundError:
+    except ProgramStateNotFoundError:
       return None, 0
 
   @abc.abstractmethod
@@ -119,7 +119,7 @@ class ProgramStateManager(abc.ABC, Generic[ProgramStateStructure]):
         `program_state`.
 
     Raises:
-      ProgramStateManagerStateAlreadyExistsError: If there is already program
-        state for the given `version`.
+      ProgramStateExistsError: If there is already program state for the given
+        `version`.
     """
     raise NotImplementedError

@@ -174,28 +174,16 @@ class FileProgramStateManager(
         user-defined classes in the structure.
 
     Raises:
-      ProgramStateManagerStateNotFoundError: If there is no program state for
-        the given `version`.
-      ProgramStateManagerStructureError: If `structure` does not match the value
-        loaded for the given `version`.
+      ProgramStateNotFoundError: If there is no program state for the given
+        `version`.
     """
     py_typecheck.check_type(version, int)
 
     path = self._get_path_for_version(version)
     if not await file_utils.exists(path):
-      raise program_state_manager.ProgramStateManagerStateNotFoundError(
-          f'No program state found for version: {version}'
-      )
+      raise program_state_manager.ProgramStateNotFoundError(version)
     flattened_state = await file_utils.read_saved_model(path)
-    try:
-      program_state = structure_utils.unflatten_as(structure, flattened_state)
-    except ValueError as e:
-      raise program_state_manager.ProgramStateManagerStructureError(
-          f'The structure of type {type(structure)}:\n'
-          f'{structure}\n'
-          f'does not match the value of type {type(flattened_state)}:\n'
-          f'{flattened_state}\n'
-      ) from e
+    program_state = structure_utils.unflatten_as(structure, flattened_state)
 
     def _normalize(
         value: program_state_manager.ProgramStateValue,
@@ -269,16 +257,14 @@ class FileProgramStateManager(
         `program_state`.
 
     Raises:
-      ProgramStateManagerStateAlreadyExistsError: If there is already program
-        state for the given `version`.
+      ProgramStateExistsError: If there is already program state for the given
+        `version`.
     """
     py_typecheck.check_type(version, (int, np.integer))
 
     path = self._get_path_for_version(version)
     if await file_utils.exists(path):
-      raise program_state_manager.ProgramStateManagerStateAlreadyExistsError(
-          f'Program state already exists for version: {version}'
-      )
+      raise program_state_manager.ProgramStateExistsError(version)
     materialized_state = await value_reference.materialize_value(program_state)
 
     def _serialize(value):

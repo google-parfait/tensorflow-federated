@@ -42,6 +42,13 @@ ReleasableStructure = TypeVar(
 Key = TypeVar('Key')
 
 
+class ReleasedValueNotFoundError(Exception):
+  """Raised when a released value cannot be found."""
+
+  def __init__(self, key: object):
+    super().__init__(f'No released value found for key: {key}.')
+
+
 class ReleaseManager(abc.ABC, Generic[ReleasableStructure, Key]):
   """An interface for releasing values from a federated program.
 
@@ -75,15 +82,11 @@ class ReleaseManager(abc.ABC, Generic[ReleasableStructure, Key]):
 
 
 class NotFilterableError(Exception):
-  """Raised when the structure can not be filtered."""
+  """Raised when the structure cannot be filtered."""
 
 
 class FilterMismatchError(Exception):
   """Raised when there is a mismatch filtering the value and type signature."""
-
-
-class StructureError(Exception):
-  """Raised when there is an error relating to the structure of a value."""
 
 
 # Sentinel object used by the `tff.program.FilteringReleaseManager` to indicate
@@ -139,7 +142,7 @@ class FilteringReleaseManager(ReleaseManager[ReleasableStructure, Key]):
 
   Important: Most `tff.program.ReleasableStructure` can be filtered, including
   individual values, structures, and structures nested in `NamedTuple`s.
-  However, the fields of a `NamedTuple` can not be filtered.
+  However, the fields of a `NamedTuple` cannot be filtered.
   """
 
   def __init__(
@@ -173,7 +176,7 @@ class FilteringReleaseManager(ReleaseManager[ReleasableStructure, Key]):
       key: A value used to reference the released `value`.
 
     Raises:
-      NotFilterableError: If the `value` can not be filtered.
+      NotFilterableError: If the `value` cannot be filtered.
       FilterMismatchError: If there is a mismatch filtering the `value` and
         `type_signature`.
     """
@@ -204,7 +207,7 @@ class FilteringReleaseManager(ReleaseManager[ReleasableStructure, Key]):
         filtered.
 
       Raises:
-        NotFilterableError: If `subtree` can not be filtered.
+        NotFilterableError: If `subtree` cannot be filtered.
       """
       if tree.is_nested(subtree) and not attrs.has(type(subtree)):
         # TODO: b/224484886 - Downcasting to all handled types.
@@ -224,9 +227,9 @@ class FilteringReleaseManager(ReleaseManager[ReleasableStructure, Key]):
                   if v is _FILTERED_SUBTREE
               ]
               raise NotFilterableError(
-                  'The fields of a `NamedTuple` can not be filtered. Expected '
-                  f'`{type(subtree)}` to have fields `{fields}`, found it was '
-                  f'missing fields `{missing_fields}`.'
+                  'The fields of a `NamedTuple` cannot be filtered. Expected '
+                  f'{type(subtree)} to have fields {fields}, found it was '
+                  f'missing fields {missing_fields}.'
               )
 
             return type(subtree)(*elements)
@@ -303,7 +306,7 @@ class FilteringReleaseManager(ReleaseManager[ReleasableStructure, Key]):
         if not elements:
           return _FILTERED_SUBTREE
         elif isinstance(type_spec, computation_types.StructWithPythonType):
-          # Note: The fields of a `NamedTuple` can not be filtered. However,
+          # Note: The fields of a `NamedTuple` cannot be filtered. However,
           # raising an error here can be skipped, because the appropriate error
           # is raised when filtering the `value`.
           return computation_types.StructWithPythonType(
@@ -334,7 +337,7 @@ class FilteringReleaseManager(ReleaseManager[ReleasableStructure, Key]):
       else:
         type_signature_label = 'not empty'
       raise FilterMismatchError(
-          'Expected `value` and `type_signature` to be filtered consistently, '
+          'Expected `value` and `type_signature` to be filtered identically, '
           f'found the filtered `value` was {value_label} and the filtered '
           f'`type_signature` was {type_signature_label}.'
       )

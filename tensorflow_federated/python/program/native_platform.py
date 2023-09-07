@@ -63,7 +63,7 @@ class AwaitableValueReference(value_reference.MaterializableValueReference):
     """
     if not callable(fn):
       raise TypeError(
-          f'Expected a function that returns an `Awaitable`, found {type(fn)}'
+          f'Expected a function that returns an `Awaitable`, found {type(fn)}.'
       )
     py_typecheck.check_type(
         type_signature,
@@ -108,7 +108,7 @@ def _wrap_in_shared_awaitable(
   """
   if not callable(fn):
     raise TypeError(
-        f'Expected a function that returns an `Awaitable`, found {type(fn)}'
+        f'Expected a function that returns an `Awaitable`, found {type(fn)}.'
     )
 
   @functools.cache
@@ -135,7 +135,7 @@ def _create_structure_of_awaitable_references(
   """
   if not callable(fn):
     raise TypeError(
-        f'Expected a function that returns an `Awaitable`, found {type(fn)}'
+        f'Expected a function that returns an `Awaitable`, found {type(fn)}.'
     )
   py_typecheck.check_type(type_signature, computation_types.Type)
 

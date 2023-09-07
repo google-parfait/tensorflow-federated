@@ -61,8 +61,8 @@ class DatasetDataSourceIterator(data_source.FederatedDataSourceIterator):
       if dataset.element_spec != element_spec:
         raise ValueError(
             'Expected each `tf.data.Dataset` in `datasets` to have the same '
-            f"type specification, found '{element_spec}' and "
-            f"'{dataset.element_spec}'."
+            f'type specification, found {element_spec} and '
+            f'{dataset.element_spec}.'
         )
     py_typecheck.check_type(federated_type, computation_types.FederatedType)
 
@@ -83,7 +83,7 @@ class DatasetDataSourceIterator(data_source.FederatedDataSourceIterator):
     if not isinstance(federated_type, computation_types.FederatedType):
       raise TypeError(
           'Expected `federated_type` to be a `tff.FederatedType`, found '
-          f'`{type(federated_type)}`.'
+          f'{type(federated_type)}.'
       )
     return DatasetDataSourceIterator(
         datasets=datasets, federated_type=federated_type
@@ -124,8 +124,8 @@ class DatasetDataSourceIterator(data_source.FederatedDataSourceIterator):
     ):
       raise ValueError(
           'Expected `num_clients` to be a positive integer and less than the '
-          f'number of `datasets`, found `num_clients`: {num_clients}, '
-          f'number of `datasets`: {len(self._datasets)}'
+          f'number of `datasets`, found `num_clients` of {num_clients} and '
+          f'number of `datasets` of {len(self._datasets)}.'
       )
 
     return random.sample(self._datasets, num_clients)
@@ -172,8 +172,8 @@ class DatasetDataSource(data_source.FederatedDataSource):
       if dataset.element_spec != element_spec:
         raise ValueError(
             'Expected each `tf.data.Dataset` in `datasets` to have the same '
-            f"type specification, found '{element_spec}' and "
-            f"'{dataset.element_spec}'."
+            f'type specification, found {element_spec} and '
+            f'{dataset.element_spec}.'
         )
 
     self._datasets = datasets

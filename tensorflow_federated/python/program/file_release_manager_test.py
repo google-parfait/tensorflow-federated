@@ -181,7 +181,9 @@ class CSVFileReleaseManagerInitTest(parameterized.TestCase):
           file_path=file_path, key_fieldname=''
       )
 
-  def test_raises_incompatible_file_error_with_unknown_key_fieldname(self):
+  def test_raises_key_fieldname_not_found_error_with_unknown_key_fieldname(
+      self,
+  ):
     file_path = self.create_tempfile()
     _write_values_to_csv(
         file_path=file_path,
@@ -189,17 +191,13 @@ class CSVFileReleaseManagerInitTest(parameterized.TestCase):
         values=[{'z': 1, 'a': 11, 'b': 12}],
     )
 
-    with self.assertRaises(
-        file_release_manager.FileReleaseManagerIncompatibleFileError
-    ):
+    with self.assertRaises(file_release_manager.CSVKeyFieldnameNotFoundError):
       file_release_manager.CSVFileReleaseManager(file_path=file_path)
 
-  def test_raises_incompatible_file_error_with_unknown_file(self):
+  def test_raises_key_fieldname_not_found_error_with_unknown_file(self):
     file_path = self.create_tempfile()
 
-    with self.assertRaises(
-        file_release_manager.FileReleaseManagerIncompatibleFileError
-    ):
+    with self.assertRaises(file_release_manager.CSVKeyFieldnameNotFoundError):
       file_release_manager.CSVFileReleaseManager(file_path=file_path)
 
 
@@ -499,7 +497,7 @@ class CSVFileReleaseManagerAppendValueTest(
     with self.assertRaises(TypeError):
       await release_mngr._append_value(value)
 
-  async def test_raises_permission_denied_error(self):
+  async def test_raises_permission_error(self):
     file_path = self.create_tempfile()
     os.remove(file_path)
     release_mngr = file_release_manager.CSVFileReleaseManager(
@@ -509,9 +507,7 @@ class CSVFileReleaseManagerAppendValueTest(
     with mock.patch.object(csv.DictWriter, 'writerow') as mock_writerow:
       mock_writerow.side_effect = csv.Error()
 
-      with self.assertRaises(
-          file_release_manager.FileReleaseManagerPermissionDeniedError
-      ):
+      with self.assertRaises(PermissionError):
         await release_mngr._append_value({})
 
 
@@ -1596,7 +1592,7 @@ class SavedModelFileReleaseManagerGetValueTest(
     expected_value = f'value_{key}'.encode()
     self.assertEqual(actual_value, expected_value)
 
-  async def test_raises_file_not_found_error_with_no_saved_value(
+  async def test_raises_released_value_not_found_error_with_no_saved_value(
       self,
   ):
     root_dir = self.create_tempdir()
@@ -1604,10 +1600,10 @@ class SavedModelFileReleaseManagerGetValueTest(
         root_dir=root_dir, prefix='a_'
     )
 
-    with self.assertRaises(file_release_manager.ValueNotFoundError):
+    with self.assertRaises(release_manager.ReleasedValueNotFoundError):
       await saved_model_mngr.get_value(key=0, structure=None)
 
-  async def test_raises_file_not_found_error_with_incorrect_key(self):
+  async def test_raises_released_value_not_found_error_with_incorrect_key(self):
     structure = 'value'
     value_type = type_conversions.infer_type(structure)
 
@@ -1617,10 +1613,10 @@ class SavedModelFileReleaseManagerGetValueTest(
     )
     await saved_model_mngr.release('value_1', value_type, key=1)
 
-    with self.assertRaises(file_release_manager.ValueNotFoundError):
+    with self.assertRaises(release_manager.ReleasedValueNotFoundError):
       await saved_model_mngr.get_value(key=10, structure=structure)
 
-  async def test_raises_structure_error_with_incorrect_structure(self):
+  async def test_raises_value_error_with_incorrect_structure(self):
     structure = []
     value_type = type_conversions.infer_type(structure)
 
@@ -1630,7 +1626,7 @@ class SavedModelFileReleaseManagerGetValueTest(
     )
     await saved_model_mngr.release('state_1', value_type, key=1)
 
-    with self.assertRaises(release_manager.StructureError):
+    with self.assertRaises(ValueError):
       await saved_model_mngr.get_value(key=1, structure=structure)
 
 

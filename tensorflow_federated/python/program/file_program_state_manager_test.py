@@ -482,7 +482,7 @@ class FileProgramStateManagerLoadTest(
     expected_state = f'state_{version}'.encode()
     self.assertEqual(actual_state, expected_state)
 
-  async def test_raises_version_not_found_error_with_no_saved_program_state(
+  async def test_raises_program_state_not_found_error_with_no_saved_program_state(
       self,
   ):
     root_dir = self.create_tempdir()
@@ -490,12 +490,12 @@ class FileProgramStateManagerLoadTest(
         root_dir=root_dir, prefix='a_'
     )
 
-    with self.assertRaises(
-        program_state_manager.ProgramStateManagerStateNotFoundError
-    ):
+    with self.assertRaises(program_state_manager.ProgramStateNotFoundError):
       await program_state_mngr.load(0, None)
 
-  async def test_raises_version_not_found_error_with_unknown_version(self):
+  async def test_raises_program_state_not_found_error_with_unknown_version(
+      self,
+  ):
     root_dir = self.create_tempdir()
     program_state_mngr = file_program_state_manager.FileProgramStateManager(
         root_dir=root_dir, prefix='a_'
@@ -503,12 +503,10 @@ class FileProgramStateManagerLoadTest(
     await program_state_mngr.save('state_1', 1)
     structure = 'state'
 
-    with self.assertRaises(
-        program_state_manager.ProgramStateManagerStateNotFoundError
-    ):
+    with self.assertRaises(program_state_manager.ProgramStateNotFoundError):
       await program_state_mngr.load(10, structure)
 
-  async def test_raises_structure_error_with_incorrect_structure(self):
+  async def test_raises_value_error_with_incorrect_structure(self):
     root_dir = self.create_tempdir()
     program_state_mngr = file_program_state_manager.FileProgramStateManager(
         root_dir=root_dir, prefix='a_'
@@ -516,9 +514,7 @@ class FileProgramStateManagerLoadTest(
     await program_state_mngr.save('state_1', 1)
     structure = []
 
-    with self.assertRaises(
-        program_state_manager.ProgramStateManagerStructureError
-    ):
+    with self.assertRaises(ValueError):
       await program_state_mngr.load(1, structure)
 
   @parameterized.named_parameters(
@@ -875,9 +871,7 @@ class FileProgramStateManagerSaveTest(
 
       mock_remove_old_program_state.assert_called_once()
 
-  async def test_raises_version_already_exists_error_with_existing_version(
-      self,
-  ):
+  async def test_raises_program_state_exists_error_with_existing_version(self):
     root_dir = self.create_tempdir()
     program_state_mngr = file_program_state_manager.FileProgramStateManager(
         root_dir=root_dir, prefix='a_'
@@ -885,9 +879,7 @@ class FileProgramStateManagerSaveTest(
 
     await program_state_mngr.save('state_1', 1)
 
-    with self.assertRaises(
-        program_state_manager.ProgramStateManagerStateAlreadyExistsError
-    ):
+    with self.assertRaises(program_state_manager.ProgramStateExistsError):
       await program_state_mngr.save('state_1', 1)
 
   @parameterized.named_parameters(

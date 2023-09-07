@@ -33,7 +33,7 @@ from tensorflow_federated.python.program import prefetching_data_source
 class _TestDataSourceIterator(data_source_lib.FederatedDataSourceIterator):
   """A test implementation of `tff.program.FederatedDataSourceIterator`.
 
-  A `tff.program.ProgramStateManager` can not be constructed directly because it
+  A `tff.program.ProgramStateManager` cannot be constructed directly because it
   has abstract methods, this implementation exists to make it possible to
   construct instances of `tff.program.ProgramStateManager` that can used as
   stubs or mocked.

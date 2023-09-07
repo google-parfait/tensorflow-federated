@@ -29,10 +29,6 @@ from tensorflow_federated.python.program import structure_utils
 _T = TypeVar('_T')
 
 
-class FileAlreadyExistsError(Exception):
-  pass
-
-
 def _create_async_def(fn: Callable[..., _T]) -> Callable[..., _T]:
   """A decorator for creating async defs from synchronous functions."""
 
@@ -121,7 +117,7 @@ async def write_saved_model(
     # Rename the temporary directory to the final location atomically.
     if tf.io.gfile.exists(path):
       if not overwrite:
-        raise FileAlreadyExistsError(f'File already exists for path: {path}')
+        raise FileExistsError(f'File already exists for path: {path}.')
       tf.io.gfile.rmtree(path)
     tf.io.gfile.rename(temp_path, path)
 

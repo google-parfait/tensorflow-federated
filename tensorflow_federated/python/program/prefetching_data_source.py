@@ -166,8 +166,7 @@ class PrefetchingDataSourceIterator(
     if not isinstance(iterator, data_source_lib.FederatedDataSourceIterator):
       raise TypeError(
           'Expected `iterator` to be a '
-          '`tff.program.FederatedDataSourceIterator`, found '
-          f'`{type(iterator)}`.'
+          f'`tff.program.FederatedDataSourceIterator`, found {type(iterator)}.'
       )
     offset += iterator_size
     (
@@ -301,8 +300,8 @@ class PrefetchingDataSourceIterator(
     ):
       raise ValueError(
           'Expected `num_clients` to be a positive integer and equal to '
-          f'`num_clients_to_prefetch`, found `num_clients`: {num_clients}, '
-          f'`num_clients_to_prefetch`: {self._num_clients_to_prefetch}'
+          f'`num_clients_to_prefetch`, found `num_clients` of {num_clients} '
+          f'and `num_clients_to_prefetch` of {self._num_clients_to_prefetch}.'
       )
 
     self._finish_prefetching()

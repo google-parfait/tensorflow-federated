@@ -96,8 +96,8 @@ class ClientIdDataSourceIterator(data_source.FederatedDataSourceIterator):
     ):
       raise ValueError(
           'Expected `num_clients` to be a positive integer and less than the '
-          f'number of `client_ids`, found `num_clients`: {num_clients}, '
-          f'number of `client_ids`: {len(self._client_ids)}'
+          f'number of `client_ids`, found `num_clients` of {num_clients} and '
+          f'number of `client_ids` of {len(self._client_ids)}.'
       )
 
     return random.sample(self._client_ids, num_clients)

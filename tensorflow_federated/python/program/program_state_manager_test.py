@@ -28,7 +28,7 @@ class _TestProgramStateManager(
 ):
   """A test implementation of `tff.program.ProgramStateManager`.
 
-  A `tff.program.ProgramStateManager` can not be constructed directly because it
+  A `tff.program.ProgramStateManager` cannot be constructed directly because it
   has abstract methods, this implementation exists to make it possible to
   construct instances of `tff.program.ProgramStateManager` that can used as
   stubs or mocked.
@@ -86,7 +86,7 @@ class ProgramStateManagerTest(
     program_state_mngr = _TestProgramStateManager()
     program_state_mngr.get_versions = mock.AsyncMock(return_value=[1, 2, 3])
     program_state_mngr.load = mock.AsyncMock(
-        side_effect=program_state_manager.ProgramStateManagerStateNotFoundError
+        side_effect=program_state_manager.ProgramStateNotFoundError(0)
     )
     structure = 'test'
 
