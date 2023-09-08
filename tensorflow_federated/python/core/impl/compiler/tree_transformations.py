@@ -221,39 +221,42 @@ def uniquify_reference_names(comp, name_generator=None):
   )
 
 
-def normalize_all_equal_bit(comp):
-  """Normalizes the all equal bits under `comp`.
+def normalize_types(comp, normalize_all_equal_bit: bool = True):
+  """Normalizes the types under `comp`.
 
-  For any computation of `tff.FederatedType`, we rely on uniformity of the
-  `all_equal` bit to compile down to MapReduce form. For example, the values
+  Any `StructWithPythonType`s are normalized to `StructType`s.
+
+  When `normalize_all_equal_bit` is true, all `tff.CLIENTS`-placed values will
+  have `all_equal False`, and all `tff.SERVER`-placed values will have
+  `all_equal True`. This normalization is needed for MapReduceForm since we rely
+  on uniformity of the `all_equal` bit when compiling. For example, the values
   processed on the clients can only be accessed through a `federated_zip`,
   which produces a value with its `all_equal` bit set to `False`. Therefore
   any client processing cannot rely on processing values with `True`
-  `all_equal` bits. This function forces all `tff.CLIENTS`-placed values
-  to have `all_equal` bits set to `False`, while all `tff.SERVER`-placed
-  values will have `all_equal` bits set to `True`.
-
-  Notice that `normalize_all_equal_bit` relies on the "normal" all_equal bit
-  being inserted in the construction of a new `tff.FederatedType`; the
-  constructor by default sets this bit to match the pattern above, so we simply
-  ask it to create a new `tff.FederatedType` for us.
+  `all_equal` bits. Notice that `normalize_all_equal_bit` relies on the "normal"
+  all_equal bit being inserted in the construction of a new `tff.FederatedType`;
+  the constructor by default sets this bit to match the pattern above, so we
+  simply ask it to create a new `tff.FederatedType` for us. We also replace any
+  uses of the FEDERATED_MAP_ALL_EQUAL intrinsic with the FEDERATED_MAP
+  intrinsic.
 
   Args:
-    comp: Instance of `building_blocks.ComputationBuildingBlock` whose placed
-      values will have their `all_equal` bits normalized.
+    comp: Instance of `building_blocks.ComputationBuildingBlock` to transform.
+    normalize_all_equal_bit: Whether to normalize `all_equal` bits in the placed
+      values. Should be set to true when compiling for MapReduceForm and false
+      when compiling for DistributeAggregateForm.
 
   Returns:
-    A modified version of `comp` with all `tff.CLIENTS`-placed values having
-    `all_equal False`, and all `tff.SERVER`-placed values having
-    `all_equal True`.
+    A modified version of `comp` with normalized types.
   """
   py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
 
   def _normalize_type_signature_helper(type_signature):
     if isinstance(type_signature, computation_types.FederatedType):
-      return computation_types.FederatedType(
-          type_signature.member, type_signature.placement
-      )
+      if normalize_all_equal_bit:
+        return computation_types.FederatedType(
+            type_signature.member, type_signature.placement
+        )
     elif isinstance(type_signature, computation_types.StructType):
       new_elements = []
       for element_name, element_type in structure.iter_elements(type_signature):
@@ -309,7 +312,9 @@ def normalize_all_equal_bit(comp):
       return _normalize_reference_bit(comp)
     elif isinstance(comp, building_blocks.Lambda):
       return _normalize_lambda_bit(comp)
-    elif isinstance(comp, building_blocks.Intrinsic):
+    elif (
+        isinstance(comp, building_blocks.Intrinsic) and normalize_all_equal_bit
+    ):
       return _normalize_intrinsic_bit(comp)
     return comp, False
 

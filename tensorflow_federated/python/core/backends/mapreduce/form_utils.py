@@ -447,7 +447,7 @@ def _split_ast_on_aggregate(bb):
 
 def _prepare_for_rebinding(bb):
   """Replaces `bb` with semantically equivalent version for rebinding."""
-  bb = tree_transformations.normalize_all_equal_bit(bb)
+  bb = tree_transformations.normalize_types(bb)
   bb, _ = tree_transformations.remove_mapped_or_applied_identity(bb)
   bb = transformations.to_call_dominant(bb)
   bb, _ = tree_transformations.remove_unused_block_locals(bb)

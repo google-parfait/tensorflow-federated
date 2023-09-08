@@ -594,6 +594,22 @@ class GetDistributeAggregateFormTest(
     FederatedFormTestCase, parameterized.TestCase
 ):
 
+  def run_daf_in_sequence(
+      self, daf: forms.DistributeAggregateForm, server_state, client_data
+  ):
+    server_prepare_result = daf.server_prepare(server_state)
+    broadcast_output = daf.server_to_client_broadcast(
+        server_prepare_result['intrinsic_args_from_before_comp']
+    )
+    aggregation_input = daf.client_work(client_data, broadcast_output)
+    aggregation_output = daf.client_to_server_aggregation(
+        server_prepare_result['intermediate_state'], aggregation_input
+    )
+    updated_server_state, server_output = daf.server_result(
+        server_prepare_result['intermediate_state'], aggregation_output
+    )
+    return updated_server_state, server_output
+
   def test_next_computation_returning_tensor_fails_well(self):
     initialize = (
         distribute_aggregate_test_utils.get_temperature_sensor_example().initialize
@@ -651,19 +667,37 @@ class GetDistributeAggregateFormTest(
     new_daf = form_utils.get_distribute_aggregate_form_for_computation(comp)
     new_comp = form_utils.get_computation_for_distribute_aggregate_form(new_daf)
 
-    state = new_initialize()
-    self.assertEqual(state['num_rounds'], 0)
+    state_0 = new_initialize()
+    self.assertEqual(state_0['num_rounds'], 0)
 
-    state, metrics = new_comp(state, [[28.0], [30.0, 33.0, 29.0]])
-    self.assertEqual(state['num_rounds'], 1)
+    client_data_1 = [[28.0], [30.0, 33.0, 29.0]]
+    state_1, metrics_1 = new_comp(state_0, client_data_1)
+    self.assertEqual(state_1['num_rounds'], 1)
     self.assertAllClose(
-        metrics, collections.OrderedDict(ratio_over_threshold=0.5)
+        metrics_1, collections.OrderedDict(ratio_over_threshold=0.5)
+    )
+    sequential_state_1, sequential_metrics_1 = self.run_daf_in_sequence(
+        new_daf, state_0, client_data_1
+    )
+    self.assertEqual(sequential_state_1['num_rounds'], 1)
+    self.assertAllClose(
+        sequential_metrics_1, collections.OrderedDict(ratio_over_threshold=0.5)
     )
 
-    state, metrics = new_comp(state, [[33.0], [34.0], [35.0], [36.0]])
+    client_data_2 = [[33.0], [34.0], [35.0], [36.0]]
+    state_2, metrics_2 = new_comp(state_1, client_data_2)
+    self.assertEqual(state_2['num_rounds'], 2)
     self.assertAllClose(
-        metrics, collections.OrderedDict(ratio_over_threshold=0.75)
+        metrics_2, collections.OrderedDict(ratio_over_threshold=0.75)
     )
+    sequential_state_2, sequential_metrics_2 = self.run_daf_in_sequence(
+        new_daf, state_1, client_data_2
+    )
+    self.assertEqual(sequential_state_2['num_rounds'], 2)
+    self.assertAllClose(
+        sequential_metrics_2, collections.OrderedDict(ratio_over_threshold=0.75)
+    )
+
     # Check that no TF work has been unintentionally duplicated.
     self.assertEqual(
         tree_analysis.count_tensorflow_variables_under(
@@ -683,20 +717,27 @@ class GetDistributeAggregateFormTest(
     new_daf = form_utils.get_distribute_aggregate_form_for_computation(comp)
     new_comp = form_utils.get_computation_for_distribute_aggregate_form(new_daf)
 
-    state1 = example.initialize()
-    state2 = new_initialize()
-    self.assertAllClose(state1, state2)
+    starting_state = example.initialize()
+    alt_starting_state = new_initialize()
+    self.assertAllClose(starting_state, alt_starting_state)
+
     whimsy_x = np.array([[0.5] * 784], dtype=np.float32)
     whimsy_y = np.array([1], dtype=np.int32)
     client_data = [collections.OrderedDict(x=whimsy_x, y=whimsy_y)]
-    round_1 = new_comp(state1, [client_data])
-    state = round_1[0]
-    metrics = round_1[1]
-    alt_round_1 = new_comp(state2, [client_data])
-    alt_state = alt_round_1[0]
-    self.assertAllClose(state, alt_state)
-    alt_metrics = alt_round_1[1]
-    self.assertAllClose(metrics, alt_metrics)
+
+    round_1 = new_comp(starting_state, [client_data])
+    alt_round_1 = new_comp(alt_starting_state, [client_data])
+    sequential_round_1 = self.run_daf_in_sequence(
+        new_daf, starting_state, [client_data]
+    )
+
+    # Compare updated state
+    self.assertAllClose(round_1[0], alt_round_1[0])
+    self.assertAllClose(round_1[0], sequential_round_1[0])
+    # Compare metrics
+    self.assertAllClose(round_1[1], alt_round_1[1])
+    self.assertAllClose(round_1[1], sequential_round_1[1])
+
     # Check that no TF work has been unintentionally duplicated.
     self.assertEqual(
         tree_analysis.count_tensorflow_variables_under(
@@ -1372,5 +1413,5 @@ class AsFunctionOfSomeSubparametersTest(tf.test.TestCase):
 if __name__ == '__main__':
   # The test execution context replaces all secure intrinsics with insecure
   # reductions.
-  execution_contexts.set_sync_test_cpp_execution_context()
+  execution_contexts.set_sync_test_cpp_execution_context(default_num_clients=1)
   tf.test.main()

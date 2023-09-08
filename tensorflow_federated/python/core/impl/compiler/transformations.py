@@ -201,11 +201,13 @@ def to_call_dominant(
 
 def get_normalized_call_dominant_lambda(
     comp: building_blocks.Lambda,
+    normalize_all_equal_bit: bool = True,
 ) -> building_blocks.Lambda:
   """Creates normalized call dominant form for a lambda computation.
 
   Args:
     comp: A computation to normalize.
+    normalize_all_equal_bit: Whether to normalize the all-equal bit.
 
   Returns:
     A transformed but semantically-equivalent `comp`. The result will be a
@@ -258,7 +260,7 @@ def get_normalized_call_dominant_lambda(
     )
   comp.result.check_block()
 
-  comp = tree_transformations.normalize_all_equal_bit(comp)
+  comp = tree_transformations.normalize_types(comp, normalize_all_equal_bit)
   tree_analysis.check_contains_no_unbound_references(comp)
 
   return comp
@@ -1162,7 +1164,9 @@ def divisive_force_align_and_split_by_intrinsics(
 
   # Normalize the input computation so that we are guaranteed to have a lambda
   # computation with a result block before attempting to split.
-  comp = get_normalized_call_dominant_lambda(comp)
+  comp = get_normalized_call_dominant_lambda(
+      comp, normalize_all_equal_bit=False
+  )
 
   # Identify which locals in the result block represent intrinsic calls, which
   # locals depend on intrinsic calls, and which locals are independent of
@@ -1474,9 +1478,15 @@ def divisive_force_align_and_split_by_intrinsics(
 
   ############################### Step 8 ######################################
   # Normalize all of the output computations.
-  before_comp = get_normalized_call_dominant_lambda(before_comp)
-  intrinsic_comp = get_normalized_call_dominant_lambda(intrinsic_comp)
-  after_comp = get_normalized_call_dominant_lambda(after_comp)
+  before_comp = get_normalized_call_dominant_lambda(
+      before_comp, normalize_all_equal_bit=False
+  )
+  intrinsic_comp = get_normalized_call_dominant_lambda(
+      intrinsic_comp, normalize_all_equal_bit=False
+  )
+  after_comp = get_normalized_call_dominant_lambda(
+      after_comp, normalize_all_equal_bit=False
+  )
 
   # Check that the intrinsic comp consists of a block containing locals that are
   # exclusively calls for the allowed intrinsics and that the results are
