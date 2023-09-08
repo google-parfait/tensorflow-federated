@@ -14,7 +14,7 @@
 """Definitions of JAX computation wrapper instances."""
 
 from collections.abc import Callable
-from typing import Any, Optional, Union
+from typing import Optional, Union
 
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.computation import computation_wrapper
@@ -25,7 +25,7 @@ from tensorflow_federated.python.core.impl.types import computation_types
 
 
 def _jax_strategy_fn(
-    fn_to_wrap: Callable[..., Any],
+    fn_to_wrap: Callable[..., object],
     fn_name: Optional[str],
     parameter_type: Optional[
         Union[computation_types.StructType, computation_types.TensorType]
