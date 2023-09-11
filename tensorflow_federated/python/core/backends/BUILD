@@ -15,7 +15,12 @@ licenses(["notice"])
 py_library(
     name = "backends",
     srcs = ["__init__.py"],
-    visibility = ["//tensorflow_federated:__pkg__"],
+    visibility = [
+        "//tensorflow_federated:__pkg__",
+        "//tensorflow_federated/python/core/impl/computation:__pkg__",
+        "//tensorflow_federated/python/core/impl/executors:__pkg__",
+        "//tensorflow_federated/python/core/impl/federated_context:__pkg__",
+    ],
     deps = [
         "//tensorflow_federated/python/core/backends/mapreduce",
         "//tensorflow_federated/python/core/backends/native",

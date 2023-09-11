@@ -74,7 +74,7 @@ The
 module contains composite [building block](#building-block) transformations.
 
 The
-[tensorflow_computation_transformations](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/compiler/tensorflow_computation_transformations.py)
+[tensorflow_computation_transformations](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/backends/tensorflow/tensorflow_computation_transformations.py)
 module contains atomic [TensorFlow computation](#tensorflow-computation)
 transformations.
 

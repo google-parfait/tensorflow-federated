@@ -31,8 +31,6 @@ from tensorflow_federated.python.core.impl.types import type_serialization
 from tensorflow_federated.python.core.impl.types import type_transformations
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
-# TODO: b/181028772 - Move this and similar code to `backends/tensorflow`.
-
 # TODO: b/181131807 - Remove independent invocations of the helper methods, and
 # replace them with calls to the factory, then inline the bodies of the methods
 # within the factory.

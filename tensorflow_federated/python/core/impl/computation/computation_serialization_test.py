@@ -15,7 +15,7 @@
 from absl.testing import absltest
 import tensorflow as tf
 
-from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_factory
+from tensorflow_federated.python.core.backends.tensorflow import tensorflow_computation_factory
 from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.computation import computation_serialization

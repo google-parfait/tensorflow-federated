@@ -16,8 +16,8 @@ from absl.testing import absltest
 from absl.testing import parameterized
 import tensorflow as tf
 
+from tensorflow_federated.python.core.backends.tensorflow import tensorflow_computation_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
-from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_factory
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import federated_computation_context
