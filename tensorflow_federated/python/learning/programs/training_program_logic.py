@@ -24,7 +24,7 @@ duration of time based on the `evaluation_period` parameter.
 import asyncio
 from collections.abc import Coroutine
 import datetime
-from typing import Optional, Union
+from typing import NamedTuple, Optional, Union
 
 from absl import logging
 
@@ -36,6 +36,14 @@ from tensorflow_federated.python.program import federated_context
 from tensorflow_federated.python.program import program_state_manager as program_state_manager_lib
 from tensorflow_federated.python.program import release_manager
 from tensorflow_federated.python.program import value_reference
+
+
+class ProgramState(NamedTuple):
+  """A structure representing the program state."""
+
+  state: composers.LearningAlgorithmState
+  round_number: int
+  next_evaluation_timestamp_seconds: Optional[int]
 
 
 class TaskManager:
@@ -160,10 +168,14 @@ async def train_model(
   if train_state is None:
     raise ValueError('The initial train state is None.')
   program_state, version = await program_state_manager.load_latest(
-      (train_state, 0)
+      ProgramState(train_state, 0, 0)
   )
   if program_state is not None:
-    train_state, start_round = program_state
+    train_state = program_state.state
+    start_round = program_state.round_number
+    next_evaluation_timestamp_seconds = (
+        program_state.next_evaluation_timestamp_seconds
+    )
     logging.info('Found previous program state version %d', version)
     if start_round < train_total_rounds:
       logging.info(
@@ -192,8 +204,12 @@ async def train_model(
     # Ensure the initial state (round 0) is saved before any training occurs.
     # The program manager `keep_first=True` parameterization will enable users
     # to start future experiments from the same initialization.
+    next_evaluation_timestamp_seconds = None
     await program_state_manager.save(
-        (train_state, start_round), version=start_round
+        ProgramState(
+            train_state, start_round, next_evaluation_timestamp_seconds
+        ),
+        version=start_round,
     )
 
   train_state_type, _ = train_process.next.type_signature.result  # pytype: disable=attribute-error
@@ -201,7 +217,11 @@ async def train_model(
 
   # Track a future time after which an evaluation should be started. This will
   # be `evaluation_periodicity` after the most recent evaluation time.
-  next_evaluation_time = None
+  next_evaluation_time = (
+      datetime.datetime.fromtimestamp(next_evaluation_timestamp_seconds)
+      if next_evaluation_timestamp_seconds
+      else None
+  )
 
   def should_evaluate_round(
       round_num: int, train_round_finished_time: datetime.datetime
@@ -251,8 +271,27 @@ async def train_model(
       )
     train_state = train_result.state
     train_metrics = train_result.metrics
+
+    train_round_finished_time = datetime.datetime.now()
+    if evaluation_manager is not None and should_evaluate_round(
+        round_num, train_round_finished_time
+    ):
+      model_weights = train_process.get_model_weights(train_state)
+      await evaluation_manager.start_evaluation(
+          round_num, int(train_round_finished_time.timestamp()), model_weights
+      )
+      logging.info('Added evaluation for training round %d', round_num)
+
+    next_evaluation_timestamp_seconds = (
+        int(next_evaluation_time.timestamp()) if next_evaluation_time else None
+    )
     task_manager.add_task(
-        program_state_manager.save((train_state, round_num), version=round_num)
+        program_state_manager.save(
+            ProgramState(
+                train_state, round_num, next_evaluation_timestamp_seconds
+            ),
+            version=round_num,
+        )
     )
     if train_metrics_manager is not None:
       try:
@@ -276,15 +315,6 @@ async def train_model(
               key=round_num,
           )
       )
-    train_round_finished_time = datetime.datetime.now()
-    if evaluation_manager is not None and should_evaluate_round(
-        round_num, train_round_finished_time
-    ):
-      model_weights = train_process.get_model_weights(train_state)
-      await evaluation_manager.start_evaluation(
-          round_num, int(train_round_finished_time.timestamp()), model_weights
-      )
-      logging.info('Added evaluation for training round %d', round_num)
 
   task_manager.add_task(
       model_output_manager.release(
