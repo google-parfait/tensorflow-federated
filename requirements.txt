@@ -26,18 +26,18 @@
 # versioning scheme or reasoning.
 
 absl-py>=1.0,==1.*
-attrs~=21.4
+attrs~=23.1
 cachetools~=5.3
 dm-tree==0.1.8
 dp-accounting==0.4.2
 farmhashpy==0.4.0
-google-vizier==0.1.4
-grpcio~=1.46
+google-vizier==0.1.11
+grpcio~=1.58
 jaxlib==0.4.14
 jax==0.4.14
-numpy~=1.21
+numpy~=1.23.5
 portpicker~=1.6
-scipy~=1.9.3
+scipy~=1.10.1
 semantic-version~=2.6
 tensorflow-model-optimization==0.7.5
 tensorflow-privacy==0.8.10

@@ -1,13 +1,35 @@
 diff --git tensorflow/BUILD tensorflow/BUILD
-index b5b076847b6..5f9938d42f2 100644
+index 6085c99db06..c0e5d278699 100644
 --- tensorflow/BUILD
 +++ tensorflow/BUILD
-@@ -1045,7 +1045,7 @@ package_group(
-         "//smartass/brain/configure/...",
-         "//tensorflow/...",
-         "//tensorflow_decision_forests/...",
+@@ -1034,29 +1034,7 @@ selects.config_setting_group(
+ package_group(
+     name = "internal",
+     packages = [
+-        "//devtools/python/indexer/...",
+-        "//learning/brain/keras/...",
+-        "//learning/brain/mlir/...",
+-        "//learning/brain/tfrt/...",
+-        "//learning/lib/ami/simple_ml/...",
+-        "//learning/pathways/...",
+-        "//learning/serving/contrib/tfrt/mlir/canonical_ops/...",
+-        "//learning/serving/experimental/remote_predict/...",
+-        "//perftools/accelerators/xprof/convert/...",
+-        "//perftools/accelerators/xprof/integration_tests/...",
+-        "//smartass/brain/configure/...",
+-        "//tensorflow/...",
+-        "//tensorflow_decision_forests/...",
 -        "//tensorflow_federated/...",
+-        "//third_party/cloud_tpu/convergence_tools/sdc_monitoring/...",
+-        "//third_party/cloud_tpu/inference_converter/...",
+-        "//third_party/py/cloud_ml_autoflow/...",
+-        "//third_party/py/envlogger/...",
+-        "//third_party/py/gldm/...",
+-        "//third_party/py/keras/...",
+-        "//third_party/py/tf_keras/...",
+-        "//third_party/yggdrasil_decision_forests/...",
+-        "//waymo/ml/cn/...",
 +        "//...",
-         "//third_party/cloud_tpu/convergence_tools/sdc_monitoring/...",
-         "//third_party/cloud_tpu/inference_converter/...",
-         "//third_party/py/cloud_ml_autoflow/...",
+     ],
+ )
+

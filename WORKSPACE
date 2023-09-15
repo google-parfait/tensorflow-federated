@@ -14,7 +14,7 @@ git_repository(
 
 git_repository(
     name = "com_google_absl",
-    commit = "66665d8d2e3fedff340b83f9841ca427145a7b26",
+    commit = "b971ac5250ea8de900eae9f95e06548d14cd95fe",
     remote = "https://github.com/abseil/abseil-cpp.git",
 )
 
@@ -32,6 +32,7 @@ git_repository(
 
 git_repository(
     name = "org_tensorflow",
+    commit = "132c98b29c1a42298cd13055d1168c8d67177bc9",
     # The version of this dependency should match the version in
     # https://github.com/tensorflow/federated/blob/main/requirements.txt.
     patches = [
@@ -44,7 +45,6 @@ git_repository(
         "//third_party/tensorflow:tf2xla_visibility.patch",
     ],
     remote = "https://github.com/tensorflow/tensorflow.git",
-    tag = "v2.13.0",
 )
 
 git_repository(
@@ -68,7 +68,7 @@ git_repository(
 git_repository(
     name = "rules_python",
     remote = "https://github.com/bazelbuild/rules_python.git",
-    tag = "0.5.0",
+    tag = "0.25.0",
 )
 
 git_repository(
@@ -76,7 +76,7 @@ git_repository(
     remote = "https://github.com/tensorflow/compression.git",
     # The version of this dependency should match the version in
     # https://github.com/tensorflow/federated/blob/main/requirements.txt.
-    tag = "v2.12.0",
+    tag = "v2.13.0",
 )
 
 #
@@ -88,7 +88,7 @@ new_git_repository(
     name = "pybind11",
     build_file = "@pybind11_bazel//:pybind11.BUILD",
     remote = "https://github.com/pybind/pybind11.git",
-    tag = "v2.9.2",
+    tag = "v2.10.4",
 )
 
 #

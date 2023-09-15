@@ -1,12 +1,17 @@
 diff --git tensorflow/dtensor/BUILD tensorflow/dtensor/BUILD
-index 841e31e31a5..3b1f3ad4b7f 100644
+index 97e263fb766..30b04aa36dc 100644
 --- tensorflow/dtensor/BUILD
 +++ tensorflow/dtensor/BUILD
-@@ -24,6 +24,6 @@ package_group(
-         "//tensorflow/core/...",
-         "//tensorflow/dtensor/...",
-         "//tensorflow/python/...",
+@@ -20,11 +20,6 @@ package_group(
+ package_group(
+     name = "dtensor-internal",
+     packages = [
+-        "//learning/brain/experimental/jax_tpu_embedding/...",
+-        "//learning/brain/public/...",
+-        "//tensorflow/core/...",
+-        "//tensorflow/dtensor/...",
+-        "//tensorflow/python/...",
 -        "//tensorflow_federated/...",  #  Needs access to C++ API for dtensor device
-+        "//...",  #  Needs access to C++ API for dtensor device
++        "//...",
      ],
  )
