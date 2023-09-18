@@ -15,7 +15,7 @@
 
 import asyncio
 from collections.abc import Mapping
-from typing import Any, Optional
+from typing import Optional
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.core.impl.computation import computation_base
@@ -75,7 +75,7 @@ class CardinalityFreeDataDescriptor(ingestable_base.Ingestable):
   def __init__(
       self,
       comp: Optional[computation_base.Computation],
-      arg: Any,
+      arg: object,
       arg_type: computation_types.Type,
   ):
     """Constructs this data descriptor from the given computation and argument.
@@ -97,7 +97,7 @@ class CardinalityFreeDataDescriptor(ingestable_base.Ingestable):
     """
     self._comp = comp
     self._arg = arg
-    self._arg_type = computation_types.to_type(arg_type)
+    self._arg_type = arg_type
     if self._comp is not None:
       if (
           self._comp.type_signature.parameter is None
@@ -150,7 +150,7 @@ class DataDescriptor(
   def __init__(
       self,
       comp: Optional[computation_base.Computation],
-      arg: Any,
+      arg: object,
       arg_type: computation_types.Type,
       cardinality: Optional[int] = None,
   ):

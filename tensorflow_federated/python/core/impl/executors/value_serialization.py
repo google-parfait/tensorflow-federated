@@ -15,7 +15,7 @@
 
 import collections
 from collections.abc import Collection, Mapping, Sequence
-from typing import Any, Optional, Union
+from typing import Optional, Union
 
 import numpy as np
 import tensorflow as tf
@@ -37,7 +37,7 @@ from tensorflow_federated.python.core.impl.types import type_transformations
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
 _SerializeReturnType = tuple[executor_pb2.Value, computation_types.Type]
-_DeserializeReturnType = tuple[Any, computation_types.Type]
+_DeserializeReturnType = tuple[object, computation_types.Type]
 
 # The maximum size allowed for serialized sequence values. Sequence that
 # serialize to values larger than this will result in errors being raised.  This
@@ -78,7 +78,7 @@ def _value_proto_for_np_array(
 
 @tracing.trace
 def _serialize_tensor_value(
-    value: Any, type_spec: computation_types.TensorType
+    value: object, type_spec: computation_types.TensorType
 ) -> tuple[executor_pb2.Value, computation_types.TensorType]:
   """Serializes a tensor value into `executor_pb2.Value`.
 
@@ -101,7 +101,7 @@ def _serialize_tensor_value(
   if tf.is_tensor(value):
     if isinstance(value, tf.Variable):
       value = value.read_value()
-    if tf.executing_eagerly():
+    if isinstance(value, tf.Tensor) and tf.executing_eagerly():
       value = value.numpy()
     else:
       # Attempt to extract the value using the current graph context.
@@ -228,7 +228,7 @@ def _check_container_compat_with_tf_nest(type_spec: computation_types.Type):
 @tracing.trace
 def _serialize_sequence_value(
     value: Union[
-        Union[type_conversions.TF_DATASET_REPRESENTATION_TYPES], list[Any]
+        Union[type_conversions.TF_DATASET_REPRESENTATION_TYPES], list[object]
     ],
     type_spec: computation_types.SequenceType,
 ) -> _SerializeReturnType:
@@ -278,7 +278,7 @@ def _serialize_sequence_value(
 
 @tracing.trace
 def _serialize_struct_type(
-    struct_typed_value: Any,
+    struct_typed_value: object,
     type_spec: computation_types.StructType,
 ) -> tuple[executor_pb2.Value, computation_types.StructType]:
   """Serializes a value of tuple type."""
@@ -308,7 +308,7 @@ def _serialize_struct_type(
 
 @tracing.trace
 def _serialize_federated_value(
-    federated_value: Any, type_spec: computation_types.FederatedType
+    federated_value: object, type_spec: computation_types.FederatedType
 ) -> tuple[executor_pb2.Value, computation_types.FederatedType]:
   """Serializes a value of federated type."""
   if type_spec.all_equal:
@@ -329,7 +329,7 @@ def _serialize_federated_value(
 
 @tracing.trace
 def serialize_value(
-    value: Any,
+    value: object,
     type_spec: Optional[computation_types.Type] = None,
 ) -> _SerializeReturnType:
   """Serializes a value into `executor_pb2.Value`.
