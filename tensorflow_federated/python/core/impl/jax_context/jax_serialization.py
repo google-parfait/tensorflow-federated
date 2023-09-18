@@ -15,7 +15,7 @@
 
 
 from collections.abc import Callable, Mapping, Sequence
-from typing import Any, Optional, Union
+from typing import Optional, Union
 
 import jax
 import numpy as np
@@ -59,7 +59,9 @@ class _XlaSerializerStructArg(structure.Struct, typed_object.TypedObject):
   """Represents struct type info understood by both TFF and JAX serializer."""
 
   def __init__(
-      self, type_spec: computation_types.StructType, elements: Sequence[Any]
+      self,
+      type_spec: computation_types.StructType,
+      elements: Sequence[tuple[Optional[str], object]],
   ):
     py_typecheck.check_type(type_spec, computation_types.StructType)
     structure.Struct.__init__(self, elements)
@@ -173,7 +175,7 @@ def serialize_jax_computation(
     traced_fn: Callable[..., object],
     arg_fn: Callable[
         [Union[_XlaSerializerStructArg, _XlaSerializerTensorArg]],
-        tuple[Sequence[Any], Mapping[str, Any]],
+        tuple[Sequence[object], Mapping[str, object]],
     ],
     parameter_type: Union[
         computation_types.StructType, computation_types.TensorType
@@ -254,13 +256,13 @@ def serialize_jax_computation(
 
 def _struct_flatten(
     struct: structure.Struct,
-) -> tuple[tuple[Any, ...], tuple[Optional[str], ...]]:
+) -> tuple[tuple[object, ...], tuple[Optional[str], ...]]:
   child_names, child_values = tuple(zip(*structure.iter_elements(struct)))
   return (child_values, child_names)
 
 
 def _struct_unflatten(
-    child_names: tuple[Optional[str], ...], child_values: tuple[Any, ...]
+    child_names: tuple[Optional[str], ...], child_values: tuple[object, ...]
 ) -> structure.Struct:
   return structure.Struct(tuple(zip(child_names, child_values)))
 
