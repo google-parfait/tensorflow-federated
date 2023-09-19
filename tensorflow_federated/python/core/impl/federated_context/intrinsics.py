@@ -13,7 +13,6 @@
 # limitations under the License.
 """A factory of intrinsics for use in composing federated computations."""
 
-from typing import Any
 import warnings
 
 import tensorflow as tf
@@ -416,7 +415,7 @@ def federated_mean(value, weight=None):
   return value_impl.Value(comp)
 
 
-def federated_min(value: Any) -> value_impl.Value:
+def federated_min(value: object) -> value_impl.Value:
   """Computes a min at `tff.SERVER` of a `value` placed on the `tff.CLIENTS`.
 
   Args:
@@ -445,7 +444,7 @@ def federated_min(value: Any) -> value_impl.Value:
   return value_impl.Value(comp)
 
 
-def federated_max(value: Any) -> value_impl.Value:
+def federated_max(value: object) -> value_impl.Value:
   """Computes a max at `tff.SERVER` of a `value` placed on the `tff.CLIENTS`.
 
   Args:

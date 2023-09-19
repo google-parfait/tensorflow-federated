@@ -13,7 +13,7 @@
 # limitations under the License.
 """Defines the implementation of the base Computation interface."""
 
-from typing import Any, Optional
+from typing import Optional
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -128,7 +128,7 @@ class ConcreteComputation(computation_base.Computation):
     self._context_stack = context_stack
     self._computation_proto = computation_proto
 
-  def __eq__(self, other: Any) -> bool:
+  def __eq__(self, other: object) -> bool:
     if self is other:
       return True
     elif not isinstance(other, ConcreteComputation):
