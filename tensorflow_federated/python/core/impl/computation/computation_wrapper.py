@@ -24,6 +24,7 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.computation import function_utils
+from tensorflow_federated.python.core.impl.computation import polymorphic_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.tensorflow_libs import function
@@ -528,7 +529,9 @@ class ComputationWrapper:
             **kwargs,
         )
 
-      wrapped_func = function_utils.PolymorphicComputation(_polymorphic_wrapper)
+      wrapped_func = polymorphic_computation.PolymorphicComputation(
+          _polymorphic_wrapper
+      )
     else:
       # Either we have a concrete parameter type, or this is no-arg function.
       parameter_type = _parameter_type(parameters, parameter_types)
