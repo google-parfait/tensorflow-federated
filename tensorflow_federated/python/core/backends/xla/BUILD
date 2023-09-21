@@ -79,36 +79,6 @@ py_test(
 )
 
 py_library(
-    name = "executor",
-    srcs = ["executor.py"],
-    deps = [
-        ":runtime",
-        "//tensorflow_federated/proto/v0:computation_py_pb2",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/common_libs:structure",
-        "//tensorflow_federated/python/common_libs:tracing",
-        "//tensorflow_federated/python/core/impl/computation:computation_impl",
-        "//tensorflow_federated/python/core/impl/executors:executor_base",
-        "//tensorflow_federated/python/core/impl/executors:executor_utils",
-        "//tensorflow_federated/python/core/impl/executors:executor_value_base",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:type_serialization",
-        "//tensorflow_federated/python/core/impl/types:typed_object",
-    ],
-)
-
-py_test(
-    name = "executor_test",
-    srcs = ["executor_test.py"],
-    deps = [
-        ":executor",
-        "//tensorflow_federated/python/common_libs:structure",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/xla_context:xla_serialization",
-    ],
-)
-
-py_library(
     name = "runtime",
     srcs = ["runtime.py"],
     deps = [
