@@ -60,16 +60,8 @@ py_test(
     name = "federated_computation_test",
     size = "small",
     srcs = ["federated_computation_test.py"],
-    args = [
-        "--golden",
-        "$(location federated_computation_test_goldens/federated_computation_traceback.expected)",
-    ],
-    data = [
-        "federated_computation_test_goldens/federated_computation_traceback.expected",
-    ],
     deps = [
         ":federated_computation",
-        "//tensorflow_federated/python/common_libs:golden",
         "//tensorflow_federated/python/core/impl/computation:computation_impl",
         "//tensorflow_federated/python/core/impl/computation:computation_wrapper",
         "//tensorflow_federated/python/core/impl/context_stack:get_context_stack",

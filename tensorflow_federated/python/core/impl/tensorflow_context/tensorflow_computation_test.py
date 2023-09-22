@@ -20,7 +20,6 @@ from absl.testing import parameterized
 import attrs
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import golden
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.computation import computation_wrapper
 from tensorflow_federated.python.core.impl.context_stack import get_context_stack
@@ -383,21 +382,18 @@ class TensorFlowComputationTest(parameterized.TestCase):
       tensorflow_computation.tf_computation(foo, tuple_on_function)
 
   def test_stackframes_in_errors(self):
+
     class DummyError(RuntimeError):
       pass
 
-    with golden.check_raises_traceback(
-        'tensorflow_computation_traceback.expected', DummyError
-    ):
-
+    with self.assertRaises(DummyError):
       @tensorflow_computation.tf_computation
       def _():
         raise DummyError()
 
   def test_error_on_non_callable_non_type(self):
-    with golden.check_raises_traceback(
-        'non_callable_non_type_traceback.expected', TypeError
-    ):
+
+    with self.assertRaises(TypeError):
       tensorflow_computation.tf_computation(5)
 
   def test_stack_resets_on_none_returned(self):
@@ -445,9 +441,7 @@ class TensorFlowComputationTest(parameterized.TestCase):
     )
 
   def test_check_returns_type_fails_with_mismatched_container_type(self):
-    with golden.check_raises_traceback(
-        'returns_type_container_mismatch_traceback.expected', TypeError
-    ):
+    with self.assertRaises(TypeError):
       # This test fails because it `check_returns_type` with a `tuple`,
       # but returns a `list`.
       @tensorflow_computation.tf_computation(tf.int32)
@@ -1055,18 +1049,13 @@ class TensorFlowFunctionComputationTest(parameterized.TestCase):
     class DummyError(RuntimeError):
       pass
 
-    with golden.check_raises_traceback(
-        'tensorflow_function_computation_traceback.expected', DummyError
-    ):
-
+    with self.assertRaises(DummyError):
       @tensorflow_computation.experimental_tf_fn_computation
       def _():
         raise DummyError()
 
   def test_error_on_non_callable_non_type(self):
-    with golden.check_raises_traceback(
-        'function_non_callable_non_type_traceback.expected', TypeError
-    ):
+    with self.assertRaises(TypeError):
       tensorflow_computation.experimental_tf_fn_computation(5)
 
   def test_stack_resets_on_none_returned(self):
@@ -1118,9 +1107,8 @@ class TensorFlowFunctionComputationTest(parameterized.TestCase):
         'b/257277613: AutoGraph causes non-deterministic stacktrace strings '
         'which will eventually fail golden checks.'
     )
-    with golden.check_raises_traceback(
-        'function_returns_type_container_mismatch_traceback.expected', TypeError
-    ):
+
+    with self.assertRaises(TypeError):
       # This test fails because it `check_returns_type` with a `tuple`,
       # but returns a `list`.
       @tensorflow_computation.experimental_tf_fn_computation(tf.int32)

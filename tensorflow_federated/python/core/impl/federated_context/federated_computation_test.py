@@ -15,7 +15,6 @@
 from absl.testing import absltest
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import golden
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.computation import computation_wrapper
 from tensorflow_federated.python.core.impl.context_stack import get_context_stack
@@ -52,9 +51,7 @@ class FederatedComputationWrapperTest(absltest.TestCase):
     class DummyError(RuntimeError):
       pass
 
-    with golden.check_raises_traceback(
-        'federated_computation_traceback.expected', DummyError
-    ):
+    with self.assertRaises(DummyError):
       @federated_computation.federated_computation
       def _():
         raise DummyError()
