@@ -98,6 +98,7 @@ py_library(
     deps = [
         ":computation_impl",
         ":function_utils",
+        ":polymorphic_computation",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/types:computation_types",
@@ -126,7 +127,6 @@ py_library(
     name = "function_utils",
     srcs = ["function_utils.py"],
     deps = [
-        ":computation_base",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/types:computation_types",
@@ -141,10 +141,30 @@ py_test(
     size = "small",
     srcs = ["function_utils_test.py"],
     deps = [
+        ":function_utils",
+        "//tensorflow_federated/python/common_libs:structure",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+    ],
+)
+
+py_library(
+    name = "polymorphic_computation",
+    srcs = ["polymorphic_computation.py"],
+    deps = [
         ":computation_impl",
         ":function_utils",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:type_conversions",
+    ],
+)
+
+py_test(
+    name = "polymorphic_computation_test",
+    srcs = ["polymorphic_computation_test.py"],
+    deps = [
+        ":computation_impl",
+        ":polymorphic_computation",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
-        "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/context_stack:context_base",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_base",
         "//tensorflow_federated/python/core/impl/types:computation_types",
