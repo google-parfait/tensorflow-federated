@@ -97,7 +97,6 @@ py_library(
     srcs = ["computation_wrapper.py"],
     deps = [
         ":computation_impl",
-        ":function_utils",
         ":polymorphic_computation",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
@@ -112,14 +111,11 @@ py_test(
     size = "small",
     srcs = ["computation_wrapper_test.py"],
     deps = [
-        ":computation_impl",
         ":computation_wrapper",
-        "//tensorflow_federated/proto/v0:computation_py_pb2",
-        "//tensorflow_federated/python/common_libs:structure",
+        ":function_utils",
         "//tensorflow_federated/python/core/impl/context_stack:context_base",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
         "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:type_serialization",
     ],
 )
 

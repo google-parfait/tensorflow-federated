@@ -13,20 +13,25 @@
 # limitations under the License.
 """Definition of a tensorflow computation."""
 
+from typing import Optional
+
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.computation import computation_wrapper
+from tensorflow_federated.python.core.impl.computation import function_utils
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_serialization
 from tensorflow_federated.python.core.impl.types import type_analysis
 
 
-def _tf_wrapper_fn(parameter_type, name, **kwargs):
+def _tf_wrapper_fn(
+    target_fn,
+    parameter_type,
+    unpack: Optional[bool],
+    name: Optional[str] = None,
+    **kwargs
+):
   """Wrapper function to plug Tensorflow logic into the TFF framework."""
   del name  # Unused.
-  if 'layout_map' in kwargs:
-    layout_map = kwargs['layout_map']
-  else:
-    layout_map = None
   if not type_analysis.is_tensorflow_compatible_type(parameter_type):
     raise TypeError(
         '`tf_computation`s can accept only parameter types with '
@@ -34,25 +39,23 @@ def _tf_wrapper_fn(parameter_type, name, **kwargs):
         'and `TensorType`; you have attempted to create one '
         'with the type {}.'.format(parameter_type)
     )
-  ctx_stack = context_stack_impl.context_stack
-  tf_serializer = tensorflow_serialization.tf_computation_serializer(
-      parameter_type, ctx_stack, layout_map
+
+  target_fn = function_utils.wrap_as_zero_or_one_arg_callable(
+      target_fn, parameter_type, unpack
   )
-  arg = next(tf_serializer)
-  try:
-    result = yield arg
-  except Exception as e:  # pylint: disable=broad-except
-    tf_serializer.throw(e)
-  comp_pb, extra_type_spec = tf_serializer.send(result)  # pylint: disable=undefined-variable  # pytype: disable=attribute-error
-  tf_serializer.close()
-  yield computation_impl.ConcreteComputation(
-      comp_pb, ctx_stack, extra_type_spec
+  context_stack = context_stack_impl.context_stack
+  layout_map = kwargs.get('layout_map')
+  comp_pb, extra_type_spec = (
+      tensorflow_serialization.serialize_py_fn_as_tf_computation(
+          target_fn, parameter_type, context_stack, layout_map
+      )
+  )
+  return computation_impl.ConcreteComputation(
+      comp_pb, context_stack, extra_type_spec
   )
 
 
-tf_computation = computation_wrapper.ComputationWrapper(
-    computation_wrapper.PythonTracingStrategy(_tf_wrapper_fn)
-)
+tf_computation = computation_wrapper.ComputationWrapper(_tf_wrapper_fn)
 tf_computation.__doc__ = """Decorates/wraps Python functions and defuns as TFF TensorFlow computations.
 
   This symbol can be used as either a decorator or a wrapper applied to a

@@ -22,36 +22,29 @@ from tensorflow_federated.python.core.impl.context_stack import context_stack_im
 from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_serialization
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_serialization
-from tensorflow_federated.python.core.impl.types import type_test_utils
 from tensorflow_federated.python.tensorflow_libs import tensorflow_test_utils
 
 
 class TensorFlowSerializationTest(tf.test.TestCase):
 
-  def assert_serializes(self, fn, parameter_type, expected_fn_type_str):
-    serializer = tensorflow_serialization.tf_computation_serializer(
-        parameter_type, context_stack_impl.context_stack
-    )
-    arg_to_fn = next(serializer)
-    result = fn(arg_to_fn)
-    comp, extra_type_spec = serializer.send(result)
-    deserialized_type = type_serialization.deserialize_type(comp.type)
-    type_test_utils.assert_types_equivalent(deserialized_type, extra_type_spec)
-    self.assertEqual(
-        deserialized_type.compact_representation(), expected_fn_type_str
-    )
-    self.assertEqual(comp.WhichOneof('computation'), 'tensorflow')
-    return comp.tensorflow, extra_type_spec
-
   def test_serialize_tensorflow_with_no_parameter(self):
-    tf_proto, _ = self.assert_serializes(
-        lambda _: tf.constant(99), None, '( -> int32)'
+    comp, extra_type_spec = (
+        tensorflow_serialization.serialize_py_fn_as_tf_computation(
+            lambda: tf.constant(99),
+            None,
+            context_stack_impl.context_stack,
+        )
     )
+    self.assertEqual(
+        str(type_serialization.deserialize_type(comp.type)), '( -> int32)'
+    )
+    self.assertEqual(str(extra_type_spec), '( -> int32)')
+    self.assertEqual(comp.WhichOneof('computation'), 'tensorflow')
     results = tf.compat.v1.Session().run(
         tf.graph_util.import_graph_def(
-            serialization_utils.unpack_graph_def(tf_proto.graph_def),
+            serialization_utils.unpack_graph_def(comp.tensorflow.graph_def),
             None,
-            [tf_proto.result.tensor.tensor_name],
+            [comp.tensorflow.result.tensor.tensor_name],
         )
     )
     self.assertEqual(results, [99])
@@ -66,37 +59,55 @@ class TensorFlowSerializationTest(tf.test.TestCase):
       )
       return table.lookup(word)
 
-    tf_proto, _ = self.assert_serializes(
-        table_lookup,
-        computation_types.TensorType(dtype=tf.string, shape=(None,)),
+    comp, extra_type_spec = (
+        tensorflow_serialization.serialize_py_fn_as_tf_computation(
+            table_lookup,
+            computation_types.TensorType(dtype=tf.string, shape=(None,)),
+            context_stack_impl.context_stack,
+        )
+    )
+    self.assertEqual(
+        str(type_serialization.deserialize_type(comp.type)),
         '(string[?] -> int64[?])',
     )
+    self.assertEqual(str(extra_type_spec), '(string[?] -> int64[?])')
+    self.assertEqual(comp.WhichOneof('computation'), 'tensorflow')
 
     with tf.Graph().as_default() as g:
-      tf.graph_util.import_graph_def(
-          serialization_utils.unpack_graph_def(tf_proto.graph_def), name=''
+      tf.import_graph_def(
+          serialization_utils.unpack_graph_def(comp.tensorflow.graph_def),
+          name='',
       )
     with tf.compat.v1.Session(graph=g) as sess:
-      sess.run(fetches=tf_proto.initialize_op)
+      sess.run(fetches=comp.tensorflow.initialize_op)
       results = sess.run(
-          fetches=tf_proto.result.tensor.tensor_name,
-          feed_dict={tf_proto.parameter.tensor.tensor_name: ['b', 'c', 'a']},
+          fetches=comp.tensorflow.result.tensor.tensor_name,
+          feed_dict={
+              comp.tensorflow.parameter.tensor.tensor_name: ['b', 'c', 'a']
+          },
       )
     self.assertAllEqual(results, [1, 2, 0])
 
   @tensorflow_test_utils.graph_mode_test
   def test_serialize_tensorflow_with_simple_add_three_lambda(self):
-    tf_proto, _ = self.assert_serializes(
-        lambda x: x + 3,
-        computation_types.TensorType(tf.int32),
-        '(int32 -> int32)',
+    comp, extra_type_spec = (
+        tensorflow_serialization.serialize_py_fn_as_tf_computation(
+            lambda x: x + 3,
+            computation_types.TensorType(tf.int32),
+            context_stack_impl.context_stack,
+        )
     )
+    self.assertEqual(
+        str(type_serialization.deserialize_type(comp.type)), '(int32 -> int32)'
+    )
+    self.assertEqual(str(extra_type_spec), '(int32 -> int32)')
+    self.assertEqual(comp.WhichOneof('computation'), 'tensorflow')
     parameter = tf.constant(1000)
     results = tf.compat.v1.Session().run(
-        tf.graph_util.import_graph_def(
-            serialization_utils.unpack_graph_def(tf_proto.graph_def),
-            {tf_proto.parameter.tensor.tensor_name: parameter},
-            [tf_proto.result.tensor.tensor_name],
+        tf.import_graph_def(
+            serialization_utils.unpack_graph_def(comp.tensorflow.graph_def),
+            {comp.tensorflow.parameter.tensor.tensor_name: parameter},
+            [comp.tensorflow.result.tensor.tensor_name],
         )
     )
     self.assertEqual(results, [1003])
@@ -105,11 +116,22 @@ class TensorFlowSerializationTest(tf.test.TestCase):
   def test_serialize_tensorflow_with_structured_type_signature(self):
     batch_type = collections.namedtuple('BatchType', ['x', 'y'])
     output_type = collections.namedtuple('OutputType', ['A', 'B'])
-    _, extra_type_spec = self.assert_serializes(
-        lambda z: output_type(2.0 * tf.cast(z.x, tf.float32), 3.0 * z.y),
-        computation_types.StructWithPythonType(
-            [('x', tf.int32), ('y', (tf.float32, [2]))], batch_type
-        ),
+    comp, extra_type_spec = (
+        tensorflow_serialization.serialize_py_fn_as_tf_computation(
+            lambda z: output_type(2.0 * tf.cast(z.x, tf.float32), 3.0 * z.y),
+            computation_types.StructWithPythonType(
+                [('x', tf.int32), ('y', (tf.float32, [2]))], batch_type
+            ),
+            context_stack_impl.context_stack,
+        )
+    )
+    self.assertEqual(
+        str(type_serialization.deserialize_type(comp.type)),
+        '(<x=int32,y=float32[2]> -> <A=float32,B=float32[2]>)',
+    )
+    self.assertEqual(comp.WhichOneof('computation'), 'tensorflow')
+    self.assertEqual(
+        str(extra_type_spec),
         '(<x=int32,y=float32[2]> -> <A=float32,B=float32[2]>)',
     )
     self.assertIsInstance(

@@ -14,7 +14,7 @@
 """Utilities for serializing JAX computations."""
 
 
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Sequence
 from typing import Optional, Union
 
 import jax
@@ -173,10 +173,6 @@ def _jax_shape_dtype_struct_to_tff_tensor(
 
 def serialize_jax_computation(
     traced_fn: Callable[..., object],
-    arg_fn: Callable[
-        [Union[_XlaSerializerStructArg, _XlaSerializerTensorArg]],
-        tuple[Sequence[object], Mapping[str, object]],
-    ],
     parameter_type: Union[
         computation_types.StructType, computation_types.TensorType
     ],
@@ -187,9 +183,6 @@ def serialize_jax_computation(
   Args:
     traced_fn: The Python function containing JAX code to be traced by JAX and
       serialized as a TFF computation containing XLA code.
-    arg_fn: An unpacking function that takes a TFF argument, and returns a combo
-      of (args, kwargs) to invoke `traced_fn` with (e.g., as the one constructed
-      by `function_utils.create_argument_unpacking_fn`).
     parameter_type: An instance of `computation_types.Type` that represents the
       TFF type of the computation parameter, or `None` if the function does not
       take any parameters.
@@ -211,7 +204,10 @@ def serialize_jax_computation(
   else:
     packed_arg = None
 
-  args, kwargs = arg_fn(packed_arg)
+  # arg_types, kwarg_types = function_utils.unpack_args_from_struct(
+  #     parameter_type
+  # )
+  # args, kwargs = function_utils.unpack_arg(arg_types, kwarg_types, packed_arg)
 
   # While the fake parameters are fed via args/kwargs during serialization,
   # it is possible for them to get reordered in the actual generated XLA code.
@@ -219,13 +215,13 @@ def serialize_jax_computation(
   # the JAX serializer to determine the ordering and allow it to be captured
   # in the parameter binding. We do not need to do anything special for the
   # results, since the results, if multiple, are always returned as a tuple.
-  flattened_obj, _ = jax.tree_util.tree_flatten((args, kwargs))
+  flattened_obj, _ = jax.tree_util.tree_flatten(packed_arg)
   tensor_indexes = list(np.argsort([x.tensor_index for x in flattened_obj]))
 
   context = jax_computation_context.JaxComputationContext()
   with context_stack.install(context):
     tracer_callable = jax.xla_computation(traced_fn, return_shape=True)
-    compiled_xla, returned_shape = tracer_callable(*args, **kwargs)
+    compiled_xla, returned_shape = tracer_callable(packed_arg)
 
   if isinstance(returned_shape, jax.ShapeDtypeStruct):
     returned_type_spec = _jax_shape_dtype_struct_to_tff_tensor(returned_shape)

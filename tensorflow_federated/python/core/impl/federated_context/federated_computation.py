@@ -13,40 +13,48 @@
 # limitations under the License.
 """Definition of a federated computation."""
 
+from typing import Optional
+
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.computation import computation_wrapper
+from tensorflow_federated.python.core.impl.computation import function_utils
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.federated_context import federated_computation_utils
 
 
-def _federated_computation_wrapper_fn(parameter_type, name, **kwargs):
+def _federated_computation_wrapper_fn(
+    target_fn,
+    parameter_type,
+    unpack: Optional[bool],
+    name: Optional[str] = None,
+    **kwargs
+):
   """Wrapper function to plug orchestration logic into the TFF framework."""
   del kwargs  # Unused.
-  ctx_stack = context_stack_impl.context_stack
   if parameter_type is None:
     parameter_name = None
   else:
     parameter_name = 'arg'
-  fn_generator = federated_computation_utils.federated_computation_serializer(
-      parameter_name=parameter_name,
-      parameter_type=parameter_type,
-      context_stack=ctx_stack,
-      suggested_name=name,
+  target_fn = function_utils.wrap_as_zero_or_one_arg_callable(
+      target_fn, parameter_type, unpack
   )
-  arg = next(fn_generator)
-  try:
-    result = yield arg
-  except Exception as e:  # pylint: disable=broad-except
-    fn_generator.throw(e)
-  target_lambda, extra_type_spec = fn_generator.send(result)
-  fn_generator.close()
-  yield computation_impl.ConcreteComputation(
-      target_lambda.proto, ctx_stack, extra_type_spec
+  context_stack = context_stack_impl.context_stack
+  target_lambda, extra_type_spec = (
+      federated_computation_utils.zero_or_one_arg_fn_to_building_block(
+          target_fn,
+          parameter_name,
+          parameter_type,
+          context_stack,
+          suggested_name=name,
+      )
+  )
+  return computation_impl.ConcreteComputation(
+      target_lambda.proto, context_stack, extra_type_spec
   )
 
 
 federated_computation = computation_wrapper.ComputationWrapper(
-    computation_wrapper.PythonTracingStrategy(_federated_computation_wrapper_fn)
+    _federated_computation_wrapper_fn
 )
 federated_computation.__doc__ = """Decorates/wraps Python functions as TFF federated/composite computations.
 

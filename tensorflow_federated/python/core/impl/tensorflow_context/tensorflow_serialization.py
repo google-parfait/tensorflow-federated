@@ -13,6 +13,7 @@
 # limitations under the License.
 """Utilities for serializing TensorFlow computations."""
 
+import inspect
 from typing import Optional
 
 import tensorflow as tf
@@ -28,7 +29,8 @@ from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 from tensorflow_federated.python.tensorflow_libs import variable_utils
 
 
-def tf_computation_serializer(
+def serialize_py_fn_as_tf_computation(
+    target,
     parameter_type: Optional[computation_types.Type],
     context_stack,
     layout_map=None,
@@ -36,6 +38,16 @@ def tf_computation_serializer(
   """Serializes a TF computation with a given parameter type.
 
   Args:
+    target: The entity to convert into and serialize as a TF computation. This
+      can currently only be a Python function. In the future, we will add here
+      support for serializing the various kinds of non-eager and eager
+      functions, and eventually aim at full support for and compliance with TF
+      2.0. This function is currently required to declare either zero parameters
+      if `parameter_type` is `None`, or exactly one parameter if it's not
+      `None`.  The nested structure of this parameter must correspond to the
+      structure of the 'parameter_type'. In the future, we may support targets
+      with multiple args/keyword args (to be documented in the API and
+      referenced from here).
     parameter_type: The parameter type specification if the target accepts a
       parameter, or `None` if the target doesn't declare any parameters. Either
       an instance of `computation_types.Type`.
@@ -43,13 +55,8 @@ def tf_computation_serializer(
     layout_map: Sharding spec for variables or inputs when DTensor based
       executor is used.
 
-  Yields:
-    The first yielded value will be a Python object (such as a dataset,
-    a placeholder, or a `structure.Struct`) to be passed to the function to
-    serialize. The result of the function should then be passed to the
-    following `send` call.
-    The next yielded value will be
-    a tuple of (`pb.Computation`, `tff.Type`), where the computation contains
+  Returns:
+    A tuple of (`pb.Computation`, `tff.Type`), where the computation contains
     the instance with the `pb.TensorFlow` variant set, and the type is an
     instance of `tff.Type`, potentially including Python container annotations,
     for use by TensorFlow computation wrappers.
@@ -67,18 +74,31 @@ def tf_computation_serializer(
   py_typecheck.check_type(context_stack, context_stack_base.ContextStack)
   if parameter_type is not None:
     py_typecheck.check_type(parameter_type, computation_types.Type)
+  signature = inspect.signature(target)
 
   with tf.Graph().as_default() as graph:
     session_token_tensor = tf.compat.v1.placeholder(
         tf.string, shape=(), name='session_token_tensor'
     )
     if parameter_type is not None:
+      if len(signature.parameters) != 1:
+        raise ValueError(
+            'Expected the target to declare exactly one parameter, found {!r}.'
+            .format(signature.parameters)
+        )
+      parameter_name = next(iter(signature.parameters))
       parameter_value, parameter_binding = (
           tensorflow_utils.stamp_parameter_in_graph(
-              'arg', parameter_type, graph
+              parameter_name, parameter_type, graph
           )
       )
     else:
+      if signature.parameters:
+        raise ValueError(
+            'Expected the target to declare no parameters, found {!r}.'.format(
+                signature.parameters
+            )
+        )
       parameter_value = None
       parameter_binding = None
     context = tensorflow_computation_context.TensorFlowComputationContext(
@@ -86,7 +106,10 @@ def tf_computation_serializer(
     )
     with context_stack.install(context):
       with variable_utils.record_variable_creation_scope() as all_variables:
-        result = yield parameter_value
+        if parameter_value is not None:
+          result = target(parameter_value)
+        else:
+          result = target()
       initializer_ops = []
       if all_variables:
         # Use a readable but not-too-long name for the init_op.
@@ -131,7 +154,10 @@ def tf_computation_serializer(
       initialize_op=init_op_name,
       layout_map=pb.TensorFlow.LayoutMap(name_to_sharding_spec=layout_map),
   )
-  yield pb.Computation(
-      type=type_serialization.serialize_type(type_signature),
-      tensorflow=tensorflow,
-  ), type_signature
+  return (
+      pb.Computation(
+          type=type_serialization.serialize_type(type_signature),
+          tensorflow=tensorflow,
+      ),
+      type_signature,
+  )
