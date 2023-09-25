@@ -446,27 +446,6 @@ absl::Status UpdateVariableLayouts(
 }  // namespace
 
 absl::StatusOr<EagerComputation> EagerComputation::FromProto(
-    const v0::TensorFlowFunction& comp_pb,
-    std::map<std::string, tensorflow::dtensor::Layout> layout_map) {
-  if (!comp_pb.function_def().Is<tensorflow::FunctionDef>()) {
-    return absl::InvalidArgumentError(absl::StrCat(
-        "Unsupported type in function def proto: ",
-        comp_pb.function_def().type_url(), ". Only FunctionDef is supported."));
-  }
-  // If input is FunctionDef, directly register the functionDef for calling
-  // later from Call method.
-  tensorflow::FunctionDef func_def;
-  if (!comp_pb.function_def().UnpackTo(&func_def)) {
-    return absl::InternalError("Could not unpack FunctionDef proto");
-  }
-
-  TFF_TRY(UpdateVariableLayouts(func_def, layout_map));
-  UpdateVarHandleOpNodesAsAnonymous(func_def);
-  // Note: Nested function defs should be passed here for second argument.
-  return EagerComputation(func_def, {});
-}
-
-absl::StatusOr<EagerComputation> EagerComputation::FromProto(
     const v0::TensorFlow& comp_pb,
     std::map<std::string, tensorflow::dtensor::Layout> layout_map) {
   if (!(comp_pb.graph_def().Is<tensorflow::GraphDef>())) {

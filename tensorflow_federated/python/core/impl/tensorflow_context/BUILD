@@ -28,17 +28,10 @@ py_library(
     srcs = ["tensorflow_computation.py"],
     deps = [
         ":tensorflow_serialization",
-        "//tensorflow_federated/proto/v0:computation_py_pb2",
-        "//tensorflow_federated/python/common_libs:serialization_utils",
-        "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/computation:computation_impl",
         "//tensorflow_federated/python/core/impl/computation:computation_wrapper",
-        "//tensorflow_federated/python/core/impl/computation:function_utils",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_analysis",
-        "//tensorflow_federated/python/core/impl/types:type_conversions",
-        "//tensorflow_federated/python/core/impl/types:type_serialization",
     ],
 )
 
@@ -48,14 +41,11 @@ py_test(
     srcs = ["tensorflow_computation_test.py"],
     deps = [
         ":tensorflow_computation",
-        "//tensorflow_federated/python/core/impl/computation:computation_impl",
         "//tensorflow_federated/python/core/impl/computation:computation_wrapper",
         "//tensorflow_federated/python/core/impl/context_stack:get_context_stack",
         "//tensorflow_federated/python/core/impl/context_stack:runtime_error_context",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
-        "//tensorflow_federated/python/core/impl/types:type_test_utils",
-        "//tensorflow_federated/python/tensorflow_libs:version_check",
     ],
 )
 
