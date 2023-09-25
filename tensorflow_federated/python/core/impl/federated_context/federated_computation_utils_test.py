@@ -18,6 +18,7 @@ from absl.testing import absltest
 from absl.testing import parameterized
 import tensorflow as tf
 
+from tensorflow_federated.python.core.impl.computation import computation_wrapper
 from tensorflow_federated.python.core.impl.computation import function_utils
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.federated_context import federated_computation_utils
@@ -26,19 +27,7 @@ from tensorflow_federated.python.core.impl.types import computation_types
 TestNamedTuple = collections.namedtuple('TestTuple', ['x', 'y'])
 
 
-def _federated_computation_serializer(fn, parameter_name, parameter_type):
-  unpack_arguments = function_utils.create_argument_unpacking_fn(
-      fn, parameter_type
-  )
-  fn_gen = federated_computation_utils.federated_computation_serializer(
-      parameter_name, parameter_type, context_stack_impl.context_stack
-  )
-  args, kwargs = unpack_arguments(next(fn_gen))
-  result = fn(*args, **kwargs)
-  return fn_gen.send(result)
-
-
-class FnToBuildingBlockTest(parameterized.TestCase):
+class ZeroOrOneArgFnToBuildingBlockTest(parameterized.TestCase):
 
   # pyformat: disable
   @parameterized.named_parameters(
@@ -63,8 +52,11 @@ class FnToBuildingBlockTest(parameterized.TestCase):
   # pyformat: enable
   def test_returns_result(self, fn, parameter_type, fn_str):
     parameter_name = 'foo' if parameter_type is not None else None
-    result, _ = _federated_computation_serializer(
-        fn, parameter_name, parameter_type
+    fn = function_utils.wrap_as_zero_or_one_arg_callable(fn, parameter_type)
+    result, _ = (
+        federated_computation_utils.zero_or_one_arg_fn_to_building_block(
+            fn, parameter_name, parameter_type, context_stack_impl.context_stack
+        )
     )
     self.assertStartsWith(str(result), fn_str)
 
@@ -95,8 +87,12 @@ class FnToBuildingBlockTest(parameterized.TestCase):
   def test_returns_result_with_py_container(
       self, fn, parameter_type, expected_result_type
   ):
-    _, type_signature = _federated_computation_serializer(
-        fn, 'foo', parameter_type
+    parameter_name = 'foo'
+    fn = function_utils.wrap_as_zero_or_one_arg_callable(fn, parameter_type)
+    _, type_signature = (
+        federated_computation_utils.zero_or_one_arg_fn_to_building_block(
+            fn, parameter_name, parameter_type, context_stack_impl.context_stack
+        )
     )
     self.assertIs(type(type_signature.result), type(expected_result_type))
     self.assertIs(
@@ -104,6 +100,16 @@ class FnToBuildingBlockTest(parameterized.TestCase):
         expected_result_type.python_container,
     )
     self.assertEqual(type_signature.result, expected_result_type)
+
+  def test_raises_value_error_with_none_result(self):
+    fn = lambda: None
+    parameter_type = None
+    fn = function_utils.wrap_as_zero_or_one_arg_callable(fn, parameter_type)
+
+    with self.assertRaises(computation_wrapper.ComputationReturnedNoneError):
+      federated_computation_utils.zero_or_one_arg_fn_to_building_block(
+          fn, None, parameter_type, context_stack_impl.context_stack
+      )
 
 
 if __name__ == '__main__':

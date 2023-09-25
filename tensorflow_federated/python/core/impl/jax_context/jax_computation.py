@@ -18,30 +18,29 @@ from typing import Optional, Union
 
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.computation import computation_wrapper
-from tensorflow_federated.python.core.impl.computation import function_utils
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.jax_context import jax_serialization
 from tensorflow_federated.python.core.impl.types import computation_types
 
 
-def _jax_strategy_fn(
-    fn_to_wrap: Callable[..., object],
-    fn_name: Optional[str],
+def _jax_wrapper_fn(
+    fn: Callable[..., object],
     parameter_type: Optional[
         Union[computation_types.StructType, computation_types.TensorType]
     ],
     unpack: Optional[bool],
+    name: Optional[str] = None,
     **kwargs,
 ) -> computation_impl.ConcreteComputation:
   """Serializes a Python function containing JAX code as a TFF computation.
 
   Args:
-    fn_to_wrap: The Python function containing JAX code to be serialized as a
+    fn: The Python function containing JAX code to be serialized as a
       computation containing XLA.
-    fn_name: The name for the constructed computation (currently ignored).
     parameter_type: An instance of `computation_types.Type` that represents the
       TFF type of the computation parameter, or `None` if there's none.
-    unpack: See `unpack` in `function_utils.create_argument_unpacking_fn`.
+    unpack: See `unpack` in `function_utils.wrap_as_zero_or_one_arg_callable`.
+    name: The name for the constructed computation (currently ignored).
     **kwargs: Unused currently. A placeholder for passing Jax strategy specific
       parameters.
 
@@ -49,21 +48,17 @@ def _jax_strategy_fn(
     An instance of `computation_impl.ConcreteComputation` with the constructed
     computation.
   """
-  del fn_name  # Unused.
-  del kwargs  # Unused.
-  unpack_arguments_fn = function_utils.create_argument_unpacking_fn(
-      fn_to_wrap, parameter_type, unpack=unpack
-  )
-  ctx_stack = context_stack_impl.context_stack
+  del unpack, name, kwargs  # Unused.
+  context_stack = context_stack_impl.context_stack
   comp_pb, extra_type_spec = jax_serialization.serialize_jax_computation(
-      fn_to_wrap, unpack_arguments_fn, parameter_type, ctx_stack
+      fn, parameter_type, context_stack
   )
   return computation_impl.ConcreteComputation(
-      comp_pb, ctx_stack, annotated_type=extra_type_spec
+      comp_pb, context_stack, extra_type_spec
   )
 
 
-jax_computation = computation_wrapper.ComputationWrapper(_jax_strategy_fn)
+jax_computation = computation_wrapper.ComputationWrapper(_jax_wrapper_fn)
 jax_computation.__doc__ = """Decorates/wraps Python functions containing JAX code as TFF computations.
 
   This wrapper can be used in a similar manner to `tff.tf_computation`, with

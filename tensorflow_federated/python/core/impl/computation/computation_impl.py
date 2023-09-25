@@ -31,9 +31,7 @@ class ConcreteComputation(computation_base.Computation):
 
   This implementation exposes methods to retrieve the backing `pb.Computation`,
   as well as the Python representation of this protocol buffer represented by
-  an instance of `building_blocks.ComputationBuildingBlock`. Leverages the
-  implementation of `__call__` inherited from `function_utils.ConcreteFunction`
-  to pass `self` to the currently installed context.
+  an instance of `building_blocks.ComputationBuildingBlock`.
   """
 
   @classmethod

@@ -13,8 +13,7 @@
 # limitations under the License.
 """Utilities for Python functions, defuns, and other types of callables."""
 
-from collections.abc import Callable, Mapping, Sequence
-import functools
+from collections.abc import Mapping, Sequence
 import inspect
 import types
 from typing import Optional
@@ -97,7 +96,8 @@ def is_argument_struct(arg) -> bool:
   elif isinstance(arg, typed_object.TypedObject):
     return is_argument_struct(arg.type_signature)
   else:
-    arg = computation_types.to_type(arg)
+    if arg is not None:
+      arg = computation_types.to_type(arg)
     if isinstance(arg, computation_types.StructType):
       elements = structure.to_elements(arg)
     else:
@@ -114,7 +114,7 @@ def is_argument_struct(arg) -> bool:
 
 def unpack_args_from_struct(
     struct_with_args,
-) -> tuple[list[object], dict[str, object]]:
+) -> tuple[list[computation_types.Type], dict[str, computation_types.Type]]:
   """Extracts argument types from a struct.
 
   Args:
@@ -293,7 +293,7 @@ def pack_args(
 
 def _infer_unpack_needed(
     fn: types.FunctionType,
-    parameter_type: computation_types.Type,
+    parameter_type: Optional[computation_types.Type],
     should_unpack: Optional[bool] = None,
 ) -> bool:
   """Returns whether parameter_type must be unpacked when calling fn.
@@ -301,7 +301,7 @@ def _infer_unpack_needed(
   Args:
     fn: The function to be invoked.
     parameter_type: The TFF type of the parameter bundle to be accepted by the
-      returned callable.
+      returned callable, if any, or None if there's no parameter.
     should_unpack: Default or expected return value; None implies the inferred
       value should be returned. If either unpacking or packing could work, and
       should_unpack is not None, then should_unpack is returned.
@@ -320,6 +320,18 @@ def _infer_unpack_needed(
   py_typecheck.check_type(parameter_type, computation_types.Type)
   unpack = should_unpack  # Default return value.
   signature = inspect.signature(fn)
+
+  if parameter_type is None:
+    if is_signature_compatible_with_types(signature):
+      if should_unpack:
+        raise ValueError('Requested unpacking of a no-arg function.')
+      return False
+    else:
+      raise TypeError(
+          'The signature {} of the supplied function cannot be interpreted as '
+          'a body of a no-parameter computation.'.format(signature)
+      )
+
   unpack_required = not is_signature_compatible_with_types(
       signature, parameter_type
   )
@@ -369,6 +381,84 @@ def _infer_unpack_needed(
     unpack = unpack_possible
 
   return unpack
+
+
+def wrap_as_zero_or_one_arg_callable(
+    fn: types.FunctionType,
+    parameter_type: Optional[computation_types.Type] = None,
+    unpack: Optional[bool] = None,
+):
+  """Wraps around `fn` so it accepts up to one positional TFF-typed argument.
+
+  This function helps to simplify dealing with functions and defuns that might
+  have diverse and complex signatures, but that represent computations and as
+  such, conceptually only accept a single parameter. The returned callable has
+  a single positional parameter or no parameters. If it has one parameter, the
+  parameter is expected to contain all arguments required by `fn` and matching
+  the supplied parameter type signature bundled together into a `Struct`,
+  if needed. The callable unpacks that structure, and passes all of
+  its elements as positional or keyword-based arguments in the call to `fn`.
+
+  Example usage:
+
+    @tf.function
+    def my_fn(x, y, z=10, name='bar', *p, **q):
+      return x + y
+
+    type_spec = (tf.int32, tf.int32)
+
+    wrapped_fn = wrap_as_zero_or_one_arg_callable(my_fn, type_spec)
+
+    arg = Struct([('x', 10), ('y', 20)])
+
+    ... = wrapped_fn(arg)
+
+  Args:
+    fn: The underlying backend function or defun to invoke with the unpacked
+      arguments.
+    parameter_type: The TFF type of the parameter bundle to be accepted by the
+      returned callable, if any, or None if there's no parameter.
+    unpack: Whether to break the parameter down into constituent parts and feed
+      them as arguments to `fn` (True), leave the parameter as is and pass it to
+      `fn` as a single unit (False), or allow it to be inferred from the
+      signature of `fn` (None). In the latter case (None), if any ambiguity
+      arises, an exception is thrown. If the parameter_type is None, this value
+      has no effect, and is simply ignored.
+
+  Returns:
+    The zero- or one-argument callable that invokes `fn` with the unbundled
+    arguments, as described above.
+
+  Raises:
+    TypeError: if arguments to this call are of the wrong types, or if the
+      supplied 'parameter_type' is not compatible with `fn`.
+  """
+  # TODO: b/113112885 - Revisit whether the 3-way 'unpack' knob is sufficient
+  # for our needs, or more options are needed.
+  signature = inspect.signature(fn)
+  if parameter_type is None:
+    if is_signature_compatible_with_types(signature):
+      # Deliberate wrapping to isolate the caller from `fn`, e.g., to prevent
+      # the caller from mistakenly specifying args that match fn's defaults.
+      return lambda: fn()  # pylint: disable=unnecessary-lambda
+    else:
+      raise TypeError(
+          'The signature {} of the supplied function cannot be interpreted as '
+          'a body of a no-parameter computation.'.format(signature)
+      )
+  else:
+    parameter_type = computation_types.to_type(parameter_type)
+
+    def _call(fn, parameter_type, arg, unpack):
+      args, kwargs = unpack_arg(fn, parameter_type, arg, unpack)
+      return fn(*args, **kwargs)
+
+    # TODO: b/132888123 - Consider other options to avoid possible bugs here.
+    try:
+      (fn, parameter_type, unpack)
+    except NameError as e:
+      raise AssertionError('Args to be bound must be in scope.') from e
+    return lambda arg: _call(fn, parameter_type, arg, unpack)
 
 
 def _unpack_arg(
@@ -424,67 +514,32 @@ def _ensure_arg_type(
   return [arg], {}
 
 
-def create_argument_unpacking_fn(
+def unpack_arg(
     fn: types.FunctionType,
     parameter_type: Optional[computation_types.Type],
+    arg,
     unpack: Optional[bool] = None,
-) -> Callable[[object], tuple[list[object], dict[str, object]]]:
-  """Returns a function which converts TFF values into arguments to `fn`.
-
-  This function helps to simplify dealing with functions and defuns that might
-  have diverse and complex signatures, but that represent computations and as
-  such, conceptually only accept a single parameter.
-
-  The argument provided to the returned callable is expected to contain all
-  arguments required by `fn` and matching the supplied parameter type signature.
-  If `fn` takes multiple parameters, those should be represented by packing
-  the arguments to the returned callable into a `Struct`.
-
-  The callable unpacks that structure and returns its elements as an `Arguments`
-  structure containing both positional and keyword arguments.
-
-  Example usage:
-
-    @tf.function
-    def my_fn(x, y, z=10, name='bar', *p, **q):
-      return x + y
-
-    type_spec = (tf.int32, tf.int32)
-    argument_converter = create_argument_unpacking_fn(my_fn, type_spec)
-    arg = Struct([('x', 10), ('y', 20)])
-    args, kwargs = argument_converter(arg)
-    ... = my_fn(*args, **kwargs)
+) -> tuple[list[object], dict[str, object]]:
+  """Converts TFF values into arguments to `fn`.
 
   Args:
     fn: The function to unpack arguments for.
     parameter_type: The TFF type of the parameter bundle to be accepted by the
       returned callable.
+    arg: The argument to unpack.
     unpack: Whether to break the parameter down into constituent parts (`True`),
       leave the parameter as a single unit (False), or allow it to be inferred
       from the signature of `fn` (None). In the latter case (None), if any
       ambiguity arises, an exception is thrown.
 
   Returns:
-    A callable accepting one argument to unpack.
-
-  Raises:
-    TypeError: if arguments to this call are of the wrong types, or if the
-      supplied 'parameter_type' is not compatible with `fn`.
+    The unpacked arg.
   """
   if parameter_type is None:
+    return [], {}
 
-    def _none_arg(arg):
-      if arg is not None:
-        raise RuntimeError(
-            'Unexpected non-`None` argument to no-arg function with '
-            f'parameter type `None`: {arg}'
-        )
-      return [], {}
-
-    return _none_arg
-  py_typecheck.check_type(parameter_type, computation_types.Type)
   if _infer_unpack_needed(fn, parameter_type, unpack):
     arg_types, kwarg_types = unpack_args_from_struct(parameter_type)
-    return functools.partial(_unpack_arg, arg_types, kwarg_types)
+    return _unpack_arg(arg_types, kwarg_types, arg)
   else:
-    return functools.partial(_ensure_arg_type, parameter_type)
+    return _ensure_arg_type(parameter_type, arg)

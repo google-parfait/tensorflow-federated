@@ -21,7 +21,6 @@ import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import structure
-from tensorflow_federated.python.core.impl.computation import function_utils
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.jax_context import jax_serialization
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -41,46 +40,42 @@ class JaxSerializationTest(absltest.TestCase):
     def traced_fn(x):
       return x + 10
 
-    param_type = computation_types.TensorType(
+    parameter_type = computation_types.TensorType(
         dtype=tf.int32, shape=tf.TensorShape(None)
     )
-    arg_fn = function_utils.create_argument_unpacking_fn(traced_fn, param_type)
     with self.assertRaisesRegex(TypeError, 'fully-defined TensorShapes'):
       jax_serialization.serialize_jax_computation(
-          traced_fn, arg_fn, param_type, context_stack_impl.context_stack
+          traced_fn, parameter_type, context_stack_impl.context_stack
       )
 
   def test_serialize_jax_fails_well_with_known_rank_unk_shape_param(self):
     def traced_fn(x):
       return x + 10
 
-    param_type = computation_types.TensorType(
+    parameter_type = computation_types.TensorType(
         dtype=tf.int32, shape=tf.TensorShape([None])
     )
-    arg_fn = function_utils.create_argument_unpacking_fn(traced_fn, param_type)
     with self.assertRaisesRegex(TypeError, 'fully-defined TensorShapes'):
       jax_serialization.serialize_jax_computation(
-          traced_fn, arg_fn, param_type, context_stack_impl.context_stack
+          traced_fn, parameter_type, context_stack_impl.context_stack
       )
 
   def test_serialize_jax_with_noarg_to_int32(self):
     def traced_fn():
       return 10
 
-    param_type = None
-    arg_fn = function_utils.create_argument_unpacking_fn(traced_fn, param_type)
-    ctx_stack = context_stack_impl.context_stack
+    parameter_type = None
     comp_pb, annotated_type = jax_serialization.serialize_jax_computation(
-        traced_fn, arg_fn, param_type, ctx_stack
+        traced_fn, parameter_type, context_stack_impl.context_stack
     )
     self.assertIsInstance(comp_pb, pb.Computation)
     self.assertEqual(comp_pb.WhichOneof('computation'), 'xla')
     type_spec = type_serialization.deserialize_type(comp_pb.type)
     type_test_utils.assert_types_equivalent(
-        type_spec, FunctionType(parameter=param_type, result=np.int32)
+        type_spec, FunctionType(parameter=parameter_type, result=np.int32)
     )
     type_test_utils.assert_types_identical(
-        annotated_type, FunctionType(parameter=param_type, result=np.int32)
+        annotated_type, FunctionType(parameter=parameter_type, result=np.int32)
     )
     xla_comp = xla_serialization.unpack_xla_computation(comp_pb.xla.hlo_module)
     self.assertNotEmpty(xla_comp.as_hlo_text())
@@ -91,20 +86,18 @@ class JaxSerializationTest(absltest.TestCase):
     def traced_fn(x):
       return x + 10
 
-    param_type = computation_types.to_type(np.int32)
-    arg_fn = function_utils.create_argument_unpacking_fn(traced_fn, param_type)
-    ctx_stack = context_stack_impl.context_stack
+    parameter_type = computation_types.to_type(np.int32)
     comp_pb, annotated_type = jax_serialization.serialize_jax_computation(
-        traced_fn, arg_fn, param_type, ctx_stack
+        traced_fn, parameter_type, context_stack_impl.context_stack
     )
     self.assertIsInstance(comp_pb, pb.Computation)
     self.assertEqual(comp_pb.WhichOneof('computation'), 'xla')
     type_spec = type_serialization.deserialize_type(comp_pb.type)
     type_test_utils.assert_types_equivalent(
-        type_spec, FunctionType(parameter=param_type, result=np.int32)
+        type_spec, FunctionType(parameter=parameter_type, result=np.int32)
     )
     type_test_utils.assert_types_identical(
-        annotated_type, FunctionType(parameter=param_type, result=np.int32)
+        annotated_type, FunctionType(parameter=parameter_type, result=np.int32)
     )
     xla_comp = xla_serialization.unpack_xla_computation(comp_pb.xla.hlo_module)
     self.assertNotEmpty(xla_comp.as_hlo_text())
@@ -117,13 +110,11 @@ class JaxSerializationTest(absltest.TestCase):
           sum=x['foo'] + x['bar'], difference=x['bar'] - x['foo']
       )
 
-    param_type = computation_types.to_type(
+    parameter_type = computation_types.to_type(
         collections.OrderedDict(foo=np.int32, bar=np.int32)
     )
-    arg_fn = function_utils.create_argument_unpacking_fn(traced_fn, param_type)
-    ctx_stack = context_stack_impl.context_stack
     comp_pb, annotated_type = jax_serialization.serialize_jax_computation(
-        traced_fn, arg_fn, param_type, ctx_stack
+        traced_fn, parameter_type, context_stack_impl.context_stack
     )
     self.assertIsInstance(comp_pb, pb.Computation)
     self.assertEqual(comp_pb.WhichOneof('computation'), 'xla')
@@ -131,14 +122,14 @@ class JaxSerializationTest(absltest.TestCase):
     type_test_utils.assert_types_equivalent(
         type_spec,
         FunctionType(
-            parameter=param_type,
+            parameter=parameter_type,
             result=StructType([('sum', np.int32), ('difference', np.int32)]),
         ),
     )
     type_test_utils.assert_types_identical(
         annotated_type,
         FunctionType(
-            parameter=param_type,
+            parameter=parameter_type,
             result=computation_types.StructWithPythonType(
                 [('sum', np.int32), ('difference', np.int32)],
                 container_type=collections.OrderedDict,
@@ -170,22 +161,20 @@ class JaxSerializationTest(absltest.TestCase):
     def traced_fn(x, y):
       return x + y
 
-    param_type = computation_types.to_type(
+    parameter_type = computation_types.to_type(
         collections.OrderedDict(x=np.int32, y=np.int32)
     )
-    arg_fn = function_utils.create_argument_unpacking_fn(traced_fn, param_type)
-    ctx_stack = context_stack_impl.context_stack
     comp_pb, annotated_type = jax_serialization.serialize_jax_computation(
-        traced_fn, arg_fn, param_type, ctx_stack
+        traced_fn, parameter_type, context_stack_impl.context_stack
     )
     self.assertIsInstance(comp_pb, pb.Computation)
     self.assertEqual(comp_pb.WhichOneof('computation'), 'xla')
     type_spec = type_serialization.deserialize_type(comp_pb.type)
     type_test_utils.assert_types_equivalent(
-        type_spec, FunctionType(parameter=param_type, result=np.int32)
+        type_spec, FunctionType(parameter=parameter_type, result=np.int32)
     )
     type_test_utils.assert_types_identical(
-        annotated_type, FunctionType(parameter=param_type, result=np.int32)
+        annotated_type, FunctionType(parameter=parameter_type, result=np.int32)
     )
     xla_comp = xla_serialization.unpack_xla_computation(comp_pb.xla.hlo_module)
     self.assertNotEmpty(xla_comp.as_hlo_text())
@@ -212,47 +201,43 @@ class JaxSerializationTest(absltest.TestCase):
     def traced_fn(x, y):
       return x[0] + y
 
-    param_type = computation_types.StructType([
+    parameter_type = computation_types.StructType([
         (None, computation_types.StructType([(None, np.int32)])),
         (None, np.int32),
     ])
-    arg_fn = function_utils.create_argument_unpacking_fn(traced_fn, param_type)
-    ctx_stack = context_stack_impl.context_stack
     comp_pb, annotated_type = jax_serialization.serialize_jax_computation(
-        traced_fn, arg_fn, param_type, ctx_stack
+        traced_fn, parameter_type, context_stack_impl.context_stack
     )
     self.assertIsInstance(comp_pb, pb.Computation)
     self.assertEqual(comp_pb.WhichOneof('computation'), 'xla')
     type_spec = type_serialization.deserialize_type(comp_pb.type)
     type_test_utils.assert_types_equivalent(
-        type_spec, FunctionType(parameter=param_type, result=np.int32)
+        type_spec, FunctionType(parameter=parameter_type, result=np.int32)
     )
     type_test_utils.assert_types_identical(
-        annotated_type, FunctionType(parameter=param_type, result=np.int32)
+        annotated_type, FunctionType(parameter=parameter_type, result=np.int32)
     )
 
   def test_nested_structure_type_signature_roundtrip(self):
     def traced_fn(x):
       return x[0][0]
 
-    param_type = computation_types.to_type([(np.int32,)])
-    arg_fn = function_utils.create_argument_unpacking_fn(traced_fn, param_type)
-    ctx_stack = context_stack_impl.context_stack
+    parameter_type = computation_types.to_type([(np.int32,)])
     comp_pb, annotated_type = jax_serialization.serialize_jax_computation(
-        traced_fn, arg_fn, param_type, ctx_stack
+        traced_fn, parameter_type, context_stack_impl.context_stack
     )
     self.assertIsInstance(comp_pb, pb.Computation)
     self.assertEqual(comp_pb.WhichOneof('computation'), 'xla')
     type_spec = type_serialization.deserialize_type(comp_pb.type)
     type_test_utils.assert_types_equivalent(
-        type_spec, FunctionType(parameter=param_type, result=np.int32)
+        type_spec, FunctionType(parameter=parameter_type, result=np.int32)
     )
     type_test_utils.assert_types_identical(
-        annotated_type, FunctionType(parameter=param_type, result=np.int32)
+        annotated_type, FunctionType(parameter=parameter_type, result=np.int32)
     )
 
   def test_arg_ordering(self):
-    param_type = computation_types.to_type((
+    parameter_type = computation_types.to_type((
         computation_types.TensorType(np.int32, 10),
         computation_types.TensorType(np.int32),
     ))
@@ -260,31 +245,25 @@ class JaxSerializationTest(absltest.TestCase):
     def traced_fn(b, a):
       return jax.numpy.add(a, jax.numpy.sum(b))
 
-    arg_fn = function_utils.create_argument_unpacking_fn(traced_fn, param_type)
-    ctx_stack = context_stack_impl.context_stack
     comp_pb, annotated_type = jax_serialization.serialize_jax_computation(
-        traced_fn, arg_fn, param_type, ctx_stack
+        traced_fn, parameter_type, context_stack_impl.context_stack
     )
     self.assertIsInstance(comp_pb, pb.Computation)
     self.assertEqual(comp_pb.WhichOneof('computation'), 'xla')
     type_spec = type_serialization.deserialize_type(comp_pb.type)
     type_test_utils.assert_types_equivalent(
-        type_spec, FunctionType(parameter=param_type, result=np.int32)
+        type_spec, FunctionType(parameter=parameter_type, result=np.int32)
     )
     type_test_utils.assert_types_identical(
-        annotated_type, FunctionType(parameter=param_type, result=np.int32)
+        annotated_type, FunctionType(parameter=parameter_type, result=np.int32)
     )
 
   def test_tracing_with_float64_input(self):
     self.skipTest('b/237566862')
-    param_type = computation_types.TensorType(np.float64)
+    parameter_type = computation_types.TensorType(np.float64)
     identity_fn = lambda x: x
-    arg_fn = function_utils.create_argument_unpacking_fn(
-        identity_fn, param_type
-    )
-    ctx_stack = context_stack_impl.context_stack
     comp_pb, annotated_type = jax_serialization.serialize_jax_computation(
-        identity_fn, arg_fn, param_type, ctx_stack
+        identity_fn, parameter_type, context_stack_impl.context_stack
     )
     self.assertIsInstance(comp_pb, pb.Computation)
     self.assertEqual(comp_pb.WhichOneof('computation'), 'xla')

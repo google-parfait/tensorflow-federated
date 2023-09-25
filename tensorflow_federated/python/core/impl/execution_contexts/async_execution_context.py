@@ -16,7 +16,7 @@
 import asyncio
 from collections.abc import Callable
 import contextlib
-from typing import Any, Generic, Optional, TypeVar
+from typing import Generic, Optional, TypeVar
 
 import tensorflow as tf
 
@@ -163,7 +163,7 @@ class AsyncExecutionContext(context_base.AsyncContext, Generic[_Computation]):
   def __init__(
       self,
       executor_fn: executor_factory.ExecutorFactory,
-      compiler_fn: Optional[Callable[[_Computation], Any]] = None,
+      compiler_fn: Optional[Callable[[_Computation], object]] = None,
       *,
       cardinality_inference_fn: cardinalities_utils.CardinalityInferenceFnType = cardinalities_utils.infer_cardinalities,
   ):
