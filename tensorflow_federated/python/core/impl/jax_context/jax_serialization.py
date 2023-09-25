@@ -14,7 +14,7 @@
 """Utilities for serializing JAX computations."""
 
 
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Sequence
 from typing import Optional, Union
 
 import jax
@@ -23,6 +23,7 @@ import numpy as np
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
+from tensorflow_federated.python.core.impl.computation import function_utils
 from tensorflow_federated.python.core.impl.context_stack import context_stack_base
 from tensorflow_federated.python.core.impl.jax_context import jax_computation_context
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -172,11 +173,7 @@ def _jax_shape_dtype_struct_to_tff_tensor(
 
 
 def serialize_jax_computation(
-    traced_fn: Callable[..., object],
-    arg_fn: Callable[
-        [Union[_XlaSerializerStructArg, _XlaSerializerTensorArg]],
-        tuple[Sequence[object], Mapping[str, object]],
-    ],
+    fn: Callable[..., object],
     parameter_type: Union[
         computation_types.StructType, computation_types.TensorType
     ],
@@ -185,11 +182,8 @@ def serialize_jax_computation(
   """Serializes a Python function containing JAX code as a TFF computation.
 
   Args:
-    traced_fn: The Python function containing JAX code to be traced by JAX and
+    fn: The Python function containing JAX code to be traced by JAX and
       serialized as a TFF computation containing XLA code.
-    arg_fn: An unpacking function that takes a TFF argument, and returns a combo
-      of (args, kwargs) to invoke `traced_fn` with (e.g., as the one constructed
-      by `function_utils.create_argument_unpacking_fn`).
     parameter_type: An instance of `computation_types.Type` that represents the
       TFF type of the computation parameter, or `None` if the function does not
       take any parameters.
@@ -211,7 +205,7 @@ def serialize_jax_computation(
   else:
     packed_arg = None
 
-  args, kwargs = arg_fn(packed_arg)
+  args, kwargs = function_utils.unpack_arg(fn, parameter_type, packed_arg)
 
   # While the fake parameters are fed via args/kwargs during serialization,
   # it is possible for them to get reordered in the actual generated XLA code.
@@ -224,7 +218,7 @@ def serialize_jax_computation(
 
   context = jax_computation_context.JaxComputationContext()
   with context_stack.install(context):
-    tracer_callable = jax.xla_computation(traced_fn, return_shape=True)
+    tracer_callable = jax.xla_computation(fn, return_shape=True)
     compiled_xla, returned_shape = tracer_callable(*args, **kwargs)
 
   if isinstance(returned_shape, jax.ShapeDtypeStruct):

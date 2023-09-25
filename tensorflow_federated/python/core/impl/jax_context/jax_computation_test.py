@@ -21,7 +21,7 @@ from tensorflow_federated.python.core.impl.jax_context import jax_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 
 
-class JaxWrapperTest(absltest.TestCase):
+class JaxComputationTest(absltest.TestCase):
 
   def test_invoke_with_single_arg_fn(self):
     @jax_computation.jax_computation(np.int32)

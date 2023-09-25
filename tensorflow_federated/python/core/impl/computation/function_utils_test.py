@@ -250,11 +250,10 @@ class FunctionUtilsTest(parameterized.TestCase):
   def test_wrap_as_zero_or_one_arg_callable(
       self, fn, parameter_type, unpack, arg, expected_result
   ):
-    unpack_arguments = function_utils.create_argument_unpacking_fn(
+    wrapped_fn = function_utils.wrap_as_zero_or_one_arg_callable(
         fn, parameter_type, unpack
     )
-    args, kwargs = unpack_arguments(arg)
-    actual_result = fn(*args, **kwargs)
+    actual_result = wrapped_fn(arg) if parameter_type else wrapped_fn()
     self.assertEqual(actual_result, expected_result)
 
 
