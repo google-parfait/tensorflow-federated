@@ -17,7 +17,7 @@ from collections.abc import Callable, Mapping, Sequence
 import functools
 import inspect
 import types
-from typing import Any, Optional
+from typing import Optional
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
@@ -114,7 +114,7 @@ def is_argument_struct(arg) -> bool:
 
 def unpack_args_from_struct(
     struct_with_args,
-) -> tuple[list[Any], dict[str, Any]]:
+) -> tuple[list[object], dict[str, object]]:
   """Extracts argument types from a struct.
 
   Args:
@@ -156,7 +156,7 @@ def unpack_args_from_struct(
 
 
 def pack_args_into_struct(
-    args: Sequence[Any], kwargs: Mapping[str, Any], type_spec=None
+    args: Sequence[object], kwargs: Mapping[str, object], type_spec=None
 ) -> structure.Struct:
   """Packs positional and keyword arguments into a `Struct`.
 
@@ -234,7 +234,9 @@ def pack_args_into_struct(
       return structure.Struct(result_elements)
 
 
-def pack_args(parameter_type, args: Sequence[Any], kwargs: Mapping[str, Any]):
+def pack_args(
+    parameter_type, args: Sequence[object], kwargs: Mapping[str, object]
+):
   """Pack arguments into a single one that matches the given parameter type.
 
   The arguments may or may not be packed into a `Struct`, depending on the type
@@ -369,10 +371,9 @@ def _infer_unpack_needed(
   return unpack
 
 
-_Arguments = tuple[list[Any], dict[str, Any]]
-
-
-def _unpack_arg(arg_types, kwarg_types, arg) -> _Arguments:
+def _unpack_arg(
+    arg_types, kwarg_types, arg
+) -> tuple[list[object], dict[str, object]]:
   """Unpacks 'arg' into an argument list based on types."""
   args = []
   for idx, expected_type in enumerate(arg_types):
@@ -407,7 +408,9 @@ def _unpack_arg(arg_types, kwarg_types, arg) -> _Arguments:
   return args, kwargs
 
 
-def _ensure_arg_type(parameter_type, arg) -> _Arguments:
+def _ensure_arg_type(
+    parameter_type, arg
+) -> tuple[list[object], dict[str, object]]:
   """Ensures that `arg` matches `parameter_type` before returning it."""
   arg_type = type_conversions.infer_type(arg)
   if not parameter_type.is_assignable_from(arg_type):
@@ -425,7 +428,7 @@ def create_argument_unpacking_fn(
     fn: types.FunctionType,
     parameter_type: Optional[computation_types.Type],
     unpack: Optional[bool] = None,
-) -> Callable[[Any], _Arguments]:
+) -> Callable[[object], tuple[list[object], dict[str, object]]]:
   """Returns a function which converts TFF values into arguments to `fn`.
 
   This function helps to simplify dealing with functions and defuns that might
