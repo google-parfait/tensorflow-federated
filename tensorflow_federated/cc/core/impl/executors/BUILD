@@ -1131,8 +1131,8 @@ cc_library(
 
 tff_cc_cpu_gpu_test(
     name = "xla_executor_test",
-    timeout = "short",
     srcs = ["xla_executor_test.cc"],
+    args = ["--tff_xla_executor_test_platform=Host"],
     deps = [
         ":executor",
         ":status_matchers",
@@ -1141,8 +1141,37 @@ tff_cc_cpu_gpu_test(
         ":xla_executor",
         "//tensorflow_federated/cc/common_libs:oss_test_main",
         "//tensorflow_federated/proto/v0:computation_cc_proto",
+        "@com_google_absl//absl/flags:flag",
+        "@com_google_absl//absl/log:check",
         "@com_google_absl//absl/status",
-        "@org_tensorflow//tensorflow/compiler/jit:xla_cpu_jit",  # buildcleaner: keep # Linking in this dependency ensures that XLA can compile its code for the CPU host.
+        "@org_tensorflow//tensorflow/compiler/tf2xla:common",
+        "@org_tensorflow//tensorflow/compiler/xla:shape_util",
+        "@org_tensorflow//tensorflow/compiler/xla:xla_data_proto_cc",
+        "@org_tensorflow//tensorflow/compiler/xla/client:xla_builder",
+        "@org_tensorflow//tensorflow/compiler/xla/client:xla_computation",
+        "@org_tensorflow//tensorflow/compiler/xla/service:platform_util",
+        "@org_tensorflow//tensorflow/compiler/xla/stream_executor",
+        "@org_tensorflow//tensorflow/core:framework",
+        "@org_tensorflow//tensorflow/core:protos_all_cc",
+    ],
+)
+
+cc_test(
+    name = "xla_executor_gpu_test",
+    srcs = ["xla_executor_test.cc"],
+    args = ["--tff_xla_executor_test_platform=CUDA"],
+    tags = ["requires-gpu-nvidia"],
+    deps = [
+        ":executor",
+        ":status_matchers",
+        ":type_test_utils",
+        ":value_test_utils",
+        ":xla_executor",
+        "//tensorflow_federated/cc/common_libs:oss_test_main",
+        "//tensorflow_federated/proto/v0:computation_cc_proto",
+        "@com_google_absl//absl/flags:flag",
+        "@com_google_absl//absl/log:check",
+        "@com_google_absl//absl/status",
         "@org_tensorflow//tensorflow/compiler/jit:xla_gpu_jit",  # buildcleaner: keep # Linking in this dependency ensures that XLA can compile its code for the GPU.
         "@org_tensorflow//tensorflow/compiler/tf2xla:common",
         "@org_tensorflow//tensorflow/compiler/xla:shape_util",
@@ -1152,7 +1181,6 @@ tff_cc_cpu_gpu_test(
         "@org_tensorflow//tensorflow/compiler/xla/service:platform_util",
         "@org_tensorflow//tensorflow/compiler/xla/stream_executor",
         "@org_tensorflow//tensorflow/compiler/xla/stream_executor/cuda:cuda_platform",  # buildcleaner: keep # Linking in the host platform here ensures that the stream executor can execute on GPU.
-        "@org_tensorflow//tensorflow/compiler/xla/stream_executor/host:host_platform",  # buildcleaner: keep # Linking in the host platform here ensures that the stream executor can execute on CPU.
         "@org_tensorflow//tensorflow/core:framework",
         "@org_tensorflow//tensorflow/core:protos_all_cc",
     ],
