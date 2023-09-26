@@ -163,7 +163,7 @@ def _parameter_type(
   )
 
 
-def _is_function(fn: Callable[..., Any]) -> bool:
+def _is_function(fn: Callable[..., object]) -> bool:
   return isinstance(
       fn, (types.FunctionType, types.MethodType, functools.partial)
   ) or function.is_tf_function(fn)
