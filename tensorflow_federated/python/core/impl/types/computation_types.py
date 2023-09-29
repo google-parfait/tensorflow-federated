@@ -681,7 +681,7 @@ class SequenceType(Type, metaclass=_Intern):
         return type_spec
       elements = [
           (name, convert_struct_with_list_to_struct_with_tuple(value))
-          for name, value in structure.iter_elements(type_spec)  # pytype: disable=wrong-arg-types
+          for name, value in structure.iter_elements(type_spec)
       ]
       if not isinstance(type_spec, StructWithPythonType):
         return StructType(elements=elements)
