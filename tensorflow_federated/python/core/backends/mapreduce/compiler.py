@@ -62,7 +62,6 @@ simpler than the problem of reducing the entire input computation, hence the
 divide-and-conquer.
 """
 
-from typing import Any
 
 from absl import logging
 
@@ -291,8 +290,8 @@ class ExternalBlockToTensorFlowError(ValueError):
 
 def _evaluate_to_tensorflow(
     comp: building_blocks.ComputationBuildingBlock,
-    bindings: dict[str, Any],
-) -> Any:
+    bindings: dict[str, object],
+) -> object:
   """Evaluates `comp` within a TensorFlow context, returning a tensor structure.
 
   Args:

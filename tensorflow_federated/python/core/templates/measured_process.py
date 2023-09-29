@@ -14,7 +14,7 @@
 """Define a template for a stateful process that produces metrics."""
 
 import collections
-from typing import Any, Optional
+from typing import Optional
 
 import attrs
 import tensorflow as tf
@@ -44,9 +44,9 @@ class MeasuredProcessOutput:
       chained `MeasuredProcess`es.
   """
 
-  state: Any
-  result: Any
-  measurements: Any
+  state: object
+  result: object
+  measurements: object
 
 
 class MeasuredProcess(iterative_process.IterativeProcess):
@@ -123,22 +123,9 @@ class MeasuredProcess(iterative_process.IterativeProcess):
           f'which is not assignable to its first input argument:\n{state_type}'
       )
 
-  @property
-  def next(self) -> computation_base.Computation:
-    """A `tff.Computation` that runs one iteration of the process.
-
-    Its first argument should always be the current state (originally produced
-    by `tff.templates.MeasuredProcess.initialize`), and the return type must be
-    a `tff.templates.MeasuredProcessOutput`.
-
-    Returns:
-      A `tff.Computation`.
-    """
-    return super().next
-
 
 def chain_measured_processes(
-    measured_processes: collections.OrderedDict[str, Any]
+    measured_processes: collections.OrderedDict[str, MeasuredProcess]
 ) -> MeasuredProcess:
   """Creates a composition of multiple `tff.templates.MeasuredProcess`es.
 
@@ -200,11 +187,11 @@ def chain_measured_processes(
       ) from e
 
   first_process = next(iter(measured_processes.values()))
-  first_process_value_type_spec = first_process.next.type_signature.parameter[1]
+  first_process_value_type_spec = first_process.next.type_signature.parameter[1]  # pytype: disable=unsupported-operands
   concatenated_state_type_spec = computation_types.at_server(
       computation_types.StructType(
           [
-              (name, process.next.type_signature.parameter[0].member)
+              (name, process.next.type_signature.parameter[0].member)  # pytype: disable=unsupported-operands
               for name, process in measured_processes.items()
           ]
       )
@@ -220,7 +207,7 @@ def chain_measured_processes(
       values_type = values.type_signature
       if values_type is not None:
         if not values_type.is_assignable_from(
-            process.next.type_signature.parameter[1]
+            process.next.type_signature.parameter[1]  # pytype: disable=unsupported-operands
         ):
           raise TypeError(
               f'Cannot call function {name} of type '
@@ -241,7 +228,7 @@ def chain_measured_processes(
 
 
 def concatenate_measured_processes(
-    measured_processes: collections.OrderedDict[str, Any]
+    measured_processes: collections.OrderedDict[str, MeasuredProcess]
 ) -> MeasuredProcess:
   """Creates a concatenation of multiple `tff.templates.MeasuredProcess`es.
 
