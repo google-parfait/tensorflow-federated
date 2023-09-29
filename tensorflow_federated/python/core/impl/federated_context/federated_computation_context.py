@@ -22,7 +22,12 @@ from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_analysis
 
 
-class FederatedComputationContext(symbol_binding_context.SymbolBindingContext):
+class FederatedComputationContext(
+    symbol_binding_context.SymbolBindingContext[
+        building_blocks.ComputationBuildingBlock,
+        building_blocks.Reference,
+    ]
+):
   """The context for building federated computations.
 
   This context additionally holds a list of symbols which are bound to

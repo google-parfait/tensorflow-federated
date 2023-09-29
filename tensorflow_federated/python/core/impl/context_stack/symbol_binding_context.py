@@ -14,21 +14,27 @@
 """Defines interface for contexts which can bind symbols."""
 
 import abc
-from typing import Any
+from typing import Generic, TypeVar
 
 from tensorflow_federated.python.core.impl.context_stack import context_base
 
 
-class SymbolBindingContext(context_base.SyncContext, metaclass=abc.ABCMeta):
+_Symbol = TypeVar('_Symbol')
+_Reference = TypeVar('_Reference')
+
+
+class SymbolBindingContext(
+    context_base.SyncContext, abc.ABC, Generic[_Symbol, _Reference]
+):
   """Interface for contexts which handle binding and tracking of references."""
 
   @abc.abstractmethod
-  def bind_computation_to_reference(self, comp: Any) -> Any:
+  def bind_computation_to_reference(self, comp: _Symbol) -> _Reference:
     """Binds a computation to a symbol, returns a reference to this binding."""
     raise NotImplementedError
 
   @property
   @abc.abstractmethod
-  def symbol_bindings(self) -> list[tuple[str, Any]]:
+  def symbol_bindings(self) -> list[tuple[str, _Symbol]]:
     """Returns all symbols bound in this context."""
     raise NotImplementedError
