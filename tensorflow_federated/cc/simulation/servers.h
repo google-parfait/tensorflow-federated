@@ -19,7 +19,6 @@ limitations under the License
 #include <functional>
 #include <memory>
 #include <optional>
-#include <string>
 
 #include "absl/status/statusor.h"
 #include "grpcpp/grpcpp.h"
@@ -44,9 +43,7 @@ void RunServer(std::function<absl::StatusOr<std::shared_ptr<Executor>>(
 // will execute federated computations on the local machine.
 void RunWorker(int port, std::shared_ptr<grpc::ServerCredentials> credentials,
                int grpc_max_message_length_megabytes,
-               int32_t max_concurrent_computation_calls = -1,
-               std::string serialized_server_mesh = "",
-               std::string serialized_client_mesh = "");
+               int32_t max_concurrent_computation_calls = -1);
 
 }  // namespace tensorflow_federated
 #endif  // THIRD_PARTY_TENSORFLOW_FEDERATED_CC_SIMULATION_SERVERS_H_
