@@ -26,7 +26,7 @@ Note: Using `Struct` as a single data structure to represent both Python `args`
 and `kwargs` is the reason that `Struct` accepts both named and unnamed fields.
 
 See
-[function_utils.create_argument_unpacking_fn](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/computation/function_utils.py)
+[function_utils.wrap_as_zero_or_one_arg_callable](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/computation/function_utils.py)
 for more information.
 
 ### Tracing the function

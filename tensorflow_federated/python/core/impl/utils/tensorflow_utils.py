@@ -1226,7 +1226,7 @@ def deserialize_and_call_tf_computation(
   """Deserializes a TF computation and inserts it into `graph`.
 
   This method performs an action that can be considered roughly the opposite of
-  what `tensorflow_serialization.tf_computation_serializer` does. At
+  what `tensorflow_serialization.serialize_py_fn_as_tf_computation` does. At
   the moment, it simply imports the graph in the current context. A future
   implementation may rely on different mechanisms. The caller should not be
   concerned with the specifics of the implementation. At this point, the method
