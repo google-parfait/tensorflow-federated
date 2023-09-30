@@ -6,6 +6,7 @@ cc_library(
     srcs = [
         "oss_test_main.cc",
     ],
+    copts = ["-Wthread-safety-analysis"],
     tags = ["keep_dep"],  # Tell build_cleaner to keep dependencies on this.
     visibility = ["//visibility:public"],
     deps = [
