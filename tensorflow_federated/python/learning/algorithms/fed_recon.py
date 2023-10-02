@@ -87,7 +87,7 @@ OptimizerFn = Union[
 ]
 
 
-# TODO(b/230109170) re-enable pylint after fixing bug.
+# TODO: b/230109170 - re-enable pylint after fixing bug.
 # pylint: disable=g-bare-generic
 def _build_reconstruction_client_work(
     model_fn: ModelFn,
@@ -374,7 +374,7 @@ def _build_reconstruction_client_work(
   )
 
 
-# TODO(b/230109170) re-enable pylint after fixing bug.
+# TODO: b/230109170 - re-enable pylint after fixing bug.
 # pylint: disable=g-bare-generic
 def build_fed_recon(
     model_fn: Callable[[], ReconstructionModel],
