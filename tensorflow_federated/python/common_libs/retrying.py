@@ -18,7 +18,7 @@ from collections.abc import Callable
 import functools
 import inspect
 import time
-from typing import Any, Union
+from typing import Union
 
 from tensorflow_federated.python.common_libs import py_typecheck
 
@@ -27,7 +27,7 @@ def retry(
     fn=None,
     *,
     retry_on_exception_filter: Callable[[Exception], bool] = lambda x: True,
-    retry_on_result_filter: Callable[[Any], bool] = lambda x: False,
+    retry_on_result_filter: Callable[[object], bool] = lambda x: False,
     wait_max_ms: Union[float, int] = 30000,
     wait_multiplier: Union[float, int] = 2,
 ):

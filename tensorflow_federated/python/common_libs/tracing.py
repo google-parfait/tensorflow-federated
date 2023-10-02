@@ -35,7 +35,7 @@ import random
 import sys
 import threading
 import time
-from typing import Any, Generic, Optional, TypeVar, Union
+from typing import Generic, Optional, TypeVar, Union
 
 from absl import logging
 
@@ -92,9 +92,9 @@ class TracingProvider(Generic[T], metaclass=abc.ABCMeta):
       sub_scope: str,
       nonce: int,
       parent_span_yield: Optional[T],
-      fn_args: Optional[tuple[Any, ...]],
-      fn_kwargs: Optional[dict[str, Any]],
-      trace_opts: dict[str, Any],
+      fn_args: Optional[tuple[object, ...]],
+      fn_kwargs: Optional[dict[str, object]],
+      trace_opts: dict[str, object],
   ) -> Generator[T, TraceResult, None]:
     """Create a new tracing span.
 
@@ -133,7 +133,7 @@ class TracingProvider(Generic[T], metaclass=abc.ABCMeta):
     return None
 
 
-class LoggingTracingProvider(TracingProvider):
+class LoggingTracingProvider(TracingProvider[None]):
   """Implements TracingProvider and outputs the results via logging.
 
   This implementation does not require storing additional trace context state,
@@ -146,9 +146,9 @@ class LoggingTracingProvider(TracingProvider):
       sub_scope: str,
       nonce: int,
       parent_span_yield: Optional[None],
-      fn_args: Optional[tuple[Any, ...]],
-      fn_kwargs: Optional[dict[str, Any]],
-      trace_opts: dict[str, Any],
+      fn_args: Optional[tuple[object, ...]],
+      fn_kwargs: Optional[dict[str, object]],
+      trace_opts: dict[str, object],
   ) -> Generator[None, TraceResult, None]:
     assert parent_span_yield is None
     del parent_span_yield, fn_args, fn_kwargs, trace_opts
@@ -271,7 +271,7 @@ def trace(fn=None, **trace_kwargs):
 # in a synchronous context.
 
 # A single yielded value for each currently-active TracingProvider.
-SpanYields = list[Any]
+SpanYields = list[Optional[object]]
 
 
 class ThreadLocalSpanYields(threading.local):
