@@ -18,10 +18,11 @@ from collections.abc import Callable, Iterable
 import functools
 import inspect
 import types
-from typing import Any, Optional
+from typing import Optional
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
+from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.computation import polymorphic_computation
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -414,7 +415,7 @@ class ComputationWrapper:
   For more examples of usage, see `computation_wrapper_test`.
   """
 
-  def __init__(self, wrapper_fn: Callable[..., Any]):
+  def __init__(self, wrapper_fn: Callable[..., computation_base.Computation]):
     """Construct a new wrapper/decorator for the given wrapper callable.
 
     Args:
