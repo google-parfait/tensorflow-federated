@@ -41,7 +41,7 @@ BINARY_METRIC_NAMES = [
 
 # keras_utils assumes that the input to a metric's `update` method has a
 # `prediction` attribute.
-# TODO(b/259609586) Remove this class when `FunctionalModel` has an explicit
+# TODO: b/259609586 - Remove this class when `FunctionalModel` has an explicit
 # loss function.
 _BatchOutput = collections.namedtuple(
     'BatchOutput',

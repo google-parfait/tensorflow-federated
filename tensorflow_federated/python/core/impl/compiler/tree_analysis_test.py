@@ -842,7 +842,7 @@ trivial_mean = building_block_test_utils.create_whimsy_called_federated_mean(
     unit
 )
 trivial_sum = building_block_test_utils.create_whimsy_called_federated_sum(unit)
-# TODO(b/120439632) Enable once federated_mean accepts structured weights.
+# TODO: b/120439632 - Enable once federated_mean accepts structured weights.
 # trivial_weighted_mean = ...
 trivial_secure_sum = building_block_test_utils.create_whimsy_called_federated_secure_sum_bitwidth(
     unit
@@ -856,7 +856,8 @@ class ContainsAggregationShared(parameterized.TestCase):
       ('trivial_aggregate', trivial_aggregate),
       ('trivial_mean', trivial_mean),
       ('trivial_sum', trivial_sum),
-      # TODO(b/120439632) Enable once federated_mean accepts structured weight.
+      # TODO: b/120439632 - Enable once federated_mean accepts structured
+      # weight.
       # ('trivial_weighted_mean', trivial_weighted_mean),
       ('trivial_secure_sum', trivial_secure_sum),
   ])

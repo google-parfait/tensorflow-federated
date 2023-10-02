@@ -38,7 +38,7 @@ _MaterializedValueFn = Callable[
 _T = TypeVar('_T')
 # This type defines values of type `_T` nested in a structure of
 # `tff.structure.Struct`'s.
-# TODO(b/232433269) Update `tff.structure.Struct` to be able to define nested
+# TODO: b/232433269 - Update `tff.structure.Struct` to be able to define nested
 # homogeneous structures of `tff.structure.Struct`s.
 _StructStructure = Union[
     _T,
