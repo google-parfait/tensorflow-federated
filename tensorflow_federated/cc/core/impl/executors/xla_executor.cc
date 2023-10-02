@@ -463,7 +463,7 @@ class XLAExecutor : public ExecutorBase<ValueFuture> {
   }
 
   absl::Status Materialize(ValueFuture value, v0::Value* value_pb) final {
-    // TODO(b/235642979) This pattern is known to potentially segfault under
+    // TODO: b/235642979 - This pattern is known to potentially segfault under
     // heavy load.
     XLAExecutorValue executor_value = TFF_TRY(Wait(value));
     ParallelTasks tasks;

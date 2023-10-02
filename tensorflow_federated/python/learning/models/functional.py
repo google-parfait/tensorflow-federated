@@ -464,7 +464,7 @@ def functional_model_from_keras(
   #    GroupNormalization in place of BatchNormalization at the current time.
   #
   # 3. This does not support multiple outputs with different loss functions, or
-  #    laywerise regularization losses TODO(b/156629927).
+  #    laywerise regularization losses TODO: b/156629927.
   if isinstance(keras_model, tf.keras.Model):
     for layer in keras_model.layers:
       # There may be other layers that are problematic, at this time updating

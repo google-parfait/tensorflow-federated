@@ -697,8 +697,8 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
     KeyData keys;
     keys.for_clients.reserve(keys_child_ids->size());
     for (const auto& keys_child_id : *keys_child_ids) {
-      // TODO(b/209504748) Make federating_executor value a future so that these
-      // materialize calls don't block.
+      // TODO: b/209504748 - Make federating_executor value a future so that
+      // these materialize calls don't block.
       v0::Value keys_for_client_pb =
           TFF_TRY(client_child_->Materialize(keys_child_id->ref()));
       tensorflow::Tensor keys_for_client_tensor =

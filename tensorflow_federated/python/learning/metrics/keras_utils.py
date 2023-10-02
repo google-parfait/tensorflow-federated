@@ -215,7 +215,7 @@ def create_functional_metric_fns(
     # Keras metrics operate on the model predictions, but TFF algorithms
     # pass the entire `BatchOutput` structure in case some custom metrics
     # want to operate on other values, such as the logits/loss.
-    # TODO(b/259609586) Remove this attribute access when `FunctionalModel`
+    # TODO: b/259609586 - Remove this attribute access when `FunctionalModel`
     # has an explicit loss function.
     if not hasattr(batch_output, 'predictions'):
       raise ValueError(

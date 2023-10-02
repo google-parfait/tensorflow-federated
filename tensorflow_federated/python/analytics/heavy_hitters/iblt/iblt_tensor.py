@@ -279,7 +279,7 @@ class IbltTensorEncoder(iblt_lib.IbltEncoder):
         self.table_size,
     ) + self.value_shape
 
-    # TODO(b/199440652) remove when compute_values is implemented with scatter
+    # TODO: b/199440652 - remove when compute_values is implemented with scatter
     if len(self.value_shape) > 1:
       # In `compute_values` we need to tile the flattened value tensors based on
       # the number of repetitions. The tiling is _always_ [1, reps, 1 ... 1]
@@ -298,8 +298,8 @@ class IbltTensorEncoder(iblt_lib.IbltEncoder):
   ) -> tf.SparseTensor:
     """Returns SparseTensor with tensor value for each (string, repetition)."""
 
-    # TODO(b/199440652) replace the sparse tensor construction
-    # with `scatter_nd` when it is available.
+    # TODO: b/199440652 - replace the sparse tensor construction with
+    # `scatter_nd` when it is available.
 
     indices = tf.reshape(sparse_indices, [-1, 3])
     repeated_indices = tf.repeat(indices, self.num_values, axis=0)

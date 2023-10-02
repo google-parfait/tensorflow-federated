@@ -16,7 +16,7 @@ from absl.testing import absltest
 import tensorflow as tf
 import tensorflow_federated as tff
 
-# TODO(b/146086870) Move more tests into this file
+# TODO: b/146086870 - Move more tests into this file
 
 
 class AstGenerationTest(absltest.TestCase):
