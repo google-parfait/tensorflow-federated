@@ -142,7 +142,6 @@ py_library(
         "//tensorflow_federated/python/core/impl/execution_contexts:mergeable_comp_execution_context",
         "//tensorflow_federated/python/core/impl/execution_contexts:sync_execution_context",
         "//tensorflow_federated/python/core/impl/executor_stacks:executor_factory",
-        "//tensorflow_federated/python/core/impl/executors:executor_factory",
     ],
 )
 
@@ -153,7 +152,6 @@ py_test(
         ":execution_contexts",
         "//tensorflow_federated/proto/v0:executor_py_pb2",
         "//tensorflow_federated/python/core/impl/computation:computation_impl",
-        "//tensorflow_federated/python/core/impl/context_stack:context_stack_test_utils",
         "//tensorflow_federated/python/core/impl/executors:remote_executor_grpc_stub",
         "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
         "//tensorflow_federated/python/tensorflow_libs:tensorflow_test_utils",
