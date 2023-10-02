@@ -96,6 +96,7 @@ py_library(
     name = "computation_wrapper",
     srcs = ["computation_wrapper.py"],
     deps = [
+        ":computation_base",
         ":computation_impl",
         ":polymorphic_computation",
         "//tensorflow_federated/python/common_libs:py_typecheck",
