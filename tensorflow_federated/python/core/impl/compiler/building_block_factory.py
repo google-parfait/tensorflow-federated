@@ -648,6 +648,7 @@ def create_computation_appending(
     TypeError: If any of the types do not match.
   """
   py_typecheck.check_type(comp1, building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(comp1.type_signature, computation_types.StructType)
   if isinstance(comp2, building_blocks.ComputationBuildingBlock):
     name2 = None
   elif py_typecheck.is_name_value_pair(
