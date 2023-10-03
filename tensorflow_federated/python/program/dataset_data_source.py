@@ -180,17 +180,11 @@ class DatasetDataSource(data_source.FederatedDataSource):
     self._federated_type = computation_types.FederatedType(
         computation_types.SequenceType(element_spec), placements.CLIENTS
     )
-    self._capabilities = [data_source.Capability.RANDOM_UNIFORM]
 
   @property
   def federated_type(self) -> computation_types.FederatedType:
     """The type of the data returned by calling `select` on an iterator."""
     return self._federated_type
-
-  @property
-  def capabilities(self) -> list[data_source.Capability]:
-    """The list of capabilities supported by this data source."""
-    return self._capabilities
 
   def iterator(self) -> DatasetDataSourceIterator:
     """Returns a new iterator for retrieving datasets from this data source."""

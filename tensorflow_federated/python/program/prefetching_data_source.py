@@ -383,11 +383,6 @@ class PrefetchingDataSource(data_source_lib.FederatedDataSource):
     """The type of the data returned by calling `select` on an iterator."""
     return self._data_source.federated_type
 
-  @property
-  def capabilities(self) -> list[data_source_lib.Capability]:
-    """The list of capabilities supported by this data source."""
-    return self._data_source.capabilities
-
   def iterator(self) -> PrefetchingDataSourceIterator:
     """Returns a new iterator for retrieving data from this data source."""
     iterator = self._data_source.iterator()
