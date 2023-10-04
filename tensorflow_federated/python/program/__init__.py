@@ -15,7 +15,6 @@
 
 from tensorflow_federated.python.program.client_id_data_source import ClientIdDataSource
 from tensorflow_federated.python.program.client_id_data_source import ClientIdDataSourceIterator
-from tensorflow_federated.python.program.data_source import Capability
 from tensorflow_federated.python.program.data_source import FederatedDataSource
 from tensorflow_federated.python.program.data_source import FederatedDataSourceIterator
 from tensorflow_federated.python.program.dataset_data_source import DatasetDataSource
