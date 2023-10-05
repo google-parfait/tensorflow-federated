@@ -65,10 +65,6 @@ upper_tabs:
       - title: "Experimental support for JAX in TFF"
         path: /federated/tutorials/jax_support
 
-      - heading: Resources
-      - title: "FAQ"
-        path: /federated/faq
-
 
     - name: Guide
       contents:
@@ -85,6 +81,8 @@ upper_tabs:
         path: /federated/federated_core
       - title: "TFF for Federated Learning Research"
         path: /federated/tff_for_research
+      - title: "FAQ"
+        path: /federated/faq
     - name: API
       skip_translation: true
       contents:
