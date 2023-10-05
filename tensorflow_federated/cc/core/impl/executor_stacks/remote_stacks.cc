@@ -132,9 +132,8 @@ absl::StatusOr<std::shared_ptr<Executor>> CreateRemoteExecutorStack(
     federated_cardinalities.insert_or_assign(kClientsUri, 0);
     // TODO: b/256948367 - Expose separate ExecutorFn for client side leaf
     // executor.
-    return CreateReferenceResolvingExecutor(TFF_TRY(CreateFederatingExecutor(
-        /*server_child=*/server, /*client_child=*/server,
-        federated_cardinalities)));
+    return CreateReferenceResolvingExecutor(
+        TFF_TRY(CreateFederatingExecutor(server, federated_cardinalities)));
   } else if (channels.empty()) {
     return absl::InvalidArgumentError(absl::StrCat(
         "A remote executor stack with nonzero number of clients must be "

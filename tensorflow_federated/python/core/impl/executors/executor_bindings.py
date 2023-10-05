@@ -54,11 +54,12 @@ def create_federating_executor(
     cardinalities: Mapping[placements.PlacementLiteral, int],
 ) -> executor_bindings.Executor:
   """Constructs a FederatingExecutor with a specified placement."""
+  del inner_client_executor
   uri_cardinalities = (
       data_conversions.convert_cardinalities_dict_to_string_keyed(cardinalities)
   )
   return executor_bindings.create_federating_executor(
-      inner_server_executor, inner_client_executor, uri_cardinalities
+      inner_server_executor, uri_cardinalities
   )
 
 
