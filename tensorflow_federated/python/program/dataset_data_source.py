@@ -104,31 +104,27 @@ class DatasetDataSourceIterator(data_source.FederatedDataSourceIterator):
     """The type of the data returned by calling `select`."""
     return self._federated_type
 
-  def select(self, num_clients: Optional[int] = None) -> object:
+  def select(self, k: Optional[int] = None) -> object:
     """Returns a new selection of data from this iterator.
 
     Args:
-      num_clients: A number of clients to use when selecting data. Must be a
-        positive integer and less than the number of `datasets`.
+      k: A number of elements to select. Must be a positive integer and less
+        than the number of `datasets`.
 
     Raises:
-      ValueError: If `num_clients` is not a positive integer or if `num_clients`
-        is not less than the number of `datasets`.
+      ValueError: If `k` is not a positive integer or if `k` is not less than
+        the number of `datasets`.
     """
-    if num_clients is not None:
-      py_typecheck.check_type(num_clients, int)
-    if (
-        num_clients is None
-        or num_clients < 0
-        or num_clients > len(self._datasets)
-    ):
+    if k is not None:
+      py_typecheck.check_type(k, int)
+    if k is None or k < 0 or k > len(self._datasets):
       raise ValueError(
-          'Expected `num_clients` to be a positive integer and less than the '
-          f'number of `datasets`, found `num_clients` of {num_clients} and '
-          f'number of `datasets` of {len(self._datasets)}.'
+          'Expected `k` to be a positive integer and less than the number of '
+          f'`datasets`, found `k` of {k} and number of `datasets` of '
+          f'{len(self._datasets)}.'
       )
 
-    return random.sample(self._datasets, num_clients)
+    return random.sample(self._datasets, k)
 
   def __eq__(self, other: object) -> bool:
     if self is other:

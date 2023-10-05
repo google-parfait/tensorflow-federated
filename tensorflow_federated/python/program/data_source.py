@@ -46,12 +46,12 @@ class FederatedDataSourceIterator(serializable.Serializable, abc.ABC):
     raise NotImplementedError
 
   @abc.abstractmethod
-  def select(self, num_clients: Optional[int] = None) -> object:
+  def select(self, k: Optional[int] = None) -> object:
     """Returns a new selection of federated data from this iterator.
 
     Args:
-      num_clients: Optional, the number of clients to select. Must be a positive
-        integer, or `None` if unspecified.
+      k: An optional number of elements to select. Must be a positive integer,
+        or `None` if unspecified.
 
     Returns:
       An object of type `federated_type` representing the selected data, and
