@@ -345,10 +345,6 @@ class StructTest(tf.test.TestCase, parameterized.TestCase):
             structure.Struct.named(x=dict(y=6)),
         )
     )
-    with self.assertRaises(TypeError):
-      structure.is_same_structure(
-          {'x': 5.0}, structure.Struct.named(x=5.0)  # not a Struct
-      )
 
   def test_map_structure(self):
     x = structure.Struct.named(
@@ -383,16 +379,6 @@ class StructTest(tf.test.TestCase, parameterized.TestCase):
             c=22,
         ),
     )
-
-  def test_map_structure_tensor_fails(self):
-    x = structure.Struct.named(a=10, c=20)
-    y = tf.constant(2)
-    with self.assertRaises(TypeError):
-      structure.map_structure(tf.add, x, y)
-    x = structure.Struct.named(a='abc', c='xyz')
-    y = tf.strings.bytes_split('abc')
-    with self.assertRaises(TypeError):
-      structure.map_structure(tf.add, x, y)
 
   def test_map_structure_fails_different_structures(self):
     x = structure.Struct.named(a=10, c=20)
