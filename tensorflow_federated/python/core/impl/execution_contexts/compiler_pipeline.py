@@ -15,7 +15,7 @@
 
 from collections.abc import Callable
 import functools
-from typing import Any, Generic, TypeVar
+from typing import Generic, TypeVar
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl.computation import computation_base
@@ -40,11 +40,11 @@ class CompilerPipeline(Generic[_Computation]):
   returns `tff.backends.mapreduce.MapReduceForm`s.
   """
 
-  def __init__(self, compiler_fn: Callable[[_Computation], Any]):
+  def __init__(self, compiler_fn: Callable[[_Computation], object]):
     self._compiler_fn = compiler_fn
 
   @functools.lru_cache()
-  def compile(self, comp: _Computation) -> Any:
+  def compile(self, comp: _Computation) -> object:
     """Compiles `comp`."""
     py_typecheck.check_type(comp, computation_base.Computation)
     return self._compiler_fn(comp)

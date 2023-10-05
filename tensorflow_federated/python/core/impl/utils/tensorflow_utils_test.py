@@ -14,14 +14,12 @@
 
 import collections
 import dataclasses
-from typing import Any
 
 import attrs
 import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
-from tensorflow_federated.python.common_libs import golden
 from tensorflow_federated.python.common_libs import serialization_utils
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -434,8 +432,8 @@ class GraphUtilsTest(tf.test.TestCase):
   def test_capture_result_with_dataclass_of_constants(self):
     @dataclasses.dataclass
     class TestFoo:
-      x: Any
-      y: Any
+      x: object
+      y: object
 
     graph = tf.compat.v1.get_default_graph()
     type_spec, _ = tensorflow_utils.capture_result_from_graph(
@@ -491,9 +489,7 @@ class GraphUtilsTest(tf.test.TestCase):
 
   def test_capture_result_with_sequence_of_dicts_fails(self):
     ds = tf.data.Dataset.from_tensor_slices({'A': [1, 2, 3], 'B': [4, 5, 6]})
-    with golden.check_raises_traceback(
-        'capture_result_with_sequence_of_dicts.expected', TypeError
-    ):
+    with self.assertRaises(TypeError):
       self._checked_capture_result(ds)
 
   def test_compute_map_from_bindings_with_tuple_of_tensors(self):

@@ -13,7 +13,7 @@
 # limitations under the License.
 """Defines the implementation of the base Computation interface."""
 
-from typing import Any, Optional
+from typing import Optional
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -31,9 +31,7 @@ class ConcreteComputation(computation_base.Computation):
 
   This implementation exposes methods to retrieve the backing `pb.Computation`,
   as well as the Python representation of this protocol buffer represented by
-  an instance of `building_blocks.ComputationBuildingBlock`. Leverages the
-  implementation of `__call__` inherited from `function_utils.ConcreteFunction`
-  to pass `self` to the currently installed context.
+  an instance of `building_blocks.ComputationBuildingBlock`.
   """
 
   @classmethod
@@ -128,7 +126,7 @@ class ConcreteComputation(computation_base.Computation):
     self._context_stack = context_stack
     self._computation_proto = computation_proto
 
-  def __eq__(self, other: Any) -> bool:
+  def __eq__(self, other: object) -> bool:
     if self is other:
       return True
     elif not isinstance(other, ConcreteComputation):

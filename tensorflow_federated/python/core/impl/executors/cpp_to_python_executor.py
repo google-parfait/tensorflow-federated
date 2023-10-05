@@ -16,7 +16,7 @@
 import asyncio
 from collections.abc import Sequence
 import concurrent
-from typing import Any, NoReturn, Optional
+from typing import NoReturn, Optional
 
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.common_libs import tracing
@@ -66,7 +66,7 @@ class CppToPythonExecutorValue(executor_value_base.ExecutorValue):
     return self._owned_value_id.ref
 
   @tracing.trace
-  async def compute(self) -> Any:
+  async def compute(self) -> object:
     """Pulls protocol buffer out of C++ into Python, and deserializes."""
     running_loop = asyncio.get_running_loop()
 
@@ -107,7 +107,7 @@ class CppToPythonExecutorBridge(executor_base.Executor):
 
   @tracing.trace
   async def create_value(
-      self, value: Any, type_signature: computation_types.Type
+      self, value: object, type_signature: computation_types.Type
   ) -> CppToPythonExecutorValue:
     serialized_value, _ = value_serialization.serialize_value(
         value, type_signature

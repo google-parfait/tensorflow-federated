@@ -34,17 +34,6 @@ ABSL_FLAG(int32_t, max_concurrent_computation_calls, -1,
           "helpful for users running into OOMs when using GPUs. Non-positive"
           " values result in no limiting.");
 
-ABSL_FLAG(std::string, serialized_server_mesh, "",
-          "Server mesh configuration to be used for dtensor executor. "
-          "The mesh must be is valid tf.experiment.dtensor.Mesh "
-          "serialized with to_string(). "
-          "If empty string, dtensor executor will not be used.");
-ABSL_FLAG(std::string, serialized_client_mesh, "",
-          "Client mesh configuration to be used for dtensor executor. "
-          "The mesh must be is valid tf.experiment.dtensor.Mesh "
-          "serialized with to_string(). "
-          "If empty string, dtensor executor will not be used.");
-
 // TODO: b/234160632 - Add option for secure server connections here.
 
 namespace tff = ::tensorflow_federated;
@@ -55,7 +44,5 @@ int main(int argc, char* argv[]) {
       grpc::InsecureServerCredentials();
   tff::RunWorker(absl::GetFlag(FLAGS_port), credentials,
                  absl::GetFlag(FLAGS_grpc_max_message_length_megabytes),
-                 absl::GetFlag(FLAGS_max_concurrent_computation_calls),
-                 absl::GetFlag(FLAGS_serialized_server_mesh),
-                 absl::GetFlag(FLAGS_serialized_client_mesh));
+                 absl::GetFlag(FLAGS_max_concurrent_computation_calls));
 }

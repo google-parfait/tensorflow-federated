@@ -16,6 +16,7 @@
 import abc
 import asyncio
 from collections.abc import Callable, Mapping, Sequence
+import datetime
 import functools
 import operator
 import typing
@@ -40,6 +41,13 @@ ReleasableStructure = TypeVar(
     bound=structure_utils.Structure[ReleasableValue],
 )
 Key = TypeVar('Key')
+
+
+class ReleasedValueNotFoundError(Exception):
+  """Raised when a released value cannot be found."""
+
+  def __init__(self, key: object):
+    super().__init__(f'No released value found for key: {key}.')
 
 
 class ReleaseManager(abc.ABC, Generic[ReleasableStructure, Key]):
@@ -75,15 +83,11 @@ class ReleaseManager(abc.ABC, Generic[ReleasableStructure, Key]):
 
 
 class NotFilterableError(Exception):
-  """Raised when the structure can not be filtered."""
+  """Raised when the structure cannot be filtered."""
 
 
 class FilterMismatchError(Exception):
   """Raised when there is a mismatch filtering the value and type signature."""
-
-
-class StructureError(Exception):
-  """Raised when there is an error relating to the structure of a value."""
 
 
 # Sentinel object used by the `tff.program.FilteringReleaseManager` to indicate
@@ -139,7 +143,7 @@ class FilteringReleaseManager(ReleaseManager[ReleasableStructure, Key]):
 
   Important: Most `tff.program.ReleasableStructure` can be filtered, including
   individual values, structures, and structures nested in `NamedTuple`s.
-  However, the fields of a `NamedTuple` can not be filtered.
+  However, the fields of a `NamedTuple` cannot be filtered.
   """
 
   def __init__(
@@ -173,7 +177,7 @@ class FilteringReleaseManager(ReleaseManager[ReleasableStructure, Key]):
       key: A value used to reference the released `value`.
 
     Raises:
-      NotFilterableError: If the `value` can not be filtered.
+      NotFilterableError: If the `value` cannot be filtered.
       FilterMismatchError: If there is a mismatch filtering the `value` and
         `type_signature`.
     """
@@ -204,7 +208,7 @@ class FilteringReleaseManager(ReleaseManager[ReleasableStructure, Key]):
         filtered.
 
       Raises:
-        NotFilterableError: If `subtree` can not be filtered.
+        NotFilterableError: If `subtree` cannot be filtered.
       """
       if tree.is_nested(subtree) and not attrs.has(type(subtree)):
         # TODO: b/224484886 - Downcasting to all handled types.
@@ -224,9 +228,9 @@ class FilteringReleaseManager(ReleaseManager[ReleasableStructure, Key]):
                   if v is _FILTERED_SUBTREE
               ]
               raise NotFilterableError(
-                  'The fields of a `NamedTuple` can not be filtered. Expected '
-                  f'`{type(subtree)}` to have fields `{fields}`, found it was '
-                  f'missing fields `{missing_fields}`.'
+                  'The fields of a `NamedTuple` cannot be filtered. Expected '
+                  f'{type(subtree)} to have fields {fields}, found it was '
+                  f'missing fields {missing_fields}.'
               )
 
             return type(subtree)(*elements)
@@ -303,7 +307,7 @@ class FilteringReleaseManager(ReleaseManager[ReleasableStructure, Key]):
         if not elements:
           return _FILTERED_SUBTREE
         elif isinstance(type_spec, computation_types.StructWithPythonType):
-          # Note: The fields of a `NamedTuple` can not be filtered. However,
+          # Note: The fields of a `NamedTuple` cannot be filtered. However,
           # raising an error here can be skipped, because the appropriate error
           # is raised when filtering the `value`.
           return computation_types.StructWithPythonType(
@@ -334,7 +338,7 @@ class FilteringReleaseManager(ReleaseManager[ReleasableStructure, Key]):
       else:
         type_signature_label = 'not empty'
       raise FilterMismatchError(
-          'Expected `value` and `type_signature` to be filtered consistently, '
+          'Expected `value` and `type_signature` to be filtered identically, '
           f'found the filtered `value` was {value_label} and the filtered '
           f'`type_signature` was {type_signature_label}.'
       )
@@ -388,3 +392,87 @@ class GroupingReleaseManager(ReleaseManager[ReleasableStructure, Key]):
     await asyncio.gather(
         *[m.release(value, type_signature, key) for m in self._release_managers]
     )
+
+
+class PeriodicReleaseManager(ReleaseManager[ReleasableStructure, Key]):
+  """A `tff.program.ReleaseManager` that releases values at regular intervals.
+
+  A `tff.program.PeriodicReleaseManager` is a utility for releasing values at
+  regular intervals and is used to release values from platform storage to
+  customer storage in a federated program.
+
+  The interval can be controlled at construction time by setting the
+  `periodicity`. The `periodicity` can be a positive integer or
+  `datetime.timedelta`. A `periodicity` of `3` means that every third value is
+  released to the `release_manager`, and invoking `release` ten times will
+  release the third, sixth, and ninth values. A `periodicity` of
+  `datetime.timedelta(hours=3)` means that three hours after the previously
+  released value the next value is released to the `release_manager`.
+
+   Note: that a `periodicity` of one or a very small `datetime.timedelta` will
+   release every value, making the `tff.program.PeriodicReleaseManager` a noop
+   wrapper around the `release_manager`.
+  """
+
+  def __init__(
+      self,
+      release_manager: ReleaseManager[ReleasableStructure, Key],
+      periodicity: Union[int, datetime.timedelta],
+  ):
+    """Returns an initialized `tff.program.PeriodicReleaseManager`.
+
+    Args:
+      release_manager: A `tff.program.ReleaseManager` used to release values to.
+      periodicity: The interval to release values. Must be a positive integer or
+        `datetime.timedelta`.
+
+    Raises:
+      ValueError: If `periodicity` is not a positive integer or
+      `datetime.timedelta`.
+    """
+    if (isinstance(periodicity, int) and periodicity < 1) or (
+        isinstance(periodicity, datetime.timedelta)
+        and periodicity.total_seconds() < 1.0
+    ):
+      raise ValueError(
+          'Expected `periodicity` to be a positive integer or'
+          f' `datetime.timedelta`, found {periodicity}.'
+      )
+
+    self._release_manager = release_manager
+    self._periodicity = periodicity
+    if isinstance(periodicity, int):
+      self._count = 0
+    elif isinstance(periodicity, datetime.timedelta):
+      self._timestamp = datetime.datetime.now()
+    else:
+      raise NotImplementedError(
+          f'Unexpected `periodicity` found: {type(periodicity)}.'
+      )
+
+  async def release(
+      self,
+      value: ReleasableStructure,
+      type_signature: computation_types.Type,
+      key: Key,
+  ) -> None:
+    """Releases `value` from a federated program.
+
+    Args:
+      value: A `tff.program.ReleasableStructure` to release.
+      type_signature: The `tff.Type` of `value`.
+      key: A value used to reference the released `value`.
+    """
+    if isinstance(self._periodicity, int):
+      self._count += 1
+      if self._count % self._periodicity == 0:
+        await self._release_manager.release(value, type_signature, key)
+    elif isinstance(self._periodicity, datetime.timedelta):
+      now = datetime.datetime.now()
+      if now >= self._timestamp + self._periodicity:
+        self._timestamp = now
+        await self._release_manager.release(value, type_signature, key)
+    else:
+      raise NotImplementedError(
+          f'Unexpected `periodicity` found: {type(self._periodicity)}.'
+      )

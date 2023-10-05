@@ -16,7 +16,7 @@
 import collections
 from collections.abc import Callable
 import functools
-from typing import Any, OrderedDict, TypeVar, Union
+from typing import Any, TypeVar, Union
 
 import tensorflow as tf
 
@@ -24,8 +24,8 @@ from tensorflow_federated.python.tensorflow_libs import variable_utils
 
 StateVar = TypeVar('StateVar')
 MetricConstructor = Callable[[], tf.keras.metrics.Metric]
-MetricConstructors = OrderedDict[str, MetricConstructor]
-MetricStructure = OrderedDict[str, tf.keras.metrics.Metric]
+MetricConstructors = collections.OrderedDict[str, MetricConstructor]
+MetricStructure = collections.OrderedDict[str, tf.keras.metrics.Metric]
 MetricsConstructor = Callable[[], MetricStructure]
 
 
@@ -215,7 +215,7 @@ def create_functional_metric_fns(
     # Keras metrics operate on the model predictions, but TFF algorithms
     # pass the entire `BatchOutput` structure in case some custom metrics
     # want to operate on other values, such as the logits/loss.
-    # TODO(b/259609586) Remove this attribute access when `FunctionalModel`
+    # TODO: b/259609586 - Remove this attribute access when `FunctionalModel`
     # has an explicit loss function.
     if not hasattr(batch_output, 'predictions'):
       raise ValueError(
@@ -225,7 +225,7 @@ def create_functional_metric_fns(
       )
     predictions = batch_output.predictions
 
-    def inner_update(metric: tf.keras.metrics.Metric) -> tuple[tf.Tensor]:
+    def inner_update(metric: tf.keras.metrics.Metric) -> tuple[tf.Tensor, ...]:
       # We must unwrap `update_state` here because the `TensorVariable` is
       # created in the outer `update` FuncGraph and since it is not constant
       # it can't be closed over in the `update_state` FuncGraph. The

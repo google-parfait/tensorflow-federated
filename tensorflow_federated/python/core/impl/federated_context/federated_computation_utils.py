@@ -16,6 +16,7 @@ from typing import Optional
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl.compiler import building_blocks
+from tensorflow_federated.python.core.impl.computation import computation_wrapper
 from tensorflow_federated.python.core.impl.context_stack import context_stack_base
 from tensorflow_federated.python.core.impl.federated_context import federated_computation_context
 from tensorflow_federated.python.core.impl.federated_context import value_impl
@@ -23,15 +24,21 @@ from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_conversions
 
 
-def federated_computation_serializer(
+def zero_or_one_arg_fn_to_building_block(
+    fn,
     parameter_name: Optional[str],
     parameter_type: Optional[computation_types.Type],
     context_stack: context_stack_base.ContextStack,
     suggested_name: Optional[str] = None,
-):
-  """Converts a function into a computation building block.
+) -> tuple[
+    building_blocks.ComputationBuildingBlock, computation_types.FunctionType
+]:
+  """Converts a zero- or one-argument `fn` into a computation building block.
 
   Args:
+    fn: A function with 0 or 1 arguments that contains orchestration logic,
+      i.e., that expects zero or one `values_base.Value` and returns a result
+      convertible to the same.
     parameter_name: The name of the parameter, or `None` if there is't any.
     parameter_type: The `tff.Type` of the parameter, or `None` if there's none.
     context_stack: The context stack to use.
@@ -39,11 +46,14 @@ def federated_computation_serializer(
       that will be used to serialize this function's body (ideally the name of
       the underlying Python function). It might be modified to avoid conflicts.
 
-  Yields:
-    First, the argument to be passed to the function to be converted.
-    Finally, a tuple of `(building_blocks.ComputationBuildingBlock,
-    computation_types.Type)`: the function represented via building blocks and
-    the inferred return type.
+  Returns:
+    A tuple of `(building_blocks.ComputationBuildingBlock,
+    computation_types.Type)`, where the first element contains the logic from
+    `fn`, and the second element contains potentially annotated type information
+    for the result of `fn`.
+
+  Raises:
+    ValueError: if `fn` is incompatible with `parameter_type`.
   """
   py_typecheck.check_type(context_stack, context_stack_base.ContextStack)
   if suggested_name is not None:
@@ -62,12 +72,16 @@ def federated_computation_serializer(
     py_typecheck.check_type(parameter_name, str)
     parameter_name = '{}_{}'.format(context.name, str(parameter_name))
   with context_stack.install(context):
-    if parameter_type is None:
-      result = yield None
-    else:
-      result = yield value_impl.Value(
-          building_blocks.Reference(parameter_name, parameter_type)
+    if parameter_type is not None:
+      result = fn(
+          value_impl.Value(
+              building_blocks.Reference(parameter_name, parameter_type),
+          )
       )
+    else:
+      result = fn()
+    if result is None:
+      raise computation_wrapper.ComputationReturnedNoneError(fn)
     annotated_result_type = type_conversions.infer_type(result)
     result = value_impl.to_value(result, annotated_result_type)
     result_comp = result.comp
@@ -79,6 +93,7 @@ def federated_computation_serializer(
     annotated_type = computation_types.FunctionType(
         parameter_type, annotated_result_type
     )
-    yield building_blocks.Lambda(
-        parameter_name, parameter_type, result_comp
-    ), annotated_type
+    return (
+        building_blocks.Lambda(parameter_name, parameter_type, result_comp),
+        annotated_type,
+    )

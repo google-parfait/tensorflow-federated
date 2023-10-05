@@ -17,7 +17,7 @@ from collections.abc import Callable, Iterator, Sequence
 import functools
 import random
 import string
-from typing import Any, Optional, Union
+from typing import Optional, Union
 
 import tensorflow as tf
 
@@ -383,7 +383,7 @@ def create_compiled_input_replication(
 
 
 def create_tensorflow_unary_operator(
-    operator: Callable[[Any], Any], operand_type: computation_types.Type
+    operator: Callable[[object], object], operand_type: computation_types.Type
 ) -> building_blocks.CompiledComputation:
   """Creates a TensorFlow computation for the unary `operator`.
 
@@ -421,7 +421,7 @@ def create_tensorflow_unary_operator(
 
 
 def create_tensorflow_binary_operator(
-    operator: Callable[[Any, Any], Any],
+    operator: Callable[[object, object], object],
     operand_type: computation_types.Type,
     second_operand_type: Optional[computation_types.Type] = None,
 ) -> building_blocks.CompiledComputation:
@@ -648,6 +648,7 @@ def create_computation_appending(
     TypeError: If any of the types do not match.
   """
   py_typecheck.check_type(comp1, building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(comp1.type_signature, computation_types.StructType)
   if isinstance(comp2, building_blocks.ComputationBuildingBlock):
     name2 = None
   elif py_typecheck.is_name_value_pair(
@@ -1943,7 +1944,8 @@ def _check_generic_operator_type(type_spec):
 
 @functools.lru_cache()
 def create_tensorflow_binary_operator_with_upcast(
-    operator: Callable[[Any, Any], Any], type_signature: computation_types.Type
+    operator: Callable[[object, object], object],
+    type_signature: computation_types.Type,
 ) -> building_blocks.CompiledComputation:
   """Creates TF computation upcasting its argument and applying `operator`.
 
@@ -1977,7 +1979,7 @@ def create_tensorflow_binary_operator_with_upcast(
 
 def apply_binary_operator_with_upcast(
     arg: building_blocks.ComputationBuildingBlock,
-    operator: Callable[[Any, Any], Any],
+    operator: Callable[[object, object], object],
 ) -> building_blocks.Call:
   """Constructs result of applying `operator` to `arg` upcasting if appropriate.
 

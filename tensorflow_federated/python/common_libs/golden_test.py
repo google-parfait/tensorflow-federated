@@ -60,12 +60,6 @@ class GoldenTest(absltest.TestCase):
     with open(golden_path, 'w') as f:
       f.write(old_contents)
 
-  def test_check_raises_traceback(self):
-    with golden.check_raises_traceback(
-        'test_check_raises_traceback.expected', RuntimeError
-    ):
-      raise RuntimeError()
-
 
 if __name__ == '__main__':
   absltest.main()

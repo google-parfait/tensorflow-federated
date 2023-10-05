@@ -14,7 +14,6 @@
 """Utilities for cardinality inference and handling."""
 
 from collections.abc import Callable, Mapping
-from typing import Any
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
@@ -64,7 +63,7 @@ class InvalidNonAllEqualValueError(TypeError):
 # We define this type here to avoid having to redeclare it wherever we
 # parameterize by a cardinality inference fn.
 CardinalityInferenceFnType = Callable[
-    [Any, computation_types.Type], Mapping[placements.PlacementLiteral, int]
+    [object, computation_types.Type], Mapping[placements.PlacementLiteral, int]
 ]
 
 

@@ -13,8 +13,7 @@
 # limitations under the License.
 """Utility functions for writing executors."""
 
-from typing import Any, Optional
-
+from typing import Optional
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -22,7 +21,7 @@ from tensorflow_federated.python.core.impl.types import typed_object
 
 
 def reconcile_value_with_type_spec(
-    value: Any, type_spec: computation_types.Type
+    value: object, type_spec: computation_types.Type
 ) -> computation_types.Type:
   """Reconciles the type of `value` with the given `type_spec`.
 

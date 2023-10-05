@@ -101,7 +101,7 @@ class DatasetDataSourceIteratorTest(parameterized.TestCase):
       ('one', 1),
       ('two', 2),
   )
-  def test_select_returns_datasets_with_num_clients(self, num_clients):
+  def test_select_returns_datasets_with_k(self, k):
     datasets = [tf.data.Dataset.from_tensor_slices([1, 2, 3])] * 3
     federated_type = computation_types.FederatedType(
         computation_types.SequenceType(tf.int32), placements.CLIENTS
@@ -110,9 +110,9 @@ class DatasetDataSourceIteratorTest(parameterized.TestCase):
         datasets=datasets, federated_type=federated_type
     )
 
-    actual_datasets = iterator.select(num_clients)
+    actual_datasets = iterator.select(k)
 
-    self.assertLen(actual_datasets, num_clients)
+    self.assertLen(actual_datasets, k)
     for actual_dataset in actual_datasets:
       expected_dataset = tf.data.Dataset.from_tensor_slices([1, 2, 3])
       self.assertSameElements(actual_dataset, expected_dataset)
@@ -121,7 +121,7 @@ class DatasetDataSourceIteratorTest(parameterized.TestCase):
       ('str', 'a'),
       ('list', []),
   )
-  def test_select_raises_type_error_with_num_clients(self, num_clients):
+  def test_select_raises_type_error_with_k(self, k):
     datasets = [tf.data.Dataset.from_tensor_slices([1, 2, 3])] * 3
     federated_type = computation_types.FederatedType(
         computation_types.SequenceType(tf.int32), placements.CLIENTS
@@ -131,14 +131,14 @@ class DatasetDataSourceIteratorTest(parameterized.TestCase):
     )
 
     with self.assertRaises(TypeError):
-      iterator.select(num_clients)
+      iterator.select(k)
 
   @parameterized.named_parameters(
       ('none', None),
       ('negative', -1),
       ('greater', 4),
   )
-  def test_select_raises_value_error_with_num_clients(self, num_clients):
+  def test_select_raises_value_error_with_k(self, k):
     datasets = [tf.data.Dataset.from_tensor_slices([1, 2, 3])] * 3
     federated_type = computation_types.FederatedType(
         computation_types.SequenceType(tf.int32), placements.CLIENTS
@@ -148,7 +148,7 @@ class DatasetDataSourceIteratorTest(parameterized.TestCase):
     )
 
     with self.assertRaises(ValueError):
-      iterator.select(num_clients)
+      iterator.select(k)
 
   def test_serializable_with_datasets(self):
     datasets = [tf.data.Dataset.from_tensor_slices([1, 2, 3])] * 3

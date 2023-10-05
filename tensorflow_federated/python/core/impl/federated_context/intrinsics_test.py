@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import collections
-from typing import Any, NamedTuple
+from typing import NamedTuple
 
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -919,8 +919,8 @@ class FederatedAggregateTest(IntrinsicTestBase):
     # tuple with 2 elements - the integer 'total' that represents the sum of
     # elements encountered, and the integer element 'count'.
     class Accumulator(NamedTuple):
-      total: Any
-      count: Any
+      total: object
+      count: object
 
     accumulator_type = computation_types.to_type(
         Accumulator(
@@ -1010,7 +1010,7 @@ class FederatedAggregateTest(IntrinsicTestBase):
   def test_federated_aggregate_with_unknown_dimension(self):
 
     class Accumulator(NamedTuple):
-      samples: Any
+      samples: object
 
     accumulator_type = computation_types.to_type(
         Accumulator(

@@ -24,6 +24,8 @@ limitations under the License
 
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
+#include "absl/flags/flag.h"
+#include "absl/log/check.h"
 #include "absl/status/status.h"
 #include "tensorflow/compiler/tf2xla/shape_util.h"
 #include "tensorflow/compiler/tf2xla/type_util.h"
@@ -41,6 +43,10 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/type_test_utils.h"
 #include "tensorflow_federated/cc/core/impl/executors/value_test_utils.h"
 #include "tensorflow_federated/proto/v0/computation.pb.h"
+
+ABSL_FLAG(std::string, tff_xla_executor_test_platform, "Host",
+          "The name of the XLA platform to run the tests on. By default will "
+          "run on 'Host' (CPU).");
 
 namespace tensorflow_federated {
 namespace {
@@ -144,17 +150,21 @@ class XLAExecutorTest : public ::testing::Test {
       LOG(FATAL) << "Could not enumerate supported XLA platforms";
     }
     LOG(INFO) << "Found " << platforms->size() << " platforms";
+    const std::string requested_platform_name =
+        absl::GetFlag(FLAGS_tff_xla_executor_test_platform);
     for (auto* platform : *platforms) {
       LOG(INFO) << "Platform: " << platform->Name();
-      if (platform->Name() == "CUDA") {
+      if (platform->Name() == requested_platform_name) {
         if (platform->VisibleDeviceCount() > 0) {
           test_executor_ = CreateXLAExecutor(platform->Name()).value();
-          return;
         }
       }
     }
-    // If no accelerators exist, ust the "Host" (cpu) platform.
-    test_executor_ = CreateXLAExecutor("Host").value();
+    // Fail the test if we couldn't find the requested platform.
+    CHECK(test_executor_ != nullptr)
+        << "Could not find platform " << requested_platform_name
+        << ", missing build dependency, or no devices for platform found. See "
+        << "logs for registered platforms.";
   }
   std::shared_ptr<Executor> test_executor_;
 

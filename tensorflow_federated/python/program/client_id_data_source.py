@@ -76,31 +76,27 @@ class ClientIdDataSourceIterator(data_source.FederatedDataSourceIterator):
     """The type of the data returned by calling `select`."""
     return self._federated_type
 
-  def select(self, num_clients: Optional[int] = None) -> object:
+  def select(self, k: Optional[int] = None) -> object:
     """Returns a new selection of client ids from this iterator.
 
     Args:
-      num_clients: A number of clients to use when selecting data. Must be a
-        positive integer and less than the total number of `client_ids`.
+      k: A number of elements to select. Must be a positive integer and less
+        than the number of `client_ids`.
 
     Raises:
-      ValueError: If `num_clients` is not a positive integer or if `num_clients`
-        is not less than the total number of `client_ids`.
+      ValueError: If `k` is not a positive integer or if `k` is not less than
+        the number of `client_ids`.
     """
-    if num_clients is not None:
-      py_typecheck.check_type(num_clients, int)
-    if (
-        num_clients is None
-        or num_clients < 0
-        or num_clients > len(self._client_ids)
-    ):
+    if k is not None:
+      py_typecheck.check_type(k, int)
+    if k is None or k < 0 or k > len(self._client_ids):
       raise ValueError(
-          'Expected `num_clients` to be a positive integer and less than the '
-          f'number of `client_ids`, found `num_clients`: {num_clients}, '
-          f'number of `client_ids`: {len(self._client_ids)}'
+          'Expected `k` to be a positive integer and less than the number of '
+          f'`client_ids`, found `k` of {k} and number of `client_ids` of '
+          f'{len(self._client_ids)}.'
       )
 
-    return random.sample(self._client_ids, num_clients)
+    return random.sample(self._client_ids, k)
 
   def __eq__(self, other: object) -> bool:
     if self is other:
@@ -133,17 +129,11 @@ class ClientIdDataSource(data_source.FederatedDataSource):
     self._federated_type = computation_types.FederatedType(
         tf.string, placements.CLIENTS
     )
-    self._capabilities = [data_source.Capability.RANDOM_UNIFORM]
 
   @property
   def federated_type(self) -> computation_types.FederatedType:
     """The type of the data returned by calling `select` on an iterator."""
     return self._federated_type
-
-  @property
-  def capabilities(self) -> list[data_source.Capability]:
-    """The list of capabilities supported by this data source."""
-    return self._capabilities
 
   def iterator(self) -> data_source.FederatedDataSourceIterator:
     """Returns a new iterator for retrieving client ids from this data source."""

@@ -100,10 +100,10 @@ class WriteSavedModelTest(
     actual_value = module()
     self.assertEqual(actual_value, 1)
 
-  async def test_raises_file_already_exists_error_with_existing_file(self):
+  async def test_raises_file_exists_error_with_existing_file(self):
     path = self.create_tempdir()
 
-    with self.assertRaises(file_utils.FileAlreadyExistsError):
+    with self.assertRaises(FileExistsError):
       await file_utils.write_saved_model(1, path)
 
   @parameterized.named_parameters(

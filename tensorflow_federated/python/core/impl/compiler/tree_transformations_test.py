@@ -491,17 +491,29 @@ class UniquifyReferenceNamesTest(TransformTestBase):
     self.assertFalse(modified)
 
 
-class NormalizedBitTest(absltest.TestCase):
+class NormalizeTypesTest(absltest.TestCase):
 
   def test_raises_on_none(self):
     with self.assertRaises(TypeError):
-      tree_transformations.normalize_all_equal_bit(None)
+      tree_transformations.normalize_types(None)
+
+  def test_ignore_unnormalized_all_equal(self):
+    fed_type_all_equal = computation_types.FederatedType(
+        tf.int32, placements.CLIENTS, all_equal=True
+    )
+    unnormalized_comp = tree_transformations.normalize_types(
+        building_blocks.Reference('x', fed_type_all_equal),
+        normalize_all_equal_bit=False,
+    )
+    self.assertEqual(unnormalized_comp.type_signature, fed_type_all_equal)
+    self.assertIsInstance(unnormalized_comp, building_blocks.Reference)
+    self.assertEqual(str(unnormalized_comp), 'x')
 
   def test_converts_all_equal_at_clients_reference_to_not_equal(self):
     fed_type_all_equal = computation_types.FederatedType(
         tf.int32, placements.CLIENTS, all_equal=True
     )
-    normalized_comp = tree_transformations.normalize_all_equal_bit(
+    normalized_comp = tree_transformations.normalize_types(
         building_blocks.Reference('x', fed_type_all_equal)
     )
     self.assertEqual(
@@ -517,7 +529,7 @@ class NormalizedBitTest(absltest.TestCase):
     fed_type_not_all_equal = computation_types.FederatedType(
         tf.int32, placements.SERVER, all_equal=False
     )
-    normalized_comp = tree_transformations.normalize_all_equal_bit(
+    normalized_comp = tree_transformations.normalize_types(
         building_blocks.Reference('x', fed_type_not_all_equal)
     )
     self.assertEqual(
@@ -538,7 +550,7 @@ class NormalizedBitTest(absltest.TestCase):
     )
     ref = building_blocks.Reference('x', fed_type_all_equal)
     lam = building_blocks.Lambda('x', fed_type_all_equal, ref)
-    normalized_lambda = tree_transformations.normalize_all_equal_bit(lam)
+    normalized_lambda = tree_transformations.normalize_types(lam)
     self.assertEqual(
         lam.type_signature,
         computation_types.FunctionType(fed_type_all_equal, fed_type_all_equal),
@@ -571,7 +583,7 @@ class NormalizedBitTest(absltest.TestCase):
             ),
         ),
     )
-    normalized_lambda = tree_transformations.normalize_all_equal_bit(lam)
+    normalized_lambda = tree_transformations.normalize_types(lam)
     self.assertEqual(
         lam.type_signature,
         computation_types.FunctionType(
@@ -620,7 +632,7 @@ class NormalizedBitTest(absltest.TestCase):
             ]),
         ),
     )
-    normalized_lambda = tree_transformations.normalize_all_equal_bit(lam)
+    normalized_lambda = tree_transformations.normalize_types(lam)
     self.assertEqual(
         lam.type_signature,
         computation_types.FunctionType(
@@ -659,7 +671,7 @@ class NormalizedBitTest(absltest.TestCase):
     )
     ref = building_blocks.Reference('x', fed_type_not_all_equal)
     lam = building_blocks.Lambda('x', fed_type_not_all_equal, ref)
-    normalized_lambda = tree_transformations.normalize_all_equal_bit(lam)
+    normalized_lambda = tree_transformations.normalize_types(lam)
     self.assertEqual(
         lam.type_signature,
         computation_types.FunctionType(
@@ -690,7 +702,7 @@ class NormalizedBitTest(absltest.TestCase):
             int_identity, federated_int_ref
         )
     )
-    normalized_federated_map = tree_transformations.normalize_all_equal_bit(
+    normalized_federated_map = tree_transformations.normalize_types(
         called_federated_map_all_equal
     )
     self.assertEqual(

@@ -38,7 +38,7 @@ _MaterializedValueFn = Callable[
 _T = TypeVar('_T')
 # This type defines values of type `_T` nested in a structure of
 # `tff.structure.Struct`'s.
-# TODO(b/232433269) Update `tff.structure.Struct` to be able to define nested
+# TODO: b/232433269 - Update `tff.structure.Struct` to be able to define nested
 # homogeneous structures of `tff.structure.Struct`s.
 _StructStructure = Union[
     _T,
@@ -63,7 +63,7 @@ class AwaitableValueReference(value_reference.MaterializableValueReference):
     """
     if not callable(fn):
       raise TypeError(
-          f'Expected a function that returns an `Awaitable`, found {type(fn)}'
+          f'Expected a function that returns an `Awaitable`, found {type(fn)}.'
       )
     py_typecheck.check_type(
         type_signature,
@@ -108,7 +108,7 @@ def _wrap_in_shared_awaitable(
   """
   if not callable(fn):
     raise TypeError(
-        f'Expected a function that returns an `Awaitable`, found {type(fn)}'
+        f'Expected a function that returns an `Awaitable`, found {type(fn)}.'
     )
 
   @functools.cache
@@ -135,7 +135,7 @@ def _create_structure_of_awaitable_references(
   """
   if not callable(fn):
     raise TypeError(
-        f'Expected a function that returns an `Awaitable`, found {type(fn)}'
+        f'Expected a function that returns an `Awaitable`, found {type(fn)}.'
     )
   py_typecheck.check_type(type_signature, computation_types.Type)
 

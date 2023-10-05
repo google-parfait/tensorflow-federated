@@ -72,8 +72,6 @@ py_test(
     srcs = ["golden_test.py"],
     args = [
         "--golden",
-        "$(location golden_test_goldens/test_check_raises_traceback.expected)",
-        "--golden",
         "$(location golden_test_goldens/test_check_string_fails.expected)",
         "--golden",
         "$(location golden_test_goldens/test_check_string_succeeds.expected)",
@@ -81,7 +79,6 @@ py_test(
         "$(location golden_test_goldens/test_check_string_updates.expected)",
     ],
     data = [
-        "golden_test_goldens/test_check_raises_traceback.expected",
         "golden_test_goldens/test_check_string_fails.expected",
         "golden_test_goldens/test_check_string_succeeds.expected",
         "golden_test_goldens/test_check_string_updates.expected",

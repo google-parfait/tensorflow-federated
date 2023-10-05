@@ -231,14 +231,16 @@ class ToCallDominantTest(absltest.TestCase):
     self.assert_compact_representations_equal(after, expected)
 
   def test_call_to_higher_order_external_allowed(self):
-    bb = building_blocks
-    types = computation_types
-    int_type = types.TensorType(tf.int32)
-    int_to_int_type = types.FunctionType(int_type, int_type)
-    int_to_int_to_int_type = types.FunctionType(int_to_int_type, int_type)
-    call_ext = bb.Call(
-        bb.Data('call_with_one', int_to_int_to_int_type),
-        bb.Lambda('x', int_type, bb.Data('num', int_type)),
+    int_type = computation_types.TensorType(tf.int32)
+    int_to_int_type = computation_types.FunctionType(int_type, int_type)
+    int_to_int_to_int_type = computation_types.FunctionType(
+        int_to_int_type, int_type
+    )
+    call_ext = building_blocks.Call(
+        building_blocks.Data('call_with_one', int_to_int_to_int_type),
+        building_blocks.Lambda(
+            'x', int_type, building_blocks.Data('num', int_type)
+        ),
     )
     after = transformations.to_call_dominant(call_ext)
     after.check_block()
@@ -247,7 +249,9 @@ class ToCallDominantTest(absltest.TestCase):
     self.assertEqual(
         bound_call.compact_representation(), call_ext.compact_representation()
     )
-    expected_result = bb.Reference(ref_name, call_ext.type_signature)
+    expected_result = building_blocks.Reference(
+        ref_name, call_ext.type_signature
+    )
     self.assert_compact_representations_equal(after.result, expected_result)
 
 
@@ -781,7 +785,9 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
       comp.result.check_block()
 
     original_comp = transformations.to_call_dominant(original_comp)
-    original_comp = tree_transformations.normalize_all_equal_bit(original_comp)
+    original_comp = tree_transformations.normalize_types(
+        original_comp, normalize_all_equal_bit=False
+    )
 
     self.assertIsInstance(
         before.type_signature.result, computation_types.StructType

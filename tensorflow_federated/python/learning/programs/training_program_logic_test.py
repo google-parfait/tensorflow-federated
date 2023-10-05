@@ -36,6 +36,7 @@ from tensorflow_federated.python.program import program_state_manager
 from tensorflow_federated.python.program import release_manager
 
 # Convenience aliases.
+ProgramState = training_program_logic.ProgramState
 TensorType = computation_types.TensorType
 
 
@@ -225,16 +226,21 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     )
     self.assertEqual(
         mock_program_state_manager.load_latest.call_args_list,
-        [mock.call((any_algorithm_state, 0))],
+        [mock.call(ProgramState(any_algorithm_state, 0, 0))],
     )
+    expected_state_manager_call_list = []
+    # Expect saving the initial state (version 0) and training rounds 1
+    # through training_rounds.
+    for round_num in range(0, training_rounds + 1):
+      expected_state_manager_call_list.append(
+          mock.call(
+              ProgramState(any_algorithm_state, round_num, None),
+              version=round_num,
+          )
+      )
     self.assertEqual(
         mock_program_state_manager.save.call_args_list,
-        # Expect saving the initial state (version 0) and training rounds 1
-        # through training_rounds.
-        [
-            mock.call((any_algorithm_state, round_num), version=round_num)
-            for round_num in range(0, training_rounds + 1)
-        ],
+        expected_state_manager_call_list,
     )
 
     # Assert that training metrics were released every round.
@@ -312,7 +318,7 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     )
 
     # Patch `datetime.now` so that each round looks like it takes 20
-    # milliseconds. With evaluation periodicity of 25 milliseconds and training
+    # seconds. With evaluation periodicity of 25 seconds and training
     # rounds finishing (relative) at [0, 20, 40, 60, 80], the test will expect
     # evaluations at round [1, 3, 5].
     with mock.patch(
@@ -320,7 +326,7 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     ) as mock_datetime:
       start_datetime = datetime.datetime(2022, 11, 17, 9, 0)
       mock_datetime.now.side_effect = [
-          start_datetime + datetime.timedelta(milliseconds=20 * i)
+          start_datetime + datetime.timedelta(seconds=20 * i)
           for i in range(training_rounds)
       ]
       await training_program_logic.train_model(
@@ -332,7 +338,7 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
           model_output_manager=mock_model_output_manager,
           evaluation_manager=mock_evaluation_manager,
           train_metrics_manager=mock_train_metrics_manager,
-          evaluation_periodicity=datetime.timedelta(milliseconds=25),
+          evaluation_periodicity=datetime.timedelta(seconds=25),
       )
 
     # Assert that the program attempted to load a previous checkpoint and then
@@ -346,16 +352,32 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     )
     self.assertEqual(
         mock_program_state_manager.load_latest.call_args_list,
-        [mock.call((any_algorithm_state, 0))],
+        [mock.call(ProgramState(any_algorithm_state, 0, 0))],
     )
+    # The next evaluation time of the first round is None. The last round will
+    # always be evaluated, and the next evaluation time won't be updated.
+    next_evaluation_timestamps = [None]
+    for relative_timestamp in [25, 25, 65, 65, 65]:
+      next_evaluation_timestamps.append(
+          relative_timestamp + int(start_datetime.timestamp())
+      )
+    # Expect saving the initial state (version 0) and training rounds 1
+    # through training_rounds.
+    expected_state_manager_call_list = []
+    for round_num in range(0, training_rounds + 1):
+      expected_state_manager_call_list.append(
+          mock.call(
+              ProgramState(
+                  any_algorithm_state,
+                  round_num,
+                  next_evaluation_timestamps[round_num],
+              ),
+              version=round_num,
+          )
+      )
     self.assertEqual(
         mock_program_state_manager.save.call_args_list,
-        # Expect saving the initial state (version 0) and training rounds 1
-        # through training_rounds.
-        [
-            mock.call((any_algorithm_state, round_num), version=round_num)
-            for round_num in range(0, training_rounds + 1)
-        ],
+        expected_state_manager_call_list,
     )
 
     # Assert that training metrics were released every round.
@@ -432,16 +454,21 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     )
     self.assertEqual(
         mock_program_state_manager.load_latest.call_args_list,
-        [mock.call((any_algorithm_state, 0))],
+        [mock.call(ProgramState(any_algorithm_state, 0, 0))],
     )
+    expected_state_manager_call_list = []
+    # Expect saving the initial state (version 0) and training rounds 1
+    # through training_rounds.
+    for round_num in range(0, training_rounds + 1):
+      expected_state_manager_call_list.append(
+          mock.call(
+              ProgramState(any_algorithm_state, round_num, None),
+              version=round_num,
+          )
+      )
     self.assertEqual(
         mock_program_state_manager.save.call_args_list,
-        # Expect saving the initial state (version 0) and training rounds 1
-        # through training_rounds.
-        [
-            mock.call((any_algorithm_state, round_num), version=round_num)
-            for round_num in range(0, training_rounds + 1)
-        ],
+        expected_state_manager_call_list,
     )
 
     # Assert that training metrics were released every round.
@@ -509,11 +536,11 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     # given initial state and save it as version 0.
     self.assertEqual(
         mock_program_state_manager.load_latest.call_args_list,
-        [mock.call((initial_train_state, 0))],
+        [mock.call(ProgramState(initial_train_state, 0, 0))],
     )
     self.assertEqual(
         mock_program_state_manager.save.call_args_list[0],
-        mock.call((initial_train_state, 0), version=0),
+        mock.call(ProgramState(initial_train_state, 0, None), version=0),
     )
 
   @context_stack_test_utils.with_context(_create_test_context)
@@ -529,7 +556,7 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
         program_state_manager.ProgramStateManager, instance=True
     )
     mock_program_state_manager.load_latest.side_effect = [(
-        (training_state, training_rounds - 1),
+        ProgramState(training_state, training_rounds - 1, None),
         training_rounds - 1,
     )]
 
@@ -571,7 +598,7 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     )
     self.assertEqual(
         mock_program_state_manager.load_latest.call_args_list,
-        [mock.call((any_algorithm_state, 0))],
+        [mock.call(ProgramState(any_algorithm_state, 0, 0))],
     )
     self.assertEqual(
         mock_program_state_manager.save.call_args_list,
@@ -579,7 +606,8 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
         # 10th version)
         [
             mock.call(
-                (any_algorithm_state, training_rounds), version=training_rounds
+                ProgramState(any_algorithm_state, training_rounds, None),
+                version=training_rounds,
             )
         ],
         msg=mock_program_state_manager.save.call_args_list,
@@ -620,7 +648,7 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
         program_state_manager.ProgramStateManager, instance=True
     )
     mock_program_state_manager.load_latest.side_effect = [(
-        (training_state, training_rounds),
+        ProgramState(training_state, training_rounds, None),
         training_rounds,
     )]
 
@@ -660,7 +688,7 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     )
     self.assertSequenceEqual(
         mock_program_state_manager.load_latest.call_args_list,
-        [mock.call((any_algorithm_state, 0))],
+        [mock.call(ProgramState(any_algorithm_state, 0, 0))],
     )
     mock_program_state_manager.save.assert_not_called()
 

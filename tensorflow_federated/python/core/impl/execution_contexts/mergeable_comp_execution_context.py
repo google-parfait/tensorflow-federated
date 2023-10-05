@@ -17,7 +17,7 @@ import asyncio
 from collections.abc import Awaitable, Callable, Sequence
 import functools
 import math
-from typing import Any, Generic, Optional, TypeVar, Union
+from typing import Generic, Optional, TypeVar, Union
 
 import attrs
 
@@ -245,7 +245,7 @@ class MergeableCompForm:
 class _PartitioningValue:
   """Data class to hold info on traversal while partitioning into subrounds."""
 
-  payload: Any
+  payload: object
   num_remaining_clients: int
   num_remaining_partitions: int
   last_client_index: int
@@ -411,7 +411,7 @@ class MergeableCompExecutionContextValue(typed_object.TypedObject):
 
   def __init__(
       self,
-      value: Any,
+      value: object,
       type_spec: computation_types.Type,
       num_desired_subrounds: int,
   ):
@@ -467,14 +467,14 @@ async def _compute_after_merged(
 
 
 async def _run_in_async_context_pool(
-    task_fn: Callable[[Any, context_base.AsyncContext], asyncio.Task],
-    arg_list: Sequence[Any],
+    task_fn: Callable[[object, context_base.AsyncContext], asyncio.Task],
+    arg_list: Sequence[object],
     execution_contexts: Sequence[context_base.AsyncContext],
-    initial_result: Any,
+    initial_result: object,
     postprocessing_hook: Callable[
-        [Any, Any, context_base.AsyncContext], Awaitable[Any]
+        [object, object, context_base.AsyncContext], Awaitable[Value]
     ],
-):
+) -> tuple[Value, Optional[context_base.AsyncContext]]:
   """Runs the tasks against the execution pool, sequentializing the extra work.
 
   Args:
@@ -526,7 +526,7 @@ async def _run_in_async_context_pool(
 
 async def _invoke_merge_in_async_pool(
     comp: MergeableCompForm,
-    arg_list: Sequence[Any],
+    arg_list: Sequence[object],
     execution_contexts: Sequence[context_base.AsyncContext],
 ):
   """Invokes up to merge and merge in a pool of async contexts."""
@@ -552,10 +552,10 @@ async def _invoke_merge_in_async_pool(
 
 async def _invoke_after_merge_in_async_pool(
     comp: MergeableCompForm,
-    merge_result: Any,
-    arg_list: Sequence[Any],
+    merge_result: object,
+    arg_list: Sequence[object],
     execution_contexts: Sequence[context_base.AsyncContext],
-) -> list[Any]:
+) -> list[object]:
   """Invokes after_merge in a pool of async contexts, returning result."""
 
   def task_fn(x, context):
@@ -672,7 +672,7 @@ class MergeableCompExecutionContext(
   def invoke(
       self,
       comp: Union[MergeableCompForm, computation_base.Computation],
-      arg: Optional[Any] = None,
+      arg: Optional[object] = None,
   ):
     py_typecheck.check_type(
         comp, (MergeableCompForm, computation_base.Computation)

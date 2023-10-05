@@ -13,7 +13,6 @@
 
 import collections
 import dataclasses
-from typing import Any
 
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -24,12 +23,12 @@ from tensorflow_federated.python.common_libs import named_containers
 
 @dataclasses.dataclass
 class TestDataclass:
-  x: Any
+  x: object
 
 
 @attrs.define
 class TestAttrClass:
-  x: Any
+  x: object
 
 
 class UserDefinedClassToOdictTest(parameterized.TestCase):

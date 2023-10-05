@@ -14,7 +14,7 @@
 """Custom exceptions and symbols for TFF executors."""
 
 import typing
-from typing import Any, Union
+from typing import Union
 
 import grpc
 from typing_extensions import TypeGuard
@@ -36,10 +36,10 @@ class RetryableGRPCError(RetryableError, grpc.RpcError, grpc.Call):
   def details(self) -> str:
     return self._grpc_call.details()
 
-  def initial_metadata(self) -> Any:
+  def initial_metadata(self) -> object:
     return self._grpc_call.initial_metadata()
 
-  def trailing_metadata(self) -> Any:
+  def trailing_metadata(self) -> object:
     return self._grpc_call.trailing_metadata()
 
 

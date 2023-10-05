@@ -52,6 +52,7 @@ py_library(
         ":federated_computation_utils",
         "//tensorflow_federated/python/core/impl/computation:computation_impl",
         "//tensorflow_federated/python/core/impl/computation:computation_wrapper",
+        "//tensorflow_federated/python/core/impl/computation:function_utils",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
     ],
 )
@@ -60,16 +61,8 @@ py_test(
     name = "federated_computation_test",
     size = "small",
     srcs = ["federated_computation_test.py"],
-    args = [
-        "--golden",
-        "$(location federated_computation_test_goldens/federated_computation_traceback.expected)",
-    ],
-    data = [
-        "federated_computation_test_goldens/federated_computation_traceback.expected",
-    ],
     deps = [
         ":federated_computation",
-        "//tensorflow_federated/python/common_libs:golden",
         "//tensorflow_federated/python/core/impl/computation:computation_impl",
         "//tensorflow_federated/python/core/impl/computation:computation_wrapper",
         "//tensorflow_federated/python/core/impl/context_stack:get_context_stack",
@@ -117,6 +110,7 @@ py_library(
         ":value_impl",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
+        "//tensorflow_federated/python/core/impl/computation:computation_wrapper",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_base",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
@@ -129,6 +123,7 @@ py_test(
     srcs = ["federated_computation_utils_test.py"],
     deps = [
         ":federated_computation_utils",
+        "//tensorflow_federated/python/core/impl/computation:computation_wrapper",
         "//tensorflow_federated/python/core/impl/computation:function_utils",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
         "//tensorflow_federated/python/core/impl/types:computation_types",
@@ -192,6 +187,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/compiler:tensorflow_computation_factory",
         "//tensorflow_federated/python/core/impl/computation:computation_impl",
         "//tensorflow_federated/python/core/impl/computation:function_utils",
+        "//tensorflow_federated/python/core/impl/computation:polymorphic_computation",
         "//tensorflow_federated/python/core/impl/context_stack:context_base",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
         "//tensorflow_federated/python/core/impl/context_stack:symbol_binding_context",

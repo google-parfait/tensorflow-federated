@@ -15,11 +15,14 @@
 
 import abc
 import collections
+from collections.abc import Hashable
 import dataclasses
 import itertools
-from typing import Any, Optional, Union
+import typing
+from typing import Optional, Union
 
 import attrs
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
@@ -32,6 +35,7 @@ from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_factory
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.computation import function_utils
+from tensorflow_federated.python.core.impl.computation import polymorphic_computation
 from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.context_stack import symbol_binding_context
@@ -326,7 +330,7 @@ def _dictlike_items_to_value(items, type_spec, container_type) -> Value:
 
 
 def to_value(
-    arg: Any,
+    arg: object,
     type_spec: Optional[computation_types.Type],
     *,
     parameter_type_hint=None,
@@ -371,7 +375,7 @@ def to_value(
       TFF value automatically.
     parameter_type_hint: An optional `tff.Type` or value convertible to it by
       `tff.to_type()` which specifies an argument type to use in the case that
-      `arg` is a `function_utils.PolymorphicComputation`.
+      `arg` is a `polymorphic_computation.PolymorphicComputation`.
     zip_if_needed: If `True`, attempt to coerce the result of `to_value` to
       match `type_spec` by applying `intrinsics.federated_zip` to appropriate
       elements.
@@ -385,6 +389,34 @@ def to_value(
       are encountered, as TensorFlow code should be sealed away from TFF
       federated context.
   """
+  # TODO: b/224484886 - Downcasting to all handled types.
+  arg = typing.cast(
+      Union[
+          None,
+          Value,
+          building_blocks.ComputationBuildingBlock,
+          placements.PlacementLiteral,
+          computation_impl.ConcreteComputation,
+          polymorphic_computation.PolymorphicComputation,
+          computation_types.SequenceType,
+          structure.Struct,
+          py_typecheck.SupportsNamedTuple,
+          dict[Hashable, object],
+          tuple[object, ...],
+          list[object],
+          tf.Tensor,
+          tf.Variable,
+          # Inlined from tensorflow_utils.TENSOR_REPRESENTATION_TYPES
+          str,
+          int,
+          float,
+          bool,
+          bytes,
+          np.generic,
+          np.ndarray,
+      ],
+      arg,
+  )
   if type_spec is not None:
     type_spec = computation_types.to_type(type_spec)
   if isinstance(arg, Value):
@@ -397,10 +429,10 @@ def to_value(
       arg,
       (
           computation_impl.ConcreteComputation,
-          function_utils.PolymorphicComputation,
+          polymorphic_computation.PolymorphicComputation,
       ),
   ):
-    if isinstance(arg, function_utils.PolymorphicComputation):
+    if isinstance(arg, polymorphic_computation.PolymorphicComputation):
       if parameter_type_hint is None:
         raise TypeError(
             'Polymorphic computations cannot be converted to `tff.Value`s '

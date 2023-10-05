@@ -15,7 +15,7 @@
 
 import collections
 from collections.abc import Callable
-from typing import Any, Optional, OrderedDict
+from typing import Optional
 
 import tensorflow as tf
 
@@ -82,7 +82,7 @@ def contains_only(
   return not contains(type_signature, lambda t: not predicate(t))
 
 
-def check_type(value: Any, type_spec: computation_types.Type):
+def check_type(value: object, type_spec: computation_types.Type):
   """Checks whether `val` is of TFF type `type_spec`.
 
   Args:
@@ -863,7 +863,7 @@ def count_tensors_in_type(
     tensor_filter: Optional[
         Callable[[computation_types.TensorType], bool]
     ] = None,
-) -> OrderedDict[str, Any]:
+) -> collections.OrderedDict[str, int]:
   """Counts tensors and fully-specified elements under `type_spec`.
 
   Args:

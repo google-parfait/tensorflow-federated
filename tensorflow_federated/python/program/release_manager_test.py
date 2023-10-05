@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import collections
+import datetime
 import unittest
 from unittest import mock
 
@@ -717,6 +718,110 @@ class GroupingReleaseManagerTest(
       mock_release_mngr.release.assert_called_once_with(
           value, type_signature, key
       )
+
+
+class PeriodicReleaseManagerTest(
+    parameterized.TestCase, unittest.IsolatedAsyncioTestCase
+):
+
+  @parameterized.named_parameters(
+      ('int_negative', -1),
+      ('int_zero', 0),
+      ('timedelta_negative', datetime.timedelta(seconds=-1)),
+      ('timedelta_zero', datetime.timedelta()),
+  )
+  def test_init_raises_value_error_with_period(self, periodicity):
+    mock_release_mngr = mock.AsyncMock(
+        spec=release_manager.ReleaseManager, set_spec=True
+    )
+
+    with self.assertRaises(ValueError):
+      release_manager.PeriodicReleaseManager(mock_release_mngr, periodicity)
+
+  @parameterized.named_parameters(
+      ('all_releases', 1, 10, 10),
+      ('some_releases', 2, 10, 5),
+      ('last_release', 10, 10, 1),
+      ('drops_trailing_releases', 3, 10, 3),
+      ('drops_all_releases', 11, 10, 0),
+  )
+  async def test_release_delegates_value_and_type_signature_with_periodicity_int(
+      self, periodicity, total, expected_count
+  ):
+    mock_release_mngr = mock.AsyncMock(
+        spec=release_manager.ReleaseManager, set_spec=True
+    )
+    release_mngr = release_manager.PeriodicReleaseManager(
+        mock_release_mngr, periodicity
+    )
+    value = 1
+    type_signature = computation_types.TensorType(tf.int32)
+    key = 1
+
+    for _ in range(total):
+      await release_mngr.release(value, type_signature, key)
+
+    self.assertEqual(mock_release_mngr.release.call_count, expected_count)
+    mock_release_mngr.release.assert_has_calls(
+        [mock.call(value, type_signature, key)] * expected_count
+    )
+
+  @parameterized.named_parameters(
+      (
+          'all_releases',
+          datetime.timedelta(seconds=1),
+          [datetime.timedelta(seconds=x) for x in range(1, 11)],
+          10,
+      ),
+      (
+          'some_releases',
+          datetime.timedelta(seconds=2),
+          [datetime.timedelta(seconds=x) for x in range(1, 11)],
+          5,
+      ),
+      (
+          'last_release',
+          datetime.timedelta(seconds=10),
+          [datetime.timedelta(seconds=x) for x in range(1, 11)],
+          1,
+      ),
+      (
+          'drops_trailing_releases',
+          datetime.timedelta(seconds=3),
+          [datetime.timedelta(seconds=x) for x in range(1, 11)],
+          3,
+      ),
+      (
+          'drops_all_releases',
+          datetime.timedelta(seconds=11),
+          [datetime.timedelta(seconds=x) for x in range(1, 11)],
+          0,
+      ),
+  )
+  async def test_release_delegates_value_and_type_signature_with_periodicity_timedelta(
+      self, periodicity, timedeltas, expected_count
+  ):
+    mock_release_mngr = mock.AsyncMock(
+        spec=release_manager.ReleaseManager, set_spec=True
+    )
+    release_mngr = release_manager.PeriodicReleaseManager(
+        mock_release_mngr, periodicity
+    )
+    value = 1
+    type_signature = computation_types.TensorType(tf.int32)
+    key = 1
+
+    now = datetime.datetime.now()
+    with mock.patch.object(datetime, 'datetime') as mock_datetime:
+      mock_datetime.now.side_effect = [now + x for x in timedeltas]
+
+      for _ in timedeltas:
+        await release_mngr.release(value, type_signature, key)
+
+    self.assertEqual(mock_release_mngr.release.call_count, expected_count)
+    mock_release_mngr.release.assert_has_calls(
+        [mock.call(value, type_signature, key)] * expected_count
+    )
 
 
 if __name__ == '__main__':

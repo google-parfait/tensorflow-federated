@@ -11,8 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import asyncio
-from typing import Any
 from unittest import mock
 
 from absl.testing import absltest
@@ -57,7 +57,7 @@ class CountInvocations:
       self,
       n_invocations_to_raise: int,
       error_to_raise: Exception,
-      return_value: Any,
+      return_value: object,
   ):
     self._n_invocations_to_raise = n_invocations_to_raise
     self._error_to_raise = error_to_raise

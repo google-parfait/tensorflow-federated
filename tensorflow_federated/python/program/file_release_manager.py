@@ -41,12 +41,20 @@ from tensorflow_federated.python.program import structure_utils
 from tensorflow_federated.python.program import value_reference
 
 
-class FileReleaseManagerIncompatibleFileError(Exception):
-  pass
+class CSVKeyFieldnameNotFoundError(Exception):
+  """Raised when a file does not contain the key fieldname."""
 
-
-class FileReleaseManagerPermissionDeniedError(Exception):
-  pass
+  def __init__(
+      self,
+      file_path: Union[bytes, str, os.PathLike[Union[bytes, str]]],
+      key_fieldname: str,
+  ):
+    super().__init__(
+        f'Expected the file {file_path} to contain the key fieldname of '
+        f'{key_fieldname}. It is possible that the file was not created by '
+        'a `tff.program.CSVFileReleaseManager` or was created with a different '
+        '`key_fieldname`.'
+    )
 
 
 @enum.unique
@@ -108,8 +116,8 @@ class CSVFileReleaseManager(
 
     Raises:
       ValueError: If `file_path` or `key_fieldname` is an empty string.
-      FileReleaseManagerIncompatibleFileError: If the file exists but does not
-        contain a fieldname of `key_fieldname`.
+      CSVKeyFieldnameNotFoundError: If the file exists but does not contain a
+        fieldname of `key_fieldname`.
     """
     py_typecheck.check_type(file_path, (bytes, str, os.PathLike))
     if not file_path:
@@ -129,13 +137,7 @@ class CSVFileReleaseManager(
     if tf.io.gfile.exists(self._file_path):
       fieldnames, values = self._read_values()
       if self._key_fieldname not in fieldnames:
-        raise FileReleaseManagerIncompatibleFileError(
-            f"The file '{self._file_path}' exists but does not contain a "
-            f"fieldname of '{self._key_fieldname}'. It is possible that this "
-            'file was not created by a `tff.program.CSVFileReleaseManager` or '
-            'the `tff.program.CSVFileReleaseManager` was constructed with a '
-            'different `key_fieldname`.'
-        )
+        raise CSVKeyFieldnameNotFoundError(self._file_path, self._key_fieldname)
       if values:
         self._latest_key = int(values[-1][self._key_fieldname])
       else:
@@ -230,9 +232,9 @@ class CSVFileReleaseManager(
           writer = csv.DictWriter(file, fieldnames=fieldnames)
           writer.writerow(value)
       except (tf.errors.PermissionDeniedError, csv.Error) as e:
-        raise FileReleaseManagerPermissionDeniedError(
-            f"Could not append a value to the file '{self._file_path}'. It "
-            'is possible that this file is compressed or encoded. Please use '
+        raise PermissionError(
+            f'Could not append a value to the file {self._file_path}. It is '
+            'possible that this file is compressed or encoded. Please use '
             'write mode instead of append mode to release values to this '
             'file using a `tff.program.CSVFileReleaseManager`.'
         ) from e
@@ -316,10 +318,6 @@ class CSVFileReleaseManager(
     elif self._save_mode == CSVSaveMode.WRITE:
       await self._write_value(normalized_value)
     self._latest_key = key
-
-
-class ValueNotFoundError(Exception):
-  """Raised when a FileReleaseManager cannot find value in file system."""
 
 
 class SavedModelFileReleaseManager(
@@ -418,25 +416,14 @@ class SavedModelFileReleaseManager(
       A retrieved value matching `structure`.
 
     Raises:
-      ValueNotFoundError: If there is no value for the given `key`.
-      StructureError: If the value retrieved from the file system cannot be
-        unflattened into `structure`.
+      ReleasedValueNotFoundError: If there is no released value for the given
+        `key`.
     """
     path = self._get_path_for_key(key)
     if not await file_utils.exists(path):
-      raise ValueNotFoundError(
-          f'No value found for prefix and key: {self._prefix} and {key}'
-      )
+      raise release_manager.ReleasedValueNotFoundError(key)
     flattened_value = await file_utils.read_saved_model(path)
-    try:
-      value = structure_utils.unflatten_as(structure, flattened_value)
-    except ValueError as e:
-      raise release_manager.StructureError(
-          f'The structure of type {type(structure)}:\n'
-          f'{structure}\n'
-          f'does not match the value of type {type(flattened_value)}:\n'
-          f'{flattened_value}\n'
-      ) from e
+    value = structure_utils.unflatten_as(structure, flattened_value)
 
     def _normalize(
         value: release_manager.ReleasableValue,

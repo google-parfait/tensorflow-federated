@@ -55,15 +55,15 @@ class ClientIdDataSourceIteratorTest(parameterized.TestCase):
       ('one', 1),
       ('two', 2),
   )
-  def test_select_returns_client_ids_with_num_clients(self, num_clients):
+  def test_select_returns_client_ids_with_k(self, k):
     client_ids = ['a', 'b', 'c']
     iterator = client_id_data_source.ClientIdDataSourceIterator(
         client_ids=client_ids
     )
 
-    actual_client_ids = iterator.select(num_clients)
+    actual_client_ids = iterator.select(k)
 
-    self.assertLen(actual_client_ids, num_clients)
+    self.assertLen(actual_client_ids, k)
     for actual_client_id in actual_client_ids:
       self.assertIn(actual_client_id, client_ids)
       self.assertIsInstance(actual_client_id, str)
@@ -72,28 +72,28 @@ class ClientIdDataSourceIteratorTest(parameterized.TestCase):
       ('str', 'a'),
       ('list', []),
   )
-  def test_select_raises_type_error_with_num_clients(self, num_clients):
+  def test_select_raises_type_error_with_k(self, k):
     client_ids = ['a', 'b', 'c']
     iterator = client_id_data_source.ClientIdDataSourceIterator(
         client_ids=client_ids
     )
 
     with self.assertRaises(TypeError):
-      iterator.select(num_clients)
+      iterator.select(k)
 
   @parameterized.named_parameters(
       ('none', None),
       ('negative', -1),
       ('greater', 4),
   )
-  def test_select_raises_value_error_with_num_clients(self, num_clients):
+  def test_select_raises_value_error_with_k(self, k):
     client_ids = ['a', 'b', 'c']
     iterator = client_id_data_source.ClientIdDataSourceIterator(
         client_ids=client_ids
     )
 
     with self.assertRaises(ValueError):
-      iterator.select(num_clients)
+      iterator.select(k)
 
   def test_serializable_with_client_ids(self):
     client_ids = ['a', 'b', 'c']

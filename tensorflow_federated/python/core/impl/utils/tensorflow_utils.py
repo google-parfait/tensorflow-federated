@@ -18,7 +18,7 @@ from collections.abc import Iterable, Mapping
 import dataclasses
 import itertools
 import typing
-from typing import Any, Optional
+from typing import Optional
 
 import attrs
 import numpy as np
@@ -193,7 +193,7 @@ class UnsupportedGraphResultError(InvalidGraphResultError):
 
 
 def capture_result_from_graph(
-    result: Any,
+    result: object,
     graph: tf.Graph,
 ) -> tuple[computation_types.Type, pb.TensorFlow.Binding]:
   """Captures a result stamped into a tf.Graph as a type signature and binding.
@@ -220,9 +220,9 @@ def capture_result_from_graph(
   """
 
   def _get_bindings_for_elements(
-      name_value_pairs: Iterable[tuple[str, Any]],
+      name_value_pairs: Iterable[tuple[str, object]],
       graph: tf.Graph,
-      container_type: Optional[type[Any]],
+      container_type: Optional[type[object]],
   ) -> tuple[computation_types.Type, pb.TensorFlow.Binding]:
     """Build `(type_spec, binding)` tuple for name value pairs."""
     element_name_type_binding_triples = [
@@ -1218,15 +1218,15 @@ def uniquify_shared_names_with_suffix(
 
 def deserialize_and_call_tf_computation(
     computation_proto: pb.Computation,
-    arg: Any,
+    arg: Optional[object],
     graph: tf.Graph,
     shared_names_suffix: str,
     session_token_tensor: tf.Tensor,
-) -> tuple[Optional[str], Any]:
+) -> tuple[Optional[str], object]:
   """Deserializes a TF computation and inserts it into `graph`.
 
   This method performs an action that can be considered roughly the opposite of
-  what `tensorflow_serialization.tf_computation_serializer` does. At
+  what `tensorflow_serialization.serialize_py_fn_as_tf_computation` does. At
   the moment, it simply imports the graph in the current context. A future
   implementation may rely on different mechanisms. The caller should not be
   concerned with the specifics of the implementation. At this point, the method

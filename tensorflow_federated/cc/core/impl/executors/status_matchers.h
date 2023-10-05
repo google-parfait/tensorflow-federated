@@ -16,7 +16,7 @@ limitations under the License
 #ifndef THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTORS_STATUS_MATCHERS_H_
 #define THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTORS_STATUS_MATCHERS_H_
 
-// TODO(b/199461150) remove this file and the associated .cc file.
+// TODO: b/199461150 - remove this file and the associated .cc file.
 
 #include <cstdint>
 #include <optional>

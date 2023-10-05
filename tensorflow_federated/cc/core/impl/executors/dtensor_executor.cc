@@ -99,7 +99,7 @@ class Value {
   // Method to bind input parameters.
   // This is required to construct a flattened list of input arguments when
   // calling Computation.
-  // TODO(b/256948367) If parameter name has a layout provided in layout map,
+  // TODO: b/256948367 - If parameter name has a layout provided in layout map,
   // this method also converts input Tensor to DTensor with given layout.
   virtual absl::Status Bind(
       TFE_Context* context, const v0::TensorFlow::Binding& shape,
