@@ -1,3 +1,47 @@
+# Release 0.63.0
+
+## Major Features and Improvements
+
+*   Added `tff.federated_min` and `tff.federated_max` intrinsics.
+*   Added a `get_value()` method to `tff.program.SavedModelFileReleaseManager,`
+    for retrieving values that were previously released.
+*   Added `tff.program.PeriodicReleaseManager` to release values at regular
+    intervals.
+*   Learning program logic now saves next evaluation time so that it can be
+    loaded upon computation restarts.
+*   `DistributeAggregateForm` now skips normalizing the all_equal bit.
+*   Added parallelism to Vizier program logic.
+*   Enabled building protos with certain Bazel versions.
+
+## Breaking Changes
+
+*   Updated the version of `attrs` to `23.1`.
+*   Updated the version of `cachetools` to `~=5.3`.
+*   Updated the version of `dp-accounting` to `0.4.3`.
+*   Updated the version of `google-vizier` to `0.1.11`.
+*   Updated the version of `jax` to `0.4.14`.
+*   Updated the version of `portpicker` to `~=1.6`.
+*   Updated the version of `tensorflow` to `2.13.0`.
+*   Updated the version of `tensorflow-model-optimization` to `0.7.5`.
+*   Updated the version of `tensorflow-privacy` to `0.8.11`.
+*   Updated the version of `typing-extensions` to `~=4.5.0`.
+*   Increased `TF_CUDA_VERSION` to `12`.
+*   Removed the `tff.program.Capabilities` enum from the iterator.
+*   Deleted Python executors.
+*   Removed the deprecated `is_{foo}` functions from `tff.Type`s. Users should
+    use `isinstance` checks instead.
+*   Deleted go-related BUILD targets for TFF proto files.
+
+## Bug Fixes
+
+*   Removed non-existent GCP doc from TFF guides.
+*   Cleaned up exceptions in the `tff.program` package for consistency and
+    clarity.
+*   Fixed various pytype errors.
+*   Fixed various `undefined-variable` lint errors.
+*   Fixed a `UnicodeDecodeError` in the FedRecon tutorial.
+*   Fixed Python 3.11 related errors.
+
 # Release 0.62.0
 
 ## Breaking Changes
