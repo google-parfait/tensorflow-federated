@@ -662,7 +662,7 @@ class ExecutorValue {
                                        const v0::TensorFlow::Binding& shape) {
     return absl::InvalidArgumentError(
         absl::StrCat("Attempted to bind ", value_kind,
-                     " value to argument of kind ", shape.SerializeAsString()));
+                     " value to argument of kind ", shape.Utf8DebugString()));
   }
 };
 
