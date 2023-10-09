@@ -45,6 +45,13 @@ py_test(
 )
 
 py_test(
+    name = "local_sync_cpp_execution_context_integration_test",
+    size = "small",
+    srcs = ["local_sync_cpp_execution_context_integration_test.py"],
+    deps = ["//tensorflow_federated"],
+)
+
+py_test(
     name = "map_reduce_form_test",
     size = "medium",
     srcs = ["map_reduce_form_test.py"],
