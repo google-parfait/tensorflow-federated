@@ -21,12 +21,15 @@ from google.protobuf import text_format  # pylint: disable=g-bad-import-order
 
 from vizier.service import clients
 from vizier.service import pyvizier
-from vizier.service import study_pb2
+
+# The proto message type does not appear to be in the public API any longer,
+# but it is necessary to be able to parse text formatted proto strings.
+_StudySpec = type(pyvizier.StudyConfig().to_proto())
 
 
 def create_study_config(config_path: str) -> pyvizier.StudyConfig:
   with tf.io.gfile.GFile(config_path) as f:
-    proto = text_format.Parse(f.read(), study_pb2.StudySpec())
+    proto = text_format.Parse(f.read(), _StudySpec())
   return pyvizier.StudyConfig.from_proto(proto)
 
 
