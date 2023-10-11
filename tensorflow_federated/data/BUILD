@@ -1,4 +1,5 @@
 load("@bazel_skylib//rules:copy_file.bzl", "copy_file")
+load("@rules_python//python:defs.bzl", "py_library")
 
 package(
     default_applicable_licenses = ["//:package_license"],
@@ -22,6 +23,12 @@ package_group(
 )
 
 licenses(["notice"])
+
+py_library(
+    name = "data",
+    srcs = ["__init__.py"],
+    visibility = ["//tensorflow_federated/tools/python_package:python_package_tool"],
+)
 
 copy_file(
     name = "_worker_binary",
