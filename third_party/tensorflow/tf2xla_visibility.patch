@@ -1,5 +1,5 @@
 diff --git tensorflow/compiler/tf2xla/BUILD tensorflow/compiler/tf2xla/BUILD
-index ef32bdb19a8..7eac4b4ab75 100644
+index 22d9877bed9..3f6b421465d 100644
 --- tensorflow/compiler/tf2xla/BUILD
 +++ tensorflow/compiler/tf2xla/BUILD
 @@ -46,7 +46,7 @@ package_group(

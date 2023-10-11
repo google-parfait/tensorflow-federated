@@ -44,7 +44,7 @@ git_repository(
         "//third_party/tensorflow:tf2xla_visibility.patch",
     ],
     remote = "https://github.com/tensorflow/tensorflow.git",
-    tag = "v2.13.0",
+    tag = "v2.14.0",
 )
 
 git_repository(

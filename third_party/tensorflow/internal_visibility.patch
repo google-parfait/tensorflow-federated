@@ -1,8 +1,8 @@
 diff --git tensorflow/BUILD tensorflow/BUILD
-index b5b076847b6..5f9938d42f2 100644
+index 202553cd531..171eb04665c 100644
 --- tensorflow/BUILD
 +++ tensorflow/BUILD
-@@ -1045,7 +1045,7 @@ package_group(
+@@ -1039,7 +1039,7 @@ package_group(
          "//smartass/brain/configure/...",
          "//tensorflow/...",
          "//tensorflow_decision_forests/...",
