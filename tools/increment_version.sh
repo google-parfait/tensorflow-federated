@@ -30,32 +30,33 @@ usage() {
       "[VERSION]"
   )
   echo "usage: ${script_name} ${options[@]}"
-  exit 1
 }
 
 main() {
   # Parse the arguments.
   local version="$@"
   if [[ -z "${version}" ]]; then
-    echo "error: Expected a VERSION." 1>&2
+    echo "error: expected a 'VERSION'" 1>&2
     usage
+    exit 1
   fi
 
   local release_file="tensorflow_federated/RELEASE.md"
   if [[ ! -f "${release_file}" ]]; then
-    echo "error: Expected '${release_file}' to exist." 1>&2
+    echo "error: expected the release file '${release_file}' to exist" 1>&2
+    exit 1
   fi
 
-  # Grab the latest version before begining to update the version.
+  # Get the latest version from the `RELEASE.md``; must come before updating
+  # `RELEASE.md`.
   local latest_version="$(latest_version)"
-  echo "Updating version from ${latest_version} to ${version}"
 
   # Confirm release notes.
   local unreleased_notes="$(unreleased_notes)"
   echo "${unreleased_notes}" | sed "s/# Unreleased/# Release ${version}/g"
   read -r -p "Do these release notes look correct (yes/no)? "
   if [[ "${REPLY}" != "yes" ]]; then
-    exit 1
+    exit 0
   fi
 
   # Update RELEASE.md.

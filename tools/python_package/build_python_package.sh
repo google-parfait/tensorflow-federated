@@ -13,32 +13,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# Tool to build the TensorFlow Federated pip package.
+# Tool to build the TensorFlow Federated Python package.
 set -e
 
 usage() {
   local script_name=$(basename "${0}")
   local options=(
-      "--python=python3.11"
       "--output_dir=<path>"
   )
   echo "usage: ${script_name} ${options[@]}"
-  echo "  --python=python3.11   The Python version used by the environment to"
-  echo "                        build the Python package."
-  echo "  --output_dir=<path>   An output directory."
-  exit 1
+  echo "  --output_dir=<path>  An optional output directory (defaults to"
+  echo "                       '{BUILD_WORKING_DIRECTORY}/dist')."
 }
 
 main() {
   # Parse the arguments.
-  local python="python3.11"
-  local output_dir=""
+  local output_dir="${BUILD_WORKING_DIRECTORY}/dist"
 
   while [[ "$#" -gt 0 ]]; do
     option="$1"
     case "${option}" in
       --python=*)
-        python="${option#*=}"
         shift
         ;;
       --output_dir=*)
@@ -48,51 +43,40 @@ main() {
       *)
         echo "error: unrecognized option '${option}'" 1>&2
         usage
+        exit 1
         ;;
     esac
   done
 
   if [[ -z "${output_dir}" ]]; then
-    echo "error: required option `--output_dir`" 1>&2
+    echo "error: expected an 'output_dir'" 1>&2
     usage
-  elif [[ ! -d "${output_dir}" ]]; then
-    echo "error: the directory '${output_dir}' does not exist" 1>&2
-    usage
-  fi
-
-  # Create a working directory.
-  local temp_dir="$(mktemp -d)"
-  trap "rm -rf ${temp_dir}" EXIT
-  cp -LR "." "${temp_dir}"
-  pushd "${temp_dir}"
-
-  # Create a Python environment.
-  "${python}" -m venv "venv"
-  source "venv/bin/activate"
-  python --version
-  pip install --upgrade "pip"
-  pip --version
-  ldd --version
-
-  # Build the Python package.
-  pip install --upgrade setuptools wheel
-  # The manylinux tag should match GLIBC version returned by `ldd --version`.
-  python "setup.py" bdist_wheel \
-      --plat-name=manylinux_2_31_x86_64
-  cp "${temp_dir}/dist/"* "${output_dir}"
-
-  # Check Python package sizes.
-  local package="$(ls "${output_dir}/tensorflow_federated-"*".whl" | head -n1)"
-  local actual_size="$(du -b "${package}" | cut -f1)"
-  local maximum_size=80000000  # 80 MiB
-  if [ "${actual_size}" -ge "${maximum_size}" ]; then
-    echo "Error: expected $(basename ${package}) to be less than ${maximum_size} bytes; it was ${actual_size}." 1>&2
     exit 1
   fi
 
-  # Cleanup.
-  deactivate
-  popd
+  # Check the GLIBC version.
+  local expected_glibc="2.31"
+  if ! ldd --version | grep --quiet "${expected_glibc}"; then
+    echo "error: expected GLIBC version to be '${expected_glibc}', found:" 1>&2
+    ldd --version 1>&2
+    exit 1
+  fi
+
+  # Create a temp directory.
+  local temp_dir="$(mktemp -d)"
+  trap "rm -rf ${temp_dir}" EXIT
+
+  # Create a Python environment.
+  python3 -m venv "${temp_dir}/venv"
+  source "${temp_dir}/venv/bin/activate"
+  python --version
+  pip install --upgrade "pip"
+  pip --version
+
+  # Build the Python package.
+  pip install --upgrade "build"
+  pip freeze
+  python -m build --outdir "${output_dir}"
 }
 
 main "$@"

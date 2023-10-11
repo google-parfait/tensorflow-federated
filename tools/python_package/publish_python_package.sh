@@ -13,32 +13,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# Tool to publish the TensorFlow Federated pip package.
+# Tool to publish the TensorFlow Federated Python package.
 set -e
 
 usage() {
   local script_name=$(basename "${0}")
   local options=(
-      "--python=python3.11"
       "--package=<path>"
   )
   echo "usage: ${script_name} ${options[@]}"
-  echo "  --python=python3.11  The Python version used by the environment to"
-  echo "                       build the Python package."
-  echo "  --package=<path>     A path to a local pip package."
-  exit 1
+  echo "  --package=<path>  A path to a local Python package."
 }
 
 main() {
   # Parse the arguments.
-  local python="python3.11"
   local package=""
 
   while [[ "$#" -gt 0 ]]; do
     option="$1"
     case "${option}" in
       --python=*)
-        python="${option#*=}"
         shift
         ;;
       --package=*)
@@ -48,46 +42,44 @@ main() {
       *)
         echo "error: unrecognized option '${option}'" 1>&2
         usage
+        exit 1
         ;;
     esac
   done
 
   if [[ -z "${package}" ]]; then
-    echo "error: required option `--package`" 1>&2
+    echo "error: expected a 'package'" 1>&2
     usage
+    exit 1
   elif [[ ! -f "${package}" ]]; then
-    echo "error: the file '${package}' does not exist" 1>&2
+    echo "error: expected the package '${package}' to exist" 1>&2
     usage
+    exit 1
   fi
 
   # Check Python package sizes.
   local actual_size="$(du -b "${package}" | cut -f1)"
   local maximum_size=80000000  # 80 MiB
-  if [ "${actual_size}" -ge "${maximum_size}" ]; then
-    echo "Error: expected $(basename ${package}) to be less than ${maximum_size} bytes; it was ${actual_size}." 1>&2
+  if [[ "${actual_size}" -ge "${maximum_size}" ]]; then
+    echo "error: expected '${package}' to be less than '${maximum_size}' bytes, it was '${actual_size}' bytes" 1>&2
     exit 1
   fi
 
-  # Create a working directory.
+  # Create a temp directory.
   local temp_dir="$(mktemp -d)"
   trap "rm -rf ${temp_dir}" EXIT
-  pushd "${temp_dir}"
 
   # Create a Python environment.
-  "${python}" -m venv "venv"
-  source "venv/bin/activate"
+  python3 -m venv "${temp_dir}/venv"
+  source "${temp_dir}/venv/bin/activate"
   python --version
   pip install --upgrade "pip"
   pip --version
 
   # Publish the Python package.
-  pip install --upgrade twine
+  pip install --upgrade "twine"
   twine check "${package}"
   twine upload "${package}"
-
-  # Cleanup.
-  deactivate
-  popd
 }
 
 main "$@"
