@@ -73,7 +73,7 @@ REQUIRED_PACKAGES = [
     'semantic-version~=2.6',
     'tensorflow-compression>=2.13.0,==2.13.*',
     'tensorflow-model-optimization==0.7.5',
-    'tensorflow-privacy==0.8.11',
+    'tensorflow-privacy==0.8.12',
     'tensorflow>=2.13.0,==2.13.*',
     'tqdm~=4.64',
     'typing-extensions>=4.5.0,==4.5.*',
