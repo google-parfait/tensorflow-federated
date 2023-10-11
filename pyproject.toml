@@ -1,0 +1,62 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tensorflow_federated"
+description = "TensorFlow Federated is an open-source federated learning framework."
+readme = "README.md"
+requires-python = ">=3.9.0,<3.11"
+license = {file = "LICENSE"}
+authors = [
+  { name="Google Inc.", email="packages@tensorflow.org" },
+]
+keywords = ["tensorflow", "federated", "machine", "learning"]
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Education",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: Apache Software License",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3 :: Only",
+  "Topic :: Scientific/Engineering",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+  "Topic :: Scientific/Engineering :: Mathematics",
+  "Topic :: Software Development",
+  "Topic :: Software Development :: Libraries",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+  "absl-py>=1.0,==1.*",
+  "attrs>=21.4",
+  "dm-tree==0.1.8",
+  "dp-accounting==0.4.3",
+  "immutabledict~=2.2",
+  "matplotlib~=3.3",
+  "numpy~=1.21",
+  "packaging~=22.0",
+  "pandas~=1.4",
+  "parameterized~=0.8",
+  "scikit-learn>=1.0,==1.*",
+  "scipy~=1.9",
+  "statsmodels~=0.13",
+  "tensorflow-datasets~=4.5",
+  "tensorflow-estimator~=2.4",
+  "tensorflow-probability~=0.20.0",
+  "tensorflow~=2.4",
+  "tf-models-official~=2.13",
+]
+dynamic = ["version"]
+
+[project.urls]
+"Issues" = "https://github.com/tensorflow/federated/issues"
+"Releases" = "https://github.com/tensorflow/federated/releases"
+"Source" = "https://github.com/tensorflow/federated"
+"Documentation" = "https://www.tensorflow.org/federated"
+
+[tool.setuptools.dynamic]
+version = {attr = "tensorflow_privacy/version.__version__"}

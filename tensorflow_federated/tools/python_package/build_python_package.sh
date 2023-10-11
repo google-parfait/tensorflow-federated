@@ -75,10 +75,11 @@ main() {
   ldd --version
 
   # Build the Python package.
-  pip install --upgrade setuptools wheel
+  pip install --upgrade build
   # The manylinux tag should match GLIBC version returned by `ldd --version`.
-  python "tensorflow_federated/tools/python_package/setup.py" bdist_wheel \
-      --plat-name=manylinux_2_31_x86_64
+  python -m build --wheel \
+      --config-setting="--global-option=--plat-name" \
+      --config-setting="--global-option=manylinux_2_31_x86_64"
   cp "${temp_dir}/dist/"* "${output_dir}"
 
   # Check Python package sizes.
