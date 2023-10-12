@@ -103,6 +103,7 @@ class TrainModelWithVizierTest(
     )
     mock_train_model_program_logic = mock.AsyncMock()
     mock_train_process = _create_mock_train_process()
+    mock_train_process_factory = mock.Mock(return_value=mock_train_process)
     mock_train_data_source = mock.create_autospec(
         data_source.FederatedDataSource, spec_set=True, instance=True
     )
@@ -143,7 +144,7 @@ class TrainModelWithVizierTest(
         num_parallel_trials=num_parallel_trials,
         update_hparams=mock_update_hparams,
         train_model_program_logic=mock_train_model_program_logic,
-        train_process=mock_train_process,
+        train_process_factory=mock_train_process_factory,
         train_data_source=mock_train_data_source,
         total_rounds=total_rounds,
         num_clients=num_clients,
@@ -167,6 +168,11 @@ class TrainModelWithVizierTest(
     # )
     # mock_program_state_manager_factory.assert_has_calls(expected_calls)
     # mock_learning_process.assert_has_calls(expected_calls)
+
+    # Assert that the `mock_train_process_factory` is invoked for each trial.
+    expected_calls = [mock.call(x) for x in mock_trials]
+    self.assertLen(mock_train_process_factory.mock_calls, len(expected_calls))
+    mock_train_process_factory.assert_has_calls(expected_calls)
 
     # Assert that the `mock_train_metrics_manager_factory` is invoked for each
     # trial.
