@@ -7,7 +7,7 @@ index ef32bdb19a8..7eac4b4ab75 100644
          "//platforms/performance/automl/...",
          "//tensorflow/...",
 -        "//tensorflow_federated/cc/core/impl/executors/...",
-+        "//...",
++        "public",
          "//tensorflow_models/...",
          "//third_party/deepmind/deepmind_research/density_functional_approximation_dm21/...",
          "//third_party/mlir_edge/model_curriculum/iree/...",

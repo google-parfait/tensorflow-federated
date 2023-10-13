@@ -7,6 +7,6 @@ index 841e31e31a5..3b1f3ad4b7f 100644
          "//tensorflow/dtensor/...",
          "//tensorflow/python/...",
 -        "//tensorflow_federated/...",  #  Needs access to C++ API for dtensor device
-+        "//...",  #  Needs access to C++ API for dtensor device
++        "public",  #  Needs access to C++ API for dtensor device
      ],
  )
