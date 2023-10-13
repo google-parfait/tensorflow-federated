@@ -1,6 +1,10 @@
 workspace(name = "org_tensorflow_federated")
 
-load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository", "new_git_repository")
+load(
+    "@bazel_tools//tools/build_defs/repo:git.bzl",
+    "git_repository",
+    "new_git_repository",
+)
 
 #
 # Direct dependencies
@@ -41,10 +45,11 @@ git_repository(
         # TODO: b/263201501 - Make DTensor C++ API public and remove this patch.
         "//third_party/tensorflow:dtensor_internal_visibility.patch",
         "//third_party/tensorflow:internal_visibility.patch",
+        "//third_party/tensorflow:python_toolchain.patch",
         "//third_party/tensorflow:tf2xla_visibility.patch",
     ],
     remote = "https://github.com/tensorflow/tensorflow.git",
-    tag = "v2.13.0",
+    tag = "v2.14.0",
 )
 
 git_repository(
@@ -73,10 +78,10 @@ git_repository(
 
 git_repository(
     name = "tensorflow_compression",
-    remote = "https://github.com/tensorflow/compression.git",
     # The version of this dependency should match the version in
     # https://github.com/tensorflow/federated/blob/main/requirements.txt.
-    tag = "v2.12.0",
+    commit="8137024697286624971adb8f6ee4dd3d35d83619",
+    remote = "https://github.com/tensorflow/compression.git",
 )
 
 #
@@ -96,23 +101,18 @@ new_git_repository(
 #
 
 load("@org_tensorflow//tensorflow:workspace3.bzl", "tf_workspace3")
-
 tf_workspace3()
 
 load("@org_tensorflow//tensorflow:workspace2.bzl", "tf_workspace2")
-
 tf_workspace2()
 
 load("@org_tensorflow//tensorflow:workspace1.bzl", "tf_workspace1")
-
 tf_workspace1()
 
 load("@org_tensorflow//tensorflow:workspace0.bzl", "tf_workspace0")
-
 tf_workspace0()
 
 load("@com_google_protobuf//:protobuf_deps.bzl", "protobuf_deps")
-
 protobuf_deps()
 
 git_repository(
@@ -122,12 +122,10 @@ git_repository(
 )
 
 load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps")
-
 grpc_deps()
 
 # TODO: b/260598663 - Temporarily disable the direct dependency on
 # `grpc_extra_deps`, for now we pick this dependency up via TensorFlows
 # workspace.
 # load("@com_github_grpc_grpc//bazel:grpc_extra_deps.bzl", "grpc_extra_deps")
-#
 # grpc_extra_deps()
