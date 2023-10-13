@@ -14,14 +14,15 @@
 
 import collections
 import dataclasses
-from typing import Any
 
 import attrs
 
 from tensorflow_federated.python.common_libs import py_typecheck
 
 
-def dataclass_to_odict(dataclass_obj: Any) -> collections.OrderedDict[str, Any]:
+def dataclass_to_odict(
+    dataclass_obj: object,
+) -> collections.OrderedDict[str, object]:
   """Shallow-copies a dataclass instance to an ordered dict."""
   py_typecheck.check_dataclass(dataclass_obj)
   # dataclasses guarantee field ordering.
@@ -33,8 +34,8 @@ def dataclass_to_odict(dataclass_obj: Any) -> collections.OrderedDict[str, Any]:
 
 
 def attrs_class_to_odict(
-    attr_class_obj: Any,
-) -> collections.OrderedDict[Any, Any]:
+    attr_class_obj: object,
+) -> collections.OrderedDict[str, object]:
   """Shallow-copies an attr-class object to an ordered dict."""
   py_typecheck.check_attrs(attr_class_obj)
   odict = collections.OrderedDict(attrs.asdict(attr_class_obj, recurse=False))
