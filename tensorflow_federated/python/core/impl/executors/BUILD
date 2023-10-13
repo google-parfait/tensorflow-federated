@@ -191,7 +191,6 @@ py_library(
         ":executor_factory",
         ":ingestable_base",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
-        "//tensorflow_federated/python/common_libs:serialization_utils",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/compiler:computation_factory",
         "//tensorflow_federated/python/core/impl/compiler:intrinsic_defs",
@@ -204,6 +203,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:type_factory",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
         "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
+        "//tensorflow_federated/python/tensorflow_libs:serialization_utils",
     ],
 )
 

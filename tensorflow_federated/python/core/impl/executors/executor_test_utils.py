@@ -18,7 +18,6 @@ import asyncio
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
-from tensorflow_federated.python.common_libs import serialization_utils
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.compiler import computation_factory
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
@@ -35,6 +34,7 @@ from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.types import type_factory
 from tensorflow_federated.python.core.impl.types import type_serialization
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
+from tensorflow_federated.python.tensorflow_libs import serialization_utils
 
 
 class BasicTestExFactory(executor_factory.ExecutorFactory):
@@ -561,7 +561,3 @@ def create_whimsy_value_unplaced():
   value = 10.0
   type_signature = computation_types.TensorType(tf.float32)
   return value, type_signature
-
-
-def _return_assertion_error():
-  return AssertionError
