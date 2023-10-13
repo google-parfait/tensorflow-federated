@@ -68,7 +68,7 @@ git_repository(
 git_repository(
     name = "rules_python",
     remote = "https://github.com/bazelbuild/rules_python.git",
-    tag = "0.5.0",
+    tag = "0.26.0",
 )
 
 git_repository(
