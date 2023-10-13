@@ -370,9 +370,9 @@ _Dtype = Union[
 
 def _is_dtype(obj: object) -> TypeGuard[_Dtype]:
   """Returns `True` if `obj` is a dtype, otherwise `False`."""
-  return isinstance(obj, (tf.dtypes.DType, np.dtype)) or (
-      isinstance(obj, type) and issubclass(obj, np.number)
-  )
+  if isinstance(obj, type) and issubclass(obj, np.generic):
+    return True
+  return isinstance(obj, (tf.dtypes.DType, np.dtype))
 
 
 class TensorType(Type, metaclass=_Intern):

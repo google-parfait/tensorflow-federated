@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from absl.testing import absltest
-import tensorflow as tf
+import numpy as np
 
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.computation import computation_wrapper
@@ -28,7 +28,7 @@ class FederatedComputationWrapperTest(absltest.TestCase):
   def test_federated_computation_wrapper(self):
 
     @federated_computation.federated_computation(
-        (computation_types.FunctionType(tf.int32, tf.int32), tf.int32)
+        (computation_types.FunctionType(np.int32, np.int32), np.int32)
     )
     def foo(f, x):
       return f(f(x))
