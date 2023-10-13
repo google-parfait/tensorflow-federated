@@ -32,7 +32,7 @@ py_library(
     deps = [
         ":building_blocks",
         "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/common_libs:serialization_utils",
+        "//tensorflow_federated/python/tensorflow_libs:serialization_utils",
     ],
 )
 
@@ -44,10 +44,10 @@ py_test(
         ":building_block_analysis",
         ":building_blocks",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
-        "//tensorflow_federated/python/common_libs:serialization_utils",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
         "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
+        "//tensorflow_federated/python/tensorflow_libs:serialization_utils",
     ],
 )
 
@@ -61,7 +61,6 @@ py_library(
         ":transformation_utils",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/common_libs:serialization_utils",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
@@ -70,6 +69,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:type_serialization",
         "//tensorflow_federated/python/core/impl/types:type_transformations",
         "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
+        "//tensorflow_federated/python/tensorflow_libs:serialization_utils",
     ],
 )
 
@@ -191,10 +191,10 @@ py_library(
         ":transformation_utils",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/common_libs:serialization_utils",
         "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
         "//tensorflow_federated/python/tensorflow_libs:graph_optimizations",
         "//tensorflow_federated/python/tensorflow_libs:graph_spec",
+        "//tensorflow_federated/python/tensorflow_libs:serialization_utils",
     ],
 )
 
@@ -270,7 +270,6 @@ py_library(
         ":local_computation_factory_base",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/common_libs:serialization_utils",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_analysis",
@@ -278,6 +277,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:type_serialization",
         "//tensorflow_federated/python/core/impl/types:type_transformations",
         "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
+        "//tensorflow_federated/python/tensorflow_libs:serialization_utils",
     ],
 )
 
@@ -301,7 +301,7 @@ py_library(
     deps = [
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/common_libs:serialization_utils",
+        "//tensorflow_federated/python/tensorflow_libs:serialization_utils",
     ],
 )
 
@@ -326,10 +326,10 @@ py_test(
         ":building_block_factory",
         ":tensorflow_computation_transformations",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
-        "//tensorflow_federated/python/common_libs:serialization_utils",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
         "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
+        "//tensorflow_federated/python/tensorflow_libs:serialization_utils",
     ],
 )
 
@@ -403,10 +403,10 @@ py_library(
         ":intrinsic_defs",
         ":transformation_utils",
         "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/common_libs:serialization_utils",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/impl/types:type_analysis",
+        "//tensorflow_federated/python/tensorflow_libs:serialization_utils",
     ],
 )
 
@@ -421,11 +421,11 @@ py_test(
         ":intrinsic_defs",
         ":tree_analysis",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
-        "//tensorflow_federated/python/common_libs:serialization_utils",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
         "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
+        "//tensorflow_federated/python/tensorflow_libs:serialization_utils",
     ],
 )
 

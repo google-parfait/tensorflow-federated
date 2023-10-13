@@ -70,6 +70,25 @@ py_test(
 )
 
 py_library(
+    name = "serialization_utils",
+    srcs = ["serialization_utils.py"],
+    deps = [
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "@com_google_protobuf//:protobuf_python",
+    ],
+)
+
+py_test(
+    name = "serialization_utils_test",
+    size = "small",
+    srcs = ["serialization_utils_test.py"],
+    deps = [
+        ":serialization_utils",
+        "@com_google_protobuf//:protobuf_python",
+    ],
+)
+
+py_library(
     name = "tensor_utils",
     srcs = ["tensor_utils.py"],
     deps = ["//tensorflow_federated/python/common_libs:py_typecheck"],

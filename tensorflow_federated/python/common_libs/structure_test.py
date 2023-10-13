@@ -13,7 +13,9 @@
 # limitations under the License.
 
 import collections
+import operator
 
+from absl.testing import absltest
 from absl.testing import parameterized
 import attrs
 import tensorflow as tf
@@ -21,7 +23,7 @@ import tensorflow as tf
 from tensorflow_federated.python.common_libs import structure
 
 
-class StructTest(tf.test.TestCase, parameterized.TestCase):
+class StructTest(parameterized.TestCase):
 
   def test_new_named(self):
     x = structure.Struct.named(a=1, b=4)
@@ -366,9 +368,8 @@ class StructTest(tf.test.TestCase, parameterized.TestCase):
         c=2,
     )
 
-    add = lambda v1, v2: v1 + v2
     self.assertEqual(
-        structure.map_structure(add, x, y),
+        structure.map_structure(operator.add, x, y),
         structure.Struct.named(
             a=11,
             b=structure.Struct.named(
@@ -384,20 +385,20 @@ class StructTest(tf.test.TestCase, parameterized.TestCase):
     x = structure.Struct.named(a=10, c=20)
     y = structure.Struct.named(a=30)
     with self.assertRaises(TypeError):
-      structure.map_structure(tf.add, x, y)
+      structure.map_structure(operator.add, x, y)
     x = structure.Struct.named(a=10)
     y = structure.Struct.named(a=30, c=tf.strings.bytes_split('abc'))
     with self.assertRaises(TypeError):
-      structure.map_structure(tf.add, x, y)
+      structure.map_structure(operator.add, x, y)
 
   def test_map_structure_tensors(self):
     x = tf.constant(1)
     y = tf.constant(2)
-    self.assertAllEqual(structure.map_structure(tf.add, x, y), 3)
+    self.assertAllEqual(structure.map_structure(operator.add, x, y), 3)
     x = tf.strings.bytes_split('abc')
     y = tf.strings.bytes_split('xyz')
     self.assertAllEqual(
-        structure.map_structure(tf.add, x, y), ['ax', 'by', 'cz']
+        structure.map_structure(operator.add, x, y), ['ax', 'by', 'cz']
     )
 
   def test_from_container_with_none(self):
@@ -651,4 +652,4 @@ class StructTest(tf.test.TestCase, parameterized.TestCase):
 
 
 if __name__ == '__main__':
-  tf.test.main()
+  absltest.main()
