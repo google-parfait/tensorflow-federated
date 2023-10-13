@@ -27,13 +27,13 @@ import tensorflow as tf
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import named_containers
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.common_libs import serialization_utils
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.types import type_serialization
 from tensorflow_federated.python.tensorflow_libs import graph_utils
+from tensorflow_federated.python.tensorflow_libs import serialization_utils
 
 TENSOR_REPRESENTATION_TYPES = (
     # Python native types
@@ -409,14 +409,12 @@ def compute_map_from_bindings(source, target):
           )
       )
     if sequence_oneof == 'variant_tensor_name':
-      return collections.OrderedDict(
-          [
-              (
-                  str(source.sequence.variant_tensor_name),
-                  str(target.sequence.variant_tensor_name),
-              ),
-          ]
-      )
+      return collections.OrderedDict([
+          (
+              str(source.sequence.variant_tensor_name),
+              str(target.sequence.variant_tensor_name),
+          ),
+      ])
     else:
       raise ValueError('Unsupported sequence binding {}'.format(sequence_oneof))
   elif source_oneof == 'struct':

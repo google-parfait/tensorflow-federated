@@ -119,25 +119,6 @@ py_library(
 )
 
 py_library(
-    name = "serialization_utils",
-    srcs = ["serialization_utils.py"],
-    deps = [
-        ":py_typecheck",
-        "@com_google_protobuf//:protobuf_python",
-    ],
-)
-
-py_test(
-    name = "serialization_utils_test",
-    size = "small",
-    srcs = ["serialization_utils_test.py"],
-    deps = [
-        ":serialization_utils",
-        "@com_google_protobuf//:protobuf_python",
-    ],
-)
-
-py_library(
     name = "structure",
     srcs = ["structure.py"],
     deps = [":py_typecheck"],
