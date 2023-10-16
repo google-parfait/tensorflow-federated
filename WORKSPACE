@@ -1,6 +1,10 @@
 workspace(name = "org_tensorflow_federated")
 
-load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository", "new_git_repository")
+load(
+    "@bazel_tools//tools/build_defs/repo:git.bzl",
+    "git_repository",
+    "new_git_repository",
+)
 
 #
 # Direct dependencies
@@ -41,10 +45,11 @@ git_repository(
         # TODO: b/263201501 - Make DTensor C++ API public and remove this patch.
         "//third_party/tensorflow:dtensor_internal_visibility.patch",
         "//third_party/tensorflow:internal_visibility.patch",
+        "//third_party/tensorflow:python_toolchain.patch",
         "//third_party/tensorflow:tf2xla_visibility.patch",
     ],
     remote = "https://github.com/tensorflow/tensorflow.git",
-    tag = "v2.13.0",
+    tag = "v2.14.0",
 )
 
 git_repository(
@@ -76,7 +81,7 @@ git_repository(
     remote = "https://github.com/tensorflow/compression.git",
     # The version of this dependency should match the version in
     # https://github.com/tensorflow/federated/blob/main/requirements.txt.
-    tag = "v2.12.0",
+    tag = "v2.14.0",
 )
 
 #

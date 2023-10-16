@@ -40,12 +40,12 @@ portpicker~=1.6
 scipy~=1.9.3
 semantic-version~=2.6
 tensorflow-model-optimization==0.7.5
-tensorflow-privacy==0.8.11
+tensorflow-privacy==0.8.12
 tqdm~=4.64
 typing-extensions>=4.5.0,==4.5.*
 
 # Requires TF x.y.* for ABI compatibility.
-tensorflow-compression>=2.13.0,==2.13.*
+tensorflow-compression>=2.14.0,==2.14.*
 # The version of this dependency should match the version in
 # https://github.com/tensorflow/federated/blob/main/WORKSPACE.
-tensorflow>=2.13.0,==2.13.*
+tensorflow>=2.14.0,==2.14.*
