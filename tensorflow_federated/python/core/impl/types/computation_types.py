@@ -382,8 +382,12 @@ class TensorType(Type, metaclass=_Intern):
   def _hashable_from_init_args(
       cls,
       dtype: _Dtype,
-      shape: Union[tf.TensorShape, Optional[Sequence[Optional[int]]]] = (),
+      shape: Union[
+          tf.TensorShape,
+          Optional[Union[Sequence[Optional[int]], int]],
+      ] = (),
   ) -> Hashable:
+    """Returns hashable `TensorType.__init__` args."""
     if not isinstance(dtype, tf.dtypes.DType):
       dtype = tf.dtypes.as_dtype(dtype)
     if not isinstance(shape, tf.TensorShape):
@@ -393,7 +397,10 @@ class TensorType(Type, metaclass=_Intern):
   def __init__(
       self,
       dtype: _Dtype,
-      shape: Union[tf.TensorShape, Optional[Sequence[Optional[int]]]] = (),
+      shape: Union[
+          tf.TensorShape,
+          Optional[Union[Sequence[Optional[int]], int]],
+      ] = (),
   ):
     """Constructs a new instance from the given `dtype` and `shape`.
 
