@@ -117,6 +117,12 @@ def main(argv: Sequence[str]) -> None:
       learning_process.create_learning_processes(input_spec)
   )
 
+  def _train_process_factory(
+      trial: client_abc.TrialInterface,
+  ) -> tff.learning.templates.LearningProcess:
+    del trial  # Unused
+    return train_process
+
   def _model_output_manager_factory(
       trial: client_abc.TrialInterface,
   ) -> tff.program.ReleaseManager[tff.program.ReleasableStructure, str]:
@@ -180,7 +186,7 @@ def main(argv: Sequence[str]) -> None:
           total_trials=_MAX_NUM_TRIALS,
           update_hparams=_update_hparams,
           train_model_program_logic=tff.learning.programs.train_model,
-          train_process=train_process,
+          train_process_factory=_train_process_factory,
           train_data_source=data_source,
           total_rounds=_TOTAL_ROUNDS,
           num_clients=_NUM_CLIENTS,

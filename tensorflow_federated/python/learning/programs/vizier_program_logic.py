@@ -66,6 +66,14 @@ class EvaluationManagerFactory(Protocol):
     pass
 
 
+class TrainProcessFactory(Protocol):
+
+  def __call__(
+      self, trial: client_abc.TrialInterface
+  ) -> learning_process.LearningProcess:
+    pass
+
+
 async def _create_measurement(
     value: value_reference.MaterializableStructure,
     steps: int,
@@ -150,7 +158,7 @@ async def train_model_with_vizier(
     num_parallel_trials: int = 1,
     update_hparams: computation_base.Computation,
     train_model_program_logic: program_logic.TrainModelProgramLogic,
-    train_process: learning_process.LearningProcess,
+    train_process_factory: TrainProcessFactory,
     train_data_source: data_source.FederatedDataSource,
     total_rounds: int,
     num_clients: int,
@@ -171,8 +179,8 @@ async def train_model_with_vizier(
       using a trials parameters.
     train_model_program_logic: The program logic to use for training and
       evaluating the model.
-    train_process: A `tff.learning.templates.LearningProcess` to run for
-      training.
+    train_process_factory: A factory for creating
+      `tff.learning.templates.LearningProcess` to run for training.
     train_data_source: A `tff.program.FederatedDataSource` which returns client
       data used during training.
     total_rounds: The number of rounds of training.
@@ -201,6 +209,7 @@ async def train_model_with_vizier(
         break
       trial = list(trials)[0]
 
+      train_process = train_process_factory(trial)
       initial_train_state = train_process.initialize()
       hparams = train_process.get_hparams(initial_train_state)
       hparams = update_hparams(
