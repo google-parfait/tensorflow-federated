@@ -346,13 +346,13 @@ class TestClientDataTest(tf.test.TestCase, parameterized.TestCase):
                 (
                     'y',
                     computation_types.TensorType(
-                        client_data.element_type_structure['y'].dtype, None
+                        client_data.element_type_structure['y'].dtype,
                     ),
                 ),
                 (
                     'z',
                     computation_types.TensorType(
-                        client_data.element_type_structure['z'].dtype, None
+                        client_data.element_type_structure['z'].dtype,
                     ),
                 ),
             ])

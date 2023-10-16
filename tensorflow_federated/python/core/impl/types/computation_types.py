@@ -16,7 +16,7 @@
 import abc
 import atexit
 import collections
-from collections.abc import Hashable, Iterable, Iterator, Mapping, MutableMapping
+from collections.abc import Hashable, Iterable, Iterator, Mapping, MutableMapping, Sequence
 import difflib
 import enum
 from typing import Optional, TypeVar, Union
@@ -380,24 +380,27 @@ class TensorType(Type, metaclass=_Intern):
 
   @classmethod
   def _hashable_from_init_args(
-      cls, dtype: _Dtype, shape: Optional[object] = None
+      cls,
+      dtype: _Dtype,
+      shape: Union[tf.TensorShape, Optional[Sequence[Optional[int]]]] = (),
   ) -> Hashable:
     if not isinstance(dtype, tf.dtypes.DType):
       dtype = tf.dtypes.as_dtype(dtype)
-    if shape is None:
-      shape = tf.TensorShape([])
-    elif not isinstance(shape, tf.TensorShape):
+    if not isinstance(shape, tf.TensorShape):
       shape = tf.TensorShape(shape)
     return (dtype, shape)
 
-  def __init__(self, dtype: _Dtype, shape: Optional[object] = None):
+  def __init__(
+      self,
+      dtype: _Dtype,
+      shape: Union[tf.TensorShape, Optional[Sequence[Optional[int]]]] = (),
+  ):
     """Constructs a new instance from the given `dtype` and `shape`.
 
     Args:
       dtype: An instance of `tf.dtypes.DType` or one of the Numpy numeric types.
-      shape: An optional instance of `tf.TensorShape` or an argument that can be
-        passed to its constructor (such as a `list` or a `tuple`). `None` yields
-        the default scalar shape.
+      shape: An instance of `tf.TensorShape` or an argument that can be passed
+        to its constructor (such as a `list` or a `tuple`).
 
     Raises:
       TypeError: if arguments are of the wrong types.
@@ -405,9 +408,7 @@ class TensorType(Type, metaclass=_Intern):
     if not isinstance(dtype, tf.dtypes.DType):
       dtype = tf.dtypes.as_dtype(dtype)
     self._dtype = dtype
-    if shape is None:
-      shape = tf.TensorShape([])
-    elif not isinstance(shape, tf.TensorShape):
+    if not isinstance(shape, tf.TensorShape):
       shape = tf.TensorShape(shape)
     self._shape = shape
 
