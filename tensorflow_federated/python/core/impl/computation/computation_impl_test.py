@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from absl.testing import absltest
-import tensorflow as tf
+import numpy as np
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.core.impl.compiler import building_blocks
@@ -36,7 +36,7 @@ class ConcreteComputationTest(absltest.TestCase):
         pb.Computation(
             **{
                 'type': type_serialization.serialize_type(
-                    computation_types.FunctionType(tf.int32, tf.int32)
+                    computation_types.FunctionType(np.int32, np.int32)
                 ),
                 'intrinsic': pb.Intrinsic(uri='whatever'),
             }
@@ -62,7 +62,7 @@ class ConcreteComputationTest(absltest.TestCase):
 
   def test_with_type_preserves_python_container(self):
     struct_return_type = computation_types.FunctionType(
-        tf.int32, computation_types.StructType([(None, tf.int32)])
+        np.int32, computation_types.StructType([(None, np.int32)])
     )
     original_comp = computation_impl.ConcreteComputation(
         pb.Computation(
@@ -75,8 +75,8 @@ class ConcreteComputationTest(absltest.TestCase):
     )
 
     list_return_type = computation_types.FunctionType(
-        tf.int32,
-        computation_types.StructWithPythonType([(None, tf.int32)], list),
+        np.int32,
+        computation_types.StructWithPythonType([(None, np.int32)], list),
     )
     fn_with_annotated_type = computation_impl.ConcreteComputation.with_type(
         original_comp, list_return_type
@@ -86,7 +86,7 @@ class ConcreteComputationTest(absltest.TestCase):
     )
 
   def test_with_type_raises_non_assignable_type(self):
-    int_return_type = computation_types.FunctionType(tf.int32, tf.int32)
+    int_return_type = computation_types.FunctionType(np.int32, np.int32)
     original_comp = computation_impl.ConcreteComputation(
         pb.Computation(
             **{
@@ -98,8 +98,8 @@ class ConcreteComputationTest(absltest.TestCase):
     )
 
     list_return_type = computation_types.FunctionType(
-        tf.int32,
-        computation_types.StructWithPythonType([(None, tf.int32)], list),
+        np.int32,
+        computation_types.StructWithPythonType([(None, np.int32)], list),
     )
     with self.assertRaises(computation_types.TypeNotAssignableError):
       computation_impl.ConcreteComputation.with_type(
@@ -115,7 +115,7 @@ class FromBuildingBlockTest(absltest.TestCase):
 
   def test_converts_building_block_to_computation(self):
     buiding_block = building_blocks.Lambda(
-        'x', tf.int32, building_blocks.Reference('x', tf.int32)
+        'x', np.int32, building_blocks.Reference('x', np.int32)
     )
     computation = computation_impl.ConcreteComputation.from_building_block(
         buiding_block

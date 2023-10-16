@@ -17,7 +17,7 @@ import inspect
 
 from absl.testing import absltest
 from absl.testing import parameterized
-import tensorflow as tf
+import numpy as np
 
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.computation import function_utils
@@ -30,20 +30,20 @@ class FunctionUtilsTest(parameterized.TestCase):
   @parameterized.named_parameters(
       ('args_only',
        inspect.signature(lambda a: None),
-       [tf.int32],
+       [np.int32],
        collections.OrderedDict()),
       ('args_and_kwargs_unnamed',
        inspect.signature(lambda a, b=True: None),
-       [tf.int32, tf.bool],
+       [np.int32, np.bool_],
        collections.OrderedDict()),
       ('args_and_kwargs_named',
        inspect.signature(lambda a, b=True: None),
-       [tf.int32],
-       collections.OrderedDict(b=tf.bool)),
+       [np.int32],
+       collections.OrderedDict(b=np.bool_)),
       ('args_and_kwargs_default_int',
        inspect.signature(lambda a=10, b=True: None),
-       [tf.int32],
-       collections.OrderedDict(b=tf.bool)),
+       [np.int32],
+       collections.OrderedDict(b=np.bool_)),
   )
   # pyformat: enable
   def test_is_signature_compatible_with_types_true(
@@ -59,12 +59,12 @@ class FunctionUtilsTest(parameterized.TestCase):
   @parameterized.named_parameters(
       ('args_only',
        inspect.signature(lambda a=True: None),
-       [tf.int32],
+       [np.int32],
        collections.OrderedDict()),
       ('args_and_kwargs',
        inspect.signature(lambda a=10, b=True: None),
-       [tf.bool],
-       collections.OrderedDict(b=tf.bool)),
+       [np.bool_],
+       collections.OrderedDict(b=np.bool_)),
   )
   # pyformat: enable
   def test_is_signature_compatible_with_types_false(
@@ -78,11 +78,11 @@ class FunctionUtilsTest(parameterized.TestCase):
 
   # pyformat: disable
   @parameterized.named_parameters(
-      ('int', tf.int32, False),
-      ('tuple_unnamed', [tf.int32, tf.int32], True),
-      ('tuple_partially_named', [tf.int32, ('b', tf.int32)], True),
-      ('tuple_named', [('a', tf.int32), ('b', tf.int32)], True),
-      ('tuple_partially_named_kwargs_first', [('a', tf.int32), tf.int32],
+      ('int', np.int32, False),
+      ('tuple_unnamed', [np.int32, np.int32], True),
+      ('tuple_partially_named', [np.int32, ('b', np.int32)], True),
+      ('tuple_named', [('a', np.int32), ('b', np.int32)], True),
+      ('tuple_partially_named_kwargs_first', [('a', np.int32), np.int32],
        False),
       ('struct', structure.Struct([(None, 1), ('a', 2)]), True),
       ('struct_kwargs_first', structure.Struct([('a', 1), (None, 2)]), False))
@@ -107,13 +107,13 @@ class FunctionUtilsTest(parameterized.TestCase):
 
   # pyformat: disable
   @parameterized.named_parameters(
-      ('tuple_unnamed_1', [tf.int32], [tf.int32], {}),
-      ('tuple_named_1', [('a', tf.int32)], [], {'a': tf.int32}),
-      ('tuple_unnamed_2', [tf.int32, tf.bool], [tf.int32, tf.bool], {}),
+      ('tuple_unnamed_1', [np.int32], [np.int32], {}),
+      ('tuple_named_1', [('a', np.int32)], [], {'a': np.int32}),
+      ('tuple_unnamed_2', [np.int32, np.bool_], [np.int32, np.bool_], {}),
       ('tuple_partially_named',
-       [tf.int32, ('b', tf.bool)], [tf.int32], {'b': tf.bool}),
+       [np.int32, ('b', np.bool_)], [np.int32], {'b': np.bool_}),
       ('tuple_named_2',
-       [('a', tf.int32), ('b', tf.bool)], [], {'a': tf.int32, 'b': tf.bool}),
+       [('a', np.int32), ('b', np.bool_)], [], {'a': np.int32, 'b': np.bool_}),
   )
   # pyformat: enable
   def test_unpack_args_from_struct_type(
@@ -167,17 +167,17 @@ class FunctionUtilsTest(parameterized.TestCase):
 
   # pyformat: disable
   @parameterized.named_parameters(
-      ('int', [1], {}, [tf.int32], [(None, 1)]),
+      ('int', [1], {}, [np.int32], [(None, 1)]),
       ('tuple_unnamed_with_args',
-       [1, True], {}, [tf.int32, tf.bool], [(None, 1), (None, True)]),
+       [1, True], {}, [np.int32, np.bool_], [(None, 1), (None, True)]),
       ('tuple_named_with_args', [1, True], {},
-       [('x', tf.int32), ('y', tf.bool)], [('x', 1), ('y', True)]),
+       [('x', np.int32), ('y', np.bool_)], [('x', 1), ('y', True)]),
       ('tuple_named_with_args_and_kwargs', [1], {'y': True},
-       [('x', tf.int32), ('y', tf.bool)], [('x', 1), ('y', True)]),
+       [('x', np.int32), ('y', np.bool_)], [('x', 1), ('y', True)]),
       ('tuple_with_kwargs', [], {'x': 1, 'y': True},
-       [('x', tf.int32), ('y', tf.bool)], [('x', 1), ('y', True)]),
+       [('x', np.int32), ('y', np.bool_)], [('x', 1), ('y', True)]),
       ('tuple_with_args_odict', [], collections.OrderedDict([('y', True), ('x', 1)]),
-       [('x', tf.int32), ('y', tf.bool)], [('x', 1), ('y', True)]))
+       [('x', np.int32), ('y', np.bool_)], [('x', 1), ('y', True)]))
   # pyformat: enable
   def test_pack_args_into_struct_with_type_spec_expect_success(
       self, args, kwargs, type_spec, elements
@@ -190,19 +190,19 @@ class FunctionUtilsTest(parameterized.TestCase):
   def test_pack_args_into_struct_named_to_unnamed_fails(self):
     with self.assertRaises(TypeError):
       function_utils.pack_args_into_struct(
-          [], {'x': 1, 'y': True}, [tf.int32, tf.bool]
+          [], {'x': 1, 'y': True}, [np.int32, np.bool_]
       )
 
   # pyformat: disable
   @parameterized.named_parameters(
       ('none', None, [], {}, 'None'),
-      ('int', tf.int32, [1], {}, '1'),
-      ('tuple_unnamed', [tf.int32, tf.bool], [1, True], {}, '<1,True>'),
-      ('tuple_named_with_args', [('x', tf.int32), ('y', tf.bool)], [1, True],
+      ('int', np.int32, [1], {}, '1'),
+      ('tuple_unnamed', [np.int32, np.bool_], [1, True], {}, '<1,True>'),
+      ('tuple_named_with_args', [('x', np.int32), ('y', np.bool_)], [1, True],
        {}, '<x=1,y=True>'),
-      ('tuple_named_with_kwargs', [('x', tf.int32), ('y', tf.bool)], [1],
+      ('tuple_named_with_kwargs', [('x', np.int32), ('y', np.bool_)], [1],
        {'y': True}, '<x=1,y=True>'),
-      ('tuple_with_args_struct', [tf.int32, tf.bool],
+      ('tuple_with_args_struct', [np.int32, np.bool_],
        [structure.Struct([(None, 1), (None, True)])], {}, '<1,True>'))
   # pyformat: enable
   def test_pack_args(self, parameter_type, args, kwargs, expected_value_string):
@@ -217,31 +217,31 @@ class FunctionUtilsTest(parameterized.TestCase):
       ('add_const', lambda x=1: x + 10, None, None, None, 11),
       ('add_const_with_type',
        lambda x=1: x + 10,
-       computation_types.TensorType(tf.int32),
+       computation_types.TensorType(np.int32),
        None,
        20,
        30),
       ('add',
        lambda x, y: x + y,
-       computation_types.StructType([tf.int32, tf.int32]),
+       computation_types.StructType([np.int32, np.int32]),
        None,
        structure.Struct([('x', 5), ('y', 6)]),
        11),
       ('str_tuple',
        lambda *args: str(args),
-       computation_types.StructType([tf.int32, tf.int32]),
+       computation_types.StructType([np.int32, np.int32]),
        True,
        structure.Struct([(None, 5), (None, 6)]),
        '(5, 6)'),
       ('str_tuple_with_named_type',
        lambda *args: str(args),
-       computation_types.StructType([('x', tf.int32), ('y', tf.int32)]),
+       computation_types.StructType([('x', np.int32), ('y', np.int32)]),
        False,
        structure.Struct([('x', 5), ('y', 6)]),
        '(Struct([(\'x\', 5), (\'y\', 6)]),)'),
       ('str_ing',
        lambda x: str(x),  # pylint: disable=unnecessary-lambda
-       computation_types.StructWithPythonType([tf.int32], list),
+       computation_types.StructWithPythonType([np.int32], list),
        None,
        structure.Struct([(None, 10)]),
        '[10]'),
