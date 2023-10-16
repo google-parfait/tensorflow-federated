@@ -439,51 +439,57 @@ def _client_tensor_shift_for_secure_sum(value, lower_bound, upper_bound):
   Returns:
     Shifted value of dtype `tf.int64`.
   """
-  tf.debugging.assert_less_equal(
-      lower_bound,
-      upper_bound,
-      message=(
-          'lower_bound must be smaller than upper_bound for secagg quantization'
-      ),
-  )
-  if value.dtype == tf.int32:
-    clipped_val = tf.clip_by_value(value, lower_bound, upper_bound)
-    # Cast BEFORE shift in order to avoid overflow if full int32 range is used.
-    return tf.cast(clipped_val, tf.int64) - tf.cast(lower_bound, tf.int64)
-  elif value.dtype == tf.int64:
-    clipped_val = tf.clip_by_value(value, lower_bound, upper_bound)
-    range_span = upper_bound - lower_bound
-    scale_factor = tf.math.floordiv(range_span, _SECAGG_MAX) + 1
-    shifted_value = tf.cond(
-        tf.greater(scale_factor, 1),
-        lambda: tf.math.floordiv(clipped_val - lower_bound, scale_factor),
-        lambda: clipped_val - lower_bound,
-    )
-    return shifted_value
-  else:
-    # This should be ensured earlier and thus not user-facing.
-    assert value.dtype in [tf.float32, tf.float64]
-    clipped_value = tf.clip_by_value(value, lower_bound, upper_bound)
-    # Prevent NaNs if `lower_bound` and `upper_bound` are the same.
-    scale_factor = tf.math.divide_no_nan(
-        tf.constant(_SECAGG_MAX, tf.float64),
-        tf.cast(upper_bound - lower_bound, tf.float64),
-    )
-    scaled_value = tf.cast(clipped_value, tf.float64) * scale_factor
-    # Perform deterministic rounding here, which may introduce bias as every
-    # value may be rounded in the same direction for some input data.
-    rounded_value = tf.saturate_cast(tf.round(scaled_value), tf.int64)
-    # Perform shift in integer space to minimize float precision errors.
-    shifted_value = rounded_value - tf.saturate_cast(
-        tf.round(tf.cast(lower_bound, tf.float64) * scale_factor), tf.int64
-    )
-    # Clip to expected range in case of numerical stability issues.
-    quantized_value = tf.clip_by_value(
-        shifted_value,
-        tf.constant(0, dtype=tf.int64),
-        tf.constant(_SECAGG_MAX, dtype=tf.int64),
-    )
-    return quantized_value
+  with tf.control_dependencies(
+      [
+          tf.debugging.assert_less_equal(
+              lower_bound,
+              upper_bound,
+              message=(
+                  'lower_bound must be smaller than upper_bound for secagg'
+                  ' quantization'
+              ),
+          )
+      ]
+  ):
+    if value.dtype == tf.int32:
+      clipped_val = tf.clip_by_value(value, lower_bound, upper_bound)
+      # Cast BEFORE shift in order to avoid overflow if full int32 range is
+      # used.
+      return tf.cast(clipped_val, tf.int64) - tf.cast(lower_bound, tf.int64)
+    elif value.dtype == tf.int64:
+      clipped_val = tf.clip_by_value(value, lower_bound, upper_bound)
+      range_span = upper_bound - lower_bound
+      scale_factor = tf.math.floordiv(range_span, _SECAGG_MAX) + 1
+      shifted_value = tf.cond(
+          tf.greater(scale_factor, 1),
+          lambda: tf.math.floordiv(clipped_val - lower_bound, scale_factor),
+          lambda: clipped_val - lower_bound,
+      )
+      return shifted_value
+    else:
+      # This should be ensured earlier and thus not user-facing.
+      assert value.dtype in [tf.float32, tf.float64]
+      clipped_value = tf.clip_by_value(value, lower_bound, upper_bound)
+      # Prevent NaNs if `lower_bound` and `upper_bound` are the same.
+      scale_factor = tf.math.divide_no_nan(
+          tf.constant(_SECAGG_MAX, tf.float64),
+          tf.cast(upper_bound - lower_bound, tf.float64),
+      )
+      scaled_value = tf.cast(clipped_value, tf.float64) * scale_factor
+      # Perform deterministic rounding here, which may introduce bias as every
+      # value may be rounded in the same direction for some input data.
+      rounded_value = tf.saturate_cast(tf.round(scaled_value), tf.int64)
+      # Perform shift in integer space to minimize float precision errors.
+      shifted_value = rounded_value - tf.saturate_cast(
+          tf.round(tf.cast(lower_bound, tf.float64) * scale_factor), tf.int64
+      )
+      # Clip to expected range in case of numerical stability issues.
+      quantized_value = tf.clip_by_value(
+          shifted_value,
+          tf.constant(0, dtype=tf.int64),
+          tf.constant(_SECAGG_MAX, dtype=tf.int64),
+      )
+      return quantized_value
 
 
 @tf.function

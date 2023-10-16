@@ -598,7 +598,6 @@ class CompilerIntegrationTest(parameterized.TestCase):
     )
 
   def test_ddp_secure_aggregator(self):
-    self.skipTest('b/305747127')
     aggregator = model_update_aggregator.ddp_secure_aggregator(
         noise_multiplier=1e-2, expected_clients_per_round=10
     ).create(_FLOAT_MATRIX_TYPE)

@@ -380,8 +380,10 @@ def _stochastic_rounding(
         'beta to 0.0. See the initializer docstring of the aggregator for '
         'more details.'
     )
-    tf.debugging.assert_less_equal(tries, max_tries, message)
-    tries += 1
-    rounded_x = try_rounding(tries)
+    with tf.control_dependencies(
+        [tf.debugging.assert_less_equal(tries, max_tries, message)]
+    ):
+      tries += 1
+      rounded_x = try_rounding(tries)
 
   return rounded_x
