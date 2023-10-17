@@ -18,7 +18,7 @@ git_repository(
 
 git_repository(
     name = "com_google_absl",
-    commit = "66665d8d2e3fedff340b83f9841ca427145a7b26",
+    commit = "b971ac5250ea8de900eae9f95e06548d14cd95fe",
     remote = "https://github.com/abseil/abseil-cpp.git",
 )
 
@@ -54,7 +54,7 @@ git_repository(
 
 git_repository(
     name = "pybind11_abseil",
-    commit = "38111ef06d426f75bb335a3b58aa0342f6ce0ce3",
+    commit = "2c4932ed6f6204f1656e245838f4f5eae69d2e29",
     remote = "https://github.com/pybind/pybind11_abseil.git",
 )
 
@@ -93,7 +93,7 @@ new_git_repository(
     name = "pybind11",
     build_file = "@pybind11_bazel//:pybind11.BUILD",
     remote = "https://github.com/pybind/pybind11.git",
-    tag = "v2.9.2",
+    tag = "v2.10.4",
 )
 
 #
