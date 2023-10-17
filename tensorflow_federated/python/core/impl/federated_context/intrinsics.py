@@ -15,6 +15,7 @@
 
 import warnings
 
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -697,7 +698,7 @@ def _federated_select(client_keys, max_key, server_val, select_fn, secure):
   client_keys = value_impl.to_value(client_keys, None)
   _check_select_keys_type(client_keys.type_signature, secure)
   max_key = value_impl.to_value(max_key, None)
-  expected_max_key_type = computation_types.at_server(tf.int32)
+  expected_max_key_type = computation_types.at_server(np.int32)
   if not expected_max_key_type.is_assignable_from(max_key.type_signature):
     _select_parameter_mismatch(
         max_key.type_signature,
@@ -725,7 +726,7 @@ def _federated_select(client_keys, max_key, server_val, select_fn, secure):
         expected_type=expected_server_val_type,
     )
   select_fn_param_type = computation_types.to_type(
-      [server_val.type_signature.member, tf.int32]  # pytype: disable=attribute-error
+      [server_val.type_signature.member, np.int32]  # pytype: disable=attribute-error
   )
   select_fn = value_impl.to_value(
       select_fn, None, parameter_type_hint=select_fn_param_type

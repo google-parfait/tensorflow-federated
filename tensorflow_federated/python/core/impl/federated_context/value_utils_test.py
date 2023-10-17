@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import operator
+
 from absl.testing import absltest
 from absl.testing import parameterized
-import tensorflow as tf
+import numpy as np
 
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_factory
@@ -34,13 +36,13 @@ class ValueUtilsTest(parameterized.TestCase):
         context_stack_impl.context_stack
     )
     with context_stack_impl.context_stack.install(fc_context):
-      super(ValueUtilsTest, self).run(result)
+      super().run(result)
 
   def test_get_curried(self):
-    operand_type = computation_types.TensorType(tf.int32)
+    operand_type = computation_types.TensorType(np.int32)
     computation_proto, type_signature = (
         tensorflow_computation_factory.create_binary_operator(
-            tf.add, operand_type, operand_type
+            operator.add, operand_type, operand_type
         )
     )
     building_block = building_blocks.CompiledComputation(
@@ -62,7 +64,7 @@ class ValueUtilsTest(parameterized.TestCase):
   def test_ensure_federated_value(self):
 
     @federated_computation.federated_computation(
-        computation_types.FederatedType(tf.int32, placements.CLIENTS)
+        computation_types.FederatedType(np.int32, placements.CLIENTS)
     )
     def _(x):
       x = value_impl.to_value(x, None)
@@ -72,7 +74,7 @@ class ValueUtilsTest(parameterized.TestCase):
   def test_ensure_federated_value_wrong_placement(self):
 
     @federated_computation.federated_computation(
-        computation_types.FederatedType(tf.int32, placements.CLIENTS)
+        computation_types.FederatedType(np.int32, placements.CLIENTS)
     )
     def _(x):
       x = value_impl.to_value(x, None)
@@ -84,8 +86,8 @@ class ValueUtilsTest(parameterized.TestCase):
 
     @federated_computation.federated_computation(
         computation_types.StructType((
-            computation_types.FederatedType(tf.int32, placements.CLIENTS),
-            computation_types.FederatedType(tf.int32, placements.CLIENTS),
+            computation_types.FederatedType(np.int32, placements.CLIENTS),
+            computation_types.FederatedType(np.int32, placements.CLIENTS),
         ))
     )
     def _(x):
@@ -97,8 +99,8 @@ class ValueUtilsTest(parameterized.TestCase):
 
     @federated_computation.federated_computation(
         computation_types.StructType((
-            computation_types.FederatedType(tf.int32, placements.CLIENTS),
-            computation_types.FederatedType(tf.int32, placements.SERVER),
+            computation_types.FederatedType(np.int32, placements.CLIENTS),
+            computation_types.FederatedType(np.int32, placements.SERVER),
         ))
     )
     def _(x):

@@ -15,7 +15,7 @@
 import collections
 
 from absl.testing import absltest
-import tensorflow as tf
+import numpy as np
 
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_factory
@@ -31,7 +31,7 @@ from tensorflow_federated.python.core.impl.types import placements
 class FederatedComputationContextTest(absltest.TestCase):
 
   def test_invoke_returns_value_with_correct_type(self):
-    tensor_type = computation_types.TensorType(tf.int32)
+    tensor_type = computation_types.TensorType(np.int32)
     computation_proto, _ = tensorflow_computation_factory.create_constant(
         10, tensor_type
     )
@@ -51,7 +51,7 @@ class FederatedComputationContextTest(absltest.TestCase):
   def test_ingest_zips_value_when_necessary_to_match_federated_type(self):
     # Expects `{<int, int>}@C`
     @federated_computation.federated_computation(
-        computation_types.at_clients((tf.int32, tf.int32))
+        computation_types.at_clients((np.int32, np.int32))
     )
     def fn(_):
       return ()
@@ -60,11 +60,11 @@ class FederatedComputationContextTest(absltest.TestCase):
     arg = building_blocks.Struct([
         building_blocks.Reference(
             'x',
-            computation_types.FederatedType(tf.int32, placements.CLIENTS),
+            computation_types.FederatedType(np.int32, placements.CLIENTS),
         ),
         building_blocks.Reference(
             'y',
-            computation_types.FederatedType(tf.int32, placements.CLIENTS),
+            computation_types.FederatedType(np.int32, placements.CLIENTS),
         ),
     ])
 
@@ -80,8 +80,8 @@ class FederatedComputationContextTest(absltest.TestCase):
         computation_types.StructType([(
             None,
             collections.OrderedDict(
-                x=computation_types.at_clients(tf.int32),
-                y=computation_types.at_clients(tf.int32),
+                x=computation_types.at_clients(np.int32),
+                y=computation_types.at_clients(np.int32),
             ),
         )])
     )
@@ -94,13 +94,13 @@ class FederatedComputationContextTest(absltest.TestCase):
                 building_blocks.Reference(
                     'x',
                     computation_types.FederatedType(
-                        tf.int32, placements.CLIENTS
+                        np.int32, placements.CLIENTS
                     ),
                 ),
                 building_blocks.Reference(
                     'y',
                     computation_types.FederatedType(
-                        tf.int32, placements.CLIENTS
+                        np.int32, placements.CLIENTS
                     ),
                 ),
             ])
@@ -152,7 +152,7 @@ class FederatedComputationContextTest(absltest.TestCase):
     context = federated_computation_context.FederatedComputationContext(
         context_stack_impl.context_stack
     )
-    data = building_blocks.Data('x', tf.int32)
+    data = building_blocks.Data('x', np.int32)
     ref = context.bind_computation_to_reference(data)
     symbol_bindings = context.symbol_bindings
     bound_symbol_name = symbol_bindings[0][0]
@@ -166,8 +166,8 @@ class FederatedComputationContextTest(absltest.TestCase):
     context = federated_computation_context.FederatedComputationContext(
         context_stack_impl.context_stack
     )
-    data = building_blocks.Data('x', tf.int32)
-    float_data = building_blocks.Data('x', tf.float32)
+    data = building_blocks.Data('x', np.int32)
+    float_data = building_blocks.Data('x', np.float32)
     ref1 = context.bind_computation_to_reference(data)
     ref2 = context.bind_computation_to_reference(float_data)
     symbol_bindings = context.symbol_bindings

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from absl.testing import absltest
-import tensorflow as tf
+import numpy as np
 
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.federated_context import data
@@ -24,7 +24,7 @@ from tensorflow_federated.python.core.impl.types import computation_types
 class DataTest(absltest.TestCase):
 
   def test_data(self):
-    val = data.data('foo://bar', computation_types.SequenceType(tf.int32))
+    val = data.data('foo://bar', computation_types.SequenceType(np.int32))
     self.assertIsInstance(val, value_impl.Value)
     self.assertEqual(str(val.type_signature), 'int32*')
     self.assertIsInstance(val.comp, building_blocks.Data)
