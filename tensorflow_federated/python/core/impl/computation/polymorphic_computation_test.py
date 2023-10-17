@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from absl.testing import absltest
-import tensorflow as tf
+import numpy as np
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.core.impl.computation import computation_impl
@@ -59,9 +59,7 @@ class PolymorphicComputationTest(absltest.TestCase):
       def __init__(self, name, unpack, parameter_type):
         self._name = name
         self._unpack = unpack
-        type_signature = computation_types.FunctionType(
-            parameter_type, tf.string
-        )
+        type_signature = computation_types.FunctionType(parameter_type, np.str_)
         test_proto = pb.Computation(
             type=type_serialization.serialize_type(type_signature)
         )
@@ -91,7 +89,7 @@ class PolymorphicComputationTest(absltest.TestCase):
         fn(20, x=True), 'name=2,type=<int32,x=bool>,arg=<20,x=True>,unpack=True'
     )
     fn_with_bool_arg = fn.fn_for_argument_type(
-        computation_types.to_type(tf.bool)
+        computation_types.to_type(np.bool_)
     )
     self.assertEqual(
         fn_with_bool_arg(True), 'name=3,type=bool,arg=True,unpack=None'
@@ -104,7 +102,7 @@ class PolymorphicComputationTest(absltest.TestCase):
         fn(0, x=False), 'name=2,type=<int32,x=bool>,arg=<0,x=False>,unpack=True'
     )
     fn_with_bool_arg = fn.fn_for_argument_type(
-        computation_types.to_type(tf.bool)
+        computation_types.to_type(np.bool_)
     )
     self.assertEqual(
         fn_with_bool_arg(False), 'name=3,type=bool,arg=False,unpack=None'
