@@ -14,6 +14,7 @@
 
 import asyncio
 
+from absl.testing import absltest
 import numpy as np
 import tensorflow as tf
 
@@ -27,7 +28,7 @@ from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 
 
-class RetryableErrorTest(tf.test.TestCase):
+class RetryableErrorTest(absltest.TestCase):
 
   def test_is_retryable_error(self):
     retryable_error = executors_errors.RetryableError()
@@ -40,14 +41,18 @@ class RetryableErrorTest(tf.test.TestCase):
     self.assertFalse(async_execution_context._is_retryable_error(None))
 
 
-class UnwrapValueTest(tf.test.TestCase):
+class UnwrapValueTest(absltest.TestCase):
 
   def test_tensor(self):
     result = async_execution_context._unwrap(tf.constant(1))
     self.assertIsInstance(result, np.int32)
+    self.assertEqual(result, 1)
+
     result = async_execution_context._unwrap(tf.constant([1, 2]))
     self.assertIsInstance(result, np.ndarray)
-    self.assertAllEqual(result, [1, 2])
+    expected_result = [1, 2]
+    for actual, expected in zip(result, expected_result):
+      self.assertEqual(actual, expected)
 
   def test_structure_of_tensors(self):
     result = async_execution_context._unwrap([tf.constant(x) for x in range(5)])
@@ -57,13 +62,13 @@ class UnwrapValueTest(tf.test.TestCase):
       self.assertEqual(result[x], x)
 
 
-class AsyncContextInstallationTest(tf.test.TestCase):
+class AsyncContextInstallationTest(absltest.TestCase):
 
   def test_install_and_execute_in_context(self):
     factory = executor_factory.local_cpp_executor_factory()
     context = async_execution_context.AsyncExecutionContext(factory)
 
-    @tensorflow_computation.tf_computation(tf.int32)
+    @tensorflow_computation.tf_computation(np.int32)
     def add_one(x):
       return x + 1
 
@@ -77,7 +82,7 @@ class AsyncContextInstallationTest(tf.test.TestCase):
     context = async_execution_context.AsyncExecutionContext(factory)
 
     @federated_computation.federated_computation(
-        computation_types.FederatedType(tf.int32, placements.CLIENTS)
+        computation_types.FederatedType(np.int32, placements.CLIENTS)
     )
     def repackage_arg(x):
       return [x, x]
@@ -98,7 +103,7 @@ class AsyncContextInstallationTest(tf.test.TestCase):
         factory, cardinality_inference_fn=(lambda x, y: {})
     )
 
-    @federated_computation.federated_computation(tf.int32)
+    @federated_computation.federated_computation(np.int32)
     def identity(x):
       return x
 
@@ -120,7 +125,7 @@ class AsyncContextInstallationTest(tf.test.TestCase):
         factory, cardinality_inference_fn=_cardinality_fn
     )
 
-    arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
+    arg_type = computation_types.FederatedType(np.int32, placements.CLIENTS)
 
     @federated_computation.federated_computation(arg_type)
     def identity(x):
@@ -139,4 +144,4 @@ class AsyncContextInstallationTest(tf.test.TestCase):
 
 
 if __name__ == '__main__':
-  tf.test.main()
+  absltest.main()

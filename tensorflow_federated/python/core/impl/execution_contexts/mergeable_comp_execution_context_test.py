@@ -16,7 +16,7 @@ import collections
 
 from absl.testing import absltest
 from absl.testing import parameterized
-import tensorflow as tf
+import numpy as np
 
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.computation import computation_base
@@ -153,11 +153,11 @@ class MergeableCompFormTest(absltest.TestCase):
 
   def test_raises_mismatched_up_to_merge_and_merge(self):
     up_to_merge = build_sum_client_arg_computation(
-        computation_types.at_server(tf.int32),
-        computation_types.at_clients(tf.int32),
+        computation_types.at_server(np.int32),
+        computation_types.at_clients(np.int32),
     )
 
-    bad_merge = build_whimsy_merge_computation(tf.float32)
+    bad_merge = build_whimsy_merge_computation(np.float32)
 
     @federated_computation.federated_computation(
         up_to_merge.type_signature.parameter,
@@ -175,11 +175,11 @@ class MergeableCompFormTest(absltest.TestCase):
 
   def test_raises_merge_computation_not_assignable_result(self):
     up_to_merge = build_sum_client_arg_computation(
-        computation_types.at_server(tf.int32),
-        computation_types.at_clients(tf.int32),
+        computation_types.at_server(np.int32),
+        computation_types.at_clients(np.int32),
     )
 
-    @tensorflow_computation.tf_computation(tf.int32, tf.int32)
+    @tensorflow_computation.tf_computation(np.int32, np.int32)
     def bad_merge(x, y):
       del x, y  # Unused
       return 1.0  # of type float.
@@ -200,11 +200,11 @@ class MergeableCompFormTest(absltest.TestCase):
 
   def test_raises_no_top_level_argument_in_after_agg(self):
     up_to_merge = build_sum_client_arg_computation(
-        computation_types.at_server(tf.int32),
-        computation_types.at_clients(tf.int32),
+        computation_types.at_server(np.int32),
+        computation_types.at_clients(np.int32),
     )
 
-    merge = build_whimsy_merge_computation(tf.int32)
+    merge = build_whimsy_merge_computation(np.int32)
 
     @federated_computation.federated_computation(
         computation_types.at_server(merge.type_signature.result)
@@ -220,13 +220,13 @@ class MergeableCompFormTest(absltest.TestCase):
   def test_raises_up_to_merge_returns_non_server_placed_result(self):
 
     @federated_computation.federated_computation(
-        computation_types.at_server(tf.int32)
+        computation_types.at_server(np.int32)
     )
     def bad_up_to_merge(x):
       # Returns non SERVER-placed result.
       return x, x
 
-    merge = build_whimsy_merge_computation(tf.int32)
+    merge = build_whimsy_merge_computation(np.int32)
 
     after_merge = build_whimsy_after_merge_computation(
         bad_up_to_merge.type_signature.parameter, merge.type_signature.result
@@ -239,11 +239,11 @@ class MergeableCompFormTest(absltest.TestCase):
 
   def test_raises_with_aggregation_in_after_agg(self):
     up_to_merge = build_sum_client_arg_computation(
-        computation_types.at_server(tf.int32),
-        computation_types.at_clients(tf.int32),
+        computation_types.at_server(np.int32),
+        computation_types.at_clients(np.int32),
     )
 
-    merge = build_whimsy_merge_computation(tf.int32)
+    merge = build_whimsy_merge_computation(np.int32)
 
     @federated_computation.federated_computation(
         up_to_merge.type_signature.parameter,
@@ -264,10 +264,10 @@ class MergeableCompFormTest(absltest.TestCase):
 
   def test_passes_with_correct_signatures(self):
     up_to_merge = build_sum_client_arg_computation(
-        computation_types.at_server(tf.int32),
-        computation_types.at_clients(tf.int32),
+        computation_types.at_server(np.int32),
+        computation_types.at_clients(np.int32),
     )
-    merge = build_whimsy_merge_computation(tf.int32)
+    merge = build_whimsy_merge_computation(np.int32)
     after_merge = build_whimsy_after_merge_computation(
         up_to_merge.type_signature.parameter, merge.type_signature.result
     )
@@ -281,7 +281,7 @@ class MergeableCompFormTest(absltest.TestCase):
 
   def test_passes_with_noarg_top_level_computation(self):
     up_to_merge = build_noarg_count_clients_computation()
-    merge = build_whimsy_merge_computation(tf.int32)
+    merge = build_whimsy_merge_computation(np.int32)
     after_merge = build_whimsy_after_merge_computation(
         up_to_merge.type_signature.parameter, merge.type_signature.result
     )
@@ -297,7 +297,7 @@ class PartitionValueTest(absltest.TestCase):
 
   def test_partitions_value_with_no_clients_arguments(self):
     value = 0
-    type_signature = computation_types.at_server(tf.int32)
+    type_signature = computation_types.at_server(np.int32)
     num_desired_subrounds = 2
     partitioned_value = (
         mergeable_comp_execution_context._split_value_into_subrounds(
@@ -309,8 +309,8 @@ class PartitionValueTest(absltest.TestCase):
   def test_wraps_value_with_empty_client_argument(self):
     value = (0, [])
     type_signature = computation_types.StructType([
-        (None, computation_types.at_server(tf.int32)),
-        (None, computation_types.at_clients(tf.int32)),
+        (None, computation_types.at_server(np.int32)),
+        (None, computation_types.at_clients(np.int32)),
     ])
     num_desired_subrounds = 2
     partitioned_value = (
@@ -323,8 +323,8 @@ class PartitionValueTest(absltest.TestCase):
   def test_replicates_all_equal_clients_argument(self):
     value = (0, 1)
     type_signature = computation_types.StructType([
-        (None, computation_types.at_server(tf.int32)),
-        (None, computation_types.at_clients(tf.int32, all_equal=True)),
+        (None, computation_types.at_server(np.int32)),
+        (None, computation_types.at_clients(np.int32, all_equal=True)),
     ])
     num_desired_subrounds = 2
     partitioned_value = (
@@ -336,7 +336,7 @@ class PartitionValueTest(absltest.TestCase):
 
   def test_partitions_client_placed_value_into_subrounds(self):
     value = list(range(10))
-    type_signature = computation_types.at_clients(tf.int32)
+    type_signature = computation_types.at_clients(np.int32)
     num_desired_subrounds = 5
     partitioned_value = (
         mergeable_comp_execution_context._split_value_into_subrounds(
@@ -351,8 +351,8 @@ class PartitionValueTest(absltest.TestCase):
     server_placed_name = 'a'
     clients_placed_name = 'b'
     type_signature = computation_types.StructType([
-        (server_placed_name, computation_types.at_server(tf.int32)),
-        (clients_placed_name, computation_types.at_clients(tf.int32)),
+        (server_placed_name, computation_types.at_server(np.int32)),
+        (clients_placed_name, computation_types.at_clients(np.int32)),
     ])
 
     num_desired_subrounds = 5
@@ -371,7 +371,7 @@ class PartitionValueTest(absltest.TestCase):
 
   def test_partitions_fewer_clients_than_rounds_into_nonempty_rounds(self):
     value = [0, 1]
-    type_signature = computation_types.at_clients(tf.int32)
+    type_signature = computation_types.at_clients(np.int32)
     num_desired_subrounds = 5
     partitioned_value = (
         mergeable_comp_execution_context._split_value_into_subrounds(
@@ -402,13 +402,13 @@ class RepackageResultsTest(absltest.TestCase):
 
   def test_roundtrip_with_no_clients_argument(self):
     value = 0
-    type_signature = computation_types.at_server(tf.int32)
+    type_signature = computation_types.at_server(np.int32)
     self.assertRoundTripEqual(value, type_signature, value)
 
   def test_roundtrip_with_named_struct(self):
     value = collections.OrderedDict(a=0)
     type_signature = computation_types.StructType(
-        [('a', computation_types.at_server(tf.int32))]
+        [('a', computation_types.at_server(np.int32))]
     )
     self.assertRoundTripEqual(
         value, type_signature, structure.Struct([('a', 0)])
@@ -417,8 +417,8 @@ class RepackageResultsTest(absltest.TestCase):
   def test_roundtrip_with_empty_clients_argument(self):
     value = (0, [])
     type_signature = computation_types.StructType([
-        (None, computation_types.at_server(tf.int32)),
-        (None, computation_types.at_clients(tf.int32)),
+        (None, computation_types.at_server(np.int32)),
+        (None, computation_types.at_clients(np.int32)),
     ])
     self.assertRoundTripEqual(
         value, type_signature, structure.from_container(value)
@@ -426,19 +426,19 @@ class RepackageResultsTest(absltest.TestCase):
 
   def test_roundtrip_with_nonempty_clients_argument(self):
     value = list(range(10))
-    type_signature = computation_types.at_clients(tf.int32)
+    type_signature = computation_types.at_clients(np.int32)
     self.assertRoundTripEqual(value, type_signature, value)
 
   def test_roundtrip_with_nonempty_tuple_clients_argument(self):
     value = tuple(range(10))
-    type_signature = computation_types.at_clients(tf.int32)
+    type_signature = computation_types.at_clients(np.int32)
     self.assertRoundTripEqual(value, type_signature, value)
 
   def test_roundtrip_with_all_equal_clients_argument(self):
     value = (0, 1)
     type_signature = computation_types.StructType([
-        (None, computation_types.at_server(tf.int32)),
-        (None, computation_types.at_clients(tf.int32, all_equal=True)),
+        (None, computation_types.at_server(np.int32)),
+        (None, computation_types.at_clients(np.int32, all_equal=True)),
     ])
     self.assertRoundTripEqual(
         value, type_signature, structure.from_container(value)
