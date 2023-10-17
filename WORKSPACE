@@ -25,7 +25,7 @@ git_repository(
 git_repository(
     name = "com_google_googletest",
     remote = "https://github.com/google/googletest.git",
-    tag = "release-1.11.0",
+    tag = "release-1.12.1",
 )
 
 git_repository(
