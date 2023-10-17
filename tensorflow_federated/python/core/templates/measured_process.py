@@ -17,7 +17,7 @@ import collections
 from typing import Optional
 
 import attrs
-import tensorflow as tf
+import tree
 
 from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
@@ -177,7 +177,7 @@ def chain_measured_processes(
           )
       )
     except TypeError as e:
-      state_type = tf.nest.map_structure(
+      state_type = tree.map_structure(
           lambda process: process.state_type, measured_processes
       )
       raise TypeError(
@@ -277,7 +277,7 @@ def concatenate_measured_processes(
           )
       )
     except TypeError as e:
-      state_type = tf.nest.map_structure(
+      state_type = tree.map_structure(
           lambda process: process.state_type, measured_processes
       )
       raise TypeError(
@@ -287,11 +287,11 @@ def concatenate_measured_processes(
       ) from e
 
   concatenated_state_type_spec = computation_types.at_server(
-      tf.nest.map_structure(
+      tree.map_structure(
           lambda process: process.state_type.member, measured_processes
       )
   )
-  concatenated_values_type_spec = tf.nest.map_structure(
+  concatenated_values_type_spec = tree.map_structure(
       lambda process: process.next.type_signature.parameter[1],
       measured_processes,
   )
