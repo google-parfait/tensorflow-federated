@@ -28,17 +28,6 @@ from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import typed_object
 
-# This symbol being defined here is somewhat unfortunate. Likely, this symbol
-# should be factored into a module that encapsulates the type functions related
-# to the TensorFlow platform. However, it seems useful to consider how to
-# organize such a boundary in the context of the entire type system. For
-# example, we have an abstraction for a TensorFlow computation, but we do not
-# have such an abstraction for a Tensor type.
-TF_DATASET_REPRESENTATION_TYPES = (
-    tf.data.Dataset,
-    tf.compat.v1.data.Dataset,
-)
-
 
 def infer_type(arg: object) -> Optional[computation_types.Type]:
   """Infers the TFF type of the argument (a `computation_types.Type` instance).
@@ -67,15 +56,13 @@ def infer_type(arg: object) -> Optional[computation_types.Type]:
           tf.RaggedTensor,
           tf.SparseTensor,
           tf.Tensor,
+          tf.data.Dataset,
           structure.Struct,
           py_typecheck.SupportsNamedTuple,
           dict[Hashable, object],
           collections.OrderedDict[Hashable, object],
           tuple[object, ...],
           list[object],
-          # Inlined from TF_DATASET_REPRESENTATION_TYPES
-          tf.data.Dataset,
-          tf.compat.v1.data.Dataset,
       ],
       arg,
   )
@@ -105,7 +92,7 @@ def infer_type(arg: object) -> Optional[computation_types.Type]:
       )
     else:
       return computation_types.TensorType(arg.dtype.base_dtype, arg.shape)  # pytype: disable=attribute-error
-  elif isinstance(arg, TF_DATASET_REPRESENTATION_TYPES):
+  elif isinstance(arg, tf.data.Dataset):
     element_type = computation_types.to_type(arg.element_spec)
     return computation_types.SequenceType(element_type)
   elif isinstance(arg, structure.Struct):

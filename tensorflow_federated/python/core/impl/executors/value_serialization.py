@@ -133,7 +133,7 @@ def _serialize_tensor_value(
 
 
 def _serialize_dataset(
-    dataset,
+    dataset: tf.data.Dataset,
     max_serialized_size_bytes=_DEFAULT_MAX_SERIALIZED_SEQUENCE_SIZE_BYTES,
 ):
   """Serializes a `tf.data.Dataset` value into a `bytes` object.
@@ -152,9 +152,6 @@ def _serialize_dataset(
     SerializationError: if there was an error in TensorFlow during
       serialization.
   """
-  py_typecheck.check_type(
-      dataset, type_conversions.TF_DATASET_REPRESENTATION_TYPES
-  )
   dataset_graph = tf.raw_ops.DatasetToGraphV2(
       input_dataset=tf.data.experimental.to_variant(dataset)
   )
@@ -227,9 +224,7 @@ def _check_container_compat_with_tf_nest(type_spec: computation_types.Type):
 
 @tracing.trace
 def _serialize_sequence_value(
-    value: Union[
-        Union[type_conversions.TF_DATASET_REPRESENTATION_TYPES], list[object]
-    ],
+    value: Union[tf.data.Dataset, list[object]],
     type_spec: computation_types.SequenceType,
 ) -> _SerializeReturnType:
   """Serializes a `tf.data.Dataset` value into `executor_pb2.Value`.
@@ -249,7 +244,7 @@ def _serialize_sequence_value(
     value = tensorflow_utils.make_data_set_from_elements(
         None, value, type_spec.element
     )
-  if not isinstance(value, type_conversions.TF_DATASET_REPRESENTATION_TYPES):
+  if not isinstance(value, tf.data.Dataset):
     raise TypeError(
         'Cannot serialize Python type {!s} as TFF type {!s}.'.format(
             py_typecheck.type_string(type(value)),

@@ -664,10 +664,6 @@ class ValueSerializationtest(tf.test.TestCase, parameterized.TestCase):
 
 class DatasetSerializationTest(tf.test.TestCase):
 
-  def test_serialize_sequence_not_a_dataset(self):
-    with self.assertRaisesRegex(TypeError, r'Expected .*Dataset.* found int'):
-      _ = value_serialization._serialize_dataset(5)
-
   def test_serialize_sequence_bytes_too_large(self):
     with self.assertRaisesRegex(
         ValueError, r'Serialized size .* exceeds maximum allowed'
