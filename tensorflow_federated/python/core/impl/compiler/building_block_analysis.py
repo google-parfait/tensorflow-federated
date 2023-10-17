@@ -16,8 +16,8 @@
 import collections
 
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.common_libs import serialization_utils
 from tensorflow_federated.python.core.impl.compiler import building_blocks
+from tensorflow_federated.python.tensorflow_libs import serialization_utils
 
 
 def is_called_intrinsic(comp, uri=None):

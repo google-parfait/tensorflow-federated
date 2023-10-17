@@ -17,13 +17,13 @@ import ctypes
 
 from tensorflow_federated.proto.v0 import computation_pb2
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.common_libs import serialization_utils
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_transformations
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 from tensorflow_federated.python.tensorflow_libs import graph_optimizations
 from tensorflow_federated.python.tensorflow_libs import graph_spec
+from tensorflow_federated.python.tensorflow_libs import serialization_utils
 
 
 def _unpack_proto_into_graph_spec(tf_block_proto):
