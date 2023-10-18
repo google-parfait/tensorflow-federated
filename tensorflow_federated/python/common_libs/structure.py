@@ -20,6 +20,7 @@ from typing import Generic, Optional, TypeVar, Union
 
 import attrs
 import tensorflow as tf
+import tree
 
 from tensorflow_federated.python.common_libs import py_typecheck
 
@@ -372,7 +373,7 @@ def flatten(struct: object) -> list[object]:
     The list of leaf values in the `Struct`.
   """
   if not isinstance(struct, Struct):
-    return tf.nest.flatten(struct)
+    return tree.flatten(struct)
   else:
     result = []
     for _, v in iter_elements(struct):
@@ -454,7 +455,7 @@ def is_same_structure(a: Struct, b: Struct) -> bool:
       return False
     else:
       try:
-        tf.nest.assert_same_structure(val_a, val_b, check_types=True)
+        tree.assert_same_structure(val_a, val_b, check_types=True)
       except (ValueError, TypeError):
         return False
   return True
@@ -484,9 +485,7 @@ def map_structure(fn: Callable[..., object], *structures: Struct) -> object:
   if not structures:
     raise ValueError('Must provide at least one structure')
 
-  # Mimic tf.nest.map_structure, if all elements are tensors, just apply `fn` to
-  # the incoming values directly.
-  if all(tf.is_tensor(s) for s in structures):
+  if not all(isinstance(s, Struct) for s in structures):
     return fn(*structures)
 
   for i, other in enumerate(structures[1:]):

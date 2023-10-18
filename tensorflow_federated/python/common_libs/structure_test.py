@@ -387,18 +387,18 @@ class StructTest(parameterized.TestCase):
     with self.assertRaises(TypeError):
       structure.map_structure(operator.add, x, y)
     x = structure.Struct.named(a=10)
-    y = structure.Struct.named(a=30, c=tf.strings.bytes_split('abc'))
+    y = structure.Struct.named(a=30, c=['a', 'b', 'c'])
     with self.assertRaises(TypeError):
       structure.map_structure(operator.add, x, y)
 
-  def test_map_structure_tensors(self):
-    x = tf.constant(1)
-    y = tf.constant(2)
+  def test_map_structure_non_structs(self):
+    x = 1
+    y = 2
     result = structure.map_structure(operator.add, x, y)
     self.assertEqual(result, 3)
 
-    x = tf.strings.bytes_split('abc')
-    y = tf.strings.bytes_split('xyz')
+    x = ['a', 'b', 'c']
+    y = ['x', 'y', 'z']
     result = structure.map_structure(operator.add, x, y)
     expected_result = ['ax', 'by', 'cz']
     for actual, expected in zip(result, expected_result):
