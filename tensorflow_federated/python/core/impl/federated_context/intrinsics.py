@@ -13,10 +13,10 @@
 # limitations under the License.
 """A factory of intrinsics for use in composing federated computations."""
 
+from typing import NoReturn
 import warnings
 
 import numpy as np
-import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
@@ -584,7 +584,7 @@ def _select_parameter_mismatch(
     name,
     secure,
     expected_type=None,
-):
+) -> NoReturn:
   """Throws a `TypeError` indicating a mismatched `select` parameter type."""
   secure_string = '_secure' if secure else ''
   intrinsic_name = f'federated{secure_string}_select'
@@ -615,10 +615,10 @@ def _check_select_keys_type(
         keys_type, 'a federated value placed at clients', 'client_keys', secure
     )
   if not (
-      isinstance(keys_type.member, computation_types.TensorType)  # pytype: disable=attribute-error
-      and keys_type.member.dtype == tf.int32  # pytype: disable=attribute-error
-      and keys_type.member.shape.rank == 1  # pytype: disable=attribute-error
-      and keys_type.member.shape.dims[0].value is not None  # pytype: disable=attribute-error
+      isinstance(keys_type.member, computation_types.TensorType)
+      and keys_type.member.dtype == np.int32
+      and keys_type.member.shape.rank == 1
+      and keys_type.member.shape.dims[0].value is not None
   ):
     _select_parameter_mismatch(
         keys_type.member,  # pytype: disable=attribute-error
