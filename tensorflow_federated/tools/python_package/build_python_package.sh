@@ -19,11 +19,11 @@ set -e
 usage() {
   local script_name=$(basename "${0}")
   local options=(
-      "--python=python3.10"
+      "--python=python3.11"
       "--output_dir=<path>"
   )
   echo "usage: ${script_name} ${options[@]}"
-  echo "  --python=python3.10   The Python version used by the environment to"
+  echo "  --python=python3.11   The Python version used by the environment to"
   echo "                        build the Python package."
   echo "  --output_dir=<path>   An output directory."
   exit 1
@@ -31,7 +31,7 @@ usage() {
 
 main() {
   # Parse the arguments.
-  local python="python3.10"
+  local python="python3.11"
   local output_dir=""
 
   while [[ "$#" -gt 0 ]]; do
