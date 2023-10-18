@@ -649,6 +649,30 @@ class FileProgramStateManagerRemoveOldProgramStateTest(
 
     self.assertCountEqual(os.listdir(root_dir), ['a_7', 'a_8', 'a_9'])
 
+  async def test_removes_all_saved_program_state_except_for_the_first(self):
+    root_dir = self.create_tempdir()
+    for version in range(10):
+      os.mkdir(os.path.join(root_dir, f'a_{version}'))
+    program_state_mngr = file_program_state_manager.FileProgramStateManager(
+        root_dir=root_dir, prefix='a_', keep_total=1, keep_first=True
+    )
+
+    await program_state_mngr._remove_old_program_state()
+
+    self.assertCountEqual(os.listdir(root_dir), ['a_0'])
+
+  async def test_removes_all_saved_program_state_except_for_the_last(self):
+    root_dir = self.create_tempdir()
+    for version in range(10):
+      os.mkdir(os.path.join(root_dir, f'a_{version}'))
+    program_state_mngr = file_program_state_manager.FileProgramStateManager(
+        root_dir=root_dir, prefix='a_', keep_total=1, keep_first=False
+    )
+
+    await program_state_mngr._remove_old_program_state()
+
+    self.assertCountEqual(os.listdir(root_dir), ['a_9'])
+
 
 class FileProgramStateManagerRemoveAllTest(
     absltest.TestCase, unittest.IsolatedAsyncioTestCase
