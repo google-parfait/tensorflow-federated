@@ -322,43 +322,6 @@ class InferTypeTest(parameterized.TestCase, tf.test.TestCase):
     t = type_conversions.infer_type(())
     self.assertEqual(t, computation_types.StructWithPythonType([], tuple))
 
-  def test_with_ragged_tensor(self):
-    t = type_conversions.infer_type(
-        tf.RaggedTensor.from_row_splits([0, 0, 0, 0], [0, 1, 4])
-    )
-    type_test_utils.assert_types_identical(
-        t,
-        computation_types.StructWithPythonType(
-            [
-                ('flat_values', computation_types.TensorType(tf.int32, [4])),
-                (
-                    'nested_row_splits',
-                    computation_types.StructWithPythonType(
-                        [(None, computation_types.TensorType(tf.int64, [3]))],
-                        tuple,
-                    ),
-                ),
-            ],
-            tf.RaggedTensor,
-        ),
-    )
-
-  def test_with_sparse_tensor(self):
-    # sparse_tensor = [0, 2, 0, 0, 0]
-    sparse_tensor = tf.SparseTensor(indices=[[1]], values=[2], dense_shape=[5])
-    t = type_conversions.infer_type(sparse_tensor)
-    type_test_utils.assert_types_identical(
-        t,
-        computation_types.StructWithPythonType(
-            [
-                ('indices', computation_types.TensorType(tf.int64, [1, 1])),
-                ('values', computation_types.TensorType(tf.int32, [1])),
-                ('dense_shape', computation_types.TensorType(tf.int64, [1])),
-            ],
-            tf.SparseTensor,
-        ),
-    )
-
 
 class TypeToTfDtypesAndShapesTest(absltest.TestCase):
 
@@ -572,29 +535,6 @@ class TypeToTfStructureTest(tf.test.TestCase):
         computation_types.StructType([])
     )
     self.assertEqual(tf_structure, ())
-
-  def check_round_trip(self, first_spec):
-    first_type = computation_types.to_type(first_spec)
-    round_trip_spec = type_conversions.type_to_tf_structure(first_type)
-    round_trip_type = computation_types.to_type(round_trip_spec)
-    type_test_utils.assert_types_identical(first_type, round_trip_type)
-
-  def test_ragged_tensor_spec_round_trip(self):
-    ragged_tensor = tf.RaggedTensor.from_row_splits([0, 0, 0, 0], [0, 1, 4])
-    spec = tf.RaggedTensorSpec.from_value(ragged_tensor)
-    self.check_round_trip(spec)
-
-  def test_double_ragged_tensor_spec_round_trip(self):
-    double_ragged_tensor = tf.strings.bytes_split(
-        tf.strings.split(['one two', 'three'])
-    )
-    spec = tf.RaggedTensorSpec.from_value(double_ragged_tensor)
-    self.check_round_trip(spec)
-
-  def test_sparse_tensor_spec_round_trip(self):
-    sparse_tensor = tf.SparseTensor(indices=[[1]], values=[2], dense_shape=[5])
-    spec = tf.SparseTensorSpec.from_value(sparse_tensor)
-    self.check_round_trip(spec)
 
 
 class TypeFromTensorsTest(tf.test.TestCase):
@@ -870,50 +810,6 @@ class TypeToPyContainerTest(tf.test.TestCase):
     actual_elements = list(converted_dataset)
     expected_elements = list(dataset_yielding_mappings)
     self.assertAllEqual(actual_elements, expected_elements)
-
-  def test_ragged_tensor(self):
-    value = structure.Struct([
-        ('flat_values', [0, 0, 0, 0]),
-        ('nested_row_splits', [[0, 1, 4]]),
-    ])
-    value_type = computation_types.StructWithPythonType(
-        [
-            ('flat_values', computation_types.TensorType(tf.int32, [4])),
-            (
-                'nested_row_splits',
-                computation_types.StructWithPythonType(
-                    [(None, computation_types.TensorType(tf.int64, [3]))], tuple
-                ),
-            ),
-        ],
-        tf.RaggedTensor,
-    )
-    result = type_conversions.type_to_py_container(value, value_type)
-    self.assertIsInstance(result, tf.RaggedTensor)
-    self.assertAllEqual(result.flat_values, [0, 0, 0, 0])
-    self.assertLen(result.nested_row_splits, 1)
-    self.assertAllEqual(result.nested_row_splits[0], [0, 1, 4])
-
-  def test_sparse_tensor(self):
-    value = structure.Struct([
-        ('indices', [[1]]),
-        ('values', [2]),
-        ('dense_shape', [5]),
-    ])
-    value_type = computation_types.StructWithPythonType(
-        [
-            ('indices', computation_types.TensorType(tf.int64, [1, 1])),
-            ('values', computation_types.TensorType(tf.int32, [1])),
-            ('dense_shape', computation_types.TensorType(tf.int64, [1])),
-        ],
-        tf.SparseTensor,
-    )
-    result = type_conversions.type_to_py_container(value, value_type)
-    self.assertIsInstance(result, tf.SparseTensor)
-    self.assertLen(result.indices, 1)
-    self.assertAllEqual(result.indices[0], [1])
-    self.assertAllEqual(result.values, [2])
-    self.assertAllEqual(result.dense_shape, [5])
 
 
 class StructureFromTensorTypeTreeTest(tf.test.TestCase):

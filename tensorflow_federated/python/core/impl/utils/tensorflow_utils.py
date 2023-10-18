@@ -263,32 +263,12 @@ def capture_result_from_graph(
       # tff.Computation is only performing a selection from a structure.
       with graph.as_default():
         result = tf.identity(result)
-    # `tf.is_tensor` returns true for some things that are not actually single
-    # `tf.Tensor`s, including `tf.sparse.SparseTensor`s and `tf.RaggedTensor`s.
-    if isinstance(result, tf.RaggedTensor):
-      name_value_pairs = (
-          ('flat_values', result.flat_values),
-          ('nested_row_splits', result.nested_row_splits),
-      )
-      return _get_bindings_for_elements(
-          name_value_pairs, graph, tf.RaggedTensor
-      )
-    elif isinstance(result, tf.sparse.SparseTensor):
-      name_value_pairs = (
-          ('indices', result.indices),
-          ('values', result.values),
-          ('dense_shape', result.dense_shape),
-      )
-      return _get_bindings_for_elements(
-          name_value_pairs, graph, tf.sparse.SparseTensor
-      )
-    else:
-      return (
-          computation_types.TensorType(result.dtype.base_dtype, result.shape),
-          pb.TensorFlow.Binding(
-              tensor=pb.TensorFlow.TensorBinding(tensor_name=result.name)
-          ),
-      )
+    return (
+        computation_types.TensorType(result.dtype.base_dtype, result.shape),
+        pb.TensorFlow.Binding(
+            tensor=pb.TensorFlow.TensorBinding(tensor_name=result.name)
+        ),
+    )
   elif isinstance(result, py_typecheck.SupportsNamedTuple):
     # Special handling needed for collections.namedtuples since they do not have
     # anything in the way of a shared base class. Note we don't want to rely on
@@ -1116,10 +1096,6 @@ def coerce_dataset_elements_to_tff_type_spec(
   py_typecheck.check_type(element_type, computation_types.Type)
   if isinstance(element_type, computation_types.TensorType):
     return dataset
-  elif isinstance(element_type, computation_types.StructWithPythonType):
-    py_type = element_type.python_container
-    if py_type is tf.RaggedTensor or py_type is tf.sparse.SparseTensor:
-      return dataset
 
   # This is a similar to `reference_context.to_representation_for_type`,
   # look for opportunities to consolidate?
@@ -1133,8 +1109,6 @@ def coerce_dataset_elements_to_tff_type_spec(
         # unwrapped by tf.data.
         elements = [elements]
       py_type = type_spec.python_container
-      if py_type is tf.RaggedTensor or py_type is tf.sparse.SparseTensor:
-        return elements
 
       field_types = structure.iter_elements(type_spec)
       if issubclass(py_type, Mapping) or attrs.has(py_type):

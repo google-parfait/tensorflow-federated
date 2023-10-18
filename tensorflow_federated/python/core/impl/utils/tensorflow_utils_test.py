@@ -23,7 +23,6 @@ from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_serialization
-from tensorflow_federated.python.core.impl.types import type_test_utils
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 from tensorflow_federated.python.tensorflow_libs import serialization_utils
 from tensorflow_federated.python.tensorflow_libs import tensorflow_test_utils
@@ -277,47 +276,6 @@ class GraphUtilsTest(tf.test.TestCase):
           np.ndarray(shape=(2, 0), dtype=np.int32), graph
       )
     self._assert_captured_result_eq_dtype(type_spec, binding, 'int32[2,0]')
-
-  def test_capture_result_with_ragged_tensor(self):
-    with tf.Graph().as_default() as graph:
-      type_spec, binding = tensorflow_utils.capture_result_from_graph(
-          tf.RaggedTensor.from_row_splits([0, 0, 0, 0], [0, 1, 4]), graph
-      )
-      del binding
-      type_test_utils.assert_types_identical(
-          type_spec,
-          computation_types.StructWithPythonType(
-              [
-                  ('flat_values', computation_types.TensorType(tf.int32, [4])),
-                  (
-                      'nested_row_splits',
-                      computation_types.StructWithPythonType(
-                          [(None, computation_types.TensorType(tf.int64, [3]))],
-                          tuple,
-                      ),
-                  ),
-              ],
-              tf.RaggedTensor,
-          ),
-      )
-
-  def test_capture_result_with_sparse_tensor(self):
-    with tf.Graph().as_default() as graph:
-      type_spec, binding = tensorflow_utils.capture_result_from_graph(
-          tf.SparseTensor(indices=[[1]], values=[2], dense_shape=[5]), graph
-      )
-      del binding
-      type_test_utils.assert_types_identical(
-          type_spec,
-          computation_types.StructWithPythonType(
-              [
-                  ('indices', computation_types.TensorType(tf.int64, [1, 1])),
-                  ('values', computation_types.TensorType(tf.int32, [1])),
-                  ('dense_shape', computation_types.TensorType(tf.int64, [1])),
-              ],
-              tf.SparseTensor,
-          ),
-      )
 
   @tensorflow_test_utils.graph_mode_test
   def test_capture_result_with_int_placeholder(self):
@@ -703,36 +661,6 @@ class GraphUtilsTest(tf.test.TestCase):
   def test_make_data_set_from_elements_in_eager_context(self):
     ds = tensorflow_utils.make_data_set_from_elements(None, [10, 20], tf.int32)
     self.assertCountEqual([x.numpy() for x in iter(ds)], [10, 20])
-
-  def test_make_data_set_from_sparse_tensor_elements(self):
-    self.skipTest('b/258037897')
-    sparse_tensor = tf.SparseTensor(
-        [[0, i] for i in range(5)], list(range(5)), [1, 10]
-    )
-    ds = tf.data.Dataset.from_tensor_slices(sparse_tensor)
-    constructed_ds = tensorflow_utils.make_data_set_from_elements(
-        None, list(ds), computation_types.to_type(ds.element_spec)
-    )
-    self.assertEqual(ds.element_spec, constructed_ds.element_spec)
-    self.assertEqual(
-        tf.sparse.to_dense(next(iter(ds))),
-        tf.sparse.to_dense(next(iter(constructed_ds))),
-    )
-
-  def test_make_data_set_from_ragged_tensor_elements(self):
-    self.skipTest('b/258038191')
-    ragged_tensor = tf.RaggedTensor.from_row_splits([0, 0, 0, 0], [0, 1, 4])
-    constructed_ds = tensorflow_utils.make_data_set_from_elements(
-        None,
-        [ragged_tensor],
-        computation_types.to_type(
-            tf.RaggedTensorSpec.from_value(ragged_tensor)
-        ),
-    )
-    self.assertIsInstance(constructed_ds.element_spec, tf.RaggedTensorSpec)
-    self.assertEqual(
-        next(iter(constructed_ds)).to_tensor(), ragged_tensor.to_tensor()
-    )
 
   @tensorflow_test_utils.graph_mode_test
   def test_make_data_set_from_elements_with_empty_list(self):

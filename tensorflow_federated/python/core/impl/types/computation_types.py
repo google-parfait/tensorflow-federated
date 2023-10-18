@@ -1108,44 +1108,6 @@ def to_type(obj: object) -> Type:
     )
   elif isinstance(obj, structure.Struct):
     return StructType(structure.to_elements(obj))
-  elif isinstance(obj, tf.RaggedTensorSpec):
-    if obj.flat_values_spec is not None:
-      flat_values_type = to_type(obj.flat_values_spec)
-    else:
-      # We could provide a more specific shape here if `obj.shape is not None`:
-      # `flat_values_shape = [None] + obj.shape[obj.ragged_rank + 1:]`
-      # However, we can't go back from this type into a `tf.RaggedTensorSpec`,
-      # meaning that round-tripping a `tf.RaggedTensorSpec` through
-      # `type_conversions.type_to_tf_structure(to_type(obj))`
-      # would *not* be a no-op: it would clear away the extra shape information,
-      # leading to compilation errors. This round-trip is tested in
-      # `type_conversions_test.py` to ensure correctness.
-      flat_values_shape = tf.TensorShape(None)
-      flat_values_type = TensorType(obj.dtype, flat_values_shape)
-    nested_row_splits_type = StructWithPythonType(
-        ([(None, TensorType(obj.row_splits_dtype, [None]))] * obj.ragged_rank),
-        tuple,
-    )
-    return StructWithPythonType(
-        [
-            ('flat_values', flat_values_type),
-            ('nested_row_splits', nested_row_splits_type),
-        ],
-        tf.RaggedTensor,
-    )
-  elif isinstance(obj, tf.SparseTensorSpec):
-    dtype = obj.dtype
-    shape = obj.shape
-    unknown_num_values = None
-    rank = None if shape is None else shape.rank
-    return StructWithPythonType(
-        [
-            ('indices', TensorType(tf.int64, [unknown_num_values, rank])),
-            ('values', TensorType(dtype, [unknown_num_values])),
-            ('dense_shape', TensorType(tf.int64, [rank])),
-        ],
-        tf.SparseTensor,
-    )
   else:
     raise TypeError(
         'Unable to interpret an argument of type {} as a type spec.'.format(

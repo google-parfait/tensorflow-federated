@@ -38,13 +38,6 @@ py_cpu_gpu_test(
 )
 
 py_test(
-    name = "composite_tensor_e2e_test",
-    size = "small",
-    srcs = ["composite_tensor_e2e_test.py"],
-    deps = ["//tensorflow_federated"],
-)
-
-py_test(
     name = "map_reduce_form_test",
     size = "medium",
     srcs = ["map_reduce_form_test.py"],
