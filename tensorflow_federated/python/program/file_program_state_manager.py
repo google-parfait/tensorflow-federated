@@ -235,7 +235,7 @@ class FileProgramStateManager(
     versions = await self.get_versions()
     if versions is not None and len(versions) > self._keep_total:
       start = 1 if self._keep_first else 0
-      stop = start - self._keep_total
+      stop = len(versions) - (self._keep_total - start)
       await asyncio.gather(*[self._remove(v) for v in versions[start:stop]])
 
   async def remove_all(self) -> None:
