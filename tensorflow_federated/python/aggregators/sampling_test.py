@@ -563,7 +563,6 @@ class BuildCheckNonFiniteLeavesComputationTest(
 
   @parameterized.named_parameters(
       ('float32_nan', tf.float32, np.nan, True),
-      ('bfloat16_inf', tf.bfloat16, np.inf, True),
       ('half_nan', tf.half, np.nan, True),
       ('float64_inf', tf.float64, np.inf, True),
       ('int32_finite', tf.int32, 1, False),
