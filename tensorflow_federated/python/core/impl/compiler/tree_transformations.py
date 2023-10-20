@@ -16,6 +16,7 @@
 import collections
 from collections.abc import Callable, Sequence
 
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -1059,7 +1060,7 @@ def _get_secure_intrinsic_reductions() -> (
       def assert_all_coordinates_less_equal(x, m):
         return tf.Assert(
             tf.reduce_all(
-                tf.less_equal(tf.cast(x, tf.int64), tf.cast(m, tf.int64))
+                tf.less_equal(tf.cast(x, np.int64), tf.cast(m, np.int64))
             ),
             [
                 'client value larger than maximum specified for secure sum',

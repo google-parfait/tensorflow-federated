@@ -14,6 +14,7 @@
 
 from absl.testing import absltest
 from absl.testing import parameterized
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
@@ -41,10 +42,10 @@ class TestCheckContainsOnlyReducibleIntrinsics(absltest.TestCase):
         intrinsic_defs.FEDERATED_MAP.uri,
         computation_types.FunctionType(
             [
-                computation_types.FunctionType(tf.int32, tf.float32),
-                computation_types.FederatedType(tf.int32, placements.CLIENTS),
+                computation_types.FunctionType(np.int32, np.float32),
+                computation_types.FederatedType(np.int32, placements.CLIENTS),
             ],
-            computation_types.FederatedType(tf.float32, placements.CLIENTS),
+            computation_types.FederatedType(np.float32, placements.CLIENTS),
         ),
     )
     tree_analysis.check_contains_only_reducible_intrinsics(intrinsic)
@@ -53,8 +54,8 @@ class TestCheckContainsOnlyReducibleIntrinsics(absltest.TestCase):
     intrinsic = building_blocks.Intrinsic(
         intrinsic_defs.FEDERATED_MEAN.uri,
         computation_types.FunctionType(
-            computation_types.FederatedType(tf.int32, placements.CLIENTS),
-            computation_types.FederatedType(tf.int32, placements.SERVER),
+            computation_types.FederatedType(np.int32, placements.CLIENTS),
+            computation_types.FederatedType(np.int32, placements.SERVER),
         ),
     )
 
@@ -96,22 +97,22 @@ class NodesDependentOnPredicateTest(absltest.TestCase):
     self.assertEmpty(all_nodes)
 
   def test_propogates_dependence_up_through_lambda(self):
-    type_signature = computation_types.TensorType(tf.int32)
+    type_signature = computation_types.TensorType(np.int32)
     whimsy_intrinsic = building_blocks.Intrinsic(
         'whimsy_intrinsic', type_signature
     )
-    lam = building_blocks.Lambda('x', tf.int32, whimsy_intrinsic)
+    lam = building_blocks.Lambda('x', np.int32, whimsy_intrinsic)
     dependent_nodes = tree_analysis.extract_nodes_consuming(
         lam, whimsy_intrinsic_predicate
     )
     self.assertIn(lam, dependent_nodes)
 
   def test_propogates_dependence_up_through_block_result(self):
-    type_signature = computation_types.TensorType(tf.int32)
+    type_signature = computation_types.TensorType(np.int32)
     whimsy_intrinsic = building_blocks.Intrinsic(
         'whimsy_intrinsic', type_signature
     )
-    integer_reference = building_blocks.Reference('int', tf.int32)
+    integer_reference = building_blocks.Reference('int', np.int32)
     block = building_blocks.Block([('x', integer_reference)], whimsy_intrinsic)
     dependent_nodes = tree_analysis.extract_nodes_consuming(
         block, whimsy_intrinsic_predicate
@@ -119,11 +120,11 @@ class NodesDependentOnPredicateTest(absltest.TestCase):
     self.assertIn(block, dependent_nodes)
 
   def test_propogates_dependence_up_through_block_locals(self):
-    type_signature = computation_types.TensorType(tf.int32)
+    type_signature = computation_types.TensorType(np.int32)
     whimsy_intrinsic = building_blocks.Intrinsic(
         'whimsy_intrinsic', type_signature
     )
-    integer_reference = building_blocks.Reference('int', tf.int32)
+    integer_reference = building_blocks.Reference('int', np.int32)
     block = building_blocks.Block([('x', whimsy_intrinsic)], integer_reference)
     dependent_nodes = tree_analysis.extract_nodes_consuming(
         block, whimsy_intrinsic_predicate
@@ -131,11 +132,11 @@ class NodesDependentOnPredicateTest(absltest.TestCase):
     self.assertIn(block, dependent_nodes)
 
   def test_propogates_dependence_up_through_tuple(self):
-    type_signature = computation_types.TensorType(tf.int32)
+    type_signature = computation_types.TensorType(np.int32)
     whimsy_intrinsic = building_blocks.Intrinsic(
         'whimsy_intrinsic', type_signature
     )
-    integer_reference = building_blocks.Reference('int', tf.int32)
+    integer_reference = building_blocks.Reference('int', np.int32)
     tup = building_blocks.Struct([integer_reference, whimsy_intrinsic])
     dependent_nodes = tree_analysis.extract_nodes_consuming(
         tup, whimsy_intrinsic_predicate
@@ -143,7 +144,7 @@ class NodesDependentOnPredicateTest(absltest.TestCase):
     self.assertIn(tup, dependent_nodes)
 
   def test_propogates_dependence_up_through_selection(self):
-    type_signature = computation_types.StructType([tf.int32])
+    type_signature = computation_types.StructType([np.int32])
     whimsy_intrinsic = building_blocks.Intrinsic(
         'whimsy_intrinsic', type_signature
     )
@@ -154,12 +155,12 @@ class NodesDependentOnPredicateTest(absltest.TestCase):
     self.assertIn(selection, dependent_nodes)
 
   def test_propogates_dependence_up_through_call(self):
-    type_signature = computation_types.TensorType(tf.int32)
+    type_signature = computation_types.TensorType(np.int32)
     whimsy_intrinsic = building_blocks.Intrinsic(
         'whimsy_intrinsic', type_signature
     )
-    ref_to_x = building_blocks.Reference('x', tf.int32)
-    identity_lambda = building_blocks.Lambda('x', tf.int32, ref_to_x)
+    ref_to_x = building_blocks.Reference('x', np.int32)
+    identity_lambda = building_blocks.Lambda('x', np.int32, ref_to_x)
     called_lambda = building_blocks.Call(identity_lambda, whimsy_intrinsic)
     dependent_nodes = tree_analysis.extract_nodes_consuming(
         called_lambda, whimsy_intrinsic_predicate
@@ -167,7 +168,7 @@ class NodesDependentOnPredicateTest(absltest.TestCase):
     self.assertIn(called_lambda, dependent_nodes)
 
   def test_propogates_dependence_into_binding_to_reference(self):
-    fed_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
+    fed_type = computation_types.FederatedType(np.int32, placements.CLIENTS)
     ref_to_x = building_blocks.Reference('x', fed_type)
     federated_zero = building_blocks.Intrinsic(
         intrinsic_defs.GENERIC_ZERO.uri, fed_type
@@ -311,7 +312,7 @@ class CountTensorFlowOpsTest(absltest.TestCase):
     self.assertEqual(tf_count, 0)
 
   def test_single_tensorflow_node_count_agrees_with_node_count(self):
-    tensor_type = computation_types.TensorType(tf.int32)
+    tensor_type = computation_types.TensorType(np.int32)
     integer_identity = building_block_factory.create_compiled_identity(
         tensor_type
     )
@@ -324,7 +325,7 @@ class CountTensorFlowOpsTest(absltest.TestCase):
     self.assertEqual(node_tf_op_count, tree_tf_op_count)
 
   def test_tensorflow_op_count_doubles_number_of_ops_in_two_tuple(self):
-    tensor_type = computation_types.TensorType(tf.int32)
+    tensor_type = computation_types.TensorType(np.int32)
     integer_identity = building_block_factory.create_compiled_identity(
         tensor_type
     )
@@ -444,40 +445,40 @@ class ContainsNoUnboundReferencesTest(absltest.TestCase):
       tree_analysis.contains_no_unbound_references(None)
 
   def test_raises_type_error_with_int_excluding(self):
-    ref = building_blocks.Reference('a', tf.int32)
+    ref = building_blocks.Reference('a', np.int32)
     fn = building_blocks.Lambda(ref.name, ref.type_signature, ref)
     with self.assertRaises(TypeError):
       tree_analysis.contains_no_unbound_references(fn, 1)
 
   def test_returns_true(self):
-    ref = building_blocks.Reference('a', tf.int32)
+    ref = building_blocks.Reference('a', np.int32)
     fn = building_blocks.Lambda(ref.name, ref.type_signature, ref)
     self.assertTrue(tree_analysis.contains_no_unbound_references(fn))
 
   def test_returns_true_with_excluded_reference(self):
-    ref = building_blocks.Reference('a', tf.int32)
-    fn = building_blocks.Lambda('b', tf.int32, ref)
+    ref = building_blocks.Reference('a', np.int32)
+    fn = building_blocks.Lambda('b', np.int32, ref)
     self.assertTrue(
         tree_analysis.contains_no_unbound_references(fn, excluding='a')
     )
 
   def test_returns_false(self):
-    ref = building_blocks.Reference('a', tf.int32)
-    fn = building_blocks.Lambda('b', tf.int32, ref)
+    ref = building_blocks.Reference('a', np.int32)
+    fn = building_blocks.Lambda('b', np.int32, ref)
     self.assertFalse(tree_analysis.contains_no_unbound_references(fn))
 
 
 class TreesEqualTest(absltest.TestCase):
 
   def test_raises_type_error(self):
-    data = building_blocks.Data('data', tf.int32)
+    data = building_blocks.Data('data', np.int32)
     with self.assertRaises(TypeError):
       tree_analysis.trees_equal(data, 0)
     with self.assertRaises(TypeError):
       tree_analysis.trees_equal(0, data)
 
   def test_returns_false_for_block_and_none(self):
-    data = building_blocks.Data('data', tf.int32)
+    data = building_blocks.Data('data', np.int32)
     self.assertFalse(tree_analysis.trees_equal(data, None))
     self.assertFalse(tree_analysis.trees_equal(None, data))
 
@@ -485,36 +486,36 @@ class TreesEqualTest(absltest.TestCase):
     self.assertTrue(tree_analysis.trees_equal(None, None))
 
   def test_returns_true_for_the_same_comp(self):
-    data = building_blocks.Data('data', tf.int32)
+    data = building_blocks.Data('data', np.int32)
     self.assertTrue(tree_analysis.trees_equal(data, data))
 
   def test_returns_false_for_comps_with_different_types(self):
-    data = building_blocks.Data('data', tf.int32)
-    ref = building_blocks.Reference('a', tf.int32)
+    data = building_blocks.Data('data', np.int32)
+    ref = building_blocks.Reference('a', np.int32)
     self.assertFalse(tree_analysis.trees_equal(data, ref))
     self.assertFalse(tree_analysis.trees_equal(ref, data))
 
   def test_returns_false_for_blocks_with_different_results(self):
-    data_1 = building_blocks.Data('data', tf.int32)
+    data_1 = building_blocks.Data('data', np.int32)
     comp_1 = building_blocks.Block([], data_1)
-    data_2 = building_blocks.Data('data', tf.float32)
+    data_2 = building_blocks.Data('data', np.float32)
     comp_2 = building_blocks.Block([], data_2)
     self.assertFalse(tree_analysis.trees_equal(comp_1, comp_2))
 
   def test_returns_false_for_blocks_with_different_variable_lengths(self):
-    data = building_blocks.Data('data', tf.int32)
+    data = building_blocks.Data('data', np.int32)
     comp_1 = building_blocks.Block([('a', data)], data)
     comp_2 = building_blocks.Block([('a', data), ('b', data)], data)
     self.assertFalse(tree_analysis.trees_equal(comp_1, comp_2))
 
   def test_returns_true_for_blocks_with_different_variable_names(self):
-    data = building_blocks.Data('data', tf.int32)
+    data = building_blocks.Data('data', np.int32)
     comp_1 = building_blocks.Block([('a', data)], data)
     comp_2 = building_blocks.Block([('b', data)], data)
     self.assertTrue(tree_analysis.trees_equal(comp_1, comp_2))
 
   def test_returns_true_for_blocks_resulting_reference_to_same_local(self):
-    data = building_blocks.Data('data', tf.int32)
+    data = building_blocks.Data('data', np.int32)
     ref_to_a = building_blocks.Reference('a', data.type_signature)
     ref_to_b = building_blocks.Reference('b', data.type_signature)
     comp_1 = building_blocks.Block([('a', data)], ref_to_a)
@@ -522,7 +523,7 @@ class TreesEqualTest(absltest.TestCase):
     self.assertTrue(tree_analysis.trees_equal(comp_1, comp_2))
 
   def test_returns_true_for_blocks_referring_to_same_comp_in_local(self):
-    data = building_blocks.Data('data', tf.int32)
+    data = building_blocks.Data('data', np.int32)
     ref_to_a = building_blocks.Reference('a', data.type_signature)
     ref_to_b = building_blocks.Reference('b', data.type_signature)
     comp_1 = building_blocks.Block([('a', data), ('b', ref_to_a)], data)
@@ -530,7 +531,7 @@ class TreesEqualTest(absltest.TestCase):
     self.assertTrue(tree_analysis.trees_equal(comp_1, comp_2))
 
   def test_returns_true_for_blocks_referring_same_local(self):
-    data = building_blocks.Data('data', tf.int32)
+    data = building_blocks.Data('data', np.int32)
     ref_to_a = building_blocks.Reference('a', data.type_signature)
     ref_to_b = building_blocks.Reference('b', data.type_signature)
     comp_1 = building_blocks.Block([('a', data), ('b', ref_to_a)], ref_to_b)
@@ -538,7 +539,7 @@ class TreesEqualTest(absltest.TestCase):
     self.assertTrue(tree_analysis.trees_equal(comp_1, comp_2))
 
   def test_returns_false_for_blocks_referring_to_different_local(self):
-    data = building_blocks.Data('data', tf.int32)
+    data = building_blocks.Data('data', np.int32)
     ref_to_a = building_blocks.Reference('a', data.type_signature)
     ref_to_b = building_blocks.Reference('b', data.type_signature)
     comp_1 = building_blocks.Block([('a', data), ('b', ref_to_a)], ref_to_a)
@@ -547,75 +548,75 @@ class TreesEqualTest(absltest.TestCase):
     self.assertFalse(tree_analysis.trees_equal(comp_2, comp_1))
 
   def test_returns_false_for_blocks_with_different_variable_values(self):
-    data = building_blocks.Data('data', tf.int32)
-    data_1 = building_blocks.Data('data', tf.float32)
+    data = building_blocks.Data('data', np.int32)
+    data_1 = building_blocks.Data('data', np.float32)
     comp_1 = building_blocks.Block([('a', data_1)], data)
-    data_2 = building_blocks.Data('data', tf.bool)
+    data_2 = building_blocks.Data('data', np.bool_)
     comp_2 = building_blocks.Block([('a', data_2)], data)
     self.assertFalse(tree_analysis.trees_equal(comp_1, comp_2))
 
   def test_returns_true_for_blocks(self):
-    data_1 = building_blocks.Data('data', tf.int32)
+    data_1 = building_blocks.Data('data', np.int32)
     comp_1 = building_blocks.Block([('a', data_1)], data_1)
-    data_2 = building_blocks.Data('data', tf.int32)
+    data_2 = building_blocks.Data('data', np.int32)
     comp_2 = building_blocks.Block([('a', data_2)], data_2)
     self.assertTrue(tree_analysis.trees_equal(comp_1, comp_2))
 
   def test_returns_false_for_calls_with_different_functions(self):
-    function_type_1 = computation_types.FunctionType(tf.int32, tf.int32)
+    function_type_1 = computation_types.FunctionType(np.int32, np.int32)
     fn_1 = building_blocks.Reference('a', function_type_1)
-    arg_1 = building_blocks.Data('data', tf.int32)
+    arg_1 = building_blocks.Data('data', np.int32)
     comp_1 = building_blocks.Call(fn_1, arg_1)
-    function_type_2 = computation_types.FunctionType(tf.int32, tf.int32)
+    function_type_2 = computation_types.FunctionType(np.int32, np.int32)
     fn_2 = building_blocks.Reference('b', function_type_2)
-    arg_2 = building_blocks.Data('data', tf.int32)
+    arg_2 = building_blocks.Data('data', np.int32)
     comp_2 = building_blocks.Call(fn_2, arg_2)
     self.assertFalse(tree_analysis.trees_equal(comp_1, comp_2))
 
   def test_returns_false_for_calls_with_different_arguments(self):
-    function_type_1 = computation_types.FunctionType(tf.int32, tf.int32)
+    function_type_1 = computation_types.FunctionType(np.int32, np.int32)
     fn_1 = building_blocks.Reference('a', function_type_1)
-    arg_1 = building_blocks.Data('a', tf.int32)
+    arg_1 = building_blocks.Data('a', np.int32)
     comp_1 = building_blocks.Call(fn_1, arg_1)
-    function_type_2 = computation_types.FunctionType(tf.int32, tf.int32)
+    function_type_2 = computation_types.FunctionType(np.int32, np.int32)
     fn_2 = building_blocks.Reference('a', function_type_2)
-    arg_2 = building_blocks.Data('b', tf.int32)
+    arg_2 = building_blocks.Data('b', np.int32)
     comp_2 = building_blocks.Call(fn_2, arg_2)
     self.assertFalse(tree_analysis.trees_equal(comp_1, comp_2))
 
   def test_returns_true_for_calls(self):
-    function_type_1 = computation_types.FunctionType(tf.int32, tf.int32)
+    function_type_1 = computation_types.FunctionType(np.int32, np.int32)
     fn_1 = building_blocks.Reference('a', function_type_1)
-    arg_1 = building_blocks.Data('data', tf.int32)
+    arg_1 = building_blocks.Data('data', np.int32)
     comp_1 = building_blocks.Call(fn_1, arg_1)
-    function_type_2 = computation_types.FunctionType(tf.int32, tf.int32)
+    function_type_2 = computation_types.FunctionType(np.int32, np.int32)
     fn_2 = building_blocks.Reference('a', function_type_2)
-    arg_2 = building_blocks.Data('data', tf.int32)
+    arg_2 = building_blocks.Data('data', np.int32)
     comp_2 = building_blocks.Call(fn_2, arg_2)
     self.assertTrue(tree_analysis.trees_equal(comp_1, comp_2))
 
   def test_returns_true_for_calls_with_no_arguments(self):
-    function_type_1 = computation_types.FunctionType(None, tf.int32)
+    function_type_1 = computation_types.FunctionType(None, np.int32)
     fn_1 = building_blocks.Reference('a', function_type_1)
     comp_1 = building_blocks.Call(fn_1)
-    function_type_2 = computation_types.FunctionType(None, tf.int32)
+    function_type_2 = computation_types.FunctionType(None, np.int32)
     fn_2 = building_blocks.Reference('a', function_type_2)
     comp_2 = building_blocks.Call(fn_2)
     self.assertTrue(tree_analysis.trees_equal(comp_1, comp_2))
 
   def test_returns_false_for_compiled_computations_with_different_types(self):
-    tensor_type_1 = computation_types.TensorType(tf.int32)
+    tensor_type_1 = computation_types.TensorType(np.int32)
     compiled_1 = building_block_factory.create_compiled_identity(
         tensor_type_1, 'a'
     )
-    tensor_type_2 = computation_types.TensorType(tf.float32)
+    tensor_type_2 = computation_types.TensorType(np.float32)
     compiled_2 = building_block_factory.create_compiled_identity(
         tensor_type_2, 'a'
     )
     self.assertFalse(tree_analysis.trees_equal(compiled_1, compiled_2))
 
   def test_returns_true_for_compiled_computations(self):
-    tensor_type = computation_types.TensorType(tf.int32)
+    tensor_type = computation_types.TensorType(np.int32)
     compiled_1 = building_block_factory.create_compiled_identity(
         tensor_type, 'a'
     )
@@ -625,7 +626,7 @@ class TreesEqualTest(absltest.TestCase):
     self.assertTrue(tree_analysis.trees_equal(compiled_1, compiled_2))
 
   def test_returns_true_for_compiled_computations_with_different_names(self):
-    tensor_type = computation_types.TensorType(tf.int32)
+    tensor_type = computation_types.TensorType(np.int32)
     compiled_1 = building_block_factory.create_compiled_identity(
         tensor_type, 'a'
     )
@@ -635,93 +636,93 @@ class TreesEqualTest(absltest.TestCase):
     self.assertTrue(tree_analysis.trees_equal(compiled_1, compiled_2))
 
   def test_returns_false_for_data_with_different_types(self):
-    data_1 = building_blocks.Data('data', tf.int32)
-    data_2 = building_blocks.Data('data', tf.float32)
+    data_1 = building_blocks.Data('data', np.int32)
+    data_2 = building_blocks.Data('data', np.float32)
     self.assertFalse(tree_analysis.trees_equal(data_1, data_2))
 
   def test_returns_false_for_data_with_different_names(self):
-    data_1 = building_blocks.Data('a', tf.int32)
-    data_2 = building_blocks.Data('b', tf.int32)
+    data_1 = building_blocks.Data('a', np.int32)
+    data_2 = building_blocks.Data('b', np.int32)
     self.assertFalse(tree_analysis.trees_equal(data_1, data_2))
 
   def test_returns_true_for_data(self):
-    data_1 = building_blocks.Data('data', tf.int32)
-    data_2 = building_blocks.Data('data', tf.int32)
+    data_1 = building_blocks.Data('data', np.int32)
+    data_2 = building_blocks.Data('data', np.int32)
     self.assertTrue(tree_analysis.trees_equal(data_1, data_2))
 
   def test_returns_false_for_intrinsics_with_different_types(self):
-    type_signature_1 = computation_types.TensorType(tf.int32)
+    type_signature_1 = computation_types.TensorType(np.int32)
     intrinsic_1 = building_blocks.Intrinsic('intrinsic', type_signature_1)
-    type_signature_2 = computation_types.TensorType(tf.float32)
+    type_signature_2 = computation_types.TensorType(np.float32)
     intrinsic_2 = building_blocks.Intrinsic('intrinsic', type_signature_2)
     self.assertFalse(tree_analysis.trees_equal(intrinsic_1, intrinsic_2))
 
   def test_returns_false_for_intrinsics_with_different_names(self):
-    type_signature_1 = computation_types.TensorType(tf.int32)
+    type_signature_1 = computation_types.TensorType(np.int32)
     intrinsic_1 = building_blocks.Intrinsic('a', type_signature_1)
-    type_signature_2 = computation_types.TensorType(tf.int32)
+    type_signature_2 = computation_types.TensorType(np.int32)
     intrinsic_2 = building_blocks.Intrinsic('b', type_signature_2)
     self.assertFalse(tree_analysis.trees_equal(intrinsic_1, intrinsic_2))
 
   def test_returns_true_for_intrinsics(self):
-    type_signature_1 = computation_types.TensorType(tf.int32)
+    type_signature_1 = computation_types.TensorType(np.int32)
     intrinsic_1 = building_blocks.Intrinsic('intrinsic', type_signature_1)
-    type_signature_2 = computation_types.TensorType(tf.int32)
+    type_signature_2 = computation_types.TensorType(np.int32)
     intrinsic_2 = building_blocks.Intrinsic('intrinsic', type_signature_2)
     self.assertTrue(tree_analysis.trees_equal(intrinsic_1, intrinsic_2))
 
   def test_returns_true_for_lambdas_representing_identical_functions(self):
-    ref_1 = building_blocks.Reference('a', tf.int32)
+    ref_1 = building_blocks.Reference('a', np.int32)
     fn_1 = building_blocks.Lambda('a', ref_1.type_signature, ref_1)
-    ref_2 = building_blocks.Reference('b', tf.int32)
+    ref_2 = building_blocks.Reference('b', np.int32)
     fn_2 = building_blocks.Lambda('b', ref_2.type_signature, ref_2)
     self.assertTrue(tree_analysis.trees_equal(fn_1, fn_2))
 
   def test_returns_false_for_lambdas_with_different_parameter_types(self):
-    ref_1 = building_blocks.Reference('a', tf.int32)
+    ref_1 = building_blocks.Reference('a', np.int32)
     fn_1 = building_blocks.Lambda(ref_1.name, ref_1.type_signature, ref_1)
-    ref_2 = building_blocks.Reference('a', tf.float32)
+    ref_2 = building_blocks.Reference('a', np.float32)
     fn_2 = building_blocks.Lambda(ref_2.name, ref_2.type_signature, ref_2)
     self.assertFalse(tree_analysis.trees_equal(fn_1, fn_2))
 
   def test_returns_false_for_lambdas_with_different_results(self):
-    data_1 = building_blocks.Data('x', tf.int32)
-    ref_1 = building_blocks.Reference('a', tf.int32)
+    data_1 = building_blocks.Data('x', np.int32)
+    ref_1 = building_blocks.Reference('a', np.int32)
     fn_1 = building_blocks.Lambda(ref_1.name, ref_1.type_signature, data_1)
-    data_2 = building_blocks.Data('y', tf.int32)
-    ref_2 = building_blocks.Reference('b', tf.int32)
+    data_2 = building_blocks.Data('y', np.int32)
+    ref_2 = building_blocks.Reference('b', np.int32)
     fn_2 = building_blocks.Lambda(ref_2.name, ref_2.type_signature, data_2)
     self.assertFalse(tree_analysis.trees_equal(fn_1, fn_2))
 
   def test_returns_true_for_lambdas_with_different_parameter_names_but_same_result(
       self,
   ):
-    data_1 = building_blocks.Data('x', tf.int32)
-    ref_1 = building_blocks.Reference('a', tf.int32)
+    data_1 = building_blocks.Data('x', np.int32)
+    ref_1 = building_blocks.Reference('a', np.int32)
     fn_1 = building_blocks.Lambda(ref_1.name, ref_1.type_signature, data_1)
-    ref_2 = building_blocks.Reference('b', tf.int32)
+    ref_2 = building_blocks.Reference('b', np.int32)
     fn_2 = building_blocks.Lambda(ref_2.name, ref_2.type_signature, data_1)
     self.assertTrue(tree_analysis.trees_equal(fn_1, fn_2))
 
   def test_returns_false_for_lambdas_referring_to_different_unbound_variables(
       self,
   ):
-    ref_to_x = building_blocks.Reference('x', tf.int32)
-    ref_to_y = building_blocks.Reference('y', tf.int32)
-    fn_1 = building_blocks.Lambda('a', tf.int32, ref_to_x)
-    fn_2 = building_blocks.Lambda('a', tf.int32, ref_to_y)
+    ref_to_x = building_blocks.Reference('x', np.int32)
+    ref_to_y = building_blocks.Reference('y', np.int32)
+    fn_1 = building_blocks.Lambda('a', np.int32, ref_to_x)
+    fn_2 = building_blocks.Lambda('a', np.int32, ref_to_y)
     self.assertFalse(tree_analysis.trees_equal(fn_1, fn_2))
 
   def test_returns_true_for_lambdas_referring_to_same_unbound_variables(self):
-    ref_to_x = building_blocks.Reference('x', tf.int32)
-    fn_1 = building_blocks.Lambda('a', tf.int32, ref_to_x)
-    fn_2 = building_blocks.Lambda('a', tf.int32, ref_to_x)
+    ref_to_x = building_blocks.Reference('x', np.int32)
+    fn_1 = building_blocks.Lambda('a', np.int32, ref_to_x)
+    fn_2 = building_blocks.Lambda('a', np.int32, ref_to_x)
     self.assertTrue(tree_analysis.trees_equal(fn_1, fn_2))
 
   def test_returns_true_for_lambdas(self):
-    ref_1 = building_blocks.Reference('a', tf.int32)
+    ref_1 = building_blocks.Reference('a', np.int32)
     fn_1 = building_blocks.Lambda(ref_1.name, ref_1.type_signature, ref_1)
-    ref_2 = building_blocks.Reference('a', tf.int32)
+    ref_2 = building_blocks.Reference('a', np.int32)
     fn_2 = building_blocks.Lambda(ref_2.name, ref_2.type_signature, ref_2)
     self.assertTrue(tree_analysis.trees_equal(fn_1, fn_2))
 
@@ -736,80 +737,80 @@ class TreesEqualTest(absltest.TestCase):
     self.assertTrue(tree_analysis.trees_equal(placement_1, placement_2))
 
   def test_returns_false_for_references_with_different_types(self):
-    reference_1 = building_blocks.Reference('a', tf.int32)
-    reference_2 = building_blocks.Reference('a', tf.float32)
+    reference_1 = building_blocks.Reference('a', np.int32)
+    reference_2 = building_blocks.Reference('a', np.float32)
     self.assertFalse(tree_analysis.trees_equal(reference_1, reference_2))
 
   def test_returns_false_for_references_with_different_names(self):
-    reference_1 = building_blocks.Reference('a', tf.int32)
-    reference_2 = building_blocks.Reference('b', tf.int32)
+    reference_1 = building_blocks.Reference('a', np.int32)
+    reference_2 = building_blocks.Reference('b', np.int32)
     self.assertFalse(tree_analysis.trees_equal(reference_1, reference_2))
 
   def test_returns_true_for_references(self):
-    reference_1 = building_blocks.Reference('a', tf.int32)
-    reference_2 = building_blocks.Reference('a', tf.int32)
+    reference_1 = building_blocks.Reference('a', np.int32)
+    reference_2 = building_blocks.Reference('a', np.int32)
     self.assertTrue(tree_analysis.trees_equal(reference_1, reference_2))
 
   def test_returns_false_for_selections_with_differet_sources(self):
-    ref_1 = building_blocks.Reference('a', [tf.int32, tf.int32])
+    ref_1 = building_blocks.Reference('a', [np.int32, np.int32])
     selection_1 = building_blocks.Selection(ref_1, index=0)
-    ref_2 = building_blocks.Reference('b', [tf.int32, tf.int32])
+    ref_2 = building_blocks.Reference('b', [np.int32, np.int32])
     selection_2 = building_blocks.Selection(ref_2, index=1)
     self.assertFalse(tree_analysis.trees_equal(selection_1, selection_2))
 
   def test_returns_false_for_selections_with_different_indexes(self):
-    ref_1 = building_blocks.Reference('a', [tf.int32, tf.int32])
+    ref_1 = building_blocks.Reference('a', [np.int32, np.int32])
     selection_1 = building_blocks.Selection(ref_1, index=0)
-    ref_2 = building_blocks.Reference('a', [tf.int32, tf.int32])
+    ref_2 = building_blocks.Reference('a', [np.int32, np.int32])
     selection_2 = building_blocks.Selection(ref_2, index=1)
     self.assertFalse(tree_analysis.trees_equal(selection_1, selection_2))
 
   def test_returns_false_for_selections_with_differet_names(self):
-    ref_1 = building_blocks.Reference('a', [('a', tf.int32), ('b', tf.int32)])
+    ref_1 = building_blocks.Reference('a', [('a', np.int32), ('b', np.int32)])
     selection_1 = building_blocks.Selection(ref_1, name='a')
-    ref_2 = building_blocks.Reference('a', [('a', tf.int32), ('b', tf.int32)])
+    ref_2 = building_blocks.Reference('a', [('a', np.int32), ('b', np.int32)])
     selection_2 = building_blocks.Selection(ref_2, name='b')
     self.assertFalse(tree_analysis.trees_equal(selection_1, selection_2))
 
   def test_returns_true_for_selections_with_indexes(self):
-    ref_1 = building_blocks.Reference('a', [tf.int32, tf.int32])
+    ref_1 = building_blocks.Reference('a', [np.int32, np.int32])
     selection_1 = building_blocks.Selection(ref_1, index=0)
-    ref_2 = building_blocks.Reference('a', [tf.int32, tf.int32])
+    ref_2 = building_blocks.Reference('a', [np.int32, np.int32])
     selection_2 = building_blocks.Selection(ref_2, index=0)
     self.assertTrue(tree_analysis.trees_equal(selection_1, selection_2))
 
   def test_returns_true_for_selections_with_names(self):
-    ref_1 = building_blocks.Reference('a', [('a', tf.int32), ('b', tf.int32)])
+    ref_1 = building_blocks.Reference('a', [('a', np.int32), ('b', np.int32)])
     selection_1 = building_blocks.Selection(ref_1, name='a')
-    ref_2 = building_blocks.Reference('a', [('a', tf.int32), ('b', tf.int32)])
+    ref_2 = building_blocks.Reference('a', [('a', np.int32), ('b', np.int32)])
     selection_2 = building_blocks.Selection(ref_2, name='a')
     self.assertTrue(tree_analysis.trees_equal(selection_1, selection_2))
 
   def test_returns_false_for_tuples_with_different_lengths(self):
-    data_1 = building_blocks.Data('data', tf.int32)
+    data_1 = building_blocks.Data('data', np.int32)
     tuple_1 = building_blocks.Struct([data_1])
-    data_2 = building_blocks.Data('data', tf.int32)
+    data_2 = building_blocks.Data('data', np.int32)
     tuple_2 = building_blocks.Struct([data_2, data_2])
     self.assertFalse(tree_analysis.trees_equal(tuple_1, tuple_2))
 
   def test_returns_false_for_tuples_with_different_names(self):
-    data_1 = building_blocks.Data('data', tf.int32)
+    data_1 = building_blocks.Data('data', np.int32)
     tuple_1 = building_blocks.Struct([('a', data_1), ('b', data_1)])
-    data_2 = building_blocks.Data('data', tf.float32)
+    data_2 = building_blocks.Data('data', np.float32)
     tuple_2 = building_blocks.Struct([('c', data_2), ('d', data_2)])
     self.assertFalse(tree_analysis.trees_equal(tuple_1, tuple_2))
 
   def test_returns_false_for_tuples_with_different_elements(self):
-    data_1 = building_blocks.Data('data', tf.int32)
+    data_1 = building_blocks.Data('data', np.int32)
     tuple_1 = building_blocks.Struct([data_1, data_1])
-    data_2 = building_blocks.Data('data', tf.float32)
+    data_2 = building_blocks.Data('data', np.float32)
     tuple_2 = building_blocks.Struct([data_2, data_2])
     self.assertFalse(tree_analysis.trees_equal(tuple_1, tuple_2))
 
   def test_returns_true_for_tuples(self):
-    data_1 = building_blocks.Data('data', tf.int32)
+    data_1 = building_blocks.Data('data', np.int32)
     tuple_1 = building_blocks.Struct([data_1, data_1])
-    data_2 = building_blocks.Data('data', tf.int32)
+    data_2 = building_blocks.Data('data', np.int32)
     tuple_2 = building_blocks.Struct([data_2, data_2])
     self.assertTrue(tree_analysis.trees_equal(tuple_1, tuple_2))
 
@@ -870,7 +871,7 @@ class ContainsAggregationShared(parameterized.TestCase):
         building_blocks.Data(
             'unknown_func',
             computation_types.FunctionType(
-                None, computation_types.at_clients(tf.int32)
+                None, computation_types.at_clients(np.int32)
             ),
         )
     )
@@ -883,8 +884,8 @@ class ContainsAggregationShared(parameterized.TestCase):
   def test_returns_none_on_unresolvable_function_call_with_non_federated_output(
       self,
   ):
-    input_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
-    output_type = tf.int32
+    input_type = computation_types.FederatedType(np.int32, placements.CLIENTS)
+    output_type = np.int32
     comp = building_blocks.Call(
         building_blocks.Data(
             'unknown_func',
@@ -904,7 +905,7 @@ simple_mean = building_block_test_utils.create_whimsy_called_federated_mean()
 simple_sum = building_block_test_utils.create_whimsy_called_federated_sum()
 simple_weighted_mean = (
     building_block_test_utils.create_whimsy_called_federated_mean(
-        tf.float32, tf.float32
+        np.float32, np.float32
     )
 )
 simple_secure_sum = (
@@ -931,7 +932,7 @@ class ContainsSecureAggregation(parameterized.TestCase):
 
   def test_returns_str_on_nested_secure_aggregation(self):
     comp = building_block_test_utils.create_whimsy_called_federated_secure_sum_bitwidth(
-        (tf.int32, tf.int32)
+        (np.int32, np.int32)
     )
     self.assert_one_aggregation(comp)
 
@@ -960,71 +961,71 @@ class CheckHasUniqueNamesTest(absltest.TestCase):
       tree_analysis.check_has_unique_names(None)
 
   def test_ok_on_single_lambda(self):
-    ref_to_x = building_blocks.Reference('x', tf.int32)
-    lambda_1 = building_blocks.Lambda('x', tf.int32, ref_to_x)
+    ref_to_x = building_blocks.Reference('x', np.int32)
+    lambda_1 = building_blocks.Lambda('x', np.int32, ref_to_x)
     tree_analysis.check_has_unique_names(lambda_1)
 
   def test_ok_on_multiple_no_arg_lambdas(self):
-    data = building_blocks.Data('x', tf.int32)
+    data = building_blocks.Data('x', np.int32)
     lambda_1 = building_blocks.Lambda(None, None, data)
     lambda_2 = building_blocks.Lambda(None, None, data)
     tup = building_blocks.Struct([lambda_1, lambda_2])
     tree_analysis.check_has_unique_names(tup)
 
   def test_raises_on_nested_lambdas_with_same_variable_name(self):
-    ref_to_x = building_blocks.Reference('x', tf.int32)
-    lambda_1 = building_blocks.Lambda('x', tf.int32, ref_to_x)
-    lambda_2 = building_blocks.Lambda('x', tf.int32, lambda_1)
+    ref_to_x = building_blocks.Reference('x', np.int32)
+    lambda_1 = building_blocks.Lambda('x', np.int32, ref_to_x)
+    lambda_2 = building_blocks.Lambda('x', np.int32, lambda_1)
     with self.assertRaises(tree_analysis.NonuniqueNameError):
       tree_analysis.check_has_unique_names(lambda_2)
 
   def test_ok_on_nested_lambdas_with_different_variable_name(self):
-    ref_to_x = building_blocks.Reference('x', tf.int32)
-    lambda_1 = building_blocks.Lambda('x', tf.int32, ref_to_x)
-    lambda_2 = building_blocks.Lambda('y', tf.int32, lambda_1)
+    ref_to_x = building_blocks.Reference('x', np.int32)
+    lambda_1 = building_blocks.Lambda('x', np.int32, ref_to_x)
+    lambda_2 = building_blocks.Lambda('y', np.int32, lambda_1)
     tree_analysis.check_has_unique_names(lambda_2)
 
   def test_ok_on_single_block(self):
-    x_data = building_blocks.Data('x', tf.int32)
+    x_data = building_blocks.Data('x', np.int32)
     single_block = building_blocks.Block([('x', x_data)], x_data)
     tree_analysis.check_has_unique_names(single_block)
 
   def test_raises_on_sequential_binding_of_same_variable_in_block(self):
-    x_data = building_blocks.Data('x', tf.int32)
+    x_data = building_blocks.Data('x', np.int32)
     block = building_blocks.Block([('x', x_data), ('x', x_data)], x_data)
     with self.assertRaises(tree_analysis.NonuniqueNameError):
       tree_analysis.check_has_unique_names(block)
 
   def test_ok_on_sequential_binding_of_different_variable_in_block(self):
-    x_data = building_blocks.Data('x', tf.int32)
+    x_data = building_blocks.Data('x', np.int32)
     block = building_blocks.Block([('x', x_data), ('y', x_data)], x_data)
     tree_analysis.check_has_unique_names(block)
 
   def test_raises_block_rebinding_of_lambda_variable(self):
-    x_data = building_blocks.Data('x', tf.int32)
+    x_data = building_blocks.Data('x', np.int32)
     single_block = building_blocks.Block([('x', x_data)], x_data)
-    lambda_1 = building_blocks.Lambda('x', tf.int32, single_block)
+    lambda_1 = building_blocks.Lambda('x', np.int32, single_block)
     with self.assertRaises(tree_analysis.NonuniqueNameError):
       tree_analysis.check_has_unique_names(lambda_1)
 
   def test_ok_block_binding_of_new_variable(self):
-    x_data = building_blocks.Data('x', tf.int32)
+    x_data = building_blocks.Data('x', np.int32)
     single_block = building_blocks.Block([('x', x_data)], x_data)
-    lambda_1 = building_blocks.Lambda('y', tf.int32, single_block)
+    lambda_1 = building_blocks.Lambda('y', np.int32, single_block)
     tree_analysis.check_has_unique_names(lambda_1)
 
   def test_raises_lambda_rebinding_of_block_variable(self):
-    x_ref = building_blocks.Reference('x', tf.int32)
-    lambda_1 = building_blocks.Lambda('x', tf.int32, x_ref)
-    x_data = building_blocks.Data('x', tf.int32)
+    x_ref = building_blocks.Reference('x', np.int32)
+    lambda_1 = building_blocks.Lambda('x', np.int32, x_ref)
+    x_data = building_blocks.Data('x', np.int32)
     single_block = building_blocks.Block([('x', x_data)], lambda_1)
     with self.assertRaises(tree_analysis.NonuniqueNameError):
       tree_analysis.check_has_unique_names(single_block)
 
   def test_ok_lambda_binding_of_new_variable(self):
-    y_ref = building_blocks.Reference('y', tf.int32)
-    lambda_1 = building_blocks.Lambda('y', tf.int32, y_ref)
-    x_data = building_blocks.Data('x', tf.int32)
+    y_ref = building_blocks.Reference('y', np.int32)
+    lambda_1 = building_blocks.Lambda('y', np.int32, y_ref)
+    x_data = building_blocks.Data('x', np.int32)
     single_block = building_blocks.Block([('x', x_data)], lambda_1)
     tree_analysis.check_has_unique_names(single_block)
 

@@ -14,7 +14,9 @@
 
 from absl.testing import absltest
 from absl.testing import parameterized
-import tensorflow as tf
+import numpy as np
+
+# import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import golden
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -108,7 +110,7 @@ class RemoveMappedOrAppliedIdentityTest(parameterized.TestCase):
     self.assertTrue(modified)
 
   def test_removes_federated_map_with_named_result(self):
-    parameter_type = [('a', tf.int32), ('b', tf.int32)]
+    parameter_type = [('a', np.int32), ('b', np.int32)]
     fn = building_block_test_utils.create_identity_function('c', parameter_type)
     arg_type = computation_types.FederatedType(
         parameter_type, placements.CLIENTS
@@ -154,8 +156,8 @@ class RemoveMappedOrAppliedIdentityTest(parameterized.TestCase):
     self.assertTrue(modified)
 
   def test_removes_chained_federated_maps(self):
-    fn = building_block_test_utils.create_identity_function('a', tf.int32)
-    arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
+    fn = building_block_test_utils.create_identity_function('a', np.int32)
+    arg_type = computation_types.FederatedType(np.int32, placements.CLIENTS)
     arg = building_blocks.Data('data', arg_type)
     call = _create_chained_whimsy_federated_maps([fn, fn], arg)
     comp = call
@@ -189,8 +191,8 @@ class RemoveMappedOrAppliedIdentityTest(parameterized.TestCase):
     self.assertFalse(modified)
 
   def test_does_not_remove_called_lambda(self):
-    fn = building_block_test_utils.create_identity_function('a', tf.int32)
-    arg = building_blocks.Data('data', tf.int32)
+    fn = building_block_test_utils.create_identity_function('a', np.int32)
+    arg = building_blocks.Data('data', np.int32)
     call = building_blocks.Call(fn, arg)
     comp = call
 
@@ -216,19 +218,19 @@ class RemoveUnusedBlockLocalsTest(absltest.TestCase):
 
   def test_should_transform_block(self):
     blk = building_blocks.Block(
-        [('x', building_blocks.Data('a', tf.int32))],
-        building_blocks.Data('b', tf.int32),
+        [('x', building_blocks.Data('a', np.int32))],
+        building_blocks.Data('b', np.int32),
     )
     self.assertTrue(self._unused_block_remover.should_transform(blk))
 
   def test_should_not_transform_data(self):
-    data = building_blocks.Data('b', tf.int32)
+    data = building_blocks.Data('b', np.int32)
     self.assertFalse(self._unused_block_remover.should_transform(data))
 
   def test_removes_block_with_unused_reference(self):
-    input_data = building_blocks.Data('b', tf.int32)
+    input_data = building_blocks.Data('b', np.int32)
     blk = building_blocks.Block(
-        [('x', building_blocks.Data('a', tf.int32))], input_data
+        [('x', building_blocks.Data('a', np.int32))], input_data
     )
     data, modified = transformation_utils.transform_postorder(
         blk, self._unused_block_remover.transform
@@ -239,7 +241,7 @@ class RemoveUnusedBlockLocalsTest(absltest.TestCase):
     )
 
   def test_unwraps_block_with_empty_locals(self):
-    input_data = building_blocks.Data('b', tf.int32)
+    input_data = building_blocks.Data('b', np.int32)
     blk = building_blocks.Block([], input_data)
     data, modified = transformation_utils.transform_postorder(
         blk, self._unused_block_remover.transform
@@ -250,9 +252,9 @@ class RemoveUnusedBlockLocalsTest(absltest.TestCase):
     )
 
   def test_removes_nested_blocks_with_unused_reference(self):
-    input_data = building_blocks.Data('b', tf.int32)
+    input_data = building_blocks.Data('b', np.int32)
     blk = building_blocks.Block(
-        [('x', building_blocks.Data('a', tf.int32))], input_data
+        [('x', building_blocks.Data('a', np.int32))], input_data
     )
     higher_level_blk = building_blocks.Block([('y', input_data)], blk)
     data, modified = transformation_utils.transform_postorder(
@@ -265,8 +267,8 @@ class RemoveUnusedBlockLocalsTest(absltest.TestCase):
 
   def test_leaves_single_used_reference(self):
     blk = building_blocks.Block(
-        [('x', building_blocks.Data('a', tf.int32))],
-        building_blocks.Reference('x', tf.int32),
+        [('x', building_blocks.Data('a', np.int32))],
+        building_blocks.Reference('x', np.int32),
     )
     transformed_blk, modified = transformation_utils.transform_postorder(
         blk, self._unused_block_remover.transform
@@ -279,10 +281,10 @@ class RemoveUnusedBlockLocalsTest(absltest.TestCase):
   def test_leaves_chained_used_references(self):
     blk = building_blocks.Block(
         [
-            ('x', building_blocks.Data('a', tf.int32)),
-            ('y', building_blocks.Reference('x', tf.int32)),
+            ('x', building_blocks.Data('a', np.int32)),
+            ('y', building_blocks.Reference('x', np.int32)),
         ],
-        building_blocks.Reference('y', tf.int32),
+        building_blocks.Reference('y', np.int32),
     )
     transformed_blk, modified = transformation_utils.transform_postorder(
         blk, self._unused_block_remover.transform
@@ -295,11 +297,11 @@ class RemoveUnusedBlockLocalsTest(absltest.TestCase):
   def test_removes_locals_referencing_each_other_but_unreferenced_in_result(
       self,
   ):
-    input_data = building_blocks.Data('b', tf.int32)
+    input_data = building_blocks.Data('b', np.int32)
     blk = building_blocks.Block(
         [
-            ('x', building_blocks.Data('a', tf.int32)),
-            ('y', building_blocks.Reference('x', tf.int32)),
+            ('x', building_blocks.Data('a', np.int32)),
+            ('y', building_blocks.Reference('x', np.int32)),
         ],
         input_data,
     )
@@ -313,11 +315,11 @@ class RemoveUnusedBlockLocalsTest(absltest.TestCase):
     )
 
   def test_leaves_lone_referenced_local(self):
-    ref = building_blocks.Reference('y', tf.int32)
+    ref = building_blocks.Reference('y', np.int32)
     blk = building_blocks.Block(
         [
-            ('x', building_blocks.Data('a', tf.int32)),
-            ('y', building_blocks.Data('b', tf.int32)),
+            ('x', building_blocks.Data('a', np.int32)),
+            ('y', building_blocks.Data('b', np.int32)),
         ],
         ref,
     )
@@ -340,8 +342,8 @@ class UniquifyReferenceNamesTest(TransformTestBase):
   def test_renames_lambda_but_not_unbound_reference_when_given_name_generator(
       self,
   ):
-    ref = building_blocks.Reference('x', tf.int32)
-    lambda_binding_y = building_blocks.Lambda('y', tf.float32, ref)
+    ref = building_blocks.Reference('x', np.int32)
+    lambda_binding_y = building_blocks.Lambda('y', np.float32, ref)
 
     name_generator = building_block_factory.unique_name_generator(
         lambda_binding_y
@@ -358,8 +360,8 @@ class UniquifyReferenceNamesTest(TransformTestBase):
     self.assertTrue(modified)
 
   def test_single_level_block(self):
-    ref = building_blocks.Reference('a', tf.int32)
-    data = building_blocks.Data('data', tf.int32)
+    ref = building_blocks.Reference('a', np.int32)
+    data = building_blocks.Data('data', np.int32)
     block = building_blocks.Block((('a', data), ('a', ref), ('a', ref)), ref)
 
     transformed_comp, modified = tree_transformations.uniquify_reference_names(
@@ -377,8 +379,8 @@ class UniquifyReferenceNamesTest(TransformTestBase):
     self.assertTrue(modified)
 
   def test_nested_blocks(self):
-    x_ref = building_blocks.Reference('a', tf.int32)
-    data = building_blocks.Data('data', tf.int32)
+    x_ref = building_blocks.Reference('a', np.int32)
+    data = building_blocks.Data('data', np.int32)
     block1 = building_blocks.Block([('a', data), ('a', x_ref)], x_ref)
     block2 = building_blocks.Block([('a', data), ('a', x_ref)], block1)
 
@@ -398,7 +400,7 @@ class UniquifyReferenceNamesTest(TransformTestBase):
     self.assertTrue(modified)
 
   def test_nested_lambdas(self):
-    data = building_blocks.Data('data', tf.int32)
+    data = building_blocks.Data('data', np.int32)
     input1 = building_blocks.Reference('a', data.type_signature)
     first_level_call = building_blocks.Call(
         building_blocks.Lambda('a', input1.type_signature, input1), data
@@ -420,15 +422,15 @@ class UniquifyReferenceNamesTest(TransformTestBase):
     self.assertFalse(modified)
 
   def test_block_lambda_block_lambda(self):
-    x_ref = building_blocks.Reference('a', tf.int32)
-    inner_lambda = building_blocks.Lambda('a', tf.int32, x_ref)
+    x_ref = building_blocks.Reference('a', np.int32)
+    inner_lambda = building_blocks.Lambda('a', np.int32, x_ref)
     called_lambda = building_blocks.Call(inner_lambda, x_ref)
     lower_block = building_blocks.Block(
         [('a', x_ref), ('a', x_ref)], called_lambda
     )
-    second_lambda = building_blocks.Lambda('a', tf.int32, lower_block)
+    second_lambda = building_blocks.Lambda('a', np.int32, lower_block)
     second_call = building_blocks.Call(second_lambda, x_ref)
-    data = building_blocks.Data('data', tf.int32)
+    data = building_blocks.Data('data', np.int32)
     last_block = building_blocks.Block([('a', data), ('a', x_ref)], second_call)
 
     transformed_comp, modified = tree_transformations.uniquify_reference_names(
@@ -450,11 +452,11 @@ class UniquifyReferenceNamesTest(TransformTestBase):
     self.assertTrue(modified)
 
   def test_blocks_nested_inside_of_locals(self):
-    data = building_blocks.Data('data', tf.int32)
+    data = building_blocks.Data('data', np.int32)
     lower_block = building_blocks.Block([('a', data)], data)
     middle_block = building_blocks.Block([('a', lower_block)], data)
     higher_block = building_blocks.Block([('a', middle_block)], data)
-    y_ref = building_blocks.Reference('a', tf.int32)
+    y_ref = building_blocks.Reference('a', np.int32)
     lower_block_with_y_ref = building_blocks.Block([('a', y_ref)], data)
     middle_block_with_y_ref = building_blocks.Block(
         [('a', lower_block_with_y_ref)], data
@@ -474,7 +476,7 @@ class UniquifyReferenceNamesTest(TransformTestBase):
     tree_analysis.check_has_unique_names(transformed_comp)
 
   def test_keeps_existing_nonoverlapping_names(self):
-    data = building_blocks.Data('data', tf.int32)
+    data = building_blocks.Data('data', np.int32)
     block = building_blocks.Block([('a', data), ('b', data)], data)
     comp = block
 
@@ -499,7 +501,7 @@ class NormalizeTypesTest(absltest.TestCase):
 
   def test_ignore_unnormalized_all_equal(self):
     fed_type_all_equal = computation_types.FederatedType(
-        tf.int32, placements.CLIENTS, all_equal=True
+        np.int32, placements.CLIENTS, all_equal=True
     )
     unnormalized_comp = tree_transformations.normalize_types(
         building_blocks.Reference('x', fed_type_all_equal),
@@ -511,7 +513,7 @@ class NormalizeTypesTest(absltest.TestCase):
 
   def test_converts_all_equal_at_clients_reference_to_not_equal(self):
     fed_type_all_equal = computation_types.FederatedType(
-        tf.int32, placements.CLIENTS, all_equal=True
+        np.int32, placements.CLIENTS, all_equal=True
     )
     normalized_comp = tree_transformations.normalize_types(
         building_blocks.Reference('x', fed_type_all_equal)
@@ -519,7 +521,7 @@ class NormalizeTypesTest(absltest.TestCase):
     self.assertEqual(
         normalized_comp.type_signature,
         computation_types.FederatedType(
-            tf.int32, placements.CLIENTS, all_equal=False
+            np.int32, placements.CLIENTS, all_equal=False
         ),
     )
     self.assertIsInstance(normalized_comp, building_blocks.Reference)
@@ -527,7 +529,7 @@ class NormalizeTypesTest(absltest.TestCase):
 
   def test_converts_not_all_equal_at_server_reference_to_equal(self):
     fed_type_not_all_equal = computation_types.FederatedType(
-        tf.int32, placements.SERVER, all_equal=False
+        np.int32, placements.SERVER, all_equal=False
     )
     normalized_comp = tree_transformations.normalize_types(
         building_blocks.Reference('x', fed_type_not_all_equal)
@@ -535,7 +537,7 @@ class NormalizeTypesTest(absltest.TestCase):
     self.assertEqual(
         normalized_comp.type_signature,
         computation_types.FederatedType(
-            tf.int32, placements.SERVER, all_equal=True
+            np.int32, placements.SERVER, all_equal=True
         ),
     )
     self.assertIsInstance(normalized_comp, building_blocks.Reference)
@@ -543,10 +545,10 @@ class NormalizeTypesTest(absltest.TestCase):
 
   def test_converts_all_equal_at_clients_lambda_parameter_to_not_equal(self):
     fed_type_all_equal = computation_types.FederatedType(
-        tf.int32, placements.CLIENTS, all_equal=True
+        np.int32, placements.CLIENTS, all_equal=True
     )
     normalized_fed_type = computation_types.FederatedType(
-        tf.int32, placements.CLIENTS
+        np.int32, placements.CLIENTS
     )
     ref = building_blocks.Reference('x', fed_type_all_equal)
     lam = building_blocks.Lambda('x', fed_type_all_equal, ref)
@@ -568,10 +570,10 @@ class NormalizeTypesTest(absltest.TestCase):
       self,
   ):
     fed_type_all_equal = computation_types.FederatedType(
-        tf.int32, placements.CLIENTS, all_equal=True
+        np.int32, placements.CLIENTS, all_equal=True
     )
     normalized_fed_type = computation_types.FederatedType(
-        tf.int32, placements.CLIENTS
+        np.int32, placements.CLIENTS
     )
     lam = building_blocks.Lambda(
         'x',
@@ -613,10 +615,10 @@ class NormalizeTypesTest(absltest.TestCase):
       self,
   ):
     fed_type_all_equal = computation_types.FederatedType(
-        tf.int32, placements.CLIENTS, all_equal=True
+        np.int32, placements.CLIENTS, all_equal=True
     )
     normalized_fed_type = computation_types.FederatedType(
-        tf.int32, placements.CLIENTS
+        np.int32, placements.CLIENTS
     )
     lam = building_blocks.Lambda(
         'x',
@@ -664,10 +666,10 @@ class NormalizeTypesTest(absltest.TestCase):
 
   def test_converts_not_all_equal_at_server_lambda_parameter_to_equal(self):
     fed_type_not_all_equal = computation_types.FederatedType(
-        tf.int32, placements.SERVER, all_equal=False
+        np.int32, placements.SERVER, all_equal=False
     )
     normalized_fed_type = computation_types.FederatedType(
-        tf.int32, placements.SERVER
+        np.int32, placements.SERVER
     )
     ref = building_blocks.Reference('x', fed_type_not_all_equal)
     lam = building_blocks.Lambda('x', fed_type_not_all_equal, ref)
@@ -689,13 +691,13 @@ class NormalizeTypesTest(absltest.TestCase):
 
   def test_converts_federated_map_all_equal_to_federated_map(self):
     fed_type_all_equal = computation_types.FederatedType(
-        tf.int32, placements.CLIENTS, all_equal=True
+        np.int32, placements.CLIENTS, all_equal=True
     )
     normalized_fed_type = computation_types.FederatedType(
-        tf.int32, placements.CLIENTS
+        np.int32, placements.CLIENTS
     )
-    int_ref = building_blocks.Reference('x', tf.int32)
-    int_identity = building_blocks.Lambda('x', tf.int32, int_ref)
+    int_ref = building_blocks.Reference('x', np.int32)
+    int_identity = building_blocks.Lambda('x', np.int32, int_ref)
     federated_int_ref = building_blocks.Reference('y', fed_type_all_equal)
     called_federated_map_all_equal = (
         building_block_factory.create_federated_map_all_equal(
@@ -721,13 +723,13 @@ class NormalizeTypesTest(absltest.TestCase):
     )
 
 
-class ReplaceSelectionsTest(tf.test.TestCase):
+class ReplaceSelectionsTest(absltest.TestCase):
 
   def test_replace_selection(self):
     comp = building_blocks.Selection(
-        building_blocks.Reference('x', [tf.int32, tf.int32]), index=1
+        building_blocks.Reference('x', [np.int32, np.int32]), index=1
     )
-    y = building_blocks.Reference('y', tf.int32)
+    y = building_blocks.Reference('y', np.int32)
     path_to_replacement = {
         (1,): y,
     }
@@ -739,17 +741,17 @@ class ReplaceSelectionsTest(tf.test.TestCase):
   def test_replace_multiple_instances_of_selection(self):
     comp = building_blocks.Struct([
         building_blocks.Selection(
-            building_blocks.Reference('x', [tf.int32, [tf.int32]]), index=1
+            building_blocks.Reference('x', [np.int32, [np.int32]]), index=1
         ),
         building_blocks.Selection(
             building_blocks.Selection(
-                building_blocks.Reference('x', [tf.int32, [tf.int32]]),
+                building_blocks.Reference('x', [np.int32, [np.int32]]),
                 index=1,
             ),
             index=0,
         ),
     ])
-    y = building_blocks.Reference('y', [tf.int32])
+    y = building_blocks.Reference('y', [np.int32])
     path_to_replacement = {
         (1,): y,
     }
@@ -765,9 +767,9 @@ class ReplaceSelectionsTest(tf.test.TestCase):
 
   def test_replace_selection_mismatching_ref_name(self):
     comp = building_blocks.Selection(
-        building_blocks.Reference('x', [tf.int32, tf.int32]), index=1
+        building_blocks.Reference('x', [np.int32, np.int32]), index=1
     )
-    y = building_blocks.Reference('y', tf.int32)
+    y = building_blocks.Reference('y', np.int32)
     path_to_replacement = {
         (1,): y,
     }
@@ -777,30 +779,28 @@ class ReplaceSelectionsTest(tf.test.TestCase):
     self.assertEqual(new_comp.proto, comp.proto)
 
   def test_fail_replace_compiled_comp(self):
-    arg_type = computation_types.StructType([tf.int32])
+    arg_type = computation_types.StructType([np.int32])
     comp = building_blocks.Call(
         building_block_factory.create_tensorflow_unary_operator(
             lambda x: x, arg_type
         ),
         building_blocks.Reference('x', arg_type),
     )
-    y = building_blocks.Reference('y', tf.int32)
+    y = building_blocks.Reference('y', np.int32)
     path_to_replacement = {
         (0,): y,
     }
-    with self.assertRaisesWithPredicateMatch(
-        ValueError, 'Encountered called graph'
-    ):
+    with self.assertRaisesRegex(ValueError, 'Encountered called graph'):
       tree_transformations.replace_selections(comp, 'x', path_to_replacement)
 
   def test_no_subsequent_replacement(self):
     comp = building_blocks.Selection(
         building_blocks.Selection(
-            building_blocks.Reference('x', [[tf.int32]]), index=0
+            building_blocks.Reference('x', [[np.int32]]), index=0
         ),
         index=0,
     )
-    replacement = building_blocks.Reference('x', [tf.int32])
+    replacement = building_blocks.Reference('x', [np.int32])
     path_to_replacement = {
         (0,): replacement,
     }
@@ -813,16 +813,16 @@ class ReplaceSelectionsTest(tf.test.TestCase):
     self.assertEqual(
         new_comp.proto,
         building_blocks.Selection(
-            building_blocks.Reference('x', [tf.int32]), index=0
+            building_blocks.Reference('x', [np.int32]), index=0
         ).proto,
     )
 
 
-class AsFunctionOfSomeParametersTest(tf.test.TestCase):
+class AsFunctionOfSomeParametersTest(absltest.TestCase):
 
   def test_empty_path(self):
     comp = building_blocks.Lambda(
-        'x', tf.int32, building_blocks.Reference('x', tf.int32)
+        'x', np.int32, building_blocks.Reference('x', np.int32)
     )
     new_comp = tree_transformations.as_function_of_some_subparameters(comp, [])
     self.assertEqual(new_comp.parameter_type, computation_types.StructType([]))
@@ -833,13 +833,13 @@ class AsFunctionOfSomeParametersTest(tf.test.TestCase):
 
   def test_all_path(self):
     comp = building_blocks.Lambda(
-        'x', tf.int32, building_blocks.Reference('x', tf.int32)
+        'x', np.int32, building_blocks.Reference('x', np.int32)
     )
     new_comp = tree_transformations.as_function_of_some_subparameters(
         comp, [()]
     )
     self.assertEqual(
-        new_comp.parameter_type, computation_types.StructType([tf.int32])
+        new_comp.parameter_type, computation_types.StructType([np.int32])
     )
     unbound_references = transformation_utils.get_map_of_unbound_references(
         new_comp
@@ -847,7 +847,7 @@ class AsFunctionOfSomeParametersTest(tf.test.TestCase):
     self.assertEmpty(unbound_references)
 
   def test_selection_path(self):
-    arg_type = [[tf.int32]]
+    arg_type = [[np.int32]]
     comp = building_blocks.Lambda(
         'x',
         arg_type,
@@ -862,7 +862,7 @@ class AsFunctionOfSomeParametersTest(tf.test.TestCase):
         comp, [(0, 0)]
     )
     self.assertEqual(
-        new_comp.parameter_type, computation_types.StructType([tf.int32])
+        new_comp.parameter_type, computation_types.StructType([np.int32])
     )
     unbound_references = transformation_utils.get_map_of_unbound_references(
         new_comp
@@ -870,7 +870,7 @@ class AsFunctionOfSomeParametersTest(tf.test.TestCase):
     self.assertEmpty(unbound_references)
 
   def test_partial_selection_path(self):
-    arg_type = [[tf.int32]]
+    arg_type = [[np.int32]]
     comp = building_blocks.Lambda(
         'x',
         arg_type,
@@ -882,7 +882,7 @@ class AsFunctionOfSomeParametersTest(tf.test.TestCase):
         comp, [(0,)]
     )
     self.assertEqual(
-        new_comp.parameter_type, computation_types.StructType([[tf.int32]])
+        new_comp.parameter_type, computation_types.StructType([[np.int32]])
     )
     unbound_references = transformation_utils.get_map_of_unbound_references(
         new_comp
@@ -890,7 +890,7 @@ class AsFunctionOfSomeParametersTest(tf.test.TestCase):
     self.assertEmpty(unbound_references)
 
   def test_invalid_selection_path(self):
-    arg_type = [[tf.int32]]
+    arg_type = [[np.int32]]
     comp = building_blocks.Lambda(
         'x',
         arg_type,
@@ -905,7 +905,7 @@ class AsFunctionOfSomeParametersTest(tf.test.TestCase):
       tree_transformations.as_function_of_some_subparameters(comp, [(0, 1)])
 
   def test_multiple_selection_path(self):
-    arg_type = [tf.int32, tf.float32, [tf.int32, tf.string]]
+    arg_type = [np.int32, np.float32, [np.int32, np.str_]]
     comp = building_blocks.Lambda(
         'x',
         arg_type,
@@ -929,7 +929,7 @@ class AsFunctionOfSomeParametersTest(tf.test.TestCase):
     )
     self.assertEqual(
         new_comp.parameter_type,
-        computation_types.StructType([tf.float32, [tf.int32, tf.string]]),
+        computation_types.StructType([np.float32, [np.int32, np.str_]]),
     )
     unbound_references = transformation_utils.get_map_of_unbound_references(
         new_comp
@@ -937,7 +937,7 @@ class AsFunctionOfSomeParametersTest(tf.test.TestCase):
     self.assertEmpty(unbound_references)
 
   def test_unused_selection_path(self):
-    arg_type = [tf.int32, tf.float32, [tf.int32, tf.string]]
+    arg_type = [np.int32, np.float32, [np.int32, np.str_]]
     comp = building_blocks.Lambda(
         'x',
         arg_type,
@@ -950,7 +950,7 @@ class AsFunctionOfSomeParametersTest(tf.test.TestCase):
     )
     self.assertEqual(
         new_comp.parameter_type,
-        computation_types.StructType([tf.float32, [tf.int32, tf.string]]),
+        computation_types.StructType([np.float32, [np.int32, np.str_]]),
     )
     unbound_references = transformation_utils.get_map_of_unbound_references(
         new_comp
@@ -958,7 +958,7 @@ class AsFunctionOfSomeParametersTest(tf.test.TestCase):
     self.assertEmpty(unbound_references)
 
   def test_paths_not_applied_sequentially(self):
-    arg_type = [tf.int32, tf.float32, [tf.int32, tf.string]]
+    arg_type = [np.int32, np.float32, [np.int32, np.str_]]
     comp = building_blocks.Lambda(
         'x',
         arg_type,
@@ -975,7 +975,7 @@ class AsFunctionOfSomeParametersTest(tf.test.TestCase):
     )
     self.assertEqual(
         new_comp.parameter_type,
-        computation_types.StructType([[tf.int32, tf.string], tf.float32]),
+        computation_types.StructType([[np.int32, np.str_], np.float32]),
     )
     unbound_references = transformation_utils.get_map_of_unbound_references(
         new_comp
@@ -1003,14 +1003,14 @@ class StripPlacementTest(parameterized.TestCase):
       tree_transformations.strip_placement(None)
 
   def test_computation_non_federated_type(self):
-    before = building_blocks.Data('x', tf.int32)
+    before = building_blocks.Data('x', np.int32)
     after, modified = tree_transformations.strip_placement(before)
     self.assertEqual(before, after)
     self.assertFalse(modified)
 
   def test_raises_disallowed_intrinsic(self):
     fed_ref = building_blocks.Reference(
-        'x', computation_types.FederatedType(tf.int32, placements.SERVER)
+        'x', computation_types.FederatedType(np.int32, placements.SERVER)
     )
     broadcaster = building_blocks.Intrinsic(
         intrinsic_defs.FEDERATED_BROADCAST.uri,
@@ -1029,10 +1029,10 @@ class StripPlacementTest(parameterized.TestCase):
 
   def test_raises_multiple_placements(self):
     server_placed_data = building_blocks.Reference(
-        'x', computation_types.at_server(tf.int32)
+        'x', computation_types.at_server(np.int32)
     )
     clients_placed_data = building_blocks.Reference(
-        'y', computation_types.at_clients(tf.int32)
+        'y', computation_types.at_clients(np.int32)
     )
     block_holding_both = building_blocks.Block(
         [('x', server_placed_data)], clients_placed_data
@@ -1042,13 +1042,13 @@ class StripPlacementTest(parameterized.TestCase):
 
   def test_passes_unbound_type_signature_obscured_under_block(self):
     fed_ref = building_blocks.Reference(
-        'x', computation_types.FederatedType(tf.int32, placements.SERVER)
+        'x', computation_types.FederatedType(np.int32, placements.SERVER)
     )
     block = building_blocks.Block(
         [
             ('y', fed_ref),
-            ('x', building_blocks.Data('whimsy', tf.int32)),
-            ('z', building_blocks.Reference('x', tf.int32)),
+            ('x', building_blocks.Data('whimsy', np.int32)),
+            ('z', building_blocks.Reference('x', np.int32)),
         ],
         building_blocks.Reference('y', fed_ref.type_signature),
     )
@@ -1056,9 +1056,9 @@ class StripPlacementTest(parameterized.TestCase):
 
   def test_passes_noarg_lambda(self):
     lam = building_blocks.Lambda(
-        None, None, building_blocks.Data('a', tf.int32)
+        None, None, building_blocks.Data('a', np.int32)
     )
-    fed_int_type = computation_types.FederatedType(tf.int32, placements.SERVER)
+    fed_int_type = computation_types.FederatedType(np.int32, placements.SERVER)
     fed_eval = building_blocks.Intrinsic(
         intrinsic_defs.FEDERATED_EVAL_AT_SERVER.uri,
         computation_types.FunctionType(lam.type_signature, fed_int_type),
@@ -1067,7 +1067,7 @@ class StripPlacementTest(parameterized.TestCase):
     tree_transformations.strip_placement(called_eval)
 
   def test_removes_federated_types_under_function(self):
-    int_type = tf.int32
+    int_type = np.int32
     server_int_type = computation_types.at_server(int_type)
     int_ref = building_blocks.Reference('x', int_type)
     int_id = building_blocks.Lambda('x', int_type, int_ref)
@@ -1083,7 +1083,7 @@ class StripPlacementTest(parameterized.TestCase):
     self.assert_has_no_intrinsics_nor_federated_types(after)
 
   def test_strip_placement_removes_federated_applys(self):
-    int_type = computation_types.TensorType(tf.int32)
+    int_type = computation_types.TensorType(np.int32)
     server_int_type = computation_types.at_server(int_type)
     int_ref = building_blocks.Reference('x', int_type)
     int_id = building_blocks.Lambda('x', int_type, int_ref)
@@ -1108,7 +1108,7 @@ class StripPlacementTest(parameterized.TestCase):
     self.assertEqual(after.compact_representation(), '(x -> x)((x -> x)(x))')
 
   def test_strip_placement_removes_federated_maps(self):
-    int_type = computation_types.TensorType(tf.int32)
+    int_type = computation_types.TensorType(np.int32)
     clients_int_type = computation_types.at_clients(int_type)
     int_ref = building_blocks.Reference('x', int_type)
     int_id = building_blocks.Lambda('x', int_type, int_ref)
@@ -1133,7 +1133,7 @@ class StripPlacementTest(parameterized.TestCase):
     self.assertEqual(after.compact_representation(), '(x -> x)((x -> x)(x))')
 
   def test_unwrap_removes_federated_zips_at_server(self):
-    list_type = computation_types.to_type([tf.int32, tf.float32] * 2)
+    list_type = computation_types.to_type([np.int32, np.float32] * 2)
     server_list_type = computation_types.at_server(list_type)
     fed_tuple = building_blocks.Reference('tup', server_list_type)
     unzipped = building_block_factory.create_federated_unzip(fed_tuple)
@@ -1147,7 +1147,7 @@ class StripPlacementTest(parameterized.TestCase):
     type_test_utils.assert_types_identical(after.type_signature, list_type)
 
   def test_unwrap_removes_federated_zips_at_clients(self):
-    list_type = computation_types.to_type([tf.int32, tf.float32] * 2)
+    list_type = computation_types.to_type([np.int32, np.float32] * 2)
     clients_list_type = computation_types.at_server(list_type)
     fed_tuple = building_blocks.Reference('tup', clients_list_type)
     unzipped = building_block_factory.create_federated_unzip(fed_tuple)
@@ -1161,8 +1161,8 @@ class StripPlacementTest(parameterized.TestCase):
     type_test_utils.assert_types_identical(after.type_signature, list_type)
 
   def test_strip_placement_removes_federated_value_at_server(self):
-    int_data = building_blocks.Data('x', tf.int32)
-    float_data = building_blocks.Data('x', tf.float32)
+    int_data = building_blocks.Data('x', np.int32)
+    float_data = building_blocks.Data('x', np.float32)
     fed_int = building_block_factory.create_federated_value(
         int_data, placements.SERVER
     )
@@ -1175,7 +1175,7 @@ class StripPlacementTest(parameterized.TestCase):
     self.assertTrue(modified)
     self.assert_has_no_intrinsics_nor_federated_types(after)
     tuple_type = computation_types.StructWithPythonType(
-        [(None, tf.int32), (None, tf.float32)], tuple
+        [(None, np.int32), (None, np.float32)], tuple
     )
     type_test_utils.assert_types_identical(
         before.type_signature, computation_types.at_server(tuple_type)
@@ -1183,8 +1183,8 @@ class StripPlacementTest(parameterized.TestCase):
     type_test_utils.assert_types_identical(after.type_signature, tuple_type)
 
   def test_strip_placement_federated_value_at_clients(self):
-    int_data = building_blocks.Data('x', tf.int32)
-    float_data = building_blocks.Data('x', tf.float32)
+    int_data = building_blocks.Data('x', np.int32)
+    float_data = building_blocks.Data('x', np.float32)
     fed_int = building_block_factory.create_federated_value(
         int_data, placements.CLIENTS
     )
@@ -1197,7 +1197,7 @@ class StripPlacementTest(parameterized.TestCase):
     self.assertTrue(modified)
     self.assert_has_no_intrinsics_nor_federated_types(after)
     tuple_type = computation_types.StructWithPythonType(
-        [(None, tf.int32), (None, tf.float32)], tuple
+        [(None, np.int32), (None, np.float32)], tuple
     )
     type_test_utils.assert_types_identical(
         before.type_signature, computation_types.at_clients(tuple_type)
@@ -1205,7 +1205,7 @@ class StripPlacementTest(parameterized.TestCase):
     type_test_utils.assert_types_identical(after.type_signature, tuple_type)
 
   def test_strip_placement_with_called_lambda(self):
-    int_type = computation_types.TensorType(tf.int32)
+    int_type = computation_types.TensorType(np.int32)
     server_int_type = computation_types.at_server(int_type)
     federated_ref = building_blocks.Reference('outer', server_int_type)
     inner_federated_ref = building_blocks.Reference('inner', server_int_type)
@@ -1222,7 +1222,7 @@ class StripPlacementTest(parameterized.TestCase):
     type_test_utils.assert_types_identical(after.type_signature, int_type)
 
   def test_strip_placement_nested_federated_type(self):
-    int_type = computation_types.TensorType(tf.int32)
+    int_type = computation_types.TensorType(np.int32)
     server_int_type = computation_types.at_server(int_type)
     tupled_int_type = computation_types.to_type((int_type, int_type))
     tupled_server_int_type = computation_types.to_type(
@@ -1264,8 +1264,8 @@ class ReplaceIntrinsicsWithBodiesTest(parameterized.TestCase):
     comp = building_blocks.Intrinsic(
         uri,
         computation_types.FunctionType(
-            computation_types.at_clients(tf.float32),
-            computation_types.at_server(tf.float32),
+            computation_types.at_clients(np.float32),
+            computation_types.at_server(np.float32),
         ),
     )
 
@@ -1291,8 +1291,8 @@ class ReplaceIntrinsicsWithBodiesTest(parameterized.TestCase):
     comp = building_blocks.Intrinsic(
         uri,
         computation_types.FunctionType(
-            (computation_types.at_clients(tf.float32),) * 2,
-            computation_types.at_server(tf.float32),
+            (computation_types.at_clients(np.float32),) * 2,
+            computation_types.at_server(np.float32),
         ),
     )
 
@@ -1318,8 +1318,8 @@ class ReplaceIntrinsicsWithBodiesTest(parameterized.TestCase):
     comp = building_blocks.Intrinsic(
         uri,
         computation_types.FunctionType(
-            computation_types.at_clients(tf.float32),
-            computation_types.at_server(tf.float32),
+            computation_types.at_clients(np.float32),
+            computation_types.at_server(np.float32),
         ),
     )
 
@@ -1345,8 +1345,8 @@ class ReplaceIntrinsicsWithBodiesTest(parameterized.TestCase):
     comp = building_blocks.Intrinsic(
         uri,
         computation_types.FunctionType(
-            computation_types.at_clients(tf.float32),
-            computation_types.at_server(tf.float32),
+            computation_types.at_clients(np.float32),
+            computation_types.at_server(np.float32),
         ),
     )
 
@@ -1372,8 +1372,8 @@ class ReplaceIntrinsicsWithBodiesTest(parameterized.TestCase):
     comp = building_blocks.Intrinsic(
         uri,
         computation_types.FunctionType(
-            computation_types.at_clients(tf.float32),
-            computation_types.at_server(tf.float32),
+            computation_types.at_clients(np.float32),
+            computation_types.at_server(np.float32),
         ),
     )
 
@@ -1397,7 +1397,7 @@ class ReplaceIntrinsicsWithBodiesTest(parameterized.TestCase):
     uri = intrinsic_defs.GENERIC_DIVIDE.uri
     comp = building_blocks.Intrinsic(
         uri,
-        computation_types.FunctionType([tf.float32, tf.float32], tf.float32),
+        computation_types.FunctionType([np.float32, np.float32], np.float32),
     )
 
     count_before_reduction = _count_intrinsics(comp, uri)
@@ -1418,7 +1418,7 @@ class ReplaceIntrinsicsWithBodiesTest(parameterized.TestCase):
     uri = intrinsic_defs.GENERIC_MULTIPLY.uri
     comp = building_blocks.Intrinsic(
         uri,
-        computation_types.FunctionType([tf.float32, tf.float32], tf.float32),
+        computation_types.FunctionType([np.float32, np.float32], np.float32),
     )
 
     count_before_reduction = _count_intrinsics(comp, uri)
@@ -1439,7 +1439,7 @@ class ReplaceIntrinsicsWithBodiesTest(parameterized.TestCase):
     uri = intrinsic_defs.GENERIC_PLUS.uri
     comp = building_blocks.Intrinsic(
         uri,
-        computation_types.FunctionType([tf.float32, tf.float32], tf.float32),
+        computation_types.FunctionType([np.float32, np.float32], np.float32),
     )
 
     count_before_reduction = _count_intrinsics(comp, uri)
@@ -1457,11 +1457,11 @@ class ReplaceIntrinsicsWithBodiesTest(parameterized.TestCase):
     tree_analysis.check_contains_only_reducible_intrinsics(reduced)
 
   @parameterized.named_parameters(
-      ('int32', tf.int32, tf.int32),
-      ('int32_struct', [tf.int32, tf.int32], tf.int32),
-      ('int64', tf.int64, tf.int32),
-      ('mixed_struct', [tf.int64, [tf.int32]], tf.int32),
-      ('per_leaf_bitwidth', [tf.int64, [tf.int32]], [tf.int32, [tf.int32]]),
+      ('int32', np.int32, np.int32),
+      ('int32_struct', [np.int32, np.int32], np.int32),
+      ('int64', np.int64, np.int32),
+      ('mixed_struct', [np.int64, [np.int32]], np.int32),
+      ('per_leaf_bitwidth', [np.int64, [np.int32]], [np.int32, [np.int32]]),
   )
   def test_federated_secure_sum(self, value_dtype, bitwidth_type):
     uri = intrinsic_defs.FEDERATED_SECURE_SUM.uri
@@ -1500,11 +1500,11 @@ class ReplaceIntrinsicsWithBodiesTest(parameterized.TestCase):
     )
 
   @parameterized.named_parameters(
-      ('int32', tf.int32, tf.int32),
-      ('int32_struct', [tf.int32, tf.int32], tf.int32),
-      ('int64', tf.int64, tf.int32),
-      ('mixed_struct', [tf.int64, [tf.int32]], tf.int32),
-      ('per_leaf_bitwidth', [tf.int64, [tf.int32]], [tf.int32, [tf.int32]]),
+      ('int32', np.int32, np.int32),
+      ('int32_struct', [np.int32, np.int32], np.int32),
+      ('int64', np.int64, np.int32),
+      ('mixed_struct', [np.int64, [np.int32]], np.int32),
+      ('per_leaf_bitwidth', [np.int64, [np.int32]], [np.int32, [np.int32]]),
   )
   def test_federated_secure_sum_bitwidth(self, value_dtype, bitwidth_type):
     uri = intrinsic_defs.FEDERATED_SECURE_SUM_BITWIDTH.uri
@@ -1542,11 +1542,11 @@ class ReplaceIntrinsicsWithBodiesTest(parameterized.TestCase):
     )
 
   @parameterized.named_parameters(
-      ('int32', tf.int32, tf.int32),
-      ('int32_struct', [tf.int32, tf.int32], tf.int32),
-      ('int64', tf.int32, tf.int32),
-      ('mixed_struct', [tf.int32, [tf.int32]], tf.int32),
-      ('per_leaf_modulus', [tf.int32, [tf.int32]], [tf.int32, [tf.int32]]),
+      ('int32', np.int32, np.int32),
+      ('int32_struct', [np.int32, np.int32], np.int32),
+      ('int64', np.int32, np.int32),
+      ('mixed_struct', [np.int32, [np.int32]], np.int32),
+      ('per_leaf_modulus', [np.int32, [np.int32]], [np.int32, [np.int32]]),
   )
   def test_federated_secure_modular_sum(self, value_dtype, modulus_type):
     uri = intrinsic_defs.FEDERATED_SECURE_MODULAR_SUM.uri
@@ -1591,15 +1591,15 @@ class ReplaceIntrinsicsWithBodiesTest(parameterized.TestCase):
         uri,
         computation_types.FunctionType(
             [
-                computation_types.at_clients(tf.int32),  # client_keys
-                computation_types.at_server(tf.int32),  # max_key
-                computation_types.at_server(tf.float32),  # server_state
+                computation_types.at_clients(np.int32),  # client_keys
+                computation_types.at_server(np.int32),  # max_key
+                computation_types.at_server(np.float32),  # server_state
                 computation_types.FunctionType(
-                    [tf.float32, tf.int32], tf.float32
+                    [np.float32, np.int32], np.float32
                 ),  # select_fn
             ],
             computation_types.at_clients(
-                computation_types.SequenceType(tf.float32)
+                computation_types.SequenceType(np.float32)
             ),
         ),
     )

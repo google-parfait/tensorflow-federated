@@ -16,7 +16,7 @@
 import enum
 from typing import Optional
 
-import tensorflow as tf
+import numpy as np
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -448,12 +448,12 @@ _SELECT_TYPE = computation_types.FunctionType(
         computation_types.at_clients(
             computation_types.AbstractType('Ks')
         ),  # client_keys
-        computation_types.at_server(tf.int32),  # max_key
+        computation_types.at_server(np.int32),  # max_key
         computation_types.at_server(
             computation_types.AbstractType('T')
         ),  # server_state
         computation_types.FunctionType(
-            [computation_types.AbstractType('T'), tf.int32],
+            [computation_types.AbstractType('T'), np.int32],
             computation_types.AbstractType('U'),
         ),  # select_fn
     ],

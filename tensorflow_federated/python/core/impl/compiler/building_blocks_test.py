@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from absl.testing import absltest
-import tensorflow as tf
+import numpy as np
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import structure
@@ -29,7 +29,7 @@ from tensorflow_federated.python.core.impl.types import type_serialization
 class ComputationBuildingBlocksTest(absltest.TestCase):
 
   def test_basic_functionality_of_reference_class(self):
-    x = building_blocks.Reference('foo', tf.int32)
+    x = building_blocks.Reference('foo', np.int32)
     self.assertEqual(x.name, 'foo')
     self.assertEqual(str(x.type_signature), 'int32')
     self.assertEqual(repr(x), "Reference('foo', TensorType(tf.int32))")
@@ -43,11 +43,11 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
     self._serialize_deserialize_roundtrip_test(x)
 
   def test_reference_children_is_empty(self):
-    ref = building_blocks.Reference('foo', tf.int32)
+    ref = building_blocks.Reference('foo', np.int32)
     self.assertEqual([], list(ref.children()))
 
   def test_basic_functionality_of_selection_class(self):
-    x = building_blocks.Reference('foo', [('bar', tf.int32), ('baz', tf.bool)])
+    x = building_blocks.Reference('foo', [('bar', np.int32), ('baz', np.bool_)])
     y = building_blocks.Selection(x, name='bar')
     self.assertEqual(y.name, 'bar')
     self.assertIsNone(y.index)
@@ -100,13 +100,13 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
     self._serialize_deserialize_roundtrip_test(x1)
 
   def test_reference_children_yields_source(self):
-    source = building_blocks.Reference('foo', (tf.int32, tf.int32))
+    source = building_blocks.Reference('foo', (np.int32, np.int32))
     selection = building_blocks.Selection(source, index=1)
     self.assertEqual([source], list(selection.children()))
 
   def test_basic_functionality_of_struct_class(self):
-    x = building_blocks.Reference('foo', tf.int32)
-    y = building_blocks.Reference('bar', tf.bool)
+    x = building_blocks.Reference('foo', np.int32)
+    y = building_blocks.Reference('bar', np.bool_)
     z = building_blocks.Struct([x, ('y', y)])
     with self.assertRaises(ValueError):
       _ = building_blocks.Struct([('', y)])
@@ -137,27 +137,27 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
     self._serialize_deserialize_roundtrip_test(z)
 
   def test_struct_children_yields_elements(self):
-    e1 = building_blocks.Reference('a', tf.int32)
-    e2 = building_blocks.Reference('b', tf.int32)
+    e1 = building_blocks.Reference('a', np.int32)
+    e2 = building_blocks.Reference('b', np.int32)
     struct_ = building_blocks.Struct([(None, e1), (None, e2)])
     self.assertEqual([e1, e2], list(struct_.children()))
 
   def test_struct_with_container_type(self):
-    x = building_blocks.Reference('foo', tf.int32)
-    y = building_blocks.Reference('bar', tf.bool)
+    x = building_blocks.Reference('foo', np.int32)
+    y = building_blocks.Reference('bar', np.bool_)
     z = building_blocks.Struct([x, ('y', y)], tuple)
     self.assertEqual(
         z.type_signature,
         computation_types.StructWithPythonType(
-            [tf.int32, ('y', tf.bool)], tuple
+            [np.int32, ('y', np.bool_)], tuple
         ),
     )
 
   def test_basic_functionality_of_call_class(self):
     x = building_blocks.Reference(
-        'foo', computation_types.FunctionType(tf.int32, tf.bool)
+        'foo', computation_types.FunctionType(np.int32, np.bool_)
     )
-    y = building_blocks.Reference('bar', tf.int32)
+    y = building_blocks.Reference('bar', np.int32)
     z = building_blocks.Call(x, y)
     self.assertEqual(str(z.type_signature), 'bool')
     self.assertIs(z.function, x)
@@ -173,7 +173,7 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
     self.assertEqual(z.compact_representation(), 'foo(bar)')
     with self.assertRaises(TypeError):
       building_blocks.Call(x)
-    w = building_blocks.Reference('bak', tf.float32)
+    w = building_blocks.Reference('bak', np.float32)
     with self.assertRaises(TypeError):
       building_blocks.Call(x, w)
     z_proto = z.proto
@@ -187,24 +187,24 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
 
   def test_call_children_with_no_arg_yields_function(self):
     fn = building_blocks.Reference(
-        'a', computation_types.FunctionType(None, tf.int32)
+        'a', computation_types.FunctionType(None, np.int32)
     )
     call = building_blocks.Call(fn)
     self.assertEqual([fn], list(call.children()))
 
   def test_call_children_with_arg_yields_function_and_arg(self):
     fn = building_blocks.Reference(
-        'a', computation_types.FunctionType(tf.int32, tf.int32)
+        'a', computation_types.FunctionType(np.int32, np.int32)
     )
-    arg = building_blocks.Reference('b', tf.int32)
+    arg = building_blocks.Reference('b', np.int32)
     call = building_blocks.Call(fn, arg)
     self.assertEqual([fn, arg], list(call.children()))
 
   def test_basic_functionality_of_lambda_class(self):
     arg_name = 'arg'
     arg_type = [
-        ('f', computation_types.FunctionType(tf.int32, tf.int32)),
-        ('x', tf.int32),
+        ('f', computation_types.FunctionType(np.int32, np.int32)),
+        ('x', np.int32),
     ]
     arg = building_blocks.Reference(arg_name, arg_type)
     arg_f = building_blocks.Selection(arg, name='f')
@@ -245,23 +245,23 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
     self._serialize_deserialize_roundtrip_test(x)
 
   def test_lambda_children_returns_result(self):
-    result = building_blocks.Reference('a', tf.int32)
-    lambda_ = building_blocks.Lambda('a', tf.int32, result)
+    result = building_blocks.Reference('a', np.int32)
+    lambda_ = building_blocks.Lambda('a', np.int32, result)
     self.assertEqual([result], list(lambda_.children()))
 
   def test_basic_functionality_of_block_class(self):
     x = building_blocks.Block(
         [
-            ('x', building_blocks.Reference('arg', (tf.int32, tf.int32))),
+            ('x', building_blocks.Reference('arg', (np.int32, np.int32))),
             (
                 'y',
                 building_blocks.Selection(
-                    building_blocks.Reference('x', (tf.int32, tf.int32)),
+                    building_blocks.Reference('x', (np.int32, np.int32)),
                     index=0,
                 ),
             ),
         ],
-        building_blocks.Reference('y', tf.int32),
+        building_blocks.Reference('y', np.int32),
     )
     self.assertEqual(str(x.type_signature), 'int32')
     self.assertEqual(
@@ -292,15 +292,15 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
       self._serialize_deserialize_roundtrip_test(x)
 
   def test_block_children_returns_locals_then_result(self):
-    l1 = building_blocks.Reference('a', tf.int32)
-    l2 = building_blocks.Reference('b', tf.int32)
-    result = building_blocks.Reference('c', tf.int32)
+    l1 = building_blocks.Reference('a', np.int32)
+    l2 = building_blocks.Reference('b', np.int32)
+    result = building_blocks.Reference('c', np.int32)
     block = building_blocks.Block([('1', l1), ('2', l2)], result)
     self.assertEqual([l1, l2, result], list(block.children()))
 
   def test_basic_functionality_of_intrinsic_class(self):
     x = building_blocks.Intrinsic(
-        'add_one', computation_types.FunctionType(tf.int32, tf.int32)
+        'add_one', computation_types.FunctionType(np.int32, np.int32)
     )
     self.assertEqual(str(x.type_signature), '(int32 -> int32)')
     self.assertEqual(x.uri, 'add_one')
@@ -322,14 +322,14 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
 
   def test_intrinsic_children_is_empty(self):
     intrinsic = building_blocks.Intrinsic(
-        'a', computation_types.FunctionType(tf.int32, tf.int32)
+        'a', computation_types.FunctionType(np.int32, np.int32)
     )
     self.assertEqual([], list(intrinsic.children()))
 
   def test_basic_intrinsic_functionality_plus_canonical_typecheck(self):
     x = building_blocks.Intrinsic(
         'generic_plus',
-        computation_types.FunctionType([tf.int32, tf.int32], tf.int32),
+        computation_types.FunctionType([np.int32, np.int32], np.int32),
     )
     self.assertEqual(str(x.type_signature), '(<int32,int32> -> int32)')
     self.assertEqual(x.uri, 'generic_plus')
@@ -345,7 +345,7 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
     with self.assertRaises(TypeError):
       _ = building_blocks.Intrinsic(
           intrinsic_defs.GENERIC_PLUS.uri,
-          computation_types.FunctionType([tf.int32, tf.int32], tf.float32),
+          computation_types.FunctionType([np.int32, np.int32], np.float32),
       )
 
   def test_intrinsic_class_fails_struct_type_with_names(self):
@@ -353,12 +353,12 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
       _ = building_blocks.Intrinsic(
           intrinsic_defs.GENERIC_PLUS.uri,
           computation_types.FunctionType(
-              [('a', tf.int32), ('b', tf.int32)], tf.int32
+              [('a', np.int32), ('b', np.int32)], np.int32
           ),
       )
 
   def test_intrinsic_class_succeeds_simple_federated_map(self):
-    simple_function = computation_types.FunctionType(tf.int32, tf.float32)
+    simple_function = computation_types.FunctionType(np.int32, np.float32)
     federated_arg = computation_types.FederatedType(
         simple_function.parameter, placements.CLIENTS
     )
@@ -396,7 +396,7 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
 
   def test_basic_functionality_of_data_class(self):
     x = building_blocks.Data(
-        '/tmp/mydata', computation_types.SequenceType(tf.int32)
+        '/tmp/mydata', computation_types.SequenceType(np.int32)
     )
     self.assertEqual(str(x.type_signature), 'int32*')
     self.assertEqual(x.uri, '/tmp/mydata')
@@ -413,11 +413,11 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
     self._serialize_deserialize_roundtrip_test(x)
 
   def test_data_children_is_empty(self):
-    data = building_blocks.Data('a', tf.int32)
+    data = building_blocks.Data('a', np.int32)
     self.assertEqual([], list(data.children()))
 
   def test_basic_functionality_of_compiled_computation_class(self):
-    x_type = computation_types.TensorType(tf.int32)
+    x_type = computation_types.TensorType(np.int32)
     x = building_block_factory.create_compiled_identity(x_type, 'a')
     self.assertEqual(
         x.type_signature.compact_representation(), '(int32 -> int32)'
@@ -432,12 +432,12 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
         ),
     )
     self.assertTrue(x.compact_representation(), 'comp#a')
-    y_type = computation_types.TensorType(tf.int32)
+    y_type = computation_types.TensorType(np.int32)
     y = building_block_factory.create_compiled_identity(y_type)
     self._serialize_deserialize_roundtrip_test(y)
 
   def test_compiled_computation_children_is_empty(self):
-    comp_type = computation_types.TensorType(tf.int32)
+    comp_type = computation_types.TensorType(np.int32)
     comp = building_block_factory.create_compiled_identity(comp_type, 'a')
     self.assertEqual([], list(comp.children()))
 
@@ -480,8 +480,8 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
 class RepresentationTest(absltest.TestCase):
 
   def test_returns_string_for_block(self):
-    data = building_blocks.Data('data', tf.int32)
-    ref = building_blocks.Reference('c', tf.int32)
+    data = building_blocks.Data('data', np.int32)
+    ref = building_blocks.Reference('c', np.int32)
     comp = building_blocks.Block((('a', data), ('b', data)), ref)
 
     self.assertEqual(comp.compact_representation(), '(let a=data,b=data in c)')
@@ -502,9 +502,9 @@ class RepresentationTest(absltest.TestCase):
     # pyformat: enable
 
   def test_returns_string_for_call_with_arg(self):
-    fn_type = computation_types.FunctionType(tf.int32, tf.int32)
+    fn_type = computation_types.FunctionType(np.int32, np.int32)
     fn = building_blocks.Reference('a', fn_type)
-    arg = building_blocks.Data('data', tf.int32)
+    arg = building_blocks.Data('data', np.int32)
     comp = building_blocks.Call(fn, arg)
 
     self.assertEqual(comp.compact_representation(), 'a(data)')
@@ -519,7 +519,7 @@ class RepresentationTest(absltest.TestCase):
     # pyformat: enable
 
   def test_returns_string_for_call_with_no_arg(self):
-    fn_type = computation_types.FunctionType(None, tf.int32)
+    fn_type = computation_types.FunctionType(None, np.int32)
     fn = building_blocks.Reference('a', fn_type)
     comp = building_blocks.Call(fn)
 
@@ -535,7 +535,7 @@ class RepresentationTest(absltest.TestCase):
     # pyformat: enable
 
   def test_returns_string_for_compiled_computation(self):
-    tensor_type = computation_types.TensorType(tf.int32)
+    tensor_type = computation_types.TensorType(np.int32)
     comp = building_block_factory.create_compiled_identity(tensor_type, 'a')
 
     self.assertEqual(comp.compact_representation(), 'comp#a')
@@ -543,14 +543,14 @@ class RepresentationTest(absltest.TestCase):
     self.assertEqual(comp.structural_representation(), 'Compiled(a)')
 
   def test_returns_string_for_data(self):
-    comp = building_blocks.Data('data', tf.int32)
+    comp = building_blocks.Data('data', np.int32)
 
     self.assertEqual(comp.compact_representation(), 'data')
     self.assertEqual(comp.formatted_representation(), 'data')
     self.assertEqual(comp.structural_representation(), 'data')
 
   def test_returns_string_for_intrinsic(self):
-    comp_type = computation_types.TensorType(tf.int32)
+    comp_type = computation_types.TensorType(np.int32)
     comp = building_blocks.Intrinsic('intrinsic', comp_type)
 
     self.assertEqual(comp.compact_representation(), 'intrinsic')
@@ -558,7 +558,7 @@ class RepresentationTest(absltest.TestCase):
     self.assertEqual(comp.structural_representation(), 'intrinsic')
 
   def test_returns_string_for_lambda(self):
-    ref = building_blocks.Reference('a', tf.int32)
+    ref = building_blocks.Reference('a', np.int32)
     comp = building_blocks.Lambda(ref.name, ref.type_signature, ref)
 
     self.assertEqual(comp.compact_representation(), '(a -> a)')
@@ -580,14 +580,14 @@ class RepresentationTest(absltest.TestCase):
     self.assertEqual(comp.structural_representation(), 'Placement')
 
   def test_returns_string_for_reference(self):
-    comp = building_blocks.Reference('a', tf.int32)
+    comp = building_blocks.Reference('a', np.int32)
 
     self.assertEqual(comp.compact_representation(), 'a')
     self.assertEqual(comp.formatted_representation(), 'a')
     self.assertEqual(comp.structural_representation(), 'Ref(a)')
 
   def test_returns_string_for_selection_with_name(self):
-    ref = building_blocks.Reference('a', (('b', tf.int32), ('c', tf.bool)))
+    ref = building_blocks.Reference('a', (('b', np.int32), ('c', np.bool_)))
     comp = building_blocks.Selection(ref, name='b')
 
     self.assertEqual(comp.compact_representation(), 'a.b')
@@ -602,7 +602,7 @@ class RepresentationTest(absltest.TestCase):
     # pyformat: enable
 
   def test_returns_string_for_selection_with_index(self):
-    ref = building_blocks.Reference('a', (('b', tf.int32), ('c', tf.bool)))
+    ref = building_blocks.Reference('a', (('b', np.int32), ('c', np.bool_)))
     comp = building_blocks.Selection(ref, index=0)
 
     self.assertEqual(comp.compact_representation(), 'a[0]')
@@ -617,7 +617,7 @@ class RepresentationTest(absltest.TestCase):
     # pyformat: enable
 
   def test_returns_string_for_struct_with_names(self):
-    data = building_blocks.Data('data', tf.int32)
+    data = building_blocks.Data('data', np.int32)
     comp = building_blocks.Struct([('a', data), ('b', data)])
 
     self.assertEqual(comp.compact_representation(), '<a=data,b=data>')
@@ -638,7 +638,7 @@ class RepresentationTest(absltest.TestCase):
     # pyformat: enable
 
   def test_returns_string_for_struct_with_no_names(self):
-    data = building_blocks.Data('data', tf.int32)
+    data = building_blocks.Data('data', np.int32)
     comp = building_blocks.Struct([data, data])
 
     self.assertEqual(comp.compact_representation(), '<data,data>')
@@ -735,9 +735,9 @@ class RepresentationTest(absltest.TestCase):
     # pyformat: enable
 
   def test_returns_string_for_comp_with_left_overhang(self):
-    fn_1_type = computation_types.FunctionType(tf.int32, tf.int32)
+    fn_1_type = computation_types.FunctionType(np.int32, np.int32)
     fn_1 = building_blocks.Reference('a', fn_1_type)
-    fn_2_type = computation_types.FunctionType(None, tf.int32)
+    fn_2_type = computation_types.FunctionType(None, np.int32)
     fn_2 = building_blocks.Reference('bbbbbbbbbb', fn_2_type)
     arg = building_blocks.Call(fn_2)
     comp = building_blocks.Call(fn_1, arg)
@@ -756,8 +756,8 @@ class RepresentationTest(absltest.TestCase):
     # pyformat: enable
 
   def test_returns_string_for_comp_with_right_overhang(self):
-    ref = building_blocks.Reference('a', tf.int32)
-    data = building_blocks.Data('data', tf.int32)
+    ref = building_blocks.Reference('a', np.int32)
+    data = building_blocks.Data('data', np.int32)
     tup = building_blocks.Struct([ref, data, data, data, data])
     sel = building_blocks.Selection(tup, index=0)
     fn = building_blocks.Lambda(ref.name, ref.type_signature, sel)

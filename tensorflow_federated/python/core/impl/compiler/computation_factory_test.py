@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from absl.testing import absltest
-import tensorflow as tf
+import numpy as np
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.core.impl.compiler import computation_factory
@@ -38,7 +38,7 @@ class CreateLambdaEmptyTupleTest(absltest.TestCase):
 class CreateLambdaIdentityTest(absltest.TestCase):
 
   def test_returns_computation_int(self):
-    type_signature = computation_types.TensorType(tf.int32)
+    type_signature = computation_types.TensorType(np.int32)
 
     proto = computation_factory.create_lambda_identity(type_signature)
 
@@ -48,7 +48,7 @@ class CreateLambdaIdentityTest(absltest.TestCase):
     self.assertEqual(actual_type, expected_type)
 
   def test_returns_computation_tuple_unnamed(self):
-    type_signature = computation_types.StructType([tf.int32, tf.float32])
+    type_signature = computation_types.StructType([np.int32, np.float32])
 
     proto = computation_factory.create_lambda_identity(type_signature)
 
@@ -59,7 +59,7 @@ class CreateLambdaIdentityTest(absltest.TestCase):
 
   def test_returns_computation_tuple_named(self):
     type_signature = computation_types.StructType(
-        [('a', tf.int32), ('b', tf.float32)]
+        [('a', np.int32), ('b', np.float32)]
     )
 
     proto = computation_factory.create_lambda_identity(type_signature)
@@ -70,7 +70,7 @@ class CreateLambdaIdentityTest(absltest.TestCase):
     self.assertEqual(actual_type, expected_type)
 
   def test_returns_computation_sequence(self):
-    type_signature = computation_types.SequenceType(tf.int32)
+    type_signature = computation_types.SequenceType(np.int32)
 
     proto = computation_factory.create_lambda_identity(type_signature)
 

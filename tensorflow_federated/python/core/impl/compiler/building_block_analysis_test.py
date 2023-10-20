@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from absl.testing import absltest
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
@@ -31,7 +32,7 @@ class CountTensorFlowOpsTest(absltest.TestCase):
       building_block_analysis.count_tensorflow_ops_in(None)
 
   def test_raises_on_reference(self):
-    ref = building_blocks.Reference('x', tf.int32)
+    ref = building_blocks.Reference('x', np.int32)
     with self.assertRaises(ValueError):
       building_block_analysis.count_tensorflow_ops_in(ref)
 
@@ -44,7 +45,7 @@ class CountTensorFlowOpsTest(absltest.TestCase):
     _, result_binding = tensorflow_utils.capture_result_from_graph(c, g)
 
     packed_graph_def = serialization_utils.pack_graph_def(g.as_graph_def())
-    function_type = computation_types.FunctionType(None, tf.int32)
+    function_type = computation_types.FunctionType(None, np.int32)
     proto = pb.Computation(
         type=type_serialization.serialize_type(function_type),
         tensorflow=pb.TensorFlow(
@@ -65,14 +66,14 @@ class CountTensorFlowOpsTest(absltest.TestCase):
 
     with tf.Graph().as_default() as graph:
       parameter_value, parameter_binding = (
-          tensorflow_utils.stamp_parameter_in_graph('x', tf.int32, graph)
+          tensorflow_utils.stamp_parameter_in_graph('x', np.int32, graph)
       )
       result = add_one(add_one(parameter_value))
 
     result_type, result_binding = tensorflow_utils.capture_result_from_graph(
         result, graph
     )
-    type_signature = computation_types.FunctionType(tf.int32, result_type)
+    type_signature = computation_types.FunctionType(np.int32, result_type)
     tensorflow = pb.TensorFlow(
         graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
         parameter=parameter_binding,
@@ -115,7 +116,7 @@ class CountTensorFlowVariablesTest(absltest.TestCase):
     _, result_binding = tensorflow_utils.capture_result_from_graph(c, g)
 
     packed_graph_def = serialization_utils.pack_graph_def(g.as_graph_def())
-    function_type = computation_types.FunctionType(None, tf.int32)
+    function_type = computation_types.FunctionType(None, np.int32)
     proto = pb.Computation(
         type=type_serialization.serialize_type(function_type),
         tensorflow=pb.TensorFlow(
@@ -137,7 +138,7 @@ class CountTensorFlowVariablesTest(absltest.TestCase):
     _, result_binding = tensorflow_utils.capture_result_from_graph(c, g)
 
     packed_graph_def = serialization_utils.pack_graph_def(g.as_graph_def())
-    function_type = computation_types.FunctionType(None, tf.int32)
+    function_type = computation_types.FunctionType(None, np.int32)
     proto = pb.Computation(
         type=type_serialization.serialize_type(function_type),
         tensorflow=pb.TensorFlow(
@@ -159,7 +160,7 @@ class CountTensorFlowVariablesTest(absltest.TestCase):
     _, result_binding = tensorflow_utils.capture_result_from_graph(c, g)
 
     packed_graph_def = serialization_utils.pack_graph_def(g.as_graph_def())
-    function_type = computation_types.FunctionType(None, tf.int32)
+    function_type = computation_types.FunctionType(None, np.int32)
     proto = pb.Computation(
         type=type_serialization.serialize_type(function_type),
         tensorflow=pb.TensorFlow(
@@ -181,14 +182,14 @@ class CountTensorFlowVariablesTest(absltest.TestCase):
 
     with tf.Graph().as_default() as graph:
       parameter_value, parameter_binding = (
-          tensorflow_utils.stamp_parameter_in_graph('x', tf.int32, graph)
+          tensorflow_utils.stamp_parameter_in_graph('x', np.int32, graph)
       )
       result = add_one(add_one(parameter_value))
 
     result_type, result_binding = tensorflow_utils.capture_result_from_graph(
         result, graph
     )
-    type_signature = computation_types.FunctionType(tf.int32, result_type)
+    type_signature = computation_types.FunctionType(np.int32, result_type)
     tensorflow = pb.TensorFlow(
         graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
         parameter=parameter_binding,
@@ -210,7 +211,7 @@ class CountTensorFlowVariablesTest(absltest.TestCase):
 class GetDevicePlacementInTest(absltest.TestCase):
 
   def test_raises_with_reference(self):
-    ref = building_blocks.Reference('x', tf.int32)
+    ref = building_blocks.Reference('x', np.int32)
     with self.assertRaisesRegex(ValueError, 'tensorflow'):
       building_block_analysis.get_device_placement_in(ref)
 
@@ -223,7 +224,7 @@ class GetDevicePlacementInTest(absltest.TestCase):
     _, result_binding = tensorflow_utils.capture_result_from_graph(c, g)
 
     packed_graph_def = serialization_utils.pack_graph_def(g.as_graph_def())
-    function_type = computation_types.FunctionType(None, tf.int32)
+    function_type = computation_types.FunctionType(None, np.int32)
     proto = pb.Computation(
         type=type_serialization.serialize_type(function_type),
         tensorflow=pb.TensorFlow(
@@ -249,7 +250,7 @@ class GetDevicePlacementInTest(absltest.TestCase):
     _, result_binding = tensorflow_utils.capture_result_from_graph(c, g)
 
     packed_graph_def = serialization_utils.pack_graph_def(g.as_graph_def())
-    function_type = computation_types.FunctionType(None, tf.int32)
+    function_type = computation_types.FunctionType(None, np.int32)
     proto = pb.Computation(
         type=type_serialization.serialize_type(function_type),
         tensorflow=pb.TensorFlow(
@@ -278,7 +279,7 @@ class GetDevicePlacementInTest(absltest.TestCase):
     _, result_binding = tensorflow_utils.capture_result_from_graph(c, g)
 
     packed_graph_def = serialization_utils.pack_graph_def(g.as_graph_def())
-    function_type = computation_types.FunctionType(None, tf.int32)
+    function_type = computation_types.FunctionType(None, np.int32)
     proto = pb.Computation(
         type=type_serialization.serialize_type(function_type),
         tensorflow=pb.TensorFlow(
