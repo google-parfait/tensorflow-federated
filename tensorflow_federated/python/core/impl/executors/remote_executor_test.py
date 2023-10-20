@@ -18,6 +18,7 @@ from unittest import mock
 from absl.testing import absltest
 from absl.testing import parameterized
 import grpc
+import numpy as np
 import tensorflow as tf
 
 from google.protobuf import any_pb2
@@ -65,7 +66,7 @@ class RemoteValueTest(parameterized.TestCase):
     )
     _set_cardinalities_with_mock(executor, mock_stub)
     executor.set_cardinalities({placements.CLIENTS: 3})
-    type_signature = computation_types.FunctionType(None, tf.int32)
+    type_signature = computation_types.FunctionType(None, np.int32)
     comp = remote_executor.RemoteValue(
         executor_pb2.ValueRef(), type_signature, executor
     )
@@ -88,7 +89,7 @@ class RemoteValueTest(parameterized.TestCase):
         mock_stub, stream_structs=stream_structs
     )
     _set_cardinalities_with_mock(executor, mock_stub)
-    type_signature = computation_types.FunctionType(None, tf.int32)
+    type_signature = computation_types.FunctionType(None, np.int32)
     comp = remote_executor.RemoteValue(
         executor_pb2.ValueRef(), type_signature, executor
     )
@@ -111,7 +112,7 @@ class RemoteValueTest(parameterized.TestCase):
         mock_stub, stream_structs=stream_structs
     )
     _set_cardinalities_with_mock(executor, mock_stub)
-    type_signature = computation_types.FunctionType(None, tf.int32)
+    type_signature = computation_types.FunctionType(None, np.int32)
     comp = remote_executor.RemoteValue(
         executor_pb2.ValueRef(), type_signature, executor
     )
@@ -154,7 +155,7 @@ class RemoteExecutorTest(parameterized.TestCase):
     )
     _set_cardinalities_with_mock(executor, mock_stub)
 
-    result = asyncio.run(executor.create_value(1, tf.int32))
+    result = asyncio.run(executor.create_value(1, np.int32))
 
     mock_stub.create_value.assert_called_once()
     self.assertIsInstance(result, remote_executor.RemoteValue)
@@ -176,7 +177,7 @@ class RemoteExecutorTest(parameterized.TestCase):
     _set_cardinalities_with_mock(executor, mock_stub)
 
     with self.assertRaises(grpc.RpcError) as context:
-      asyncio.run(executor.create_value(1, tf.int32))
+      asyncio.run(executor.create_value(1, np.int32))
 
     self.assertEqual(context.exception.code(), grpc.StatusCode.ABORTED)
 
@@ -195,7 +196,7 @@ class RemoteExecutorTest(parameterized.TestCase):
     _set_cardinalities_with_mock(executor, mock_stub)
 
     with self.assertRaises(TypeError):
-      asyncio.run(executor.create_value(1, tf.int32))
+      asyncio.run(executor.create_value(1, np.int32))
 
   @parameterized.named_parameters(
       ('false', False),
@@ -219,21 +220,21 @@ class RemoteExecutorTest(parameterized.TestCase):
     _set_cardinalities_with_mock(executor, mock_stub)
     tensor_shape = (2, 10)
     struct_value = structure.Struct([
-        ('a', tf.zeros(shape=tensor_shape, dtype=tf.int32)),
+        ('a', np.zeros(shape=tensor_shape, dtype=np.int32)),
         (
             'b',
             structure.Struct([
-                ('b0', tf.zeros(shape=tensor_shape, dtype=tf.int32)),
-                ('b1', tf.zeros(shape=tensor_shape, dtype=tf.int32)),
+                ('b0', np.zeros(shape=tensor_shape, dtype=np.int32)),
+                ('b1', np.zeros(shape=tensor_shape, dtype=np.int32)),
             ]),
         ),
-        ('c', tf.zeros(shape=tensor_shape, dtype=tf.int32)),
+        ('c', np.zeros(shape=tensor_shape, dtype=np.int32)),
     ])
 
     type_signature = computation_types.StructType([
         (
             'a',
-            computation_types.TensorType(shape=tensor_shape, dtype=tf.int32),
+            computation_types.TensorType(shape=tensor_shape, dtype=np.int32),
         ),
         (
             'b',
@@ -241,20 +242,20 @@ class RemoteExecutorTest(parameterized.TestCase):
                 (
                     'b0',
                     computation_types.TensorType(
-                        shape=tensor_shape, dtype=tf.int32
+                        shape=tensor_shape, dtype=np.int32
                     ),
                 ),
                 (
                     'b1',
                     computation_types.TensorType(
-                        shape=tensor_shape, dtype=tf.int32
+                        shape=tensor_shape, dtype=np.int32
                     ),
                 ),
             ]),
         ),
         (
             'c',
-            computation_types.TensorType(shape=tensor_shape, dtype=tf.int32),
+            computation_types.TensorType(shape=tensor_shape, dtype=np.int32),
         ),
     ])
 
@@ -279,7 +280,7 @@ class RemoteExecutorTest(parameterized.TestCase):
         mock_stub, stream_structs=stream_structs
     )
     _set_cardinalities_with_mock(executor, mock_stub)
-    type_signature = computation_types.FunctionType(None, tf.int32)
+    type_signature = computation_types.FunctionType(None, np.int32)
     fn = remote_executor.RemoteValue(
         executor_pb2.ValueRef(), type_signature, executor
     )
@@ -304,7 +305,7 @@ class RemoteExecutorTest(parameterized.TestCase):
         mock_stub, stream_structs=stream_structs
     )
     _set_cardinalities_with_mock(executor, mock_stub)
-    type_signature = computation_types.FunctionType(None, tf.int32)
+    type_signature = computation_types.FunctionType(None, np.int32)
     comp = remote_executor.RemoteValue(
         executor_pb2.ValueRef(), type_signature, executor
     )
@@ -327,7 +328,7 @@ class RemoteExecutorTest(parameterized.TestCase):
         mock_stub, stream_structs=stream_structs
     )
     _set_cardinalities_with_mock(executor, mock_stub)
-    type_signature = computation_types.FunctionType(None, tf.int32)
+    type_signature = computation_types.FunctionType(None, np.int32)
     comp = remote_executor.RemoteValue(
         executor_pb2.ValueRef(), type_signature, executor
     )
@@ -348,7 +349,7 @@ class RemoteExecutorTest(parameterized.TestCase):
         mock_stub, stream_structs=stream_structs
     )
     _set_cardinalities_with_mock(executor, mock_stub)
-    type_signature = computation_types.TensorType(tf.int32)
+    type_signature = computation_types.TensorType(np.int32)
     value_1 = remote_executor.RemoteValue(
         executor_pb2.ValueRef(), type_signature, executor
     )
@@ -376,7 +377,7 @@ class RemoteExecutorTest(parameterized.TestCase):
         mock_stub, stream_structs=stream_structs
     )
     _set_cardinalities_with_mock(executor, mock_stub)
-    type_signature = computation_types.TensorType(tf.int32)
+    type_signature = computation_types.TensorType(np.int32)
     value_1 = remote_executor.RemoteValue(
         executor_pb2.ValueRef(), type_signature, executor
     )
@@ -402,7 +403,7 @@ class RemoteExecutorTest(parameterized.TestCase):
         mock_stub, stream_structs=stream_structs
     )
     _set_cardinalities_with_mock(executor, mock_stub)
-    type_signature = computation_types.TensorType(tf.int32)
+    type_signature = computation_types.TensorType(np.int32)
     value_1 = remote_executor.RemoteValue(
         executor_pb2.ValueRef(), type_signature, executor
     )
@@ -428,7 +429,7 @@ class RemoteExecutorTest(parameterized.TestCase):
         mock_stub, stream_structs=stream_structs
     )
     _set_cardinalities_with_mock(executor, mock_stub)
-    type_signature = computation_types.StructType([tf.int32, tf.int32])
+    type_signature = computation_types.StructType([np.int32, np.int32])
     source = remote_executor.RemoteValue(
         executor_pb2.ValueRef(), type_signature, executor
     )
@@ -453,7 +454,7 @@ class RemoteExecutorTest(parameterized.TestCase):
         mock_stub, stream_structs=stream_structs
     )
     _set_cardinalities_with_mock(executor, mock_stub)
-    type_signature = computation_types.StructType([tf.int32, tf.int32])
+    type_signature = computation_types.StructType([np.int32, np.int32])
     source = remote_executor.RemoteValue(
         executor_pb2.ValueRef(), type_signature, executor
     )
@@ -476,7 +477,7 @@ class RemoteExecutorTest(parameterized.TestCase):
         mock_stub, stream_structs=stream_structs
     )
     _set_cardinalities_with_mock(executor, mock_stub)
-    type_signature = computation_types.StructType([tf.int32, tf.int32])
+    type_signature = computation_types.StructType([np.int32, np.int32])
     source = remote_executor.RemoteValue(
         executor_pb2.ValueRef(), type_signature, executor
     )

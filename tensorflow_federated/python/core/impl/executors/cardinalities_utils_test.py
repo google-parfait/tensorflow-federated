@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from absl.testing import absltest
-import tensorflow as tf
+import numpy as np
 
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.executors import cardinalities_utils
@@ -24,7 +24,7 @@ from tensorflow_federated.python.core.impl.types import placements
 class InferCardinalitiesTest(absltest.TestCase):
 
   def test_returns_empty_dict_none_value(self):
-    type_signature = computation_types.TensorType(tf.int32)
+    type_signature = computation_types.TensorType(np.int32)
     self.assertEqual(
         cardinalities_utils.infer_cardinalities(None, type_signature), {}
     )
@@ -34,13 +34,13 @@ class InferCardinalitiesTest(absltest.TestCase):
       cardinalities_utils.infer_cardinalities(1, None)
 
   def test_noops_on_int(self):
-    type_signature = computation_types.TensorType(tf.int32)
+    type_signature = computation_types.TensorType(np.int32)
     cardinalities = cardinalities_utils.infer_cardinalities(1, type_signature)
     self.assertEmpty(cardinalities)
 
   def test_raises_federated_type_integer(self):
     federated_type = computation_types.FederatedType(
-        tf.int32, placements.CLIENTS, all_equal=False
+        np.int32, placements.CLIENTS, all_equal=False
     )
     with self.assertRaises(TypeError):
       cardinalities_utils.infer_cardinalities(1, federated_type)
@@ -51,7 +51,7 @@ class InferCardinalitiesTest(absltest.TestCase):
 
     generator = generator_fn()
     federated_type = computation_types.FederatedType(
-        tf.int32, placements.CLIENTS, all_equal=False
+        np.int32, placements.CLIENTS, all_equal=False
     )
     with self.assertRaises(TypeError):
       cardinalities_utils.infer_cardinalities(generator, federated_type)
@@ -59,7 +59,7 @@ class InferCardinalitiesTest(absltest.TestCase):
   def test_passes_federated_type_tuple(self):
     tup = tuple(range(5))
     federated_type = computation_types.FederatedType(
-        tf.int32, placements.CLIENTS, all_equal=False
+        np.int32, placements.CLIENTS, all_equal=False
     )
     cardinalities_utils.infer_cardinalities(tup, federated_type)
     five_client_cardinalities = cardinalities_utils.infer_cardinalities(
@@ -69,7 +69,7 @@ class InferCardinalitiesTest(absltest.TestCase):
 
   def test_adds_list_length_as_cardinality_at_clients(self):
     federated_type = computation_types.FederatedType(
-        tf.int32, placements.CLIENTS, all_equal=False
+        np.int32, placements.CLIENTS, all_equal=False
     )
     five_clients = list(range(5))
     five_client_cardinalities = cardinalities_utils.infer_cardinalities(
@@ -79,7 +79,7 @@ class InferCardinalitiesTest(absltest.TestCase):
 
   def test_raises_conflicting_clients_sizes(self):
     federated_type = computation_types.FederatedType(
-        tf.int32, placements.CLIENTS, all_equal=False
+        np.int32, placements.CLIENTS, all_equal=False
     )
     five_clients = list(range(5))
     ten_clients = list(range(10))
@@ -96,7 +96,7 @@ class InferCardinalitiesTest(absltest.TestCase):
         'Agg', 'Agg', False, 'Intermediate aggregators'
     )
     federated_type = computation_types.FederatedType(
-        tf.int32, new_placement, all_equal=False
+        np.int32, new_placement, all_equal=False
     )
     ten_aggregators = list(range(10))
     ten_aggregator_cardinalities = cardinalities_utils.infer_cardinalities(
@@ -106,13 +106,13 @@ class InferCardinalitiesTest(absltest.TestCase):
 
   def test_recurses_under_tuple_type(self):
     client_int = computation_types.FederatedType(
-        tf.int32, placements.CLIENTS, all_equal=False
+        np.int32, placements.CLIENTS, all_equal=False
     )
     new_placement = placements.PlacementLiteral(
         'Agg', 'Agg', False, 'Intermediate aggregators'
     )
     aggregator_placed_int = computation_types.FederatedType(
-        tf.int32, new_placement, all_equal=False
+        np.int32, new_placement, all_equal=False
     )
     five_aggregators = list(range(5))
     ten_clients = list(range(10))
@@ -138,7 +138,7 @@ class InferCardinalitiesTest(absltest.TestCase):
         computation_types.StructType([
             (
                 'A',
-                computation_types.FederatedType(tf.int32, placements.CLIENTS),
+                computation_types.FederatedType(np.int32, placements.CLIENTS),
             ),
             (
                 'B',
@@ -146,14 +146,14 @@ class InferCardinalitiesTest(absltest.TestCase):
                     (
                         'C',
                         computation_types.FederatedType(
-                            computation_types.SequenceType(tf.int32),
+                            computation_types.SequenceType(np.int32),
                             placements.CLIENTS,
                         ),
                     ),
                     (
                         'D',
                         computation_types.FederatedType(
-                            tf.bool, placements.CLIENTS
+                            np.bool_, placements.CLIENTS
                         ),
                     ),
                 ],
@@ -169,11 +169,11 @@ class InferCardinalitiesTest(absltest.TestCase):
           computation_types.StructType([
               (
                   'A',
-                  computation_types.FederatedType(tf.int32, placements.CLIENTS),
+                  computation_types.FederatedType(np.int32, placements.CLIENTS),
               ),
               (
                   'B',
-                  computation_types.FederatedType(tf.int32, placements.CLIENTS),
+                  computation_types.FederatedType(np.int32, placements.CLIENTS),
               ),
           ]),
       )
@@ -181,8 +181,8 @@ class InferCardinalitiesTest(absltest.TestCase):
   def test_raises_invalid_non_all_equal_value_error(self):
     with self.assertRaises(cardinalities_utils.InvalidNonAllEqualValueError):
       cardinalities_utils.infer_cardinalities(
-          tf.constant(5),
-          computation_types.at_clients(computation_types.TensorType(tf.int32)),
+          5,
+          computation_types.at_clients(computation_types.TensorType(np.int32)),
       )
 
 

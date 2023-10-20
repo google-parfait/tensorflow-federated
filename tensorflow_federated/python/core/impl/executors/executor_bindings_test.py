@@ -200,7 +200,7 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
     comp = executor.create_value(comp_pb)
     result = executor.create_call(comp.ref, arg.ref)
     output_pb = executor.materialize(result.ref)
-    result, result_type_spec = value_serialization.deserialize_value(
+    _, result_type_spec = value_serialization.deserialize_value(
         output_pb, type_hint=struct_of_sequence_type
     )
     type_test_utils.assert_types_identical(
