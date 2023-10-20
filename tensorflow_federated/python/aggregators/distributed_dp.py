@@ -34,6 +34,7 @@ from tensorflow_federated.python.aggregators import secure
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
+from tensorflow_federated.python.core.impl.types import array_shape
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
@@ -591,11 +592,11 @@ class DistributedDpSumFactory(factory.UnweightedAggregationFactory):
         value_type, computation_types.StructWithPythonType
     ) and type_analysis.is_structure_of_tensors(value_type):
       num_elements_struct = type_conversions.structure_from_tensor_type_tree(
-          lambda x: x.shape.num_elements(), value_type
+          lambda x: array_shape.num_elements_in_shape(x.shape), value_type
       )
       self._client_dim = sum(tf.nest.flatten(num_elements_struct))
     elif isinstance(value_type, computation_types.TensorType):
-      self._client_dim = value_type.shape.num_elements()
+      self._client_dim = array_shape.num_elements_in_shape(value_type.shape)
     else:
       raise TypeError(
           'Expected `value_type` to be `TensorType` or '

@@ -23,6 +23,7 @@ from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.compiler import local_computation_factory_base
+from tensorflow_federated.python.core.impl.types import array_shape
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_conversions
@@ -164,7 +165,10 @@ def create_constant(
   def _create_result_tensor(type_spec, value):
     """Packs `value` into `type_spec` recursively."""
     if isinstance(type_spec, computation_types.TensorType):
-      type_spec.shape.assert_is_fully_defined()
+      if not array_shape.is_shape_fully_defined(type_spec.shape):
+        raise ValueError(
+            f'Expected the shape to be fully defined, found {type_spec.shape}.'
+        )
       result = tf.constant(value, dtype=type_spec.dtype, shape=type_spec.shape)
     else:
       elements = []
@@ -388,7 +392,7 @@ def create_binary_operator_with_upcast(
       value_tensor_type = type_conversions.type_from_tensors(to_pack)
       if type_spec.is_assignable_from(value_tensor_type):
         return to_pack
-      elif not type_spec.shape.is_fully_defined():  # pytype: disable=attribute-error
+      elif not array_shape.is_shape_fully_defined(type_spec.shape):
         raise TypeError(
             'Cannot generate TensorFlow creating binary operator '
             'with first type not assignable from second, and '
@@ -468,7 +472,7 @@ def create_indexing_operator(
   """Returns a tensorflow computation computing an indexing operation."""
   operand_type.check_tensor()
   index_type.check_tensor()
-  if index_type.shape.rank != 0:
+  if index_type.shape:
     raise TypeError(f'Expected index type to be a scalar, found {index_type}.')
   with tf.Graph().as_default() as graph:
     operand_value, operand_binding = tensorflow_utils.stamp_parameter_in_graph(

@@ -312,8 +312,8 @@ message TensorType {
   // True iff the number of dimensions is unknown.
   //
   // If `dims` is unset:
-  // - `unknown_rank` == True corresponds to tf.TensorShape(None)
-  // - `unknown_rank` == False corresponds to tf.TensorShape([])
+  // - `unknown_rank` == True corresponds to None
+  // - `unknown_rank` == False corresponds to []
   bool unknown_rank = 3;
 }
 

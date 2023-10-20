@@ -37,8 +37,6 @@ class TensorUtilsTest(tf.test.TestCase):
         'y': tf.float32,
     }
     nested_shapes = {
-        # N.B. tf.TensorShape([None]) == tf.TensorShape([None])
-        # returns False, so we can't use a None shape here.
         'x': [[1], [3, 5]],
         'y': [1],
     }
@@ -177,44 +175,6 @@ class TensorUtilsTest(tf.test.TestCase):
     self.assertFalse(
         tensor_utils.is_scalar(tf.Variable([0.0, 1.0], 'notscalar'))
     )
-
-  def test_same_shape(self):
-    self.assertTrue(
-        tensor_utils.same_shape(tf.TensorShape(None), tf.TensorShape(None))
-    )
-    self.assertTrue(
-        tensor_utils.same_shape(tf.TensorShape([None]), tf.TensorShape([None]))
-    )
-    self.assertTrue(
-        tensor_utils.same_shape(tf.TensorShape([1]), tf.TensorShape([1]))
-    )
-    self.assertTrue(
-        tensor_utils.same_shape(
-            tf.TensorShape([None, 1]), tf.TensorShape([None, 1])
-        )
-    )
-    self.assertTrue(
-        tensor_utils.same_shape(
-            tf.TensorShape([1, 2, 3]), tf.TensorShape([1, 2, 3])
-        )
-    )
-
-    self.assertFalse(
-        tensor_utils.same_shape(tf.TensorShape(None), tf.TensorShape([1]))
-    )
-    self.assertFalse(
-        tensor_utils.same_shape(tf.TensorShape([1]), tf.TensorShape(None))
-    )
-    self.assertFalse(
-        tensor_utils.same_shape(tf.TensorShape([1]), tf.TensorShape([None]))
-    )
-    self.assertFalse(
-        tensor_utils.same_shape(tf.TensorShape([1]), tf.TensorShape([2]))
-    )
-    self.assertFalse(
-        tensor_utils.same_shape(tf.TensorShape([1, 2]), tf.TensorShape([2, 1]))
-    )
-
 
 if __name__ == '__main__':
   tf.test.main()

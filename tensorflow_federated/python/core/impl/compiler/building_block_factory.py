@@ -1629,9 +1629,11 @@ def create_generic_constant(
     return create_tensorflow_constant(type_spec, scalar_value)
   py_typecheck.check_type(type_spec, computation_types.Type)
   inferred_scalar_value_type = type_conversions.infer_type(scalar_value)
-  if not isinstance(
-      inferred_scalar_value_type, computation_types.TensorType
-  ) or inferred_scalar_value_type.shape != tf.TensorShape(()):
+  if (
+      not isinstance(inferred_scalar_value_type, computation_types.TensorType)
+      or inferred_scalar_value_type.shape is None
+      or inferred_scalar_value_type.shape
+  ):
     raise TypeError(
         'Must pass a scalar value to `create_generic_constant`; encountered a '
         'value {}'.format(scalar_value)

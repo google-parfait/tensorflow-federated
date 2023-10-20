@@ -30,8 +30,8 @@ from typing_extensions import TypeGuard
 from tensorflow_federated.python.common_libs import deprecation
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
+from tensorflow_federated.python.core.impl.types import array_shape
 from tensorflow_federated.python.core.impl.types import placements
-from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
 T = TypeVar('T')
 
@@ -384,26 +384,33 @@ class TensorType(Type, metaclass=_Intern):
   def _hashable_from_init_args(
       cls,
       dtype: Union[Dtype, tf.dtypes.DType],
-      shape: Union[Shape, tf.TensorShape, int] = (),
+      shape: Union[array_shape._ArrayShapeLike, tf.TensorShape, int] = (),
   ) -> Hashable:
     """Returns hashable `TensorType.__init__` args."""
     if not isinstance(dtype, tf.dtypes.DType):
       dtype = tf.dtypes.as_dtype(dtype)
-    if not isinstance(shape, tf.TensorShape):
-      shape = tf.TensorShape(shape)
+    if isinstance(shape, tf.TensorShape):
+      if shape.rank is not None:
+        shape = shape.as_list()
+      else:
+        shape = None
+    elif isinstance(shape, int):
+      shape = ()
+
+    if shape is not None:
+      shape = tuple(shape)
     return (dtype, shape)
 
   def __init__(
       self,
       dtype: Union[Dtype, tf.dtypes.DType],
-      shape: Union[Shape, tf.TensorShape, int] = (),
+      shape: Union[array_shape._ArrayShapeLike, tf.TensorShape, int] = (),
   ):
     """Constructs a new instance from the given `dtype` and `shape`.
 
     Args:
       dtype: An instance of `tf.dtypes.DType` or one of the Numpy numeric types.
-      shape: An instance of `tf.TensorShape` or an argument that can be passed
-        to its constructor (such as a `list` or a `tuple`).
+      shape: The shape of the `tff.TensorType`.
 
     Raises:
       TypeError: if arguments are of the wrong types.
@@ -411,8 +418,16 @@ class TensorType(Type, metaclass=_Intern):
     if not isinstance(dtype, tf.dtypes.DType):
       dtype = tf.dtypes.as_dtype(dtype)
     self._dtype = dtype
-    if not isinstance(shape, tf.TensorShape):
-      shape = tf.TensorShape(shape)
+    if isinstance(shape, tf.TensorShape):
+      if shape.rank is not None:
+        shape = shape.as_list()
+      else:
+        shape = None
+    elif isinstance(shape, int):
+      shape = ()
+
+    if shape is not None:
+      shape = tuple(shape)
     self._shape = shape
 
   def children(self) -> Iterator[Type]:
@@ -423,17 +438,14 @@ class TensorType(Type, metaclass=_Intern):
     return self._dtype
 
   @property
-  def shape(self) -> tf.TensorShape:
+  def shape(self) -> array_shape.ArrayShape:
     return self._shape
 
   def __repr__(self):
-    if self._shape.ndims is None:
-      return 'TensorType({!r}, shape=None)'.format(self._dtype)
-    elif self._shape.ndims > 0:
-      values = self._shape.as_list()
-      return 'TensorType({!r}, {!r})'.format(self._dtype, values)
-    else:
+    if self._shape is not None and not self._shape:
       return 'TensorType({!r})'.format(self._dtype)
+    else:
+      return 'TensorType({!r}, {!r})'.format(self._dtype, self._shape)
 
   def __hash__(self):
     return hash((self._dtype, self._shape))
@@ -442,42 +454,35 @@ class TensorType(Type, metaclass=_Intern):
     return (self is other) or (
         isinstance(other, TensorType)
         and self._dtype == other.dtype
-        and tensor_utils.same_shape(self._shape, other.shape)
+        and self._shape == other.shape
     )
 
   def is_assignable_from(self, source_type: Type) -> bool:
     if self is source_type:
       return True
+
     if (
         not isinstance(source_type, TensorType)
         or self.dtype != source_type.dtype
     ):
       return False
+
     target_shape = self.shape
     source_shape = source_type.shape
-
-    # TensorShape's `is_compatible_with` relation is nontransitive
-    # a property TFF does not desire in its subtyping relation. So we implement
-    # our own comparison between shapes below.
-    if target_shape.rank is None:
+    if target_shape is None:
       return True
-    elif source_shape.rank is None:
+    elif source_shape is None:
       return False
 
-    # The as_list call here is safe, as both TensorShapes have known rank.
-    target_shape_list = target_shape.as_list()
-    source_shape_list = source_shape.as_list()
-    if len(target_shape_list) != len(source_shape_list):
+    if len(target_shape) != len(source_shape):
       return False
 
     def _dimension_is_assignable_from(target_dim, source_dim):
       return (target_dim is None) or (target_dim == source_dim)
 
     return all(
-        _dimension_is_assignable_from(target_shape_elem, source_shape_elem)
-        for target_shape_elem, source_shape_elem in zip(
-            target_shape_list, source_shape_list
-        )
+        _dimension_is_assignable_from(x, y)
+        for x, y in zip(target_shape, source_shape)
     )
 
 
@@ -1109,7 +1114,7 @@ def to_type(obj: object) -> Type:
       # would *not* be a no-op: it would clear away the extra shape information,
       # leading to compilation errors. This round-trip is tested in
       # `type_conversions_test.py` to ensure correctness.
-      flat_values_shape = tf.TensorShape(None)
+      flat_values_shape = None
       flat_values_type = TensorType(obj.dtype, flat_values_shape)
     nested_row_splits_type = StructWithPythonType(
         ([(None, TensorType(obj.row_splits_dtype, [None]))] * obj.ragged_rank),
@@ -1353,14 +1358,13 @@ def _string_representation(type_spec: Type, formatted: bool) -> str:
       element_lines = _lines_for_type(type_spec.element, formatted)
       return _combine([element_lines, ['*']])
     elif isinstance(type_spec, TensorType):
-      if type_spec.shape.ndims is None:
+      if type_spec.shape is None:
         return ['{!r}(shape=None)'.format(type_spec.dtype.name)]
-      elif type_spec.shape.ndims > 0:
-
+      elif type_spec.shape:
         def _value_string(value):
           return str(value) if value is not None else '?'
 
-        value_strings = [_value_string(e.value) for e in type_spec.shape.dims]
+        value_strings = [_value_string(e) for e in type_spec.shape]
         values_strings = ','.join(value_strings)
         return ['{}[{}]'.format(type_spec.dtype.name, values_strings)]
       else:

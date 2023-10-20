@@ -551,7 +551,7 @@ def to_stacked_tensor(ds: tf.data.Dataset) -> tf.Tensor:
   def expanded_empty_tensor(tensor_spec: tf.TensorSpec) -> tf.Tensor:
     if not tensor_spec.shape.is_fully_defined():
       raise _TensorShapeNotFullyDefinedError()
-    return tf.zeros(shape=[0] + tensor_spec.shape, dtype=tensor_spec.dtype)
+    return tf.zeros(shape=(0) + tensor_spec.shape, dtype=tensor_spec.dtype)
 
   with tf.name_scope('to_stacked_tensor'):
     try:

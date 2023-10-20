@@ -248,7 +248,7 @@ def _remove_batch_dim(
   def _remove_first_dim_in_tensortype(tensor_type):
     """Return a new `tff.TensorType` after removing the first dimension."""
     py_typecheck.check_type(tensor_type, computation_types.TensorType)
-    if (tensor_type.shape.rank is not None) and (tensor_type.shape.rank >= 1):
+    if tensor_type.shape is not None and tensor_type.shape:
       return computation_types.TensorType(
           shape=tensor_type.shape[1:], dtype=tensor_type.dtype
       )
