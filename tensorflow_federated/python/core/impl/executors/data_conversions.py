@@ -14,6 +14,7 @@
 """Helpers for converting Python data representations for CPP bindings."""
 
 from collections.abc import Mapping
+
 from tensorflow_federated.python.core.impl.types import placements
 
 

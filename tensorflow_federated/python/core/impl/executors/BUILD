@@ -181,33 +181,6 @@ py_library(
 )
 
 py_library(
-    name = "executor_test_utils",
-    testonly = True,
-    srcs = ["executor_test_utils.py"],
-    srcs_version = "PY3",
-    deps = [
-        ":cardinalities_utils",
-        ":executor_base",
-        ":executor_factory",
-        ":ingestable_base",
-        "//tensorflow_federated/proto/v0:computation_py_pb2",
-        "//tensorflow_federated/python/common_libs:structure",
-        "//tensorflow_federated/python/core/impl/compiler:computation_factory",
-        "//tensorflow_federated/python/core/impl/compiler:intrinsic_defs",
-        "//tensorflow_federated/python/core/impl/compiler:tensorflow_computation_factory",
-        "//tensorflow_federated/python/core/impl/context_stack:context_base",
-        "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:placements",
-        "//tensorflow_federated/python/core/impl/types:type_conversions",
-        "//tensorflow_federated/python/core/impl/types:type_factory",
-        "//tensorflow_federated/python/core/impl/types:type_serialization",
-        "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
-        "//tensorflow_federated/python/tensorflow_libs:serialization_utils",
-    ],
-)
-
-py_library(
     name = "executor_utils",
     srcs = ["executor_utils.py"],
     srcs_version = "PY3",
@@ -220,7 +193,6 @@ py_library(
 
 py_test(
     name = "executor_utils_test",
-    size = "small",
     srcs = ["executor_utils_test.py"],
     deps = [
         ":executor_utils",

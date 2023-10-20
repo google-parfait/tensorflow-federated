@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from absl.testing import absltest
-import tensorflow as tf
+import numpy as np
 
 from tensorflow_federated.python.core.impl.executors import data_descriptor
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
@@ -29,10 +29,10 @@ class DataDescriptorTest(absltest.TestCase):
       data_descriptor.DataDescriptor(
           federated_computation.federated_computation(
               lambda x: intrinsics.federated_value(x, placements.SERVER),
-              tf.int32,
+              np.int32,
           ),
           1000,
-          computation_types.TensorType(tf.int32),
+          computation_types.TensorType(np.int32),
           3,
       )
 

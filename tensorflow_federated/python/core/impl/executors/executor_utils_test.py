@@ -14,7 +14,7 @@
 
 from absl.testing import absltest
 from absl.testing import parameterized
-import tensorflow as tf
+import numpy as np
 
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.executors import executor_utils
@@ -27,18 +27,18 @@ class TypeUtilsTest(parameterized.TestCase):
   @parameterized.named_parameters([
       ('buiding_block_and_type_spec',
        building_block_factory.create_compiled_identity(
-           computation_types.TensorType(tf.int32)),
-       computation_types.FunctionType(tf.int32, tf.int32),
-       computation_types.FunctionType(tf.int32, tf.int32)),
+           computation_types.TensorType(np.int32)),
+       computation_types.FunctionType(np.int32, np.int32),
+       computation_types.FunctionType(np.int32, np.int32)),
       ('buiding_block_and_none',
        building_block_factory.create_compiled_identity(
-           computation_types.TensorType(tf.int32)),
+           computation_types.TensorType(np.int32)),
        None,
-       computation_types.FunctionType(tf.int32, tf.int32)),
+       computation_types.FunctionType(np.int32, np.int32)),
       ('int_and_type_spec',
        10,
-       computation_types.TensorType(tf.int32),
-       computation_types.TensorType(tf.int32)),
+       computation_types.TensorType(np.int32),
+       computation_types.TensorType(np.int32)),
   ])
   # pyformat: enable
   def test_reconcile_value_with_type_spec_returns_type(
@@ -53,8 +53,8 @@ class TypeUtilsTest(parameterized.TestCase):
   @parameterized.named_parameters([
       ('building_block_and_bad_type_spec',
        building_block_factory.create_compiled_identity(
-           computation_types.TensorType(tf.int32)),
-       computation_types.TensorType(tf.int32)),
+           computation_types.TensorType(np.int32)),
+       computation_types.TensorType(np.int32)),
       ('int_and_none', 10, None),
   ])
   # pyformat: enable
@@ -67,13 +67,13 @@ class TypeUtilsTest(parameterized.TestCase):
   # pyformat: disable
   @parameterized.named_parameters([
       ('value_type_and_type_spec',
-       computation_types.TensorType(tf.int32),
-       computation_types.TensorType(tf.int32),
-       computation_types.TensorType(tf.int32)),
+       computation_types.TensorType(np.int32),
+       computation_types.TensorType(np.int32),
+       computation_types.TensorType(np.int32)),
       ('value_type_and_none',
-       computation_types.TensorType(tf.int32),
+       computation_types.TensorType(np.int32),
        None,
-       computation_types.TensorType(tf.int32)),
+       computation_types.TensorType(np.int32)),
   ])
   # pyformat: enable
   def test_reconcile_value_type_with_type_spec_returns_type(
@@ -87,8 +87,8 @@ class TypeUtilsTest(parameterized.TestCase):
   def test_reconcile_value_type_with_type_spec_raises_type_error_value_type_and_bad_type_spec(
       self,
   ):
-    value_type = computation_types.TensorType(tf.int32)
-    type_spec = computation_types.TensorType(tf.string)
+    value_type = computation_types.TensorType(np.int32)
+    type_spec = computation_types.TensorType(np.str_)
 
     with self.assertRaises(TypeError):
       executor_utils.reconcile_value_type_with_type_spec(value_type, type_spec)
