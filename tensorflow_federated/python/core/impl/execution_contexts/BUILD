@@ -54,7 +54,6 @@ py_test(
         "//tensorflow_federated/python/core/impl/executor_stacks:executor_factory",
         "//tensorflow_federated/python/core/impl/executors:executors_errors",
         "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
-        "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
     ],

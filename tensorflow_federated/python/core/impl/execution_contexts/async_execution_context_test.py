@@ -23,7 +23,6 @@ from tensorflow_federated.python.core.impl.execution_contexts import async_execu
 from tensorflow_federated.python.core.impl.executor_stacks import executor_factory
 from tensorflow_federated.python.core.impl.executors import executors_errors
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
-from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 
@@ -68,14 +67,14 @@ class AsyncContextInstallationTest(absltest.TestCase):
     factory = executor_factory.local_cpp_executor_factory()
     context = async_execution_context.AsyncExecutionContext(factory)
 
-    @tensorflow_computation.tf_computation(np.int32)
-    def add_one(x):
-      return x + 1
+    @federated_computation.federated_computation(np.int32)
+    def identity(x):
+      return x
 
     with get_context_stack.get_context_stack().install(context):
-      val_coro = add_one(1)
+      val_coro = identity(1)
       self.assertTrue(asyncio.iscoroutine(val_coro))
-      self.assertEqual(asyncio.run(val_coro), 2)
+      self.assertEqual(asyncio.run(val_coro), 1)
 
   def test_install_and_execute_computations_with_different_cardinalities(self):
     factory = executor_factory.local_cpp_executor_factory()
