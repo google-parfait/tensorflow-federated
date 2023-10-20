@@ -51,18 +51,16 @@ digraph {
 
   execution_contexts -> executor_stacks
   execution_contexts -> executors
-  execution_contexts -> federated_context
-  execution_contexts -> tensorflow_context
-  execution_contexts -> jax_context
+  execution_contexts -> federated_context [color="#ff0000"]
+  execution_contexts -> tensorflow_context [color="#ff0000"]
   execution_contexts -> computation
   execution_contexts -> compiler
   execution_contexts -> types
   execution_contexts -> context_stack
   executor_stacks -> executors
   executor_stacks -> types
-  executors -> federated_context
-  executors -> tensorflow_context
-  executors -> jax_context
+  executors -> federated_context [color="#ff0000"]
+  executors -> tensorflow_context [color="#ff0000"]
   executors -> computation
   executors -> compiler
   executors -> utils
