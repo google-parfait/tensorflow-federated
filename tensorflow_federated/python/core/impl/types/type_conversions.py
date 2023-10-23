@@ -21,6 +21,7 @@ from typing import Optional, Union
 import attrs
 import numpy as np
 import tensorflow as tf
+import tree
 
 from tensorflow_federated.python.common_libs import named_containers
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -142,15 +143,13 @@ def infer_type(arg: object) -> Optional[computation_types.Type]:
     else:
       return computation_types.StructWithPythonType(elements, type(arg))
   elif isinstance(arg, str):
-    return computation_types.TensorType(tf.string)
+    return computation_types.TensorType(np.str_)
   elif isinstance(arg, (np.generic, np.ndarray)):
-    return computation_types.TensorType(
-        tf.dtypes.as_dtype(arg.dtype), arg.shape
-    )
+    return computation_types.TensorType(arg.dtype, arg.shape)
   else:
     arg_type = type(arg)
     if arg_type is bool:
-      return computation_types.TensorType(tf.bool)
+      return computation_types.TensorType(np.bool_)
     elif arg_type is int:
       # Chose the integral type based on value.
       if arg > tf.int64.max or arg < tf.int64.min:
@@ -159,11 +158,11 @@ def infer_type(arg: object) -> Optional[computation_types.Type]:
             f'[{tf.int64.min}, {tf.int64.max}]. Got: {arg}'
         )
       elif arg > tf.int32.max or arg < tf.int32.min:
-        return computation_types.TensorType(tf.int64)
+        return computation_types.TensorType(np.int64)
       else:
-        return computation_types.TensorType(tf.int32)
+        return computation_types.TensorType(np.int32)
     elif arg_type is float:
-      return computation_types.TensorType(tf.float32)
+      return computation_types.TensorType(np.float32)
     else:
       # Now fall back onto the heavier-weight processing, as all else failed.
       # Use make_tensor_proto() to make sure to handle it consistently with
@@ -293,7 +292,7 @@ def type_to_tf_tensor_specs(type_spec: computation_types.Type):
   """
   py_typecheck.check_type(type_spec, computation_types.Type)
   dtypes, shapes = type_to_tf_dtypes_and_shapes(type_spec)
-  return tf.nest.map_structure(
+  return tree.map_structure(
       lambda dtype, shape: tf.TensorSpec(shape, dtype), dtypes, shapes
   )
 
@@ -399,7 +398,7 @@ def type_from_tensors(tensors):
   if isinstance(tensors, structure.Struct):
     type_spec = structure.map_structure(_mapping_fn, tensors)
   else:
-    type_spec = tf.nest.map_structure(_mapping_fn, tensors)
+    type_spec = tree.map_structure(_mapping_fn, tensors)
   return computation_types.to_type(type_spec)
 
 

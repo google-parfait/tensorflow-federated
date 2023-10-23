@@ -417,7 +417,6 @@ def is_structure_of_floats(type_spec: computation_types.Type) -> bool:
   """
   py_typecheck.check_type(type_spec, computation_types.Type)
   if isinstance(type_spec, computation_types.TensorType):
-    py_typecheck.check_type(type_spec.dtype, tf.dtypes.DType)
     return type_spec.dtype.is_floating
   elif isinstance(type_spec, computation_types.StructType):
     return all(
@@ -452,7 +451,6 @@ def is_structure_of_integers(type_spec: computation_types.Type) -> bool:
   """
   py_typecheck.check_type(type_spec, computation_types.Type)
   if isinstance(type_spec, computation_types.TensorType):
-    py_typecheck.check_type(type_spec.dtype, tf.dtypes.DType)  # pytype: disable=attribute-error
     return type_spec.dtype.is_integer  # pytype: disable=attribute-error
   elif isinstance(type_spec, computation_types.StructType):
     return all(

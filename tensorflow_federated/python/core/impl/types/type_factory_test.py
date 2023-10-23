@@ -13,7 +13,9 @@
 # limitations under the License.
 
 from absl.testing import absltest
-import tensorflow as tf
+import numpy as np
+
+# import tensorflow as tf
 
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_factory
@@ -22,8 +24,8 @@ from tensorflow_federated.python.core.impl.types import type_factory
 class TypeConstructorsTest(absltest.TestCase):
 
   def test_reduction_op(self):
-    result_type = computation_types.TensorType(tf.float32)
-    element_type = computation_types.TensorType(tf.int32)
+    result_type = computation_types.TensorType(np.float32)
+    element_type = computation_types.TensorType(np.int32)
     actual_type = type_factory.reduction_op(result_type, element_type)
     expected_type = computation_types.FunctionType(
         computation_types.StructType([result_type, element_type]), result_type
@@ -31,13 +33,13 @@ class TypeConstructorsTest(absltest.TestCase):
     self.assertEqual(actual_type, expected_type)
 
   def test_unary_op(self):
-    type_spec = computation_types.TensorType(tf.bool)
+    type_spec = computation_types.TensorType(np.bool_)
     actual_type = type_factory.unary_op(type_spec)
-    expected_type = computation_types.FunctionType(tf.bool, tf.bool)
+    expected_type = computation_types.FunctionType(np.bool_, np.bool_)
     self.assertEqual(actual_type, expected_type)
 
   def test_binary_op(self):
-    type_spec = computation_types.TensorType(tf.bool)
+    type_spec = computation_types.TensorType(np.bool_)
     actual_type = type_factory.binary_op(type_spec)
     expected_type = computation_types.FunctionType(
         computation_types.StructType([type_spec, type_spec]), type_spec
