@@ -38,14 +38,6 @@ def _validate_value_on_clients(value):
     )
 
 
-def _validate_dtype_is_min_max_compatible(dtype):
-  if not (dtype.is_integer or dtype.is_floating):
-    raise TypeError(
-        'Unsupported dtype. The dtype for min and max must be either an '
-        f'integer or floating:. Got: {dtype}.'
-    )
-
-
 @deprecation.deprecated(
     '`tff.aggregators.federated_min` is deprecated, use `tff.federated_min`'
     ' instead.'
