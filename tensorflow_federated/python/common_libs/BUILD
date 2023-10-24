@@ -48,19 +48,6 @@ py_test(
 )
 
 py_library(
-    name = "named_containers",
-    srcs = ["named_containers.py"],
-    deps = [":py_typecheck"],
-)
-
-py_test(
-    name = "named_containers_test",
-    size = "small",
-    srcs = ["named_containers_test.py"],
-    deps = [":named_containers"],
-)
-
-py_library(
     name = "golden",
     testonly = True,
     srcs = ["golden.py"],

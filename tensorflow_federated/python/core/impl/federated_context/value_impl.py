@@ -14,8 +14,7 @@
 """Representation of values inside a federated computation."""
 
 import abc
-import collections
-from collections.abc import Hashable
+from collections.abc import Hashable, Mapping
 import dataclasses
 import itertools
 import typing
@@ -26,7 +25,6 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
-from tensorflow_federated.python.common_libs import named_containers
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
@@ -401,7 +399,7 @@ def to_value(
           computation_types.SequenceType,
           structure.Struct,
           py_typecheck.SupportsNamedTuple,
-          dict[Hashable, object],
+          Mapping[Hashable, object],
           tuple[object, ...],
           list[object],
           tf.Tensor,
@@ -459,19 +457,12 @@ def to_value(
     items = arg._asdict().items()
     result = _dictlike_items_to_value(items, type_spec, type(arg))
   elif attrs.has(type(arg)):
-    items = named_containers.attrs_class_to_odict(arg).items()
+    items = attrs.asdict(arg, recurse=False).items()
     result = _dictlike_items_to_value(items, type_spec, type(arg))
   elif dataclasses.is_dataclass(arg):
-    items = named_containers.dataclass_to_odict(arg).items()
+    items = arg.__dict__.copy().items()
     result = _dictlike_items_to_value(items, type_spec, type(arg))
-  elif isinstance(arg, dict):
-    if not isinstance(arg, collections.OrderedDict):
-      raise TypeError(
-          'Unsupported mapping type {}. Use collections.OrderedDict for '
-          'mappings. Unsupported mapping: {}'.format(
-              py_typecheck.type_string(type(arg)), arg
-          )
-      )
+  elif isinstance(arg, Mapping):
     result = _dictlike_items_to_value(arg.items(), type_spec, type(arg))
   elif isinstance(arg, (tuple, list)):
     items = zip(itertools.repeat(None), arg)
