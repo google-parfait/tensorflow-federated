@@ -16,7 +16,7 @@
 The program logic is abstracted into a separate function to illustrate the
 boundary between the program and the program logic. Note the Python types of the
 function signature, this program logic only depends on the abstract interfaces
-defined by the TFF's federated program API and does not depend and the platform,
+defined by the TFF's federated program API and does not depend on the platform,
 therefore this program logic is portable across platforms.
 
 Note: This example focuses on the federated program API and does not use TFF's
