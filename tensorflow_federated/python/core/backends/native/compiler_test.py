@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from absl.testing import absltest
-import tensorflow as tf
+import numpy as np
 
 from tensorflow_federated.python.core.backends.native import compiler
 from tensorflow_federated.python.core.impl.compiler import building_blocks
@@ -23,12 +23,12 @@ from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 
 
-class DesugarAndTransformTest(tf.test.TestCase):
+class DesugarAndTransformTest(absltest.TestCase):
 
   def test_desugaring_sum_insert_id_for_tf_computations(self):
 
     @federated_computation.federated_computation(
-        computation_types.at_clients(tf.int32)
+        computation_types.at_clients(np.int32)
     )
     def fed_sum(x):
       return intrinsics.federated_sum(x)

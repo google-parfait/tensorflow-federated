@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from absl.testing import absltest
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2
@@ -73,18 +74,18 @@ class CheckExtractionResultTest(absltest.TestCase):
   def test_raises_on_none_args(self):
     with self.assertRaisesRegex(TypeError, 'None'):
       compiler.check_extraction_result(
-          None, building_blocks.Reference('x', tf.int32)
+          None, building_blocks.Reference('x', np.int32)
       )
     with self.assertRaisesRegex(TypeError, 'None'):
       compiler.check_extraction_result(
-          building_blocks.Reference('x', tf.int32), None
+          building_blocks.Reference('x', np.int32), None
       )
 
   def test_raises_function_and_call(self):
     function = building_blocks.Reference(
-        'f', computation_types.FunctionType(tf.int32, tf.int32)
+        'f', computation_types.FunctionType(np.int32, np.int32)
     )
-    integer_ref = building_blocks.Reference('x', tf.int32)
+    integer_ref = building_blocks.Reference('x', np.int32)
     call = building_blocks.Call(function, integer_ref)
     with self.assertRaisesRegex(
         compiler.MapReduceFormCompilationError, 'we have the functional type'
@@ -97,7 +98,7 @@ class CheckExtractionResultTest(absltest.TestCase):
     )
     init = form_utils.get_state_initialization_computation(initialize)
     compiled_computation = self.compiled_computation_for_initialize(init)
-    integer_ref = building_blocks.Reference('x', tf.int32)
+    integer_ref = building_blocks.Reference('x', np.int32)
     with self.assertRaisesRegex(
         compiler.MapReduceFormCompilationError,
         'we have the non-functional type',
@@ -111,7 +112,7 @@ class CheckExtractionResultTest(absltest.TestCase):
     init = form_utils.get_state_initialization_computation(initialize)
     compiled_computation = self.compiled_computation_for_initialize(init)
     function = building_blocks.Reference(
-        'f', computation_types.FunctionType(tf.int32, tf.int32)
+        'f', computation_types.FunctionType(np.int32, np.int32)
     )
     with self.assertRaisesRegex(
         compiler.MapReduceFormCompilationError, 'incorrect TFF type'
@@ -120,9 +121,9 @@ class CheckExtractionResultTest(absltest.TestCase):
 
   def test_raises_tensor_and_call_to_not_compiled_computation(self):
     function = building_blocks.Reference(
-        'f', computation_types.FunctionType(tf.int32, tf.int32)
+        'f', computation_types.FunctionType(np.int32, np.int32)
     )
-    ref_to_int = building_blocks.Reference('x', tf.int32)
+    ref_to_int = building_blocks.Reference('x', np.int32)
     called_fn = building_blocks.Call(function, ref_to_int)
     with self.assertRaisesRegex(
         compiler.MapReduceFormCompilationError, 'missing'
@@ -167,7 +168,7 @@ class ConsolidateAndExtractTest(absltest.TestCase):
 
   def test_reduces_unplaced_lambda_leaving_type_signature_alone(self):
     lam = building_blocks.Lambda(
-        'x', tf.int32, building_blocks.Reference('x', tf.int32)
+        'x', np.int32, building_blocks.Reference('x', np.int32)
     )
     extracted_tf = compiler.consolidate_and_extract_local_processing(
         lam, DEFAULT_GRAPPLER_CONFIG
@@ -177,10 +178,10 @@ class ConsolidateAndExtractTest(absltest.TestCase):
 
   def test_further_concretizes_type_if_possible(self):
     unk_size_int_type = computation_types.TensorType(
-        dtype=tf.int32, shape=[None]
+        dtype=np.int32, shape=[None]
     )
     known_size_int_type = computation_types.TensorType(
-        dtype=tf.int32, shape=[1]
+        dtype=np.int32, shape=[1]
     )
     lam_with_unk_size = building_blocks.Lambda(
         'x',
@@ -215,7 +216,7 @@ class ConsolidateAndExtractTest(absltest.TestCase):
 
   def test_reduces_unplaced_lambda_to_equivalent_tf(self):
     lam = building_blocks.Lambda(
-        'x', tf.int32, building_blocks.Reference('x', tf.int32)
+        'x', np.int32, building_blocks.Reference('x', np.int32)
     )
     extracted_tf = compiler.consolidate_and_extract_local_processing(
         lam, DEFAULT_GRAPPLER_CONFIG
@@ -230,7 +231,7 @@ class ConsolidateAndExtractTest(absltest.TestCase):
       self.assertEqual(executable_tf(k), executable_lam(k))
 
   def test_reduces_federated_identity_to_member_identity(self):
-    fed_int_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
+    fed_int_type = computation_types.FederatedType(np.int32, placements.CLIENTS)
     lam = building_blocks.Lambda(
         'x', fed_int_type, building_blocks.Reference('x', fed_int_type)
     )
@@ -245,9 +246,9 @@ class ConsolidateAndExtractTest(absltest.TestCase):
 
   def test_reduces_federated_map_to_equivalent_function(self):
     lam = building_blocks.Lambda(
-        'x', tf.int32, building_blocks.Reference('x', tf.int32)
+        'x', np.int32, building_blocks.Reference('x', np.int32)
     )
-    arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
+    arg_type = computation_types.FederatedType(np.int32, placements.CLIENTS)
     arg = building_blocks.Reference('arg', arg_type)
     map_block = building_block_factory.create_federated_map_or_apply(lam, arg)
     mapping_fn = building_blocks.Lambda('arg', arg_type, map_block)
@@ -266,9 +267,9 @@ class ConsolidateAndExtractTest(absltest.TestCase):
 
   def test_reduces_federated_apply_to_equivalent_function(self):
     lam = building_blocks.Lambda(
-        'x', tf.int32, building_blocks.Reference('x', tf.int32)
+        'x', np.int32, building_blocks.Reference('x', np.int32)
     )
-    arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
+    arg_type = computation_types.FederatedType(np.int32, placements.CLIENTS)
     arg = building_blocks.Reference('arg', arg_type)
     map_block = building_block_factory.create_federated_map_or_apply(lam, arg)
     mapping_fn = building_blocks.Lambda('arg', arg_type, map_block)
@@ -287,7 +288,7 @@ class ConsolidateAndExtractTest(absltest.TestCase):
 
   def test_reduces_federated_value_at_server_to_equivalent_noarg_function(self):
     zero = building_block_factory.create_tensorflow_constant(
-        computation_types.TensorType(tf.int32, shape=[]), 0
+        computation_types.TensorType(np.int32, shape=[]), 0
     )
     federated_value = building_block_factory.create_federated_value(
         zero, placements.SERVER
@@ -305,7 +306,7 @@ class ConsolidateAndExtractTest(absltest.TestCase):
       self,
   ):
     zero = building_block_factory.create_tensorflow_constant(
-        computation_types.TensorType(tf.int32, shape=[]), 0
+        computation_types.TensorType(np.int32, shape=[]), 0
     )
     federated_value = building_block_factory.create_federated_value(
         zero, placements.CLIENTS
@@ -320,7 +321,7 @@ class ConsolidateAndExtractTest(absltest.TestCase):
     self.assertEqual(executable_tf(), 0)
 
   def test_reduces_generic_intrinsic_to_equivalent_tf_op(self):
-    arg_type = computation_types.FederatedType(tf.int32, placements.SERVER)
+    arg_type = computation_types.FederatedType(np.int32, placements.SERVER)
     arg = building_blocks.Reference('arg', arg_type)
     multiply_intrinsic = building_blocks.Intrinsic(
         intrinsic_defs.GENERIC_MULTIPLY.uri,
@@ -345,7 +346,7 @@ class ConsolidateAndExtractTest(absltest.TestCase):
 
   def test_reduces_lambda_returning_empty_tuple_to_tf(self):
     empty_tuple = building_blocks.Struct([])
-    lam = building_blocks.Lambda('x', tf.int32, empty_tuple)
+    lam = building_blocks.Lambda('x', np.int32, empty_tuple)
     extracted_tf = compiler.consolidate_and_extract_local_processing(
         lam, DEFAULT_GRAPPLER_CONFIG
     )
@@ -368,14 +369,14 @@ class CompileLocalComputationToTensorFlow(absltest.TestCase):
     )
 
   def test_returns_tf_computation_with_functional_type_lambda_no_block(self):
-    param = building_blocks.Reference('x', [('a', tf.int32), ('b', tf.float32)])
+    param = building_blocks.Reference('x', [('a', np.int32), ('b', np.float32)])
     sel = building_blocks.Selection(source=param, index=0)
     tup = building_blocks.Struct([sel, sel, sel])
     lam = building_blocks.Lambda(param.name, param.type_signature, tup)
     self.assert_compiles_to_tensorflow(lam)
 
   def test_returns_tf_computation_with_functional_type_lambda_with_block(self):
-    param = building_blocks.Reference('x', [('a', tf.int32), ('b', tf.float32)])
+    param = building_blocks.Reference('x', [('a', np.int32), ('b', np.float32)])
     block_to_param = building_blocks.Block([('x', param)], param)
     lam = building_blocks.Lambda(
         param.name, param.type_signature, block_to_param
@@ -385,8 +386,8 @@ class CompileLocalComputationToTensorFlow(absltest.TestCase):
   def test_returns_tf_computation_with_functional_type_block_to_lambda_no_block(
       self,
   ):
-    concrete_int_type = computation_types.TensorType(tf.int32)
-    param = building_blocks.Reference('x', tf.float32)
+    concrete_int_type = computation_types.TensorType(np.int32)
+    param = building_blocks.Reference('x', np.float32)
     lam = building_blocks.Lambda(param.name, param.type_signature, param)
     unused_int = building_block_factory.create_tensorflow_constant(
         concrete_int_type, 1
@@ -397,8 +398,8 @@ class CompileLocalComputationToTensorFlow(absltest.TestCase):
   def test_returns_tf_computation_with_functional_type_block_to_lambda_with_block(
       self,
   ):
-    concrete_int_type = computation_types.TensorType(tf.int32)
-    param = building_blocks.Reference('x', tf.float32)
+    concrete_int_type = computation_types.TensorType(np.int32)
+    param = building_blocks.Reference('x', np.float32)
     block_to_param = building_blocks.Block([('x', param)], param)
     lam = building_blocks.Lambda(
         param.name, param.type_signature, block_to_param
@@ -410,7 +411,7 @@ class CompileLocalComputationToTensorFlow(absltest.TestCase):
     self.assert_compiles_to_tensorflow(blk_to_lam)
 
   def test_returns_tf_computation_block_with_compiled_comp(self):
-    concrete_int_type = computation_types.TensorType(tf.int32)
+    concrete_int_type = computation_types.TensorType(np.int32)
     tf_identity = building_block_factory.create_compiled_identity(
         concrete_int_type
     )
@@ -421,14 +422,14 @@ class CompileLocalComputationToTensorFlow(absltest.TestCase):
     self.assert_compiles_to_tensorflow(block_to_id)
 
   def test_returns_tf_computation_ompiled_comp(self):
-    concrete_int_type = computation_types.TensorType(tf.int32)
+    concrete_int_type = computation_types.TensorType(np.int32)
     tf_identity = building_block_factory.create_compiled_identity(
         concrete_int_type
     )
     self.assert_compiles_to_tensorflow(tf_identity)
 
   def test_returns_called_tf_computation_with_truct(self):
-    constant_tuple_type = computation_types.StructType([tf.int32, tf.float32])
+    constant_tuple_type = computation_types.StructType([np.int32, np.float32])
     constant_tuple = building_block_factory.create_tensorflow_constant(
         constant_tuple_type, 1
     )
@@ -438,15 +439,15 @@ class CompileLocalComputationToTensorFlow(absltest.TestCase):
 
   def test_passes_on_tf(self):
     tf_comp = building_block_factory.create_compiled_identity(
-        computation_types.TensorType(tf.int32)
+        computation_types.TensorType(np.int32)
     )
     transformed = compiler.compile_local_computation_to_tensorflow(tf_comp)
     self.assertEqual(tf_comp, transformed)
 
   def test_raises_on_xla(self):
     function_type = computation_types.FunctionType(
-        computation_types.TensorType(tf.int32),
-        computation_types.TensorType(tf.int32),
+        computation_types.TensorType(np.int32),
+        computation_types.TensorType(np.int32),
     )
     empty_xla_computation_proto = computation_pb2.Computation(
         type=type_serialization.serialize_type(function_type),
@@ -462,7 +463,7 @@ class CompileLocalComputationToTensorFlow(absltest.TestCase):
 
   def test_generates_tf_with_lambda(self):
     ref_to_x = building_blocks.Reference(
-        'x', computation_types.StructType([tf.int32, tf.float32])
+        'x', computation_types.StructType([np.int32, np.float32])
     )
     identity_lambda = building_blocks.Lambda(
         ref_to_x.name, ref_to_x.type_signature, ref_to_x
@@ -471,22 +472,22 @@ class CompileLocalComputationToTensorFlow(absltest.TestCase):
 
   def test_generates_tf_with_block(self):
     ref_to_x = building_blocks.Reference(
-        'x', computation_types.StructType([tf.int32, tf.float32])
+        'x', computation_types.StructType([np.int32, np.float32])
     )
     identity_lambda = building_blocks.Lambda(
         ref_to_x.name, ref_to_x.type_signature, ref_to_x
     )
     tf_zero = building_block_factory.create_tensorflow_constant(
-        computation_types.StructType([tf.int32, tf.float32]), 0
+        computation_types.StructType([np.int32, np.float32]), 0
     )
-    ref_to_z = building_blocks.Reference('z', [tf.int32, tf.float32])
+    ref_to_z = building_blocks.Reference('z', [np.int32, np.float32])
     called_lambda_on_z = building_blocks.Call(identity_lambda, ref_to_z)
     blk = building_blocks.Block([('z', tf_zero)], called_lambda_on_z)
     self.assert_compiles_to_tensorflow(blk)
 
   def test_generates_tf_with_sequence_type(self):
     ref_to_x = building_blocks.Reference(
-        'x', computation_types.SequenceType([tf.int32, tf.float32])
+        'x', computation_types.SequenceType([np.int32, np.float32])
     )
     identity_lambda = building_blocks.Lambda(
         ref_to_x.name, ref_to_x.type_signature, ref_to_x
@@ -498,7 +499,7 @@ class CompileLocalSubcomputationsToTensorFlowTest(absltest.TestCase):
 
   def test_leaves_federated_comp_alone(self):
     ref_to_federated_x = building_blocks.Reference(
-        'x', computation_types.FederatedType(tf.int32, placements.SERVER)
+        'x', computation_types.FederatedType(np.int32, placements.SERVER)
     )
     identity_lambda = building_blocks.Lambda(
         ref_to_federated_x.name,
@@ -512,7 +513,7 @@ class CompileLocalSubcomputationsToTensorFlowTest(absltest.TestCase):
 
   def test_compiles_lambda_under_federated_comp_to_tf(self):
     ref_to_x = building_blocks.Reference(
-        'x', computation_types.StructType([tf.int32, tf.float32])
+        'x', computation_types.StructType([np.int32, np.float32])
     )
     identity_lambda = building_blocks.Lambda(
         ref_to_x.name, ref_to_x.type_signature, ref_to_x
@@ -520,7 +521,7 @@ class CompileLocalSubcomputationsToTensorFlowTest(absltest.TestCase):
     federated_data = building_blocks.Data(
         'a',
         computation_types.FederatedType(
-            computation_types.StructType([tf.int32, tf.float32]),
+            computation_types.StructType([np.int32, np.float32]),
             placements.SERVER,
         ),
     )
@@ -541,8 +542,8 @@ class CompileLocalSubcomputationsToTensorFlowTest(absltest.TestCase):
     )
 
   def test_leaves_local_comp_with_unbound_reference_alone(self):
-    ref_to_x = building_blocks.Reference('x', [tf.int32, tf.float32])
-    ref_to_z = building_blocks.Reference('z', [tf.int32, tf.float32])
+    ref_to_x = building_blocks.Reference('x', [np.int32, np.float32])
+    ref_to_z = building_blocks.Reference('z', [np.int32, np.float32])
     lambda_with_unbound_ref = building_blocks.Lambda(
         ref_to_x.name, ref_to_x.type_signature, ref_to_z
     )
@@ -556,35 +557,35 @@ class CompileLocalSubcomputationsToTensorFlowTest(absltest.TestCase):
 class ConcatenateFunctionOutputsTest(absltest.TestCase):
 
   def test_raises_on_non_lambda_args(self):
-    reference = building_blocks.Reference('x', tf.int32)
-    tff_lambda = building_blocks.Lambda('x', tf.int32, reference)
+    reference = building_blocks.Reference('x', np.int32)
+    tff_lambda = building_blocks.Lambda('x', np.int32, reference)
     with self.assertRaises(TypeError):
       compiler.concatenate_function_outputs(tff_lambda, reference)
     with self.assertRaises(TypeError):
       compiler.concatenate_function_outputs(reference, tff_lambda)
 
   def test_raises_on_non_unique_names(self):
-    reference = building_blocks.Reference('x', tf.int32)
-    good_lambda = building_blocks.Lambda('x', tf.int32, reference)
-    bad_lambda = building_blocks.Lambda('x', tf.int32, good_lambda)
+    reference = building_blocks.Reference('x', np.int32)
+    good_lambda = building_blocks.Lambda('x', np.int32, reference)
+    bad_lambda = building_blocks.Lambda('x', np.int32, good_lambda)
     with self.assertRaises(ValueError):
       compiler.concatenate_function_outputs(good_lambda, bad_lambda)
     with self.assertRaises(ValueError):
       compiler.concatenate_function_outputs(bad_lambda, good_lambda)
 
   def test_raises_on_different_parameter_types(self):
-    int_reference = building_blocks.Reference('x', tf.int32)
-    int_lambda = building_blocks.Lambda('x', tf.int32, int_reference)
-    float_reference = building_blocks.Reference('x', tf.float32)
-    float_lambda = building_blocks.Lambda('x', tf.float32, float_reference)
+    int_reference = building_blocks.Reference('x', np.int32)
+    int_lambda = building_blocks.Lambda('x', np.int32, int_reference)
+    float_reference = building_blocks.Reference('x', np.float32)
+    float_lambda = building_blocks.Lambda('x', np.float32, float_reference)
     with self.assertRaises(TypeError):
       compiler.concatenate_function_outputs(int_lambda, float_lambda)
 
   def test_parameters_are_mapped_together(self):
-    x_reference = building_blocks.Reference('x', tf.int32)
-    x_lambda = building_blocks.Lambda('x', tf.int32, x_reference)
-    y_reference = building_blocks.Reference('y', tf.int32)
-    y_lambda = building_blocks.Lambda('y', tf.int32, y_reference)
+    x_reference = building_blocks.Reference('x', np.int32)
+    x_lambda = building_blocks.Lambda('x', np.int32, x_reference)
+    y_reference = building_blocks.Reference('y', np.int32)
+    y_lambda = building_blocks.Lambda('y', np.int32, y_reference)
     concatenated = compiler.concatenate_function_outputs(x_lambda, y_lambda)
     parameter_name = concatenated.parameter_name
 
@@ -602,10 +603,10 @@ class ConcatenateFunctionOutputsTest(absltest.TestCase):
     )
 
   def test_concatenates_identities(self):
-    x_reference = building_blocks.Reference('x', tf.int32)
-    x_lambda = building_blocks.Lambda('x', tf.int32, x_reference)
-    y_reference = building_blocks.Reference('y', tf.int32)
-    y_lambda = building_blocks.Lambda('y', tf.int32, y_reference)
+    x_reference = building_blocks.Reference('x', np.int32)
+    x_lambda = building_blocks.Lambda('x', np.int32, x_reference)
+    y_reference = building_blocks.Reference('y', np.int32)
+    y_lambda = building_blocks.Lambda('y', np.int32, y_reference)
     concatenated = compiler.concatenate_function_outputs(x_lambda, y_lambda)
     self.assertEqual(str(concatenated), '(y -> <y,y>)')
 
