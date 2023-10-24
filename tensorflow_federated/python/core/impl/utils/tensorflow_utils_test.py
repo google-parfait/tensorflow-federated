@@ -103,8 +103,8 @@ class GraphUtilsTest(tf.test.TestCase):
     """Verifies that 'x' is a placeholder with the given attributes."""
     self.assertEqual(x.name, name)
     self.assertEqual(x.dtype, dtype)
-    expected_ndims = len(shape)
-    self.assertEqual(x.shape.ndims, expected_ndims)
+    expected_rank = len(shape)
+    self.assertEqual(x.shape.rank, expected_rank)
     for i, s in enumerate(shape):
       self.assertEqual(x.shape.dims[i].value, s)
     self.assertEqual(x.op.type, 'Placeholder')
