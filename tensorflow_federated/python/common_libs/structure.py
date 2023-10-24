@@ -543,7 +543,7 @@ def from_container(value: object, recursive=False) -> Struct:
         Union[
             Struct,
             py_typecheck.SupportsNamedTuple,
-            collections.OrderedDict[str, object],
+            Mapping[str, object],
             dict[str, object],
             tuple[object, ...],
             list[object],
@@ -559,26 +559,12 @@ def from_container(value: object, recursive=False) -> Struct:
         return value
     elif attrs.has(type(value)):
       return _convert(
-          collections.OrderedDict(attrs.asdict(value, recurse=False)),
-          recursive,
-          must_be_container,
+          attrs.asdict(value, recurse=False), recursive, must_be_container
       )
     elif isinstance(value, py_typecheck.SupportsNamedTuple):
-      return _convert(
-          # In Python 3.8 and later `_asdict` no longer return OrdereDict,
-          # rather a regular `dict`.
-          collections.OrderedDict(value._asdict()),
-          recursive,
-          must_be_container,
-      )
-    elif isinstance(value, collections.OrderedDict):
+      return _convert(value._asdict(), recursive, must_be_container)
+    elif isinstance(value, Mapping):
       items = value.items()
-      if recursive:
-        return Struct((k, _convert(v, True)) for k, v in items)
-      else:
-        return Struct(items)
-    elif isinstance(value, dict):
-      items = sorted(list(value.items()))
       if recursive:
         return Struct((k, _convert(v, True)) for k, v in items)
       else:
@@ -715,9 +701,9 @@ def update_struct(structure, **kwargs):
     # In Python 3.8 and later `_asdict` no longer return OrdereDict, rather a
     # regular `dict`, so we wrap here to get consistent types across Python
     # version.s
-    dictionary = collections.OrderedDict(structure._asdict())
+    dictionary = structure._asdict()
   elif attrs.has(type(structure)):
-    dictionary = collections.OrderedDict(attrs.asdict(structure, recurse=False))
+    dictionary = attrs.asdict(structure, recurse=False)
   else:
     for key in kwargs:
       if key not in structure:

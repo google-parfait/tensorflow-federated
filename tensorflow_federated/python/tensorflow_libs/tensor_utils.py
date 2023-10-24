@@ -76,18 +76,6 @@ def to_var_dict(variables):
   return collections.OrderedDict(tuples)
 
 
-def to_odict(d):
-  """Converts d to an OrderedDict with lexically sorted string keys."""
-  if isinstance(d, collections.OrderedDict):
-    return d
-  py_typecheck.check_type(d, dict)
-  items = []
-  for k, v in d.items():
-    py_typecheck.check_type(k, str)
-    items.append((k, v))
-  return collections.OrderedDict(sorted(items))
-
-
 def zero_all_if_any_non_finite(structure):
   """Zeroes out all entries in input if any are not finite.
 

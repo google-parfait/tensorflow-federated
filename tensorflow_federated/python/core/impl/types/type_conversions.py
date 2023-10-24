@@ -13,7 +13,7 @@
 """Utilities for type conversion, type checking, type inference, etc."""
 
 import collections
-from collections.abc import Callable, Hashable
+from collections.abc import Callable, Hashable, Mapping
 import dataclasses
 import typing
 from typing import Optional, Union
@@ -23,7 +23,6 @@ import numpy as np
 import tensorflow as tf
 import tree
 
-from tensorflow_federated.python.common_libs import named_containers
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -60,8 +59,7 @@ def infer_type(arg: object) -> Optional[computation_types.Type]:
           tf.data.Dataset,
           structure.Struct,
           py_typecheck.SupportsNamedTuple,
-          dict[Hashable, object],
-          collections.OrderedDict[Hashable, object],
+          Mapping[Hashable, object],
           tuple[object, ...],
           list[object],
       ],
@@ -104,27 +102,22 @@ def infer_type(arg: object) -> Optional[computation_types.Type]:
         ]
     )
   elif attrs.has(type(arg)):
-    items = named_containers.attrs_class_to_odict(arg).items()
+    items = attrs.asdict(arg, recurse=False).items()
     return computation_types.StructWithPythonType(
         [(k, infer_type(v)) for k, v in items], type(arg)
     )
   elif dataclasses.is_dataclass(arg):
-    items = named_containers.dataclass_to_odict(arg).items()
+    items = arg.__dict__.copy().items()
     return computation_types.StructWithPythonType(
         [(k, infer_type(v)) for k, v in items], type(arg)
     )
   elif isinstance(arg, py_typecheck.SupportsNamedTuple):
-    # In Python 3.8 and later `_asdict` no longer return OrderedDict, rather a
-    # regular `dict`.
-    items = collections.OrderedDict(arg._asdict())
+    items = arg._asdict().items()
     return computation_types.StructWithPythonType(
-        [(k, infer_type(v)) for k, v in items.items()], type(arg)
+        [(k, infer_type(v)) for k, v in items], type(arg)
     )
-  elif isinstance(arg, dict):
-    if isinstance(arg, collections.OrderedDict):
-      items = arg.items()
-    else:
-      items = sorted(arg.items())
+  elif isinstance(arg, Mapping):
+    items = arg.items()
     return computation_types.StructWithPythonType(
         [(k, infer_type(v)) for k, v in items], type(arg)
     )
