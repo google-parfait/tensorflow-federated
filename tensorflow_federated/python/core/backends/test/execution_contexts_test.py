@@ -16,18 +16,17 @@ from absl.testing import absltest
 from absl.testing import parameterized
 import grpc
 import numpy as np
-import tensorflow as tf
 
 from tensorflow_federated.python.core.backends.test import execution_contexts
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 
-_CLIENTS_INT = computation_types.at_clients(tf.int32)
-_CLIENTS_INT_LIST = computation_types.at_clients([tf.int32, tf.int32])
+_CLIENTS_INT = computation_types.at_clients(np.int32)
+_CLIENTS_INT_LIST = computation_types.at_clients([np.int32, np.int32])
 
 
-class SecureModularSumTest(parameterized.TestCase, tf.test.TestCase):
+class SecureModularSumTest(parameterized.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -47,7 +46,7 @@ class SecureModularSumTest(parameterized.TestCase, tf.test.TestCase):
           'nonscalar_struct_arg',
           [([1, 2], 3), ([4, 5], 6)],
           (np.array([0, 2], dtype=np.int32), 4),
-          computation_types.at_clients(((tf.int32, [2]), tf.int32)),
+          computation_types.at_clients(((np.int32, [2]), np.int32)),
       ),
   )
   def test_executes_computation_with_modular_secure_sum_integer_modulus(
@@ -59,11 +58,16 @@ class SecureModularSumTest(parameterized.TestCase, tf.test.TestCase):
     def modular_sum_by_five(arg):
       return intrinsics.federated_secure_modular_sum(arg, modulus)
 
-    # assertAllEqual doesnt handle nested structures well, so we use
-    # assertAllClose with no tolerance here.
-    self.assertAllClose(
-        expected_result, modular_sum_by_five(arg), atol=0.0, rtol=0.0
-    )
+    actual_result = modular_sum_by_five(arg)
+
+    if isinstance(actual_result, tuple) and isinstance(expected_result, tuple):
+      for a, b in zip(actual_result, expected_result):
+        if isinstance(a, np.ndarray) and isinstance(b, np.ndarray):
+          np.testing.assert_array_equal(a, b)
+        else:
+          self.assertEqual(a, b)
+    else:
+      self.assertEqual(actual_result, expected_result)
 
   @parameterized.named_parameters(
       ('one_client_not_divisible', [[1, 2]], [1, 2], _CLIENTS_INT_LIST),
@@ -98,7 +102,7 @@ class SecureModularSumTest(parameterized.TestCase, tf.test.TestCase):
     self.assertEqual(expected_result, modular_sum_by_five(arg))
 
 
-class SecureSumBitwidthTest(tf.test.TestCase, parameterized.TestCase):
+class SecureSumBitwidthTest(parameterized.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -120,7 +124,7 @@ class SecureSumBitwidthTest(tf.test.TestCase, parameterized.TestCase):
     expected_result = sum(arg)
 
     @federated_computation.federated_computation(
-        computation_types.at_clients(tf.int32)
+        computation_types.at_clients(np.int32)
     )
     def sum_with_bitwidth(arg):
       return intrinsics.federated_secure_sum_bitwidth(arg, bitwidth)
@@ -132,18 +136,18 @@ class SecureSumBitwidthTest(tf.test.TestCase, parameterized.TestCase):
           'two_clients_scalar_tensors',
           [[1, 2], [3, 4]],
           [4, 6],
-          computation_types.at_clients([tf.int32, tf.int32]),
+          computation_types.at_clients([np.int32, np.int32]),
       ),
       (
           'two_clients_nonscalar_tensors',
           [
-              [tf.ones(shape=[10], dtype=tf.int32), 2],
-              [tf.ones(shape=[10], dtype=tf.int32), 4],
+              [np.ones(shape=[10], dtype=np.int32), 2],
+              [np.ones(shape=[10], dtype=np.int32), 4],
           ],
-          [2 * tf.ones(shape=[10], dtype=tf.int32).numpy(), 6],
+          [2 * np.ones(shape=[10], dtype=np.int32), 6],
           computation_types.at_clients([
-              computation_types.TensorType(dtype=tf.int32, shape=[10]),
-              tf.int32,
+              computation_types.TensorType(dtype=np.int32, shape=[10]),
+              np.int32,
           ]),
       ),
   )
@@ -156,10 +160,16 @@ class SecureSumBitwidthTest(tf.test.TestCase, parameterized.TestCase):
     def sum_with_bitwidth(arg):
       return intrinsics.federated_secure_sum_bitwidth(arg, bitwidth)
 
-    self.assertAllClose(expected_result, sum_with_bitwidth(arg))
+    actual_result = sum_with_bitwidth(arg)
+
+    for a, b in zip(actual_result, expected_result):
+      if isinstance(a, np.ndarray) and isinstance(b, np.ndarray):
+        np.testing.assert_array_equal(a, b)
+      else:
+        self.assertEqual(a, b)
 
 
-class SecureSumMaxValueTest(tf.test.TestCase, parameterized.TestCase):
+class SecureSumMaxValueTest(parameterized.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -169,7 +179,7 @@ class SecureSumMaxValueTest(tf.test.TestCase, parameterized.TestCase):
     max_value = 1
 
     @federated_computation.federated_computation(
-        computation_types.at_clients(tf.int32)
+        computation_types.at_clients(np.int32)
     )
     def secure_sum(arg):
       return intrinsics.federated_secure_sum(arg, max_value)
@@ -191,7 +201,7 @@ class SecureSumMaxValueTest(tf.test.TestCase, parameterized.TestCase):
     expected_result = sum(arg)
 
     @federated_computation.federated_computation(
-        computation_types.at_clients(tf.int32)
+        computation_types.at_clients(np.int32)
     )
     def secure_sum(arg):
       return intrinsics.federated_secure_sum(arg, max_value)
@@ -203,18 +213,18 @@ class SecureSumMaxValueTest(tf.test.TestCase, parameterized.TestCase):
           'two_clients_scalar_tensors',
           [[1, 2], [3, 4]],
           [4, 6],
-          computation_types.at_clients([tf.int32, tf.int32]),
+          computation_types.at_clients([np.int32, np.int32]),
       ),
       (
           'two_clients_nonscalar_tensors',
           [
-              [tf.ones(shape=[10], dtype=tf.int32), 2],
-              [tf.ones(shape=[10], dtype=tf.int32), 4],
+              [np.ones(shape=[10], dtype=np.int32), 2],
+              [np.ones(shape=[10], dtype=np.int32), 4],
           ],
-          [2 * tf.ones(shape=[10], dtype=tf.int32).numpy(), 6],
+          [2 * np.ones(shape=[10], dtype=np.int32), 6],
           computation_types.at_clients([
-              computation_types.TensorType(dtype=tf.int32, shape=[10]),
-              tf.int32,
+              computation_types.TensorType(dtype=np.int32, shape=[10]),
+              np.int32,
           ]),
       ),
   )
@@ -227,7 +237,13 @@ class SecureSumMaxValueTest(tf.test.TestCase, parameterized.TestCase):
     def secure_sum(arg):
       return intrinsics.federated_secure_sum(arg, max_value)
 
-    self.assertAllClose(expected_result, secure_sum(arg))
+    actual_result = secure_sum(arg)
+
+    for a, b in zip(actual_result, expected_result):
+      if isinstance(a, np.ndarray) and isinstance(b, np.ndarray):
+        np.testing.assert_array_equal(a, b)
+      else:
+        self.assertEqual(a, b)
 
 
 if __name__ == '__main__':

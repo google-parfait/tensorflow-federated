@@ -13,12 +13,13 @@
 # limitations under the License.
 
 import inspect
+from typing import NoReturn, Optional
 import unittest
 
 from absl.testing import absltest
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf
+import tree
 
 from tensorflow_federated.python.core.backends.test import cpp_execution_contexts
 from tensorflow_federated.python.core.backends.test import execution_contexts
@@ -43,6 +44,16 @@ def _assert_signature_equal(first_obj, second_obj):
         f'{first_signature.return_annotation} != '
         f'{second_signature.return_annotation}'
     )
+
+
+def assert_value_equal(a: object, b: object) -> Optional[NoReturn]:
+  def _assert_value_equal(a: object, b: object) -> Optional[NoReturn]:
+    if isinstance(a, np.ndarray) and isinstance(b, np.ndarray):
+      np.testing.assert_array_equal(a, b)
+    elif a != b:
+      raise AssertionError(f'{a} != {b}')
+
+  tree.map_structure(_assert_value_equal, a, b)
 
 
 class CreateAsyncTestCPPExecutionContextTest(absltest.TestCase):
@@ -92,22 +103,22 @@ class SetSyncTestCPPExecutionContextTest(absltest.TestCase):
 
 
 class SecureModularSumTest(
-    parameterized.TestCase, tf.test.TestCase, unittest.IsolatedAsyncioTestCase
+    parameterized.TestCase, unittest.IsolatedAsyncioTestCase
 ):
 
   # pyformat: disable
   @parameterized.named_parameters(
       ('one_client_not_divisible', [1], 1,
-       computation_types.at_clients(tf.int32)),
+       computation_types.at_clients(np.int32)),
       ('two_clients_none_divisible', [1, 2], 3,
-       computation_types.at_clients(tf.int32)),
+       computation_types.at_clients(np.int32)),
       ('three_clients_one_divisible', [1, 2, 10], 3,
-       computation_types.at_clients(tf.int32)),
+       computation_types.at_clients(np.int32)),
       ('all_clients_divisible_by_modulus', [x * 5 for x in range(5)], 0,
-       computation_types.at_clients(tf.int32)),
+       computation_types.at_clients(np.int32)),
       ('nonscalar_struct_arg', [([1, 2], 3), ([4, 5], 6)],
        (np.array([0, 2], dtype=np.int32), 4),
-       computation_types.at_clients(((tf.int32, [2]), tf.int32))),
+       computation_types.at_clients(((np.int32, [2]), np.int32))),
   )
   # pyformat: enable
   def test_executes_computation_with_modular_secure_sum_integer_modulus(
@@ -121,18 +132,31 @@ class SecureModularSumTest(
     def modular_sum_by_five(arg):
       return intrinsics.federated_secure_modular_sum(arg, modulus)
 
-    # assertAllEqual doesnt handle nested structures well, so we use
-    # assertAllClose with no tolerance here.
-    self.assertAllClose(
-        expected_result, modular_sum_by_five(arg), atol=0.0, rtol=0.0
-    )
+    actual_result = modular_sum_by_five(arg)
 
-  # pyformat: disable
+    if isinstance(actual_result, tuple) and isinstance(expected_result, tuple):
+      for a, b in zip(actual_result, expected_result):
+        if isinstance(a, np.ndarray) and isinstance(b, np.ndarray):
+          np.testing.assert_array_equal(a, b)
+        else:
+          self.assertEqual(a, b)
+    else:
+      self.assertEqual(actual_result, expected_result)
+
+  # # pyformat: disable
   @parameterized.named_parameters(
-      ('one_client_not_divisible', [1], 1,
-       computation_types.at_clients(tf.int32)),
-      ('two_clients_none_divisible', [1, 2], 3,
-       computation_types.at_clients(tf.int32)),
+      (
+          'one_client_not_divisible',
+          [1],
+          1,
+          computation_types.at_clients(np.int32),
+      ),
+      (
+          'two_clients_none_divisible',
+          [1, 2],
+          3,
+          computation_types.at_clients(np.int32),
+      ),
   )
   # pyformat: enable
   async def test_async_executes_computation_with_modular_secure_sum_integer_modulus(
@@ -146,36 +170,32 @@ class SecureModularSumTest(
     def modular_sum_by_five(arg):
       return intrinsics.federated_secure_modular_sum(arg, modulus)
 
-    # assertAllEqual doesnt handle nested structures well, so we use
-    # assertAllClose with no tolerance here.
-    self.assertAllClose(
-        expected_result, await modular_sum_by_five(arg), atol=0.0, rtol=0.0
-    )
+    self.assertEqual(expected_result, await modular_sum_by_five(arg))
 
   @parameterized.named_parameters(
       (
           'one_client_not_divisible',
           [[1, 2]],
           [1, 2],
-          computation_types.at_clients([tf.int32, tf.int32]),
+          computation_types.at_clients([np.int32, np.int32]),
       ),
       (
           'two_clients_none_divisible',
           [[1, 2], [3, 4]],
           [4, 6],
-          computation_types.at_clients([tf.int32, tf.int32]),
+          computation_types.at_clients([np.int32, np.int32]),
       ),
       (
           'three_clients_one_divisible',
           [[1, 2], [3, 4], [10, 14]],
           [4, 6],
-          computation_types.at_clients([tf.int32, tf.int32]),
+          computation_types.at_clients([np.int32, np.int32]),
       ),
       (
           'two_clients_one_partially_divisible',
           [[1, 2], [3, 4], [10, 15]],
           [4, 0],
-          computation_types.at_clients([tf.int32, tf.int32]),
+          computation_types.at_clients([np.int32, np.int32]),
       ),
   )
   def test_executes_computation_with_modular_secure_sum_struct_modulus(
@@ -192,7 +212,7 @@ class SecureModularSumTest(
 
 
 class SecureSumBitwidthTest(
-    tf.test.TestCase, parameterized.TestCase, unittest.IsolatedAsyncioTestCase
+    parameterized.TestCase, unittest.IsolatedAsyncioTestCase
 ):
 
   @parameterized.named_parameters(
@@ -208,7 +228,7 @@ class SecureSumBitwidthTest(
     expected_result = sum(arg)
 
     @federated_computation.federated_computation(
-        computation_types.at_clients(tf.int32)
+        computation_types.at_clients(np.int32)
     )
     def sum_with_bitwidth(arg):
       return intrinsics.federated_secure_sum_bitwidth(arg, bitwidth)
@@ -224,7 +244,7 @@ class SecureSumBitwidthTest(
     expected_result = sum(arg)
 
     @federated_computation.federated_computation(
-        computation_types.at_clients(tf.int32)
+        computation_types.at_clients(np.int32)
     )
     def sum_with_bitwidth(arg):
       return intrinsics.federated_secure_sum_bitwidth(arg, bitwidth)
@@ -234,13 +254,13 @@ class SecureSumBitwidthTest(
   # pyformat: disable
   @parameterized.named_parameters(
       ('two_clients_scalar_tensors', [[1, 2], [3, 4]], [4, 6],
-       computation_types.at_clients([tf.int32, tf.int32])),
+       computation_types.at_clients([np.int32, np.int32])),
       ('two_clients_nonscalar_tensors',
-       [[tf.ones(shape=[10], dtype=tf.int32), 2],
-        [tf.ones(shape=[10], dtype=tf.int32), 4]],
-       [2 * tf.ones(shape=[10], dtype=tf.int32).numpy(), 6],
+       [[np.ones(shape=[10], dtype=np.int32), 2],
+        [np.ones(shape=[10], dtype=np.int32), 4]],
+       [2 * np.ones(shape=[10], dtype=np.int32), 6],
        computation_types.at_clients([
-           computation_types.TensorType(dtype=tf.int32, shape=[10]), tf.int32]),
+           computation_types.TensorType(dtype=np.int32, shape=[10]), np.int32]),
       ),
   )
   # pyformat: enable
@@ -255,11 +275,17 @@ class SecureSumBitwidthTest(
     def sum_with_bitwidth(arg):
       return intrinsics.federated_secure_sum_bitwidth(arg, bitwidth)
 
-    self.assertAllClose(expected_result, sum_with_bitwidth(arg))
+    actual_result = sum_with_bitwidth(arg)
+
+    for a, b in zip(actual_result, expected_result):
+      if isinstance(a, np.ndarray) and isinstance(b, np.ndarray):
+        np.testing.assert_array_equal(a, b)
+      else:
+        self.assertEqual(a, b)
 
 
 class SecureSumMaxValueTest(
-    tf.test.TestCase, parameterized.TestCase, unittest.IsolatedAsyncioTestCase
+    parameterized.TestCase, unittest.IsolatedAsyncioTestCase
 ):
 
   def test_raises_with_arguments_over_max_value(self):
@@ -268,7 +294,7 @@ class SecureSumMaxValueTest(
     max_value = 1
 
     @federated_computation.federated_computation(
-        computation_types.at_clients(tf.int32)
+        computation_types.at_clients(np.int32)
     )
     def secure_sum(arg):
       return intrinsics.federated_secure_sum(arg, max_value)
@@ -291,7 +317,7 @@ class SecureSumMaxValueTest(
     expected_result = sum(arg)
 
     @federated_computation.federated_computation(
-        computation_types.at_clients(tf.int32)
+        computation_types.at_clients(np.int32)
     )
     def secure_sum(arg):
       return intrinsics.federated_secure_sum(arg, max_value)
@@ -308,7 +334,7 @@ class SecureSumMaxValueTest(
     expected_result = sum(arg)
 
     @federated_computation.federated_computation(
-        computation_types.at_clients(tf.int32)
+        computation_types.at_clients(np.int32)
     )
     def secure_sum(arg):
       return intrinsics.federated_secure_sum(arg, max_value)
@@ -318,14 +344,14 @@ class SecureSumMaxValueTest(
   # pyformat: disable
   @parameterized.named_parameters(
       ('two_clients_scalar_tensors', [[1, 2], [3, 4]], [4, 6],
-       computation_types.at_clients([tf.int32, tf.int32])),
+       computation_types.at_clients([np.int32, np.int32])),
       ('two_clients_nonscalar_tensors',
-       [[tf.ones(shape=[10], dtype=tf.int32), 2],
-        [tf.ones(shape=[10], dtype=tf.int32), 4]],
-       [2 * tf.ones(shape=[10], dtype=tf.int32).numpy(), 6],
+       [[np.ones(shape=[10], dtype=np.int32), 2],
+        [np.ones(shape=[10], dtype=np.int32), 4]],
+       [2 * np.ones(shape=[10], dtype=np.int32), 6],
        computation_types.at_clients([
            computation_types.TensorType(
-               dtype=tf.int32, shape=[10]), tf.int32])),
+               dtype=np.int32, shape=[10]), np.int32])),
   )
   # pyformat: enable
   def test_executes_computation_with_argument_structure(
@@ -339,7 +365,13 @@ class SecureSumMaxValueTest(
     def secure_sum(arg):
       return intrinsics.federated_secure_sum(arg, max_value)
 
-    self.assertAllClose(expected_result, secure_sum(arg))
+    actual_result = secure_sum(arg)
+
+    for a, b in zip(actual_result, expected_result):
+      if isinstance(a, np.ndarray) and isinstance(b, np.ndarray):
+        np.testing.assert_array_equal(a, b)
+      else:
+        self.assertEqual(a, b)
 
 
 if __name__ == '__main__':
