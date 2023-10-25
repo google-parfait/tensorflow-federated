@@ -1,3 +1,28 @@
+# Release 0.64.0
+
+## Major Features and Improvements
+
+*   Updated the TFF project and the Python package to be compatible with Python
+    3.11.
+*   Updated `train_process` to `train_process_factory` in vizier program logic
+    to support multiple trials in parallel.
+*   Added support for using non-OrderedDict mapping types.
+
+## Breaking Changes
+
+*   Updated the version of `grpc` to `v1.59.1`.
+*   Updated the version of `bazel` to `6.1.0`.
+*   Updated the version of `tensorflow` to `2.14.0`.
+*   Updated the version of `numpy` to `~=1.25`.
+*   Updated the version of `com_google_googletest` to `1.12.1`.
+
+## Bug Fixes
+
+*   Fixed import path for Vizier in federated program example.
+*   Fixed serialization of TenshorShape in error message to be human readable.
+*   Fixed bug in `tff.program.FileProgramStateManager` removing old program
+    state.
+
 # Release 0.63.0
 
 ## Major Features and Improvements
