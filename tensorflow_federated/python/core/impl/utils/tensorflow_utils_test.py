@@ -69,7 +69,10 @@ class GraphUtilsTest(tf.test.TestCase):
       self.assertIsInstance(type_spec, computation_types.StructType)
       if not isinstance(val, (list, tuple, structure.Struct)):
         self.assertIsInstance(val, dict)
-        val = list(val.values())
+        if isinstance(val, collections.OrderedDict):
+          val = list(val.values())
+        else:
+          val = [v for _, v in sorted(val.items())]
       for idx, e in enumerate(structure.to_elements(type_spec)):
         self._assert_binding_matches_type_and_value(
             binding.struct.element[idx], e[1], val[idx], graph, is_output
@@ -363,6 +366,13 @@ class GraphUtilsTest(tf.test.TestCase):
     self.assertEqual(str(t1), '<a=int32,b=bool>')
     self.assertIs(t1.python_container, dict)
 
+    t2 = self._checked_capture_result({
+        'b': tf.constant(True),
+        'a': tf.constant(1),
+    })
+    self.assertEqual(str(t2), '<a=int32,b=bool>')
+    self.assertIs(t2.python_container, dict)
+
   @tensorflow_test_utils.graph_mode_test
   def test_capture_result_with_ordered_dict_of_constants(self):
     t = self._checked_capture_result(
@@ -474,6 +484,11 @@ class GraphUtilsTest(tf.test.TestCase):
     ds = tf.data.Dataset.range(10)
     self.assertEqual(str(self._checked_capture_result(ds)), 'int64*')
 
+  def test_capture_result_with_sequence_of_dicts_fails(self):
+    ds = tf.data.Dataset.from_tensor_slices({'A': [1, 2, 3], 'B': [4, 5, 6]})
+    with self.assertRaises(TypeError):
+      self._checked_capture_result(ds)
+
   def test_compute_map_from_bindings_with_tuple_of_tensors(self):
     with tf.Graph().as_default() as graph:
       _, source = tensorflow_utils.capture_result_from_graph(
@@ -525,7 +540,7 @@ class GraphUtilsTest(tf.test.TestCase):
         sequence=pb.TensorFlow.SequenceBinding(variant_tensor_name='foo')
     )
     result = tensorflow_utils.extract_tensor_names_from_binding(binding)
-    self.assertEqual(str(result), "['foo']")
+    self.assertEqual(str(sorted(result)), "['foo']")
 
   @tensorflow_test_utils.graph_mode_test
   def test_assemble_result_from_graph_with_named_tuple(self):

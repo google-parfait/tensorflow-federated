@@ -423,7 +423,7 @@ class StructTest(parameterized.TestCase):
   def test_from_container_with_dict(self):
     x = structure.from_container({'z': 10, 'y': 20, 'a': 30})
     self.assertIsInstance(x, structure.Struct)
-    self.assertEqual(str(x), '<z=10,y=20,a=30>')
+    self.assertEqual(str(x), '<a=30,y=20,z=10>')
 
   def test_from_container_with_ordered_dict(self):
     x = structure.from_container(

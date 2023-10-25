@@ -1095,10 +1095,17 @@ def to_type(obj: object) -> Type:
       return StructType(obj)
     else:
       return StructWithPythonType(obj, type(obj))
+  elif isinstance(obj, collections.OrderedDict):
+    return StructWithPythonType(obj, type(obj))
   elif attrs.has(type(obj)):
     return StructWithPythonType(attrs.asdict(obj, recurse=False), type(obj))
   elif isinstance(obj, Mapping):
-    return StructWithPythonType(obj, type(obj))
+    # This is an unsupported mapping, likely a `dict`. StructType adds an
+    # ordering, which the original container did not have.
+    raise TypeError(
+        'Unsupported mapping type {}. Use collections.OrderedDict for '
+        'mappings.'.format(py_typecheck.type_string(type(obj)))
+    )
   elif isinstance(obj, structure.Struct):
     return StructType(structure.to_elements(obj))
   elif isinstance(obj, tf.RaggedTensorSpec):

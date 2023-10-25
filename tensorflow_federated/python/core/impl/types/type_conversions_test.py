@@ -244,6 +244,15 @@ class InferTypeTest(parameterized.TestCase, tf.test.TestCase):
     self.assertIsInstance(inferred_type, computation_types.StructWithPythonType)
     self.assertIs(inferred_type.python_container, dict)
 
+    v2 = {
+        'b': 2.0,
+        'a': 1,
+    }
+    inferred_type = type_conversions.infer_type(v2)
+    self.assertEqual(str(inferred_type), '<a=int32,b=float32>')
+    self.assertIsInstance(inferred_type, computation_types.StructWithPythonType)
+    self.assertIs(inferred_type.python_container, dict)
+
   def test_with_ordered_dict(self):
     t = type_conversions.infer_type(
         collections.OrderedDict([('b', 2.0), ('a', 1)])

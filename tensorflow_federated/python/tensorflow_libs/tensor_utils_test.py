@@ -121,6 +121,18 @@ class TensorUtilsTest(tf.test.TestCase):
     with self.assertRaisesRegex(ValueError, 'multiple.*foo'):
       tensor_utils.to_var_dict([v1, v2])
 
+  def test_to_odict(self):
+    d1 = {'b': 2, 'a': 1}
+    odict1 = tensor_utils.to_odict(d1)
+    self.assertIsInstance(odict1, collections.OrderedDict)
+    self.assertCountEqual(d1, odict1)
+
+    odict2 = tensor_utils.to_odict(odict1)
+    self.assertEqual(odict1, odict2)
+
+    with self.assertRaises(TypeError):
+      tensor_utils.to_odict({1: 'a', 2: 'b'})
+
   def test_zero_all_if_any_non_finite(self):
     def expect_ok(structure):
       with tf.Graph().as_default():

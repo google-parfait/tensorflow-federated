@@ -25,6 +25,7 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
+from tensorflow_federated.python.common_libs import named_containers
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -296,10 +297,10 @@ def capture_result_from_graph(
     name_value_pairs = result._asdict().items()
     return _get_bindings_for_elements(name_value_pairs, graph, type(result))
   elif attrs.has(type(result)):
-    name_value_pairs = attrs.asdict(result, recurse=False).items()
+    name_value_pairs = named_containers.attrs_class_to_odict(result).items()
     return _get_bindings_for_elements(name_value_pairs, graph, type(result))
   elif dataclasses.is_dataclass(result):
-    name_value_pairs = result.__dict__.copy().items()
+    name_value_pairs = named_containers.dataclass_to_odict(result).items()
     return _get_bindings_for_elements(name_value_pairs, graph, type(result))
   elif isinstance(result, structure.Struct):
     return _get_bindings_for_elements(
@@ -313,7 +314,10 @@ def capture_result_from_graph(
             'Dictionaries returned from TensorFlow graphs must be of type '
             f'`str`, but found key `{key}` of type `{key_type_str}`.'
         )
-    name_value_pairs = result.items()
+    if isinstance(result, collections.OrderedDict):
+      name_value_pairs = result.items()
+    else:
+      name_value_pairs = sorted(result.items())
     return _get_bindings_for_elements(name_value_pairs, graph, type(result))
   elif isinstance(result, (list, tuple)):
     element_type_binding_pairs = [
