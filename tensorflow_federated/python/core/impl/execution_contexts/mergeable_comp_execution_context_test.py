@@ -26,11 +26,8 @@ from tensorflow_federated.python.core.impl.execution_contexts import sync_execut
 from tensorflow_federated.python.core.impl.executor_stacks import executor_factory
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
-
-_NUM_EXPLICIT_SUBROUNDS = 50
 
 
 def build_sum_client_arg_computation(
@@ -68,16 +65,6 @@ def build_whimsy_merge_computation(
   return merge
 
 
-def build_sum_merge_computation(
-    arg_type: computation_types.Type,
-) -> computation_base.Computation:
-  @tensorflow_computation.tf_computation(arg_type, arg_type)
-  def merge(arg0, arg1):
-    return arg0 + arg1
-
-  return merge
-
-
 def build_whimsy_after_merge_computation(
     original_arg_type: computation_types.Type,
     merge_result_type: computation_types.Type,
@@ -98,53 +85,6 @@ def build_whimsy_after_merge_computation(
     )
     def after_merge(merge_result):
       return merge_result
-
-  return after_merge
-
-
-def build_return_merge_result_computation(
-    original_arg_type: computation_types.Type,
-    merge_result_type: computation_types.Type,
-) -> computation_base.Computation:
-  @federated_computation.federated_computation(
-      original_arg_type, computation_types.at_server(merge_result_type)
-  )
-  def after_merge(original_arg, merge_result):
-    del original_arg  # Unused
-    return merge_result
-
-  return after_merge
-
-
-def build_return_merge_result_with_no_first_arg_computation(
-    merge_result_type: computation_types.Type,
-) -> computation_base.Computation:
-  @federated_computation.federated_computation(
-      computation_types.at_server(merge_result_type)
-  )
-  def after_merge(merge_result):
-    return merge_result
-
-  return after_merge
-
-
-def build_sum_merge_with_first_arg_computation(
-    original_arg_type: computation_types.Type,
-    merge_result_type: computation_types.Type,
-) -> computation_base.Computation:
-  """Assumes original_arg_type is federated, and compatible with summing with merge_result_type."""
-
-  @tensorflow_computation.tf_computation(
-      original_arg_type[0].member, merge_result_type
-  )
-  def add(x, y):
-    return x + y
-
-  @federated_computation.federated_computation(
-      original_arg_type, computation_types.at_server(merge_result_type)
-  )
-  def after_merge(original_arg, merge_result):
-    return intrinsics.federated_map(add, (original_arg[0], merge_result))
 
   return after_merge
 
@@ -179,7 +119,7 @@ class MergeableCompFormTest(absltest.TestCase):
         computation_types.at_clients(np.int32),
     )
 
-    @tensorflow_computation.tf_computation(np.int32, np.int32)
+    @federated_computation.federated_computation(np.int32, np.int32)
     def bad_merge(x, y):
       del x, y  # Unused
       return 1.0  # of type float.
@@ -456,7 +396,8 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
       mergeable_comp_execution_context.MergeableCompExecutionContext(contexts)
 
   def test_invoke_raises_computation_no_compiler(self):
-    @tensorflow_computation.tf_computation()
+
+    @federated_computation.federated_computation()
     def return_one():
       return 1
 
@@ -474,7 +415,8 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
       no_compiler_context.invoke(return_one)
 
   def test_invoke_raises_computation_not_compiled_to_mergeable_comp_form(self):
-    @tensorflow_computation.tf_computation()
+
+    @federated_computation.federated_computation()
     def return_one():
       return 1
 
