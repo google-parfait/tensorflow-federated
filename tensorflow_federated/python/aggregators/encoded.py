@@ -231,7 +231,7 @@ def _encoded_next_fn(server_state_type, value_type, encoders):
     one = tf.constant((1,), tf.int32)
     return part_decoded_x, one
 
-  # ...however, result type is needed to build the subsequent tf_compuations.
+  # ...however, result type is needed to build the subsequent tf_computations.
   @tensorflow_computation.tf_computation(encode_fn.type_signature.result[0:2])
   def tmp_decode_before_sum_fn(encoded_x, decode_before_sum_params):
     return decode_before_sum_tf_function(encoded_x, decode_before_sum_params)

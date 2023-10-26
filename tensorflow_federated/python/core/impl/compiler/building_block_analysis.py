@@ -108,7 +108,7 @@ def count_tensorflow_variables_in(comp):
 
 
 def get_device_placement_in(comp):
-  """Gets counter of device placement for tensorflow compuation `comp`."""
+  """Gets counter of device placement for tensorflow computation `comp`."""
   py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
   if (
       not isinstance(comp, building_blocks.CompiledComputation)

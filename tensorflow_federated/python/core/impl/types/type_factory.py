@@ -10,7 +10,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # limitations under the License.
-"""A library of contruction functions for computation type structures."""
+"""A library of construction functions for computation type structures."""
 
 from tensorflow_federated.python.core.impl.types import computation_types
 

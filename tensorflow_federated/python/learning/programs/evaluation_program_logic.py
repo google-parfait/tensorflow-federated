@@ -24,7 +24,7 @@ managing federated model evaluation. It exposed following symbols:
 This logic is intended to be paired with another set of program logic that
 produces model weights to evaluate, typically a training program. For example
 if a program is configured to evaluate every other training round for two
-evalution rounds, the sequence may look something like this:
+evaluation rounds, the sequence may look something like this:
 
 ```
    ┌────────┐  ┌──────────┐        ┌──────────┐
@@ -622,7 +622,7 @@ async def _run_evaluation(
     )
     return evaluation_state, evaluation_metrics, eval_round_num + 1
 
-  # Read the initial state from the manager. If this is the first evalution,
+  # Read the initial state from the manager. If this is the first evaluation,
   # the zeroth version should contain the initial state.
   evaluation_state, version = await state_manager.load_latest(
       await value_reference.materialize_value(evaluation_process.initialize())

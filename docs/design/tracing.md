@@ -80,7 +80,7 @@ returned as a Python object that fully represents the user’s Python function.
 
 ## Tracing a TensorFlow Computation
 
-TODO: b/153500547 - Describe the process of tracing a TensorFlow compuation.
+TODO: b/153500547 - Describe the process of tracing a TensorFlow computation.
 
 ## Clean Error Messages from Exceptions During Tracing
 

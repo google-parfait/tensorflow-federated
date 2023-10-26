@@ -75,7 +75,7 @@ class ScopedLambda {
   std::shared_ptr<Scope> scope_;
 };
 
-// An object for tracking computaton evalution scopes.
+// An object for tracking computation evaluation scopes.
 //
 // Scopes are nested, each containing a single reference. Resolution of a
 // reference start with the innermost nesting and works its way up to the

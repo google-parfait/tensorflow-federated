@@ -39,8 +39,8 @@ class KerasOptimizer(optimizer.Optimizer):
   If this class is supposed to be used as a "client optimizer", set
   `disjoint_init_and_next` to False, which means that the `initialize` and
   `next` methods are going to be invoked in the context of *the same*
-  `tff.tf_compuation` and we don't need to pass the variables of keras optimizer
-  to TFF to handle.
+  `tff.tf_computation` and we don't need to pass the variables of keras
+  optimizer to TFF to handle.
 
   NOTE: This class is not meant to be exposed in public API for now. Rather, it
   is used to convert the previous default support for keras optimizers to the

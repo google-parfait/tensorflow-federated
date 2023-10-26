@@ -102,7 +102,7 @@ def unique_name_generator(
   """Yields a new unique name that does not exist in `comp`.
 
   Args:
-    comp: The compuation building block to use as a reference.
+    comp: The computation building block to use as a reference.
     prefix: The prefix to use when generating unique names. If `prefix` is
       `None` or if `comp` contains any name with this prefix, then a unique
       prefix will be generated from random lowercase ascii characters.

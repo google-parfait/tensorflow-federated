@@ -1005,7 +1005,7 @@ class Data(ComputationBuildingBlock):
 class CompiledComputation(ComputationBuildingBlock):
   """A representation of a fully constructed and serialized computation.
 
-  A compile comutation is one that has not been parsed into constituents, and
+  A compiled computation is one that has not been parsed into constituents, and
   is simply represented as an embedded `Computation` protocol buffer. Whereas
   technically, any computation can be represented and passed around this way,
   this structure is generally only used to represent TensorFlow sections, for
@@ -1164,7 +1164,7 @@ def _string_representation(
     """Returns a `list` of strings representing the given `named_comps`.
 
     Args:
-      named_comps: A `list` of named comutations, each being a pair consisting
+      named_comps: A `list` of named computations, each being a pair consisting
         of a name (either a string, or `None`) and a `ComputationBuildingBlock`.
       formatted: A boolean indicating if the returned string should be
         formatted.
@@ -1509,7 +1509,7 @@ def _structural_representation(comp):
     """Returns a `list` of strings representing the given `named_comps`.
 
     Args:
-      named_comps: A `list` of named comutations, each being a pair consisting
+      named_comps: A `list` of named computations, each being a pair consisting
         of a name (either a string, or `None`) and a `ComputationBuildingBlock`.
     """
     lines = ['[']

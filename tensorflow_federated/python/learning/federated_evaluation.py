@@ -87,7 +87,7 @@ def build_local_evaluation(
   )
   @tf.function
   def client_eval(incoming_model_weights, dataset):
-    """Returns local outputs after evaluting `model_weights` on `dataset`."""
+    """Returns local outputs after evaluating `model_weights` on `dataset`."""
     with tf.init_scope():
       model = model_fn()
     model_weights = model_weights_lib.ModelWeights.from_model(model)

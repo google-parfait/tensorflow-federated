@@ -1001,7 +1001,7 @@ def sequence_map(fn, arg):
     the sequence `arg` is of type `T*` (a sequence of `T`-typed elements),
     the result is a sequence of type `U*` (a sequence of `U`-typed elements),
     with each element of the input sequence individually mapped by `fn`.
-    In this mode of usage, `sequence_map` behaves like a compuatation with type
+    In this mode of usage, `sequence_map` behaves like a computatation with type
     signature `<T->U,T*> -> U*`.
 
   * When applied to a federated sequence, `sequence_map` behaves as if it were

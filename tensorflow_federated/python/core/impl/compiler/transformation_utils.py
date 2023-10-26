@@ -1178,17 +1178,17 @@ def get_map_of_unbound_references(
 ) -> dict[building_blocks.ComputationBuildingBlock, set[str]]:
   """Gets a Python `dict` of unbound references in `comp`, keyed by Python `id`.
 
-  Compuations that are equal will have the same collections of unbounded
+  Computations that are equal will have the same collections of unbounded
   references, so it is safe to use `comp` as the key for this `dict` even though
-  a given compuation may appear in many positions in the AST.
+  a given computation may appear in many positions in the AST.
 
   Args:
     comp: The computation building block to parse.
 
   Returns:
-    A Python `dict` of elements where keys are the compuations in `comp` and
+    A Python `dict` of elements where keys are the computations in `comp` and
     values are a Python `set` of the names of the unbound references in the
-    subtree of that compuation.
+    subtree of that computation.
   """
   py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
   references = {}

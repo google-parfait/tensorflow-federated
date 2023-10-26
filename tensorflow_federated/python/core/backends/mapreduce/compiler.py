@@ -335,7 +335,7 @@ def _evaluate_to_tensorflow(
       return call_concrete
     if kind == 'xla':
       raise XlaToTensorFlowError(
-          f'Cannot compile XLA subcomptation to TensorFlow:\n{comp}'
+          f'Cannot compile XLA subcomputation to TensorFlow:\n{comp}'
       )
     raise ValueError(f'Unexpected compiled computation kind:\n{kind}')
   if isinstance(comp, building_blocks.Call):

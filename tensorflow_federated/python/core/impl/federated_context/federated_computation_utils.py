@@ -10,7 +10,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # limitations under the License.
-"""Helpers for creating larger structures out of computating building blocks."""
+"""Helpers for creating larger structures out of computing building blocks."""
 
 from typing import Optional
 
