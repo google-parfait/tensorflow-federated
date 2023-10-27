@@ -32,9 +32,6 @@ from tensorflow_federated.python.program import structure_utils
 from tensorflow_federated.python.program import value_reference
 
 
-_MaterializedValueFn = Callable[
-    [], Awaitable[value_reference.MaterializedValue]
-]
 _T = TypeVar('_T')
 # This type defines values of type `_T` nested in a structure of
 # `tff.structure.Struct`'s.
@@ -51,7 +48,7 @@ class AwaitableValueReference(value_reference.MaterializableValueReference):
 
   def __init__(
       self,
-      fn: _MaterializedValueFn,
+      fn: Callable[[], Awaitable[value_reference.MaterializedValue]],
       type_signature: value_reference.MaterializableTypeSignature,
   ):
     """Returns an initialized `tff.program.AwaitableValueReference`.
@@ -120,7 +117,8 @@ def _wrap_in_shared_awaitable(
 
 
 def _create_structure_of_awaitable_references(
-    fn: _MaterializedValueFn, type_signature: computation_types.Type
+    fn: Callable[[], Awaitable[value_reference.MaterializableStructure]],
+    type_signature: computation_types.Type,
 ) -> _StructStructure[AwaitableValueReference]:
   """Returns a structure of `tff.program.AwaitableValueReference`s.
 
@@ -145,7 +143,10 @@ def _create_structure_of_awaitable_references(
   fn = _wrap_in_shared_awaitable(fn)
 
   if isinstance(type_signature, computation_types.StructType):
-    async def _to_structure(fn: _MaterializedValueFn) -> structure.Struct:
+
+    async def _to_structure(
+        fn: Callable[[], Awaitable[value_reference.MaterializableStructure]]
+    ) -> structure.Struct:
       value = await fn()
       return structure.from_container(value)
 
@@ -158,7 +159,8 @@ def _create_structure_of_awaitable_references(
     fn = _wrap_in_shared_awaitable(fn)
 
     async def _get_item(
-        fn: _MaterializedValueFn, index: int
+        fn: Callable[[], Awaitable[value_reference.MaterializableStructure]],
+        index: int,
     ) -> value_reference.MaterializedValue:
       value = await fn()
       return value[index]

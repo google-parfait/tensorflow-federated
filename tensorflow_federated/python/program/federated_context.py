@@ -116,6 +116,8 @@ class FederatedContext(context_base.SyncContext):
   | -------------------------- | ------------------------------------------ |
   | `tff.TensorType`           | `tff.program.MaterializableValueReference` |
   | `tff.SequenceType`         | `tff.program.MaterializableValueReference` |
+  | `tff.FederatedType`        | Python representation of the `member` of   |
+  : (server-placed)            : the `tff.FederatedType`                    :
   | `tff.StructWithPythonType` | Python container of the                    |
   :                            : `tff.StructWithPythonType`                 :
   | `tff.StructType` (with no  | `collections.OrderedDict`                  |
@@ -124,8 +126,6 @@ class FederatedContext(context_base.SyncContext):
   | `tff.StructType` (with no  | `tuple`                                    |
   : Python type, no fields     :                                            :
   : named)                     :                                            :
-  | `tff.FederatedType`        | Python representation of the `member` of   |
-  : (server-placed)            : the `tff.FederatedType`                    :
 
   Python representations of values that can be only be *accepted as an arguments
   to* a `tff.Computation`:

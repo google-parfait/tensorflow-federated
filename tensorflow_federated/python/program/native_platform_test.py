@@ -14,7 +14,6 @@
 
 import asyncio
 import collections
-from typing import TypeVar
 import unittest
 from unittest import mock
 
@@ -28,7 +27,6 @@ from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.execution_contexts import async_execution_context
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
-from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
@@ -38,21 +36,28 @@ from tensorflow_federated.python.program import structure_utils
 from tensorflow_federated.python.program import value_reference
 
 
-_T = TypeVar('_T')
-
-
-def _value_fn_factory(value: _T) -> _T:
-  async def _value_fn() -> _T:
+def _value_fn_factory(value: object) -> object:
+  async def _value_fn() -> object:
     return value
 
   return _value_fn
 
 
-def _identity_factory(
+def _identity_federated_computation_factory(
+    type_signature: computation_types.Type,
+) -> computation_base.Computation:
+  @federated_computation.federated_computation(type_signature)
+  def _identity(value: object) -> object:
+    return value
+
+  return _identity
+
+
+def _identity_tensorflow_computation_factory(
     type_signature: computation_types.Type,
 ) -> computation_base.Computation:
   @tensorflow_computation.tf_computation(type_signature)
-  def _identity(value: _T) -> _T:
+  def _identity(value: object) -> object:
     return value
 
   return _identity
@@ -106,15 +111,22 @@ class AwaitableValueReferenceTest(
 
   # pyformat: disable
   @parameterized.named_parameters(
-      ('bool',
+      ('tensor_bool',
        _value_fn_factory(True),
-       computation_types.TensorType(tf.bool), True),
-      ('int',
+       computation_types.TensorType(tf.bool),
+       True),
+      ('tensor_int',
        _value_fn_factory(1),
-       computation_types.TensorType(tf.int32), 1),
-      ('str',
+       computation_types.TensorType(tf.int32),
+       1),
+      ('tensor_str',
        _value_fn_factory('a'),
-       computation_types.TensorType(tf.string), 'a'),
+       computation_types.TensorType(tf.string),
+       'a'),
+      ('sequence',
+       _value_fn_factory(tf.data.Dataset.from_tensor_slices([1, 2, 3])),
+       computation_types.SequenceType(tf.int32),
+       tf.data.Dataset.from_tensor_slices([1, 2, 3])),
   )
   # pyformat: enable
   async def test_get_value_returns_value(
@@ -124,6 +136,11 @@ class AwaitableValueReferenceTest(
 
     actual_value = await reference.get_value()
 
+    if isinstance(actual_value, tf.data.Dataset) and isinstance(
+        expected_value, tf.data.Dataset
+    ):
+      actual_value = list(actual_value)
+      expected_value = list(expected_value)
     self.assertEqual(actual_value, expected_value)
 
 
@@ -179,6 +196,12 @@ class CreateStructureOfAwaitableReferencesTest(
        computation_types.TensorType(tf.int32),
        native_platform.AwaitableValueReference(
            _value_fn_factory(1), computation_types.TensorType(tf.int32))),
+      ('sequence',
+       _value_fn_factory(tf.data.Dataset.from_tensor_slices([1, 2, 3])),
+       computation_types.SequenceType(tf.int32),
+       native_platform.AwaitableValueReference(
+           _value_fn_factory(tf.data.Dataset.from_tensor_slices([1, 2, 3])),
+           computation_types.SequenceType(tf.int32))),
       ('federated_server',
        _value_fn_factory(1),
        computation_types.FederatedType(tf.int32, placements.SERVER),
@@ -241,22 +264,25 @@ class CreateStructureOfAwaitableReferencesTest(
         fn, type_signature
     )
 
-    if isinstance(
-        type_signature, computation_types.StructType
-    ) and not structure.is_same_structure(actual_value, expected_value):
-      self.fail(
-          'Expected the structures to be the same, found '
-          f'{actual_value} and {expected_value}'
+    if isinstance(actual_value, structure.Struct) and isinstance(
+        expected_value, structure.Struct
+    ):
+      actual_flattened = structure.flatten(actual_value)
+      actual_value = await asyncio.gather(
+          *[v.get_value() for v in actual_flattened]
       )
-    actual_flattened = structure.flatten(actual_value)
-    actual_materialized = await asyncio.gather(
-        *[v.get_value() for v in actual_flattened]
-    )
-    expected_flattened = structure.flatten(expected_value)
-    expected_materialized = await asyncio.gather(
-        *[v.get_value() for v in expected_flattened]
-    )
-    self.assertEqual(actual_materialized, expected_materialized)
+      expected_flattened = structure.flatten(expected_value)
+      expected_value = await asyncio.gather(
+          *[v.get_value() for v in expected_flattened]
+      )
+    actual_value = await value_reference.materialize_value(actual_value)
+    expected_value = await value_reference.materialize_value(expected_value)
+    if isinstance(actual_value, tf.data.Dataset) and isinstance(
+        expected_value, tf.data.Dataset
+    ):
+      actual_value = list(actual_value)
+      expected_value = list(expected_value)
+    self.assertEqual(actual_value, expected_value)
 
   @parameterized.named_parameters(
       ('none', None),
@@ -318,6 +344,12 @@ class MaterializeStructureOfValueReferencesTest(
            _value_fn_factory(1), computation_types.TensorType(tf.int32)),
        computation_types.TensorType(tf.int32),
        1),
+      ('sequence',
+       native_platform.AwaitableValueReference(
+           _value_fn_factory(tf.data.Dataset.from_tensor_slices([1, 2, 3])),
+           computation_types.SequenceType(tf.int32)),
+       computation_types.SequenceType(tf.int32),
+       tf.data.Dataset.from_tensor_slices([1, 2, 3])),
       ('federated_server',
        native_platform.AwaitableValueReference(
            _value_fn_factory(1), computation_types.TensorType(tf.int32)),
@@ -398,6 +430,11 @@ class MaterializeStructureOfValueReferencesTest(
         )
     )
 
+    if isinstance(actual_value, tf.data.Dataset) and isinstance(
+        expected_value, tf.data.Dataset
+    ):
+      actual_value = list(actual_value)
+      expected_value = list(expected_value)
     self.assertEqual(actual_value, expected_value)
 
   @parameterized.named_parameters(
@@ -460,18 +497,36 @@ class NativeFederatedContextTest(
        1),
       ('sequence',
        computation_types.SequenceType(tf.int32),
-       [1, 2, 3]),
+       tf.data.Dataset.from_tensor_slices([1, 2, 3])),
       ('federated_server',
        computation_types.FederatedType(tf.int32, placements.SERVER),
        1),
       ('federated_clients',
        computation_types.FederatedType(
-           tf.int32, placements.CLIENTS, all_equal=True
-       ),
+           tf.int32, placements.CLIENTS, all_equal=True),
        1),
-      ('struct',
-       computation_types.StructWithPythonType([], list),
-       []),
+      ('struct_unnamed',
+       computation_types.StructWithPythonType(
+           [tf.bool, tf.int32, tf.string], list),
+       [True, 1, 'a']),
+      ('struct_named',
+       computation_types.StructWithPythonType([
+           ('a', tf.bool),
+           ('b', tf.int32),
+           ('c', tf.string)
+       ], collections.OrderedDict),
+       {'a': True, 'b': 1, 'c': 'a'}),
+      ('struct_nested',
+       computation_types.StructWithPythonType([
+           ('x', computation_types.StructWithPythonType([
+               ('a', tf.bool),
+               ('b', tf.int32),
+           ], collections.OrderedDict)),
+           ('y', computation_types.StructWithPythonType([
+               ('c', tf.string),
+           ], collections.OrderedDict)),
+       ], collections.OrderedDict),
+       {'x': {'a': True, 'b': 1}, 'y': {'c': 'a'}}),
   )
   # pyformat: enable
   async def test_invoke_accepts_argument(self, type_signature, arg):
@@ -486,38 +541,68 @@ class NativeFederatedContextTest(
     try:
       result = context.invoke(_comp, arg)
       actual_value = await result.get_value()
+
+      self.assertEqual(actual_value, 1)
     except NotImplementedError:
       self.fail('Raised `NotImplementedError` unexpectedly.')
-
-    self.assertEqual(actual_value, 1)
 
   # pyformat: disable
   @parameterized.named_parameters(
       ('tensor',
-       _identity_factory(computation_types.TensorType(tf.int32)),
+       _identity_federated_computation_factory(
+           computation_types.TensorType(tf.int32)),
        1,
        1),
+      ('federated_server',
+       _identity_federated_computation_factory(
+           computation_types.FederatedType(tf.int32, placements.SERVER)),
+       1,
+       1),
+      ('struct_unnamed',
+       _identity_federated_computation_factory(
+           computation_types.StructWithPythonType(
+               [tf.bool, tf.int32, tf.string], list)),
+       [True, 1, 'a'],
+       [True, 1, b'a']),
+  )
+  # pyformat: enable
+  async def test_invoke_returns_result(self, comp, arg, expected_value):
+    context = execution_contexts.create_async_local_cpp_execution_context()
+    context = native_platform.NativeFederatedContext(context)
+
+    try:
+      result = context.invoke(comp, arg)
+      actual_value = await value_reference.materialize_value(result)
+
+      self.assertEqual(actual_value, expected_value)
+    except NotImplementedError:
+      self.fail('Raised `NotImplementedError` unexpectedly.')
+
+  # pyformat: disable
+  @parameterized.named_parameters(
       ('struct_nested',
-       _identity_factory(computation_types.StructWithPythonType([
-           ('x', computation_types.StructWithPythonType([
-               ('a', tf.bool),
-               ('b', tf.int32),
+       _identity_federated_computation_factory(
+           computation_types.StructWithPythonType([
+               ('x', computation_types.StructWithPythonType([
+                   ('a', tf.bool),
+                   ('b', tf.int32),
+               ], collections.OrderedDict)),
+               ('y', computation_types.StructWithPythonType([
+                   ('c', tf.string),
+               ], collections.OrderedDict)),
            ], collections.OrderedDict)),
-           ('y', computation_types.StructWithPythonType([
-               ('c', tf.string),
-           ], collections.OrderedDict)),
-       ], collections.OrderedDict)),
        {'x': {'a': True, 'b': 1}, 'y': {'c': 'a'}},
        {'x': {'a': True, 'b': 1}, 'y': {'c': b'a'}}),
       ('struct_partially_empty',
-       _identity_factory(computation_types.StructWithPythonType([
-           ('x', computation_types.StructWithPythonType([
-               ('a', tf.bool),
-               ('b', tf.int32),
+       _identity_federated_computation_factory(
+           computation_types.StructWithPythonType([
+               ('x', computation_types.StructWithPythonType([
+                   ('a', tf.bool),
+                   ('b', tf.int32),
+               ], collections.OrderedDict)),
+               ('y', computation_types.StructWithPythonType(
+                   [], collections.OrderedDict)),
            ], collections.OrderedDict)),
-           ('y', computation_types.StructWithPythonType(
-               [], collections.OrderedDict)),
-       ], collections.OrderedDict)),
        {'x': {'a': True, 'b': 1}, 'y': {}},
        {'x': {'a': True, 'b': 1}, 'y': {}}),
   )
@@ -542,31 +627,29 @@ class NativeFederatedContextTest(
 
   # pyformat: disable
   @parameterized.named_parameters(
-      ('tensor',
-       _identity_factory(computation_types.TensorType(tf.int32)),
-       1,
-       1),
       ('struct_nested',
-       _identity_factory(computation_types.StructWithPythonType([
-           ('x', computation_types.StructWithPythonType([
-               ('a', tf.bool),
-               ('b', tf.int32),
+       _identity_federated_computation_factory(
+           computation_types.StructWithPythonType([
+               ('x', computation_types.StructWithPythonType([
+                   ('a', tf.bool),
+                   ('b', tf.int32),
+               ], collections.OrderedDict)),
+               ('y', computation_types.StructWithPythonType([
+                   ('c', tf.string),
+               ], collections.OrderedDict)),
            ], collections.OrderedDict)),
-           ('y', computation_types.StructWithPythonType([
-               ('c', tf.string),
-           ], collections.OrderedDict)),
-       ], collections.OrderedDict)),
        {'x': {'a': True, 'b': 1}, 'y': {'c': 'a'}},
        {'x': {'a': True, 'b': 1}, 'y': {'c': b'a'}}),
       ('struct_partially_empty',
-       _identity_factory(computation_types.StructWithPythonType([
-           ('x', computation_types.StructWithPythonType([
-               ('a', tf.bool),
-               ('b', tf.int32),
+       _identity_federated_computation_factory(
+           computation_types.StructWithPythonType([
+               ('x', computation_types.StructWithPythonType([
+                   ('a', tf.bool),
+                   ('b', tf.int32),
+               ], collections.OrderedDict)),
+               ('y', computation_types.StructWithPythonType(
+                   [], collections.OrderedDict)),
            ], collections.OrderedDict)),
-           ('y', computation_types.StructWithPythonType(
-               [], collections.OrderedDict)),
-       ], collections.OrderedDict)),
        {'x': {'a': True, 'b': 1}, 'y': {}},
        {'x': {'a': True, 'b': 1}, 'y': {}}),
   )
@@ -589,31 +672,29 @@ class NativeFederatedContextTest(
 
   # pyformat: disable
   @parameterized.named_parameters(
-      ('tensor',
-       _identity_factory(computation_types.TensorType(tf.int32)),
-       1,
-       1),
       ('struct_nested',
-       _identity_factory(computation_types.StructWithPythonType([
-           ('x', computation_types.StructWithPythonType([
-               ('a', tf.bool),
-               ('b', tf.int32),
+       _identity_federated_computation_factory(
+           computation_types.StructWithPythonType([
+               ('x', computation_types.StructWithPythonType([
+                   ('a', tf.bool),
+                   ('b', tf.int32),
+               ], collections.OrderedDict)),
+               ('y', computation_types.StructWithPythonType([
+                   ('c', tf.string),
+               ], collections.OrderedDict)),
            ], collections.OrderedDict)),
-           ('y', computation_types.StructWithPythonType([
-               ('c', tf.string),
-           ], collections.OrderedDict)),
-       ], collections.OrderedDict)),
        {'x': {'a': True, 'b': 1}, 'y': {'c': 'a'}},
        {'x': {'a': True, 'b': 1}, 'y': {'c': b'a'}}),
       ('struct_partially_empty',
-       _identity_factory(computation_types.StructWithPythonType([
-           ('x', computation_types.StructWithPythonType([
-               ('a', tf.bool),
-               ('b', tf.int32),
+       _identity_federated_computation_factory(
+           computation_types.StructWithPythonType([
+               ('x', computation_types.StructWithPythonType([
+                   ('a', tf.bool),
+                   ('b', tf.int32),
+               ], collections.OrderedDict)),
+               ('y', computation_types.StructWithPythonType(
+                   [], collections.OrderedDict)),
            ], collections.OrderedDict)),
-           ('y', computation_types.StructWithPythonType(
-               [], collections.OrderedDict)),
-       ], collections.OrderedDict)),
        {'x': {'a': True, 'b': 1}, 'y': {}},
        {'x': {'a': True, 'b': 1}, 'y': {}}),
   )
@@ -642,21 +723,23 @@ class NativeFederatedContextTest(
   # pyformat: disable
   @parameterized.named_parameters(
       ('struct_unnamed_empty',
-       _identity_factory(computation_types.StructWithPythonType([], list)),
+       _identity_federated_computation_factory(
+           computation_types.StructWithPythonType([], list)),
        [],
        []),
       ('struct_named_empty',
-       _identity_factory(
+       _identity_federated_computation_factory(
            computation_types.StructWithPythonType([], collections.OrderedDict)),
        {},
        {}),
       ('struct_nested_empty',
-       _identity_factory(computation_types.StructWithPythonType([
-           ('x', computation_types.StructWithPythonType(
-               [], collections.OrderedDict)),
-           ('y', computation_types.StructWithPythonType(
-               [], collections.OrderedDict)),
-       ], collections.OrderedDict)),
+       _identity_federated_computation_factory(
+           computation_types.StructWithPythonType([
+               ('x', computation_types.StructWithPythonType(
+                   [], collections.OrderedDict)),
+               ('y', computation_types.StructWithPythonType(
+                   [], collections.OrderedDict)),
+           ], collections.OrderedDict)),
        {'x': {}, 'y': {}},
        {'x': {}, 'y': {}}),
   )
@@ -691,16 +774,48 @@ class NativeFederatedContextTest(
     with self.assertRaises(TypeError):
       context.invoke(comp, None)
 
-  def test_invoke_raises_value_error_with_comp(self):
+  # pyformat: disable
+  @parameterized.named_parameters(
+      ('federated_clients',
+       _identity_federated_computation_factory(
+           computation_types.FederatedType(tf.int32, placements.CLIENTS)),
+       1),
+      ('function',
+       _identity_federated_computation_factory(
+           computation_types.FunctionType(tf.int32, tf.int32)),
+       _identity_federated_computation_factory(
+           computation_types.TensorType(tf.int32))),
+      ('placement',
+       _identity_federated_computation_factory(
+           computation_types.PlacementType()),
+       None),
+  )
+  # pyformat: enable
+  def test_invoke_raises_value_error_with_comp(self, comp, arg):
     context = execution_contexts.create_async_local_cpp_execution_context()
     context = native_platform.NativeFederatedContext(context)
 
-    @federated_computation.federated_computation()
-    def _comp():
-      return intrinsics.federated_value(1, placements.CLIENTS)
-
     with self.assertRaises(ValueError):
-      context.invoke(_comp, None)
+      context.invoke(comp, arg)
+
+  # pyformat: disable
+  @parameterized.named_parameters(
+      ('sequence',
+       _identity_tensorflow_computation_factory(
+           computation_types.SequenceType(tf.int32)),
+       tf.data.Dataset.from_tensor_slices([1, 2, 3]),
+       tf.data.Dataset.from_tensor_slices([1, 2, 3])),
+  )
+  # pyformat: enable
+  async def test_invoke_fails_unexpectedly(self, comp, arg, expected_value):
+    del expected_value  # Unused.
+    context = execution_contexts.create_async_local_cpp_execution_context()
+    context = native_platform.NativeFederatedContext(context)
+
+    # TODO: b/308011013 - This test should not be failing.
+    with self.assertRaises(Exception):
+      result = context.invoke(comp, arg)
+      await value_reference.materialize_value(result)
 
 
 if __name__ == '__main__':
