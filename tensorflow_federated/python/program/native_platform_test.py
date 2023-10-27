@@ -539,10 +539,9 @@ class NativeFederatedContextTest(
       return 1
 
     try:
-      result = context.invoke(_comp, arg)
-      actual_value = await result.get_value()
-
-      self.assertEqual(actual_value, 1)
+      with program_test_utils.assert_not_warns(RuntimeWarning):
+        result = context.invoke(_comp, arg)
+        _ = await result.get_value()
     except NotImplementedError:
       self.fail('Raised `NotImplementedError` unexpectedly.')
 
@@ -553,6 +552,11 @@ class NativeFederatedContextTest(
            computation_types.TensorType(tf.int32)),
        1,
        1),
+      ('sequence',
+       _identity_tensorflow_computation_factory(
+           computation_types.SequenceType(tf.int32)),
+       tf.data.Dataset.from_tensor_slices([1, 2, 3]),
+       tf.data.Dataset.from_tensor_slices([1, 2, 3])),
       ('federated_server',
        _identity_federated_computation_factory(
            computation_types.FederatedType(tf.int32, placements.SERVER)),
@@ -564,19 +568,31 @@ class NativeFederatedContextTest(
                [tf.bool, tf.int32, tf.string], list)),
        [True, 1, 'a'],
        [True, 1, b'a']),
+      ('struct_named',
+       _identity_federated_computation_factory(
+           computation_types.StructWithPythonType([
+               ('a', tf.bool),
+               ('b', tf.int32),
+               ('c', tf.string)
+           ], collections.OrderedDict)),
+       {'a': True, 'b': 1, 'c': 'a'},
+       {'a': True, 'b': 1, 'c': b'a'}),
   )
   # pyformat: enable
   async def test_invoke_returns_result(self, comp, arg, expected_value):
     context = execution_contexts.create_async_local_cpp_execution_context()
     context = native_platform.NativeFederatedContext(context)
 
-    try:
+    with program_test_utils.assert_not_warns(RuntimeWarning):
       result = context.invoke(comp, arg)
       actual_value = await value_reference.materialize_value(result)
 
-      self.assertEqual(actual_value, expected_value)
-    except NotImplementedError:
-      self.fail('Raised `NotImplementedError` unexpectedly.')
+    if isinstance(actual_value, tf.data.Dataset) and isinstance(
+        expected_value, tf.data.Dataset
+    ):
+      actual_value = list(actual_value)
+      expected_value = list(expected_value)
+    self.assertEqual(actual_value, expected_value)
 
   # pyformat: disable
   @parameterized.named_parameters(
@@ -797,26 +813,6 @@ class NativeFederatedContextTest(
 
     with self.assertRaises(ValueError):
       context.invoke(comp, arg)
-
-  # pyformat: disable
-  @parameterized.named_parameters(
-      ('sequence',
-       _identity_tensorflow_computation_factory(
-           computation_types.SequenceType(tf.int32)),
-       tf.data.Dataset.from_tensor_slices([1, 2, 3]),
-       tf.data.Dataset.from_tensor_slices([1, 2, 3])),
-  )
-  # pyformat: enable
-  async def test_invoke_fails_unexpectedly(self, comp, arg, expected_value):
-    del expected_value  # Unused.
-    context = execution_contexts.create_async_local_cpp_execution_context()
-    context = native_platform.NativeFederatedContext(context)
-
-    # TODO: b/308011013 - This test should not be failing.
-    with self.assertRaises(Exception):
-      result = context.invoke(comp, arg)
-      await value_reference.materialize_value(result)
-
 
 if __name__ == '__main__':
   absltest.main()
