@@ -249,6 +249,7 @@ def create_binary_operator(
     operator: Callable[..., object],
     operand_type: computation_types.Type,
     second_operand_type: Optional[computation_types.Type] = None,
+    layout_map: Optional[pb.TensorFlow.LayoutMap] = None,
 ) -> ComputationProtoAndType:
   """Returns a tensorflow computation computing a binary operation.
 
@@ -274,6 +275,8 @@ def create_binary_operator(
       seocnd argument to the constructed binary operator. If `None`, operator
       uses `operand_type` for both arguments. Must contain only named tuples and
       tensor types.
+    layout_map: Optional LayoutMap to be included in the returned tensorflow
+      computation.
 
   Raises:
     TypeError: If the constraints of `operand_type` are violated or `operator`
@@ -323,6 +326,7 @@ def create_binary_operator(
       graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
       parameter=parameter_binding,
       result=result_binding,
+      layout_map=layout_map,
   )
   return _tensorflow_comp(tensorflow, type_signature)
 

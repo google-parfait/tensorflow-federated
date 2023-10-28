@@ -23,8 +23,10 @@ import tensorflow as tf
 from tensorflow_federated.proto.v0 import computation_pb2
 from tensorflow_federated.proto.v0 import executor_pb2
 from tensorflow_federated.python.common_libs import structure
+from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_factory
+from tensorflow_federated.python.core.impl.computation import computation_impl
+from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.executors import value_serialization
-from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_serialization
@@ -474,9 +476,13 @@ class ValueSerializationtest(tf.test.TestCase, parameterized.TestCase):
       value_serialization.serialize_value(x, np.int32)
 
   def test_serialize_deserialize_computation_value(self):
-    @tensorflow_computation.tf_computation
-    def comp():
-      return tf.constant(10)
+
+    proto, _ = tensorflow_computation_factory.create_constant(
+        10, computation_types.TensorType(np.int32)
+    )
+    comp = computation_impl.ConcreteComputation(
+        proto, context_stack_impl.context_stack
+    )
 
     value_proto, value_type = value_serialization.serialize_value(comp)
     self.assertEqual(value_proto.WhichOneof('value'), 'computation')

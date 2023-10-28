@@ -4,10 +4,10 @@ digraph {
   edge [color="#616161"]
 
   subgraph cluster_core_0 {
-    mapreduce [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/backends/mapreduce" target="_parent",]
-    native [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/backends/native" target="_parent",]
-    backends_test [label="test", href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/backends/test" target="_parent",]
-    xla [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/backends/xla" target="_parent",]
+    mapreduce [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/backends/mapreduce" target="_parent"]
+    native [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/backends/native" target="_parent"]
+    backends_test [label="test", href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/backends/test" target="_parent"]
+    xla [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/backends/xla" target="_parent"]
     backends [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/backends" target="_parent"]
     templates [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/templates" target="_parent"]
   }
@@ -59,7 +59,6 @@ digraph {
   executor_stacks -> executors
   executor_stacks -> types
   executors -> federated_context [color="#ff0000"]
-  executors -> tensorflow_context [color="#ff0000"]
   executors -> computation
   executors -> compiler
   executors -> utils
