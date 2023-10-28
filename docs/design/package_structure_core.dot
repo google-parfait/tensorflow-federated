@@ -59,7 +59,6 @@ digraph {
   executor_stacks -> executors
   executor_stacks -> types
   executors -> federated_context [color="#ff0000"]
-  executors -> tensorflow_context [color="#ff0000"]
   executors -> computation
   executors -> compiler
   executors -> utils
