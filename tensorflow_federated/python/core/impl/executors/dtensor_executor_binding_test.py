@@ -21,10 +21,11 @@ for virtual devices initialization to create logical  devices.
 from absl.testing import parameterized
 import tensorflow as tf
 
+from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.proto.v0 import executor_pb2
+from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_factory
 from tensorflow_federated.python.core.impl.executors import executor_bindings
 from tensorflow_federated.python.core.impl.executors import value_serialization
-from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 
 TensorType = computation_types.TensorType
@@ -68,19 +69,21 @@ class DtensorExecutorBindingTest(parameterized.TestCase, tf.test.TestCase):
       arg = executor.create_struct((value_ref.ref, value_ref.ref))
 
       mesh_dim_name = 'batch'
-      layout_map = {}
+      spec = {}
       if sharded_input:
-        layout_map['arg_a'] = mesh_dim_name
+        spec['arg_a'] = mesh_dim_name
       else:
-        layout_map['arg_a'] = 'unsharded'
+        spec['arg_a'] = 'unsharded'
+      layout_map = pb.TensorFlow.LayoutMap(name_to_sharding_spec=spec)
 
-      @tensorflow_computation.tf_computation(
-          tf.int64, tf.int64, layout_map=layout_map
+      proto, _ = tensorflow_computation_factory.create_binary_operator(
+          tf.add,
+          computation_types.TensorType(tf.int64),
+          computation_types.TensorType(tf.int64),
+          layout_map,
       )
-      def foo(a, b):
-        return tf.add(a, b)
 
-      comp_pb = executor_pb2.Value(computation=foo.get_proto(foo))
+      comp_pb = executor_pb2.Value(computation=proto)
       comp = executor.create_value(comp_pb)
       result = executor.create_call(comp.ref, arg.ref)
       result_value_pb = executor.materialize(result.ref)
