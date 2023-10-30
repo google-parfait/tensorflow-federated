@@ -33,6 +33,7 @@ _MIN_MAX_TEST_DTYPES = [
     ('float16', tf.float16),
     ('float32', tf.float32),
     ('float64', tf.float64),
+    ('bfloat16', tf.bfloat16),
 ]
 
 

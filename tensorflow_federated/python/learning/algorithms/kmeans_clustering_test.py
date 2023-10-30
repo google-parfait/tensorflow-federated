@@ -47,6 +47,7 @@ class ClientWorkTest(tf.test.TestCase, parameterized.TestCase):
       ('int64', tf.int64),
       ('float32', tf.float32),
       ('float64', tf.float64),
+      ('bfloat16', tf.bfloat16),
   )
   def test_find_closest_centroid_with_different_dtypes(self, dtype):
     shape = (3, 2)
@@ -96,6 +97,7 @@ class ClientWorkTest(tf.test.TestCase, parameterized.TestCase):
       ('int64', tf.int64),
       ('float32', tf.float32),
       ('float64', tf.float64),
+      ('bfloat16', tf.bfloat16),
   )
   def test_kmeans_step_with_different_dtypes(self, dtype):
     shape = (3, 2)
@@ -175,6 +177,7 @@ class ClientWorkTest(tf.test.TestCase, parameterized.TestCase):
       ('int64', tf.int64),
       ('float32', tf.float32),
       ('float64', tf.float64),
+      ('bfloat16', tf.bfloat16),
   )
   def test_build_kmeans_client_work_with_different_dtypes(self, point_dtype):
     shape = (3, 2)

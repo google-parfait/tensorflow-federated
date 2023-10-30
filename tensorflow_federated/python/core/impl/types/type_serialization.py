@@ -13,11 +13,9 @@
 # limitations under the License.
 """A library of (de)serialization functions for computation types."""
 
-from collections.abc import Mapping, Sequence
-from typing import Optional
 import weakref
 
-import numpy as np
+import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import structure
@@ -25,98 +23,36 @@ from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 
 
-# Mapping from `np.dtype` to `pb.TensorType.DataType`.
-_NP_TO_PROTO: Mapping[type[np.generic], pb.TensorType.DataType] = {
-    np.float32: pb.TensorType.DataType.DT_FLOAT,
-    np.float64: pb.TensorType.DataType.DT_DOUBLE,
-    np.int32: pb.TensorType.DataType.DT_INT32,
-    np.uint8: pb.TensorType.DataType.DT_UINT8,
-    np.int16: pb.TensorType.DataType.DT_INT16,
-    np.int8: pb.TensorType.DataType.DT_INT8,
-    np.str_: pb.TensorType.DataType.DT_STRING,
-    np.complex64: pb.TensorType.DataType.DT_COMPLEX64,
-    np.int64: pb.TensorType.DataType.DT_INT64,
-    np.bool_: pb.TensorType.DataType.DT_BOOL,
-    np.uint16: pb.TensorType.DataType.DT_UINT16,
-    np.float16: pb.TensorType.DataType.DT_HALF,
-    np.uint32: pb.TensorType.DataType.DT_UINT32,
-    np.uint64: pb.TensorType.DataType.DT_UINT64,
-    np.complex128: pb.TensorType.DataType.DT_COMPLEX128,
-}
-
-
-def _serialize_dtype(dtype: computation_types.Dtype) -> pb.TensorType.DataType:
-  """Serializes `np.dtype` as a `pb.TensorType.DataType`."""
-  if isinstance(dtype, np.dtype):
-    dtype = dtype.type
-  if dtype not in _NP_TO_PROTO:
-    raise NotImplementedError(f'Unexpected dtype found: {dtype}.')
-  return _NP_TO_PROTO[dtype]
-
-
-# Mapping from `pb.TensorType.DataType` to `np.dtype`.
-_PROTO_TO_NP: Mapping[pb.TensorType.DataType, type[np.generic]] = {
-    pb.TensorType.DataType.DT_FLOAT: np.float32,
-    pb.TensorType.DataType.DT_DOUBLE: np.float64,
-    pb.TensorType.DataType.DT_INT32: np.int32,
-    pb.TensorType.DataType.DT_UINT8: np.uint8,
-    pb.TensorType.DataType.DT_INT16: np.int16,
-    pb.TensorType.DataType.DT_INT8: np.int8,
-    pb.TensorType.DataType.DT_STRING: np.str_,
-    pb.TensorType.DataType.DT_COMPLEX64: np.complex64,
-    pb.TensorType.DataType.DT_INT64: np.int64,
-    pb.TensorType.DataType.DT_BOOL: np.bool_,
-    pb.TensorType.DataType.DT_UINT16: np.uint16,
-    pb.TensorType.DataType.DT_HALF: np.float16,
-    pb.TensorType.DataType.DT_UINT32: np.uint32,
-    pb.TensorType.DataType.DT_UINT64: np.uint64,
-    pb.TensorType.DataType.DT_COMPLEX128: np.complex128,
-}
-
-
-def _deserialize_dtype(
-    dtype_proto: pb.TensorType.DataType,
-) -> computation_types.Dtype:
-  """Deserializes `pb.TensorType.DataType` as a `py.dtype`."""
-  if dtype_proto not in _PROTO_TO_NP:
-    raise NotImplementedError(
-        f'Unexpected data type proto found: {dtype_proto}.'
-    )
-  return _PROTO_TO_NP[dtype_proto]
-
-
-_Dimensions = Sequence[int]
-
-
-def _serialize_shape(
-    shape: computation_types.Shape,
-) -> tuple[Optional[_Dimensions], bool]:
-  if shape is None:
+def _to_tensor_type_proto(
+    tensor_type: computation_types.TensorType,
+) -> pb.TensorType:
+  shape = tensor_type.shape
+  if shape.dims is None:
     dims = None
     unknown_rank = True
   else:
-    dims = [d if d is not None else -1 for d in shape]
+    dims = [d.value if d.value is not None else -1 for d in shape.dims]
     unknown_rank = False
-  return dims, unknown_rank
+  return pb.TensorType(
+      dtype=tensor_type.dtype.base_dtype.as_datatype_enum,
+      dims=dims,
+      unknown_rank=unknown_rank,
+  )
 
 
-def _deserialize_shape(
-    dims: Optional[_Dimensions], unknown_rank: bool
-) -> computation_types.Shape:
-  if unknown_rank:
-    return None
-  elif dims is None:
-    return []
-  else:
-    return [dim if dim >= 0 else None for dim in dims]
+def _to_tensor_shape(tensor_type_proto: pb.TensorType) -> tf.TensorShape:
+  if tensor_type_proto.unknown_rank:
+    return tf.TensorShape(None)
+  elif not hasattr(tensor_type_proto, 'dims'):
+    return tf.TensorShape([])
+  dims = [dim if dim >= 0 else None for dim in tensor_type_proto.dims]
+  return tf.TensorShape(dims)
 
 
 # Manual cache used rather than `cachetools.cached` due to incompatibility
 # with `WeakKeyDictionary`. We want to use a `WeakKeyDictionary` so that
 # cache entries are destroyed once the types they index no longer exist.
-_type_serialization_cache: Mapping[computation_types.Type, pb.Type] = (
-    weakref.WeakKeyDictionary({})
-)
+_type_serialization_cache = weakref.WeakKeyDictionary({})
 
 
 def serialize_type(type_spec: computation_types.Type) -> pb.Type:
@@ -136,29 +72,11 @@ def serialize_type(type_spec: computation_types.Type) -> pb.Type:
     NotImplementedError: for type variants for which serialization is not
       implemented.
   """
-  cached_proto = _type_serialization_cache.get(type_spec)
+  cached_proto = _type_serialization_cache.get(type_spec, None)
   if cached_proto is not None:
     return cached_proto
-
   if isinstance(type_spec, computation_types.TensorType):
-    # TODO: b/305743962 - This is only required because the public fields on
-    # `TensorType` are still expressed in terms of tensorflow APIs.
-    if type_spec.dtype.base_dtype != np.str_:
-      dtype = type_spec.dtype.base_dtype.as_numpy_dtype
-    else:
-      dtype = np.str_
-    if type_spec.shape.rank is not None:
-      shape = type_spec.shape.as_list()
-    else:
-      shape = None
-    dims, unknown_rank = _serialize_shape(shape)
-    proto = pb.Type(
-        tensor=pb.TensorType(
-            dtype=_serialize_dtype(dtype),
-            dims=dims,
-            unknown_rank=unknown_rank,
-        )
-    )
+    proto = pb.Type(tensor=_to_tensor_type_proto(type_spec))
   elif isinstance(type_spec, computation_types.SequenceType):
     proto = pb.Type(
         sequence=pb.SequenceType(element=serialize_type(type_spec.element))
@@ -221,13 +139,11 @@ def deserialize_type(type_proto: pb.Type) -> computation_types.Type:
   """
   type_variant = type_proto.WhichOneof('type')
   if type_variant == 'tensor':
-    dtype = _deserialize_dtype(type_proto.tensor.dtype)
-    if hasattr(type_proto.tensor, 'dims'):
-      dims = type_proto.tensor.dims
-    else:
-      dims = None
-    shape = _deserialize_shape(dims, type_proto.tensor.unknown_rank)
-    return computation_types.TensorType(dtype, shape)
+    tensor_proto = type_proto.tensor
+    return computation_types.TensorType(
+        dtype=tf.dtypes.as_dtype(tensor_proto.dtype),
+        shape=_to_tensor_shape(tensor_proto),
+    )
   elif type_variant == 'sequence':
     return computation_types.SequenceType(
         deserialize_type(type_proto.sequence.element)

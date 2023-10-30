@@ -361,20 +361,18 @@ def _clear_intern_pool() -> None:
 atexit.register(_clear_intern_pool)
 
 
-Dtype = Union[
-    type[np.generic],
+_Dtype = Union[
+    type[np.number],
     np.dtype,
+    tf.dtypes.DType,
 ]
 
 
-def _is_dtype(obj: object) -> TypeGuard[Union[Dtype, tf.dtypes.DType]]:
+def _is_dtype(obj: object) -> TypeGuard[_Dtype]:
   """Returns `True` if `obj` is a dtype, otherwise `False`."""
   if isinstance(obj, type) and issubclass(obj, np.generic):
     return True
   return isinstance(obj, (tf.dtypes.DType, np.dtype))
-
-
-Shape = Optional[Sequence[Optional[int]]]
 
 
 class TensorType(Type, metaclass=_Intern):
@@ -383,8 +381,11 @@ class TensorType(Type, metaclass=_Intern):
   @classmethod
   def _hashable_from_init_args(
       cls,
-      dtype: Union[Dtype, tf.dtypes.DType],
-      shape: Union[Shape, tf.TensorShape, int] = (),
+      dtype: _Dtype,
+      shape: Union[
+          tf.TensorShape,
+          Optional[Union[Sequence[Optional[int]], int]],
+      ] = (),
   ) -> Hashable:
     """Returns hashable `TensorType.__init__` args."""
     if not isinstance(dtype, tf.dtypes.DType):
@@ -395,8 +396,11 @@ class TensorType(Type, metaclass=_Intern):
 
   def __init__(
       self,
-      dtype: Union[Dtype, tf.dtypes.DType],
-      shape: Union[Shape, tf.TensorShape, int] = (),
+      dtype: _Dtype,
+      shape: Union[
+          tf.TensorShape,
+          Optional[Union[Sequence[Optional[int]], int]],
+      ] = (),
   ):
     """Constructs a new instance from the given `dtype` and `shape`.
 
