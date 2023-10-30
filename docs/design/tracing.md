@@ -57,7 +57,7 @@ def foo(x):
   return x[0]
 ```
 
-Here the function’s parameter is a tuple and in the body of the fuction the 0th
+Here the function’s parameter is a tuple and in the body of the function the 0th
 element is selected. This invokes Python’s `__getitem__` method, which is
 overridden on `Value`. In the simplest case, the implementation of
 `Value.__getitem__` constructs a
@@ -66,7 +66,7 @@ to represent the invocation of `__getitem__` and returns a `Value` backed by
 this new `Selection`.
 
 Tracing continues because each dunder methods return a `Value`, stamping out
-every operation in the body of the function which causes one of the overriden
+every operation in the body of the function which causes one of the overridden
 dunder methods to be invoked.
 
 ### Constructing the AST
@@ -185,12 +185,12 @@ context, and the situation gets even less clear when more bits of state are
 shared across the before and after sections.
 
 Several other solutions to the general problem of "hide TFF functions from user
-error messages" were attempted, including catching and reraising exceptions
+error messages" were attempted, including catching and re-raising exceptions
 (failed due to the inability to create an exception whose stack included only
 the lowest level of user code without also including the code that called it),
 catching exceptions and replacing their traceback with a filtered one (which is
 CPython-specific and unsupported by the Python language), and replacing the
 exception handler (fails because `sys.excepthook` isn't used by `absltest` and
-is overriden by other frameworks). In the end, the generator-based
+is overridden by other frameworks). In the end, the generator-based
 inversion-of-control allowed for the best end-user experience at the cost of
 some TFF implementation complexity.

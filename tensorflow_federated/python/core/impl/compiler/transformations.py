@@ -1441,7 +1441,7 @@ def divisive_force_align_and_split_by_intrinsics(
 
   # Replace the duplicated locals in the after comp with references to the
   # extended intermediate state. Note when indexing into the extended
-  # intermediate state that it consists of the portion contructed in step 5
+  # intermediate state that it consists of the portion constructed in step 5
   # followed by the duplicated locals portion.
   block_locals: list[tuple[str, building_blocks.ComputationBuildingBlock]] = []
   duplicated_local_names = [local_name for local_name, _ in duplicated_locals]

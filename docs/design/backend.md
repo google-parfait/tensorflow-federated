@@ -16,7 +16,7 @@ runtime; these extensions can be found in the corresponding backend.
 If the [runtime](execution.md#runtime) of a backend is implemented as an
 [execution stack](execution.md#execution-stack), then the backend can construct
 an [ExecutionContext](context.md#executioncontext) to provide TFF with an
-environemnt in which to evaluate an AST. In this case, the backend is
+environment in which to evaluate an AST. In this case, the backend is
 integrating with TFF using the high-level abstraction. However, if the runtime
 is *not* implemented as an execution stack, then the backend will need to
 construct a [Context](context.md#context) and is integrating with TFF using the
@@ -43,7 +43,7 @@ inheritance.
 The
 [native](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/backends/native)
 backend composes of the TFF compiler and TFF runtime in order to compile and
-execute an AST in a way that is reasonably efficiant and debuggable.
+execute an AST in a way that is reasonably efficient and debuggable.
 
 ### Native Form
 
