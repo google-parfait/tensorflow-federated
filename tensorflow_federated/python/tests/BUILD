@@ -77,6 +77,13 @@ py_test(
     deps = ["//tensorflow_federated"],
 )
 
+py_test(
+    name = "sync_local_cpp_execution_context_test",
+    size = "small",
+    srcs = ["sync_local_cpp_execution_context_test.py"],
+    deps = ["//tensorflow_federated"],
+)
+
 py_library(
     name = "temperature_sensor_example",
     srcs = ["temperature_sensor_example.py"],
