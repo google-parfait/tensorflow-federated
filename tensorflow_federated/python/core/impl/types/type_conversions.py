@@ -417,6 +417,10 @@ def type_to_py_container(value, type_spec: computation_types.Type):
   This is in some sense the inverse operation to
   `structure.from_container`.
 
+  This function assumes some unique behavior with regards to `tff.SequenceType`.
+  If the `value` is a list, it may yield other `tff.StructTypes` as well as
+  Python types. Otherwise, it may only yeild Python types.
+
   Args:
     value: A structure of anonymous tuples of values corresponding to
       `type_spec`.
@@ -451,17 +455,16 @@ def type_to_py_container(value, type_spec: computation_types.Type):
     element_type = structure_type_spec.element
     if isinstance(value, list):
       return [type_to_py_container(element, element_type) for element in value]
-    if isinstance(value, tf.data.Dataset):
+    elif isinstance(value, tf.data.Dataset):
       # `tf.data.Dataset` does not understand `Struct`, so the dataset
       # in `value` must already be yielding Python containers. This is because
       # when TFF is constructing datasets it always uses the proper Python
       # container, so we simply return `value` here without modification.
       return value
-    raise TypeError(
-        'Unexpected Python type for TFF type {}: {}'.format(
-            structure_type_spec, type(value)
-        )
-    )
+    else:
+      # Assume that the type of value does not understand `Struct` and that the
+      # value must yield Python containers.
+      return value
 
   if not isinstance(structure_type_spec, computation_types.StructType):
     return value
