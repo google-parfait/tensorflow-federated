@@ -19,9 +19,9 @@ import portpicker
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import executor_pb2
+from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_factory
 from tensorflow_federated.python.core.impl.executors import executor_bindings
 from tensorflow_federated.python.core.impl.executors import value_serialization
-from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_conversions
@@ -119,11 +119,13 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
     )
 
     # 3. Test creating a value from a computation.
-    @tensorflow_computation.tf_computation(tf.int32, tf.int32)
-    def foo(a, b):
-      return tf.add(a, b)
+    foo, _ = tensorflow_computation_factory.create_binary_operator(
+        tf.add,
+        computation_types.TensorType(tf.int64),
+        computation_types.TensorType(tf.int64),
+    )
 
-    value_pb, _ = value_serialization.serialize_value(foo)
+    value_pb = executor_pb2.Value(computation=foo)
     value = executor.create_value(value_pb)
     self.assertIsInstance(value, executor_bindings.OwnedValueId)
     # Assert the value ID was incremented again.
@@ -154,16 +156,17 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
     )
     arg = executor.create_value(arg_value_pb)
 
-    @tensorflow_computation.tf_computation(sequence_type)
     def sum_examples(ds):
       return ds.reduce(
           tf.constant(0, ds.element_spec.dtype),
           lambda s, x: s + tf.reduce_sum(x),
       )
 
-    comp_pb = executor_pb2.Value(
-        computation=sum_examples.get_proto(sum_examples)
+    proto, _ = tensorflow_computation_factory.create_computation_for_py_fn(
+        sum_examples, sequence_type
     )
+
+    comp_pb = executor_pb2.Value(computation=proto)
     comp = executor.create_value(comp_pb)
     result = executor.create_call(comp.ref, arg.ref)
     output_pb = executor.materialize(result.ref)
@@ -185,7 +188,6 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
     )
     arg = executor.create_value(arg_value_pb)
 
-    @tensorflow_computation.tf_computation(struct_of_sequence_type)
     def preprocess(datasets):
       def double_value(x):
         return 2 * x
@@ -196,7 +198,11 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
 
       return add_preprocessing(*datasets)
 
-    comp_pb = executor_pb2.Value(computation=preprocess.get_proto(preprocess))
+    proto, _ = tensorflow_computation_factory.create_computation_for_py_fn(
+        preprocess, struct_of_sequence_type
+    )
+
+    comp_pb = executor_pb2.Value(computation=proto)
     comp = executor.create_value(comp_pb)
     result = executor.create_call(comp.ref, arg.ref)
     output_pb = executor.materialize(result.ref)
@@ -300,11 +306,13 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
     value_ref = executor.create_value(value_pb)
     arg = executor.create_struct((value_ref.ref, value_ref.ref))
 
-    @tensorflow_computation.tf_computation(tf.int64, tf.int64)
-    def foo(a, b):
-      return tf.add(a, b)
+    foo, _ = tensorflow_computation_factory.create_binary_operator(
+        tf.add,
+        computation_types.TensorType(tf.int64),
+        computation_types.TensorType(tf.int64),
+    )
 
-    comp_pb = executor_pb2.Value(computation=foo.get_proto(foo))
+    comp_pb = executor_pb2.Value(computation=foo)
     comp = executor.create_value(comp_pb)
     result = executor.create_call(comp.ref, arg.ref)
     result_value_pb = executor.materialize(result.ref)
@@ -318,11 +326,11 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
   def test_call_no_arg(self, use_tf_executor=True):
     executor = get_executor(use_tf_executor)
 
-    @tensorflow_computation.tf_computation
-    def foo():
-      return tf.constant(123.0)
+    foo, _ = tensorflow_computation_factory.create_constant(
+        123.0, computation_types.TensorType(tf.float32)
+    )
 
-    comp_pb = executor_pb2.Value(computation=foo.get_proto(foo))
+    comp_pb = executor_pb2.Value(computation=foo)
     comp = executor.create_value(comp_pb)
     result = executor.create_call(comp.ref, None)
     result_value_pb = executor.materialize(result.ref)
@@ -405,11 +413,13 @@ class ReferenceResolvingExecutorBindingsTest(
     )
 
     # 3. Test creating a value from a computation.
-    @tensorflow_computation.tf_computation(tf.int32, tf.int32)
-    def foo(a, b):
-      return tf.add(a, b)
+    foo, _ = tensorflow_computation_factory.create_binary_operator(
+        tf.add,
+        computation_types.TensorType(tf.int64),
+        computation_types.TensorType(tf.int64),
+    )
 
-    value_pb, _ = value_serialization.serialize_value(foo)
+    value_pb = executor_pb2.Value(computation=foo)
     value = executor.create_value(value_pb)
     self.assertIsInstance(value, executor_bindings.OwnedValueId)
     # Assert the value ID was incremented again.
@@ -517,11 +527,13 @@ class ReferenceResolvingExecutorBindingsTest(
     value_ref = executor.create_value(value_pb)
     arg = executor.create_struct((value_ref.ref, value_ref.ref))
 
-    @tensorflow_computation.tf_computation(tf.int64, tf.int64)
-    def foo(a, b):
-      return tf.add(a, b)
+    foo, _ = tensorflow_computation_factory.create_binary_operator(
+        tf.add,
+        computation_types.TensorType(tf.int64),
+        computation_types.TensorType(tf.int64),
+    )
 
-    comp_pb = executor_pb2.Value(computation=foo.get_proto(foo))
+    comp_pb = executor_pb2.Value(computation=foo)
     comp = executor.create_value(comp_pb)
     result = executor.create_call(comp.ref, arg.ref)
     result_value_pb = executor.materialize(result.ref)
@@ -537,11 +549,11 @@ class ReferenceResolvingExecutorBindingsTest(
         get_executor(use_tf_executor)
     )
 
-    @tensorflow_computation.tf_computation
-    def foo():
-      return tf.constant(123.0)
+    foo, _ = tensorflow_computation_factory.create_constant(
+        123.0, computation_types.TensorType(tf.float32)
+    )
 
-    comp_pb = executor_pb2.Value(computation=foo.get_proto(foo))
+    comp_pb = executor_pb2.Value(computation=foo)
     comp = executor.create_value(comp_pb)
     result = executor.create_call(comp.ref, None)
     result_value_pb = executor.materialize(result.ref)
