@@ -769,10 +769,12 @@ def check_concrete_instance_of(
       concrete_elements = structure.to_elements(concrete_type_member)  # pytype: disable=wrong-arg-types
       if len(generic_elements) != len(concrete_elements):
         _raise_structural('length')
-      for k in range(len(generic_elements)):
-        if generic_elements[k][0] != concrete_elements[k][0]:
+      for generic_element, concrete_element in zip(
+          generic_elements, concrete_elements
+      ):
+        if generic_element[0] != concrete_element[0]:
           _raise_structural('element names')
-        _check_helper(generic_elements[k][1], concrete_elements[k][1], defining)
+        _check_helper(generic_element[1], concrete_element[1], defining)
     elif _both_are(lambda t: isinstance(t, computation_types.SequenceType)):
       _check_helper(
           generic_type_member.element,  # pytype: disable=attribute-error
