@@ -1,0 +1,34 @@
+digraph {
+  graph [style="dotted,rounded"]
+  node [color="#bdbdbd", fillcolor="#efefef", shape="box", style="rounded,filled", width="1.6"]
+  edge [color="#616161"]
+  newrank=true
+
+  subgraph cluster_core_customer {
+    graph [label="Customer"]
+    program [label="Program", href="#program" target="_parent"]
+    computations [label="Computations", href="#computations" target="_parent"]
+  }
+
+  subgraph cluster_core_platform {
+    graph [label="Platform"]
+    platform [label="Platform", href="#platform" target="_parent"]
+    platform_specific_components [label="Platform-Specific\nComponents", href="#platform-specific-components" target="_parent"]
+  }
+
+  subgraph cluster_core_library {
+    graph [label="Library"]
+    program_logic [label="Program Logic", href="#program-logic" target="_parent"]
+    platform_agnostic_components [label="Platform-Agnostic\nComponents", href="#platform-agnostic-components" target="_parent"]
+  }
+
+  program -> computations
+  program -> platform_agnostic_components
+  program -> program_logic
+  program -> platform
+  platform -> platform_specific_components
+
+  {rank=same; program, computations}
+  {rank=same; platform, platform_agnostic_components, program_logic}
+  {rank=same; platform_specific_components}
+}

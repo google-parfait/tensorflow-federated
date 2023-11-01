@@ -46,6 +46,10 @@ defines the abstractions required to create a federated program and provides
 
 ## Components
 
+```dot
+<!--#include file="components.dot"-->
+```
+
 The **components** of TFF's federated program library are designed so they can
 be owned and authored by different [roles](#roles).
 
@@ -233,6 +237,10 @@ A **library** typically:
 *   authors [program logic](#program-logic)
 
 ## Concepts
+
+```dot
+<!--#include file="concepts.dot"-->
+```
 
 There are a few **concepts** that are useful to define when discussing federated
 programs.

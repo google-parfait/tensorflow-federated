@@ -1,0 +1,26 @@
+digraph {
+  graph [style="dotted,rounded"]
+  node [color="#bdbdbd", fillcolor="#efefef", shape="box", style="rounded,filled", width="1.6"]
+  edge [color="#616161"]
+  newrank=true
+
+  subgraph cluster_core_customer {
+    graph [label="Customer"]
+    customer_storage [label="Customer Storage", href="#customer-storage" target="_parent", color="#57bb8a", fillcolor="#e2f3eb", shape="cylinder", style="filled"]
+  }
+
+  subgraph cluster_core_platform {
+    graph [label="Platform"]
+    program [label="Program", href="#program" target="_parent"]
+    platform_storage [label="Platform Storage", href="#platform-storage" target="_parent", color="#57bb8a", fillcolor="#e2f3eb", shape="cylinder", style="filled"]
+    python [label="Python", color="#57bb8a", fillcolor="#e2f3eb"]
+  }
+
+  program -> platform_storage [label="save"]
+  program -> platform_storage [label="load", dir="back"]
+  customer_storage -> program [label="release", href="#release" target="_parent", dir="back"]
+  program -> python [label="materialize", href="#materialize" target="_parent"]
+
+  {rank=same; customer_storage, program}
+  {rank=same; platform_storage, python}
+}
