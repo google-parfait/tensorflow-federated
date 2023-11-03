@@ -60,6 +60,15 @@ py_test(
 )
 
 py_test(
+    name = "remote_runtime_stream_structs_test",
+    size = "large",
+    timeout = "moderate",
+    srcs = ["remote_runtime_stream_structs_test.py"],
+    tags = ["requires-mem:20g"],
+    deps = ["//tensorflow_federated"],
+)
+
+py_test(
     name = "simulation_test",
     size = "medium",
     timeout = "long",
@@ -69,12 +78,13 @@ py_test(
 )
 
 py_test(
-    name = "remote_runtime_stream_structs_test",
+    name = "sync_execution_context_integration_test",
     size = "large",
-    timeout = "moderate",
-    srcs = ["remote_runtime_stream_structs_test.py"],
-    tags = ["requires-mem:20g"],
-    deps = ["//tensorflow_federated"],
+    srcs = ["sync_execution_context_integration_test.py"],
+    deps = [
+        "//tensorflow_federated",
+        "//third_party/pybind11_abseil:status",
+    ],
 )
 
 py_test(
