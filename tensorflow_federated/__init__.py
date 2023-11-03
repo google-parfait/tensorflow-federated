@@ -67,7 +67,6 @@ from tensorflow_federated.python.core.impl.types.computation_types import to_typ
 from tensorflow_federated.python.core.impl.types.computation_types import Type
 from tensorflow_federated.python.core.impl.types.placements import CLIENTS
 from tensorflow_federated.python.core.impl.types.placements import SERVER
-from tensorflow_federated.python.core.impl.types.type_conversions import structure_from_tensor_type_tree
 from tensorflow_federated.python.core.impl.types.typed_object import TypedObject
 from tensorflow_federated.version import __version__
 # pylint: enable=g-importing-member
