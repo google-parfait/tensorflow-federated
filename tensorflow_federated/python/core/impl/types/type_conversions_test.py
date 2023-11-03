@@ -355,19 +355,19 @@ class TypeToTfDtypesAndShapesTest(absltest.TestCase):
 
   def test_with_int_scalar(self):
     type_signature = computation_types.TensorType(tf.int32)
-    dtypes, shapes = type_conversions.type_to_tf_dtypes_and_shapes(
+    dtypes, shapes = type_conversions._type_to_tf_dtypes_and_shapes(
         type_signature
     )
     _assert_structure_eq(dtypes, tf.int32)
-    _assert_structure_eq(shapes, tf.TensorShape([]))
+    self.assertEqual(shapes, ())
 
   def test_with_int_vector(self):
     type_signature = computation_types.TensorType(tf.int32, [10])
-    dtypes, shapes = type_conversions.type_to_tf_dtypes_and_shapes(
+    dtypes, shapes = type_conversions._type_to_tf_dtypes_and_shapes(
         type_signature
     )
     _assert_structure_eq(dtypes, tf.int32)
-    _assert_structure_eq(shapes, tf.TensorShape([10]))
+    self.assertEqual(shapes, (10,))
 
   def test_with_tensor_triple(self):
     type_signature = computation_types.StructWithPythonType(
@@ -378,16 +378,16 @@ class TypeToTfDtypesAndShapesTest(absltest.TestCase):
         ],
         collections.OrderedDict,
     )
-    dtypes, shapes = type_conversions.type_to_tf_dtypes_and_shapes(
+    dtypes, shapes = type_conversions._type_to_tf_dtypes_and_shapes(
         type_signature
     )
     _assert_structure_eq(dtypes, {'a': tf.int32, 'b': tf.bool, 'c': tf.float32})
-    _assert_structure_eq(
+    self.assertEqual(
         shapes,
         {
-            'a': tf.TensorShape([5]),
-            'b': tf.TensorShape([]),
-            'c': tf.TensorShape([3]),
+            'a': [5],
+            'b': [],
+            'c': [3],
         },
     )
 
@@ -409,7 +409,7 @@ class TypeToTfDtypesAndShapesTest(absltest.TestCase):
         ],
         collections.OrderedDict,
     )
-    dtypes, shapes = type_conversions.type_to_tf_dtypes_and_shapes(
+    dtypes, shapes = type_conversions._type_to_tf_dtypes_and_shapes(
         type_signature
     )
     _assert_structure_eq(
@@ -420,11 +420,11 @@ class TypeToTfDtypesAndShapesTest(absltest.TestCase):
             'e': (),
         },
     )
-    _assert_structure_eq(
+    self.assertEqual(
         shapes,
         {
-            'a': tf.TensorShape([]),
-            'b': {'c': tf.TensorShape([]), 'd': tf.TensorShape([20])},
+            'a': [],
+            'b': {'c': [], 'd': [20]},
             'e': (),
         },
     )

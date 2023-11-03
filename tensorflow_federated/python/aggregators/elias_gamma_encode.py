@@ -25,6 +25,7 @@ from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
+from tensorflow_federated.python.core.impl.types import array_shape
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_conversions
@@ -143,7 +144,7 @@ class EliasGammaEncodedSumFactory(factory.UnweightedAggregationFactory):
       @tensorflow_computation.tf_computation
       def decode_accumulate_values(accumulator, encoded_value):
         shapes = type_conversions.structure_from_tensor_type_tree(
-            lambda x: x.shape, value_type
+            lambda x: tf.TensorShape(x.shape), value_type
         )
         return tf.nest.map_structure(
             lambda a, x, y: a + tfc.run_length_gamma_decode(code=x, shape=y),
@@ -187,7 +188,7 @@ class EliasGammaEncodedSumFactory(factory.UnweightedAggregationFactory):
         @tensorflow_computation.tf_computation
         def get_num_elements():
           num_elements = type_conversions.structure_from_tensor_type_tree(
-              lambda x: x.shape.num_elements(), value_type
+              lambda x: array_shape.num_elements_in_shape(x.shape), value_type
           )
           return tf.cast(sum(tf.nest.flatten(num_elements)), tf.float64)
 

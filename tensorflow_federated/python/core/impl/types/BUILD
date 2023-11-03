@@ -30,6 +30,7 @@ py_library(
     srcs = ["__init__.py"],
     visibility = ["//tensorflow_federated:__pkg__"],
     deps = [
+        ":array_shape",
         ":computation_types",
         ":type_analysis",
         ":type_conversions",
@@ -38,14 +39,25 @@ py_library(
 )
 
 py_library(
+    name = "array_shape",
+    srcs = ["array_shape.py"],
+)
+
+py_test(
+    name = "array_shape_test",
+    srcs = ["array_shape_test.py"],
+    deps = [":array_shape"],
+)
+
+py_library(
     name = "computation_types",
     srcs = ["computation_types.py"],
     deps = [
+        ":array_shape",
         ":placements",
         "//tensorflow_federated/python/common_libs:deprecation",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
-        "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
     ],
 )
 
@@ -91,6 +103,7 @@ py_library(
     name = "type_analysis",
     srcs = ["type_analysis.py"],
     deps = [
+        ":array_shape",
         ":computation_types",
         ":placements",
         ":type_conversions",
@@ -157,6 +170,7 @@ py_library(
     name = "type_serialization",
     srcs = ["type_serialization.py"],
     deps = [
+        ":array_shape",
         ":computation_types",
         ":placements",
         "//tensorflow_federated/proto/v0:computation_py_pb2",

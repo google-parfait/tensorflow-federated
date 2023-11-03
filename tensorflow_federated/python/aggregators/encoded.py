@@ -25,6 +25,7 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
+from tensorflow_federated.python.core.impl.types import array_shape
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_conversions
@@ -114,7 +115,7 @@ class EncodedSumFactory(factory.UnweightedAggregationFactory):
     _check_threshold(threshold)
 
     def encoder_fn(value_spec):
-      if value_spec.shape.num_elements() > threshold:
+      if array_shape.num_elements_in_shape(value_spec.shape) > threshold:
         return te.encoders.as_gather_encoder(
             te.encoders.uniform_quantization(quantization_bits, **kwargs),
             value_spec,

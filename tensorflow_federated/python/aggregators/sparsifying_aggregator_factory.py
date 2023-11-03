@@ -76,7 +76,7 @@ def _build_sparse_zero(
     type_spec: computation_types.StructWithPythonType,
     dense_shape: tf.TensorShape,
 ) -> Union[tf.SparseTensor, tf.Tensor]:
-  num_dense_dimensions = sum(type_spec.dense_shape.shape.as_list())
+  num_dense_dimensions = sum(type_spec.dense_shape.shape)
   return tf.SparseTensor(
       indices=tf.zeros(shape=[0, num_dense_dimensions], dtype=tf.int64),
       values=tf.constant([], dtype=type_spec.values.dtype),
@@ -162,7 +162,7 @@ class SparsifyingSumFactory(factory.UnweightedAggregationFactory):
           _build_sparsify_computation(self._element_threshold), client_values
       )
       dense_shapes = type_conversions.structure_from_tensor_type_tree(
-          lambda t: t.shape, client_values.type_signature.member
+          lambda t: tf.TensorShape(t.shape), client_values.type_signature.member
       )
       if isinstance(
           client_values.type_signature.member, computation_types.StructType
