@@ -102,7 +102,7 @@ def _build_reservoir_type(
   def add_unknown_dimension(t):
     if isinstance(t, computation_types.TensorType):
       return (
-          computation_types.TensorType(dtype=t.dtype, shape=[None] + t.shape),
+          computation_types.TensorType(dtype=t.dtype, shape=(None,) + t.shape),
           True,
       )
     return t, False
@@ -164,10 +164,13 @@ def _build_initial_sample_reservoir(
 
       Raises:
         `TypeError` if `t` is not a `tff.TensorType`.
+        ValueError: If `t.shape` is `None`'
       """
       if not isinstance(t, computation_types.TensorType):
         raise TypeError(f'Cannot create zero for non TesnorType: {type(t)}')
-      return tf.zeros([0] + t.shape, dtype=t.dtype)
+      if t.shape is None:
+        raise ValueError('Expected `t.shape` to not be `None`.')
+      return tf.zeros((0,) + t.shape, dtype=t.dtype)
 
     try:
       initial_samples = type_conversions.structure_from_tensor_type_tree(

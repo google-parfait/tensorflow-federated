@@ -19,6 +19,7 @@ import numpy as np
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
+from tensorflow_federated.python.core.impl.types import array_shape
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import typed_object
@@ -41,13 +42,18 @@ def normalize_tensor_representation(value, type_spec):
     TypeError: if the arguments are of the wrong types.
   """
   py_typecheck.check_type(type_spec, computation_types.TensorType)
-  type_spec.shape.assert_is_fully_defined()
+  if not array_shape.is_shape_fully_defined(type_spec.shape):
+    raise ValueError(
+        f'Expected the shape to be fully defined, found {type_spec.shape}.'
+    )
   type_analysis.check_type(value, type_spec)
-  if type_spec.shape.rank == 0:
-    return np.dtype(type_spec.dtype.as_numpy_dtype).type(value)
-  if type_spec.shape.rank > 0:
-    return np.array(value, dtype=type_spec.dtype.as_numpy_dtype)
-  raise TypeError('Unsupported tensor shape {}.'.format(type_spec.shape))
+  if type_spec.shape is not None:
+    if not type_spec.shape:
+      return np.dtype(type_spec.dtype.as_numpy_dtype).type(value)
+    else:
+      return np.array(value, dtype=type_spec.dtype.as_numpy_dtype)
+  else:
+    raise NotImplementedError(f'Unexpected shape found {type_spec.shape}.')
 
 
 def _binding_to_tensor_indexes(binding):

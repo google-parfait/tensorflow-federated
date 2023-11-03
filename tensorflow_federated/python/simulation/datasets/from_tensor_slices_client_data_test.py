@@ -267,7 +267,7 @@ class TestClientDataTest(tf.test.TestCase, parameterized.TestCase):
         computation_types.to_type(tf.string),
         computation_types.SequenceType(
             computation_types.TensorType(
-                client_data.element_type_structure.dtype, tf.TensorShape(None)
+                client_data.element_type_structure.dtype, None
             )
         ),
     )

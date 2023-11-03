@@ -130,13 +130,13 @@ class TypeTest(parameterized.TestCase):
   @parameterized.named_parameters(
       (
           'tensor_type_different_dtype',
-          computation_types.TensorType(tf.int32, tf.TensorShape([])),
-          computation_types.TensorType(tf.bool, tf.TensorShape([])),
+          computation_types.TensorType(tf.int32),
+          computation_types.TensorType(tf.bool),
       ),
       (
           'tensor_type_different_shape',
-          computation_types.TensorType(tf.int32, tf.TensorShape([])),
-          computation_types.TensorType(tf.int32, tf.TensorShape([10])),
+          computation_types.TensorType(tf.int32),
+          computation_types.TensorType(tf.int32, (10,)),
       ),
   )
   def test_check_equivalent_to_returns_false(self, type_spec, other):
@@ -154,8 +154,8 @@ class TensorTypeTest(parameterized.TestCase):
       ),
       (
           'tensor_type_ndims_unknown',
-          computation_types.TensorType(tf.int32, tf.TensorShape([None])),
-          computation_types.TensorType(tf.int32, tf.TensorShape([None])),
+          computation_types.TensorType(tf.int32, (None,)),
+          computation_types.TensorType(tf.int32, (None,)),
       ),
   )
   def test_interned(self, type_spec_1, type_spec_2):
@@ -163,22 +163,22 @@ class TensorTypeTest(parameterized.TestCase):
 
   def test_init_infers_shape(self):
     type_spec = computation_types.TensorType(tf.int32)
-    self.assertEqual(type_spec.shape, tf.TensorShape([]))
+    self.assertEqual(type_spec.shape, ())
 
   @parameterized.named_parameters(
       (
           'rank_unknown',
-          computation_types.TensorType(tf.int32, tf.TensorShape([])),
+          computation_types.TensorType(tf.int32),
           'int32',
       ),
       (
           'ndims_unknown',
-          computation_types.TensorType(tf.int32, tf.TensorShape([None])),
+          computation_types.TensorType(tf.int32, (None,)),
           'int32[?]',
       ),
       (
           'ndims_10',
-          computation_types.TensorType(tf.int32, tf.TensorShape([10])),
+          computation_types.TensorType(tf.int32, (10,)),
           'int32[10]',
       ),
   )
@@ -189,18 +189,18 @@ class TensorTypeTest(parameterized.TestCase):
   @parameterized.named_parameters(
       (
           'rank_unknown',
-          computation_types.TensorType(tf.int32, tf.TensorShape([])),
+          computation_types.TensorType(tf.int32),
           'TensorType(tf.int32)',
       ),
       (
           'ndims_unknown',
-          computation_types.TensorType(tf.int32, tf.TensorShape([None])),
-          'TensorType(tf.int32, [None])',
+          computation_types.TensorType(tf.int32, (None,)),
+          'TensorType(tf.int32, (None,))',
       ),
       (
           'ndims_ten',
-          computation_types.TensorType(tf.int32, tf.TensorShape([10])),
-          'TensorType(tf.int32, [10])',
+          computation_types.TensorType(tf.int32, (10,)),
+          'TensorType(tf.int32, (10,))',
       ),
   )
   def test_repr(self, type_spec, expected_repr):
@@ -216,14 +216,14 @@ class TensorTypeTest(parameterized.TestCase):
       ),
       (
           'different_dtype',
-          computation_types.TensorType(tf.int32, tf.TensorShape([])),
-          computation_types.TensorType(tf.bool, tf.TensorShape([])),
+          computation_types.TensorType(tf.int32),
+          computation_types.TensorType(tf.bool),
           False,
       ),
       (
           'different_shape',
-          computation_types.TensorType(tf.int32, tf.TensorShape([])),
-          computation_types.TensorType(tf.int32, tf.TensorShape([10])),
+          computation_types.TensorType(tf.int32),
+          computation_types.TensorType(tf.int32, (10,)),
           False,
       ),
   )
@@ -240,26 +240,26 @@ class TensorTypeTest(parameterized.TestCase):
       ),
       (
           'different_dtype',
-          computation_types.TensorType(tf.int32, tf.TensorShape([])),
-          computation_types.TensorType(tf.bool, tf.TensorShape([])),
+          computation_types.TensorType(tf.int32),
+          computation_types.TensorType(tf.bool),
           False,
       ),
       (
           'different_shape',
-          computation_types.TensorType(tf.int32, tf.TensorShape([])),
-          computation_types.TensorType(tf.int32, tf.TensorShape([10])),
+          computation_types.TensorType(tf.int32),
+          computation_types.TensorType(tf.int32, (10,)),
           False,
       ),
       (
           'ndims_unknown_from_known',
-          computation_types.TensorType(tf.int32, tf.TensorShape([None])),
-          computation_types.TensorType(tf.int32, tf.TensorShape([10])),
+          computation_types.TensorType(tf.int32, (None,)),
+          computation_types.TensorType(tf.int32, (10,)),
           True,
       ),
       (
           'ndims_known_from_unknown',
-          computation_types.TensorType(tf.int32, tf.TensorShape([10])),
-          computation_types.TensorType(tf.int32, tf.TensorShape([None])),
+          computation_types.TensorType(tf.int32, (10,)),
+          computation_types.TensorType(tf.int32, (None,)),
           False,
       ),
   )
@@ -1300,20 +1300,20 @@ class ToTypeTest(parameterized.TestCase):
     t = computation_types.to_type(np.int32)
     self.assertIsInstance(t, computation_types.TensorType)
     self.assertEqual(t.dtype, tf.int32)
-    self.assertEqual(t.shape, tf.TensorShape([]))
+    self.assertEqual(t.shape, ())
 
   def test_with_np_int32_in_tensor_spec(self):
     t = computation_types.to_type((np.int32, [5]))
     self.assertIsInstance(t, computation_types.TensorType)
     self.assertEqual(t.dtype, tf.int32)
-    self.assertEqual(t.shape, tf.TensorShape([5]))
+    self.assertEqual(t.shape, (5,))
 
   def test_with_np_int32_in_dict(self):
     t = computation_types.to_type(collections.OrderedDict([('foo', np.int32)]))
     self.assertIsInstance(t, computation_types.StructType)
     self.assertIsInstance(t.foo, computation_types.TensorType)
     self.assertEqual(t.foo.dtype, tf.int32)
-    self.assertEqual(t.foo.shape, tf.TensorShape([]))
+    self.assertEqual(t.foo.shape, ())
 
   def test_ragged_tensor_spec(self):
     ragged_tensor = tf.RaggedTensor.from_row_splits([0, 0, 0, 0], [0, 1, 4])
@@ -1322,7 +1322,7 @@ class ToTypeTest(parameterized.TestCase):
     self.assertEqual(t.python_container, tf.RaggedTensor)
     self.assertEqual(
         t.flat_values,
-        computation_types.TensorType(tf.int32, tf.TensorShape(None)),
+        computation_types.TensorType(tf.int32, None),
     )
     self.assertEqual(
         t.nested_row_splits,

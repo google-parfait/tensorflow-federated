@@ -50,7 +50,7 @@ class GraphUtilsTest(tf.test.TestCase):
         self.assertEqual(binding.tensor.tensor_name, val.name)
       self.assertIsInstance(type_spec, computation_types.TensorType)
       self.assertEqual(type_spec.dtype, val.dtype.base_dtype)
-      self.assertEqual(repr(type_spec.shape), repr(val.shape))
+      self.assertEqual(type_spec.shape, val.shape)
     elif binding_oneof == 'sequence':
       self.assertIsInstance(val, tf.data.Dataset)
       sequence_oneof = binding.sequence.WhichOneof('binding')
@@ -623,30 +623,6 @@ class GraphUtilsTest(tf.test.TestCase):
     correct_elem = np.zeros([0, 10, 0, 10, 10], np.float32)
     self.assertAllClose(elem, correct_elem)
 
-  def test_make_whimsy_element_tensor_type_backed_by_tf_dimension(self):
-    type_spec = computation_types.TensorType(
-        tf.float32,
-        [
-            tf.compat.v1.Dimension(None),
-            tf.compat.v1.Dimension(10),
-            tf.compat.v1.Dimension(None),
-            tf.compat.v1.Dimension(10),
-            tf.compat.v1.Dimension(10),
-        ],
-    )
-    elem = tensorflow_utils.make_whimsy_element_for_type_spec(type_spec)
-    correct_elem = np.zeros([0, 10, 0, 10, 10], np.float32)
-    self.assertAllClose(elem, correct_elem)
-
-  def test_make_whimsy_element_string_tensor(self):
-    type_spec = computation_types.TensorType(tf.string, [None])
-    elem = tensorflow_utils.make_whimsy_element_for_type_spec(
-        type_spec, none_dim_replacement=1
-    )
-    self.assertIsInstance(elem, np.ndarray)
-    self.assertAllEqual(elem.shape, [1])
-    self.assertEqual(elem[0], '')
-
   def test_make_whimsy_element_tensor_type_none_replaced_by_1(self):
     type_spec = computation_types.TensorType(
         tf.float32, [None, 10, None, 10, 10]
@@ -1196,12 +1172,12 @@ class GraphUtilsTest(tf.test.TestCase):
     tensorflow_utils.make_data_set_from_elements(
         tf.compat.v1.get_default_graph(),
         [np.array([1, 2]), np.array([3])],
-        computation_types.TensorType(tf.int32, tf.TensorShape([None])),
+        computation_types.TensorType(tf.int32, (None,)),
     )
     tensorflow_utils.make_data_set_from_elements(
         tf.compat.v1.get_default_graph(),
         [{'x': np.array([1, 2])}, {'x': np.array([3])}],
-        [('x', computation_types.TensorType(tf.int32, tf.TensorShape([None])))],
+        [('x', computation_types.TensorType(tf.int32, (None,)))],
     )
 
   def test_make_data_set_from_elements_with_odd_all_batches(self):
@@ -1213,7 +1189,7 @@ class GraphUtilsTest(tf.test.TestCase):
             np.array([4, 5, 6]),
             np.array([7, 8]),
         ],
-        computation_types.TensorType(tf.int32, tf.TensorShape([None])),
+        computation_types.TensorType(tf.int32, (None,)),
     )
     tensorflow_utils.make_data_set_from_elements(
         tf.compat.v1.get_default_graph(),
@@ -1223,19 +1199,19 @@ class GraphUtilsTest(tf.test.TestCase):
             {'x': np.array([4, 5, 6])},
             {'x': np.array([7, 8])},
         ],
-        [('x', computation_types.TensorType(tf.int32, tf.TensorShape([None])))],
+        [('x', computation_types.TensorType(tf.int32, (None,)))],
     )
 
   def test_make_data_set_from_elements_with_just_one_batch(self):
     tensorflow_utils.make_data_set_from_elements(
         tf.compat.v1.get_default_graph(),
         [np.array([1])],
-        computation_types.TensorType(tf.int32, tf.TensorShape([None])),
+        computation_types.TensorType(tf.int32, (None,)),
     )
     tensorflow_utils.make_data_set_from_elements(
         tf.compat.v1.get_default_graph(),
         [{'x': np.array([1])}],
-        [('x', computation_types.TensorType(tf.int32, tf.TensorShape([None])))],
+        [('x', computation_types.TensorType(tf.int32, (None,)))],
     )
 
   def test_make_dataset_from_variant_tensor_constructs_dataset(self):

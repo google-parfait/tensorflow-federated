@@ -91,7 +91,7 @@ class DatasetManipulationTest(parameterized.TestCase):
     @tff.tf_computation
     def create_empty_ds():
       empty_tensor = tf.zeros(
-          shape=[0] + tensor_spec.shape, dtype=tensor_spec.dtype
+          shape=(0,) + tensor_spec.shape, dtype=tensor_spec.dtype
       )
       return tf.data.Dataset.from_tensor_slices(empty_tensor)
 

@@ -13,6 +13,9 @@
 # limitations under the License.
 """Libraries for interacting with the type of a computation."""
 
+from tensorflow_federated.python.core.impl.types.array_shape import ArrayShape
+from tensorflow_federated.python.core.impl.types.array_shape import is_shape_fully_defined
+from tensorflow_federated.python.core.impl.types.array_shape import num_elements_in_shape
 from tensorflow_federated.python.core.impl.types.computation_types import AbstractType
 from tensorflow_federated.python.core.impl.types.computation_types import at_clients
 from tensorflow_federated.python.core.impl.types.computation_types import at_server
