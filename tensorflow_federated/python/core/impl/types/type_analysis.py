@@ -21,6 +21,7 @@ import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
+from tensorflow_federated.python.core.impl.types import array_shape
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_conversions
@@ -198,10 +199,9 @@ def is_binary_op_with_upcast_compatible_pair(
     return type_to_upcast is None
   if possibly_nested_type.is_equivalent_to(type_to_upcast):
     return True
-  if not (
-      isinstance(type_to_upcast, computation_types.TensorType)
-      and type_to_upcast.shape == tf.TensorShape(())
-  ):
+  if not isinstance(
+      type_to_upcast, computation_types.TensorType
+  ) or not array_shape.is_shape_scalar(type_to_upcast.shape):
     return False
 
   types_are_ok = [True]
@@ -372,7 +372,7 @@ def check_is_sum_compatible(type_spec, type_spec_context=None):
       raise SumIncompatibleError(
           type_spec, type_spec_context, f'{type_spec.dtype} is not numeric'
       )
-    if not type_spec.shape.is_fully_defined():
+    if not array_shape.is_shape_fully_defined(type_spec.shape):
       raise SumIncompatibleError(
           type_spec,
           type_spec_context,
@@ -483,7 +483,9 @@ def is_single_integer_or_matches_structure(
   if isinstance(type_sig, computation_types.TensorType):
     # This condition applies to both `shape_type` being a tensor or structure,
     # as the same integer bitwidth can be used for all values in the structure.
-    return type_sig.dtype.is_integer and (type_sig.shape.num_elements() == 1)
+    return type_sig.dtype.is_integer and (
+        array_shape.num_elements_in_shape(type_sig.shape) == 1
+    )
   elif isinstance(shape_type, computation_types.StructType) and isinstance(
       type_sig, computation_types.StructType
   ):
@@ -853,8 +855,11 @@ def check_valid_federated_weighted_mean_argument_tuple_type(
           .format(v.member, type_spec)
       )
   w_type = type_spec[1].member
-  py_typecheck.check_type(w_type, computation_types.TensorType)
-  if w_type.shape.ndims != 0:
+  if (
+      not isinstance(w_type, computation_types.TensorType)
+      or w_type.shape is None
+      or w_type.shape
+  ):
     raise TypeError('Expected scalar weight, got {}.'.format(w_type))
 
 
@@ -895,7 +900,7 @@ def count_tensors_in_type(
         type_signature, computation_types.TensorType
     ) and tensor_filter(type_signature):
       tensors_and_params['num_tensors'] += 1
-      num_parameters = type_signature.shape.num_elements()
+      num_parameters = array_shape.num_elements_in_shape(type_signature.shape)
       if num_parameters is not None:
         tensors_and_params['parameters'] += num_parameters
       else:

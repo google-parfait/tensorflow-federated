@@ -28,6 +28,7 @@ from tensorflow_federated.python.core.impl.context_stack import context_stack_im
 from tensorflow_federated.python.core.impl.context_stack import symbol_binding_context
 from tensorflow_federated.python.core.impl.federated_context import value_impl
 from tensorflow_federated.python.core.impl.federated_context import value_utils
+from tensorflow_federated.python.core.impl.types import array_shape
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
@@ -391,11 +392,13 @@ def federated_mean(value, weight=None):
     weight = value_utils.ensure_federated_value(
         weight, placements.CLIENTS, 'weight to use in averaging'
     )
-    py_typecheck.check_type(
-        weight.type_signature.member,  # pytype: disable=attribute-error
-        computation_types.TensorType,
-    )
-    if weight.type_signature.member.shape.ndims != 0:  # pytype: disable=attribute-error
+    if (
+        not isinstance(weight.type_signature, computation_types.FederatedType)
+        or not isinstance(
+            weight.type_signature.member, computation_types.TensorType
+        )
+        or not array_shape.is_shape_scalar(weight.type_signature.member.shape)
+    ):
       raise TypeError(
           'The weight type {} is not a federated scalar.'.format(
               weight.type_signature
@@ -617,8 +620,8 @@ def _check_select_keys_type(
   if not (
       isinstance(keys_type.member, computation_types.TensorType)
       and keys_type.member.dtype == np.int32
-      and keys_type.member.shape.rank == 1
-      and keys_type.member.shape.dims[0].value is not None
+      and len(keys_type.member.shape) == 1
+      and keys_type.member.shape[0] is not None
   ):
     _select_parameter_mismatch(
         keys_type.member,  # pytype: disable=attribute-error

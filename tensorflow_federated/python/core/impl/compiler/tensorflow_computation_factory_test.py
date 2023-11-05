@@ -343,7 +343,7 @@ class CreateBinaryOperatorWithUpcastTest(parameterized.TestCase):
        np.array([3.25])),
       ('add_float_unknown_rank', tf.math.add,
        _StructType([
-           _TensorType(dtype=tf.float64, shape=tf.TensorShape(None)),
+           _TensorType(dtype=tf.float64, shape=None),
            _TensorType(dtype=tf.float64, shape=[1])
        ]),
        [np.array([1.0]), np.array([2.25])],

@@ -28,6 +28,7 @@ from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_factory
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
+from tensorflow_federated.python.core.impl.types import array_shape
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
@@ -1631,7 +1632,7 @@ def create_generic_constant(
   inferred_scalar_value_type = type_conversions.infer_type(scalar_value)
   if not isinstance(
       inferred_scalar_value_type, computation_types.TensorType
-  ) or inferred_scalar_value_type.shape != tf.TensorShape(()):
+  ) or not array_shape.is_shape_scalar(inferred_scalar_value_type.shape):
     raise TypeError(
         'Must pass a scalar value to `create_generic_constant`; encountered a '
         'value {}'.format(scalar_value)

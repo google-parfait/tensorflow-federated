@@ -42,7 +42,7 @@ class JaxComputationTest(absltest.TestCase):
   def test_arg_ordering(self):
 
     @jax_computation.jax_computation(
-        computation_types.TensorType(np.int32, 10), np.int32
+        computation_types.TensorType(np.int32, (10,)), np.int32
     )
     def foo(b, a):
       return jax.numpy.add(a, jax.numpy.sum(b))

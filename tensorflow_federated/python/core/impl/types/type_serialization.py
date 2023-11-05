@@ -21,6 +21,7 @@ import numpy as np
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import structure
+from tensorflow_federated.python.core.impl.types import array_shape
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 
@@ -89,7 +90,7 @@ _Dimensions = Sequence[int]
 
 
 def _serialize_shape(
-    shape: computation_types.Shape,
+    shape: array_shape.ArrayShape,
 ) -> tuple[Optional[_Dimensions], bool]:
   if shape is None:
     dims = None
@@ -102,13 +103,14 @@ def _serialize_shape(
 
 def _deserialize_shape(
     dims: Optional[_Dimensions], unknown_rank: bool
-) -> computation_types.Shape:
+) -> array_shape.ArrayShape:
   if unknown_rank:
     return None
   elif dims is None:
-    return []
+    shape: array_shape.ArrayShape = ()
+    return shape
   else:
-    return [dim if dim >= 0 else None for dim in dims]
+    return tuple(dim if dim >= 0 else None for dim in dims)
 
 
 # Manual cache used rather than `cachetools.cached` due to incompatibility
@@ -147,11 +149,7 @@ def serialize_type(type_spec: computation_types.Type) -> pb.Type:
       dtype = type_spec.dtype.base_dtype.as_numpy_dtype
     else:
       dtype = np.str_
-    if type_spec.shape.rank is not None:
-      shape = type_spec.shape.as_list()
-    else:
-      shape = None
-    dims, unknown_rank = _serialize_shape(shape)
+    dims, unknown_rank = _serialize_shape(type_spec.shape)
     proto = pb.Type(
         tensor=pb.TensorType(
             dtype=_serialize_dtype(dtype),

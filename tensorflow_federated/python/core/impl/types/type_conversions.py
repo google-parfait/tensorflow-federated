@@ -176,7 +176,7 @@ def infer_type(arg: object) -> Optional[computation_types.Type]:
         ) from e
 
 
-def type_to_tf_dtypes_and_shapes(type_spec: computation_types.Type):
+def _type_to_tf_dtypes_and_shapes(type_spec: computation_types.Type):
   """Returns nested structures of tensor dtypes and shapes for a given TFF type.
 
   The returned dtypes and shapes match those used by `tf.data.Dataset`s to
@@ -200,7 +200,11 @@ def type_to_tf_dtypes_and_shapes(type_spec: computation_types.Type):
   """
   py_typecheck.check_type(type_spec, computation_types.Type)
   if isinstance(type_spec, computation_types.TensorType):
-    return (type_spec.dtype, type_spec.shape)
+    if not isinstance(type_spec.shape, tf.TensorShape):
+      shape = tf.TensorShape(type_spec.shape)
+    else:
+      shape = type_spec.shape
+    return (type_spec.dtype, shape)
   elif isinstance(type_spec, computation_types.StructType):
     elements = structure.to_elements(type_spec)
     if not elements:
@@ -221,9 +225,9 @@ def type_to_tf_dtypes_and_shapes(type_spec: computation_types.Type):
                   type_spec
               )
           )
-        element_output = type_to_tf_dtypes_and_shapes(element_spec)
-        output_dtypes[element_name] = element_output[0]
-        output_shapes[element_name] = element_output[1]
+        output_dtype, output_shape = _type_to_tf_dtypes_and_shapes(element_spec)
+        output_dtypes[element_name] = output_dtype
+        output_shapes[element_name] = output_shape
     else:
       output_dtypes = []
       output_shapes = []
@@ -239,9 +243,9 @@ def type_to_tf_dtypes_and_shapes(type_spec: computation_types.Type):
                   type_spec
               )
           )
-        element_output = type_to_tf_dtypes_and_shapes(element_spec)
-        output_dtypes.append(element_output[0])
-        output_shapes.append(element_output[1])
+        output_dtype, output_shape = _type_to_tf_dtypes_and_shapes(element_spec)
+        output_dtypes.append(output_dtype)
+        output_shapes.append(output_shape)
     if type_spec.python_container is not None:
       container_type = type_spec.python_container
 
@@ -283,8 +287,7 @@ def type_to_tf_tensor_specs(type_spec: computation_types.Type):
     the layout of the nested type defined by `type_spec`. Named tuples are
     represented as dictionaries.
   """
-  py_typecheck.check_type(type_spec, computation_types.Type)
-  dtypes, shapes = type_to_tf_dtypes_and_shapes(type_spec)
+  dtypes, shapes = _type_to_tf_dtypes_and_shapes(type_spec)
   return tree.map_structure(
       lambda dtype, shape: tf.TensorSpec(shape, dtype), dtypes, shapes
   )
@@ -345,15 +348,17 @@ def type_to_tf_structure(type_spec: computation_types.Type):
         # `dense_shape`.
         if (
             type_spec.indices.shape is not None  # pytype: disable=attribute-error
-            and type_spec.indices.shape.dims[1] is not None  # pytype: disable=attribute-error
+            and len(type_spec.indices.shape) >= 2  # pytype: disable=attribute-error
+            and type_spec.indices.shape[1] is not None  # pytype: disable=attribute-error
         ):
-          rank = type_spec.indices.shape.dims[1]  # pytype: disable=attribute-error
+          rank = type_spec.indices.shape[1]  # pytype: disable=attribute-error
           shape = tf.TensorShape([None] * rank)
         elif (
             type_spec.dense_shape.shape is not None  # pytype: disable=attribute-error
-            and type_spec.dense_shape.shape.dims[0] is not None  # pytype: disable=attribute-error
+            and type_spec.indices.shape  # pytype: disable=attribute-error
+            and type_spec.dense_shape.shape[0] is not None  # pytype: disable=attribute-error
         ):
-          rank = type_spec.dense_shape.shape.dims[0]  # pytype: disable=attribute-error
+          rank = type_spec.dense_shape.shape[0]  # pytype: disable=attribute-error
           shape = tf.TensorShape([None] * rank)
         else:
           shape = None

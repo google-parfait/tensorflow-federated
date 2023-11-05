@@ -111,7 +111,7 @@ def _zeros_for_sample(member_type):
   """
 
   def zeros_for_tensor_type(tensor_type):
-    return tf.zeros([0] + tensor_type.shape.dims, tensor_type.dtype)
+    return tf.zeros((0,) + tensor_type.shape, tensor_type.dtype)
 
   @tensorflow_computation.tf_computation
   def accumlator_type_fn():
@@ -140,7 +140,7 @@ def _get_accumulator_type(member_type):
 
   def add_unknown_first_dim(tensor_type):
     return computation_types.TensorType(
-        tensor_type.dtype, [None] + tensor_type.shape.dims
+        tensor_type.dtype, (None,) + tensor_type.shape
     )
 
   accumulator_type = type_conversions.structure_from_tensor_type_tree(
