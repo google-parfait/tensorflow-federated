@@ -264,7 +264,7 @@ class JaxSerializationTest(absltest.TestCase):
 
   def test_arg_ordering(self):
     parameter_type = computation_types.to_type((
-        computation_types.TensorType(np.int32, 10),
+        computation_types.TensorType(np.int32, (10,)),
         computation_types.TensorType(np.int32),
     ))
 
