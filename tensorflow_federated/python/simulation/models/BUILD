@@ -37,7 +37,10 @@ py_library(
 py_test(
     name = "mobilenet_v2_test",
     srcs = ["mobilenet_v2_test.py"],
-    deps = [":mobilenet_v2"],
+    deps = [
+        ":mobilenet_v2",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
+    ],
 )
 
 py_library(
@@ -48,5 +51,8 @@ py_library(
 py_test(
     name = "resnet_models_test",
     srcs = ["resnet_models_test.py"],
-    deps = [":resnet_models"],
+    deps = [
+        ":resnet_models",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
+    ],
 )
