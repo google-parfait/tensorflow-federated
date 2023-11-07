@@ -16,7 +16,7 @@
 import abc
 import atexit
 import collections
-from collections.abc import Hashable, Iterable, Iterator, Mapping, MutableMapping, Sequence
+from collections.abc import Hashable, Iterable, Iterator, Mapping, MutableMapping
 import difflib
 import enum
 from typing import Optional, TypeVar, Union
@@ -374,9 +374,6 @@ def _is_dtype(obj: object) -> TypeGuard[Union[Dtype, tf.dtypes.DType]]:
   return isinstance(obj, (tf.dtypes.DType, np.dtype))
 
 
-Shape = Optional[Sequence[Optional[int]]]
-
-
 class TensorType(Type, metaclass=_Intern):
   """An implementation of `tff.Type` representing types of tensors in TFF."""
 
@@ -384,7 +381,7 @@ class TensorType(Type, metaclass=_Intern):
   def _hashable_from_init_args(
       cls,
       dtype: Union[Dtype, tf.dtypes.DType],
-      shape: Union[array_shape._ArrayShapeLike, tf.TensorShape, int] = (),
+      shape: Union[array_shape._ArrayShapeLike, tf.TensorShape] = (),
   ) -> Hashable:
     """Returns hashable `TensorType.__init__` args."""
     if not isinstance(dtype, tf.dtypes.DType):
@@ -394,8 +391,6 @@ class TensorType(Type, metaclass=_Intern):
         shape = shape.as_list()
       else:
         shape = None
-    elif isinstance(shape, int):
-      shape = (shape,)
 
     if shape is not None:
       shape = tuple(shape)
@@ -404,7 +399,7 @@ class TensorType(Type, metaclass=_Intern):
   def __init__(
       self,
       dtype: Union[Dtype, tf.dtypes.DType],
-      shape: Union[array_shape._ArrayShapeLike, tf.TensorShape, int] = (),
+      shape: Union[array_shape._ArrayShapeLike, tf.TensorShape] = (),
   ):
     """Constructs a new instance from the given `dtype` and `shape`.
 
@@ -423,8 +418,6 @@ class TensorType(Type, metaclass=_Intern):
         shape = shape.as_list()
       else:
         shape = None
-    elif isinstance(shape, int):
-      shape = (shape,)
 
     if shape is not None:
       shape = tuple(shape)
@@ -1194,7 +1187,7 @@ def _get_contained_children_types(type_spec: Type) -> _ContainedChildrenTypes:
   """Returns the types of children `tff.Types` contained by `type_spec`.
 
   The `_ContainedChildrenTypes` is cached so that this function can be used in
-  performance sensative operations.
+  performance sensitive operations.
 
   Args:
     type_spec: A `tff.Type`.
