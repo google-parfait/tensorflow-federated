@@ -47,6 +47,9 @@ git_repository(
         "//third_party/tensorflow:internal_visibility.patch",
         "//third_party/tensorflow:python_toolchain.patch",
         "//third_party/tensorflow:tf2xla_visibility.patch",
+        # TODO: temporary patch to allow building with MacOS 2.14.0 using XCode 15.0
+        # remove when resolved https://github.com/tensorflow/tensorflow/issues/62001#issuecomment-1786942635
+        "//third_party/tensorflow:macos_ldclassic.patch",
     ],
     remote = "https://github.com/tensorflow/tensorflow.git",
     tag = "v2.14.0",

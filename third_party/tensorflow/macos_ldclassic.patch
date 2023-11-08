@@ -1,0 +1,12 @@
+diff --git tensorflow/tensorflow.bzl tensorflow/tensorflow.bzl
+index 9fa8c9d7628..d25e189057f 100644
+--- tensorflow/tensorflow.bzl
++++ tensorflow/tensorflow.bzl
+@@ -2393,6 +2393,7 @@ def pywrap_tensorflow_macro_opensource(
+         clean_dep("//tensorflow:macos"): [
+             # TODO: the -w suppresses a wall of harmless warnings about hidden typeinfo symbols
+             # not being exported.  There should be a better way to deal with this.
++            "-ld_classic", 
+             "-Wl,-w",
+             "-Wl,-exported_symbols_list,$(location %s.lds)" % vscriptname,
+         ],

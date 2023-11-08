@@ -33,16 +33,29 @@ build --define=allow_oversize_protos=true
 # explicit __init__.py files.
 # build --incompatible_default_to_explicit_init_py
 
+# Sets the default Apple platform to macOS.
+build:macos --apple_platform_type=macos
+
+# gRPC on MacOS requires this #define
+build:macos --copt=-DGRPC_BAZEL_BUILD
+
+# Avoid hitting command line argument limit
+build:macos --features=archive_param_file
+
+# Settings for MacOS on ARM CPUs.
+build:macos_arm64 --cpu=darwin_arm64
+build:macos_arm64 --macos_minimum_os=12.0
+
 # Processor native optimizations (depends on build host capabilities).
-build --copt=-march=native
-build --host_copt=-march=native
+build:linux --copt=-march=native
+build:linux --host_copt=-march=native
 # Only use level three optimizations for target, not necessarily for host
 # since host artifacts don't need to be fast.
 build --copt=-O3
 
 # Suppress C++ compiler warnings.
-build:linux --copt=-w
-build:linux --host_copt=-w
+build --copt=-w
+build --host_copt=-w
 
 #
 # Remote execution capabilities
@@ -108,10 +121,14 @@ build:linux --define=PREFIX=/usr
 build:linux --define=LIBDIR=$(PREFIX)/lib
 build:linux --define=INCLUDEDIR=$(PREFIX)/include
 build:linux --define=PROTOBUF_INCLUDE_PATH=$(PREFIX)/include
+build:macos --define=PREFIX=/usr
+build:macos --define=LIBDIR=$(PREFIX)/lib
+build:macos --define=INCLUDEDIR=$(PREFIX)/include
+build:macos --define=PROTOBUF_INCLUDE_PATH=$(PREFIX)/include
 
 # By default, build TF in C++ 17 mode.
-build:linux --cxxopt=-std=c++17
-build:linux --host_cxxopt=-std=c++17
+build --cxxopt=-std=c++17
+build --host_cxxopt=-std=c++17
 
 # Do not risk cache corruption. See:
 # https://github.com/bazelbuild/bazel/issues/3360
@@ -137,9 +154,6 @@ build:v2 --define=tf_api_version=2 --action_env=TF2_BEHAVIOR=1
 common --experimental_repo_remote_exec
 
 # Config-specific options should come above this line.
-
-# Here are bazelrc configs for release builds
-build --config=v2
 
 build:cuda --action_env=TF_CUDA_VERSION="12"
 build:cuda --action_env=TF_CUDNN_VERSION="8"
