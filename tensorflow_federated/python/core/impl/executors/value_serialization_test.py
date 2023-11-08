@@ -827,7 +827,7 @@ class SerializeCardinalitiesTest(absltest.TestCase):
     self.assertEqual(client_cardinalities, reconstructed_cardinalities)
 
 
-class SerializeNpArrayTest(tf.test.TestCase, parameterized.TestCase):
+class SerializeNpArrayTest(parameterized.TestCase):
 
   def test_serialize_deserialize_value_proto_for_array_undefined_shape(self):
     ndarray = np.array([10])
@@ -842,21 +842,23 @@ class SerializeNpArrayTest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(ndarray, deserialized_array)
 
   @parameterized.named_parameters(
-      ('str_generic', np.str_('abc')),
-      ('bytes_generic', np.bytes_('def')),
+      ('str_generic', np.str_('abc'), b'abc'),
+      ('bytes_generic', np.bytes_('def'), b'def'),
   )
-  def test_serialize_deserialize_value_proto_for_generic(self, np_generic):
+  def test_serialize_deserialize_value_proto_for_generic(
+      self, np_generic, expected_value
+  ):
     type_spec = computation_types.TensorType(
         dtype=np_generic.dtype, shape=np_generic.shape
     )
     value_proto = value_serialization._value_proto_for_np_array(
         np_generic, type_spec
     )
-    deserialized_array, deserialized_type = (
+    deserialized_value, deserialized_type = (
         value_serialization.deserialize_value(value_proto)
     )
     type_test_utils.assert_type_assignable_from(type_spec, deserialized_type)
-    self.assertAllEqual(np_generic, deserialized_array)
+    self.assertEqual(deserialized_value, expected_value)
 
 
 if __name__ == '__main__':

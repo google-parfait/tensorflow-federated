@@ -14,9 +14,12 @@
 
 import collections
 
+from absl.testing import absltest
 from absl.testing import parameterized
+import numpy as np
 import portpicker
 import tensorflow as tf
+import tree
 
 from tensorflow_federated.proto.v0 import executor_pb2
 from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_factory
@@ -27,9 +30,15 @@ from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.types import type_test_utils
 
-TensorType = computation_types.TensorType
-StructType = computation_types.StructType
-SequenceType = computation_types.SequenceType
+
+def _normalize_structure(structure):
+  def fn(obj):
+    if isinstance(obj, np.ndarray):
+      return list(obj)
+    else:
+      return obj
+
+  return tree.map_structure(fn, structure)
 
 
 def _test_map_integers(tensor):
@@ -74,7 +83,7 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
   def test_create_value(self, use_tf_executor):
     executor = get_executor(use_tf_executor)
     # 1. Test a simple tensor.
-    expected_type_spec = TensorType(shape=[3], dtype=tf.int64)
+    expected_type_spec = computation_types.TensorType(shape=[3], dtype=tf.int64)
     value_pb, _ = value_serialization.serialize_value(
         [1, 2, 3], expected_type_spec
     )
@@ -90,9 +99,9 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
     type_test_utils.assert_types_identical(type_spec, expected_type_spec)
     self.assertAllEqual(deserialized_value, [1, 2, 3])
     # 2. Test a struct of tensors, ensure that we get a different ID.
-    expected_type_spec = StructType([
-        ('a', TensorType(shape=[3], dtype=tf.int64)),
-        ('b', TensorType(shape=[], dtype=tf.float32)),
+    expected_type_spec = computation_types.StructType([
+        ('a', computation_types.TensorType(shape=[3], dtype=tf.int64)),
+        ('b', computation_types.TensorType(shape=[], dtype=tf.float32)),
     ])
     value_pb, _ = value_serialization.serialize_value(
         collections.OrderedDict(a=tf.constant([1, 2, 3]), b=tf.constant(42.0)),
@@ -150,7 +159,7 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
   )
   def test_create_value_sequence(self, dataset):
     executor = executor_bindings.create_tensorflow_executor()
-    sequence_type = SequenceType(dataset.element_spec)
+    sequence_type = computation_types.SequenceType(dataset.element_spec)
     arg_value_pb, _ = value_serialization.serialize_value(
         dataset, sequence_type
     )
@@ -172,16 +181,17 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
     output_pb = executor.materialize(result.ref)
     result, result_type_spec = value_serialization.deserialize_value(output_pb)
     type_test_utils.assert_types_identical(
-        result_type_spec, TensorType(sequence_type.element.dtype)
+        result_type_spec,
+        computation_types.TensorType(sequence_type.element.dtype),
     )
     self.assertEqual(result, sum(range(5)))
 
   def test_create_tuple_of_value_sequence(self):
     datasets = (tf.data.Dataset.range(5), tf.data.Dataset.range(5))
     executor = executor_bindings.create_tensorflow_executor()
-    struct_of_sequence_type = StructType([
-        (None, SequenceType(datasets[0].element_spec)),
-        (None, SequenceType(datasets[0].element_spec)),
+    struct_of_sequence_type = computation_types.StructType([
+        (None, computation_types.SequenceType(datasets[0].element_spec)),
+        (None, computation_types.SequenceType(datasets[0].element_spec)),
     ])
     arg_value_pb, _ = value_serialization.serialize_value(
         datasets, struct_of_sequence_type
@@ -219,7 +229,7 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
   )
   def test_create_struct(self, use_tf_executor):
     executor = get_executor(use_tf_executor)
-    expected_type_spec = TensorType(shape=[3], dtype=tf.int64)
+    expected_type_spec = computation_types.TensorType(shape=[3], dtype=tf.int64)
     value_pb, _ = value_serialization.serialize_value(
         tf.constant([1, 2, 3]), expected_type_spec
     )
@@ -261,7 +271,7 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
   )
   def test_create_selection(self, use_tf_executor):
     executor = get_executor(use_tf_executor)
-    expected_type_spec = TensorType(shape=[3], dtype=tf.int64)
+    expected_type_spec = computation_types.TensorType(shape=[3], dtype=tf.int64)
     value_pb, _ = value_serialization.serialize_value(
         tf.constant([1, 2, 3]), expected_type_spec
     )
@@ -301,7 +311,8 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
   def test_call_with_arg(self, use_tf_executor):
     executor = get_executor(use_tf_executor)
     value_pb, _ = value_serialization.serialize_value(
-        tf.constant([1, 2, 3]), TensorType(shape=[3], dtype=tf.int64)
+        tf.constant([1, 2, 3]),
+        computation_types.TensorType(shape=[3], dtype=tf.int64),
     )
     value_ref = executor.create_value(value_pb)
     arg = executor.create_struct((value_ref.ref, value_ref.ref))
@@ -344,7 +355,7 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
 
 
 class ReferenceResolvingExecutorBindingsTest(
-    parameterized.TestCase, tf.test.TestCase
+    parameterized.TestCase, absltest.TestCase
 ):
 
   @parameterized.named_parameters(
@@ -368,7 +379,7 @@ class ReferenceResolvingExecutorBindingsTest(
         get_executor(use_tf_executor)
     )
     # 1. Test a simple tensor.
-    expected_type_spec = TensorType(shape=[3], dtype=tf.int64)
+    expected_type_spec = computation_types.TensorType(shape=[3], dtype=tf.int64)
     value_pb, _ = value_serialization.serialize_value(
         [1, 2, 3], expected_type_spec
     )
@@ -382,11 +393,11 @@ class ReferenceResolvingExecutorBindingsTest(
         materialized_value
     )
     type_test_utils.assert_types_identical(type_spec, expected_type_spec)
-    self.assertAllEqual(deserialized_value, [1, 2, 3])
+    self.assertEqual(list(deserialized_value), [1, 2, 3])
     # 2. Test a struct of tensors, ensure that we get a different ID.
-    expected_type_spec = StructType([
-        ('a', TensorType(shape=[3], dtype=tf.int64)),
-        ('b', TensorType(shape=[], dtype=tf.float32)),
+    expected_type_spec = computation_types.StructType([
+        ('a', computation_types.TensorType(shape=[3], dtype=tf.int64)),
+        ('b', computation_types.TensorType(shape=[], dtype=tf.float32)),
     ])
     value_pb, _ = value_serialization.serialize_value(
         collections.OrderedDict(a=tf.constant([1, 2, 3]), b=tf.constant(42.0)),
@@ -408,8 +419,10 @@ class ReferenceResolvingExecutorBindingsTest(
     deserialized_value = type_conversions.type_to_py_container(
         deserialized_value, expected_type_spec
     )
-    self.assertAllClose(
-        deserialized_value, collections.OrderedDict(a=(1, 2, 3), b=42.0)
+
+    deserialized_value = _normalize_structure(deserialized_value)
+    self.assertEqual(
+        deserialized_value, collections.OrderedDict(a=[1, 2, 3], b=42.0)
     )
 
     # 3. Test creating a value from a computation.
@@ -436,7 +449,7 @@ class ReferenceResolvingExecutorBindingsTest(
     executor = executor_bindings.create_reference_resolving_executor(
         get_executor(use_tf_executor)
     )
-    expected_type_spec = TensorType(shape=[3], dtype=tf.int64)
+    expected_type_spec = computation_types.TensorType(shape=[3], dtype=tf.int64)
     value_pb, _ = value_serialization.serialize_value(
         tf.constant([1, 2, 3]), expected_type_spec
     )
@@ -456,7 +469,8 @@ class ReferenceResolvingExecutorBindingsTest(
     deserialized_value = type_conversions.type_to_py_container(
         deserialized_value, struct_type_spec
     )
-    self.assertAllClose([(1, 2, 3), (1, 2, 3)], deserialized_value)
+    deserialized_value = _normalize_structure(deserialized_value)
+    self.assertEqual(deserialized_value, [[1, 2, 3], [1, 2, 3]])
     # 2. Create a struct from the struct and another value.
     new_struct_value = executor.create_struct([struct_value.ref, value.ref])
     materialized_value = executor.materialize(new_struct_value.ref)
@@ -470,7 +484,8 @@ class ReferenceResolvingExecutorBindingsTest(
     deserialized_value = type_conversions.type_to_py_container(
         deserialized_value, struct_type_spec
     )
-    self.assertAllClose([[(1, 2, 3), (1, 2, 3)], (1, 2, 3)], deserialized_value)
+    deserialized_value = _normalize_structure(deserialized_value)
+    self.assertEqual(deserialized_value, [[[1, 2, 3], [1, 2, 3]], [1, 2, 3]])
 
   @parameterized.named_parameters(
       ('tf_executor', True),
@@ -480,7 +495,7 @@ class ReferenceResolvingExecutorBindingsTest(
     executor = executor_bindings.create_reference_resolving_executor(
         get_executor(use_tf_executor)
     )
-    expected_type_spec = TensorType(shape=[3], dtype=tf.int64)
+    expected_type_spec = computation_types.TensorType(shape=[3], dtype=tf.int64)
     value_pb, _ = value_serialization.serialize_value(
         tf.constant([1, 2, 3]), expected_type_spec
     )
@@ -500,7 +515,8 @@ class ReferenceResolvingExecutorBindingsTest(
     deserialized_value = type_conversions.type_to_py_container(
         deserialized_value, struct_type_spec
     )
-    self.assertAllClose([(1, 2, 3), (1, 2, 3)], deserialized_value)
+    deserialized_value = _normalize_structure(deserialized_value)
+    self.assertEqual(deserialized_value, [[1, 2, 3], [1, 2, 3]])
     # 2. Select the first value out of the struct.
     new_value = executor.create_selection(struct_value.ref, 0)
     materialized_value = executor.materialize(new_value.ref)
@@ -511,7 +527,8 @@ class ReferenceResolvingExecutorBindingsTest(
     deserialized_value = type_conversions.type_to_py_container(
         deserialized_value, struct_type_spec
     )
-    self.assertAllClose((1, 2, 3), deserialized_value)
+    deserialized_value = _normalize_structure(deserialized_value)
+    self.assertEqual(deserialized_value, [1, 2, 3])
 
   @parameterized.named_parameters(
       ('tf_executor', True),
@@ -522,7 +539,8 @@ class ReferenceResolvingExecutorBindingsTest(
         get_executor(use_tf_executor)
     )
     value_pb, _ = value_serialization.serialize_value(
-        tf.constant([1, 2, 3]), TensorType(shape=[3], dtype=tf.int64)
+        tf.constant([1, 2, 3]),
+        computation_types.TensorType(shape=[3], dtype=tf.int64),
     )
     value_ref = executor.create_value(value_pb)
     arg = executor.create_struct((value_ref.ref, value_ref.ref))
@@ -538,7 +556,8 @@ class ReferenceResolvingExecutorBindingsTest(
     result = executor.create_call(comp.ref, arg.ref)
     result_value_pb = executor.materialize(result.ref)
     result_tensor, _ = value_serialization.deserialize_value(result_value_pb)
-    self.assertAllEqual(result_tensor, [2, 4, 6])
+    result_tensor = _normalize_structure(result_tensor)
+    self.assertEqual(result_tensor, [2, 4, 6])
 
   @parameterized.named_parameters(
       ('tf_executor', True),
@@ -566,7 +585,7 @@ class ReferenceResolvingExecutorBindingsTest(
       executor.materialize(0)
 
 
-class FederatingExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
+class FederatingExecutorBindingsTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('server_client_both_tf_executor', True, True),
@@ -613,7 +632,7 @@ class FederatingExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
         )
 
 
-class RemoteExecutorBindingsTest(tf.test.TestCase):
+class RemoteExecutorBindingsTest(absltest.TestCase):
 
   def test_insecure_channel_construction(self):
     remote_ex = executor_bindings.create_remote_executor(
@@ -682,7 +701,7 @@ class SerializeTensorTest(tf.test.TestCase, parameterized.TestCase):
     self.assertAllEqual(roundtrip_value, input_value)
 
 
-class XlaExecutorBindingsTest(parameterized.TestCase):
+class XlaExecutorBindingsTest(absltest.TestCase):
 
   def test_create(self):
     try:
@@ -696,7 +715,7 @@ class XlaExecutorBindingsTest(parameterized.TestCase):
       executor.materialize(0)
 
 
-class SequenceExecutorBindingsTest(parameterized.TestCase):
+class SequenceExecutorBindingsTest(absltest.TestCase):
 
   def test_create(self):
     try:
@@ -715,4 +734,4 @@ class SequenceExecutorBindingsTest(parameterized.TestCase):
 
 
 if __name__ == '__main__':
-  tf.test.main()
+  absltest.main()
