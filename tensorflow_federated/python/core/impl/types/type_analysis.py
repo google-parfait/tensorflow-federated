@@ -324,19 +324,6 @@ def check_all_abstract_types_are_bound(type_spec):
   _check_or_get_unbound_abstract_type_labels(type_spec, set(), True)
 
 
-def is_numeric_dtype(dtype):
-  """Returns True iff `dtype` is numeric.
-
-  Args:
-    dtype: An instance of `tf.dtypes.DType`.
-
-  Returns:
-    True iff `dtype` is numeric, i.e., integer, float, or complex.
-  """
-  py_typecheck.check_type(dtype, tf.dtypes.DType)
-  return dtype.is_integer or dtype.is_floating or dtype.is_complex
-
-
 class SumIncompatibleError(TypeError):
 
   def __init__(self, type_spec, type_spec_context, reason):
@@ -368,7 +355,11 @@ def check_is_sum_compatible(type_spec, type_spec_context=None):
     type_spec_context = type_spec
   py_typecheck.check_type(type_spec_context, computation_types.Type)
   if isinstance(type_spec, computation_types.TensorType):
-    if not is_numeric_dtype(type_spec.dtype):
+
+    def _is_numeric_dtype(dtype):
+      return dtype.is_integer or dtype.is_floating or dtype.is_complex
+
+    if not _is_numeric_dtype(type_spec.dtype):
       raise SumIncompatibleError(
           type_spec, type_spec_context, f'{type_spec.dtype} is not numeric'
       )

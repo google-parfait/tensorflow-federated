@@ -145,12 +145,13 @@ def infer_type(arg: object) -> Optional[computation_types.Type]:
       return computation_types.TensorType(np.bool_)
     elif arg_type is int:
       # Chose the integral type based on value.
-      if arg > tf.int64.max or arg < tf.int64.min:
+      if arg > np.iinfo(np.int64).max or arg < np.iinfo(np.int64).min:
         raise TypeError(
             'No integral type support for values outside range '
-            f'[{tf.int64.min}, {tf.int64.max}]. Got: {arg}'
+            f'[{np.iinfo(np.int64).min}, {np.iinfo(np.int64).max}], '
+            f'found: {arg}.'
         )
-      elif arg > tf.int32.max or arg < tf.int32.min:
+      elif arg > np.iinfo(np.int32).max or arg < np.iinfo(np.int32).min:
         return computation_types.TensorType(np.int64)
       else:
         return computation_types.TensorType(np.int32)
