@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from absl.testing import absltest
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2
@@ -39,7 +40,7 @@ def _create_compiled_computation(py_fn, parameter_type, layout_map=None):
 class TensorFlowOptimizerTest(absltest.TestCase):
 
   def test_should_transform_compiled_computation(self):
-    tuple_type = computation_types.TensorType(tf.int32)
+    tuple_type = computation_types.TensorType(np.int32)
     compiled_computation = building_block_factory.create_compiled_identity(
         tuple_type
     )
@@ -50,7 +51,7 @@ class TensorFlowOptimizerTest(absltest.TestCase):
     self.assertTrue(tf_optimizer.should_transform(compiled_computation))
 
   def test_should_not_transform_reference(self):
-    reference = building_blocks.Reference('x', tf.int32)
+    reference = building_blocks.Reference('x', np.int32)
     config = tf.compat.v1.ConfigProto()
     tf_optimizer = compiled_computation_transformations.TensorFlowOptimizer(
         config
@@ -58,7 +59,7 @@ class TensorFlowOptimizerTest(absltest.TestCase):
     self.assertFalse(tf_optimizer.should_transform(reference))
 
   def test_transform_compiled_computation_returns_compiled_computation(self):
-    tuple_type = computation_types.TensorType(tf.int32)
+    tuple_type = computation_types.TensorType(np.int32)
     proto, function_type = tensorflow_computation_factory.create_identity(
         tuple_type,
         layout_map=computation_pb2.TensorFlow.LayoutMap(
@@ -105,7 +106,7 @@ class TensorFlowOptimizerTest(absltest.TestCase):
     self.assertFalse(transformed_comp.proto.tensorflow.initialize_op)
 
   def test_transform_compiled_computation_semantic_equivalence(self):
-    tuple_type = computation_types.TensorType(tf.int32)
+    tuple_type = computation_types.TensorType(np.int32)
     compiled_computation = building_block_factory.create_compiled_identity(
         tuple_type
     )
@@ -128,7 +129,7 @@ class TensorFlowOptimizerTest(absltest.TestCase):
 class AddUniqueIDsTest(absltest.TestCase):
 
   def test_should_transform_compiled_tf_computation(self):
-    tuple_type = computation_types.TensorType(tf.int32)
+    tuple_type = computation_types.TensorType(np.int32)
     compiled_computation = building_block_factory.create_compiled_identity(
         tuple_type
     )
@@ -139,7 +140,7 @@ class AddUniqueIDsTest(absltest.TestCase):
     )
 
   def test_should_not_transform_non_compiled_computations(self):
-    reference = building_blocks.Reference('x', tf.int32)
+    reference = building_blocks.Reference('x', np.int32)
     self.assertFalse(
         compiled_computation_transformations.AddUniqueIDs().should_transform(
             reference
@@ -194,7 +195,7 @@ class AddUniqueIDsTest(absltest.TestCase):
   def test_transform_compiled_computation_returns_compiled_computation_with_id(
       self,
   ):
-    tuple_type = computation_types.TensorType(tf.int32)
+    tuple_type = computation_types.TensorType(np.int32)
     compiled_computation = building_block_factory.create_compiled_identity(
         tuple_type
     )
@@ -246,8 +247,8 @@ class AddUniqueIDsTest(absltest.TestCase):
       )
     with self.subTest('different_computation_different_id'):
       different_compiled_computation = _create_compiled_computation(
-          lambda x: x + tf.constant(1.0),
-          computation_types.TensorType(tf.float32),
+          lambda x: x + np.float32(1.0),
+          computation_types.TensorType(np.float32),
       )
       different_transformed_comp, mutated = add_ids.transform(
           different_compiled_computation
@@ -268,7 +269,7 @@ class AddUniqueIDsTest(absltest.TestCase):
 class VerifyAllowedOpsTest(absltest.TestCase):
 
   def test_should_transform_tf_computation(self):
-    tuple_type = computation_types.TensorType(tf.int32)
+    tuple_type = computation_types.TensorType(np.int32)
     compiled_computation = building_block_factory.create_compiled_identity(
         tuple_type
     )
@@ -279,7 +280,7 @@ class VerifyAllowedOpsTest(absltest.TestCase):
     )
 
   def test_should_not_transform_non_compiled_computations(self):
-    reference = building_blocks.Reference('x', tf.int32)
+    reference = building_blocks.Reference('x', np.int32)
     self.assertFalse(
         compiled_computation_transformations.VerifyAllowedOps(
             frozenset()
@@ -287,7 +288,7 @@ class VerifyAllowedOpsTest(absltest.TestCase):
     )
 
   def test_transform_only_allowed_ops(self):
-    tuple_type = computation_types.TensorType(tf.int32)
+    tuple_type = computation_types.TensorType(np.int32)
     compiled_computation = building_block_factory.create_compiled_identity(
         tuple_type
     )
@@ -300,7 +301,7 @@ class VerifyAllowedOpsTest(absltest.TestCase):
     self.assertFalse(mutated)
 
   def test_transform_disallowed_ops(self):
-    tuple_type = computation_types.TensorType(tf.int32)
+    tuple_type = computation_types.TensorType(np.int32)
     compiled_computation = building_block_factory.create_compiled_identity(
         tuple_type
     )
@@ -316,7 +317,7 @@ class VerifyAllowedOpsTest(absltest.TestCase):
 class RaiseOnDisallowedOpTest(absltest.TestCase):
 
   def test_should_transform_tf_computation(self):
-    tuple_type = computation_types.TensorType(tf.int32)
+    tuple_type = computation_types.TensorType(np.int32)
     compiled_computation = building_block_factory.create_compiled_identity(
         tuple_type
     )
@@ -327,7 +328,7 @@ class RaiseOnDisallowedOpTest(absltest.TestCase):
     )
 
   def test_should_not_transform_non_compiled_computations(self):
-    reference = building_blocks.Reference('x', tf.int32)
+    reference = building_blocks.Reference('x', np.int32)
     self.assertFalse(
         compiled_computation_transformations.RaiseOnDisallowedOp(
             frozenset()
@@ -335,7 +336,7 @@ class RaiseOnDisallowedOpTest(absltest.TestCase):
     )
 
   def test_transform_no_disallowed_ops(self):
-    tuple_type = computation_types.TensorType(tf.int32)
+    tuple_type = computation_types.TensorType(np.int32)
     compiled_computation = building_block_factory.create_compiled_identity(
         tuple_type
     )
@@ -346,7 +347,7 @@ class RaiseOnDisallowedOpTest(absltest.TestCase):
     self.assertFalse(mutated)
 
   def test_transform_disallowed_ops(self):
-    tuple_type = computation_types.TensorType(tf.int32)
+    tuple_type = computation_types.TensorType(np.int32)
     compiled_computation = building_block_factory.create_compiled_identity(
         tuple_type
     )
