@@ -1,3 +1,19 @@
+# Release 0.65.0
+
+## Major Features and Improvements
+
+*   Update the representation of a `tff.TensorType.shape` to be a
+    `tff.types.ArrayShape` instead of `tf.TensorShape`.
+
+*   Updated `type_to_py_container``to be able to handle`tff.SequenceTypes` with
+    an unknown Python type.
+
+## Breaking Changes
+
+*   Moved `tff.structure_from_tensor_type_tree` to
+    `tff.types.structure_from_tensor_type_tree`.
+*   Remove the capability to pass an `int` as the shape of a `tff.TensorType`.
+
 # Release 0.64.0
 
 ## Major Features and Improvements
