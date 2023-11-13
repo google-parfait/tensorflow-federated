@@ -28,6 +28,7 @@ from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.common_libs import tracing
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.executors import executor_utils
+from tensorflow_federated.python.core.impl.types import array_shape
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
@@ -113,7 +114,7 @@ def _serialize_tensor_value(
     value = np.asarray(value, np.object_)
   else:
     value = np.asarray(value)
-  if not tf.TensorShape(value.shape).is_compatible_with(type_spec.shape):
+  if not array_shape.is_compatible_with(value.shape, type_spec.shape):
     raise TypeError(
         f'Cannot serialize tensor with shape {value.shape} to '
         f'shape {type_spec.shape}.'

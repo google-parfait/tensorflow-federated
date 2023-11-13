@@ -18,7 +18,7 @@ The `shape` of a tensor may be one of the following:
 *   Fully-defined: Has a known number of dimensions and a known size for each
     dimension (e.g. (2, 3)).
 *   Partially-defined: Has a known number of dimensions, and an unknown size for
-    one or more dimension (e.g. (1, None)).
+    one or more dimension (e.g. (2, None)).
 *   Unknown: Has an unknown number of dimensions (e.g. None).
 *   Scalar: Has no dimensions (e.g. ()).
 """
@@ -49,6 +49,33 @@ def is_shape_scalar(shape: ArrayShape) -> bool:
     shape: A `tff.types.ArrayShape`.
   """
   return shape is not None and not shape
+
+
+def is_compatible_with(target: ArrayShape, other: ArrayShape) -> bool:
+  """Returns `True` if `target` is compatible with `other`, otherwise `False`.
+
+  Two shapes are compatible if there exists a fully-defined shape that both
+  shapes can represent. For example:
+
+  * `None` is compatible with all shapes.
+  * `(None, None)` is compatible with all two-dimensional shapes, and also
+  `None`.
+  * `(2, None)` is compatible with all two-dimensional shapes with size 2 in the
+  0th dimension, and also `(None, None)` and `None`.
+  * `(2, 3) is compatible with itself, and also `(32, None)`, `(None, 3]),
+  `(None, None)`, and `None`.
+
+  Args:
+    target: A `tff.types.ArrayShape`.
+    other: Another `tff.types.ArrayShape`.
+  """
+  if target is None or other is None:
+    return True
+
+  if len(other) != len(target):
+    return False
+
+  return all(x is None or y is None or x == y for x, y in zip(target, other))
 
 
 def num_elements_in_shape(shape: ArrayShape) -> Optional[int]:
