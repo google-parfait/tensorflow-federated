@@ -59,7 +59,6 @@ py_library(
         ":intrinsic_defs",
         ":tensorflow_computation_factory",
         ":transformation_utils",
-        "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/types:array_shape",
@@ -67,10 +66,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/impl/types:type_analysis",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
-        "//tensorflow_federated/python/core/impl/types:type_serialization",
         "//tensorflow_federated/python/core/impl/types:type_transformations",
-        "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
-        "//tensorflow_federated/python/tensorflow_libs:serialization_utils",
     ],
 )
 
@@ -130,7 +126,6 @@ py_test(
         ":intrinsic_defs",
         ":tensorflow_computation_test_utils",
         "//tensorflow_federated/python/common_libs:golden",
-        "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/impl/types:type_analysis",

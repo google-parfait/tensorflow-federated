@@ -21,7 +21,6 @@ from typing import Optional, Union
 
 import tensorflow as tf
 
-from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.compiler import building_blocks
@@ -33,10 +32,7 @@ from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_conversions
-from tensorflow_federated.python.core.impl.types import type_serialization
 from tensorflow_federated.python.core.impl.types import type_transformations
-from tensorflow_federated.python.core.impl.utils import tensorflow_utils
-from tensorflow_federated.python.tensorflow_libs import serialization_utils
 
 Index = Union[str, int]
 Path = Union[Index, tuple[Index, ...]]
@@ -232,92 +228,6 @@ def _extract_selections(parameter_value, output_spec):
       result_element = result_element[selection]
     results.append(result_element)
   return results
-
-
-@functools.lru_cache()
-def construct_tensorflow_selecting_and_packing_outputs(
-    parameter_type: computation_types.StructType,
-    output_structure: structure.Struct,
-) -> building_blocks.CompiledComputation:
-  """Constructs TensorFlow selecting and packing elements from its input.
-
-  The result of this function can be called on a deduplicated
-  `building_blocks.Struct` containing called graphs, thus preventing us from
-  embedding the same TensorFlow computation in the generated graphs, and
-  reducing the amount of work duplicated in the process of generating
-  TensorFlow.
-
-  The TensorFlow which results here will be a function which takes an argument
-  of type `arg_type`, returning a result specified by `output_structure`. Each
-  `SelectionSpec` nested inside of `output_structure` will represent a selection
-  from one of the arguments of the tuple `arg_type`, with the empty selection
-  being a possibility. The nested structure of `output_structure` will determine
-  how these selections are packed back into a result, IE, the result of the
-  function will be a nested tuple with the same structure as `output_structure`,
-  where the leaves of this structure (the `SelectionSpecs` of
-  `output_structure`) will be selections from the argument.
-
-  Args:
-    parameter_type: A `computation_types.StructType` of the argument on which
-      the constructed function will be called.
-    output_structure: `structure.Struct` with `SelectionSpec` or
-      `anonymous_tupl.Struct` elements, mapping from elements of the nested
-      argument tuple to the desired result of the generated computation.
-      `output_structure` must contain all the names desired on the output of the
-      computation.
-
-  Returns:
-    A `building_blocks.CompiledComputation` representing the specification
-    above.
-
-  Raises:
-    TypeError: If `arg_type` is not a `computation_types.StructType`, or
-      represents a type which cannot act as an input or output to a TensorFlow
-      computation in TFF, IE does not contain exclusively
-      `computation_types.SequenceType`, `computation_types.StructType` or
-      `computation_types.TensorType`.
-  """
-  py_typecheck.check_type(parameter_type, computation_types.StructType)
-  py_typecheck.check_type(output_structure, structure.Struct)
-
-  def _check_output_structure(elem):
-    if isinstance(elem, structure.Struct):
-      for x in elem:
-        _check_output_structure(x)
-    elif not isinstance(elem, SelectionSpec):
-      raise TypeError(
-          'output_structure can only contain nested anonymous '
-          'tuples and `SelectionSpecs`; encountered the value {} '
-          'of type {}.'.format(elem, type(elem))
-      )
-
-  _check_output_structure(output_structure)
-  output_spec = structure.flatten(output_structure)
-  type_analysis.check_tensorflow_compatible_type(parameter_type)
-  with tf.Graph().as_default() as graph:
-    parameter_value, parameter_binding = (
-        tensorflow_utils.stamp_parameter_in_graph('x', parameter_type, graph)
-    )
-  results = _extract_selections(parameter_value, output_spec)
-
-  repacked_result = structure.pack_sequence_as(output_structure, results)
-  result_type, result_binding = tensorflow_utils.capture_result_from_graph(
-      repacked_result, graph
-  )
-
-  function_type = computation_types.FunctionType(parameter_type, result_type)
-  serialized_function_type = type_serialization.serialize_type(function_type)
-  proto = pb.Computation(
-      type=serialized_function_type,
-      tensorflow=pb.TensorFlow(
-          graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
-          parameter=parameter_binding,
-          result=result_binding,
-      ),
-  )
-  return building_blocks.CompiledComputation(
-      proto, type_signature=function_type
-  )
 
 
 @functools.lru_cache()
