@@ -15,6 +15,7 @@ limitations under the License
 
 #include "tensorflow_federated/cc/core/impl/executors/streaming_remote_executor.h"
 
+#include <climits>
 #include <cstdint>
 #include <future>  // NOLINT
 #include <list>
@@ -532,6 +533,16 @@ absl::StatusOr<ValueFuture> StreamingRemoteExecutor::CreateValueRPC(
   if (type_pb.has_function() || type_pb.ShortDebugString().empty()) {
     VLOG(5) << value_pb.Utf8DebugString();
   }
+  if (value_pb.ByteSizeLong() > INT_MAX) {
+    if (type_pb.has_federated()) {
+      LOG(ERROR) << "Federated type `" << type_pb.ShortDebugString()
+                 << "` with " << value_pb.federated().value_size()
+                 << " values.";
+    }
+    return absl::InvalidArgumentError(absl::StrCat(
+        "Message with type `", type_pb.ShortDebugString(),
+        "` will fail to serialize for gRPC, size: ", value_pb.ByteSizeLong()));
+  }
   v0::CreateValueRequest request;
   *request.mutable_executor() = executor_pb_;
   *request.mutable_value() = value_pb;
@@ -655,16 +666,31 @@ absl::Status StreamingRemoteExecutor::Materialize(ValueFuture value,
         // If not struct, nothing to stream; forward call as-is.
         return MaterializeRPC(value, value_pb);
       }
-      auto iter = cardinalities_.find(
-          value_ref->Type().federated().placement().value().uri());
-      if (iter == cardinalities_.end()) {
-        return absl::InternalError(absl::StrCat(
-            "Somehow tried to materialize a value with placed [",
-            value_ref->Type().federated().placement().value().uri(),
-            "] which is unknown. Only  have cardinalites for: ",
-            absl::StrJoin(cardinalities_, ",", absl::PairFormatter("="))));
+      int32_t cardinality = 0;
+      if (value_ref->Type().federated().placement().value().uri() ==
+          kServerUri) {
+        cardinality = 1;
+      } else {
+        auto iter = cardinalities_.find(
+            value_ref->Type().federated().placement().value().uri());
+        if (iter == cardinalities_.end()) {
+          return absl::InternalError(absl::StrCat(
+              "Somehow tried to materialize a value with placed [",
+              value_ref->Type().federated().placement().value().uri(),
+              "] which is unknown. Only have cardinalites for: ",
+              absl::StrJoin(cardinalities_, ",", absl::PairFormatter("="))));
+        }
+        cardinality = iter->second;
       }
-      const int32_t cardinality = iter->second;
+      if (cardinality <= 0) {
+        return absl::InternalError(absl::StrCat(
+            "Computed cardinality for placement ",
+            value_ref->Type().federated().placement().value().uri(), " is ",
+            cardinality, " <= 0!. Had cardinality map: ",
+            absl::StrJoin(cardinalities_, ",", absl::PairFormatter("=")),
+            ". This indicates an internal coding/logic error in the "
+            "system."));
+      }
       if (member_type_pb.struct_().element_size() == 0) {
         // Empty struct has nothing to materialize from the remote, avoid
         // issuing the RPC and simply return.

@@ -34,6 +34,7 @@ limitations under the License
 #include "absl/strings/substitute.h"
 #include "absl/synchronization/notification.h"
 #include "absl/time/time.h"
+#include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/federated_intrinsics.h"
 #include "tensorflow_federated/cc/core/impl/executors/mock_grpc.h"
@@ -142,10 +143,6 @@ constexpr char kExpectedGetExecutorRequest[] = R"pb(
     placement { uri: "clients" }
     cardinality: 1
   }
-  cardinalities {
-    placement { uri: "server" }
-    cardinality: 1
-  }
 )pb";
 
 grpc::Status UnimplementedPlaceholder() {
@@ -161,7 +158,7 @@ class StreamingRemoteExecutorBase {
   StreamingRemoteExecutorBase()
       : mock_executor_service_(mock_executor_.service()) {
     std::unique_ptr<v0::ExecutorGroup::Stub> stub_ptr(mock_executor_.NewStub());
-    CardinalityMap cardinalities = {{"server", 1}, {"clients", 1}};
+    CardinalityMap cardinalities = {{"clients", 1}};
     test_executor_ =
         CreateStreamingRemoteExecutor(std::move(stub_ptr), cardinalities);
   }

@@ -851,6 +851,7 @@ cc_test(
     timeout = "short",
     srcs = ["streaming_remote_executor_test.cc"],
     deps = [
+        ":cardinalities",
         ":executor",
         ":federated_intrinsics",
         ":mock_grpc",
