@@ -15,12 +15,25 @@
 
 from typing import Optional
 
+import tensorflow as tf
+import tree
+
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.computation import computation_wrapper
 from tensorflow_federated.python.core.impl.computation import function_utils
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_serialization
 from tensorflow_federated.python.core.impl.types import type_analysis
+
+
+def _transform_result(result: object) -> object:
+  def fn(obj):
+    if isinstance(obj, tf.Tensor) and not tf.is_symbolic_tensor(obj):
+      return obj.numpy()
+    else:
+      return obj
+
+  return tree.map_structure(fn, result)
 
 
 def _tf_wrapper_fn(
@@ -51,7 +64,10 @@ def _tf_wrapper_fn(
       )
   )
   return computation_impl.ConcreteComputation(
-      comp_pb, context_stack, extra_type_spec
+      comp_pb,
+      context_stack,
+      extra_type_spec,
+      _transform_result,
   )
 
 
