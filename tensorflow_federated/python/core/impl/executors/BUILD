@@ -249,9 +249,9 @@ py_test(
         ":remote_executor_stub",
         "//tensorflow_federated/proto/v0:executor_py_pb2",
         "//tensorflow_federated/python/common_libs:structure",
+        "//tensorflow_federated/python/core/impl/compiler:computation_factory",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
-        "@com_google_protobuf//:protobuf_python",
     ],
 )
 
@@ -327,7 +327,7 @@ py_test(
         ":value_serialization",
         "//tensorflow_federated/proto/v0:executor_py_pb2",
         "//tensorflow_federated/proto/v0:executor_py_pb2_grpc",
-        "@com_google_protobuf//:protobuf_python",
+        "//tensorflow_federated/python/core/impl/compiler:computation_factory",
     ],
 )
 

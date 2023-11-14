@@ -17,11 +17,10 @@ from unittest import mock
 from absl.testing import absltest
 import grpc
 import portpicker
-import tensorflow as tf
 
-from google.protobuf import any_pb2
 from tensorflow_federated.proto.v0 import executor_pb2
 from tensorflow_federated.proto.v0 import executor_pb2_grpc
+from tensorflow_federated.python.core.impl.compiler import computation_factory
 from tensorflow_federated.python.core.impl.executors import executors_errors
 from tensorflow_federated.python.core.impl.executors import remote_executor_grpc_stub
 from tensorflow_federated.python.core.impl.executors import value_serialization
@@ -68,10 +67,8 @@ class GrpcConnectivityTest(absltest.TestCase):
 class RemoteExecutorGrpcStubTest(absltest.TestCase):
 
   def test_compute_returns_result(self, mock_executor_grpc_stub):
-    tensor_proto = tf.make_tensor_proto(1)
-    any_pb = any_pb2.Any()
-    any_pb.Pack(tensor_proto)
-    value = executor_pb2.Value(tensor=any_pb)
+    comp = computation_factory.create_lambda_empty_struct()
+    value = executor_pb2.Value(computation=comp)
     response = executor_pb2.ComputeResponse(value=value)
     instance = mock_executor_grpc_stub.return_value
     instance.Compute = mock.Mock(side_effect=[response])
@@ -86,7 +83,7 @@ class RemoteExecutorGrpcStubTest(absltest.TestCase):
     instance.Compute.assert_called_once()
 
     value, _ = value_serialization.deserialize_value(result.value)
-    self.assertEqual(value, 1)
+    self.assertEqual(value, comp)
 
   def test_compute_raises_retryable_error_on_grpc_error_unavailable(
       self, mock_executor_grpc_stub

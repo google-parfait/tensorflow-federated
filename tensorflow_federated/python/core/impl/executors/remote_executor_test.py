@@ -19,11 +19,10 @@ from absl.testing import absltest
 from absl.testing import parameterized
 import grpc
 import numpy as np
-import tensorflow as tf
 
-from google.protobuf import any_pb2
 from tensorflow_federated.proto.v0 import executor_pb2
 from tensorflow_federated.python.common_libs import structure
+from tensorflow_federated.python.core.impl.compiler import computation_factory
 from tensorflow_federated.python.core.impl.executors import remote_executor
 from tensorflow_federated.python.core.impl.executors import remote_executor_stub
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -56,10 +55,8 @@ class RemoteValueTest(parameterized.TestCase):
   def test_compute_returns_result_with_stream_structs(
       self, stream_structs, mock_stub
   ):
-    tensor_proto = tf.make_tensor_proto(1)
-    any_pb = any_pb2.Any()
-    any_pb.Pack(tensor_proto)
-    value = executor_pb2.Value(tensor=any_pb)
+    comp = computation_factory.create_lambda_empty_struct()
+    value = executor_pb2.Value(computation=comp)
     mock_stub.compute.return_value = executor_pb2.ComputeResponse(value=value)
     executor = remote_executor.RemoteExecutor(
         mock_stub, stream_structs=stream_structs
@@ -67,14 +64,13 @@ class RemoteValueTest(parameterized.TestCase):
     _set_cardinalities_with_mock(executor, mock_stub)
     executor.set_cardinalities({placements.CLIENTS: 3})
     type_signature = computation_types.FunctionType(None, np.int32)
-    comp = remote_executor.RemoteValue(
+    remote_value = remote_executor.RemoteValue(
         executor_pb2.ValueRef(), type_signature, executor
     )
 
-    result = asyncio.run(comp.compute())
-
+    result = asyncio.run(remote_value.compute())
     mock_stub.compute.assert_called_once()
-    self.assertEqual(result, 1)
+    self.assertEqual(result, comp)
 
   @parameterized.named_parameters(
       ('false', False),
