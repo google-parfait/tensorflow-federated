@@ -19,15 +19,14 @@ from typing import Union
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.templates import aggregation_process
 
-ValueType = Union[computation_types.TensorType, computation_types.StructType]
-
 
 class UnweightedAggregationFactory(abc.ABC):
   """Factory for creating `tff.templates.AggregationProcess` without weights."""
 
   @abc.abstractmethod
   def create(
-      self, value_type: ValueType
+      self,
+      value_type: computation_types.Type,
   ) -> aggregation_process.AggregationProcess:
     """Creates a `tff.aggregators.AggregationProcess` without weights.
 
@@ -54,7 +53,9 @@ class WeightedAggregationFactory(abc.ABC):
 
   @abc.abstractmethod
   def create(
-      self, value_type: ValueType, weight_type: ValueType
+      self,
+      value_type: computation_types.Type,
+      weight_type: computation_types.Type,
   ) -> aggregation_process.AggregationProcess:
     """Creates a `tff.aggregators.AggregationProcess` with weights.
 
