@@ -18,6 +18,7 @@ from typing import NamedTuple
 from absl.testing import absltest
 from absl.testing import parameterized
 import attrs
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.core.impl.computation import computation_wrapper
@@ -34,6 +35,37 @@ def one_arg_fn(x):
 
 def no_arg_fn():
   return 10
+
+
+class TransformResultTest(absltest.TestCase):
+
+  def test_tensor_scalar(self):
+    result = tf.constant(1)
+
+    transformed_result = tensorflow_computation._transform_result(result)
+
+    self.assertIsInstance(transformed_result, np.int32)
+    self.assertEqual(transformed_result, 1)
+
+  def test_tensor_array(self):
+    result = tf.constant(list(range(5)))
+
+    transformed_result = tensorflow_computation._transform_result(result)
+
+    self.assertIsInstance(transformed_result, np.ndarray)
+    expected_result = list(range(5))
+    for actual, expected in zip(transformed_result, expected_result):
+      self.assertEqual(actual, expected)
+
+  def test_list_of_tensors(self):
+    result = [tf.constant(x) for x in range(5)]
+
+    transformed_result = tensorflow_computation._transform_result(result)
+
+    self.assertIsInstance(transformed_result, list)
+    self.assertTrue(all(isinstance(x, np.int32) for x in transformed_result))
+    expected_result = list(range(5))
+    self.assertEqual(transformed_result, expected_result)
 
 
 class TensorFlowComputationTest(parameterized.TestCase):

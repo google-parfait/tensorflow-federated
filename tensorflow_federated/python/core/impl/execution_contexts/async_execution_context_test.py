@@ -16,7 +16,6 @@ import asyncio
 
 from absl.testing import absltest
 import numpy as np
-import tensorflow as tf
 
 from tensorflow_federated.python.core.impl.context_stack import get_context_stack
 from tensorflow_federated.python.core.impl.execution_contexts import async_execution_context
@@ -38,27 +37,6 @@ class RetryableErrorTest(absltest.TestCase):
     self.assertFalse(async_execution_context._is_retryable_error(1))
     self.assertFalse(async_execution_context._is_retryable_error('a'))
     self.assertFalse(async_execution_context._is_retryable_error(None))
-
-
-class UnwrapValueTest(absltest.TestCase):
-
-  def test_tensor(self):
-    result = async_execution_context._unwrap(tf.constant(1))
-    self.assertIsInstance(result, np.int32)
-    self.assertEqual(result, 1)
-
-    result = async_execution_context._unwrap(tf.constant([1, 2]))
-    self.assertIsInstance(result, np.ndarray)
-    expected_result = [1, 2]
-    for actual, expected in zip(result, expected_result):
-      self.assertEqual(actual, expected)
-
-  def test_structure_of_tensors(self):
-    result = async_execution_context._unwrap([tf.constant(x) for x in range(5)])
-    self.assertIsInstance(result, list)
-    for x in range(5):
-      self.assertIsInstance(result[x], np.int32)
-      self.assertEqual(result[x], x)
 
 
 class AsyncContextInstallationTest(absltest.TestCase):
