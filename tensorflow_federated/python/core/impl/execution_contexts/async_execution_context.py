@@ -18,6 +18,8 @@ from collections.abc import Callable
 import contextlib
 from typing import Generic, Optional, TypeVar
 
+import tensorflow as tf
+
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import retrying
 from tensorflow_federated.python.common_libs import structure
@@ -37,6 +39,19 @@ from tensorflow_federated.python.core.impl.types import typed_object
 
 
 _Computation = TypeVar('_Computation', bound=computation_base.Computation)
+
+
+def _unwrap(value):
+  if isinstance(value, tf.Tensor):
+    return value.numpy()
+  elif isinstance(value, structure.Struct):
+    return structure.Struct(
+        (k, _unwrap(v)) for k, v in structure.iter_elements(value)
+    )
+  elif isinstance(value, list):
+    return [_unwrap(v) for v in value]
+  else:
+    return value
 
 
 def _is_retryable_error(exception):
@@ -130,8 +145,8 @@ async def _invoke(executor, comp, arg, result_type: computation_types.Type):
   comp = await executor.create_value(comp, comp.type_signature)
   result = await executor.create_call(comp, arg)
   py_typecheck.check_type(result, executor_value_base.ExecutorValue)
-  result_value = await result.compute()
-  return type_conversions.type_to_py_container(result_value, result_type)
+  result_val = _unwrap(await result.compute())
+  return type_conversions.type_to_py_container(result_val, result_type)
 
 
 class AsyncExecutionContext(context_base.AsyncContext, Generic[_Computation]):

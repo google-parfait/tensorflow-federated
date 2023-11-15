@@ -13,7 +13,6 @@
 # limitations under the License.
 """Defines the implementation of the base Computation interface."""
 
-from collections.abc import Callable
 from typing import Optional
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
@@ -87,7 +86,6 @@ class ConcreteComputation(computation_base.Computation):
       computation_proto: pb.Computation,
       context_stack: context_stack_base.ContextStack,
       annotated_type: Optional[computation_types.FunctionType] = None,
-      transform_result: Optional[Callable[[object], object]] = None,
   ):
     """Constructs a new instance of ConcreteComputation from the computation_proto.
 
@@ -97,8 +95,6 @@ class ConcreteComputation(computation_base.Computation):
       context_stack: The context stack to use.
       annotated_type: Optional, type information with additional annotations
         that replaces the information in `computation_proto.type`.
-      transform_result: An `Optional` `Callable` used to transform the result
-        before it is returned.
 
     Raises:
       TypeError: If `annotated_type` is not `None` and is not compatible with
@@ -129,7 +125,6 @@ class ConcreteComputation(computation_base.Computation):
     self._type_signature = type_spec
     self._context_stack = context_stack
     self._computation_proto = computation_proto
-    self._transform_result = transform_result
 
   def __eq__(self, other: object) -> bool:
     if self is other:
@@ -148,10 +143,7 @@ class ConcreteComputation(computation_base.Computation):
         args,
         kwargs,
     )
-    result = self._context_stack.current.invoke(self, arg)
-    if self._transform_result is not None:
-      result = self._transform_result(result)
-    return result
+    return self._context_stack.current.invoke(self, arg)
 
   def __hash__(self) -> int:
     return hash(self._computation_proto.SerializeToString(deterministic=True))
