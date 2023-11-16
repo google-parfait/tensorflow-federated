@@ -90,7 +90,12 @@ def infer_type(arg: object) -> Optional[computation_types.Type]:
           tf.SparseTensor,
       )
     else:
-      return computation_types.TensorType(arg.dtype.base_dtype, arg.shape)  # pytype: disable=attribute-error
+      dtype = arg.dtype.base_dtype.as_numpy_dtype  # pytype: disable=attribute-error
+      if arg.shape.rank is not None:  # pytype: disable=attribute-error
+        shape = arg.shape.as_list()  # pytype: disable=attribute-error
+      else:
+        shape = None
+      return computation_types.TensorType(dtype, shape)
   elif isinstance(arg, tf.data.Dataset):
     element_type = computation_types.to_type(arg.element_spec)
     return computation_types.SequenceType(element_type)
@@ -201,10 +206,7 @@ def _type_to_tf_dtypes_and_shapes(type_spec: computation_types.Type):
   """
   py_typecheck.check_type(type_spec, computation_types.Type)
   if isinstance(type_spec, computation_types.TensorType):
-    if not isinstance(type_spec.shape, tf.TensorShape):
-      shape = tf.TensorShape(type_spec.shape)
-    else:
-      shape = type_spec.shape
+    shape = tf.TensorShape(type_spec.shape)
     return (type_spec.dtype, shape)
   elif isinstance(type_spec, computation_types.StructType):
     elements = structure.to_elements(type_spec)
@@ -389,10 +391,15 @@ def type_from_tensors(tensors):
     The nested TensorType structure.
   """
 
-  def _mapping_fn(x):
-    if not tf.is_tensor(x):
-      x = tf.convert_to_tensor(x)
-    return computation_types.TensorType(x.dtype.base_dtype, x.shape)
+  def _mapping_fn(obj):
+    if not tf.is_tensor(obj):
+      obj = tf.convert_to_tensor(obj)
+    dtype = obj.dtype.base_dtype.as_numpy_dtype
+    if obj.shape.rank is not None:
+      shape = obj.shape.as_list()
+    else:
+      shape = None
+    return computation_types.TensorType(dtype, shape)
 
   if isinstance(tensors, structure.Struct):
     type_spec = structure.map_structure(_mapping_fn, tensors)
