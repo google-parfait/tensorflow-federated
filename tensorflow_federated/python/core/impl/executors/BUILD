@@ -130,6 +130,22 @@ py_test(
     ],
 )
 
+py_test(
+    name = "dtensor_executor_binding_test",
+    srcs = ["dtensor_executor_binding_test.py"],
+    tags = [
+        "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
+    ],
+    deps = [
+        ":executor_bindings",
+        ":value_serialization",
+        "//tensorflow_federated/proto/v0:computation_py_pb2",
+        "//tensorflow_federated/proto/v0:executor_py_pb2",
+        "//tensorflow_federated/python/core/impl/compiler:tensorflow_computation_factory",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+    ],
+)
+
 py_library(
     name = "executor_base",
     srcs = ["executor_base.py"],
@@ -161,6 +177,7 @@ py_test(
     deps = [
         ":executor_bindings",
         ":value_serialization",
+        ":xla_executor_bindings",
         "//tensorflow_federated/proto/v0:executor_py_pb2",
         "//tensorflow_federated/python/core/impl/compiler:tensorflow_computation_factory",
         "//tensorflow_federated/python/core/impl/types:computation_types",
@@ -256,6 +273,39 @@ py_test(
 )
 
 py_library(
+    name = "remote_executor_stub",
+    srcs = ["remote_executor_stub.py"],
+    srcs_version = "PY3",
+    deps = ["//tensorflow_federated/proto/v0:executor_py_pb2"],
+)
+
+py_library(
+    name = "remote_executor_grpc_stub",
+    srcs = ["remote_executor_grpc_stub.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":executors_errors",
+        ":remote_executor_stub",
+        "//tensorflow_federated/proto/v0:executor_py_pb2",
+        "//tensorflow_federated/proto/v0:executor_py_pb2_grpc",
+        "//tensorflow_federated/python/common_libs:tracing",
+    ],
+)
+
+py_test(
+    name = "remote_executor_grpc_stub_test",
+    srcs = ["remote_executor_grpc_stub_test.py"],
+    deps = [
+        ":executors_errors",
+        ":remote_executor_grpc_stub",
+        ":value_serialization",
+        "//tensorflow_federated/proto/v0:executor_py_pb2",
+        "//tensorflow_federated/proto/v0:executor_py_pb2_grpc",
+        "//tensorflow_federated/python/core/impl/compiler:computation_factory",
+    ],
+)
+
+py_library(
     name = "value_serialization",
     srcs = ["value_serialization.py"],
     srcs_version = "PY3",
@@ -299,51 +349,19 @@ py_test(
 )
 
 py_library(
-    name = "remote_executor_stub",
-    srcs = ["remote_executor_stub.py"],
-    srcs_version = "PY3",
-    deps = ["//tensorflow_federated/proto/v0:executor_py_pb2"],
-)
-
-py_library(
-    name = "remote_executor_grpc_stub",
-    srcs = ["remote_executor_grpc_stub.py"],
-    srcs_version = "PY3",
-    deps = [
-        ":executors_errors",
-        ":remote_executor_stub",
-        "//tensorflow_federated/proto/v0:executor_py_pb2",
-        "//tensorflow_federated/proto/v0:executor_py_pb2_grpc",
-        "//tensorflow_federated/python/common_libs:tracing",
-    ],
-)
-
-py_test(
-    name = "remote_executor_grpc_stub_test",
-    srcs = ["remote_executor_grpc_stub_test.py"],
-    deps = [
-        ":executors_errors",
-        ":remote_executor_grpc_stub",
-        ":value_serialization",
-        "//tensorflow_federated/proto/v0:executor_py_pb2",
-        "//tensorflow_federated/proto/v0:executor_py_pb2_grpc",
-        "//tensorflow_federated/python/core/impl/compiler:computation_factory",
-    ],
-)
-
-py_test(
-    name = "dtensor_executor_binding_test",
-    srcs = ["dtensor_executor_binding_test.py"],
+    name = "xla_executor_bindings",
+    srcs = ["xla_executor_bindings.py"],
     tags = [
-        # Similar to executor_bindings_tests which are disabled for kokoro as well.
         "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
     ],
-    deps = [
-        ":executor_bindings",
-        ":value_serialization",
-        "//tensorflow_federated/proto/v0:computation_py_pb2",
-        "//tensorflow_federated/proto/v0:executor_py_pb2",
-        "//tensorflow_federated/python/core/impl/compiler:tensorflow_computation_factory",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
+    deps = ["//tensorflow_federated/cc/core/impl/executors:executor_bindings"],
+)
+
+py_test(
+    name = "xla_executor_bindings_test",
+    srcs = ["xla_executor_bindings_test.py"],
+    tags = [
+        "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
     ],
+    deps = [":xla_executor_bindings"],
 )

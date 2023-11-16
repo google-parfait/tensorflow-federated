@@ -18,6 +18,7 @@ from tensorflow_federated.python.core.impl.context_stack import set_default_cont
 from tensorflow_federated.python.core.impl.execution_contexts import sync_execution_context
 from tensorflow_federated.python.core.impl.executor_stacks import cpp_executor_factory
 from tensorflow_federated.python.core.impl.executors import executor_bindings
+from tensorflow_federated.python.core.impl.executors import xla_executor_bindings
 
 
 def create_sync_local_cpp_execution_context(
@@ -39,7 +40,7 @@ def create_sync_local_cpp_execution_context(
 
   def leaf_executor_fn(max_concurrent_computation_calls):
     del max_concurrent_computation_calls  # Unused.
-    xla_executor = executor_bindings.create_xla_executor()
+    xla_executor = xla_executor_bindings.create_xla_executor()
     reference_resolving_executor = (
         executor_bindings.create_reference_resolving_executor(xla_executor)
     )
