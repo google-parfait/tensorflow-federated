@@ -11,13 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """DTensor executor binding test with Mesh and layout_map.
 
 These tests are added separately, since they require a module level setup
 for virtual devices initialization to create logical  devices.
 """
 
+from absl.testing import absltest
 from absl.testing import parameterized
 import tensorflow as tf
 
@@ -92,4 +92,4 @@ class DtensorExecutorBindingTest(parameterized.TestCase, tf.test.TestCase):
 
 
 if __name__ == '__main__':
-  tf.test.main()
+  absltest.main()

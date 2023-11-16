@@ -14,6 +14,7 @@
 
 import collections
 
+from absl.testing import absltest
 from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
@@ -558,4 +559,4 @@ class CreateComputationForPyFnTest(parameterized.TestCase):
 
 
 if __name__ == '__main__':
-  tf.test.main()
+  absltest.main()

@@ -15,6 +15,7 @@
 import collections
 import dataclasses
 
+from absl.testing import absltest
 import attrs
 import numpy as np
 import tensorflow as tf
@@ -1527,4 +1528,4 @@ class TensorFlowDeserializationTest(tf.test.TestCase):
 
 
 if __name__ == '__main__':
-  tf.test.main()
+  absltest.main()
