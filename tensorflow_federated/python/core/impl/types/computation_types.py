@@ -368,10 +368,23 @@ Dtype = Union[
 
 
 def _is_dtype(obj: object) -> TypeGuard[Union[Dtype, tf.dtypes.DType]]:
-  """Returns `True` if `obj` is a dtype, otherwise `False`."""
+  """Returns `True` if `obj` is a `Dtype`, otherwise `False`."""
   if isinstance(obj, type) and issubclass(obj, np.generic):
     return True
-  return isinstance(obj, (tf.dtypes.DType, np.dtype))
+  else:
+    return isinstance(obj, (tf.dtypes.DType, np.dtype))
+
+
+def _is_array_shape_like(
+    obj: object,
+) -> TypeGuard[Union[array_shape._ArrayShapeLike]]:
+  """Returns `True` if `obj` is an `_ArrayShapeLike`, otherwise `False`."""
+  if obj is None:
+    return True
+  else:
+    return isinstance(obj, Iterable) and all(
+        isinstance(x, int) or x is None for x in obj
+    )
 
 
 class TensorType(Type, metaclass=_Intern):
@@ -381,17 +394,11 @@ class TensorType(Type, metaclass=_Intern):
   def _hashable_from_init_args(
       cls,
       dtype: Union[Dtype, tf.dtypes.DType],
-      shape: Union[array_shape._ArrayShapeLike, tf.TensorShape] = (),
+      shape: Union[array_shape._ArrayShapeLike] = (),
   ) -> Hashable:
     """Returns hashable `TensorType.__init__` args."""
     if not isinstance(dtype, tf.dtypes.DType):
       dtype = tf.dtypes.as_dtype(dtype)
-    if isinstance(shape, tf.TensorShape):
-      if shape.rank is not None:
-        shape = shape.as_list()
-      else:
-        shape = None
-
     if shape is not None:
       shape = tuple(shape)
     return (dtype, shape)
@@ -399,7 +406,7 @@ class TensorType(Type, metaclass=_Intern):
   def __init__(
       self,
       dtype: Union[Dtype, tf.dtypes.DType],
-      shape: Union[array_shape._ArrayShapeLike, tf.TensorShape] = (),
+      shape: Union[array_shape._ArrayShapeLike] = (),
   ):
     """Constructs a new instance from the given `dtype` and `shape`.
 
@@ -413,12 +420,6 @@ class TensorType(Type, metaclass=_Intern):
     if not isinstance(dtype, tf.dtypes.DType):
       dtype = tf.dtypes.as_dtype(dtype)
     self._dtype = dtype
-    if isinstance(shape, tf.TensorShape):
-      if shape.rank is not None:
-        shape = shape.as_list()
-      else:
-        shape = None
-
     if shape is not None:
       shape = tuple(shape)
     self._shape = shape
@@ -512,7 +513,7 @@ def _to_named_types(
   if it were an iterable of that element.
 
   Args:
-    elements: An iterable of named or unamed objects to convert to `tff.Types`.
+    elements: An iterable of named or unnamed objects to convert to `tff.Types`.
       See `tff.types.to_type` for more information.
 
   Returns:
@@ -1056,26 +1057,22 @@ def to_type(obj: object) -> Type:
   elif _is_dtype(obj):
     return TensorType(obj)  # pytype: disable=wrong-arg-types  # b/290661340
   elif isinstance(obj, tf.TensorSpec):
-    return TensorType(obj.dtype, obj.shape)
+    dtype = obj.dtype.as_numpy_dtype
+    if obj.shape.rank is not None:
+      shape = obj.shape.as_list()
+    else:
+      shape = None
+    return TensorType(dtype, shape)
   elif isinstance(obj, tf.data.DatasetSpec):
     return SequenceType(element=to_type(obj.element_spec))
   elif (
       isinstance(obj, tuple)
       and len(obj) == 2
       and _is_dtype(obj[0])
-      and (
-          isinstance(obj[1], tf.TensorShape)
-          or (
-              isinstance(obj[1], (list, tuple))
-              and all((isinstance(x, int) or x is None) for x in obj[1])
-          )
-      )
+      and _is_array_shape_like(obj[1])
   ):
-    # We found a 2-element tuple of the form (dtype, shape), where dtype is an
-    # instance of tf.dtypes.DType, and shape is either an instance of
-    # tf.TensorShape, or a list, or a tuple that can be fed as argument into a
-    # tf.TensorShape. We thus convert this into a TensorType.
-    return TensorType(obj[0], obj[1])
+    dtype, shape = obj
+    return TensorType(dtype, shape)
   elif isinstance(obj, (list, tuple)):
     if any(py_typecheck.is_name_value_pair(e, name_type=str) for e in obj):
       # The sequence has a (name, value) elements, the whole sequence is most

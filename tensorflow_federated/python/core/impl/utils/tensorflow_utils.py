@@ -282,8 +282,13 @@ def capture_result_from_graph(
           name_value_pairs, graph, tf.sparse.SparseTensor
       )
     else:
+      dtype = result.dtype.base_dtype.as_numpy_dtype
+      if result.shape.rank is not None:
+        shape = result.shape.as_list()
+      else:
+        shape = None
       return (
-          computation_types.TensorType(result.dtype.base_dtype, result.shape),
+          computation_types.TensorType(dtype, shape),
           pb.TensorFlow.Binding(
               tensor=pb.TensorFlow.TensorBinding(tensor_name=result.name)
           ),
