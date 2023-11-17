@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from absl.testing import absltest
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
@@ -30,7 +31,7 @@ class TensorFlowComputationContextTest(absltest.TestCase):
     bogus_proto = pb.Computation(
         type=type_serialization.serialize_type(
             computation_types.to_type(
-                computation_types.FunctionType(tf.int32, tf.int32)
+                computation_types.FunctionType(np.int32, np.int32)
             )
         ),
         reference=pb.Reference(name='boogledy'),

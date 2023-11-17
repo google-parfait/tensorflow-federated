@@ -441,7 +441,7 @@ class TypeToTfTensorSpecsTest(absltest.TestCase):
 
   def test_with_invalid_type(self):
     with self.assertRaises(TypeError):
-      type_conversions.type_to_tf_tensor_specs(tf.float32(0.0))
+      type_conversions.type_to_tf_tensor_specs(np.float32(0.0))
 
   def test_with_unnamed_element(self):
     type_signature = computation_types.StructType([np.int32])

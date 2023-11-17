@@ -19,6 +19,7 @@ for virtual devices initialization to create logical  devices.
 
 from absl.testing import absltest
 from absl.testing import parameterized
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
@@ -62,7 +63,7 @@ class DtensorExecutorBindingTest(parameterized.TestCase, tf.test.TestCase):
       )
       value_pb, _ = value_serialization.serialize_value(
           tf.constant([1, 2, 3, 4, 5, 6, 7, 8]),
-          TensorType(shape=[8], dtype=tf.int64),
+          TensorType(np.int64, [8]),
       )
 
       value_ref = executor.create_value(value_pb)
@@ -78,8 +79,8 @@ class DtensorExecutorBindingTest(parameterized.TestCase, tf.test.TestCase):
 
       proto, _ = tensorflow_computation_factory.create_binary_operator(
           tf.add,
-          computation_types.TensorType(tf.int64),
-          computation_types.TensorType(tf.int64),
+          computation_types.TensorType(np.int64),
+          computation_types.TensorType(np.int64),
           layout_map,
       )
 

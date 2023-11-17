@@ -64,7 +64,7 @@ class TensorFlowSerializationTest(tf.test.TestCase):
     comp, extra_type_spec = (
         tensorflow_serialization.serialize_py_fn_as_tf_computation(
             table_lookup,
-            computation_types.TensorType(dtype=tf.string, shape=(None,)),
+            computation_types.TensorType(np.str_, (None,)),
             context_stack_impl.context_stack,
         )
     )
@@ -97,7 +97,7 @@ class TensorFlowSerializationTest(tf.test.TestCase):
     comp, extra_type_spec = (
         tensorflow_serialization.serialize_py_fn_as_tf_computation(
             lambda x: x + 3,
-            computation_types.TensorType(tf.int32),
+            computation_types.TensorType(np.int32),
             context_stack_impl.context_stack,
         )
     )
@@ -127,7 +127,7 @@ class TensorFlowSerializationTest(tf.test.TestCase):
         tensorflow_serialization.serialize_py_fn_as_tf_computation(
             lambda z: output_type(2.0 * tf.cast(z.x, tf.float32), 3.0 * z.y),
             computation_types.StructWithPythonType(
-                [('x', tf.int32), ('y', (tf.float32, [2]))], batch_type
+                [('x', np.int32), ('y', (np.float32, [2]))], batch_type
             ),
             context_stack_impl.context_stack,
         )
@@ -158,7 +158,7 @@ class TensorFlowSerializationTest(tf.test.TestCase):
     comp, extra_type_spec = (
         tensorflow_serialization.serialize_py_fn_as_tf_computation(
             _legacy_dataset_reducer_example,
-            computation_types.SequenceType(tf.int64),
+            computation_types.SequenceType(np.int64),
             context_stack_impl.context_stack,
         )
     )
@@ -193,7 +193,7 @@ class TensorFlowSerializationTest(tf.test.TestCase):
     comp, extra_type_spec = (
         tensorflow_serialization.serialize_py_fn_as_tf_computation(
             _legacy_dataset_reducer_example,
-            computation_types.SequenceType([tf.int64]),
+            computation_types.SequenceType([np.int64]),
             context_stack_impl.context_stack,
         )
     )

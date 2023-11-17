@@ -16,6 +16,7 @@ from collections.abc import Iterator
 import itertools
 
 from absl.testing import absltest
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2
@@ -63,7 +64,7 @@ class DisableGrapplerForPartitionedCalls(absltest.TestCase):
       )
 
   def test_raises_on_compiled_computation(self):
-    tensor_type = computation_types.TensorType(tf.int32)
+    tensor_type = computation_types.TensorType(np.int32)
     comp = building_block_factory.create_compiled_identity(tensor_type)
     with self.assertRaises(TypeError):
       tensorflow_computation_transformations.disable_grappler_for_partitioned_calls(
