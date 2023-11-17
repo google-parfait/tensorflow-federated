@@ -102,7 +102,7 @@ def _serialize_tensor_value(
   if tf.is_tensor(value):
     if isinstance(value, tf.Variable):
       value = value.read_value()
-    if isinstance(value, tf.Tensor) and tf.executing_eagerly():
+    if isinstance(value, tf.Tensor) and not tf.is_symbolic_tensor(value):
       value = value.numpy()
     else:
       # Attempt to extract the value using the current graph context.
