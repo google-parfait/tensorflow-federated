@@ -62,6 +62,7 @@ py_test(
         "//tensorflow_federated/python/program:file_program_state_manager",
         "//tensorflow_federated/python/program:native_platform",
         "//tensorflow_federated/python/program:release_manager",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
     ],
 )
 
@@ -111,6 +112,7 @@ py_test(
         "//tensorflow_federated/python/program:native_platform",
         "//tensorflow_federated/python/program:program_state_manager",
         "//tensorflow_federated/python/program:release_manager",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
     ],
 )
 
@@ -145,5 +147,6 @@ py_test(
         "//tensorflow_federated/python/program:native_platform",
         "//tensorflow_federated/python/program:program_state_manager",
         "//tensorflow_federated/python/program:release_manager",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
     ],
 )

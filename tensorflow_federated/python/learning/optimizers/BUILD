@@ -33,6 +33,7 @@ py_test(
         ":adagrad",
         ":optimizer",
         ":optimizer_test_utils",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
     ],
 )
 
@@ -52,6 +53,7 @@ py_test(
         ":adam",
         ":optimizer",
         ":optimizer_test_utils",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
     ],
 )
 
@@ -86,6 +88,7 @@ py_test(
         ":sgdm",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
     ],
 )
 
@@ -105,6 +108,7 @@ py_test(
         "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
     ],
 )
 
@@ -116,7 +120,10 @@ py_library(
 py_test(
     name = "optimizer_test",
     srcs = ["optimizer_test.py"],
-    deps = [":optimizer"],
+    deps = [
+        ":optimizer",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
+    ],
 )
 
 py_library(
@@ -129,7 +136,10 @@ py_library(
 py_test(
     name = "optimizer_test_utils_test",
     srcs = ["optimizer_test_utils_test.py"],
-    deps = [":optimizer_test_utils"],
+    deps = [
+        ":optimizer_test_utils",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
+    ],
 )
 
 py_library(
@@ -148,6 +158,7 @@ py_test(
         ":optimizer",
         ":optimizer_test_utils",
         ":rmsprop",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
     ],
 )
 
@@ -168,6 +179,7 @@ py_test(
         ":scheduling",
         ":sgdm",
         ":yogi",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
     ],
 )
 
@@ -187,6 +199,7 @@ py_test(
         ":optimizer",
         ":optimizer_test_utils",
         ":sgdm",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
     ],
 )
 
@@ -206,5 +219,6 @@ py_test(
         ":optimizer",
         ":optimizer_test_utils",
         ":yogi",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
     ],
 )

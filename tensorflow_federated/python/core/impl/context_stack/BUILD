@@ -55,6 +55,7 @@ py_test(
     deps = [
         ":context_stack_impl",
         ":context_stack_test_utils",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
     ],
 )
 
@@ -73,6 +74,7 @@ py_test(
     deps = [
         ":context_stack_impl",
         ":context_stack_test_utils",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
     ],
 )
 
@@ -89,6 +91,7 @@ py_test(
     deps = [
         ":context_stack_impl",
         ":get_context_stack",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
     ],
 )
 
@@ -115,6 +118,7 @@ py_test(
         ":context_stack_impl",
         ":context_stack_test_utils",
         ":set_default_context",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
     ],
 )
 

@@ -55,6 +55,7 @@ py_test(
         ":iblt_factory",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
     ],
 )
 
@@ -90,20 +91,29 @@ py_test(
     timeout = "long",
     srcs = ["iblt_lib_test.py"],
     shard_count = 4,
-    deps = [":iblt_lib"],
+    deps = [
+        ":iblt_lib",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
+    ],
 )
 
 py_test(
     name = "chunkers_test",
     srcs = ["chunkers_test.py"],
-    deps = [":chunkers"],
+    deps = [
+        ":chunkers",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
+    ],
 )
 
 py_test(
     name = "hyperedge_hashers_test",
     size = "medium",
     srcs = ["hyperedge_hashers_test.py"],
-    deps = [":hyperedge_hashers"],
+    deps = [
+        ":hyperedge_hashers",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
+    ],
 )
 
 py_library(
@@ -134,6 +144,7 @@ py_test(
         "//tensorflow_federated/python/core/impl/computation:computation_base",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_test_utils",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
     ],
 )
 
@@ -152,6 +163,7 @@ py_test(
     deps = [
         ":iblt_lib",
         ":iblt_tensor",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
     ],
 )
 
@@ -184,6 +196,7 @@ py_test(
         "//tensorflow_federated/python/aggregators:sum_factory",
         "//tensorflow_federated/python/core/backends/test:execution_contexts",
         "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
     ],
 )
 
@@ -200,5 +213,6 @@ py_test(
         ":iblt_factory",
         ":iblt_lib",
         ":subsample_process",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
     ],
 )

@@ -19,6 +19,7 @@ py_test(
     deps = [
         ":p13n_utils",
         "//tensorflow_federated",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
     ],
 )
 

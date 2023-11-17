@@ -84,6 +84,7 @@ py_test(
         ":type_test_utils",
         "//tensorflow_federated/python/common_libs:golden",
         "//tensorflow_federated/python/common_libs:structure",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
     ],
 )
 
@@ -96,7 +97,10 @@ py_test(
     name = "placements_test",
     size = "small",
     srcs = ["placements_test.py"],
-    deps = [":placements"],
+    deps = [
+        ":placements",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
+    ],
 )
 
 py_library(
@@ -122,6 +126,7 @@ py_test(
         ":placements",
         ":type_analysis",
         "//tensorflow_federated/python/common_libs:structure",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
     ],
 )
 
@@ -147,6 +152,7 @@ py_test(
         ":type_test_utils",
         ":typed_object",
         "//tensorflow_federated/python/common_libs:structure",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
     ],
 )
 
@@ -163,6 +169,7 @@ py_test(
     deps = [
         ":computation_types",
         ":type_factory",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
     ],
 )
 
@@ -187,6 +194,7 @@ py_test(
         ":placements",
         ":type_serialization",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
     ],
 )
 
@@ -214,6 +222,7 @@ py_test(
         ":computation_types",
         ":placements",
         ":type_transformations",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
     ],
 )
 

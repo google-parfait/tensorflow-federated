@@ -33,7 +33,10 @@ py_library(
 py_test(
     name = "async_utils_test",
     srcs = ["async_utils_test.py"],
-    deps = [":async_utils"],
+    deps = [
+        ":async_utils",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
+    ],
 )
 
 py_library(
@@ -44,7 +47,10 @@ py_library(
 py_test(
     name = "deprecation_test",
     srcs = ["deprecation_test.py"],
-    deps = [":deprecation"],
+    deps = [
+        ":deprecation",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
+    ],
 )
 
 py_library(
@@ -70,7 +76,10 @@ py_test(
         "golden_test_goldens/test_check_string_succeeds.expected",
         "golden_test_goldens/test_check_string_updates.expected",
     ],
-    deps = [":golden"],
+    deps = [
+        ":golden",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
+    ],
 )
 
 py_library(
@@ -82,7 +91,10 @@ py_test(
     name = "py_typecheck_test",
     size = "small",
     srcs = ["py_typecheck_test.py"],
-    deps = [":py_typecheck"],
+    deps = [
+        ":py_typecheck",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
+    ],
 )
 
 py_library(
@@ -97,7 +109,10 @@ py_test(
     name = "retrying_test",
     size = "small",
     srcs = ["retrying_test.py"],
-    deps = [":retrying"],
+    deps = [
+        ":retrying",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
+    ],
 )
 
 py_library(
@@ -115,7 +130,10 @@ py_test(
     name = "structure_test",
     size = "small",
     srcs = ["structure_test.py"],
-    deps = [":structure"],
+    deps = [
+        ":structure",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
+    ],
 )
 
 py_library(
@@ -128,5 +146,8 @@ py_test(
     name = "tracing_test",
     size = "small",
     srcs = ["tracing_test.py"],
-    deps = [":tracing"],
+    deps = [
+        ":tracing",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
+    ],
 )

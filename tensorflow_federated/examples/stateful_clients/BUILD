@@ -40,5 +40,6 @@ py_test(
         ":stateful_fedavg_tf",
         ":stateful_fedavg_tff",
         "//tensorflow_federated",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
     ],
 )

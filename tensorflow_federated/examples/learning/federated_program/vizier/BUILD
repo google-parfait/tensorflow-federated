@@ -37,5 +37,8 @@ py_test(
     data = [
         ":study_spec.textproto",
     ],
-    deps = [":vizier_service"],
+    deps = [
+        ":vizier_service",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
+    ],
 )

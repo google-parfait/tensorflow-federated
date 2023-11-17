@@ -48,6 +48,7 @@ py_test(
         ":task_data",
         "//tensorflow_federated/python/learning/models:keras_utils",
         "//tensorflow_federated/python/simulation/datasets:client_data",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
     ],
 )
 
@@ -64,7 +65,10 @@ py_library(
 py_test(
     name = "keras_metrics_test",
     srcs = ["keras_metrics_test.py"],
-    deps = [":keras_metrics"],
+    deps = [
+        ":keras_metrics",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
+    ],
 )
 
 py_library(
@@ -82,5 +86,6 @@ py_test(
     deps = [
         ":task_data",
         "//tensorflow_federated/python/simulation/datasets:client_data",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
     ],
 )

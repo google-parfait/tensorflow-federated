@@ -48,6 +48,7 @@ py_test(
     deps = [
         ":data_processing",
         ":histogram_test_utils",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
     ],
 )
 
@@ -68,6 +69,7 @@ py_test(
     deps = [
         ":histogram_processing",
         ":histogram_test_utils",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
     ],
 )
 
@@ -92,7 +94,10 @@ py_library(
 py_test(
     name = "differential_privacy_test",
     srcs = ["differential_privacy_test.py"],
-    deps = [":differential_privacy"],
+    deps = [
+        ":differential_privacy",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
+    ],
 )
 
 py_test(
@@ -102,5 +107,6 @@ py_test(
         ":count_distinct",
         "//tensorflow_federated/python/core/backends/test:execution_contexts",
         "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
     ],
 )

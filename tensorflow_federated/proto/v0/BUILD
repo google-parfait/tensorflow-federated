@@ -34,7 +34,10 @@ py_test(
         "nofixdeps",
         "nokokoro",
     ],
-    deps = [":computation_py_pb2"],
+    deps = [
+        ":computation_py_pb2",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
+    ],
 )
 
 cc_proto_library(
