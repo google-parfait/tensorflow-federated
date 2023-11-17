@@ -99,13 +99,13 @@ class TensorFlowComputationTest(parameterized.TestCase):
   def test_tf_computation_without_type(self, fn):
     fn = tensorflow_computation.tf_computation(fn)
     concrete_fn = fn.fn_for_argument_type(
-        computation_types.TensorType(tf.int32)
+        computation_types.TensorType(np.int32)
     )
     self.assertEqual(
         concrete_fn.type_signature.compact_representation(), '(int32 -> bool)'
     )
     concrete_fn = fn.fn_for_argument_type(
-        computation_types.TensorType(tf.float32)
+        computation_types.TensorType(np.float32)
     )
     self.assertEqual(
         concrete_fn.type_signature.compact_representation(), '(float32 -> bool)'
@@ -126,13 +126,13 @@ class TensorFlowComputationTest(parameterized.TestCase):
       return x > 10
 
     concrete_fn = foo.fn_for_argument_type(
-        computation_types.TensorType(tf.int32)
+        computation_types.TensorType(np.int32)
     )
     self.assertEqual(
         concrete_fn.type_signature.compact_representation(), '(int32 -> bool)'
     )
     concrete_fn = foo.fn_for_argument_type(
-        computation_types.TensorType(tf.float32)
+        computation_types.TensorType(np.float32)
     )
     self.assertEqual(
         concrete_fn.type_signature.compact_representation(), '(float32 -> bool)'
@@ -163,8 +163,8 @@ class TensorFlowComputationTest(parameterized.TestCase):
 
     concrete_fn = foo.fn_for_argument_type(
         computation_types.StructType([
-            computation_types.TensorType(tf.int32),
-            computation_types.TensorType(tf.int32),
+            computation_types.TensorType(np.int32),
+            computation_types.TensorType(np.int32),
         ])
     )
     self.assertEqual(
@@ -173,8 +173,8 @@ class TensorFlowComputationTest(parameterized.TestCase):
     )
     concrete_fn = foo.fn_for_argument_type(
         computation_types.StructType([
-            computation_types.TensorType(tf.float32),
-            computation_types.TensorType(tf.float32),
+            computation_types.TensorType(np.float32),
+            computation_types.TensorType(np.float32),
         ])
     )
     self.assertEqual(
@@ -234,11 +234,11 @@ class TensorFlowComputationTest(parameterized.TestCase):
 
     concrete_fn = foo.fn_for_argument_type(
         computation_types.to_type([
-            tf.int32,
-            (tf.int32, tf.int32),
-            [tf.int32, tf.int32],
-            collections.OrderedDict([('foo', tf.int32), ('bar', tf.int32)]),
-            MyType(tf.int32, tf.int32),
+            np.int32,
+            (np.int32, np.int32),
+            [np.int32, np.int32],
+            collections.OrderedDict([('foo', np.int32), ('bar', np.int32)]),
+            MyType(np.int32, np.int32),
         ])
     )
     self.assertEqual(
@@ -250,11 +250,11 @@ class TensorFlowComputationTest(parameterized.TestCase):
     )
     concrete_fn = foo.fn_for_argument_type(
         computation_types.to_type([
-            tf.float32,
-            (tf.float32, tf.float32),
-            [tf.float32, tf.float32],
-            collections.OrderedDict([('foo', tf.float32), ('bar', tf.float32)]),
-            MyType(tf.float32, tf.float32),
+            np.float32,
+            (np.float32, np.float32),
+            [np.float32, np.float32],
+            collections.OrderedDict([('foo', np.float32), ('bar', np.float32)]),
+            MyType(np.float32, np.float32),
         ])
     )
     self.assertEqual(
@@ -322,7 +322,7 @@ class TensorFlowComputationTest(parameterized.TestCase):
 
     concrete_fn = foo.fn_for_argument_type(
         computation_types.StructWithPythonType(
-            [('x', tf.int32), ('y', tf.int32)], MyType
+            [('x', np.int32), ('y', np.int32)], MyType
         )
     )
     self.assertEqual(
@@ -331,7 +331,7 @@ class TensorFlowComputationTest(parameterized.TestCase):
     )
     concrete_fn = foo.fn_for_argument_type(
         computation_types.StructWithPythonType(
-            [('x', tf.float32), ('y', tf.float32)], MyType
+            [('x', np.float32), ('y', np.float32)], MyType
         )
     )
     self.assertEqual(
@@ -359,7 +359,7 @@ class TensorFlowComputationTest(parameterized.TestCase):
     try:
 
       @tensorflow_computation.tf_computation(
-          computation_types.SequenceType(tf.int32)
+          computation_types.SequenceType(np.int32)
       )
       def _(x):
         return x
@@ -369,9 +369,9 @@ class TensorFlowComputationTest(parameterized.TestCase):
 
   def test_fails_with_bad_types(self):
     function = computation_types.FunctionType(
-        None, computation_types.TensorType(tf.int32)
+        None, computation_types.TensorType(np.int32)
     )
-    federated = computation_types.FederatedType(tf.int32, placements.CLIENTS)
+    federated = computation_types.FederatedType(np.int32, placements.CLIENTS)
     tuple_on_function = computation_types.StructType([federated, function])
 
     def foo(x):
@@ -441,23 +441,26 @@ class TensorFlowComputationTest(parameterized.TestCase):
     )
 
   def test_check_returns_type_with_tensorflow_computation_succeeds(self):
+
     @tensorflow_computation.tf_computation(tf.int32)
-    @computation_wrapper.check_returns_type(tf.int32)
+    @computation_wrapper.check_returns_type(np.int32)
     def _(x):
       return x
 
   def test_check_returns_type_with_tensorflow_computation_fails(self):
     with self.assertRaises(TypeError):
+
       @tensorflow_computation.tf_computation(tf.int32)
-      @computation_wrapper.check_returns_type(tf.int32)
+      @computation_wrapper.check_returns_type(np.int32)
       def _(x):
         return (x, x)
 
   def test_check_returns_type_with_tensorflow_computation_picking_up_named_parameters(
       self,
   ):
+
     @tensorflow_computation.tf_computation(tf.int32, tf.int32)
-    @computation_wrapper.check_returns_type(tf.int32)
+    @computation_wrapper.check_returns_type(np.int32)
     def f(a, b):
       del b
       return a
@@ -465,7 +468,7 @@ class TensorFlowComputationTest(parameterized.TestCase):
     self.assertEqual(
         f.type_signature,
         computation_types.FunctionType(
-            collections.OrderedDict(a=tf.int32, b=tf.int32), tf.int32
+            collections.OrderedDict(a=np.int32, b=np.int32), np.int32
         ),
     )
 
@@ -474,13 +477,13 @@ class TensorFlowComputationTest(parameterized.TestCase):
       # This test fails because it `check_returns_type` with a `tuple`,
       # but returns a `list`.
       @tensorflow_computation.tf_computation(tf.int32)
-      @computation_wrapper.check_returns_type((tf.int32, tf.int32))
+      @computation_wrapper.check_returns_type((np.int32, np.int32))
       def _(a):
         return [a, a]
 
   def test_check_returns_type_fails_with_more_general_tensorspec(self):
-    type_with_known_shape = computation_types.TensorType(tf.int32, [1])
-    type_with_unknown_shape = computation_types.TensorType(tf.int32, [None])
+    type_with_known_shape = computation_types.TensorType(np.int32, [1])
+    type_with_unknown_shape = computation_types.TensorType(np.int32, [None])
 
     with self.assertRaises(TypeError):
       @tensorflow_computation.tf_computation(type_with_known_shape)
@@ -495,7 +498,7 @@ class TensorFlowComputationTest(parameterized.TestCase):
       a: int
       b: int
 
-    expected_return_type = MyAttrs(a=tf.int32, b=tf.int32)
+    expected_return_type = MyAttrs(a=np.int32, b=np.int32)
 
     @tensorflow_computation.tf_computation
     @computation_wrapper.check_returns_type(expected_return_type)
