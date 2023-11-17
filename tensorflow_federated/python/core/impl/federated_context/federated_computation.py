@@ -75,7 +75,7 @@ federated_computation.__doc__ = """Decorates/wraps Python functions as TFF feder
   Example:
 
     ```python
-    @tff.federated_computation((tff.FunctionType(tf.int32, tf.int32), tf.int32))
+    @tff.federated_computation((tff.FunctionType(np.int32, np.int32), np.int32))
     def foo(f, x):
       return f(f(x))
     ```

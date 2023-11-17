@@ -366,8 +366,8 @@ def federated_mean(value, weight=None):
   """
   # TODO: b/113112108 - Possibly relax the constraints on numeric types, and
   # inject implicit casts where appropriate. For instance, we might want to
-  # allow `tf.int32` values as the input, and automatically cast them to
-  # `tf.float321 before invoking the average, thus producing a floating-point
+  # allow `np.int32` values as the input, and automatically cast them to
+  # `np.float32`` before invoking the average, thus producing a floating-point
   # result.
 
   # TODO: b/120439632 - Possibly allow the weight to be either structured or
@@ -625,7 +625,7 @@ def _check_select_keys_type(
   ):
     _select_parameter_mismatch(
         keys_type.member,  # pytype: disable=attribute-error
-        'a rank-1 tensor with statically known shape and tf.int32 dtype',
+        'a rank-1 tensor with statically known shape and `np.int32` dtype',
         'client_keys.type_signature.member',
         secure,
     )

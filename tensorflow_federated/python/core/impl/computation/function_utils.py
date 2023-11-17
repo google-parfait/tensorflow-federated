@@ -405,7 +405,7 @@ def wrap_as_zero_or_one_arg_callable(
     def my_fn(x, y, z=10, name='bar', *p, **q):
       return x + y
 
-    type_spec = (tf.int32, tf.int32)
+    type_spec = (np.int32, np.int32)
 
     wrapped_fn = wrap_as_zero_or_one_arg_callable(my_fn, type_spec)
 

@@ -1001,28 +1001,27 @@ def to_type(obj: object) -> Type:
   Examples of arguments convertible to tensor types:
 
   ```python
-  tf.int32
-  (tf.int32, [10])
-  (tf.int32, [None])
   np.int32
+  (np.int32, [10])
+  (np.int32, [None])
   ```
 
   Examples of arguments convertible to flat named tuple types:
 
   ```python
-  [tf.int32, tf.bool]
-  (tf.int32, tf.bool)
-  [('a', tf.int32), ('b', tf.bool)]
-  ('a', tf.int32)
-  collections.OrderedDict([('a', tf.int32), ('b', tf.bool)])
+  [np.int32, np.bool]
+  (np.int32, np.bool)
+  [('a', np.int32), ('b', np.bool)]
+  ('a', np.int32)
+  collections.OrderedDict([('a', np.int32), ('b', np.bool)])
   ```
 
   Examples of arguments convertible to nested named tuple types:
 
   ```python
-  (tf.int32, (tf.float32, tf.bool))
-  (tf.int32, (('x', tf.float32), tf.bool))
-  ((tf.int32, [1]), (('x', (tf.float32, [2])), (tf.bool, [3])))
+  (np.int32, (np.float32, np.bool))
+  (np.int32, (('x', np.float32), np.bool))
+  ((np.int32, [1]), (('x', (np.float32, [2])), (np.bool, [3])))
   ```
 
   `attr.s` class instances can also be used to describe TFF types by populating
@@ -1031,17 +1030,13 @@ def to_type(obj: object) -> Type:
   ```python
   @attr.s(auto_attribs=True)
   class MyDataClass:
-    int_scalar: tf.Tensor
-    string_array: tf.Tensor
+    int_scalar
+    string_array
 
-    @classmethod
-    def tff_type(cls) -> tff.Type:
-      return tff.types.to_type(cls(
-        int_scalar=tf.int32,
-        string_array=tf.TensorSpec(dtype=tf.string, shape=[3]),
-      ))
+  obj = MyDataClass(...)
+  type_spec = tff.types.to_type(obj)
 
-  @tff.tf_computation(MyDataClass.tff_type())
+  @tff.tf_computation(type_spec)
   def work(my_data):
     assert isinstance(my_data, MyDataClass)
     ...

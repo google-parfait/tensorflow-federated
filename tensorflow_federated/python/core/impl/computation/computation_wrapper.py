@@ -296,7 +296,7 @@ class ComputationWrapper:
   1. When the decorator is invoked with positional arguments:
 
      ```python
-     @xyz(('x', tf.int32), ('y', tf.int32))
+     @xyz(('x', np.int32), ('y', np.int32))
      ```
 
      The decorator arguments must be instances of `types.Type`, or something
@@ -307,8 +307,8 @@ class ComputationWrapper:
      tuple type. This means that the following two invocations behave the same:
 
      ```
-     @xyz(('x', tf.int32), ('y', tf.int32)) # gets packed into the below
-     @xyz((('x', tf.int32), ('y', tf.int32)))
+     @xyz(('x', np.int32), ('y', np.int32)) # gets packed into the below
+     @xyz((('x', np.int32), ('y', np.int32)))
      ```
 
      In the above example, the computation will accept as an argument a pair
@@ -320,7 +320,7 @@ class ComputationWrapper:
         receive all arguments packed into a single value:
 
         ```python
-        @xyz(('x', tf.int32), ('y', tf.int32))
+        @xyz(('x', np.int32), ('y', np.int32))
         def my_comp(coord):
           ... # use `coord.x` and `coord.y`
         ```
@@ -331,12 +331,12 @@ class ComputationWrapper:
 
         ```python
         # With explicitly named parameters
-        @xyz(('x', tf.int32), ('y', tf.int32))
+        @xyz(('x', np.int32), ('y', np.int32))
         def my_comp(x, y):
           ... # use `x` and `y`
 
         # Without explicitly named parameters
-        @xyz(tf.int32, tf.int32)
+        @xyz(np.int32, np.int32)
         def my_comp(x, y):
           ... # use `x` and `y`
         ```
@@ -522,7 +522,7 @@ def check_returns_type(*args):
 
   ```
   @tff.tf_computation(tf.int32, tf.int32)
-  @tff.check_returns_type(tf.int32)
+  @tff.check_returns_type(np.int32)
   def add(a, b):
     return a + b
   ```

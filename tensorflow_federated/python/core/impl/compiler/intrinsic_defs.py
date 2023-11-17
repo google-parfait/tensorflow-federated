@@ -526,7 +526,7 @@ FEDERATED_VALUE_AT_SERVER = IntrinsicDef(
 # The types of weights and values must be compatible, i.e., multiplying and
 # dividing member constituents of the value by weights should yield results of
 # the same type as the type of these member constituents being weighted. Thus,
-# for example, one may not supply values containing tf.int32 tensors, as the
+# for example, one may not supply values containing `np.int32`` tensors, as the
 # result of weighting such values is of a floating-point type. Casting must be
 # injected, where appropriate, by the compiler before invoking this intrinsic.
 #
