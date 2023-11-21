@@ -104,7 +104,7 @@ class FederatedComputationContext(
     return self._symbol_bindings
 
   def invoke(self, comp, arg):
-    fn = value_impl.to_value(comp, None)
+    fn = value_impl.to_value(comp, type_spec=None)
     tys = fn.type_signature
     py_typecheck.check_type(tys, computation_types.FunctionType)
     if arg is not None:
@@ -113,7 +113,11 @@ class FederatedComputationContext(
             'A computation of type {} does not expect any arguments, but got '
             'an argument {}.'.format(tys, arg)
         )
-      arg = value_impl.to_value(arg, tys.parameter, zip_if_needed=True)  # pytype: disable=attribute-error
+      arg = value_impl.to_value(
+          arg,
+          type_spec=tys.parameter,  # pytype: disable=attribute-error
+          zip_if_needed=True,
+      )
       type_analysis.check_type(arg, tys.parameter)  # pytype: disable=attribute-error
       ret_val = fn(arg)
     else:

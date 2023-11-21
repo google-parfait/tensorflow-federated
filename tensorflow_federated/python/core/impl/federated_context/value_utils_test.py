@@ -67,7 +67,7 @@ class ValueUtilsTest(parameterized.TestCase):
         computation_types.FederatedType(np.int32, placements.CLIENTS)
     )
     def _(x):
-      x = value_impl.to_value(x, None)
+      x = value_impl.to_value(x, type_spec=None)
       value_utils.ensure_federated_value(x, placements.CLIENTS)
       return x
 
@@ -77,7 +77,7 @@ class ValueUtilsTest(parameterized.TestCase):
         computation_types.FederatedType(np.int32, placements.CLIENTS)
     )
     def _(x):
-      x = value_impl.to_value(x, None)
+      x = value_impl.to_value(x, type_spec=None)
       with self.assertRaises(TypeError):
         value_utils.ensure_federated_value(x, placements.SERVER)
       return x
@@ -91,7 +91,7 @@ class ValueUtilsTest(parameterized.TestCase):
         ))
     )
     def _(x):
-      x = value_impl.to_value(x, None)
+      x = value_impl.to_value(x, type_spec=None)
       value_utils.ensure_federated_value(x)
       return x
 
@@ -104,7 +104,7 @@ class ValueUtilsTest(parameterized.TestCase):
         ))
     )
     def _(x):
-      x = value_impl.to_value(x, None)
+      x = value_impl.to_value(x, type_spec=None)
       with self.assertRaises(TypeError):
         value_utils.ensure_federated_value(x)
       return x
