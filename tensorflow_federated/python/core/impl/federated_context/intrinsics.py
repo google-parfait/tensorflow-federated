@@ -96,16 +96,16 @@ def federated_aggregate(
   Raises:
     TypeError: If the arguments are not of the types specified above.
   """
-  value = value_impl.to_value(value, None)
+  value = value_impl.to_value(value, type_spec=None)
   value = value_utils.ensure_federated_value(
       value, placements.CLIENTS, 'value to be aggregated'
   )
 
-  zero = value_impl.to_value(zero, None)
+  zero = value_impl.to_value(zero, type_spec=None)
   py_typecheck.check_type(zero, value_impl.Value)
   accumulate = value_impl.to_value(
       accumulate,
-      None,
+      type_spec=None,
       parameter_type_hint=computation_types.StructType([
           zero.type_signature,
           value.type_signature.member,  # pytype: disable=attribute-error
@@ -113,7 +113,7 @@ def federated_aggregate(
   )
   merge = value_impl.to_value(
       merge,
-      None,
+      type_spec=None,
       parameter_type_hint=computation_types.StructType(
           [accumulate.type_signature.result]  # pytype: disable=attribute-error
           * 2
@@ -121,7 +121,7 @@ def federated_aggregate(
   )
   report = value_impl.to_value(
       report,
-      None,
+      type_spec=None,
       parameter_type_hint=merge.type_signature.result,  # pytype: disable=attribute-error
   )
   for op in [accumulate, merge, report]:
@@ -184,7 +184,7 @@ def federated_broadcast(value):
     TypeError: If the argument is not a federated TFF value placed at the
       `tff.SERVER`.
   """
-  value = value_impl.to_value(value, None)
+  value = value_impl.to_value(value, type_spec=None)
   value = value_utils.ensure_federated_value(
       value, placements.SERVER, 'value to be broadcasted'
   )
@@ -214,7 +214,7 @@ def federated_eval(fn, placement):
   # TODO: b/113112108 - Verify that neither the value, nor any of its parts
   # are of a federated type.
 
-  fn = value_impl.to_value(fn, None)
+  fn = value_impl.to_value(fn, type_spec=None)
   py_typecheck.check_type(fn, value_impl.Value)
   py_typecheck.check_type(fn.type_signature, computation_types.FunctionType)
 
@@ -261,11 +261,11 @@ def federated_map(fn, arg):
   # specification of the intrinsic this is based on to work with federated
   # values of arbitrary placement.
 
-  arg = value_impl.to_value(arg, None)
+  arg = value_impl.to_value(arg, type_spec=None)
   arg = value_utils.ensure_federated_value(arg, label='value to be mapped')
 
   fn = value_impl.to_value(
-      fn, None, parameter_type_hint=arg.type_signature.member  # pytype: disable=attribute-error
+      fn, type_spec=None, parameter_type_hint=arg.type_signature.member  # pytype: disable=attribute-error
   )
 
   py_typecheck.check_type(fn, value_impl.Value)
@@ -311,13 +311,13 @@ def federated_map_all_equal(fn, arg):
   # in the federated types, and expanding the type specification of the
   # intrinsic this is based on to work with federated values of arbitrary
   # placement.
-  arg = value_impl.to_value(arg, None)
+  arg = value_impl.to_value(arg, type_spec=None)
   arg = value_utils.ensure_federated_value(
       arg, placements.CLIENTS, 'value to be mapped'
   )
 
   fn = value_impl.to_value(
-      fn, None, parameter_type_hint=arg.type_signature.member  # pytype: disable=attribute-error
+      fn, type_spec=None, parameter_type_hint=arg.type_signature.member  # pytype: disable=attribute-error
   )
 
   py_typecheck.check_type(fn, value_impl.Value)
@@ -376,7 +376,7 @@ def federated_mean(value, weight=None):
   # might be cumbersome for users to have to manually slice and assemble a
   # variable.
 
-  value = value_impl.to_value(value, None)
+  value = value_impl.to_value(value, type_spec=None)
   value = value_utils.ensure_federated_value(
       value, placements.CLIENTS, 'value to be averaged'
   )
@@ -388,7 +388,7 @@ def federated_mean(value, weight=None):
     )
 
   if weight is not None:
-    weight = value_impl.to_value(weight, None)
+    weight = value_impl.to_value(weight, type_spec=None)
     weight = value_utils.ensure_federated_value(
         weight, placements.CLIENTS, 'weight to use in averaging'
     )
@@ -494,7 +494,7 @@ def federated_sum(value):
     TypeError: If the argument is not a federated TFF value placed at
       `tff.CLIENTS`.
   """
-  value = value_impl.to_value(value, None)
+  value = value_impl.to_value(value, type_spec=None)
   value = value_utils.ensure_federated_value(
       value, placements.CLIENTS, 'value to be summed'
   )
@@ -532,7 +532,7 @@ def federated_value(value, placement):
         ),
         DeprecationWarning,
     )
-  value = value_impl.to_value(value, None)
+  value = value_impl.to_value(value, type_spec=None)
   if type_analysis.contains(
       value.type_signature,
       lambda t: isinstance(t, computation_types.FederatedType),
@@ -572,7 +572,7 @@ def federated_zip(value):
   # here fixed at 2. There are other potential approaches to getting around
   # this problem (e.g. having the operator act on sequences and thereby
   # sidestepping the issue) which we may want to explore.
-  value = value_impl.to_value(value, None)
+  value = value_impl.to_value(value, type_spec=None)
   py_typecheck.check_type(value, value_impl.Value)
   py_typecheck.check_type(value.type_signature, computation_types.StructType)
 
@@ -698,9 +698,9 @@ def federated_secure_select(client_keys, max_key, server_val, select_fn):
 
 def _federated_select(client_keys, max_key, server_val, select_fn, secure):
   """Internal helper for `federated_select` and `federated_secure_select`."""
-  client_keys = value_impl.to_value(client_keys, None)
+  client_keys = value_impl.to_value(client_keys, type_spec=None)
   _check_select_keys_type(client_keys.type_signature, secure)
-  max_key = value_impl.to_value(max_key, None)
+  max_key = value_impl.to_value(max_key, type_spec=None)
   expected_max_key_type = computation_types.at_server(np.int32)
   if not expected_max_key_type.is_assignable_from(max_key.type_signature):
     _select_parameter_mismatch(
@@ -710,7 +710,7 @@ def _federated_select(client_keys, max_key, server_val, select_fn, secure):
         secure,
         expected_type=expected_max_key_type,
     )
-  server_val = value_impl.to_value(server_val, None)
+  server_val = value_impl.to_value(server_val, type_spec=None)
   server_val = value_utils.ensure_federated_value(
       server_val, label='server_val'
   )
@@ -732,7 +732,7 @@ def _federated_select(client_keys, max_key, server_val, select_fn, secure):
       [server_val.type_signature.member, np.int32]  # pytype: disable=attribute-error
   )
   select_fn = value_impl.to_value(
-      select_fn, None, parameter_type_hint=select_fn_param_type
+      select_fn, type_spec=None, parameter_type_hint=select_fn_param_type
   )
   expected_select_fn_type = computation_types.FunctionType(
       select_fn_param_type, computation_types.AbstractType('U')
@@ -806,12 +806,12 @@ def federated_secure_modular_sum(value, modulus):
     TypeError: If the argument is not a federated TFF value placed at
       `tff.CLIENTS`.
   """
-  value = value_impl.to_value(value, None)
+  value = value_impl.to_value(value, type_spec=None)
   value = value_utils.ensure_federated_value(
       value, placements.CLIENTS, 'value to be summed'
   )
   type_analysis.check_is_structure_of_integers(value.type_signature)
-  modulus_value = value_impl.to_value(modulus, None)
+  modulus_value = value_impl.to_value(modulus, type_spec=None)
   value_member_type = value.type_signature.member  # pytype: disable=attribute-error
   modulus_type = modulus_value.type_signature
   if not type_analysis.is_single_integer_or_matches_structure(
@@ -828,7 +828,8 @@ def federated_secure_modular_sum(value, modulus):
       value_member_type, computation_types.StructType
   ):
     modulus_value = value_impl.to_value(
-        structure.map_structure(lambda _: modulus, value_member_type), None
+        structure.map_structure(lambda _: modulus, value_member_type),
+        type_spec=None,
     )
   comp = building_block_factory.create_federated_secure_modular_sum(
       value.comp, modulus_value.comp
@@ -883,12 +884,12 @@ def federated_secure_sum(value, max_input):
     TypeError: If the argument is not a federated TFF value placed at
       `tff.CLIENTS`.
   """
-  value = value_impl.to_value(value, None)
+  value = value_impl.to_value(value, type_spec=None)
   value = value_utils.ensure_federated_value(
       value, placements.CLIENTS, 'value to be summed'
   )
   type_analysis.check_is_structure_of_integers(value.type_signature)
-  max_input_value = value_impl.to_value(max_input, None)
+  max_input_value = value_impl.to_value(max_input, type_spec=None)
   value_member_type = value.type_signature.member  # pytype: disable=attribute-error
   max_input_type = max_input_value.type_signature
   if not type_analysis.is_single_integer_or_matches_structure(
@@ -905,7 +906,8 @@ def federated_secure_sum(value, max_input):
       value_member_type, computation_types.StructType
   ):
     max_input_value = value_impl.to_value(
-        structure.map_structure(lambda _: max_input, value_member_type), None
+        structure.map_structure(lambda _: max_input, value_member_type),
+        type_spec=None,
     )
   comp = building_block_factory.create_federated_secure_sum(
       value.comp, max_input_value.comp
@@ -963,12 +965,12 @@ def federated_secure_sum_bitwidth(value, bitwidth):
     TypeError: If the argument is not a federated TFF value placed at
       `tff.CLIENTS`.
   """
-  value = value_impl.to_value(value, None)
+  value = value_impl.to_value(value, type_spec=None)
   value = value_utils.ensure_federated_value(
       value, placements.CLIENTS, 'value to be summed'
   )
   type_analysis.check_is_structure_of_integers(value.type_signature)
-  bitwidth_value = value_impl.to_value(bitwidth, None)
+  bitwidth_value = value_impl.to_value(bitwidth, type_spec=None)
   value_member_type = value.type_signature.member  # pytype: disable=attribute-error
   bitwidth_type = bitwidth_value.type_signature
   if not type_analysis.is_single_integer_or_matches_structure(
@@ -985,7 +987,8 @@ def federated_secure_sum_bitwidth(value, bitwidth):
       value_member_type, computation_types.StructType
   ):
     bitwidth_value = value_impl.to_value(
-        structure.map_structure(lambda _: bitwidth, value_member_type), None
+        structure.map_structure(lambda _: bitwidth, value_member_type),
+        type_spec=None,
     )
   comp = building_block_factory.create_federated_secure_sum_bitwidth(
       value.comp, bitwidth_value.comp
@@ -1031,9 +1034,9 @@ def sequence_map(fn, arg):
   Raises:
     TypeError: If the arguments are not of the appropriate types.
   """
-  fn = value_impl.to_value(fn, None)
+  fn = value_impl.to_value(fn, type_spec=None)
   py_typecheck.check_type(fn.type_signature, computation_types.FunctionType)
-  arg = value_impl.to_value(arg, None)
+  arg = value_impl.to_value(arg, type_spec=None)
 
   if isinstance(arg.type_signature, computation_types.SequenceType):
     comp = building_block_factory.create_sequence_map(fn.comp, arg.comp)
@@ -1097,9 +1100,9 @@ def sequence_reduce(value, zero, op):
   Raises:
     TypeError: If the arguments are not of the types specified above.
   """
-  value = value_impl.to_value(value, None)
-  zero = value_impl.to_value(zero, None)
-  op = value_impl.to_value(op, None)
+  value = value_impl.to_value(value, type_spec=None)
+  zero = value_impl.to_value(zero, type_spec=None)
+  op = value_impl.to_value(op, type_spec=None)
   # Check if the value is a federated sequence that should be reduced
   # under a `federated_map`.
   if isinstance(value.type_signature, computation_types.FederatedType):
@@ -1142,7 +1145,7 @@ def sequence_sum(value):
   Raises:
     TypeError: If the arguments are of wrong or unsupported types.
   """
-  value = value_impl.to_value(value, None)
+  value = value_impl.to_value(value, type_spec=None)
   if isinstance(value.type_signature, computation_types.SequenceType):
     element_type = value.type_signature.element
   else:

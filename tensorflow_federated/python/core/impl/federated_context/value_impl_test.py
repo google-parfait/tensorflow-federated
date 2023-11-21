@@ -196,21 +196,21 @@ class ValueTest(parameterized.TestCase):
     y = value_impl.Value(
         building_blocks.Reference('bar', np.bool_),
     )
-    v = value_impl.to_value((x, y), None)
+    v = value_impl.to_value((x, y), type_spec=None)
     self.assertIsInstance(v, value_impl.Value)
     self.assertEqual(str(v), '<foo,bar>')
 
   def test_to_value_for_dataclass(self):
     x = value_impl.Value(building_blocks.Reference('foo', np.int32))
     y = value_impl.Value(building_blocks.Reference('bar', np.int32))
-    v = value_impl.to_value(TestDataclass(x, y), None)
+    v = value_impl.to_value(TestDataclass(x, y), type_spec=None)
     self.assertIsInstance(v, value_impl.Value)
     self.assertEqual(str(v), '<x=foo,y=bar>')
 
   def test_to_value_for_attrs_class(self):
     x = value_impl.Value(building_blocks.Reference('foo', np.int32))
     y = value_impl.Value(building_blocks.Reference('bar', np.int32))
-    v = value_impl.to_value(TestAttrClass(x, y), None)
+    v = value_impl.to_value(TestAttrClass(x, y), type_spec=None)
     self.assertIsInstance(v, value_impl.Value)
     self.assertEqual(str(v), '<x=foo,y=bar>')
 
@@ -218,7 +218,7 @@ class ValueTest(parameterized.TestCase):
     x = value_impl.Value(building_blocks.Reference('foo', np.int32))
     y = value_impl.Value(building_blocks.Reference('bar', np.int32))
     v = value_impl.to_value(
-        TestDataclass(TestDataclass(x, y), TestDataclass(x, y)), None
+        TestDataclass(TestDataclass(x, y), TestDataclass(x, y)), type_spec=None
     )
     self.assertIsInstance(v, value_impl.Value)
     self.assertEqual(str(v), '<x=<x=foo,y=bar>,y=<x=foo,y=bar>>')
@@ -227,7 +227,7 @@ class ValueTest(parameterized.TestCase):
     x = value_impl.Value(building_blocks.Reference('foo', np.int32))
     y = value_impl.Value(building_blocks.Reference('bar', np.int32))
     v = value_impl.to_value(
-        TestAttrClass(TestAttrClass(x, y), TestAttrClass(x, y)), None
+        TestAttrClass(TestAttrClass(x, y), TestAttrClass(x, y)), type_spec=None
     )
     self.assertIsInstance(v, value_impl.Value)
     self.assertEqual(str(v), '<x=<x=foo,y=bar>,y=<x=foo,y=bar>>')
@@ -235,33 +235,39 @@ class ValueTest(parameterized.TestCase):
   def test_to_value_for_list(self):
     x = value_impl.Value(building_blocks.Reference('foo', np.int32))
     y = value_impl.Value(building_blocks.Reference('bar', np.bool_))
-    v = value_impl.to_value([x, y], None)
+    v = value_impl.to_value([x, y], type_spec=None)
     self.assertIsInstance(v, value_impl.Value)
     self.assertEqual(str(v), '<foo,bar>')
 
   def test_to_value_for_ordered_dict(self):
     x = value_impl.Value(building_blocks.Reference('foo', np.int32))
     y = value_impl.Value(building_blocks.Reference('bar', np.bool_))
-    v = value_impl.to_value(collections.OrderedDict([('b', y), ('a', x)]), None)
+    v = value_impl.to_value(
+        collections.OrderedDict([('b', y), ('a', x)]), type_spec=None
+    )
     self.assertIsInstance(v, value_impl.Value)
     self.assertEqual(str(v), '<b=bar,a=foo>')
 
   def test_to_value_for_named_tuple(self):
     x = value_impl.Value(building_blocks.Reference('foo', np.int32))
     y = value_impl.Value(building_blocks.Reference('bar', np.bool_))
-    v = value_impl.to_value(collections.namedtuple('_', 'a b')(x, y), None)
+    v = value_impl.to_value(
+        collections.namedtuple('_', 'a b')(x, y), type_spec=None
+    )
     self.assertIsInstance(v, value_impl.Value)
     self.assertEqual(str(v), '<a=foo,b=bar>')
 
   def test_to_value_for_structure(self):
     x = value_impl.Value(building_blocks.Reference('foo', np.int32))
     y = value_impl.Value(building_blocks.Reference('bar', np.bool_))
-    v = value_impl.to_value(structure.Struct([('a', x), ('b', y)]), None)
+    v = value_impl.to_value(
+        structure.Struct([('a', x), ('b', y)]), type_spec=None
+    )
     self.assertIsInstance(v, value_impl.Value)
     self.assertEqual(str(v), '<a=foo,b=bar>')
 
   def test_to_value_for_placements(self):
-    clients = value_impl.to_value(placements.CLIENTS, None)
+    clients = value_impl.to_value(placements.CLIENTS, type_spec=None)
     self.assertIsInstance(clients, value_impl.Value)
     self.assertEqual(str(clients.type_signature), 'placement')
     self.assertEqual(str(clients), 'CLIENTS')
@@ -275,7 +281,7 @@ class ValueTest(parameterized.TestCase):
         computation_proto, context_stack_impl.context_stack
     )
 
-    value = value_impl.to_value(computation, None)
+    value = value_impl.to_value(computation, type_spec=None)
 
     self.assertIsInstance(value, value_impl.Value)
     self.assertEqual(
@@ -283,53 +289,64 @@ class ValueTest(parameterized.TestCase):
     )
 
   def test_to_value_with_string(self):
-    value = value_impl.to_value('a', np.str_)
+    value = value_impl.to_value('a', computation_types.TensorType(np.str_))
     self.assertIsInstance(value, value_impl.Value)
     self.assertEqual(str(value.type_signature), 'string')
 
   def test_to_value_with_int(self):
-    value = value_impl.to_value(1, np.int32)
+    value = value_impl.to_value(1, computation_types.TensorType(np.int32))
     self.assertIsInstance(value, value_impl.Value)
     self.assertEqual(str(value.type_signature), 'int32')
 
   def test_to_value_with_float(self):
-    value = value_impl.to_value(1.0, np.float32)
+    value = value_impl.to_value(1.0, computation_types.TensorType(np.float32))
     self.assertIsInstance(value, value_impl.Value)
     self.assertEqual(str(value.type_signature), 'float32')
 
   def test_to_value_with_bool(self):
-    value = value_impl.to_value(True, np.bool_)
+    value = value_impl.to_value(True, computation_types.TensorType(np.bool_))
     self.assertIsInstance(value, value_impl.Value)
     self.assertEqual(str(value.type_signature), 'bool')
 
   def test_to_value_with_np_int32(self):
-    value = value_impl.to_value(np.int32(1), np.int32)
+    value = value_impl.to_value(
+        np.int32(1), computation_types.TensorType(np.int32)
+    )
     self.assertIsInstance(value, value_impl.Value)
     self.assertEqual(str(value.type_signature), 'int32')
 
   def test_to_value_with_np_int64(self):
-    value = value_impl.to_value(np.int64(1), np.int64)
+    value = value_impl.to_value(
+        np.int64(1), computation_types.TensorType(np.int64)
+    )
     self.assertIsInstance(value, value_impl.Value)
     self.assertEqual(str(value.type_signature), 'int64')
 
   def test_to_value_with_np_float32(self):
-    value = value_impl.to_value(np.float32(1.0), np.float32)
+    value = value_impl.to_value(
+        np.float32(1.0), computation_types.TensorType(np.float32)
+    )
     self.assertIsInstance(value, value_impl.Value)
     self.assertEqual(str(value.type_signature), 'float32')
 
   def test_to_value_with_np_float64(self):
-    value = value_impl.to_value(np.float64(1.0), np.float64)
+    value = value_impl.to_value(
+        np.float64(1.0), computation_types.TensorType(np.float64)
+    )
     self.assertIsInstance(value, value_impl.Value)
     self.assertEqual(str(value.type_signature), 'float64')
 
   def test_to_value_with_np_bool(self):
-    value = value_impl.to_value(np.bool_(1.0), np.bool_)
+    value = value_impl.to_value(
+        np.bool_(1.0), computation_types.TensorType(np.bool_)
+    )
     self.assertIsInstance(value, value_impl.Value)
     self.assertEqual(str(value.type_signature), 'bool')
 
   def test_to_value_with_np_ndarray(self):
     value = value_impl.to_value(
-        np.ndarray(shape=(2, 0), dtype=np.int32), (np.int32, [2, 0])
+        np.ndarray(shape=(2, 0), dtype=np.int32),
+        computation_types.TensorType(np.int32, [2, 0]),
     )
     self.assertIsInstance(value, value_impl.Value)
     self.assertEqual(str(value.type_signature), 'int32[2,0]')
@@ -355,7 +372,7 @@ class ValueTest(parameterized.TestCase):
 
   def test_to_value_raises_type_error(self):
     with self.assertRaises(TypeError):
-      value_impl.to_value(10, np.bool_)
+      value_impl.to_value(10, computation_types.TensorType(np.bool_))
 
   def test_tf_mapping_raises_helpful_error(self):
     with self.assertRaisesRegex(

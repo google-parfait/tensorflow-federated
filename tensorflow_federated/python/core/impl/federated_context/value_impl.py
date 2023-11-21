@@ -415,8 +415,6 @@ def to_value(
       ],
       arg,
   )
-  if type_spec is not None:
-    type_spec = computation_types.to_type(type_spec)
   if isinstance(arg, Value):
     result = arg
   elif isinstance(arg, building_blocks.ComputationBuildingBlock):

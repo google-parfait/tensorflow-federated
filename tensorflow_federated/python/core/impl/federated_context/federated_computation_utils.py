@@ -83,7 +83,7 @@ def zero_or_one_arg_fn_to_building_block(
     if result is None:
       raise computation_wrapper.ComputationReturnedNoneError(fn)
     annotated_result_type = type_conversions.infer_type(result)
-    result = value_impl.to_value(result, annotated_result_type)
+    result = value_impl.to_value(result, type_spec=annotated_result_type)
     result_comp = result.comp
     symbols_bound_in_context = context_stack.current.symbol_bindings
     if symbols_bound_in_context:
