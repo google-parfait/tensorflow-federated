@@ -110,7 +110,7 @@ def _serialize_tensor_value(
         value = sess.run(value)
   # If we got a string or bytes scalar, wrap it in numpy so it has a dtype and
   # shape.
-  if isinstance(value, (np.bytes_, np.string_, bytes, str)):
+  if isinstance(value, (np.bytes_, np.str_, bytes, str)):
     value = np.asarray(value, np.object_)
   else:
     value = np.asarray(value)

@@ -471,7 +471,7 @@ class FederatedSelectTest(parameterized.TestCase, IntrinsicTestBase):
 
     bad_server_val_proto, _ = tensorflow_computation_factory.create_constant(
         tf.constant(['first', 'second', 'third']),
-        computation_types.TensorType(dtype=np.string_, shape=[3]),
+        computation_types.TensorType(np.str_, [3]),
     )
     bad_server_val = computation_impl.ConcreteComputation(
         bad_server_val_proto, context_stack_impl.context_stack
@@ -653,7 +653,7 @@ class FederatedSumTest(IntrinsicTestBase):
     self.assert_value(val, 'int32@SERVER')
 
   def test_federated_sum_with_client_string(self):
-    x = _mock_data_of_type(computation_types.at_clients(np.string_))
+    x = _mock_data_of_type(computation_types.at_clients(np.str_))
     with self.assertRaises(TypeError):
       intrinsics.federated_sum(x)
 
@@ -874,7 +874,7 @@ class FederatedMeanTest(IntrinsicTestBase):
 
   def test_federated_mean_with_string_weight_fails(self):
     values = _mock_data_of_type(computation_types.at_clients(np.float32))
-    weights = _mock_data_of_type(computation_types.at_clients(np.string_))
+    weights = _mock_data_of_type(computation_types.at_clients(np.str_))
     with self.assertRaises(TypeError):
       intrinsics.federated_mean(values, weights)
 
@@ -887,7 +887,7 @@ class FederatedMinTest(parameterized.TestCase, IntrinsicTestBase):
     self.assert_value(val, 'int32@SERVER')
 
   @parameterized.named_parameters(
-      ('client_string', computation_types.at_clients(np.string_)),
+      ('client_string', computation_types.at_clients(np.str_)),
       ('server_int', computation_types.at_server(np.int32)),
   )
   def test_federated_min_with_invalid_type(self, data_type):
@@ -904,7 +904,7 @@ class FederatedMaxTest(parameterized.TestCase, IntrinsicTestBase):
     self.assert_value(val, 'int32@SERVER')
 
   @parameterized.named_parameters(
-      ('client_string', computation_types.at_clients(np.string_)),
+      ('client_string', computation_types.at_clients(np.str_)),
       ('server_int', computation_types.at_server(np.int32)),
   )
   def test_federated_max_with_invalid_type(self, data_type):

@@ -632,9 +632,9 @@ class UTF8Chunker(Chunker):
     )
     int_to_char_fn = lambda x: (dict(enumerate(self._int_to_byte_map)).get(x))
 
-    # Added `otypes=(np.string_,)` as an additional arg to np.vectorize to avoid
+    # Added `otypes=(np.bytes_,)` as an additional arg to np.vectorize to avoid
     # numpy crashes with empty strings (not able to identify the type).
-    decoded_chars = np.vectorize(int_to_char_fn, otypes=(np.string_,))(
+    decoded_chars = np.vectorize(int_to_char_fn, otypes=(np.bytes_,))(
         encoded_chunks_bytes
     )
     decoded_chars_reshaped = decoded_chars.reshape(-1, self._max_length)

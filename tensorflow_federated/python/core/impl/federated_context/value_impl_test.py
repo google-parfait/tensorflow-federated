@@ -283,7 +283,7 @@ class ValueTest(parameterized.TestCase):
     )
 
   def test_to_value_with_string(self):
-    value = value_impl.to_value('a', np.string_)
+    value = value_impl.to_value('a', np.str_)
     self.assertIsInstance(value, value_impl.Value)
     self.assertEqual(str(value.type_signature), 'string')
 
