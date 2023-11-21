@@ -52,7 +52,10 @@ py_test(
     name = "celeba_test",
     size = "small",
     srcs = ["celeba_test.py"],
-    deps = [":celeba"],
+    deps = [
+        ":celeba",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
+    ],
 )
 
 py_library(
@@ -69,7 +72,10 @@ py_test(
     name = "cifar100_test",
     size = "small",
     srcs = ["cifar100_test.py"],
-    deps = [":cifar100"],
+    deps = [
+        ":cifar100",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
+    ],
 )
 
 py_library(
@@ -84,6 +90,7 @@ py_test(
     deps = [
         ":dataset_utils",
         ":from_tensor_slices_client_data",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
     ],
 )
 
@@ -96,7 +103,10 @@ py_test(
     name = "download_test",
     size = "small",
     srcs = ["download_test.py"],
-    deps = [":download"],
+    deps = [
+        ":download",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
+    ],
 )
 
 py_library(
@@ -113,7 +123,10 @@ py_test(
     name = "emnist_test",
     timeout = "long",
     srcs = ["emnist_test.py"],
-    deps = [":emnist"],
+    deps = [
+        ":emnist",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
+    ],
 )
 
 py_library(
@@ -128,7 +141,10 @@ py_library(
 py_test(
     name = "flair_test",
     srcs = ["flair_test.py"],
-    deps = [":flair"],
+    deps = [
+        ":flair",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
+    ],
 )
 
 py_library(
@@ -146,7 +162,10 @@ py_test(
     name = "shakespeare_test",
     size = "small",
     srcs = ["shakespeare_test.py"],
-    deps = [":shakespeare"],
+    deps = [
+        ":shakespeare",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
+    ],
 )
 
 py_library(
@@ -163,7 +182,10 @@ py_test(
     name = "stackoverflow_test",
     size = "medium",
     srcs = ["stackoverflow_test.py"],
-    deps = [":stackoverflow"],
+    deps = [
+        ":stackoverflow",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
+    ],
 )
 
 py_library(
@@ -183,6 +205,7 @@ py_test(
     deps = [
         ":gldv2",
         ":vision_datasets_utils",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
     ],
 )
 
@@ -203,6 +226,7 @@ py_test(
     deps = [
         ":inaturalist",
         ":vision_datasets_utils",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
     ],
 )
 
@@ -218,7 +242,10 @@ py_library(
 py_test(
     name = "vision_datasets_utils_test",
     srcs = ["vision_datasets_utils_test.py"],
-    deps = [":vision_datasets_utils"],
+    deps = [
+        ":vision_datasets_utils",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
+    ],
 )
 
 py_library(
@@ -239,6 +266,7 @@ py_test(
         ":client_data",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
     ],
 )
 
@@ -260,6 +288,7 @@ py_test(
         ":file_per_user_client_data",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/impl/computation:computation_base",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
     ],
 )
 
@@ -281,6 +310,7 @@ py_test(
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/impl/computation:computation_base",
         "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
     ],
 )
 
@@ -300,6 +330,7 @@ py_test(
     deps = [
         ":sql_client_data",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
     ],
 )
 
@@ -319,6 +350,7 @@ py_test(
         ":from_tensor_slices_client_data",
         ":transforming_client_data",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
     ],
 )
 
@@ -334,5 +366,8 @@ py_library(
 py_test(
     name = "sql_client_data_utils_test",
     srcs = ["sql_client_data_utils_test.py"],
-    deps = [":sql_client_data_utils"],
+    deps = [
+        ":sql_client_data_utils",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
+    ],
 )

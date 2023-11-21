@@ -29,7 +29,10 @@ py_library(
 py_test(
     name = "function_test",
     srcs = ["function_test.py"],
-    deps = [":function"],
+    deps = [
+        ":function",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
+    ],
 )
 
 py_library(
@@ -44,6 +47,7 @@ py_test(
     deps = [
         ":graph_optimizations",
         ":graph_spec",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
     ],
 )
 
@@ -55,7 +59,10 @@ py_library(
 py_test(
     name = "graph_spec_test",
     srcs = ["graph_spec_test.py"],
-    deps = [":graph_spec"],
+    deps = [
+        ":graph_spec",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
+    ],
 )
 
 py_library(
@@ -66,7 +73,10 @@ py_library(
 py_test(
     name = "graph_utils_test",
     srcs = ["graph_utils_test.py"],
-    deps = [":graph_utils"],
+    deps = [
+        ":graph_utils",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
+    ],
 )
 
 py_library(
@@ -84,6 +94,7 @@ py_test(
     srcs = ["serialization_utils_test.py"],
     deps = [
         ":serialization_utils",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
         "@com_google_protobuf//:protobuf_python",
     ],
 )
@@ -98,7 +109,10 @@ py_test(
     name = "tensor_utils_test",
     size = "small",
     srcs = ["tensor_utils_test.py"],
-    deps = [":tensor_utils"],
+    deps = [
+        ":tensor_utils",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
+    ],
 )
 
 py_library(
@@ -117,7 +131,10 @@ py_test(
     size = "small",
     timeout = "moderate",
     srcs = ["variable_utils_test.py"],
-    deps = [":variable_utils"],
+    deps = [
+        ":variable_utils",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
+    ],
 )
 
 py_library(
@@ -129,5 +146,8 @@ py_test(
     name = "version_check_test",
     size = "small",
     srcs = ["version_check_test.py"],
-    deps = [":version_check"],
+    deps = [
+        ":version_check",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # Automatically added go/proto_python_upb_flip
+    ],
 )
