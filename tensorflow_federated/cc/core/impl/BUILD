@@ -13,7 +13,10 @@ package_group(
 
 package_group(
     name = "impl_users",
-    includes = ["//tensorflow_federated/cc/simulation:simulation_packages"],
+    includes = [
+        "//tensorflow_federated/cc/simulation:simulation_packages",
+        "//tensorflow_federated/python/core/impl:impl_users",
+    ],
 )
 
 licenses(["notice"])

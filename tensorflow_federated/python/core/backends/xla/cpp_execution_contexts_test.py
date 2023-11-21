@@ -16,10 +16,10 @@ from absl.testing import absltest
 import numpy as np
 
 from tensorflow_federated.python.core.backends.xla import cpp_execution_contexts
+from tensorflow_federated.python.core.environments.jax_frontend import jax_computation
 from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.jax_context import jax_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 
 

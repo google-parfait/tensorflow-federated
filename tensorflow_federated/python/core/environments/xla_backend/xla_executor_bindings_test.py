@@ -14,7 +14,7 @@
 
 from absl.testing import absltest
 
-from tensorflow_federated.python.core.impl.executors import xla_executor_bindings
+from tensorflow_federated.python.core.environments.xla_backend import xla_executor_bindings
 
 
 class XlaExecutorBindingsTest(absltest.TestCase):

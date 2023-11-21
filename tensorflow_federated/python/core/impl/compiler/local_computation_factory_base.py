@@ -25,8 +25,7 @@ class LocalComputationFactory(metaclass=abc.ABCMeta):
   """Interface for factories of backend framework-specific local computations.
 
   Implementations of this interface encapsulate the logic for constructing local
-  computations that are executable on a particular type of backends (such as
-  TensorFlow or XLA).
+  computations that are executable on a particular type of backend.
   """
 
   @abc.abstractmethod

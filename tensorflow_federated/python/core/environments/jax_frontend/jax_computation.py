@@ -16,10 +16,10 @@
 from collections.abc import Callable
 from typing import Optional, Union
 
+from tensorflow_federated.python.core.environments.jax_frontend import jax_serialization
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.computation import computation_wrapper
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
-from tensorflow_federated.python.core.impl.jax_context import jax_serialization
 from tensorflow_federated.python.core.impl.types import computation_types
 
 

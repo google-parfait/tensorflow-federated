@@ -3,20 +3,20 @@ load("@rules_python//python:defs.bzl", "py_library", "py_test")
 package(
     default_applicable_licenses = ["//:package_license"],
     default_visibility = [
-        ":jax_context_packages",
-        "//tensorflow_federated/python/core/impl:impl_users",
+        ":jax_frontend_packages",
+        "//tensorflow_federated/python/core/environments:environments_users",
     ],
 )
 
 package_group(
-    name = "jax_context_packages",
-    packages = ["//tensorflow_federated/python/core/impl/jax_context/..."],
+    name = "jax_frontend_packages",
+    packages = ["//tensorflow_federated/python/core/environments/jax_frontend/..."],
 )
 
 licenses(["notice"])
 
 py_library(
-    name = "jax_context",
+    name = "jax_frontend",
     srcs = ["__init__.py"],
     visibility = ["//tensorflow_federated/tools/python_package:python_package_tool"],
 )
@@ -68,13 +68,13 @@ py_library(
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
+        "//tensorflow_federated/python/core/environments/xla_backend:xla_serialization",
         "//tensorflow_federated/python/core/impl/computation:function_utils",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_base",
         "//tensorflow_federated/python/core/impl/types:array_shape",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_analysis",
         "//tensorflow_federated/python/core/impl/types:typed_object",
-        "//tensorflow_federated/python/core/impl/xla_context:xla_serialization",
     ],
 )
 
@@ -86,10 +86,10 @@ py_test(
         ":jax_serialization",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:structure",
+        "//tensorflow_federated/python/core/environments/xla_backend:xla_serialization",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
         "//tensorflow_federated/python/core/impl/types:type_test_utils",
-        "//tensorflow_federated/python/core/impl/xla_context:xla_serialization",
     ],
 )
