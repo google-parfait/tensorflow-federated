@@ -41,7 +41,6 @@ py_library(
         "//tensorflow_federated/python/core/impl/executors:ingestable_base",
         "//tensorflow_federated/python/core/impl/executors:remote_executor_stub",
         "//tensorflow_federated/python/core/impl/executors:value_serialization",
-        "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation_context",
         "//tensorflow_federated/python/core/impl/types:placements",
     ],
 )
