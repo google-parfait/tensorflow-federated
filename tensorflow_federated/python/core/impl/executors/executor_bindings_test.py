@@ -25,7 +25,6 @@ from tensorflow_federated.proto.v0 import executor_pb2
 from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_factory
 from tensorflow_federated.python.core.impl.executors import executor_bindings
 from tensorflow_federated.python.core.impl.executors import value_serialization
-from tensorflow_federated.python.core.impl.executors import xla_executor_bindings
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_conversions
@@ -705,17 +704,15 @@ class SerializeTensorTest(tf.test.TestCase, parameterized.TestCase):
 class SequenceExecutorBindingsTest(absltest.TestCase):
 
   def test_create(self):
+    executor = executor_bindings.create_tensorflow_executor()
     try:
-      executor_bindings.create_sequence_executor(
-          xla_executor_bindings.create_xla_executor()
-      )
-    except Exception as e:  # pylint: disable=broad-except
-      self.fail(f'Exception: {e}')
+      executor_bindings.create_sequence_executor(executor)
+    except Exception:  # pylint: disable=broad-except
+      self.fail('Raised `Exception` unexpectedly.')
 
   def test_materialize_on_unkown_fails(self):
-    executor = executor_bindings.create_sequence_executor(
-        xla_executor_bindings.create_xla_executor()
-    )
+    executor = executor_bindings.create_tensorflow_executor()
+    executor_bindings.create_sequence_executor(executor)
     with self.assertRaisesRegex(Exception, 'NOT_FOUND'):
       executor.materialize(0)
 
