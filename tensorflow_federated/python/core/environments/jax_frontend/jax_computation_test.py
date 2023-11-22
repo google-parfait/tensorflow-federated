@@ -16,8 +16,8 @@ from absl.testing import absltest
 import jax
 import numpy as np
 
+from tensorflow_federated.python.core.environments.jax_frontend import jax_computation
 from tensorflow_federated.python.core.impl.computation import computation_impl
-from tensorflow_federated.python.core.impl.jax_context import jax_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 
 
@@ -40,7 +40,6 @@ class JaxComputationTest(absltest.TestCase):
     self.assertEqual(str(foo.type_signature), '(<x=int32,y=int32> -> int32)')
 
   def test_arg_ordering(self):
-
     @jax_computation.jax_computation(
         computation_types.TensorType(np.int32, (10,)), np.int32
     )

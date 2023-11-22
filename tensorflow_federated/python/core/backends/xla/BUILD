@@ -22,32 +22,6 @@ py_library(
 )
 
 py_library(
-    name = "compiler",
-    srcs = ["compiler.py"],
-    deps = [
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/common_libs:structure",
-        "//tensorflow_federated/python/core/impl/compiler:local_computation_factory_base",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:type_analysis",
-        "//tensorflow_federated/python/core/impl/xla_context:xla_serialization",
-    ],
-)
-
-py_test(
-    name = "compiler_test",
-    size = "small",
-    srcs = ["compiler_test.py"],
-    deps = [
-        ":compiler",
-        ":runtime",
-        "//tensorflow_federated/proto/v0:computation_py_pb2",
-        "//tensorflow_federated/python/common_libs:structure",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-    ],
-)
-
-py_library(
     name = "cpp_execution_contexts",
     srcs = ["cpp_execution_contexts.py"],
     tags = [
@@ -55,11 +29,11 @@ py_library(
     ],
     deps = [
         "//tensorflow_federated/python/core/backends/native:compiler",
+        "//tensorflow_federated/python/core/environments/xla_backend:xla_executor_bindings",
         "//tensorflow_federated/python/core/impl/context_stack:set_default_context",
         "//tensorflow_federated/python/core/impl/execution_contexts:sync_execution_context",
         "//tensorflow_federated/python/core/impl/executor_stacks:cpp_executor_factory",
         "//tensorflow_federated/python/core/impl/executors:executor_bindings",
-        "//tensorflow_federated/python/core/impl/executors:xla_executor_bindings",
     ],
 )
 
@@ -71,36 +45,10 @@ py_test(
     ],
     deps = [
         ":cpp_execution_contexts",
+        "//tensorflow_federated/python/core/environments/jax_frontend:jax_computation",
         "//tensorflow_federated/python/core/impl/context_stack:context_base",
         "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
-        "//tensorflow_federated/python/core/impl/jax_context:jax_computation",
         "//tensorflow_federated/python/core/impl/types:computation_types",
-    ],
-)
-
-py_library(
-    name = "runtime",
-    srcs = ["runtime.py"],
-    deps = [
-        "//tensorflow_federated/proto/v0:computation_py_pb2",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/common_libs:structure",
-        "//tensorflow_federated/python/core/impl/types:array_shape",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:type_analysis",
-        "//tensorflow_federated/python/core/impl/types:typed_object",
-        "//tensorflow_federated/python/core/impl/xla_context:xla_serialization",
-    ],
-)
-
-py_test(
-    name = "runtime_test",
-    srcs = ["runtime_test.py"],
-    deps = [
-        ":runtime",
-        "//tensorflow_federated/python/common_libs:structure",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/xla_context:xla_serialization",
     ],
 )

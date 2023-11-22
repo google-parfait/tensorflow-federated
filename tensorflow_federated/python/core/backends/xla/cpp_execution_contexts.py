@@ -14,11 +14,11 @@
 """Execution contexts for the XLA backend."""
 
 from tensorflow_federated.python.core.backends.native import compiler
+from tensorflow_federated.python.core.environments.xla_backend import xla_executor_bindings
 from tensorflow_federated.python.core.impl.context_stack import set_default_context
 from tensorflow_federated.python.core.impl.execution_contexts import sync_execution_context
 from tensorflow_federated.python.core.impl.executor_stacks import cpp_executor_factory
 from tensorflow_federated.python.core.impl.executors import executor_bindings
-from tensorflow_federated.python.core.impl.executors import xla_executor_bindings
 
 
 def create_sync_local_cpp_execution_context(

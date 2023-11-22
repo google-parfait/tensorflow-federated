@@ -20,8 +20,8 @@ import numpy as np
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import structure
-from tensorflow_federated.python.core.backends.xla import compiler
-from tensorflow_federated.python.core.backends.xla import runtime
+from tensorflow_federated.python.core.environments.xla_backend import compiler
+from tensorflow_federated.python.core.environments.xla_backend import runtime
 from tensorflow_federated.python.core.impl.types import computation_types
 
 
