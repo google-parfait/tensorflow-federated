@@ -149,7 +149,7 @@ class TrainTestClientSplitTest(tf.test.TestCase, parameterized.TestCase):
       ('none', None),
   )
   def test_split_does_not_raise_on_expected_random_seed(self, seed):
-    client_data = client_data = self.get_even_odd_client_data()
+    client_data = self.get_even_odd_client_data()
     cd.ClientData.train_test_client_split(
         client_data, num_test_clients=3, seed=seed
     )
@@ -164,7 +164,7 @@ class TrainTestClientSplitTest(tf.test.TestCase, parameterized.TestCase):
       ('string', 'bad_seed'),
   )
   def test_split_raises_on_unexpected_random_seed(self, seed):
-    client_data = client_data = self.get_even_odd_client_data()
+    client_data = self.get_even_odd_client_data()
     with self.assertRaises(cd.InvalidRandomSeedError):
       cd.ClientData.train_test_client_split(
           client_data, num_test_clients=3, seed=seed
@@ -216,7 +216,7 @@ class ConcreteClientDataTest(tf.test.TestCase, parameterized.TestCase):
       if called_count == 1:
         self.assertEqual(client_id, client_ids[0])
       if called_count > 3:
-        raise Exception('called too many times')
+        raise RuntimeError('called too many times')
       num_examples = client_id
       return tf.data.Dataset.range(num_examples)
 
@@ -226,7 +226,7 @@ class ConcreteClientDataTest(tf.test.TestCase, parameterized.TestCase):
     datasets_iter = client_data.datasets()
     next(datasets_iter)
     next(datasets_iter)
-    with self.assertRaisesRegex(Exception, 'called too many times'):
+    with self.assertRaisesRegex(RuntimeError, 'called too many times'):
       next(datasets_iter)
 
   def test_datasets_limit_count(self):
