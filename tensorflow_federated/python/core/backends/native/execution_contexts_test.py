@@ -120,11 +120,11 @@ class DatasetsTest(parameterized.TestCase):
   def test_returns_dataset_and_tensor(self):
     @tensorflow_computation.tf_computation
     def foo():
-      return [tf.data.Dataset.range(5), tf.constant(5)]
+      return [tf.data.Dataset.range(5), 5]
 
     actual_result = foo()
 
-    expected_result = [tf.data.Dataset.range(5), tf.constant(5)]
+    expected_result = [tf.data.Dataset.range(5), 5]
     self.assertEqual(
         list(actual_result[0].as_numpy_iterator()),
         list(expected_result[0].as_numpy_iterator()),

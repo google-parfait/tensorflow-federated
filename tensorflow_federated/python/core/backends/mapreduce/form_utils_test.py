@@ -14,9 +14,11 @@
 
 import collections
 
+from absl.testing import absltest
 from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
+import tree
 
 from tensorflow_federated.python.core.backends.mapreduce import distribute_aggregate_test_utils
 from tensorflow_federated.python.core.backends.mapreduce import form_utils
@@ -37,6 +39,24 @@ from tensorflow_federated.python.core.impl.types import type_test_utils
 from tensorflow_federated.python.core.templates import iterative_process
 
 
+def _to_python_value(value):
+  """Returns a normalized Python representation of `value`.
+
+  This enables the use of Python equality operations on `value`.
+
+  Args:
+    value: A value.
+  """
+
+  def _fn(obj):
+    if isinstance(obj, np.ndarray):
+      return obj.tolist()
+    else:
+      return None
+
+  return tree.traverse(_fn, value)
+
+
 def get_iterative_process_for_sum_example():
   """Returns an iterative process for a sum example.
 
@@ -49,26 +69,26 @@ def get_iterative_process_for_sum_example():
     """The `init` function for `tff.templates.IterativeProcess`."""
     return intrinsics.federated_value([0, 0], placements.SERVER)
 
-  @tensorflow_computation.tf_computation([tf.int32, tf.int32])
+  @tensorflow_computation.tf_computation([np.int32, np.int32])
   def prepare(server_state):
     return server_state
 
-  @tensorflow_computation.tf_computation(tf.int32, [tf.int32, tf.int32])
+  @tensorflow_computation.tf_computation(np.int32, [np.int32, np.int32])
   def work(client_data, client_input):
     del client_data  # Unused
     del client_input  # Unused
     return 1, 1
 
   @tensorflow_computation.tf_computation(
-      [tf.int32, tf.int32], [tf.int32, tf.int32]
+      [np.int32, np.int32], [np.int32, np.int32]
   )
   def update(server_state, global_update):
     del server_state  # Unused
     return global_update, []
 
   @federated_computation.federated_computation([
-      computation_types.FederatedType([tf.int32, tf.int32], placements.SERVER),
-      computation_types.FederatedType(tf.int32, placements.CLIENTS),
+      computation_types.FederatedType([np.int32, np.int32], placements.SERVER),
+      computation_types.FederatedType(np.int32, placements.CLIENTS),
   ])
   def next_fn(server_state, client_data):
     """The `next` function for `tff.templates.IterativeProcess`."""
@@ -96,33 +116,33 @@ def get_computation_with_nested_broadcasts():
   `forms.MapReduceForm`.
   """
 
-  @tensorflow_computation.tf_computation([tf.int32, tf.int32])
+  @tensorflow_computation.tf_computation([np.int32, np.int32])
   def prepare(server_state):
     return server_state
 
-  @tensorflow_computation.tf_computation(tf.int32, [tf.int32, tf.int32])
+  @tensorflow_computation.tf_computation(np.int32, [np.int32, np.int32])
   def work(client_data, client_input):
     del client_data  # Unused
     del client_input  # Unused
     return 1, 1
 
   @tensorflow_computation.tf_computation(
-      [tf.int32, tf.int32], [tf.int32, tf.int32]
+      [np.int32, np.int32], [np.int32, np.int32]
   )
   def update(server_state, global_update):
     del server_state  # Unused
     return global_update, []
 
   @federated_computation.federated_computation(
-      computation_types.FederatedType([tf.int32, tf.int32], placements.SERVER)
+      computation_types.FederatedType([np.int32, np.int32], placements.SERVER)
   )
   def broadcast_and_return_arg_and_result(x):
     broadcasted = intrinsics.federated_broadcast(x)
     return [broadcasted, x]
 
   @federated_computation.federated_computation([
-      computation_types.FederatedType([tf.int32, tf.int32], placements.SERVER),
-      computation_types.FederatedType(tf.int32, placements.CLIENTS),
+      computation_types.FederatedType([np.int32, np.int32], placements.SERVER),
+      computation_types.FederatedType(np.int32, placements.CLIENTS),
   ])
   def comp_fn(server_state, client_data):
     """The `next` function for `tff.templates.IterativeProcess`."""
@@ -156,22 +176,22 @@ def get_iterative_process_for_sum_example_with_no_prepare():
     """The `init` function for `tff.templates.IterativeProcess`."""
     return intrinsics.federated_value([0, 0], placements.SERVER)
 
-  @tensorflow_computation.tf_computation(tf.int32, [tf.int32, tf.int32])
+  @tensorflow_computation.tf_computation(np.int32, [np.int32, np.int32])
   def work(client_data, client_input):
     del client_data  # Unused
     del client_input  # Unused
     return 1, 1
 
   @tensorflow_computation.tf_computation(
-      [tf.int32, tf.int32], [tf.int32, tf.int32]
+      [np.int32, np.int32], [np.int32, np.int32]
   )
   def update(server_state, global_update):
     del server_state  # Unused
     return global_update, []
 
   @federated_computation.federated_computation([
-      computation_types.FederatedType([tf.int32, tf.int32], placements.SERVER),
-      computation_types.FederatedType(tf.int32, placements.CLIENTS),
+      computation_types.FederatedType([np.int32, np.int32], placements.SERVER),
+      computation_types.FederatedType(np.int32, placements.CLIENTS),
   ])
   def next_fn(server_state, client_data):
     """The `next` function for `tff.templates.IterativeProcess`."""
@@ -205,21 +225,21 @@ def get_iterative_process_for_sum_example_with_no_broadcast():
     """The `init` function for `tff.templates.IterativeProcess`."""
     return intrinsics.federated_value([0, 0], placements.SERVER)
 
-  @tensorflow_computation.tf_computation(tf.int32)
+  @tensorflow_computation.tf_computation(np.int32)
   def work(client_data):
     del client_data  # Unused
     return 1, 1
 
   @tensorflow_computation.tf_computation(
-      [tf.int32, tf.int32], [tf.int32, tf.int32]
+      [np.int32, np.int32], [np.int32, np.int32]
   )
   def update(server_state, global_update):
     del server_state  # Unused
     return global_update, []
 
   @federated_computation.federated_computation([
-      computation_types.FederatedType([tf.int32, tf.int32], placements.SERVER),
-      computation_types.FederatedType(tf.int32, placements.CLIENTS),
+      computation_types.FederatedType([np.int32, np.int32], placements.SERVER),
+      computation_types.FederatedType(np.int32, placements.CLIENTS),
   ])
   def next_fn(server_state, client_data):
     """The `next` function for `tff.templates.IterativeProcess`."""
@@ -250,24 +270,24 @@ def get_iterative_process_for_sum_example_with_no_federated_aggregate():
     """The `init` function for `tff.templates.IterativeProcess`."""
     return intrinsics.federated_value(0, placements.SERVER)
 
-  @tensorflow_computation.tf_computation(tf.int32)
+  @tensorflow_computation.tf_computation(np.int32)
   def prepare(server_state):
     return server_state
 
-  @tensorflow_computation.tf_computation(tf.int32, tf.int32)
+  @tensorflow_computation.tf_computation(np.int32, np.int32)
   def work(client_data, client_input):
     del client_data  # Unused
     del client_input  # Unused
     return 1
 
-  @tensorflow_computation.tf_computation([tf.int32, tf.int32])
+  @tensorflow_computation.tf_computation([np.int32, np.int32])
   def update(server_state, global_update):
     del server_state  # Unused
     return global_update, []
 
   @federated_computation.federated_computation([
-      computation_types.FederatedType(tf.int32, placements.SERVER),
-      computation_types.FederatedType(tf.int32, placements.CLIENTS),
+      computation_types.FederatedType(np.int32, placements.SERVER),
+      computation_types.FederatedType(np.int32, placements.CLIENTS),
   ])
   def next_fn(server_state, client_data):
     """The `next` function for `tff.templates.IterativeProcess`."""
@@ -296,24 +316,24 @@ def get_iterative_process_for_sum_example_with_no_federated_secure_sum_bitwidth(
     """The `init` function for `tff.templates.IterativeProcess`."""
     return intrinsics.federated_value(0, placements.SERVER)
 
-  @tensorflow_computation.tf_computation(tf.int32)
+  @tensorflow_computation.tf_computation(np.int32)
   def prepare(server_state):
     return server_state
 
-  @tensorflow_computation.tf_computation(tf.int32, tf.int32)
+  @tensorflow_computation.tf_computation(np.int32, np.int32)
   def work(client_data, client_input):
     del client_data  # Unused
     del client_input  # Unused
     return 1
 
-  @tensorflow_computation.tf_computation([tf.int32, tf.int32])
+  @tensorflow_computation.tf_computation([np.int32, np.int32])
   def update(server_state, global_update):
     del server_state  # Unused
     return global_update, []
 
   @federated_computation.federated_computation([
-      computation_types.FederatedType(tf.int32, placements.SERVER),
-      computation_types.FederatedType(tf.int32, placements.CLIENTS),
+      computation_types.FederatedType(np.int32, placements.SERVER),
+      computation_types.FederatedType(np.int32, placements.CLIENTS),
   ])
   def next_fn(server_state, client_data):
     """The `next` function for `tff.templates.IterativeProcess`."""
@@ -342,19 +362,19 @@ def get_iterative_process_for_sum_example_with_no_update():
     """The `init` function for `tff.templates.IterativeProcess`."""
     return intrinsics.federated_value([0, 0], placements.SERVER)
 
-  @tensorflow_computation.tf_computation([tf.int32, tf.int32])
+  @tensorflow_computation.tf_computation([np.int32, np.int32])
   def prepare(server_state):
     return server_state
 
-  @tensorflow_computation.tf_computation(tf.int32, [tf.int32, tf.int32])
+  @tensorflow_computation.tf_computation(np.int32, [np.int32, np.int32])
   def work(client_data, client_input):
     del client_data  # Unused
     del client_input  # Unused
     return 1, 1
 
   @federated_computation.federated_computation([
-      computation_types.FederatedType([tf.int32, tf.int32], placements.SERVER),
-      computation_types.FederatedType(tf.int32, placements.CLIENTS),
+      computation_types.FederatedType([np.int32, np.int32], placements.SERVER),
+      computation_types.FederatedType(np.int32, placements.CLIENTS),
   ])
   def next_fn(server_state, client_data):
     """The `next` function for `tff.templates.IterativeProcess`."""
@@ -391,18 +411,18 @@ def get_iterative_process_for_sum_example_with_no_server_state():
     """The `init` function for `tff.templates.IterativeProcess`."""
     return intrinsics.federated_value([], placements.SERVER)
 
-  @tensorflow_computation.tf_computation(tf.int32)
+  @tensorflow_computation.tf_computation(np.int32)
   def work(client_data):
     del client_data  # Unused
     return 1, 1
 
-  @tensorflow_computation.tf_computation([tf.int32, tf.int32])
+  @tensorflow_computation.tf_computation([np.int32, np.int32])
   def update(global_update):
     return global_update
 
   @federated_computation.federated_computation([
       computation_types.FederatedType([], placements.SERVER),
-      computation_types.FederatedType(tf.int32, placements.CLIENTS),
+      computation_types.FederatedType(np.int32, placements.CLIENTS),
   ])
   def next_fn(server_state, client_data):
     """The `next` function for `tff.templates.IterativeProcess`."""
@@ -437,15 +457,15 @@ def get_iterative_process_for_sum_example_with_no_aggregation():
     return intrinsics.federated_value([0, 0], placements.SERVER)
 
   @tensorflow_computation.tf_computation(
-      [tf.int32, tf.int32], [tf.int32, tf.int32]
+      [np.int32, np.int32], [np.int32, np.int32]
   )
   def update(server_state, global_update):
     del server_state  # Unused
     return global_update, []
 
   @federated_computation.federated_computation([
-      computation_types.FederatedType([tf.int32, tf.int32], placements.SERVER),
-      computation_types.FederatedType(tf.int32, placements.CLIENTS),
+      computation_types.FederatedType([np.int32, np.int32], placements.SERVER),
+      computation_types.FederatedType(np.int32, placements.CLIENTS),
   ])
   def next_fn(server_state, client_data):
     """The `next` function for `tff.templates.IterativeProcess`."""
@@ -476,14 +496,14 @@ def get_iterative_process_for_minimal_sum_example():
     zero = tensorflow_computation.tf_computation(lambda: [0, 0, 0, 0])
     return intrinsics.federated_eval(zero, placements.SERVER)
 
-  @tensorflow_computation.tf_computation(tf.int32)
+  @tensorflow_computation.tf_computation(np.int32)
   def work(client_data):
     del client_data  # Unused
     return 1, 1, 1, 1
 
   @federated_computation.federated_computation([
-      computation_types.at_server([tf.int32, tf.int32, tf.int32, tf.int32]),
-      computation_types.at_clients(tf.int32),
+      computation_types.at_server([np.int32, np.int32, np.int32, np.int32]),
+      computation_types.at_clients(np.int32),
   ])
   def next_fn(server_state, client_data):
     """The `next` function for `tff.templates.IterativeProcess`."""
@@ -541,7 +561,7 @@ def get_example_cf_compatible_iterative_processes():
   # pyformat: enable
 
 
-class FederatedFormTestCase(tf.test.TestCase):
+class FederatedFormTestCase(absltest.TestCase):
   """A base class that overrides evaluate to handle various executors."""
 
   def evaluate(self, value):
@@ -579,13 +599,13 @@ class GetComputationForDistributeAggregateFormTest(
 
     comp = form_utils.get_computation_for_distribute_aggregate_form(example.daf)
     state, metrics = comp(state, [[28.0], [30.0, 33.0, 29.0]])
-    self.assertAllEqual(state, collections.OrderedDict(num_rounds=1))
-    self.assertAllClose(
+    self.assertEqual(state, collections.OrderedDict(num_rounds=1))
+    self.assertAlmostEqual(
         metrics, collections.OrderedDict(ratio_over_threshold=0.5)
     )
 
-    state, metrics = comp(state, [[33.0], [34.0], [35.0], [36.0]])
-    self.assertAllClose(
+    _, metrics = comp(state, [[33.0], [34.0], [35.0], [36.0]])
+    self.assertAlmostEqual(
         metrics, collections.OrderedDict(ratio_over_threshold=0.75)
     )
 
@@ -673,28 +693,28 @@ class GetDistributeAggregateFormTest(
     client_data_1 = [[28.0], [30.0, 33.0, 29.0]]
     state_1, metrics_1 = new_comp(state_0, client_data_1)
     self.assertEqual(state_1['num_rounds'], 1)
-    self.assertAllClose(
+    self.assertAlmostEqual(
         metrics_1, collections.OrderedDict(ratio_over_threshold=0.5)
     )
     sequential_state_1, sequential_metrics_1 = self.run_daf_in_sequence(
         new_daf, state_0, client_data_1
     )
     self.assertEqual(sequential_state_1['num_rounds'], 1)
-    self.assertAllClose(
+    self.assertAlmostEqual(
         sequential_metrics_1, collections.OrderedDict(ratio_over_threshold=0.5)
     )
 
     client_data_2 = [[33.0], [34.0], [35.0], [36.0]]
     state_2, metrics_2 = new_comp(state_1, client_data_2)
     self.assertEqual(state_2['num_rounds'], 2)
-    self.assertAllClose(
+    self.assertAlmostEqual(
         metrics_2, collections.OrderedDict(ratio_over_threshold=0.75)
     )
     sequential_state_2, sequential_metrics_2 = self.run_daf_in_sequence(
         new_daf, state_1, client_data_2
     )
     self.assertEqual(sequential_state_2['num_rounds'], 2)
-    self.assertAllClose(
+    self.assertAlmostEqual(
         sequential_metrics_2, collections.OrderedDict(ratio_over_threshold=0.75)
     )
 
@@ -719,7 +739,10 @@ class GetDistributeAggregateFormTest(
 
     starting_state = example.initialize()
     alt_starting_state = new_initialize()
-    self.assertAllClose(starting_state, alt_starting_state)
+
+    starting_state = _to_python_value(starting_state)
+    alt_starting_state = _to_python_value(alt_starting_state)
+    self.assertAlmostEqual(starting_state, alt_starting_state)
 
     whimsy_x = np.array([[0.5] * 784], dtype=np.float32)
     whimsy_y = np.array([1], dtype=np.int32)
@@ -731,12 +754,15 @@ class GetDistributeAggregateFormTest(
         new_daf, starting_state, [client_data]
     )
 
+    round_1 = _to_python_value(round_1)
+    alt_round_1 = _to_python_value(alt_round_1)
+    sequential_round_1 = _to_python_value(sequential_round_1)
     # Compare updated state
-    self.assertAllClose(round_1[0], alt_round_1[0])
-    self.assertAllClose(round_1[0], sequential_round_1[0])
+    self.assertAlmostEqual(round_1[0], alt_round_1[0])
+    self.assertAlmostEqual(round_1[0], sequential_round_1[0])
     # Compare metrics
-    self.assertAllClose(round_1[1], alt_round_1[1])
-    self.assertAllClose(round_1[1], sequential_round_1[1])
+    self.assertAlmostEqual(round_1[1], alt_round_1[1])
+    self.assertAlmostEqual(round_1[1], sequential_round_1[1])
 
     # Check that no TF work has been unintentionally duplicated.
     self.assertEqual(
@@ -786,13 +812,13 @@ class GetComputationForMapReduceFormTest(
 
     comp = form_utils.get_computation_for_map_reduce_form(example.mrf)
     state, metrics = comp(state, [[28.0], [30.0, 33.0, 29.0]])
-    self.assertAllEqual(state, collections.OrderedDict(num_rounds=1))
-    self.assertAllClose(
+    self.assertEqual(state, collections.OrderedDict(num_rounds=1))
+    self.assertAlmostEqual(
         metrics, collections.OrderedDict(ratio_over_threshold=0.5)
     )
 
-    state, metrics = comp(state, [[33.0], [34.0], [35.0], [36.0]])
-    self.assertAllClose(
+    _, metrics = comp(state, [[33.0], [34.0], [35.0], [36.0]])
+    self.assertAlmostEqual(
         metrics, collections.OrderedDict(ratio_over_threshold=0.75)
     )
 
@@ -810,7 +836,7 @@ class CheckMapReduceFormCompatibleWithComputationTest(
   def test_disallows_broadcast_dependent_on_aggregate(self):
 
     @federated_computation.federated_computation(
-        computation_types.at_server(tf.int32), computation_types.at_clients(())
+        computation_types.at_server(np.int32), computation_types.at_clients(())
     )
     def comp(server_state, client_data):
       del server_state, client_data
@@ -891,12 +917,12 @@ class GetMapReduceFormTest(FederatedFormTestCase, parameterized.TestCase):
 
     state, metrics = new_comp(state, [[28.0], [30.0, 33.0, 29.0]])
     self.assertEqual(state['num_rounds'], 1)
-    self.assertAllClose(
+    self.assertAlmostEqual(
         metrics, collections.OrderedDict(ratio_over_threshold=0.5)
     )
 
-    state, metrics = new_comp(state, [[33.0], [34.0], [35.0], [36.0]])
-    self.assertAllClose(
+    _, metrics = new_comp(state, [[33.0], [34.0], [35.0], [36.0]])
+    self.assertAlmostEqual(
         metrics, collections.OrderedDict(ratio_over_threshold=0.75)
     )
     self.assertEqual(
@@ -927,7 +953,10 @@ class GetMapReduceFormTest(FederatedFormTestCase, parameterized.TestCase):
 
     state1 = example.initialize()
     state2 = new_initialize()
-    self.assertAllClose(state1, state2)
+
+    state1 = _to_python_value(state1)
+    state2 = _to_python_value(state2)
+    self.assertAlmostEqual(state1, state2)
     whimsy_x = np.array([[0.5] * 784], dtype=np.float32)
     whimsy_y = np.array([1], dtype=np.int32)
     client_data = [collections.OrderedDict(x=whimsy_x, y=whimsy_y)]
@@ -936,9 +965,11 @@ class GetMapReduceFormTest(FederatedFormTestCase, parameterized.TestCase):
     metrics = round_1[1]
     alt_round_1 = new_comp(state2, [client_data])
     alt_state = alt_round_1[0]
-    self.assertAllClose(state, alt_state)
+    state = _to_python_value(state)
+    alt_state = _to_python_value(alt_state)
+    self.assertAlmostEqual(state, alt_state)
     alt_metrics = alt_round_1[1]
-    self.assertAllClose(metrics, alt_metrics)
+    self.assertAlmostEqual(metrics, alt_metrics)
     self.assertEqual(
         tree_analysis.count_tensorflow_variables_under(
             comp.to_building_block()
@@ -1001,7 +1032,7 @@ class GetMapReduceFormTest(FederatedFormTestCase, parameterized.TestCase):
 
     @federated_computation.federated_computation([
         computation_types.at_server(()),
-        computation_types.at_clients(tf.int32),
+        computation_types.at_clients(np.int32),
     ])
     def comp_fn(server_state, client_data):
       server_output = client_to_server_fn(client_data)
@@ -1028,12 +1059,12 @@ class GetMapReduceFormTest(FederatedFormTestCase, parameterized.TestCase):
     self.assertEqual(mrf.secure_modular_sum_modulus(), (22,))
 
 
-class BroadcastFormTest(tf.test.TestCase):
+class BroadcastFormTest(absltest.TestCase):
 
   def test_roundtrip(self):
     add = tensorflow_computation.tf_computation(lambda x, y: x + y)
-    server_data_type = computation_types.at_server(tf.int32)
-    client_data_type = computation_types.at_clients(tf.int32)
+    server_data_type = computation_types.at_server(np.int32)
+    client_data_type = computation_types.at_clients(np.int32)
 
     @federated_computation.federated_computation(
         server_data_type, client_data_type
@@ -1051,12 +1082,12 @@ class BroadcastFormTest(tf.test.TestCase):
     self.assertEqual(bf.client_data_label, 'client_numbers')
     type_test_utils.assert_types_equivalent(
         bf.compute_server_context.type_signature,
-        computation_types.FunctionType(tf.int32, (tf.int32,)),
+        computation_types.FunctionType(np.int32, (np.int32,)),
     )
     self.assertEqual(2, bf.compute_server_context(1)[0])
     type_test_utils.assert_types_equivalent(
         bf.client_processing.type_signature,
-        computation_types.FunctionType(((tf.int32,), tf.int32), tf.int32),
+        computation_types.FunctionType(((np.int32,), np.int32), np.int32),
     )
     self.assertEqual(3, bf.client_processing((1,), 2))
 
@@ -1071,7 +1102,7 @@ class BroadcastFormTest(tf.test.TestCase):
   def test_roundtrip_no_broadcast(self):
     add_five = tensorflow_computation.tf_computation(lambda x: x + 5)
     server_data_type = computation_types.at_server(())
-    client_data_type = computation_types.at_clients(tf.int32)
+    client_data_type = computation_types.at_clients(np.int32)
 
     @federated_computation.federated_computation(
         server_data_type, client_data_type
@@ -1089,7 +1120,7 @@ class BroadcastFormTest(tf.test.TestCase):
     )
     type_test_utils.assert_types_equivalent(
         bf.client_processing.type_signature,
-        computation_types.FunctionType(((), tf.int32), tf.int32),
+        computation_types.FunctionType(((), np.int32), np.int32),
     )
     self.assertEqual(6, bf.client_processing((), 1))
 
@@ -1100,7 +1131,7 @@ class BroadcastFormTest(tf.test.TestCase):
     self.assertEqual([10, 11, 12], round_trip_comp((), [5, 6, 7]))
 
 
-class AsFunctionOfSingleSubparameterTest(tf.test.TestCase):
+class AsFunctionOfSingleSubparameterTest(absltest.TestCase):
 
   def assert_selected_param_to_result_type(self, old_lam, new_lam, index):
     old_type = old_lam.type_signature
@@ -1116,9 +1147,9 @@ class AsFunctionOfSingleSubparameterTest(tf.test.TestCase):
 
   def test_selection(self):
     fed_at_clients = computation_types.FederatedType(
-        tf.int32, placements.CLIENTS
+        np.int32, placements.CLIENTS
     )
-    fed_at_server = computation_types.FederatedType(tf.int32, placements.SERVER)
+    fed_at_server = computation_types.FederatedType(np.int32, placements.SERVER)
     tuple_of_federated_types = computation_types.StructType(
         [fed_at_clients, fed_at_server]
     )
@@ -1134,9 +1165,9 @@ class AsFunctionOfSingleSubparameterTest(tf.test.TestCase):
 
   def test_named_element_selection(self):
     fed_at_clients = computation_types.FederatedType(
-        tf.int32, placements.CLIENTS
+        np.int32, placements.CLIENTS
     )
-    fed_at_server = computation_types.FederatedType(tf.int32, placements.SERVER)
+    fed_at_server = computation_types.FederatedType(np.int32, placements.SERVER)
     tuple_of_federated_types = computation_types.StructType([
         (None, fed_at_server),
         ('a', fed_at_clients),
@@ -1156,30 +1187,30 @@ class AsFunctionOfSomeSubparametersTest(tf.test.TestCase):
 
   def test_raises_on_non_tuple_parameter(self):
     lam = building_blocks.Lambda(
-        'x', tf.int32, building_blocks.Reference('x', tf.int32)
+        'x', np.int32, building_blocks.Reference('x', np.int32)
     )
     with self.assertRaises(tree_transformations.ParameterSelectionError):
       form_utils._as_function_of_some_federated_subparameters(lam, [(0,)])
 
   def test_raises_on_selection_from_non_tuple(self):
     lam = building_blocks.Lambda(
-        'x', [tf.int32], building_blocks.Reference('x', [tf.int32])
+        'x', [np.int32], building_blocks.Reference('x', [np.int32])
     )
     with self.assertRaises(tree_transformations.ParameterSelectionError):
       form_utils._as_function_of_some_federated_subparameters(lam, [(0, 0)])
 
   def test_raises_on_non_federated_selection(self):
     lam = building_blocks.Lambda(
-        'x', [tf.int32], building_blocks.Reference('x', [tf.int32])
+        'x', [np.int32], building_blocks.Reference('x', [np.int32])
     )
     with self.assertRaises(form_utils._NonFederatedSelectionError):
       form_utils._as_function_of_some_federated_subparameters(lam, [(0,)])
 
   def test_raises_on_selections_at_different_placements(self):
     fed_at_clients = computation_types.FederatedType(
-        tf.int32, placements.CLIENTS
+        np.int32, placements.CLIENTS
     )
-    fed_at_server = computation_types.FederatedType(tf.int32, placements.SERVER)
+    fed_at_server = computation_types.FederatedType(np.int32, placements.SERVER)
     tuple_of_federated_types = computation_types.StructType(
         [fed_at_clients, fed_at_server]
     )
@@ -1195,9 +1226,9 @@ class AsFunctionOfSomeSubparametersTest(tf.test.TestCase):
 
   def test_single_element_selection(self):
     fed_at_clients = computation_types.FederatedType(
-        tf.int32, placements.CLIENTS
+        np.int32, placements.CLIENTS
     )
-    fed_at_server = computation_types.FederatedType(tf.int32, placements.SERVER)
+    fed_at_server = computation_types.FederatedType(np.int32, placements.SERVER)
     tuple_of_federated_types = computation_types.StructType(
         [fed_at_clients, fed_at_server]
     )
@@ -1212,7 +1243,7 @@ class AsFunctionOfSomeSubparametersTest(tf.test.TestCase):
     new_lam = form_utils._as_function_of_some_federated_subparameters(
         lam, [(0,)]
     )
-    expected_parameter_type = computation_types.at_clients((tf.int32,))
+    expected_parameter_type = computation_types.at_clients((np.int32,))
     type_test_utils.assert_types_equivalent(
         new_lam.type_signature,
         computation_types.FunctionType(
@@ -1222,9 +1253,9 @@ class AsFunctionOfSomeSubparametersTest(tf.test.TestCase):
 
   def test_single_named_element_selection(self):
     fed_at_clients = computation_types.FederatedType(
-        tf.int32, placements.CLIENTS
+        np.int32, placements.CLIENTS
     )
-    fed_at_server = computation_types.FederatedType(tf.int32, placements.SERVER)
+    fed_at_server = computation_types.FederatedType(np.int32, placements.SERVER)
     tuple_of_federated_types = computation_types.StructType(
         [('a', fed_at_clients), ('b', fed_at_server)]
     )
@@ -1239,7 +1270,7 @@ class AsFunctionOfSomeSubparametersTest(tf.test.TestCase):
     new_lam = form_utils._as_function_of_some_federated_subparameters(
         lam, [(0,)]
     )
-    expected_parameter_type = computation_types.at_clients((tf.int32,))
+    expected_parameter_type = computation_types.at_clients((np.int32,))
     type_test_utils.assert_types_equivalent(
         new_lam.type_signature,
         computation_types.FunctionType(
@@ -1249,9 +1280,9 @@ class AsFunctionOfSomeSubparametersTest(tf.test.TestCase):
 
   def test_single_element_selection_leaves_no_unbound_references(self):
     fed_at_clients = computation_types.FederatedType(
-        tf.int32, placements.CLIENTS
+        np.int32, placements.CLIENTS
     )
-    fed_at_server = computation_types.FederatedType(tf.int32, placements.SERVER)
+    fed_at_server = computation_types.FederatedType(np.int32, placements.SERVER)
     tuple_of_federated_types = computation_types.StructType(
         [fed_at_clients, fed_at_server]
     )
@@ -1272,9 +1303,9 @@ class AsFunctionOfSomeSubparametersTest(tf.test.TestCase):
 
   def test_single_nested_element_selection(self):
     fed_at_clients = computation_types.FederatedType(
-        tf.int32, placements.CLIENTS
+        np.int32, placements.CLIENTS
     )
-    fed_at_server = computation_types.FederatedType(tf.int32, placements.SERVER)
+    fed_at_server = computation_types.FederatedType(np.int32, placements.SERVER)
     tuple_of_federated_types = computation_types.StructType(
         [[fed_at_clients], fed_at_server]
     )
@@ -1293,7 +1324,7 @@ class AsFunctionOfSomeSubparametersTest(tf.test.TestCase):
     new_lam = form_utils._as_function_of_some_federated_subparameters(
         lam, [(0, 0)]
     )
-    expected_parameter_type = computation_types.at_clients((tf.int32,))
+    expected_parameter_type = computation_types.at_clients((np.int32,))
     type_test_utils.assert_types_equivalent(
         new_lam.type_signature,
         computation_types.FunctionType(
@@ -1303,9 +1334,9 @@ class AsFunctionOfSomeSubparametersTest(tf.test.TestCase):
 
   def test_multiple_nested_element_selection(self):
     fed_at_clients = computation_types.FederatedType(
-        tf.int32, placements.CLIENTS
+        np.int32, placements.CLIENTS
     )
-    fed_at_server = computation_types.FederatedType(tf.int32, placements.SERVER)
+    fed_at_server = computation_types.FederatedType(np.int32, placements.SERVER)
     tuple_of_federated_types = computation_types.StructType(
         [[fed_at_clients], fed_at_server, [fed_at_clients]]
     )
@@ -1331,7 +1362,7 @@ class AsFunctionOfSomeSubparametersTest(tf.test.TestCase):
         lam, [(0, 0), (2, 0)]
     )
 
-    expected_parameter_type = computation_types.at_clients((tf.int32, tf.int32))
+    expected_parameter_type = computation_types.at_clients((np.int32, np.int32))
     type_test_utils.assert_types_equivalent(
         new_lam.type_signature,
         computation_types.FunctionType(
@@ -1341,9 +1372,9 @@ class AsFunctionOfSomeSubparametersTest(tf.test.TestCase):
 
   def test_multiple_nested_named_element_selection(self):
     fed_at_clients = computation_types.FederatedType(
-        tf.int32, placements.CLIENTS
+        np.int32, placements.CLIENTS
     )
-    fed_at_server = computation_types.FederatedType(tf.int32, placements.SERVER)
+    fed_at_server = computation_types.FederatedType(np.int32, placements.SERVER)
     tuple_of_federated_types = computation_types.StructType([
         ('a', [('a', fed_at_clients)]),
         ('b', fed_at_server),
@@ -1371,7 +1402,7 @@ class AsFunctionOfSomeSubparametersTest(tf.test.TestCase):
         lam, [(0, 0), (2, 0)]
     )
 
-    expected_parameter_type = computation_types.at_clients((tf.int32, tf.int32))
+    expected_parameter_type = computation_types.at_clients((np.int32, np.int32))
     type_test_utils.assert_types_equivalent(
         new_lam.type_signature,
         computation_types.FunctionType(
@@ -1381,9 +1412,9 @@ class AsFunctionOfSomeSubparametersTest(tf.test.TestCase):
 
   def test_binding_multiple_args_results_in_unique_names(self):
     fed_at_clients = computation_types.FederatedType(
-        tf.int32, placements.CLIENTS
+        np.int32, placements.CLIENTS
     )
-    fed_at_server = computation_types.FederatedType(tf.int32, placements.SERVER)
+    fed_at_server = computation_types.FederatedType(np.int32, placements.SERVER)
     tuple_of_federated_types = computation_types.StructType(
         [[fed_at_clients], fed_at_server, [fed_at_clients]]
     )
@@ -1414,4 +1445,4 @@ if __name__ == '__main__':
   # The test execution context replaces all secure intrinsics with insecure
   # reductions.
   execution_contexts.set_sync_test_cpp_execution_context(default_num_clients=1)
-  tf.test.main()
+  absltest.main()

@@ -32,13 +32,14 @@ from tensorflow_federated.python.core.impl.types import type_test_utils
 
 
 def _normalize_structure(structure):
-  def fn(obj):
+
+  def _fn(obj):
     if isinstance(obj, np.ndarray):
-      return list(obj)
+      return obj.tolist()
     else:
       return obj
 
-  return tree.map_structure(fn, structure)
+  return tree.map_structure(_fn, structure)
 
 
 def _test_map_integers(tensor):

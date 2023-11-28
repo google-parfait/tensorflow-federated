@@ -18,6 +18,7 @@ import inspect
 import time
 
 from absl.testing import absltest
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.core.backends.native import cpp_execution_contexts
@@ -49,7 +50,7 @@ def _assert_signature_equal(first_obj, second_obj):
     )
 
 
-class CreateAsyncLocalCPPExecutionContextTest(tf.test.TestCase):
+class CreateAsyncLocalCPPExecutionContextTest(absltest.TestCase):
 
   def test_has_same_signature(self):
     _assert_signature_equal(
@@ -66,7 +67,7 @@ class CreateAsyncLocalCPPExecutionContextTest(tf.test.TestCase):
   def test_install_and_execute_in_context(self):
     context = cpp_execution_contexts.create_async_local_cpp_execution_context()
 
-    @tensorflow_computation.tf_computation(tf.int32)
+    @tensorflow_computation.tf_computation(np.int32)
     def add_one(x):
       return x + 1
 
@@ -79,7 +80,7 @@ class CreateAsyncLocalCPPExecutionContextTest(tf.test.TestCase):
     context = cpp_execution_contexts.create_async_local_cpp_execution_context()
 
     @federated_computation.federated_computation(
-        computation_types.FederatedType(tf.int32, placements.CLIENTS)
+        computation_types.FederatedType(np.int32, placements.CLIENTS)
     )
     def repackage_arg(x):
       return [x, x]
@@ -95,7 +96,7 @@ class CreateAsyncLocalCPPExecutionContextTest(tf.test.TestCase):
       )
 
 
-class SetAsyncLocalCPPExecutionContextTest(tf.test.TestCase):
+class SetAsyncLocalCPPExecutionContextTest(absltest.TestCase):
 
   def test_has_same_signature(self):
     _assert_signature_equal(
@@ -126,7 +127,7 @@ class SetSyncLocalCPPExecutionContextTest(absltest.TestCase):
     )
 
 
-class LocalCPPExecutionContextTest(tf.test.TestCase):
+class LocalCPPExecutionContextTest(absltest.TestCase):
 
   def test_returns_sync_context(self):
     targets = ['fake_target']
@@ -141,7 +142,7 @@ class LocalCPPExecutionContextTest(tf.test.TestCase):
   def test_returns_same_python_structure(self):
 
     @federated_computation.federated_computation(
-        collections.OrderedDict(a=tf.int32, b=tf.float32)
+        collections.OrderedDict(a=np.int32, b=np.float32)
     )
     def identity(x):
       return x
@@ -155,7 +156,7 @@ class LocalCPPExecutionContextTest(tf.test.TestCase):
   def test_runs_tensorflow(self):
 
     @tensorflow_computation.tf_computation(
-        collections.OrderedDict(x=tf.int32, y=tf.int32)
+        collections.OrderedDict(x=np.int32, y=np.int32)
     )
     def multiply(ordered_dict):
       return ordered_dict['x'] * ordered_dict['y']
@@ -175,7 +176,7 @@ class LocalCPPExecutionContextTest(tf.test.TestCase):
     )
 
     @tensorflow_computation.tf_computation(
-        collections.OrderedDict(x=tf.int32, y=tf.int32)
+        collections.OrderedDict(x=np.int32, y=np.int32)
     )
     def multiply(ordered_dict):
       return ordered_dict['x'] * ordered_dict['y']
@@ -199,7 +200,7 @@ class LocalCPPExecutionContextTest(tf.test.TestCase):
     )
 
     @tensorflow_computation.tf_computation(
-        collections.OrderedDict(x=tf.int32, y=tf.int32)
+        collections.OrderedDict(x=np.int32, y=np.int32)
     )
     def multiply(ordered_dict):
       return ordered_dict['x'] * ordered_dict['y']
@@ -238,7 +239,7 @@ class LocalCPPExecutionContextTest(tf.test.TestCase):
     sleep_time = 5
 
     @tensorflow_computation.tf_computation(
-        collections.OrderedDict(x=tf.int32, y=tf.int32)
+        collections.OrderedDict(x=np.int32, y=np.int32)
     )
     @tf.function
     def sleep_and_multiply(ordered_dict):
@@ -287,7 +288,7 @@ class LocalCPPExecutionContextTest(tf.test.TestCase):
       with self.subTest('unplaced'):
         dataset = create_dataset()
         self.assertEqual(
-            dataset.element_spec, tf.TensorSpec(shape=[], dtype=tf.int64)
+            dataset.element_spec, tf.TensorSpec(shape=[], dtype=np.int64)
         )
         self.assertEqual(dataset.cardinality(), 5)
       with self.subTest('federated'):
@@ -298,7 +299,7 @@ class LocalCPPExecutionContextTest(tf.test.TestCase):
 
         dataset = create_federated_dataset()
         self.assertEqual(
-            dataset.element_spec, tf.TensorSpec(shape=[], dtype=tf.int64)
+            dataset.element_spec, tf.TensorSpec(shape=[], dtype=np.int64)
         )
         self.assertEqual(dataset.cardinality(), 5)
       with self.subTest('struct'):
@@ -312,8 +313,8 @@ class LocalCPPExecutionContextTest(tf.test.TestCase):
         self.assertEqual(
             [d.element_spec for d in datasets],
             [
-                tf.TensorSpec(shape=[], dtype=tf.int64),
-                tf.TensorSpec(shape=[], dtype=tf.int64),
+                tf.TensorSpec(shape=[], dtype=np.int64),
+                tf.TensorSpec(shape=[], dtype=np.int64),
             ],
         )
         self.assertEqual([d.cardinality() for d in datasets], [5, 5])

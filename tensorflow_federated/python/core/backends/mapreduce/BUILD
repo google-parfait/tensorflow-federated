@@ -134,7 +134,7 @@ py_library(
 
 py_test(
     name = "form_utils_test",
-    size = "medium",
+    size = "large",
     srcs = ["form_utils_test.py"],
     deps = [
         ":distribute_aggregate_test_utils",
@@ -183,7 +183,9 @@ py_library(
     deps = [
         ":forms",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
+        "//tensorflow_federated/python/core/impl/compiler:tree_transformations",
         "//tensorflow_federated/python/core/impl/computation:computation_base",
+        "//tensorflow_federated/python/core/impl/computation:computation_impl",
         "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
         "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",

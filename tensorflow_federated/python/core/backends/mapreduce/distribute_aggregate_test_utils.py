@@ -97,13 +97,13 @@ def get_temperature_sensor_example() -> DistributeAggregateFormExample:
   def initialize():
     @tensorflow_computation.tf_computation
     def initialize_tf():
-      return collections.OrderedDict(num_rounds=tf.constant(0))
+      return collections.OrderedDict(num_rounds=0)
 
     return intrinsics.federated_value(initialize_tf(), placements.SERVER)
 
   # The state of the server is a struct containing just the integer
   # counter `num_rounds`.
-  server_state_type = [('num_rounds', tf.int32)]
+  server_state_type = [('num_rounds', np.int32)]
 
   @federated_computation.federated_computation(
       computation_types.at_server(server_state_type)
@@ -121,7 +121,7 @@ def get_temperature_sensor_example() -> DistributeAggregateFormExample:
 
   # The broadcast input and output types are both structs containing a single
   # float `max_temperature`, which is the threshold received from the server.
-  broadcast_type = collections.OrderedDict(max_temperature=tf.float32)
+  broadcast_type = collections.OrderedDict(max_temperature=np.float32)
 
   # The intermediate state will contain the server state.
   intermediate_state_type = [computation_types.at_server(server_state_type)]
@@ -133,7 +133,7 @@ def get_temperature_sensor_example() -> DistributeAggregateFormExample:
     return [intrinsics.federated_broadcast(context_at_server[0])]
 
   # The client data is a sequence of floats.
-  client_data_type = computation_types.SequenceType(tf.float32)
+  client_data_type = computation_types.SequenceType(np.float32)
 
   @federated_computation.federated_computation(
       computation_types.at_clients(client_data_type),
@@ -174,8 +174,8 @@ def get_temperature_sensor_example() -> DistributeAggregateFormExample:
 
   # The client update is a struct.
   federated_client_update_type = [
-      ('is_over', computation_types.at_clients(tf.float32)),
-      ('weight', computation_types.at_clients(tf.float32)),
+      ('is_over', computation_types.at_clients(np.float32)),
+      ('weight', computation_types.at_clients(np.float32)),
   ]
 
   @federated_computation.federated_computation(
@@ -186,7 +186,7 @@ def get_temperature_sensor_example() -> DistributeAggregateFormExample:
     return [intrinsics.federated_mean(client_updates[0], client_updates[1])]
 
   # The aggregation result type is a single float.
-  aggregation_result_type = tf.float32
+  aggregation_result_type = np.float32
 
   @federated_computation.federated_computation(
       intermediate_state_type,
@@ -230,15 +230,15 @@ def get_mnist_training_example() -> DistributeAggregateFormExample:
     @tensorflow_computation.tf_computation
     def initialize_tf():
       return server_state_nt(
-          model=model_nt(weights=tf.zeros([784, 10]), bias=tf.zeros([10])),
-          num_rounds=tf.constant(0),
+          model=model_nt(weights=np.zeros([784, 10]), bias=np.zeros([10])),
+          num_rounds=0,
       )
 
     return intrinsics.federated_value(initialize_tf(), placements.SERVER)
 
   server_state_tff_type = server_state_nt(
-      model=model_nt(weights=(tf.float32, [784, 10]), bias=(tf.float32, [10])),
-      num_rounds=tf.int32,
+      model=model_nt(weights=(np.float32, [784, 10]), bias=(np.float32, [10])),
+      num_rounds=np.int32,
   )
   client_state_nt = collections.namedtuple('ClientState', 'model learning_rate')
 
@@ -261,15 +261,15 @@ def get_mnist_training_example() -> DistributeAggregateFormExample:
   # The intermediate state is a struct containiing the bitwidth for the secure
   # sum and the server state.
   intermediate_state_type = [
-      tf.int32,
+      np.int32,
       computation_types.at_server(server_state_tff_type),
   ]
 
   model_tff_type = model_nt(
-      weights=(tf.float32, [784, 10]), bias=(tf.float32, [10])
+      weights=(np.float32, [784, 10]), bias=(np.float32, [10])
   )
   broadcast_tff_type = client_state_nt(
-      model=model_tff_type, learning_rate=tf.float32
+      model=model_tff_type, learning_rate=np.float32
   )
 
   @federated_computation.federated_computation(
@@ -279,7 +279,7 @@ def get_mnist_training_example() -> DistributeAggregateFormExample:
     return [intrinsics.federated_broadcast(context_at_server[0])]
 
   batch_nt = collections.namedtuple('Batch', 'x y')
-  batch_tff_type = batch_nt(x=(tf.float32, [None, 784]), y=(tf.int32, [None]))
+  batch_tff_type = batch_nt(x=(np.float32, [None, 784]), y=(np.int32, [None]))
   dataset_tff_type = computation_types.SequenceType(batch_tff_type)
   loop_state_nt = collections.namedtuple('LoopState', 'num_examples total_loss')
   update_nt = collections.namedtuple('Update', 'model num_examples loss')
@@ -338,7 +338,7 @@ def get_mnist_training_example() -> DistributeAggregateFormExample:
 
       return update_nt(model=model_vars, num_examples=num_examples, loss=loss)
 
-    @tensorflow_computation.tf_computation(tf.int32)
+    @tensorflow_computation.tf_computation(np.int32)
     def cast_to_float(val):
       return tf.cast(val, tf.float32)
 
@@ -368,12 +368,12 @@ def get_mnist_training_example() -> DistributeAggregateFormExample:
   federated_aggregation_input_tff_type = [
       # input for federated_mean
       computation_types.at_clients(model_tff_type),
-      computation_types.at_clients(tf.float32),
+      computation_types.at_clients(np.float32),
       # input for federated_sum
-      computation_types.at_clients(tf.int32),
+      computation_types.at_clients(np.int32),
       # input for federated_mean
-      computation_types.at_clients(tf.float32),
-      computation_types.at_clients(tf.float32),
+      computation_types.at_clients(np.float32),
+      computation_types.at_clients(np.float32),
   ]
 
   @federated_computation.federated_computation(
@@ -395,8 +395,8 @@ def get_mnist_training_example() -> DistributeAggregateFormExample:
   # The aggregation result type is a struct.
   federated_aggregation_result_type = update_nt(
       model=computation_types.at_server(model_tff_type),
-      num_examples=computation_types.at_server(tf.int32),
-      loss=computation_types.at_server(tf.float32),
+      num_examples=computation_types.at_server(np.int32),
+      loss=computation_types.at_server(np.float32),
   )
 
   metrics_nt = collections.namedtuple('Metrics', 'num_rounds num_examples loss')

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from absl.testing import absltest
-import tensorflow as tf
+import numpy as np
 
 from tensorflow_federated.python.core.backends.native import mergeable_comp_compiler
 from tensorflow_federated.python.core.impl.execution_contexts import async_execution_context
@@ -109,18 +109,18 @@ def build_whimsy_computation_with_false_aggregation_dependence(
   return aggregation_comp
 
 
-@tensorflow_computation.tf_computation(tf.int32, tf.int32)
+@tensorflow_computation.tf_computation(np.int32, np.int32)
 def tf_multiply_int(x, y):
   return x * y
 
 
-@federated_computation.federated_computation(tf.int32, tf.int32)
+@federated_computation.federated_computation(np.int32, np.int32)
 def return_list(x, y):
   return [x, y]
 
 
 @federated_computation.federated_computation(
-    computation_types.at_server([tf.int32, tf.int32])
+    computation_types.at_server([np.int32, np.int32])
 )
 def server_placed_mult(arg):
   return intrinsics.federated_map(tf_multiply_int, arg)
@@ -149,7 +149,7 @@ class MergeableCompCompilerTest(absltest.TestCase):
   def test_raises_two_dependent_aggregates(self):
 
     @federated_computation.federated_computation(
-        computation_types.at_server(tf.int32)
+        computation_types.at_server(np.int32)
     )
     def dependent_agg_comp(server_arg):
       arg_at_clients = intrinsics.federated_broadcast(server_arg)
@@ -246,8 +246,8 @@ class MergeableCompCompilerTest(absltest.TestCase):
 
   def test_compiles_computation_with_aggregation_and_after(self):
     incoming_comp = build_whimsy_computation_with_aggregation_and_after(
-        computation_types.at_server(tf.int32),
-        computation_types.at_clients(tf.int32),
+        computation_types.at_server(np.int32),
+        computation_types.at_clients(np.int32),
     )
     mergeable_form = mergeable_comp_compiler.compile_to_mergeable_comp_form(
         incoming_comp
@@ -259,8 +259,8 @@ class MergeableCompCompilerTest(absltest.TestCase):
 
   def test_compilation_preserves_semantics_aggregation_and_after(self):
     incoming_comp = build_whimsy_computation_with_aggregation_and_after(
-        computation_types.at_server(tf.int32),
-        computation_types.at_clients(tf.int32),
+        computation_types.at_server(np.int32),
+        computation_types.at_clients(np.int32),
     )
     mergeable_form = mergeable_comp_compiler.compile_to_mergeable_comp_form(
         incoming_comp
@@ -273,8 +273,8 @@ class MergeableCompCompilerTest(absltest.TestCase):
 
   def test_compiles_computation_with_before_aggregation_work(self):
     incoming_comp = build_whimsy_computation_with_before_aggregation_work(
-        computation_types.at_server(tf.int32),
-        computation_types.at_clients([tf.int32, tf.int32]),
+        computation_types.at_server(np.int32),
+        computation_types.at_clients([np.int32, np.int32]),
     )
     mergeable_form = mergeable_comp_compiler.compile_to_mergeable_comp_form(
         incoming_comp
@@ -286,8 +286,8 @@ class MergeableCompCompilerTest(absltest.TestCase):
 
   def test_compiles_computation_with_false_aggregation_dependence(self):
     incoming_comp = build_whimsy_computation_with_false_aggregation_dependence(
-        computation_types.at_server(tf.int32),
-        computation_types.at_clients([tf.int32, tf.int32]),
+        computation_types.at_server(np.int32),
+        computation_types.at_clients([np.int32, np.int32]),
     )
     mergeable_form = mergeable_comp_compiler.compile_to_mergeable_comp_form(
         incoming_comp
@@ -299,8 +299,8 @@ class MergeableCompCompilerTest(absltest.TestCase):
 
   def test_compilation_preserves_semantics_before_agg_work(self):
     incoming_comp = build_whimsy_computation_with_before_aggregation_work(
-        computation_types.at_server(tf.int32),
-        computation_types.at_clients([tf.int32, tf.int32]),
+        computation_types.at_server(np.int32),
+        computation_types.at_clients([np.int32, np.int32]),
     )
     mergeable_form = mergeable_comp_compiler.compile_to_mergeable_comp_form(
         incoming_comp
