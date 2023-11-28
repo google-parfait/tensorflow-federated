@@ -1,3 +1,16 @@
+# Release 0.66.0
+
+## Breaking Changes
+
+*   Removed the capability to pass a `tf.TensorShape` as the shape of a
+    `tff.TensorType`.
+
+## Bug Fixes
+
+*   Correctly materialize `SERVER` placed values out of the C++ execution stack
+    when using StreamingRemoteExecutor instead of returning an error about
+    placement not found.
+
 # Release 0.65.0
 
 ## Major Features and Improvements
