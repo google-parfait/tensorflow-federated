@@ -173,8 +173,7 @@ class EstimationProcessTest(absltest.TestCase):
         computation_types.FederatedType(np.float32, placements.SERVER)
     )
     def _next_float(state):
-      del state  # Unused.
-      return 1.0
+      return state
 
     with self.assertRaises(errors.TemplateStateNotAssignableError):
       estimation_process.EstimationProcess(_initialize, _next_float, _report)
@@ -186,9 +185,8 @@ class EstimationProcessTest(absltest.TestCase):
             computation_types.FederatedType(np.float32, placements.SERVER),
         ]),
     )
-    def _next_float(state, x):
-      del state, x  # Unused.
-      return 1.0, 0.0
+    def _next_float(state, value):
+      return state, value
 
     with self.assertRaises(errors.TemplateStateNotAssignableError):
       estimation_process.EstimationProcess(_initialize, _next_float, _report)
