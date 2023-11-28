@@ -2,9 +2,9 @@ initialize:
 
 ( -> (let
   fc_concatenation_initialize_symbol_0=( -> (let
-    fc_<lambda>_symbol_0=comp#1(),
-    fc_<lambda>_symbol_1=federated_value_at_server(fc_<lambda>_symbol_0)
-   in fc_<lambda>_symbol_1))(),
+    fc__initialize_double_symbol_0=comp#1(),
+    fc__initialize_double_symbol_1=federated_value_at_server(fc__initialize_double_symbol_0)
+   in fc__initialize_double_symbol_1))(),
   fc_concatenation_initialize_symbol_1=( -> (let
     fc_<lambda>_symbol_0=comp#2(),
     fc_<lambda>_symbol_1=federated_value_at_server(fc_<lambda>_symbol_0)
@@ -18,23 +18,23 @@ initialize:
 next:
 
 (concatenation_next_arg -> (let
-  fc_concatenation_next_symbol_0=(map_double_arg -> (let
-    fc_map_double_symbol_0=federated_apply(<
-      comp#1,
-      map_double_arg[0]
+  fc_concatenation_next_symbol_0=(_next_double_arg -> (let
+    fc__next_double_symbol_0=federated_apply(<
+      (_double_arg -> _double_arg),
+      _next_double_arg[0]
     >),
-    fc_map_double_symbol_1=federated_map(<
-      comp#2,
-      map_double_arg[1]
+    fc__next_double_symbol_1=federated_map(<
+      (_double_arg -> _double_arg),
+      _next_double_arg[1]
     >),
-    fc_map_double_symbol_2=comp#3(),
-    fc_map_double_symbol_3=federated_value_at_server(<
-      a=fc_map_double_symbol_2
+    fc__next_double_symbol_2=comp#1(),
+    fc__next_double_symbol_3=federated_value_at_server(<
+      a=fc__next_double_symbol_2
     >)
    in <
-    state=fc_map_double_symbol_0,
-    result=fc_map_double_symbol_1,
-    measurements=fc_map_double_symbol_3
+    state=fc__next_double_symbol_0,
+    result=fc__next_double_symbol_1,
+    measurements=fc__next_double_symbol_3
   >))(<
     state=federated_apply(<
       (x -> x[0]),
@@ -44,7 +44,7 @@ next:
   >),
   fc_concatenation_next_symbol_1=(next_fn_arg -> (let
     fc_next_fn_symbol_0=federated_sum(next_fn_arg[1]),
-    fc_next_fn_symbol_1=comp#4(),
+    fc_next_fn_symbol_1=comp#2(),
     fc_next_fn_symbol_2=federated_value_at_server(fc_next_fn_symbol_1)
    in <
     state=next_fn_arg[0],

@@ -157,7 +157,6 @@ py_test(
         "//tensorflow_federated/python/core/impl/compiler:compiler_test_utils",
         "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
-        "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
     ],
