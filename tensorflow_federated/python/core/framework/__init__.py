@@ -27,7 +27,6 @@ from tensorflow_federated.python.core.impl.compiler.building_blocks import Struc
 from tensorflow_federated.python.core.impl.compiler.building_blocks import UnexpectedBlockError
 from tensorflow_federated.python.core.impl.compiler.compiled_computation_transformations import check_allowed_ops
 from tensorflow_federated.python.core.impl.compiler.compiled_computation_transformations import check_disallowed_ops
-from tensorflow_federated.python.core.impl.compiler.tree_transformations import replace_intrinsics_with_bodies
 from tensorflow_federated.python.core.impl.computation.computation_impl import ConcreteComputation
 from tensorflow_federated.python.core.impl.computation.computation_serialization import deserialize_computation
 from tensorflow_federated.python.core.impl.computation.computation_serialization import serialize_computation

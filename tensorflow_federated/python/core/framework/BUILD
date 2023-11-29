@@ -22,7 +22,6 @@ py_library(
     deps = [
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
         "//tensorflow_federated/python/core/impl/compiler:compiled_computation_transformations",
-        "//tensorflow_federated/python/core/impl/compiler:tree_transformations",
         "//tensorflow_federated/python/core/impl/computation:computation_impl",
         "//tensorflow_federated/python/core/impl/computation:computation_serialization",
         "//tensorflow_federated/python/core/impl/context_stack:context_base",
