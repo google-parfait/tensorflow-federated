@@ -53,5 +53,4 @@ from tensorflow_federated.python.core.impl.executors.ingestable_base import Inge
 from tensorflow_federated.python.core.impl.executors.remote_executor_stub import RemoteExecutorStub
 from tensorflow_federated.python.core.impl.executors.value_serialization import deserialize_value
 from tensorflow_federated.python.core.impl.executors.value_serialization import serialize_value
-from tensorflow_federated.python.core.impl.tensorflow_context.tensorflow_computation_context import get_session_token
 from tensorflow_federated.python.core.impl.types.placements import PlacementLiteral
