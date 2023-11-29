@@ -18,8 +18,8 @@ from collections.abc import Collection
 import typing
 from typing import Any, NamedTuple, Optional
 import warnings
-from absl import logging
 
+from absl import logging
 import dp_accounting
 import tensorflow as tf
 import tensorflow_privacy as tfp
@@ -27,9 +27,9 @@ import tensorflow_privacy as tfp
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import sum_factory
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_conversions

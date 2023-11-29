@@ -21,10 +21,10 @@ import attrs
 import numpy as np
 import tensorflow as tf
 
+from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.core.impl.computation import computation_wrapper
 from tensorflow_federated.python.core.impl.context_stack import get_context_stack
 from tensorflow_federated.python.core.impl.context_stack import runtime_error_context
-from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 
@@ -183,7 +183,6 @@ class TensorFlowComputationTest(parameterized.TestCase):
     )
 
   def test_takes_structured_tuple_typed(self):
-
     class MyType(NamedTuple):
       x: object
       y: object
@@ -216,7 +215,6 @@ class TensorFlowComputationTest(parameterized.TestCase):
     )
 
   def test_takes_structured_tuple_polymorphic(self):
-
     class MyType(NamedTuple):
       x: object
       y: object
@@ -266,7 +264,6 @@ class TensorFlowComputationTest(parameterized.TestCase):
     )
 
   def test_returns_tuple_structured(self):
-
     class MyType(NamedTuple):
       x: object
       y: object
@@ -291,7 +288,6 @@ class TensorFlowComputationTest(parameterized.TestCase):
     # pyformat: enable
 
   def test_takes_namedtuple_typed(self):
-
     class MyType(NamedTuple):
       x: object
       y: object
@@ -308,7 +304,6 @@ class TensorFlowComputationTest(parameterized.TestCase):
     )
 
   def test_takes_namedtuple_polymorphic(self):
-
     class MyType(NamedTuple):
       x: object
       y: object
@@ -411,17 +406,16 @@ class TensorFlowComputationTest(parameterized.TestCase):
       tensorflow_computation.tf_computation(foo, tuple_on_function)
 
   def test_stackframes_in_errors(self):
-
     class DummyError(RuntimeError):
       pass
 
     with self.assertRaises(DummyError):
+
       @tensorflow_computation.tf_computation
       def _():
         raise DummyError()
 
   def test_error_on_non_callable_non_type(self):
-
     with self.assertRaises(TypeError):
       tensorflow_computation.tf_computation(5)
 
@@ -432,6 +426,7 @@ class TensorFlowComputationTest(parameterized.TestCase):
     )
 
     with self.assertRaises(computation_wrapper.ComputationReturnedNoneError):
+
       @tensorflow_computation.tf_computation()
       def _():
         pass
@@ -441,7 +436,6 @@ class TensorFlowComputationTest(parameterized.TestCase):
     )
 
   def test_check_returns_type_with_tensorflow_computation_succeeds(self):
-
     @tensorflow_computation.tf_computation(tf.int32)
     @computation_wrapper.check_returns_type(np.int32)
     def _(x):
@@ -458,7 +452,6 @@ class TensorFlowComputationTest(parameterized.TestCase):
   def test_check_returns_type_with_tensorflow_computation_picking_up_named_parameters(
       self,
   ):
-
     @tensorflow_computation.tf_computation(tf.int32, tf.int32)
     @computation_wrapper.check_returns_type(np.int32)
     def f(a, b):
@@ -486,13 +479,13 @@ class TensorFlowComputationTest(parameterized.TestCase):
     type_with_unknown_shape = computation_types.TensorType(np.int32, [None])
 
     with self.assertRaises(TypeError):
+
       @tensorflow_computation.tf_computation(type_with_known_shape)
       @computation_wrapper.check_returns_type(type_with_unknown_shape)
       def _(a):
         return a
 
   def test_check_returns_type_attrs_type(self):
-
     @attrs.define
     class MyAttrs:
       a: int

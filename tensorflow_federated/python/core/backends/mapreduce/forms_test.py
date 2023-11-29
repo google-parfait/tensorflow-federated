@@ -19,9 +19,9 @@ import tensorflow as tf
 from tensorflow_federated.python.core.backends.mapreduce import distribute_aggregate_test_utils
 from tensorflow_federated.python.core.backends.mapreduce import forms
 from tensorflow_federated.python.core.backends.mapreduce import mapreduce_test_utils
+from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 
@@ -158,7 +158,6 @@ def _build_test_map_reduce_form_with_computations(
 
 
 def _test_distribute_aggregate_form_computations():
-
   @federated_computation.federated_computation(
       computation_types.at_server(np.int32)
   )
@@ -412,7 +411,6 @@ class MapReduceFormTest(absltest.TestCase):
       _build_test_map_reduce_form_with_computations(prepare=prepare)
 
   def test_init_raises_type_error_with_bad_work_second_parameter_type(self):
-
     @tensorflow_computation.tf_computation(
         computation_types.SequenceType(np.float32), np.int32
     )
@@ -425,7 +423,6 @@ class MapReduceFormTest(absltest.TestCase):
       _build_test_map_reduce_form_with_computations(work=work)
 
   def test_init_raises_type_error_with_bad_work_result_type(self):
-
     @tensorflow_computation.tf_computation(
         computation_types.SequenceType(np.float32), np.float32
     )
@@ -483,7 +480,6 @@ class MapReduceFormTest(absltest.TestCase):
       _build_test_map_reduce_form_with_computations(accumulate=accumulate)
 
   def test_init_raises_type_error_with_bad_merge_first_parameter_type(self):
-
     @tensorflow_computation.tf_computation(
         (np.float32, np.int32), (np.int32, np.int32)
     )
@@ -496,7 +492,6 @@ class MapReduceFormTest(absltest.TestCase):
       _build_test_map_reduce_form_with_computations(merge=merge)
 
   def test_init_raises_type_error_with_bad_merge_second_parameter_type(self):
-
     @tensorflow_computation.tf_computation(
         (np.int32, np.int32), (np.float32, np.int32)
     )
@@ -509,7 +504,6 @@ class MapReduceFormTest(absltest.TestCase):
       _build_test_map_reduce_form_with_computations(merge=merge)
 
   def test_init_raises_type_error_with_bad_merge_result_type(self):
-
     @tensorflow_computation.tf_computation(
         (np.int32, np.int32), (np.int32, np.int32)
     )
@@ -542,7 +536,6 @@ class MapReduceFormTest(absltest.TestCase):
       _build_test_map_reduce_form_with_computations(report=report)
 
   def test_init_raises_type_error_with_bad_update_first_parameter_type(self):
-
     @tensorflow_computation.tf_computation(
         np.float32, (np.float32, computation_types.StructType([]))
     )
@@ -555,7 +548,6 @@ class MapReduceFormTest(absltest.TestCase):
       _build_test_map_reduce_form_with_computations(update=update)
 
   def test_init_raises_type_error_with_bad_update_second_parameter_type(self):
-
     @tensorflow_computation.tf_computation(
         np.int32, (np.int32, computation_types.StructType([]))
     )
@@ -568,7 +560,6 @@ class MapReduceFormTest(absltest.TestCase):
       _build_test_map_reduce_form_with_computations(update=update)
 
   def test_init_raises_type_error_with_bad_update_result_type(self):
-
     @tensorflow_computation.tf_computation(
         np.int32, (np.float32, computation_types.StructType([]))
     )
@@ -650,11 +641,9 @@ class DistributeAggregateFormTest(absltest.TestCase):
         computation_types.at_server(state_type)
     )
     def server_prepare(server_state):
-      return [
-          [
-              server_state,
-          ]
-      ], [server_state]
+      return [[
+          server_state,
+      ]], [server_state]
 
     @federated_computation.federated_computation(
         [[computation_types.at_server(state_type)]]
@@ -712,7 +701,6 @@ class DistributeAggregateFormTest(absltest.TestCase):
       self.fail('Raised TypeError unexpectedly.')
 
   def test_init_raises_type_error_with_bad_server_prepare_parameter_type(self):
-
     @federated_computation.federated_computation(
         computation_types.at_server(np.float32)
     )
@@ -748,12 +736,10 @@ class DistributeAggregateFormTest(absltest.TestCase):
       )
 
   def test_init_raises_type_error_with_broadcast_input_type_mismatch(self):
-
     @federated_computation.federated_computation(
         computation_types.at_server(np.int32)
     )
     def server_prepare(server_state):
-
       @tensorflow_computation.tf_computation
       def server_prepare_state_tf():
         return 32
@@ -769,7 +755,6 @@ class DistributeAggregateFormTest(absltest.TestCase):
       )
 
   def test_init_raises_type_error_with_broadcast_output_type_mismatch(self):
-
     @federated_computation.federated_computation(
         computation_types.at_clients(
             computation_types.SequenceType(np.float32)
@@ -814,7 +799,6 @@ class DistributeAggregateFormTest(absltest.TestCase):
       )
 
   def test_init_raises_type_error_with_aggregation_input_type_mismatch(self):
-
     @federated_computation.federated_computation(
         [np.int32, computation_types.at_server(np.int32)],
         [[computation_types.at_clients(np.int32)]],
@@ -838,7 +822,6 @@ class DistributeAggregateFormTest(absltest.TestCase):
       )
 
   def test_init_raises_type_error_with_aggregation_output_type_mismatch(self):
-
     @federated_computation.federated_computation(
         [np.int32, computation_types.at_server(np.int32)],
         [
@@ -863,7 +846,6 @@ class DistributeAggregateFormTest(absltest.TestCase):
       )
 
   def test_init_raises_assertion_error_with_bad_aggregation_body(self):
-
     @federated_computation.federated_computation(
         [np.int32, computation_types.at_server(np.int32)],
         [
@@ -907,7 +889,6 @@ class DistributeAggregateFormTest(absltest.TestCase):
       )
 
   def test_init_raises_type_error_with_temporary_state_type_mismatch(self):
-
     @federated_computation.federated_computation(
         [np.int32, computation_types.at_server(np.int32), np.int32],
         [

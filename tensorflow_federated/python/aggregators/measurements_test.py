@@ -21,8 +21,8 @@ from tensorflow_federated.python.aggregators import measurements
 from tensorflow_federated.python.aggregators import primitives
 from tensorflow_federated.python.aggregators import sum_factory
 from tensorflow_federated.python.core.backends.native import execution_contexts
+from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 
 _struct_type = computation_types.to_type([(tf.float32, (3,)), tf.float32])

@@ -15,6 +15,7 @@ package_group(
 package_group(
     name = "environments_users",
     includes = [
+        "//tensorflow_federated/python/core:core_users",
         "//tensorflow_federated/python/core/backends:backends_packages",
     ],
     packages = [

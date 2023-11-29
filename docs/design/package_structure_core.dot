@@ -18,18 +18,22 @@ digraph {
   // TODO: b/233801300 - Remove dependency from `mapreduce` to `test`.
   mapreduce -> backends_test [color="#ff0000"]
   backends_test -> jax_frontend [arrowhead="none", style="invisible"]
-  xla -> jax_frontend [arrowhead="none", style="invisible"]
+  backends_test -> tensorflow_frontend [arrowhead="none", style="invisible"]
 
   subgraph cluster_environments {
     graph [label="Environments", href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/environments" target="_parent"]
     jax_frontend [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/environments/jax_frontend" target="_parent"]
     xla_backend [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/environments/xla_backend" target="_parent"]
+    tensorflow_frontend [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/environments/tensorflow_frontend" target="_parent"]
   }
 
   jax_frontend -> xla_backend
   xla_backend -> framework [arrowhead="none", style="invisible"]
   xla_backend -> test [arrowhead="none", style="invisible"]
   xla_backend -> templates [arrowhead="none", style="invisible"]
+  tensorflow_frontend -> framework [arrowhead="none", style="invisible"]
+  tensorflow_frontend -> test [arrowhead="none", style="invisible"]
+  tensorflow_frontend -> templates [arrowhead="none", style="invisible"]
 
   subgraph cluster_core_1 {
     framework [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/framework" target="_parent"]
@@ -47,7 +51,6 @@ digraph {
     executor_stacks [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/executor_stacks" target="_parent"]
     executors [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/executors" target="_parent"]
     federated_context [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/federated_context" target="_parent"]
-    tensorflow_context [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/tensorflow_context" target="_parent"]
     computation [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/computation" target="_parent"]
     compiler [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/compiler" target="_parent"]
     utils [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/utils" target="_parent"]
@@ -75,10 +78,6 @@ digraph {
   federated_context -> utils
   federated_context -> types
   federated_context -> context_stack
-  tensorflow_context -> computation
-  tensorflow_context -> utils
-  tensorflow_context -> types
-  tensorflow_context -> context_stack
   computation -> compiler
   computation -> utils
   computation -> types

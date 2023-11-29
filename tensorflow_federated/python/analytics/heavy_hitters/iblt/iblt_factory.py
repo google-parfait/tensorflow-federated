@@ -24,9 +24,9 @@ from tensorflow_federated.python.aggregators import sum_factory
 from tensorflow_federated.python.analytics import data_processing
 from tensorflow_federated.python.analytics.heavy_hitters.iblt import chunkers
 from tensorflow_federated.python.analytics.heavy_hitters.iblt import iblt_tensor
+from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process

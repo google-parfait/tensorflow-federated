@@ -29,6 +29,7 @@ from tensorflow_federated.python.core import framework
 from tensorflow_federated.python.core import templates
 from tensorflow_federated.python.core import test
 from tensorflow_federated.python.core.environments.jax_frontend.jax_computation import jax_computation
+from tensorflow_federated.python.core.environments.tensorflow_frontend.tensorflow_computation import tf_computation
 from tensorflow_federated.python.core.impl import types
 from tensorflow_federated.python.core.impl.computation.computation_base import Computation
 from tensorflow_federated.python.core.impl.computation.computation_wrapper import check_returns_type
@@ -54,7 +55,6 @@ from tensorflow_federated.python.core.impl.federated_context.intrinsics import s
 from tensorflow_federated.python.core.impl.federated_context.intrinsics import sequence_sum
 from tensorflow_federated.python.core.impl.federated_context.value_impl import to_value
 from tensorflow_federated.python.core.impl.federated_context.value_impl import Value
-from tensorflow_federated.python.core.impl.tensorflow_context.tensorflow_computation import tf_computation
 from tensorflow_federated.python.core.impl.types.computation_types import at_clients as type_at_clients
 from tensorflow_federated.python.core.impl.types.computation_types import at_server as type_at_server
 from tensorflow_federated.python.core.impl.types.computation_types import FederatedType

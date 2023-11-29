@@ -8,7 +8,6 @@ package(
         "//tensorflow_federated/python/core/impl/compiler:compiler_packages",
         "//tensorflow_federated/python/core/impl/executors:executors_packages",
         "//tensorflow_federated/python/core/impl/federated_context:federated_context_packages",
-        "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_context_packages",
     ],
 )
 

@@ -42,10 +42,10 @@ decorator.
 ### `TensorFlowComputationContext`
 
 A
-[tensorflow_computation_context.TensorFlowComputationContext](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/tensorflow_context/tensorflow_computation_context.py)
+[tensorflow_computation_context.TensorFlowComputationContext](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/environments/tensorflow_backends/tensorflow_computation_context.py)
 is a context that constructs TensorFlow computations. This context is used to
 serialize Python functions decorated with the
-[tensorflow_computation.tf_computation](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/tensorflow_context/tensorflow_computation.py)
+[tensorflow_computation.tf_computation](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/environments/tensorflow_backends/tensorflow_computation.py)
 decorator.
 
 ## `ContextStack`
@@ -70,7 +70,7 @@ You can set the context TFF will use to [construct](tracing.md),
     to temporarily install a context onto the top of the stack. For example, the
     [federated_computation.federated_computation](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/federated_context/federated_computation.py)
     and
-    [tensorflow_computation.tf_computation](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/tensorflow_context/tensorflow_computation.py)
+    [tensorflow_computation.tf_computation](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/environments/tensorflow_backends/tensorflow_computation.py)
     decorators push the corresponding contexts onto the current context stack
     while the decorated function is being traced.
 

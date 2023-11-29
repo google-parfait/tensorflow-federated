@@ -22,8 +22,8 @@ from absl import logging
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_conversions
@@ -115,9 +115,7 @@ def from_keras_model(
       specified but `loss` is not a list, if `input_spec` does not contain
       exactly two elements, or if `input_spec` is a dictionary and does not
       contain keys `'x'` and `'y'`.
-  """.format(
-      variable.MODEL_ARG_NAME, variable.MODEL_LABEL_NAME
-  )
+  """.format(variable.MODEL_ARG_NAME, variable.MODEL_LABEL_NAME)
   # Validate `keras_model`
   py_typecheck.check_type(keras_model, tf.keras.Model)
   if keras_model._is_compiled:  # pylint: disable=protected-access

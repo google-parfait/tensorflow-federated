@@ -226,8 +226,8 @@ py_library(
     srcs = ["client_data.py"],
     deps = [
         "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
         "//tensorflow_federated/python/core/impl/computation:computation_base",
-        "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
     ],
 )
 
@@ -238,7 +238,7 @@ py_test(
     deps = [
         ":client_data",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
-        "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
+        "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
     ],
 )
 

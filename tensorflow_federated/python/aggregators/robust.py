@@ -17,7 +17,7 @@ import collections
 from collections.abc import Callable
 import math
 import typing
-from typing import Optional, Union, TypeVar
+from typing import Optional, TypeVar, Union
 
 import numpy as np
 import tensorflow as tf
@@ -25,10 +25,10 @@ import tensorflow as tf
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import sum_factory
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
@@ -407,6 +407,7 @@ def _make_wrapper(
 
     return WeightedRobustFactory()
   elif isinstance(inner_agg_factory, factory.UnweightedAggregationFactory):
+
     class UnweightedRobustFactory(factory.UnweightedAggregationFactory):
       """`UnweightedAggregationFactory` factory for clipping large values."""
 

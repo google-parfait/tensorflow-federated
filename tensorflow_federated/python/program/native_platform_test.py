@@ -24,10 +24,10 @@ import tensorflow as tf
 from tensorflow_federated.python.common_libs import async_utils
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.backends.native import execution_contexts
+from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.execution_contexts import async_execution_context
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
-from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.program import native_platform
@@ -813,6 +813,7 @@ class NativeFederatedContextTest(
 
     with self.assertRaises(ValueError):
       context.invoke(comp, arg)
+
 
 if __name__ == '__main__':
   absltest.main()

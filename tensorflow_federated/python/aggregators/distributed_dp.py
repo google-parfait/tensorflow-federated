@@ -31,9 +31,9 @@ from tensorflow_federated.python.aggregators import quantile_estimation
 from tensorflow_federated.python.aggregators import robust
 from tensorflow_federated.python.aggregators import rotation
 from tensorflow_federated.python.aggregators import secure
+from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import array_shape
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
@@ -696,9 +696,7 @@ def _heuristic_scale_factor(
   sigma = tf.cast(local_stddev, tf.float64)
 
   numer = tf.sqrt(2.0 ** (2.0 * bits) - n * k_stddevs**2)
-  denom = (
-      2.0 * k_stddevs * tf.sqrt(rho / dim * c**2 * n**2 + n * sigma**2)
-  )
+  denom = 2.0 * k_stddevs * tf.sqrt(rho / dim * c**2 * n**2 + n * sigma**2)
   scale_factor = numer / denom
   return scale_factor
 

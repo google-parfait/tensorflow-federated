@@ -20,7 +20,6 @@ Breaking the centralized barrier for cross-device federated learning.
     Reddi, Sebastian U. Stich, and Ananda Theertha Suresh.
     Advances in Neural Information Processing Systems 34 (2021).
     https://proceedings.neurips.cc/paper/2021/file/f0e6be4ce76ccfa73c5a540d992d0756-Paper.pdf
-
 """
 
 import collections
@@ -33,9 +32,9 @@ from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import factory_utils
 from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_conversions

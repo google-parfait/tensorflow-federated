@@ -23,13 +23,13 @@ import tensorflow as tf
 
 from tensorflow_federated.python.core.backends.native import cpp_execution_contexts
 from tensorflow_federated.python.core.backends.native import execution_contexts
+from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.core.impl.context_stack import get_context_stack
 from tensorflow_federated.python.core.impl.execution_contexts import async_execution_context
 from tensorflow_federated.python.core.impl.execution_contexts import sync_execution_context
 from tensorflow_federated.python.core.impl.executors import executor_bindings
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 
@@ -140,7 +140,6 @@ class LocalCPPExecutionContextTest(absltest.TestCase):
     self.assertIsInstance(context, sync_execution_context.SyncExecutionContext)
 
   def test_returns_same_python_structure(self):
-
     @federated_computation.federated_computation(
         collections.OrderedDict(a=np.int32, b=np.float32)
     )
@@ -154,7 +153,6 @@ class LocalCPPExecutionContextTest(absltest.TestCase):
     self.assertIsInstance(odict, collections.OrderedDict)
 
   def test_runs_tensorflow(self):
-
     @tensorflow_computation.tf_computation(
         collections.OrderedDict(x=np.int32, y=np.int32)
     )

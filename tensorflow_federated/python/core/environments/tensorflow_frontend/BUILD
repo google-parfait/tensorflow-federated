@@ -3,20 +3,20 @@ load("@rules_python//python:defs.bzl", "py_library", "py_test")
 package(
     default_applicable_licenses = ["//:package_license"],
     default_visibility = [
-        ":tensorflow_context_packages",
-        "//tensorflow_federated/python/core/impl:impl_users",
+        ":tensorflow_frontend_packages",
+        "//tensorflow_federated/python/core/environments:environments_users",
     ],
 )
 
 package_group(
-    name = "tensorflow_context_packages",
-    packages = ["//tensorflow_federated/python/core/impl/tensorflow_context/..."],
+    name = "tensorflow_frontend_packages",
+    packages = ["//tensorflow_federated/python/core/environments/tensorflow_frontend/..."],
 )
 
 licenses(["notice"])
 
 py_library(
-    name = "tensorflow_context",
+    name = "tensorflow_frontend",
     srcs = ["__init__.py"],
     visibility = ["//tensorflow_federated/tools/python_package:python_package_tool"],
 )

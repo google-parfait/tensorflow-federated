@@ -22,10 +22,10 @@ import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.common_libs import structure
+from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_conversions
@@ -80,7 +80,8 @@ def _build_sparse_zero(
   return tf.SparseTensor(
       indices=tf.zeros(shape=[0, num_dense_dimensions], dtype=tf.int64),
       values=tf.constant([], dtype=type_spec.values.dtype),
-      dense_shape=tf.constant(dense_shape.as_list(), dtype=tf.int64))
+      dense_shape=tf.constant(dense_shape.as_list(), dtype=tf.int64),
+  )
 
 
 def _build_value_zeros(
@@ -108,7 +109,8 @@ def _build_value_zeros(
       return type_conversions.type_to_py_container(child_zeros, value_type_spec)
     except TypeError as e:
       raise TypeError(
-          f'Cannot build zeros for type: {value_type_spec!r}') from e
+          f'Cannot build zeros for type: {value_type_spec!r}'
+      ) from e
   else:
     raise TypeError(f'Cannot build zeros for type: {value_type_spec!r}')
 
@@ -182,8 +184,9 @@ class SparsifyingSumFactory(factory.UnweightedAggregationFactory):
 
       @tensorflow_computation.tf_computation
       def zero_values():
-        return _build_value_zeros(sparse_client_values_type,
-                                  dense_shape_structure)
+        return _build_value_zeros(
+            sparse_client_values_type, dense_shape_structure
+        )
 
       zero_values = zero_values()
       client_values_type = client_values.type_signature.member
@@ -258,7 +261,8 @@ class SparsifyingSumFactory(factory.UnweightedAggregationFactory):
         def accumulate_coordinate_count_if_sparse(partial_count, client_value):
           if isinstance(client_value, tf.SparseTensor):
             return partial_count + tf.size(
-                client_value.values, out_type=tf.int64)
+                client_value.values, out_type=tf.int64
+            )
           else:
             return partial_count
 
@@ -301,8 +305,9 @@ class SparsifyingSumFactory(factory.UnweightedAggregationFactory):
           else:
             return tf.constant(0, dtype=tf.int64)
 
-        aggregate_counts = tf.nest.map_structure(count_coordinates_if_sparse,
-                                                 sparse_values)
+        aggregate_counts = tf.nest.map_structure(
+            count_coordinates_if_sparse, sparse_values
+        )
 
         def _densify_if_sparse(tensor, shape):
           if isinstance(tensor, tf.SparseTensor):

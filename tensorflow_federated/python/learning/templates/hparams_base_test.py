@@ -17,7 +17,7 @@ import collections
 from absl.testing import absltest
 import tensorflow as tf
 
-from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
+from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_test_utils
 from tensorflow_federated.python.learning.templates import hparams_base

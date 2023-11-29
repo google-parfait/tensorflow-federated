@@ -29,9 +29,9 @@ from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.aggregators import robust
 from tensorflow_federated.python.aggregators import sum_factory
 from tensorflow_federated.python.core.backends.native import execution_contexts
+from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_conversions
@@ -253,9 +253,7 @@ def _get_keras_optimizer_fn(learning_rate=0.1):
 
 class TrainingProcessTest(tf.test.TestCase, parameterized.TestCase):
 
-  def _run_rounds(
-      self, learning_process, federated_data, num_rounds
-  ) -> tuple[
+  def _run_rounds(self, learning_process, federated_data, num_rounds) -> tuple[
       composers.LearningAlgorithmState,
       list[collections.OrderedDict[str, Any]],
       composers.LearningAlgorithmState,

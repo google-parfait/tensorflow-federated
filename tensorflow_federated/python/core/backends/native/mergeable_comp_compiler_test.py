@@ -16,12 +16,12 @@ from absl.testing import absltest
 import numpy as np
 
 from tensorflow_federated.python.core.backends.native import mergeable_comp_compiler
+from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.core.impl.execution_contexts import async_execution_context
 from tensorflow_federated.python.core.impl.execution_contexts import mergeable_comp_execution_context
 from tensorflow_federated.python.core.impl.executor_stacks import executor_factory
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_test_utils
@@ -147,7 +147,6 @@ class MergeableCompCompilerTest(absltest.TestCase):
     return self._mergeable_comp_context.invoke(mergeable_form, arg)
 
   def test_raises_two_dependent_aggregates(self):
-
     @federated_computation.federated_computation(
         computation_types.at_server(np.int32)
     )

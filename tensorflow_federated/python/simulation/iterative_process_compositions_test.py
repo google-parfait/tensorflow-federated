@@ -17,9 +17,9 @@ import collections
 from absl.testing import absltest
 import tensorflow as tf
 
+from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import iterative_process
@@ -175,13 +175,9 @@ def test_int64_sequence_nested_struct_computation(a, dataset, b):
 
 
 @federated_computation.federated_computation(
-    computation_types.StructType(
-        [
-            computation_types.at_clients(
-                computation_types.SequenceType(tf.int64)
-            ),
-        ]
-    ),
+    computation_types.StructType([
+        computation_types.at_clients(computation_types.SequenceType(tf.int64)),
+    ]),
     computation_types.at_clients(computation_types.SequenceType(tf.int64)),
 )
 def test_int64_sequence_multiple_matching_federated_types_computation(a, b):

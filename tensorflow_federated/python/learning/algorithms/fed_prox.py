@@ -30,7 +30,7 @@ from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import factory_utils
 from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
+from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.learning import client_weight_lib
 from tensorflow_federated.python.learning.metrics import aggregator as metric_aggregator
