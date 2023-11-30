@@ -338,7 +338,7 @@ py_test(
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/proto/v0:executor_py_pb2",
         "//tensorflow_federated/python/common_libs:structure",
-        "//tensorflow_federated/python/core/impl/compiler:tensorflow_computation_factory",
+        "//tensorflow_federated/python/core/impl/compiler:computation_factory",
         "//tensorflow_federated/python/core/impl/computation:computation_impl",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
         "//tensorflow_federated/python/core/impl/types:computation_types",

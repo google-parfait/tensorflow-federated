@@ -84,7 +84,7 @@ py_test(
         ":computation_base",
         ":computation_impl",
         ":computation_serialization",
-        "//tensorflow_federated/python/core/impl/compiler:tensorflow_computation_factory",
+        "//tensorflow_federated/python/core/impl/compiler:computation_factory",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
         "//tensorflow_federated/python/core/impl/types:computation_types",
     ],

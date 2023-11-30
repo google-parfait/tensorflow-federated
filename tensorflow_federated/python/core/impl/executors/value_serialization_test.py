@@ -23,7 +23,7 @@ import tensorflow as tf
 from tensorflow_federated.proto.v0 import computation_pb2
 from tensorflow_federated.proto.v0 import executor_pb2
 from tensorflow_federated.python.common_libs import structure
-from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_factory
+from tensorflow_federated.python.core.impl.compiler import computation_factory
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.executors import value_serialization
@@ -477,8 +477,8 @@ class ValueSerializationtest(tf.test.TestCase, parameterized.TestCase):
 
   def test_serialize_deserialize_computation_value(self):
 
-    proto, _ = tensorflow_computation_factory.create_constant(
-        10, computation_types.TensorType(np.int32)
+    proto = computation_factory.create_lambda_identity(
+        computation_types.TensorType(np.int32)
     )
     comp = computation_impl.ConcreteComputation(
         proto, context_stack_impl.context_stack
@@ -488,12 +488,12 @@ class ValueSerializationtest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(value_proto.WhichOneof('value'), 'computation')
     type_test_utils.assert_types_identical(
         value_type,
-        computation_types.FunctionType(parameter=None, result=np.int32),
+        computation_types.FunctionType(parameter=np.int32, result=np.int32),
     )
     _, type_spec = value_serialization.deserialize_value(value_proto)
     type_test_utils.assert_types_identical(
         type_spec,
-        computation_types.FunctionType(parameter=None, result=np.int32),
+        computation_types.FunctionType(parameter=np.int32, result=np.int32),
     )
 
   def test_serialize_deserialize_nested_tuple_value_with_names(self):

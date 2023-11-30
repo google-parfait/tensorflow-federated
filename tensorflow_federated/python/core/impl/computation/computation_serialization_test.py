@@ -12,12 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import operator
-
 from absl.testing import absltest
 import numpy as np
 
-from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_factory
+from tensorflow_federated.python.core.impl.compiler import computation_factory
 from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.computation import computation_serialization
@@ -28,10 +26,8 @@ from tensorflow_federated.python.core.impl.types import computation_types
 class ComputationSerializationTest(absltest.TestCase):
 
   def test_serialize_deserialize_round_trip(self):
-    operand_type = computation_types.TensorType(np.int32)
-    proto, _ = tensorflow_computation_factory.create_binary_operator(
-        operator.add, operand_type, operand_type
-    )
+    type_spec = computation_types.TensorType(np.int32)
+    proto = computation_factory.create_lambda_identity(type_spec)
     comp = computation_impl.ConcreteComputation(
         proto, context_stack_impl.context_stack
     )
