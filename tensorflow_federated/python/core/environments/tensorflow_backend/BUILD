@@ -23,6 +23,63 @@ py_library(
 )
 
 py_library(
+    name = "compiled_computation_transformations",
+    srcs = ["compiled_computation_transformations.py"],
+    deps = [
+        ":tensorflow_computation_transformations",
+        "//tensorflow_federated/proto/v0:computation_py_pb2",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/impl/compiler:building_blocks",
+        "//tensorflow_federated/python/core/impl/compiler:transformation_utils",
+        "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
+        "//tensorflow_federated/python/tensorflow_libs:graph_optimizations",
+        "//tensorflow_federated/python/tensorflow_libs:graph_spec",
+        "//tensorflow_federated/python/tensorflow_libs:serialization_utils",
+    ],
+)
+
+py_test(
+    name = "compiled_computation_transformations_test",
+    size = "small",
+    srcs = ["compiled_computation_transformations_test.py"],
+    deps = [
+        ":compiled_computation_transformations",
+        ":tensorflow_computation_transformations",
+        "//tensorflow_federated/proto/v0:computation_py_pb2",
+        "//tensorflow_federated/python/core/impl/compiler:building_block_factory",
+        "//tensorflow_federated/python/core/impl/compiler:building_blocks",
+        "//tensorflow_federated/python/core/impl/compiler:tensorflow_computation_factory",
+        "//tensorflow_federated/python/core/impl/compiler:tensorflow_computation_test_utils",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+    ],
+)
+
+py_library(
+    name = "tensorflow_computation_transformations",
+    srcs = ["tensorflow_computation_transformations.py"],
+    deps = [
+        "//tensorflow_federated/proto/v0:computation_py_pb2",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/tensorflow_libs:serialization_utils",
+    ],
+)
+
+py_test(
+    name = "tensorflow_computation_transformations_test",
+    size = "small",
+    srcs = ["tensorflow_computation_transformations_test.py"],
+    deps = [
+        ":tensorflow_computation_transformations",
+        "//tensorflow_federated/proto/v0:computation_py_pb2",
+        "//tensorflow_federated/python/core/impl/compiler:building_block_factory",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:type_serialization",
+        "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
+        "//tensorflow_federated/python/tensorflow_libs:serialization_utils",
+    ],
+)
+
+py_library(
     name = "tensorflow_tree_transformations",
     srcs = ["tensorflow_tree_transformations.py"],
     deps = [

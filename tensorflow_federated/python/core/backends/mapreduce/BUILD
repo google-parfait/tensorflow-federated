@@ -35,11 +35,11 @@ py_library(
     deps = [
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
+        "//tensorflow_federated/python/core/environments/tensorflow_backend:compiled_computation_transformations",
         "//tensorflow_federated/python/core/environments/tensorflow_backend:tensorflow_tree_transformations",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
         "//tensorflow_federated/python/core/impl/compiler:building_block_factory",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
-        "//tensorflow_federated/python/core/impl/compiler:compiled_computation_transformations",
         "//tensorflow_federated/python/core/impl/compiler:transformation_utils",
         "//tensorflow_federated/python/core/impl/compiler:transformations",
         "//tensorflow_federated/python/core/impl/compiler:tree_analysis",
