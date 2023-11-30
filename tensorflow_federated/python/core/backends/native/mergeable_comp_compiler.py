@@ -14,6 +14,7 @@
 """A MergeableCompForm compiler for the native backend."""
 
 from tensorflow_federated.python.core.backends.mapreduce import compiler
+from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_tree_transformations
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import transformations
@@ -152,7 +153,9 @@ def compile_to_mergeable_comp_form(
   original_return_type = comp.type_signature.result
   building_block = comp.to_building_block()
   lam = _ensure_lambda(building_block)
-  lowered_bb, _ = tree_transformations.replace_intrinsics_with_bodies(lam)
+  lowered_bb, _ = (
+      tensorflow_tree_transformations.replace_intrinsics_with_bodies(lam)
+  )
 
   # We transform the body of this computation to easily preserve the top-level
   # lambda required by force-aligning.

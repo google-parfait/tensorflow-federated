@@ -26,6 +26,7 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.backends.mapreduce import compiler
 from tensorflow_federated.python.core.backends.mapreduce import forms
+from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_tree_transformations
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
@@ -127,8 +128,10 @@ def get_state_initialization_computation(
         f'{init_type.result}'  # pytype: disable=attribute-error
     )
   initialize_tree = initialize_computation.to_building_block()
-  initialize_tree, _ = tree_transformations.replace_intrinsics_with_bodies(
-      initialize_tree
+  initialize_tree, _ = (
+      tensorflow_tree_transformations.replace_intrinsics_with_bodies(
+          initialize_tree
+      )
   )
   tree_analysis.check_contains_only_reducible_intrinsics(initialize_tree)
   initialize_tree = compiler.consolidate_and_extract_local_processing(
@@ -348,7 +351,9 @@ def check_computation_compatible_with_map_reduce_form(
         f'type:\n{comp_type.result}'  # pytype: disable=attribute-error
     )
 
-  comp_tree, _ = tree_transformations.replace_intrinsics_with_bodies(comp_tree)
+  comp_tree, _ = tensorflow_tree_transformations.replace_intrinsics_with_bodies(
+      comp_tree
+  )
   comp_tree = _replace_lambda_body_with_call_dominant_form(comp_tree)
 
   tree_analysis.check_contains_only_reducible_intrinsics(comp_tree)
@@ -935,7 +940,7 @@ def get_broadcast_form_for_computation(
   bb = comp.to_building_block()
   if tff_internal_preprocessing is not None:
     bb = tff_internal_preprocessing(bb)
-  bb, _ = tree_transformations.replace_intrinsics_with_bodies(bb)
+  bb, _ = tensorflow_tree_transformations.replace_intrinsics_with_bodies(bb)
   bb = _replace_lambda_body_with_call_dominant_form(bb)
 
   tree_analysis.check_contains_only_reducible_intrinsics(bb)

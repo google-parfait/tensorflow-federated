@@ -25,15 +25,17 @@ digraph {
     jax_frontend [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/environments/jax_frontend" target="_parent"]
     xla_backend [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/environments/xla_backend" target="_parent"]
     tensorflow_frontend [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/environments/tensorflow_frontend" target="_parent"]
+    tensorflow_backend [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/environments/tensorflow_backend" target="_parent"]
   }
 
   jax_frontend -> xla_backend
   xla_backend -> framework [arrowhead="none", style="invisible"]
   xla_backend -> test [arrowhead="none", style="invisible"]
   xla_backend -> templates [arrowhead="none", style="invisible"]
-  tensorflow_frontend -> framework [arrowhead="none", style="invisible"]
-  tensorflow_frontend -> test [arrowhead="none", style="invisible"]
-  tensorflow_frontend -> templates [arrowhead="none", style="invisible"]
+  tensorflow_frontend -> tensorflow_backend
+  tensorflow_backend -> framework [arrowhead="none", style="invisible"]
+  tensorflow_backend -> test [arrowhead="none", style="invisible"]
+  tensorflow_backend -> templates [arrowhead="none", style="invisible"]
 
   subgraph cluster_core_1 {
     framework [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/framework" target="_parent"]

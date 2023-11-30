@@ -67,6 +67,7 @@ from absl import logging
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
+from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_tree_transformations
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
@@ -250,7 +251,7 @@ def consolidate_and_extract_local_processing(comp, grappler_config_proto):
   py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
   comp.type_signature.check_function()
   # Replace any GENERIC_* intrinsic calls with TF function calls.
-  comp, _ = tree_transformations.replace_intrinsics_with_bodies(comp)
+  comp, _ = tensorflow_tree_transformations.replace_intrinsics_with_bodies(comp)
   # Drop any unused subcomputations which may reference placements different
   # from the result.
   simplified = transformations.to_call_dominant(comp)

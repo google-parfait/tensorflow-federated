@@ -29,6 +29,7 @@ sh_binary(
         "//tensorflow_federated/python/core",
         "//tensorflow_federated/python/core/environments",
         "//tensorflow_federated/python/core/environments/jax_frontend",
+        "//tensorflow_federated/python/core/environments/tensorflow_backend",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend",
         "//tensorflow_federated/python/core/environments/xla_backend",
         "//tensorflow_federated/python/core/impl",

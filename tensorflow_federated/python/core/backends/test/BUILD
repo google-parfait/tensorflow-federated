@@ -32,7 +32,7 @@ py_library(
     name = "compiler",
     srcs = ["compiler.py"],
     deps = [
-        "//tensorflow_federated/python/core/impl/compiler:tree_transformations",
+        "//tensorflow_federated/python/core/environments/tensorflow_backend:tensorflow_tree_transformations",
         "//tensorflow_federated/python/core/impl/computation:computation_impl",
     ],
 )

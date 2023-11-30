@@ -36,10 +36,10 @@ py_library(
     deps = [
         "//tensorflow_federated/python/common_libs:tracing",
         "//tensorflow_federated/python/core/backends/mapreduce:compiler",
+        "//tensorflow_federated/python/core/environments/tensorflow_backend:tensorflow_tree_transformations",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
         "//tensorflow_federated/python/core/impl/compiler:compiled_computation_transformations",
         "//tensorflow_federated/python/core/impl/compiler:transformations",
-        "//tensorflow_federated/python/core/impl/compiler:tree_transformations",
         "//tensorflow_federated/python/core/impl/computation:computation_impl",
     ],
 )
@@ -100,6 +100,7 @@ py_library(
     srcs = ["mergeable_comp_compiler.py"],
     deps = [
         "//tensorflow_federated/python/core/backends/mapreduce:compiler",
+        "//tensorflow_federated/python/core/environments/tensorflow_backend:tensorflow_tree_transformations",
         "//tensorflow_federated/python/core/impl/compiler:building_block_factory",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
         "//tensorflow_federated/python/core/impl/compiler:transformations",

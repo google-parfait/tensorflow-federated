@@ -20,10 +20,10 @@ import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import tracing
 from tensorflow_federated.python.core.backends.mapreduce import compiler
+from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_tree_transformations
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import compiled_computation_transformations
 from tensorflow_federated.python.core.impl.compiler import transformations
-from tensorflow_federated.python.core.impl.compiler import tree_transformations
 from tensorflow_federated.python.core.impl.computation import computation_impl
 
 
@@ -132,7 +132,7 @@ def desugar_and_transform_to_native(comp):
   rewrite_options.function_optimization = aggressive
 
   intrinsics_desugared_bb, _ = (
-      tree_transformations.replace_intrinsics_with_bodies(
+      tensorflow_tree_transformations.replace_intrinsics_with_bodies(
           comp.to_building_block()
       )
   )

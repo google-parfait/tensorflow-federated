@@ -13,7 +13,7 @@
 # limitations under the License.
 """A compiler for the test backend."""
 
-from tensorflow_federated.python.core.impl.compiler import tree_transformations
+from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_tree_transformations
 from tensorflow_federated.python.core.impl.computation import computation_impl
 
 
@@ -34,7 +34,7 @@ def replace_secure_intrinsics_with_bodies(comp):
   # Compile secure_sum and secure_sum_bitwidth intrinsics to insecure
   # TensorFlow computations for testing purposes.
   replaced_intrinsic_bodies, _ = (
-      tree_transformations.replace_secure_intrinsics_with_insecure_bodies(
+      tensorflow_tree_transformations.replace_secure_intrinsics_with_insecure_bodies(
           comp.to_building_block()
       )
   )
