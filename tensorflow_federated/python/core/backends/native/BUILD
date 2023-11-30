@@ -36,9 +36,9 @@ py_library(
     deps = [
         "//tensorflow_federated/python/common_libs:tracing",
         "//tensorflow_federated/python/core/backends/mapreduce:compiler",
+        "//tensorflow_federated/python/core/environments/tensorflow_backend:compiled_computation_transformations",
         "//tensorflow_federated/python/core/environments/tensorflow_backend:tensorflow_tree_transformations",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
-        "//tensorflow_federated/python/core/impl/compiler:compiled_computation_transformations",
         "//tensorflow_federated/python/core/impl/compiler:transformations",
         "//tensorflow_federated/python/core/impl/computation:computation_impl",
     ],

@@ -20,9 +20,9 @@ import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import tracing
 from tensorflow_federated.python.core.backends.mapreduce import compiler
+from tensorflow_federated.python.core.environments.tensorflow_backend import compiled_computation_transformations
 from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_tree_transformations
 from tensorflow_federated.python.core.impl.compiler import building_blocks
-from tensorflow_federated.python.core.impl.compiler import compiled_computation_transformations
 from tensorflow_federated.python.core.impl.compiler import transformations
 from tensorflow_federated.python.core.impl.computation import computation_impl
 
