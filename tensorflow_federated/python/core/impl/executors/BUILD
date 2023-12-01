@@ -176,14 +176,8 @@ py_test(
     ],
     deps = [
         ":executor_bindings",
-        ":tensorflow_executor_bindings",
-        ":value_serialization",
-        "//tensorflow_federated/proto/v0:executor_py_pb2",
-        "//tensorflow_federated/python/core/impl/compiler:computation_factory",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/cc/core/impl/executors:executor_test_utils_bindings",
         "//tensorflow_federated/python/core/impl/types:placements",
-        "//tensorflow_federated/python/core/impl/types:type_conversions",
-        "//tensorflow_federated/python/core/impl/types:type_test_utils",
     ],
 )
 

@@ -114,6 +114,9 @@ class MockExecutor : public Executor,
   std::vector<std::unique_ptr<std::vector<ValueId>>> struct_expectations_;
 };
 
+// Returns a mock executor.
+std::shared_ptr<Executor> CreateMockExecutor();
+
 }  // namespace tensorflow_federated
 
 #endif  // THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTORS_MOCK_EXECUTOR_H_
