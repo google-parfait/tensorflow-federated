@@ -38,6 +38,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/executors:executor_bindings",
         "//tensorflow_federated/python/core/impl/executors:executor_factory",
         "//tensorflow_federated/python/core/impl/executors:executors_errors",
+        "//tensorflow_federated/python/core/impl/executors:tensorflow_executor_bindings",
         "//tensorflow_federated/python/core/impl/types:placements",
     ],
 )

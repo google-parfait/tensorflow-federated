@@ -28,6 +28,7 @@ from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_bindings
 from tensorflow_federated.python.core.impl.executors import executor_factory
 from tensorflow_federated.python.core.impl.executors import executors_errors
+from tensorflow_federated.python.core.impl.executors import tensorflow_executor_bindings
 from tensorflow_federated.python.core.impl.types import placements
 
 # Users likely do not intend to run 4 or more TensorFlow functions sequentially;
@@ -119,7 +120,7 @@ def default_leaf_executor_fn(
   """Constructs the default leaf executor stack."""
   return executor_bindings.create_sequence_executor(
       executor_bindings.create_reference_resolving_executor(
-          executor_bindings.create_tensorflow_executor(
+          tensorflow_executor_bindings.create_tensorflow_executor(
               max_concurrent_computation_calls
           )
       )

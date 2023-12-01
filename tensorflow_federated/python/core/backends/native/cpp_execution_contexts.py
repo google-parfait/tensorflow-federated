@@ -26,6 +26,7 @@ from tensorflow_federated.python.core.impl.execution_contexts import sync_execut
 from tensorflow_federated.python.core.impl.executor_stacks import cpp_executor_factory
 from tensorflow_federated.python.core.impl.executors import executor_bindings
 from tensorflow_federated.python.core.impl.executors import executor_factory
+from tensorflow_federated.python.core.impl.executors import tensorflow_executor_bindings
 
 
 @dataclasses.dataclass(frozen=True)
@@ -158,7 +159,7 @@ def _create_dtensor_executor(mesh: tf.experimental.dtensor.Mesh):
     with tf.experimental.dtensor.run_on(mesh):
       return executor_bindings.create_sequence_executor(
           executor_bindings.create_reference_resolving_executor(
-              executor_bindings.create_dtensor_executor(
+              tensorflow_executor_bindings.create_dtensor_executor(
                   tf.experimental.dtensor.device_name(),
                   mesh.to_string(),
                   max_concurrent_computation_calls,
