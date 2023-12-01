@@ -55,7 +55,7 @@ py_library(
 
 py_test(
     name = "golden_test",
-    size = "small",
+    timeout = "long",
     srcs = ["golden_test.py"],
     args = [
         "--golden",

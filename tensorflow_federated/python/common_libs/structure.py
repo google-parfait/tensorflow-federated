@@ -19,7 +19,6 @@ import typing
 from typing import Generic, Optional, TypeVar, Union
 
 import attrs
-import tensorflow as tf
 import tree
 
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -547,8 +546,6 @@ def from_container(value: object, recursive=False) -> Struct:
             dict[str, object],
             tuple[object, ...],
             list[object],
-            tf.RaggedTensor,
-            tf.SparseTensor,
         ],
         value,
     )
@@ -574,22 +571,6 @@ def from_container(value: object, recursive=False) -> Struct:
         return Struct((None, _convert(v, True)) for v in value)
       else:
         return Struct((None, v) for v in value)
-    elif isinstance(value, tf.RaggedTensor):
-      if recursive:
-        nested_row_splits = _convert(value.nested_row_splits, True)
-      else:
-        nested_row_splits = value.nested_row_splits
-      return Struct([
-          ('flat_values', value.flat_values),
-          ('nested_row_splits', nested_row_splits),
-      ])
-    elif isinstance(value, tf.SparseTensor):
-      # Each element is a tensor
-      return Struct([
-          ('indices', value.indices),
-          ('values', value.values),
-          ('dense_shape', value.dense_shape),
-      ])
     elif must_be_container:
       raise TypeError(
           'Unable to convert a Python object of type {} into '

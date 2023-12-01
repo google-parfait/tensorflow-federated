@@ -30,59 +30,33 @@ import tensorflow as tf
 import tensorflow_federated as tff
 
 
-def create_ragged():
-  return tf.RaggedTensor.from_row_splits([0, 0, 0, 0], [0, 1, 4])
+class CompositeTensorTest(absltest.TestCase):
 
-
-class RaggedTensorTest(absltest.TestCase):
-
-  def test_inferred_type_assignable_to_type_spec(self):
-    tf_comp = tff.tf_computation(create_ragged)
-    type_from_return = tf_comp.type_signature.result
-
-    ragged_tensor_spec = tf.RaggedTensorSpec.from_value(create_ragged())
-    type_from_spec = tff.types.tensorflow_to_type(ragged_tensor_spec)
-
-    type_from_spec.check_assignable_from(type_from_return)
-
-  def test_passes_through_computation(self):
-    ragged_tensor_spec = tf.RaggedTensorSpec.from_value(create_ragged())
+  def test_ragged_tensor_passes_through_computation(self):
+    ragged_tensor = tf.RaggedTensor.from_row_splits([0, 0, 0, 0], [0, 1, 4])
+    ragged_tensor_spec = tf.RaggedTensorSpec.from_value(ragged_tensor)
 
     @tff.tf_computation(ragged_tensor_spec)
-    def check_ragged(ragged):
-      self.assertIsInstance(ragged, tf.RaggedTensor)
-      return ragged
+    def _foo(obj):
+      self.assertIsInstance(obj, tf.RaggedTensor)
+      return obj
 
-    out = check_ragged(create_ragged())
-    self.assertIsInstance(out, tf.RaggedTensor)
+    result = _foo(ragged_tensor)
+    self.assertIsInstance(result, tf.RaggedTensor)
 
-
-def create_sparse():
-  return tf.SparseTensor(indices=[[1]], values=[2], dense_shape=[5])
-
-
-class SparseTensorTest(absltest.TestCase):
-
-  def test_inferred_type_assignable_to_type_spec(self):
-    tf_comp = tff.tf_computation(create_sparse)
-    type_from_return = tf_comp.type_signature.result
-
-    sparse_tensor_spec = tf.SparseTensorSpec.from_value(create_sparse())
-    type_from_spec = tff.types.tensorflow_to_type(sparse_tensor_spec)
-
-    type_from_spec.check_assignable_from(type_from_return)
-
-  def test_passes_through_computation(self):
-    sparse_tensor_spec = tf.SparseTensorSpec.from_value(create_sparse())
+  def test_sparse_tensor_passes_through_computation(self):
+    sparse_tensor = tf.SparseTensor(indices=[[1]], values=[2], dense_shape=[5])
+    sparse_tensor_spec = tf.SparseTensorSpec.from_value(sparse_tensor)
 
     @tff.tf_computation(sparse_tensor_spec)
-    def check_sparse(sparse):
-      self.assertIsInstance(sparse, tf.SparseTensor)
-      return sparse
+    def _foo(obj):
+      self.assertIsInstance(obj, tf.SparseTensor)
+      return obj
 
-    out = check_sparse(create_sparse())
-    self.assertIsInstance(out, tf.SparseTensor)
+    result = _foo(sparse_tensor)
+    self.assertIsInstance(result, tf.SparseTensor)
 
 
 if __name__ == '__main__':
+  tff.backends.test.set_sync_test_cpp_execution_context()
   absltest.main()

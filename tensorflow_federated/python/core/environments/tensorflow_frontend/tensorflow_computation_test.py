@@ -21,6 +21,7 @@ import attrs
 import numpy as np
 import tensorflow as tf
 
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.core.impl.computation import computation_wrapper
 from tensorflow_federated.python.core.impl.context_stack import get_context_stack
@@ -35,6 +36,61 @@ def one_arg_fn(x):
 
 def no_arg_fn():
   return 10
+
+
+class TransformArgsTest(parameterized.TestCase):
+
+  @parameterized.named_parameters(
+      (
+          'ragged_tensor',
+          tf.RaggedTensor.from_row_splits([0, 0, 0, 0], [0, 1, 4]),
+          (
+              (
+                  structure.Struct([
+                      ('flat_values', tf.constant([0, 0, 0, 0], tf.int32)),
+                      (
+                          'nested_row_splits',
+                          structure.Struct([
+                              (None, tf.constant([0, 1, 4], tf.int64)),
+                          ]),
+                      ),
+                  ]),
+              ),
+              {},
+          ),
+      ),
+      (
+          'sparse_tensor',
+          tf.SparseTensor(indices=[[1]], values=[2], dense_shape=[5]),
+          (
+              (
+                  structure.Struct([
+                      ('indices', tf.constant([[1]], tf.int64)),
+                      ('values', tf.constant([2], tf.int64)),
+                      ('dense_shape', tf.constant([5], tf.int64)),
+                  ]),
+              ),
+              {},
+          ),
+      ),
+  )
+  def test_returns_result(self, args, expected_result):
+    actual_args, actual_kwargs = tensorflow_computation._transform_args(args)
+
+    def _to_python_value(obj):
+      if isinstance(obj, tf.Tensor) and not tf.is_symbolic_tensor(obj):
+        return obj.numpy().tolist()
+      else:
+        return obj
+
+    expected_args, expected_kwargs = expected_result
+
+    for actual_arg, expected_arg in zip(actual_args, expected_args):
+      actual_arg = structure.map_structure(_to_python_value, actual_arg)
+      expected_arg = structure.map_structure(_to_python_value, expected_arg)
+      self.assertEqual(actual_arg, expected_arg)
+
+    self.assertEqual(actual_kwargs, expected_kwargs)
 
 
 class TransformResultTest(absltest.TestCase):

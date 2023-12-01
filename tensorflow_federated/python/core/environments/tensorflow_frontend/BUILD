@@ -26,6 +26,7 @@ py_library(
     srcs = ["tensorflow_computation.py"],
     deps = [
         ":tensorflow_serialization",
+        "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/computation:computation_impl",
         "//tensorflow_federated/python/core/impl/computation:computation_wrapper",
         "//tensorflow_federated/python/core/impl/computation:function_utils",
@@ -42,6 +43,7 @@ py_test(
     srcs = ["tensorflow_computation_test.py"],
     deps = [
         ":tensorflow_computation",
+        "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/computation:computation_wrapper",
         "//tensorflow_federated/python/core/impl/context_stack:get_context_stack",
         "//tensorflow_federated/python/core/impl/context_stack:runtime_error_context",

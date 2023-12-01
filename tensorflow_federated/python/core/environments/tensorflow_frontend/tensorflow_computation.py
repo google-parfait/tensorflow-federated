@@ -13,11 +13,13 @@
 # limitations under the License.
 """Definition of a tensorflow computation."""
 
+from collections.abc import Mapping, Sequence
 from typing import Optional
 
 import tensorflow as tf
 import tree
 
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_serialization
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.computation import computation_wrapper
@@ -28,7 +30,51 @@ from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_conversions
 
 
+def _transform_args(
+    *args: object, **kwargs: object
+) -> tuple[Sequence[object], Mapping[str, object]]:
+  """Transforms the args before they are passed to the computaiton."""
+
+  # elif isinstance(value, tf.RaggedTensor):
+  #   if recursive:
+  #     nested_row_splits = _convert(value.nested_row_splits, True)
+  #   else:
+  #     nested_row_splits = value.nested_row_splits
+  #   return Struct([
+  #       ('flat_values', value.flat_values),
+  #       ('nested_row_splits', nested_row_splits),
+  #   ])
+  # elif isinstance(value, tf.SparseTensor):
+  #   # Each element is a tensor
+  #   return Struct([
+  #       ('indices', value.indices),
+  #       ('values', value.values),
+  #       ('dense_shape', value.dense_shape),
+  #   ])
+  def fn(obj):
+    if isinstance(obj, tf.RaggedTensor):
+      nested_row_splits = structure.from_container(
+          obj.nested_row_splits, recursive=True
+      )
+      return structure.Struct([
+          ('flat_values', obj.flat_values),
+          ('nested_row_splits', nested_row_splits),
+      ])
+    elif isinstance(obj, tf.SparseTensor):
+      return structure.Struct([
+          ('indices', obj.indices),
+          ('values', obj.values),
+          ('dense_shape', obj.dense_shape),
+      ])
+    else:
+      return None
+
+  return tree.traverse(fn, args), tree.traverse(fn, kwargs)
+
+
 def _transform_result(result: object) -> object:
+  """Transforms the result of the computation before it is returned."""
+
   def fn(obj):
     if isinstance(obj, tf.Tensor) and not tf.is_symbolic_tensor(obj):
       return obj.numpy()
@@ -43,7 +89,7 @@ def _transform_result(result: object) -> object:
 
 def _tf_wrapper_fn(
     fn,
-    parameter_type,
+    parameter_type: Optional[object],
     unpack: Optional[bool],
     name: Optional[str] = None,
     **kwargs
@@ -72,6 +118,7 @@ def _tf_wrapper_fn(
       comp_pb,
       context_stack,
       extra_type_spec,
+      _transform_args,
       _transform_result,
   )
 

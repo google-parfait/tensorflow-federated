@@ -529,12 +529,6 @@ def type_to_py_container(value, type_spec: computation_types.Type):
     element_type = structure_type_spec.element
     if isinstance(value, list):
       return [type_to_py_container(element, element_type) for element in value]
-    elif isinstance(value, tf.data.Dataset):
-      # `tf.data.Dataset` does not understand `Struct`, so the dataset
-      # in `value` must already be yielding Python containers. This is because
-      # when TFF is constructing datasets it always uses the proper Python
-      # container, so we simply return `value` here without modification.
-      return value
     else:
       # Assume that the type of value does not understand `Struct` and that the
       # value must yield Python containers.
@@ -621,18 +615,12 @@ def type_to_py_container(value, type_spec: computation_types.Type):
       isinstance(container_type, py_typecheck.SupportsNamedTuple)
       or attrs.has(container_type)
       or dataclasses.is_dataclass(container_type)
-      or container_type is tf.SparseTensor
   ):
     # The namedtuple and attr.s class constructors cannot interpret a list of
     # (name, value) tuples; instead call constructor using kwargs. Note that
     # these classes already define an order of names internally, so order does
     # not matter.
     return container_type(**dict(elements))
-  elif container_type is tf.RaggedTensor:
-    elements = dict(elements)
-    return tf.RaggedTensor.from_nested_row_splits(
-        elements['flat_values'], elements['nested_row_splits']
-    )
   else:
     # E.g., tuple and list when elements only has values, but also `dict`,
     # `collections.OrderedDict`, or `structure.Struct` when
