@@ -59,6 +59,12 @@ git_repository(
 )
 
 git_repository(
+    name = "pybind11_bazel",
+    remote = "https://github.com/pybind/pybind11_bazel.git",
+    tag = "v2.11.1",
+)
+
+git_repository(
     name = "pybind11_protobuf",
     commit = "80f3440cd8fee124e077e2e47a8a17b78b451363",
     remote = "https://github.com/pybind/pybind11_protobuf.git",
