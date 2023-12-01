@@ -16,8 +16,10 @@ import collections
 
 from absl.testing import absltest
 from absl.testing import parameterized
+import numpy as np
 import tensorflow as tf
 
+from tensorflow_federated.proto.v0 import computation_pb2
 from tensorflow_federated.proto.v0 import executor_pb2
 from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_factory
 from tensorflow_federated.python.core.impl.executors import executor_bindings
@@ -26,6 +28,19 @@ from tensorflow_federated.python.core.impl.executors import value_serialization
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.types import type_test_utils
+
+
+# Creating logical devices should be done only once before TF runtime startup
+# Thus, perform it during setUpModule method.
+def setUpModule():
+  devices = tf.config.list_physical_devices('CPU')
+  tf.config.set_logical_device_configuration(
+      devices[0],
+      [
+          tf.config.LogicalDeviceConfiguration(),
+      ]
+      * 8,
+  )
 
 
 def _test_map_integers(tensor):
@@ -57,11 +72,11 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
       ('tf_executor', True),
       ('dtensor_executor', False),
   )
-  def test_create(self, use_tf_executor):
+  def test_construction(self, use_tf_executor):
     try:
       get_executor(use_tf_executor)
-    except Exception as e:  # pylint: disable=broad-except
-      self.fail(f'Exception: {e}')
+    except Exception:  # pylint: disable=broad-except
+      self.fail('Raised `Exception` unexpectedly.')
 
   @parameterized.named_parameters(
       ('tf_executor', True),
@@ -70,7 +85,7 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
   def test_create_value(self, use_tf_executor):
     executor = get_executor(use_tf_executor)
     # 1. Test a simple tensor.
-    expected_type_spec = computation_types.TensorType(shape=[3], dtype=tf.int64)
+    expected_type_spec = computation_types.TensorType(np.int64, [3])
     value_pb, _ = value_serialization.serialize_value(
         [1, 2, 3], expected_type_spec
     )
@@ -87,8 +102,8 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
     self.assertAllEqual(deserialized_value, [1, 2, 3])
     # 2. Test a struct of tensors, ensure that we get a different ID.
     expected_type_spec = computation_types.StructType([
-        ('a', computation_types.TensorType(shape=[3], dtype=tf.int64)),
-        ('b', computation_types.TensorType(shape=[], dtype=tf.float32)),
+        ('a', computation_types.TensorType(np.int64, [3])),
+        ('b', computation_types.TensorType(np.float32, [])),
     ])
     value_pb, _ = value_serialization.serialize_value(
         collections.OrderedDict(a=tf.constant([1, 2, 3]), b=tf.constant(42.0)),
@@ -117,8 +132,8 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
     # 3. Test creating a value from a computation.
     foo, _ = tensorflow_computation_factory.create_binary_operator(
         tf.add,
-        computation_types.TensorType(tf.int64),
-        computation_types.TensorType(tf.int64),
+        computation_types.TensorType(np.int64),
+        computation_types.TensorType(np.int64),
     )
 
     value_pb = executor_pb2.Value(computation=foo)
@@ -131,20 +146,24 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
     # Note: functions are not materializable, no addition assertions.
 
   @parameterized.named_parameters(
-      ('range', tf.data.Dataset.range(5)),
-      ('shuffled_range', tf.data.Dataset.range(5).shuffle(3)),
+      ('range', lambda: tf.data.Dataset.range(5)),
+      ('shuffled_range', lambda: tf.data.Dataset.range(5).shuffle(3)),
       (
           'mapped_with_resource_range',
-          tf.data.Dataset.range(5).map(_test_map_integers),
+          lambda: tf.data.Dataset.range(5).map(_test_map_integers),
       ),
-      ('mapped_range', tf.data.Dataset.range(5).map(lambda x: x)),
+      ('mapped_range', lambda: tf.data.Dataset.range(5).map(lambda x: x)),
       (
           'batched_range',
-          tf.data.Dataset.range(5).batch(2, drop_remainder=False),
+          lambda: tf.data.Dataset.range(5).batch(2, drop_remainder=False),
       ),
-      ('tensor_slices', tf.data.Dataset.from_tensor_slices(list(range(5)))),
+      (
+          'tensor_slices',
+          lambda: tf.data.Dataset.from_tensor_slices(list(range(5))),
+      ),
   )
-  def test_create_value_sequence(self, dataset):
+  def test_create_value_sequence(self, dataset_factory):
+    dataset = dataset_factory()
     executor = tensorflow_executor_bindings.create_tensorflow_executor()
     sequence_type = computation_types.SequenceType(dataset.element_spec)
     arg_value_pb, _ = value_serialization.serialize_value(
@@ -216,7 +235,7 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
   )
   def test_create_struct(self, use_tf_executor):
     executor = get_executor(use_tf_executor)
-    expected_type_spec = computation_types.TensorType(shape=[3], dtype=tf.int64)
+    expected_type_spec = computation_types.TensorType(np.int64, [3])
     value_pb, _ = value_serialization.serialize_value(
         tf.constant([1, 2, 3]), expected_type_spec
     )
@@ -258,7 +277,7 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
   )
   def test_create_selection(self, use_tf_executor):
     executor = get_executor(use_tf_executor)
-    expected_type_spec = computation_types.TensorType(shape=[3], dtype=tf.int64)
+    expected_type_spec = computation_types.TensorType(np.int64, [3])
     value_pb, _ = value_serialization.serialize_value(
         tf.constant([1, 2, 3]), expected_type_spec
     )
@@ -299,15 +318,15 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
     executor = get_executor(use_tf_executor)
     value_pb, _ = value_serialization.serialize_value(
         tf.constant([1, 2, 3]),
-        computation_types.TensorType(shape=[3], dtype=tf.int64),
+        computation_types.TensorType(np.int64, [3]),
     )
     value_ref = executor.create_value(value_pb)
     arg = executor.create_struct((value_ref.ref, value_ref.ref))
 
     foo, _ = tensorflow_computation_factory.create_binary_operator(
         tf.add,
-        computation_types.TensorType(tf.int64),
-        computation_types.TensorType(tf.int64),
+        computation_types.TensorType(np.int64),
+        computation_types.TensorType(np.int64),
     )
 
     comp_pb = executor_pb2.Value(computation=foo)
@@ -325,7 +344,7 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
     executor = get_executor(use_tf_executor)
 
     foo, _ = tensorflow_computation_factory.create_constant(
-        123.0, computation_types.TensorType(tf.float32)
+        123.0, computation_types.TensorType(np.float32)
     )
 
     comp_pb = executor_pb2.Value(computation=foo)
@@ -339,6 +358,55 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
     executor = tensorflow_executor_bindings.create_tensorflow_executor()
     with self.assertRaisesRegex(Exception, 'NOT_FOUND'):
       executor.materialize(0)
+
+
+class DtensorExecutorBindingTest(parameterized.TestCase, tf.test.TestCase):
+
+  @parameterized.named_parameters(
+      ('sharded_input', True),
+      ('replicated_input', False),
+  )
+  def test_call_with_arg_dtensor_executor_with_mesh(self, sharded_input):
+    mesh_dim_name = 'batch'
+    mesh = tf.experimental.dtensor.create_mesh(
+        devices=['CPU:%d' % i for i in range(8)], mesh_dims=[(mesh_dim_name, 8)]
+    )
+    # dtensor.run_on method is used to set mesh for the dtensor device.
+    with tf.experimental.dtensor.run_on(mesh):
+      executor = tensorflow_executor_bindings.create_dtensor_executor(
+          tf.experimental.dtensor.device_name(), mesh.to_string(), -1
+      )
+      value_pb, _ = value_serialization.serialize_value(
+          tf.constant([1, 2, 3, 4, 5, 6, 7, 8]),
+          computation_types.TensorType(np.int64, [8]),
+      )
+
+      value_ref = executor.create_value(value_pb)
+      arg = executor.create_struct((value_ref.ref, value_ref.ref))
+
+      mesh_dim_name = 'batch'
+      spec = {}
+      if sharded_input:
+        spec['arg_a'] = mesh_dim_name
+      else:
+        spec['arg_a'] = 'unsharded'
+      layout_map = computation_pb2.TensorFlow.LayoutMap(
+          name_to_sharding_spec=spec
+      )
+
+      proto, _ = tensorflow_computation_factory.create_binary_operator(
+          tf.add,
+          computation_types.TensorType(np.int64),
+          computation_types.TensorType(np.int64),
+          layout_map,
+      )
+
+      comp_pb = executor_pb2.Value(computation=proto)
+      comp = executor.create_value(comp_pb)
+      result = executor.create_call(comp.ref, arg.ref)
+      result_value_pb = executor.materialize(result.ref)
+      result_tensor, _ = value_serialization.deserialize_value(result_value_pb)
+      self.assertAllEqual(result_tensor, [2, 4, 6, 8, 10, 12, 14, 16])
 
 
 if __name__ == '__main__':
