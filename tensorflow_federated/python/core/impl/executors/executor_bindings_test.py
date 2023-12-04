@@ -19,8 +19,8 @@ import portpicker
 import tensorflow as tf
 import tree
 
-from tensorflow_federated.cc.core.impl.executors import executor_test_utils_bindings
 from tensorflow_federated.python.core.impl.executors import executor_bindings
+from tensorflow_federated.python.core.impl.executors import executor_test_utils_bindings
 from tensorflow_federated.python.core.impl.types import placements
 
 

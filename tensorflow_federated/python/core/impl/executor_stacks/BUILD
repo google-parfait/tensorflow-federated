@@ -38,7 +38,6 @@ py_library(
         "//tensorflow_federated/python/core/impl/executors:executor_bindings",
         "//tensorflow_federated/python/core/impl/executors:executor_factory",
         "//tensorflow_federated/python/core/impl/executors:executors_errors",
-        "//tensorflow_federated/python/core/impl/executors:tensorflow_executor_bindings",
         "//tensorflow_federated/python/core/impl/types:placements",
     ],
 )
@@ -54,6 +53,7 @@ py_test(
         "//tensorflow_federated/python/core/impl/executors:executor_base",
         "//tensorflow_federated/python/core/impl/executors:executor_bindings",
         "//tensorflow_federated/python/core/impl/executors:executor_factory",
+        "//tensorflow_federated/python/core/impl/executors:executor_test_utils_bindings",
         "//tensorflow_federated/python/core/impl/types:placements",
     ],
 )
@@ -65,6 +65,7 @@ py_library(
     tags = ["ignore_for_dep=third_party.py.IPython.get_ipython"],
     deps = [
         ":python_executor_stacks",
+        "//tensorflow_federated/python/core/impl/executors:executor_base",
         "//tensorflow_federated/python/core/impl/executors:executor_factory",
         "//tensorflow_federated/python/core/impl/executors:remote_executor",
         "//tensorflow_federated/python/core/impl/executors:remote_executor_grpc_stub",

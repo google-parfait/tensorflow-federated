@@ -25,6 +25,7 @@ py_library(
     visibility = ["//tensorflow_federated/python/core/backends:__pkg__"],
     deps = [
         ":compiler",
+        ":cpp_execution_contexts",
         ":execution_contexts",
         ":mergeable_comp_compiler",
     ],
@@ -119,6 +120,7 @@ py_test(
     name = "mergeable_comp_compiler_test",
     srcs = ["mergeable_comp_compiler_test.py"],
     deps = [
+        ":cpp_execution_contexts",
         ":mergeable_comp_compiler",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
         "//tensorflow_federated/python/core/impl/execution_contexts:async_execution_context",

@@ -15,6 +15,7 @@
 from absl.testing import absltest
 import numpy as np
 
+from tensorflow_federated.python.core.backends.native import cpp_execution_contexts
 from tensorflow_federated.python.core.backends.native import mergeable_comp_compiler
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.core.impl.execution_contexts import async_execution_context
@@ -129,8 +130,10 @@ def server_placed_mult(arg):
 class MergeableCompCompilerTest(absltest.TestCase):
 
   def setUp(self):
+
     ex_factory = executor_factory.local_cpp_executor_factory(
-        default_num_clients=0
+        default_num_clients=0,
+        leaf_executor_fn=cpp_execution_contexts.create_tensorflow_executor,
     )
     self._mergeable_comp_context = (
         mergeable_comp_execution_context.MergeableCompExecutionContext(

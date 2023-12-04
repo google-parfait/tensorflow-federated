@@ -29,6 +29,8 @@ from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.context_stack import set_default_context
 from tensorflow_federated.python.core.impl.execution_contexts import sync_execution_context
 from tensorflow_federated.python.core.impl.executor_stacks import executor_factory
+from tensorflow_federated.python.core.impl.executors import executor_bindings
+from tensorflow_federated.python.core.impl.executors import tensorflow_executor_bindings
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -612,7 +614,27 @@ class ConcatenateFunctionOutputsTest(absltest.TestCase):
 
 
 if __name__ == '__main__':
-  factory = executor_factory.local_cpp_executor_factory()
+
+  def _leaf_executor(
+      max_concurrent_computation_calls: int,
+  ) -> executor_bindings.Executor:
+    tensorflow_executor = (
+        tensorflow_executor_bindings.create_tensorflow_executor(
+            max_concurrent_computation_calls
+        )
+    )
+    reference_resolving_executor = (
+        executor_bindings.create_reference_resolving_executor(
+            tensorflow_executor
+        )
+    )
+    return executor_bindings.create_sequence_executor(
+        reference_resolving_executor
+    )
+
+  factory = executor_factory.local_cpp_executor_factory(
+      leaf_executor_fn=_leaf_executor
+  )
   context = sync_execution_context.SyncExecutionContext(executor_fn=factory)
   set_default_context.set_default_context(context)
   absltest.main()

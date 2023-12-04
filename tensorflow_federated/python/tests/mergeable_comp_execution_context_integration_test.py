@@ -198,7 +198,8 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
     for _ in range(num_contexts):
       context = tff.framework.AsyncExecutionContext(
           executor_fn=tff.framework.local_cpp_executor_factory(
-              max_concurrent_computation_calls=1
+              max_concurrent_computation_calls=1,
+              leaf_executor_fn=tff.backends.native.create_tensorflow_executor,
           ),
           compiler_fn=tff.backends.native.desugar_and_transform_to_native,
       )
@@ -274,7 +275,8 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
     for _ in range(5):
       context = tff.framework.AsyncExecutionContext(
           executor_fn=tff.framework.local_cpp_executor_factory(
-              max_concurrent_computation_calls=1
+              max_concurrent_computation_calls=1,
+              leaf_executor_fn=tff.backends.native.create_tensorflow_executor,
           ),
           compiler_fn=tff.backends.native.desugar_and_transform_to_native,
       )
@@ -328,7 +330,8 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
     for _ in range(1):
       context = tff.framework.AsyncExecutionContext(
           executor_fn=tff.framework.local_cpp_executor_factory(
-              max_concurrent_computation_calls=1
+              max_concurrent_computation_calls=1,
+              leaf_executor_fn=tff.backends.native.create_tensorflow_executor,
           ),
           compiler_fn=tff.backends.native.desugar_and_transform_to_native,
       )
@@ -365,6 +368,7 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
           executor_fn=tff.framework.local_cpp_executor_factory(
               default_num_clients=int(num_clients / num_executors),
               max_concurrent_computation_calls=1,
+              leaf_executor_fn=tff.backends.native.create_tensorflow_executor,
           ),
           compiler_fn=tff.backends.native.desugar_and_transform_to_native,
       )
