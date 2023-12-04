@@ -130,22 +130,6 @@ py_test(
     ],
 )
 
-py_test(
-    name = "dtensor_executor_binding_test",
-    srcs = ["dtensor_executor_binding_test.py"],
-    tags = [
-        "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
-    ],
-    deps = [
-        ":tensorflow_executor_bindings",
-        ":value_serialization",
-        "//tensorflow_federated/proto/v0:computation_py_pb2",
-        "//tensorflow_federated/proto/v0:executor_py_pb2",
-        "//tensorflow_federated/python/core/impl/compiler:tensorflow_computation_factory",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-    ],
-)
-
 py_library(
     name = "executor_base",
     srcs = ["executor_base.py"],
@@ -318,6 +302,7 @@ py_test(
         ":executor_bindings",
         ":tensorflow_executor_bindings",
         ":value_serialization",
+        "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/proto/v0:executor_py_pb2",
         "//tensorflow_federated/python/core/impl/compiler:tensorflow_computation_factory",
         "//tensorflow_federated/python/core/impl/types:computation_types",
