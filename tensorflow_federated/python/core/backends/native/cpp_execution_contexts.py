@@ -44,6 +44,22 @@ class DistributedConfiguration:
       )
 
 
+def create_tensorflow_executor(
+    max_concurrent_computation_calls: int,
+) -> executor_bindings.Executor:
+  """Returns a leaf executor for Tensorflow based executor."""
+
+  tensorflow_executor = tensorflow_executor_bindings.create_tensorflow_executor(
+      max_concurrent_computation_calls
+  )
+  reference_resolving_executor = (
+      executor_bindings.create_reference_resolving_executor(tensorflow_executor)
+  )
+  return executor_bindings.create_sequence_executor(
+      reference_resolving_executor
+  )
+
+
 def create_sync_local_cpp_execution_context(
     default_num_clients: int = 0,
     max_concurrent_computation_calls: int = -1,
@@ -67,6 +83,7 @@ def create_sync_local_cpp_execution_context(
   factory = cpp_executor_factory.local_cpp_executor_factory(
       default_num_clients=default_num_clients,
       max_concurrent_computation_calls=max_concurrent_computation_calls,
+      leaf_executor_fn=create_tensorflow_executor,
   )
   context = sync_execution_context.SyncExecutionContext(
       executor_fn=factory, compiler_fn=compiler.desugar_and_transform_to_native
@@ -121,6 +138,7 @@ def create_async_local_cpp_execution_context(
   factory = cpp_executor_factory.local_cpp_executor_factory(
       default_num_clients=default_num_clients,
       max_concurrent_computation_calls=max_concurrent_computation_calls,
+      leaf_executor_fn=create_tensorflow_executor,
   )
   context = async_execution_context.AsyncExecutionContext(
       executor_fn=factory, compiler_fn=compiler.desugar_and_transform_to_native
@@ -176,8 +194,8 @@ def _get_distributed_executor_factory(
     distributed_config: Optional[DistributedConfiguration] = None,
 ) -> executor_factory.ExecutorFactory:
   """Return an execution factory which constructs DTensor based executor."""
-  server_leaf_executor_fn = cpp_executor_factory.default_leaf_executor_fn
-  client_leaf_executor_fn = cpp_executor_factory.default_leaf_executor_fn
+  server_leaf_executor_fn = create_tensorflow_executor
+  client_leaf_executor_fn = create_tensorflow_executor
   if distributed_config is None:
     raise ValueError("Distributed configuration is unspecified.")
 
