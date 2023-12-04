@@ -24,10 +24,27 @@ from tensorflow_federated.python.core.impl.execution_contexts import async_execu
 from tensorflow_federated.python.core.impl.execution_contexts import mergeable_comp_execution_context
 from tensorflow_federated.python.core.impl.execution_contexts import sync_execution_context
 from tensorflow_federated.python.core.impl.executor_stacks import executor_factory
+from tensorflow_federated.python.core.impl.executors import executor_bindings
+from tensorflow_federated.python.core.impl.executors import executor_test_utils_bindings
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
+
+
+def _leaf_executor(
+    max_concurrent_computation_calls: int,
+) -> executor_bindings.Executor:
+  """Constructs the default leaf executor stack."""
+  del max_concurrent_computation_calls  # Unused.
+
+  mock_executor = executor_test_utils_bindings.create_mock_executor()
+  reference_resolving_executor = (
+      executor_bindings.create_reference_resolving_executor(mock_executor)
+  )
+  return executor_bindings.create_sequence_executor(
+      reference_resolving_executor
+  )
 
 
 def build_sum_client_arg_computation(
@@ -388,9 +405,10 @@ class RepackageResultsTest(absltest.TestCase):
 class MergeableCompExecutionContextTest(parameterized.TestCase):
 
   def test_construction_raises_with_sync_context(self):
-    context = sync_execution_context.SyncExecutionContext(
-        executor_factory.local_cpp_executor_factory()
+    factory = executor_factory.local_cpp_executor_factory(
+        leaf_executor_fn=_leaf_executor
     )
+    context = sync_execution_context.SyncExecutionContext(factory)
     contexts = [context]
     with self.assertRaises(TypeError):
       mergeable_comp_execution_context.MergeableCompExecutionContext(contexts)
@@ -401,12 +419,13 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
     def return_one():
       return 1
 
-    contexts = [
-        async_execution_context.AsyncExecutionContext(
-            executor_factory.local_cpp_executor_factory()
-        )
-        for _ in range(1)
-    ]
+    contexts = []
+    for _ in range(1):
+      factory = executor_factory.local_cpp_executor_factory(
+          leaf_executor_fn=_leaf_executor
+      )
+      context = async_execution_context.AsyncExecutionContext(factory)
+      contexts.append(context)
     no_compiler_context = (
         mergeable_comp_execution_context.MergeableCompExecutionContext(contexts)
     )
@@ -420,11 +439,11 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
     def return_one():
       return 1
 
+    factory = executor_factory.local_cpp_executor_factory(
+        leaf_executor_fn=_leaf_executor
+    )
     contexts = [
-        async_execution_context.AsyncExecutionContext(
-            executor_factory.local_cpp_executor_factory()
-        )
-        for _ in range(1)
+        async_execution_context.AsyncExecutionContext(factory) for _ in range(1)
     ]
     context = mergeable_comp_execution_context.MergeableCompExecutionContext(
         contexts, compiler_fn=lambda x: x

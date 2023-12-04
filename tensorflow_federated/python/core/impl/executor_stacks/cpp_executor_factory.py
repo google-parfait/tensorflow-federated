@@ -16,7 +16,7 @@
 from collections.abc import Callable, Sequence
 import concurrent
 import math
-import typing
+from typing import Optional
 
 from absl import logging
 import cachetools
@@ -28,7 +28,6 @@ from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_bindings
 from tensorflow_federated.python.core.impl.executors import executor_factory
 from tensorflow_federated.python.core.impl.executors import executors_errors
-from tensorflow_federated.python.core.impl.executors import tensorflow_executor_bindings
 from tensorflow_federated.python.core.impl.types import placements
 
 # Users likely do not intend to run 4 or more TensorFlow functions sequentially;
@@ -114,31 +113,19 @@ def _check_num_clients_is_valid(default_num_clients: int):
     raise ValueError('Default number of clients must be nonnegative.')
 
 
-def default_leaf_executor_fn(
-    max_concurrent_computation_calls: int,
-) -> executor_bindings.Executor:
-  """Constructs the default leaf executor stack."""
-  return executor_bindings.create_sequence_executor(
-      executor_bindings.create_reference_resolving_executor(
-          tensorflow_executor_bindings.create_tensorflow_executor(
-              max_concurrent_computation_calls
-          )
-      )
-  )
-
-
 def local_cpp_executor_factory(
+    *,
     default_num_clients: int = 0,
     max_concurrent_computation_calls: int = -1,
-    leaf_executor_fn: Callable[
-        [int], executor_bindings.Executor
-    ] = default_leaf_executor_fn,
-    client_leaf_executor_fn: typing.Optional[
+    leaf_executor_fn: Optional[Callable[[int], executor_bindings.Executor]],
+    client_leaf_executor_fn: Optional[
         Callable[[int], executor_bindings.Executor]
     ] = None,
 ) -> executor_factory.ExecutorFactory:
   """Local ExecutorFactory backed by C++ Executor bindings."""
   _check_num_clients_is_valid(default_num_clients)
+  if leaf_executor_fn is None:
+    raise ValueError('Expected `leaf_executor_fn` to not be `None`.')
 
   def _executor_fn(
       cardinalities: executor_factory.CardinalitiesType,

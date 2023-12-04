@@ -160,7 +160,7 @@ py_test(
     ],
     deps = [
         ":executor_bindings",
-        "//tensorflow_federated/cc/core/impl/executors:executor_test_utils_bindings",
+        ":executor_test_utils_bindings",
         "//tensorflow_federated/python/core/impl/types:placements",
     ],
 )
@@ -173,6 +173,16 @@ py_library(
         ":executor_base",
         "//tensorflow_federated/python/core/impl/types:placements",
     ],
+)
+
+py_library(
+    name = "executor_test_utils_bindings",
+    testonly = True,
+    srcs = ["executor_test_utils_bindings.py"],
+    tags = [
+        "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
+    ],
+    deps = ["//tensorflow_federated/cc/core/impl/executors:executor_test_utils_bindings"],
 )
 
 py_library(

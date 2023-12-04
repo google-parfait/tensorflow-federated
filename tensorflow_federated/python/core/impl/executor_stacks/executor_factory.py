@@ -13,18 +13,21 @@
 # limitations under the License.
 """Execution contexts for the native backend."""
 
+from collections.abc import Callable
 import os
 import os.path
 import signal
 import subprocess
 import sys
 import time
+from typing import Optional
 
 from absl import logging
 import grpc
 import portpicker
 
 from tensorflow_federated.python.core.impl.executor_stacks import python_executor_stacks
+from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_factory
 from tensorflow_federated.python.core.impl.executors import remote_executor
 from tensorflow_federated.python.core.impl.executors import remote_executor_grpc_stub
@@ -44,6 +47,7 @@ def local_cpp_executor_factory(
     *,
     default_num_clients: int = 0,
     max_concurrent_computation_calls: int = -1,
+    leaf_executor_fn: Optional[Callable[[int], executor_base.Executor]],
     stream_structs: bool = False,
 ) -> executor_factory.ExecutorFactory:
   """Returns an execution context backed by C++ runtime.
@@ -55,11 +59,13 @@ def local_cpp_executor_factory(
     max_concurrent_computation_calls: The maximum number of concurrent calls to
       a single computation in the C++ runtime. If nonpositive, there is no
       limit.
+    leaf_executor_fn: An `Optional` factory used to create leave executors.
     stream_structs: The flag to enable decomposing and streaming struct values.
 
   Raises:
     RuntimeError: If an internal C++ worker binary can not be found.
   """
+  del leaf_executor_fn  # Unused.
 
   # This path is specified relative to this file because the relative location
   # of the worker binary will remain the same when this function is executed

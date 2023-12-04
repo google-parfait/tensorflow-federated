@@ -24,6 +24,7 @@ from absl import logging
 import portpicker
 
 from tensorflow_federated.python.core.backends.native import compiler as native_compiler
+from tensorflow_federated.python.core.backends.native import cpp_execution_contexts
 from tensorflow_federated.python.core.backends.test import compiler as test_compiler
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.execution_contexts import async_execution_context
@@ -74,6 +75,7 @@ def create_async_test_cpp_execution_context(
   factory = cpp_executor_factory.local_cpp_executor_factory(
       default_num_clients=default_num_clients,
       max_concurrent_computation_calls=max_concurrent_computation_calls,
+      leaf_executor_fn=cpp_execution_contexts.create_tensorflow_executor,
   )
   context = async_execution_context.AsyncExecutionContext(
       executor_fn=factory, compiler_fn=_compile
@@ -253,6 +255,7 @@ def create_sync_test_cpp_execution_context(
   factory = cpp_executor_factory.local_cpp_executor_factory(
       default_num_clients=default_num_clients,
       max_concurrent_computation_calls=max_concurrent_computation_calls,
+      leaf_executor_fn=cpp_execution_contexts.create_tensorflow_executor,
   )
   context = sync_execution_context.SyncExecutionContext(
       executor_fn=factory, compiler_fn=_compile

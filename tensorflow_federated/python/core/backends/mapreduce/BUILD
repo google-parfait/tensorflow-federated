@@ -68,6 +68,8 @@ py_test(
         "//tensorflow_federated/python/core/impl/context_stack:set_default_context",
         "//tensorflow_federated/python/core/impl/execution_contexts:sync_execution_context",
         "//tensorflow_federated/python/core/impl/executor_stacks:executor_factory",
+        "//tensorflow_federated/python/core/impl/executors:executor_bindings",
+        "//tensorflow_federated/python/core/impl/executors:tensorflow_executor_bindings",
         "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
         "//tensorflow_federated/python/core/impl/types:computation_types",

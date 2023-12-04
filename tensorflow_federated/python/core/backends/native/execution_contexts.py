@@ -100,6 +100,7 @@ def create_async_local_cpp_execution_context(
   factory = executor_factory.local_cpp_executor_factory(
       default_num_clients=default_num_clients,
       max_concurrent_computation_calls=max_concurrent_computation_calls,
+      leaf_executor_fn=None,
       stream_structs=stream_structs,
   )
   return async_execution_context.AsyncExecutionContext(
@@ -147,6 +148,7 @@ def create_sync_local_cpp_execution_context(
   factory = executor_factory.local_cpp_executor_factory(
       default_num_clients=default_num_clients,
       max_concurrent_computation_calls=max_concurrent_computation_calls,
+      leaf_executor_fn=None,
       stream_structs=stream_structs,
   )
   return sync_execution_context.SyncExecutionContext(

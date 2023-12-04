@@ -15,6 +15,7 @@
 
 from tensorflow_federated.python.core.backends.native.compiler import desugar_and_transform_to_native
 from tensorflow_federated.python.core.backends.native.compiler import transform_to_native_form
+from tensorflow_federated.python.core.backends.native.cpp_execution_contexts import create_tensorflow_executor
 from tensorflow_federated.python.core.backends.native.execution_contexts import create_async_local_cpp_execution_context
 from tensorflow_federated.python.core.backends.native.execution_contexts import create_mergeable_comp_execution_context
 from tensorflow_federated.python.core.backends.native.execution_contexts import create_sync_local_cpp_execution_context
