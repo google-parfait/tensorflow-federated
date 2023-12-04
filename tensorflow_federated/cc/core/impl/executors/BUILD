@@ -473,6 +473,16 @@ cc_library(
     ],
 )
 
+pybind_extension(
+    name = "executor_test_utils_bindings",
+    testonly = True,
+    srcs = ["executor_test_utils_bindings.cc"],
+    tags = [
+        "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
+    ],
+    deps = [":mock_executor"],
+)
+
 cc_library(
     name = "federated_intrinsics",
     srcs = ["federated_intrinsics.cc"],
@@ -578,6 +588,7 @@ cc_library(
 cc_library(
     name = "mock_executor",
     testonly = True,
+    srcs = ["mock_executor.cc"],
     hdrs = ["mock_executor.h"],
     deps = [
         ":executor",
