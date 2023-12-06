@@ -659,8 +659,8 @@ def deserialize_value(
 
   Args:
     value_proto: An instance of `executor_pb2.Value`.
-    type_hint: A `comptuations_types.Type` that hints at what the value type
-      should be for executors that only return values.
+    type_hint: A `tff.Type` that hints at what the value type should be for
+      executors that only return values.
 
   Returns:
     A tuple `(value, type_spec)`, where `value` is a deserialized

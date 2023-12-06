@@ -758,9 +758,9 @@ class DatasetSerializationTest(absltest.TestCase):
       )
 
     x = tf.data.Dataset.range(5).map(_make_nested_tf_structure)
-    serialzied_bytes = value_serialization._serialize_dataset(x)
+    serialized_bytes = value_serialization._serialize_dataset(x)
     y = value_serialization._deserialize_dataset_from_graph_def(
-        serialzied_bytes, element_type=computation_types.to_type(x.element_spec)
+        serialized_bytes, element_type=computation_types.to_type(x.element_spec)
     )
     # Note: TF loses the `OrderedDict` during serialization, so the expectation
     # here is for a `dict` in the result.
