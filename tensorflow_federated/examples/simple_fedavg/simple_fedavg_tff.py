@@ -129,7 +129,7 @@ def build_federated_averaging_process(
   """
 
   whimsy_model = model_fn()
-  unfinalized_metrics_type = tff.types.type_from_tensors(
+  unfinalized_metrics_type = tff.types.infer_unplaced_type(
       whimsy_model.report_local_unfinalized_metrics()
   )
   metrics_aggregation_computation = tff.learning.metrics.sum_then_finalize(

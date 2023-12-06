@@ -88,7 +88,7 @@ def build_federated_averaging_process(
 
   model_weights_type = server_state_type.model_weights
 
-  client_state_type = tff.types.type_from_tensors(client_state_fn())
+  client_state_type = tff.types.infer_unplaced_type(client_state_fn())
 
   @tff.tf_computation(
       server_state_type,
