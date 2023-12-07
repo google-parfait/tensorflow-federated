@@ -218,7 +218,7 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
     )
     state_type = at_server(
         LearningAlgorithmState(
-            global_model_weights=type_conversions.type_from_tensors(
+            global_model_weights=type_conversions.infer_type(
                 reconstruction_model.ReconstructionModel.get_global_variables(
                     model_fn()
                 )
@@ -326,7 +326,7 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
 
     state_type = at_server(
         LearningAlgorithmState(
-            global_model_weights=type_conversions.type_from_tensors(
+            global_model_weights=type_conversions.infer_type(
                 reconstruction_model.ReconstructionModel.get_global_variables(
                     model_fn()
                 )
@@ -433,7 +433,7 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
     )
     state_type = at_server(
         LearningAlgorithmState(
-            global_model_weights=type_conversions.type_from_tensors(
+            global_model_weights=type_conversions.infer_type(
                 reconstruction_model.ReconstructionModel.get_global_variables(
                     model_fn()
                 )
@@ -534,7 +534,7 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
     )
     state_type = at_server(
         LearningAlgorithmState(
-            global_model_weights=type_conversions.type_from_tensors(
+            global_model_weights=type_conversions.infer_type(
                 reconstruction_model.ReconstructionModel.get_global_variables(
                     model_fn()
                 )
@@ -643,7 +643,7 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
     )
     state_type = at_server(
         LearningAlgorithmState(
-            global_model_weights=type_conversions.type_from_tensors(
+            global_model_weights=type_conversions.infer_type(
                 reconstruction_model.ReconstructionModel.get_global_variables(
                     model_fn()
                 )
@@ -753,7 +753,7 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
     )
     state_type = at_server(
         LearningAlgorithmState(
-            global_model_weights=type_conversions.type_from_tensors(
+            global_model_weights=type_conversions.infer_type(
                 reconstruction_model.ReconstructionModel.get_global_variables(
                     model_fn()
                 )
@@ -835,7 +835,7 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
     def metrics_fn():
       return [counters.NumExamplesCounter(), NumOverCounter(5.0)]
 
-    model_weights_type = type_conversions.type_from_tensors(
+    model_weights_type = type_conversions.infer_type(
         reconstruction_model.ReconstructionModel.get_global_variables(
             model_fn()
         )
@@ -883,7 +883,7 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
     )
     state_type = at_server(
         LearningAlgorithmState(
-            global_model_weights=type_conversions.type_from_tensors(
+            global_model_weights=type_conversions.infer_type(
                 reconstruction_model.ReconstructionModel.get_global_variables(
                     model_fn()
                 )

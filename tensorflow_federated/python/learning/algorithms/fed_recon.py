@@ -147,7 +147,7 @@ def _build_reconstruction_client_work(
   """
   with tf.Graph().as_default():
     model_for_metadata = model_fn()
-  model_weights_type = type_conversions.type_from_tensors(
+  model_weights_type = type_conversions.infer_type(
       ReconstructionModel.get_global_variables(model_for_metadata)
   )
   dataset_type = computation_types.SequenceType(model_for_metadata.input_spec)

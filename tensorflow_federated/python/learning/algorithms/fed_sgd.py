@@ -164,7 +164,7 @@ def _build_fed_sgd_client_work(
     # Wrap model construction in a graph to avoid polluting the global context
     # with variables created for this model.
     model = model_fn()
-    unfinalized_metrics_type = type_conversions.type_from_tensors(
+    unfinalized_metrics_type = type_conversions.infer_type(
         model.report_local_unfinalized_metrics()
     )
     metrics_aggregation_fn = metrics_aggregator(

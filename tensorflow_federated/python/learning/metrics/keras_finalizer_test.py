@@ -103,7 +103,7 @@ class FinalizerTest(parameterized.TestCase, tf.test.TestCase):
     # The unfinalized accuracy contains two tensors `total` and `count`.
     unfinalized_accuracy = [tf.constant(2.0), tf.constant(2.0)]
     finalizer_computation = wrap_tf_function_in_tff_tf_computation(
-        metric, type_conversions.type_from_tensors(unfinalized_accuracy)
+        metric, type_conversions.infer_type(unfinalized_accuracy)
     )
     finalized_accuracy = finalizer_computation(unfinalized_accuracy)
     self.assertEqual(
@@ -130,7 +130,7 @@ class FinalizerTest(parameterized.TestCase, tf.test.TestCase):
       self, metric, unfinalized_metric_values, expected_result
   ):
     finalizer_computation = wrap_tf_function_in_tff_tf_computation(
-        metric, type_conversions.type_from_tensors(unfinalized_metric_values)
+        metric, type_conversions.infer_type(unfinalized_metric_values)
     )
     finalized_metric = finalizer_computation(unfinalized_metric_values)
     self.assertEqual(finalized_metric, expected_result)
@@ -191,7 +191,7 @@ class FinalizerTest(parameterized.TestCase, tf.test.TestCase):
     with self.assertRaisesRegex(error_type, error_message):
       wrap_tf_function_in_tff_tf_computation(
           metric,
-          type_conversions.type_from_tensors(invalid_unfinalized_metric_values),
+          type_conversions.infer_type(invalid_unfinalized_metric_values),
       )
 
 

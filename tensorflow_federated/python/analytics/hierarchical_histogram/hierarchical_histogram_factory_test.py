@@ -61,8 +61,8 @@ class TreeAggregationFactoryComputationTest(
         arity=arity, inner_query=tfp.NoPrivacySumQuery()
     )
     query_state = query.initial_global_state()
-    query_state_type = type_conversions.type_from_tensors(query_state)
-    query_metrics_type = type_conversions.type_from_tensors(
+    query_state_type = type_conversions.infer_type(query_state)
+    query_metrics_type = type_conversions.infer_type(
         query.derive_metrics(query_state)
     )
 
@@ -154,8 +154,8 @@ class TreeAggregationFactoryComputationTest(
         l2_norm_clip=1.0, stddev=0.0
     )
     query_state = query.initial_global_state()
-    query_state_type = type_conversions.type_from_tensors(query_state)
-    query_metrics_type = type_conversions.type_from_tensors(
+    query_state_type = type_conversions.infer_type(query_state)
+    query_metrics_type = type_conversions.infer_type(
         query.derive_metrics(query_state)
     )
 
@@ -252,8 +252,8 @@ class TreeAggregationFactoryComputationTest(
         ),
     )
     query_state = query.initial_global_state()
-    query_state_type = type_conversions.type_from_tensors(query_state)
-    query_metrics_type = type_conversions.type_from_tensors(
+    query_state_type = type_conversions.infer_type(query_state)
+    query_metrics_type = type_conversions.infer_type(
         query.derive_metrics(query_state)
     )
 

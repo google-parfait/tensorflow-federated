@@ -53,8 +53,8 @@ class DPFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
     query_state = _test_dp_query.initial_global_state()
-    query_state_type = type_conversions.type_from_tensors(query_state)
-    query_metrics_type = type_conversions.type_from_tensors(
+    query_state_type = type_conversions.infer_type(query_state)
+    query_metrics_type = type_conversions.infer_type(
         _test_dp_query.derive_metrics(query_state)
     )
 
@@ -66,9 +66,7 @@ class DPFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
     _, _, dp_event = _test_dp_query.get_noised_result(
         initial_sample_state, query_state
     )
-    dp_event_type = type_conversions.type_from_tensors(
-        dp_event.to_named_tuple()
-    )
+    dp_event_type = type_conversions.infer_type(dp_event.to_named_tuple())
 
     server_state_type = computation_types.at_server(
         differential_privacy.DPAggregatorState(

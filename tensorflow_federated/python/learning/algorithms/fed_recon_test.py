@@ -999,7 +999,7 @@ class TrainingProcessTest(tf.test.TestCase, parameterized.TestCase):
           tf.keras.metrics.SparseCategoricalAccuracy(),
       ]
 
-    model_weights_type = type_conversions.type_from_tensors(
+    model_weights_type = type_conversions.infer_type(
         ReconstructionModel.get_global_variables(local_recon_model_fn())
     )
 

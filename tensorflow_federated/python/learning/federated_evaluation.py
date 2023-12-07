@@ -290,7 +290,7 @@ def _build_federated_evaluation(
     model_weights_type = model_weights_lib.weights_type_from_model(model)
     batch_type = computation_types.to_type(model.input_spec)
 
-    unfinalized_metrics_type = type_conversions.type_from_tensors(
+    unfinalized_metrics_type = type_conversions.infer_type(
         model.report_local_unfinalized_metrics()
     )
     metrics_aggregation_computation = metrics_aggregator(

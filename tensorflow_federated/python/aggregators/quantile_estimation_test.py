@@ -57,7 +57,7 @@ class PrivateQEComputationTest(tf.test.TestCase, parameterized.TestCase):
     sum_process_state = ()
 
     server_state_type = computation_types.FederatedType(
-        type_conversions.type_from_tensors((query_state, sum_process_state)),
+        type_conversions.infer_type((query_state, sum_process_state)),
         placements.SERVER,
     )
 

@@ -73,7 +73,7 @@ def _intialize_unfinalized_metrics_accumulators(
 ):
   """Initalizes the unfinalized metrics accumulators."""
   if initial_unfinalized_metrics is not None:
-    initial_unfinalized_metrics_type = type_conversions.type_from_tensors(
+    initial_unfinalized_metrics_type = type_conversions.infer_type(
         initial_unfinalized_metrics
     )
     if initial_unfinalized_metrics_type != local_unfinalized_metrics_type:

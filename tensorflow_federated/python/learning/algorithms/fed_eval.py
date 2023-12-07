@@ -57,7 +57,7 @@ def _build_fed_eval_client_work(
     batch_type = computation_types.to_type(model.input_spec)
     if metrics_aggregation_process is None:
       metrics_finalizers = model.metric_finalizers()
-      local_unfinalized_metrics_type = type_conversions.type_from_tensors(
+      local_unfinalized_metrics_type = type_conversions.infer_type(
           model.report_local_unfinalized_metrics()
       )
       factory = aggregation_factory.SumThenFinalizeFactory(metrics_finalizers)

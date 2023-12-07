@@ -237,7 +237,7 @@ class SumThenFinalizeTest(parameterized.TestCase, tf.test.TestCase):
   ):
     aggregator_computation = aggregator.sum_then_finalize(
         metric_finalizers=metric_finalizers,
-        local_unfinalized_metrics_type=type_conversions.type_from_tensors(
+        local_unfinalized_metrics_type=type_conversions.infer_type(
             local_unfinalized_metrics_at_clients[0]
         ),
     )
@@ -257,7 +257,7 @@ class SumThenFinalizeTest(parameterized.TestCase, tf.test.TestCase):
     with self.assertRaisesRegex(error_type, error_message):
       aggregator.sum_then_finalize(
           metric_finalizers=metric_finalizers,
-          local_unfinalized_metrics_type=type_conversions.type_from_tensors(
+          local_unfinalized_metrics_type=type_conversions.infer_type(
               local_unfinalized_metrics
           ),
       )
@@ -279,7 +279,7 @@ class SecureSumThenFinalizeTest(parameterized.TestCase, tf.test.TestCase):
   ):
     aggregator_computation = aggregator.secure_sum_then_finalize(
         metric_finalizers=metric_finalizers,
-        local_unfinalized_metrics_type=type_conversions.type_from_tensors(
+        local_unfinalized_metrics_type=type_conversions.infer_type(
             local_unfinalized_metrics_at_clients[0]
         ),
     )
@@ -359,7 +359,7 @@ class SecureSumThenFinalizeTest(parameterized.TestCase, tf.test.TestCase):
     ]
     aggregator_computation = aggregator.secure_sum_then_finalize(
         metric_finalizers=metric_finalizers,
-        local_unfinalized_metrics_type=type_conversions.type_from_tensors(
+        local_unfinalized_metrics_type=type_conversions.infer_type(
             local_unfinalized_metrics_at_clients[0]
         ),
         # Note: Partial specification, only the `accuracy` metrics denominator
@@ -424,7 +424,7 @@ class SecureSumThenFinalizeTest(parameterized.TestCase, tf.test.TestCase):
     ]
     aggregator_computation = aggregator.secure_sum_then_finalize(
         metric_finalizers=metric_finalizers,
-        local_unfinalized_metrics_type=type_conversions.type_from_tensors(
+        local_unfinalized_metrics_type=type_conversions.infer_type(
             local_unfinalized_metrics_at_clients[0]
         ),
         # Note: Partial specification, `divide/1` and `sum/count_1` gets the
@@ -502,7 +502,7 @@ class SecureSumThenFinalizeTest(parameterized.TestCase, tf.test.TestCase):
     with self.assertRaises(aggregation_factory.UnquantizableDTypeError):
       aggregator.secure_sum_then_finalize(
           metric_finalizers=metric_finalizers,
-          local_unfinalized_metrics_type=type_conversions.type_from_tensors(
+          local_unfinalized_metrics_type=type_conversions.infer_type(
               local_unfinalized_metrics_at_clients[0]
           ),
       )
@@ -519,7 +519,7 @@ class SecureSumThenFinalizeTest(parameterized.TestCase, tf.test.TestCase):
     with self.assertRaisesRegex(ValueError, 'must be defined as a 2-tuple'):
       aggregator.secure_sum_then_finalize(
           metric_finalizers=metric_finalizers,
-          local_unfinalized_metrics_type=type_conversions.type_from_tensors(
+          local_unfinalized_metrics_type=type_conversions.infer_type(
               local_unfinalized_metrics_at_clients[0]
           ),
           metric_value_ranges=collections.OrderedDict(
@@ -542,7 +542,7 @@ class SecureSumThenFinalizeTest(parameterized.TestCase, tf.test.TestCase):
     with self.assertRaisesRegex(error_type, error_message):
       aggregator.secure_sum_then_finalize(
           metric_finalizers=metric_finalizers,
-          local_unfinalized_metrics_type=type_conversions.type_from_tensors(
+          local_unfinalized_metrics_type=type_conversions.infer_type(
               local_unfinalized_metrics
           ),
       )

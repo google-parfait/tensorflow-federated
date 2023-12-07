@@ -247,7 +247,7 @@ class UnflattenTest(tf.test.TestCase, parameterized.TestCase):
     )
     actual_output = packed_fn()
     type_test_utils.assert_types_equivalent(
-        type_conversions.type_from_tensors(actual_output), result_type_spec
+        type_conversions.infer_type(actual_output), result_type_spec
     )
     self.assertIsInstance(actual_output, expected_python_container)
 
@@ -456,9 +456,7 @@ class SerializationTest(tf.test.TestCase, parameterized.TestCase):
     # `metric_finalizers` will create `tf.Variable`s on the non-first call (and
     # hence, will throw an error if it is directly invoked).
     @tensorflow_computation.tf_computation(
-        type_conversions.type_from_tensors(
-            model.report_local_unfinalized_metrics()
-        )
+        type_conversions.infer_type(model.report_local_unfinalized_metrics())
     )
     def finalizer_computation(unfinalized_metrics):
       finalized_metrics = collections.OrderedDict()

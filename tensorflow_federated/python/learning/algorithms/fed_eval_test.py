@@ -119,7 +119,7 @@ def _get_finalized_metrics_type(metric_finalizers, unfinalized_metrics):
   finalized_metrics = collections.OrderedDict()
   for metric, finalizer in metric_finalizers.items():
     finalized_metrics[metric] = finalizer(unfinalized_metrics[metric])
-  return type_conversions.type_from_tensors(finalized_metrics)
+  return type_conversions.infer_type(finalized_metrics)
 
 
 def _create_custom_metrics_aggregation_process(
@@ -194,7 +194,7 @@ class FedEvalProcessTest(tf.test.TestCase):
     model_weights_type = model_weights_lib.weights_type_from_model(test_model)
     metric_finalizers = test_model.metric_finalizers()
     unfinalized_metrics = test_model.report_local_unfinalized_metrics()
-    local_unfinalized_metrics_type = type_conversions.type_from_tensors(
+    local_unfinalized_metrics_type = type_conversions.infer_type(
         unfinalized_metrics
     )
     finalized_metrics_type = _get_finalized_metrics_type(
@@ -366,7 +366,7 @@ class FedEvalProcessTest(tf.test.TestCase):
     model_fn = TestModel
     test_model = model_fn()
     unfinalized_metrics = test_model.report_local_unfinalized_metrics()
-    local_unfinalized_metrics_type = type_conversions.type_from_tensors(
+    local_unfinalized_metrics_type = type_conversions.infer_type(
         unfinalized_metrics
     )
     metric_finalizers = test_model.metric_finalizers()
@@ -409,7 +409,7 @@ class FedEvalProcessTest(tf.test.TestCase):
     test_model = TestModel()
     metrics_aggregator = aggregator.sum_then_finalize(
         test_model.metric_finalizers(),
-        type_conversions.type_from_tensors(
+        type_conversions.infer_type(
             test_model.report_local_unfinalized_metrics()
         ),
     )

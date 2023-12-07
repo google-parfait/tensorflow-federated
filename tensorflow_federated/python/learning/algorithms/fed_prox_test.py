@@ -143,7 +143,7 @@ class FedProxConstructionTest(parameterized.TestCase):
       )
 
   def test_raises_on_invalid_distributor(self):
-    model_weights_type = type_conversions.type_from_tensors(
+    model_weights_type = type_conversions.infer_type(
         model_weights.ModelWeights.from_model(model_examples.LinearRegression())
     )
     distributor = distributors.build_broadcast_process(model_weights_type)

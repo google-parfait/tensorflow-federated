@@ -337,7 +337,7 @@ def save(model: variable.VariableModel, path: str, input_type=None) -> None:
     )
 
   for metric_name, finalizer in model.metric_finalizers().items():
-    metric_type = type_conversions.type_from_tensors(
+    metric_type = type_conversions.infer_type(
         model.report_local_unfinalized_metrics()[metric_name]
     )
     m.serialized_metric_finalizers[metric_name] = serialize_metric_finalizer(

@@ -42,7 +42,7 @@ def _get_finalized_metrics_type(metric_finalizers, unfinalized_metrics):
         (metric, finalizer(unfinalized_metrics[metric]))
         for metric, finalizer in metric_finalizers.items()
     )
-  return type_conversions.type_from_tensors(finalized_metrics)
+  return type_conversions.infer_type(finalized_metrics)
 
 
 @tf.function
@@ -103,7 +103,7 @@ class SumThenFinalizeFactoryComputationTest(
     self.assertIsInstance(
         aggregate_factory, factory.UnweightedAggregationFactory
     )
-    local_unfinalized_metrics_type = type_conversions.type_from_tensors(
+    local_unfinalized_metrics_type = type_conversions.infer_type(
         unfinalized_metrics
     )
     process = aggregate_factory.create(local_unfinalized_metrics_type)
@@ -177,7 +177,7 @@ class SumThenFinalizeFactoryComputationTest(
         loss=[2.0, 1.0],
         custom_sum=[tf.constant(1.0), tf.constant([1.0, 1.0])],
     )
-    local_unfinalized_metrics_type = type_conversions.type_from_tensors(
+    local_unfinalized_metrics_type = type_conversions.infer_type(
         local_unfinalized_metrics
     )
 
@@ -289,7 +289,7 @@ class SumThenFinalizeFactoryComputationTest(
     metric_finalizers = collections.OrderedDict(
         num_examples=tf.function(func=lambda x: x)
     )
-    local_unfinalized_metrics_type = type_conversions.type_from_tensors(
+    local_unfinalized_metrics_type = type_conversions.infer_type(
         collections.OrderedDict(num_examples=1.0)
     )
     initial_unfinalized_metrics = collections.OrderedDict(num_examples=[1.0])
@@ -316,7 +316,7 @@ class SumThenFinalizeFactoryExecutionTest(tf.test.TestCase):
         loss=[2.0, 1.0],
         custom_sum=[tf.constant(1.0), tf.constant([1.0, 1.0])],
     )
-    local_unfinalized_metrics_type = type_conversions.type_from_tensors(
+    local_unfinalized_metrics_type = type_conversions.infer_type(
         local_unfinalized_metrics
     )
     aggregate_factory = aggregation_factory.SumThenFinalizeFactory(
@@ -372,7 +372,7 @@ class SumThenFinalizeFactoryExecutionTest(tf.test.TestCase):
     local_unfinalized_metrics = collections.OrderedDict(
         num_examples=1.0, loss=[2.0, 1.0]
     )
-    local_unfinalized_metrics_type = type_conversions.type_from_tensors(
+    local_unfinalized_metrics_type = type_conversions.infer_type(
         local_unfinalized_metrics
     )
     initial_unfinalized_metrics = collections.OrderedDict(
@@ -420,7 +420,7 @@ class SumThenFinalizeFactoryExecutionTest(tf.test.TestCase):
         loss=[2.0, 1.0],
         custom_sum=[tf.constant(101.0), tf.constant([1.0, 1.0])],
     )
-    local_unfinalized_metrics_type = type_conversions.type_from_tensors(
+    local_unfinalized_metrics_type = type_conversions.infer_type(
         local_unfinalized_metrics
     )
     secure_sum_factory = aggregation_factory.SecureSumFactory()
@@ -517,7 +517,7 @@ class SecureSumFactoryTest(tf.test.TestCase, parameterized.TestCase):
         loss=[2.0, 1.0],
         custom_sum=[tf.constant(1.0), tf.constant([1.0, 1.0])],
     )
-    local_unfinalized_metrics_type = type_conversions.type_from_tensors(
+    local_unfinalized_metrics_type = type_conversions.infer_type(
         local_unfinalized_metrics
     )
     process = aggregate_factory.create(local_unfinalized_metrics_type)
@@ -582,7 +582,7 @@ class SecureSumFactoryTest(tf.test.TestCase, parameterized.TestCase):
         loss=[2.0, 1.0],
         custom_sum=[tf.constant(101.0), tf.constant([1.0, 1.0])],
     )
-    local_unfinalized_metrics_type = type_conversions.type_from_tensors(
+    local_unfinalized_metrics_type = type_conversions.infer_type(
         local_unfinalized_metrics
     )
     metric_value_ranges = collections.OrderedDict(
@@ -694,13 +694,13 @@ class SecureSumFactoryTest(tf.test.TestCase, parameterized.TestCase):
     secure_sum_factory = aggregation_factory.SecureSumFactory()
     with self.assertRaises(aggregation_factory.UnquantizableDTypeError):
       secure_sum_factory.create(
-          local_unfinalized_metrics_type=type_conversions.type_from_tensors(
+          local_unfinalized_metrics_type=type_conversions.infer_type(
               local_unfinalized_metrics
           )
       )
 
   def test_user_value_ranges_fails_not_2_tuple(self):
-    local_unfinalized_metrics_type = type_conversions.type_from_tensors(
+    local_unfinalized_metrics_type = type_conversions.infer_type(
         collections.OrderedDict(accuracy=[tf.constant(1.0), tf.constant(2.0)])
     )
     metric_value_ranges = collections.OrderedDict(

@@ -93,7 +93,7 @@ def build_scheduled_client_work(
     # with variables created for this model.
     whimsy_model = model_fn()
     whimsy_optimizer = optimizer_fn(1.0)
-    unfinalized_metrics_type = type_conversions.type_from_tensors(
+    unfinalized_metrics_type = type_conversions.infer_type(
         whimsy_model.report_local_unfinalized_metrics()
     )
     metrics_aggregation_fn = metrics_aggregator(

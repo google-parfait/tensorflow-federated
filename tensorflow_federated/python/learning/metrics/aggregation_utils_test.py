@@ -69,7 +69,7 @@ class CheckUnfinalizedMetricsTypeTest(tf.test.TestCase, parameterized.TestCase):
         num_examples=1, mean=[2.0, 1.0]
     )
     aggregation_utils.check_local_unfinalzied_metrics_type(
-        type_conversions.type_from_tensors(local_unfianlized_metrics)
+        type_conversions.infer_type(local_unfianlized_metrics)
     )
 
   @parameterized.named_parameters(
@@ -85,7 +85,7 @@ class CheckUnfinalizedMetricsTypeTest(tf.test.TestCase, parameterized.TestCase):
       ),
       (
           'list_container',
-          type_conversions.type_from_tensors([1.0, 2.0]),
+          type_conversions.infer_type([1.0, 2.0]),
           'Python container',
       ),
   )
@@ -109,7 +109,7 @@ class CheckFinalizersMatchUnfinalizedMetricsTypeTest(
     )
     aggregation_utils.check_finalizers_matches_unfinalized_metrics(
         metric_finalizers,
-        type_conversions.type_from_tensors(local_unfianlized_metrics),
+        type_conversions.infer_type(local_unfianlized_metrics),
     )
 
   @parameterized.named_parameters(
@@ -134,7 +134,7 @@ class CheckFinalizersMatchUnfinalizedMetricsTypeTest(
     with self.assertRaisesRegex(ValueError, expected_regex):
       aggregation_utils.check_finalizers_matches_unfinalized_metrics(
           metric_finalizers,
-          type_conversions.type_from_tensors(local_unfianlized_metrics),
+          type_conversions.infer_type(local_unfianlized_metrics),
       )
 
 

@@ -615,7 +615,7 @@ class ModelFromFunctionalModelTest(tf.test.TestCase):
         loss=[2.0, 4.0], mse=[2.0, 2.0], mae=[1.0, 6.0]
     )
     metrics_aggregator = aggregator.sum_then_finalize
-    unfinalized_metrics_type = type_conversions.type_from_tensors(
+    unfinalized_metrics_type = type_conversions.infer_type(
         tff_model.report_local_unfinalized_metrics()
     )
     metrics_aggregation_computation = metrics_aggregator(

@@ -84,7 +84,7 @@ class MimeLiteClientWorkComputationTest(
             update_weight=computation_types.TensorType(tf.float32),
         )
     )
-    expected_optimizer_state_type = type_conversions.type_from_tensors(
+    expected_optimizer_state_type = type_conversions.infer_type(
         optimizer.initialize(
             type_conversions.type_to_tf_tensor_specs(mw_type.trainable)
         )
@@ -432,7 +432,7 @@ class MimeLiteTest(tf.test.TestCase, parameterized.TestCase):
       )
 
   def test_raises_on_invalid_distributor(self):
-    model_weights_type = type_conversions.type_from_tensors(
+    model_weights_type = type_conversions.infer_type(
         model_weights.ModelWeights.from_model(model_examples.LinearRegression())
     )
     distributor = distributors.build_broadcast_process(model_weights_type)
@@ -589,7 +589,7 @@ class ScheduledMimeLiteTest(tf.test.TestCase):
       )
 
   def test_raises_on_invalid_distributor(self):
-    model_weights_type = type_conversions.type_from_tensors(
+    model_weights_type = type_conversions.infer_type(
         model_weights.ModelWeights.from_model(model_examples.LinearRegression())
     )
     distributor = distributors.build_broadcast_process(model_weights_type)

@@ -389,7 +389,7 @@ def create_binary_operator_with_upcast(
           ]
       )
     elif isinstance(type_spec, computation_types.TensorType):
-      value_tensor_type = type_conversions.type_from_tensors(to_pack)
+      value_tensor_type = type_conversions.infer_type(to_pack)
       if type_spec.is_assignable_from(value_tensor_type):
         return to_pack
       elif not array_shape.is_shape_fully_defined(type_spec.shape):

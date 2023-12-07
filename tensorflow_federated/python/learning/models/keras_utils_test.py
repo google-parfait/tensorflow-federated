@@ -770,7 +770,7 @@ class KerasUtilsTest(tf.test.TestCase, parameterized.TestCase):
 
     tff_model = _model_fn()
     metrics_aggregator = aggregator.sum_then_finalize
-    unfinalized_metrics_type = type_conversions.type_from_tensors(
+    unfinalized_metrics_type = type_conversions.infer_type(
         tff_model.report_local_unfinalized_metrics()
     )
     metrics_aggregation_computation = metrics_aggregator(
@@ -815,7 +815,7 @@ class KerasUtilsTest(tf.test.TestCase, parameterized.TestCase):
     # `metric_finalizers` will create `tf.Variable`s on the non-first call (and
     # hence, will throw an error if it is directly invoked).
     @tensorflow_computation.tf_computation(
-        type_conversions.type_from_tensors(local_unfinalized_metrics)
+        type_conversions.infer_type(local_unfinalized_metrics)
     )
     def finalizer_computation(unfinalized_metrics):
       finalized_metrics = collections.OrderedDict()
@@ -1247,7 +1247,7 @@ class KerasUtilsTest(tf.test.TestCase, parameterized.TestCase):
         metrics=[CustomCounter(arg1=1)],
     )
     metrics_aggregator = aggregator.sum_then_finalize
-    unfinalized_metrics_type = type_conversions.type_from_tensors(
+    unfinalized_metrics_type = type_conversions.infer_type(
         tff_model.report_local_unfinalized_metrics()
     )
 
@@ -1283,7 +1283,7 @@ class KerasUtilsTest(tf.test.TestCase, parameterized.TestCase):
         metrics=[CustomCounter(arg1=1)],
     )
     metrics_aggregator = aggregator.sum_then_finalize
-    unfinalized_metrics_type = type_conversions.type_from_tensors(
+    unfinalized_metrics_type = type_conversions.infer_type(
         tff_model.report_local_unfinalized_metrics()
     )
     federated_metrics_aggregation = metrics_aggregator(
