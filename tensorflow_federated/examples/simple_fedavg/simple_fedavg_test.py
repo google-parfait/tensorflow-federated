@@ -303,10 +303,8 @@ class SimpleFedAvgTest(tf.test.TestCase, parameterized.TestCase):
         tff.types.at_clients(
             tff.types.SequenceType(
                 collections.OrderedDict(
-                    x=tff.types.TensorType(
-                        shape=[None, 28, 28, 1], dtype=tf.float32
-                    ),
-                    y=tff.types.TensorType(shape=[None], dtype=tf.int32),
+                    x=tff.types.TensorType(np.float32, [None, 28, 28, 1]),
+                    y=tff.types.TensorType(np.int32, [None]),
                 )
             )
         ),
@@ -504,7 +502,7 @@ class RNNTest(tf.test.TestCase, parameterized.TestCase):
         global_model_type,
         tff.types.at_server(
             simple_fedavg_tf.ServerState(
-                model=model_type, optimizer_state=[tf.int64], round_num=tf.int32
+                model=model_type, optimizer_state=[np.int64], round_num=np.int32
             )
         ),
     )
@@ -513,8 +511,8 @@ class RNNTest(tf.test.TestCase, parameterized.TestCase):
         tff.types.at_clients(
             tff.types.SequenceType(
                 collections.OrderedDict(
-                    x=tff.types.TensorType(shape=[None, 5], dtype=tf.int32),
-                    y=tff.types.TensorType(shape=[None, 5], dtype=tf.int32),
+                    x=tff.types.TensorType(np.int32, [None, 5]),
+                    y=tff.types.TensorType(np.int32, [None, 5]),
                 )
             )
         ),

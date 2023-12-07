@@ -18,6 +18,7 @@ These computations compute the sum of the integer data accross all clients.
 
 import collections
 
+import numpy as np
 import tensorflow as tf
 import tensorflow_federated as tff
 
@@ -30,21 +31,21 @@ def initialize():
   return tff.federated_value(0, tff.SERVER)
 
 
-@tff.tf_computation(tff.SequenceType(tf.int32))
+@tff.tf_computation(tff.SequenceType(np.int32))
 def _sum_dataset(dataset: tf.data.Dataset) -> int:
   """Returns the sum of all the integers in `dataset`."""
   return dataset.reduce(tf.cast(0, tf.int32), tf.add)
 
 
-@tff.tf_computation(tf.int32, tf.int32)
+@tff.tf_computation(np.int32, np.int32)
 def _sum_integers(x: int, y: int) -> int:
   """Returns the sum two integers."""
   return x + y
 
 
 @tff.federated_computation(
-    tff.type_at_server(tf.int32),
-    tff.type_at_clients(tff.SequenceType(tf.int32)),
+    tff.type_at_server(np.int32),
+    tff.type_at_clients(tff.SequenceType(np.int32)),
 )
 def train(server_state: int, client_data: tf.data.Dataset):
   """Computes the sum of all the integers on the clients.
@@ -75,8 +76,8 @@ def train(server_state: int, client_data: tf.data.Dataset):
 
 
 @tff.federated_computation(
-    tff.type_at_server(tf.int32),
-    tff.type_at_clients(tff.SequenceType(tf.int32)),
+    tff.type_at_server(np.int32),
+    tff.type_at_clients(tff.SequenceType(np.int32)),
 )
 def evaluation(server_state: int, client_data: tf.data.Dataset):
   """Computes the sum of all the integers on the clients.

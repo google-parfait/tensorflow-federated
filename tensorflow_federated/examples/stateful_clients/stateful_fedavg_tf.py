@@ -64,7 +64,7 @@ class KerasModelWrapper:
       training: Boolean scalar indicating training or inference mode.
 
     Returns:
-      A scalar tf.float32 `tf.Tensor` loss for current batch input.
+      A scalar np.float32 `tf.Tensor` loss for current batch input.
     """
     preds = self.keras_model(batch_input['x'], training=training)
     loss = self.loss(batch_input['y'], preds)

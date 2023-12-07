@@ -322,12 +322,6 @@ class FedAvgTest(tf.test.TestCase, parameterized.TestCase):
         _tff_learning_model_fn, _create_one_client_state
     )
     server_state = it_process.initialize()
-    sample_data = [
-        collections.OrderedDict(
-            x=np.ones([1, 28, 28, 1], dtype=np.float32),
-            y=np.ones([1], dtype=np.int32),
-        )
-    ]
     keras_model = _create_test_cnn_model()
     server_state.model_weights.assign_weights_to(keras_model)
 
