@@ -17,7 +17,7 @@ from unittest import mock
 
 from absl.testing import absltest
 from absl.testing import parameterized
-import tensorflow as tf
+import numpy as np
 
 from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
@@ -34,8 +34,8 @@ def _test_init_fn():
 
 
 @federated_computation.federated_computation([
-    computation_types.FederatedType(tf.int32, placements.SERVER),
-    computation_types.FederatedType(tf.int32, placements.CLIENTS),
+    computation_types.FederatedType(np.int32, placements.SERVER),
+    computation_types.FederatedType(np.int32, placements.CLIENTS),
 ])
 def _test_next_fn(state, client_data):
   del state, client_data  # Unused
@@ -46,8 +46,8 @@ def _test_next_fn(state, client_data):
 
 
 @federated_computation.federated_computation([
-    computation_types.FederatedType(tf.int32, placements.SERVER),
-    computation_types.FederatedType(tf.int32, placements.CLIENTS),
+    computation_types.FederatedType(np.int32, placements.SERVER),
+    computation_types.FederatedType(np.int32, placements.CLIENTS),
 ])
 def _test_evaluation_fn(state, client_data):
   del state, client_data  # Unused
@@ -295,9 +295,9 @@ class RunTrainingProcessTest(parameterized.TestCase):
       ])
       metrics_type = computation_types.StructWithPythonType(
           [
-              ('metric', tf.float32),
-              ('training_time_in_seconds', tf.float32),
-              ('round_number', tf.int32),
+              ('metric', np.float32),
+              ('training_time_in_seconds', np.float32),
+              ('round_number', np.int32),
           ],
           collections.OrderedDict,
       )
@@ -347,8 +347,8 @@ class RunTrainingProcessTest(parameterized.TestCase):
     ])
     metrics_type = computation_types.StructWithPythonType(
         [
-            ('evaluation/metric', tf.float32),
-            ('evaluation/evaluation_time_in_seconds', tf.float32),
+            ('evaluation/metric', np.float32),
+            ('evaluation/evaluation_time_in_seconds', np.float32),
         ],
         collections.OrderedDict,
     )
@@ -365,11 +365,11 @@ class RunTrainingProcessTest(parameterized.TestCase):
         ])
         metrics_type = computation_types.StructWithPythonType(
             [
-                ('metric', tf.float32),
-                ('training_time_in_seconds', tf.float32),
-                ('round_number', tf.int32),
-                ('evaluation/metric', tf.float32),
-                ('evaluation/evaluation_time_in_seconds', tf.float32),
+                ('metric', np.float32),
+                ('training_time_in_seconds', np.float32),
+                ('round_number', np.int32),
+                ('evaluation/metric', np.float32),
+                ('evaluation/evaluation_time_in_seconds', np.float32),
             ],
             collections.OrderedDict,
         )
@@ -381,9 +381,9 @@ class RunTrainingProcessTest(parameterized.TestCase):
         ])
         metrics_type = computation_types.StructWithPythonType(
             [
-                ('metric', tf.float32),
-                ('training_time_in_seconds', tf.float32),
-                ('round_number', tf.int32),
+                ('metric', np.float32),
+                ('training_time_in_seconds', np.float32),
+                ('round_number', np.int32),
             ],
             collections.OrderedDict,
         )
@@ -427,8 +427,8 @@ class RunTrainingProcessTest(parameterized.TestCase):
     ])
     metrics_type = computation_types.StructWithPythonType(
         [
-            ('evaluation/metric', tf.float32),
-            ('evaluation/evaluation_time_in_seconds', tf.float32),
+            ('evaluation/metric', np.float32),
+            ('evaluation/evaluation_time_in_seconds', np.float32),
         ],
         collections.OrderedDict,
     )
@@ -443,11 +443,11 @@ class RunTrainingProcessTest(parameterized.TestCase):
     ])
     metrics_type = computation_types.StructWithPythonType(
         [
-            ('metric', tf.float32),
-            ('training_time_in_seconds', tf.float32),
-            ('round_number', tf.int32),
-            ('evaluation/metric', tf.float32),
-            ('evaluation/evaluation_time_in_seconds', tf.float32),
+            ('metric', np.float32),
+            ('training_time_in_seconds', np.float32),
+            ('round_number', np.int32),
+            ('evaluation/metric', np.float32),
+            ('evaluation/evaluation_time_in_seconds', np.float32),
         ],
         collections.OrderedDict,
     )
