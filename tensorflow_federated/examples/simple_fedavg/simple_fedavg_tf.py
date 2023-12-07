@@ -29,6 +29,7 @@ Communication-Efficient Learning of Deep Networks from Decentralized Data
 from typing import Any
 
 import attrs
+import numpy as np
 import tensorflow as tf
 import tensorflow_federated as tff
 
@@ -48,7 +49,7 @@ class ClientOutput:
   """
 
   weights_delta: Any
-  client_weight: tf.float32
+  client_weight: np.float32
   model_output: Any
 
 
