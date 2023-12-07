@@ -15,6 +15,7 @@
 import collections
 
 from absl.testing import absltest
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
@@ -65,7 +66,7 @@ def _create_stateless_int_dataset_reduction_iterative_process():
     return intrinsics.federated_eval(make_zero, placements.SERVER)
 
   @tensorflow_computation.tf_computation(
-      computation_types.SequenceType(tf.int64)
+      computation_types.SequenceType(np.int64)
   )
   def reduce_dataset(x):
     return x.reduce(tf.cast(0, tf.int64), lambda x, y: x + y)
@@ -73,7 +74,7 @@ def _create_stateless_int_dataset_reduction_iterative_process():
   @federated_computation.federated_computation((
       init.type_signature.result,
       computation_types.FederatedType(
-          computation_types.SequenceType(tf.int64), placements.CLIENTS
+          computation_types.SequenceType(np.int64), placements.CLIENTS
       ),
   ))
   def next_fn(server_state, client_data):
@@ -98,7 +99,7 @@ def _create_stateless_int_vector_unknown_dim_dataset_reduction_iterative_process
 
   @tensorflow_computation.tf_computation(
       computation_types.SequenceType(
-          computation_types.TensorType(tf.int64, shape=[None])
+          computation_types.TensorType(np.int64, shape=[None])
       )
   )
   def reduce_dataset(x):
@@ -108,12 +109,12 @@ def _create_stateless_int_vector_unknown_dim_dataset_reduction_iterative_process
 
   @federated_computation.federated_computation(
       computation_types.FederatedType(
-          computation_types.TensorType(tf.int64, shape=[None]),
+          computation_types.TensorType(np.int64, shape=[None]),
           placements.SERVER,
       ),
       computation_types.FederatedType(
           computation_types.SequenceType(
-              computation_types.TensorType(tf.int64, shape=[None])
+              computation_types.TensorType(np.int64, shape=[None])
           ),
           placements.CLIENTS,
       ),
@@ -127,48 +128,48 @@ def _create_stateless_int_vector_unknown_dim_dataset_reduction_iterative_process
   return iterative_process.IterativeProcess(initialize_fn=init, next_fn=next_fn)
 
 
-@tensorflow_computation.tf_computation(tf.string)
+@tensorflow_computation.tf_computation(np.str_)
 def int_dataset_computation(x):
   del x  # Unused
   return tf.data.Dataset.range(5)
 
 
-@tensorflow_computation.tf_computation(tf.string)
+@tensorflow_computation.tf_computation(np.str_)
 def vector_int_dataset_computation(x):
   del x  # Unused
   return tf.data.Dataset.range(5).map(lambda x: tf.reshape(x, shape=[1]))
 
 
-@tensorflow_computation.tf_computation(tf.string)
+@tensorflow_computation.tf_computation(np.str_)
 def float_dataset_computation(x):
   del x  # Unused
   return tf.data.Dataset.range(5, output_type=tf.float32)
 
 
-@tensorflow_computation.tf_computation(tf.int32)
+@tensorflow_computation.tf_computation(np.int32)
 def int_identity(x):
   return x
 
 
 @federated_computation.federated_computation(
-    tf.int32,
+    np.int32,
     computation_types.FederatedType(
-        computation_types.SequenceType(tf.int64), placements.CLIENTS
+        computation_types.SequenceType(np.int64), placements.CLIENTS
     ),
-    tf.float32,
+    np.float32,
 )
 def test_int64_sequence_struct_computation(a, dataset, b):
   return a, dataset, b
 
 
 @federated_computation.federated_computation(
-    tf.int32,
+    np.int32,
     computation_types.StructType([
-        tf.int64,
-        computation_types.at_clients(computation_types.SequenceType(tf.int64)),
-        tf.float64,
+        np.int64,
+        computation_types.at_clients(computation_types.SequenceType(np.int64)),
+        np.float64,
     ]),
-    tf.float32,
+    np.float32,
 )
 def test_int64_sequence_nested_struct_computation(a, dataset, b):
   return a, dataset, b
@@ -176,9 +177,9 @@ def test_int64_sequence_nested_struct_computation(a, dataset, b):
 
 @federated_computation.federated_computation(
     computation_types.StructType([
-        computation_types.at_clients(computation_types.SequenceType(tf.int64)),
+        computation_types.at_clients(computation_types.SequenceType(np.int64)),
     ]),
-    computation_types.at_clients(computation_types.SequenceType(tf.int64)),
+    computation_types.at_clients(computation_types.SequenceType(np.int64)),
 )
 def test_int64_sequence_multiple_matching_federated_types_computation(a, b):
   return a, b
@@ -186,7 +187,7 @@ def test_int64_sequence_multiple_matching_federated_types_computation(a, b):
 
 @federated_computation.federated_computation(
     computation_types.FederatedType(
-        computation_types.SequenceType(tf.int64), placements.CLIENTS
+        computation_types.SequenceType(np.int64), placements.CLIENTS
     )
 )
 def test_int64_sequence_computation(dataset):
@@ -218,7 +219,7 @@ class ConstructDatasetsOnClientsComputationTest(absltest.TestCase):
 
   def test_raises_computation_no_dataset_parameter(self):
     no_dataset_comp = federated_computation.federated_computation(
-        lambda x: x, [tf.int32]
+        lambda x: x, [np.int32]
     )
     with self.assertRaises(
         iterative_process_compositions.SequenceTypeNotFoundError
@@ -237,10 +238,8 @@ class ConstructDatasetsOnClientsComputationTest(absltest.TestCase):
 
   def test_mutates_comp_accepting_only_dataset(self):
     expected_new_next_type_signature = computation_types.FunctionType(
-        parameter=computation_types.FederatedType(
-            tf.string, placements.CLIENTS
-        ),
-        result=computation_types.FederatedType(tf.int32, placements.SERVER),
+        parameter=computation_types.FederatedType(np.str_, placements.CLIENTS),
+        result=computation_types.FederatedType(np.int32, placements.SERVER),
     )
     new_comp = iterative_process_compositions.compose_dataset_computation_with_computation(
         int_dataset_computation, test_int64_sequence_computation
@@ -252,18 +251,18 @@ class ConstructDatasetsOnClientsComputationTest(absltest.TestCase):
   def test_mutates_comp_accepting_dataset_in_second_index(self):
     expected_new_next_type_signature = computation_types.FunctionType(
         parameter=collections.OrderedDict(
-            a=tf.int32,
+            a=np.int32,
             dataset=computation_types.FederatedType(
-                tf.string, placements.CLIENTS
+                np.str_, placements.CLIENTS
             ),
-            b=tf.float32,
+            b=np.float32,
         ),
         result=(
-            tf.int32,
+            np.int32,
             computation_types.FederatedType(
-                computation_types.SequenceType(tf.int64), placements.CLIENTS
+                computation_types.SequenceType(np.int64), placements.CLIENTS
             ),
-            tf.float32,
+            np.float32,
         ),
     )
     new_comp = iterative_process_compositions.compose_dataset_computation_with_computation(
@@ -285,13 +284,13 @@ class ConstructDatasetsOnClientsComputationTest(absltest.TestCase):
   def test_mutates_comp_accepting_deeply_nested_dataset(self):
     expected_new_next_type_signature = computation_types.FunctionType(
         parameter=collections.OrderedDict(
-            a=tf.int32,
+            a=np.int32,
             dataset=computation_types.StructType([
-                tf.int64,
-                computation_types.FederatedType(tf.string, placements.CLIENTS),
-                tf.float64,
+                np.int64,
+                computation_types.FederatedType(np.str_, placements.CLIENTS),
+                np.float64,
             ]),
-            b=tf.float32,
+            b=np.float32,
         ),
         result=test_int64_sequence_nested_struct_computation.type_signature.result,
     )
@@ -361,13 +360,13 @@ class ConstructDatasetsOnClientsIterativeProcessTest(absltest.TestCase):
     expected_new_next_type_signature = computation_types.FunctionType(
         collections.OrderedDict(
             server_state=computation_types.FederatedType(
-                tf.int64, placements.SERVER
+                np.int64, placements.SERVER
             ),
             client_data=computation_types.FederatedType(
-                tf.string, placements.CLIENTS
+                np.str_, placements.CLIENTS
             ),
         ),
-        computation_types.FederatedType(tf.int64, placements.SERVER),
+        computation_types.FederatedType(np.int64, placements.SERVER),
     )
 
     new_iterproc = iterative_process_compositions.compose_dataset_computation_with_iterative_process(
@@ -385,15 +384,15 @@ class ConstructDatasetsOnClientsIterativeProcessTest(absltest.TestCase):
     expected_new_next_type_signature = computation_types.FunctionType(
         collections.OrderedDict(
             server_state=computation_types.FederatedType(
-                computation_types.TensorType(tf.int64, shape=[None]),
+                computation_types.TensorType(np.int64, shape=[None]),
                 placements.SERVER,
             ),
             client_data=computation_types.FederatedType(
-                tf.string, placements.CLIENTS
+                np.str_, placements.CLIENTS
             ),
         ),
         computation_types.FederatedType(
-            computation_types.TensorType(tf.int64, shape=[1]), placements.SERVER
+            computation_types.TensorType(np.int64, shape=[1]), placements.SERVER
         ),
     )
 
@@ -410,7 +409,7 @@ class ConstructDatasetsOnClientsIterativeProcessTest(absltest.TestCase):
 
     old_param_type = iterproc.next.type_signature.parameter
 
-    new_param_elements = [old_param_type[0], tf.int32, old_param_type[1]]
+    new_param_elements = [old_param_type[0], np.int32, old_param_type[1]]
 
     @federated_computation.federated_computation(
         computation_types.StructType(new_param_elements)
@@ -423,11 +422,11 @@ class ConstructDatasetsOnClientsIterativeProcessTest(absltest.TestCase):
     )
     expected_new_next_type_signature = computation_types.FunctionType(
         [
-            computation_types.FederatedType(tf.int64, placements.SERVER),
-            tf.int32,
-            computation_types.FederatedType(tf.string, placements.CLIENTS),
+            computation_types.FederatedType(np.int64, placements.SERVER),
+            np.int32,
+            computation_types.FederatedType(np.str_, placements.CLIENTS),
         ],
-        computation_types.FederatedType(tf.int64, placements.SERVER),
+        computation_types.FederatedType(np.int64, placements.SERVER),
     )
 
     new_iterproc = iterative_process_compositions.compose_dataset_computation_with_iterative_process(
@@ -455,7 +454,7 @@ class ConstructDatasetsOnClientsLearningProcessTest(absltest.TestCase):
     @federated_computation.federated_computation((
         initialize_fn.type_signature.result,
         computation_types.FederatedType(
-            computation_types.SequenceType(tf.int64), placements.CLIENTS
+            computation_types.SequenceType(np.int64), placements.CLIENTS
         ),
     ))
     def next_fn(server_state, client_data):
@@ -465,11 +464,11 @@ class ConstructDatasetsOnClientsLearningProcessTest(absltest.TestCase):
           metrics=intrinsics.federated_value((), placements.SERVER),
       )
 
-    @tensorflow_computation.tf_computation(tf.int64)
+    @tensorflow_computation.tf_computation(np.int64)
     def get_model_weights(server_state):
       return server_state + 1
 
-    @tensorflow_computation.tf_computation(tf.int64, tf.int64)
+    @tensorflow_computation.tf_computation(np.int64, np.int64)
     def set_model_weights(state, state_update):
       return state + state_update
 
