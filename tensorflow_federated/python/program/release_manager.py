@@ -476,3 +476,66 @@ class PeriodicReleaseManager(ReleaseManager[ReleasableStructure, Key]):
       raise NotImplementedError(
           f'Unexpected `periodicity` found: {type(self._periodicity)}.'
       )
+
+
+class DelayedReleaseManager(ReleaseManager[ReleasableStructure, Key]):
+  """A `tff.program.ReleaseManager` that releases values after specified delay.
+
+  A `tff.program.DelayedReleaseManager` is a utility for releasing values in a
+  federated program, where releases only take place after a specified delay
+  count. I.e., releases from platform storage to customer storage will take
+  place only after a certain number of instances that the `.release()` method is
+  called. After this delay, further calls to `.release()` will release values
+  (in accordance with the `release_manager` that was provided).
+
+  For example, in a federated program that runs for a long time, one may want to
+  skip releasing values until the program has run for a sufficiently long-enough
+  period.
+
+  The delay count is specified at construction time by setting the `delay`
+  argument (an integer). A `delay` of `3` means that all values will start to be
+  released once `release` has been invoked at least three times.
+
+   Note: that a `delay` of one will release every value, making the
+   `tff.program.DelayedReleaseManager` a noop wrapper around the
+   `release_manager`.
+  """
+
+  def __init__(
+      self,
+      release_manager: ReleaseManager[ReleasableStructure, Key],
+      delay: int,
+  ):
+    """Returns an initialized `tff.program.DelayedReleaseManager`.
+
+    Args:
+      release_manager: A `tff.program.ReleaseManager` used to release values to.
+      delay: The delay duration before releasing values. Must be a positive
+        integer.
+
+    Raises:
+      ValueError: If `delay` is not positive.
+    """
+    if delay < 1:
+      raise ValueError(f'The `delay` must be positive but found {delay}.')
+
+    self._release_manager = release_manager
+    self._count = 0
+    self._delay = delay
+
+  async def release(
+      self,
+      value: ReleasableStructure,
+      type_signature: computation_types.Type,
+      key: Key,
+  ) -> None:
+    """Releases `value` from a federated program.
+
+    Args:
+      value: A `tff.program.ReleasableStructure` to release.
+      type_signature: The `tff.Type` of `value`.
+      key: A value used to reference the released `value`.
+    """
+    self._count += 1
+    if self._count >= self._delay:
+      await self._release_manager.release(value, type_signature, key)

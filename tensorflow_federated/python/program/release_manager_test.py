@@ -824,5 +824,49 @@ class PeriodicReleaseManagerTest(
     )
 
 
+class DelayedReleaseManagerTest(
+    parameterized.TestCase, unittest.IsolatedAsyncioTestCase
+):
+
+  @parameterized.named_parameters(
+      ('int_negative', -1),
+      ('int_zero', 0),
+  )
+  def test_init_raises_value_error_with_bad_delay(self, delay):
+    mock_release_mngr = mock.AsyncMock(
+        spec=release_manager.ReleaseManager, set_spec=True
+    )
+
+    with self.assertRaises(ValueError):
+      release_manager.DelayedReleaseManager(mock_release_mngr, delay)
+
+  @parameterized.named_parameters(
+      ('all_releases', 1, 10, 10),
+      ('some_releases', 3, 10, 8),
+      ('last_release', 10, 10, 1),
+      ('drops_all_releases', 11, 10, 0),
+  )
+  async def test_release_delegates_value_and_type_signature_with_delay(
+      self, delay, total, expected_count
+  ):
+    mock_release_mngr = mock.AsyncMock(
+        spec=release_manager.ReleaseManager, set_spec=True
+    )
+    release_mngr = release_manager.DelayedReleaseManager(
+        mock_release_mngr, delay
+    )
+    value = 1
+    type_signature = computation_types.TensorType(tf.int32)
+    key = 1
+
+    for _ in range(total):
+      await release_mngr.release(value, type_signature, key)
+
+    self.assertEqual(mock_release_mngr.release.call_count, expected_count)
+    mock_release_mngr.release.assert_has_calls(
+        [mock.call(value, type_signature, key)] * expected_count
+    )
+
+
 if __name__ == '__main__':
   absltest.main()

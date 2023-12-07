@@ -39,6 +39,7 @@ from tensorflow_federated.python.program.program_state_manager import ProgramSta
 from tensorflow_federated.python.program.program_state_manager import ProgramStateNotFoundError
 from tensorflow_federated.python.program.program_state_manager import ProgramStateStructure
 from tensorflow_federated.python.program.program_state_manager import ProgramStateValue
+from tensorflow_federated.python.program.release_manager import DelayedReleaseManager
 from tensorflow_federated.python.program.release_manager import FilteringReleaseManager
 from tensorflow_federated.python.program.release_manager import FilterMismatchError
 from tensorflow_federated.python.program.release_manager import GroupingReleaseManager
