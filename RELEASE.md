@@ -1,3 +1,17 @@
+# Release 0.67.0
+
+## Major Features and Improvements
+
+*   Added `tff.program.DelayedReleaseManager`.
+
+## Breaking Changes
+
+*   Removed `check_allowed_ops` from the `framework` package.
+*   Removed `check_disallowed_ops` from the `framework` package.
+*   Removed `replace_intrinsics_with_bodies` from the `framework` package.
+*   Removed `get_session_token` from the `framework` package.
+*   Added a workspace dependency on `pybind11_bazel`.
+
 # Release 0.66.0
 
 ## Breaking Changes
