@@ -12,7 +12,7 @@ computation and how the computation is evaluated by TFF.
 ```python
 tff.backends.native.set_sync_local_cpp_execution_context()  # 3
 
-@tff.tf_computation(tf.int32)  # 2
+@tff.tf_computation(np.int32)  # 2
 def add_one(x):  # 1
   return x + 1
 
@@ -46,11 +46,11 @@ set.
 ```python
 tff.backends.native.set_sync_local_cpp_execution_context()
 
-@tff.tf_computation(tf.int32)
+@tff.tf_computation(np.int32)
 def add_one(x):
   return x + 1
 
-@tff.federated_computation(tff.type_at_clients(tf.int32))
+@tff.federated_computation(tff.type_at_clients(np.int32))
 def add_one_to_all_clients(values):
   return tff.federated_map(add_one, values)
 
