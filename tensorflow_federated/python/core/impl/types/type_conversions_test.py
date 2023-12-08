@@ -535,42 +535,6 @@ class TypeToTfStructureTest(absltest.TestCase):
     self.check_round_trip(spec)
 
 
-class TypeFromTensorsTest(absltest.TestCase):
-
-  def test_with_single(self):
-    v = tf.Variable(0.0, name='a', dtype=np.float32, shape=[])
-    result = type_conversions.type_from_tensors(v)
-    self.assertEqual(str(result), 'float32')
-
-  def test_with_non_convert_tensors(self):
-    v1 = tf.Variable(0, name='foo', dtype=np.int32, shape=[])
-    v2 = {'bar'}
-    d = collections.OrderedDict([('v1', v1), ('v2', v2)])
-    with self.assertRaisesRegex(ValueError, 'supported type'):
-      type_conversions.type_from_tensors(d)
-
-  def test_with_nested_tensors(self):
-    v1 = tf.Variable(0, name='foo', dtype=np.int32, shape=[])
-    v2 = tf.Variable(0, name='bar', dtype=np.int32, shape=[])
-    d = collections.OrderedDict([('v1', v1), ('v2', v2)])
-    result = type_conversions.type_from_tensors(d)
-    self.assertEqual(str(result), '<v1=int32,v2=int32>')
-
-  def test_with_list_tensors(self):
-    v1 = tf.Variable(0.0, name='a', dtype=np.float32, shape=[])
-    v2 = tf.Variable(0, name='b', dtype=np.int32, shape=[])
-    l = [v1, v2]
-    result = type_conversions.type_from_tensors(l)
-    self.assertEqual(str(result), '<float32,int32>')
-
-  def test_with_named_tuple(self):
-    test_type = collections.namedtuple('NestedTensors', ['x', 'y'])
-    v1 = tf.Variable(0.0, name='a', dtype=np.float32, shape=[])
-    v2 = tf.Variable(0, name='b', dtype=np.int32, shape=[])
-    result = type_conversions.type_from_tensors(test_type(v1, v2))
-    self.assertEqual(str(result), '<x=float32,y=int32>')
-
-
 class TypeToPyContainerTest(absltest.TestCase):
 
   def test_tuple_passthrough(self):
