@@ -16,7 +16,7 @@ import functools
 
 from absl.testing import absltest
 from absl.testing import parameterized
-
+import numpy as np
 import tensorflow as tf
 import tensorflow_federated as tff
 
@@ -57,8 +57,7 @@ class RemoteRuntimeStreamStructsTest(parameterized.TestCase):
 
     @tff.tf_computation(
         tff.StructType(
-            [(None, tff.TensorType(shape=small_tensor_shape, dtype=tf.float32))]
-            * 6
+            [(None, tff.TensorType(np.float32, small_tensor_shape))] * 6
         )
     )
     def identity(s):
@@ -85,27 +84,27 @@ class RemoteRuntimeStreamStructsTest(parameterized.TestCase):
         tff.StructType([
             (
                 'a',
-                tff.TensorType(shape=small_tensor_shape, dtype=tf.float32),
+                tff.TensorType(np.float32, small_tensor_shape),
             ),
             (
                 'b',
-                tff.TensorType(shape=small_tensor_shape, dtype=tf.float32),
+                tff.TensorType(np.float32, small_tensor_shape),
             ),
             (
                 'c',
-                tff.TensorType(shape=small_tensor_shape, dtype=tf.float32),
+                tff.TensorType(np.float32, small_tensor_shape),
             ),
             (
                 'd',
-                tff.TensorType(shape=small_tensor_shape, dtype=tf.float32),
+                tff.TensorType(np.float32, small_tensor_shape),
             ),
             (
                 'e',
-                tff.TensorType(shape=small_tensor_shape, dtype=tf.float32),
+                tff.TensorType(np.float32, small_tensor_shape),
             ),
             (
                 'f',
-                tff.TensorType(shape=small_tensor_shape, dtype=tf.float32),
+                tff.TensorType(np.float32, small_tensor_shape),
             ),
         ])
     )
@@ -144,36 +143,32 @@ class RemoteRuntimeStreamStructsTest(parameterized.TestCase):
         tff.StructType([
             (
                 'a',
-                tff.TensorType(shape=small_tensor_shape, dtype=tf.float32),
+                tff.TensorType(np.float32, small_tensor_shape),
             ),
             (
                 'b',
                 tff.StructType([
                     (
                         'b0',
-                        tff.TensorType(
-                            shape=small_tensor_shape, dtype=tf.float32
-                        ),
+                        tff.TensorType(np.float32, small_tensor_shape),
                     ),
                     (
                         'b1',
-                        tff.TensorType(
-                            shape=small_tensor_shape, dtype=tf.float32
-                        ),
+                        tff.TensorType(np.float32, small_tensor_shape),
                     ),
                 ]),
             ),
             (
                 'c',
-                tff.TensorType(shape=small_tensor_shape, dtype=tf.float32),
+                tff.TensorType(np.float32, small_tensor_shape),
             ),
             (
                 'd',
-                tff.TensorType(shape=small_tensor_shape, dtype=tf.float32),
+                tff.TensorType(np.float32, small_tensor_shape),
             ),
             (
                 'e',
-                tff.TensorType(shape=small_tensor_shape, dtype=tf.float32),
+                tff.TensorType(np.float32, small_tensor_shape),
             ),
         ])
     )

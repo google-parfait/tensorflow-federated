@@ -14,7 +14,7 @@
 
 from absl.testing import absltest
 from absl.testing import parameterized
-import tensorflow as tf
+import numpy as np
 import tensorflow_federated as tff
 
 _NUM_EXPLICIT_SUBROUNDS = 50
@@ -182,10 +182,10 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
       self, arg, num_subrounds, num_contexts
   ):
     up_to_merge = build_sum_client_arg_computation(
-        tff.type_at_server(tf.int32),
-        tff.type_at_clients(tf.int32),
+        tff.type_at_server(np.int32),
+        tff.type_at_clients(np.int32),
     )
-    merge = build_whimsy_merge_computation(tf.int32)
+    merge = build_whimsy_merge_computation(np.int32)
     after_merge = build_whimsy_after_merge_computation(
         up_to_merge.type_signature.parameter, merge.type_signature.result
     )
@@ -259,10 +259,10 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
       self, arg, expected_sum, num_subrounds
   ):
     up_to_merge = build_sum_client_arg_computation(
-        tff.type_at_server(tf.int32),
-        tff.type_at_clients(tf.int32),
+        tff.type_at_server(np.int32),
+        tff.type_at_clients(np.int32),
     )
-    merge = build_sum_merge_computation(tf.int32)
+    merge = build_sum_merge_computation(np.int32)
     after_merge = build_return_merge_result_computation(
         up_to_merge.type_signature.parameter, merge.type_signature.result
     )
@@ -313,10 +313,10 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
   )
   def test_computes_sum_of_all_values(self, arg, expected_sum, num_subrounds):
     up_to_merge = build_sum_client_arg_computation(
-        tff.type_at_server(tf.int32),
-        tff.type_at_clients(tf.int32),
+        tff.type_at_server(np.int32),
+        tff.type_at_clients(np.int32),
     )
-    merge = build_sum_merge_computation(tf.int32)
+    merge = build_sum_merge_computation(np.int32)
     after_merge = build_sum_merge_with_first_arg_computation(
         up_to_merge.type_signature.parameter, merge.type_signature.result
     )
@@ -351,7 +351,7 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
     num_clients = 100
     num_executors = 5
     up_to_merge = build_noarg_count_clients_computation()
-    merge = build_sum_merge_computation(tf.int32)
+    merge = build_sum_merge_computation(np.int32)
     after_merge = build_return_merge_result_with_no_first_arg_computation(
         merge.type_signature.result
     )

@@ -18,21 +18,21 @@ import tensorflow as tf
 import tensorflow_federated as tff
 
 
-@tff.tf_computation(tff.SequenceType(tf.float32), tf.float32)
+@tff.tf_computation(tff.SequenceType(np.float32), np.float32)
 def count_over(ds, t):
   return ds.reduce(
       np.float32(0), lambda n, x: n + tf.cast(tf.greater(x, t), tf.float32)
   )
 
 
-@tff.tf_computation(tff.SequenceType(tf.float32))
+@tff.tf_computation(tff.SequenceType(np.float32))
 def count_total(ds):
   return ds.reduce(np.float32(0.0), lambda n, _: n + 1.0)
 
 
 @tff.federated_computation(
-    tff.type_at_clients(tff.SequenceType(tf.float32)),
-    tff.type_at_server(tf.float32),
+    tff.type_at_clients(tff.SequenceType(np.float32)),
+    tff.type_at_server(np.float32),
 )
 def mean_over_threshold(temperatures, threshold):
   client_data = tff.federated_broadcast(threshold)
