@@ -16,6 +16,7 @@ import collections
 import copy
 
 from absl.testing import parameterized
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.core.backends.native import execution_contexts
@@ -264,7 +265,7 @@ class TestClientDataTest(tf.test.TestCase, parameterized.TestCase):
     self.assertIsInstance(dataset_computation, computation_base.Computation)
 
     expected_dataset_comp_type_signature = computation_types.FunctionType(
-        computation_types.to_type(tf.string),
+        computation_types.TensorType(np.str_),
         computation_types.SequenceType(
             computation_types.TensorType(
                 client_data.element_type_structure.dtype, None
@@ -298,7 +299,7 @@ class TestClientDataTest(tf.test.TestCase, parameterized.TestCase):
     self.assertIsInstance(dataset_computation, computation_base.Computation)
 
     expected_dataset_comp_type_signature = computation_types.FunctionType(
-        computation_types.to_type(tf.string),
+        computation_types.TensorType(np.str_),
         computation_types.SequenceType(
             computation_types.TensorType(
                 client_data.element_type_structure[0].dtype,
@@ -333,7 +334,7 @@ class TestClientDataTest(tf.test.TestCase, parameterized.TestCase):
     self.assertIsInstance(dataset_computation, computation_base.Computation)
 
     expected_dataset_comp_type_signature = computation_types.FunctionType(
-        computation_types.to_type(tf.string),
+        computation_types.TensorType(np.str_),
         computation_types.SequenceType(
             collections.OrderedDict([
                 (

@@ -160,7 +160,7 @@ class ClientData(metaclass=abc.ABCMeta):
         self._cached_dataset_computation is None
     ):
 
-      @tensorflow_computation.tf_computation(tf.string)
+      @tensorflow_computation.tf_computation(np.str_)
       def dataset_computation(client_id):
         return self.serializable_dataset_fn(client_id)
 
