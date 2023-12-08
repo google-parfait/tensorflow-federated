@@ -49,3 +49,7 @@ tensorflow-compression>=2.14.0,==2.14.*
 # The version of this dependency should match the version in
 # https://github.com/tensorflow/federated/blob/main/WORKSPACE.
 tensorflow>=2.14.0,==2.14.*
+
+# TODO: b/315515548 - Required because current dependencies are pulling in later
+# versions which are causing opaque failures.
+googleapis-common-protos==1.61.0

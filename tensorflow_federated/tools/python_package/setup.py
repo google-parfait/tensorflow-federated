@@ -77,6 +77,9 @@ REQUIRED_PACKAGES = [
     'tensorflow>=2.14.0,==2.14.*',
     'tqdm~=4.64',
     'typing-extensions>=4.5.0,==4.5.*',
+    # TODO: b/315515548 - Required because current dependencies are pulling in
+    # later versions which are causing opaque failures.
+    'googleapis-common-protos==1.61.0',
 ]
 
 with open('tensorflow_federated/version.py') as fp:
