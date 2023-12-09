@@ -22,6 +22,7 @@ https://dl.acm.org/doi/10.1145/1772690.1772862 for the full paper.
 import collections
 from typing import Optional
 
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory
@@ -39,9 +40,9 @@ from tensorflow_federated.python.learning.templates import distributors
 from tensorflow_federated.python.learning.templates import finalizers
 from tensorflow_federated.python.learning.templates import learning_process
 
-_INDEX_DTYPE = tf.int32
-_POINT_DTYPE = tf.float32
-_WEIGHT_DTYPE = tf.int32
+_INDEX_DTYPE = np.int32
+_POINT_DTYPE = np.float32
+_WEIGHT_DTYPE = np.int32
 _MILLIS_PER_SECOND = 100000.0
 
 

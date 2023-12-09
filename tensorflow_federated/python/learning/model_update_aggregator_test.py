@@ -17,7 +17,7 @@ from unittest import mock
 
 from absl.testing import absltest
 from absl.testing import parameterized
-import tensorflow as tf
+import numpy as np
 
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import mean
@@ -35,8 +35,8 @@ from tensorflow_federated.python.core.test import static_assert
 from tensorflow_federated.python.learning import debug_measurements
 from tensorflow_federated.python.learning import model_update_aggregator
 
-_FLOAT_TYPE = computation_types.TensorType(tf.float32)
-_FLOAT_MATRIX_TYPE = computation_types.TensorType(tf.float32, [200, 300])
+_FLOAT_TYPE = computation_types.TensorType(np.float32)
+_FLOAT_MATRIX_TYPE = computation_types.TensorType(np.float32, [200, 300])
 
 
 class ModelUpdateAggregatorTest(parameterized.TestCase):
@@ -361,7 +361,7 @@ class ModelUpdateAggregatorTest(parameterized.TestCase):
 
     expected_unweighted_state_type = computation_types.at_server((
         computation_types.StructType(
-            [('step_size', tf.float32), ('inner_agg_process', ())]
+            [('step_size', np.float32), ('inner_agg_process', ())]
         ),
         (),
     ))
@@ -371,10 +371,10 @@ class ModelUpdateAggregatorTest(parameterized.TestCase):
                 (
                     'stochastic_discretization',
                     computation_types.StructType(
-                        [('elias_gamma_code_avg_bitrate', tf.float64)]
+                        [('elias_gamma_code_avg_bitrate', np.float64)]
                     ),
                 ),
-                ('distortion', tf.float32),
+                ('distortion', np.float32),
             ]),
             mean_count=(),
         )
@@ -418,7 +418,7 @@ class ModelUpdateAggregatorTest(parameterized.TestCase):
     expected_weighted_state_type = computation_types.at_server(
         collections.OrderedDict(
             value_sum_process=computation_types.StructType(
-                [('step_size', tf.float32), ('inner_agg_process', ())]
+                [('step_size', np.float32), ('inner_agg_process', ())]
             ),
             weight_sum_process=(),
         )
@@ -429,10 +429,10 @@ class ModelUpdateAggregatorTest(parameterized.TestCase):
                 (
                     'stochastic_discretization',
                     computation_types.StructType(
-                        [('elias_gamma_code_avg_bitrate', tf.float64)]
+                        [('elias_gamma_code_avg_bitrate', np.float64)]
                     ),
                 ),
-                ('distortion', tf.float32),
+                ('distortion', np.float32),
             ]),
             mean_weight=(),
         )

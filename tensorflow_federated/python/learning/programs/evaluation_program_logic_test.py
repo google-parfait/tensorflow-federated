@@ -96,16 +96,16 @@ class ExtractAndRewrapMetricsTest(tf.test.TestCase):
                     'test',
                     collections.OrderedDict(
                         other=collections.OrderedDict(
-                            test_one=TensorType(tf.float32),
-                            test_two=TensorType(tf.float32),
+                            test_one=TensorType(np.float32),
+                            test_two=TensorType(np.float32),
                         )
                     ),
                 ),
                 (
                     evaluation_program_logic.MODEL_METRICS_PREFIX,
                     collections.OrderedDict(
-                        test_a=[TensorType(tf.int32)] * 3,
-                        test_b=TensorType(tf.float32),
+                        test_a=[TensorType(np.int32)] * 3,
+                        test_b=TensorType(np.float32),
                     ),
                 ),
             ])

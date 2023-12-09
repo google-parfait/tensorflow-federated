@@ -15,7 +15,7 @@
 import collections
 
 from absl.testing import absltest
-import tensorflow as tf
+import numpy as np
 
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
@@ -28,19 +28,19 @@ from tensorflow_federated.python.learning.models import model_weights
 from tensorflow_federated.python.learning.templates import client_works
 from tensorflow_federated.python.learning.templates import hparams_base
 
-SERVER_INT = computation_types.FederatedType(tf.int32, placements.SERVER)
-SERVER_FLOAT = computation_types.FederatedType(tf.float32, placements.SERVER)
+SERVER_INT = computation_types.FederatedType(np.int32, placements.SERVER)
+SERVER_FLOAT = computation_types.FederatedType(np.float32, placements.SERVER)
 CLIENTS_FLOAT_SEQUENCE = computation_types.FederatedType(
-    computation_types.SequenceType(tf.float32), placements.CLIENTS
+    computation_types.SequenceType(np.float32), placements.CLIENTS
 )
-CLIENTS_FLOAT = computation_types.FederatedType(tf.float32, placements.CLIENTS)
-CLIENTS_INT = computation_types.FederatedType(tf.int32, placements.CLIENTS)
+CLIENTS_FLOAT = computation_types.FederatedType(np.float32, placements.CLIENTS)
+CLIENTS_INT = computation_types.FederatedType(np.int32, placements.CLIENTS)
 MODEL_WEIGHTS_TYPE = computation_types.at_clients(
     computation_types.to_type(
-        model_weights.ModelWeights(tf.float32, tf.float32)
+        model_weights.ModelWeights(np.float32, np.float32)
     )
 )
-HPARAMS_TYPE = computation_types.to_type(collections.OrderedDict(a=tf.int32))
+HPARAMS_TYPE = computation_types.to_type(collections.OrderedDict(a=np.int32))
 MeasuredProcessOutput = measured_process.MeasuredProcessOutput
 
 _IterativeProcessConstructionError = (
@@ -100,12 +100,12 @@ def test_next_fn(state, weights, data):
   )
 
 
-@tensorflow_computation.tf_computation(tf.int32)
+@tensorflow_computation.tf_computation(np.int32)
 def test_get_hparams_fn(state):
   return collections.OrderedDict(a=state)
 
 
-@tensorflow_computation.tf_computation(tf.int32, HPARAMS_TYPE)
+@tensorflow_computation.tf_computation(np.int32, HPARAMS_TYPE)
 def test_set_hparams_fn(state, hparams):
   del state
   return hparams['a']
@@ -245,9 +245,9 @@ class ClientWorkTest(absltest.TestCase):
     initialize_fn = tensorflow_computation.tf_computation(lambda: 0)
 
     @tensorflow_computation.tf_computation(
-        tf.int32,
+        np.int32,
         MODEL_WEIGHTS_TYPE.member,
-        computation_types.SequenceType(tf.float32),
+        computation_types.SequenceType(np.float32),
     )
     def next_fn(state, weights, data):
       return MeasuredProcessOutput(
@@ -322,7 +322,7 @@ class ClientWorkTest(absltest.TestCase):
   def test_constructs_with_non_model_weights_parameter(self):
     non_model_weights_type = computation_types.at_clients(
         computation_types.to_type(
-            collections.OrderedDict(trainable=tf.float32, non_trainable=())
+            collections.OrderedDict(trainable=np.float32, non_trainable=())
         )
     )
 
@@ -340,14 +340,15 @@ class ClientWorkTest(absltest.TestCase):
       self.fail('Could not construct a valid ClientWorkProcess.')
 
   def test_constructs_with_struct_of_client_data_parameter(self):
+
     @federated_computation.federated_computation(
         SERVER_INT,
         MODEL_WEIGHTS_TYPE,
         computation_types.at_clients((
-            computation_types.SequenceType(tf.float32),
+            computation_types.SequenceType(np.float32),
             (
-                computation_types.SequenceType(tf.float32),
-                computation_types.SequenceType(tf.float32),
+                computation_types.SequenceType(np.float32),
+                computation_types.SequenceType(np.float32),
             ),
         )),
     )
@@ -367,7 +368,7 @@ class ClientWorkTest(absltest.TestCase):
 
   def test_non_clients_placed_next_data_param_raises(self):
     server_sequence_float_type = computation_types.at_server(
-        computation_types.SequenceType(tf.float32)
+        computation_types.SequenceType(np.float32)
     )
 
     @federated_computation.federated_computation(

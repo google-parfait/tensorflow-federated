@@ -15,6 +15,7 @@
 import collections
 
 from absl.testing import parameterized
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.core.backends.native import execution_contexts
@@ -137,7 +138,7 @@ class ClientWorkTest(tf.test.TestCase, parameterized.TestCase):
       ('shape4', (5, 7, 1, 6)),
   )
   def test_build_kmeans_client_work_with_different_shapes(self, shape):
-    point_dtype = tf.float32
+    point_dtype = np.float32
     num_clusters = 5
     centroids_shape = (num_clusters,) + shape
     centroids_type = computation_types.TensorType(point_dtype, centroids_shape)
@@ -171,10 +172,10 @@ class ClientWorkTest(tf.test.TestCase, parameterized.TestCase):
     next_type.result[2].member.check_equivalent_to(expected_measurements_type)
 
   @parameterized.named_parameters(
-      ('int32', tf.int32),
-      ('int64', tf.int64),
-      ('float32', tf.float32),
-      ('float64', tf.float64),
+      ('int32', np.int32),
+      ('int64', np.int64),
+      ('float32', np.float32),
+      ('float64', np.float64),
   )
   def test_build_kmeans_client_work_with_different_dtypes(self, point_dtype):
     shape = (3, 2)

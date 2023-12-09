@@ -70,8 +70,8 @@ class ProximalClientWorkComputationTest(
     self.assertIsInstance(client_work_process, client_works.ClientWorkProcess)
 
     mw_type = model_weights.ModelWeights(
-        trainable=computation_types.to_type([(tf.float32, (2, 1)), tf.float32]),
-        non_trainable=computation_types.to_type([tf.float32]),
+        trainable=computation_types.to_type([(np.float32, (2, 1)), np.float32]),
+        non_trainable=computation_types.to_type([np.float32]),
     )
     expected_param_model_weights_type = computation_types.at_clients(mw_type)
     expected_param_data_type = computation_types.at_clients(
@@ -82,14 +82,14 @@ class ProximalClientWorkComputationTest(
     expected_result_type = computation_types.at_clients(
         client_works.ClientResult(
             update=mw_type.trainable,
-            update_weight=computation_types.TensorType(tf.float32),
+            update_weight=computation_types.TensorType(np.float32),
         )
     )
     expected_state_type = computation_types.at_server(())
     expected_measurements_type = computation_types.at_server(
         collections.OrderedDict(
             train=collections.OrderedDict(
-                loss=tf.float32, num_examples=tf.int32
+                loss=np.float32, num_examples=np.int32
             )
         )
     )

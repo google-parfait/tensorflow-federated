@@ -24,8 +24,7 @@ from tensorflow_federated.python.core.impl.federated_context import federated_co
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.learning import debug_measurements
 
-TensorType = computation_types.TensorType
-FloatType = TensorType(tf.float32)
+FloatType = computation_types.TensorType(np.float32)
 FloatAtServer = computation_types.at_server(FloatType)
 FloatAtClients = computation_types.at_clients(FloatType)
 
@@ -49,12 +48,12 @@ class DebugMeasurementsTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('scalar_type', FloatType),
-      ('vector_type', TensorType(tf.float32, [3])),
+      ('vector_type', computation_types.TensorType(np.float32, [3])),
       ('struct_type', [FloatType, FloatType]),
       (
           'nested_struct_type',
           [
-              [TensorType(tf.float32, [3])],
+              [computation_types.TensorType(np.float32, [3])],
               [FloatType, FloatType],
           ],
       ),
@@ -77,12 +76,12 @@ class DebugMeasurementsTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('scalar_type', FloatType),
-      ('vector_type', TensorType(tf.float32, [3])),
+      ('vector_type', computation_types.TensorType(np.float32, [3])),
       ('struct_type', [FloatType, FloatType]),
       (
           'nested_struct_type',
           [
-              [TensorType(tf.float32, [3])],
+              [computation_types.TensorType(np.float32, [3])],
               [FloatType, FloatType],
           ],
       ),
@@ -107,12 +106,12 @@ class DebugMeasurementsTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('scalar_type', FloatType),
-      ('vector_type', TensorType(tf.float32, [3])),
+      ('vector_type', computation_types.TensorType(np.float32, [3])),
       ('struct_type', [FloatType, FloatType]),
       (
           'nested_struct_type',
           [
-              [TensorType(tf.float32, [3])],
+              [computation_types.TensorType(np.float32, [3])],
               [FloatType, FloatType],
           ],
       ),
@@ -126,7 +125,7 @@ class DebugMeasurementsTest(tf.test.TestCase, parameterized.TestCase):
         )
     )
     input_type = computation_types.at_clients(value_type)
-    weights_type = computation_types.at_clients(tf.float32)
+    weights_type = computation_types.at_clients(np.float32)
 
     @federated_computation.federated_computation(input_type, weights_type)
     def get_client_measurements(client_update, client_weights):
@@ -234,8 +233,8 @@ class DebugMeasurementsTest(tf.test.TestCase, parameterized.TestCase):
     client_weights = [1.0 for _ in client_updates]
 
     @federated_computation.federated_computation(
-        computation_types.at_clients(tf.float32),
-        computation_types.at_clients(tf.float32),
+        computation_types.at_clients(np.float32),
+        computation_types.at_clients(np.float32),
     )
     def compute_client_statistics(client_updates, client_weights):
       return debug_measurements._calculate_client_update_statistics(
@@ -267,9 +266,10 @@ class DebugMeasurementsTest(tf.test.TestCase, parameterized.TestCase):
   def test_correctness_of_weighted_client_update_statistics(
       self, client_updates, client_weights
   ):
+
     @federated_computation.federated_computation(
-        computation_types.at_clients(tf.float32),
-        computation_types.at_clients(tf.float32),
+        computation_types.at_clients(np.float32),
+        computation_types.at_clients(np.float32),
     )
     def compute_client_statistics(client_updates, client_weights):
       return debug_measurements._calculate_client_update_statistics(
@@ -311,21 +311,22 @@ class DebugMeasurementsTest(tf.test.TestCase, parameterized.TestCase):
           'distribution_float16',
           [np.float16(1.0), np.float16(3.0), np.float16(2.0)],
           [2.0, 3.0, 1.0],
-          tf.float16,
+          np.float16,
       ),
       (
           'distribution_float64',
           [np.float64(123), np.float64(234), np.float64(456)],
           [6.0, 7.0, 4.0],
-          tf.float64,
+          np.float64,
       ),
   )
   def test_correctness_of_weighted_client_update_statistics_mixed_dtype(
       self, client_updates, client_weights, client_type_spec
   ):
+
     @federated_computation.federated_computation(
         computation_types.at_clients(client_type_spec),
-        computation_types.at_clients(tf.float32),
+        computation_types.at_clients(np.float32),
     )
     def compute_client_statistics(client_updates, client_weights):
       return debug_measurements._calculate_client_update_statistics_mixed_dtype(
@@ -372,15 +373,16 @@ class DebugMeasurementsTest(tf.test.TestCase, parameterized.TestCase):
               np.float64(2**63 + 1),
           ],
           [2.0, 3.0, 1.0],
-          tf.float64,
+          np.float64,
       ),
   )
   def test_inf_error_in_client_update_statistics(
       self, client_updates, client_weights, client_type_spec
   ):
+
     @federated_computation.federated_computation(
         computation_types.at_clients(client_type_spec),
-        computation_types.at_clients(tf.float32),
+        computation_types.at_clients(np.float32),
     )
     def compute_client_statistics(client_updates, client_weights):
       return debug_measurements._calculate_client_update_statistics_mixed_dtype(
@@ -400,7 +402,7 @@ class DebugMeasurementsTest(tf.test.TestCase, parameterized.TestCase):
           'distribution_int32',
           [np.int32(123), np.int32(234), np.int32(345)],
           [2.0, 3.0, 1.0],
-          tf.int32,
+          np.int32,
       ),
   )
   def test_type_error_in_client_update_statistics_with_int32(
@@ -410,7 +412,7 @@ class DebugMeasurementsTest(tf.test.TestCase, parameterized.TestCase):
 
       @federated_computation.federated_computation(
           computation_types.at_clients(client_type_spec),
-          computation_types.at_clients(tf.float32),
+          computation_types.at_clients(np.float32),
       )
       def compute_client_statistics(client_updates, client_weights):
         return (
@@ -424,7 +426,7 @@ class DebugMeasurementsTest(tf.test.TestCase, parameterized.TestCase):
   def test_add_measurements_to_weighted_aggregation_factory_types(self):
     mean_factory = mean.MeanFactory()
     debug_mean_factory = debug_measurements.add_debug_measurements(mean_factory)
-    value_type = computation_types.TensorType(tf.float32)
+    value_type = computation_types.TensorType(np.float32)
     mean_aggregator = mean_factory.create(value_type, value_type)
     debug_aggregator = debug_mean_factory.create(value_type, value_type)
     self.assertTrue(debug_aggregator.is_weighted)
@@ -448,7 +450,7 @@ class DebugMeasurementsTest(tf.test.TestCase, parameterized.TestCase):
   def test_add_measurements_to_weighted_aggregation_factory_output(self):
     mean_factory = mean.MeanFactory()
     debug_mean_factory = debug_measurements.add_debug_measurements(mean_factory)
-    value_type = computation_types.TensorType(tf.float32)
+    value_type = computation_types.TensorType(np.float32)
     mean_aggregator = mean_factory.create(value_type, value_type)
     debug_aggregator = debug_mean_factory.create(value_type, value_type)
 
@@ -484,7 +486,7 @@ class DebugMeasurementsTest(tf.test.TestCase, parameterized.TestCase):
   def test_add_measurements_to_unweighted_aggregation_factory_types(self):
     mean_factory = mean.UnweightedMeanFactory()
     debug_mean_factory = debug_measurements.add_debug_measurements(mean_factory)
-    value_type = computation_types.TensorType(tf.float32)
+    value_type = computation_types.TensorType(np.float32)
     mean_aggregator = mean_factory.create(value_type)
     debug_aggregator = debug_mean_factory.create(value_type)
     self.assertFalse(debug_aggregator.is_weighted)
@@ -508,7 +510,7 @@ class DebugMeasurementsTest(tf.test.TestCase, parameterized.TestCase):
   def test_add_measurements_to_unweighted_aggregation_factory_output(self):
     mean_factory = mean.UnweightedMeanFactory()
     debug_mean_factory = debug_measurements.add_debug_measurements(mean_factory)
-    value_type = computation_types.TensorType(tf.float32)
+    value_type = computation_types.TensorType(np.float32)
     mean_aggregator = mean_factory.create(value_type)
     debug_aggregator = debug_mean_factory.create(value_type)
 

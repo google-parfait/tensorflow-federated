@@ -25,6 +25,7 @@ import collections
 from collections.abc import Callable, Mapping
 from typing import Any, Optional, Union
 
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory
@@ -500,7 +501,7 @@ def build_fed_sgd(
   if model_aggregator is None:
     model_aggregator = mean.MeanFactory()
   aggregator = model_aggregator.create(
-      model_update_type, computation_types.TensorType(tf.float32)
+      model_update_type, computation_types.TensorType(np.float32)
   )
 
   if metrics_aggregator is None:

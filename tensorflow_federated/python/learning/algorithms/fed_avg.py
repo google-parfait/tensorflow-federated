@@ -31,6 +31,7 @@ Adaptive Federated Optimization
 from collections.abc import Callable
 from typing import Optional, Union
 
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory
@@ -224,7 +225,7 @@ def build_weighted_fed_avg(
   else:
     model_update_type = model_weights_type.trainable
   aggregator = model_aggregator.create(
-      model_update_type, computation_types.TensorType(tf.float32)
+      model_update_type, computation_types.TensorType(np.float32)
   )
 
   process_signature = aggregator.next.type_signature

@@ -79,8 +79,8 @@ class ModelDeltaClientWorkComputationTest(
     )
 
     mw_type = model_weights_lib.ModelWeights(
-        trainable=computation_types.to_type([(tf.float32, (2, 1)), tf.float32]),
-        non_trainable=computation_types.to_type([tf.float32]),
+        trainable=computation_types.to_type([(np.float32, (2, 1)), np.float32]),
+        non_trainable=computation_types.to_type([np.float32]),
     )
     expected_param_model_weights_type = computation_types.at_clients(mw_type)
     expected_param_data_type = computation_types.at_clients(
@@ -91,14 +91,14 @@ class ModelDeltaClientWorkComputationTest(
     expected_result_type = computation_types.at_clients(
         client_works.ClientResult(
             update=mw_type.trainable,
-            update_weight=computation_types.TensorType(tf.float32),
+            update_weight=computation_types.TensorType(np.float32),
         )
     )
     expected_state_type = computation_types.at_server(())
     expected_measurements_type = computation_types.at_server(
         collections.OrderedDict(
             train=collections.OrderedDict(
-                loss=tf.float32, num_examples=tf.int32
+                loss=np.float32, num_examples=np.int32
             )
         )
     )
@@ -133,7 +133,7 @@ class ModelDeltaClientWorkComputationTest(
     )
 
     expected_state_type = computation_types.at_server(
-        collections.OrderedDict(learning_rate=tf.float32)
+        collections.OrderedDict(learning_rate=np.float32)
     )
     expected_initialize_type = computation_types.FunctionType(
         parameter=None, result=expected_state_type
@@ -155,8 +155,8 @@ class ModelDeltaClientWorkComputationTest(
     )
 
     mw_type = model_weights_lib.ModelWeights(
-        trainable=computation_types.to_type([(tf.float32, (2, 1)), tf.float32]),
-        non_trainable=computation_types.to_type([tf.float32]),
+        trainable=computation_types.to_type([(np.float32, (2, 1)), np.float32]),
+        non_trainable=computation_types.to_type([np.float32]),
     )
     expected_param_model_weights_type = computation_types.at_clients(mw_type)
     expected_param_data_type = computation_types.at_clients(
@@ -167,16 +167,16 @@ class ModelDeltaClientWorkComputationTest(
     expected_result_type = computation_types.at_clients(
         client_works.ClientResult(
             update=mw_type.trainable,
-            update_weight=computation_types.TensorType(tf.float32),
+            update_weight=computation_types.TensorType(np.float32),
         )
     )
     expected_state_type = computation_types.at_server(
-        collections.OrderedDict(learning_rate=tf.float32)
+        collections.OrderedDict(learning_rate=np.float32)
     )
     expected_measurements_type = computation_types.at_server(
         collections.OrderedDict(
             train=collections.OrderedDict(
-                loss=tf.float32, num_examples=tf.int32
+                loss=np.float32, num_examples=np.int32
             )
         )
     )
@@ -261,7 +261,7 @@ class ModelDeltaClientWorkComputationTest(
         model_fn, optimizer, weighting
     )
 
-    expected_state_type = collections.OrderedDict(learning_rate=tf.float32)
+    expected_state_type = collections.OrderedDict(learning_rate=np.float32)
     expected_hparams_type = expected_state_type
     expected_get_hparams_type = computation_types.FunctionType(
         parameter=expected_state_type, result=expected_hparams_type
@@ -285,7 +285,7 @@ class ModelDeltaClientWorkComputationTest(
         model_fn, optimizer, weighting
     )
 
-    expected_state_type = collections.OrderedDict(learning_rate=tf.float32)
+    expected_state_type = collections.OrderedDict(learning_rate=np.float32)
     expected_hparams_type = expected_state_type
     expected_parameter_type = computation_types.StructType(
         [('state', expected_state_type), ('hparams', expected_hparams_type)]

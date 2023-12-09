@@ -573,9 +573,9 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
     Example partial value range specification:
 
     >>> metrics_type = tff.to_type(collections.OrderedDict(
-        a=tff.types.TensorType(tf.int32),
-        b=tff.types.TensorType(tf.float32),
-        c=[tff.types.TensorType(tf.float32), tff.types.TensorType(tf.float32)])
+        a=tff.types.TensorType(np.int32),
+        b=tff.types.TensorType(np.float32),
+        c=[tff.types.TensorType(np.float32), tff.types.TensorType(np.float32)])
     >>> value_ranges = collections.OrderedDict(
         b=(0.0, 1.0),
         c=[None, (0.0, 1.0)])

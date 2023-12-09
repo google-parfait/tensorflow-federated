@@ -17,6 +17,7 @@ import collections
 from collections.abc import Callable
 from typing import Optional, Union
 
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory
@@ -112,7 +113,7 @@ def build_scheduled_client_work(
         model_delta_client_work.build_model_delta_update_with_keras_optimizer
     )
 
-  @tensorflow_computation.tf_computation(weights_type, data_type, tf.int32)
+  @tensorflow_computation.tf_computation(weights_type, data_type, np.int32)
   def client_update_computation(initial_model_weights, dataset, round_num):
     learning_rate = learning_rate_fn(round_num)
     optimizer = optimizer_fn(learning_rate)
@@ -127,12 +128,12 @@ def build_scheduled_client_work(
   def init_fn():
     return intrinsics.federated_value(0, placements.SERVER)
 
-  @tensorflow_computation.tf_computation(tf.int32)
+  @tensorflow_computation.tf_computation(np.int32)
   @tf.function
   def add_one(x):
     return x + 1
 
-  @tensorflow_computation.tf_computation(tf.int32)
+  @tensorflow_computation.tf_computation(np.int32)
   @tf.function
   def tf_learning_rate_fn(x):
     return learning_rate_fn(x)
@@ -280,7 +281,7 @@ def build_weighted_fed_avg_with_optimizer_schedule(
     model_aggregator = mean.MeanFactory()
   py_typecheck.check_type(model_aggregator, factory.WeightedAggregationFactory)
   aggregator = model_aggregator.create(
-      model_weights_type.trainable, computation_types.TensorType(tf.float32)
+      model_weights_type.trainable, computation_types.TensorType(np.float32)
   )
   process_signature = aggregator.next.type_signature
   input_client_value_type = process_signature.parameter[1]  # pytype: disable=unsupported-operands

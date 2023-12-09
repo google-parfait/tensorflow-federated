@@ -244,7 +244,7 @@ class KerasUtilsTest(tf.test.TestCase, parameterized.TestCase):
           computation_types.to_type(
               collections.OrderedDict(
                   x=computation_types.SequenceType(
-                      computation_types.TensorType(tf.float32)
+                      computation_types.TensorType(np.float32)
                   ),
                   y=tf.TensorSpec(shape=[None, 1], dtype=tf.float32),
               )

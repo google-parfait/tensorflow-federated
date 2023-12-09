@@ -46,6 +46,7 @@ from collections.abc import Callable
 import functools
 from typing import Any, Optional, Union
 
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory
@@ -516,7 +517,7 @@ def build_fed_recon(
       model_aggregator_factory, factory.WeightedAggregationFactory
   )
   model_aggregator = model_aggregator_factory.create(
-      model_weights_type.trainable, computation_types.TensorType(tf.float32)
+      model_weights_type.trainable, computation_types.TensorType(np.float32)
   )
 
   if dataset_split_fn is None:

@@ -26,6 +26,7 @@ import collections
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any, Optional, Union
 
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory
@@ -249,7 +250,7 @@ def _build_mime_lite_client_work(
   weight_tensor_specs = type_conversions.type_to_tf_tensor_specs(weights_type)
 
   full_gradient_aggregator = full_gradient_aggregator.create(
-      weights_type.trainable, computation_types.TensorType(tf.float32)
+      weights_type.trainable, computation_types.TensorType(np.float32)
   )
 
   @federated_computation.federated_computation
@@ -533,7 +534,7 @@ def _build_mime_lite_functional_client_work(
 
   full_gradient_aggregator = full_gradient_aggregator.create(
       weights_type.trainable,  # pytype: disable=attribute-error
-      computation_types.TensorType(tf.float32),
+      computation_types.TensorType(np.float32),
   )
 
   @federated_computation.federated_computation
@@ -882,7 +883,7 @@ def build_weighted_mime_lite(
   py_typecheck.check_type(model_aggregator, factory.WeightedAggregationFactory)
   model_update_type = model_weights_type.trainable
   model_aggregator = model_aggregator.create(
-      model_update_type, computation_types.TensorType(tf.float32)
+      model_update_type, computation_types.TensorType(np.float32)
   )
   if full_gradient_aggregator is None:
     full_gradient_aggregator = mean.MeanFactory()
@@ -1207,7 +1208,7 @@ def build_mime_lite_with_optimizer_schedule(
   py_typecheck.check_type(model_aggregator, factory.WeightedAggregationFactory)
   model_update_type = model_weights_type.trainable
   model_aggregator = model_aggregator.create(
-      model_update_type, computation_types.TensorType(tf.float32)
+      model_update_type, computation_types.TensorType(np.float32)
   )
   if full_gradient_aggregator is None:
     full_gradient_aggregator = mean.MeanFactory()

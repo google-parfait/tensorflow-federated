@@ -43,14 +43,14 @@ class FlattenTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('no_arg_empty_result', lambda: (), (), {}, StructType([])),
-      ('no_arg_tensor_result', lambda: 1.0, (), {}, TensorType(tf.float32)),
+      ('no_arg_tensor_result', lambda: 1.0, (), {}, TensorType(np.float32)),
       (
           'no_arg_list_result',
           lambda: [1.0, 2],
           (),
           {},
           StructWithPythonType(
-              [TensorType(tf.float32), TensorType(tf.int32)], list
+              [TensorType(np.float32), TensorType(np.int32)], list
           ),
       ),
       (
@@ -59,7 +59,7 @@ class FlattenTest(tf.test.TestCase, parameterized.TestCase):
           (),
           {},
           StructWithPythonType(
-              [TensorType(tf.int32), TensorType(tf.float32)], tuple
+              [TensorType(np.int32), TensorType(np.float32)], tuple
           ),
       ),
       (
@@ -68,7 +68,7 @@ class FlattenTest(tf.test.TestCase, parameterized.TestCase):
           (),
           {},
           StructWithPythonType(
-              [('a', TensorType(tf.string)), ('b', TensorType(tf.int32))],
+              [('a', TensorType(np.str_)), ('b', TensorType(np.int32))],
               collections.OrderedDict,
           ),
       ),
@@ -79,11 +79,11 @@ class FlattenTest(tf.test.TestCase, parameterized.TestCase):
           {},
           StructWithPythonType(
               [
-                  ('a', TensorType(tf.string)),
+                  ('a', TensorType(np.str_)),
                   (
                       'b',
                       StructWithPythonType(
-                          [TensorType(tf.int32), TensorType(tf.int32)], tuple
+                          [TensorType(np.int32), TensorType(np.int32)], tuple
                       ),
                   ),
               ],
@@ -95,7 +95,7 @@ class FlattenTest(tf.test.TestCase, parameterized.TestCase):
           lambda x: x,
           (tf.TensorSpec([], tf.int32),),
           {},
-          TensorType(tf.int32),
+          TensorType(np.int32),
       ),
       (
           'identity_tuple',
@@ -103,7 +103,7 @@ class FlattenTest(tf.test.TestCase, parameterized.TestCase):
           (tf.TensorSpec([], tf.int32), tf.TensorSpec([], tf.float32)),
           {},
           StructWithPythonType(
-              [TensorType(tf.int32), TensorType(tf.float32)], tuple
+              [TensorType(np.int32), TensorType(np.float32)], tuple
           ),
       ),
       (
@@ -112,7 +112,7 @@ class FlattenTest(tf.test.TestCase, parameterized.TestCase):
           [tf.TensorSpec([], tf.int32), tf.TensorSpec([], tf.float32)],
           {},
           StructWithPythonType(
-              [TensorType(tf.int32), TensorType(tf.float32)], list
+              [TensorType(np.int32), TensorType(np.float32)], list
           ),
       ),
       (
@@ -124,7 +124,7 @@ class FlattenTest(tf.test.TestCase, parameterized.TestCase):
               'b': tf.TensorSpec([], tf.float32),
           },
           StructWithPythonType(
-              [('a', TensorType(tf.int32)), ('b', TensorType(tf.float32))],
+              [('a', TensorType(np.int32)), ('b', TensorType(np.float32))],
               collections.OrderedDict,
           ),
       ),
@@ -133,7 +133,7 @@ class FlattenTest(tf.test.TestCase, parameterized.TestCase):
           functools.partial(lambda x: x, 1),
           (),
           {},
-          TensorType(tf.int32),
+          TensorType(np.int32),
       ),
   )
   def test_flatten_tf_function(self, fn, args, kwargs, expected_type_spec):
@@ -155,7 +155,7 @@ class UnflattenTest(tf.test.TestCase, parameterized.TestCase):
       (
           'tensor_result',
           tf.constant(1.0),
-          TensorType(tf.float32),
+          TensorType(np.float32),
           None,
           tf.Tensor,
       ),

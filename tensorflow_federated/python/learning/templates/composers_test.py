@@ -15,6 +15,7 @@
 import collections
 
 from absl.testing import parameterized
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import mean
@@ -40,7 +41,7 @@ from tensorflow_federated.python.learning.templates import finalizers
 from tensorflow_federated.python.learning.templates import learning_process
 from tensorflow_federated.python.learning.templates import model_delta_client_work
 
-FLOAT_TYPE = computation_types.TensorType(tf.float32)
+FLOAT_TYPE = computation_types.TensorType(np.float32)
 MODEL_WEIGHTS_TYPE = computation_types.to_type(
     model_weights_lib.ModelWeights(FLOAT_TYPE, ())
 )
@@ -158,8 +159,9 @@ class ComposeLearningProcessTest(tf.test.TestCase):
     self.assertLen(metrics_type, 4)
 
   def test_one_arg_computation_init_raises(self):
+
     @tensorflow_computation.tf_computation(
-        computation_types.TensorType(tf.float32)
+        computation_types.TensorType(np.float32)
     )
     def init_model_weights_fn(x):
       return model_weights_lib.ModelWeights(trainable=x, non_trainable=())

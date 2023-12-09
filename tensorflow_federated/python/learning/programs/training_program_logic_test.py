@@ -19,7 +19,7 @@ import unittest
 from unittest import mock
 
 from absl.testing import absltest
-import tensorflow as tf
+import numpy as np
 
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.context_stack import context_stack_test_utils
@@ -132,7 +132,7 @@ def _create_mock_train_process() -> mock.Mock:
       return_value=computation_types.FunctionType(
           parameter=(
               empty_state,
-              computation_types.SequenceType(element=TensorType(tf.float32)),
+              computation_types.SequenceType(element=TensorType(np.float32)),
           ),
           result=mock_process.next.return_value,
       )

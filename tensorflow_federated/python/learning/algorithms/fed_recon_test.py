@@ -220,7 +220,7 @@ class _DPMean(factory.UnweightedAggregationFactory):
       # Invoke here to instantiate anything we need
       return self._dp_sum_process.initialize()
 
-    @tensorflow_computation.tf_computation(value_type, tf.int32)
+    @tensorflow_computation.tf_computation(value_type, np.int32)
     def div(x, y):
       # Opaque shape manipulations
       return [tf.squeeze(tf.math.divide_no_nan(x, tf.cast(y, tf.float32)), 0)]
@@ -1013,7 +1013,7 @@ class TrainingProcessTest(tf.test.TestCase, parameterized.TestCase):
         return intrinsics.federated_value(2.0, placements.SERVER)
 
       @federated_computation.federated_computation(
-          computation_types.at_server(tf.float32),
+          computation_types.at_server(np.float32),
           computation_types.at_server(model_weights_type),
       )
       def stateful_broadcast(state, value):

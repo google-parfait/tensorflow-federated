@@ -15,7 +15,7 @@
 import collections
 
 from absl.testing import absltest
-import tensorflow as tf
+import numpy as np
 
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -26,18 +26,18 @@ from tensorflow_federated.python.learning.templates import hparams_base
 class HparamsBaseTest(absltest.TestCase):
 
   def test_get_hparams_with_compatible_state_type_does_not_raise(self):
-    state_type = computation_types.TensorType(dtype=tf.int32)
+    state_type = computation_types.TensorType(np.int32)
 
-    @tensorflow_computation.tf_computation(tf.int32)
+    @tensorflow_computation.tf_computation(np.int32)
     def get_hparams_fn(state):
       return collections.OrderedDict(a=state)
 
     hparams_base.type_check_get_hparams_fn(get_hparams_fn, state_type)
 
   def test_get_hparams_with_incompatible_state_type(self):
-    state_type = computation_types.TensorType(dtype=tf.int32)
+    state_type = computation_types.TensorType(np.int32)
 
-    @tensorflow_computation.tf_computation(tf.float32)
+    @tensorflow_computation.tf_computation(np.float32)
     def get_hparams_fn(state):
       return collections.OrderedDict(a=state)
 
@@ -45,9 +45,9 @@ class HparamsBaseTest(absltest.TestCase):
       hparams_base.type_check_get_hparams_fn(get_hparams_fn, state_type)
 
   def test_set_hparams_fn_with_one_input_arg_raises(self):
-    state_type = computation_types.TensorType(tf.int32)
+    state_type = computation_types.TensorType(np.int32)
 
-    @tensorflow_computation.tf_computation(tf.int32)
+    @tensorflow_computation.tf_computation(np.int32)
     def set_hparams_fn(state):
       return state
 
@@ -55,9 +55,9 @@ class HparamsBaseTest(absltest.TestCase):
       hparams_base.type_check_set_hparams_fn(set_hparams_fn, state_type)
 
   def test_set_hparams_fn_with_three_input_args_raises(self):
-    state_type = computation_types.TensorType(tf.int32)
+    state_type = computation_types.TensorType(np.int32)
 
-    @tensorflow_computation.tf_computation(tf.int32, tf.int32, tf.int32)
+    @tensorflow_computation.tf_computation(np.int32, np.int32, np.int32)
     def set_hparams_fn(state, x, y):
       del x
       del y
@@ -67,12 +67,12 @@ class HparamsBaseTest(absltest.TestCase):
       hparams_base.type_check_set_hparams_fn(set_hparams_fn, state_type)
 
   def test_set_hparams_fn_with_compatible_state_type_does_not_raise(self):
-    state_type = computation_types.TensorType(tf.int32)
+    state_type = computation_types.TensorType(np.int32)
     hparams_type = computation_types.to_type(
-        collections.OrderedDict(a=tf.int32)
+        collections.OrderedDict(a=np.int32)
     )
 
-    @tensorflow_computation.tf_computation(tf.int32, hparams_type)
+    @tensorflow_computation.tf_computation(np.int32, hparams_type)
     def set_hparams_fn(state, hparams):
       del state
       return hparams['a']
@@ -80,12 +80,12 @@ class HparamsBaseTest(absltest.TestCase):
     hparams_base.type_check_set_hparams_fn(set_hparams_fn, state_type)
 
   def test_set_hparams_fn_with_incompatible_input_state_type_raises(self):
-    state_type = computation_types.TensorType(tf.int32)
+    state_type = computation_types.TensorType(np.int32)
     hparams_type = computation_types.to_type(
-        collections.OrderedDict(a=tf.int32)
+        collections.OrderedDict(a=np.int32)
     )
 
-    @tensorflow_computation.tf_computation(tf.float32, hparams_type)
+    @tensorflow_computation.tf_computation(np.float32, hparams_type)
     def set_hparams_fn(state, hparams):
       del state
       return hparams['a']
@@ -94,12 +94,12 @@ class HparamsBaseTest(absltest.TestCase):
       hparams_base.type_check_set_hparams_fn(set_hparams_fn, state_type)
 
   def test_set_hparams_fn_with_incompatible_outputput_state_type_raises(self):
-    state_type = computation_types.TensorType(tf.int32)
+    state_type = computation_types.TensorType(np.int32)
     hparams_type = computation_types.to_type(
-        collections.OrderedDict(a=tf.float32)
+        collections.OrderedDict(a=np.float32)
     )
 
-    @tensorflow_computation.tf_computation(tf.int32, hparams_type)
+    @tensorflow_computation.tf_computation(np.int32, hparams_type)
     def set_hparams_fn(state, hparams):
       del state
       return hparams['a']
@@ -108,7 +108,7 @@ class HparamsBaseTest(absltest.TestCase):
       hparams_base.type_check_set_hparams_fn(set_hparams_fn, state_type)
 
   def test_default_get_hparams_returns_empty_dict(self):
-    state_type = computation_types.TensorType(tf.int32)
+    state_type = computation_types.TensorType(np.int32)
     get_hparams_fn = hparams_base.build_basic_hparams_getter(state_type)
     expected_hparams_type = computation_types.to_type(collections.OrderedDict())
     expected_function_type = computation_types.FunctionType(
@@ -119,9 +119,9 @@ class HparamsBaseTest(absltest.TestCase):
     )
 
   def test_default_set_hparams_returns_state_of_matching_type(self):
-    state_type = computation_types.TensorType(tf.int32)
+    state_type = computation_types.TensorType(np.int32)
     hparams_type = computation_types.to_type(
-        collections.OrderedDict(a=tf.float32)
+        collections.OrderedDict(a=np.float32)
     )
     set_hparams_fn = hparams_base.build_basic_hparams_setter(
         state_type, hparams_type

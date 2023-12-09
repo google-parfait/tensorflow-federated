@@ -15,6 +15,7 @@
 import collections
 
 from absl.testing import parameterized
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.core.backends.native import execution_contexts
@@ -27,9 +28,9 @@ from tensorflow_federated.python.core.templates import errors
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning.templates import distributors
 
-SERVER_INT = computation_types.FederatedType(tf.int32, placements.SERVER)
-SERVER_FLOAT = computation_types.FederatedType(tf.float32, placements.SERVER)
-CLIENTS_INT = computation_types.FederatedType(tf.int32, placements.CLIENTS)
+SERVER_INT = computation_types.FederatedType(np.int32, placements.SERVER)
+SERVER_FLOAT = computation_types.FederatedType(np.float32, placements.SERVER)
+CLIENTS_INT = computation_types.FederatedType(np.int32, placements.CLIENTS)
 MeasuredProcessOutput = measured_process.MeasuredProcessOutput
 
 _DistributionProcessConstructionError = (
@@ -186,7 +187,7 @@ class DistributionProcessTest(tf.test.TestCase):
   def test_non_federated_init_next_raises(self):
     initialize_fn = tensorflow_computation.tf_computation(lambda: 0)
 
-    @tensorflow_computation.tf_computation(tf.int32, tf.float32)
+    @tensorflow_computation.tf_computation(np.int32, np.float32)
     def next_fn(state, val):
       return MeasuredProcessOutput(state, val, ())
 
@@ -275,8 +276,8 @@ class DistributionProcessTest(tf.test.TestCase):
 class BroadcastProcessComputationTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
-      ('float', computation_types.TensorType(tf.float32)),
-      ('struct', computation_types.to_type([(tf.float32, (2,)), tf.int32])),
+      ('float', computation_types.TensorType(np.float32)),
+      ('struct', computation_types.to_type([(np.float32, (2,)), np.int32])),
   )
   def test_type_properties(self, value_type):
     broadcast_process = distributors.build_broadcast_process(value_type)
@@ -313,7 +314,7 @@ class BroadcastProcessComputationTest(tf.test.TestCase, parameterized.TestCase):
   @parameterized.named_parameters(
       ('federated_type', SERVER_FLOAT),
       ('function_type', computation_types.FunctionType(None, ())),
-      ('sequence_type', computation_types.SequenceType(tf.float32)),
+      ('sequence_type', computation_types.SequenceType(np.float32)),
   )
   def test_incorrect_value_type_raises(self, bad_value_type):
     with self.assertRaises(TypeError):
@@ -338,7 +339,7 @@ class BroadcastProcessExecutionTest(tf.test.TestCase):
     self.assertEqual((), output.measurements)
 
   def test_broadcast_struct(self):
-    struct_type = computation_types.to_type([(tf.float32, (2,)), tf.int32])
+    struct_type = computation_types.to_type([(np.float32, (2,)), np.int32])
     broadcast_process = distributors.build_broadcast_process(struct_type)
     output = broadcast_process.next(
         broadcast_process.initialize(), ((1.0, 2.5), 3)

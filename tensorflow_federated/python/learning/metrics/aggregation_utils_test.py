@@ -17,6 +17,7 @@ import collections
 from typing import Any
 
 from absl.testing import parameterized
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -75,12 +76,12 @@ class CheckUnfinalizedMetricsTypeTest(tf.test.TestCase, parameterized.TestCase):
   @parameterized.named_parameters(
       (
           'struct_type',
-          computation_types.StructType([(None, tf.int32)]),
+          computation_types.StructType([(None, np.int32)]),
           '`tff.types.StructWithPythonType`',
       ),
       (
           'ordereddict',
-          collections.OrderedDict(num_example=tf.int32),
+          collections.OrderedDict(num_example=np.int32),
           '`tff.types.StructWithPythonType`',
       ),
       (

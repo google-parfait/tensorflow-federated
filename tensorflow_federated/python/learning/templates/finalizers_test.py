@@ -14,6 +14,7 @@
 
 import collections
 
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
@@ -27,13 +28,13 @@ from tensorflow_federated.python.learning.models import model_weights
 from tensorflow_federated.python.learning.templates import finalizers
 from tensorflow_federated.python.learning.templates import hparams_base
 
-SERVER_INT = computation_types.FederatedType(tf.int32, placements.SERVER)
-SERVER_FLOAT = computation_types.FederatedType(tf.float32, placements.SERVER)
-CLIENTS_INT = computation_types.FederatedType(tf.int32, placements.CLIENTS)
-CLIENTS_FLOAT = computation_types.FederatedType(tf.float32, placements.CLIENTS)
+SERVER_INT = computation_types.FederatedType(np.int32, placements.SERVER)
+SERVER_FLOAT = computation_types.FederatedType(np.float32, placements.SERVER)
+CLIENTS_INT = computation_types.FederatedType(np.int32, placements.CLIENTS)
+CLIENTS_FLOAT = computation_types.FederatedType(np.float32, placements.CLIENTS)
 MODEL_WEIGHTS_TYPE = computation_types.at_server(
     computation_types.to_type(
-        model_weights.ModelWeights(tf.float32, tf.float32)
+        model_weights.ModelWeights(np.float32, np.float32)
     )
 )
 MeasuredProcessOutput = measured_process.MeasuredProcessOutput
@@ -96,7 +97,7 @@ class FinalizerTest(tf.test.TestCase):
         lambda: intrinsics.federated_value((), placements.SERVER)
     )
     model_weights_type = computation_types.StructWithPythonType(
-        [('trainable', tf.float32), ('non_trainable', ())],
+        [('trainable', np.float32), ('non_trainable', ())],
         model_weights.ModelWeights,
     )
     server_model_weights_type = computation_types.at_server(model_weights_type)
@@ -203,14 +204,14 @@ class FinalizerTest(tf.test.TestCase):
   def test_non_federated_init_next_raises(self):
     initialize_fn = tensorflow_computation.tf_computation(lambda: 0)
     model_weights_type = computation_types.StructWithPythonType(
-        [('trainable', tf.float32), ('non_trainable', ())],
+        [('trainable', np.float32), ('non_trainable', ())],
         model_weights.ModelWeights,
     )
 
     @tensorflow_computation.tf_computation(
-        tf.int32,
+        np.int32,
         model_weights_type,
-        tf.float32,
+        np.float32,
     )
     def next_fn(state, weights, update):
       new_weigths = model_weights.ModelWeights(weights.trainable + update, ())
@@ -278,7 +279,7 @@ class FinalizerTest(tf.test.TestCase):
   def test_constructs_with_non_model_weights_parameter(self):
     non_model_weights_type = computation_types.at_server(
         computation_types.to_type(
-            collections.OrderedDict(trainable=tf.float32, non_trainable=())
+            collections.OrderedDict(trainable=np.float32, non_trainable=())
         )
     )
 

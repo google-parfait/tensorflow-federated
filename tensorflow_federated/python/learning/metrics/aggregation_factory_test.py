@@ -15,6 +15,7 @@
 import collections
 
 from absl.testing import parameterized
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory
@@ -247,10 +248,10 @@ class SumThenFinalizeFactoryComputationTest(
   @parameterized.named_parameters(
       (
           'federated_type',
-          computation_types.FederatedType(tf.float32, placements.SERVER),
+          computation_types.FederatedType(np.float32, placements.SERVER),
       ),
       ('function_type', computation_types.FunctionType(None, ())),
-      ('sequence_type', computation_types.SequenceType(tf.float32)),
+      ('sequence_type', computation_types.SequenceType(np.float32)),
   )
   def test_incorrect_unfinalized_metrics_type_raises(
       self, bad_unfinalized_metrics_type
@@ -673,10 +674,10 @@ class SecureSumFactoryTest(tf.test.TestCase, parameterized.TestCase):
   @parameterized.named_parameters(
       (
           'federated_type',
-          computation_types.FederatedType(tf.float32, placements.SERVER),
+          computation_types.FederatedType(np.float32, placements.SERVER),
       ),
       ('function_type', computation_types.FunctionType(None, ())),
-      ('sequence_type', computation_types.SequenceType(tf.float32)),
+      ('sequence_type', computation_types.SequenceType(np.float32)),
   )
   def test_incorrect_unfinalized_metrics_type_raises(
       self, bad_unfinalized_metrics_type
@@ -728,22 +729,22 @@ class CreateDefaultSecureSumQuantizationRangesTest(
       return self.assertIsInstance(b, estimation_process.EstimationProcess, msg)
 
   @parameterized.named_parameters(
-      ('float32', TensorType(tf.float32, [3]), _DEFAULT_AUTO_TUNED_FLOAT_RANGE),
-      ('float64', TensorType(tf.float64, [1]), _DEFAULT_AUTO_TUNED_FLOAT_RANGE),
-      ('int32', TensorType(tf.int32, [1]), _DEFAULT_INT_RANGE),
-      ('int64', TensorType(tf.int64, [3]), _DEFAULT_INT_RANGE),
+      ('float32', TensorType(np.float32, [3]), _DEFAULT_AUTO_TUNED_FLOAT_RANGE),
+      ('float64', TensorType(np.float64, [1]), _DEFAULT_AUTO_TUNED_FLOAT_RANGE),
+      ('int32', TensorType(np.int32, [1]), _DEFAULT_INT_RANGE),
+      ('int64', TensorType(np.int64, [3]), _DEFAULT_INT_RANGE),
       (
           '<int64,float32>',
-          computation_types.to_type([tf.int64, tf.float32]),
+          computation_types.to_type([np.int64, np.float32]),
           [_DEFAULT_INT_RANGE, _DEFAULT_AUTO_TUNED_FLOAT_RANGE],
       ),
       (
           '<a=int64,b=<c=float32,d=[int32,int32]>>',
           computation_types.to_type(
               collections.OrderedDict(
-                  a=tf.int64,
+                  a=np.int64,
                   b=collections.OrderedDict(
-                      c=tf.float32, d=[tf.int32, tf.int32]
+                      c=np.float32, d=[np.int32, np.int32]
                   ),
               )
           ),
@@ -771,22 +772,22 @@ class CreateDefaultSecureSumQuantizationRangesTest(
     )
 
   @parameterized.named_parameters(
-      ('float32', TensorType(tf.float32, [3]), _DEFAULT_FIXED_FLOAT_RANGE),
-      ('float64', TensorType(tf.float64, [1]), _DEFAULT_FIXED_FLOAT_RANGE),
-      ('int32', TensorType(tf.int32, [1]), _DEFAULT_INT_RANGE),
-      ('int64', TensorType(tf.int64, [3]), _DEFAULT_INT_RANGE),
+      ('float32', TensorType(np.float32, [3]), _DEFAULT_FIXED_FLOAT_RANGE),
+      ('float64', TensorType(np.float64, [1]), _DEFAULT_FIXED_FLOAT_RANGE),
+      ('int32', TensorType(np.int32, [1]), _DEFAULT_INT_RANGE),
+      ('int64', TensorType(np.int64, [3]), _DEFAULT_INT_RANGE),
       (
           '<int64,float32>',
-          computation_types.to_type([tf.int64, tf.float32]),
+          computation_types.to_type([np.int64, np.float32]),
           [_DEFAULT_INT_RANGE, _DEFAULT_FIXED_FLOAT_RANGE],
       ),
       (
           '<a=int64,b=<c=float32,d=[int32,int32]>>',
           computation_types.to_type(
               collections.OrderedDict(
-                  a=tf.int64,
+                  a=np.int64,
                   b=collections.OrderedDict(
-                      c=tf.float32, d=[tf.int32, tf.int32]
+                      c=np.float32, d=[np.int32, np.int32]
                   ),
               )
           ),
@@ -810,30 +811,30 @@ class CreateDefaultSecureSumQuantizationRangesTest(
   @parameterized.named_parameters(
       (
           'float32_float_range',
-          TensorType(tf.float32, [3]),
+          TensorType(np.float32, [3]),
           0.1,
           0.5,
           _DEFAULT_AUTO_TUNED_FLOAT_RANGE,
       ),
       (
           'float32_int_range',
-          TensorType(tf.float32, [3]),
+          TensorType(np.float32, [3]),
           1,
           5,
           _DEFAULT_AUTO_TUNED_FLOAT_RANGE,
       ),
-      ('int32_int_range', TensorType(tf.int32, [1]), 1, 5, (1, 5)),
-      ('int32_float_range', TensorType(tf.int32, [1]), 1.0, 5.0, (1, 5)),
+      ('int32_int_range', TensorType(np.int32, [1]), 1, 5, (1, 5)),
+      ('int32_float_range', TensorType(np.int32, [1]), 1.0, 5.0, (1, 5)),
       (
           'int32_float_range_truncated',
-          TensorType(tf.int32, [1]),
+          TensorType(np.int32, [1]),
           1.5,
           5.5,
           (2, 5),
       ),
       (
           '<int64,float32>',
-          computation_types.to_type([tf.int64, tf.float32]),
+          computation_types.to_type([np.int64, np.float32]),
           1,
           5,
           [(1, 5), _DEFAULT_AUTO_TUNED_FLOAT_RANGE],
