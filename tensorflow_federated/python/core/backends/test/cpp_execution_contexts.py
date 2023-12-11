@@ -30,9 +30,25 @@ from tensorflow_federated.python.core.impl.execution_contexts import async_execu
 from tensorflow_federated.python.core.impl.execution_contexts import sync_execution_context
 from tensorflow_federated.python.core.impl.executor_stacks import cpp_executor_factory
 from tensorflow_federated.python.core.impl.executors import executor_bindings
+from tensorflow_federated.python.core.impl.executors import tensorflow_executor_bindings
 
 
 FLAGS = flags.FLAGS
+
+
+def _create_tensorflow_executor(
+    max_concurrent_computation_calls: int,
+) -> executor_bindings.Executor:
+  """Returns a leaf executor for Tensorflow based executor."""
+  tensorflow_executor = tensorflow_executor_bindings.create_tensorflow_executor(
+      max_concurrent_computation_calls
+  )
+  reference_resolving_executor = (
+      executor_bindings.create_reference_resolving_executor(tensorflow_executor)
+  )
+  return executor_bindings.create_sequence_executor(
+      reference_resolving_executor
+  )
 
 
 def create_async_test_cpp_execution_context(
@@ -74,6 +90,7 @@ def create_async_test_cpp_execution_context(
   factory = cpp_executor_factory.local_cpp_executor_factory(
       default_num_clients=default_num_clients,
       max_concurrent_computation_calls=max_concurrent_computation_calls,
+      leaf_executor_fn=_create_tensorflow_executor,
   )
   context = async_execution_context.AsyncExecutionContext(
       executor_fn=factory, compiler_fn=_compile
@@ -253,6 +270,7 @@ def create_sync_test_cpp_execution_context(
   factory = cpp_executor_factory.local_cpp_executor_factory(
       default_num_clients=default_num_clients,
       max_concurrent_computation_calls=max_concurrent_computation_calls,
+      leaf_executor_fn=_create_tensorflow_executor,
   )
   context = sync_execution_context.SyncExecutionContext(
       executor_fn=factory, compiler_fn=_compile
