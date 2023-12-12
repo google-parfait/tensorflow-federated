@@ -97,6 +97,34 @@ py_test(
 )
 
 py_library(
+    name = "execution_contexts",
+    srcs = ["execution_contexts.py"],
+    deps = [
+        ":compiler",
+        ":mergeable_comp_compiler",
+        "//tensorflow_federated/python/core/impl/context_stack:context_base",
+        "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
+        "//tensorflow_federated/python/core/impl/execution_contexts:async_execution_context",
+        "//tensorflow_federated/python/core/impl/execution_contexts:mergeable_comp_execution_context",
+        "//tensorflow_federated/python/core/impl/execution_contexts:sync_execution_context",
+        "//tensorflow_federated/python/core/impl/executor_stacks:executor_factory",
+    ],
+)
+
+py_test(
+    name = "execution_contexts_test",
+    srcs = ["execution_contexts_test.py"],
+    deps = [
+        ":execution_contexts",
+        "//tensorflow_federated/proto/v0:executor_py_pb2",
+        "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
+        "//tensorflow_federated/python/core/impl/computation:computation_impl",
+        "//tensorflow_federated/python/core/impl/executors:remote_executor_grpc_stub",
+        "//tensorflow_federated/python/tensorflow_libs:tensorflow_test_utils",
+    ],
+)
+
+py_library(
     name = "mergeable_comp_compiler",
     srcs = ["mergeable_comp_compiler.py"],
     deps = [
@@ -129,33 +157,5 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/impl/types:type_test_utils",
-    ],
-)
-
-py_library(
-    name = "execution_contexts",
-    srcs = ["execution_contexts.py"],
-    deps = [
-        ":compiler",
-        ":mergeable_comp_compiler",
-        "//tensorflow_federated/python/core/impl/context_stack:context_base",
-        "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
-        "//tensorflow_federated/python/core/impl/execution_contexts:async_execution_context",
-        "//tensorflow_federated/python/core/impl/execution_contexts:mergeable_comp_execution_context",
-        "//tensorflow_federated/python/core/impl/execution_contexts:sync_execution_context",
-        "//tensorflow_federated/python/core/impl/executor_stacks:executor_factory",
-    ],
-)
-
-py_test(
-    name = "execution_contexts_test",
-    srcs = ["execution_contexts_test.py"],
-    deps = [
-        ":execution_contexts",
-        "//tensorflow_federated/proto/v0:executor_py_pb2",
-        "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
-        "//tensorflow_federated/python/core/impl/computation:computation_impl",
-        "//tensorflow_federated/python/core/impl/executors:remote_executor_grpc_stub",
-        "//tensorflow_federated/python/tensorflow_libs:tensorflow_test_utils",
     ],
 )
