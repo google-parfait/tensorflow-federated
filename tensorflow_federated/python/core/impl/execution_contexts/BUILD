@@ -107,7 +107,6 @@ py_test(
     deps = [
         ":async_execution_context",
         ":mergeable_comp_execution_context",
-        ":sync_execution_context",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/computation:computation_base",
         "//tensorflow_federated/python/core/impl/executor_stacks:executor_factory",

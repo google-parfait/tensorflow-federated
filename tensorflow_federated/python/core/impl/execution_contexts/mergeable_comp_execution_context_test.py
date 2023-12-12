@@ -22,12 +22,16 @@ from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.execution_contexts import async_execution_context
 from tensorflow_federated.python.core.impl.execution_contexts import mergeable_comp_execution_context
-from tensorflow_federated.python.core.impl.execution_contexts import sync_execution_context
-from tensorflow_federated.python.core.impl.executor_stacks import executor_factory
+from tensorflow_federated.python.core.impl.executor_stacks import executor_factory  # pylint: enable=line-too-long
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
+
+
+def _create_test_context():
+  factory = executor_factory.local_cpp_executor_factory()
+  return async_execution_context.AsyncExecutionContext(factory)
 
 
 def build_sum_client_arg_computation(
@@ -387,32 +391,19 @@ class RepackageResultsTest(absltest.TestCase):
 
 class MergeableCompExecutionContextTest(parameterized.TestCase):
 
-  def test_construction_raises_with_sync_context(self):
-    context = sync_execution_context.SyncExecutionContext(
-        executor_factory.local_cpp_executor_factory()
-    )
-    contexts = [context]
-    with self.assertRaises(TypeError):
-      mergeable_comp_execution_context.MergeableCompExecutionContext(contexts)
-
   def test_invoke_raises_computation_no_compiler(self):
 
     @federated_computation.federated_computation()
     def return_one():
       return 1
 
-    contexts = [
-        async_execution_context.AsyncExecutionContext(
-            executor_factory.local_cpp_executor_factory()
-        )
-        for _ in range(1)
-    ]
-    no_compiler_context = (
-        mergeable_comp_execution_context.MergeableCompExecutionContext(contexts)
+    context = _create_test_context()
+    context = mergeable_comp_execution_context.MergeableCompExecutionContext(
+        [context]
     )
 
     with self.assertRaises(ValueError):
-      no_compiler_context.invoke(return_one)
+      context.invoke(return_one)
 
   def test_invoke_raises_computation_not_compiled_to_mergeable_comp_form(self):
 
@@ -420,14 +411,9 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
     def return_one():
       return 1
 
-    contexts = [
-        async_execution_context.AsyncExecutionContext(
-            executor_factory.local_cpp_executor_factory()
-        )
-        for _ in range(1)
-    ]
+    context = _create_test_context()
     context = mergeable_comp_execution_context.MergeableCompExecutionContext(
-        contexts, compiler_fn=lambda x: x
+        [context], compiler_fn=lambda x: x
     )
 
     with self.assertRaises(ValueError):
