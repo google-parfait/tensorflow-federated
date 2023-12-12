@@ -28,7 +28,7 @@ from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.context_stack import set_default_context
 from tensorflow_federated.python.core.impl.execution_contexts import sync_execution_context
-from tensorflow_federated.python.core.impl.executor_stacks import executor_factory
+from tensorflow_federated.python.core.impl.executor_stacks import executor_factory  # pylint: enable=line-too-long
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -37,6 +37,11 @@ from tensorflow_federated.python.core.impl.types import type_serialization
 from tensorflow_federated.python.core.impl.types import type_test_utils
 
 DEFAULT_GRAPPLER_CONFIG = tf.compat.v1.ConfigProto()
+
+
+def _create_test_context():
+  factory = executor_factory.local_cpp_executor_factory()
+  return sync_execution_context.SyncExecutionContext(executor_fn=factory)
 
 
 class CheckExtractionResultTest(absltest.TestCase):
@@ -612,7 +617,6 @@ class ConcatenateFunctionOutputsTest(absltest.TestCase):
 
 
 if __name__ == '__main__':
-  factory = executor_factory.local_cpp_executor_factory()
-  context = sync_execution_context.SyncExecutionContext(executor_fn=factory)
+  context = _create_test_context()
   set_default_context.set_default_context(context)
   absltest.main()
