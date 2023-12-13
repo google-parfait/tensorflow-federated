@@ -300,13 +300,14 @@ class SimpleFedAvgTest(tf.test.TestCase, parameterized.TestCase):
     federated_data_type = it_process.next.type_signature.parameter[1]
     tff.test.assert_types_identical(
         federated_data_type,
-        tff.types.at_clients(
+        tff.FederatedType(
             tff.types.SequenceType(
                 collections.OrderedDict(
                     x=tff.types.TensorType(np.float32, [None, 28, 28, 1]),
                     y=tff.types.TensorType(np.int32, [None]),
                 )
-            )
+            ),
+            tff.CLIENTS,
         ),
     )
 
@@ -500,21 +501,25 @@ class RNNTest(tf.test.TestCase, parameterized.TestCase):
     model_type = tff.learning.models.weights_type_from_model(_rnn_model_fn)
     tff.test.assert_types_identical(
         global_model_type,
-        tff.types.at_server(
+        tff.FederatedType(
             simple_fedavg_tf.ServerState(
-                model=model_type, optimizer_state=[np.int64], round_num=np.int32
-            )
+                model=model_type,
+                optimizer_state=[np.int64],
+                round_num=np.int32,
+            ),
+            tff.SERVER,
         ),
     )
     tff.test.assert_types_identical(
         client_datasets_type,
-        tff.types.at_clients(
+        tff.FederatedType(
             tff.types.SequenceType(
                 collections.OrderedDict(
                     x=tff.types.TensorType(np.int32, [None, 5]),
                     y=tff.types.TensorType(np.int32, [None, 5]),
                 )
-            )
+            ),
+            tff.CLIENTS,
         ),
     )
 

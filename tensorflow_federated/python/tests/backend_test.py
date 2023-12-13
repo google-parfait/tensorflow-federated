@@ -52,7 +52,7 @@ class NoClientAggregationsTest(parameterized.TestCase):
   @tff.test.with_contexts(*test_contexts.get_all_contexts())
   def test_executes_empty_sum(self):
 
-    @tff.federated_computation(tff.type_at_clients(np.int32))
+    @tff.federated_computation(tff.FederatedType(np.int32, tff.CLIENTS))
     def fed_sum(x):
       return tff.federated_sum(x)
 
@@ -65,7 +65,7 @@ class NoClientAggregationsTest(parameterized.TestCase):
     # TODO: b/200970992 - Standardize handling of this case. We currently have a
     # ZeroDivisionError, a RuntimeError, and a context that returns nan.
 
-    @tff.federated_computation(tff.type_at_clients(np.float32))
+    @tff.federated_computation(tff.FederatedType(np.float32, tff.CLIENTS))
     def fed_mean(x):
       return tff.federated_mean(x)
 
@@ -106,7 +106,7 @@ class DatasetManipulationTest(parameterized.TestCase):
       return ds
 
     @tff.federated_computation(
-        tff.type_at_clients(tff.SequenceType(tensor_spec))
+        tff.FederatedType(tff.SequenceType(tensor_spec), tff.CLIENTS)
     )
     def do_a_federated_aggregate(client_ds):
       return tff.federated_aggregate(
@@ -186,7 +186,7 @@ class FederatedComputationTest(parameterized.TestCase):
   @tff.test.with_contexts(*test_contexts.get_all_contexts())
   def test_federated_zip(self):
 
-    @tff.federated_computation([tff.type_at_clients(np.int32)] * 2)
+    @tff.federated_computation([tff.FederatedType(np.int32, tff.CLIENTS)] * 2)
     def foo(x):
       return tff.federated_zip(x)
 
@@ -200,7 +200,9 @@ class FederatedComputationTest(parameterized.TestCase):
     num_element = 20
     num_clients = 2
 
-    @tff.federated_computation([tff.type_at_clients(np.int32)] * num_element)
+    @tff.federated_computation(
+        [tff.FederatedType(np.int32, tff.CLIENTS)] * num_element
+    )
     def foo(x):
       return tff.federated_zip(x)
 
@@ -215,7 +217,7 @@ class FederatedComputationTest(parameterized.TestCase):
     def add_one(x):
       return x + 1
 
-    @tff.federated_computation(tff.type_at_clients(np.int32))
+    @tff.federated_computation(tff.FederatedType(np.int32, tff.CLIENTS))
     def map_add_one(federated_arg):
       return tff.federated_map(add_one, federated_arg)
 
@@ -232,7 +234,7 @@ class FederatedComputationTest(parameterized.TestCase):
     def add_one(x):
       return x + 1
 
-    @tff.federated_computation(tff.type_at_clients(np.int32))
+    @tff.federated_computation(tff.FederatedType(np.int32, tff.CLIENTS))
     def map_add_one(federated_arg):
       return tff.federated_map(add_one, federated_arg)
 
@@ -304,11 +306,11 @@ class FederatedComputationTest(parameterized.TestCase):
       # reshape.
       return tf.reshape(x, [])
 
-    @tff.federated_computation(tff.type_at_clients(tensor_type))
+    @tff.federated_computation(tff.FederatedType(tensor_type, tff.CLIENTS))
     def map_foo_at_clients(x):
       return tff.federated_map(foo, x)
 
-    @tff.federated_computation(tff.type_at_server(tensor_type))
+    @tff.federated_computation(tff.FederatedType(tensor_type, tff.SERVER))
     def map_foo_at_server(x):
       return tff.federated_map(foo, x)
 
@@ -340,10 +342,14 @@ class FederatedComputationTest(parameterized.TestCase):
       return tf.gather(selectee, key)
 
     @tff.federated_computation(
-        tff.type_at_server(selectee_type),
-        tff.type_at_clients(tff.TensorType(np.int32, [keys_per_client])),
+        tff.FederatedType(selectee_type, tff.SERVER),
+        tff.FederatedType(
+            tff.TensorType(np.int32, [keys_per_client]), tff.CLIENTS
+        ),
     )
-    @tff.check_returns_type(tff.type_at_clients(tff.SequenceType(np.str_)))
+    @tff.check_returns_type(
+        tff.FederatedType(tff.SequenceType(np.str_), tff.CLIENTS)
+    )
     def select(server_val, client_keys):
       max_key_at_server = tff.federated_value(max_key, tff.SERVER)
       return tff.federated_select(

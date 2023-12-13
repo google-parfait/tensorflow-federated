@@ -99,7 +99,9 @@ class MergeableCompForm:
     return merge(arg[0], arg[1])
 
   @tff.federated_computation(
-      tff.AbstractType('T'), tff.type_at_server(merge.type_signature.result))
+      tff.AbstractType('T'),
+      tff.FederatedType(merge.type_signature.result, tff.SERVER),
+  )
   def after_merge(original_arg, merged_result):
     return postprocess(original_arg, merged_result)
   ```

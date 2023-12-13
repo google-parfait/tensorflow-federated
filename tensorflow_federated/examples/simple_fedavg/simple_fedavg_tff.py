@@ -178,8 +178,8 @@ def build_federated_averaging_process(
   server_message_type = server_message_fn.type_signature.result
   tf_dataset_type = tff.SequenceType(whimsy_model.input_spec)
 
-  federated_server_state_type = tff.type_at_server(server_state_type)
-  federated_dataset_type = tff.type_at_clients(tf_dataset_type)
+  federated_server_state_type = tff.FederatedType(server_state_type, tff.SERVER)
+  federated_dataset_type = tff.FederatedType(tf_dataset_type, tff.CLIENTS)
 
   @tff.federated_computation(
       federated_server_state_type, federated_dataset_type

@@ -44,8 +44,8 @@ def _sum_integers(x: int, y: int) -> int:
 
 
 @tff.federated_computation(
-    tff.type_at_server(np.int32),
-    tff.type_at_clients(tff.SequenceType(np.int32)),
+    tff.FederatedType(np.int32, tff.SERVER),
+    tff.FederatedType(tff.SequenceType(np.int32), tff.CLIENTS),
 )
 def train(server_state: int, client_data: tf.data.Dataset):
   """Computes the sum of all the integers on the clients.
@@ -76,8 +76,8 @@ def train(server_state: int, client_data: tf.data.Dataset):
 
 
 @tff.federated_computation(
-    tff.type_at_server(np.int32),
-    tff.type_at_clients(tff.SequenceType(np.int32)),
+    tff.FederatedType(np.int32, tff.SERVER),
+    tff.FederatedType(tff.SequenceType(np.int32), tff.CLIENTS),
 )
 def evaluation(server_state: int, client_data: tf.data.Dataset):
   """Computes the sum of all the integers on the clients.

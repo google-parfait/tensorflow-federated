@@ -118,10 +118,12 @@ def build_federated_averaging_process(
         model, tf_dataset, client_state, server_message, client_optimizer
     )
 
-  federated_server_state_type = tff.type_at_server(server_state_type)
-  federated_dataset_type = tff.type_at_clients(tf_dataset_type)
+  federated_server_state_type = tff.FederatedType(server_state_type, tff.SERVER)
+  federated_dataset_type = tff.FederatedType(tf_dataset_type, tff.CLIENTS)
 
-  federated_client_state_type = tff.type_at_clients(client_state_type)
+  federated_client_state_type = tff.FederatedType(
+      client_state_type, tff.CLIENTS
+  )
 
   @tff.federated_computation(
       federated_server_state_type,

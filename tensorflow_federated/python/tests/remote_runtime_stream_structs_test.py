@@ -36,7 +36,7 @@ def _make_federated(computation: tff.Computation) -> tff.Computation:
   """Construct a federate computation that maps comptuation to CLIENTS."""
 
   @tff.federated_computation(
-      tff.types.at_clients(computation.type_signature.parameter)
+      tff.FederatedType(computation.type_signature.parameter, tff.CLIENTS),
   )
   def compute(a):
     return tff.federated_map(computation, a)

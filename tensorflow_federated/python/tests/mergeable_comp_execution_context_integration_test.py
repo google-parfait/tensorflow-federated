@@ -68,7 +68,7 @@ def build_whimsy_after_merge_computation(
   if original_arg_type is not None:
 
     @tff.federated_computation(
-        original_arg_type, tff.type_at_server(merge_result_type)
+        original_arg_type, tff.FederatedType(merge_result_type, tff.SERVER)
     )
     def after_merge(original_arg, merge_result):
       del merge_result  # Unused
@@ -76,7 +76,7 @@ def build_whimsy_after_merge_computation(
 
   else:
 
-    @tff.federated_computation(tff.type_at_server(merge_result_type))
+    @tff.federated_computation(tff.FederatedType(merge_result_type, tff.SERVER))
     def after_merge(merge_result):
       return merge_result
 
@@ -87,8 +87,9 @@ def build_return_merge_result_computation(
     original_arg_type: tff.Type,
     merge_result_type: tff.Type,
 ) -> tff.Computation:
+
   @tff.federated_computation(
-      original_arg_type, tff.type_at_server(merge_result_type)
+      original_arg_type, tff.FederatedType(merge_result_type, tff.SERVER)
   )
   def after_merge(original_arg, merge_result):
     del original_arg  # Unused
@@ -100,7 +101,8 @@ def build_return_merge_result_computation(
 def build_return_merge_result_with_no_first_arg_computation(
     merge_result_type: tff.Type,
 ) -> tff.Computation:
-  @tff.federated_computation(tff.type_at_server(merge_result_type))
+
+  @tff.federated_computation(tff.FederatedType(merge_result_type, tff.SERVER))
   def after_merge(merge_result):
     return merge_result
 
@@ -118,7 +120,7 @@ def build_sum_merge_with_first_arg_computation(
     return x + y
 
   @tff.federated_computation(
-      original_arg_type, tff.type_at_server(merge_result_type)
+      original_arg_type, tff.FederatedType(merge_result_type, tff.SERVER)
   )
   def after_merge(original_arg, merge_result):
     return tff.federated_map(add, (original_arg[0], merge_result))
@@ -182,8 +184,8 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
       self, arg, num_subrounds, num_contexts
   ):
     up_to_merge = build_sum_client_arg_computation(
-        tff.type_at_server(np.int32),
-        tff.type_at_clients(np.int32),
+        tff.FederatedType(np.int32, tff.SERVER),
+        tff.FederatedType(np.int32, tff.CLIENTS),
     )
     merge = build_whimsy_merge_computation(np.int32)
     after_merge = build_whimsy_after_merge_computation(
@@ -259,8 +261,8 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
       self, arg, expected_sum, num_subrounds
   ):
     up_to_merge = build_sum_client_arg_computation(
-        tff.type_at_server(np.int32),
-        tff.type_at_clients(np.int32),
+        tff.FederatedType(np.int32, tff.SERVER),
+        tff.FederatedType(np.int32, tff.CLIENTS),
     )
     merge = build_sum_merge_computation(np.int32)
     after_merge = build_return_merge_result_computation(
@@ -313,8 +315,8 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
   )
   def test_computes_sum_of_all_values(self, arg, expected_sum, num_subrounds):
     up_to_merge = build_sum_client_arg_computation(
-        tff.type_at_server(np.int32),
-        tff.type_at_clients(np.int32),
+        tff.FederatedType(np.int32, tff.SERVER),
+        tff.FederatedType(np.int32, tff.CLIENTS),
     )
     merge = build_sum_merge_computation(np.int32)
     after_merge = build_sum_merge_with_first_arg_computation(
