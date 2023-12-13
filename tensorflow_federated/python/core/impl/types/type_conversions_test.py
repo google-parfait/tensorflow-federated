@@ -116,7 +116,7 @@ class InferTypeTest(parameterized.TestCase):
     self.assertEqual(str(type_conversions.infer_type(True)), 'bool')
 
   def test_with_string(self):
-    self.assertEqual(str(type_conversions.infer_type('abc')), 'string')
+    self.assertEqual(str(type_conversions.infer_type('abc')), 'str')
 
   def test_with_np_int32(self):
     self.assertEqual(str(type_conversions.infer_type(np.int32(10))), 'int32')
@@ -138,7 +138,7 @@ class InferTypeTest(parameterized.TestCase):
     self.assertEqual(str(type_conversions.infer_type(np.bool_(True))), 'bool')
 
   def test_with_unicode_string(self):
-    self.assertEqual(str(type_conversions.infer_type('abc')), 'string')
+    self.assertEqual(str(type_conversions.infer_type('abc')), 'str')
 
   def test_with_numpy_int_array(self):
     self.assertEqual(

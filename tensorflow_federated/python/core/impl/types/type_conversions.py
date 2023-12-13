@@ -90,7 +90,10 @@ def infer_type(arg: object) -> Optional[computation_types.Type]:
           tf.SparseTensor,
       )
     else:
-      dtype = arg.dtype.base_dtype.as_numpy_dtype  # pytype: disable=attribute-error
+      if arg.dtype.base_dtype == tf.string:  # pytype: disable=attribute-error
+        dtype = np.str_
+      else:
+        dtype = arg.dtype.base_dtype.as_numpy_dtype  # pytype: disable=attribute-error
       if arg.shape.rank is not None:  # pytype: disable=attribute-error
         shape = arg.shape.as_list()  # pytype: disable=attribute-error
       else:

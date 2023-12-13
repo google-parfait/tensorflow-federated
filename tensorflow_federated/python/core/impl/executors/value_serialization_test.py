@@ -56,7 +56,7 @@ class ValueSerializationtest(tf.test.TestCase, parameterized.TestCase):
     type_test_utils.assert_types_identical(value_type, serialize_type_spec)
     y, type_spec = value_serialization.deserialize_value(value_proto)
     type_test_utils.assert_types_identical(type_spec, serialize_type_spec)
-    self.assertEqual(y.dtype, serialize_type_spec.dtype.as_numpy_dtype)
+    self.assertEqual(y.dtype, serialize_type_spec.dtype)
     self.assertAllEqual(x, y)
 
   def test_serialize_deserialize_tensor_value_unk_shape_without_hint(self):
@@ -68,7 +68,7 @@ class ValueSerializationtest(tf.test.TestCase, parameterized.TestCase):
     type_test_utils.assert_type_assignable_from(value_type, serialize_type_spec)
     y, type_spec = value_serialization.deserialize_value(value_proto)
     type_test_utils.assert_type_assignable_from(serialize_type_spec, type_spec)
-    self.assertEqual(y.dtype, serialize_type_spec.dtype.as_numpy_dtype)
+    self.assertEqual(y.dtype, serialize_type_spec.dtype)
     self.assertAllEqual(x, y)
 
   @parameterized.named_parameters(TENSOR_SERIALIZATION_TEST_PARAMS)
@@ -88,7 +88,7 @@ class ValueSerializationtest(tf.test.TestCase, parameterized.TestCase):
     type_test_utils.assert_types_identical(
         deserialize_type_spec, serialize_type_spec
     )
-    self.assertEqual(y.dtype, serialize_type_spec.dtype.as_numpy_dtype)
+    self.assertEqual(y.dtype, serialize_type_spec.dtype)
     self.assertAllEqual(x, y)
 
   @parameterized.named_parameters(TENSOR_SERIALIZATION_TEST_PARAMS)
@@ -105,7 +105,7 @@ class ValueSerializationtest(tf.test.TestCase, parameterized.TestCase):
     type_test_utils.assert_types_identical(
         deserialize_type_spec, serialize_type_spec
     )
-    self.assertEqual(y.dtype, serialize_type_spec.dtype.as_numpy_dtype)
+    self.assertEqual(y.dtype, serialize_type_spec.dtype)
     self.assertAllEqual(x, y)
 
   @parameterized.named_parameters(
@@ -141,37 +141,65 @@ class ValueSerializationtest(tf.test.TestCase, parameterized.TestCase):
     )
 
   @parameterized.named_parameters(
-      ('numpy_string', np.str_('abc')),
-      ('numpy_null_termianted_bytes', np.bytes_(b'abc\x00\x00')),
-      ('tensorflow', tf.constant('abc')),
-      ('tensorflow_null_terminated_bytes', tf.constant(b'abc\x00\x00')),
+      ('str', 'abc', TensorType(np.str_), b'abc', bytes),
+      ('bytes', b'abc', TensorType(np.bytes_), b'abc', bytes),
+      (
+          'bytes_null_terminated',
+          b'abc\x00\x00',
+          TensorType(np.bytes_),
+          b'abc\x00\x00',
+          bytes,
+      ),
+      ('numpy_str', np.str_('abc'), TensorType(np.str_), b'abc', bytes),
+      (
+          'numpy_bytes',
+          np.bytes_(b'abc'),
+          TensorType(np.bytes_),
+          b'abc',
+          bytes,
+      ),
+      (
+          'numpy_bytes_null_termianted',
+          np.bytes_(b'abc\x00\x00'),
+          TensorType(np.bytes_),
+          b'abc\x00\x00',
+          bytes,
+      ),
+      (
+          'tensorflow_str',
+          tf.constant('abc'),
+          TensorType(np.str_),
+          b'abc',
+          bytes,
+      ),
+      (
+          'tensorflow_bytes',
+          tf.constant(b'abc'),
+          TensorType(np.bytes_),
+          b'abc',
+          bytes,
+      ),
+      (
+          'tensorflow_bytes_null_terminated',
+          tf.constant(b'abc\x00\x00'),
+          TensorType(np.bytes_),
+          b'abc\x00\x00',
+          bytes,
+      ),
   )
-  def test_serialize_deserialize_string_value(self, x):
-    type_spec = TensorType(x.dtype, x.shape)
-    value_proto, value_type = value_serialization.serialize_value(x, type_spec)
-    type_test_utils.assert_types_identical(
-        value_type, TensorType(x.dtype, x.shape)
+  def test_serialize_deserialize_string_value(
+      self, value, type_spec, expected_value, expected_type
+  ):
+    value_proto, value_type = value_serialization.serialize_value(
+        value, type_spec
     )
-    y, type_spec = value_serialization.deserialize_value(
-        value_proto, type_hint=type_spec
+    type_test_utils.assert_types_identical(value_type, type_spec)
+    result, result_type = value_serialization.deserialize_value(
+        value_proto, type_spec
     )
-    type_test_utils.assert_types_identical(
-        type_spec, TensorType(x.dtype, x.shape)
-    )
-    self.assertIsInstance(y, bytes)
-    self.assertAllEqual(x, y)
-
-  def test_serialize_deserialize_null_terminated_bytes_value(self):
-    x = b'abc\x00\x00'
-    type_spec = TensorType(np.str_)
-    value_proto, value_type = value_serialization.serialize_value(x, type_spec)
-    type_test_utils.assert_types_identical(value_type, TensorType(np.str_))
-    y, type_spec = value_serialization.deserialize_value(
-        value_proto, type_hint=type_spec
-    )
-    type_test_utils.assert_types_identical(type_spec, TensorType(np.str_))
-    self.assertIsInstance(y, bytes)
-    self.assertEqual(x, y)
+    type_test_utils.assert_types_identical(result_type, type_spec)
+    self.assertIsInstance(result, expected_type)
+    self.assertEqual(result, expected_value)
 
   def test_serialize_deserialize_variable_as_tensor_value(self):
     x = tf.Variable(10.0)
@@ -855,7 +883,7 @@ class SerializeNpArrayTest(parameterized.TestCase):
         np_generic, type_spec
     )
     deserialized_value, deserialized_type = (
-        value_serialization.deserialize_value(value_proto)
+        value_serialization.deserialize_value(value_proto, type_spec)
     )
     type_test_utils.assert_type_assignable_from(type_spec, deserialized_type)
     self.assertEqual(deserialized_value, expected_value)

@@ -717,8 +717,7 @@ def _unique_dtypes_in_structure(
   """
   py_typecheck.check_type(type_spec, computation_types.Type)
   if isinstance(type_spec, computation_types.TensorType):
-    py_typecheck.check_type(type_spec.dtype, tf.dtypes.DType)
-    return set([type_spec.dtype])
+    return set([tf.dtypes.as_dtype(type_spec.dtype)])
   elif isinstance(type_spec, computation_types.StructType):
     return set(
         tf.nest.flatten(

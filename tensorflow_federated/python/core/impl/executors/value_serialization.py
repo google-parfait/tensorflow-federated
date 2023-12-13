@@ -64,12 +64,12 @@ def _serialize_computation(
 
 
 def _value_proto_for_np_array(
-    value, type_spec: computation_types.Type
+    value, type_spec: computation_types.TensorType
 ) -> executor_pb2.Value:
   """Creates value proto for np array, assumed to be assignable to type_spec."""
   tensor_proto = tf.make_tensor_proto(
       value,
-      dtype=type_spec.dtype,  # pytype: disable=attribute-error
+      dtype=type_spec.dtype,
       verify_shape=True,
   )
   any_pb = any_pb2.Any()
@@ -119,9 +119,9 @@ def _serialize_tensor_value(
         f'Cannot serialize tensor with shape {value.shape} to '
         f'shape {type_spec.shape}.'
     )
-  if tf.dtypes.as_dtype(value.dtype) != type_spec.dtype:
+  if value.dtype != type_spec.dtype and value.dtype != np.object_:
     try:
-      value = value.astype(type_spec.dtype.as_numpy_dtype, casting='same_kind')
+      value = value.astype(type_spec.dtype, casting='same_kind')
     except TypeError as te:
       value_type_string = py_typecheck.type_string(type(original_value))
       raise TypeError(
@@ -399,26 +399,26 @@ def _tensor_for_value(value_proto: executor_pb2.Value) -> tf.Tensor:
 @tracing.trace
 def _deserialize_tensor_value(
     value_proto: executor_pb2.Value,
+    type_hint: Optional[computation_types.TensorType] = None,
 ) -> _DeserializeReturnType:
   """Deserializes a tensor value from `.Value`.
 
   Args:
-    value_proto: An instance of `executor_pb2.Value`.
+    value_proto: A `executor_pb2.Value` to deserialize.
+    type_hint: A `tff.TensorType` that hints at what the value type should be.
 
   Returns:
     A tuple `(value, type_spec)`, where `value` is a Numpy array that represents
     the deserialized value, and `type_spec` is an instance of `tff.TensorType`
     that represents its type.
-
-  Raises:
-    TypeError: If the arguments are of the wrong types.
-    ValueError: If the value is malformed.
   """
   value = _tensor_for_value(value_proto)
-  value_type = computation_types.TensorType(
-      dtype=value.dtype, shape=value.shape
-  )
-  if not value.shape:
+
+  if type_hint is not None:
+    value_type = type_hint
+  else:
+    value_type = computation_types.TensorType(value.dtype, value.shape)
+  if array_shape.is_shape_scalar(value_type.shape):
     # Unwrap the scalar array as just a primitive numeric.
     value = value.dtype.type(value)
   return value, value_type
@@ -679,7 +679,11 @@ def deserialize_value(
     )
   which_value = value_proto.WhichOneof('value')
   if which_value == 'tensor':
-    return _deserialize_tensor_value(value_proto)
+    if type_hint is not None and not isinstance(
+        type_hint, computation_types.TensorType
+    ):
+      raise ValueError(f'Expected a `tff.TensorType`, found {type_hint}.')
+    return _deserialize_tensor_value(value_proto, type_hint)
   elif which_value == 'computation':
     return _deserialize_computation(value_proto)
   elif which_value == 'sequence':

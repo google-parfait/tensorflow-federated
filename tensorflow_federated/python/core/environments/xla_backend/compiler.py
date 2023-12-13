@@ -27,7 +27,7 @@ from tensorflow_federated.python.core.impl.types import type_analysis
 def _xla_tensor_shape_from_tff_tensor_type(tensor_type):
   py_typecheck.check_type(tensor_type, computation_types.TensorType)
   return xla_client.Shape.array_shape(
-      xla_client.dtype_to_etype(tensor_type.dtype.as_numpy_dtype),
+      xla_client.dtype_to_etype(tensor_type.dtype),
       tensor_type.shape,
   )
 
@@ -115,7 +115,7 @@ class XlaComputationFactory(
       numpy_value = np.full(
           shape=tensor_type.shape,
           fill_value=value,
-          dtype=tensor_type.dtype.as_numpy_dtype,
+          dtype=tensor_type.dtype,
       )
       return xla_client.ops.Constant(builder, numpy_value)
 

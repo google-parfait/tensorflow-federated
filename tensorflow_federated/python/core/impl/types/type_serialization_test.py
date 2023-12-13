@@ -34,7 +34,7 @@ class TypeSerializationTest(parameterized.TestCase):
   def test_serialize_tensor_type(self, dtype, shape):
     type_signature = computation_types.TensorType(dtype, shape)
     actual_proto = type_serialization.serialize_type(type_signature)
-    dtype = type_serialization._serialize_dtype(dtype)
+    dtype = type_serialization._serialize_dtype(np.dtype(dtype))
     dims, unknown_rank = type_serialization._serialize_shape(shape)
     expected_proto = pb.Type(
         tensor=pb.TensorType(
@@ -53,7 +53,7 @@ class TypeSerializationTest(parameterized.TestCase):
         sequence=pb.SequenceType(
             element=pb.Type(
                 tensor=pb.TensorType(
-                    dtype=type_serialization._serialize_dtype(np.str_)
+                    dtype=type_serialization._serialize_dtype(np.dtype(np.str_))
                 )
             )
         )
@@ -75,7 +75,9 @@ class TypeSerializationTest(parameterized.TestCase):
                     name='x',
                     value=pb.Type(
                         tensor=pb.TensorType(
-                            dtype=type_serialization._serialize_dtype(np.int32)
+                            dtype=type_serialization._serialize_dtype(
+                                np.dtype(np.int32)
+                            )
                         )
                     ),
                 ),
@@ -83,7 +85,9 @@ class TypeSerializationTest(parameterized.TestCase):
                     name='y',
                     value=pb.Type(
                         tensor=pb.TensorType(
-                            dtype=type_serialization._serialize_dtype(np.str_)
+                            dtype=type_serialization._serialize_dtype(
+                                np.dtype(np.str_)
+                            )
                         )
                     ),
                 ),
@@ -91,7 +95,7 @@ class TypeSerializationTest(parameterized.TestCase):
                     value=pb.Type(
                         tensor=pb.TensorType(
                             dtype=type_serialization._serialize_dtype(
-                                np.float32
+                                np.dtype(np.float32)
                             )
                         )
                     )
@@ -100,7 +104,9 @@ class TypeSerializationTest(parameterized.TestCase):
                     name='z',
                     value=pb.Type(
                         tensor=pb.TensorType(
-                            dtype=type_serialization._serialize_dtype(np.bool_)
+                            dtype=type_serialization._serialize_dtype(
+                                np.dtype(np.bool_)
+                            )
                         )
                     ),
                 ),
@@ -119,7 +125,7 @@ class TypeSerializationTest(parameterized.TestCase):
         name='z',
         value=pb.Type(
             tensor=pb.TensorType(
-                dtype=type_serialization._serialize_dtype(np.bool_)
+                dtype=type_serialization._serialize_dtype(np.dtype(np.bool_))
             )
         ),
     )
@@ -159,7 +165,7 @@ class TypeSerializationTest(parameterized.TestCase):
                             value=pb.Type(
                                 tensor=pb.TensorType(
                                     dtype=type_serialization._serialize_dtype(
-                                        np.int32
+                                        np.dtype(np.int32)
                                     )
                                 )
                             )
@@ -168,7 +174,7 @@ class TypeSerializationTest(parameterized.TestCase):
                             value=pb.Type(
                                 tensor=pb.TensorType(
                                     dtype=type_serialization._serialize_dtype(
-                                        np.int32
+                                        np.dtype(np.int32)
                                     )
                                 )
                             )
@@ -178,7 +184,9 @@ class TypeSerializationTest(parameterized.TestCase):
             ),
             result=pb.Type(
                 tensor=pb.TensorType(
-                    dtype=type_serialization._serialize_dtype(np.bool_)
+                    dtype=type_serialization._serialize_dtype(
+                        np.dtype(np.bool_)
+                    )
                 )
             ),
         )
@@ -205,7 +213,9 @@ class TypeSerializationTest(parameterized.TestCase):
             all_equal=True,
             member=pb.Type(
                 tensor=pb.TensorType(
-                    dtype=type_serialization._serialize_dtype(np.bool_)
+                    dtype=type_serialization._serialize_dtype(
+                        np.dtype(np.bool_)
+                    )
                 )
             ),
         )

@@ -195,7 +195,18 @@ def _get_intrinsic_reductions() -> dict[
     if not isinstance(x.type_signature, computation_types.FederatedType):
       raise TypeError('Expected a federated value.')
     operand_type = x.type_signature.member
-    zero = _initial_values(lambda v: v.dtype.max, operand_type)
+
+    def _max_fn(tensor_type: computation_types.TensorType):
+      if np.issubdtype(tensor_type.dtype, np.integer):
+        return np.iinfo(tensor_type.dtype).max
+      elif np.issubdtype(tensor_type.dtype, np.floating):
+        return np.finfo(tensor_type.dtype).max
+      else:
+        raise NotImplementedError(
+            'Unexpected `tensor_type` found {tensor_type}.'
+        )
+
+    zero = _initial_values(_max_fn, operand_type)
     min_op = (
         building_block_factory.create_tensorflow_binary_operator_with_upcast(
             tf.minimum,
@@ -211,7 +222,18 @@ def _get_intrinsic_reductions() -> dict[
     if not isinstance(x.type_signature, computation_types.FederatedType):
       raise TypeError('Expected a federated value.')
     operand_type = x.type_signature.member
-    zero = _initial_values(lambda v: v.dtype.min, operand_type)
+
+    def _min_fn(tensor_type: computation_types.TensorType):
+      if np.issubdtype(tensor_type.dtype, np.integer):
+        return np.iinfo(tensor_type.dtype).min
+      elif np.issubdtype(tensor_type.dtype, np.floating):
+        return np.finfo(tensor_type.dtype).min
+      else:
+        raise NotImplementedError(
+            'Unexpected `tensor_type` found {tensor_type}.'
+        )
+
+    zero = _initial_values(_min_fn, operand_type)
     max_op = (
         building_block_factory.create_tensorflow_binary_operator_with_upcast(
             tf.maximum,

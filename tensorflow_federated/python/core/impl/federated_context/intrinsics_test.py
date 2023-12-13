@@ -455,7 +455,7 @@ class FederatedSelectTest(parameterized.TestCase, IntrinsicTestBase):
   )
   def test_federated_select_succeeds(self, federated_select):
     result = federated_select(*self.basic_federated_select_args())
-    self.assert_value(result, '{string*}@CLIENTS')
+    self.assert_value(result, '{str*}@CLIENTS')
 
   @parameterized.named_parameters(
       ('non_secure', intrinsics.federated_select),
@@ -520,7 +520,7 @@ class FederatedSelectTest(parameterized.TestCase, IntrinsicTestBase):
     result = federated_select(
         client_keys, max_key, server_val_dict, select_fn_dict
     )
-    self.assert_value(result, '{<string,string>*}@CLIENTS')
+    self.assert_value(result, '{<str,str>*}@CLIENTS')
 
   @parameterized.named_parameters(
       ('non_secure', intrinsics.federated_select),

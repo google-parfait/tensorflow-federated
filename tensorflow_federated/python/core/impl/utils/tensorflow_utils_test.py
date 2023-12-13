@@ -213,7 +213,7 @@ class GraphUtilsTest(tf.test.TestCase):
       type_spec, binding = tensorflow_utils.capture_result_from_graph(
           'a', graph
       )
-    self._assert_captured_result_eq_dtype(type_spec, binding, 'string')
+    self._assert_captured_result_eq_dtype(type_spec, binding, 'str')
 
   def test_capture_result_with_int(self):
     with tf.Graph().as_default() as graph:

@@ -145,7 +145,6 @@ class ConcatFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
       ('string', tf.string),
       ('string_list', [tf.string, tf.string]),
       ('string_nested', [tf.string, [tf.string]]),
-      ('variant', tf.variant),
   )
   def test_raises_on_non_numeric_dtypes(self, value_type):
     factory = _concat_sum()

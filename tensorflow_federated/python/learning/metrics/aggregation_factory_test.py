@@ -51,8 +51,8 @@ def _tf_mean(x):
   return tf.math.divide_no_nan(x[0], x[1])
 
 
-_DEFAULT_FLOAT_FACTORY_KEY = 'None/default_estimation_process/1'
-_DEFAULT_INT_FACTORY_KEY = '0/1048575/3'
+_DEFAULT_FLOAT_FACTORY_KEY = 'None/default_estimation_process/float32'
+_DEFAULT_INT_FACTORY_KEY = '0/1048575/int32'
 
 _DEFAULT_FIXED_FLOAT_RANGE = (
     float(aggregation_factory.DEFAULT_FIXED_SECURE_LOWER_BOUND),

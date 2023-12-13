@@ -361,18 +361,44 @@ def _clear_intern_pool() -> None:
 atexit.register(_clear_intern_pool)
 
 
-Dtype = Union[
+_DtypeLike = Union[
     type[np.generic],
     np.dtype,
 ]
 
 
-def _is_dtype(obj: object) -> TypeGuard[Union[Dtype, tf.dtypes.DType]]:
-  """Returns `True` if `obj` is a `Dtype`, otherwise `False`."""
+def _is_dtype_like(
+    obj: object,
+) -> TypeGuard[Union[_DtypeLike, tf.dtypes.DType]]:
+  """Returns `True` if `obj` is dtype like, otherwise `False`."""
   if isinstance(obj, type) and issubclass(obj, np.generic):
     return True
   else:
     return isinstance(obj, (tf.dtypes.DType, np.dtype))
+
+
+_ALLOWED_NP_DTYPES = [
+    np.bool_,
+    np.bytes_,
+    np.complex128,
+    np.complex64,
+    np.float16,
+    np.float32,
+    np.float64,
+    np.int16,
+    np.int32,
+    np.int64,
+    np.int8,
+    np.str_,
+    np.uint16,
+    np.uint32,
+    np.uint64,
+    np.uint8,
+]
+
+
+def _is_allowed_np_dtype(dtype: np.dtype) -> bool:
+  return dtype in _ALLOWED_NP_DTYPES
 
 
 def _is_array_shape_like(
@@ -387,39 +413,74 @@ def _is_array_shape_like(
     )
 
 
+def _to_dtype(dtype: _DtypeLike) -> np.dtype:
+  """Returns a `np.dtype` for the dtype like object.
+
+  Normalize `dtype` to an instance of `np.dtype` that describes an array
+  scalar. see https://numpy.org/doc/stable/reference/arrays.scalars.html.
+
+  Args:
+    dtype: A dtype like object.
+  """
+  if isinstance(dtype, np.dtype):
+    dtype = dtype.type
+  if dtype == np.bytes_:
+    dtype = np.str_
+  dtype = np.dtype(dtype)
+
+  if not _is_allowed_np_dtype(dtype):
+    raise NotImplementedError(f'Unexpected `dtype` found: {dtype}.')
+  return dtype
+
+
 class TensorType(Type, metaclass=_Intern):
   """An implementation of `tff.Type` representing types of tensors in TFF."""
 
   @classmethod
   def _hashable_from_init_args(
       cls,
-      dtype: Union[Dtype, tf.dtypes.DType],
+      dtype: Union[_DtypeLike, tf.dtypes.DType],
       shape: Union[array_shape._ArrayShapeLike] = (),
   ) -> Hashable:
     """Returns hashable `TensorType.__init__` args."""
-    if not isinstance(dtype, tf.dtypes.DType):
-      dtype = tf.dtypes.as_dtype(dtype)
+    # TODO: b/305743962 - This is only required to convert a `tf.dtypes.DType`
+    # to a `np.dtype`. It should be when `tf.dtypes.DType` can not be passed
+    # into the constructor of the `tff.TensorType`.
+    if isinstance(dtype, tf.dtypes.DType):
+      if dtype.base_dtype == tf.string:
+        dtype = np.str_
+      else:
+        dtype = dtype.base_dtype.as_numpy_dtype
+
+    dtype = _to_dtype(dtype)
     if shape is not None:
       shape = tuple(shape)
     return (dtype, shape)
 
   def __init__(
       self,
-      dtype: Union[Dtype, tf.dtypes.DType],
+      dtype: Union[_DtypeLike, tf.dtypes.DType],
       shape: Union[array_shape._ArrayShapeLike] = (),
   ):
     """Constructs a new instance from the given `dtype` and `shape`.
 
     Args:
-      dtype: An instance of `tf.dtypes.DType` or one of the Numpy numeric types.
-      shape: The shape of the `tff.TensorType`.
+      dtype: The `np.dtype` of the array.
+      shape: The shape of the array.
 
     Raises:
       TypeError: if arguments are of the wrong types.
     """
-    if not isinstance(dtype, tf.dtypes.DType):
-      dtype = tf.dtypes.as_dtype(dtype)
-    self._dtype = dtype
+    # TODO: b/305743962 - This is only required to convert a `tf.dtypes.DType`
+    # to a `np.dtype`. It should be when `tf.dtypes.DType` can not be passed
+    # into the constructor of the `tff.TensorType`.
+    if isinstance(dtype, tf.dtypes.DType):
+      if dtype.base_dtype == tf.string:
+        dtype = np.str_
+      else:
+        dtype = dtype.base_dtype.as_numpy_dtype
+
+    self._dtype = _to_dtype(dtype)
     if shape is not None:
       shape = tuple(shape)
     self._shape = shape
@@ -428,7 +489,7 @@ class TensorType(Type, metaclass=_Intern):
     return iter(())
 
   @property
-  def dtype(self) -> tf.dtypes.DType:
+  def dtype(self) -> np.dtype:
     return self._dtype
 
   @property
@@ -436,10 +497,11 @@ class TensorType(Type, metaclass=_Intern):
     return self._shape
 
   def __repr__(self):
-    if self._shape is not None and not self._shape:
-      return 'TensorType({!r})'.format(self._dtype)
+    dtype_repr = f'np.{self._dtype.name}'
+    if array_shape.is_shape_scalar(self._shape):
+      return f'TensorType({dtype_repr})'
     else:
-      return 'TensorType({!r}, {!r})'.format(self._dtype, self._shape)
+      return f'TensorType({dtype_repr}, {self._shape!r})'
 
   def __hash__(self):
     return hash((self._dtype, self._shape))
@@ -1054,10 +1116,17 @@ def to_type(obj: object) -> Type:
   # comments, in addition to the unit test.
   if isinstance(obj, Type):
     return obj
-  elif _is_dtype(obj):
+  elif _is_dtype_like(obj):
     return TensorType(obj)  # pytype: disable=wrong-arg-types  # b/290661340
   elif isinstance(obj, tf.TensorSpec):
-    dtype = obj.dtype.as_numpy_dtype
+    # TensorFlow converts a dtype of `tf.string` into a dtype of `np.object_`.
+    # However, this is not a valid dtype for a `tff.TensorType`. Convert the
+    # dtype to a `np.str_`.
+    if obj.dtype.base_dtype == tf.string:
+      dtype = np.str_
+    else:
+      dtype = obj.dtype.base_dtype.as_numpy_dtype
+
     if obj.shape.rank is not None:
       shape = obj.shape.as_list()
     else:
@@ -1068,7 +1137,7 @@ def to_type(obj: object) -> Type:
   elif (
       isinstance(obj, tuple)
       and len(obj) == 2
-      and _is_dtype(obj[0])
+      and _is_dtype_like(obj[0])
       and _is_array_shape_like(obj[1])
   ):
     dtype, shape = obj
@@ -1076,8 +1145,7 @@ def to_type(obj: object) -> Type:
   elif isinstance(obj, (list, tuple)):
     if any(py_typecheck.is_name_value_pair(e, name_type=str) for e in obj):
       # The sequence has a (name, value) elements, the whole sequence is most
-      # likely intended to be a `Struct`, do not store the Python
-      # container.
+      # likely intended to be a `Struct`, do not store the Python container.
       return StructType(obj)
     else:
       return StructWithPythonType(obj, type(obj))

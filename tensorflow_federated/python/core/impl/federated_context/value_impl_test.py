@@ -67,7 +67,7 @@ class ValueTest(parameterized.TestCase):
     x = value_impl.Value(x_comp)
     self.assertIs(x.comp, x_comp)
     self.assertEqual(str(x.type_signature), 'int32')
-    self.assertEqual(repr(x), "Reference('foo', TensorType(tf.int32))")
+    self.assertEqual(repr(x), "Reference('foo', TensorType(np.int32))")
     self.assertEqual(str(x), 'foo')
     with self.assertRaises(SyntaxError):
       x(10)
@@ -291,7 +291,7 @@ class ValueTest(parameterized.TestCase):
   def test_to_value_with_string(self):
     value = value_impl.to_value('a', computation_types.TensorType(np.str_))
     self.assertIsInstance(value, value_impl.Value)
-    self.assertEqual(str(value.type_signature), 'string')
+    self.assertEqual(str(value.type_signature), 'str')
 
   def test_to_value_with_int(self):
     value = value_impl.to_value(1, computation_types.TensorType(np.int32))

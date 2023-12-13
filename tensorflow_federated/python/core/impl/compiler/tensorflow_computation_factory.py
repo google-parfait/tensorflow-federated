@@ -17,6 +17,7 @@ from collections.abc import Callable
 import functools
 from typing import Optional, TypeVar
 
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
@@ -150,9 +151,9 @@ def create_constant(
   type_transformations.transform_type_postorder(type_spec, _pack_dtypes)
 
   if (
-      any(x.is_integer for x in tensor_dtypes_in_type_spec)
+      any(np.issubdtype(x, np.integer) for x in tensor_dtypes_in_type_spec)
       and isinstance(inferred_value_type, computation_types.TensorType)
-      and not inferred_value_type.dtype.is_integer
+      and not np.issubdtype(inferred_value_type.dtype, np.integer)
   ):
     raise TypeError(
         'Only integers can be used as scalar values if our desired constant '

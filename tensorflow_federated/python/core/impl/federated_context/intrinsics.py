@@ -404,9 +404,12 @@ def federated_mean(value, weight=None):
               weight.type_signature
           )
       )
-    if not (
-        weight.type_signature.member.dtype.is_integer  # pytype: disable=attribute-error
-        or weight.type_signature.member.dtype.is_floating  # pytype: disable=attribute-error
+    if not np.issubdtype(
+        weight.type_signature.member.dtype,  # pytype: disable=attribute-error
+        np.integer,
+    ) and not np.issubdtype(
+        weight.type_signature.member.dtype,  # pytype: disable=attribute-error
+        np.floating,
     ):
       raise TypeError(
           'The weight type {} is not a federated integer or floating-point '

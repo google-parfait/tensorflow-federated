@@ -32,7 +32,7 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
     x = building_blocks.Reference('foo', np.int32)
     self.assertEqual(x.name, 'foo')
     self.assertEqual(str(x.type_signature), 'int32')
-    self.assertEqual(repr(x), "Reference('foo', TensorType(tf.int32))")
+    self.assertEqual(repr(x), "Reference('foo', TensorType(np.int32))")
     self.assertEqual(x.compact_representation(), 'foo')
     x_proto = x.proto
     self.assertEqual(
@@ -56,7 +56,7 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
         repr(y),
         (
             "Selection(Reference('foo', StructType(["
-            "('bar', TensorType(tf.int32)), ('baz', TensorType(tf.bool))]))"
+            "('bar', TensorType(np.int32)), ('baz', TensorType(np.bool))]))"
             ", name='bar')"
         ),
     )
@@ -74,7 +74,7 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
         repr(x0),
         (
             "Selection(Reference('foo', StructType(["
-            "('bar', TensorType(tf.int32)), ('baz', TensorType(tf.bool))]))"
+            "('bar', TensorType(np.int32)), ('baz', TensorType(np.bool))]))"
             ', index=0)'
         ),
     )
@@ -115,8 +115,8 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
     self.assertEqual(
         repr(z),
         (
-            "Struct([(None, Reference('foo', TensorType(tf.int32))), ('y', "
-            "Reference('bar', TensorType(tf.bool)))])"
+            "Struct([(None, Reference('foo', TensorType(np.int32))), ('y', "
+            "Reference('bar', TensorType(np.bool)))])"
         ),
     )
     self.assertEqual(z.compact_representation(), '<foo,y=bar>')
@@ -166,8 +166,8 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
         repr(z),
         (
             "Call(Reference('foo', "
-            'FunctionType(TensorType(tf.int32), TensorType(tf.bool))), '
-            "Reference('bar', TensorType(tf.int32)))"
+            'FunctionType(TensorType(np.int32), TensorType(np.bool))), '
+            "Reference('bar', TensorType(np.int32)))"
         ),
     )
     self.assertEqual(z.compact_representation(), 'foo(bar)')
@@ -222,8 +222,8 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
     self.assertEqual(x.result.compact_representation(), 'arg.f(arg.f(arg.x))')
     arg_type_repr = (
         'StructType(['
-        "('f', FunctionType(TensorType(tf.int32), TensorType(tf.int32))), "
-        "('x', TensorType(tf.int32))])"
+        "('f', FunctionType(TensorType(np.int32), TensorType(np.int32))), "
+        "('x', TensorType(np.int32))])"
     )
     self.assertEqual(
         repr(x),
@@ -272,10 +272,10 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
     self.assertEqual(
         repr(x),
         (
-            "Block([('x', Reference('arg', StructType([TensorType(tf.int32),"
-            " TensorType(tf.int32)]) as tuple)), ('y', Selection(Reference('x',"
-            ' StructType([TensorType(tf.int32), TensorType(tf.int32)]) as'
-            " tuple), index=0))], Reference('y', TensorType(tf.int32)))"
+            "Block([('x', Reference('arg', StructType([TensorType(np.int32),"
+            " TensorType(np.int32)]) as tuple)), ('y', Selection(Reference('x',"
+            ' StructType([TensorType(np.int32), TensorType(np.int32)]) as'
+            " tuple), index=0))], Reference('y', TensorType(np.int32)))"
         ),
     )
     self.assertEqual(x.compact_representation(), '(let x=arg,y=x[0] in y)')
@@ -308,7 +308,7 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
         repr(x),
         (
             "Intrinsic('add_one', "
-            'FunctionType(TensorType(tf.int32), TensorType(tf.int32)))'
+            'FunctionType(TensorType(np.int32), TensorType(np.int32)))'
         ),
     )
     self.assertEqual(x.compact_representation(), 'add_one')
@@ -401,7 +401,7 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
     self.assertEqual(str(x.type_signature), 'int32*')
     self.assertEqual(x.uri, '/tmp/mydata')
     self.assertEqual(
-        repr(x), "Data('/tmp/mydata', SequenceType(TensorType(tf.int32)))"
+        repr(x), "Data('/tmp/mydata', SequenceType(TensorType(np.int32)))"
     )
     self.assertEqual(x.compact_representation(), '/tmp/mydata')
     x_proto = x.proto
@@ -427,8 +427,8 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
     self.assertTrue(
         repr(x),
         (
-            "CompiledComputation('a', FunctionType(TensorType(tf.int32),"
-            ' TensorType(tf.int32)))'
+            "CompiledComputation('a', FunctionType(TensorType(np.int32),"
+            ' TensorType(np.int32)))'
         ),
     )
     self.assertTrue(x.compact_representation(), 'comp#a')

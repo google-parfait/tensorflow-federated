@@ -372,7 +372,7 @@ class ComputationWrapperTest(absltest.TestCase):
         return f'{cls.__name__}_{msg}'
 
     wrapped = test_wrap(C.prefix)
-    self.assertEqual(wrapped('foo'), '<foo> : <string> -> C_foo')
+    self.assertEqual(wrapped('foo'), '<foo> : <str> -> C_foo')
 
 
 class CheckReturnsTypeTest(absltest.TestCase):

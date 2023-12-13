@@ -49,9 +49,9 @@ def normalize_tensor_representation(value, type_spec):
   type_analysis.check_type(value, type_spec)
   if type_spec.shape is not None:
     if not type_spec.shape:
-      return np.dtype(type_spec.dtype.as_numpy_dtype).type(value)
+      return np.dtype(type_spec.dtype).type(value)
     else:
-      return np.array(value, dtype=type_spec.dtype.as_numpy_dtype)
+      return np.array(value, dtype=type_spec.dtype)
   else:
     raise NotImplementedError(f'Unexpected shape found {type_spec.shape}.')
 

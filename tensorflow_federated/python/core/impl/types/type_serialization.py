@@ -46,13 +46,9 @@ _NP_TO_PROTO: Mapping[type[np.generic], pb.TensorType.DataType] = {
 }
 
 
-def _serialize_dtype(dtype: computation_types.Dtype) -> pb.TensorType.DataType:
+def _serialize_dtype(dtype: np.dtype) -> pb.TensorType.DataType:
   """Serializes `np.dtype` as a `pb.TensorType.DataType`."""
-  if isinstance(dtype, np.dtype):
-    dtype = dtype.type
-  if dtype not in _NP_TO_PROTO:
-    raise NotImplementedError(f'Unexpected dtype found: {dtype}.')
-  return _NP_TO_PROTO[dtype]
+  return _NP_TO_PROTO[dtype.type]
 
 
 # Mapping from `pb.TensorType.DataType` to `np.dtype`.
@@ -77,13 +73,9 @@ _PROTO_TO_NP: Mapping[pb.TensorType.DataType, type[np.generic]] = {
 
 def _deserialize_dtype(
     dtype_proto: pb.TensorType.DataType,
-) -> computation_types.Dtype:
-  """Deserializes `pb.TensorType.DataType` as a `py.dtype`."""
-  if dtype_proto not in _PROTO_TO_NP:
-    raise NotImplementedError(
-        f'Unexpected data type proto found: {dtype_proto}.'
-    )
-  return _PROTO_TO_NP[dtype_proto]
+) -> np.dtype:
+  """Deserializes `pb.TensorType.DataType` as a `np.dtype`."""
+  return np.dtype(_PROTO_TO_NP[dtype_proto])
 
 
 _Dimensions = Sequence[int]
@@ -143,19 +135,10 @@ def serialize_type(type_spec: computation_types.Type) -> pb.Type:
     return cached_proto
 
   if isinstance(type_spec, computation_types.TensorType):
-    # TODO: b/305743962 - This is only required because the public fields on
-    # `TensorType` are still expressed in terms of tensorflow APIs.
-    if type_spec.dtype.base_dtype != np.str_:
-      dtype = type_spec.dtype.base_dtype.as_numpy_dtype
-    else:
-      dtype = np.str_
+    dtype = _serialize_dtype(type_spec.dtype)
     dims, unknown_rank = _serialize_shape(type_spec.shape)
     proto = pb.Type(
-        tensor=pb.TensorType(
-            dtype=_serialize_dtype(dtype),
-            dims=dims,
-            unknown_rank=unknown_rank,
-        )
+        tensor=pb.TensorType(dtype=dtype, dims=dims, unknown_rank=unknown_rank)
     )
   elif isinstance(type_spec, computation_types.SequenceType):
     proto = pb.Type(

@@ -16,6 +16,7 @@
 import collections
 from typing import Optional
 
+import numpy as np
 import tensorflow as tf
 import tensorflow_compression as tfc
 
@@ -51,8 +52,7 @@ def _is_int32_or_structure_of_int32s(type_spec: computation_types.Type) -> bool:
     structures of int32s, otherwise `False`.
   """
   if isinstance(type_spec, computation_types.TensorType):
-    py_typecheck.check_type(type_spec.dtype, tf.dtypes.DType)
-    return type_spec.dtype == tf.int32
+    return type_spec.dtype == np.int32
   elif isinstance(type_spec, computation_types.StructType):
     return all(
         _is_int32_or_structure_of_int32s(v)

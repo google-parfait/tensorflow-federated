@@ -20,6 +20,7 @@ import math
 import typing
 from typing import Any, Optional, Union
 
+import numpy as np
 import tensorflow as tf
 import tree
 
@@ -432,11 +433,11 @@ def create_default_secure_sum_quantization_ranges(
   def create_default_range(
       type_spec: computation_types.TensorType,
   ) -> MetricValueRange:
-    if type_spec.dtype.is_floating:
+    if np.issubdtype(type_spec.dtype, np.floating):
       if use_auto_tuned_bounds_for_float_values:
         return None, auto_tuned_float_upper_bound
       return float(lower_bound), float(upper_bound)
-    elif type_spec.dtype.is_integer:
+    elif np.issubdtype(type_spec.dtype, np.integer):
       if integer_range_width < 1:
         raise ValueError(
             'Encounter an integer tensor in the type, but quantization range '
@@ -526,7 +527,7 @@ def create_factory_key(
   if isinstance(upper, estimation_process.EstimationProcess):
     upper = 'default_estimation_process'
   return _DELIMITER.join(
-      str(item) for item in [lower, upper, tensor_dtype.as_datatype_enum]
+      str(item) for item in [lower, upper, tensor_dtype.name]
   )
 
 

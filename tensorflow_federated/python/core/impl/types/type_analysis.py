@@ -17,6 +17,7 @@ import collections
 from collections.abc import Callable
 from typing import Optional
 
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -355,11 +356,7 @@ def check_is_sum_compatible(type_spec, type_spec_context=None):
     type_spec_context = type_spec
   py_typecheck.check_type(type_spec_context, computation_types.Type)
   if isinstance(type_spec, computation_types.TensorType):
-
-    def _is_numeric_dtype(dtype):
-      return dtype.is_integer or dtype.is_floating or dtype.is_complex
-
-    if not _is_numeric_dtype(type_spec.dtype):
+    if not np.issubdtype(type_spec.dtype, np.number):
       raise SumIncompatibleError(
           type_spec, type_spec_context, f'{type_spec.dtype} is not numeric'
       )
@@ -408,7 +405,7 @@ def is_structure_of_floats(type_spec: computation_types.Type) -> bool:
   """
   py_typecheck.check_type(type_spec, computation_types.Type)
   if isinstance(type_spec, computation_types.TensorType):
-    return type_spec.dtype.is_floating
+    return np.issubdtype(type_spec.dtype, np.floating)
   elif isinstance(type_spec, computation_types.StructType):
     return all(
         is_structure_of_floats(v) for _, v in structure.iter_elements(type_spec)
@@ -442,7 +439,7 @@ def is_structure_of_integers(type_spec: computation_types.Type) -> bool:
   """
   py_typecheck.check_type(type_spec, computation_types.Type)
   if isinstance(type_spec, computation_types.TensorType):
-    return type_spec.dtype.is_integer  # pytype: disable=attribute-error
+    return np.issubdtype(type_spec.dtype, np.integer)
   elif isinstance(type_spec, computation_types.StructType):
     return all(
         is_structure_of_integers(v)
@@ -474,8 +471,9 @@ def is_single_integer_or_matches_structure(
   if isinstance(type_sig, computation_types.TensorType):
     # This condition applies to both `shape_type` being a tensor or structure,
     # as the same integer bitwidth can be used for all values in the structure.
-    return type_sig.dtype.is_integer and (
-        array_shape.num_elements_in_shape(type_sig.shape) == 1
+    return (
+        np.issubdtype(type_sig.dtype, np.integer)
+        and array_shape.num_elements_in_shape(type_sig.shape) == 1
     )
   elif isinstance(shape_type, computation_types.StructType) and isinstance(
       type_sig, computation_types.StructType
@@ -552,7 +550,7 @@ def is_average_compatible(type_spec: computation_types.Type) -> bool:
   """
   py_typecheck.check_type(type_spec, computation_types.Type)
   if isinstance(type_spec, computation_types.TensorType):
-    return type_spec.dtype.is_floating or type_spec.dtype.is_complex  # pytype: disable=attribute-error
+    return np.issubdtype(type_spec, np.inexact)
   elif isinstance(type_spec, computation_types.StructType):
     return all(
         is_average_compatible(v) for _, v in structure.iter_elements(type_spec)
@@ -576,7 +574,9 @@ def is_min_max_compatible(type_spec: computation_types.Type) -> bool:
     `True` iff `type_spec` is min/max compatible, `False` otherwise.
   """
   if isinstance(type_spec, computation_types.TensorType):
-    return type_spec.dtype.is_integer or type_spec.dtype.is_floating
+    return np.issubdtype(type_spec.dtype, np.integer) or np.issubdtype(
+        type_spec.dtype, np.floating
+    )
   elif isinstance(type_spec, computation_types.StructType):
     return all(
         is_min_max_compatible(v) for _, v in structure.iter_elements(type_spec)

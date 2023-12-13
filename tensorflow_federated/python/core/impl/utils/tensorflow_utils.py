@@ -282,7 +282,10 @@ def capture_result_from_graph(
           name_value_pairs, graph, tf.sparse.SparseTensor
       )
     else:
-      dtype = result.dtype.base_dtype.as_numpy_dtype
+      if result.dtype.base_dtype == tf.string:
+        dtype = np.str_
+      else:
+        dtype = result.dtype.base_dtype.as_numpy_dtype
       if result.shape.rank is not None:
         shape = result.shape.as_list()
       else:
@@ -708,7 +711,7 @@ def make_whimsy_element_for_type_spec(type_spec, none_dim_replacement=0):
     whimsy_shape = [_handle_none_dimension(x) for x in type_spec.shape]
     if type_spec.dtype == np.str_:
       return np.empty(whimsy_shape, dtype=np.str_)
-    return np.zeros(whimsy_shape, type_spec.dtype.as_numpy_dtype)
+    return np.zeros(whimsy_shape, type_spec.dtype)
   elif isinstance(type_spec, computation_types.StructType):
     elements = structure.to_elements(type_spec)
     elem_list = []
@@ -838,7 +841,7 @@ def replace_empty_leaf_lists_with_numpy_arrays(lists, type_spec):
     if lists:
       return lists
     else:
-      return np.array([], dtype=type_spec.dtype.as_numpy_dtype)  # pytype: disable=attribute-error
+      return np.array([], dtype=type_spec.dtype)
   elif isinstance(type_spec, computation_types.StructType):
     elements = structure.to_elements(type_spec)
     if isinstance(lists, collections.OrderedDict):

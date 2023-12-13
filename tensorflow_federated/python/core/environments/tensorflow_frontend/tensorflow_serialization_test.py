@@ -70,11 +70,11 @@ class TensorFlowSerializationTest(tf.test.TestCase):
     )
     self.assertEqual(
         type_serialization.deserialize_type(comp.type).compact_representation(),
-        '(string[?] -> int64[?])',
+        '(str[?] -> int64[?])',
     )
     self.assertEqual(comp.WhichOneof('computation'), 'tensorflow')
     self.assertEqual(
-        extra_type_spec.compact_representation(), '(string[?] -> int64[?])'
+        extra_type_spec.compact_representation(), '(str[?] -> int64[?])'
     )
 
     with tf.Graph().as_default() as g:

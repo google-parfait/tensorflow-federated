@@ -852,7 +852,7 @@ class CreateFederatedSelectTest(parameterized.TestCase):
         f'{name}(<client_keys,max_key,server_val,(a -> select_fn(a))>)',
     )
     self.assertEqual(
-        comp.type_signature.compact_representation(), '{string*}@CLIENTS'
+        comp.type_signature.compact_representation(), '{str*}@CLIENTS'
     )
 
 

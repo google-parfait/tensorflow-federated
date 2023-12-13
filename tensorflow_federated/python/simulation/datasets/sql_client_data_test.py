@@ -149,7 +149,7 @@ class SqlClientDataTest(tf.test.TestCase):
       )
       self.assertEqual(
           str(client_data.dataset_computation.type_signature),
-          '(string -> string*)',
+          '(str -> str*)',
       )
       dataset = client_data.dataset_computation('test_c')
       actual_examples = dataset.reduce(0, lambda s, x: s + 1)
@@ -239,7 +239,7 @@ class PreprocessSqlClientDataTest(tf.test.TestCase):
       client_data = client_data.preprocess(lambda x: x)
       self.assertEqual(
           str(client_data.dataset_computation.type_signature),
-          '(string -> string*)',
+          '(str -> str*)',
       )
       dataset = client_data.dataset_computation('test_c')
       actual_examples = dataset.reduce(0, lambda s, x: s + 1)
@@ -302,7 +302,7 @@ class PreprocessSqlClientDataTest(tf.test.TestCase):
       client_data = client_data.preprocess(lambda x: x.take(1))
       self.assertEqual(
           str(client_data.dataset_computation.type_signature),
-          '(string -> string*)',
+          '(str -> str*)',
       )
       dataset = client_data.dataset_computation('test_c')
       actual_examples = dataset.reduce(0, lambda s, x: s + 1)

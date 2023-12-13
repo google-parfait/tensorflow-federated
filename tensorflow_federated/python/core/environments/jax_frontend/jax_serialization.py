@@ -40,9 +40,7 @@ class _XlaSerializerTensorArg(jax.ShapeDtypeStruct, typed_object.TypedObject):
       self, tensor_type: computation_types.TensorType, tensor_index: int
   ):
     py_typecheck.check_type(tensor_type, computation_types.TensorType)
-    # We assume shape has already been checked to be fully defined here.
-    dtype = tensor_type.dtype.as_numpy_dtype
-    jax.ShapeDtypeStruct.__init__(self, tensor_type.shape, dtype)
+    jax.ShapeDtypeStruct.__init__(self, tensor_type.shape, tensor_type.dtype)
     self._type_signature = tensor_type
     self._tensor_index = tensor_index
 
