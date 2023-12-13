@@ -12,18 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import asyncio
-
 from absl.testing import absltest
-import numpy as np
 
-from tensorflow_federated.python.core.impl.context_stack import get_context_stack
 from tensorflow_federated.python.core.impl.execution_contexts import async_execution_context
-from tensorflow_federated.python.core.impl.executor_stacks import executor_factory
 from tensorflow_federated.python.core.impl.executors import executors_errors
-from tensorflow_federated.python.core.impl.federated_context import federated_computation
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
 
 
 class RetryableErrorTest(absltest.TestCase):
@@ -37,87 +29,6 @@ class RetryableErrorTest(absltest.TestCase):
     self.assertFalse(async_execution_context._is_retryable_error(1))
     self.assertFalse(async_execution_context._is_retryable_error('a'))
     self.assertFalse(async_execution_context._is_retryable_error(None))
-
-
-class AsyncContextInstallationTest(absltest.TestCase):
-
-  def test_install_and_execute_in_context(self):
-    factory = executor_factory.local_cpp_executor_factory()
-    context = async_execution_context.AsyncExecutionContext(factory)
-
-    @federated_computation.federated_computation(np.int32)
-    def identity(x):
-      return x
-
-    with get_context_stack.get_context_stack().install(context):
-      val_coro = identity(1)
-      self.assertTrue(asyncio.iscoroutine(val_coro))
-      self.assertEqual(asyncio.run(val_coro), 1)
-
-  def test_install_and_execute_computations_with_different_cardinalities(self):
-    factory = executor_factory.local_cpp_executor_factory()
-    context = async_execution_context.AsyncExecutionContext(factory)
-
-    @federated_computation.federated_computation(
-        computation_types.FederatedType(np.int32, placements.CLIENTS)
-    )
-    def repackage_arg(x):
-      return [x, x]
-
-    with get_context_stack.get_context_stack().install(context):
-      single_val_coro = repackage_arg([1])
-      second_val_coro = repackage_arg([1, 2])
-      self.assertTrue(asyncio.iscoroutine(single_val_coro))
-      self.assertTrue(asyncio.iscoroutine(second_val_coro))
-      self.assertEqual(
-          [asyncio.run(single_val_coro), asyncio.run(second_val_coro)],
-          [[[1], [1]], [[1, 2], [1, 2]]],
-      )
-
-  def test_runs_cardinality_free(self):
-    factory = executor_factory.local_cpp_executor_factory()
-    context = async_execution_context.AsyncExecutionContext(
-        factory, cardinality_inference_fn=(lambda x, y: {})
-    )
-
-    @federated_computation.federated_computation(np.int32)
-    def identity(x):
-      return x
-
-    with get_context_stack.get_context_stack().install(context):
-      data = 0
-      # This computation is independent of cardinalities
-      val_coro = identity(data)
-      self.assertTrue(asyncio.iscoroutine(val_coro))
-      self.assertEqual(asyncio.run(val_coro), 0)
-
-  def test_raises_exception(self):
-    factory = executor_factory.local_cpp_executor_factory()
-
-    def _cardinality_fn(x, y):
-      del x, y  # Unused
-      return {placements.CLIENTS: 1}
-
-    context = async_execution_context.AsyncExecutionContext(
-        factory, cardinality_inference_fn=_cardinality_fn
-    )
-
-    arg_type = computation_types.FederatedType(np.int32, placements.CLIENTS)
-
-    @federated_computation.federated_computation(arg_type)
-    def identity(x):
-      return x
-
-    with get_context_stack.get_context_stack().install(context):
-      # This argument conflicts with the value returned by the
-      # cardinality-inference function; we should get an error surfaced.
-      data = [0, 1]
-      val_coro = identity(data)
-      self.assertTrue(asyncio.iscoroutine(val_coro))
-      with self.assertRaises(Exception) as e:
-        self.assertTrue(hasattr(e, 'status'))
-        self.assertTrue(hasattr(e.status, 'code_int'))
-        asyncio.run(val_coro)
 
 
 if __name__ == '__main__':

@@ -50,12 +50,7 @@ py_test(
     srcs = ["async_execution_context_test.py"],
     deps = [
         ":async_execution_context",
-        "//tensorflow_federated/python/core/impl/context_stack:get_context_stack",
-        "//tensorflow_federated/python/core/impl/executor_stacks:executor_factory",
         "//tensorflow_federated/python/core/impl/executors:executors_errors",
-        "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:placements",
     ],
 )
 

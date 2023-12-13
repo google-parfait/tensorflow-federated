@@ -21,6 +21,12 @@ py_test(
 )
 
 py_test(
+    name = "async_execution_context_integration_test",
+    srcs = ["async_execution_context_integration_test.py"],
+    deps = ["//tensorflow_federated"],
+)
+
+py_test(
     name = "backend_test",
     timeout = "long",
     srcs = ["backend_test.py"],
