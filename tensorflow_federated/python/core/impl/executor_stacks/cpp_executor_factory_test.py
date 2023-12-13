@@ -18,20 +18,36 @@ from tensorflow_federated.python.core.impl.executor_stacks import cpp_executor_f
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_bindings
 from tensorflow_federated.python.core.impl.executors import executor_factory
+from tensorflow_federated.python.core.impl.executors import executor_test_utils_bindings
 from tensorflow_federated.python.core.impl.types import placements
+
+
+def _create_mock_executor(
+    max_concurrent_computation_calls: int,
+) -> executor_bindings.Executor:
+  """Constructs the default leaf executor stack."""
+  del max_concurrent_computation_calls  # Unused.
+
+  mock_executor = executor_test_utils_bindings.create_mock_executor()
+  reference_resolving_executor = (
+      executor_bindings.create_reference_resolving_executor(mock_executor)
+  )
+  return executor_bindings.create_sequence_executor(
+      reference_resolving_executor
+  )
 
 
 class CPPExecutorFactoryTest(absltest.TestCase):
 
   def test_create_local_cpp_factory_constructs(self):
     local_cpp_factory = cpp_executor_factory.local_cpp_executor_factory(
-        default_num_clients=0
+        default_num_clients=0, leaf_executor_fn=_create_mock_executor
     )
     self.assertIsInstance(local_cpp_factory, executor_factory.ExecutorFactory)
 
   def test_clean_up_executors_clears_state(self):
     local_cpp_factory = cpp_executor_factory.local_cpp_executor_factory(
-        default_num_clients=0
+        default_num_clients=0, leaf_executor_fn=_create_mock_executor
     )
     cardinalities = {placements.CLIENTS: 1}
     local_cpp_factory.create_executor(cardinalities)
@@ -42,7 +58,7 @@ class CPPExecutorFactoryTest(absltest.TestCase):
 
   def test_create_local_cpp_factory_constructs_executor_implementation(self):
     local_cpp_factory = cpp_executor_factory.local_cpp_executor_factory(
-        default_num_clients=0
+        default_num_clients=0, leaf_executor_fn=_create_mock_executor
     )
     self.assertIsInstance(local_cpp_factory, executor_factory.ExecutorFactory)
     executor = local_cpp_factory.create_executor({placements.CLIENTS: 1})
@@ -73,7 +89,9 @@ class CPPExecutorFactoryTest(absltest.TestCase):
   def test_create_cpp_factory_raises_with_invalid_default_num_clients(self):
     with self.subTest('local_nonnegative'):
       with self.assertRaisesRegex(ValueError, 'nonnegative'):
-        cpp_executor_factory.local_cpp_executor_factory(default_num_clients=-1)
+        cpp_executor_factory.local_cpp_executor_factory(
+            default_num_clients=-1, leaf_executor_fn=_create_mock_executor
+        )
 
     with self.subTest('remote_nonnegative'):
       with self.assertRaisesRegex(ValueError, 'nonnegative'):
@@ -83,7 +101,9 @@ class CPPExecutorFactoryTest(absltest.TestCase):
 
     with self.subTest('local_non_integer'):
       with self.assertRaisesRegex(TypeError, 'int'):
-        cpp_executor_factory.local_cpp_executor_factory(default_num_clients=1.0)
+        cpp_executor_factory.local_cpp_executor_factory(
+            default_num_clients=1.0, leaf_executor_fn=_create_mock_executor
+        )
 
     with self.subTest('remote_non_integer'):
       with self.assertRaisesRegex(TypeError, 'int'):

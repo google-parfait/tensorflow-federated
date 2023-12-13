@@ -54,6 +54,7 @@ py_test(
         "//tensorflow_federated/python/core/impl/executors:executor_base",
         "//tensorflow_federated/python/core/impl/executors:executor_bindings",
         "//tensorflow_federated/python/core/impl/executors:executor_factory",
+        "//tensorflow_federated/python/core/impl/executors:executor_test_utils_bindings",
         "//tensorflow_federated/python/core/impl/types:placements",
     ],
 )
