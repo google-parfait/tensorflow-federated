@@ -25,12 +25,12 @@ import portpicker
 
 from tensorflow_federated.python.core.backends.native import compiler as native_compiler
 from tensorflow_federated.python.core.backends.test import compiler as test_compiler
+from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_executor_bindings
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.execution_contexts import async_execution_context
 from tensorflow_federated.python.core.impl.execution_contexts import sync_execution_context
 from tensorflow_federated.python.core.impl.executor_stacks import cpp_executor_factory
 from tensorflow_federated.python.core.impl.executors import executor_bindings
-from tensorflow_federated.python.core.impl.executors import tensorflow_executor_bindings
 
 
 FLAGS = flags.FLAGS
