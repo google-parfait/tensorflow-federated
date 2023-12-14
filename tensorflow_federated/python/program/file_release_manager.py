@@ -77,8 +77,8 @@ class CSVFileReleaseManager(
   structure containing value references, each value reference is materialized.
   The value is then flattened, converted to a `numpy.ndarray`, and then
   converted to a nested list of Python scalars, and released as a CSV file.
-  For example, `1` will be written as `'1'` and `tf.constant([[1, 1], [1, 1])`
-  will be written as `'[[1, 1], [1, 1]'`.
+  For example, `1` will be written as `'1'` and `tf.constant([[1, 1], [1, 1]])`
+  will be written as `'[[1, 1], [1, 1]]'`.
 
   This manager can be configured to release values using a `save_mode` of either
   `CSVSaveMode.APPEND` or `CSVSaveMode.WRITE`.
@@ -246,7 +246,7 @@ class CSVFileReleaseManager(
     else:
       await self._write_value(value)
 
-  async def _remove_values_greater_than(self, key: int) -> None:
+  async def _remove_values_greater_than_key(self, key: int) -> None:
     """Removes all values greater than `key` from the managed CSV."""
     py_typecheck.check_type(key, (int, np.integer))
 
@@ -297,7 +297,7 @@ class CSVFileReleaseManager(
     py_typecheck.check_type(key, (int, np.integer))
 
     _, materialized_value = await asyncio.gather(
-        self._remove_values_greater_than(key - 1),
+        self._remove_values_greater_than_key(key - 1),
         value_reference.materialize_value(value),
     )
 
@@ -444,5 +444,4 @@ class SavedModelFileReleaseManager(
       else:
         return value
 
-    normalized_value = structure_utils.map_structure(_normalize, value)
-    return normalized_value
+    return structure_utils.map_structure(_normalize, value)

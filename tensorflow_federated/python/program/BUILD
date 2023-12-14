@@ -167,9 +167,7 @@ py_test(
         ":program_test_utils",
         ":release_manager",
         ":structure_utils",
-        ":value_reference",
         "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:type_conversions",
     ],
 )
 

@@ -32,7 +32,7 @@ class MemoryReleaseManagerTest(
   # pyformat: disable
   @parameterized.named_parameters(
       # materialized values
-      ('none', None, computation_types.StructWithPythonType([], list), None),
+      ('none', None, computation_types.StructType([]), None),
       ('bool', True, computation_types.TensorType(tf.bool), True),
       ('int', 1, computation_types.TensorType(tf.int32), 1),
       ('str', 'a', computation_types.TensorType(tf.string), 'a'),

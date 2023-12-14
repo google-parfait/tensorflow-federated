@@ -326,7 +326,7 @@ class TensorBoardReleaseManagerReleaseTest(
   # pyformat: disable
   @parameterized.named_parameters(
       # materialized values
-      ('none', None, computation_types.StructWithPythonType([], list)),
+      ('none', None, computation_types.StructType([])),
       ('str', 'a', computation_types.TensorType(tf.string)),
       ('tensor_str', tf.constant('a'), computation_types.TensorType(tf.string)),
 
