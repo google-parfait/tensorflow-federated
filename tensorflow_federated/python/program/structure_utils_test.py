@@ -298,5 +298,45 @@ class FlattenWithNameTest(parameterized.TestCase, tf.test.TestCase):
       self.assertAllEqual(actual_value, expected_value)
 
 
+class MapStructureTest(absltest.TestCase):
+
+  def test_returns_result(self):
+    fn = lambda x, y: (x, y)
+    structure1 = [1, 2, 3]
+    structure2 = [4, 5, 6]
+
+    result = structure_utils.map_structure(fn, structure1, structure2)
+    self.assertEqual(result, [(1, 4), (2, 5), (3, 6)])
+
+  def test_raises_value_error_with_no_structures(self):
+    fn = lambda x, y: (x, y)
+
+    with self.assertRaises(ValueError):
+      structure_utils.map_structure(fn)
+
+  def test_raises_value_error_with_different_structures(self):
+    fn = lambda x, y: (x, y)
+    structure1 = []
+    structure2 = [1, 2, 3]
+
+    with self.assertRaises(ValueError):
+      structure_utils.map_structure(fn, structure1, structure2)
+
+  def test_does_not_raises_type_error_with_different_types(self):
+    fn = lambda x, y: (x, y)
+    structure1 = [1, 2, 3]
+    structure2 = (4, 5, 6)
+
+    structure_utils.map_structure(fn, structure1, structure2, check_types=False)
+
+  def test_raises_type_error_with_different_types(self):
+    fn = lambda x, y: (x, y)
+    structure1 = [1, 2, 3]
+    structure2 = (4, 5, 6)
+
+    with self.assertRaises(TypeError):
+      structure_utils.map_structure(fn, structure1, structure2)
+
+
 if __name__ == '__main__':
   absltest.main()

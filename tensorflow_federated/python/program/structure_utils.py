@@ -99,5 +99,12 @@ def map_structure(
     fn: Callable[..., T], *structures: Structure[T], **kwargs: object
 ) -> Structure[T]:
   """Maps `fn` through the `tff.program.Structure`s."""
-  filtered_structure = _filter_structure(structures[0])
+  if not structures:
+    raise ValueError('Expected at least one structure.')
+  first_structure = structures[0]
+  if len(structures) > 1:
+    check_types = kwargs.get('check_types', True)
+    for structure in structures[1:]:
+      tree.assert_same_structure(first_structure, structure, check_types)
+  filtered_structure = _filter_structure(first_structure)
   return tree.map_structure_up_to(filtered_structure, fn, *structures, **kwargs)
