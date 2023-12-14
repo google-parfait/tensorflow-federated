@@ -73,12 +73,12 @@ class CSVFileReleaseManager(
   platform storage to customer storage in a federated program.
 
   Values are released to the file system as a CSV file and are quoted as
-  strings. When the value is released, each
-  `tff.program.MaterializableValueReference` is materialized. The value is then
-  flattened, converted to a `numpy.ndarray`, and then converted to a nested list
-  of Python scalars, and released as a CSV file. For example, `1` will be
-  written as `'1'` and `tf.constant([[1, 1], [1, 1]])` will be written as
-  `'[[1, 1], [1, 1]]'`.
+  strings. When the value is released, if the value is a value reference or a
+  structure containing value references, each value reference is materialized.
+  The value is then flattened, converted to a `numpy.ndarray`, and then
+  converted to a nested list of Python scalars, and released as a CSV file.
+  For example, `1` will be written as `'1'` and `tf.constant([[1, 1], [1, 1])`
+  will be written as `'[[1, 1], [1, 1]'`.
 
   This manager can be configured to release values using a `save_mode` of either
   `CSVSaveMode.APPEND` or `CSVSaveMode.WRITE`.
@@ -332,9 +332,10 @@ class SavedModelFileReleaseManager(
   platform storage to customer storage in a federated program.
 
   Values are released to the file system using the SavedModel (see
-  `tf.saved_model`) format. When the value is released, each
-  `tff.program.MaterializableValueReference` is materialized. The structure of
-  the value is discarded.
+  `tf.saved_model`) format. When the value is released, if the value is a value
+  reference or a structure containing value references, each value reference is
+  materialized. The value is then flattened and released using the SavedModel
+  format. The structure of the value is discarded.
 
   Note: The SavedModel format can only contain values that can be converted to a
   `tf.Tensor` (see `tf.convert_to_tensor`), releasing any other values will
@@ -395,7 +396,8 @@ class SavedModelFileReleaseManager(
     del type_signature  # Unused.
     path = self._get_path_for_key(key)
     materialized_value = await value_reference.materialize_value(value)
-    await file_utils.write_saved_model(materialized_value, path, overwrite=True)
+    flattened_value = structure_utils.flatten(materialized_value)
+    await file_utils.write_saved_model(flattened_value, path, overwrite=True)
 
   async def get_value(
       self,
@@ -417,12 +419,11 @@ class SavedModelFileReleaseManager(
       ReleasedValueNotFoundError: If there is no released value for the given
         `key`.
     """
-    del structure  # Unused.
-
     path = self._get_path_for_key(key)
     if not await file_utils.exists(path):
       raise release_manager.ReleasedValueNotFoundError(key)
-    value = await file_utils.read_saved_model(path)
+    flattened_value = await file_utils.read_saved_model(path)
+    value = structure_utils.unflatten_as(structure, flattened_value)
 
     def _normalize(
         value: release_manager.ReleasableValue,
@@ -443,4 +444,5 @@ class SavedModelFileReleaseManager(
       else:
         return value
 
-    return structure_utils.map_structure(_normalize, value)
+    normalized_value = structure_utils.map_structure(_normalize, value)
+    return normalized_value
