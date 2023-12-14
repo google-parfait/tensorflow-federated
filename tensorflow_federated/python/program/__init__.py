@@ -48,6 +48,7 @@ from tensorflow_federated.python.program.release_manager import PeriodicReleaseM
 from tensorflow_federated.python.program.release_manager import ReleasableStructure
 from tensorflow_federated.python.program.release_manager import ReleasableValue
 from tensorflow_federated.python.program.release_manager import ReleaseManager
+from tensorflow_federated.python.program.release_manager import StatefulReleaseManager
 from tensorflow_federated.python.program.tensorboard_release_manager import TensorBoardReleaseManager
 from tensorflow_federated.python.program.value_reference import MaterializableStructure
 from tensorflow_federated.python.program.value_reference import MaterializableTypeSignature
