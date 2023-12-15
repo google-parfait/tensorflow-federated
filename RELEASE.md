@@ -1,3 +1,26 @@
+# Release 0.67.0
+
+## Major Features and Improvements
+
+*   Updated the representation of a tff.TensorType.dtype to be a `np.dtype`
+    instead of `tf.dtypes.Dtype`.
+*   Added `tff.program.DelayedReleaseManager`.
+
+## Breaking Changes
+
+*   Removed `check_allowed_ops` from the `framework` package.
+*   Removed `check_disallowed_ops` from the `framework` package.
+*   Removed `replace_intrinsics_with_bodies` from the `framework` package.
+*   Removed `get_session_token` from the `framework` package.
+*   Added a workspace dependency on `pybind11_bazel`.
+*   Removed `type_from_tensors` from the `framework` package.
+*   Updated the version of `rules_python` to `0.23.0`.
+
+## Bug Fixes
+
+*   Temporary pin `googleapis-common-protos` to version `1.61.0` to work around
+    an issue with a transitive dependency.
+
 # Release 0.66.0
 
 ## Breaking Changes
