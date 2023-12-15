@@ -176,7 +176,8 @@ def build_apply_optimizer_finalizer(
     ):
       raise TypeError(
           'The optimizer_fn must be a `tff.learning.optimizers.Optimizer`, or '
-          'a no-arg callable returning a `tf.keras.optimizers.Optimizer`.'
+          'a no-arg callable returning a `tf.keras.optimizers.Optimizer`. Got: '
+          f'{type(optimizer_fn)=}'
       )
 
   if (

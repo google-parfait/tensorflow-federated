@@ -171,8 +171,10 @@ def build_weighted_fed_avg_with_optimizer_schedule(
     client_learning_rate_fn: Callable[[int], float],
     client_optimizer_fn: Callable[[float], TFFOrKerasOptimizer],
     server_optimizer_fn: Union[
-        optimizer_base.Optimizer, Callable[[], tf.keras.optimizers.Optimizer]
-    ] = fed_avg.DEFAULT_SERVER_OPTIMIZER_FN,
+        optimizer_base.Optimizer,
+        Callable[[], tf.keras.optimizers.Optimizer],
+        None,
+    ] = None,
     model_distributor: Optional[distributors.DistributionProcess] = None,
     model_aggregator: Optional[factory.WeightedAggregationFactory] = None,
     metrics_aggregator: Optional[types.MetricsAggregatorType] = None,
@@ -243,9 +245,9 @@ def build_weighted_fed_avg_with_optimizer_schedule(
       serializable by TFF.
     client_optimizer_fn: A callable accepting a float learning rate, and
       returning a `tff.learning.optimizers.Optimizer` or a `tf.keras.Optimizer`.
-    server_optimizer_fn: A `tff.learning.optimizers.Optimizer`, or a no-arg
-      callable that returns a `tf.keras.Optimizer`. By default, this uses
-      `tf.keras.optimizers.SGD` with a learning rate of 1.0.
+    server_optimizer_fn: A `tff.learning.optimizers.Optimizer`, a no-arg
+      callable that returns a `tf.keras.Optimizer`, or None. By default, this
+      uses `tff.learning.optimizers.build_sgdm` with a learning rate of 1.0.
     model_distributor: An optional `DistributionProcess` that distributes the
       model weights on the server to the clients. If set to `None`, the
       distributor is constructed via `distributors.build_broadcast_process`.
@@ -267,6 +269,8 @@ def build_weighted_fed_avg_with_optimizer_schedule(
   Returns:
     A `LearningProcess`.
   """
+  if server_optimizer_fn is None:
+    server_optimizer_fn = fed_avg.DEFAULT_SERVER_OPTIMIZER_FN()
 
   @tensorflow_computation.tf_computation()
   def initial_model_weights_fn():

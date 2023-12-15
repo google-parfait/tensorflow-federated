@@ -51,6 +51,7 @@ py_library(
         "//tensorflow_federated/python/learning/models:model_weights",
         "//tensorflow_federated/python/learning/models:variable",
         "//tensorflow_federated/python/learning/optimizers:optimizer",
+        "//tensorflow_federated/python/learning/optimizers:sgdm",
         "//tensorflow_federated/python/learning/templates:apply_optimizer_finalizer",
         "//tensorflow_federated/python/learning/templates:composers",
         "//tensorflow_federated/python/learning/templates:distributors",

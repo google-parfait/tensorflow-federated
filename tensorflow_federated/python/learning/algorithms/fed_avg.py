@@ -47,13 +47,14 @@ from tensorflow_federated.python.learning.models import functional
 from tensorflow_federated.python.learning.models import model_weights
 from tensorflow_federated.python.learning.models import variable
 from tensorflow_federated.python.learning.optimizers import optimizer as optimizer_base
+from tensorflow_federated.python.learning.optimizers import sgdm
 from tensorflow_federated.python.learning.templates import apply_optimizer_finalizer
 from tensorflow_federated.python.learning.templates import composers
 from tensorflow_federated.python.learning.templates import distributors
 from tensorflow_federated.python.learning.templates import learning_process
 from tensorflow_federated.python.learning.templates import model_delta_client_work
 
-DEFAULT_SERVER_OPTIMIZER_FN = lambda: tf.keras.optimizers.SGD(learning_rate=1.0)
+DEFAULT_SERVER_OPTIMIZER_FN = lambda: sgdm.build_sgdm(learning_rate=1.0)
 
 
 def build_weighted_fed_avg(
@@ -64,8 +65,10 @@ def build_weighted_fed_avg(
         optimizer_base.Optimizer, Callable[[], tf.keras.optimizers.Optimizer]
     ],
     server_optimizer_fn: Union[
-        optimizer_base.Optimizer, Callable[[], tf.keras.optimizers.Optimizer]
-    ] = DEFAULT_SERVER_OPTIMIZER_FN,
+        optimizer_base.Optimizer,
+        Callable[[], tf.keras.optimizers.Optimizer],
+        None,
+    ] = None,
     *,
     client_weighting: Optional[
         client_weight_lib.ClientWeighting
@@ -110,13 +113,14 @@ def build_weighted_fed_avg(
   aggregation function, according to `client_weighting`. The aggregate model
   delta is applied at the server using a server optimizer.
 
-  Note: the default server optimizer function is `tf.keras.optimizers.SGD`
-  with a learning rate of 1.0, which corresponds to adding the model delta to
-  the current server model. This recovers the original FedAvg algorithm in
-  [McMahan et al., 2017](https://arxiv.org/abs/1602.05629). More
-  sophisticated federated averaging procedures may use different learning rates
-  or server optimizers (this generalized FedAvg algorithm is described in
-  [Reddi et al., 2021](https://arxiv.org/abs/2003.00295)).
+  Note: the default server optimizer function is
+  `tff.learning.optimizers.build_sgdm` with a learning rate of 1.0, which
+  corresponds to adding the model delta to the current server model. This
+  recovers the original FedAvg algorithm in [McMahan et al.,
+  2017](https://arxiv.org/abs/1602.05629). More sophisticated federated
+  averaging procedures may use different learning rates or server optimizers
+  (this generalized FedAvg algorithm is described in [Reddi et al.,
+  2021](https://arxiv.org/abs/2003.00295)).
 
   Args:
     model_fn: A no-arg function that returns a
@@ -130,10 +134,10 @@ def build_weighted_fed_avg(
       callable that returns a `tf.keras.Optimizer`. If `model_fn` is a
       `tff.learning.models.FunctionalModel`, _must_ be a
       `tff.learning.optimizers.Optimizer`.
-    server_optimizer_fn: A `tff.learning.optimizers.Optimizer`, or a no-arg
-      callable that returns a `tf.keras.Optimizer`. By default, this uses
-      `tf.keras.optimizers.SGD` with a learning rate of 1.0. If `model_fn` is a
-      `tff.learning.models.FunctionalModel`, _must_ be a
+    server_optimizer_fn: A `tff.learning.optimizers.Optimizer`, a no-arg
+      callable that returns a `tf.keras.Optimizer`, or None. By default, this
+      uses `tff.leanring.optimizers.build_sgdm` with a learning rate of 1.0. If
+      `model_fn` is a `tff.learning.models.FunctionalModel`, _must_ be a
       `tff.learning.optimizers.Optimizer`.
     client_weighting: A member of `tff.learning.ClientWeighting` that specifies
       a built-in weighting method. By default, weighting by number of examples
@@ -168,6 +172,8 @@ def build_weighted_fed_avg(
       client_weight_lib.ClientWeighting,
       label='client_weighting',
   )
+  if server_optimizer_fn is None:
+    server_optimizer_fn = DEFAULT_SERVER_OPTIMIZER_FN()
 
   if not isinstance(model_fn, Callable):
     if not isinstance(model_fn, functional.FunctionalModel):
@@ -280,8 +286,10 @@ def build_unweighted_fed_avg(
         optimizer_base.Optimizer, Callable[[], tf.keras.optimizers.Optimizer]
     ],
     server_optimizer_fn: Union[
-        optimizer_base.Optimizer, Callable[[], tf.keras.optimizers.Optimizer]
-    ] = DEFAULT_SERVER_OPTIMIZER_FN,
+        optimizer_base.Optimizer,
+        Callable[[], tf.keras.optimizers.Optimizer],
+        None,
+    ] = None,
     model_distributor: Optional[distributors.DistributionProcess] = None,
     model_aggregator: Optional[factory.UnweightedAggregationFactory] = None,
     metrics_aggregator: types.MetricsAggregatorType = metric_aggregator.sum_then_finalize,
@@ -322,12 +330,12 @@ def build_unweighted_fed_avg(
   aggregation function. The aggregate model delta is applied at the server using
   a server optimizer.
 
-  Note: the default server optimizer function is `tf.keras.optimizers.SGD`
-  with a learning rate of 1.0, which corresponds to adding the model delta to
-  the current server model. This recovers the original FedAvg algorithm in
-  [McMahan et al., 2017](https://arxiv.org/abs/1602.05629). More
-  sophisticated federated averaging procedures may use different learning rates
-  or server optimizers.
+  Note: the default server optimizer function is
+  `tff.learning.optimizers.build_sgdm` with a learning rate of 1.0, which
+  corresponds to adding the model delta to the current server model. This
+  recovers the original FedAvg algorithm in [McMahan et al.,
+  2017](https://arxiv.org/abs/1602.05629). More sophisticated federated
+  averaging procedures may use different learning rates or server optimizers.
 
   Args:
     model_fn: A no-arg function that returns a
@@ -343,8 +351,8 @@ def build_unweighted_fed_avg(
       `tff.learning.optimizers.Optimizer`.
     server_optimizer_fn: A `tff.learning.optimizers.Optimizer`, or a no-arg
       callable that returns a `tf.keras.Optimizer`. By default, this uses
-      `tf.keras.optimizers.SGD` with a learning rate of 1.0. If `model_fn` is a
-      `tff.learning.models.FunctionalModel`, _must_ be a
+      `tff.learning.optimizers.build_sgdm` with a learning rate of 1.0. If
+      `model_fn` is a `tff.learning.models.FunctionalModel`, _must_ be a
       `tff.learning.optimizers.Optimizer`.
     model_distributor: An optional `DistributionProcess` that distributes the
       model weights on the server to the clients. If set to `None`, the
@@ -372,6 +380,8 @@ def build_unweighted_fed_avg(
   py_typecheck.check_type(
       model_aggregator, factory.UnweightedAggregationFactory
   )
+  if server_optimizer_fn is None:
+    server_optimizer_fn = DEFAULT_SERVER_OPTIMIZER_FN()
 
   return build_weighted_fed_avg(
       model_fn=model_fn,
