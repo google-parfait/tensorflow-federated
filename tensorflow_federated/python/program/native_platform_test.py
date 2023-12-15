@@ -20,6 +20,7 @@ from unittest import mock
 from absl.testing import absltest
 from absl.testing import parameterized
 import tensorflow as tf
+import tree
 
 from tensorflow_federated.python.common_libs import async_utils
 from tensorflow_federated.python.common_libs import structure
@@ -136,11 +137,9 @@ class AwaitableValueReferenceTest(
 
     actual_value = await reference.get_value()
 
-    if isinstance(actual_value, tf.data.Dataset) and isinstance(
-        expected_value, tf.data.Dataset
-    ):
-      actual_value = list(actual_value)
-      expected_value = list(expected_value)
+    tree.assert_same_structure(actual_value, expected_value)
+    actual_value = program_test_utils.to_python(actual_value)
+    expected_value = program_test_utils.to_python(expected_value)
     self.assertEqual(actual_value, expected_value)
 
 
@@ -165,11 +164,10 @@ class WrapInSharedAwaitableTest(
     fn = native_platform._wrap_in_shared_awaitable(_identity)
 
     awaitable_1 = fn(1)
-    self.assertIsInstance(awaitable_1, async_utils.SharedAwaitable)
     awaitable_2 = fn(1)
-    self.assertIsInstance(awaitable_2, async_utils.SharedAwaitable)
     self.assertIs(awaitable_1, awaitable_2)
     awaitable_3 = fn(2)
+    self.assertIsInstance(awaitable_1, async_utils.SharedAwaitable)
     self.assertIsInstance(awaitable_3, async_utils.SharedAwaitable)
     self.assertIsNot(awaitable_1, awaitable_3)
 
@@ -267,21 +265,13 @@ class CreateStructureOfAwaitableReferencesTest(
     if isinstance(actual_value, structure.Struct) and isinstance(
         expected_value, structure.Struct
     ):
-      actual_flattened = structure.flatten(actual_value)
-      actual_value = await asyncio.gather(
-          *[v.get_value() for v in actual_flattened]
-      )
-      expected_flattened = structure.flatten(expected_value)
-      expected_value = await asyncio.gather(
-          *[v.get_value() for v in expected_flattened]
-      )
+      actual_value = structure.flatten(actual_value)
+      expected_value = structure.flatten(expected_value)
     actual_value = await value_reference.materialize_value(actual_value)
     expected_value = await value_reference.materialize_value(expected_value)
-    if isinstance(actual_value, tf.data.Dataset) and isinstance(
-        expected_value, tf.data.Dataset
-    ):
-      actual_value = list(actual_value)
-      expected_value = list(expected_value)
+    tree.assert_same_structure(actual_value, expected_value)
+    actual_value = program_test_utils.to_python(actual_value)
+    expected_value = program_test_utils.to_python(expected_value)
     self.assertEqual(actual_value, expected_value)
 
   @parameterized.named_parameters(
@@ -430,11 +420,9 @@ class MaterializeStructureOfValueReferencesTest(
         )
     )
 
-    if isinstance(actual_value, tf.data.Dataset) and isinstance(
-        expected_value, tf.data.Dataset
-    ):
-      actual_value = list(actual_value)
-      expected_value = list(expected_value)
+    tree.assert_same_structure(actual_value, expected_value)
+    actual_value = program_test_utils.to_python(actual_value)
+    expected_value = program_test_utils.to_python(expected_value)
     self.assertEqual(actual_value, expected_value)
 
   @parameterized.named_parameters(
@@ -587,11 +575,9 @@ class NativeFederatedContextTest(
       result = context.invoke(comp, arg)
       actual_value = await value_reference.materialize_value(result)
 
-    if isinstance(actual_value, tf.data.Dataset) and isinstance(
-        expected_value, tf.data.Dataset
-    ):
-      actual_value = list(actual_value)
-      expected_value = list(expected_value)
+    tree.assert_same_structure(actual_value, expected_value)
+    actual_value = program_test_utils.to_python(actual_value)
+    expected_value = program_test_utils.to_python(expected_value)
     self.assertEqual(actual_value, expected_value)
 
   # pyformat: disable

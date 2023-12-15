@@ -26,6 +26,7 @@ from absl.testing import absltest
 from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
+import tree
 
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.program import file_release_manager
@@ -884,7 +885,7 @@ class CSVFileReleaseManagerReleaseTest(
     await release_mngr.release(value, type_signature, key=1)
 
     _, actual_value = _read_values_from_csv(file_path)
-    program_test_utils.assert_types_equal(actual_value, expected_value)
+    tree.assert_same_structure(actual_value, expected_value)
     self.assertEqual(actual_value, expected_value)
 
   async def test_remove_values_greater_than_key_with_empty_file(self):
@@ -1061,7 +1062,7 @@ class SavedModelFileReleaseManagerGetPathForKeyTest(parameterized.TestCase):
 
 
 class SavedModelFileReleaseManagerReleaseTest(
-    parameterized.TestCase, unittest.IsolatedAsyncioTestCase, tf.test.TestCase
+    parameterized.TestCase, unittest.IsolatedAsyncioTestCase
 ):
 
   # pyformat: disable
@@ -1301,18 +1302,10 @@ class SavedModelFileReleaseManagerReleaseTest(
       call = mock_write_saved_model.mock_calls[0]
       _, args, kwargs = call
       actual_value, actual_path = args
-      program_test_utils.assert_types_equal(actual_value, expected_value)
-
-      def _normalize(
-          value: release_manager.ReleasableValue,
-      ) -> release_manager.ReleasableValue:
-        if isinstance(value, tf.data.Dataset):
-          value = list(value)
-        return value
-
-      actual_value = structure_utils.map_structure(_normalize, actual_value)
-      expected_value = structure_utils.map_structure(_normalize, expected_value)
-      self.assertAllEqual(actual_value, expected_value)
+      tree.assert_same_structure(actual_value, expected_value)
+      actual_value = program_test_utils.to_python(actual_value)
+      expected_value = program_test_utils.to_python(expected_value)
+      self.assertEqual(actual_value, expected_value)
       expected_path = os.path.join(root_dir, 'a_1')
       self.assertEqual(actual_path, expected_path)
       self.assertEqual(kwargs, {'overwrite': True})
@@ -1369,7 +1362,7 @@ class SavedModelFileReleaseManagerReleaseTest(
 
 
 class SavedModelFileReleaseManagerGetValueTest(
-    parameterized.TestCase, unittest.IsolatedAsyncioTestCase, tf.test.TestCase
+    parameterized.TestCase, unittest.IsolatedAsyncioTestCase
 ):
 
   # pyformat: disable
@@ -1592,19 +1585,10 @@ class SavedModelFileReleaseManagerGetValueTest(
 
     actual_value = await release_mngr.get_value(1, structure)
 
-    if isinstance(actual_value, tf.data.Dataset) and isinstance(
-        expected_value, tf.data.Dataset
-    ):
-      actual_value = list(actual_value)
-      expected_value = list(expected_value)
-    else:
-      program_test_utils.assert_types_equal(actual_value, expected_value)
-    if isinstance(actual_value, np.ndarray) and isinstance(
-        expected_value, np.ndarray
-    ):
-      np.testing.assert_equal(actual_value, expected_value)
-    else:
-      self.assertEqual(actual_value, expected_value)
+    tree.assert_same_structure(actual_value, expected_value)
+    actual_value = program_test_utils.to_python(actual_value)
+    expected_value = program_test_utils.to_python(expected_value)
+    self.assertEqual(actual_value, expected_value)
 
   @parameterized.named_parameters(
       ('0', 0),

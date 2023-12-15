@@ -21,11 +21,12 @@ from typing import NamedTuple, Optional
 import warnings
 
 import attrs
+import numpy as np
 import tensorflow as tf
+import tree
 
 from tensorflow_federated.python.common_libs import serializable
 from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.program import structure_utils
 from tensorflow_federated.python.program import value_reference
 
 
@@ -123,17 +124,24 @@ class TestNamedTuple3(NamedTuple):
   y: TestNamedTuple2
 
 
-def assert_types_equal(a: object, b: object) -> None:
-  def _assert_type_equal(a: object, b: object) -> None:
-    if not isinstance(a, type(b)):
-      raise AssertionError(f'{type(a)} != {type(b)}')
+def to_python(value: object) -> object:
+  """Returns a Python representation of `value`."""
 
-  try:
-    structure_utils.map_structure(_assert_type_equal, a, b)
-  except (TypeError, ValueError) as e:
-    raise AssertionError(
-        "The two structures don't have the same nested structure."
-    ) from e
+  def _fn(obj):
+    if isinstance(obj, tf.Tensor) and not tf.is_symbolic_tensor(obj):
+      obj = obj.numpy()
+      if isinstance(obj, np.ndarray):
+        return obj.tolist()
+      else:
+        return obj
+    elif isinstance(obj, tf.data.Dataset):
+      return list(obj)
+    elif isinstance(obj, np.ndarray):
+      return obj.tolist()
+    else:
+      return None
+
+  return tree.traverse(_fn, value, top_down=False)
 
 
 @contextlib.contextmanager

@@ -141,7 +141,6 @@ py_test(
         ":file_utils",
         ":program_state_manager",
         ":program_test_utils",
-        ":structure_utils",
     ],
 )
 
@@ -319,7 +318,6 @@ py_library(
     testonly = True,
     srcs = ["program_test_utils.py"],
     deps = [
-        ":structure_utils",
         ":value_reference",
         "//tensorflow_federated/python/common_libs:serializable",
         "//tensorflow_federated/python/core/impl/types:computation_types",

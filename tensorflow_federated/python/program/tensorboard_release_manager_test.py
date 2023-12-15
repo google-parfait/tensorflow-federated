@@ -23,6 +23,7 @@ from absl.testing import absltest
 from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
+import tree
 
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.program import program_test_utils
@@ -72,7 +73,7 @@ class TensorBoardReleaseManagerInitTest(parameterized.TestCase):
 
 
 class TensorBoardReleaseManagerReleaseTest(
-    parameterized.TestCase, unittest.IsolatedAsyncioTestCase, tf.test.TestCase
+    parameterized.TestCase, unittest.IsolatedAsyncioTestCase
 ):
 
   # pyformat: disable
@@ -291,7 +292,10 @@ class TensorBoardReleaseManagerReleaseTest(
         actual_name, actual_value = args
         expected_name, expected_value = expected_args
         self.assertEqual(actual_name, expected_name)
-        self.assertAllEqual(actual_value, expected_value)
+        tree.assert_same_structure(actual_value, expected_value)
+        actual_value = program_test_utils.to_python(actual_value)
+        expected_value = program_test_utils.to_python(expected_value)
+        self.assertEqual(actual_value, expected_value)
         self.assertEqual(kwargs, {'step': 1})
 
   async def test_writes_value_scalar_and_histogram(self):
@@ -320,7 +324,10 @@ class TensorBoardReleaseManagerReleaseTest(
       actual_name, actual_value = args
       expected_name, expected_value = '1', tf.constant([1] * 3)
       self.assertEqual(actual_name, expected_name)
-      self.assertAllEqual(actual_value, expected_value)
+      tree.assert_same_structure(actual_value, expected_value)
+      actual_value = program_test_utils.to_python(actual_value)
+      expected_value = program_test_utils.to_python(expected_value)
+      self.assertEqual(actual_value, expected_value)
       self.assertEqual(kwargs, {'step': 1})
 
   # pyformat: disable

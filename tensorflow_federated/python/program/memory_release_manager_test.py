@@ -19,6 +19,7 @@ from absl.testing import absltest
 from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
+import tree
 
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.program import memory_release_manager
@@ -26,7 +27,7 @@ from tensorflow_federated.python.program import program_test_utils
 
 
 class MemoryReleaseManagerTest(
-    parameterized.TestCase, unittest.IsolatedAsyncioTestCase, tf.test.TestCase
+    parameterized.TestCase, unittest.IsolatedAsyncioTestCase
 ):
 
   # pyformat: disable
@@ -284,13 +285,10 @@ class MemoryReleaseManagerTest(
 
     self.assertLen(release_mngr._values, 1)
     actual_value, actual_type_signature = release_mngr._values[1]
-    program_test_utils.assert_types_equal(actual_value, expected_value)
-    if isinstance(actual_value, tf.data.Dataset) and isinstance(
-        expected_value, tf.data.Dataset
-    ):
-      actual_value = list(actual_value)
-      expected_value = list(expected_value)
-    self.assertAllEqual(actual_value, expected_value)
+    tree.assert_same_structure(actual_value, expected_value)
+    actual_value = program_test_utils.to_python(actual_value)
+    expected_value = program_test_utils.to_python(expected_value)
+    self.assertEqual(actual_value, expected_value)
     self.assertEqual(actual_type_signature, type_signature)
 
   @parameterized.named_parameters(

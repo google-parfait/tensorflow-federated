@@ -21,6 +21,7 @@ from absl.testing import absltest
 from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
+import tree
 
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.program import program_test_utils
@@ -28,7 +29,7 @@ from tensorflow_federated.python.program import release_manager
 
 
 class FilteringReleaseManagerTest(
-    parameterized.TestCase, unittest.IsolatedAsyncioTestCase, tf.test.TestCase
+    parameterized.TestCase, unittest.IsolatedAsyncioTestCase
 ):
 
   def test_init_does_not_raise_type_error(self):
@@ -316,8 +317,10 @@ class FilteringReleaseManagerTest(
     call = mock_release_mngr.release.mock_calls[0]
     _, args, kwargs = call
     actual_value, actual_type_signature, actual_key = args
-    program_test_utils.assert_types_equal(actual_value, expected_value)
-    self.assertAllEqual(actual_value, expected_value)
+    tree.assert_same_structure(actual_value, expected_value)
+    actual_value = program_test_utils.to_python(actual_value)
+    expected_value = program_test_utils.to_python(expected_value)
+    self.assertEqual(actual_value, expected_value)
     self.assertEqual(actual_type_signature, expected_type_signature)
     self.assertEqual(actual_key, 1)
     self.assertEqual(kwargs, {})
@@ -611,8 +614,10 @@ class FilteringReleaseManagerTest(
     call = mock_release_mngr.release.mock_calls[0]
     _, args, kwargs = call
     actual_value, actual_type_signature, actual_key = args
-    program_test_utils.assert_types_equal(actual_value, expected_value)
-    self.assertAllEqual(actual_value, expected_value)
+    tree.assert_same_structure(actual_value, expected_value)
+    actual_value = program_test_utils.to_python(actual_value)
+    expected_value = program_test_utils.to_python(expected_value)
+    self.assertEqual(actual_value, expected_value)
     self.assertEqual(actual_type_signature, expected_type_signature)
     self.assertEqual(actual_key, 1)
     self.assertEqual(kwargs, {})

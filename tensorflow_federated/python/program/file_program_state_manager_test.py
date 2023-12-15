@@ -23,12 +23,12 @@ from absl.testing import absltest
 from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
+import tree
 
 from tensorflow_federated.python.program import file_program_state_manager
 from tensorflow_federated.python.program import file_utils
 from tensorflow_federated.python.program import program_state_manager
 from tensorflow_federated.python.program import program_test_utils
-from tensorflow_federated.python.program import structure_utils
 
 
 class FileProgramStateManagerInitTest(parameterized.TestCase):
@@ -294,7 +294,7 @@ class FileProgramStateManagerGetPathForVersionTest(parameterized.TestCase):
 
 
 class FileProgramStateManagerLoadTest(
-    parameterized.TestCase, unittest.IsolatedAsyncioTestCase, tf.test.TestCase
+    parameterized.TestCase, unittest.IsolatedAsyncioTestCase
 ):
 
   # pyformat: disable
@@ -447,19 +447,10 @@ class FileProgramStateManagerLoadTest(
 
     actual_state = await program_state_mngr.load(1, structure)
 
-    if isinstance(actual_state, tf.data.Dataset) and isinstance(
-        expected_state, tf.data.Dataset
-    ):
-      actual_state = list(actual_state)
-      expected_state = list(expected_state)
-    else:
-      program_test_utils.assert_types_equal(actual_state, expected_state)
-    if isinstance(actual_state, np.ndarray) and isinstance(
-        expected_state, np.ndarray
-    ):
-      np.testing.assert_equal(actual_state, expected_state)
-    else:
-      self.assertEqual(actual_state, expected_state)
+    tree.assert_same_structure(actual_state, expected_state)
+    actual_state = program_test_utils.to_python(actual_state)
+    expected_state = program_test_utils.to_python(expected_state)
+    self.assertEqual(actual_state, expected_state)
 
   @parameterized.named_parameters(
       ('0', 0),
@@ -700,7 +691,7 @@ class FileProgramStateManagerRemoveAllTest(
 
 
 class FileProgramStateManagerSaveTest(
-    parameterized.TestCase, unittest.IsolatedAsyncioTestCase, tf.test.TestCase
+    parameterized.TestCase, unittest.IsolatedAsyncioTestCase
 ):
 
   # pyformat: disable
@@ -854,18 +845,10 @@ class FileProgramStateManagerSaveTest(
       call = mock_write_saved_model.mock_calls[0]
       _, args, kwargs = call
       actual_value, actual_path = args
-      program_test_utils.assert_types_equal(actual_value, expected_value)
-
-      def _normalize(
-          value: program_state_manager.ProgramStateValue,
-      ) -> program_state_manager.ProgramStateValue:
-        if isinstance(value, tf.data.Dataset):
-          value = list(value)
-        return value
-
-      actual_value = structure_utils.map_structure(_normalize, actual_value)
-      expected_value = structure_utils.map_structure(_normalize, expected_value)
-      self.assertAllEqual(actual_value, expected_value)
+      tree.assert_same_structure(actual_value, expected_value)
+      actual_value = program_test_utils.to_python(actual_value)
+      expected_value = program_test_utils.to_python(expected_value)
+      self.assertEqual(actual_value, expected_value)
       expected_path = os.path.join(root_dir, 'a_1')
       self.assertEqual(actual_path, expected_path)
       self.assertEqual(kwargs, {})

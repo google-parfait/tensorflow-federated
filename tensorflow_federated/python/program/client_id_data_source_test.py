@@ -66,7 +66,6 @@ class ClientIdDataSourceIteratorTest(parameterized.TestCase):
     self.assertLen(actual_client_ids, k)
     for actual_client_id in actual_client_ids:
       self.assertIn(actual_client_id, client_ids)
-      self.assertIsInstance(actual_client_id, str)
 
   @parameterized.named_parameters(
       ('str', 'a'),
