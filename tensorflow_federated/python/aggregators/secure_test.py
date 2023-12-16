@@ -31,10 +31,10 @@ from tensorflow_federated.python.core.templates import estimation_process
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.core.test import static_assert
 
-_float_at_server = computation_types.at_server(tf.float32)
-_float_at_clients = computation_types.at_clients(tf.float32)
-_int_at_server = computation_types.at_server(tf.int32)
-_int_at_clients = computation_types.at_clients(tf.int32)
+_float_at_server = computation_types.at_server(np.float32)
+_float_at_clients = computation_types.at_clients(np.float32)
+_int_at_server = computation_types.at_server(np.int32)
+_int_at_clients = computation_types.at_clients(np.int32)
 
 
 def _test_struct_type(dtype):
@@ -75,8 +75,8 @@ def _test_estimation_process(factor):
 def _measurements_type(bound_type):
   return computation_types.at_server(
       collections.OrderedDict(
-          secure_upper_clipped_count=secure.COUNT_TF_TYPE,
-          secure_lower_clipped_count=secure.COUNT_TF_TYPE,
+          secure_upper_clipped_count=secure.COUNT_TYPE,
+          secure_lower_clipped_count=secure.COUNT_TYPE,
           secure_upper_threshold=bound_type,
           secure_lower_threshold=bound_type,
       )
@@ -88,14 +88,14 @@ class SecureModularSumFactoryComputationTest(
 ):
 
   @parameterized.named_parameters(
-      ('scalar_non_symmetric_int32', 8, tf.int32, False),
-      ('scalar_non_symmetric_int64', 8, tf.int64, False),
-      ('struct_non_symmetric', 8, _test_struct_type(tf.int32), False),
-      ('scalar_symmetric_int32', 8, tf.int32, True),
-      ('scalar_symmetric_int64', 8, tf.int64, True),
-      ('struct_symmetric', 8, _test_struct_type(tf.int32), True),
-      ('numpy_modulus_non_symmetric', np.int32(8), tf.int32, False),
-      ('numpy_modulus_symmetric', np.int32(8), tf.int32, True),
+      ('scalar_non_symmetric_int32', 8, np.int32, False),
+      ('scalar_non_symmetric_int64', 8, np.int64, False),
+      ('struct_non_symmetric', 8, _test_struct_type(np.int32), False),
+      ('scalar_symmetric_int32', 8, np.int32, True),
+      ('scalar_symmetric_int64', 8, np.int64, True),
+      ('struct_symmetric', 8, _test_struct_type(np.int32), True),
+      ('numpy_modulus_non_symmetric', np.int32(8), np.int32, False),
+      ('numpy_modulus_symmetric', np.int32(8), np.int32, True),
   )
   def test_type_properties(self, modulus, value_type, symmetric_range):
     factory_ = secure.SecureModularSumFactory(
@@ -153,14 +153,14 @@ class SecureModularSumFactoryComputationTest(
       secure.SecureModularSumFactory(modulus=8, symmetric_range='True')
 
   @parameterized.named_parameters(
-      ('float_type', computation_types.TensorType(tf.float32)),
-      ('mixed_type', computation_types.to_type([tf.float32, tf.int32])),
+      ('float_type', computation_types.TensorType(np.float32)),
+      ('mixed_type', computation_types.to_type([np.float32, np.int32])),
       (
           'federated_type',
-          computation_types.FederatedType(tf.int32, placements.SERVER),
+          computation_types.FederatedType(np.int32, placements.SERVER),
       ),
       ('function_type', computation_types.FunctionType(None, ())),
-      ('sequence_type', computation_types.SequenceType(tf.float32)),
+      ('sequence_type', computation_types.SequenceType(np.float32)),
   )
   def test_incorrect_value_type_raises(self, bad_value_type):
     with self.assertRaises(TypeError):
@@ -183,7 +183,7 @@ class SecureModularSumFactoryExecutionTest(
   )
   def test_non_symmetric(self, modulus, client_data, expected_sum):
     factory_ = secure.SecureModularSumFactory(modulus, symmetric_range=False)
-    process = factory_.create(computation_types.to_type(tf.int32))
+    process = factory_.create(computation_types.TensorType(np.int32))
     state = process.initialize()
     output = process.next(state, client_data)
     self.assertEqual(expected_sum, output.result)
@@ -205,7 +205,7 @@ class SecureModularSumFactoryExecutionTest(
   )
   def test_symmetric(self, modulus, client_data, expected_sum):
     factory_ = secure.SecureModularSumFactory(modulus, symmetric_range=True)
-    process = factory_.create(computation_types.to_type(tf.int32))
+    process = factory_.create(computation_types.TensorType(np.int32))
     state = process.initialize()
     output = process.next(state, client_data)
     self.assertEqual(expected_sum, output.result)
@@ -213,7 +213,7 @@ class SecureModularSumFactoryExecutionTest(
   def test_struct_type(self):
     factory_ = secure.SecureModularSumFactory(8)
     process = factory_.create(
-        computation_types.to_type(_test_struct_type(tf.int32))
+        computation_types.to_type(_test_struct_type(np.int32))
     )
     state = process.initialize()
     client_data = [
@@ -228,41 +228,41 @@ class SecureModularSumFactoryExecutionTest(
 class SecureSumFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
-      ('float_scalar', tf.float32, 1.0, -1.0, tf.float32),
-      ('float_np', tf.float32, np.float32(1.0), np.float32(-1.0), tf.float32),
-      ('float_struct', _test_struct_type(tf.float32), 1.0, -1.0, tf.float32),
-      ('int_scalar', tf.int32, 1, -1, tf.int32),
-      ('int_np', tf.int32, np.int32(1), np.int32(-1), tf.int32),
-      ('int_struct', _test_struct_type(tf.int32), 1, -1, tf.int32),
-      ('py_int_bounds_int64_value', tf.int64, 1, 0, tf.int64),
+      ('float_scalar', np.float32, 1.0, -1.0, np.float32),
+      ('float_np', np.float32, np.float32(1.0), np.float32(-1.0), np.float32),
+      ('float_struct', _test_struct_type(np.float32), 1.0, -1.0, np.float32),
+      ('int_scalar', np.int32, 1, -1, np.int32),
+      ('int_np', np.int32, np.int32(1), np.int32(-1), np.int32),
+      ('int_struct', _test_struct_type(np.int32), 1, -1, np.int32),
+      ('py_int_bounds_int64_value', np.int64, 1, 0, np.int64),
       (
           'numpy_int32_bounds_int64_value',
-          tf.int64,
+          np.int64,
           np.int32(1),
           np.int32(0),
-          tf.int64,
+          np.int64,
       ),
       (
           'numpy_int64_bounds_int32_value',
-          tf.int32,
+          np.int32,
           np.int64(1),
           np.int64(0),
-          tf.int32,
+          np.int32,
       ),
-      ('py_float_bounds_float64_value', tf.float64, 1.0, 0.0, tf.float64),
+      ('py_float_bounds_float64_value', np.float64, 1.0, 0.0, np.float64),
       (
           'numpy_float32_bounds_float64_value',
-          tf.float64,
+          np.float64,
           np.float32(1.0),
           np.float32(0.0),
-          tf.float64,
+          np.float64,
       ),
       (
           'numpy_float64_bounds_float32_value',
-          tf.float32,
+          np.float32,
           np.float64(1.0),
           np.float64(0.0),
-          tf.float32,
+          np.float32,
       ),
   )
   def test_type_properties_constant_bounds(
@@ -307,10 +307,10 @@ class SecureSumFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
     static_assert.assert_not_contains_unsecure_aggregation(process.next)
 
   @parameterized.named_parameters(
-      ('float32_scalar', tf.float32, tf.float32),
-      ('float64_scalar', tf.float64, tf.float64),
-      ('float32_struct', _test_struct_type(tf.float32), tf.float32),
-      ('float64_struct', _test_struct_type(tf.float64), tf.float64),
+      ('float32_scalar', np.float32, np.float32),
+      ('float64_scalar', np.float64, np.float64),
+      ('float32_struct', _test_struct_type(np.float32), np.float32),
+      ('float64_struct', _test_struct_type(np.float64), np.float64),
   )
   def test_type_properties_single_bound(self, value_type, dtype):
     upper_bound_process = _test_estimation_process(1)
@@ -354,10 +354,10 @@ class SecureSumFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
     static_assert.assert_not_contains_unsecure_aggregation(process.next)
 
   @parameterized.named_parameters(
-      ('float32_scalar', tf.float32, tf.float32),
-      ('float64_scalar', tf.float64, tf.float64),
-      ('float32_struct', _test_struct_type(tf.float32), tf.float32),
-      ('float64_struct', _test_struct_type(tf.float64), tf.float64),
+      ('float32_scalar', np.float32, np.float32),
+      ('float64_scalar', np.float64, np.float64),
+      ('float32_struct', _test_struct_type(np.float32), np.float32),
+      ('float64_struct', _test_struct_type(np.float64), np.float64),
   )
   def test_type_properties_adaptive_bounds(self, value_type, dtype):
     upper_bound_process = _test_estimation_process(1)
@@ -414,10 +414,10 @@ class SecureSumFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_int_ranges_beyond_2_pow_32(self):
     secure_sum_f = secure.SecureSumFactory(2**33, -(2**33))
-    # Bounds this large should be provided only with tf.int64 value_type.
-    process = secure_sum_f.create(computation_types.TensorType(tf.int64))
+    # Bounds this large should be provided only with np.int64 value_type.
+    process = secure_sum_f.create(computation_types.TensorType(np.int64))
     self.assertEqual(
-        process.next.type_signature.result.result.member.dtype, tf.int64
+        process.next.type_signature.result.result.member.dtype, np.int64
     )
 
   @parameterized.named_parameters(
@@ -428,7 +428,7 @@ class SecureSumFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
   ):
     secure_sum_f = secure.SecureSumFactory(upper, lower)
     with self.assertRaises(TypeError):
-      secure_sum_f.create(computation_types.TensorType(tf.float32))
+      secure_sum_f.create(computation_types.TensorType(np.float32))
 
   @parameterized.named_parameters(
       ('py', 1.0, -1.0), ('np', np.float32(1.0), np.float32(-1.0))
@@ -438,27 +438,27 @@ class SecureSumFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
   ):
     secure_sum_f = secure.SecureSumFactory(upper, lower)
     with self.assertRaises(TypeError):
-      secure_sum_f.create(computation_types.TensorType(tf.int32))
+      secure_sum_f.create(computation_types.TensorType(np.int32))
 
   def test_value_type_incompatible_with_config_mode_raises_single_process(self):
     secure_sum_f = secure.SecureSumFactory(_test_estimation_process(1))
     with self.assertRaises(TypeError):
-      secure_sum_f.create(computation_types.TensorType(tf.int32))
+      secure_sum_f.create(computation_types.TensorType(np.int32))
 
   def test_value_type_incompatible_with_config_mode_raises_two_processes(self):
     secure_sum_f = secure.SecureSumFactory(
         _test_estimation_process(1), _test_estimation_process(-1)
     )
     with self.assertRaises(TypeError):
-      secure_sum_f.create(computation_types.TensorType(tf.int32))
+      secure_sum_f.create(computation_types.TensorType(np.int32))
 
   @parameterized.named_parameters(
       (
           'federated_type',
-          computation_types.FederatedType(tf.float32, placements.SERVER),
+          computation_types.FederatedType(np.float32, placements.SERVER),
       ),
       ('function_type', computation_types.FunctionType(None, ())),
-      ('sequence_type', computation_types.SequenceType(tf.float32)),
+      ('sequence_type', computation_types.SequenceType(np.float32)),
   )
   def test_incorrect_value_type_raises(self, bad_value_type):
     secure_sum_f = secure.SecureSumFactory(1.0, -1.0)
@@ -472,7 +472,7 @@ class SecureSumFactoryExecutionTest(tf.test.TestCase):
     secure_sum_f = secure.SecureSumFactory(
         upper_bound_threshold=1, lower_bound_threshold=-1
     )
-    process = secure_sum_f.create(computation_types.to_type(tf.int32))
+    process = secure_sum_f.create(computation_types.TensorType(np.int32))
     client_data = [-2, -1, 0, 1, 2, 3]
 
     state = process.initialize()
@@ -490,7 +490,7 @@ class SecureSumFactoryExecutionTest(tf.test.TestCase):
     secure_sum_f = secure.SecureSumFactory(
         upper_bound_threshold=1.0, lower_bound_threshold=-1.0
     )
-    process = secure_sum_f.create(computation_types.to_type(tf.float32))
+    process = secure_sum_f.create(computation_types.TensorType(np.float32))
     client_data = [-2.5, -0.5, 0.0, 1.0, 1.5, 2.5]
 
     state = process.initialize()
@@ -508,7 +508,7 @@ class SecureSumFactoryExecutionTest(tf.test.TestCase):
     secure_sum_f = secure.SecureSumFactory(
         upper_bound_threshold=_test_estimation_process(1)
     )
-    process = secure_sum_f.create(computation_types.to_type(tf.float32))
+    process = secure_sum_f.create(computation_types.TensorType(np.float32))
     client_data = [-2.5, -0.5, 0.0, 1.0, 1.5, 3.5]
 
     state = process.initialize()
@@ -547,7 +547,7 @@ class SecureSumFactoryExecutionTest(tf.test.TestCase):
         upper_bound_threshold=_test_estimation_process(1),
         lower_bound_threshold=_test_estimation_process(-1),
     )
-    process = secure_sum_f.create(computation_types.to_type(tf.float32))
+    process = secure_sum_f.create(computation_types.TensorType(np.float32))
     client_data = [-2.5, -0.5, 0.0, 1.0, 1.5, 3.5]
 
     state = process.initialize()
@@ -582,7 +582,7 @@ class SecureSumFactoryExecutionTest(tf.test.TestCase):
 
   def test_float_32_larger_than_2_pow_32(self):
     secure_sum_f = secure.SecureSumFactory(upper_bound_threshold=float(2**34))
-    process = secure_sum_f.create(computation_types.to_type(tf.float32))
+    process = secure_sum_f.create(computation_types.TensorType(np.float32))
     client_data = [float(2**33), float(2**33), float(2**34)]
 
     state = process.initialize()
@@ -600,7 +600,7 @@ class SecureSumFactoryExecutionTest(tf.test.TestCase):
     secure_sum_f = secure.SecureSumFactory(
         upper_bound_threshold=np.float64(2**66)
     )
-    process = secure_sum_f.create(computation_types.to_type(tf.float64))
+    process = secure_sum_f.create(computation_types.TensorType(np.float64))
     client_data = [
         np.float64(2**65),
         np.float64(2**65),
@@ -645,21 +645,21 @@ class SecureSumFactoryExecutionTest(tf.test.TestCase):
 class IsStructureOfSingleDtypeTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
-      ('bool', computation_types.TensorType(tf.bool)),
-      ('int', computation_types.TensorType(tf.int32)),
-      ('ints', computation_types.StructType([tf.int32, tf.int32])),
-      ('floats', computation_types.StructType([tf.float32, tf.float32])),
+      ('bool', computation_types.TensorType(np.bool_)),
+      ('int', computation_types.TensorType(np.int32)),
+      ('ints', computation_types.StructType([np.int32, np.int32])),
+      ('floats', computation_types.StructType([np.float32, np.float32])),
       (
           'nested_struct',
           computation_types.StructType([
-              computation_types.TensorType(tf.int32),
-              computation_types.StructType([tf.int32, tf.int32]),
+              computation_types.TensorType(np.int32),
+              computation_types.StructType([np.int32, np.int32]),
           ]),
       ),
       (
           'federated_floats_at_clients',
           computation_types.FederatedType(
-              computation_types.StructType([tf.float32, tf.float32]),
+              computation_types.StructType([np.float32, np.float32]),
               placements.CLIENTS,
           ),
       ),
@@ -669,22 +669,22 @@ class IsStructureOfSingleDtypeTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('empty_struct', computation_types.StructType([])),
-      ('int_and_float', computation_types.StructType([tf.int32, tf.float32])),
-      ('int32_and_int64', computation_types.StructType([tf.int32, tf.int64])),
+      ('int_and_float', computation_types.StructType([np.int32, np.float32])),
+      ('int32_and_int64', computation_types.StructType([np.int32, np.int64])),
       (
           'float32_and_float64',
-          computation_types.StructType([tf.float32, tf.float64]),
+          computation_types.StructType([np.float32, np.float64]),
       ),
       (
           'nested_struct',
           computation_types.StructType([
-              computation_types.TensorType(tf.int32),
-              computation_types.StructType([tf.float32, tf.float32]),
+              computation_types.TensorType(np.int32),
+              computation_types.StructType([np.float32, np.float32]),
           ]),
       ),
-      ('sequence_of_ints', computation_types.SequenceType(tf.int32)),
+      ('sequence_of_ints', computation_types.SequenceType(np.int32)),
       ('placement', computation_types.PlacementType()),
-      ('function', computation_types.FunctionType(tf.int32, tf.int32)),
+      ('function', computation_types.FunctionType(np.int32, np.int32)),
       ('abstract', computation_types.AbstractType('T')),
   )
   def test_returns_false(self, type_spec):

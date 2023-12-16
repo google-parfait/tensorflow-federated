@@ -16,6 +16,7 @@
 import collections
 from typing import Optional
 
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory
@@ -120,7 +121,7 @@ class StochasticDiscretizationFactory(factory.UnweightedAggregationFactory):
     if self._distortion_aggregation_factory is not None:
       distortion_aggregation_process = (
           self._distortion_aggregation_factory.create(
-              computation_types.to_type(tf.float32)
+              computation_types.to_type(np.float32)
           )  # pytype: disable=wrong-arg-types
       )
 

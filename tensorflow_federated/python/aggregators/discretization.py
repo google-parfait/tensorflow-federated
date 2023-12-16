@@ -16,6 +16,7 @@
 import collections
 import numbers
 
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory
@@ -231,7 +232,7 @@ class DiscretizationFactory(factory.UnweightedAggregationFactory):
 def _build_discretize_fn(value_type, stochastic, beta):
   """Builds a `tff.tf_computation` for discretization."""
 
-  @tensorflow_computation.tf_computation(value_type, tf.float32, tf.float32)
+  @tensorflow_computation.tf_computation(value_type, np.float32, np.float32)
   def discretize_fn(value, scale_factor, prior_norm_bound):
     return _discretize_struct(
         value, scale_factor, stochastic, beta, prior_norm_bound

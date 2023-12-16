@@ -36,8 +36,8 @@ from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import estimation_process
 from tensorflow_federated.python.core.templates import measured_process
 
-NORM_TF_TYPE = tf.float32
-COUNT_TF_TYPE = tf.int32
+NORM_TYPE = np.float32
+COUNT_TYPE = np.int32
 
 ThresholdEstType = Union[
     int, float, np.integer, np.floating, estimation_process.EstimationProcess
@@ -186,8 +186,8 @@ def _check_bound_process(
   """Checks type properties for estimation process for bounds.
 
   The process must be an `EstimationProcess` with `next` function of type
-  signature (<state@SERVER, NORM_TF_TYPE@CLIENTS> -> state@SERVER), and `report`
-  with type signature (state@SERVER -> NORM_TF_TYPE@SERVER).
+  signature (<state@SERVER, NORM_TYPE@CLIENTS> -> state@SERVER), and `report`
+  with type signature (state@SERVER -> NORM_TYPE@SERVER).
 
   Args:
     bound_process: A process to check.
@@ -205,7 +205,7 @@ def _check_bound_process(
         f'{next_parameter_type}'
     )
 
-  float_type_at_clients = computation_types.at_clients(NORM_TF_TYPE)
+  float_type_at_clients = computation_types.at_clients(NORM_TYPE)
   if not next_parameter_type[1].is_assignable_from(float_type_at_clients):  # pytype: disable=unsupported-operands
     raise TypeError(
         f'Second argument of `{name}.next` must be assignable from '
@@ -341,7 +341,6 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
         # Bounds specified as Python constants.
         if lower_bound_threshold is None:
           _check_positive(upper_bound_threshold)
-          lower_bound_threshold = -1.0 * upper_bound_threshold
         else:
           _check_upper_larger_than_lower(
               upper_bound_threshold, lower_bound_threshold
@@ -409,7 +408,7 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
     """Creates measurements to be reported. All values are summed securely."""
     is_max_clipped = intrinsics.federated_map(
         tensorflow_computation.tf_computation(
-            lambda bound, value: tf.cast(bound < value, COUNT_TF_TYPE)
+            lambda bound, value: tf.cast(bound < value, COUNT_TYPE)
         ),
         (intrinsics.federated_broadcast(upper_bound), value_max),
     )
@@ -418,7 +417,7 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
     )
     is_min_clipped = intrinsics.federated_map(
         tensorflow_computation.tf_computation(
-            lambda bound, value: tf.cast(bound > value, COUNT_TF_TYPE)
+            lambda bound, value: tf.cast(bound > value, COUNT_TYPE)
         ),
         (intrinsics.federated_broadcast(lower_bound), value_min),
     )
@@ -583,13 +582,6 @@ def _client_one():
       tensorflow_computation.tf_computation(lambda: tf.constant(1, tf.int32)),
       placements.CLIENTS,
   )
-
-
-def _cast_bounds(upper_bound, lower_bound, dtype):
-  cast_fn = tensorflow_computation.tf_computation(lambda x: tf.cast(x, dtype))
-  upper_bound = intrinsics.federated_map(cast_fn, upper_bound)
-  lower_bound = intrinsics.federated_map(cast_fn, lower_bound)
-  return upper_bound, lower_bound
 
 
 def _create_initial_state_two_processes(

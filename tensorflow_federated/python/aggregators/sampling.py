@@ -16,6 +16,7 @@
 import collections
 from typing import Any, Optional
 
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory
@@ -112,8 +113,8 @@ def _build_reservoir_type(
   # for TFF users. Replace this once such helper exists.
   return computation_types.to_type(
       collections.OrderedDict(
-          random_seed=computation_types.TensorType(tf.int64, shape=[2]),
-          random_values=computation_types.TensorType(tf.int32, shape=[None]),
+          random_seed=computation_types.TensorType(np.int64, shape=[2]),
+          random_values=computation_types.TensorType(np.int32, shape=[None]),
           samples=type_transformations.transform_type_postorder(
               sample_value_type, add_unknown_dimension
           )[0],
@@ -143,8 +144,7 @@ def _build_initial_sample_reservoir(
     if seed is None:
       real_seed = tf.convert_to_tensor(SEED_SENTINEL, dtype=tf.int64)
     elif tf.is_tensor(seed):
-      if hasattr(seed, 'dtype') and seed.dtype != tf.int64:
-        real_seed = tf.cast(seed, dtype=tf.int64)
+      real_seed = tf.cast(seed, dtype=tf.int64)
     else:
       real_seed = tf.convert_to_tensor(seed, dtype=tf.int64)
 

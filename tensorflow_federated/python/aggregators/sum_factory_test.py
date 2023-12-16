@@ -15,6 +15,7 @@
 import collections
 
 from absl.testing import parameterized
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory
@@ -29,7 +30,7 @@ from tensorflow_federated.python.core.templates import measured_process
 class SumFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
-      ('float', tf.float32), ('struct', ((tf.float32, (2,)), tf.int32))
+      ('float', np.float32), ('struct', ((np.float32, (2,)), np.int32))
   )
   def test_type_properties(self, value_type):
     sum_f = sum_factory.SumFactory()
@@ -73,10 +74,10 @@ class SumFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
   @parameterized.named_parameters(
       (
           'federated_type',
-          computation_types.FederatedType(tf.float32, placements.SERVER),
+          computation_types.FederatedType(np.float32, placements.SERVER),
       ),
       ('function_type', computation_types.FunctionType(None, ())),
-      ('sequence_type', computation_types.SequenceType(tf.float32)),
+      ('sequence_type', computation_types.SequenceType(np.float32)),
   )
   def test_incorrect_value_type_raises(self, bad_value_type):
     sum_f = sum_factory.SumFactory()
@@ -88,7 +89,7 @@ class SumFactoryExecutionTest(tf.test.TestCase):
 
   def test_sum_scalar(self):
     sum_f = sum_factory.SumFactory()
-    value_type = computation_types.to_type(tf.float32)
+    value_type = computation_types.to_type(np.float32)
     process = sum_f.create(value_type)
 
     state = process.initialize()
@@ -102,7 +103,7 @@ class SumFactoryExecutionTest(tf.test.TestCase):
 
   def test_sum_structure(self):
     sum_f = sum_factory.SumFactory()
-    value_type = computation_types.to_type(((tf.float32, (2,)), tf.int32))
+    value_type = computation_types.to_type(((np.float32, (2,)), np.int32))
     process = sum_f.create(value_type)
 
     state = process.initialize()

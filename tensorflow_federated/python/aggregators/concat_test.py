@@ -27,14 +27,14 @@ from tensorflow_federated.python.core.impl.types import type_test_utils
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
 
-_test_struct_type_int_mixed = [tf.int32, (tf.int32, (2,)), (tf.int32, (3, 3))]
+_test_struct_type_int_mixed = [np.int32, (np.int32, (2,)), (np.int32, (3, 3))]
 _test_struct_type_float_mixed = [
-    tf.float32,
-    (tf.float32, (2,)),
-    (tf.float32, (3, 3)),
+    np.float32,
+    (np.float32, (2,)),
+    (np.float32, (3, 3)),
 ]
 _test_struct_type_nested = collections.OrderedDict(
-    a=[tf.float32, [(tf.float32, (2, 2, 2))]], b=(tf.float32, (3, 3))
+    a=[np.float32, [(np.float32, (2, 2, 2))]], b=(np.float32, (3, 3))
 )
 
 
@@ -48,16 +48,16 @@ def _concat_sum():
 
 def _make_test_struct_nested(value):
   return collections.OrderedDict(
-      a=[tf.cast(value, tf.float32), [tf.ones([2, 2, 2]) * value]],
-      b=tf.ones((3, 3)) * value,
+      a=[np.array(value, np.float32), [np.ones([2, 2, 2]) * value]],
+      b=np.ones((3, 3)) * value,
   )
 
 
 class ConcatFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
-      ('float', tf.float32),
-      ('struct_list_int_scalars', [tf.int32, tf.int32, tf.int32]),
+      ('float', np.float32),
+      ('struct_list_int_scalars', [np.int32, np.int32, np.int32]),
       ('struct_list_int_mixed', _test_struct_type_int_mixed),
       ('struct_list_float_mixed', _test_struct_type_float_mixed),
       ('struct_nested', _test_struct_type_nested),
@@ -96,10 +96,10 @@ class ConcatFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
     )
 
   @parameterized.named_parameters(
-      ('float_value_float32_weight', tf.float32, tf.float32),
-      ('struct_value_float32_weight', _test_struct_type_nested, tf.float32),
-      ('float_value_float64_weight', tf.float32, tf.float64),
-      ('struct_value_float64_weight', _test_struct_type_nested, tf.float64),
+      ('float_value_float32_weight', np.float32, np.float32),
+      ('struct_value_float32_weight', _test_struct_type_nested, np.float32),
+      ('float_value_float64_weight', np.float32, np.float64),
+      ('struct_value_float64_weight', _test_struct_type_nested, np.float64),
   )
   def test_clip_type_properties_weighted(self, value_type, weight_type):
     factory = _concat_mean()
@@ -141,10 +141,10 @@ class ConcatFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
     )
 
   @parameterized.named_parameters(
-      ('bool', tf.bool),
-      ('string', tf.string),
-      ('string_list', [tf.string, tf.string]),
-      ('string_nested', [tf.string, [tf.string]]),
+      ('bool', np.bool_),
+      ('string', np.str_),
+      ('string_list', [np.str_, np.str_]),
+      ('string_nested', [np.str_, [np.str_]]),
   )
   def test_raises_on_non_numeric_dtypes(self, value_type):
     factory = _concat_sum()
@@ -153,13 +153,13 @@ class ConcatFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
       factory.create(value_type)
 
   @parameterized.named_parameters(
-      ('int32_int64_list', [tf.int32, tf.int64]),
-      ('float32_float64_list', [tf.float32, tf.float64]),
-      ('float32_float64_nested', [tf.float32, (tf.float64, [tf.float64])]),
-      ('int32_float32_list', [tf.int32, tf.float32]),
-      ('int32_float32_list_mixed_rank', [(tf.int32, (2, 3, 4)), tf.float32]),
-      ('int32_float32_nested', [tf.int32, (tf.float32, [tf.float32])]),
-      ('int32_string_list', [tf.int32, tf.string]),
+      ('int32_int64_list', [np.int32, np.int64]),
+      ('float32_float64_list', [np.float32, np.float64]),
+      ('float32_float64_nested', [np.float32, (np.float64, [np.float64])]),
+      ('int32_float32_list', [np.int32, np.float32]),
+      ('int32_float32_list_mixed_rank', [(np.int32, (2, 3, 4)), np.float32]),
+      ('int32_float32_nested', [np.int32, (np.float32, [np.float32])]),
+      ('int32_string_list', [np.int32, np.str_]),
   )
   def test_raises_on_mixed_dtypes(self, value_type):
     factory = _concat_sum()
@@ -168,11 +168,11 @@ class ConcatFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
       factory.create(value_type)
 
   @parameterized.named_parameters(
-      ('plain_struct', [('a', tf.int32)]),
-      ('sequence', computation_types.SequenceType(tf.int32)),
-      ('function', computation_types.FunctionType(tf.int32, tf.int32)),
-      ('nested_sequence', [[[computation_types.SequenceType(tf.int32)]]]),
-      ('nested_function', [computation_types.FunctionType(tf.int32, tf.int32)]),
+      ('plain_struct', [('a', np.int32)]),
+      ('sequence', computation_types.SequenceType(np.int32)),
+      ('function', computation_types.FunctionType(np.int32, np.int32)),
+      ('nested_sequence', [[[computation_types.SequenceType(np.int32)]]]),
+      ('nested_function', [computation_types.FunctionType(np.int32, np.int32)]),
   )
   def test_raises_on_bad_tff_value_types(self, value_type):
     factory = _concat_sum()
@@ -184,11 +184,11 @@ class ConcatFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
 class ConcatFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
-      ('scalar', tf.int32, [1, 2, 3], 6),
-      ('rank_1_tensor', (tf.int32, [3]), [(1, 1, 1), (2, 2, 2)], (3, 3, 3)),
+      ('scalar', np.int32, [1, 2, 3], 6),
+      ('rank_1_tensor', (np.int32, [3]), [(1, 1, 1), (2, 2, 2)], (3, 3, 3)),
       (
           'rank_2_tensor',
-          (tf.int32, [2, 2]),
+          (np.int32, [2, 2]),
           [((1, 1), (1, 1)), ((2, 2), (2, 2))],
           ((3, 3), (3, 3)),
       ),
@@ -212,11 +212,11 @@ class ConcatFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
     self.assertAllClose(output.result, expected_sum, atol=0)
 
   @parameterized.named_parameters(
-      ('scalar', tf.float32, [1, 2, 3], [3, 4, 5], 26.0 / 12),
-      ('rank_1_tensor', (tf.float32, [2]), [(1, 1), (5, 5)], [3, 1], (2, 2)),
+      ('scalar', np.float32, [1, 2, 3], [3, 4, 5], 26.0 / 12),
+      ('rank_1_tensor', (np.float32, [2]), [(1, 1), (5, 5)], [3, 1], (2, 2)),
       (
           'rank_2_tensor',
-          (tf.float32, [2, 2]),
+          (np.float32, [2, 2]),
           [((1, 1), (1, 1)), ((5, 5), (5, 5))],
           [3, 1],
           ((2, 2), (2, 2)),
@@ -235,7 +235,7 @@ class ConcatFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
     factory = _concat_mean()
     process = factory.create(
         computation_types.to_type(value_type),
-        computation_types.to_type(tf.float32),
+        computation_types.to_type(np.float32),
     )
 
     expected_state = collections.OrderedDict(

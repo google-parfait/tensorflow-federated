@@ -125,7 +125,7 @@ class EliasGammaEncodedSumFactory(factory.UnweightedAggregationFactory):
 
     if self._bitrate_mean_factory is not None:
       bitrate_mean_process = self._bitrate_mean_factory.create(
-          computation_types.to_type(tf.float64)
+          computation_types.to_type(np.float64)
       )  # pytype: disable=wrong-arg-types
 
     @tensorflow_computation.tf_computation(value_type)

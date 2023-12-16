@@ -16,6 +16,7 @@ import collections
 import random
 
 from absl.testing import parameterized
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import encoded
@@ -26,13 +27,6 @@ from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_model_optimization.python.core.internal import tensor_encoding as te
-
-
-def _tff_spec_to_encoder(encoder, tff_type):
-  assert isinstance(tff_type, computation_types.TensorType)
-  return te.encoders.as_gather_encoder(
-      encoder, tf.TensorSpec(tff_type.shape, tff_type.dtype)
-  )
 
 
 def _identity_encoder_fn(value_spec):
@@ -65,7 +59,7 @@ def _state_update_encoder_fn(value_spec):
   )
 
 
-_test_struct_type = computation_types.to_type(((tf.float32, (20,)), tf.float32))
+_test_struct_type = computation_types.to_type(((np.float32, (20,)), np.float32))
 
 
 class EncodedSumFactoryComputationTest(
@@ -131,7 +125,7 @@ class EncodedSumFactoryExecutionTest(tf.test.TestCase):
 
   def test_simple_sum(self):
     encoded_f = encoded.EncodedSumFactory(_identity_encoder_fn)
-    process = encoded_f.create(computation_types.to_type(tf.float32))
+    process = encoded_f.create(computation_types.to_type(np.float32))
 
     state = process.initialize()
 
@@ -145,7 +139,7 @@ class EncodedSumFactoryExecutionTest(tf.test.TestCase):
   def test_structure_sum(self):
     encoded_f = encoded.EncodedSumFactory(_identity_encoder_fn)
     process = encoded_f.create(
-        computation_types.to_type(((tf.float32, (2,)), tf.float32))
+        computation_types.to_type(((np.float32, (2,)), np.float32))
     )
 
     state = process.initialize()
@@ -166,7 +160,7 @@ class EncodedSumFactoryExecutionTest(tf.test.TestCase):
         quantization_bits=1, threshold=0
     )
     test_type = computation_types.to_type(
-        [(tf.float32, (3,)), (tf.float32, (5,))]
+        [(np.float32, (3,)), (np.float32, (5,))]
     )
     process = encoded_f.create(test_type)
 
@@ -182,7 +176,7 @@ class EncodedSumFactoryExecutionTest(tf.test.TestCase):
         quantization_bits=1, threshold=4
     )
     test_type = computation_types.to_type(
-        [(tf.float32, (3,)), (tf.float32, (5,))]
+        [(np.float32, (3,)), (np.float32, (5,))]
     )
     process = encoded_f.create(test_type)
 
@@ -199,7 +193,7 @@ class EncodedSumFactoryExecutionTest(tf.test.TestCase):
         quantization_bits=4, threshold=0
     )
     process = encoded_f.create(
-        computation_types.to_type((tf.float32, (10000,)))
+        computation_types.to_type((np.float32, (10000,)))
     )
 
     # Creates random values in range [0., 15.] plus the bondaries exactly.

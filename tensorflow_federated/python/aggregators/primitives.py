@@ -15,6 +15,7 @@
 
 from typing import Any, NamedTuple
 
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import deprecation
@@ -149,7 +150,7 @@ def _get_accumulator_type(member_type):
   return computation_types.to_type(
       _Samples(
           accumulators=accumulator_type,
-          rands=computation_types.TensorType(tf.float32, shape=[None]),
+          rands=computation_types.TensorType(np.float32, shape=[None]),
       )
   )
 
@@ -224,10 +225,10 @@ def federated_sample(value, max_num_samples=100):
 # Lower precision types are not supported to avoid potential hard to discover
 # numerical issues in conversion to/from format compatible with secure sum.
 _SECURE_QUANTIZED_SUM_ALLOWED_DTYPES = (
-    tf.int32,
-    tf.int64,
-    tf.float32,
-    tf.float64,
+    np.int32,
+    np.int64,
+    np.float32,
+    np.float64,
 )
 
 # The largest integer value provided to federated_secure_sum_bitwidth operator.

@@ -15,7 +15,7 @@
 
 from typing import Optional
 
-import tensorflow as tf
+import numpy as np
 import tensorflow_privacy as tfp
 
 from tensorflow_federated.python.aggregators import factory
@@ -143,7 +143,7 @@ class PrivateQuantileEstimationProcess(estimation_process.EstimationProcess):
     get_quantile_record = tensorflow_computation.tf_computation(
         quantile_estimator_query.preprocess_record,
         derive_sample_params.type_signature.result,
-        tf.float32,
+        np.float32,
     )
     quantile_record_type = get_quantile_record.type_signature.result
     get_noised_result = tensorflow_computation.tf_computation(
@@ -165,7 +165,7 @@ class PrivateQuantileEstimationProcess(estimation_process.EstimationProcess):
 
     @federated_computation.federated_computation(
         init_fn.type_signature.result,
-        computation_types.FederatedType(tf.float32, placements.CLIENTS),
+        computation_types.FederatedType(np.float32, placements.CLIENTS),
     )
     def next_fn(state, value):
       quantile_query_state, agg_state = state
@@ -198,11 +198,11 @@ class PrivateQuantileEstimationProcess(estimation_process.EstimationProcess):
 
 def _affine_transform(multiplier, increment):
   transform_tf_comp = tensorflow_computation.tf_computation(
-      lambda value: multiplier * value + increment, tf.float32
+      lambda value: multiplier * value + increment, np.float32
   )
   return federated_computation.federated_computation(
       lambda value: intrinsics.federated_map(transform_tf_comp, value),
-      computation_types.at_server(tf.float32),
+      computation_types.at_server(np.float32),
   )
 
 

@@ -36,8 +36,8 @@ from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import estimation_process
 from tensorflow_federated.python.core.templates import measured_process
 
-NORM_TF_TYPE = tf.float32
-COUNT_TF_TYPE = tf.int32
+NORM_TF_TYPE = np.float32
+COUNT_TF_TYPE = np.int32
 _T = TypeVar('_T', bound=factory.AggregationFactory)
 
 
@@ -133,8 +133,8 @@ def clipping_factory(
   being aggregated.
 
   The `value_type` provided to the `create` method must be a structure of
-  floats, but they do not all need to be the same, e.g. a mix of `tf.float32`
-  and `tf.float16` dtypes is allowed.
+  floats, but they do not all need to be the same, e.g. a mix of `np.float32`
+  and `np.float16` dtypes is allowed.
 
   The created process will report measurements
   * `clipped_count`: The number of aggregands clipped.
@@ -211,8 +211,8 @@ def zeroing_factory(
   values being aggregated.
 
   The `value_type` provided to the `create` method must be a structure of
-  floats, but they do not all need to be the same, e.g. a mix of `tf.float32`
-  and `tf.float16` dtypes is allowed.
+  floats, but they do not all need to be the same, e.g. a mix of `np.float32`
+  and `np.float16` dtypes is allowed.
 
   The created process will report measurements
   * `zeroed_count`: The number of aggregands zeroed out.

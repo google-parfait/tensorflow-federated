@@ -33,14 +33,14 @@ class SparsifyingAggregatorFactoryTest(parameterized.TestCase):
   @parameterized.named_parameters(
       (
           'single_scalar',
-          computation_types.TensorType(dtype=tf.float32, shape=[]),
+          computation_types.TensorType(dtype=np.float32, shape=[]),
       ),
       (
           'structed_values',
           collections.OrderedDict(
-              a=computation_types.TensorType(dtype=tf.float32, shape=[]),
+              a=computation_types.TensorType(dtype=np.float32, shape=[]),
               b=computation_types.TensorType(
-                  dtype=tf.float32, shape=[100, 100]
+                  dtype=np.float32, shape=[100, 100]
               ),
           ),
       ),
@@ -72,10 +72,10 @@ class SparsifyingAggregatorFactoryTest(parameterized.TestCase):
                 measurements=computation_types.at_server(
                     collections.OrderedDict(
                         client_coordinate_counts=type_conversions.structure_from_tensor_type_tree(
-                            lambda _: tf.int64, client_value_type
+                            lambda _: np.int64, client_value_type
                         ),
                         aggregate_coordinate_counts=type_conversions.structure_from_tensor_type_tree(
-                            lambda _: tf.int64, client_value_type
+                            lambda _: np.int64, client_value_type
                         ),
                     )
                 ),
@@ -91,7 +91,7 @@ class SparsifyingAggregatorFactoryExecutionTest(tf.test.TestCase):
     execution_contexts.set_sync_local_cpp_execution_context()
 
   def test_scalar_sum_no_zeros(self):
-    client_value_type = computation_types.TensorType(dtype=tf.float32, shape=[])
+    client_value_type = computation_types.TensorType(dtype=np.float32, shape=[])
     factory = sparsifying_aggregator_factory.SparsifyingSumFactory()
     mean_process = factory.create(value_type=client_value_type)
     empty_state = ()
@@ -109,7 +109,7 @@ class SparsifyingAggregatorFactoryExecutionTest(tf.test.TestCase):
   def test_single_sparse_sum(self):
     tensor_shape = [20, 20]
     client_value_type = computation_types.TensorType(
-        dtype=tf.float32, shape=tensor_shape
+        dtype=np.float32, shape=tensor_shape
     )
     factory = sparsifying_aggregator_factory.SparsifyingSumFactory()
     mean_process = factory.create(value_type=client_value_type)
@@ -138,7 +138,7 @@ class SparsifyingAggregatorFactoryExecutionTest(tf.test.TestCase):
   def test_single_sparse_sum_high_threshold(self):
     tensor_shape = [20, 20]
     client_value_type = computation_types.TensorType(
-        dtype=tf.float32, shape=tensor_shape
+        dtype=np.float32, shape=tensor_shape
     )
     # Increase the element threshold such that nothing is sparsified.
     factory = sparsifying_aggregator_factory.SparsifyingSumFactory(
@@ -174,11 +174,11 @@ class SparsifyingAggregatorFactoryExecutionTest(tf.test.TestCase):
     client_value_type = computation_types.to_type(
         collections.OrderedDict(
             a=[
-                computation_types.TensorType(dtype=tf.float32, shape=[]),
-                computation_types.TensorType(dtype=tf.float32, shape=[]),
+                computation_types.TensorType(dtype=np.float32, shape=[]),
+                computation_types.TensorType(dtype=np.float32, shape=[]),
             ],
             b=computation_types.TensorType(
-                dtype=tf.float32, shape=tensor_shape
+                dtype=np.float32, shape=tensor_shape
             ),
         )
     )

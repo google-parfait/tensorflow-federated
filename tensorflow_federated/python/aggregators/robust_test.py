@@ -16,6 +16,7 @@ import collections
 import itertools
 
 from absl.testing import parameterized
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import aggregator_test_utils
@@ -33,7 +34,7 @@ from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import estimation_process
 from tensorflow_federated.python.core.templates import measured_process
 
-_test_struct_type = [(tf.float32, (3,)), tf.float32]
+_test_struct_type = [(np.float32, (3,)), np.float32]
 
 
 def _make_test_struct_value(x):
@@ -56,8 +57,12 @@ def _zeroed_sum(clip=2.0, norm_order=2.0):
   return robust.zeroing_factory(clip, sum_factory.SumFactory(), norm_order)
 
 
-_float_at_server = computation_types.at_server(tf.float32)
-_float_at_clients = computation_types.at_clients(tf.float32)
+_float_at_server = computation_types.at_server(
+    computation_types.TensorType(np.float32)
+)
+_float_at_clients = computation_types.at_clients(
+    computation_types.TensorType(np.float32)
+)
 
 
 @federated_computation.federated_computation()
@@ -71,7 +76,7 @@ def _test_init_fn():
 def _test_next_fn(state, value):
   del value
   return intrinsics.federated_map(
-      tensorflow_computation.tf_computation(lambda x: x + 1.0, tf.float32),
+      tensorflow_computation.tf_computation(lambda x: x + 1.0, np.float32),
       state,
   )
 
@@ -90,7 +95,7 @@ def _test_norm_process(
 class ClippingFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
-      ('float', tf.float32),
+      ('float', np.float32),
       ('struct', _test_struct_type),
   )
   def test_clip_type_properties_simple(self, value_type):
@@ -136,10 +141,10 @@ class ClippingFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
     )
 
   @parameterized.named_parameters(
-      ('float_value_float32_weight', tf.float32, tf.float32),
-      ('struct_value_float32_weight', _test_struct_type, tf.float32),
-      ('float_value_float64_weight', tf.float32, tf.float64),
-      ('struct_value_float64_weight', _test_struct_type, tf.float64),
+      ('float_value_float32_weight', np.float32, np.float32),
+      ('struct_value_float32_weight', _test_struct_type, np.float32),
+      ('float_value_float64_weight', np.float32, np.float64),
+      ('struct_value_float64_weight', _test_struct_type, np.float64),
   )
   def test_clip_type_properties_weighted(self, value_type, weight_type):
     factory = _clipped_mean()
@@ -189,7 +194,7 @@ class ClippingFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
     )
 
   @parameterized.named_parameters(
-      ('float', tf.float32),
+      ('float', np.float32),
       ('struct', _test_struct_type),
   )
   def test_zero_type_properties_simple(self, value_type):
@@ -235,10 +240,10 @@ class ClippingFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
     )
 
   @parameterized.named_parameters(
-      ('float_value_float32_weight', tf.float32, tf.float32),
-      ('struct_value_float32_weight', _test_struct_type, tf.float32),
-      ('float_value_float64_weight', tf.float32, tf.float64),
-      ('struct_value_float64_weight', _test_struct_type, tf.float64),
+      ('float_value_float32_weight', np.float32, np.float32),
+      ('struct_value_float32_weight', _test_struct_type, np.float32),
+      ('float_value_float64_weight', np.float32, np.float64),
+      ('struct_value_float64_weight', _test_struct_type, np.float64),
   )
   def test_zero_type_properties_weighted(self, value_type, weight_type):
     factory = _zeroed_mean()
@@ -288,7 +293,7 @@ class ClippingFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
     )
 
   @parameterized.named_parameters(
-      ('float', tf.float32),
+      ('float', np.float32),
       ('struct', _test_struct_type),
   )
   def test_zero_type_properties_with_zeroed_count_agg_factory(self, value_type):
@@ -304,7 +309,7 @@ class ClippingFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
 
     server_state_type = computation_types.at_server(
         collections.OrderedDict(
-            zeroing_norm=(), inner_agg=(), zeroed_count_agg=tf.int32
+            zeroing_norm=(), inner_agg=(), zeroed_count_agg=np.int32
         )
     )
     expected_initialize_type = computation_types.FunctionType(
@@ -339,7 +344,7 @@ class ClippingFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
     )
 
   @parameterized.named_parameters(
-      ('float', tf.float32),
+      ('float', np.float32),
       ('struct', _test_struct_type),
   )
   def test_clip_type_properties_with_clipped_count_agg_factory(
@@ -356,7 +361,7 @@ class ClippingFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
 
     server_state_type = computation_types.at_server(
         collections.OrderedDict(
-            clipping_norm=(), inner_agg=(), clipped_count_agg=tf.int32
+            clipping_norm=(), inner_agg=(), clipped_count_agg=np.int32
         )
     )
     expected_initialize_type = computation_types.FunctionType(
@@ -391,8 +396,8 @@ class ClippingFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
     )
 
   @parameterized.named_parameters(
-      ('struct', (tf.float16, tf.float32)),
-      ('nested', (tf.float16, [tf.float32, (tf.float64, [3])])),
+      ('struct', (np.float16, np.float32)),
+      ('nested', (np.float16, [np.float32, (np.float64, [3])])),
   )
   def test_clip_preserves_aggregated_dtype_with_mixed_float(self, type_spec):
     factory = _clipped_sum()
@@ -403,23 +408,23 @@ class ClippingFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
     )
 
   @parameterized.named_parameters(
-      ('norm_order_1_struct', 1.0, (tf.float16, tf.float32)),
-      ('norm_order_2_struct', 2.0, (tf.float16, tf.float32)),
-      ('norm_order_inf_struct', float('inf'), (tf.float16, tf.float32)),
+      ('norm_order_1_struct', 1.0, (np.float16, np.float32)),
+      ('norm_order_2_struct', 2.0, (np.float16, np.float32)),
+      ('norm_order_inf_struct', float('inf'), (np.float16, np.float32)),
       (
           'norm_order_1_nested',
           1.0,
-          (tf.float16, [tf.float32, (tf.float64, [3])]),
+          (np.float16, [np.float32, (np.float64, [3])]),
       ),
       (
           'norm_order_2_nested',
           2.0,
-          (tf.float16, [tf.float32, (tf.float64, [3])]),
+          (np.float16, [np.float32, (np.float64, [3])]),
       ),
       (
           'norm_order_inf_nested',
           float('inf'),
-          (tf.float16, [tf.float32, (tf.float64, [3])]),
+          (np.float16, [np.float32, (np.float64, [3])]),
       ),
   )
   def test_zero_preserves_aggregated_dtype_with_mixed_float(
@@ -517,7 +522,7 @@ class ClippingFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
   def test_fixed_clip_sum(self):
     factory = _clipped_sum()
 
-    value_type = computation_types.to_type(tf.float32)
+    value_type = computation_types.TensorType(np.float32)
     process = factory.create(value_type)
 
     state = process.initialize()
@@ -531,8 +536,8 @@ class ClippingFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
   def test_fixed_clip_mean(self):
     factory = _clipped_mean()
 
-    value_type = computation_types.to_type(tf.float32)
-    weight_type = computation_types.to_type(tf.float32)
+    value_type = computation_types.TensorType(np.float32)
+    weight_type = computation_types.TensorType(np.float32)
     process = factory.create(value_type, weight_type)
 
     state = process.initialize()
@@ -563,7 +568,7 @@ class ClippingFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
     factory = _clipped_mean(4.0)
 
     value_type = computation_types.to_type(_test_struct_type)
-    weight_type = computation_types.to_type(tf.float32)
+    weight_type = computation_types.TensorType(np.float32)
     process = factory.create(value_type, weight_type)
 
     state = process.initialize()
@@ -579,7 +584,7 @@ class ClippingFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
   def test_increasing_clip_sum(self):
     factory = _clipped_sum(_test_norm_process())
 
-    value_type = computation_types.to_type(tf.float32)
+    value_type = computation_types.TensorType(np.float32)
     process = factory.create(value_type)
 
     state = process.initialize()
@@ -603,8 +608,8 @@ class ClippingFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
   def test_increasing_clip_mean(self):
     factory = _clipped_mean(_test_norm_process())
 
-    value_type = computation_types.to_type(tf.float32)
-    weight_type = computation_types.to_type(tf.float32)
+    value_type = computation_types.TensorType(np.float32)
+    weight_type = computation_types.TensorType(np.float32)
     process = factory.create(value_type, weight_type)
 
     state = process.initialize()
@@ -628,7 +633,7 @@ class ClippingFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_clip_mixed_float_dtype(self):
     factory = _clipped_sum(clip=3.0)
-    mixed_float = computation_types.to_type((tf.float16, tf.float32))
+    mixed_float = computation_types.to_type((np.float16, np.float32))
     process = factory.create(mixed_float)
 
     # Should not clip anything.
@@ -644,7 +649,7 @@ class ClippingFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
   def test_fixed_zero_sum(self):
     factory = _zeroed_sum()
 
-    value_type = computation_types.to_type(tf.float32)
+    value_type = computation_types.TensorType(np.float32)
     process = factory.create(value_type)
 
     state = process.initialize()
@@ -658,8 +663,8 @@ class ClippingFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
   def test_fixed_zero_mean(self):
     factory = _zeroed_mean()
 
-    value_type = computation_types.to_type(tf.float32)
-    weight_type = computation_types.to_type(tf.float32)
+    value_type = computation_types.TensorType(np.float32)
+    weight_type = computation_types.TensorType(np.float32)
     process = factory.create(value_type, weight_type)
 
     state = process.initialize()
@@ -689,7 +694,7 @@ class ClippingFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
     factory = _zeroed_mean(4.0)
 
     value_type = computation_types.to_type(_test_struct_type)
-    weight_type = computation_types.to_type(tf.float32)
+    weight_type = computation_types.TensorType(np.float32)
     process = factory.create(value_type, weight_type)
 
     state = process.initialize()
@@ -719,7 +724,7 @@ class ClippingFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
     factory = _zeroed_mean(2.0, float('inf'))
 
     value_type = computation_types.to_type(_test_struct_type)
-    weight_type = computation_types.to_type(tf.float32)
+    weight_type = computation_types.TensorType(np.float32)
     process = factory.create(value_type, weight_type)
 
     state = process.initialize()
@@ -734,7 +739,7 @@ class ClippingFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
   def test_increasing_zero_sum(self):
     factory = _zeroed_sum(_test_norm_process())
 
-    value_type = computation_types.to_type(tf.float32)
+    value_type = computation_types.TensorType(np.float32)
     process = factory.create(value_type)
 
     state = process.initialize()
@@ -758,8 +763,8 @@ class ClippingFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
   def test_increasing_zero_mean(self):
     factory = _zeroed_mean(_test_norm_process())
 
-    value_type = computation_types.to_type(tf.float32)
-    weight_type = computation_types.to_type(tf.float32)
+    value_type = computation_types.TensorType(np.float32)
+    weight_type = computation_types.TensorType(np.float32)
     process = factory.create(value_type, weight_type)
 
     state = process.initialize()
@@ -791,7 +796,7 @@ class ClippingFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
     def zeroing_next_fn(state, value):
       del value
       return intrinsics.federated_map(
-          tensorflow_computation.tf_computation(lambda x: x + 0.75, tf.float32),
+          tensorflow_computation.tf_computation(lambda x: x + 0.75, np.float32),
           state,
       )
 
@@ -801,7 +806,7 @@ class ClippingFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
     def clipping_next_fn(state, value):
       del value
       return intrinsics.federated_map(
-          tensorflow_computation.tf_computation(lambda x: x + 0.25, tf.float32),
+          tensorflow_computation.tf_computation(lambda x: x + 0.25, np.float32),
           state,
       )
 
@@ -816,7 +821,7 @@ class ClippingFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
         zeroing_norm_process, _clipped_sum(clipping_norm_process)
     )
 
-    value_type = computation_types.to_type(tf.float32)
+    value_type = computation_types.TensorType(np.float32)
     process = factory.create(value_type)
 
     state = process.initialize()
@@ -864,7 +869,7 @@ class ClippingFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
   )
   def test_zero_mixed_float_dtype(self, norm_order):
     factory = _zeroed_sum(clip=3.0, norm_order=norm_order)
-    mixed_float = computation_types.to_type((tf.float16, tf.float32))
+    mixed_float = computation_types.to_type((np.float16, np.float32))
     process = factory.create(mixed_float)
 
     # Should not zero-out anything.

@@ -36,19 +36,19 @@ from tensorflow_federated.python.core.templates import estimation_process
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.core.test import static_assert
 
-_test_struct_type = [(tf.float32, (2, 2)), tf.float32]
+_test_struct_type = [(np.float32, (2, 2)), np.float32]
 _test_nested_struct_type = collections.OrderedDict(
-    a=[tf.float32, [(tf.float32, (2, 2, 1))]], b=(tf.float32, (3,))
+    a=[np.float32, [(np.float32, (2, 2, 1))]], b=(np.float32, (3,))
 )
 
 
 def _make_test_nested_struct(value):
   return collections.OrderedDict(
       a=[
-          tf.constant(value, dtype=tf.float32),
-          [tf.constant(value, dtype=tf.float32, shape=[2, 2, 1])],
+          np.array(value, dtype=np.float32),
+          [np.array(value, dtype=np.float32, shape=[2, 2, 1])],
       ],
-      b=tf.constant(value, dtype=tf.float32, shape=(3,)),
+      b=np.array(value, dtype=np.float32, shape=(3,)),
   )
 
 
@@ -116,8 +116,8 @@ class DistributedDpComputationTest(tf.test.TestCase, parameterized.TestCase):
   @parameterized.named_parameters(
       _named_test_cases_product(
           {
-              'value_type_1': tf.int64,
-              'value_type_2': tf.float32,
+              'value_type_1': np.int64,
+              'value_type_2': np.float32,
               'value_type_3': _test_struct_type,
               'value_type_4': _test_nested_struct_type,
           },
@@ -163,7 +163,7 @@ class DistributedDpComputationTest(tf.test.TestCase, parameterized.TestCase):
 
     # Check next_fn/measurements.
     discrete_state = discrete_f.create(
-        computation_types.to_type(tf.float32)
+        computation_types.TensorType(np.float32)
     ).initialize()
     dp_query_state = dp_query.initial_global_state()
     dp_query_metrics_type = type_conversions.infer_type(
@@ -180,8 +180,8 @@ class DistributedDpComputationTest(tf.test.TestCase, parameterized.TestCase):
         scaled_local_stddev=type_conversions.infer_type(
             dp_query_state.local_stddev
         ),
-        actual_num_clients=tf.int32,
-        padded_dim=tf.int32,
+        actual_num_clients=np.int32,
+        padded_dim=np.int32,
         dp_query_metrics=dp_query_metrics_type,
     )
     expected_next_type = computation_types.FunctionType(
@@ -319,10 +319,10 @@ class DistributedDpComputationTest(tf.test.TestCase, parameterized.TestCase):
       )
 
   @parameterized.named_parameters(
-      ('plain_struct', [('a', tf.int32)]),
-      ('sequence', computation_types.SequenceType(tf.int32)),
-      ('function', computation_types.FunctionType(tf.int32, tf.int32)),
-      ('nested_sequence', [[[computation_types.SequenceType(tf.int32)]]]),
+      ('plain_struct', [('a', np.int32)]),
+      ('sequence', computation_types.SequenceType(np.int32)),
+      ('function', computation_types.FunctionType(np.int32, np.int32)),
+      ('nested_sequence', [[[computation_types.SequenceType(np.int32)]]]),
   )
   def test_tff_value_types_raise_on(self, value_type):
     ddp_factory = _make_test_factory()
@@ -331,9 +331,9 @@ class DistributedDpComputationTest(tf.test.TestCase, parameterized.TestCase):
       ddp_factory.create(value_type)
 
   @parameterized.named_parameters(
-      ('bool', tf.bool),
-      ('string', tf.string),
-      ('string_nested', [tf.string, [tf.string]]),
+      ('bool', np.bool_),
+      ('string', np.str_),
+      ('string_nested', [np.str_, [np.str_]]),
   )
   def test_component_tensor_dtypes_raise_on(self, value_type):
     test_factory = _make_test_factory()
@@ -362,11 +362,11 @@ class DistributedDpExecutionTest(tf.test.TestCase, parameterized.TestCase):
   )
   def test_sum(self, name, rotation_type, beta):
     if name == 'scalar':
-      value_type = tf.float32
+      value_type = np.float32
       client_values = [-1.0, 2.0, 3.0]
       expected_sum = 4.0
     elif name == 'rank_2':
-      value_type = (tf.float32, [2, 2])
+      value_type = (np.float32, [2, 2])
       client_values = [[[1.0, 2.0], [1.0, 2.0]], [[2.0, 1.0], [2.0, 1.0]]]
       expected_sum = [[3.0, 3.0], [3.0, 3.0]]
     else:  # name == 'struct'
@@ -417,7 +417,7 @@ class DistributedDpExecutionTest(tf.test.TestCase, parameterized.TestCase):
 
     dim = 99
     padded_dim = 100.0 if rotation_type == 'dft' else 128.0
-    value_type = (tf.float32, _make_onehot(0.0, dim).shape.as_list())
+    value_type = (np.float32, _make_onehot(0.0, dim).shape.as_list())
     process = ddp_factory.create(computation_types.to_type(value_type))
     state = process.initialize()
     _, discrete_state, _ = ddp_factory._unpack_state(state)
@@ -532,7 +532,7 @@ class DistributedDpExecutionTest(tf.test.TestCase, parameterized.TestCase):
         bits=20,
         mechanism=mechanism,
     )
-    process = ddp_factory.create(computation_types.to_type(tf.float32))
+    process = ddp_factory.create(computation_types.TensorType(np.float32))
     state = process.initialize()
     outputs = []
     for _ in range(num_iterations):

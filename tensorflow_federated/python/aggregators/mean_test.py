@@ -16,6 +16,7 @@ import collections
 import math
 
 from absl.testing import parameterized
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import aggregator_test_utils
@@ -28,20 +29,20 @@ from tensorflow_federated.python.core.templates import measured_process
 
 M_CONST = aggregator_test_utils.MEASUREMENT_CONSTANT
 
-_test_struct_type = ((tf.float32, (2,)), tf.float64)
+_test_struct_type = ((np.float32, (2,)), np.float64)
 
 
 class MeanFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
-      ('float_value_float32_weight', tf.float32, tf.float32),
-      ('struct_value_float32_weight', _test_struct_type, tf.float32),
-      ('float_value_float64_weight', tf.float32, tf.float64),
-      ('struct_value_float64_weight', _test_struct_type, tf.float64),
-      ('float_value_int32_weight', tf.float32, tf.int32),
-      ('struct_value_int32_weight', _test_struct_type, tf.int32),
-      ('float_value_int64_weight', tf.float32, tf.int64),
-      ('struct_value_int64_weight', _test_struct_type, tf.int64),
+      ('float_value_float32_weight', np.float32, np.float32),
+      ('struct_value_float32_weight', _test_struct_type, np.float32),
+      ('float_value_float64_weight', np.float32, np.float64),
+      ('struct_value_float64_weight', _test_struct_type, np.float64),
+      ('float_value_int32_weight', np.float32, np.int32),
+      ('struct_value_int32_weight', _test_struct_type, np.int32),
+      ('float_value_int64_weight', np.float32, np.int64),
+      ('struct_value_int64_weight', _test_struct_type, np.int64),
   )
   def test_type_properties(self, value_type, weight_type):
     value_type = computation_types.to_type(value_type)
@@ -89,7 +90,7 @@ class MeanFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
     )
 
   @parameterized.named_parameters(
-      ('float_value', tf.float32),
+      ('float_value', np.float32),
       ('struct_value', _test_struct_type),
   )
   def test_type_properties_unweighted(self, value_type):
@@ -131,14 +132,14 @@ class MeanFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
     )
 
   @parameterized.named_parameters(
-      ('float_value_float32_weight', tf.float32, tf.float32),
-      ('struct_value_float32_weight', _test_struct_type, tf.float32),
-      ('float_value_float64_weight', tf.float32, tf.float64),
-      ('struct_value_float64_weight', _test_struct_type, tf.float64),
-      ('float_value_int32_weight', tf.float32, tf.int32),
-      ('struct_value_int32_weight', _test_struct_type, tf.int32),
-      ('float_value_int64_weight', tf.float32, tf.int64),
-      ('struct_value_int64_weight', _test_struct_type, tf.int64),
+      ('float_value_float32_weight', np.float32, np.float32),
+      ('struct_value_float32_weight', _test_struct_type, np.float32),
+      ('float_value_float64_weight', np.float32, np.float64),
+      ('struct_value_float64_weight', _test_struct_type, np.float64),
+      ('float_value_int32_weight', np.float32, np.int32),
+      ('struct_value_int32_weight', _test_struct_type, np.int32),
+      ('float_value_int64_weight', np.float32, np.int64),
+      ('struct_value_int64_weight', _test_struct_type, np.int64),
   )
   def test_type_properties_with_inner_factory(self, value_type, weight_type):
     value_type = computation_types.to_type(value_type)
@@ -158,11 +159,11 @@ class MeanFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
 
     expected_state_type = computation_types.at_server(
         collections.OrderedDict(
-            value_sum_process=tf.int32, weight_sum_process=tf.int32
+            value_sum_process=np.int32, weight_sum_process=np.int32
         )
     )
     expected_measurements_type = computation_types.at_server(
-        collections.OrderedDict(mean_value=tf.int32, mean_weight=tf.int32)
+        collections.OrderedDict(mean_value=np.int32, mean_weight=np.int32)
     )
 
     expected_initialize_type = computation_types.FunctionType(
@@ -191,7 +192,7 @@ class MeanFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
     )
 
   @parameterized.named_parameters(
-      ('float_value', tf.float32),
+      ('float_value', np.float32),
       ('struct_value', _test_struct_type),
   )
   def test_type_properties_with_inner_factory_unweighted(self, value_type):
@@ -209,9 +210,9 @@ class MeanFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
     param_value_type = computation_types.at_clients(value_type)
     result_value_type = computation_types.at_server(value_type)
 
-    expected_state_type = computation_types.at_server(((tf.int32, tf.int32)))
+    expected_state_type = computation_types.at_server(((np.int32, np.int32)))
     expected_measurements_type = computation_types.at_server(
-        collections.OrderedDict(mean_value=tf.int32, mean_count=tf.int32)
+        collections.OrderedDict(mean_value=np.int32, mean_count=np.int32)
     )
 
     expected_initialize_type = computation_types.FunctionType(
@@ -236,13 +237,13 @@ class MeanFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
     )
 
   @parameterized.named_parameters(
-      ('federated_type', computation_types.at_server(tf.float32)),
+      ('federated_type', computation_types.at_server(np.float32)),
       ('function_type', computation_types.FunctionType(None, ())),
-      ('sequence_type', computation_types.SequenceType(tf.float32)),
+      ('sequence_type', computation_types.SequenceType(np.float32)),
   )
   def test_incorrect_create_type_raises(self, wrong_type):
     factory_ = mean.MeanFactory()
-    correct_type = computation_types.to_type(tf.float32)
+    correct_type = computation_types.TensorType(np.float32)
     with self.assertRaises(TypeError):
       factory_.create(wrong_type, correct_type)
     with self.assertRaises(TypeError):
@@ -257,8 +258,8 @@ class MeanFactoryExecutionTest(tf.test.TestCase):
 
   def test_scalar_value(self):
     factory_ = mean.MeanFactory()
-    value_type = computation_types.to_type(tf.float32)
-    weight_type = computation_types.to_type(tf.float32)
+    value_type = computation_types.TensorType(np.float32)
+    weight_type = computation_types.TensorType(np.float32)
 
     process = factory_.create(value_type, weight_type)
     expected_state = collections.OrderedDict(
@@ -281,7 +282,7 @@ class MeanFactoryExecutionTest(tf.test.TestCase):
 
   def test_scalar_value_unweighted(self):
     factory_ = mean.UnweightedMeanFactory()
-    value_type = computation_types.to_type(tf.float32)
+    value_type = computation_types.TensorType(np.float32)
 
     process = factory_.create(value_type)
     expected_state = ((), ())
@@ -302,7 +303,7 @@ class MeanFactoryExecutionTest(tf.test.TestCase):
   def test_structure_value(self):
     factory_ = mean.MeanFactory()
     value_type = computation_types.to_type(_test_struct_type)
-    weight_type = computation_types.to_type(tf.float32)
+    weight_type = computation_types.TensorType(np.float32)
     process = factory_.create(value_type, weight_type)
     expected_state = collections.OrderedDict(
         value_sum_process=(), weight_sum_process=()
@@ -342,8 +343,8 @@ class MeanFactoryExecutionTest(tf.test.TestCase):
 
   def test_weight_arg(self):
     factory_ = mean.MeanFactory()
-    value_type = computation_types.to_type(tf.float32)
-    weight_type = computation_types.to_type(tf.float32)
+    value_type = computation_types.TensorType(np.float32)
+    weight_type = computation_types.TensorType(np.float32)
     process = factory_.create(value_type, weight_type)
 
     state = process.initialize()
@@ -357,8 +358,8 @@ class MeanFactoryExecutionTest(tf.test.TestCase):
 
   def test_weight_arg_all_zeros_nan_division(self):
     factory_ = mean.MeanFactory(no_nan_division=False)
-    value_type = computation_types.to_type(tf.float32)
-    weight_type = computation_types.to_type(tf.float32)
+    value_type = computation_types.TensorType(np.float32)
+    weight_type = computation_types.TensorType(np.float32)
     process = factory_.create(value_type, weight_type)
 
     state = process.initialize()
@@ -372,8 +373,8 @@ class MeanFactoryExecutionTest(tf.test.TestCase):
 
   def test_weight_arg_all_zeros_no_nan_division(self):
     factory_ = mean.MeanFactory(no_nan_division=True)
-    value_type = computation_types.to_type(tf.float32)
-    weight_type = computation_types.to_type(tf.float32)
+    value_type = computation_types.TensorType(np.float32)
+    weight_type = computation_types.TensorType(np.float32)
     process = factory_.create(value_type, weight_type)
 
     state = process.initialize()
@@ -386,8 +387,8 @@ class MeanFactoryExecutionTest(tf.test.TestCase):
   def test_inner_value_sum_factory(self):
     sum_factory = aggregator_test_utils.SumPlusOneFactory()
     factory_ = mean.MeanFactory(value_sum_factory=sum_factory)
-    value_type = computation_types.to_type(tf.float32)
-    weight_type = computation_types.to_type(tf.float32)
+    value_type = computation_types.TensorType(np.float32)
+    weight_type = computation_types.TensorType(np.float32)
     process = factory_.create(value_type, weight_type)
 
     state = process.initialize()
@@ -416,7 +417,7 @@ class MeanFactoryExecutionTest(tf.test.TestCase):
     factory_ = mean.UnweightedMeanFactory(
         value_sum_factory=sum_factory, count_sum_factory=sum_factory
     )
-    value_type = computation_types.to_type(tf.float32)
+    value_type = computation_types.TensorType(np.float32)
     process = factory_.create(value_type)
 
     state = process.initialize()
@@ -436,8 +437,8 @@ class MeanFactoryExecutionTest(tf.test.TestCase):
   def test_inner_weight_sum_factory(self):
     sum_factory = aggregator_test_utils.SumPlusOneFactory()
     factory_ = mean.MeanFactory(weight_sum_factory=sum_factory)
-    value_type = computation_types.to_type(tf.float32)
-    weight_type = computation_types.to_type(tf.float32)
+    value_type = computation_types.TensorType(np.float32)
+    weight_type = computation_types.TensorType(np.float32)
     process = factory_.create(value_type, weight_type)
 
     state = process.initialize()
@@ -466,8 +467,8 @@ class MeanFactoryExecutionTest(tf.test.TestCase):
     factory_ = mean.MeanFactory(
         value_sum_factory=sum_factory, weight_sum_factory=sum_factory
     )
-    value_type = computation_types.to_type(tf.float32)
-    weight_type = computation_types.to_type(tf.float32)
+    value_type = computation_types.TensorType(np.float32)
+    weight_type = computation_types.TensorType(np.float32)
     process = factory_.create(value_type, weight_type)
 
     state = process.initialize()

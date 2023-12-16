@@ -27,20 +27,20 @@ from tensorflow_federated.python.core.impl.types import type_test_utils
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
 
-_test_value_type_int32_tensor_rank_1 = (tf.int32, (4,))
-_test_value_type_int32_tensor_rank_2 = (tf.int32, (2, 4))
-_test_value_type_float32_tensor = (tf.float32, (3,))
-_test_value_type_int64_tensor = (tf.int64, (4,))
+_test_value_type_int32_tensor_rank_1 = (np.int32, (4,))
+_test_value_type_int32_tensor_rank_2 = (np.int32, (2, 4))
+_test_value_type_float32_tensor = (np.float32, (3,))
+_test_value_type_int64_tensor = (np.int64, (4,))
 _test_value_type_struct_int32_tensors = collections.OrderedDict({
-    'layer1': (tf.int32, (4,)),
-    'layer2': (tf.int32, (4,)),
+    'layer1': (np.int32, (4,)),
+    'layer2': (np.int32, (4,)),
 })
 _test_federated_value_type_int32_tensor = computation_types.at_clients(
     _test_value_type_int32_tensor_rank_1
 )
 _test_federated_value_type_struct_int32_tensors = collections.OrderedDict({
-    'layer1': computation_types.at_server((tf.int32, (4,))),
-    'layer2': (tf.int32, (4,)),
+    'layer1': computation_types.at_server((np.int32, (4,))),
+    'layer2': (np.int32, (4,)),
 })
 
 _test_client_values_int32_tensor_rank_1 = [[-5, 3, 0, 0], [-3, 1, 0, 0]]
@@ -130,7 +130,7 @@ class EncodeComputationTest(tf.test.TestCase, parameterized.TestCase):
     )
 
     expected_measurements_type = computation_types.StructType(
-        [('elias_gamma_code_avg_bitrate', tf.float64)]
+        [('elias_gamma_code_avg_bitrate', np.float64)]
     )
     expected_measurements_type = computation_types.at_server(
         expected_measurements_type

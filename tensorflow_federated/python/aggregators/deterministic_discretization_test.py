@@ -31,21 +31,21 @@ from tensorflow_federated.python.core.impl.types import type_test_utils
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
 
-_test_struct_type_int = [tf.int32, (tf.int32, (2,)), (tf.int32, (3, 3))]
-_test_struct_type_float = [tf.float32, (tf.float32, (2,)), (tf.float32, (3, 3))]
+_test_struct_type_int = [np.int32, (np.int32, (2,)), (np.int32, (3, 3))]
+_test_struct_type_float = [np.float32, (np.float32, (2,)), (np.float32, (3, 3))]
 
 _test_nested_struct_type_float = collections.OrderedDict(
-    a=[tf.float32, [(tf.float32, (2, 2, 1))]], b=(tf.float32, (3, 3))
+    a=[np.float32, [(np.float32, (2, 2, 1))]], b=(np.float32, (3, 3))
 )
 
 
 def _make_test_nested_struct_value(value):
   return collections.OrderedDict(
       a=[
-          tf.constant(value, dtype=tf.float32),
-          [tf.constant(value, dtype=tf.float32, shape=[2, 2, 1])],
+          tf.constant(value, dtype=np.float32),
+          [tf.constant(value, dtype=np.float32, shape=[2, 2, 1])],
       ],
-      b=tf.constant(value, dtype=tf.float32, shape=(3, 3)),
+      b=tf.constant(value, dtype=np.float32, shape=(3, 3)),
   )
 
 
@@ -69,8 +69,8 @@ class DeterministicDiscretizationComputationTest(
 ):
 
   @parameterized.named_parameters(
-      ('float', tf.float32),
-      ('struct_list_float_scalars', [tf.float16, tf.float32, tf.float64]),
+      ('float', np.float32),
+      ('struct_list_float_scalars', [np.float16, np.float32, np.float64]),
       ('struct_list_float_mixed', _test_struct_type_float),
       ('struct_nested', _test_nested_struct_type_float),
   )
@@ -82,13 +82,13 @@ class DeterministicDiscretizationComputationTest(
     )
     value_type = computation_types.to_type(value_type)
     quantize_type = type_conversions.structure_from_tensor_type_tree(
-        lambda x: (tf.int32, x.shape), value_type
+        lambda x: (np.int32, x.shape), value_type
     )
     process = factory.create(value_type)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
     server_state_type = computation_types.StructType(
-        [('step_size', tf.float32), ('inner_agg_process', ())]
+        [('step_size', np.float32), ('inner_agg_process', ())]
     )
     server_state_type = computation_types.at_server(server_state_type)
     expected_initialize_type = computation_types.FunctionType(
@@ -100,7 +100,7 @@ class DeterministicDiscretizationComputationTest(
 
     expected_measurements_type = computation_types.StructType([
         ('deterministic_discretization', quantize_type),
-        ('distortion', tf.float32),
+        ('distortion', np.float32),
     ])
     expected_measurements_type = computation_types.at_server(
         expected_measurements_type
@@ -121,11 +121,11 @@ class DeterministicDiscretizationComputationTest(
     )
 
   @parameterized.named_parameters(
-      ('bool', tf.bool),
-      ('string', tf.string),
-      ('int32', tf.int32),
-      ('int64', tf.int64),
-      ('int_nested', [tf.int32, [tf.int32]]),
+      ('bool', np.bool_),
+      ('string', np.str_),
+      ('int32', np.int32),
+      ('int64', np.int64),
+      ('int_nested', [np.int32, [np.int32]]),
   )
   def test_raises_on_bad_component_tensor_dtypes(self, value_type):
     factory = deterministic_discretization.DeterministicDiscretizationFactory(
@@ -135,10 +135,10 @@ class DeterministicDiscretizationComputationTest(
     self.assertRaises(TypeError, factory.create, value_type)
 
   @parameterized.named_parameters(
-      ('plain_struct', [('a', tf.int32)]),
-      ('sequence', computation_types.SequenceType(tf.int32)),
-      ('function', computation_types.FunctionType(tf.int32, tf.int32)),
-      ('nested_sequence', [[[computation_types.SequenceType(tf.int32)]]]),
+      ('plain_struct', [('a', np.int32)]),
+      ('sequence', computation_types.SequenceType(np.int32)),
+      ('function', computation_types.FunctionType(np.int32, np.int32)),
+      ('nested_sequence', [[[computation_types.SequenceType(np.int32)]]]),
   )
   def test_raises_on_bad_tff_value_types(self, value_type):
     factory = deterministic_discretization.DeterministicDiscretizationFactory(
@@ -153,16 +153,16 @@ class DeterministicDiscretizationExecutionTest(
 ):
 
   @parameterized.named_parameters(
-      ('scalar', tf.float32, [1, 2, 3], 6),
+      ('scalar', np.float32, [1, 2, 3], 6),
       (
           'rank_1_tensor',
-          (tf.float32, [7]),
+          (np.float32, [7]),
           [np.arange(7.0), np.arange(7.0) * 2],
           np.arange(7.0) * 3,
       ),
       (
           'rank_2_tensor',
-          (tf.float32, [1, 2]),
+          (np.float32, [1, 2]),
           [((1, 1),), ((2, 2),)],
           ((3, 3),),
       ),
@@ -202,7 +202,7 @@ class DeterministicDiscretizationExecutionTest(
       self.assertAllClose(result, expected_result)
 
   @parameterized.named_parameters(
-      ('int32', tf.int32), ('int64', tf.int64), ('float64', tf.float64)
+      ('int32', np.int32), ('int64', np.int64), ('float64', np.float64)
   )
   def test_output_dtype(self, dtype):
     """Checks the tensor type gets casted during preprocessing."""
@@ -215,7 +215,7 @@ class DeterministicDiscretizationExecutionTest(
     )
 
   @parameterized.named_parameters(
-      ('int32', tf.int32), ('int64', tf.int64), ('float64', tf.float64)
+      ('int32', np.int32), ('int64', np.int64), ('float64', np.float64)
   )
   def test_revert_to_input_dtype(self, dtype):
     """Checks that postprocessing restores the original dtype."""
@@ -241,11 +241,10 @@ class QuantizationTest(tf.test.TestCase, parameterized.TestCase):
       )
   )
   def test_error_from_rounding(self, step_size, shape):
-    dtype = tf.float32
-    x = tf.random.uniform(shape=shape, minval=-10, maxval=10, dtype=dtype)
+    x = tf.random.uniform(shape=shape, minval=-10, maxval=10, dtype=tf.float32)
     encoded_x = deterministic_discretization._discretize_struct(x, step_size)
     decoded_x = deterministic_discretization._undiscretize_struct(
-        encoded_x, step_size, tf_dtype_struct=dtype
+        encoded_x, step_size, tf_dtype_struct=np.float32
     )
     x, decoded_x = self.evaluate([x, decoded_x])
 
@@ -264,14 +263,14 @@ class ScalingTest(tf.test.TestCase, parameterized.TestCase):
     # Integers to prevent rounding.
     x = tf.random.stateless_uniform([100], (1, 1), -100, 100, dtype=tf.int32)
     discretized_x = deterministic_discretization._discretize_struct(
-        x, tf.cast(step_size, tf.float32)
+        x, tf.cast(step_size, np.float32)
     )
     reverted_x = deterministic_discretization._undiscretize_struct(
-        discretized_x, step_size, tf_dtype_struct=tf.int32
+        discretized_x, step_size, tf_dtype_struct=np.int32
     )
     x, discretized_x, reverted_x = self.evaluate([x, discretized_x, reverted_x])
     self.assertAllEqual(
-        tf.round(tf.divide(tf.cast(x, tf.float32), step_size)), discretized_x
+        tf.round(tf.divide(tf.cast(x, np.float32), step_size)), discretized_x
     )  # Scaling up.
     self.assertAllEqual(x, reverted_x)  # Scaling down.
 

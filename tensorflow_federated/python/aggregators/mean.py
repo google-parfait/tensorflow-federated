@@ -17,6 +17,7 @@ import collections
 import typing
 from typing import Optional
 
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory
@@ -210,7 +211,7 @@ class UnweightedMeanFactory(factory.UnweightedAggregationFactory):
     _check_value_type(value_type)
     value_sum_process = self._value_sum_factory.create(value_type)
     count_sum_process = self._count_sum_factory.create(
-        computation_types.TensorType(tf.int32)
+        computation_types.TensorType(np.int32)
     )
 
     @federated_computation.federated_computation()

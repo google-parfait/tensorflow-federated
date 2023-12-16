@@ -69,7 +69,7 @@ class PrivateQEComputationTest(tf.test.TestCase, parameterized.TestCase):
     )
 
     estimate_type = computation_types.FederatedType(
-        tf.float32, placements.SERVER
+        np.float32, placements.SERVER
     )
 
     self.assertEqual(
@@ -80,7 +80,7 @@ class PrivateQEComputationTest(tf.test.TestCase, parameterized.TestCase):
     )
 
     client_value_type = computation_types.FederatedType(
-        tf.float32, placements.CLIENTS
+        np.float32, placements.CLIENTS
     )
     self.assertTrue(
         process.next.type_signature.is_equivalent_to(

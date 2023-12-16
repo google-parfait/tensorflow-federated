@@ -16,6 +16,7 @@
 import collections
 from typing import Optional
 
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory
@@ -49,7 +50,7 @@ class DeterministicDiscretizationFactory(factory.UnweightedAggregationFactory):
   inflation.
 
   The structure of the input is kept, and all values of the component tensors
-  are scaled, rounded, and cast to `tf.int32`.
+  are scaled, rounded, and cast to 32-bit integers.
 
   This aggregator only accepts `value_type` of either `tff.TensorType` or
   `tff.StructWithPythonType` and expects the dtype of component tensors to be
@@ -120,21 +121,21 @@ class DeterministicDiscretizationFactory(factory.UnweightedAggregationFactory):
     if self._distortion_aggregation_factory is not None:
       distortion_aggregation_process = (
           self._distortion_aggregation_factory.create(
-              computation_types.to_type(tf.float32)
+              computation_types.to_type(np.float32)
           )  # pytype: disable=wrong-arg-types
       )
 
-    @tensorflow_computation.tf_computation(value_type, tf.float32)
+    @tensorflow_computation.tf_computation(value_type, np.float32)
     def discretize_fn(value, step_size):
       return _discretize_struct(value, step_size)
 
     @tensorflow_computation.tf_computation(
-        discretize_fn.type_signature.result, tf.float32
+        discretize_fn.type_signature.result, np.float32
     )
     def undiscretize_fn(value, step_size):
       return _undiscretize_struct(value, step_size, tf_dtype)
 
-    @tensorflow_computation.tf_computation(value_type, tf.float32)
+    @tensorflow_computation.tf_computation(value_type, np.float32)
     def distortion_measurement_fn(value, step_size):
       reconstructed_value = undiscretize_fn(
           discretize_fn(value, step_size), step_size
@@ -212,7 +213,7 @@ def _discretize_struct(struct, step_size):
   def discretize_tensor(x):
     scaled_x = tf.divide(tf.cast(x, tf.float32), step_size)
     discretized_x = tf.round(scaled_x)
-    return tf.cast(discretized_x, tf.int32)
+    return tf.cast(discretized_x, OUTPUT_TF_TYPE)
 
   return tf.nest.map_structure(discretize_tensor, struct)
 

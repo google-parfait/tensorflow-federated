@@ -27,12 +27,12 @@ from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.test import static_assert
 
 _MIN_MAX_TEST_DTYPES = [
-    ('int16', tf.int16),
-    ('int32', tf.int32),
-    ('int64', tf.int64),
-    ('float16', tf.float16),
-    ('float32', tf.float32),
-    ('float64', tf.float64),
+    ('int16', np.int16),
+    ('int32', np.int32),
+    ('int64', np.int64),
+    ('float16', np.float16),
+    ('float32', np.float32),
+    ('float64', np.float64),
 ]
 
 
@@ -126,8 +126,9 @@ class FederatedMinTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_federated_min_wrong_type(self):
     with self.assertRaises(ValueError):
+
       @federated_computation.federated_computation(
-          computation_types.at_clients(tf.bool)
+          computation_types.at_clients(np.bool_)
       )
       def call_federated_min(value):
         return primitives.federated_min(value)
@@ -136,8 +137,9 @@ class FederatedMinTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_federated_min_wrong_placement(self):
     with self.assertRaises(TypeError):
+
       @federated_computation.federated_computation(
-          computation_types.at_server(tf.int32)
+          computation_types.at_server(np.int32)
       )
       def call_federated_min(value):
         return primitives.federated_min(value)
@@ -235,8 +237,9 @@ class FederatedMaxTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_federated_max_wrong_type(self):
     with self.assertRaises(ValueError):
+
       @federated_computation.federated_computation(
-          computation_types.at_clients(tf.bool)
+          computation_types.at_clients(np.bool_)
       )
       def call_federated_max(value):
         return primitives.federated_max(value)
@@ -245,8 +248,9 @@ class FederatedMaxTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_federated_max_wrong_placement(self):
     with self.assertRaises(TypeError):
+
       @federated_computation.federated_computation(
-          computation_types.at_server(tf.float32)
+          computation_types.at_server(np.float32)
       )
       def call_federated_max(value):
         return primitives.federated_max(value)
@@ -257,8 +261,9 @@ class FederatedMaxTest(tf.test.TestCase, parameterized.TestCase):
 class FederatedSampleTest(tf.test.TestCase):
 
   def test_federated_sample_single_value(self):
+
     @federated_computation.federated_computation(
-        computation_types.FederatedType(tf.float32, placements.CLIENTS)
+        computation_types.FederatedType(np.float32, placements.CLIENTS)
     )
     def call_federated_sample(value):
       return primitives.federated_sample(value)
@@ -267,7 +272,7 @@ class FederatedSampleTest(tf.test.TestCase):
     self.assertCountEqual(value, [1.0, 2.0, 5.0])
 
   def test_federated_sample_on_nested_scalars(self):
-    tuple_type = collections.OrderedDict(x=tf.float32, y=tf.float32)
+    tuple_type = collections.OrderedDict(x=np.float32, y=np.float32)
 
     @federated_computation.federated_computation(
         computation_types.FederatedType(tuple_type, placements.CLIENTS)
@@ -296,7 +301,7 @@ class FederatedSampleTest(tf.test.TestCase):
     ):
 
       @federated_computation.federated_computation(
-          computation_types.FederatedType(tf.bool, placements.SERVER)
+          computation_types.FederatedType(np.bool_, placements.SERVER)
       )
       def call_federated_sample(value):
         return primitives.federated_sample(value)
@@ -304,8 +309,9 @@ class FederatedSampleTest(tf.test.TestCase):
       call_federated_sample([True, False, True, True])
 
   def test_federated_sample_max_size_is_100(self):
+
     @federated_computation.federated_computation(
-        computation_types.FederatedType(tf.float32, placements.CLIENTS)
+        computation_types.FederatedType(np.float32, placements.CLIENTS)
     )
     def call_federated_sample(value):
       return primitives.federated_sample(value)
@@ -315,8 +321,9 @@ class FederatedSampleTest(tf.test.TestCase):
     self.assertAlmostEqual(len(np.nonzero(value)[0]), 50, delta=20)
 
   def test_federated_sample_preserves_nan_percentage(self):
+
     @federated_computation.federated_computation(
-        computation_types.FederatedType(tf.float32, placements.CLIENTS)
+        computation_types.FederatedType(np.float32, placements.CLIENTS)
     )
     def call_federated_sample(value):
       return primitives.federated_sample(value)
@@ -325,8 +332,9 @@ class FederatedSampleTest(tf.test.TestCase):
     self.assertAlmostEqual(np.count_nonzero(np.isnan(value)), 50, delta=20)
 
   def test_federated_sample_preserves_inf_percentage(self):
+
     @federated_computation.federated_computation(
-        computation_types.FederatedType(tf.float32, placements.CLIENTS)
+        computation_types.FederatedType(np.float32, placements.CLIENTS)
     )
     def call_federated_sample(value):
       return primitives.federated_sample(value)
@@ -336,7 +344,7 @@ class FederatedSampleTest(tf.test.TestCase):
 
   def test_federated_sample_named_tuple_type_of_ordered_dict(self):
     dict_type = computation_types.to_type(
-        collections.OrderedDict([('x', tf.float32), ('y', tf.float32)])
+        collections.OrderedDict([('x', np.float32), ('y', np.float32)])
     )
 
     @federated_computation.federated_computation(
@@ -355,9 +363,9 @@ class FederatedSampleTest(tf.test.TestCase):
     self.assertIn(x, result['x'])
 
   def test_federated_sample_nested_named_tuples(self):
-    tuple_test_type = collections.OrderedDict(x=tf.float32, y=tf.float32)
+    tuple_test_type = collections.OrderedDict(x=np.float32, y=np.float32)
     dict_test_type = computation_types.to_type(
-        collections.OrderedDict(a=tf.float32, b=tf.float32)
+        collections.OrderedDict(a=np.float32, b=np.float32)
     )
     nested_tuple_type = collections.OrderedDict(
         tuple_1=tuple_test_type, tuple_2=dict_test_type
@@ -385,10 +393,10 @@ class SecureQuantizedSumStaticAssertsTest(
 ):
 
   @parameterized.named_parameters(
-      ('int32', tf.int32),
-      ('int64', tf.int64),
-      ('float32', tf.float32),
-      ('float64', tf.float64),
+      ('int32', np.int32),
+      ('int64', np.int64),
+      ('float32', np.float32),
+      ('float64', np.float64),
   )
   def test_contains_static_aggregation(self, dtype):
     """Tests that built computation contains at least one secure sum call."""
@@ -400,8 +408,8 @@ class SecureQuantizedSumStaticAssertsTest(
     def comp_py_bounds(value):
       return primitives.secure_quantized_sum(
           value,
-          np.array(-1.0, dtype.as_numpy_dtype),
-          np.array(1.0, dtype.as_numpy_dtype),
+          np.array(-1.0, dtype),
+          np.array(1.0, dtype),
       )
 
     static_assert.assert_not_contains_unsecure_aggregation(comp_py_bounds)
@@ -762,31 +770,31 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
         int_type,
     )
 
-  @parameterized.named_parameters(('int32', tf.int32), ('int64', tf.int64))
+  @parameterized.named_parameters(('int32', np.int32), ('int64', np.int64))
   def test_scalar_int_type_py_range(self, int_type):
     """Tests value of integer scalar type and scalar np range."""
     call_secure_sum = _build_test_sum_fn_py_bounds(
-        int_type, _np_val_fn(0, int_type), _np_val_fn(255, int_type)
+        int_type, np.array(0, int_type), np.array(255, int_type)
     )
     self.assertEqual(0, call_secure_sum([0]))
     self.assertEqual(278, call_secure_sum([0, 1, 255, 22]))
 
-  @parameterized.named_parameters(('int32', tf.int32), ('int64', tf.int64))
+  @parameterized.named_parameters(('int32', np.int32), ('int64', np.int64))
   def test_tensor_int_type_py_range(self, int_type):
     """Tests value of integer tensor type and scalar np range."""
     t_type = computation_types.TensorType(int_type, (2,))
     call_secure_sum = _build_test_sum_fn_py_bounds(
-        t_type, _np_val_fn(0, int_type), _np_val_fn(255, int_type)
+        t_type, np.array(0, int_type), np.array(255, int_type)
     )
     data = [(0, 0), (1, 2), (255, 5), (22, 123)]
     self.assertAllEqual((278, 130), call_secure_sum(data))
 
-  @parameterized.named_parameters(('int32', tf.int32), ('int64', tf.int64))
+  @parameterized.named_parameters(('int32', np.int32), ('int64', np.int64))
   def test_composite_int_type_py_range(self, int_type):
     """Tests value of integer composite type and scalar np range."""
     t_type = computation_types.to_type(((int_type, (2,)), (int_type, (3,))))
     call_secure_sum = _build_test_sum_fn_py_bounds(
-        t_type, _np_val_fn(0, int_type), _np_val_fn(255, int_type)
+        t_type, np.array(0, int_type), np.array(255, int_type)
     )
     data = [((0, 0), (0, 0, 0)),
             ((1, 2), (3, 4, 5)),
@@ -796,14 +804,14 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
     self.assertAllEqual((278, 130), result[0])
     self.assertAllEqual((329, 15, 270), result[1])
 
-  @parameterized.named_parameters(('int32', tf.int32), ('int64', tf.int64))
+  @parameterized.named_parameters(('int32', np.int32), ('int64', np.int64))
   def test_composite_int_type_composite_py_range(self, int_type):
     """Tests value of integer composite type and composite np range."""
     t_type = computation_types.to_type(((int_type, (2,)), (int_type, (3,))))
     call_secure_sum = _build_test_sum_fn_py_bounds(
         t_type,
-        (_np_val_fn(0, int_type), _np_val_fn(63, int_type)),
-        (_np_val_fn(255, int_type), _np_val_fn(64, int_type)),
+        (np.array(0, int_type), np.array(63, int_type)),
+        (np.array(255, int_type), np.array(64, int_type)),
     )
     data = [((0, 0), (0, 0, 0)),
             ((1, 2), (3, 4, 5)),
@@ -813,7 +821,7 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
     self.assertAllEqual((278, 130), result[0])
     self.assertAllEqual((254, 252, 254), result[1])
 
-  @parameterized.named_parameters(('int32', tf.int32), ('int64', tf.int64))
+  @parameterized.named_parameters(('int32', np.int32), ('int64', np.int64))
   def test_scalar_int_type_tff_range(self, int_type):
     """Tests value of integer scalar type and scalar tff range."""
     call_secure_sum = _build_test_sum_fn_tff_bounds(
@@ -822,7 +830,7 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(0, call_secure_sum([0], 0, 255))
     self.assertEqual(258, call_secure_sum([0, 255, 1, 2], 0, 255))
 
-  @parameterized.named_parameters(('int32', tf.int32), ('int64', tf.int64))
+  @parameterized.named_parameters(('int32', np.int32), ('int64', np.int64))
   def test_tensor_int_type_tff_range(self, int_type):
     """Tests value of integer tensor type and scalar tff range."""
     call_secure_sum = _build_test_sum_fn_tff_bounds(
@@ -832,7 +840,7 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
         [256, 7], call_secure_sum([[0, 0], [1, 2], [255, 5]], 0, 255)
     )
 
-  @parameterized.named_parameters(('int32', tf.int32), ('int64', tf.int64))
+  @parameterized.named_parameters(('int32', np.int32), ('int64', np.int64))
   def test_composite_int_type_tff_range(self, int_type):
     """Tests value of integer composite type and scalar tff range."""
     t_type = computation_types.to_type(((int_type, (2,)), (int_type, (3,))))
@@ -845,7 +853,7 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
     self.assertAllEqual((278, 130), result[0])
     self.assertAllEqual((329, 15, 270), result[1])
 
-  @parameterized.named_parameters(('int32', tf.int32), ('int64', tf.int64))
+  @parameterized.named_parameters(('int32', np.int32), ('int64', np.int64))
   def test_composite_int_type_composite_tff_range(self, int_type):
     """Tests value of integer composite type and composite tff range."""
     t_type = computation_types.to_type(((int_type, (2,)), (int_type, (3,))))
@@ -862,7 +870,7 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_int_type_non_zero_lower_bound(self):
     """Tests that the integer logic is correct when lower bound is not zero."""
-    call_secure_sum = _build_test_sum_fn_py_bounds(tf.int32, 4, 20)
+    call_secure_sum = _build_test_sum_fn_py_bounds(np.int32, 4, 20)
     self.assertEqual(4, call_secure_sum([3]))
     self.assertEqual(4, call_secure_sum([4]))
     self.assertEqual(5, call_secure_sum([5]))
@@ -878,7 +886,7 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
     """Tests that summation is not exact if range spans more than 2**32."""
     # Range of size 2 * 2**32 - 1.
     call_secure_sum = _build_test_sum_fn_py_bounds(
-        tf.int64, -(2**32) + 1, 2**32 - 2
+        np.int64, -(2**32) + 1, 2**32 - 2
     )
     result_0 = call_secure_sum([0])
     result_1 = call_secure_sum([1])
@@ -902,7 +910,7 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
   def test_int_type_out_of_range(self):
     """Tests that integer value is clipped if outside of specified range."""
     # Range specified as Python constants.
-    call_secure_sum = _build_test_sum_fn_py_bounds(tf.int32, 0, 255)
+    call_secure_sum = _build_test_sum_fn_py_bounds(np.int32, 0, 255)
     self.assertEqual(0, call_secure_sum([-1]))
     self.assertEqual(0, call_secure_sum([-255]))
     self.assertEqual(0, call_secure_sum([-256]))
@@ -912,7 +920,7 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
 
     # Range specified as tff values.
     call_secure_sum = _build_test_sum_fn_tff_bounds(
-        tf.int32, tf.int32, tf.int32
+        np.int32, np.int32, np.int32
     )
     self.assertEqual(0, call_secure_sum([-1], 0, 255))
     self.assertEqual(0, call_secure_sum([-255], 0, 255))
@@ -922,12 +930,12 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(255, call_secure_sum([-10, 256], 0, 255))
 
   @parameterized.named_parameters(
-      ('float32', tf.float32), ('float64', tf.float64)
+      ('float32', np.float32), ('float64', np.float64)
   )
   def test_scalar_float_type_py_range(self, float_type):
     """Tests value of float scalar type and scalar np range."""
     call_secure_sum = _build_test_sum_fn_py_bounds(
-        float_type, _np_val_fn(0.0, float_type), _np_val_fn(1.0, float_type)
+        float_type, np.array(0.0, float_type), np.array(1.0, float_type)
     )
     self.assertEqual(0.0, call_secure_sum([0.0]))
     self.assertEqual(1.0, call_secure_sum([1.0]))
@@ -935,25 +943,25 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
     self.assertAllClose(1.8, call_secure_sum([0.0, 0.1, 0.7, 1.0]))
 
   @parameterized.named_parameters(
-      ('float32', tf.float32), ('float64', tf.float64)
+      ('float32', np.float32), ('float64', np.float64)
   )
   def test_tensor_float_type_py_range(self, float_type):
     """Tests value of float tensor type and scalar np range."""
     t_type = computation_types.TensorType(float_type, (2,))
     call_secure_sum = _build_test_sum_fn_py_bounds(
-        t_type, _np_val_fn(0.0, float_type), _np_val_fn(1.0, float_type)
+        t_type, np.array(0.0, float_type), np.array(1.0, float_type)
     )
     data = [(0.0, 0.0), (0.1, 0.55), (0.7, 0.15), (1.0, 0.99)]
     self.assertAllClose((1.8, 1.69), call_secure_sum(data))
 
   @parameterized.named_parameters(
-      ('float32', tf.float32), ('float64', tf.float64)
+      ('float32', np.float32), ('float64', np.float64)
   )
   def test_composite_float_type_py_range(self, float_type):
     """Tests value of float composite type and scalar np range."""
     t_type = computation_types.to_type(((float_type, (2,)), (float_type, (3,))))
     call_secure_sum = _build_test_sum_fn_py_bounds(
-        t_type, _np_val_fn(0.0, float_type), _np_val_fn(1.0, float_type)
+        t_type, np.array(0.0, float_type), np.array(1.0, float_type)
     )
     data = [((0.0, 0.0), (0.0, 0.0, 0.0)),
             ((0.1, 0.55), (0.3, 0.4, 0.5)),
@@ -964,15 +972,15 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
     self.assertAllClose((0.9234, 1.1001, 1.8299), result[1])
 
   @parameterized.named_parameters(
-      ('float32', tf.float32), ('float64', tf.float64)
+      ('float32', np.float32), ('float64', np.float64)
   )
   def test_composite_float_type_composite_py_range(self, float_type):
     """Tests value of float composite type and composite np range."""
     t_type = computation_types.to_type(((float_type, (2,)), (float_type, (3,))))
     call_secure_sum = _build_test_sum_fn_py_bounds(
         t_type,
-        (_np_val_fn(0.0, float_type), _np_val_fn(0.2, float_type)),
-        (_np_val_fn(1.0, float_type), _np_val_fn(0.9, float_type)),
+        (np.array(0.0, float_type), np.array(0.2, float_type)),
+        (np.array(1.0, float_type), np.array(0.9, float_type)),
     )
     data = [((0.0, 0.0), (0.0, 0.0, 0.0)),
             ((0.1, 0.55), (0.3, 0.4, 0.5)),
@@ -983,7 +991,7 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
     self.assertAllClose((1.2, 1.5, 1.93), result[1])
 
   @parameterized.named_parameters(
-      ('float32', tf.float32), ('float64', tf.float64)
+      ('float32', np.float32), ('float64', np.float64)
   )
   def test_scalar_float_type_tff_range(self, float_type):
     """Tests value of float scalar type and scalar tff range."""
@@ -996,7 +1004,7 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
     self.assertAllClose(1.8, call_secure_sum([0.0, 0.1, 0.7, 1.0], 0.0, 1.0))
 
   @parameterized.named_parameters(
-      ('float32', tf.float32), ('float64', tf.float64)
+      ('float32', np.float32), ('float64', np.float64)
   )
   def test_tensor_float_type_tff_range(self, float_type):
     """Tests value of float tensor type and scalar tff range."""
@@ -1008,7 +1016,7 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
     self.assertAllClose((1.8, 1.69), call_secure_sum(data, 0.0, 1.0))
 
   @parameterized.named_parameters(
-      ('float32', tf.float32), ('float64', tf.float64)
+      ('float32', np.float32), ('float64', np.float64)
   )
   def test_composite_float_type_tff_range(self, float_type):
     """Tests value of float composite type and scalar tff range."""
@@ -1025,7 +1033,7 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
     self.assertAllClose((0.9234, 1.1001, 1.8299), result[1])
 
   @parameterized.named_parameters(
-      ('float32', tf.float32), ('float64', tf.float64)
+      ('float32', np.float32), ('float64', np.float64)
   )
   def test_composite_float_type_composite_tff_range(self, float_type):
     """Tests value of float composite type and composite tff range."""
@@ -1044,7 +1052,7 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
   def test_float_type_out_of_range(self):
     """Tests that float value is clipped if outside of specified range."""
     # Range specified as Python constants.
-    call_secure_sum = _build_test_sum_fn_py_bounds(tf.float32, 0.0, 1.0)
+    call_secure_sum = _build_test_sum_fn_py_bounds(np.float32, 0.0, 1.0)
     self.assertAllClose(0.0, call_secure_sum([-1.0]))
     self.assertAllClose(0.0, call_secure_sum([-0.001]))
     self.assertAllClose(1.0, call_secure_sum([2.9]))
@@ -1053,7 +1061,7 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
 
     # Range specified as tff values.
     call_secure_sum = _build_test_sum_fn_tff_bounds(
-        tf.float32, tf.float32, tf.float32
+        np.float32, np.float32, np.float32
     )
     self.assertAllClose(0.0, call_secure_sum([-1.0], 0.0, 1.0))
     self.assertAllClose(0.0, call_secure_sum([-0.001], 0.0, 1.0))
@@ -1063,7 +1071,7 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_float_type_non_zero_lower_bound(self):
     """Tests that the float logic is correct when lower bound is not zero."""
-    call_secure_sum = _build_test_sum_fn_py_bounds(tf.float32, 4.0, 20.0)
+    call_secure_sum = _build_test_sum_fn_py_bounds(np.float32, 4.0, 20.0)
     self.assertAllClose(4.0, call_secure_sum([3.0]))
     self.assertAllClose(4.0, call_secure_sum([4.0]))
     self.assertAllClose(5.0, call_secure_sum([5.0]))
@@ -1077,7 +1085,7 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_mixed_type_structure(self):
     """Tests a structure consisting of different dtypes can be aggregted."""
-    t_type = computation_types.to_type(((tf.int32, (2,)), (tf.float32, (3,))))
+    t_type = computation_types.to_type(((np.int32, (2,)), (np.float32, (3,))))
     call_secure_sum = _build_test_sum_fn_py_bounds(t_type, (0, 0.0), (255, 1.0))
     data = [((0, 0), (0.0, 0.0, 0.0)),
             ((1, 2), (0.3, 0.4, 0.5)),
@@ -1090,18 +1098,18 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
   def test_numeric_border_conditions_int(self):
     """Tests that certain border conditions do not cause numeric issues."""
     # Ensure division by zero does not occur.
-    call_secure_sum = _build_test_sum_fn_py_bounds(tf.int32, 0, 0)
+    call_secure_sum = _build_test_sum_fn_py_bounds(np.int32, 0, 0)
     self.assertEqual(0, call_secure_sum([-1]))
     self.assertEqual(0, call_secure_sum([0]))
     self.assertEqual(0, call_secure_sum([1]))
-    call_secure_sum = _build_test_sum_fn_py_bounds(tf.int32, 1, 1)
+    call_secure_sum = _build_test_sum_fn_py_bounds(np.int32, 1, 1)
     self.assertEqual(1, call_secure_sum([0]))
     self.assertEqual(1, call_secure_sum([1]))
     self.assertEqual(1, call_secure_sum([2]))
 
     # Ensure that using entire int32 range does not somehow break down.
     call_secure_sum = _build_test_sum_fn_py_bounds(
-        tf.int32, -(2**31), -1 + 2**31
+        np.int32, -(2**31), -1 + 2**31
     )
     self.assertEqual(0, call_secure_sum([0]))
     self.assertEqual(-(2**31), call_secure_sum([-(2**31)]))
@@ -1110,11 +1118,11 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(-1, call_secure_sum([-(2**31), -1 + 2**31]))
 
   @parameterized.named_parameters(
-      ('float32', tf.float32), ('float64', tf.float64)
+      ('float32', np.float32), ('float64', np.float64)
   )
   def test_numeric_border_conditions_float(self, float_type):
     """Tests that certain border conditions do not cause numeric issues."""
-    np_val_fn = lambda v: np.array(v, float_type.as_numpy_dtype)
+    np_val_fn = lambda v: np.array(v, float_type)
 
     # Ensure division by zero does not occur.
     call_secure_sum = _build_test_sum_fn_py_bounds(
@@ -1149,11 +1157,11 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
     )
 
   @parameterized.named_parameters(
-      ('float32', tf.float32), ('float64', tf.float64)
+      ('float32', np.float32), ('float64', np.float64)
   )
   def test_numeric_precision_zeros_float(self, float_type):
     """Ensure that 0's are represented exactly regardless of clipping range."""
-    np_val_fn = lambda v: np.array(v, float_type.as_numpy_dtype)
+    np_val_fn = lambda v: np.array(v, float_type)
 
     # Small symmetric clipping range. Test multiple summands as well to ensure
     # dequantization shifting handles this without introducing additional
@@ -1228,11 +1236,11 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
     )
 
   @parameterized.named_parameters(
-      ('float32', tf.float32), ('float64', tf.float64)
+      ('float32', np.float32), ('float64', np.float64)
   )
   def test_numeric_precision_small_values_float(self, float_type):
     """Ensure that small values are as accurate as expected."""
-    np_val_fn = lambda v: np.array(v, float_type.as_numpy_dtype)
+    np_val_fn = lambda v: np.array(v, float_type)
 
     def call_secure_sum_with_small_values(call_secure_sum_fn, orders):
       """Checks sum with multiple orders of magnitude of small inputs."""
@@ -1266,7 +1274,7 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_numeric_precision_represent_sums_float32(self):
     """Ensure that upper_bound + value for small float32 values is as accurate as expected."""
-    np_val_fn = lambda v: np.array(v, tf.float32.as_numpy_dtype)
+    np_val_fn = lambda v: np.array(v, np.float32)
 
     def call_secure_sum_with_small_values(
         call_secure_sum_fn, orders, upper_bound
@@ -1274,7 +1282,7 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
       """Checks sum with multiple orders of magnitude of small inputs."""
       for i in range(1, orders + 1):
         # Test sums slightly above `upper_bound` since this uses additional bits
-        # of the float mantissa, which can be a problem for `tf.float32`
+        # of the float mantissa, which can be a problem for `np.float32`
         # especially in representing the final output.
         value = 10**-i
         summed_value = call_secure_sum_fn([value, upper_bound])
@@ -1288,7 +1296,7 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
     # Small clipping range. Expect 7 significant figures relative to range, so
     # values as small as 10**-7 should be captured.
     call_secure_sum_fn = _build_test_sum_fn_py_bounds(
-        tf.float32, np_val_fn(-1.0), np_val_fn(1.0)
+        np.float32, np_val_fn(-1.0), np_val_fn(1.0)
     )
     call_secure_sum_with_small_values(
         call_secure_sum_fn, orders=7, upper_bound=1.0
@@ -1297,7 +1305,7 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
     # Large clipping range. Expect 7 significant figures relative to range, so
     # values as small as 10**-1 should be captured.
     call_secure_sum_fn = _build_test_sum_fn_py_bounds(
-        tf.float32, np_val_fn(-(10**6) * 1.0), np_val_fn(10**6 * 1.0)
+        np.float32, np_val_fn(-(10**6) * 1.0), np_val_fn(10**6 * 1.0)
     )
     call_secure_sum_with_small_values(
         call_secure_sum_fn, orders=1, upper_bound=10**6 * 1.0
@@ -1306,7 +1314,7 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
     # Asymmetric clipping range. Expect 7 significant figures relative to range,
     # so values as small as 10**-5 should be captured.
     call_secure_sum_fn = _build_test_sum_fn_py_bounds(
-        tf.float32, np_val_fn(-1.0), np_val_fn(100.0)
+        np.float32, np_val_fn(-1.0), np_val_fn(100.0)
     )
     call_secure_sum_with_small_values(
         call_secure_sum_fn, orders=5, upper_bound=100.0
@@ -1314,7 +1322,7 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_numeric_precision_represent_sums_float64(self):
     """Ensure that upper_bound + value for small float64 values is as accurate as expected."""
-    np_val_fn = lambda v: np.array(v, tf.float64.as_numpy_dtype)
+    np_val_fn = lambda v: np.array(v, np.float64)
 
     def call_secure_sum_with_small_values(
         call_secure_sum_fn, orders, upper_bound
@@ -1322,7 +1330,7 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
       """Checks sum with multiple orders of magnitude of small inputs."""
       for i in range(1, orders + 1):
         # Test sums slightly above `upper_bound` since this uses additional bits
-        # of the float mantissa, which can be a problem for `tf.float64` in
+        # of the float mantissa, which can be a problem for `np.float64` in
         # representing the final output.
         value = 10**-i
         summed_value = call_secure_sum_fn([value, upper_bound])
@@ -1336,7 +1344,7 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
     # Small clipping range. Expect 9 significant figures relative to range, so
     # values as small as 10**-9 should be captured.
     call_secure_sum_fn = _build_test_sum_fn_py_bounds(
-        tf.float64, np_val_fn(-1.0), np_val_fn(1.0)
+        np.float64, np_val_fn(-1.0), np_val_fn(1.0)
     )
     call_secure_sum_with_small_values(
         call_secure_sum_fn, orders=9, upper_bound=1.0
@@ -1345,7 +1353,7 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
     # Large clipping range. Expect 9 significant figures relative to range, so
     # values as small as 10**-3 should be captured.
     call_secure_sum_fn = _build_test_sum_fn_py_bounds(
-        tf.float64, np_val_fn(-(10**6) * 1.0), np_val_fn(10**6 * 1.0)
+        np.float64, np_val_fn(-(10**6) * 1.0), np_val_fn(10**6 * 1.0)
     )
     call_secure_sum_with_small_values(
         call_secure_sum_fn, orders=3, upper_bound=10**6 * 1.0
@@ -1354,42 +1362,42 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
     # Asymmetric clipping range. Expect 9 significant figures relative to range,
     # so values as small as 10**-7 should be captured.
     call_secure_sum_fn = _build_test_sum_fn_py_bounds(
-        tf.float64, np_val_fn(-1.0), np_val_fn(100.0)
+        np.float64, np_val_fn(-1.0), np_val_fn(100.0)
     )
     call_secure_sum_with_small_values(
         call_secure_sum_fn, orders=7, upper_bound=100.0
     )
 
   @parameterized.named_parameters(
-      ('int8', tf.int8), ('int16', tf.int16), ('float16', tf.float16)
+      ('int8', np.int8), ('int16', np.int16), ('float16', np.float16)
   )
   def test_client_value_bad_dtype_raises(self, bad_dtype):
     with self.assertRaises(primitives.UnsupportedDTypeError):
       _build_test_sum_fn_py_bounds(
           bad_dtype,
-          np.array(0, bad_dtype.as_numpy_dtype),
-          np.array(1, bad_dtype.as_numpy_dtype),
+          np.array(0, bad_dtype),
+          np.array(1, bad_dtype),
       )
 
   def test_range_type_mismatch_raises(self):
     with self.assertRaises(primitives.ScalarBoundSimpleValueDTypeError):
-      _build_test_sum_fn_py_bounds(tf.float32, 0, 1)
+      _build_test_sum_fn_py_bounds(np.float32, 0, 1)
     with self.assertRaises(primitives.ScalarBoundSimpleValueDTypeError):
-      _build_test_sum_fn_py_bounds(tf.int32, 0.0, 1.0)
+      _build_test_sum_fn_py_bounds(np.int32, 0.0, 1.0)
     with self.assertRaises(primitives.ScalarBoundStructValueDTypeError):
-      _build_test_sum_fn_py_bounds((tf.float32, tf.float64), 0.0, 1.0)
+      _build_test_sum_fn_py_bounds((np.float32, np.float64), 0.0, 1.0)
     with self.assertRaises(primitives.ScalarBoundStructValueDTypeError):
-      _build_test_sum_fn_py_bounds((tf.int32, tf.int64), 0, 1)
+      _build_test_sum_fn_py_bounds((np.int32, np.int64), 0, 1)
     with self.assertRaises(primitives.BoundsDifferentSignaturesError):
-      _build_test_sum_fn_py_bounds(tf.int32, 0, 1.0)
+      _build_test_sum_fn_py_bounds(np.int32, 0, 1.0)
     with self.assertRaises(primitives.BoundsDifferentSignaturesError):
-      _build_test_sum_fn_py_bounds(tf.int32, 0.0, 1)
+      _build_test_sum_fn_py_bounds(np.int32, 0.0, 1)
 
   def test_bounds_different_types_raises(self):
     with self.assertRaises(primitives.BoundsDifferentTypesError):
 
       @federated_computation.federated_computation(
-          computation_types.FederatedType(tf.int32, placements.CLIENTS)
+          computation_types.FederatedType(np.int32, placements.CLIENTS)
       )
       def _(value):
         lower_bound = intrinsics.federated_value(0, placements.SERVER)
@@ -1403,7 +1411,7 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
     with self.assertRaises(primitives.BoundsNotPlacedAtServerError):
 
       @federated_computation.federated_computation(
-          computation_types.FederatedType(tf.int32, placements.CLIENTS)
+          computation_types.FederatedType(np.int32, placements.CLIENTS)
       )
       def _(value):
         lower_bound = intrinsics.federated_value(0, placements.CLIENTS)
@@ -1416,11 +1424,11 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
   def test_range_structure_mismatch_raises(self):
     with self.assertRaises(primitives.StructuredBoundsTypeMismatchError):
       _build_test_sum_fn_py_bounds(
-          (tf.int32, tf.int32, tf.int32), (0, 0), (1, 1)
+          (np.int32, np.int32, np.int32), (0, 0), (1, 1)
       )
     with self.assertRaises(primitives.StructuredBoundsTypeMismatchError):
       _build_test_sum_fn_py_bounds(
-          (tf.int32, tf.int32, tf.int32), (0.0, 0.0, 0.0), (1.0, 1.0, 1.0)
+          (np.int32, np.int32, np.int32), (0.0, 0.0, 0.0), (1.0, 1.0, 1.0)
       )
 
 
@@ -1484,11 +1492,6 @@ def _build_test_sum_fn_tff_bounds(
     return summed_value
 
   return call_secure_sum
-
-
-def _np_val_fn(value, tf_dtype):
-  """Converts `value` to numpy array of dtype corresponding to `tf_dtype`."""
-  return np.array(value, tf_dtype.as_numpy_dtype)
 
 
 if __name__ == '__main__':

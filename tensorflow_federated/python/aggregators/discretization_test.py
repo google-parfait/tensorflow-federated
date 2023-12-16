@@ -26,11 +26,11 @@ from tensorflow_federated.python.core.impl.types import type_test_utils
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
 
-_test_struct_type_int = [tf.int32, (tf.int32, (2,)), (tf.int32, (3, 3))]
-_test_struct_type_float = [tf.float32, (tf.float32, (2,)), (tf.float32, (3, 3))]
+_test_struct_type_int = [np.int32, (np.int32, (2,)), (np.int32, (3, 3))]
+_test_struct_type_float = [np.float32, (np.float32, (2,)), (np.float32, (3, 3))]
 
 _test_nested_struct_type_float = collections.OrderedDict(
-    a=[tf.float32, [(tf.float32, (2, 2, 1))]], b=(tf.float32, (3, 3))
+    a=[np.float32, [(np.float32, (2, 2, 1))]], b=(np.float32, (3, 3))
 )
 
 
@@ -74,8 +74,8 @@ class DiscretizationFactoryComputationTest(
 ):
 
   @parameterized.named_parameters(
-      ('float', tf.float32),
-      ('struct_list_float_scalars', [tf.float16, tf.float32, tf.float64]),
+      ('float', np.float32),
+      ('struct_list_float_scalars', [np.float16, np.float32, np.float64]),
       ('struct_list_float_mixed', _test_struct_type_float),
       ('struct_nested', _test_nested_struct_type_float),
   )
@@ -87,8 +87,8 @@ class DiscretizationFactoryComputationTest(
 
     server_state_type = computation_types.at_server(
         collections.OrderedDict(
-            scale_factor=tf.float32,
-            prior_norm_bound=tf.float32,
+            scale_factor=np.float32,
+            prior_norm_bound=np.float32,
             inner_agg_process=(),
         )
     )
@@ -119,11 +119,11 @@ class DiscretizationFactoryComputationTest(
     )
 
   @parameterized.named_parameters(
-      ('bool', tf.bool),
-      ('string', tf.string),
-      ('int32', tf.int32),
-      ('int64', tf.int64),
-      ('int_nested', [tf.int32, [tf.int32]]),
+      ('bool', np.bool_),
+      ('string', np.str_),
+      ('int32', np.int32),
+      ('int64', np.int64),
+      ('int_nested', [np.int32, [np.int32]]),
   )
   def test_raises_on_bad_component_tensor_dtypes(self, value_type):
     factory = _discretization_sum()
@@ -132,10 +132,10 @@ class DiscretizationFactoryComputationTest(
       factory.create(value_type)
 
   @parameterized.named_parameters(
-      ('plain_struct', [('a', tf.int32)]),
-      ('sequence', computation_types.SequenceType(tf.int32)),
-      ('function', computation_types.FunctionType(tf.int32, tf.int32)),
-      ('nested_sequence', [[[computation_types.SequenceType(tf.int32)]]]),
+      ('plain_struct', [('a', np.int32)]),
+      ('sequence', computation_types.SequenceType(np.int32)),
+      ('function', computation_types.FunctionType(np.int32, np.int32)),
+      ('nested_sequence', [[[computation_types.SequenceType(np.int32)]]]),
   )
   def test_raises_on_bad_tff_value_types(self, value_type):
     factory = _discretization_sum()
@@ -186,17 +186,17 @@ class DiscretizationFactoryExecutionTest(
 ):
 
   @parameterized.named_parameters(
-      ('scalar', tf.float32, [1, 2, 3], 6, False),
+      ('scalar', np.float32, [1, 2, 3], 6, False),
       (
           'rank_1_tensor',
-          (tf.float32, [7]),
+          (np.float32, [7]),
           [np.arange(7.0), np.arange(7.0) * 2],
           np.arange(7.0) * 3,
           False,
       ),
       (
           'rank_2_tensor',
-          (tf.float32, [1, 2]),
+          (np.float32, [1, 2]),
           [((1, 1),), ((2, 2),)],
           ((3, 3),),
           False,
@@ -211,7 +211,7 @@ class DiscretizationFactoryExecutionTest(
           _make_test_nested_struct_value(579),
           False,
       ),
-      ('stochastic', tf.float32, [1, 2, 3], 6, True),
+      ('stochastic', np.float32, [1, 2, 3], 6, True),
   )
   def test_sum(self, value_type, client_data, expected_sum, stochastic):
     """Integration test with sum."""
@@ -317,12 +317,10 @@ class StochasticRoundingTest(tf.test.TestCase, parameterized.TestCase):
     x = tf.random.uniform([100], -100, 100, dtype=tf.float32)
     rounded_norms = []
     for beta in [0, 0.9]:
-      avg_rounded_norm_beta = tf.reduce_mean(
-          [
-              tf.norm(discretization._stochastic_rounding(x, beta=beta))
-              for i in range(num_trials)
-          ]
-      )
+      avg_rounded_norm_beta = tf.reduce_mean([
+          tf.norm(discretization._stochastic_rounding(x, beta=beta))
+          for _ in range(num_trials)
+      ])
       rounded_norms.append(avg_rounded_norm_beta)
 
     rounded_norms = self.evaluate(rounded_norms)

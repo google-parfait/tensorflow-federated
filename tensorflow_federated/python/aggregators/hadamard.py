@@ -106,7 +106,7 @@ def fast_walsh_hadamard_transform(x):
     index = tf.constant(0)
     cond = lambda i, x: tf.less(i, log2)
     body = lambda i, x: [i + 1, _hadamard_step(x, dim)]
-    index, x = tf.while_loop(cond, body, [index, x])
+    _, x = tf.while_loop(cond, body, [index, x])
     return x
 
   x = tf.cond(

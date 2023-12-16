@@ -14,6 +14,7 @@
 
 import collections
 
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import mean
@@ -25,9 +26,9 @@ from tensorflow_federated.python.core.environments.tensorflow_frontend import te
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 
-_struct_type = computation_types.to_type([(tf.float32, (3,)), tf.float32])
+_struct_type = computation_types.to_type([(np.float32, (3,)), np.float32])
 _struct_type_clients = computation_types.at_clients(_struct_type)
-_float_type = computation_types.to_type(tf.float32)
+_float_type = computation_types.to_type(np.float32)
 
 
 @tensorflow_computation.tf_computation

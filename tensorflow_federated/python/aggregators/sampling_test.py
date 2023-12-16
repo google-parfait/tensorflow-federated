@@ -31,21 +31,21 @@ StructWithPythonType = computation_types.StructWithPythonType
 TensorType = computation_types.TensorType
 
 # Type for the random seed used in sampling is int64 tensor with shape [2].
-SEED_TYPE = computation_types.TensorType(tf.int64, shape=[2])
+SEED_TYPE = computation_types.TensorType(np.int64, shape=[2])
 TEST_SEED = 42
-RANDOM_VALUE_TYPE = computation_types.TensorType(tf.int32, [None])
+RANDOM_VALUE_TYPE = computation_types.TensorType(np.int32, [None])
 
 
 class BuildReservoirTypeTest(tf.test.TestCase):
 
   def test_scalar(self):
     self.assertEqual(
-        sampling._build_reservoir_type(TensorType(tf.float32)),
+        sampling._build_reservoir_type(TensorType(np.float32)),
         StructWithPythonType(
             [
                 ('random_seed', SEED_TYPE),
                 ('random_values', RANDOM_VALUE_TYPE),
-                ('samples', TensorType(tf.float32, [None])),
+                ('samples', TensorType(np.float32, [None])),
             ],
             collections.OrderedDict,
         ),
@@ -56,8 +56,8 @@ class BuildReservoirTypeTest(tf.test.TestCase):
         sampling._build_reservoir_type(
             computation_types.to_type(
                 collections.OrderedDict(
-                    a=TensorType(tf.float32),
-                    b=[TensorType(tf.int64, [2]), TensorType(tf.bool)],
+                    a=TensorType(np.float32),
+                    b=[TensorType(np.int64, [2]), TensorType(np.bool_)],
                 )
             )
         ),
@@ -68,10 +68,10 @@ class BuildReservoirTypeTest(tf.test.TestCase):
                 (
                     'samples',
                     collections.OrderedDict(
-                        a=TensorType(tf.float32, [None]),
+                        a=TensorType(np.float32, [None]),
                         b=[
-                            TensorType(tf.int64, [None, 2]),
-                            TensorType(tf.bool, [None]),
+                            TensorType(np.int64, [None, 2]),
+                            TensorType(np.bool_, [None]),
                         ],
                     ),
                 ),
@@ -82,10 +82,10 @@ class BuildReservoirTypeTest(tf.test.TestCase):
 
   def test_fails_non_tensor_or_struct_with_python_type(self):
     with self.assertRaises(TypeError):
-      sampling._build_reservoir_type(SequenceType(TensorType(tf.float32, [3])))
+      sampling._build_reservoir_type(SequenceType(TensorType(np.float32, [3])))
     with self.assertRaises(TypeError):
       sampling._build_reservoir_type(
-          StructType(elements=[(None, TensorType(tf.float32, [3]))])
+          StructType(elements=[(None, TensorType(np.float32, [3]))])
       )
 
 
@@ -100,19 +100,19 @@ class BuildInitialSampleReservoirTest(tf.test.TestCase):
   def test_scalar(self):
     with self.subTest('fixed_seed'):
       initial_reservoir = sampling._build_initial_sample_reservoir(
-          TensorType(tf.int32), seed=TEST_SEED
+          TensorType(np.int32), seed=TEST_SEED
       )
       self.assertAllEqual(
           initial_reservoir,
           collections.OrderedDict(
               random_seed=tf.convert_to_tensor((TEST_SEED, TEST_SEED)),
-              random_values=tf.zeros([0], tf.int32),
-              samples=tf.zeros([0], dtype=tf.int32),
+              random_values=np.zeros([0], np.int32),
+              samples=np.zeros([0], dtype=np.int32),
           ),
       )
     with self.subTest('no_seed'):
       initial_reservoir = sampling._build_initial_sample_reservoir(
-          TensorType(tf.int32)
+          TensorType(np.int32)
       )
       self.assertLen(initial_reservoir['random_seed'], 2)
       self.assertEqual(
@@ -126,8 +126,8 @@ class BuildInitialSampleReservoirTest(tf.test.TestCase):
   def test_structure_of_tensors(self):
     value_type = computation_types.to_type(
         collections.OrderedDict(
-            a=TensorType(tf.float32),
-            b=[TensorType(tf.int64, [2]), TensorType(tf.bool)],
+            a=TensorType(np.float32),
+            b=[TensorType(np.int64, [2]), TensorType(np.bool_)],
         )
     )
     initial_reservoir = sampling._build_initial_sample_reservoir(
@@ -137,12 +137,12 @@ class BuildInitialSampleReservoirTest(tf.test.TestCase):
         initial_reservoir,
         collections.OrderedDict(
             random_seed=tf.convert_to_tensor((TEST_SEED, TEST_SEED)),
-            random_values=tf.zeros([0], tf.int32),
+            random_values=tf.zeros([0], np.int32),
             samples=collections.OrderedDict(
-                a=tf.zeros([0], dtype=tf.float32),
+                a=np.zeros([0], dtype=np.float32),
                 b=[
-                    tf.zeros([0, 2], dtype=tf.int64),
-                    tf.zeros([0], dtype=tf.bool),
+                    np.zeros([0, 2], dtype=np.int64),
+                    np.zeros([0], dtype=np.bool_),
                 ],
             ),
         ),
@@ -151,12 +151,12 @@ class BuildInitialSampleReservoirTest(tf.test.TestCase):
   def test_fails_with_non_tensor_type(self):
     with self.assertRaises(TypeError):
       sampling._build_initial_sample_reservoir(
-          sample_value_type=SequenceType(TensorType(tf.int32)), seed=TEST_SEED
+          sample_value_type=SequenceType(TensorType(np.int32)), seed=TEST_SEED
       )
     with self.assertRaises(TypeError):
       sampling._build_initial_sample_reservoir(
           sample_value_type=computation_types.to_type(
-              collections.OrderedDict(a=SequenceType(TensorType(tf.int32)))
+              collections.OrderedDict(a=SequenceType(TensorType(np.int32)))
           ),
           seed=TEST_SEED,
       )
@@ -171,7 +171,7 @@ class BuildSampleValueComputationTest(tf.test.TestCase):
     self.assertAllClose(*args, **kwargs, atol=0.0, rtol=0.0)
 
   def test_scalar_random_seed(self):
-    example_type = TensorType(tf.int32)
+    example_type = TensorType(np.int32)
     sample_computation = sampling._build_sample_value_computation(
         example_type, sample_size=1
     )
@@ -206,7 +206,7 @@ class BuildSampleValueComputationTest(tf.test.TestCase):
     self.assertNotEqual(reservoir['random_seed'][1], sampling.SEED_SENTINEL)
 
   def test_scalar_fixed_seed(self):
-    example_type = TensorType(tf.int32)
+    example_type = TensorType(np.int32)
     sample_computation = sampling._build_sample_value_computation(
         example_type, sample_size=1
     )
@@ -258,8 +258,8 @@ class BuildSampleValueComputationTest(tf.test.TestCase):
   def test_structure_of_tensors(self):
     example_type = computation_types.to_type(
         collections.OrderedDict(
-            a=TensorType(tf.int32, [3]),
-            b=[TensorType(tf.float32), TensorType(tf.bool)],
+            a=TensorType(np.int32, [3]),
+            b=[TensorType(np.float32), TensorType(np.bool_)],
         )
     )
     sample_computation = sampling._build_sample_value_computation(
@@ -329,7 +329,7 @@ class BuildMergeSamplesComputationTest(tf.test.TestCase):
     self.assertAllClose(*args, **kwargs, atol=0.0, rtol=0.0)
 
   def test_scalar(self):
-    example_type = TensorType(tf.int32)
+    example_type = TensorType(np.int32)
     merge_computation = sampling._build_merge_samples_computation(
         example_type, sample_size=5
     )
@@ -375,7 +375,7 @@ class BuildMergeSamplesComputationTest(tf.test.TestCase):
           merged_reservoir,
           collections.OrderedDict(
               # Arbitrarily take seeds from `a`, discarded later.
-              random_seed=tf.convert_to_tensor((TEST_SEED, TEST_SEED)),
+              random_seed=np.array((TEST_SEED, TEST_SEED)),
               random_values=[1, 3, 5, 2],
               samples=[3, 9, 15, 6],
           ),
@@ -391,7 +391,7 @@ class BuildMergeSamplesComputationTest(tf.test.TestCase):
       self.assertAllEqual(
           merged_reservoir,
           collections.OrderedDict(
-              random_seed=tf.convert_to_tensor((TEST_SEED, TEST_SEED)),
+              random_seed=np.array((TEST_SEED, TEST_SEED)),
               random_values=[5, 5, 5, 5, 5],
               samples=[15, -1, -1, -1, -1],
           ),
@@ -400,8 +400,8 @@ class BuildMergeSamplesComputationTest(tf.test.TestCase):
   def test_structure_of_tensors(self):
     example_type = computation_types.to_type(
         collections.OrderedDict(
-            a=TensorType(tf.int32, [3]),
-            b=[TensorType(tf.float32), TensorType(tf.bool)],
+            a=TensorType(np.int32, [3]),
+            b=[TensorType(np.float32), TensorType(np.bool_)],
         )
     )
     merge_computation = sampling._build_merge_samples_computation(
@@ -437,7 +437,7 @@ class BuildMergeSamplesComputationTest(tf.test.TestCase):
           merged_reservoir,
           collections.OrderedDict(
               # Arbitrarily take seeds from `a`, discarded later.
-              random_seed=tf.convert_to_tensor((TEST_SEED, TEST_SEED)),
+              random_seed=np.array((TEST_SEED, TEST_SEED)),
               random_values=[3, 5, 4, 6, 8],
               samples=collections.OrderedDict(
                   a=[
@@ -469,7 +469,7 @@ class BuildMergeSamplesComputationTest(tf.test.TestCase):
           merged_reservoir,
           collections.OrderedDict(
               # Arbitrarily take seeds from `a`, discarded later.
-              random_seed=tf.convert_to_tensor((TEST_SEED, TEST_SEED)),
+              random_seed=np.array((TEST_SEED, TEST_SEED)),
               random_values=[1, 3, 5, 2],
               samples=collections.OrderedDict(
                   a=[[0, 1, 2], [1, 2, 3], [2, 3, 4], [-0, -1, -2]],
@@ -490,7 +490,7 @@ class BuildMergeSamplesComputationTest(tf.test.TestCase):
       self.assertAllEqual(
           merged_reservoir,
           collections.OrderedDict(
-              random_seed=tf.convert_to_tensor((TEST_SEED, TEST_SEED)),
+              random_seed=np.array((TEST_SEED, TEST_SEED)),
               random_values=[5, 5, 5, 5, 5],
               samples=collections.OrderedDict(
                   a=[[2, 3, 4]] + [[-1, -1, -1]] * 4,
@@ -510,7 +510,7 @@ class BuildFinalizeSampleTest(tf.test.TestCase):
     self.assertAllClose(*args, **kwargs, atol=0.0, rtol=0.0)
 
   def test_scalar(self):
-    example_type = computation_types.to_type(TensorType(tf.int32))
+    example_type = computation_types.to_type(TensorType(np.int32))
     finalize_computation = sampling._build_finalize_sample_computation(
         example_type
     )
@@ -532,8 +532,8 @@ class BuildFinalizeSampleTest(tf.test.TestCase):
   def test_structure(self):
     example_type = computation_types.to_type(
         collections.OrderedDict(
-            a=TensorType(tf.int32),
-            b=[TensorType(tf.float32, [3]), TensorType(tf.bool)],
+            a=TensorType(np.int32),
+            b=[TensorType(np.float32, [3]), TensorType(np.bool_)],
         )
     )
     finalize_computation = sampling._build_finalize_sample_computation(
@@ -562,26 +562,26 @@ class BuildCheckNonFiniteLeavesComputationTest(
 ):
 
   @parameterized.named_parameters(
-      ('float32_nan', tf.float32, np.nan, True),
-      ('half_nan', tf.half, np.nan, True),
-      ('float64_inf', tf.float64, np.inf, True),
-      ('int32_finite', tf.int32, 1, False),
-      ('bool_finite', tf.bool, False, False),
+      ('float32_nan', np.float32, np.nan, True),
+      ('half_nan', np.half, np.nan, True),
+      ('float64_inf', np.float64, np.inf, True),
+      ('int32_finite', np.int32, 1, False),
+      ('bool_finite', np.bool_, False, False),
   )
   def test_scalar(self, dtype, value, is_non_finite):
     computation = sampling._build_check_non_finite_leaves_computation(
         TensorType(dtype)
     )
     result = computation(value)
-    expected_result = tf.constant(is_non_finite, dtype=tf.int64)
+    expected_result = np.array(is_non_finite, dtype=np.int64)
     self.assertEqual(result, expected_result)
 
   def test_structure(self):
     value_type = computation_types.to_type(
         collections.OrderedDict(
-            a=TensorType(tf.int32),
-            b=[TensorType(tf.float32, [3]), TensorType(tf.bool)],
-            c=collections.OrderedDict(d=TensorType(tf.float64, [2, 2])),
+            a=TensorType(np.int32),
+            b=[TensorType(np.float32, [3]), TensorType(np.bool_)],
+            c=collections.OrderedDict(d=TensorType(np.float64, [2, 2])),
         )
     )
     computation = sampling._build_check_non_finite_leaves_computation(
@@ -594,23 +594,23 @@ class BuildCheckNonFiniteLeavesComputationTest(
     )
     result = computation(value)
     expected_result = collections.OrderedDict(
-        a=tf.constant(0, dtype=tf.int64),
-        b=[tf.constant(1, dtype=tf.int64), tf.constant(0, dtype=tf.int64)],
-        c=collections.OrderedDict(d=tf.constant(1, dtype=tf.int64)),
+        a=np.array(0, dtype=np.int64),
+        b=[np.array(1, dtype=np.int64), np.array(0, dtype=np.int64)],
+        c=collections.OrderedDict(d=np.array(1, dtype=np.int64)),
     )
     self.assertEqual(result, expected_result)
 
   def test_fails_with_non_tensor_type(self):
     with self.assertRaisesRegex(TypeError, 'only contain `TensorType`s'):
       sampling._build_check_non_finite_leaves_computation(
-          SequenceType(TensorType(tf.int32))
+          SequenceType(TensorType(np.int32))
       )
     with self.assertRaisesRegex(TypeError, 'only contain `TensorType`s'):
       sampling._build_check_non_finite_leaves_computation(
           computation_types.to_type(
               collections.OrderedDict(
-                  a=TensorType(tf.float32, [3]),
-                  b=[SequenceType(TensorType(tf.int32)), TensorType(tf.bool)],
+                  a=TensorType(np.float32, [3]),
+                  b=[SequenceType(TensorType(np.int32)), TensorType(np.bool_)],
               )
           )
       )
@@ -623,13 +623,13 @@ class UnweightedReservoirSamplingFactoryTest(
   def test_create(self):
     factory = sampling.UnweightedReservoirSamplingFactory(sample_size=10)
     with self.subTest('scalar_aggregator'):
-      factory.create(computation_types.to_type(tf.int32))
+      factory.create(computation_types.TensorType(np.int32))
     with self.subTest('structure_aggregator'):
       factory.create(
           computation_types.to_type(
               collections.OrderedDict(
-                  a=TensorType(tf.int32),
-                  b=[TensorType(tf.float32, [3]), TensorType(tf.bool)],
+                  a=TensorType(np.int32),
+                  b=[TensorType(np.float32, [3]), TensorType(np.bool_)],
               )
           )
       )
@@ -638,7 +638,7 @@ class UnweightedReservoirSamplingFactoryTest(
   def test_sample_size_limits(self, sample_size):
     process = sampling.UnweightedReservoirSamplingFactory(
         sample_size=sample_size
-    ).create(computation_types.to_type(tf.int32))
+    ).create(computation_types.TensorType(np.int32))
     state = process.initialize()
     output = process.next(
         state,
@@ -656,7 +656,7 @@ class UnweightedReservoirSamplingFactoryTest(
 
   def test_unfilled_reservoir(self):
     process = sampling.UnweightedReservoirSamplingFactory(sample_size=4).create(
-        computation_types.to_type(tf.int32)
+        computation_types.TensorType(np.int32)
     )
     state = process.initialize()
     # Create 3 client values to aggregate.
@@ -685,19 +685,19 @@ class UnweightedReservoirSamplingFactoryTest(
 
   def test_measurements_scalar_value(self):
     process = sampling.UnweightedReservoirSamplingFactory(sample_size=1).create(
-        computation_types.to_type(tf.float32)
+        computation_types.TensorType(np.float32)
     )
     state = process.initialize()
     output = process.next(state, [1.0, np.nan, np.inf, 2.0, 3.0])
     # Two clients' values are non-infinte.
-    self.assertEqual(output.measurements, tf.constant(2, dtype=tf.int64))
+    self.assertEqual(output.measurements, np.array(2, dtype=np.int64))
 
   def test_measurements_structure_value(self):
     process = sampling.UnweightedReservoirSamplingFactory(sample_size=1).create(
         computation_types.to_type(
             collections.OrderedDict(
-                a=TensorType(tf.float32),
-                b=[TensorType(tf.float32, [2, 2]), TensorType(tf.bool)],
+                a=TensorType(np.float32),
+                b=[TensorType(np.float32, [2, 2]), TensorType(np.bool_)],
             )
         )
     )
@@ -718,9 +718,9 @@ class UnweightedReservoirSamplingFactoryTest(
         output.measurements,
         collections.OrderedDict(
             # One client has non-infinte tensors for this leaf node.
-            a=tf.constant(1, dtype=tf.int64),
+            a=np.array(1, dtype=np.int64),
             # Two clients have non-infinte tensors for this leaf node.
-            b=[tf.constant(2, dtype=tf.int64), tf.constant(0, dtype=tf.int64)],
+            b=[np.array(2, dtype=np.int64), np.array(0, dtype=np.int64)],
         ),
     )
 

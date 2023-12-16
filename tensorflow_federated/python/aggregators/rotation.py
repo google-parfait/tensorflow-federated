@@ -17,6 +17,7 @@ import collections
 import math
 from typing import Optional
 
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory
@@ -34,8 +35,8 @@ from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
 
 SEED_TF_DTYPE = tf.int64
-SEED_TFF_TYPE = computation_types.TensorType(SEED_TF_DTYPE, [2])
-OUTPUT_TF_DTYPE = tf.float32
+SEED_TFF_TYPE = computation_types.TensorType(np.int64, [2])
+OUTPUT_TF_DTYPE = np.float32
 
 
 class HadamardTransformFactory(factory.UnweightedAggregationFactory):

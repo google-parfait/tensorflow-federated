@@ -25,10 +25,10 @@ from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
 
-_test_struct_type = [(tf.int32, (3,)), tf.int32]
+_test_struct_type = [(np.int32, (3,)), np.int32]
 
-_int_at_server = computation_types.at_server(tf.int32)
-_int_at_clients = computation_types.at_clients(tf.int32)
+_int_at_server = computation_types.at_server(np.int32)
+_int_at_clients = computation_types.at_clients(np.int32)
 
 
 def _make_test_struct_value(x):
@@ -59,10 +59,10 @@ class ModularClippingSumFactoryComputationTest(
   @parameterized.named_parameters(
       _named_test_cases_product(
           {
-              'value_type_1': (tf.int32, [10]),
+              'value_type_1': (np.int32, [10]),
               'value_type_2': _test_struct_type,
               'value_type_3': computation_types.StructType(
-                  [('a', tf.int32), ('b', tf.int32)]
+                  [('a', np.int32), ('b', np.int32)]
               ),
           },
           {'true_stddev': True, 'false_stddev': False},
@@ -85,7 +85,7 @@ class ModularClippingSumFactoryComputationTest(
 
     expected_measurements_type = collections.OrderedDict(modclip=())
     if estimate_stddev:
-      expected_measurements_type['estimated_stddev'] = tf.float32
+      expected_measurements_type['estimated_stddev'] = np.float32
 
     expected_next_type = computation_types.FunctionType(
         parameter=collections.OrderedDict(
@@ -136,7 +136,7 @@ class ModularClippingSumFactoryComputationTest(
       _ = _test_factory(estimate_stddev=value)
 
   @parameterized.named_parameters(
-      ('scalar', tf.int32), ('rank-2', (tf.int32, [1, 1]))
+      ('scalar', np.int32), ('rank-2', (np.int32, [1, 1]))
   )
   def test_raise_on_estimate_stddev_for_single_element(self, value_type):
     factory = _test_factory(estimate_stddev=True)
@@ -145,9 +145,9 @@ class ModularClippingSumFactoryComputationTest(
       factory.create(value_type)
 
   @parameterized.named_parameters(
-      ('sequence', computation_types.SequenceType(tf.int32)),
-      ('function', computation_types.FunctionType(tf.int32, tf.int32)),
-      ('nested_sequence', [[[computation_types.SequenceType(tf.int32)]]]),
+      ('sequence', computation_types.SequenceType(np.int32)),
+      ('function', computation_types.FunctionType(np.int32, np.int32)),
+      ('nested_sequence', [[[computation_types.SequenceType(np.int32)]]]),
   )
   def test_tff_value_types_raise_on(self, value_type):
     factory = _test_factory()
@@ -156,9 +156,9 @@ class ModularClippingSumFactoryComputationTest(
       factory.create(value_type)
 
   @parameterized.named_parameters(
-      ('bool', tf.bool),
-      ('string', tf.string),
-      ('string_nested', [tf.string, [tf.string]]),
+      ('bool', np.bool_),
+      ('string', np.str_),
+      ('string_nested', [np.str_, [np.str_]]),
   )
   def test_component_tensor_dtypes_raise_on(self, value_type):
     factory = _test_factory()
@@ -201,7 +201,7 @@ class ModularClippingSumFactoryExecutionTest(
       self, clip_range_lower, clip_range_upper, client_data, expected_sum
   ):
     factory = _test_factory(clip_range_lower, clip_range_upper)
-    value_type = computation_types.to_type(tf.int32)
+    value_type = computation_types.TensorType(np.int32)
     process = factory.create(value_type)
     state = process.initialize()
     output = process.next(state, client_data)
@@ -217,7 +217,7 @@ class ModularClippingSumFactoryExecutionTest(
       self, clip_range_lower, clip_range_upper, client_data, expected_sum
   ):
     factory = _test_factory(clip_range_lower, clip_range_upper)
-    value_type = computation_types.to_type(tf.int32)
+    value_type = computation_types.TensorType(np.int32)
     process = factory.create(value_type)
     state = process.initialize()
     output = process.next(state, client_data)

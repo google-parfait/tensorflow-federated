@@ -31,21 +31,21 @@ from tensorflow_federated.python.core.impl.types import type_test_utils
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
 
-_test_struct_type_int = [tf.int32, (tf.int32, (2,)), (tf.int32, (3, 3))]
-_test_struct_type_float = [tf.float32, (tf.float32, (2,)), (tf.float32, (3, 3))]
+_test_struct_type_int = [np.int32, (np.int32, (2,)), (np.int32, (3, 3))]
+_test_struct_type_float = [np.float32, (np.float32, (2,)), (np.float32, (3, 3))]
 
 _test_nested_struct_type_float = collections.OrderedDict(
-    a=[tf.float16, [(tf.float32, (2, 2, 1))]], b=(tf.float16, (3, 3))
+    a=[np.float16, [(np.float32, (2, 2, 1))]], b=(np.float16, (3, 3))
 )
 
 
 def _make_test_nested_struct_value(value):
   return collections.OrderedDict(
       a=[
-          tf.constant(value, dtype=tf.float16),
-          [tf.constant(value, dtype=tf.float32, shape=[2, 2, 1])],
+          tf.constant(value, dtype=np.float16),
+          [tf.constant(value, dtype=np.float32, shape=[2, 2, 1])],
       ],
-      b=tf.constant(value, dtype=tf.float16, shape=(3, 3)),
+      b=tf.constant(value, dtype=np.float16, shape=(3, 3)),
   )
 
 
@@ -69,8 +69,8 @@ class StochasticDiscretizationComputationTest(
 ):
 
   @parameterized.named_parameters(
-      ('float', tf.float32),
-      ('struct_list_float_scalars', [tf.float16, tf.float32, tf.float64]),
+      ('float', np.float32),
+      ('struct_list_float_scalars', [np.float16, np.float32, np.float64]),
       ('struct_list_float_mixed', _test_struct_type_float),
       ('struct_nested', _test_nested_struct_type_float),
   )
@@ -82,13 +82,13 @@ class StochasticDiscretizationComputationTest(
     )
     value_type = computation_types.to_type(value_type)
     quantize_type = type_conversions.structure_from_tensor_type_tree(
-        lambda x: (tf.int32, x.shape), value_type
+        lambda x: (np.int32, x.shape), value_type
     )
     process = factory.create(value_type)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
     server_state_type = computation_types.StructType(
-        [('step_size', tf.float32), ('inner_agg_process', ())]
+        [('step_size', np.float32), ('inner_agg_process', ())]
     )
     server_state_type = computation_types.at_server(server_state_type)
     expected_initialize_type = computation_types.FunctionType(
@@ -100,7 +100,7 @@ class StochasticDiscretizationComputationTest(
 
     expected_measurements_type = computation_types.StructType([
         ('stochastic_discretization', quantize_type),
-        ('distortion', tf.float32),
+        ('distortion', np.float32),
     ])
     expected_measurements_type = computation_types.at_server(
         expected_measurements_type
@@ -121,11 +121,11 @@ class StochasticDiscretizationComputationTest(
     )
 
   @parameterized.named_parameters(
-      ('bool', tf.bool),
-      ('string', tf.string),
-      ('int32', tf.int32),
-      ('int64', tf.int64),
-      ('int_nested', [tf.int32, [tf.int32]]),
+      ('bool', np.bool_),
+      ('string', np.str_),
+      ('int32', np.int32),
+      ('int64', np.int64),
+      ('int_nested', [np.int32, [np.int32]]),
   )
   def test_raises_on_bad_component_tensor_dtypes(self, value_type):
     factory = stochastic_discretization.StochasticDiscretizationFactory(
@@ -135,10 +135,10 @@ class StochasticDiscretizationComputationTest(
     self.assertRaises(TypeError, factory.create, value_type)
 
   @parameterized.named_parameters(
-      ('plain_struct', [('a', tf.int32)]),
-      ('sequence', computation_types.SequenceType(tf.int32)),
-      ('function', computation_types.FunctionType(tf.int32, tf.int32)),
-      ('nested_sequence', [[[computation_types.SequenceType(tf.int32)]]]),
+      ('plain_struct', [('a', np.int32)]),
+      ('sequence', computation_types.SequenceType(np.int32)),
+      ('function', computation_types.FunctionType(np.int32, np.int32)),
+      ('nested_sequence', [[[computation_types.SequenceType(np.int32)]]]),
   )
   def test_raises_on_bad_tff_value_types(self, value_type):
     factory = stochastic_discretization.StochasticDiscretizationFactory(
@@ -153,16 +153,16 @@ class StochasticDiscretizationExecutionTest(
 ):
 
   @parameterized.named_parameters(
-      ('scalar', tf.float32, [1, 2, 3], 6),
+      ('scalar', np.float32, [1, 2, 3], 6),
       (
           'rank_1_tensor',
-          (tf.float32, [7]),
+          (np.float32, [7]),
           [np.arange(7.0), np.arange(7.0) * 2],
           np.arange(7.0) * 3,
       ),
       (
           'rank_2_tensor',
-          (tf.float32, [1, 2]),
+          (np.float32, [1, 2]),
           [((1, 1),), ((2, 2),)],
           ((3, 3),),
       ),
@@ -177,7 +177,7 @@ class StochasticDiscretizationExecutionTest(
       ),
       (
           'zero_size_tensor',
-          [(tf.float32, (0,)), (tf.float32, (2,))],
+          [(np.float32, (0,)), (np.float32, (2,))],
           [[[], [1, 2]], [[], [3, 4]]],
           [[], [4, 6]],
       ),
@@ -208,7 +208,7 @@ class StochasticDiscretizationExecutionTest(
       self.assertAllClose(result, expected_result)
 
   @parameterized.named_parameters(
-      ('float16', tf.float16), ('float32', tf.float32), ('float64', tf.float64)
+      ('float16', np.float16), ('float32', np.float32), ('float64', np.float64)
   )
   def test_output_dtype(self, dtype):
     """Checks the tensor type gets casted during preprocessing."""
@@ -218,7 +218,7 @@ class StochasticDiscretizationExecutionTest(
     self.assertEqual(encoded_x.dtype, stochastic_discretization.OUTPUT_TF_TYPE)
 
   @parameterized.named_parameters(
-      ('float16', tf.float16), ('float32', tf.float32), ('float64', tf.float64)
+      ('float16', np.float16), ('float32', np.float32), ('float64', np.float64)
   )
   def test_revert_to_input_dtype(self, dtype):
     """Checks that postprocessing restores the original dtype."""
@@ -245,7 +245,7 @@ class QuantizationTest(tf.test.TestCase, parameterized.TestCase):
       )
   )
   def test_error_from_rounding(self, step_size, shape):
-    dtype = tf.float32
+    dtype = np.float32
     x = tf.random.uniform(shape=shape, minval=-10, maxval=10, dtype=dtype)
     encoded_x = stochastic_discretization._discretize_struct(x, step_size)
     decoded_x = stochastic_discretization._undiscretize_struct(
@@ -260,7 +260,7 @@ class QuantizationTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_diff_random_seeds_diff_result(self):
     value = tf.random.uniform(
-        (1000,), minval=-5.0, maxval=5.0, dtype=tf.float32
+        (1000,), minval=-5.0, maxval=5.0, dtype=np.float32
     )
     quantized = stochastic_discretization._discretize_struct(value, 0.4)
     # Seed generated based on timestamp; repeat call should have different seed.
@@ -268,12 +268,12 @@ class QuantizationTest(tf.test.TestCase, parameterized.TestCase):
     self.assertFalse(tf.reduce_all(tf.equal(quantized, requantized)))
 
   def test_expected_stochasticity(self):
-    zeros = tf.zeros((1000,), dtype=tf.float32)
+    zeros = tf.zeros((1000,), dtype=np.float32)
     round_down = stochastic_discretization._discretize_struct(zeros, 0.4)
     self.assertTrue(
         tf.reduce_all(tf.equal(round_down, tf.cast(zeros, tf.int32)))
     )
-    ones = tf.zeros((1000,), dtype=tf.float32)
+    ones = tf.zeros((1000,), dtype=np.float32)
     round_up = stochastic_discretization._discretize_struct(ones, 0.9999)
     self.assertTrue(tf.reduce_all(tf.equal(round_up, tf.cast(ones, tf.int32))))
 
@@ -287,11 +287,11 @@ class ScalingTest(tf.test.TestCase, parameterized.TestCase):
     # Integers to prevent rounding.
     x = tf.cast(
         tf.random.stateless_uniform([100], (1, 1), -100, 100, dtype=tf.int32),
-        tf.float32,
+        np.float32,
     )
     discretized_x = stochastic_discretization._discretize_struct(x, step_size)
     reverted_x = stochastic_discretization._undiscretize_struct(
-        discretized_x, step_size, tf_dtype_struct=tf.float32
+        discretized_x, step_size, tf_dtype_struct=np.float32
     )
     x, discretized_x, reverted_x = self.evaluate([x, discretized_x, reverted_x])
     self.assertAllEqual(
