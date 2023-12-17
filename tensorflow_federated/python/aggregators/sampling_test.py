@@ -21,6 +21,7 @@ import tensorflow as tf
 from tensorflow_federated.python.aggregators import sampling
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_test_utils
 
 # Convenience type aliases.
@@ -620,8 +621,13 @@ class UnweightedReservoirSamplingFactoryTest(
     tf.test.TestCase, parameterized.TestCase
 ):
 
-  def test_create(self):
-    factory = sampling.UnweightedReservoirSamplingFactory(sample_size=10)
+  @parameterized.named_parameters(
+      ('with_sampling_metadata', True), ('without_sampling_metadata', False)
+  )
+  def test_create(self, return_sampling_metadata):
+    factory = sampling.UnweightedReservoirSamplingFactory(
+        sample_size=10, return_sampling_metadata=return_sampling_metadata
+    )
     with self.subTest('scalar_aggregator'):
       factory.create(computation_types.TensorType(np.int32))
     with self.subTest('structure_aggregator'):
@@ -633,6 +639,25 @@ class UnweightedReservoirSamplingFactoryTest(
               )
           )
       )
+
+  @parameterized.named_parameters(
+      ('with_sampling_metadata', True), ('without_sampling_metadata', False)
+  )
+  def test_create_fails_with_invalid_value_type(self, return_sampling_metadata):
+    factory = sampling.UnweightedReservoirSamplingFactory(
+        sample_size=10, return_sampling_metadata=return_sampling_metadata
+    )
+    with self.subTest('function_type'):
+      with self.assertRaisesRegex(TypeError, 'must be a structure of tensors'):
+        factory.create(computation_types.FunctionType(None, np.int32))
+    with self.subTest('sequence_type'):
+      with self.assertRaisesRegex(TypeError, 'must be a structure of tensors'):
+        factory.create(computation_types.SequenceType(np.int32))
+    with self.subTest('federated_type'):
+      with self.assertRaisesRegex(TypeError, 'must be a structure of tensors'):
+        factory.create(
+            computation_types.FederatedType(np.int32, placements.CLIENTS)
+        )
 
   @parameterized.named_parameters(('two_samples', 2), ('four_samples', 4))
   def test_sample_size_limits(self, sample_size):
@@ -654,6 +679,28 @@ class UnweightedReservoirSamplingFactoryTest(
     )
     self.assertEqual(output.result.shape, (sample_size,))
 
+  @parameterized.named_parameters(('two_samples', 2), ('four_samples', 4))
+  def test_sample_size_limits_with_sampling_metadata(self, sample_size):
+    process = sampling.UnweightedReservoirSamplingFactory(
+        sample_size=sample_size, return_sampling_metadata=True
+    ).create(computation_types.to_type(tf.int32))
+    state = process.initialize()
+    output = process.next(
+        state,
+        # Create a 2  * sample_size values from clients.
+        tf.random.stateless_uniform(
+            shape=(sample_size * 2,),
+            minval=None,
+            seed=tf.convert_to_tensor((TEST_SEED, TEST_SEED)),
+            dtype=tf.int32,
+        )
+        .numpy()
+        .tolist(),
+    )
+    self.assertIn('random_seed', output.result)
+    self.assertEqual(output.result['random_values'].shape, (sample_size,))
+    self.assertEqual(output.result['samples'].shape, (sample_size,))
+
   def test_unfilled_reservoir(self):
     process = sampling.UnweightedReservoirSamplingFactory(sample_size=4).create(
         computation_types.TensorType(np.int32)
@@ -672,6 +719,27 @@ class UnweightedReservoirSamplingFactoryTest(
     )
     output = process.next(state, client_values)
     self.assertCountEqual(output.result, client_values)
+
+  def test_unfilled_reservoir_with_sampling_metadata(self):
+    process = sampling.UnweightedReservoirSamplingFactory(
+        sample_size=4, return_sampling_metadata=True
+    ).create(computation_types.to_type(tf.int32))
+    state = process.initialize()
+    # Create 3 client values to aggregate.
+    client_values = (
+        tf.random.stateless_uniform(
+            shape=(3,),
+            minval=None,
+            seed=tf.convert_to_tensor((TEST_SEED, TEST_SEED)),
+            dtype=tf.int32,
+        )
+        .numpy()
+        .tolist()
+    )
+    output = process.next(state, client_values)
+    self.assertIn('random_seed', output.result)
+    self.assertLen(client_values, output.result['random_values'].shape[0])
+    self.assertCountEqual(output.result['samples'], client_values)
 
   def test_build_factory_fails_invalid_argument(self):
     with self.assertRaises(ValueError):

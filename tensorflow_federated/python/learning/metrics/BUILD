@@ -173,11 +173,44 @@ py_test(
     ],
 )
 
+py_test(
+    name = "sampling_aggregation_factory_test",
+    srcs = ["sampling_aggregation_factory_test.py"],
+    deps = [
+        ":sampling_aggregation_factory",
+        ":types",
+        "//tensorflow_federated/python/core/backends/test:cpp_execution_contexts",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:placements",
+        "//tensorflow_federated/python/core/impl/types:type_conversions",
+    ],
+)
+
 py_library(
     name = "types",
     srcs = ["types.py"],
     deps = [
         "//tensorflow_federated/python/core/impl/computation:computation_base",
         "//tensorflow_federated/python/core/impl/types:computation_types",
+    ],
+)
+
+py_library(
+    name = "sampling_aggregation_factory",
+    srcs = ["sampling_aggregation_factory.py"],
+    deps = [
+        ":aggregation_factory",
+        ":aggregation_utils",
+        ":types",
+        "//tensorflow_federated/python/aggregators:factory",
+        "//tensorflow_federated/python/aggregators:sampling",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
+        "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
+        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:placements",
+        "//tensorflow_federated/python/core/templates:aggregation_process",
+        "//tensorflow_federated/python/core/templates:measured_process",
     ],
 )
