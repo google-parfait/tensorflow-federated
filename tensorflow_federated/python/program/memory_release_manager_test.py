@@ -280,8 +280,9 @@ class MemoryReleaseManagerTest(
       self, value, type_signature, expected_value
   ):
     release_mngr = memory_release_manager.MemoryReleaseManager()
+    key = 1
 
-    await release_mngr.release(value, type_signature, key=1)
+    await release_mngr.release(value, type_signature, key)
 
     self.assertLen(release_mngr._values, 1)
     actual_value, actual_type_signature = release_mngr._values[1]
@@ -302,9 +303,11 @@ class MemoryReleaseManagerTest(
       self, type_signature
   ):
     release_mngr = memory_release_manager.MemoryReleaseManager()
+    value = 1
+    key = 1
 
     with self.assertRaises(TypeError):
-      await release_mngr.release(1, type_signature, key=1)
+      await release_mngr.release(value, type_signature, key)
 
   @parameterized.named_parameters(
       ('list', []),

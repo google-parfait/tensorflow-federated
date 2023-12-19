@@ -85,9 +85,7 @@ class DatasetDataSourceIterator(data_source.FederatedDataSourceIterator):
           'Expected `federated_type` to be a `tff.FederatedType`, found '
           f'{type(federated_type)}.'
       )
-    return DatasetDataSourceIterator(
-        datasets=datasets, federated_type=federated_type
-    )
+    return DatasetDataSourceIterator(datasets, federated_type)
 
   def to_bytes(self) -> bytes:
     """Serializes the object to bytes."""

@@ -65,46 +65,51 @@ class WriteSavedModelTest(
 ):
 
   async def test_writes_to_new_file_with_path_str(self):
+    value = 1
     path = self.create_tempdir()
     path = path.full_path
     shutil.rmtree(path)
     self.assertFalse(os.path.exists(path))
 
-    await file_utils.write_saved_model(1, path)
+    await file_utils.write_saved_model(value, path)
 
     self.assertTrue(os.path.exists(path))
     module = tf.saved_model.load(path)
     actual_value = module()
-    self.assertEqual(actual_value, 1)
+    self.assertEqual(actual_value, value)
 
   async def test_writes_to_new_file_with_path_path_like(self):
+    value = 1
     path = self.create_tempdir()
     shutil.rmtree(path)
     self.assertFalse(os.path.exists(path))
 
-    await file_utils.write_saved_model(1, path)
+    await file_utils.write_saved_model(value, path)
 
     self.assertTrue(os.path.exists(path))
     module = tf.saved_model.load(path.full_path)
     actual_value = module()
-    self.assertEqual(actual_value, 1)
+    self.assertEqual(actual_value, value)
 
   async def test_writes_to_existing_file(self):
+    value = 1
     path = self.create_tempdir()
     self.assertTrue(os.path.exists(path))
+    overwrite = True
 
-    await file_utils.write_saved_model(1, path, True)
+    await file_utils.write_saved_model(value, path, overwrite)
 
     self.assertTrue(os.path.exists(path))
     module = tf.saved_model.load(path.full_path)
     actual_value = module()
-    self.assertEqual(actual_value, 1)
+    self.assertEqual(actual_value, value)
 
   async def test_raises_file_exists_error_with_existing_file(self):
+    value = 1
     path = self.create_tempdir()
 
     with self.assertRaises(FileExistsError):
-      await file_utils.write_saved_model(1, path)
+      await file_utils.write_saved_model(value, path)
 
   @parameterized.named_parameters(
       ('none', None),
@@ -113,8 +118,10 @@ class WriteSavedModelTest(
       ('list', []),
   )
   async def test_raises_type_error_with_path(self, path):
+    value = 1
+
     with self.assertRaises(TypeError):
-      await file_utils.write_saved_model(1, path)
+      await file_utils.write_saved_model(value, path)
 
   @parameterized.named_parameters(
       ('none', None),
@@ -122,10 +129,11 @@ class WriteSavedModelTest(
       ('list', []),
   )
   async def test_raises_type_error_with_overwrite(self, overwrite):
+    value = 1
     path = self.create_tempdir()
 
     with self.assertRaises(TypeError):
-      await file_utils.write_saved_model(1, path, overwrite)
+      await file_utils.write_saved_model(value, path, overwrite)
 
   async def test_does_not_raise_decode_error_with_large_value(self):
     path = self.create_tempdir()

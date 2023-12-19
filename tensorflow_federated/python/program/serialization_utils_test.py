@@ -52,7 +52,7 @@ class SerializationUtilsStrTest(parameterized.TestCase):
     value_bytes = serialization_utils.pack_str(value)
     padded_bytes = bytes([1] * offset) + value_bytes
     actual_str, actual_size = serialization_utils.unpack_str_from(
-        padded_bytes, offset=offset
+        padded_bytes, offset
     )
 
     self.assertEqual(actual_str, value)
@@ -68,7 +68,7 @@ class SerializationUtilsStrTest(parameterized.TestCase):
     value_bytes = serialization_utils.pack_str(value)
 
     with self.assertRaises(struct.error):
-      serialization_utils.unpack_str_from(value_bytes, offset=offset)
+      serialization_utils.unpack_str_from(value_bytes, offset)
 
   @parameterized.named_parameters(
       ('leading', lambda x: x[1:]),
@@ -113,7 +113,7 @@ class SerializationUtilsSequenceTest(parameterized.TestCase):
     )
     padded_bytes = bytes([1] * offset) + value_bytes
     actual_value, actual_size = serialization_utils.unpack_sequence_from(
-        serialization_utils.unpack_str_from, padded_bytes, offset=offset
+        serialization_utils.unpack_str_from, padded_bytes, offset
     )
 
     self.assertEqual(actual_value, value)
@@ -132,7 +132,7 @@ class SerializationUtilsSequenceTest(parameterized.TestCase):
 
     with self.assertRaises(struct.error):
       serialization_utils.unpack_sequence_from(
-          serialization_utils.unpack_str_from, value_bytes, offset=offset
+          serialization_utils.unpack_str_from, value_bytes, offset
       )
 
   @parameterized.named_parameters(
@@ -175,7 +175,7 @@ class SerializationUtilsSerializableTest(parameterized.TestCase):
     value_bytes = serialization_utils.pack_serializable(value)
     padded_bytes = bytes([1] * offset) + value_bytes
     actual_value, actual_size = serialization_utils.unpack_serializable_from(
-        padded_bytes, offset=offset
+        padded_bytes, offset
     )
 
     self.assertEqual(actual_value, value)
@@ -193,7 +193,7 @@ class SerializationUtilsSerializableTest(parameterized.TestCase):
     value_bytes = serialization_utils.pack_serializable(value)
 
     with self.assertRaises(struct.error):
-      serialization_utils.unpack_serializable_from(value_bytes, offset=offset)
+      serialization_utils.unpack_serializable_from(value_bytes, offset)
 
   @parameterized.named_parameters(
       ('leading', lambda x: x[1:]),
@@ -231,7 +231,7 @@ class SerializationUtilsTypeSpecTest(parameterized.TestCase):
     value_bytes = serialization_utils.pack_type_spec(value)
     padded_bytes = bytes([1] * offset) + value_bytes
     actual_value, actual_size = serialization_utils.unpack_type_spec_from(
-        padded_bytes, offset=offset
+        padded_bytes, offset
     )
 
     self.assertEqual(actual_value, value)
@@ -247,7 +247,7 @@ class SerializationUtilsTypeSpecTest(parameterized.TestCase):
     value_bytes = serialization_utils.pack_type_spec(value)
 
     with self.assertRaises(struct.error):
-      serialization_utils.unpack_type_spec_from(value_bytes, offset=offset)
+      serialization_utils.unpack_type_spec_from(value_bytes, offset)
 
   @parameterized.named_parameters(
       ('leading', lambda x: x[1:]),
@@ -306,7 +306,7 @@ class SerializationUtilsElementSpecTest(parameterized.TestCase):
     value_bytes = serialization_utils.pack_element_spec(value)
     padded_bytes = bytes([1] * offset) + value_bytes
     actual_value, actual_size = serialization_utils.unpack_element_spec_from(
-        padded_bytes, offset=offset
+        padded_bytes, offset
     )
 
     self.assertEqual(actual_value, value)
@@ -324,7 +324,7 @@ class SerializationUtilsElementSpecTest(parameterized.TestCase):
     value_bytes = serialization_utils.pack_element_spec(value)
 
     with self.assertRaises(struct.error):
-      serialization_utils.unpack_element_spec_from(value_bytes, offset=offset)
+      serialization_utils.unpack_element_spec_from(value_bytes, offset)
 
   @parameterized.named_parameters(
       ('leading', lambda x: x[1:]),
@@ -361,7 +361,7 @@ class SerializationUtilsDatasetTest(parameterized.TestCase):
     value_bytes = serialization_utils.pack_dataset(value)
     padded_bytes = bytes([1] * offset) + value_bytes
     actual_value, actual_size = serialization_utils.unpack_dataset_from(
-        padded_bytes, offset=offset
+        padded_bytes, offset
     )
 
     self.assertEqual(list(actual_value), list(value))
@@ -379,7 +379,7 @@ class SerializationUtilsDatasetTest(parameterized.TestCase):
     value_bytes = serialization_utils.pack_dataset(value)
 
     with self.assertRaises(struct.error):
-      serialization_utils.unpack_dataset_from(value_bytes, offset=offset)
+      serialization_utils.unpack_dataset_from(value_bytes, offset)
 
   @parameterized.named_parameters(
       ('leading', lambda x: x[1:]),

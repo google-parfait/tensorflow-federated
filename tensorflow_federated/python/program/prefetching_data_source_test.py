@@ -354,7 +354,7 @@ class PrefetchingDataSourceIteratorTest(
     # Selecting one iteration worth of data, would drop the cache below
     # threshold i.e. 2, and trigger a replenishing of the cache.
     expected_iterations_prefetched = expected_iterations_prefetched + 1
-    iterator.select(k=k_to_prefetch)
+    iterator.select(k_to_prefetch)
     self.assertEqual(
         iterator._iterations_prefetched, expected_iterations_prefetched
     )
@@ -404,7 +404,7 @@ class PrefetchingDataSourceIteratorTest(
     # iterations of data in the prefetched cache, so no new prefetches would be
     # triggered.
     expected_prefetched_data_size -= 1
-    iterator.select(k=k_to_prefetch)
+    iterator.select(k_to_prefetch)
     self.assertEqual(
         iterator._iterations_prefetched, expected_iterations_prefetched
     )  # No additional calls.
@@ -459,7 +459,7 @@ class PrefetchingDataSourceIteratorTest(
     # Selecting one iteration of data should use up one iteration from the
     # prefetched cache but should not trigger any additional prefetches.
     expected_prefetched_data_size -= 1
-    iterator.select(k=k_to_prefetch)
+    iterator.select(k_to_prefetch)
     self.assertEqual(
         mock_iterator.select.call_count, expected_iterations_prefetched
     )
@@ -553,13 +553,14 @@ class PrefetchingDataSourceIteratorTest(
         k_to_prefetch=3,
         prefetch_threshold=1,
     )
-
     iterator_bytes = iterator.to_bytes()
+
     actual_iterator = (
         prefetching_data_source.PrefetchingDataSourceIterator.from_bytes(
             iterator_bytes
         )
     )
+
     self.assertIsNot(actual_iterator, iterator)
     self.assertEqual(actual_iterator, iterator)
 

@@ -86,7 +86,7 @@ class ProgramStateManagerTest(
     program_state_mngr = _TestProgramStateManager()
     program_state_mngr.get_versions = mock.AsyncMock(return_value=[1, 2, 3])
     program_state_mngr.load = mock.AsyncMock(
-        side_effect=program_state_manager.ProgramStateNotFoundError(0)
+        side_effect=program_state_manager.ProgramStateNotFoundError(version=0)
     )
     structure = 'test'
 

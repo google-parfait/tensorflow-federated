@@ -26,9 +26,7 @@ class ClientIdDataSourceIteratorTest(parameterized.TestCase):
   def test_init_sets_federated_type(self):
     client_ids = ['a', 'b', 'c']
 
-    iterator = client_id_data_source.ClientIdDataSourceIterator(
-        client_ids=client_ids
-    )
+    iterator = client_id_data_source.ClientIdDataSourceIterator(client_ids)
 
     federated_type = computation_types.FederatedType(
         tf.string, placements.CLIENTS
@@ -43,12 +41,13 @@ class ClientIdDataSourceIteratorTest(parameterized.TestCase):
   )
   def test_init_raises_type_error_with_client_ids(self, client_ids):
     with self.assertRaises(TypeError):
-      client_id_data_source.ClientIdDataSourceIterator(client_ids=client_ids)
+      client_id_data_source.ClientIdDataSourceIterator(client_ids)
 
   def test_init_raises_value_error_with_client_ids_empty(self):
     client_ids = []
+
     with self.assertRaises(ValueError):
-      client_id_data_source.ClientIdDataSourceIterator(client_ids=client_ids)
+      client_id_data_source.ClientIdDataSourceIterator(client_ids)
 
   @parameterized.named_parameters(
       ('zero', 0),
@@ -57,9 +56,7 @@ class ClientIdDataSourceIteratorTest(parameterized.TestCase):
   )
   def test_select_returns_client_ids_with_k(self, k):
     client_ids = ['a', 'b', 'c']
-    iterator = client_id_data_source.ClientIdDataSourceIterator(
-        client_ids=client_ids
-    )
+    iterator = client_id_data_source.ClientIdDataSourceIterator(client_ids)
 
     actual_client_ids = iterator.select(k)
 
@@ -73,9 +70,7 @@ class ClientIdDataSourceIteratorTest(parameterized.TestCase):
   )
   def test_select_raises_type_error_with_k(self, k):
     client_ids = ['a', 'b', 'c']
-    iterator = client_id_data_source.ClientIdDataSourceIterator(
-        client_ids=client_ids
-    )
+    iterator = client_id_data_source.ClientIdDataSourceIterator(client_ids)
 
     with self.assertRaises(TypeError):
       iterator.select(k)
@@ -87,20 +82,16 @@ class ClientIdDataSourceIteratorTest(parameterized.TestCase):
   )
   def test_select_raises_value_error_with_k(self, k):
     client_ids = ['a', 'b', 'c']
-    iterator = client_id_data_source.ClientIdDataSourceIterator(
-        client_ids=client_ids
-    )
+    iterator = client_id_data_source.ClientIdDataSourceIterator(client_ids)
 
     with self.assertRaises(ValueError):
       iterator.select(k)
 
-  def test_serializable_with_client_ids(self):
+  def test_serializable(self):
     client_ids = ['a', 'b', 'c']
-    iterator = client_id_data_source.ClientIdDataSourceIterator(
-        client_ids=client_ids
-    )
-
+    iterator = client_id_data_source.ClientIdDataSourceIterator(client_ids)
     iterator_bytes = iterator.to_bytes()
+
     actual_iterator = (
         client_id_data_source.ClientIdDataSourceIterator.from_bytes(
             iterator_bytes
@@ -135,6 +126,7 @@ class ClientIdDataSourceTest(parameterized.TestCase):
 
   def test_init_raises_value_error_with_client_ids_empty(self):
     client_ids = []
+
     with self.assertRaises(ValueError):
       client_id_data_source.ClientIdDataSource(client_ids)
 

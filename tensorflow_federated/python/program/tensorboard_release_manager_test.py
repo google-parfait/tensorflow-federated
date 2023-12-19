@@ -38,9 +38,7 @@ class TensorBoardReleaseManagerInitTest(parameterized.TestCase):
     shutil.rmtree(summary_dir)
     self.assertFalse(os.path.exists(summary_dir))
 
-    tensorboard_release_manager.TensorBoardReleaseManager(
-        summary_dir=summary_dir
-    )
+    tensorboard_release_manager.TensorBoardReleaseManager(summary_dir)
 
     self.assertTrue(os.path.exists(summary_dir))
 
@@ -49,9 +47,7 @@ class TensorBoardReleaseManagerInitTest(parameterized.TestCase):
     shutil.rmtree(summary_dir)
     self.assertFalse(os.path.exists(summary_dir))
 
-    tensorboard_release_manager.TensorBoardReleaseManager(
-        summary_dir=summary_dir
-    )
+    tensorboard_release_manager.TensorBoardReleaseManager(summary_dir)
 
     self.assertTrue(os.path.exists(summary_dir))
 
@@ -63,13 +59,13 @@ class TensorBoardReleaseManagerInitTest(parameterized.TestCase):
   )
   def test_raises_type_error_with_summary_dir(self, summary_dir):
     with self.assertRaises(TypeError):
-      tensorboard_release_manager.TensorBoardReleaseManager(
-          summary_dir=summary_dir
-      )
+      tensorboard_release_manager.TensorBoardReleaseManager(summary_dir)
 
   def test_raises_value_error_with_summary_dir_empty(self):
+    summary_dir = ''
+
     with self.assertRaises(ValueError):
-      tensorboard_release_manager.TensorBoardReleaseManager(summary_dir='')
+      tensorboard_release_manager.TensorBoardReleaseManager(summary_dir)
 
 
 class TensorBoardReleaseManagerReleaseTest(
@@ -240,11 +236,12 @@ class TensorBoardReleaseManagerReleaseTest(
   ):
     summary_dir = self.create_tempdir()
     release_mngr = tensorboard_release_manager.TensorBoardReleaseManager(
-        summary_dir=summary_dir
+        summary_dir
     )
+    key = 1
 
     with mock.patch.object(tf.summary, 'scalar') as mock_scalar:
-      await release_mngr.release(value, type_signature, key=1)
+      await release_mngr.release(value, type_signature, key)
 
       self.assertLen(mock_scalar.mock_calls, len(expected_calls))
       for call, expected_args in zip(mock_scalar.mock_calls, expected_calls):
@@ -253,7 +250,7 @@ class TensorBoardReleaseManagerReleaseTest(
         expected_name, expected_value = expected_args
         self.assertEqual(actual_name, expected_name)
         self.assertEqual(actual_value, expected_value)
-        self.assertEqual(kwargs, {'step': 1})
+        self.assertEqual(kwargs, {'step': key})
 
   # pyformat: disable
   @parameterized.named_parameters(
@@ -280,11 +277,12 @@ class TensorBoardReleaseManagerReleaseTest(
   ):
     summary_dir = self.create_tempdir()
     release_mngr = tensorboard_release_manager.TensorBoardReleaseManager(
-        summary_dir=summary_dir
+        summary_dir
     )
+    key = 1
 
     with mock.patch.object(tf.summary, 'histogram') as mock_histogram:
-      await release_mngr.release(value, type_signature, key=1)
+      await release_mngr.release(value, type_signature, key)
 
       self.assertLen(mock_histogram.mock_calls, len(expected_calls))
       for call, expected_args in zip(mock_histogram.mock_calls, expected_calls):
@@ -296,12 +294,12 @@ class TensorBoardReleaseManagerReleaseTest(
         actual_value = program_test_utils.to_python(actual_value)
         expected_value = program_test_utils.to_python(expected_value)
         self.assertEqual(actual_value, expected_value)
-        self.assertEqual(kwargs, {'step': 1})
+        self.assertEqual(kwargs, {'step': key})
 
   async def test_writes_value_scalar_and_histogram(self):
     summary_dir = self.create_tempdir()
     release_mngr = tensorboard_release_manager.TensorBoardReleaseManager(
-        summary_dir=summary_dir
+        summary_dir
     )
     value = [1, tf.constant([1] * 3)]
     type_signature = computation_types.StructWithPythonType(
@@ -311,11 +309,12 @@ class TensorBoardReleaseManagerReleaseTest(
         ],
         list,
     )
+    key = 1
 
     patched_scalar = mock.patch.object(tf.summary, 'scalar')
     patched_histogram = mock.patch.object(tf.summary, 'histogram')
     with patched_scalar as mock_scalar, patched_histogram as mock_histogram:
-      await release_mngr.release(value, type_signature, key=1)
+      await release_mngr.release(value, type_signature, key)
 
       mock_scalar.assert_called_once_with('0', 1, step=1)
       self.assertLen(mock_histogram.mock_calls, 1)
@@ -328,7 +327,7 @@ class TensorBoardReleaseManagerReleaseTest(
       actual_value = program_test_utils.to_python(actual_value)
       expected_value = program_test_utils.to_python(expected_value)
       self.assertEqual(actual_value, expected_value)
-      self.assertEqual(kwargs, {'step': 1})
+      self.assertEqual(kwargs, {'step': key})
 
   # pyformat: disable
   @parameterized.named_parameters(
@@ -363,13 +362,14 @@ class TensorBoardReleaseManagerReleaseTest(
   async def test_does_not_write_value(self, value, type_signature):
     summary_dir = self.create_tempdir()
     release_mngr = tensorboard_release_manager.TensorBoardReleaseManager(
-        summary_dir=summary_dir
+        summary_dir
     )
+    key = 1
 
     patch_scalar = mock.patch.object(tf.summary, 'scalar')
     patch_histogram = mock.patch.object(tf.summary, 'histogram')
     with patch_scalar as mock_scalar, patch_histogram as mock_histogram:
-      await release_mngr.release(value, type_signature, key=1)
+      await release_mngr.release(value, type_signature, key)
 
       mock_scalar.assert_not_called()
       mock_histogram.assert_not_called()
@@ -383,7 +383,7 @@ class TensorBoardReleaseManagerReleaseTest(
   async def test_does_not_raise_type_error_with_key(self, key):
     summary_dir = self.create_tempdir()
     release_mngr = tensorboard_release_manager.TensorBoardReleaseManager(
-        summary_dir=summary_dir
+        summary_dir
     )
     value = 1
     type_signature = computation_types.TensorType(tf.int32)
@@ -401,7 +401,7 @@ class TensorBoardReleaseManagerReleaseTest(
   async def test_raises_type_error_with_key(self, key):
     summary_dir = self.create_tempdir()
     release_mngr = tensorboard_release_manager.TensorBoardReleaseManager(
-        summary_dir=summary_dir
+        summary_dir
     )
     value = 1
     type_signature = computation_types.TensorType(tf.int32)

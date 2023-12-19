@@ -310,8 +310,9 @@ class FilteringReleaseManagerTest(
     release_mngr = release_manager.FilteringReleaseManager(
         mock_release_mngr, filter_fn
     )
+    key = 1
 
-    await release_mngr.release(value, type_signature, key=1)
+    await release_mngr.release(value, type_signature, key)
 
     mock_release_mngr.release.assert_called_once()
     call = mock_release_mngr.release.mock_calls[0]
@@ -322,7 +323,7 @@ class FilteringReleaseManagerTest(
     expected_value = program_test_utils.to_python(expected_value)
     self.assertEqual(actual_value, expected_value)
     self.assertEqual(actual_type_signature, expected_type_signature)
-    self.assertEqual(actual_key, 1)
+    self.assertEqual(actual_key, key)
     self.assertEqual(kwargs, {})
 
   # pyformat: disable
@@ -512,8 +513,9 @@ class FilteringReleaseManagerTest(
     release_mngr = release_manager.FilteringReleaseManager(
         mock_release_mngr, filter_fn
     )
+    key = 1
 
-    await release_mngr.release(value, type_signature, key=1)
+    await release_mngr.release(value, type_signature, key)
 
     mock_release_mngr.release.assert_not_called()
 
@@ -607,8 +609,9 @@ class FilteringReleaseManagerTest(
     release_mngr = release_manager.FilteringReleaseManager(
         mock_release_mngr, filter_fn
     )
+    key = 1
 
-    await release_mngr.release(value, type_signature, key=1)
+    await release_mngr.release(value, type_signature, key)
 
     mock_release_mngr.release.assert_called_once()
     call = mock_release_mngr.release.mock_calls[0]
@@ -619,7 +622,7 @@ class FilteringReleaseManagerTest(
     expected_value = program_test_utils.to_python(expected_value)
     self.assertEqual(actual_value, expected_value)
     self.assertEqual(actual_type_signature, expected_type_signature)
-    self.assertEqual(actual_key, 1)
+    self.assertEqual(actual_key, key)
     self.assertEqual(kwargs, {})
 
   # pyformat: disable
@@ -653,24 +656,25 @@ class FilteringReleaseManagerTest(
     release_mngr = release_manager.FilteringReleaseManager(
         mock_release_mngr, filter_fn
     )
+    key = 1
 
     with self.assertRaises(release_manager.NotFilterableError):
-      await release_mngr.release(value, type_signature, key=1)
+      await release_mngr.release(value, type_signature, key)
 
   async def test_release_raises_filter_mismatch_error(self):
+    mock_release_mngr = mock.AsyncMock(spec=release_manager.ReleaseManager)
+    filter_fn = lambda path: path == ('a',)
+    release_mngr = release_manager.FilteringReleaseManager(
+        mock_release_mngr, filter_fn
+    )
     value = {'a': 1}
     type_signature = computation_types.StructWithPythonType(
         [('b', tf.int32)], collections.OrderedDict
     )
-    filter_fn = lambda path: path == ('a',)
-
-    mock_release_mngr = mock.AsyncMock(spec=release_manager.ReleaseManager)
-    release_mngr = release_manager.FilteringReleaseManager(
-        mock_release_mngr, filter_fn
-    )
+    key = 1
 
     with self.assertRaises(release_manager.FilterMismatchError):
-      await release_mngr.release(value, type_signature, key=1)
+      await release_mngr.release(value, type_signature, key)
 
 
 class GroupingReleaseManagerTest(

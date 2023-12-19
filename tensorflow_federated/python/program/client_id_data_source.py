@@ -62,7 +62,7 @@ class ClientIdDataSourceIterator(data_source.FederatedDataSourceIterator):
     client_ids, _ = serialization_utils.unpack_sequence_from(
         serialization_utils.unpack_str_from, buffer
     )
-    return ClientIdDataSourceIterator(client_ids=client_ids)
+    return ClientIdDataSourceIterator(client_ids)
 
   def to_bytes(self) -> bytes:
     """Serializes the object to bytes."""
