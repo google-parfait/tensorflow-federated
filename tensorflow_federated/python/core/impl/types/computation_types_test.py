@@ -1326,9 +1326,9 @@ class ToTypeTest(parameterized.TestCase):
     )
     self.assertEqual(
         t.nested_row_splits,
-        computation_types.StructWithPythonType(
-            [(None, computation_types.TensorType(np.int64, [None]))], tuple
-        ),
+        computation_types.StructType([
+            (None, computation_types.TensorType(np.int64, [None])),
+        ]),
     )
 
   def test_sparse_tensor_spec(self):
@@ -1351,6 +1351,252 @@ class ToTypeTest(parameterized.TestCase):
   def test_raises_type_error(self, obj):
     with self.assertRaises(TypeError):
       _ = computation_types.to_type(obj)
+
+
+class TensorflowToTypeTest(parameterized.TestCase):
+
+  @parameterized.named_parameters(
+      (
+          'tensor_spec',
+          tf.TensorSpec(shape=[2, 3], dtype=np.int32),
+          computation_types.TensorType(np.int32, [2, 3]),
+      ),
+      (
+          'tensor_spec_nested',
+          [tf.TensorSpec(shape=[2, 3], dtype=np.int32)],
+          computation_types.StructWithPythonType(
+              [
+                  computation_types.TensorType(np.int32, [2, 3]),
+              ],
+              list,
+          ),
+      ),
+      (
+          'tensor_spec_mixed',
+          [tf.TensorSpec(shape=[2, 3], dtype=np.int32), np.float32],
+          computation_types.StructWithPythonType(
+              [
+                  computation_types.TensorType(np.int32, [2, 3]),
+                  computation_types.TensorType(np.float32),
+              ],
+              list,
+          ),
+      ),
+      (
+          'dataset_spec',
+          tf.data.DatasetSpec(
+              element_spec=tf.TensorSpec([2, 3], dtype=np.int32)
+          ),
+          computation_types.SequenceType(
+              computation_types.TensorType(np.int32, [2, 3])
+          ),
+      ),
+      (
+          'dataset_spec_nested',
+          [
+              tf.data.DatasetSpec(
+                  element_spec=tf.TensorSpec([2, 3], dtype=np.int32)
+              )
+          ],
+          computation_types.StructWithPythonType(
+              [
+                  computation_types.SequenceType(
+                      computation_types.TensorType(np.int32, [2, 3])
+                  ),
+              ],
+              list,
+          ),
+      ),
+      (
+          'dataset_spec_mixed',
+          [
+              tf.data.DatasetSpec(
+                  element_spec=tf.TensorSpec([2, 3], dtype=np.int32)
+              ),
+              np.float32,
+          ],
+          computation_types.StructWithPythonType(
+              [
+                  computation_types.SequenceType(
+                      computation_types.TensorType(np.int32, [2, 3])
+                  ),
+                  computation_types.TensorType(np.float32),
+              ],
+              list,
+          ),
+      ),
+      (
+          'ragged_tensor_spec',
+          tf.RaggedTensorSpec.from_value(
+              tf.RaggedTensor.from_row_splits([0, 0, 0, 0], [0, 1, 4])
+          ),
+          computation_types.StructWithPythonType(
+              [
+                  ('flat_values', computation_types.TensorType(np.int32, None)),
+                  (
+                      'nested_row_splits',
+                      computation_types.StructType([
+                          (
+                              None,
+                              computation_types.TensorType(np.int64, [None]),
+                          ),
+                      ]),
+                  ),
+              ],
+              tf.RaggedTensor,
+          ),
+      ),
+      (
+          'ragged_tensor_spec_nested',
+          [
+              tf.RaggedTensorSpec.from_value(
+                  tf.RaggedTensor.from_row_splits([0, 0, 0, 0], [0, 1, 4])
+              )
+          ],
+          computation_types.StructWithPythonType(
+              [
+                  computation_types.StructWithPythonType(
+                      [
+                          (
+                              'flat_values',
+                              computation_types.TensorType(np.int32, None),
+                          ),
+                          (
+                              'nested_row_splits',
+                              computation_types.StructType([
+                                  (
+                                      None,
+                                      computation_types.TensorType(
+                                          np.int64, [None]
+                                      ),
+                                  ),
+                              ]),
+                          ),
+                      ],
+                      tf.RaggedTensor,
+                  ),
+              ],
+              list,
+          ),
+      ),
+      (
+          'ragged_tensor_spec_mixed',
+          [
+              tf.RaggedTensorSpec.from_value(
+                  tf.RaggedTensor.from_row_splits([0, 0, 0, 0], [0, 1, 4])
+              ),
+              np.float32,
+          ],
+          computation_types.StructWithPythonType(
+              [
+                  computation_types.StructWithPythonType(
+                      [
+                          (
+                              'flat_values',
+                              computation_types.TensorType(np.int32, None),
+                          ),
+                          (
+                              'nested_row_splits',
+                              computation_types.StructType([
+                                  (
+                                      None,
+                                      computation_types.TensorType(
+                                          np.int64, [None]
+                                      ),
+                                  ),
+                              ]),
+                          ),
+                      ],
+                      tf.RaggedTensor,
+                  ),
+                  computation_types.TensorType(np.float32),
+              ],
+              list,
+          ),
+      ),
+      (
+          'sparse_tensor_spec',
+          tf.SparseTensorSpec.from_value(
+              tf.SparseTensor(indices=[[1]], values=[2], dense_shape=[5])
+          ),
+          computation_types.StructWithPythonType(
+              [
+                  (
+                      'indices',
+                      computation_types.TensorType(np.int64, [None, 1]),
+                  ),
+                  ('values', computation_types.TensorType(np.int32, [None])),
+                  ('dense_shape', computation_types.TensorType(np.int64, [1])),
+              ],
+              tf.SparseTensor,
+          ),
+      ),
+      (
+          'sparse_tensor_spec_nested',
+          [
+              tf.SparseTensorSpec.from_value(
+                  tf.SparseTensor(indices=[[1]], values=[2], dense_shape=[5])
+              )
+          ],
+          computation_types.StructWithPythonType(
+              [
+                  computation_types.StructWithPythonType(
+                      [
+                          (
+                              'indices',
+                              computation_types.TensorType(np.int64, [None, 1]),
+                          ),
+                          (
+                              'values',
+                              computation_types.TensorType(np.int32, [None]),
+                          ),
+                          (
+                              'dense_shape',
+                              computation_types.TensorType(np.int64, [1]),
+                          ),
+                      ],
+                      tf.SparseTensor,
+                  ),
+              ],
+              list,
+          ),
+      ),
+      (
+          'sparse_tensor_spec_mixed',
+          [
+              tf.SparseTensorSpec.from_value(
+                  tf.SparseTensor(indices=[[1]], values=[2], dense_shape=[5])
+              ),
+              np.float32,
+          ],
+          computation_types.StructWithPythonType(
+              [
+                  computation_types.StructWithPythonType(
+                      [
+                          (
+                              'indices',
+                              computation_types.TensorType(np.int64, [None, 1]),
+                          ),
+                          (
+                              'values',
+                              computation_types.TensorType(np.int32, [None]),
+                          ),
+                          (
+                              'dense_shape',
+                              computation_types.TensorType(np.int64, [1]),
+                          ),
+                      ],
+                      tf.SparseTensor,
+                  ),
+                  computation_types.TensorType(np.float32),
+              ],
+              list,
+          ),
+      ),
+  )
+  def test_returns_result(self, obj, expected_result):
+    actual_result = computation_types.tensorflow_to_type(obj)
+    self.assertEqual(actual_result, expected_result)
 
 
 class RepresentationTest(absltest.TestCase):
