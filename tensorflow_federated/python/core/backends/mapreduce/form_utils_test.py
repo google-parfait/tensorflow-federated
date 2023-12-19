@@ -1135,8 +1135,8 @@ class AsFunctionOfSingleSubparameterTest(absltest.TestCase):
   def assert_selected_param_to_result_type(self, old_lam, new_lam, index):
     old_type = old_lam.type_signature
     new_type = new_lam.type_signature
-    old_type.check_function()
-    new_type.check_function()
+    self.assertIsInstance(old_type, computation_types.FunctionType)
+    self.assertIsInstance(new_type, computation_types.FunctionType)
     type_test_utils.assert_types_equivalent(
         new_type,
         computation_types.FunctionType(

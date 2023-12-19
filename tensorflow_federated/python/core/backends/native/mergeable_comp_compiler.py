@@ -101,7 +101,12 @@ def _ensure_lambda(
     building_block: building_blocks.ComputationBuildingBlock,
 ) -> building_blocks.Lambda:
   """Wraps a functional building block as a lambda if necessary."""
-  building_block.type_signature.check_function()
+  if not isinstance(
+      building_block.type_signature, computation_types.FunctionType
+  ):
+    raise ValueError(
+        f'Expected a `tff.FunctionType`, found {building_block.type_signature}.'
+    )
   if not isinstance(building_block, building_blocks.Lambda):
     if building_block.type_signature.parameter is not None:  # pytype: disable=attribute-error
       name_generator = building_block_factory.unique_name_generator(

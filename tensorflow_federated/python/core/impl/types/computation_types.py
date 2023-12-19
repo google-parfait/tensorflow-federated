@@ -158,14 +158,6 @@ class Type(metaclass=abc.ABCMeta):
       raise UnexpectedTypeError(FederatedType, self)
 
   @deprecation.deprecated(
-      '`tff.Type.check_function()` is deprecated, use `isinstance` instead.'
-  )
-  def check_function(self) -> None:
-    """Check that this is a `tff.FunctionType`."""
-    if not isinstance(self, FunctionType):
-      raise UnexpectedTypeError(FunctionType, self)
-
-  @deprecation.deprecated(
       '`tff.Type.check_sequence()` is deprecated, use `isinstance` instead.'
   )
   def check_sequence(self) -> None:

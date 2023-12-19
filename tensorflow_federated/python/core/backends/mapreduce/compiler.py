@@ -249,7 +249,10 @@ def consolidate_and_extract_local_processing(comp, grappler_config_proto):
     TensorFlow section produced by this extraction step, as described above.
   """
   py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
-  comp.type_signature.check_function()
+  if not isinstance(comp.type_signature, computation_types.FunctionType):
+    raise ValueError(
+        f'Expected a `tff.FunctionType`, found {comp.type_signature}.'
+    )
   # Replace any GENERIC_* intrinsic calls with TF function calls.
   comp, _ = tensorflow_tree_transformations.replace_intrinsics_with_bodies(comp)
   # Drop any unused subcomputations which may reference placements different
