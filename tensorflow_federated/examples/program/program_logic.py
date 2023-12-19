@@ -68,151 +68,217 @@ def _check_expected_type_signatures(
     UnexpectedTypeSignatureError: If the computations or data sources have an
       unexpected type signature.
   """
-  try:
-    # Check initialize type.
-    initialize.type_signature.check_function()
 
-    # Check initialize parameter type.
-    if initialize.type_signature.parameter is not None:
-      raise UnexpectedTypeSignatureError(
-          'Expected `initialize` to have no parameters, found '
-          f'{initialize.type_signature.parameter}.'
-      )
-
-    # Check initialize result type.
-    initialize.type_signature.result.check_federated()
-    if initialize.type_signature.result.placement is not tff.SERVER:  # pytype: disable=attribute-error
-      raise UnexpectedTypeSignatureError(
-          'Expected the result of `initialize` to be placed at `tff.SERVER`, '
-          f'found {initialize.type_signature.result.placement}.'  # pytype: disable=attribute-error
-      )
-
-    # Check train data source type.
-    if train_data_source.federated_type.placement is not tff.CLIENTS:
-      raise UnexpectedTypeSignatureError(
-          'Expected the data returned by `train_data_source` to be placed at '
-          '`tff.CLIENTS`, found '
-          f'{train_data_source.federated_type.placement}.'
-      )
-
-    # Check train type.
-    train.type_signature.check_function()
-
-    # Check train result type.
-    train.type_signature.result.check_struct()
-    if len(train.type_signature.result) != 2:  # pytype: disable=wrong-arg-types
-      raise UnexpectedTypeSignatureError(
-          'Expected `train` to return two values, found '
-          f'{train.type_signature.result}.'
-      )
-    train_result_state_type, train_result_metrics_type = (
-        train.type_signature.result
-    )  # pytype: disable=attribute-error
-
-    # Check train result state type.
-    train_result_state_type.check_federated()
-    if train_result_state_type.placement is not tff.SERVER:
-      raise UnexpectedTypeSignatureError(
-          'Expected the first result of `train` to be placed at `tff.SERVER`, '
-          f'found {train_result_state_type.placement}.'
-      )
-
-    # Check train result metrics type.
-    train_result_metrics_type.check_federated()
-    if train_result_metrics_type.placement is not tff.SERVER:
-      raise UnexpectedTypeSignatureError(
-          'Expected the second result of `train` to be placed at `tff.SERVER`, '
-          f'found {train_result_metrics_type.placement}.'
-      )
-
-    # Check train parameter type.
-    train.type_signature.parameter.check_struct()  # pytype: disable=attribute-error
-    if len(train.type_signature.parameter) != 2:  # pytype: disable=wrong-arg-types
-      raise UnexpectedTypeSignatureError(
-          'Expected `train` to have two parameters, found '
-          f'{train.type_signature.parameter}.'
-      )
-    train_parameter_state_type, train_parameter_client_data_type = (
-        train.type_signature.parameter
-    )  # pytype: disable=attribute-error
-
-    # Check train parameter state type.
-    train_parameter_state_type.check_federated()
-    if train_parameter_state_type.placement is not tff.SERVER:
-      raise UnexpectedTypeSignatureError(
-          'Expected the first parameter of `train` to be placed at'
-          f' `tff.SERVER`, found {train_parameter_state_type.placement}.'
-      )
-    train_parameter_state_type.check_assignable_from(
-        initialize.type_signature.result
-    )
-    train_parameter_state_type.check_assignable_from(train_result_state_type)
-
-    # Check train parameter client data type.
-    train_parameter_client_data_type.check_federated()
-    if train_parameter_client_data_type.placement is not tff.CLIENTS:
-      raise UnexpectedTypeSignatureError(
-          'Expected the second parameter of `train` to be placed at '
-          f'`tff.CLIENTS`, found {train_parameter_client_data_type.placement}.'
-      )
-    train_parameter_client_data_type.check_assignable_from(
-        train_data_source.federated_type
+  # Check initialize type.
+  if not isinstance(initialize.type_signature, tff.FunctionType):
+    raise UnexpectedTypeSignatureError(
+        'Expected `initialize` to be a `tff.FunctionType`, found '
+        f'{initialize.type_signature}.'
     )
 
-    # Check evaluation data source type.
-    if evaluation_data_source.federated_type.placement is not tff.CLIENTS:
-      raise UnexpectedTypeSignatureError(
-          'Expected the data returned by `evaluation_data_source` to be placed '
-          'at `tff.CLIENTS`, found '
-          f'{evaluation_data_source.federated_type.placement}.'
-      )
-
-    # Check evaluation type.
-    evaluation.type_signature.check_function()
-
-    # Check evaluation result type.
-    evaluation.type_signature.result.check_federated()
-    if evaluation.type_signature.result.placement is not tff.SERVER:  # pytype: disable=attribute-error
-      raise UnexpectedTypeSignatureError(
-          'Expected the result of `evaluation` to be placed at `tff.SERVER`, '
-          f'found {evaluation.type_signature.result.placement}.'  # pytype: disable=attribute-error
-      )
-
-    # Check evaluation parameter type.
-    evaluation.type_signature.parameter.check_struct()  # pytype: disable=attribute-error
-    if len(evaluation.type_signature.parameter) != 2:  # pytype: disable=wrong-arg-types
-      raise UnexpectedTypeSignatureError(
-          'Expected `evaluation` to have two parameters, found '
-          f'{evaluation.type_signature.parameter}.'
-      )
-    evaluation_parameter_state_type, evaluation_parameter_client_data_type = (
-        evaluation.type_signature.parameter
-    )  # pytype: disable=attribute-error
-
-    # Check evaluation parameter state type.
-    evaluation_parameter_state_type.check_federated()
-    if evaluation_parameter_state_type.placement is not tff.SERVER:
-      raise UnexpectedTypeSignatureError(
-          'Expected the first parameter of `evaluation` to be placed at '
-          f'`tff.SERVER`, found {evaluation_parameter_state_type.placement}.'
-      )
-    evaluation_parameter_state_type.check_assignable_from(
-        train_result_state_type
+  # Check initialize parameter type.
+  if initialize.type_signature.parameter is not None:
+    raise UnexpectedTypeSignatureError(
+        'Expected `initialize` to have no parameters, found '
+        f'{initialize.type_signature.parameter}.'
     )
 
-    # Check evaluation parameter client data type.
-    evaluation_parameter_client_data_type.check_federated()
-    if evaluation_parameter_client_data_type.placement is not tff.CLIENTS:
-      raise UnexpectedTypeSignatureError(
-          'Expected the second parameter of `evaluation` to be placed at '
-          '`tff.CLIENTS`, found '
-          f'{evaluation_parameter_client_data_type.placement}.'
-      )
-    evaluation_parameter_client_data_type.check_assignable_from(
-        evaluation_data_source.federated_type
+  # Check initialize result type.
+  if (
+      not isinstance(initialize.type_signature.result, tff.FederatedType)
+      or initialize.type_signature.result.placement is not tff.SERVER
+  ):
+    raise UnexpectedTypeSignatureError(
+        'Expected `initialize` to return a `tff.FederatedType` placed at '
+        f'`tff.SERVER, found {initialize.type_signature.result}.'
     )
-  except TypeError as e:
-    raise UnexpectedTypeSignatureError() from e
+
+  # Check train data source type.
+  if train_data_source.federated_type.placement is not tff.CLIENTS:
+    raise UnexpectedTypeSignatureError(
+        'Expected `train_data_source` to yield data placed at `tff.CLIENTS`, '
+        f'found {train_data_source.federated_type.placement}.'
+    )
+
+  # Check train type.
+  if not isinstance(train.type_signature, tff.FunctionType):
+    raise UnexpectedTypeSignatureError(
+        'Expected `train` to be a `tff.FunctionType`, found '
+        f'{train.type_signature}.'
+    )
+
+  # Check train result type.
+  if (
+      not isinstance(train.type_signature.result, tff.StructType)
+      or len(train.type_signature.result) != 2
+  ):
+    raise UnexpectedTypeSignatureError(
+        'Expected `train` to return two results, found '
+        f'{train.type_signature.result}.'
+    )
+  train_result_state_type, train_result_metrics_type = (
+      train.type_signature.result
+  )
+
+  # Check train result state type.
+  if (
+      not isinstance(train_result_state_type, tff.FederatedType)
+      or train_result_state_type.placement is not tff.SERVER
+  ):
+    raise UnexpectedTypeSignatureError(
+        'Expected the first result of `train` to be a `tff.FederatedType` '
+        f'placed at `tff.SERVER, found {train_result_state_type}.'
+    )
+
+  # Check train result metrics type.
+  if (
+      not isinstance(train_result_metrics_type, tff.FederatedType)
+      or train_result_metrics_type.placement is not tff.SERVER
+  ):
+    raise UnexpectedTypeSignatureError(
+        'Expected the second result of `train` to be a `tff.FederatedType` '
+        f'placed at `tff.SERVER, found {train_result_metrics_type}.'
+    )
+
+  # Check train parameter type.
+  if (
+      not isinstance(train.type_signature.parameter, tff.StructType)
+      or len(train.type_signature.parameter) != 2
+  ):
+    raise UnexpectedTypeSignatureError(
+        'Expected `train` to have two parameters, found '
+        f'{train.type_signature.parameter}.'
+    )
+  train_parameter_state_type, train_parameter_client_data_type = (
+      train.type_signature.parameter
+  )
+
+  # Check train parameter state type.
+  if (
+      not isinstance(train_parameter_state_type, tff.FederatedType)
+      or train_parameter_state_type.placement is not tff.SERVER
+  ):
+    raise UnexpectedTypeSignatureError(
+        'Expected the first parameter of `train` to be a `tff.FederatedType` '
+        f'placed at `tff.SERVER, found {train_parameter_state_type}.'
+    )
+  if not train_parameter_state_type.is_assignable_from(
+      initialize.type_signature.result
+  ):
+    raise UnexpectedTypeSignatureError(
+        'Expected the first parameter of `train` to be assignable from the '
+        'result of `initialize`.\n '
+        f'The first parameter of `train:` {train_parameter_state_type}\n'
+        f'The result of `initialize:` {train_data_source.federated_type}\n'
+    )
+  if not train_parameter_state_type.is_assignable_from(train_result_state_type):
+    raise UnexpectedTypeSignatureError(
+        'Expected the first parameter of `train` to be assignable from the '
+        'first result of `train`.\n'
+        f'The first parameter of `train:` {train_parameter_state_type}\n'
+        f'The first result of `train:` {train_result_state_type}\n'
+    )
+
+  # Check train parameter client data type.
+  if (
+      not isinstance(train_parameter_client_data_type, tff.FederatedType)
+      or train_parameter_client_data_type.placement is not tff.CLIENTS
+  ):
+    raise UnexpectedTypeSignatureError(
+        'Expected the second parameter of `train` to be a `tff.FederatedType` '
+        f'placed at `tff.CLIENTS, found {train_parameter_client_data_type}.'
+    )
+  if not train_parameter_client_data_type.is_assignable_from(
+      train_data_source.federated_type
+  ):
+    raise UnexpectedTypeSignatureError(
+        'Expected the second parameter of `train` to be assignable from the '
+        'data yielded from `train_data_source`.\n'
+        f'The second parameter of `train:` {train_parameter_client_data_type}\n'
+        'The data yielded from `tratrain_data_sourcein:` '
+        f'{train_data_source.federated_type}\n'
+    )
+
+  # Check evaluation data source type.
+  if evaluation_data_source.federated_type.placement is not tff.CLIENTS:
+    raise UnexpectedTypeSignatureError(
+        'Expected `evaluation_data_source` to yield data placed at '
+        '`tff.CLIENTS`, found'
+        f' {evaluation_data_source.federated_type.placement}.'
+    )
+
+  # Check evaluation type.
+  if not isinstance(evaluation.type_signature, tff.FunctionType):
+    raise UnexpectedTypeSignatureError(
+        'Expected `evaluation` to be a `tff.FunctionType`, found '
+        f'{evaluation.type_signature}.'
+    )
+
+  # Check evaluation parameter type.
+  if (
+      not isinstance(evaluation.type_signature.parameter, tff.StructType)
+      or len(evaluation.type_signature.parameter) != 2
+  ):
+    raise UnexpectedTypeSignatureError(
+        'Expected `evaluation` to have two parameters, found '
+        f'{evaluation.type_signature.parameter}.'
+    )
+  evaluation_parameter_state_type, evaluation_parameter_client_data_type = (
+      evaluation.type_signature.parameter
+  )
+
+  # Check evaluation parameter state type.
+  if (
+      not isinstance(evaluation_parameter_state_type, tff.FederatedType)
+      or evaluation_parameter_state_type.placement is not tff.SERVER
+  ):
+    raise UnexpectedTypeSignatureError(
+        'Expected the first parameter of `evaluation` to be a '
+        '`tff.FederatedType` placed at `tff.SERVER, found '
+        f'{evaluation_parameter_state_type}.'
+    )
+  if not evaluation_parameter_state_type.is_assignable_from(
+      train_result_state_type
+  ):
+    raise UnexpectedTypeSignatureError(
+        'Expected the first parameter of `evaluation` to be assignable from '
+        'the first result of `train`.\n'
+        'The first parameter of `evaluation:` '
+        f'{evaluation_parameter_state_type}\n'
+        f'The first result of `train:` {train_result_state_type}\n'
+    )
+
+  # Check evaluation parameter client data type.
+  if (
+      not isinstance(evaluation_parameter_client_data_type, tff.FederatedType)
+      or evaluation_parameter_client_data_type.placement is not tff.CLIENTS
+  ):
+    raise UnexpectedTypeSignatureError(
+        'Expected the second parameter of `evaluation` to be a '
+        '`tff.FederatedType` placed at `tff.CLIENTS, found '
+        f'{evaluation_parameter_client_data_type}.'
+    )
+  if not evaluation_parameter_client_data_type.is_assignable_from(
+      evaluation_data_source.federated_type
+  ):
+    raise UnexpectedTypeSignatureError(
+        'Expected the second parameter of `evaluation` to be assignable from '
+        'the data yielded from `evaluation_data_source`.\n'
+        'The second parameter of `evaluation:` '
+        f'{evaluation_parameter_client_data_type}\n'
+        'The data yielded from `evaluation_data_source:` '
+        f'{evaluation_data_source.federated_type}\n'
+    )
+
+  # Check evaluation result type.
+  if (
+      not isinstance(evaluation.type_signature.result, tff.FederatedType)
+      or evaluation.type_signature.result.placement is not tff.SERVER
+  ):
+    raise UnexpectedTypeSignatureError(
+        'Expected the result of `train` to be a `tff.FederatedType` placed at '
+        f'`tff.SERVER, found {evaluation.type_signature.result}.'
+    )
 
 
 class _TaskGroup:
