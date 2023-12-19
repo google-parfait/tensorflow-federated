@@ -471,8 +471,6 @@ def create_indexing_operator(
     index_type: computation_types.TensorType,
 ) -> ComputationProtoAndType:
   """Returns a tensorflow computation computing an indexing operation."""
-  operand_type.check_tensor()
-  index_type.check_tensor()
   if not array_shape.is_shape_scalar(index_type.shape):
     raise TypeError(f'Expected index type to be a scalar, found {index_type}.')
   with tf.Graph().as_default() as graph:

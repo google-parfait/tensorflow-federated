@@ -1066,14 +1066,14 @@ def create_null_federated_secure_modular_sum():
 
 def _cast(
     comp: building_blocks.ComputationBuildingBlock,
-    type_signature: computation_types.Type,
+    type_signature: computation_types.TensorType,
 ) -> building_blocks.Call:
   """Casts `comp` to the provided type."""
 
   def cast_fn(value):
-    def cast_element(element, type_signature: computation_types.Type):
-      type_signature.check_tensor()
-      return tf.cast(element, type_signature.dtype)  # pytype: disable=attribute-error
+
+    def cast_element(element, type_signature: computation_types.TensorType):
+      return tf.cast(element, type_signature.dtype)
 
     if isinstance(comp.type_signature, computation_types.StructType):
       return structure.map_structure(cast_element, value, type_signature)

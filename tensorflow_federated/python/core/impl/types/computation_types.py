@@ -205,14 +205,6 @@ class Type(metaclass=abc.ABCMeta):
     if not isinstance(self, StructWithPythonType):
       raise UnexpectedTypeError(StructWithPythonType, self)
 
-  @deprecation.deprecated(
-      '`tff.Type.check_tensor()` is deprecated, use `isinstance` instead.'
-  )
-  def check_tensor(self) -> None:
-    """Check that this is a `tff.TensorType`."""
-    if not isinstance(self, TensorType):
-      raise UnexpectedTypeError(TensorType, self)
-
   @abc.abstractmethod
   def __repr__(self):
     """Returns a full-form representation of this type."""
