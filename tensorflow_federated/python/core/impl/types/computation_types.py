@@ -166,14 +166,6 @@ class Type(metaclass=abc.ABCMeta):
       raise UnexpectedTypeError(FunctionType, self)
 
   @deprecation.deprecated(
-      '`tff.Type.check_sequence()` is deprecated, use `isinstance` instead.'
-  )
-  def check_sequence(self) -> None:
-    """Check that this is a `tff.SequenceType`."""
-    if not isinstance(self, SequenceType):
-      raise UnexpectedTypeError(SequenceType, self)
-
-  @deprecation.deprecated(
       '`tff.Type.check_struct()` is deprecated, use `isinstance` instead.'
   )
   def check_struct(self) -> None:
