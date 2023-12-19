@@ -29,7 +29,6 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
-from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_factory
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.computation import function_utils
@@ -230,29 +229,6 @@ class Value(typed_object.TypedObject, metaclass=abc.ABCMeta):
       arg = None
     call = building_blocks.Call(self._comp, arg)
     ref = _bind_computation_to_reference(call, 'calling a `tff.Value`')
-    return Value(ref)
-
-  def __add__(self, other):
-    other = to_value(other, None)
-    if not self.type_signature.is_equivalent_to(other.type_signature):
-      raise TypeError(
-          'Cannot add non-equivalent types. '
-          + computation_types.type_mismatch_error_message(
-              self.type_signature,
-              other.type_signature,
-              computation_types.TypeRelation.EQUIVALENT,
-          )
-      )
-    call = building_blocks.Call(
-        building_blocks.Intrinsic(
-            intrinsic_defs.GENERIC_PLUS.uri,
-            computation_types.FunctionType(
-                [self.type_signature, self.type_signature], self.type_signature
-            ),
-        ),
-        to_value([self, other], None).comp,
-    )
-    ref = _bind_computation_to_reference(call, 'adding a tff.Value')
     return Value(ref)
 
 

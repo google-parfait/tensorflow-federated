@@ -164,31 +164,6 @@ class ValueTest(parameterized.TestCase):
     self.assertEqual(bound_symbols[0][0], 'fc_FEDERATED_symbol_0')
     self.assertEqual(str(bound_symbols[0][1]), 'arg.f(arg.x)')
 
-  def test_value_impl_with_plus_raises_mismatched_types(self):
-    x = value_impl.Value(
-        building_blocks.Reference('x', np.int32),
-    )
-    y = value_impl.Value(
-        building_blocks.Reference('y', np.float32),
-    )
-    with self.assertRaisesRegex(TypeError, 'Cannot add non-equivalent types'):
-      _ = x + y
-
-  def test_value_impl_with_plus(self):
-    x = value_impl.Value(
-        building_blocks.Reference('x', np.int32),
-    )
-    y = value_impl.Value(building_blocks.Reference('y', np.int32))
-    z = x + y
-    self.assertIsInstance(z, value_impl.Value)
-    self.assertEqual(str(z.type_signature), 'int32')
-    self.assertEqual(str(z), 'fc_FEDERATED_symbol_0')
-    bindings = self.bound_symbols()
-    self.assertLen(bindings, 1)
-    name, comp = bindings[0]
-    self.assertEqual(name, 'fc_FEDERATED_symbol_0')
-    self.assertEqual(comp.compact_representation(), 'generic_plus(<x,y>)')
-
   def test_to_value_for_tuple(self):
     x = value_impl.Value(
         building_blocks.Reference('foo', np.int32),
