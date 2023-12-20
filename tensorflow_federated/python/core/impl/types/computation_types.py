@@ -150,14 +150,6 @@ class Type(metaclass=abc.ABCMeta):
     raise NotImplementedError
 
   @deprecation.deprecated(
-      '`tff.Type.check_abstract()` is deprecated, use `isinstance` instead.'
-  )
-  def check_abstract(self) -> None:
-    """Check that this is a `tff.AbstractType`."""
-    if not isinstance(self, AbstractType):
-      raise UnexpectedTypeError(AbstractType, self)
-
-  @deprecation.deprecated(
       '`tff.Type.check_federated()` is deprecated, use `isinstance` instead.'
   )
   def check_federated(self) -> None:
