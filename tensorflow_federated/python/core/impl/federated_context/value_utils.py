@@ -38,7 +38,10 @@ def get_curried(fn):
     A value that represents the curried form of `fn`.
   """
   py_typecheck.check_type(fn, value_impl.Value)
-  fn.type_signature.check_function()
+  if not isinstance(fn.type_signature, computation_types.FunctionType):
+    raise ValueError(
+        f'Expected a `tff.FunctionType`, found {fn.type_signature}.'
+    )
   fn.type_signature.parameter.check_struct()
   param_elements = structure.to_elements(fn.type_signature.parameter)
   references = []

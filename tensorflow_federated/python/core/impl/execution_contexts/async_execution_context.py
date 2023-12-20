@@ -195,7 +195,10 @@ class AsyncExecutionContext(context_base.AsyncContext, Generic[_Computation]):
       # context in conjunction with ConcreteComputations' implementation of
       # __call__.
       arg = await arg
-    comp.type_signature.check_function()
+    if not isinstance(comp.type_signature, computation_types.FunctionType):
+      raise ValueError(
+          f'Expected a `tff.FunctionType`, found {comp.type_signature}.'
+      )
     # Save the type signature before compiling. Compilation currently loses
     # container types, so we must remember them here so that they can be
     # restored in the output.
