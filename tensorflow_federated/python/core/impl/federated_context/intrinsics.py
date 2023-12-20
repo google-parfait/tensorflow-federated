@@ -1110,7 +1110,10 @@ def sequence_reduce(value, zero, op):
   # under a `federated_map`.
   if isinstance(value.type_signature, computation_types.FederatedType):
     value_member_type = value.type_signature.member
-    value_member_type.check_sequence()
+    if not isinstance(value_member_type, computation_types.SequenceType):
+      raise ValueError(
+          f'Expected a `tff.SequenceType`, found {value_member_type}.'
+      )
     zero_member_type = zero.type_signature.member
     ref_type = computation_types.StructType(
         [value_member_type, zero_member_type]
@@ -1123,13 +1126,14 @@ def sequence_reduce(value, zero, op):
     fn_value_impl = value_impl.Value(fn)
     args = building_blocks.Struct([value.comp, zero.comp])
     return federated_map(fn_value_impl, args)
-  else:
-    value.type_signature.check_sequence()
+  elif isinstance(value.type_signature, computation_types.SequenceType):
     comp = building_block_factory.create_sequence_reduce(
         value.comp, zero.comp, op.comp
     )
     comp = _bind_comp_as_reference(comp)
     return value_impl.Value(comp)
+  else:
+    raise NotImplementedError(f'Unexpected type found: {value.type_signature}.')
 
 
 def sequence_sum(value):
