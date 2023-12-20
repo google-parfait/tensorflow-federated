@@ -166,14 +166,6 @@ class Type(metaclass=abc.ABCMeta):
       raise UnexpectedTypeError(FunctionType, self)
 
   @deprecation.deprecated(
-      '`tff.Type.check_placement()` is deprecated, use `isinstance` instead.'
-  )
-  def check_placement(self) -> None:
-    """Check that this is a `tff.PlacementType`."""
-    if not isinstance(self, PlacementType):
-      raise UnexpectedTypeError(PlacementType, self)
-
-  @deprecation.deprecated(
       '`tff.Type.check_sequence()` is deprecated, use `isinstance` instead.'
   )
   def check_sequence(self) -> None:
