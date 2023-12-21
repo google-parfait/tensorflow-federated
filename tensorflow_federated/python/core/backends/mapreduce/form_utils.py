@@ -473,7 +473,8 @@ def _construct_selection_from_federated_tuple(
         f' {federated_tuple.type_signature}.'
     )
   member_type = federated_tuple.type_signature.member
-  member_type.check_struct()
+  if not isinstance(member_type, computation_types.StructType):
+    raise ValueError(f'Expected a `tff.StructType`, found {member_type}.')
   param_name = next(name_generator)
   selecting_function = building_blocks.Lambda(
       param_name,

@@ -143,8 +143,11 @@ def unpack_args_from_struct(
         elements.append((None, struct_with_args[index]))
   else:
     struct_with_args = computation_types.to_type(struct_with_args)
-    struct_with_args.check_struct()  # pytype: disable=attribute-error
-    elements = structure.to_elements(struct_with_args)  # pytype: disable=wrong-arg-types
+    if not isinstance(struct_with_args, computation_types.StructType):
+      raise ValueError(
+          f'Expected a `tff.StructType`, found {struct_with_args}.'
+      )
+    elements = structure.to_elements(struct_with_args)
   args = []
   kwargs = {}
   for name, value in elements:

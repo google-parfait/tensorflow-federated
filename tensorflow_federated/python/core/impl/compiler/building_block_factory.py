@@ -57,7 +57,10 @@ def select_output_from_lambda(
     `comp` specified by `paths`.
   """
   comp.check_lambda()
-  comp.type_signature.result.check_struct()
+  if not isinstance(comp.type_signature.result, computation_types.StructType):
+    raise ValueError(
+        f'Expected a `tff.StructType`, found {comp.type_signature.result}.'
+    )
 
   def _select_path(result, path: Path):
     if not isinstance(path, tuple):

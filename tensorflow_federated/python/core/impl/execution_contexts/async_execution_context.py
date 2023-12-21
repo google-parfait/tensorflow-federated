@@ -84,7 +84,8 @@ async def _ingest(executor, val, type_spec):
   elif isinstance(val, structure.Struct) and not isinstance(
       type_spec, computation_types.FederatedType
   ):
-    type_spec.check_struct()
+    if not isinstance(type_spec, computation_types.StructType):
+      raise ValueError(f'Expected a `tff.StructType`, found {type_spec}.')
     v_elem = structure.to_elements(val)
     t_elem = structure.to_elements(type_spec)
     if len(v_elem) != len(t_elem):

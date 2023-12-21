@@ -28,7 +28,6 @@ import tensorflow as tf
 import tree
 from typing_extensions import TypeGuard
 
-from tensorflow_federated.python.common_libs import deprecation
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.types import array_shape
@@ -148,14 +147,6 @@ class Type(metaclass=abc.ABCMeta):
   def children(self) -> Iterator['Type']:
     """Returns a generator yielding immediate child types."""
     raise NotImplementedError
-
-  @deprecation.deprecated(
-      '`tff.Type.check_struct()` is deprecated, use `isinstance` instead.'
-  )
-  def check_struct(self) -> None:
-    """Check that this is a `tff.StructType`."""
-    if not isinstance(self, StructType):
-      raise UnexpectedTypeError(StructType, self)
 
   @abc.abstractmethod
   def __repr__(self):

@@ -279,8 +279,10 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
       )
     else:
       self.assertIsNone(before.parameter_type)
-    # THere must be one parameter for each intrinsic in `calls`.
-    before.type_signature.result.check_struct()
+    # There must be one parameter for each intrinsic in `calls`.
+    self.assertIsInstance(
+        before.type_signature.result, computation_types.StructType
+    )
     self.assertLen(before.type_signature.result, len(calls))
 
     # Check that `after`'s parameter is a structure like:
@@ -288,7 +290,7 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     #   'original_arg': comp.parameter_type, (if present)
     #   'intrinsic_results': [...],
     # }
-    after.parameter_type.check_struct()
+    self.assertIsInstance(after.parameter_type, computation_types.StructType)
     if comp.parameter_type is not None:
       self.assertLen(after.parameter_type, 2)
       type_test_utils.assert_types_equivalent(
@@ -781,7 +783,9 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
   def check_split_signatures(self, original_comp, before, intrinsic, after):
     for comp in (before, intrinsic, after):
       comp.check_lambda()
-      comp.type_signature.parameter.check_struct()
+      self.assertIsInstance(
+          comp.type_signature.parameter, computation_types.StructType
+      )
       comp.result.check_block()
 
     original_comp = transformations.to_call_dominant(original_comp)

@@ -42,7 +42,10 @@ def get_curried(fn):
     raise ValueError(
         f'Expected a `tff.FunctionType`, found {fn.type_signature}.'
     )
-  fn.type_signature.parameter.check_struct()
+  if not isinstance(fn.type_signature.parameter, computation_types.StructType):
+    raise ValueError(
+        f'Expected a `tff.StructType`, found {fn.type_signature.parameter}.'
+    )
   param_elements = structure.to_elements(fn.type_signature.parameter)
   references = []
   for idx, (_, elem_type) in enumerate(param_elements):
