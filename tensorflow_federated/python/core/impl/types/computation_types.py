@@ -150,14 +150,6 @@ class Type(metaclass=abc.ABCMeta):
     raise NotImplementedError
 
   @deprecation.deprecated(
-      '`tff.Type.check_federated()` is deprecated, use `isinstance` instead.'
-  )
-  def check_federated(self) -> None:
-    """Check that this is a `tff.FederatedType`."""
-    if not isinstance(self, FederatedType):
-      raise UnexpectedTypeError(FederatedType, self)
-
-  @deprecation.deprecated(
       '`tff.Type.check_struct()` is deprecated, use `isinstance` instead.'
   )
   def check_struct(self) -> None:

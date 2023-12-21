@@ -465,8 +465,14 @@ def _construct_selection_from_federated_tuple(
     name_generator,
 ) -> building_blocks.ComputationBuildingBlock:
   """Selects the index `selected_index` from `federated_tuple`."""
-  federated_tuple.type_signature.check_federated()
-  member_type = federated_tuple.type_signature.member  # pytype: disable=attribute-error
+  if not isinstance(
+      federated_tuple.type_signature, computation_types.FederatedType
+  ):
+    raise ValueError(
+        'Expected a `tff.FederatedType`, found'
+        f' {federated_tuple.type_signature}.'
+    )
+  member_type = federated_tuple.type_signature.member
   member_type.check_struct()
   param_name = next(name_generator)
   selecting_function = building_blocks.Lambda(
