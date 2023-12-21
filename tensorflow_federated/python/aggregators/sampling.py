@@ -335,6 +335,7 @@ def _build_merge_samples_computation(
 
 def _build_finalize_sample_computation(
     value_type: computation_types.Type,
+    return_sampling_metadata: bool = False,
 ) -> computation_base.Computation:
   """Builds the `report` computation for sampling."""
   reservoir_type = _build_reservoir_type(value_type)
@@ -342,6 +343,8 @@ def _build_finalize_sample_computation(
   @tensorflow_computation.tf_computation(reservoir_type)
   @tf.function
   def finalize_samples(reservoir):
+    if return_sampling_metadata:  # Return the entire reservoir sampling state.
+      return reservoir
     # Drop all the container extra data and just return the sampled values.
     return reservoir['samples']
 
@@ -433,15 +436,38 @@ class UnweightedReservoirSamplingFactory(factory.UnweightedAggregationFactory):
   https://en.wikipedia.org/wiki/Reservoir_sampling.
   """
 
-  def __init__(self, sample_size: int):
+  def __init__(self, sample_size: int, return_sampling_metadata: bool = False):
+    """Initialize the `UnweightedReservoirSamplingFactory`.
+
+    Args:
+      sample_size: An integer specifying the number of clients sampled (by
+        reservoir sampling algorithm). Values from the sampled clients are
+        collected at the server (see the class documentation for details).
+      return_sampling_metadata: If True, the `result` property in the returned
+        `tff.templates.MeasuredProcessOutput` object contains a dictionary of
+        sampled values and other sampling metadata (such as random values
+        generated during reservoir sampling). Otherwise, it only contains the
+        sampled values.
+
+    Raises:
+      TypeError: If any argument type mismatches.
+      ValueError: If `sample_size` is not positive.
+    """
     py_typecheck.check_type(sample_size, int)
+    py_typecheck.check_type(return_sampling_metadata, bool)
     if sample_size <= 0:
       raise ValueError('`sample_size` must be positive.')
     self._sample_size = sample_size
+    self._return_sampling_metadata = return_sampling_metadata
 
   def create(
-      self, value_type: factory.ValueType
+      self,
+      value_type: computation_types.Type,
   ) -> aggregation_process.AggregationProcess:
+    if not type_analysis.is_structure_of_tensors(value_type):
+      raise TypeError(
+          f'`value_type` must be a structure of tensors, got a {value_type!r}.'
+      )
     @federated_computation.federated_computation()
     def init_fn():
       # Empty/null state, nothing is tracked across invocations.
@@ -466,7 +492,9 @@ class UnweightedReservoirSamplingFactory(factory.UnweightedAggregationFactory):
       merge_samples = _build_merge_samples_computation(
           value_type, self._sample_size
       )
-      finalize_sample = _build_finalize_sample_computation(value_type)
+      finalize_sample = _build_finalize_sample_computation(
+          value_type, self._return_sampling_metadata
+      )
       samples = intrinsics.federated_aggregate(
           value,
           zero=initial_reservoir,
