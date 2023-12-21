@@ -157,15 +157,6 @@ class Type(metaclass=abc.ABCMeta):
     if not isinstance(self, StructType):
       raise UnexpectedTypeError(StructType, self)
 
-  @deprecation.deprecated(
-      '`tff.Type.check_struct_with_python()` is deprecated, use `isinstance` '
-      'instead.'
-  )
-  def check_struct_with_python(self) -> None:
-    """Check that this is a `tff.StructWithPythonType`."""
-    if not isinstance(self, StructWithPythonType):
-      raise UnexpectedTypeError(StructWithPythonType, self)
-
   @abc.abstractmethod
   def __repr__(self):
     """Returns a full-form representation of this type."""
