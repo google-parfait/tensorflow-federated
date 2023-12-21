@@ -28,6 +28,7 @@ import tensorflow as tf
 import tree
 from typing_extensions import TypeGuard
 
+from tensorflow_federated.python.common_libs import deprecation
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.types import array_shape
@@ -967,6 +968,10 @@ class FederatedType(Type, metaclass=_Intern):
     )
 
 
+@deprecation.deprecated(
+    '`tff.types.at_server(type_spec)` is deprecated, use '
+    '`tff.FederatedType(type_spec, tff.SERVER, all_equal=True)` instead.'
+)
 def at_server(type_spec: object) -> FederatedType:
   """Constructs a federated type of the form `T@SERVER`.
 
@@ -979,6 +984,10 @@ def at_server(type_spec: object) -> FederatedType:
   return FederatedType(type_spec, placements.SERVER, all_equal=True)
 
 
+@deprecation.deprecated(
+    '`tff.types.at_clients(type_spec, all_equal)` is deprecated, use '
+    '`tff.FederatedType(type_spec, tff.CLIENTS, all_equal)` instead.'
+)
 def at_clients(type_spec: object, all_equal: bool = False) -> FederatedType:
   """Constructs a federated type of the form `{T}@CLIENTS`.
 

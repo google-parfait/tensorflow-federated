@@ -23,12 +23,17 @@ import numpy as np
 import tensorflow as tf
 import tree
 
+from tensorflow_federated.python.common_libs import deprecation
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import typed_object
 
 
+@deprecation.deprecated(
+    '`tff.types.infer_unplaced_type()` is deprecated, use `tff.Type()`'
+    ' constructors instead.'
+)
 def infer_type(arg: object) -> Optional[computation_types.Type]:
   """Infers the TFF type of the argument (a `computation_types.Type` instance).
 
