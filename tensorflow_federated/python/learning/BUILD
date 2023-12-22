@@ -155,7 +155,6 @@ py_library(
     srcs = ["federated_evaluation.py"],
     deps = [
         ":dataset_reduce",
-        "//tensorflow_federated/python/common_libs:deprecation",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
         "//tensorflow_federated/python/core/impl/computation:computation_base",
         "//tensorflow_federated/python/core/impl/federated_context:federated_computation",

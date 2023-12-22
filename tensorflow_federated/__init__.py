@@ -14,6 +14,7 @@
 """The TensorFlow Federated library."""
 
 import sys
+import typing_extensions
 
 # pylint: disable=g-importing-member
 from tensorflow_federated.python import aggregators
@@ -22,7 +23,6 @@ from tensorflow_federated.python import learning
 from tensorflow_federated.python import program
 from tensorflow_federated.python import simulation
 from tensorflow_federated.python.common_libs import async_utils
-from tensorflow_federated.python.common_libs import deprecation as _deprecation
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.common_libs import tracing as profiler
 from tensorflow_federated.python.core import backends
@@ -73,10 +73,10 @@ if sys.version_info < (3, 9):
   raise RuntimeError('TFF only supports Python versions 3.9 or later.')
 
 # TODO: b/305743962 - Remove deprecated API.
-jax_computation = _deprecation.deprecated(
+jax_computation = typing_extensions.deprecated(
     '`tff.jax_computation` is deprecated, use `tff.jax.computation` instead.'
 )(jax.computation)
-tf_computation = _deprecation.deprecated(
+tf_computation = typing_extensions.deprecated(
     '`tff.tf_computation` is deprecated, use `tff.tensorflow.computation`'
     ' instead.'
 )(tensorflow.computation)
