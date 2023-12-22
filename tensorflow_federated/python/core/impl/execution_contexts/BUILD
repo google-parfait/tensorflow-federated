@@ -100,15 +100,9 @@ py_test(
     timeout = "moderate",
     srcs = ["mergeable_comp_execution_context_test.py"],
     deps = [
-        ":async_execution_context",
         ":mergeable_comp_execution_context",
         "//tensorflow_federated/python/common_libs:structure",
-        "//tensorflow_federated/python/core/impl/computation:computation_base",
-        "//tensorflow_federated/python/core/impl/executor_stacks:executor_factory",
-        "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
-        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
         "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:placements",
     ],
 )
 

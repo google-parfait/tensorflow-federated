@@ -128,6 +128,136 @@ def build_sum_merge_with_first_arg_computation(
   return after_merge
 
 
+class MergeableCompFormTest(absltest.TestCase):
+
+  def test_raises_mismatched_up_to_merge_and_merge(self):
+    up_to_merge = build_sum_client_arg_computation(
+        tff.FederatedType(np.int32, tff.SERVER),
+        tff.FederatedType(np.int32, tff.CLIENTS),
+    )
+
+    bad_merge = build_whimsy_merge_computation(np.float32)
+
+    @tff.federated_computation(
+        up_to_merge.type_signature.parameter,
+        tff.FederatedType(bad_merge.type_signature.result, tff.SERVER),
+    )
+    def after_merge(x, y):
+      return (x, y)
+
+    with self.assertRaises(TypeError):
+      tff.framework.MergeableCompForm(
+          up_to_merge=up_to_merge, merge=bad_merge, after_merge=after_merge
+      )
+
+  def test_raises_merge_computation_not_assignable_result(self):
+    up_to_merge = build_sum_client_arg_computation(
+        tff.FederatedType(np.int32, tff.SERVER),
+        tff.FederatedType(np.int32, tff.CLIENTS),
+    )
+
+    @tff.federated_computation(np.int32, np.int32)
+    def bad_merge(x, y):
+      del x, y  # Unused
+      return 1.0  # of type float.
+
+    @tff.federated_computation(
+        up_to_merge.type_signature.parameter,
+        tff.FederatedType(bad_merge.type_signature.result, tff.SERVER),
+    )
+    def after_merge(x, y):
+      return (x, y)
+
+    with self.assertRaises(TypeError):
+      tff.framework.MergeableCompForm(
+          up_to_merge=up_to_merge, merge=bad_merge, after_merge=after_merge
+      )
+
+  def test_raises_no_top_level_argument_in_after_agg(self):
+    up_to_merge = build_sum_client_arg_computation(
+        tff.FederatedType(np.int32, tff.SERVER),
+        tff.FederatedType(np.int32, tff.CLIENTS),
+    )
+
+    merge = build_whimsy_merge_computation(np.int32)
+
+    @tff.federated_computation(
+        tff.FederatedType(merge.type_signature.result, tff.SERVER)
+    )
+    def bad_after_merge(x):
+      return x
+
+    with self.assertRaises(TypeError):
+      tff.framework.MergeableCompForm(
+          up_to_merge=up_to_merge, merge=merge, after_merge=bad_after_merge
+      )
+
+  def test_raises_up_to_merge_returns_non_server_placed_result(self):
+    @tff.federated_computation(tff.FederatedType(np.int32, tff.SERVER))
+    def bad_up_to_merge(x):
+      # Returns non SERVER-placed result.
+      return x, x
+
+    merge = build_whimsy_merge_computation(np.int32)
+
+    after_merge = build_whimsy_after_merge_computation(
+        bad_up_to_merge.type_signature.parameter, merge.type_signature.result
+    )
+
+    with self.assertRaises(TypeError):
+      tff.framework.MergeableCompForm(
+          up_to_merge=bad_up_to_merge, merge=merge, after_merge=after_merge
+      )
+
+  def test_raises_with_aggregation_in_after_agg(self):
+    up_to_merge = build_sum_client_arg_computation(
+        tff.FederatedType(np.int32, tff.SERVER),
+        tff.FederatedType(np.int32, tff.CLIENTS),
+    )
+
+    merge = build_whimsy_merge_computation(np.int32)
+
+    @tff.federated_computation(
+        up_to_merge.type_signature.parameter,
+        tff.FederatedType(merge.type_signature.result, tff.SERVER),
+    )
+    def after_merge_with_sum(original_arg, merged_arg):
+      del merged_arg  # Unused
+      # Second element in original arg is the clients-placed value.
+      return tff.federated_sum(original_arg[1])
+
+    with self.assertRaises(ValueError):
+      tff.framework.MergeableCompForm(
+          up_to_merge=up_to_merge, merge=merge, after_merge=after_merge_with_sum
+      )
+
+  def test_passes_with_correct_signatures(self):
+    up_to_merge = build_sum_client_arg_computation(
+        tff.FederatedType(np.int32, tff.SERVER),
+        tff.FederatedType(np.int32, tff.CLIENTS),
+    )
+    merge = build_whimsy_merge_computation(np.int32)
+    after_merge = build_whimsy_after_merge_computation(
+        up_to_merge.type_signature.parameter, merge.type_signature.result
+    )
+    mergeable_comp_form = tff.framework.MergeableCompForm(
+        up_to_merge=up_to_merge, merge=merge, after_merge=after_merge
+    )
+
+    self.assertIsInstance(mergeable_comp_form, tff.framework.MergeableCompForm)
+
+  def test_passes_with_noarg_top_level_computation(self):
+    up_to_merge = build_noarg_count_clients_computation()
+    merge = build_whimsy_merge_computation(np.int32)
+    after_merge = build_whimsy_after_merge_computation(
+        up_to_merge.type_signature.parameter, merge.type_signature.result
+    )
+    mergeable_comp_form = tff.framework.MergeableCompForm(
+        up_to_merge=up_to_merge, merge=merge, after_merge=after_merge
+    )
+    self.assertIsInstance(mergeable_comp_form, tff.framework.MergeableCompForm)
+
+
 class MergeableCompExecutionContextTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
@@ -378,6 +508,32 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
     expected_result = num_clients
     result = mergeable_comp_context.invoke(mergeable_comp_form, None)
     self.assertEqual(result, expected_result)
+
+  def test_invoke_raises_computation_no_compiler(self):
+    @tff.federated_computation()
+    def return_one():
+      return 1
+
+    factory = tff.framework.local_cpp_executor_factory()
+    context = tff.framework.AsyncExecutionContext(factory)
+    context = tff.framework.MergeableCompExecutionContext([context])
+
+    with self.assertRaises(ValueError):
+      context.invoke(return_one)
+
+  def test_invoke_raises_computation_not_compiled_to_mergeable_comp_form(self):
+    @tff.federated_computation()
+    def return_one():
+      return 1
+
+    factory = tff.framework.local_cpp_executor_factory()
+    context = tff.framework.AsyncExecutionContext(factory)
+    context = tff.framework.MergeableCompExecutionContext(
+        [context], compiler_fn=lambda x: x
+    )
+
+    with self.assertRaises(ValueError):
+      context.invoke(return_one)
 
 
 if __name__ == '__main__':

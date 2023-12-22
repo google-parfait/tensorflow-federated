@@ -62,7 +62,6 @@ digraph {
 
   execution_contexts -> executor_stacks
   execution_contexts -> executors
-  execution_contexts -> federated_context [color="#ff0000"]
   execution_contexts -> computation
   execution_contexts -> compiler
   execution_contexts -> types
