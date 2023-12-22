@@ -29,12 +29,7 @@ absl::StatusOr<std::shared_ptr<Executor>> CreateLocalExecutor(
         client_leaf_executor_fn) {
   std::shared_ptr<Executor> server = CreateReferenceResolvingExecutor(
       CreateSequenceExecutor(TFF_TRY(leaf_executor_fn(-1))));
-  std::shared_ptr<Executor> client = server;
-  if (client_leaf_executor_fn != nullptr) {
-    client = CreateReferenceResolvingExecutor(
-        CreateSequenceExecutor(TFF_TRY(client_leaf_executor_fn(-1))));
-  }
-  return CreateReferenceResolvingExecutor(TFF_TRY(CreateFederatingExecutor(
-      /*server_child=*/server, /*client_child=*/client, cardinalities)));
+  return CreateReferenceResolvingExecutor(
+      TFF_TRY(CreateFederatingExecutor(server, cardinalities)));
 }
 }  // namespace tensorflow_federated
