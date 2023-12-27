@@ -26,14 +26,11 @@ Communication-Efficient Learning of Deep Networks from Decentralized Data
     https://arxiv.org/abs/1602.05629
 """
 
+import numpy as np
 import tensorflow as tf
 import tensorflow_federated as tff
 
-from tensorflow_federated.examples.stateful_clients.stateful_fedavg_tf import build_server_broadcast_message
-from tensorflow_federated.examples.stateful_clients.stateful_fedavg_tf import client_update
-from tensorflow_federated.examples.stateful_clients.stateful_fedavg_tf import get_model_weights
-from tensorflow_federated.examples.stateful_clients.stateful_fedavg_tf import server_update
-from tensorflow_federated.examples.stateful_clients.stateful_fedavg_tf import ServerState
+from tensorflow_federated.examples.stateful_clients import stateful_fedavg_tf
 
 
 def _initialize_optimizer_vars(model, optimizer):
@@ -43,7 +40,7 @@ def _initialize_optimizer_vars(model, optimizer):
   # creates the variables on first usage of the optimizer. Optimizers such as
   # Adam, Adagrad, or using momentum need to create a new set of variables shape
   # like the model weights.
-  model_weights = get_model_weights(model)
+  model_weights = stateful_fedavg_tf.get_model_weights(model)
   zero_gradient = [tf.zeros_like(t) for t in model_weights.trainable]
   optimizer.apply_gradients(zip(zero_gradient, model_weights.trainable))
   assert optimizer.variables()
@@ -69,6 +66,7 @@ def build_federated_averaging_process(
   Returns:
     A `tff.templates.IterativeProcess`.
   """
+  del client_state_fn  # Unused.
 
   whimsy_model = model_fn()
 
@@ -77,8 +75,8 @@ def build_federated_averaging_process(
     model = model_fn()
     server_optimizer = server_optimizer_fn()
     _initialize_optimizer_vars(model, server_optimizer)
-    return ServerState(
-        model_weights=get_model_weights(model),
+    return stateful_fedavg_tf.ServerState(
+        model_weights=stateful_fedavg_tf.get_model_weights(model),
         optimizer_state=server_optimizer.variables(),
         round_num=0,
         total_iters_count=0,
@@ -88,24 +86,30 @@ def build_federated_averaging_process(
 
   model_weights_type = server_state_type.model_weights
 
-  client_state_type = tff.types.infer_unplaced_type(client_state_fn())
+  client_state_type = tff.StructWithPythonType(
+      [
+          ('client_index', np.int32),
+          ('iters_count', np.int32),
+      ],
+      stateful_fedavg_tf.ClientState,
+  )
 
   @tff.tf_computation(
       server_state_type,
       model_weights_type.trainable,
-      client_state_type.iters_count,  # pytype: disable=attribute-error
+      client_state_type.iters_count,
   )
   def server_update_fn(server_state, model_delta, total_iters_count):
     model = model_fn()
     server_optimizer = server_optimizer_fn()
     _initialize_optimizer_vars(model, server_optimizer)
-    return server_update(
+    return stateful_fedavg_tf.server_update(
         model, server_optimizer, server_state, model_delta, total_iters_count
     )
 
   @tff.tf_computation(server_state_type)
   def server_message_fn(server_state):
-    return build_server_broadcast_message(server_state)
+    return stateful_fedavg_tf.build_server_broadcast_message(server_state)
 
   server_message_type = server_message_fn.type_signature.result
   element_type = tff.types.tensorflow_to_type(whimsy_model.input_spec)
@@ -115,7 +119,7 @@ def build_federated_averaging_process(
   def client_update_fn(tf_dataset, client_state, server_message):
     model = model_fn()
     client_optimizer = client_optimizer_fn()
-    return client_update(
+    return stateful_fedavg_tf.client_update(
         model, tf_dataset, client_state, server_message, client_optimizer
     )
 
