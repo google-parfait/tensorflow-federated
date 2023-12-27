@@ -151,7 +151,10 @@ def _build_reconstruction_client_work(
   model_weights_type = type_conversions.infer_type(
       ReconstructionModel.get_global_variables(model_for_metadata)
   )
-  dataset_type = computation_types.SequenceType(model_for_metadata.input_spec)
+  element_type = computation_types.tensorflow_to_type(
+      model_for_metadata.input_spec
+  )
+  dataset_type = computation_types.SequenceType(element_type)
 
   @federated_computation.federated_computation
   def initialize():

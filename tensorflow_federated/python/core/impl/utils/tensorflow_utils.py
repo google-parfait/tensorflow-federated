@@ -338,13 +338,12 @@ def capture_result_from_graph(
         ),
     )
   elif isinstance(result, tf.data.Dataset):
-    element_structure = result.element_spec
     try:
-      element_type = computation_types.to_type(element_structure)
+      element_type = computation_types.tensorflow_to_type(result.element_spec)
     except TypeError as e:
       raise InvalidDatasetElementSpecError(
           'Dataset has `element_spec` which is not a valid TFF type.\n'
-          f'Found `element_spec`: {element_structure}\n'
+          f'Found `element_spec`: {result.element_spec}\n'
           f'which is not a valid TFF type: {str(e)}'
       ) from None
 
@@ -945,7 +944,7 @@ def make_data_set_from_elements(graph, elements, element_type):
         for i in range(len(elements)):
           singleton_ds = _make(elements[i : i + 1])
           ds = singleton_ds if ds is None else ds.concatenate(singleton_ds)
-    ds_element_type = computation_types.to_type(ds.element_spec)
+    ds_element_type = computation_types.tensorflow_to_type(ds.element_spec)
     if not element_type.is_assignable_from(ds_element_type):  # pytype: disable=attribute-error
       raise TypeError(
           'Failure during data set construction, expected elements of type {}, '

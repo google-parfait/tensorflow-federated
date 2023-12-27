@@ -101,7 +101,8 @@ def build_scheduled_client_work(
         whimsy_model.metric_finalizers(),
         unfinalized_metrics_type,  # pytype: disable=wrong-arg-types
     )
-  data_type = computation_types.SequenceType(whimsy_model.input_spec)
+  element_type = computation_types.tensorflow_to_type(whimsy_model.input_spec)
+  data_type = computation_types.SequenceType(element_type)
   weights_type = model_weights.weights_type_from_model(whimsy_model)
 
   if isinstance(whimsy_optimizer, optimizer_base.Optimizer):

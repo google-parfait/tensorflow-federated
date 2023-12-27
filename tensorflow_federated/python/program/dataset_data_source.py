@@ -85,7 +85,9 @@ class DatasetDataSourceIterator(data_source.FederatedDataSourceIterator):
           'Expected `federated_type` to be a `tff.FederatedType`, found '
           f'{type(federated_type)}.'
       )
-    return DatasetDataSourceIterator(datasets, federated_type)
+    return DatasetDataSourceIterator(
+        datasets=datasets, federated_type=federated_type
+    )
 
   def to_bytes(self) -> bytes:
     """Serializes the object to bytes."""
@@ -171,8 +173,9 @@ class DatasetDataSource(data_source.FederatedDataSource):
         )
 
     self._datasets = datasets
+    element_type = computation_types.tensorflow_to_type(element_spec)
     self._federated_type = computation_types.FederatedType(
-        computation_types.SequenceType(element_spec), placements.CLIENTS
+        computation_types.SequenceType(element_type), placements.CLIENTS
     )
 
   @property

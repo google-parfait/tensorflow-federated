@@ -17,6 +17,7 @@ See https://en.wikipedia.org/wiki/HyperLogLog for additional details on this
 algorithm.
 """
 
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import primitives
@@ -63,7 +64,7 @@ def build_client_hyperloglog_computation() -> computation_base.Computation:
   """
 
   @tensorflow_computation.tf_computation(
-      computation_types.SequenceType(tf.int64)
+      computation_types.SequenceType(np.int64)
   )
   @tf.function
   def _client_hyperloglog(client_data: tf.data.Dataset) -> tf.Tensor:
@@ -204,7 +205,7 @@ def create_federated_hyperloglog_computation(
   federated_secure_max = build_federated_secure_max_computation()
 
   @federated_computation.federated_computation(
-      computation_types.at_clients(computation_types.SequenceType(tf.string))
+      computation_types.at_clients(computation_types.SequenceType(np.str_))
   )
   def federated_hyperloglog(client_data):
     client_hash = intrinsics.federated_map(hash_client_data, client_data)

@@ -245,7 +245,8 @@ def _build_mime_lite_client_work(
         model.metric_finalizers(),
         unfinalized_metrics_type,  # pytype: disable=wrong-arg-types
     )
-  data_type = computation_types.SequenceType(model.input_spec)
+  element_type = computation_types.tensorflow_to_type(model.input_spec)
+  data_type = computation_types.SequenceType(element_type)
   weights_type = model_weights_lib.weights_type_from_model(model)
   weight_tensor_specs = type_conversions.type_to_tf_tensor_specs(weights_type)
 
@@ -523,7 +524,8 @@ def _build_mime_lite_functional_client_work(
   if metrics_aggregator is None:
     metrics_aggregator = metric_aggregator.sum_then_finalize
 
-  data_type = computation_types.SequenceType(model.input_spec)
+  element_type = computation_types.tensorflow_to_type(model.input_spec)
+  data_type = computation_types.SequenceType(element_type)
   trainable_weights, non_trainable_weights = model.initial_weights
   weights_type = type_conversions.infer_type(
       model_weights_lib.ModelWeights(

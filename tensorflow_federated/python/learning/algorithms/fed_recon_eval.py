@@ -144,7 +144,7 @@ def build_fed_recon_eval(
           f'`tff.learning.models.ReconstructionModel`. Got a: {type(model)}'
       )
     nonlocal batch_type
-    batch_type = model.input_spec
+    batch_type = computation_types.tensorflow_to_type(model.input_spec)
     return reconstruction_model.ReconstructionModel.get_global_variables(model)
 
   if dataset_split_fn is None:

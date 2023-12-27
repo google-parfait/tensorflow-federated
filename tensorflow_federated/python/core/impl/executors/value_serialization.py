@@ -252,7 +252,7 @@ def _serialize_sequence_value(
             type_spec if type_spec is not None else 'unknown',
         )
     )
-  element_type = computation_types.to_type(value.element_spec)
+  element_type = computation_types.tensorflow_to_type(value.element_spec)
   _check_container_compat_with_tf_nest(element_type)
   value_type = computation_types.SequenceType(element_type)
   if not type_spec.is_assignable_from(value_type):
@@ -551,7 +551,7 @@ def _deserialize_sequence_value(
         'Deserializing Sequences enocded as {!s} has not been implemented'
         .format(which_value)
     )
-  return ds, computation_types.SequenceType(element=element_type)
+  return ds, computation_types.SequenceType(element_type)
 
 
 @tracing.trace

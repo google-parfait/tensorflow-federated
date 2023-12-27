@@ -88,12 +88,12 @@ class DatasetManipulationTest(parameterized.TestCase):
 
   @tff.test.with_contexts(*test_contexts.get_all_contexts())
   def test_executes_dataset_concat_aggregation(self):
-    tensor_spec = tf.TensorSpec(shape=[2], dtype=tf.float32)
+    element_type = tff.TensorType(np.float32, [2])
 
     @tff.tf_computation
     def create_empty_ds():
       empty_tensor = tf.zeros(
-          shape=(0,) + tensor_spec.shape, dtype=tensor_spec.dtype
+          shape=(0,) + element_type.shape, dtype=element_type.dtype
       )
       return tf.data.Dataset.from_tensor_slices(empty_tensor)
 
@@ -106,7 +106,7 @@ class DatasetManipulationTest(parameterized.TestCase):
       return ds
 
     @tff.federated_computation(
-        tff.FederatedType(tff.SequenceType(tensor_spec), tff.CLIENTS)
+        tff.FederatedType(tff.SequenceType(element_type), tff.CLIENTS)
     )
     def do_a_federated_aggregate(client_ds):
       return tff.federated_aggregate(

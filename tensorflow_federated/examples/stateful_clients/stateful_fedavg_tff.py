@@ -108,7 +108,8 @@ def build_federated_averaging_process(
     return build_server_broadcast_message(server_state)
 
   server_message_type = server_message_fn.type_signature.result
-  tf_dataset_type = tff.SequenceType(whimsy_model.input_spec)
+  element_type = tff.types.tensorflow_to_type(whimsy_model.input_spec)
+  tf_dataset_type = tff.SequenceType(element_type)
 
   @tff.tf_computation(tf_dataset_type, client_state_type, server_message_type)
   def client_update_fn(tf_dataset, client_state, server_message):

@@ -105,7 +105,7 @@ def infer_type(arg: object) -> Optional[computation_types.Type]:
         shape = None
       return computation_types.TensorType(dtype, shape)
   elif isinstance(arg, tf.data.Dataset):
-    element_type = computation_types.to_type(arg.element_spec)
+    element_type = computation_types.tensorflow_to_type(arg.element_spec)
     return computation_types.SequenceType(element_type)
   elif isinstance(arg, structure.Struct):
     return computation_types.StructType(

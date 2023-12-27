@@ -41,7 +41,7 @@ class RaggedTensorTest(absltest.TestCase):
     type_from_return = tf_comp.type_signature.result
 
     ragged_tensor_spec = tf.RaggedTensorSpec.from_value(create_ragged())
-    type_from_spec = tff.to_type(ragged_tensor_spec)
+    type_from_spec = tff.types.tensorflow_to_type(ragged_tensor_spec)
 
     type_from_spec.check_assignable_from(type_from_return)
 
@@ -68,7 +68,7 @@ class SparseTensorTest(absltest.TestCase):
     type_from_return = tf_comp.type_signature.result
 
     sparse_tensor_spec = tf.SparseTensorSpec.from_value(create_sparse())
-    type_from_spec = tff.to_type(sparse_tensor_spec)
+    type_from_spec = tff.types.tensorflow_to_type(sparse_tensor_spec)
 
     type_from_spec.check_assignable_from(type_from_return)
 

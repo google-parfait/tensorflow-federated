@@ -687,7 +687,7 @@ class GraphUtilsTest(tf.test.TestCase):
     constructed_ds = tensorflow_utils.make_data_set_from_elements(
         None,
         [ragged_tensor],
-        computation_types.to_type(
+        computation_types.tensorflow_to_type(
             tf.RaggedTensorSpec.from_value(ragged_tensor)
         ),
     )

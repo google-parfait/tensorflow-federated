@@ -165,7 +165,8 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
   def test_create_value_sequence(self, dataset_factory):
     dataset = dataset_factory()
     executor = tensorflow_executor_bindings.create_tensorflow_executor()
-    sequence_type = computation_types.SequenceType(dataset.element_spec)
+    element_type = computation_types.tensorflow_to_type(dataset.element_spec)
+    sequence_type = computation_types.SequenceType(element_type)
     arg_value_pb, _ = value_serialization.serialize_value(
         dataset, sequence_type
     )
@@ -195,9 +196,12 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
   def test_create_tuple_of_value_sequence(self):
     datasets = (tf.data.Dataset.range(5), tf.data.Dataset.range(5))
     executor = tensorflow_executor_bindings.create_tensorflow_executor()
+    element_type = computation_types.tensorflow_to_type(
+        datasets[0].element_spec
+    )
     struct_of_sequence_type = computation_types.StructType([
-        (None, computation_types.SequenceType(datasets[0].element_spec)),
-        (None, computation_types.SequenceType(datasets[0].element_spec)),
+        computation_types.SequenceType(element_type),
+        computation_types.SequenceType(element_type),
     ])
     arg_value_pb, _ = value_serialization.serialize_value(
         datasets, struct_of_sequence_type

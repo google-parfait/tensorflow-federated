@@ -511,28 +511,37 @@ class TypeToTfStructureTest(absltest.TestCase):
     )
     self.assertEqual(tf_structure, ())
 
-  def check_round_trip(self, first_spec):
-    first_type = computation_types.to_type(first_spec)
-    round_trip_spec = type_conversions.type_to_tf_structure(first_type)
-    round_trip_type = computation_types.to_type(round_trip_spec)
-    type_test_utils.assert_types_identical(first_type, round_trip_type)
-
-  def test_ragged_tensor_spec_round_trip(self):
+  def test_ragged_tensor_spec(self):
     ragged_tensor = tf.RaggedTensor.from_row_splits([0, 0, 0, 0], [0, 1, 4])
-    spec = tf.RaggedTensorSpec.from_value(ragged_tensor)
-    self.check_round_trip(spec)
+    ragged_tensor_spec = tf.RaggedTensorSpec.from_value(ragged_tensor)
+    type_spec_1 = computation_types.tensorflow_to_type(ragged_tensor_spec)
 
-  def test_double_ragged_tensor_spec_round_trip(self):
-    double_ragged_tensor = tf.strings.bytes_split(
+    result = type_conversions.type_to_tf_structure(type_spec_1)
+
+    type_spec_2 = computation_types.tensorflow_to_type(result)
+    self.assertEqual(type_spec_1, type_spec_2)
+
+  def test_double_ragged_tensor(self):
+    ragged_tensor = tf.strings.bytes_split(
         tf.strings.split(['one two', 'three'])
     )
-    spec = tf.RaggedTensorSpec.from_value(double_ragged_tensor)
-    self.check_round_trip(spec)
+    ragged_tensor_spec = tf.RaggedTensorSpec.from_value(ragged_tensor)
+    type_spec_1 = computation_types.tensorflow_to_type(ragged_tensor_spec)
 
-  def test_sparse_tensor_spec_round_trip(self):
+    result = type_conversions.type_to_tf_structure(type_spec_1)
+
+    type_spec_2 = computation_types.tensorflow_to_type(result)
+    self.assertEqual(type_spec_1, type_spec_2)
+
+  def test_sparse_tensor_spec(self):
     sparse_tensor = tf.SparseTensor(indices=[[1]], values=[2], dense_shape=[5])
-    spec = tf.SparseTensorSpec.from_value(sparse_tensor)
-    self.check_round_trip(spec)
+    sparse_tensor_spec = tf.SparseTensorSpec.from_value(sparse_tensor)
+    type_spec_1 = computation_types.tensorflow_to_type(sparse_tensor_spec)
+
+    result = type_conversions.type_to_tf_structure(type_spec_1)
+
+    type_spec_2 = computation_types.tensorflow_to_type(result)
+    self.assertEqual(type_spec_1, type_spec_2)
 
 
 class TypeToPyContainerTest(absltest.TestCase):

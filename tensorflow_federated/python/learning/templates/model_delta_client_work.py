@@ -317,7 +317,8 @@ def build_model_delta_client_work(
         model.metric_finalizers(),
         unfinalized_metrics_type,  # pytype: disable=wrong-arg-types
     )
-  data_type = computation_types.SequenceType(model.input_spec)
+  element_type = computation_types.tensorflow_to_type(model.input_spec)
+  data_type = computation_types.SequenceType(element_type)
   weights_type = model_weights_lib.weights_type_from_model(model)
 
   if isinstance(optimizer, optimizer_base.Optimizer):
@@ -550,7 +551,8 @@ def build_functional_model_delta_client_work(
   py_typecheck.check_type(model, functional.FunctionalModel)
   py_typecheck.check_type(optimizer, optimizer_base.Optimizer)
   py_typecheck.check_type(client_weighting, client_weight_lib.ClientWeighting)
-  data_type = computation_types.SequenceType(model.input_spec)
+  element_type = computation_types.tensorflow_to_type(model.input_spec)
+  data_type = computation_types.SequenceType(element_type)
 
   def ndarray_to_tensorspec(ndarray):
     return tf.TensorSpec(

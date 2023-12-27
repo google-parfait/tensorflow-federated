@@ -172,7 +172,8 @@ def _build_fed_sgd_client_work(
         model.metric_finalizers(),
         unfinalized_metrics_type,  # pytype: disable=wrong-arg-types
     )
-  data_type = computation_types.SequenceType(model.input_spec)
+  element_type = computation_types.tensorflow_to_type(model.input_spec)
+  data_type = computation_types.SequenceType(element_type)
   weights_type = model_weights_lib.weights_type_from_model(model)
 
   @federated_computation.federated_computation
@@ -337,7 +338,8 @@ def _build_functional_fed_sgd_client_work(
     A `tff.learning.templates.ClientWorkProcess`.
   """
   py_typecheck.check_type(model, functional.FunctionalModel)
-  data_type = computation_types.SequenceType(model.input_spec)
+  element_type = computation_types.tensorflow_to_type(model.input_spec)
+  data_type = computation_types.SequenceType(element_type)
 
   def ndarray_to_tensorspec(ndarray):
     return tf.TensorSpec(shape=ndarray.shape, dtype=ndarray.dtype)

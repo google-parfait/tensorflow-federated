@@ -312,7 +312,7 @@ class ValueSerializationtest(tf.test.TestCase, parameterized.TestCase):
     element_type = computation_types.to_type(
         test_tuple_type(np.int64, np.int32, np.float32)
     )
-    sequence_type = computation_types.SequenceType(element=element_type)
+    sequence_type = computation_types.SequenceType(element_type)
     value_proto, value_type = value_serialization.serialize_value(
         ds_repr, sequence_type
     )
@@ -394,19 +394,24 @@ class ValueSerializationtest(tf.test.TestCase, parameterized.TestCase):
         values=[3, 1, 4], row_splits=[0, 2, 2, 3]
     )
     ds = tf.data.Dataset.from_tensors(ragged_tensor)
-    value_proto, value_type = value_serialization.serialize_value(
-        ds, computation_types.SequenceType(element=ds.element_spec)
+    element_type = computation_types.tensorflow_to_type(ds.element_spec)
+    type_spec = computation_types.SequenceType(element_type)
+
+    serialized_value, serialized_type = value_serialization.serialize_value(
+        ds, type_spec
     )
-    expected_type = computation_types.SequenceType(ds.element_spec)
-    type_test_utils.assert_types_identical(value_type, expected_type)
+
+    type_test_utils.assert_types_identical(serialized_type, type_spec)
+
     # We remove the `element_type` field from the proto in order to ensure
     # that the type hint we pass to deserialize_value is used, as this contains
     # the information that the dataset uses RaggedTensors as python containers
-    value_proto.sequence.ClearField('element_type')
-    _, type_spec = value_serialization.deserialize_value(
-        value_proto, value_type
+    serialized_value.sequence.ClearField('element_type')
+    _, deserialized_type = value_serialization.deserialize_value(
+        serialized_value, serialized_type
     )
-    type_test_utils.assert_types_identical(type_spec, expected_type)
+
+    type_test_utils.assert_types_identical(deserialized_type, type_spec)
 
   def test_serialize_deserialize_dataset_of_sparse_tensors_with_type_hint(self):
     self.skipTest('b/235492749')
@@ -705,8 +710,9 @@ class DatasetSerializationTest(absltest.TestCase):
   def test_roundtrip_sequence_of_scalars(self):
     x = tf.data.Dataset.range(5).map(lambda x: x * 2)
     serialized_bytes = value_serialization._serialize_dataset(x)
+    element_type = computation_types.tensorflow_to_type(x.element_spec)
     y = value_serialization._deserialize_dataset_from_graph_def(
-        serialized_bytes, element_type=computation_types.to_type(x.element_spec)
+        serialized_bytes, element_type
     )
     self.assertEqual(x.element_spec, y.element_spec)
     self.assertEqual(list(y), [x * 2 for x in range(5)])
@@ -737,8 +743,9 @@ class DatasetSerializationTest(absltest.TestCase):
         lambda x: (x * 2, tf.cast(x, np.int32), tf.cast(x - 1, np.float32))
     )
     serialized_bytes = value_serialization._serialize_dataset(x)
+    element_type = computation_types.tensorflow_to_type(x.element_spec)
     y = value_serialization._deserialize_dataset_from_graph_def(
-        serialized_bytes, element_type=computation_types.to_type(x.element_spec)
+        serialized_bytes, element_type
     )
     self.assertEqual(x.element_spec, y.element_spec)
     self.assertEqual(list(y), [(x * 2, x, x - 1.0) for x in range(5)])
@@ -746,8 +753,9 @@ class DatasetSerializationTest(absltest.TestCase):
   def test_roundtrip_sequence_of_singleton_tuples(self):
     x = tf.data.Dataset.range(5).map(lambda x: (x,))
     serialized_bytes = value_serialization._serialize_dataset(x)
+    element_type = computation_types.tensorflow_to_type(x.element_spec)
     y = value_serialization._deserialize_dataset_from_graph_def(
-        serialized_bytes, element_type=computation_types.to_type(x.element_spec)
+        serialized_bytes, element_type
     )
     self.assertEqual(x.element_spec, y.element_spec)
     expected_values = [(x,) for x in range(5)]
@@ -764,8 +772,9 @@ class DatasetSerializationTest(absltest.TestCase):
 
     x = tf.data.Dataset.range(5).map(make_test_tuple)
     serialized_bytes = value_serialization._serialize_dataset(x)
+    element_type = computation_types.tensorflow_to_type(x.element_spec)
     y = value_serialization._deserialize_dataset_from_graph_def(
-        serialized_bytes, element_type=computation_types.to_type(x.element_spec)
+        serialized_bytes, element_type
     )
     self.assertEqual(x.element_spec, y.element_spec)
     self.assertEqual(
@@ -786,9 +795,10 @@ class DatasetSerializationTest(absltest.TestCase):
       )
 
     x = tf.data.Dataset.range(5).map(_make_nested_tf_structure)
-    serialized_bytes = value_serialization._serialize_dataset(x)
+    serialzied_bytes = value_serialization._serialize_dataset(x)
+    element_type = computation_types.tensorflow_to_type(x.element_spec)
     y = value_serialization._deserialize_dataset_from_graph_def(
-        serialized_bytes, element_type=computation_types.to_type(x.element_spec)
+        serialzied_bytes, element_type
     )
     # Note: TF loses the `OrderedDict` during serialization, so the expectation
     # here is for a `dict` in the result.

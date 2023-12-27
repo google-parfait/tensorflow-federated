@@ -83,10 +83,9 @@ class ModelDeltaClientWorkComputationTest(
         non_trainable=computation_types.to_type([np.float32]),
     )
     expected_param_model_weights_type = computation_types.at_clients(mw_type)
+    element_type = computation_types.tensorflow_to_type(model_fn().input_spec)
     expected_param_data_type = computation_types.at_clients(
-        computation_types.SequenceType(
-            computation_types.to_type(model_fn().input_spec)
-        )
+        computation_types.SequenceType(element_type)
     )
     expected_result_type = computation_types.at_clients(
         client_works.ClientResult(
@@ -159,10 +158,9 @@ class ModelDeltaClientWorkComputationTest(
         non_trainable=computation_types.to_type([np.float32]),
     )
     expected_param_model_weights_type = computation_types.at_clients(mw_type)
+    element_type = computation_types.tensorflow_to_type(model_fn().input_spec)
     expected_param_data_type = computation_types.at_clients(
-        computation_types.SequenceType(
-            computation_types.to_type(model_fn().input_spec)
-        )
+        computation_types.SequenceType(element_type)
     )
     expected_result_type = computation_types.at_clients(
         client_works.ClientResult(

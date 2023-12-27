@@ -1118,7 +1118,7 @@ def _tensor_spec_to_type(tensor_spec: tf.TensorSpec) -> Type:
 
 def _dataset_spec_to_type(dataset_spec: tf.data.DatasetSpec) -> Type:
   """Returns a `tff.Type` for the `dataset_spec`."""
-  return SequenceType(element=to_type(dataset_spec.element_spec))
+  return SequenceType(element=tensorflow_to_type(dataset_spec.element_spec))
 
 
 def _ragged_tensor_spec_to_type(
@@ -1126,7 +1126,7 @@ def _ragged_tensor_spec_to_type(
 ) -> Type:
   """Returns a `tff.Type` for the `ragged_tensor_spec`."""
   if ragged_tensor_spec.flat_values_spec is not None:
-    flat_values_type = to_type(ragged_tensor_spec.flat_values_spec)
+    flat_values_type = tensorflow_to_type(ragged_tensor_spec.flat_values_spec)
   else:
     # We could provide a more specific shape here if `shape is not None`:
     # `flat_values_shape = [None] + shape[ragged_tensor_spec.ragged_rank + 1:]`

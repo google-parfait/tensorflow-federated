@@ -54,7 +54,7 @@ def _build_fed_eval_client_work(
 
   with tf.Graph().as_default():
     model = model_fn()
-    batch_type = computation_types.to_type(model.input_spec)
+    batch_type = computation_types.tensorflow_to_type(model.input_spec)
     if metrics_aggregation_process is None:
       metrics_finalizers = model.metric_finalizers()
       local_unfinalized_metrics_type = type_conversions.infer_type(
@@ -130,7 +130,7 @@ def _build_functional_fed_eval_client_work(
       tuple(ndarray_to_tensorspec(w) for w in model.initial_weights[1]),
   )
   tuple_weights_type = (weights_type.trainable, weights_type.non_trainable)
-  batch_type = computation_types.to_type(model.input_spec)
+  batch_type = computation_types.tensorflow_to_type(model.input_spec)
   local_eval = federated_evaluation.build_functional_local_evaluation(
       model,
       tuple_weights_type,  # pytype: disable=wrong-arg-types
