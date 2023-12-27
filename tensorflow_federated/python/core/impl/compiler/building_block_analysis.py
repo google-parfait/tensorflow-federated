@@ -13,9 +13,7 @@
 # limitations under the License.
 """A library of static analysis functions for building blocks."""
 
-from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl.compiler import building_blocks
-from tensorflow_federated.python.tensorflow_libs import serialization_utils
 
 
 def is_called_intrinsic(comp, uri=None):
@@ -46,40 +44,3 @@ def is_identity_function(comp):
       and isinstance(comp.result, building_blocks.Reference)
       and comp.parameter_name == comp.result.name
   )
-
-
-def count_tensorflow_variables_in(comp):
-  """Counts TF Variables in `comp` if `comp` is a TF block."""
-  py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
-  if (
-      not isinstance(comp, building_blocks.CompiledComputation)
-      or comp.proto.WhichOneof('computation') != 'tensorflow'
-  ):
-    raise ValueError(
-        'Please pass a '
-        '`building_blocks.CompiledComputation` of the '
-        '`tensorflow` variety to `count_tensorflow_variables_in`.'
-    )
-  graph_def = serialization_utils.unpack_graph_def(
-      comp.proto.tensorflow.graph_def
-  )
-
-  def _node_is_variable(node):
-    # TODO: b/137887596 - Follow up on ways to count Variables on the GraphDef
-    # level.
-    op_name = str(node.op).lower()
-    return (
-        op_name.startswith('variable') and op_name not in ['variableshape']
-    ) or op_name == 'varhandleop'
-
-  def _count_vars_in_function_lib(func_library):
-    total_nodes = 0
-    for graph_func in func_library.function:
-      total_nodes += sum(
-          _node_is_variable(node) for node in graph_func.node_def
-      )
-    return total_nodes
-
-  return sum(
-      _node_is_variable(node) for node in graph_def.node
-  ) + _count_vars_in_function_lib(graph_def.library)

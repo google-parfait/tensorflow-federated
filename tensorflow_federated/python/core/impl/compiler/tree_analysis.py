@@ -475,39 +475,6 @@ def check_aggregate_not_dependent_on_aggregate(tree):
     )
 
 
-def count_tensorflow_variables_under(comp):
-  """Counts total TF variables in any TensorFlow computations under `comp`.
-
-  Notice that this function is designed for the purpose of instrumentation,
-  in particular to check the size and constituents of the TensorFlow
-  artifacts generated.
-
-  Args:
-    comp: Instance of `building_blocks.ComputationBuildingBlock` whose TF
-      variables we wish to count.
-
-  Returns:
-    `integer` count of number of TF variables present in any
-    `building_blocks.CompiledComputation` of the TensorFlow
-    variety under `comp`.
-  """
-  py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
-  count_vars = 0
-
-  def _count_tf_vars(inner_comp):
-    nonlocal count_vars
-    if (
-        isinstance(inner_comp, building_blocks.CompiledComputation)
-        and inner_comp.proto.WhichOneof('computation') == 'tensorflow'
-    ):
-      count_vars += building_block_analysis.count_tensorflow_variables_in(
-          inner_comp
-      )
-
-  visit_postorder(comp, _count_tf_vars)
-  return count_vars
-
-
 def check_contains_no_unbound_references(tree, excluding=None):
   """Checks that `tree` has no unbound references.
 

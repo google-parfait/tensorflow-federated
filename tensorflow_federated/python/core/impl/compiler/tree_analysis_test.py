@@ -18,7 +18,6 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
-from tensorflow_federated.python.core.impl.compiler import building_block_analysis
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_block_test_utils
 from tensorflow_federated.python.core.impl.compiler import building_blocks
@@ -313,28 +312,6 @@ def _pack_noarg_graph(graph_def, return_type, result_binding):
   return building_block
 
 
-def _create_no_variable_tensorflow():
-  with tf.Graph().as_default() as g:
-    a = tf.constant(0, name='variable1')
-    b = tf.constant(1, name='variable2')
-    c = a + b
-
-  result_type, result_binding = tensorflow_utils.capture_result_from_graph(c, g)
-
-  return _pack_noarg_graph(g.as_graph_def(), result_type, result_binding)
-
-
-def _create_two_variable_tensorflow():
-  with tf.Graph().as_default() as g:
-    a = tf.Variable(0, name='variable1')
-    b = tf.Variable(1, name='variable2')
-    c = a + b
-
-  result_type, result_binding = tensorflow_utils.capture_result_from_graph(c, g)
-
-  return _pack_noarg_graph(g.as_graph_def(), result_type, result_binding)
-
-
 def _create_tensorflow_graph_with_nan():
   with tf.Graph().as_default() as g:
     a = tf.constant(float('NaN'))
@@ -342,38 +319,6 @@ def _create_tensorflow_graph_with_nan():
   result_type, result_binding = tensorflow_utils.capture_result_from_graph(a, g)
 
   return _pack_noarg_graph(g.as_graph_def(), result_type, result_binding)
-
-
-class CountTensorFlowVariablesTest(absltest.TestCase):
-
-  def test_raises_on_none(self):
-    with self.assertRaises(TypeError):
-      tree_analysis.count_tensorflow_variables_under(None)
-
-  def test_returns_zero_no_tensorflow(self):
-    no_tensorflow_comp = building_block_test_utils.create_nested_syntax_tree()
-    variable_count = tree_analysis.count_tensorflow_variables_under(
-        no_tensorflow_comp
-    )
-    self.assertEqual(variable_count, 0)
-
-  def test_returns_zero_tensorflow_with_no_variables(self):
-    no_variable_comp = _create_no_variable_tensorflow()
-    variable_count = tree_analysis.count_tensorflow_variables_under(
-        no_variable_comp
-    )
-    self.assertEqual(variable_count, 0)
-
-  def test_tensorflow_op_count_doubles_number_of_ops_in_two_tuple(self):
-    two_variable_comp = _create_two_variable_tensorflow()
-    node_tf_variable_count = (
-        building_block_analysis.count_tensorflow_variables_in(two_variable_comp)
-    )
-    tf_tuple = building_blocks.Struct([two_variable_comp, two_variable_comp])
-    tree_tf_variable_count = tree_analysis.count_tensorflow_variables_under(
-        tf_tuple
-    )
-    self.assertEqual(tree_tf_variable_count, 2 * node_tf_variable_count)
 
 
 class ContainsCalledIntrinsic(absltest.TestCase):

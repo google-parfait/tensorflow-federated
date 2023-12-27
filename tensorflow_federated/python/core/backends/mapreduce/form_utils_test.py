@@ -37,6 +37,7 @@ from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_test_utils
 from tensorflow_federated.python.core.templates import iterative_process
+from tensorflow_federated.python.tensorflow_libs import serialization_utils
 
 
 def _to_python_value(value):
@@ -561,6 +562,60 @@ def get_example_cf_compatible_iterative_processes():
   # pyformat: enable
 
 
+def _count_tensorflow_variables_under(
+    comp: building_blocks.ComputationBuildingBlock,
+) -> int:
+  count_vars = 0
+
+  def _count_tensorflow_variables_in(
+      comp: building_blocks.CompiledComputation,
+  ) -> int:
+    """Counts TF Variables in `comp` if `comp` is a TF block."""
+    if (
+        not isinstance(comp, building_blocks.CompiledComputation)
+        or comp.proto.WhichOneof('computation') != 'tensorflow'
+    ):
+      raise ValueError(
+          'Please pass a '
+          '`building_blocks.CompiledComputation` of the '
+          '`tensorflow` variety to `count_tensorflow_variables_in`.'
+      )
+    graph_def = serialization_utils.unpack_graph_def(
+        comp.proto.tensorflow.graph_def
+    )
+
+    def _node_is_variable(node):
+      # TODO: b/137887596 - Follow up on ways to count Variables on the GraphDef
+      # level.
+      op_name = str(node.op).lower()
+      return (
+          op_name.startswith('variable') and op_name not in ['variableshape']
+      ) or op_name == 'varhandleop'
+
+    def _count_vars_in_function_lib(func_library):
+      total_nodes = 0
+      for graph_func in func_library.function:
+        total_nodes += sum(
+            _node_is_variable(node) for node in graph_func.node_def
+        )
+      return total_nodes
+
+    return sum(
+        _node_is_variable(node) for node in graph_def.node
+    ) + _count_vars_in_function_lib(graph_def.library)
+
+  def _count_tf_vars(inner_comp):
+    nonlocal count_vars
+    if (
+        isinstance(inner_comp, building_blocks.CompiledComputation)
+        and inner_comp.proto.WhichOneof('computation') == 'tensorflow'
+    ):
+      count_vars += _count_tensorflow_variables_in(inner_comp)
+
+  tree_analysis.visit_postorder(comp, _count_tf_vars)
+  return count_vars
+
+
 class FederatedFormTestCase(absltest.TestCase):
   """A base class that overrides evaluate to handle various executors."""
 
@@ -720,12 +775,8 @@ class GetDistributeAggregateFormTest(
 
     # Check that no TF work has been unintentionally duplicated.
     self.assertEqual(
-        tree_analysis.count_tensorflow_variables_under(
-            comp.to_building_block()
-        ),
-        tree_analysis.count_tensorflow_variables_under(
-            new_comp.to_building_block()
-        ),
+        _count_tensorflow_variables_under(comp.to_building_block()),
+        _count_tensorflow_variables_under(new_comp.to_building_block()),
     )
 
   def test_mnist_training_round_trip(self):
@@ -766,12 +817,8 @@ class GetDistributeAggregateFormTest(
 
     # Check that no TF work has been unintentionally duplicated.
     self.assertEqual(
-        tree_analysis.count_tensorflow_variables_under(
-            comp.to_building_block()
-        ),
-        tree_analysis.count_tensorflow_variables_under(
-            new_comp.to_building_block()
-        ),
+        _count_tensorflow_variables_under(comp.to_building_block()),
+        _count_tensorflow_variables_under(new_comp.to_building_block()),
     )
 
   @parameterized.named_parameters(
@@ -925,12 +972,8 @@ class GetMapReduceFormTest(FederatedFormTestCase, parameterized.TestCase):
         metrics, collections.OrderedDict(ratio_over_threshold=0.75)
     )
     self.assertEqual(
-        tree_analysis.count_tensorflow_variables_under(
-            comp.to_building_block()
-        ),
-        tree_analysis.count_tensorflow_variables_under(
-            new_comp.to_building_block()
-        ),
+        _count_tensorflow_variables_under(comp.to_building_block()),
+        _count_tensorflow_variables_under(new_comp.to_building_block()),
     )
 
   def test_mnist_training_round_trip(self):
@@ -970,12 +1013,8 @@ class GetMapReduceFormTest(FederatedFormTestCase, parameterized.TestCase):
     alt_metrics = alt_round_1[1]
     self.assertAlmostEqual(metrics, alt_metrics)
     self.assertEqual(
-        tree_analysis.count_tensorflow_variables_under(
-            comp.to_building_block()
-        ),
-        tree_analysis.count_tensorflow_variables_under(
-            new_comp.to_building_block()
-        ),
+        _count_tensorflow_variables_under(comp.to_building_block()),
+        _count_tensorflow_variables_under(new_comp.to_building_block()),
     )
 
   @parameterized.named_parameters(

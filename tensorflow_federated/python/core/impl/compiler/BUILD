@@ -29,26 +29,7 @@ py_library(
 py_library(
     name = "building_block_analysis",
     srcs = ["building_block_analysis.py"],
-    deps = [
-        ":building_blocks",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/tensorflow_libs:serialization_utils",
-    ],
-)
-
-py_test(
-    name = "building_block_analysis_test",
-    size = "small",
-    srcs = ["building_block_analysis_test.py"],
-    deps = [
-        ":building_block_analysis",
-        ":building_blocks",
-        "//tensorflow_federated/proto/v0:computation_py_pb2",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:type_serialization",
-        "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
-        "//tensorflow_federated/python/tensorflow_libs:serialization_utils",
-    ],
+    deps = [":building_blocks"],
 )
 
 py_library(
@@ -354,7 +335,6 @@ py_test(
     name = "tree_analysis_test",
     srcs = ["tree_analysis_test.py"],
     deps = [
-        ":building_block_analysis",
         ":building_block_factory",
         ":building_block_test_utils",
         ":building_blocks",
