@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from absl.testing import parameterized
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.analytics.heavy_hitters.iblt import iblt_clipping
@@ -109,7 +110,7 @@ class IbltClippingTest(parameterized.TestCase):
     )
     clip_fac = iblt_clipping.ClippingIbltFactory(iblt_fac)
     wrong_type = computation_types.SequenceType(
-        computation_types.TensorType(shape=[None], dtype=tf.int32)
+        computation_types.TensorType(shape=[None], dtype=np.int32)
     )
     with self.assertRaises(ValueError):
       clip_fac.create(wrong_type)
@@ -122,7 +123,7 @@ class IbltClippingTest(parameterized.TestCase):
         iblt_fac, max_words_per_user=4, unique_counts=True
     )
     value_type = computation_types.SequenceType(
-        computation_types.TensorType(shape=[None], dtype=tf.string)
+        computation_types.TensorType(shape=[None], dtype=np.str_)
     )
     agg_process = clip_fac.create(value_type)
     data = [

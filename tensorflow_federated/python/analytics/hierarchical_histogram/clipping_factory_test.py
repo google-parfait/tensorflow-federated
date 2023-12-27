@@ -40,7 +40,7 @@ class ClippingSumFactoryComputationTest(
         clip_mechanism, 1
     )
     self.assertIsInstance(clip_factory, factory.UnweightedAggregationFactory)
-    value_type = computation_types.to_type((tf.int32, (2,)))
+    value_type = computation_types.TensorType(np.int32, shape=(2,))
     process = clip_factory.create(value_type)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
@@ -78,8 +78,8 @@ class ClippingSumFactoryComputationTest(
 class ClippingSumFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
-      ('invalid_clip_mechanism', 'invalid', 1, (tf.int32, (2,))),
-      ('invalid_max_records_per_user', 'sub-sampling', 0, (tf.int32, (2,))),
+      ('invalid_clip_mechanism', 'invalid', 1, (np.int32, (2,))),
+      ('invalid_max_records_per_user', 'sub-sampling', 0, (np.int32, (2,))),
   )
   def test_raises_value_error(
       self, clip_mechanism, max_records_per_user, value_type
@@ -93,8 +93,8 @@ class ClippingSumFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
       clip_factory.create(value_type)
 
   @parameterized.named_parameters(
-      ('struct_value_type', ((tf.int32, (2,)), tf.int32)),
-      ('float_value_type', (tf.float32, (2,))),
+      ('struct_value_type', ((np.int32, (2,)), np.int32)),
+      ('float_value_type', (np.float32, (2,))),
   )
   def test_raises_type_error(self, value_type):
     value_type = computation_types.to_type(value_type)
@@ -153,7 +153,9 @@ class ClippingSumFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
     clip_factory = clipping_factory.HistogramClippingSumFactory(
         clip_mechanism='sub-sampling', max_records_per_user=max_records_per_user
     )
-    outer_value_type = computation_types.to_type((tf.int32, (value_shape,)))
+    outer_value_type = computation_types.TensorType(
+        np.int32, shape=(value_shape,)
+    )
     process = clip_factory.create(outer_value_type)
 
     state = process.initialize()
@@ -185,7 +187,7 @@ class ClippingSumFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
         clip_mechanism='distinct', max_records_per_user=max_records_per_user
     )
 
-    value_type = computation_types.to_type((tf.int32, (value_shape,)))
+    value_type = computation_types.TensorType(np.int32, shape=(value_shape,))
     process = clip_factory.create(value_type)
 
     state = process.initialize()

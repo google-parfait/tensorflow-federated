@@ -177,7 +177,7 @@ def build_iblt_computation(
     decode_iblt_fn = iblt_tensor.decode_iblt_tensor_tf
 
   dataset_type = computation_types.SequenceType(
-      computation_types.TensorType(shape=[None], dtype=tf.string)
+      computation_types.TensorType(shape=[None], dtype=np.str_)
   )
 
   @tensorflow_computation.tf_computation(dataset_type)
@@ -298,7 +298,7 @@ def build_iblt_computation(
       count_sum_fn = intrinsics.federated_sum
     round_timestamp = intrinsics.federated_eval(
         tensorflow_computation.tf_computation(
-            lambda: tf.cast(tf.timestamp(), tf.int64)
+            lambda: tf.cast(tf.timestamp(), np.int64)
         ),
         placements.SERVER,
     )

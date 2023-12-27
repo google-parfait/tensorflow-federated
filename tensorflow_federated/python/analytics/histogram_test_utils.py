@@ -20,7 +20,7 @@ def create_np_histogram(keys, values):
   """Create a numpy dictionary by the input keys and values.
 
   Args:
-    keys: A 1D tensor of tf.string or list of strings containing the keys of the
+    keys: A 1-d string tensor or list of strings containing the keys of the
       histogram.
     values: A 1D tensor or list of ints containing the values of the histogram.
 
@@ -47,12 +47,12 @@ class HistogramTest(tf.test.TestCase):
     histograms.
 
     Args:
-      x_keys: A 1D tensor of tf.string or list of strings containing the keys of
-        the second histogram.
+      x_keys: A 1D string tensor or list of strings containing the keys of the
+        second histogram.
       x_values: A 1D tensor or list of ints containing the values of the first
         histogram.
-      y_keys: A 1D tensor of tf.string or list of strings containing the keys of
-        the second histogram.
+      y_keys: A 1D string tensor or list of strings containing the keys of the
+        second histogram.
       y_values: A 1D tensor or list of ints containing the values of the second
         histogram.
 

@@ -199,19 +199,17 @@ class IbltTensorDecoder(iblt_lib.IbltDecoder):
 
     # While queue is non-empty, pop and subtract from IBLT, add new peelable
     # locations to queue.
-    iblt, iblt_values, out_strings, out_counts, out_tensor_values = (
-        tf.while_loop(
-            self._check_if_queue_is_empty,
-            self._peel_element_from_iblt,
-            loop_vars=(
-                iblt,
-                iblt_values,
-                out_strings,
-                out_counts,
-                out_tensor_values,
-            ),
-            parallel_iterations=1,
-        )
+    iblt, _, out_strings, out_counts, out_tensor_values = tf.while_loop(
+        self._check_if_queue_is_empty,
+        self._peel_element_from_iblt,
+        loop_vars=(
+            iblt,
+            iblt_values,
+            out_strings,
+            out_counts,
+            out_tensor_values,
+        ),
+        parallel_iterations=1,
     )
 
     # Count of entries that could not be decoded:

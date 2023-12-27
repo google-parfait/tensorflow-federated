@@ -110,7 +110,7 @@ def build_federated_secure_max_computation() -> computation_base.Computation:
 
   @federated_computation.federated_computation(
       computation_types.at_clients(
-          computation_types.TensorType(tf.int64, shape=[HLL_SKETCH_SIZE])
+          computation_types.TensorType(np.int64, shape=[HLL_SKETCH_SIZE])
       )
   )
   def federated_secure_max(sketch):

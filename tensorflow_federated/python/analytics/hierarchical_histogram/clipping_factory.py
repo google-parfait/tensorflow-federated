@@ -15,6 +15,7 @@
 
 from typing import Optional
 
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory
@@ -106,11 +107,16 @@ class HistogramClippingSumFactory(factory.UnweightedAggregationFactory):
       clip_fn = _sub_sample_clip
     elif self._clip_mechanism == 'distinct':
       clip_fn = _distinct_clip
+    else:
+      raise ValueError(
+          f'Unsupported clipping mechanism: {self._clip_mechanism}. Must be one'
+          f' of {CLIP_MECHANISMS}'
+      )
 
     inner_value_type = value_type
     if self._cast_to_float:
-      inner_value_type = computation_types.to_type(
-          (tf.float32, value_type.shape)
+      inner_value_type = computation_types.TensorType(
+          np.float32, value_type.shape
       )
     inner_agg_process = self._inner_agg_factory.create(inner_value_type)
 

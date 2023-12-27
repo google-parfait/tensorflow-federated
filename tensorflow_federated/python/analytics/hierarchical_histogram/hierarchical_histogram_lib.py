@@ -210,7 +210,7 @@ def build_hierarchical_histogram_computation(
     )
 
   @tensorflow_computation.tf_computation(
-      computation_types.SequenceType(tf.float32)
+      computation_types.SequenceType(np.float32)
   )
   def client_work(client_data):
     return _discretized_histogram_counts(
@@ -237,7 +237,7 @@ def build_hierarchical_histogram_computation(
   def hierarchical_histogram_computation(federated_client_data):
     round_timestamp = intrinsics.federated_eval(
         tensorflow_computation.tf_computation(
-            lambda: tf.cast(tf.timestamp(), tf.int64)
+            lambda: tf.cast(tf.timestamp(), np.int64)
         ),
         placements.SERVER,
     )

@@ -159,7 +159,7 @@ def _gcd_tf(a, b, dtype=tf.int64):
     x0, x1 = x1, x0 - q * x1
     return a, b, x0, x1, y0, y1
 
-  a, b, x0, x1, y0, y1 = tf.while_loop(
+  _, b, x0, _, y0, _ = tf.while_loop(
       cond, body, loop_vars=(a, b, x0, x1, y0, y1)
   )
   return b, x0, y0

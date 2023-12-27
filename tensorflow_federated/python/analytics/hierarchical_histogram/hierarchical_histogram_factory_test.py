@@ -53,7 +53,7 @@ class TreeAggregationFactoryComputationTest(
         )
     )
     self.assertIsInstance(agg_factory, factory.UnweightedAggregationFactory)
-    value_type = computation_types.to_type((tf.int32, (value_shape,)))
+    value_type = computation_types.to_type((np.int32, (value_shape,)))
     process = agg_factory.create(value_type)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
@@ -73,7 +73,7 @@ class TreeAggregationFactoryComputationTest(
 
     server_state_type = computation_types.at_server(
         differential_privacy.DPAggregatorState(
-            query_state_type, (), dp_event_type, tf.bool
+            query_state_type, (), dp_event_type, np.bool_
         )
     )
     expected_initialize_type = computation_types.FunctionType(
@@ -87,10 +87,10 @@ class TreeAggregationFactoryComputationTest(
 
     if enable_secure_sum:
       expected_measurements_dp = collections.OrderedDict(
-          secure_upper_clipped_count=tf.int32,
-          secure_lower_clipped_count=tf.int32,
-          secure_upper_threshold=tf.int32,
-          secure_lower_threshold=tf.int32,
+          secure_upper_clipped_count=np.int32,
+          secure_lower_clipped_count=np.int32,
+          secure_upper_threshold=np.int32,
+          secure_lower_threshold=np.int32,
       )
     else:
       expected_measurements_dp = ()
@@ -106,12 +106,12 @@ class TreeAggregationFactoryComputationTest(
         collections.OrderedDict([
             (
                 'flat_values',
-                computation_types.to_type((tf.int32, (flat_tree_shape,))),
+                computation_types.to_type((np.int32, (flat_tree_shape,))),
             ),
-            ('nested_row_splits', [(tf.int64, (tree_depth + 1,))]),
+            ('nested_row_splits', [(np.int64, (tree_depth + 1,))]),
         ])
     )
-    value_type = computation_types.to_type((tf.int32, (value_shape,)))
+    value_type = computation_types.to_type((np.int32, (value_shape,)))
     expected_next_type = computation_types.FunctionType(
         parameter=collections.OrderedDict(
             state=server_state_type,
@@ -146,7 +146,7 @@ class TreeAggregationFactoryComputationTest(
         )
     )
     self.assertIsInstance(agg_factory, factory.UnweightedAggregationFactory)
-    value_type = computation_types.to_type((tf.int32, (value_shape,)))
+    value_type = computation_types.to_type((np.int32, (value_shape,)))
     process = agg_factory.create(value_type)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
@@ -161,7 +161,7 @@ class TreeAggregationFactoryComputationTest(
 
     # template_type is not derived from value_type in this test because the
     # outer factory converts the ints to floats before they reach the query.
-    inner_value_type = computation_types.to_type((tf.float32, (value_shape,)))
+    inner_value_type = computation_types.to_type((np.float32, (value_shape,)))
     template_type = type_conversions.type_to_tf_tensor_specs(inner_value_type)
     initial_sample_state = query.initial_sample_state(template_type)
     _, _, dp_event = query.get_noised_result(initial_sample_state, query_state)
@@ -169,7 +169,7 @@ class TreeAggregationFactoryComputationTest(
 
     server_state_type = computation_types.at_server(
         differential_privacy.DPAggregatorState(
-            query_state_type, (), dp_event_type, tf.bool
+            query_state_type, (), dp_event_type, np.bool_
         )
     )
     expected_initialize_type = computation_types.FunctionType(
@@ -183,10 +183,10 @@ class TreeAggregationFactoryComputationTest(
 
     if enable_secure_sum:
       expected_measurements_dp = collections.OrderedDict(
-          secure_upper_clipped_count=tf.int32,
-          secure_lower_clipped_count=tf.int32,
-          secure_upper_threshold=tf.float32,
-          secure_lower_threshold=tf.float32,
+          secure_upper_clipped_count=np.int32,
+          secure_lower_clipped_count=np.int32,
+          secure_upper_threshold=np.float32,
+          secure_lower_threshold=np.float32,
       )
     else:
       expected_measurements_dp = ()
@@ -201,12 +201,12 @@ class TreeAggregationFactoryComputationTest(
         collections.OrderedDict([
             (
                 'flat_values',
-                computation_types.to_type((tf.float32, (flat_tree_shape,))),
+                computation_types.to_type((np.float32, (flat_tree_shape,))),
             ),
-            ('nested_row_splits', [(tf.int64, (tree_depth + 1,))]),
+            ('nested_row_splits', [(np.int64, (tree_depth + 1,))]),
         ])
     )
-    value_type = computation_types.to_type((tf.int32, (value_shape,)))
+    value_type = computation_types.to_type((np.int32, (value_shape,)))
     expected_next_type = computation_types.FunctionType(
         parameter=collections.OrderedDict(
             state=server_state_type,
@@ -241,7 +241,7 @@ class TreeAggregationFactoryComputationTest(
         )
     )
     self.assertIsInstance(agg_factory, factory.UnweightedAggregationFactory)
-    value_type = computation_types.to_type((tf.int32, (value_shape,)))
+    value_type = computation_types.to_type((np.int32, (value_shape,)))
     process = agg_factory.create(value_type)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
@@ -264,7 +264,7 @@ class TreeAggregationFactoryComputationTest(
 
     server_state_type = computation_types.at_server(
         differential_privacy.DPAggregatorState(
-            query_state_type, (), dp_event_type, tf.bool
+            query_state_type, (), dp_event_type, np.bool_
         )
     )
     expected_initialize_type = computation_types.FunctionType(
@@ -285,12 +285,12 @@ class TreeAggregationFactoryComputationTest(
         collections.OrderedDict([
             (
                 'flat_values',
-                computation_types.to_type((tf.int32, (flat_tree_shape,))),
+                computation_types.to_type((np.int32, (flat_tree_shape,))),
             ),
-            ('nested_row_splits', [(tf.int64, (tree_depth + 1,))]),
+            ('nested_row_splits', [(np.int64, (tree_depth + 1,))]),
         ])
     )
-    value_type = computation_types.to_type((tf.int32, (value_shape,)))
+    value_type = computation_types.to_type((np.int32, (value_shape,)))
     expected_next_type = computation_types.FunctionType(
         parameter=collections.OrderedDict(
             state=server_state_type,
@@ -493,7 +493,7 @@ class TreeAggregationFactoryExecutionTest(
             enable_secure_sum=enable_secure_sum,
         )
     )
-    value_type = computation_types.to_type((tf.int32, (value_shape,)))
+    value_type = computation_types.to_type((np.int32, (value_shape,)))
     process = agg_factory.create(value_type)
 
     state = process.initialize()
@@ -544,7 +544,7 @@ class TreeAggregationFactoryExecutionTest(
             enable_secure_sum=enable_secure_sum,
         )
     )
-    value_type = computation_types.to_type((tf.int32, (value_shape,)))
+    value_type = computation_types.to_type((np.int32, (value_shape,)))
     process = agg_factory.create(value_type)
 
     state = process.initialize()
@@ -598,7 +598,7 @@ class TreeAggregationFactoryExecutionTest(
             enable_secure_sum=enable_secure_sum,
         )
     )
-    value_type = computation_types.to_type((tf.int32, (value_shape,)))
+    value_type = computation_types.to_type((np.int32, (value_shape,)))
     process = agg_factory.create(value_type)
 
     state = process.initialize()
@@ -657,7 +657,7 @@ class TreeAggregationFactoryExecutionTest(
             enable_secure_sum=enable_secure_sum,
         )
     )
-    value_type = computation_types.to_type((tf.int32, (value_shape,)))
+    value_type = computation_types.to_type((np.int32, (value_shape,)))
     process = agg_factory.create(value_type)
 
     state = process.initialize()
@@ -711,7 +711,7 @@ class TreeAggregationFactoryExecutionTest(
             enable_secure_sum=True,
         )
     )
-    value_type = computation_types.to_type((tf.int32, (value_shape,)))
+    value_type = computation_types.to_type((np.int32, (value_shape,)))
     process = agg_factory.create(value_type)
 
     state = process.initialize()
@@ -769,7 +769,7 @@ class TreeAggregationFactoryExecutionTest(
             enable_secure_sum=True,
         )
     )
-    value_type = computation_types.to_type((tf.int32, (value_shape,)))
+    value_type = computation_types.to_type((np.int32, (value_shape,)))
     process = agg_factory.create(value_type)
 
     state = process.initialize()
@@ -822,7 +822,7 @@ class TreeAggregationFactoryExecutionTest(
             enable_secure_sum=True,
         )
     )
-    value_type = computation_types.to_type((tf.int32, (value_shape,)))
+    value_type = computation_types.to_type((np.int32, (value_shape,)))
     process = agg_factory.create(value_type)
 
     state = process.initialize()

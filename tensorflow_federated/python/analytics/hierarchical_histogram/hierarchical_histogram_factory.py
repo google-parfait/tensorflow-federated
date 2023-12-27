@@ -211,7 +211,7 @@ def create_hierarchical_histogram_aggregation_factory(
         l2_norm_bound, noise_multiplier * l2_norm_bound, arity
     )
     # If the inner `DifferentiallyPrivateFactory` uses `GaussianSumQuery`, then
-    # the record is casted to `tf.float32` before feeding to the DP factory.
+    # the record is cast to a float32 before feeding to the DP factory.
     cast_to_float = True
   elif dp_mechanism == 'distributed-discrete-gaussian':
     query = tfp.TreeRangeSumQuery.build_distributed_discrete_gaussian_query(
@@ -222,14 +222,14 @@ def create_hierarchical_histogram_aggregation_factory(
         arity,
     )
     # If the inner `DifferentiallyPrivateFactory` uses
-    # `DistributedDiscreteGaussianQuery`, then the record is kept as `tf.int32`
-    # before feeding to the DP factory.
+    # `DistributedDiscreteGaussianQuery`, then the record is kept as a 32-bit
+    # integer before feeding to the DP factory.
     cast_to_float = False
   elif dp_mechanism == 'no-noise':
     inner_query = tfp.NoPrivacySumQuery()
     query = tfp.TreeRangeSumQuery(arity=arity, inner_query=inner_query)
     # If the inner `DifferentiallyPrivateFactory` uses `NoPrivacyQuery`, then
-    # the record is kept as `tf.int32` before feeding to the DP factory.
+    # the record is kept as a 32-bit integer before feeding to the DP factory.
     cast_to_float = False
   else:
     raise ValueError('Unexpected dp_mechanism.')

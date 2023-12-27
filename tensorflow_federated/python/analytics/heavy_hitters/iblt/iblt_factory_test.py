@@ -18,8 +18,9 @@ from typing import Optional, Union
 from absl import logging
 from absl.testing import parameterized
 import grpc
-
+import numpy as np
 import tensorflow as tf
+
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import secure
 from tensorflow_federated.python.aggregators import sum_factory
@@ -45,8 +46,8 @@ DATA = [
 
 VALUE_TYPE = computation_types.SequenceType(
     collections.OrderedDict(
-        key=tf.string,
-        value=computation_types.TensorType(shape=(3,), dtype=tf.int64),
+        key=np.str_,
+        value=computation_types.TensorType(shape=(3,), dtype=np.int64),
     )
 )
 
@@ -72,11 +73,11 @@ def _generate_client_data(
     client = collections.OrderedDict([
         (
             iblt_factory.DATASET_KEY,
-            tf.constant(input_strings, dtype=tf.string),
+            tf.constant(input_strings, dtype=np.str_),
         ),
         (
             iblt_factory.DATASET_VALUE,
-            tf.constant(string_values, dtype=tf.int64),
+            tf.constant(string_values, dtype=np.int64),
         ),
     ])
     client_data.append(tf.data.Dataset.from_tensor_slices(client))
@@ -138,23 +139,23 @@ class IbltFactoryTest(tf.test.TestCase, parameterized.TestCase):
       (
           'scalar',
           computation_types.SequenceType(
-              computation_types.TensorType(shape=(), dtype=tf.int64)
+              computation_types.TensorType(shape=(), dtype=np.int64)
           ),
       ),
       (
           'list',
           computation_types.SequenceType(
-              computation_types.TensorType(shape=(3,), dtype=tf.int64)
+              computation_types.TensorType(shape=(3,), dtype=np.int64)
           ),
       ),
       (
           'dict_wrong_key',
           computation_types.SequenceType(
               collections.OrderedDict([
-                  ('foo', tf.int64),
+                  ('foo', np.int64),
                   (
                       iblt_factory.DATASET_VALUE,
-                      computation_types.TensorType(shape=(1,), dtype=tf.int64),
+                      computation_types.TensorType(shape=(1,), dtype=np.int64),
                   ),
               ])
           ),
@@ -163,11 +164,11 @@ class IbltFactoryTest(tf.test.TestCase, parameterized.TestCase):
           'dict_extra_key',
           computation_types.SequenceType(
               collections.OrderedDict([
-                  ('bar', tf.int64),
-                  (iblt_factory.DATASET_KEY, tf.int64),
+                  ('bar', np.int64),
+                  (iblt_factory.DATASET_KEY, np.int64),
                   (
                       iblt_factory.DATASET_VALUE,
-                      computation_types.TensorType(shape=(1,), dtype=tf.int64),
+                      computation_types.TensorType(shape=(1,), dtype=np.int64),
                   ),
               ])
           ),
@@ -176,10 +177,10 @@ class IbltFactoryTest(tf.test.TestCase, parameterized.TestCase):
           'dict_int64_int64',
           computation_types.SequenceType(
               collections.OrderedDict([
-                  (iblt_factory.DATASET_KEY, tf.int64),
+                  (iblt_factory.DATASET_KEY, np.int64),
                   (
                       iblt_factory.DATASET_VALUE,
-                      computation_types.TensorType(shape=(1,), dtype=tf.int64),
+                      computation_types.TensorType(shape=(1,), dtype=np.int64),
                   ),
               ])
           ),
@@ -188,10 +189,10 @@ class IbltFactoryTest(tf.test.TestCase, parameterized.TestCase):
           'dict_string_int32',
           computation_types.SequenceType(
               collections.OrderedDict([
-                  (iblt_factory.DATASET_KEY, tf.string),
+                  (iblt_factory.DATASET_KEY, np.str_),
                   (
                       iblt_factory.DATASET_VALUE,
-                      computation_types.TensorType(shape=(1,), dtype=tf.int32),
+                      computation_types.TensorType(shape=(1,), dtype=np.int32),
                   ),
               ])
           ),
@@ -208,14 +209,14 @@ class IbltFactoryTest(tf.test.TestCase, parameterized.TestCase):
     client = collections.OrderedDict([
         (
             iblt_factory.DATASET_KEY,
-            tf.constant(['thisisalongword'], dtype=tf.string),
+            tf.constant(['thisisalongword'], dtype=np.str_),
         ),
-        (iblt_factory.DATASET_VALUE, tf.constant([[1]], dtype=tf.int64)),
+        (iblt_factory.DATASET_VALUE, tf.constant([[1]], dtype=np.int64)),
     ])
     value_type = computation_types.SequenceType(
         collections.OrderedDict(
-            key=tf.string,
-            value=computation_types.TensorType(shape=(1,), dtype=tf.int64),
+            key=np.str_,
+            value=computation_types.TensorType(shape=(1,), dtype=np.int64),
         )
     )
     client_data = [tf.data.Dataset.from_tensor_slices(client)]
@@ -323,10 +324,10 @@ class IbltFactoryTest(tf.test.TestCase, parameterized.TestCase):
     iblt_agg_process = iblt_agg_factory.create(
         value_type=computation_types.SequenceType(
             collections.OrderedDict(
-                key=tf.string,
+                key=np.str_,
                 value=computation_types.TensorType(
                     shape=(2,),
-                    dtype=tf.int64,
+                    dtype=np.int64,
                 ),
             )
         )

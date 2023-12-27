@@ -27,7 +27,7 @@ EXPECTED_ROUND_TIMESTAMP = 314159
 
 
 def get_mock_timestamp():
-  return tf.constant(MOCK_TIME_SECONDS, dtype=tf.float64)
+  return np.float64(MOCK_TIME_SECONDS)
 
 
 class ClientWorkTest(tf.test.TestCase, parameterized.TestCase):

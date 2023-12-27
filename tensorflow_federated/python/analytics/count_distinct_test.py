@@ -70,9 +70,9 @@ class CountDistinctComputationTest(tf.test.TestCase):
     client_hyperloglog = count_distinct.build_client_hyperloglog_computation()
 
     expected_type_signature = computation_types.FunctionType(
-        computation_types.SequenceType(computation_types.TensorType(tf.int64)),
+        computation_types.SequenceType(computation_types.TensorType(np.int64)),
         computation_types.TensorType(
-            tf.int64, [count_distinct.HLL_SKETCH_SIZE]
+            np.int64, [count_distinct.HLL_SKETCH_SIZE]
         ),
     )
     self.assertTrue(

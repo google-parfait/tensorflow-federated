@@ -16,6 +16,7 @@
 import collections
 from typing import Optional
 
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory
@@ -39,8 +40,10 @@ def get_clipped_elements_with_counts(
 ) -> tf.data.Dataset:
   """Gets elements and corresponding clipped counts from the input `dataset`.
 
-  Returns a dataset that yields `OrderedDict`s with two keys: `key` with
-  `tf.string` scalar value, and `value' with list of tf.int64 scalar values.
+  Returns a dataset that yields `OrderedDict`s with two keys: `key`, whose
+  associated dictionary value is string tensor, `value', whose associated
+  dictionary value is a list 64-bit integers.
+
   The list is of length one or two, with each entry representing the (clipped)
   count for a given word and (if unique_counts=True) the constant 1.  The
   primary intended use case for this function is to preprocess client-data
@@ -158,7 +161,7 @@ class ClippingIbltFactory(factory.UnweightedAggregationFactory):
       self, value_type: factory.ValueType
   ) -> aggregation_process.AggregationProcess:
     expected_type = computation_types.SequenceType(
-        computation_types.TensorType(shape=[None], dtype=tf.string)
+        computation_types.TensorType(shape=[None], dtype=np.str_)
     )
 
     if value_type != expected_type:

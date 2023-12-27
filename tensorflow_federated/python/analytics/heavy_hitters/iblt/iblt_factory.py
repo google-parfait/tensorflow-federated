@@ -17,6 +17,7 @@ import collections
 from typing import Any, Optional
 
 import attrs
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory
@@ -53,10 +54,9 @@ def _parse_client_dict(
 
   Args:
     dataset: A `tf.data.Dataset` that yields `OrderedDict`. In each
-      `OrderedDict` there are two key, value pairs: `DATASET_KEY`: A `tf.string`
-      representing a string in the dataset. `DATASET_VALUE`: A rank 1
-      `tf.Tensor` with `dtype` `tf.int64` representing the value associate with
-      the string.
+      `OrderedDict` there are two key, value pairs: `DATASET_KEY`: A string
+      tensor, and `DATASET_VALUE`: A rank 1 int64 tensor representing the value
+      associate with the string.
     string_max_bytes: The maximum length of the strings in bytes. If any string
       is longer than `string_max_bytes`, a `ValueError` will be raised.
 
@@ -165,8 +165,8 @@ class IbltFactory(factory.UnweightedAggregationFactory):
     Args:
       value_type: A `tff.SequenceType` representing the type of the input
         dataset, must be compatible with the following `tff.Type`:
-        tff.SequenceType( collections.OrderedDict([ (DATASET_KEY, tf.string),
-        (DATASET_VALUE, tff.TensorType(shape=[None], dtype=tf.int64)), ]))
+        tff.SequenceType(collections.OrderedDict([ (DATASET_KEY, np.str_),
+        (DATASET_VALUE, tff.TensorType(shape=[None], dtype=np.int64)), ]))
 
     Raises:
       ValueError: If `value_type` is not as expected.
@@ -177,10 +177,10 @@ class IbltFactory(factory.UnweightedAggregationFactory):
     """
     expected_value_type = computation_types.SequenceType(
         collections.OrderedDict([
-            (DATASET_KEY, tf.string),
+            (DATASET_KEY, np.str_),
             (
                 DATASET_VALUE,
-                computation_types.TensorType(shape=[None], dtype=tf.int64),
+                computation_types.TensorType(shape=[None], dtype=np.int64),
             ),
         ])
     )

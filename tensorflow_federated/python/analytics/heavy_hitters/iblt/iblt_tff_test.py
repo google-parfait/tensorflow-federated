@@ -19,6 +19,7 @@ from typing import Optional
 
 from absl.testing import absltest
 from absl.testing import parameterized
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.analytics.heavy_hitters.iblt import iblt_tff
@@ -164,23 +165,23 @@ class IbltTffConstructionTest(absltest.TestCase):
         computation_types.FunctionType(
             parameter=computation_types.at_clients(
                 computation_types.SequenceType(
-                    computation_types.TensorType(shape=[None], dtype=tf.string)
+                    computation_types.TensorType(shape=[None], dtype=np.str_)
                 )
             ),
             result=computation_types.at_server(
                 iblt_tff.ServerOutput(
-                    clients=tf.int32,
+                    clients=np.int32,
                     heavy_hitters=computation_types.TensorType(
-                        shape=[None], dtype=tf.string
+                        shape=[None], dtype=np.str_
                     ),
                     heavy_hitters_unique_counts=computation_types.TensorType(
-                        shape=[None], dtype=tf.int64
+                        shape=[None], dtype=np.int64
                     ),
                     heavy_hitters_counts=computation_types.TensorType(
-                        shape=[None], dtype=tf.int64
+                        shape=[None], dtype=np.int64
                     ),
-                    num_not_decoded=tf.int64,
-                    round_timestamp=tf.int64,
+                    num_not_decoded=np.int64,
+                    round_timestamp=np.int64,
                 )
             ),
         ),

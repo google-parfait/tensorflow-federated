@@ -243,7 +243,7 @@ class CoupledHyperEdgeHasher:
       hash_range: tuple[float, float],
       precision: int = tf.int32.max,
   ) -> tf.Tensor:
-    """Hashes a `tf.strings` 1-d tensor and returns a `tf.float32` 1-d tensor.
+    """Hashes a 1-d string tensor to a 32-bit integer tensor.
 
     `hash_range` is evenly divided into a number of buckets. The hashed value of
     `input_strings` is mapped to one of the bucket.
@@ -255,7 +255,7 @@ class CoupledHyperEdgeHasher:
         integer.
 
     Returns:
-      A 1-d `tf.float` tensor of the lower bound of each bucket that each hashed
+      A float tensor of the lower bound of each bucket that each hashed
       string value falls into.
     """
     (low, high) = hash_range
