@@ -300,43 +300,6 @@ class AggregateDependentOnAggregateTest(absltest.TestCase):
       tree_analysis.check_aggregate_not_dependent_on_aggregate(second_aggregate)
 
 
-class CountTensorFlowOpsTest(absltest.TestCase):
-
-  def test_raises_on_none(self):
-    with self.assertRaises(TypeError):
-      tree_analysis.count_tensorflow_ops_under(None)
-
-  def test_returns_zero_no_tensorflow(self):
-    no_tensorflow_comp = building_block_test_utils.create_nested_syntax_tree()
-    tf_count = tree_analysis.count_tensorflow_ops_under(no_tensorflow_comp)
-    self.assertEqual(tf_count, 0)
-
-  def test_single_tensorflow_node_count_agrees_with_node_count(self):
-    tensor_type = computation_types.TensorType(np.int32)
-    integer_identity = building_block_factory.create_compiled_identity(
-        tensor_type
-    )
-    node_tf_op_count = building_block_analysis.count_tensorflow_ops_in(
-        integer_identity
-    )
-    tree_tf_op_count = tree_analysis.count_tensorflow_ops_under(
-        integer_identity
-    )
-    self.assertEqual(node_tf_op_count, tree_tf_op_count)
-
-  def test_tensorflow_op_count_doubles_number_of_ops_in_two_tuple(self):
-    tensor_type = computation_types.TensorType(np.int32)
-    integer_identity = building_block_factory.create_compiled_identity(
-        tensor_type
-    )
-    node_tf_op_count = building_block_analysis.count_tensorflow_ops_in(
-        integer_identity
-    )
-    tf_tuple = building_blocks.Struct([integer_identity, integer_identity])
-    tree_tf_op_count = tree_analysis.count_tensorflow_ops_under(tf_tuple)
-    self.assertEqual(tree_tf_op_count, 2 * node_tf_op_count)
-
-
 def _pack_noarg_graph(graph_def, return_type, result_binding):
   packed_graph_def = serialization_utils.pack_graph_def(graph_def)
   function_type = computation_types.FunctionType(None, return_type)

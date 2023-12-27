@@ -475,37 +475,6 @@ def check_aggregate_not_dependent_on_aggregate(tree):
     )
 
 
-def count_tensorflow_ops_under(comp):
-  """Counts total TF ops in any TensorFlow computations under `comp`.
-
-  Notice that this function is designed for the purpose of instrumentation,
-  in particular to check the size and constituents of the TensorFlow
-  artifacts generated.
-
-  Args:
-    comp: Instance of `building_blocks.ComputationBuildingBlock` whose TF ops we
-      wish to count.
-
-  Returns:
-    `integer` count of number of TF ops present in any
-    `building_blocks.CompiledComputation` of the TensorFlow
-    variety under `comp`.
-  """
-  py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
-  count_ops = 0
-
-  def _count_tf_ops(inner_comp):
-    nonlocal count_ops
-    if (
-        isinstance(inner_comp, building_blocks.CompiledComputation)
-        and inner_comp.proto.WhichOneof('computation') == 'tensorflow'
-    ):
-      count_ops += building_block_analysis.count_tensorflow_ops_in(inner_comp)
-
-  visit_postorder(comp, _count_tf_ops)
-  return count_ops
-
-
 def count_tensorflow_variables_under(comp):
   """Counts total TF variables in any TensorFlow computations under `comp`.
 

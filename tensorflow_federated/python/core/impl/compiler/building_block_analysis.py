@@ -50,26 +50,6 @@ def is_identity_function(comp):
   )
 
 
-def count_tensorflow_ops_in(comp):
-  """Counts TF ops in `comp` if `comp` is a TF block."""
-  py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
-  if (
-      not isinstance(comp, building_blocks.CompiledComputation)
-      or comp.proto.WhichOneof('computation') != 'tensorflow'
-  ):
-    raise ValueError(
-        'Please pass a '
-        '`building_blocks.CompiledComputation` of the '
-        '`tensorflow` variety to `count_tensorflow_ops_in`.'
-    )
-  graph_def = serialization_utils.unpack_graph_def(
-      comp.proto.tensorflow.graph_def
-  )
-  return len(graph_def.node) + sum(
-      [len(graph_func.node_def) for graph_func in graph_def.library.function]
-  )
-
-
 def count_tensorflow_variables_in(comp):
   """Counts TF Variables in `comp` if `comp` is a TF block."""
   py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
