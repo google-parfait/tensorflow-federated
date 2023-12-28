@@ -187,10 +187,7 @@ class SumThenFinalizeFactory(factory.UnweightedAggregationFactory):
     Args:
       local_unfinalized_metrics_type: A `tff.types.StructWithPythonType` (with
         `collections.OrderedDict` as the Python container) of a client's local
-        unfinalized metrics. Let `local_unfinalized_metrics` be the output of
-        `tff.learning.models.VariableModel.report_local_unfinalized_metrics()`,
-        its type can be obtained by
-        `tff.types.infer_unplaced_type(local_unfinalized_metrics)`.
+        unfinalized metrics.
 
     Returns:
       An instance of `tff.templates.AggregationProcess`.

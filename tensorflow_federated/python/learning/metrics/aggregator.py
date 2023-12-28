@@ -58,10 +58,7 @@ def sum_then_finalize(
       returned by `tff.learning.models.FunctionalModel.update_metrics_state`.
     local_unfinalized_metrics_type: A `tff.types.StructWithPythonType` (with
       `OrderedDict` as the Python container) of a client's local unfinalized
-      metrics. Let `local_unfinalized_metrics` be the output of
-      `tff.learning.models.VariableModel.report_local_unfinalized_metrics()`.
-      Its type can be obtained by
-      `tff.types.infer_unplaced_type(local_unfinalized_metrics)`.
+      metrics.
 
   Returns:
     A federated TFF computation that sums the unfinalized metrics from
