@@ -415,17 +415,26 @@ class ComputationWrapper:
   For more examples of usage, see `computation_wrapper_test`.
   """
 
-  def __init__(self, wrapper_fn: Callable[..., computation_base.Computation]):
+  def __init__(
+      self,
+      wrapper_fn: Callable[..., computation_base.Computation],
+      to_type: Optional[
+          Callable[[object], computation_types.Type]
+      ] = computation_types.to_type,
+  ):
     """Construct a new wrapper/decorator for the given wrapper callable.
 
     Args:
       wrapper_fn: The Python callable that performs actual wrapping (as in the
         specification of `_wrap`).
+      to_type: An `Optional` `Callable` used to convert an environment-speific
+        object to a `tff.Type`.
 
     Raises:
       TypeError: if the arguments are of the wrong types.
     """
     self._wrapper_fn = wrapper_fn
+    self._to_type = to_type
 
   def __call__(self, *args, **kwargs):
     """Handles the different modes of usage of the decorator/wrapper.
@@ -453,7 +462,7 @@ class ComputationWrapper:
       result = []
       for obj in objs:
         if obj is not None:
-          result.append(computation_types.to_type(obj))
+          result.append(self._to_type(obj))
         else:
           result.append(None)
       return tuple(result)
