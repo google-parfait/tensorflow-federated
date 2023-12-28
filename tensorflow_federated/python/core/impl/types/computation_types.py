@@ -375,19 +375,10 @@ class TensorType(Type, metaclass=_Intern):
   @classmethod
   def _hashable_from_init_args(
       cls,
-      dtype: Union[_DtypeLike, tf.dtypes.DType],
+      dtype: _DtypeLike,
       shape: array_shape._ArrayShapeLike = (),
   ) -> Hashable:
     """Returns hashable `TensorType.__init__` args."""
-    # TODO: b/305743962 - This is only required to convert a `tf.dtypes.DType`
-    # to a `np.dtype`. It should be when `tf.dtypes.DType` can not be passed
-    # into the constructor of the `tff.TensorType`.
-    if isinstance(dtype, tf.dtypes.DType):
-      if dtype.base_dtype == tf.string:
-        dtype = np.str_
-      else:
-        dtype = dtype.base_dtype.as_numpy_dtype
-
     dtype = _to_dtype(dtype)
     if shape is not None:
       shape = tuple(shape)
@@ -395,7 +386,7 @@ class TensorType(Type, metaclass=_Intern):
 
   def __init__(
       self,
-      dtype: Union[_DtypeLike, tf.dtypes.DType],
+      dtype: _DtypeLike,
       shape: array_shape._ArrayShapeLike = (),
   ):
     """Constructs a new instance from the given `dtype` and `shape`.
@@ -407,15 +398,6 @@ class TensorType(Type, metaclass=_Intern):
     Raises:
       TypeError: if arguments are of the wrong types.
     """
-    # TODO: b/305743962 - This is only required to convert a `tf.dtypes.DType`
-    # to a `np.dtype`. It should be when `tf.dtypes.DType` can not be passed
-    # into the constructor of the `tff.TensorType`.
-    if isinstance(dtype, tf.dtypes.DType):
-      if dtype.base_dtype == tf.string:
-        dtype = np.str_
-      else:
-        dtype = dtype.base_dtype.as_numpy_dtype
-
     self._dtype = _to_dtype(dtype)
     if shape is not None:
       shape = tuple(shape)
