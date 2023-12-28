@@ -35,47 +35,47 @@ class LoggingReleaseManagerTest(
   @parameterized.named_parameters(
       # materialized values
       ('none', None, computation_types.StructType([]), None),
-      ('bool', True, computation_types.TensorType(tf.bool), True),
-      ('int', 1, computation_types.TensorType(tf.int32), 1),
-      ('str', 'a', computation_types.TensorType(tf.string), 'a'),
+      ('bool', True, computation_types.TensorType(np.bool_), True),
+      ('int', 1, computation_types.TensorType(np.int32), 1),
+      ('str', 'a', computation_types.TensorType(np.str_), 'a'),
       ('tensor_int',
        tf.constant(1),
-       computation_types.TensorType(tf.int32),
+       computation_types.TensorType(np.int32),
        tf.constant(1)),
       ('tensor_str',
        tf.constant('a'),
-       computation_types.TensorType(tf.string),
+       computation_types.TensorType(np.str_),
        tf.constant('a')),
       ('tensor_array',
        tf.constant([1] * 3),
-       computation_types.TensorType(tf.int32, [3]),
+       computation_types.TensorType(np.int32, [3]),
        tf.constant([1] * 3)),
       ('numpy_int',
        np.int32(1),
-       computation_types.TensorType(tf.int32),
+       computation_types.TensorType(np.int32),
        np.int32(1)),
       ('numpy_array',
        np.array([1] * 3, np.int32),
-       computation_types.TensorType(tf.int32, [3]),
+       computation_types.TensorType(np.int32, [3]),
        np.array([1] * 3, np.int32)),
 
       # materializable value references
       ('value_reference_tensor',
        program_test_utils.TestMaterializableValueReference(1),
-       computation_types.TensorType(tf.int32),
+       computation_types.TensorType(np.int32),
        1),
       ('value_reference_sequence',
        program_test_utils.TestMaterializableValueReference(
            tf.data.Dataset.from_tensor_slices([1, 2, 3])),
-       computation_types.SequenceType(tf.int32),
+       computation_types.SequenceType(np.int32),
        tf.data.Dataset.from_tensor_slices([1, 2, 3])),
 
       # serializable values
       ('serializable_value',
        program_test_utils.TestSerializable(1, 2),
        computation_types.StructWithPythonType([
-           ('a', tf.int32),
-           ('b', tf.int32),
+           ('a', np.int32),
+           ('b', np.int32),
        ], collections.OrderedDict),
        program_test_utils.TestSerializable(1, 2)),
 
@@ -83,8 +83,8 @@ class LoggingReleaseManagerTest(
       ('attrs',
        program_test_utils.TestAttrs(1, 2),
        computation_types.StructWithPythonType([
-           ('a', tf.int32),
-           ('b', tf.int32),
+           ('a', np.int32),
+           ('b', np.int32),
        ], collections.OrderedDict),
        program_test_utils.TestAttrs(1, 2)),
 
@@ -98,13 +98,13 @@ class LoggingReleaseManagerTest(
            program_test_utils.TestSerializable(3, 4),
        ],
        computation_types.StructWithPythonType([
-           tf.bool,
-           tf.int32,
-           tf.string,
-           tf.int32,
+           np.bool_,
+           np.int32,
+           np.str_,
+           np.int32,
            computation_types.StructWithPythonType([
-               ('a', tf.int32),
-               ('b', tf.int32),
+               ('a', np.int32),
+               ('b', np.int32),
            ], collections.OrderedDict),
        ], list),
        [
@@ -128,16 +128,16 @@ class LoggingReleaseManagerTest(
        ],
        computation_types.StructWithPythonType([
            computation_types.StructWithPythonType([
-               tf.bool,
-               tf.int32,
-               tf.string,
-               tf.int32,
+               np.bool_,
+               np.int32,
+               np.str_,
+               np.int32,
                computation_types.StructWithPythonType([
-                   ('a', tf.int32),
-                   ('b', tf.int32),
+                   ('a', np.int32),
+                   ('b', np.int32),
                ], collections.OrderedDict),
            ], list),
-           computation_types.StructWithPythonType([tf.int32], list),
+           computation_types.StructWithPythonType([np.int32], list),
        ], list),
        [
            [
@@ -158,13 +158,13 @@ class LoggingReleaseManagerTest(
            'e': program_test_utils.TestSerializable(3, 4),
        },
        computation_types.StructWithPythonType([
-           ('a', tf.bool),
-           ('b', tf.int32),
-           ('c', tf.string),
-           ('d', tf.int32),
+           ('a', np.bool_),
+           ('b', np.int32),
+           ('c', np.str_),
+           ('d', np.int32),
            ('e', computation_types.StructWithPythonType([
-               ('a', tf.int32),
-               ('b', tf.int32),
+               ('a', np.int32),
+               ('b', np.int32),
            ], collections.OrderedDict)),
        ], collections.OrderedDict),
        {
@@ -191,17 +191,17 @@ class LoggingReleaseManagerTest(
        },
        computation_types.StructWithPythonType([
            ('x', computation_types.StructWithPythonType([
-               ('a', tf.bool),
-               ('b', tf.int32),
-               ('c', tf.string),
-               ('d', tf.int32),
+               ('a', np.bool_),
+               ('b', np.int32),
+               ('c', np.str_),
+               ('d', np.int32),
                ('e', computation_types.StructWithPythonType([
-                   ('a', tf.int32),
-                   ('b', tf.int32),
+                   ('a', np.int32),
+                   ('b', np.int32),
                ], collections.OrderedDict)),
            ], collections.OrderedDict)),
            ('y', computation_types.StructWithPythonType([
-               ('a', tf.int32),
+               ('a', np.int32),
            ], collections.OrderedDict)),
        ], collections.OrderedDict),
        {
@@ -223,13 +223,13 @@ class LoggingReleaseManagerTest(
            e=program_test_utils.TestSerializable(3, 4),
        ),
        computation_types.StructWithPythonType([
-           ('a', tf.bool),
-           ('b', tf.int32),
-           ('c', tf.string),
-           ('d', tf.int32),
+           ('a', np.bool_),
+           ('b', np.int32),
+           ('c', np.str_),
+           ('d', np.int32),
            ('e', computation_types.StructWithPythonType([
-               ('a', tf.int32),
-               ('b', tf.int32),
+               ('a', np.int32),
+               ('b', np.int32),
            ], collections.OrderedDict)),
        ], program_test_utils.TestNamedTuple1),
        program_test_utils.TestNamedTuple1(
@@ -252,17 +252,17 @@ class LoggingReleaseManagerTest(
        ),
        computation_types.StructWithPythonType([
            ('x', computation_types.StructWithPythonType([
-               ('a', tf.bool),
-               ('b', tf.int32),
-               ('c', tf.string),
-               ('d', tf.int32),
+               ('a', np.bool_),
+               ('b', np.int32),
+               ('c', np.str_),
+               ('d', np.int32),
                ('e', computation_types.StructWithPythonType([
-                   ('a', tf.int32),
-                   ('b', tf.int32),
+                   ('a', np.int32),
+                   ('b', np.int32),
                ], collections.OrderedDict)),
            ], program_test_utils.TestNamedTuple1)),
            ('y', computation_types.StructWithPythonType([
-               ('c', tf.int32),
+               ('c', np.int32),
            ], program_test_utils.TestNamedTuple2)),
        ], program_test_utils.TestNamedTuple3),
        program_test_utils.TestNamedTuple3(
@@ -311,7 +311,7 @@ class LoggingReleaseManagerTest(
   async def test_release_logs_key(self, key):
     release_mngr = logging_release_manager.LoggingReleaseManager()
     value = 1
-    type_signature = computation_types.TensorType(tf.int32)
+    type_signature = computation_types.TensorType(np.int32)
 
     with mock.patch('absl.logging.info') as mock_info:
       await release_mngr.release(value, type_signature, key)

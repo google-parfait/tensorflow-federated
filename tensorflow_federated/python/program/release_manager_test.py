@@ -65,81 +65,81 @@ class FilteringReleaseManagerTest(
        computation_types.StructType([])),
       ('bool_filter_none',
        True,
-       computation_types.TensorType(tf.bool),
+       computation_types.TensorType(np.bool_),
        lambda _: True,
        True,
-       computation_types.TensorType(tf.bool)),
+       computation_types.TensorType(np.bool_)),
       ('int_filter_none',
        1,
-       computation_types.TensorType(tf.int32),
+       computation_types.TensorType(np.int32),
        lambda _: True,
        1,
-       computation_types.TensorType(tf.int32)),
+       computation_types.TensorType(np.int32)),
       ('str_filter_none',
        'a',
-       computation_types.TensorType(tf.string),
+       computation_types.TensorType(np.str_),
        lambda _: True,
        'a',
-       computation_types.TensorType(tf.string)),
+       computation_types.TensorType(np.str_)),
       ('tensor_int_filter_none',
        tf.constant(1),
-       computation_types.TensorType(tf.int32),
+       computation_types.TensorType(np.int32),
        lambda _: True,
        tf.constant(1),
-       computation_types.TensorType(tf.int32)),
+       computation_types.TensorType(np.int32)),
       ('tensor_array_filter_none',
        tf.constant([1] * 3),
-       computation_types.TensorType(tf.int32, [3]),
+       computation_types.TensorType(np.int32, [3]),
        lambda _: True,
        tf.constant([1] * 3),
-       computation_types.TensorType(tf.int32, [3])),
+       computation_types.TensorType(np.int32, [3])),
       ('numpy_int_filter_none',
        np.int32(1),
-       computation_types.TensorType(tf.int32),
+       computation_types.TensorType(np.int32),
        lambda _: True,
        np.int32(1),
-       computation_types.TensorType(tf.int32)),
+       computation_types.TensorType(np.int32)),
       ('numpy_array_filter_none',
        np.array([1] * 1, np.int32),
-       computation_types.TensorType(tf.int32, [3]),
+       computation_types.TensorType(np.int32, [3]),
        lambda _: True,
        np.array([1] * 1, np.int32),
-       computation_types.TensorType(tf.int32, [3])),
+       computation_types.TensorType(np.int32, [3])),
 
       # materializable value references
       ('value_reference_tensor_filter_none',
        program_test_utils.TestMaterializableValueReference(1),
-       computation_types.TensorType(tf.int32),
+       computation_types.TensorType(np.int32),
        lambda _: True,
        program_test_utils.TestMaterializableValueReference(1),
-       computation_types.TensorType(tf.int32)),
+       computation_types.TensorType(np.int32)),
 
       # serializable values
       ('serializable_value_filter_none',
        program_test_utils.TestSerializable(1, 2),
        computation_types.StructWithPythonType([
-           ('a', tf.int32),
-           ('b', tf.int32),
+           ('a', np.int32),
+           ('b', np.int32),
        ], collections.OrderedDict),
        lambda _: True,
        program_test_utils.TestSerializable(1, 2),
        computation_types.StructWithPythonType([
-           ('a', tf.int32),
-           ('b', tf.int32),
+           ('a', np.int32),
+           ('b', np.int32),
        ], collections.OrderedDict)),
 
       # other values
       ('attrs_filter_none',
        program_test_utils.TestAttrs(1, 2),
        computation_types.StructWithPythonType([
-           ('a', tf.int32),
-           ('b', tf.int32),
+           ('a', np.int32),
+           ('b', np.int32),
        ], collections.OrderedDict),
        lambda _: True,
        program_test_utils.TestAttrs(1, 2),
        computation_types.StructWithPythonType([
-           ('a', tf.int32),
-           ('b', tf.int32),
+           ('a', np.int32),
+           ('b', np.int32),
        ], collections.OrderedDict)),
 
       # structures
@@ -152,13 +152,13 @@ class FilteringReleaseManagerTest(
            program_test_utils.TestSerializable(3, 4),
        ],
        computation_types.StructWithPythonType([
-           tf.bool,
-           tf.int32,
-           tf.string,
-           tf.int32,
+           np.bool_,
+           np.int32,
+           np.str_,
+           np.int32,
            computation_types.StructWithPythonType([
-               ('a', tf.int32),
-               ('b', tf.int32),
+               ('a', np.int32),
+               ('b', np.int32),
            ], collections.OrderedDict),
        ], list),
        lambda _: True,
@@ -170,13 +170,13 @@ class FilteringReleaseManagerTest(
            program_test_utils.TestSerializable(3, 4),
        ],
        computation_types.StructWithPythonType([
-           tf.bool,
-           tf.int32,
-           tf.string,
-           tf.int32,
+           np.bool_,
+           np.int32,
+           np.str_,
+           np.int32,
            computation_types.StructWithPythonType([
-               ('a', tf.int32),
-               ('b', tf.int32),
+               ('a', np.int32),
+               ('b', np.int32),
            ], collections.OrderedDict),
        ], list)),
       ('list_filter_some',
@@ -188,18 +188,18 @@ class FilteringReleaseManagerTest(
            program_test_utils.TestSerializable(3, 4),
        ],
        computation_types.StructWithPythonType([
-           tf.bool,
-           tf.int32,
-           tf.string,
-           tf.int32,
+           np.bool_,
+           np.int32,
+           np.str_,
+           np.int32,
            computation_types.StructWithPythonType([
-               ('a', tf.int32),
-               ('b', tf.int32),
+               ('a', np.int32),
+               ('b', np.int32),
            ], collections.OrderedDict),
        ], list),
        lambda path: path == (1,) or path == (2,),
        [1, 'a'],
-       computation_types.StructWithPythonType([tf.int32, tf.string], list)),
+       computation_types.StructWithPythonType([np.int32, np.str_], list)),
       ('dict_filter_none',
        {
            'a': True,
@@ -209,13 +209,13 @@ class FilteringReleaseManagerTest(
            'e': program_test_utils.TestSerializable(3, 4),
        },
        computation_types.StructWithPythonType([
-           ('a', tf.bool),
-           ('b', tf.int32),
-           ('c', tf.string),
-           ('d', tf.int32),
+           ('a', np.bool_),
+           ('b', np.int32),
+           ('c', np.str_),
+           ('d', np.int32),
            ('e', computation_types.StructWithPythonType([
-               ('a', tf.int32),
-               ('b', tf.int32),
+               ('a', np.int32),
+               ('b', np.int32),
            ], collections.OrderedDict)),
        ], collections.OrderedDict),
        lambda _: True,
@@ -227,13 +227,13 @@ class FilteringReleaseManagerTest(
            'e': program_test_utils.TestSerializable(3, 4),
        },
        computation_types.StructWithPythonType([
-           ('a', tf.bool),
-           ('b', tf.int32),
-           ('c', tf.string),
-           ('d', tf.int32),
+           ('a', np.bool_),
+           ('b', np.int32),
+           ('c', np.str_),
+           ('d', np.int32),
            ('e', computation_types.StructWithPythonType([
-               ('a', tf.int32),
-               ('b', tf.int32),
+               ('a', np.int32),
+               ('b', np.int32),
            ], collections.OrderedDict)),
        ], collections.OrderedDict)),
       ('dict_filter_some',
@@ -245,20 +245,20 @@ class FilteringReleaseManagerTest(
            'e': program_test_utils.TestSerializable(3, 4),
        },
        computation_types.StructWithPythonType([
-           ('a', tf.bool),
-           ('b', tf.int32),
-           ('c', tf.string),
-           ('d', tf.int32),
+           ('a', np.bool_),
+           ('b', np.int32),
+           ('c', np.str_),
+           ('d', np.int32),
            ('e', computation_types.StructWithPythonType([
-               ('a', tf.int32),
-               ('b', tf.int32),
+               ('a', np.int32),
+               ('b', np.int32),
            ], collections.OrderedDict)),
        ], collections.OrderedDict),
        lambda path: path == ('b',) or path == ('c',),
        {'b': 1, 'c': 'a'},
        computation_types.StructWithPythonType([
-           ('b', tf.int32),
-           ('c', tf.string),
+           ('b', np.int32),
+           ('c', np.str_),
        ], collections.OrderedDict)),
       ('named_tuple_filter_none',
        program_test_utils.TestNamedTuple1(
@@ -269,13 +269,13 @@ class FilteringReleaseManagerTest(
            e=program_test_utils.TestSerializable(3, 4),
        ),
        computation_types.StructWithPythonType([
-           ('a', tf.bool),
-           ('b', tf.int32),
-           ('c', tf.string),
-           ('d', tf.int32),
+           ('a', np.bool_),
+           ('b', np.int32),
+           ('c', np.str_),
+           ('d', np.int32),
            ('e', computation_types.StructWithPythonType([
-               ('a', tf.int32),
-               ('b', tf.int32),
+               ('a', np.int32),
+               ('b', np.int32),
            ], collections.OrderedDict)),
        ], program_test_utils.TestNamedTuple1),
        lambda _: True,
@@ -287,13 +287,13 @@ class FilteringReleaseManagerTest(
            e=program_test_utils.TestSerializable(3, 4),
        ),
        computation_types.StructWithPythonType([
-           ('a', tf.bool),
-           ('b', tf.int32),
-           ('c', tf.string),
-           ('d', tf.int32),
+           ('a', np.bool_),
+           ('b', np.int32),
+           ('c', np.str_),
+           ('d', np.int32),
            ('e', computation_types.StructWithPythonType([
-               ('a', tf.int32),
-               ('b', tf.int32),
+               ('a', np.int32),
+               ('b', np.int32),
            ], collections.OrderedDict)),
        ], program_test_utils.TestNamedTuple1)),
   )
@@ -330,42 +330,42 @@ class FilteringReleaseManagerTest(
   @parameterized.named_parameters(
       # materialized values
       ('none', None, computation_types.StructType([])),
-      ('bool', True, computation_types.TensorType(tf.bool)),
-      ('int', 1, computation_types.TensorType(tf.int32)),
-      ('str', 'a', computation_types.TensorType(tf.string)),
-      ('tensor_int', tf.constant(1), computation_types.TensorType(tf.int32)),
-      ('tensor_str', tf.constant('a'), computation_types.TensorType(tf.string)),
+      ('bool', True, computation_types.TensorType(np.bool_)),
+      ('int', 1, computation_types.TensorType(np.int32)),
+      ('str', 'a', computation_types.TensorType(np.str_)),
+      ('tensor_int', tf.constant(1), computation_types.TensorType(np.int32)),
+      ('tensor_str', tf.constant('a'), computation_types.TensorType(np.str_)),
       ('tensor_array',
        tf.constant([1] * 3),
-       computation_types.TensorType(tf.int32, [3])),
-      ('numpy_int', np.int32(1), computation_types.TensorType(tf.int32)),
+       computation_types.TensorType(np.int32, [3])),
+      ('numpy_int', np.int32(1), computation_types.TensorType(np.int32)),
       ('numpy_array',
        np.array([1] * 3, np.int32),
-       computation_types.TensorType(tf.int32, [3])),
+       computation_types.TensorType(np.int32, [3])),
 
       # materializable value references
       ('value_reference_tensor',
        program_test_utils.TestMaterializableValueReference(1),
-       computation_types.TensorType(tf.int32)),
+       computation_types.TensorType(np.int32)),
       ('value_reference_sequence',
        program_test_utils.TestMaterializableValueReference(
            tf.data.Dataset.from_tensor_slices([1, 2, 3])),
-       computation_types.SequenceType(tf.int32)),
+       computation_types.SequenceType(np.int32)),
 
       # serializable values
       ('serializable_value',
        program_test_utils.TestSerializable(1, 2),
        computation_types.StructWithPythonType([
-           ('a', tf.int32),
-           ('b', tf.int32),
+           ('a', np.int32),
+           ('b', np.int32),
        ], collections.OrderedDict)),
 
       # other values
       ('attrs',
        program_test_utils.TestAttrs(1, 2),
        computation_types.StructWithPythonType([
-           ('a', tf.int32),
-           ('b', tf.int32),
+           ('a', np.int32),
+           ('b', np.int32),
        ], collections.OrderedDict)),
 
       # structures
@@ -378,13 +378,13 @@ class FilteringReleaseManagerTest(
            program_test_utils.TestSerializable(3, 4),
        ],
        computation_types.StructWithPythonType([
-           tf.bool,
-           tf.int32,
-           tf.string,
-           tf.int32,
+           np.bool_,
+           np.int32,
+           np.str_,
+           np.int32,
            computation_types.StructWithPythonType([
-               ('a', tf.int32),
-               ('b', tf.int32),
+               ('a', np.int32),
+               ('b', np.int32),
            ], collections.OrderedDict),
        ], list)),
       ('list_empty', [], computation_types.StructWithPythonType([], list)),
@@ -401,16 +401,16 @@ class FilteringReleaseManagerTest(
        ],
        computation_types.StructWithPythonType([
            computation_types.StructWithPythonType([
-               tf.bool,
-               tf.int32,
-               tf.string,
-               tf.int32,
+               np.bool_,
+               np.int32,
+               np.str_,
+               np.int32,
                computation_types.StructWithPythonType([
-                   ('a', tf.int32),
-                   ('b', tf.int32),
+                   ('a', np.int32),
+                   ('b', np.int32),
                ], collections.OrderedDict),
            ], list),
-           computation_types.StructWithPythonType([tf.int32], list),
+           computation_types.StructWithPythonType([np.int32], list),
        ], list)),
       ('dict',
        {
@@ -421,13 +421,13 @@ class FilteringReleaseManagerTest(
            'e': program_test_utils.TestSerializable(3, 4),
        },
        computation_types.StructWithPythonType([
-           ('a', tf.bool),
-           ('b', tf.int32),
-           ('c', tf.string),
-           ('d', tf.int32),
+           ('a', np.bool_),
+           ('b', np.int32),
+           ('c', np.str_),
+           ('d', np.int32),
            ('e', computation_types.StructWithPythonType([
-               ('a', tf.int32),
-               ('b', tf.int32),
+               ('a', np.int32),
+               ('b', np.int32),
            ], collections.OrderedDict)),
        ], collections.OrderedDict)),
       ('dict_empty', {}, computation_types.StructWithPythonType([], list)),
@@ -444,17 +444,17 @@ class FilteringReleaseManagerTest(
        },
        computation_types.StructWithPythonType([
            ('x', computation_types.StructWithPythonType([
-               ('a', tf.bool),
-               ('b', tf.int32),
-               ('c', tf.string),
-               ('d', tf.int32),
+               ('a', np.bool_),
+               ('b', np.int32),
+               ('c', np.str_),
+               ('d', np.int32),
                ('e', computation_types.StructWithPythonType([
-                   ('a', tf.int32),
-                   ('b', tf.int32),
+                   ('a', np.int32),
+                   ('b', np.int32),
                ], collections.OrderedDict)),
            ], collections.OrderedDict)),
            ('y', computation_types.StructWithPythonType([
-               ('a', tf.int32),
+               ('a', np.int32),
            ], collections.OrderedDict)),
        ], collections.OrderedDict)),
       ('named_tuple',
@@ -466,13 +466,13 @@ class FilteringReleaseManagerTest(
            e=program_test_utils.TestSerializable(3, 4),
        ),
        computation_types.StructWithPythonType([
-           ('a', tf.bool),
-           ('b', tf.int32),
-           ('c', tf.string),
-           ('d', tf.int32),
+           ('a', np.bool_),
+           ('b', np.int32),
+           ('c', np.str_),
+           ('d', np.int32),
            ('e', computation_types.StructWithPythonType([
-               ('a', tf.int32),
-               ('b', tf.int32),
+               ('a', np.int32),
+               ('b', np.int32),
            ], collections.OrderedDict)),
        ], program_test_utils.TestNamedTuple1)),
       ('named_tuple_nested',
@@ -488,17 +488,17 @@ class FilteringReleaseManagerTest(
        ),
        computation_types.StructWithPythonType([
            ('x', computation_types.StructWithPythonType([
-               ('a', tf.bool),
-               ('b', tf.int32),
-               ('c', tf.string),
-               ('d', tf.int32),
+               ('a', np.bool_),
+               ('b', np.int32),
+               ('c', np.str_),
+               ('d', np.int32),
                ('e', computation_types.StructWithPythonType([
-                   ('a', tf.int32),
-                   ('b', tf.int32),
+                   ('a', np.int32),
+                   ('b', np.int32),
                ], collections.OrderedDict)),
            ], program_test_utils.TestNamedTuple1)),
            ('y', computation_types.StructWithPythonType([
-               ('c', tf.int32),
+               ('c', np.int32),
            ], program_test_utils.TestNamedTuple2)),
        ], program_test_utils.TestNamedTuple3)),
   )
@@ -524,76 +524,76 @@ class FilteringReleaseManagerTest(
       ('list_filter_none',
        [True, 1, 'a', [], [2]],
        computation_types.StructWithPythonType([
-           tf.bool,
-           tf.int32,
-           tf.string,
+           np.bool_,
+           np.int32,
+           np.str_,
            computation_types.StructWithPythonType([], list),
-           computation_types.StructWithPythonType([tf.int32], list),
+           computation_types.StructWithPythonType([np.int32], list),
        ], list),
        lambda _: True,
        [True, 1, 'a', [2]],
        computation_types.StructWithPythonType([
-           tf.bool,
-           tf.int32,
-           tf.string,
-           computation_types.StructWithPythonType([tf.int32], list),
+           np.bool_,
+           np.int32,
+           np.str_,
+           computation_types.StructWithPythonType([np.int32], list),
        ], list)),
       ('list_filter_some',
        [True, 1, 'a', [], [2]],
        computation_types.StructWithPythonType([
-           tf.bool,
-           tf.int32,
-           tf.string,
+           np.bool_,
+           np.int32,
+           np.str_,
            computation_types.StructWithPythonType([], list),
-           computation_types.StructWithPythonType([tf.int32], list),
+           computation_types.StructWithPythonType([np.int32], list),
        ], list),
        lambda path: path != (4, 0),
        [True, 1, 'a'],
        computation_types.StructWithPythonType([
-           tf.bool,
-           tf.int32,
-           tf.string,
+           np.bool_,
+           np.int32,
+           np.str_,
        ], list)),
       ('dict_filter_none',
        {'a': True, 'b': 1, 'c': 'a', 'd': {}, 'e': {'a': 2}},
        computation_types.StructWithPythonType([
-           ('a', tf.bool),
-           ('b', tf.int32),
-           ('c', tf.string),
+           ('a', np.bool_),
+           ('b', np.int32),
+           ('c', np.str_),
            ('d', computation_types.StructWithPythonType([
            ], collections.OrderedDict)),
            ('e', computation_types.StructWithPythonType([
-               ('a', tf.int32),
+               ('a', np.int32),
            ], collections.OrderedDict)),
        ], collections.OrderedDict),
        lambda _: True,
        {'a': True, 'b': 1, 'c': 'a', 'e': {'a': 2}},
        computation_types.StructWithPythonType([
-           ('a', tf.bool),
-           ('b', tf.int32),
-           ('c', tf.string),
+           ('a', np.bool_),
+           ('b', np.int32),
+           ('c', np.str_),
            ('e', computation_types.StructWithPythonType([
-               ('a', tf.int32),
+               ('a', np.int32),
            ], collections.OrderedDict)),
        ], collections.OrderedDict)),
       ('dict_filter_some',
        {'a': True, 'b': 1, 'c': 'a', 'd': {}, 'e': {'a': 2}},
        computation_types.StructWithPythonType([
-           ('a', tf.bool),
-           ('b', tf.int32),
-           ('c', tf.string),
+           ('a', np.bool_),
+           ('b', np.int32),
+           ('c', np.str_),
            ('d', computation_types.StructWithPythonType([
            ], collections.OrderedDict)),
            ('e', computation_types.StructWithPythonType([
-               ('a', tf.int32),
+               ('a', np.int32),
            ], collections.OrderedDict)),
        ], collections.OrderedDict),
        lambda path: path != ('e', 'a'),
        {'a': True, 'b': 1, 'c': 'a'},
        computation_types.StructWithPythonType([
-           ('a', tf.bool),
-           ('b', tf.int32),
-           ('c', tf.string),
+           ('a', np.bool_),
+           ('b', np.int32),
+           ('c', np.str_),
        ], collections.OrderedDict)),
   )
   # pyformat: enable
@@ -637,13 +637,13 @@ class FilteringReleaseManagerTest(
            e=program_test_utils.TestSerializable(3, 4),
        ),
        computation_types.StructWithPythonType([
-           ('a', tf.bool),
-           ('b', tf.int32),
-           ('c', tf.string),
-           ('d', tf.int32),
+           ('a', np.bool_),
+           ('b', np.int32),
+           ('c', np.str_),
+           ('d', np.int32),
            ('e', computation_types.StructWithPythonType([
-               ('a', tf.int32),
-               ('b', tf.int32),
+               ('a', np.int32),
+               ('b', np.int32),
            ], collections.OrderedDict)),
        ], program_test_utils.TestNamedTuple1),
        lambda path: path == ('b',) or path == ('c',)),
@@ -669,7 +669,7 @@ class FilteringReleaseManagerTest(
     )
     value = {'a': 1}
     type_signature = computation_types.StructWithPythonType(
-        [('b', tf.int32)], collections.OrderedDict
+        [('b', np.int32)], collections.OrderedDict
     )
     key = 1
 
@@ -718,7 +718,7 @@ class GroupingReleaseManagerTest(
     ]
     release_mngr = release_manager.GroupingReleaseManager(release_mngrs)
     value = 1
-    type_signature = computation_types.TensorType(tf.int32)
+    type_signature = computation_types.TensorType(np.int32)
     key = 1
 
     await release_mngr.release(value, type_signature, key)
@@ -764,7 +764,7 @@ class PeriodicReleaseManagerTest(
         mock_release_mngr, periodicity
     )
     value = 1
-    type_signature = computation_types.TensorType(tf.int32)
+    type_signature = computation_types.TensorType(np.int32)
     key = 1
 
     for _ in range(total):
@@ -817,7 +817,7 @@ class PeriodicReleaseManagerTest(
         mock_release_mngr, periodicity
     )
     value = 1
-    type_signature = computation_types.TensorType(tf.int32)
+    type_signature = computation_types.TensorType(np.int32)
     key = 1
 
     now = datetime.datetime.now()
@@ -865,7 +865,7 @@ class DelayedReleaseManagerTest(
         mock_release_mngr, delay
     )
     value = 1
-    type_signature = computation_types.TensorType(tf.int32)
+    type_signature = computation_types.TensorType(np.int32)
     key = 1
 
     for _ in range(total):

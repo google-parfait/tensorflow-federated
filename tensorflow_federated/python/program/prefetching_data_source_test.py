@@ -19,7 +19,7 @@ import uuid
 
 from absl.testing import absltest
 from absl.testing import parameterized
-import tensorflow as tf
+import numpy as np
 
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.context_stack import context_stack_test_utils
@@ -54,7 +54,7 @@ class _TestDataSourceIterator(data_source_lib.FederatedDataSourceIterator):
 
   @property
   def federated_type(self) -> computation_types.FederatedType:
-    return computation_types.FederatedType(tf.int32, placements.CLIENTS)
+    return computation_types.FederatedType(np.int32, placements.CLIENTS)
 
   def select(self, k: Optional[int] = None) -> object:
     return [1, 2, 3]
@@ -270,7 +270,7 @@ class PrefetchingDataSourceIteratorTest(
     )
     mock_iterator.select.return_value = list(range(k))
     mock_iterator.federated_type = computation_types.FederatedType(
-        tf.int32, placements.CLIENTS
+        np.int32, placements.CLIENTS
     )
     iterator = prefetching_data_source.PrefetchingDataSourceIterator(
         iterator=mock_iterator,
@@ -304,7 +304,7 @@ class PrefetchingDataSourceIteratorTest(
     )
     mock_iterator.select.return_value = [1, 2, 3, 4, 5]
     mock_iterator.federated_type = computation_types.FederatedType(
-        tf.int32, placements.CLIENTS
+        np.int32, placements.CLIENTS
     )
     iterator = prefetching_data_source.PrefetchingDataSourceIterator(
         iterator=mock_iterator,
@@ -337,7 +337,7 @@ class PrefetchingDataSourceIteratorTest(
     )
     mock_iterator.select.return_value = [1, 2, 3, 4, 5]
     mock_iterator.federated_type = computation_types.FederatedType(
-        tf.int32, placements.CLIENTS
+        np.int32, placements.CLIENTS
     )
     iterator = prefetching_data_source.PrefetchingDataSourceIterator(
         iterator=mock_iterator,
@@ -380,7 +380,7 @@ class PrefetchingDataSourceIteratorTest(
     )
     mock_iterator.select.return_value = [1, 2, 3, 4, 5]
     mock_iterator.federated_type = computation_types.FederatedType(
-        tf.int32, placements.CLIENTS
+        np.int32, placements.CLIENTS
     )
     iterator = prefetching_data_source.PrefetchingDataSourceIterator(
         iterator=mock_iterator,
@@ -431,7 +431,7 @@ class PrefetchingDataSourceIteratorTest(
     )
     mock_iterator.select.return_value = [1, 2, 3, 4, 5]
     mock_iterator.federated_type = computation_types.FederatedType(
-        tf.int32, placements.CLIENTS
+        np.int32, placements.CLIENTS
     )
     iterator = prefetching_data_source.PrefetchingDataSourceIterator(
         iterator=mock_iterator,
@@ -525,7 +525,7 @@ class PrefetchingDataSourceIteratorTest(
     )
     mock_iterator.select.return_value = [1, 2, 3]
     mock_iterator.federated_type = computation_types.FederatedType(
-        tf.int32, placements.CLIENTS
+        np.int32, placements.CLIENTS
     )
     iterator = prefetching_data_source.PrefetchingDataSourceIterator(
         iterator=mock_iterator,

@@ -17,7 +17,7 @@ from collections.abc import Sequence
 import random
 from typing import Optional
 
-import tensorflow as tf
+import numpy as np
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -53,7 +53,7 @@ class ClientIdDataSourceIterator(data_source.FederatedDataSourceIterator):
 
     self._client_ids = client_ids
     self._federated_type = computation_types.FederatedType(
-        tf.string, placements.CLIENTS
+        np.str_, placements.CLIENTS
     )
 
   @classmethod
@@ -127,7 +127,7 @@ class ClientIdDataSource(data_source.FederatedDataSource):
 
     self._client_ids = client_ids
     self._federated_type = computation_types.FederatedType(
-        tf.string, placements.CLIENTS
+        np.str_, placements.CLIENTS
     )
 
   @property

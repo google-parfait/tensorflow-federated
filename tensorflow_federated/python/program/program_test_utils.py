@@ -35,13 +35,13 @@ def _materialized_value_to_type(
 ) -> value_reference.MaterializableTypeSignature:
   """Returns a `tff.Type` for the `value`."""
   if isinstance(value, bool):
-    return computation_types.TensorType(tf.bool)
+    return computation_types.TensorType(np.bool_)
   elif isinstance(value, int):
-    return computation_types.TensorType(tf.int32)
+    return computation_types.TensorType(np.int32)
   elif isinstance(value, str):
-    return computation_types.TensorType(tf.string)
+    return computation_types.TensorType(np.str_)
   elif isinstance(value, tf.data.Dataset):
-    return computation_types.SequenceType(tf.int32)
+    return computation_types.SequenceType(np.int32)
   else:
     raise NotImplementedError(f'Unexpected type found: {type(value)}.')
 

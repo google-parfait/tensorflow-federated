@@ -17,6 +17,7 @@ from typing import NamedTuple
 
 from absl.testing import absltest
 from absl.testing import parameterized
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -213,7 +214,7 @@ class SerializationUtilsSerializableTest(parameterized.TestCase):
 class SerializationUtilsTypeSpecTest(parameterized.TestCase):
 
   def test_pack_and_unpack_type_spec(self):
-    value = computation_types.TensorType(tf.int32)
+    value = computation_types.TensorType(np.int32)
 
     value_bytes = serialization_utils.pack_type_spec(value)
     actual_value, actual_size = serialization_utils.unpack_type_spec_from(
@@ -225,7 +226,7 @@ class SerializationUtilsTypeSpecTest(parameterized.TestCase):
     self.assertEqual(actual_size, expected_size)
 
   def test_pack_and_unpack_type_spec_with_offset(self):
-    value = computation_types.TensorType(tf.int32)
+    value = computation_types.TensorType(np.int32)
     offset = 100
 
     value_bytes = serialization_utils.pack_type_spec(value)
@@ -243,7 +244,7 @@ class SerializationUtilsTypeSpecTest(parameterized.TestCase):
       ('too_large', 1),
   )
   def test_unpack_type_spec_from_raises_struct_error_with_offset(self, offset):
-    value = computation_types.TensorType(tf.int32)
+    value = computation_types.TensorType(np.int32)
     value_bytes = serialization_utils.pack_type_spec(value)
 
     with self.assertRaises(struct.error):
@@ -256,7 +257,7 @@ class SerializationUtilsTypeSpecTest(parameterized.TestCase):
   def test_unpack_type_spec_from_raises_struct_error_with_corrupt_bytes(
       self, corrupt_fn
   ):
-    value = computation_types.TensorType(tf.int32)
+    value = computation_types.TensorType(np.int32)
     value_bytes = serialization_utils.pack_type_spec(value)
     corrupt_bytes = corrupt_fn(value_bytes)
 
@@ -268,24 +269,24 @@ class SerializationUtilsElementSpecTest(parameterized.TestCase):
 
   # pyformat: disable
   @parameterized.named_parameters(
-      ('tensor_spec', tf.TensorSpec(shape=(3,), dtype=tf.int32, name=None)),
+      ('tensor_spec', tf.TensorSpec(shape=(3,), dtype=np.int32, name=None)),
       ('list',
        [
-           tf.TensorSpec(shape=(3,), dtype=tf.int32, name=None),
-           tf.TensorSpec(shape=(3,), dtype=tf.int32, name=None),
-           tf.TensorSpec(shape=(3,), dtype=tf.int32, name=None),
+           tf.TensorSpec(shape=(3,), dtype=np.int32, name=None),
+           tf.TensorSpec(shape=(3,), dtype=np.int32, name=None),
+           tf.TensorSpec(shape=(3,), dtype=np.int32, name=None),
        ]),
       ('dict',
        {
-           'a': tf.TensorSpec(shape=(3,), dtype=tf.int32, name=None),
-           'b': tf.TensorSpec(shape=(3,), dtype=tf.int32, name=None),
-           'c': tf.TensorSpec(shape=(3,), dtype=tf.int32, name=None),
+           'a': tf.TensorSpec(shape=(3,), dtype=np.int32, name=None),
+           'b': tf.TensorSpec(shape=(3,), dtype=np.int32, name=None),
+           'c': tf.TensorSpec(shape=(3,), dtype=np.int32, name=None),
        }),
       ('named_tuple',
        _TestNamedTuple(
-           a=tf.TensorSpec(shape=(3,), dtype=tf.int32, name=None),
-           b=tf.TensorSpec(shape=(3,), dtype=tf.int32, name=None),
-           c=tf.TensorSpec(shape=(3,), dtype=tf.int32, name=None),
+           a=tf.TensorSpec(shape=(3,), dtype=np.int32, name=None),
+           b=tf.TensorSpec(shape=(3,), dtype=np.int32, name=None),
+           c=tf.TensorSpec(shape=(3,), dtype=np.int32, name=None),
        )),
   )
   # pyformat: enable
@@ -300,7 +301,7 @@ class SerializationUtilsElementSpecTest(parameterized.TestCase):
     self.assertEqual(actual_size, expected_size)
 
   def test_pack_and_unpack_element_spec_with_offset(self):
-    value = tf.TensorSpec(shape=(3,), dtype=tf.int32, name=None)
+    value = tf.TensorSpec(shape=(3,), dtype=np.int32, name=None)
     offset = 100
 
     value_bytes = serialization_utils.pack_element_spec(value)
@@ -320,7 +321,7 @@ class SerializationUtilsElementSpecTest(parameterized.TestCase):
   def test_unpack_element_spec_from_raises_struct_error_with_offset(
       self, offset
   ):
-    value = tf.TensorSpec(shape=(3,), dtype=tf.int32, name=None)
+    value = tf.TensorSpec(shape=(3,), dtype=np.int32, name=None)
     value_bytes = serialization_utils.pack_element_spec(value)
 
     with self.assertRaises(struct.error):
@@ -333,7 +334,7 @@ class SerializationUtilsElementSpecTest(parameterized.TestCase):
   def test_unpack_element_spec_from_raises_struct_error_with_corrupt_bytes(
       self, corrupt_fn
   ):
-    value = tf.TensorSpec(shape=(3,), dtype=tf.int32, name=None)
+    value = tf.TensorSpec(shape=(3,), dtype=np.int32, name=None)
     value_bytes = serialization_utils.pack_element_spec(value)
     corrupt_bytes = corrupt_fn(value_bytes)
 

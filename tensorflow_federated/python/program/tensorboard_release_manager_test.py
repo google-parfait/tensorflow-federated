@@ -75,21 +75,21 @@ class TensorBoardReleaseManagerReleaseTest(
   # pyformat: disable
   @parameterized.named_parameters(
       # materialized values
-      ('bool', True, computation_types.TensorType(tf.bool), [('', True)]),
-      ('int', 1, computation_types.TensorType(tf.int32), [('', 1)]),
+      ('bool', True, computation_types.TensorType(np.bool_), [('', True)]),
+      ('int', 1, computation_types.TensorType(np.int32), [('', 1)]),
       ('tensor_int',
        tf.constant(1),
-       computation_types.TensorType(tf.int32),
+       computation_types.TensorType(np.int32),
        [('', tf.constant(1))]),
       ('numpy_int',
        np.int32(1),
-       computation_types.TensorType(tf.int32),
+       computation_types.TensorType(np.int32),
        [('', np.int32(1))]),
 
       # materializable value references
       ('materializable_value_reference_tensor',
        program_test_utils.TestMaterializableValueReference(1),
-       computation_types.TensorType(tf.int32),
+       computation_types.TensorType(np.int32),
        [('', 1)]),
 
       # structures
@@ -102,13 +102,13 @@ class TensorBoardReleaseManagerReleaseTest(
            program_test_utils.TestSerializable(3, 4),
        ],
        computation_types.StructWithPythonType([
-           tf.bool,
-           tf.int32,
-           tf.string,
-           tf.int32,
+           np.bool_,
+           np.int32,
+           np.str_,
+           np.int32,
            computation_types.StructWithPythonType([
-               ('a', tf.int32),
-               ('b', tf.int32),
+               ('a', np.int32),
+               ('b', np.int32),
            ], collections.OrderedDict),
        ], list),
        [('0', True), ('1', 1), ('3', 2)]),
@@ -125,16 +125,16 @@ class TensorBoardReleaseManagerReleaseTest(
        ],
        computation_types.StructWithPythonType([
            computation_types.StructWithPythonType([
-               tf.bool,
-               tf.int32,
-               tf.string,
-               tf.int32,
+               np.bool_,
+               np.int32,
+               np.str_,
+               np.int32,
                computation_types.StructWithPythonType([
-                   ('a', tf.int32),
-                   ('b', tf.int32),
+                   ('a', np.int32),
+                   ('b', np.int32),
                ], collections.OrderedDict),
            ], list),
-           computation_types.StructWithPythonType([tf.int32], list),
+           computation_types.StructWithPythonType([np.int32], list),
        ], list),
        [('0/0', True), ('0/1', 1), ('0/3', 2), ('1/0', 5)]),
       ('dict',
@@ -146,13 +146,13 @@ class TensorBoardReleaseManagerReleaseTest(
            'e': program_test_utils.TestSerializable(3, 4),
        },
        computation_types.StructWithPythonType([
-           ('a', tf.bool),
-           ('b', tf.int32),
-           ('c', tf.string),
-           ('d', tf.int32),
+           ('a', np.bool_),
+           ('b', np.int32),
+           ('c', np.str_),
+           ('d', np.int32),
            ('e', computation_types.StructWithPythonType([
-               ('a', tf.int32),
-               ('b', tf.int32),
+               ('a', np.int32),
+               ('b', np.int32),
            ], collections.OrderedDict)),
        ], collections.OrderedDict),
        [('a', True), ('b', 1), ('d', 2)]),
@@ -169,17 +169,17 @@ class TensorBoardReleaseManagerReleaseTest(
        },
        computation_types.StructWithPythonType([
            ('x', computation_types.StructWithPythonType([
-               ('a', tf.bool),
-               ('b', tf.int32),
-               ('c', tf.string),
-               ('d', tf.int32),
+               ('a', np.bool_),
+               ('b', np.int32),
+               ('c', np.str_),
+               ('d', np.int32),
                ('e', computation_types.StructWithPythonType([
-                   ('a', tf.int32),
-                   ('b', tf.int32),
+                   ('a', np.int32),
+                   ('b', np.int32),
                ], collections.OrderedDict)),
            ], collections.OrderedDict)),
            ('y', computation_types.StructWithPythonType([
-               ('a', tf.int32),
+               ('a', np.int32),
            ], collections.OrderedDict)),
        ], collections.OrderedDict),
        [('x/a', True), ('x/b', 1), ('x/d', 2), ('y/a', 5)]),
@@ -192,13 +192,13 @@ class TensorBoardReleaseManagerReleaseTest(
            e=program_test_utils.TestSerializable(3, 4),
        ),
        computation_types.StructWithPythonType([
-           ('a', tf.bool),
-           ('b', tf.int32),
-           ('c', tf.string),
-           ('d', tf.int32),
+           ('a', np.bool_),
+           ('b', np.int32),
+           ('c', np.str_),
+           ('d', np.int32),
            ('e', computation_types.StructWithPythonType([
-               ('a', tf.int32),
-               ('b', tf.int32),
+               ('a', np.int32),
+               ('b', np.int32),
            ], collections.OrderedDict)),
        ], program_test_utils.TestNamedTuple1),
        [('a', True), ('b', 1), ('d', 2)]),
@@ -215,17 +215,17 @@ class TensorBoardReleaseManagerReleaseTest(
        ),
        computation_types.StructWithPythonType([
            ('x', computation_types.StructWithPythonType([
-               ('a', tf.bool),
-               ('b', tf.int32),
-               ('c', tf.string),
-               ('d', tf.int32),
+               ('a', np.bool_),
+               ('b', np.int32),
+               ('c', np.str_),
+               ('d', np.int32),
                ('e', computation_types.StructWithPythonType([
-                   ('a', tf.int32),
-                   ('b', tf.int32),
+                   ('a', np.int32),
+                   ('b', np.int32),
                ], collections.OrderedDict)),
            ], program_test_utils.TestNamedTuple1)),
            ('y', computation_types.StructWithPythonType([
-               ('c', tf.int32),
+               ('c', np.int32),
            ], program_test_utils.TestNamedTuple2)),
        ], program_test_utils.TestNamedTuple3),
        [('x/a', True), ('x/b', 1), ('x/d', 2), ('y/a', 5)]),
@@ -257,18 +257,18 @@ class TensorBoardReleaseManagerReleaseTest(
       # materialized values
       ('tensor_array',
        tf.constant([1] * 3),
-       computation_types.TensorType(tf.int32, [3]),
+       computation_types.TensorType(np.int32, [3]),
        [('', tf.constant([1] * 3))]),
       ('numpy_array',
        np.array([1] * 3, np.int32),
-       computation_types.TensorType(tf.int32, [3]),
+       computation_types.TensorType(np.int32, [3]),
        [('', np.array([1] * 3, np.int32))]),
 
       # materializable value references
       ('materializable_value_reference_sequence',
        program_test_utils.TestMaterializableValueReference(
            tf.data.Dataset.from_tensor_slices([1, 2, 3])),
-       computation_types.SequenceType([tf.int32] * 3),
+       computation_types.SequenceType([np.int32] * 3),
        [('', [1, 2, 3])]),
   )
   # pyformat: enable
@@ -304,8 +304,8 @@ class TensorBoardReleaseManagerReleaseTest(
     value = [1, tf.constant([1] * 3)]
     type_signature = computation_types.StructWithPythonType(
         [
-            tf.int32,
-            computation_types.TensorType(tf.float32, [3]),
+            np.int32,
+            computation_types.TensorType(np.float32, [3]),
         ],
         list,
     )
@@ -333,23 +333,23 @@ class TensorBoardReleaseManagerReleaseTest(
   @parameterized.named_parameters(
       # materialized values
       ('none', None, computation_types.StructType([])),
-      ('str', 'a', computation_types.TensorType(tf.string)),
-      ('tensor_str', tf.constant('a'), computation_types.TensorType(tf.string)),
+      ('str', 'a', computation_types.TensorType(np.str_)),
+      ('tensor_str', tf.constant('a'), computation_types.TensorType(np.str_)),
 
       # serializable values
       ('serializable_value',
        program_test_utils.TestSerializable(1, 2),
        computation_types.StructWithPythonType([
-           ('a', tf.int32),
-           ('b', tf.int32),
+           ('a', np.int32),
+           ('b', np.int32),
        ], collections.OrderedDict)),
 
       # other values
       ('attrs',
        program_test_utils.TestAttrs(1, 2),
        computation_types.StructWithPythonType([
-           ('a', tf.int32),
-           ('b', tf.int32),
+           ('a', np.int32),
+           ('b', np.int32),
        ], collections.OrderedDict)),
 
       # structures
@@ -386,7 +386,7 @@ class TensorBoardReleaseManagerReleaseTest(
         summary_dir
     )
     value = 1
-    type_signature = computation_types.TensorType(tf.int32)
+    type_signature = computation_types.TensorType(np.int32)
 
     try:
       await release_mngr.release(value, type_signature, key)
@@ -404,7 +404,7 @@ class TensorBoardReleaseManagerReleaseTest(
         summary_dir
     )
     value = 1
-    type_signature = computation_types.TensorType(tf.int32)
+    type_signature = computation_types.TensorType(np.int32)
 
     with self.assertRaises(TypeError):
       await release_mngr.release(value, type_signature, key)
