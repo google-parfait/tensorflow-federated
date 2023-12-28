@@ -129,7 +129,7 @@ class GraphUtilsTest(tf.test.TestCase):
       graph = tf.compat.v1.get_default_graph()
     val, binding = tensorflow_utils.stamp_parameter_in_graph(name, spec, graph)
     self._assert_input_binding_matches_type_and_value(
-        binding, computation_types.to_type(spec), val, graph
+        binding, computation_types.tensorflow_to_type(spec), val, graph
     )
     return val
 
@@ -151,7 +151,11 @@ class GraphUtilsTest(tf.test.TestCase):
   def test_stamp_parameter_in_graph_with_struct(self):
     with tf.Graph().as_default() as my_graph:
       x = self._checked_stamp_parameter(
-          'foo', computation_types.StructType([('a', tf.int32), ('b', tf.bool)])
+          'foo',
+          computation_types.StructType([
+              ('a', np.int32),
+              ('b', np.bool_),
+          ]),
       )
     self.assertIsInstance(x, structure.Struct)
     self.assertTrue(len(x), 2)
@@ -163,7 +167,11 @@ class GraphUtilsTest(tf.test.TestCase):
       x = self._checked_stamp_parameter(
           'foo',
           computation_types.StructWithPythonType(
-              [('a', tf.int32), ('b', tf.bool)], collections.OrderedDict
+              [
+                  ('a', np.int32),
+                  ('b', np.bool_),
+              ],
+              collections.OrderedDict,
           ),
       )
     self.assertIsInstance(x, structure.Struct)
@@ -174,7 +182,7 @@ class GraphUtilsTest(tf.test.TestCase):
   def test_stamp_parameter_in_graph_with_bool_sequence(self):
     with tf.Graph().as_default():
       x = self._checked_stamp_parameter(
-          'foo', computation_types.SequenceType(tf.bool)
+          'foo', computation_types.SequenceType(np.bool_)
       )
       self.assertIsInstance(x, tf.data.Dataset)
       self.assertEqual(x.element_spec, tf.TensorSpec(shape=(), dtype=tf.bool))
@@ -182,7 +190,7 @@ class GraphUtilsTest(tf.test.TestCase):
   def test_stamp_parameter_in_graph_with_int_vector_sequence(self):
     with tf.Graph().as_default():
       x = self._checked_stamp_parameter(
-          'foo', computation_types.SequenceType((tf.int32, [50]))
+          'foo', computation_types.SequenceType((np.int32, [50]))
       )
       self.assertIsInstance(x, tf.data.Dataset)
       self.assertEqual(
@@ -195,7 +203,7 @@ class GraphUtilsTest(tf.test.TestCase):
           'foo',
           computation_types.SequenceType(
               collections.OrderedDict(
-                  [('A', (tf.float32, [3, 4, 5])), ('B', (tf.int32, [1]))]
+                  [('A', (np.float32, [3, 4, 5])), ('B', (np.int32, [1]))]
               )
           ),
       )
@@ -286,11 +294,11 @@ class GraphUtilsTest(tf.test.TestCase):
           type_spec,
           computation_types.StructWithPythonType(
               [
-                  ('flat_values', computation_types.TensorType(tf.int32, [4])),
+                  ('flat_values', computation_types.TensorType(np.int32, [4])),
                   (
                       'nested_row_splits',
                       computation_types.StructWithPythonType(
-                          [(None, computation_types.TensorType(tf.int64, [3]))],
+                          [(None, computation_types.TensorType(np.int64, [3]))],
                           tuple,
                       ),
                   ),
@@ -309,9 +317,9 @@ class GraphUtilsTest(tf.test.TestCase):
           type_spec,
           computation_types.StructWithPythonType(
               [
-                  ('indices', computation_types.TensorType(tf.int64, [1, 1])),
-                  ('values', computation_types.TensorType(tf.int32, [1])),
-                  ('dense_shape', computation_types.TensorType(tf.int64, [1])),
+                  ('indices', computation_types.TensorType(np.int64, [1, 1])),
+                  ('values', computation_types.TensorType(np.int32, [1])),
+                  ('dense_shape', computation_types.TensorType(np.int64, [1])),
               ],
               tf.SparseTensor,
           ),
@@ -557,7 +565,7 @@ class GraphUtilsTest(tf.test.TestCase):
   @tensorflow_test_utils.graph_mode_test
   def test_assemble_result_from_graph_with_sequence_of_odicts(self):
     type_spec = computation_types.SequenceType(
-        collections.OrderedDict([('X', tf.int32), ('Y', tf.int32)])
+        collections.OrderedDict([('X', np.int32), ('Y', np.int32)])
     )
     binding = pb.TensorFlow.Binding(
         sequence=pb.TensorFlow.SequenceBinding(variant_tensor_name='foo')
@@ -582,7 +590,7 @@ class GraphUtilsTest(tf.test.TestCase):
   def test_assemble_result_from_graph_with_sequence_of_namedtuples(self):
     named_tuple_type = collections.namedtuple('TestNamedTuple', 'X Y')
     type_spec = computation_types.SequenceType(
-        named_tuple_type(tf.int32, tf.int32)
+        named_tuple_type(np.int32, np.int32)
     )
     binding = pb.TensorFlow.Binding(
         sequence=pb.TensorFlow.SequenceBinding(variant_tensor_name='foo')
@@ -604,7 +612,7 @@ class GraphUtilsTest(tf.test.TestCase):
     )
 
   def test_make_whimsy_element_for_type_spec_raises_sequence_type(self):
-    type_spec = computation_types.SequenceType(tf.float32)
+    type_spec = computation_types.SequenceType(np.float32)
     with self.assertRaisesRegex(
         ValueError, 'Cannot construct array for TFF type'
     ):
@@ -618,7 +626,7 @@ class GraphUtilsTest(tf.test.TestCase):
 
   def test_make_whimsy_element_tensor_type(self):
     type_spec = computation_types.TensorType(
-        tf.float32, [None, 10, None, 10, 10]
+        np.float32, [None, 10, None, 10, 10]
     )
     elem = tensorflow_utils.make_whimsy_element_for_type_spec(type_spec)
     correct_elem = np.zeros([0, 10, 0, 10, 10], np.float32)
@@ -626,7 +634,7 @@ class GraphUtilsTest(tf.test.TestCase):
 
   def test_make_whimsy_element_tensor_type_none_replaced_by_1(self):
     type_spec = computation_types.TensorType(
-        tf.float32, [None, 10, None, 10, 10]
+        np.float32, [None, 10, None, 10, 10]
     )
     elem = tensorflow_utils.make_whimsy_element_for_type_spec(
         type_spec, none_dim_replacement=1
@@ -635,8 +643,8 @@ class GraphUtilsTest(tf.test.TestCase):
     self.assertAllClose(elem, correct_elem)
 
   def test_make_whimsy_element_struct_type(self):
-    tensor1 = computation_types.TensorType(tf.float32, [None, 10, None, 10, 10])
-    tensor2 = computation_types.TensorType(tf.int32, [10, None, 10])
+    tensor1 = computation_types.TensorType(np.float32, [None, 10, None, 10, 10])
+    tensor2 = computation_types.TensorType(np.int32, [10, None, 10])
     namedtuple = computation_types.StructType([('x', tensor1), ('y', tensor2)])
     unnamedtuple = computation_types.StructType(
         [('x', tensor1), ('y', tensor2)]
@@ -711,7 +719,7 @@ class GraphUtilsTest(tf.test.TestCase):
     ds = tensorflow_utils.make_data_set_from_elements(
         tf.compat.v1.get_default_graph(),
         [],
-        computation_types.TensorType(tf.float32, [None, 10]),
+        computation_types.TensorType(np.float32, [None, 10]),
     )
     self.assertIsInstance(ds, tf.data.Dataset)
     self.assertEqual(
@@ -727,8 +735,8 @@ class GraphUtilsTest(tf.test.TestCase):
         tf.compat.v1.get_default_graph(),
         [],
         [
-            computation_types.TensorType(tf.float32, [None, 10]),
-            computation_types.TensorType(tf.float32, [None, 5]),
+            computation_types.TensorType(np.float32, [None, 10]),
+            computation_types.TensorType(np.float32, [None, 5]),
         ],
     )
     self.assertIsInstance(ds, tf.data.Dataset)
@@ -972,25 +980,21 @@ class GraphUtilsTest(tf.test.TestCase):
     self.assertEqual(str(y), '<a=<b=<>,c=10>>')
 
   def test_make_empty_list_structure_for_element_type_spec_w_tuple_dict(self):
-    type_spec = computation_types.to_type(
-        [tf.int32, [('a', tf.bool), ('b', tf.float32)]]
-    )
+    type_spec = [tf.int32, [('a', tf.bool), ('b', tf.float32)]]
     result = tensorflow_utils.make_empty_list_structure_for_element_type_spec(
         type_spec
     )
     self.assertEqual(str(result), "([], OrderedDict([('a', []), ('b', [])]))")
 
   def test_append_to_list_structure_for_element_type_spec_w_tuple_dict(self):
-    type_spec = computation_types.to_type(
-        [tf.int32, [('a', tf.bool), ('b', tf.float32)]]
-    )
-    result = tuple([[], collections.OrderedDict([('a', []), ('b', [])])])
+    nested = tuple([[], collections.OrderedDict([('a', []), ('b', [])])])
+    type_spec = [tf.int32, [('a', tf.bool), ('b', tf.float32)]]
     for value in [[10, {'a': True, 'b': 30}], (40, [False, 60])]:
       tensorflow_utils.append_to_list_structure_for_element_type_spec(
-          result, value, type_spec
+          nested, value, type_spec
       )
     self.assertEqual(
-        str(result),
+        str(nested),
         (
             '([<tf.Tensor: shape=(), dtype=int32, numpy=10>, <tf.Tensor:'
             " shape=(), dtype=int32, numpy=40>], OrderedDict([('a',"
@@ -1002,48 +1006,46 @@ class GraphUtilsTest(tf.test.TestCase):
     )
 
   def test_append_to_list_structure_with_too_few_element_keys(self):
-    type_spec = computation_types.to_type([('a', tf.int32), ('b', tf.int32)])
-    result = collections.OrderedDict([('a', []), ('b', [])])
+    nested = collections.OrderedDict([('a', []), ('b', [])])
     value = {'a': 10}
+    type_spec = [('a', tf.int32), ('b', tf.int32)]
     with self.assertRaises(TypeError):
       tensorflow_utils.append_to_list_structure_for_element_type_spec(
-          result, value, type_spec
+          nested, value, type_spec
       )
 
   def test_append_to_list_structure_with_too_many_element_keys(self):
-    type_spec = computation_types.to_type([('a', tf.int32), ('b', tf.int32)])
-    result = collections.OrderedDict([('a', []), ('b', [])])
+    nested = collections.OrderedDict([('a', []), ('b', [])])
     value = {'a': 10, 'b': 20, 'c': 30}
+    type_spec = [('a', tf.int32), ('b', tf.int32)]
     with self.assertRaises(TypeError):
       tensorflow_utils.append_to_list_structure_for_element_type_spec(
-          result, value, type_spec
+          nested, value, type_spec
       )
 
   def test_append_to_list_structure_with_too_few_unnamed_elements(self):
-    type_spec = computation_types.to_type([tf.int32, tf.int32])
-    result = tuple([[], []])
+    nested = tuple([[], []])
     value = [10]
+    type_spec = [tf.int32, tf.int32]
     with self.assertRaises(TypeError):
       tensorflow_utils.append_to_list_structure_for_element_type_spec(
-          result, value, type_spec
+          nested, value, type_spec
       )
 
   def test_append_to_list_structure_with_too_many_unnamed_elements(self):
-    type_spec = computation_types.to_type([tf.int32, tf.int32])
-    result = tuple([[], []])
+    nested = tuple([[], []])
     value = [10, 20, 30]
+    type_spec = [tf.int32, tf.int32]
     with self.assertRaises(TypeError):
       tensorflow_utils.append_to_list_structure_for_element_type_spec(
-          result, value, type_spec
+          nested, value, type_spec
       )
 
   def test_replace_empty_leaf_lists_with_numpy_arrays(self):
-    type_spec = computation_types.to_type(
-        [tf.int32, [('a', tf.bool), ('b', tf.float32)]]
-    )
-    result = tuple([[], collections.OrderedDict([('a', []), ('b', [])])])
+    lists = tuple([[], collections.OrderedDict([('a', []), ('b', [])])])
+    type_spec = [tf.int32, [('a', tf.bool), ('b', tf.float32)]]
     result = tensorflow_utils.replace_empty_leaf_lists_with_numpy_arrays(
-        result, type_spec
+        lists, type_spec
     )
 
     expected_structure = tuple([
@@ -1134,7 +1136,7 @@ class GraphUtilsTest(tf.test.TestCase):
 
   def test_list_structures_from_element_type_spec_with_structures(self):
     self._test_list_structure(
-        computation_types.StructType([('a', tf.int32)]),
+        computation_types.StructType([('a', np.int32)]),
         [structure.Struct([('a', 1)]), structure.Struct([('a', 2)])],
         (
             "OrderedDict([('a', ["
@@ -1153,7 +1155,7 @@ class GraphUtilsTest(tf.test.TestCase):
   def test_list_structures_from_element_type_spec_w_list_of_anon_tuples(self):
     self._test_list_structure(
         computation_types.StructType(
-            [computation_types.StructType([('a', tf.int32)])]
+            [computation_types.StructType([('a', np.int32)])]
         ),
         [[structure.Struct([('a', 1)])], [structure.Struct([('a', 2)])]],
         (
@@ -1173,12 +1175,12 @@ class GraphUtilsTest(tf.test.TestCase):
     tensorflow_utils.make_data_set_from_elements(
         tf.compat.v1.get_default_graph(),
         [np.array([1, 2]), np.array([3])],
-        computation_types.TensorType(tf.int32, (None,)),
+        computation_types.TensorType(np.int32, (None,)),
     )
     tensorflow_utils.make_data_set_from_elements(
         tf.compat.v1.get_default_graph(),
         [{'x': np.array([1, 2])}, {'x': np.array([3])}],
-        [('x', computation_types.TensorType(tf.int32, (None,)))],
+        [('x', computation_types.TensorType(np.int32, (None,)))],
     )
 
   def test_make_data_set_from_elements_with_odd_all_batches(self):
@@ -1190,7 +1192,7 @@ class GraphUtilsTest(tf.test.TestCase):
             np.array([4, 5, 6]),
             np.array([7, 8]),
         ],
-        computation_types.TensorType(tf.int32, (None,)),
+        computation_types.TensorType(np.int32, (None,)),
     )
     tensorflow_utils.make_data_set_from_elements(
         tf.compat.v1.get_default_graph(),
@@ -1200,19 +1202,19 @@ class GraphUtilsTest(tf.test.TestCase):
             {'x': np.array([4, 5, 6])},
             {'x': np.array([7, 8])},
         ],
-        [('x', computation_types.TensorType(tf.int32, (None,)))],
+        [('x', computation_types.TensorType(np.int32, (None,)))],
     )
 
   def test_make_data_set_from_elements_with_just_one_batch(self):
     tensorflow_utils.make_data_set_from_elements(
         tf.compat.v1.get_default_graph(),
         [np.array([1])],
-        computation_types.TensorType(tf.int32, (None,)),
+        computation_types.TensorType(np.int32, (None,)),
     )
     tensorflow_utils.make_data_set_from_elements(
         tf.compat.v1.get_default_graph(),
         [{'x': np.array([1])}],
-        [('x', computation_types.TensorType(tf.int32, (None,)))],
+        [('x', computation_types.TensorType(np.int32, (None,)))],
     )
 
   def test_make_dataset_from_variant_tensor_constructs_dataset(self):
@@ -1321,7 +1323,7 @@ class GraphUtilsTest(tf.test.TestCase):
   def test_coerce_dataset_elements_noop(self):
     x = tf.data.Dataset.range(5)
     y = tensorflow_utils.coerce_dataset_elements_to_tff_type_spec(
-        x, computation_types.TensorType(tf.int64)
+        x, computation_types.TensorType(np.int64)
     )
     self.assertEqual(x.element_spec, y.element_spec)
 
@@ -1332,11 +1334,11 @@ class GraphUtilsTest(tf.test.TestCase):
     dataset = tf.data.Dataset.from_tensors(ragged_tensor)
     element_type = computation_types.StructWithPythonType(
         [
-            ('flat_values', computation_types.TensorType(tf.int32)),
+            ('flat_values', computation_types.TensorType(np.int32)),
             (
                 'nested_row_splits',
                 computation_types.StructWithPythonType(
-                    [computation_types.TensorType(tf.int64, [None])], tuple
+                    [computation_types.TensorType(np.int64, [None])], tuple
                 ),
             ),
         ],
@@ -1356,10 +1358,10 @@ class GraphUtilsTest(tf.test.TestCase):
         [
             (
                 'indices',
-                computation_types.TensorType(tf.int64, shape=[None, 2]),
+                computation_types.TensorType(np.int64, shape=[None, 2]),
             ),
-            ('values', computation_types.TensorType(tf.int32, shape=[None])),
-            ('dense_shape', computation_types.TensorType(tf.int64, shape=[2])),
+            ('values', computation_types.TensorType(np.int32, shape=[None])),
+            ('dense_shape', computation_types.TensorType(np.int64, shape=[2])),
         ],
         tf.sparse.SparseTensor,
     )
@@ -1388,18 +1390,18 @@ class GraphUtilsTest(tf.test.TestCase):
         (
             'a',
             computation_types.StructType([
-                (None, tf.int64),
-                (None, test_tuple_type(tf.int64, tf.int64)),
+                (None, np.int64),
+                (None, test_tuple_type(np.int64, np.int64)),
                 (
                     None,
                     computation_types.StructType(
-                        [('x', tf.int64), ('y', tf.int64)]
+                        [('x', np.int64), ('y', np.int64)]
                     ),
                 ),
             ]),
         ),
-        ('b', tf.int32),
-        ('c', tf.float32),
+        ('b', np.int32),
+        ('c', np.float32),
     ])
 
     y = tensorflow_utils.coerce_dataset_elements_to_tff_type_spec(
@@ -1421,7 +1423,7 @@ class TensorFlowDeserializationTest(tf.test.TestCase):
       result_type, result_binding = tensorflow_utils.capture_result_from_graph(
           result, graph
       )
-    parameter_type = computation_types.TensorType(tf.int32)
+    parameter_type = computation_types.TensorType(np.int32)
     type_signature = computation_types.FunctionType(parameter_type, result_type)
     tensorflow_proto = pb.TensorFlow(
         graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
@@ -1465,8 +1467,8 @@ class TensorFlowDeserializationTest(tf.test.TestCase):
           result, graph
       )
     parameter_type = computation_types.StructType([
-        (None, computation_types.TensorType(tf.int32)),
-        (None, computation_types.TensorType(tf.int32)),
+        (None, computation_types.TensorType(np.int32)),
+        (None, computation_types.TensorType(np.int32)),
     ])
     type_signature = computation_types.FunctionType(parameter_type, result_type)
     tensorflow_proto = pb.TensorFlow(

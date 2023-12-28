@@ -81,7 +81,7 @@ def stamp_parameter_in_graph(parameter_name, parameter_type, graph):
   py_typecheck.check_type(graph, tf.Graph)
   if parameter_type is None:
     return (None, None)
-  parameter_type = computation_types.to_type(parameter_type)
+  parameter_type = computation_types.tensorflow_to_type(parameter_type)
   if isinstance(parameter_type, computation_types.TensorType):
     with graph.as_default():
       placeholder = tf.compat.v1.placeholder(
@@ -169,7 +169,7 @@ def make_dataset_from_variant_tensor(variant_tensor, type_spec):
         variant_tensor,
         structure=(
             type_conversions.type_to_tf_structure(
-                computation_types.to_type(type_spec)
+                computation_types.tensorflow_to_type(type_spec)
             )
         ),
     )
@@ -495,7 +495,7 @@ def assemble_result_from_graph(type_spec, binding, output_map):
     ValueError: If the arguments are invalid or inconsistent witch other, e.g.,
       the type and binding don't match, or the tensor is not found in the map.
   """
-  type_spec = computation_types.to_type(type_spec)
+  type_spec = computation_types.tensorflow_to_type(type_spec)
   py_typecheck.check_type(type_spec, computation_types.Type)
   py_typecheck.check_type(binding, pb.TensorFlow.Binding)
   py_typecheck.check_type(output_map, dict)
@@ -619,7 +619,7 @@ def make_empty_list_structure_for_element_type_spec(type_spec):
   Raises:
     TypeError: If the `type_spec` is not of a form described above.
   """
-  type_spec = computation_types.to_type(type_spec)
+  type_spec = computation_types.tensorflow_to_type(type_spec)
   py_typecheck.check_type(type_spec, computation_types.Type)
   if isinstance(type_spec, computation_types.TensorType):
     return []
@@ -665,8 +665,7 @@ def make_whimsy_element_for_type_spec(type_spec, none_dim_replacement=0):
   matches `type_spec`.
 
   Args:
-    type_spec: Instance of `computation_types.Type`, or something convertible to
-      one by `computation_types.to_type`.
+    type_spec: A `tff.Type`, or something convertible to it.
     none_dim_replacement: `int` with which to replace any unspecified tensor
       dimensions.
 
@@ -677,7 +676,7 @@ def make_whimsy_element_for_type_spec(type_spec, none_dim_replacement=0):
     This data structure is of the minimal size necessary in order to be
     compatible with `type_spec`.
   """
-  type_spec = computation_types.to_type(type_spec)
+  type_spec = computation_types.tensorflow_to_type(type_spec)
 
   def _predicate(type_spec: computation_types.Type) -> bool:
     return isinstance(
@@ -741,7 +740,7 @@ def append_to_list_structure_for_element_type_spec(nested, value, type_spec):
   """
   if value is None:
     return
-  type_spec = computation_types.to_type(type_spec)
+  type_spec = computation_types.tensorflow_to_type(type_spec)
   # TODO: b/113116813 - This could be made more efficient, but for now we won't
   # need to worry about it as this is an odd corner case.
   if isinstance(value, structure.Struct):
@@ -833,7 +832,7 @@ def replace_empty_leaf_lists_with_numpy_arrays(lists, type_spec):
     TypeError: If the `type_spec` is not of a form described above, or if
       `lists` is not of a type compatible with `type_spec`.
   """
-  type_spec = computation_types.to_type(type_spec)
+  type_spec = computation_types.tensorflow_to_type(type_spec)
   py_typecheck.check_type(type_spec, computation_types.Type)
   if isinstance(type_spec, computation_types.TensorType):
     py_typecheck.check_type(lists, list)
@@ -906,7 +905,7 @@ def make_data_set_from_elements(graph, elements, element_type):
   elif not tf.executing_eagerly():
     raise ValueError('Only in eager context may the graph be `None`.')
   py_typecheck.check_type(elements, list)
-  element_type = computation_types.to_type(element_type)
+  element_type = computation_types.tensorflow_to_type(element_type)
   py_typecheck.check_type(element_type, computation_types.Type)
 
   def _make(element_subset):

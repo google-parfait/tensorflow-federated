@@ -203,7 +203,7 @@ class ValueSerializationtest(tf.test.TestCase, parameterized.TestCase):
 
   def test_serialize_deserialize_variable_as_tensor_value(self):
     x = tf.Variable(10.0)
-    type_spec = TensorType(x.dtype, x.shape)
+    type_spec = TensorType(np.float32)
     value_proto, value_type = value_serialization.serialize_value(x, type_spec)
     type_test_utils.assert_types_identical(value_type, TensorType(np.float32))
     y, type_spec = value_serialization.deserialize_value(value_proto)

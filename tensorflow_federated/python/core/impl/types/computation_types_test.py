@@ -1357,13 +1357,70 @@ class TensorflowToTypeTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
       (
+          'type',
+          computation_types.TensorType(np.int32),
+          computation_types.TensorType(np.int32),
+      ),
+      (
+          'dtype',
+          tf.int32,
+          computation_types.TensorType(np.int32),
+      ),
+      (
+          'dtype_nested',
+          [tf.int32],
+          computation_types.StructWithPythonType(
+              [
+                  computation_types.TensorType(np.int32),
+              ],
+              list,
+          ),
+      ),
+      (
+          'dtype_mixed',
+          [tf.int32, np.float32],
+          computation_types.StructWithPythonType(
+              [
+                  computation_types.TensorType(np.int32),
+                  computation_types.TensorType(np.float32),
+              ],
+              list,
+          ),
+      ),
+      (
+          'tensor_like',
+          (tf.int32, [2, 3]),
+          computation_types.TensorType(np.int32, [2, 3]),
+      ),
+      (
+          'tensor_like_nested',
+          [(tf.int32, [2, 3])],
+          computation_types.StructWithPythonType(
+              [
+                  computation_types.TensorType(np.int32, [2, 3]),
+              ],
+              list,
+          ),
+      ),
+      (
+          'tensor_like_mixed',
+          [(tf.int32, [2, 3]), np.float32],
+          computation_types.StructWithPythonType(
+              [
+                  computation_types.TensorType(np.int32, [2, 3]),
+                  computation_types.TensorType(np.float32),
+              ],
+              list,
+          ),
+      ),
+      (
           'tensor_spec',
-          tf.TensorSpec(shape=[2, 3], dtype=np.int32),
+          tf.TensorSpec(shape=[2, 3], dtype=tf.int32),
           computation_types.TensorType(np.int32, [2, 3]),
       ),
       (
           'tensor_spec_nested',
-          [tf.TensorSpec(shape=[2, 3], dtype=np.int32)],
+          [tf.TensorSpec(shape=[2, 3], dtype=tf.int32)],
           computation_types.StructWithPythonType(
               [
                   computation_types.TensorType(np.int32, [2, 3]),
@@ -1373,7 +1430,7 @@ class TensorflowToTypeTest(parameterized.TestCase):
       ),
       (
           'tensor_spec_mixed',
-          [tf.TensorSpec(shape=[2, 3], dtype=np.int32), np.float32],
+          [tf.TensorSpec(shape=[2, 3], dtype=tf.int32), np.float32],
           computation_types.StructWithPythonType(
               [
                   computation_types.TensorType(np.int32, [2, 3]),
@@ -1384,9 +1441,7 @@ class TensorflowToTypeTest(parameterized.TestCase):
       ),
       (
           'dataset_spec',
-          tf.data.DatasetSpec(
-              element_spec=tf.TensorSpec([2, 3], dtype=np.int32)
-          ),
+          tf.data.DatasetSpec(tf.TensorSpec([2, 3], dtype=tf.int32)),
           computation_types.SequenceType(
               computation_types.TensorType(np.int32, [2, 3])
           ),
@@ -1394,9 +1449,7 @@ class TensorflowToTypeTest(parameterized.TestCase):
       (
           'dataset_spec_nested',
           [
-              tf.data.DatasetSpec(
-                  element_spec=tf.TensorSpec([2, 3], dtype=np.int32)
-              )
+              tf.data.DatasetSpec(tf.TensorSpec([2, 3], dtype=tf.int32)),
           ],
           computation_types.StructWithPythonType(
               [
@@ -1410,9 +1463,7 @@ class TensorflowToTypeTest(parameterized.TestCase):
       (
           'dataset_spec_mixed',
           [
-              tf.data.DatasetSpec(
-                  element_spec=tf.TensorSpec([2, 3], dtype=np.int32)
-              ),
+              tf.data.DatasetSpec(tf.TensorSpec([2, 3], dtype=tf.int32)),
               np.float32,
           ],
           computation_types.StructWithPythonType(
@@ -1428,7 +1479,9 @@ class TensorflowToTypeTest(parameterized.TestCase):
       (
           'ragged_tensor_spec',
           tf.RaggedTensorSpec.from_value(
-              tf.RaggedTensor.from_row_splits([0, 0, 0, 0], [0, 1, 4])
+              tf.RaggedTensor.from_row_splits(
+                  values=[0, 0, 0, 0], row_splits=[0, 1, 4]
+              )
           ),
           computation_types.StructWithPythonType(
               [
@@ -1436,10 +1489,7 @@ class TensorflowToTypeTest(parameterized.TestCase):
                   (
                       'nested_row_splits',
                       computation_types.StructType([
-                          (
-                              None,
-                              computation_types.TensorType(np.int64, [None]),
-                          ),
+                          computation_types.TensorType(np.int64, [None]),
                       ]),
                   ),
               ],
@@ -1450,7 +1500,9 @@ class TensorflowToTypeTest(parameterized.TestCase):
           'ragged_tensor_spec_nested',
           [
               tf.RaggedTensorSpec.from_value(
-                  tf.RaggedTensor.from_row_splits([0, 0, 0, 0], [0, 1, 4])
+                  tf.RaggedTensor.from_row_splits(
+                      values=[0, 0, 0, 0], row_splits=[0, 1, 4]
+                  )
               )
           ],
           computation_types.StructWithPythonType(
@@ -1464,11 +1516,8 @@ class TensorflowToTypeTest(parameterized.TestCase):
                           (
                               'nested_row_splits',
                               computation_types.StructType([
-                                  (
-                                      None,
-                                      computation_types.TensorType(
-                                          np.int64, [None]
-                                      ),
+                                  computation_types.TensorType(
+                                      np.int64, [None]
                                   ),
                               ]),
                           ),
@@ -1483,7 +1532,9 @@ class TensorflowToTypeTest(parameterized.TestCase):
           'ragged_tensor_spec_mixed',
           [
               tf.RaggedTensorSpec.from_value(
-                  tf.RaggedTensor.from_row_splits([0, 0, 0, 0], [0, 1, 4])
+                  tf.RaggedTensor.from_row_splits(
+                      values=[0, 0, 0, 0], row_splits=[0, 1, 4]
+                  )
               ),
               np.float32,
           ],
@@ -1498,11 +1549,8 @@ class TensorflowToTypeTest(parameterized.TestCase):
                           (
                               'nested_row_splits',
                               computation_types.StructType([
-                                  (
-                                      None,
-                                      computation_types.TensorType(
-                                          np.int64, [None]
-                                      ),
+                                  computation_types.TensorType(
+                                      np.int64, [None]
                                   ),
                               ]),
                           ),

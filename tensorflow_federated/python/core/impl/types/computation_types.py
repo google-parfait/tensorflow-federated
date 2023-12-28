@@ -376,7 +376,7 @@ class TensorType(Type, metaclass=_Intern):
   def _hashable_from_init_args(
       cls,
       dtype: Union[_DtypeLike, tf.dtypes.DType],
-      shape: Union[array_shape._ArrayShapeLike] = (),
+      shape: array_shape._ArrayShapeLike = (),
   ) -> Hashable:
     """Returns hashable `TensorType.__init__` args."""
     # TODO: b/305743962 - This is only required to convert a `tf.dtypes.DType`
@@ -396,7 +396,7 @@ class TensorType(Type, metaclass=_Intern):
   def __init__(
       self,
       dtype: Union[_DtypeLike, tf.dtypes.DType],
-      shape: Union[array_shape._ArrayShapeLike] = (),
+      shape: array_shape._ArrayShapeLike = (),
   ):
     """Constructs a new instance from the given `dtype` and `shape`.
 
@@ -1099,20 +1099,34 @@ def to_type(obj: object) -> Type:
     )
 
 
-def _tensor_spec_to_type(tensor_spec: tf.TensorSpec) -> Type:
-  """Returns a `tff.Type` for the `tensor_spec`."""
+def _tensorflow_dtype_to_numpy_dtype(
+    dtype: tf.dtypes.DType,
+) -> type[np.generic]:
+  """Returns a numpy dtype for the `dtype`."""
   # TensorFlow converts a dtype of `tf.string` into a dtype of `np.object_`.
-  # However, this is not a valid dtype for a `tff.TensorType`. Convert the
-  # dtype to a `np.str_`.
-  if tensor_spec.dtype.base_dtype == tf.string:
+  # However, this is not a valid dtype for TFF, instead use `np.str_`.
+  if dtype.base_dtype == tf.string:
     dtype = np.str_
   else:
-    dtype = tensor_spec.dtype.base_dtype.as_numpy_dtype
+    dtype = dtype.base_dtype.as_numpy_dtype
+  return dtype
 
-  if tensor_spec.shape.rank is not None:
-    shape = tensor_spec.shape.as_list()
+
+def _tensor_shape_to_array_shape(
+    tensor_shape: tf.TensorShape,
+) -> array_shape.ArrayShape:
+  """Returns a `tff.types.ArrayShape` for the `tensor_shape`."""
+  if tensor_shape.rank is not None:
+    shape = tensor_shape.as_list()
   else:
     shape = None
+  return shape
+
+
+def _tensor_spec_to_type(tensor_spec: tf.TensorSpec) -> Type:
+  """Returns a `tff.Type` for the `tensor_spec`."""
+  dtype = _tensorflow_dtype_to_numpy_dtype(tensor_spec.dtype)
+  shape = _tensor_shape_to_array_shape(tensor_spec.shape)
   return TensorType(dtype, shape)
 
 
@@ -1128,6 +1142,9 @@ def _ragged_tensor_spec_to_type(
   if ragged_tensor_spec.flat_values_spec is not None:
     flat_values_type = tensorflow_to_type(ragged_tensor_spec.flat_values_spec)
   else:
+    flat_values_dtype = _tensorflow_dtype_to_numpy_dtype(
+        ragged_tensor_spec.dtype
+    )
     # We could provide a more specific shape here if `shape is not None`:
     # `flat_values_shape = [None] + shape[ragged_tensor_spec.ragged_rank + 1:]`
     # However, we can't go back from this type into a `tf.RaggedTensorSpec`,
@@ -1137,14 +1154,16 @@ def _ragged_tensor_spec_to_type(
     # leading to compilation errors. This round-trip is tested in
     # `type_conversions_test.py` to ensure correctness.
     flat_values_shape = None
-    flat_values_type = TensorType(ragged_tensor_spec.dtype, flat_values_shape)
-  nested_row_splits_type = StructType((
-      [(
-          None,
-          TensorType(ragged_tensor_spec.row_splits_dtype, [None]),
-      )]
+    flat_values_type = TensorType(flat_values_dtype, flat_values_shape)
+  nested_row_splits_dtype = _tensorflow_dtype_to_numpy_dtype(
+      ragged_tensor_spec.row_splits_dtype
+  )
+  nested_row_splits_type = StructType(
+      [
+          TensorType(nested_row_splits_dtype, [None]),
+      ]
       * ragged_tensor_spec.ragged_rank
-  ))
+  )
   return StructWithPythonType(
       [
           ('flat_values', flat_values_type),
@@ -1158,25 +1177,102 @@ def _sparse_tensor_spec_to_type(
     sparse_tensor_spec: tf.SparseTensorSpec,
 ) -> Type:
   """Returns a `tff.Type` for the `sparse_tensor_spec`."""
+  dtype = _tensorflow_dtype_to_numpy_dtype(sparse_tensor_spec.dtype)
   if sparse_tensor_spec.shape is None:
     rank = None
   else:
     rank = sparse_tensor_spec.shape.rank
   return StructWithPythonType(
       [
-          ('indices', TensorType(tf.int64, [None, rank])),
-          ('values', TensorType(sparse_tensor_spec.dtype, [None])),
-          ('dense_shape', TensorType(tf.int64, [rank])),
+          ('indices', TensorType(np.int64, [None, rank])),
+          ('values', TensorType(dtype, [None])),
+          ('dense_shape', TensorType(np.int64, [rank])),
       ],
       tf.SparseTensor,
   )
 
 
 def tensorflow_to_type(obj: object) -> Type:
-  """Returns a `tff.Type` for Tensorflow objects."""
+  """Returns a `tff.Type` for an `obj` containing TensorFlow objects.
 
-  def _fn(obj):
-    if isinstance(obj, tf.TensorSpec):
+  This function extends `tff.types.to_type` to handle TensorFlow objects and
+  Python structures containing TensorFlow objects:
+
+  *   `tf.dtypes.DType`
+  *   tensor-like objects (e.g. `(tf.int32, [2, 3])`)
+  *   `tf.TensorSpec`
+  *   `tf.data.DatasetSpec`
+  *   `tf.RaggedTensorSpec`
+  *   `tf.SparseTensorSpec`
+
+  For example:
+
+  >>> tensorflow_to_type(tf.int32)
+  tff.TensorType(np.int32)
+
+  >>> tensorflow_to_type((tf.int32, [2, 3]))
+  tff.TensorType(np.int32, (2, 3))
+
+  >>> spec = tf.TensorSpec(shape=[2, 3], dtype=tf.int32)
+  >>> tensorflow_to_type(spec)
+  tff.TensorType(np.int32, (2, 3))
+
+  >>> spec = tf.data.DatasetSpec(tf.TensorSpec([2, 3], dtype=tf.int32))
+  >>> tensorflow_to_type(spec)
+  tff.SequenceType(tff.TensorType(np.int32, (2, 3)))
+
+  >>> spec = tf.RaggedTensorSpec.from_value(
+        tf.RaggedTensor.from_row_splits(
+            values=[0, 0, 0, 0], row_splits=[0, 1, 4]
+        )
+      )
+  >>> tensorflow_to_type(spec)
+  tff.StructWithPythonType(
+      [
+          ('flat_values', tff.TensorType(np.int32, None)),
+          (
+              'nested_row_splits',
+              tff.StructType([tff.TensorType(np.int64, [None])]),
+          ),
+      ],
+      tf.RaggedTensor,
+  )
+
+  >>> spec = tf.SparseTensorSpec.from_value(
+          tf.SparseTensor(indices=[[1]], values=[2], dense_shape=[5])
+      )
+  >>> tensorflow_to_type(spec)
+  tff.StructWithPythonType(
+      [
+          ('indices', tff.TensorType(np.int64, (None, 1))),
+          ('values', tff.TensorType(np.int32, (None,))),
+          ('dense_shape', tff.TensorType(np.int64, (1,))),
+      ],
+      tf.SparseTensor,
+  )
+
+  Args:
+    obj: A `tff.Type` or an argument convertible to a `tff.Type`.
+  """
+  if isinstance(obj, Type):
+    return obj
+
+  def _is_tensor_like(obj):
+    """Returns `True` if `obj` is tensor-like, otherwise `False`."""
+    if isinstance(obj, tuple) and len(obj) == 2:
+      dtype, shape = obj
+      return isinstance(dtype, tf.dtypes.DType) and _is_array_shape_like(shape)
+    return False
+
+  def _to_type(obj):
+    if isinstance(obj, tf.dtypes.DType):
+      dtype = _tensorflow_dtype_to_numpy_dtype(obj)
+      return TensorType(dtype)
+    elif _is_tensor_like(obj):
+      dtype, shape = obj
+      dtype = _tensorflow_dtype_to_numpy_dtype(dtype)
+      return TensorType(dtype, shape)
+    elif isinstance(obj, tf.TensorSpec):
       return _tensor_spec_to_type(obj)
     elif isinstance(obj, tf.data.DatasetSpec):
       return _dataset_spec_to_type(obj)
@@ -1187,7 +1283,7 @@ def tensorflow_to_type(obj: object) -> Type:
     else:
       return None
 
-  partial_type = tree.traverse(_fn, obj)
+  partial_type = tree.traverse(_to_type, obj)
   return to_type(partial_type)
 
 
