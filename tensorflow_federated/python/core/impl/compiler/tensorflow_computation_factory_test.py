@@ -24,6 +24,7 @@ from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_factory
 from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_test_utils
 from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_factory
 from tensorflow_federated.python.core.impl.types import type_serialization
 
@@ -91,7 +92,11 @@ class CreateConstantTest(parameterized.TestCase):
           computation_types.TensorType(np.int32),
       ),
       ('none_type', 10, None),
-      ('federated_type', 10, computation_types.at_server(np.int32)),
+      (
+          'federated_type',
+          10,
+          computation_types.FederatedType(np.int32, placements.SERVER),
+      ),
       ('bad_type', 10.0, computation_types.TensorType(np.int32)),
       (
           'value_structure_larger_than_type_structure',
@@ -193,7 +198,11 @@ class CreateUnaryOperatorTest(parameterized.TestCase, tf.test.TestCase):
   @parameterized.named_parameters(
       ('non_callable_operator', 1, computation_types.TensorType(np.int32)),
       ('none_type', tf.math.add, None),
-      ('federated_type', tf.math.add, computation_types.at_server(np.int32)),
+      (
+          'federated_type',
+          tf.math.add,
+          computation_types.FederatedType(np.int32, placements.SERVER),
+      ),
       ('sequence_type', tf.math.add, computation_types.SequenceType(np.int32)),
   )
   def test_raises_type_error(self, operator, type_signature):
@@ -281,7 +290,11 @@ class CreateBinaryOperatorTest(parameterized.TestCase):
   @parameterized.named_parameters(
       ('non_callable_operator', 1, computation_types.TensorType(np.int32)),
       ('none_type', tf.math.add, None),
-      ('federated_type', tf.math.add, computation_types.at_server(np.int32)),
+      (
+          'federated_type',
+          tf.math.add,
+          computation_types.FederatedType(np.int32, placements.SERVER),
+      ),
       ('sequence_type', tf.math.add, computation_types.SequenceType(np.int32)),
   )
   def test_raises_type_error(self, operator, type_signature):
@@ -473,7 +486,10 @@ class CreateIdentityTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('none', None),
-      ('federated_type', computation_types.at_server(np.int32)),
+      (
+          'federated_type',
+          computation_types.FederatedType(np.int32, placements.SERVER),
+      ),
   )
   def test_raises_type_error(self, type_signature):
     with self.assertRaises(TypeError):
@@ -525,7 +541,11 @@ class CreateReplicateInputTest(parameterized.TestCase):
   @parameterized.named_parameters(
       ('none_type', None, 3),
       ('none_count', computation_types.TensorType(np.int32), None),
-      ('federated_type', computation_types.at_server(np.int32), 3),
+      (
+          'federated_type',
+          computation_types.FederatedType(np.int32, placements.SERVER),
+          3,
+      ),
   )
   def test_raises_type_error(self, type_signature, count):
     with self.assertRaises(TypeError):

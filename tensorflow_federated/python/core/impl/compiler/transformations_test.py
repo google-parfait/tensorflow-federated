@@ -315,7 +315,9 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
 
   def test_cannot_split_on_chained_intrinsic(self):
     int_type = computation_types.TensorType(np.int32)
-    client_int_type = computation_types.at_clients(int_type)
+    client_int_type = computation_types.FederatedType(
+        int_type, placements.CLIENTS
+    )
     int_ref = lambda name: building_blocks.Reference(name, int_type)
 
     def client_int_ref(name):
@@ -369,7 +371,9 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
         building_block_test_utils.create_whimsy_called_federated_broadcast()
     )
     packed_broadcast = building_blocks.Struct([
-        building_blocks.Data('a', computation_types.at_server(np.int32)),
+        building_blocks.Data(
+            'a', computation_types.FederatedType(np.int32, placements.SERVER)
+        ),
         first_broadcast,
     ])
     sel = building_blocks.Selection(packed_broadcast, index=0)
@@ -582,7 +586,9 @@ class AugmentLambdaWithParameterForUnboundReferences(absltest.TestCase):
 
   def test_identifies_unbound_refs(self):
     original_arg_type = computation_types.StructType([np.int32])
-    int_at_clients_type = computation_types.at_clients(np.int32)
+    int_at_clients_type = computation_types.FederatedType(
+        np.int32, placements.CLIENTS
+    )
     comp = building_blocks.Lambda(
         'arg',
         original_arg_type,
@@ -595,7 +601,10 @@ class AugmentLambdaWithParameterForUnboundReferences(absltest.TestCase):
             )],
             building_blocks.Struct([
                 building_blocks.Reference(
-                    'a', computation_types.at_server(np.int32)
+                    'a',
+                    computation_types.FederatedType(
+                        np.int32, placements.SERVER
+                    ),
                 ),
                 building_blocks.Reference('y', int_at_clients_type),
                 building_blocks.Reference('x', int_at_clients_type),
@@ -625,7 +634,9 @@ class AugmentLambdaWithParameterForUnboundReferences(absltest.TestCase):
 
   def test_identifies_unbound_selections(self):
     original_arg_type = computation_types.StructType([np.int32])
-    int_at_clients_type = computation_types.at_clients(np.int32)
+    int_at_clients_type = computation_types.FederatedType(
+        np.int32, placements.CLIENTS
+    )
     federated_sum_param = building_blocks.Selection(
         building_blocks.Reference('x', [int_at_clients_type]), index=0
     )
@@ -650,7 +661,10 @@ class AugmentLambdaWithParameterForUnboundReferences(absltest.TestCase):
             )],
             building_blocks.Struct([
                 building_blocks.Reference(
-                    'a', computation_types.at_server(np.int32)
+                    'a',
+                    computation_types.FederatedType(
+                        np.int32, placements.SERVER
+                    ),
                 ),
                 other_result_param,
             ]),
@@ -674,9 +688,11 @@ class AugmentLambdaWithParameterForUnboundReferences(absltest.TestCase):
 
   def test_identifies_unbound_refs_in_struct(self):
     original_arg_type = computation_types.StructType(
-        [computation_types.at_clients(np.int32)]
+        [computation_types.FederatedType(np.int32, placements.CLIENTS)]
     )
-    int_at_clients_type = computation_types.at_clients(np.int32)
+    int_at_clients_type = computation_types.FederatedType(
+        np.int32, placements.CLIENTS
+    )
     comp = building_blocks.Lambda(
         'arg',
         original_arg_type,
@@ -693,20 +709,20 @@ class AugmentLambdaWithParameterForUnboundReferences(absltest.TestCase):
                                 index=0,
                             ),
                             building_blocks.Reference('b', int_at_clients_type),
-                            building_blocks.Struct(
-                                [
-                                    building_blocks.Reference(
-                                        'c', int_at_clients_type
-                                    )
-                                ]
-                            ),
+                            building_blocks.Struct([
+                                building_blocks.Reference(
+                                    'c', int_at_clients_type
+                                )
+                            ]),
                         ])
                     )
                 ),
             )],
             building_blocks.Reference(
                 'a',
-                computation_types.at_server([np.int32, np.int32, [np.int32]]),
+                computation_types.FederatedType(
+                    [np.int32, np.int32, [np.int32]], placements.SERVER
+                ),
             ),
         ),
     )
@@ -1718,7 +1734,9 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
             building_block_factory.create_federated_sum(
                 building_blocks.Reference(
                     'broadcast_result_at_clients',
-                    computation_types.at_clients(np.int32),
+                    computation_types.FederatedType(
+                        np.int32, placements.CLIENTS
+                    ),
                 )
             ),
         ),

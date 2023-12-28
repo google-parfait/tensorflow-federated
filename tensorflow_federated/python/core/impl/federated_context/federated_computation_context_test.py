@@ -51,7 +51,9 @@ class FederatedComputationContextTest(absltest.TestCase):
   def test_ingest_zips_value_when_necessary_to_match_federated_type(self):
     # Expects `{<int, int>}@C`
     @federated_computation.federated_computation(
-        computation_types.at_clients((np.int32, np.int32))
+        computation_types.FederatedType(
+            (np.int32, np.int32), placements.CLIENTS
+        )
     )
     def fn(_):
       return ()
@@ -80,8 +82,8 @@ class FederatedComputationContextTest(absltest.TestCase):
         computation_types.StructType([(
             None,
             collections.OrderedDict(
-                x=computation_types.at_clients(np.int32),
-                y=computation_types.at_clients(np.int32),
+                x=computation_types.FederatedType(np.int32, placements.CLIENTS),
+                y=computation_types.FederatedType(np.int32, placements.CLIENTS),
             ),
         )])
     )

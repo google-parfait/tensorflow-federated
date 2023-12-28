@@ -20,6 +20,7 @@ import numpy as np
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_factory
 
 _intrinsic_registry = {}
@@ -216,7 +217,9 @@ FEDERATED_AGGREGATE = IntrinsicDef(
     'federated_aggregate',
     computation_types.FunctionType(
         parameter=[
-            computation_types.at_clients(computation_types.AbstractType('T')),
+            computation_types.FederatedType(
+                computation_types.AbstractType('T'), placements.CLIENTS
+            ),
             computation_types.AbstractType('U'),
             type_factory.reduction_op(
                 computation_types.AbstractType('U'),
@@ -228,7 +231,9 @@ FEDERATED_AGGREGATE = IntrinsicDef(
                 computation_types.AbstractType('R'),
             ),
         ],
-        result=computation_types.at_server(computation_types.AbstractType('R')),
+        result=computation_types.FederatedType(
+            computation_types.AbstractType('R'), placements.SERVER
+        ),
     ),
     aggregation_kind=AggregationKind.DEFAULT,
 )
@@ -245,9 +250,13 @@ FEDERATED_APPLY = IntrinsicDef(
                 computation_types.AbstractType('T'),
                 computation_types.AbstractType('U'),
             ),
-            computation_types.at_server(computation_types.AbstractType('T')),
+            computation_types.FederatedType(
+                computation_types.AbstractType('T'), placements.SERVER
+            ),
         ],
-        result=computation_types.at_server(computation_types.AbstractType('U')),
+        result=computation_types.FederatedType(
+            computation_types.AbstractType('U'), placements.SERVER
+        ),
     ),
 )
 
@@ -258,11 +267,13 @@ FEDERATED_BROADCAST = IntrinsicDef(
     'FEDERATED_BROADCAST',
     'federated_broadcast',
     computation_types.FunctionType(
-        parameter=computation_types.at_server(
-            computation_types.AbstractType('T')
+        parameter=computation_types.FederatedType(
+            computation_types.AbstractType('T'), placements.SERVER
         ),
-        result=computation_types.at_clients(
-            computation_types.AbstractType('T'), all_equal=True
+        result=computation_types.FederatedType(
+            computation_types.AbstractType('T'),
+            placements.CLIENTS,
+            all_equal=True,
         ),
     ),
     broadcast_kind=BroadcastKind.DEFAULT,
@@ -278,8 +289,8 @@ FEDERATED_EVAL_AT_CLIENTS = IntrinsicDef(
         parameter=computation_types.FunctionType(
             None, computation_types.AbstractType('T')
         ),
-        result=computation_types.at_clients(
-            computation_types.AbstractType('T')
+        result=computation_types.FederatedType(
+            computation_types.AbstractType('T'), placements.CLIENTS
         ),
     ),
 )
@@ -294,7 +305,9 @@ FEDERATED_EVAL_AT_SERVER = IntrinsicDef(
         parameter=computation_types.FunctionType(
             None, computation_types.AbstractType('T')
         ),
-        result=computation_types.at_server(computation_types.AbstractType('T')),
+        result=computation_types.FederatedType(
+            computation_types.AbstractType('T'), placements.SERVER
+        ),
     ),
 )
 
@@ -311,10 +324,12 @@ FEDERATED_MAP = IntrinsicDef(
                 computation_types.AbstractType('T'),
                 computation_types.AbstractType('U'),
             ),
-            computation_types.at_clients(computation_types.AbstractType('T')),
+            computation_types.FederatedType(
+                computation_types.AbstractType('T'), placements.CLIENTS
+            ),
         ],
-        result=computation_types.at_clients(
-            computation_types.AbstractType('U')
+        result=computation_types.FederatedType(
+            computation_types.AbstractType('U'), placements.CLIENTS
         ),
     ),
 )
@@ -334,12 +349,16 @@ FEDERATED_MAP_ALL_EQUAL = IntrinsicDef(
                 computation_types.AbstractType('T'),
                 computation_types.AbstractType('U'),
             ),
-            computation_types.at_clients(
-                computation_types.AbstractType('T'), all_equal=True
+            computation_types.FederatedType(
+                computation_types.AbstractType('T'),
+                placements.CLIENTS,
+                all_equal=True,
             ),
         ],
-        result=computation_types.at_clients(
-            computation_types.AbstractType('U'), all_equal=True
+        result=computation_types.FederatedType(
+            computation_types.AbstractType('U'),
+            placements.CLIENTS,
+            all_equal=True,
         ),
     ),
 )
@@ -352,10 +371,12 @@ FEDERATED_MEAN = IntrinsicDef(
     'FEDERATED_MEAN',
     'federated_mean',
     computation_types.FunctionType(
-        parameter=computation_types.at_clients(
-            computation_types.AbstractType('T')
+        parameter=computation_types.FederatedType(
+            computation_types.AbstractType('T'), placements.CLIENTS
         ),
-        result=computation_types.at_server(computation_types.AbstractType('T')),
+        result=computation_types.FederatedType(
+            computation_types.AbstractType('T'), placements.SERVER
+        ),
     ),
     aggregation_kind=AggregationKind.DEFAULT,
 )
@@ -368,10 +389,12 @@ FEDERATED_MIN = IntrinsicDef(
     'FEDERATED_MIN',
     'federated_min',
     computation_types.FunctionType(
-        parameter=computation_types.at_clients(
-            computation_types.AbstractType('T')
+        parameter=computation_types.FederatedType(
+            computation_types.AbstractType('T'), placements.CLIENTS
         ),
-        result=computation_types.at_server(computation_types.AbstractType('T')),
+        result=computation_types.FederatedType(
+            computation_types.AbstractType('T'), placements.SERVER
+        ),
     ),
     aggregation_kind=AggregationKind.DEFAULT,
 )
@@ -384,10 +407,12 @@ FEDERATED_MAX = IntrinsicDef(
     'FEDERATED_MAX',
     'federated_max',
     computation_types.FunctionType(
-        parameter=computation_types.at_clients(
-            computation_types.AbstractType('T')
+        parameter=computation_types.FederatedType(
+            computation_types.AbstractType('T'), placements.CLIENTS
         ),
-        result=computation_types.at_server(computation_types.AbstractType('T')),
+        result=computation_types.FederatedType(
+            computation_types.AbstractType('T'), placements.SERVER
+        ),
     ),
     aggregation_kind=AggregationKind.DEFAULT,
 )
@@ -401,10 +426,14 @@ FEDERATED_SECURE_MODULAR_SUM = IntrinsicDef(
     'federated_secure_modular_sum',
     computation_types.FunctionType(
         parameter=[
-            computation_types.at_clients(computation_types.AbstractType('V')),
+            computation_types.FederatedType(
+                computation_types.AbstractType('V'), placements.CLIENTS
+            ),
             computation_types.AbstractType('M'),
         ],
-        result=computation_types.at_server(computation_types.AbstractType('V')),
+        result=computation_types.FederatedType(
+            computation_types.AbstractType('V'), placements.SERVER
+        ),
     ),
     aggregation_kind=AggregationKind.SECURE,
 )
@@ -418,10 +447,14 @@ FEDERATED_SECURE_SUM = IntrinsicDef(
     'federated_secure_sum',
     computation_types.FunctionType(
         parameter=[
-            computation_types.at_clients(computation_types.AbstractType('V')),
+            computation_types.FederatedType(
+                computation_types.AbstractType('V'), placements.CLIENTS
+            ),
             computation_types.AbstractType('M'),
         ],
-        result=computation_types.at_server(computation_types.AbstractType('V')),
+        result=computation_types.FederatedType(
+            computation_types.AbstractType('V'), placements.SERVER
+        ),
     ),
     aggregation_kind=AggregationKind.SECURE,
 )
@@ -435,30 +468,35 @@ FEDERATED_SECURE_SUM_BITWIDTH = IntrinsicDef(
     'federated_secure_sum_bitwidth',
     computation_types.FunctionType(
         parameter=[
-            computation_types.at_clients(computation_types.AbstractType('V')),
+            computation_types.FederatedType(
+                computation_types.AbstractType('V'), placements.CLIENTS
+            ),
             computation_types.AbstractType('B'),
         ],
-        result=computation_types.at_server(computation_types.AbstractType('V')),
+        result=computation_types.FederatedType(
+            computation_types.AbstractType('V'), placements.SERVER
+        ),
     ),
     aggregation_kind=AggregationKind.SECURE,
 )
 
 _SELECT_TYPE = computation_types.FunctionType(
     parameter=[
-        computation_types.at_clients(
-            computation_types.AbstractType('Ks')
+        computation_types.FederatedType(
+            computation_types.AbstractType('Ks'), placements.CLIENTS
         ),  # client_keys
-        computation_types.at_server(np.int32),  # max_key
-        computation_types.at_server(
-            computation_types.AbstractType('T')
+        computation_types.FederatedType(np.int32, placements.SERVER),  # max_key
+        computation_types.FederatedType(
+            computation_types.AbstractType('T'), placements.SERVER
         ),  # server_state
         computation_types.FunctionType(
             [computation_types.AbstractType('T'), np.int32],
             computation_types.AbstractType('U'),
         ),  # select_fn
     ],
-    result=computation_types.at_clients(
-        computation_types.SequenceType(computation_types.AbstractType('U'))
+    result=computation_types.FederatedType(
+        computation_types.SequenceType(computation_types.AbstractType('U')),
+        placements.CLIENTS,
     ),
 )
 
@@ -486,10 +524,12 @@ FEDERATED_SUM = IntrinsicDef(
     'FEDERATED_SUM',
     'federated_sum',
     computation_types.FunctionType(
-        parameter=computation_types.at_clients(
-            computation_types.AbstractType('T')
+        parameter=computation_types.FederatedType(
+            computation_types.AbstractType('T'), placements.CLIENTS
         ),
-        result=computation_types.at_server(computation_types.AbstractType('T')),
+        result=computation_types.FederatedType(
+            computation_types.AbstractType('T'), placements.SERVER
+        ),
     ),
     aggregation_kind=AggregationKind.DEFAULT,
 )
@@ -502,8 +542,8 @@ FEDERATED_VALUE_AT_CLIENTS = IntrinsicDef(
     'federated_value_at_clients',
     computation_types.FunctionType(
         parameter=computation_types.AbstractType('T'),
-        result=computation_types.at_clients(
-            computation_types.AbstractType('T'), True
+        result=computation_types.FederatedType(
+            computation_types.AbstractType('T'), placements.CLIENTS, True
         ),
     ),
 )
@@ -516,7 +556,9 @@ FEDERATED_VALUE_AT_SERVER = IntrinsicDef(
     'federated_value_at_server',
     computation_types.FunctionType(
         parameter=computation_types.AbstractType('T'),
-        result=computation_types.at_server(computation_types.AbstractType('T')),
+        result=computation_types.FederatedType(
+            computation_types.AbstractType('T'), placements.SERVER
+        ),
     ),
 )
 
@@ -536,10 +578,16 @@ FEDERATED_WEIGHTED_MEAN = IntrinsicDef(
     'federated_weighted_mean',
     computation_types.FunctionType(
         parameter=[
-            computation_types.at_clients(computation_types.AbstractType('T')),
-            computation_types.at_clients(computation_types.AbstractType('U')),
+            computation_types.FederatedType(
+                computation_types.AbstractType('T'), placements.CLIENTS
+            ),
+            computation_types.FederatedType(
+                computation_types.AbstractType('U'), placements.CLIENTS
+            ),
         ],
-        result=computation_types.at_server(computation_types.AbstractType('T')),
+        result=computation_types.FederatedType(
+            computation_types.AbstractType('T'), placements.SERVER
+        ),
     ),
     aggregation_kind=AggregationKind.DEFAULT,
 )
@@ -554,8 +602,8 @@ FEDERATED_ZIP_AT_CLIENTS = IntrinsicDef(
     'federated_zip_at_clients',
     computation_types.FunctionType(
         parameter=computation_types.AbstractType('T'),
-        result=computation_types.at_clients(
-            computation_types.AbstractType('U')
+        result=computation_types.FederatedType(
+            computation_types.AbstractType('U'), placements.CLIENTS
         ),
     ),
 )
@@ -567,7 +615,9 @@ FEDERATED_ZIP_AT_SERVER = IntrinsicDef(
     'federated_zip_at_server',
     computation_types.FunctionType(
         parameter=computation_types.AbstractType('T'),
-        result=computation_types.at_server(computation_types.AbstractType('U')),
+        result=computation_types.FederatedType(
+            computation_types.AbstractType('U'), placements.SERVER
+        ),
     ),
 )
 

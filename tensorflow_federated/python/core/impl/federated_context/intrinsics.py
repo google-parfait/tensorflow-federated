@@ -704,7 +704,9 @@ def _federated_select(client_keys, max_key, server_val, select_fn, secure):
   client_keys = value_impl.to_value(client_keys, type_spec=None)
   _check_select_keys_type(client_keys.type_signature, secure)
   max_key = value_impl.to_value(max_key, type_spec=None)
-  expected_max_key_type = computation_types.at_server(np.int32)
+  expected_max_key_type = computation_types.FederatedType(
+      np.int32, placements.SERVER
+  )
   if not expected_max_key_type.is_assignable_from(max_key.type_signature):
     _select_parameter_mismatch(
         max_key.type_signature,
@@ -717,8 +719,8 @@ def _federated_select(client_keys, max_key, server_val, select_fn, secure):
   server_val = value_utils.ensure_federated_value(
       server_val, label='server_val'
   )
-  expected_server_val_type = computation_types.at_server(
-      computation_types.AbstractType('T')
+  expected_server_val_type = computation_types.FederatedType(
+      computation_types.AbstractType('T'), placements.SERVER
   )
   if (
       not isinstance(server_val.type_signature, computation_types.FederatedType)

@@ -171,11 +171,16 @@ class MergeableCompForm:
       # empty tuples, we could avoid this and related ugly if/else casing.
       expected_after_merge_arg_type = computation_types.StructType([
           (None, up_to_merge.type_signature.parameter),
-          (None, computation_types.at_server(merge.type_signature.result)),
+          (
+              None,
+              computation_types.FederatedType(
+                  merge.type_signature.result, placements.SERVER
+              ),
+          ),
       ])
     else:
-      expected_after_merge_arg_type = computation_types.at_server(
-          merge.type_signature.result
+      expected_after_merge_arg_type = computation_types.FederatedType(
+          merge.type_signature.result, placements.SERVER
       )
 
     after_merge.type_signature.parameter.check_assignable_from(

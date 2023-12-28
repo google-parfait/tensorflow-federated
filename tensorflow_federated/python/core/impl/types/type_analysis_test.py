@@ -775,13 +775,15 @@ class TestCheckValidFederatedWeightedMeanArgumentTupleTypeTest(
   def test_raises_type_error(self):
     type_analysis.check_valid_federated_weighted_mean_argument_tuple_type(
         computation_types.StructType(
-            [computation_types.at_clients(np.float32)] * 2
+            [computation_types.FederatedType(np.float32, placements.CLIENTS)]
+            * 2
         )
     )
     with self.assertRaises(TypeError):
       type_analysis.check_valid_federated_weighted_mean_argument_tuple_type(
           computation_types.StructType(
-              [computation_types.at_clients(np.int32)] * 2
+              [computation_types.FederatedType(np.int32, placements.CLIENTS)]
+              * 2
           )
       )
 

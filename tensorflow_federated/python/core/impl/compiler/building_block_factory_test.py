@@ -823,16 +823,17 @@ class CreateFederatedSelectTest(parameterized.TestCase):
   def test_returns_federated_select(self, secure, name):
     client_keys = building_blocks.Data(
         'client_keys',
-        computation_types.at_clients(
-            computation_types.TensorType(np.int32, [5])
+        computation_types.FederatedType(
+            computation_types.TensorType(np.int32, [5]), placements.CLIENTS
         ),
     )
     max_key = building_blocks.Data(
-        'max_key', computation_types.at_server(np.int32)
+        'max_key', computation_types.FederatedType(np.int32, placements.SERVER)
     )
     server_val_type = computation_types.SequenceType(np.str_)
     server_val = building_blocks.Data(
-        'server_val', computation_types.at_server(server_val_type)
+        'server_val',
+        computation_types.FederatedType(server_val_type, placements.SERVER),
     )
     select_fn = building_blocks.Data(
         'select_fn',
@@ -1054,10 +1055,10 @@ class CreateFederatedValueTest(absltest.TestCase):
     self.assertEqual(str(comp.type_signature), 'int32@SERVER')
 
 
-INT_AT_CLIENTS = computation_types.at_clients(np.int32)
-BOOL_AT_CLIENTS = computation_types.at_clients(np.bool_)
-INT_AT_SERVER = computation_types.at_server(np.int32)
-BOOL_AT_SERVER = computation_types.at_server(np.bool_)
+INT_AT_CLIENTS = computation_types.FederatedType(np.int32, placements.CLIENTS)
+BOOL_AT_CLIENTS = computation_types.FederatedType(np.bool_, placements.CLIENTS)
+INT_AT_SERVER = computation_types.FederatedType(np.int32, placements.SERVER)
+BOOL_AT_SERVER = computation_types.FederatedType(np.bool_, placements.SERVER)
 
 
 class CreateFederatedZipTest(parameterized.TestCase, absltest.TestCase):
@@ -1111,8 +1112,8 @@ class CreateFederatedZipTest(parameterized.TestCase, absltest.TestCase):
   ])
   def test_returns_zip_at_clients(self, value_type, expected_zipped_type):
     value_type = computation_types.to_type(value_type)
-    expected_zipped_type = computation_types.at_clients(
-        computation_types.to_type(expected_zipped_type)
+    expected_zipped_type = computation_types.FederatedType(
+        expected_zipped_type, placements.CLIENTS
     )
     value = building_blocks.Data('v', value_type)
     comp = building_block_factory.create_federated_zip(value)
@@ -1162,8 +1163,8 @@ class CreateFederatedZipTest(parameterized.TestCase, absltest.TestCase):
   ])
   def test_returns_zip_at_server(self, value_type, expected_zipped_type):
     value_type = computation_types.to_type(value_type)
-    expected_zipped_type = computation_types.at_server(
-        computation_types.to_type(expected_zipped_type)
+    expected_zipped_type = computation_types.FederatedType(
+        expected_zipped_type, placements.SERVER
     )
     value = building_blocks.Data('v', value_type)
     comp = building_block_factory.create_federated_zip(value)

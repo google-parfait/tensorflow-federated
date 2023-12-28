@@ -1279,8 +1279,9 @@ def create_federated_select(
       (None, single_key_type),
   ])
   select_fn = _unname_fn_parameter(select_fn, select_fn_unnamed_param_type)
-  result_type = computation_types.at_clients(
-      computation_types.SequenceType(select_fn.type_signature.result)
+  result_type = computation_types.FederatedType(
+      computation_types.SequenceType(select_fn.type_signature.result),
+      placements.CLIENTS,
   )
   intrinsic_type = computation_types.FunctionType(
       [
@@ -1501,7 +1502,12 @@ def create_federated_zip(
         and element_type.placement is placements.CLIENTS
         and element_type.all_equal
     ):
-      return computation_types.at_clients(element_type.member), True
+      return (
+          computation_types.FederatedType(
+              element_type.member, placements.CLIENTS
+          ),
+          True,
+      )
     return element_type, False
 
   normalized_input_type, _ = type_transformations.transform_type_postorder(

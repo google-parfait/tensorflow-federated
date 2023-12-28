@@ -103,6 +103,7 @@ py_test(
         ":mergeable_comp_execution_context",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:placements",
     ],
 )
 

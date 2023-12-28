@@ -225,10 +225,16 @@ def create_whimsy_called_federated_map_all_equal(
 def create_whimsy_called_federated_mean(
     value_type=np.float32, weights_type=None
 ):
-  fed_value_type = computation_types.at_clients(value_type)
+  """Returns a called federated mean."""
+
+  fed_value_type = computation_types.FederatedType(
+      value_type, placements.CLIENTS
+  )
   values = building_blocks.Data('values', fed_value_type)
   if weights_type is not None:
-    fed_weights_type = computation_types.at_clients(weights_type)
+    fed_weights_type = computation_types.FederatedType(
+        weights_type, placements.CLIENTS
+    )
     weights = building_blocks.Data('weights', fed_weights_type)
   else:
     weights = None

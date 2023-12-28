@@ -1093,7 +1093,7 @@ class AtServerTest(absltest.TestCase):
 
   def test_at_server(self):
     type_spec = computation_types.TensorType(np.bool_)
-    actual_type = computation_types.at_server(type_spec)
+    actual_type = computation_types.FederatedType(type_spec, placements.SERVER)
     expected_type = computation_types.FederatedType(
         type_spec, placements.SERVER
     )
@@ -1104,7 +1104,7 @@ class AtClientsTest(absltest.TestCase):
 
   def test_at_clients(self):
     type_spec = computation_types.TensorType(np.bool_)
-    actual_type = computation_types.at_clients(type_spec)
+    actual_type = computation_types.FederatedType(type_spec, placements.CLIENTS)
     expected_type = computation_types.FederatedType(
         type_spec, placements.CLIENTS
     )

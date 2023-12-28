@@ -779,7 +779,8 @@ class ContainsAggregationShared(parameterized.TestCase):
         building_blocks.Data(
             'unknown_func',
             computation_types.FunctionType(
-                None, computation_types.at_clients(np.int32)
+                None,
+                computation_types.FederatedType(np.int32, placements.CLIENTS),
             ),
         )
     )

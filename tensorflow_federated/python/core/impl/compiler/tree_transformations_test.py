@@ -1027,10 +1027,10 @@ class StripPlacementTest(parameterized.TestCase):
 
   def test_raises_multiple_placements(self):
     server_placed_data = building_blocks.Reference(
-        'x', computation_types.at_server(np.int32)
+        'x', computation_types.FederatedType(np.int32, placements.SERVER)
     )
     clients_placed_data = building_blocks.Reference(
-        'y', computation_types.at_clients(np.int32)
+        'y', computation_types.FederatedType(np.int32, placements.CLIENTS)
     )
     block_holding_both = building_blocks.Block(
         [('x', server_placed_data)], clients_placed_data
@@ -1066,7 +1066,9 @@ class StripPlacementTest(parameterized.TestCase):
 
   def test_removes_federated_types_under_function(self):
     int_type = np.int32
-    server_int_type = computation_types.at_server(int_type)
+    server_int_type = computation_types.FederatedType(
+        int_type, placements.SERVER
+    )
     int_ref = building_blocks.Reference('x', int_type)
     int_id = building_blocks.Lambda('x', int_type, int_ref)
     fed_ref = building_blocks.Reference('x', server_int_type)
@@ -1082,7 +1084,9 @@ class StripPlacementTest(parameterized.TestCase):
 
   def test_strip_placement_removes_federated_applys(self):
     int_type = computation_types.TensorType(np.int32)
-    server_int_type = computation_types.at_server(int_type)
+    server_int_type = computation_types.FederatedType(
+        int_type, placements.SERVER
+    )
     int_ref = building_blocks.Reference('x', int_type)
     int_id = building_blocks.Lambda('x', int_type, int_ref)
     fed_ref = building_blocks.Reference('x', server_int_type)
@@ -1107,7 +1111,9 @@ class StripPlacementTest(parameterized.TestCase):
 
   def test_strip_placement_removes_federated_maps(self):
     int_type = computation_types.TensorType(np.int32)
-    clients_int_type = computation_types.at_clients(int_type)
+    clients_int_type = computation_types.FederatedType(
+        int_type, placements.CLIENTS
+    )
     int_ref = building_blocks.Reference('x', int_type)
     int_id = building_blocks.Lambda('x', int_type, int_ref)
     fed_ref = building_blocks.Reference('x', clients_int_type)
@@ -1132,7 +1138,9 @@ class StripPlacementTest(parameterized.TestCase):
 
   def test_unwrap_removes_federated_zips_at_server(self):
     list_type = computation_types.to_type([np.int32, np.float32] * 2)
-    server_list_type = computation_types.at_server(list_type)
+    server_list_type = computation_types.FederatedType(
+        list_type, placements.SERVER
+    )
     fed_tuple = building_blocks.Reference('tup', server_list_type)
     unzipped = building_block_factory.create_federated_unzip(fed_tuple)
     before = building_block_factory.create_federated_zip(unzipped)
@@ -1146,7 +1154,9 @@ class StripPlacementTest(parameterized.TestCase):
 
   def test_unwrap_removes_federated_zips_at_clients(self):
     list_type = computation_types.to_type([np.int32, np.float32] * 2)
-    clients_list_type = computation_types.at_server(list_type)
+    clients_list_type = computation_types.FederatedType(
+        list_type, placements.SERVER
+    )
     fed_tuple = building_blocks.Reference('tup', clients_list_type)
     unzipped = building_block_factory.create_federated_unzip(fed_tuple)
     before = building_block_factory.create_federated_zip(unzipped)
@@ -1176,7 +1186,8 @@ class StripPlacementTest(parameterized.TestCase):
         [(None, np.int32), (None, np.float32)], tuple
     )
     type_test_utils.assert_types_identical(
-        before.type_signature, computation_types.at_server(tuple_type)
+        before.type_signature,
+        computation_types.FederatedType(tuple_type, placements.SERVER),
     )
     type_test_utils.assert_types_identical(after.type_signature, tuple_type)
 
@@ -1198,13 +1209,16 @@ class StripPlacementTest(parameterized.TestCase):
         [(None, np.int32), (None, np.float32)], tuple
     )
     type_test_utils.assert_types_identical(
-        before.type_signature, computation_types.at_clients(tuple_type)
+        before.type_signature,
+        computation_types.FederatedType(tuple_type, placements.CLIENTS),
     )
     type_test_utils.assert_types_identical(after.type_signature, tuple_type)
 
   def test_strip_placement_with_called_lambda(self):
     int_type = computation_types.TensorType(np.int32)
-    server_int_type = computation_types.at_server(int_type)
+    server_int_type = computation_types.FederatedType(
+        int_type, placements.SERVER
+    )
     federated_ref = building_blocks.Reference('outer', server_int_type)
     inner_federated_ref = building_blocks.Reference('inner', server_int_type)
     identity_lambda = building_blocks.Lambda(
@@ -1221,7 +1235,9 @@ class StripPlacementTest(parameterized.TestCase):
 
   def test_strip_placement_nested_federated_type(self):
     int_type = computation_types.TensorType(np.int32)
-    server_int_type = computation_types.at_server(int_type)
+    server_int_type = computation_types.FederatedType(
+        int_type, placements.SERVER
+    )
     tupled_int_type = computation_types.to_type((int_type, int_type))
     tupled_server_int_type = computation_types.to_type(
         (server_int_type, server_int_type)

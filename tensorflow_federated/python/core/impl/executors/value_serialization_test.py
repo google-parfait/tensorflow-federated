@@ -558,14 +558,15 @@ class ValueSerializationtest(tf.test.TestCase, parameterized.TestCase):
 
   def test_serialize_deserialize_federated_at_clients(self):
     x = [10, 20]
-    x_type = computation_types.at_clients(np.int32)
+    x_type = computation_types.FederatedType(np.int32, placements.CLIENTS)
     value_proto, value_type = value_serialization.serialize_value(x, x_type)
     type_test_utils.assert_types_identical(
-        value_type, computation_types.at_clients(np.int32)
+        value_type,
+        computation_types.FederatedType(np.int32, placements.CLIENTS),
     )
     y, type_spec = value_serialization.deserialize_value(value_proto)
     type_test_utils.assert_types_identical(
-        type_spec, computation_types.at_clients(np.int32)
+        type_spec, computation_types.FederatedType(np.int32, placements.CLIENTS)
     )
     self.assertEqual(y, [10, 20])
 
@@ -574,7 +575,7 @@ class ValueSerializationtest(tf.test.TestCase, parameterized.TestCase):
     x_type = computation_types.to_type(np.int32)
     member_proto, _ = value_serialization.serialize_value(x, x_type)
     fully_specified_type_at_clients = type_serialization.serialize_type(
-        computation_types.at_clients(np.int32)
+        computation_types.FederatedType(np.int32, placements.CLIENTS)
     )
 
     unspecified_member_federated_type = computation_pb2.FederatedType(
@@ -591,7 +592,8 @@ class ValueSerializationtest(tf.test.TestCase, parameterized.TestCase):
         value_serialization.deserialize_value(federated_value_proto)
     )
     type_test_utils.assert_types_identical(
-        deserialized_type_spec, computation_types.at_clients(np.int32)
+        deserialized_type_spec,
+        computation_types.FederatedType(np.int32, placements.CLIENTS),
     )
     self.assertEqual(deserialized_federated_value, [10])
 
@@ -605,7 +607,7 @@ class ValueSerializationtest(tf.test.TestCase, parameterized.TestCase):
     y_type = computation_types.to_type(np.float32)
     float_member_proto, _ = value_serialization.serialize_value(y, y_type)
     fully_specified_type_at_clients = type_serialization.serialize_type(
-        computation_types.at_clients(np.int32)
+        computation_types.FederatedType(np.int32, placements.CLIENTS)
     )
 
     unspecified_member_federated_type = computation_pb2.FederatedType(
@@ -665,7 +667,7 @@ class ValueSerializationtest(tf.test.TestCase, parameterized.TestCase):
         x, larger_type
     )
     type_at_clients = type_serialization.serialize_type(
-        computation_types.at_clients(np.int32)
+        computation_types.FederatedType(np.int32, placements.CLIENTS)
     )
 
     unspecified_member_federated_type = computation_pb2.FederatedType(
@@ -682,15 +684,16 @@ class ValueSerializationtest(tf.test.TestCase, parameterized.TestCase):
         federated_value_proto
     )
     type_test_utils.assert_types_identical(
-        deserialized_type_spec, computation_types.at_clients(larger_type)
+        deserialized_type_spec,
+        computation_types.FederatedType(larger_type, placements.CLIENTS),
     )
 
   def test_serialize_deserialize_federated_at_server(self):
     x = 10
-    x_type = computation_types.at_server(np.int32)
+    x_type = computation_types.FederatedType(np.int32, placements.SERVER)
     value_proto, value_type = value_serialization.serialize_value(x, x_type)
     type_test_utils.assert_types_identical(
-        value_type, computation_types.at_server(np.int32)
+        value_type, computation_types.FederatedType(np.int32, placements.SERVER)
     )
     y, type_spec = value_serialization.deserialize_value(value_proto)
     type_test_utils.assert_types_identical(type_spec, x_type)

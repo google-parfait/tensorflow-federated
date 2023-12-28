@@ -182,7 +182,9 @@ class InferCardinalitiesTest(absltest.TestCase):
     with self.assertRaises(cardinalities_utils.InvalidNonAllEqualValueError):
       cardinalities_utils.infer_cardinalities(
           5,
-          computation_types.at_clients(computation_types.TensorType(np.int32)),
+          computation_types.FederatedType(
+              computation_types.TensorType(np.int32), placements.CLIENTS
+          ),
       )
 
 
