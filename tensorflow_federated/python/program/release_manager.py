@@ -28,6 +28,7 @@ import tree
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.program import program_state_manager
 from tensorflow_federated.python.program import structure_utils
 from tensorflow_federated.python.program import value_reference
 
@@ -394,7 +395,49 @@ class GroupingReleaseManager(ReleaseManager[ReleasableStructure, Key]):
     )
 
 
-class PeriodicReleaseManager(ReleaseManager[ReleasableStructure, Key]):
+class StatefulReleaseManager(ReleaseManager, Generic[ReleasableStructure, Key]):
+  """A ReleaseManager abstraction with methods to save and resume from state.
+
+  Release manager classes which require statefulness can extend from this class.
+  The expected pattern is for extensions to define their initial_state in their
+  constructor, and then pass it via a `super().__init__` call. Additionally,
+  extending classes are expected to handle updating `self._state` and
+  incrementing `self._version` in their implementation of `.release()`.
+  """
+
+  def __init__(
+      self,
+      release_manager: ReleaseManager[ReleasableStructure, Key],
+      state_manager: program_state_manager.ProgramStateManager,
+      initial_state: program_state_manager.ProgramStateStructure,
+  ):
+    """Base constructor for extending class to leverage via `super().__init__`.
+
+    Args:
+      release_manager: A `tff.program.ReleaseManager` used to release values to.
+      state_manager: A `tff.program.ProgramStateManager` which will be used for
+        saving and loading the state of this stateful ReleaseManager.
+      initial_state: The initial state to use.
+    """
+    self._release_manager = release_manager
+    self._state_manager = state_manager
+    self._initial_state = initial_state
+    self._state = self._initial_state
+    self._version = 0
+
+  async def resume_from_previous_state(self) -> None:
+    state, version = await self._state_manager.load_latest(self._initial_state)
+    if state is None:
+      state = self._initial_state
+      version = 0
+    self._state = state
+    self._version = version
+
+  def save_state(self) -> None:
+    self._state_manager.save(self._state, self._version)
+
+
+class PeriodicReleaseManager(StatefulReleaseManager[ReleasableStructure, Key]):
   """A `tff.program.ReleaseManager` that releases values at regular intervals.
 
   A `tff.program.PeriodicReleaseManager` is a utility for releasing values at
@@ -417,12 +460,15 @@ class PeriodicReleaseManager(ReleaseManager[ReleasableStructure, Key]):
   def __init__(
       self,
       release_manager: ReleaseManager[ReleasableStructure, Key],
+      state_manager: program_state_manager.ProgramStateManager,
       periodicity: Union[int, datetime.timedelta],
   ):
     """Returns an initialized `tff.program.PeriodicReleaseManager`.
 
     Args:
       release_manager: A `tff.program.ReleaseManager` used to release values to.
+      state_manager: A `tff.program.ProgramStateManager` which will be used for
+        saving and loading the state of this stateful ReleaseManager.
       periodicity: The interval to release values. Must be a positive integer or
         `datetime.timedelta`.
 
@@ -439,16 +485,15 @@ class PeriodicReleaseManager(ReleaseManager[ReleasableStructure, Key]):
           f' `datetime.timedelta`, found {periodicity}.'
       )
 
-    self._release_manager = release_manager
-    self._periodicity = periodicity
     if isinstance(periodicity, int):
-      self._count = 0
+      initial_state = (periodicity, 0)
     elif isinstance(periodicity, datetime.timedelta):
-      self._timestamp = datetime.datetime.now()
+      initial_state = (periodicity, datetime.datetime.now())
     else:
       raise NotImplementedError(
           f'Unexpected `periodicity` found: {type(periodicity)}.'
       )
+    super().__init__(release_manager, state_manager, initial_state)
 
   async def release(
       self,
@@ -463,21 +508,33 @@ class PeriodicReleaseManager(ReleaseManager[ReleasableStructure, Key]):
       type_signature: The `tff.Type` of `value`.
       key: A value used to reference the released `value`.
     """
-    if isinstance(self._periodicity, int):
-      self._count += 1
-      if self._count % self._periodicity == 0:
+    state = self._state
+
+    periodicity, count_or_timestamp = state
+    if isinstance(periodicity, int):
+      updated_count: int = count_or_timestamp + 1
+      if updated_count % periodicity == 0:
         await self._release_manager.release(value, type_signature, key)
-    elif isinstance(self._periodicity, datetime.timedelta):
+      state = (periodicity, updated_count)
+    elif isinstance(periodicity, datetime.timedelta):
+      timestamp: datetime.datetime = count_or_timestamp
       now = datetime.datetime.now()
-      if now >= self._timestamp + self._periodicity:
-        self._timestamp = now
+      if now >= timestamp + periodicity:
         await self._release_manager.release(value, type_signature, key)
+        state = (periodicity, now)
     else:
       raise NotImplementedError(
-          f'Unexpected `periodicity` found: {type(self._periodicity)}.'
+          f'Unexpected `periodicity` found: {type(periodicity)}.'
       )
 
+    self._state = state
+    self._version += 1
 
+
+# TODO: b/311758968 - When we've converged on how to handle stateful release
+# managers, update this class. Possibilities are to have it also adopt the
+# StatefulReleaseManager base, or alternatively, to scrap this and just add
+# delay functionality to PeriodicReleaseManager.
 class DelayedReleaseManager(ReleaseManager[ReleasableStructure, Key]):
   """A `tff.program.ReleaseManager` that releases values after specified delay.
 

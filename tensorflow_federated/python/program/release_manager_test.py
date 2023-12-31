@@ -14,6 +14,7 @@
 
 import collections
 import datetime
+from typing import Optional
 import unittest
 from unittest import mock
 
@@ -24,6 +25,7 @@ import tensorflow as tf
 import tree
 
 from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.program import program_state_manager
 from tensorflow_federated.python.program import program_test_utils
 from tensorflow_federated.python.program import release_manager
 
@@ -729,6 +731,49 @@ class GroupingReleaseManagerTest(
       )
 
 
+class _TestProgramStateManager(
+    program_state_manager.ProgramStateManager[
+        program_state_manager.ProgramStateStructure
+    ]
+):
+  """A test implementation of `tff.program.ProgramStateManager`.
+
+  A `tff.program.ProgramStateManager` cannot be constructed directly because it
+  has abstract methods, this implementation exists to make it possible to
+  construct instances of `tff.program.ProgramStateManager` that can used as
+  stubs or mocked.
+  """
+
+  async def get_versions(self) -> Optional[list[int]]:
+    raise NotImplementedError
+
+  async def load(
+      self, version: int, structure: program_state_manager.ProgramStateStructure
+  ) -> program_state_manager.ProgramStateStructure:
+    del version, structure  # Unused.
+    raise NotImplementedError
+
+  async def save(
+      self,
+      program_state: program_state_manager.ProgramStateStructure,
+      version: int,
+  ) -> None:
+    del program_state, version  # Unused.
+    raise NotImplementedError
+
+
+def _get_mock_state_manager(
+    saved_state: Optional[program_state_manager.ProgramStateStructure] = None,
+) -> _TestProgramStateManager:
+  state_manager = _TestProgramStateManager()
+  state_manager.get_versions = mock.AsyncMock(
+      return_value=None if saved_state is None else [1]
+  )
+  state_manager.load = mock.AsyncMock(return_value=saved_state)
+  state_manager.save = mock.AsyncMock(return_value=None)
+  return state_manager
+
+
 class PeriodicReleaseManagerTest(
     parameterized.TestCase, unittest.IsolatedAsyncioTestCase
 ):
@@ -743,9 +788,12 @@ class PeriodicReleaseManagerTest(
     mock_release_mngr = mock.AsyncMock(
         spec=release_manager.ReleaseManager, set_spec=True
     )
+    mock_state_manager = _get_mock_state_manager()
 
     with self.assertRaises(ValueError):
-      release_manager.PeriodicReleaseManager(mock_release_mngr, periodicity)
+      release_manager.PeriodicReleaseManager(
+          mock_release_mngr, mock_state_manager, periodicity
+      )
 
   @parameterized.named_parameters(
       ('all_releases', 1, 10, 10),
@@ -753,21 +801,28 @@ class PeriodicReleaseManagerTest(
       ('last_release', 10, 10, 1),
       ('drops_trailing_releases', 3, 10, 3),
       ('drops_all_releases', 11, 10, 0),
+      ('correct_releases_when_resuming', 5, 10, 1, 8),
   )
   async def test_release_delegates_value_and_type_signature_with_periodicity_int(
-      self, periodicity, total, expected_count
+      self, periodicity, total, expected_count, start=0
   ):
     mock_release_mngr = mock.AsyncMock(
         spec=release_manager.ReleaseManager, set_spec=True
     )
+    saved_state = None
+    if start > 0:
+      saved_state = (periodicity, start)
+    mock_state_manager = _get_mock_state_manager(saved_state)
     release_mngr = release_manager.PeriodicReleaseManager(
-        mock_release_mngr, periodicity
+        mock_release_mngr, mock_state_manager, periodicity
     )
+    await release_mngr.resume_from_previous_state()
+
     value = 1
     type_signature = computation_types.TensorType(np.int32)
     key = 1
 
-    for _ in range(total):
+    for _ in range(start, total):
       await release_mngr.release(value, type_signature, key)
 
     self.assertEqual(mock_release_mngr.release.call_count, expected_count)
@@ -806,31 +861,92 @@ class PeriodicReleaseManagerTest(
           [datetime.timedelta(seconds=x) for x in range(1, 11)],
           0,
       ),
+      (
+          'correct_releases_when_resuming',
+          datetime.timedelta(seconds=5),
+          [datetime.timedelta(seconds=x) for x in range(1, 11)],
+          1,
+          8,
+      ),
   )
   async def test_release_delegates_value_and_type_signature_with_periodicity_timedelta(
-      self, periodicity, timedeltas, expected_count
+      self, periodicity, timedeltas, expected_count, start_timedelta_index=0
   ):
     mock_release_mngr = mock.AsyncMock(
         spec=release_manager.ReleaseManager, set_spec=True
     )
+    saved_state = None
+    if start_timedelta_index > 0:
+      saved_state = (periodicity, datetime.datetime.now())
+    mock_state_manager = _get_mock_state_manager(saved_state)
     release_mngr = release_manager.PeriodicReleaseManager(
-        mock_release_mngr, periodicity
+        mock_release_mngr, mock_state_manager, periodicity
     )
+    await release_mngr.resume_from_previous_state()
+
     value = 1
     type_signature = computation_types.TensorType(np.int32)
     key = 1
 
     now = datetime.datetime.now()
     with mock.patch.object(datetime, 'datetime') as mock_datetime:
-      mock_datetime.now.side_effect = [now + x for x in timedeltas]
+      mock_datetime.now.side_effect = [
+          now + x for x in timedeltas[start_timedelta_index:]
+      ]
 
-      for _ in timedeltas:
+      for _ in timedeltas[start_timedelta_index:]:
         await release_mngr.release(value, type_signature, key)
 
     self.assertEqual(mock_release_mngr.release.call_count, expected_count)
     mock_release_mngr.release.assert_has_calls(
         [mock.call(value, type_signature, key)] * expected_count
     )
+
+  async def test_state_is_saved(self):
+    mock_release_mngr = mock.AsyncMock(
+        spec=release_manager.ReleaseManager, set_spec=True
+    )
+    mock_state_manager = _get_mock_state_manager()
+    periodicity = 1
+    release_mngr = release_manager.PeriodicReleaseManager(
+        release_manager=mock_release_mngr,
+        state_manager=mock_state_manager,
+        periodicity=periodicity,
+    )
+
+    # Not state saved prior to any calls to `.save_state`.
+    mock_state_manager.save.assert_has_calls([])
+    release_mngr.save_state()
+    # After a call to `.save_state`, the initial state has been saved.
+    mock_state_manager.save.assert_has_calls([mock.call((periodicity, 0), 0)])
+
+    value = 1
+    type_signature = computation_types.TensorType(tf.int32)
+    key = 1
+
+    # Make a release.
+    await release_mngr.release(value, type_signature, key)
+    # Releasing alone does *not* result in state being saved, ...
+    mock_state_manager.save.assert_has_calls([mock.call((periodicity, 0), 0)])
+    release_mngr.save_state()
+    # ... new state only saved when release manager's `.save_state` is called.
+    mock_state_manager.save.assert_has_calls(
+        [mock.call((periodicity, 0), 0), mock.call((periodicity, 1), 1)]
+    )
+
+    # Make another release.
+    await release_mngr.release(value, type_signature, key)
+    # Releasing alone does *not* result in state being saved, ...
+    mock_state_manager.save.assert_has_calls(
+        [mock.call((periodicity, 0), 0), mock.call((periodicity, 1), 1)]
+    )
+    release_mngr.save_state()
+    # ... new state only saved when release manager's `.save_state` is called.
+    mock_state_manager.save.assert_has_calls([
+        mock.call((periodicity, 0), 0),
+        mock.call((periodicity, 1), 1),
+        mock.call((periodicity, 2), 2),
+    ])
 
 
 class DelayedReleaseManagerTest(

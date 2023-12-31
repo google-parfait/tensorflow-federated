@@ -328,6 +328,7 @@ py_library(
     name = "release_manager",
     srcs = ["release_manager.py"],
     deps = [
+        ":program_state_manager",
         ":structure_utils",
         ":value_reference",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -340,6 +341,7 @@ py_test(
     name = "release_manager_test",
     srcs = ["release_manager_test.py"],
     deps = [
+        ":program_state_manager",
         ":program_test_utils",
         ":release_manager",
         "//tensorflow_federated/python/core/impl/types:computation_types",
