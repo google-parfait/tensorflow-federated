@@ -273,8 +273,8 @@ def _create_test_measured_process_double(state_type, state_init, values_type):
     return x
 
   @federated_computation.federated_computation(
-      computation_types.at_server(state_type),
-      computation_types.at_clients(values_type),
+      computation_types.FederatedType(state_type, placements.SERVER),
+      computation_types.FederatedType(values_type, placements.CLIENTS),
   )
   def _next_double(state, values):
     return measured_process.MeasuredProcessOutput(
@@ -299,8 +299,8 @@ def _create_test_measured_process_sum(state_type, state_init, values_type):
     return x
 
   @federated_computation.federated_computation(
-      computation_types.at_server(state_type),
-      computation_types.at_clients(values_type),
+      computation_types.FederatedType(state_type, placements.SERVER),
+      computation_types.FederatedType(values_type, placements.CLIENTS),
   )
   def _next_sum(state, values):
     return measured_process.MeasuredProcessOutput(
@@ -317,8 +317,8 @@ def _create_test_measured_process_sum(state_type, state_init, values_type):
 def _create_test_measured_process_state_at_clients():
 
   @federated_computation.federated_computation(
-      computation_types.at_clients(np.int32),
-      computation_types.at_clients(np.int32),
+      computation_types.FederatedType(np.int32, placements.CLIENTS),
+      computation_types.FederatedType(np.int32, placements.CLIENTS),
   )
   def next_fn(state, values):
     return measured_process.MeasuredProcessOutput(
@@ -353,8 +353,8 @@ def _create_test_measured_process_state_missing_placement():
 def _create_test_aggregation_process(state_type, state_init, values_type):
 
   @federated_computation.federated_computation(
-      computation_types.at_server(state_type),
-      computation_types.at_clients(values_type),
+      computation_types.FederatedType(state_type, placements.SERVER),
+      computation_types.FederatedType(values_type, placements.CLIENTS),
   )
   def next_fn(state, values):
     return measured_process.MeasuredProcessOutput(
@@ -404,8 +404,9 @@ class MeasuredProcessCompositionComputationTest(parameterized.TestCase):
     )
     self.assertIsInstance(composite_process, measured_process.MeasuredProcess)
 
-    expected_state_type = computation_types.at_server(
-        collections.OrderedDict(double=state_type, last_process=state_type)
+    expected_state_type = computation_types.FederatedType(
+        collections.OrderedDict(double=state_type, last_process=state_type),
+        placements.SERVER,
     )
     expected_initialize_type = computation_types.FunctionType(
         parameter=None, result=expected_state_type
@@ -416,13 +417,18 @@ class MeasuredProcessCompositionComputationTest(parameterized.TestCase):
         )
     )
 
-    param_value_type = computation_types.at_clients(values_type)
-    result_value_type = computation_types.at_server(values_type)
-    expected_measurements_type = computation_types.at_server(
+    param_value_type = computation_types.FederatedType(
+        values_type, placements.CLIENTS
+    )
+    result_value_type = computation_types.FederatedType(
+        values_type, placements.SERVER
+    )
+    expected_measurements_type = computation_types.FederatedType(
         collections.OrderedDict(
             double=collections.OrderedDict(a=np.int32),
             last_process=last_process.next.type_signature.result.measurements.member,
-        )
+        ),
+        placements.SERVER,
     )
     expected_next_type = computation_types.FunctionType(
         parameter=collections.OrderedDict(
@@ -558,8 +564,9 @@ class MeasuredProcessConcatenationComputationTest(parameterized.TestCase):
         concatenated_process, measured_process.MeasuredProcess
     )
 
-    expected_state_type = computation_types.at_server(
-        collections.OrderedDict(double=state_type, last_process=state_type)
+    expected_state_type = computation_types.FederatedType(
+        collections.OrderedDict(double=state_type, last_process=state_type),
+        placements.SERVER,
     )
     expected_initialize_type = computation_types.FunctionType(
         parameter=None, result=expected_state_type
@@ -571,18 +578,23 @@ class MeasuredProcessConcatenationComputationTest(parameterized.TestCase):
     )
 
     param_value_type = collections.OrderedDict(
-        double=computation_types.at_clients(values_type),
-        last_process=computation_types.at_clients(values_type),
+        double=computation_types.FederatedType(values_type, placements.CLIENTS),
+        last_process=computation_types.FederatedType(
+            values_type, placements.CLIENTS
+        ),
     )
     result_value_type = collections.OrderedDict(
-        double=computation_types.at_clients(values_type),
-        last_process=computation_types.at_server(values_type),
+        double=computation_types.FederatedType(values_type, placements.CLIENTS),
+        last_process=computation_types.FederatedType(
+            values_type, placements.SERVER
+        ),
     )
-    expected_measurements_type = computation_types.at_server(
+    expected_measurements_type = computation_types.FederatedType(
         collections.OrderedDict(
             double=collections.OrderedDict(a=np.int32),
             last_process=last_process.next.type_signature.result.measurements.member,
-        )
+        ),
+        placements.SERVER,
     )
     expected_next_type = computation_types.FunctionType(
         parameter=collections.OrderedDict(

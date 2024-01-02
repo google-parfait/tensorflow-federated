@@ -21,6 +21,7 @@ from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.core.impl.types import placements
 
 
 class CppExecutionContextsTest(absltest.TestCase):
@@ -57,7 +58,7 @@ class CppExecutionContextsTest(absltest.TestCase):
       return np.float32(0)
 
     @federated_computation.federated_computation(
-        computation_types.at_clients(np.float32)
+        computation_types.FederatedType(np.float32, placements.CLIENTS)
     )
     def aggregate(client_values):
       return intrinsics.federated_aggregate(
@@ -95,7 +96,9 @@ class CppExecutionContextsTest(absltest.TestCase):
     sequence = list(range(10))
 
     @federated_computation.federated_computation(
-        computation_types.at_server(computation_types.SequenceType(np.int32))
+        computation_types.FederatedType(
+            computation_types.SequenceType(np.int32), placements.SERVER
+        )
     )
     def comp(x):
       @jax_computation.jax_computation
@@ -117,8 +120,9 @@ class CppExecutionContextsTest(absltest.TestCase):
     self.assertEqual(comp(sequence), sum(range(10)))
 
   def test_federated_sum(self):
+
     @federated_computation.federated_computation(
-        computation_types.at_clients(np.int32)
+        computation_types.FederatedType(np.int32, placements.CLIENTS)
     )
     def comp(x):
       return intrinsics.federated_sum(x)
@@ -132,8 +136,9 @@ class CppExecutionContextsTest(absltest.TestCase):
       comp([1, 2, 3])
 
   def test_unweighted_federated_mean(self):
+
     @federated_computation.federated_computation(
-        computation_types.at_clients(np.float32)
+        computation_types.FederatedType(np.float32, placements.CLIENTS)
     )
     def comp(x):
       return intrinsics.federated_mean(x)

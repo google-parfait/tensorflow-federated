@@ -21,9 +21,12 @@ from tensorflow_federated.python.core.backends.test import execution_contexts
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.core.impl.types import placements
 
-_CLIENTS_INT = computation_types.at_clients(np.int32)
-_CLIENTS_INT_LIST = computation_types.at_clients([np.int32, np.int32])
+_CLIENTS_INT = computation_types.FederatedType(np.int32, placements.CLIENTS)
+_CLIENTS_INT_LIST = computation_types.FederatedType(
+    [np.int32, np.int32], placements.CLIENTS
+)
 
 
 class SecureModularSumTest(parameterized.TestCase):
@@ -46,7 +49,9 @@ class SecureModularSumTest(parameterized.TestCase):
           'nonscalar_struct_arg',
           [([1, 2], 3), ([4, 5], 6)],
           (np.array([0, 2], dtype=np.int32), 4),
-          computation_types.at_clients(((np.int32, [2]), np.int32)),
+          computation_types.FederatedType(
+              ((np.int32, [2]), np.int32), placements.CLIENTS
+          ),
       ),
   )
   def test_executes_computation_with_modular_secure_sum_integer_modulus(
@@ -124,7 +129,7 @@ class SecureSumBitwidthTest(parameterized.TestCase):
     expected_result = sum(arg)
 
     @federated_computation.federated_computation(
-        computation_types.at_clients(np.int32)
+        computation_types.FederatedType(np.int32, placements.CLIENTS)
     )
     def sum_with_bitwidth(arg):
       return intrinsics.federated_secure_sum_bitwidth(arg, bitwidth)
@@ -136,7 +141,9 @@ class SecureSumBitwidthTest(parameterized.TestCase):
           'two_clients_scalar_tensors',
           [[1, 2], [3, 4]],
           [4, 6],
-          computation_types.at_clients([np.int32, np.int32]),
+          computation_types.FederatedType(
+              [np.int32, np.int32], placements.CLIENTS
+          ),
       ),
       (
           'two_clients_nonscalar_tensors',
@@ -145,10 +152,13 @@ class SecureSumBitwidthTest(parameterized.TestCase):
               [np.ones(shape=[10], dtype=np.int32), 4],
           ],
           [2 * np.ones(shape=[10], dtype=np.int32), 6],
-          computation_types.at_clients([
-              computation_types.TensorType(dtype=np.int32, shape=[10]),
-              np.int32,
-          ]),
+          computation_types.FederatedType(
+              [
+                  computation_types.TensorType(dtype=np.int32, shape=[10]),
+                  np.int32,
+              ],
+              placements.CLIENTS,
+          ),
       ),
   )
   def test_executes_computation_with_argument_structure(
@@ -179,7 +189,7 @@ class SecureSumMaxValueTest(parameterized.TestCase):
     max_value = 1
 
     @federated_computation.federated_computation(
-        computation_types.at_clients(np.int32)
+        computation_types.FederatedType(np.int32, placements.CLIENTS)
     )
     def secure_sum(arg):
       return intrinsics.federated_secure_sum(arg, max_value)
@@ -201,7 +211,7 @@ class SecureSumMaxValueTest(parameterized.TestCase):
     expected_result = sum(arg)
 
     @federated_computation.federated_computation(
-        computation_types.at_clients(np.int32)
+        computation_types.FederatedType(np.int32, placements.CLIENTS)
     )
     def secure_sum(arg):
       return intrinsics.federated_secure_sum(arg, max_value)
@@ -213,7 +223,9 @@ class SecureSumMaxValueTest(parameterized.TestCase):
           'two_clients_scalar_tensors',
           [[1, 2], [3, 4]],
           [4, 6],
-          computation_types.at_clients([np.int32, np.int32]),
+          computation_types.FederatedType(
+              [np.int32, np.int32], placements.CLIENTS
+          ),
       ),
       (
           'two_clients_nonscalar_tensors',
@@ -222,10 +234,13 @@ class SecureSumMaxValueTest(parameterized.TestCase):
               [np.ones(shape=[10], dtype=np.int32), 4],
           ],
           [2 * np.ones(shape=[10], dtype=np.int32), 6],
-          computation_types.at_clients([
-              computation_types.TensorType(dtype=np.int32, shape=[10]),
-              np.int32,
-          ]),
+          computation_types.FederatedType(
+              [
+                  computation_types.TensorType(dtype=np.int32, shape=[10]),
+                  np.int32,
+              ],
+              placements.CLIENTS,
+          ),
       ),
   )
   def test_executes_computation_with_argument_structure(

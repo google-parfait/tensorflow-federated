@@ -73,8 +73,14 @@ def get_computation_for_broadcast_form(
   server_data_type = bf.compute_server_context.type_signature.parameter
   client_data_type = bf.client_processing.type_signature.parameter[1]
   comp_parameter_type = computation_types.StructType([
-      (bf.server_data_label, computation_types.at_server(server_data_type)),
-      (bf.client_data_label, computation_types.at_clients(client_data_type)),
+      (
+          bf.server_data_label,
+          computation_types.FederatedType(server_data_type, placements.SERVER),
+      ),
+      (
+          bf.client_data_label,
+          computation_types.FederatedType(client_data_type, placements.CLIENTS),
+      ),
   ])
 
   @federated_computation.federated_computation(comp_parameter_type)
@@ -857,7 +863,9 @@ def _extract_update(after_aggregate, grappler_config):
 
   # update = v -> update_with_flat_inputs(federated_map(unpack, v))
   param_name = next(name_generator)
-  param_type = computation_types.at_server(unpack_param_type)
+  param_type = computation_types.FederatedType(
+      unpack_param_type, placements.SERVER
+  )
   param_ref = building_blocks.Reference(param_name, param_type)
   update = building_blocks.Lambda(
       param_name,

@@ -21,6 +21,7 @@ from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.core.impl.types import placements
 
 
 class DesugarAndTransformTest(absltest.TestCase):
@@ -28,7 +29,7 @@ class DesugarAndTransformTest(absltest.TestCase):
   def test_desugaring_sum_insert_id_for_tf_computations(self):
 
     @federated_computation.federated_computation(
-        computation_types.at_clients(np.int32)
+        computation_types.FederatedType(np.int32, placements.CLIENTS)
     )
     def fed_sum(x):
       return intrinsics.federated_sum(x)

@@ -25,6 +25,7 @@ from tensorflow_federated.python.core.impl.execution_contexts import mergeable_c
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.core.impl.types import placements
 
 
 def _compile_to_tf(fn):
@@ -218,7 +219,9 @@ def compile_to_mergeable_comp_form(
 
     @federated_computation.federated_computation(
         before_agg.type_signature.parameter,
-        computation_types.at_server(identity_report.type_signature.result),
+        computation_types.FederatedType(
+            identity_report.type_signature.result, placements.SERVER
+        ),
     )
     def after_merge_computation(top_level_arg, merge_result):
       reported_result = intrinsics.federated_map(report_comp, merge_result)
@@ -238,7 +241,9 @@ def compile_to_mergeable_comp_form(
       )
 
     @federated_computation.federated_computation(
-        computation_types.at_server(identity_report.type_signature.result)
+        computation_types.FederatedType(
+            identity_report.type_signature.result, placements.SERVER
+        )
     )
     def after_merge_computation(merge_result):
       reported_result = intrinsics.federated_map(report_comp, merge_result)

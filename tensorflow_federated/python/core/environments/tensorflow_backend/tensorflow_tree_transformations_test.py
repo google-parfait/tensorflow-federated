@@ -21,6 +21,7 @@ from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_test_utils
 
 
@@ -47,8 +48,8 @@ class ReplaceIntrinsicsWithBodiesTest(parameterized.TestCase):
     comp = building_blocks.Intrinsic(
         uri,
         computation_types.FunctionType(
-            computation_types.at_clients(np.float32),
-            computation_types.at_server(np.float32),
+            computation_types.FederatedType(np.float32, placements.CLIENTS),
+            computation_types.FederatedType(np.float32, placements.SERVER),
         ),
     )
 
@@ -74,8 +75,9 @@ class ReplaceIntrinsicsWithBodiesTest(parameterized.TestCase):
     comp = building_blocks.Intrinsic(
         uri,
         computation_types.FunctionType(
-            (computation_types.at_clients(np.float32),) * 2,
-            computation_types.at_server(np.float32),
+            (computation_types.FederatedType(np.float32, placements.CLIENTS),)
+            * 2,
+            computation_types.FederatedType(np.float32, placements.SERVER),
         ),
     )
 
@@ -101,8 +103,8 @@ class ReplaceIntrinsicsWithBodiesTest(parameterized.TestCase):
     comp = building_blocks.Intrinsic(
         uri,
         computation_types.FunctionType(
-            computation_types.at_clients(np.float32),
-            computation_types.at_server(np.float32),
+            computation_types.FederatedType(np.float32, placements.CLIENTS),
+            computation_types.FederatedType(np.float32, placements.SERVER),
         ),
     )
 
@@ -128,8 +130,8 @@ class ReplaceIntrinsicsWithBodiesTest(parameterized.TestCase):
     comp = building_blocks.Intrinsic(
         uri,
         computation_types.FunctionType(
-            computation_types.at_clients(np.float32),
-            computation_types.at_server(np.float32),
+            computation_types.FederatedType(np.float32, placements.CLIENTS),
+            computation_types.FederatedType(np.float32, placements.SERVER),
         ),
     )
 
@@ -155,8 +157,8 @@ class ReplaceIntrinsicsWithBodiesTest(parameterized.TestCase):
     comp = building_blocks.Intrinsic(
         uri,
         computation_types.FunctionType(
-            computation_types.at_clients(np.float32),
-            computation_types.at_server(np.float32),
+            computation_types.FederatedType(np.float32, placements.CLIENTS),
+            computation_types.FederatedType(np.float32, placements.SERVER),
         ),
     )
 
@@ -252,10 +254,12 @@ class ReplaceIntrinsicsWithBodiesTest(parameterized.TestCase):
         uri,
         computation_types.FunctionType(
             [
-                computation_types.at_clients(value_dtype),
+                computation_types.FederatedType(
+                    value_dtype, placements.CLIENTS
+                ),
                 computation_types.to_type(bitwidth_type),
             ],
-            computation_types.at_server(value_dtype),
+            computation_types.FederatedType(value_dtype, placements.SERVER),
         ),
     )
     self.assertGreater(_count_intrinsics(comp, uri), 0)
@@ -295,10 +299,14 @@ class ReplaceIntrinsicsWithBodiesTest(parameterized.TestCase):
         uri,
         computation_types.FunctionType(
             parameter=[
-                computation_types.at_clients(value_dtype),
+                computation_types.FederatedType(
+                    value_dtype, placements.CLIENTS
+                ),
                 computation_types.to_type(bitwidth_type),
             ],
-            result=computation_types.at_server(value_dtype),
+            result=computation_types.FederatedType(
+                value_dtype, placements.SERVER
+            ),
         ),
     )
     # First without secure intrinsics shouldn't modify anything.
@@ -337,10 +345,14 @@ class ReplaceIntrinsicsWithBodiesTest(parameterized.TestCase):
         uri,
         computation_types.FunctionType(
             parameter=[
-                computation_types.at_clients(value_dtype),
+                computation_types.FederatedType(
+                    value_dtype, placements.CLIENTS
+                ),
                 computation_types.to_type(modulus_type),
             ],
-            result=computation_types.at_server(value_dtype),
+            result=computation_types.FederatedType(
+                value_dtype, placements.SERVER
+            ),
         ),
     )
     # First without secure intrinsics shouldn't modify anything.
@@ -374,15 +386,21 @@ class ReplaceIntrinsicsWithBodiesTest(parameterized.TestCase):
         uri,
         computation_types.FunctionType(
             [
-                computation_types.at_clients(np.int32),  # client_keys
-                computation_types.at_server(np.int32),  # max_key
-                computation_types.at_server(np.float32),  # server_state
+                computation_types.FederatedType(
+                    np.int32, placements.CLIENTS
+                ),  # client_keys
+                computation_types.FederatedType(
+                    np.int32, placements.SERVER
+                ),  # max_key
+                computation_types.FederatedType(
+                    np.float32, placements.SERVER
+                ),  # server_state
                 computation_types.FunctionType(
                     [np.float32, np.int32], np.float32
                 ),  # select_fn
             ],
-            computation_types.at_clients(
-                computation_types.SequenceType(np.float32)
+            computation_types.FederatedType(
+                computation_types.SequenceType(np.float32), placements.CLIENTS
             ),
         ),
     )

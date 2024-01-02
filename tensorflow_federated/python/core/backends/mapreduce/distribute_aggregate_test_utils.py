@@ -106,7 +106,7 @@ def get_temperature_sensor_example() -> DistributeAggregateFormExample:
   server_state_type = [('num_rounds', np.int32)]
 
   @federated_computation.federated_computation(
-      computation_types.at_server(server_state_type)
+      computation_types.FederatedType(server_state_type, placements.SERVER)
   )
   def server_prepare(state):
     @tensorflow_computation.tf_computation(server_state_type)
@@ -124,10 +124,12 @@ def get_temperature_sensor_example() -> DistributeAggregateFormExample:
   broadcast_type = collections.OrderedDict(max_temperature=np.float32)
 
   # The intermediate state will contain the server state.
-  intermediate_state_type = [computation_types.at_server(server_state_type)]
+  intermediate_state_type = [
+      computation_types.FederatedType(server_state_type, placements.SERVER)
+  ]
 
   @federated_computation.federated_computation(
-      [computation_types.at_server(broadcast_type)]
+      [computation_types.FederatedType(broadcast_type, placements.SERVER)]
   )
   def server_to_client_broadcast(context_at_server):
     return [intrinsics.federated_broadcast(context_at_server[0])]
@@ -136,8 +138,8 @@ def get_temperature_sensor_example() -> DistributeAggregateFormExample:
   client_data_type = computation_types.SequenceType(np.float32)
 
   @federated_computation.federated_computation(
-      computation_types.at_clients(client_data_type),
-      [computation_types.at_clients(broadcast_type)],
+      computation_types.FederatedType(client_data_type, placements.CLIENTS),
+      [computation_types.FederatedType(broadcast_type, placements.CLIENTS)],
   )
   def client_work(data, context_at_client):
     @tensorflow_computation.tf_computation(client_data_type, [broadcast_type])
@@ -174,8 +176,14 @@ def get_temperature_sensor_example() -> DistributeAggregateFormExample:
 
   # The client update is a struct.
   federated_client_update_type = [
-      ('is_over', computation_types.at_clients(np.float32)),
-      ('weight', computation_types.at_clients(np.float32)),
+      (
+          'is_over',
+          computation_types.FederatedType(np.float32, placements.CLIENTS),
+      ),
+      (
+          'weight',
+          computation_types.FederatedType(np.float32, placements.CLIENTS),
+      ),
   ]
 
   @federated_computation.federated_computation(
@@ -190,7 +198,11 @@ def get_temperature_sensor_example() -> DistributeAggregateFormExample:
 
   @federated_computation.federated_computation(
       intermediate_state_type,
-      [computation_types.at_server(aggregation_result_type)],
+      [
+          computation_types.FederatedType(
+              aggregation_result_type, placements.SERVER
+          )
+      ],
   )
   def server_result(intermediate_server_state, aggregation_result):
     @tensorflow_computation.tf_computation(server_state_type)
@@ -246,7 +258,7 @@ def get_mnist_training_example() -> DistributeAggregateFormExample:
   # learning rate that starts at 0.1 and decays exponentially by a factor of
   # 0.9.
   @federated_computation.federated_computation(
-      computation_types.at_server(server_state_tff_type)
+      computation_types.FederatedType(server_state_tff_type, placements.SERVER)
   )
   def server_prepare(state):
     @tensorflow_computation.tf_computation(server_state_tff_type)
@@ -262,7 +274,7 @@ def get_mnist_training_example() -> DistributeAggregateFormExample:
   # sum and the server state.
   intermediate_state_type = [
       np.int32,
-      computation_types.at_server(server_state_tff_type),
+      computation_types.FederatedType(server_state_tff_type, placements.SERVER),
   ]
 
   model_tff_type = model_nt(
@@ -273,7 +285,7 @@ def get_mnist_training_example() -> DistributeAggregateFormExample:
   )
 
   @federated_computation.federated_computation(
-      [computation_types.at_server(broadcast_tff_type)]
+      [computation_types.FederatedType(broadcast_tff_type, placements.SERVER)]
   )
   def server_to_client_broadcast(context_at_server):
     return [intrinsics.federated_broadcast(context_at_server[0])]
@@ -288,8 +300,8 @@ def get_mnist_training_example() -> DistributeAggregateFormExample:
   # examples as an update, and the average loss and the number of examples as
   # local client stats.
   @federated_computation.federated_computation(
-      computation_types.at_clients(dataset_tff_type),
-      [computation_types.at_clients(broadcast_tff_type)],
+      computation_types.FederatedType(dataset_tff_type, placements.CLIENTS),
+      [computation_types.FederatedType(broadcast_tff_type, placements.CLIENTS)],
   )
   def client_work(data, context_at_client):
     @tensorflow_computation.tf_computation(dataset_tff_type, broadcast_tff_type)
@@ -367,13 +379,13 @@ def get_mnist_training_example() -> DistributeAggregateFormExample:
 
   federated_aggregation_input_tff_type = [
       # input for federated_mean
-      computation_types.at_clients(model_tff_type),
-      computation_types.at_clients(np.float32),
+      computation_types.FederatedType(model_tff_type, placements.CLIENTS),
+      computation_types.FederatedType(np.float32, placements.CLIENTS),
       # input for federated_sum
-      computation_types.at_clients(np.int32),
+      computation_types.FederatedType(np.int32, placements.CLIENTS),
       # input for federated_mean
-      computation_types.at_clients(np.float32),
-      computation_types.at_clients(np.float32),
+      computation_types.FederatedType(np.float32, placements.CLIENTS),
+      computation_types.FederatedType(np.float32, placements.CLIENTS),
   ]
 
   @federated_computation.federated_computation(
@@ -394,9 +406,9 @@ def get_mnist_training_example() -> DistributeAggregateFormExample:
 
   # The aggregation result type is a struct.
   federated_aggregation_result_type = update_nt(
-      model=computation_types.at_server(model_tff_type),
-      num_examples=computation_types.at_server(np.int32),
-      loss=computation_types.at_server(np.float32),
+      model=computation_types.FederatedType(model_tff_type, placements.SERVER),
+      num_examples=computation_types.FederatedType(np.int32, placements.SERVER),
+      loss=computation_types.FederatedType(np.float32, placements.SERVER),
   )
 
   metrics_nt = collections.namedtuple('Metrics', 'num_rounds num_examples loss')

@@ -28,6 +28,7 @@ from tensorflow_federated.python.core.impl.execution_contexts import sync_execut
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.core.impl.types import placements
 
 
 def _assert_signature_equal(first_obj, second_obj):
@@ -109,16 +110,16 @@ class SecureModularSumTest(
   # pyformat: disable
   @parameterized.named_parameters(
       ('one_client_not_divisible', [1], 1,
-       computation_types.at_clients(np.int32)),
+       computation_types.FederatedType(np.int32, placements.CLIENTS)),
       ('two_clients_none_divisible', [1, 2], 3,
-       computation_types.at_clients(np.int32)),
+       computation_types.FederatedType(np.int32, placements.CLIENTS)),
       ('three_clients_one_divisible', [1, 2, 10], 3,
-       computation_types.at_clients(np.int32)),
+       computation_types.FederatedType(np.int32, placements.CLIENTS)),
       ('all_clients_divisible_by_modulus', [x * 5 for x in range(5)], 0,
-       computation_types.at_clients(np.int32)),
+       computation_types.FederatedType(np.int32, placements.CLIENTS)),
       ('nonscalar_struct_arg', [([1, 2], 3), ([4, 5], 6)],
        (np.array([0, 2], dtype=np.int32), 4),
-       computation_types.at_clients(((np.int32, [2]), np.int32))),
+       computation_types.FederatedType(((np.int32, [2]), np.int32), placements.CLIENTS)),
   )
   # pyformat: enable
   def test_executes_computation_with_modular_secure_sum_integer_modulus(
@@ -149,13 +150,13 @@ class SecureModularSumTest(
           'one_client_not_divisible',
           [1],
           1,
-          computation_types.at_clients(np.int32),
+          computation_types.FederatedType(np.int32, placements.CLIENTS),
       ),
       (
           'two_clients_none_divisible',
           [1, 2],
           3,
-          computation_types.at_clients(np.int32),
+          computation_types.FederatedType(np.int32, placements.CLIENTS),
       ),
   )
   # pyformat: enable
@@ -177,25 +178,33 @@ class SecureModularSumTest(
           'one_client_not_divisible',
           [[1, 2]],
           [1, 2],
-          computation_types.at_clients([np.int32, np.int32]),
+          computation_types.FederatedType(
+              [np.int32, np.int32], placements.CLIENTS
+          ),
       ),
       (
           'two_clients_none_divisible',
           [[1, 2], [3, 4]],
           [4, 6],
-          computation_types.at_clients([np.int32, np.int32]),
+          computation_types.FederatedType(
+              [np.int32, np.int32], placements.CLIENTS
+          ),
       ),
       (
           'three_clients_one_divisible',
           [[1, 2], [3, 4], [10, 14]],
           [4, 6],
-          computation_types.at_clients([np.int32, np.int32]),
+          computation_types.FederatedType(
+              [np.int32, np.int32], placements.CLIENTS
+          ),
       ),
       (
           'two_clients_one_partially_divisible',
           [[1, 2], [3, 4], [10, 15]],
           [4, 0],
-          computation_types.at_clients([np.int32, np.int32]),
+          computation_types.FederatedType(
+              [np.int32, np.int32], placements.CLIENTS
+          ),
       ),
   )
   def test_executes_computation_with_modular_secure_sum_struct_modulus(
@@ -228,7 +237,7 @@ class SecureSumBitwidthTest(
     expected_result = sum(arg)
 
     @federated_computation.federated_computation(
-        computation_types.at_clients(np.int32)
+        computation_types.FederatedType(np.int32, placements.CLIENTS)
     )
     def sum_with_bitwidth(arg):
       return intrinsics.federated_secure_sum_bitwidth(arg, bitwidth)
@@ -244,7 +253,7 @@ class SecureSumBitwidthTest(
     expected_result = sum(arg)
 
     @federated_computation.federated_computation(
-        computation_types.at_clients(np.int32)
+        computation_types.FederatedType(np.int32, placements.CLIENTS)
     )
     def sum_with_bitwidth(arg):
       return intrinsics.federated_secure_sum_bitwidth(arg, bitwidth)
@@ -254,13 +263,13 @@ class SecureSumBitwidthTest(
   # pyformat: disable
   @parameterized.named_parameters(
       ('two_clients_scalar_tensors', [[1, 2], [3, 4]], [4, 6],
-       computation_types.at_clients([np.int32, np.int32])),
+       computation_types.FederatedType([np.int32, np.int32], placements.CLIENTS)),
       ('two_clients_nonscalar_tensors',
        [[np.ones(shape=[10], dtype=np.int32), 2],
         [np.ones(shape=[10], dtype=np.int32), 4]],
        [2 * np.ones(shape=[10], dtype=np.int32), 6],
-       computation_types.at_clients([
-           computation_types.TensorType(dtype=np.int32, shape=[10]), np.int32]),
+       computation_types.FederatedType([
+           computation_types.TensorType(dtype=np.int32, shape=[10]), np.int32], placements.CLIENTS)
       ),
   )
   # pyformat: enable
@@ -294,7 +303,7 @@ class SecureSumMaxValueTest(
     max_value = 1
 
     @federated_computation.federated_computation(
-        computation_types.at_clients(np.int32)
+        computation_types.FederatedType(np.int32, placements.CLIENTS)
     )
     def secure_sum(arg):
       return intrinsics.federated_secure_sum(arg, max_value)
@@ -317,7 +326,7 @@ class SecureSumMaxValueTest(
     expected_result = sum(arg)
 
     @federated_computation.federated_computation(
-        computation_types.at_clients(np.int32)
+        computation_types.FederatedType(np.int32, placements.CLIENTS)
     )
     def secure_sum(arg):
       return intrinsics.federated_secure_sum(arg, max_value)
@@ -334,7 +343,7 @@ class SecureSumMaxValueTest(
     expected_result = sum(arg)
 
     @federated_computation.federated_computation(
-        computation_types.at_clients(np.int32)
+        computation_types.FederatedType(np.int32, placements.CLIENTS)
     )
     def secure_sum(arg):
       return intrinsics.federated_secure_sum(arg, max_value)
@@ -344,14 +353,14 @@ class SecureSumMaxValueTest(
   # pyformat: disable
   @parameterized.named_parameters(
       ('two_clients_scalar_tensors', [[1, 2], [3, 4]], [4, 6],
-       computation_types.at_clients([np.int32, np.int32])),
+       computation_types.FederatedType([np.int32, np.int32], placements.CLIENTS)),
       ('two_clients_nonscalar_tensors',
        [[np.ones(shape=[10], dtype=np.int32), 2],
         [np.ones(shape=[10], dtype=np.int32), 4]],
        [2 * np.ones(shape=[10], dtype=np.int32), 6],
-       computation_types.at_clients([
+       computation_types.FederatedType([
            computation_types.TensorType(
-               dtype=np.int32, shape=[10]), np.int32])),
+               dtype=np.int32, shape=[10]), np.int32], placements.CLIENTS)),
   )
   # pyformat: enable
   def test_executes_computation_with_argument_structure(

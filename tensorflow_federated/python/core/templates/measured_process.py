@@ -23,6 +23,7 @@ from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import errors
 from tensorflow_federated.python.core.templates import iterative_process
 
@@ -188,13 +189,12 @@ def chain_measured_processes(
 
   first_process = next(iter(measured_processes.values()))
   first_process_value_type_spec = first_process.next.type_signature.parameter[1]  # pytype: disable=unsupported-operands
-  concatenated_state_type_spec = computation_types.at_server(
-      computation_types.StructType(
-          [
-              (name, process.next.type_signature.parameter[0].member)  # pytype: disable=unsupported-operands
-              for name, process in measured_processes.items()
-          ]
-      )
+  concatenated_state_type_spec = computation_types.FederatedType(
+      computation_types.StructType([
+          (name, process.next.type_signature.parameter[0].member)  # pytype: disable=unsupported-operands
+          for name, process in measured_processes.items()
+      ]),
+      placements.SERVER,
   )
 
   @federated_computation.federated_computation(
@@ -286,10 +286,11 @@ def concatenate_measured_processes(
           f'placement of the state: {state_type}.'
       ) from e
 
-  concatenated_state_type_spec = computation_types.at_server(
+  concatenated_state_type_spec = computation_types.FederatedType(
       tree.map_structure(
           lambda process: process.state_type.member, measured_processes
-      )
+      ),
+      placements.SERVER,
   )
   concatenated_values_type_spec = tree.map_structure(
       lambda process: process.next.type_signature.parameter[1],

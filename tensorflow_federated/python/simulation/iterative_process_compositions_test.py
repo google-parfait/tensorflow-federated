@@ -166,7 +166,9 @@ def test_int64_sequence_struct_computation(a, dataset, b):
     np.int32,
     computation_types.StructType([
         np.int64,
-        computation_types.at_clients(computation_types.SequenceType(np.int64)),
+        computation_types.FederatedType(
+            computation_types.SequenceType(np.int64), placements.CLIENTS
+        ),
         np.float64,
     ]),
     np.float32,
@@ -177,9 +179,13 @@ def test_int64_sequence_nested_struct_computation(a, dataset, b):
 
 @federated_computation.federated_computation(
     computation_types.StructType([
-        computation_types.at_clients(computation_types.SequenceType(np.int64)),
+        computation_types.FederatedType(
+            computation_types.SequenceType(np.int64), placements.CLIENTS
+        ),
     ]),
-    computation_types.at_clients(computation_types.SequenceType(np.int64)),
+    computation_types.FederatedType(
+        computation_types.SequenceType(np.int64), placements.CLIENTS
+    ),
 )
 def test_int64_sequence_multiple_matching_federated_types_computation(a, b):
   return a, b

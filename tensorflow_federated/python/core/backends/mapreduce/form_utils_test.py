@@ -503,8 +503,10 @@ def get_iterative_process_for_minimal_sum_example():
     return 1, 1, 1, 1
 
   @federated_computation.federated_computation([
-      computation_types.at_server([np.int32, np.int32, np.int32, np.int32]),
-      computation_types.at_clients(np.int32),
+      computation_types.FederatedType(
+          [np.int32, np.int32, np.int32, np.int32], placements.SERVER
+      ),
+      computation_types.FederatedType(np.int32, placements.CLIENTS),
   ])
   def next_fn(server_state, client_data):
     """The `next` function for `tff.templates.IterativeProcess`."""
@@ -881,8 +883,10 @@ class CheckMapReduceFormCompatibleWithComputationTest(
     form_utils.check_computation_compatible_with_map_reduce_form(ip.next)
 
   def test_disallows_broadcast_dependent_on_aggregate(self):
+
     @federated_computation.federated_computation(
-        computation_types.at_server(np.int32), computation_types.at_clients(())
+        computation_types.FederatedType(np.int32, placements.SERVER),
+        computation_types.FederatedType((), placements.CLIENTS),
     )
     def comp(server_state, client_data):
       del server_state, client_data
@@ -1069,8 +1073,8 @@ class GetMapReduceFormTest(FederatedFormTestCase, parameterized.TestCase):
     """
 
     @federated_computation.federated_computation([
-        computation_types.at_server(()),
-        computation_types.at_clients(np.int32),
+        computation_types.FederatedType((), placements.SERVER),
+        computation_types.FederatedType(np.int32, placements.CLIENTS),
     ])
     def comp_fn(server_state, client_data):
       server_output = client_to_server_fn(client_data)
@@ -1101,8 +1105,12 @@ class BroadcastFormTest(absltest.TestCase):
 
   def test_roundtrip(self):
     add = tensorflow_computation.tf_computation(lambda x, y: x + y)
-    server_data_type = computation_types.at_server(np.int32)
-    client_data_type = computation_types.at_clients(np.int32)
+    server_data_type = computation_types.FederatedType(
+        np.int32, placements.SERVER
+    )
+    client_data_type = computation_types.FederatedType(
+        np.int32, placements.CLIENTS
+    )
 
     @federated_computation.federated_computation(
         server_data_type, client_data_type
@@ -1139,8 +1147,10 @@ class BroadcastFormTest(absltest.TestCase):
 
   def test_roundtrip_no_broadcast(self):
     add_five = tensorflow_computation.tf_computation(lambda x: x + 5)
-    server_data_type = computation_types.at_server(())
-    client_data_type = computation_types.at_clients(np.int32)
+    server_data_type = computation_types.FederatedType((), placements.SERVER)
+    client_data_type = computation_types.FederatedType(
+        np.int32, placements.CLIENTS
+    )
 
     @federated_computation.federated_computation(
         server_data_type, client_data_type
@@ -1281,7 +1291,9 @@ class AsFunctionOfSomeSubparametersTest(tf.test.TestCase):
     new_lam = form_utils._as_function_of_some_federated_subparameters(
         lam, [(0,)]
     )
-    expected_parameter_type = computation_types.at_clients((np.int32,))
+    expected_parameter_type = computation_types.FederatedType(
+        (np.int32,), placements.CLIENTS
+    )
     type_test_utils.assert_types_equivalent(
         new_lam.type_signature,
         computation_types.FunctionType(
@@ -1308,7 +1320,9 @@ class AsFunctionOfSomeSubparametersTest(tf.test.TestCase):
     new_lam = form_utils._as_function_of_some_federated_subparameters(
         lam, [(0,)]
     )
-    expected_parameter_type = computation_types.at_clients((np.int32,))
+    expected_parameter_type = computation_types.FederatedType(
+        (np.int32,), placements.CLIENTS
+    )
     type_test_utils.assert_types_equivalent(
         new_lam.type_signature,
         computation_types.FunctionType(
@@ -1362,7 +1376,9 @@ class AsFunctionOfSomeSubparametersTest(tf.test.TestCase):
     new_lam = form_utils._as_function_of_some_federated_subparameters(
         lam, [(0, 0)]
     )
-    expected_parameter_type = computation_types.at_clients((np.int32,))
+    expected_parameter_type = computation_types.FederatedType(
+        (np.int32,), placements.CLIENTS
+    )
     type_test_utils.assert_types_equivalent(
         new_lam.type_signature,
         computation_types.FunctionType(
@@ -1400,7 +1416,9 @@ class AsFunctionOfSomeSubparametersTest(tf.test.TestCase):
         lam, [(0, 0), (2, 0)]
     )
 
-    expected_parameter_type = computation_types.at_clients((np.int32, np.int32))
+    expected_parameter_type = computation_types.FederatedType(
+        (np.int32, np.int32), placements.CLIENTS
+    )
     type_test_utils.assert_types_equivalent(
         new_lam.type_signature,
         computation_types.FunctionType(
@@ -1440,7 +1458,9 @@ class AsFunctionOfSomeSubparametersTest(tf.test.TestCase):
         lam, [(0, 0), (2, 0)]
     )
 
-    expected_parameter_type = computation_types.at_clients((np.int32, np.int32))
+    expected_parameter_type = computation_types.FederatedType(
+        (np.int32, np.int32), placements.CLIENTS
+    )
     type_test_utils.assert_types_equivalent(
         new_lam.type_signature,
         computation_types.FunctionType(
