@@ -23,6 +23,7 @@ from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.aggregators import sum_factory
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_test_utils
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
@@ -69,7 +70,7 @@ class ConcatFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
     # Inner SumFactory has no state.
-    server_state_type = computation_types.at_server(())
+    server_state_type = computation_types.FederatedType((), placements.SERVER)
 
     expected_initialize_type = computation_types.FunctionType(
         parameter=None, result=server_state_type
@@ -79,15 +80,21 @@ class ConcatFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
     )
 
     # Inner SumFactory has no measurements.
-    expected_measurements_type = computation_types.at_server(())
+    expected_measurements_type = computation_types.FederatedType(
+        (), placements.SERVER
+    )
     expected_next_type = computation_types.FunctionType(
         parameter=collections.OrderedDict(
             state=server_state_type,
-            value=computation_types.at_clients(value_type),
+            value=computation_types.FederatedType(
+                value_type, placements.CLIENTS
+            ),
         ),
         result=measured_process.MeasuredProcessOutput(
             state=server_state_type,
-            result=computation_types.at_server(value_type),
+            result=computation_types.FederatedType(
+                value_type, placements.SERVER
+            ),
             measurements=expected_measurements_type,
         ),
     )
@@ -109,8 +116,9 @@ class ConcatFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
     # State comes from the inner MeanFactory.
-    server_state_type = computation_types.at_server(
-        collections.OrderedDict(value_sum_process=(), weight_sum_process=())
+    server_state_type = computation_types.FederatedType(
+        collections.OrderedDict(value_sum_process=(), weight_sum_process=()),
+        placements.SERVER,
     )
 
     expected_initialize_type = computation_types.FunctionType(
@@ -121,18 +129,25 @@ class ConcatFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
     )
 
     # Measurements come from the inner mean factory.
-    expected_measurements_type = computation_types.at_server(
-        collections.OrderedDict(mean_value=(), mean_weight=())
+    expected_measurements_type = computation_types.FederatedType(
+        collections.OrderedDict(mean_value=(), mean_weight=()),
+        placements.SERVER,
     )
     expected_next_type = computation_types.FunctionType(
         parameter=collections.OrderedDict(
             state=server_state_type,
-            value=computation_types.at_clients(value_type),
-            weight=computation_types.at_clients(weight_type),
+            value=computation_types.FederatedType(
+                value_type, placements.CLIENTS
+            ),
+            weight=computation_types.FederatedType(
+                weight_type, placements.CLIENTS
+            ),
         ),
         result=measured_process.MeasuredProcessOutput(
             state=server_state_type,
-            result=computation_types.at_server(value_type),
+            result=computation_types.FederatedType(
+                value_type, placements.SERVER
+            ),
             measurements=expected_measurements_type,
         ),
     )

@@ -24,6 +24,7 @@ from tensorflow_federated.python.core.environments.tensorflow_frontend import te
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
 
@@ -113,8 +114,8 @@ def add_measurements(
 
         @federated_computation.federated_computation(
             init_fn.type_signature.result,
-            computation_types.at_clients(value_type),
-            computation_types.at_clients(weight_type),
+            computation_types.FederatedType(value_type, placements.CLIENTS),
+            computation_types.FederatedType(weight_type, placements.CLIENTS),
         )
         def next_fn(state, value, weight):
           inner_agg_output = inner_agg_process.next(state, value, weight)
@@ -154,7 +155,7 @@ def add_measurements(
 
         @federated_computation.federated_computation(
             init_fn.type_signature.result,
-            computation_types.at_clients(value_type),
+            computation_types.FederatedType(value_type, placements.CLIENTS),
         )
         def next_fn(state, value):
           inner_agg_output = inner_agg_process.next(state, value)

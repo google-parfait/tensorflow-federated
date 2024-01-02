@@ -151,7 +151,8 @@ class HadamardTransformFactory(factory.UnweightedAggregationFactory):
       return intrinsics.federated_zip((inner_state, my_state))
 
     @federated_computation.federated_computation(
-        init_fn.type_signature.result, computation_types.at_clients(value_type)
+        init_fn.type_signature.result,
+        computation_types.FederatedType(value_type, placements.CLIENTS),
     )
     def next_fn(state, value):
       next_fn_impl = _build_next_fn(
@@ -292,7 +293,8 @@ class DiscreteFourierTransformFactory(factory.UnweightedAggregationFactory):
       return intrinsics.federated_zip((inner_state, my_state))
 
     @federated_computation.federated_computation(
-        init_fn.type_signature.result, computation_types.at_clients(value_type)
+        init_fn.type_signature.result,
+        computation_types.FederatedType(value_type, placements.CLIENTS),
     )
     def next_fn(state, value):
       next_fn_impl = _build_next_fn(

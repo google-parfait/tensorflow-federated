@@ -30,6 +30,7 @@ from tensorflow_federated.python.aggregators import rotation
 from tensorflow_federated.python.aggregators import secure
 from tensorflow_federated.python.core.backends.test import execution_contexts
 from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import estimation_process
@@ -187,13 +188,17 @@ class DistributedDpComputationTest(tf.test.TestCase, parameterized.TestCase):
     expected_next_type = computation_types.FunctionType(
         parameter=collections.OrderedDict(
             state=expected_state_type,
-            value=computation_types.at_clients(value_type),
+            value=computation_types.FederatedType(
+                value_type, placements.CLIENTS
+            ),
         ),
         result=measured_process.MeasuredProcessOutput(
             state=expected_state_type,
-            result=computation_types.at_server(value_type),
-            measurements=computation_types.at_server(
-                expected_measurements_type
+            result=computation_types.FederatedType(
+                value_type, placements.SERVER
+            ),
+            measurements=computation_types.FederatedType(
+                expected_measurements_type, placements.SERVER
             ),
         ),
     )

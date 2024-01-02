@@ -40,14 +40,15 @@ class FederatedMinTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(_MIN_MAX_TEST_DTYPES)
   def test_federated_min_scalar(self, dtype):
+
     @federated_computation.federated_computation(
-        computation_types.at_clients(dtype)
+        computation_types.FederatedType(dtype, placements.CLIENTS)
     )
     def call_federated_min(value):
       return primitives.federated_min(value)
 
     self.assertEqual(
-        computation_types.at_server(dtype),
+        computation_types.FederatedType(dtype, placements.SERVER),
         call_federated_min.type_signature.result,
     )
 
@@ -60,8 +61,8 @@ class FederatedMinTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(_MIN_MAX_TEST_DTYPES)
   def test_federated_min_struct(self, dtype):
-    struct_type = computation_types.at_clients(
-        computation_types.to_type([dtype, (dtype, [2])])
+    struct_type = computation_types.FederatedType(
+        computation_types.to_type([dtype, (dtype, [2])]), placements.CLIENTS
     )
 
     @federated_computation.federated_computation(struct_type)
@@ -69,7 +70,7 @@ class FederatedMinTest(tf.test.TestCase, parameterized.TestCase):
       return primitives.federated_min(value)
 
     self.assertEqual(
-        computation_types.at_server(struct_type.member),
+        computation_types.FederatedType(struct_type.member, placements.SERVER),
         call_federated_min.type_signature.result,
     )
 
@@ -82,8 +83,9 @@ class FederatedMinTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(_MIN_MAX_TEST_DTYPES)
   def test_federated_min_named_struct(self, dtype):
-    struct_type = computation_types.at_clients(
-        computation_types.to_type(collections.OrderedDict(x=dtype, y=dtype))
+    struct_type = computation_types.FederatedType(
+        computation_types.to_type(collections.OrderedDict(x=dtype, y=dtype)),
+        placements.CLIENTS,
     )
 
     @federated_computation.federated_computation(struct_type)
@@ -91,7 +93,7 @@ class FederatedMinTest(tf.test.TestCase, parameterized.TestCase):
       return primitives.federated_min(value)
 
     self.assertEqual(
-        computation_types.at_server(struct_type.member),
+        computation_types.FederatedType(struct_type.member, placements.SERVER),
         call_federated_min.type_signature.result,
     )
 
@@ -104,8 +106,8 @@ class FederatedMinTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(_MIN_MAX_TEST_DTYPES)
   def test_federated_min_nested_struct(self, dtype):
-    struct_type = computation_types.at_clients(
-        computation_types.to_type([[dtype, dtype], dtype])
+    struct_type = computation_types.FederatedType(
+        computation_types.to_type([[dtype, dtype], dtype]), placements.CLIENTS
     )
 
     @federated_computation.federated_computation(struct_type)
@@ -113,7 +115,7 @@ class FederatedMinTest(tf.test.TestCase, parameterized.TestCase):
       return primitives.federated_min(value)
 
     self.assertEqual(
-        computation_types.at_server(struct_type.member),
+        computation_types.FederatedType(struct_type.member, placements.SERVER),
         call_federated_min.type_signature.result,
     )
 
@@ -128,7 +130,7 @@ class FederatedMinTest(tf.test.TestCase, parameterized.TestCase):
     with self.assertRaises(ValueError):
 
       @federated_computation.federated_computation(
-          computation_types.at_clients(np.bool_)
+          computation_types.FederatedType(np.bool_, placements.CLIENTS)
       )
       def call_federated_min(value):
         return primitives.federated_min(value)
@@ -139,7 +141,7 @@ class FederatedMinTest(tf.test.TestCase, parameterized.TestCase):
     with self.assertRaises(TypeError):
 
       @federated_computation.federated_computation(
-          computation_types.at_server(np.int32)
+          computation_types.FederatedType(np.int32, placements.SERVER)
       )
       def call_federated_min(value):
         return primitives.federated_min(value)
@@ -151,14 +153,15 @@ class FederatedMaxTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(_MIN_MAX_TEST_DTYPES)
   def test_federated_max_scalar(self, dtype):
+
     @federated_computation.federated_computation(
-        computation_types.at_clients(dtype)
+        computation_types.FederatedType(dtype, placements.CLIENTS)
     )
     def call_federated_max(value):
       return primitives.federated_max(value)
 
     self.assertEqual(
-        computation_types.at_server(dtype),
+        computation_types.FederatedType(dtype, placements.SERVER),
         call_federated_max.type_signature.result,
     )
 
@@ -171,8 +174,8 @@ class FederatedMaxTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(_MIN_MAX_TEST_DTYPES)
   def test_federated_max_struct(self, dtype):
-    struct_type = computation_types.at_clients(
-        computation_types.to_type([dtype, (dtype, [2])])
+    struct_type = computation_types.FederatedType(
+        computation_types.to_type([dtype, (dtype, [2])]), placements.CLIENTS
     )
 
     @federated_computation.federated_computation(struct_type)
@@ -180,7 +183,7 @@ class FederatedMaxTest(tf.test.TestCase, parameterized.TestCase):
       return primitives.federated_max(value)
 
     self.assertEqual(
-        computation_types.at_server(struct_type.member),
+        computation_types.FederatedType(struct_type.member, placements.SERVER),
         call_federated_max.type_signature.result,
     )
 
@@ -193,8 +196,9 @@ class FederatedMaxTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(_MIN_MAX_TEST_DTYPES)
   def test_federated_max_named_struct(self, dtype):
-    struct_type = computation_types.at_clients(
-        computation_types.to_type(collections.OrderedDict(x=dtype, y=dtype))
+    struct_type = computation_types.FederatedType(
+        computation_types.to_type(collections.OrderedDict(x=dtype, y=dtype)),
+        placements.CLIENTS,
     )
 
     @federated_computation.federated_computation(struct_type)
@@ -202,7 +206,7 @@ class FederatedMaxTest(tf.test.TestCase, parameterized.TestCase):
       return primitives.federated_max(value)
 
     self.assertEqual(
-        computation_types.at_server(struct_type.member),
+        computation_types.FederatedType(struct_type.member, placements.SERVER),
         call_federated_max.type_signature.result,
     )
 
@@ -215,8 +219,8 @@ class FederatedMaxTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(_MIN_MAX_TEST_DTYPES)
   def test_federated_max_nested_struct(self, dtype):
-    struct_type = computation_types.at_clients(
-        computation_types.to_type([[dtype, dtype], dtype])
+    struct_type = computation_types.FederatedType(
+        computation_types.to_type([[dtype, dtype], dtype]), placements.CLIENTS
     )
 
     @federated_computation.federated_computation(struct_type)
@@ -224,7 +228,7 @@ class FederatedMaxTest(tf.test.TestCase, parameterized.TestCase):
       return primitives.federated_max(value)
 
     self.assertEqual(
-        computation_types.at_server(struct_type.member),
+        computation_types.FederatedType(struct_type.member, placements.SERVER),
         call_federated_max.type_signature.result,
     )
 
@@ -239,7 +243,7 @@ class FederatedMaxTest(tf.test.TestCase, parameterized.TestCase):
     with self.assertRaises(ValueError):
 
       @federated_computation.federated_computation(
-          computation_types.at_clients(np.bool_)
+          computation_types.FederatedType(np.bool_, placements.CLIENTS)
       )
       def call_federated_max(value):
         return primitives.federated_max(value)
@@ -250,7 +254,7 @@ class FederatedMaxTest(tf.test.TestCase, parameterized.TestCase):
     with self.assertRaises(TypeError):
 
       @federated_computation.federated_computation(
-          computation_types.at_server(np.float32)
+          computation_types.FederatedType(np.float32, placements.SERVER)
       )
       def call_federated_max(value):
         return primitives.federated_max(value)

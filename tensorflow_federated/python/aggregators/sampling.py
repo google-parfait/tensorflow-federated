@@ -474,8 +474,8 @@ class UnweightedReservoirSamplingFactory(factory.UnweightedAggregationFactory):
       return intrinsics.federated_value((), placements.SERVER)
 
     @federated_computation.federated_computation(
-        computation_types.at_server(()),
-        computation_types.at_clients(value_type),
+        computation_types.FederatedType((), placements.SERVER),
+        computation_types.FederatedType(value_type, placements.CLIENTS),
     )
     def next_fn(unused_state, value):
       # Empty tuple is the `None` of TFF.

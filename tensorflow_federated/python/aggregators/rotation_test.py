@@ -24,6 +24,7 @@ from tensorflow_federated.python.aggregators import rotation
 from tensorflow_federated.python.aggregators import sum_factory
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_test_utils
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
@@ -112,8 +113,8 @@ class RotationsComputationTest(tf.test.TestCase, parameterized.TestCase):
     process = factory.create(value_type)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
-    server_state_type = computation_types.at_server(
-        ((), rotation.SEED_TFF_TYPE)
+    server_state_type = computation_types.FederatedType(
+        ((), rotation.SEED_TFF_TYPE), placements.SERVER
     )
 
     expected_initialize_type = computation_types.FunctionType(
@@ -123,17 +124,21 @@ class RotationsComputationTest(tf.test.TestCase, parameterized.TestCase):
         process.initialize.type_signature, expected_initialize_type
     )
 
-    expected_measurements_type = computation_types.at_server(
-        collections.OrderedDict([(name, ())])
+    expected_measurements_type = computation_types.FederatedType(
+        collections.OrderedDict([(name, ())]), placements.SERVER
     )
     expected_next_type = computation_types.FunctionType(
         parameter=collections.OrderedDict(
             state=server_state_type,
-            value=computation_types.at_clients(value_type),
+            value=computation_types.FederatedType(
+                value_type, placements.CLIENTS
+            ),
         ),
         result=measured_process.MeasuredProcessOutput(
             state=server_state_type,
-            result=computation_types.at_server(value_type),
+            result=computation_types.FederatedType(
+                value_type, placements.SERVER
+            ),
             measurements=expected_measurements_type,
         ),
     )

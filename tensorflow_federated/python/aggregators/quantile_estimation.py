@@ -202,7 +202,7 @@ def _affine_transform(multiplier, increment):
   )
   return federated_computation.federated_computation(
       lambda value: intrinsics.federated_map(transform_tf_comp, value),
-      computation_types.at_server(np.float32),
+      computation_types.FederatedType(np.float32, placements.SERVER),
   )
 
 

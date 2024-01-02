@@ -321,7 +321,8 @@ def _encoded_next_fn(server_state_type, value_type, encoders):
     return acc
 
   @federated_computation.federated_computation(
-      server_state_type, computation_types.at_clients(value_type)
+      server_state_type,
+      computation_types.FederatedType(value_type, placements.CLIENTS),
   )
   def next_fn(state, value):
     encode_params, decode_before_sum_params, decode_after_sum_params = (

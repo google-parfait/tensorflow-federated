@@ -22,13 +22,14 @@ from tensorflow_federated.python.aggregators import modular_clipping
 from tensorflow_federated.python.aggregators import sum_factory
 from tensorflow_federated.python.core.backends.test import execution_contexts
 from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
 
 _test_struct_type = [(np.int32, (3,)), np.int32]
 
-_int_at_server = computation_types.at_server(np.int32)
-_int_at_clients = computation_types.at_clients(np.int32)
+_int_at_server = computation_types.FederatedType(np.int32, placements.SERVER)
+_int_at_clients = computation_types.FederatedType(np.int32, placements.CLIENTS)
 
 
 def _make_test_struct_value(x):
@@ -74,7 +75,7 @@ class ModularClippingSumFactoryComputationTest(
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
     # Inner SumFactory has no state.
-    server_state_type = computation_types.at_server(())
+    server_state_type = computation_types.FederatedType((), placements.SERVER)
 
     expected_init_type = computation_types.FunctionType(
         parameter=None, result=server_state_type
@@ -90,13 +91,17 @@ class ModularClippingSumFactoryComputationTest(
     expected_next_type = computation_types.FunctionType(
         parameter=collections.OrderedDict(
             state=server_state_type,
-            value=computation_types.at_clients(value_type),
+            value=computation_types.FederatedType(
+                value_type, placements.CLIENTS
+            ),
         ),
         result=measured_process.MeasuredProcessOutput(
             state=server_state_type,
-            result=computation_types.at_server(value_type),
-            measurements=computation_types.at_server(
-                expected_measurements_type
+            result=computation_types.FederatedType(
+                value_type, placements.SERVER
+            ),
+            measurements=computation_types.FederatedType(
+                expected_measurements_type, placements.SERVER
             ),
         ),
     )

@@ -178,7 +178,8 @@ class EliasGammaEncodedSumFactory(factory.UnweightedAggregationFactory):
       return intrinsics.federated_value((), placements.SERVER)
 
     @federated_computation.federated_computation(
-        init_fn.type_signature.result, computation_types.at_clients(value_type)
+        init_fn.type_signature.result,
+        computation_types.FederatedType(value_type, placements.CLIENTS),
     )
     def next_fn(state, value):
       measurements = ()

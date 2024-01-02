@@ -205,7 +205,8 @@ class ModularClippingSumFactory(factory.UnweightedAggregationFactory):
     )
 
     @federated_computation.federated_computation(
-        state_type, computation_types.at_clients(value_type)
+        state_type,
+        computation_types.FederatedType(value_type, placements.CLIENTS),
     )
     def next_fn(state, value):
       clip_lower = intrinsics.federated_value(

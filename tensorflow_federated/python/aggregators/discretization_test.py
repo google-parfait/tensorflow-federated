@@ -22,6 +22,7 @@ from tensorflow_federated.python.aggregators import discretization
 from tensorflow_federated.python.aggregators import sum_factory
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_test_utils
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
@@ -85,12 +86,13 @@ class DiscretizationFactoryComputationTest(
     process = factory.create(value_type)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
-    server_state_type = computation_types.at_server(
+    server_state_type = computation_types.FederatedType(
         collections.OrderedDict(
             scale_factor=np.float32,
             prior_norm_bound=np.float32,
             inner_agg_process=(),
-        )
+        ),
+        placements.SERVER,
     )
 
     expected_initialize_type = computation_types.FunctionType(
@@ -100,17 +102,21 @@ class DiscretizationFactoryComputationTest(
         process.initialize.type_signature, expected_initialize_type
     )
 
-    expected_measurements_type = computation_types.at_server(
-        collections.OrderedDict(discretize=())
+    expected_measurements_type = computation_types.FederatedType(
+        collections.OrderedDict(discretize=()), placements.SERVER
     )
     expected_next_type = computation_types.FunctionType(
         parameter=collections.OrderedDict(
             state=server_state_type,
-            value=computation_types.at_clients(value_type),
+            value=computation_types.FederatedType(
+                value_type, placements.CLIENTS
+            ),
         ),
         result=measured_process.MeasuredProcessOutput(
             state=server_state_type,
-            result=computation_types.at_server(value_type),
+            result=computation_types.FederatedType(
+                value_type, placements.SERVER
+            ),
             measurements=expected_measurements_type,
         ),
     )

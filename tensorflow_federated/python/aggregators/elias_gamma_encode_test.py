@@ -23,6 +23,7 @@ from tensorflow_federated.python.aggregators import elias_gamma_encode
 from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_test_utils
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
@@ -35,11 +36,13 @@ _test_value_type_struct_int32_tensors = collections.OrderedDict({
     'layer1': (np.int32, (4,)),
     'layer2': (np.int32, (4,)),
 })
-_test_federated_value_type_int32_tensor = computation_types.at_clients(
-    _test_value_type_int32_tensor_rank_1
+_test_federated_value_type_int32_tensor = computation_types.FederatedType(
+    _test_value_type_int32_tensor_rank_1, placements.CLIENTS
 )
 _test_federated_value_type_struct_int32_tensors = collections.OrderedDict({
-    'layer1': computation_types.at_server((np.int32, (4,))),
+    'layer1': computation_types.FederatedType(
+        (np.int32, (4,)), placements.SERVER
+    ),
     'layer2': (np.int32, (4,)),
 })
 
@@ -121,7 +124,7 @@ class EncodeComputationTest(tf.test.TestCase, parameterized.TestCase):
     process = factory.create(value_type)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
-    server_state_type = computation_types.at_server(())
+    server_state_type = computation_types.FederatedType((), placements.SERVER)
     expected_initialize_type = computation_types.FunctionType(
         parameter=None, result=server_state_type
     )
@@ -132,17 +135,21 @@ class EncodeComputationTest(tf.test.TestCase, parameterized.TestCase):
     expected_measurements_type = computation_types.StructType(
         [('elias_gamma_code_avg_bitrate', np.float64)]
     )
-    expected_measurements_type = computation_types.at_server(
-        expected_measurements_type
+    expected_measurements_type = computation_types.FederatedType(
+        expected_measurements_type, placements.SERVER
     )
     expected_next_type = computation_types.FunctionType(
         parameter=collections.OrderedDict(
             state=server_state_type,
-            value=computation_types.at_clients(value_type),
+            value=computation_types.FederatedType(
+                value_type, placements.CLIENTS
+            ),
         ),
         result=measured_process.MeasuredProcessOutput(
             state=server_state_type,
-            result=computation_types.at_server(value_type),
+            result=computation_types.FederatedType(
+                value_type, placements.SERVER
+            ),
             measurements=expected_measurements_type,
         ),
     )

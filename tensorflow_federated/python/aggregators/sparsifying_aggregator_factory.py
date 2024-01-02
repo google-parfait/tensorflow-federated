@@ -154,9 +154,10 @@ class SparsifyingSumFactory(factory.UnweightedAggregationFactory):
           computation_types.TensorType, computation_types.StructType
       ],
   ) -> aggregation_process.AggregationProcess:
+
     @federated_computation.federated_computation(
-        computation_types.at_server(()),
-        computation_types.at_clients(value_type),
+        computation_types.FederatedType((), placements.SERVER),
+        computation_types.FederatedType(value_type, placements.CLIENTS),
     )
     def next_fn(state, client_values):
       del state  # Unused.
