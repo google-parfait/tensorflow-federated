@@ -969,7 +969,7 @@ class FederatedType(Type, metaclass=_Intern):
 
 
 @deprecation.deprecated(
-    '`tff.types.at_server(type_spec)` is deprecated, use '
+    '`tff.type_at_server(type_spec)` is deprecated, use '
     '`tff.FederatedType(type_spec, tff.SERVER, all_equal=True)` instead.'
 )
 def at_server(type_spec: object) -> FederatedType:
@@ -985,7 +985,7 @@ def at_server(type_spec: object) -> FederatedType:
 
 
 @deprecation.deprecated(
-    '`tff.types.at_clients(type_spec, all_equal)` is deprecated, use '
+    '`tff.type_at_clients(type_spec, all_equal)` is deprecated, use '
     '`tff.FederatedType(type_spec, tff.CLIENTS, all_equal)` instead.'
 )
 def at_clients(type_spec: object, all_equal: bool = False) -> FederatedType:
