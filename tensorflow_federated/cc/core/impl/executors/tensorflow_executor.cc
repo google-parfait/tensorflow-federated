@@ -776,16 +776,13 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
   // concurrent invocations of session.run to that number. Zero or negative
   // provides effectively unlimited concurrency.
   explicit TensorFlowExecutor(int32_t max_concurrent_computation_calls)
-      : max_concurrent_computation_calls_(max_concurrent_computation_calls),
-        thread_pool_(
+      : thread_pool_(
             // Use a threadpool with CPU * 4 or the user specified
             // maximum.
             ((max_concurrent_computation_calls > 0)
                  ? max_concurrent_computation_calls
                  : std::thread::hardware_concurrency() * 4),
             ExecutorName()) {
-    VLOG(2) << "max_concurrent_computation_calls: "
-            << max_concurrent_computation_calls_;
     VLOG(2) << "thread pool size: "
             << ((max_concurrent_computation_calls > 0)
                     ? max_concurrent_computation_calls
@@ -798,10 +795,6 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
   absl::flat_hash_map<uint64_t, std::shared_ptr<Computation>> function_cache_
       ABSL_GUARDED_BY(function_cache_mutex_);
   absl::Mutex function_cache_mutex_;
-  // TODO: b/254454077 - now that TensorFlowExecutor has a thread pool, clean-up
-  // the usage of `max_concurrent_computation_calls` to move all parallellism
-  // limits ot the thread pool.
-  int32_t max_concurrent_computation_calls_;
   ThreadPool thread_pool_;
 
   absl::StatusOr<ExecutorValue> CreateValueAny(const v0::Value& value_pb) {

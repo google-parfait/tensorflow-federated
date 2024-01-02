@@ -510,7 +510,6 @@ class DTensorExecutor : public ExecutorBase<ValueFuture> {
                   int32_t max_concurrent_computation_calls)
       : context_(std::move(context)),
         dtensor_device_name_(dtensor_device_name),
-        max_concurrent_computation_calls_(max_concurrent_computation_calls),
         mesh_(mesh),
         converter_(std::move(converter)),
         thread_pool_(
@@ -520,8 +519,6 @@ class DTensorExecutor : public ExecutorBase<ValueFuture> {
                  ? max_concurrent_computation_calls
                  : std::thread::hardware_concurrency() * 4),
             ExecutorName()) {
-    VLOG(2) << "max_concurrent_computation_calls: "
-            << max_concurrent_computation_calls_;
     VLOG(2) << "thread pool size: "
             << ((max_concurrent_computation_calls > 0)
                     ? max_concurrent_computation_calls
@@ -595,7 +592,6 @@ class DTensorExecutor : public ExecutorBase<ValueFuture> {
  private:
   TFE_Context* context_ = nullptr;
   std::optional<std::string> dtensor_device_name_;
-  int32_t max_concurrent_computation_calls_;
   std::optional<tensorflow::dtensor::Mesh> mesh_;
   std::unique_ptr<DTensorConverter> converter_;
   // ThreadPool should always be the last member so that in progress threads
