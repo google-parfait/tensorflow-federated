@@ -15,6 +15,7 @@
 import collections
 import inspect
 from typing import NamedTuple
+from unittest import mock
 
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -1357,11 +1358,6 @@ class TensorflowToTypeTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
       (
-          'type',
-          computation_types.TensorType(np.int32),
-          computation_types.TensorType(np.int32),
-      ),
-      (
           'dtype',
           tf.int32,
           computation_types.TensorType(np.int32),
@@ -1642,9 +1638,25 @@ class TensorflowToTypeTest(parameterized.TestCase):
           ),
       ),
   )
-  def test_returns_result(self, obj, expected_result):
+  def test_returns_result_with_tensorflow_obj(self, obj, expected_result):
     actual_result = computation_types.tensorflow_to_type(obj)
     self.assertEqual(actual_result, expected_result)
+
+  @parameterized.named_parameters(
+      ('type', computation_types.TensorType(np.int32)),
+      ('dtype', np.int32),
+      ('tensor_like', (np.int32, [2, 3])),
+      ('sequence_unnamed', [np.bool_, np.int32, np.str_]),
+      ('sequence_named', [('a', np.bool_), ('b', np.int32), ('c', np.str_)]),
+      ('mapping', {'a': np.bool_, 'b': np.int32, 'c': np.str_}),
+  )
+  def test_delegates_result_with_obj(self, obj):
+
+    with mock.patch.object(
+        computation_types, 'to_type', autospec=True, spec_set=True
+    ) as mock_to_type:
+      computation_types.tensorflow_to_type(obj)
+      mock_to_type.assert_called_once_with(obj)
 
 
 class RepresentationTest(absltest.TestCase):
