@@ -360,8 +360,8 @@ def build_model_delta_client_work(
 
     @federated_computation.federated_computation(
         init_fn.type_signature.result,
-        computation_types.at_clients(weights_type),
-        computation_types.at_clients(data_type),
+        computation_types.FederatedType(weights_type, placements.CLIENTS),
+        computation_types.FederatedType(data_type, placements.CLIENTS),
     )
     def next_fn(state, weights, client_data):
       state_at_clients = intrinsics.federated_broadcast(state)
@@ -397,8 +397,8 @@ def build_model_delta_client_work(
 
     @federated_computation.federated_computation(
         init_fn.type_signature.result,
-        computation_types.at_clients(weights_type),
-        computation_types.at_clients(data_type),
+        computation_types.FederatedType(weights_type, placements.CLIENTS),
+        computation_types.FederatedType(data_type, placements.CLIENTS),
     )
     def next_fn(state, weights, client_data):
       client_result, model_outputs = intrinsics.federated_map(
@@ -586,9 +586,9 @@ def build_functional_model_delta_client_work(
     metrics_aggregator = aggregator.sum_then_finalize
 
   @federated_computation.federated_computation(
-      computation_types.at_server(()),
-      computation_types.at_clients(weights_type),
-      computation_types.at_clients(data_type),
+      computation_types.FederatedType((), placements.SERVER),
+      computation_types.FederatedType(weights_type, placements.CLIENTS),
+      computation_types.FederatedType(data_type, placements.CLIENTS),
   )
   def next_fn(state, weights, client_data):
     client_result, unfinalized_metrics = intrinsics.federated_map(

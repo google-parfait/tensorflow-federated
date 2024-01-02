@@ -25,6 +25,7 @@ from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.templates import iterative_process
 from tensorflow_federated.python.core.templates import measured_process
@@ -306,8 +307,10 @@ def _build_federated_evaluation(
   )
 
   @federated_computation.federated_computation(
-      computation_types.at_server(model_weights_type),
-      computation_types.at_clients(_SequenceType(batch_type)),
+      computation_types.FederatedType(model_weights_type, placements.SERVER),
+      computation_types.FederatedType(
+          _SequenceType(batch_type), placements.CLIENTS
+      ),
   )
   def server_eval(server_model_weights, federated_dataset):
     if broadcast_process is not None:
@@ -359,8 +362,10 @@ def _build_functional_federated_evaluation(
   )
 
   @federated_computation.federated_computation(
-      computation_types.at_server(weights_type),
-      computation_types.at_clients(_SequenceType(batch_type)),
+      computation_types.FederatedType(weights_type, placements.SERVER),
+      computation_types.FederatedType(
+          _SequenceType(batch_type), placements.CLIENTS
+      ),
   )
   def federated_eval(server_weights, client_data):
     if broadcast_process is not None:

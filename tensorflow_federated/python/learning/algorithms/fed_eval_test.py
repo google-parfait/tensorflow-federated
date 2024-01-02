@@ -150,7 +150,9 @@ def _create_custom_metrics_aggregation_process(
 
   @federated_computation.federated_computation(
       init_fn.type_signature.result,
-      computation_types.at_clients(local_unfinalized_metrics_type),
+      computation_types.FederatedType(
+          local_unfinalized_metrics_type, placements.CLIENTS
+      ),
   )
   def next_fn(state, unfinalized_metrics):
     max_unfinalized_metrics = primitives.federated_max(unfinalized_metrics)
@@ -210,7 +212,7 @@ class FedEvalProcessTest(tf.test.TestCase):
     eval_process = fed_eval.build_fed_eval(model_fn)
     self.assertIsInstance(eval_process, learning_process.LearningProcess)
 
-    expected_state_type = computation_types.at_server(
+    expected_state_type = computation_types.FederatedType(
         composers.LearningAlgorithmState(
             global_model_weights=model_weights_type,
             distributor=(),
@@ -219,9 +221,10 @@ class FedEvalProcessTest(tf.test.TestCase):
                 value_sum_process=(), weight_sum_process=()
             ),
             finalizer=(),
-        )
+        ),
+        placements.SERVER,
     )
-    expected_metrics_type = computation_types.at_server(
+    expected_metrics_type = computation_types.FederatedType(
         collections.OrderedDict(
             distributor=(),
             client_work=collections.OrderedDict(
@@ -232,7 +235,8 @@ class FedEvalProcessTest(tf.test.TestCase):
             ),
             aggregator=collections.OrderedDict(mean_value=(), mean_weight=()),
             finalizer=(),
-        )
+        ),
+        placements.SERVER,
     )
     type_test_utils.assert_types_equivalent(
         eval_process.initialize.type_signature,
@@ -245,13 +249,14 @@ class FedEvalProcessTest(tf.test.TestCase):
                 ('state', expected_state_type),
                 (
                     'client_data',
-                    computation_types.at_clients(
+                    computation_types.FederatedType(
                         SequenceType(
                             StructType([(
                                 'temp',
                                 TensorType(dtype=tf.float32, shape=[None]),
                             )])
-                        )
+                        ),
+                        placements.CLIENTS,
                     ),
                 ),
             ]),
@@ -336,7 +341,9 @@ class FedEvalProcessTest(tf.test.TestCase):
 
       @federated_computation.federated_computation(
           init_fn.type_signature.result,
-          computation_types.at_server(model_weights_type),
+          computation_types.FederatedType(
+              model_weights_type, placements.SERVER
+          ),
       )
       def next_fn(state, value):
         return measured_process.MeasuredProcessOutput(

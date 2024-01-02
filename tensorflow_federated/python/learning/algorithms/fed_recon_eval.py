@@ -309,8 +309,8 @@ def build_fed_recon_eval(
 
   @federated_computation.federated_computation(
       client_initialize.type_signature.result,
-      computation_types.at_clients(model_weights_type),
-      computation_types.at_clients(dataset_type),
+      computation_types.FederatedType(model_weights_type, placements.CLIENTS),
+      computation_types.FederatedType(dataset_type, placements.CLIENTS),
   )
   def client_work(state, model_weights, client_dataset):
     unfinalized_metrics = intrinsics.federated_map(
@@ -345,8 +345,8 @@ def build_fed_recon_eval(
 
   # The evaluation will *not* send model updates back, only metrics; so the type
   # is simply an empty tuple.
-  empty_client_work_result_type = computation_types.at_clients(
-      client_works.ClientResult(update=(), update_weight=())
+  empty_client_work_result_type = computation_types.FederatedType(
+      client_works.ClientResult(update=(), update_weight=()), placements.CLIENTS
   )
   empty_model_update_type = empty_client_work_result_type.member.update  # pytype: disable=attribute-error
   empty_model_update_weight_type = (

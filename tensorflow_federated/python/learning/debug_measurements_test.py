@@ -22,25 +22,28 @@ from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.learning import debug_measurements
 
 FloatType = computation_types.TensorType(np.float32)
-FloatAtServer = computation_types.at_server(FloatType)
-FloatAtClients = computation_types.at_clients(FloatType)
+FloatAtServer = computation_types.FederatedType(FloatType, placements.SERVER)
+FloatAtClients = computation_types.FederatedType(FloatType, placements.CLIENTS)
 
-SERVER_MEASUREMENTS_OUTPUT_TYPE = computation_types.at_server(
+SERVER_MEASUREMENTS_OUTPUT_TYPE = computation_types.FederatedType(
     collections.OrderedDict([
         ('server_update_max', FloatType),
         ('server_update_norm', FloatType),
         ('server_update_min', FloatType),
-    ])
+    ]),
+    placements.SERVER,
 )
 
-CLIENT_MEASUREMENTS_OUTPUT_TYPE = computation_types.at_server(
+CLIENT_MEASUREMENTS_OUTPUT_TYPE = computation_types.FederatedType(
     collections.OrderedDict([
         ('average_client_norm', FloatType),
         ('std_dev_client_norm', FloatType),
-    ])
+    ]),
+    placements.SERVER,
 )
 
 
@@ -64,7 +67,7 @@ class DebugMeasurementsTest(tf.test.TestCase, parameterized.TestCase):
     _, server_measurement_fn = (
         debug_measurements._build_aggregator_measurement_fns()
     )
-    input_type = computation_types.at_server(value_type)
+    input_type = computation_types.FederatedType(value_type, placements.SERVER)
 
     @federated_computation.federated_computation(input_type)
     def get_server_measurements(server_update):
@@ -94,7 +97,7 @@ class DebugMeasurementsTest(tf.test.TestCase, parameterized.TestCase):
             weighted_aggregator=False
         )
     )
-    input_type = computation_types.at_clients(value_type)
+    input_type = computation_types.FederatedType(value_type, placements.CLIENTS)
 
     @federated_computation.federated_computation(input_type)
     def get_client_measurements(client_update):
@@ -124,8 +127,10 @@ class DebugMeasurementsTest(tf.test.TestCase, parameterized.TestCase):
             weighted_aggregator=True
         )
     )
-    input_type = computation_types.at_clients(value_type)
-    weights_type = computation_types.at_clients(np.float32)
+    input_type = computation_types.FederatedType(value_type, placements.CLIENTS)
+    weights_type = computation_types.FederatedType(
+        np.float32, placements.CLIENTS
+    )
 
     @federated_computation.federated_computation(input_type, weights_type)
     def get_client_measurements(client_update, client_weights):
@@ -233,8 +238,8 @@ class DebugMeasurementsTest(tf.test.TestCase, parameterized.TestCase):
     client_weights = [1.0 for _ in client_updates]
 
     @federated_computation.federated_computation(
-        computation_types.at_clients(np.float32),
-        computation_types.at_clients(np.float32),
+        computation_types.FederatedType(np.float32, placements.CLIENTS),
+        computation_types.FederatedType(np.float32, placements.CLIENTS),
     )
     def compute_client_statistics(client_updates, client_weights):
       return debug_measurements._calculate_client_update_statistics(
@@ -268,8 +273,8 @@ class DebugMeasurementsTest(tf.test.TestCase, parameterized.TestCase):
   ):
 
     @federated_computation.federated_computation(
-        computation_types.at_clients(np.float32),
-        computation_types.at_clients(np.float32),
+        computation_types.FederatedType(np.float32, placements.CLIENTS),
+        computation_types.FederatedType(np.float32, placements.CLIENTS),
     )
     def compute_client_statistics(client_updates, client_weights):
       return debug_measurements._calculate_client_update_statistics(
@@ -325,8 +330,8 @@ class DebugMeasurementsTest(tf.test.TestCase, parameterized.TestCase):
   ):
 
     @federated_computation.federated_computation(
-        computation_types.at_clients(client_type_spec),
-        computation_types.at_clients(np.float32),
+        computation_types.FederatedType(client_type_spec, placements.CLIENTS),
+        computation_types.FederatedType(np.float32, placements.CLIENTS),
     )
     def compute_client_statistics(client_updates, client_weights):
       return debug_measurements._calculate_client_update_statistics_mixed_dtype(
@@ -381,8 +386,8 @@ class DebugMeasurementsTest(tf.test.TestCase, parameterized.TestCase):
   ):
 
     @federated_computation.federated_computation(
-        computation_types.at_clients(client_type_spec),
-        computation_types.at_clients(np.float32),
+        computation_types.FederatedType(client_type_spec, placements.CLIENTS),
+        computation_types.FederatedType(np.float32, placements.CLIENTS),
     )
     def compute_client_statistics(client_updates, client_weights):
       return debug_measurements._calculate_client_update_statistics_mixed_dtype(
@@ -411,8 +416,8 @@ class DebugMeasurementsTest(tf.test.TestCase, parameterized.TestCase):
     with self.assertRaises(TypeError):
 
       @federated_computation.federated_computation(
-          computation_types.at_clients(client_type_spec),
-          computation_types.at_clients(np.float32),
+          computation_types.FederatedType(client_type_spec, placements.CLIENTS),
+          computation_types.FederatedType(np.float32, placements.CLIENTS),
       )
       def compute_client_statistics(client_updates, client_weights):
         return (

@@ -81,8 +81,10 @@ def _build_fed_eval_client_work(
 
   @federated_computation.federated_computation(
       init_fn.type_signature.result,
-      computation_types.at_clients(model_weights_type),
-      computation_types.at_clients(computation_types.SequenceType(batch_type)),
+      computation_types.FederatedType(model_weights_type, placements.CLIENTS),
+      computation_types.FederatedType(
+          computation_types.SequenceType(batch_type), placements.CLIENTS
+      ),
   )
   def next_fn(state, model_weights, client_data):
     model_outputs = intrinsics.federated_map(
@@ -157,8 +159,10 @@ def _build_functional_fed_eval_client_work(
 
   @federated_computation.federated_computation(
       init_fn.type_signature.result,
-      computation_types.at_clients(model_weights_type),
-      computation_types.at_clients(computation_types.SequenceType(batch_type)),
+      computation_types.FederatedType(model_weights_type, placements.CLIENTS),
+      computation_types.FederatedType(
+          computation_types.SequenceType(batch_type), placements.CLIENTS
+      ),
   )
   def next_fn(state, model_weights, client_data):
     unfinalized_metrics = intrinsics.federated_map(
@@ -307,8 +311,8 @@ def build_fed_eval(
         use_experimental_simulation_loop,
     )
 
-  client_work_result_type = computation_types.at_clients(
-      client_works.ClientResult(update=(), update_weight=())
+  client_work_result_type = computation_types.FederatedType(
+      client_works.ClientResult(update=(), update_weight=()), placements.CLIENTS
   )
   model_update_type = client_work_result_type.member.update  # pytype: disable=attribute-error
   model_update_weight_type = client_work_result_type.member.update_weight  # pytype: disable=attribute-error

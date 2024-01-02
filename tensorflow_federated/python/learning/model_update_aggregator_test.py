@@ -27,6 +27,7 @@ from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_test_utils
 from tensorflow_federated.python.core.templates import aggregation_process
@@ -359,13 +360,16 @@ class ModelUpdateAggregatorTest(parameterized.TestCase):
     process = factory_.create(_FLOAT_TYPE)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
-    expected_unweighted_state_type = computation_types.at_server((
-        computation_types.StructType(
-            [('step_size', np.float32), ('inner_agg_process', ())]
+    expected_unweighted_state_type = computation_types.FederatedType(
+        (
+            computation_types.StructType(
+                [('step_size', np.float32), ('inner_agg_process', ())]
+            ),
+            (),
         ),
-        (),
-    ))
-    expected_unweighted_measurements_type = computation_types.at_server(
+        placements.SERVER,
+    )
+    expected_unweighted_measurements_type = computation_types.FederatedType(
         collections.OrderedDict(
             mean_value=computation_types.StructType([
                 (
@@ -377,7 +381,8 @@ class ModelUpdateAggregatorTest(parameterized.TestCase):
                 ('distortion', np.float32),
             ]),
             mean_count=(),
-        )
+        ),
+        placements.SERVER,
     )
 
     type_test_utils.assert_types_equivalent(
@@ -391,11 +396,15 @@ class ModelUpdateAggregatorTest(parameterized.TestCase):
         computation_types.FunctionType(
             parameter=collections.OrderedDict(
                 state=expected_unweighted_state_type,
-                value=computation_types.at_clients(_FLOAT_TYPE),
+                value=computation_types.FederatedType(
+                    _FLOAT_TYPE, placements.CLIENTS
+                ),
             ),
             result=collections.OrderedDict(
                 state=expected_unweighted_state_type,
-                result=computation_types.at_server(_FLOAT_TYPE),
+                result=computation_types.FederatedType(
+                    _FLOAT_TYPE, placements.SERVER
+                ),
                 measurements=expected_unweighted_measurements_type,
             ),
         ),
@@ -415,15 +424,16 @@ class ModelUpdateAggregatorTest(parameterized.TestCase):
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
     self.assertTrue(process.is_weighted)
 
-    expected_weighted_state_type = computation_types.at_server(
+    expected_weighted_state_type = computation_types.FederatedType(
         collections.OrderedDict(
             value_sum_process=computation_types.StructType(
                 [('step_size', np.float32), ('inner_agg_process', ())]
             ),
             weight_sum_process=(),
-        )
+        ),
+        placements.SERVER,
     )
-    expected_weighted_measurements_type = computation_types.at_server(
+    expected_weighted_measurements_type = computation_types.FederatedType(
         collections.OrderedDict(
             mean_value=computation_types.StructType([
                 (
@@ -435,7 +445,8 @@ class ModelUpdateAggregatorTest(parameterized.TestCase):
                 ('distortion', np.float32),
             ]),
             mean_weight=(),
-        )
+        ),
+        placements.SERVER,
     )
 
     type_test_utils.assert_types_equivalent(
@@ -449,12 +460,18 @@ class ModelUpdateAggregatorTest(parameterized.TestCase):
         computation_types.FunctionType(
             parameter=collections.OrderedDict(
                 state=expected_weighted_state_type,
-                value=computation_types.at_clients(_FLOAT_TYPE),
-                weight=computation_types.at_clients(_FLOAT_TYPE),
+                value=computation_types.FederatedType(
+                    _FLOAT_TYPE, placements.CLIENTS
+                ),
+                weight=computation_types.FederatedType(
+                    _FLOAT_TYPE, placements.CLIENTS
+                ),
             ),
             result=collections.OrderedDict(
                 state=expected_weighted_state_type,
-                result=computation_types.at_server(_FLOAT_TYPE),
+                result=computation_types.FederatedType(
+                    _FLOAT_TYPE, placements.SERVER
+                ),
                 measurements=expected_weighted_measurements_type,
             ),
         ),
@@ -616,10 +633,13 @@ def _mrfify_aggregator(aggregator):
 
     @federated_computation.federated_computation(
         aggregator.next.type_signature.parameter[0],
-        computation_types.at_clients((
-            aggregator.next.type_signature.parameter[1].member,
-            aggregator.next.type_signature.parameter[2].member,
-        )),
+        computation_types.FederatedType(
+            (
+                aggregator.next.type_signature.parameter[1].member,
+                aggregator.next.type_signature.parameter[2].member,
+            ),
+            placements.CLIENTS,
+        ),
     )
     def next_fn(state, value):
       output = aggregator.next(state, value[0], value[1])

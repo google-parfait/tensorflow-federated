@@ -231,8 +231,8 @@ def build_identity_finalizer(
   # `tff.learning.templates.compose_learning_process`.
   @federated_computation.federated_computation(
       init_fn.type_signature.result,
-      computation_types.at_server(model_weights_type),
-      computation_types.at_server(update_type),
+      computation_types.FederatedType(model_weights_type, placements.SERVER),
+      computation_types.FederatedType(update_type, placements.SERVER),
   )
   def next_fn(state, weights, update):
     del update

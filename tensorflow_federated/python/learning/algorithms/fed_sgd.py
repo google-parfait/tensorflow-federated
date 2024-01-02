@@ -189,8 +189,8 @@ def _build_fed_sgd_client_work(
 
   @federated_computation.federated_computation(
       init_fn.type_signature.result,
-      computation_types.at_clients(weights_type),
-      computation_types.at_clients(data_type),
+      computation_types.FederatedType(weights_type, placements.CLIENTS),
+      computation_types.FederatedType(data_type, placements.CLIENTS),
   )
   def next_fn(state, model_weights, client_data):
     client_result, model_outputs = intrinsics.federated_map(
@@ -364,8 +364,8 @@ def _build_functional_fed_sgd_client_work(
 
   @federated_computation.federated_computation(
       init_fn.type_signature.result,
-      computation_types.at_clients(weights_type),
-      computation_types.at_clients(data_type),
+      computation_types.FederatedType(weights_type, placements.CLIENTS),
+      computation_types.FederatedType(data_type, placements.CLIENTS),
   )
   def next_fn(state, model_weights, client_data):
     client_result, unfinalized_metrics = intrinsics.federated_map(

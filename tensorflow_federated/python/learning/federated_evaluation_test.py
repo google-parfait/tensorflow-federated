@@ -258,24 +258,28 @@ class FederatedEvaluationTest(parameterized.TestCase):
             parameter=StructType([
                 (
                     'server_model_weights',
-                    computation_types.at_server(model_weights_type),
+                    computation_types.FederatedType(
+                        model_weights_type, placements.SERVER
+                    ),
                 ),
                 (
                     'federated_dataset',
-                    computation_types.at_clients(
+                    computation_types.FederatedType(
                         SequenceType(
                             StructType([(
                                 'temp',
                                 TensorType(dtype=np.float32, shape=[None]),
                             )])
-                        )
+                        ),
+                        placements.CLIENTS,
                     ),
                 ),
             ]),
-            result=computation_types.at_server(
+            result=computation_types.FederatedType(
                 collections.OrderedDict(
                     eval=collections.OrderedDict(num_over=np.float32)
-                )
+                ),
+                placements.SERVER,
             ),
         ),
     )
@@ -310,8 +314,8 @@ class FederatedEvaluationTest(parameterized.TestCase):
       )
 
     @federated_computation.federated_computation(
-        computation_types.at_server(np.float32),
-        computation_types.at_clients(np.int32),
+        computation_types.FederatedType(np.float32, placements.SERVER),
+        computation_types.FederatedType(np.int32, placements.CLIENTS),
     )
     def next_fn(state, value):
       return measured_process.MeasuredProcessOutput(state, value, state)

@@ -45,8 +45,6 @@ SequenceType = computation_types.SequenceType
 TensorType = computation_types.TensorType
 LearningAlgorithmState = composers.LearningAlgorithmState
 LearningProcessOutput = learning_process_lib.LearningProcessOutput
-at_clients = computation_types.at_clients
-at_server = computation_types.at_server
 
 
 def _create_input_spec():
@@ -216,7 +214,7 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
         reconstruction_optimizer_fn=optimizer_fn(),
         dataset_split_fn=dataset_split_fn,
     )
-    state_type = at_server(
+    state_type = computation_types.FederatedType(
         LearningAlgorithmState(
             global_model_weights=type_conversions.infer_type(
                 reconstruction_model.ReconstructionModel.get_global_variables(
@@ -236,25 +234,27 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
                 value_sum_process=(), weight_sum_process=()
             ),
             finalizer=(),
-        )
+        ),
+        placements.SERVER,
     )
     type_test_utils.assert_types_identical(
         evaluate.next.type_signature,
         FunctionType(
             parameter=collections.OrderedDict(
                 state=state_type,
-                client_data=at_clients(
+                client_data=computation_types.FederatedType(
                     SequenceType(
                         collections.OrderedDict(
                             x=TensorType(tf.float32, [None, 1]),
                             y=TensorType(tf.float32, [None, 1]),
                         )
-                    )
+                    ),
+                    placements.CLIENTS,
                 ),
             ),
             result=LearningProcessOutput(
                 state=state_type,
-                metrics=at_server(
+                metrics=computation_types.FederatedType(
                     collections.OrderedDict(
                         distributor=(),
                         client_work=collections.OrderedDict(
@@ -275,7 +275,8 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
                             mean_value=(), mean_weight=()
                         ),
                         finalizer=(),
-                    )
+                    ),
+                    placements.SERVER,
                 ),
             ),
         ),
@@ -324,7 +325,7 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
         reconstruction_optimizer_fn=optimizer_fn(),
     )
 
-    state_type = at_server(
+    state_type = computation_types.FederatedType(
         LearningAlgorithmState(
             global_model_weights=type_conversions.infer_type(
                 reconstruction_model.ReconstructionModel.get_global_variables(
@@ -344,25 +345,27 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
                 value_sum_process=(), weight_sum_process=()
             ),
             finalizer=(),
-        )
+        ),
+        placements.SERVER,
     )
     type_test_utils.assert_types_identical(
         evaluate.next.type_signature,
         FunctionType(
             parameter=collections.OrderedDict(
                 state=state_type,
-                client_data=at_clients(
+                client_data=computation_types.FederatedType(
                     SequenceType(
                         collections.OrderedDict(
                             x=TensorType(tf.float32, [None, 1]),
                             y=TensorType(tf.float32, [None, 1]),
                         )
-                    )
+                    ),
+                    placements.CLIENTS,
                 ),
             ),
             result=LearningProcessOutput(
                 state=state_type,
-                metrics=at_server(
+                metrics=computation_types.FederatedType(
                     collections.OrderedDict(
                         distributor=(),
                         client_work=collections.OrderedDict(
@@ -383,7 +386,8 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
                             mean_value=(), mean_weight=()
                         ),
                         finalizer=(),
-                    )
+                    ),
+                    placements.SERVER,
                 ),
             ),
         ),
@@ -431,7 +435,7 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
         reconstruction_optimizer_fn=optimizer_fn(),
         dataset_split_fn=dataset_split_fn,
     )
-    state_type = at_server(
+    state_type = computation_types.FederatedType(
         LearningAlgorithmState(
             global_model_weights=type_conversions.infer_type(
                 reconstruction_model.ReconstructionModel.get_global_variables(
@@ -451,25 +455,27 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
                 value_sum_process=(), weight_sum_process=()
             ),
             finalizer=(),
-        )
+        ),
+        placements.SERVER,
     )
     type_test_utils.assert_types_identical(
         evaluate.next.type_signature,
         FunctionType(
             parameter=collections.OrderedDict(
                 state=state_type,
-                client_data=at_clients(
+                client_data=computation_types.FederatedType(
                     SequenceType(
                         collections.OrderedDict(
                             x=TensorType(tf.float32, [None, 1]),
                             y=TensorType(tf.float32, [None, 1]),
                         )
-                    )
+                    ),
+                    placements.CLIENTS,
                 ),
             ),
             result=LearningProcessOutput(
                 state=state_type,
-                metrics=at_server(
+                metrics=computation_types.FederatedType(
                     collections.OrderedDict(
                         distributor=(),
                         client_work=collections.OrderedDict(
@@ -490,7 +496,8 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
                             mean_value=(), mean_weight=()
                         ),
                         finalizer=(),
-                    )
+                    ),
+                    placements.SERVER,
                 ),
             ),
         ),
@@ -532,7 +539,7 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
         reconstruction_optimizer_fn=optimizer_fn(0.0),
         dataset_split_fn=dataset_split_fn,
     )
-    state_type = at_server(
+    state_type = computation_types.FederatedType(
         LearningAlgorithmState(
             global_model_weights=type_conversions.infer_type(
                 reconstruction_model.ReconstructionModel.get_global_variables(
@@ -552,25 +559,27 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
                 value_sum_process=(), weight_sum_process=()
             ),
             finalizer=(),
-        )
+        ),
+        placements.SERVER,
     )
     type_test_utils.assert_types_identical(
         evaluate.next.type_signature,
         FunctionType(
             parameter=collections.OrderedDict(
                 state=state_type,
-                client_data=at_clients(
+                client_data=computation_types.FederatedType(
                     SequenceType(
                         collections.OrderedDict(
                             x=TensorType(tf.float32, [None, 1]),
                             y=TensorType(tf.float32, [None, 1]),
                         )
-                    )
+                    ),
+                    placements.CLIENTS,
                 ),
             ),
             result=LearningProcessOutput(
                 state=state_type,
-                metrics=at_server(
+                metrics=computation_types.FederatedType(
                     collections.OrderedDict(
                         distributor=(),
                         client_work=collections.OrderedDict(
@@ -591,7 +600,8 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
                             mean_value=(), mean_weight=()
                         ),
                         finalizer=(),
-                    )
+                    ),
+                    placements.SERVER,
                 ),
             ),
         ),
@@ -641,7 +651,7 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
         reconstruction_optimizer_fn=optimizer_fn(),
         dataset_split_fn=dataset_split_fn,
     )
-    state_type = at_server(
+    state_type = computation_types.FederatedType(
         LearningAlgorithmState(
             global_model_weights=type_conversions.infer_type(
                 reconstruction_model.ReconstructionModel.get_global_variables(
@@ -661,25 +671,27 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
                 value_sum_process=(), weight_sum_process=()
             ),
             finalizer=(),
-        )
+        ),
+        placements.SERVER,
     )
     type_test_utils.assert_types_identical(
         evaluate.next.type_signature,
         FunctionType(
             parameter=collections.OrderedDict(
                 state=state_type,
-                client_data=at_clients(
+                client_data=computation_types.FederatedType(
                     SequenceType(
                         collections.OrderedDict(
                             x=TensorType(tf.float32, [None, 1]),
                             y=TensorType(tf.float32, [None, 1]),
                         )
-                    )
+                    ),
+                    placements.CLIENTS,
                 ),
             ),
             result=LearningProcessOutput(
                 state=state_type,
-                metrics=at_server(
+                metrics=computation_types.FederatedType(
                     collections.OrderedDict(
                         distributor=(),
                         client_work=collections.OrderedDict(
@@ -700,7 +712,8 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
                             mean_value=(), mean_weight=()
                         ),
                         finalizer=(),
-                    )
+                    ),
+                    placements.SERVER,
                 ),
             ),
         ),
@@ -751,7 +764,7 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
         reconstruction_optimizer_fn=optimizer_fn(0.01),
         dataset_split_fn=dataset_split_fn,
     )
-    state_type = at_server(
+    state_type = computation_types.FederatedType(
         LearningAlgorithmState(
             global_model_weights=type_conversions.infer_type(
                 reconstruction_model.ReconstructionModel.get_global_variables(
@@ -769,25 +782,27 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
                 value_sum_process=(), weight_sum_process=()
             ),
             finalizer=(),
-        )
+        ),
+        placements.SERVER,
     )
     type_test_utils.assert_types_identical(
         evaluate.next.type_signature,
         FunctionType(
             parameter=collections.OrderedDict(
                 state=state_type,
-                client_data=at_clients(
+                client_data=computation_types.FederatedType(
                     SequenceType(
                         collections.OrderedDict(
                             x=TensorType(tf.float32, [None, 1]),
                             y=TensorType(tf.float32, [None, 1]),
                         )
-                    )
+                    ),
+                    placements.CLIENTS,
                 ),
             ),
             result=LearningProcessOutput(
                 state=state_type,
-                metrics=at_server(
+                metrics=computation_types.FederatedType(
                     collections.OrderedDict(
                         distributor=(),
                         client_work=collections.OrderedDict(
@@ -804,7 +819,8 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
                             mean_value=(), mean_weight=()
                         ),
                         finalizer=(),
-                    )
+                    ),
+                    placements.SERVER,
                 ),
             ),
         ),
@@ -881,7 +897,7 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
             model_weights_type=model_weights_type
         ),
     )
-    state_type = at_server(
+    state_type = computation_types.FederatedType(
         LearningAlgorithmState(
             global_model_weights=type_conversions.infer_type(
                 reconstruction_model.ReconstructionModel.get_global_variables(
@@ -901,25 +917,27 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
                 value_sum_process=(), weight_sum_process=()
             ),
             finalizer=(),
-        )
+        ),
+        placements.SERVER,
     )
     type_test_utils.assert_types_identical(
         evaluate.next.type_signature,
         FunctionType(
             parameter=collections.OrderedDict(
                 state=state_type,
-                client_data=at_clients(
+                client_data=computation_types.FederatedType(
                     SequenceType(
                         collections.OrderedDict(
                             x=TensorType(tf.float32, [None, 1]),
                             y=TensorType(tf.float32, [None, 1]),
                         )
-                    )
+                    ),
+                    placements.CLIENTS,
                 ),
             ),
             result=LearningProcessOutput(
                 state=state_type,
-                metrics=at_server(
+                metrics=computation_types.FederatedType(
                     collections.OrderedDict(
                         distributor=tf.float32,
                         client_work=collections.OrderedDict(
@@ -940,7 +958,8 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
                             mean_value=(), mean_weight=()
                         ),
                         finalizer=(),
-                    )
+                    ),
+                    placements.SERVER,
                 ),
             ),
         ),

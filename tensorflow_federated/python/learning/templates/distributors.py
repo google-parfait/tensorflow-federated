@@ -151,7 +151,8 @@ def build_broadcast_process(value_type: computation_types.Type):
     return intrinsics.federated_value((), placements.SERVER)
 
   @federated_computation.federated_computation(
-      init_fn.type_signature.result, computation_types.at_server(value_type)
+      init_fn.type_signature.result,
+      computation_types.FederatedType(value_type, placements.SERVER),
   )
   def next_fn(state, value):
     empty_measurements = intrinsics.federated_value((), placements.SERVER)

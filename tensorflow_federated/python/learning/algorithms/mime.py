@@ -282,8 +282,8 @@ def _build_mime_lite_client_work(
 
   @federated_computation.federated_computation(
       init_fn.type_signature.result,
-      computation_types.at_clients(weights_type),
-      computation_types.at_clients(data_type),
+      computation_types.FederatedType(weights_type, placements.CLIENTS),
+      computation_types.FederatedType(data_type, placements.CLIENTS),
   )
   def next_fn(state, weights, client_data):
     optimizer_state, aggregator_state = state
@@ -572,8 +572,8 @@ def _build_mime_lite_functional_client_work(
 
   @federated_computation.federated_computation(
       init_fn.type_signature.result,
-      computation_types.at_clients(weights_type),
-      computation_types.at_clients(data_type),
+      computation_types.FederatedType(weights_type, placements.CLIENTS),
+      computation_types.FederatedType(data_type, placements.CLIENTS),
   )
   def next_fn(state, weights, client_data):
     optimizer_state, aggregator_state = state
@@ -719,8 +719,8 @@ def _build_scheduled_mime_lite_client_work(
 
   @federated_computation.federated_computation(
       init_fn.type_signature.result,
-      computation_types.at_clients(weights_type),
-      computation_types.at_clients(data_type),
+      computation_types.FederatedType(weights_type, placements.CLIENTS),
+      computation_types.FederatedType(data_type, placements.CLIENTS),
   )
   def next_fn(state, weights, client_data):
     round_num, mime_state = state

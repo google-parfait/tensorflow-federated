@@ -260,8 +260,8 @@ def _validate_args(initial_model_weights_fn, model_weights_distributor,
         f'Provided initial_model_weights_fn must be a tff.Computation with '
         f'unplaced return type.\n'
         f'Return type found: {global_model_weights_type}')
-  global_model_weights_type = computation_types.at_server(
-      global_model_weights_type)
+  global_model_weights_type = computation_types.FederatedType(
+      global_model_weights_type, placements.SERVER)
   py_typecheck.check_type(model_weights_distributor,
                           distributors.DistributionProcess)
   py_typecheck.check_type(client_work, client_works.ClientWorkProcess)

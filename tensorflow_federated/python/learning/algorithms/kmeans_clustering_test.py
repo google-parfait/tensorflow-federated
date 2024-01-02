@@ -20,6 +20,7 @@ import tensorflow as tf
 
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.learning.algorithms import kmeans_clustering
 
 _WEIGHT_DTYPE = kmeans_clustering._WEIGHT_DTYPE
@@ -145,7 +146,7 @@ class ClientWorkTest(tf.test.TestCase, parameterized.TestCase):
     point_type = computation_types.TensorType(point_dtype, shape)
     data_type = computation_types.SequenceType(point_type)
     weight_type = computation_types.TensorType(_WEIGHT_DTYPE, (num_clusters,))
-    empty_server_type = computation_types.at_server(())
+    empty_server_type = computation_types.FederatedType((), placements.SERVER)
 
     client_work = kmeans_clustering._build_kmeans_client_work(
         centroids_type, data_type
@@ -154,10 +155,10 @@ class ClientWorkTest(tf.test.TestCase, parameterized.TestCase):
     next_type = client_work.next.type_signature
     next_type.parameter[0].check_equivalent_to(empty_server_type)
     next_type.parameter[1].check_equivalent_to(
-        computation_types.at_clients(centroids_type)
+        computation_types.FederatedType(centroids_type, placements.CLIENTS)
     )
     next_type.parameter[2].check_equivalent_to(
-        computation_types.at_clients(data_type)
+        computation_types.FederatedType(data_type, placements.CLIENTS)
     )
     next_type.result[0].check_equivalent_to(empty_server_type)
     next_type.result[1].member.update.check_equivalent_to(
@@ -185,7 +186,7 @@ class ClientWorkTest(tf.test.TestCase, parameterized.TestCase):
     point_type = computation_types.TensorType(point_dtype, shape)
     data_type = computation_types.SequenceType(point_type)
     weight_type = computation_types.TensorType(_WEIGHT_DTYPE, (num_clusters,))
-    empty_server_type = computation_types.at_server(())
+    empty_server_type = computation_types.FederatedType((), placements.SERVER)
 
     client_work = kmeans_clustering._build_kmeans_client_work(
         centroids_type, data_type
@@ -194,10 +195,10 @@ class ClientWorkTest(tf.test.TestCase, parameterized.TestCase):
     next_type = client_work.next.type_signature
     next_type.parameter[0].check_equivalent_to(empty_server_type)
     next_type.parameter[1].check_equivalent_to(
-        computation_types.at_clients(centroids_type)
+        computation_types.FederatedType(centroids_type, placements.CLIENTS)
     )
     next_type.parameter[2].check_equivalent_to(
-        computation_types.at_clients(data_type)
+        computation_types.FederatedType(data_type, placements.CLIENTS)
     )
     next_type.result[0].check_equivalent_to(empty_server_type)
     next_type.result[1].member.update.check_equivalent_to(

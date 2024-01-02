@@ -35,10 +35,11 @@ CLIENTS_FLOAT_SEQUENCE = computation_types.FederatedType(
 )
 CLIENTS_FLOAT = computation_types.FederatedType(np.float32, placements.CLIENTS)
 CLIENTS_INT = computation_types.FederatedType(np.int32, placements.CLIENTS)
-MODEL_WEIGHTS_TYPE = computation_types.at_clients(
+MODEL_WEIGHTS_TYPE = computation_types.FederatedType(
     computation_types.to_type(
         model_weights.ModelWeights(np.float32, np.float32)
-    )
+    ),
+    placements.CLIENTS,
 )
 HPARAMS_TYPE = computation_types.to_type(collections.OrderedDict(a=np.int32))
 MeasuredProcessOutput = measured_process.MeasuredProcessOutput
@@ -304,9 +305,12 @@ class ClientWorkTest(absltest.TestCase):
       client_works.ClientWorkProcess(test_initialize_fn, next_fn)
 
   def test_non_clients_placed_next_weights_param_raises(self):
+
     @federated_computation.federated_computation(
         SERVER_INT,
-        computation_types.at_server(MODEL_WEIGHTS_TYPE.member),
+        computation_types.FederatedType(
+            MODEL_WEIGHTS_TYPE.member, placements.SERVER
+        ),
         CLIENTS_FLOAT_SEQUENCE,
     )
     def next_fn(state, weights, data):
@@ -320,10 +324,11 @@ class ClientWorkTest(absltest.TestCase):
       client_works.ClientWorkProcess(test_initialize_fn, next_fn)
 
   def test_constructs_with_non_model_weights_parameter(self):
-    non_model_weights_type = computation_types.at_clients(
+    non_model_weights_type = computation_types.FederatedType(
         computation_types.to_type(
             collections.OrderedDict(trainable=np.float32, non_trainable=())
-        )
+        ),
+        placements.CLIENTS,
     )
 
     @federated_computation.federated_computation(
@@ -344,13 +349,16 @@ class ClientWorkTest(absltest.TestCase):
     @federated_computation.federated_computation(
         SERVER_INT,
         MODEL_WEIGHTS_TYPE,
-        computation_types.at_clients((
-            computation_types.SequenceType(np.float32),
+        computation_types.FederatedType(
             (
                 computation_types.SequenceType(np.float32),
-                computation_types.SequenceType(np.float32),
+                (
+                    computation_types.SequenceType(np.float32),
+                    computation_types.SequenceType(np.float32),
+                ),
             ),
-        )),
+            placements.CLIENTS,
+        ),
     )
     def next_fn(state, unused_weights, unused_data):
       return MeasuredProcessOutput(
@@ -367,8 +375,8 @@ class ClientWorkTest(absltest.TestCase):
       self.fail('Could not construct a valid ClientWorkProcess.')
 
   def test_non_clients_placed_next_data_param_raises(self):
-    server_sequence_float_type = computation_types.at_server(
-        computation_types.SequenceType(np.float32)
+    server_sequence_float_type = computation_types.FederatedType(
+        computation_types.SequenceType(np.float32), placements.SERVER
     )
 
     @federated_computation.federated_computation(

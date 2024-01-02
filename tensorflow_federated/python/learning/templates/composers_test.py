@@ -45,8 +45,8 @@ FLOAT_TYPE = computation_types.TensorType(np.float32)
 MODEL_WEIGHTS_TYPE = computation_types.to_type(
     model_weights_lib.ModelWeights(FLOAT_TYPE, ())
 )
-CLIENTS_SEQUENCE_FLOAT_TYPE = computation_types.at_clients(
-    computation_types.SequenceType(FLOAT_TYPE)
+CLIENTS_SEQUENCE_FLOAT_TYPE = computation_types.FederatedType(
+    computation_types.SequenceType(FLOAT_TYPE), placements.CLIENTS
 )
 
 
@@ -67,9 +67,10 @@ def test_init_model_weights_fn():
 
 
 def test_distributor():
+
   @federated_computation.federated_computation(
       empty_init_fn.type_signature.result,
-      computation_types.at_server(MODEL_WEIGHTS_TYPE),
+      computation_types.FederatedType(MODEL_WEIGHTS_TYPE, placements.SERVER),
   )
   def next_fn(state, value):
     return measured_process.MeasuredProcessOutput(
@@ -89,7 +90,7 @@ def test_client_work():
 
   @federated_computation.federated_computation(
       empty_init_fn.type_signature.result,
-      computation_types.at_clients(MODEL_WEIGHTS_TYPE),
+      computation_types.FederatedType(MODEL_WEIGHTS_TYPE, placements.CLIENTS),
       CLIENTS_SEQUENCE_FLOAT_TYPE,
   )
   def next_fn(state, value, client_data):
@@ -106,10 +107,11 @@ def test_aggregator():
 
 
 def test_finalizer():
+
   @federated_computation.federated_computation(
       empty_init_fn.type_signature.result,
-      computation_types.at_server(MODEL_WEIGHTS_TYPE),
-      computation_types.at_server(FLOAT_TYPE),
+      computation_types.FederatedType(MODEL_WEIGHTS_TYPE, placements.SERVER),
+      computation_types.FederatedType(FLOAT_TYPE, placements.SERVER),
   )
   def next_fn(state, weights, updates):
     new_weights = intrinsics.federated_map(

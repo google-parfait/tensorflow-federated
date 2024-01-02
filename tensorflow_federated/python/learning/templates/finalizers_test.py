@@ -32,10 +32,11 @@ SERVER_INT = computation_types.FederatedType(np.int32, placements.SERVER)
 SERVER_FLOAT = computation_types.FederatedType(np.float32, placements.SERVER)
 CLIENTS_INT = computation_types.FederatedType(np.int32, placements.CLIENTS)
 CLIENTS_FLOAT = computation_types.FederatedType(np.float32, placements.CLIENTS)
-MODEL_WEIGHTS_TYPE = computation_types.at_server(
+MODEL_WEIGHTS_TYPE = computation_types.FederatedType(
     computation_types.to_type(
         model_weights.ModelWeights(np.float32, np.float32)
-    )
+    ),
+    placements.SERVER,
 )
 MeasuredProcessOutput = measured_process.MeasuredProcessOutput
 
@@ -100,7 +101,9 @@ class FinalizerTest(tf.test.TestCase):
         [('trainable', np.float32), ('non_trainable', ())],
         model_weights.ModelWeights,
     )
-    server_model_weights_type = computation_types.at_server(model_weights_type)
+    server_model_weights_type = computation_types.FederatedType(
+        model_weights_type, placements.SERVER
+    )
 
     @federated_computation.federated_computation(
         initialize_fn.type_signature.result,
@@ -261,9 +264,12 @@ class FinalizerTest(tf.test.TestCase):
       finalizers.FinalizerProcess(test_initialize_fn, next_fn)
 
   def test_non_server_placed_next_weight_param_raises(self):
+
     @federated_computation.federated_computation(
         SERVER_INT,
-        computation_types.at_clients(MODEL_WEIGHTS_TYPE.member),
+        computation_types.FederatedType(
+            MODEL_WEIGHTS_TYPE.member, placements.CLIENTS
+        ),
         SERVER_FLOAT,
     )
     def next_fn(state, weights, update):
@@ -277,10 +283,11 @@ class FinalizerTest(tf.test.TestCase):
       finalizers.FinalizerProcess(test_initialize_fn, next_fn)
 
   def test_constructs_with_non_model_weights_parameter(self):
-    non_model_weights_type = computation_types.at_server(
+    non_model_weights_type = computation_types.FederatedType(
         computation_types.to_type(
             collections.OrderedDict(trainable=np.float32, non_trainable=())
-        )
+        ),
+        placements.SERVER,
     )
 
     @federated_computation.federated_computation(

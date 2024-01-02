@@ -345,9 +345,9 @@ def _build_reconstruction_client_work(
     )
 
   @federated_computation.federated_computation(
-      computation_types.at_server(()),
-      computation_types.at_clients(model_weights_type),
-      computation_types.at_clients(dataset_type),
+      computation_types.FederatedType((), placements.SERVER),
+      computation_types.FederatedType(model_weights_type, placements.CLIENTS),
+      computation_types.FederatedType(dataset_type, placements.CLIENTS),
   )
   def next_fn(state, incoming_model_weights, client_datasets):
     del state  # Unused.

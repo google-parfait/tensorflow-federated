@@ -283,12 +283,16 @@ class BroadcastProcessComputationTest(tf.test.TestCase, parameterized.TestCase):
     broadcast_process = distributors.build_broadcast_process(value_type)
     self.assertIsInstance(broadcast_process, distributors.DistributionProcess)
 
-    expected_param_value_type = computation_types.at_server(value_type)
-    expected_result_type = computation_types.at_clients(
-        value_type, all_equal=True
+    expected_param_value_type = computation_types.FederatedType(
+        value_type, placements.SERVER
     )
-    expected_state_type = computation_types.at_server(())
-    expected_measurements_type = computation_types.at_server(())
+    expected_result_type = computation_types.FederatedType(
+        value_type, placements.CLIENTS, all_equal=True
+    )
+    expected_state_type = computation_types.FederatedType((), placements.SERVER)
+    expected_measurements_type = computation_types.FederatedType(
+        (), placements.SERVER
+    )
 
     expected_initialize_type = computation_types.FunctionType(
         parameter=None, result=expected_state_type

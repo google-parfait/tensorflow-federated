@@ -34,7 +34,9 @@ _MODEL_WEIGHTS_SPEC = model_weights.ModelWeights(
     trainable=(np.float32,), non_trainable=(np.float32,)
 )
 _MODEL_WEIGHTS_TYPE = computation_types.to_type(_MODEL_WEIGHTS_SPEC)
-_SERVER_MODEL_WEIGHTS_TYPE = computation_types.at_server(_MODEL_WEIGHTS_TYPE)
+_SERVER_MODEL_WEIGHTS_TYPE = computation_types.FederatedType(
+    _MODEL_WEIGHTS_TYPE, placements.SERVER
+)
 MeasuredProcessOutput = measured_process.MeasuredProcessOutput
 
 
@@ -48,7 +50,9 @@ class ApplyOptimizerFinalizerComputationTest(
     finalizer = apply_optimizer_finalizer.build_apply_optimizer_finalizer(
         optimizer_fn, _MODEL_WEIGHTS_TYPE
     )
-    expected_state_type = computation_types.at_server([np.int64])
+    expected_state_type = computation_types.FederatedType(
+        [np.int64], placements.SERVER
+    )
     expected_initialize_type = computation_types.FunctionType(
         parameter=None, result=expected_state_type
     )
@@ -64,13 +68,17 @@ class ApplyOptimizerFinalizerComputationTest(
     )
 
     expected_param_weights_type = _SERVER_MODEL_WEIGHTS_TYPE
-    expected_param_update_type = computation_types.at_server(
-        _MODEL_WEIGHTS_TYPE.trainable
+    expected_param_update_type = computation_types.FederatedType(
+        _MODEL_WEIGHTS_TYPE.trainable, placements.SERVER
     )
-    expected_result_type = computation_types.at_server(_MODEL_WEIGHTS_TYPE)
-    expected_state_type = computation_types.at_server([np.int64])
-    expected_measurements_type = computation_types.at_server(
-        collections.OrderedDict(update_non_finite=np.int32)
+    expected_result_type = computation_types.FederatedType(
+        _MODEL_WEIGHTS_TYPE, placements.SERVER
+    )
+    expected_state_type = computation_types.FederatedType(
+        [np.int64], placements.SERVER
+    )
+    expected_measurements_type = computation_types.FederatedType(
+        collections.OrderedDict(update_non_finite=np.int32), placements.SERVER
     )
     expected_next_type = computation_types.FunctionType(
         parameter=collections.OrderedDict(
@@ -128,12 +136,13 @@ class ApplyOptimizerFinalizerComputationTest(
         sgdm.build_sgdm(1.0), _MODEL_WEIGHTS_TYPE
     )
 
-    expected_state_type = computation_types.at_server(
+    expected_state_type = computation_types.FederatedType(
         computation_types.to_type(
             collections.OrderedDict(
                 [(optimizer_base.LEARNING_RATE_KEY, np.float32)]
             )
-        )
+        ),
+        placements.SERVER,
     )
     expected_initialize_type = computation_types.FunctionType(
         parameter=None, result=expected_state_type
@@ -148,19 +157,20 @@ class ApplyOptimizerFinalizerComputationTest(
     )
 
     expected_param_weights_type = _SERVER_MODEL_WEIGHTS_TYPE
-    expected_param_update_type = computation_types.at_server(
-        _MODEL_WEIGHTS_TYPE.trainable
+    expected_param_update_type = computation_types.FederatedType(
+        _MODEL_WEIGHTS_TYPE.trainable, placements.SERVER
     )
     expected_result_type = _SERVER_MODEL_WEIGHTS_TYPE
-    expected_state_type = computation_types.at_server(
+    expected_state_type = computation_types.FederatedType(
         computation_types.to_type(
             collections.OrderedDict(
                 [(optimizer_base.LEARNING_RATE_KEY, np.float32)]
             )
-        )
+        ),
+        placements.SERVER,
     )
-    expected_measurements_type = computation_types.at_server(
-        collections.OrderedDict(update_non_finite=np.int32)
+    expected_measurements_type = computation_types.FederatedType(
+        collections.OrderedDict(update_non_finite=np.int32), placements.SERVER
     )
     expected_next_type = computation_types.FunctionType(
         parameter=collections.OrderedDict(
@@ -373,7 +383,6 @@ class ApplyOptimizerFinalizerExecutionTest(tf.test.TestCase):
       self.assertEqual(
           collections.OrderedDict(update_non_finite=0), output.measurements
       )
-    weights = output.result
 
   def test_execution_with_stateful_keras_optimizer(self):
     momentum = 0.5

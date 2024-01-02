@@ -224,8 +224,8 @@ def build_stateless_broadcaster(
     return intrinsics.federated_value((), placements.SERVER)
 
   @federated_computation.federated_computation(
-      computation_types.at_server(()),
-      computation_types.at_server(model_weights_type),
+      computation_types.FederatedType((), placements.SERVER),
+      computation_types.FederatedType(model_weights_type, placements.SERVER),
   )
   def stateless_broadcast(state, value):
     empty_metrics = intrinsics.federated_value((), placements.SERVER)

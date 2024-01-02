@@ -581,8 +581,10 @@ class RunEvaluationTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
       return intrinsics.federated_value((), placements.SERVER)
 
     @federated_computation.federated_computation(
-        computation_types.at_server(()),
-        computation_types.at_clients(computation_types.SequenceType(())),
+        computation_types.FederatedType((), placements.SERVER),
+        computation_types.FederatedType(
+            computation_types.SequenceType(()), placements.CLIENTS
+        ),
     )
     def next_fn(state, inputs):
       del inputs  # Unused.

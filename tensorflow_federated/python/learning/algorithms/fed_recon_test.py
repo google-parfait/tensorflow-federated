@@ -226,7 +226,8 @@ class _DPMean(factory.UnweightedAggregationFactory):
       return [tf.squeeze(tf.math.divide_no_nan(x, tf.cast(y, tf.float32)), 0)]
 
     @federated_computation.federated_computation(
-        init.type_signature.result, computation_types.at_clients(value_type)
+        init.type_signature.result,
+        computation_types.FederatedType(value_type, placements.CLIENTS),
     )
     def next_fn(state, value):
       one_at_clients = intrinsics.federated_value(1, placements.CLIENTS)
@@ -510,7 +511,6 @@ class TrainingProcessTest(tf.test.TestCase, parameterized.TestCase):
     federated_data = [client_data(max_examples=2), client_data()]
 
     output = learning_process.next(server_state, federated_data)
-    server_state = output.state
     metrics = output.metrics
 
     expected_keys = ['distributor', 'client_work', 'aggregator', 'finalizer']
@@ -563,7 +563,6 @@ class TrainingProcessTest(tf.test.TestCase, parameterized.TestCase):
     federated_data = [client_data(max_examples=2), client_data()]
 
     output = learning_process.next(server_state, federated_data)
-    server_state = output.state
     metrics = output.metrics
 
     expected_keys = ['distributor', 'client_work', 'aggregator', 'finalizer']
@@ -608,7 +607,6 @@ class TrainingProcessTest(tf.test.TestCase, parameterized.TestCase):
     federated_data = [client_data(), client_data()]
 
     output = learning_process.next(server_state, federated_data)
-    server_state = output.state
     metrics = output.metrics
 
     expected_keys = ['distributor', 'client_work', 'aggregator', 'finalizer']
@@ -639,7 +637,6 @@ class TrainingProcessTest(tf.test.TestCase, parameterized.TestCase):
     client_data = create_emnist_client_data()
     federated_data = [client_data(), client_data()]
     output = learning_process.next(server_state, federated_data)
-    server_state = output.state
 
     expected_keys = ['distributor', 'client_work', 'aggregator', 'finalizer']
     self.assertCountEqual(output.metrics.keys(), expected_keys)
@@ -1013,8 +1010,10 @@ class TrainingProcessTest(tf.test.TestCase, parameterized.TestCase):
         return intrinsics.federated_value(2.0, placements.SERVER)
 
       @federated_computation.federated_computation(
-          computation_types.at_server(np.float32),
-          computation_types.at_server(model_weights_type),
+          computation_types.FederatedType(np.float32, placements.SERVER),
+          computation_types.FederatedType(
+              model_weights_type, placements.SERVER
+          ),
       )
       def stateful_broadcast(state, value):
         empty_metrics = intrinsics.federated_value(1.0, placements.SERVER)
@@ -1049,7 +1048,6 @@ class TrainingProcessTest(tf.test.TestCase, parameterized.TestCase):
     federated_data = [client_data(), client_data()]
 
     output = learning_process.next(algorithm_state, federated_data)
-    algorithm_state = output.state
     metrics = output.metrics
 
     expected_keys = ['distributor', 'client_work', 'aggregator', 'finalizer']

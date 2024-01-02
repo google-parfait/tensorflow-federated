@@ -138,8 +138,8 @@ def _build_kmeans_client_work(
 
   @federated_computation.federated_computation(
       init_fn.type_signature.result,
-      computation_types.at_clients(centroids_type),
-      computation_types.at_clients(data_type),
+      computation_types.FederatedType(centroids_type, placements.CLIENTS),
+      computation_types.FederatedType(data_type, placements.CLIENTS),
   )
   def next_fn(state, cluster_centers, client_data):
     client_result, stat_output = intrinsics.federated_map(
@@ -226,13 +226,14 @@ def _build_kmeans_finalizer(
         current_centroids, current_weights, new_centroid_sums, new_weights
     )
 
-  summed_updates_type = computation_types.at_server(
-      computation_types.to_type((centroids_type, weights_type))
+  summed_updates_type = computation_types.FederatedType(
+      computation_types.to_type((centroids_type, weights_type)),
+      placements.SERVER,
   )
 
   @federated_computation.federated_computation(
       init_fn.type_signature.result,
-      computation_types.at_server(centroids_type),
+      computation_types.FederatedType(centroids_type, placements.SERVER),
       summed_updates_type,
   )
   def next_fn(state, current_centroids, summed_updates):

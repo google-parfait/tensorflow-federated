@@ -83,9 +83,6 @@ class UtilsTest(tf.test.TestCase, parameterized.TestCase):
     )
 
     new_trainable = trainable if new_trainable is None else new_trainable
-    non_trainable = (
-        non_trainable if new_non_trainable is None else non_trainable
-    )
 
     with self.assertRaisesRegex(TypeError, expected_err_msg):
       optimizer_utils.state_with_new_model_weights(
@@ -100,7 +97,8 @@ class UtilsTest(tf.test.TestCase, parameterized.TestCase):
       return intrinsics.federated_value((), placements.SERVER)
 
     @federated_computation.federated_computation(
-        computation_types.at_server(()), computation_types.at_server(())
+        computation_types.FederatedType((), placements.SERVER),
+        computation_types.FederatedType((), placements.SERVER),
     )
     def stateless_broadcast(state, value):
       empty_metrics = intrinsics.federated_value(1.0, placements.SERVER)
@@ -124,7 +122,8 @@ class UtilsTest(tf.test.TestCase, parameterized.TestCase):
       return intrinsics.federated_value((), placements.SERVER)
 
     @federated_computation.federated_computation(
-        computation_types.at_server(()), computation_types.at_server(())
+        computation_types.FederatedType((), placements.SERVER),
+        computation_types.FederatedType((), placements.SERVER),
     )
     def fake_broadcast(state, value):
       empty_metrics = intrinsics.federated_value(1.0, placements.SERVER)
@@ -146,7 +145,8 @@ class UtilsTest(tf.test.TestCase, parameterized.TestCase):
       return intrinsics.federated_value((), placements.SERVER)
 
     @federated_computation.federated_computation(
-        computation_types.at_server(()), computation_types.at_clients(())
+        computation_types.FederatedType((), placements.SERVER),
+        computation_types.FederatedType((), placements.CLIENTS),
     )
     def stateless_broadcast(state, value):
       empty_metrics = intrinsics.federated_value(1.0, placements.SERVER)

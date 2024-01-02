@@ -21,6 +21,7 @@ from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import iterative_process
 from tensorflow_federated.python.learning.metrics import aggregation_factory
 from tensorflow_federated.python.learning.metrics import aggregation_utils
@@ -82,7 +83,9 @@ def sum_then_finalize(
     )
 
   @federated_computation.federated_computation(
-      computation_types.at_clients(local_unfinalized_metrics_type)
+      computation_types.FederatedType(
+          local_unfinalized_metrics_type, placements.CLIENTS
+      )
   )
   def aggregator_computation(client_local_unfinalized_metrics):
     unfinalized_metrics_sum = intrinsics.federated_sum(
@@ -247,7 +250,9 @@ def secure_sum_then_finalize(
   assert not iterative_process.is_stateful(secure_sum_process)
 
   @federated_computation.federated_computation(
-      computation_types.at_clients(local_unfinalized_metrics_type)
+      computation_types.FederatedType(
+          local_unfinalized_metrics_type, placements.CLIENTS
+      )
   )
   def aggregator_computation(client_local_unfinalized_metrics):
     unused_state = secure_sum_process.initialize()

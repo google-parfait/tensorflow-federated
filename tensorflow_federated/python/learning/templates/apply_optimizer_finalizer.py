@@ -206,8 +206,10 @@ def build_apply_optimizer_finalizer(
 
   @federated_computation.federated_computation(
       init_fn.type_signature.result,
-      computation_types.at_server(model_weights_type),
-      computation_types.at_server(model_weights_type.trainable),
+      computation_types.FederatedType(model_weights_type, placements.SERVER),
+      computation_types.FederatedType(
+          model_weights_type.trainable, placements.SERVER
+      ),
   )
   def next_fn(state, weights, update):
     optimizer_state, new_trainable_weights, measurements = (
