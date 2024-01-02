@@ -232,7 +232,9 @@ def build_hierarchical_histogram_computation(
   process = agg_factory.create(client_work.type_signature.result)
 
   @federated_computation.federated_computation(
-      computation_types.at_clients(client_work.type_signature.parameter)
+      computation_types.FederatedType(
+          client_work.type_signature.parameter, placements.CLIENTS
+      )
   )
   def hierarchical_histogram_computation(federated_client_data):
     round_timestamp = intrinsics.federated_eval(

@@ -26,6 +26,7 @@ from tensorflow_federated.python.core.environments.tensorflow_frontend import te
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import aggregation_process
 
 
@@ -185,7 +186,7 @@ class ClippingIbltFactory(factory.UnweightedAggregationFactory):
 
     @federated_computation.federated_computation(
         inner_process.initialize.type_signature.result,
-        computation_types.at_clients(value_type),
+        computation_types.FederatedType(value_type, placements.CLIENTS),
     )
     def next_fn(state, client_data):
       preprocessed = intrinsics.federated_map(preprocess, client_data)

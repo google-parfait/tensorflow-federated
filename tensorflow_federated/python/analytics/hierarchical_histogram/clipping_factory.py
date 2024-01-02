@@ -128,7 +128,8 @@ class HistogramClippingSumFactory(factory.UnweightedAggregationFactory):
     )
 
     @federated_computation.federated_computation(
-        init_fn.type_signature.result, computation_types.at_clients(value_type)
+        init_fn.type_signature.result,
+        computation_types.FederatedType(value_type, placements.CLIENTS),
     )
     def next_fn(state, value):
       # Clip values before aggregation.

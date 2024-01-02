@@ -25,6 +25,7 @@ from tensorflow_federated.python.analytics.hierarchical_histogram import build_t
 from tensorflow_federated.python.analytics.hierarchical_histogram import hierarchical_histogram_factory as hihi_factory
 from tensorflow_federated.python.core.backends.test import execution_contexts
 from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
@@ -71,10 +72,11 @@ class TreeAggregationFactoryComputationTest(
     _, _, dp_event = query.get_noised_result(initial_sample_state, query_state)
     dp_event_type = type_conversions.infer_type(dp_event.to_named_tuple())
 
-    server_state_type = computation_types.at_server(
+    server_state_type = computation_types.FederatedType(
         differential_privacy.DPAggregatorState(
             query_state_type, (), dp_event_type, np.bool_
-        )
+        ),
+        placements.SERVER,
     )
     expected_initialize_type = computation_types.FunctionType(
         parameter=None, result=server_state_type
@@ -94,10 +96,11 @@ class TreeAggregationFactoryComputationTest(
       )
     else:
       expected_measurements_dp = ()
-    expected_measurements_type = computation_types.at_server(
+    expected_measurements_type = computation_types.FederatedType(
         collections.OrderedDict(
             dp_query_metrics=query_metrics_type, dp=expected_measurements_dp
-        )
+        ),
+        placements.SERVER,
     )
 
     tree_depth = hihi_factory._tree_depth(value_shape, arity)
@@ -115,11 +118,15 @@ class TreeAggregationFactoryComputationTest(
     expected_next_type = computation_types.FunctionType(
         parameter=collections.OrderedDict(
             state=server_state_type,
-            value=computation_types.at_clients(value_type),
+            value=computation_types.FederatedType(
+                value_type, placements.CLIENTS
+            ),
         ),
         result=measured_process.MeasuredProcessOutput(
             state=server_state_type,
-            result=computation_types.at_server(result_value_type),
+            result=computation_types.FederatedType(
+                result_value_type, placements.SERVER
+            ),
             measurements=expected_measurements_type,
         ),
     )
@@ -167,10 +174,11 @@ class TreeAggregationFactoryComputationTest(
     _, _, dp_event = query.get_noised_result(initial_sample_state, query_state)
     dp_event_type = type_conversions.infer_type(dp_event.to_named_tuple())
 
-    server_state_type = computation_types.at_server(
+    server_state_type = computation_types.FederatedType(
         differential_privacy.DPAggregatorState(
             query_state_type, (), dp_event_type, np.bool_
-        )
+        ),
+        placements.SERVER,
     )
     expected_initialize_type = computation_types.FunctionType(
         parameter=None, result=server_state_type
@@ -190,10 +198,11 @@ class TreeAggregationFactoryComputationTest(
       )
     else:
       expected_measurements_dp = ()
-    expected_measurements_type = computation_types.at_server(
+    expected_measurements_type = computation_types.FederatedType(
         collections.OrderedDict(
             dp_query_metrics=query_metrics_type, dp=expected_measurements_dp
-        )
+        ),
+        placements.SERVER,
     )
     tree_depth = hihi_factory._tree_depth(value_shape, arity)
     flat_tree_shape = (arity**tree_depth - 1) // (arity - 1)
@@ -210,11 +219,15 @@ class TreeAggregationFactoryComputationTest(
     expected_next_type = computation_types.FunctionType(
         parameter=collections.OrderedDict(
             state=server_state_type,
-            value=computation_types.at_clients(value_type),
+            value=computation_types.FederatedType(
+                value_type, placements.CLIENTS
+            ),
         ),
         result=measured_process.MeasuredProcessOutput(
             state=server_state_type,
-            result=computation_types.at_server(result_value_type),
+            result=computation_types.FederatedType(
+                result_value_type, placements.SERVER
+            ),
             measurements=expected_measurements_type,
         ),
     )
@@ -262,10 +275,11 @@ class TreeAggregationFactoryComputationTest(
     _, _, dp_event = query.get_noised_result(initial_sample_state, query_state)
     dp_event_type = type_conversions.infer_type(dp_event.to_named_tuple())
 
-    server_state_type = computation_types.at_server(
+    server_state_type = computation_types.FederatedType(
         differential_privacy.DPAggregatorState(
             query_state_type, (), dp_event_type, np.bool_
-        )
+        ),
+        placements.SERVER,
     )
     expected_initialize_type = computation_types.FunctionType(
         parameter=None, result=server_state_type
@@ -275,8 +289,9 @@ class TreeAggregationFactoryComputationTest(
             expected_initialize_type
         )
     )
-    expected_measurements_type = computation_types.at_server(
-        collections.OrderedDict(dp_query_metrics=query_metrics_type, dp=())
+    expected_measurements_type = computation_types.FederatedType(
+        collections.OrderedDict(dp_query_metrics=query_metrics_type, dp=()),
+        placements.SERVER,
     )
 
     tree_depth = hihi_factory._tree_depth(value_shape, arity)
@@ -294,11 +309,15 @@ class TreeAggregationFactoryComputationTest(
     expected_next_type = computation_types.FunctionType(
         parameter=collections.OrderedDict(
             state=server_state_type,
-            value=computation_types.at_clients(value_type),
+            value=computation_types.FederatedType(
+                value_type, placements.CLIENTS
+            ),
         ),
         result=measured_process.MeasuredProcessOutput(
             state=server_state_type,
-            result=computation_types.at_server(result_value_type),
+            result=computation_types.FederatedType(
+                result_value_type, placements.SERVER
+            ),
             measurements=expected_measurements_type,
         ),
     )

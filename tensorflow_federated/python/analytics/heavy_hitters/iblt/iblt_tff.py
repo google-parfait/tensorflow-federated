@@ -284,7 +284,7 @@ def build_iblt_computation(
     )
 
   @federated_computation.federated_computation(
-      computation_types.at_clients(dataset_type)
+      computation_types.FederatedType(dataset_type, placements.CLIENTS)
   )
   def one_round_computation(examples):
     """The TFF computation to compute the aggregated IBLT sketch."""

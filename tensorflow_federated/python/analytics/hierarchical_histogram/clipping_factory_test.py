@@ -50,8 +50,10 @@ class ClippingSumFactoryComputationTest(
     result_value_type = computation_types.FederatedType(
         value_type, placements.SERVER
     )
-    expected_state_type = computation_types.at_server(())
-    expected_measurements_type = computation_types.at_server(())
+    expected_state_type = computation_types.FederatedType((), placements.SERVER)
+    expected_measurements_type = computation_types.FederatedType(
+        (), placements.SERVER
+    )
 
     expected_initialize_type = computation_types.FunctionType(
         parameter=None, result=expected_state_type

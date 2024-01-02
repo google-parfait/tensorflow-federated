@@ -26,6 +26,7 @@ from tensorflow_federated.python.analytics.heavy_hitters.iblt import iblt_tff
 from tensorflow_federated.python.core.backends.test import execution_contexts
 from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_test_utils
 
 DATA = [
@@ -163,12 +164,13 @@ class IbltTffConstructionTest(absltest.TestCase):
     type_test_utils.assert_types_identical(
         iblt_computation.type_signature,
         computation_types.FunctionType(
-            parameter=computation_types.at_clients(
+            parameter=computation_types.FederatedType(
                 computation_types.SequenceType(
                     computation_types.TensorType(shape=[None], dtype=np.str_)
-                )
+                ),
+                placements.CLIENTS,
             ),
-            result=computation_types.at_server(
+            result=computation_types.FederatedType(
                 iblt_tff.ServerOutput(
                     clients=np.int32,
                     heavy_hitters=computation_types.TensorType(
@@ -182,7 +184,8 @@ class IbltTffConstructionTest(absltest.TestCase):
                     ),
                     num_not_decoded=np.int64,
                     round_timestamp=np.int64,
-                )
+                ),
+                placements.SERVER,
             ),
         ),
     )

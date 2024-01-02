@@ -26,6 +26,7 @@ from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.core.impl.types import placements
 
 # See https://en.wikipedia.org/wiki/HyperLogLog for usage of these constants.
 # Setting HLL_SKETCH_SIZE = 64 is not currently supported because it is not
@@ -109,8 +110,9 @@ def build_federated_secure_max_computation() -> computation_base.Computation:
   """
 
   @federated_computation.federated_computation(
-      computation_types.at_clients(
-          computation_types.TensorType(np.int64, shape=[HLL_SKETCH_SIZE])
+      computation_types.FederatedType(
+          computation_types.TensorType(np.int64, shape=[HLL_SKETCH_SIZE]),
+          placements.CLIENTS,
       )
   )
   def federated_secure_max(sketch):
@@ -205,7 +207,9 @@ def create_federated_hyperloglog_computation(
   federated_secure_max = build_federated_secure_max_computation()
 
   @federated_computation.federated_computation(
-      computation_types.at_clients(computation_types.SequenceType(np.str_))
+      computation_types.FederatedType(
+          computation_types.SequenceType(np.str_), placements.CLIENTS
+      )
   )
   def federated_hyperloglog(client_data):
     client_hash = intrinsics.federated_map(hash_client_data, client_data)
