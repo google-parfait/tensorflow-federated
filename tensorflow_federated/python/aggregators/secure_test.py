@@ -31,10 +31,14 @@ from tensorflow_federated.python.core.templates import estimation_process
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.core.test import static_assert
 
-_float_at_server = computation_types.at_server(np.float32)
-_float_at_clients = computation_types.at_clients(np.float32)
-_int_at_server = computation_types.at_server(np.int32)
-_int_at_clients = computation_types.at_clients(np.int32)
+_float_at_server = computation_types.FederatedType(
+    np.float32, placements.SERVER
+)
+_float_at_clients = computation_types.FederatedType(
+    np.float32, placements.CLIENTS
+)
+_int_at_server = computation_types.FederatedType(np.int32, placements.SERVER)
+_int_at_clients = computation_types.FederatedType(np.int32, placements.CLIENTS)
 
 
 def _test_struct_type(dtype):
@@ -73,13 +77,14 @@ def _test_estimation_process(factor):
 
 
 def _measurements_type(bound_type):
-  return computation_types.at_server(
+  return computation_types.FederatedType(
       collections.OrderedDict(
           secure_upper_clipped_count=secure.COUNT_TYPE,
           secure_lower_clipped_count=secure.COUNT_TYPE,
           secure_upper_threshold=bound_type,
           secure_lower_threshold=bound_type,
-      )
+      ),
+      placements.SERVER,
   )
 
 
@@ -106,9 +111,7 @@ class SecureModularSumFactoryComputationTest(
     process = factory_.create(value_type)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
-    expected_state_type = computation_types.at_server(
-        computation_types.to_type(())
-    )
+    expected_state_type = computation_types.FederatedType((), placements.SERVER)
     expected_measurements_type = expected_state_type
 
     expected_initialize_type = computation_types.FunctionType(
@@ -123,11 +126,15 @@ class SecureModularSumFactoryComputationTest(
     expected_next_type = computation_types.FunctionType(
         parameter=collections.OrderedDict(
             state=expected_state_type,
-            value=computation_types.at_clients(value_type),
+            value=computation_types.FederatedType(
+                value_type, placements.CLIENTS
+            ),
         ),
         result=measured_process.MeasuredProcessOutput(
             state=expected_state_type,
-            result=computation_types.at_server(value_type),
+            result=computation_types.FederatedType(
+                value_type, placements.SERVER
+            ),
             measurements=expected_measurements_type,
         ),
     )
@@ -276,9 +283,7 @@ class SecureSumFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
     process = secure_sum_f.create(value_type)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
-    expected_state_type = computation_types.at_server(
-        computation_types.to_type(())
-    )
+    expected_state_type = computation_types.FederatedType((), placements.SERVER)
     expected_measurements_type = _measurements_type(measurements_dtype)
 
     expected_initialize_type = computation_types.FunctionType(
@@ -293,11 +298,15 @@ class SecureSumFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
     expected_next_type = computation_types.FunctionType(
         parameter=collections.OrderedDict(
             state=expected_state_type,
-            value=computation_types.at_clients(value_type),
+            value=computation_types.FederatedType(
+                value_type, placements.CLIENTS
+            ),
         ),
         result=measured_process.MeasuredProcessOutput(
             state=expected_state_type,
-            result=computation_types.at_server(value_type),
+            result=computation_types.FederatedType(
+                value_type, placements.SERVER
+            ),
             measurements=expected_measurements_type,
         ),
     )
@@ -323,8 +332,8 @@ class SecureSumFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
     threshold_type = upper_bound_process.report.type_signature.result.member
-    expected_state_type = computation_types.at_server(
-        computation_types.to_type(threshold_type)
+    expected_state_type = computation_types.FederatedType(
+        computation_types.to_type(threshold_type), placements.SERVER
     )
     expected_measurements_type = _measurements_type(dtype)
 
@@ -340,11 +349,15 @@ class SecureSumFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
     expected_next_type = computation_types.FunctionType(
         parameter=collections.OrderedDict(
             state=expected_state_type,
-            value=computation_types.at_clients(value_type),
+            value=computation_types.FederatedType(
+                value_type, placements.CLIENTS
+            ),
         ),
         result=measured_process.MeasuredProcessOutput(
             state=expected_state_type,
-            result=computation_types.at_server(value_type),
+            result=computation_types.FederatedType(
+                value_type, placements.SERVER
+            ),
             measurements=expected_measurements_type,
         ),
     )
@@ -372,8 +385,9 @@ class SecureSumFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
     threshold_type = upper_bound_process.report.type_signature.result.member
-    expected_state_type = computation_types.at_server(
-        computation_types.to_type((threshold_type, threshold_type))
+    expected_state_type = computation_types.FederatedType(
+        computation_types.to_type((threshold_type, threshold_type)),
+        placements.SERVER,
     )
     expected_measurements_type = _measurements_type(dtype)
 
@@ -389,11 +403,15 @@ class SecureSumFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
     expected_next_type = computation_types.FunctionType(
         parameter=collections.OrderedDict(
             state=expected_state_type,
-            value=computation_types.at_clients(value_type),
+            value=computation_types.FederatedType(
+                value_type, placements.CLIENTS
+            ),
         ),
         result=measured_process.MeasuredProcessOutput(
             state=expected_state_type,
-            result=computation_types.at_server(value_type),
+            result=computation_types.FederatedType(
+                value_type, placements.SERVER
+            ),
             measurements=expected_measurements_type,
         ),
     )

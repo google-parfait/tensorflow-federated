@@ -68,10 +68,11 @@ class DPFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
     )
     dp_event_type = type_conversions.infer_type(dp_event.to_named_tuple())
 
-    server_state_type = computation_types.at_server(
+    server_state_type = computation_types.FederatedType(
         differential_privacy.DPAggregatorState(
             query_state_type, inner_state_type, dp_event_type, np.bool_
-        )
+        ),
+        placements.SERVER,
     )
     expected_initialize_type = computation_types.FunctionType(
         parameter=None, result=server_state_type
@@ -82,20 +83,25 @@ class DPFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
         )
     )
     inner_measurements_type = np.int32 if inner_agg_factory else ()
-    expected_measurements_type = computation_types.at_server(
+    expected_measurements_type = computation_types.FederatedType(
         collections.OrderedDict(
             dp_query_metrics=query_metrics_type, dp=inner_measurements_type
-        )
+        ),
+        placements.SERVER,
     )
 
     expected_next_type = computation_types.FunctionType(
         parameter=collections.OrderedDict(
             state=server_state_type,
-            value=computation_types.at_clients(value_type),
+            value=computation_types.FederatedType(
+                value_type, placements.CLIENTS
+            ),
         ),
         result=measured_process.MeasuredProcessOutput(
             state=server_state_type,
-            result=computation_types.at_server(value_type),
+            result=computation_types.FederatedType(
+                value_type, placements.SERVER
+            ),
             measurements=expected_measurements_type,
         ),
     )

@@ -25,9 +25,12 @@ from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.core.impl.types import placements
 
 _struct_type = computation_types.to_type([(np.float32, (3,)), np.float32])
-_struct_type_clients = computation_types.at_clients(_struct_type)
+_struct_type_clients = computation_types.FederatedType(
+    _struct_type, placements.CLIENTS
+)
 _float_type = computation_types.to_type(np.float32)
 
 

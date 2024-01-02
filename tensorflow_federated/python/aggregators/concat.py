@@ -25,6 +25,7 @@ from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.templates import aggregation_process
@@ -141,7 +142,8 @@ def _unweighted_concat_factory(inner_agg_factory):
       state_type = init_fn.type_signature.result
 
       @federated_computation.federated_computation(
-          state_type, computation_types.at_clients(value_type)
+          state_type,
+          computation_types.FederatedType(value_type, placements.CLIENTS),
       )
       def next_fn(state, value):
         return _next_fn_impl(
@@ -170,8 +172,8 @@ def _weighted_concat_factory(inner_agg_factory):
 
       @federated_computation.federated_computation(
           init_fn.type_signature.result,
-          computation_types.at_clients(value_type),
-          computation_types.at_clients(weight_type),
+          computation_types.FederatedType(value_type, placements.CLIENTS),
+          computation_types.FederatedType(weight_type, placements.CLIENTS),
       )
       def next_fn(state, value, weight):
         return _next_fn_impl(

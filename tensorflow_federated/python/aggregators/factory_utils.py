@@ -17,6 +17,7 @@ from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import aggregation_process
 
 
@@ -53,8 +54,8 @@ class _UnweightedAsWeightedFactory(factory.WeightedAggregationFactory):
 
     @federated_computation.federated_computation(
         aggregator.state_type,
-        computation_types.at_clients(value_type),
-        computation_types.at_clients(weight_type),
+        computation_types.FederatedType(value_type, placements.CLIENTS),
+        computation_types.FederatedType(weight_type, placements.CLIENTS),
     )
     def next_fn(state, value, weight):
       del weight  # Unused.

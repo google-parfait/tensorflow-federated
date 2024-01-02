@@ -24,6 +24,7 @@ from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
 
@@ -54,14 +55,20 @@ class MeanFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
 
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
-    param_value_type = computation_types.at_clients(value_type)
-    result_value_type = computation_types.at_server(value_type)
-
-    expected_state_type = computation_types.at_server(
-        collections.OrderedDict(value_sum_process=(), weight_sum_process=())
+    param_value_type = computation_types.FederatedType(
+        value_type, placements.CLIENTS
     )
-    expected_measurements_type = computation_types.at_server(
-        collections.OrderedDict(mean_value=(), mean_weight=())
+    result_value_type = computation_types.FederatedType(
+        value_type, placements.SERVER
+    )
+
+    expected_state_type = computation_types.FederatedType(
+        collections.OrderedDict(value_sum_process=(), weight_sum_process=()),
+        placements.SERVER,
+    )
+    expected_measurements_type = computation_types.FederatedType(
+        collections.OrderedDict(mean_value=(), mean_weight=()),
+        placements.SERVER,
     )
 
     expected_initialize_type = computation_types.FunctionType(
@@ -76,7 +83,7 @@ class MeanFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
     expected_parameter = collections.OrderedDict(
         state=expected_state_type,
         value=param_value_type,
-        weight=computation_types.at_clients(weight_type),
+        weight=computation_types.FederatedType(weight_type, placements.CLIENTS),
     )
 
     expected_next_type = computation_types.FunctionType(
@@ -102,12 +109,18 @@ class MeanFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
 
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
-    param_value_type = computation_types.at_clients(value_type)
-    result_value_type = computation_types.at_server(value_type)
+    param_value_type = computation_types.FederatedType(
+        value_type, placements.CLIENTS
+    )
+    result_value_type = computation_types.FederatedType(
+        value_type, placements.SERVER
+    )
 
-    expected_state_type = computation_types.at_server(((), ()))
-    expected_measurements_type = computation_types.at_server(
-        collections.OrderedDict(mean_value=(), mean_count=())
+    expected_state_type = computation_types.FederatedType(
+        ((), ()), placements.SERVER
+    )
+    expected_measurements_type = computation_types.FederatedType(
+        collections.OrderedDict(mean_value=(), mean_count=()), placements.SERVER
     )
 
     expected_initialize_type = computation_types.FunctionType(
@@ -154,16 +167,22 @@ class MeanFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
 
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
-    param_value_type = computation_types.at_clients(value_type)
-    result_value_type = computation_types.at_server(value_type)
+    param_value_type = computation_types.FederatedType(
+        value_type, placements.CLIENTS
+    )
+    result_value_type = computation_types.FederatedType(
+        value_type, placements.SERVER
+    )
 
-    expected_state_type = computation_types.at_server(
+    expected_state_type = computation_types.FederatedType(
         collections.OrderedDict(
             value_sum_process=np.int32, weight_sum_process=np.int32
-        )
+        ),
+        placements.SERVER,
     )
-    expected_measurements_type = computation_types.at_server(
-        collections.OrderedDict(mean_value=np.int32, mean_weight=np.int32)
+    expected_measurements_type = computation_types.FederatedType(
+        collections.OrderedDict(mean_value=np.int32, mean_weight=np.int32),
+        placements.SERVER,
     )
 
     expected_initialize_type = computation_types.FunctionType(
@@ -178,7 +197,7 @@ class MeanFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
     expected_parameter = collections.OrderedDict(
         state=expected_state_type,
         value=param_value_type,
-        weight=computation_types.at_clients(weight_type),
+        weight=computation_types.FederatedType(weight_type, placements.CLIENTS),
     )
 
     expected_next_type = computation_types.FunctionType(
@@ -207,12 +226,19 @@ class MeanFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
 
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
-    param_value_type = computation_types.at_clients(value_type)
-    result_value_type = computation_types.at_server(value_type)
+    param_value_type = computation_types.FederatedType(
+        value_type, placements.CLIENTS
+    )
+    result_value_type = computation_types.FederatedType(
+        value_type, placements.SERVER
+    )
 
-    expected_state_type = computation_types.at_server(((np.int32, np.int32)))
-    expected_measurements_type = computation_types.at_server(
-        collections.OrderedDict(mean_value=np.int32, mean_count=np.int32)
+    expected_state_type = computation_types.FederatedType(
+        ((np.int32, np.int32)), placements.SERVER
+    )
+    expected_measurements_type = computation_types.FederatedType(
+        collections.OrderedDict(mean_value=np.int32, mean_count=np.int32),
+        placements.SERVER,
     )
 
     expected_initialize_type = computation_types.FunctionType(
@@ -237,7 +263,10 @@ class MeanFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
     )
 
   @parameterized.named_parameters(
-      ('federated_type', computation_types.at_server(np.float32)),
+      (
+          'federated_type',
+          computation_types.FederatedType(np.float32, placements.SERVER),
+      ),
       ('function_type', computation_types.FunctionType(None, ())),
       ('sequence_type', computation_types.SequenceType(np.float32)),
   )

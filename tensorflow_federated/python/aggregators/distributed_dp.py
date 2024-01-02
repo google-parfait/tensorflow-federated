@@ -617,7 +617,8 @@ class DistributedDpSumFactory(factory.UnweightedAggregationFactory):
     init_fn = ddp_agg_process.initialize
 
     @federated_computation.federated_computation(
-        init_fn.type_signature.result, computation_types.at_clients(value_type)
+        init_fn.type_signature.result,
+        computation_types.FederatedType(value_type, placements.CLIENTS),
     )
     def next_fn(state, value):
       agg_output = ddp_agg_process.next(state, value)

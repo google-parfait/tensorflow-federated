@@ -129,7 +129,8 @@ class SecureModularSumFactory(factory.UnweightedAggregationFactory):
       return intrinsics.federated_value((), placements.SERVER)
 
     @federated_computation.federated_computation(
-        init_fn.type_signature.result, computation_types.at_clients(value_type)
+        init_fn.type_signature.result,
+        computation_types.FederatedType(value_type, placements.CLIENTS),
     )
     def next_fn(state, value):
       if self._symmetric_range:
@@ -205,7 +206,9 @@ def _check_bound_process(
         f'{next_parameter_type}'
     )
 
-  float_type_at_clients = computation_types.at_clients(NORM_TYPE)
+  float_type_at_clients = computation_types.FederatedType(
+      NORM_TYPE, placements.CLIENTS
+  )
   if not next_parameter_type[1].is_assignable_from(float_type_at_clients):  # pytype: disable=unsupported-operands
     raise TypeError(
         f'Second argument of `{name}.next` must be assignable from '
@@ -221,8 +224,9 @@ def _check_bound_process(
     )
 
   report_type = bound_process.report.type_signature.result
-  estimated_value_type_at_server = computation_types.at_server(
-      next_parameter_type[1].member  # pytype: disable=unsupported-operands
+  estimated_value_type_at_server = computation_types.FederatedType(
+      next_parameter_type[1].member,  # pytype: disable=unsupported-operands
+      placements.SERVER,
   )
   if not report_type.is_assignable_from(estimated_value_type_at_server):
     raise TypeError(

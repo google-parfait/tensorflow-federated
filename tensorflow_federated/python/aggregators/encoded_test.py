@@ -89,12 +89,16 @@ class EncodedSumFactoryComputationTest(
     expected_next_type = computation_types.FunctionType(
         parameter=collections.OrderedDict(
             state=server_state_type,
-            value=computation_types.at_clients(_test_struct_type),
+            value=computation_types.FederatedType(
+                _test_struct_type, placements.CLIENTS
+            ),
         ),
         result=measured_process.MeasuredProcessOutput(
             state=server_state_type,
-            result=computation_types.at_server(_test_struct_type),
-            measurements=computation_types.at_server(()),
+            result=computation_types.FederatedType(
+                _test_struct_type, placements.SERVER
+            ),
+            measurements=computation_types.FederatedType((), placements.SERVER),
         ),
     )
     self.assertTrue(

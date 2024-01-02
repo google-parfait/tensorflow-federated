@@ -23,6 +23,7 @@ import tensorflow as tf
 from tensorflow_federated.python.aggregators import sparsifying_aggregator_factory
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.types import type_test_utils
 from tensorflow_federated.python.core.templates import measured_process
@@ -49,7 +50,9 @@ class SparsifyingAggregatorFactoryTest(parameterized.TestCase):
     client_value_type = computation_types.to_type(client_value_type)
     factory = sparsifying_aggregator_factory.SparsifyingSumFactory()
     mean_process = factory.create(value_type=client_value_type)
-    empty_tuple_at_server = computation_types.at_server(())
+    empty_tuple_at_server = computation_types.FederatedType(
+        (), placements.SERVER
+    )
     type_test_utils.assert_types_identical(
         mean_process.initialize.type_signature,
         computation_types.FunctionType(
@@ -63,13 +66,17 @@ class SparsifyingAggregatorFactoryTest(parameterized.TestCase):
                 ('state', empty_tuple_at_server),
                 (
                     'client_values',
-                    computation_types.at_clients(client_value_type),
+                    computation_types.FederatedType(
+                        client_value_type, placements.CLIENTS
+                    ),
                 ),
             ]),
             result=measured_process.MeasuredProcessOutput(
                 state=empty_tuple_at_server,
-                result=computation_types.at_server(client_value_type),
-                measurements=computation_types.at_server(
+                result=computation_types.FederatedType(
+                    client_value_type, placements.SERVER
+                ),
+                measurements=computation_types.FederatedType(
                     collections.OrderedDict(
                         client_coordinate_counts=type_conversions.structure_from_tensor_type_tree(
                             lambda _: np.int64, client_value_type
@@ -77,7 +84,8 @@ class SparsifyingAggregatorFactoryTest(parameterized.TestCase):
                         aggregate_coordinate_counts=type_conversions.structure_from_tensor_type_tree(
                             lambda _: np.int64, client_value_type
                         ),
-                    )
+                    ),
+                    placements.SERVER,
                 ),
             ),
         ),

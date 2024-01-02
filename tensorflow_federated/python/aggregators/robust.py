@@ -49,7 +49,7 @@ def _constant_process(value):
   next_fn = federated_computation.federated_computation(
       lambda state, value: state,
       init_fn.type_signature.result,
-      computation_types.at_clients(NORM_TF_TYPE),
+      computation_types.FederatedType(NORM_TF_TYPE, placements.CLIENTS),
   )
   report_fn = federated_computation.federated_computation(
       lambda state: intrinsics.federated_value(value, placements.SERVER),
@@ -84,7 +84,9 @@ def _check_norm_process(
         f'{next_parameter_type}'
     )
 
-  norm_type_at_clients = computation_types.at_clients(NORM_TF_TYPE)
+  norm_type_at_clients = computation_types.FederatedType(
+      NORM_TF_TYPE, placements.CLIENTS
+  )
   if not next_parameter_type[1].is_assignable_from(norm_type_at_clients):  # pytype: disable=unsupported-operands
     raise TypeError(
         f'Second argument of `{name}.next` must be assignable from '
@@ -100,7 +102,9 @@ def _check_norm_process(
     )
 
   result_type = norm_process.report.type_signature.result
-  norm_type_at_server = computation_types.at_server(NORM_TF_TYPE)
+  norm_type_at_server = computation_types.FederatedType(
+      NORM_TF_TYPE, placements.SERVER
+  )
   if not norm_type_at_server.is_assignable_from(result_type):
     raise TypeError(
         f'Result type of `{name}.report` must be assignable to '
@@ -397,8 +401,8 @@ def _make_wrapper(
 
         @federated_computation.federated_computation(
             init_fn.type_signature.result,
-            computation_types.at_clients(value_type),
-            computation_types.at_clients(weight_type),
+            computation_types.FederatedType(value_type, placements.CLIENTS),
+            computation_types.FederatedType(weight_type, placements.CLIENTS),
         )
         def next_fn(state, value, weight):
           return next_fn_impl(state, value, clip_fn, inner_agg_process, weight)
@@ -425,7 +429,7 @@ def _make_wrapper(
 
         @federated_computation.federated_computation(
             init_fn.type_signature.result,
-            computation_types.at_clients(value_type),
+            computation_types.FederatedType(value_type, placements.CLIENTS),
         )
         def next_fn(state, value):
           return next_fn_impl(state, value, clip_fn, inner_agg_process)
