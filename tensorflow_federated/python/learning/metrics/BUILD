@@ -27,18 +27,18 @@ py_library(
     srcs = ["__init__.py"],
     visibility = ["//tensorflow_federated/python/learning:__pkg__"],
     deps = [
-        ":aggregation_factory",
         ":aggregator",
         ":counters",
         ":keras_finalizer",
         ":keras_utils",
+        ":sum_aggregation_factory",
         ":types",
     ],
 )
 
 py_library(
-    name = "aggregation_factory",
-    srcs = ["aggregation_factory.py"],
+    name = "sum_aggregation_factory",
+    srcs = ["sum_aggregation_factory.py"],
     deps = [
         ":aggregation_utils",
         ":types",
@@ -61,11 +61,11 @@ py_library(
 )
 
 py_test(
-    name = "aggregation_factory_test",
-    srcs = ["aggregation_factory_test.py"],
+    name = "sum_aggregation_factory_test",
+    srcs = ["sum_aggregation_factory_test.py"],
     shard_count = 2,
     deps = [
-        ":aggregation_factory",
+        ":sum_aggregation_factory",
         "//tensorflow_federated/python/aggregators:factory",
         "//tensorflow_federated/python/aggregators:quantile_estimation",
         "//tensorflow_federated/python/core/backends/test:execution_contexts",
@@ -105,8 +105,8 @@ py_library(
     name = "aggregator",
     srcs = ["aggregator.py"],
     deps = [
-        ":aggregation_factory",
         ":aggregation_utils",
+        ":sum_aggregation_factory",
         ":types",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
         "//tensorflow_federated/python/core/impl/computation:computation_base",
@@ -122,9 +122,9 @@ py_test(
     name = "aggregator_test",
     srcs = ["aggregator_test.py"],
     deps = [
-        ":aggregation_factory",
         ":aggregator",
         ":keras_finalizer",
+        ":sum_aggregation_factory",
         "//tensorflow_federated/python/core/backends/test:execution_contexts",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
         "//tensorflow_federated/python/core/test:static_assert",
@@ -200,8 +200,8 @@ py_library(
     name = "sampling_aggregation_factory",
     srcs = ["sampling_aggregation_factory.py"],
     deps = [
-        ":aggregation_factory",
         ":aggregation_utils",
+        ":sum_aggregation_factory",
         ":types",
         "//tensorflow_federated/python/aggregators:factory",
         "//tensorflow_federated/python/aggregators:sampling",

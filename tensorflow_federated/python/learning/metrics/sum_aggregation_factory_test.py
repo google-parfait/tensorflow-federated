@@ -28,11 +28,11 @@ from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import estimation_process
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.core.test import static_assert
-from tensorflow_federated.python.learning.metrics import aggregation_factory
+from tensorflow_federated.python.learning.metrics import sum_aggregation_factory
 
 # Convenience aliases.
 TensorType = computation_types.TensorType
-MetricRange = aggregation_factory._MetricRange
+MetricRange = sum_aggregation_factory._MetricRange
 
 
 def _get_finalized_metrics_type(metric_finalizers, unfinalized_metrics):
@@ -55,8 +55,8 @@ _DEFAULT_FLOAT_FACTORY_KEY = 'None/default_estimation_process/float32'
 _DEFAULT_INT_FACTORY_KEY = '0/1048575/int32'
 
 _DEFAULT_FIXED_FLOAT_RANGE = (
-    float(aggregation_factory.DEFAULT_FIXED_SECURE_LOWER_BOUND),
-    float(aggregation_factory.DEFAULT_FIXED_SECURE_UPPER_BOUND),
+    float(sum_aggregation_factory.DEFAULT_FIXED_SECURE_LOWER_BOUND),
+    float(sum_aggregation_factory.DEFAULT_FIXED_SECURE_UPPER_BOUND),
 )
 _DEFAULT_AUTO_TUNED_FLOAT_RANGE = (
     None,
@@ -69,8 +69,8 @@ _DEFAULT_AUTO_TUNED_FLOAT_RANGE = (
     ),
 )
 _DEFAULT_INT_RANGE = (
-    int(aggregation_factory.DEFAULT_FIXED_SECURE_LOWER_BOUND),
-    int(aggregation_factory.DEFAULT_FIXED_SECURE_UPPER_BOUND),
+    int(sum_aggregation_factory.DEFAULT_FIXED_SECURE_LOWER_BOUND),
+    int(sum_aggregation_factory.DEFAULT_FIXED_SECURE_UPPER_BOUND),
 )
 
 
@@ -98,7 +98,7 @@ class SumThenFinalizeFactoryComputationTest(
       ),
   )
   def test_type_properties(self, metric_finalizers, unfinalized_metrics):
-    aggregate_factory = aggregation_factory.SumThenFinalizeFactory(
+    aggregate_factory = sum_aggregation_factory.SumThenFinalizeFactory(
         metric_finalizers
     )
     self.assertIsInstance(
@@ -161,9 +161,9 @@ class SumThenFinalizeFactoryComputationTest(
       self, metric_value_ranges
   ):
     if metric_value_ranges is None:
-      secure_summation_factory = aggregation_factory.SecureSumFactory()
+      secure_summation_factory = sum_aggregation_factory.SecureSumFactory()
     else:
-      secure_summation_factory = aggregation_factory.SecureSumFactory(
+      secure_summation_factory = sum_aggregation_factory.SecureSumFactory(
           metric_value_ranges
       )
     metric_finalizers = collections.OrderedDict(
@@ -182,7 +182,7 @@ class SumThenFinalizeFactoryComputationTest(
         local_unfinalized_metrics
     )
 
-    aggregate_factory = aggregation_factory.SumThenFinalizeFactory(
+    aggregate_factory = sum_aggregation_factory.SumThenFinalizeFactory(
         metric_finalizers, inner_summation_factory=secure_summation_factory
     )
     process = aggregate_factory.create(local_unfinalized_metrics_type)
@@ -243,7 +243,7 @@ class SumThenFinalizeFactoryComputationTest(
   )
   def test_incorrect_finalizers_type_raises(self, bad_finalizers):
     with self.assertRaises(TypeError):
-      aggregation_factory.SumThenFinalizeFactory(bad_finalizers)
+      sum_aggregation_factory.SumThenFinalizeFactory(bad_finalizers)
 
   @parameterized.named_parameters(
       (
@@ -259,7 +259,7 @@ class SumThenFinalizeFactoryComputationTest(
     metric_finalizers = collections.OrderedDict(
         num_examples=tf.function(func=lambda x: x)
     )
-    aggregate_factory = aggregation_factory.SumThenFinalizeFactory(
+    aggregate_factory = sum_aggregation_factory.SumThenFinalizeFactory(
         metric_finalizers
     )
     with self.assertRaisesRegex(
@@ -271,7 +271,7 @@ class SumThenFinalizeFactoryComputationTest(
     metric_finalizers = collections.OrderedDict(
         num_examples=tf.function(func=lambda x: x)
     )
-    aggregate_factory = aggregation_factory.SumThenFinalizeFactory(
+    aggregate_factory = sum_aggregation_factory.SumThenFinalizeFactory(
         metric_finalizers
     )
     local_unfinalized_metrics_type = computation_types.StructWithPythonType(
@@ -294,7 +294,7 @@ class SumThenFinalizeFactoryComputationTest(
         collections.OrderedDict(num_examples=1.0)
     )
     initial_unfinalized_metrics = collections.OrderedDict(num_examples=[1.0])
-    aggregate_factory = aggregation_factory.SumThenFinalizeFactory(
+    aggregate_factory = sum_aggregation_factory.SumThenFinalizeFactory(
         metric_finalizers,
         initial_unfinalized_metrics=initial_unfinalized_metrics,
     )
@@ -320,7 +320,7 @@ class SumThenFinalizeFactoryExecutionTest(tf.test.TestCase):
     local_unfinalized_metrics_type = type_conversions.infer_type(
         local_unfinalized_metrics
     )
-    aggregate_factory = aggregation_factory.SumThenFinalizeFactory(
+    aggregate_factory = sum_aggregation_factory.SumThenFinalizeFactory(
         metric_finalizers
     )
     process = aggregate_factory.create(local_unfinalized_metrics_type)
@@ -379,7 +379,7 @@ class SumThenFinalizeFactoryExecutionTest(tf.test.TestCase):
     initial_unfinalized_metrics = collections.OrderedDict(
         num_examples=2.0, loss=[3.0, 2.0]
     )
-    aggregate_factory = aggregation_factory.SumThenFinalizeFactory(
+    aggregate_factory = sum_aggregation_factory.SumThenFinalizeFactory(
         metric_finalizers,
         initial_unfinalized_metrics=initial_unfinalized_metrics,
     )
@@ -424,9 +424,9 @@ class SumThenFinalizeFactoryExecutionTest(tf.test.TestCase):
     local_unfinalized_metrics_type = type_conversions.infer_type(
         local_unfinalized_metrics
     )
-    secure_sum_factory = aggregation_factory.SecureSumFactory()
+    secure_sum_factory = sum_aggregation_factory.SecureSumFactory()
 
-    aggregate_factory = aggregation_factory.SumThenFinalizeFactory(
+    aggregate_factory = sum_aggregation_factory.SumThenFinalizeFactory(
         metric_finalizers, inner_summation_factory=secure_sum_factory
     )
     process = aggregate_factory.create(local_unfinalized_metrics_type)
@@ -512,7 +512,7 @@ class SumThenFinalizeFactoryExecutionTest(tf.test.TestCase):
 class SecureSumFactoryTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_default_value_ranges_returns_correct_results(self):
-    aggregate_factory = aggregation_factory.SecureSumFactory()
+    aggregate_factory = sum_aggregation_factory.SecureSumFactory()
     local_unfinalized_metrics = collections.OrderedDict(
         num_examples=1,
         loss=[2.0, 1.0],
@@ -570,8 +570,8 @@ class SecureSumFactoryTest(tf.test.TestCase, parameterized.TestCase):
                 collections.OrderedDict(
                     secure_upper_clipped_count=0,
                     secure_lower_clipped_count=0,
-                    secure_upper_threshold=aggregation_factory.DEFAULT_FIXED_SECURE_UPPER_BOUND,
-                    secure_lower_threshold=aggregation_factory.DEFAULT_FIXED_SECURE_LOWER_BOUND,
+                    secure_upper_threshold=sum_aggregation_factory.DEFAULT_FIXED_SECURE_UPPER_BOUND,
+                    secure_lower_threshold=sum_aggregation_factory.DEFAULT_FIXED_SECURE_LOWER_BOUND,
                 ),
             ),
         ]),
@@ -593,17 +593,17 @@ class SecureSumFactoryTest(tf.test.TestCase, parameterized.TestCase):
             (0.0, 100.0),
         ],
     )
-    aggregate_factory = aggregation_factory.SecureSumFactory(
+    aggregate_factory = sum_aggregation_factory.SecureSumFactory(
         metric_value_ranges
     )
     process = aggregate_factory.create(local_unfinalized_metrics_type)
     static_assert.assert_not_contains_unsecure_aggregation(process.next)
 
     state = process.initialize()
-    custom_float_factory_key = aggregation_factory.create_factory_key(
+    custom_float_factory_key = sum_aggregation_factory.create_factory_key(
         0.0, 100.0, tf.float32
     )
-    custom_int_factory_key = aggregation_factory.create_factory_key(
+    custom_int_factory_key = sum_aggregation_factory.create_factory_key(
         0, 100, tf.int32
     )
     expected_factory_keys = set([
@@ -682,7 +682,7 @@ class SecureSumFactoryTest(tf.test.TestCase, parameterized.TestCase):
   def test_incorrect_unfinalized_metrics_type_raises(
       self, bad_unfinalized_metrics_type
   ):
-    secure_sum_factory = aggregation_factory.SecureSumFactory()
+    secure_sum_factory = sum_aggregation_factory.SecureSumFactory()
     with self.assertRaisesRegex(
         TypeError, 'Expected .*`tff.types.StructWithPythonType`'
     ):
@@ -692,8 +692,8 @@ class SecureSumFactoryTest(tf.test.TestCase, parameterized.TestCase):
     local_unfinalized_metrics = collections.OrderedDict(
         custom_sum=[tf.constant('abc')]
     )
-    secure_sum_factory = aggregation_factory.SecureSumFactory()
-    with self.assertRaises(aggregation_factory.UnquantizableDTypeError):
+    secure_sum_factory = sum_aggregation_factory.SecureSumFactory()
+    with self.assertRaises(sum_aggregation_factory.UnquantizableDTypeError):
       secure_sum_factory.create(
           local_unfinalized_metrics_type=type_conversions.infer_type(
               local_unfinalized_metrics
@@ -711,7 +711,7 @@ class SecureSumFactoryTest(tf.test.TestCase, parameterized.TestCase):
             None,
         ]
     )
-    secure_sum_factory = aggregation_factory.SecureSumFactory(
+    secure_sum_factory = sum_aggregation_factory.SecureSumFactory(
         metric_value_ranges
     )
     with self.assertRaisesRegex(ValueError, 'must be defined as a 2-tuple'):
@@ -765,7 +765,7 @@ class CreateDefaultSecureSumQuantizationRangesTest(
     )
     tf.nest.map_structure(
         self.assertEqual,
-        aggregation_factory.create_default_secure_sum_quantization_ranges(
+        sum_aggregation_factory.create_default_secure_sum_quantization_ranges(
             type_spec
         ),
         expected_range,
@@ -802,7 +802,7 @@ class CreateDefaultSecureSumQuantizationRangesTest(
   )
   def test_default_fixed_range_construction(self, type_spec, expected_range):
     self.assertAllEqual(
-        aggregation_factory.create_default_secure_sum_quantization_ranges(
+        sum_aggregation_factory.create_default_secure_sum_quantization_ranges(
             type_spec, use_auto_tuned_bounds_for_float_values=False
         ),
         expected_range,
@@ -867,7 +867,7 @@ class CreateDefaultSecureSumQuantizationRangesTest(
     )
     tf.nest.map_structure(
         self.assertEqual,
-        aggregation_factory.create_default_secure_sum_quantization_ranges(
+        sum_aggregation_factory.create_default_secure_sum_quantization_ranges(
             type_spec, lower_bound, upper_bound
         ),
         expected_range,
@@ -920,7 +920,7 @@ class CreateDefaultSecureSumQuantizationRangesTest(
       self, type_spec, lower_bound, upper_bound, expected_range
   ):
     self.assertAllEqual(
-        aggregation_factory.create_default_secure_sum_quantization_ranges(
+        sum_aggregation_factory.create_default_secure_sum_quantization_ranges(
             type_spec,
             lower_bound,
             upper_bound,
@@ -930,24 +930,24 @@ class CreateDefaultSecureSumQuantizationRangesTest(
     )
 
   def test_invalid_dtype(self):
-    with self.assertRaises(aggregation_factory.UnquantizableDTypeError):
-      aggregation_factory.create_default_secure_sum_quantization_ranges(
+    with self.assertRaises(sum_aggregation_factory.UnquantizableDTypeError):
+      sum_aggregation_factory.create_default_secure_sum_quantization_ranges(
           TensorType(tf.string)
       )
 
   def test_too_narrow_integer_range(self):
     with self.assertRaisesRegex(ValueError, 'not wide enough'):
-      aggregation_factory.create_default_secure_sum_quantization_ranges(
+      sum_aggregation_factory.create_default_secure_sum_quantization_ranges(
           TensorType(tf.int32), lower_bound=0.7, upper_bound=1.3
       )
 
   def test_range_reversed(self):
     with self.assertRaisesRegex(ValueError, 'must be greater than'):
-      aggregation_factory.create_default_secure_sum_quantization_ranges(
+      sum_aggregation_factory.create_default_secure_sum_quantization_ranges(
           TensorType(tf.int32), lower_bound=10, upper_bound=5
       )
     with self.assertRaisesRegex(ValueError, 'must be greater than'):
-      aggregation_factory.create_default_secure_sum_quantization_ranges(
+      sum_aggregation_factory.create_default_secure_sum_quantization_ranges(
           TensorType(tf.int32), lower_bound=10.0, upper_bound=5.0
       )
 
@@ -1001,7 +1001,7 @@ class FillMissingMetricValueRangesTest(
     default_ranges = collections.OrderedDict(
         num_example=(0, 100), loss=[(0.0, 100.0), (0.0, 100.0)]
     )
-    filled_ranges = aggregation_factory.fill_missing_values_with_defaults(
+    filled_ranges = sum_aggregation_factory.fill_missing_values_with_defaults(
         default_ranges, user_ranges
     )
     tf.nest.map_structure(
@@ -1032,7 +1032,7 @@ class FillMissingMetricValueRangesTest(
         num_example=(0, 100), loss=[(0.0, 100.0), (0.0, 100.0)]
     )
     with self.assertRaisesRegex(TypeError, expected_regex):
-      aggregation_factory.fill_missing_values_with_defaults(
+      sum_aggregation_factory.fill_missing_values_with_defaults(
           default_ranges, user_ranges
       )
 
@@ -1045,7 +1045,7 @@ class FillMissingMetricValueRangesTest(
         num_example=(0, 100), loss=[(0.0, 100.0), (0.0, 100.0)]
     )
     with self.assertRaisesRegex(ValueError, '2-tuple'):
-      aggregation_factory.fill_missing_values_with_defaults(
+      sum_aggregation_factory.fill_missing_values_with_defaults(
           default_ranges, user_ranges
       )
 

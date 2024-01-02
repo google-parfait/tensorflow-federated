@@ -25,8 +25,8 @@ from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
-from tensorflow_federated.python.learning.metrics import aggregation_factory
 from tensorflow_federated.python.learning.metrics import aggregation_utils
+from tensorflow_federated.python.learning.metrics import sum_aggregation_factory
 from tensorflow_federated.python.learning.metrics import types
 
 
@@ -151,7 +151,7 @@ class FinalizeThenSampleFactory(factory.UnweightedAggregationFactory):
       )
     local_finalize_computation = (
         # TODO: b/315870085 - Remove this pylint.
-        aggregation_factory._build_finalizer_computation(  # pylint: disable=protected-access
+        sum_aggregation_factory._build_finalizer_computation(  # pylint: disable=protected-access
             metric_finalizers, local_unfinalized_metrics_type
         )
     )

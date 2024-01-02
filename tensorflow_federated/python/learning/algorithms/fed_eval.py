@@ -30,7 +30,7 @@ from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import federated_evaluation
-from tensorflow_federated.python.learning.metrics import aggregation_factory
+from tensorflow_federated.python.learning.metrics import sum_aggregation_factory
 from tensorflow_federated.python.learning.models import functional
 from tensorflow_federated.python.learning.models import model_weights as model_weights_lib
 from tensorflow_federated.python.learning.models import variable
@@ -60,7 +60,9 @@ def _build_fed_eval_client_work(
       local_unfinalized_metrics_type = type_conversions.infer_type(
           model.report_local_unfinalized_metrics()
       )
-      factory = aggregation_factory.SumThenFinalizeFactory(metrics_finalizers)
+      factory = sum_aggregation_factory.SumThenFinalizeFactory(
+          metrics_finalizers
+      )
       metrics_aggregation_process = factory.create(
           local_unfinalized_metrics_type
       )  # pytype: disable=wrong-arg-types
@@ -141,9 +143,11 @@ def _build_functional_fed_eval_client_work(
 
   if metrics_aggregation_process is None:
     unfinalized_metrics_type = local_eval.type_signature.result
-    metrics_aggregation_process = aggregation_factory.SumThenFinalizeFactory(
-        model.finalize_metrics
-    ).create(unfinalized_metrics_type)
+    metrics_aggregation_process = (
+        sum_aggregation_factory.SumThenFinalizeFactory(
+            model.finalize_metrics
+        ).create(unfinalized_metrics_type)
+    )
 
   @federated_computation.federated_computation
   def init_fn():

@@ -32,9 +32,9 @@ from tensorflow_federated.python.core.impl.types import type_test_utils
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning.algorithms import fed_eval
-from tensorflow_federated.python.learning.metrics import aggregation_factory
 from tensorflow_federated.python.learning.metrics import aggregator
 from tensorflow_federated.python.learning.metrics import counters
+from tensorflow_federated.python.learning.metrics import sum_aggregation_factory
 from tensorflow_federated.python.learning.models import functional
 from tensorflow_federated.python.learning.models import keras_utils
 from tensorflow_federated.python.learning.models import model_examples
@@ -44,6 +44,7 @@ from tensorflow_federated.python.learning.templates import composers
 from tensorflow_federated.python.learning.templates import distributors
 from tensorflow_federated.python.learning.templates import learning_process
 from tensorflow_federated.python.tensorflow_libs import tensorflow_test_utils
+
 
 # Convenience aliases.
 FederatedType = computation_types.FederatedType
@@ -202,7 +203,7 @@ class FedEvalProcessTest(tf.test.TestCase):
     finalized_metrics_type = _get_finalized_metrics_type(
         metric_finalizers, unfinalized_metrics
     )
-    metics_aggregator = aggregation_factory.SumThenFinalizeFactory(
+    metics_aggregator = sum_aggregation_factory.SumThenFinalizeFactory(
         metric_finalizers
     ).create(local_unfinalized_metrics_type)
     metics_aggregator_state_type = (

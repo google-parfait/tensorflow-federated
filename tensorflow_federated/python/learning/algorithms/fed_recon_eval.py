@@ -41,8 +41,8 @@ from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process as measured_process_lib
 from tensorflow_federated.python.learning.algorithms import fed_recon
-from tensorflow_federated.python.learning.metrics import aggregation_factory
 from tensorflow_federated.python.learning.metrics import keras_finalizer as metrics_finalizers_lib
+from tensorflow_federated.python.learning.metrics import sum_aggregation_factory
 from tensorflow_federated.python.learning.models import reconstruction_model
 from tensorflow_federated.python.learning.optimizers import keras_optimizer
 from tensorflow_federated.python.learning.templates import client_works
@@ -293,9 +293,11 @@ def build_fed_recon_eval(
     return tf_client_computation(incoming_model_weights, client_dataset)
 
   if metrics_aggregation_process is None:
-    metrics_aggregation_process = aggregation_factory.SumThenFinalizeFactory(
-        metric_finalizers
-    ).create(client_computation.type_signature.result)
+    metrics_aggregation_process = (
+        sum_aggregation_factory.SumThenFinalizeFactory(
+            metric_finalizers
+        ).create(client_computation.type_signature.result)
+    )
   else:
     py_typecheck.check_type(
         metrics_aggregation_process,

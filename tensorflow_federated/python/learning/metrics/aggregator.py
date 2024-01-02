@@ -23,8 +23,8 @@ from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import iterative_process
-from tensorflow_federated.python.learning.metrics import aggregation_factory
 from tensorflow_federated.python.learning.metrics import aggregation_utils
+from tensorflow_federated.python.learning.metrics import sum_aggregation_factory
 from tensorflow_federated.python.learning.metrics import types
 
 
@@ -128,7 +128,7 @@ def secure_sum_then_finalize(
     ],
     local_unfinalized_metrics_type: computation_types.StructWithPythonType,
     metric_value_ranges: Optional[
-        aggregation_factory.UserMetricValueRangeDict
+        sum_aggregation_factory.UserMetricValueRangeDict
     ] = None,
 ) -> computation_base.Computation:
   """Creates a TFF computation that aggregates metrics using secure summation.
@@ -223,7 +223,7 @@ def secure_sum_then_finalize(
     )
 
   default_metric_value_ranges = (
-      aggregation_factory.create_default_secure_sum_quantization_ranges(
+      sum_aggregation_factory.create_default_secure_sum_quantization_ranges(
           local_unfinalized_metrics_type,
           lower_bound=DEFAULT_SECURE_LOWER_BOUND,
           upper_bound=DEFAULT_SECURE_UPPER_BOUND,
@@ -231,21 +231,25 @@ def secure_sum_then_finalize(
       )
   )
   try:
-    metric_value_ranges = aggregation_factory.fill_missing_values_with_defaults(
-        default_metric_value_ranges, metric_value_ranges
+    metric_value_ranges = (
+        sum_aggregation_factory.fill_missing_values_with_defaults(
+            default_metric_value_ranges, metric_value_ranges
+        )
     )
   except TypeError as e:
     raise TypeError(
         f'Failed to create encoding value range from: {metric_value_ranges}'
     ) from e
 
-  # Create a secure sum factory to perform secure summation on metrics.
-  # Note that internally metrics are grouped by their value range and dtype, and
   # only one inner secure aggregation process will be created for each group.
   # This is an optimization for computation tracing and compiling, which can be
   # slow when there are a large number of independent aggregations.
-  secure_sum_factory = aggregation_factory.SecureSumFactory(metric_value_ranges)
+  secure_sum_factory = sum_aggregation_factory.SecureSumFactory(
+      metric_value_ranges
+  )
   secure_sum_process = secure_sum_factory.create(local_unfinalized_metrics_type)
+  # Check the secure sum process is stateless.
+  assert not iterative_process.is_stateful(secure_sum_process)
   # Check the secure sum process is stateless.
   assert not iterative_process.is_stateful(secure_sum_process)
 

@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""AggregationFactory for Federated Learning metrics."""
+"""AggregationFactory that sums and then finalizes federated learning metrics."""
 
 import collections
 from collections.abc import Mapping
@@ -187,7 +187,10 @@ class SumThenFinalizeFactory(factory.UnweightedAggregationFactory):
     Args:
       local_unfinalized_metrics_type: A `tff.types.StructWithPythonType` (with
         `collections.OrderedDict` as the Python container) of a client's local
-        unfinalized metrics.
+        unfinalized metrics. Let `local_unfinalized_metrics` be the output of
+        `tff.learning.models.VariableModel.report_local_unfinalized_metrics()`,
+        its type can be obtained by
+        `tff.types.infer_unplaced_type(local_unfinalized_metrics)`.
 
     Returns:
       An instance of `tff.templates.AggregationProcess`.
@@ -226,9 +229,7 @@ class SumThenFinalizeFactory(factory.UnweightedAggregationFactory):
 
     @federated_computation.federated_computation(
         init_fn.type_signature.result,
-        computation_types.FederatedType(
-            local_unfinalized_metrics_type, placements.CLIENTS
-        ),
+        computation_types.at_clients(local_unfinalized_metrics_type),
     )
     def next_fn(
         state, unfinalized_metrics
@@ -739,9 +740,7 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
 
     @federated_computation.federated_computation(
         init_fn.type_signature.result,
-        computation_types.FederatedType(
-            local_unfinalized_metrics_type, placements.CLIENTS
-        ),
+        computation_types.at_clients(local_unfinalized_metrics_type),
     )
     def next_fn(state, client_local_unfinalized_metrics):
       client_local_grouped_unfinalized_metrics = intrinsics.federated_map(

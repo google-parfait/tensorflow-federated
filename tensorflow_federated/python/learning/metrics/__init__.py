@@ -13,15 +13,15 @@
 # limitations under the License.
 """Libraries for working with metrics in federated learning algorithms."""
 
-from tensorflow_federated.python.learning.metrics.aggregation_factory import create_default_secure_sum_quantization_ranges
-from tensorflow_federated.python.learning.metrics.aggregation_factory import SecureSumFactory
-from tensorflow_federated.python.learning.metrics.aggregation_factory import SumThenFinalizeFactory
 from tensorflow_federated.python.learning.metrics.aggregator import secure_sum_then_finalize
 from tensorflow_federated.python.learning.metrics.aggregator import sum_then_finalize
 from tensorflow_federated.python.learning.metrics.counters import NumBatchesCounter
 from tensorflow_federated.python.learning.metrics.counters import NumExamplesCounter
 from tensorflow_federated.python.learning.metrics.keras_finalizer import create_keras_metric_finalizer
 from tensorflow_federated.python.learning.metrics.keras_utils import create_functional_metric_fns
+from tensorflow_federated.python.learning.metrics.sum_aggregation_factory import create_default_secure_sum_quantization_ranges
+from tensorflow_federated.python.learning.metrics.sum_aggregation_factory import SecureSumFactory
+from tensorflow_federated.python.learning.metrics.sum_aggregation_factory import SumThenFinalizeFactory
 from tensorflow_federated.python.learning.metrics.types import FunctionalMetricFinalizersType
 from tensorflow_federated.python.learning.metrics.types import MetricFinalizersType
 from tensorflow_federated.python.learning.metrics.types import MetricsAggregatorType

@@ -22,9 +22,10 @@ import tensorflow as tf
 from tensorflow_federated.python.core.backends.test import execution_contexts
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.test import static_assert
-from tensorflow_federated.python.learning.metrics import aggregation_factory
 from tensorflow_federated.python.learning.metrics import aggregator
 from tensorflow_federated.python.learning.metrics import keras_finalizer
+from tensorflow_federated.python.learning.metrics import sum_aggregation_factory
+
 
 _UNUSED_METRICS_FINALIZERS = collections.OrderedDict(
     accuracy=tf.function(func=lambda x: x[0] / x[1])
@@ -311,7 +312,7 @@ class SecureSumThenFinalizeTest(parameterized.TestCase, tf.test.TestCase):
         raise TypeError(
             f'Expected float or int, found tensors of dtype {tensor.dtype}.'
         )
-      factory_key = aggregation_factory.create_factory_key(
+      factory_key = sum_aggregation_factory.create_factory_key(
           lower, upper, tensor.dtype
       )
       factory_keys[factory_key] = 1
@@ -378,15 +379,17 @@ class SecureSumThenFinalizeTest(parameterized.TestCase, tf.test.TestCase):
     expected_secure_sum_measurements = collections.OrderedDict()
     # The metric values are grouped into three `factory_key`s. The first group
     # only has `accoracy/0`.
-    factory_key = aggregation_factory.create_factory_key(
+    factory_key = sum_aggregation_factory.create_factory_key(
         0.0, float(aggregator.DEFAULT_SECURE_UPPER_BOUND), tf.float32
     )
     expected_secure_sum_measurements[factory_key] = self._clipped_values(0)
     # The second `factory_key` only has `accuracy/1`. Both clients get clipped.
-    factory_key = aggregation_factory.create_factory_key(0.0, 1.0, tf.float32)
+    factory_key = sum_aggregation_factory.create_factory_key(
+        0.0, 1.0, tf.float32
+    )
     expected_secure_sum_measurements[factory_key] = self._clipped_values(2, 1.0)
     # The third `factory_key` covers 3 values in `custom_sum`.
-    factory_key = aggregation_factory.create_factory_key(
+    factory_key = sum_aggregation_factory.create_factory_key(
         0, int(aggregator.DEFAULT_SECURE_UPPER_BOUND), tf.int32
     )
     expected_secure_sum_measurements[factory_key] = self._clipped_values(0)
@@ -445,7 +448,7 @@ class SecureSumThenFinalizeTest(parameterized.TestCase, tf.test.TestCase):
     expected_secure_sum_measurements = collections.OrderedDict()
     # The metric values are grouped into three `factory_key`s. The first group
     # only has `divide/0`.
-    factory_key = aggregation_factory.create_factory_key(
+    factory_key = sum_aggregation_factory.create_factory_key(
         0.0, float(aggregator.DEFAULT_SECURE_UPPER_BOUND), tf.float32
     )
     expected_secure_sum_measurements[factory_key] = self._clipped_values(0)
@@ -453,10 +456,12 @@ class SecureSumThenFinalizeTest(parameterized.TestCase, tf.test.TestCase):
     # client, both `divide/1` and `sum/count_1` get clipped; for the second
     # client, `sum/count_1` gets clipped. As a result, the number of clipped
     # clients for this group is 2.
-    factory_key = aggregation_factory.create_factory_key(0, 1, tf.int32)
+    factory_key = sum_aggregation_factory.create_factory_key(0, 1, tf.int32)
     expected_secure_sum_measurements[factory_key] = self._clipped_values(2, 1)
     # The third `factory_key` has `sum/count_2`. One client gets clipped.
-    factory_key = aggregation_factory.create_factory_key(0.0, 2.0, tf.float32)
+    factory_key = sum_aggregation_factory.create_factory_key(
+        0.0, 2.0, tf.float32
+    )
     expected_secure_sum_measurements[factory_key] = self._clipped_values(1, 2.0)
     secure_sum_measurements = aggregated_metrics.pop('secure_sum_measurements')
     self.assertAllEqual(
@@ -499,7 +504,7 @@ class SecureSumThenFinalizeTest(parameterized.TestCase, tf.test.TestCase):
     local_unfinalized_metrics_at_clients = [
         collections.OrderedDict(custom_sum=[tf.constant('abc')])
     ]
-    with self.assertRaises(aggregation_factory.UnquantizableDTypeError):
+    with self.assertRaises(sum_aggregation_factory.UnquantizableDTypeError):
       aggregator.secure_sum_then_finalize(
           metric_finalizers=metric_finalizers,
           local_unfinalized_metrics_type=type_conversions.infer_type(
