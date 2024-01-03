@@ -1055,10 +1055,6 @@ def to_type(obj: object) -> Type:
     return StructWithPythonType(obj, type(obj))
   elif isinstance(obj, structure.Struct):
     return StructType(structure.to_elements(obj))
-  elif isinstance(obj, tf.RaggedTensorSpec):
-    return _ragged_tensor_spec_to_type(obj)
-  elif isinstance(obj, tf.SparseTensorSpec):
-    return _sparse_tensor_spec_to_type(obj)
   else:
     raise TypeError(
         'Unable to interpret an argument of type {} as a type spec.'.format(

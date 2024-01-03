@@ -443,7 +443,7 @@ def save_functional_model(
         tf.TensorSpec.from_tensor, concrete_structured_fn.structured_outputs
     )
     result_type_spec = type_serialization.serialize_type(
-        computation_types.to_type(output_tensor_spec_structure)
+        computation_types.tensorflow_to_type(output_tensor_spec_structure)
     )
 
     @tf.function
