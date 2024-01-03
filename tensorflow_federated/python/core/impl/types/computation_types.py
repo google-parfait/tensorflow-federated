@@ -16,7 +16,7 @@
 import abc
 import atexit
 import collections
-from collections.abc import Hashable, Iterable, Iterator, Mapping, MutableMapping
+from collections.abc import Hashable, Iterable, Iterator, Mapping, MutableMapping, Sequence
 import difflib
 import enum
 from typing import Optional, TypeVar, Union
@@ -343,10 +343,15 @@ def _is_array_shape_like(
   """Returns `True` if `obj` is an `_ArrayShapeLike`, otherwise `False`."""
   if obj is None:
     return True
+  elif isinstance(obj, Sequence):
+    # If iterating over the `Sequence` fails, then `obj` is not an
+    # `array_shape._ArrayShapeLike`.
+    try:
+      return all(isinstance(x, int) or x is None for x in obj)
+    except Exception:  # pylint: disable=broad-exception-caught
+      return False
   else:
-    return isinstance(obj, Iterable) and all(
-        isinstance(x, int) or x is None for x in obj
-    )
+    return False
 
 
 def _to_dtype(dtype: _DtypeLike) -> np.dtype:

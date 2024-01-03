@@ -23,14 +23,14 @@ The `shape` of a tensor may be one of the following:
 *   Scalar: Has no dimensions (e.g. ()).
 """
 
-from collections.abc import Iterable
+from collections.abc import Sequence
 import functools
 import operator
 from typing import Optional, Union
 
 _EmptyTuple = tuple[()]
 ArrayShape = Union[tuple[Optional[int], ...], None, _EmptyTuple]
-_ArrayShapeLike = Union[Iterable[Optional[int]], None, _EmptyTuple]
+_ArrayShapeLike = Union[Sequence[Optional[int]], None, _EmptyTuple]
 
 
 def is_shape_fully_defined(shape: ArrayShape) -> bool:
