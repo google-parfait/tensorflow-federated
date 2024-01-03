@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import collections
 import datetime
 import unittest
@@ -552,6 +553,33 @@ class EvaluationManagerTest(tf.test.TestCase, unittest.IsolatedAsyncioTestCase):
           mock.call(mock.ANY, version=(index * 10) + 1),
       )
       mock_resumed_eval_manager.remove_all.assert_called_once()
+
+  async def test_failed_evaluation_raises(self):
+    mock_data_source = mock.create_autospec(
+        data_source.FederatedDataSource, instance=True, spec_set=True
+    )
+    mock_metrics_manager = mock.create_autospec(
+        release_manager.ReleaseManager, instance=True, spec_set=True
+    )
+    mock_create_state_manager = mock.Mock()
+    mock_create_process_fn = mock.Mock()
+    manager = evaluation_program_logic.EvaluationManager(
+        data_source=mock_data_source,
+        aggregated_metrics_manager=mock_metrics_manager,
+        create_state_manager_fn=mock_create_state_manager,
+        create_process_fn=mock_create_process_fn,
+        cohort_size=10,
+        duration=datetime.timedelta(milliseconds=10),
+    )
+
+    async def foo():
+      raise RuntimeError('Task failed!')
+
+    manager._pending_tasks.clear()
+    task = asyncio.create_task(foo())
+    manager._pending_tasks.add(task)
+    with self.assertRaisesRegex(RuntimeError, 'Task failed!'):
+      await manager.wait_for_evaluations_to_finish()
 
 
 class RunEvaluationTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):

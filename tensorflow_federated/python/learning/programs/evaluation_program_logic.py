@@ -244,7 +244,7 @@ class EvaluationManager:
     """Creates an awaitable that blocks until all evaluations are finished."""
     if not self._pending_tasks:
       return
-    _, self._pending_tasks = await asyncio.wait(
+    done_tasks, self._pending_tasks = await asyncio.wait(
         self._pending_tasks, timeout=None, return_when=asyncio.ALL_COMPLETED
     )
     if self._pending_tasks:
@@ -253,6 +253,8 @@ class EvaluationManager:
           'Expected all tasks to be complete, but wait() returned with still '
           'unfinished tasks.'
       )
+    for task in done_tasks:
+      task.result()  # Trigger any potentially stored exceptions.
 
   def _finalize_task(self, task: asyncio.Task):
     """Calls result() on tasks to ensure errors are propagated."""
