@@ -1254,8 +1254,6 @@ def tensorflow_to_type(obj: object) -> Type:
   Args:
     obj: A `tff.Type` or an argument convertible to a `tff.Type`.
   """
-  if isinstance(obj, Type):
-    return obj
 
   def _is_tensor_like(obj):
     """Returns `True` if `obj` is tensor-like, otherwise `False`."""
