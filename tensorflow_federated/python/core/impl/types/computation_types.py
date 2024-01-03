@@ -28,7 +28,6 @@ import tensorflow as tf
 import tree
 from typing_extensions import TypeGuard
 
-from tensorflow_federated.python.common_libs import deprecation
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.types import array_shape
@@ -971,40 +970,6 @@ class FederatedType(Type, metaclass=_Intern):
         and (not self.all_equal or source_type.all_equal)
         and self.placement is source_type.placement
     )
-
-
-@deprecation.deprecated(
-    '`tff.type_at_server(type_spec)` is deprecated, use '
-    '`tff.FederatedType(type_spec, tff.SERVER, all_equal=True)` instead.'
-)
-def at_server(type_spec: object) -> FederatedType:
-  """Constructs a federated type of the form `T@SERVER`.
-
-  Args:
-    type_spec: An instance of `tff.Type` or something convertible to it.
-
-  Returns:
-    The type of the form `T@SERVER`, where `T` is the `type_spec`.
-  """
-  return FederatedType(type_spec, placements.SERVER, all_equal=True)
-
-
-@deprecation.deprecated(
-    '`tff.type_at_clients(type_spec, all_equal)` is deprecated, use '
-    '`tff.FederatedType(type_spec, tff.CLIENTS, all_equal)` instead.'
-)
-def at_clients(type_spec: object, all_equal: bool = False) -> FederatedType:
-  """Constructs a federated type of the form `{T}@CLIENTS`.
-
-  Args:
-    type_spec: An instance of `tff.Type` or something convertible to it.
-    all_equal: The `all_equal` bit, `False` by default.
-
-  Returns:
-    The type of the form `{T}@CLIENTS` (by default) or `T@CLIENTS` (if specified
-    by setting the `all_equal` bit), where `T` is the `type_spec`.
-  """
-  return FederatedType(type_spec, placements.CLIENTS, all_equal=all_equal)
 
 
 def to_type(obj: object) -> Type:

@@ -1089,28 +1089,6 @@ class FederatedTypeTest(parameterized.TestCase):
     self.assertEqual(actual_result, expected_result)
 
 
-class AtServerTest(absltest.TestCase):
-
-  def test_at_server(self):
-    type_spec = computation_types.TensorType(np.bool_)
-    actual_type = computation_types.FederatedType(type_spec, placements.SERVER)
-    expected_type = computation_types.FederatedType(
-        type_spec, placements.SERVER
-    )
-    self.assertEqual(actual_type, expected_type)
-
-
-class AtClientsTest(absltest.TestCase):
-
-  def test_at_clients(self):
-    type_spec = computation_types.TensorType(np.bool_)
-    actual_type = computation_types.FederatedType(type_spec, placements.CLIENTS)
-    expected_type = computation_types.FederatedType(
-        type_spec, placements.CLIENTS
-    )
-    self.assertEqual(actual_type, expected_type)
-
-
 class ToTypeTest(parameterized.TestCase):
 
   def test_tensor_type(self):
