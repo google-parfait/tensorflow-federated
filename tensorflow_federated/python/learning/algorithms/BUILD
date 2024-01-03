@@ -205,6 +205,8 @@ py_library(
 py_test(
     name = "fed_recon_test",
     srcs = ["fed_recon_test.py"],
+    # TODO: b/318429579 - Refactor test into unit and integration testing components.
+    tags = ["nokokoro"],
     deps = [
         ":fed_recon",
         "//tensorflow_federated/python/aggregators:differential_privacy",
@@ -400,6 +402,8 @@ py_cpu_gpu_test(
     timeout = "long",
     srcs = ["mime_test.py"],
     shard_count = 10,
+    # TODO: b/318429579 - Refactor test into unit and integration testing components.
+    tags = ["nokokoro"],
     deps = [
         ":fed_avg",
         ":mime",
