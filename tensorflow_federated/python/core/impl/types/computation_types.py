@@ -1197,7 +1197,7 @@ def tensorflow_to_type(obj: object) -> Type:
   Python structures containing TensorFlow objects:
 
   *   `tf.dtypes.DType`
-  *   tensor-like objects (e.g. `(tf.int32, [2, 3])`)
+  *   tensor-like objects (e.g. `(tf.int32, tf.TensorShape([2, 3]))`)
   *   `tf.TensorSpec`
   *   `tf.data.DatasetSpec`
   *   `tf.RaggedTensorSpec`
@@ -1208,7 +1208,7 @@ def tensorflow_to_type(obj: object) -> Type:
   >>> tensorflow_to_type(tf.int32)
   tff.TensorType(np.int32)
 
-  >>> tensorflow_to_type((tf.int32, [2, 3]))
+  >>> tensorflow_to_type((tf.int32, tf.TensorShape([2, 3])))
   tff.TensorType(np.int32, (2, 3))
 
   >>> spec = tf.TensorSpec(shape=[2, 3], dtype=tf.int32)
@@ -1253,21 +1253,15 @@ def tensorflow_to_type(obj: object) -> Type:
     obj: A `tff.Type` or an argument convertible to a `tff.Type`.
   """
 
-  def _is_tensor_like(obj):
-    """Returns `True` if `obj` is tensor-like, otherwise `False`."""
-    if isinstance(obj, tuple) and len(obj) == 2:
-      dtype, shape = obj
-      return isinstance(dtype, tf.dtypes.DType) and _is_array_shape_like(shape)
-    return False
-
   def _to_type(obj):
     if isinstance(obj, tf.dtypes.DType):
-      dtype = _tensorflow_dtype_to_numpy_dtype(obj)
-      return TensorType(dtype)
-    elif _is_tensor_like(obj):
-      dtype, shape = obj
-      dtype = _tensorflow_dtype_to_numpy_dtype(dtype)
-      return TensorType(dtype, shape)
+      return _tensorflow_dtype_to_numpy_dtype(obj)
+    elif isinstance(obj, tf.TensorShape):
+      shape = _tensor_shape_to_array_shape(obj)
+      if shape is None:
+        return tree.MAP_TO_NONE
+      else:
+        return shape
     elif isinstance(obj, tf.TensorSpec):
       return _tensor_spec_to_type(obj)
     elif isinstance(obj, tf.data.DatasetSpec):

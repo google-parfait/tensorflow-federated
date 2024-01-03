@@ -1369,13 +1369,38 @@ class TensorflowToTypeTest(parameterized.TestCase):
           ),
       ),
       (
-          'tensor_like',
+          'tensor_like_shape_fully_defined',
+          (tf.int32, tf.TensorShape([2, 3])),
+          computation_types.TensorType(np.int32, [2, 3]),
+      ),
+      (
+          'tensor_like_shape_partially_defined',
+          (tf.int32, tf.TensorShape([2, None])),
+          computation_types.TensorType(np.int32, [2, None]),
+      ),
+      (
+          'tensor_like_shape_unknown',
+          (tf.int32, tf.TensorShape(None)),
+          computation_types.TensorType(np.int32, None),
+      ),
+      (
+          'tensor_like_shape_scalar',
+          (tf.int32, tf.TensorShape([])),
+          computation_types.TensorType(np.int32),
+      ),
+      (
+          'tensor_like_dtype_only',
           (tf.int32, [2, 3]),
           computation_types.TensorType(np.int32, [2, 3]),
       ),
       (
+          'tensor_like_shape_only',
+          (np.int32, tf.TensorShape([2, 3])),
+          computation_types.TensorType(np.int32, [2, 3]),
+      ),
+      (
           'tensor_like_nested',
-          [(tf.int32, [2, 3])],
+          [(tf.int32, tf.TensorShape([2, 3]))],
           computation_types.StructWithPythonType(
               [
                   computation_types.TensorType(np.int32, [2, 3]),
@@ -1385,7 +1410,7 @@ class TensorflowToTypeTest(parameterized.TestCase):
       ),
       (
           'tensor_like_mixed',
-          [(tf.int32, [2, 3]), np.float32],
+          [(tf.int32, tf.TensorShape([2, 3])), np.float32],
           computation_types.StructWithPythonType(
               [
                   computation_types.TensorType(np.int32, [2, 3]),
