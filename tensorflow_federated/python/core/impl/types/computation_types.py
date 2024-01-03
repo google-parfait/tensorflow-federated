@@ -1032,8 +1032,6 @@ def to_type(obj: object) -> Type:
     return obj
   elif _is_dtype_like(obj):
     return TensorType(obj)  # pytype: disable=wrong-arg-types  # b/290661340
-  elif isinstance(obj, tf.TensorSpec):
-    return _tensor_spec_to_type(obj)
   elif (
       isinstance(obj, tuple)
       and len(obj) == 2
