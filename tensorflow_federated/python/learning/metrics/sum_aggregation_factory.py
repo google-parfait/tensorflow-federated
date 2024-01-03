@@ -229,7 +229,9 @@ class SumThenFinalizeFactory(factory.UnweightedAggregationFactory):
 
     @federated_computation.federated_computation(
         init_fn.type_signature.result,
-        computation_types.at_clients(local_unfinalized_metrics_type),
+        computation_types.FederatedType(
+            local_unfinalized_metrics_type, placements.CLIENTS
+        ),
     )
     def next_fn(
         state, unfinalized_metrics
@@ -740,7 +742,9 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
 
     @federated_computation.federated_computation(
         init_fn.type_signature.result,
-        computation_types.at_clients(local_unfinalized_metrics_type),
+        computation_types.FederatedType(
+            local_unfinalized_metrics_type, placements.CLIENTS
+        ),
     )
     def next_fn(state, client_local_unfinalized_metrics):
       client_local_grouped_unfinalized_metrics = intrinsics.federated_map(
