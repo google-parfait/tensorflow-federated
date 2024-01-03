@@ -18,11 +18,11 @@ from typing import Any, NamedTuple, Union
 
 import numpy as np
 import tensorflow as tf
-import tree
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.learning.models import variable
 
 
@@ -120,14 +120,4 @@ def weights_type_from_model(
     with tf.Graph().as_default():
       model = model()
   py_typecheck.check_type(model, variable.VariableModel)
-  model_weights = ModelWeights.from_model(model)
-
-  def _type_from_tf_variable(x: tf.Variable) -> computation_types.TensorType:
-    return computation_types.TensorType(x.dtype, x.shape)
-
-  model_weights_type = tree.map_structure(_type_from_tf_variable, model_weights)
-  # StructWithPythonType operates recursively, and will preserve the python type
-  # information of model.trainable_variables and model.non_trainable_variables.
-  return computation_types.StructWithPythonType(
-      model_weights_type, ModelWeights
-  )
+  return type_conversions.infer_type(ModelWeights.from_model(model))  # pytype: disable=bad-return-type
