@@ -163,24 +163,15 @@ class DistributedDpComputationTest(tf.test.TestCase, parameterized.TestCase):
     self.assertTrue(actual_init_type.is_equivalent_to(expected_init_type))
 
     # Check next_fn/measurements.
-    discrete_state = discrete_f.create(
-        computation_types.TensorType(np.float32)
-    ).initialize()
     dp_query_state = dp_query.initial_global_state()
     dp_query_metrics_type = type_conversions.infer_type(
         dp_query.derive_metrics(dp_query_state)
     )
     expected_measurements_type = collections.OrderedDict(
         l2_clip=robust.NORM_TF_TYPE,
-        scale_factor=type_conversions.infer_type(
-            discrete_state['scale_factor']
-        ),
-        scaled_inflated_l2=type_conversions.infer_type(
-            dp_query_state.l2_norm_bound
-        ),
-        scaled_local_stddev=type_conversions.infer_type(
-            dp_query_state.local_stddev
-        ),
+        scale_factor=np.float32,
+        scaled_inflated_l2=np.float32,
+        scaled_local_stddev=np.float32,
         actual_num_clients=np.int32,
         padded_dim=np.int32,
         dp_query_metrics=dp_query_metrics_type,

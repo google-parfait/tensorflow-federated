@@ -83,11 +83,17 @@ class SumThenFinalizeFactoryComputationTest(
           'scalar_metric',
           collections.OrderedDict(num_examples=tf.function(func=lambda x: x)),
           collections.OrderedDict(num_examples=1.0),
+          computation_types.StructWithPythonType(
+              [('num_examples', np.float32)], collections.OrderedDict
+          ),
       ),
       (
           'non_scalar_metric',
           collections.OrderedDict(loss=_tf_mean),
           collections.OrderedDict(loss=[2.0, 1.0]),
+          computation_types.StructWithPythonType(
+              [('loss', [np.float32, np.float32])], collections.OrderedDict
+          ),
       ),
       (
           'callable',
@@ -95,17 +101,22 @@ class SumThenFinalizeFactoryComputationTest(
               lambda x: collections.OrderedDict(mean_loss=_tf_mean(x['loss']))
           ),
           collections.OrderedDict(loss=[1.0, 2.0]),
+          computation_types.StructWithPythonType(
+              [('loss', [np.float32, np.float32])], collections.OrderedDict
+          ),
       ),
   )
-  def test_type_properties(self, metric_finalizers, unfinalized_metrics):
+  def test_type_properties(
+      self,
+      metric_finalizers,
+      unfinalized_metrics,
+      local_unfinalized_metrics_type,
+  ):
     aggregate_factory = sum_aggregation_factory.SumThenFinalizeFactory(
         metric_finalizers
     )
     self.assertIsInstance(
         aggregate_factory, factory.UnweightedAggregationFactory
-    )
-    local_unfinalized_metrics_type = type_conversions.infer_type(
-        unfinalized_metrics
     )
     process = aggregate_factory.create(local_unfinalized_metrics_type)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
@@ -178,8 +189,16 @@ class SumThenFinalizeFactoryComputationTest(
         loss=[2.0, 1.0],
         custom_sum=[tf.constant(1.0), tf.constant([1.0, 1.0])],
     )
-    local_unfinalized_metrics_type = type_conversions.infer_type(
-        local_unfinalized_metrics
+    local_unfinalized_metrics_type = computation_types.StructWithPythonType(
+        [
+            ('num_examples', np.int32),
+            ('loss', [np.float32, np.float32]),
+            (
+                'custom_sum',
+                [np.float32, computation_types.TensorType(np.float32, [2])],
+            ),
+        ],
+        collections.OrderedDict,
     )
 
     aggregate_factory = sum_aggregation_factory.SumThenFinalizeFactory(
@@ -290,8 +309,8 @@ class SumThenFinalizeFactoryComputationTest(
     metric_finalizers = collections.OrderedDict(
         num_examples=tf.function(func=lambda x: x)
     )
-    local_unfinalized_metrics_type = type_conversions.infer_type(
-        collections.OrderedDict(num_examples=1.0)
+    local_unfinalized_metrics_type = computation_types.StructWithPythonType(
+        [('num_examples', np.float32)], collections.OrderedDict
     )
     initial_unfinalized_metrics = collections.OrderedDict(num_examples=[1.0])
     aggregate_factory = sum_aggregation_factory.SumThenFinalizeFactory(
@@ -317,8 +336,16 @@ class SumThenFinalizeFactoryExecutionTest(tf.test.TestCase):
         loss=[2.0, 1.0],
         custom_sum=[tf.constant(1.0), tf.constant([1.0, 1.0])],
     )
-    local_unfinalized_metrics_type = type_conversions.infer_type(
-        local_unfinalized_metrics
+    local_unfinalized_metrics_type = computation_types.StructWithPythonType(
+        [
+            ('num_examples', np.float32),
+            ('loss', [np.float32, np.float32]),
+            (
+                'custom_sum',
+                [np.float32, computation_types.TensorType(np.float32, [2])],
+            ),
+        ],
+        collections.OrderedDict,
     )
     aggregate_factory = sum_aggregation_factory.SumThenFinalizeFactory(
         metric_finalizers
@@ -373,8 +400,12 @@ class SumThenFinalizeFactoryExecutionTest(tf.test.TestCase):
     local_unfinalized_metrics = collections.OrderedDict(
         num_examples=1.0, loss=[2.0, 1.0]
     )
-    local_unfinalized_metrics_type = type_conversions.infer_type(
-        local_unfinalized_metrics
+    local_unfinalized_metrics_type = computation_types.StructWithPythonType(
+        [
+            ('num_examples', np.float32),
+            ('loss', [np.float32, np.float32]),
+        ],
+        collections.OrderedDict,
     )
     initial_unfinalized_metrics = collections.OrderedDict(
         num_examples=2.0, loss=[3.0, 2.0]
@@ -421,8 +452,16 @@ class SumThenFinalizeFactoryExecutionTest(tf.test.TestCase):
         loss=[2.0, 1.0],
         custom_sum=[tf.constant(101.0), tf.constant([1.0, 1.0])],
     )
-    local_unfinalized_metrics_type = type_conversions.infer_type(
-        local_unfinalized_metrics
+    local_unfinalized_metrics_type = computation_types.StructWithPythonType(
+        [
+            ('num_examples', np.int32),
+            ('loss', [np.float32, np.float32]),
+            (
+                'custom_sum',
+                [np.float32, computation_types.TensorType(np.float32, [2])],
+            ),
+        ],
+        collections.OrderedDict,
     )
     secure_sum_factory = sum_aggregation_factory.SecureSumFactory()
 
@@ -518,8 +557,16 @@ class SecureSumFactoryTest(tf.test.TestCase, parameterized.TestCase):
         loss=[2.0, 1.0],
         custom_sum=[tf.constant(1.0), tf.constant([1.0, 1.0])],
     )
-    local_unfinalized_metrics_type = type_conversions.infer_type(
-        local_unfinalized_metrics
+    local_unfinalized_metrics_type = computation_types.StructWithPythonType(
+        [
+            ('num_examples', np.int32),
+            ('loss', [np.float32, np.float32]),
+            (
+                'custom_sum',
+                [np.float32, computation_types.TensorType(np.float32, [2])],
+            ),
+        ],
+        collections.OrderedDict,
     )
     process = aggregate_factory.create(local_unfinalized_metrics_type)
     static_assert.assert_not_contains_unsecure_aggregation(process.next)
@@ -583,8 +630,16 @@ class SecureSumFactoryTest(tf.test.TestCase, parameterized.TestCase):
         loss=[2.0, 1.0],
         custom_sum=[tf.constant(101.0), tf.constant([1.0, 1.0])],
     )
-    local_unfinalized_metrics_type = type_conversions.infer_type(
-        local_unfinalized_metrics
+    local_unfinalized_metrics_type = computation_types.StructWithPythonType(
+        [
+            ('num_examples', np.int32),
+            ('loss', [np.float32, np.float32]),
+            (
+                'custom_sum',
+                [np.float32, computation_types.TensorType(np.float32, [2])],
+            ),
+        ],
+        collections.OrderedDict,
     )
     metric_value_ranges = collections.OrderedDict(
         num_examples=(0, 100),
@@ -689,20 +744,20 @@ class SecureSumFactoryTest(tf.test.TestCase, parameterized.TestCase):
       secure_sum_factory.create(bad_unfinalized_metrics_type)
 
   def test_user_value_ranges_fails_invalid_dtype(self):
-    local_unfinalized_metrics = collections.OrderedDict(
-        custom_sum=[tf.constant('abc')]
+    local_unfinalized_metrics_type = computation_types.StructWithPythonType(
+        [
+            ('custom_sum', [np.str_]),
+        ],
+        collections.OrderedDict,
     )
     secure_sum_factory = sum_aggregation_factory.SecureSumFactory()
     with self.assertRaises(sum_aggregation_factory.UnquantizableDTypeError):
-      secure_sum_factory.create(
-          local_unfinalized_metrics_type=type_conversions.infer_type(
-              local_unfinalized_metrics
-          )
-      )
+      secure_sum_factory.create(local_unfinalized_metrics_type)
 
   def test_user_value_ranges_fails_not_2_tuple(self):
-    local_unfinalized_metrics_type = type_conversions.infer_type(
-        collections.OrderedDict(accuracy=[tf.constant(1.0), tf.constant(2.0)])
+    local_unfinalized_metrics_type = computation_types.StructWithPythonType(
+        [('accuracy', [np.float32, np.float32])],
+        collections.OrderedDict,
     )
     metric_value_ranges = collections.OrderedDict(
         accuracy=[

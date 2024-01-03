@@ -27,7 +27,6 @@ from tensorflow_federated.python.core.impl.federated_context import federated_co
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
-from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.types import type_test_utils
 from tensorflow_federated.python.core.templates import iterative_process
 from tensorflow_federated.python.learning.models import model_weights
@@ -138,18 +137,18 @@ class ExtractAndRewrapMetricsTest(tf.test.TestCase):
       )
 
   def test_federated_value_structure(self):
-    def awaitable_value(value):
+
+    def awaitable_value(value, value_type):
       async def _value():
         return value
 
-      return native_platform.AwaitableValueReference(
-          _value, type_conversions.infer_type(value)
-      )
+      return native_platform.AwaitableValueReference(_value, value_type)
 
     test_value = collections.OrderedDict(
-        a=awaitable_value('foo'),
+        a=awaitable_value('foo', computation_types.TensorType(np.str_)),
         b=collections.OrderedDict(
-            x=awaitable_value('bar'), z=awaitable_value(1.0)
+            x=awaitable_value('bar', computation_types.TensorType(np.str_)),
+            z=awaitable_value(1.0, computation_types.TensorType(np.float32)),
         ),
     )
 

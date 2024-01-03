@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for aggregation_utils."""
 
 import collections
 from typing import Any
@@ -86,7 +85,9 @@ class CheckUnfinalizedMetricsTypeTest(tf.test.TestCase, parameterized.TestCase):
       ),
       (
           'list_container',
-          type_conversions.infer_type([1.0, 2.0]),
+          computation_types.StructWithPythonType(
+              [np.float32, np.float32], list
+          ),
           'Python container',
       ),
   )

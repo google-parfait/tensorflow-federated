@@ -155,6 +155,7 @@ py_test(
         ":keras_finalizer",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
     ],
 )
@@ -183,7 +184,6 @@ py_test(
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
-        "//tensorflow_federated/python/core/impl/types:type_conversions",
     ],
 )
 

@@ -11,13 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for finalizer."""
 
 from absl.testing import parameterized
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
+from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.learning.metrics import keras_finalizer
 
@@ -102,8 +103,11 @@ class FinalizerTest(parameterized.TestCase, tf.test.TestCase):
   def test_keras_metric_finalizer_returns_correct_result(self, metric):
     # The unfinalized accuracy contains two tensors `total` and `count`.
     unfinalized_accuracy = [tf.constant(2.0), tf.constant(2.0)]
+    unfinalized_accuracy_type = computation_types.StructWithPythonType(
+        [np.float32, np.float32], list
+    )
     finalizer_computation = wrap_tf_function_in_tff_tf_computation(
-        metric, type_conversions.infer_type(unfinalized_accuracy)
+        metric, unfinalized_accuracy_type
     )
     finalized_accuracy = finalizer_computation(unfinalized_accuracy)
     self.assertEqual(
@@ -117,20 +121,33 @@ class FinalizerTest(parameterized.TestCase, tf.test.TestCase):
           'one_variable',
           CustomSumMetric(has_extra_variables=False),
           [tf.constant(1.0)],
+          computation_types.StructWithPythonType([np.float32], list),
           1.0,
       ),
       (
           'three_variables',
           CustomSumMetric(has_extra_variables=True),
           [tf.constant(1.0), tf.constant(1.0), tf.constant([1.0, 1.0])],
+          computation_types.StructWithPythonType(
+              [
+                  np.float32,
+                  np.float32,
+                  computation_types.TensorType(np.float32, [2]),
+              ],
+              list,
+          ),
           4.0,
       ),
   )
   def test_keras_metric_finalizer_succeeds_with_different_metric_variables(
-      self, metric, unfinalized_metric_values, expected_result
+      self,
+      metric,
+      unfinalized_metric_values,
+      unfinalized_metric_type,
+      expected_result,
   ):
     finalizer_computation = wrap_tf_function_in_tff_tf_computation(
-        metric, type_conversions.infer_type(unfinalized_metric_values)
+        metric, unfinalized_metric_type
     )
     finalized_metric = finalizer_computation(unfinalized_metric_values)
     self.assertEqual(finalized_metric, expected_result)

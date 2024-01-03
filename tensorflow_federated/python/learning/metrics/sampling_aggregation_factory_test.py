@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for sampling_aggregation_factory."""
 
 import collections
 from typing import Any
@@ -23,7 +22,6 @@ import tensorflow as tf
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
-from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.learning.metrics import sampling_aggregation_factory
 from tensorflow_federated.python.learning.metrics import types
 
@@ -56,7 +54,7 @@ def _create_functional_metric_finalizers() -> (
 
 
 def _create_random_unfinalized_metrics(seed: int):
-  return collections.OrderedDict(
+  metrics = collections.OrderedDict(
       accuracy=tf.random.stateless_uniform(shape=(), seed=[seed, seed]),
       loss=tf.random.stateless_uniform(shape=(2,), seed=[seed, seed]),
       custom_sum=[
@@ -64,6 +62,21 @@ def _create_random_unfinalized_metrics(seed: int):
           tf.random.stateless_uniform(shape=(2,), seed=[seed, seed]),
       ],
   )
+  metrics_type = computation_types.StructWithPythonType(
+      [
+          ('accuracy', computation_types.TensorType(np.float32)),
+          ('loss', computation_types.TensorType(np.float32, (2,))),
+          (
+              'custom_sum',
+              [
+                  computation_types.TensorType(np.float32, shape=(1,)),
+                  computation_types.TensorType(np.float32, shape=(2,)),
+              ],
+          ),
+      ],
+      collections.OrderedDict,
+  )
+  return metrics, metrics_type
 
 
 def _create_finalized_clients_metrics(
@@ -130,9 +143,7 @@ class SamplingAggregationFactoryTest(tf.test.TestCase, parameterized.TestCase):
   def test_create_process_fails_with_invalid_metric_finalizers(
       self, bad_metric_finalizers
   ):
-    unused_metrics_type = type_conversions.infer_type(
-        _create_random_unfinalized_metrics(seed=0)
-    )
+    _, unused_metrics_type = _create_random_unfinalized_metrics(seed=0)
     with self.assertRaisesRegex(TypeError, 'metric_finalizers'):
       sampling_aggregation_factory.FinalizeThenSampleFactory(
           sample_size=10
@@ -161,9 +172,7 @@ class SamplingAggregationFactoryTest(tf.test.TestCase, parameterized.TestCase):
     metric_finalizers = collections.OrderedDict(
         num_examples=tf.function(func=lambda x: x)
     )
-    unfinalized_metrics_type = type_conversions.infer_type(
-        _create_random_unfinalized_metrics(seed=0)
-    )
+    _, unfinalized_metrics_type = _create_random_unfinalized_metrics(seed=0)
     with self.assertRaisesRegex(
         ValueError, 'The metric names in `metric_finalizers` do not match those'
     ):
@@ -194,8 +203,8 @@ class SamplingAggregationFactoryTest(tf.test.TestCase, parameterized.TestCase):
       metric_finalizers = _create_metric_finalizers()
       create_finalized_clients_metrics_fn = _create_finalized_clients_metrics
     total_rounds = 5
-    local_unfinalized_metrics_type = type_conversions.infer_type(
-        _create_random_unfinalized_metrics(seed=0)
+    _, local_unfinalized_metrics_type = _create_random_unfinalized_metrics(
+        seed=0
     )
     sampling_process = sampling_aggregation_factory.FinalizeThenSampleFactory(
         sample_size
@@ -204,7 +213,7 @@ class SamplingAggregationFactoryTest(tf.test.TestCase, parameterized.TestCase):
     total_rounds_client_values = []
     for round_i in range(total_rounds):
       current_round_client_values = [
-          _create_random_unfinalized_metrics(seed=round_i + client_i)
+          _create_random_unfinalized_metrics(seed=round_i + client_i)[0]
           for client_i in range(num_clients_per_round)
       ]
       total_rounds_client_values.extend(current_round_client_values)
@@ -250,8 +259,8 @@ class SamplingAggregationFactoryTest(tf.test.TestCase, parameterized.TestCase):
   )
   def test_finalize_then_sample_returns_correct_measurements(self, sample_size):
     metric_finalizers = lambda x: x
-    unfinalized_metrics_type = type_conversions.infer_type(
-        collections.OrderedDict(loss=1.0)
+    unfinalized_metrics_type = computation_types.StructWithPythonType(
+        [('loss', np.float32)], collections.OrderedDict
     )
     sampling_process = sampling_aggregation_factory.FinalizeThenSampleFactory(
         sample_size
