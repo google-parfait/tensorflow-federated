@@ -11,11 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Library of common metric aggregators."""
+"""Library of common single-round metric aggregators."""
 
 import collections
 from typing import Optional, Union
 
+from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
@@ -24,6 +25,7 @@ from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import iterative_process
 from tensorflow_federated.python.learning.metrics import aggregation_utils
+from tensorflow_federated.python.learning.metrics import sampling_aggregation_factory
 from tensorflow_federated.python.learning.metrics import sum_aggregation_factory
 from tensorflow_federated.python.learning.metrics import types
 
@@ -59,7 +61,10 @@ def sum_then_finalize(
       returned by `tff.learning.models.FunctionalModel.update_metrics_state`.
     local_unfinalized_metrics_type: A `tff.types.StructWithPythonType` (with
       `OrderedDict` as the Python container) of a client's local unfinalized
-      metrics.
+      metrics. Let `local_unfinalized_metrics` be the output of
+      `tff.learning.models.VariableModel.report_local_unfinalized_metrics()`.
+      Its type can be obtained by
+      `tff.types.infer_unplaced_type(local_unfinalized_metrics)`.
 
   Returns:
     A federated TFF computation that sums the unfinalized metrics from
@@ -250,8 +255,6 @@ def secure_sum_then_finalize(
   secure_sum_process = secure_sum_factory.create(local_unfinalized_metrics_type)
   # Check the secure sum process is stateless.
   assert not iterative_process.is_stateful(secure_sum_process)
-  # Check the secure sum process is stateless.
-  assert not iterative_process.is_stateful(secure_sum_process)
 
   @federated_computation.federated_computation(
       computation_types.FederatedType(
@@ -295,5 +298,117 @@ def secure_sum_then_finalize(
     return intrinsics.federated_map(
         finalizer_computation, (unfinalized_metrics, secure_sum_measurements)
     )
+
+  return aggregator_computation
+
+
+def finalize_then_sample(
+    metric_finalizers: Union[
+        types.MetricFinalizersType,
+        types.FunctionalMetricFinalizersType,
+    ],
+    local_unfinalized_metrics_type: computation_types.StructWithPythonType,
+    sample_size: int = 100,
+) -> computation_base.Computation:
+  """Creates a TFF computation to aggregate metrics via `finalize_then_sample`.
+
+  The returned federated TFF computation has the following type signature:
+  `local_unfinalized_metrics@CLIENTS -> aggregated_metrics@SERVER`. The input is
+  given by
+  `tff.learning.models.VariableModel.report_local_unfinalized_metrics()` at
+  `CLIENTS`. The output is computed by first finalizing each client's metrics
+  locally, and then collecting metrics from at most `sample_size` clients at the
+  `SERVER`. If more than `sample_size` clients participating, then `sample_size`
+  clients are sampled (by reservoir sampling algorithm); otherwise, all clients'
+  metrics are collected. Sampling is done in a "per-client" manner, i.e.,
+  a client, once sampled, will contribute all its metrics to the final result.
+
+  The collected metrics samples at `SERVER` has the same structure (i.e., same
+  keys in a dictionary) as the client's local metrics, except that each leaf
+  node contains a list of scalar metric values, where each value comes from a
+  sampled client, e.g.,
+    ```
+    sampled_metrics_at_server = {
+        'metric_a': [a1, a2, ...],
+        'metric_b': [b1, b2, ...],
+        ...
+    }
+    ```
+  where "a1" and "b1" are from the same client (similary for "a2" and "b2" etc).
+
+  Example usage:
+    ```
+    training_process = tff.learning.algorithms.build_weighted_fed_avg(
+        model_fn=..., ..., metrics_aggregator=finalize_then_sample,
+    )
+    state = training_process.initialize()
+    for i in range(num_rounds):
+      output = training_process.next(state, client_data_at_round_i)
+      state = output.state
+      sampled_client_metrics = output.metrics['client_work']
+    ```
+  Args:
+    metric_finalizers: Either the result of
+      `tff.learning.models.VariableModel.metric_finalizers` (an `OrderedDict` of
+      callables) or the `tff.learning.models.FunctionalModel.finalize_metrics`
+      method (a callable that takes an `OrderedDict` argument). If the former,
+      the keys must be the same as the `OrderedDict` returned by
+      `tff.learning.models.VariableModel.report_local_unfinalized_metrics`. If
+      the later, the callable must compute over the same keyspace of the result
+      returned by `tff.learning.models.FunctionalModel.update_metrics_state`.
+    local_unfinalized_metrics_type: A `tff.types.StructWithPythonType` (with
+      `OrderedDict` as the Python container) of a client's local unfinalized
+      metrics. Let `local_unfinalized_metrics` be the output of
+      `tff.learning.models.VariableModel.report_local_unfinalized_metrics()`.
+      Its type can be obtained by
+      `tff.types.infer_unplaced_type(local_unfinalized_metrics)`.
+    sample_size: An integer specifying the number of clients sampled by the
+      reservoir sampling algorithm. Metrics from the sampled clients are
+      collected at the server. If the total number of participating clients are
+      smaller than this value, then all clients' metrics are collected. Default
+      value is 100.
+
+  Returns:
+    A federated TFF computation that finalizes the unfinalized metrics from
+    `CLIENTS`, samples the clients, and returns the sampled metrics at `SERVER`.
+
+  Raises:
+    TypeError: If the inputs are of the wrong types.
+    ValueError: If the keys (i.e., metric names) in `metric_finalizers` are not
+      the same as those expected by `local_unfinalized_metrics_type`.
+    ValueError: If `sample_size` is not positive.
+  """
+  aggregation_utils.check_metric_finalizers(metric_finalizers)
+  aggregation_utils.check_local_unfinalzied_metrics_type(
+      local_unfinalized_metrics_type
+  )
+  if not callable(metric_finalizers):
+    # If we have a FunctionalMetricsFinalizerType it's a function that can only
+    # we checked when we call it, as users may have used *args/**kwargs
+    # arguments or otherwise making it hard to deduce the type.
+    aggregation_utils.check_finalizers_matches_unfinalized_metrics(
+        metric_finalizers, local_unfinalized_metrics_type
+    )
+  py_typecheck.check_type(sample_size, int, 'sample_size')
+  if sample_size <= 0:
+    raise ValueError('sample_size must be positive.')
+  sample_process = sampling_aggregation_factory.FinalizeThenSampleFactory(
+      sample_size=sample_size
+  ).create(
+      metric_finalizers=metric_finalizers,
+      local_unfinalized_metrics_type=local_unfinalized_metrics_type,
+  )
+
+  @federated_computation.federated_computation(
+      computation_types.FederatedType(
+          local_unfinalized_metrics_type, placements.CLIENTS
+      )
+  )
+  def aggregator_computation(client_local_unfinalized_metrics):
+    unused_state = sample_process.initialize()
+    output = sample_process.next(unused_state, client_local_unfinalized_metrics)
+    # `output.result` is a tuple (current_round_samples, total_rounds_samples).
+    current_round_samples, _ = output.result
+    return current_round_samples
 
   return aggregator_computation

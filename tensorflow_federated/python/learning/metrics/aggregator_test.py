@@ -553,6 +553,64 @@ class SecureSumThenFinalizeTest(parameterized.TestCase, tf.test.TestCase):
       )
 
 
+class FinalizeThenSampleTest(parameterized.TestCase, tf.test.TestCase):
+
+  @parameterized.named_parameters(
+      ('zero', 0, ValueError, 'must be positive'),
+      ('negative', -1, ValueError, 'must be positive'),
+      ('none', None, TypeError, 'sample_size'),
+      ('string', '5', TypeError, 'sample_size'),
+  )
+  def test_fails_with_invalid_sample_size(
+      self, bad_sample_size, expected_error_type, expected_error_message
+  ):
+    with self.assertRaisesRegex(expected_error_type, expected_error_message):
+      aggregator.finalize_then_sample(
+          metric_finalizers=_UNUSED_METRICS_FINALIZERS,
+          local_unfinalized_metrics_type=type_conversions.infer_type(
+              _UNUSED_UNFINALIZED_METRICS
+          ),
+          sample_size=bad_sample_size,
+      )
+
+  @parameterized.named_parameters(_TEST_ARGUMENTS_INVALID_INPUTS)
+  def test_fails_with_invalid_inputs(
+      self,
+      metric_finalizers,
+      local_unfinalized_metrics,
+      error_type,
+      error_message,
+  ):
+    with self.assertRaisesRegex(error_type, error_message):
+      aggregator.finalize_then_sample(
+          metric_finalizers=metric_finalizers,
+          local_unfinalized_metrics_type=type_conversions.infer_type(
+              local_unfinalized_metrics
+          ),
+      )
+
+  @parameterized.named_parameters(
+      ('sample_size_larger_then_num_clients', 4, 3, 3),
+      ('sample_size_equal_num_clients', 2, 2, 2),
+      ('sample_size_smaller_than_num_clients', 2, 5, 2),
+  )
+  def test_returns_correct_num_samples(
+      self, sample_size, num_clients, expected_num_samples
+  ):
+    aggregator_computation = aggregator.finalize_then_sample(
+        metric_finalizers=_UNUSED_METRICS_FINALIZERS,
+        local_unfinalized_metrics_type=type_conversions.infer_type(
+            _UNUSED_UNFINALIZED_METRICS
+        ),
+        sample_size=sample_size,
+    )
+    local_metrics_at_clients = [_UNUSED_UNFINALIZED_METRICS] * num_clients
+    aggregated_metrics = aggregator_computation(local_metrics_at_clients)
+    tf.nest.map_structure(
+        lambda v: self.assertLen(v, expected_num_samples), aggregated_metrics
+    )
+
+
 if __name__ == '__main__':
   execution_contexts.set_sync_test_cpp_execution_context()
   tf.test.main()
