@@ -1007,23 +1007,15 @@ def to_type(obj: object) -> Type:
   # comments, in addition to the unit test.
   if isinstance(obj, Type):
     return obj
-  elif _is_dtype_like(obj) or isinstance(obj, tf.dtypes.DType):
-    # TODO: b/305743962 - Passing a `tf.dtypes.DType` to `tff.to_type` is
-    # deprecated, use `tff.types.tensorflow_to_type` instead.
-    if isinstance(obj, tf.dtypes.DType):
-      obj = _tensorflow_dtype_to_numpy_dtype(obj)
+  elif _is_dtype_like(obj):
     return TensorType(obj)  # pytype: disable=wrong-arg-types  # b/290661340
   elif (
       isinstance(obj, tuple)
       and len(obj) == 2
-      and (_is_dtype_like(obj[0]) or isinstance(obj, tf.dtypes.DType))
+      and _is_dtype_like(obj[0])
       and _is_array_shape_like(obj[1])
   ):
     dtype, shape = obj
-    # TODO: b/305743962 - Passing a `tf.dtypes.DType` to `tff.to_type` is
-    # deprecated, use `tff.types.tensorflow_to_type` instead.
-    if isinstance(dtype, tf.dtypes.DType):
-      dtype = _tensorflow_dtype_to_numpy_dtype(dtype)
     return TensorType(dtype, shape)
   elif isinstance(obj, (list, tuple)):
     if any(py_typecheck.is_name_value_pair(e, name_type=str) for e in obj):
