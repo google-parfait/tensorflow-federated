@@ -17,7 +17,6 @@ from typing import Optional
 
 from absl import logging
 
-from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.program import release_manager
 from tensorflow_federated.python.program import value_reference
@@ -54,11 +53,10 @@ class LoggingReleaseManager(
       type_signature: The `tff.Type` of `value`.
       key: An optional value used to reference the released `value`.
     """
-    py_typecheck.check_type(type_signature, computation_types.Type)
+    del type_signature  # Unused.
 
     materialized_value = await value_reference.materialize_value(value)
     logging.info('Releasing')
     logging.info('  value: %s', materialized_value)
-    logging.info('  type: %s', type_signature)
     if key is not None:
       logging.info('  key: %s', key)

@@ -398,6 +398,7 @@ class SavedModelFileReleaseManager(
       key: Used to reference (in the file system) the released `value`.
     """
     del type_signature  # Unused.
+
     path = self._get_path_for_key(key)
     materialized_value = await value_reference.materialize_value(value)
     flattened_value = structure_utils.flatten(materialized_value)
