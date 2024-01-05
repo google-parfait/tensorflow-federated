@@ -26,7 +26,9 @@ import tensorflow as tf
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.core.impl.computation import computation_base
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.learning.metrics import aggregator
 from tensorflow_federated.python.learning.metrics import counters
@@ -779,13 +781,24 @@ class KerasUtilsTest(tf.test.TestCase, parameterized.TestCase):
 
     tff_model = _model_fn()
     metrics_aggregator = aggregator.sum_then_finalize
-    unfinalized_metrics_type = type_conversions.infer_type(
-        tff_model.report_local_unfinalized_metrics()
-    )
+    unfinalized_metrics_type = _train.type_signature.result[0]
     metrics_aggregation_computation = metrics_aggregator(
         tff_model.metric_finalizers(), unfinalized_metrics_type
     )
-    aggregated_outputs = metrics_aggregation_computation(
+
+    @federated_computation.federated_computation(
+        computation_types.FederatedType(
+            unfinalized_metrics_type, placements.CLIENTS
+        )
+    )
+    def wrapped_metrics_aggregation_computation(unfinalized_metrics):
+      return metrics_aggregation_computation(unfinalized_metrics)
+
+    self.assertIsInstance(
+        wrapped_metrics_aggregation_computation, computation_base.Computation
+    )
+
+    aggregated_outputs = wrapped_metrics_aggregation_computation(
         [client_unfinalized_metrics]
     )
     self.assertEqual(aggregated_outputs['num_batches'], num_train_steps)
@@ -1308,10 +1321,19 @@ class KerasUtilsTest(tf.test.TestCase, parameterized.TestCase):
         tff_model.report_local_unfinalized_metrics()
     )
 
+    federated_metrics_aggregator = metrics_aggregator(
+        tff_model.metric_finalizers(), unfinalized_metrics_type
+    )
+
     with self.assertRaisesRegex(TypeError, 'extra arguments'):
-      metrics_aggregator(
-          tff_model.metric_finalizers(), unfinalized_metrics_type
+
+      @federated_computation.federated_computation(
+          computation_types.FederatedType(
+              unfinalized_metrics_type, placements.CLIENTS
+          )
       )
+      def _(unfinalized_metrics):
+        return federated_metrics_aggregator(unfinalized_metrics)
 
   def test_custom_keras_metric_no_extra_init_args_builds(self):
     class CustomCounter(tf.keras.metrics.Sum):
@@ -1347,8 +1369,16 @@ class KerasUtilsTest(tf.test.TestCase, parameterized.TestCase):
         tff_model.metric_finalizers(), unfinalized_metrics_type
     )
 
+    @federated_computation.federated_computation(
+        computation_types.FederatedType(
+            unfinalized_metrics_type, placements.CLIENTS
+        )
+    )
+    def wrapped_federated_metrics_aggregation(unfinalized_metrics):
+      return federated_metrics_aggregation(unfinalized_metrics)
+
     self.assertIsInstance(
-        federated_metrics_aggregation, computation_base.Computation
+        wrapped_federated_metrics_aggregation, computation_base.Computation
     )
 
   @parameterized.named_parameters(

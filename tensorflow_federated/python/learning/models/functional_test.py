@@ -20,7 +20,9 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.core.backends.native import execution_contexts
-from tensorflow_federated.python.core.impl.types import type_conversions
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
+from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.learning.metrics import aggregator
 from tensorflow_federated.python.learning.metrics import types
 from tensorflow_federated.python.learning.models import functional
@@ -386,8 +388,6 @@ class FunctionalModelTest(tf.test.TestCase):
       gradients = tape.gradient(batch_loss, trainable)
       optimizer.apply_gradients(zip(gradients, trainable))
       loss_value = batch_loss
-      optimizer.apply_gradients(zip(gradients, trainable))
-      loss_value = batch_loss
     # Expect some amount of convergence after a few epochs of the dataset.
     self.assertLess(loss_value, 0.1)
     self.assertAllClose(trainable, ([[1.0, 2.0, 3.0]], [5.0]), atol=0.5)
@@ -615,13 +615,30 @@ class ModelFromFunctionalModelTest(tf.test.TestCase):
         loss=[2.0, 4.0], mse=[2.0, 2.0], mae=[1.0, 6.0]
     )
     metrics_aggregator = aggregator.sum_then_finalize
-    unfinalized_metrics_type = type_conversions.infer_type(
-        tff_model.report_local_unfinalized_metrics()
+    unfinalized_metrics_type = computation_types.to_type(
+        collections.OrderedDict(
+            loss=[np.float32, np.float32],
+            mse=[np.float32, np.float32],
+            mae=[np.float32, np.float32],
+        )
     )
+
     metrics_aggregation_computation = metrics_aggregator(
         tff_model.metric_finalizers(), unfinalized_metrics_type
     )
-    aggregated_metrics = metrics_aggregation_computation(
+    # Tell TFF that the argument is CLIENTS placed, so that when this
+    # computation is later invoked on a list of values, TFF will teach each
+    # element of the list as a single client value. This cannot be inferred from
+    # the value itself.
+    @federated_computation.federated_computation(
+        computation_types.FederatedType(
+            unfinalized_metrics_type, placements.CLIENTS
+        )
+    )
+    def aggregate_metrics(metrics):
+      return metrics_aggregation_computation(metrics)
+
+    aggregated_metrics = aggregate_metrics(
         [client_1_local_outputs, client_2_local_outputs]
     )
     self.assertAllClose(
