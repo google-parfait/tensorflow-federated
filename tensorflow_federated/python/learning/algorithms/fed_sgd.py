@@ -346,10 +346,11 @@ def _build_functional_fed_sgd_client_work(
 
   # Wrap in a `ModelWeights` structure that is required by the `finalizer.`
   trainable_weights, non_trainable_weights = model.initial_weights
-  weights_type = model_weights_lib.ModelWeights(
+  weights_spec = model_weights_lib.ModelWeights(
       tuple(ndarray_to_tensorspec(w) for w in trainable_weights),
       tuple(ndarray_to_tensorspec(w) for w in non_trainable_weights),
   )
+  weights_type = computation_types.tensorflow_to_type(weights_spec)
 
   @federated_computation.federated_computation
   def init_fn():

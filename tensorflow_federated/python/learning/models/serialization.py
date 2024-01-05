@@ -348,7 +348,7 @@ def save(model: variable.VariableModel, path: str, input_type=None) -> None:
   # protos from the computation or the type.
   m.serialized_input_spec = tf.Variable(
       type_serialization.serialize_type(
-          computation_types.to_type(model.input_spec)
+          computation_types.tensorflow_to_type(model.input_spec)
       ).SerializeToString(deterministic=True),
       trainable=False,
   )
@@ -505,7 +505,7 @@ def save_functional_model(
         tf.TensorSpec.from_tensor, concrete_structured_fn.structured_outputs
     )
     result_type_spec = type_serialization.serialize_type(
-        computation_types.to_type(output_tensor_spec_structure)
+        computation_types.tensorflow_to_type(output_tensor_spec_structure)
     )
 
     @tf.function
@@ -534,7 +534,7 @@ def save_functional_model(
   # protos from the computation or the type.
   m.serialized_input_spec = tf.Variable(
       type_serialization.serialize_type(
-          computation_types.to_type(functional_model.input_spec)
+          computation_types.tensorflow_to_type(functional_model.input_spec)
       ).SerializeToString(deterministic=True),
       trainable=False,
   )

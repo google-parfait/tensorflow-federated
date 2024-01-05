@@ -464,7 +464,7 @@ class FunctionalFedEvalProcessTest(tf.test.TestCase):
   @tensorflow_test_utils.skip_test_for_gpu
   def test_functional_evaluation_matches_non_functional(self):
     datasets = self.create_test_datasets()
-    batch_type = computation_types.to_type(datasets[0].element_spec)
+    batch_type = computation_types.tensorflow_to_type(datasets[0].element_spec)
     loss_fn = tf.keras.losses.MeanSquaredError
     keras_model_fn = functools.partial(
         model_examples.build_linear_regression_keras_functional_model,

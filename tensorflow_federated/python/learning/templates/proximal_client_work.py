@@ -582,10 +582,11 @@ def build_functional_model_delta_client_work(
     return tf.TensorSpec(shape=ndarray.shape, dtype=ndarray.dtype)
 
   # Wrap in a `ModelWeights` structure that is required by the `finalizer.`
-  weights_type = model_weights_lib.ModelWeights(
+  weights_spec = model_weights_lib.ModelWeights(
       tuple(ndarray_to_tensorspec(w) for w in model.initial_weights[0]),
       tuple(ndarray_to_tensorspec(w) for w in model.initial_weights[1]),
   )
+  weights_type = computation_types.tensorflow_to_type(weights_spec)
 
   @tensorflow_computation.tf_computation(weights_type, data_type)
   def client_update_computation(initial_model_weights, dataset):

@@ -126,7 +126,7 @@ def build_personalization_eval_computation(
   with tf.Graph().as_default():
     model = model_fn()
     model_weights_type = model_weights_lib.weights_type_from_model(model)
-    batch_tff_type = computation_types.to_type(model.input_spec)
+    batch_tff_type = computation_types.tensorflow_to_type(model.input_spec)
 
   # Define the `tff.Type` of each client's input. Since batching (as well as
   # other preprocessing of datasets) is done within each personalization

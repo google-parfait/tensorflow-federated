@@ -463,7 +463,20 @@ class TypeToTfStructureTest(absltest.TestCase):
         ),
     ])
     type_spec = computation_types.StructWithPythonType(
-        expected_structure, collections.OrderedDict
+        [
+            ('a', computation_types.TensorType(np.bool_)),
+            (
+                'b',
+                computation_types.StructWithPythonType(
+                    [
+                        ('c', computation_types.TensorType(np.float32)),
+                        ('d', computation_types.TensorType(np.int32, (20,))),
+                    ],
+                    collections.OrderedDict,
+                ),
+            ),
+        ],
+        collections.OrderedDict,
     )
     tf_structure = type_conversions.type_to_tf_structure(type_spec)
     with tf.Graph().as_default():
@@ -478,9 +491,7 @@ class TypeToTfStructureTest(absltest.TestCase):
         tf.TensorSpec(shape=(), dtype=np.bool_),
         tf.TensorSpec(shape=(), dtype=np.int32),
     )
-    type_spec = computation_types.StructWithPythonType(
-        expected_structure, tuple
-    )
+    type_spec = computation_types.StructType([np.bool_, np.int32])
     tf_structure = type_conversions.type_to_tf_structure(type_spec)
     with tf.Graph().as_default():
       ds = tf.data.experimental.from_variant(

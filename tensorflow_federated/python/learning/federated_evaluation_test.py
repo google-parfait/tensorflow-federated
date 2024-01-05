@@ -204,7 +204,7 @@ class FederatedEvaluationTest(parameterized.TestCase):
   @tensorflow_test_utils.skip_test_for_multi_gpu
   def test_local_evaluation(self):
     model_weights_type = model_weights.weights_type_from_model(TestModel)
-    batch_type = computation_types.to_type(TestModel().input_spec)
+    batch_type = computation_types.tensorflow_to_type(TestModel().input_spec)
     client_evaluate = federated_evaluation.build_local_evaluation(
         TestModel, model_weights_type, batch_type
     )
@@ -473,7 +473,7 @@ class FunctionalFederatedEvaluationTest(tf.test.TestCase):
   @tensorflow_test_utils.skip_test_for_gpu
   def test_functional_local_evaluation_matches_non_functional(self):
     dataset = self.create_test_datasets()[0]
-    batch_type = computation_types.to_type(dataset.element_spec)
+    batch_type = computation_types.tensorflow_to_type(dataset.element_spec)
     loss_fn = tf.keras.losses.MeanSquaredError
     keras_model = model_examples.build_linear_regression_keras_functional_model(
         feature_dims=2
@@ -535,7 +535,7 @@ class FunctionalFederatedEvaluationTest(tf.test.TestCase):
   @tensorflow_test_utils.skip_test_for_gpu
   def test_functional_evaluation_matches_non_functional(self):
     datasets = self.create_test_datasets()
-    batch_type = computation_types.to_type(datasets[0].element_spec)
+    batch_type = computation_types.tensorflow_to_type(datasets[0].element_spec)
     loss_fn = tf.keras.losses.MeanSquaredError
     keras_model = model_examples.build_linear_regression_keras_functional_model(
         feature_dims=2

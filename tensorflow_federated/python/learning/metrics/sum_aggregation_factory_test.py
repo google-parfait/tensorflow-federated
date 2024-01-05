@@ -295,8 +295,8 @@ class SumThenFinalizeFactoryComputationTest(
     )
     local_unfinalized_metrics_type = computation_types.StructWithPythonType(
         collections.OrderedDict(
-            x=tf.TensorSpec(shape=[None, 2], dtype=tf.float32),
-            y=tf.TensorSpec(shape=[None, 1], dtype=tf.float32),
+            x=computation_types.TensorType(shape=[None, 2], dtype=np.float32),
+            y=computation_types.TensorType(shape=[None, 1], dtype=np.float32),
         ),
         container_type=collections.OrderedDict,
     )

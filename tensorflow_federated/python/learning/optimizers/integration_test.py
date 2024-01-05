@@ -100,10 +100,10 @@ def _run_in_federated_computation(optimizer, spec):
   @federated_computation.federated_computation(
       init_fn.type_signature.result,
       computation_types.FederatedType(
-          computation_types.to_type(spec), placements.SERVER
+          computation_types.tensorflow_to_type(spec), placements.SERVER
       ),
       computation_types.FederatedType(
-          computation_types.to_type(spec), placements.SERVER
+          computation_types.tensorflow_to_type(spec), placements.SERVER
       ),
   )
   def next_fn(state, weights, gradients):

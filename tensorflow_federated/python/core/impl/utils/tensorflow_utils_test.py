@@ -64,7 +64,8 @@ class GraphUtilsTest(tf.test.TestCase):
       self.assertEqual(variant_tensor.dtype, tf.variant)
       self.assertIsInstance(type_spec, computation_types.SequenceType)
       self.assertEqual(
-          computation_types.to_type(val.element_spec), type_spec.element
+          computation_types.tensorflow_to_type(val.element_spec),
+          type_spec.element,
       )
     elif binding_oneof == 'struct':
       self.assertIsInstance(type_spec, computation_types.StructType)
@@ -681,7 +682,7 @@ class GraphUtilsTest(tf.test.TestCase):
     )
     ds = tf.data.Dataset.from_tensor_slices(sparse_tensor)
     constructed_ds = tensorflow_utils.make_data_set_from_elements(
-        None, list(ds), computation_types.to_type(ds.element_spec)
+        None, list(ds), computation_types.tensorflow_to_type(ds.element_spec)
     )
     self.assertEqual(ds.element_spec, constructed_ds.element_spec)
     self.assertEqual(
@@ -1407,8 +1408,8 @@ class GraphUtilsTest(tf.test.TestCase):
     y = tensorflow_utils.coerce_dataset_elements_to_tff_type_spec(
         x, element_type
     )
-
-    computation_types.to_type(y.element_spec).check_equivalent_to(element_type)
+    y_type = computation_types.tensorflow_to_type(y.element_spec)
+    y_type.check_equivalent_to(element_type)
 
 
 class TensorFlowDeserializationTest(tf.test.TestCase):
