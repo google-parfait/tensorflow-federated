@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import collections
 import os
 import os.path
 import shutil
@@ -25,7 +24,6 @@ import numpy as np
 import tensorflow as tf
 import tree
 
-from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.program import program_test_utils
 from tensorflow_federated.python.program import tensorboard_release_manager
 
@@ -75,21 +73,14 @@ class TensorBoardReleaseManagerReleaseTest(
   # pyformat: disable
   @parameterized.named_parameters(
       # materialized values
-      ('bool', True, computation_types.TensorType(np.bool_), [('', True)]),
-      ('int', 1, computation_types.TensorType(np.int32), [('', 1)]),
-      ('tensor_int',
-       tf.constant(1),
-       computation_types.TensorType(np.int32),
-       [('', tf.constant(1))]),
-      ('numpy_int',
-       np.int32(1),
-       computation_types.TensorType(np.int32),
-       [('', np.int32(1))]),
+      ('bool', True, [('', True)]),
+      ('int', 1, [('', 1)]),
+      ('tensor_int', tf.constant(1), [('', tf.constant(1))]),
+      ('numpy_int', np.int32(1), [('', np.int32(1))]),
 
       # materializable value references
       ('materializable_value_reference_tensor',
        program_test_utils.TestMaterializableValueReference(1),
-       computation_types.TensorType(np.int32),
        [('', 1)]),
 
       # structures
@@ -101,16 +92,6 @@ class TensorBoardReleaseManagerReleaseTest(
            program_test_utils.TestMaterializableValueReference(2),
            program_test_utils.TestSerializable(3, 4),
        ],
-       computation_types.StructWithPythonType([
-           np.bool_,
-           np.int32,
-           np.str_,
-           np.int32,
-           computation_types.StructWithPythonType([
-               ('a', np.int32),
-               ('b', np.int32),
-           ], collections.OrderedDict),
-       ], list),
        [('0', True), ('1', 1), ('3', 2)]),
       ('list_nested',
        [
@@ -123,19 +104,6 @@ class TensorBoardReleaseManagerReleaseTest(
            ],
            [5],
        ],
-       computation_types.StructWithPythonType([
-           computation_types.StructWithPythonType([
-               np.bool_,
-               np.int32,
-               np.str_,
-               np.int32,
-               computation_types.StructWithPythonType([
-                   ('a', np.int32),
-                   ('b', np.int32),
-               ], collections.OrderedDict),
-           ], list),
-           computation_types.StructWithPythonType([np.int32], list),
-       ], list),
        [('0/0', True), ('0/1', 1), ('0/3', 2), ('1/0', 5)]),
       ('dict',
        {
@@ -145,16 +113,6 @@ class TensorBoardReleaseManagerReleaseTest(
            'd': program_test_utils.TestMaterializableValueReference(2),
            'e': program_test_utils.TestSerializable(3, 4),
        },
-       computation_types.StructWithPythonType([
-           ('a', np.bool_),
-           ('b', np.int32),
-           ('c', np.str_),
-           ('d', np.int32),
-           ('e', computation_types.StructWithPythonType([
-               ('a', np.int32),
-               ('b', np.int32),
-           ], collections.OrderedDict)),
-       ], collections.OrderedDict),
        [('a', True), ('b', 1), ('d', 2)]),
       ('dict_nested',
        {
@@ -167,21 +125,6 @@ class TensorBoardReleaseManagerReleaseTest(
            },
            'y': {'a': 5},
        },
-       computation_types.StructWithPythonType([
-           ('x', computation_types.StructWithPythonType([
-               ('a', np.bool_),
-               ('b', np.int32),
-               ('c', np.str_),
-               ('d', np.int32),
-               ('e', computation_types.StructWithPythonType([
-                   ('a', np.int32),
-                   ('b', np.int32),
-               ], collections.OrderedDict)),
-           ], collections.OrderedDict)),
-           ('y', computation_types.StructWithPythonType([
-               ('a', np.int32),
-           ], collections.OrderedDict)),
-       ], collections.OrderedDict),
        [('x/a', True), ('x/b', 1), ('x/d', 2), ('y/a', 5)]),
       ('named_tuple',
        program_test_utils.TestNamedTuple1(
@@ -191,16 +134,6 @@ class TensorBoardReleaseManagerReleaseTest(
            d=program_test_utils.TestMaterializableValueReference(2),
            e=program_test_utils.TestSerializable(3, 4),
        ),
-       computation_types.StructWithPythonType([
-           ('a', np.bool_),
-           ('b', np.int32),
-           ('c', np.str_),
-           ('d', np.int32),
-           ('e', computation_types.StructWithPythonType([
-               ('a', np.int32),
-               ('b', np.int32),
-           ], collections.OrderedDict)),
-       ], program_test_utils.TestNamedTuple1),
        [('a', True), ('b', 1), ('d', 2)]),
       ('named_tuple_nested',
        program_test_utils.TestNamedTuple3(
@@ -213,27 +146,10 @@ class TensorBoardReleaseManagerReleaseTest(
            ),
            y=program_test_utils.TestNamedTuple2(a=5),
        ),
-       computation_types.StructWithPythonType([
-           ('x', computation_types.StructWithPythonType([
-               ('a', np.bool_),
-               ('b', np.int32),
-               ('c', np.str_),
-               ('d', np.int32),
-               ('e', computation_types.StructWithPythonType([
-                   ('a', np.int32),
-                   ('b', np.int32),
-               ], collections.OrderedDict)),
-           ], program_test_utils.TestNamedTuple1)),
-           ('y', computation_types.StructWithPythonType([
-               ('c', np.int32),
-           ], program_test_utils.TestNamedTuple2)),
-       ], program_test_utils.TestNamedTuple3),
        [('x/a', True), ('x/b', 1), ('x/d', 2), ('y/a', 5)]),
   )
   # pyformat: enable
-  async def test_writes_value_scalar(
-      self, value, type_signature, expected_calls
-  ):
+  async def test_writes_value_scalar(self, value, expected_calls):
     summary_dir = self.create_tempdir()
     release_mngr = tensorboard_release_manager.TensorBoardReleaseManager(
         summary_dir
@@ -241,7 +157,7 @@ class TensorBoardReleaseManagerReleaseTest(
     key = 1
 
     with mock.patch.object(tf.summary, 'scalar') as mock_scalar:
-      await release_mngr.release(value, type_signature, key)
+      await release_mngr.release(value, key=key)
 
       self.assertLen(mock_scalar.mock_calls, len(expected_calls))
       for call, expected_args in zip(mock_scalar.mock_calls, expected_calls):
@@ -255,26 +171,19 @@ class TensorBoardReleaseManagerReleaseTest(
   # pyformat: disable
   @parameterized.named_parameters(
       # materialized values
-      ('tensor_array',
-       tf.constant([1] * 3),
-       computation_types.TensorType(np.int32, [3]),
-       [('', tf.constant([1] * 3))]),
+      ('tensor_array', tf.constant([1] * 3), [('', tf.constant([1] * 3))]),
       ('numpy_array',
        np.array([1] * 3, np.int32),
-       computation_types.TensorType(np.int32, [3]),
        [('', np.array([1] * 3, np.int32))]),
 
       # materializable value references
       ('materializable_value_reference_sequence',
        program_test_utils.TestMaterializableValueReference(
            tf.data.Dataset.from_tensor_slices([1, 2, 3])),
-       computation_types.SequenceType([np.int32] * 3),
        [('', [1, 2, 3])]),
   )
   # pyformat: enable
-  async def test_writes_value_histogram(
-      self, value, type_signature, expected_calls
-  ):
+  async def test_writes_value_histogram(self, value, expected_calls):
     summary_dir = self.create_tempdir()
     release_mngr = tensorboard_release_manager.TensorBoardReleaseManager(
         summary_dir
@@ -282,7 +191,7 @@ class TensorBoardReleaseManagerReleaseTest(
     key = 1
 
     with mock.patch.object(tf.summary, 'histogram') as mock_histogram:
-      await release_mngr.release(value, type_signature, key)
+      await release_mngr.release(value, key=key)
 
       self.assertLen(mock_histogram.mock_calls, len(expected_calls))
       for call, expected_args in zip(mock_histogram.mock_calls, expected_calls):
@@ -302,19 +211,12 @@ class TensorBoardReleaseManagerReleaseTest(
         summary_dir
     )
     value = [1, tf.constant([1] * 3)]
-    type_signature = computation_types.StructWithPythonType(
-        [
-            np.int32,
-            computation_types.TensorType(np.float32, [3]),
-        ],
-        list,
-    )
     key = 1
 
     patched_scalar = mock.patch.object(tf.summary, 'scalar')
     patched_histogram = mock.patch.object(tf.summary, 'histogram')
     with patched_scalar as mock_scalar, patched_histogram as mock_histogram:
-      await release_mngr.release(value, type_signature, key)
+      await release_mngr.release(value, key=key)
 
       mock_scalar.assert_called_once_with('0', 1, step=1)
       self.assertLen(mock_histogram.mock_calls, 1)
@@ -332,34 +234,22 @@ class TensorBoardReleaseManagerReleaseTest(
   # pyformat: disable
   @parameterized.named_parameters(
       # materialized values
-      ('none', None, computation_types.StructType([])),
-      ('str', 'a', computation_types.TensorType(np.str_)),
-      ('tensor_str', tf.constant('a'), computation_types.TensorType(np.str_)),
+      ('none', None),
+      ('str', 'a'),
+      ('tensor_str', tf.constant('a')),
 
       # serializable values
-      ('serializable_value',
-       program_test_utils.TestSerializable(1, 2),
-       computation_types.StructWithPythonType([
-           ('a', np.int32),
-           ('b', np.int32),
-       ], collections.OrderedDict)),
+      ('serializable_value', program_test_utils.TestSerializable(1, 2)),
 
       # other values
-      ('attrs',
-       program_test_utils.TestAttrs(1, 2),
-       computation_types.StructWithPythonType([
-           ('a', np.int32),
-           ('b', np.int32),
-       ], collections.OrderedDict)),
+      ('attrs', program_test_utils.TestAttrs(1, 2)),
 
       # structures
-      ('list_empty', [], computation_types.StructWithPythonType([], list)),
-      ('dict_empty',
-       {},
-       computation_types.StructWithPythonType([], collections.OrderedDict)),
+      ('list_empty', []),
+      ('dict_empty', {}),
   )
   # pyformat: enable
-  async def test_does_not_write_value(self, value, type_signature):
+  async def test_does_not_write_value(self, value):
     summary_dir = self.create_tempdir()
     release_mngr = tensorboard_release_manager.TensorBoardReleaseManager(
         summary_dir
@@ -369,7 +259,7 @@ class TensorBoardReleaseManagerReleaseTest(
     patch_scalar = mock.patch.object(tf.summary, 'scalar')
     patch_histogram = mock.patch.object(tf.summary, 'histogram')
     with patch_scalar as mock_scalar, patch_histogram as mock_histogram:
-      await release_mngr.release(value, type_signature, key)
+      await release_mngr.release(value, key=key)
 
       mock_scalar.assert_not_called()
       mock_histogram.assert_not_called()
@@ -386,10 +276,9 @@ class TensorBoardReleaseManagerReleaseTest(
         summary_dir
     )
     value = 1
-    type_signature = computation_types.TensorType(np.int32)
 
     try:
-      await release_mngr.release(value, type_signature, key)
+      await release_mngr.release(value, key=key)
     except TypeError:
       self.fail('Raised `TypeError` unexpectedly.')
 
@@ -404,10 +293,9 @@ class TensorBoardReleaseManagerReleaseTest(
         summary_dir
     )
     value = 1
-    type_signature = computation_types.TensorType(np.int32)
 
     with self.assertRaises(TypeError):
-      await release_mngr.release(value, type_signature, key)
+      await release_mngr.release(value, key=key)
 
 
 if __name__ == '__main__':

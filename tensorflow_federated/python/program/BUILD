@@ -166,7 +166,6 @@ py_test(
         ":program_test_utils",
         ":release_manager",
         ":structure_utils",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
     ],
 )
 
@@ -191,7 +190,6 @@ py_library(
     deps = [
         ":release_manager",
         ":value_reference",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/impl/types:computation_types",
     ],
 )
@@ -202,7 +200,6 @@ py_test(
     deps = [
         ":logging_release_manager",
         ":program_test_utils",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
     ],
 )
 
@@ -331,7 +328,6 @@ py_library(
         ":structure_utils",
         ":value_reference",
         "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/types:computation_types",
     ],
 )
@@ -342,7 +338,6 @@ py_test(
     deps = [
         ":program_test_utils",
         ":release_manager",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
     ],
 )
 
@@ -400,7 +395,6 @@ py_test(
     deps = [
         ":program_test_utils",
         ":tensorboard_release_manager",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
     ],
 )
 

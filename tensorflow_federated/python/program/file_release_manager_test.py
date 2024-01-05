@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import collections
 from collections.abc import Iterable, Mapping, Sequence
 import csv
 import os
@@ -28,7 +27,6 @@ import numpy as np
 import tensorflow as tf
 import tree
 
-from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.program import file_release_manager
 from tensorflow_federated.python.program import file_utils
 from tensorflow_federated.python.program import program_test_utils
@@ -579,70 +577,35 @@ class CSVFileReleaseManagerReleaseTest(
   # pyformat: disable
   @parameterized.named_parameters(
       # materialized values
-      ('none',
-       None,
-       computation_types.StructType([]),
-       [{'key': '1', '': ''}]),
-      ('bool',
-       True,
-       computation_types.TensorType(np.bool_),
-       [{'key': '1', '': 'True'}]),
-      ('int',
-       1,
-       computation_types.TensorType(np.int32),
-       [{'key': '1', '': '1'}]),
-      ('str',
-       'a',
-       computation_types.TensorType(np.str_),
-       [{'key': '1', '': 'a'}]),
-      ('tensor_int',
-       tf.constant(1),
-       computation_types.TensorType(np.int32),
-       [{'key': '1', '': '1'}]),
-      ('tensor_str',
-       tf.constant('a'),
-       computation_types.TensorType(np.str_),
-       [{'key': '1', '': 'b\'a\''}]),
-      ('tensor_array',
-       tf.constant([1] * 3),
-       computation_types.TensorType(np.int32, [3]),
-       [{'key': '1', '': '[1, 1, 1]'}]),
-      ('numpy_int',
-       np.int32(1),
-       computation_types.TensorType(np.int32),
-       [{'key': '1', '': '1'}]),
+      ('none', None, [{'key': '1', '': ''}]),
+      ('bool', True, [{'key': '1', '': 'True'}]),
+      ('int', 1, [{'key': '1', '': '1'}]),
+      ('str', 'a', [{'key': '1', '': 'a'}]),
+      ('tensor_int', tf.constant(1), [{'key': '1', '': '1'}]),
+      ('tensor_str', tf.constant('a'), [{'key': '1', '': 'b\'a\''}]),
+      ('tensor_array', tf.constant([1] * 3), [{'key': '1', '': '[1, 1, 1]'}]),
+      ('numpy_int', np.int32(1), [{'key': '1', '': '1'}]),
       ('numpy_array',
        np.array([1] * 3, np.int32),
-       computation_types.TensorType(np.int32, [3]),
        [{'key': '1', '': '[1, 1, 1]'}]),
 
       # materializable value references
       ('materializable_value_reference_tensor',
        program_test_utils.TestMaterializableValueReference(1),
-       computation_types.TensorType(np.int32),
        [{'key': '1', '': '1'}]),
       ('materializable_value_reference_sequence',
        program_test_utils.TestMaterializableValueReference(
            tf.data.Dataset.from_tensor_slices([1, 2, 3])),
-       computation_types.SequenceType(np.int32),
        [{'key': '1', '': '[1, 2, 3]'}]),
 
       # serializable values
       ('serializable_value',
        program_test_utils.TestSerializable(1, 2),
-       computation_types.StructWithPythonType([
-           ('a', np.int32),
-           ('b', np.int32),
-       ], collections.OrderedDict),
        [{'key': '1', '': 'TestSerializable(a=1, b=2)'}]),
 
       # other values
       ('attrs',
        program_test_utils.TestAttrs(1, 2),
-       computation_types.StructWithPythonType([
-           ('a', np.int32),
-           ('b', np.int32),
-       ], collections.OrderedDict),
        [{'key': '1', '': 'TestAttrs(a=1, b=2)'}]),
 
       # structures
@@ -654,16 +617,6 @@ class CSVFileReleaseManagerReleaseTest(
            program_test_utils.TestMaterializableValueReference(2),
            program_test_utils.TestSerializable(3, 4),
        ],
-       computation_types.StructWithPythonType([
-           np.bool_,
-           np.int32,
-           np.str_,
-           np.int32,
-           computation_types.StructWithPythonType([
-               ('a', np.int32),
-               ('b', np.int32),
-           ], collections.OrderedDict),
-       ], list),
        [
            {
                'key': '1',
@@ -674,10 +627,7 @@ class CSVFileReleaseManagerReleaseTest(
                '4': 'TestSerializable(a=3, b=4)',
            },
        ]),
-      ('list_empty',
-       [],
-       computation_types.StructWithPythonType([], list),
-       [{'key': '1'}]),
+      ('list_empty', [], [{'key': '1'}]),
       ('list_nested',
        [
            [
@@ -689,19 +639,6 @@ class CSVFileReleaseManagerReleaseTest(
            ],
            [5],
        ],
-       computation_types.StructWithPythonType([
-           computation_types.StructWithPythonType([
-               np.bool_,
-               np.int32,
-               np.str_,
-               np.int32,
-               computation_types.StructWithPythonType([
-                   ('a', np.int32),
-                   ('b', np.int32),
-               ], collections.OrderedDict),
-           ], list),
-           computation_types.StructWithPythonType([np.int32], list),
-       ], list),
        [
            {
                'key': '1',
@@ -721,16 +658,6 @@ class CSVFileReleaseManagerReleaseTest(
            'd': program_test_utils.TestMaterializableValueReference(2),
            'e': program_test_utils.TestSerializable(3, 4),
        },
-       computation_types.StructWithPythonType([
-           ('a', np.bool_),
-           ('b', np.int32),
-           ('c', np.str_),
-           ('d', np.int32),
-           ('e', computation_types.StructWithPythonType([
-               ('a', np.int32),
-               ('b', np.int32),
-           ], collections.OrderedDict)),
-       ], collections.OrderedDict),
        [
            {
                'key': '1',
@@ -741,10 +668,7 @@ class CSVFileReleaseManagerReleaseTest(
                'e': 'TestSerializable(a=3, b=4)',
            },
        ]),
-      ('dict_empty',
-       {},
-       computation_types.StructWithPythonType([], collections.OrderedDict),
-       [{'key': '1'}]),
+      ('dict_empty', {}, [{'key': '1'}]),
       ('dict_nested',
        {
            'x': {
@@ -756,21 +680,6 @@ class CSVFileReleaseManagerReleaseTest(
            },
            'y': {'a': 5},
        },
-       computation_types.StructWithPythonType([
-           ('x', computation_types.StructWithPythonType([
-               ('a', np.bool_),
-               ('b', np.int32),
-               ('c', np.str_),
-               ('d', np.int32),
-               ('e', computation_types.StructWithPythonType([
-                   ('a', np.int32),
-                   ('b', np.int32),
-               ], collections.OrderedDict)),
-           ], collections.OrderedDict)),
-           ('y', computation_types.StructWithPythonType([
-               ('a', np.int32),
-           ], collections.OrderedDict)),
-       ], collections.OrderedDict),
        [
            {
                'key': '1',
@@ -790,16 +699,6 @@ class CSVFileReleaseManagerReleaseTest(
            d=program_test_utils.TestMaterializableValueReference(2),
            e=program_test_utils.TestSerializable(3, 4),
        ),
-       computation_types.StructWithPythonType([
-           ('a', np.bool_),
-           ('b', np.int32),
-           ('c', np.str_),
-           ('d', np.int32),
-           ('e', computation_types.StructWithPythonType([
-               ('a', np.int32),
-               ('b', np.int32),
-           ], collections.OrderedDict)),
-       ], program_test_utils.TestNamedTuple1),
        [
            {
                'key': '1',
@@ -821,21 +720,6 @@ class CSVFileReleaseManagerReleaseTest(
            ),
            y=program_test_utils.TestNamedTuple2(a=5),
        ),
-       computation_types.StructWithPythonType([
-           ('x', computation_types.StructWithPythonType([
-               ('a', np.bool_),
-               ('b', np.int32),
-               ('c', np.str_),
-               ('d', np.int32),
-               ('e', computation_types.StructWithPythonType([
-                   ('a', np.int32),
-                   ('b', np.int32),
-               ], collections.OrderedDict)),
-           ], program_test_utils.TestNamedTuple1)),
-           ('y', computation_types.StructWithPythonType([
-               ('a', np.int32),
-           ], program_test_utils.TestNamedTuple2)),
-       ], program_test_utils.TestNamedTuple3),
        [
            {
                'key': '1',
@@ -849,13 +733,13 @@ class CSVFileReleaseManagerReleaseTest(
        ]),
   )
   # pyformat: enable
-  async def test_writes_value(self, value, type_signature, expected_value):
+  async def test_writes_value(self, value, expected_value):
     file_path = self.create_tempfile()
     os.remove(file_path)
     release_mngr = file_release_manager.CSVFileReleaseManager(file_path)
     key = 1
 
-    await release_mngr.release(value, type_signature, key)
+    await release_mngr.release(value, key=key)
 
     _, actual_value = _read_values_from_csv(file_path)
     tree.assert_same_structure(actual_value, expected_value)
@@ -866,15 +750,12 @@ class CSVFileReleaseManagerReleaseTest(
     os.remove(file_path)
     release_mngr = file_release_manager.CSVFileReleaseManager(file_path)
     value = {'a': 11, 'b': 21}
-    type_signature = computation_types.StructWithPythonType(
-        [('a', np.int32), ('b', np.int32)], collections.OrderedDict
-    )
     key = 1
 
     with mock.patch.object(
         release_mngr, '_remove_values_greater_than_key'
     ) as mock_remove_values_greater_than_key:
-      await release_mngr.release(value, type_signature, key)
+      await release_mngr.release(value, key=key)
 
       mock_remove_values_greater_than_key.assert_called_once_with(0)
 
@@ -889,19 +770,12 @@ class CSVFileReleaseManagerReleaseTest(
     )
     release_mngr = file_release_manager.CSVFileReleaseManager(file_path)
     value = {'a': 11, 'b': 12}
-    type_signature = computation_types.StructWithPythonType(
-        [
-            ('a', np.int32),
-            ('b', np.int32),
-        ],
-        collections.OrderedDict,
-    )
     key = 1
 
     with mock.patch.object(
         release_mngr, '_remove_values_greater_than_key'
     ) as mock_remove_values_greater_than_key:
-      await release_mngr.release(value, type_signature, key)
+      await release_mngr.release(value, key=key)
 
       mock_remove_values_greater_than_key.assert_called_once_with(0)
 
@@ -918,10 +792,9 @@ class CSVFileReleaseManagerReleaseTest(
     os.remove(file_path)
     release_mngr = file_release_manager.CSVFileReleaseManager(file_path)
     value = 1
-    type_signature = computation_types.TensorType(np.int32)
 
     try:
-      await release_mngr.release(value, type_signature, key)
+      await release_mngr.release(value, key=key)
     except TypeError:
       self.fail('Raised `TypeError` unexpectedly.')
 
@@ -935,10 +808,9 @@ class CSVFileReleaseManagerReleaseTest(
     os.remove(file_path)
     release_mngr = file_release_manager.CSVFileReleaseManager(file_path)
     value = 1
-    type_signature = computation_types.TensorType(np.int32)
 
     with self.assertRaises(TypeError):
-      await release_mngr.release(value, type_signature, key)
+      await release_mngr.release(value, key=key)
 
 
 class SavedModelFileReleaseManagerInitTest(parameterized.TestCase):
@@ -1033,40 +905,25 @@ class SavedModelFileReleaseManagerReleaseTest(
   # pyformat: disable
   @parameterized.named_parameters(
       # materialized values
-      ('none', None, computation_types.StructType([]), [None]),
-      ('bool', True, computation_types.TensorType(np.bool_), [True]),
-      ('int', 1, computation_types.TensorType(np.int32), [1]),
-      ('str', 'a', computation_types.TensorType(np.str_), ['a']),
-      ('tensor_int',
-       tf.constant(1),
-       computation_types.TensorType(np.int32),
-       [tf.constant(1)]),
-      ('tensor_str',
-       tf.constant('a'),
-       computation_types.TensorType(np.str_),
-       [tf.constant('a')]),
-      ('tensor_array',
-       tf.constant([1] * 3),
-       computation_types.TensorType(np.int32, [3]),
-       [tf.constant([1] * 3)]),
-      ('numpy_int',
-       np.int32(1),
-       computation_types.TensorType(np.int32),
-       [np.int32(1)]),
+      ('none', None, [None]),
+      ('bool', True, [True]),
+      ('int', 1, [1]),
+      ('str', 'a', ['a']),
+      ('tensor_int', tf.constant(1), [tf.constant(1)]),
+      ('tensor_str', tf.constant('a'), [tf.constant('a')]),
+      ('tensor_array', tf.constant([1] * 3), [tf.constant([1] * 3)]),
+      ('numpy_int', np.int32(1), [np.int32(1)]),
       ('numpy_array',
        np.array([1] * 3, np.int32),
-       computation_types.TensorType(np.int32, [3]),
        [np.array([1] * 3, np.int32)]),
 
       # materializable value references
       ('materializable_value_reference_tensor',
        program_test_utils.TestMaterializableValueReference(1),
-       computation_types.TensorType(np.int32),
        [1]),
       ('materializable_value_reference_sequence',
        program_test_utils.TestMaterializableValueReference(
            tf.data.Dataset.from_tensor_slices([1, 2, 3])),
-       computation_types.SequenceType(np.int32),
        [tf.data.Dataset.from_tensor_slices([1, 2, 3])]),
 
       # structures
@@ -1078,16 +935,6 @@ class SavedModelFileReleaseManagerReleaseTest(
            program_test_utils.TestMaterializableValueReference(2),
            program_test_utils.TestSerializable(3, 4),
        ],
-       computation_types.StructWithPythonType([
-           np.bool_,
-           np.int32,
-           np.str_,
-           np.int32,
-           computation_types.StructWithPythonType([
-               ('a', np.int32),
-               ('b', np.int32),
-           ], collections.OrderedDict),
-       ], list),
        [
            True,
            1,
@@ -1095,7 +942,7 @@ class SavedModelFileReleaseManagerReleaseTest(
            2,
            program_test_utils.TestSerializable(3, 4),
        ]),
-      ('list_empty', [], computation_types.StructWithPythonType([], list), []),
+      ('list_empty', [], []),
       ('list_nested',
        [
            [
@@ -1107,19 +954,6 @@ class SavedModelFileReleaseManagerReleaseTest(
            ],
            [5],
        ],
-       computation_types.StructWithPythonType([
-           computation_types.StructWithPythonType([
-               np.bool_,
-               np.int32,
-               np.str_,
-               np.int32,
-               computation_types.StructWithPythonType([
-                   ('a', np.int32),
-                   ('b', np.int32),
-               ], collections.OrderedDict),
-           ], list),
-           computation_types.StructWithPythonType([np.int32], list),
-       ], list),
        [
            True,
            1,
@@ -1136,16 +970,6 @@ class SavedModelFileReleaseManagerReleaseTest(
            'd': program_test_utils.TestMaterializableValueReference(2),
            'e': program_test_utils.TestSerializable(3, 4),
        },
-       computation_types.StructWithPythonType([
-           ('a', np.bool_),
-           ('b', np.int32),
-           ('c', np.str_),
-           ('d', np.int32),
-           ('e', computation_types.StructWithPythonType([
-               ('a', np.int32),
-               ('b', np.int32),
-           ], collections.OrderedDict)),
-       ], collections.OrderedDict),
        [
            True,
            1,
@@ -1153,10 +977,7 @@ class SavedModelFileReleaseManagerReleaseTest(
            2,
            program_test_utils.TestSerializable(3, 4),
        ]),
-      ('dict_empty',
-       {},
-       computation_types.StructWithPythonType([], collections.OrderedDict),
-       []),
+      ('dict_empty', {}, []),
       ('dict_nested',
        {
            'x': {
@@ -1168,21 +989,6 @@ class SavedModelFileReleaseManagerReleaseTest(
            },
            'y': {'a': 5},
        },
-       computation_types.StructWithPythonType([
-           ('x', computation_types.StructWithPythonType([
-               ('a', np.bool_),
-               ('b', np.int32),
-               ('c', np.str_),
-               ('d', np.int32),
-               ('e', computation_types.StructWithPythonType([
-                   ('a', np.int32),
-                   ('b', np.int32),
-               ], collections.OrderedDict)),
-           ], collections.OrderedDict)),
-           ('y', computation_types.StructWithPythonType([
-               ('a', np.int32),
-           ], collections.OrderedDict)),
-       ], collections.OrderedDict),
        [
            True,
            1,
@@ -1199,16 +1005,6 @@ class SavedModelFileReleaseManagerReleaseTest(
            d=program_test_utils.TestMaterializableValueReference(2),
            e=program_test_utils.TestSerializable(3, 4),
        ),
-       computation_types.StructWithPythonType([
-           ('a', np.bool_),
-           ('b', np.int32),
-           ('c', np.str_),
-           ('d', np.int32),
-           ('e', computation_types.StructWithPythonType([
-               ('a', np.int32),
-               ('b', np.int32),
-           ], collections.OrderedDict)),
-       ], program_test_utils.TestNamedTuple1),
        [
            True,
            1,
@@ -1227,21 +1023,6 @@ class SavedModelFileReleaseManagerReleaseTest(
            ),
            y=program_test_utils.TestNamedTuple2(a=5),
        ),
-       computation_types.StructWithPythonType([
-           ('x', computation_types.StructWithPythonType([
-               ('a', np.bool_),
-               ('b', np.int32),
-               ('c', np.str_),
-               ('d', np.int32),
-               ('e', computation_types.StructWithPythonType([
-                   ('a', np.int32),
-                   ('b', np.int32),
-               ], collections.OrderedDict)),
-           ], program_test_utils.TestNamedTuple1)),
-           ('y', computation_types.StructWithPythonType([
-               ('a', np.int32),
-           ], program_test_utils.TestNamedTuple2)),
-       ], program_test_utils.TestNamedTuple3),
        [
            True,
            1,
@@ -1252,7 +1033,7 @@ class SavedModelFileReleaseManagerReleaseTest(
        ]),
   )
   # pyformat: enable
-  async def test_writes_value(self, value, type_signature, expected_value):
+  async def test_writes_value(self, value, expected_value):
     root_dir = self.create_tempdir()
     release_mngr = file_release_manager.SavedModelFileReleaseManager(root_dir)
     key = 1
@@ -1260,7 +1041,7 @@ class SavedModelFileReleaseManagerReleaseTest(
     with mock.patch.object(
         file_utils, 'write_saved_model'
     ) as mock_write_saved_model:
-      await release_mngr.release(value, type_signature, key)
+      await release_mngr.release(value, key=key)
 
       mock_write_saved_model.assert_called_once()
       call = mock_write_saved_model.mock_calls[0]
@@ -1277,31 +1058,19 @@ class SavedModelFileReleaseManagerReleaseTest(
   # pyformat: disable
   @parameterized.named_parameters(
       # serializable values
-      ('serializable_value',
-       program_test_utils.TestSerializable(1, 2),
-       computation_types.StructWithPythonType([
-           ('a', np.int32),
-           ('b', np.int32),
-       ], collections.OrderedDict)),
+      ('serializable_value', program_test_utils.TestSerializable(1, 2)),
 
       # other values
-      ('attrs',
-       program_test_utils.TestAttrs(1, 2),
-       computation_types.StructWithPythonType([
-           ('a', np.int32),
-           ('b', np.int32),
-       ], collections.OrderedDict)),
+      ('attrs', program_test_utils.TestAttrs(1, 2)),
   )
   # pyformat: enable
-  async def test_raises_not_encodable_error_with_value(
-      self, value, type_signature
-  ):
+  async def test_raises_not_encodable_error_with_value(self, value):
     root_dir = self.create_tempdir()
     release_mngr = file_release_manager.SavedModelFileReleaseManager(root_dir)
     key = 1
 
     with self.assertRaises(Exception):
-      await release_mngr.release(value, type_signature, key)
+      await release_mngr.release(value, key=key)
 
   @parameterized.named_parameters(
       ('0', 0),
@@ -1314,10 +1083,9 @@ class SavedModelFileReleaseManagerReleaseTest(
     root_dir = self.create_tempdir()
     release_mngr = file_release_manager.SavedModelFileReleaseManager(root_dir)
     value = 1
-    type_signature = computation_types.TensorType(np.int32)
 
     try:
-      await release_mngr.release(value, type_signature, key)
+      await release_mngr.release(value, key=key)
     except TypeError:
       self.fail('Raised `TypeError` unexpectedly.')
 
@@ -1329,40 +1097,23 @@ class SavedModelFileReleaseManagerGetValueTest(
   # pyformat: disable
   @parameterized.named_parameters(
       # materialized values
-      ('none', None, computation_types.StructType([]), None),
-      ('bool', True, computation_types.TensorType(np.bool_), np.bool_(True)),
-      ('int', 1, computation_types.TensorType(np.int32), np.int32(1)),
-      ('str', 'a', computation_types.TensorType(np.str_), b'a'),
-      ('tensor_int',
-       tf.constant(1),
-       computation_types.TensorType(np.int32),
-       np.int32(1)),
-      ('tensor_str',
-       tf.constant('a'),
-       computation_types.TensorType(np.str_),
-       b'a'),
-      ('tensor_array',
-       tf.constant([1] * 3),
-       computation_types.TensorType(np.int32, [3]),
-       np.array([1] * 3, np.int32)),
-      ('numpy_int',
-       np.int32(1),
-       computation_types.TensorType(np.int32),
-       np.int32(1)),
-      ('numpy_array',
-       np.array([1] * 3, np.int32),
-       computation_types.TensorType(np.int32, [3]),
-       np.array([1] * 3, np.int32)),
+      ('none', None, None),
+      ('bool', True, np.bool_(True)),
+      ('int', 1, np.int32(1)),
+      ('str', 'a', b'a'),
+      ('tensor_int', tf.constant(1), np.int32(1)),
+      ('tensor_str', tf.constant('a'), b'a'),
+      ('tensor_array', tf.constant([1] * 3), np.array([1] * 3, np.int32)),
+      ('numpy_int', np.int32(1), np.int32(1)),
+      ('numpy_array', np.array([1] * 3, np.int32), np.array([1] * 3, np.int32)),
 
       # materializable value references
       ('materializable_value_reference_tensor',
        program_test_utils.TestMaterializableValueReference(1),
-       computation_types.TensorType(np.int32),
        np.int32(1)),
       ('materializable_value_reference_sequence',
        program_test_utils.TestMaterializableValueReference(
            tf.data.Dataset.from_tensor_slices([1, 2, 3])),
-       computation_types.SequenceType(np.int32),
        tf.data.Dataset.from_tensor_slices([1, 2, 3])),
 
       # structures
@@ -1374,13 +1125,6 @@ class SavedModelFileReleaseManagerGetValueTest(
            program_test_utils.TestMaterializableValueReference(2),
            None,
        ],
-       computation_types.StructWithPythonType([
-           np.bool_,
-           np.int32,
-           np.str_,
-           np.int32,
-           [],
-       ], list),
        [
            np.bool_(True),
            np.int32(1),
@@ -1388,10 +1132,7 @@ class SavedModelFileReleaseManagerGetValueTest(
            np.int32(2),
            None,
        ]),
-      ('list_empty',
-       [],
-       computation_types.StructWithPythonType([], list),
-       []),
+      ('list_empty', [], []),
       ('list_nested',
        [
            [
@@ -1403,16 +1144,6 @@ class SavedModelFileReleaseManagerGetValueTest(
            ],
            [5],
        ],
-       computation_types.StructWithPythonType([
-           computation_types.StructWithPythonType([
-               np.bool_,
-               np.int32,
-               np.str_,
-               np.int32,
-               [],
-           ], list),
-           computation_types.StructWithPythonType([np.int32], list),
-       ], list),
        [
            [
                np.bool_(True),
@@ -1431,13 +1162,6 @@ class SavedModelFileReleaseManagerGetValueTest(
            'd': program_test_utils.TestMaterializableValueReference(2),
            'e': None,
        },
-       computation_types.StructWithPythonType([
-           ('a', np.bool_),
-           ('b', np.int32),
-           ('c', np.str_),
-           ('d', np.int32),
-           ('e', []),
-       ], collections.OrderedDict),
        {
            'a': np.bool_(True),
            'b': np.int32(1),
@@ -1445,10 +1169,7 @@ class SavedModelFileReleaseManagerGetValueTest(
            'd': np.int32(2),
            'e': None,
        }),
-      ('dict_empty',
-       {},
-       computation_types.StructWithPythonType([], collections.OrderedDict),
-       {}),
+      ('dict_empty', {}, {}),
       ('dict_nested',
        {
            'x': {
@@ -1460,13 +1181,6 @@ class SavedModelFileReleaseManagerGetValueTest(
            },
            'y': {'a': 5},
        },
-       computation_types.StructWithPythonType([
-           ('a', np.bool_),
-           ('b', np.int32),
-           ('c', np.str_),
-           ('d', np.int32),
-           ('e', []),
-       ], program_test_utils.TestNamedTuple1),
        {
            'x': {
                'a': np.bool_(True),
@@ -1485,13 +1199,6 @@ class SavedModelFileReleaseManagerGetValueTest(
            d=program_test_utils.TestMaterializableValueReference(2),
            e=None,
        ),
-       computation_types.StructWithPythonType([
-           ('a', np.bool_),
-           ('b', np.int32),
-           ('c', np.str_),
-           ('d', np.int32),
-           ('e', []),
-       ], program_test_utils.TestNamedTuple1),
        program_test_utils.TestNamedTuple1(
            a=np.bool_(True),
            b=np.int32(1),
@@ -1510,18 +1217,6 @@ class SavedModelFileReleaseManagerGetValueTest(
            ),
            y=program_test_utils.TestNamedTuple2(a=5),
        ),
-       computation_types.StructWithPythonType([
-           ('x', computation_types.StructWithPythonType([
-               ('a', np.bool_),
-               ('b', np.int32),
-               ('c', np.str_),
-               ('d', np.int32),
-               ('e', computation_types.StructType([])),
-           ], program_test_utils.TestNamedTuple1)),
-           ('y', computation_types.StructWithPythonType([
-               ('a', np.int32),
-           ], program_test_utils.TestNamedTuple2)),
-       ], program_test_utils.TestNamedTuple3),
        program_test_utils.TestNamedTuple3(
            x=program_test_utils.TestNamedTuple1(
                a=np.bool_(True),
@@ -1534,13 +1229,11 @@ class SavedModelFileReleaseManagerGetValueTest(
        )),
   )
   # pyformat: enable
-  async def test_returns_saved_value(
-      self, value, type_signature, expected_value
-  ):
+  async def test_returns_saved_value(self, value, expected_value):
     root_dir = self.create_tempdir()
     release_mngr = file_release_manager.SavedModelFileReleaseManager(root_dir)
     key = 1
-    await release_mngr.release(value, type_signature, key)
+    await release_mngr.release(value, key=key)
     structure = value
 
     actual_value = await release_mngr.get_value(key, structure)
@@ -1558,9 +1251,8 @@ class SavedModelFileReleaseManagerGetValueTest(
   async def test_returns_saved_value_with_key(self, key):
     root_dir = self.create_tempdir()
     release_mngr = file_release_manager.SavedModelFileReleaseManager(root_dir)
-    for i in range(3):
-      type_signature = computation_types.TensorType(np.str_)
-      await release_mngr.release(f'value_{i}', type_signature, i)
+    for key in range(3):
+      await release_mngr.release(f'value_{key}', key=key)
     structure = 'value'
 
     actual_value = await release_mngr.get_value(key, structure)
@@ -1583,9 +1275,8 @@ class SavedModelFileReleaseManagerGetValueTest(
     root_dir = self.create_tempdir()
     release_mngr = file_release_manager.SavedModelFileReleaseManager(root_dir)
     value = 'value_1'
-    type_signature = computation_types.TensorType(np.str_)
     key = 1
-    await release_mngr.release(value, type_signature, key)
+    await release_mngr.release(value, key=key)
     unknown_key = 10
     structure = 'value'
 

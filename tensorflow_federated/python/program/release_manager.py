@@ -17,8 +17,6 @@ import abc
 import asyncio
 from collections.abc import Callable, Mapping, Sequence
 import datetime
-import functools
-import operator
 import typing
 from typing import Generic, Optional, TypeVar, Union
 
@@ -26,7 +24,6 @@ import attrs
 import tree
 
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.program import structure_utils
 from tensorflow_federated.python.program import value_reference
@@ -86,10 +83,6 @@ class ReleaseManager(abc.ABC, Generic[ReleasableStructure, Key]):
 
 class NotFilterableError(Exception):
   """Raised when the structure cannot be filtered."""
-
-
-class FilterMismatchError(Exception):
-  """Raised when there is a mismatch filtering the value and type signature."""
 
 
 # Sentinel object used by the `tff.program.FilteringReleaseManager` to indicate
@@ -182,9 +175,8 @@ class FilteringReleaseManager(ReleaseManager[ReleasableStructure, Key]):
 
     Raises:
       NotFilterableError: If the `value` cannot be filtered.
-      FilterMismatchError: If there is a mismatch filtering the `value` and
-        `type_signature`.
     """
+    del type_signature  # Unused.
 
     def _filter_value(
         path: tuple[Union[str, int], ...],
@@ -264,88 +256,8 @@ class FilteringReleaseManager(ReleaseManager[ReleasableStructure, Key]):
         _filter_value, value, top_down=False
     )
 
-    def _create_filtered_type(
-        type_spec: computation_types.Type,
-        path: tuple[Union[str, int], ...] = (),
-    ) -> Union[computation_types.Type, type(_FILTERED_SUBTREE)]:
-      """Creates a `tff.Type` from the `type_signature`.
-
-      This function mirrors `_filter_value` in the way the way `path` and
-      `_FILTERED_SUBTREE` are used ; however, it does not use `tree` to do the
-      traversal because `tree` does not know how to traverse `tff.Type`s.
-      Instead the traversal is performed manually.
-
-      Args:
-        type_spec: A `tff.Type` in `type_signature`.
-        path: A tuple of indices and/or keys which uniquely identifies the
-          position of `subtree` in the `value`.
-
-      Returns:
-        A filtered value or `_FILTERED_SUBTREE` if the entire structure was
-        filtered.
-      """
-      if isinstance(type_spec, computation_types.StructType) and not attrs.has(
-          type_spec.python_container
-      ):
-        # An empty tuple may represent the type signature for the value `None`.
-        # If that is the case, do not filter the empty structure, instead treat
-        # `type_spec` as a leaf and apply the filter function.
-        if type_spec == computation_types.StructType([]):
-          value_at_path = functools.reduce(operator.getitem, path, value)
-          if value_at_path is None:
-            if self._filter_fn(path):
-              return type_spec
-            else:
-              return _FILTERED_SUBTREE
-
-        elements = []
-        element_types = structure.iter_elements(type_spec)
-        for index, (name, element_type) in enumerate(element_types):
-          element_path = path + (name or index,)
-          filtered_element_type = _create_filtered_type(
-              element_type, element_path
-          )
-          if filtered_element_type is not _FILTERED_SUBTREE:
-            elements.append((name, filtered_element_type))
-
-        if not elements:
-          return _FILTERED_SUBTREE
-        elif isinstance(type_spec, computation_types.StructWithPythonType):
-          # Note: The fields of a `NamedTuple` cannot be filtered. However,
-          # raising an error here can be skipped, because the appropriate error
-          # is raised when filtering the `value`.
-          return computation_types.StructWithPythonType(
-              elements, type_spec.python_container
-          )
-        else:
-          return computation_types.StructType(elements)
-      else:
-        if self._filter_fn(path):
-          return type_spec
-        else:
-          return _FILTERED_SUBTREE
-
-    filtered_type = _create_filtered_type(type_signature)
-
-    if (
-        filtered_value is not _FILTERED_SUBTREE
-        and filtered_type is not _FILTERED_SUBTREE
-    ):
-      await self._release_manager.release(filtered_value, filtered_type, key)
-    elif filtered_value is not filtered_type:
-      if filtered_value is _FILTERED_SUBTREE:
-        value_label = 'empty'
-      else:
-        value_label = 'not empty'
-      if filtered_type is _FILTERED_SUBTREE:
-        type_signature_label = 'empty'
-      else:
-        type_signature_label = 'not empty'
-      raise FilterMismatchError(
-          'Expected `value` and `type_signature` to be filtered identically, '
-          f'found the filtered `value` was {value_label} and the filtered '
-          f'`type_signature` was {type_signature_label}.'
-      )
+    if filtered_value is not _FILTERED_SUBTREE:
+      await self._release_manager.release(filtered_value, key=key)
 
 
 class GroupingReleaseManager(ReleaseManager[ReleasableStructure, Key]):
@@ -395,8 +307,10 @@ class GroupingReleaseManager(ReleaseManager[ReleasableStructure, Key]):
       type_signature: The `tff.Type` of `value`.
       key: A value used to reference the released `value`.
     """
+    del type_signature  # Unused.
+
     await asyncio.gather(
-        *[m.release(value, type_signature, key) for m in self._release_managers]
+        *[m.release(value, key=key) for m in self._release_managers]
     )
 
 
@@ -471,15 +385,17 @@ class PeriodicReleaseManager(ReleaseManager[ReleasableStructure, Key]):
       type_signature: The `tff.Type` of `value`.
       key: A value used to reference the released `value`.
     """
+    del type_signature  # Unused.
+
     if isinstance(self._periodicity, int):
       self._count += 1
       if self._count % self._periodicity == 0:
-        await self._release_manager.release(value, type_signature, key)
+        await self._release_manager.release(value, key=key)
     elif isinstance(self._periodicity, datetime.timedelta):
       now = datetime.datetime.now()
       if now >= self._timestamp + self._periodicity:
         self._timestamp = now
-        await self._release_manager.release(value, type_signature, key)
+        await self._release_manager.release(value, key=key)
     else:
       raise NotImplementedError(
           f'Unexpected `periodicity` found: {type(self._periodicity)}.'
@@ -546,6 +462,8 @@ class DelayedReleaseManager(ReleaseManager[ReleasableStructure, Key]):
       type_signature: The `tff.Type` of `value`.
       key: A value used to reference the released `value`.
     """
+    del type_signature  # Unused.
+
     self._count += 1
     if self._count >= self._delay:
-      await self._release_manager.release(value, type_signature, key)
+      await self._release_manager.release(value, key=key)
