@@ -279,43 +279,6 @@ class InferTypeTest(parameterized.TestCase):
     t = type_conversions.infer_type(())
     self.assertEqual(t, computation_types.StructWithPythonType([], tuple))
 
-  def test_with_ragged_tensor(self):
-    t = type_conversions.infer_type(
-        tf.RaggedTensor.from_row_splits([0, 0, 0, 0], [0, 1, 4])
-    )
-    type_test_utils.assert_types_identical(
-        t,
-        computation_types.StructWithPythonType(
-            [
-                ('flat_values', computation_types.TensorType(np.int32, [4])),
-                (
-                    'nested_row_splits',
-                    computation_types.StructWithPythonType(
-                        [(None, computation_types.TensorType(np.int64, [3]))],
-                        tuple,
-                    ),
-                ),
-            ],
-            tf.RaggedTensor,
-        ),
-    )
-
-  def test_with_sparse_tensor(self):
-    # sparse_tensor = [0, 2, 0, 0, 0]
-    sparse_tensor = tf.SparseTensor(indices=[[1]], values=[2], dense_shape=[5])
-    t = type_conversions.infer_type(sparse_tensor)
-    type_test_utils.assert_types_identical(
-        t,
-        computation_types.StructWithPythonType(
-            [
-                ('indices', computation_types.TensorType(np.int64, [1, 1])),
-                ('values', computation_types.TensorType(np.int32, [1])),
-                ('dense_shape', computation_types.TensorType(np.int64, [1])),
-            ],
-            tf.SparseTensor,
-        ),
-    )
-
 
 class TypeToTfDtypesAndShapesTest(absltest.TestCase):
 

@@ -58,8 +58,6 @@ def infer_type(arg: object) -> Optional[computation_types.Type]:
       Union[
           None,
           typed_object.TypedObject,
-          tf.RaggedTensor,
-          tf.SparseTensor,
           tf.Tensor,
           tf.data.Dataset,
           structure.Struct,
@@ -75,35 +73,15 @@ def infer_type(arg: object) -> Optional[computation_types.Type]:
   elif isinstance(arg, typed_object.TypedObject):
     return arg.type_signature
   elif tf.is_tensor(arg):
-    # `tf.is_tensor` returns true for some things that are not actually single
-    # `tf.Tensor`s, including `tf.SparseTensor`s and `tf.RaggedTensor`s.
-    if isinstance(arg, tf.RaggedTensor):
-      return computation_types.StructWithPythonType(
-          (
-              ('flat_values', infer_type(arg.flat_values)),
-              ('nested_row_splits', infer_type(arg.nested_row_splits)),
-          ),
-          tf.RaggedTensor,
-      )
-    elif isinstance(arg, tf.SparseTensor):
-      return computation_types.StructWithPythonType(
-          (
-              ('indices', infer_type(arg.indices)),
-              ('values', infer_type(arg.values)),
-              ('dense_shape', infer_type(arg.dense_shape)),
-          ),
-          tf.SparseTensor,
-      )
+    if arg.dtype.base_dtype == tf.string:  # pytype: disable=attribute-error
+      dtype = np.str_
     else:
-      if arg.dtype.base_dtype == tf.string:  # pytype: disable=attribute-error
-        dtype = np.str_
-      else:
-        dtype = arg.dtype.base_dtype.as_numpy_dtype  # pytype: disable=attribute-error
-      if arg.shape.rank is not None:  # pytype: disable=attribute-error
-        shape = arg.shape.as_list()  # pytype: disable=attribute-error
-      else:
-        shape = None
-      return computation_types.TensorType(dtype, shape)
+      dtype = arg.dtype.base_dtype.as_numpy_dtype  # pytype: disable=attribute-error
+    if arg.shape.rank is not None:  # pytype: disable=attribute-error
+      shape = arg.shape.as_list()  # pytype: disable=attribute-error
+    else:
+      shape = None
+    return computation_types.TensorType(dtype, shape)
   elif isinstance(arg, tf.data.Dataset):
     element_type = computation_types.tensorflow_to_type(arg.element_spec)
     return computation_types.SequenceType(element_type)
