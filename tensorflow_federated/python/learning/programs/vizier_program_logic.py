@@ -98,11 +98,13 @@ class _IntermediateMeasurementReleaseManager(
   def __init__(self, trial: client_abc.TrialInterface):
     self._trial = trial
 
+  # TODO: b/305743962 - Deprecate `type_signature` and temporarily give `key` a
+  # default value.
   async def release(
       self,
       value: release_manager.ReleasableStructure,
-      type_signature: computation_types.Type,
-      key: int,
+      type_signature: Optional[computation_types.Type] = None,
+      key: int = 0,
   ) -> None:
     del type_signature  # Unused.
 
@@ -129,11 +131,13 @@ class _FinalMeasurementReleaseManager(
   def __init__(self, trial: client_abc.TrialInterface):
     self._trial = trial
 
+  # TODO: b/305743962 - Deprecate `type_signature` and temporarily give `key` a
+  # default value.
   async def release(
       self,
       value: release_manager.ReleasableStructure,
-      type_signature: computation_types.Type,
-      key: int,
+      type_signature: Optional[computation_types.Type] = None,
+      key: int = 0,
   ) -> None:
     del type_signature  # Unused.
 

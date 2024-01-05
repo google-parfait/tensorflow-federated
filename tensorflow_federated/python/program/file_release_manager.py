@@ -28,7 +28,7 @@ import enum
 import os
 import os.path
 import random
-from typing import Union
+from typing import Optional, Union
 
 import numpy as np
 import tensorflow as tf
@@ -275,11 +275,13 @@ class CSVFileReleaseManager(
       )
       self._latest_key = key
 
+  # TODO: b/305743962 - Deprecate `type_signature` and temporarily give `key` a
+  # default value.
   async def release(
       self,
       value: release_manager.ReleasableStructure,
-      type_signature: computation_types.Type,
-      key: int,
+      type_signature: Optional[computation_types.Type] = None,
+      key: int = 0,
   ) -> None:
     """Releases `value` from a federated program.
 
@@ -380,11 +382,13 @@ class SavedModelFileReleaseManager(
     basename = f'{self._prefix}{str(key)}'
     return os.path.join(self._root_dir, basename)
 
+  # TODO: b/305743962 - Deprecate `type_signature` and temporarily give `key` a
+  # default value.
   async def release(
       self,
       value: release_manager.ReleasableStructure,
-      type_signature: computation_types.Type,
-      key: release_manager.Key,
+      type_signature: Optional[computation_types.Type] = None,
+      key: release_manager.Key = None,
   ) -> None:
     """Releases `value` from a federated program.
 

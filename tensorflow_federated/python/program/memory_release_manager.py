@@ -15,6 +15,7 @@
 
 import collections
 from collections.abc import Hashable
+from typing import Optional
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -42,11 +43,13 @@ class MemoryReleaseManager(
     """Returns an initialized `tff.program.MemoryReleaseManager`."""
     self._values = collections.OrderedDict()
 
+  # TODO: b/305743962 - Deprecate `type_signature` and temporarily give `key` a
+  # default value.
   async def release(
       self,
       value: release_manager.ReleasableStructure,
-      type_signature: computation_types.Type,
-      key: Hashable,
+      type_signature: Optional[computation_types.Type] = None,
+      key: Hashable = None,
   ) -> None:
     """Releases `value` from a federated program.
 
@@ -65,7 +68,9 @@ class MemoryReleaseManager(
       self,
   ) -> collections.OrderedDict[
       Hashable,
-      tuple[release_manager.ReleasableStructure, computation_types.Type],
+      tuple[
+          release_manager.ReleasableStructure, Optional[computation_types.Type]
+      ],
   ]:
     """Returns an `collections.OrderedDict` of all keys and released values and types."""
     return self._values.copy()

@@ -14,7 +14,7 @@
 """Utilities for releasing values from a federated program to TensorBoard."""
 
 import os
-from typing import Union
+from typing import Optional, Union
 
 import numpy as np
 import tensorflow as tf
@@ -69,11 +69,13 @@ class TensorBoardReleaseManager(
       summary_dir = os.fspath(summary_dir)
     self._summary_writer = tf.summary.create_file_writer(summary_dir)
 
+  # TODO: b/305743962 - Deprecate `type_signature` and temporarily give `key` a
+  # default value.
   async def release(
       self,
       value: release_manager.ReleasableStructure,
-      type_signature: computation_types.Type,
-      key: int,
+      type_signature: Optional[computation_types.Type] = None,
+      key: int = 0,
   ) -> None:
     """Releases `value` from a federated program.
 

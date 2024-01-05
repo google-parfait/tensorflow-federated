@@ -57,12 +57,14 @@ class ReleaseManager(abc.ABC, Generic[ReleasableStructure, Key]):
   to customer storage in a federated program.
   """
 
+  # TODO: b/305743962 - Deprecate `type_signature` and temporarily give `key` a
+  # default value.
   @abc.abstractmethod
   async def release(
       self,
       value: ReleasableStructure,
-      type_signature: computation_types.Type,
-      key: Key,
+      type_signature: Optional[computation_types.Type] = None,
+      key: Key = None,
   ) -> None:
     """Releases `value` from a federated program.
 
@@ -163,11 +165,13 @@ class FilteringReleaseManager(ReleaseManager[ReleasableStructure, Key]):
     self._release_manager = release_manager
     self._filter_fn = filter_fn
 
+  # TODO: b/305743962 - Deprecate `type_signature` and temporarily give `key` a
+  # default value.
   async def release(
       self,
       value: ReleasableStructure,
-      type_signature: computation_types.Type,
-      key: Key,
+      type_signature: Optional[computation_types.Type] = None,
+      key: Key = None,
   ) -> None:
     """Releases `value` from a federated program.
 
@@ -376,11 +380,13 @@ class GroupingReleaseManager(ReleaseManager[ReleasableStructure, Key]):
 
     self._release_managers = release_managers
 
+  # TODO: b/305743962 - Deprecate `type_signature` and temporarily give `key` a
+  # default value.
   async def release(
       self,
       value: ReleasableStructure,
-      type_signature: computation_types.Type,
-      key: Key,
+      type_signature: Optional[computation_types.Type] = None,
+      key: Key = None,
   ) -> None:
     """Releases `value` from a federated program.
 
@@ -450,11 +456,13 @@ class PeriodicReleaseManager(ReleaseManager[ReleasableStructure, Key]):
           f'Unexpected `periodicity` found: {type(periodicity)}.'
       )
 
+  # TODO: b/305743962 - Deprecate `type_signature` and temporarily give `key` a
+  # default value.
   async def release(
       self,
       value: ReleasableStructure,
-      type_signature: computation_types.Type,
-      key: Key,
+      type_signature: Optional[computation_types.Type] = None,
+      key: Key = None,
   ) -> None:
     """Releases `value` from a federated program.
 
@@ -523,11 +531,13 @@ class DelayedReleaseManager(ReleaseManager[ReleasableStructure, Key]):
     self._count = 0
     self._delay = delay
 
+  # TODO: b/305743962 - Deprecate `type_signature` and temporarily give `key` a
+  # default value.
   async def release(
       self,
       value: ReleasableStructure,
-      type_signature: computation_types.Type,
-      key: Key,
+      type_signature: Optional[computation_types.Type] = None,
+      key: Key = None,
   ) -> None:
     """Releases `value` from a federated program.
 

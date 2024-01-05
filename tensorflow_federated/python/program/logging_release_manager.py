@@ -39,11 +39,13 @@ class LoggingReleaseManager(
   containing value references, each value reference is materialized.
   """
 
+  # TODO: b/305743962 - Deprecate `type_signature` and temporarily give `key` a
+  # default value.
   async def release(
       self,
       value: release_manager.ReleasableStructure,
-      type_signature: computation_types.Type,
-      key: Optional[release_manager.Key],
+      type_signature: Optional[computation_types.Type] = None,
+      key: Optional[release_manager.Key] = None,
   ) -> None:
     """Releases `value` from a federated program.
 
