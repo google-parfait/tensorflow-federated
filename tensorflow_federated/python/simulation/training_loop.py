@@ -23,7 +23,6 @@ from absl import logging
 
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.computation import computation_base
-from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.templates import iterative_process
 from tensorflow_federated.python.program import program_state_manager as program_state_manager_lib
 from tensorflow_federated.python.program import release_manager as release_manager_lib
@@ -164,14 +163,10 @@ def run_training_process(
       )
 
       if metrics_managers is not None:
-        metrics_type = type_conversions.infer_type(evaluation_metrics)
         loop.run_until_complete(
-            asyncio.gather(
-                *[
-                    m.release(evaluation_metrics, metrics_type, 0)
-                    for m in metrics_managers
-                ]
-            )
+            asyncio.gather(*[
+                m.release(evaluation_metrics, key=0) for m in metrics_managers
+            ])
         )
 
     if program_state_manager is not None:
@@ -195,13 +190,9 @@ def run_training_process(
           metrics.update(evaluation_metrics)
 
     if metrics_managers is not None:
-      metrics_type = type_conversions.infer_type(metrics)
       loop.run_until_complete(
           asyncio.gather(
-              *[
-                  m.release(metrics, metrics_type, round_num)
-                  for m in metrics_managers
-              ]
+              *[m.release(metrics, key=round_num) for m in metrics_managers]
           )
       )
 

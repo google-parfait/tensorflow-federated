@@ -85,7 +85,6 @@ py_library(
     deps = [
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/computation:computation_base",
-        "//tensorflow_federated/python/core/impl/types:type_conversions",
         "//tensorflow_federated/python/core/templates:iterative_process",
         "//tensorflow_federated/python/program:program_state_manager",
         "//tensorflow_federated/python/program:release_manager",
