@@ -87,11 +87,7 @@ def sum_then_finalize(
         metric_finalizers, local_unfinalized_metrics_type
     )
 
-  @federated_computation.federated_computation(
-      computation_types.FederatedType(
-          local_unfinalized_metrics_type, placements.CLIENTS
-      )
-  )
+  @federated_computation.federated_computation
   def aggregator_computation(client_local_unfinalized_metrics):
     unfinalized_metrics_sum = intrinsics.federated_sum(
         client_local_unfinalized_metrics
@@ -103,7 +99,7 @@ def sum_then_finalize(
       )
     else:
 
-      @tensorflow_computation.tf_computation(local_unfinalized_metrics_type)
+      @tensorflow_computation.tf_computation
       def finalizer_computation(unfinalized_metrics):
         finalized_metrics = collections.OrderedDict()
         for metric_name, metric_finalizer in metric_finalizers.items():

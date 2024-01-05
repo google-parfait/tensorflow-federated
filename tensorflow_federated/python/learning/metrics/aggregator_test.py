@@ -17,9 +17,13 @@ import collections
 from typing import Any
 
 from absl.testing import parameterized
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.core.backends.test import execution_contexts
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
+from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.test import static_assert
 from tensorflow_federated.python.learning.metrics import aggregator
@@ -79,6 +83,19 @@ _TEST_ARGUMENTS_KERAS_METRICS = {
             custom_sum=[tf.constant(1), tf.constant(1), tf.constant([1, 1])],
         ),
     ],
+    'local_unfinalized_metrics_type': computation_types.to_type(
+        computation_types.StructWithPythonType(
+            collections.OrderedDict(
+                accuracy=[np.float32, np.float32],
+                custom_sum=[
+                    np.int32,
+                    np.int32,
+                    computation_types.TensorType(np.int32, [2]),
+                ],
+            ),
+            collections.OrderedDict,
+        )
+    ),
     # The finalized metrics are computed by first summing the unfinalized values
     # from clients, and run the corresponding finalizers (a division for
     # `accuracy`, and a sum for `custom_sum`) at the server.
@@ -117,6 +134,19 @@ _TEST_CALLABLE_ARGUMENTS_KERAS_METRICS = {
             custom_sum=[tf.constant(1), tf.constant(1), tf.constant([1, 1])],
         ),
     ],
+    'local_unfinalized_metrics_type': computation_types.to_type(
+        computation_types.StructWithPythonType(
+            collections.OrderedDict(
+                accuracy=[np.float32, np.float32],
+                custom_sum=[
+                    np.int32,
+                    np.int32,
+                    computation_types.TensorType(np.int32, [2]),
+                ],
+            ),
+            collections.OrderedDict,
+        )
+    ),
     # The finalized metrics are computed by first summing the unfinalized values
     # from clients, and run the corresponding finalizers (a division for
     # `accuracy`, and a sum for `custom_sum`) at the server.
@@ -144,6 +174,15 @@ _TEST_ARGUMENTS_NON_KERAS_METRICS = {
             sum=collections.OrderedDict(count_1=1, count_2=1),
         ),
     ],
+    'local_unfinalized_metrics_type': computation_types.to_type(
+        computation_types.StructWithPythonType(
+            collections.OrderedDict(
+                divide=[np.float32, np.float32],
+                sum=collections.OrderedDict(count_1=np.int32, count_2=np.int32),
+            ),
+            collections.OrderedDict,
+        )
+    ),
     'expected_aggregated_metrics': collections.OrderedDict(
         divide=(1.0 + 3.0) / (2.0 + 6.0), sum=4
     ),
@@ -169,6 +208,17 @@ _TEST_METRICS_MIXED_DTYPES = {
             sum=collections.OrderedDict(count_1=1, count_2=1.0),
         ),
     ],
+    'local_unfinalized_metrics_type': computation_types.to_type(
+        computation_types.StructWithPythonType(
+            collections.OrderedDict(
+                divide=[np.float32, np.int32],
+                sum=collections.OrderedDict(
+                    count_1=np.int32, count_2=np.float32
+                ),
+            ),
+            collections.OrderedDict,
+        )
+    ),
     'expected_aggregated_metrics': collections.OrderedDict(
         divide=(1.0 + 3.0) / (2.0 + 6.0), sum=4.0
     ),
@@ -234,6 +284,7 @@ class SumThenFinalizeTest(parameterized.TestCase, tf.test.TestCase):
       self,
       metric_finalizers,
       local_unfinalized_metrics_at_clients,
+      local_unfinalized_metrics_type,
       expected_aggregated_metrics,
   ):
     aggregator_computation = aggregator.sum_then_finalize(
@@ -242,7 +293,15 @@ class SumThenFinalizeTest(parameterized.TestCase, tf.test.TestCase):
             local_unfinalized_metrics_at_clients[0]
         ),
     )
-    aggregated_metrics = aggregator_computation(
+    @federated_computation.federated_computation(
+        computation_types.FederatedType(
+            local_unfinalized_metrics_type, placements.CLIENTS
+        )
+    )
+    def wrapped_aggregator_computation(unfinalized_metrics):
+      return aggregator_computation(unfinalized_metrics)
+
+    aggregated_metrics = wrapped_aggregator_computation(
         local_unfinalized_metrics_at_clients
     )
     self.assertAllEqual(aggregated_metrics, expected_aggregated_metrics)
@@ -276,8 +335,10 @@ class SecureSumThenFinalizeTest(parameterized.TestCase, tf.test.TestCase):
       self,
       metric_finalizers,
       local_unfinalized_metrics_at_clients,
+      local_unfinalized_metrics_type,
       expected_aggregated_metrics,
   ):
+    del local_unfinalized_metrics_type
     aggregator_computation = aggregator.secure_sum_then_finalize(
         metric_finalizers=metric_finalizers,
         local_unfinalized_metrics_type=type_conversions.infer_type(
