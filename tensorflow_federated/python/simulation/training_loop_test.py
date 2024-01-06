@@ -293,15 +293,7 @@ class RunTrainingProcessTest(parameterized.TestCase):
           ('training_time_in_seconds', mock.ANY),
           ('round_number', round_num),
       ])
-      metrics_type = computation_types.StructWithPythonType(
-          [
-              ('metric', np.float32),
-              ('training_time_in_seconds', np.float32),
-              ('round_number', np.int32),
-          ],
-          collections.OrderedDict,
-      )
-      call = mock.call(metrics, metrics_type, round_num)
+      call = mock.call(metrics, key=round_num)
       expected_calls.append(call)
     for metrics_manager in metrics_managers:
       self.assertEqual(metrics_manager.release.call_args_list, expected_calls)
@@ -345,14 +337,7 @@ class RunTrainingProcessTest(parameterized.TestCase):
         ('evaluation/metric', 1.0),
         ('evaluation/evaluation_time_in_seconds', mock.ANY),
     ])
-    metrics_type = computation_types.StructWithPythonType(
-        [
-            ('evaluation/metric', np.float32),
-            ('evaluation/evaluation_time_in_seconds', np.float32),
-        ],
-        collections.OrderedDict,
-    )
-    call = mock.call(metrics, metrics_type, 0)
+    call = mock.call(metrics, key=0)
     expected_calls.append(call)
     for round_num in range(1, total_rounds + 1):
       if round_num % rounds_per_evaluation == 0:
@@ -363,31 +348,13 @@ class RunTrainingProcessTest(parameterized.TestCase):
             ('evaluation/metric', 1.0),
             ('evaluation/evaluation_time_in_seconds', mock.ANY),
         ])
-        metrics_type = computation_types.StructWithPythonType(
-            [
-                ('metric', np.float32),
-                ('training_time_in_seconds', np.float32),
-                ('round_number', np.int32),
-                ('evaluation/metric', np.float32),
-                ('evaluation/evaluation_time_in_seconds', np.float32),
-            ],
-            collections.OrderedDict,
-        )
       else:
         metrics = collections.OrderedDict([
             ('metric', 1.0),
             ('training_time_in_seconds', mock.ANY),
             ('round_number', round_num),
         ])
-        metrics_type = computation_types.StructWithPythonType(
-            [
-                ('metric', np.float32),
-                ('training_time_in_seconds', np.float32),
-                ('round_number', np.int32),
-            ],
-            collections.OrderedDict,
-        )
-      call = mock.call(metrics, metrics_type, round_num)
+      call = mock.call(metrics, key=round_num)
       expected_calls.append(call)
     for metrics_manager in metrics_managers:
       self.assertEqual(metrics_manager.release.call_args_list, expected_calls)
@@ -425,14 +392,7 @@ class RunTrainingProcessTest(parameterized.TestCase):
         ('evaluation/metric', 1.0),
         ('evaluation/evaluation_time_in_seconds', 10.0),
     ])
-    metrics_type = computation_types.StructWithPythonType(
-        [
-            ('evaluation/metric', np.float32),
-            ('evaluation/evaluation_time_in_seconds', np.float32),
-        ],
-        collections.OrderedDict,
-    )
-    call = mock.call(metrics, metrics_type, 0)
+    call = mock.call(metrics, key=0)
     expected_calls.append(call)
     metrics = collections.OrderedDict([
         ('metric', 1.0),
@@ -441,17 +401,7 @@ class RunTrainingProcessTest(parameterized.TestCase):
         ('evaluation/metric', 1.0),
         ('evaluation/evaluation_time_in_seconds', 10.0),
     ])
-    metrics_type = computation_types.StructWithPythonType(
-        [
-            ('metric', np.float32),
-            ('training_time_in_seconds', np.float32),
-            ('round_number', np.int32),
-            ('evaluation/metric', np.float32),
-            ('evaluation/evaluation_time_in_seconds', np.float32),
-        ],
-        collections.OrderedDict,
-    )
-    call = mock.call(metrics, metrics_type, 1)
+    call = mock.call(metrics, key=1)
     expected_calls.append(call)
     self.assertEqual(metrics_manager.release.call_args_list, expected_calls)
 
