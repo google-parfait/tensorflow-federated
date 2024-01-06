@@ -58,19 +58,14 @@ class MemoryReleaseManager(
       type_signature: The `tff.Type` of `value`.
       key: A hashable value used to reference the released `value`.
     """
-    py_typecheck.check_type(type_signature, computation_types.Type)
+    del type_signature  # Unused.
     py_typecheck.check_type(key, Hashable)
 
     materialized_value = await value_reference.materialize_value(value)
-    self._values[key] = (materialized_value, type_signature)
+    self._values[key] = materialized_value
 
   def values(
       self,
-  ) -> collections.OrderedDict[
-      Hashable,
-      tuple[
-          release_manager.ReleasableStructure, Optional[computation_types.Type]
-      ],
-  ]:
-    """Returns an `collections.OrderedDict` of all keys and released values and types."""
+  ) -> collections.OrderedDict[Hashable, release_manager.ReleasableStructure]:
+    """Returns an `collections.OrderedDict` of all keys and released values."""
     return self._values.copy()

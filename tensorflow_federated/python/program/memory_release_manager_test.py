@@ -33,58 +33,33 @@ class MemoryReleaseManagerTest(
   # pyformat: disable
   @parameterized.named_parameters(
       # materialized values
-      ('none', None, computation_types.StructType([]), None),
-      ('bool', True, computation_types.TensorType(np.bool_), True),
-      ('int', 1, computation_types.TensorType(np.int32), 1),
-      ('str', 'a', computation_types.TensorType(np.str_), 'a'),
-      ('tensor_int',
-       tf.constant(1),
-       computation_types.TensorType(np.int32),
-       tf.constant(1)),
-      ('tensor_str',
-       tf.constant('a'),
-       computation_types.TensorType(np.str_),
-       tf.constant('a')),
-      ('tensor_array',
-       tf.constant([1] * 3),
-       computation_types.TensorType(np.int32, [3]),
-       tf.constant([1] * 3)),
-      ('numpy_int',
-       np.int32(1),
-       computation_types.TensorType(np.int32),
-       np.int32(1)),
-      ('numpy_array',
-       np.array([1] * 3, np.int32),
-       computation_types.TensorType(np.int32, [3]),
-       np.array([1] * 3, np.int32)),
+      ('none', None, None),
+      ('bool', True, True),
+      ('int', 1, 1),
+      ('str', 'a', 'a'),
+      ('tensor_int', tf.constant(1), tf.constant(1)),
+      ('tensor_str', tf.constant('a'), tf.constant('a')),
+      ('tensor_array', tf.constant([1] * 3), tf.constant([1] * 3)),
+      ('numpy_int', np.int32(1), np.int32(1)),
+      ('numpy_array', np.array([1] * 3, np.int32), np.array([1] * 3, np.int32)),
 
       # materializable value references
       ('value_reference_tensor',
        program_test_utils.TestMaterializableValueReference(1),
-       computation_types.TensorType(np.int32),
        1),
       ('value_reference_sequence',
        program_test_utils.TestMaterializableValueReference(
            tf.data.Dataset.from_tensor_slices([1, 2, 3])),
-       computation_types.SequenceType(np.int32),
        tf.data.Dataset.from_tensor_slices([1, 2, 3])),
 
       # serializable values
       ('serializable_value',
        program_test_utils.TestSerializable(1, 2),
-       computation_types.StructWithPythonType([
-           ('a', np.int32),
-           ('b', np.int32),
-       ], collections.OrderedDict),
        program_test_utils.TestSerializable(1, 2)),
 
       # other values
       ('attrs',
        program_test_utils.TestAttrs(1, 2),
-       computation_types.StructWithPythonType([
-           ('a', np.int32),
-           ('b', np.int32),
-       ], collections.OrderedDict),
        program_test_utils.TestAttrs(1, 2)),
 
       # structures
@@ -96,16 +71,6 @@ class MemoryReleaseManagerTest(
            program_test_utils.TestMaterializableValueReference(2),
            program_test_utils.TestSerializable(3, 4),
        ],
-       computation_types.StructWithPythonType([
-           np.bool_,
-           np.int32,
-           np.str_,
-           np.int32,
-           computation_types.StructWithPythonType([
-               ('a', np.int32),
-               ('b', np.int32),
-           ], collections.OrderedDict),
-       ], list),
        [
            True,
            1,
@@ -113,7 +78,7 @@ class MemoryReleaseManagerTest(
            2,
            program_test_utils.TestSerializable(3, 4),
        ]),
-      ('list_empty', [], computation_types.StructWithPythonType([], list), []),
+      ('list_empty', [], []),
       ('list_nested',
        [
            [
@@ -125,19 +90,6 @@ class MemoryReleaseManagerTest(
            ],
            [5],
        ],
-       computation_types.StructWithPythonType([
-           computation_types.StructWithPythonType([
-               np.bool_,
-               np.int32,
-               np.str_,
-               np.int32,
-               computation_types.StructWithPythonType([
-                   ('a', np.int32),
-                   ('b', np.int32),
-               ], collections.OrderedDict),
-           ], list),
-           computation_types.StructWithPythonType([np.int32], list),
-       ], list),
        [
            [
                True,
@@ -156,16 +108,6 @@ class MemoryReleaseManagerTest(
            'd': program_test_utils.TestMaterializableValueReference(2),
            'e': program_test_utils.TestSerializable(3, 4),
        },
-       computation_types.StructWithPythonType([
-           ('a', np.bool_),
-           ('b', np.int32),
-           ('c', np.str_),
-           ('d', np.int32),
-           ('e', computation_types.StructWithPythonType([
-               ('a', np.int32),
-               ('b', np.int32),
-           ], collections.OrderedDict)),
-       ], collections.OrderedDict),
        {
            'a': True,
            'b': 1,
@@ -173,10 +115,7 @@ class MemoryReleaseManagerTest(
            'd': 2,
            'e': program_test_utils.TestSerializable(3, 4),
        }),
-      ('dict_empty',
-       {},
-       computation_types.StructWithPythonType([], collections.OrderedDict),
-       {}),
+      ('dict_empty', {}, {}),
       ('dict_nested',
        {
            'x': {
@@ -188,21 +127,6 @@ class MemoryReleaseManagerTest(
            },
            'y': {'a': 5},
        },
-       computation_types.StructWithPythonType([
-           ('x', computation_types.StructWithPythonType([
-               ('a', np.bool_),
-               ('b', np.int32),
-               ('c', np.str_),
-               ('d', np.int32),
-               ('e', computation_types.StructWithPythonType([
-                   ('a', np.int32),
-                   ('b', np.int32),
-               ], collections.OrderedDict)),
-           ], collections.OrderedDict)),
-           ('y', computation_types.StructWithPythonType([
-               ('a', np.int32),
-           ], collections.OrderedDict)),
-       ], collections.OrderedDict),
        {
            'x': {
                'a': True,
@@ -221,16 +145,6 @@ class MemoryReleaseManagerTest(
            d=program_test_utils.TestMaterializableValueReference(2),
            e=program_test_utils.TestSerializable(3, 4),
        ),
-       computation_types.StructWithPythonType([
-           ('a', np.bool_),
-           ('b', np.int32),
-           ('c', np.str_),
-           ('d', np.int32),
-           ('e', computation_types.StructWithPythonType([
-               ('a', np.int32),
-               ('b', np.int32),
-           ], collections.OrderedDict)),
-       ], program_test_utils.TestNamedTuple1),
        program_test_utils.TestNamedTuple1(
            a=True,
            b=1,
@@ -249,21 +163,6 @@ class MemoryReleaseManagerTest(
            ),
            y=program_test_utils.TestNamedTuple2(a=5),
        ),
-       computation_types.StructWithPythonType([
-           ('x', computation_types.StructWithPythonType([
-               ('a', np.bool_),
-               ('b', np.int32),
-               ('c', np.str_),
-               ('d', np.int32),
-               ('e', computation_types.StructWithPythonType([
-                   ('a', np.int32),
-                   ('b', np.int32),
-               ], collections.OrderedDict)),
-           ], program_test_utils.TestNamedTuple1)),
-           ('y', computation_types.StructWithPythonType([
-               ('c', np.int32),
-           ], program_test_utils.TestNamedTuple2)),
-       ], program_test_utils.TestNamedTuple3),
        program_test_utils.TestNamedTuple3(
            x=program_test_utils.TestNamedTuple1(
                a=True,
@@ -276,38 +175,18 @@ class MemoryReleaseManagerTest(
        )),
   )
   # pyformat: enable
-  async def test_release_saves_value_and_type_signature(
-      self, value, type_signature, expected_value
-  ):
+  async def test_release_saves_value(self, value, expected_value):
     release_mngr = memory_release_manager.MemoryReleaseManager()
     key = 1
 
-    await release_mngr.release(value, type_signature, key)
+    await release_mngr.release(value, key=key)
 
     self.assertLen(release_mngr._values, 1)
-    actual_value, actual_type_signature = release_mngr._values[1]
+    actual_value = release_mngr._values[1]
     tree.assert_same_structure(actual_value, expected_value)
     actual_value = program_test_utils.to_python(actual_value)
     expected_value = program_test_utils.to_python(expected_value)
     self.assertEqual(actual_value, expected_value)
-    self.assertEqual(actual_type_signature, type_signature)
-
-  @parameterized.named_parameters(
-      ('none', None),
-      ('bool', True),
-      ('int', 1),
-      ('str', 'a'),
-      ('list', []),
-  )
-  async def test_release_raises_type_error_with_type_signature(
-      self, type_signature
-  ):
-    release_mngr = memory_release_manager.MemoryReleaseManager()
-    value = 1
-    key = 1
-
-    with self.assertRaises(TypeError):
-      await release_mngr.release(value, type_signature, key)
 
   @parameterized.named_parameters(
       ('list', []),
@@ -315,17 +194,16 @@ class MemoryReleaseManagerTest(
   async def test_release_raises_type_error_with_key(self, key):
     release_mngr = memory_release_manager.MemoryReleaseManager()
     value = 1
-    type_signature = computation_types.TensorType(np.int32)
 
     with self.assertRaises(TypeError):
-      await release_mngr.release(value, type_signature, key)
+      await release_mngr.release(value, key=key)
 
   @parameterized.named_parameters(
       ('0', 0),
       ('1', 1),
       ('10', 10),
   )
-  def test_values_returns_values_and_type_signatures(self, count):
+  def test_values_returns_values(self, count):
     expected_values = collections.OrderedDict(
         [(i, (i, computation_types.TensorType(np.int32))) for i in range(count)]
     )
