@@ -351,9 +351,10 @@ def _build_functional_federated_evaluation(
         shape=ndarray.shape, dtype=tf.dtypes.as_dtype(ndarray.dtype)
     )
 
-  weights_type = tf.nest.map_structure(
+  weights_spec = tf.nest.map_structure(
       ndarray_to_tensorspec, model.initial_weights
   )
+  weights_type = computation_types.tensorflow_to_type(weights_spec)
   batch_type = computation_types.tensorflow_to_type(model.input_spec)
   local_eval = build_functional_local_evaluation(
       model,

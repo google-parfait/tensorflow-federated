@@ -161,15 +161,16 @@ class KerasUtilsTest(tf.test.TestCase, parameterized.TestCase):
     keras_model = model_examples.build_linear_regression_keras_functional_model(
         feature_dims=1
     )
-    input_spec = computation_types.StructType(
-        collections.OrderedDict(
-            x=tf.TensorSpec(shape=[None, 1], dtype=tf.float32),
-            y=tf.TensorSpec(shape=[None, 1], dtype=tf.float32),
-        )
+    input_type = computation_types.StructWithPythonType(
+        [
+            ('x', computation_types.TensorType(np.float32, [None, 1])),
+            ('y', computation_types.TensorType(np.float32, [None, 1])),
+        ],
+        collections.OrderedDict,
     )
     tff_model = keras_utils.from_keras_model(
         keras_model=keras_model,
-        input_spec=input_spec,
+        input_spec=input_type,
         loss=tf.keras.losses.MeanSquaredError(),
     )
     self.assertIsInstance(tff_model, variable.VariableModel)
@@ -245,13 +246,17 @@ class KerasUtilsTest(tf.test.TestCase, parameterized.TestCase):
       ),
       (
           'tff_type_not_tensortype',
-          computation_types.to_type(
-              collections.OrderedDict(
-                  x=computation_types.SequenceType(
-                      computation_types.TensorType(np.float32)
+          computation_types.StructWithPythonType(
+              [
+                  (
+                      'x',
+                      computation_types.SequenceType(
+                          computation_types.TensorType(np.float32)
+                      ),
                   ),
-                  y=tf.TensorSpec(shape=[None, 1], dtype=tf.float32),
-              )
+                  ('y', computation_types.TensorType(np.float32, [None, 1])),
+              ],
+              collections.OrderedDict,
           ),
           (
               'Expected a `tff.Type` with all the leaf nodes being'
@@ -854,15 +859,39 @@ class KerasUtilsTest(tf.test.TestCase, parameterized.TestCase):
       (
           'tff_struct_with_python_type',
           computation_types.StructWithPythonType(
-              _create_input_spec_multiple_inputs_outputs(),
-              container_type=collections.OrderedDict,
+              [
+                  (
+                      'x',
+                      computation_types.tensorflow_to_type(
+                          _create_input_spec_multiple_inputs_outputs()['x']
+                      ),
+                  ),
+                  (
+                      'y',
+                      computation_types.tensorflow_to_type(
+                          _create_input_spec_multiple_inputs_outputs()['y']
+                      ),
+                  ),
+              ],
+              collections.OrderedDict,
           ),
       ),
       (
           'tff_struct_type',
-          computation_types.StructType(
-              _create_input_spec_multiple_inputs_outputs()
-          ),
+          computation_types.StructType([
+              (
+                  'x',
+                  computation_types.tensorflow_to_type(
+                      _create_input_spec_multiple_inputs_outputs()['x']
+                  ),
+              ),
+              (
+                  'y',
+                  computation_types.tensorflow_to_type(
+                      _create_input_spec_multiple_inputs_outputs()['y']
+                  ),
+              ),
+          ]),
       ),
   )
   def test_keras_model_multiple_outputs(self, input_spec):
@@ -1000,15 +1029,39 @@ class KerasUtilsTest(tf.test.TestCase, parameterized.TestCase):
       (
           'tff_struct_with_python_type',
           computation_types.StructWithPythonType(
-              _create_input_spec_multiple_inputs_outputs(),
-              container_type=collections.OrderedDict,
+              [
+                  (
+                      'x',
+                      computation_types.tensorflow_to_type(
+                          _create_input_spec_multiple_inputs_outputs()['x']
+                      ),
+                  ),
+                  (
+                      'y',
+                      computation_types.tensorflow_to_type(
+                          _create_input_spec_multiple_inputs_outputs()['y']
+                      ),
+                  ),
+              ],
+              collections.OrderedDict,
           ),
       ),
       (
           'tff_struct_type',
-          computation_types.StructType(
-              _create_input_spec_multiple_inputs_outputs()
-          ),
+          computation_types.StructType([
+              (
+                  'x',
+                  computation_types.tensorflow_to_type(
+                      _create_input_spec_multiple_inputs_outputs()['x']
+                  ),
+              ),
+              (
+                  'y',
+                  computation_types.tensorflow_to_type(
+                      _create_input_spec_multiple_inputs_outputs()['y']
+                  ),
+              ),
+          ]),
       ),
   )
   def test_regularized_keras_model_multiple_outputs(self, input_spec):
