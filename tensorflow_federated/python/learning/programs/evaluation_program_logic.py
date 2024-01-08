@@ -64,13 +64,11 @@ from collections.abc import Callable, Mapping, MutableMapping, Sequence
 import datetime
 import time
 import typing
-from typing import Any, Optional, Union
+from typing import Any, Optional
 
 from absl import logging as _logging
 import numpy as np
 
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.learning.models import model_weights as model_weights_lib
 from tensorflow_federated.python.learning.templates import learning_process
 from tensorflow_federated.python.program import data_source as data_source_lib
@@ -449,10 +447,7 @@ def extract_and_rewrap_metrics(
     metrics_structure: Mapping[str, Any],
     *,
     path: Sequence[str],
-) -> tuple[
-    Mapping[str, Any],
-    Union[computation_types.TensorType, computation_types.StructType],
-]:
+) -> Mapping[str, Any]:
   """Extracts a sub-structure and re-wraps it with a new prefix.
 
   This is used to normalize outputs from the training and evaluation
@@ -484,8 +479,7 @@ def extract_and_rewrap_metrics(
       `metrics_structure` and identify the substructure of interest.
 
   Returns:
-    A 2-tuple of potentially nested structure of metrics of
-    `metrics_substructure` and its `tff.Type`.
+    A structure of metrics of `metrics_substructure`.
 
   Raises:
     ValueError: If `path` is empty.
@@ -518,11 +512,8 @@ def extract_and_rewrap_metrics(
     )
   del current_structure[last_part]
   structure_copy[MODEL_METRICS_PREFIX] = substructure
-  # Note: we create an non-federated type for `structure_copy` which is expected
-  # because the `metrics_structure` input to this function also is not a
-  # federated value with placement. This type is intended for use by
-  # `tff.program.ReleaseManager` downstream.
-  return structure_copy, type_conversions.infer_type(structure_copy)  # pytype: disable=bad-return-type
+
+  return structure_copy
 
 
 async def _run_evaluation(
@@ -604,15 +595,12 @@ async def _run_evaluation(
     # Only output the `current_round_metrics` here. The total_rounds_metrics
     # will be output once at the end of the evaluation loop.
     if per_round_metrics_manager is not None:
-      current_round_eval_metrics, current_round_eval_metrics_type = (
-          extract_and_rewrap_metrics(
-              evaluation_metrics,
-              path=_EVAL_METRICS_PATH_COMPONENTS + ('current_round_metrics',),
-          )
+      current_round_eval_metrics = extract_and_rewrap_metrics(
+          evaluation_metrics,
+          path=_EVAL_METRICS_PATH_COMPONENTS + ('current_round_metrics',),
       )
       await per_round_metrics_manager.release(
           current_round_eval_metrics,
-          current_round_eval_metrics_type,
           key=eval_round_num,
       )
     elapsed_round_seconds = time.monotonic() - round_start
@@ -660,14 +648,11 @@ async def _run_evaluation(
       evaluation_end_time,
   )
   if aggregated_metrics_manager is not None:
-    total_rounds_eval_metrics, total_rounds_eval_metrics_type = (
-        extract_and_rewrap_metrics(
-            evaluation_metrics,
-            path=_EVAL_METRICS_PATH_COMPONENTS + ('total_rounds_metrics',),
-        )
+    total_rounds_eval_metrics = extract_and_rewrap_metrics(
+        evaluation_metrics,
+        path=_EVAL_METRICS_PATH_COMPONENTS + ('total_rounds_metrics',),
     )
     await aggregated_metrics_manager.release(
         total_rounds_eval_metrics,
-        total_rounds_eval_metrics_type,
         key=train_round_num,
     )

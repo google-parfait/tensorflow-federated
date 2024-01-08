@@ -28,7 +28,6 @@ from tensorflow_federated.python.core.impl.federated_context import federated_co
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
-from tensorflow_federated.python.core.impl.types import type_test_utils
 from tensorflow_federated.python.core.templates import iterative_process
 from tensorflow_federated.python.learning.models import model_weights
 from tensorflow_federated.python.learning.programs import evaluation_program_logic
@@ -68,10 +67,8 @@ class ExtractAndRewrapMetricsTest(tf.test.TestCase):
             other=collections.OrderedDict(test_one=1.0, test_two=2.0),
         )
     )
-    extracted_structure, extracted_type_spec = (
-        evaluation_program_logic.extract_and_rewrap_metrics(
-            test_structure, path=('test', 'path')
-        )
+    extracted_structure = evaluation_program_logic.extract_and_rewrap_metrics(
+        test_structure, path=('test', 'path')
     )
     self.assertAllClose(
         extracted_structure,
@@ -87,29 +84,6 @@ class ExtractAndRewrapMetricsTest(tf.test.TestCase):
                 ),
             ),
         ]),
-    )
-    type_test_utils.assert_types_equivalent(
-        extracted_type_spec,
-        computation_types.to_type(
-            collections.OrderedDict([
-                (
-                    'test',
-                    collections.OrderedDict(
-                        other=collections.OrderedDict(
-                            test_one=TensorType(np.float32),
-                            test_two=TensorType(np.float32),
-                        )
-                    ),
-                ),
-                (
-                    evaluation_program_logic.MODEL_METRICS_PREFIX,
-                    collections.OrderedDict(
-                        test_a=[TensorType(np.int32)] * 3,
-                        test_b=TensorType(np.float32),
-                    ),
-                ),
-            ])
-        ),
     )
 
   def test_no_path_raises_error(self):
@@ -130,12 +104,6 @@ class ExtractAndRewrapMetricsTest(tf.test.TestCase):
             collections.OrderedDict(foo=collections.OrderedDict(bar=2)),
             path=('foo', 'bad_path'),
         )
-
-  def test_structure_with_invalid_value_fails(self):
-    with self.assertRaisesRegex(TypeError, 'Could not infer the TFF type'):
-      evaluation_program_logic.extract_and_rewrap_metrics(
-          collections.OrderedDict(foo=lambda x: x), path=('foo',)
-      )
 
   def test_federated_value_structure(self):
 
@@ -192,7 +160,6 @@ def _create_per_round_eval_metrics_release_call(*, key: int):
           ('finalizer', ()),
           (evaluation_program_logic.MODEL_METRICS_PREFIX, mock.ANY),
       ]),
-      mock.ANY,
       key=key,
   )
 
@@ -715,7 +682,7 @@ class RunEvaluationTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     # Assert the aggregated metrics are output once at the end.
     self.assertSequenceEqual(
         mock_aggregated_metrics_manager.release.call_args_list,
-        [mock.call(mock.ANY, mock.ANY, key=train_round_num)],
+        [mock.call(mock.ANY, key=train_round_num)],
     )
 
   async def test_future_end_time_runs_atleast_one_evaluation_round(self):
@@ -772,7 +739,7 @@ class RunEvaluationTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     # Assert the aggregated metrics are output once at the end.
     self.assertEqual(
         mock_aggregated_metrics_manager.release.call_args_list,
-        [mock.call(mock.ANY, mock.ANY, key=train_round_num)],
+        [mock.call(mock.ANY, key=train_round_num)],
     )
 
   async def test_resume_evaluation_uses_correct_eval_round(self):
@@ -836,7 +803,7 @@ class RunEvaluationTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     # Assert the aggregated metrics are output once at the end.
     self.assertEqual(
         mock_aggregated_metrics_manager.release.call_args_list,
-        [mock.call(mock.ANY, mock.ANY, key=train_round_num)],
+        [mock.call(mock.ANY, key=train_round_num)],
     )
 
   async def test_resume_evaluation_uses_correct_end_time(self):
@@ -888,7 +855,7 @@ class RunEvaluationTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     # Assert the aggregated metrics are output once at the end.
     self.assertEqual(
         mock_aggregated_metrics_manager.release.call_args_list,
-        [mock.call(mock.ANY, mock.ANY, key=train_round_num)],
+        [mock.call(mock.ANY, key=train_round_num)],
     )
 
 

@@ -295,7 +295,7 @@ async def train_model(
     )
     if train_metrics_manager is not None:
       try:
-        released_train_metrics, released_train_metrics_type = (
+        released_train_metrics = (
             evaluation_program_logic.extract_and_rewrap_metrics(
                 train_metrics, path=('client_work', 'train')
             )
@@ -311,7 +311,6 @@ async def train_model(
       task_manager.add_task(
           train_metrics_manager.release(
               released_train_metrics,
-              released_train_metrics_type,
               key=round_num,
           )
       )

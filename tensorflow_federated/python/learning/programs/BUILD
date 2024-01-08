@@ -27,8 +27,6 @@ py_library(
     name = "evaluation_program_logic",
     srcs = ["evaluation_program_logic.py"],
     deps = [
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:type_conversions",
         "//tensorflow_federated/python/learning/models:model_weights",
         "//tensorflow_federated/python/learning/templates:learning_process",
         "//tensorflow_federated/python/program:data_source",
@@ -51,7 +49,6 @@ py_test(
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
-        "//tensorflow_federated/python/core/impl/types:type_test_utils",
         "//tensorflow_federated/python/core/templates:iterative_process",
         "//tensorflow_federated/python/learning/models:model_weights",
         "//tensorflow_federated/python/learning/templates:composers",

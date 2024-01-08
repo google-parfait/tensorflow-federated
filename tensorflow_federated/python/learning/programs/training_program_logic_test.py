@@ -141,7 +141,7 @@ def _create_mock_train_process() -> mock.Mock:
 
 
 def _create_metrics_release_call(*, key: int):
-  return mock.call(mock.ANY, mock.ANY, key=key)
+  return mock.call(mock.ANY, key=key)
 
 
 class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
