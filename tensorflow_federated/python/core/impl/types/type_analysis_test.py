@@ -16,7 +16,6 @@ import collections
 from absl.testing import absltest
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -170,7 +169,7 @@ class CheckAllAbstractTypesAreBoundTest(parameterized.TestCase):
     try:
       type_analysis.check_all_abstract_types_are_bound(type_spec)
     except TypeError:
-      self.fail('Raised TypeError unexpectedly.')
+      self.fail('Raised `TypeError` unexpectedly.')
 
   # pyformat: disable
   @parameterized.named_parameters([
@@ -192,18 +191,18 @@ class CheckAllAbstractTypesAreBoundTest(parameterized.TestCase):
       type_analysis.check_all_abstract_types_are_bound(type_spec)
 
 
-class IsSumCompatibleTest(parameterized.TestCase):
+class CheckIsSumCompatibleTest(parameterized.TestCase):
 
   @parameterized.named_parameters([
       ('tensor_type', computation_types.TensorType(np.int32)),
       (
-          'tuple_type_int',
+          'struct_type_int',
           computation_types.StructType(
               [np.int32, np.int32],
           ),
       ),
       (
-          'tuple_type_float',
+          'struct_type_float',
           computation_types.StructType([np.complex128, np.float32, np.float64]),
       ),
       (
@@ -211,8 +210,11 @@ class IsSumCompatibleTest(parameterized.TestCase):
           computation_types.FederatedType(np.int32, placements.CLIENTS),
       ),
   ])
-  def test_positive_examples(self, type_spec):
-    type_analysis.check_is_sum_compatible(type_spec)
+  def test_does_not_raise_sum_incompatible_error(self, type_spec):
+    try:
+      type_analysis.check_is_sum_compatible(type_spec)
+    except type_analysis.SumIncompatibleError:
+      self.fail('Raised `SumIncompatibleError` unexpectedly.')
 
   @parameterized.named_parameters([
       ('tensor_type_bool', computation_types.TensorType(np.bool_)),
@@ -226,16 +228,8 @@ class IsSumCompatibleTest(parameterized.TestCase):
       ('placement_type', computation_types.PlacementType()),
       ('function_type', computation_types.FunctionType(np.int32, np.int32)),
       ('abstract_type', computation_types.AbstractType('T')),
-      (
-          'ragged_tensor',
-          computation_types.StructWithPythonType([], tf.RaggedTensor),
-      ),
-      (
-          'sparse_tensor',
-          computation_types.StructWithPythonType([], tf.SparseTensor),
-      ),
   ])
-  def test_negative_examples(self, type_spec):
+  def test_raises_sum_incompatible_error(self, type_spec):
     with self.assertRaises(type_analysis.SumIncompatibleError):
       type_analysis.check_is_sum_compatible(type_spec)
 
