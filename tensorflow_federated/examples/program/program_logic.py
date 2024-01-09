@@ -488,10 +488,8 @@ async def train_federated_model(
 
       # Release the training metrics.
       if train_metrics_manager is not None:
-        _, metrics_type = train.type_signature.result  # pytype: disable=attribute-error
-        metrics_type = metrics_type.member
         task_group.create_task(
-            train_metrics_manager.release(metrics, metrics_type, round_num)
+            train_metrics_manager.release(metrics, key=round_num)
         )
 
       # Save the current program state.
@@ -511,17 +509,12 @@ async def train_federated_model(
 
     # Release the evaluation metrics.
     if evaluation_metrics_manager is not None:
-      evaluation_metrics_type = evaluation.type_signature.result.member  # pytype: disable=attribute-error
       task_group.create_task(
           evaluation_metrics_manager.release(
-              evaluation_metrics, evaluation_metrics_type, total_rounds + 1
+              evaluation_metrics, key=total_rounds + 1
           )
       )
 
     # Release the model output.
     if model_output_manager is not None:
-      _, state_type = train.type_signature.result  # pytype: disable=attribute-error
-      state_type = state_type.member
-      task_group.create_task(
-          model_output_manager.release(state, state_type, None)
-      )
+      task_group.create_task(model_output_manager.release(state, key=None))

@@ -343,7 +343,7 @@ class TrainFederatedModelTest(
     expected_calls = []
     if rounds:
       for round_num, metrics in zip(rounds, train_metrics):
-        call = mock.call(metrics, train_metrics_type.member, round_num)
+        call = mock.call(metrics, key=round_num)
         expected_calls.append(call)
     self.assertLen(
         mock_train_metrics_manager.release.mock_calls, len(expected_calls)
@@ -392,14 +392,13 @@ class TrainFederatedModelTest(
 
     # Assert that evaluation metrics are released once.
     mock_evaluation_metrics_manager.release.assert_called_once_with(
-        evaluation_metrics, evaluation_metrics_type.member, total_rounds + 1
+        evaluation_metrics, key=total_rounds + 1
     )
 
     # Assert that the model output is released once.
     mock_model_output_manager.release.assert_called_once_with(
         expected_final_state,
-        state_type.member,
-        None,
+        key=None,
     )
 
 
