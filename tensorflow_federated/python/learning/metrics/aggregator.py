@@ -34,6 +34,8 @@ class InternalError(Exception):
   """An error internal to TFF. File a bug report."""
 
 
+# TODO: b/319261270 - Update documentation to reference polymorphism and
+# best practices around using such computations.
 def sum_then_finalize(
     metric_finalizers: Union[
         types.MetricFinalizersType,
@@ -43,12 +45,12 @@ def sum_then_finalize(
 ) -> computation_base.Computation:
   """Creates a TFF computation that aggregates metrics via `sum_then_finalize`.
 
-  The returned federated TFF computation has the following type signature:
-  `local_unfinalized_metrics@CLIENTS -> aggregated_metrics@SERVER`, where the
-  input is given by
-  `tff.learning.models.VariableModel.report_local_unfinalized_metrics()` at
-  `CLIENTS`, and the output is computed by first summing the unfinalized metrics
-  from `CLIENTS`, followed by applying the finalizers at `SERVER`.
+  The returned federated TFF computation is a polymorphic computation that
+  accepts unfinalized client metrics, and returns finalized, summed metrics
+  placed at the server.
+
+  Note that invoking this computation directly may require first wrapping it
+  in a concrete, non-polymorphic `tff.Computation`.
 
   Args:
     metric_finalizers: Either the result of
@@ -87,11 +89,7 @@ def sum_then_finalize(
         metric_finalizers, local_unfinalized_metrics_type
     )
 
-  @federated_computation.federated_computation(
-      computation_types.FederatedType(
-          local_unfinalized_metrics_type, placements.CLIENTS
-      )
-  )
+  @federated_computation.federated_computation
   def aggregator_computation(client_local_unfinalized_metrics):
     unfinalized_metrics_sum = intrinsics.federated_sum(
         client_local_unfinalized_metrics
@@ -103,7 +101,7 @@ def sum_then_finalize(
       )
     else:
 
-      @tensorflow_computation.tf_computation(local_unfinalized_metrics_type)
+      @tensorflow_computation.tf_computation
       def finalizer_computation(unfinalized_metrics):
         finalized_metrics = collections.OrderedDict()
         for metric_name, metric_finalizer in metric_finalizers.items():
