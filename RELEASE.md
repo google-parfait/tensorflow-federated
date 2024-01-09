@@ -1,3 +1,29 @@
+# Release 0.68.0
+
+## Major Features and Improvements
+
+*   Added `tff.types.tensorflow_to_type` function to convert structures
+    containing tensorflow type specs into a `tff.Type`.
+*   Deprecated `tff.types.infer_unplaced_type`.
+*   Updated `tff.types.ArrayShape` to be defined as a `Sequence` not an
+    `Iterable`, this is because the `len` of an `tff.types.ArrayShape` is used
+    for comparison.
+*   Deprecated the `type_signature` parameter for the
+    `tff.program.ReleaseManager.release` method.
+
+## Breaking Changes
+
+*   Removed the implementation of `tff.Value.__add__`.
+*   Removed the deprecated `tff.Type.check_*()` functions, use `isinstance`
+    instead.
+*   Removed `tff.types.at_clients` and `tff.types.at_server` functions, use the
+    `tff.FederatedType` constructor instead.
+*   Removed support for handling `tf.data.DatasetSpec`, `tf.RaggedTensorSpec`,
+    and `tf.SparseTensorSpec` using `tff.to_type`, use
+    `tff.types.tensorflow_to_type` instead.
+*   Removed support for handling `tf.RaggedTensor` and `tf.SparseTensor` using
+    `infer_type`.
+
 # Release 0.67.0
 
 ## Major Features and Improvements
