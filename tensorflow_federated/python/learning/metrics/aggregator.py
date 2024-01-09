@@ -41,7 +41,9 @@ def sum_then_finalize(
         types.MetricFinalizersType,
         types.FunctionalMetricFinalizersType,
     ],
-    local_unfinalized_metrics_type: computation_types.StructWithPythonType,
+    local_unfinalized_metrics_type: Optional[
+        computation_types.StructWithPythonType
+    ] = None,
 ) -> computation_base.Computation:
   """Creates a TFF computation that aggregates metrics via `sum_then_finalize`.
 
@@ -78,16 +80,6 @@ def sum_then_finalize(
       the same as those expected by `local_unfinalized_metrics_type`.
   """
   aggregation_utils.check_metric_finalizers(metric_finalizers)
-  aggregation_utils.check_local_unfinalzied_metrics_type(
-      local_unfinalized_metrics_type
-  )
-  if not callable(metric_finalizers):
-    # If we have a FunctionalMetricsFinalizerType it's a function that can only
-    # we checked when we call it, as users may have used *args/**kwargs
-    # arguments or otherwise making it hard to deduce the type.
-    aggregation_utils.check_finalizers_matches_unfinalized_metrics(
-        metric_finalizers, local_unfinalized_metrics_type
-    )
 
   @federated_computation.federated_computation
   def aggregator_computation(client_local_unfinalized_metrics):
@@ -104,7 +96,7 @@ def sum_then_finalize(
       @tensorflow_computation.tf_computation
       def finalizer_computation(unfinalized_metrics):
         finalized_metrics = collections.OrderedDict()
-        for metric_name, metric_finalizer in metric_finalizers.items():
+        for metric_name, metric_finalizer in metric_finalizers.items():  # pytype: disable=attribute-error
           finalized_metrics[metric_name] = metric_finalizer(
               unfinalized_metrics[metric_name]
           )
@@ -129,7 +121,9 @@ def secure_sum_then_finalize(
         types.MetricFinalizersType,
         types.FunctionalMetricFinalizersType,
     ],
-    local_unfinalized_metrics_type: computation_types.StructWithPythonType,
+    local_unfinalized_metrics_type: Optional[
+        computation_types.StructWithPythonType
+    ] = None,
     metric_value_ranges: Optional[
         sum_aggregation_factory.UserMetricValueRangeDict
     ] = None,
@@ -214,17 +208,6 @@ def secure_sum_then_finalize(
       the same as those expected by `local_unfinalized_metrics_type`.
   """
   aggregation_utils.check_metric_finalizers(metric_finalizers)
-  aggregation_utils.check_local_unfinalzied_metrics_type(
-      local_unfinalized_metrics_type
-  )
-  if not callable(metric_finalizers):
-    # If we have a FunctionalMetricsFinalizerType it's a function that can only
-    # we checked when we call it, as users may have used *args/**kwargs
-    # arguments or otherwise making it hard to deduce the type.
-    aggregation_utils.check_finalizers_matches_unfinalized_metrics(
-        metric_finalizers, local_unfinalized_metrics_type
-    )
-
   default_metric_value_ranges = (
       sum_aggregation_factory.create_default_secure_sum_quantization_ranges(
           local_unfinalized_metrics_type,

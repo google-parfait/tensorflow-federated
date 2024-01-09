@@ -15,19 +15,24 @@
 
 import collections
 from collections.abc import Callable
-from typing import Any
+from typing import Any, Optional, Protocol
 
 from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.types import computation_types
 
 
 MetricFinalizersType = collections.OrderedDict[str, Callable[[Any], Any]]
-MetricsAggregatorType = Callable[
-    [
-        MetricFinalizersType,
-        computation_types.StructWithPythonType,
-    ],
-    computation_base.Computation,
-]
 MetricsState = collections.OrderedDict[str, Any]
 FunctionalMetricFinalizersType = Callable[[MetricsState], MetricsState]
+
+
+class MetricsAggregatorType(Protocol):
+
+  def __call__(
+      self,
+      metric_finalizers: MetricFinalizersType,
+      local_unfinalized_metrics_type: Optional[
+          computation_types.StructWithPythonType
+      ] = None,
+  ) -> computation_base.Computation:
+    ...
