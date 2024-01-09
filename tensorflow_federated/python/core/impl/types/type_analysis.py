@@ -18,7 +18,6 @@ from collections.abc import Callable
 from typing import Optional
 
 import numpy as np
-import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
@@ -367,18 +366,6 @@ def check_is_sum_compatible(type_spec, type_spec_context=None):
           f'{type_spec.shape} is not fully defined',
       )
   elif isinstance(type_spec, computation_types.StructType):
-    if (
-        type_spec.python_container is tf.RaggedTensor
-        or type_spec.python_container is tf.sparse.SparseTensor
-    ):
-      raise SumIncompatibleError(
-          type_spec,
-          type_spec_context,
-          (
-              '`tf.RaggedTensor` and `tf.sparse.SparseTensor` cannot be used'
-              ' with simple summation'
-          ),
-      )
     for _, element_type in structure.iter_elements(type_spec):
       check_is_sum_compatible(element_type, type_spec_context)
   elif isinstance(type_spec, computation_types.FederatedType):
