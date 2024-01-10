@@ -19,7 +19,6 @@ from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory_utils
-from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.templates import iterative_process
 from tensorflow_federated.python.core.test import static_assert
 from tensorflow_federated.python.learning import dataset_reduce
@@ -143,8 +142,8 @@ class FedProxConstructionTest(parameterized.TestCase):
       )
 
   def test_raises_on_invalid_distributor(self):
-    model_weights_type = type_conversions.infer_type(
-        model_weights.ModelWeights.from_model(model_examples.LinearRegression())
+    model_weights_type = model_weights.weights_type_from_model(
+        model_examples.LinearRegression
     )
     distributor = distributors.build_broadcast_process(model_weights_type)
     invalid_distributor = iterative_process.IterativeProcess(
