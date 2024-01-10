@@ -48,23 +48,27 @@ def _build_finalizer_computation(
         types.MetricFinalizersType,
         types.FunctionalMetricFinalizersType,
     ],
-    local_unfinalized_metrics_type: computation_types.StructWithPythonType,
 ) -> computation_base.Computation:
-  """Builds computation for finalizing metrics."""
+  """Builds a polymorphic computation for finalizing metrics."""
   if callable(metric_finalizers):
-    return tensorflow_computation.tf_computation(
-        local_unfinalized_metrics_type
-    )(metric_finalizers)
-  metric_finalizers = typing.cast(types.MetricFinalizersType, metric_finalizers)
 
-  @tensorflow_computation.tf_computation(local_unfinalized_metrics_type)
-  def finalizer_computation(unfinalized_metrics):
-    finalized_metrics = collections.OrderedDict()
-    for metric_name, metric_finalizer in metric_finalizers.items():
-      finalized_metrics[metric_name] = metric_finalizer(
-          unfinalized_metrics[metric_name]
-      )
-    return finalized_metrics
+    @tensorflow_computation.tf_computation
+    def finalizer_computation(unfinalized_metrics):
+      return metric_finalizers(unfinalized_metrics)
+
+  else:
+    metric_finalizers = typing.cast(
+        types.MetricFinalizersType, metric_finalizers
+    )
+
+    @tensorflow_computation.tf_computation
+    def finalizer_computation(unfinalized_metrics):
+      finalized_metrics = collections.OrderedDict()
+      for metric_name, metric_finalizer in metric_finalizers.items():
+        finalized_metrics[metric_name] = metric_finalizer(
+            unfinalized_metrics[metric_name]
+        )
+      return finalized_metrics
 
   return finalizer_computation
 
@@ -260,7 +264,7 @@ class SumThenFinalizeFactory(factory.UnweightedAggregationFactory):
       )
 
       finalizer_computation = _build_finalizer_computation(
-          self._metric_finalizers, local_unfinalized_metrics_type
+          self._metric_finalizers
       )
 
       current_round_metrics = intrinsics.federated_map(

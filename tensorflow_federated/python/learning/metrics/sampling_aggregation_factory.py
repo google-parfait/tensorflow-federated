@@ -152,7 +152,7 @@ class FinalizeThenSampleFactory(factory.UnweightedAggregationFactory):
     local_finalize_computation = (
         # TODO: b/315870085 - Remove this pylint.
         sum_aggregation_factory._build_finalizer_computation(  # pylint: disable=protected-access
-            metric_finalizers, local_unfinalized_metrics_type
+            metric_finalizers
         )
     )
     local_finalized_metrics_type = (
