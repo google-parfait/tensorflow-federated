@@ -18,7 +18,7 @@ from absl.testing import absltest
 import numpy as np
 
 from tensorflow_federated.python.core.impl.compiler import building_blocks
-from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_factory
+from tensorflow_federated.python.core.impl.compiler import computation_factory
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
@@ -32,9 +32,7 @@ class FederatedComputationContextTest(absltest.TestCase):
 
   def test_invoke_returns_value_with_correct_type(self):
     tensor_type = computation_types.TensorType(np.int32)
-    computation_proto, _ = tensorflow_computation_factory.create_constant(
-        10, tensor_type
-    )
+    computation_proto = computation_factory.create_lambda_identity(tensor_type)
     computation = computation_impl.ConcreteComputation(
         computation_proto, context_stack_impl.context_stack
     )
@@ -43,10 +41,10 @@ class FederatedComputationContextTest(absltest.TestCase):
     )
 
     with context_stack_impl.context_stack.install(context):
-      result = context.invoke(computation, None)
+      result = context.invoke(computation, 1)
 
     self.assertIsInstance(result, value_impl.Value)
-    self.assertEqual(str(result.type_signature), 'int32')
+    self.assertEqual(result.type_signature, tensor_type)
 
   def test_ingest_zips_value_when_necessary_to_match_federated_type(self):
     # Expects `{<int, int>}@C`

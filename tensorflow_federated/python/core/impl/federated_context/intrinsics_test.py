@@ -23,6 +23,7 @@ import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.compiler import building_blocks
+from tensorflow_federated.python.core.impl.compiler import computation_factory
 from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_factory
 from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.computation import computation_impl
@@ -42,17 +43,6 @@ def _create_computation_add() -> computation_base.Computation:
   operand_type = computation_types.TensorType(np.int32)
   computation_proto, _ = tensorflow_computation_factory.create_binary_operator(
       operator.add, operand_type, operand_type
-  )
-  return computation_impl.ConcreteComputation(
-      computation_proto, context_stack_impl.context_stack
-  )
-
-
-def _create_computation_random() -> computation_base.Computation:
-  computation_proto, _ = (
-      tensorflow_computation_factory.create_computation_for_py_fn(
-          lambda: tf.random.normal([]), None
-      )
   )
   return computation_impl.ConcreteComputation(
       computation_proto, context_stack_impl.context_stack
@@ -115,11 +105,8 @@ class OutsideFederatedComputationTest(absltest.TestCase):
         intrinsics.federated_value(2, placements.SERVER)
 
   def test_intrinsic_construction_raises_outside_symbol_binding_context(self):
-    type_signature = computation_types.TensorType(np.int32)
-    computation_proto, _ = tensorflow_computation_factory.create_constant(
-        2, type_signature
-    )
-    return_2 = computation_impl.ConcreteComputation(
+    computation_proto = computation_factory.create_lambda_empty_struct()
+    computation = computation_impl.ConcreteComputation(
         computation_proto, context_stack_impl.context_stack
     )
 
@@ -127,7 +114,7 @@ class OutsideFederatedComputationTest(absltest.TestCase):
         runtime_error_context.RuntimeErrorContext()
     ):
       with self.assertRaises(context_base.ContextError):
-        intrinsics.federated_eval(return_2, placements.SERVER)
+        intrinsics.federated_eval(computation, placements.SERVER)
 
 
 class IntrinsicTestBase(absltest.TestCase):
@@ -163,15 +150,21 @@ class FederatedBroadcastTest(IntrinsicTestBase):
 
 class FederatedEvalTest(IntrinsicTestBase):
 
-  def test_federated_eval_rand_on_clients(self):
-    random = _create_computation_random()
-    value = intrinsics.federated_eval(random, placements.CLIENTS)
-    self.assert_value(value, '{float32}@CLIENTS')
+  def test_federated_eval_on_clients(self):
+    computation_proto = computation_factory.create_lambda_empty_struct()
+    computation = computation_impl.ConcreteComputation(
+        computation_proto, context_stack_impl.context_stack
+    )
+    value = intrinsics.federated_eval(computation, placements.CLIENTS)
+    self.assert_value(value, '{<>}@CLIENTS')
 
-  def test_federated_eval_rand_on_server(self):
-    random = _create_computation_random()
-    value = intrinsics.federated_eval(random, placements.SERVER)
-    self.assert_value(value, 'float32@SERVER')
+  def test_federated_eval_on_server(self):
+    computation_proto = computation_factory.create_lambda_empty_struct()
+    computation = computation_impl.ConcreteComputation(
+        computation_proto, context_stack_impl.context_stack
+    )
+    value = intrinsics.federated_eval(computation, placements.SERVER)
+    self.assert_value(value, '<>@SERVER')
 
 
 class FederatedMapTest(IntrinsicTestBase):
@@ -484,19 +477,13 @@ class FederatedSelectTest(parameterized.TestCase, IntrinsicTestBase):
   def test_federated_select_server_val_must_be_server_placed(
       self, federated_select
   ):
-    client_keys, max_key, server_val, select_fn = (
-        self.basic_federated_select_args()
-    )
-    del server_val
-
-    bad_server_val_proto, _ = tensorflow_computation_factory.create_constant(
-        tf.constant(['first', 'second', 'third']),
-        computation_types.TensorType(np.str_, [3]),
-    )
+    client_keys, max_key, _, select_fn = self.basic_federated_select_args()
+    type_spec = computation_types.TensorType(np.str_, [3])
+    bad_server_val_proto = computation_factory.create_lambda_identity(type_spec)
     bad_server_val = computation_impl.ConcreteComputation(
         bad_server_val_proto, context_stack_impl.context_stack
     )
-    bad_server_val = bad_server_val()
+    bad_server_val = bad_server_val(np.array(['a', 'b', 'c']))
 
     with self.assertRaises(TypeError):
       federated_select(client_keys, max_key, bad_server_val, select_fn)
@@ -623,9 +610,7 @@ class FederatedSelectTest(parameterized.TestCase, IntrinsicTestBase):
     )
 
     unshape_type = computation_types.TensorType(np.int32, [None])
-    unshape_proto, _ = tensorflow_computation_factory.create_identity(
-        unshape_type
-    )
+    unshape_proto = computation_factory.create_lambda_identity(unshape_type)
     unshape = computation_impl.ConcreteComputation(
         unshape_proto, context_stack_impl.context_stack
     )
@@ -1092,9 +1077,7 @@ class FederatedAggregateTest(IntrinsicTestBase):
 
     # The operator to use during the final stage simply computes the ratio.
     report_type = computation_types.TensorType(np.int32)
-    report_proto, _ = tensorflow_computation_factory.create_identity(
-        report_type
-    )
+    report_proto = computation_factory.create_lambda_identity(report_type)
     report = computation_impl.ConcreteComputation(
         report_proto, context_stack_impl.context_stack
     )
@@ -1174,9 +1157,7 @@ class FederatedAggregateTest(IntrinsicTestBase):
     )
 
     # The operator to use during the final stage simply computes the ratio.
-    report_proto, _ = tensorflow_computation_factory.create_identity(
-        accumulator_type
-    )
+    report_proto = computation_factory.create_lambda_identity(accumulator_type)
     report = computation_impl.ConcreteComputation(
         report_proto, context_stack_impl.context_stack
     )
@@ -1193,7 +1174,7 @@ class FederatedAggregateTest(IntrinsicTestBase):
     )
 
     def initialize_fn():
-      return tf.constant([], dtype=np.int64, shape=[0])
+      return np.array([], np.int64)
 
     initialize_proto, _ = (
         tensorflow_computation_factory.create_computation_for_py_fn(
@@ -1231,7 +1212,7 @@ class FederatedAggregateTest(IntrinsicTestBase):
         merge_proto, context_stack_impl.context_stack
     )
 
-    report_proto, _ = tensorflow_computation_factory.create_identity(type_spec)
+    report_proto = computation_factory.create_lambda_identity(type_spec)
     report = computation_impl.ConcreteComputation(
         report_proto, context_stack_impl.context_stack
     )

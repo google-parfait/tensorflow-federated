@@ -12,14 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import operator
-
 from absl.testing import absltest
 from absl.testing import parameterized
 import numpy as np
 
 from tensorflow_federated.python.core.impl.compiler import building_blocks
-from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_factory
+from tensorflow_federated.python.core.impl.compiler import computation_factory
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import federated_computation_context
@@ -39,22 +37,22 @@ class ValueUtilsTest(parameterized.TestCase):
       super().run(result)
 
   def test_get_curried(self):
-    operand_type = computation_types.TensorType(np.int32)
-    computation_proto, type_signature = (
-        tensorflow_computation_factory.create_binary_operator(
-            operator.add, operand_type, operand_type
-        )
-    )
+    type_sec = computation_types.StructType([
+        computation_types.TensorType(np.int32),
+        computation_types.TensorType(np.int32),
+    ])
+    computation_proto = computation_factory.create_lambda_identity(type_sec)
+    type_signature = computation_types.FunctionType(type_sec, type_sec)
     building_block = building_blocks.CompiledComputation(
         proto=computation_proto, name='test', type_signature=type_signature
     )
-    add_numbers = value_impl.Value(building_block)
+    value = value_impl.Value(building_block)
 
-    curried = value_utils.get_curried(add_numbers)
+    curried = value_utils.get_curried(value)
 
     self.assertEqual(
         curried.type_signature.compact_representation(),
-        '(int32 -> (int32 -> int32))',
+        '(int32 -> (int32 -> <int32,int32>))',
     )
     self.assertEqual(
         curried.comp.compact_representation(),
