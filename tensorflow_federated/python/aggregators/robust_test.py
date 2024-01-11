@@ -529,7 +529,7 @@ class ClippingFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
   )
   def test_raises_on_bad_process_next_not_float(self, make_factory):
     complex_at_clients = computation_types.FederatedType(
-        tf.complex64, placements.CLIENTS
+        np.complex64, placements.CLIENTS
     )
     next_fn = federated_computation.federated_computation(
         lambda state, value: state, _float_at_server, complex_at_clients

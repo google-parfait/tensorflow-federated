@@ -683,7 +683,7 @@ class UnweightedReservoirSamplingFactoryTest(
   def test_sample_size_limits_with_sampling_metadata(self, sample_size):
     process = sampling.UnweightedReservoirSamplingFactory(
         sample_size=sample_size, return_sampling_metadata=True
-    ).create(computation_types.to_type(tf.int32))
+    ).create(computation_types.TensorType(np.int32))
     state = process.initialize()
     output = process.next(
         state,
@@ -723,7 +723,7 @@ class UnweightedReservoirSamplingFactoryTest(
   def test_unfilled_reservoir_with_sampling_metadata(self):
     process = sampling.UnweightedReservoirSamplingFactory(
         sample_size=4, return_sampling_metadata=True
-    ).create(computation_types.to_type(tf.int32))
+    ).create(computation_types.TensorType(np.int32))
     state = process.initialize()
     # Create 3 client values to aggregate.
     client_values = (

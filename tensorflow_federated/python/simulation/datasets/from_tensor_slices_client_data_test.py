@@ -267,8 +267,8 @@ class TestClientDataTest(tf.test.TestCase, parameterized.TestCase):
     expected_dataset_comp_type_signature = computation_types.FunctionType(
         computation_types.TensorType(np.str_),
         computation_types.SequenceType(
-            computation_types.TensorType(
-                client_data.element_type_structure.dtype, None
+            computation_types.tensorflow_to_type(
+                (client_data.element_type_structure.dtype, None)
             )
         ),
     )
@@ -301,10 +301,10 @@ class TestClientDataTest(tf.test.TestCase, parameterized.TestCase):
     expected_dataset_comp_type_signature = computation_types.FunctionType(
         computation_types.TensorType(np.str_),
         computation_types.SequenceType(
-            computation_types.TensorType(
+            computation_types.tensorflow_to_type((
                 client_data.element_type_structure[0].dtype,
                 None,
-            )
+            ))
         ),
     )
 
@@ -339,21 +339,20 @@ class TestClientDataTest(tf.test.TestCase, parameterized.TestCase):
             collections.OrderedDict([
                 (
                     'x',
-                    computation_types.TensorType(
-                        client_data.element_type_structure['x'].dtype,
-                        [2],
+                    computation_types.tensorflow_to_type(
+                        (client_data.element_type_structure['x'].dtype, [2])
                     ),
                 ),
                 (
                     'y',
-                    computation_types.TensorType(
-                        client_data.element_type_structure['y'].dtype,
+                    computation_types.tensorflow_to_type(
+                        client_data.element_type_structure['y'].dtype
                     ),
                 ),
                 (
                     'z',
-                    computation_types.TensorType(
-                        client_data.element_type_structure['z'].dtype,
+                    computation_types.tensorflow_to_type(
+                        client_data.element_type_structure['z'].dtype
                     ),
                 ),
             ])

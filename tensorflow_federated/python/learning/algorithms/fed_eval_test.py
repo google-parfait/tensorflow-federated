@@ -254,7 +254,7 @@ class FedEvalProcessTest(tf.test.TestCase):
                         SequenceType(
                             StructType([(
                                 'temp',
-                                TensorType(dtype=tf.float32, shape=[None]),
+                                TensorType(dtype=np.float32, shape=[None]),
                             )])
                         ),
                         placements.CLIENTS,

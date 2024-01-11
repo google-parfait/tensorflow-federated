@@ -162,39 +162,35 @@ class UnflattenTest(tf.test.TestCase, parameterized.TestCase):
       (
           'list_result',
           [1.0, 2],
-          StructType([TensorType(tf.float32), TensorType(tf.int32)]),
+          StructType([TensorType(np.float32), TensorType(np.int32)]),
           list,
           list,
       ),
       (
           'tuple_result',
           (2, 1.0),
-          StructType([TensorType(tf.int32), TensorType(tf.float32)]),
+          StructType([TensorType(np.int32), TensorType(np.float32)]),
           tuple,
           tuple,
       ),
       (
           'tuple_result_no_hint',
           (2, 1.0),
-          StructType([TensorType(tf.int32), TensorType(tf.float32)]),
+          StructType([TensorType(np.int32), TensorType(np.float32)]),
           None,
           tuple,
       ),
       (
           'odict_result',
           collections.OrderedDict(a='abc', b=0),
-          StructType(
-              [('a', TensorType(tf.string)), ('b', TensorType(tf.int32))]
-          ),
+          StructType([('a', TensorType(np.str_)), ('b', TensorType(np.int32))]),
           collections.OrderedDict,
           collections.OrderedDict,
       ),
       (
           'odict_result_no_hint',
           collections.OrderedDict(a='abc', b=0),
-          StructType(
-              [('a', TensorType(tf.string)), ('b', TensorType(tf.int32))]
-          ),
+          StructType([('a', TensorType(np.str_)), ('b', TensorType(np.int32))]),
           None,
           collections.OrderedDict,
       ),
@@ -202,10 +198,10 @@ class UnflattenTest(tf.test.TestCase, parameterized.TestCase):
           'nested_result',
           collections.OrderedDict(a='abc', b=(0, 2)),
           StructType([
-              ('a', TensorType(tf.string)),
+              ('a', TensorType(np.str_)),
               (
                   'b',
-                  StructType([TensorType(tf.int32), TensorType(tf.int32)]),
+                  StructType([TensorType(np.int32), TensorType(np.int32)]),
               ),
           ]),
           collections.OrderedDict,
@@ -215,10 +211,10 @@ class UnflattenTest(tf.test.TestCase, parameterized.TestCase):
           'nested_result_no_hint',
           collections.OrderedDict(a='abc', b=(0, 2)),
           StructType([
-              ('a', TensorType(tf.string)),
+              ('a', TensorType(np.str_)),
               (
                   'b',
-                  StructType([TensorType(tf.int32), TensorType(tf.int32)]),
+                  StructType([TensorType(np.int32), TensorType(np.int32)]),
               ),
           ]),
           None,

@@ -163,8 +163,12 @@ def _make_concrete_flat_output_fn(fn, *args, **kwargs):
     function.
   """
   concrete_fn = tf.function(fn).get_concrete_function(*args, **kwargs)
+
+  def _create_tensor_type(dtype, shape):
+    return computation_types.tensorflow_to_type((dtype, shape))
+
   tensor_types = tf.nest.map_structure(
-      computation_types.TensorType,
+      _create_tensor_type,
       concrete_fn.output_dtypes,
       concrete_fn.output_shapes,
   )

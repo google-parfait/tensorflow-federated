@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for fed_recon_eval.py."""
 
 import collections
 from unittest import mock
@@ -19,6 +18,7 @@ from unittest import mock
 from absl.testing import absltest
 from absl.testing import parameterized
 import attrs
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.core.backends.native import execution_contexts
@@ -225,9 +225,9 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
             client_work=(
                 (),
                 collections.OrderedDict(
-                    num_examples=[tf.int64],
-                    num_over=[tf.float32],
-                    loss=[tf.float32, tf.float32],
+                    num_examples=[np.int64],
+                    num_over=[np.float32],
+                    loss=[np.float32, np.float32],
                 ),
             ),
             aggregator=collections.OrderedDict(
@@ -245,8 +245,8 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
                 client_data=computation_types.FederatedType(
                     SequenceType(
                         collections.OrderedDict(
-                            x=TensorType(tf.float32, [None, 1]),
-                            y=TensorType(tf.float32, [None, 1]),
+                            x=TensorType(np.float32, [None, 1]),
+                            y=TensorType(np.float32, [None, 1]),
                         )
                     ),
                     placements.CLIENTS,
@@ -260,14 +260,14 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
                         client_work=collections.OrderedDict(
                             eval=collections.OrderedDict(
                                 current_round_metrics=collections.OrderedDict(
-                                    num_examples=tf.int64,
-                                    num_over=tf.float32,
-                                    loss=tf.float32,
+                                    num_examples=np.int64,
+                                    num_over=np.float32,
+                                    loss=np.float32,
                                 ),
                                 total_rounds_metrics=collections.OrderedDict(
-                                    num_examples=tf.int64,
-                                    num_over=tf.float32,
-                                    loss=tf.float32,
+                                    num_examples=np.int64,
+                                    num_over=np.float32,
+                                    loss=np.float32,
                                 ),
                             )
                         ),
@@ -336,9 +336,9 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
             client_work=(
                 (),
                 collections.OrderedDict(
-                    num_examples=[tf.int64],
-                    num_over=[tf.float32],
-                    loss=[tf.float32, tf.float32],
+                    num_examples=[np.int64],
+                    num_over=[np.float32],
+                    loss=[np.float32, np.float32],
                 ),
             ),
             aggregator=collections.OrderedDict(
@@ -356,8 +356,8 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
                 client_data=computation_types.FederatedType(
                     SequenceType(
                         collections.OrderedDict(
-                            x=TensorType(tf.float32, [None, 1]),
-                            y=TensorType(tf.float32, [None, 1]),
+                            x=TensorType(np.float32, [None, 1]),
+                            y=TensorType(np.float32, [None, 1]),
                         )
                     ),
                     placements.CLIENTS,
@@ -371,14 +371,14 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
                         client_work=collections.OrderedDict(
                             eval=collections.OrderedDict(
                                 current_round_metrics=collections.OrderedDict(
-                                    num_examples=tf.int64,
-                                    num_over=tf.float32,
-                                    loss=tf.float32,
+                                    num_examples=np.int64,
+                                    num_over=np.float32,
+                                    loss=np.float32,
                                 ),
                                 total_rounds_metrics=collections.OrderedDict(
-                                    num_examples=tf.int64,
-                                    num_over=tf.float32,
-                                    loss=tf.float32,
+                                    num_examples=np.int64,
+                                    num_over=np.float32,
+                                    loss=np.float32,
                                 ),
                             )
                         ),
@@ -446,9 +446,9 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
             client_work=(
                 (),
                 collections.OrderedDict(
-                    num_examples=[tf.int64],
-                    num_over=[tf.float32],
-                    loss=[tf.float32, tf.float32],
+                    num_examples=[np.int64],
+                    num_over=[np.float32],
+                    loss=[np.float32, np.float32],
                 ),
             ),
             aggregator=collections.OrderedDict(
@@ -466,8 +466,8 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
                 client_data=computation_types.FederatedType(
                     SequenceType(
                         collections.OrderedDict(
-                            x=TensorType(tf.float32, [None, 1]),
-                            y=TensorType(tf.float32, [None, 1]),
+                            x=TensorType(np.float32, [None, 1]),
+                            y=TensorType(np.float32, [None, 1]),
                         )
                     ),
                     placements.CLIENTS,
@@ -481,14 +481,14 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
                         client_work=collections.OrderedDict(
                             eval=collections.OrderedDict(
                                 current_round_metrics=collections.OrderedDict(
-                                    num_examples=tf.int64,
-                                    num_over=tf.float32,
-                                    loss=tf.float32,
+                                    num_examples=np.int64,
+                                    num_over=np.float32,
+                                    loss=np.float32,
                                 ),
                                 total_rounds_metrics=collections.OrderedDict(
-                                    num_examples=tf.int64,
-                                    num_over=tf.float32,
-                                    loss=tf.float32,
+                                    num_examples=np.int64,
+                                    num_over=np.float32,
+                                    loss=np.float32,
                                 ),
                             )
                         ),
@@ -550,9 +550,9 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
             client_work=(
                 (),
                 collections.OrderedDict(
-                    num_examples=[tf.int64],
-                    num_over=[tf.float32],
-                    loss=[tf.float32, tf.float32],
+                    num_examples=[np.int64],
+                    num_over=[np.float32],
+                    loss=[np.float32, np.float32],
                 ),
             ),
             aggregator=collections.OrderedDict(
@@ -570,8 +570,8 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
                 client_data=computation_types.FederatedType(
                     SequenceType(
                         collections.OrderedDict(
-                            x=TensorType(tf.float32, [None, 1]),
-                            y=TensorType(tf.float32, [None, 1]),
+                            x=TensorType(np.float32, [None, 1]),
+                            y=TensorType(np.float32, [None, 1]),
                         )
                     ),
                     placements.CLIENTS,
@@ -585,14 +585,14 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
                         client_work=collections.OrderedDict(
                             eval=collections.OrderedDict(
                                 current_round_metrics=collections.OrderedDict(
-                                    num_examples=tf.int64,
-                                    num_over=tf.float32,
-                                    loss=tf.float32,
+                                    num_examples=np.int64,
+                                    num_over=np.float32,
+                                    loss=np.float32,
                                 ),
                                 total_rounds_metrics=collections.OrderedDict(
-                                    num_examples=tf.int64,
-                                    num_over=tf.float32,
-                                    loss=tf.float32,
+                                    num_examples=np.int64,
+                                    num_over=np.float32,
+                                    loss=np.float32,
                                 ),
                             )
                         ),
@@ -662,9 +662,9 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
             client_work=(
                 (),
                 collections.OrderedDict(
-                    num_examples=[tf.int64],
-                    num_over=[tf.float32],
-                    loss=[tf.float32, tf.float32],
+                    num_examples=[np.int64],
+                    num_over=[np.float32],
+                    loss=[np.float32, np.float32],
                 ),
             ),
             aggregator=collections.OrderedDict(
@@ -682,8 +682,8 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
                 client_data=computation_types.FederatedType(
                     SequenceType(
                         collections.OrderedDict(
-                            x=TensorType(tf.float32, [None, 1]),
-                            y=TensorType(tf.float32, [None, 1]),
+                            x=TensorType(np.float32, [None, 1]),
+                            y=TensorType(np.float32, [None, 1]),
                         )
                     ),
                     placements.CLIENTS,
@@ -697,14 +697,14 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
                         client_work=collections.OrderedDict(
                             eval=collections.OrderedDict(
                                 current_round_metrics=collections.OrderedDict(
-                                    num_examples=tf.int64,
-                                    num_over=tf.float32,
-                                    loss=tf.float32,
+                                    num_examples=np.int64,
+                                    num_over=np.float32,
+                                    loss=np.float32,
                                 ),
                                 total_rounds_metrics=collections.OrderedDict(
-                                    num_examples=tf.int64,
-                                    num_over=tf.float32,
-                                    loss=tf.float32,
+                                    num_examples=np.int64,
+                                    num_over=np.float32,
+                                    loss=np.float32,
                                 ),
                             )
                         ),
@@ -775,7 +775,7 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
             client_work=(
                 (),
                 collections.OrderedDict(
-                    loss=[tf.float32, tf.float32],
+                    loss=[np.float32, np.float32],
                 ),
             ),
             aggregator=collections.OrderedDict(
@@ -793,8 +793,8 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
                 client_data=computation_types.FederatedType(
                     SequenceType(
                         collections.OrderedDict(
-                            x=TensorType(tf.float32, [None, 1]),
-                            y=TensorType(tf.float32, [None, 1]),
+                            x=TensorType(np.float32, [None, 1]),
+                            y=TensorType(np.float32, [None, 1]),
                         )
                     ),
                     placements.CLIENTS,
@@ -808,10 +808,10 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
                         client_work=collections.OrderedDict(
                             eval=collections.OrderedDict(
                                 current_round_metrics=collections.OrderedDict(
-                                    loss=tf.float32,
+                                    loss=np.float32,
                                 ),
                                 total_rounds_metrics=collections.OrderedDict(
-                                    loss=tf.float32,
+                                    loss=np.float32,
                                 ),
                             )
                         ),
@@ -868,7 +868,7 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
         return intrinsics.federated_value(0, placements.SERVER)
 
       @federated_computation.federated_computation(
-          computation_types.FederatedType(tf.int32, placements.SERVER),
+          computation_types.FederatedType(np.int32, placements.SERVER),
           computation_types.FederatedType(
               model_weights_type, placements.SERVER
           ),
@@ -904,13 +904,13 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
                     model_fn()
                 )
             ),
-            distributor=tf.int32,
+            distributor=np.int32,
             client_work=(
                 (),
                 collections.OrderedDict(
-                    num_examples=[tf.int64],
-                    num_over=[tf.float32],
-                    loss=[tf.float32, tf.float32],
+                    num_examples=[np.int64],
+                    num_over=[np.float32],
+                    loss=[np.float32, np.float32],
                 ),
             ),
             aggregator=collections.OrderedDict(
@@ -928,8 +928,8 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
                 client_data=computation_types.FederatedType(
                     SequenceType(
                         collections.OrderedDict(
-                            x=TensorType(tf.float32, [None, 1]),
-                            y=TensorType(tf.float32, [None, 1]),
+                            x=TensorType(np.float32, [None, 1]),
+                            y=TensorType(np.float32, [None, 1]),
                         )
                     ),
                     placements.CLIENTS,
@@ -939,18 +939,18 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
                 state=state_type,
                 metrics=computation_types.FederatedType(
                     collections.OrderedDict(
-                        distributor=tf.float32,
+                        distributor=np.float32,
                         client_work=collections.OrderedDict(
                             eval=collections.OrderedDict(
                                 current_round_metrics=collections.OrderedDict(
-                                    num_examples=tf.int64,
-                                    num_over=tf.float32,
-                                    loss=tf.float32,
+                                    num_examples=np.int64,
+                                    num_over=np.float32,
+                                    loss=np.float32,
                                 ),
                                 total_rounds_metrics=collections.OrderedDict(
-                                    num_examples=tf.int64,
-                                    num_over=tf.float32,
-                                    loss=tf.float32,
+                                    num_examples=np.int64,
+                                    num_over=np.float32,
+                                    loss=np.float32,
                                 ),
                             )
                         ),

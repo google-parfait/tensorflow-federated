@@ -64,7 +64,7 @@ class TypeChecksTest(tf.test.TestCase):
 
   def test_raises_on_client_placed_structure_of_tensor_and_sequence(self):
     tensor_spec = computation_types.TensorType(np.int32, (1, 2))
-    sequence_type = computation_types.SequenceType(tf.int32)
+    sequence_type = computation_types.SequenceType(np.int32)
     struct_type = computation_types.StructWithPythonType(
         [tensor_spec, sequence_type], list
     )

@@ -898,9 +898,9 @@ class CreateDefaultSecureSumQuantizationRangesTest(
           '<a=int64,b=<c=float32,d=[int32,int32]>>',
           computation_types.to_type(
               collections.OrderedDict(
-                  a=tf.int64,
+                  a=np.int64,
                   b=collections.OrderedDict(
-                      c=tf.float32, d=[tf.int32, tf.int32]
+                      c=np.float32, d=[np.int32, np.int32]
                   ),
               )
           ),
@@ -931,24 +931,24 @@ class CreateDefaultSecureSumQuantizationRangesTest(
   @parameterized.named_parameters(
       (
           'float32_float_range',
-          TensorType(tf.float32, [3]),
+          TensorType(np.float32, [3]),
           0.1,
           0.5,
           (0.1, 0.5),
       ),
-      ('float32_int_range', TensorType(tf.float32, [3]), 1, 5, (1.0, 5.0)),
-      ('int32_int_range', TensorType(tf.int32, [1]), 1, 5, (1, 5)),
-      ('int32_float_range', TensorType(tf.int32, [1]), 1.0, 5.0, (1, 5)),
+      ('float32_int_range', TensorType(np.float32, [3]), 1, 5, (1.0, 5.0)),
+      ('int32_int_range', TensorType(np.int32, [1]), 1, 5, (1, 5)),
+      ('int32_float_range', TensorType(np.int32, [1]), 1.0, 5.0, (1, 5)),
       (
           'int32_float_range_truncated',
-          TensorType(tf.int32, [1]),
+          TensorType(np.int32, [1]),
           1.5,
           5.5,
           (2, 5),
       ),
       (
           '<int64,float32>',
-          computation_types.to_type([tf.int64, tf.float32]),
+          computation_types.to_type([np.int64, np.float32]),
           1,
           5,
           [(1, 5), (1.0, 5.0)],
@@ -957,9 +957,9 @@ class CreateDefaultSecureSumQuantizationRangesTest(
           '<a=int64,b=<c=float32,d=[int32,int32]>>',
           computation_types.to_type(
               collections.OrderedDict(
-                  a=tf.int64,
+                  a=np.int64,
                   b=collections.OrderedDict(
-                      c=tf.float32, d=[tf.int32, tf.int32]
+                      c=np.float32, d=[np.int32, np.int32]
                   ),
               )
           ),
@@ -987,23 +987,23 @@ class CreateDefaultSecureSumQuantizationRangesTest(
   def test_invalid_dtype(self):
     with self.assertRaises(sum_aggregation_factory.UnquantizableDTypeError):
       sum_aggregation_factory.create_default_secure_sum_quantization_ranges(
-          TensorType(tf.string)
+          TensorType(np.str_)
       )
 
   def test_too_narrow_integer_range(self):
     with self.assertRaisesRegex(ValueError, 'not wide enough'):
       sum_aggregation_factory.create_default_secure_sum_quantization_ranges(
-          TensorType(tf.int32), lower_bound=0.7, upper_bound=1.3
+          TensorType(np.int32), lower_bound=0.7, upper_bound=1.3
       )
 
   def test_range_reversed(self):
     with self.assertRaisesRegex(ValueError, 'must be greater than'):
       sum_aggregation_factory.create_default_secure_sum_quantization_ranges(
-          TensorType(tf.int32), lower_bound=10, upper_bound=5
+          TensorType(np.int32), lower_bound=10, upper_bound=5
       )
     with self.assertRaisesRegex(ValueError, 'must be greater than'):
       sum_aggregation_factory.create_default_secure_sum_quantization_ranges(
-          TensorType(tf.int32), lower_bound=10.0, upper_bound=5.0
+          TensorType(np.int32), lower_bound=10.0, upper_bound=5.0
       )
 
 

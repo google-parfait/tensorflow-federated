@@ -94,8 +94,8 @@ class WeightsTypeFromModelTest(absltest.TestCase):
                     'trainable',
                     computation_types.StructWithPythonType(
                         [
-                            computation_types.TensorType(tf.float32, [3]),
-                            computation_types.TensorType(tf.float32, [1]),
+                            computation_types.TensorType(np.float32, [3]),
+                            computation_types.TensorType(np.float32, [1]),
                         ],
                         list,
                     ),
@@ -104,7 +104,7 @@ class WeightsTypeFromModelTest(absltest.TestCase):
                     'non_trainable',
                     computation_types.StructWithPythonType(
                         [
-                            computation_types.TensorType(tf.int32),
+                            computation_types.TensorType(np.int32),
                         ],
                         list,
                     ),
@@ -124,8 +124,8 @@ class WeightsTypeFromModelTest(absltest.TestCase):
                     'trainable',
                     computation_types.StructWithPythonType(
                         [
-                            computation_types.TensorType(tf.float32, [3]),
-                            computation_types.TensorType(tf.float32, [1]),
+                            computation_types.TensorType(np.float32, [3]),
+                            computation_types.TensorType(np.float32, [1]),
                         ],
                         list,
                     ),
@@ -134,7 +134,7 @@ class WeightsTypeFromModelTest(absltest.TestCase):
                     'non_trainable',
                     computation_types.StructWithPythonType(
                         [
-                            computation_types.TensorType(tf.int32),
+                            computation_types.TensorType(np.int32),
                         ],
                         list,
                     ),
