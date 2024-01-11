@@ -31,7 +31,6 @@ from tensorflow_federated.python.core.impl.federated_context import federated_co
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
-from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import client_weight_lib
 from tensorflow_federated.python.learning import dataset_reduce
@@ -280,12 +279,9 @@ def build_model_delta_client_work(
       hyperparameters as the optimizer.
     client_weighting:  A `tff.learning.ClientWeighting` value.
     metrics_aggregator: A function that takes in the metric finalizers (i.e.,
-      `tff.learning.models.VariableModel.metric_finalizers()`) and a
-      `tff.types.StructWithPythonType` of the unfinalized metrics (i.e., the TFF
-      type of
-      `tff.learning.models.VariableModel.report_local_unfinalized_metrics()`),
-      and returns a `tff.Computation` for aggregating the unfinalized metrics.
-      If `None`, this is set to `tff.learning.metrics.sum_then_finalize`.
+      `tff.learning.models.VariableModel.metric_finalizers()`) returns a
+      `tff.Computation` for aggregating the unfinalized metrics.  If `None`,
+      this is set to `tff.learning.metrics.sum_then_finalize`.
     use_experimental_simulation_loop: Controls the reduce loop function for
       input dataset. An experimental reduce loop is used for simulation. It is
       currently necessary to set this flag to True for performant GPU
@@ -310,13 +306,7 @@ def build_model_delta_client_work(
     # Wrap model construction in a graph to avoid polluting the global context
     # with variables created for this model.
     model = model_fn()
-    unfinalized_metrics_type = type_conversions.infer_type(
-        model.report_local_unfinalized_metrics()
-    )
-    metrics_aggregation_fn = metrics_aggregator(
-        model.metric_finalizers(),
-        unfinalized_metrics_type,  # pytype: disable=wrong-arg-types
-    )
+    metrics_aggregation_fn = metrics_aggregator(model.metric_finalizers())
   element_type = computation_types.tensorflow_to_type(model.input_spec)
   data_type = computation_types.SequenceType(element_type)
   weights_type = model_weights_lib.weights_type_from_model(model)
@@ -538,12 +528,9 @@ def build_functional_model_delta_client_work(
       optimization.
     client_weighting:  A `tff.learning.ClientWeighting` value.
     metrics_aggregator: A function that takes in the metric finalizers (i.e.,
-      `tff.learning.models.VariableModel.metric_finalizers()`) and a
-      `tff.types.StructWithPythonType` of the unfinalized metrics (i.e., the TFF
-      type of
-      `tff.learning.models.VariableModel.report_local_unfinalized_metrics()`),
-      and returns a `tff.Computation` for aggregating the unfinalized metrics.
-      If `None`, this is set to `tff.learning.metrics.sum_then_finalize`.
+      `tff.learning.models.VariableModel.metric_finalizers()`) and returns a
+      `tff.Computation` for aggregating the unfinalized metrics.  If `None`,
+      this is set to `tff.learning.metrics.sum_then_finalize`.
 
   Returns:
     A `ClientWorkProcess`.
@@ -595,9 +582,7 @@ def build_functional_model_delta_client_work(
     client_result, unfinalized_metrics = intrinsics.federated_map(
         client_update_computation, (weights, client_data)
     )
-    metrics_aggregation_fn = metrics_aggregator(
-        model.finalize_metrics, unfinalized_metrics.type_signature.member
-    )
+    metrics_aggregation_fn = metrics_aggregator(model.finalize_metrics)
     finalized_training_metrics = metrics_aggregation_fn(unfinalized_metrics)
     measurements = intrinsics.federated_zip(
         collections.OrderedDict(train=finalized_training_metrics)
