@@ -36,7 +36,6 @@ from tensorflow_federated.python.core.impl.federated_context import federated_co
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
-from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import dataset_reduce
 from tensorflow_federated.python.learning.metrics import aggregator as metric_aggregator
@@ -165,12 +164,8 @@ def _build_fed_sgd_client_work(
     # Wrap model construction in a graph to avoid polluting the global context
     # with variables created for this model.
     model = model_fn()
-    unfinalized_metrics_type = type_conversions.infer_type(
-        model.report_local_unfinalized_metrics()
-    )
     metrics_aggregation_fn = metrics_aggregator(
         model.metric_finalizers(),
-        unfinalized_metrics_type,  # pytype: disable=wrong-arg-types
     )
   element_type = computation_types.tensorflow_to_type(model.input_spec)
   data_type = computation_types.SequenceType(element_type)
