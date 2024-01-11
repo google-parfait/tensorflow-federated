@@ -14,6 +14,7 @@
 
 import collections
 import functools
+from typing import Any
 from unittest import mock
 
 from absl.testing import absltest
@@ -116,11 +117,18 @@ class TestModel(variable.VariableModel):
       var.assign(tf.zeros_like(var))
 
 
-def _get_finalized_metrics_type(metric_finalizers, unfinalized_metrics):
-  finalized_metrics = collections.OrderedDict()
-  for metric, finalizer in metric_finalizers.items():
-    finalized_metrics[metric] = finalizer(unfinalized_metrics[metric])
-  return type_conversions.infer_type(finalized_metrics)
+# TODO: b/319261270 - Avoid the need for inferring types here, if possible.
+def _get_metrics_type(metrics: collections.OrderedDict[str, Any]):
+  def _tensor_spec_from_tensor_like(x):
+    x_as_tensor = tf.convert_to_tensor(x)
+    return computation_types.tensorflow_to_type(
+        (x_as_tensor.dtype, x_as_tensor.shape)
+    )
+
+  finalizer_spec = tf.nest.map_structure(_tensor_spec_from_tensor_like, metrics)
+  return computation_types.StructWithPythonType(
+      finalizer_spec, collections.OrderedDict
+  )
 
 
 def _create_custom_metrics_aggregation_process(
@@ -195,14 +203,16 @@ class FedEvalProcessTest(tf.test.TestCase):
     model_fn = TestModel
     test_model = model_fn()
     model_weights_type = model_weights_lib.weights_type_from_model(test_model)
-    metric_finalizers = test_model.metric_finalizers()
+
     unfinalized_metrics = test_model.report_local_unfinalized_metrics()
-    local_unfinalized_metrics_type = type_conversions.infer_type(
-        unfinalized_metrics
-    )
-    finalized_metrics_type = _get_finalized_metrics_type(
-        metric_finalizers, unfinalized_metrics
-    )
+    local_unfinalized_metrics_type = _get_metrics_type(unfinalized_metrics)
+
+    metric_finalizers = test_model.metric_finalizers()
+    finalized_metrics = collections.OrderedDict()
+    for metric, finalizer in metric_finalizers.items():
+      finalized_metrics[metric] = finalizer(unfinalized_metrics[metric])
+    finalized_metrics_type = _get_metrics_type(finalized_metrics)
+
     metics_aggregator = sum_aggregation_factory.SumThenFinalizeFactory(
         metric_finalizers
     ).create(local_unfinalized_metrics_type)
@@ -374,9 +384,7 @@ class FedEvalProcessTest(tf.test.TestCase):
     model_fn = TestModel
     test_model = model_fn()
     unfinalized_metrics = test_model.report_local_unfinalized_metrics()
-    local_unfinalized_metrics_type = type_conversions.infer_type(
-        unfinalized_metrics
-    )
+    local_unfinalized_metrics_type = _get_metrics_type(unfinalized_metrics)
     metric_finalizers = test_model.metric_finalizers()
 
     eval_process = fed_eval.build_fed_eval(
@@ -416,10 +424,7 @@ class FedEvalProcessTest(tf.test.TestCase):
   def test_invalid_metrics_aggregation_process_raises(self):
     test_model = TestModel()
     metrics_aggregator = aggregator.sum_then_finalize(
-        test_model.metric_finalizers(),
-        type_conversions.infer_type(
-            test_model.report_local_unfinalized_metrics()
-        ),
+        test_model.metric_finalizers()
     )
     with self.assertRaisesRegex(TypeError, 'AggregationProcess'):
       fed_eval.build_fed_eval(

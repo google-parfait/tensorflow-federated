@@ -26,7 +26,6 @@ from tensorflow_federated.python.core.impl.federated_context import federated_co
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
-from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import federated_evaluation
@@ -52,26 +51,35 @@ def _build_fed_eval_client_work(
 ) -> client_works.ClientWorkProcess:
   """Builds a `ClientWorkProcess` that performs model evaluation at clients."""
 
+  def _tensor_type_from_tensor_like(x):
+    x_as_tensor = tf.convert_to_tensor(x)
+    return computation_types.tensorflow_to_type(
+        (x_as_tensor.dtype, x_as_tensor.shape)
+    )
+
   with tf.Graph().as_default():
     model = model_fn()
     batch_type = computation_types.tensorflow_to_type(model.input_spec)
     if metrics_aggregation_process is None:
-      metrics_finalizers = model.metric_finalizers()
-      local_unfinalized_metrics_type = type_conversions.infer_type(
-          model.report_local_unfinalized_metrics()
+      unfinalized_metrics = model.report_local_unfinalized_metrics()
+      unfinalized_metrics_spec = tf.nest.map_structure(
+          _tensor_type_from_tensor_like, unfinalized_metrics
       )
-      factory = sum_aggregation_factory.SumThenFinalizeFactory(
-          metrics_finalizers
-      )
-      metrics_aggregation_process = factory.create(
-          local_unfinalized_metrics_type
-      )  # pytype: disable=wrong-arg-types
-    else:
-      py_typecheck.check_type(
-          metrics_aggregation_process,
-          _AggregationProcess,
-          'metrics_aggregation_process',
-      )
+
+  if metrics_aggregation_process is None:
+    # TODO: b/319261270 - Avoid the need for inferring types here, if possible.
+    metrics_finalizers = model.metric_finalizers()
+    unfinalized_metrics_type = computation_types.StructWithPythonType(
+        unfinalized_metrics_spec, collections.OrderedDict
+    )
+    factory = sum_aggregation_factory.SumThenFinalizeFactory(metrics_finalizers)
+    metrics_aggregation_process = factory.create(unfinalized_metrics_type)
+  else:
+    py_typecheck.check_type(
+        metrics_aggregation_process,
+        _AggregationProcess,
+        'metrics_aggregation_process',
+    )
 
   @federated_computation.federated_computation
   def init_fn():
