@@ -23,7 +23,6 @@ from tensorflow_federated.python.aggregators import quantile_estimation
 from tensorflow_federated.python.core.backends.test import execution_contexts
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
-from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import estimation_process
 from tensorflow_federated.python.core.templates import measured_process
@@ -36,6 +35,14 @@ MetricRange = sum_aggregation_factory._MetricRange
 
 
 def _get_finalized_metrics_type(metric_finalizers, unfinalized_metrics):
+
+  # TODO: b/319261270 - Avoid the need for inferring types here, if possible.
+  def _tensor_type_from_tensor_like(x):
+    x_as_tensor = tf.convert_to_tensor(x)
+    return computation_types.tensorflow_to_type(
+        (x_as_tensor.dtype, x_as_tensor.shape)
+    )
+
   if callable(metric_finalizers):
     finalized_metrics = metric_finalizers(unfinalized_metrics)
   else:
@@ -43,7 +50,12 @@ def _get_finalized_metrics_type(metric_finalizers, unfinalized_metrics):
         (metric, finalizer(unfinalized_metrics[metric]))
         for metric, finalizer in metric_finalizers.items()
     )
-  return type_conversions.infer_type(finalized_metrics)
+  finalizer_type = tf.nest.map_structure(
+      _tensor_type_from_tensor_like, finalized_metrics
+  )
+  return computation_types.StructWithPythonType(
+      finalizer_type, collections.OrderedDict
+  )
 
 
 @tf.function
@@ -317,7 +329,10 @@ class SumThenFinalizeFactoryComputationTest(
         metric_finalizers,
         initial_unfinalized_metrics=initial_unfinalized_metrics,
     )
-    with self.assertRaisesRegex(TypeError, 'initial unfinalized metrics type'):
+    with self.assertRaisesRegex(
+        TypeError,
+        'member constituents of the mapped value are of incompatible type',
+    ):
       aggregate_factory.create(local_unfinalized_metrics_type)
 
 

@@ -20,7 +20,6 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.learning.metrics import aggregation_utils
 from tensorflow_federated.python.learning.metrics import keras_finalizer
 
@@ -65,11 +64,14 @@ class CheckMetricFinalizersTest(tf.test.TestCase, parameterized.TestCase):
 class CheckUnfinalizedMetricsTypeTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_valid_type_does_not_raise(self):
-    local_unfianlized_metrics = collections.OrderedDict(
-        num_examples=1, mean=[2.0, 1.0]
+    local_unfinalized_metrics_type = computation_types.StructWithPythonType(
+        collections.OrderedDict(
+            num_examples=np.int32, mean=[np.float32, np.float32]
+        ),
+        collections.OrderedDict,
     )
     aggregation_utils.check_local_unfinalized_metrics_type(
-        type_conversions.infer_type(local_unfianlized_metrics)
+        local_unfinalized_metrics_type
     )
 
   @parameterized.named_parameters(
@@ -106,12 +108,15 @@ class CheckFinalizersMatchUnfinalizedMetricsTypeTest(
     metric_finalizers = collections.OrderedDict(
         num_examples=tf.function(func=lambda x: x), mean=_tf_mean
     )
-    local_unfianlized_metrics = collections.OrderedDict(
-        num_examples=1, mean=[2.0, 1.0]
+    local_unfinalized_metrics_type = computation_types.StructWithPythonType(
+        collections.OrderedDict(
+            num_examples=np.int32, mean=[np.float32, np.float32]
+        ),
+        collections.OrderedDict,
     )
     aggregation_utils.check_finalizers_matches_unfinalized_metrics(
         metric_finalizers,
-        type_conversions.infer_type(local_unfianlized_metrics),
+        local_unfinalized_metrics_type,
     )
 
   @parameterized.named_parameters(
@@ -120,23 +125,31 @@ class CheckFinalizersMatchUnfinalizedMetricsTypeTest(
           collections.OrderedDict(
               num_examples=tf.function(func=lambda x: x), mean=_tf_mean
           ),
-          collections.OrderedDict(num_examples=1),
+          computation_types.StructWithPythonType(
+              collections.OrderedDict(num_examples=np.int32),
+              collections.OrderedDict,
+          ),
           'Metric names in the `metric_finalizers`',
       ),
       (
           'more_metrics_in_unfinalized_metrics_type',
           collections.OrderedDict(mean=_tf_mean),
-          collections.OrderedDict(num_examples=1, mean=[2.0, 1.0]),
+          computation_types.StructWithPythonType(
+              collections.OrderedDict(
+                  num_examples=np.int32, mean=[np.float32, np.float32]
+              ),
+              collections.OrderedDict,
+          ),
           'Metric names in the `local_unfinalized_metrics`',
       ),
   )
   def test_not_match_raises(
-      self, metric_finalizers, local_unfianlized_metrics, expected_regex
+      self, metric_finalizers, local_unfinalized_metrics_type, expected_regex
   ):
     with self.assertRaisesRegex(ValueError, expected_regex):
       aggregation_utils.check_finalizers_matches_unfinalized_metrics(
           metric_finalizers,
-          type_conversions.infer_type(local_unfianlized_metrics),
+          local_unfinalized_metrics_type,
       )
 
 

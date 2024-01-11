@@ -69,21 +69,14 @@ def _build_finalizer_computation(
   return finalizer_computation
 
 
-def _intialize_unfinalized_metrics_accumulators(
+def _initialize_unfinalized_metrics_accumulators(
     local_unfinalized_metrics_type, initial_unfinalized_metrics
 ):
-  """Initalizes the unfinalized metrics accumulators."""
+  """Initializes the unfinalized metrics accumulators."""
   if initial_unfinalized_metrics is not None:
-    initial_unfinalized_metrics_type = type_conversions.infer_type(
-        initial_unfinalized_metrics
+    return intrinsics.federated_value(
+        initial_unfinalized_metrics, placements.SERVER
     )
-    if initial_unfinalized_metrics_type != local_unfinalized_metrics_type:
-      raise TypeError(
-          "The initial unfinalized metrics type doesn't match "
-          'with the `local_unfinalized_metrics_type`, expect: '
-          f'{local_unfinalized_metrics_type}, found: '
-          f'{initial_unfinalized_metrics_type}.'
-      )
 
   @tensorflow_computation.tf_computation
   def create_all_zero_state():
@@ -92,12 +85,7 @@ def _intialize_unfinalized_metrics_accumulators(
         local_unfinalized_metrics_type,
     )
 
-  if initial_unfinalized_metrics is None:
-    return intrinsics.federated_eval(create_all_zero_state, placements.SERVER)
-
-  return intrinsics.federated_value(
-      initial_unfinalized_metrics, placements.SERVER
-  )
+  return intrinsics.federated_eval(create_all_zero_state, placements.SERVER)
 
 
 # TODO: b/227811468 - Support other inner aggregators for SecAgg and DP.
@@ -187,10 +175,9 @@ class SumThenFinalizeFactory(factory.UnweightedAggregationFactory):
     Args:
       local_unfinalized_metrics_type: A `tff.types.StructWithPythonType` (with
         `collections.OrderedDict` as the Python container) of a client's local
-        unfinalized metrics. Let `local_unfinalized_metrics` be the output of
-        `tff.learning.models.VariableModel.report_local_unfinalized_metrics()`,
-        its type can be obtained by
-        `tff.types.infer_unplaced_type(local_unfinalized_metrics)`.
+        unfinalized metrics. For example, `local_unfinalized_metrics` could
+        represent the output type of
+        `tff.learning.models.VariableModel.report_local_unfinalized_metrics()`.
 
     Returns:
       An instance of `tff.templates.AggregationProcess`.
@@ -218,7 +205,7 @@ class SumThenFinalizeFactory(factory.UnweightedAggregationFactory):
     @federated_computation.federated_computation
     def init_fn():
       unfinalized_metrics_accumulators = (
-          _intialize_unfinalized_metrics_accumulators(
+          _initialize_unfinalized_metrics_accumulators(
               local_unfinalized_metrics_type, self._initial_unfinalized_metrics
           )
       )
@@ -615,10 +602,9 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
     Args:
       local_unfinalized_metrics_type: A `tff.types.StructWithPythonType` (with
         `collections.OrderedDict` as the Python container) of a client's local
-        unfinalized metrics. Let `local_unfinalized_metrics` be the output of
-        `tff.learning.models.VariableModel.report_local_unfinalized_metrics()`,
-        its type can be obtained by
-        `tff.types.infer_unplaced_type(local_unfinalized_metrics)`.
+        unfinalized metrics. For example, `local_unfinalized_metrics` could
+        represent the output type of
+        `tff.learning.models.VariableModel.report_local_unfinalized_metrics()`.
 
     Returns:
       An instance of `tff.templates.AggregationProcess`.
