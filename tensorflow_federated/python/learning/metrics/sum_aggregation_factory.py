@@ -200,7 +200,7 @@ class SumThenFinalizeFactory(factory.UnweightedAggregationFactory):
         mismatch the type of local unfinalized metrics; if the initial
         unfinalized metrics mismatch the type of local unfinalized metrics.
     """
-    aggregation_utils.check_local_unfinalzied_metrics_type(
+    aggregation_utils.check_local_unfinalized_metrics_type(
         local_unfinalized_metrics_type
     )
     if not callable(self._metric_finalizers):
@@ -626,7 +626,7 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
     Raises:
       TypeError: If any argument type mismatches.
     """
-    aggregation_utils.check_local_unfinalzied_metrics_type(
+    aggregation_utils.check_local_unfinalized_metrics_type(
         local_unfinalized_metrics_type
     )
 

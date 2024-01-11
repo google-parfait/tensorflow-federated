@@ -11,8 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for aggregator."""
-
 import collections
 from typing import Any
 
@@ -24,7 +22,6 @@ from tensorflow_federated.python.core.backends.test import execution_contexts
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
-from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.test import static_assert
 from tensorflow_federated.python.learning.metrics import aggregator
 from tensorflow_federated.python.learning.metrics import keras_finalizer
@@ -299,13 +296,27 @@ class SumThenFinalizeTest(parameterized.TestCase, tf.test.TestCase):
       error_type,
       error_message,
   ):
+    local_unfinalized_metrics_type = computation_types.tensorflow_to_type(
+        tf.nest.map_structure(
+            tf.TensorSpec.from_tensor,
+            local_unfinalized_metrics,
+        )
+    )
+
     with self.assertRaisesRegex(error_type, error_message):
-      aggregator.sum_then_finalize(
-          metric_finalizers=metric_finalizers,
-          local_unfinalized_metrics_type=type_conversions.infer_type(
-              local_unfinalized_metrics
-          ),
+      # Concretize on a federated type with CLIENTS placement so that the method
+      # invocation understands to interpret python lists of values as CLIENTS
+      # placed values.
+      @federated_computation.federated_computation(
+          computation_types.FederatedType(
+              local_unfinalized_metrics_type,
+              placements.CLIENTS,
+          )
       )
+      def _aggregator_computation(unfinalized_metrics):
+        return aggregator.sum_then_finalize(
+            metric_finalizers=metric_finalizers,
+        )(unfinalized_metrics)
 
 
 class SecureSumThenFinalizeTest(parameterized.TestCase, tf.test.TestCase):
@@ -323,10 +334,18 @@ class SecureSumThenFinalizeTest(parameterized.TestCase, tf.test.TestCase):
       local_unfinalized_metrics_type,
       expected_aggregated_metrics,
   ):
-    aggregator_computation = aggregator.secure_sum_then_finalize(
-        metric_finalizers=metric_finalizers,
-        local_unfinalized_metrics_type=local_unfinalized_metrics_type,
+    polymorphic_aggregator_computation = aggregator.secure_sum_then_finalize(
+        metric_finalizers=metric_finalizers
     )
+
+    @federated_computation.federated_computation(
+        computation_types.FederatedType(
+            local_unfinalized_metrics_type, placements.CLIENTS
+        )
+    )
+    def aggregator_computation(unfinalized_metrics):
+      return polymorphic_aggregator_computation(unfinalized_metrics)
+
     static_assert.assert_not_contains_unsecure_aggregation(
         aggregator_computation
     )
@@ -401,11 +420,8 @@ class SecureSumThenFinalizeTest(parameterized.TestCase, tf.test.TestCase):
             custom_sum=[tf.constant(1), tf.constant(1), tf.constant([1, 1])],
         ),
     ]
-    aggregator_computation = aggregator.secure_sum_then_finalize(
+    polymorphic_aggregator_computation = aggregator.secure_sum_then_finalize(
         metric_finalizers=metric_finalizers,
-        local_unfinalized_metrics_type=type_conversions.infer_type(
-            local_unfinalized_metrics_at_clients[0]
-        ),
         # Note: Partial specification, only the `accuracy` metrics denominator
         # variable has a different range; all others get the default.
         metric_value_ranges=collections.OrderedDict(
@@ -415,6 +431,29 @@ class SecureSumThenFinalizeTest(parameterized.TestCase, tf.test.TestCase):
             ]
         ),
     )
+
+    # Concretize on a federated type with CLIENTS placement so that the method
+    # invocation understands to interpret python lists of values as CLIENTS
+    # placed values.
+    @federated_computation.federated_computation(
+        computation_types.FederatedType(
+            collections.OrderedDict(
+                accuracy=[
+                    computation_types.TensorType(np.float32),
+                    computation_types.TensorType(np.float32),
+                ],
+                custom_sum=[
+                    computation_types.TensorType(np.int32),
+                    computation_types.TensorType(np.int32),
+                    computation_types.TensorType(dtype=np.int32, shape=(2,)),
+                ],
+            ),
+            placements.CLIENTS,
+        )
+    )
+    def aggregator_computation(unfinalized_metrics):
+      return polymorphic_aggregator_computation(unfinalized_metrics)
+
     aggregated_metrics = aggregator_computation(
         local_unfinalized_metrics_at_clients
     )
@@ -468,11 +507,8 @@ class SecureSumThenFinalizeTest(parameterized.TestCase, tf.test.TestCase):
             sum=collections.OrderedDict(count_1=3, count_2=3.0),
         ),
     ]
-    aggregator_computation = aggregator.secure_sum_then_finalize(
+    polymorphic_aggregator_computation = aggregator.secure_sum_then_finalize(
         metric_finalizers=metric_finalizers,
-        local_unfinalized_metrics_type=type_conversions.infer_type(
-            local_unfinalized_metrics_at_clients[0]
-        ),
         # Note: Partial specification, `divide/1` and `sum/count_1` gets the
         # same range (0, 1); `sum/count_2` gets range (0.0, 2.0); and `divide/0`
         # gets the default range.
@@ -484,6 +520,28 @@ class SecureSumThenFinalizeTest(parameterized.TestCase, tf.test.TestCase):
             sum=collections.OrderedDict(count_1=(0, 1), count_2=(0.0, 2.0)),
         ),
     )
+
+    # Concretize on a federated type with CLIENTS placement so that the method
+    # invocation understands to interpret python lists of values as CLIENTS
+    # placed values.
+    @federated_computation.federated_computation(
+        computation_types.FederatedType(
+            collections.OrderedDict(
+                divide=[
+                    computation_types.TensorType(np.float32),
+                    computation_types.TensorType(np.int32),
+                ],
+                sum=collections.OrderedDict(
+                    count_1=computation_types.TensorType(np.int32),
+                    count_2=computation_types.TensorType(np.float32),
+                ),
+            ),
+            placements.CLIENTS,
+        )
+    )
+    def aggregator_computation(unfinalized_metrics):
+      return polymorphic_aggregator_computation(unfinalized_metrics)
+
     aggregated_metrics = aggregator_computation(
         local_unfinalized_metrics_at_clients
     )
@@ -544,16 +602,23 @@ class SecureSumThenFinalizeTest(parameterized.TestCase, tf.test.TestCase):
             TestConcatMetric
         )
     )
-    local_unfinalized_metrics_at_clients = [
-        collections.OrderedDict(custom_sum=[tf.constant('abc')])
-    ]
     with self.assertRaises(sum_aggregation_factory.UnquantizableDTypeError):
-      aggregator.secure_sum_then_finalize(
-          metric_finalizers=metric_finalizers,
-          local_unfinalized_metrics_type=type_conversions.infer_type(
-              local_unfinalized_metrics_at_clients[0]
-          ),
+
+      # Concretize on a federated type with CLIENTS placement so that the method
+      # invocation understands to interpret python lists of values as CLIENTS
+      # placed values.
+      @federated_computation.federated_computation(
+          computation_types.FederatedType(
+              collections.OrderedDict(
+                  custom_sum=computation_types.TensorType(tf.string),
+              ),
+              placements.CLIENTS,
+          )
       )
+      def _aggregator_computation(unfinalized_metrics):
+        return aggregator.secure_sum_then_finalize(
+            metric_finalizers=metric_finalizers
+        )(unfinalized_metrics)
 
   def test_user_value_ranges_fails_not_2_tuple(self):
     metric_finalizers = collections.OrderedDict(
@@ -561,23 +626,32 @@ class SecureSumThenFinalizeTest(parameterized.TestCase, tf.test.TestCase):
             tf.keras.metrics.SparseCategoricalAccuracy
         )
     )
-    local_unfinalized_metrics_at_clients = [
-        collections.OrderedDict(accuracy=[tf.constant(1.0), tf.constant(2.0)])
-    ]
     with self.assertRaisesRegex(ValueError, 'must be defined as a 2-tuple'):
-      aggregator.secure_sum_then_finalize(
-          metric_finalizers=metric_finalizers,
-          local_unfinalized_metrics_type=type_conversions.infer_type(
-              local_unfinalized_metrics_at_clients[0]
-          ),
-          metric_value_ranges=collections.OrderedDict(
-              accuracy=[
-                  # Invalid specification
-                  (0.0, 1.0, 2.0),
-                  None,
-              ]
-          ),
+      # Concretize on a federated type with CLIENTS placement so that the method
+      # invocation understands to interpret python lists of values as CLIENTS
+      # placed values.
+      @federated_computation.federated_computation(
+          computation_types.FederatedType(
+              collections.OrderedDict(
+                  accuracy=[
+                      computation_types.TensorType(np.float32),
+                      computation_types.TensorType(np.float32),
+                  ],
+              ),
+              placements.CLIENTS,
+          )
       )
+      def _aggregator_computation(unfinalized_metrics):
+        return aggregator.secure_sum_then_finalize(
+            metric_finalizers=metric_finalizers,
+            metric_value_ranges=collections.OrderedDict(
+                accuracy=[
+                    # Invalid specification
+                    (0.0, 1.0, 2.0),
+                    None,
+                ]
+            ),
+        )(unfinalized_metrics)
 
   @parameterized.named_parameters(_TEST_ARGUMENTS_INVALID_INPUTS)
   def test_fails_with_invalid_inputs(
@@ -587,13 +661,27 @@ class SecureSumThenFinalizeTest(parameterized.TestCase, tf.test.TestCase):
       error_type,
       error_message,
   ):
+    local_unfinalized_metrics_type = computation_types.tensorflow_to_type(
+        tf.nest.map_structure(
+            tf.TensorSpec.from_tensor,
+            local_unfinalized_metrics,
+        )
+    )
+
     with self.assertRaisesRegex(error_type, error_message):
-      aggregator.secure_sum_then_finalize(
-          metric_finalizers=metric_finalizers,
-          local_unfinalized_metrics_type=type_conversions.infer_type(
-              local_unfinalized_metrics
-          ),
+      # Concretize on a federated type with CLIENTS placement so that the method
+      # invocation understands to interpret python lists of values as CLIENTS
+      # placed values.
+      @federated_computation.federated_computation(
+          computation_types.FederatedType(
+              local_unfinalized_metrics_type,
+              placements.CLIENTS,
+          )
       )
+      def _aggregator_computation(unfinalized_metrics):
+        return aggregator.secure_sum_then_finalize(
+            metric_finalizers=metric_finalizers
+        )(unfinalized_metrics)
 
 
 class FinalizeThenSampleTest(parameterized.TestCase, tf.test.TestCase):
@@ -608,13 +696,25 @@ class FinalizeThenSampleTest(parameterized.TestCase, tf.test.TestCase):
       self, bad_sample_size, expected_error_type, expected_error_message
   ):
     with self.assertRaisesRegex(expected_error_type, expected_error_message):
-      aggregator.finalize_then_sample(
-          metric_finalizers=_UNUSED_METRICS_FINALIZERS,
-          local_unfinalized_metrics_type=type_conversions.infer_type(
-              _UNUSED_UNFINALIZED_METRICS
-          ),
-          sample_size=bad_sample_size,
+      # Concretize on a federated type with CLIENTS placement so that the method
+      # invocation understands to interpret python lists of values as CLIENTS
+      # placed values.
+      @federated_computation.federated_computation(
+          computation_types.FederatedType(
+              collections.OrderedDict(
+                  accuracy=[
+                      computation_types.TensorType(np.float32),
+                      computation_types.TensorType(np.float32),
+                  ]
+              ),
+              placements.CLIENTS,
+          )
       )
+      def _aggregator_computation(unfinalized_metrics):
+        return aggregator.finalize_then_sample(
+            metric_finalizers=_UNUSED_METRICS_FINALIZERS,
+            sample_size=bad_sample_size,
+        )(unfinalized_metrics)
 
   @parameterized.named_parameters(_TEST_ARGUMENTS_INVALID_INPUTS)
   def test_fails_with_invalid_inputs(
@@ -624,13 +724,27 @@ class FinalizeThenSampleTest(parameterized.TestCase, tf.test.TestCase):
       error_type,
       error_message,
   ):
+    local_unfinalized_metrics_type = computation_types.tensorflow_to_type(
+        tf.nest.map_structure(
+            tf.TensorSpec.from_tensor,
+            local_unfinalized_metrics,
+        )
+    )
+
     with self.assertRaisesRegex(error_type, error_message):
-      aggregator.finalize_then_sample(
-          metric_finalizers=metric_finalizers,
-          local_unfinalized_metrics_type=type_conversions.infer_type(
-              local_unfinalized_metrics
-          ),
+      # Concretize on a federated type with CLIENTS placement so that the method
+      # invocation understands to interpret python lists of values as CLIENTS
+      # placed values.
+      @federated_computation.federated_computation(
+          computation_types.FederatedType(
+              local_unfinalized_metrics_type,
+              placements.CLIENTS,
+          )
       )
+      def _aggregator_computation(unfinalized_metrics):
+        return aggregator.finalize_then_sample(
+            metric_finalizers=metric_finalizers
+        )(unfinalized_metrics)
 
   @parameterized.named_parameters(
       ('sample_size_larger_then_num_clients', 4, 3, 3),
@@ -640,13 +754,25 @@ class FinalizeThenSampleTest(parameterized.TestCase, tf.test.TestCase):
   def test_returns_correct_num_samples(
       self, sample_size, num_clients, expected_num_samples
   ):
-    aggregator_computation = aggregator.finalize_then_sample(
+    polymorphic_aggregator_computation = aggregator.finalize_then_sample(
         metric_finalizers=_UNUSED_METRICS_FINALIZERS,
-        local_unfinalized_metrics_type=type_conversions.infer_type(
-            _UNUSED_UNFINALIZED_METRICS
-        ),
         sample_size=sample_size,
     )
+
+    @federated_computation.federated_computation(
+        computation_types.FederatedType(
+            collections.OrderedDict(
+                accuracy=[
+                    computation_types.TensorType(np.float32),
+                    computation_types.TensorType(np.float32),
+                ],
+            ),
+            placements.CLIENTS,
+        )
+    )
+    def aggregator_computation(unfinalized_metrics):
+      return polymorphic_aggregator_computation(unfinalized_metrics)
+
     local_metrics_at_clients = [_UNUSED_UNFINALIZED_METRICS] * num_clients
     aggregated_metrics = aggregator_computation(local_metrics_at_clients)
     tf.nest.map_structure(

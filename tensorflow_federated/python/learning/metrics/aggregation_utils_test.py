@@ -68,7 +68,7 @@ class CheckUnfinalizedMetricsTypeTest(tf.test.TestCase, parameterized.TestCase):
     local_unfianlized_metrics = collections.OrderedDict(
         num_examples=1, mean=[2.0, 1.0]
     )
-    aggregation_utils.check_local_unfinalzied_metrics_type(
+    aggregation_utils.check_local_unfinalized_metrics_type(
         type_conversions.infer_type(local_unfianlized_metrics)
     )
 
@@ -93,7 +93,7 @@ class CheckUnfinalizedMetricsTypeTest(tf.test.TestCase, parameterized.TestCase):
   )
   def test_invalid_type_raises(self, unfinalized_metrics_type, expected_regex):
     with self.assertRaisesRegex(TypeError, expected_regex):
-      aggregation_utils.check_local_unfinalzied_metrics_type(
+      aggregation_utils.check_local_unfinalized_metrics_type(
           unfinalized_metrics_type
       )
 

@@ -88,7 +88,7 @@ def check_metric_finalizers(
       py_typecheck.check_type(key, str, f'metric_finalizers key {key}')
 
 
-def check_local_unfinalzied_metrics_type(
+def check_local_unfinalized_metrics_type(
     local_unfinalized_metrics_type: computation_types.StructWithPythonType,
 ):
   """Validates `local_unfinalized_metrics_type` raising error on failure.

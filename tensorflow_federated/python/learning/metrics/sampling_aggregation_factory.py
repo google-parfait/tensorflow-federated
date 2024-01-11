@@ -139,7 +139,7 @@ class FinalizeThenSampleFactory(factory.UnweightedAggregationFactory):
         unfinalized metrics mismatch the type of local unfinalized metrics.
     """
     aggregation_utils.check_metric_finalizers(metric_finalizers)
-    aggregation_utils.check_local_unfinalzied_metrics_type(
+    aggregation_utils.check_local_unfinalized_metrics_type(
         local_unfinalized_metrics_type
     )
     if not callable(metric_finalizers):

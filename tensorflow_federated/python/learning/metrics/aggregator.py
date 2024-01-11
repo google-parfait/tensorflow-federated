@@ -22,7 +22,6 @@ from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import iterative_process
 from tensorflow_federated.python.learning.metrics import aggregation_utils
 from tensorflow_federated.python.learning.metrics import sampling_aggregation_factory
@@ -34,23 +33,28 @@ class InternalError(Exception):
   """An error internal to TFF. File a bug report."""
 
 
-# TODO: b/319261270 - Update documentation to reference polymorphism and
-# best practices around using such computations.
 def sum_then_finalize(
     metric_finalizers: Union[
         types.MetricFinalizersType,
         types.FunctionalMetricFinalizersType,
     ],
-    local_unfinalized_metrics_type: computation_types.StructWithPythonType,
+    local_unfinalized_metrics_type: Optional[
+        computation_types.StructWithPythonType
+    ] = None,
 ) -> computation_base.Computation:
   """Creates a TFF computation that aggregates metrics via `sum_then_finalize`.
 
   The returned federated TFF computation is a polymorphic computation that
   accepts unfinalized client metrics, and returns finalized, summed metrics
-  placed at the server.
+  placed at the server. Invoking the polymorphic computation will initiate
+  tracing on the argument and will raise a `ValueError` if the keys (i.e.,
+  metric names) in `metric_finalizers` are not the same as those of the argument
+  the polymorphic method is invoked on.
 
-  Note that invoking this computation directly may require first wrapping it
-  in a concrete, non-polymorphic `tff.Computation`.
+  Note: invoking this computation outside of a federated context (a method
+  decorated with `tff.federated_computation`) will require first wrapping it in
+  a concrete, non-polymorphic `tff.Computation` with appropriate federated
+  types.
 
   Args:
     metric_finalizers: Either the result of
@@ -61,12 +65,8 @@ def sum_then_finalize(
       `tff.learning.models.VariableModel.report_local_unfinalized_metrics`. If
       the later, the callable must compute over the same keyspace of the result
       returned by `tff.learning.models.FunctionalModel.update_metrics_state`.
-    local_unfinalized_metrics_type: A `tff.types.StructWithPythonType` (with
-      `OrderedDict` as the Python container) of a client's local unfinalized
-      metrics. Let `local_unfinalized_metrics` be the output of
-      `tff.learning.models.VariableModel.report_local_unfinalized_metrics()`.
-      Its type can be obtained by
-      `tff.types.infer_unplaced_type(local_unfinalized_metrics)`.
+    local_unfinalized_metrics_type: Unused, will be removed from the API in the
+      future.
 
   Returns:
     A federated TFF computation that sums the unfinalized metrics from
@@ -74,23 +74,26 @@ def sum_then_finalize(
 
   Raises:
     TypeError: If the inputs are of the wrong types.
-    ValueError: If the keys (i.e., metric names) in `metric_finalizers` are not
-      the same as those expected by `local_unfinalized_metrics_type`.
   """
+  # TODO: b/319261270 - delete the local_unfinalized_metrics_type entirely.
+  del local_unfinalized_metrics_type  # Unused.
   aggregation_utils.check_metric_finalizers(metric_finalizers)
-  aggregation_utils.check_local_unfinalzied_metrics_type(
-      local_unfinalized_metrics_type
-  )
-  if not callable(metric_finalizers):
-    # If we have a FunctionalMetricsFinalizerType it's a function that can only
-    # we checked when we call it, as users may have used *args/**kwargs
-    # arguments or otherwise making it hard to deduce the type.
-    aggregation_utils.check_finalizers_matches_unfinalized_metrics(
-        metric_finalizers, local_unfinalized_metrics_type
-    )
 
   @federated_computation.federated_computation
   def aggregator_computation(client_local_unfinalized_metrics):
+    local_unfinalized_metrics_type = (
+        client_local_unfinalized_metrics.type_signature.member
+    )
+    aggregation_utils.check_local_unfinalized_metrics_type(
+        local_unfinalized_metrics_type
+    )
+    if not callable(metric_finalizers):
+      # If we have a FunctionalMetricsFinalizerType it's a function that can
+      # only we checked when we call it, as users may have used *args/**kwargs
+      # arguments or otherwise making it hard to deduce the type.
+      aggregation_utils.check_finalizers_matches_unfinalized_metrics(
+          metric_finalizers, local_unfinalized_metrics_type
+      )
     unfinalized_metrics_sum = intrinsics.federated_sum(
         client_local_unfinalized_metrics
     )
@@ -129,23 +132,30 @@ def secure_sum_then_finalize(
         types.MetricFinalizersType,
         types.FunctionalMetricFinalizersType,
     ],
-    local_unfinalized_metrics_type: computation_types.StructWithPythonType,
+    local_unfinalized_metrics_type: Optional[
+        computation_types.StructWithPythonType
+    ] = None,
     metric_value_ranges: Optional[
         sum_aggregation_factory.UserMetricValueRangeDict
     ] = None,
 ) -> computation_base.Computation:
   """Creates a TFF computation that aggregates metrics using secure summation.
 
-  The returned federated TFF computation has the following type signature:
+  The returned federated TFF computation is a polymorphic computation that
+  accepts unfinalized client metrics, and returns finalized, summed metrics
+  placed at the server. Invoking the polymorphic computation will initiate
+  tracing on the argument and will raise a `ValueError` if the keys (i.e.,
+  metric names) in `metric_finalizers` are not the same as those of the argument
+  the polymorphic method is invoked on.
 
-  ```
-  (local_unfinalized_metrics@CLIENTS ->
-   <aggregated_metrics@SERVER, secure_sum_measurements@SERVER)
-  ```
+  Note: invoking this computation outside of a federated context (a method
+  decorated with `tff.federated_computation`) will require first wrapping it in
+  a concrete, non-polymorphic `tff.Computation` with appropriate federated
+  types.
 
-  where the input is given by
-  `tff.learning.models.VariableModel.report_local_unfinalized_metrics()` at
-  `CLIENTS`, and the
+  The computation is intended to be invoked on the output of
+  `tff.learning.models.VariableModel.report_local_unfinalized_metrics()` when
+  placed at `CLIENTS`, and the
   first output (`aggregated_metrics`) is computed by first securely summing the
   unfinalized metrics from `CLIENTS`, followed by applying the finalizers at
   `SERVER`. The second output (`secure_sum_measurements`) is an `OrderedDict`
@@ -158,23 +168,19 @@ def secure_sum_then_finalize(
 
   Since secure summation works in fixed-point arithmetic space, floating point
   numbers must be encoding using integer quantization. By default, each tensor
-  in `local_unfinalized_metrics_type` will be clipped to `[0, 2**20 - 1]` and
-  encoded to integers inside `tff.aggregators.SecureSumFactory`. Callers can
+  in from the clients unfinalized metrics will be clipped to `[0, 2**20 - 1]`
+  and encoded to integers inside `tff.aggregators.SecureSumFactory`. Callers can
   change this range by setting `metric_value_ranges`, which may be a partial
-  tree matching the structure of `local_unfinalized_metrics_type`.
+  tree matching the structure of the argument to `metrics_finalizers`.
 
   Example partial value range specification:
 
   >>> finalizers = ...
-  >>> metrics_type = tff.to_type(collections.OrderedDict(
-      a=tff.types.TensorType(np.int32),
-      b=tff.types.TensorType(np.float32),
-      c=[tff.types.TensorType(np.float32), tff.types.TensorType(np.float32)])
   >>> value_ranges = collections.OrderedDict(
       b=(0.0, 1.0),
       c=[None, (0.0, 1.0)])
   >>> aggregator = tff.learning.metrics.secure_sum_then_finalize(
-      finalizers, metrics_type, value_ranges)
+      finalizers, value_ranges)
 
   This sets the range of the *second* tensor of `b` in the dictionary, using the
   range for the first tensor, and the `a` tensor.
@@ -188,21 +194,16 @@ def secure_sum_then_finalize(
       `tff.learning.models.VariableModel.report_local_unfinalized_metrics`. If
       the later, the callable must compute over the same keyspace of the result
       returned by `tff.learning.models.FunctionalModel.update_metrics_state`.
-    local_unfinalized_metrics_type: A `tff.types.StructWithPythonType` (with
-      `OrderedDict` as the Python container) of a client's local unfinalized
-      metrics. Let `local_unfinalized_metrics` be the output of
-      `tff.learning.models.VariableModel.report_local_unfinalized_metrics()`.
-      Its type can be obtained by
-      `tff.types.infer_unplaced_type(local_unfinalized_metrics)`.
+    local_unfinalized_metrics_type: Unused, will be removed from the API in the
+      future.
     metric_value_ranges: A `collections.OrderedDict` that matches the structure
-      of `local_unfinalized_metrics_type` (a value for each
-      `tff.types.TensorType` in the type tree). Each leaf in the tree should
-      have a 2-tuple that defines the range of expected values for that variable
-      in the metric. If the entire structure is `None`, a default range of
-      `[0.0, 2.0**20 - 1]` will be applied to all variables. Each leaf may also
-      be `None`, which will also get the default range; allowing partial user
-      sepcialization. At runtime, values that fall outside the ranges specified
-      at the leaves, those values will be clipped to within the range.
+      of the input arguments of `metric_finalizers`. Each leaf in the tree
+      should have a 2-tuple that defines the range of expected values for that
+      variable in the metric. If the entire structure is `None`, a default range
+      of `[0.0, 2.0**20 - 1]` will be applied to all variables. Each leaf may
+      also be `None`, which will also get the default range; allowing partial
+      user sepcialization. At runtime, values that fall outside the ranges
+      specified at the leaves, those values will be clipped to within the range.
 
   Returns:
     A federated TFF computation that securely sums the unfinalized metrics from
@@ -210,76 +211,74 @@ def secure_sum_then_finalize(
 
   Raises:
     TypeError: If the inputs are of the wrong types.
-    ValueError: If the keys (i.e., metric names) in `metric_finalizers` are not
-      the same as those expected by `local_unfinalized_metrics_type`.
   """
+  # TODO: b/319261270 - delete the local_unfinalized_metrics_type entirely.
+  del local_unfinalized_metrics_type  # Unused.
   aggregation_utils.check_metric_finalizers(metric_finalizers)
-  aggregation_utils.check_local_unfinalzied_metrics_type(
-      local_unfinalized_metrics_type
-  )
-  if not callable(metric_finalizers):
-    # If we have a FunctionalMetricsFinalizerType it's a function that can only
-    # we checked when we call it, as users may have used *args/**kwargs
-    # arguments or otherwise making it hard to deduce the type.
-    aggregation_utils.check_finalizers_matches_unfinalized_metrics(
-        metric_finalizers, local_unfinalized_metrics_type
-    )
 
-  default_metric_value_ranges = (
-      sum_aggregation_factory.create_default_secure_sum_quantization_ranges(
-          local_unfinalized_metrics_type,
-          lower_bound=DEFAULT_SECURE_LOWER_BOUND,
-          upper_bound=DEFAULT_SECURE_UPPER_BOUND,
-          use_auto_tuned_bounds_for_float_values=False,
+  def _create_secure_sum_process(
+      local_unfinalized_metrics_type, metric_value_ranges=metric_value_ranges
+  ):
+    aggregation_utils.check_local_unfinalized_metrics_type(
+        local_unfinalized_metrics_type
+    )
+    if not callable(metric_finalizers):
+      # If we have a FunctionalMetricsFinalizerType it's a function that can
+      # only we checked when we call it, as users may have used *args/**kwargs
+      # arguments or otherwise making it hard to deduce the type.
+      aggregation_utils.check_finalizers_matches_unfinalized_metrics(
+          metric_finalizers, local_unfinalized_metrics_type
       )
-  )
-  try:
-    metric_value_ranges = (
-        sum_aggregation_factory.fill_missing_values_with_defaults(
-            default_metric_value_ranges, metric_value_ranges
+    default_metric_value_ranges = (
+        sum_aggregation_factory.create_default_secure_sum_quantization_ranges(
+            local_unfinalized_metrics_type,
+            lower_bound=DEFAULT_SECURE_LOWER_BOUND,
+            upper_bound=DEFAULT_SECURE_UPPER_BOUND,
+            use_auto_tuned_bounds_for_float_values=False,
         )
     )
-  except TypeError as e:
-    raise TypeError(
-        f'Failed to create encoding value range from: {metric_value_ranges}'
-    ) from e
-
-  # only one inner secure aggregation process will be created for each group.
-  # This is an optimization for computation tracing and compiling, which can be
-  # slow when there are a large number of independent aggregations.
-  secure_sum_factory = sum_aggregation_factory.SecureSumFactory(
-      metric_value_ranges
-  )
-  secure_sum_process = secure_sum_factory.create(local_unfinalized_metrics_type)
-  # Check the secure sum process is stateless.
-  assert not iterative_process.is_stateful(secure_sum_process)
-
-  @federated_computation.federated_computation(
-      computation_types.FederatedType(
-          local_unfinalized_metrics_type, placements.CLIENTS
+    try:
+      metric_value_ranges = (
+          sum_aggregation_factory.fill_missing_values_with_defaults(
+              default_metric_value_ranges, metric_value_ranges
+          )
       )
-  )
+    except TypeError as e:
+      raise TypeError(
+          f'Failed to create encoding value range from: {metric_value_ranges}'
+      ) from e
+
+    # Only one inner secure aggregation process will be created for each group.
+    # This is an optimization for computation tracing and compiling, which can
+    # be slow when there are a large number of independent aggregations.
+    secure_sum_factory = sum_aggregation_factory.SecureSumFactory(
+        metric_value_ranges
+    )
+    secure_sum_process = secure_sum_factory.create(
+        local_unfinalized_metrics_type
+    )
+    # Check the secure sum process is stateless.
+    assert not iterative_process.is_stateful(secure_sum_process)
+    return secure_sum_process
+
+  @federated_computation.federated_computation
   def aggregator_computation(client_local_unfinalized_metrics):
+    secure_sum_process = _create_secure_sum_process(
+        client_local_unfinalized_metrics.type_signature.member
+    )
+
     unused_state = secure_sum_process.initialize()
     output = secure_sum_process.next(
         unused_state, client_local_unfinalized_metrics
     )
 
     unfinalized_metrics = output.result
-    unfinalized_metrics_type = (
-        secure_sum_process.next.type_signature.result.result.member  # pytype: disable=attribute-error
-    )
     # One minor downside of grouping the inner aggregation processes is that the
     # SecAgg measurements (e.g., clipped_count) are computed at a group level
     # (a group means all metric values belonging to the same `factory_key`).
     secure_sum_measurements = output.measurements
-    secure_sum_measurements_type = (
-        secure_sum_process.next.type_signature.result.measurements.member  # pytype: disable=attribute-error
-    )
 
-    @tensorflow_computation.tf_computation(
-        unfinalized_metrics_type, secure_sum_measurements_type
-    )
+    @tensorflow_computation.tf_computation
     def finalizer_computation(unfinalized_metrics, secure_sum_measurements):
       finalized_metrics = collections.OrderedDict(
           secure_sum_measurements=secure_sum_measurements
@@ -305,21 +304,34 @@ def finalize_then_sample(
         types.MetricFinalizersType,
         types.FunctionalMetricFinalizersType,
     ],
-    local_unfinalized_metrics_type: computation_types.StructWithPythonType,
+    local_unfinalized_metrics_type: Optional[
+        computation_types.StructWithPythonType
+    ] = None,
     sample_size: int = 100,
 ) -> computation_base.Computation:
   """Creates a TFF computation to aggregate metrics via `finalize_then_sample`.
 
-  The returned federated TFF computation has the following type signature:
-  `local_unfinalized_metrics@CLIENTS -> aggregated_metrics@SERVER`. The input is
-  given by
-  `tff.learning.models.VariableModel.report_local_unfinalized_metrics()` at
-  `CLIENTS`. The output is computed by first finalizing each client's metrics
-  locally, and then collecting metrics from at most `sample_size` clients at the
-  `SERVER`. If more than `sample_size` clients participating, then `sample_size`
-  clients are sampled (by reservoir sampling algorithm); otherwise, all clients'
-  metrics are collected. Sampling is done in a "per-client" manner, i.e.,
-  a client, once sampled, will contribute all its metrics to the final result.
+  The returned federated TFF computation is a polymorphic computation that
+  accepts unfinalized client metrics, and returns finalized, summed metrics
+  placed at the server. Invoking the polymorphic computation will initiate
+  tracing on the argument and will raise a `ValueError` if the keys (i.e.,
+  metric names) in `metric_finalizers` are not the same as those of the argument
+  the polymorphic method is invoked on.
+
+  Note: invoking this computation outside of a federated context (a method
+  decoratedc with `tff.federated_computation`) will require first wrapping it in
+  a concrete, non-polymorphic `tff.Computation` with appropriate federated
+  types.
+
+  The returned computation is intended to be invoked on the output of
+  `tff.learning.models.VariableModel.report_local_unfinalized_metrics()` when
+  placed at `CLIENTS`. The output is computed by first finalizing each client's
+  metrics locally, and then collecting metrics from at most `sample_size`
+  clients at the `SERVER`. If more than `sample_size` clients participating,
+  then `sample_size` clients are sampled (by reservoir sampling algorithm);
+  otherwise, all clients' metrics are collected. Sampling is done in a
+  "per-client" manner, i.e., a client, once sampled, will contribute all its
+  metrics to the final result.
 
   The collected metrics samples at `SERVER` has the same structure (i.e., same
   keys in a dictionary) as the client's local metrics, except that each leaf
@@ -345,6 +357,7 @@ def finalize_then_sample(
       state = output.state
       sampled_client_metrics = output.metrics['client_work']
     ```
+
   Args:
     metric_finalizers: Either the result of
       `tff.learning.models.VariableModel.metric_finalizers` (an `OrderedDict` of
@@ -354,12 +367,8 @@ def finalize_then_sample(
       `tff.learning.models.VariableModel.report_local_unfinalized_metrics`. If
       the later, the callable must compute over the same keyspace of the result
       returned by `tff.learning.models.FunctionalModel.update_metrics_state`.
-    local_unfinalized_metrics_type: A `tff.types.StructWithPythonType` (with
-      `OrderedDict` as the Python container) of a client's local unfinalized
-      metrics. Let `local_unfinalized_metrics` be the output of
-      `tff.learning.models.VariableModel.report_local_unfinalized_metrics()`.
-      Its type can be obtained by
-      `tff.types.infer_unplaced_type(local_unfinalized_metrics)`.
+    local_unfinalized_metrics_type: Unused, will be removed from the API in the
+      future.
     sample_size: An integer specifying the number of clients sampled by the
       reservoir sampling algorithm. Metrics from the sampled clients are
       collected at the server. If the total number of participating clients are
@@ -372,37 +381,36 @@ def finalize_then_sample(
 
   Raises:
     TypeError: If the inputs are of the wrong types.
-    ValueError: If the keys (i.e., metric names) in `metric_finalizers` are not
-      the same as those expected by `local_unfinalized_metrics_type`.
     ValueError: If `sample_size` is not positive.
   """
+  # TODO: b/319261270 - delete the local_unfinalized_metrics_type entirely.
+  del local_unfinalized_metrics_type  # Unused.
   aggregation_utils.check_metric_finalizers(metric_finalizers)
-  aggregation_utils.check_local_unfinalzied_metrics_type(
-      local_unfinalized_metrics_type
-  )
-  if not callable(metric_finalizers):
-    # If we have a FunctionalMetricsFinalizerType it's a function that can only
-    # we checked when we call it, as users may have used *args/**kwargs
-    # arguments or otherwise making it hard to deduce the type.
-    aggregation_utils.check_finalizers_matches_unfinalized_metrics(
-        metric_finalizers, local_unfinalized_metrics_type
-    )
-  py_typecheck.check_type(sample_size, int, 'sample_size')
-  if sample_size <= 0:
-    raise ValueError('sample_size must be positive.')
-  sample_process = sampling_aggregation_factory.FinalizeThenSampleFactory(
-      sample_size=sample_size
-  ).create(
-      metric_finalizers=metric_finalizers,
-      local_unfinalized_metrics_type=local_unfinalized_metrics_type,
-  )
 
-  @federated_computation.federated_computation(
-      computation_types.FederatedType(
-          local_unfinalized_metrics_type, placements.CLIENTS
-      )
-  )
+  @federated_computation.federated_computation
   def aggregator_computation(client_local_unfinalized_metrics):
+    local_unfinalized_metrics_type = (
+        client_local_unfinalized_metrics.type_signature.member
+    )
+    aggregation_utils.check_local_unfinalized_metrics_type(
+        local_unfinalized_metrics_type
+    )
+    if not callable(metric_finalizers):
+      # If we have a FunctionalMetricsFinalizerType it's a function that can
+      # only we checked when we call it, as users may have used *args/**kwargs
+      # arguments or otherwise making it hard to deduce the type.
+      aggregation_utils.check_finalizers_matches_unfinalized_metrics(
+          metric_finalizers, local_unfinalized_metrics_type
+      )
+    py_typecheck.check_type(sample_size, int, 'sample_size')
+    if sample_size <= 0:
+      raise ValueError('sample_size must be positive.')
+    sample_process = sampling_aggregation_factory.FinalizeThenSampleFactory(
+        sample_size=sample_size
+    ).create(
+        metric_finalizers=metric_finalizers,
+        local_unfinalized_metrics_type=local_unfinalized_metrics_type,
+    )
     unused_state = sample_process.initialize()
     output = sample_process.next(unused_state, client_local_unfinalized_metrics)
     # `output.result` is a tuple (current_round_samples, total_rounds_samples).
