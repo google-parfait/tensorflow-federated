@@ -27,6 +27,7 @@ from tensorflow_federated.python.core.impl.federated_context import federated_co
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
+from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.templates import iterative_process
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.core.test import static_assert
@@ -87,13 +88,10 @@ class MimeLiteClientWorkComputationTest(
         ),
         placements.CLIENTS,
     )
-    expected_optimizer_state_type = computation_types.StructWithPythonType(
-        collections.OrderedDict(
-            learning_rate=np.float32,
-            momentum=np.float32,
-            accumulator=mw_type.trainable,
-        ),
-        collections.OrderedDict,
+    expected_optimizer_state_type = type_conversions.infer_type(
+        optimizer.initialize(
+            type_conversions.type_to_tf_tensor_specs(mw_type.trainable)
+        )
     )
     expected_aggregator_type = computation_types.to_type(
         collections.OrderedDict(value_sum_process=(), weight_sum_process=())
@@ -234,15 +232,21 @@ class MimeLiteClientWorkExecutionTest(tf.test.TestCase, parameterized.TestCase):
 
   @tensorflow_test_utils.skip_test_for_multi_gpu
   def test_custom_metrics_aggregator(self):
+    def sum_then_finalize_then_times_two(
+        metric_finalizers, local_unfinalized_metrics_type
+    ):
 
-    def sum_then_finalize_then_times_two(metric_finalizers):
-      @federated_computation.federated_computation
+      @federated_computation.federated_computation(
+          computation_types.FederatedType(
+              local_unfinalized_metrics_type, placements.CLIENTS
+          )
+      )
       def aggregation_computation(client_local_unfinalized_metrics):
         unfinalized_metrics_sum = intrinsics.federated_sum(
             client_local_unfinalized_metrics
         )
 
-        @tensorflow_computation.tf_computation
+        @tensorflow_computation.tf_computation(local_unfinalized_metrics_type)
         def finalizer_computation(unfinalized_metrics):
           finalized_metrics = collections.OrderedDict()
           for metric_name, metric_finalizer in metric_finalizers.items():
@@ -440,8 +444,8 @@ class MimeLiteTest(tf.test.TestCase, parameterized.TestCase):
       )
 
   def test_raises_on_invalid_distributor(self):
-    model_weights_type = model_weights.weights_type_from_model(
-        model_examples.LinearRegression
+    model_weights_type = type_conversions.infer_type(
+        model_weights.ModelWeights.from_model(model_examples.LinearRegression())
     )
     distributor = distributors.build_broadcast_process(model_weights_type)
     invalid_distributor = iterative_process.IterativeProcess(
@@ -597,8 +601,8 @@ class ScheduledMimeLiteTest(tf.test.TestCase):
       )
 
   def test_raises_on_invalid_distributor(self):
-    model_weights_type = model_weights.weights_type_from_model(
-        model_examples.LinearRegression
+    model_weights_type = type_conversions.infer_type(
+        model_weights.ModelWeights.from_model(model_examples.LinearRegression())
     )
     distributor = distributors.build_broadcast_process(model_weights_type)
     invalid_distributor = iterative_process.IterativeProcess(

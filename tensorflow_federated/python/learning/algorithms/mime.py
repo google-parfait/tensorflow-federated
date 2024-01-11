@@ -238,8 +238,12 @@ def _build_mime_lite_client_work(
     # Wrap model construction in a graph to avoid polluting the global context
     # with variables created for this model.
     model = model_fn()
+    unfinalized_metrics_type = type_conversions.infer_type(
+        model.report_local_unfinalized_metrics()
+    )
     metrics_aggregation_fn = metrics_aggregator(
         model.metric_finalizers(),
+        unfinalized_metrics_type,  # pytype: disable=wrong-arg-types
     )
   element_type = computation_types.tensorflow_to_type(model.input_spec)
   data_type = computation_types.SequenceType(element_type)
@@ -522,18 +526,12 @@ def _build_mime_lite_functional_client_work(
 
   element_type = computation_types.tensorflow_to_type(model.input_spec)
   data_type = computation_types.SequenceType(element_type)
-
-  def ndarray_to_tensorspec(ndarray):
-    return tf.TensorSpec(
-        shape=ndarray.shape, dtype=tf.dtypes.as_dtype(ndarray.dtype)
-    )
-
-  # Wrap in a `ModelWeights` structure that is required by the `finalizer.`
-  weights_spec = model_weights_lib.ModelWeights(
-      tuple(ndarray_to_tensorspec(w) for w in model.initial_weights[0]),
-      tuple(ndarray_to_tensorspec(w) for w in model.initial_weights[1]),
+  trainable_weights, non_trainable_weights = model.initial_weights
+  weights_type = type_conversions.infer_type(
+      model_weights_lib.ModelWeights(
+          tuple(trainable_weights), tuple(non_trainable_weights)
+      )
   )
-  weights_type = computation_types.tensorflow_to_type(weights_spec)
   weight_tensor_specs = type_conversions.type_to_tf_tensor_specs(weights_type)
 
   full_gradient_aggregator = full_gradient_aggregator.create(

@@ -28,6 +28,7 @@ from tensorflow_federated.python.core.impl.federated_context import federated_co
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
+from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import client_weight_lib
 from tensorflow_federated.python.learning.algorithms import fed_avg
@@ -93,8 +94,12 @@ def build_scheduled_client_work(
     # with variables created for this model.
     whimsy_model = model_fn()
     whimsy_optimizer = optimizer_fn(1.0)
+    unfinalized_metrics_type = type_conversions.infer_type(
+        whimsy_model.report_local_unfinalized_metrics()
+    )
     metrics_aggregation_fn = metrics_aggregator(
         whimsy_model.metric_finalizers(),
+        unfinalized_metrics_type,  # pytype: disable=wrong-arg-types
     )
   element_type = computation_types.tensorflow_to_type(whimsy_model.input_spec)
   data_type = computation_types.SequenceType(element_type)

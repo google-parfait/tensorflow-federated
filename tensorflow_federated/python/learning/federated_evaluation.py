@@ -26,6 +26,7 @@ from tensorflow_federated.python.core.impl.federated_context import federated_co
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
+from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.templates import iterative_process
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import dataset_reduce
@@ -35,8 +36,15 @@ from tensorflow_federated.python.learning.models import functional
 from tensorflow_federated.python.learning.models import model_weights as model_weights_lib
 from tensorflow_federated.python.learning.models import variable
 
-
+# Convenience aliases.
 _SequenceType = computation_types.SequenceType
+_MetricsAggregatorFirstArgType = Union[
+    types.MetricFinalizersType, types.FunctionalMetricFinalizersType
+]
+_MetricsAggregator = Callable[
+    [_MetricsAggregatorFirstArgType, computation_types.StructWithPythonType],
+    computation_base.Computation,
+]
 
 
 def build_local_evaluation(
@@ -192,7 +200,7 @@ def build_federated_evaluation(
         Callable[[], variable.VariableModel], functional.FunctionalModel
     ],
     broadcast_process: Optional[measured_process.MeasuredProcess] = None,
-    metrics_aggregator: Optional[types.MetricsAggregatorType] = None,
+    metrics_aggregator: Optional[_MetricsAggregator] = None,
     use_experimental_simulation_loop: bool = False,
 ) -> computation_base.Computation:
   """Builds the TFF computation for federated evaluation of the given model.
@@ -270,7 +278,7 @@ def _build_federated_evaluation(
     *,
     model_fn: Callable[[], variable.VariableModel],
     broadcast_process: Optional[measured_process.MeasuredProcess],
-    metrics_aggregator: types.MetricsAggregatorType,
+    metrics_aggregator: _MetricsAggregator,
     use_experimental_simulation_loop: bool,
 ) -> computation_base.Computation:
   """Builds a federated evaluation computation for a `tff.learning.models.VariableModel`."""
@@ -282,8 +290,13 @@ def _build_federated_evaluation(
     model = model_fn()
     model_weights_type = model_weights_lib.weights_type_from_model(model)
     batch_type = computation_types.tensorflow_to_type(model.input_spec)
+
+    unfinalized_metrics_type = type_conversions.infer_type(
+        model.report_local_unfinalized_metrics()
+    )
     metrics_aggregation_computation = metrics_aggregator(
         model.metric_finalizers(),
+        unfinalized_metrics_type,  # pytype: disable=wrong-arg-types
     )
 
   local_eval = build_local_evaluation(
@@ -329,7 +342,7 @@ def _build_functional_federated_evaluation(
     *,
     model: functional.FunctionalModel,
     broadcast_process: Optional[measured_process.MeasuredProcess],
-    metrics_aggregator: types.MetricsAggregatorType,
+    metrics_aggregator: _MetricsAggregator,
 ) -> computation_base.Computation:
   """Builds a federated evaluation computation for a functional model."""
 
