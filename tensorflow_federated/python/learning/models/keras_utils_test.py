@@ -29,7 +29,6 @@ from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
-from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.learning.metrics import aggregator
 from tensorflow_federated.python.learning.metrics import counters
 from tensorflow_federated.python.learning.models import keras_utils
@@ -832,13 +831,17 @@ class KerasUtilsTest(tf.test.TestCase, parameterized.TestCase):
     )
     tff_model.forward_pass(batch_input)
     local_unfinalized_metrics = tff_model.report_local_unfinalized_metrics()
+    local_unfinalized_metrics_type = collections.OrderedDict(
+        num_batches=[np.int64],
+        num_examples=[np.int64],
+        mean_absolute_error=[np.float32, np.float32],
+        loss=[np.float32, np.float32],
+    )
 
     # Creating a TFF computation is needed because the `tf.function`-decorated
     # `metric_finalizers` will create `tf.Variable`s on the non-first call (and
     # hence, will throw an error if it is directly invoked).
-    @tensorflow_computation.tf_computation(
-        type_conversions.infer_type(local_unfinalized_metrics)
-    )
+    @tensorflow_computation.tf_computation(local_unfinalized_metrics_type)
     def finalizer_computation(unfinalized_metrics):
       finalized_metrics = collections.OrderedDict()
       for metric_name, finalizer in tff_model.metric_finalizers().items():
@@ -1317,8 +1320,11 @@ class KerasUtilsTest(tf.test.TestCase, parameterized.TestCase):
         metrics=[CustomCounter(arg1=1)],
     )
     metrics_aggregator = aggregator.sum_then_finalize
-    unfinalized_metrics_type = type_conversions.infer_type(
-        tff_model.report_local_unfinalized_metrics()
+    unfinalized_metrics_type = collections.OrderedDict(
+        new_counter=[np.int64],
+        loss=[np.float32, np.float32],
+        num_examples=[np.int64],
+        num_batches=[np.int64],
     )
 
     federated_metrics_aggregator = metrics_aggregator(
@@ -1362,8 +1368,11 @@ class KerasUtilsTest(tf.test.TestCase, parameterized.TestCase):
         metrics=[CustomCounter(arg1=1)],
     )
     metrics_aggregator = aggregator.sum_then_finalize
-    unfinalized_metrics_type = type_conversions.infer_type(
-        tff_model.report_local_unfinalized_metrics()
+    unfinalized_metrics_type = collections.OrderedDict(
+        new_counter=[np.int64],
+        loss=[np.float32, np.float32],
+        num_examples=[np.int64],
+        num_batches=[np.int64],
     )
     federated_metrics_aggregation = metrics_aggregator(
         tff_model.metric_finalizers(), unfinalized_metrics_type

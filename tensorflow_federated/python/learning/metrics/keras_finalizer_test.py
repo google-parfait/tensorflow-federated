@@ -19,7 +19,6 @@ import tensorflow as tf
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.learning.metrics import keras_finalizer
 
 
@@ -173,34 +172,39 @@ class FinalizerTest(parameterized.TestCase, tf.test.TestCase):
       wrap_tf_function_in_tff_tf_computation(invalid_metric, unused_type)
 
   @parameterized.named_parameters(
-      ('not_a_list', tf.constant(1.0), TypeError, 'Expected list'),
+      (
+          'not_a_list',
+          np.float32,
+          TypeError,
+          'Expected list',
+      ),
       (
           'not_a_list_of_tensors',
-          [tf.constant(1.0), [tf.constant(1.0)]],
+          [np.float32, [np.float32]],
           TypeError,
           'found list',
       ),
       (
           'unmatched_length',
-          [tf.constant(1.0)],
+          [np.float32],
           ValueError,
           'found a list of length 1',
       ),
       (
           'unmatched_shape',
-          [tf.constant([1.0, 2.0]), tf.constant(1.0)],
+          [computation_types.TensorType(np.float32, shape=(2,)), np.float32],
           ValueError,
           r'found a `tf.Tensor` of shape \(2,\) and dtype tf.float32',
       ),
       (
           'unmatched_dtype',
-          [tf.constant(1, dtype=tf.int32), tf.constant(1.0)],
+          [np.int32, np.float32],
           ValueError,
           r'found a `tf.Tensor` of shape \(\) and dtype tf.int32',
       ),
   )
   def test_keras_metric_finalizer_fails_with_unmatched_unfinalized_metric_values(
-      self, invalid_unfinalized_metric_values, error_type, error_message
+      self, invalid_unfinalized_metric_type, error_type, error_message
   ):
     # The expected unfinalized metric values for `SparseCategoricalAccuracy` is
     # a list of two `tf.Tensor`s and each has shape () and dtype tf.float32.
@@ -208,7 +212,7 @@ class FinalizerTest(parameterized.TestCase, tf.test.TestCase):
     with self.assertRaisesRegex(error_type, error_message):
       wrap_tf_function_in_tff_tf_computation(
           metric,
-          type_conversions.infer_type(invalid_unfinalized_metric_values),
+          invalid_unfinalized_metric_type,
       )
 
 
