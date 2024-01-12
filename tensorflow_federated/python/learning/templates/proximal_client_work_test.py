@@ -298,21 +298,15 @@ class ProximalClientWorkExecutionTest(tf.test.TestCase, parameterized.TestCase):
     )
 
   def test_custom_metrics_aggregator(self):
-    def sum_then_finalize_then_times_two(
-        metric_finalizers, local_unfinalized_metrics_type
-    ):
 
-      @federated_computation.federated_computation(
-          computation_types.FederatedType(
-              local_unfinalized_metrics_type, placements.CLIENTS
-          )
-      )
+    def sum_then_finalize_then_times_two(metric_finalizers):
+      @federated_computation.federated_computation
       def aggregation_computation(client_local_unfinalized_metrics):
         unfinalized_metrics_sum = intrinsics.federated_sum(
             client_local_unfinalized_metrics
         )
 
-        @tensorflow_computation.tf_computation(local_unfinalized_metrics_type)
+        @tensorflow_computation.tf_computation
         def finalizer_computation(unfinalized_metrics):
           finalized_metrics = collections.OrderedDict()
           for metric_name, metric_finalizer in metric_finalizers.items():
