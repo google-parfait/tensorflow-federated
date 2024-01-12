@@ -208,8 +208,8 @@ class FileProgramStateManager(
 
     def _deserialize_as(structure, value):
       if isinstance(structure, serializable.Serializable):
-        structure_type = type(structure)
-        value = structure_type.from_bytes(value)
+        serializable_cls = type(structure)
+        value = serializable_cls.from_bytes(value)
       return value
 
     deserialized_state = structure_utils.map_structure(

@@ -64,6 +64,10 @@ class MemoryReleaseManager(
     materialized_value = await value_reference.materialize_value(value)
     self._values[key] = materialized_value
 
+  def remove_all(self) -> None:
+    """Removes all program states."""
+    self._values = collections.OrderedDict()
+
   def values(
       self,
   ) -> collections.OrderedDict[Hashable, release_manager.ReleasableStructure]:

@@ -33,6 +33,7 @@ py_test(
     name = "program_logic_test",
     srcs = ["program_logic_test.py"],
     deps = [
+        ":computations",
         ":program_logic",
         "//tensorflow_federated",
     ],

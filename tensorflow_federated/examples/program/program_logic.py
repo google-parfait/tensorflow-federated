@@ -328,10 +328,12 @@ class _ProgramState(NamedTuple):
   Attributes:
     state: The server state produced at `round_num`.
     round_num: The training round.
+    iterator: The training `tff.program.FederatedDataSourceIterator`.
   """
 
   state: object
   round_num: int
+  iterator: tff.program.FederatedDataSourceIterator
 
 
 async def train_federated_model(
@@ -440,14 +442,21 @@ async def train_federated_model(
       program_state_manager,
   )
 
-  initial_state = initialize()
+  # Initialize the inputs of the program logic.
+  state = initialize()
+  start_round = 1
+  train_data_iterator = train_data_source.iterator()
 
   # Try to load the latest program state. If the program logic failed on a
   # previous run, this program state can be used to restore the execution of
   # this program logic and skip unnecessary steps.
   if program_state_manager is not None:
-    initial_state = await tff.program.materialize_value(initial_state)
-    structure = _ProgramState(initial_state, round_num=0)
+    state = await tff.program.materialize_value(state)
+    structure = _ProgramState(
+        state=state,
+        round_num=0,
+        iterator=train_data_iterator,
+    )
     program_state, version = await program_state_manager.load_latest(structure)
 
     # TODO: b/271445312 - Cast `program_state` to `_ProgramState`. `TypeVar`s
@@ -457,14 +466,12 @@ async def train_federated_model(
     program_state = None
     version = 0
 
-  # Assign the inputs to the program logic using the loaded program state if
-  # available or the initialized state.
+  # Assign the inputs of the program logic using the loaded program state if
+  # available.
   if program_state is not None:
     state = program_state.state
     start_round = program_state.round_num + 1
-  else:
-    state = initial_state
-    start_round = 1
+    train_data_iterator = program_state.iterator
 
   # Construct a async context manager to group and run tasks concurrently.
   # Program logic will release values and save program state, these functions
@@ -472,9 +479,6 @@ async def train_federated_model(
   # schedule these functions differently using
   # [asyncio](https://docs.python.org/3/library/asyncio.html).
   async with _TaskGroup() as task_group:
-    # Construct an iterator from the `train_data_source` which returns client
-    # data used during training.
-    train_data_iterator = train_data_source.iterator()
 
     # Train `state` for some number of rounds. Both `state` and `start_round`
     # are inputs to this loop and are saved using the `program_state_manager`.
@@ -494,7 +498,11 @@ async def train_federated_model(
 
       # Save the current program state.
       if program_state_manager is not None:
-        program_state = _ProgramState(state, round_num)
+        program_state = _ProgramState(
+            state=state,
+            round_num=round_num,
+            iterator=train_data_iterator,
+        )
         version = version + 1
         task_group.create_task(
             program_state_manager.save(program_state, version)

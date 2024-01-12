@@ -21,7 +21,6 @@ import numpy as np
 import tensorflow as tf
 import tree
 
-from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.program import memory_release_manager
 from tensorflow_federated.python.program import program_test_utils
 
@@ -198,15 +197,28 @@ class MemoryReleaseManagerTest(
     with self.assertRaises(TypeError):
       await release_mngr.release(value, key=key)
 
+  async def test_remove_all_with_no_values(self):
+    release_mngr = memory_release_manager.MemoryReleaseManager()
+
+    release_mngr.remove_all()
+
+    self.assertEqual(release_mngr._values, {})
+
+  async def test_remove_all_with_values(self):
+    release_mngr = memory_release_manager.MemoryReleaseManager()
+    release_mngr._values = collections.OrderedDict([(i, i) for i in range(3)])
+
+    release_mngr.remove_all()
+
+    self.assertEqual(release_mngr._values, {})
+
   @parameterized.named_parameters(
       ('0', 0),
       ('1', 1),
       ('10', 10),
   )
   def test_values_returns_values(self, count):
-    expected_values = collections.OrderedDict(
-        [(i, (i, computation_types.TensorType(np.int32))) for i in range(count)]
-    )
+    expected_values = collections.OrderedDict([(i, i) for i in range(count)])
     release_mngr = memory_release_manager.MemoryReleaseManager()
     release_mngr._values = expected_values
 

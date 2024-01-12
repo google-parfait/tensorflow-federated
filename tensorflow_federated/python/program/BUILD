@@ -220,7 +220,6 @@ py_test(
     deps = [
         ":memory_release_manager",
         ":program_test_utils",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
     ],
 )
 

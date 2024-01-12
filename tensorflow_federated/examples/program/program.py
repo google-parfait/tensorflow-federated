@@ -85,8 +85,7 @@ def main(argv: Sequence[str]) -> None:
   tff.framework.set_default_context(context)
 
   # Create data sources that are compatible with the context and computations.
-  to_int32 = lambda x: tf.cast(x, tf.int32)
-  datasets = [tf.data.Dataset.range(10).map(to_int32)] * 3
+  datasets = [tf.data.Dataset.range(10, output_type=tf.int32)] * 3
   train_data_source = tff.program.DatasetDataSource(datasets)
   evaluation_data_source = tff.program.DatasetDataSource(datasets)
 

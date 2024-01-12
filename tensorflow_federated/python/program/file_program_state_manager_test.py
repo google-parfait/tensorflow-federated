@@ -689,7 +689,7 @@ class FileProgramStateManagerRemoveAllTest(
     absltest.TestCase, unittest.IsolatedAsyncioTestCase
 ):
 
-  async def test_remove_all_with_no_program_state(self):
+  async def test_noops_with_no_program_state(self):
     root_dir = self.create_tempdir()
     program_state_mngr = file_program_state_manager.FileProgramStateManager(
         root_dir
@@ -697,9 +697,9 @@ class FileProgramStateManagerRemoveAllTest(
 
     await program_state_mngr.remove_all()
 
-    self.assertCountEqual(os.listdir(root_dir), [])
+    self.assertEqual(os.listdir(root_dir), [])
 
-  async def test_remove_all_with_program_state(self):
+  async def test_removes_all_program_state(self):
     root_dir = self.create_tempdir()
     for version in range(10):
       os.mkdir(os.path.join(root_dir, f'program_state_{version}'))
@@ -709,7 +709,7 @@ class FileProgramStateManagerRemoveAllTest(
 
     await program_state_mngr.remove_all()
 
-    self.assertCountEqual(os.listdir(root_dir), [])
+    self.assertEqual(os.listdir(root_dir), [])
 
 
 class FileProgramStateManagerSaveTest(
