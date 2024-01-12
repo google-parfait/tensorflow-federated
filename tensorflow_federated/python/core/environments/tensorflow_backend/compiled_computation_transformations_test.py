@@ -60,7 +60,8 @@ class TensorFlowOptimizerTest(absltest.TestCase):
 
   def test_transform_compiled_computation_returns_compiled_computation(self):
     tuple_type = computation_types.TensorType(np.int32)
-    proto, function_type = tensorflow_computation_factory.create_identity(
+    factory = tensorflow_computation_factory.TensorFlowComputationFactory()
+    proto, function_type = factory.create_identity(
         tuple_type,
         layout_map=computation_pb2.TensorFlow.LayoutMap(
             name_to_sharding_spec={'v': 'unsharded'}
@@ -151,10 +152,10 @@ class AddUniqueIDsTest(absltest.TestCase):
     # First create no-arg computation that returns an empty tuple. This will
     # be compared against a omputation that returns a nested empty tuple, which
     # should produce a different ID.
-    empty_tuple_computation = (
-        building_block_factory.create_tensorflow_unary_operator(
-            lambda x: (), operand_type=computation_types.StructType([])
-        )
+    factory = tensorflow_computation_factory.TensorFlowComputationFactory()
+    proto, empty_tuple_type = factory.create_empty_tuple()
+    empty_tuple_computation = building_blocks.CompiledComputation(
+        proto, type_signature=empty_tuple_type
     )
     add_ids = compiled_computation_transformations.AddUniqueIDs()
     first_transformed_comp, mutated = add_ids.transform(empty_tuple_computation)

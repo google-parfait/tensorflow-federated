@@ -89,12 +89,11 @@ def _initial_values(
   Returns:
     A building_blocks.ComputationBuildingBlock representing the initial values.
   """
+  factory = tensorflow_computation_factory.TensorFlowComputationFactory()
 
   def _fill(tensor_type: computation_types.TensorType) -> building_blocks.Call:
-    computation_proto, function_type = (
-        tensorflow_computation_factory.create_constant(
-            initial_value_fn(tensor_type), tensor_type
-        )
+    computation_proto, function_type = factory.create_constant(
+        initial_value_fn(tensor_type), tensor_type
     )
     compiled = building_blocks.CompiledComputation(
         computation_proto, type_signature=function_type
@@ -194,6 +193,8 @@ def _get_intrinsic_reductions() -> dict[
   def federated_min(x: building_blocks.ComputationBuildingBlock):
     if not isinstance(x.type_signature, computation_types.FederatedType):
       raise TypeError('Expected a federated value.')
+
+    factory = tensorflow_computation_factory.TensorFlowComputationFactory()
     operand_type = x.type_signature.member
 
     def _max_fn(tensor_type: computation_types.TensorType):
@@ -207,12 +208,9 @@ def _get_intrinsic_reductions() -> dict[
         )
 
     zero = _initial_values(_max_fn, operand_type)
-    min_op = (
-        building_block_factory.create_tensorflow_binary_operator_with_upcast(
-            tf.minimum,
-            computation_types.StructType([operand_type, operand_type]),
-        )
-    )
+    proto, min_type = factory.create_min(operand_type)
+    min_op = building_blocks.CompiledComputation(proto, type_signature=min_type)
+
     identity = building_block_factory.create_identity(operand_type)
     return building_block_factory.create_federated_aggregate(
         x, zero, min_op, min_op, identity
@@ -221,6 +219,8 @@ def _get_intrinsic_reductions() -> dict[
   def federated_max(x: building_blocks.ComputationBuildingBlock):
     if not isinstance(x.type_signature, computation_types.FederatedType):
       raise TypeError('Expected a federated value.')
+
+    factory = tensorflow_computation_factory.TensorFlowComputationFactory()
     operand_type = x.type_signature.member
 
     def _min_fn(tensor_type: computation_types.TensorType):
@@ -234,12 +234,8 @@ def _get_intrinsic_reductions() -> dict[
         )
 
     zero = _initial_values(_min_fn, operand_type)
-    max_op = (
-        building_block_factory.create_tensorflow_binary_operator_with_upcast(
-            tf.maximum,
-            computation_types.StructType([operand_type, operand_type]),
-        )
-    )
+    proto, max_type = factory.create_max(operand_type)
+    max_op = building_blocks.CompiledComputation(proto, type_signature=max_type)
     identity = building_block_factory.create_identity(operand_type)
     return building_block_factory.create_federated_aggregate(
         x, zero, max_op, max_op, identity
@@ -247,12 +243,13 @@ def _get_intrinsic_reductions() -> dict[
 
   def federated_sum(x):
     py_typecheck.check_type(x, building_blocks.ComputationBuildingBlock)
+
+    factory = tensorflow_computation_factory.TensorFlowComputationFactory()
     operand_type = x.type_signature.member  # pytype: disable=attribute-error
     zero = building_block_factory.create_generic_constant(operand_type, 0)
-    plus_op = (
-        building_block_factory.create_tensorflow_binary_operator_with_upcast(
-            tf.add, computation_types.StructType([operand_type, operand_type])
-        )
+    proto, add_type = factory.create_add(operand_type)
+    plus_op = building_blocks.CompiledComputation(
+        proto, type_signature=add_type
     )
     identity = building_block_factory.create_identity(operand_type)
     return building_block_factory.create_federated_aggregate(
@@ -406,6 +403,9 @@ def _get_secure_intrinsic_reductions() -> (
 
   def federated_secure_sum(arg):
     py_typecheck.check_type(arg, building_blocks.ComputationBuildingBlock)
+
+    factory = tensorflow_computation_factory.TensorFlowComputationFactory()
+
     summand_arg = building_blocks.Selection(arg, index=0)
     summand_type = summand_arg.type_signature.member  # pytype: disable=attribute-error
     max_input_arg = building_blocks.Selection(arg, index=1)
@@ -464,11 +464,9 @@ def _get_secure_intrinsic_reductions() -> (
         )
     )
 
-    def nested_plus(a, b):
-      return structure.map_structure(tf.add, a, b)
-
-    plus_op = building_block_factory.create_tensorflow_binary_operator(
-        nested_plus, operand_type=aggregation_zero.type_signature
+    proto, add_type = factory.create_add(aggregation_zero.type_signature)
+    plus_op = building_blocks.CompiledComputation(
+        proto, type_signature=add_type
     )
 
     # In the `report` function we take the summation and drop the second element

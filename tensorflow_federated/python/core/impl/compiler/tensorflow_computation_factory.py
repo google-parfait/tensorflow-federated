@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""A library of construction functions for tensorflow computation structures."""
+"""A library for constructing TensorFlow computation."""
 
 from collections.abc import Callable
 import functools
@@ -39,56 +39,227 @@ from tensorflow_federated.python.tensorflow_libs import serialization_utils
 # replace them with calls to the factory, then inline the bodies of the methods
 # within the factory.
 
-ComputationProtoAndType = local_computation_factory_base.ComputationProtoAndType
 T = TypeVar('T', bound=computation_types.Type)
 
 
 class TensorFlowComputationFactory(
     local_computation_factory_base.LocalComputationFactory
 ):
-  """An implementation of local computation factory for TF computations."""
+  """A `LocalComputationFactory` for TensorFlow computations."""
 
-  def __init__(self):
-    pass
+  def create_constant(
+      self, value: object, type_spec: computation_types.Type
+  ) -> local_computation_factory_base.ComputationProtoAndType:
+    """Returns a tensorflow computation returning a constant `value`.
 
-  def create_constant_from_scalar(
-      self, value, type_spec: computation_types.Type
-  ) -> ComputationProtoAndType:
-    return create_constant(value, type_spec)
+    The returned computation has the type signature `( -> T)`, where `T` is
+    `type_spec`.
 
-  def create_plus_operator(
+    `value` must be a value convertible to a tensor or a structure of values,
+    such
+    that the dtype and shapes match `type_spec`. `type_spec` must contain only
+    named tuples and tensor types, but these can be arbitrarily nested.
+
+    Args:
+      value: A value to embed as a constant in the tensorflow graph.
+      type_spec: A `computation_types.Type` to use as the argument to the
+        constructed binary operator; must contain only named tuples and tensor
+        types.
+
+    Raises:
+      TypeError: If the constraints of `type_spec` are violated.
+    """
+    if not type_analysis.is_generic_op_compatible_type(type_spec):
+      raise TypeError(
+          'Type spec {} cannot be constructed as a TensorFlow constant in TFF; '
+          ' only nested tuples and tensors are permitted.'.format(type_spec)
+      )
+    inferred_value_type = type_conversions.infer_type(value)
+    if isinstance(
+        inferred_value_type, computation_types.StructType
+    ) and not type_spec.is_assignable_from(inferred_value_type):
+      raise TypeError(
+          'Must pass a only tensor or structure of tensor values to '
+          '`create_tensorflow_constant`; encountered a value {v} with inferred '
+          'type {t!r}, but needed {s!r}'.format(
+              v=value, t=inferred_value_type, s=type_spec
+          )
+      )
+    if isinstance(inferred_value_type, computation_types.StructType):
+      value = structure.from_container(value, recursive=True)
+    tensor_dtypes_in_type_spec = []
+
+    def _pack_dtypes(type_signature):
+      """Appends dtype of `type_signature` to nonlocal variable."""
+      if isinstance(type_signature, computation_types.TensorType):
+        tensor_dtypes_in_type_spec.append(type_signature.dtype)
+      return type_signature, False
+
+    type_transformations.transform_type_postorder(type_spec, _pack_dtypes)
+
+    if (
+        any(np.issubdtype(x, np.integer) for x in tensor_dtypes_in_type_spec)
+        and isinstance(inferred_value_type, computation_types.TensorType)
+        and not np.issubdtype(inferred_value_type.dtype, np.integer)
+    ):
+      raise TypeError(
+          'Only integers can be used as scalar values if our desired constant'
+          ' type spec contains any integer tensors; passed scalar {} of dtype'
+          ' {} for type spec {}.'.format(
+              value, inferred_value_type.dtype, type_spec
+          )
+      )
+
+    def _create_result_tensor(type_spec, value):
+      """Packs `value` into `type_spec` recursively."""
+      if isinstance(type_spec, computation_types.TensorType):
+        if not array_shape.is_shape_fully_defined(type_spec.shape):
+          raise ValueError(
+              'Expected the shape to be fully defined, found'
+              f' {type_spec.shape}.'
+          )
+        result = tf.constant(
+            value, dtype=type_spec.dtype, shape=type_spec.shape
+        )
+      else:
+        elements = []
+        if isinstance(inferred_value_type, computation_types.StructType):
+          # Copy the leaf values according to the type_spec structure.
+          for (name, elem_type), value in zip(
+              structure.iter_elements(type_spec),
+              value,
+          ):
+            elements.append((name, _create_result_tensor(elem_type, value)))
+        else:
+          # "Broadcast" the value to each level of the type_spec structure.
+          for _, elem_type in structure.iter_elements(type_spec):  # pytype: disable=wrong-arg-types
+            elements.append((None, _create_result_tensor(elem_type, value)))
+        result = structure.Struct(elements)
+      return result
+
+    with tf.Graph().as_default() as graph:
+      result = _create_result_tensor(type_spec, value)
+      _, result_binding = tensorflow_utils.capture_result_from_graph(
+          result, graph
+      )
+
+    type_signature = computation_types.FunctionType(None, type_spec)
+    tensorflow = pb.TensorFlow(
+        graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
+        parameter=None,
+        result=result_binding,
+    )
+    return _tensorflow_comp(tensorflow, type_signature)
+
+  def create_empty_tuple(
+      self,
+  ) -> local_computation_factory_base.ComputationProtoAndType:
+    """Returns a tensorflow computation returning an empty tuple.
+
+    The returned computation has the type signature `( -> <>)`.
+    """
+    return create_computation_for_py_fn(lambda: structure.Struct([]), None)
+
+  def create_identity(
+      self,
+      type_spec: computation_types.Type,
+      layout_map: Optional[pb.TensorFlow.LayoutMap] = None,
+      **kwargs: object,
+  ) -> local_computation_factory_base.ComputationProtoAndType:
+    """Returns a tensorflow computation representing an identity function.
+
+    The returned computation has the type signature `(T -> T)`, where `T` is
+    `type_signature`. NOTE: if `T` contains `computation_types.StructType`s
+    without an associated container type, they will be given the container type
+    `tuple` by this function.
+
+    Args:
+      type_spec: A `computation_types.Type` to use as the parameter type and
+        result type of the identity function.
+      layout_map: Optional `pb.TensorFlow.LayoutMap` to be included in the
+        returned tensorflow computation.
+      **kwargs: Other options.
+
+    Raises:
+      TypeError: If `type_signature` contains any types which cannot appear in
+        TensorFlow bindings.
+    """
+    type_analysis.check_tensorflow_compatible_type(type_spec)
+    parameter_type = type_spec
+    if parameter_type is None:
+      raise TypeError('TensorFlow identity cannot be created for NoneType.')
+
+    # TF relies on feeds not-identical to fetches in certain circumstances.
+    if isinstance(
+        type_spec,
+        (
+            computation_types.SequenceType,
+            computation_types.TensorType,
+        ),
+    ):
+      identity_fn = tf.identity
+    elif isinstance(type_spec, computation_types.StructType):
+      identity_fn = functools.partial(structure.map_structure, tf.identity)
+    else:
+      raise NotImplementedError(
+          f'TensorFlow identity cannot be created for type {type_spec}'
+      )
+
+    return create_computation_for_py_fn(identity_fn, parameter_type, layout_map)
+
+  def create_add(
       self, type_spec: computation_types.Type
-  ) -> ComputationProtoAndType:
-    def plus(a, b):
+  ) -> local_computation_factory_base.ComputationProtoAndType:
+    def _add(a, b):
       return structure.map_structure(tf.add, a, b)
 
-    return create_binary_operator(plus, type_spec)
+    return create_binary_operator(_add, type_spec)
 
-  def create_multiply_operator(
+  def create_subtract(
       self, type_spec: computation_types.Type
-  ) -> ComputationProtoAndType:
-    def multiply(a, b):
+  ) -> local_computation_factory_base.ComputationProtoAndType:
+    def _subtract(a, b):
+      return structure.map_structure(tf.subtract, a, b)
+
+    return create_binary_operator(_subtract, type_spec)
+
+  def create_multiply(
+      self, type_spec: computation_types.Type
+  ) -> local_computation_factory_base.ComputationProtoAndType:
+    def _multiply(a, b):
       return structure.map_structure(tf.multiply, a, b)
 
-    return create_binary_operator(multiply, type_spec)
+    return create_binary_operator(_multiply, type_spec)
 
-  def create_scalar_multiply_operator(
-      self,
-      operand_type: computation_types.Type,
-      scalar_type: computation_types.TensorType,
-  ) -> ComputationProtoAndType:
-    return create_binary_operator_with_upcast(
-        computation_types.StructType(
-            [(None, operand_type), (None, scalar_type)]
-        ),
-        tf.multiply,
-    )
+  def create_divide(
+      self, type_spec: computation_types.Type
+  ) -> local_computation_factory_base.ComputationProtoAndType:
+    def _divide(a, b):
+      return structure.map_structure(tf.divide, a, b)
+
+    return create_binary_operator(_divide, type_spec)
+
+  def create_min(
+      self, type_spec: computation_types.Type
+  ) -> local_computation_factory_base.ComputationProtoAndType:
+    def _min(a, b):
+      return structure.map_structure(tf.minimum, a, b)
+
+    return create_binary_operator(_min, type_spec)
+
+  def create_max(
+      self, type_spec: computation_types.Type
+  ) -> local_computation_factory_base.ComputationProtoAndType:
+    def _max(a, b):
+      return structure.map_structure(tf.maximum, a, b)
+
+    return create_binary_operator(_max, type_spec)
 
   def create_indexing_operator(
       self,
       operand_type: computation_types.TensorType,
       index_type: computation_types.TensorType,
-  ) -> ComputationProtoAndType:
+  ) -> local_computation_factory_base.ComputationProtoAndType:
     return create_indexing_operator(operand_type, index_type)
 
 
@@ -101,110 +272,9 @@ def _tensorflow_comp(
   return (comp, type_signature)
 
 
-def create_constant(
-    value, type_spec: computation_types.Type
-) -> tuple[pb.Computation, computation_types.FunctionType]:
-  """Returns a tensorflow computation returning a constant `value`.
-
-  The returned computation has the type signature `( -> T)`, where `T` is
-  `type_spec`.
-
-  `value` must be a value convertible to a tensor or a structure of values, such
-  that the dtype and shapes match `type_spec`. `type_spec` must contain only
-  named tuples and tensor types, but these can be arbitrarily nested.
-
-  Args:
-    value: A value to embed as a constant in the tensorflow graph.
-    type_spec: A `computation_types.Type` to use as the argument to the
-      constructed binary operator; must contain only named tuples and tensor
-      types.
-
-  Raises:
-    TypeError: If the constraints of `type_spec` are violated.
-  """
-  if not type_analysis.is_generic_op_compatible_type(type_spec):
-    raise TypeError(
-        'Type spec {} cannot be constructed as a TensorFlow constant in TFF; '
-        ' only nested tuples and tensors are permitted.'.format(type_spec)
-    )
-  inferred_value_type = type_conversions.infer_type(value)
-  if isinstance(
-      inferred_value_type, computation_types.StructType
-  ) and not type_spec.is_assignable_from(inferred_value_type):
-    raise TypeError(
-        'Must pass a only tensor or structure of tensor values to '
-        '`create_tensorflow_constant`; encountered a value {v} with inferred '
-        'type {t!r}, but needed {s!r}'.format(
-            v=value, t=inferred_value_type, s=type_spec
-        )
-    )
-  if isinstance(inferred_value_type, computation_types.StructType):
-    value = structure.from_container(value, recursive=True)
-  tensor_dtypes_in_type_spec = []
-
-  def _pack_dtypes(type_signature):
-    """Appends dtype of `type_signature` to nonlocal variable."""
-    if isinstance(type_signature, computation_types.TensorType):
-      tensor_dtypes_in_type_spec.append(type_signature.dtype)
-    return type_signature, False
-
-  type_transformations.transform_type_postorder(type_spec, _pack_dtypes)
-
-  if (
-      any(np.issubdtype(x, np.integer) for x in tensor_dtypes_in_type_spec)
-      and isinstance(inferred_value_type, computation_types.TensorType)
-      and not np.issubdtype(inferred_value_type.dtype, np.integer)
-  ):
-    raise TypeError(
-        'Only integers can be used as scalar values if our desired constant '
-        'type spec contains any integer tensors; passed scalar {} of dtype {} '
-        'for type spec {}.'.format(value, inferred_value_type.dtype, type_spec)
-    )
-
-  result_type = type_spec
-
-  def _create_result_tensor(type_spec, value):
-    """Packs `value` into `type_spec` recursively."""
-    if isinstance(type_spec, computation_types.TensorType):
-      if not array_shape.is_shape_fully_defined(type_spec.shape):
-        raise ValueError(
-            f'Expected the shape to be fully defined, found {type_spec.shape}.'
-        )
-      result = tf.constant(value, dtype=type_spec.dtype, shape=type_spec.shape)
-    else:
-      elements = []
-      if isinstance(inferred_value_type, computation_types.StructType):
-        # Copy the leaf values according to the type_spec structure.
-        for (name, elem_type), value in zip(
-            structure.iter_elements(type_spec),
-            value,
-        ):
-          elements.append((name, _create_result_tensor(elem_type, value)))
-      else:
-        # "Broadcast" the value to each level of the type_spec structure.
-        for _, elem_type in structure.iter_elements(type_spec):  # pytype: disable=wrong-arg-types
-          elements.append((None, _create_result_tensor(elem_type, value)))
-      result = structure.Struct(elements)
-    return result
-
-  with tf.Graph().as_default() as graph:
-    result = _create_result_tensor(result_type, value)
-    _, result_binding = tensorflow_utils.capture_result_from_graph(
-        result, graph
-    )
-
-  type_signature = computation_types.FunctionType(None, result_type)
-  tensorflow = pb.TensorFlow(
-      graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
-      parameter=None,
-      result=result_binding,
-  )
-  return _tensorflow_comp(tensorflow, type_signature)
-
-
 def create_unary_operator(
     operator: Callable[..., object], operand_type: computation_types.Type
-) -> ComputationProtoAndType:
+) -> local_computation_factory_base.ComputationProtoAndType:
   """Returns a tensorflow computation computing a unary operation.
 
   The returned computation has the type signature `(T -> U)`, where `T` is
@@ -255,7 +325,7 @@ def create_binary_operator(
     operand_type: computation_types.Type,
     second_operand_type: Optional[computation_types.Type] = None,
     layout_map: Optional[pb.TensorFlow.LayoutMap] = None,
-) -> ComputationProtoAndType:
+) -> local_computation_factory_base.ComputationProtoAndType:
   """Returns a tensorflow computation computing a binary operation.
 
   The returned computation has the type signature `(<T,T> -> U)`, where `T` is
@@ -339,7 +409,7 @@ def create_binary_operator(
 def create_binary_operator_with_upcast(
     type_signature: computation_types.StructType,
     operator: Callable[[object, object], object],
-) -> ComputationProtoAndType:
+) -> local_computation_factory_base.ComputationProtoAndType:
   """Creates TF computation upcasting its argument and applying `operator`.
 
   Args:
@@ -469,7 +539,7 @@ def create_binary_operator_with_upcast(
 def create_indexing_operator(
     operand_type: computation_types.TensorType,
     index_type: computation_types.TensorType,
-) -> ComputationProtoAndType:
+) -> local_computation_factory_base.ComputationProtoAndType:
   """Returns a tensorflow computation computing an indexing operation."""
   if not array_shape.is_shape_scalar(index_type.shape):
     raise TypeError(f'Expected index type to be a scalar, found {index_type}.')
@@ -500,116 +570,11 @@ def create_indexing_operator(
   return _tensorflow_comp(tensorflow, type_signature)
 
 
-def create_empty_tuple() -> ComputationProtoAndType:
-  """Returns a tensorflow computation returning an empty tuple.
-
-  The returned computation has the type signature `( -> <>)`.
-  """
-  return create_computation_for_py_fn(lambda: structure.Struct([]), None)
-
-
-def create_identity(
-    type_signature: computation_types.Type,
-    layout_map: Optional[pb.TensorFlow.LayoutMap] = None,
-) -> ComputationProtoAndType:
-  """Returns a tensorflow computation representing an identity function.
-
-  The returned computation has the type signature `(T -> T)`, where `T` is
-  `type_signature`. NOTE: if `T` contains `computation_types.StructType`s
-  without an associated container type, they will be given the container type
-  `tuple` by this function.
-
-  Args:
-    type_signature: A `computation_types.Type` to use as the parameter type and
-      result type of the identity function.
-    layout_map: Optional LayoutMap to be included in the returned tensorflow
-      computation.
-
-  Raises:
-    TypeError: If `type_signature` contains any types which cannot appear in
-      TensorFlow bindings.
-  """
-  type_analysis.check_tensorflow_compatible_type(type_signature)
-  parameter_type = type_signature
-  if parameter_type is None:
-    raise TypeError('TensorFlow identity cannot be created for NoneType.')
-
-  # TF relies on feeds not-identical to fetches in certain circumstances.
-  if isinstance(
-      type_signature,
-      (
-          computation_types.SequenceType,
-          computation_types.TensorType,
-      ),
-  ):
-    identity_fn = tf.identity
-  elif isinstance(type_signature, computation_types.StructType):
-    identity_fn = functools.partial(structure.map_structure, tf.identity)
-  else:
-    raise NotImplementedError(
-        f'TensorFlow identity cannot be created for type {type_signature}'
-    )
-
-  return create_computation_for_py_fn(identity_fn, parameter_type, layout_map)
-
-
-def create_replicate_input(
-    type_signature: computation_types.Type, count: int
-) -> ComputationProtoAndType:
-  """Returns a tensorflow computation returning `count` copies of its argument.
-
-  The returned computation has the type signature `(T -> <T, T, T, ...>)`, where
-  `T` is `type_signature` and the length of the result is `count`.
-
-  Args:
-    type_signature: A `computation_types.Type` to replicate.
-    count: An integer, the number of times the input is replicated.
-
-  Raises:
-    TypeError: If `type_signature` contains any types which cannot appear in
-      TensorFlow bindings or if `which` is not an integer.
-  """
-  type_analysis.check_tensorflow_compatible_type(type_signature)
-  py_typecheck.check_type(count, int)
-  parameter_type = type_signature
-  identity_comp, _ = create_identity(parameter_type)
-  # This manual proto manipulation is significantly faster than using TFF's
-  # GraphDef serialization for large `count` arguments.
-  tensorflow_comp = identity_comp.tensorflow
-  single_result_binding = tensorflow_comp.result
-  if tensorflow_comp.parameter:
-    new_tf_pb = pb.TensorFlow(
-        graph_def=tensorflow_comp.graph_def,
-        parameter=tensorflow_comp.parameter,
-        result=pb.TensorFlow.Binding(
-            struct=pb.TensorFlow.StructBinding(
-                element=(single_result_binding for _ in range(count))
-            )
-        ),
-    )
-  else:
-    new_tf_pb = pb.TensorFlow(
-        graph_def=tensorflow_comp.graph_def,
-        result=pb.TensorFlow.Binding(
-            struct=pb.TensorFlow.StructBinding(
-                element=(single_result_binding for _ in range(count))
-            )
-        ),
-    )
-  fn_type = computation_types.FunctionType(
-      parameter_type,
-      computation_types.StructType(
-          [(None, parameter_type) for _ in range(count)]
-      ),
-  )
-  return _tensorflow_comp(new_tf_pb, fn_type)
-
-
 def create_computation_for_py_fn(
     fn: Callable[..., object],
     parameter_type: Optional[computation_types.Type],
     layout_map: Optional[pb.TensorFlow.LayoutMap] = None,
-) -> ComputationProtoAndType:
+) -> local_computation_factory_base.ComputationProtoAndType:
   """Returns a tensorflow computation returning the result of `fn`.
 
   The returned computation has the type signature `(T -> U)`, where `T` is

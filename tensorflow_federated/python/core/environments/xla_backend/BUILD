@@ -23,32 +23,6 @@ py_library(
 )
 
 py_library(
-    name = "compiler",
-    srcs = ["compiler.py"],
-    deps = [
-        ":xla_serialization",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/common_libs:structure",
-        "//tensorflow_federated/python/core/impl/compiler:local_computation_factory_base",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:type_analysis",
-    ],
-)
-
-py_test(
-    name = "compiler_test",
-    size = "small",
-    srcs = ["compiler_test.py"],
-    deps = [
-        ":compiler",
-        ":runtime",
-        "//tensorflow_federated/proto/v0:computation_py_pb2",
-        "//tensorflow_federated/python/common_libs:structure",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-    ],
-)
-
-py_library(
     name = "runtime",
     srcs = ["runtime.py"],
     deps = [
@@ -71,6 +45,32 @@ py_test(
         ":xla_serialization",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/types:computation_types",
+    ],
+)
+
+py_library(
+    name = "xla_computation_factory",
+    srcs = ["xla_computation_factory.py"],
+    deps = [
+        ":xla_serialization",
+        "//tensorflow_federated/python/common_libs:structure",
+        "//tensorflow_federated/python/core/impl/compiler:local_computation_factory_base",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:type_analysis",
+    ],
+)
+
+py_test(
+    name = "xla_computation_factory_test",
+    size = "small",
+    srcs = ["xla_computation_factory_test.py"],
+    deps = [
+        ":runtime",
+        ":xla_computation_factory",
+        "//tensorflow_federated/proto/v0:computation_py_pb2",
+        "//tensorflow_federated/python/common_libs:structure",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:placements",
     ],
 )
 

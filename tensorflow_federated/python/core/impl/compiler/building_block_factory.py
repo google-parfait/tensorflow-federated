@@ -130,7 +130,8 @@ def create_compiled_no_arg_empty_tuple_computation() -> (
     An instance of `building_blocks.CompiledComputation`, a noarg function
     which returns an empty tuple.
   """
-  proto, type_signature = tensorflow_computation_factory.create_empty_tuple()
+  factory = tensorflow_computation_factory.TensorFlowComputationFactory()
+  proto, type_signature = factory.create_empty_tuple()
   return building_blocks.CompiledComputation(
       proto, type_signature=type_signature
   )
@@ -179,9 +180,8 @@ def create_compiled_identity(
     TypeError: If `type_signature` contains any types which cannot appear in
       TensorFlow bindings.
   """
-  proto, function_type = tensorflow_computation_factory.create_identity(
-      type_signature
-  )
+  factory = tensorflow_computation_factory.TensorFlowComputationFactory()
+  proto, function_type = factory.create_identity(type_signature)
   return building_blocks.CompiledComputation(
       proto, name, type_signature=function_type
   )
@@ -249,9 +249,8 @@ def create_tensorflow_constant(
   Raises:
     TypeError: If the type assumptions above are violated.
   """
-  proto, function_type = tensorflow_computation_factory.create_constant(
-      scalar_value, type_spec
-  )
+  factory = tensorflow_computation_factory.TensorFlowComputationFactory()
+  proto, function_type = factory.create_constant(scalar_value, type_spec)
   compiled = building_blocks.CompiledComputation(
       proto, name, type_signature=function_type
   )

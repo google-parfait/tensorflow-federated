@@ -347,7 +347,8 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
   def test_call_no_arg(self, use_tf_executor=True):
     executor = get_executor(use_tf_executor)
 
-    foo, _ = tensorflow_computation_factory.create_constant(
+    factory = tensorflow_computation_factory.TensorFlowComputationFactory()
+    foo, _ = factory.create_constant(
         123.0, computation_types.TensorType(np.float32)
     )
 

@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import collections
-import operator
 from typing import NamedTuple
 
 from absl.testing import absltest
@@ -40,10 +39,10 @@ from tensorflow_federated.python.core.impl.types import type_test_utils
 
 
 def _create_computation_add() -> computation_base.Computation:
-  operand_type = computation_types.TensorType(np.int32)
-  computation_proto, _ = tensorflow_computation_factory.create_binary_operator(
-      operator.add, operand_type, operand_type
-  )
+  factory = tensorflow_computation_factory.TensorFlowComputationFactory()
+
+  type_spec = computation_types.TensorType(np.int32)
+  computation_proto, _ = factory.create_add(type_spec)
   return computation_impl.ConcreteComputation(
       computation_proto, context_stack_impl.context_stack
   )

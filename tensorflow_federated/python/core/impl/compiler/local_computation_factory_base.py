@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Defines the interface for factories of framework-specific computations."""
+"""Defines the interface for factories of backend-specific computations."""
 
 import abc
 
@@ -22,15 +22,15 @@ ComputationProtoAndType = tuple[pb.Computation, computation_types.Type]
 
 
 class LocalComputationFactory(metaclass=abc.ABCMeta):
-  """Interface for factories of backend framework-specific local computations.
+  """Interface for factories of backend-specific local computations.
 
   Implementations of this interface encapsulate the logic for constructing local
   computations that are executable on a particular type of backend.
   """
 
   @abc.abstractmethod
-  def create_constant_from_scalar(
-      self, value, type_spec: computation_types.Type
+  def create_constant(
+      self, value: object, type_spec: computation_types.Type
   ) -> ComputationProtoAndType:
     """Creates a TFF computation returning a constant based on a scalar value.
 
@@ -51,7 +51,18 @@ class LocalComputationFactory(metaclass=abc.ABCMeta):
     """
     raise NotImplementedError
 
-  def create_plus_operator(
+  @abc.abstractmethod
+  def create_empty_tuple(self) -> ComputationProtoAndType:
+    raise NotImplementedError
+
+  @abc.abstractmethod
+  def create_identity(
+      self, type_spec: computation_types.Type, **kwargs: object
+  ) -> ComputationProtoAndType:
+    raise NotImplementedError
+
+  @abc.abstractmethod
+  def create_add(
       self, type_spec: computation_types.Type
   ) -> ComputationProtoAndType:
     """Creates a TFF computation computing a binary plus operation.
@@ -74,7 +85,14 @@ class LocalComputationFactory(metaclass=abc.ABCMeta):
     """
     raise NotImplementedError
 
-  def create_multiply_operator(
+  @abc.abstractmethod
+  def create_subtract(
+      self, type_spec: computation_types.Type, **kwargs: object
+  ) -> ComputationProtoAndType:
+    raise NotImplementedError
+
+  @abc.abstractmethod
+  def create_multiply(
       self, type_spec: computation_types.Type
   ) -> ComputationProtoAndType:
     """Creates a TFF computation computing a binary point-wise multiplication.
@@ -97,38 +115,20 @@ class LocalComputationFactory(metaclass=abc.ABCMeta):
     """
     raise NotImplementedError
 
-  def create_scalar_multiply_operator(
-      self,
-      operand_type: computation_types.Type,
-      scalar_type: computation_types.TensorType,
+  @abc.abstractmethod
+  def create_divide(
+      self, type_spec: computation_types.Type, **kwargs: object
   ) -> ComputationProtoAndType:
-    """Creates a TFF computation multiplying an argument by a scalar.
-
-    Args:
-      operand_type: The type of the value to multiply by a scalar.
-      scalar_type: The type of the scalar to multiply by.
-
-    Returns:
-      A tuple `(pb.Computation, computation_types.Type)` with the first element
-      being a TFF computation with semantics as described above, and the second
-      element representing the formal type of that computation.
-    """
     raise NotImplementedError
 
-  def create_indexing_operator(
-      self,
-      operand_type: computation_types.TensorType,
-      index_type: computation_types.TensorType,
+  @abc.abstractmethod
+  def create_min(
+      self, type_spec: computation_types.Type
   ) -> ComputationProtoAndType:
-    """Creates a TFF computation selecting an index from an argument.
+    raise NotImplementedError
 
-    Args:
-      operand_type: The type of the value to be indexed into.
-      index_type: The type of the index. Must be a scalar.
-
-    Returns:
-      A tuple `(pb.Computation, computation_types.Type)' with the first element
-      being a TFF computation with semantics as described above, and the second
-      element representing the formal type of that computation.
-    """
+  @abc.abstractmethod
+  def create_max(
+      self, type_spec: computation_types.Type
+  ) -> ComputationProtoAndType:
     raise NotImplementedError
