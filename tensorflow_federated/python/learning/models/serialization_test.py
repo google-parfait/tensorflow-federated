@@ -23,9 +23,7 @@ import tensorflow as tf
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.types import type_serialization
-from tensorflow_federated.python.core.impl.types import type_test_utils
 from tensorflow_federated.python.learning.models import functional
 from tensorflow_federated.python.learning.models import keras_utils
 from tensorflow_federated.python.learning.models import model_examples
@@ -242,9 +240,7 @@ class UnflattenTest(tf.test.TestCase, parameterized.TestCase):
         fn, type_spec_var, python_container_hint
     )
     actual_output = packed_fn()
-    type_test_utils.assert_types_equivalent(
-        type_conversions.infer_type(actual_output), result_type_spec
-    )
+    tf.nest.map_structure(self.assertEqual, actual_output, result)
     self.assertIsInstance(actual_output, expected_python_container)
 
 
@@ -451,9 +447,7 @@ class SerializationTest(tf.test.TestCase, parameterized.TestCase):
     # Creating a TFF computation is needed because the `tf.function`-decorated
     # `metric_finalizers` will create `tf.Variable`s on the non-first call (and
     # hence, will throw an error if it is directly invoked).
-    @tensorflow_computation.tf_computation(
-        type_conversions.infer_type(model.report_local_unfinalized_metrics())
-    )
+    @tensorflow_computation.tf_computation
     def finalizer_computation(unfinalized_metrics):
       finalized_metrics = collections.OrderedDict()
       for metric_name, finalizer in model.metric_finalizers().items():

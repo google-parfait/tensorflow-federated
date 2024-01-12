@@ -340,8 +340,19 @@ def save(model: variable.VariableModel, path: str, input_type=None) -> None:
         trainable=False,
     )
 
+  def type_for_tensor_values(values):
+    def type_for_normalized_tensor_value(value):
+      tensor = tf.convert_to_tensor(value)
+      return computation_types.TensorType(
+          dtype=tensor.dtype, shape=tensor.shape
+      )
+
+    return computation_types.to_type(
+        tf.nest.map_structure(type_for_normalized_tensor_value, values)
+    )
+
   for metric_name, finalizer in model.metric_finalizers().items():
-    metric_type = type_conversions.infer_type(
+    metric_type = type_for_tensor_values(
         model.report_local_unfinalized_metrics()[metric_name]
     )
     m.serialized_metric_finalizers[metric_name] = serialize_metric_finalizer(
