@@ -222,17 +222,6 @@ class SelectionSpec:
     return str(self)
 
 
-def _extract_selections(parameter_value, output_spec):
-  results = []
-  for selection_spec in output_spec:
-    result_element = parameter_value[selection_spec.tuple_index]  # pytype: disable=unsupported-operands
-    for selection in selection_spec.selection_sequence:
-      py_typecheck.check_type(selection, int)
-      result_element = result_element[selection]
-    results.append(result_element)
-  return results
-
-
 @functools.lru_cache()
 def create_tensorflow_constant(
     type_spec: computation_types.Type,
@@ -267,33 +256,6 @@ def create_tensorflow_constant(
       proto, name, type_signature=function_type
   )
   return building_blocks.Call(compiled, None)
-
-
-@functools.lru_cache()
-def create_compiled_input_replication(
-    type_signature: computation_types.Type, n_replicas: int
-) -> building_blocks.CompiledComputation:
-  """Creates a compiled computation which replicates its argument.
-
-  Args:
-    type_signature: A `computation_types.Type`, the type of the parameter of the
-      constructed computation.
-    n_replicas: Integer, the number of times the argument is intended to be
-      replicated.
-
-  Returns:
-    An instance of `building_blocks.CompiledComputation` encoding
-    a function taking a single argument fo type `type_signature` and returning
-    `n_replicas` identical copies of this argument.
-
-  Raises:
-    TypeError: If `type_signature` contains any types which cannot appear in
-      TensorFlow bindings, or if `n_replicas` is not an integer.
-  """
-  proto, comp_type = tensorflow_computation_factory.create_replicate_input(
-      type_signature, n_replicas
-  )
-  return building_blocks.CompiledComputation(proto, type_signature=comp_type)
 
 
 def create_tensorflow_unary_operator(

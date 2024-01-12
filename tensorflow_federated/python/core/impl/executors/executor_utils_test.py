@@ -26,12 +26,12 @@ class TypeUtilsTest(parameterized.TestCase):
   # pyformat: disable
   @parameterized.named_parameters([
       ('buiding_block_and_type_spec',
-       building_block_factory.create_compiled_identity(
+       building_block_factory.create_identity(
            computation_types.TensorType(np.int32)),
        computation_types.FunctionType(np.int32, np.int32),
        computation_types.FunctionType(np.int32, np.int32)),
       ('buiding_block_and_none',
-       building_block_factory.create_compiled_identity(
+       building_block_factory.create_identity(
            computation_types.TensorType(np.int32)),
        None,
        computation_types.FunctionType(np.int32, np.int32)),
@@ -52,7 +52,7 @@ class TypeUtilsTest(parameterized.TestCase):
   # pyformat: disable
   @parameterized.named_parameters([
       ('building_block_and_bad_type_spec',
-       building_block_factory.create_compiled_identity(
+       building_block_factory.create_identity(
            computation_types.TensorType(np.int32)),
        computation_types.TensorType(np.int32)),
       ('int_and_none', 10, None),

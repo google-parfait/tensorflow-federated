@@ -310,6 +310,7 @@ py_test(
         ":building_block_factory",
         ":building_block_test_utils",
         ":building_blocks",
+        ":computation_factory",
         ":transformation_utils",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/impl/types:computation_types",

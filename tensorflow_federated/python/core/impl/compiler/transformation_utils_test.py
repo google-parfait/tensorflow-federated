@@ -20,6 +20,7 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_block_test_utils
 from tensorflow_federated.python.core.impl.compiler import building_blocks
+from tensorflow_federated.python.core.impl.compiler import computation_factory
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
@@ -109,7 +110,11 @@ def _construct_trivial_instance_of_all_computation_building_blocks():
   call = building_blocks.Call(lam, ref_to_x)
   cbb_list.append(('call', call))
   tensor_type = computation_types.TensorType(np.int32)
-  compiled_comp = building_block_factory.create_compiled_identity(tensor_type)
+  proto = computation_factory.create_lambda_identity(tensor_type)
+  function_type = computation_types.FunctionType(tensor_type, tensor_type)
+  compiled_comp = building_blocks.CompiledComputation(
+      proto, type_signature=function_type
+  )
   cbb_list.append(('compiled_comp', compiled_comp))
   placement = building_blocks.Placement(placements.CLIENTS)
   cbb_list.append(('placement', placement))
@@ -1735,15 +1740,6 @@ class TransformPreorderTest(parameterized.TestCase):
     comp = building_blocks.Data('x', np.int32)
     with self.assertRaises(TypeError):
       transformation_utils.transform_preorder(comp, None)
-
-  def test_transform_preorder_fails_on_none_recusrive_bool(self):
-    comp = building_blocks.Data('x', np.int32)
-
-    def transform(comp):
-      return comp, False
-
-    with self.assertRaises(TypeError):
-      transformation_utils.transform_preorder(comp, transform, None)
 
   def test_transform_preorder_with_lambda_call_selection_and_reference(self):
     function_type = computation_types.FunctionType(np.int32, np.int32)

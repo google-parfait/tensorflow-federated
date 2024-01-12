@@ -14,6 +14,7 @@
 
 import collections
 import re
+from unittest import mock
 
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -703,9 +704,8 @@ class CreateFederatedMaxTest(absltest.TestCase):
 class CreateFederatedSecureModularSumTest(absltest.TestCase):
 
   def test_raises_type_error_with_none_value(self):
-    modulus_type = computation_types.TensorType(np.int32)
-    modulus = building_block_factory.create_compiled_identity(
-        modulus_type, name='b'
+    modulus = mock.create_autospec(
+        building_blocks.CompiledComputation, spec_set=True, instance=True
     )
 
     with self.assertRaises(TypeError):
@@ -744,9 +744,8 @@ class CreateFederatedSecureModularSumTest(absltest.TestCase):
 class CreateFederatedSecureSumTest(absltest.TestCase):
 
   def test_raises_type_error_with_none_value(self):
-    max_input_type = computation_types.TensorType(np.int32)
-    max_input = building_block_factory.create_compiled_identity(
-        max_input_type, name='b'
+    max_input = mock.create_autospec(
+        building_blocks.CompiledComputation, spec_set=True, instance=True
     )
 
     with self.assertRaises(TypeError):
@@ -778,9 +777,8 @@ class CreateFederatedSecureSumTest(absltest.TestCase):
 class CreateFederatedSecureSumBitwidthTest(absltest.TestCase):
 
   def test_raises_type_error_with_none_value(self):
-    bitwidth_type = computation_types.TensorType(np.int32)
-    bitwidth = building_block_factory.create_compiled_identity(
-        bitwidth_type, name='b'
+    bitwidth = mock.create_autospec(
+        building_blocks.CompiledComputation, spec_set=True, instance=True
     )
 
     with self.assertRaises(TypeError):

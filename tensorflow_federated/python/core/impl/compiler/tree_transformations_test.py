@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from unittest import mock
+
 from absl.testing import absltest
 from absl.testing import parameterized
 import numpy as np
@@ -778,10 +780,15 @@ class ReplaceSelectionsTest(absltest.TestCase):
 
   def test_fail_replace_compiled_comp(self):
     arg_type = computation_types.StructType([np.int32])
+    fn_type = computation_types.FunctionType(arg_type, arg_type)
+    mock_fn = mock.create_autospec(
+        building_blocks.CompiledComputation, spec_set=True, instance=True
+    )
+    type(mock_fn).type_signature = mock.PropertyMock(
+        spec=computation_types.FunctionType, return_value=fn_type, spec_set=True
+    )
     comp = building_blocks.Call(
-        building_block_factory.create_tensorflow_unary_operator(
-            lambda x: x, arg_type
-        ),
+        mock_fn,
         building_blocks.Reference('x', arg_type),
     )
     y = building_blocks.Reference('y', np.int32)
