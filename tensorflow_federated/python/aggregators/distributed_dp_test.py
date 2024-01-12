@@ -31,7 +31,6 @@ from tensorflow_federated.python.aggregators import secure
 from tensorflow_federated.python.core.backends.test import execution_contexts
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
-from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import estimation_process
 from tensorflow_federated.python.core.templates import measured_process
@@ -47,9 +46,9 @@ def _make_test_nested_struct(value):
   return collections.OrderedDict(
       a=[
           np.array(value, dtype=np.float32),
-          [np.array(value, dtype=np.float32, shape=[2, 2, 1])],
+          [np.full(shape=[2, 2, 1], fill_value=value, dtype=np.float32)],
       ],
-      b=np.array(value, dtype=np.float32, shape=(3,)),
+      b=np.full(shape=(3,), fill_value=value, dtype=np.float32),
   )
 
 
@@ -163,10 +162,7 @@ class DistributedDpComputationTest(tf.test.TestCase, parameterized.TestCase):
     self.assertTrue(actual_init_type.is_equivalent_to(expected_init_type))
 
     # Check next_fn/measurements.
-    dp_query_state = dp_query.initial_global_state()
-    dp_query_metrics_type = type_conversions.infer_type(
-        dp_query.derive_metrics(dp_query_state)
-    )
+    dp_query_metrics_type = ()
     expected_measurements_type = collections.OrderedDict(
         l2_clip=robust.NORM_TF_TYPE,
         scale_factor=np.float32,

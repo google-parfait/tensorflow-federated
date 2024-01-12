@@ -52,22 +52,16 @@ class DPFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
     process = factory_.create(value_type)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
-    query_state = _test_dp_query.initial_global_state()
-    query_state_type = type_conversions.infer_type(query_state)
-    query_metrics_type = type_conversions.infer_type(
-        _test_dp_query.derive_metrics(query_state)
+    query_state_type = computation_types.StructType(
+        [('l2_norm_clip', np.float32), ('stddev', np.float32)]
     )
-
+    query_metrics_type = ()
     inner_state_type = np.int32 if inner_agg_factory else ()
-
-    initial_sample_state = _test_dp_query.initial_sample_state(
-        type_conversions.type_to_tf_tensor_specs(value_type)
-    )
-    _, _, dp_event = _test_dp_query.get_noised_result(
-        initial_sample_state, query_state
-    )
-    dp_event_type = type_conversions.infer_type(dp_event.to_named_tuple())
-
+    dp_event_type = computation_types.StructType([
+        ('module_name', np.str_),
+        ('class_name', np.str_),
+        ('noise_multiplier', np.float32),
+    ])
     server_state_type = computation_types.FederatedType(
         differential_privacy.DPAggregatorState(
             query_state_type, inner_state_type, dp_event_type, np.bool_

@@ -23,7 +23,6 @@ from tensorflow_federated.python.aggregators import quantile_estimation
 from tensorflow_federated.python.core.backends.test import execution_contexts
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
-from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.templates import estimation_process
 from tensorflow_federated.python.core.test import static_assert
 
@@ -43,6 +42,15 @@ class PrivateQEComputationTest(tf.test.TestCase, parameterized.TestCase):
           expected_num_records=100,
           geometric_update=True,
       )
+      below_estimate_state = computation_types.StructType([
+          (
+              'numerator_state',
+              computation_types.StructType(
+                  [('l2_norm_clip', np.float32), ('stddev', np.float32)]
+              ),
+          ),
+          ('denominator', np.float32),
+      ])
     else:
       quantile_estimator_query = tfp.NoPrivacyQuantileEstimatorQuery(
           initial_estimate=1.0,
@@ -50,33 +58,42 @@ class PrivateQEComputationTest(tf.test.TestCase, parameterized.TestCase):
           learning_rate=1.0,
           geometric_update=True,
       )
-
+      below_estimate_state = ()
+    query_state_type = computation_types.StructType([
+        ('current_estimate', np.float32),
+        ('target_quantile', np.float32),
+        ('learning_rate', np.float32),
+        ('below_estimate_state', below_estimate_state),
+    ])
     process = QEProcess(quantile_estimator_query)
 
-    query_state = quantile_estimator_query.initial_global_state()
-    sum_process_state = ()
-
+    sum_process_state_type = ()
+    state_type = computation_types.StructType(
+        [query_state_type, sum_process_state_type]
+    )
     server_state_type = computation_types.FederatedType(
-        type_conversions.infer_type((query_state, sum_process_state)),
+        state_type,
         placements.SERVER,
     )
-
-    self.assertEqual(
-        computation_types.FunctionType(
-            parameter=None, result=server_state_type
-        ),
-        process.initialize.type_signature,
+    expected_initialize_type_signature = computation_types.FunctionType(
+        parameter=None, result=server_state_type
+    )
+    self.assertTrue(
+        expected_initialize_type_signature.is_equivalent_to(
+            process.initialize.type_signature
+        )
     )
 
     estimate_type = computation_types.FederatedType(
         np.float32, placements.SERVER
     )
-
-    self.assertEqual(
-        computation_types.FunctionType(
-            parameter=server_state_type, result=estimate_type
-        ),
-        process.report.type_signature,
+    expected_report_type_signature = computation_types.FunctionType(
+        parameter=server_state_type, result=estimate_type
+    )
+    self.assertTrue(
+        expected_report_type_signature.is_equivalent_to(
+            process.report.type_signature
+        )
     )
 
     client_value_type = computation_types.FederatedType(
