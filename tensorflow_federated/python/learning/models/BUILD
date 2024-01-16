@@ -170,7 +170,11 @@ py_library(
 py_test(
     name = "reconstruction_model_test",
     srcs = ["reconstruction_model_test.py"],
-    deps = [":reconstruction_model"],
+    deps = [
+        ":model_weights",
+        ":reconstruction_model",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+    ],
 )
 
 py_test(

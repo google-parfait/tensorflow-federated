@@ -645,3 +645,30 @@ class _KerasReconstructionModel(ReconstructionModel):
         labels=y_true,
         num_examples=tf.shape(tf.nest.flatten(inputs)[0])[0],
     )
+
+
+def global_weights_type_from_model(
+    model: ReconstructionModel,
+) -> computation_types.StructType:
+  """Creates a `tff.Type` from a `tff.learning.models.ReconstructionModel`.
+
+  Args:
+    model: A `tff.learning.models.ReconstructionModel`
+
+  Returns:
+    A `tff.StructType` representing the TFF type of the model's global
+    variables.
+  """
+  global_model_weights = ReconstructionModel.get_global_variables(model)
+
+  def _variable_to_type(x: tf.Variable) -> computation_types.Type:
+    return computation_types.tensorflow_to_type((x.dtype, x.shape))
+
+  model_weights_type = tf.nest.map_structure(
+      _variable_to_type, global_model_weights
+  )
+  # StructWithPythonType operates recursively, and will preserve the python type
+  # information of model.trainable_variables and model.non_trainable_variables.
+  return computation_types.StructWithPythonType(
+      model_weights_type, model_weights.ModelWeights
+  )

@@ -34,7 +34,6 @@ from tensorflow_federated.python.core.impl.federated_context import federated_co
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
-from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.templates import aggregation_process as aggregation_process_lib
 from tensorflow_federated.python.core.templates import iterative_process as iterative_process_lib
 from tensorflow_federated.python.core.templates import measured_process as measured_process_lib
@@ -996,8 +995,8 @@ class TrainingProcessTest(tf.test.TestCase, parameterized.TestCase):
           tf.keras.metrics.SparseCategoricalAccuracy(),
       ]
 
-    model_weights_type = type_conversions.infer_type(
-        ReconstructionModel.get_global_variables(local_recon_model_fn())
+    model_weights_type = reconstruction_model.global_weights_type_from_model(
+        local_recon_model_fn()
     )
 
     def build_custom_stateful_distributor(

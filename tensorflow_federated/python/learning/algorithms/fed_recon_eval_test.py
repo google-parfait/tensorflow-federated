@@ -27,7 +27,6 @@ from tensorflow_federated.python.core.impl.federated_context import federated_co
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
-from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.types import type_test_utils
 from tensorflow_federated.python.core.templates import measured_process as measured_process_lib
 from tensorflow_federated.python.learning.algorithms import fed_recon_eval
@@ -214,13 +213,12 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
         reconstruction_optimizer_fn=optimizer_fn(),
         dataset_split_fn=dataset_split_fn,
     )
+    global_weights_type = reconstruction_model.global_weights_type_from_model(
+        model_fn()
+    )
     state_type = computation_types.FederatedType(
         LearningAlgorithmState(
-            global_model_weights=type_conversions.infer_type(
-                reconstruction_model.ReconstructionModel.get_global_variables(
-                    model_fn()
-                )
-            ),
+            global_model_weights=global_weights_type,
             distributor=(),
             client_work=(
                 (),
@@ -325,13 +323,12 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
         reconstruction_optimizer_fn=optimizer_fn(),
     )
 
+    global_weights_type = reconstruction_model.global_weights_type_from_model(
+        model_fn()
+    )
     state_type = computation_types.FederatedType(
         LearningAlgorithmState(
-            global_model_weights=type_conversions.infer_type(
-                reconstruction_model.ReconstructionModel.get_global_variables(
-                    model_fn()
-                )
-            ),
+            global_model_weights=global_weights_type,
             distributor=(),
             client_work=(
                 (),
@@ -435,13 +432,12 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
         reconstruction_optimizer_fn=optimizer_fn(),
         dataset_split_fn=dataset_split_fn,
     )
+    global_weights_type = reconstruction_model.global_weights_type_from_model(
+        model_fn()
+    )
     state_type = computation_types.FederatedType(
         LearningAlgorithmState(
-            global_model_weights=type_conversions.infer_type(
-                reconstruction_model.ReconstructionModel.get_global_variables(
-                    model_fn()
-                )
-            ),
+            global_model_weights=global_weights_type,
             distributor=(),
             client_work=(
                 (),
@@ -539,13 +535,12 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
         reconstruction_optimizer_fn=optimizer_fn(0.0),
         dataset_split_fn=dataset_split_fn,
     )
+    global_weights_type = reconstruction_model.global_weights_type_from_model(
+        model_fn()
+    )
     state_type = computation_types.FederatedType(
         LearningAlgorithmState(
-            global_model_weights=type_conversions.infer_type(
-                reconstruction_model.ReconstructionModel.get_global_variables(
-                    model_fn()
-                )
-            ),
+            global_model_weights=global_weights_type,
             distributor=(),
             client_work=(
                 (),
@@ -651,13 +646,12 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
         reconstruction_optimizer_fn=optimizer_fn(),
         dataset_split_fn=dataset_split_fn,
     )
+    global_weights_type = reconstruction_model.global_weights_type_from_model(
+        model_fn()
+    )
     state_type = computation_types.FederatedType(
         LearningAlgorithmState(
-            global_model_weights=type_conversions.infer_type(
-                reconstruction_model.ReconstructionModel.get_global_variables(
-                    model_fn()
-                )
-            ),
+            global_model_weights=global_weights_type,
             distributor=(),
             client_work=(
                 (),
@@ -764,13 +758,12 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
         reconstruction_optimizer_fn=optimizer_fn(0.01),
         dataset_split_fn=dataset_split_fn,
     )
+    global_weights_type = reconstruction_model.global_weights_type_from_model(
+        model_fn()
+    )
     state_type = computation_types.FederatedType(
         LearningAlgorithmState(
-            global_model_weights=type_conversions.infer_type(
-                reconstruction_model.ReconstructionModel.get_global_variables(
-                    model_fn()
-                )
-            ),
+            global_model_weights=global_weights_type,
             distributor=(),
             client_work=(
                 (),
@@ -851,10 +844,8 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
     def metrics_fn():
       return [counters.NumExamplesCounter(), NumOverCounter(5.0)]
 
-    model_weights_type = type_conversions.infer_type(
-        reconstruction_model.ReconstructionModel.get_global_variables(
-            model_fn()
-        )
+    model_weights_type = reconstruction_model.global_weights_type_from_model(
+        model_fn()
     )
 
     def build_custom_distributor(
@@ -897,13 +888,12 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
             model_weights_type=model_weights_type
         ),
     )
+    global_weights_type = reconstruction_model.global_weights_type_from_model(
+        model_fn()
+    )
     state_type = computation_types.FederatedType(
         LearningAlgorithmState(
-            global_model_weights=type_conversions.infer_type(
-                reconstruction_model.ReconstructionModel.get_global_variables(
-                    model_fn()
-                )
-            ),
+            global_model_weights=global_weights_type,
             distributor=np.int32,
             client_work=(
                 (),

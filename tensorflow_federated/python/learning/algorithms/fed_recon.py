@@ -59,7 +59,6 @@ from tensorflow_federated.python.core.impl.federated_context import federated_co
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
-from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.templates import measured_process as measured_process_lib
 from tensorflow_federated.python.learning import client_weight_lib
 from tensorflow_federated.python.learning.metrics import aggregator as metrics_aggregators
@@ -148,8 +147,8 @@ def _build_reconstruction_client_work(
   """
   with tf.Graph().as_default():
     model_for_metadata = model_fn()
-  model_weights_type = type_conversions.infer_type(
-      ReconstructionModel.get_global_variables(model_for_metadata)
+  model_weights_type = reconstruction_model.global_weights_type_from_model(
+      model_for_metadata
   )
   element_type = computation_types.tensorflow_to_type(
       model_for_metadata.input_spec

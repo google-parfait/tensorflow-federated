@@ -17,8 +17,11 @@ import collections
 from typing import Optional
 
 from absl.testing import parameterized
+import numpy as np
 import tensorflow as tf
 
+from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.learning.models import model_weights
 from tensorflow_federated.python.learning.models import reconstruction_model
 
 
@@ -162,6 +165,42 @@ class ReconstructionModelTest(tf.test.TestCase, parameterized.TestCase):
     ):
       self.assertIs(var, expected_var)
 
+  def test_global_weights_type_with_global_and_local_layers(self):
+    keras_model = _get_two_layer_model()
+    local_layers = keras_model.layers[:1]
+    global_layers = keras_model.layers[1:]
+    input_spec = _get_input_spec()
+    recon_model = (
+        reconstruction_model.ReconstructionModel.from_keras_model_and_layers(
+            keras_model,
+            global_layers=global_layers,
+            local_layers=local_layers,
+            input_spec=input_spec,
+        )
+    )
+    global_model_weights_type = (
+        reconstruction_model.global_weights_type_from_model(recon_model)
+    )
+    expected_trainable = computation_types.StructWithPythonType(
+        [
+            computation_types.TensorType(dtype=np.float32, shape=(5, 2)),
+            computation_types.TensorType(dtype=np.float32, shape=(2,)),
+        ],
+        list,
+    )
+    expected_non_trainable = computation_types.StructWithPythonType(
+        [],
+        list,
+    )
+    expected_type = computation_types.StructWithPythonType(
+        [
+            ('trainable', expected_trainable),
+            ('non_trainable', expected_non_trainable),
+        ],
+        model_weights.ModelWeights,
+    )
+    self.assertTrue(global_model_weights_type.is_equivalent_to(expected_type))
+
   def test_from_keras_model_and_layers_with_only_global_layers(self):
     keras_model = _get_two_layer_model()
     local_layers = []
@@ -206,6 +245,44 @@ class ReconstructionModelTest(tf.test.TestCase, parameterized.TestCase):
         expected_global_trainable_vars,
     ):
       self.assertIs(var, expected_var)
+
+  def test_global_weights_type_with_only_global_layers(self):
+    keras_model = _get_two_layer_model()
+    local_layers = []
+    global_layers = keras_model.layers
+    input_spec = _get_input_spec()
+    recon_model = (
+        reconstruction_model.ReconstructionModel.from_keras_model_and_layers(
+            keras_model,
+            global_layers=global_layers,
+            local_layers=local_layers,
+            input_spec=input_spec,
+        )
+    )
+    global_model_weights_type = (
+        reconstruction_model.global_weights_type_from_model(recon_model)
+    )
+    expected_trainable = computation_types.StructWithPythonType(
+        [
+            computation_types.TensorType(dtype=np.float32, shape=(5, 5)),
+            computation_types.TensorType(dtype=np.float32, shape=(5,)),
+            computation_types.TensorType(dtype=np.float32, shape=(5, 2)),
+            computation_types.TensorType(dtype=np.float32, shape=(2,)),
+        ],
+        list,
+    )
+    expected_non_trainable = computation_types.StructWithPythonType(
+        [],
+        list,
+    )
+    expected_type = computation_types.StructWithPythonType(
+        [
+            ('trainable', expected_trainable),
+            ('non_trainable', expected_non_trainable),
+        ],
+        model_weights.ModelWeights,
+    )
+    self.assertTrue(global_model_weights_type.is_equivalent_to(expected_type))
 
   def test_forward_pass_is_same_regardless_of_global_local_layer_split(self):
     keras_model = _get_two_layer_model()
