@@ -159,7 +159,7 @@ def _make_concrete_flat_output_fn(fn, *args, **kwargs):
 
   Returns:
     A 2-tuple of concrete `tf.function` instance and a `tff.Type` protocol
-    buffer message documenting the the result structure returned by the concrete
+    buffer message documenting the result structure returned by the concrete
     function.
   """
   concrete_fn = tf.function(fn).get_concrete_function(*args, **kwargs)
@@ -343,9 +343,8 @@ def save(model: variable.VariableModel, path: str, input_type=None) -> None:
   def type_for_tensor_values(values):
     def type_for_normalized_tensor_value(value):
       tensor = tf.convert_to_tensor(value)
-      return computation_types.TensorType(
-          dtype=tensor.dtype, shape=tensor.shape
-      )
+      tensor_spec = tf.TensorSpec.from_tensor(tensor)
+      return computation_types.tensorflow_to_type(tensor_spec)
 
     return computation_types.to_type(
         tf.nest.map_structure(type_for_normalized_tensor_value, values)
@@ -438,7 +437,7 @@ def save_functional_model(
 
     Returns:
       A 2-tuple of concrete `tf.function` instance and a `tff.Type` protocol
-      buffer message documenting the the result structure returned by the
+      buffer message documenting the result structure returned by the
       concrete function.
     """
     # Save the un-flattened type spec for deserialization later.
