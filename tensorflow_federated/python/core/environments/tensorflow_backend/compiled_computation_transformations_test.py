@@ -19,7 +19,6 @@ import tensorflow as tf
 from tensorflow_federated.proto.v0 import computation_pb2
 from tensorflow_federated.python.core.environments.tensorflow_backend import compiled_computation_transformations
 from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_computation_transformations
-from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_factory
 from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_test_utils
@@ -41,8 +40,11 @@ class TensorFlowOptimizerTest(absltest.TestCase):
 
   def test_should_transform_compiled_computation(self):
     tuple_type = computation_types.TensorType(np.int32)
-    compiled_computation = building_block_factory.create_compiled_identity(
-        tuple_type
+    compiled_proto, compiled_type = (
+        tensorflow_computation_factory.create_identity(tuple_type)
+    )
+    compiled_computation = building_blocks.CompiledComputation(
+        compiled_proto, name='a', type_signature=compiled_type
     )
     config = tf.compat.v1.ConfigProto()
     tf_optimizer = compiled_computation_transformations.TensorFlowOptimizer(
@@ -89,8 +91,9 @@ class TensorFlowOptimizerTest(absltest.TestCase):
   def test_transform_compiled_computation_returns_compiled_computation_without_empty_fields(
       self,
   ):
-    compiled_computation = (
-        building_block_factory.create_compiled_no_arg_empty_tuple_computation()
+    proto, type_signature = tensorflow_computation_factory.create_empty_tuple()
+    compiled_computation = building_blocks.CompiledComputation(
+        proto, type_signature=type_signature
     )
     config = tf.compat.v1.ConfigProto()
     tf_optimizer = compiled_computation_transformations.TensorFlowOptimizer(
@@ -107,8 +110,11 @@ class TensorFlowOptimizerTest(absltest.TestCase):
 
   def test_transform_compiled_computation_semantic_equivalence(self):
     tuple_type = computation_types.TensorType(np.int32)
-    compiled_computation = building_block_factory.create_compiled_identity(
-        tuple_type
+    compiled_proto, compiled_type = (
+        tensorflow_computation_factory.create_identity(tuple_type)
+    )
+    compiled_computation = building_blocks.CompiledComputation(
+        compiled_proto, name='a', type_signature=compiled_type
     )
     config = tf.compat.v1.ConfigProto()
     tf_optimizer = compiled_computation_transformations.TensorFlowOptimizer(
@@ -130,8 +136,11 @@ class AddUniqueIDsTest(absltest.TestCase):
 
   def test_should_transform_compiled_tf_computation(self):
     tuple_type = computation_types.TensorType(np.int32)
-    compiled_computation = building_block_factory.create_compiled_identity(
-        tuple_type
+    compiled_proto, compiled_type = (
+        tensorflow_computation_factory.create_identity(tuple_type)
+    )
+    compiled_computation = building_blocks.CompiledComputation(
+        compiled_proto, name='a', type_signature=compiled_type
     )
     self.assertTrue(
         compiled_computation_transformations.AddUniqueIDs().should_transform(
@@ -151,10 +160,13 @@ class AddUniqueIDsTest(absltest.TestCase):
     # First create no-arg computation that returns an empty tuple. This will
     # be compared against a omputation that returns a nested empty tuple, which
     # should produce a different ID.
-    empty_tuple_computation = (
-        building_block_factory.create_tensorflow_unary_operator(
+    proto, type_signature = (
+        tensorflow_computation_factory.create_unary_operator(
             lambda x: (), operand_type=computation_types.StructType([])
         )
+    )
+    empty_tuple_computation = building_blocks.CompiledComputation(
+        proto, type_signature=type_signature
     )
     add_ids = compiled_computation_transformations.AddUniqueIDs()
     first_transformed_comp, mutated = add_ids.transform(empty_tuple_computation)
@@ -168,10 +180,13 @@ class AddUniqueIDsTest(absltest.TestCase):
     self.assertNotEqual(first_transformed_comp.proto.tensorflow.cache_key.id, 0)
     # Now create the same NoOp tf.Graph, but with a different binding and
     # type_signature.
-    nested_empty_tuple_computation = (
-        building_block_factory.create_tensorflow_unary_operator(
+    proto, type_signature = (
+        tensorflow_computation_factory.create_unary_operator(
             lambda x: ((),), operand_type=computation_types.StructType([])
         )
+    )
+    nested_empty_tuple_computation = building_blocks.CompiledComputation(
+        proto, type_signature=type_signature
     )
     second_transformed_comp, mutated = add_ids.transform(
         nested_empty_tuple_computation
@@ -196,8 +211,11 @@ class AddUniqueIDsTest(absltest.TestCase):
       self,
   ):
     tuple_type = computation_types.TensorType(np.int32)
-    compiled_computation = building_block_factory.create_compiled_identity(
-        tuple_type
+    compiled_proto, compiled_type = (
+        tensorflow_computation_factory.create_identity(tuple_type)
+    )
+    compiled_computation = building_blocks.CompiledComputation(
+        compiled_proto, name='a', type_signature=compiled_type
     )
     add_ids = compiled_computation_transformations.AddUniqueIDs()
     with self.subTest('first_comp_non_zero_id'):
@@ -270,8 +288,11 @@ class VerifyAllowedOpsTest(absltest.TestCase):
 
   def test_should_transform_tf_computation(self):
     tuple_type = computation_types.TensorType(np.int32)
-    compiled_computation = building_block_factory.create_compiled_identity(
-        tuple_type
+    compiled_proto, compiled_type = (
+        tensorflow_computation_factory.create_identity(tuple_type)
+    )
+    compiled_computation = building_blocks.CompiledComputation(
+        compiled_proto, name='a', type_signature=compiled_type
     )
     self.assertTrue(
         compiled_computation_transformations.VerifyAllowedOps(
@@ -289,8 +310,11 @@ class VerifyAllowedOpsTest(absltest.TestCase):
 
   def test_transform_only_allowed_ops(self):
     tuple_type = computation_types.TensorType(np.int32)
-    compiled_computation = building_block_factory.create_compiled_identity(
-        tuple_type
+    compiled_proto, compiled_type = (
+        tensorflow_computation_factory.create_identity(tuple_type)
+    )
+    compiled_computation = building_blocks.CompiledComputation(
+        compiled_proto, name='a', type_signature=compiled_type
     )
     allowed_op_names = frozenset(
         ['Const', 'PartitionedCall', 'Identity', 'Placeholder']
@@ -302,8 +326,11 @@ class VerifyAllowedOpsTest(absltest.TestCase):
 
   def test_transform_disallowed_ops(self):
     tuple_type = computation_types.TensorType(np.int32)
-    compiled_computation = building_block_factory.create_compiled_identity(
-        tuple_type
+    compiled_proto, compiled_type = (
+        tensorflow_computation_factory.create_identity(tuple_type)
+    )
+    compiled_computation = building_blocks.CompiledComputation(
+        compiled_proto, name='a', type_signature=compiled_type
     )
     allowed_op_names = frozenset(['Identity'])
     with self.assertRaises(
@@ -318,8 +345,11 @@ class RaiseOnDisallowedOpTest(absltest.TestCase):
 
   def test_should_transform_tf_computation(self):
     tuple_type = computation_types.TensorType(np.int32)
-    compiled_computation = building_block_factory.create_compiled_identity(
-        tuple_type
+    compiled_proto, compiled_type = (
+        tensorflow_computation_factory.create_identity(tuple_type)
+    )
+    compiled_computation = building_blocks.CompiledComputation(
+        compiled_proto, name='a', type_signature=compiled_type
     )
     self.assertTrue(
         compiled_computation_transformations.RaiseOnDisallowedOp(
@@ -337,8 +367,11 @@ class RaiseOnDisallowedOpTest(absltest.TestCase):
 
   def test_transform_no_disallowed_ops(self):
     tuple_type = computation_types.TensorType(np.int32)
-    compiled_computation = building_block_factory.create_compiled_identity(
-        tuple_type
+    compiled_proto, compiled_type = (
+        tensorflow_computation_factory.create_identity(tuple_type)
+    )
+    compiled_computation = building_blocks.CompiledComputation(
+        compiled_proto, name='a', type_signature=compiled_type
     )
     disallowed_op_names = frozenset(['ShardedFilename'])
     _, mutated = compiled_computation_transformations.RaiseOnDisallowedOp(
@@ -348,8 +381,11 @@ class RaiseOnDisallowedOpTest(absltest.TestCase):
 
   def test_transform_disallowed_ops(self):
     tuple_type = computation_types.TensorType(np.int32)
-    compiled_computation = building_block_factory.create_compiled_identity(
-        tuple_type
+    compiled_proto, compiled_type = (
+        tensorflow_computation_factory.create_identity(tuple_type)
+    )
+    compiled_computation = building_blocks.CompiledComputation(
+        compiled_proto, name='a', type_signature=compiled_type
     )
     disallowed_op_names = frozenset(['Identity'])
     with self.assertRaises(

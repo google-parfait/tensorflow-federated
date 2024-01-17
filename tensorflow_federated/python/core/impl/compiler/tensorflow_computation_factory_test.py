@@ -397,7 +397,7 @@ class CreateBinaryOperatorWithUpcastTest(parameterized.TestCase):
   ):
     proto, _ = (
         tensorflow_computation_factory.create_binary_operator_with_upcast(
-            type_signature, operator
+            operator, type_signature
         )
     )
 
@@ -440,7 +440,7 @@ class CreateBinaryOperatorWithUpcastTest(parameterized.TestCase):
   def test_fails(self, operator, type_signature):
     with self.assertRaises(TypeError):
       tensorflow_computation_factory.create_binary_operator_with_upcast(
-          type_signature, operator
+          operator, type_signature
       )
 
 
@@ -500,58 +500,6 @@ class CreateIdentityTest(parameterized.TestCase):
         computation_types.TensorType(np.int32)
     )
     self.assertNotEqual(proto.tensorflow.parameter, proto.tensorflow.result)
-
-
-class CreateReplicateInputTest(parameterized.TestCase):
-
-  @parameterized.named_parameters(
-      ('int', computation_types.TensorType(np.int32), 3, 10),
-      ('float', computation_types.TensorType(np.float32), 3, 10.0),
-      (
-          'unnamed_tuple',
-          computation_types.StructType([np.int32, np.float32]),
-          3,
-          structure.Struct([(None, 10), (None, 10.0)]),
-      ),
-      (
-          'named_tuple',
-          computation_types.StructType([('a', np.int32), ('b', np.float32)]),
-          3,
-          structure.Struct([('a', 10), ('b', 10.0)]),
-      ),
-      ('sequence', computation_types.SequenceType(np.int32), 3, [10] * 3),
-  )
-  def test_returns_computation(self, type_signature, count, value):
-    proto, _ = tensorflow_computation_factory.create_replicate_input(
-        type_signature, count
-    )
-
-    self.assertIsInstance(proto, pb.Computation)
-    actual_type = type_serialization.deserialize_type(proto.type)
-    expected_type = computation_types.FunctionType(
-        type_signature, [type_signature] * count
-    )
-    expected_type.check_assignable_from(actual_type)
-    actual_result = tensorflow_computation_test_utils.run_tensorflow(
-        proto, value
-    )
-    expected_result = structure.Struct([(None, value)] * count)
-    self.assertEqual(actual_result, expected_result)
-
-  @parameterized.named_parameters(
-      ('none_type', None, 3),
-      ('none_count', computation_types.TensorType(np.int32), None),
-      (
-          'federated_type',
-          computation_types.FederatedType(np.int32, placements.SERVER),
-          3,
-      ),
-  )
-  def test_raises_type_error(self, type_signature, count):
-    with self.assertRaises(TypeError):
-      tensorflow_computation_factory.create_replicate_input(
-          type_signature, count
-      )
 
 
 class CreateComputationForPyFnTest(parameterized.TestCase):

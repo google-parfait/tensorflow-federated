@@ -56,41 +56,6 @@ class TensorFlowComputationFactory(
   ) -> ComputationProtoAndType:
     return create_constant(value, type_spec)
 
-  def create_plus_operator(
-      self, type_spec: computation_types.Type
-  ) -> ComputationProtoAndType:
-    def plus(a, b):
-      return structure.map_structure(tf.add, a, b)
-
-    return create_binary_operator(plus, type_spec)
-
-  def create_multiply_operator(
-      self, type_spec: computation_types.Type
-  ) -> ComputationProtoAndType:
-    def multiply(a, b):
-      return structure.map_structure(tf.multiply, a, b)
-
-    return create_binary_operator(multiply, type_spec)
-
-  def create_scalar_multiply_operator(
-      self,
-      operand_type: computation_types.Type,
-      scalar_type: computation_types.TensorType,
-  ) -> ComputationProtoAndType:
-    return create_binary_operator_with_upcast(
-        computation_types.StructType(
-            [(None, operand_type), (None, scalar_type)]
-        ),
-        tf.multiply,
-    )
-
-  def create_indexing_operator(
-      self,
-      operand_type: computation_types.TensorType,
-      index_type: computation_types.TensorType,
-  ) -> ComputationProtoAndType:
-    return create_indexing_operator(operand_type, index_type)
-
 
 def _tensorflow_comp(
     tensorflow_proto: pb.TensorFlow,
@@ -337,12 +302,13 @@ def create_binary_operator(
 
 
 def create_binary_operator_with_upcast(
-    type_signature: computation_types.StructType,
     operator: Callable[[object, object], object],
+    type_signature: computation_types.StructType,
 ) -> ComputationProtoAndType:
   """Creates TF computation upcasting its argument and applying `operator`.
 
   Args:
+    operator: Callable defining the operator.
     type_signature: A `computation_types.StructType` with two elements, both
       only containing structs or tensors in their type tree. The first and
       second element must match in structure, or the second element may be a
@@ -352,7 +318,6 @@ def create_binary_operator_with_upcast(
       defined shapes, this tensor may be `tf.broadcast`-ed to each of those
       shapes. In the case of non-assignability and non-fully defined shapes at
       the leaves of the structure, this function will raise.
-    operator: Callable defining the operator.
 
   Returns:
     Same as `create_binary_operator()`.
@@ -466,40 +431,6 @@ def create_binary_operator_with_upcast(
   return _tensorflow_comp(tensorflow, type_signature)
 
 
-def create_indexing_operator(
-    operand_type: computation_types.TensorType,
-    index_type: computation_types.TensorType,
-) -> ComputationProtoAndType:
-  """Returns a tensorflow computation computing an indexing operation."""
-  if not array_shape.is_shape_scalar(index_type.shape):
-    raise TypeError(f'Expected index type to be a scalar, found {index_type}.')
-  with tf.Graph().as_default() as graph:
-    operand_value, operand_binding = tensorflow_utils.stamp_parameter_in_graph(
-        'indexing_operand', operand_type, graph
-    )
-    index_value, index_binding = tensorflow_utils.stamp_parameter_in_graph(
-        'index', index_type, graph
-    )
-    result_value = tf.gather(operand_value, index_value)
-    result_type, result_binding = tensorflow_utils.capture_result_from_graph(
-        result_value, graph
-    )
-  type_signature = computation_types.FunctionType(
-      computation_types.StructType((operand_type, index_type)), result_type
-  )
-  parameter_binding = pb.TensorFlow.Binding(
-      struct=pb.TensorFlow.StructBinding(
-          element=[operand_binding, index_binding]
-      )  # pytype: disable=wrong-arg-types
-  )
-  tensorflow = pb.TensorFlow(
-      graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
-      parameter=parameter_binding,
-      result=result_binding,
-  )
-  return _tensorflow_comp(tensorflow, type_signature)
-
-
 def create_empty_tuple() -> ComputationProtoAndType:
   """Returns a tensorflow computation returning an empty tuple.
 
@@ -551,58 +482,6 @@ def create_identity(
     )
 
   return create_computation_for_py_fn(identity_fn, parameter_type, layout_map)
-
-
-def create_replicate_input(
-    type_signature: computation_types.Type, count: int
-) -> ComputationProtoAndType:
-  """Returns a tensorflow computation returning `count` copies of its argument.
-
-  The returned computation has the type signature `(T -> <T, T, T, ...>)`, where
-  `T` is `type_signature` and the length of the result is `count`.
-
-  Args:
-    type_signature: A `computation_types.Type` to replicate.
-    count: An integer, the number of times the input is replicated.
-
-  Raises:
-    TypeError: If `type_signature` contains any types which cannot appear in
-      TensorFlow bindings or if `which` is not an integer.
-  """
-  type_analysis.check_tensorflow_compatible_type(type_signature)
-  py_typecheck.check_type(count, int)
-  parameter_type = type_signature
-  identity_comp, _ = create_identity(parameter_type)
-  # This manual proto manipulation is significantly faster than using TFF's
-  # GraphDef serialization for large `count` arguments.
-  tensorflow_comp = identity_comp.tensorflow
-  single_result_binding = tensorflow_comp.result
-  if tensorflow_comp.parameter:
-    new_tf_pb = pb.TensorFlow(
-        graph_def=tensorflow_comp.graph_def,
-        parameter=tensorflow_comp.parameter,
-        result=pb.TensorFlow.Binding(
-            struct=pb.TensorFlow.StructBinding(
-                element=(single_result_binding for _ in range(count))
-            )
-        ),
-    )
-  else:
-    new_tf_pb = pb.TensorFlow(
-        graph_def=tensorflow_comp.graph_def,
-        result=pb.TensorFlow.Binding(
-            struct=pb.TensorFlow.StructBinding(
-                element=(single_result_binding for _ in range(count))
-            )
-        ),
-    )
-  fn_type = computation_types.FunctionType(
-      parameter_type,
-      computation_types.StructType(
-          [(None, parameter_type) for _ in range(count)]
-      ),
-  )
-  return _tensorflow_comp(new_tf_pb, fn_type)
 
 
 def create_computation_for_py_fn(

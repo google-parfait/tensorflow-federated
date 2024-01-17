@@ -121,35 +121,6 @@ def unique_name_generator(
 
 
 @functools.lru_cache()
-def create_compiled_no_arg_empty_tuple_computation() -> (
-    building_blocks.CompiledComputation
-):
-  """Returns graph representing a function that returns an empty tuple.
-
-  Returns:
-    An instance of `building_blocks.CompiledComputation`, a noarg function
-    which returns an empty tuple.
-  """
-  proto, type_signature = tensorflow_computation_factory.create_empty_tuple()
-  return building_blocks.CompiledComputation(
-      proto, type_signature=type_signature
-  )
-
-
-@functools.lru_cache()
-def create_compiled_empty_tuple() -> building_blocks.Call:
-  """Returns called graph representing the empty tuple.
-
-  Returns:
-    An instance of `building_blocks.Call`, calling a noarg function
-    which returns an empty tuple. This function is an instance of
-    `building_blocks.CompiledComputation`.
-  """
-  compiled = create_compiled_no_arg_empty_tuple_computation()
-  return building_blocks.Call(compiled, None)
-
-
-@functools.lru_cache()
 def create_identity(
     type_signature: computation_types.Type,
 ) -> building_blocks.Lambda:
@@ -157,33 +128,6 @@ def create_identity(
       'id_arg',
       type_signature,
       building_blocks.Reference('id_arg', type_signature),
-  )
-
-
-@functools.lru_cache()
-def create_compiled_identity(
-    type_signature: computation_types.Type, name: Optional[str] = None
-) -> building_blocks.CompiledComputation:
-  """Creates CompiledComputation representing identity function.
-
-  Args:
-    type_signature: A `computation_types.Type`.
-    name: An optional string name to use as the name of the computation.
-
-  Returns:
-    An instance of `building_blocks.CompiledComputation`
-    representing the identity function taking an argument of type
-    `type_signature` and returning the same value.
-
-  Raises:
-    TypeError: If `type_signature` contains any types which cannot appear in
-      TensorFlow bindings.
-  """
-  proto, function_type = tensorflow_computation_factory.create_identity(
-      type_signature
-  )
-  return building_blocks.CompiledComputation(
-      proto, name, type_signature=function_type
   )
 
 
@@ -256,95 +200,6 @@ def create_tensorflow_constant(
       proto, name, type_signature=function_type
   )
   return building_blocks.Call(compiled, None)
-
-
-def create_tensorflow_unary_operator(
-    operator: Callable[[object], object], operand_type: computation_types.Type
-) -> building_blocks.CompiledComputation:
-  """Creates a TensorFlow computation for the unary `operator`.
-
-  For `T` the `operand_type`, the type signature of the constructed operator
-  will be `(T -> U)`, where `U` is the result of applying `operator` to
-  a value of type `T`.
-
-  Notice that we have quite serious restrictions on `operand_type` here; not
-  only must it be compatible with stamping into a TensorFlow graph, but
-  additionally cannot contain a `computation_types.SequenceType`, as checked by
-  `type_analysis.is_generic_op_compatible_type`.
-
-  Args:
-    operator: Callable taking one argument specifying the operation to encode.
-      For example, `tf.math.abs`, `tf.math.reduce_sum`, ...
-    operand_type: The type of argument to the constructed unary operator. Must
-      be convertible to `computation_types.Type`.
-
-  Returns:
-    Instance of `building_blocks.CompiledComputation` encoding this unary
-    operator.
-
-  Raises:
-    TypeError: If the type tree of `operand_type` contains any type which is
-    incompatible with the TFF generic operators, as checked by
-    `type_analysis.is_generic_op_compatible_type`, or `operator` is not
-    callable.
-  """
-  proto, type_signature = tensorflow_computation_factory.create_unary_operator(
-      operator, operand_type
-  )
-  return building_blocks.CompiledComputation(
-      proto, type_signature=type_signature
-  )
-
-
-def create_tensorflow_binary_operator(
-    operator: Callable[[object, object], object],
-    operand_type: computation_types.Type,
-    second_operand_type: Optional[computation_types.Type] = None,
-) -> building_blocks.CompiledComputation:
-  """Creates a TensorFlow computation for the binary `operator`.
-
-  For `T` the `operand_type`, the type signature of the constructed operator
-  will be `(<T,T> -> U)`, where `U` is the result of applying `operator` to
-  a tuple of type `<T,T>`.
-
-  Notice that we have quite serious restrictions on `operand_type` here; not
-  only must it be compatible with stamping into a TensorFlow graph, but
-  additionally cannot contain a `computation_types.SequenceType`, as checked by
-  `type_analysis.is_generic_op_compatible_type`.
-
-  Notice also that if `operand_type` is a `computation_types.StructType` and
-  `second_operand_type` is not `None`, `operator` will be applied pointwise.
-  This places the burden on callers of this function to construct the correct
-  values to pass into the returned function. For example, to divide `[2, 2]` by
-  `2`, first the `int 2` must be packed into the data structure `[x, x]`, before
-  the division operator of the appropriate type is called.
-
-  Args:
-    operator: Callable taking two arguments specifying the operation to encode.
-      For example, `tf.add`, `tf.multiply`, `tf.divide`, ...
-    operand_type: The type of argument to the constructed binary operator. Must
-      be convertible to `computation_types.Type`.
-    second_operand_type: An optional type for the second argument to the
-      constructed binary operator. Must be convertible to
-      `computation_types.Type`. If `None`, uses `operand_type` for the second
-      argument's type.
-
-  Returns:
-    Instance of `building_blocks.CompiledComputation` encoding
-    this binary operator.
-
-  Raises:
-    TypeError: If the type tree of `operand_type` contains any type which is
-    incompatible with the TFF generic operators, as checked by
-    `type_analysis.is_generic_op_compatible_type`, or `operator` is not
-    callable.
-  """
-  proto, type_signature = tensorflow_computation_factory.create_binary_operator(
-      operator, operand_type, second_operand_type
-  )
-  return building_blocks.CompiledComputation(
-      proto, type_signature=type_signature
-  )
 
 
 def create_federated_getitem_call(
@@ -565,13 +420,26 @@ def _unname_fn_parameter(fn, unnamed_parameter_type):
 
 
 def create_null_federated_aggregate() -> building_blocks.Call:
+  """Creates an aggregate over an empty struct and returns an empty struct."""
   unit = building_blocks.Struct([])
   unit_type = unit.type_signature
   value = create_federated_value(unit, placements.CLIENTS)
   zero = unit
-  accumulate = create_tensorflow_binary_operator(lambda a, b: a, unit_type)
+  accumulate_proto, accumulate_type = (
+      tensorflow_computation_factory.create_binary_operator(
+          lambda a, b: a, unit_type
+      )
+  )
+  accumulate = building_blocks.CompiledComputation(
+      accumulate_proto, type_signature=accumulate_type
+  )
   merge = accumulate
-  report = create_compiled_identity(computation_types.StructType([]))
+  report_proto, report_type = tensorflow_computation_factory.create_identity(
+      computation_types.StructType([])
+  )
+  report = building_blocks.CompiledComputation(
+      report_proto, type_signature=report_type
+  )
   return create_federated_aggregate(value, zero, accumulate, merge, report)
 
 
@@ -769,8 +637,12 @@ def create_federated_eval(
 
 
 def create_null_federated_map() -> building_blocks.Call:
+  fn_proto, fn_type = tensorflow_computation_factory.create_identity(
+      computation_types.StructType([])
+  )
+  fn = building_blocks.CompiledComputation(fn_proto, type_signature=fn_type)
   return create_federated_map(
-      create_compiled_identity(computation_types.StructType([])),
+      fn,
       create_federated_value(building_blocks.Struct([]), placements.CLIENTS),
   )
 
@@ -1044,7 +916,12 @@ def _cast(
       return structure.map_structure(cast_element, value, type_signature)
     return cast_element(value, type_signature)
 
-  cast_comp = create_tensorflow_unary_operator(cast_fn, comp.type_signature)
+  cast_proto, cast_type = tensorflow_computation_factory.create_unary_operator(
+      cast_fn, comp.type_signature
+  )
+  cast_comp = building_blocks.CompiledComputation(
+      cast_proto, type_signature=cast_type
+  )
   return building_blocks.Call(cast_comp, comp)
 
 
@@ -1112,10 +989,15 @@ def create_federated_secure_modular_sum(
   def structural_modulus(value, mod):
     return structure.map_structure(tf.math.floormod, value, mod)
 
-  structural_modulus_tf = create_tensorflow_binary_operator(
-      structural_modulus,
-      value.type_signature.member,  # pytype: disable=attribute-error
-      casted_mod.type_signature,
+  structural_modulus_proto, structural_modulus_type = (
+      tensorflow_computation_factory.create_binary_operator(
+          structural_modulus,
+          value.type_signature.member,  # pytype: disable=attribute-error
+          casted_mod.type_signature,
+      )
+  )
+  structural_modulus_tf = building_blocks.CompiledComputation(
+      structural_modulus_proto, type_signature=structural_modulus_type
   )
   value_modded = create_federated_map_or_apply(
       structural_modulus_tf, value_with_mod
@@ -1783,82 +1665,6 @@ def create_named_tuple(
   return building_blocks.Call(fn, comp)
 
 
-def _check_generic_operator_type(type_spec):
-  """Checks that `type_spec` can be the signature of args to a generic op."""
-
-  def _predicate(type_spec: computation_types.Type) -> bool:
-    return isinstance(
-        type_spec,
-        (
-            computation_types.FederatedType,
-            computation_types.StructType,
-            computation_types.TensorType,
-        ),
-    )
-
-  if not type_analysis.contains_only(type_spec, _predicate):
-    raise TypeError(
-        'Generic operators are only implemented for arguments both containing '
-        'only federated, tuple and tensor types; you have passed an argument '
-        'of type {} '.format(type_spec)
-    )
-  if (
-      not isinstance(type_spec, computation_types.StructType)
-      or len(type_spec) != 2
-  ):
-    raise TypeError(
-        'We are trying to construct a generic operator declaring argument that '
-        'is not a two-tuple, the type {}.'.format(type_spec)
-    )
-  if not type_analysis.is_binary_op_with_upcast_compatible_pair(
-      type_spec[0],  # pytype: disable=unsupported-operands
-      type_spec[1],  # pytype: disable=unsupported-operands
-  ):
-    raise TypeError(
-        'The two-tuple you have passed in is incompatible with upcasted '
-        'binary operators. You have passed the tuple type {}, which fails the '
-        'check that the two members of the tuple are either the same type, or '
-        'the second is a scalar with the same dtype as the leaves of the '
-        'first. See `type_analysis.is_binary_op_with_upcast_compatible_pair` '
-        'for more details.'.format(type_spec)
-    )
-
-
-@functools.lru_cache()
-def create_tensorflow_binary_operator_with_upcast(
-    operator: Callable[[object, object], object],
-    type_signature: computation_types.Type,
-) -> building_blocks.CompiledComputation:
-  """Creates TF computation upcasting its argument and applying `operator`.
-
-  The concept of upcasting is explained further in the docstring for
-  `apply_binary_operator_with_upcast`.
-
-  Args:
-    operator: Callable defining the operator.
-    type_signature: Value convertible to `computation_types.StructType`, with
-      two elements, both of the same type or the second able to be upcast to the
-      first, as explained in `apply_binary_operator_with_upcast`, and both
-      containing only tuples and tensors in their type tree.
-
-  Returns:
-    A `building_blocks.CompiledComputation` encapsulating a function which
-    upcasts the second element of its argument and applies the binary
-    operator.
-  """
-  _check_generic_operator_type(type_signature)
-  type_analysis.check_tensorflow_compatible_type(type_signature)
-  tf_proto, type_signature = (
-      tensorflow_computation_factory.create_binary_operator_with_upcast(
-          type_signature, operator
-      )  # pytype: disable=wrong-arg-types
-  )
-  compiled = building_blocks.CompiledComputation(
-      tf_proto, type_signature=type_signature
-  )
-  return compiled
-
-
 def apply_binary_operator_with_upcast(
     arg: building_blocks.ComputationBuildingBlock,
     operator: Callable[[object, object], object],
@@ -1905,8 +1711,13 @@ def apply_binary_operator_with_upcast(
         'unplaced tuples; you have passed {}.'.format(arg.type_signature)
     )
 
-  tf_representing_op = create_tensorflow_binary_operator_with_upcast(
-      operator, tuple_type
+  tf_representing_proto, tf_representing_type = (
+      tensorflow_computation_factory.create_binary_operator_with_upcast(
+          operator, tuple_type
+      )
+  )
+  tf_representing_op = building_blocks.CompiledComputation(
+      tf_representing_proto, type_signature=tf_representing_type
   )
 
   if isinstance(arg.type_signature, computation_types.FederatedType):

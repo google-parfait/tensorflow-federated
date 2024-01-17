@@ -23,6 +23,7 @@ from tensorflow_federated.python.core.backends.mapreduce import mapreduce_test_u
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
+from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_factory
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.computation import computation_impl
@@ -417,8 +418,11 @@ class CompileLocalComputationToTensorFlow(absltest.TestCase):
 
   def test_returns_tf_computation_block_with_compiled_comp(self):
     concrete_int_type = computation_types.TensorType(np.int32)
-    tf_identity = building_block_factory.create_compiled_identity(
+    proto, type_signature = tensorflow_computation_factory.create_identity(
         concrete_int_type
+    )
+    tf_identity = building_blocks.CompiledComputation(
+        proto, type_signature=type_signature
     )
     unused_int = building_block_factory.create_tensorflow_constant(
         concrete_int_type, 1
@@ -428,8 +432,11 @@ class CompileLocalComputationToTensorFlow(absltest.TestCase):
 
   def test_returns_tf_computation_ompiled_comp(self):
     concrete_int_type = computation_types.TensorType(np.int32)
-    tf_identity = building_block_factory.create_compiled_identity(
+    proto, type_signature = tensorflow_computation_factory.create_identity(
         concrete_int_type
+    )
+    tf_identity = building_blocks.CompiledComputation(
+        proto, type_signature=type_signature
     )
     self.assert_compiles_to_tensorflow(tf_identity)
 
@@ -443,8 +450,11 @@ class CompileLocalComputationToTensorFlow(absltest.TestCase):
     self.assert_compiles_to_tensorflow(tup)
 
   def test_passes_on_tf(self):
-    tf_comp = building_block_factory.create_compiled_identity(
+    proto, type_signature = tensorflow_computation_factory.create_identity(
         computation_types.TensorType(np.int32)
+    )
+    tf_comp = building_blocks.CompiledComputation(
+        proto, type_signature=type_signature
     )
     transformed = compiler.compile_local_computation_to_tensorflow(tf_comp)
     self.assertEqual(tf_comp, transformed)

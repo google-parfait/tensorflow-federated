@@ -17,9 +17,9 @@ import numpy as np
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import structure
-from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_block_test_utils
 from tensorflow_federated.python.core.impl.compiler import building_blocks
+from tensorflow_federated.python.core.impl.compiler import computation_factory
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
@@ -417,8 +417,12 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
     self.assertEqual([], list(data.children()))
 
   def test_basic_functionality_of_compiled_computation_class(self):
-    x_type = computation_types.TensorType(np.int32)
-    x = building_block_factory.create_compiled_identity(x_type, 'a')
+    type_spec = computation_types.TensorType(np.int32)
+    x_proto = computation_factory.create_lambda_identity(type_spec)
+    x_type = computation_types.FunctionType(type_spec, type_spec)
+    x = building_blocks.CompiledComputation(
+        x_proto, name='a', type_signature=x_type
+    )
     self.assertEqual(
         x.type_signature.compact_representation(), '(int32 -> int32)'
     )
@@ -432,13 +436,19 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
         ),
     )
     self.assertTrue(x.compact_representation(), 'comp#a')
-    y_type = computation_types.TensorType(np.int32)
-    y = building_block_factory.create_compiled_identity(y_type)
+    y_proto = computation_factory.create_lambda_identity(type_spec)
+    y_type = computation_types.FunctionType(type_spec, type_spec)
+    y = building_blocks.CompiledComputation(
+        y_proto, name='a', type_signature=y_type
+    )
     self._serialize_deserialize_roundtrip_test(y)
 
   def test_compiled_computation_children_is_empty(self):
     comp_type = computation_types.TensorType(np.int32)
-    comp = building_block_factory.create_compiled_identity(comp_type, 'a')
+    proto = computation_factory.create_lambda_identity(comp_type)
+    comp = building_blocks.CompiledComputation(
+        proto, name='a', type_signature=comp_type
+    )
     self.assertEqual([], list(comp.children()))
 
   def test_basic_functionality_of_placement_class(self):
@@ -536,7 +546,10 @@ class RepresentationTest(absltest.TestCase):
 
   def test_returns_string_for_compiled_computation(self):
     tensor_type = computation_types.TensorType(np.int32)
-    comp = building_block_factory.create_compiled_identity(tensor_type, 'a')
+    proto = computation_factory.create_lambda_identity(tensor_type)
+    comp = building_blocks.CompiledComputation(
+        proto, name='a', type_signature=tensor_type
+    )
 
     self.assertEqual(comp.compact_representation(), 'comp#a')
     self.assertEqual(comp.formatted_representation(), 'comp#a')

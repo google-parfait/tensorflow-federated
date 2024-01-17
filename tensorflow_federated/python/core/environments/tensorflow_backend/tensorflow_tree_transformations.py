@@ -207,11 +207,14 @@ def _get_intrinsic_reductions() -> dict[
         )
 
     zero = _initial_values(_max_fn, operand_type)
-    min_op = (
-        building_block_factory.create_tensorflow_binary_operator_with_upcast(
+    min_proto, min_type = (
+        tensorflow_computation_factory.create_binary_operator_with_upcast(
             tf.minimum,
             computation_types.StructType([operand_type, operand_type]),
         )
+    )
+    min_op = building_blocks.CompiledComputation(
+        min_proto, type_signature=min_type
     )
     identity = building_block_factory.create_identity(operand_type)
     return building_block_factory.create_federated_aggregate(
@@ -234,11 +237,14 @@ def _get_intrinsic_reductions() -> dict[
         )
 
     zero = _initial_values(_min_fn, operand_type)
-    max_op = (
-        building_block_factory.create_tensorflow_binary_operator_with_upcast(
+    max_proto, max_type = (
+        tensorflow_computation_factory.create_binary_operator_with_upcast(
             tf.maximum,
             computation_types.StructType([operand_type, operand_type]),
         )
+    )
+    max_op = building_blocks.CompiledComputation(
+        max_proto, type_signature=max_type
     )
     identity = building_block_factory.create_identity(operand_type)
     return building_block_factory.create_federated_aggregate(
@@ -249,10 +255,13 @@ def _get_intrinsic_reductions() -> dict[
     py_typecheck.check_type(x, building_blocks.ComputationBuildingBlock)
     operand_type = x.type_signature.member  # pytype: disable=attribute-error
     zero = building_block_factory.create_generic_constant(operand_type, 0)
-    plus_op = (
-        building_block_factory.create_tensorflow_binary_operator_with_upcast(
+    plus_proto, plus_type = (
+        tensorflow_computation_factory.create_binary_operator_with_upcast(
             tf.add, computation_types.StructType([operand_type, operand_type])
         )
+    )
+    plus_op = building_blocks.CompiledComputation(
+        plus_proto, type_signature=plus_type
     )
     identity = building_block_factory.create_identity(operand_type)
     return building_block_factory.create_federated_aggregate(
@@ -456,26 +465,40 @@ def _get_secure_intrinsic_reductions() -> (
             original_max_input,
         )
 
-    assert_less_equal_and_add = (
-        building_block_factory.create_tensorflow_binary_operator(
+    assert_less_equal_and_add_proto, assert_less_equal_and_add_type = (
+        tensorflow_computation_factory.create_binary_operator(
             assert_less_equal_max_and_add,
             operand_type=aggregation_zero.type_signature,
             second_operand_type=summand_type,
         )
     )
+    assert_less_equal_and_add = building_blocks.CompiledComputation(
+        assert_less_equal_and_add_proto,
+        type_signature=assert_less_equal_and_add_type,
+    )
 
     def nested_plus(a, b):
       return structure.map_structure(tf.add, a, b)
 
-    plus_op = building_block_factory.create_tensorflow_binary_operator(
-        nested_plus, operand_type=aggregation_zero.type_signature
+    plus_proto, plus_type = (
+        tensorflow_computation_factory.create_binary_operator(
+            nested_plus, operand_type=aggregation_zero.type_signature
+        )
+    )
+    plus_op = building_blocks.CompiledComputation(
+        plus_proto, type_signature=plus_type
     )
 
     # In the `report` function we take the summation and drop the second element
     # of the struct (which was holding the max_value).
-    drop_max_value_op = building_block_factory.create_tensorflow_unary_operator(
-        lambda x: type_conversions.type_to_py_container(x[0], summand_type),
-        aggregation_zero.type_signature,
+    drop_max_value_proto, drop_max_value_type = (
+        tensorflow_computation_factory.create_unary_operator(
+            lambda x: type_conversions.type_to_py_container(x[0], summand_type),
+            aggregation_zero.type_signature,
+        )
+    )
+    drop_max_value_op = building_blocks.CompiledComputation(
+        drop_max_value_proto, type_signature=drop_max_value_type
     )
 
     return building_block_factory.create_federated_aggregate(
@@ -512,10 +535,13 @@ def _get_secure_intrinsic_reductions() -> (
 
       return structure.map_structure(compute_max_input, bitwidth)
 
-    compute_max_value_op = (
-        building_block_factory.create_tensorflow_unary_operator(
+    proto, type_signature = (
+        tensorflow_computation_factory.create_unary_operator(
             max_input_from_bitwidth, bitwidth_arg.type_signature
         )
+    )
+    compute_max_value_op = building_blocks.CompiledComputation(
+        proto, type_signature=type_signature
     )
 
     max_value = building_blocks.Call(compute_max_value_op, bitwidth_arg)
@@ -554,10 +580,15 @@ def _get_secure_intrinsic_reductions() -> (
       )
       return structure.map_structure(tf.math.mod, summed_values, modulus)
 
-    modulus_fn = building_block_factory.create_tensorflow_binary_operator(
-        map_structure_mod,
-        operand_type=raw_summed_values.type_signature.member,  # pytype: disable=attribute-error
-        second_operand_type=placed_modulus.type_signature.member,  # pytype: disable=attribute-error
+    proto, type_signature = (
+        tensorflow_computation_factory.create_binary_operator(
+            map_structure_mod,
+            operand_type=raw_summed_values.type_signature.member,  # pytype: disable=attribute-error
+            second_operand_type=placed_modulus.type_signature.member,  # pytype: disable=attribute-error
+        )
+    )
+    modulus_fn = building_blocks.CompiledComputation(
+        proto, type_signature=type_signature
     )
     modulus_computed = building_block_factory.create_federated_apply(
         modulus_fn, modulus_arg

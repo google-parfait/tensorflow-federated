@@ -147,9 +147,9 @@ py_test(
     size = "small",
     srcs = ["building_blocks_test.py"],
     deps = [
-        ":building_block_factory",
         ":building_block_test_utils",
         ":building_blocks",
+        ":computation_factory",
         ":intrinsic_defs",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:structure",
@@ -342,6 +342,7 @@ py_test(
         ":building_block_test_utils",
         ":building_blocks",
         ":intrinsic_defs",
+        ":tensorflow_computation_factory",
         ":tree_analysis",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/core/impl/types:computation_types",

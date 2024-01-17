@@ -17,6 +17,7 @@ from tensorflow_federated.python.core.backends.mapreduce import compiler
 from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_tree_transformations
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
+from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_factory
 from tensorflow_federated.python.core.impl.compiler import transformations
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
@@ -185,8 +186,11 @@ def compile_to_mergeable_comp_form(
   merge_fn_type = before_agg.type_signature.result['federated_aggregate_param'][
       3
   ]  # pytype: disable=unsupported-operands
-  identity_report = computation_impl.ConcreteComputation.from_building_block(
-      building_block_factory.create_compiled_identity(merge_fn_type.result)
+  report_proto, report_type = tensorflow_computation_factory.create_identity(
+      merge_fn_type.result
+  )
+  identity_report = building_blocks.CompiledComputation(
+      report_proto, type_signature=report_type
   )
 
   zero_comp, accumulate_comp, merge_comp, report_comp = (
@@ -220,7 +224,8 @@ def compile_to_mergeable_comp_form(
     @federated_computation.federated_computation(
         before_agg.type_signature.parameter,
         computation_types.FederatedType(
-            identity_report.type_signature.result, placements.SERVER
+            identity_report.type_signature.result,  # pytype: disable=attribute-error
+            placements.SERVER,
         ),
     )
     def after_merge_computation(top_level_arg, merge_result):
@@ -242,7 +247,8 @@ def compile_to_mergeable_comp_form(
 
     @federated_computation.federated_computation(
         computation_types.FederatedType(
-            identity_report.type_signature.result, placements.SERVER
+            identity_report.type_signature.result,  # pytype: disable=attribute-error
+            placements.SERVER,
         )
     )
     def after_merge_computation(merge_result):

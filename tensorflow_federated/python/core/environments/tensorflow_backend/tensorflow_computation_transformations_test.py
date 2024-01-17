@@ -21,7 +21,8 @@ import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2
 from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_computation_transformations
-from tensorflow_federated.python.core.impl.compiler import building_block_factory
+from tensorflow_federated.python.core.impl.compiler import building_blocks
+from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_factory
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_serialization
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
@@ -65,7 +66,12 @@ class DisableGrapplerForPartitionedCalls(absltest.TestCase):
 
   def test_raises_on_compiled_computation(self):
     tensor_type = computation_types.TensorType(np.int32)
-    comp = building_block_factory.create_compiled_identity(tensor_type)
+    comp_proto, comp_type = tensorflow_computation_factory.create_identity(
+        tensor_type
+    )
+    comp = building_blocks.CompiledComputation(
+        comp_proto, type_signature=comp_type
+    )
     with self.assertRaises(TypeError):
       tensorflow_computation_transformations.disable_grappler_for_partitioned_calls(
           comp

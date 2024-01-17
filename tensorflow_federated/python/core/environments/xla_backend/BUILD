@@ -43,7 +43,6 @@ py_test(
         ":compiler",
         ":runtime",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
-        "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/types:computation_types",
     ],
 )

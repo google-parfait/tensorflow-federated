@@ -17,11 +17,12 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.proto.v0 import computation_pb2 as pb
+from tensorflow_federated.proto.v0 import computation_pb2
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_block_test_utils
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
+from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_factory
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
@@ -302,9 +303,9 @@ class AggregateDependentOnAggregateTest(absltest.TestCase):
 def _pack_noarg_graph(graph_def, return_type, result_binding):
   packed_graph_def = serialization_utils.pack_graph_def(graph_def)
   function_type = computation_types.FunctionType(None, return_type)
-  proto = pb.Computation(
+  proto = computation_pb2.Computation(
       type=type_serialization.serialize_type(function_type),
-      tensorflow=pb.TensorFlow(
+      tensorflow=computation_pb2.TensorFlow(
           graph_def=packed_graph_def, parameter=None, result=result_binding
       ),
   )
@@ -514,32 +515,50 @@ class TreesEqualTest(absltest.TestCase):
 
   def test_returns_false_for_compiled_computations_with_different_types(self):
     tensor_type_1 = computation_types.TensorType(np.int32)
-    compiled_1 = building_block_factory.create_compiled_identity(
-        tensor_type_1, 'a'
+    compiled_1_proto, compiled_1_type = (
+        tensorflow_computation_factory.create_identity(tensor_type_1)
+    )
+    compiled_1 = building_blocks.CompiledComputation(
+        compiled_1_proto, name='a', type_signature=compiled_1_type
     )
     tensor_type_2 = computation_types.TensorType(np.float32)
-    compiled_2 = building_block_factory.create_compiled_identity(
-        tensor_type_2, 'a'
+    compiled_2_proto, compiled_2_type = (
+        tensorflow_computation_factory.create_identity(tensor_type_2)
+    )
+    compiled_2 = building_blocks.CompiledComputation(
+        compiled_2_proto, name='a', type_signature=compiled_2_type
     )
     self.assertFalse(tree_analysis.trees_equal(compiled_1, compiled_2))
 
   def test_returns_true_for_compiled_computations(self):
     tensor_type = computation_types.TensorType(np.int32)
-    compiled_1 = building_block_factory.create_compiled_identity(
-        tensor_type, 'a'
+    compiled_1_proto, compiled_1_type = (
+        tensorflow_computation_factory.create_identity(tensor_type)
     )
-    compiled_2 = building_block_factory.create_compiled_identity(
-        tensor_type, 'a'
+    compiled_1 = building_blocks.CompiledComputation(
+        compiled_1_proto, name='a', type_signature=compiled_1_type
+    )
+    compiled_2_proto, compiled_2_type = (
+        tensorflow_computation_factory.create_identity(tensor_type)
+    )
+    compiled_2 = building_blocks.CompiledComputation(
+        compiled_2_proto, name='a', type_signature=compiled_2_type
     )
     self.assertTrue(tree_analysis.trees_equal(compiled_1, compiled_2))
 
   def test_returns_true_for_compiled_computations_with_different_names(self):
     tensor_type = computation_types.TensorType(np.int32)
-    compiled_1 = building_block_factory.create_compiled_identity(
-        tensor_type, 'a'
+    compiled_1_proto, compiled_1_type = (
+        tensorflow_computation_factory.create_identity(tensor_type)
     )
-    compiled_2 = building_block_factory.create_compiled_identity(
-        tensor_type, 'b'
+    compiled_1 = building_blocks.CompiledComputation(
+        compiled_1_proto, name='a', type_signature=compiled_1_type
+    )
+    compiled_2_proto, compiled_2_type = (
+        tensorflow_computation_factory.create_identity(tensor_type)
+    )
+    compiled_2 = building_blocks.CompiledComputation(
+        compiled_2_proto, name='b', type_signature=compiled_2_type
     )
     self.assertTrue(tree_analysis.trees_equal(compiled_1, compiled_2))
 
