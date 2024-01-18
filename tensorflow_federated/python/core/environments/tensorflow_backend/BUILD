@@ -54,6 +54,37 @@ py_test(
 )
 
 py_library(
+    name = "tensorflow_building_block_factory",
+    srcs = ["tensorflow_building_block_factory.py"],
+    deps = [
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/common_libs:structure",
+        "//tensorflow_federated/python/core/impl/compiler:building_block_factory",
+        "//tensorflow_federated/python/core/impl/compiler:building_blocks",
+        "//tensorflow_federated/python/core/impl/compiler:intrinsic_defs",
+        "//tensorflow_federated/python/core/impl/compiler:tensorflow_computation_factory",
+        "//tensorflow_federated/python/core/impl/types:array_shape",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:placements",
+        "//tensorflow_federated/python/core/impl/types:type_analysis",
+        "//tensorflow_federated/python/core/impl/types:type_conversions",
+    ],
+)
+
+py_test(
+    name = "tensorflow_building_block_factory_test",
+    srcs = ["tensorflow_building_block_factory_test.py"],
+    deps = [
+        ":tensorflow_building_block_factory",
+        "//tensorflow_federated/python/core/impl/compiler:building_blocks",
+        "//tensorflow_federated/python/core/impl/compiler:intrinsic_defs",
+        "//tensorflow_federated/python/core/impl/compiler:tensorflow_computation_test_utils",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:placements",
+    ],
+)
+
+py_library(
     name = "tensorflow_computation_transformations",
     srcs = ["tensorflow_computation_transformations.py"],
     deps = [
@@ -111,6 +142,7 @@ py_library(
     name = "tensorflow_tree_transformations",
     srcs = ["tensorflow_tree_transformations.py"],
     deps = [
+        ":tensorflow_building_block_factory",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/compiler:building_block_factory",

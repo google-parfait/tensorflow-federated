@@ -14,6 +14,7 @@
 """A MergeableCompForm compiler for the native backend."""
 
 from tensorflow_federated.python.core.backends.mapreduce import compiler
+from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_building_block_factory
 from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_tree_transformations
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
@@ -179,7 +180,7 @@ def compile_to_mergeable_comp_form(
 
   before_agg, after_agg = transformations.force_align_and_split_by_intrinsics(
       call_dominant_bb,
-      [building_block_factory.create_null_federated_aggregate()],
+      [tensorflow_building_block_factory.create_null_federated_aggregate()],
   )
 
   # Construct a report function which accepts the result of merge.

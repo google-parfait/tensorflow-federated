@@ -26,6 +26,7 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.backends.mapreduce import compiler
 from tensorflow_federated.python.core.backends.mapreduce import forms
+from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_building_block_factory
 from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_tree_transformations
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
@@ -426,7 +427,7 @@ def _split_ast_on_broadcast(bb):
     broadcast's output to comp's output.
   """
   before, after = transformations.force_align_and_split_by_intrinsics(
-      bb, [building_block_factory.create_null_federated_broadcast()]
+      bb, [tensorflow_building_block_factory.create_null_federated_broadcast()]
   )
   return _untuple_broadcast_only_before_after(before, after)
 
@@ -448,10 +449,10 @@ def _split_ast_on_aggregate(bb):
   return transformations.force_align_and_split_by_intrinsics(
       bb,
       [
-          building_block_factory.create_null_federated_aggregate(),
-          building_block_factory.create_null_federated_secure_sum_bitwidth(),
-          building_block_factory.create_null_federated_secure_sum(),
-          building_block_factory.create_null_federated_secure_modular_sum(),
+          tensorflow_building_block_factory.create_null_federated_aggregate(),
+          tensorflow_building_block_factory.create_null_federated_secure_sum_bitwidth(),
+          tensorflow_building_block_factory.create_null_federated_secure_sum(),
+          tensorflow_building_block_factory.create_null_federated_secure_modular_sum(),
       ],
   )
 

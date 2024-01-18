@@ -130,6 +130,7 @@ py_library(
     srcs = ["mergeable_comp_compiler.py"],
     deps = [
         "//tensorflow_federated/python/core/backends/mapreduce:compiler",
+        "//tensorflow_federated/python/core/environments/tensorflow_backend:tensorflow_building_block_factory",
         "//tensorflow_federated/python/core/environments/tensorflow_backend:tensorflow_tree_transformations",
         "//tensorflow_federated/python/core/impl/compiler:building_block_factory",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",

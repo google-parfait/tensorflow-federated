@@ -21,6 +21,7 @@ import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
+from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
@@ -187,7 +188,9 @@ def _get_intrinsic_reductions() -> dict[
 
   def federated_mean(arg):
     py_typecheck.check_type(arg, building_blocks.ComputationBuildingBlock)
-    one = building_block_factory.create_generic_constant(arg.type_signature, 1)
+    one = tensorflow_building_block_factory.create_generic_constant(
+        arg.type_signature, 1
+    )
     mean_arg = building_blocks.Struct([(None, arg), (None, one)])
     return federated_weighted_mean(mean_arg)
 
@@ -254,7 +257,9 @@ def _get_intrinsic_reductions() -> dict[
   def federated_sum(x):
     py_typecheck.check_type(x, building_blocks.ComputationBuildingBlock)
     operand_type = x.type_signature.member  # pytype: disable=attribute-error
-    zero = building_block_factory.create_generic_constant(operand_type, 0)
+    zero = tensorflow_building_block_factory.create_generic_constant(
+        operand_type, 0
+    )
     plus_proto, plus_type = (
         tensorflow_computation_factory.create_binary_operator_with_upcast(
             tf.add, computation_types.StructType([operand_type, operand_type])
@@ -426,7 +431,7 @@ def _get_secure_intrinsic_reductions() -> (
     #
     # While accumulating summands, we'll assert each summand is less than or
     # equal to max_input. Otherwise the comptuation should issue an error.
-    summation_zero = building_block_factory.create_generic_constant(
+    summation_zero = tensorflow_building_block_factory.create_generic_constant(
         summand_type, 0
     )
     aggregation_zero = building_blocks.Struct(
