@@ -44,6 +44,7 @@ class ProgramState(NamedTuple):
   state: composers.LearningAlgorithmState
   round_number: int
   next_evaluation_timestamp_seconds: Optional[int]
+  data_iterator: Optional[data_source.FederatedDataSourceIterator]
 
 
 class TaskManager:
@@ -157,6 +158,9 @@ async def train_model(
     logging.info('Looking for previous evaluation states...')
     await evaluation_manager.resume_from_previous_state()
 
+  train_state_type, _ = train_process.next.type_signature.result  # pytype: disable=attribute-error
+  train_data_iterator = train_data_source.iterator()
+
   # Try to load the latest program state; if the program logic failed on a
   # previous run, this program state can be used to restore the execution of
   # this program logic and skip unnecessary steps.
@@ -168,7 +172,7 @@ async def train_model(
   if train_state is None:
     raise ValueError('The initial train state is None.')
   program_state, version = await program_state_manager.load_latest(
-      ProgramState(train_state, 0, 0)
+      ProgramState(train_state, 0, 0, train_data_iterator)
   )
   if program_state is not None:
     train_state = program_state.state
@@ -176,6 +180,7 @@ async def train_model(
     next_evaluation_timestamp_seconds = (
         program_state.next_evaluation_timestamp_seconds
     )
+    train_data_iterator = program_state.data_iterator
     logging.info('Found previous program state version %d', version)
     if start_round < train_total_rounds:
       logging.info(
@@ -207,13 +212,13 @@ async def train_model(
     next_evaluation_timestamp_seconds = None
     await program_state_manager.save(
         ProgramState(
-            train_state, start_round, next_evaluation_timestamp_seconds
+            train_state,
+            start_round,
+            next_evaluation_timestamp_seconds,
+            train_data_iterator,
         ),
         version=start_round,
     )
-
-  train_state_type, _ = train_process.next.type_signature.result  # pytype: disable=attribute-error
-  train_data_iterator = train_data_source.iterator()
 
   # Track a future time after which an evaluation should be started. This will
   # be `evaluation_periodicity` after the most recent evaluation time.
@@ -288,7 +293,10 @@ async def train_model(
     task_manager.add_task(
         program_state_manager.save(
             ProgramState(
-                train_state, round_num, next_evaluation_timestamp_seconds
+                train_state,
+                round_num,
+                next_evaluation_timestamp_seconds,
+                train_data_iterator,
             ),
             version=round_num,
         )

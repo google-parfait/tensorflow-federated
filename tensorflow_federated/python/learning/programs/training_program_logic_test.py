@@ -95,15 +95,11 @@ def _create_mock_datasource() -> mock.Mock:
   mock_datasource = mock.create_autospec(
       data_source.FederatedDataSource, instance=True, spec_set=True
   )
+  mock_datasource_iterator = mock.create_autospec(
+      data_source.FederatedDataSourceIterator, instance=True, spec_set=True
+  )
 
-  def create_mock_iterator(*args, **kwargs) -> mock.Mock:
-    del args  # Unused
-    del kwargs  # Unused
-    return mock.create_autospec(
-        data_source.FederatedDataSourceIterator, instance=True, spec_set=True
-    )
-
-  mock_datasource.iterator.side_effect = create_mock_iterator
+  mock_datasource.iterator.return_value = mock_datasource_iterator
   return mock_datasource
 
 
@@ -202,9 +198,14 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
         mock_evaluation_coros
     )
 
+    mock_train_data_source = _create_mock_datasource()
+    mock_train_data_source_iterator = (
+        mock_train_data_source.iterator.return_value
+    )
+
     await training_program_logic.train_model(
         train_process=training_process,
-        train_data_source=_create_mock_datasource(),
+        train_data_source=mock_train_data_source,
         train_per_round_clients=train_num_clients,
         train_total_rounds=training_rounds,
         program_state_manager=mock_program_state_manager,
@@ -226,7 +227,16 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     )
     self.assertEqual(
         mock_program_state_manager.load_latest.call_args_list,
-        [mock.call(ProgramState(any_algorithm_state, 0, 0))],
+        [
+            mock.call(
+                ProgramState(
+                    state=any_algorithm_state,
+                    round_number=0,
+                    next_evaluation_timestamp_seconds=0,
+                    data_iterator=mock_train_data_source_iterator,
+                )
+            )
+        ],
     )
     expected_state_manager_call_list = []
     # Expect saving the initial state (version 0) and training rounds 1
@@ -234,7 +244,12 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     for round_num in range(0, training_rounds + 1):
       expected_state_manager_call_list.append(
           mock.call(
-              ProgramState(any_algorithm_state, round_num, None),
+              ProgramState(
+                  state=any_algorithm_state,
+                  round_number=round_num,
+                  next_evaluation_timestamp_seconds=None,
+                  data_iterator=mock_train_data_source_iterator,
+              ),
               version=round_num,
           )
       )
@@ -317,6 +332,11 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
         create_fake_evaluation
     )
 
+    mock_train_data_source = _create_mock_datasource()
+    mock_train_data_source_iterator = (
+        mock_train_data_source.iterator.return_value
+    )
+
     # Patch `datetime.now` so that each round looks like it takes 20
     # seconds. With evaluation periodicity of 25 seconds and training
     # rounds finishing (relative) at [0, 20, 40, 60, 80], the test will expect
@@ -331,7 +351,7 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
       ]
       await training_program_logic.train_model(
           train_process=training_process,
-          train_data_source=_create_mock_datasource(),
+          train_data_source=mock_train_data_source,
           train_per_round_clients=train_num_clients,
           train_total_rounds=training_rounds,
           program_state_manager=mock_program_state_manager,
@@ -352,7 +372,16 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     )
     self.assertEqual(
         mock_program_state_manager.load_latest.call_args_list,
-        [mock.call(ProgramState(any_algorithm_state, 0, 0))],
+        [
+            mock.call(
+                ProgramState(
+                    state=any_algorithm_state,
+                    round_number=0,
+                    next_evaluation_timestamp_seconds=0,
+                    data_iterator=mock_train_data_source_iterator,
+                )
+            )
+        ],
     )
     # The next evaluation time of the first round is None. The last round will
     # always be evaluated, and the next evaluation time won't be updated.
@@ -368,9 +397,12 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
       expected_state_manager_call_list.append(
           mock.call(
               ProgramState(
-                  any_algorithm_state,
-                  round_num,
-                  next_evaluation_timestamps[round_num],
+                  state=any_algorithm_state,
+                  round_number=round_num,
+                  next_evaluation_timestamp_seconds=next_evaluation_timestamps[
+                      round_num
+                  ],
+                  data_iterator=mock_train_data_source_iterator,
               ),
               version=round_num,
           )
@@ -431,9 +463,14 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     for manager in (mock_model_output_manager, mock_train_metrics_manager):
       manager.release.return_value = None
 
+    mock_train_data_source = _create_mock_datasource()
+    mock_train_data_source_iterator = (
+        mock_train_data_source.iterator.return_value
+    )
+
     await training_program_logic.train_model(
         train_process=training_process,
-        train_data_source=_create_mock_datasource(),
+        train_data_source=mock_train_data_source,
         train_per_round_clients=train_num_clients,
         train_total_rounds=training_rounds,
         program_state_manager=mock_program_state_manager,
@@ -454,7 +491,16 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     )
     self.assertEqual(
         mock_program_state_manager.load_latest.call_args_list,
-        [mock.call(ProgramState(any_algorithm_state, 0, 0))],
+        [
+            mock.call(
+                ProgramState(
+                    state=any_algorithm_state,
+                    round_number=0,
+                    next_evaluation_timestamp_seconds=0,
+                    data_iterator=mock_train_data_source_iterator,
+                )
+            )
+        ],
     )
     expected_state_manager_call_list = []
     # Expect saving the initial state (version 0) and training rounds 1
@@ -462,7 +508,12 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     for round_num in range(0, training_rounds + 1):
       expected_state_manager_call_list.append(
           mock.call(
-              ProgramState(any_algorithm_state, round_num, None),
+              ProgramState(
+                  state=any_algorithm_state,
+                  round_number=round_num,
+                  next_evaluation_timestamp_seconds=None,
+                  data_iterator=mock_train_data_source_iterator,
+              ),
               version=round_num,
           )
       )
@@ -519,10 +570,15 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     for manager in (mock_model_output_manager, mock_train_metrics_manager):
       manager.release.return_value = None
 
+    mock_train_data_source = _create_mock_datasource()
+    mock_train_data_source_iterator = (
+        mock_train_data_source.iterator.return_value
+    )
+
     await training_program_logic.train_model(
         initial_train_state=initial_train_state,
         train_process=_create_mock_train_process(),
-        train_data_source=_create_mock_datasource(),
+        train_data_source=mock_train_data_source,
         train_per_round_clients=5,
         train_total_rounds=5,
         program_state_manager=mock_program_state_manager,
@@ -536,11 +592,28 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     # given initial state and save it as version 0.
     self.assertEqual(
         mock_program_state_manager.load_latest.call_args_list,
-        [mock.call(ProgramState(initial_train_state, 0, 0))],
+        [
+            mock.call(
+                ProgramState(
+                    state=initial_train_state,
+                    round_number=0,
+                    next_evaluation_timestamp_seconds=0,
+                    data_iterator=mock_train_data_source_iterator,
+                )
+            )
+        ],
     )
     self.assertEqual(
         mock_program_state_manager.save.call_args_list[0],
-        mock.call(ProgramState(initial_train_state, 0, None), version=0),
+        mock.call(
+            ProgramState(
+                state=initial_train_state,
+                round_number=0,
+                next_evaluation_timestamp_seconds=None,
+                data_iterator=mock_train_data_source_iterator,
+            ),
+            version=0,
+        ),
     )
 
   @context_stack_test_utils.with_context(_create_test_context)
@@ -549,6 +622,11 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     training_rounds = 11
     training_process = _create_mock_train_process()
 
+    mock_train_data_source = _create_mock_datasource()
+    mock_train_data_source_iterator = (
+        mock_train_data_source.iterator.return_value
+    )
+
     # Create a mock state manager that returns a previous state for round 10
     # (one before the last requested round).
     training_state = training_process.initialize()
@@ -556,7 +634,12 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
         program_state_manager.ProgramStateManager, instance=True
     )
     mock_program_state_manager.load_latest.side_effect = [(
-        ProgramState(training_state, training_rounds - 1, None),
+        ProgramState(
+            state=training_state,
+            round_number=training_rounds - 1,
+            next_evaluation_timestamp_seconds=None,
+            data_iterator=mock_train_data_source_iterator,
+        ),
         training_rounds - 1,
     )]
 
@@ -577,7 +660,7 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
 
     await training_program_logic.train_model(
         train_process=training_process,
-        train_data_source=_create_mock_datasource(),
+        train_data_source=mock_train_data_source,
         train_per_round_clients=train_num_clients,
         train_total_rounds=training_rounds,
         program_state_manager=mock_program_state_manager,
@@ -598,7 +681,16 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     )
     self.assertEqual(
         mock_program_state_manager.load_latest.call_args_list,
-        [mock.call(ProgramState(any_algorithm_state, 0, 0))],
+        [
+            mock.call(
+                ProgramState(
+                    state=any_algorithm_state,
+                    round_number=0,
+                    next_evaluation_timestamp_seconds=0,
+                    data_iterator=mock_train_data_source_iterator,
+                )
+            )
+        ],
     )
     self.assertEqual(
         mock_program_state_manager.save.call_args_list,
@@ -606,7 +698,12 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
         # 10th version)
         [
             mock.call(
-                ProgramState(any_algorithm_state, training_rounds, None),
+                ProgramState(
+                    state=any_algorithm_state,
+                    round_number=training_rounds,
+                    next_evaluation_timestamp_seconds=None,
+                    data_iterator=mock_train_data_source_iterator,
+                ),
                 version=training_rounds,
             )
         ],
@@ -641,6 +738,11 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     training_rounds = 10
     training_process = _create_mock_train_process()
 
+    mock_train_data_source = _create_mock_datasource()
+    mock_train_data_source_iterator = (
+        mock_train_data_source.iterator.return_value
+    )
+
     # Create a mock state manager that returns a previous state that already
     # completed the entire training process.
     training_state = training_process.initialize()
@@ -648,7 +750,12 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
         program_state_manager.ProgramStateManager, instance=True
     )
     mock_program_state_manager.load_latest.side_effect = [(
-        ProgramState(training_state, training_rounds, None),
+        ProgramState(
+            state=training_state,
+            round_number=training_rounds,
+            next_evaluation_timestamp_seconds=None,
+            data_iterator=mock_train_data_source_iterator,
+        ),
         training_rounds,
     )]
 
@@ -667,7 +774,7 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
 
     await training_program_logic.train_model(
         train_process=training_process,
-        train_data_source=_create_mock_datasource(),
+        train_data_source=mock_train_data_source,
         train_per_round_clients=train_num_clients,
         train_total_rounds=training_rounds,
         program_state_manager=mock_program_state_manager,
@@ -688,7 +795,16 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     )
     self.assertSequenceEqual(
         mock_program_state_manager.load_latest.call_args_list,
-        [mock.call(ProgramState(any_algorithm_state, 0, 0))],
+        [
+            mock.call(
+                ProgramState(
+                    state=any_algorithm_state,
+                    round_number=0,
+                    next_evaluation_timestamp_seconds=0,
+                    data_iterator=mock_train_data_source_iterator,
+                )
+            )
+        ],
     )
     mock_program_state_manager.save.assert_not_called()
 
