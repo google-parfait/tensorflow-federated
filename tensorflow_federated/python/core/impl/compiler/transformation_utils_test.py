@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from unittest import mock
+
 from absl.testing import absltest
 from absl.testing import parameterized
 import numpy as np
 
+from tensorflow_federated.proto.v0 import computation_pb2
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_block_test_utils
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import computation_factory
@@ -1671,7 +1673,14 @@ class TransformationUtilsTest(parameterized.TestCase):
       self,
   ):
     tensor_type = computation_types.TensorType(np.int32)
-    make_10 = building_block_factory.create_tensorflow_constant(tensor_type, 10)
+    proto = mock.create_autospec(
+        computation_pb2.Computation, spec_set=True, instance=True
+    )
+    function_type = computation_types.FunctionType(None, tensor_type)
+    compiled = building_blocks.CompiledComputation(
+        proto, name='make_10', type_signature=function_type
+    )
+    make_10 = building_blocks.Call(compiled, None)
 
     whimsy_x_reference = building_blocks.Reference('x', np.int32)
 

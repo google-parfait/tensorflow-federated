@@ -167,7 +167,7 @@ class SelectionSpec:
 
 
 @functools.lru_cache()
-def create_tensorflow_constant(
+def _create_tensorflow_constant(
     type_spec: computation_types.Type,
     scalar_value: Union[int, float, str],
     name=None,
@@ -1390,7 +1390,7 @@ def create_generic_constant(
       the rsponsibility of this function.
   """
   if type_spec is None:
-    return create_tensorflow_constant(type_spec, scalar_value)
+    return _create_tensorflow_constant(type_spec, scalar_value)
   py_typecheck.check_type(type_spec, computation_types.Type)
   inferred_scalar_value_type = type_conversions.infer_type(scalar_value)
   if not isinstance(
@@ -1424,9 +1424,9 @@ def create_generic_constant(
     )
 
   if type_analysis.contains_only(type_spec, _predicate):
-    return create_tensorflow_constant(type_spec, scalar_value)
+    return _create_tensorflow_constant(type_spec, scalar_value)
   elif isinstance(type_spec, computation_types.FederatedType):
-    unplaced_zero = create_tensorflow_constant(type_spec.member, scalar_value)
+    unplaced_zero = _create_tensorflow_constant(type_spec.member, scalar_value)
     if type_spec.placement is placements.CLIENTS:
       placement_federated_type = computation_types.FederatedType(
           type_spec.member, type_spec.placement, all_equal=True

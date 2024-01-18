@@ -12,9 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from unittest import mock
+
 from absl.testing import absltest
 import numpy as np
 
+from tensorflow_federated.proto.v0 import computation_pb2
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_block_test_utils
@@ -1339,17 +1342,29 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
 
     block_locals = []
     # Create a local that will be needed in both the before and after comps.
+    proto = mock.create_autospec(
+        computation_pb2.Computation, spec_set=True, instance=True
+    )
+    function_type = computation_types.FunctionType(None, np.int32)
+    compiled = building_blocks.CompiledComputation(
+        proto, name='state_1', type_signature=function_type
+    )
+    state_1 = building_blocks.Call(compiled, None)
     server_state_val_call_1 = building_block_factory.create_federated_value(
-        building_block_factory.create_tensorflow_constant(
-            computation_types.TensorType(np.int32, shape=[]), 5
-        ),
+        state_1,
         placements.SERVER,
     )
     block_locals.append(('server_state_val_1', server_state_val_call_1))
+    proto = mock.create_autospec(
+        computation_pb2.Computation, spec_set=True, instance=True
+    )
+    function_type = computation_types.FunctionType(None, np.int32)
+    compiled = building_blocks.CompiledComputation(
+        proto, name='state_2', type_signature=function_type
+    )
+    state_2 = building_blocks.Call(compiled, None)
     server_state_val_call_2 = building_block_factory.create_federated_value(
-        building_block_factory.create_tensorflow_constant(
-            computation_types.TensorType(np.int32, shape=[]), 10
-        ),
+        state_2,
         placements.SERVER,
     )
     block_locals.append(('server_state_val_2', server_state_val_call_2))
@@ -1456,10 +1471,16 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
 
     block_locals = []
     # Create a local that will be needed in both the before and after comps.
+    proto = mock.create_autospec(
+        computation_pb2.Computation, spec_set=True, instance=True
+    )
+    function_type = computation_types.FunctionType(None, np.int32)
+    compiled = building_blocks.CompiledComputation(
+        proto, name='state', type_signature=function_type
+    )
+    state = building_blocks.Call(compiled, None)
     server_state_val_call = building_block_factory.create_federated_value(
-        building_block_factory.create_tensorflow_constant(
-            computation_types.TensorType(np.int32, shape=[]), 5
-        ),
+        state,
         placements.SERVER,
     )
     block_locals.append(('server_state_val', server_state_val_call))

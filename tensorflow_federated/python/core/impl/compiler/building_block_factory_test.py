@@ -722,9 +722,7 @@ class CreateFederatedSecureModularSumTest(absltest.TestCase):
     value_type = computation_types.FederatedType(np.int32, placements.CLIENTS)
     value = building_blocks.Data('v', value_type)
     modulus_type = computation_types.TensorType(np.int32)
-    modulus = building_block_factory.create_tensorflow_constant(
-        modulus_type, 8, 'b'
-    )
+    modulus = building_blocks.Data('m', modulus_type)
     comp = building_block_factory.create_federated_secure_modular_sum(
         value, modulus
     )
@@ -762,12 +760,10 @@ class CreateFederatedSecureSumTest(absltest.TestCase):
     value_type = computation_types.FederatedType(np.int32, placements.CLIENTS)
     value = building_blocks.Data('v', value_type)
     max_value_type = computation_types.TensorType(np.int32)
-    max_value = building_block_factory.create_tensorflow_constant(
-        max_value_type, 8, 'b'
-    )
+    max_value = building_blocks.Data('m', max_value_type)
     comp = building_block_factory.create_federated_secure_sum(value, max_value)
     self.assertEqual(
-        comp.compact_representation(), 'federated_secure_sum(<v,comp#b()>)'
+        comp.compact_representation(), 'federated_secure_sum(<v,m>)'
     )
     self.assertEqual(
         comp.type_signature.compact_representation(), 'int32@SERVER'
@@ -797,15 +793,12 @@ class CreateFederatedSecureSumBitwidthTest(absltest.TestCase):
     value_type = computation_types.FederatedType(np.int32, placements.CLIENTS)
     value = building_blocks.Data('v', value_type)
     bitwidth_type = computation_types.TensorType(np.int32)
-    bitwidth = building_block_factory.create_tensorflow_constant(
-        bitwidth_type, 8, 'b'
-    )
+    bitwidth = building_blocks.Data('b', bitwidth_type)
     comp = building_block_factory.create_federated_secure_sum_bitwidth(
         value, bitwidth
     )
     self.assertEqual(
-        comp.compact_representation(),
-        'federated_secure_sum_bitwidth(<v,comp#b()>)',
+        comp.compact_representation(), 'federated_secure_sum_bitwidth(<v,b>)'
     )
     self.assertEqual(
         comp.type_signature.compact_representation(), 'int32@SERVER'

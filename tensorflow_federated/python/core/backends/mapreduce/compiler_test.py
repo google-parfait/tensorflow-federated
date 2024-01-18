@@ -293,9 +293,13 @@ class ConsolidateAndExtractTest(absltest.TestCase):
       self.assertEqual(executable_tf(k), executable_lam(k))
 
   def test_reduces_federated_value_at_server_to_equivalent_noarg_function(self):
-    zero = building_block_factory.create_tensorflow_constant(
-        computation_types.TensorType(np.int32, shape=[]), 0
+    zero_proto, zero_type = tensorflow_computation_factory.create_constant(
+        0, computation_types.TensorType(np.int32)
     )
+    zero_compiled = building_blocks.CompiledComputation(
+        zero_proto, type_signature=zero_type
+    )
+    zero = building_blocks.Call(zero_compiled, None)
     federated_value = building_block_factory.create_federated_value(
         zero, placements.SERVER
     )
@@ -311,9 +315,13 @@ class ConsolidateAndExtractTest(absltest.TestCase):
   def test_reduces_federated_value_at_clients_to_equivalent_noarg_function(
       self,
   ):
-    zero = building_block_factory.create_tensorflow_constant(
-        computation_types.TensorType(np.int32, shape=[]), 0
+    zero_proto, zero_type = tensorflow_computation_factory.create_constant(
+        0, computation_types.TensorType(np.int32)
     )
+    zero_compiled = building_blocks.CompiledComputation(
+        zero_proto, type_signature=zero_type
+    )
+    zero = building_blocks.Call(zero_compiled, None)
     federated_value = building_block_factory.create_federated_value(
         zero, placements.CLIENTS
     )
@@ -395,9 +403,13 @@ class CompileLocalComputationToTensorFlow(absltest.TestCase):
     concrete_int_type = computation_types.TensorType(np.int32)
     param = building_blocks.Reference('x', np.float32)
     lam = building_blocks.Lambda(param.name, param.type_signature, param)
-    unused_int = building_block_factory.create_tensorflow_constant(
-        concrete_int_type, 1
+    unused_proto, unused_type = tensorflow_computation_factory.create_constant(
+        1, concrete_int_type
     )
+    unused_compiled = building_blocks.CompiledComputation(
+        unused_proto, type_signature=unused_type
+    )
+    unused_int = building_blocks.Call(unused_compiled, None)
     blk_to_lam = building_blocks.Block([('y', unused_int)], lam)
     self.assert_compiles_to_tensorflow(blk_to_lam)
 
@@ -410,9 +422,13 @@ class CompileLocalComputationToTensorFlow(absltest.TestCase):
     lam = building_blocks.Lambda(
         param.name, param.type_signature, block_to_param
     )
-    unused_int = building_block_factory.create_tensorflow_constant(
-        concrete_int_type, 1
+    unused_proto, unused_type = tensorflow_computation_factory.create_constant(
+        1, concrete_int_type
     )
+    unused_compiled = building_blocks.CompiledComputation(
+        unused_proto, type_signature=unused_type
+    )
+    unused_int = building_blocks.Call(unused_compiled, None)
     blk_to_lam = building_blocks.Block([('y', unused_int)], lam)
     self.assert_compiles_to_tensorflow(blk_to_lam)
 
@@ -424,9 +440,13 @@ class CompileLocalComputationToTensorFlow(absltest.TestCase):
     tf_identity = building_blocks.CompiledComputation(
         proto, type_signature=type_signature
     )
-    unused_int = building_block_factory.create_tensorflow_constant(
-        concrete_int_type, 1
+    unused_proto, unused_type = tensorflow_computation_factory.create_constant(
+        1, concrete_int_type
     )
+    unused_compiled = building_blocks.CompiledComputation(
+        unused_proto, type_signature=unused_type
+    )
+    unused_int = building_blocks.Call(unused_compiled, None)
     block_to_id = building_blocks.Block([('x', unused_int)], tf_identity)
     self.assert_compiles_to_tensorflow(block_to_id)
 
@@ -442,9 +462,13 @@ class CompileLocalComputationToTensorFlow(absltest.TestCase):
 
   def test_returns_called_tf_computation_with_truct(self):
     constant_tuple_type = computation_types.StructType([np.int32, np.float32])
-    constant_tuple = building_block_factory.create_tensorflow_constant(
-        constant_tuple_type, 1
+    constant_proto, constant_type = (
+        tensorflow_computation_factory.create_constant(1, constant_tuple_type)
     )
+    constant_compiled = building_blocks.CompiledComputation(
+        constant_proto, type_signature=constant_type
+    )
+    constant_tuple = building_blocks.Call(constant_compiled, None)
     sel = building_blocks.Selection(source=constant_tuple, index=0)
     tup = building_blocks.Struct([sel, sel, sel])
     self.assert_compiles_to_tensorflow(tup)
@@ -492,12 +516,16 @@ class CompileLocalComputationToTensorFlow(absltest.TestCase):
     identity_lambda = building_blocks.Lambda(
         ref_to_x.name, ref_to_x.type_signature, ref_to_x
     )
-    tf_zero = building_block_factory.create_tensorflow_constant(
-        computation_types.StructType([np.int32, np.float32]), 0
+    zero_proto, zero_type = tensorflow_computation_factory.create_constant(
+        0, computation_types.StructType([np.int32, np.float32])
     )
+    zero_compiled = building_blocks.CompiledComputation(
+        zero_proto, type_signature=zero_type
+    )
+    zero = building_blocks.Call(zero_compiled, None)
     ref_to_z = building_blocks.Reference('z', [np.int32, np.float32])
     called_lambda_on_z = building_blocks.Call(identity_lambda, ref_to_z)
-    blk = building_blocks.Block([('z', tf_zero)], called_lambda_on_z)
+    blk = building_blocks.Block([('z', zero)], called_lambda_on_z)
     self.assert_compiles_to_tensorflow(blk)
 
   def test_generates_tf_with_sequence_type(self):

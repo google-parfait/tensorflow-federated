@@ -1,5 +1,5 @@
 (let
-  mod=some_compiled_comp()
+  mod=m
  in federated_secure_modular_sum(<
   federated_map(<
     some_compiled_comp,
