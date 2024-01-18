@@ -1314,17 +1314,17 @@ class TensorflowToTypeTest(parameterized.TestCase):
       (
           'tensor_like_shape_fully_defined',
           (tf.int32, tf.TensorShape([2, 3])),
-          computation_types.TensorType(np.int32, [2, 3]),
+          computation_types.TensorType(np.int32, shape=[2, 3]),
       ),
       (
           'tensor_like_shape_partially_defined',
           (tf.int32, tf.TensorShape([2, None])),
-          computation_types.TensorType(np.int32, [2, None]),
+          computation_types.TensorType(np.int32, shape=[2, None]),
       ),
       (
           'tensor_like_shape_unknown',
           (tf.int32, tf.TensorShape(None)),
-          computation_types.TensorType(np.int32, None),
+          computation_types.TensorType(np.int32, shape=None),
       ),
       (
           'tensor_like_shape_scalar',
@@ -1334,19 +1334,19 @@ class TensorflowToTypeTest(parameterized.TestCase):
       (
           'tensor_like_dtype_only',
           (tf.int32, [2, 3]),
-          computation_types.TensorType(np.int32, [2, 3]),
+          computation_types.TensorType(np.int32, shape=[2, 3]),
       ),
       (
           'tensor_like_shape_only',
           (np.int32, tf.TensorShape([2, 3])),
-          computation_types.TensorType(np.int32, [2, 3]),
+          computation_types.TensorType(np.int32, shape=[2, 3]),
       ),
       (
           'tensor_like_nested',
           [(tf.int32, tf.TensorShape([2, 3]))],
           computation_types.StructWithPythonType(
               [
-                  computation_types.TensorType(np.int32, [2, 3]),
+                  computation_types.TensorType(np.int32, shape=[2, 3]),
               ],
               list,
           ),
@@ -1356,7 +1356,7 @@ class TensorflowToTypeTest(parameterized.TestCase):
           [(tf.int32, tf.TensorShape([2, 3])), np.float32],
           computation_types.StructWithPythonType(
               [
-                  computation_types.TensorType(np.int32, [2, 3]),
+                  computation_types.TensorType(np.int32, shape=[2, 3]),
                   computation_types.TensorType(np.float32),
               ],
               list,
@@ -1365,14 +1365,14 @@ class TensorflowToTypeTest(parameterized.TestCase):
       (
           'tensor_spec',
           tf.TensorSpec(shape=[2, 3], dtype=tf.int32),
-          computation_types.TensorType(np.int32, [2, 3]),
+          computation_types.TensorType(np.int32, shape=[2, 3]),
       ),
       (
           'tensor_spec_nested',
           [tf.TensorSpec(shape=[2, 3], dtype=tf.int32)],
           computation_types.StructWithPythonType(
               [
-                  computation_types.TensorType(np.int32, [2, 3]),
+                  computation_types.TensorType(np.int32, shape=[2, 3]),
               ],
               list,
           ),
@@ -1382,7 +1382,7 @@ class TensorflowToTypeTest(parameterized.TestCase):
           [tf.TensorSpec(shape=[2, 3], dtype=tf.int32), np.float32],
           computation_types.StructWithPythonType(
               [
-                  computation_types.TensorType(np.int32, [2, 3]),
+                  computation_types.TensorType(np.int32, shape=[2, 3]),
                   computation_types.TensorType(np.float32),
               ],
               list,
@@ -1390,20 +1390,20 @@ class TensorflowToTypeTest(parameterized.TestCase):
       ),
       (
           'dataset_spec',
-          tf.data.DatasetSpec(tf.TensorSpec([2, 3], dtype=tf.int32)),
+          tf.data.DatasetSpec(tf.TensorSpec(shape=[2, 3], dtype=tf.int32)),
           computation_types.SequenceType(
-              computation_types.TensorType(np.int32, [2, 3])
+              computation_types.TensorType(np.int32, shape=[2, 3])
           ),
       ),
       (
           'dataset_spec_nested',
           [
-              tf.data.DatasetSpec(tf.TensorSpec([2, 3], dtype=tf.int32)),
+              tf.data.DatasetSpec(tf.TensorSpec(shape=[2, 3], dtype=tf.int32)),
           ],
           computation_types.StructWithPythonType(
               [
                   computation_types.SequenceType(
-                      computation_types.TensorType(np.int32, [2, 3])
+                      computation_types.TensorType(np.int32, shape=[2, 3])
                   ),
               ],
               list,
@@ -1412,13 +1412,13 @@ class TensorflowToTypeTest(parameterized.TestCase):
       (
           'dataset_spec_mixed',
           [
-              tf.data.DatasetSpec(tf.TensorSpec([2, 3], dtype=tf.int32)),
+              tf.data.DatasetSpec(tf.TensorSpec(shape=[2, 3], dtype=tf.int32)),
               np.float32,
           ],
           computation_types.StructWithPythonType(
               [
                   computation_types.SequenceType(
-                      computation_types.TensorType(np.int32, [2, 3])
+                      computation_types.TensorType(np.int32, shape=[2, 3])
                   ),
                   computation_types.TensorType(np.float32),
               ],
@@ -1434,11 +1434,14 @@ class TensorflowToTypeTest(parameterized.TestCase):
           ),
           computation_types.StructWithPythonType(
               [
-                  ('flat_values', computation_types.TensorType(np.int32, None)),
+                  (
+                      'flat_values',
+                      computation_types.TensorType(np.int32, shape=None),
+                  ),
                   (
                       'nested_row_splits',
                       computation_types.StructType([
-                          computation_types.TensorType(np.int64, [None]),
+                          computation_types.TensorType(np.int64, shape=[None]),
                       ]),
                   ),
               ],
@@ -1460,13 +1463,15 @@ class TensorflowToTypeTest(parameterized.TestCase):
                       [
                           (
                               'flat_values',
-                              computation_types.TensorType(np.int32, None),
+                              computation_types.TensorType(
+                                  np.int32, shape=None
+                              ),
                           ),
                           (
                               'nested_row_splits',
                               computation_types.StructType([
                                   computation_types.TensorType(
-                                      np.int64, [None]
+                                      np.int64, shape=[None]
                                   ),
                               ]),
                           ),
@@ -1493,13 +1498,15 @@ class TensorflowToTypeTest(parameterized.TestCase):
                       [
                           (
                               'flat_values',
-                              computation_types.TensorType(np.int32, None),
+                              computation_types.TensorType(
+                                  np.int32, shape=None
+                              ),
                           ),
                           (
                               'nested_row_splits',
                               computation_types.StructType([
                                   computation_types.TensorType(
-                                      np.int64, [None]
+                                      np.int64, shape=[None]
                                   ),
                               ]),
                           ),
@@ -1520,10 +1527,16 @@ class TensorflowToTypeTest(parameterized.TestCase):
               [
                   (
                       'indices',
-                      computation_types.TensorType(np.int64, [None, 1]),
+                      computation_types.TensorType(np.int64, shape=[None, 1]),
                   ),
-                  ('values', computation_types.TensorType(np.int32, [None])),
-                  ('dense_shape', computation_types.TensorType(np.int64, [1])),
+                  (
+                      'values',
+                      computation_types.TensorType(np.int32, shape=[None]),
+                  ),
+                  (
+                      'dense_shape',
+                      computation_types.TensorType(np.int64, shape=[1]),
+                  ),
               ],
               tf.SparseTensor,
           ),
@@ -1541,15 +1554,19 @@ class TensorflowToTypeTest(parameterized.TestCase):
                       [
                           (
                               'indices',
-                              computation_types.TensorType(np.int64, [None, 1]),
+                              computation_types.TensorType(
+                                  np.int64, shape=[None, 1]
+                              ),
                           ),
                           (
                               'values',
-                              computation_types.TensorType(np.int32, [None]),
+                              computation_types.TensorType(
+                                  np.int32, shape=[None]
+                              ),
                           ),
                           (
                               'dense_shape',
-                              computation_types.TensorType(np.int64, [1]),
+                              computation_types.TensorType(np.int64, shape=[1]),
                           ),
                       ],
                       tf.SparseTensor,
@@ -1572,15 +1589,19 @@ class TensorflowToTypeTest(parameterized.TestCase):
                       [
                           (
                               'indices',
-                              computation_types.TensorType(np.int64, [None, 1]),
+                              computation_types.TensorType(
+                                  np.int64, shape=[None, 1]
+                              ),
                           ),
                           (
                               'values',
-                              computation_types.TensorType(np.int32, [None]),
+                              computation_types.TensorType(
+                                  np.int32, shape=[None]
+                              ),
                           ),
                           (
                               'dense_shape',
-                              computation_types.TensorType(np.int64, [1]),
+                              computation_types.TensorType(np.int64, shape=[1]),
                           ),
                       ],
                       tf.SparseTensor,

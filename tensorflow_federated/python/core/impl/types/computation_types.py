@@ -1079,7 +1079,8 @@ def _tensor_spec_to_type(tensor_spec: tf.TensorSpec) -> Type:
 
 def _dataset_spec_to_type(dataset_spec: tf.data.DatasetSpec) -> Type:
   """Returns a `tff.Type` for the `dataset_spec`."""
-  return SequenceType(element=tensorflow_to_type(dataset_spec.element_spec))
+  element_type = tensorflow_to_type(dataset_spec.element_spec)
+  return SequenceType(element_type)
 
 
 def _ragged_tensor_spec_to_type(
@@ -1140,10 +1141,10 @@ def _sparse_tensor_spec_to_type(
 
 
 def tensorflow_to_type(obj: object) -> Type:
-  """Returns a `tff.Type` for an `obj` containing TensorFlow objects.
+  """Returns a `tff.Type` for an `obj` containing TensorFlow type specs.
 
-  This function extends `tff.types.to_type` to handle TensorFlow objects and
-  Python structures containing TensorFlow objects:
+  This function extends `tff.types.to_type` to handle TensorFlow type specs and
+  Python structures containing TensorFlow type specs:
 
   *   `tf.dtypes.DType`
   *   tensor-like objects (e.g. `(tf.int32, tf.TensorShape([2, 3]))`)

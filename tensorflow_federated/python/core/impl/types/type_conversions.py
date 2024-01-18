@@ -72,26 +72,17 @@ def infer_type(arg: object) -> Optional[computation_types.Type]:
     return None
   elif isinstance(arg, typed_object.TypedObject):
     return arg.type_signature
-  elif tf.is_tensor(arg):
-    if arg.dtype.base_dtype == tf.string:  # pytype: disable=attribute-error
-      dtype = np.str_
-    else:
-      dtype = arg.dtype.base_dtype.as_numpy_dtype  # pytype: disable=attribute-error
-    if arg.shape.rank is not None:  # pytype: disable=attribute-error
-      shape = arg.shape.as_list()  # pytype: disable=attribute-error
-    else:
-      shape = None
-    return computation_types.TensorType(dtype, shape)
+  elif isinstance(arg, tf.Tensor):
+    return _tensor_to_type(arg)
+  elif isinstance(arg, tf.Variable):
+    return _variable_to_type(arg)
   elif isinstance(arg, tf.data.Dataset):
-    element_type = computation_types.tensorflow_to_type(arg.element_spec)
-    return computation_types.SequenceType(element_type)
+    return _dataset_to_type(arg)
   elif isinstance(arg, structure.Struct):
-    return computation_types.StructType(
-        [
-            (k, infer_type(v)) if k else infer_type(v)
-            for k, v in structure.iter_elements(arg)
-        ]
-    )
+    return computation_types.StructType([
+        (k, infer_type(v)) if k else infer_type(v)
+        for k, v in structure.iter_elements(arg)
+    ])
   elif attrs.has(type(arg)):
     items = attrs.asdict(arg, recurse=False).items()
     return computation_types.StructWithPythonType(
@@ -166,6 +157,132 @@ def infer_type(arg: object) -> Optional[computation_types.Type]:
                 py_typecheck.type_string(type(arg))
             )
         ) from e
+
+
+def _tensor_to_type(tensor: tf.Tensor) -> computation_types.Type:
+  """Returns a `tff.Type` for the `tensor`."""
+  return computation_types.tensorflow_to_type((tensor.dtype, tensor.shape))
+
+
+def _variable_to_type(variable: tf.Variable) -> computation_types.Type:
+  """Returns a `tff.Type` for the `variable`."""
+  return computation_types.tensorflow_to_type((variable.dtype, variable.shape))
+
+
+def _dataset_to_type(dataset: tf.data.Dataset) -> computation_types.Type:
+  """Returns a `tff.Type` for the `dataset`."""
+  dataset_spec = tf.data.DatasetSpec.from_value(dataset)
+  return computation_types.tensorflow_to_type(dataset_spec)
+
+
+def _ragged_tensor_to_type(
+    ragged_tensor: tf.RaggedTensor,
+) -> computation_types.Type:
+  """Returns a `tff.Type` for the `ragged_tensor`."""
+  ragged_tensor_spec = tf.RaggedTensorSpec.from_value(ragged_tensor)
+  return computation_types.tensorflow_to_type(ragged_tensor_spec)
+
+
+def _sparse_tensor_to_type(
+    sparse_tensor: tf.SparseTensor,
+) -> computation_types.Type:
+  """Returns a `tff.Type` for the `sparse_tensor`."""
+  sparse_tensor_spec = tf.SparseTensorSpec.from_value(sparse_tensor)
+  return computation_types.tensorflow_to_type(sparse_tensor_spec)
+
+
+def tensorflow_infer_type(obj: object) -> Optional[computation_types.Type]:
+  """Returns a `tff.Type` for an `obj` containing TensorFlow values.
+
+  This function extends `type_conversions.infer_type` to handle TensorFlow
+  values and Python structures containing TensorFlow values:
+
+  *   `tf.Tensor`
+  *   `tf.Variable`
+  *   `tf.data.Dataset`
+  *   `tf.RaggedTensor`
+  *   `tf.SparseTensor`
+
+  For example:
+
+  >>> tensor = tf.ones(shape=[2, 3], dtype=tf.int32)
+  >>> tensorflow_infer_type(tensor)
+  tff.TensorType(np.int32, (2, 3))
+
+  >>> tensor = tf.ones(shape=[2, 3], dtype=tf.int32)
+  >>> variable = tf.Variable(tensor)
+  >>> tensorflow_infer_type(variable)
+  tff.TensorType(np.int32, (2, 3))
+
+  >>> tensor = tf.ones(shape=[2, 3], dtype=tf.int32)
+  >>> dataset = tf.data.Dataset.from_tensors(tensor)
+  >>> tensorflow_infer_type(dataset)
+  tff.SequenceType(tff.TensorType(np.int32, (2, 3)))
+
+  >>> ragged_tensor = tf.RaggedTensor.from_row_splits(
+          values=[0, 0, 0, 0], row_splits=[0, 1, 4]
+      )
+  >>> tensorflow_infer_type(ragged_tensor)
+  tff.StructWithPythonType(
+      [
+          ('flat_values', tff.TensorType(np.int32, None)),
+          (
+              'nested_row_splits',
+              tff.StructType([tff.TensorType(np.int64, [None])]),
+          ),
+      ],
+      tf.RaggedTensor,
+  )
+
+  >>> sparse_tensor = tf.SparseTensor(
+          indices=[[1]], values=[2], dense_shape=[5]
+      )
+  >>> tensorflow_infer_type(sparse_tensor)
+  tff.StructWithPythonType(
+      [
+          ('indices', tff.TensorType(np.int64, (None, 1))),
+          ('values', tff.TensorType(np.int32, (None,))),
+          ('dense_shape', tff.TensorType(np.int64, (1,))),
+      ],
+      tf.SparseTensor,
+  )
+
+  Args:
+    obj: An object to infer a `tff.Type`.
+  """
+
+  class _Placeholder(typed_object.TypedObject):
+
+    def __init__(self, type_signature: computation_types.Type):
+      self._type_signature = type_signature
+
+    @property
+    def type_signature(self) -> computation_types.Type:
+      return self._type_signature
+
+  def _infer_type(obj):
+    if isinstance(obj, tf.Tensor):
+      type_spec = _tensor_to_type(obj)
+    elif isinstance(obj, tf.Variable):
+      type_spec = _variable_to_type(obj)
+    elif isinstance(obj, tf.data.Dataset):
+      type_spec = _dataset_to_type(obj)
+    elif isinstance(obj, tf.RaggedTensor):
+      type_spec = _ragged_tensor_to_type(obj)
+    elif isinstance(obj, tf.SparseTensor):
+      type_spec = _sparse_tensor_to_type(obj)
+    else:
+      type_spec = None
+
+    # Return a `TypedObject` instead of the `tff.Type` because `infer_type` does
+    # not know how to infer the type of a `tff.Type`.
+    if type_spec is not None:
+      return _Placeholder(type_spec)
+    else:
+      return None
+
+  partial = tree.traverse(_infer_type, obj)
+  return infer_type(partial)
 
 
 def _type_to_tf_dtypes_and_shapes(type_spec: computation_types.Type):
