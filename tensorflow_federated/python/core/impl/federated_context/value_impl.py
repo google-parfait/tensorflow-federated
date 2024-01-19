@@ -378,8 +378,6 @@ def to_value(
           Mapping[Hashable, object],
           tuple[object, ...],
           list[object],
-          tf.Tensor,
-          tf.Variable,
           # Inlined from tensorflow_utils.TENSOR_REPRESENTATION_TYPES
           str,
           int,
@@ -443,17 +441,13 @@ def to_value(
     result = _dictlike_items_to_value(items, type_spec, type(arg))
   elif isinstance(arg, tensorflow_utils.TENSOR_REPRESENTATION_TYPES):
     result = _wrap_constant_as_value(arg)
-  elif isinstance(arg, (tf.Tensor, tf.Variable)):
-    raise TypeError(
-        'TensorFlow construct {} has been encountered in a federated '
-        'context. TFF does not support mixing TF and federated orchestration '
-        'code. Please wrap any TensorFlow constructs with '
-        '`tff.tf_computation`.'.format(arg)
-    )
   else:
     raise TypeError(
-        'Unable to interpret an argument of Python type '
-        f'{py_typecheck.type_string(type(arg))} as a `tff.Value`.'
+        'Expected a Python types that is convertible to a `tff.Value`, found'
+        f' {type(arg)}. If this is backend-specific constructs, it was'
+        ' encountered in a federated context and TFF does not support mixing'
+        ' backend-specific and federated logic. Please wrap any '
+        ' backend-specific constructs in a computation function.'
     )
   py_typecheck.check_type(result, Value)
   if type_spec is not None and not type_spec.is_assignable_from(

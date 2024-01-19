@@ -1238,13 +1238,7 @@ class FederatedValueTest(IntrinsicTestBase):
 
   def test_federated_value_raw_tf_scalar_variable(self):
     v = tf.Variable(initial_value=0.0, name='test_var')
-    with self.assertRaisesRegex(
-        TypeError,
-        (
-            'TensorFlow construct (.*) has been '
-            'encountered in a federated context.'
-        ),
-    ):
+    with self.assertRaises(TypeError):
       intrinsics.federated_value(v, placements.SERVER)
 
   def test_federated_value_with_bool_on_server(self):

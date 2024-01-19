@@ -19,7 +19,6 @@ from absl.testing import absltest
 from absl.testing import parameterized
 import attrs
 import numpy as np
-import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.compiler import building_blocks
@@ -349,20 +348,9 @@ class ValueTest(parameterized.TestCase):
   def test_tf_mapping_raises_helpful_error(self):
     with self.assertRaisesRegex(
         TypeError,
-        (
-            'TensorFlow construct (.*) has been '
-            'encountered in a federated context.'
-        ),
+        'Expected a Python types that is convertible to a `tff.Value`',
     ):
-      _ = value_impl.to_value(tf.constant(10), None)
-    with self.assertRaisesRegex(
-        TypeError,
-        (
-            'TensorFlow construct (.*) has been '
-            'encountered in a federated context.'
-        ),
-    ):
-      _ = value_impl.to_value(tf.Variable(np.array([10.0])), None)
+      value_impl.to_value(object(), None)
 
   def test_slicing_support_namedtuple(self):
     x = value_impl.Value(building_blocks.Reference('foo', np.int32))
