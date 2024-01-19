@@ -72,7 +72,9 @@ def _apply_generic_op(op, arg):
     # If there are federated elements nested in a struct, we need to zip these
     # together before passing to binary operator constructor.
     arg = building_block_factory.create_federated_zip(arg)
-  return building_block_factory.apply_binary_operator_with_upcast(arg, op)
+  return tensorflow_building_block_factory.apply_binary_operator_with_upcast(
+      arg, op
+  )
 
 
 def _initial_values(
