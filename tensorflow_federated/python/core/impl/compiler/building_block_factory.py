@@ -13,7 +13,7 @@
 # limitations under the License.
 """A library of construction functions for building block structures."""
 
-from collections.abc import Callable, Iterator, Sequence
+from collections.abc import Iterator, Sequence
 import functools
 import random
 import string
@@ -162,42 +162,6 @@ class SelectionSpec:
 
   def __repr__(self):
     return str(self)
-
-
-@functools.lru_cache()
-def _create_tensorflow_constant(
-    type_spec: computation_types.Type,
-    scalar_value: Union[int, float, str],
-    name=None,
-) -> building_blocks.Call:
-  """Creates called graph returning constant `scalar_value` of type `type_spec`.
-
-  `scalar_value` must be a scalar, and cannot be a float if any of the tensor
-  leaves of `type_spec` contain an integer data type. `type_spec` must contain
-  only named tuples and tensor types, but these can be arbitrarily nested.
-
-  Args:
-    type_spec: A `computation_types.Type` whose resulting type tree can only
-      contain named tuples and tensors.
-    scalar_value: Scalar value to place in all the tensor leaves of `type_spec`.
-    name: An optional string name to use as the name of the computation.
-
-  Returns:
-    An instance of `building_blocks.Call`, whose argument is `None`
-    and whose function is a noarg
-    `building_blocks.CompiledComputation` which returns the
-    specified `scalar_value` packed into a TFF structure of type `type_spec.
-
-  Raises:
-    TypeError: If the type assumptions above are violated.
-  """
-  proto, function_type = tensorflow_computation_factory.create_constant(
-      scalar_value, type_spec
-  )
-  compiled = building_blocks.CompiledComputation(
-      proto, name, type_signature=function_type
-  )
-  return building_blocks.Call(compiled, None)
 
 
 def create_federated_getitem_call(
@@ -1441,69 +1405,6 @@ def create_named_tuple(
   py_typecheck.check_type(comp.type_signature, computation_types.StructType)
   fn = _create_naming_function(comp.type_signature, names, container_type)
   return building_blocks.Call(fn, comp)
-
-
-def apply_binary_operator_with_upcast(
-    arg: building_blocks.ComputationBuildingBlock,
-    operator: Callable[[object, object], object],
-) -> building_blocks.Call:
-  """Constructs result of applying `operator` to `arg` upcasting if appropriate.
-
-  Notice `arg` here must be of federated type, with a named tuple member of
-  length 2, or a named tuple type of length 2. If the named tuple type of `arg`
-  satisfies certain conditions (that is, there is only a single tensor dtype in
-  the first element of `arg`, and the second element represents a scalar of
-  this dtype), the second element will be upcast to match the first. Here this
-  means it will be pushed into a nested structure matching the structure of the
-  first element of `arg`. For example, it makes perfect sense to divide a model
-  of type `<a=float32[784],b=float32[10]>` by a scalar of type `float32`, but
-  the binary operator constructors we have implemented only take arguments of
-  type `<T, T>`. Therefore in this case we would broadcast the `float` argument
-  to the `tuple` type, before constructing a binary operator which divides
-  pointwise.
-
-  Args:
-    arg: `building_blocks.ComputationBuildingBlock` of federated type whose
-      `member` attribute is a named tuple type of length 2, or named tuple type
-      of length 2.
-    operator: Callable representing binary operator to apply to the 2-tuple
-      represented by the federated `arg`.
-
-  Returns:
-    Instance of `building_blocks.Call`
-    encapsulating the result of formally applying `operator` to
-    `arg[0], `arg[1]`, upcasting `arg[1]` in the condition described above.
-
-  Raises:
-    TypeError: If the types don't match.
-  """
-  py_typecheck.check_type(arg, building_blocks.ComputationBuildingBlock)
-  if isinstance(arg.type_signature, computation_types.FederatedType):
-    tuple_type = arg.type_signature.member
-    assert isinstance(tuple_type, computation_types.StructType)
-  elif isinstance(arg.type_signature, computation_types.StructType):
-    tuple_type = arg.type_signature
-  else:
-    raise TypeError(
-        'Generic binary operators are only implemented for federated tuple and '
-        'unplaced tuples; you have passed {}.'.format(arg.type_signature)
-    )
-
-  tf_representing_proto, tf_representing_type = (
-      tensorflow_computation_factory.create_binary_operator_with_upcast(
-          operator, tuple_type
-      )
-  )
-  tf_representing_op = building_blocks.CompiledComputation(
-      tf_representing_proto, type_signature=tf_representing_type
-  )
-
-  if isinstance(arg.type_signature, computation_types.FederatedType):
-    called = create_federated_map_or_apply(tf_representing_op, arg)
-  else:
-    called = building_blocks.Call(tf_representing_op, arg)
-
-  return called
 
 
 def zip_to_match_type(
