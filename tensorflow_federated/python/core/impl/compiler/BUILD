@@ -327,7 +327,6 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/impl/types:type_analysis",
-        "//tensorflow_federated/python/tensorflow_libs:serialization_utils",
     ],
 )
 
@@ -339,14 +338,9 @@ py_test(
         ":building_block_test_utils",
         ":building_blocks",
         ":intrinsic_defs",
-        ":tensorflow_computation_factory",
         ":tree_analysis",
-        "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
-        "//tensorflow_federated/python/core/impl/types:type_serialization",
-        "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
-        "//tensorflow_federated/python/tensorflow_libs:serialization_utils",
     ],
 )
 
