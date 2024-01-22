@@ -1,3 +1,21 @@
+# Release 0.69.0
+
+## Major Features and Improvements
+
+*   The `local_unfinalized_metrics_type` argument to
+    tff.learning.metrics.(secure_)sum_then_finalize is now optional (and is not
+    actually used). It will be removed in a future release.
+
+## Breaking Changes
+
+*   tff.learning.metrics.(secure_)sum_then_finalize now return polymorphic
+    computations. They can still be passed into algorithm builders (e.g.
+    tff.learning.algorithms.build_weighted_fed_avg) but to be called directly
+    they must first be traced with explicit types.
+*   Removed support for handling `tf.TensorSpec` using `to_type`, use
+    `tensorflow_to_type` instead.
+*   Removed support for calling `tff.TensorType` using a `tf.dtypes.DType`.
+
 # Release 0.68.0
 
 ## Major Features and Improvements
