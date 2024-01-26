@@ -140,23 +140,11 @@ def infer_type(arg: object) -> Optional[computation_types.Type]:
     elif arg_type is float:
       return computation_types.TensorType(np.float32)
     else:
-      # Now fall back onto the heavier-weight processing, as all else failed.
-      # Use make_tensor_proto() to make sure to handle it consistently with
-      # how TensorFlow is handling values (e.g., recognizing int as int32, as
-      # opposed to int64 as in NumPy).
-      try:
-        # TODO: b/113112885 - Find something more lightweight we could use here.
-        tensor_proto = tf.make_tensor_proto(arg)
-        return computation_types.TensorType(
-            tf.dtypes.as_dtype(tensor_proto.dtype),
-            tf.TensorShape(tensor_proto.tensor_shape),
-        )
-      except TypeError as e:
-        raise TypeError(
-            'Could not infer the TFF type of {}.'.format(
-                py_typecheck.type_string(type(arg))
-            )
-        ) from e
+      raise TypeError(
+          'Could not infer the TFF type of {}.'.format(
+              py_typecheck.type_string(type(arg))
+          )
+      )
 
 
 def _tensor_to_type(tensor: tf.Tensor) -> computation_types.Type:
