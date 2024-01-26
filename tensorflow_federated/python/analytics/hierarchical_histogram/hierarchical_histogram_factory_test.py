@@ -17,7 +17,6 @@ import collections
 from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
-import tensorflow_privacy as tfp
 
 from tensorflow_federated.python.aggregators import differential_privacy
 from tensorflow_federated.python.aggregators import factory
@@ -26,7 +25,6 @@ from tensorflow_federated.python.analytics.hierarchical_histogram import hierarc
 from tensorflow_federated.python.core.backends.test import execution_contexts
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
-from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
 
@@ -58,20 +56,16 @@ class TreeAggregationFactoryComputationTest(
     process = agg_factory.create(value_type)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
-    query = tfp.TreeRangeSumQuery(
-        arity=arity, inner_query=tfp.NoPrivacySumQuery()
-    )
-    query_state = query.initial_global_state()
-    query_state_type = type_conversions.infer_type(query_state)
-    query_metrics_type = type_conversions.infer_type(
-        query.derive_metrics(query_state)
-    )
+    query_state_type = computation_types.StructType([
+        ('arity', computation_types.TensorType(np.int32)),
+        ('inner_query_state', computation_types.StructType([])),
+    ])
+    query_metrics_type = computation_types.StructType([])
 
-    template_type = type_conversions.type_to_tf_tensor_specs(value_type)
-    initial_sample_state = query.initial_sample_state(template_type)
-    _, _, dp_event = query.get_noised_result(initial_sample_state, query_state)
-    dp_event_type = type_conversions.infer_type(dp_event.to_named_tuple())
-
+    dp_event_type = computation_types.StructType([
+        ('module_name', computation_types.TensorType(np.str_)),
+        ('class_name', computation_types.TensorType(np.str_)),
+    ])
     server_state_type = computation_types.FederatedType(
         differential_privacy.DPAggregatorState(
             query_state_type, (), dp_event_type, np.bool_
@@ -157,23 +151,24 @@ class TreeAggregationFactoryComputationTest(
     process = agg_factory.create(value_type)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
-    query = tfp.TreeRangeSumQuery.build_central_gaussian_query(
-        l2_norm_clip=1.0, stddev=0.0
-    )
-    query_state = query.initial_global_state()
-    query_state_type = type_conversions.infer_type(query_state)
-    query_metrics_type = type_conversions.infer_type(
-        query.derive_metrics(query_state)
-    )
+    query_state_type = computation_types.StructType([
+        ('arity', computation_types.TensorType(np.int32)),
+        (
+            'inner_query_state',
+            computation_types.StructType([
+                ('l2_norm_clip', computation_types.TensorType(np.float32)),
+                ('stddev', computation_types.TensorType(np.float32)),
+            ]),
+        ),
+    ])
+    query_metrics_type = computation_types.StructType([])
 
     # template_type is not derived from value_type in this test because the
     # outer factory converts the ints to floats before they reach the query.
-    inner_value_type = computation_types.to_type((np.float32, (value_shape,)))
-    template_type = type_conversions.type_to_tf_tensor_specs(inner_value_type)
-    initial_sample_state = query.initial_sample_state(template_type)
-    _, _, dp_event = query.get_noised_result(initial_sample_state, query_state)
-    dp_event_type = type_conversions.infer_type(dp_event.to_named_tuple())
-
+    dp_event_type = computation_types.StructType([
+        ('module_name', computation_types.TensorType(np.str_)),
+        ('class_name', computation_types.TensorType(np.str_)),
+    ])
     server_state_type = computation_types.FederatedType(
         differential_privacy.DPAggregatorState(
             query_state_type, (), dp_event_type, np.bool_
@@ -258,23 +253,22 @@ class TreeAggregationFactoryComputationTest(
     process = agg_factory.create(value_type)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
-    query = tfp.TreeRangeSumQuery(
-        arity=arity,
-        inner_query=tfp.DistributedDiscreteGaussianSumQuery(
-            l2_norm_bound=1.0, local_stddev=1.0
+    query_state_type = computation_types.StructType([
+        ('arity', computation_types.TensorType(np.int32)),
+        (
+            'inner_query_state',
+            computation_types.StructType([
+                ('l2_norm_bound', computation_types.TensorType(np.float32)),
+                ('local_stddev', computation_types.TensorType(np.float32)),
+            ]),
         ),
-    )
-    query_state = query.initial_global_state()
-    query_state_type = type_conversions.infer_type(query_state)
-    query_metrics_type = type_conversions.infer_type(
-        query.derive_metrics(query_state)
-    )
+    ])
+    query_metrics_type = computation_types.StructType([])
 
-    template_type = type_conversions.type_to_tf_tensor_specs(value_type)
-    initial_sample_state = query.initial_sample_state(template_type)
-    _, _, dp_event = query.get_noised_result(initial_sample_state, query_state)
-    dp_event_type = type_conversions.infer_type(dp_event.to_named_tuple())
-
+    dp_event_type = computation_types.StructType([
+        ('module_name', computation_types.TensorType(np.str_)),
+        ('class_name', computation_types.TensorType(np.str_)),
+    ])
     server_state_type = computation_types.FederatedType(
         differential_privacy.DPAggregatorState(
             query_state_type, (), dp_event_type, np.bool_
@@ -583,6 +577,8 @@ class TreeAggregationFactoryExecutionTest(
               for x in client_records
           ]
       )
+    else:
+      self.fail(f'Unexpected `clip_mechanism` found: {clip_mechanism}.')
 
     for layer in range(hihi_factory._tree_depth(value_shape, arity)):
       self.assertAllClose(tf.math.reduce_sum(output[layer]), expected_l1_norm)
@@ -696,6 +692,8 @@ class TreeAggregationFactoryExecutionTest(
               for x in client_records
           ]
       )
+    else:
+      self.fail(f'Unexpected `clip_mechanism` found: {clip_mechanism}.')
 
     # 300 is a rough estimation of six-sigma considering the effect of the L2
     # norm bound and the privacy composition.
@@ -808,6 +806,8 @@ class TreeAggregationFactoryExecutionTest(
               for x in client_records
           ]
       )
+    else:
+      self.fail(f'Unexpected `clip_mechanism` found: {clip_mechanism}.')
 
     # 300 is a rough estimation of six-sigma considering the effect of the L2
     # norm bound and the privacy composition.
