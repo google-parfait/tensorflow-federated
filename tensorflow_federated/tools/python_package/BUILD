@@ -19,6 +19,7 @@ sh_binary(
     srcs = ["build_python_package.sh"],
     data = [
         ":setup",
+        ":get_wheel_platform",
         "//tensorflow_federated",
         "//tensorflow_federated/data:worker_binary",
         "//tensorflow_federated/proto",
@@ -59,4 +60,9 @@ sh_binary(
 sh_binary(
     name = "test_python_package",
     srcs = ["test_python_package.sh"],
+)
+
+sh_binary(
+    name = "get_wheel_platform",
+    srcs = ["get_wheel_platform.py"],
 )

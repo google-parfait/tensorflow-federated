@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 # Copyright 2019, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,11 +19,11 @@ set -e
 usage() {
   local script_name=$(basename "${0}")
   local options=(
-      "--python=python3.11"
+      "--python=python3"
       "--output_dir=<path>"
   )
   echo "usage: ${script_name} ${options[@]}"
-  echo "  --python=python3.11   The Python version used by the environment to"
+  echo "  --python=python3      The Python version used by the environment to"
   echo "                        build the Python package."
   echo "  --output_dir=<path>   An output directory."
   exit 1
@@ -31,7 +31,7 @@ usage() {
 
 main() {
   # Parse the arguments.
-  local python="python3.11"
+  local python="python3" # use current python3 by default
   local output_dir=""
 
   while [[ "$#" -gt 0 ]]; do
@@ -52,13 +52,23 @@ main() {
     esac
   done
 
-  if [[ -z "${output_dir}" ]]; then
-    echo "error: required option `--output_dir`" 1>&2
+  # check python is valid
+  if [[ -z "${python}" ]]; then
+    echo "error: required option --python cannot be empty" 1>&2
     usage
-  elif [[ ! -d "${output_dir}" ]]; then
-    echo "error: the directory '${output_dir}' does not exist" 1>&2
+  elif ! command -v "${python}" &> /dev/null; then
+    echo "error: python '${python}' is not found" 1>&2
     usage
   fi
+
+  # check output_dir
+  if [[ -z "${output_dir}" ]]; then
+    echo "error: required option --output_dir" 1>&2
+    usage
+  elif [[ ! -d "${output_dir}" ]]; then
+    mkdir -p "${output_dir}"
+  fi
+  output_dir="$(realpath "${output_dir}")"
 
   # Create a working directory.
   local temp_dir="$(mktemp -d)"
@@ -67,28 +77,38 @@ main() {
   pushd "${temp_dir}"
 
   # Create a Python environment.
+  python="$(which "${python}")"
+  "${python}" --version
   "${python}" -m venv "venv"
   source "venv/bin/activate"
-  python --version
   pip install --upgrade "pip"
-  pip --version
-  ldd --version
-
-  # Build the Python package.
   pip install --upgrade setuptools wheel
-  # The manylinux tag should match GLIBC version returned by `ldd --version`.
-  python "tensorflow_federated/tools/python_package/setup.py" bdist_wheel \
-      --plat-name=manylinux_2_31_x86_64
+  pip --version
+
+  # Get platform name.
+  local platform=$(python3 tensorflow_federated/tools/python_package/get_wheel_platform.py)
+  echo "Platform is recognized as ${platform}"
+  # Build the Python package.
+  python "tensorflow_federated/tools/python_package/setup.py" bdist_wheel --plat-name="${platform}"
   cp "${temp_dir}/dist/"* "${output_dir}"
 
   # Check Python package sizes.
   local package="$(ls "${output_dir}/tensorflow_federated-"*".whl" | head -n1)"
-  local actual_size="$(du -b "${package}" | cut -f1)"
+
+  local actual_size
+  if [[ "$OSTYPE" == "linux"* ]]; then
+    actual_size="$(du -b "${package}" | cut -f1)"
+  elif [[ "$OSTYPE" == "darwin"* ]]; then
+    actual_size="$(stat -f%z "${package}")"
+  fi
+
   local maximum_size=80000000  # 80 MiB
   if [ "${actual_size}" -ge "${maximum_size}" ]; then
     echo "Error: expected $(basename ${package}) to be less than ${maximum_size} bytes; it was ${actual_size}." 1>&2
     exit 1
   fi
+
+  echo "Successfully built $(basename ${package}) at ${output_dir}"
 
   # Cleanup.
   deactivate

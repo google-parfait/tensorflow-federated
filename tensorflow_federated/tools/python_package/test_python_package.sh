@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 # Copyright 2019, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,11 +19,11 @@ set -e
 usage() {
   local script_name=$(basename "${0}")
   local options=(
-      "--python=python3.11"
+      "--python=python3"
       "--package=<path>"
   )
   echo "usage: ${script_name} ${options[@]}"
-  echo "  --python=python3.11  The Python version used by the environment to"
+  echo "  --python=python3     The Python version used by the environment to"
   echo "                       build the Python package."
   echo "  --package=<path>     A path to a local pip package."
   exit 1
@@ -31,7 +31,7 @@ usage() {
 
 main() {
   # Parse the arguments.
-  local python="python3.11"
+  local python="python3" # use current python3 by default
   local package=""
 
   while [[ "$#" -gt 0 ]]; do
@@ -52,6 +52,16 @@ main() {
     esac
   done
 
+  # check python is valid
+  if [[ -z "${python}" ]]; then
+    echo "error: required option --python cannot be empty" 1>&2
+    usage
+  elif ! command -v "${python}" &> /dev/null; then
+    echo "error: python '${python}' is not found" 1>&2
+    usage
+  fi
+
+  # check package exists
   if [[ -z "${package}" ]]; then
     echo "error: required option `--package`" 1>&2
     usage

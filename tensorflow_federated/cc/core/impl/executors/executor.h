@@ -210,7 +210,7 @@ class OwnedValueId {
   std::weak_ptr<Executor> exec_;
   ValueId id_;
   // Use ValueId max to indicate "no value."
-  static const ValueId INVALID_ID = std::numeric_limits<ValueId>::max();
+  inline static const ValueId INVALID_ID = std::numeric_limits<ValueId>::max();
 };
 
 // A base class to allow for easy implementation of `Executor`.
