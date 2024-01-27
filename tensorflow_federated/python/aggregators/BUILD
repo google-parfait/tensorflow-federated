@@ -479,7 +479,6 @@ py_library(
     name = "primitives",
     srcs = ["primitives.py"],
     deps = [
-        "//tensorflow_federated/python/common_libs:deprecation",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
