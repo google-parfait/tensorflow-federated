@@ -17,7 +17,6 @@ import collections
 from collections.abc import Callable, Iterable
 import functools
 import inspect
-import types
 from typing import Optional
 
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -27,7 +26,6 @@ from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.computation import polymorphic_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_conversions
-from tensorflow_federated.python.tensorflow_libs import function
 
 
 def _parameters(fn):
@@ -236,10 +234,14 @@ def _wrap(fn, parameter_types: tuple[computation_types.Type, ...], wrapper_fn):
   return wrapped_fn
 
 
-def _is_function(fn):
-  return isinstance(
-      fn, (types.FunctionType, types.MethodType, functools.partial)
-  ) or function.is_tf_function(fn)
+def _is_function(obj):
+  # TFF supports passing type specifications (i.e. objects that can be turned
+  # into a `tff.Type`) as arguments to a computation decorator. In some cases
+  # those type specifications (e.g. np.int32) are a `type`, making them
+  # `Callable`, but they should not be treated as the function being decorated.
+  if isinstance(obj, type):
+    return False
+  return isinstance(obj, Callable)
 
 
 class ComputationReturnedNoneError(ValueError):
@@ -458,7 +460,7 @@ class ComputationWrapper:
 
     def _to_types(
         objs: Iterable[object],
-    ) -> tuple[Optional[computation_types.Type]]:
+    ) -> tuple[Optional[computation_types.Type], ...]:
       result = []
       for obj in objs:
         if obj is not None:

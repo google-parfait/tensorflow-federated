@@ -22,17 +22,6 @@ py_library(
 )
 
 py_library(
-    name = "function",
-    srcs = ["function.py"],
-)
-
-py_test(
-    name = "function_test",
-    srcs = ["function_test.py"],
-    deps = [":function"],
-)
-
-py_library(
     name = "graph_optimizations",
     srcs = ["graph_optimizations.py"],
     deps = [":graph_spec"],
