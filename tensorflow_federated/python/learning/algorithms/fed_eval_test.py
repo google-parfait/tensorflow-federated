@@ -21,7 +21,6 @@ from absl.testing import absltest
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.aggregators import primitives
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
@@ -164,7 +163,7 @@ def _create_custom_metrics_aggregation_process(
       ),
   )
   def next_fn(state, unfinalized_metrics):
-    max_unfinalized_metrics = primitives.federated_max(unfinalized_metrics)
+    max_unfinalized_metrics = intrinsics.federated_max(unfinalized_metrics)
 
     state = intrinsics.federated_map(
         get_max_unfinalized_metrics, (state, max_unfinalized_metrics)

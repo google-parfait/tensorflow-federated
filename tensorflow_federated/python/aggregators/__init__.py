@@ -32,8 +32,6 @@ from tensorflow_federated.python.aggregators.factory_utils import as_weighted_ag
 from tensorflow_federated.python.aggregators.mean import MeanFactory
 from tensorflow_federated.python.aggregators.mean import UnweightedMeanFactory
 from tensorflow_federated.python.aggregators.measurements import add_measurements
-from tensorflow_federated.python.aggregators.primitives import federated_max
-from tensorflow_federated.python.aggregators.primitives import federated_min
 from tensorflow_federated.python.aggregators.primitives import federated_sample
 from tensorflow_federated.python.aggregators.primitives import secure_quantized_sum
 from tensorflow_federated.python.aggregators.quantile_estimation import PrivateQuantileEstimationProcess

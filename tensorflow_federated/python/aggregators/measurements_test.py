@@ -19,7 +19,6 @@ import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.aggregators import measurements
-from tensorflow_federated.python.aggregators import primitives
 from tensorflow_federated.python.aggregators import sum_factory
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
@@ -46,7 +45,7 @@ def _make_struct(x):
 
 def _get_min_norm(value):
   norms = intrinsics.federated_map(_get_norm, value)
-  min_norm = primitives.federated_min(norms)
+  min_norm = intrinsics.federated_min(norms)
   return collections.OrderedDict(min_norm=min_norm)
 
 
@@ -58,7 +57,7 @@ def _mul_struct(value, weight):
 def _get_min_weighted_norm(value, weight):
   weighted_value = intrinsics.federated_map(_mul_struct, (value, weight))
   norms = intrinsics.federated_map(_get_norm, weighted_value)
-  min_weighted_norm = primitives.federated_min(norms)
+  min_weighted_norm = intrinsics.federated_min(norms)
   return collections.OrderedDict(min_weighted_norm=min_weighted_norm)
 
 

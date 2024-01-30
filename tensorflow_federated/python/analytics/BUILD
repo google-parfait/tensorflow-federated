@@ -80,7 +80,6 @@ py_library(
     name = "count_distinct",
     srcs = ["count_distinct.py"],
     deps = [
-        "//tensorflow_federated/python/aggregators:primitives",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
         "//tensorflow_federated/python/core/impl/computation:computation_base",
         "//tensorflow_federated/python/core/impl/federated_context:federated_computation",

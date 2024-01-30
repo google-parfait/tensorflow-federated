@@ -18,7 +18,6 @@ from typing import Any, NamedTuple
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import deprecation
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
@@ -37,54 +36,6 @@ def _validate_value_on_clients(value):
         '`value` argument must be a tff.Value placed at CLIENTS. Got: {!s}'
         .format(value.type_signature)
     )
-
-
-@deprecation.deprecated(
-    '`tff.aggregators.federated_min` is deprecated, use `tff.federated_min`'
-    ' instead.'
-)
-def federated_min(value):
-  """Computes the minimum at `tff.SERVER` of a `value` placed at `tff.CLIENTS`.
-
-  The minimum is computed element-wise, for each scalar and every scalar in a
-  tensor contained in `value`.
-
-  In the degenerate scenario that the `value` is aggregated over an empty set
-  of `tff.CLIENTS`, the tensor constituents of the result are set to the
-  maximum of the underlying numeric data type.
-
-  Args:
-    value: A value of a TFF federated type placed at the tff.CLIENTS.
-
-  Returns:
-    A representation of the min of the member constituents of `value` placed at
-    `tff.SERVER`.
-  """
-  return intrinsics.federated_min(value_impl.to_value(value, type_spec=None))
-
-
-@deprecation.deprecated(
-    '`tff.aggregators.federated_max` is deprecated, use `tff.federated_max`'
-    ' instead.'
-)
-def federated_max(value):
-  """Computes the maximum at `tff.SERVER` of a `value` placed at `tff.CLIENTS`.
-
-  The maximum is computed element-wise, for each scalar and every scalar in a
-  tensor contained in `value`.
-
-  In the degenerate scenario that the `value` is aggregated over an empty set
-  of `tff.CLIENTS`, the tensor constituents of the result are set to the
-  minimum of the underlying numeric data type.
-
-  Args:
-    value: A value of a TFF federated type placed at the tff.CLIENTS.
-
-  Returns:
-    A representation of the max of the member constituents of `value` placed at
-    `tff.SERVER`.
-  """
-  return intrinsics.federated_max(value_impl.to_value(value, type_spec=None))
 
 
 class _Samples(NamedTuple):

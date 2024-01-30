@@ -465,7 +465,6 @@ py_cpu_gpu_test(
     srcs = ["fed_eval_test.py"],
     deps = [
         ":fed_eval",
-        "//tensorflow_federated/python/aggregators:primitives",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
         "//tensorflow_federated/python/core/impl/federated_context:federated_computation",

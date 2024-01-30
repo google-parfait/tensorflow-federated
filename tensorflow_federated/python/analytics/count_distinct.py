@@ -20,7 +20,6 @@ algorithm.
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.aggregators import primitives
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
@@ -217,7 +216,7 @@ def create_federated_hyperloglog_computation(
     if use_secagg:
       server_sketch = federated_secure_max(sketches)
     else:
-      server_sketch = primitives.federated_max(sketches)
+      server_sketch = intrinsics.federated_max(sketches)
 
     return intrinsics.federated_map(estimate_count_from_sketch, server_sketch)
 
