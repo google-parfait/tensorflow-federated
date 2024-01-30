@@ -23,17 +23,12 @@ import numpy as np
 import tensorflow as tf
 import tree
 
-from tensorflow_federated.python.common_libs import deprecation
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import typed_object
 
 
-@deprecation.deprecated(
-    '`tff.types.infer_unplaced_type()` is deprecated, use `tff.Type()`'
-    ' constructors instead.'
-)
 def infer_type(arg: object) -> Optional[computation_types.Type]:
   """Infers the TFF type of the argument (a `computation_types.Type` instance).
 
@@ -58,8 +53,6 @@ def infer_type(arg: object) -> Optional[computation_types.Type]:
       Union[
           None,
           typed_object.TypedObject,
-          tf.Tensor,
-          tf.data.Dataset,
           structure.Struct,
           py_typecheck.SupportsNamedTuple,
           Mapping[Hashable, object],
@@ -72,12 +65,6 @@ def infer_type(arg: object) -> Optional[computation_types.Type]:
     return None
   elif isinstance(arg, typed_object.TypedObject):
     return arg.type_signature
-  elif isinstance(arg, tf.Tensor):
-    return _tensor_to_type(arg)
-  elif isinstance(arg, tf.Variable):
-    return _variable_to_type(arg)
-  elif isinstance(arg, tf.data.Dataset):
-    return _dataset_to_type(arg)
   elif isinstance(arg, structure.Struct):
     return computation_types.StructType([
         (k, infer_type(v)) if k else infer_type(v)
@@ -140,11 +127,13 @@ def infer_type(arg: object) -> Optional[computation_types.Type]:
     elif arg_type is float:
       return computation_types.TensorType(np.float32)
     else:
-      raise TypeError(
-          'Could not infer the TFF type of {}.'.format(
-              py_typecheck.type_string(type(arg))
-          )
-      )
+      print('--- infer_type')
+      print(arg)
+      print(type(arg))
+      print(type(arg).__mro__)
+      print(isinstance(arg, tf.Tensor))
+      print('---')
+      raise NotImplementedError(f'Unexpected type found: {type(arg)}.')
 
 
 def _tensor_to_type(tensor: tf.Tensor) -> computation_types.Type:
@@ -238,6 +227,9 @@ def tensorflow_infer_type(obj: object) -> Optional[computation_types.Type]:
   Args:
     obj: An object to infer a `tff.Type`.
   """
+  print('--- tensorflow_infer_type')
+  print(obj)
+  print('---')
 
   class _Placeholder(typed_object.TypedObject):
 
@@ -270,6 +262,11 @@ def tensorflow_infer_type(obj: object) -> Optional[computation_types.Type]:
       return None
 
   partial = tree.traverse(_infer_type, obj)
+
+  print('--- tensorflow_infer_type')
+  print(partial)
+  print('---')
+
   return infer_type(partial)
 
 
@@ -496,7 +493,7 @@ def type_to_py_container(value, type_spec: computation_types.Type):
 
   This function assumes some unique behavior with regards to `tff.SequenceType`.
   If the `value` is a list, it may yield other `tff.StructTypes` as well as
-  Python types. Otherwise, it may only yeild Python types.
+  Python types. Otherwise, it may only yield Python types.
 
   Args:
     value: A structure of anonymous tuples of values corresponding to

@@ -471,13 +471,6 @@ def _unpack_arg(
   args = []
   for idx, expected_type in enumerate(arg_types):
     element_value = arg[idx]
-    actual_type = type_conversions.infer_type(element_value)
-    if not expected_type.is_assignable_from(actual_type):
-      raise TypeError(
-          'Expected element at position {} to be of type {}, found {}.'.format(
-              idx, expected_type, actual_type
-          )
-      )
     if isinstance(element_value, structure.Struct):
       element_value = type_conversions.type_to_py_container(
           element_value, expected_type
@@ -486,13 +479,6 @@ def _unpack_arg(
   kwargs = {}
   for name, expected_type in kwarg_types.items():
     element_value = getattr(arg, name)
-    actual_type = type_conversions.infer_type(element_value)
-    if not expected_type.is_assignable_from(actual_type):
-      raise TypeError(
-          'Expected element named {} to be of type {}, found {}.'.format(
-              name, expected_type, actual_type
-          )
-      )
     if type_analysis.is_struct_with_py_container(element_value, expected_type):
       element_value = type_conversions.type_to_py_container(
           element_value, expected_type
@@ -505,13 +491,6 @@ def _ensure_arg_type(
     parameter_type, arg
 ) -> tuple[list[object], dict[str, object]]:
   """Ensures that `arg` matches `parameter_type` before returning it."""
-  arg_type = type_conversions.infer_type(arg)
-  if not parameter_type.is_assignable_from(arg_type):
-    raise TypeError(
-        'Expected an argument of type {}, found {}.'.format(
-            parameter_type, arg_type
-        )
-    )
   if type_analysis.is_struct_with_py_container(arg, parameter_type):
     arg = type_conversions.type_to_py_container(arg, parameter_type)
   return [arg], {}

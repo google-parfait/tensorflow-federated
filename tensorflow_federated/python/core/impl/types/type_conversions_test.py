@@ -74,45 +74,6 @@ class InferTypeTest(parameterized.TestCase):
         'int64[4]',
     )
 
-  def test_with_scalar_int_variable_tensor(self):
-    self.assertEqual(str(type_conversions.infer_type(tf.Variable(10))), 'int32')
-
-  def test_with_scalar_bool_variable_tensor(self):
-    self.assertEqual(
-        str(type_conversions.infer_type(tf.Variable(True))), 'bool'
-    )
-
-  def test_with_scalar_float_variable_tensor(self):
-    self.assertEqual(
-        str(type_conversions.infer_type(tf.Variable(0.5))), 'float32'
-    )
-
-  def test_with_scalar_int_array_variable_tensor(self):
-    self.assertEqual(
-        str(type_conversions.infer_type(tf.Variable([10]))), 'int32[1]'
-    )
-
-  def test_with_int_dataset(self):
-    self.assertEqual(
-        str(type_conversions.infer_type(tf.data.Dataset.from_tensors(10))),
-        'int32*',
-    )
-
-  def test_with_ordered_dict_dataset(self):
-    self.assertEqual(
-        str(
-            type_conversions.infer_type(
-                tf.data.Dataset.from_tensors(
-                    collections.OrderedDict([
-                        ('b', 20),
-                        ('a', 10),
-                    ])
-                )
-            )
-        ),
-        '<b=int32,a=int32>*',
-    )
-
   def test_with_int(self):
     self.assertEqual(str(type_conversions.infer_type(10)), 'int32')
 
@@ -253,34 +214,6 @@ class InferTypeTest(parameterized.TestCase):
     self.assertIsInstance(t, computation_types.StructWithPythonType)
     self.assertIs(t.python_container, TestAttrClass)
     self.assertIs(t.b.python_container, collections.OrderedDict)
-
-  def test_with_dataset_list(self):
-    t = type_conversions.infer_type(
-        [tf.data.Dataset.from_tensors(x) for x in [1, True, [0.5]]]
-    )
-    self.assertEqual(str(t), '<int32*,bool*,float32[1]*>')
-    self.assertIsInstance(t, computation_types.StructWithPythonType)
-    self.assertIs(t.python_container, list)
-
-  def test_with_nested_dataset_list_tuple(self):
-    t = type_conversions.infer_type(
-        tuple([(tf.data.Dataset.from_tensors(x),) for x in [1, True, [0.5]]])
-    )
-    self.assertEqual(str(t), '<<int32*>,<bool*>,<float32[1]*>>')
-    self.assertIsInstance(t, computation_types.StructWithPythonType)
-    self.assertIs(t.python_container, tuple)
-
-  def test_with_dataset_of_named_tuple(self):
-    test_named_tuple = collections.namedtuple('_', 'A B')
-    t = type_conversions.infer_type(
-        tf.data.Dataset.from_tensor_slices({
-            'x': [0.0],
-            'y': [1],
-        }).map(lambda v: test_named_tuple(v['x'], v['y']))
-    )
-    self.assertEqual(str(t), '<A=float32,B=int32>*')
-    self.assertIsInstance(t.element, computation_types.StructWithPythonType)
-    self.assertIs(t.element.python_container, test_named_tuple)
 
   def test_with_empty_tuple(self):
     t = type_conversions.infer_type(())

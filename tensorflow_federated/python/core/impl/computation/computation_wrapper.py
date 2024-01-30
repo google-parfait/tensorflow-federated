@@ -69,7 +69,7 @@ def _check_parameters(parameters):
 
 
 def _wrap_polymorphic(
-    fn, wrapper_fn
+    fn, wrapper_fn, infer_type_fn
 ) -> polymorphic_computation.PolymorphicComputation:
   """Wraps `fn` in `wrapper_fn` at invocation time."""
   try:
@@ -82,7 +82,9 @@ def _wrap_polymorphic(
   ):
     return wrapper_fn(fn, parameter_type, unpack=unpack, name=name)
 
-  return polymorphic_computation.PolymorphicComputation(_polymorphic_wrapper)
+  return polymorphic_computation.PolymorphicComputation(
+      _polymorphic_wrapper, infer_type_fn
+  )
 
 
 def _wrap_concrete(
@@ -176,7 +178,12 @@ def _parameter_type(
   )
 
 
-def _wrap(fn, parameter_types: tuple[computation_types.Type, ...], wrapper_fn):
+def _wrap(
+    fn,
+    wrapper_fn,
+    parameter_types: tuple[computation_types.Type, ...],
+    infer_type_fn: Callable[[object], computation_types.Type],
+):
   """Wraps a possibly-polymorphic `fn` in `wrapper_fn`.
 
   If `parameter_type` is `None` and `fn` takes any arguments (even with default
@@ -200,10 +207,11 @@ def _wrap(fn, parameter_types: tuple[computation_types.Type, ...], wrapper_fn):
 
   Args:
     fn: The function or tf.function to wrap as a computation.
-    parameter_types: Types of any arguments to `fn`.
     wrapper_fn: The Python callable that performs actual wrapping. The object to
       be returned by this function should be an instance of a
       `tff.framework.ConcreteComputation`.
+    parameter_types: Types of any arguments to `fn`.
+    infer_type_fn: ...
 
   Returns:
     Either the result of wrapping (an object that represents the computation),
@@ -219,10 +227,10 @@ def _wrap(fn, parameter_types: tuple[computation_types.Type, ...], wrapper_fn):
   # in the polymorphic case in order to avoid creating an inconsistency.
   _check_parameters(parameters)
 
-  if (not parameter_types) and parameters:
+  if parameters and not parameter_types:
     # There is no TFF type specification, and the function/tf.function declares
     # parameters. Create a polymorphic template.
-    wrapped_fn = _wrap_polymorphic(fn, wrapper_fn)
+    wrapped_fn = _wrap_polymorphic(fn, wrapper_fn, infer_type_fn)
   else:
     # Either we have a concrete parameter type, or this is no-arg function.
     parameter_type = _parameter_type(parameters, parameter_types)
@@ -420,23 +428,29 @@ class ComputationWrapper:
   def __init__(
       self,
       wrapper_fn: Callable[..., computation_base.Computation],
-      to_type: Optional[
-          Callable[[object], computation_types.Type]
+      to_type_fn: Callable[
+          [object], computation_types.Type
       ] = computation_types.to_type,
+      infer_type_fn: Callable[
+          [object], computation_types.Type
+      ] = type_conversions.infer_type,
   ):
     """Construct a new wrapper/decorator for the given wrapper callable.
 
     Args:
       wrapper_fn: The Python callable that performs actual wrapping (as in the
         specification of `_wrap`).
-      to_type: An `Optional` `Callable` used to convert an environment-speific
-        object to a `tff.Type`.
+      to_type_fn: A `Callable` used to convert a backend-specific type
+        specification to a `tff.Type`.
+      infer_type_fn: A `Callable` used to convert a backend-specific values to a
+        `tff.Type`.
 
     Raises:
       TypeError: if the arguments are of the wrong types.
     """
     self._wrapper_fn = wrapper_fn
-    self._to_type = to_type
+    self._to_type_fn = to_type_fn
+    self._infer_type_fn = infer_type_fn
 
   def __call__(self, *args, **kwargs):
     """Handles the different modes of usage of the decorator/wrapper.
@@ -464,7 +478,7 @@ class ComputationWrapper:
       result = []
       for obj in objs:
         if obj is not None:
-          result.append(self._to_type(obj))
+          result.append(self._to_type_fn(obj))
         else:
           result.append(None)
       return tuple(result)
@@ -478,8 +492,10 @@ class ComputationWrapper:
       # to accidentally specify parameter type as a second argument.
       # The tricky partial recursion is needed to inline the logic in the
       # "success" case below.
-      provided_types = ()
-      return lambda fn: _wrap(fn, provided_types, self._wrapper_fn)
+      provided_types = []
+      return lambda fn: _wrap(
+          fn, self._wrapper_fn, provided_types, self._infer_type_fn
+      )
     elif _is_function(args[0]):
       # If the first argument on the list is a Python function, instance method,
       # or a tf.function, this is the one that's being wrapped. This is the case
@@ -490,10 +506,12 @@ class ComputationWrapper:
       # wrapper that are to be interpreted as the type specification.
       fn = args[0]
       provided_types = _to_types(args[1:])
-      return _wrap(fn, provided_types, self._wrapper_fn)
+      return _wrap(fn, self._wrapper_fn, provided_types, self._infer_type_fn)
     else:
       provided_types = _to_types(args)
-      return lambda fn: _wrap(fn, provided_types, self._wrapper_fn)
+      return lambda fn: _wrap(
+          fn, self._wrapper_fn, provided_types, self._infer_type_fn
+      )
 
 
 def _check_returns_type_helper(fn, expected_return_type):
@@ -509,7 +527,9 @@ def _check_returns_type_helper(fn, expected_return_type):
           'TFF computations may not return `None`. '
           'Consider instead returning `()`.'
       )
-    result_type = type_conversions.infer_type(result)
+    if isinstance(result, structure.Struct):
+      result = structure.to_odict_or_tuple(result)
+    result_type = type_conversions.tensorflow_infer_type(result)
     if not result_type.is_identical_to(expected_return_type):  # pytype: disable=attribute-error
       raise TypeError(
           f'Value returned from `{fn.__name__}` did not match asserted type.\n'

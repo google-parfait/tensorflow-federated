@@ -48,7 +48,7 @@ class TensorFlowComputationContextTest(absltest.TestCase):
         ValueError,
         'Can only invoke TensorFlow in the body of a TensorFlow computation',
     ):
-      context.invoke(non_tf_computation, None)
+      context.invoke(non_tf_computation, 1)
 
   def test_invoke_returns_result_with_tf_computation(self):
     make_10 = tensorflow_computation.tf_computation(lambda: tf.constant(10))

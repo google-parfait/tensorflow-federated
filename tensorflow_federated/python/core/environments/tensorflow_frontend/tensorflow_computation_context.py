@@ -14,12 +14,14 @@
 """The implementation of a context to use in building TF computations."""
 
 import tensorflow as tf
+import tree
 
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
-from tensorflow_federated.python.core.impl.types import type_analysis
+from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
@@ -57,8 +59,48 @@ class TensorFlowComputationContext(context_base.SyncContext):
     return self._session_token
 
   def invoke(self, comp: computation_impl.ConcreteComputation, arg):
-    if arg is not None:
-      type_analysis.check_type(arg, comp.type_signature.parameter)
+    if comp.type_signature.parameter is not None:
+      # Note: `arg` is sometimes a `structure.Struct` and sometimes it's not,
+      # other times it's a Python structure that contains a `structure.Struct`.
+      # Here we normalize this to a Python structure to make it simpler to
+      # handle.
+      def _to_python(obj):
+        if isinstance(obj, structure.Struct):
+          return structure.to_odict_or_tuple(obj)
+        else:
+          return None
+
+      normalized_arg = tree.traverse(_to_python, arg)
+
+      # Preemptively package as a struct to work around shortcircuiting in
+      # type_to_py_container in a non-Struct argument case.
+      # structure_arg = structure.Struct.unnamed(*arg)
+      # normalized_arg = type_conversions.type_to_py_container(
+      #     structure_arg, comp.type_signature.parameter
+      # )
+
+      try:
+        inferred_type = type_conversions.tensorflow_infer_type(normalized_arg)
+      except Exception as e:
+        print('---')
+        print(arg)
+        print()
+        print(comp.type_signature.parameter)
+        print()
+        print(normalized_arg)
+        print('---')
+        raise e
+
+      if not comp.type_signature.parameter.is_assignable_from(inferred_type):
+        raise TypeError(
+            computation_types.type_mismatch_error_message(
+                inferred_type,
+                comp.type_signature.parameter,
+                computation_types.TypeRelation.ASSIGNABLE,
+                second_is_expected=True,
+            )
+        )
+
     # We are invoking a tff.tf_computation inside of another
     # tf_computation.
     py_typecheck.check_type(comp, computation_impl.ConcreteComputation)

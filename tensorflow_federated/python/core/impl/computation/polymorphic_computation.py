@@ -16,10 +16,10 @@
 from collections.abc import Callable
 from typing import Optional
 
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.computation import function_utils
 from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import type_conversions
 
 
 class PolymorphicComputation:
@@ -31,6 +31,7 @@ class PolymorphicComputation:
           [computation_types.Type, Optional[bool]],
           computation_impl.ConcreteComputation,
       ],
+      infer_type_fn: Callable[[object], computation_types.Type],
   ):
     """Crates a polymorphic function with a given function factory.
 
@@ -42,8 +43,11 @@ class PolymorphicComputation:
         return a `Computation` instance that's been created to accept a single
         positional argument of this TFF type (to be reused for future calls with
         parameters of a matching type).
+      infer_type_fn: A `Callable` used to convert a backend-specific value to a
+        `tff.Type`.
     """
     self._concrete_function_factory = concrete_function_factory
+    self._infer_type_fn = infer_type_fn
     self._concrete_function_cache = {}
 
   def fn_for_argument_type(
@@ -96,12 +100,17 @@ class PolymorphicComputation:
       TypeError: if the concrete functions created by the factory are of the
         wrong computation_types.
     """
-    # TODO: b/113112885 - We may need to normalize individuals args, such that
-    # the type is more predictable and uniform (e.g., if someone supplies an
-    # unordered dictionary), possibly by converting dict-like and tuple-like
-    # containers into `Struct`s.
     packed_arg = function_utils.pack_args_into_struct(args, kwargs)
-    arg_type = type_conversions.infer_type(packed_arg)
+    args_type = self._infer_type_fn(args)
+    if not isinstance(args_type, computation_types.StructType):
+      raise ValueError
+    kwargs_type = self._infer_type_fn(kwargs)
+    if not isinstance(kwargs_type, computation_types.StructType):
+      raise ValueError
+    arg_type = computation_types.StructType([
+        *structure.iter_elements(args_type),
+        *structure.iter_elements(kwargs_type),
+    ])
     # We know the argument types have been packed, so force unpacking.
     concrete_fn = self.fn_for_argument_type(arg_type, unpack=True)
     return concrete_fn(packed_arg)

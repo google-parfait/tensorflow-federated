@@ -523,15 +523,14 @@ def assemble_result_from_graph(type_spec, binding, output_map):
     else:
       tensor_name = binding.tensor.tensor_name
       tensor = output_map[tensor_name]
-      try:
-        type_analysis.check_type(tensor, type_spec)
-      except TypeError as te:
+      inferred_type = type_conversions.tensorflow_infer_type(tensor)
+      if not type_spec.is_assignable_from(inferred_type):
         raise ValueError(
             f'Type mismatch loading graph result tensor {tensor} '
             f'(named "{tensor_name}").\n'
             'This may have been caused by a use of `tf.set_shape`.\n'
             'Prefer usage of `tf.ensure_shape` to `tf.set_shape`.'
-        ) from te
+        )
       return tensor
   elif isinstance(type_spec, computation_types.StructType):
     if binding_oneof != 'struct':

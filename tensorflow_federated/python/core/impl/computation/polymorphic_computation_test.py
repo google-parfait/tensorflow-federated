@@ -21,6 +21,7 @@ from tensorflow_federated.python.core.impl.computation import polymorphic_comput
 from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.context_stack import context_stack_base
 from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.types import type_serialization
 
 
@@ -82,7 +83,9 @@ class PolymorphicComputationTest(absltest.TestCase):
         self._count = self._count + 1
         return TestFunction(str(self._count), str(unpack), parameter_type)
 
-    fn = polymorphic_computation.PolymorphicComputation(TestFunctionFactory())
+    fn = polymorphic_computation.PolymorphicComputation(
+        TestFunctionFactory(), type_conversions.infer_type
+    )
 
     self.assertEqual(fn(10), 'name=1,type=<int32>,arg=<10>,unpack=True')
     self.assertEqual(

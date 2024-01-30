@@ -166,7 +166,9 @@ def create_generic_constant(
   if type_spec is None:
     return _create_tensorflow_constant(type_spec, scalar_value)
   py_typecheck.check_type(type_spec, computation_types.Type)
-  inferred_scalar_value_type = type_conversions.infer_type(scalar_value)
+  inferred_scalar_value_type = type_conversions.tensorflow_infer_type(
+      scalar_value
+  )
   if not isinstance(
       inferred_scalar_value_type, computation_types.TensorType
   ) or not array_shape.is_shape_scalar(inferred_scalar_value_type.shape):

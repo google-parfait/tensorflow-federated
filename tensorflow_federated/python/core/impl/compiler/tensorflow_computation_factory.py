@@ -92,7 +92,7 @@ def create_constant(
         'Type spec {} cannot be constructed as a TensorFlow constant in TFF; '
         ' only nested tuples and tensors are permitted.'.format(type_spec)
     )
-  inferred_value_type = type_conversions.infer_type(value)
+  inferred_value_type = type_conversions.tensorflow_infer_type(value)
   if isinstance(
       inferred_value_type, computation_types.StructType
   ) and not type_spec.is_assignable_from(inferred_value_type):
@@ -355,7 +355,7 @@ def create_binary_operator_with_upcast(
           ]
       )
     elif isinstance(type_spec, computation_types.TensorType):
-      value_tensor_type = type_conversions.infer_type(to_pack)
+      value_tensor_type = type_conversions.tensorflow_infer_type(to_pack)
       if type_spec.is_assignable_from(value_tensor_type):
         return to_pack
       elif not array_shape.is_shape_fully_defined(type_spec.shape):
