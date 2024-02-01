@@ -62,7 +62,7 @@ def _is_tensor_or_structure_of_tensors(
   )
 
 
-def _build_reservoir_type(
+def build_reservoir_type(
     sample_value_type: computation_types.Type,
 ) -> computation_types.Type:
   """Create the TFF type for the reservoir's state.
@@ -122,7 +122,7 @@ def _build_reservoir_type(
   )  # pytype: disable=bad-return-type
 
 
-def _build_initial_sample_reservoir(
+def build_initial_sample_reservoir(
     sample_value_type: computation_types.Type, seed: Optional[Any] = None
 ):
   """Build up the initial state of the reservoir for sampling.
@@ -195,7 +195,7 @@ def _build_sample_value_computation(
     value_type: computation_types.Type, sample_size: int
 ) -> computation_base.Computation:
   """Builds the `accumulate` computation for sampling."""
-  reservoir_type = _build_reservoir_type(value_type)
+  reservoir_type = build_reservoir_type(value_type)
 
   def add_sample(reservoir, new_seed, sample_random_value, sample):
     """Add a sample to the reservoir state.
@@ -283,11 +283,11 @@ def _build_sample_value_computation(
   return perform_sampling
 
 
-def _build_merge_samples_computation(
+def build_merge_samples_computation(
     value_type: computation_types.Type, sample_size: int
 ) -> computation_base.Computation:
   """Builds the `merge` computation for a sampling."""
-  reservoir_type = _build_reservoir_type(value_type)
+  reservoir_type = build_reservoir_type(value_type)
 
   @tensorflow_computation.tf_computation(reservoir_type, reservoir_type)
   @tf.function
@@ -338,7 +338,7 @@ def _build_finalize_sample_computation(
     return_sampling_metadata: bool = False,
 ) -> computation_base.Computation:
   """Builds the `report` computation for sampling."""
-  reservoir_type = _build_reservoir_type(value_type)
+  reservoir_type = build_reservoir_type(value_type)
 
   @tensorflow_computation.tf_computation(reservoir_type)
   @tf.function
@@ -485,11 +485,11 @@ class UnweightedReservoirSamplingFactory(factory.UnweightedAggregationFactory):
               _build_check_non_finite_leaves_computation(value_type), value
           )
       )
-      initial_reservoir = _build_initial_sample_reservoir(value_type)
+      initial_reservoir = build_initial_sample_reservoir(value_type)
       sample_value = _build_sample_value_computation(
           value_type, self._sample_size
       )
-      merge_samples = _build_merge_samples_computation(
+      merge_samples = build_merge_samples_computation(
           value_type, self._sample_size
       )
       finalize_sample = _build_finalize_sample_computation(

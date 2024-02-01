@@ -41,7 +41,7 @@ class BuildReservoirTypeTest(tf.test.TestCase):
 
   def test_scalar(self):
     self.assertEqual(
-        sampling._build_reservoir_type(TensorType(np.float32)),
+        sampling.build_reservoir_type(TensorType(np.float32)),
         StructWithPythonType(
             [
                 ('random_seed', SEED_TYPE),
@@ -54,7 +54,7 @@ class BuildReservoirTypeTest(tf.test.TestCase):
 
   def test_structure_of_tensors(self):
     self.assertEqual(
-        sampling._build_reservoir_type(
+        sampling.build_reservoir_type(
             computation_types.to_type(
                 collections.OrderedDict(
                     a=TensorType(np.float32),
@@ -83,9 +83,9 @@ class BuildReservoirTypeTest(tf.test.TestCase):
 
   def test_fails_non_tensor_or_struct_with_python_type(self):
     with self.assertRaises(TypeError):
-      sampling._build_reservoir_type(SequenceType(TensorType(np.float32, [3])))
+      sampling.build_reservoir_type(SequenceType(TensorType(np.float32, [3])))
     with self.assertRaises(TypeError):
-      sampling._build_reservoir_type(
+      sampling.build_reservoir_type(
           StructType(elements=[(None, TensorType(np.float32, [3]))])
       )
 
@@ -100,7 +100,7 @@ class BuildInitialSampleReservoirTest(tf.test.TestCase):
 
   def test_scalar(self):
     with self.subTest('fixed_seed'):
-      initial_reservoir = sampling._build_initial_sample_reservoir(
+      initial_reservoir = sampling.build_initial_sample_reservoir(
           TensorType(np.int32), seed=TEST_SEED
       )
       self.assertAllEqual(
@@ -112,7 +112,7 @@ class BuildInitialSampleReservoirTest(tf.test.TestCase):
           ),
       )
     with self.subTest('no_seed'):
-      initial_reservoir = sampling._build_initial_sample_reservoir(
+      initial_reservoir = sampling.build_initial_sample_reservoir(
           TensorType(np.int32)
       )
       self.assertLen(initial_reservoir['random_seed'], 2)
@@ -131,7 +131,7 @@ class BuildInitialSampleReservoirTest(tf.test.TestCase):
             b=[TensorType(np.int64, [2]), TensorType(np.bool_)],
         )
     )
-    initial_reservoir = sampling._build_initial_sample_reservoir(
+    initial_reservoir = sampling.build_initial_sample_reservoir(
         sample_value_type=value_type, seed=TEST_SEED
     )
     self.assertAllEqual(
@@ -151,11 +151,11 @@ class BuildInitialSampleReservoirTest(tf.test.TestCase):
 
   def test_fails_with_non_tensor_type(self):
     with self.assertRaises(TypeError):
-      sampling._build_initial_sample_reservoir(
+      sampling.build_initial_sample_reservoir(
           sample_value_type=SequenceType(TensorType(np.int32)), seed=TEST_SEED
       )
     with self.assertRaises(TypeError):
-      sampling._build_initial_sample_reservoir(
+      sampling.build_initial_sample_reservoir(
           sample_value_type=computation_types.to_type(
               collections.OrderedDict(a=SequenceType(TensorType(np.int32)))
           ),
@@ -176,7 +176,7 @@ class BuildSampleValueComputationTest(tf.test.TestCase):
     sample_computation = sampling._build_sample_value_computation(
         example_type, sample_size=1
     )
-    reservoir_type = sampling._build_reservoir_type(example_type)
+    reservoir_type = sampling.build_reservoir_type(example_type)
     expected_type = FunctionType(
         parameter=collections.OrderedDict(
             reservoir=reservoir_type, sample=example_type
@@ -188,7 +188,7 @@ class BuildSampleValueComputationTest(tf.test.TestCase):
     )
     # Get the sentinel seed so that the first call initializes based on
     # timestamp.
-    reservoir = sampling._build_initial_sample_reservoir(example_type)
+    reservoir = sampling.build_initial_sample_reservoir(example_type)
     self.assertAllEqual(
         reservoir['random_seed'],
         [sampling.SEED_SENTINEL, sampling.SEED_SENTINEL],
@@ -211,7 +211,7 @@ class BuildSampleValueComputationTest(tf.test.TestCase):
     sample_computation = sampling._build_sample_value_computation(
         example_type, sample_size=1
     )
-    reservoir_type = sampling._build_reservoir_type(example_type)
+    reservoir_type = sampling.build_reservoir_type(example_type)
     expected_type = FunctionType(
         parameter=collections.OrderedDict(
             reservoir=reservoir_type, sample=example_type
@@ -221,7 +221,7 @@ class BuildSampleValueComputationTest(tf.test.TestCase):
     type_test_utils.assert_types_identical(
         sample_computation.type_signature, expected_type
     )
-    reservoir = sampling._build_initial_sample_reservoir(
+    reservoir = sampling.build_initial_sample_reservoir(
         example_type, seed=TEST_SEED
     )
     reservoir = sample_computation(reservoir, 1)
@@ -266,7 +266,7 @@ class BuildSampleValueComputationTest(tf.test.TestCase):
     sample_computation = sampling._build_sample_value_computation(
         example_type, sample_size=1
     )
-    reservoir_type = sampling._build_reservoir_type(example_type)
+    reservoir_type = sampling.build_reservoir_type(example_type)
     expected_type = FunctionType(
         parameter=collections.OrderedDict(
             reservoir=reservoir_type, sample=example_type
@@ -276,7 +276,7 @@ class BuildSampleValueComputationTest(tf.test.TestCase):
     type_test_utils.assert_types_identical(
         sample_computation.type_signature, expected_type
     )
-    reservoir = sampling._build_initial_sample_reservoir(
+    reservoir = sampling.build_initial_sample_reservoir(
         example_type, seed=TEST_SEED
     )
     reservoir = sample_computation(
@@ -331,10 +331,10 @@ class BuildMergeSamplesComputationTest(tf.test.TestCase):
 
   def test_scalar(self):
     example_type = TensorType(np.int32)
-    merge_computation = sampling._build_merge_samples_computation(
+    merge_computation = sampling.build_merge_samples_computation(
         example_type, sample_size=5
     )
-    reservoir_type = sampling._build_reservoir_type(example_type)
+    reservoir_type = sampling.build_reservoir_type(example_type)
     expected_type = FunctionType(
         parameter=collections.OrderedDict(a=reservoir_type, b=reservoir_type),
         result=reservoir_type,
@@ -342,13 +342,13 @@ class BuildMergeSamplesComputationTest(tf.test.TestCase):
     type_test_utils.assert_types_identical(
         merge_computation.type_signature, expected_type
     )
-    reservoir_a = sampling._build_initial_sample_reservoir(
+    reservoir_a = sampling.build_initial_sample_reservoir(
         example_type, seed=TEST_SEED
     )
     reservoir_a['random_values'] = [1, 3, 5]
     reservoir_a['samples'] = [3, 9, 15]
     with self.subTest('downsample'):
-      reservoir_b = sampling._build_initial_sample_reservoir(
+      reservoir_b = sampling.build_initial_sample_reservoir(
           example_type, seed=TEST_SEED + 1
       )
       reservoir_b['random_values'] = [2, 4, 6, 8]
@@ -364,7 +364,7 @@ class BuildMergeSamplesComputationTest(tf.test.TestCase):
           ),
       )
     with self.subTest('keep_all'):
-      reservoir_b = sampling._build_initial_sample_reservoir(
+      reservoir_b = sampling.build_initial_sample_reservoir(
           example_type, seed=TEST_SEED + 1
       )
       reservoir_b['random_values'] = [2]
@@ -383,7 +383,7 @@ class BuildMergeSamplesComputationTest(tf.test.TestCase):
       )
     with self.subTest('tie_breakers'):
       # In case of tie, we take the as many values from `a` first.
-      reservoir_b = sampling._build_initial_sample_reservoir(
+      reservoir_b = sampling.build_initial_sample_reservoir(
           example_type, seed=TEST_SEED
       )
       reservoir_b['random_values'] = [5, 5, 5, 5, 5]  # all tied with `a`
@@ -405,10 +405,10 @@ class BuildMergeSamplesComputationTest(tf.test.TestCase):
             b=[TensorType(np.float32), TensorType(np.bool_)],
         )
     )
-    merge_computation = sampling._build_merge_samples_computation(
+    merge_computation = sampling.build_merge_samples_computation(
         example_type, sample_size=5
     )
-    reservoir_type = sampling._build_reservoir_type(example_type)
+    reservoir_type = sampling.build_reservoir_type(example_type)
     expected_type = FunctionType(
         parameter=collections.OrderedDict(a=reservoir_type, b=reservoir_type),
         result=reservoir_type,
@@ -416,7 +416,7 @@ class BuildMergeSamplesComputationTest(tf.test.TestCase):
     type_test_utils.assert_types_identical(
         merge_computation.type_signature, expected_type
     )
-    reservoir_a = sampling._build_initial_sample_reservoir(
+    reservoir_a = sampling.build_initial_sample_reservoir(
         example_type, seed=TEST_SEED
     )
     reservoir_a['random_values'] = [1, 3, 5]
@@ -425,7 +425,7 @@ class BuildMergeSamplesComputationTest(tf.test.TestCase):
         b=[[0.0, 1.0, 2.0], [True, False, True]],
     )
     with self.subTest('downsample'):
-      reservoir_b = sampling._build_initial_sample_reservoir(
+      reservoir_b = sampling.build_initial_sample_reservoir(
           example_type, seed=TEST_SEED + 1
       )
       reservoir_b['random_values'] = [2, 4, 6, 8]
@@ -456,7 +456,7 @@ class BuildMergeSamplesComputationTest(tf.test.TestCase):
           ),
       )
     with self.subTest('keep_all'):
-      reservoir_b = sampling._build_initial_sample_reservoir(
+      reservoir_b = sampling.build_initial_sample_reservoir(
           example_type, seed=TEST_SEED + 1
       )
       reservoir_b['random_values'] = [2]
@@ -480,7 +480,7 @@ class BuildMergeSamplesComputationTest(tf.test.TestCase):
       )
     with self.subTest('tie_breakers'):
       # In case of tie, we take the as many values from `a` first.
-      reservoir_b = sampling._build_initial_sample_reservoir(
+      reservoir_b = sampling.build_initial_sample_reservoir(
           example_type, seed=TEST_SEED
       )
       reservoir_b['random_values'] = [5, 5, 5, 5, 5]  # all tied with `a`
@@ -515,14 +515,14 @@ class BuildFinalizeSampleTest(tf.test.TestCase):
     finalize_computation = sampling._build_finalize_sample_computation(
         example_type
     )
-    reservoir_type = sampling._build_reservoir_type(example_type)
+    reservoir_type = sampling.build_reservoir_type(example_type)
     expected_type = FunctionType(
         parameter=reservoir_type, result=reservoir_type.samples
     )
     type_test_utils.assert_types_identical(
         finalize_computation.type_signature, expected_type
     )
-    reservoir = sampling._build_initial_sample_reservoir(
+    reservoir = sampling.build_initial_sample_reservoir(
         example_type, seed=TEST_SEED
     )
     reservoir['random_values'] = [3, 5, 7]
@@ -540,14 +540,14 @@ class BuildFinalizeSampleTest(tf.test.TestCase):
     finalize_computation = sampling._build_finalize_sample_computation(
         example_type
     )
-    reservoir_type = sampling._build_reservoir_type(example_type)
+    reservoir_type = sampling.build_reservoir_type(example_type)
     expected_type = FunctionType(
         parameter=reservoir_type, result=reservoir_type.samples
     )
     type_test_utils.assert_types_identical(
         finalize_computation.type_signature, expected_type
     )
-    reservoir = sampling._build_initial_sample_reservoir(
+    reservoir = sampling.build_initial_sample_reservoir(
         example_type, seed=TEST_SEED
     )
     reservoir['random_values'] = [3, 5, 7]

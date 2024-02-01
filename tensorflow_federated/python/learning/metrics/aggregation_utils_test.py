@@ -19,6 +19,7 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
+from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.learning.metrics import aggregation_utils
 from tensorflow_federated.python.learning.metrics import keras_finalizer
@@ -29,7 +30,7 @@ def _tf_mean(x):
   return tf.math.divide_no_nan(x[0], x[1])
 
 
-def _test_finalize_metrics(
+def _test_functional_finalize_metrics(
     unfinalized_metrics: collections.OrderedDict[str, Any]
 ) -> collections.OrderedDict[str, Any]:
   return collections.OrderedDict(
@@ -43,7 +44,7 @@ class CheckMetricFinalizersTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('ordereddict', collections.OrderedDict(mean=_tf_mean)),
-      ('functional_finalizers', _test_finalize_metrics),
+      ('functional_finalizers', _test_functional_finalize_metrics),
   )
   def test_valid_finalizers_does_not_raise(self, metric_finalizers):
     aggregation_utils.check_metric_finalizers(metric_finalizers)
@@ -153,5 +154,52 @@ class CheckFinalizersMatchUnfinalizedMetricsTypeTest(
       )
 
 
+class CheckBuildFinalizerComputationTest(
+    tf.test.TestCase, parameterized.TestCase
+):
+
+  @parameterized.named_parameters(
+      (
+          'non_functional',
+          collections.OrderedDict(accuracy=_tf_mean),
+          computation_types.StructWithPythonType(
+              [('accuracy', computation_types.TensorType(np.float32, (2,)))],
+              collections.OrderedDict,
+          ),
+          collections.OrderedDict(accuracy=[0.2, 5.0]),
+          collections.OrderedDict(accuracy=0.2 / 5.0),
+      ),
+      (
+          'functional',
+          _test_functional_finalize_metrics,
+          computation_types.StructWithPythonType(
+              [(
+                  'accuracy',
+                  [
+                      computation_types.TensorType(np.float32),
+                      computation_types.TensorType(np.float32),
+                  ],
+              )],
+              collections.OrderedDict,
+          ),
+          collections.OrderedDict(accuracy=[0.4, 2.0]),
+          collections.OrderedDict(accuracy=0.4 / 2.0),
+      ),
+  )
+  def test_finalizer_computation_gives_correct_result(
+      self,
+      metric_finalizers,
+      unfinalized_metric_type,
+      unfinalized_metric,
+      expected_result,
+  ):
+    finalizer_computation = aggregation_utils.build_finalizer_computation(
+        metric_finalizers, unfinalized_metric_type
+    )
+    result = finalizer_computation(unfinalized_metric)
+    tf.nest.map_structure(self.assertAlmostEqual, result, expected_result)
+
+
 if __name__ == '__main__':
+  execution_contexts.set_sync_local_cpp_execution_context()
   tf.test.main()

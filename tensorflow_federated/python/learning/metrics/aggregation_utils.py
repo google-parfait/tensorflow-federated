@@ -14,10 +14,13 @@
 """Utility methods for metrics aggregation."""
 
 import collections
+import typing
 from typing import Union
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
+from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
+from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.learning.metrics import types
 
@@ -120,3 +123,29 @@ def check_local_unfinalized_metrics_type(
         'the Python container, found a `tff.types.StructWithPythonType` with '
         f'Python container {py_typecheck.type_string(local_metrics_container)}.'
     )
+
+
+def build_finalizer_computation(
+    metric_finalizers: Union[
+        types.MetricFinalizersType,
+        types.FunctionalMetricFinalizersType,
+    ],
+    local_unfinalized_metrics_type: computation_types.StructWithPythonType,
+) -> computation_base.Computation:
+  """Builds computation for finalizing metrics."""
+  if callable(metric_finalizers):
+    return tensorflow_computation.tf_computation(
+        local_unfinalized_metrics_type
+    )(metric_finalizers)
+  metric_finalizers = typing.cast(types.MetricFinalizersType, metric_finalizers)
+
+  @tensorflow_computation.tf_computation(local_unfinalized_metrics_type)
+  def finalizer_computation(unfinalized_metrics):
+    finalized_metrics = collections.OrderedDict()
+    for metric_name, metric_finalizer in metric_finalizers.items():
+      finalized_metrics[metric_name] = metric_finalizer(
+          unfinalized_metrics[metric_name]
+      )
+    return finalized_metrics
+
+  return finalizer_computation

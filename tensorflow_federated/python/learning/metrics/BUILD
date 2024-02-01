@@ -31,6 +31,7 @@ py_library(
         ":counters",
         ":keras_finalizer",
         ":keras_utils",
+        ":sampling_aggregation_factory",
         ":sum_aggregation_factory",
         ":types",
     ],
@@ -48,7 +49,6 @@ py_library(
         "//tensorflow_federated/python/aggregators:sum_factory",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
-        "//tensorflow_federated/python/core/impl/computation:computation_base",
         "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
         "//tensorflow_federated/python/core/impl/types:computation_types",
@@ -85,6 +85,8 @@ py_library(
         ":types",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
+        "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
+        "//tensorflow_federated/python/core/impl/computation:computation_base",
         "//tensorflow_federated/python/core/impl/types:computation_types",
     ],
 )
@@ -95,6 +97,7 @@ py_test(
     deps = [
         ":aggregation_utils",
         ":keras_finalizer",
+        "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/impl/types:computation_types",
     ],
 )
@@ -201,7 +204,6 @@ py_library(
     srcs = ["sampling_aggregation_factory.py"],
     deps = [
         ":aggregation_utils",
-        ":sum_aggregation_factory",
         ":types",
         "//tensorflow_federated/python/aggregators:factory",
         "//tensorflow_federated/python/aggregators:sampling",

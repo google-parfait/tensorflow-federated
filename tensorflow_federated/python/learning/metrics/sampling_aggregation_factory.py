@@ -26,7 +26,6 @@ from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning.metrics import aggregation_utils
-from tensorflow_federated.python.learning.metrics import sum_aggregation_factory
 from tensorflow_federated.python.learning.metrics import types
 
 
@@ -149,11 +148,8 @@ class FinalizeThenSampleFactory(factory.UnweightedAggregationFactory):
       aggregation_utils.check_finalizers_matches_unfinalized_metrics(
           metric_finalizers, local_unfinalized_metrics_type
       )
-    local_finalize_computation = (
-        # TODO: b/315870085 - Remove this pylint.
-        sum_aggregation_factory._build_finalizer_computation(  # pylint: disable=protected-access
-            metric_finalizers, local_unfinalized_metrics_type
-        )
+    local_finalize_computation = aggregation_utils.build_finalizer_computation(
+        metric_finalizers, local_unfinalized_metrics_type
     )
     local_finalized_metrics_type = (
         local_finalize_computation.type_signature.result
@@ -166,8 +162,7 @@ class FinalizeThenSampleFactory(factory.UnweightedAggregationFactory):
     def init_fn():
       @tensorflow_computation.tf_computation
       def create_initial_sample_state():
-        # TODO: b/315870085 - Remove this pylint.
-        return sampling._build_initial_sample_reservoir(  # pylint: disable=protected-access
+        return sampling.build_initial_sample_reservoir(
             local_finalized_metrics_type
         )
 
@@ -179,8 +174,7 @@ class FinalizeThenSampleFactory(factory.UnweightedAggregationFactory):
     # type because the `init_fn` returns values with 0 shape. This fails to
     # capture the fact that the state can grow size over rounds. Instead, we
     # should use `None` to denote the shape that can change over rounds.
-    # TODO: b/315870085 - Remove this pylint.
-    state_type = sampling._build_reservoir_type(local_finalized_metrics_type)  # pylint: disable=protected-access
+    state_type = sampling.build_reservoir_type(local_finalized_metrics_type)
 
     @federated_computation.federated_computation(
         computation_types.FederatedType(state_type, placements.SERVER),
@@ -195,8 +189,7 @@ class FinalizeThenSampleFactory(factory.UnweightedAggregationFactory):
       current_round_sampling_output = sampling_process.next(
           sampling_process.initialize(), local_finalized_metrics
       )
-      # TODO: b/315870085 - Remove this pylint.
-      merge_samples_computation = sampling._build_merge_samples_computation(  # pylint: disable=protected-access
+      merge_samples_computation = sampling.build_merge_samples_computation(
           value_type=local_finalized_metrics_type, sample_size=self._sample_size
       )
       new_state = intrinsics.federated_map(
