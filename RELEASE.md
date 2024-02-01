@@ -1,3 +1,19 @@
+# Release 0.70.0
+
+## Breaking Changes
+
+*   Temporarily disable `tff.program.PrefetchingDataSource` due to flakiness
+    from a lack of determinism.
+*   Removed support for invoking `infer_type` with TensorFlow values.
+*   Removed deprecated `tff.aggregators.federated_(min|max)`symbols, please use
+    `tff.federated_(min|max)` instead.
+*   Removed support for creating a `tff.TensorType` using a `tf.dtypes.DType`.
+*   Removed `tff.check_return_type`.
+
+## Bug Fixes
+
+*   Declared `OwnedValueId::INVALID_ID` as a static constexpr.
+
 # Release 0.69.0
 
 ## Major Features and Improvements
