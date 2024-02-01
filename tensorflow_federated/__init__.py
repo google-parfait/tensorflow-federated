@@ -32,7 +32,6 @@ from tensorflow_federated.python.core.environments.jax_frontend.jax_computation 
 from tensorflow_federated.python.core.environments.tensorflow_frontend.tensorflow_computation import tf_computation
 from tensorflow_federated.python.core.impl import types
 from tensorflow_federated.python.core.impl.computation.computation_base import Computation
-from tensorflow_federated.python.core.impl.computation.computation_wrapper import check_returns_type
 from tensorflow_federated.python.core.impl.federated_context.data import data
 from tensorflow_federated.python.core.impl.federated_context.federated_computation import federated_computation
 from tensorflow_federated.python.core.impl.federated_context.intrinsics import federated_aggregate

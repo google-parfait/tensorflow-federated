@@ -337,7 +337,6 @@ class FederatedComputationTest(parameterized.TestCase):
     selectee_type = tff.TensorType(np.str_, [None])
 
     @tff.tf_computation(selectee_type, np.int32)
-    @tff.check_returns_type(np.str_)
     def gather(selectee, key):
       return tf.gather(selectee, key)
 
@@ -346,9 +345,6 @@ class FederatedComputationTest(parameterized.TestCase):
         tff.FederatedType(
             tff.TensorType(np.int32, [keys_per_client]), tff.CLIENTS
         ),
-    )
-    @tff.check_returns_type(
-        tff.FederatedType(tff.SequenceType(np.str_), tff.CLIENTS)
     )
     def select(server_val, client_keys):
       max_key_at_server = tff.federated_value(max_key, tff.SERVER)

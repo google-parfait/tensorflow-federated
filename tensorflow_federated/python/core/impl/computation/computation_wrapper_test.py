@@ -375,41 +375,6 @@ class ComputationWrapperTest(absltest.TestCase):
     self.assertEqual(wrapped('foo'), '<foo> : <str> -> C_foo')
 
 
-class CheckReturnsTypeTest(absltest.TestCase):
-
-  def test_basic_non_tff_function_as_decorator_succeeds(self):
-
-    @computation_wrapper.check_returns_type(np.int32)
-    def f():
-      return 5
-
-    self.assertEqual(f(), 5)
-
-  def test_basic_non_tff_function_as_decorator_fails(self):
-
-    @computation_wrapper.check_returns_type(np.int32)
-    def f():
-      return [5]
-
-    with self.assertRaises(TypeError):
-      f()
-
-  def test_basic_non_tff_function_as_nondecorator_succeeds(self):
-    def f():
-      return 5
-
-    f_wrapped = computation_wrapper.check_returns_type(f, np.int32)
-    self.assertEqual(f_wrapped(), 5)
-
-  def test_basic_non_tff_function_as_nondecorator_fails(self):
-    def f():
-      return [5]
-
-    f_wrapped = computation_wrapper.check_returns_type(f, np.int32)
-    with self.assertRaises(TypeError):
-      f_wrapped()
-
-
 if __name__ == '__main__':
   with context_stack_impl.context_stack.install(ContextForTest()):
     absltest.main()

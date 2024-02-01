@@ -17,7 +17,6 @@ from typing import NamedTuple
 
 from absl.testing import absltest
 from absl.testing import parameterized
-import attrs
 import numpy as np
 import tensorflow as tf
 
@@ -434,69 +433,6 @@ class TensorFlowComputationTest(parameterized.TestCase):
     self.assertIsInstance(
         stack.current, runtime_error_context.RuntimeErrorContext
     )
-
-  def test_check_returns_type_with_tensorflow_computation_succeeds(self):
-    @tensorflow_computation.tf_computation(tf.int32)
-    @computation_wrapper.check_returns_type(np.int32)
-    def _(x):
-      return x
-
-  def test_check_returns_type_with_tensorflow_computation_fails(self):
-    with self.assertRaises(TypeError):
-
-      @tensorflow_computation.tf_computation(tf.int32)
-      @computation_wrapper.check_returns_type(np.int32)
-      def _(x):
-        return (x, x)
-
-  def test_check_returns_type_with_tensorflow_computation_picking_up_named_parameters(
-      self,
-  ):
-    @tensorflow_computation.tf_computation(tf.int32, tf.int32)
-    @computation_wrapper.check_returns_type(np.int32)
-    def f(a, b):
-      del b
-      return a
-
-    self.assertEqual(
-        f.type_signature,
-        computation_types.FunctionType(
-            collections.OrderedDict(a=np.int32, b=np.int32), np.int32
-        ),
-    )
-
-  def test_check_returns_type_fails_with_mismatched_container_type(self):
-    with self.assertRaises(TypeError):
-      # This test fails because it `check_returns_type` with a `tuple`,
-      # but returns a `list`.
-      @tensorflow_computation.tf_computation(tf.int32)
-      @computation_wrapper.check_returns_type((np.int32, np.int32))
-      def _(a):
-        return [a, a]
-
-  def test_check_returns_type_fails_with_more_general_tensorspec(self):
-    type_with_known_shape = computation_types.TensorType(np.int32, [1])
-    type_with_unknown_shape = computation_types.TensorType(np.int32, [None])
-
-    with self.assertRaises(TypeError):
-
-      @tensorflow_computation.tf_computation(type_with_known_shape)
-      @computation_wrapper.check_returns_type(type_with_unknown_shape)
-      def _(a):
-        return a
-
-  def test_check_returns_type_attrs_type(self):
-    @attrs.define
-    class MyAttrs:
-      a: int
-      b: int
-
-    expected_return_type = MyAttrs(a=np.int32, b=np.int32)
-
-    @tensorflow_computation.tf_computation
-    @computation_wrapper.check_returns_type(expected_return_type)
-    def _():
-      return MyAttrs(a=0, b=0)
 
 
 if __name__ == '__main__':
