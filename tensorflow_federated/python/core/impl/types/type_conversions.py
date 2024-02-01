@@ -127,12 +127,6 @@ def infer_type(arg: object) -> Optional[computation_types.Type]:
     elif arg_type is float:
       return computation_types.TensorType(np.float32)
     else:
-      print('--- infer_type')
-      print(arg)
-      print(type(arg))
-      print(type(arg).__mro__)
-      print(isinstance(arg, tf.Tensor))
-      print('---')
       raise NotImplementedError(f'Unexpected type found: {type(arg)}.')
 
 
@@ -227,9 +221,6 @@ def tensorflow_infer_type(obj: object) -> Optional[computation_types.Type]:
   Args:
     obj: An object to infer a `tff.Type`.
   """
-  print('--- tensorflow_infer_type')
-  print(obj)
-  print('---')
 
   class _Placeholder(typed_object.TypedObject):
 
@@ -262,11 +253,6 @@ def tensorflow_infer_type(obj: object) -> Optional[computation_types.Type]:
       return None
 
   partial = tree.traverse(_infer_type, obj)
-
-  print('--- tensorflow_infer_type')
-  print(partial)
-  print('---')
-
   return infer_type(partial)
 
 
@@ -469,14 +455,14 @@ def type_to_tf_structure(type_spec: computation_types.Type):
     )
 
 
-def is_container_type_without_names(container_type: type[object]) -> bool:
+def _is_container_type_without_names(container_type: type[object]) -> bool:
   """Returns whether `container_type`'s elements are unnamed."""
   return issubclass(container_type, (list, tuple)) and not isinstance(
       container_type, py_typecheck.SupportsNamedTuple
   )
 
 
-def is_container_type_with_names(container_type: type[object]) -> bool:
+def _is_container_type_with_names(container_type: type[object]) -> bool:
   """Returns whether `container_type`'s elements are named."""
   return (
       isinstance(container_type, py_typecheck.SupportsNamedTuple)
@@ -581,7 +567,9 @@ def type_to_py_container(value, type_spec: computation_types.Type):
 
   # Avoid projecting the `structure.StructType`d TFF value into a Python
   # container that is not supported.
-  if num_named_elements > 0 and is_container_type_without_names(container_type):
+  if num_named_elements > 0 and _is_container_type_without_names(
+      container_type
+  ):
     raise ValueError(
         'Cannot represent value {} with named elements '
         "using container type {} which does not support names. In TFF's "
@@ -589,7 +577,7 @@ def type_to_py_container(value, type_spec: computation_types.Type):
             value, container_type
         )
     )
-  if is_container_type_with_names(container_type) and len(
+  if _is_container_type_with_names(container_type) and len(
       dir(structure_type_spec)
   ) != len(value):
     # If the type specifies the names, we have all the information we need.
