@@ -983,16 +983,16 @@ def to_type(obj: object) -> Type:
 
   ```python
   @attr.s(auto_attribs=True)
-  class MyDataClass:
+  class MyClass:
     int_scalar
     string_array
 
-  obj = MyDataClass(...)
+  obj = MyClass(...)
   type_spec = tff.types.to_type(obj)
 
   @tff.tensorflow.computation(type_spec)
   def work(my_data):
-    assert isinstance(my_data, MyDataClass)
+    assert isinstance(my_data, MyClass)
     ...
   ```
 

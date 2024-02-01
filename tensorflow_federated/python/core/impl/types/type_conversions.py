@@ -14,7 +14,6 @@
 
 import collections
 from collections.abc import Callable, Hashable, Mapping
-import dataclasses
 import typing
 from typing import Optional, Union
 
@@ -40,7 +39,7 @@ def infer_type(arg: object) -> Optional[computation_types.Type]:
   * things that are convertible to tensors (including `numpy` arrays, builtin
     types, as well as `list`s and `tuple`s of any of the above, etc.)
   * nested lists, `tuple`s, `namedtuple`s, anonymous `tuple`s, `dict`,
-    `OrderedDict`s, `dataclasses`, `attrs` classes, and `tff.TypedObject`s
+    `OrderedDict`s, `attrs` classes, and `tff.TypedObject`s
 
   Args:
     arg: The argument, the TFF type of which to infer.
@@ -73,11 +72,6 @@ def infer_type(arg: object) -> Optional[computation_types.Type]:
     ])
   elif attrs.has(type(arg)):
     items = attrs.asdict(arg, recurse=False).items()
-    return computation_types.StructWithPythonType(
-        [(k, infer_type(v)) for k, v in items], type(arg)
-    )
-  elif dataclasses.is_dataclass(arg):
-    items = arg.__dict__.copy().items()
     return computation_types.StructWithPythonType(
         [(k, infer_type(v)) for k, v in items], type(arg)
     )
@@ -501,7 +495,6 @@ def type_to_py_container(value, type_spec: computation_types.Type):
   if (
       isinstance(container_type, py_typecheck.SupportsNamedTuple)
       or attrs.has(container_type)
-      or dataclasses.is_dataclass(container_type)
   ):
     # The namedtuple and attr.s class constructors cannot interpret a list of
     # (name, value) tuples; instead call constructor using kwargs. Note that

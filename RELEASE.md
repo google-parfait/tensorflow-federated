@@ -8,6 +8,10 @@ and this project adheres to
 
 ## Unreleased
 
+### Removed
+
+*   Partial support for `dataclasses`.
+
 ## Release 0.82.0
 
 ### Added

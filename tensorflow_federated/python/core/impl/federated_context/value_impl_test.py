@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import collections
-import dataclasses
 
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -29,12 +28,6 @@ from tensorflow_federated.python.core.impl.federated_context import federated_co
 from tensorflow_federated.python.core.impl.federated_context import value_impl
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
-
-
-@dataclasses.dataclass
-class TestDataclass:
-  x: object
-  y: object
 
 
 @attrs.define
@@ -174,28 +167,12 @@ class ValueTest(parameterized.TestCase):
     self.assertIsInstance(v, value_impl.Value)
     self.assertEqual(str(v), '<foo,bar>')
 
-  def test_to_value_for_dataclass(self):
-    x = value_impl.Value(building_blocks.Reference('foo', np.int32))
-    y = value_impl.Value(building_blocks.Reference('bar', np.int32))
-    v = value_impl.to_value(TestDataclass(x, y), type_spec=None)
-    self.assertIsInstance(v, value_impl.Value)
-    self.assertEqual(str(v), '<x=foo,y=bar>')
-
   def test_to_value_for_attrs_class(self):
     x = value_impl.Value(building_blocks.Reference('foo', np.int32))
     y = value_impl.Value(building_blocks.Reference('bar', np.int32))
     v = value_impl.to_value(TestAttrClass(x, y), type_spec=None)
     self.assertIsInstance(v, value_impl.Value)
     self.assertEqual(str(v), '<x=foo,y=bar>')
-
-  def test_to_value_for_nested_dataclass(self):
-    x = value_impl.Value(building_blocks.Reference('foo', np.int32))
-    y = value_impl.Value(building_blocks.Reference('bar', np.int32))
-    v = value_impl.to_value(
-        TestDataclass(TestDataclass(x, y), TestDataclass(x, y)), type_spec=None
-    )
-    self.assertIsInstance(v, value_impl.Value)
-    self.assertEqual(str(v), '<x=<x=foo,y=bar>,y=<x=foo,y=bar>>')
 
   def test_to_value_for_nested_attrs_class(self):
     x = value_impl.Value(building_blocks.Reference('foo', np.int32))

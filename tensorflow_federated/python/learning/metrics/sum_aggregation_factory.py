@@ -15,10 +15,9 @@
 
 import collections
 from collections.abc import Mapping
-import dataclasses
 import math
 import typing
-from typing import Any, Optional, Union
+from typing import Any, NamedTuple, Optional, Union
 
 import numpy as np
 import tensorflow as tf
@@ -249,8 +248,7 @@ MetricValueUpperBoundType = Union[
 ]
 
 
-@dataclasses.dataclass(frozen=True)
-class _MetricRange:
+class _MetricRange(NamedTuple):
   """An opaque structure defining a closed range.
 
   This is used as an opaque object in a nested structure to prevent
@@ -259,17 +257,6 @@ class _MetricRange:
 
   lower: MetricValueLowerBoundType
   upper: MetricValueUpperBoundType
-
-  def __eq__(self, other):
-    """A type-aware equality that prevents int/float conversion."""
-    if isinstance(self.upper, estimation_process.EstimationProcess):
-      return False
-    return (
-        type(self.upper) is type(other.upper)
-        and self.upper == other.upper
-        and type(self.lower) is type(other.lower)
-        and self.lower == other.lower
-    )
 
 
 UserMetricValueRange = Union[tuple[float, float], tuple[int, int], _MetricRange]

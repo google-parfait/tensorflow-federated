@@ -15,7 +15,6 @@
 
 import builtins
 from collections.abc import Sequence
-import dataclasses
 import sys
 import typing
 from typing import Optional, Protocol, TypeVar, Union
@@ -87,15 +86,6 @@ def check_attrs(value):
         'Expected an instance of an attrs decorated class, or an '
         'attrs-decorated class type; found a value of type '
         f'{type(value)}'
-    )
-
-
-def check_dataclass(value):
-  """Checks that `value` is a Python dataclass or an instance thereof."""
-  if not dataclasses.is_dataclass(value):
-    raise TypeError(
-        'Expected an instance of a Python dataclass, or a '
-        f'dataclass type; found a value of type {type(value)}'
     )
 
 

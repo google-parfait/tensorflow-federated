@@ -14,7 +14,6 @@
 
 import collections
 from collections.abc import Mapping
-import dataclasses
 from unittest import mock
 
 from absl.testing import absltest
@@ -185,20 +184,6 @@ class InferTypeTest(parameterized.TestCase):
     self.assertEqual(str(t), '<b=float32,a=int32>')
     self.assertIsInstance(t, computation_types.StructWithPythonType)
     self.assertIs(t.python_container, collections.OrderedDict)
-
-  def test_with_nested_dataclass(self):
-    @dataclasses.dataclass
-    class TestDataclass:
-      a: int
-      b: collections.OrderedDict[str, object]
-
-    t = type_conversions.infer_type(
-        TestDataclass(a=0, b=collections.OrderedDict(x=True, y=0.0))
-    )
-    self.assertEqual(str(t), '<a=int32,b=<x=bool,y=float32>>')
-    self.assertIsInstance(t, computation_types.StructWithPythonType)
-    self.assertIs(t.python_container, TestDataclass)
-    self.assertIs(t.b.python_container, collections.OrderedDict)
 
   def test_with_nested_attrs_class(self):
 
