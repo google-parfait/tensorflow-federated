@@ -295,7 +295,7 @@ class StructTypeTest(parameterized.TestCase):
       (
           'unnamed',
           computation_types.StructType([np.int32, np.bool_]),
-          'StructType([TensorType(np.int32), TensorType(np.bool)])',
+          'StructType([TensorType(np.int32), TensorType(np.bool_)])',
       ),
       (
           'named',
@@ -303,7 +303,7 @@ class StructTypeTest(parameterized.TestCase):
           (
               'StructType(['
               "('a', TensorType(np.int32)), "
-              "('b', TensorType(np.bool))"
+              "('b', TensorType(np.bool_))"
               '])'
           ),
       ),
@@ -463,7 +463,7 @@ class StructWithPythonTypeTest(parameterized.TestCase):
       (
           'list_unnamed',
           computation_types.StructWithPythonType([np.int32, np.bool_], list),
-          'StructType([TensorType(np.int32), TensorType(np.bool)]) as list',
+          'StructType([TensorType(np.int32), TensorType(np.bool_)]) as list',
       ),
       (
           'list_named',
@@ -473,14 +473,14 @@ class StructWithPythonTypeTest(parameterized.TestCase):
           (
               'StructType(['
               "('a', TensorType(np.int32)), "
-              "('b', TensorType(np.bool))"
+              "('b', TensorType(np.bool_))"
               ']) as list'
           ),
       ),
       (
           'tuple',
           computation_types.StructWithPythonType([np.int32, np.bool_], tuple),
-          'StructType([TensorType(np.int32), TensorType(np.bool)]) as tuple',
+          'StructType([TensorType(np.int32), TensorType(np.bool_)]) as tuple',
       ),
       (
           'dict',
@@ -490,7 +490,7 @@ class StructWithPythonTypeTest(parameterized.TestCase):
           (
               'StructType(['
               "('a', TensorType(np.int32)), "
-              "('b', TensorType(np.bool))"
+              "('b', TensorType(np.bool_))"
               ']) as dict'
           ),
       ),
@@ -502,7 +502,7 @@ class StructWithPythonTypeTest(parameterized.TestCase):
           (
               'StructType(['
               "('a', TensorType(np.int32)), "
-              "('b', TensorType(np.bool))"
+              "('b', TensorType(np.bool_))"
               ']) as OrderedDict'
           ),
       ),
@@ -514,7 +514,7 @@ class StructWithPythonTypeTest(parameterized.TestCase):
           (
               'StructType(['
               "('a', TensorType(np.int32)), "
-              "('b', TensorType(np.bool))"
+              "('b', TensorType(np.bool_))"
               ']) as TestAttrs'
           ),
       ),
@@ -526,7 +526,7 @@ class StructWithPythonTypeTest(parameterized.TestCase):
           (
               'StructType(['
               "('a', TensorType(np.int32)), "
-              "('b', TensorType(np.bool))"
+              "('b', TensorType(np.bool_))"
               ']) as TestNamedTuple'
           ),
       ),
@@ -685,7 +685,7 @@ class SequenceTypeTest(parameterized.TestCase):
           ),
           (
               'SequenceType(StructType([TensorType(np.int32),'
-              ' TensorType(np.bool)]))'
+              ' TensorType(np.bool_)]))'
           ),
       ),
   )
@@ -757,12 +757,12 @@ class FunctionTypeTest(parameterized.TestCase):
       (
           'with_parameter',
           computation_types.FunctionType(np.int32, np.bool_),
-          'FunctionType(TensorType(np.int32), TensorType(np.bool))',
+          'FunctionType(TensorType(np.int32), TensorType(np.bool_))',
       ),
       (
           'without_parameter',
           computation_types.FunctionType(None, np.bool_),
-          'FunctionType(None, TensorType(np.bool))',
+          'FunctionType(None, TensorType(np.bool_))',
       ),
   )
   def test_repr(self, type_spec, expected_repr):

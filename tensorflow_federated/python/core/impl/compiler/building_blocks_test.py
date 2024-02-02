@@ -56,7 +56,7 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
         repr(y),
         (
             "Selection(Reference('foo', StructType(["
-            "('bar', TensorType(np.int32)), ('baz', TensorType(np.bool))]))"
+            "('bar', TensorType(np.int32)), ('baz', TensorType(np.bool_))]))"
             ", name='bar')"
         ),
     )
@@ -74,7 +74,7 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
         repr(x0),
         (
             "Selection(Reference('foo', StructType(["
-            "('bar', TensorType(np.int32)), ('baz', TensorType(np.bool))]))"
+            "('bar', TensorType(np.int32)), ('baz', TensorType(np.bool_))]))"
             ', index=0)'
         ),
     )
@@ -116,7 +116,7 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
         repr(z),
         (
             "Struct([(None, Reference('foo', TensorType(np.int32))), ('y', "
-            "Reference('bar', TensorType(np.bool)))])"
+            "Reference('bar', TensorType(np.bool_)))])"
         ),
     )
     self.assertEqual(z.compact_representation(), '<foo,y=bar>')
@@ -166,7 +166,7 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
         repr(z),
         (
             "Call(Reference('foo', "
-            'FunctionType(TensorType(np.int32), TensorType(np.bool))), '
+            'FunctionType(TensorType(np.int32), TensorType(np.bool_))), '
             "Reference('bar', TensorType(np.int32)))"
         ),
     )

@@ -414,7 +414,7 @@ class TensorType(Type, metaclass=_Intern):
     return self._shape
 
   def __repr__(self):
-    dtype_repr = f'np.{self._dtype.name}'
+    dtype_repr = f'np.{self._dtype.type.__name__}'
     if array_shape.is_shape_scalar(self._shape):
       return f'TensorType({dtype_repr})'
     else:
