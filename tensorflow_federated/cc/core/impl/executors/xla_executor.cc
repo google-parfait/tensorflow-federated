@@ -32,8 +32,8 @@ limitations under the License
 #include "tensorflow/compiler/xla/client/client_library.h"
 #include "tensorflow/compiler/xla/client/global_data.h"
 #include "tensorflow/compiler/xla/service/hlo.pb.h"
-#include "tensorflow/compiler/xla/stream_executor/multi_platform_manager.h"
 #include "tensorflow/compiler/xla/stream_executor/platform.h"
+#include "tensorflow/compiler/xla/stream_executor/platform_manager.h"
 #include "tensorflow/compiler/xla/xla.pb.h"
 #include "tensorflow/compiler/xla/xla_data.pb.h"
 #include "tensorflow/core/framework/tensor.h"
@@ -692,11 +692,11 @@ class XLAExecutor : public ExecutorBase<ValueFuture> {
 
 absl::StatusOr<xla::Client*> GetXLAClient(std::string_view platform_name) {
   tensorflow::StatusOr<xla::se::Platform*> platform =
-      xla::se::MultiPlatformManager::PlatformWithName(platform_name);
+      xla::se::PlatformManager::PlatformWithName(platform_name);
   if (!platform.ok()) {
     return absl::InternalError(
         absl::StrCat("Failed to find specified platform ", platform_name,
-                     " in MultiPlatformManager. You may be missing a build "
+                     " in PlatformManager. You may be missing a build "
                      "dependency to register the platform. Message: ",
                      ToMessage(platform.status())));
   }
