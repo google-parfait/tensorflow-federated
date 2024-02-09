@@ -28,13 +28,12 @@ import enum
 import os
 import os.path
 import random
-from typing import Optional, Union
+from typing import Union
 
 import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.program import file_utils
 from tensorflow_federated.python.program import release_manager
 from tensorflow_federated.python.program import structure_utils
@@ -275,13 +274,8 @@ class CSVFileReleaseManager(
       )
       self._latest_key = key
 
-  # TODO: b/305743962 - Deprecate `type_signature` and temporarily give `key` a
-  # default value.
   async def release(
-      self,
-      value: release_manager.ReleasableStructure,
-      type_signature: Optional[computation_types.Type] = None,
-      key: int = 0,
+      self, value: release_manager.ReleasableStructure, key: int
   ) -> None:
     """Releases `value` from a federated program.
 
@@ -291,11 +285,9 @@ class CSVFileReleaseManager(
 
     Args:
       value: A `tff.program.ReleasableStructure` to release.
-      type_signature: The `tff.Type` of `value`.
       key: An integer used to reference the released `value`; `key` represents a
         step in a federated program.
     """
-    del type_signature  # Unused.
     py_typecheck.check_type(key, (int, np.integer))
 
     _, materialized_value = await asyncio.gather(
@@ -382,23 +374,15 @@ class SavedModelFileReleaseManager(
     basename = f'{self._prefix}{str(key)}'
     return os.path.join(self._root_dir, basename)
 
-  # TODO: b/305743962 - Deprecate `type_signature` and temporarily give `key` a
-  # default value.
   async def release(
-      self,
-      value: release_manager.ReleasableStructure,
-      type_signature: Optional[computation_types.Type] = None,
-      key: release_manager.Key = None,
+      self, value: release_manager.ReleasableStructure, key: release_manager.Key
   ) -> None:
     """Releases `value` from a federated program.
 
     Args:
       value: A `tff.program.ReleasableStructure` to release.
-      type_signature: The `tff.Type` of `value`.
       key: Used to reference (in the file system) the released `value`.
     """
-    del type_signature  # Unused.
-
     path = self._get_path_for_key(key)
     materialized_value = await value_reference.materialize_value(value)
     flattened_value = structure_utils.flatten(materialized_value)

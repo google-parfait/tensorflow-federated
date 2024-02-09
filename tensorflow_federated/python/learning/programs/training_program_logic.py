@@ -158,7 +158,6 @@ async def train_model(
     logging.info('Looking for previous evaluation states...')
     await evaluation_manager.resume_from_previous_state()
 
-  train_state_type, _ = train_process.next.type_signature.result  # pytype: disable=attribute-error
   train_data_iterator = train_data_source.iterator()
 
   # Try to load the latest program state; if the program logic failed on a
@@ -326,7 +325,6 @@ async def train_model(
   task_manager.add_task(
       model_output_manager.release(
           train_state,
-          train_state_type,
           key=f'final_training_checkpoint_round_{train_total_rounds}',
       )
   )

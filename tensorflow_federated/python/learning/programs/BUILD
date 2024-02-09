@@ -117,7 +117,6 @@ py_library(
         ":evaluation_program_logic",
         ":program_logic",
         "//tensorflow_federated/python/core/impl/computation:computation_base",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/learning/templates:learning_process",
         "//tensorflow_federated/python/program:data_source",
         "//tensorflow_federated/python/program:program_state_manager",

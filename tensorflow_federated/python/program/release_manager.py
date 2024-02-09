@@ -24,7 +24,6 @@ import attrs
 import tree
 
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.program import structure_utils
 from tensorflow_federated.python.program import value_reference
 
@@ -54,15 +53,8 @@ class ReleaseManager(abc.ABC, Generic[ReleasableStructure, Key]):
   to customer storage in a federated program.
   """
 
-  # TODO: b/305743962 - Deprecate `type_signature` and temporarily give `key` a
-  # default value.
   @abc.abstractmethod
-  async def release(
-      self,
-      value: ReleasableStructure,
-      type_signature: Optional[computation_types.Type] = None,
-      key: Key = None,
-  ) -> None:
+  async def release(self, value: ReleasableStructure, key: Key) -> None:
     """Releases `value` from a federated program.
 
     An implementation of this interface should be specific about the types of
@@ -75,7 +67,6 @@ class ReleaseManager(abc.ABC, Generic[ReleasableStructure, Key]):
 
     Args:
       value: A `tff.program.ReleasableStructure` to release.
-      type_signature: The `tff.Type` of `value`.
       key: A value used to reference the released `value`.
     """
     raise NotImplementedError
@@ -158,25 +149,16 @@ class FilteringReleaseManager(ReleaseManager[ReleasableStructure, Key]):
     self._release_manager = release_manager
     self._filter_fn = filter_fn
 
-  # TODO: b/305743962 - Deprecate `type_signature` and temporarily give `key` a
-  # default value.
-  async def release(
-      self,
-      value: ReleasableStructure,
-      type_signature: Optional[computation_types.Type] = None,
-      key: Key = None,
-  ) -> None:
+  async def release(self, value: ReleasableStructure, key: Key) -> None:
     """Releases `value` from a federated program.
 
     Args:
       value: A `tff.program.ReleasableStructure` to release.
-      type_signature: The `tff.Type` of `value`.
       key: A value used to reference the released `value`.
 
     Raises:
       NotFilterableError: If the `value` cannot be filtered.
     """
-    del type_signature  # Unused.
 
     def _filter_value(
         path: tuple[Union[str, int], ...],
@@ -292,23 +274,13 @@ class GroupingReleaseManager(ReleaseManager[ReleasableStructure, Key]):
 
     self._release_managers = release_managers
 
-  # TODO: b/305743962 - Deprecate `type_signature` and temporarily give `key` a
-  # default value.
-  async def release(
-      self,
-      value: ReleasableStructure,
-      type_signature: Optional[computation_types.Type] = None,
-      key: Key = None,
-  ) -> None:
+  async def release(self, value: ReleasableStructure, key: Key) -> None:
     """Releases `value` from a federated program.
 
     Args:
       value: A `tff.program.ReleasableStructure` to release.
-      type_signature: The `tff.Type` of `value`.
       key: A value used to reference the released `value`.
     """
-    del type_signature  # Unused.
-
     await asyncio.gather(
         *[m.release(value, key=key) for m in self._release_managers]
     )
@@ -370,23 +342,13 @@ class PeriodicReleaseManager(ReleaseManager[ReleasableStructure, Key]):
           f'Unexpected `periodicity` found: {type(periodicity)}.'
       )
 
-  # TODO: b/305743962 - Deprecate `type_signature` and temporarily give `key` a
-  # default value.
-  async def release(
-      self,
-      value: ReleasableStructure,
-      type_signature: Optional[computation_types.Type] = None,
-      key: Key = None,
-  ) -> None:
+  async def release(self, value: ReleasableStructure, key: Key) -> None:
     """Releases `value` from a federated program.
 
     Args:
       value: A `tff.program.ReleasableStructure` to release.
-      type_signature: The `tff.Type` of `value`.
       key: A value used to reference the released `value`.
     """
-    del type_signature  # Unused.
-
     if isinstance(self._periodicity, int):
       self._count += 1
       if self._count % self._periodicity == 0:
@@ -447,23 +409,13 @@ class DelayedReleaseManager(ReleaseManager[ReleasableStructure, Key]):
     self._count = 0
     self._delay = delay
 
-  # TODO: b/305743962 - Deprecate `type_signature` and temporarily give `key` a
-  # default value.
-  async def release(
-      self,
-      value: ReleasableStructure,
-      type_signature: Optional[computation_types.Type] = None,
-      key: Key = None,
-  ) -> None:
+  async def release(self, value: ReleasableStructure, key: Key) -> None:
     """Releases `value` from a federated program.
 
     Args:
       value: A `tff.program.ReleasableStructure` to release.
-      type_signature: The `tff.Type` of `value`.
       key: A value used to reference the released `value`.
     """
-    del type_signature  # Unused.
-
     self._count += 1
     if self._count >= self._delay:
       await self._release_manager.release(value, key=key)

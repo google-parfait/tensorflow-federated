@@ -17,7 +17,6 @@ from typing import Optional
 
 from absl import logging
 
-from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.program import release_manager
 from tensorflow_federated.python.program import value_reference
 
@@ -38,23 +37,17 @@ class LoggingReleaseManager(
   containing value references, each value reference is materialized.
   """
 
-  # TODO: b/305743962 - Deprecate `type_signature` and temporarily give `key` a
-  # default value.
   async def release(
       self,
       value: release_manager.ReleasableStructure,
-      type_signature: Optional[computation_types.Type] = None,
-      key: Optional[release_manager.Key] = None,
+      key: Optional[release_manager.Key],
   ) -> None:
     """Releases `value` from a federated program.
 
     Args:
       value: A `tff.program.ReleasableStructure` to release.
-      type_signature: The `tff.Type` of `value`.
       key: An optional value used to reference the released `value`.
     """
-    del type_signature  # Unused.
-
     materialized_value = await value_reference.materialize_value(value)
     logging.info('Releasing')
     logging.info('  value: %s', materialized_value)
