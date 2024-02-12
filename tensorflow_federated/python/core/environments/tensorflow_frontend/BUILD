@@ -5,6 +5,8 @@ package(
     default_visibility = [
         ":tensorflow_frontend_packages",
         "//tensorflow_federated/python/core/environments:environments_users",
+        "//tensorflow_federated/python/core/environments/tensorflow:tensorflow_packages",
+        "//tensorflow_federated/python/core/environments/tensorflow_backend:tensorflow_backend_packages",
     ],
 )
 

@@ -5,6 +5,7 @@ package(
     default_visibility = [
         ":xla_backend_packages",
         "//tensorflow_federated/python/core/environments:environments_users",
+        "//tensorflow_federated/python/core/environments/jax:jax_packages",
         "//tensorflow_federated/python/core/environments/jax_frontend:jax_frontend_packages",
     ],
 )
