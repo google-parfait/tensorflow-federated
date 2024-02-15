@@ -14,13 +14,12 @@
 """Utilities for releasing values from a federated program to TensorBoard."""
 
 import os
-from typing import Optional, Union
+from typing import Union
 
 import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.program import release_manager
 from tensorflow_federated.python.program import structure_utils
 from tensorflow_federated.python.program import value_reference
@@ -69,23 +68,16 @@ class TensorBoardReleaseManager(
       summary_dir = os.fspath(summary_dir)
     self._summary_writer = tf.summary.create_file_writer(summary_dir)
 
-  # TODO: b/305743962 - Deprecate `type_signature` and temporarily give `key` a
-  # default value.
   async def release(
-      self,
-      value: release_manager.ReleasableStructure,
-      type_signature: Optional[computation_types.Type] = None,
-      key: int = 0,
+      self, value: release_manager.ReleasableStructure, key: int
   ) -> None:
     """Releases `value` from a federated program.
 
     Args:
       value: A `tff.program.ReleasableStructure` to release.
-      type_signature: The `tff.Type` of `value`.
       key: A integer used to reference the released `value`; `key` represents a
         step in a federated program.
     """
-    del type_signature  # Unused.
     py_typecheck.check_type(key, (int, np.integer))
 
     materialized_value = await value_reference.materialize_value(value)

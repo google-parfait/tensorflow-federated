@@ -22,7 +22,6 @@ from vizier import pyvizier
 from vizier.client import client_abc
 
 from tensorflow_federated.python.core.impl.computation import computation_base
-from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.learning.programs import evaluation_program_logic
 from tensorflow_federated.python.learning.programs import program_logic
 from tensorflow_federated.python.learning.templates import learning_process
@@ -98,16 +97,9 @@ class _IntermediateMeasurementReleaseManager(
   def __init__(self, trial: client_abc.TrialInterface):
     self._trial = trial
 
-  # TODO: b/305743962 - Deprecate `type_signature` and temporarily give `key` a
-  # default value.
   async def release(
-      self,
-      value: release_manager.ReleasableStructure,
-      type_signature: Optional[computation_types.Type] = None,
-      key: int = 0,
+      self, value: release_manager.ReleasableStructure, key: int
   ) -> None:
-    del type_signature  # Unused.
-
     creation_time = self._trial.materialize().creation_time
     measurement = await _create_measurement(
         value=value, steps=key, creation_time=creation_time
@@ -131,16 +123,9 @@ class _FinalMeasurementReleaseManager(
   def __init__(self, trial: client_abc.TrialInterface):
     self._trial = trial
 
-  # TODO: b/305743962 - Deprecate `type_signature` and temporarily give `key` a
-  # default value.
   async def release(
-      self,
-      value: release_manager.ReleasableStructure,
-      type_signature: Optional[computation_types.Type] = None,
-      key: int = 0,
+      self, value: release_manager.ReleasableStructure, key: int
   ) -> None:
-    del type_signature  # Unused.
-
     creation_time = self._trial.materialize().creation_time
     measurement = await _create_measurement(
         value=value, steps=key, creation_time=creation_time

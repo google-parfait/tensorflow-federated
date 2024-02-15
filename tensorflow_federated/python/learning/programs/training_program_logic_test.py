@@ -259,7 +259,6 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     )
 
     # Assert that training metrics were released every round.
-    train_state_type, _ = training_process.next.type_signature.result
     self.assertSequenceEqual(
         [
             _create_metrics_release_call(key=round_num)
@@ -273,7 +272,6 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
         [
             mock.call(
                 any_algorithm_state,
-                train_state_type,
                 key=f'final_training_checkpoint_round_{training_rounds}',
             )
         ],
@@ -413,7 +411,6 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     )
 
     # Assert that training metrics were released every round.
-    train_state_type, _ = training_process.next.type_signature.result
     self.assertSequenceEqual(
         [
             _create_metrics_release_call(key=round_num)
@@ -427,7 +424,6 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
         [
             mock.call(
                 any_algorithm_state,
-                train_state_type,
                 key=f'final_training_checkpoint_round_{training_rounds}',
             )
         ],
@@ -523,7 +519,6 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     )
 
     # Assert that training metrics were released every round.
-    train_state_type, _ = training_process.next.type_signature.result
     self.assertSequenceEqual(
         [
             _create_metrics_release_call(key=round_num)
@@ -537,7 +532,6 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
         [
             mock.call(
                 any_algorithm_state,
-                train_state_type,
                 key=f'final_training_checkpoint_round_{training_rounds}',
             )
         ],
@@ -712,7 +706,6 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
 
     # Assert that training metrics were released for the resumed round and the
     # model as output after all training.
-    train_state_type, _ = training_process.next.type_signature.result
     self.assertSequenceEqual(
         [_create_metrics_release_call(key=training_rounds)],
         mock_train_metrics_manager.release.call_args_list,
@@ -721,7 +714,6 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
         [
             mock.call(
                 any_algorithm_state,
-                train_state_type,
                 key=f'final_training_checkpoint_round_{training_rounds}',
             )
         ],

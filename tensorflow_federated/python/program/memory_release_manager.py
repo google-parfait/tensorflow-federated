@@ -15,10 +15,8 @@
 
 import collections
 from collections.abc import Hashable
-from typing import Optional
 
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.program import release_manager
 from tensorflow_federated.python.program import value_reference
 
@@ -43,22 +41,15 @@ class MemoryReleaseManager(
     """Returns an initialized `tff.program.MemoryReleaseManager`."""
     self._values = collections.OrderedDict()
 
-  # TODO: b/305743962 - Deprecate `type_signature` and temporarily give `key` a
-  # default value.
   async def release(
-      self,
-      value: release_manager.ReleasableStructure,
-      type_signature: Optional[computation_types.Type] = None,
-      key: Hashable = None,
+      self, value: release_manager.ReleasableStructure, key: Hashable
   ) -> None:
     """Releases `value` from a federated program.
 
     Args:
       value: A `tff.program.ReleasableStructure` to release.
-      type_signature: The `tff.Type` of `value`.
       key: A hashable value used to reference the released `value`.
     """
-    del type_signature  # Unused.
     py_typecheck.check_type(key, Hashable)
 
     materialized_value = await value_reference.materialize_value(value)
