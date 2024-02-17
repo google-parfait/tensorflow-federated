@@ -71,25 +71,7 @@ class TensorFlowComputationContext(context_base.SyncContext):
           return None
 
       normalized_arg = tree.traverse(_to_python, arg)
-
-      # Preemptively package as a struct to work around shortcircuiting in
-      # type_to_py_container in a non-Struct argument case.
-      # structure_arg = structure.Struct.unnamed(*arg)
-      # normalized_arg = type_conversions.type_to_py_container(
-      #     structure_arg, comp.type_signature.parameter
-      # )
-
-      try:
-        inferred_type = type_conversions.tensorflow_infer_type(normalized_arg)
-      except Exception as e:
-        print('---')
-        print(arg)
-        print()
-        print(comp.type_signature.parameter)
-        print()
-        print(normalized_arg)
-        print('---')
-        raise e
+      inferred_type = type_conversions.tensorflow_infer_type(normalized_arg)
 
       if not comp.type_signature.parameter.is_assignable_from(inferred_type):
         raise TypeError(
