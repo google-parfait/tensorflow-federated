@@ -44,7 +44,7 @@ class DistributedConfiguration:
       )
 
 
-def _create_tensorflow_executor(
+def _create_tensorflow_backend_execution_stack(
     max_concurrent_computation_calls: int,
 ) -> executor_bindings.Executor:
   """Returns a leaf executor for Tensorflow based executor."""
@@ -82,7 +82,7 @@ def create_sync_local_cpp_execution_context(
   factory = cpp_executor_factory.local_cpp_executor_factory(
       default_num_clients=default_num_clients,
       max_concurrent_computation_calls=max_concurrent_computation_calls,
-      leaf_executor_fn=_create_tensorflow_executor,
+      leaf_executor_fn=_create_tensorflow_backend_execution_stack,
   )
   context = sync_execution_context.SyncExecutionContext(
       executor_fn=factory, compiler_fn=compiler.desugar_and_transform_to_native
@@ -137,7 +137,7 @@ def create_async_local_cpp_execution_context(
   factory = cpp_executor_factory.local_cpp_executor_factory(
       default_num_clients=default_num_clients,
       max_concurrent_computation_calls=max_concurrent_computation_calls,
-      leaf_executor_fn=_create_tensorflow_executor,
+      leaf_executor_fn=_create_tensorflow_backend_execution_stack,
   )
   context = async_execution_context.AsyncExecutionContext(
       executor_fn=factory, compiler_fn=compiler.desugar_and_transform_to_native
@@ -193,8 +193,8 @@ def _get_distributed_executor_factory(
     distributed_config: Optional[DistributedConfiguration] = None,
 ) -> executor_factory.ExecutorFactory:
   """Return an execution factory which constructs DTensor based executor."""
-  server_leaf_executor_fn = _create_tensorflow_executor
-  client_leaf_executor_fn = _create_tensorflow_executor
+  server_leaf_executor_fn = _create_tensorflow_backend_execution_stack
+  client_leaf_executor_fn = _create_tensorflow_backend_execution_stack
   if distributed_config is None:
     raise ValueError("Distributed configuration is unspecified.")
 

@@ -36,7 +36,7 @@ from tensorflow_federated.python.core.impl.executors import executor_bindings
 FLAGS = flags.FLAGS
 
 
-def _create_tensorflow_executor(
+def _create_tensorflow_backend_execution_stack(
     max_concurrent_computation_calls: int,
 ) -> executor_bindings.Executor:
   """Returns a leaf executor for Tensorflow based executor."""
@@ -90,7 +90,7 @@ def create_async_test_cpp_execution_context(
   factory = cpp_executor_factory.local_cpp_executor_factory(
       default_num_clients=default_num_clients,
       max_concurrent_computation_calls=max_concurrent_computation_calls,
-      leaf_executor_fn=_create_tensorflow_executor,
+      leaf_executor_fn=_create_tensorflow_backend_execution_stack,
   )
   context = async_execution_context.AsyncExecutionContext(
       executor_fn=factory, compiler_fn=_compile
@@ -270,7 +270,7 @@ def create_sync_test_cpp_execution_context(
   factory = cpp_executor_factory.local_cpp_executor_factory(
       default_num_clients=default_num_clients,
       max_concurrent_computation_calls=max_concurrent_computation_calls,
-      leaf_executor_fn=_create_tensorflow_executor,
+      leaf_executor_fn=_create_tensorflow_backend_execution_stack,
   )
   context = sync_execution_context.SyncExecutionContext(
       executor_fn=factory, compiler_fn=_compile

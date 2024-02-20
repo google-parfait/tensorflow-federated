@@ -12,36 +12,64 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
 from absl.testing import absltest
 import numpy as np
 
 from tensorflow_federated.python.core.backends.xla import cpp_execution_contexts
 from tensorflow_federated.python.core.environments.jax_frontend import jax_computation
 from tensorflow_federated.python.core.impl.context_stack import context_base
+from tensorflow_federated.python.core.impl.context_stack import context_stack_test_utils
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 
 
-class CppExecutionContextsTest(absltest.TestCase):
+class AsyncLocalCppExecutionContextTest(
+    absltest.TestCase, unittest.IsolatedAsyncioTestCase
+):
 
-  def setUp(self):
-    super().setUp()
-    cpp_execution_contexts.set_sync_local_cpp_execution_context()
+  def test_create_async_local_cpp_execution_context_returns_async_context(self):
+    context = cpp_execution_contexts.create_async_local_cpp_execution_context()
+    self.assertIsInstance(context, context_base.AsyncContext)
 
-  def test_create_local_execution_context(self):
+  @context_stack_test_utils.with_context(
+      cpp_execution_contexts.create_async_local_cpp_execution_context
+  )
+  async def test_jax_computation_returns_result(self):
+    @jax_computation.jax_computation(np.int32, np.int32)
+    def _comp(a, b):
+      return a + b
+
+    actual_result = await _comp(1, 2)
+
+    self.assertEqual(actual_result, 3)
+
+
+class SyncLocalCppExecutionContextTest(absltest.TestCase):
+
+  def test_create_sync_local_cpp_execution_context_returns_sync_context(self):
     context = cpp_execution_contexts.create_sync_local_cpp_execution_context()
     self.assertIsInstance(context, context_base.SyncContext)
 
-  def test_run_simple_jax_computation(self):
-    @jax_computation.jax_computation(np.float32, np.float32)
-    def comp(a, b):
+  @context_stack_test_utils.with_context(
+      cpp_execution_contexts.create_sync_local_cpp_execution_context
+  )
+  def test_jax_computation_returns_result(self):
+    @jax_computation.jax_computation(np.int32, np.int32)
+    def _comp(a, b):
       return a + b
 
-    self.assertEqual(comp(np.float32(10.0), np.float32(20.0)), 30.0)
+    actual_result = _comp(1, 2)
 
-  def test_run_federated_aggergate(self):
+    self.assertEqual(actual_result, 3)
+
+  @context_stack_test_utils.with_context(
+      cpp_execution_contexts.create_sync_local_cpp_execution_context
+  )
+  def test_federated_aggergate(self):
     @jax_computation.jax_computation(np.float32, np.float32)
     def _add(a, b):
       return a + b
@@ -73,6 +101,9 @@ class CppExecutionContextsTest(absltest.TestCase):
         aggregate([np.float32(1), np.float32(2), np.float32(3)]), np.float32(6)
     )
 
+  @context_stack_test_utils.with_context(
+      cpp_execution_contexts.create_sync_local_cpp_execution_context
+  )
   def test_sequence_reduce(self):
     sequence = list(range(10))
 
@@ -92,6 +123,9 @@ class CppExecutionContextsTest(absltest.TestCase):
 
     self.assertEqual(comp(sequence), sum(range(10)))
 
+  @context_stack_test_utils.with_context(
+      cpp_execution_contexts.create_sync_local_cpp_execution_context
+  )
   def test_federated_sequence_reduce(self):
     sequence = list(range(10))
 
@@ -119,6 +153,9 @@ class CppExecutionContextsTest(absltest.TestCase):
 
     self.assertEqual(comp(sequence), sum(range(10)))
 
+  @context_stack_test_utils.with_context(
+      cpp_execution_contexts.create_sync_local_cpp_execution_context
+  )
   def test_federated_sum(self):
 
     @federated_computation.federated_computation(
@@ -135,6 +172,9 @@ class CppExecutionContextsTest(absltest.TestCase):
       # self.assertEqual(comp([1, 2, 3]), 6)
       comp([1, 2, 3])
 
+  @context_stack_test_utils.with_context(
+      cpp_execution_contexts.create_sync_local_cpp_execution_context
+  )
   def test_unweighted_federated_mean(self):
 
     @federated_computation.federated_computation(
