@@ -31,7 +31,6 @@ limitations under the License
 #include "tensorflow/core/graph/node_builder.h"
 #include "tensorflow_federated/cc/core/impl/executors/session_provider.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
-#include "tensorflow_federated/cc/core/impl/executors/tensorflow_status_compat.h"
 
 namespace tensorflow_federated {
 
@@ -191,10 +190,10 @@ absl::StatusOr<GraphWithOutput> DatasetFromTensorStructuresGraph(
       .Device("/device:CPU:0");
   scope.UpdateStatus(ds_to_graph_builder.Finalize(scope.graph(), nullptr));
   tf::GraphDef graph_def;
-  tf::Status status = scope.ToGraphDef(&graph_def);
+  absl::Status status = scope.ToGraphDef(&graph_def);
   if (!status.ok()) {
     return absl::InternalError(
-        absl::StrCat("Failure to create dataset graph: ", ToMessage(status)));
+        absl::StrCat("Failure to create dataset graph: ", status.message()));
   }
   return GraphWithOutput{std::move(graph_def), std::string(output_tensor_name)};
 }
@@ -220,13 +219,12 @@ absl::StatusOr<tf::Tensor> DatasetFromTensorStructures(
   SessionProvider session_provider(std::move(graph_def));
   auto session = TFF_TRY(session_provider.BorrowSession());
   std::vector<tf::Tensor> outputs;
-  tensorflow::Status status =
-      session->Run(inputs, {std::move(output_tensor_name)},
-                   /*target_tensor_names=*/{}, &outputs);
+  absl::Status status = session->Run(inputs, {std::move(output_tensor_name)},
+                                     /*target_tensor_names=*/{}, &outputs);
   if (!status.ok()) {
     return absl::InternalError(
         absl::StrCat("Failed to run DatasetFromTensorStructures computation: ",
-                     ToMessage(status)));
+                     status.message()));
   }
   if (outputs.size() != 1) {
     return absl::InternalError(
