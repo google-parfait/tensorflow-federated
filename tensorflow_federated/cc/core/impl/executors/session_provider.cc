@@ -20,20 +20,18 @@ limitations under the License
 #include <vector>
 
 #include "absl/container/flat_hash_set.h"
+#include "absl/status/status.h"
 #include "absl/strings/match.h"
 #include "absl/strings/str_join.h"
 #include "absl/strings/str_split.h"
 #include "absl/synchronization/mutex.h"
-#include "tensorflow/core/common_runtime/device_mgr.h"
 #include "tensorflow/core/framework/attr_value.pb.h"
 #include "tensorflow/core/framework/device_factory.h"
 #include "tensorflow/core/framework/function.pb.h"
 #include "tensorflow/core/framework/op.h"
 #include "tensorflow/core/framework/op_kernel.h"
 #include "tensorflow/core/framework/types.h"
-#include "tensorflow/core/graph/default_device.h"
 #include "tensorflow/core/public/session_options.h"
-#include "tensorflow_federated/cc/core/impl/executors/tensorflow_status_compat.h"
 
 namespace tensorflow_federated {
 
@@ -227,11 +225,11 @@ SessionProvider::CreateSession(const int16_t session_id) {
   std::unique_ptr<tensorflow::Session> session;
   {
     tensorflow::Session* raw_session;
-    tensorflow::Status status =
+    absl::Status status =
         tensorflow::NewSession(get_session_options(), &raw_session);
     if (!status.ok()) {
       return absl::InternalError(absl::StrCat(
-          "Failed to create TensorFlow session: ", ToMessage(status)));
+          "Failed to create TensorFlow session: ", status.message()));
     }
     session.reset(raw_session);
   }
@@ -272,7 +270,7 @@ SessionProvider::CreateSession(const int16_t session_id) {
       LOG(ERROR) << line;
     }
     return absl::InternalError(
-        absl::StrCat("Failed to create graph in session: ", ToMessage(status)));
+        absl::StrCat("Failed to create graph in session: ", status.message()));
   }
   return std::move(session);
 }
