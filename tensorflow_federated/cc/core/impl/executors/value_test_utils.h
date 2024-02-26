@@ -44,7 +44,6 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/dataset_conversions.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/protobuf_matchers.h"
-#include "tensorflow_federated/cc/core/impl/executors/tensorflow_status_compat.h"
 #include "tensorflow_federated/cc/core/impl/executors/type_utils.h"
 #include "tensorflow_federated/proto/v0/computation.pb.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
@@ -218,10 +217,10 @@ SequenceValueToList(const v0::Value::Sequence& sequence) {
   std::unique_ptr<tensorflow::data::standalone::Dataset> dataset =
       TFF_TRY(SequenceValueToDataset(sequence));
   std::unique_ptr<tensorflow::data::standalone::Iterator> iterator;
-  tensorflow::Status status = dataset->MakeIterator(&iterator);
+  absl::Status status = dataset->MakeIterator(&iterator);
   if (!status.ok()) {
     return absl::InternalError(absl::StrCat(
-        "Unable to make iterator from sequence dataset: ", ToMessage(status)));
+        "Unable to make iterator from sequence dataset: ", status.message()));
   }
   std::vector<std::vector<tensorflow::Tensor>> outputs;
   while (true) {
@@ -231,7 +230,7 @@ SequenceValueToList(const v0::Value::Sequence& sequence) {
     if (!status.ok()) {
       return absl::InternalError(
           absl::StrCat("Failed to get the ", outputs.size(),
-                       "th element of the sequence: ", ToMessage(status)));
+                       "th element of the sequence: ", status.message()));
     }
     if (end_of_input) {
       break;

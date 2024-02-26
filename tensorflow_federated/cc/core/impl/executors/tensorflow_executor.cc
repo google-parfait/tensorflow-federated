@@ -46,8 +46,6 @@ limitations under the License
 #include "tensorflow/core/framework/types.h"
 #include "tensorflow/core/framework/types.pb.h"
 #include "tensorflow/core/platform/macros.h"
-#include "tensorflow/core/platform/status.h"
-#include "tensorflow/core/platform/threadpool.h"
 #include "tensorflow/core/platform/tstring.h"
 #include "tensorflow/core/public/session.h"
 #include "tensorflow_federated/cc/core/impl/executors/dataset_from_tensor_structures.h"
@@ -55,7 +53,6 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/session_provider.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
 #include "tensorflow_federated/cc/core/impl/executors/tensor_serialization.h"
-#include "tensorflow_federated/cc/core/impl/executors/tensorflow_status_compat.h"
 #include "tensorflow_federated/cc/core/impl/executors/threading.h"
 #include "tensorflow_federated/proto/v0/computation.pb.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
@@ -694,22 +691,21 @@ absl::StatusOr<ExecutorValue> Computation::Call(
     TFF_TRY(arg.value().Bind(parameter_shape_.value(), &inputs));
   }
   if (!init_op_.empty()) {
-    tensorflow::Status status = session->Run(inputs,
-                                             /*output_tensor_names=*/{},
-                                             /*target_tensor_names=*/{init_op_},
-                                             /*outputs=*/nullptr);
+    absl::Status status = session->Run(inputs,
+                                       /*output_tensor_names=*/{},
+                                       /*target_tensor_names=*/{init_op_},
+                                       /*outputs=*/nullptr);
     if (!status.ok()) {
       return absl::InternalError(ERR_LOG(absl::StrCat(
-          "Failed to initialize the computation: ", ToMessage(status))));
+          "Failed to initialize the computation: ", status.message())));
     }
   }
   std::vector<tensorflow::Tensor> outputs;
-  tensorflow::Status status =
-      session->Run(inputs, output_tensor_names_,
-                   /*target_tensor_names=*/{}, &outputs);
+  absl::Status status = session->Run(inputs, output_tensor_names_,
+                                     /*target_tensor_names=*/{}, &outputs);
   if (!status.ok()) {
-    return absl::InternalError(ERR_LOG(
-        absl::StrCat("Failed to run computation: ", ToMessage(status))));
+    return absl::InternalError(
+        ERR_LOG(absl::StrCat("Failed to run computation: ", status.message())));
   }
   // Return the session rental before computing the final ExecutorValue.
   session.ReturnRental();

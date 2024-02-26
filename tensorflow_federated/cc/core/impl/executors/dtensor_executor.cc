@@ -22,42 +22,30 @@ limitations under the License
 #include <string>
 #include <string_view>
 #include <thread>  // NOLINT
-#include <tuple>
 #include <utility>
-#include <variant>
 #include <vector>
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/str_split.h"
 #include "tensorflow/c/eager/c_api.h"
 #include "tensorflow/c/eager/tfe_tensorhandle_internal.h"
 #include "tensorflow/c/tf_status.h"
 #include "tensorflow/c/tf_tensor.h"
 #include "tensorflow/c/tf_tensor_internal.h"
-#include "tensorflow/core/platform/status.h"
-#include "tensorflow/core/platform/statusor.h"
 #include "tensorflow/dtensor/cc/tensor_layout.h"
 #include "tensorflow_federated/cc/core/impl/executors/dtensor_api.h"
 #include "tensorflow_federated/cc/core/impl/executors/eager_computation.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
 #include "tensorflow_federated/cc/core/impl/executors/tensor_serialization.h"
-#include "tensorflow_federated/cc/core/impl/executors/tensorflow_status_compat.h"
 #include "tensorflow_federated/cc/core/impl/executors/tensorflow_utils.h"
 #include "tensorflow_federated/cc/core/impl/executors/threading.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow_federated {
 namespace {
-
-template <class T>
-absl::StatusOr<T> ToAbslStatusOr(tensorflow::StatusOr<T> input) {
-  if (input.ok()) {
-    return input.value();
-  }
-  return tensorflow::ToAbslStatus(input.status());
-}
 
 class DTensorConverterImpl : public DTensorConverter {
  public:
@@ -180,7 +168,7 @@ class TensorValue : public Value {
       auto tf_status = tensorflow::TF_TensorToTensor(tf_tensor.get(), &tensor);
       if (!tf_status.ok()) {
         return absl::InternalError(
-            absl::StrCat("Tensor materialize failed: ", ToMessage(tf_status)));
+            absl::StrCat("Tensor materialize failed: ", tf_status.message()));
       }
 
       return SerializeTensorValue(tensor, value_pb);
@@ -379,7 +367,7 @@ class ComputationValue : public Value {
           auto layout_or = tensorflow::dtensor::Layout::GetLayout(
               sharding_specs, mesh.value());
           if (!layout_or.ok()) {
-            return tensorflow::ToAbslStatus(layout_or.status());
+            return layout_or.status();
           }
           layout_map[sharding.first] = layout_or.value();
         }

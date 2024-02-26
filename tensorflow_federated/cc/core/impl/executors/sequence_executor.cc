@@ -37,7 +37,6 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/sequence_intrinsics.h"
 #include "tensorflow_federated/cc/core/impl/executors/struct_traversal_order.h"
 #include "tensorflow_federated/cc/core/impl/executors/tensor_serialization.h"
-#include "tensorflow_federated/cc/core/impl/executors/tensorflow_status_compat.h"
 #include "tensorflow_federated/cc/core/impl/executors/threading.h"
 #include "tensorflow_federated/proto/v0/computation.pb.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
@@ -170,7 +169,7 @@ class DatasetIterator : public SequenceIterator {
     auto status = ds_iterator_->GetNext(&output_tensors, &end_of_data);
     if (!status.ok()) {
       return absl::InternalError(absl::StrCat(
-          "error pulling elements from dataset: ", ToMessage(status)));
+          "error pulling elements from dataset: ", status.message()));
     }
     if (end_of_data) {
       return std::nullopt;
@@ -256,7 +255,7 @@ class Sequence {
         return absl::InternalError(
             absl::StrCat("Error creating iterator from dataset in sequence "
                          "executor. Message: ",
-                         ToMessage(iter_status)));
+                         iter_status.message()));
       }
       return std::make_unique<DatasetIterator>(
           std::move(iter), proto().sequence().element_type());
