@@ -71,10 +71,10 @@ REQUIRED_PACKAGES = [
     'portpicker~=1.6',
     'scipy~=1.9.3',
     'semantic-version~=2.6',
-    'tensorflow-compression>=2.14.0,==2.14.*',
+    'tensorflow-compression>=2.15.0,==2.15.*',
     'tensorflow-model-optimization==0.7.5',
     'tensorflow-privacy==0.9.0',
-    'tensorflow>=2.14.0,==2.14.*',
+    'tensorflow>=2.15.0,==2.15.*',
     'tqdm~=4.64',
     'typing-extensions>=4.5.0,==4.5.*',
     # TODO: b/315515548 - Required because current dependencies are pulling in
