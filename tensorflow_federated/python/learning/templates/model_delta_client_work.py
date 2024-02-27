@@ -130,17 +130,24 @@ def build_model_delta_update_with_tff_optimizer(
     client_update = tf.nest.map_structure(
         tf.subtract, initial_weights.trainable, model_weights.trainable
     )
-    model_output = model.report_local_unfinalized_metrics()
-
     # TODO: b/122071074 - Consider moving this functionality into
     # tff.federated_mean?
     client_update, has_non_finite_delta = (
         tensor_utils.zero_all_if_any_non_finite(client_update)
     )
+    # If there are any non-finite model weights values, we set the
+    # `client_weight` to zero so that this client does not contribute to the
+    # aggregated model deltas at the server. We also reset the client local
+    # metrics via `model.reset_metrics()`, so that these non-finite training
+    # metrics are excluded from the aggregated metrics at the server.
+    # TODO: b/327051011 - Add a metric to count the number of clients with
+    # non-finite model deltas.
     client_weight = _choose_client_weight(
         weighting, has_non_finite_delta, num_examples
     )
-
+    if has_non_finite_delta > 0:
+      model.reset_metrics()
+    model_output = model.report_local_unfinalized_metrics()
     return (
         client_works.ClientResult(
             update=client_update, update_weight=client_weight
@@ -210,16 +217,22 @@ def build_model_delta_update_with_keras_optimizer(
     client_update = tf.nest.map_structure(
         tf.subtract, initial_weights.trainable, model_weights.trainable
     )
-    model_output = model.report_local_unfinalized_metrics()
-
     # TODO: b/122071074 - Consider moving this functionality into
     # tff.federated_mean?
     client_update, has_non_finite_delta = (
         tensor_utils.zero_all_if_any_non_finite(client_update)
     )
+    # If there are any non-finite model weights values, we set the
+    # `client_weight` to zero so that this client does not contribute to the
+    # aggregated model deltas at the server. We also reset the client local
+    # metrics via `model.reset_metrics()`, so that these non-finite training
+    # metrics are excluded from the aggregated metrics at the server.
     client_weight = _choose_client_weight(
         weighting, has_non_finite_delta, num_examples
     )
+    if has_non_finite_delta > 0:
+      model.reset_metrics()
+    model_output = model.report_local_unfinalized_metrics()
     return (
         client_works.ClientResult(
             update=client_update, update_weight=client_weight
@@ -491,12 +504,21 @@ def build_functional_model_delta_update(
     client_model_update = tf.nest.map_structure(
         tf.subtract, initial_trainable_weights, trainable_weights
     )
-    unfinalized_metrics = metrics_state
     client_model_update, has_non_finite_delta = (
         tensor_utils.zero_all_if_any_non_finite(client_model_update)
     )
+    # If there are any non-finite model weights values, we set the
+    # `client_weight` to zero so that this client does not contribute to the
+    # aggregated model deltas at the server. We also reset the client local
+    # metrics by `initialize_metrics_state`, so that these non-finite training
+    # metrics are excluded from the aggregated metrics at the server.
     client_weight = _choose_client_weight(
         weighting, has_non_finite_delta, num_examples
+    )
+    unfinalized_metrics = (
+        model.initialize_metrics_state()
+        if has_non_finite_delta > 0
+        else metrics_state
     )
     return (
         client_works.ClientResult(

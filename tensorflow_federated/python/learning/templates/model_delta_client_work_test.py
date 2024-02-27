@@ -470,10 +470,53 @@ class ModelDeltaClientWorkExecutionTest(
     init_weights = create_test_initial_weights()
     init_weights.trainable[1] = bad_value
     client_outputs = client_tf(optimizer, init_weights, dataset)
-    self.assertEqual(self.evaluate(client_outputs[0].update_weight), 0.0)
-    self.assertAllClose(
-        self.evaluate(client_outputs[0].update), [[[0.0], [0.0]], 0.0]
+    # Since this client has non-finite model weights update, we will zero out
+    # its `update` and set `update_weight` to zero.
+    self.assertEqual(client_outputs[0].update_weight, 0.0)
+    self.assertAllClose(client_outputs[0].update, [[[0.0], [0.0]], 0.0])
+    # Since this client has non-finite model weights update, we will reset its
+    # local metrics, which essentially excludes it from server aggregation.
+    tf.nest.map_structure(
+        self.assertAllEqual,
+        client_outputs[1],
+        collections.OrderedDict(loss=[0.0, 0.0], num_examples=0),
     )
+
+  def test_correct_update_weight_with_traced_function(self):
+    client_tf = (
+        model_delta_client_work.build_model_delta_update_with_keras_optimizer(
+            model_fn=create_model,
+            weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES,
+        )
+    )
+    optimizer = tf.keras.optimizers.SGD(learning_rate=0.1)
+    init_weights = create_test_initial_weights()
+    dataset_with_nan = tf.data.Dataset.from_tensor_slices(
+        collections.OrderedDict(
+            x=[[0.0, 0.0], [1.0, 0.0], [2.0, 0.0], [3.0, np.nan]],
+            y=[[0.0], [0.0], [1.0], [1.0]],
+        )
+    ).batch(1)
+    dataset_wo_nan = tf.data.Dataset.from_tensor_slices(
+        collections.OrderedDict(
+            x=[[0.0, 0.0], [1.0, 0.0], [2.0, 0.0], [3.0, 0.0]],
+            y=[[0.0], [0.0], [1.0], [1.0]],
+        )
+    ).batch(1)
+    # Obtain a concrete function after tracing.
+    client_concrete_fn = client_tf.get_concrete_function(
+        optimizer, init_weights, dataset_wo_nan
+    )
+    # Execute the traced function with different data inputs. If the data input
+    # has nan, the corresponding model delta will be non-finite, and hence,
+    # the `update_weight` should be 0.0 (i.e., exclude this client from model
+    # aggregation). Otherwise, the `update_weight` should be larger than 0.0.
+    client_outputs = client_concrete_fn(optimizer, init_weights, dataset_wo_nan)
+    self.assertGreater(client_outputs[0].update_weight, 0.0)
+    client_outputs = client_concrete_fn(
+        optimizer, init_weights, dataset_with_nan
+    )
+    self.assertEqual(client_outputs[0].update_weight, 0.0)
 
   def test_custom_metrics_aggregator(self):
 
@@ -740,7 +783,7 @@ class FunctionalModelDeltaClientWorkExecutionTest(
       # pylint: enable=cell-var-from-loop
     self.assertAllClose(tuple(model_fn_weights), functional_model_weights)
 
-  def test_metrics_output(self):
+  def _create_dataset_and_functional_model(self):
     keras_model = model_examples.build_linear_regression_keras_functional_model(
         feature_dims=2
     )
@@ -757,7 +800,10 @@ class FunctionalModelDeltaClientWorkExecutionTest(
         input_spec=input_spec,
         metrics_constructor=build_metrics_fn,
     )
+    return dataset, functional_model
 
+  def test_metrics_output(self):
+    dataset, functional_model = self._create_dataset_and_functional_model()
     process = model_delta_client_work.build_functional_model_delta_client_work(
         model=functional_model,
         optimizer=sgdm.build_sgdm(learning_rate=1.0),
@@ -772,6 +818,31 @@ class FunctionalModelDeltaClientWorkExecutionTest(
     self.assertEqual(
         output.measurements['train']['num_examples'], 8 * num_clients
     )
+
+  @parameterized.named_parameters(('_inf', np.inf), ('_nan', np.nan))
+  def test_metrics_output_with_non_finite_updates(self, bad_value):
+    dataset, functional_model = self._create_dataset_and_functional_model()
+    process = model_delta_client_work.build_functional_model_delta_client_work(
+        model=functional_model,
+        optimizer=sgdm.build_sgdm(learning_rate=1.0),
+        client_weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES,
+    )
+    initial_weights = (
+        (
+            np.array([[0.0], [0.0]], dtype=np.float32),
+            np.array([bad_value], dtype=np.float32),
+        ),
+        (),
+    )
+    num_clients = 3
+    client_model_weights = [initial_weights] * num_clients
+    client_datasets = [dataset] * num_clients
+    output = process.next(
+        process.initialize(), client_model_weights, client_datasets
+    )
+    # Since all clients have non-finite model weights update, we reset their
+    # local metrics. The resulting aggregated metric at server is zero.
+    self.assertEqual(output.measurements['train']['num_examples'], 0)
 
 
 if __name__ == '__main__':
