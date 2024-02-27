@@ -1,3 +1,15 @@
+# Release 0.72.0
+
+## Major Features and Improvements
+
+*   Added an async XLA runtime under `tff.backends.xla`.
+
+## Breaking Changes
+
+*   Updated `tensorflow-privacy` version to `0.9.0`.
+*   Removed the deprecated `type_signature` parameter from the
+    `tff.program.ReleaseManager.release` method.
+
 # Release 0.71.0
 
 ## Major Features and Improvements
