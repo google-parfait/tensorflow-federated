@@ -180,4 +180,4 @@ class ComputationCallable(typed_object.TypedObject):
       return normalize_tensor_representation(result[0], result_type)
     else:
       py_typecheck.check_type(result_type, computation_types.StructType)
-      return structure.pack_sequence_as(result_type, result)
+      return structure.pack_sequence_as(result_type, result)  # pytype: disable=wrong-arg-types  # always-use-property-annotation
