@@ -25,6 +25,7 @@ cc_library(
     name = "cardinalities",
     srcs = ["cardinalities.cc"],
     hdrs = ["cardinalities.h"],
+    visibility = ["//visibility:public"],
     deps = [
         "@com_google_absl//absl/container:btree",
         "@com_google_absl//absl/status:statusor",
@@ -357,6 +358,7 @@ cc_library(
     name = "executor",
     srcs = ["executor.cc"],
     hdrs = ["executor.h"],
+    visibility = ["//visibility:public"],
     deps = [
         ":status_macros",
         "//tensorflow_federated/proto/v0:computation_cc_proto",
@@ -493,6 +495,7 @@ cc_library(
     name = "federating_executor",
     srcs = ["federating_executor.cc"],
     hdrs = ["federating_executor.h"],
+    visibility = ["//visibility:public"],
     deps = [
         ":cardinalities",
         ":executor",
@@ -626,6 +629,7 @@ cc_library(
     name = "reference_resolving_executor",
     srcs = ["reference_resolving_executor.cc"],
     hdrs = ["reference_resolving_executor.h"],
+    visibility = ["//visibility:public"],
     deps = [
         ":executor",
         ":status_macros",
@@ -916,6 +920,7 @@ cc_library(
     name = "tensorflow_executor",
     srcs = ["tensorflow_executor.cc"],
     hdrs = ["tensorflow_executor.h"],
+    visibility = ["//visibility:public"],
     deps = [
         ":dataset_from_tensor_structures",
         ":executor",
