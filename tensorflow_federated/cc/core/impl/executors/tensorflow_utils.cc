@@ -17,6 +17,8 @@ limitations under the License
 
 #include <string>
 
+#include "absl/strings/string_view.h"
+
 namespace tensorflow_federated {
 
 std::string GetNodeName(absl::string_view tensor_name) {

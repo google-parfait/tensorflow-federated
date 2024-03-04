@@ -21,7 +21,9 @@ limitations under the License
 #include "absl/strings/string_view.h"
 
 namespace tensorflow_federated {
+
 std::string GetNodeName(absl::string_view tensor_name);
-}
+
+}  // namespace tensorflow_federated
 
 #endif  // THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTORS_TENSORFLOW_UTILS_H_

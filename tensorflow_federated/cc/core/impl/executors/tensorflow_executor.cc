@@ -30,10 +30,12 @@ limitations under the License
 #include "google/protobuf/any.pb.h"
 #include "absl/base/thread_annotations.h"
 #include "absl/container/flat_hash_map.h"
+#include "absl/log/log.h"
 #include "absl/meta/type_traits.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/str_join.h"
 #include "absl/synchronization/mutex.h"
 #include "absl/types/span.h"
 #include "tensorflow/core/framework/attr_value.pb.h"
@@ -138,7 +140,7 @@ void AddDatasetToGraphOp(tensorflow::GraphDef& graphdef_pb,
 // Given a GraphDef and a tensor binding, replace sequence bindings that use the
 // variant_tensor_name binding with a new binding that uses `DatasetFromGraph`
 // ops to deserialize a serialized GraphDef proto into the Dataset's variant
-// tensor. This is necessary to avoid isues with stateful datasets used across
+// tensor. This is necessary to avoid issues with stateful datasets used across
 // sessions.
 //
 // Example:
@@ -172,7 +174,7 @@ absl::Status AddDeserializationOpsForParameters(
     case v0::TensorFlow::Binding::kSequence: {
       // Get a copy of the name of the placeholder we're operating on. We're
       // going to clear/reset the binding and  then rebuild the it but re-use
-      // the placholder op.
+      // the placeholder op.
       const std::string dataset_placeholder_node_name =
           binding.sequence().variant_tensor_name();
       binding.mutable_sequence()->Clear();
@@ -259,7 +261,7 @@ absl::Status AddDeserializationOpsForParameters(
 //   └──────────────────────┘
 //
 // This is used on result bindings of `v0::TensorFlow` computations. This is
-// the reseverse of `AddDeserializationOpsForParameters`, which is used on the
+// the reverse of `AddDeserializationOpsForParameters`, which is used on the
 // parameter bindings of the function.
 absl::Status AddSerializationOpsForResults(tensorflow::GraphDef& graphdef_pb,
                                            v0::TensorFlow::Binding& binding,
