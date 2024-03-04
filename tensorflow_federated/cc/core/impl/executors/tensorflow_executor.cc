@@ -38,6 +38,7 @@ limitations under the License
 #include "absl/strings/str_join.h"
 #include "absl/synchronization/mutex.h"
 #include "absl/types/span.h"
+#include "google/protobuf/message.h"
 #include "tensorflow/core/framework/attr_value.pb.h"
 #include "tensorflow/core/framework/graph.pb.h"
 #include "tensorflow/core/framework/node_def.pb.h"
@@ -833,7 +834,7 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
       // No ID to use for caching, simply create a computation and skip cache
       // logic.
       LOG_FIRST_N(WARNING, 10) << "Skipped caching computation, no cache_key:\n"
-                               << comp_pb.type().Utf8DebugString();
+                               << google::protobuf::Utf8Format(comp_pb.type());
       return ExecutorValue(
           TFF_TRY(Computation::FromProto(comp_pb.tensorflow())));
     }

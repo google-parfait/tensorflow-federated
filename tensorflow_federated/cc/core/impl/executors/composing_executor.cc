@@ -16,6 +16,7 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/composing_executor.h"
 
 #include <cstddef>
+#include <cstdint>
 #include <functional>
 #include <future>  // NOLINT
 #include <memory>
@@ -28,13 +29,15 @@ limitations under the License
 #include <variant>
 #include <vector>
 
-#include "google/protobuf/repeated_field.h"
 #include "absl/base/thread_annotations.h"
+#include "absl/log/check.h"
+#include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/synchronization/mutex.h"
 #include "absl/types/span.h"
+#include "third_party/protobuf/repeated_ptr_field.h"
 #include "tensorflow/core/platform/macros.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/core/impl/executors/computations.h"
@@ -919,7 +922,7 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
         return CallIntrinsicBroadcast(std::move(arg));
       }
       // The following intrinsics are sent as computation values down to child
-      // executors. These children might be StreamingRemoteExecutors, whcih need
+      // executors. These children might be StreamingRemoteExecutors, which need
       // to have the type information so this is added back to the intrinsic.
       case FederatedIntrinsic::AGGREGATE: {
         return CallIntrinsicAggregate(std::move(arg), type_pb);
