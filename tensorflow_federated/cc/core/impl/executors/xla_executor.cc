@@ -87,7 +87,7 @@ class ServiceTensor {
   // minimizes transfers.
   std::unique_ptr<xla::GlobalData> data_;
   const tensorflow::DataType dtype_;
-  // Since we hold a unique pointer internally, ServiceTensor is non-copyable
+  // Since we hold a unique pointer internally, ServiceTensor is uncopyable
   // and non-copy-constructable.
   ServiceTensor(const ServiceTensor&) = delete;
   ServiceTensor& operator=(const ServiceTensor&) = delete;
@@ -493,7 +493,8 @@ class XLAExecutor : public ExecutorBase<ValueFuture> {
   // the executor.
   xla::Client* xla_client_;
 
-  absl::StatusOr<XLAExecutorValue> EmbedTensorValue(const v0::Value& value_pb) {
+  absl::StatusOr<XLAExecutorValue> CreateValueTensor(
+      const v0::Value& value_pb) {
     tensorflow::Tensor t = TFF_TRY(DeserializeTensorValue(value_pb));
     xla::BorrowingLiteral tensor_literal;
     absl::Status to_literal_status =
@@ -514,28 +515,10 @@ class XLAExecutor : public ExecutorBase<ValueFuture> {
     }
   }
 
-  absl::StatusOr<XLAExecutorValue> CreateValueAny(const v0::Value& value_pb) {
-    switch (value_pb.value_case()) {
-      case v0::Value::ValueCase::kTensor: {
-        return TFF_TRY(EmbedTensorValue(value_pb));
-      }
-      case v0::Value::ValueCase::kStruct: {
-        std::vector<XLAExecutorValue> values;
-        values.reserve(value_pb.struct_().element_size());
-        for (const auto& el : value_pb.struct_().element()) {
-          values.emplace_back(TFF_TRY(CreateValueAny(el.value())));
-        }
-        return XLAExecutorValue(values);
-      }
-      case v0::Value::ValueCase::kComputation: {
-        const v0::Computation& comp_pb = value_pb.computation();
-        if (!comp_pb.has_xla()) {
-          return absl::InvalidArgumentError(absl::StrCat(
-              "Only XLA computations can be embedded in the XLA "
-              "executor. Attempted to embed a computation oneof [",
-              comp_pb.computation_case(), "] and TFF type signature [",
-              comp_pb.type().Utf8DebugString(), "]"));
-        }
+  absl::StatusOr<XLAExecutorValue> CreateValueComputation(
+      const v0::Computation& comp_pb) {
+    switch (comp_pb.computation_case()) {
+      case v0::Computation::kXla: {
         if (!comp_pb.type().has_function()) {
           return absl::InvalidArgumentError(
               absl::StrCat("Computation proto with non-functional type "
@@ -549,15 +532,15 @@ class XLAExecutor : public ExecutorBase<ValueFuture> {
         // compile the computation.
         v0::Xla::Binding arg_binding = comp_pb.xla().parameter();
         int num_arg_elements = ComputeNumElementsFromBinding(arg_binding);
-        // Preallocate this vector to num_arg_elements, so that we can assign to
-        // these elements directly in the function call below.
+        // Preallocate this vector to num_arg_elements, so that we can
+        // assign to these elements directly in the function call below.
         std::vector<xla::Shape> arg_shapes(num_arg_elements);
         if (comp_pb.type().function().has_parameter()) {
           TFF_TRY(ComputeFlatShapesFromType(
               comp_pb.type().function().parameter(), arg_binding, &arg_shapes));
         }
-        // Compile the computation, resulting in caching the executable in the
-        // XLA service.
+        // Compile the computation, resulting in caching the executable in
+        // the XLA service.
         absl::StatusOr<xla::ExecutionHandle> computation_handle =
             xla_client_->Compile(xla_comp, arg_shapes);
         if (!computation_handle.ok()) {
@@ -565,13 +548,40 @@ class XLAExecutor : public ExecutorBase<ValueFuture> {
               absl::StrCat("Failed to compile XLA computation. Message: ",
                            computation_handle.status().message()));
         }
-        // Finally, construct the representation of this computation in the XLA
-        // executor.
+        // Finally, construct the representation of this computation in the
+        // XLA executor.
         v0::Xla::Binding result_binding = comp_pb.xla().result();
         return XLAExecutorValue(std::make_shared<Computation>(
             std::move(*computation_handle), arg_binding, result_binding,
             comp_pb.type()));
       }
+      default:
+        return absl::InvalidArgumentError(absl::StrCat(
+            "Only XLA computations can be embedded in the XLA "
+            "executor. Attempted to embed a computation oneof [",
+            comp_pb.computation_case(), "] and TFF type signature [",
+            comp_pb.type().Utf8DebugString(), "]"));
+    }
+  }
+
+  absl::StatusOr<XLAExecutorValue> CreateValueStruct(
+      const v0::Value::Struct& struct_pb) {
+    std::vector<XLAExecutorValue> values;
+    values.reserve(struct_pb.element_size());
+    for (const auto& el : struct_pb.element()) {
+      values.emplace_back(TFF_TRY(CreateValueAny(el.value())));
+    }
+    return XLAExecutorValue(values);
+  }
+
+  absl::StatusOr<XLAExecutorValue> CreateValueAny(const v0::Value& value_pb) {
+    switch (value_pb.value_case()) {
+      case v0::Value::ValueCase::kTensor:
+        return CreateValueTensor(value_pb);
+      case v0::Value::ValueCase::kComputation:
+        return CreateValueComputation(value_pb.computation());
+      case v0::Value::ValueCase::kStruct:
+        return CreateValueStruct(value_pb.struct_());
       default:
         return absl::UnimplementedError(absl::StrCat(
             "XLA executor can only embed values of tensor, structure, or "

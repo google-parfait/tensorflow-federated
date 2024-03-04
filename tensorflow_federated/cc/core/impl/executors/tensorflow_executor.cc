@@ -98,7 +98,7 @@ struct NamesForBindingRewrite {
 };
 
 // Computes the names for the nodes and tensors we will add to the graph when
-// wrapping sequence bindings in datset serialization ops.
+// wrapping sequence bindings in dataset serialization ops.
 NamesForBindingRewrite GetVariantTensorNodeNameAndReplacement(
     std::string_view variant_tensor_name, std::string_view replace_node_suffix,
     std::string_view node_prefix) {
@@ -797,18 +797,14 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
 
   absl::StatusOr<ExecutorValue> CreateValueAny(const v0::Value& value_pb) {
     switch (value_pb.value_case()) {
-      case v0::Value::kComputation: {
-        return CreateValueComputation(value_pb.computation());
-      }
-      case v0::Value::kTensor: {
+      case v0::Value::kTensor:
         return CreateValueTensor(value_pb);
-      }
-      case v0::Value::kStruct: {
+      case v0::Value::kComputation:
+        return CreateValueComputation(value_pb.computation());
+      case v0::Value::kStruct:
         return CreateValueStruct(value_pb.struct_());
-      }
-      case v0::Value::kSequence: {
+      case v0::Value::kSequence:
         return CreateValueSequence(value_pb.sequence());
-      }
       default:
         return absl::UnimplementedError(
             absl::StrCat("Unknown value proto type ", value_pb.value_case()));
@@ -817,50 +813,55 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
 
   absl::StatusOr<ExecutorValue> CreateValueComputation(
       const v0::Computation& comp_pb) {
-    if (!comp_pb.has_tensorflow() && !comp_pb.has_intrinsic()) {
-      return absl::InvalidArgumentError(absl::StrCat(
-          "`TensorFlowExecutor::CreateValue` can only create values for "
-          "TensorFlow computations and intrinsics. Found computation of type ",
-          comp_pb.computation_case()));
-    }
-    if (comp_pb.has_intrinsic()) {
-      Intrinsic intrinsic =
-          TFF_TRY(IntrinsicFromUri(comp_pb.intrinsic().uri()));
-      return ExecutorValue(intrinsic);
-    }
-    if (!comp_pb.tensorflow().has_cache_key() ||
-        comp_pb.tensorflow().cache_key().id() == 0) {
-      // No ID to use for caching, simply create a computation and skip cache
-      // logic.
-      LOG_FIRST_N(WARNING, 10) << "Skipped caching computation, no cache_key:\n"
-                               << comp_pb.type().Utf8DebugString();
-      return ExecutorValue(
-          TFF_TRY(Computation::FromProto(comp_pb.tensorflow())));
-    }
-    const uint64_t function_id = comp_pb.tensorflow().cache_key().id();
-    // Try the fast path first, reader locks are much cheaper.
-    {
-      absl::ReaderMutexLock reader_lock(&function_cache_mutex_);
-      auto cache_iter = function_cache_.find(function_id);
-      if (cache_iter != function_cache_.end()) {
-        VLOG(2) << "Cache hit for function id: " << function_id;
-        return ExecutorValue(cache_iter->second);
+    switch (comp_pb.computation_case()) {
+      case v0::Computation::kTensorflow: {
+        if (!comp_pb.tensorflow().has_cache_key() ||
+            comp_pb.tensorflow().cache_key().id() == 0) {
+          // No ID to use for caching, simply create a computation and skip
+          // cache logic.
+          LOG_FIRST_N(WARNING, 10)
+              << "Skipped caching computation, no cache_key:\n"
+              << comp_pb.type().Utf8DebugString();
+          return ExecutorValue(
+              TFF_TRY(Computation::FromProto(comp_pb.tensorflow())));
+        }
+        const uint64_t function_id = comp_pb.tensorflow().cache_key().id();
+        // Try the fast path first, reader locks are much cheaper.
+        {
+          absl::ReaderMutexLock reader_lock(&function_cache_mutex_);
+          auto cache_iter = function_cache_.find(function_id);
+          if (cache_iter != function_cache_.end()) {
+            VLOG(2) << "Cache hit for function id: " << function_id;
+            return ExecutorValue(cache_iter->second);
+          }
+        }
+        // Otherwise build the cached value and insert it into the cache.
+        VLOG(2) << "Cache MISS for function id: " << function_id;
+        std::shared_ptr<Computation> computation =
+            TFF_TRY(Computation::FromProto(comp_pb.tensorflow()));
+        {
+          absl::WriterMutexLock writer_lock(&function_cache_mutex_);
+          auto result = function_cache_.try_emplace(function_id, computation);
+          if (!result.second) {
+            // Another thread beat us to creating the cache value. We end up
+            // throwing away our value here, but this is fine because its cheap.
+            computation = result.first->second;
+          }
+        }
+        return ExecutorValue(computation);
       }
-    }
-    // Otherwise build the cached value and insert it into the cache.
-    VLOG(2) << "Cache MISS for function id: " << function_id;
-    std::shared_ptr<Computation> computation =
-        TFF_TRY(Computation::FromProto(comp_pb.tensorflow()));
-    {
-      absl::WriterMutexLock writer_lock(&function_cache_mutex_);
-      auto result = function_cache_.try_emplace(function_id, computation);
-      if (!result.second) {
-        // Another thread beat us to creating the cache value. We end up
-        // throwing away our value here, but this is fine because its cheap.
-        computation = result.first->second;
+      case v0::Computation::kIntrinsic: {
+        Intrinsic intrinsic =
+            TFF_TRY(IntrinsicFromUri(comp_pb.intrinsic().uri()));
+        return ExecutorValue(intrinsic);
       }
+      default:
+        return absl::InvalidArgumentError(absl::StrCat(
+            "`TensorFlowExecutor::CreateValueComputation` can only create "
+            "values "
+            "for computations and intrinsics. Found computation of type ",
+            comp_pb.computation_case()));
     }
-    return ExecutorValue(computation);
   }
 
   absl::StatusOr<ExecutorValue> CreateValueTensor(const v0::Value& value_pb) {
