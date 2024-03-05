@@ -226,13 +226,13 @@ class FinalizerTest(tf.test.TestCase, parameterized.TestCase):
     centroids_shape = (num_clusters,) + shape
     current_centroids = tf.fill(centroids_shape, -3.0)
     new_cluster_sums = tf.fill(centroids_shape, 1.0)
-    weights = tf.fill((num_clusters,), 1)
+    weights = tf.fill((num_clusters,), 1.0)
     updated_centroids, total_weights = kmeans_clustering._update_centroids(
         current_centroids, weights, new_cluster_sums, weights
     )
 
     expected_centroids = 0.5 * (current_centroids + new_cluster_sums)
-    expected_weights = tf.fill((num_clusters,), 2)
+    expected_weights = tf.fill((num_clusters,), 2.0)
 
     self.assertAllEqual(updated_centroids, expected_centroids)
     self.assertAllEqual(total_weights, expected_weights)
@@ -248,8 +248,8 @@ class FinalizerTest(tf.test.TestCase, parameterized.TestCase):
     centroids_shape = (num_clusters,) + shape
     current_centroids = tf.fill(centroids_shape, -3.0)
     new_cluster_sums = tf.fill(centroids_shape, 1.0)
-    current_weights = tf.fill((num_clusters,), 1)
-    new_weights = tf.fill((num_clusters,), 0)
+    current_weights = tf.fill((num_clusters,), 1.0)
+    new_weights = tf.fill((num_clusters,), 0.0)
     updated_centroids, total_weights = kmeans_clustering._update_centroids(
         current_centroids, current_weights, new_cluster_sums, new_weights
     )
@@ -268,8 +268,8 @@ class FinalizerTest(tf.test.TestCase, parameterized.TestCase):
     centroids_shape = (num_clusters,) + shape
     current_centroids = tf.fill(centroids_shape, -3.0)
     new_cluster_sums = tf.fill(centroids_shape, 16.0)
-    current_weights = tf.fill((num_clusters,), 0)
-    new_weights = tf.fill((num_clusters,), 8)
+    current_weights = tf.fill((num_clusters,), 0.0)
+    new_weights = tf.fill((num_clusters,), 8.0)
     updated_centroids, total_weights = kmeans_clustering._update_centroids(
         current_centroids, current_weights, new_cluster_sums, new_weights
     )
@@ -281,8 +281,8 @@ class FinalizerTest(tf.test.TestCase, parameterized.TestCase):
     centroids_shape = (3, 2)
     current_centroids = tf.fill(centroids_shape, 1.0)
     new_cluster_sums = tf.fill(centroids_shape, 0.0)
-    current_weights = tf.constant([1, 2, 3])
-    new_weights = tf.constant([1, 1, 1])
+    current_weights = tf.constant([1.0, 2.0, 3.0])
+    new_weights = tf.constant([1.0, 1.0, 1.0])
     updated_centroids, total_weights = kmeans_clustering._update_centroids(
         current_centroids, current_weights, new_cluster_sums, new_weights
     )
@@ -299,8 +299,8 @@ class FinalizerTest(tf.test.TestCase, parameterized.TestCase):
     centroids_shape = (3, 2)
     current_centroids = tf.fill(centroids_shape, 0.0)
     new_cluster_sums = tf.fill(centroids_shape, 1.0)
-    current_weights = tf.constant([0, 0, 0])
-    new_weights = tf.constant([1, 2, 3])
+    current_weights = tf.constant([0.0, 0.0, 0.0])
+    new_weights = tf.constant([1.0, 2.0, 3.0])
     updated_centroids, total_weights = kmeans_clustering._update_centroids(
         current_centroids, current_weights, new_cluster_sums, new_weights
     )

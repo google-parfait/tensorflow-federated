@@ -42,7 +42,7 @@ from tensorflow_federated.python.learning.templates import learning_process
 
 _INDEX_DTYPE = np.int32
 _POINT_DTYPE = np.float32
-_WEIGHT_DTYPE = np.int32
+_WEIGHT_DTYPE = np.float32
 _MILLIS_PER_SECOND = 100000.0
 
 
@@ -161,10 +161,10 @@ def _update_centroids(
 
   Args:
     current_centroids: A tensor whose rows represent the current centroids.
-    current_weights: A tensor of integer weights associated to each cluster.
+    current_weights: A tensor of float weights associated to each cluster.
     new_cluster_sums: A tensor of shape matching `current_centroids`
       representing a sum of points newly associated to each centroid.
-    new_weights: A tensor of integer weights representing the number of new
+    new_weights: A tensor of float weights representing the number of new
       samples assigned to each centroid.
 
   Returns:
@@ -175,15 +175,9 @@ def _update_centroids(
   total_weights = current_weights + new_weights
 
   # We convert the weights to floats in order to do division
-  current_weights_as_float = tf.cast(current_weights, _POINT_DTYPE)
-  total_weights_as_float = tf.cast(total_weights, _POINT_DTYPE)
-  current_scale = tf.math.divide_no_nan(
-      current_weights_as_float, total_weights_as_float
-  )
+  current_scale = tf.math.divide_no_nan(current_weights, total_weights)
   new_weights_indicator = tf.cast(tf.math.greater(new_weights, 0), _POINT_DTYPE)
-  new_scale = tf.math.divide_no_nan(
-      new_weights_indicator, total_weights_as_float
-  )
+  new_scale = tf.math.divide_no_nan(new_weights_indicator, total_weights)
 
   # We reshape so that we can do element-wise multiplication
   num_centroids = current_centroids.shape[0]
@@ -296,7 +290,7 @@ def build_fed_kmeans(
   the nearest centroid, and then summing these points according to these
   centroids. The centroids are then updated at the server based on these points.
   To do so, we keep track of how many points have been assigned to each centroid
-  overall, as an integer tensor of shape `(num_clusters,)`. This information can
+  overall, as a float tensor of shape `(num_clusters,)`. This information can
   be found in `state.finalizer`. Note that we begin with a "pseudo-count" of 1,
   in order to ensure that the centroids do not collapse to zero.
 
