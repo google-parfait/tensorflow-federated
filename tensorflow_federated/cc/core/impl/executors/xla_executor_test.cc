@@ -15,6 +15,7 @@ limitations under the License
 
 #include "tensorflow_federated/cc/core/impl/executors/xla_executor.h"
 
+#include <cstdint>
 #include <memory>
 #include <optional>
 #include <string>
@@ -26,6 +27,7 @@ limitations under the License
 #include "googletest/include/gtest/gtest.h"
 #include "absl/flags/flag.h"
 #include "absl/log/check.h"
+#include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "tensorflow/compiler/tf2xla/shape_util.h"
 #include "tensorflow/compiler/tf2xla/type_util.h"
@@ -34,11 +36,15 @@ limitations under the License
 #include "tensorflow/compiler/xla/service/platform_util.h"
 #include "tensorflow/compiler/xla/shape.h"
 #include "tensorflow/compiler/xla/shape_util.h"
+#include "tensorflow/compiler/xla/statusor.h"
 #include "tensorflow/compiler/xla/stream_executor/platform.h"
 #include "tensorflow/compiler/xla/xla_data.pb.h"
-#include "tensorflow/core/framework/device_factory.h"
+#include "tensorflow/core/framework/tensor_shape.h"
 #include "tensorflow/core/framework/types.pb.h"
+#include "tensorflow/core/platform/statusor.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
+#include "tensorflow_federated/cc/core/impl/executors/protobuf_matchers.h"
+#include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_matchers.h"
 #include "tensorflow_federated/cc/core/impl/executors/type_test_utils.h"
 #include "tensorflow_federated/cc/core/impl/executors/value_test_utils.h"
@@ -315,7 +321,7 @@ TEST_F(XLAExecutorTest, CreateValueComputationNonFunctionalTypeFails) {
   v0::Value computation =
       ComputationV(tensor_binding, tensor_binding, std::move(*xla_computation),
                    // Create a computation with non-functional type; the XLA
-                   // executor needs the functional type to porpagate shape and
+                   // executor needs the functional type to propagate shape and
                    // type information to parameters and results.
                    float_tensor_type);
 
