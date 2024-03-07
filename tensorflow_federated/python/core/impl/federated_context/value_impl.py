@@ -38,7 +38,6 @@ from tensorflow_federated.python.core.impl.context_stack import context_stack_im
 from tensorflow_federated.python.core.impl.context_stack import symbol_binding_context
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
-from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.types import typed_object
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
@@ -258,42 +257,6 @@ def _wrap_constant_as_value(const) -> Value:
   return _wrap_computation_as_value(tf_comp)
 
 
-def _wrap_sequence_as_value(elements, element_type) -> Value:
-  """Wraps `elements` as a TFF sequence with elements of type `element_type`.
-
-  Args:
-    elements: Python object to the wrapped as a TFF sequence value.
-    element_type: An instance of `Type` that determines the type of elements of
-      the sequence.
-
-  Returns:
-    An instance of `tff.Value`.
-
-  Raises:
-    TypeError: If `elements` and `element_type` are of incompatible types.
-  """
-  # TODO: b/113116813 - Add support for other representations of sequences.
-  py_typecheck.check_type(elements, list)
-  for element in elements:
-    inferred_type = type_conversions.infer_type(element)
-    if not element_type.is_assignable_from(inferred_type):
-      raise TypeError(
-          'Expected all sequence elements to be {}, found {}.'.format(
-              element_type, inferred_type
-          )
-      )
-
-  def _create_dataset_from_elements():
-    return tensorflow_utils.make_data_set_from_elements(
-        tf.compat.v1.get_default_graph(), elements, element_type
-    )
-
-  proto, _ = tensorflow_computation_factory.create_computation_for_py_fn(
-      fn=_create_dataset_from_elements, parameter_type=None
-  )
-  return _wrap_computation_as_value(proto)
-
-
 def _dictlike_items_to_value(items, type_spec, container_type) -> Value:
   elements = []
   for i, (k, v) in enumerate(items):
@@ -418,10 +381,6 @@ def to_value(
       arg = arg.fn_for_argument_type(parameter_type_hint)
     py_typecheck.check_type(arg, computation_impl.ConcreteComputation)
     result = Value(arg.to_compiled_building_block())
-  elif type_spec is not None and isinstance(
-      type_spec, computation_types.SequenceType
-  ):
-    result = _wrap_sequence_as_value(arg, type_spec.element)
   elif isinstance(arg, structure.Struct):
     items = structure.iter_elements(arg)
     result = _dictlike_items_to_value(items, type_spec, None)
@@ -436,7 +395,9 @@ def to_value(
     result = _dictlike_items_to_value(items, type_spec, type(arg))
   elif isinstance(arg, Mapping):
     result = _dictlike_items_to_value(arg.items(), type_spec, type(arg))
-  elif isinstance(arg, (tuple, list)):
+  elif isinstance(arg, (tuple, list)) and not isinstance(
+      type_spec, computation_types.SequenceType
+  ):
     items = zip(itertools.repeat(None), arg)
     result = _dictlike_items_to_value(items, type_spec, type(arg))
   elif isinstance(arg, tensorflow_utils.TENSOR_REPRESENTATION_TYPES):

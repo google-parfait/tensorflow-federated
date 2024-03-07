@@ -323,23 +323,8 @@ class ValueTest(parameterized.TestCase):
     self.assertEqual(str(value.type_signature), 'int32[2,0]')
 
   def test_to_value_with_list_of_ints(self):
-    value = value_impl.to_value(
-        [1, 2, 3], computation_types.SequenceType(np.int32)
-    )
-    self.assertIsInstance(value, value_impl.Value)
-    self.assertEqual(str(value.type_signature), 'int32*')
-
-  def test_to_value_sequence_in_tuple_with_type(self):
-    expected_type = computation_types.StructWithPythonType(
-        [computation_types.SequenceType(np.int32)], tuple
-    )
-    value = value_impl.to_value(([1, 2, 3],), expected_type)
-    value.type_signature.check_identical_to(expected_type)
-
-  def test_to_value_with_empty_list_of_ints(self):
-    value = value_impl.to_value([], computation_types.SequenceType(np.int32))
-    self.assertIsInstance(value, value_impl.Value)
-    self.assertEqual(str(value.type_signature), 'int32*')
+    with self.assertRaises(TypeError):
+      value_impl.to_value([1, 2, 3], computation_types.SequenceType(np.int32))
 
   def test_to_value_raises_type_error(self):
     with self.assertRaises(TypeError):
