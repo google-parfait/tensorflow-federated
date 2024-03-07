@@ -54,7 +54,7 @@ git_repository(
 
 git_repository(
     name = "pybind11_abseil",
-    commit = "38111ef06d426f75bb335a3b58aa0342f6ce0ce3",
+    commit = "2c4932ed6f6204f1656e245838f4f5eae69d2e29",
     remote = "https://github.com/pybind/pybind11_abseil.git",
 )
 
