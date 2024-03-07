@@ -15,7 +15,7 @@
 
 import collections
 from collections.abc import Collection, Mapping, Sequence
-from typing import Optional, Union
+from typing import Union
 
 import numpy as np
 import tensorflow as tf
@@ -54,7 +54,7 @@ class DatasetSerializationError(Exception):
 @tracing.trace
 def _serialize_computation(
     comp: computation_pb2.Computation,
-    type_spec: Optional[computation_types.Type],
+    type_spec: computation_types.Type | None,
 ) -> _SerializeReturnType:
   """Serializes a TFF computation."""
   type_spec = executor_utils.reconcile_value_type_with_type_spec(
@@ -326,7 +326,7 @@ def _serialize_federated_value(
 @tracing.trace
 def serialize_value(
     value: object,
-    type_spec: Optional[computation_types.Type] = None,
+    type_spec: computation_types.Type | None = None,
 ) -> _SerializeReturnType:
   """Serializes a value into `executor_pb2.Value`.
 
@@ -399,7 +399,7 @@ def _tensor_for_value(value_proto: executor_pb2.Value) -> tf.Tensor:
 @tracing.trace
 def _deserialize_tensor_value(
     value_proto: executor_pb2.Value,
-    type_hint: Optional[computation_types.TensorType] = None,
+    type_hint: computation_types.TensorType | None = None,
 ) -> _DeserializeReturnType:
   """Deserializes a tensor value from `.Value`.
 
@@ -512,7 +512,7 @@ def _deserialize_dataset_from_graph_def(
 @tracing.trace
 def _deserialize_sequence_value(
     sequence_value_proto: executor_pb2.Value.Sequence,
-    type_hint: Optional[computation_types.Type] = None,
+    type_hint: computation_types.Type | None = None,
 ) -> _DeserializeReturnType:
   """Deserializes a `tf.data.Dataset`.
 
@@ -557,7 +557,7 @@ def _deserialize_sequence_value(
 @tracing.trace
 def _deserialize_struct_value(
     value_proto: executor_pb2.Value,
-    type_hint: Optional[computation_types.Type] = None,
+    type_hint: computation_types.Type | None = None,
 ) -> _DeserializeReturnType:
   """Deserializes a value of struct type."""
   val_elems = []
@@ -575,7 +575,7 @@ def _deserialize_struct_value(
 
 
 def _ensure_deserialized_types_compatible(
-    previous_type: Optional[computation_types.Type],
+    previous_type: computation_types.Type | None,
     next_type: computation_types.Type,
 ) -> computation_types.Type:
   """Ensures one of `previous_type` or `next_type` is assignable to the other.
@@ -609,7 +609,7 @@ def _ensure_deserialized_types_compatible(
 @tracing.trace
 def _deserialize_federated_value(
     value_proto: executor_pb2.Value,
-    type_hint: Optional[computation_types.Type] = None,
+    type_hint: computation_types.Type | None = None,
 ) -> _DeserializeReturnType:
   """Deserializes a value of federated type."""
   if not value_proto.federated.value:
@@ -653,7 +653,7 @@ def _deserialize_federated_value(
 @tracing.trace
 def deserialize_value(
     value_proto: executor_pb2.Value,
-    type_hint: Optional[computation_types.Type] = None,
+    type_hint: computation_types.Type | None = None,
 ) -> _DeserializeReturnType:
   """Deserializes a value (of any type) from `executor_pb2.Value`.
 

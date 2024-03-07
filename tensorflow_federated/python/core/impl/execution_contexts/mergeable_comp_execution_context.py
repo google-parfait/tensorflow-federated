@@ -17,7 +17,7 @@ import asyncio
 from collections.abc import Awaitable, Callable, Sequence
 import functools
 import math
-from typing import Generic, Optional, TypeVar, Union
+from typing import Generic, TypeVar, Union
 
 import attrs
 
@@ -264,7 +264,7 @@ def _partition_value(
   """Partitions value as specified in _split_value_into_subrounds."""
   if isinstance(type_signature, computation_types.StructType):
     struct_val = structure.from_container(val.payload)
-    partition_result: Optional[_PartitioningValue] = None
+    partition_result: _PartitioningValue | None = None
     result_container = []
     for (_, val_elem), (name, type_elem) in zip(
         structure.iter_elements(struct_val),
@@ -481,7 +481,7 @@ async def _run_in_async_context_pool(
     postprocessing_hook: Callable[
         [object, object, context_base.AsyncContext], Awaitable[Value]
     ],
-) -> tuple[Value, Optional[context_base.AsyncContext]]:
+) -> tuple[Value, context_base.AsyncContext | None]:
   """Runs the tasks against the execution pool, sequentializing the extra work.
 
   Args:
@@ -585,7 +585,7 @@ async def _invoke_after_merge_in_async_pool(
 
 async def _invoke_mergeable_comp_form(
     comp: MergeableCompForm,
-    arg: Optional[MergeableCompExecutionContextValue],
+    arg: MergeableCompExecutionContextValue | None,
     execution_contexts: Sequence[context_base.AsyncContext],
 ):
   """Invokes `comp` on `arg`, repackaging the results to a single value."""
@@ -644,8 +644,8 @@ class MergeableCompExecutionContext(
   def __init__(
       self,
       async_contexts: Sequence[context_base.AsyncContext],
-      compiler_fn: Optional[Callable[[_Computation], MergeableCompForm]] = None,
-      num_subrounds: Optional[int] = None,
+      compiler_fn: Callable[[_Computation], MergeableCompForm] | None = None,
+      num_subrounds: int | None = None,
   ):
     """Initializes a MergeableCompExecutionContext.
 
@@ -679,7 +679,7 @@ class MergeableCompExecutionContext(
   def invoke(
       self,
       comp: Union[MergeableCompForm, computation_base.Computation],
-      arg: Optional[object] = None,
+      arg: object | None = None,
   ):
     py_typecheck.check_type(
         comp, (MergeableCompForm, computation_base.Computation)

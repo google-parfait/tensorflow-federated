@@ -13,7 +13,6 @@
 # limitations under the License.
 """Definition of a federated computation."""
 
-from typing import Optional
 
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.computation import computation_wrapper
@@ -23,11 +22,7 @@ from tensorflow_federated.python.core.impl.federated_context import federated_co
 
 
 def _federated_computation_wrapper_fn(
-    fn,
-    parameter_type,
-    unpack: Optional[bool],
-    name: Optional[str] = None,
-    **kwargs
+    fn, parameter_type, unpack: bool | None, name: str | None = None, **kwargs
 ):
   """Wrapper function to plug orchestration logic into the TFF framework."""
   del kwargs  # Unused.

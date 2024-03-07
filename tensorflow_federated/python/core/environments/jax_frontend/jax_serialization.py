@@ -15,7 +15,7 @@
 
 
 from collections.abc import Callable, Sequence
-from typing import Optional, Union
+from typing import Union
 
 import jax
 import numpy as np
@@ -60,7 +60,7 @@ class _XlaSerializerStructArg(structure.Struct, typed_object.TypedObject):
   def __init__(
       self,
       type_spec: computation_types.StructType,
-      elements: Sequence[tuple[Optional[str], object]],
+      elements: Sequence[tuple[str | None, object]],
   ):
     py_typecheck.check_type(type_spec, computation_types.StructType)
     structure.Struct.__init__(self, elements)
@@ -247,13 +247,13 @@ def serialize_jax_computation(
 
 def _struct_flatten(
     struct: structure.Struct,
-) -> tuple[tuple[object, ...], tuple[Optional[str], ...]]:
+) -> tuple[tuple[object, ...], tuple[str | None, ...]]:
   child_names, child_values = tuple(zip(*structure.iter_elements(struct)))
   return (child_values, child_names)
 
 
 def _struct_unflatten(
-    child_names: tuple[Optional[str], ...], child_values: tuple[object, ...]
+    child_names: tuple[str | None, ...], child_values: tuple[object, ...]
 ) -> structure.Struct:
   return structure.Struct(tuple(zip(child_names, child_values)))
 

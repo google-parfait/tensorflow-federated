@@ -14,7 +14,7 @@
 """Definitions of JAX computation wrapper instances."""
 
 from collections.abc import Callable
-from typing import Optional, Union
+from typing import Union
 
 from tensorflow_federated.python.core.environments.jax_frontend import jax_serialization
 from tensorflow_federated.python.core.impl.computation import computation_impl
@@ -25,11 +25,11 @@ from tensorflow_federated.python.core.impl.types import computation_types
 
 def _jax_wrapper_fn(
     fn: Callable[..., object],
-    parameter_type: Optional[
-        Union[computation_types.StructType, computation_types.TensorType]
-    ],
-    unpack: Optional[bool],
-    name: Optional[str] = None,
+    parameter_type: (
+        Union[computation_types.StructType, computation_types.TensorType] | None
+    ),
+    unpack: bool | None,
+    name: str | None = None,
     **kwargs,
 ) -> computation_impl.ConcreteComputation:
   """Serializes a Python function containing JAX code as a TFF computation.

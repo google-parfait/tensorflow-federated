@@ -12,7 +12,6 @@
 # limitations under the License.
 """Helpers for creating larger structures out of computing building blocks."""
 
-from typing import Optional
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl.compiler import building_blocks
@@ -26,10 +25,10 @@ from tensorflow_federated.python.core.impl.types import type_conversions
 
 def zero_or_one_arg_fn_to_building_block(
     fn,
-    parameter_name: Optional[str],
-    parameter_type: Optional[computation_types.Type],
+    parameter_name: str | None,
+    parameter_type: computation_types.Type | None,
     context_stack: context_stack_base.ContextStack,
-    suggested_name: Optional[str] = None,
+    suggested_name: str | None = None,
 ) -> tuple[
     building_blocks.ComputationBuildingBlock, computation_types.FunctionType
 ]:

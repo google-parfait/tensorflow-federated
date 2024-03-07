@@ -15,7 +15,6 @@
 
 from collections.abc import Sequence
 import random
-from typing import Optional
 
 import numpy as np
 
@@ -76,7 +75,7 @@ class ClientIdDataSourceIterator(data_source.FederatedDataSourceIterator):
     """The type of the data returned by calling `select`."""
     return self._federated_type
 
-  def select(self, k: Optional[int] = None) -> object:
+  def select(self, k: int | None = None) -> object:
     """Returns a new selection of client ids from this iterator.
 
     Args:

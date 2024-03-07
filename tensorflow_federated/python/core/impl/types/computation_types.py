@@ -19,7 +19,7 @@ import collections
 from collections.abc import Hashable, Iterable, Iterator, Mapping, MutableMapping, Sequence
 import difflib
 import enum
-from typing import Optional, TypeVar, Union
+from typing import TypeVar, Union
 import weakref
 
 import attrs
@@ -473,7 +473,7 @@ def _format_struct_type_members(struct_type: 'StructType') -> str:
 
 def _to_named_types(
     elements: Iterable[object],
-) -> Iterable[tuple[Optional[str], Type]]:
+) -> Iterable[tuple[str | None, Type]]:
   """Creates an `Iterable` of optionally named types from `elements`.
 
   This function creates an `Iterable` of optionally named types by iterating
@@ -496,7 +496,7 @@ def _to_named_types(
       See `tff.types.to_type` for more information.
 
   Returns:
-    An `Iterable` where each each element is `tuple[Optional[str], Type]`.
+    An `Iterable` where each each element is `tuple[str | None, Type]`.
   """
 
   if py_typecheck.is_name_value_pair(elements):
@@ -506,7 +506,7 @@ def _to_named_types(
   elif isinstance(elements, Mapping):
     elements = elements.items()
 
-  def _to_named_value_pair(element: object) -> tuple[Optional[str], Type]:
+  def _to_named_value_pair(element: object) -> tuple[str | None, Type]:
     if py_typecheck.is_name_value_pair(element):
       name, value = element
     else:
@@ -562,7 +562,7 @@ class StructType(structure.Struct, Type, metaclass=_Intern):
     return (element for _, element in structure.iter_elements(self))
 
   @property
-  def python_container(self) -> Optional[type[object]]:
+  def python_container(self) -> type[object] | None:
     return None
 
   def __repr__(self):
@@ -718,14 +718,14 @@ class FunctionType(Type, metaclass=_Intern):
 
   @classmethod
   def _hashable_from_init_args(
-      cls, parameter: Optional[object], result: object
+      cls, parameter: object | None, result: object
   ) -> Hashable:
     if parameter is not None:
       parameter = to_type(parameter)
     result = to_type(result)
     return (parameter, result)
 
-  def __init__(self, parameter: Optional[object], result: object):
+  def __init__(self, parameter: object | None, result: object):
     """Constructs a new instance from the given `parameter` and `result` types.
 
     Args:
@@ -746,7 +746,7 @@ class FunctionType(Type, metaclass=_Intern):
     yield self._result
 
   @property
-  def parameter(self) -> Optional[Type]:
+  def parameter(self) -> Type | None:
     return self._parameter
 
   @property
@@ -862,7 +862,7 @@ class FederatedType(Type, metaclass=_Intern):
       cls,
       member: object,
       placement: placements.PlacementLiteral,
-      all_equal: Optional[bool] = None,
+      all_equal: bool | None = None,
   ) -> Hashable:
     member = to_type(member)
     return (member, placement, all_equal)
@@ -871,7 +871,7 @@ class FederatedType(Type, metaclass=_Intern):
       self,
       member: object,
       placement: placements.PlacementLiteral,
-      all_equal: Optional[bool] = None,
+      all_equal: bool | None = None,
   ):
     """Constructs a new federated type instance.
 

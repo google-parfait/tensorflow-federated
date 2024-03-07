@@ -17,7 +17,7 @@ import asyncio
 from collections.abc import Awaitable, Callable
 import functools
 import typing
-from typing import Optional, TypeVar, Union
+from typing import TypeVar, Union
 
 from tensorflow_federated.python.common_libs import async_utils
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -242,7 +242,7 @@ class NativeFederatedContext(federated_context.FederatedContext):
   def invoke(
       self,
       comp: computation_base.Computation,
-      arg: Optional[federated_context.ComputationArgValue],
+      arg: federated_context.ComputationArgValue | None,
   ) -> structure_utils.Structure[AwaitableValueReference]:
     """Invokes the `comp` with the argument `arg`.
 

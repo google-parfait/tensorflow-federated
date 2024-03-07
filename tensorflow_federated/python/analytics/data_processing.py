@@ -13,7 +13,6 @@
 # limitations under the License.
 """A set of utility functions for data processing."""
 
-from typing import Optional
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -21,7 +20,7 @@ from tensorflow_federated.python.common_libs import py_typecheck
 
 @tf.function
 def get_all_elements(
-    dataset: tf.data.Dataset, string_max_bytes: Optional[int] = None
+    dataset: tf.data.Dataset, string_max_bytes: int | None = None
 ):
   """Gets all the elements from the input dataset.
 
@@ -136,7 +135,7 @@ def get_capped_elements(
     dataset: tf.data.Dataset,
     max_user_contribution: int,
     batch_size: int = 1,
-    string_max_bytes: Optional[int] = None,
+    string_max_bytes: int | None = None,
 ):
   """Gets the first `max_user_contribution` elements from the input dataset.
 
@@ -186,7 +185,7 @@ def get_capped_elements_with_counts(
     dataset: tf.data.Dataset,
     max_user_contribution: int,
     batch_size: int = 1,
-    string_max_bytes: Optional[int] = None,
+    string_max_bytes: int | None = None,
 ):
   """Gets the capped elements with counts from the input dataset.
 
@@ -235,7 +234,7 @@ def get_capped_elements_with_counts(
 
 @tf.function
 def get_unique_elements(
-    dataset: tf.data.Dataset, string_max_bytes: Optional[int] = None
+    dataset: tf.data.Dataset, string_max_bytes: int | None = None
 ):
   """Gets the unique elements from the input `dataset`.
 
@@ -299,7 +298,7 @@ def get_unique_elements(
 # TODO: b/192336690 - Improve the efficiency of get_unique_elements_with_counts.
 # The current implementation iterates `dataset` twice, which is not optimal.
 def get_unique_elements_with_counts(
-    dataset: tf.data.Dataset, string_max_bytes: Optional[int] = None
+    dataset: tf.data.Dataset, string_max_bytes: int | None = None
 ) -> tuple[tf.Tensor, tf.Tensor]:
   """Gets unique elements and their counts from the input `dataset`.
 
@@ -369,7 +368,7 @@ def get_unique_elements_with_counts(
 def get_top_elements_with_counts(
     dataset: tf.data.Dataset,
     max_user_contribution: int,
-    string_max_bytes: Optional[int] = None,
+    string_max_bytes: int | None = None,
 ) -> tuple[tf.Tensor, tf.Tensor]:
   """Gets top unique elements from the input `dataset`.
 
@@ -420,7 +419,7 @@ def get_top_elements_with_counts(
 def get_top_elements(
     dataset: tf.data.Dataset,
     max_user_contribution: int,
-    string_max_bytes: Optional[int] = None,
+    string_max_bytes: int | None = None,
 ):
   """Gets top unique elements from the input `dataset`.
 
@@ -469,7 +468,7 @@ def get_top_elements(
 def get_top_multi_elements(
     dataset: tf.data.Dataset,
     max_user_contribution: int,
-    string_max_bytes: Optional[int] = None,
+    string_max_bytes: int | None = None,
 ):
   """Gets the top unique word multiset from the input `dataset`.
 

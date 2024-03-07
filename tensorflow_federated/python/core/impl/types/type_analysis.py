@@ -15,7 +15,6 @@
 
 import collections
 from collections.abc import Callable
-from typing import Optional
 
 import numpy as np
 
@@ -164,7 +163,7 @@ def is_generic_op_compatible_type(type_spec):
 
 
 def is_binary_op_with_upcast_compatible_pair(
-    possibly_nested_type: Optional[computation_types.Type],
+    possibly_nested_type: computation_types.Type | None,
     type_to_upcast: computation_types.Type,
 ) -> bool:
   """Checks unambiguity in applying `type_to_upcast` to `possibly_nested_type`.
@@ -483,9 +482,9 @@ def is_single_integer_or_matches_structure(
 
 def check_federated_type(
     type_spec: computation_types.FederatedType,
-    member: Optional[computation_types.Type] = None,
-    placement: Optional[placements.PlacementLiteral] = None,
-    all_equal: Optional[bool] = None,
+    member: computation_types.Type | None = None,
+    placement: placements.PlacementLiteral | None = None,
+    all_equal: bool | None = None,
 ):
   """Checks that `type_spec` is a federated type with the given parameters.
 
@@ -843,9 +842,7 @@ def check_valid_federated_weighted_mean_argument_tuple_type(
 
 def count_tensors_in_type(
     type_spec: computation_types.Type,
-    tensor_filter: Optional[
-        Callable[[computation_types.TensorType], bool]
-    ] = None,
+    tensor_filter: Callable[[computation_types.TensorType], bool] | None = None,
 ) -> collections.OrderedDict[str, int]:
   """Counts tensors and fully-specified elements under `type_spec`.
 

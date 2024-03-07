@@ -13,7 +13,6 @@
 # limitations under the License.
 """Utilities for releasing values from a federated program to logs."""
 
-from typing import Optional
 
 from absl import logging
 
@@ -40,7 +39,7 @@ class LoggingReleaseManager(
   async def release(
       self,
       value: release_manager.ReleasableStructure,
-      key: Optional[release_manager.Key],
+      key: release_manager.Key | None,
   ) -> None:
     """Releases `value` from a federated program.
 

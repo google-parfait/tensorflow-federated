@@ -17,7 +17,6 @@ For architectural details, see the original paper,
 https://arxiv.org/abs/1801.04381.
 """
 import math
-from typing import Optional
 
 import tensorflow as tf
 
@@ -237,7 +236,7 @@ def create_mobilenet_v2(
     alpha: float = 1.0,
     pooling: str = 'avg',
     num_groups: int = 2,
-    dropout_prob: Optional[float] = None,
+    dropout_prob: float | None = None,
     num_classes: int = 1000,
 ):
   """Instantiates a MobileNetV2 model with Group Normalization.

@@ -16,7 +16,6 @@
 from collections.abc import Mapping, Sequence
 import inspect
 import types
-from typing import Optional
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
@@ -296,8 +295,8 @@ def pack_args(
 
 def _infer_unpack_needed(
     fn: types.FunctionType,
-    parameter_type: Optional[computation_types.Type],
-    should_unpack: Optional[bool] = None,
+    parameter_type: computation_types.Type | None,
+    should_unpack: bool | None = None,
 ) -> bool:
   """Returns whether parameter_type must be unpacked when calling fn.
 
@@ -388,8 +387,8 @@ def _infer_unpack_needed(
 
 def wrap_as_zero_or_one_arg_callable(
     fn: types.FunctionType,
-    parameter_type: Optional[computation_types.Type] = None,
-    unpack: Optional[bool] = None,
+    parameter_type: computation_types.Type | None = None,
+    unpack: bool | None = None,
 ):
   """Wraps around `fn` so it accepts up to one positional TFF-typed argument.
 
@@ -498,9 +497,9 @@ def _ensure_arg_type(
 
 def unpack_arg(
     fn: types.FunctionType,
-    parameter_type: Optional[computation_types.Type],
+    parameter_type: computation_types.Type | None,
     arg,
-    unpack: Optional[bool] = None,
+    unpack: bool | None = None,
 ) -> tuple[list[object], dict[str, object]]:
   """Converts TFF values into arguments to `fn`.
 

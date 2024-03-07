@@ -15,7 +15,7 @@
 
 from collections.abc import Callable, Iterable, Mapping, Sequence
 import typing
-from typing import Optional, TypeVar, Union
+from typing import TypeVar, Union
 
 import attrs
 import tree
@@ -49,7 +49,7 @@ def _filter_structure(structure: Structure[object]) -> Structure[object]:
     if origin_type is not None:
       structure_types.append(origin_type)
 
-  def _fn(structure: Structure[object]) -> Optional[object]:
+  def _fn(structure: Structure[object]) -> object | None:
     if tree.is_nested(structure) and not attrs.has(type(structure)):
       if isinstance(structure, tuple(structure_types)):
         return None

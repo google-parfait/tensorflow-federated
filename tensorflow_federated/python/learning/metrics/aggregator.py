@@ -14,7 +14,7 @@
 """Library of common single-round metric aggregators."""
 
 import collections
-from typing import Optional, Union
+from typing import Union
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
@@ -38,9 +38,9 @@ def sum_then_finalize(
         types.MetricFinalizersType,
         types.FunctionalMetricFinalizersType,
     ],
-    local_unfinalized_metrics_type: Optional[
-        computation_types.StructWithPythonType
-    ] = None,
+    local_unfinalized_metrics_type: (
+        computation_types.StructWithPythonType | None
+    ) = None,
 ) -> computation_base.Computation:
   """Creates a TFF computation that aggregates metrics via `sum_then_finalize`.
 
@@ -132,12 +132,12 @@ def secure_sum_then_finalize(
         types.MetricFinalizersType,
         types.FunctionalMetricFinalizersType,
     ],
-    local_unfinalized_metrics_type: Optional[
-        computation_types.StructWithPythonType
-    ] = None,
-    metric_value_ranges: Optional[
-        sum_aggregation_factory.UserMetricValueRangeDict
-    ] = None,
+    local_unfinalized_metrics_type: (
+        computation_types.StructWithPythonType | None
+    ) = None,
+    metric_value_ranges: (
+        sum_aggregation_factory.UserMetricValueRangeDict | None
+    ) = None,
 ) -> computation_base.Computation:
   """Creates a TFF computation that aggregates metrics using secure summation.
 
@@ -304,9 +304,9 @@ def finalize_then_sample(
         types.MetricFinalizersType,
         types.FunctionalMetricFinalizersType,
     ],
-    local_unfinalized_metrics_type: Optional[
-        computation_types.StructWithPythonType
-    ] = None,
+    local_unfinalized_metrics_type: (
+        computation_types.StructWithPythonType | None
+    ) = None,
     sample_size: int = 100,
 ) -> computation_base.Computation:
   """Creates a TFF computation to aggregate metrics via `finalize_then_sample`.

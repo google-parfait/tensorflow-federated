@@ -15,7 +15,7 @@
 
 from collections.abc import Callable
 import functools
-from typing import Optional, TypeVar
+from typing import TypeVar
 
 import numpy as np
 import tensorflow as tf
@@ -218,8 +218,8 @@ def create_unary_operator(
 def create_binary_operator(
     operator: Callable[..., object],
     operand_type: computation_types.Type,
-    second_operand_type: Optional[computation_types.Type] = None,
-    layout_map: Optional[pb.TensorFlow.LayoutMap] = None,
+    second_operand_type: computation_types.Type | None = None,
+    layout_map: pb.TensorFlow.LayoutMap | None = None,
 ) -> ComputationProtoAndType:
   """Returns a tensorflow computation computing a binary operation.
 
@@ -441,7 +441,7 @@ def create_empty_tuple() -> ComputationProtoAndType:
 
 def create_identity(
     type_signature: computation_types.Type,
-    layout_map: Optional[pb.TensorFlow.LayoutMap] = None,
+    layout_map: pb.TensorFlow.LayoutMap | None = None,
 ) -> ComputationProtoAndType:
   """Returns a tensorflow computation representing an identity function.
 
@@ -486,8 +486,8 @@ def create_identity(
 
 def create_computation_for_py_fn(
     fn: Callable[..., object],
-    parameter_type: Optional[computation_types.Type],
-    layout_map: Optional[pb.TensorFlow.LayoutMap] = None,
+    parameter_type: computation_types.Type | None,
+    layout_map: pb.TensorFlow.LayoutMap | None = None,
 ) -> ComputationProtoAndType:
   """Returns a tensorflow computation returning the result of `fn`.
 

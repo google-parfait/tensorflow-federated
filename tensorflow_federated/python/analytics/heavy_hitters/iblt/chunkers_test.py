@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Optional
+from typing import Any
 
 from absl.testing import parameterized
 import numpy as np
@@ -171,7 +171,7 @@ _BINARY_TEST_INPUTS = [
 )
 class BinaryChunkerTest(tf.test.TestCase, parameterized.TestCase):
 
-  def test_dtype(self, dtype: tf.dtypes.DType, max_chunk_value: Optional[int]):
+  def test_dtype(self, dtype: tf.dtypes.DType, max_chunk_value: int | None):
     chunker = chunkers.BinaryChunker(
         string_max_bytes=20, dtype=dtype, max_chunk_value=max_chunk_value
     )
@@ -179,7 +179,7 @@ class BinaryChunkerTest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(chunker.dtype, dtype)
 
   def test_encode_and_decode_tensorflow_as_expected(
-      self, dtype: tf.dtypes.DType, max_chunk_value: Optional[int]
+      self, dtype: tf.dtypes.DType, max_chunk_value: int | None
   ):
     input_binary = _BINARY_TEST_INPUTS
     string_max_bytes = 10
@@ -198,7 +198,7 @@ class BinaryChunkerTest(tf.test.TestCase, parameterized.TestCase):
     self.assertCountEqual(trimmed_input_strings.numpy(), decoded_strings)
 
   def test_encode_and_decode_tensorflow_trim_strings_as_expected(
-      self, dtype: tf.dtypes.DType, max_chunk_value: Optional[int]
+      self, dtype: tf.dtypes.DType, max_chunk_value: int | None
   ):
     input_binary = _BINARY_TEST_INPUTS
     string_max_bytes = 5
@@ -218,7 +218,7 @@ class BinaryChunkerTest(tf.test.TestCase, parameterized.TestCase):
     self.assertCountEqual(trimmed_input_strings.numpy(), decoded_strings)
 
   def test_encode_and_decode_tensorflow_long_strings(
-      self, dtype: tf.dtypes.DType, max_chunk_value: Optional[int]
+      self, dtype: tf.dtypes.DType, max_chunk_value: int | None
   ):
     string_max_bytes = max_chunk_value or dtype.max
     # `string_max_bytes = max_chunk_value` causes OOMs for very large values
@@ -240,7 +240,7 @@ class BinaryChunkerTest(tf.test.TestCase, parameterized.TestCase):
     self.assertCountEqual(trimmed_input_strings.numpy(), decoded_strings)
 
   def test_decode_tensorflow_single_string(
-      self, dtype: tf.dtypes.DType, max_chunk_value: Optional[int]
+      self, dtype: tf.dtypes.DType, max_chunk_value: int | None
   ):
     # IbltDecoder calls `decode_tensorflow` with a single string at a time in
     # 1-D tensor, rather than 2-D tensor with all strings like

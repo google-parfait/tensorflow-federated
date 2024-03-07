@@ -21,7 +21,7 @@ See https://arxiv.org/abs/1812.06127 for the full paper.
 """
 
 from collections.abc import Callable
-from typing import Optional, Union
+from typing import Union
 
 from absl import logging
 import numpy as np
@@ -60,12 +60,12 @@ def build_weighted_fed_prox(
     server_optimizer_fn: Union[
         optimizer_base.Optimizer, Callable[[], tf.keras.optimizers.Optimizer]
     ] = DEFAULT_SERVER_OPTIMIZER_FN,
-    client_weighting: Optional[
-        client_weight_lib.ClientWeighting
-    ] = client_weight_lib.ClientWeighting.NUM_EXAMPLES,
-    model_distributor: Optional[distributors.DistributionProcess] = None,
-    model_aggregator: Optional[factory.WeightedAggregationFactory] = None,
-    metrics_aggregator: Optional[types.MetricsAggregatorType] = None,
+    client_weighting: (
+        client_weight_lib.ClientWeighting | None
+    ) = client_weight_lib.ClientWeighting.NUM_EXAMPLES,
+    model_distributor: distributors.DistributionProcess | None = None,
+    model_aggregator: factory.WeightedAggregationFactory | None = None,
+    metrics_aggregator: types.MetricsAggregatorType | None = None,
     use_experimental_simulation_loop: bool = False,
 ) -> learning_process.LearningProcess:
   """Builds a learning process that performs the FedProx algorithm.
@@ -269,8 +269,8 @@ def build_unweighted_fed_prox(
     server_optimizer_fn: Union[
         optimizer_base.Optimizer, Callable[[], tf.keras.optimizers.Optimizer]
     ] = DEFAULT_SERVER_OPTIMIZER_FN,
-    model_distributor: Optional[distributors.DistributionProcess] = None,
-    model_aggregator: Optional[factory.UnweightedAggregationFactory] = None,
+    model_distributor: distributors.DistributionProcess | None = None,
+    model_aggregator: factory.UnweightedAggregationFactory | None = None,
     metrics_aggregator: types.MetricsAggregatorType = metric_aggregator.sum_then_finalize,
     use_experimental_simulation_loop: bool = False,
 ) -> learning_process.LearningProcess:

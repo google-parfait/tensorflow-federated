@@ -43,7 +43,7 @@ non-decoded strings. If the value tensor is empty, value_shape = (), the output
 value tensor is also empty (returned as a tf.constant([])).
 """
 from collections.abc import Sequence
-from typing import Optional, Union
+from typing import Union
 
 import numpy as np
 import tensorflow as tf
@@ -225,7 +225,7 @@ class IbltTensorDecoder(iblt_lib.IbltDecoder):
 
   def get_freq_estimates(  # pytype: disable=signature-mismatch  # overriding-return-type-checks
       self,
-  ) -> tuple[dict[Optional[str], int], dict[Optional[str], np.ndarray]]:
+  ) -> tuple[dict[str | None, int], dict[str | None, np.ndarray]]:
     """Decodes key-value pairs from an IBLT.
 
     Note that this method only works for UTF-8 strings, and when running TF in
@@ -401,8 +401,8 @@ def decode_iblt_tensor_tf(
     encoding: _CharacterEncoding = _CharacterEncoding.UTF8,
     seed: int = 0,
     repetitions: int = iblt_lib.DEFAULT_REPETITIONS,
-    hash_family: Optional[str] = None,
-    hash_family_params: Optional[dict[str, Union[int, float]]] = None,
+    hash_family: str | None = None,
+    hash_family_params: dict[str, Union[int, float]] | None = None,
     field_size: int = iblt_lib.DEFAULT_FIELD_SIZE,
 ) -> tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]:
   """Decode a IBLT sketch.

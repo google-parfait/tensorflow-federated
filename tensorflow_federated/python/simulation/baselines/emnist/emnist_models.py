@@ -15,7 +15,6 @@
 
 import functools
 import random
-from typing import Optional
 
 import tensorflow as tf
 
@@ -39,7 +38,7 @@ class _DeterministicInitializer:
 
 
 def create_conv_dropout_model(
-    only_digits: bool = True, debug_seed: Optional[int] = None
+    only_digits: bool = True, debug_seed: int | None = None
 ) -> tf.keras.Model:
   """Create a convolutional network with dropout.
 
@@ -121,7 +120,7 @@ def create_conv_dropout_model(
 
 
 def create_original_fedavg_cnn_model(
-    only_digits: bool = True, debug_seed: Optional[int] = None
+    only_digits: bool = True, debug_seed: int | None = None
 ) -> tf.keras.Model:
   """Create a convolutional network without dropout.
 
@@ -209,7 +208,7 @@ def create_original_fedavg_cnn_model(
 def create_two_hidden_layer_model(
     only_digits: bool = True,
     hidden_units: int = 200,
-    debug_seed: Optional[int] = None,
+    debug_seed: int | None = None,
 ) -> tf.keras.Model:
   """Create a two hidden-layer fully connected neural network.
 
@@ -275,7 +274,7 @@ def create_two_hidden_layer_model(
 
 
 def create_autoencoder_model(
-    debug_seed: Optional[int] = None,
+    debug_seed: int | None = None,
 ) -> tf.keras.Model:
   """Create a bottleneck autoencoder model for use with EMNIST.
 

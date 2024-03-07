@@ -14,7 +14,7 @@
 """Library for creating baseline tasks on CIFAR-100."""
 
 import enum
-from typing import Optional, Union
+from typing import Union
 
 import tensorflow as tf
 
@@ -79,7 +79,7 @@ def _get_resnet_model(
 
 def create_image_classification_task_with_datasets(
     train_client_spec: client_spec.ClientSpec,
-    eval_client_spec: Optional[client_spec.ClientSpec],
+    eval_client_spec: client_spec.ClientSpec | None,
     model_id: Union[str, ResnetModel],
     crop_height: int,
     crop_width: int,
@@ -156,12 +156,12 @@ def create_image_classification_task_with_datasets(
 
 def create_image_classification_task(
     train_client_spec: client_spec.ClientSpec,
-    eval_client_spec: Optional[client_spec.ClientSpec] = None,
+    eval_client_spec: client_spec.ClientSpec | None = None,
     model_id: Union[str, ResnetModel] = 'resnet18',
     crop_height: int = DEFAULT_CROP_HEIGHT,
     crop_width: int = DEFAULT_CROP_WIDTH,
     distort_train_images: bool = False,
-    cache_dir: Optional[str] = None,
+    cache_dir: str | None = None,
     use_synthetic_data: bool = False,
 ) -> baseline_task.BaselineTask:
   """Creates a baseline task for image classification on CIFAR-100.

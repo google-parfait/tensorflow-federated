@@ -18,7 +18,7 @@ from collections.abc import Sequence
 import dataclasses
 import sys
 import typing
-from typing import Optional, Protocol, TypeVar, Union
+from typing import Protocol, TypeVar, Union
 
 import attrs
 from typing_extensions import TypeGuard
@@ -111,13 +111,13 @@ class SupportsNamedTuple(Protocol):
     ...
 
 
-_NT = TypeVar('_NT', bound=Optional[str])
+_NT = TypeVar('_NT', bound=Union[str, None])
 _VT = TypeVar('_VT', bound=object)
 
 
 def is_name_value_pair(
     obj: object,
-    name_type: type[_NT] = Optional[str],
+    name_type: type[_NT] = str | None,
     value_type: type[_VT] = object,
 ) -> TypeGuard[tuple[_NT, _VT]]:
   """Returns `True` if `obj` is a name value pair, otherwise `False`.

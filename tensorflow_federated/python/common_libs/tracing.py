@@ -35,7 +35,7 @@ import random
 import sys
 import threading
 import time
-from typing import Generic, Optional, TypeVar, Union
+from typing import Generic, TypeVar, Union
 
 from absl import logging
 
@@ -91,9 +91,9 @@ class TracingProvider(Generic[T], metaclass=abc.ABCMeta):
       scope: str,
       sub_scope: str,
       nonce: int,
-      parent_span_yield: Optional[T],
-      fn_args: Optional[tuple[object, ...]],
-      fn_kwargs: Optional[dict[str, object]],
+      parent_span_yield: T | None,
+      fn_args: tuple[object, ...] | None,
+      fn_kwargs: dict[str, object] | None,
       trace_opts: dict[str, object],
   ) -> Generator[T, TraceResult, None]:
     """Create a new tracing span.
@@ -122,13 +122,13 @@ class TracingProvider(Generic[T], metaclass=abc.ABCMeta):
     raise NotImplementedError
 
   def wrap_rpc(
-      self, parent_span_yield: Optional[T]
+      self, parent_span_yield: T | None
   ) -> contextlib.AbstractContextManager[None]:
     """Wrap an RPC call so that it can carry over the `parent_span_yield`."""
     del parent_span_yield
     return contextlib.nullcontext()
 
-  def receive_rpc(self) -> Optional[T]:
+  def receive_rpc(self) -> T | None:
     """Unpack `parent_span_yield` from the receiving end of an RPC."""
     return None
 
@@ -145,9 +145,9 @@ class LoggingTracingProvider(TracingProvider[None]):
       scope: str,
       sub_scope: str,
       nonce: int,
-      parent_span_yield: Optional[None],
-      fn_args: Optional[tuple[object, ...]],
-      fn_kwargs: Optional[dict[str, object]],
+      parent_span_yield: None,
+      fn_args: tuple[object, ...] | None,
+      fn_kwargs: dict[str, object] | None,
       trace_opts: dict[str, object],
   ) -> Generator[None, TraceResult, None]:
     assert parent_span_yield is None
@@ -271,7 +271,7 @@ def trace(fn=None, **trace_kwargs):
 # in a synchronous context.
 
 # A single yielded value for each currently-active TracingProvider.
-SpanYields = list[Optional[object]]
+SpanYields = list[object | None]
 
 
 class ThreadLocalSpanYields(threading.local):
@@ -282,19 +282,19 @@ class ThreadLocalSpanYields(threading.local):
 
   def __init__(self):
     super().__init__()
-    self._span_yields: Optional[SpanYields] = None
+    self._span_yields: SpanYields | None = None
 
-  def set(self, span_yields: Optional[SpanYields]):
+  def set(self, span_yields: SpanYields | None):
     self._span_yields = span_yields
 
-  def get(self) -> Optional[SpanYields]:
+  def get(self) -> SpanYields | None:
     return self._span_yields
 
 
 _non_async_span_yields = ThreadLocalSpanYields()
 
 
-def _current_task() -> Optional[asyncio.Task]:
+def _current_task() -> asyncio.Task | None:
   """Get the current running task, or `None` if no task is running."""
   # Note: `current_task` returns `None` if there is no current task, but it
   # throws if no currently running async loop.
@@ -319,7 +319,7 @@ def _current_span_yields() -> SpanYields:
   return spans
 
 
-def _set_span_yields(span_yields: Optional[SpanYields]):
+def _set_span_yields(span_yields: SpanYields | None):
   """Sets the current parent span list."""
   task = _current_task()
   if task is None:
@@ -331,7 +331,7 @@ def _set_span_yields(span_yields: Optional[SpanYields]):
 
 
 @contextlib.contextmanager
-def _with_span_yields(span_yields: Optional[SpanYields]):
+def _with_span_yields(span_yields: SpanYields | None):
   """Context manager which sets and unsets the current parent span list."""
   old_span_yields = _current_span_yields()
   _set_span_yields(span_yields)

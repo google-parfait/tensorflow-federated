@@ -15,7 +15,7 @@
 
 import collections
 from collections.abc import Callable
-from typing import Optional, Union
+from typing import Union
 
 import tensorflow as tf
 
@@ -45,7 +45,7 @@ _AggregationProcess = aggregation_process.AggregationProcess
 
 def _build_fed_eval_client_work(
     model_fn: Callable[[], variable.VariableModel],
-    metrics_aggregation_process: Optional[_AggregationProcess],
+    metrics_aggregation_process: _AggregationProcess | None,
     model_weights_type: computation_types.StructType,
     use_experimental_simulation_loop: bool = False,
 ) -> client_works.ClientWorkProcess:
@@ -126,7 +126,7 @@ def _build_fed_eval_client_work(
 
 def _build_functional_fed_eval_client_work(
     model: functional.FunctionalModel,
-    metrics_aggregation_process: Optional[_AggregationProcess],
+    metrics_aggregation_process: _AggregationProcess | None,
     model_weights_type: computation_types.StructType,
 ) -> client_works.ClientWorkProcess:
   """Builds a `ClientWorkProcess` that performs model evaluation at clients."""
@@ -208,10 +208,10 @@ def build_fed_eval(
     model_fn: Union[
         Callable[[], variable.VariableModel], functional.FunctionalModel
     ],
-    model_distributor: Optional[distributors.DistributionProcess] = None,
-    metrics_aggregation_process: Optional[
-        aggregation_process.AggregationProcess
-    ] = None,
+    model_distributor: distributors.DistributionProcess | None = None,
+    metrics_aggregation_process: (
+        aggregation_process.AggregationProcess | None
+    ) = None,
     use_experimental_simulation_loop: bool = False,
 ) -> learning_process.LearningProcess:
   """Builds a learning process that performs federated evaluation.

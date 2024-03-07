@@ -23,7 +23,7 @@ means that this library:
 import asyncio
 import os
 import os.path
-from typing import Optional, Union
+from typing import Union
 
 from absl import logging
 import numpy as np
@@ -104,7 +104,7 @@ class FileProgramStateManager(
     self._keep_total = keep_total
     self._keep_first = keep_first
 
-  async def get_versions(self) -> Optional[list[int]]:
+  async def get_versions(self) -> list[int] | None:
     """Returns a list of saved versions or `None`.
 
     Returns:
@@ -127,7 +127,7 @@ class FileProgramStateManager(
 
   def _get_version_for_path(
       self, path: Union[str, os.PathLike[str]]
-  ) -> Optional[int]:
+  ) -> int | None:
     """Returns the version for the given `path` or `None`.
 
     This method does not assert that the given `path` or the returned version

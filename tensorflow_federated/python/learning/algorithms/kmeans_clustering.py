@@ -20,7 +20,6 @@ https://dl.acm.org/doi/10.1145/1772690.1772862 for the full paper.
 """
 
 import collections
-from typing import Optional
 
 import numpy as np
 import tensorflow as tf
@@ -247,9 +246,9 @@ def _build_kmeans_finalizer(
 def build_fed_kmeans(
     num_clusters: int,
     data_shape: tuple[int, ...],
-    random_seed: Optional[tuple[int, int]] = None,
-    distributor: Optional[distributors.DistributionProcess] = None,
-    sum_aggregator: Optional[factory.UnweightedAggregationFactory] = None,
+    random_seed: tuple[int, int] | None = None,
+    distributor: distributors.DistributionProcess | None = None,
+    sum_aggregator: factory.UnweightedAggregationFactory | None = None,
 ) -> learning_process.LearningProcess:
   """Builds a learning process for federated k-means clustering.
 

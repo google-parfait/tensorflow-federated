@@ -14,7 +14,6 @@
 """Standardized representation of logic deployable to MapReduce-like systems."""
 
 from collections.abc import Callable
-from typing import Optional
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
@@ -500,11 +499,11 @@ class MapReduceForm(typed_object.TypedObject):
     return self._update
 
   @property
-  def server_state_label(self) -> Optional[str]:
+  def server_state_label(self) -> str | None:
     return self._server_state_label
 
   @property
-  def client_data_label(self) -> Optional[str]:
+  def client_data_label(self) -> str | None:
     return self._client_data_label
 
   @property

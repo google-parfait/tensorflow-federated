@@ -16,7 +16,7 @@
 from collections.abc import Callable
 import inspect
 import typing
-from typing import Any, Optional
+from typing import Any
 
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -32,8 +32,8 @@ from tensorflow_federated.python.core.templates import measured_process
 def add_measurements(
     inner_agg_factory: factory.AggregationFactory,
     *,
-    client_measurement_fn: Optional[Callable[..., dict[str, Any]]] = None,
-    server_measurement_fn: Optional[Callable[..., dict[str, Any]]] = None,
+    client_measurement_fn: Callable[..., dict[str, Any]] | None = None,
+    server_measurement_fn: Callable[..., dict[str, Any]] | None = None,
 ) -> factory.AggregationFactory:
   """Wraps `AggregationFactory` to report additional measurements.
 

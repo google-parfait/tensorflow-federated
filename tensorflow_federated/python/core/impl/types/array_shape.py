@@ -26,11 +26,11 @@ The `shape` of a tensor may be one of the following:
 from collections.abc import Sequence
 import functools
 import operator
-from typing import Optional, Union
+from typing import Union
 
 _EmptyTuple = tuple[()]
-ArrayShape = Union[tuple[Optional[int], ...], None, _EmptyTuple]
-_ArrayShapeLike = Union[Sequence[Optional[int]], None, _EmptyTuple]
+ArrayShape = Union[tuple[int | None, ...], None, _EmptyTuple]
+_ArrayShapeLike = Union[Sequence[int | None], None, _EmptyTuple]
 
 
 def is_shape_fully_defined(shape: ArrayShape) -> bool:
@@ -78,7 +78,7 @@ def is_compatible_with(target: ArrayShape, other: ArrayShape) -> bool:
   return all(x is None or y is None or x == y for x, y in zip(target, other))
 
 
-def num_elements_in_shape(shape: ArrayShape) -> Optional[int]:
+def num_elements_in_shape(shape: ArrayShape) -> int | None:
   """Returns the number of elements in `shape`, or `None` if not fully defined.
 
   Args:

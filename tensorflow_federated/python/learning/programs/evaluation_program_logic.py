@@ -64,7 +64,7 @@ from collections.abc import Callable, Mapping, MutableMapping, Sequence
 import datetime
 import time
 import typing
-from typing import Any, Optional
+from typing import Any
 
 from absl import logging as _logging
 import numpy as np
@@ -137,11 +137,12 @@ class EvaluationManager:
   def __init__(
       self,
       data_source: data_source_lib.FederatedDataSource,
-      aggregated_metrics_manager: Optional[
+      aggregated_metrics_manager: (
           release_manager.ReleaseManager[
               release_manager.ReleasableStructure, int
           ]
-      ],
+          | None
+      ),
       create_state_manager_fn: Callable[
           [str], file_program_state_manager.FileProgramStateManager
       ],
@@ -149,11 +150,10 @@ class EvaluationManager:
           [str],
           tuple[
               learning_process.LearningProcess,
-              Optional[
-                  release_manager.ReleaseManager[
-                      release_manager.ReleasableStructure, int
-                  ]
-              ],
+              release_manager.ReleaseManager[
+                  release_manager.ReleasableStructure, int
+              ]
+              | None,
           ],
       ],
       cohort_size: int,
@@ -198,9 +198,10 @@ class EvaluationManager:
   @property
   def aggregated_metrics_manager(
       self,
-  ) -> Optional[
+  ) -> (
       release_manager.ReleaseManager[release_manager.ReleasableStructure, int]
-  ]:
+      | None
+  ):
     """A manager for releasing metrics at the end of each evaluation loop."""
     return self._aggregated_metrics_manager
 
@@ -218,11 +219,10 @@ class EvaluationManager:
       [str],
       tuple[
           learning_process.LearningProcess,
-          Optional[
-              release_manager.ReleaseManager[
-                  release_manager.ReleasableStructure, int
-              ]
-          ],
+          release_manager.ReleaseManager[
+              release_manager.ReleasableStructure, int
+          ]
+          | None,
       ],
   ]:
     """A callable that returns a process and manager each evaluation loop."""
@@ -306,11 +306,12 @@ class EvaluationManager:
       self,
       train_round_num: int,
       eval_process: learning_process.LearningProcess,
-      per_round_metrics_manager: Optional[
+      per_round_metrics_manager: (
           release_manager.ReleaseManager[
               release_manager.ReleasableStructure, int
           ]
-      ],
+          | None
+      ),
       state_manager: file_program_state_manager.FileProgramStateManager,
       evaluation_end_time: datetime.datetime,
   ) -> None:
@@ -524,12 +525,14 @@ async def _run_evaluation(
     evaluation_data_source: data_source_lib.FederatedDataSource,
     evaluation_per_round_clients_number: int,
     evaluation_end_time: datetime.datetime,
-    per_round_metrics_manager: Optional[
+    per_round_metrics_manager: (
         release_manager.ReleaseManager[release_manager.ReleasableStructure, int]
-    ],
-    aggregated_metrics_manager: Optional[
+        | None
+    ),
+    aggregated_metrics_manager: (
         release_manager.ReleaseManager[release_manager.ReleasableStructure, int]
-    ],
+        | None
+    ),
 ) -> None:
   """Runs evaluation for one training state.
 

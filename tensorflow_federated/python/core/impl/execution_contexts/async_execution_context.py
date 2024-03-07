@@ -16,7 +16,7 @@
 import asyncio
 from collections.abc import Callable
 import contextlib
-from typing import Generic, Optional, TypeVar
+from typing import Generic, TypeVar
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import retrying
@@ -149,7 +149,7 @@ class AsyncExecutionContext(context_base.AsyncContext, Generic[_Computation]):
   def __init__(
       self,
       executor_fn: executor_factory.ExecutorFactory,
-      compiler_fn: Optional[Callable[[_Computation], object]] = None,
+      compiler_fn: Callable[[_Computation], object] | None = None,
       *,
       cardinality_inference_fn: cardinalities_utils.CardinalityInferenceFnType = cardinalities_utils.infer_cardinalities,
   ):

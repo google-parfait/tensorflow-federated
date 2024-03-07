@@ -21,7 +21,7 @@ implementation of the generalized FedAvg algorithm implemented in
 
 import collections
 from collections.abc import Callable, Mapping
-from typing import Any, Optional, Union
+from typing import Any, Union
 
 from absl import logging
 import tensorflow as tf
@@ -386,7 +386,7 @@ def build_model_delta_client_work(
     ],
     client_weighting: client_weight_lib.ClientWeighting,
     delta_l2_regularizer: float,
-    metrics_aggregator: Optional[types.MetricsAggregatorType] = None,
+    metrics_aggregator: types.MetricsAggregatorType | None = None,
     *,
     use_experimental_simulation_loop: bool = False,
 ) -> client_works.ClientWorkProcess:
@@ -523,7 +523,7 @@ def build_functional_model_delta_client_work(
     optimizer: optimizer_base.Optimizer,
     client_weighting: client_weight_lib.ClientWeighting,
     delta_l2_regularizer: float,
-    metrics_aggregator: Optional[types.MetricsAggregatorType] = None,
+    metrics_aggregator: types.MetricsAggregatorType | None = None,
 ) -> client_works.ClientWorkProcess:
   """Creates a `ClientWorkProcess` for the FedProx algorithm.
 

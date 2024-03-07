@@ -17,7 +17,7 @@ from collections.abc import Iterable, Iterator
 import contextlib
 import struct
 import sys
-from typing import NamedTuple, Optional
+from typing import NamedTuple
 import warnings
 
 import attrs
@@ -112,7 +112,7 @@ class TestNamedTuple1(NamedTuple):
   b: int
   c: str
   d: value_reference.MaterializableValueReference
-  e: Optional[TestSerializable]
+  e: TestSerializable | None
 
 
 class TestNamedTuple2(NamedTuple):

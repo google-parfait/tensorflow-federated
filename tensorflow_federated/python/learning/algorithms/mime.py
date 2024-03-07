@@ -24,7 +24,7 @@ Breaking the centralized barrier for cross-device federated learning.
 
 import collections
 from collections.abc import Callable, Mapping, Sequence
-from typing import Any, Optional, Union
+from typing import Any, Union
 
 import numpy as np
 import tensorflow as tf
@@ -186,10 +186,8 @@ def _build_mime_lite_client_work(
     model_fn: Callable[[], variable.VariableModel],
     optimizer: optimizer_base.Optimizer,
     client_weighting: client_weight_lib.ClientWeighting,
-    full_gradient_aggregator: Optional[
-        factory.WeightedAggregationFactory
-    ] = None,
-    metrics_aggregator: Optional[types.MetricsAggregatorType] = None,
+    full_gradient_aggregator: factory.WeightedAggregationFactory | None = None,
+    metrics_aggregator: types.MetricsAggregatorType | None = None,
     use_experimental_simulation_loop: bool = False,
 ) -> client_works.ClientWorkProcess:
   """Creates a `ClientWorkProcess` for Mime Lite.
@@ -475,10 +473,8 @@ def _build_mime_lite_functional_client_work(
     model: functional.FunctionalModel,
     optimizer: optimizer_base.Optimizer,
     client_weighting: client_weight_lib.ClientWeighting,
-    full_gradient_aggregator: Optional[
-        factory.WeightedAggregationFactory
-    ] = None,
-    metrics_aggregator: Optional[types.MetricsAggregatorType] = None,
+    full_gradient_aggregator: factory.WeightedAggregationFactory | None = None,
+    metrics_aggregator: types.MetricsAggregatorType | None = None,
     use_experimental_simulation_loop: bool = False,
 ) -> client_works.ClientWorkProcess:
   """Creates a `ClientWorkProcess` for MimeLite with FunctionalModels.
@@ -618,10 +614,8 @@ def _build_scheduled_mime_lite_client_work(
     learning_rate_fn: Callable[[int], float],
     optimizer: optimizer_base.Optimizer,
     client_weighting: client_weight_lib.ClientWeighting,
-    full_gradient_aggregator: Optional[
-        factory.WeightedAggregationFactory
-    ] = None,
-    metrics_aggregator: Optional[types.MetricsAggregatorType] = None,
+    full_gradient_aggregator: factory.WeightedAggregationFactory | None = None,
+    metrics_aggregator: types.MetricsAggregatorType | None = None,
     use_experimental_simulation_loop: bool = False,
 ) -> client_works.ClientWorkProcess:
   """Creates `ClientWorkProcess` for Mimelite with learning rate schedule.
@@ -743,15 +737,13 @@ def build_weighted_mime_lite(
     ],
     base_optimizer: optimizer_base.Optimizer,
     server_optimizer: optimizer_base.Optimizer = sgdm.build_sgdm(1.0),
-    client_weighting: Optional[
-        client_weight_lib.ClientWeighting
-    ] = client_weight_lib.ClientWeighting.NUM_EXAMPLES,
-    model_distributor: Optional[distributors.DistributionProcess] = None,
-    model_aggregator: Optional[factory.WeightedAggregationFactory] = None,
-    full_gradient_aggregator: Optional[
-        factory.WeightedAggregationFactory
-    ] = None,
-    metrics_aggregator: Optional[types.MetricsAggregatorType] = None,
+    client_weighting: (
+        client_weight_lib.ClientWeighting | None
+    ) = client_weight_lib.ClientWeighting.NUM_EXAMPLES,
+    model_distributor: distributors.DistributionProcess | None = None,
+    model_aggregator: factory.WeightedAggregationFactory | None = None,
+    full_gradient_aggregator: factory.WeightedAggregationFactory | None = None,
+    metrics_aggregator: types.MetricsAggregatorType | None = None,
     use_experimental_simulation_loop: bool = False,
 ) -> learning_process.LearningProcess:
   """Builds a learning process that performs Mime Lite.
@@ -935,11 +927,11 @@ def build_unweighted_mime_lite(
     model_fn: Callable[[], variable.VariableModel],
     base_optimizer: optimizer_base.Optimizer,
     server_optimizer: optimizer_base.Optimizer = sgdm.build_sgdm(1.0),
-    model_distributor: Optional[distributors.DistributionProcess] = None,
-    model_aggregator: Optional[factory.UnweightedAggregationFactory] = None,
-    full_gradient_aggregator: Optional[
-        factory.UnweightedAggregationFactory
-    ] = None,
+    model_distributor: distributors.DistributionProcess | None = None,
+    model_aggregator: factory.UnweightedAggregationFactory | None = None,
+    full_gradient_aggregator: (
+        factory.UnweightedAggregationFactory | None
+    ) = None,
     metrics_aggregator: types.MetricsAggregatorType = metric_aggregator.sum_then_finalize,
     use_experimental_simulation_loop: bool = False,
 ) -> learning_process.LearningProcess:
@@ -1064,15 +1056,13 @@ def build_mime_lite_with_optimizer_schedule(
     learning_rate_fn: Callable[[int], float],
     base_optimizer: optimizer_base.Optimizer,
     server_optimizer: optimizer_base.Optimizer = sgdm.build_sgdm(1.0),
-    client_weighting: Optional[
-        client_weight_lib.ClientWeighting
-    ] = client_weight_lib.ClientWeighting.NUM_EXAMPLES,
-    model_distributor: Optional[distributors.DistributionProcess] = None,
-    model_aggregator: Optional[factory.WeightedAggregationFactory] = None,
-    full_gradient_aggregator: Optional[
-        factory.WeightedAggregationFactory
-    ] = None,
-    metrics_aggregator: Optional[types.MetricsAggregatorType] = None,
+    client_weighting: (
+        client_weight_lib.ClientWeighting | None
+    ) = client_weight_lib.ClientWeighting.NUM_EXAMPLES,
+    model_distributor: distributors.DistributionProcess | None = None,
+    model_aggregator: factory.WeightedAggregationFactory | None = None,
+    full_gradient_aggregator: factory.WeightedAggregationFactory | None = None,
+    metrics_aggregator: types.MetricsAggregatorType | None = None,
     use_experimental_simulation_loop: bool = False,
 ) -> learning_process.LearningProcess:
   """Builds a learning process for Mime Lite with optimizer scheduling.

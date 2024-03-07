@@ -14,7 +14,6 @@
 """A library for building aggregators that apply Elias gamma codes to client updates."""
 
 import collections
-from typing import Optional
 
 import numpy as np
 import tensorflow as tf
@@ -96,9 +95,7 @@ class EliasGammaEncodedSumFactory(factory.UnweightedAggregationFactory):
 
   def __init__(
       self,
-      bitrate_mean_factory: Optional[
-          factory.UnweightedAggregationFactory
-      ] = None,
+      bitrate_mean_factory: factory.UnweightedAggregationFactory | None = None,
   ):
     """Constructor for EliasGammaEncodedSumFactory.
 

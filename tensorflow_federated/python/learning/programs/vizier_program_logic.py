@@ -16,7 +16,7 @@
 import asyncio
 import collections
 import datetime
-from typing import Optional, Protocol, Union
+from typing import Protocol, Union
 
 from vizier import pyvizier
 from vizier.client import client_abc
@@ -153,7 +153,7 @@ async def train_model_with_vizier(
     num_clients: int,
     program_state_manager_factory: ProgramStateManagerFactory,
     model_output_manager_factory: StrReleaseManagerFactory,
-    train_metrics_manager_factory: Optional[IntReleaseManagerFactory] = None,
+    train_metrics_manager_factory: IntReleaseManagerFactory | None = None,
     evaluation_manager_factory: EvaluationManagerFactory,
     evaluation_periodicity: Union[int, datetime.timedelta],
 ) -> None:

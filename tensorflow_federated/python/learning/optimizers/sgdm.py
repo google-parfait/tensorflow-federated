@@ -14,7 +14,7 @@
 """Gradient descent optimizer."""
 
 import collections
-from typing import Any, Optional, TypeVar
+from typing import Any, TypeVar
 
 import tensorflow as tf
 
@@ -34,7 +34,7 @@ class _SGD(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
   def __init__(
       self,
       learning_rate: optimizer.Float,
-      momentum: Optional[optimizer.Float] = None,
+      momentum: optimizer.Float | None = None,
   ):
     """Initializes SGD optimizer."""
     if learning_rate < 0.0:
@@ -109,7 +109,7 @@ class _SGD(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
 
 def build_sgdm(
     learning_rate: optimizer.Float = 0.01,
-    momentum: Optional[optimizer.Float] = None,
+    momentum: optimizer.Float | None = None,
 ) -> optimizer.Optimizer:
   """Returns a `tff.learning.optimizers.Optimizer` for momentum SGD.
 

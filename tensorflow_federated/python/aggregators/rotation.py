@@ -15,7 +15,6 @@
 
 import collections
 import math
-from typing import Optional
 
 import numpy as np
 import tensorflow as tf
@@ -71,7 +70,7 @@ class HadamardTransformFactory(factory.UnweightedAggregationFactory):
 
   def __init__(
       self,
-      inner_agg_factory: Optional[factory.UnweightedAggregationFactory] = None,
+      inner_agg_factory: factory.UnweightedAggregationFactory | None = None,
       num_repeats: int = 1,
   ):
     if inner_agg_factory is None:
@@ -203,7 +202,7 @@ class DiscreteFourierTransformFactory(factory.UnweightedAggregationFactory):
 
   def __init__(
       self,
-      inner_agg_factory: Optional[factory.UnweightedAggregationFactory] = None,
+      inner_agg_factory: factory.UnweightedAggregationFactory | None = None,
       num_repeats: int = 1,
   ):
     if inner_agg_factory is None:

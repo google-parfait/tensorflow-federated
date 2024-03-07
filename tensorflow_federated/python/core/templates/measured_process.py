@@ -14,7 +14,6 @@
 """Define a template for a stateful process that produces metrics."""
 
 import collections
-from typing import Optional
 
 import attrs
 import tree
@@ -69,7 +68,7 @@ class MeasuredProcess(iterative_process.IterativeProcess):
       self,
       initialize_fn: computation_base.Computation,
       next_fn: computation_base.Computation,
-      next_is_multi_arg: Optional[bool] = None,
+      next_is_multi_arg: bool | None = None,
   ):
     """Creates a `tff.templates.MeasuredProcess`.
 

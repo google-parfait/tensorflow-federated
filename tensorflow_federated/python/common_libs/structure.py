@@ -16,7 +16,7 @@
 import collections
 from collections.abc import Callable, Iterable, Iterator, Mapping
 import typing
-from typing import Generic, Optional, TypeVar, Union
+from typing import Generic, TypeVar, Union
 
 import attrs
 import tensorflow as tf
@@ -79,7 +79,7 @@ class Struct(Generic[_T]):
     """Constructs a new `Struct` with all unnamed elements."""
     return cls(tuple((None, v) for v in args))
 
-  def __init__(self, elements: Iterable[tuple[Optional[str], _T]]):
+  def __init__(self, elements: Iterable[tuple[str | None, _T]]):
     """Constructs a new `Struct` with the given elements.
 
     Args:
@@ -124,7 +124,7 @@ class Struct(Generic[_T]):
     self._hash = None
     self._elements_cache = None
 
-  def _elements(self) -> list[tuple[Optional[str], _T]]:
+  def _elements(self) -> list[tuple[str | None, _T]]:
     if self._elements_cache is None:
       self._elements_cache = list(zip(self._name_array, self._element_array))
     return self._elements_cache
@@ -194,7 +194,8 @@ class Struct(Generic[_T]):
     )
 
   def __str__(self) -> str:
-    def _element_str(element: tuple[Optional[str], object]) -> str:
+
+    def _element_str(element: tuple[str | None, object]) -> str:
       name, value = element
       if name is not None:
         return '{}={}'.format(name, value)
@@ -236,12 +237,12 @@ def name_list(struct: Struct) -> list[str]:
   return [n for n in names if n is not None]
 
 
-def name_list_with_nones(struct: Struct) -> list[Optional[str]]:
+def name_list_with_nones(struct: Struct) -> list[str | None]:
   """Returns an iterator over the names of all fields in `struct`."""
   return struct._name_array  # pylint: disable=protected-access
 
 
-def to_elements(struct: Struct[_T]) -> list[tuple[Optional[str], _T]]:
+def to_elements(struct: Struct[_T]) -> list[tuple[str | None, _T]]:
   """Retrieves the list of (name, value) pairs from a `Struct`.
 
   Modeled as a module function rather than a method of `Struct` to avoid
@@ -261,7 +262,7 @@ def to_elements(struct: Struct[_T]) -> list[tuple[Optional[str], _T]]:
   return struct._elements().copy()  # pylint: disable=protected-access
 
 
-def iter_elements(struct: Struct[_T]) -> Iterator[tuple[Optional[str], _T]]:
+def iter_elements(struct: Struct[_T]) -> Iterator[tuple[str | None, _T]]:
   """Returns an iterator over (name, value) pairs from a `Struct`.
 
   Modeled as a module function rather than a method of `Struct` to avoid
@@ -295,7 +296,7 @@ def to_odict(
   """
 
   def _to_odict(
-      elements: list[tuple[Optional[str], _T]]
+      elements: list[tuple[str | None, _T]]
   ) -> collections.OrderedDict[str, _T]:
     for name, _ in elements:
       if name is None:
@@ -332,7 +333,7 @@ def to_odict_or_tuple(
   """
 
   def _to_odict_or_tuple(
-      elements: list[tuple[Optional[str], _T]]
+      elements: list[tuple[str | None, _T]]
   ) -> Union[collections.OrderedDict[str, _T], tuple[_T, ...]]:
     fields_are_named = tuple(name is not None for name, _ in elements)
     if any(fields_are_named):
@@ -605,7 +606,7 @@ def from_container(value: object, recursive=False) -> Struct:
 
 def to_container_recursive(
     value: Struct[_T],
-    container_fn: Callable[[list[tuple[Optional[str], _T]]], _U],
+    container_fn: Callable[[list[tuple[str | None, _T]]], _U],
 ) -> _U:
   """Recursively converts the `Struct` `value` to a new container type.
 

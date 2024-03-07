@@ -16,7 +16,6 @@
 from collections.abc import Callable, Sequence
 import concurrent
 import math
-from typing import Optional
 
 from absl import logging
 import cachetools
@@ -117,10 +116,10 @@ def local_cpp_executor_factory(
     *,
     default_num_clients: int = 0,
     max_concurrent_computation_calls: int = -1,
-    leaf_executor_fn: Optional[Callable[[int], executor_bindings.Executor]],
-    client_leaf_executor_fn: Optional[
-        Callable[[int], executor_bindings.Executor]
-    ] = None,
+    leaf_executor_fn: Callable[[int], executor_bindings.Executor] | None,
+    client_leaf_executor_fn: (
+        Callable[[int], executor_bindings.Executor] | None
+    ) = None,
 ) -> executor_factory.ExecutorFactory:
   """Local ExecutorFactory backed by C++ Executor bindings."""
   _check_num_clients_is_valid(default_num_clients)

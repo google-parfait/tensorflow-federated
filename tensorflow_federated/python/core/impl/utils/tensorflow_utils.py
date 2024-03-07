@@ -18,7 +18,6 @@ from collections.abc import Iterable, Mapping
 import dataclasses
 import itertools
 import typing
-from typing import Optional
 
 import attrs
 import numpy as np
@@ -221,7 +220,7 @@ def capture_result_from_graph(
   def _get_bindings_for_elements(
       name_value_pairs: Iterable[tuple[str, object]],
       graph: tf.Graph,
-      container_type: Optional[type[object]],
+      container_type: type[object] | None,
   ) -> tuple[computation_types.Type, pb.TensorFlow.Binding]:
     """Build `(type_spec, binding)` tuple for name value pairs."""
     element_name_type_binding_triples = [
@@ -1214,11 +1213,11 @@ def uniquify_shared_names_with_suffix(
 
 def deserialize_and_call_tf_computation(
     computation_proto: pb.Computation,
-    arg: Optional[object],
+    arg: object | None,
     graph: tf.Graph,
     shared_names_suffix: str,
     session_token_tensor: tf.Tensor,
-) -> tuple[Optional[str], object]:
+) -> tuple[str | None, object]:
   """Deserializes a TF computation and inserts it into `graph`.
 
   This method performs an action that can be considered roughly the opposite of

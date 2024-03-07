@@ -14,7 +14,7 @@
 """Utilities for saving and loading program state in a federated program."""
 
 import abc
-from typing import Generic, Optional, Union, TypeVar
+from typing import Generic, TypeVar, Union
 
 from tensorflow_federated.python.common_libs import serializable
 from tensorflow_federated.python.program import structure_utils
@@ -58,7 +58,7 @@ class ProgramStateManager(abc.ABC, Generic[ProgramStateStructure]):
   """
 
   @abc.abstractmethod
-  async def get_versions(self) -> Optional[list[int]]:
+  async def get_versions(self) -> list[int] | None:
     """Returns a list of saved versions or `None`.
 
     Returns:

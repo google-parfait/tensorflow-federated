@@ -15,7 +15,7 @@
 
 from collections.abc import Callable
 import math
-from typing import Optional, TypeVar
+from typing import TypeVar
 
 from tensorflow_federated.python.aggregators import differential_privacy
 from tensorflow_federated.python.aggregators import distributed_dp
@@ -92,9 +92,10 @@ def robust_aggregator(
     zeroing: bool = True,
     clipping: bool = True,
     weighted: bool = True,
-    debug_measurements_fn: Optional[
+    debug_measurements_fn: (
         Callable[[factory.AggregationFactory], factory.AggregationFactory]
-    ] = None,
+        | None
+    ) = None,
 ) -> factory.AggregationFactory:
   """Creates aggregator for mean with adaptive zeroing and clipping.
 
@@ -198,9 +199,10 @@ def compression_aggregator(
     zeroing: bool = True,
     clipping: bool = True,
     weighted: bool = True,
-    debug_measurements_fn: Optional[
+    debug_measurements_fn: (
         Callable[[factory.AggregationFactory], factory.AggregationFactory]
-    ] = None,
+        | None
+    ) = None,
     **kwargs,
 ) -> factory.AggregationFactory:
   """Creates aggregator with compression and adaptive zeroing and clipping.
@@ -275,9 +277,10 @@ def entropy_compression_aggregator(
     zeroing: bool = True,
     clipping: bool = True,
     weighted: bool = True,
-    debug_measurements_fn: Optional[
+    debug_measurements_fn: (
         Callable[[factory.AggregationFactory], factory.AggregationFactory]
-    ] = None,
+        | None
+    ) = None,
 ) -> factory.AggregationFactory:
   """Creates an aggregation factory for quantization and entropy coding.
 

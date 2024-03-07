@@ -18,7 +18,6 @@ from collections.abc import Callable, Mapping
 import os
 import sqlite3
 import tempfile
-from typing import Optional
 
 from absl import logging
 import tensorflow as tf
@@ -146,7 +145,7 @@ def save_to_sql_client_data(
     dataset_fn: Callable[[str], tf.data.Dataset],
     database_filepath: str,
     allow_overwrite: bool = False,
-    split_names_by_client_id: Optional[Mapping[str, str]] = None,
+    split_names_by_client_id: Mapping[str, str] | None = None,
 ) -> None:
   """Serialize a federated dataset into a SQL database compatible with `SqlClientData`.
 
@@ -268,7 +267,7 @@ def save_to_sql_client_data(
 def load_and_parse_sql_client_data(
     database_filepath: str,
     element_spec: Mapping[str, tf.TensorSpec],
-    split_name: Optional[str] = None,
+    split_name: str | None = None,
 ) -> client_data.ClientData:
   """Load a `ClientData` arises by parsing a serialized `SqlClientData`.
 

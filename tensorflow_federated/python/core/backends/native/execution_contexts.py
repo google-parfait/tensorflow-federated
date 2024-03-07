@@ -14,7 +14,6 @@
 """Execution contexts for the native backend."""
 
 from collections.abc import Sequence
-from typing import Optional
 
 from tensorflow_federated.python.core.backends.native import compiler
 from tensorflow_federated.python.core.backends.native import mergeable_comp_compiler
@@ -28,7 +27,7 @@ from tensorflow_federated.python.core.impl.executor_stacks import executor_facto
 
 def create_mergeable_comp_execution_context(
     async_contexts: Sequence[context_base.AsyncContext],
-    num_subrounds: Optional[int] = None,
+    num_subrounds: int | None = None,
 ) -> mergeable_comp_execution_context.MergeableCompExecutionContext:
   """Creates context which compiles to and executes mergeable comp form.
 
@@ -55,7 +54,7 @@ def create_mergeable_comp_execution_context(
 
 def set_mergeable_comp_execution_context(
     async_contexts: Sequence[context_base.AsyncContext],
-    num_subrounds: Optional[int] = None,
+    num_subrounds: int | None = None,
 ):
   """Sets context which compiles to and executes mergeable comp form.
 

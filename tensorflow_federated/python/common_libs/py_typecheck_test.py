@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Optional
 
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -91,8 +90,8 @@ class IsNameValuePairTest(parameterized.TestCase):
     self.assertFalse(actual_result)
 
   @parameterized.named_parameters([
-      ('optional_str_unnamed', (None, 1), Optional[str]),
-      ('optional_str_named', ('a', 1), Optional[str]),
+      ('optional_str_unnamed', (None, 1), str | None),
+      ('optional_str_named', ('a', 1), str | None),
       ('str', ('a', 1), str),
       ('none', (None, 1), type(None)),
   ])

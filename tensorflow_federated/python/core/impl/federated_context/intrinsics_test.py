@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Optional
 
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -84,7 +83,7 @@ def _create_context() -> (
 
 
 def _create_fake_fn(
-    parameter_type: Optional[computation_types.TensorType],
+    parameter_type: computation_types.TensorType | None,
     result_type: computation_types.TensorType,
 ) -> value_impl.Value:
   result = building_blocks.Reference('result', result_type)

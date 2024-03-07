@@ -15,7 +15,6 @@
 
 import difflib
 import os.path
-from typing import Optional
 
 from absl import flags
 
@@ -34,7 +33,7 @@ class MismatchedGoldenError(RuntimeError):
   pass
 
 
-_filename_to_golden_map: Optional[dict[str, str]] = None
+_filename_to_golden_map: dict[str, str] | None = None
 
 
 def _filename_to_golden_path(filename: str) -> str:

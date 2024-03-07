@@ -18,7 +18,7 @@ from collections.abc import Mapping
 import dataclasses
 import math
 import typing
-from typing import Any, Optional, Union
+from typing import Any, Union
 
 import numpy as np
 import tensorflow as tf
@@ -91,12 +91,12 @@ class SumThenFinalizeFactory(factory.UnweightedAggregationFactory):
   def __init__(
       self,
       metric_finalizers: types.MetricFinalizersType,
-      initial_unfinalized_metrics: Optional[
-          collections.OrderedDict[str, Any]
-      ] = None,
-      inner_summation_factory: Optional[
-          factory.UnweightedAggregationFactory
-      ] = None,
+      initial_unfinalized_metrics: (
+          collections.OrderedDict[str, Any] | None
+      ) = None,
+      inner_summation_factory: (
+          factory.UnweightedAggregationFactory | None
+      ) = None,
   ):
     """Initialize the `SumThenFinalizeFactory`.
 
@@ -337,7 +337,7 @@ def create_default_secure_sum_quantization_ranges(
     local_unfinalized_metrics_type: computation_types.StructWithPythonType,
     lower_bound: Union[int, float] = DEFAULT_FIXED_SECURE_LOWER_BOUND,
     upper_bound: Union[int, float] = DEFAULT_FIXED_SECURE_UPPER_BOUND,
-    use_auto_tuned_bounds_for_float_values: Optional[bool] = True,
+    use_auto_tuned_bounds_for_float_values: bool | None = True,
 ) -> MetricValueRangeDict:  # pylint: disable=g-bare-generic
   """Create a nested structure of quantization ranges for secure sum encoding.
 
@@ -520,7 +520,7 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
   # TODO: b/233054212 - re-enable lint
   # pylint: disable=g-bare-generic
   def __init__(
-      self, metric_value_ranges: Optional[UserMetricValueRangeDict] = None
+      self, metric_value_ranges: UserMetricValueRangeDict | None = None
   ):
     # pylint: enable=g-bare-generic
     """Initializes `SecureSumFactory`.

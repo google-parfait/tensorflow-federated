@@ -15,7 +15,6 @@
 
 import collections
 import typing
-from typing import Optional
 
 import numpy as np
 import tensorflow as tf
@@ -60,8 +59,8 @@ class MeanFactory(factory.WeightedAggregationFactory):
 
   def __init__(
       self,
-      value_sum_factory: Optional[factory.UnweightedAggregationFactory] = None,
-      weight_sum_factory: Optional[factory.UnweightedAggregationFactory] = None,
+      value_sum_factory: factory.UnweightedAggregationFactory | None = None,
+      weight_sum_factory: factory.UnweightedAggregationFactory | None = None,
       no_nan_division: bool = False,
   ):
     """Initializes `MeanFactory`.
@@ -174,8 +173,8 @@ class UnweightedMeanFactory(factory.UnweightedAggregationFactory):
 
   def __init__(
       self,
-      value_sum_factory: Optional[factory.UnweightedAggregationFactory] = None,
-      count_sum_factory: Optional[factory.UnweightedAggregationFactory] = None,
+      value_sum_factory: factory.UnweightedAggregationFactory | None = None,
+      count_sum_factory: factory.UnweightedAggregationFactory | None = None,
   ):
     """Initializes `UnweightedMeanFactory`.
 

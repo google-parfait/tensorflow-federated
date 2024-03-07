@@ -15,7 +15,7 @@
 
 import collections
 from collections.abc import Callable, Mapping, Sequence
-from typing import Optional, Union
+from typing import Union
 import warnings
 
 from absl import logging
@@ -40,13 +40,14 @@ def from_keras_model(
     keras_model: tf.keras.Model,
     loss: Loss,
     input_spec,
-    loss_weights: Optional[list[float]] = None,
-    metrics: Optional[
+    loss_weights: list[float] | None = None,
+    metrics: (
         Union[
             list[tf.keras.metrics.Metric],
             list[Callable[[], tf.keras.metrics.Metric]],
         ]
-    ] = None,
+        | None
+    ) = None,
 ) -> variable.VariableModel:
   """Builds a `tff.learning.models.VariableModel` from a `tf.keras.Model`.
 

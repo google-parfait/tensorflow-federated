@@ -16,7 +16,7 @@
 import abc
 import collections
 from collections.abc import Callable, Iterable, Mapping
-from typing import Any, NamedTuple, Optional
+from typing import Any, NamedTuple
 
 import tensorflow as tf
 
@@ -221,9 +221,9 @@ class ReconstructionModel(metaclass=abc.ABCMeta):
   def build_dataset_split_fn(
       cls,
       recon_epochs: int = 1,
-      recon_steps_max: Optional[int] = None,
+      recon_steps_max: int | None = None,
       post_recon_epochs: int = 1,
-      post_recon_steps_max: Optional[int] = None,
+      post_recon_steps_max: int | None = None,
       split_dataset: bool = False,
   ) -> ReconstructionDatasetSplitFn:
     """Builds a `ReconstructionDatasetSplitFn` for training/evaluation.

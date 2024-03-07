@@ -14,7 +14,6 @@
 """A tff.aggregator for discretizing input values to the integer grid."""
 
 import collections
-from typing import Optional
 
 import numpy as np
 import tensorflow as tf
@@ -67,9 +66,9 @@ class StochasticDiscretizationFactory(factory.UnweightedAggregationFactory):
       self,
       inner_agg_factory: factory.UnweightedAggregationFactory,
       step_size: float,
-      distortion_aggregation_factory: Optional[
-          factory.UnweightedAggregationFactory
-      ] = None,
+      distortion_aggregation_factory: (
+          factory.UnweightedAggregationFactory | None
+      ) = None,
   ):
     """Constructor for DeterministicDiscretizationFactory.
 

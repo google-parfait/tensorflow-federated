@@ -14,7 +14,7 @@
 """Aggregator for sampling of CLIENT placed values."""
 
 import collections
-from typing import Any, Optional
+from typing import Any
 
 import numpy as np
 import tensorflow as tf
@@ -123,7 +123,7 @@ def build_reservoir_type(
 
 
 def build_initial_sample_reservoir(
-    sample_value_type: computation_types.Type, seed: Optional[Any] = None
+    sample_value_type: computation_types.Type, seed: Any | None = None
 ):
   """Build up the initial state of the reservoir for sampling.
 

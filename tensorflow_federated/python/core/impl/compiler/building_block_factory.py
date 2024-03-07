@@ -17,7 +17,7 @@ from collections.abc import Iterator, Sequence
 import functools
 import random
 import string
-from typing import Optional, Union
+from typing import Union
 
 import tensorflow as tf
 
@@ -1411,7 +1411,7 @@ def zip_to_match_type(
     *,
     comp_to_zip: building_blocks.ComputationBuildingBlock,
     target_type: computation_types.Type,
-) -> Optional[building_blocks.ComputationBuildingBlock]:
+) -> building_blocks.ComputationBuildingBlock | None:
   """Zips computation argument to match target type.
 
   This function will apply the appropriate federated zips to match `comp_to_zip`

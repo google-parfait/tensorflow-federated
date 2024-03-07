@@ -17,7 +17,7 @@ import asyncio
 import collections
 from collections.abc import Callable, Iterable, MutableMapping
 import time
-from typing import Any, Optional
+from typing import Any
 
 from absl import logging
 
@@ -76,16 +76,16 @@ def run_training_process(
     training_process: iterative_process.IterativeProcess,
     training_selection_fn: Callable[[int], Any],
     total_rounds: int,
-    evaluation_fn: Optional[Callable[[Any, Any], MetricsType]] = None,
-    evaluation_selection_fn: Optional[Callable[[int], Any]] = None,
+    evaluation_fn: Callable[[Any, Any], MetricsType] | None = None,
+    evaluation_selection_fn: Callable[[int], Any] | None = None,
     rounds_per_evaluation: int = 1,
-    program_state_manager: Optional[
-        program_state_manager_lib.ProgramStateManager
-    ] = None,
+    program_state_manager: (
+        program_state_manager_lib.ProgramStateManager | None
+    ) = None,
     rounds_per_saving_program_state: int = 1,
-    metrics_managers: Optional[
-        Iterable[release_manager_lib.ReleaseManager]
-    ] = None,
+    metrics_managers: (
+        Iterable[release_manager_lib.ReleaseManager] | None
+    ) = None,
 ):
   """Runs a federated `training_process`.
 

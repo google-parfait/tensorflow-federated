@@ -13,7 +13,6 @@
 # limitations under the License.
 """Type checks for learning computations."""
 
-from typing import Optional
 
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
@@ -25,7 +24,7 @@ class ClientSequenceTypeError(Exception):
 
 
 def check_is_client_placed_structure_of_sequences(
-    type_spec: computation_types.Type, error_message: Optional[str] = None
+    type_spec: computation_types.Type, error_message: str | None = None
 ) -> None:
   """Checks that a type is a structure of sequences, placed at `tff.CLIENTS`.
 

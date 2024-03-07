@@ -14,7 +14,6 @@
 """A base Python interface for all types of executors."""
 
 import abc
-from typing import Optional
 
 from tensorflow_federated.python.core.impl.executors import executor_value_base as evb
 
@@ -61,7 +60,7 @@ class Executor(metaclass=abc.ABCMeta):
 
   @abc.abstractmethod
   async def create_call(
-      self, comp: evb.ExecutorValue, arg: Optional[evb.ExecutorValue] = None
+      self, comp: evb.ExecutorValue, arg: evb.ExecutorValue | None = None
   ) -> evb.ExecutorValue:
     """A coroutine that creates a call to `comp` with optional argument `arg`.
 

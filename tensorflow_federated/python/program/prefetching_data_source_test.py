@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Optional
 import unittest
 from unittest import mock
 import uuid
@@ -56,7 +55,7 @@ class _TestDataSourceIterator(data_source_lib.FederatedDataSourceIterator):
   def federated_type(self) -> computation_types.FederatedType:
     return computation_types.FederatedType(np.int32, placements.CLIENTS)
 
-  def select(self, k: Optional[int] = None) -> object:
+  def select(self, k: int | None = None) -> object:
     return [1, 2, 3]
 
   def __eq__(self, other: object) -> bool:

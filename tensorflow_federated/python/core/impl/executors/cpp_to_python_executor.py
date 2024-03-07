@@ -16,7 +16,7 @@
 import asyncio
 from collections.abc import Sequence
 import concurrent
-from typing import NoReturn, Optional
+from typing import NoReturn
 
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.common_libs import tracing
@@ -124,7 +124,7 @@ class CppToPythonExecutorBridge(executor_base.Executor):
   async def create_call(
       self,
       fn: CppToPythonExecutorValue,
-      arg: Optional[CppToPythonExecutorValue] = None,
+      arg: CppToPythonExecutorValue | None = None,
   ) -> CppToPythonExecutorValue:
     fn_ref = fn.reference
     if arg is not None:

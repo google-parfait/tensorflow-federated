@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import collections
-from typing import Optional, Union
+from typing import Union
 
 from absl import logging
 from absl.testing import parameterized
@@ -268,10 +268,10 @@ class IbltFactoryTest(tf.test.TestCase, parameterized.TestCase):
       string_max_bytes: int,
       repetitions: int,
       seed: int,
-      sketch_agg_factory: Optional[factory.UnweightedAggregationFactory] = None,
-      value_tensor_agg_factory: Optional[
-          factory.UnweightedAggregationFactory
-      ] = None,
+      sketch_agg_factory: factory.UnweightedAggregationFactory | None = None,
+      value_tensor_agg_factory: (
+          factory.UnweightedAggregationFactory | None
+      ) = None,
   ):
     iblt_agg_factory = iblt_factory.IbltFactory(
         sketch_agg_factory=sketch_agg_factory,

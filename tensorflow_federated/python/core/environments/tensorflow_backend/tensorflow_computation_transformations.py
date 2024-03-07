@@ -14,7 +14,6 @@
 """A library of transformations for tensorflow computations."""
 
 import itertools
-from typing import Optional
 
 import tensorflow as tf
 
@@ -87,8 +86,8 @@ class DisallowedOpInTensorFlowComputationError(Exception):
 
 def _check_ops(
     proto: computation_pb2.Computation,
-    allowed_op_names: Optional[frozenset[str]] = None,
-    disallowed_op_names: Optional[frozenset[str]] = None,
+    allowed_op_names: frozenset[str] | None = None,
+    disallowed_op_names: frozenset[str] | None = None,
 ):
   """Checks the ops in the TensorFlow computation.
 

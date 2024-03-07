@@ -13,7 +13,6 @@
 # limitations under the License.
 """Library for creating Baseline Task on GLDv2."""
 
-from typing import Optional
 
 import tensorflow as tf
 
@@ -35,10 +34,10 @@ _NUM_CLASSES = 2028
 
 def create_landmark_classification_task_from_datasets(
     train_client_spec: client_spec.ClientSpec,
-    eval_client_spec: Optional[client_spec.ClientSpec],
+    eval_client_spec: client_spec.ClientSpec | None,
     train_data: client_data.ClientData,
     test_data: tf.data.Dataset,
-    debug_seed: Optional[int] = None,
+    debug_seed: int | None = None,
 ) -> baseline_task.BaselineTask:
   """Creates a baseline task of image classification on GLDv2.
 
@@ -104,11 +103,11 @@ def create_landmark_classification_task_from_datasets(
 
 def create_landmark_classification_task(
     train_client_spec: client_spec.ClientSpec,
-    eval_client_spec: Optional[client_spec.ClientSpec] = None,
+    eval_client_spec: client_spec.ClientSpec | None = None,
     use_gld23k: bool = False,
-    cache_dir: Optional[str] = None,
+    cache_dir: str | None = None,
     use_synthetic_data: bool = False,
-    debug_seed: Optional[int] = None,
+    debug_seed: int | None = None,
 ) -> baseline_task.BaselineTask:
   """Creates a baseline task of image classification on GLDv2.
 

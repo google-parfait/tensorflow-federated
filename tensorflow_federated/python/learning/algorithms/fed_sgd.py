@@ -23,7 +23,7 @@ Communication-Efficient Learning of Deep Networks from Decentralized Data
 
 import collections
 from collections.abc import Callable, Mapping
-from typing import Any, Optional, Union
+from typing import Any, Union
 
 import numpy as np
 import tensorflow as tf
@@ -391,9 +391,9 @@ def build_fed_sgd(
     server_optimizer_fn: Union[
         optimizer_base.Optimizer, Callable[[], tf.keras.optimizers.Optimizer]
     ] = DEFAULT_SERVER_OPTIMIZER_FN,
-    model_distributor: Optional[distributors.DistributionProcess] = None,
-    model_aggregator: Optional[factory.WeightedAggregationFactory] = None,
-    metrics_aggregator: Optional[types.MetricsAggregatorType] = None,
+    model_distributor: distributors.DistributionProcess | None = None,
+    model_aggregator: factory.WeightedAggregationFactory | None = None,
+    metrics_aggregator: types.MetricsAggregatorType | None = None,
     use_experimental_simulation_loop: bool = False,
 ) -> learning_process.LearningProcess:
   """Builds a learning process that performs federated SGD.

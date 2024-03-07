@@ -15,7 +15,6 @@
 
 import collections
 import math
-from typing import Optional
 import warnings
 
 import numpy as np
@@ -115,7 +114,7 @@ class DistributedDpSumFactory(factory.UnweightedAggregationFactory):
       auto_l2_clip: bool = False,
       auto_l2_target_quantile: float = 0.5,
       auto_l2_lr: float = 0.2,
-      auto_l2_clip_count_stddev: Optional[float] = None,
+      auto_l2_clip_count_stddev: float | None = None,
   ):
     """Initializes the `DistributedDpSumFactory`.
 

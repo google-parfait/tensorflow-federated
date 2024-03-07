@@ -15,7 +15,7 @@
 
 import datetime
 import typing
-from typing import Optional, Protocol, Union
+from typing import Protocol, Union
 
 from tensorflow_federated.python.learning.programs import evaluation_program_logic
 from tensorflow_federated.python.learning.templates import composers
@@ -46,12 +46,13 @@ class TrainModelProgramLogic(Protocol):
       model_output_manager: release_manager.ReleaseManager[
           release_manager.ReleasableStructure, str
       ],
-      train_metrics_manager: Optional[
+      train_metrics_manager: (
           release_manager.ReleaseManager[
               release_manager.ReleasableStructure, int
           ]
-      ] = None,
-      evaluation_manager: Optional[evaluation_program_logic.EvaluationManager],
+          | None
+      ) = None,
+      evaluation_manager: evaluation_program_logic.EvaluationManager | None,
       evaluation_periodicity: Union[int, datetime.timedelta],
   ) -> None:
     pass

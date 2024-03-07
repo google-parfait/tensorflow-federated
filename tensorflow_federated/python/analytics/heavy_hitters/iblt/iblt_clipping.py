@@ -14,7 +14,6 @@
 """Factory for clipping client strings before aggregation via IBLT."""
 
 import collections
-from typing import Optional
 
 import numpy as np
 import tensorflow as tf
@@ -33,7 +32,7 @@ from tensorflow_federated.python.core.templates import aggregation_process
 @tf.function
 def get_clipped_elements_with_counts(
     dataset: tf.data.Dataset,
-    max_words_per_user: Optional[int] = None,
+    max_words_per_user: int | None = None,
     multi_contribution: bool = True,
     batch_size: int = 1,
     string_max_bytes: int = 10,
@@ -116,7 +115,7 @@ class ClippingIbltFactory(factory.UnweightedAggregationFactory):
   def __init__(
       self,
       inner_iblt_agg: iblt_factory.IbltFactory,
-      max_words_per_user: Optional[int] = None,
+      max_words_per_user: int | None = None,
       multi_contribution: bool = True,
       batch_size: int = 1,
       string_max_bytes: int = 10,

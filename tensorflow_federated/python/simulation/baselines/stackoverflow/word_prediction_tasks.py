@@ -13,7 +13,6 @@
 # limitations under the License.
 """Library for creating word prediction tasks on Stack Overflow."""
 
-from typing import Optional
 
 import tensorflow as tf
 
@@ -32,7 +31,7 @@ from tensorflow_federated.python.simulation.datasets import stackoverflow
 
 def create_word_prediction_task_from_datasets(
     train_client_spec: client_spec.ClientSpec,
-    eval_client_spec: Optional[client_spec.ClientSpec],
+    eval_client_spec: client_spec.ClientSpec | None,
     sequence_length: int,
     vocab: list[str],
     num_out_of_vocab_buckets: int,
@@ -146,11 +145,11 @@ def create_word_prediction_task_from_datasets(
 
 def create_word_prediction_task(
     train_client_spec: client_spec.ClientSpec,
-    eval_client_spec: Optional[client_spec.ClientSpec] = None,
+    eval_client_spec: client_spec.ClientSpec | None = None,
     sequence_length: int = constants.DEFAULT_SEQUENCE_LENGTH,
     vocab_size: int = constants.DEFAULT_WORD_VOCAB_SIZE,
     num_out_of_vocab_buckets: int = 1,
-    cache_dir: Optional[str] = None,
+    cache_dir: str | None = None,
     use_synthetic_data: bool = False,
 ) -> baseline_task.BaselineTask:
   """Creates a baseline task for next-word prediction on Stack Overflow.

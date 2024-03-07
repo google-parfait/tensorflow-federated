@@ -17,7 +17,6 @@ import asyncio
 from collections.abc import Awaitable, Callable, Mapping
 import struct
 import threading
-from typing import Optional
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl.context_stack import get_context_stack
@@ -277,7 +276,7 @@ class PrefetchingDataSourceIterator(
     """The type of the data returned by calling `select`."""
     return self._iterator.federated_type
 
-  def select(self, k: Optional[int] = None) -> object:
+  def select(self, k: int | None = None) -> object:
     """Returns a new selection of data from this iterator.
 
     Args:

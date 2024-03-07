@@ -16,7 +16,6 @@
 import collections
 from collections.abc import Callable, Iterable
 import inspect
-from typing import Optional
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
@@ -77,7 +76,7 @@ def _wrap_polymorphic(
     name = None
 
   def _polymorphic_wrapper(
-      parameter_type: computation_types.Type, unpack: Optional[bool]
+      parameter_type: computation_types.Type, unpack: bool | None
   ):
     return wrapper_fn(fn, parameter_type, unpack=unpack, name=name)
 
@@ -117,7 +116,7 @@ def _wrap_concrete(
 
 def _parameter_type(
     parameters, parameter_types: tuple[computation_types.Type, ...]
-) -> Optional[computation_types.Type]:
+) -> computation_types.Type | None:
   """Bundle any user-provided parameter types into a single argument type."""
   parameter_names = [parameter.name for parameter in parameters]
   if not parameter_types and not parameters:
@@ -473,7 +472,7 @@ class ComputationWrapper:
 
     def _to_types(
         objs: Iterable[object],
-    ) -> tuple[Optional[computation_types.Type], ...]:
+    ) -> tuple[computation_types.Type | None, ...]:
       result = []
       for obj in objs:
         if obj is not None:

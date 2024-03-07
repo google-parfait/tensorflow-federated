@@ -24,7 +24,7 @@ duration of time based on the `evaluation_period` parameter.
 import asyncio
 from collections.abc import Coroutine
 import datetime
-from typing import NamedTuple, Optional, Union
+from typing import NamedTuple, Union
 
 from absl import logging
 
@@ -43,8 +43,8 @@ class ProgramState(NamedTuple):
 
   state: composers.LearningAlgorithmState
   round_number: int
-  next_evaluation_timestamp_seconds: Optional[int]
-  data_iterator: Optional[data_source.FederatedDataSourceIterator]
+  next_evaluation_timestamp_seconds: int | None
+  data_iterator: data_source.FederatedDataSourceIterator | None
 
 
 class TaskManager:
@@ -84,7 +84,7 @@ class TaskManager:
 async def train_model(
     *,
     train_process: learning_process.LearningProcess,
-    initial_train_state: Optional[composers.LearningAlgorithmState] = None,
+    initial_train_state: composers.LearningAlgorithmState | None = None,
     train_data_source: data_source.FederatedDataSource,
     train_per_round_clients: int,
     train_total_rounds: int,
@@ -92,10 +92,11 @@ async def train_model(
     model_output_manager: release_manager.ReleaseManager[
         release_manager.ReleasableStructure, str
     ],
-    train_metrics_manager: Optional[
+    train_metrics_manager: (
         release_manager.ReleaseManager[release_manager.ReleasableStructure, int]
-    ] = None,
-    evaluation_manager: Optional[evaluation_program_logic.EvaluationManager],
+        | None
+    ) = None,
+    evaluation_manager: evaluation_program_logic.EvaluationManager | None,
     evaluation_periodicity: Union[int, datetime.timedelta],
 ) -> None:
   """Runs specified rounds of training and optionally evaluates the model.

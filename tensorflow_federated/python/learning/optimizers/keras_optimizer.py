@@ -14,7 +14,7 @@
 """Optimizer adapter for Keras optimizer."""
 
 from collections.abc import Callable
-from typing import Any, Optional, Union
+from typing import Any, Union
 
 import tensorflow as tf
 
@@ -107,8 +107,8 @@ def build_or_verify_tff_optimizer(
     optimizer_fn: Union[
         Callable[[], tf.keras.optimizers.Optimizer], optimizer.Optimizer
     ],
-    trainable_weights: Optional[Any] = None,
-    disjoint_init_and_next: Optional[bool] = None,
+    trainable_weights: Any | None = None,
+    disjoint_init_and_next: bool | None = None,
 ) -> optimizer.Optimizer:
   """Returns `tff.learning.optimizers.Optimizer` for `optimizer_fn`.
 

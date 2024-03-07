@@ -15,7 +15,7 @@
 
 import abc
 from collections.abc import Callable, Iterable, Sequence
-from typing import Any, Optional, Union
+from typing import Any
 
 from absl import logging
 import numpy as np
@@ -180,8 +180,8 @@ class ClientData(metaclass=abc.ABCMeta):
 
   def datasets(
       self,
-      limit_count: Optional[int] = None,
-      seed: Optional[Union[int, Sequence[int]]] = None,
+      limit_count: int | None = None,
+      seed: int | Sequence[int] | None = None,
   ) -> Iterable[tf.data.Dataset]:
     """Yields the `tf.data.Dataset` for each client in random order.
 
@@ -208,7 +208,7 @@ class ClientData(metaclass=abc.ABCMeta):
       yield dataset
 
   def create_tf_dataset_from_all_clients(
-      self, seed: Optional[Union[int, Sequence[int]]] = None
+      self, seed: int | Sequence[int] | None = None
   ) -> tf.data.Dataset:
     """Creates a new `tf.data.Dataset` containing _all_ client examples.
 
@@ -295,7 +295,7 @@ class ClientData(metaclass=abc.ABCMeta):
       cls,
       client_data: 'ClientData',
       num_test_clients: int,
-      seed: Optional[Union[int, Sequence[int]]] = None,
+      seed: int | Sequence[int] | None = None,
   ) -> tuple['ClientData', 'ClientData']:
     """Returns a pair of (train, test) `ClientData`.
 

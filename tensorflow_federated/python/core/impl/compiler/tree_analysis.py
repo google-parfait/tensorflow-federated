@@ -14,7 +14,7 @@
 """A library of static analysis functions for ASTs."""
 
 from collections.abc import Callable
-from typing import Optional, Union
+from typing import Union
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl.compiler import building_block_analysis
@@ -65,7 +65,7 @@ _BuildingBlockPredicate = Callable[
 
 def count(
     tree: building_blocks.ComputationBuildingBlock,
-    predicate: Optional[_BuildingBlockPredicate] = None,
+    predicate: _BuildingBlockPredicate | None = None,
 ) -> int:
   """Returns the number of building blocks in `tree` matching `predicate`.
 

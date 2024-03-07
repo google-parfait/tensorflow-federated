@@ -16,7 +16,6 @@
 import collections
 import json
 import os.path
-from typing import Optional
 
 import tensorflow as tf
 
@@ -130,7 +129,7 @@ def load_data(cache_dir=None):
   return train_client_data, heldout_client_data, test_client_data
 
 
-def load_word_counts(cache_dir=None, vocab_size: Optional[int] = None):
+def load_word_counts(cache_dir=None, vocab_size: int | None = None):
   """Loads the word counts for the Stack Overflow dataset.
 
   Args:

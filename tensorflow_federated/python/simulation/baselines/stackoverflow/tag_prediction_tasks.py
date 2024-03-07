@@ -13,7 +13,6 @@
 # limitations under the License.
 """Library for creating tag prediction tasks on Stack Overflow."""
 
-from typing import Optional
 
 import tensorflow as tf
 
@@ -40,7 +39,7 @@ def _build_logistic_regression_model(input_size: int, output_size: int):
 
 def create_tag_prediction_task_from_datasets(
     train_client_spec: client_spec.ClientSpec,
-    eval_client_spec: Optional[client_spec.ClientSpec],
+    eval_client_spec: client_spec.ClientSpec | None,
     word_vocab: list[str],
     tag_vocab: list[str],
     train_data: client_data.ClientData,
@@ -106,10 +105,10 @@ def create_tag_prediction_task_from_datasets(
 
 def create_tag_prediction_task(
     train_client_spec: client_spec.ClientSpec,
-    eval_client_spec: Optional[client_spec.ClientSpec] = None,
+    eval_client_spec: client_spec.ClientSpec | None = None,
     word_vocab_size: int = constants.DEFAULT_WORD_VOCAB_SIZE,
     tag_vocab_size: int = constants.DEFAULT_TAG_VOCAB_SIZE,
-    cache_dir: Optional[str] = None,
+    cache_dir: str | None = None,
     use_synthetic_data: bool = False,
 ) -> baseline_task.BaselineTask:
   """Creates a baseline task for tag prediction on Stack Overflow.

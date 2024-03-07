@@ -13,7 +13,6 @@
 # limitations under the License.
 """Iterative process for quantile estimation."""
 
-from typing import Optional
 
 import numpy as np
 import tensorflow_privacy as tfp
@@ -108,9 +107,9 @@ class PrivateQuantileEstimationProcess(estimation_process.EstimationProcess):
   def __init__(
       self,
       quantile_estimator_query: tfp.QuantileEstimatorQuery,
-      record_aggregation_factory: Optional[
-          factory.UnweightedAggregationFactory
-      ] = None,
+      record_aggregation_factory: (
+          factory.UnweightedAggregationFactory | None
+      ) = None,
   ):
     """Initializes `PrivateQuantileEstimationProcess`.
 

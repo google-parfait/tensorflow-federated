@@ -13,7 +13,6 @@
 # limitations under the License.
 """Configuration classes for client datasets."""
 
-from typing import Optional
 
 import attrs
 
@@ -51,14 +50,14 @@ class ClientSpec:
       validator=[attrs.validators.instance_of(int), _check_positive],
       converter=int,
   )
-  max_elements: Optional[int] = attrs.field(
+  max_elements: int | None = attrs.field(
       default=None,
       validator=[
           attrs.validators.optional(attrs.validators.instance_of(int)),
           attrs.validators.optional(_check_positive),
       ],
   )
-  shuffle_buffer_size: Optional[int] = attrs.field(
+  shuffle_buffer_size: int | None = attrs.field(
       default=None,
       validator=[
           attrs.validators.optional(attrs.validators.instance_of(int)),

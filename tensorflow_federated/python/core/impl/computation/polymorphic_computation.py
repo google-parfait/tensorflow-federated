@@ -14,7 +14,6 @@
 """Utilities for Python functions, defuns, and other types of callables."""
 
 from collections.abc import Callable
-from typing import Optional
 
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.computation import computation_impl
@@ -28,7 +27,7 @@ class PolymorphicComputation:
   def __init__(
       self,
       concrete_function_factory: Callable[
-          [computation_types.Type, Optional[bool]],
+          [computation_types.Type, bool | None],
           computation_impl.ConcreteComputation,
       ],
       infer_type_fn: Callable[[object], computation_types.Type],
@@ -51,7 +50,7 @@ class PolymorphicComputation:
     self._concrete_function_cache = {}
 
   def fn_for_argument_type(
-      self, arg_type: computation_types.Type, unpack: Optional[bool] = None
+      self, arg_type: computation_types.Type, unpack: bool | None = None
   ) -> computation_impl.ConcreteComputation:
     """Concretizes this function with the provided `arg_type`.
 

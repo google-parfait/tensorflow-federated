@@ -44,7 +44,7 @@ Federated Reconstruction: Partially Local Federated Learning
 import collections
 from collections.abc import Callable
 import functools
-from typing import Any, Optional, Union
+from typing import Any, Union
 
 import numpy as np
 import tensorflow as tf
@@ -93,7 +93,7 @@ def _build_reconstruction_client_work(
     model_fn: ModelFn,
     *,  # Callers should use keyword args for below.
     loss_fn: LossFn,
-    metrics_fn: Optional[MetricsFn],
+    metrics_fn: MetricsFn | None,
     client_optimizer_fn: OptimizerFn,
     reconstruction_optimizer_fn: OptimizerFn,
     dataset_split_fn: reconstruction_model.ReconstructionDatasetSplitFn,
@@ -383,7 +383,7 @@ def build_fed_recon(
     model_fn: Callable[[], ReconstructionModel],
     *,  # Callers pass below args by name.
     loss_fn: LossFn,
-    metrics_fn: Optional[MetricsFn] = None,
+    metrics_fn: MetricsFn | None = None,
     server_optimizer_fn: OptimizerFn = functools.partial(
         tf.keras.optimizers.SGD, 1.0
     ),
@@ -393,18 +393,19 @@ def build_fed_recon(
     reconstruction_optimizer_fn: OptimizerFn = functools.partial(
         tf.keras.optimizers.SGD, 0.1
     ),
-    dataset_split_fn: Optional[
-        reconstruction_model.ReconstructionDatasetSplitFn
-    ] = None,
-    client_weighting: Optional[client_weight_lib.ClientWeightType] = None,
-    model_distributor: Optional[distributors.DistributionProcess] = None,
-    model_aggregator_factory: Optional[AggregationFactory] = None,
-    metrics_aggregator: Optional[
+    dataset_split_fn: (
+        reconstruction_model.ReconstructionDatasetSplitFn | None
+    ) = None,
+    client_weighting: client_weight_lib.ClientWeightType | None = None,
+    model_distributor: distributors.DistributionProcess | None = None,
+    model_aggregator_factory: AggregationFactory | None = None,
+    metrics_aggregator: (
         Callable[
             [MetricFinalizersType, computation_types.StructWithPythonType],
             computation_base.Computation,
         ]
-    ] = metrics_aggregators.sum_then_finalize,
+        | None
+    ) = metrics_aggregators.sum_then_finalize,
 ) -> learning_process.LearningProcess:
   # pylint: enable=g-bare-generic
   """Builds the IterativeProcess for optimization using FedRecon.

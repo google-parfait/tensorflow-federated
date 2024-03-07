@@ -14,7 +14,6 @@
 """Definitions of all intrinsic for use within the system."""
 
 import enum
-from typing import Optional
 
 import numpy as np
 
@@ -51,8 +50,8 @@ class IntrinsicDef:
       name: str,
       uri: str,
       type_signature: computation_types.Type,
-      aggregation_kind: Optional[AggregationKind] = None,
-      broadcast_kind: Optional[BroadcastKind] = None,
+      aggregation_kind: AggregationKind | None = None,
+      broadcast_kind: BroadcastKind | None = None,
   ):
     """Constructs a definition of an intrinsic.
 
@@ -91,11 +90,11 @@ class IntrinsicDef:
     return self._type_signature
 
   @property
-  def aggregation_kind(self) -> Optional[AggregationKind]:
+  def aggregation_kind(self) -> AggregationKind | None:
     return self._aggregation_kind
 
   @property
-  def broadcast_kind(self) -> Optional[BroadcastKind]:
+  def broadcast_kind(self) -> BroadcastKind | None:
     return self._broadcast_kind
 
   def __str__(self):
@@ -739,7 +738,7 @@ SEQUENCE_SUM = IntrinsicDef(
 )
 
 
-def uri_to_intrinsic_def(uri) -> Optional[IntrinsicDef]:
+def uri_to_intrinsic_def(uri) -> IntrinsicDef | None:
   return _intrinsic_registry.get(uri)
 
 

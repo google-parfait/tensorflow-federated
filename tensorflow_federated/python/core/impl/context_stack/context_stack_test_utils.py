@@ -17,7 +17,7 @@ import asyncio
 from collections.abc import Callable, Iterable
 import contextlib
 import functools
-from typing import Optional, Union
+from typing import Union
 
 from absl.testing import parameterized
 
@@ -45,7 +45,7 @@ def test_environment():
 
 def with_context(
     context_fn: _ContextFactory,
-    environment_fn: Optional[_EnvironmentFactory] = None,
+    environment_fn: _EnvironmentFactory | None = None,
 ):
   """Returns a decorator for running a test in a context.
 
@@ -63,7 +63,7 @@ def with_context(
     @contextlib.contextmanager
     def install_context(
         context_fn: _ContextFactory,
-        environment_fn: Optional[_EnvironmentFactory] = None,
+        environment_fn: _EnvironmentFactory | None = None,
     ):
       context = context_fn()
       with context_stack_impl.context_stack.install(context):
@@ -117,7 +117,7 @@ def with_contexts(*named_contexts):
       async def wrapper(
           self,
           context_fn: _ContextFactory,
-          environment_fn: Optional[_EnvironmentFactory] = None,
+          environment_fn: _EnvironmentFactory | None = None,
       ):
         decorator = with_context(context_fn, environment_fn)
         decorated_fn = decorator(fn)
@@ -130,7 +130,7 @@ def with_contexts(*named_contexts):
       def wrapper(
           self,
           context_fn: _ContextFactory,
-          environment_fn: Optional[_EnvironmentFactory] = None,
+          environment_fn: _EnvironmentFactory | None = None,
       ):
         decorator = with_context(context_fn, environment_fn)
         decorated_fn = decorator(fn)

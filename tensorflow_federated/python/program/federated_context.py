@@ -14,7 +14,7 @@
 """Defines an abstract interface for representing a federated context."""
 
 import abc
-from typing import Optional, Union
+from typing import Union
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl.computation import computation_base
@@ -141,7 +141,7 @@ class FederatedContext(context_base.SyncContext):
   def invoke(
       self,
       comp: computation_base.Computation,
-      arg: Optional[ComputationArgValue],
+      arg: ComputationArgValue | None,
   ) -> structure_utils.Structure[value_reference.MaterializableValueReference]:
     """Invokes the `comp` with the argument `arg`.
 

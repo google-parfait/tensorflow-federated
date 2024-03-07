@@ -14,7 +14,6 @@
 """Defines the implementation of the base Computation interface."""
 
 from collections.abc import Callable
-from typing import Optional
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -86,8 +85,8 @@ class ConcreteComputation(computation_base.Computation):
       self,
       computation_proto: pb.Computation,
       context_stack: context_stack_base.ContextStack,
-      annotated_type: Optional[computation_types.FunctionType] = None,
-      transform_result: Optional[Callable[[object], object]] = None,
+      annotated_type: computation_types.FunctionType | None = None,
+      transform_result: Callable[[object], object] | None = None,
   ):
     """Constructs a new instance of ConcreteComputation from the computation_proto.
 

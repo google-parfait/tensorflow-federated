@@ -13,7 +13,6 @@
 # limitations under the License.
 """Abstractions for finalization in learning algorithms."""
 
-from typing import Optional
 
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.computation import computation_base
@@ -43,8 +42,8 @@ class FinalizerProcess(measured_process.MeasuredProcess):
       initialize_fn: computation_base.Computation,
       next_fn: computation_base.Computation,
       *,
-      get_hparams_fn: Optional[computation_base.Computation] = None,
-      set_hparams_fn: Optional[computation_base.Computation] = None,
+      get_hparams_fn: computation_base.Computation | None = None,
+      set_hparams_fn: computation_base.Computation | None = None,
   ):
     """Initializes a `FinalizerProcess`.
 

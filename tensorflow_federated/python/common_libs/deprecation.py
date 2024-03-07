@@ -15,7 +15,7 @@
 
 from collections.abc import Callable
 import functools
-from typing import Optional, TypeVar
+from typing import TypeVar
 import warnings
 
 _T = TypeVar('_T')
@@ -26,7 +26,7 @@ _T = TypeVar('_T')
 def deprecated(
     msg: str,
     *,
-    category: Optional[type[Warning]] = DeprecationWarning,
+    category: type[Warning | None] = DeprecationWarning,
     stacklevel: int = 1,
 ) -> Callable[[_T], _T]:
   """Indicate that a class, function or overload is deprecated.

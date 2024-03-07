@@ -15,7 +15,6 @@
 
 from collections.abc import Sequence
 import dataclasses
-from typing import Optional
 
 import tensorflow as tf
 
@@ -190,7 +189,7 @@ def _create_dtensor_executor(mesh: tf.experimental.dtensor.Mesh):
 def _get_distributed_executor_factory(
     default_num_clients: int = 0,
     max_concurrent_computation_calls: int = -1,
-    distributed_config: Optional[DistributedConfiguration] = None,
+    distributed_config: DistributedConfiguration | None = None,
 ) -> executor_factory.ExecutorFactory:
   """Return an execution factory which constructs DTensor based executor."""
   server_leaf_executor_fn = _create_tensorflow_backend_execution_stack
@@ -218,7 +217,7 @@ def create_sync_experimental_distributed_cpp_execution_context(
     default_num_clients: int = 0,
     max_concurrent_computation_calls: int = -1,
     stream_structs: bool = False,
-    distributed_config: Optional[DistributedConfiguration] = None,
+    distributed_config: DistributedConfiguration | None = None,
 ) -> sync_execution_context.SyncExecutionContext:
   """Creates a local execution context backed by TFF-C++ runtime.
 
@@ -255,7 +254,7 @@ def set_sync_experimental_distributed_cpp_execution_context(
     default_num_clients: int = 0,
     max_concurrent_computation_calls: int = -1,
     stream_structs: bool = False,
-    distributed_config: Optional[DistributedConfiguration] = None,
+    distributed_config: DistributedConfiguration | None = None,
 ) -> None:
   """Sets a default local sync execution context backed by TFF-C++ runtime.
 
@@ -285,7 +284,7 @@ def create_async_experimental_distributed_cpp_execution_context(
     default_num_clients: int = 0,
     max_concurrent_computation_calls: int = -1,
     stream_structs: bool = False,
-    distributed_config: Optional[DistributedConfiguration] = None,
+    distributed_config: DistributedConfiguration | None = None,
 ) -> async_execution_context.AsyncExecutionContext:
   """Creates a local async execution context backed by TFF-C++ runtime.
 
@@ -326,7 +325,7 @@ def set_async_experimental_distributed_cpp_execution_context(
     default_num_clients: int = 0,
     max_concurrent_computation_calls: int = -1,
     stream_structs: bool = False,
-    distributed_config: Optional[DistributedConfiguration] = None,
+    distributed_config: DistributedConfiguration | None = None,
 ) -> None:
   """Sets a local execution context backed by TFF-C++ runtime.
 

@@ -15,7 +15,7 @@
 
 import collections
 from collections.abc import Callable
-from typing import Any, Optional, Union
+from typing import Any, Union
 
 import numpy as np
 import tensorflow as tf
@@ -30,7 +30,7 @@ PreprocessFnType = Union[
 
 
 def _get_element_spec(
-    data: CentralOrClientData, preprocess_fn: Optional[PreprocessFnType] = None
+    data: CentralOrClientData, preprocess_fn: PreprocessFnType | None = None
 ):
   """Determines the element type of a dataset after preprocessing."""
   if isinstance(data, client_data.ClientData):
@@ -73,9 +73,9 @@ class BaselineTaskDatasets:
       self,
       train_data: client_data.ClientData,
       test_data: CentralOrClientData,
-      validation_data: Optional[CentralOrClientData] = None,
-      train_preprocess_fn: Optional[PreprocessFnType] = None,
-      eval_preprocess_fn: Optional[PreprocessFnType] = None,
+      validation_data: CentralOrClientData | None = None,
+      train_preprocess_fn: PreprocessFnType | None = None,
+      eval_preprocess_fn: PreprocessFnType | None = None,
   ):
     """Creates a `BaselineTaskDatasets`.
 
@@ -146,15 +146,15 @@ class BaselineTaskDatasets:
     return self._test_data
 
   @property
-  def validation_data(self) -> Optional[CentralOrClientData]:
+  def validation_data(self) -> CentralOrClientData | None:
     return self._validation_data
 
   @property
-  def train_preprocess_fn(self) -> Optional[PreprocessFnType]:
+  def train_preprocess_fn(self) -> PreprocessFnType | None:
     return self._train_preprocess_fn
 
   @property
-  def eval_preprocess_fn(self) -> Optional[PreprocessFnType]:
+  def eval_preprocess_fn(self) -> PreprocessFnType | None:
     return self._eval_preprocess_fn
 
   @property
@@ -196,7 +196,7 @@ class BaselineTaskDatasets:
       self,
       num_clients: int,
       replace: bool = False,
-      random_seed: Optional[int] = None,
+      random_seed: int | None = None,
   ) -> list[tf.data.Dataset]:
     """Samples training clients uniformly at random.
 

@@ -14,7 +14,6 @@
 """A library of (de)serialization functions for computation types."""
 
 from collections.abc import Mapping, Sequence
-from typing import Optional
 import weakref
 
 import numpy as np
@@ -83,7 +82,7 @@ _Dimensions = Sequence[int]
 
 def _serialize_shape(
     shape: array_shape.ArrayShape,
-) -> tuple[Optional[_Dimensions], bool]:
+) -> tuple[_Dimensions | None, bool]:
   if shape is None:
     dims = None
     unknown_rank = True
@@ -94,7 +93,7 @@ def _serialize_shape(
 
 
 def _deserialize_shape(
-    dims: Optional[_Dimensions], unknown_rank: bool
+    dims: _Dimensions | None, unknown_rank: bool
 ) -> array_shape.ArrayShape:
   if unknown_rank:
     return None

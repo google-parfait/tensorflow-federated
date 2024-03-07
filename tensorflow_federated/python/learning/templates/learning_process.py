@@ -14,7 +14,7 @@
 """Defines a template for stateful processes used for learning-oriented tasks."""
 
 import typing
-from typing import Any, NamedTuple, Optional, Union
+from typing import Any, NamedTuple, Union
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl.computation import computation_base
@@ -96,8 +96,8 @@ class LearningProcess(iterative_process.IterativeProcess):
       get_model_weights: computation_base.Computation,
       set_model_weights: computation_base.Computation,
       *,
-      get_hparams_fn: Optional[computation_base.Computation] = None,
-      set_hparams_fn: Optional[computation_base.Computation] = None,
+      get_hparams_fn: computation_base.Computation | None = None,
+      set_hparams_fn: computation_base.Computation | None = None,
   ):
     """Creates a `tff.learning.templates.LearningProcess`.
 

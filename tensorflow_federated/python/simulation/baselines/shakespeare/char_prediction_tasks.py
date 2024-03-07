@@ -13,7 +13,6 @@
 # limitations under the License.
 """Library for creating baseline tasks on Shakespeare."""
 
-from typing import Optional
 
 import tensorflow as tf
 
@@ -36,7 +35,7 @@ DEFAULT_SEQUENCE_LENGTH = 80
 
 def create_character_prediction_task_from_datasets(
     train_client_spec: client_spec.ClientSpec,
-    eval_client_spec: Optional[client_spec.ClientSpec],
+    eval_client_spec: client_spec.ClientSpec | None,
     sequence_length: int,
     train_data: client_data.ClientData,
     test_data: client_data.ClientData,
@@ -103,9 +102,9 @@ def create_character_prediction_task_from_datasets(
 
 def create_character_prediction_task(
     train_client_spec: client_spec.ClientSpec,
-    eval_client_spec: Optional[client_spec.ClientSpec] = None,
+    eval_client_spec: client_spec.ClientSpec | None = None,
     sequence_length: int = DEFAULT_SEQUENCE_LENGTH,
-    cache_dir: Optional[str] = None,
+    cache_dir: str | None = None,
     use_synthetic_data: bool = False,
 ) -> baseline_task.BaselineTask:
   """Creates a baseline task for next-character prediction on Shakespeare.

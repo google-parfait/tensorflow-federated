@@ -13,7 +13,6 @@
 # limitations under the License.
 """A native form compiler for the native backend."""
 
-from typing import Optional
 
 from absl import logging
 import tensorflow as tf
@@ -30,7 +29,7 @@ from tensorflow_federated.python.core.impl.computation import computation_impl
 def transform_to_native_form(
     comp: computation_impl.ConcreteComputation,
     transform_math_to_tf: bool = False,
-    grappler_config: Optional[tf.compat.v1.ConfigProto] = None,
+    grappler_config: tf.compat.v1.ConfigProto | None = None,
 ) -> computation_impl.ConcreteComputation:
   """Compiles a computation for execution in the TFF native runtime.
 

@@ -14,7 +14,7 @@
 """Factory for string aggregation using IBLT."""
 
 import collections
-from typing import Any, Optional
+from typing import Any
 
 import attrs
 import numpy as np
@@ -101,10 +101,10 @@ class IbltFactory(factory.UnweightedAggregationFactory):
       encoding: _CharacterEncoding = _CharacterEncoding.UTF8,
       repetitions: int,
       seed: int = 0,
-      sketch_agg_factory: Optional[factory.UnweightedAggregationFactory] = None,
-      value_tensor_agg_factory: Optional[
-          factory.UnweightedAggregationFactory
-      ] = None,
+      sketch_agg_factory: factory.UnweightedAggregationFactory | None = None,
+      value_tensor_agg_factory: (
+          factory.UnweightedAggregationFactory | None
+      ) = None,
   ) -> None:
     """Initializes IbltFactory.
 

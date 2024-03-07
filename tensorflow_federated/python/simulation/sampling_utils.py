@@ -14,7 +14,7 @@
 """Utilities for sampling clients, either randomly or pseudo-randomly."""
 
 from collections.abc import Callable, Sequence
-from typing import Optional, TypeVar
+from typing import TypeVar
 
 import numpy as np
 
@@ -31,7 +31,7 @@ T = TypeVar('T')
 def build_uniform_sampling_fn(
     sample_range: Sequence[T],
     replace: bool = False,
-    random_seed: Optional[int] = None,
+    random_seed: int | None = None,
 ) -> Callable[[int, int], list[T]]:
   """Builds the function for sampling from the input iterator at each round.
 

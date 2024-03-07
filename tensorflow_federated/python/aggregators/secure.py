@@ -17,7 +17,7 @@ import collections
 import enum
 import math
 import typing
-from typing import Optional, Union
+from typing import Union
 
 import numpy as np
 import tensorflow as tf
@@ -288,7 +288,7 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
   def __init__(
       self,
       upper_bound_threshold: ThresholdEstType,
-      lower_bound_threshold: Optional[ThresholdEstType] = None,
+      lower_bound_threshold: ThresholdEstType | None = None,
   ):
     """Initializes `SecureSumFactory`.
 

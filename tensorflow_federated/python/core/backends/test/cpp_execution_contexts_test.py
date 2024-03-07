@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import inspect
-from typing import NoReturn, Optional
+from typing import NoReturn
 import unittest
 
 from absl.testing import absltest
@@ -47,8 +47,8 @@ def _assert_signature_equal(first_obj, second_obj):
     )
 
 
-def assert_value_equal(a: object, b: object) -> Optional[NoReturn]:
-  def _assert_value_equal(a: object, b: object) -> Optional[NoReturn]:
+def assert_value_equal(a: object, b: object) -> NoReturn | None:
+  def _assert_value_equal(a: object, b: object) -> NoReturn | None:
     if isinstance(a, np.ndarray) and isinstance(b, np.ndarray):
       np.testing.assert_array_equal(a, b)
     elif a != b:

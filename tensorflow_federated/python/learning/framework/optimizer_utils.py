@@ -14,7 +14,7 @@
 """Common building blocks for federated optimization algorithms."""
 
 from collections.abc import Sequence
-from typing import Any, NamedTuple, Optional, Union
+from typing import Any, NamedTuple, Union
 
 import numpy as np
 import tensorflow as tf
@@ -44,7 +44,7 @@ class ClientOutput(NamedTuple):
   weights_delta: Any
   weights_delta_weight: Any
   model_output: Any
-  optimizer_output: Optional[Any] = None
+  optimizer_output: Any | None = None
 
 
 class ServerState(NamedTuple):

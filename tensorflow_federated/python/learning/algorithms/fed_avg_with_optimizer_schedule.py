@@ -15,7 +15,7 @@
 
 import collections
 from collections.abc import Callable
-from typing import Optional, Union
+from typing import Union
 
 import numpy as np
 import tensorflow as tf
@@ -171,9 +171,9 @@ def build_weighted_fed_avg_with_optimizer_schedule(
         Callable[[], tf.keras.optimizers.Optimizer],
         None,
     ] = None,
-    model_distributor: Optional[distributors.DistributionProcess] = None,
-    model_aggregator: Optional[factory.WeightedAggregationFactory] = None,
-    metrics_aggregator: Optional[types.MetricsAggregatorType] = None,
+    model_distributor: distributors.DistributionProcess | None = None,
+    model_aggregator: factory.WeightedAggregationFactory | None = None,
+    metrics_aggregator: types.MetricsAggregatorType | None = None,
     use_experimental_simulation_loop: bool = False,
 ) -> learning_process.LearningProcess:
   """Builds a learning process for FedAvg with client optimizer scheduling.

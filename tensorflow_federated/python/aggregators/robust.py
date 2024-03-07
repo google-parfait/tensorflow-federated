@@ -17,7 +17,7 @@ import collections
 from collections.abc import Callable
 import math
 import typing
-from typing import Optional, TypeVar, Union
+from typing import TypeVar, Union
 
 import numpy as np
 import tensorflow as tf
@@ -115,9 +115,9 @@ def _check_norm_process(
 def clipping_factory(
     clipping_norm: Union[float, estimation_process.EstimationProcess],
     inner_agg_factory: factory.AggregationFactory,
-    clipped_count_sum_factory: Optional[
-        factory.UnweightedAggregationFactory
-    ] = None,
+    clipped_count_sum_factory: (
+        factory.UnweightedAggregationFactory | None
+    ) = None,
 ) -> factory.AggregationFactory:
   """Creates an aggregation factory to perform L2 clipping.
 
@@ -190,9 +190,9 @@ def zeroing_factory(
     zeroing_norm: Union[float, estimation_process.EstimationProcess],
     inner_agg_factory: _T,
     norm_order: float = math.inf,
-    zeroed_count_sum_factory: Optional[
-        factory.UnweightedAggregationFactory
-    ] = None,
+    zeroed_count_sum_factory: (
+        factory.UnweightedAggregationFactory | None
+    ) = None,
 ) -> _T:
   """Creates an aggregation factory to perform zeroing.
 

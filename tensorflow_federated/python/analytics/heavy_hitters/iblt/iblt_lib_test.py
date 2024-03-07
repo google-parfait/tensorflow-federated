@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import functools
-from typing import Optional, Union
+from typing import Union
 
 from absl.testing import parameterized
 import numpy as np
@@ -44,10 +44,10 @@ class IbltTest(tf.test.TestCase, parameterized.TestCase):
       *,
       seed: int = 0,
       repetitions: int = iblt_lib.DEFAULT_REPETITIONS,
-      hash_family: Optional[str] = None,
-      hash_family_params: Optional[dict[str, Union[int, float]]] = None,
+      hash_family: str | None = None,
+      hash_family_params: dict[str, Union[int, float | None]] = None,
       field_size: int = iblt_lib.DEFAULT_FIELD_SIZE,
-  ) -> dict[Optional[str], int]:
+  ) -> dict[str | None, int]:
     iblt_decoder = iblt_lib.IbltDecoder(
         iblt=iblt_table,
         capacity=capacity,
@@ -86,10 +86,10 @@ class IbltTest(tf.test.TestCase, parameterized.TestCase):
       *,
       seed: int = 0,
       repetitions: int = iblt_lib.DEFAULT_REPETITIONS,
-      hash_family: Optional[str] = None,
-      hash_family_params: Optional[dict[str, Union[int, float]]] = None,
+      hash_family: str | None = None,
+      hash_family_params: dict[str, Union[int, float | None]] = None,
       field_size: int = iblt_lib.DEFAULT_FIELD_SIZE,
-  ) -> dict[Optional[str], int]:
+  ) -> dict[str | None, int]:
     decoding_graph = iblt_lib.decode_iblt_tf(
         iblt=iblt_table,
         capacity=capacity,

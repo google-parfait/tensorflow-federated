@@ -20,7 +20,6 @@ with IBLTs.
 import abc
 import enum
 import math
-from typing import Optional
 
 from absl import logging
 import numpy as np
@@ -95,7 +94,7 @@ def create_chunker(
     *,
     string_max_bytes: int,
     encoding: CharacterEncoding = CharacterEncoding.UTF8,
-    max_chunk_value: Optional[int] = None,
+    max_chunk_value: int | None = None,
     dtype: tf.dtypes.DType = _DEFAULT_DTYPE,
 ) -> Chunker:
   """Creates a `Chunker` for the given specification.
@@ -155,7 +154,7 @@ class BinaryChunker(Chunker):
       self,
       *,
       string_max_bytes: int,
-      max_chunk_value: Optional[int] = None,
+      max_chunk_value: int | None = None,
       dtype: tf.dtypes.DType = _DEFAULT_DTYPE,
   ):
     """Initializes the chunker.
@@ -462,7 +461,7 @@ class UTF8Chunker(Chunker):
       self,
       string_max_bytes: int,
       *,
-      max_chunk_value: Optional[int] = None,
+      max_chunk_value: int | None = None,
       dtype: tf.dtypes.DType = _DEFAULT_DTYPE,
   ):
     """Initializes the chunker.

@@ -13,7 +13,6 @@
 # limitations under the License.
 """The private clipping factory for hierarchical histogram computation."""
 
-from typing import Optional
 
 import numpy as np
 import tensorflow as tf
@@ -62,7 +61,7 @@ class HistogramClippingSumFactory(factory.UnweightedAggregationFactory):
       self,
       clip_mechanism: str = 'sub-sampling',
       max_records_per_user: int = 10,
-      inner_agg_factory: Optional[factory.UnweightedAggregationFactory] = None,
+      inner_agg_factory: factory.UnweightedAggregationFactory | None = None,
       cast_to_float: bool = False,
   ):
     """Initializes a `HistogramClippingSumFactory` instance.

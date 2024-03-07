@@ -16,7 +16,7 @@ import collections
 from collections.abc import Callable, Hashable, Mapping
 import dataclasses
 import typing
-from typing import Optional, Union
+from typing import Union
 
 import attrs
 import numpy as np
@@ -29,7 +29,7 @@ from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import typed_object
 
 
-def infer_type(arg: object) -> Optional[computation_types.Type]:
+def infer_type(arg: object) -> computation_types.Type | None:
   """Infers the TFF type of the argument (a `computation_types.Type` instance).
 
   Warning: This function is only partially implemented.
@@ -162,7 +162,7 @@ def _sparse_tensor_to_type(
   return computation_types.tensorflow_to_type(sparse_tensor_spec)
 
 
-def tensorflow_infer_type(obj: object) -> Optional[computation_types.Type]:
+def tensorflow_infer_type(obj: object) -> computation_types.Type | None:
   """Returns a `tff.Type` for an `obj` containing TensorFlow values.
 
   This function extends `type_conversions.infer_type` to handle TensorFlow

@@ -27,7 +27,7 @@ then (2) with the reconstructed local variables.
 
 import collections
 import functools
-from typing import Any, Optional
+from typing import Any
 
 import tensorflow as tf
 
@@ -59,17 +59,17 @@ def build_fed_recon_eval(
     model_fn: fed_recon.ModelFn,
     *,  # Callers pass below args by name.
     loss_fn: fed_recon.LossFn,
-    metrics_fn: Optional[fed_recon.MetricsFn] = None,
+    metrics_fn: fed_recon.MetricsFn | None = None,
     reconstruction_optimizer_fn: fed_recon.OptimizerFn = functools.partial(
         tf.keras.optimizers.SGD, learning_rate=0.1
     ),
-    dataset_split_fn: Optional[
-        reconstruction_model.ReconstructionDatasetSplitFn
-    ] = None,
-    model_distributor: Optional[distributors.DistributionProcess] = None,
-    metrics_aggregation_process: Optional[
-        aggregation_process.AggregationProcess
-    ] = None,
+    dataset_split_fn: (
+        reconstruction_model.ReconstructionDatasetSplitFn | None
+    ) = None,
+    model_distributor: distributors.DistributionProcess | None = None,
+    metrics_aggregation_process: (
+        aggregation_process.AggregationProcess | None
+    ) = None,
 ) -> learning_process_lib.LearningProcess:
   """Builds a `tff.Computation` for evaluating a reconstruction `Model`.
 

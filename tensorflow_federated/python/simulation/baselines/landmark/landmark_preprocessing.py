@@ -15,7 +15,6 @@
 
 import collections
 from collections.abc import Callable
-from typing import Optional
 
 import tensorflow as tf
 
@@ -85,7 +84,7 @@ def create_preprocess_fn(
     preprocess_spec: client_spec.ClientSpec,
     is_training: bool,
     num_parallel_calls: tf.Tensor = tf.data.experimental.AUTOTUNE,
-    debug_seed: Optional[int] = None,
+    debug_seed: int | None = None,
 ) -> Callable[[tf.data.Dataset], tf.data.Dataset]:
   """Creates a preprocessing function for LANDMARK client datasets.
 

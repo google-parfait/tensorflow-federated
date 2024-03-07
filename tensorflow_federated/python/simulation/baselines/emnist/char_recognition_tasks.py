@@ -14,7 +14,7 @@
 """Library for creating character recognition tasks on EMNIST."""
 
 import enum
-from typing import Optional, Union
+from typing import Union
 
 import tensorflow as tf
 
@@ -43,7 +43,7 @@ _CHARACTER_RECOGNITION_MODELS = [e.value for e in CharacterRecognitionModel]
 def _get_character_recognition_model(
     model_id: Union[str, CharacterRecognitionModel],
     only_digits: bool,
-    debug_seed: Optional[int] = None,
+    debug_seed: int | None = None,
 ) -> tf.keras.Model:
   """Constructs a `tf.keras.Model` for character recognition."""
   try:
@@ -78,12 +78,12 @@ def _get_character_recognition_model(
 
 def create_character_recognition_task_from_datasets(
     train_client_spec: client_spec.ClientSpec,
-    eval_client_spec: Optional[client_spec.ClientSpec],
+    eval_client_spec: client_spec.ClientSpec | None,
     model_id: Union[str, CharacterRecognitionModel],
     only_digits: bool,
     train_data: client_data.ClientData,
     test_data: client_data.ClientData,
-    debug_seed: Optional[int] = None,
+    debug_seed: int | None = None,
 ) -> baseline_task.BaselineTask:
   """Creates a baseline task for character recognition on EMNIST.
 
@@ -147,12 +147,12 @@ def create_character_recognition_task_from_datasets(
 
 def create_character_recognition_task(
     train_client_spec: client_spec.ClientSpec,
-    eval_client_spec: Optional[client_spec.ClientSpec] = None,
+    eval_client_spec: client_spec.ClientSpec | None = None,
     model_id: Union[str, CharacterRecognitionModel] = 'cnn_dropout',
     only_digits: bool = False,
-    cache_dir: Optional[str] = None,
+    cache_dir: str | None = None,
     use_synthetic_data: bool = False,
-    debug_seed: Optional[int] = None,
+    debug_seed: int | None = None,
 ) -> baseline_task.BaselineTask:
   """Creates a baseline task for character recognition on EMNIST.
 

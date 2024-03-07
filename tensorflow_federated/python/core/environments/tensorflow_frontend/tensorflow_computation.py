@@ -13,7 +13,6 @@
 # limitations under the License.
 """Definition of a tensorflow computation."""
 
-from typing import Optional
 
 import tensorflow as tf
 import tree
@@ -42,11 +41,7 @@ def _transform_result(result: object) -> object:
 
 
 def _tf_wrapper_fn(
-    fn,
-    parameter_type,
-    unpack: Optional[bool],
-    name: Optional[str] = None,
-    **kwargs
+    fn, parameter_type, unpack: bool | None, name: str | None = None, **kwargs
 ):
   """Wrapper function to plug Tensorflow logic into the TFF framework."""
   del name  # Unused.

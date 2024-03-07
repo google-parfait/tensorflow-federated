@@ -15,7 +15,7 @@
 
 import collections
 from collections.abc import Callable
-from typing import Any, Optional, Protocol
+from typing import Any, Protocol
 
 from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -32,8 +32,8 @@ class MetricsAggregatorType(Protocol):
   def __call__(
       self,
       metric_finalizers: MetricFinalizersType,
-      local_unfinalized_metrics_type: Optional[
-          computation_types.StructWithPythonType
-      ] = None,
+      local_unfinalized_metrics_type: (
+          computation_types.StructWithPythonType | None
+      ) = None,
   ) -> computation_base.Computation:
     ...

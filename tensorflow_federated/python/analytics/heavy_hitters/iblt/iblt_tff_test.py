@@ -15,7 +15,6 @@
 import collections
 from collections.abc import Callable
 import itertools
-from typing import Optional
 
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -80,12 +79,12 @@ def _execute_computation(
     string_max_bytes: int = 10,
     repetitions: int = 3,
     seed: int = 0,
-    max_heavy_hitters: Optional[int] = None,
-    max_words_per_user: Optional[int] = None,
+    max_heavy_hitters: int | None = None,
+    max_words_per_user: int | None = None,
     k_anonymity: int = 1,
-    secure_sum_bitwidth: Optional[int] = None,
+    secure_sum_bitwidth: int | None = None,
     multi_contribution: bool = True,
-    string_postprocessor: Optional[Callable[[tf.Tensor], tf.Tensor]] = None,
+    string_postprocessor: Callable[[tf.Tensor], tf.Tensor] | None = None,
 ) -> tuple[dict[str, tf.Tensor], tf.Tensor, tf.Tensor]:
   """Executes one round of IBLT computation over the given datasets.
 

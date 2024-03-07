@@ -14,7 +14,6 @@
 """Tests for reconstruction_model.py."""
 
 import collections
-from typing import Optional
 
 from absl.testing import parameterized
 import numpy as np
@@ -84,7 +83,7 @@ def _get_encapsulated_layer_model() -> tf.keras.Model:
         self,
         inputs: tf.Tensor,
         training: bool = True,
-        mask: Optional[tf.Tensor] = None,
+        mask: tf.Tensor | None = None,
     ) -> tf.Tensor:
       del training  # Unused.
       del mask  # Unused.

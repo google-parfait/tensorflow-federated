@@ -13,7 +13,6 @@
 # limitations under the License.
 """Library for creating autoencoder tasks on EMNIST."""
 
-from typing import Optional
 
 import tensorflow as tf
 
@@ -30,7 +29,7 @@ from tensorflow_federated.python.simulation.datasets import emnist
 
 def create_autoencoder_task_from_datasets(
     train_client_spec: client_spec.ClientSpec,
-    eval_client_spec: Optional[client_spec.ClientSpec],
+    eval_client_spec: client_spec.ClientSpec | None,
     train_data: client_data.ClientData,
     test_data: client_data.ClientData,
 ) -> baseline_task.BaselineTask:
@@ -86,9 +85,9 @@ def create_autoencoder_task_from_datasets(
 
 def create_autoencoder_task(
     train_client_spec: client_spec.ClientSpec,
-    eval_client_spec: Optional[client_spec.ClientSpec] = None,
+    eval_client_spec: client_spec.ClientSpec | None = None,
     only_digits: bool = False,
-    cache_dir: Optional[str] = None,
+    cache_dir: str | None = None,
     use_synthetic_data: bool = False,
 ) -> baseline_task.BaselineTask:
   """Creates a baseline task for autoencoding on EMNIST.

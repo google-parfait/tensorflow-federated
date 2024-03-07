@@ -20,7 +20,6 @@ Related papers/blogs:
 
 from collections.abc import Iterable
 import enum
-from typing import Optional
 
 import tensorflow as tf
 
@@ -318,7 +317,7 @@ def create_resnet(
     input_shape: tuple[int, int, int],
     num_classes: int = 10,
     residual_block: ResidualBlock = ResidualBlock.BOTTLENECK,
-    repetitions: Optional[list[int]] = None,
+    repetitions: list[int] | None = None,
     initial_filters: int = 64,
     initial_strides: tuple[int, int] = (2, 2),
     initial_kernel_size: tuple[int, int] = (7, 7),

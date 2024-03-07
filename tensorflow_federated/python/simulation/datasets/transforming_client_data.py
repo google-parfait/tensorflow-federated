@@ -14,7 +14,7 @@
 """Expands ClientData by performing transformations."""
 
 from collections.abc import Callable
-from typing import Any, Optional
+from typing import Any
 
 import tensorflow as tf
 
@@ -39,8 +39,8 @@ class TransformingClientData(client_data.ClientData):
       self,
       base_client_data: client_data.ClientData,
       make_transform_fn: Callable[[str], Callable[[Any], Any]],
-      expand_client_id: Optional[Callable[[str], list[str]]] = None,
-      reduce_client_id: Optional[Callable[[str], str]] = None,
+      expand_client_id: Callable[[str], list[str]] | None = None,
+      reduce_client_id: Callable[[str], str] | None = None,
   ):
     """Initializes the TransformingClientData.
 

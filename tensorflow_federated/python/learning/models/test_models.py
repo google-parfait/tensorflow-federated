@@ -14,7 +14,7 @@
 """Module of `FunctionalModel` implementations for useful for tests."""
 
 import collections
-from typing import Any, Optional
+from typing import Any
 
 import numpy as np
 import tensorflow as tf
@@ -80,7 +80,7 @@ def build_functional_linear_regression(
       state: types.MetricsState,
       labels: Any,
       batch_output: variable.BatchOutput,
-      sample_weight: Optional[Any] = None,
+      sample_weight: Any | None = None,
   ) -> types.MetricsState:
     del sample_weight  # Unused.
     batch_size = tf.shape(labels)[0]

@@ -17,7 +17,7 @@ import abc
 from collections.abc import Iterable, Iterator
 import enum
 import typing
-from typing import Optional, Union
+from typing import Union
 import zlib
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
@@ -33,7 +33,7 @@ from tensorflow_federated.python.core.impl.types import typed_object
 
 def _check_computation_oneof(
     computation_proto: pb.Computation,
-    expected_computation_oneof: Optional[str],
+    expected_computation_oneof: str | None,
 ):
   """Checks that `computation_proto` is a oneof of the expected variant."""
   computation_oneof = computation_proto.WhichOneof('computation')
@@ -316,8 +316,8 @@ class Selection(ComputationBuildingBlock):
   def __init__(
       self,
       source: ComputationBuildingBlock,
-      name: Optional[str] = None,
-      index: Optional[int] = None,
+      name: str | None = None,
+      index: int | None = None,
   ):
     """A selection from 'source' by a string or numeric 'name_or_index'.
 
@@ -396,11 +396,11 @@ class Selection(ComputationBuildingBlock):
     return self._source
 
   @property
-  def name(self) -> Optional[str]:
+  def name(self) -> str | None:
     return self._name
 
   @property
-  def index(self) -> Optional[int]:
+  def index(self) -> int | None:
     return self._index
 
   def as_index(self) -> int:
@@ -436,7 +436,7 @@ class Struct(ComputationBuildingBlock, structure.Struct):
 
     def _element(
         proto: pb.Struct.Element,
-    ) -> tuple[Optional[str], ComputationBuildingBlock]:
+    ) -> tuple[str | None, ComputationBuildingBlock]:
       if proto.name:
         name = str(proto.name)
       else:
@@ -554,7 +554,7 @@ class Call(ComputationBuildingBlock):
   def __init__(
       self,
       fn: ComputationBuildingBlock,
-      arg: Optional[ComputationBuildingBlock] = None,
+      arg: ComputationBuildingBlock | None = None,
   ):
     """Creates a call to 'fn' with argument 'arg'.
 
@@ -624,7 +624,7 @@ class Call(ComputationBuildingBlock):
     return self._function
 
   @property
-  def argument(self) -> Optional[ComputationBuildingBlock]:
+  def argument(self) -> ComputationBuildingBlock | None:
     return self._argument
 
   def __repr__(self):
@@ -662,8 +662,8 @@ class Lambda(ComputationBuildingBlock):
 
   def __init__(
       self,
-      parameter_name: Optional[str],
-      parameter_type: Optional[object],
+      parameter_name: str | None,
+      parameter_type: object | None,
       result: ComputationBuildingBlock,
   ):
     """Creates a lambda expression.
@@ -726,11 +726,11 @@ class Lambda(ComputationBuildingBlock):
     yield self._result
 
   @property
-  def parameter_name(self) -> Optional[str]:
+  def parameter_name(self) -> str | None:
     return self._parameter_name
 
   @property
-  def parameter_type(self) -> Optional[computation_types.Type]:
+  def parameter_type(self) -> computation_types.Type | None:
     return self._parameter_type
 
   @property
@@ -1015,8 +1015,8 @@ class CompiledComputation(ComputationBuildingBlock):
   def __init__(
       self,
       proto: pb.Computation,
-      name: Optional[str] = None,
-      type_signature: Optional[computation_types.Type] = None,
+      name: str | None = None,
+      type_signature: computation_types.Type | None = None,
   ):
     """Creates a representation of a fully constructed computation.
 

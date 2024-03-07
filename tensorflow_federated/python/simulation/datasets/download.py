@@ -15,7 +15,6 @@
 
 import lzma
 import os
-from typing import Optional
 import urllib
 import urllib.parse
 
@@ -51,7 +50,7 @@ def _fetch_lzma_file(origin: str, filename: str):
         download_chunk = in_stream.read(chunk_size)
 
 
-def get_compressed_file(origin: str, cache_dir: Optional[str] = None) -> str:
+def get_compressed_file(origin: str, cache_dir: str | None = None) -> str:
   """Downloads and caches an LZMA compressed file from a URL.
 
   Args:

@@ -13,7 +13,6 @@
 # limitations under the License.
 """Classes/functions for statically asserting properties of TFF computations."""
 
-from typing import Optional
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl.compiler import building_blocks
@@ -23,7 +22,7 @@ from tensorflow_federated.python.core.impl.computation import computation_impl
 
 def _raise_expected_none(
     calls: list[building_blocks.Call], kind: str
-) -> Optional[str]:
+) -> str | None:
   if not calls:
     raise AssertionError('Expected `calls` to not be empty.')
   msg = 'Expected no {} aggregations, found {}:'.format(kind, len(calls))

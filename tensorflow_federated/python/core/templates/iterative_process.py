@@ -13,7 +13,6 @@
 # limitations under the License.
 """Defines a template for a stateful process."""
 
-from typing import Optional
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl.computation import computation_base
@@ -122,7 +121,7 @@ class IterativeProcess:
       self,
       initialize_fn: computation_base.Computation,
       next_fn: computation_base.Computation,
-      next_is_multi_arg: Optional[bool] = None,
+      next_is_multi_arg: bool | None = None,
   ):
     """Creates a `tff.templates.IterativeProcess`.
 

@@ -14,7 +14,6 @@
 """Utilities for serializing TensorFlow computations."""
 
 import inspect
-from typing import Optional
 
 import tensorflow as tf
 
@@ -32,7 +31,7 @@ from tensorflow_federated.python.tensorflow_libs import variable_utils
 
 def serialize_py_fn_as_tf_computation(
     fn,
-    parameter_type: Optional[computation_types.Type],
+    parameter_type: computation_types.Type | None,
     context_stack,
     layout_map=None,
 ):

@@ -13,7 +13,6 @@
 # limitations under the License.
 """Utilities for testing tensorflow computations."""
 
-from typing import Optional
 
 import numpy as np
 import tensorflow as tf
@@ -26,7 +25,7 @@ from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
 
 def _stamp_value_into_graph(
-    value: Optional[object],
+    value: object | None,
     type_signature: computation_types.Type,
     graph: tf.Graph,
 ) -> object:
@@ -77,7 +76,7 @@ def _stamp_value_into_graph(
 
 
 def run_tensorflow(
-    computation_proto: pb.Computation, arg: Optional[object] = None
+    computation_proto: pb.Computation, arg: object | None = None
 ) -> object:
   """Runs a TensorFlow computation with argument `arg`.
 

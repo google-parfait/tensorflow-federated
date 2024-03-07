@@ -14,7 +14,7 @@
 """Utilities for serializing and deserializing XLA code."""
 
 from collections.abc import Sequence
-from typing import Optional, TypeVar, Union
+from typing import TypeVar, Union
 
 from jax.lib import xla_client
 import numpy as np
@@ -73,8 +73,8 @@ def unpack_xla_computation(any_pb: any_pb2.Any) -> xla_client.XlaComputation:
 
 
 def _make_xla_binding_for_type(
-    tensor_indexes: Sequence[int], type_spec: Optional[computation_types.Type]
-) -> Optional[pb.Xla.Binding]:
+    tensor_indexes: Sequence[int], type_spec: computation_types.Type | None
+) -> pb.Xla.Binding | None:
   """Generates an XLA binding for TFF type `type_spec`.
 
   In the generated binding, tensors are assigned indexes in consecutive order
@@ -212,7 +212,7 @@ def create_xla_tff_computation(
 
 def xla_computation_and_bindings_to_tff_type(
     xla_computation: xla_client.XlaComputation,
-    parameter_binding: Optional[pb.Xla.Binding],
+    parameter_binding: pb.Xla.Binding | None,
     result_binding: pb.Xla.Binding,
 ) -> computation_types.FunctionType:
   """Constructs the TFF type from an `xla_client.XlaComputation` and bindings.
@@ -242,10 +242,8 @@ def xla_computation_and_bindings_to_tff_type(
 
 
 def xla_shapes_and_binding_to_tff_type(
-    xla_shapes: Sequence[xla_client.Shape], binding: Optional[pb.Xla.Binding]
-) -> Optional[
-    Union[computation_types.TensorType, computation_types.StructType]
-]:
+    xla_shapes: Sequence[xla_client.Shape], binding: pb.Xla.Binding | None
+) -> Union[computation_types.TensorType, computation_types.StructType] | None:
   """Constructs the TFF type from a list of `xla_client.Shape` and a binding.
 
   Args:
@@ -264,10 +262,8 @@ def xla_shapes_and_binding_to_tff_type(
   unused_shape_indexes = set(range(len(tensor_shapes)))
 
   def _get_type(
-      binding: Optional[pb.Xla.Binding],
-  ) -> Optional[
-      Union[computation_types.TensorType, computation_types.StructType]
-  ]:
+      binding: pb.Xla.Binding | None,
+  ) -> Union[computation_types.TensorType, computation_types.StructType] | None:
     if binding is None:
       return None
     kind = binding.WhichOneof('binding')

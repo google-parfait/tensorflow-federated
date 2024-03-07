@@ -18,7 +18,7 @@ from collections.abc import Hashable, Mapping
 import dataclasses
 import itertools
 import typing
-from typing import Optional, Union
+from typing import Union
 
 import attrs
 import numpy as np
@@ -268,7 +268,7 @@ def _dictlike_items_to_value(items, type_spec, container_type) -> Value:
 
 def to_value(
     arg: object,
-    type_spec: Optional[computation_types.Type],
+    type_spec: computation_types.Type | None,
     *,
     parameter_type_hint=None,
     zip_if_needed: bool = False,

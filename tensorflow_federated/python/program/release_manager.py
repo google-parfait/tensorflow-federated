@@ -18,7 +18,7 @@ import asyncio
 from collections.abc import Callable, Mapping, Sequence
 import datetime
 import typing
-from typing import Generic, Optional, TypeVar, Union
+from typing import Generic, TypeVar, Union
 
 import attrs
 import tree
@@ -163,7 +163,7 @@ class FilteringReleaseManager(ReleaseManager[ReleasableStructure, Key]):
     def _filter_value(
         path: tuple[Union[str, int], ...],
         subtree: ReleasableStructure,
-    ) -> Optional[Union[ReleasableStructure, type(_FILTERED_SUBTREE)]]:
+    ) -> Union[ReleasableStructure, type(_FILTERED_SUBTREE) | None]:
       """The function to apply when filtering the `value`.
 
       This function is meant to be used with `tree.traverse_with_path` to filter

@@ -13,7 +13,6 @@
 # limitations under the License.
 """TFF-independent data class for the data TFF keeps in its TF protos."""
 from collections.abc import Sequence
-from typing import Optional
 
 import attrs
 import tensorflow as tf
@@ -50,7 +49,7 @@ class GraphSpec:
   graph_def: tf.compat.v1.GraphDef = attrs.field(
       validator=attrs.validators.instance_of(tf.compat.v1.GraphDef)
   )
-  init_op: Optional[str] = attrs.field(
+  init_op: str | None = attrs.field(
       validator=attrs.validators.instance_of((str, type(None)))
   )
   in_names: Sequence[str] = attrs.field(validator=_check_names_are_strings)

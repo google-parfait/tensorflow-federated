@@ -18,7 +18,6 @@ variable names used in this module.
 """
 
 from collections.abc import Callable
-from typing import Optional
 
 import tensorflow as tf
 
@@ -313,7 +312,7 @@ def _check_function_signature_compatible_with_broadcast_form(
 def check_computation_compatible_with_map_reduce_form(
     comp: computation_impl.ConcreteComputation,
     *,
-    tff_internal_preprocessing: Optional[BuildingBlockFn] = None,
+    tff_internal_preprocessing: BuildingBlockFn | None = None,
 ) -> building_blocks.ComputationBuildingBlock:
   """Tests compatibility with `tff.backends.mapreduce.MapReduceForm`.
 
@@ -925,7 +924,7 @@ def get_broadcast_form_for_computation(
     comp: computation_impl.ConcreteComputation,
     grappler_config: tf.compat.v1.ConfigProto = _GRAPPLER_DEFAULT_CONFIG,
     *,
-    tff_internal_preprocessing: Optional[BuildingBlockFn] = None,
+    tff_internal_preprocessing: BuildingBlockFn | None = None,
 ) -> forms.BroadcastForm:
   """Constructs `tff.backends.mapreduce.BroadcastForm` given a computation.
 
@@ -997,7 +996,7 @@ def get_map_reduce_form_for_computation(
     comp: computation_impl.ConcreteComputation,
     grappler_config: tf.compat.v1.ConfigProto = _GRAPPLER_DEFAULT_CONFIG,
     *,
-    tff_internal_preprocessing: Optional[BuildingBlockFn] = None,
+    tff_internal_preprocessing: BuildingBlockFn | None = None,
 ) -> forms.MapReduceForm:
   """Constructs `tff.backends.mapreduce.MapReduceForm` for a computation.
 
@@ -1078,7 +1077,7 @@ def get_map_reduce_form_for_computation(
 def get_distribute_aggregate_form_for_computation(
     comp: computation_impl.ConcreteComputation,
     *,
-    tff_internal_preprocessing: Optional[BuildingBlockFn] = None,
+    tff_internal_preprocessing: BuildingBlockFn | None = None,
 ) -> forms.DistributeAggregateForm:
   """Constructs `DistributeAggregateForm` for a computation.
 

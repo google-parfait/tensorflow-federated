@@ -29,7 +29,7 @@ Adaptive Federated Optimization
 """
 
 from collections.abc import Callable
-from typing import Optional, Union
+from typing import Union
 
 import numpy as np
 import tensorflow as tf
@@ -70,12 +70,12 @@ def build_weighted_fed_avg(
         None,
     ] = None,
     *,
-    client_weighting: Optional[
-        client_weight_lib.ClientWeighting
-    ] = client_weight_lib.ClientWeighting.NUM_EXAMPLES,
-    model_distributor: Optional[distributors.DistributionProcess] = None,
-    model_aggregator: Optional[factory.WeightedAggregationFactory] = None,
-    metrics_aggregator: Optional[types.MetricsAggregatorType] = None,
+    client_weighting: (
+        client_weight_lib.ClientWeighting | None
+    ) = client_weight_lib.ClientWeighting.NUM_EXAMPLES,
+    model_distributor: distributors.DistributionProcess | None = None,
+    model_aggregator: factory.WeightedAggregationFactory | None = None,
+    metrics_aggregator: types.MetricsAggregatorType | None = None,
     use_experimental_simulation_loop: bool = False,
 ) -> learning_process.LearningProcess:
   """Builds a learning process that performs federated averaging.
@@ -290,8 +290,8 @@ def build_unweighted_fed_avg(
         Callable[[], tf.keras.optimizers.Optimizer],
         None,
     ] = None,
-    model_distributor: Optional[distributors.DistributionProcess] = None,
-    model_aggregator: Optional[factory.UnweightedAggregationFactory] = None,
+    model_distributor: distributors.DistributionProcess | None = None,
+    model_aggregator: factory.UnweightedAggregationFactory | None = None,
     metrics_aggregator: types.MetricsAggregatorType = metric_aggregator.sum_then_finalize,
     use_experimental_simulation_loop: bool = False,
 ) -> learning_process.LearningProcess:

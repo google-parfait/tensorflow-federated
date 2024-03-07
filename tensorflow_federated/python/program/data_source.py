@@ -14,7 +14,6 @@
 """Defines abstract interfaces for representing data sources."""
 
 import abc
-from typing import Optional
 
 from tensorflow_federated.python.common_libs import serializable
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -46,7 +45,7 @@ class FederatedDataSourceIterator(serializable.Serializable, abc.ABC):
     raise NotImplementedError
 
   @abc.abstractmethod
-  def select(self, k: Optional[int] = None) -> object:
+  def select(self, k: int | None = None) -> object:
     """Returns a new selection of federated data from this iterator.
 
     Args:

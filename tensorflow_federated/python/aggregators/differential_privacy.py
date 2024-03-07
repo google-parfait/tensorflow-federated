@@ -16,7 +16,7 @@
 import collections
 from collections.abc import Collection
 import typing
-from typing import Any, NamedTuple, Optional
+from typing import Any, NamedTuple
 import warnings
 
 from absl import logging
@@ -51,7 +51,7 @@ class DPAggregatorState(NamedTuple):
 def adaptive_clip_noise_params(
     noise_multiplier: float,
     expected_clients_per_round: float,
-    clipped_count_stddev: Optional[float] = None,
+    clipped_count_stddev: float | None = None,
 ) -> tuple[float, float]:
   """Computes noising parameters for the adaptive L2 clipping procedure.
 
@@ -141,7 +141,7 @@ class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
       initial_l2_norm_clip: float = 0.1,
       target_unclipped_quantile: float = 0.5,
       learning_rate: float = 0.2,
-      clipped_count_stddev: Optional[float] = None,
+      clipped_count_stddev: float | None = None,
   ) -> factory.UnweightedAggregationFactory:
     """`DifferentiallyPrivateFactory` with adaptive clipping and Gaussian noise.
 
@@ -261,11 +261,11 @@ class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
       clients_per_round: float,
       l2_norm_clip: float,
       record_specs: Collection[tf.TensorSpec],
-      noise_seed: Optional[int] = None,
+      noise_seed: int | None = None,
       use_efficient: bool = True,
-      record_aggregation_factory: Optional[
-          factory.UnweightedAggregationFactory
-      ] = None,
+      record_aggregation_factory: (
+          factory.UnweightedAggregationFactory | None
+      ) = None,
   ) -> factory.UnweightedAggregationFactory:
     """`DifferentiallyPrivateFactory` with tree aggregation noise.
 
@@ -332,8 +332,8 @@ class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
       restart_frequency: int = 1024,
       target_unclipped_quantile: float = 0.5,
       clip_learning_rate: float = 0.2,
-      clipped_count_stddev: Optional[float] = None,
-      noise_seed: Optional[int] = None,
+      clipped_count_stddev: float | None = None,
+      noise_seed: int | None = None,
   ) -> factory.UnweightedAggregationFactory:
     """`DifferentiallyPrivateFactory` with adaptive clipping and tree aggregation.
 
@@ -431,9 +431,9 @@ class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
   def __init__(
       self,
       query: tfp.DPQuery,
-      record_aggregation_factory: Optional[
-          factory.UnweightedAggregationFactory
-      ] = None,
+      record_aggregation_factory: (
+          factory.UnweightedAggregationFactory | None
+      ) = None,
   ):
     """Initializes `DifferentiallyPrivateFactory`.
 

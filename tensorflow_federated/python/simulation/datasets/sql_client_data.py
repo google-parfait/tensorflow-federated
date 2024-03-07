@@ -15,7 +15,6 @@
 
 from collections.abc import Iterator
 import sqlite3
-from typing import Optional
 
 from absl import logging
 import tensorflow as tf
@@ -67,7 +66,7 @@ def _check_database_format(database_filepath: str):
 
 
 def _fetch_client_ids(
-    database_filepath: str, split_name: Optional[str] = None
+    database_filepath: str, split_name: str | None = None
 ) -> Iterator[str]:
   """Fetches the list of client_ids.
 
@@ -114,7 +113,7 @@ class SqlClientData(client_data.ClientData):
          held by this client.
   """
 
-  def __init__(self, database_filepath: str, split_name: Optional[str] = None):
+  def __init__(self, database_filepath: str, split_name: str | None = None):
     """Constructs a `tff.simulation.datasets.SqlClientData` object.
 
     Args:

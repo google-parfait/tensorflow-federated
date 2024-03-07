@@ -14,7 +14,7 @@
 """Heavy hitters discovery using IBLT."""
 
 from collections.abc import Callable
-from typing import Any, Optional
+from typing import Any
 
 import attrs
 import numpy as np
@@ -62,16 +62,16 @@ class ServerOutput:
 def build_iblt_computation(
     *,
     string_max_bytes: int = 10,
-    max_words_per_user: Optional[int] = None,
+    max_words_per_user: int | None = None,
     multi_contribution: bool = True,
     capacity: int = 1000,
     k_anonymity: int = 1,
-    max_heavy_hitters: Optional[int] = None,
-    string_postprocessor: Optional[Callable[[tf.Tensor], tf.Tensor]] = None,
-    secure_sum_bitwidth: Optional[int] = None,
-    decode_iblt_fn: Optional[
-        Callable[..., tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]]
-    ] = None,
+    max_heavy_hitters: int | None = None,
+    string_postprocessor: Callable[[tf.Tensor], tf.Tensor] | None = None,
+    secure_sum_bitwidth: int | None = None,
+    decode_iblt_fn: (
+        Callable[..., tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]] | None
+    ) = None,
     seed: int = 0,
     batch_size: int = 1,
     repetitions: int = 3,

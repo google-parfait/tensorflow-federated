@@ -15,7 +15,7 @@
 
 from collections.abc import Callable
 import functools
-from typing import Optional, Union
+from typing import Union
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
@@ -145,7 +145,7 @@ def create_null_federated_secure_sum_bitwidth():
 
 @functools.lru_cache()
 def create_generic_constant(
-    type_spec: Optional[computation_types.Type], scalar_value: Union[int, float]
+    type_spec: computation_types.Type | None, scalar_value: Union[int, float]
 ) -> building_blocks.ComputationBuildingBlock:
   """Creates constant for a combination of federated, tuple and tensor types.
 

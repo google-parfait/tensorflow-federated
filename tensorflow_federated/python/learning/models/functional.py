@@ -28,7 +28,7 @@ processes expecting stateful models, wrap the functional model with
 import collections
 from collections.abc import Callable, Mapping, Sequence
 import inspect
-from typing import Any, Optional, TypeVar, Union
+from typing import Any, TypeVar, Union
 
 import numpy as np
 import tensorflow as tf
@@ -70,7 +70,7 @@ def noop_update_metrics(
     state: types.MetricsState,
     labels: Any,
     batch_output: variable.BatchOutput,
-    sample_weight: Optional[Any] = None,
+    sample_weight: Any | None = None,
 ) -> types.MetricsState:
   del state  # Unused.
   del labels  # Unused.
@@ -200,7 +200,7 @@ class FunctionalModel:
     return self._predict_on_batch_fn(model_weights, x, training)
 
   def loss(
-      self, output: Any, label: Any, sample_weight: Optional[Any] = None
+      self, output: Any, label: Any, sample_weight: Any | None = None
   ) -> float:
     """Returns the loss value based on the model output and the label."""
     return self._loss_fn(output, label, sample_weight)
@@ -215,7 +215,7 @@ class FunctionalModel:
       state: GenericMetricsState,
       labels: Any,
       batch_output: variable.BatchOutput,
-      sample_weight: Optional[Any] = None,
+      sample_weight: Any | None = None,
   ) -> GenericMetricsState:
     return self._update_metrics_state(
         state,
@@ -396,13 +396,14 @@ def functional_model_from_keras(
     keras_model: Union[tf.keras.Model, Callable[[], tf.keras.Model]],
     loss_fn: tf.keras.losses.Loss,
     input_spec: Union[Sequence[Any], Mapping[str, Any]],
-    metrics_constructor: Optional[
+    metrics_constructor: (
         Union[
             keras_utils.MetricConstructor,
             keras_utils.MetricsConstructor,
             keras_utils.MetricConstructors,
         ]
-    ] = None,
+        | None
+    ) = None,
 ) -> FunctionalModel:
   """Converts a `tf.keras.Model` to a `tff.learning.models.FunctionalModel`.
 
@@ -618,9 +619,7 @@ def functional_model_from_keras(
         variableless_model = keras_model()
     return variableless_model(x, training)
 
-  def loss(
-      output: Any, label: Any, sample_weight: Optional[Any] = None
-  ) -> float:
+  def loss(output: Any, label: Any, sample_weight: Any | None = None) -> float:
     return loss_fn(y_true=label, y_pred=output, sample_weight=sample_weight)
 
   if metrics_constructor is not None:

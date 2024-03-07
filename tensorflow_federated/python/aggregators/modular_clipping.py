@@ -15,7 +15,6 @@
 
 import collections
 import math
-from typing import Optional
 import warnings
 
 import tensorflow as tf
@@ -71,8 +70,8 @@ class ModularClippingSumFactory(factory.UnweightedAggregationFactory):
       self,
       clip_range_lower: int,
       clip_range_upper: int,
-      inner_agg_factory: Optional[factory.UnweightedAggregationFactory] = None,
-      estimate_stddev: Optional[bool] = False,
+      inner_agg_factory: factory.UnweightedAggregationFactory | None = None,
+      estimate_stddev: bool | None = False,
   ):
     """Initializes a `ModularClippingSumFactory` instance.
 

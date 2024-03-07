@@ -14,7 +14,7 @@
 
 import collections
 import itertools
-from typing import Any, Optional
+from typing import Any
 
 import numpy as np
 import tensorflow as tf
@@ -88,7 +88,7 @@ def update_metrics_state(
     state: types.MetricsState,
     labels: Any,
     batch_output: variable.BatchOutput,
-    sample_weight: Optional[Any] = None,
+    sample_weight: Any | None = None,
 ) -> types.MetricsState:
   del sample_weight  # Unused.
   batch_size = tf.cast(tf.shape(labels)[0], tf.float32)

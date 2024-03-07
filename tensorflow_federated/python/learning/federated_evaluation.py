@@ -15,7 +15,7 @@
 
 import collections
 from collections.abc import Callable, Mapping
-from typing import Optional, Union
+from typing import Union
 
 import tensorflow as tf
 
@@ -191,8 +191,8 @@ def build_federated_evaluation(
     model_fn: Union[
         Callable[[], variable.VariableModel], functional.FunctionalModel
     ],
-    broadcast_process: Optional[measured_process.MeasuredProcess] = None,
-    metrics_aggregator: Optional[types.MetricsAggregatorType] = None,
+    broadcast_process: measured_process.MeasuredProcess | None = None,
+    metrics_aggregator: types.MetricsAggregatorType | None = None,
     use_experimental_simulation_loop: bool = False,
 ) -> computation_base.Computation:
   """Builds the TFF computation for federated evaluation of the given model.
@@ -269,7 +269,7 @@ def build_federated_evaluation(
 def _build_federated_evaluation(
     *,
     model_fn: Callable[[], variable.VariableModel],
-    broadcast_process: Optional[measured_process.MeasuredProcess],
+    broadcast_process: measured_process.MeasuredProcess | None,
     metrics_aggregator: types.MetricsAggregatorType,
     use_experimental_simulation_loop: bool,
 ) -> computation_base.Computation:
@@ -328,7 +328,7 @@ def _build_federated_evaluation(
 def _build_functional_federated_evaluation(
     *,
     model: functional.FunctionalModel,
-    broadcast_process: Optional[measured_process.MeasuredProcess],
+    broadcast_process: measured_process.MeasuredProcess | None,
     metrics_aggregator: types.MetricsAggregatorType,
 ) -> computation_base.Computation:
   """Builds a federated evaluation computation for a functional model."""
