@@ -9,6 +9,7 @@
 
 *   Removed the `check_foo()` methods on building blocks.
 *   Removed `tff.data`, this symbol is not used.
+*   Updated `com_google_protobuf` to version `26.1`.
 
 # Release 0.75.0
 
