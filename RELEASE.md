@@ -8,6 +8,7 @@
 ## Breaking Changes
 
 *   Removed the `check_foo()` methods on building blocks.
+*   Updated `com_google_protobuf` to version `26.1`.
 
 # Release 0.75.0
 
