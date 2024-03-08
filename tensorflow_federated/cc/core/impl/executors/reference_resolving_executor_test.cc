@@ -38,6 +38,8 @@ limitations under the License
 #include "google/protobuf/any.pb.h"
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
+#include "absl/log/check.h"
+#include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
@@ -58,6 +60,7 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/status_matchers.h"
 #include "tensorflow_federated/cc/core/impl/executors/value_test_utils.h"
 #include "tensorflow_federated/proto/v0/computation.pb.h"
+#include "tensorflow_federated/proto/v0/data_type.pb.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow_federated {
@@ -208,7 +211,7 @@ TEST_F(ReferenceResolvingExecutorTest, CreateValueFederatedTensor) {
   type_pb->set_all_equal(false);
   type_pb->mutable_placement()->mutable_value()->set_uri(kTestPlacement);
   v0::TensorType* tensor_type = type_pb->mutable_member()->mutable_tensor();
-  tensor_type->set_dtype(v0::TensorType::DT_FLOAT);
+  tensor_type->set_dtype(v0::DataType::DT_FLOAT);
   constexpr int kNumClients = 3;
   for (int i = 0; i < kNumClients; ++i) {
     *federated_pb->add_value() = TensorV(i);
@@ -258,7 +261,7 @@ TEST_F(ReferenceResolvingExecutorTest, CreateValueFederatedStructOfTensor) {
   for (int i = 0; i < kNumFields; ++i) {
     v0::StructType::Element* element_pb = struct_type->add_element();
     element_pb->mutable_value()->mutable_tensor()->set_dtype(
-        v0::TensorType::DT_FLOAT);
+        v0::DataType::DT_FLOAT);
   }
   constexpr int kNumClients = 3;
   for (int i = 0; i < kNumClients; ++i) {
@@ -425,7 +428,7 @@ TEST_F(ReferenceResolvingExecutorTest, LambdaArgumentToInstrinsicIsEmbedded) {
       intrinsic_pb.computation();
   *lambda_pb.mutable_computation()->mutable_call()->mutable_argument() =
       lambda_arg_pb.computation();
-  // Exepct create value on a Call to evaluate the function and argument, then
+  // Expect create value on a Call to evaluate the function and argument, then
   // create a call.
   EXPECT_CALL(*mock_executor_, CreateValue(EqualsProto(intrinsic_pb)))
       .WillOnce([this]() { return OwnedValueId(mock_executor_, 100); });
@@ -439,7 +442,7 @@ TEST_F(ReferenceResolvingExecutorTest, LambdaArgumentToInstrinsicIsEmbedded) {
   EXPECT_CALL(*mock_executor_, Dispose(300));
   auto create_lambda_result = test_executor_->CreateValue(lambda_pb);
   EXPECT_THAT(create_lambda_result, IsOkAndHolds(HasValueId(0)));
-  // Exepct the materialize on the call to be pushed down.
+  // Expect the materialize on the call to be pushed down.
   EXPECT_CALL(*mock_executor_, Materialize(300, _))
       .WillOnce(Return(absl::OkStatus()));
   EXPECT_THAT(test_executor_->Materialize(create_lambda_result.value()),

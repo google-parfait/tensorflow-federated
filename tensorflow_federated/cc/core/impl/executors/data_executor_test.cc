@@ -15,6 +15,7 @@ limitations under the License
 
 #include "tensorflow_federated/cc/core/impl/executors/data_executor.h"
 
+#include <cstdint>
 #include <memory>
 #include <optional>
 #include <string>
@@ -28,6 +29,7 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/status_matchers.h"
 #include "tensorflow_federated/cc/core/impl/executors/value_test_utils.h"
 #include "tensorflow_federated/proto/v0/computation.pb.h"
+#include "tensorflow_federated/proto/v0/data_type.pb.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow_federated {
@@ -56,7 +58,7 @@ TEST_F(DataExecutorTest, CreateValueResolvesData) {
   std::string uri = "some_data_uri";
   v0::Type data_type;
   v0::TensorType* tensor_type = data_type.mutable_tensor();
-  tensor_type->set_dtype(v0::TensorType::DT_INT32);
+  tensor_type->set_dtype(v0::DataType::DT_INT32);
   tensor_type->mutable_dims()->Add(1);
   tensor_type->set_unknown_rank(false);
   v0::Value resolved_data_value = TensorV(22);

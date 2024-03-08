@@ -16,6 +16,7 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/composing_executor.h"
 
 #include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <optional>
 #include <utility>
@@ -29,12 +30,12 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/computations.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor_test_base.h"
-#include "tensorflow_federated/cc/core/impl/executors/federated_intrinsics.h"
 #include "tensorflow_federated/cc/core/impl/executors/mock_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_matchers.h"
 #include "tensorflow_federated/cc/core/impl/executors/type_utils.h"
 #include "tensorflow_federated/cc/core/impl/executors/value_test_utils.h"
 #include "tensorflow_federated/proto/v0/computation.pb.h"
+#include "tensorflow_federated/proto/v0/data_type.pb.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow_federated {
@@ -345,14 +346,14 @@ TEST_F(ComposingExecutorTest, CreateCallFederatedAggregate) {
       kClientsUri.data(), kClientsUri.size());
   parameter_type_pb->set_all_equal(false);
   parameter_type_pb->mutable_member()->mutable_tensor()->set_dtype(
-      v0::TensorType::DT_STRING);
+      v0::DataType::DT_STRING);
   v0::FederatedType* result_type_pb =
       intrinsic_type_pb.mutable_result()->mutable_federated();
   result_type_pb->mutable_placement()->mutable_value()->set_uri(
       kServerUri.data(), kServerUri.size());
   result_type_pb->set_all_equal(true);
   result_type_pb->mutable_member()->mutable_tensor()->set_dtype(
-      v0::TensorType::DT_STRING);
+      v0::DataType::DT_STRING);
 
   for (const auto& child : mock_children_) {
     auto child_value = child->ExpectCreateValue(value);
@@ -468,7 +469,7 @@ TEST_F(ComposingExecutorTest, CreateCallFederatedMapAtClients) {
       kClientsUri.data(), kClientsUri.size());
   parameter_type_pb->set_all_equal(false);
   parameter_type_pb->mutable_member()->mutable_tensor()->set_dtype(
-      v0::TensorType::DT_INT32);
+      v0::DataType::DT_INT32);
   *intrinsic_type_pb.mutable_result()->mutable_federated() = *parameter_type_pb;
 
   for (uint32_t i = 0; i < mock_children_.size(); i++) {
@@ -514,7 +515,7 @@ TEST_F(ComposingExecutorTest, CreateCallFederatedMapAllEqualAtClients) {
       kClientsUri.data(), kClientsUri.size());
   parameter_type_pb->set_all_equal(true);
   parameter_type_pb->mutable_member()->mutable_tensor()->set_dtype(
-      v0::TensorType::DT_INT32);
+      v0::DataType::DT_INT32);
   *intrinsic_type_pb.mutable_result()->mutable_federated() = *parameter_type_pb;
 
   for (uint32_t i = 0; i < mock_children_.size(); i++) {
@@ -599,7 +600,7 @@ TEST_F(ComposingExecutorTest, CreateCallFederatedEvalAtClients) {
       kClientsUri.data(), kClientsUri.size());
   result_type_pb->set_all_equal(false);
   result_type_pb->mutable_member()->mutable_tensor()->set_dtype(
-      v0::TensorType::DT_INT32);
+      v0::DataType::DT_INT32);
 
   for (uint32_t i = 0; i < mock_children_.size(); i++) {
     const auto& child = mock_children_[i];
@@ -714,14 +715,14 @@ TEST_F(ComposingExecutorTest,
       kClientsUri.data(), kClientsUri.size());
   parameter_type_pb->set_all_equal(false);
   parameter_type_pb->mutable_member()->mutable_tensor()->set_dtype(
-      v0::TensorType::DT_INT32);
+      v0::DataType::DT_INT32);
   v0::FederatedType* result_type_pb =
       intrinsic_type_pb.mutable_result()->mutable_federated();
   result_type_pb->mutable_placement()->mutable_value()->set_uri(
       kServerUri.data(), kServerUri.size());
   result_type_pb->set_all_equal(true);
   result_type_pb->mutable_member()->mutable_tensor()->set_dtype(
-      v0::TensorType::DT_INT32);
+      v0::DataType::DT_INT32);
   auto agg = TFF_ASSERT_OK(
       test_executor_->CreateValue(FederatedAggregateV(intrinsic_type_pb)));
   auto res = TFF_ASSERT_OK(test_executor_->CreateCall(agg, arg));
@@ -811,11 +812,11 @@ TEST_F(ComposingExecutorTest, CreateCallFederatedZipAtClientsFlat) {
         kClientsUri.data(), kClientsUri.size());
     parameter_element_type_pb->set_all_equal(false);
     parameter_element_type_pb->mutable_member()->mutable_tensor()->set_dtype(
-        v0::TensorType::DT_INT32);
+        v0::DataType::DT_INT32);
     result_struct_type_pb->add_element()
         ->mutable_value()
         ->mutable_tensor()
-        ->set_dtype(v0::TensorType::DT_INT32);
+        ->set_dtype(v0::DataType::DT_INT32);
   }
 
   for (const auto& child : mock_children_) {
@@ -868,11 +869,11 @@ TEST_F(ComposingExecutorTest, CreateCallFederatedZipAtClientsNested) {
         kClientsUri.data(), kClientsUri.size());
     parameter_element_type_pb->set_all_equal(false);
     parameter_element_type_pb->mutable_member()->mutable_tensor()->set_dtype(
-        v0::TensorType::DT_INT32);
+        v0::DataType::DT_INT32);
     result_struct_type_pb->add_element()
         ->mutable_value()
         ->mutable_tensor()
-        ->set_dtype(v0::TensorType::DT_INT32);
+        ->set_dtype(v0::DataType::DT_INT32);
   }
 
   for (const auto& child : mock_children_) {
