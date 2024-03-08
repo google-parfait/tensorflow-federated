@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package tensorflow_federated.v0;
+
+// Only simple data types are currently supported.
+enum DataType {
+  DT_INVALID = 0;
+  DT_FLOAT = 1;
+  DT_DOUBLE = 2;
+  DT_INT32 = 3;
+  DT_UINT8 = 4;
+  DT_INT16 = 5;
+  DT_INT8 = 6;
+  DT_STRING = 7;
+  DT_COMPLEX64 = 8;
+  DT_INT64 = 9;
+  DT_BOOL = 10;
+  DT_UINT16 = 17;
+  DT_COMPLEX128 = 18;
+  DT_HALF = 19;
+  DT_UINT32 = 22;
+  DT_UINT64 = 23;
+
+  reserved 11;  // DT_QINT8
+  reserved 12;  // DT_QUINT8
+  reserved 13;  // DT_QINT32
+  reserved 14;  // DT_BFLOAT16
+  reserved 15;  // DT_QINT16
+  reserved 16;  // DT_QUINT16
+}

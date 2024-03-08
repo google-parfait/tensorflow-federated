@@ -23,6 +23,7 @@ limitations under the License
 #include "tensorflow/core/framework/tensor_shape.pb.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
 #include "tensorflow_federated/proto/v0/computation.pb.h"
+#include "tensorflow_federated/proto/v0/data_type.pb.h"
 
 namespace tensorflow_federated {
 
@@ -38,8 +39,7 @@ absl::StatusOr<v0::Type> InferTypeFromValue(const v0::Value& value_pb) {
         return absl::InternalError("Failed to unpack Any to TensorProto");
       }
       v0::TensorType* tensor_type_pb = value_type_pb.mutable_tensor();
-      tensor_type_pb->set_dtype(
-          static_cast<v0::TensorType::DataType>(tensor_pb.dtype()));
+      tensor_type_pb->set_dtype(static_cast<v0::DataType>(tensor_pb.dtype()));
       for (const tensorflow::TensorShapeProto::Dim& dim :
            tensor_pb.tensor_shape().dim()) {
         tensor_type_pb->add_dims(dim.size());

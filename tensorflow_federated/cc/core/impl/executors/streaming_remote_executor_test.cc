@@ -48,6 +48,7 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/type_utils.h"
 #include "tensorflow_federated/cc/core/impl/executors/value_test_utils.h"
 #include "tensorflow_federated/proto/v0/computation.pb.h"
+#include "tensorflow_federated/proto/v0/data_type.pb.h"
 #include "tensorflow_federated/proto/v0/executor.grpc.pb.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
 
@@ -538,17 +539,17 @@ TEST_F(StreamingRemoteExecutorTest, CreateCallFnWithStructReturnType) {
   v0::FunctionType* fn_type =
       fn_computation->mutable_type()->mutable_function();
   fn_type->mutable_parameter()->mutable_tensor()->set_dtype(
-      v0::TensorType::DT_FLOAT);
+      v0::DataType::DT_FLOAT);
   v0::StructType* result_struct_type =
       fn_type->mutable_result()->mutable_struct_();
   result_struct_type->add_element()
       ->mutable_value()
       ->mutable_tensor()
-      ->set_dtype(v0::TensorType::DT_FLOAT);
+      ->set_dtype(v0::DataType::DT_FLOAT);
   result_struct_type->add_element()
       ->mutable_value()
       ->mutable_tensor()
-      ->set_dtype(v0::TensorType::DT_FLOAT);
+      ->set_dtype(v0::DataType::DT_FLOAT);
   v0::Value arg_value = TensorV(4.0f);
 
   v0::Value materialized_value;
@@ -935,7 +936,7 @@ TEST_P(StreamingRemoteExecutorFederatedStructsTest, RoundTripFederatedStruct) {
                                            ->mutable_value()
                                            ->mutable_federated();
           param_federated_type->mutable_member()->mutable_tensor()->set_dtype(
-              v0::TensorType::DT_FLOAT);
+              v0::DataType::DT_FLOAT);
           param_federated_type->set_all_equal(test_case.all_equal);
           param_federated_type->mutable_placement()->mutable_value()->set_uri(
               std::string(test_case.placement_uri));
@@ -951,7 +952,7 @@ TEST_P(StreamingRemoteExecutorFederatedStructsTest, RoundTripFederatedStruct) {
           result_struct_type->add_element()
               ->mutable_value()
               ->mutable_tensor()
-              ->set_dtype(v0::TensorType::DT_FLOAT);
+              ->set_dtype(v0::DataType::DT_FLOAT);
         }
       }
       EXPECT_CALL(
@@ -1222,7 +1223,7 @@ TEST_P(StreamingRemoteExecutorFederatedStructsTest,
                                  ->add_element()
                                  ->mutable_value();
         }
-        param_value_type->mutable_tensor()->set_dtype(v0::TensorType::DT_FLOAT);
+        param_value_type->mutable_tensor()->set_dtype(v0::DataType::DT_FLOAT);
         v0::FederatedType* result_federated_type =
             zip_at_placement_type_pb.mutable_result()->mutable_federated();
         result_federated_type->set_all_equal(test_case.all_equal);
@@ -1238,8 +1239,7 @@ TEST_P(StreamingRemoteExecutorFederatedStructsTest,
                                   ->add_element()
                                   ->mutable_value();
         }
-        result_value_type->mutable_tensor()->set_dtype(
-            v0::TensorType::DT_FLOAT);
+        result_value_type->mutable_tensor()->set_dtype(v0::DataType::DT_FLOAT);
         EXPECT_CALL(*mock_executor_service_,
                     CreateValue(_,
                                 EqualsProto(CreateValueRequestForValue(

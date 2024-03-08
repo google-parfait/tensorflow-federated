@@ -56,6 +56,7 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/status_matchers.h"
 #include "tensorflow_federated/cc/core/impl/executors/value_test_utils.h"
 #include "tensorflow_federated/proto/v0/computation.pb.h"
+#include "tensorflow_federated/proto/v0/data_type.pb.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow_federated {
@@ -206,7 +207,7 @@ TEST_F(ReferenceResolvingExecutorTest, CreateValueFederatedTensor) {
   type_pb->set_all_equal(false);
   type_pb->mutable_placement()->mutable_value()->set_uri(kTestPlacement);
   v0::TensorType* tensor_type = type_pb->mutable_member()->mutable_tensor();
-  tensor_type->set_dtype(v0::TensorType::DT_FLOAT);
+  tensor_type->set_dtype(v0::DataType::DT_FLOAT);
   constexpr int kNumClients = 3;
   for (int i = 0; i < kNumClients; ++i) {
     *federated_pb->add_value() = TensorV(i);
@@ -256,7 +257,7 @@ TEST_F(ReferenceResolvingExecutorTest, CreateValueFederatedStructOfTensor) {
   for (int i = 0; i < kNumFields; ++i) {
     v0::StructType::Element* element_pb = struct_type->add_element();
     element_pb->mutable_value()->mutable_tensor()->set_dtype(
-        v0::TensorType::DT_FLOAT);
+        v0::DataType::DT_FLOAT);
   }
   constexpr int kNumClients = 3;
   for (int i = 0; i < kNumClients; ++i) {

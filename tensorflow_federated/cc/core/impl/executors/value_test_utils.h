@@ -49,6 +49,7 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/protobuf_matchers.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
 #include "tensorflow_federated/proto/v0/computation.pb.h"
+#include "tensorflow_federated/proto/v0/data_type.pb.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow_federated {
@@ -200,7 +201,7 @@ inline v0::Value SequenceV(int64_t start, int64_t stop, int64_t step) {
       std::string(sequence_graph.data(), sequence_graph.size());
 
   v0::TensorType tensor_type;
-  tensor_type.set_dtype(v0::TensorType::DT_INT64);
+  tensor_type.set_dtype(v0::DataType::DT_INT64);
   tensor_type.add_dims(1);
   *sequence_pb->mutable_element_type()->mutable_tensor() = tensor_type;
 
@@ -210,7 +211,7 @@ inline v0::Value SequenceV(int64_t start, int64_t stop, int64_t step) {
 inline v0::Type MakeInt64ScalarType() {
   v0::Type type;
   v0::TensorType* tensor_type = type.mutable_tensor();
-  tensor_type->set_dtype(v0::TensorType::DT_INT64);
+  tensor_type->set_dtype(v0::DataType::DT_INT64);
   tensor_type->add_dims(1);
   return type;
 }

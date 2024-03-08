@@ -49,6 +49,7 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/type_test_utils.h"
 #include "tensorflow_federated/cc/core/impl/executors/value_test_utils.h"
 #include "tensorflow_federated/proto/v0/computation.pb.h"
+#include "tensorflow_federated/proto/v0/data_type.pb.h"
 
 ABSL_FLAG(std::string, tff_xla_executor_test_platform, "Host",
           "The name of the XLA platform to run the tests on. By default will "
@@ -314,7 +315,7 @@ TEST_F(XLAExecutorTest, CreateValueComputationNonFunctionalTypeFails) {
   tensorflow::StatusOr<xla::XlaComputation> xla_computation = builder.Build();
   ASSERT_TRUE(xla_computation.ok());
   v0::Type float_tensor_type;
-  float_tensor_type.mutable_tensor()->set_dtype(v0::TensorType::DT_FLOAT);
+  float_tensor_type.mutable_tensor()->set_dtype(v0::DataType::DT_FLOAT);
 
   auto tensor_binding =
       std::get<0>(TFF_ASSERT_OK(BindingFromType(float_tensor_type, 0)));
@@ -340,7 +341,7 @@ TEST_F(XLAExecutorTest, CreateValueComputationMismatchedTypeAndBindingFails) {
   tensorflow::StatusOr<xla::XlaComputation> xla_computation = builder.Build();
   ASSERT_TRUE(xla_computation.ok());
   v0::Type float_tensor;
-  float_tensor.mutable_tensor()->set_dtype(v0::TensorType::DT_FLOAT);
+  float_tensor.mutable_tensor()->set_dtype(v0::DataType::DT_FLOAT);
   v0::Type function_type;
   *function_type.mutable_function()->mutable_result() = float_tensor;
   *function_type.mutable_function()->mutable_parameter() = float_tensor;
@@ -374,7 +375,7 @@ TEST_F(XLAExecutorTest,
   tensorflow::StatusOr<xla::XlaComputation> xla_computation = builder.Build();
   ASSERT_TRUE(xla_computation.ok());
   v0::Type float_unk_shape_tensor;
-  float_unk_shape_tensor.mutable_tensor()->set_dtype(v0::TensorType::DT_FLOAT);
+  float_unk_shape_tensor.mutable_tensor()->set_dtype(v0::DataType::DT_FLOAT);
   for (int i = 0; i < num_dims; i++) {
     float_unk_shape_tensor.mutable_tensor()->add_dims(-1);
   }
@@ -401,7 +402,7 @@ TEST_F(XLAExecutorTest, CreateValueComputationTensorParameterUnknownRankFails) {
   tensorflow::StatusOr<xla::XlaComputation> xla_computation = builder.Build();
   ASSERT_TRUE(xla_computation.ok());
   v0::Type float_unk_rank_tensor;
-  float_unk_rank_tensor.mutable_tensor()->set_dtype(v0::TensorType::DT_FLOAT);
+  float_unk_rank_tensor.mutable_tensor()->set_dtype(v0::DataType::DT_FLOAT);
   float_unk_rank_tensor.mutable_tensor()->set_unknown_rank(true);
   v0::Type function_type;
   *function_type.mutable_function()->mutable_result() = float_unk_rank_tensor;
@@ -429,7 +430,7 @@ TEST_F(XLAExecutorTest, CreateAndMaterializeNoArgCallSingleTensor) {
   xla::Tuple(&builder, {constant});
   tensorflow::StatusOr<xla::XlaComputation> xla_computation = builder.Build();
   ASSERT_TRUE(xla_computation.ok());
-  auto tensor_type = TensorT(v0::TensorType::DT_FLOAT);
+  auto tensor_type = TensorT(v0::DataType::DT_FLOAT);
   v0::Type function_type = NoArgFunctionT(tensor_type);
   v0::Value computation = ComputationV(
       std::nullopt, std::get<0>(TFF_ASSERT_OK(BindingFromType(tensor_type, 0))),
@@ -453,7 +454,7 @@ TEST_F(XLAExecutorTest, CreateAndMaterializeNoArgCallTensorStructure) {
   tensorflow::StatusOr<xla::XlaComputation> xla_computation = builder.Build();
   ASSERT_TRUE(xla_computation.ok());
 
-  v0::Type return_type = FlatStructT(v0::TensorType::DT_FLOAT, 2);
+  v0::Type return_type = FlatStructT(v0::DataType::DT_FLOAT, 2);
   v0::Type function_type = NoArgFunctionT(return_type);
 
   v0::Value computation = ComputationV(
@@ -479,7 +480,7 @@ TEST_F(XLAExecutorTest, CreateAndMaterializeNoArgCallNestedTensorStructure) {
   ASSERT_TRUE(xla_computation.ok());
 
   // We construct a return type <tf.float32, <tf.float32, tf.float32>>
-  v0::Type nested_struct_type = NestedStructT(v0::TensorType::DT_FLOAT);
+  v0::Type nested_struct_type = NestedStructT(v0::DataType::DT_FLOAT);
   v0::Type function_type = NoArgFunctionT(nested_struct_type);
 
   v0::Value computation = ComputationV(
@@ -509,7 +510,7 @@ TEST_F(XLAExecutorTest, CreateAndMaterializeIdentityScalar) {
   xla::Tuple(&builder, {parameter});
   tensorflow::StatusOr<xla::XlaComputation> xla_computation = builder.Build();
   ASSERT_TRUE(xla_computation.ok());
-  v0::Type float_tensor_type = TensorT(v0::TensorType::DT_FLOAT);
+  v0::Type float_tensor_type = TensorT(v0::DataType::DT_FLOAT);
   v0::Type function_type = IdentityFunctionT(float_tensor_type);
   auto binding =
       std::get<0>(TFF_ASSERT_OK(BindingFromType(float_tensor_type, 0)));
@@ -540,7 +541,7 @@ TEST_F(XLAExecutorTest, CreateAndMaterializeIdentityNestedStruct) {
   tensorflow::StatusOr<xla::XlaComputation> xla_computation = builder.Build();
   ASSERT_TRUE(xla_computation.ok());
 
-  v0::Type nested_struct_type = NestedStructT(v0::TensorType::DT_FLOAT);
+  v0::Type nested_struct_type = NestedStructT(v0::DataType::DT_FLOAT);
   v0::Type function_type = IdentityFunctionT(nested_struct_type);
   auto binding =
       std::get<0>(TFF_ASSERT_OK(BindingFromType(nested_struct_type, 0)));
@@ -573,8 +574,8 @@ TEST_F(XLAExecutorTest, CallAndMaterializeIdentityPartiallyNonScalarStruct) {
   ASSERT_TRUE(xla_computation.ok());
 
   // Create a computation type to match the above.
-  v0::Type scalar = TensorT(v0::TensorType::DT_FLOAT);
-  v0::Type matrix = TensorT(v0::TensorType::DT_FLOAT, {10, 10});
+  v0::Type scalar = TensorT(v0::DataType::DT_FLOAT);
+  v0::Type matrix = TensorT(v0::DataType::DT_FLOAT, {10, 10});
   v0::Type struct_type = StructT({scalar, matrix});
   v0::Type function_type = IdentityFunctionT(struct_type);
   auto binding = std::get<0>(TFF_ASSERT_OK(BindingFromType(struct_type, 0)));
@@ -605,8 +606,8 @@ TEST_F(XLAExecutorTest,
   xla::Tuple(&builder, {x, xla::Add(y, z)});
   tensorflow::StatusOr<xla::XlaComputation> xla_computation = builder.Build();
   ASSERT_TRUE(xla_computation.ok());
-  v0::Type nested_struct_type = NestedStructT(v0::TensorType::DT_FLOAT);
-  v0::Type result_type = FlatStructT(v0::TensorType::DT_FLOAT, 2);
+  v0::Type nested_struct_type = NestedStructT(v0::DataType::DT_FLOAT);
+  v0::Type result_type = FlatStructT(v0::DataType::DT_FLOAT, 2);
   v0::Type function_type = FunctionT(nested_struct_type, result_type);
   auto parameter_binding =
       std::get<0>(TFF_ASSERT_OK(BindingFromType(nested_struct_type, 0)));
