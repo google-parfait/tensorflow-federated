@@ -15,13 +15,21 @@ limitations under the License
 
 #include "tensorflow_federated/cc/core/impl/executors/session_provider.h"
 
+#include <cstdint>
+#include <cstring>
+#include <memory>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
+#include "absl/base/attributes.h"
+#include "absl/base/const_init.h"
 #include "absl/container/flat_hash_set.h"
+#include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/strings/match.h"
+#include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
 #include "absl/strings/str_split.h"
 #include "absl/synchronization/mutex.h"
@@ -31,7 +39,10 @@ limitations under the License
 #include "tensorflow/core/framework/op.h"
 #include "tensorflow/core/framework/op_kernel.h"
 #include "tensorflow/core/framework/types.h"
+#include "tensorflow/core/platform/status.h"
+#include "tensorflow/core/public/session.h"
 #include "tensorflow/core/public/session_options.h"
+#include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
 
 namespace tensorflow_federated {
 
@@ -114,8 +125,7 @@ const AcceleratorDevices& GetAcceleratorDevices() {
       }
     }
     LOG_FIRST_N(INFO, 1) << "Found:\n\t" << num_gpus << " GPUs\n\t" << num_tpus
-                         << " TPUS"
-                         << "\nin total";
+                         << " TPUS" << "\nin total";
     return new AcceleratorDevices{num_gpus, num_tpus};
   }();
   return *accelerator_devices;
@@ -144,7 +154,7 @@ void SetDevice(std::string_view device, tensorflow::GraphDef* graph_def,
       // which will happen below because GPU kernels exist. TF will determine
       // that the iterator is on the host and correctly place the node for us,
       // but this will cause issues if we eagerly put the GetNext on the
-      // accelerator divce here.
+      // accelerator device here.
       VLOG(5) << "Forcing iterator op to CPU [" << node_pb.name() << "]";
       node_pb.set_device(
           absl::StrCat("/device:", tensorflow::DEVICE_CPU, ":0"));

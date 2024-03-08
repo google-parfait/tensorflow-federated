@@ -15,7 +15,6 @@ limitations under the License
 
 #include "tensorflow_federated/cc/core/impl/executors/executor_service.h"
 
-#include <algorithm>
 #include <memory>
 #include <optional>
 #include <string>
@@ -23,18 +22,17 @@ limitations under the License
 #include <utility>
 #include <vector>
 
+#include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/numbers.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
-#include "absl/strings/str_split.h"
 #include "absl/synchronization/mutex.h"
 #include "include/grpcpp/support/status.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_conversion.h"
-#include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
 #include "tensorflow_federated/proto/v0/computation.pb.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
 
@@ -344,9 +342,9 @@ grpc::Status ExecutorService::Dispose(grpc::ServerContext* context,
   grpc::Status executor_status =
       RequireExecutor("Dispose", request->executor(), executor);
   if (!executor_status.ok()) {
-    LOG_FIRST_N(WARNING, 10) << "Received a dispose request for ["
-                             << request->executor().id() << "], but it was not "
-                             << "found.";
+    LOG_FIRST_N(WARNING, 10)
+        << "Received a dispose request for [" << request->executor().id()
+        << "], but it was not " << "found.";
     // There may be no executor corresponding to this Dispose request, if the
     // underlying executor was destroyed before this request came in (e.g., in
     // the case of an executor returning FAILED_PRECONDITION). We consider the

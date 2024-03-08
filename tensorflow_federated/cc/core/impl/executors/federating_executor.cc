@@ -25,11 +25,15 @@ limitations under the License
 #include <variant>
 #include <vector>
 
+#include "absl/base/thread_annotations.h"
+#include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
+#include "absl/synchronization/mutex.h"
 #include "absl/types/span.h"
+#include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/framework/types.pb.h"
 #include "tensorflow/core/platform/macros.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
@@ -824,9 +828,8 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
       case ExecutorValue::ValueType::STRUCTURE: {
         v0::Value_Struct* struct_pb = value_pb->mutable_struct_();
         for (const auto& element : *value.structure()) {
-          TFF_TRY(
-              CreateMaterializeTasks(
-                  element, struct_pb->add_element()->mutable_value(), tasks));
+          TFF_TRY(CreateMaterializeTasks(
+              element, struct_pb->add_element()->mutable_value(), tasks));
         }
         return absl::OkStatus();
       }

@@ -14,6 +14,8 @@ limitations under the License
 ==============================================================================*/
 #include "tensorflow_federated/cc/core/impl/executors/eager_computation.h"
 
+#include <cstdint>
+#include <cstring>
 #include <map>
 #include <memory>
 #include <optional>
@@ -22,12 +24,18 @@ limitations under the License
 
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
+#include "absl/log/check.h"
 #include "absl/status/status.h"
+#include "absl/strings/str_cat.h"
+#include "absl/types/span.h"
 #include "tensorflow/c/eager/c_api.h"
 #include "tensorflow/c/eager/c_api_experimental.h"
+#include "tensorflow/c/eager/immediate_execution_tensor_handle.h"
+#include "tensorflow/c/eager/tfe_tensorhandle_internal.h"
 #include "tensorflow/c/tf_datatype.h"
 #include "tensorflow/c/tf_status.h"
 #include "tensorflow/c/tf_tensor.h"
+#include "tensorflow/cc/framework/ops.h"
 #include "tensorflow/cc/framework/scope.h"
 #include "tensorflow/cc/ops/array_ops.h"
 #include "tensorflow/cc/ops/const_op.h"
@@ -37,8 +45,12 @@ limitations under the License
 #include "tensorflow/cc/ops/resource_variable_ops.h"
 #include "tensorflow/core/framework/function.pb.h"
 #include "tensorflow/core/framework/tensor.pb.h"
+#include "tensorflow/core/framework/tensor_shape.h"
 #include "tensorflow/core/framework/types.pb.h"
+#include "tensorflow/core/graph/graph.h"
+#include "tensorflow/core/platform/status.h"
 #include "tensorflow/dtensor/cc/mesh_type.h"
+#include "tensorflow/dtensor/cc/tensor_layout.h"
 #include "tensorflow_federated/cc/core/impl/executors/dtensor_api.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_matchers.h"
 
@@ -417,7 +429,6 @@ tensorflow::FunctionDef AddFunctionDef() {
       &def));
   return def;
 }
-
 
 TEST_F(EagerComputationTest, CallAddGraphDefWithFunctionDef) {
   TF_Status* status = TF_NewStatus();

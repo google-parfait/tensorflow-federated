@@ -11,13 +11,18 @@ See the License for the specific language governing permissions and
 limitations under the License
 ==============================================================================*/
 #include "tensorflow_federated/cc/core/impl/executor_stacks/local_stacks.h"
+
+#include <cstdint>
 #include <functional>
+#include <memory>
+
 #include "absl/status/statusor.h"
+#include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
+#include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/federating_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/reference_resolving_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/sequence_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
-#include "tensorflow_federated/cc/core/impl/executors/tensorflow_executor.h"
 
 namespace tensorflow_federated {
 
