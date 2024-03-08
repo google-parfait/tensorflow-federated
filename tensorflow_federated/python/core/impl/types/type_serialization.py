@@ -20,61 +20,62 @@ import weakref
 import numpy as np
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
+from tensorflow_federated.proto.v0 import data_type_pb2
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.types import array_shape
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 
 
-# Mapping from `np.dtype` to `pb.TensorType.DataType`.
-_NP_TO_PROTO: Mapping[type[np.generic], pb.TensorType.DataType] = {
-    np.float32: pb.TensorType.DataType.DT_FLOAT,
-    np.float64: pb.TensorType.DataType.DT_DOUBLE,
-    np.int32: pb.TensorType.DataType.DT_INT32,
-    np.uint8: pb.TensorType.DataType.DT_UINT8,
-    np.int16: pb.TensorType.DataType.DT_INT16,
-    np.int8: pb.TensorType.DataType.DT_INT8,
-    np.str_: pb.TensorType.DataType.DT_STRING,
-    np.complex64: pb.TensorType.DataType.DT_COMPLEX64,
-    np.int64: pb.TensorType.DataType.DT_INT64,
-    np.bool_: pb.TensorType.DataType.DT_BOOL,
-    np.uint16: pb.TensorType.DataType.DT_UINT16,
-    np.float16: pb.TensorType.DataType.DT_HALF,
-    np.uint32: pb.TensorType.DataType.DT_UINT32,
-    np.uint64: pb.TensorType.DataType.DT_UINT64,
-    np.complex128: pb.TensorType.DataType.DT_COMPLEX128,
+# Mapping from `np.dtype` to `data_type_pb2.DataType`.
+_NP_TO_PROTO: Mapping[type[np.generic], data_type_pb2.DataType] = {
+    np.float32: data_type_pb2.DataType.DT_FLOAT,
+    np.float64: data_type_pb2.DataType.DT_DOUBLE,
+    np.int32: data_type_pb2.DataType.DT_INT32,
+    np.uint8: data_type_pb2.DataType.DT_UINT8,
+    np.int16: data_type_pb2.DataType.DT_INT16,
+    np.int8: data_type_pb2.DataType.DT_INT8,
+    np.str_: data_type_pb2.DataType.DT_STRING,
+    np.complex64: data_type_pb2.DataType.DT_COMPLEX64,
+    np.int64: data_type_pb2.DataType.DT_INT64,
+    np.bool_: data_type_pb2.DataType.DT_BOOL,
+    np.uint16: data_type_pb2.DataType.DT_UINT16,
+    np.float16: data_type_pb2.DataType.DT_HALF,
+    np.uint32: data_type_pb2.DataType.DT_UINT32,
+    np.uint64: data_type_pb2.DataType.DT_UINT64,
+    np.complex128: data_type_pb2.DataType.DT_COMPLEX128,
 }
 
 
-def _serialize_dtype(dtype: np.dtype) -> pb.TensorType.DataType:
-  """Serializes `np.dtype` as a `pb.TensorType.DataType`."""
+def _serialize_dtype(dtype: np.dtype) -> data_type_pb2.DataType:
+  """Serializes `np.dtype` as a `data_type_pb2.DataType`."""
   return _NP_TO_PROTO[dtype.type]
 
 
-# Mapping from `pb.TensorType.DataType` to `np.dtype`.
-_PROTO_TO_NP: Mapping[pb.TensorType.DataType, type[np.generic]] = {
-    pb.TensorType.DataType.DT_FLOAT: np.float32,
-    pb.TensorType.DataType.DT_DOUBLE: np.float64,
-    pb.TensorType.DataType.DT_INT32: np.int32,
-    pb.TensorType.DataType.DT_UINT8: np.uint8,
-    pb.TensorType.DataType.DT_INT16: np.int16,
-    pb.TensorType.DataType.DT_INT8: np.int8,
-    pb.TensorType.DataType.DT_STRING: np.str_,
-    pb.TensorType.DataType.DT_COMPLEX64: np.complex64,
-    pb.TensorType.DataType.DT_INT64: np.int64,
-    pb.TensorType.DataType.DT_BOOL: np.bool_,
-    pb.TensorType.DataType.DT_UINT16: np.uint16,
-    pb.TensorType.DataType.DT_HALF: np.float16,
-    pb.TensorType.DataType.DT_UINT32: np.uint32,
-    pb.TensorType.DataType.DT_UINT64: np.uint64,
-    pb.TensorType.DataType.DT_COMPLEX128: np.complex128,
+# Mapping from `data_type_pb2.DataType` to `np.dtype`.
+_PROTO_TO_NP: Mapping[data_type_pb2.DataType, type[np.generic]] = {
+    data_type_pb2.DataType.DT_FLOAT: np.float32,
+    data_type_pb2.DataType.DT_DOUBLE: np.float64,
+    data_type_pb2.DataType.DT_INT32: np.int32,
+    data_type_pb2.DataType.DT_UINT8: np.uint8,
+    data_type_pb2.DataType.DT_INT16: np.int16,
+    data_type_pb2.DataType.DT_INT8: np.int8,
+    data_type_pb2.DataType.DT_STRING: np.str_,
+    data_type_pb2.DataType.DT_COMPLEX64: np.complex64,
+    data_type_pb2.DataType.DT_INT64: np.int64,
+    data_type_pb2.DataType.DT_BOOL: np.bool_,
+    data_type_pb2.DataType.DT_UINT16: np.uint16,
+    data_type_pb2.DataType.DT_HALF: np.float16,
+    data_type_pb2.DataType.DT_UINT32: np.uint32,
+    data_type_pb2.DataType.DT_UINT64: np.uint64,
+    data_type_pb2.DataType.DT_COMPLEX128: np.complex128,
 }
 
 
 def _deserialize_dtype(
-    dtype_proto: pb.TensorType.DataType,
+    dtype_proto: data_type_pb2.DataType,
 ) -> np.dtype:
-  """Deserializes `pb.TensorType.DataType` as a `np.dtype`."""
+  """Deserializes `data_type_pb2.DataType` as a `np.dtype`."""
   return np.dtype(_PROTO_TO_NP[dtype_proto])
 
 

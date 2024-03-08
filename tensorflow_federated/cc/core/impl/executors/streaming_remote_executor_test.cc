@@ -29,19 +29,26 @@ limitations under the License
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
 #include "absl/container/flat_hash_map.h"
+#include "absl/log/check.h"
+#include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/match.h"
+#include "absl/strings/str_cat.h"
 #include "absl/strings/substitute.h"
 #include "absl/synchronization/notification.h"
 #include "absl/time/time.h"
+#include "absl/types/span.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/federated_intrinsics.h"
 #include "tensorflow_federated/cc/core/impl/executors/mock_grpc.h"
 #include "tensorflow_federated/cc/core/impl/executors/protobuf_matchers.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_matchers.h"
+#include "tensorflow_federated/cc/core/impl/executors/type_utils.h"
 #include "tensorflow_federated/cc/core/impl/executors/value_test_utils.h"
 #include "tensorflow_federated/proto/v0/computation.pb.h"
+#include "tensorflow_federated/proto/v0/data_type.pb.h"
 #include "tensorflow_federated/proto/v0/executor.grpc.pb.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
 
@@ -532,17 +539,17 @@ TEST_F(StreamingRemoteExecutorTest, CreateCallFnWithStructReturnType) {
   v0::FunctionType* fn_type =
       fn_computation->mutable_type()->mutable_function();
   fn_type->mutable_parameter()->mutable_tensor()->set_dtype(
-      v0::TensorType::DT_FLOAT);
+      v0::DataType::DT_FLOAT);
   v0::StructType* result_struct_type =
       fn_type->mutable_result()->mutable_struct_();
   result_struct_type->add_element()
       ->mutable_value()
       ->mutable_tensor()
-      ->set_dtype(v0::TensorType::DT_FLOAT);
+      ->set_dtype(v0::DataType::DT_FLOAT);
   result_struct_type->add_element()
       ->mutable_value()
       ->mutable_tensor()
-      ->set_dtype(v0::TensorType::DT_FLOAT);
+      ->set_dtype(v0::DataType::DT_FLOAT);
   v0::Value arg_value = TensorV(4.0f);
 
   v0::Value materialized_value;
@@ -635,7 +642,7 @@ TEST_F(StreamingRemoteExecutorTest, CreateCallError) {
     OwnedValueId call_result =
         TFF_ASSERT_OK(test_executor_->CreateCall(fn, std::nullopt));
 
-    // We expect the executor to shortcircuit and never call Compute if an
+    // We expect the executor to short circuit and never call Compute if an
     // intermediate result errors out.
     materialize_status =
         test_executor_->Materialize(call_result, &materialized_value);
@@ -927,7 +934,7 @@ TEST_P(StreamingRemoteExecutorFederatedStructsTest, RoundTripFederatedStruct) {
                                            ->mutable_value()
                                            ->mutable_federated();
           param_federated_type->mutable_member()->mutable_tensor()->set_dtype(
-              v0::TensorType::DT_FLOAT);
+              v0::DataType::DT_FLOAT);
           param_federated_type->set_all_equal(test_case.all_equal);
           param_federated_type->mutable_placement()->mutable_value()->set_uri(
               std::string(test_case.placement_uri));
@@ -943,7 +950,7 @@ TEST_P(StreamingRemoteExecutorFederatedStructsTest, RoundTripFederatedStruct) {
           result_struct_type->add_element()
               ->mutable_value()
               ->mutable_tensor()
-              ->set_dtype(v0::TensorType::DT_FLOAT);
+              ->set_dtype(v0::DataType::DT_FLOAT);
         }
       }
       EXPECT_CALL(
@@ -1141,7 +1148,7 @@ TEST_P(StreamingRemoteExecutorFederatedStructsTest, RoundTripFederatedStruct) {
     // Don't call any executor interface methods until all expectations are set
     // on the executor service above, otherwise this could trigger a TSAN
     // warning where the executor threads are reading expectations while the
-    // test thread is writign new expectations.
+    // test thread is writing new expectations.
     OwnedValueId outer_struct_ref =
         TFF_ASSERT_OK(test_executor_->CreateValue(federated_struct_value));
     materialize_status =
@@ -1213,7 +1220,7 @@ TEST_P(StreamingRemoteExecutorFederatedStructsTest,
                                  ->add_element()
                                  ->mutable_value();
         }
-        param_value_type->mutable_tensor()->set_dtype(v0::TensorType::DT_FLOAT);
+        param_value_type->mutable_tensor()->set_dtype(v0::DataType::DT_FLOAT);
         v0::FederatedType* result_federated_type =
             zip_at_placement_type_pb.mutable_result()->mutable_federated();
         result_federated_type->set_all_equal(test_case.all_equal);
@@ -1229,8 +1236,7 @@ TEST_P(StreamingRemoteExecutorFederatedStructsTest,
                                   ->add_element()
                                   ->mutable_value();
         }
-        result_value_type->mutable_tensor()->set_dtype(
-            v0::TensorType::DT_FLOAT);
+        result_value_type->mutable_tensor()->set_dtype(v0::DataType::DT_FLOAT);
         EXPECT_CALL(*mock_executor_service_,
                     CreateValue(_,
                                 EqualsProto(CreateValueRequestForValue(
@@ -1445,7 +1451,7 @@ TEST_P(StreamingRemoteExecutorFederatedStructsTest,
     // Don't call any executor interface methods until all expectations are set
     // on the executor service above, otherwise this could trigger a TSAN
     // warning where the executor threads are reading expectations while the
-    // test thread is writign new expectations.
+    // test thread is writing new expectations.
     OwnedValueId outer_struct_ref =
         TFF_ASSERT_OK(test_executor_->CreateValue(federated_struct_value));
     materialize_status =
@@ -1486,7 +1492,7 @@ TEST_P(StreamingRemoteExecutorFederatedStructsTest,
     // Don't call any executor interface methods until all expectations are set
     // on the executor service above, otherwise this could trigger a TSAN
     // warning where the executor threads are reading expectations while the
-    // test thread is writign new expectations.
+    // test thread is writing new expectations.
     OwnedValueId outer_struct_ref =
         TFF_ASSERT_OK(test_executor_->CreateValue(federated_struct_value));
     materialize_status =
