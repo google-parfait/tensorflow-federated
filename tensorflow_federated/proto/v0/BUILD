@@ -19,11 +19,19 @@ py_library(
 proto_library(
     name = "computation_proto",
     srcs = ["computation.proto"],
-    deps = ["@com_google_protobuf//:any_proto"],
+    deps = [
+        ":types_proto",
+        "@com_google_protobuf//:any_proto",
+    ],
 )
 
 py_proto_library(
     name = "computation_py_pb2",
+    deps = [":computation_proto"],
+)
+
+cc_proto_library(
+    name = "computation_cc_proto",
     deps = [":computation_proto"],
 )
 
@@ -35,11 +43,6 @@ py_test(
         "nokokoro",
     ],
     deps = [":computation_py_pb2"],
-)
-
-cc_proto_library(
-    name = "computation_cc_proto",
-    deps = [":computation_proto"],
 )
 
 proto_library(
@@ -74,10 +77,28 @@ cc_grpc_library(
     deps = [":executor_cc_proto"],
 )
 
+proto_library(
+    name = "types_proto",
+    srcs = ["types.proto"],
+    compatible_with = ["//buildenv/target:non_prod"],
+)
+
+py_proto_library(
+    name = "types_py_pb2",
+    api_version = 2,
+    deps = [":types_proto"],
+)
+
+cc_proto_library(
+    name = "types_cc_proto",
+    deps = [":types_proto"],
+)
+
 filegroup(
     name = "proto_files",
     srcs = [
         "computation.proto",
         "executor.proto",
+        "types.proto",
     ],
 )
