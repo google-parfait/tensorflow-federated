@@ -306,6 +306,7 @@ def extract_nodes_consuming(tree, predicate: _BuildingBlockPredicate):
             building_blocks.CompiledComputation,
             building_blocks.Data,
             building_blocks.Intrinsic,
+            building_blocks.Literal,
             building_blocks.Placement,
         ),
     ):

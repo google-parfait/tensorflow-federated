@@ -13,7 +13,7 @@
 # limitations under the License.
 """Utilities for working with shapes.
 
-The `shape` of a tensor may be one of the following:
+The shape of an `Array` may be one of the following:
 
 *   Fully-defined: Has a known number of dimensions and a known size for each
     dimension (e.g. (2, 3)).
@@ -28,9 +28,32 @@ import functools
 import operator
 from typing import Optional, Union
 
+from tensorflow_federated.proto.v0 import array_pb2
+
+
 _EmptyTuple = tuple[()]
-ArrayShape = Union[tuple[Optional[int], ...], None, _EmptyTuple]
 _ArrayShapeLike = Union[Sequence[Optional[int]], None, _EmptyTuple]
+
+# ArrayShape is the Python representation of the `ArrayShape` protobuf, and is
+# the shape of an `Array`.
+ArrayShape = Union[tuple[Optional[int], ...], None, _EmptyTuple]
+
+
+def from_proto(shape_pb: array_pb2.ArrayShape) -> ArrayShape:
+  """Returns a `tff.types.ArrayShape` for the `shape_pb`."""
+  if shape_pb.unknown_rank:
+    return None
+  else:
+    return tuple(d if d >= 0 else None for d in shape_pb.dim)
+
+
+def to_proto(shape: ArrayShape) -> array_pb2.ArrayShape:
+  """Returns an `ArrayShape` for the `shape`."""
+  if shape is not None:
+    dims = [d if d is not None else -1 for d in shape]
+    return array_pb2.ArrayShape(dim=dims)
+  else:
+    return array_pb2.ArrayShape(unknown_rank=True)
 
 
 def is_shape_fully_defined(shape: ArrayShape) -> bool:
@@ -72,7 +95,7 @@ def is_compatible_with(target: ArrayShape, other: ArrayShape) -> bool:
   if target is None or other is None:
     return True
 
-  if len(other) != len(target):
+  if len(target) != len(other):
     return False
 
   return all(x is None or y is None or x == y for x, y in zip(target, other))
