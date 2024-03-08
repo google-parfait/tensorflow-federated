@@ -1,0 +1,68 @@
+syntax = "proto3";
+
+package tensorflow_federated.v0;
+
+import "tensorflow_federated/proto/v0/data_type.proto";
+
+// ArrayShape is the shape of an `Array`, and may be one of the following:
+//
+// * Fully-defined: Has a known number of dimensions and a known size for each
+//   dimension (e.g. (2, 3)).
+// * Partially-defined: Has a known number of dimensions, and an unknown size
+//   for one or more dimension (e.g. (2, -1)).
+// * Unknown: Has an unknown number of dimensions.
+// * Scalar: Has no dimensions (e.g. ()).
+message ArrayShape {
+  repeated int64 dim = 1;
+  bool unknown_rank = 2;
+}
+
+// Array is the native representation of an array.
+message Array {
+  DataType dtype = 1;
+  ArrayShape shape = 2;
+
+  message BoolList {
+    repeated bool value = 1 [packed = true];
+  }
+  // INT8, INT16, INT32, UNIT8, UINT16, HALF
+  message IntList {
+    repeated int32 value = 1 [packed = true];
+  }
+  message Int64List {
+    repeated int64 value = 1 [packed = true];
+  }
+  message Uint32List {
+    repeated uint32 value = 1 [packed = true];
+  }
+  message Uint64List {
+    repeated uint64 value = 1 [packed = true];
+  }
+  message FloatList {
+    repeated float value = 1 [packed = true];
+  }
+  message DoubleList {
+    repeated double value = 1 [packed = true];
+  }
+  message BytesList {
+    repeated bytes value = 1;
+  }
+
+  oneof kind {
+    BoolList bool_list = 3;
+    IntList int8_list = 4;
+    IntList int16_list = 5;
+    IntList int32_list = 6;
+    Int64List int64_list = 7;
+    IntList uint8_list = 8;
+    IntList uint16_list = 9;
+    Uint32List uint32_list = 10;
+    Uint64List uint64_list = 11;
+    IntList float16_list = 12;
+    FloatList float32_list = 13;
+    DoubleList float64_list = 14;
+    FloatList complex64_list = 15;
+    DoubleList complex128_list = 16;
+    BytesList string_list = 17;
+  }
+}

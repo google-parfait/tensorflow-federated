@@ -26,6 +26,7 @@ import tree
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.core.impl.types import dtype_utils
 from tensorflow_federated.python.core.impl.types import typed_object
 
 
@@ -104,30 +105,13 @@ def infer_type(arg: object) -> Optional[computation_types.Type]:
       return computation_types.StructType(elements)
     else:
       return computation_types.StructWithPythonType(elements, type(arg))
-  elif isinstance(arg, str):
-    return computation_types.TensorType(np.str_)
-  elif isinstance(arg, (np.generic, np.ndarray)):
+  elif isinstance(arg, (np.ndarray, np.generic)):
     return computation_types.TensorType(arg.dtype, arg.shape)
+  elif isinstance(arg, (bool, int, float, complex, str, bytes)):
+    dtype = dtype_utils.infer_dtype(arg)
+    return computation_types.TensorType(dtype)
   else:
-    arg_type = type(arg)
-    if arg_type is bool:
-      return computation_types.TensorType(np.bool_)
-    elif arg_type is int:
-      # Chose the integral type based on value.
-      if arg > np.iinfo(np.int64).max or arg < np.iinfo(np.int64).min:
-        raise TypeError(
-            'No integral type support for values outside range '
-            f'[{np.iinfo(np.int64).min}, {np.iinfo(np.int64).max}], '
-            f'found: {arg}.'
-        )
-      elif arg > np.iinfo(np.int32).max or arg < np.iinfo(np.int32).min:
-        return computation_types.TensorType(np.int64)
-      else:
-        return computation_types.TensorType(np.int32)
-    elif arg_type is float:
-      return computation_types.TensorType(np.float32)
-    else:
-      raise NotImplementedError(f'Unexpected type found: {type(arg)}.')
+    raise NotImplementedError(f'Unexpected type found: {type(arg)}.')
 
 
 def _tensor_to_type(tensor: tf.Tensor) -> computation_types.Type:

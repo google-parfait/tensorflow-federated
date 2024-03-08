@@ -38,12 +38,16 @@ py_library(
 py_library(
     name = "array_shape",
     srcs = ["array_shape.py"],
+    deps = ["//tensorflow_federated/proto/v0:array_py_pb2"],
 )
 
 py_test(
     name = "array_shape_test",
     srcs = ["array_shape_test.py"],
-    deps = [":array_shape"],
+    deps = [
+        ":array_shape",
+        "//tensorflow_federated/proto/v0:array_py_pb2",
+    ],
 )
 
 py_library(
@@ -80,6 +84,18 @@ py_test(
         "//tensorflow_federated/python/common_libs:golden",
         "//tensorflow_federated/python/common_libs:structure",
     ],
+)
+
+py_library(
+    name = "dtype_utils",
+    srcs = ["dtype_utils.py"],
+    deps = ["//tensorflow_federated/proto/v0:data_type_py_pb2"],
+)
+
+py_test(
+    name = "dtype_utils_test",
+    srcs = ["dtype_utils_test.py"],
+    deps = [":dtype_utils"],
 )
 
 py_library(
@@ -125,6 +141,7 @@ py_library(
     srcs = ["type_conversions.py"],
     deps = [
         ":computation_types",
+        ":dtype_utils",
         ":typed_object",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
@@ -167,9 +184,10 @@ py_library(
     deps = [
         ":array_shape",
         ":computation_types",
+        ":dtype_utils",
         ":placements",
+        "//tensorflow_federated/proto/v0:array_py_pb2",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
-        "//tensorflow_federated/proto/v0:data_type_py_pb2",
         "//tensorflow_federated/python/common_libs:structure",
     ],
 )
@@ -179,10 +197,13 @@ py_test(
     size = "small",
     srcs = ["type_serialization_test.py"],
     deps = [
+        ":array_shape",
         ":computation_types",
+        ":dtype_utils",
         ":placements",
         ":type_serialization",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
+        "//tensorflow_federated/proto/v0:data_type_py_pb2",
     ],
 )
 

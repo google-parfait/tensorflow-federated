@@ -13,14 +13,30 @@
 # limitations under the License.
 """Definitions of JAX computation wrapper instances."""
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from typing import Optional, Union
+
+import jax
+import numpy as np
 
 from tensorflow_federated.python.core.environments.jax_frontend import jax_serialization
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.computation import computation_wrapper
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.core.impl.types import type_analysis
+
+
+def _contains_dtype(
+    type_spec: computation_types.Type, dtypes: Sequence[type[np.generic]]
+) -> bool:
+  def predicate(type_spec: computation_types.Type) -> bool:
+    return (
+        isinstance(type_spec, computation_types.TensorType)
+        and type_spec.dtype.type in dtypes
+    )
+
+  return type_analysis.contains_only(type_spec, predicate)
 
 
 def _jax_wrapper_fn(
@@ -49,6 +65,24 @@ def _jax_wrapper_fn(
     computation.
   """
   del unpack, name, kwargs  # Unused.
+
+  if _contains_dtype(parameter_type, (np.str_, np.bytes_)):
+    raise ValueError(
+        'JAX does not support `np.str_` or `np.bytes_` dtypes, found:'
+        f' {parameter_type}'
+    )
+
+  if not jax.config.read('jax_enable_x64') and _contains_dtype(
+      parameter_type, (np.int64, np.uint64, np.float64, np.complex128)
+  ):
+    raise ValueError(
+        'Using x64-precision numbers in JAX is not enabled and found an x64'
+        ' dtype. To use x64-precision numbers in JAX, you must set the'
+        ' `jax_enable_x64` configuration variable. See'
+        ' https://jax.readthedocs.io/en/latest/notebooks/Common_Gotchas_in_JAX.html#double-64bit-precisionJAX'
+        f' for more information.\nFound: {parameter_type}'
+    )
+
   context_stack = context_stack_impl.context_stack
   comp_pb, extra_type_spec = jax_serialization.serialize_jax_computation(
       fn, parameter_type, context_stack

@@ -20,10 +20,14 @@ import typing
 from typing import Optional, Union
 import zlib
 
+import numpy as np
+
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
+from tensorflow_federated.python.core.impl.compiler import array
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
+from tensorflow_federated.python.core.impl.types import array_shape
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
@@ -1115,6 +1119,187 @@ class Placement(ComputationBuildingBlock):
     return "Placement('{}')".format(self.uri)
 
 
+def _is_compatible_dtype(value: array.Array, dtype: type[np.generic]) -> bool:
+  """Returns `True` if `value` is compatible with `dtype`, otherwise `False`.
+
+  This functions checks that the `value` has the same scalar kind as `dtype` and
+  has a compatible size.
+
+  See https://numpy.org/doc/stable/reference/arrays.scalars.html for more
+  information.
+
+  Args:
+    value: The value to check.
+    dtype: The scalar `np.generic` to check against.
+  """
+  if isinstance(value, (np.ndarray, np.generic)):
+    value_dtype = value.dtype
+  else:
+    value_dtype = type(value)
+
+  # Check dtype kind and skip checking dtype size because `np.bool_` does not
+  # have a size and values with a dtype `np.str_` and `np.bytes_` have a
+  # variable length.
+  if np.issubdtype(value_dtype, np.bool_):
+    return dtype is np.bool_
+  elif np.issubdtype(value_dtype, np.str_):
+    return dtype is np.str_
+  elif np.issubdtype(value_dtype, np.bytes_):
+    return dtype is np.str_
+
+  # Check dtype kind.
+  if np.issubdtype(value_dtype, np.integer):
+    if not np.issubdtype(dtype, np.integer):
+      return False
+  elif np.issubdtype(value_dtype, np.floating):
+    if not np.issubdtype(dtype, np.floating):
+      return False
+  elif np.issubdtype(value_dtype, np.complexfloating):
+    if not np.issubdtype(dtype, np.complexfloating):
+      return False
+  else:
+    return False
+
+  # Check dtype size.
+  if not np.can_cast(value, dtype):
+    return False
+
+  return True
+
+
+def _is_compatible_shape(
+    value: array.Array, shape: array_shape.ArrayShape
+) -> bool:
+  """Returns `True` if `value` is compatible with `shape`, otherwise `False`.
+
+  Args:
+    value: The value to check.
+    shape: The `tff.types.ArrayShape` to check against.
+  """
+  if isinstance(value, np.ndarray):
+    return array_shape.is_compatible_with(value.shape, shape)
+  else:
+    return array_shape.is_shape_scalar(shape)
+
+
+class Literal(ComputationBuildingBlock):
+  """A representation of a literal in TFF's internal language."""
+
+  def __init__(
+      self, value: array.Array, type_signature: computation_types.TensorType
+  ):
+    """Returns an initialized `tff.framework.Literal`.
+
+    Args:
+      value: The value of the literal.
+      type_signature: A `tff.Type`.
+
+    Raises:
+      ValueError: If `value` is not compatible with `type_signature`.
+    """
+    if (
+        isinstance(value, (np.ndarray, np.generic))
+        and value.dtype.type is np.str_
+    ):
+      value = value.astype(np.bytes_)
+    elif isinstance(value, str):
+      value = value.encode()
+
+    if not _is_compatible_dtype(value, type_signature.dtype.type):
+      raise ValueError(
+          f"Expected '{value}' to be compatible with"
+          f" '{type_signature.dtype.type}'."
+      )
+
+    if not _is_compatible_shape(value, type_signature.shape):
+      raise ValueError(
+          f"Expected '{value}' to be compatible with '{type_signature.shape}'."
+      )
+
+    super().__init__(type_signature)
+    self._value = value
+    self._type_signature = type_signature
+    self._cached_proto = None
+
+  @property
+  def type_signature(self) -> computation_types.TensorType:
+    return self._type_signature
+
+  @classmethod
+  def from_proto(cls, computation_proto: pb.Computation) -> 'Literal':
+    type_signature = type_serialization.deserialize_type(computation_proto.type)
+    if not isinstance(type_signature, computation_types.TensorType):
+      raise ValueError(
+          'Expected `type_signature` to be a `tff.TensorType`, found'
+          f' {type(type_signature)}.'
+      )
+
+    which_value = computation_proto.WhichOneof('computation')
+    if which_value != 'literal':
+      raise ValueError(
+          f'Expected `computation` to be a `literal`, found {which_value}.'
+      )
+    value = array.from_proto(computation_proto.literal.value)
+
+    return cls(value, type_signature)
+
+  def _proto(self) -> pb.Computation:
+    type_pb = type_serialization.serialize_type(self._type_signature)
+    value_pb = array.to_proto(
+        self._value, dtype_hint=self._type_signature.dtype.type
+    )
+    literal_pb = pb.Literal(value=value_pb)
+    return pb.Computation(type=type_pb, literal=literal_pb)
+
+  def _uncached_hash(self):
+    # TODO: b/328241949 - Implement equality on all computation building blocks.
+    # This method intentionally fails, should never be invoked, and can be
+    # removed once `_uncached_hash()` is not an abstract method on the
+    # superclass.
+    return NotImplementedError
+
+  def children(self) -> Iterator[ComputationBuildingBlock]:
+    return iter(())
+
+  @property
+  def value(self) -> object:
+    return self._value
+
+  def __eq__(self, other: object) -> bool:
+    if self is other:
+      return True
+    elif not isinstance(other, Literal):
+      return NotImplemented
+
+    if self._type_signature != other._type_signature:
+      return False
+    if isinstance(self._value, np.ndarray) and isinstance(
+        other._value, np.ndarray
+    ):
+      return np.array_equal(self._value, other._value)
+    else:
+      return self._value == other._value
+
+  def __hash__(self):
+    if self._cached_hash is None:
+      if isinstance(self._value, (np.ndarray, np.generic)):
+        hashable_value = tuple(self._value.flatten().tolist())
+      else:
+        hashable_value = self._value
+      self._cached_hash = hash((hashable_value, self._type_signature))
+    return self._cached_hash
+
+  def __repr__(self) -> str:
+    if isinstance(self._value, np.ndarray):
+      value_repr = (
+          f'np.array({self._value.tolist()},'
+          f' dtype=np.{self._value.dtype.type.__name__})'
+      )
+    else:
+      value_repr = repr(self._value)
+    return f'Literal({value_repr}, {self._type_signature!r})'
+
+
 def _string_representation(
     comp: ComputationBuildingBlock,
     formatted: bool,
@@ -1238,8 +1423,10 @@ def _string_representation(
       lines = [['({} -> '.format(param_name)], result_lines, [')']]
       return _join(lines)
     elif isinstance(comp, Placement):
-      literal = placements.uri_to_placement_literal(comp.uri)
-      return [literal.name]
+      placement_literal = placements.uri_to_placement_literal(comp.uri)
+      return [placement_literal.name]
+    elif isinstance(comp, Literal):
+      return [str(comp.value)]
     elif isinstance(comp, Struct):
       if not comp:
         return ['<>']
@@ -1635,6 +1822,7 @@ _deserializer_dict = {
     'intrinsic': Intrinsic.from_proto,
     'data': Data.from_proto,
     'placement': Placement.from_proto,
+    'literal': Literal.from_proto,
     'tensorflow': CompiledComputation,
     'xla': CompiledComputation,
 }

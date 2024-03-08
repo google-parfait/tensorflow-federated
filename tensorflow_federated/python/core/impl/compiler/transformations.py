@@ -176,9 +176,10 @@ def to_call_dominant(
     elif isinstance(
         comp,
         (
-            building_blocks.Intrinsic,
-            building_blocks.Data,
             building_blocks.CompiledComputation,
+            building_blocks.Data,
+            building_blocks.Intrinsic,
+            building_blocks.Literal,
             building_blocks.Placement,
         ),
     ):

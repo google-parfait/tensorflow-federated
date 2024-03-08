@@ -17,9 +17,26 @@ py_library(
 )
 
 proto_library(
+    name = "array_proto",
+    srcs = ["array.proto"],
+    deps = [":data_type_proto"],
+)
+
+py_proto_library(
+    name = "array_py_pb2",
+    deps = [":array_proto"],
+)
+
+cc_proto_library(
+    name = "array_cc_proto",
+    deps = [":array_proto"],
+)
+
+proto_library(
     name = "computation_proto",
     srcs = ["computation.proto"],
     deps = [
+        ":array_proto",
         ":data_type_proto",
         "@com_google_protobuf//:any_proto",
     ],
