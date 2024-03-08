@@ -16,6 +16,7 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/composing_executor.h"
 
 #include <cstddef>
+#include <cstdint>
 #include <functional>
 #include <future>  // NOLINT
 #include <memory>
@@ -28,8 +29,9 @@ limitations under the License
 #include <variant>
 #include <vector>
 
-#include "google/protobuf/repeated_field.h"
 #include "absl/base/thread_annotations.h"
+#include "absl/log/check.h"
+#include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"

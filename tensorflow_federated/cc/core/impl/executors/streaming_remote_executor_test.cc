@@ -25,21 +25,27 @@ limitations under the License
 #include <utility>
 #include <vector>
 
-#include "google/protobuf/text_format.h"
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
 #include "absl/container/flat_hash_map.h"
+#include "absl/log/check.h"
+#include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/match.h"
+#include "absl/strings/str_cat.h"
 #include "absl/strings/substitute.h"
 #include "absl/synchronization/notification.h"
 #include "absl/time/time.h"
+#include "absl/types/span.h"
+#include "third_party/grpc/google_specific/include/grpcpp/support/status.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/federated_intrinsics.h"
 #include "tensorflow_federated/cc/core/impl/executors/mock_grpc.h"
 #include "tensorflow_federated/cc/core/impl/executors/protobuf_matchers.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_matchers.h"
+#include "tensorflow_federated/cc/core/impl/executors/type_utils.h"
 #include "tensorflow_federated/cc/core/impl/executors/value_test_utils.h"
 #include "tensorflow_federated/proto/v0/computation.pb.h"
 #include "tensorflow_federated/proto/v0/executor.grpc.pb.h"
@@ -635,7 +641,7 @@ TEST_F(StreamingRemoteExecutorTest, CreateCallError) {
     OwnedValueId call_result =
         TFF_ASSERT_OK(test_executor_->CreateCall(fn, std::nullopt));
 
-    // We expect the executor to shortcircuit and never call Compute if an
+    // We expect the executor to short circuit and never call Compute if an
     // intermediate result errors out.
     materialize_status =
         test_executor_->Materialize(call_result, &materialized_value);
