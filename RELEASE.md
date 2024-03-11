@@ -1,3 +1,25 @@
+# Release 0.73.0
+
+## Major Features and Improvements
+
+*   Make some of the C++ executor APIs public visibility for downstream repos.
+*   `tff.learning.algorithms.build_fed_kmeans` supports floating point weights,
+    enabling compatibility with `tff.aggregators` using differential privacy.
+*   Added two new metrics aggregators:
+    `tff.learning.metrics.finalize_then_sample` and
+    `tff.learning.metrics.FinalizeThenSampleFactory`.
+
+## Breaking Changes
+
+*   Remove the ability to return `SequenceType` from `tff.federated_computation`
+    decorated callables.
+
+## Bug Fixes
+
+*   `tff.learning` algorithms now correctly do *not* include metrics for clients
+    that had zero weight due to model updates containing non-finite values.
+    Previously the update was rejected, but the metrics still aggregated.
+
 # Release 0.72.0
 
 ## Major Features and Improvements
