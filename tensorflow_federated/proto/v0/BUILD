@@ -1,7 +1,7 @@
 load("@com_github_grpc_grpc//bazel:cc_grpc_library.bzl", "cc_grpc_library")
 load("@com_github_grpc_grpc//bazel:python_rules.bzl", "py_grpc_library", "py_proto_library")
 load("@rules_cc//cc:defs.bzl", "cc_proto_library")
-load("@rules_python//python:defs.bzl", "py_library", "py_test")
+load("@rules_python//python:defs.bzl", "py_library")
 
 package(
     default_applicable_licenses = ["//:package_license"],
@@ -19,7 +19,10 @@ py_library(
 proto_library(
     name = "computation_proto",
     srcs = ["computation.proto"],
-    deps = ["@com_google_protobuf//:any_proto"],
+    deps = [
+        ":data_type_proto",
+        "@com_google_protobuf//:any_proto",
+    ],
 )
 
 py_proto_library(
@@ -27,19 +30,24 @@ py_proto_library(
     deps = [":computation_proto"],
 )
 
-py_test(
-    name = "computation_pb2_test",
-    srcs = ["computation_pb2_test.py"],
-    tags = [
-        "nofixdeps",
-        "nokokoro",
-    ],
-    deps = [":computation_py_pb2"],
-)
-
 cc_proto_library(
     name = "computation_cc_proto",
     deps = [":computation_proto"],
+)
+
+proto_library(
+    name = "data_type_proto",
+    srcs = ["data_type.proto"],
+)
+
+py_proto_library(
+    name = "data_type_py_pb2",
+    deps = [":data_type_proto"],
+)
+
+cc_proto_library(
+    name = "data_type_cc_proto",
+    deps = [":data_type_proto"],
 )
 
 proto_library(
@@ -72,12 +80,4 @@ cc_grpc_library(
     srcs = [":executor_proto"],
     grpc_only = True,
     deps = [":executor_cc_proto"],
-)
-
-filegroup(
-    name = "proto_files",
-    srcs = [
-        "computation.proto",
-        "executor.proto",
-    ],
 )

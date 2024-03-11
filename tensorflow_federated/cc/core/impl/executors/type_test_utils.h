@@ -20,12 +20,13 @@ limitations under the License
 
 #include "absl/types/span.h"
 #include "tensorflow_federated/proto/v0/computation.pb.h"
+#include "tensorflow_federated/proto/v0/data_type.pb.h"
 
 namespace tensorflow_federated {
 namespace testing {
 
 // Construct a v0::Type of shape <T, <T, T>> for parameter T.
-inline v0::Type NestedStructT(v0::TensorType::DataType dtype) {
+inline v0::Type NestedStructT(v0::DataType dtype) {
   v0::Type float_tensor_type;
   float_tensor_type.mutable_tensor()->set_dtype(dtype);
   v0::Type nested_struct_type;
@@ -42,7 +43,7 @@ inline v0::Type NestedStructT(v0::TensorType::DataType dtype) {
 }
 
 // Construct a tensor type with the provided datatype and shape specification.
-inline v0::Type TensorT(v0::TensorType::DataType dtype,
+inline v0::Type TensorT(v0::DataType dtype,
                         absl::Span<const int64_t> shape = {}) {
   v0::Type tensor_type;
   tensor_type.mutable_tensor()->set_dtype(dtype);
@@ -85,7 +86,7 @@ inline v0::Type FunctionT(v0::Type parameter_type, v0::Type return_type) {
 }
 // Construct a v0::Type of shape <T,...> for parameter T, with num_reps
 // elements.
-inline v0::Type FlatStructT(v0::TensorType::DataType dtype, int num_reps) {
+inline v0::Type FlatStructT(v0::DataType dtype, int num_reps) {
   v0::Type float_tensor_type;
   float_tensor_type.mutable_tensor()->set_dtype(dtype);
   v0::Type struct_type;
