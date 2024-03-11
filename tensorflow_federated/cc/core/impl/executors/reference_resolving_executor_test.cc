@@ -29,15 +29,15 @@ limitations under the License
 #include <cstdint>
 #include <memory>
 #include <optional>
-#include <string>
 #include <string_view>
-#include <tuple>
 #include <utility>
 #include <vector>
 
 #include "google/protobuf/any.pb.h"
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
+#include "absl/log/check.h"
+#include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
@@ -49,8 +49,6 @@ limitations under the License
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/framework/types.pb.h"
 #include "tensorflow/core/graph/graph.h"
-#include "tensorflow/core/platform/byte_order.h"
-#include "tensorflow/core/platform/status.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor_test_base.h"
 #include "tensorflow_federated/cc/core/impl/executors/mock_executor.h"
@@ -103,7 +101,7 @@ inline v0::Value NoArgConstantTfComputationV() {
   tensorflow::Scope root = tensorflow::Scope::NewRootScope();
   tf::ops::OnesLike ones(root, tf::Tensor(1.0));
   tensorflow::GraphDef graphdef_pb;
-  QCHECK(root.ToGraphDef(&graphdef_pb).ok());
+  QCHECK_OK(root.ToGraphDef(&graphdef_pb));
   v0::TensorFlow* tensorflow_pb = computation_pb->mutable_tensorflow();
   tensorflow_pb->mutable_graph_def()->PackFrom(graphdef_pb);
   // Build the tensor bindings.
@@ -121,7 +119,7 @@ inline v0::Value UnarySquareTfComputationV() {
   tf::ops::Placeholder x(root, tf::DT_FLOAT);
   tf::ops::Square square(root, x);
   tensorflow::GraphDef graphdef_pb;
-  QCHECK(root.ToGraphDef(&graphdef_pb).ok());
+  QCHECK_OK(root.ToGraphDef(&graphdef_pb));
   v0::TensorFlow* tensorflow_pb = computation_pb->mutable_tensorflow();
   tensorflow_pb->mutable_graph_def()->PackFrom(graphdef_pb);
   // Build the tensor bindings.
@@ -144,7 +142,7 @@ inline v0::Value BinaryAddTfComputationV() {
   tf::ops::Placeholder y(root, tf::DT_FLOAT);
   tf::ops::AddV2 sum(root, x, y);
   tensorflow::GraphDef graphdef_pb;
-  QCHECK(root.ToGraphDef(&graphdef_pb).ok());
+  QCHECK_OK(root.ToGraphDef(&graphdef_pb));
   v0::TensorFlow* tensorflow_pb = computation_pb->mutable_tensorflow();
   tensorflow_pb->mutable_graph_def()->PackFrom(graphdef_pb);
   // Build the tensor bindings.
@@ -236,7 +234,7 @@ TEST_F(ReferenceResolvingExecutorTest, CreateValueNestedStructOfTensor) {
   v0::Value struct_value_pb =
       StructV({StructV({TensorV(1.0), TensorV(2.0)}), TensorV(100.0)});
   // Expect three calls to CreateValue() on the inner mock, once for each
-  // element of ths truct.
+  // element of the struct.
   mock_executor_->ExpectCreateValue(TensorV(1.0));
   mock_executor_->ExpectCreateValue(TensorV(2.0));
   mock_executor_->ExpectCreateValue(TensorV(100.0));
@@ -372,7 +370,7 @@ TEST_F(ReferenceResolvingExecutorTest, LambdaStructArgumentLazilyEmbedded) {
   ValueId struct_child_id =
       mock_executor_->ExpectCreateStruct(element_child_ids);
   // Expect that the CreateCall to be ID 5. 0 for the lambda, 1-3 the argument
-  // elements, 4 for the argumetn struct.
+  // elements, 4 for the argument struct.
   auto call_result = test_executor_->CreateCall(
       create_lambda_result.value().ref(), create_arg_result.value().ref());
   EXPECT_THAT(call_result, IsOkAndHolds(HasValueId(5)));
@@ -425,7 +423,7 @@ TEST_F(ReferenceResolvingExecutorTest, LambdaArgumentToInstrinsicIsEmbedded) {
       intrinsic_pb.computation();
   *lambda_pb.mutable_computation()->mutable_call()->mutable_argument() =
       lambda_arg_pb.computation();
-  // Exepct create value on a Call to evaluate the function and argument, then
+  // Expect create value on a Call to evaluate the function and argument, then
   // create a call.
   EXPECT_CALL(*mock_executor_, CreateValue(EqualsProto(intrinsic_pb)))
       .WillOnce([this]() { return OwnedValueId(mock_executor_, 100); });
@@ -439,7 +437,7 @@ TEST_F(ReferenceResolvingExecutorTest, LambdaArgumentToInstrinsicIsEmbedded) {
   EXPECT_CALL(*mock_executor_, Dispose(300));
   auto create_lambda_result = test_executor_->CreateValue(lambda_pb);
   EXPECT_THAT(create_lambda_result, IsOkAndHolds(HasValueId(0)));
-  // Exepct the materialize on the call to be pushed down.
+  // Expect the materialize on the call to be pushed down.
   EXPECT_CALL(*mock_executor_, Materialize(300, _))
       .WillOnce(Return(absl::OkStatus()));
   EXPECT_THAT(test_executor_->Materialize(create_lambda_result.value()),

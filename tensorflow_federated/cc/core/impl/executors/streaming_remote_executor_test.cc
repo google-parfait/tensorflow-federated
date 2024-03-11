@@ -25,21 +25,27 @@ limitations under the License
 #include <utility>
 #include <vector>
 
-#include "google/protobuf/text_format.h"
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
 #include "absl/container/flat_hash_map.h"
+#include "absl/log/check.h"
+#include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/match.h"
+#include "absl/strings/str_cat.h"
 #include "absl/strings/substitute.h"
 #include "absl/synchronization/notification.h"
 #include "absl/time/time.h"
+#include "absl/types/span.h"
+#include "include/grpcpp/support/status.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/federated_intrinsics.h"
 #include "tensorflow_federated/cc/core/impl/executors/mock_grpc.h"
 #include "tensorflow_federated/cc/core/impl/executors/protobuf_matchers.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_matchers.h"
+#include "tensorflow_federated/cc/core/impl/executors/type_utils.h"
 #include "tensorflow_federated/cc/core/impl/executors/value_test_utils.h"
 #include "tensorflow_federated/proto/v0/computation.pb.h"
 #include "tensorflow_federated/proto/v0/executor.grpc.pb.h"
@@ -635,7 +641,7 @@ TEST_F(StreamingRemoteExecutorTest, CreateCallError) {
     OwnedValueId call_result =
         TFF_ASSERT_OK(test_executor_->CreateCall(fn, std::nullopt));
 
-    // We expect the executor to shortcircuit and never call Compute if an
+    // We expect the executor to short circuit and never call Compute if an
     // intermediate result errors out.
     materialize_status =
         test_executor_->Materialize(call_result, &materialized_value);
@@ -746,7 +752,7 @@ TEST_F(StreamingRemoteExecutorTest, CreateStructWithNoElements) {
     // We need to call Materialize to force synchronization of the calls above.
 
     // NOTE: we don't expect any RPCs because the remote executor was tracking
-    // that this wasn an empty structure.
+    // that this wasn't an empty structure.
     materialize_status =
         test_executor_->Materialize(struct_result, &materialized_value);
   }
@@ -769,7 +775,8 @@ TEST_F(StreamingRemoteExecutorTest, CreateStructWithError) {
     OwnedValueId struct_result =
         TFF_ASSERT_OK(test_executor_->CreateStruct(struct_to_create));
 
-    // If the CreateStruct fails we dont expect a Compute call on the other side
+    // If the CreateStruct fails we don't expect a Compute call on the other
+    // side
     v0::Value materialized_value;
     absl::Status materialize_status =
         test_executor_->Materialize(struct_result, &materialized_value);
@@ -848,7 +855,7 @@ TEST_F(StreamingRemoteExecutorTest, CreateSelectionWithError) {
     OwnedValueId selection_result =
         TFF_ASSERT_OK(test_executor_->CreateSelection(source_value, 1));
 
-    // If the CreateSelection fails we dont expect a Compute call on the other
+    // If the CreateSelection fails we don't expect a Compute call on the other
     // side
     materialize_status =
         test_executor_->Materialize(selection_result, &materialized_value);
@@ -890,7 +897,8 @@ TEST_P(StreamingRemoteExecutorFederatedStructsTest, RoundTripFederatedStruct) {
   absl::Status materialize_status;
 
   {
-    // Add expecations for the sequence of calls that result from a CreateValue.
+    // Add expectations for the sequence of calls that result from a
+    // CreateValue.
     {
       EXPECT_CALL(*mock_executor_service_,
                   CreateValue(_,
@@ -967,7 +975,7 @@ TEST_P(StreamingRemoteExecutorFederatedStructsTest, RoundTripFederatedStruct) {
               "zipped_federated_struct"));
     }
 
-    // Add exepectations for the sequence of calls that result from a
+    // Add expectations for the sequence of calls that result from a
     // Materialize.
     {
       std::string_view intrinsic_name =
@@ -1141,7 +1149,7 @@ TEST_P(StreamingRemoteExecutorFederatedStructsTest, RoundTripFederatedStruct) {
     // Don't call any executor interface methods until all expectations are set
     // on the executor service above, otherwise this could trigger a TSAN
     // warning where the executor threads are reading expectations while the
-    // test thread is writign new expectations.
+    // test thread is writing new expectations.
     OwnedValueId outer_struct_ref =
         TFF_ASSERT_OK(test_executor_->CreateValue(federated_struct_value));
     materialize_status =
@@ -1169,7 +1177,8 @@ TEST_P(StreamingRemoteExecutorFederatedStructsTest,
   absl::Status materialize_status;
 
   {
-    // Add expecations for the sequence of calls that result from a CreateValue.
+    // Add expectations for the sequence of calls that result from a
+    // CreateValue.
     {
       absl::flat_hash_map<std::string_view, std::string_view>
           struct_ref_by_struct_elem_ref = {
@@ -1253,7 +1262,7 @@ TEST_P(StreamingRemoteExecutorFederatedStructsTest,
       }
     }
 
-    // Add exepectations for the sequence of calls that result from a
+    // Add expectations for the sequence of calls that result from a
     // Materialize.
     {
       std::string_view intrinsic_name =
@@ -1445,7 +1454,7 @@ TEST_P(StreamingRemoteExecutorFederatedStructsTest,
     // Don't call any executor interface methods until all expectations are set
     // on the executor service above, otherwise this could trigger a TSAN
     // warning where the executor threads are reading expectations while the
-    // test thread is writign new expectations.
+    // test thread is writing new expectations.
     OwnedValueId outer_struct_ref =
         TFF_ASSERT_OK(test_executor_->CreateValue(federated_struct_value));
     materialize_status =
@@ -1468,7 +1477,8 @@ TEST_P(StreamingRemoteExecutorFederatedStructsTest,
   absl::Status materialize_status;
 
   {
-    // Add expecations for the sequence of calls that result from a CreateValue.
+    // Add expectations for the sequence of calls that result from a
+    // CreateValue.
     {
       EXPECT_CALL(
           *mock_executor_service_,
@@ -1481,12 +1491,12 @@ TEST_P(StreamingRemoteExecutorFederatedStructsTest,
     }
 
     // Note: no materialization expectations, we want the executor to not send
-    // unecessary RPCs to the remote machine.
+    // unnecessary RPCs to the remote machine.
 
     // Don't call any executor interface methods until all expectations are set
     // on the executor service above, otherwise this could trigger a TSAN
     // warning where the executor threads are reading expectations while the
-    // test thread is writign new expectations.
+    // test thread is writing new expectations.
     OwnedValueId outer_struct_ref =
         TFF_ASSERT_OK(test_executor_->CreateValue(federated_struct_value));
     materialize_status =

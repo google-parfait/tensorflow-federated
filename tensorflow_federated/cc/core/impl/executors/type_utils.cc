@@ -16,6 +16,9 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/type_utils.h"
 
 #include "google/protobuf/any.pb.h"
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
 #include "tensorflow/core/framework/tensor.pb.h"
 #include "tensorflow/core/framework/tensor_shape.pb.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"

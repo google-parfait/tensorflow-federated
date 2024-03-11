@@ -16,6 +16,7 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/composing_executor.h"
 
 #include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <optional>
 #include <utility>
@@ -29,7 +30,6 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/computations.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor_test_base.h"
-#include "tensorflow_federated/cc/core/impl/executors/federated_intrinsics.h"
 #include "tensorflow_federated/cc/core/impl/executors/mock_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_matchers.h"
 #include "tensorflow_federated/cc/core/impl/executors/type_utils.h"

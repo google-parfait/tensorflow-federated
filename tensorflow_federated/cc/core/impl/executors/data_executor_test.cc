@@ -15,6 +15,7 @@ limitations under the License
 
 #include "tensorflow_federated/cc/core/impl/executors/data_executor.h"
 
+#include <cstdint>
 #include <memory>
 #include <optional>
 #include <string>
