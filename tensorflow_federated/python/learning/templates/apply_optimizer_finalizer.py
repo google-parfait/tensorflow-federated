@@ -15,7 +15,7 @@
 
 import collections
 from collections.abc import Callable
-from typing import Union
+from typing import Any, Optional, Union
 
 import tensorflow as tf
 
@@ -33,10 +33,41 @@ from tensorflow_federated.python.learning.optimizers import optimizer as optimiz
 from tensorflow_federated.python.learning.templates import finalizers
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
+_MeasurementsType = collections.OrderedDict[str, tf.Tensor]
+
+
+def reject_non_finite_update(
+    state: Any, update: Any
+) -> tuple[tf.Tensor, _MeasurementsType]:
+  """Rejects the update if any non-finite value is in the update.
+
+  This is the default `should_reject_update` function used in
+  `build_apply_optimizer_finalizer`.
+
+  Args:
+    state: Unused optimzier state.
+    update: The update to be applied to the model's weights by the optimizer.
+
+  Returns:
+    A tuple of:
+      - should_reject (bool tensor): True if the update should be rejected,
+      False otherwise.
+      - measurements (OrderedDict): A dict with a single key
+      (`update_non_finite`) an an integer tensor of whether the update was
+      rejected.
+  """
+  del state
+  _, has_non_finite = tensor_utils.zero_all_if_any_non_finite(update)
+  measurements = collections.OrderedDict(update_non_finite=has_non_finite)
+  return tf.equal(has_non_finite, 1), measurements
+
 
 def _build_tff_optimizer_initialize_and_next(
     model_weights_type: computation_types.Type,
     optimizer: optimizer_base.Optimizer,
+    should_reject_update: Callable[
+        [Any, Any], tuple[Union[bool, tf.Tensor], Optional[_MeasurementsType]]
+    ],
 ):
   """Creates finalizer initialize and next functions for TFF optimizers."""
 
@@ -56,14 +87,13 @@ def _build_tff_optimizer_initialize_and_next(
   )
   @tf.function
   def next_fn(optimizer_state, trainable_weights, update):
-    _, has_non_finite = tensor_utils.zero_all_if_any_non_finite(update)
-    measurements = collections.OrderedDict(update_non_finite=has_non_finite)
-    if tf.equal(has_non_finite, 1):
-      # Do nothing if there are nans/infs in the update.
-      return optimizer_state, trainable_weights, measurements
     new_state, new_weights = optimizer.next(
         optimizer_state, trainable_weights, update
     )
+    should_reject, measurements = should_reject_update(new_state, update)
+    if should_reject:
+      # Do nothing if the update should be rejected.
+      return optimizer_state, trainable_weights, measurements
     return new_state, new_weights, measurements
 
   return init_fn, next_fn
@@ -72,6 +102,9 @@ def _build_tff_optimizer_initialize_and_next(
 def _build_keras_optimizer_initialize_and_next(
     model_weights_type: computation_types.Type,
     optimizer_fn: Callable[[], tf.keras.optimizers.Optimizer],
+    should_reject_update: Callable[
+        [Any, Any], tuple[Union[bool, tf.Tensor], Optional[_MeasurementsType]]
+    ],
 ):
   """Creates finalizer initialize and next functions for Keras optimizers."""
 
@@ -98,12 +131,6 @@ def _build_keras_optimizer_initialize_and_next(
   )
   @tf.function
   def next_fn(optimizer_state, trainable_weights, update):
-    _, has_non_finite = tensor_utils.zero_all_if_any_non_finite(update)
-    measurements = collections.OrderedDict(update_non_finite=has_non_finite)
-    if tf.equal(has_non_finite, 1):
-      # Do nothing if there are nans/infs in the update.
-      return optimizer_state, trainable_weights, measurements
-
     with tf.init_scope():
       # Create a structure of variables that the server optimizer can update.
       trainable_variables = tf.nest.map_structure(
@@ -117,7 +144,7 @@ def _build_keras_optimizer_initialize_and_next(
     tf.nest.map_structure(
         lambda a, b: a.assign(b), trainable_variables, trainable_weights
     )
-    optimizer_state, updated_weights = optimizer.next(
+    new_state, updated_weights = optimizer.next(
         optimizer_state, trainable_variables, update
     )
     # Keras optimizers mutate model variables in with the `next` step above, so
@@ -126,7 +153,11 @@ def _build_keras_optimizer_initialize_and_next(
       tf.nest.map_structure(
           lambda a, b: a.assign(b), trainable_variables, updated_weights
       )
-    return optimizer_state, trainable_variables, measurements
+    should_reject, measurements = should_reject_update(new_state, update)
+    if should_reject:
+      # Do nothing if the update should be rejected.
+      return optimizer_state, trainable_weights, measurements
+    return new_state, trainable_variables, measurements
 
   return init_fn, next_fn
 
@@ -136,6 +167,9 @@ def build_apply_optimizer_finalizer(
         optimizer_base.Optimizer, Callable[[], tf.keras.optimizers.Optimizer]
     ],
     model_weights_type: computation_types.StructType,
+    should_reject_update: Callable[
+        [Any, Any], tuple[Union[bool, tf.Tensor], Optional[_MeasurementsType]]
+    ] = reject_non_finite_update,
 ):
   """Builds finalizer that applies a step of an optimizer.
 
@@ -156,6 +190,14 @@ def build_apply_optimizer_finalizer(
       apply client updates to the server model.
     model_weights_type: A non-federated `tff.Type` of the model weights to be
       optimized, which must have a `tff.learning.models.ModelWeights` container.
+    should_reject_update: A callable that takes the optimizer state and the
+      model weights update, and returns a boolean or a bool tensor indicating if
+      the model weights update should be rejected and an OrderedDict of
+      measurements. If the model weights update is reject, we will fall back to
+      the previous round's optimizer state and model weight, this is a no-op
+      otherwise. The default function is `reject_non_finite_update` which checks
+      if there is any non-finite value in the model update and returns the
+      results.
 
   Returns:
     A `FinalizerProcess` that applies the `optimizer`.
@@ -193,11 +235,11 @@ def build_apply_optimizer_finalizer(
 
   if isinstance(optimizer_fn, optimizer_base.Optimizer):
     init_tf, next_tf = _build_tff_optimizer_initialize_and_next(
-        model_weights_type, optimizer_fn
+        model_weights_type, optimizer_fn, should_reject_update
     )
   else:
     init_tf, next_tf = _build_keras_optimizer_initialize_and_next(
-        model_weights_type, optimizer_fn
+        model_weights_type, optimizer_fn, should_reject_update
     )
 
   @federated_computation.federated_computation

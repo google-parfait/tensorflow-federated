@@ -28,6 +28,7 @@ from tensorflow_federated.python.learning.models import model_weights
 from tensorflow_federated.python.learning.optimizers import optimizer as optimizer_base
 from tensorflow_federated.python.learning.optimizers import sgdm
 from tensorflow_federated.python.learning.templates import apply_optimizer_finalizer
+from tensorflow_federated.python.learning.templates import finalizers
 
 SERVER_FLOAT = computation_types.FederatedType(np.float32, placements.SERVER)
 _MODEL_WEIGHTS_SPEC = model_weights.ModelWeights(
@@ -38,6 +39,38 @@ _SERVER_MODEL_WEIGHTS_TYPE = computation_types.FederatedType(
     _MODEL_WEIGHTS_TYPE, placements.SERVER
 )
 MeasuredProcessOutput = measured_process.MeasuredProcessOutput
+
+
+def _get_should_reject_update_fn(state_threshold: int):
+  """Returns a test `should_reject_update` function with state threshold."""
+
+  def should_reject_update(state, update):
+    reject_update, measurements = (
+        apply_optimizer_finalizer.reject_non_finite_update(state, update)
+    )
+    measurements['state_large_values'] = 0
+    if reject_update:
+      return reject_update, measurements
+    else:
+      has_large_values = tf.math.reduce_any([
+          tf.math.reduce_any(
+              tf.math.greater(
+                  tf.math.abs(t),
+                  tf.cast(
+                      state_threshold,
+                      dtype=t.dtype,
+                  ),
+              )
+          )
+          for t in tf.nest.flatten(state)
+      ])
+      if has_large_values:
+        measurements['state_large_values'] = 1
+        return True, measurements
+      else:
+        return False, measurements
+
+  return should_reject_update
 
 
 class ApplyOptimizerFinalizerComputationTest(
@@ -258,6 +291,21 @@ class ApplyOptimizerFinalizerComputationTest(
           optimizer, _SERVER_MODEL_WEIGHTS_TYPE.member
       )
 
+  @parameterized.named_parameters(
+      ('tff_optimizer', sgdm.build_sgdm(1.0)),
+      (
+          'keras_optimizer',
+          lambda: tf.keras.optimizers.legacy.SGD(learning_rate=1.0),
+      ),
+  )
+  def test_custom_should_reject_update_builds(self, optimizer_fn):
+    finalizer = apply_optimizer_finalizer.build_apply_optimizer_finalizer(
+        optimizer_fn,
+        _SERVER_MODEL_WEIGHTS_TYPE.member,
+        _get_should_reject_update_fn(100),
+    )
+    self.assertIsInstance(finalizer, finalizers.FinalizerProcess)
+
 
 class ApplyOptimizerFinalizerExecutionTest(tf.test.TestCase):
 
@@ -306,6 +354,7 @@ class ApplyOptimizerFinalizerExecutionTest(tf.test.TestCase):
         apply_optimizer_finalizer._build_keras_optimizer_initialize_and_next(
             _MODEL_WEIGHTS_TYPE,
             optimizer_fn=tf.keras.optimizers.SGD,
+            should_reject_update=apply_optimizer_finalizer.reject_non_finite_update,
         )
     )
 
@@ -336,6 +385,7 @@ class ApplyOptimizerFinalizerExecutionTest(tf.test.TestCase):
         apply_optimizer_finalizer._build_tff_optimizer_initialize_and_next(
             _MODEL_WEIGHTS_TYPE,
             optimizer=sgdm.build_sgdm(1.0),
+            should_reject_update=apply_optimizer_finalizer.reject_non_finite_update,
         )
     )
 
@@ -359,6 +409,92 @@ class ApplyOptimizerFinalizerExecutionTest(tf.test.TestCase):
       self.assertAllClose(weights, test_trainable_weights)
       self.assertAllEqual(
           measurements, collections.OrderedDict(update_non_finite=1)
+      )
+
+  def test_keras_finalizer_execution_with_custom_should_reject_update(self):
+    init_fn, next_fn = (
+        apply_optimizer_finalizer._build_keras_optimizer_initialize_and_next(
+            _MODEL_WEIGHTS_TYPE,
+            optimizer_fn=tf.keras.optimizers.Adam,
+            should_reject_update=_get_should_reject_update_fn(10),
+        )
+    )
+
+    initial_state = init_fn()
+    test_trainable_weights = (0.0,)
+
+    with self.subTest('larger_than_threshold_rejects_update'):
+      state, weights, measurements = next_fn(
+          initial_state, test_trainable_weights, (float('101'),)
+      )
+      self.assertAllClose(state, initial_state)
+      self.assertAllClose(weights, test_trainable_weights)
+      self.assertAllEqual(
+          measurements,
+          collections.OrderedDict(update_non_finite=0, state_large_values=1),
+      )
+    with self.subTest('equal_to_threshold_accepts_update'):
+      state, weights, measurements = next_fn(
+          initial_state, test_trainable_weights, (float('100'),)
+      )
+      self.assertNotAllClose(state, initial_state)
+      self.assertNotAllClose(weights, test_trainable_weights)
+      self.assertAllEqual(
+          measurements,
+          collections.OrderedDict(update_non_finite=0, state_large_values=0),
+      )
+    with self.subTest('less_than_threshold_accepts_update'):
+      state, weights, measurements = next_fn(
+          initial_state, test_trainable_weights, (float('50'),)
+      )
+      self.assertNotAllClose(state, initial_state)
+      self.assertNotAllClose(weights, test_trainable_weights)
+      self.assertAllEqual(
+          measurements,
+          collections.OrderedDict(update_non_finite=0, state_large_values=0),
+      )
+
+  def test_tff_finalizer_execution_with_custom_should_reject_update(self):
+    init_fn, next_fn = (
+        apply_optimizer_finalizer._build_tff_optimizer_initialize_and_next(
+            _MODEL_WEIGHTS_TYPE,
+            optimizer=sgdm.build_sgdm(learning_rate=0.1, momentum=0.1),
+            should_reject_update=_get_should_reject_update_fn(10),
+        )
+    )
+
+    initial_state = init_fn()
+    test_trainable_weights = (0.0,)
+
+    with self.subTest('larger_than_threshold_rejects_update'):
+      state, weights, measurements = next_fn(
+          initial_state, test_trainable_weights, (float('11'),)
+      )
+      self.assertAllClose(state, initial_state)
+      self.assertAllClose(weights, test_trainable_weights)
+      self.assertAllEqual(
+          measurements,
+          collections.OrderedDict(update_non_finite=0, state_large_values=1),
+      )
+    with self.subTest('equal_to_threshold_accepts_update'):
+      state, weights, measurements = next_fn(
+          initial_state, test_trainable_weights, (float('10'),)
+      )
+      self.assertNotAllClose(state, initial_state)
+      self.assertNotAllClose(weights, test_trainable_weights)
+      self.assertAllEqual(
+          measurements,
+          collections.OrderedDict(update_non_finite=0, state_large_values=0),
+      )
+    with self.subTest('less_than_threshold_accepts_update'):
+      state, weights, measurements = next_fn(
+          initial_state, test_trainable_weights, (float('5'),)
+      )
+      self.assertNotAllClose(state, initial_state)
+      self.assertNotAllClose(weights, test_trainable_weights)
+      self.assertAllEqual(
+          measurements,
+          collections.OrderedDict(update_non_finite=0, state_large_values=0),
       )
 
   def test_execution_with_stateful_tff_optimizer(self):

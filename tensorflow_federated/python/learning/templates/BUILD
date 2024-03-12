@@ -57,6 +57,7 @@ py_test(
     srcs = ["apply_optimizer_finalizer_test.py"],
     deps = [
         ":apply_optimizer_finalizer",
+        ":finalizers",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
