@@ -645,38 +645,6 @@ py_test(
 )
 
 py_library(
-    name = "sparsifying_aggregator_factory",
-    srcs = ["sparsifying_aggregator_factory.py"],
-    deps = [
-        ":factory",
-        "//tensorflow_federated/python/common_libs:structure",
-        "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
-        "//tensorflow_federated/python/core/impl/computation:computation_base",
-        "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
-        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:placements",
-        "//tensorflow_federated/python/core/impl/types:type_conversions",
-        "//tensorflow_federated/python/core/templates:aggregation_process",
-        "//tensorflow_federated/python/core/templates:measured_process",
-    ],
-)
-
-py_test(
-    name = "sparsifying_aggregator_factory_test",
-    srcs = ["sparsifying_aggregator_factory_test.py"],
-    deps = [
-        ":sparsifying_aggregator_factory",
-        "//tensorflow_federated/python/core/backends/native:execution_contexts",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:placements",
-        "//tensorflow_federated/python/core/impl/types:type_conversions",
-        "//tensorflow_federated/python/core/impl/types:type_test_utils",
-        "//tensorflow_federated/python/core/templates:measured_process",
-    ],
-)
-
-py_library(
     name = "secure",
     srcs = ["secure.py"],
     deps = [

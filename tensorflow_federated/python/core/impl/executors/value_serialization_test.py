@@ -368,91 +368,6 @@ class ValueSerializationtest(tf.test.TestCase, parameterized.TestCase):
   @parameterized.named_parameters(
       ('as_dataset', lambda x: x), ('as_list', list)
   )
-  def test_serialize_deserialize_sequence_of_sparse_tensors(self, dataset_fn):
-    self.skipTest('b/235492749')
-    sparse_tensor = tf.SparseTensor(
-        [[0, i] for i in range(5)], list(range(5)), [1, 10]
-    )
-    ds = tf.data.Dataset.from_tensor_slices(sparse_tensor)
-    ds_repr = dataset_fn(ds)
-    value_proto, value_type = value_serialization.serialize_value(
-        ds_repr, computation_types.SequenceType(element=ds.element_spec)
-    )
-    expected_type = computation_types.SequenceType(element=ds.element_spec)
-    type_test_utils.assert_types_identical(value_type, expected_type)
-    y, type_spec = value_serialization.deserialize_value(
-        value_proto, type_hint=expected_type
-    )
-    # SparseTensor types lose the size of the first dimension, so check for
-    # assignability.
-    type_test_utils.assert_type_assignable_from(expected_type, type_spec)
-    deserialized_sparse_tensor = tf.concat(list(y), axis=0)
-    self.assertEqual(deserialized_sparse_tensor, sparse_tensor)
-
-  def test_serialize_deserialize_dataset_of_ragged_tensors_with_type_hint(self):
-    ragged_tensor = tf.RaggedTensor.from_row_splits(
-        values=[3, 1, 4], row_splits=[0, 2, 2, 3]
-    )
-    ds = tf.data.Dataset.from_tensors(ragged_tensor)
-    element_type = computation_types.tensorflow_to_type(ds.element_spec)
-    type_spec = computation_types.SequenceType(element_type)
-
-    serialized_value, serialized_type = value_serialization.serialize_value(
-        ds, type_spec
-    )
-
-    type_test_utils.assert_types_identical(serialized_type, type_spec)
-
-    # We remove the `element_type` field from the proto in order to ensure
-    # that the type hint we pass to deserialize_value is used, as this contains
-    # the information that the dataset uses RaggedTensors as python containers
-    serialized_value.sequence.ClearField('element_type')
-    _, deserialized_type = value_serialization.deserialize_value(
-        serialized_value, serialized_type
-    )
-
-    type_test_utils.assert_types_identical(deserialized_type, type_spec)
-
-  def test_serialize_deserialize_dataset_of_sparse_tensors_with_type_hint(self):
-    self.skipTest('b/235492749')
-    sparse_tensor = tf.sparse.SparseTensor(
-        indices=[[0, 0], [1, 2]], values=[1, 2], dense_shape=[3, 4]
-    )
-    ds = tf.data.Dataset.from_tensors(sparse_tensor)
-    value_proto, value_type = value_serialization.serialize_value(
-        ds, computation_types.SequenceType(element=ds.element_spec)
-    )
-    expected_type = computation_types.SequenceType(ds.element_spec)
-    type_test_utils.assert_types_identical(value_type, expected_type)
-    # We remove the `element_type` field from the proto in order to ensure
-    # that the type hint we pass to deserialize_value is used, as this contains
-    # the information that the dataset uses SparseTensors as python containers
-    value_proto.sequence.ClearField('element_type')
-    _, type_spec = value_serialization.deserialize_value(
-        value_proto, value_type
-    )
-    type_test_utils.assert_types_identical(type_spec, expected_type)
-
-  @parameterized.named_parameters(
-      ('as_dataset', lambda x: x), ('as_list', list)
-  )
-  def test_serialize_deserialize_sequence_of_ragged_tensors(self, dataset_fn):
-    self.skipTest('b/237423976')
-    ds = tf.data.Dataset.from_tensor_slices(tf.strings.split(['a b c', 'd e']))
-    ds_repr = dataset_fn(ds)
-    value_proto, value_type = value_serialization.serialize_value(
-        ds_repr, computation_types.SequenceType(element=ds.element_spec)
-    )
-    expected_type = computation_types.SequenceType(ds.element_spec)
-    type_test_utils.assert_types_identical(value_type, expected_type)
-    _, type_spec = value_serialization.deserialize_value(value_proto)
-    # Only checking for equivalence, we don't have the Python container
-    # after deserialization.
-    type_test_utils.assert_types_equivalent(type_spec, expected_type)
-
-  @parameterized.named_parameters(
-      ('as_dataset', lambda x: x), ('as_list', list)
-  )
   def test_serialize_deserialize_sequence_of_nested_structures(
       self, dataset_fn
   ):
@@ -719,27 +634,6 @@ class DatasetSerializationTest(absltest.TestCase):
     )
     self.assertEqual(x.element_spec, y.element_spec)
     self.assertEqual(list(y), [x * 2 for x in range(5)])
-
-  def test_roundtrip_sequence_of_sparse_tensors(self):
-    self.skipTest('b/225927855')
-
-    tensors = (
-        tf.constant([(1, 1)], dtype=np.int64),
-        (1.0,),
-        tf.constant((3, 3), dtype=np.int64),
-    )
-
-    ds = tf.data.Dataset.from_tensors(tensors)
-    ds = ds.map(tf.SparseTensor)
-
-    serialized_value, _ = value_serialization.serialize_value(
-        ds, computation_types.SequenceType(ds.element_spec)
-    )
-    deserialized_ds, _ = value_serialization.deserialize_value(serialized_value)
-    self.assertEqual(ds.element_spec, deserialized_ds.element_spec)
-    self.assertEqual(
-        list(deserialized_ds), [tf.sparse.SparseTensor([(1, 1)], (1.0), (3, 3))]
-    )
 
   def test_roundtrip_sequence_of_tuples(self):
     x = tf.data.Dataset.range(5).map(

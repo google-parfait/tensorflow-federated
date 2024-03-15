@@ -42,7 +42,7 @@ class ServerOutput:
       00:00:00 UTC).
   """
 
-  aggregated_hierarchical_histogram: tf.RaggedTensor
+  aggregated_hierarchical_histogram: dict[str, Any]
   round_timestamp: Any
 
 
@@ -370,22 +370,27 @@ def build_hierarchical_histogram_process(
   @tensorflow_computation.tf_computation
   def initialize():
     value_type, _ = result_type_signature.member
-    # Creates a `tf.RaggedTensor` that has the same `type_signature` as the
-    # result returned by `one_round_computation`. This is to make sure the
-    # generated IterativeProcess is compatible with
+    # Creates the components of `tf.RaggedTensor` that has the same
+    # `type_signature` as the result returned by `one_round_computation`. This
+    # is to make sure the generated IterativeProcess is compatible with
     # `tff.backends.mapreduce.MapReduceForm`.
-    flat_values_shape = value_type[0].shape
-    flat_values_dtype = value_type[0].dtype
-    nested_row_splits = np.zeros(shape=value_type[1][0].shape)
+    flat_values_shape = value_type['flat_values'].shape
+    flat_values_dtype = value_type['flat_values'].dtype
+    nested_row_splits = np.zeros(
+        shape=value_type['nested_row_splits'][0].shape,
+        dtype=value_type['nested_row_splits'][0].dtype,
+    )
     # To generated a valid `tf.RaggedTensor`, the first element in
     # `nested_row_splits` must be 0, and the last element in `nested_row_splits`
     # must be the length of `flat_values`.
     nested_row_splits[-1] = flat_values_shape[0]
-    initial_hierarchical_histogram = tf.RaggedTensor.from_nested_row_splits(
-        flat_values=tf.zeros(shape=flat_values_shape, dtype=flat_values_dtype),
-        nested_row_splits=[nested_row_splits],
-    )
+    flat_values = tf.zeros(shape=flat_values_shape, dtype=flat_values_dtype)
+    nested_row_splits = [nested_row_splits]
     initial_timestamp = tf.constant(0, dtype=tf.int64)
+    initial_hierarchical_histogram = {
+        'flat_values': flat_values,
+        'nested_row_splits': nested_row_splits,
+    }
     return ServerOutput(initial_hierarchical_histogram, initial_timestamp)
 
   @federated_computation.federated_computation

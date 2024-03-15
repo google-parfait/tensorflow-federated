@@ -146,22 +146,6 @@ def _dataset_to_type(dataset: tf.data.Dataset) -> computation_types.Type:
   return computation_types.tensorflow_to_type(dataset_spec)
 
 
-def _ragged_tensor_to_type(
-    ragged_tensor: tf.RaggedTensor,
-) -> computation_types.Type:
-  """Returns a `tff.Type` for the `ragged_tensor`."""
-  ragged_tensor_spec = tf.RaggedTensorSpec.from_value(ragged_tensor)
-  return computation_types.tensorflow_to_type(ragged_tensor_spec)
-
-
-def _sparse_tensor_to_type(
-    sparse_tensor: tf.SparseTensor,
-) -> computation_types.Type:
-  """Returns a `tff.Type` for the `sparse_tensor`."""
-  sparse_tensor_spec = tf.SparseTensorSpec.from_value(sparse_tensor)
-  return computation_types.tensorflow_to_type(sparse_tensor_spec)
-
-
 def tensorflow_infer_type(obj: object) -> Optional[computation_types.Type]:
   """Returns a `tff.Type` for an `obj` containing TensorFlow values.
 
@@ -171,8 +155,6 @@ def tensorflow_infer_type(obj: object) -> Optional[computation_types.Type]:
   *   `tf.Tensor`
   *   `tf.Variable`
   *   `tf.data.Dataset`
-  *   `tf.RaggedTensor`
-  *   `tf.SparseTensor`
 
   For example:
 
@@ -189,34 +171,6 @@ def tensorflow_infer_type(obj: object) -> Optional[computation_types.Type]:
   >>> dataset = tf.data.Dataset.from_tensors(tensor)
   >>> tensorflow_infer_type(dataset)
   tff.SequenceType(tff.TensorType(np.int32, (2, 3)))
-
-  >>> ragged_tensor = tf.RaggedTensor.from_row_splits(
-          values=[0, 0, 0, 0], row_splits=[0, 1, 4]
-      )
-  >>> tensorflow_infer_type(ragged_tensor)
-  tff.StructWithPythonType(
-      [
-          ('flat_values', tff.TensorType(np.int32, None)),
-          (
-              'nested_row_splits',
-              tff.StructType([tff.TensorType(np.int64, [None])]),
-          ),
-      ],
-      tf.RaggedTensor,
-  )
-
-  >>> sparse_tensor = tf.SparseTensor(
-          indices=[[1]], values=[2], dense_shape=[5]
-      )
-  >>> tensorflow_infer_type(sparse_tensor)
-  tff.StructWithPythonType(
-      [
-          ('indices', tff.TensorType(np.int64, (None, 1))),
-          ('values', tff.TensorType(np.int32, (None,))),
-          ('dense_shape', tff.TensorType(np.int64, (1,))),
-      ],
-      tf.SparseTensor,
-  )
 
   Args:
     obj: An object to infer a `tff.Type`.
@@ -238,10 +192,6 @@ def tensorflow_infer_type(obj: object) -> Optional[computation_types.Type]:
       type_spec = _variable_to_type(obj)
     elif isinstance(obj, tf.data.Dataset):
       type_spec = _dataset_to_type(obj)
-    elif isinstance(obj, tf.RaggedTensor):
-      type_spec = _ragged_tensor_to_type(obj)
-    elif isinstance(obj, tf.SparseTensor):
-      type_spec = _sparse_tensor_to_type(obj)
     else:
       type_spec = None
 
@@ -408,41 +358,6 @@ def type_to_tf_structure(type_spec: computation_types.Type):
           container_type, py_typecheck.SupportsNamedTuple
       ) or attrs.has(container_type):
         return container_type(**dict(element_outputs))
-      elif container_type is tf.RaggedTensor:
-        flat_values = type_spec.flat_values  # pytype: disable=attribute-error
-        nested_row_splits = type_spec.nested_row_splits  # pytype: disable=attribute-error
-        ragged_rank = len(nested_row_splits)
-        return tf.RaggedTensorSpec(
-            shape=tf.TensorShape([None] * (ragged_rank + 1)),
-            dtype=flat_values.dtype,
-            ragged_rank=ragged_rank,
-            row_splits_dtype=nested_row_splits[0].dtype,
-            flat_values_spec=None,
-        )
-      elif container_type is tf.SparseTensor:
-        # We can't generally infer the shape from the type of the tensors, but
-        # we *can* infer the rank based on the shapes of `indices` or
-        # `dense_shape`.
-        if (
-            type_spec.indices.shape is not None  # pytype: disable=attribute-error
-            and len(type_spec.indices.shape) >= 2  # pytype: disable=attribute-error
-            and type_spec.indices.shape[1] is not None  # pytype: disable=attribute-error
-        ):
-          rank = type_spec.indices.shape[1]  # pytype: disable=attribute-error
-          shape = tf.TensorShape([None] * rank)
-        elif (
-            type_spec.dense_shape.shape is not None  # pytype: disable=attribute-error
-            and type_spec.indices.shape  # pytype: disable=attribute-error
-            and type_spec.dense_shape.shape[0] is not None  # pytype: disable=attribute-error
-        ):
-          rank = type_spec.dense_shape.shape[0]  # pytype: disable=attribute-error
-          shape = tf.TensorShape([None] * rank)
-        else:
-          shape = None
-        return tf.SparseTensorSpec(
-            shape=shape,
-            dtype=type_spec.values.dtype,  # pytype: disable=attribute-error
-        )
       elif named:
         return container_type(element_outputs)
       else:
@@ -609,18 +524,12 @@ def type_to_py_container(value, type_spec: computation_types.Type):
       isinstance(container_type, py_typecheck.SupportsNamedTuple)
       or attrs.has(container_type)
       or dataclasses.is_dataclass(container_type)
-      or container_type is tf.SparseTensor
   ):
     # The namedtuple and attr.s class constructors cannot interpret a list of
     # (name, value) tuples; instead call constructor using kwargs. Note that
     # these classes already define an order of names internally, so order does
     # not matter.
     return container_type(**dict(elements))
-  elif container_type is tf.RaggedTensor:
-    elements = dict(elements)
-    return tf.RaggedTensor.from_nested_row_splits(
-        elements['flat_values'], elements['nested_row_splits']
-    )
   else:
     # E.g., tuple and list when elements only has values, but also `dict`,
     # `collections.OrderedDict`, or `structure.Struct` when

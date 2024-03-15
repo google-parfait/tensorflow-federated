@@ -1075,63 +1075,6 @@ def _dataset_spec_to_type(dataset_spec: tf.data.DatasetSpec) -> Type:
   return SequenceType(element_type)
 
 
-def _ragged_tensor_spec_to_type(
-    ragged_tensor_spec: tf.RaggedTensorSpec,
-) -> Type:
-  """Returns a `tff.Type` for the `ragged_tensor_spec`."""
-  if ragged_tensor_spec.flat_values_spec is not None:
-    flat_values_type = tensorflow_to_type(ragged_tensor_spec.flat_values_spec)
-  else:
-    flat_values_dtype = _tensorflow_dtype_to_numpy_dtype(
-        ragged_tensor_spec.dtype
-    )
-    # We could provide a more specific shape here if `shape is not None`:
-    # `flat_values_shape = [None] + shape[ragged_tensor_spec.ragged_rank + 1:]`
-    # However, we can't go back from this type into a `tf.RaggedTensorSpec`,
-    # meaning that round-tripping a `tf.RaggedTensorSpec` through
-    # `type_conversions.type_to_tf_structure(to_type(ragged_tensor_spec))`
-    # would *not* be a no-op: it would clear away the extra shape information,
-    # leading to compilation errors. This round-trip is tested in
-    # `type_conversions_test.py` to ensure correctness.
-    flat_values_shape = None
-    flat_values_type = TensorType(flat_values_dtype, flat_values_shape)
-  nested_row_splits_dtype = _tensorflow_dtype_to_numpy_dtype(
-      ragged_tensor_spec.row_splits_dtype
-  )
-  nested_row_splits_type = StructType(
-      [
-          TensorType(nested_row_splits_dtype, [None]),
-      ]
-      * ragged_tensor_spec.ragged_rank
-  )
-  return StructWithPythonType(
-      [
-          ('flat_values', flat_values_type),
-          ('nested_row_splits', nested_row_splits_type),
-      ],
-      tf.RaggedTensor,
-  )
-
-
-def _sparse_tensor_spec_to_type(
-    sparse_tensor_spec: tf.SparseTensorSpec,
-) -> Type:
-  """Returns a `tff.Type` for the `sparse_tensor_spec`."""
-  dtype = _tensorflow_dtype_to_numpy_dtype(sparse_tensor_spec.dtype)
-  if sparse_tensor_spec.shape is None:
-    rank = None
-  else:
-    rank = sparse_tensor_spec.shape.rank
-  return StructWithPythonType(
-      [
-          ('indices', TensorType(np.int64, [None, rank])),
-          ('values', TensorType(dtype, [None])),
-          ('dense_shape', TensorType(np.int64, [rank])),
-      ],
-      tf.SparseTensor,
-  )
-
-
 def tensorflow_to_type(obj: object) -> Type:
   """Returns a `tff.Type` for an `obj` containing TensorFlow type specs.
 
@@ -1142,8 +1085,6 @@ def tensorflow_to_type(obj: object) -> Type:
   *   tensor-like objects (e.g. `(tf.int32, tf.TensorShape([2, 3]))`)
   *   `tf.TensorSpec`
   *   `tf.data.DatasetSpec`
-  *   `tf.RaggedTensorSpec`
-  *   `tf.SparseTensorSpec`
 
   For example:
 
@@ -1160,36 +1101,6 @@ def tensorflow_to_type(obj: object) -> Type:
   >>> spec = tf.data.DatasetSpec(tf.TensorSpec([2, 3], dtype=tf.int32))
   >>> tensorflow_to_type(spec)
   tff.SequenceType(tff.TensorType(np.int32, (2, 3)))
-
-  >>> spec = tf.RaggedTensorSpec.from_value(
-        tf.RaggedTensor.from_row_splits(
-            values=[0, 0, 0, 0], row_splits=[0, 1, 4]
-        )
-      )
-  >>> tensorflow_to_type(spec)
-  tff.StructWithPythonType(
-      [
-          ('flat_values', tff.TensorType(np.int32, None)),
-          (
-              'nested_row_splits',
-              tff.StructType([tff.TensorType(np.int64, [None])]),
-          ),
-      ],
-      tf.RaggedTensor,
-  )
-
-  >>> spec = tf.SparseTensorSpec.from_value(
-          tf.SparseTensor(indices=[[1]], values=[2], dense_shape=[5])
-      )
-  >>> tensorflow_to_type(spec)
-  tff.StructWithPythonType(
-      [
-          ('indices', tff.TensorType(np.int64, (None, 1))),
-          ('values', tff.TensorType(np.int32, (None,))),
-          ('dense_shape', tff.TensorType(np.int64, (1,))),
-      ],
-      tf.SparseTensor,
-  )
 
   Args:
     obj: A `tff.Type` or an argument convertible to a `tff.Type`.
@@ -1208,10 +1119,6 @@ def tensorflow_to_type(obj: object) -> Type:
       return _tensor_spec_to_type(obj)
     elif isinstance(obj, tf.data.DatasetSpec):
       return _dataset_spec_to_type(obj)
-    elif isinstance(obj, tf.RaggedTensorSpec):
-      return _ragged_tensor_spec_to_type(obj)
-    elif isinstance(obj, tf.SparseTensorSpec):
-      return _sparse_tensor_spec_to_type(obj)
     else:
       return None
 

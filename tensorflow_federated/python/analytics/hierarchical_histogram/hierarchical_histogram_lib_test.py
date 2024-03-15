@@ -169,10 +169,23 @@ class HierarchicalHistogramTest(tf.test.TestCase, parameterized.TestCase):
     init_state = hihi_process.initialize()
     hihi_process_result, _ = hihi_process.next(init_state, client_data)
 
-    return (
-        hihi_computation_result.aggregated_hierarchical_histogram,
-        hihi_process_result.aggregated_hierarchical_histogram,
+    hihi_computation_histogram = tf.RaggedTensor.from_nested_row_splits(
+        flat_values=hihi_computation_result.aggregated_hierarchical_histogram[
+            'flat_values'
+        ],
+        nested_row_splits=hihi_computation_result.aggregated_hierarchical_histogram[
+            'nested_row_splits'
+        ],
     )
+    hihi_process_histogram = tf.RaggedTensor.from_nested_row_splits(
+        flat_values=hihi_process_result.aggregated_hierarchical_histogram[
+            'flat_values'
+        ],
+        nested_row_splits=hihi_process_result.aggregated_hierarchical_histogram[
+            'nested_row_splits'
+        ],
+    )
+    return (hihi_computation_histogram, hihi_process_histogram)
 
   @parameterized.named_parameters(
       (

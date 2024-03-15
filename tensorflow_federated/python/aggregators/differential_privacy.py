@@ -495,9 +495,19 @@ class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
     agg_output_type = (
         record_agg_process.next.type_signature.result.result.member  # pytype: disable=attribute-error
     )
-    get_noised_result = tensorflow_computation.tf_computation(
-        self._query.get_noised_result, agg_output_type, query_state_type
-    )
+
+    @tensorflow_computation.tf_computation(agg_output_type, query_state_type)
+    def get_noised_result(sample_state, global_state):
+      result, new_global_state, event = self._query.get_noised_result(
+          sample_state, global_state
+      )
+      if isinstance(result, tf.RaggedTensor):
+        result = {
+            'flat_values': result.flat_values,
+            'nested_row_splits': result.nested_row_splits,
+        }
+      return result, new_global_state, event
+
     derive_metrics = tensorflow_computation.tf_computation(
         self._query.derive_metrics, query_state_type
     )
