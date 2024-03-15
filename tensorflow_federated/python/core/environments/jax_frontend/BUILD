@@ -32,6 +32,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/computation:computation_wrapper",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
         "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:type_analysis",
     ],
 )
 
@@ -42,6 +43,7 @@ py_test(
     deps = [
         ":jax_computation",
         "//tensorflow_federated/python/core/impl/computation:computation_impl",
+        "//tensorflow_federated/python/core/impl/computation:polymorphic_computation",
         "//tensorflow_federated/python/core/impl/types:computation_types",
     ],
 )
