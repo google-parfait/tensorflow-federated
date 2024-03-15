@@ -33,6 +33,7 @@ class ModelWeights(NamedTuple):
   It may also be used to hold other values that are parallel to these variables,
   e.g., tensors corresponding to variable values, or updates to model variables.
   """
+
   trainable: Any
   non_trainable: Any
 
@@ -49,7 +50,9 @@ class ModelWeights(NamedTuple):
         [value for _, value in structure.iter_elements(struct.non_trainable)],
     )
 
-  def assign_weights_to(self, model):
+  def assign_weights_to(
+      self, model: Union[variable.VariableModel, tf.keras.Model]
+  ) -> None:
     """Assign these TFF model weights to the weights of a model.
 
     Args:
@@ -58,14 +61,14 @@ class ModelWeights(NamedTuple):
     """
     py_typecheck.check_type(model, (variable.VariableModel, tf.keras.Model))
     if isinstance(model, tf.keras.Model):
-      tf.nest.map_structure(
-          lambda var, t: var.assign(t), model.trainable_weights, self.trainable
-      )
-      tf.nest.map_structure(
-          lambda var, t: var.assign(t),
-          model.non_trainable_weights,
-          self.non_trainable,
-      )
+      # We do not use `tf.nest.map_structure` here because
+      # tf.keras.Model.*weights are always flat lists and we want to be flexible
+      # between sequence types (e.g. tuple/list). `tf.nest` wille error if
+      # the types differ.
+      for var, t in zip(model.trainable_weights, self.trainable):
+        var.assign(t)
+      for var, t in zip(model.non_trainable_weights, self.non_trainable):
+        var.assign(t)
     else:
       tf.nest.map_structure(
           lambda var, t: var.assign(t),
