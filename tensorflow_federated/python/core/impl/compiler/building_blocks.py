@@ -39,7 +39,7 @@ def _check_computation_oneof(
   computation_oneof = computation_proto.WhichOneof('computation')
   if computation_oneof != expected_computation_oneof:
     raise TypeError(
-        'Expected a {} computation, found {}.'.format(
+        'Expected the computation to be a {}, found {}.'.format(
             expected_computation_oneof, computation_oneof
         )
     )
@@ -576,26 +576,22 @@ class Call(ComputationBuildingBlock):
     )
     if not isinstance(function_type, computation_types.FunctionType):
       raise TypeError(
-          'Expected fn to be of a functional type, '
-          'but found that its type is {}.'.format(function_type)
+          f'Expected `fn` to have a `tff.FunctionType`, found {function_type}.'
       )
-    if function_type.parameter is not None:
+    parameter_type = function_type.parameter
+    if parameter_type is not None:
       if arg is None:
         raise TypeError(
-            'The invoked function expects an argument of type {}, '
-            'but got None instead.'.format(function_type.parameter)
+            f'Expected `arg` to be of type {parameter_type}, found None.'
         )
-      if not function_type.parameter.is_assignable_from(arg.type_signature):
+      elif not parameter_type.is_assignable_from(arg.type_signature):
         raise TypeError(
-            'The parameter of the invoked function is expected to be of '
-            'type {}, but the supplied argument is of an incompatible '
-            'type {}.'.format(function_type.parameter, arg.type_signature)
+            f'Expected `arg` to be of type {parameter_type}, found an'
+            f' incompatible type {arg.type_signature}.'
         )
-    elif arg is not None:
-      raise TypeError(
-          'The invoked function does not expect any parameters, but got '
-          'an argument of type {}.'.format(py_typecheck.type_string(type(arg)))
-      )
+    else:
+      if arg is not None:
+        raise TypeError(f'Expected `arg` to be None, found {arg}.')
     super().__init__(function_type.result)
     self._function = fn
     self._argument = arg
@@ -646,19 +642,15 @@ class Lambda(ComputationBuildingBlock):
   @classmethod
   def from_proto(cls, computation_proto: pb.Computation) -> 'Lambda':
     _check_computation_oneof(computation_proto, 'lambda')
-    the_lambda = getattr(computation_proto, 'lambda')
+    fn: pb.Lambda = getattr(computation_proto, 'lambda')
     if computation_proto.type.function.HasField('parameter'):
       parameter_type = type_serialization.deserialize_type(
           computation_proto.type.function.parameter
       )
     else:
       parameter_type = None
-
-    return cls(
-        str(the_lambda.parameter_name),
-        parameter_type,
-        ComputationBuildingBlock.from_proto(the_lambda.result),
-    )
+    result = ComputationBuildingBlock.from_proto(fn.result)
+    return cls(fn.parameter_name, parameter_type, result)
 
   def __init__(
       self,
