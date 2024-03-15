@@ -146,6 +146,35 @@ class WeightsTypeFromModelTest(absltest.TestCase):
     )
 
 
+class AssignWeightsToTest(tf.test.TestCase):
+
+  def test_weights_to_keras_model(self):
+    keras_model = tf.keras.Sequential([
+        tf.keras.layers.InputLayer(input_shape=[5]),
+        tf.keras.layers.Dense(
+            units=1, use_bias=False, kernel_initializer='zeros'
+        ),
+    ])
+    self.assertAllEqual(keras_model.trainable_weights, [tf.zeros([5, 1])])
+    model_weights.ModelWeights(
+        trainable=(tf.ones([5, 1]),), non_trainable=()
+    ).assign_weights_to(keras_model)
+    self.assertAllEqual(keras_model.trainable_weights, [tf.ones([5, 1])])
+
+  def test_weights_to_variable_model(self):
+    model = TestModel()
+    self.assertAllClose(
+        model.trainable_variables, [tf.zeros([3]), tf.zeros([1])]
+    )
+    # Note: the arguments must be `list` type sequences, matching the
+    # VariableModel types, otherwise an exception will be raised.
+    model_weights.ModelWeights(
+        trainable=[tf.ones([3]), tf.ones([1])],
+        non_trainable=[tf.ones([], dtype=tf.int32)],
+    ).assign_weights_to(model)
+    self.assertAllClose(model.trainable_variables, [tf.ones([3]), tf.ones([1])])
+
+
 class ConvertVariablesToArraysTest(tf.test.TestCase):
 
   def test_raises_exception_in_graph_context(self):
