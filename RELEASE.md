@@ -1,3 +1,25 @@
+# Release 0.74.0
+
+## Major Features and Improvements
+
+*   Make some of the C++ executor APIs public visibility for downstream repos.
+*   Moved the `DataType` protobuf object into its own module. Moving the
+    `DataType` object into its own module allows `DataType` to be used outside
+    of a `Computation` more easily and prevents a circular dependency between
+    `Computation` and `Array` which both require a `DataType`.
+*   Updated `build_apply_optimizer_finalizer` to allow custom reject update
+    function.
+*   Relaxed the type requirement of the attributes of `ModelWeights` to allow
+    assigning list or tuples of matching values to other sequence types on
+    `tf.keras.Model` instances.
+*   Improved the errors raised by JAX computations for various types.
+*   Updated tutorials to use recommended `tff.learning` APIs.
+
+## Breaking Changes
+
+*   Removed the runtime-agnostic support for `tf.RaggedTensor` and
+    `tf.SparseTensor`.
+
 # Release 0.73.0
 
 ## Major Features and Improvements
