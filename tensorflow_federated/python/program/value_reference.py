@@ -35,10 +35,21 @@ MaterializableTypeSignature = Union[
     computation_types.TensorType,
     computation_types.SequenceType,
 ]
-MaterializedValue = Union[
+_MaterializedArrayValue = Union[
+    # Python types
+    bool,
+    int,
+    float,
+    complex,
+    str,
+    bytes,
+    # Numpy types
     np.generic,
     np.ndarray,
-    Iterable[Union[np.generic, np.ndarray]],
+]
+MaterializedValue = Union[
+    _MaterializedArrayValue,
+    Iterable[_MaterializedArrayValue],
 ]
 MaterializedStructure = structure_utils.Structure[MaterializedValue]
 MaterializableValue = Union[
@@ -63,10 +74,12 @@ class MaterializableValueReference(abc.ABC, typed_object.TypedObject):
 
     The Python type of the referenced value depends on the `type_signature`:
 
-    | TFF Type           | Python Type                                |
-    | ------------------ | ------------------------------------------ |
-    | `tff.TensorType`   | `np.generic` or `np.ndarray`               |
-    | `tff.SequenceType` | `Iterable` of `np.generic` or `np.ndarray` |
+    | TFF Type           | Python Type                                        |
+    | ------------------ | -------------------------------------------------- |
+    | `tff.TensorType`   | `bool`, `int`, `float`, `complex`, `str`, `bytes`, |
+    |                    | `np.generic`, or `np.ndarray`                      |
+    | `tff.SequenceType` | `Iterable` of any Python type corresponding to a   |
+    |                    | `tff.TensorType`                                   |
     """
     raise NotImplementedError
 
