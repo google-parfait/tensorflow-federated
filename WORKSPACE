@@ -17,6 +17,12 @@ git_repository(
 )
 
 git_repository(
+    name = "com_github_grpc_grpc",
+    remote = "https://github.com/grpc/grpc.git",
+    tag = "v1.59.1",
+)
+
+git_repository(
     name = "com_google_absl",
     commit = "66665d8d2e3fedff340b83f9841ca427145a7b26",
     remote = "https://github.com/abseil/abseil-cpp.git",
@@ -106,6 +112,14 @@ new_git_repository(
 # Transitive dependencies, grouped by direct dependency.
 #
 
+load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps")
+
+grpc_deps()
+
+load("@com_github_grpc_grpc//bazel:grpc_extra_deps.bzl", "grpc_extra_deps")
+
+grpc_extra_deps()
+
 load("@org_tensorflow//tensorflow:workspace3.bzl", "tf_workspace3")
 
 tf_workspace3()
@@ -125,20 +139,3 @@ tf_workspace0()
 load("@com_google_protobuf//:protobuf_deps.bzl", "protobuf_deps")
 
 protobuf_deps()
-
-git_repository(
-    name = "com_github_grpc_grpc",
-    remote = "https://github.com/grpc/grpc.git",
-    tag = "v1.59.1",
-)
-
-load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps")
-
-grpc_deps()
-
-# TODO: b/260598663 - Temporarily disable the direct dependency on
-# `grpc_extra_deps`, for now we pick this dependency up via TensorFlows
-# workspace.
-# load("@com_github_grpc_grpc//bazel:grpc_extra_deps.bzl", "grpc_extra_deps")
-#
-# grpc_extra_deps()
