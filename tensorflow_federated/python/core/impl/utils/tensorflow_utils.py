@@ -34,7 +34,7 @@ from tensorflow_federated.python.core.impl.types import type_serialization
 from tensorflow_federated.python.tensorflow_libs import graph_utils
 from tensorflow_federated.python.tensorflow_libs import serialization_utils
 
-TENSOR_REPRESENTATION_TYPES = (
+_TENSOR_REPRESENTATION_TYPES = (
     # Python native types
     str,
     int,
@@ -248,7 +248,7 @@ def capture_result_from_graph(
   # TODO: b/113112885 - The emerging extensions for serializing SavedModels may
   # end up introducing similar concepts of bindings, etc., we should look here
   # into the possibility of reusing some of that code when it's available.
-  if isinstance(result, TENSOR_REPRESENTATION_TYPES):
+  if isinstance(result, _TENSOR_REPRESENTATION_TYPES):
     with graph.as_default():
       result = tf.constant(result)
   if tf.is_tensor(result):

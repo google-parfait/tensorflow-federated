@@ -13,97 +13,16 @@
 # limitations under the License.
 """A library of (de)serialization functions for computation types."""
 
-from collections.abc import Mapping, Sequence
-from typing import Optional
+from collections.abc import Mapping
 import weakref
 
-import numpy as np
-
+from tensorflow_federated.proto.v0 import array_pb2
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
-from tensorflow_federated.proto.v0 import data_type_pb2
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.types import array_shape
 from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.core.impl.types import dtype_utils
 from tensorflow_federated.python.core.impl.types import placements
-
-
-# Mapping from `np.dtype` to `data_type_pb2.DataType`.
-_NP_TO_PROTO: Mapping[type[np.generic], data_type_pb2.DataType] = {
-    np.float32: data_type_pb2.DataType.DT_FLOAT,
-    np.float64: data_type_pb2.DataType.DT_DOUBLE,
-    np.int32: data_type_pb2.DataType.DT_INT32,
-    np.uint8: data_type_pb2.DataType.DT_UINT8,
-    np.int16: data_type_pb2.DataType.DT_INT16,
-    np.int8: data_type_pb2.DataType.DT_INT8,
-    np.str_: data_type_pb2.DataType.DT_STRING,
-    np.complex64: data_type_pb2.DataType.DT_COMPLEX64,
-    np.int64: data_type_pb2.DataType.DT_INT64,
-    np.bool_: data_type_pb2.DataType.DT_BOOL,
-    np.uint16: data_type_pb2.DataType.DT_UINT16,
-    np.float16: data_type_pb2.DataType.DT_HALF,
-    np.uint32: data_type_pb2.DataType.DT_UINT32,
-    np.uint64: data_type_pb2.DataType.DT_UINT64,
-    np.complex128: data_type_pb2.DataType.DT_COMPLEX128,
-}
-
-
-def _serialize_dtype(dtype: np.dtype) -> data_type_pb2.DataType:
-  """Serializes `np.dtype` as a `data_type_pb2.DataType`."""
-  return _NP_TO_PROTO[dtype.type]
-
-
-# Mapping from `data_type_pb2.DataType` to `np.dtype`.
-_PROTO_TO_NP: Mapping[data_type_pb2.DataType, type[np.generic]] = {
-    data_type_pb2.DataType.DT_FLOAT: np.float32,
-    data_type_pb2.DataType.DT_DOUBLE: np.float64,
-    data_type_pb2.DataType.DT_INT32: np.int32,
-    data_type_pb2.DataType.DT_UINT8: np.uint8,
-    data_type_pb2.DataType.DT_INT16: np.int16,
-    data_type_pb2.DataType.DT_INT8: np.int8,
-    data_type_pb2.DataType.DT_STRING: np.str_,
-    data_type_pb2.DataType.DT_COMPLEX64: np.complex64,
-    data_type_pb2.DataType.DT_INT64: np.int64,
-    data_type_pb2.DataType.DT_BOOL: np.bool_,
-    data_type_pb2.DataType.DT_UINT16: np.uint16,
-    data_type_pb2.DataType.DT_HALF: np.float16,
-    data_type_pb2.DataType.DT_UINT32: np.uint32,
-    data_type_pb2.DataType.DT_UINT64: np.uint64,
-    data_type_pb2.DataType.DT_COMPLEX128: np.complex128,
-}
-
-
-def _deserialize_dtype(
-    dtype_proto: data_type_pb2.DataType,
-) -> np.dtype:
-  """Deserializes `data_type_pb2.DataType` as a `np.dtype`."""
-  return np.dtype(_PROTO_TO_NP[dtype_proto])
-
-
-_Dimensions = Sequence[int]
-
-
-def _serialize_shape(
-    shape: array_shape.ArrayShape,
-) -> tuple[Optional[_Dimensions], bool]:
-  if shape is None:
-    dims = None
-    unknown_rank = True
-  else:
-    dims = [d if d is not None else -1 for d in shape]
-    unknown_rank = False
-  return dims, unknown_rank
-
-
-def _deserialize_shape(
-    dims: Optional[_Dimensions], unknown_rank: bool
-) -> array_shape.ArrayShape:
-  if unknown_rank:
-    return None
-  elif dims is None:
-    shape: array_shape.ArrayShape = ()
-    return shape
-  else:
-    return tuple(dim if dim >= 0 else None for dim in dims)
 
 
 # Manual cache used rather than `cachetools.cached` due to incompatibility
@@ -136,10 +55,12 @@ def serialize_type(type_spec: computation_types.Type) -> pb.Type:
     return cached_proto
 
   if isinstance(type_spec, computation_types.TensorType):
-    dtype = _serialize_dtype(type_spec.dtype)
-    dims, unknown_rank = _serialize_shape(type_spec.shape)
+    dtype = dtype_utils.to_proto(type_spec.dtype.type)
+    shape = array_shape.to_proto(type_spec.shape)
     proto = pb.Type(
-        tensor=pb.TensorType(dtype=dtype, dims=dims, unknown_rank=unknown_rank)
+        tensor=pb.TensorType(
+            dtype=dtype, dims=shape.dim, unknown_rank=shape.unknown_rank
+        )
     )
   elif isinstance(type_spec, computation_types.SequenceType):
     proto = pb.Type(
@@ -203,12 +124,11 @@ def deserialize_type(type_proto: pb.Type) -> computation_types.Type:
   """
   type_variant = type_proto.WhichOneof('type')
   if type_variant == 'tensor':
-    dtype = _deserialize_dtype(type_proto.tensor.dtype)
-    if hasattr(type_proto.tensor, 'dims'):
-      dims = type_proto.tensor.dims
-    else:
-      dims = None
-    shape = _deserialize_shape(dims, type_proto.tensor.unknown_rank)
+    dtype = dtype_utils.from_proto(type_proto.tensor.dtype)
+    shape_pb = array_pb2.ArrayShape(
+        dim=type_proto.tensor.dims, unknown_rank=type_proto.tensor.unknown_rank
+    )
+    shape = array_shape.from_proto(shape_pb)
     return computation_types.TensorType(dtype, shape)
   elif type_variant == 'sequence':
     return computation_types.SequenceType(

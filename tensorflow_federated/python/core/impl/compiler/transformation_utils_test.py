@@ -447,6 +447,7 @@ class TransformationUtilsTest(parameterized.TestCase):
             building_blocks.CompiledComputation,
             building_blocks.Data,
             building_blocks.Intrinsic,
+            building_blocks.Literal,
             building_blocks.Placement,
             building_blocks.Reference,
         ),

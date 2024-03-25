@@ -27,6 +27,26 @@ py_library(
 )
 
 py_library(
+    name = "array",
+    srcs = ["array.py"],
+    deps = [
+        "//tensorflow_federated/proto/v0:array_py_pb2",
+        "//tensorflow_federated/python/core/impl/types:array_shape",
+        "//tensorflow_federated/python/core/impl/types:dtype_utils",
+    ],
+)
+
+py_test(
+    name = "array_test",
+    srcs = ["array_test.py"],
+    deps = [
+        ":array",
+        "//tensorflow_federated/proto/v0:array_py_pb2",
+        "//tensorflow_federated/proto/v0:data_type_py_pb2",
+    ],
+)
+
+py_library(
     name = "building_block_analysis",
     srcs = ["building_block_analysis.py"],
     deps = [":building_blocks"],
@@ -126,10 +146,12 @@ py_library(
     name = "building_blocks",
     srcs = ["building_blocks.py"],
     deps = [
+        ":array",
         ":intrinsic_defs",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
+        "//tensorflow_federated/python/core/impl/types:array_shape",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/impl/types:type_analysis",
@@ -147,7 +169,9 @@ py_test(
         ":building_blocks",
         ":computation_factory",
         ":intrinsic_defs",
+        "//tensorflow_federated/proto/v0:array_py_pb2",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
+        "//tensorflow_federated/proto/v0:data_type_py_pb2",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",

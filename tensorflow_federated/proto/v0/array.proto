@@ -1,0 +1,79 @@
+syntax = "proto3";
+
+package tensorflow_federated.v0;
+
+import "tensorflow_federated/proto/v0/data_type.proto";
+
+// ArrayShape is the shape of an `Array`, and may be one of the following:
+//
+// * Fully-defined: Has a known number of dimensions and a known size for each
+//   dimension (e.g. dim=(2, 3)).
+// * Partially-defined: Has a known number of dimensions, and an unknown size
+//   (repesented as size -1) for one or more dimension (e.g. dim=(2, -1)).
+// * Unknown: Has an unknown number of dimensions (unknown_rank=True).
+// * Scalar: Has no dimensions (dim=(), unknown_rank=False).
+message ArrayShape {
+  repeated int64 dim = 1;
+  bool unknown_rank = 2;
+}
+
+// Array is the native representation of an array.
+//
+// This protobuf resembles the equivalent TensorFlow
+// (https://github.com/tensorflow/tensorflow/blob/master/tensorflow/core/framework/tensor.proto)
+// and XLA (https://github.com/openxla/xla/blob/main/xla/xla_data.proto)
+// constructs and adopts some design decisions made by those platforms
+// in order to reduce the complexity and cost of converting values between those
+// environments, including:
+//
+// * How dtypes are packed.
+// * Which dtypes are supported.
+// * How strings are represented.
+message Array {
+  DataType dtype = 1;
+  ArrayShape shape = 2;
+
+  message BoolList {
+    repeated bool value = 1;
+  }
+  // INT8, INT16, INT32, UINT8, UINT16, HALF
+  message IntList {
+    repeated int32 value = 1;
+  }
+  message Int64List {
+    repeated int64 value = 1;
+  }
+  message Uint32List {
+    repeated uint32 value = 1;
+  }
+  message Uint64List {
+    repeated uint64 value = 1;
+  }
+  message FloatList {
+    repeated float value = 1;
+  }
+  message DoubleList {
+    repeated double value = 1;
+  }
+  message BytesList {
+    repeated bytes value = 1;
+  }
+
+  oneof kind {
+    BoolList bool_list = 3;
+    IntList int8_list = 4;
+    IntList int16_list = 5;
+    IntList int32_list = 6;
+    Int64List int64_list = 7;
+    IntList uint8_list = 8;
+    IntList uint16_list = 9;
+    Uint32List uint32_list = 10;
+    Uint64List uint64_list = 11;
+    IntList float16_list = 12;
+    FloatList float32_list = 13;
+    DoubleList float64_list = 14;
+    FloatList complex64_list = 15;
+    DoubleList complex128_list = 16;
+    BytesList string_list = 17;
+  }
+}

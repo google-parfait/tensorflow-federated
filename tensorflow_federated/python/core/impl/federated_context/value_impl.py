@@ -21,12 +21,12 @@ import typing
 from typing import Optional, Union
 
 import attrs
-import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
+from tensorflow_federated.python.core.impl.compiler import array
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_factory
@@ -39,7 +39,6 @@ from tensorflow_federated.python.core.impl.context_stack import symbol_binding_c
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import typed_object
-from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
 
 def _unfederated(type_signature):
@@ -341,14 +340,7 @@ def to_value(
           Mapping[Hashable, object],
           tuple[object, ...],
           list[object],
-          # Inlined from tensorflow_utils.TENSOR_REPRESENTATION_TYPES
-          str,
-          int,
-          float,
-          bool,
-          bytes,
-          np.generic,
-          np.ndarray,
+          array.Array,
       ],
       arg,
   )
@@ -400,7 +392,7 @@ def to_value(
   ):
     items = zip(itertools.repeat(None), arg)
     result = _dictlike_items_to_value(items, type_spec, type(arg))
-  elif isinstance(arg, tensorflow_utils.TENSOR_REPRESENTATION_TYPES):
+  elif isinstance(arg, typing.get_args(array.Array)):
     result = _wrap_constant_as_value(arg)
   else:
     raise TypeError(
