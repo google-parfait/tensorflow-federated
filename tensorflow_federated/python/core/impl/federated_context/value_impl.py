@@ -47,10 +47,10 @@ def _unfederated(type_signature):
   return type_signature
 
 
-def _is_federated_named_tuple(vimpl: 'Value') -> bool:
-  return isinstance(
-      vimpl.type_signature, computation_types.FederatedType
-  ) and isinstance(vimpl.type_signature.member, computation_types.StructType)
+def _is_federated_struct(type_spec: computation_types.Type) -> bool:
+  return isinstance(type_spec, computation_types.FederatedType) and isinstance(
+      type_spec.member, computation_types.StructType
+  )
 
 
 def _check_struct_or_federated_struct(
@@ -59,7 +59,7 @@ def _check_struct_or_federated_struct(
 ):
   if not isinstance(
       vimpl.type_signature, computation_types.StructType
-  ) and not _is_federated_named_tuple(vimpl):
+  ) and not _is_federated_struct(vimpl.type_signature):
     raise AttributeError(
         f'`tff.Value` of non-structural type {vimpl.type_signature} has no '
         f'attribute {attribute}'
@@ -124,7 +124,7 @@ class Value(typed_object.TypedObject, metaclass=abc.ABCMeta):
   def __getattr__(self, name):
     py_typecheck.check_type(name, str)
     _check_struct_or_federated_struct(self, name)
-    if _is_federated_named_tuple(self):
+    if _is_federated_struct(self.type_signature):
       if name not in structure.name_list(self.type_signature.member):  # pytype: disable=attribute-error
         raise AttributeError(
             "There is no such attribute '{}' in this federated tuple. Valid "
@@ -167,7 +167,7 @@ class Value(typed_object.TypedObject, metaclass=abc.ABCMeta):
     py_typecheck.check_type(key, (int, str, slice))
     if isinstance(key, str):
       return getattr(self, key)
-    if _is_federated_named_tuple(self):
+    if _is_federated_struct(self.type_signature):
       return Value(
           building_block_factory.create_federated_getitem_call(self._comp, key),
       )
