@@ -605,47 +605,47 @@ class LiteralTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
       (
-          'scalar_and_wrong_dtype_kind',
+          'scalar_and_incompatible_dtype_kind',
           1,
           computation_types.TensorType(np.float32),
       ),
       (
-          'scalar_and_wrong_dtype_size',
+          'scalar_and_incompatible_dtype_size',
           np.iinfo(np.int64).max,
           computation_types.TensorType(np.int32),
       ),
       (
-          'scalar_and_wrong_shape',
+          'scalar_and_incompatible_shape',
           1,
           computation_types.TensorType(np.int32, shape=[2, 3]),
       ),
       (
-          'generic_and_wrong_dtype_kind',
+          'generic_and_incompatible_dtype_kind',
           np.int32(1),
           computation_types.TensorType(np.float32),
       ),
       (
-          'generic_and_wrong_dtype_size',
+          'generic_and_incompatible_dtype_size',
           np.int64(np.iinfo(np.int64).max),
           computation_types.TensorType(np.int32),
       ),
       (
-          'generic_and_wrong_shape',
+          'generic_and_incompatible_shape',
           np.int32(1),
           computation_types.TensorType(np.int32, shape=[2, 3]),
       ),
       (
-          'array_and_wrong_dtype_kind',
+          'array_and_incompatible_dtype_kind',
           np.array([1, 2, 3], np.int32),
           computation_types.TensorType(np.float32, shape=[3]),
       ),
       (
-          'array_and_wrong_dtype_size',
+          'array_and_incompatible_dtype_size',
           np.array([np.iinfo(np.int64).max] * 3, np.int64),
           computation_types.TensorType(np.int32, shape=[3]),
       ),
       (
-          'array_and_wrong_shape',
+          'array_and_incompatible_shape',
           np.array([1, 2, 3], np.int32),
           computation_types.TensorType(np.int32, shape=[2, 3]),
       ),

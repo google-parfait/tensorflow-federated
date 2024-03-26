@@ -106,8 +106,10 @@ def to_proto(
   """Returns a `Array` for the `array`."""
 
   if dtype_hint is not None:
-    if not np.can_cast(array, dtype_hint):
-      raise ValueError(f'Expected that {array} can be cast to {dtype_hint}.')
+    if not is_compatible_dtype(array, dtype_hint):
+      raise ValueError(
+          f"Expected '{array}' to be compatible with '{dtype_hint}'."
+      )
 
   if isinstance(array, (np.ndarray, np.generic)):
     if dtype_hint is not None:
@@ -128,7 +130,7 @@ def to_proto(
       array = array.encode()
     value = [array]
   else:
-    raise NotImplementedError(f'Unexpected value found: {array}.')
+    raise NotImplementedError(f'Unexpected array found: {array}.')
 
   dtype_pb = dtype_utils.to_proto(dtype)
   shape_pb = array_shape.to_proto(shape)
@@ -240,3 +242,78 @@ def to_proto(
     )
   else:
     raise NotImplementedError(f'Unexpected dtype found: {dtype}.')
+
+
+def _can_cast(array: Array, dtype: type[np.generic]) -> bool:
+  """Returns `True` if `array` can be cast to the `dtype`."""
+  if isinstance(array, np.ndarray):
+    # `np.can_cast` does not operate on non-scalar arrays. See
+    # https://numpy.org/doc/stable/reference/generated/numpy.can_cast.html for
+    # more information.
+    return all(np.can_cast(x, dtype) for x in array.flatten())
+  elif isinstance(array, (np.generic, bool, int, float, complex)):
+    return np.can_cast(array, dtype)
+  elif isinstance(array, (str, bytes)):
+    # `np.can_cast` interprets strings as dtype like specifications.
+    return dtype is np.str_ or dtype is np.bytes_
+  else:
+    return False
+
+
+def is_compatible_dtype(value: Array, dtype: type[np.generic]) -> bool:
+  """Returns `True` if `value` is compatible with `dtype`, otherwise `False`.
+
+  This functions checks that the `value` has the same scalar kind as `dtype` and
+  has a compatible size.
+
+  See https://numpy.org/doc/stable/reference/arrays.scalars.html for more
+  information.
+
+  Args:
+    value: The value to check.
+    dtype: The scalar `np.generic` to check against.
+  """
+  if isinstance(value, (np.ndarray, np.generic)):
+    value_dtype = value.dtype
+  else:
+    value_dtype = type(value)
+
+  # Check dtype kind and skip checking dtype size because `np.bool_` does not
+  # have a size and values with a dtype `np.str_` and `np.bytes_` have a
+  # variable length.
+  if np.issubdtype(value_dtype, np.bool_):
+    return dtype is np.bool_
+  elif np.issubdtype(value_dtype, np.character):
+    return dtype is np.str_ or dtype is np.bytes_
+
+  # Check dtype kind.
+  if np.issubdtype(value_dtype, np.integer):
+    if not np.issubdtype(dtype, np.integer):
+      return False
+  elif np.issubdtype(value_dtype, np.floating):
+    if not np.issubdtype(dtype, np.floating):
+      return False
+  elif np.issubdtype(value_dtype, np.complexfloating):
+    if not np.issubdtype(dtype, np.complexfloating):
+      return False
+  else:
+    return False
+
+  # Check dtype size.
+  if not _can_cast(value, dtype):
+    return False
+
+  return True
+
+
+def is_compatible_shape(value: Array, shape: array_shape.ArrayShape) -> bool:
+  """Returns `True` if `value` is compatible with `shape`, otherwise `False`.
+
+  Args:
+    value: The value to check.
+    shape: The `tff.types.ArrayShape` to check against.
+  """
+  if isinstance(value, np.ndarray):
+    return array_shape.is_compatible_with(value.shape, shape)
+  else:
+    return array_shape.is_shape_scalar(shape)
