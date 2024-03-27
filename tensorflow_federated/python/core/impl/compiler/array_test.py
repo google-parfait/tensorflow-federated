@@ -470,6 +470,36 @@ class ArrayTest(parameterized.TestCase):
               int32_list=array_pb2.Array.IntList(value=[1, 2, 3, 4, 5, 6]),
           ),
       ),
+      (
+          'scalar_different_dtype',
+          1,
+          np.int64,
+          array_pb2.Array(
+              dtype=data_type_pb2.DataType.DT_INT64,
+              shape=array_pb2.ArrayShape(dim=[]),
+              int64_list=array_pb2.Array.Int64List(value=[1]),
+          ),
+      ),
+      (
+          'generic_different_dtype',
+          np.int32(1),
+          np.int64,
+          array_pb2.Array(
+              dtype=data_type_pb2.DataType.DT_INT64,
+              shape=array_pb2.ArrayShape(dim=[]),
+              int64_list=array_pb2.Array.Int64List(value=[1]),
+          ),
+      ),
+      (
+          'array_different_dtype',
+          np.array([[1, 2, 3], [4, 5, 6]], np.int32),
+          np.int64,
+          array_pb2.Array(
+              dtype=data_type_pb2.DataType.DT_INT64,
+              shape=array_pb2.ArrayShape(dim=[2, 3]),
+              int64_list=array_pb2.Array.Int64List(value=[1, 2, 3, 4, 5, 6]),
+          ),
+      ),
   )
   def test_to_proto_returns_value_with_dtype_hint(
       self, value, dtype, expected_value
@@ -478,7 +508,9 @@ class ArrayTest(parameterized.TestCase):
     self.assertEqual(actual_value, expected_value)
 
   @parameterized.named_parameters(
-      ('int', np.iinfo(np.int64).max, np.int32),
+      ('scalar', np.iinfo(np.int64).max, np.int32),
+      ('generic', np.int64(np.iinfo(np.int64).max), np.int32),
+      ('array', np.array([np.iinfo(np.int64).max] * 3, np.int64), np.int32),
   )
   def test_to_proto_raises_value_error_with_incompatible_dtype_hint(
       self, value, dtype_hint
@@ -501,6 +533,94 @@ class ArrayTest(parameterized.TestCase):
   def test_to_proto_raises_not_implemented_error(self, value):
     with self.assertRaises(NotImplementedError):
       array.to_proto(value)
+
+  @parameterized.named_parameters(
+      ('scalar', 1, np.int64),
+      ('str', 'abc', np.str_),
+      ('generic', np.int32(1), np.int64),
+      ('array', np.array([[1, 2, 3], [4, 5, 6]], np.int32), np.int64),
+  )
+  def test_can_cast_returns_true(self, value, dtype):
+    result = array._can_cast(value, dtype)
+    self.assertTrue(result)
+
+  @parameterized.named_parameters(
+      ('scalar', np.iinfo(np.int64).max, np.int32),
+      ('str', 'abc', np.int32),
+      ('generic', np.int64(np.iinfo(np.int64).max), np.int32),
+      ('array', np.array([np.iinfo(np.int64).max] * 3, np.int64), np.int32),
+  )
+  def test_can_cast_returns_false(self, value, dtype):
+    result = array._can_cast(value, dtype)
+    self.assertFalse(result)
+
+  @parameterized.named_parameters(
+      ('bool', True, np.bool_),
+      ('int', 1, np.int32),
+      ('float', 1.0, np.float32),
+      ('complex', (1.0 + 1.0j), np.complex64),
+      ('str', 'abc', np.str_),
+      ('bytes', b'abc', np.bytes_),
+      ('generic', np.int32(1), np.int32),
+      ('generic_smaller_size', np.int32(1), np.int16),
+      ('generic_larger_size', np.int32(1), np.int64),
+      ('array', np.array([[1, 2, 3], [4, 5, 6]], np.int32), np.int32),
+      (
+          'array_smaller_size',
+          np.array([[1, 2, 3], [4, 5, 6]], np.int32),
+          np.int16,
+      ),
+      (
+          'array_larger_size',
+          np.array([[1, 2, 3], [4, 5, 6]], np.int32),
+          np.int32,
+      ),
+  )
+  def test_is_compatible_dtype_returns_true(self, value, dtype):
+    result = array.is_compatible_dtype(value, dtype)
+    self.assertTrue(result)
+
+  @parameterized.named_parameters(
+      ('scalar_and_incompatible_dtype_kind', 1, np.float32),
+      ('scalar_and_incompatible_dtype_size', np.iinfo(np.int64).max, np.int32),
+      ('generic_and_incompatible_dtype_kind', np.int32(1), np.float32),
+      (
+          'generic_and_incompatible_dtype_size',
+          np.int64(np.iinfo(np.int64).max),
+          np.int32,
+      ),
+      (
+          'array_and_incompatible_dtype_kind',
+          np.array([1, 2, 3], np.int32),
+          np.float32,
+      ),
+      (
+          'array_and_incompatible_dtype_size',
+          np.array([np.iinfo(np.int64).max] * 3, np.int64),
+          np.float32,
+      ),
+  )
+  def test_is_compatible_dtype_returns_false(self, value, dtype):
+    result = array.is_compatible_dtype(value, dtype)
+    self.assertFalse(result)
+
+  @parameterized.named_parameters(
+      ('scalar', 1, []),
+      ('generic', np.int32(1), []),
+      ('array', np.array([[1, 2, 3], [4, 5, 6]], np.int32), [2, 3]),
+  )
+  def test_is_compatible_shape_returns_true(self, value, shape):
+    result = array.is_compatible_shape(value, shape)
+    self.assertTrue(result)
+
+  @parameterized.named_parameters(
+      ('scalar', 1, [3]),
+      ('generic', np.int32(1), [3]),
+      ('array', np.array([[1, 2, 3], [4, 5, 6]], np.int32), [3]),
+  )
+  def test_is_compatible_shape_returns_false(self, value, shape):
+    result = array.is_compatible_shape(value, shape)
+    self.assertFalse(result)
 
 
 if __name__ == '__main__':

@@ -27,7 +27,6 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.compiler import array
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
-from tensorflow_federated.python.core.impl.types import array_shape
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
@@ -1110,69 +1109,6 @@ class Placement(ComputationBuildingBlock):
     return "Placement('{}')".format(self.uri)
 
 
-def _is_compatible_dtype(value: array.Array, dtype: type[np.generic]) -> bool:
-  """Returns `True` if `value` is compatible with `dtype`, otherwise `False`.
-
-  This functions checks that the `value` has the same scalar kind as `dtype` and
-  has a compatible size.
-
-  See https://numpy.org/doc/stable/reference/arrays.scalars.html for more
-  information.
-
-  Args:
-    value: The value to check.
-    dtype: The scalar `np.generic` to check against.
-  """
-  if isinstance(value, (np.ndarray, np.generic)):
-    value_dtype = value.dtype
-  else:
-    value_dtype = type(value)
-
-  # Check dtype kind and skip checking dtype size because `np.bool_` does not
-  # have a size and values with a dtype `np.str_` and `np.bytes_` have a
-  # variable length.
-  if np.issubdtype(value_dtype, np.bool_):
-    return dtype is np.bool_
-  elif np.issubdtype(value_dtype, np.str_):
-    return dtype is np.str_
-  elif np.issubdtype(value_dtype, np.bytes_):
-    return dtype is np.str_
-
-  # Check dtype kind.
-  if np.issubdtype(value_dtype, np.integer):
-    if not np.issubdtype(dtype, np.integer):
-      return False
-  elif np.issubdtype(value_dtype, np.floating):
-    if not np.issubdtype(dtype, np.floating):
-      return False
-  elif np.issubdtype(value_dtype, np.complexfloating):
-    if not np.issubdtype(dtype, np.complexfloating):
-      return False
-  else:
-    return False
-
-  # Check dtype size.
-  if not np.can_cast(value, dtype):
-    return False
-
-  return True
-
-
-def _is_compatible_shape(
-    value: array.Array, shape: array_shape.ArrayShape
-) -> bool:
-  """Returns `True` if `value` is compatible with `shape`, otherwise `False`.
-
-  Args:
-    value: The value to check.
-    shape: The `tff.types.ArrayShape` to check against.
-  """
-  if isinstance(value, np.ndarray):
-    return array_shape.is_compatible_with(value.shape, shape)
-  else:
-    return array_shape.is_shape_scalar(shape)
-
-
 class Literal(ComputationBuildingBlock):
   """A representation of a literal in TFF's internal language."""
 
@@ -1196,13 +1132,13 @@ class Literal(ComputationBuildingBlock):
     elif isinstance(value, str):
       value = value.encode()
 
-    if not _is_compatible_dtype(value, type_signature.dtype.type):
+    if not array.is_compatible_dtype(value, type_signature.dtype.type):
       raise ValueError(
           f"Expected '{value}' to be compatible with"
           f" '{type_signature.dtype.type}'."
       )
 
-    if not _is_compatible_shape(value, type_signature.shape):
+    if not array.is_compatible_shape(value, type_signature.shape):
       raise ValueError(
           f"Expected '{value}' to be compatible with '{type_signature.shape}'."
       )
@@ -1229,9 +1165,9 @@ class Literal(ComputationBuildingBlock):
     return cls(value, type_signature)
 
   def _proto(self) -> pb.Computation:
-    type_pb = type_serialization.serialize_type(self._type_signature)
+    type_pb = type_serialization.serialize_type(self.type_signature)
     value_pb = array.to_proto(
-        self._value, dtype_hint=self._type_signature.dtype.type
+        self._value, dtype_hint=self.type_signature.dtype.type
     )
     literal_pb = pb.Literal(value=value_pb)
     return pb.Computation(type=type_pb, literal=literal_pb)
