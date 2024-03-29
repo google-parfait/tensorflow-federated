@@ -1,3 +1,16 @@
+# Unreleased
+
+# Release 1.2.4
+
+## Major Features and Improvements
+
+*   Fake
+*   Whatever
+
+## Breaking Changes
+
+*   Blah, blah
+
 # Release 0.74.0
 
 ## Major Features and Improvements

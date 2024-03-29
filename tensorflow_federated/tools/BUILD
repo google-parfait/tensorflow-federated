@@ -28,3 +28,11 @@ py_binary(
     name = "build_docs",
     srcs = ["build_docs.py"],
 )
+
+sh_binary(
+    name = "release",
+    srcs = ["release.sh"],
+    data = [
+        "//tensorflow_federated:RELEASE.md",
+    ],
+)

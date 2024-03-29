@@ -9,6 +9,7 @@ licenses(["notice"])
 
 exports_files([
     "LICENSE",
+    "RELEASE.md",
 ])
 
 py_library(
