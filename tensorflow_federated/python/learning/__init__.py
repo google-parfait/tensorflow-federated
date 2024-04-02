@@ -37,6 +37,7 @@ class, and
 """
 
 from tensorflow_federated.python.learning import algorithms
+from tensorflow_federated.python.learning import framework
 from tensorflow_federated.python.learning import metrics
 from tensorflow_federated.python.learning import models
 from tensorflow_federated.python.learning import optimizers

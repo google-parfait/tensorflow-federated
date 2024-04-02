@@ -11,6 +11,7 @@ digraph {
     optimizers [label="optimizers", href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/learning/optimizers" target="_parent"]
     models [label="models", href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/learning/models" target="_parent"]
     metrics [label="metrics", href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/learning/metrics" target="_parent"]
+    framework [label="framework", href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/learning/framework" target="_parent"]
     learning [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/learning" target="_parent"]
   }
 
@@ -27,6 +28,8 @@ digraph {
   templates -> learning
   models -> metrics
   models -> learning
+  framework -> learning
+  framework -> models
   optimizers -> learning
   metrics -> learning
 

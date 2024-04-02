@@ -33,6 +33,7 @@ py_library(
         ":federated_evaluation",
         ":model_update_aggregator",
         "//tensorflow_federated/python/learning/algorithms",
+        "//tensorflow_federated/python/learning/framework",
         "//tensorflow_federated/python/learning/metrics",
         "//tensorflow_federated/python/learning/models",
         "//tensorflow_federated/python/learning/optimizers",
