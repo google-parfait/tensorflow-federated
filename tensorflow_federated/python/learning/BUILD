@@ -1,5 +1,5 @@
-load("//tensorflow_federated/tools:build_defs.bzl", "py_cpu_gpu_test")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
+load("//tensorflow_federated/tools:build_defs.bzl", "py_cpu_gpu_test")
 
 package(
     default_applicable_licenses = ["//:package_license"],
@@ -33,7 +33,6 @@ py_library(
         ":federated_evaluation",
         ":model_update_aggregator",
         "//tensorflow_federated/python/learning/algorithms",
-        "//tensorflow_federated/python/learning/framework",
         "//tensorflow_federated/python/learning/metrics",
         "//tensorflow_federated/python/learning/models",
         "//tensorflow_federated/python/learning/optimizers",
