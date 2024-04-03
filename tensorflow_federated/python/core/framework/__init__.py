@@ -13,6 +13,7 @@
 # limitations under the License.
 """Libraries for extending the TensorFlow Federated core library."""
 
+# pylint: disable=g-importing-member
 from tensorflow_federated.python.core.impl.compiler.building_blocks import Block
 from tensorflow_federated.python.core.impl.compiler.building_blocks import Call
 from tensorflow_federated.python.core.impl.compiler.building_blocks import CompiledComputation
@@ -20,6 +21,7 @@ from tensorflow_federated.python.core.impl.compiler.building_blocks import Compu
 from tensorflow_federated.python.core.impl.compiler.building_blocks import Data
 from tensorflow_federated.python.core.impl.compiler.building_blocks import Intrinsic
 from tensorflow_federated.python.core.impl.compiler.building_blocks import Lambda
+from tensorflow_federated.python.core.impl.compiler.building_blocks import Literal
 from tensorflow_federated.python.core.impl.compiler.building_blocks import Placement
 from tensorflow_federated.python.core.impl.compiler.building_blocks import Reference
 from tensorflow_federated.python.core.impl.compiler.building_blocks import Selection
@@ -51,3 +53,4 @@ from tensorflow_federated.python.core.impl.executors.remote_executor_stub import
 from tensorflow_federated.python.core.impl.executors.value_serialization import deserialize_value
 from tensorflow_federated.python.core.impl.executors.value_serialization import serialize_value
 from tensorflow_federated.python.core.impl.types.placements import PlacementLiteral
+# pylint: enable=g-importing-member
