@@ -31,7 +31,7 @@ class ArrayTest(parameterized.TestCase):
               shape=array_pb2.ArrayShape(dim=[]),
               bool_list=array_pb2.Array.BoolList(value=[True]),
           ),
-          True,
+          np.bool_(True),
       ),
       (
           'int8',
@@ -40,7 +40,7 @@ class ArrayTest(parameterized.TestCase):
               shape=array_pb2.ArrayShape(dim=[]),
               int8_list=array_pb2.Array.IntList(value=[1]),
           ),
-          1,
+          np.int8(1),
       ),
       (
           'int16',
@@ -49,7 +49,7 @@ class ArrayTest(parameterized.TestCase):
               shape=array_pb2.ArrayShape(dim=[]),
               int16_list=array_pb2.Array.IntList(value=[1]),
           ),
-          1,
+          np.int16(1),
       ),
       (
           'int32',
@@ -58,7 +58,7 @@ class ArrayTest(parameterized.TestCase):
               shape=array_pb2.ArrayShape(dim=[]),
               int32_list=array_pb2.Array.IntList(value=[1]),
           ),
-          1,
+          np.int32(1),
       ),
       (
           'int64',
@@ -67,7 +67,7 @@ class ArrayTest(parameterized.TestCase):
               shape=array_pb2.ArrayShape(dim=[]),
               int64_list=array_pb2.Array.Int64List(value=[1]),
           ),
-          1,
+          np.int64(1),
       ),
       (
           'uint8',
@@ -76,7 +76,7 @@ class ArrayTest(parameterized.TestCase):
               shape=array_pb2.ArrayShape(dim=[]),
               uint8_list=array_pb2.Array.IntList(value=[1]),
           ),
-          1,
+          np.uint8(1),
       ),
       (
           'uint16',
@@ -85,7 +85,7 @@ class ArrayTest(parameterized.TestCase):
               shape=array_pb2.ArrayShape(dim=[]),
               uint16_list=array_pb2.Array.IntList(value=[1]),
           ),
-          1,
+          np.uint16(1),
       ),
       (
           'uint32',
@@ -94,7 +94,7 @@ class ArrayTest(parameterized.TestCase):
               shape=array_pb2.ArrayShape(dim=[]),
               uint32_list=array_pb2.Array.Uint32List(value=[1]),
           ),
-          1,
+          np.uint32(1),
       ),
       (
           'uint64',
@@ -103,7 +103,7 @@ class ArrayTest(parameterized.TestCase):
               shape=array_pb2.ArrayShape(dim=[]),
               uint64_list=array_pb2.Array.Uint64List(value=[1]),
           ),
-          1,
+          np.uint64(1),
       ),
       (
           'float16',
@@ -116,7 +116,7 @@ class ArrayTest(parameterized.TestCase):
                   ]
               ),
           ),
-          1.0,
+          np.float16(1.0),
       ),
       (
           'float32',
@@ -125,7 +125,7 @@ class ArrayTest(parameterized.TestCase):
               shape=array_pb2.ArrayShape(dim=[]),
               float32_list=array_pb2.Array.FloatList(value=[1.0]),
           ),
-          1.0,
+          np.float32(1.0),
       ),
       (
           'float64',
@@ -134,7 +134,7 @@ class ArrayTest(parameterized.TestCase):
               shape=array_pb2.ArrayShape(dim=[]),
               float64_list=array_pb2.Array.DoubleList(value=[1.0]),
           ),
-          1.0,
+          np.float64(1.0),
       ),
       (
           'complex64',
@@ -143,7 +143,7 @@ class ArrayTest(parameterized.TestCase):
               shape=array_pb2.ArrayShape(dim=[]),
               complex64_list=array_pb2.Array.FloatList(value=[1.0, 1.0]),
           ),
-          (1.0 + 1.0j),
+          np.complex64((1.0 + 1.0j)),
       ),
       (
           'complex128',
@@ -152,7 +152,7 @@ class ArrayTest(parameterized.TestCase):
               shape=array_pb2.ArrayShape(dim=[]),
               complex128_list=array_pb2.Array.DoubleList(value=[1.0, 1.0]),
           ),
-          (1.0 + 1.0j),
+          np.complex128((1.0 + 1.0j)),
       ),
       (
           'string',
@@ -161,7 +161,7 @@ class ArrayTest(parameterized.TestCase):
               shape=array_pb2.ArrayShape(dim=[]),
               string_list=array_pb2.Array.BytesList(value=[b'a']),
           ),
-          b'a',
+          np.str_(b'a'),
       ),
       (
           'array',

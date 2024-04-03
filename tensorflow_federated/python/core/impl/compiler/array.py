@@ -92,10 +92,16 @@ def from_proto(array_pb: array_pb2.Array) -> Array:
   else:
     raise NotImplementedError(f'Unexpected dtype found: {dtype}.')
 
+  # `Array` is a `Union` of native Python types and numpy types. However, the
+  # protobuf representation of `Array` contains additional information like
+  # dtype and shape. This information is lost when returning native Python types
+  # making it impossible to infer the original dtype later. Therefore, a numpy
+  # value should always be returned from this function.
   if not array_shape.is_shape_scalar(shape):
     value = np.array(value, dtype).reshape(shape)
   else:
     (value,) = value
+    value = dtype(value)
 
   return value
 
