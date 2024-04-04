@@ -47,9 +47,13 @@ class FilePerUserClientData(client_data.ClientData):
     if not client_ids_to_files:
       raise ValueError('`client_ids` must have at least one client ID')
     self._client_ids = sorted(client_ids_to_files.keys())
+    self._client_ids_to_files = client_ids_to_files
+    self._dataset_fn = dataset_fn
 
     # Creates a dataset in a manner that can be serialized by TF.
     def serializable_dataset_fn(client_id: str) -> tf.data.Dataset:
+      # This creates a new lookup table upon invocation. As such it should only
+      # be used in graph sessions with a limited lifespan.
       client_ids_to_path = tf.lookup.StaticHashTable(
           tf.lookup.KeyValueTensorInitializer(
               list(client_ids_to_files.keys()),
@@ -92,8 +96,9 @@ class FilePerUserClientData(client_data.ClientData):
           'ID [{i}] is not a client in this ClientData. See '
           'property `client_ids` for the list of valid ids.'.format(i=client_id)
       )
-
-    client_dataset = self.serializable_dataset_fn(tf.constant(client_id))
+    # We avoid calling serializable_datset_fn here to avoid creating lookup
+    # tables upon each invocation.
+    client_dataset = self._dataset_fn(self._client_ids_to_files[client_id])
     tensor_utils.check_nested_equal(
         client_dataset.element_spec, self._element_type_structure
     )
