@@ -151,7 +151,7 @@ inline xla::Shape XLAShapeWithUnknownDims(tensorflow::DataType dtype,
 class XLAExecutorTest : public ::testing::Test {
  public:
   XLAExecutorTest() {
-    xla::StatusOr<std::vector<xla::se::Platform*>> platforms =
+    absl::StatusOr<std::vector<xla::se::Platform*>> platforms =
         xla::PlatformUtil::GetSupportedPlatforms();
     if (!platforms.ok()) {
       LOG(FATAL) << "Could not enumerate supported XLA platforms";
