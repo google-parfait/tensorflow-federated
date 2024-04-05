@@ -95,6 +95,7 @@ py_library(
         "//tensorflow_federated/python/learning:client_weight_lib",
         "//tensorflow_federated/python/learning/metrics:aggregator",
         "//tensorflow_federated/python/learning/metrics:types",
+        "//tensorflow_federated/python/learning/models:functional",
         "//tensorflow_federated/python/learning/models:model_weights",
         "//tensorflow_federated/python/learning/models:variable",
         "//tensorflow_federated/python/learning/optimizers:optimizer",
@@ -119,6 +120,7 @@ py_cpu_gpu_test(
         "//tensorflow_federated/python/learning:model_update_aggregator",
         "//tensorflow_federated/python/learning/metrics:aggregator",
         "//tensorflow_federated/python/learning/models:model_examples",
+        "//tensorflow_federated/python/learning/models:test_models",
         "//tensorflow_federated/python/learning/optimizers:sgdm",
     ],
 )

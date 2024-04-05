@@ -15,6 +15,7 @@
 
 import collections
 from collections.abc import Callable
+import functools
 from typing import Optional, Union
 
 import numpy as np
@@ -33,6 +34,7 @@ from tensorflow_federated.python.learning import client_weight_lib
 from tensorflow_federated.python.learning.algorithms import fed_avg
 from tensorflow_federated.python.learning.metrics import aggregator as metric_aggregator
 from tensorflow_federated.python.learning.metrics import types
+from tensorflow_federated.python.learning.models import functional
 from tensorflow_federated.python.learning.models import model_weights
 from tensorflow_federated.python.learning.models import variable
 from tensorflow_federated.python.learning.optimizers import optimizer as optimizer_base
@@ -49,7 +51,9 @@ TFFOrKerasOptimizer = Union[
 
 
 def build_scheduled_client_work(
-    model_fn: Callable[[], variable.VariableModel],
+    model_fn: Union[
+        Callable[[], variable.VariableModel], functional.FunctionalModel
+    ],
     learning_rate_fn: Callable[[int], float],
     optimizer_fn: Callable[[float], TFFOrKerasOptimizer],
     metrics_aggregator: types.MetricsAggregatorType,
@@ -63,17 +67,20 @@ def build_scheduled_client_work(
   the proper optimizer.
 
   Args:
-    model_fn: A no-arg function that returns a
-      `tff.learning.models.VariableModel`. This method must *not* capture
+    model_fn: Either a no-arg function that returns a
+      `tff.learning.models.VariableModel`, or an instance of
+      `tff.learning.FunctionalModel`. The no-arg function must *not* capture
       TensorFlow tensors or variables and use them. The model must be
       constructed entirely from scratch on each invocation, returning the same
-      pre-constructed model each call will result in an error.
+      pre-constructed model instance each call will result in an error.
     learning_rate_fn: A callable accepting an integer round number and returning
       a float to be used as a learning rate for the optimizer. That is, the
       client work will call `optimizer_fn(learning_rate_fn(round_num))` where
       `round_num` is the integer round number.
     optimizer_fn: A callable accepting a float learning rate, and returning a
-      `tff.learning.optimizers.Optimizer` or a `tf.keras.Optimizer`.
+      `tff.learning.optimizers.Optimizer` or a `tf.keras.Optimizer`. If
+      `model_fn` is a `FunctionalModel`, must be a
+      `tff.learning.optimizers.Optimizer`.
     metrics_aggregator: A function that takes in the metric finalizers (i.e.,
       `tff.learning.models.VariableModel.metric_finalizers()`) and a
       `tff.types.StructWithPythonType` of the unfinalized metrics (i.e., the TFF
@@ -91,22 +98,49 @@ def build_scheduled_client_work(
   with tf.Graph().as_default():
     # Wrap model construction in a graph to avoid polluting the global context
     # with variables created for this model.
-    whimsy_model = model_fn()
+    if isinstance(model_fn, functional.FunctionalModel):
+      whimsy_model = model_fn
+      weights_type = tf.nest.map_structure(
+          lambda arr: computation_types.TensorType(
+              dtype=arr.dtype, shape=arr.shape
+          ),
+          model_weights.ModelWeights(*whimsy_model.initial_weights),
+      )
+      metrics_aggregation_fn = metrics_aggregator(whimsy_model.finalize_metrics)
+    else:
+      whimsy_model = model_fn()
+      weights_type = model_weights.weights_type_from_model(whimsy_model)
+      metrics_aggregation_fn = metrics_aggregator(
+          whimsy_model.metric_finalizers(),
+      )
+      metrics_aggregation_fn = metrics_aggregator(
+          whimsy_model.metric_finalizers(),
+      )
+
     whimsy_optimizer = optimizer_fn(1.0)
-    metrics_aggregation_fn = metrics_aggregator(
-        whimsy_model.metric_finalizers(),
-    )
+    if isinstance(model_fn, functional.FunctionalModel) and not isinstance(
+        whimsy_optimizer, optimizer_base.Optimizer
+    ):
+      raise ValueError(
+          'If model_fn is a `FunctionalModel`, `optimizer_fn` must be a '
+          f'tff.learning.optimizers.Optimizer, got {type(optimizer_fn)=}'
+      )
   element_type = computation_types.tensorflow_to_type(whimsy_model.input_spec)
   data_type = computation_types.SequenceType(element_type)
-  weights_type = model_weights.weights_type_from_model(whimsy_model)
 
-  if isinstance(whimsy_optimizer, optimizer_base.Optimizer):
+  if isinstance(model_fn, functional.FunctionalModel):
     build_client_update_fn = (
-        model_delta_client_work.build_model_delta_update_with_tff_optimizer
+        model_delta_client_work.build_functional_model_delta_update
+    )
+  elif isinstance(whimsy_optimizer, optimizer_base.Optimizer):
+    build_client_update_fn = functools.partial(
+        model_delta_client_work.build_model_delta_update_with_tff_optimizer,
+        use_experimental_simulation_loop=use_experimental_simulation_loop,
     )
   else:
-    build_client_update_fn = (
-        model_delta_client_work.build_model_delta_update_with_keras_optimizer
+    build_client_update_fn = functools.partial(
+        model_delta_client_work.build_model_delta_update_with_keras_optimizer,
+        use_experimental_simulation_loop=use_experimental_simulation_loop,
     )
 
   @tensorflow_computation.tf_computation(weights_type, data_type, np.int32)
@@ -114,9 +148,8 @@ def build_scheduled_client_work(
     learning_rate = learning_rate_fn(round_num)
     optimizer = optimizer_fn(learning_rate)
     client_update = build_client_update_fn(
-        model_fn=model_fn,
+        model_fn,
         weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES,
-        use_experimental_simulation_loop=use_experimental_simulation_loop,
     )
     return client_update(optimizer, initial_model_weights, dataset)
 
@@ -163,7 +196,9 @@ def build_scheduled_client_work(
 
 
 def build_weighted_fed_avg_with_optimizer_schedule(
-    model_fn: Callable[[], variable.VariableModel],
+    model_fn: Union[
+        Callable[[], variable.VariableModel], functional.FunctionalModel
+    ],
     client_learning_rate_fn: Callable[[int], float],
     client_optimizer_fn: Callable[[float], TFFOrKerasOptimizer],
     server_optimizer_fn: Union[
@@ -177,6 +212,16 @@ def build_weighted_fed_avg_with_optimizer_schedule(
     use_experimental_simulation_loop: bool = False,
 ) -> learning_process.LearningProcess:
   """Builds a learning process for FedAvg with client optimizer scheduling.
+
+  The primary purpose of this implementation of FedAvg is that it allows for the
+  client optimizer to be scheduled across rounds. Notably, the local
+  optimizaiton step uses a constant learning rate within a round, which is
+  scheduled across rounds of federated training. The process keeps track of how
+  many iterations of `.next` have occurred (starting at `0`), and for each such
+  `round_num`, the clients will use `client_optimizer_fn(round_num)` to perform
+  local optimization. This allows learning rate scheduling (eg. starting with a
+  large learning rate and decaying it over time) as well as a small learning
+  rate (eg. switching optimizers as learning progresses).
 
   This function creates a `LearningProcess` that performs federated averaging on
   client models. The iterative process has the following methods inherited from
@@ -211,14 +256,6 @@ def build_weighted_fed_avg_with_optimizer_schedule(
   thoughout local training. The aggregate model delta is applied at the server
   using a server optimizer.
 
-  The primary purpose of this implementation of FedAvg is that it allows for the
-  client optimizer to be scheduled across rounds. The process keeps track of how
-  many iterations of `.next` have occurred (starting at `0`), and for each such
-  `round_num`, the clients will use `client_optimizer_fn(round_num)` to perform
-  local optimization. This allows learning rate scheduling (eg. starting with
-  a large learning rate and decaying it over time) as well as a small learning
-  rate (eg. switching optimizers as learning progresses).
-
   Note: the default server optimizer function is `tf.keras.optimizers.SGD`
   with a learning rate of 1.0, which corresponds to adding the model delta to
   the current server model. This recovers the original FedAvg algorithm in
@@ -227,11 +264,12 @@ def build_weighted_fed_avg_with_optimizer_schedule(
   or server optimizers.
 
   Args:
-    model_fn: A no-arg function that returns a
-      `tff.learning.models.VariableModel`. This method must *not* capture
+    model_fn: Either a no-arg function that returns a
+      `tff.learning.models.VariableModel`, or an instance of
+      `tff.learning.FunctionalModel`. The no-arg function must *not* capture
       TensorFlow tensors or variables and use them. The model must be
       constructed entirely from scratch on each invocation, returning the same
-      pre-constructed model each call will result in an error.
+      pre-constructed model instance each call will result in an error.
     client_learning_rate_fn: A callable accepting an integer round number and
       returning a float to be used as a learning rate for the optimizer. The
       client work will call `optimizer_fn(learning_rate_fn(round_num))` where
@@ -268,9 +306,12 @@ def build_weighted_fed_avg_with_optimizer_schedule(
   if server_optimizer_fn is None:
     server_optimizer_fn = fed_avg.DEFAULT_SERVER_OPTIMIZER_FN()
 
-  @tensorflow_computation.tf_computation()
+  @tensorflow_computation.tf_computation
   def initial_model_weights_fn():
-    return model_weights.ModelWeights.from_model(model_fn())
+    if isinstance(model_fn, functional.FunctionalModel):
+      return model_weights.ModelWeights(*model_fn.initial_weights)
+    else:
+      return model_weights.ModelWeights.from_model(model_fn())
 
   model_weights_type = initial_model_weights_fn.type_signature.result
 

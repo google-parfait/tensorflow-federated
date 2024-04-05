@@ -24,6 +24,7 @@ from tensorflow_federated.python.learning import model_update_aggregator
 from tensorflow_federated.python.learning.algorithms import fed_avg_with_optimizer_schedule
 from tensorflow_federated.python.learning.metrics import aggregator
 from tensorflow_federated.python.learning.models import model_examples
+from tensorflow_federated.python.learning.models import test_models
 from tensorflow_federated.python.learning.optimizers import sgdm
 
 
@@ -53,6 +54,14 @@ class ClientScheduledFedAvgTest(parameterized.TestCase):
         model_aggregator=aggregation_factory(),
     )
     self.assertEqual(mock_model_fn.call_count, 3)
+
+  def test_construction_of_functional_model(self):
+    learning_rate_fn = lambda x: 0.1
+    fed_avg_with_optimizer_schedule.build_weighted_fed_avg_with_optimizer_schedule(
+        model_fn=test_models.build_functional_linear_regression(),
+        client_learning_rate_fn=learning_rate_fn,
+        client_optimizer_fn=lambda x: sgdm.build_sgdm(learning_rate=x),
+    )
 
   @parameterized.named_parameters(
       ('non_simulation', False),
