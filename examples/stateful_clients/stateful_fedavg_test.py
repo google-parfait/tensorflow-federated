@@ -22,8 +22,8 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_federated as tff
 
-from tensorflow_federated.examples.stateful_clients import stateful_fedavg_tf
-from tensorflow_federated.examples.stateful_clients import stateful_fedavg_tff
+from examplesstateful_clients import stateful_fedavg_tf
+from examplesstateful_clients import stateful_fedavg_tff
 
 
 def _create_test_cnn_model():

@@ -7,7 +7,7 @@ especially its type system.
 For more information about federated program, see:
 
 *   [API Documentation](https://www.tensorflow.org/federated/api_docs/python/tff/program)
-*   [Examples](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/examples/program)
+*   [Examples](https://github.com/tensorflow/federated/blob/main/examples/program)
 *   [Developer Guide](https://github.com/tensorflow/federated/blob/main/docs/program/guide.md)
 
 [TOC]

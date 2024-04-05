@@ -16,7 +16,7 @@ This section defines guidelines for how
 should be authored.
 
 See the example
-[program_logic.py](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/examples/program/program_logic.py)
+[program_logic.py](https://github.com/tensorflow/federated/blob/main/examples/program/program_logic.py)
 for more information.
 
 ### Document Type Signatures
@@ -213,7 +213,7 @@ def program_logic(...) -> None:
 ### Tests
 
 **Do** provide unit tests for the program logic (e.g.
-[program_logic_test.py](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/examples/program/program_logic_test.py)).
+[program_logic_test.py](https://github.com/tensorflow/federated/blob/main/examples/program/program_logic_test.py)).
 
 ## Program
 
@@ -222,14 +222,14 @@ This section defines guidelines for how a
 should be authored.
 
 See the example
-[program.py](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/examples/program/program.py)
+[program.py](https://github.com/tensorflow/federated/blob/main/examples/program/program.py)
 for more information.
 
 ### Document the Program
 
 **Do** document the details of the program to the customer in the docstring of
 the module (e.g.
-[program.py](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/examples/program/program.py)):
+[program.py](https://github.com/tensorflow/federated/blob/main/examples/program/program.py)):
 
 *   How to manually run the program.
 *   What platform, computations, and data sources are used in the program.

@@ -17,7 +17,7 @@ from unittest import mock
 
 from absl.testing import absltest
 
-from tensorflow_federated.examples.learning.federated_program.vizier import vizier_service
+from exampleslearning.federated_program.vizier import vizier_service
 
 from vizier.service import clients
 from vizier.service import pyvizier

@@ -29,12 +29,12 @@ Communication-Efficient Learning of Deep Networks from Decentralized Data
 import tensorflow as tf
 import tensorflow_federated as tff
 
-from tensorflow_federated.examples.simple_fedavg.simple_fedavg_tf import batch_client_update
-from tensorflow_federated.examples.simple_fedavg.simple_fedavg_tf import build_server_broadcast_message
-from tensorflow_federated.examples.simple_fedavg.simple_fedavg_tf import client_update
-from tensorflow_federated.examples.simple_fedavg.simple_fedavg_tf import init_client_ouput
-from tensorflow_federated.examples.simple_fedavg.simple_fedavg_tf import server_update
-from tensorflow_federated.examples.simple_fedavg.simple_fedavg_tf import ServerState
+from examplessimple_fedavg.simple_fedavg_tf import batch_client_update
+from examplessimple_fedavg.simple_fedavg_tf import build_server_broadcast_message
+from examplessimple_fedavg.simple_fedavg_tf import client_update
+from examplessimple_fedavg.simple_fedavg_tf import init_client_ouput
+from examplessimple_fedavg.simple_fedavg_tf import server_update
+from examplessimple_fedavg.simple_fedavg_tf import ServerState
 
 
 def _initialize_optimizer_vars(

@@ -23,8 +23,8 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_federated as tff
 
-from tensorflow_federated.examples.simple_fedavg import simple_fedavg_tf
-from tensorflow_federated.examples.simple_fedavg import simple_fedavg_tff
+from examplessimple_fedavg import simple_fedavg_tf
+from examplessimple_fedavg import simple_fedavg_tff
 
 
 def _create_test_cnn_model():

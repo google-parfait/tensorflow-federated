@@ -36,9 +36,9 @@ import tensorflow_federated as tff
 from vizier import pyvizier
 from vizier.client import client_abc
 
-from tensorflow_federated.examples.learning.federated_program.vizier import data_sources
-from tensorflow_federated.examples.learning.federated_program.vizier import learning_process
-from tensorflow_federated.examples.learning.federated_program.vizier import vizier_service
+from exampleslearning.federated_program.vizier import data_sources
+from exampleslearning.federated_program.vizier import learning_process
+from exampleslearning.federated_program.vizier import vizier_service
 
 
 _TOTAL_ROUNDS = 2

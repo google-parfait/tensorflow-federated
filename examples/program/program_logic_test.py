@@ -24,8 +24,8 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_federated as tff
 
-from tensorflow_federated.examples.program import computations
-from tensorflow_federated.examples.program import program_logic
+from examplesprogram import computations
+from examplesprogram import program_logic
 
 
 def _create_native_federated_context():

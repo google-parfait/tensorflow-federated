@@ -55,8 +55,8 @@ from absl import flags
 import tensorflow as tf
 import tensorflow_federated as tff
 
-from tensorflow_federated.examples.program import computations
-from tensorflow_federated.examples.program import program_logic
+from examplesprogram import computations
+from examplesprogram import program_logic
 
 _OUTPUT_DIR = flags.DEFINE_string('output_dir', None, 'The output path.')
 
