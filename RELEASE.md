@@ -1,3 +1,26 @@
+# Release 0.75.0
+
+## Major Features and Improvements
+
+*   Updated the type annotation for MaterializedValue to include the Python
+    scalar types in addition to the numpy scalar types.
+*   Added a `Literal` to the TFF language, part 1.
+*   Added `Literal` to the framework package.
+*   Extended
+    `tff.learning.algorithms.build_weighted_fed_avg_with_optimizer_schedule` to
+    support `tff.learning.models.FunctionalModel`.
+
+## Breaking Changes
+
+*   Deleted the `tff.learning.framework` namespace⚰️.
+
+## Bug Fixes
+
+*   Fixed logic for determining if a value can be cast to a specific dtype.
+*   Fixed a bug where repeated calls to
+    `FilePerUserClientData.create_tf_dataset_for_client` could blow up memory
+    usage
+
 # Release 0.74.0
 
 ## Major Features and Improvements
