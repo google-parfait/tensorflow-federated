@@ -177,8 +177,13 @@ using Unplaced = std::shared_ptr<UnplacedInner>;
 using Server = std::shared_ptr<OwnedValueId>;
 using Clients = std::shared_ptr<std::vector<std::shared_ptr<OwnedValueId>>>;
 using Structure = std::shared_ptr<std::vector<ExecutorValue>>;
-using TypedFederatedIntrinsic =
-    std::tuple<enum FederatedIntrinsic, v0::FunctionType>;
+struct TypedFederatedIntrinsic {
+  // The Federated Intrinsic.
+  FederatedIntrinsic federated_intrinsic;
+
+  // The type signature of the FederatedIntrinsic.
+  v0::FunctionType type_signature;
+};
 using ValueVariant =
     std::variant<Unplaced, Server, Clients, Structure, TypedFederatedIntrinsic>;
 
@@ -901,9 +906,8 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
 
   absl::StatusOr<ExecutorValue> CallFederatedIntrinsic(
       TypedFederatedIntrinsic typed_intrinsic, ExecutorValue arg) {
-    FederatedIntrinsic function = std::get<FederatedIntrinsic>(typed_intrinsic);
-    const v0::FunctionType& type_pb =
-        std::get<v0::FunctionType>(typed_intrinsic);
+    FederatedIntrinsic function = typed_intrinsic.federated_intrinsic;
+    const v0::FunctionType& type_pb = typed_intrinsic.type_signature;
     switch (function) {
       case FederatedIntrinsic::VALUE_AT_SERVER: {
         return CallIntrinsicValueAtServer(std::move(arg));
