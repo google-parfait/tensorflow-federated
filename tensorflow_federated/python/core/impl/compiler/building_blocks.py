@@ -144,11 +144,6 @@ class ComputationBuildingBlock(typed_object.TypedObject, metaclass=abc.ABCMeta):
     """Returns the structural string representation of this building block."""
     return _structural_representation(self)
 
-  def check_reference(self):
-    """Check that this is a 'Reference'."""
-    if not isinstance(self, Reference):
-      raise UnexpectedBlockError(Reference, self)
-
   def check_selection(self):
     """Check that this is a 'Selection'."""
     if not isinstance(self, Selection):
@@ -178,21 +173,6 @@ class ComputationBuildingBlock(typed_object.TypedObject, metaclass=abc.ABCMeta):
     """Check that this is an 'Intrinsic'."""
     if not isinstance(self, Intrinsic):
       raise UnexpectedBlockError(Intrinsic, self)
-
-  def check_data(self):
-    """Check that this is a 'Data'."""
-    if not isinstance(self, Data):
-      raise UnexpectedBlockError(Data, self)
-
-  def check_compiled_computation(self):
-    """Check that this is a 'CompiledComputation'."""
-    if not isinstance(self, CompiledComputation):
-      raise UnexpectedBlockError(CompiledComputation, self)
-
-  def check_placement(self):
-    """Check that this is a 'Placement'."""
-    if not isinstance(self, Placement):
-      raise UnexpectedBlockError(Placement, self)
 
   @property
   def proto(self):

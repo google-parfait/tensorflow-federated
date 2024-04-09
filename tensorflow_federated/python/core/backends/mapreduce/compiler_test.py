@@ -374,10 +374,21 @@ class CompileLocalComputationToTensorFlow(absltest.TestCase):
   ):
     result = compiler.compile_local_computation_to_tensorflow(comp)
     if isinstance(comp.type_signature, computation_types.FunctionType):
-      result.check_compiled_computation()
+      if not isinstance(result, building_blocks.CompiledComputation):
+        raise ValueError(
+            'Expected a `building_blocks.CompiledComputation`, found'
+            f' {type(result)}.'
+        )
     else:
-      result.check_call()
-      result.function.check_compiled_computation()
+      if not isinstance(result, building_blocks.Call):
+        raise ValueError(
+            f'Expected a `building_blocks.Call`, found {type(result)}.'
+        )
+      if not isinstance(result.function, building_blocks.CompiledComputation):
+        raise ValueError(
+            'Expected a `building_blocks.CompiledComputation`, found'
+            f' {type(result.function)}.'
+        )
     type_test_utils.assert_types_equivalent(
         comp.type_signature, result.type_signature
     )

@@ -54,7 +54,6 @@ def select_output_from_lambda(
     A version of `comp` with result value the selection from the result of
     `comp` specified by `paths`.
   """
-  comp.check_lambda()
   if not isinstance(comp.type_signature.result, computation_types.StructType):
     raise ValueError(
         f'Expected a `tff.StructType`, found {comp.type_signature.result}.'

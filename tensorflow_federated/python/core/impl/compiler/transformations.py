@@ -249,7 +249,6 @@ def get_normalized_call_dominant_lambda(
         comp.result.parameter_type,
         building_blocks.Block(comp.locals + additional_locals, result),
     )
-  comp.check_lambda()
 
   # Simple computations with no intrinsic calls won't have a block.
   # Normalize these as well.
@@ -259,7 +258,6 @@ def get_normalized_call_dominant_lambda(
         comp.parameter_type,
         building_blocks.Block([], comp.result),
     )
-  comp.result.check_block()
 
   comp = tree_transformations.normalize_types(comp, normalize_all_equal_bit)
   tree_analysis.check_contains_no_unbound_references(comp)
@@ -681,7 +679,6 @@ def force_align_and_split_by_intrinsics(
         comp.result.parameter_type,
         building_blocks.Block(comp.locals + additional_locals, result),
     )
-  comp.check_lambda()
 
   # Simple computations with no intrinsic calls won't have a block.
   # Normalize these as well.
@@ -691,7 +688,6 @@ def force_align_and_split_by_intrinsics(
         comp.parameter_type,
         building_blocks.Block([], comp.result),
     )
-  comp.result.check_block()
 
   name_generator = building_block_factory.unique_name_generator(comp)
 

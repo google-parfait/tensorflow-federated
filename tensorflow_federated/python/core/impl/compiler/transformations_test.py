@@ -246,7 +246,7 @@ class ToCallDominantTest(absltest.TestCase):
         ),
     )
     after = transformations.to_call_dominant(call_ext)
-    after.check_block()
+    self.assertIsInstance(after, building_blocks.Block)
     self.assertLen(after.locals, 1)
     (ref_name, bound_call) = after.locals[0]
     self.assertEqual(
@@ -603,7 +603,7 @@ class AugmentLambdaWithParameterForUnboundReferences(absltest.TestCase):
       transformed_comp: building_blocks.ComputationBuildingBlock,
       lambda_parameter_extension_name: str,
   ):
-    transformed_comp.check_lambda()
+    self.assertIsInstance(transformed_comp, building_blocks.Lambda)
 
     # The transformed lambda comp should have an additional element in the input
     # parameter named `lambda_parameter_extension_name`.
@@ -838,11 +838,11 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
 
   def check_split_signatures(self, original_comp, before, intrinsic, after):
     for comp in (before, intrinsic, after):
-      comp.check_lambda()
+      self.assertIsInstance(comp, building_blocks.Lambda)
       self.assertIsInstance(
           comp.type_signature.parameter, computation_types.StructType
       )
-      comp.result.check_block()
+      self.assertIsInstance(comp.result, building_blocks.Block)
 
     original_comp = transformations.to_call_dominant(original_comp)
     original_comp = tree_transformations.normalize_types(

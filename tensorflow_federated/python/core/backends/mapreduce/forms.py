@@ -638,12 +638,19 @@ class DistributeAggregateForm(typed_object.TypedObject):
         local_name,
         local_value,
     ) in server_to_client_broadcast.to_building_block().result.locals:  # pytype: disable=attribute-error
-      local_value.check_call()
-      local_value.function.check_intrinsic()
-      if not local_value.function.intrinsic_def().broadcast_kind:
+      if not isinstance(local_value, building_blocks.Call):
+        raise ValueError(
+            f'Expected a `tff.framework.Call`, found {type(local_value)}.'
+        )
+      local_fn = local_value.function
+      if not isinstance(local_fn, building_blocks.Intrinsic):
+        raise ValueError(
+            f'Expected a `tff.framework.Intrinsic`, found {type(local_fn)}.'
+        )
+      if not local_fn.intrinsic_def().broadcast_kind:
         raise ValueError(
             'Expected only broadcast intrinsics but found {}'.format(
-                local_value.function.uri
+                local_fn.uri
             )
         )
       _check_flattened_intrinsic_args_are_selections(
@@ -651,7 +658,14 @@ class DistributeAggregateForm(typed_object.TypedObject):
           server_to_client_broadcast.to_building_block().parameter_name,  # pytype: disable=attribute-error
       )
       expected_return_references.append(local_name)
-    server_to_client_broadcast.to_building_block().result.result.check_struct()  # pytype: disable=attribute-error
+    if not isinstance(
+        server_to_client_broadcast.to_building_block().result.result,  # pytype: disable=attribute-error
+        building_blocks.Struct,
+    ):
+      raise ValueError(
+          'Expected a `tff.framework.Struct`, found'
+          f' {type(server_to_client_broadcast.to_building_block().result.result)}.'  # pytype: disable=attribute-error
+      )
     return_references = [
         reference.name
         for reference in server_to_client_broadcast.to_building_block().result.result  # pytype: disable=attribute-error
@@ -683,12 +697,19 @@ class DistributeAggregateForm(typed_object.TypedObject):
         local_name,
         local_value,
     ) in client_to_server_aggregation.to_building_block().result.locals:  # pytype: disable=attribute-error
-      local_value.check_call()
-      local_value.function.check_intrinsic()
-      if not local_value.function.intrinsic_def().aggregation_kind:
+      if not isinstance(local_value, building_blocks.Call):
+        raise ValueError(
+            f'Expected a `tff.framework.Call`, found {type(local_value)}.'
+        )
+      local_fn = local_value.function
+      if not isinstance(local_fn, building_blocks.Intrinsic):
+        raise ValueError(
+            f'Expected a `tff.framework.Intrinsic`, found {type(local_fn)}.'
+        )
+      if not local_fn.intrinsic_def().aggregation_kind:
         raise ValueError(
             'Expected only aggregation intrinsics but found {}'.format(
-                local_value.function.uri
+                local_fn.uri
             )
         )
       _check_flattened_intrinsic_args_are_selections(
@@ -696,10 +717,17 @@ class DistributeAggregateForm(typed_object.TypedObject):
           client_to_server_aggregation.to_building_block().parameter_name,  # pytype: disable=attribute-error
       )
       expected_return_references.append(local_name)
-    client_to_server_aggregation.to_building_block().result.result.check_struct()  # pytype: disable=attribute-error
+
+    aggregation_result_result = (
+        client_to_server_aggregation.to_building_block().result.result  # pytype: disable=attribute-error
+    )
+    if not isinstance(aggregation_result_result, building_blocks.Struct):
+      raise ValueError(
+          'Expected a `tff.framework.Struct`, found'
+          f' {type(aggregation_result_result)}.'
+      )
     return_references = [
-        reference.name
-        for reference in client_to_server_aggregation.to_building_block().result.result  # pytype: disable=attribute-error
+        reference.name for reference in aggregation_result_result
     ]
     if expected_return_references != return_references:
       raise ValueError(

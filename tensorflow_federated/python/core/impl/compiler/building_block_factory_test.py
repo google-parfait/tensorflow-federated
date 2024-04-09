@@ -1331,11 +1331,6 @@ def identity_for_type(
 
 class SelectOutputFromLambdaTest(absltest.TestCase):
 
-  def test_raises_on_non_lambda(self):
-    ref = building_blocks.Reference('x', np.int32)
-    with self.assertRaises(TypeError):
-      building_block_factory.select_output_from_lambda(ref, 0)
-
   def test_raises_on_non_str_int_index(self):
     lam = identity_for_type(computation_types.StructType([np.int32]))
     with self.assertRaisesRegex(TypeError, 'Invalid selection type'):

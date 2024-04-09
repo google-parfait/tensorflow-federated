@@ -902,7 +902,6 @@ def _replace_lambda_body_with_call_dominant_form(
   Returns:
     A transformed version of `comp`, whose body is call-dominant.
   """
-  comp.check_lambda()
   transformed = transformations.to_call_dominant(comp)
   if not isinstance(transformed, building_blocks.Lambda):
     raise building_blocks.UnexpectedBlockError(
