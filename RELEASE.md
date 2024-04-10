@@ -2,7 +2,7 @@
 
 ## Breaking Changes
 
-*   Removed some of the `check_foo` functions on building blocks.
+*   Removed the `check_foo()` methods on building blocks.
 
 # Release 0.75.0
 
