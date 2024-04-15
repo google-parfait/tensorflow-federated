@@ -932,7 +932,11 @@ class Data(ComputationBuildingBlock):
     )
 
   def _uncached_hash(self):
-    return hash((self._uri, self.type_signature))
+    # TODO: b/328241949 - Implement equality on all computation building blocks.
+    # This method intentionally fails, should never be invoked, and can be
+    # removed once `_uncached_hash()` is not an abstract method on the
+    # superclass.
+    return NotImplementedError
 
   def children(self) -> Iterator[ComputationBuildingBlock]:
     del self
@@ -941,6 +945,24 @@ class Data(ComputationBuildingBlock):
   @property
   def uri(self) -> str:
     return self._uri
+
+  def __eq__(self, other: object) -> bool:
+    if self is other:
+      return True
+    elif not isinstance(other, Data):
+      return NotImplemented
+    return (
+        self._uri,
+        self._type_signature,
+    ) == (
+        other._uri,
+        other._type_signature,
+    )
+
+  def __hash__(self):
+    if self._cached_hash is None:
+      self._cached_hash = hash((self._uri, self._type_signature))
+    return self._cached_hash
 
   def __repr__(self) -> str:
     return "Data('{}', {!r})".format(self._uri, self.type_signature)

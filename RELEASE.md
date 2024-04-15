@@ -4,6 +4,7 @@
 
 *   Add an implementation of the Adafactor optimizer to
     `tff.learning.optimizers.build_adafactor`
+*   Added an implementation of `__eq__()` on `tff.framework.Block`.
 
 ## Breaking Changes
 

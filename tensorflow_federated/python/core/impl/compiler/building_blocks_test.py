@@ -498,6 +498,65 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
     target.type_signature.check_assignable_from(deserialized.type_signature)
 
 
+class DataTest(parameterized.TestCase):
+
+  def test_eq_returns_true(self):
+    type_signature = computation_types.TensorType(np.int32)
+    data = building_blocks.Data('data', type_signature)
+    other = building_blocks.Data('data', type_signature)
+
+    self.assertIsNot(data, other)
+    self.assertEqual(data, other)
+
+  @parameterized.named_parameters(
+      (
+          'different_uri',
+          building_blocks.Data('data', computation_types.TensorType(np.int32)),
+          building_blocks.Data(
+              'different', computation_types.TensorType(np.int32)
+          ),
+      ),
+      (
+          'different_type_signature',
+          building_blocks.Data('data', computation_types.TensorType(np.int32)),
+          building_blocks.Data(
+              'data', computation_types.TensorType(np.float32)
+          ),
+      ),
+  )
+  def test_eq_returns_false(self, data, other):
+    self.assertIsNot(data, other)
+    self.assertNotEqual(data, other)
+
+  def test_hash_returns_same_value(self):
+    type_signature = computation_types.TensorType(np.int32)
+    data = building_blocks.Data('data', type_signature)
+    other = building_blocks.Data('data', type_signature)
+
+    self.assertEqual(data, other)
+    self.assertEqual(hash(data), hash(other))
+
+  @parameterized.named_parameters(
+      (
+          'different_uri',
+          building_blocks.Data('data', computation_types.TensorType(np.int32)),
+          building_blocks.Data(
+              'different', computation_types.TensorType(np.int32)
+          ),
+      ),
+      (
+          'different_type_signature',
+          building_blocks.Data('data', computation_types.TensorType(np.int32)),
+          building_blocks.Data(
+              'data', computation_types.TensorType(np.float32)
+          ),
+      ),
+  )
+  def test_hash_returns_different_value(self, data, other):
+    self.assertNotEqual(data, other)
+    self.assertNotEqual(hash(data), hash(other))
+
+
 class LiteralTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
