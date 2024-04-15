@@ -2,8 +2,9 @@
 
 ## Major Features and Improvements
 
-*   Add an implementation of the Adafactor optimizer to
+*   Added an implementation of the Adafactor optimizer to
     `tff.learning.optimizers.build_adafactor`
+*   Added an implementation of `__eq__()` on `tff.framework.Placement`.
 
 ## Breaking Changes
 

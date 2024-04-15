@@ -1045,7 +1045,11 @@ class Placement(ComputationBuildingBlock):
     )
 
   def _uncached_hash(self):
-    return hash(self._literal)
+    # TODO: b/328241949 - Implement equality on all computation building blocks.
+    # This method intentionally fails, should never be invoked, and can be
+    # removed once `_uncached_hash()` is not an abstract method on the
+    # superclass.
+    return NotImplementedError
 
   def children(self) -> Iterator[ComputationBuildingBlock]:
     del self
@@ -1054,6 +1058,18 @@ class Placement(ComputationBuildingBlock):
   @property
   def uri(self) -> str:
     return self._literal.uri
+
+  def __eq__(self, other: object) -> bool:
+    if self is other:
+      return True
+    elif not isinstance(other, Placement):
+      return NotImplemented
+    return self._literal == other._literal
+
+  def __hash__(self):
+    if self._cached_hash is None:
+      self._cached_hash = hash((self._literal))
+    return self._cached_hash
 
   def __repr__(self) -> str:
     return "Placement('{}')".format(self.uri)

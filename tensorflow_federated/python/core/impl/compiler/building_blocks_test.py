@@ -498,6 +498,45 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
     target.type_signature.check_assignable_from(deserialized.type_signature)
 
 
+class PlacementTest(parameterized.TestCase):
+
+  def test_eq_returns_true(self):
+    placement = building_blocks.Placement(placements.CLIENTS)
+    other = building_blocks.Placement(placements.CLIENTS)
+
+    self.assertIsNot(placement, other)
+    self.assertEqual(placement, other)
+
+  @parameterized.named_parameters(
+      (
+          'different_literal',
+          building_blocks.Placement(placements.CLIENTS),
+          building_blocks.Placement(placements.SERVER),
+      ),
+  )
+  def test_eq_returns_false(self, placement, other):
+    self.assertIsNot(placement, other)
+    self.assertNotEqual(placement, other)
+
+  def test_hash_returns_same_value(self):
+    placement = building_blocks.Placement(placements.CLIENTS)
+    other = building_blocks.Placement(placements.CLIENTS)
+
+    self.assertEqual(placement, other)
+    self.assertEqual(hash(placement), hash(other))
+
+  @parameterized.named_parameters(
+      (
+          'different_literal',
+          building_blocks.Placement(placements.CLIENTS),
+          building_blocks.Placement(placements.SERVER),
+      ),
+  )
+  def test_hash_returns_different_value(self, placement, other):
+    self.assertNotEqual(placement, other)
+    self.assertNotEqual(hash(placement), hash(other))
+
+
 class LiteralTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
