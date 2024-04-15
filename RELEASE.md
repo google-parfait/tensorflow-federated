@@ -2,12 +2,13 @@
 
 ## Major Features and Improvements
 
-*   Add an implementation of the Adafactor optimizer to
+*   Added an implementation of the Adafactor optimizer to
     `tff.learning.optimizers.build_adafactor`
 
 ## Breaking Changes
 
 *   Removed the `check_foo()` methods on building blocks.
+*   Removed `tff.data`, this symbol is not used.
 
 # Release 0.75.0
 

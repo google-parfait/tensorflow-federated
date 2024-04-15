@@ -22,27 +22,7 @@ py_library(
     visibility = ["//tensorflow_federated/tools/python_package:python_package_tool"],
 )
 
-py_library(
-    name = "data",
-    srcs = ["data.py"],
-    deps = [
-        ":value_impl",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/core/impl/compiler:building_blocks",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-    ],
-)
-
-py_test(
-    name = "data_test",
-    srcs = ["data_test.py"],
-    deps = [
-        ":data",
-        ":value_impl",
-        "//tensorflow_federated/python/core/impl/compiler:building_blocks",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-    ],
-)
+py_library(name = "data")
 
 py_library(
     name = "federated_computation",

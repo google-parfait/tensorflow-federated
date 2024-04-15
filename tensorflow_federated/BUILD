@@ -28,7 +28,6 @@ py_library(
         "//tensorflow_federated/python/core/environments/tensorflow",
         "//tensorflow_federated/python/core/framework",
         "//tensorflow_federated/python/core/impl/computation:computation_base",
-        "//tensorflow_federated/python/core/impl/federated_context:data",
         "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
         "//tensorflow_federated/python/core/impl/federated_context:value_impl",
