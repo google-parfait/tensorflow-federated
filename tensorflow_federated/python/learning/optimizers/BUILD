@@ -18,6 +18,25 @@ package_group(
 licenses(["notice"])
 
 py_library(
+    name = "adafactor",
+    srcs = ["adafactor.py"],
+    deps = [
+        ":optimizer",
+        "//tensorflow_federated/python/common_libs:structure",
+    ],
+)
+
+py_test(
+    name = "adafactor_test",
+    srcs = ["adafactor_test.py"],
+    deps = [
+        ":adafactor",
+        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
+    ],
+)
+
+py_library(
     name = "adagrad",
     srcs = ["adagrad.py"],
     deps = [
@@ -60,6 +79,7 @@ py_library(
     srcs = ["__init__.py"],
     visibility = ["//tensorflow_federated/python/learning:__pkg__"],
     deps = [
+        ":adafactor",
         ":adagrad",
         ":adam",
         ":optimizer",

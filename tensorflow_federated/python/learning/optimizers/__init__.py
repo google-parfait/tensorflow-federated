@@ -13,6 +13,7 @@
 # limitations under the License.
 """Libraries for optimization algorithms."""
 
+from tensorflow_federated.python.learning.optimizers.adafactor import build_adafactor
 from tensorflow_federated.python.learning.optimizers.adagrad import build_adagrad
 from tensorflow_federated.python.learning.optimizers.adam import build_adam
 from tensorflow_federated.python.learning.optimizers.optimizer import check_weights_gradients_match
