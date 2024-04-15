@@ -586,7 +586,7 @@
     execution:
     *   `tff.backends.native.set_local_python_execution_context`
     *   `tff.backends.native.set_remote_python_execution_context`
-    *   `tff.frameowrk.FederatingExecutor`
+    *   `tff.framework.FederatingExecutor`
     *   `tff.framework.ComposingExecutorFactory`
     *   `tff.framework.ExecutorValue`
     *   `tff.framework.Executor`
@@ -1321,7 +1321,7 @@ Madhava Jay, nbishdev@
     algorithms on a suite of representative tasks.
 *   Added `tff.aggregators.DifferentiallyPrivateFactory.tree_aggregation` to
     support the [DP-FTRL algorithm](https://arxiv.org/abs/2103.00039).
-*   Added `tff.aggrgators.SecureModularSumFactory`
+*   Added `tff.aggregators.SecureModularSumFactory`
 *   Added `tff.aggregators.DiscreteFourierTransformFactory` and
     `tff.aggregators.HadamardTransformFactory` to support rotation-based
     aggregators.
@@ -1760,7 +1760,7 @@ jvmcns@
 *   Added support for `attr.s` classes type annotations.
 *   Updated streaming `Execute` method on `tff.framework.ExecutorService` to be
     asynchronous.
-*   PY2 and PY3 compatability.
+*   PY2 and PY3 compatibility.
 
 # Release 0.9.0
 
@@ -1888,7 +1888,7 @@ Dheeraj R Reddy, @Squadrick.
 
 ## Major Features and Improvements
 
-*   New `tff.simulation.TransformingClientData` API and associated inifinite
+*   New `tff.simulation.TransformingClientData` API and associated infinite
     EMNIST dataset (see http://tensorflow.org/federated/api_docs/python/tff for
     details)
 
