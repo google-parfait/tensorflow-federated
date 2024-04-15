@@ -14,13 +14,11 @@ limitations under the License
 ==============================================================================*/
 
 #include <stdint.h>
-
 #include <memory>
 
 #include "absl/flags/flag.h"
 #include "absl/flags/parse.h"
 #include "include/grpcpp/security/server_credentials.h"
-#include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/simulation/servers.h"
 
 ABSL_FLAG(int32_t, port, 10000, "Port to run the executor service on");

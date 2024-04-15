@@ -15,10 +15,12 @@ limitations under the License
 
 #include "tensorflow_federated/cc/simulation/servers.h"
 
+#include <cstdint>
+#include <functional>
 #include <memory>
-#include <optional>
 #include <string>
 
+#include "absl/log/log.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "include/grpcpp/security/server_credentials.h"
@@ -28,7 +30,6 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor_service.h"
-#include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
 #include "tensorflow_federated/cc/core/impl/executors/tensorflow_executor.h"
 
 constexpr int MegabytesToBytes(int megabytes) {

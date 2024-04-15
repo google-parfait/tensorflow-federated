@@ -32,9 +32,9 @@ cc_library(
         "//tensorflow_federated/cc/core/impl/executors:cardinalities",
         "//tensorflow_federated/cc/core/impl/executors:executor",
         "//tensorflow_federated/cc/core/impl/executors:executor_service",
-        "//tensorflow_federated/cc/core/impl/executors:status_macros",
         "//tensorflow_federated/cc/core/impl/executors:tensorflow_executor",
         "@com_github_grpc_grpc//:grpc++",
+        "@com_google_absl//absl/log",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
     ],
@@ -45,7 +45,6 @@ cc_library(
     srcs = ["worker_main.cc"],
     deps = [
         ":servers",
-        "//tensorflow_federated/cc/core/impl/executors:cardinalities",
         "@com_github_grpc_grpc//:grpc++",
         "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/flags:parse",
