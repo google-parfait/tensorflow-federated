@@ -16,6 +16,7 @@ limitations under the License
 #ifndef THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTOR_STACKS_LOCAL_STACKS_H_
 #define THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTOR_STACKS_LOCAL_STACKS_H_
 
+#include <cstdint>
 #include <functional>
 #include <memory>
 

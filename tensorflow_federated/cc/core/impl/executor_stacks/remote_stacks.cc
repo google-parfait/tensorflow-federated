@@ -16,15 +16,18 @@ limitations under the License
 
 #include <chrono>  // NOLINT
 #include <functional>
-#include <string>
+#include <memory>
 #include <utility>
 #include <vector>
 
+#include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "grpcpp/grpcpp.h"
-#include "include/grpcpp/support/time.h"
+#include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
+#include "tensorflow_federated/cc/core/impl/executors/composing_executor.h"
+#include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/federating_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/reference_resolving_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/remote_executor.h"
@@ -32,6 +35,7 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/streaming_remote_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/tensorflow_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/threading.h"
+
 namespace tensorflow_federated {
 // This function queries the state of the incoming channels, filtering to those
 // which are ready or idle. This function blocks up to
