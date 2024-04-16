@@ -2,6 +2,8 @@
 
 ## Major Features and Improvements
 
+*   Added a `Literal` to the TFF language, part 2. This change updates the
+    tracing and execution portions of TFF to begin using the `Literal`.
 *   Added an implementation of the Adafactor optimizer to
     `tff.learning.optimizers.build_adafactor`
 

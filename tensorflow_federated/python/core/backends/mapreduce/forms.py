@@ -52,33 +52,36 @@ def _check_lambda_computation(label, comp):
   tree_analysis.check_has_unique_names(comp.to_building_block())
 
 
-def _check_flattened_intrinsic_args_are_selections(
+def _check_flattened_intrinsic_args_are_selections_or_literals(
     value: building_blocks.ComputationBuildingBlock,
     expected_reference_name: str,
 ):
-  """Checks that the flattened args of an intrinsic call are all Selections."""
+  """Checks the flattened args of an intrinsic are Selections or Literals."""
   if isinstance(value, building_blocks.Struct):
     inner_values = structure.flatten(value)
   else:
     inner_values = [value]
 
   for inner_value in inner_values:
-    if not isinstance(inner_value, building_blocks.Selection):
-      raise TypeError(
-          'Expected that all arguments to an intrinsic call are selections or '
-          '(potentially nested) structs of selections, but found {}'.format(
-              inner_value.type_signature
-          )
-      )
-    if (
-        isinstance(inner_value.source, building_blocks.Reference)
-        and inner_value.source.name != expected_reference_name
+    if not isinstance(
+        inner_value, (building_blocks.Literal, building_blocks.Selection)
     ):
       raise TypeError(
-          'Expected that all arguments to an intrinsic call are ultimately '
-          'selections of the top-level lambda parameter {} but found selection '
-          'source {}'.format(expected_reference_name, inner_value.source.name)
+          'Expected that all arguments to an intrinsic call are selections or'
+          ' literals or structs containing only selections or literals, found'
+          f' {type(inner_value)}.'
       )
+    if isinstance(inner_value, building_blocks.Selection):
+      source = inner_value.source
+      if (
+          isinstance(source, building_blocks.Reference)
+          and source.name != expected_reference_name
+      ):
+        raise TypeError(
+            'Expected that all arguments to an intrinsic call, that are'
+            ' selections ,are selections of the top-level lambda parameter'
+            f' {expected_reference_name}, found selection source {source.name}.'
+        )
 
 
 def _is_assignable_from_or_both_none(first, second):
@@ -653,7 +656,7 @@ class DistributeAggregateForm(typed_object.TypedObject):
                 local_fn.uri
             )
         )
-      _check_flattened_intrinsic_args_are_selections(
+      _check_flattened_intrinsic_args_are_selections_or_literals(
           local_value.argument,
           server_to_client_broadcast.to_building_block().parameter_name,  # pytype: disable=attribute-error
       )
@@ -712,7 +715,7 @@ class DistributeAggregateForm(typed_object.TypedObject):
                 local_fn.uri
             )
         )
-      _check_flattened_intrinsic_args_are_selections(
+      _check_flattened_intrinsic_args_are_selections_or_literals(
           local_value.argument,
           client_to_server_aggregation.to_building_block().parameter_name,  # pytype: disable=attribute-error
       )

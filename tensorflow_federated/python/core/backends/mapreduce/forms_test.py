@@ -209,11 +209,8 @@ def _test_distribute_aggregate_form_computations():
       ]],
   )
   def client_to_server_aggregation(temp_server_state, client_updates):
-    return [
-        intrinsics.federated_secure_sum_bitwidth(
-            client_updates[0][0], temp_server_state[0]
-        )
-    ]
+    del temp_server_state  # Unused.
+    return [intrinsics.federated_secure_sum_bitwidth(client_updates[0][0], 100)]
 
   @federated_computation.federated_computation(
       [np.int32, computation_types.FederatedType(np.int32, placements.SERVER)],
@@ -813,10 +810,9 @@ class DistributeAggregateFormTest(absltest.TestCase):
         [[computation_types.FederatedType(np.int32, placements.CLIENTS)]],
     )
     def client_to_server_aggregation(temp_server_state, client_updates):
+      del temp_server_state  # Unused.
       return [
-          intrinsics.federated_secure_sum_bitwidth(
-              client_updates[0][0], temp_server_state[0]
-          )
+          intrinsics.federated_secure_sum_bitwidth(client_updates[0][0], 100)
       ]
 
     with self.assertRaisesRegex(
@@ -870,9 +866,8 @@ class DistributeAggregateFormTest(absltest.TestCase):
         ]],
     )
     def client_to_server_aggregation(temp_server_state, client_updates):
-      a = intrinsics.federated_secure_sum_bitwidth(
-          client_updates[0][0], temp_server_state[0]
-      )
+      del temp_server_state  # Unused.
+      a = intrinsics.federated_secure_sum_bitwidth(client_updates[0][0], 100)
       b = intrinsics.federated_sum(client_updates[0][0])
       return [b, a]
 
@@ -919,10 +914,9 @@ class DistributeAggregateFormTest(absltest.TestCase):
         ]],
     )
     def client_to_server_aggregation(temp_server_state, client_updates):
+      del temp_server_state  # Unused.
       return [
-          intrinsics.federated_secure_sum_bitwidth(
-              client_updates[0][0], temp_server_state[0]
-          )
+          intrinsics.federated_secure_sum_bitwidth(client_updates[0][0], 100)
       ]
 
     @federated_computation.federated_computation(

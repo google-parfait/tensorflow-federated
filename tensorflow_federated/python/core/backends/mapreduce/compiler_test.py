@@ -461,7 +461,7 @@ class CompileLocalComputationToTensorFlow(absltest.TestCase):
     block_to_id = building_blocks.Block([('x', unused_int)], tf_identity)
     self.assert_compiles_to_tensorflow(block_to_id)
 
-  def test_returns_tf_computation_ompiled_comp(self):
+  def test_returns_tf_computation_compiled_comp(self):
     concrete_int_type = computation_types.TensorType(np.int32)
     proto, type_signature = tensorflow_computation_factory.create_identity(
         concrete_int_type
@@ -547,6 +547,17 @@ class CompileLocalComputationToTensorFlow(absltest.TestCase):
         ref_to_x.name, ref_to_x.type_signature, ref_to_x
     )
     self.assert_compiles_to_tensorflow(identity_lambda)
+
+  def test_returns_result_with_literal(self):
+    comp = building_blocks.Literal(1, computation_types.TensorType(np.int32))
+
+    result = compiler.compile_local_computation_to_tensorflow(comp)
+
+    self.assertIsInstance(result, building_blocks.Call)
+    self.assertIsInstance(result.function, building_blocks.CompiledComputation)
+    type_test_utils.assert_types_equivalent(
+        comp.type_signature, result.type_signature
+    )
 
 
 class CompileLocalSubcomputationsToTensorFlowTest(absltest.TestCase):

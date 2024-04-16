@@ -23,7 +23,6 @@ from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.aggregators import sum_factory
 from tensorflow_federated.python.core.backends.mapreduce import form_utils
-from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -137,7 +136,7 @@ class ModelUpdateAggregatorTest(parameterized.TestCase):
 
   def test_wrong_debug_measurements_fn_robust_aggregator(self):
     """Expect error if debug_measurements_fn is wrong."""
-    with self.assertRaises(context_base.ContextError):
+    with self.assertRaises(TypeError):
 
       def wrong_debug_measurements_fn(
           aggregation_factory: factory.AggregationFactory,
@@ -331,7 +330,7 @@ class ModelUpdateAggregatorTest(parameterized.TestCase):
 
   def test_wrong_debug_measurements_fn_compression_aggregator(self):
     """Expect error if debug_measurements_fn is wrong."""
-    with self.assertRaises(context_base.ContextError):
+    with self.assertRaises(TypeError):
 
       def wrong_debug_measurements_fn(
           aggregation_factory: factory.AggregationFactory,

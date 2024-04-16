@@ -34,6 +34,18 @@ git_repository(
     tag = "v3.21.9",
 )
 
+# TODO: b/333391041 - Temporarily disable the direct dependency on
+# `eigen`, for now we pick this dependency up from the TensorFlow workspace.
+# new_git_repository(
+#     name = "eigen",
+#     tag = "3.4.0",
+#     remote = "https://gitlab.com/libeigen/eigen.git",
+#     build_file = "//third_party/eigen:eigen.BUILD",
+#     repo_mapping = {
+#         "@eigen": "@eigen_archive",
+#     },
+# )
+
 git_repository(
     name = "org_tensorflow",
     # The version of this dependency should match the version in
@@ -137,7 +149,7 @@ load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps")
 grpc_deps()
 
 # TODO: b/260598663 - Temporarily disable the direct dependency on
-# `grpc_extra_deps`, for now we pick this dependency up via TensorFlows
+# `grpc_extra_deps`, for now we pick this dependency up from the TensorFlow
 # workspace.
 # load("@com_github_grpc_grpc//bazel:grpc_extra_deps.bzl", "grpc_extra_deps")
 #

@@ -62,8 +62,8 @@ simpler than the problem of reducing the entire input computation, hence the
 divide-and-conquer.
 """
 
-
 from absl import logging
+import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
@@ -367,6 +367,8 @@ def _evaluate_to_tensorflow(
     for name, element in structure.iter_elements(comp):
       elements.append((name, _evaluate_to_tensorflow(element, bindings)))
     return structure.Struct(elements)
+  if isinstance(comp, building_blocks.Literal):
+    return tf.constant(comp.value)
   if isinstance(
       comp,
       (

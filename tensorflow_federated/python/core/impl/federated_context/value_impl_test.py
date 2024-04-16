@@ -326,8 +326,8 @@ class ValueTest(parameterized.TestCase):
     with self.assertRaises(TypeError):
       value_impl.to_value([1, 2, 3], computation_types.SequenceType(np.int32))
 
-  def test_to_value_raises_type_error(self):
-    with self.assertRaises(TypeError):
+  def test_to_value_raises_value_error(self):
+    with self.assertRaises(ValueError):
       value_impl.to_value(10, computation_types.TensorType(np.bool_))
 
   def test_tf_mapping_raises_helpful_error(self):
@@ -382,16 +382,14 @@ class ValueTest(parameterized.TestCase):
 
     sliced = v[:2]
     self.assertEqual((str(sliced.type_signature)), '<int32,int32>')
-    self.assertEqual(
-        str(sliced), '<fc_FEDERATED_symbol_0,fc_FEDERATED_symbol_1>'
-    )
+    self.assertEqual(str(sliced), '<0,10>')
 
     expected_symbol_bindings = [
-        ('fc_FEDERATED_symbol_0', [r'comp#[a-zA-Z0-9]*()']),
-        ('fc_FEDERATED_symbol_1', [r'comp#[a-zA-Z0-9]*()']),
-        ('fc_FEDERATED_symbol_2', [r'comp#[a-zA-Z0-9]*()']),
-        ('fc_FEDERATED_symbol_3', [r'comp#[a-zA-Z0-9]*()']),
-        ('fc_FEDERATED_symbol_4', [r'comp#[a-zA-Z0-9]*()']),
+        ('fc_FEDERATED_symbol_0', [r'( -> 0)()']),
+        ('fc_FEDERATED_symbol_1', [r'( -> 10)()']),
+        ('fc_FEDERATED_symbol_2', [r'( -> 20)()']),
+        ('fc_FEDERATED_symbol_3', [r'( -> 30)()']),
+        ('fc_FEDERATED_symbol_4', [r'( -> 40)()']),
     ]
 
     bindings = self.bound_symbols()
@@ -414,17 +412,14 @@ class ValueTest(parameterized.TestCase):
 
     sliced = v[-3:]
     self.assertEqual((str(sliced.type_signature)), '<int32,int32,int32>')
-    self.assertEqual(
-        str(sliced),
-        '<fc_FEDERATED_symbol_2,fc_FEDERATED_symbol_3,fc_FEDERATED_symbol_4>',
-    )
+    self.assertEqual(str(sliced), '<20,30,40>')
 
     expected_symbol_bindings = [
-        ('fc_FEDERATED_symbol_0', [r'comp#[a-zA-Z0-9]*()']),
-        ('fc_FEDERATED_symbol_1', [r'comp#[a-zA-Z0-9]*()']),
-        ('fc_FEDERATED_symbol_2', [r'comp#[a-zA-Z0-9]*()']),
-        ('fc_FEDERATED_symbol_3', [r'comp#[a-zA-Z0-9]*()']),
-        ('fc_FEDERATED_symbol_4', [r'comp#[a-zA-Z0-9]*()']),
+        ('fc_FEDERATED_symbol_0', [r'( -> 0)()']),
+        ('fc_FEDERATED_symbol_1', [r'( -> 10)()']),
+        ('fc_FEDERATED_symbol_2', [r'( -> 20)()']),
+        ('fc_FEDERATED_symbol_3', [r'( -> 30)()']),
+        ('fc_FEDERATED_symbol_4', [r'( -> 40)()']),
     ]
 
     bindings = self.bound_symbols()
@@ -444,17 +439,14 @@ class ValueTest(parameterized.TestCase):
 
     sliced = v[::2]
     self.assertEqual((str(sliced.type_signature)), '<int32,int32,int32>')
-    self.assertEqual(
-        str(sliced),
-        '<fc_FEDERATED_symbol_0,fc_FEDERATED_symbol_2,fc_FEDERATED_symbol_4>',
-    )
+    self.assertEqual(str(sliced), '<0,20,40>')
 
     expected_symbol_bindings = [
-        ('fc_FEDERATED_symbol_0', [r'comp#[a-zA-Z0-9]*()']),
-        ('fc_FEDERATED_symbol_1', [r'comp#[a-zA-Z0-9]*()']),
-        ('fc_FEDERATED_symbol_2', [r'comp#[a-zA-Z0-9]*()']),
-        ('fc_FEDERATED_symbol_3', [r'comp#[a-zA-Z0-9]*()']),
-        ('fc_FEDERATED_symbol_4', [r'comp#[a-zA-Z0-9]*()']),
+        ('fc_FEDERATED_symbol_0', [r'( -> 0)()']),
+        ('fc_FEDERATED_symbol_1', [r'( -> 10)()']),
+        ('fc_FEDERATED_symbol_2', [r'( -> 20)()']),
+        ('fc_FEDERATED_symbol_3', [r'( -> 30)()']),
+        ('fc_FEDERATED_symbol_4', [r'( -> 40)()']),
     ]
 
     bindings = self.bound_symbols()
