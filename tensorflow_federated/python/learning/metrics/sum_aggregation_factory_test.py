@@ -349,7 +349,10 @@ class SumThenFinalizeFactoryExecutionTest(tf.test.TestCase):
     local_unfinalized_metrics = collections.OrderedDict(
         num_examples=1.0,
         loss=[2.0, 1.0],
-        custom_sum=[tf.constant(1.0), tf.constant([1.0, 1.0])],
+        custom_sum=[
+            np.array(1.0, np.float32),
+            np.array([1.0, 1.0], np.float32),
+        ],
     )
     local_unfinalized_metrics_type = computation_types.StructWithPythonType(
         [
@@ -465,7 +468,10 @@ class SumThenFinalizeFactoryExecutionTest(tf.test.TestCase):
     local_unfinalized_metrics = collections.OrderedDict(
         num_examples=1,
         loss=[2.0, 1.0],
-        custom_sum=[tf.constant(101.0), tf.constant([1.0, 1.0])],
+        custom_sum=[
+            np.array(101.0, np.float32),
+            np.array([1.0, 1.0], np.float32),
+        ],
     )
     local_unfinalized_metrics_type = computation_types.StructWithPythonType(
         [
@@ -570,7 +576,10 @@ class SecureSumFactoryTest(tf.test.TestCase, parameterized.TestCase):
     local_unfinalized_metrics = collections.OrderedDict(
         num_examples=1,
         loss=[2.0, 1.0],
-        custom_sum=[tf.constant(1.0), tf.constant([1.0, 1.0])],
+        custom_sum=[
+            np.array(1.0, np.float32),
+            np.array([1.0, 1.0], np.float32),
+        ],
     )
     local_unfinalized_metrics_type = computation_types.StructWithPythonType(
         [
@@ -643,7 +652,10 @@ class SecureSumFactoryTest(tf.test.TestCase, parameterized.TestCase):
     local_unfinalized_metrics = collections.OrderedDict(
         num_examples=150,
         loss=[2.0, 1.0],
-        custom_sum=[tf.constant(101.0), tf.constant([1.0, 1.0])],
+        custom_sum=[
+            np.array(101.0, np.float32),
+            np.array([1.0, 1.0], np.float32),
+        ],
     )
     local_unfinalized_metrics_type = computation_types.StructWithPythonType(
         [

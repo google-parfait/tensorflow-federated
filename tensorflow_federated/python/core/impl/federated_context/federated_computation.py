@@ -49,7 +49,9 @@ def _federated_computation_wrapper_fn(
       )
   )
   return computation_impl.ConcreteComputation(
-      target_lambda.proto, context_stack, extra_type_spec
+      computation_proto=target_lambda.proto,
+      context_stack=context_stack,
+      annotated_type=extra_type_spec,
   )
 
 

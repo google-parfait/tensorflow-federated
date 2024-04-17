@@ -18,6 +18,8 @@ from typing import Optional
 import tensorflow as tf
 import tree
 
+from tensorflow_federated.proto.v0 import computation_pb2
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_serialization
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.computation import computation_wrapper
@@ -28,17 +30,39 @@ from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_conversions
 
 
-def _transform_result(result: object) -> object:
-  def fn(obj):
-    if isinstance(obj, tf.Tensor) and not tf.is_symbolic_tensor(obj):
+def _to_numpy(value: object) -> object:
+  """Convert `value` to a numpy value."""
+
+  def _fn(obj):
+    if isinstance(obj, tf.Variable):
+      return obj.read_value().numpy()
+    elif isinstance(obj, tf.Tensor) and not tf.is_symbolic_tensor(obj):
       return obj.numpy()
     else:
       return None
 
   # Important: `tree.traverse` is used instead of `tree.map_structure`, even
-  # though mutating the structure of `result` is not required, because the
+  # though mutating the structure of `value` is not required, because the
   # `tree.map_structure` sorts `dict` keys.
-  return tree.traverse(fn, result)
+  return tree.traverse(_fn, value)
+
+
+def _transform_args(args: object) -> object:
+
+  # TODO: b/322048180 - Remove external usage of `tff.structure.Struct`.
+  def _to_python(obj):
+    if isinstance(obj, structure.Struct):
+      return structure.to_odict_or_tuple(obj)
+    else:
+      return None
+
+  args = tree.traverse(_to_python, args)
+
+  return _to_numpy(args)
+
+
+def _transform_result(result: object) -> object:
+  return _to_numpy(result)
 
 
 def _tf_wrapper_fn(
@@ -67,10 +91,11 @@ def _tf_wrapper_fn(
       )
   )
   return computation_impl.ConcreteComputation(
-      comp_pb,
-      context_stack,
-      extra_type_spec,
-      _transform_result,
+      computation_proto=comp_pb,
+      context_stack=context_stack,
+      annotated_type=extra_type_spec,
+      transform_result=_transform_result,
+      transform_args=_transform_args,
   )
 
 
@@ -211,3 +236,40 @@ tf_computation.__doc__ = """Decorates/wraps Python functions and defuns as TFF T
     to be called with the function definition supplied as a parameter; see the
     patterns and examples of usage above.
   """
+
+
+def serialize_computation(
+    computation: computation_impl.ConcreteComputation,
+) -> computation_pb2.Computation:
+  """Serializes a `tff.framework.ConcreteComputation` as proto.
+
+  Args:
+    computation: A `tff.framework.ConcreteComputation`.
+
+  Returns:
+    The corresponding `computation_pb2.Computation`.
+  """
+  computation_proto = computation_pb2.Computation()
+  computation_proto.CopyFrom(
+      computation_impl.ConcreteComputation.get_proto(computation)
+  )
+  return computation_proto
+
+
+def deserialize_computation(
+    computation_proto: computation_pb2.Computation,
+) -> computation_impl.ConcreteComputation:
+  """Deserializes proto as a `tff.framework.ConcreteComputation`.
+
+  Args:
+    computation_proto: A `pb.Computation`.
+
+  Returns:
+    The corresponding `tff.framework.ConcreteComputation`.
+  """
+  return computation_impl.ConcreteComputation(
+      computation_proto=computation_proto,
+      context_stack=context_stack_impl.context_stack,
+      transform_result=_transform_result,
+      transform_args=_transform_args,
+  )

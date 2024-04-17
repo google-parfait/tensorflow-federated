@@ -60,6 +60,8 @@ class TensorFlowComputationContext(context_base.SyncContext):
 
   def invoke(self, comp: computation_impl.ConcreteComputation, arg):
     if comp.type_signature.parameter is not None:
+
+      # TODO: b/322048180 - Remove external usage of `tff.structure.Struct`.
       # Note: `arg` is sometimes a `structure.Struct` and sometimes it's not,
       # other times it's a Python structure that contains a `structure.Struct`.
       # Here we normalize this to a Python structure to make it simpler to

@@ -76,8 +76,6 @@ from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.compiler import transformations
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
-from tensorflow_federated.python.core.impl.computation import computation_impl
-from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_analysis
 
@@ -328,9 +326,7 @@ def _evaluate_to_tensorflow(
     if kind == 'tensorflow':
 
       def call_concrete(*args):
-        concrete = computation_impl.ConcreteComputation(
-            comp.proto, context_stack_impl.context_stack
-        )
+        concrete = tensorflow_computation.deserialize_computation(comp.proto)
         result = concrete(*args)
         if isinstance(comp.type_signature.result, computation_types.StructType):
           return structure.from_container(result, recursive=True)
