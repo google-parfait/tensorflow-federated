@@ -796,7 +796,7 @@ class FunctionalModelFromKerasTest(tf.test.TestCase):
     )
     with self.assertRaisesRegex(
         functional.KerasFunctionalModelError,
-        'only usable inside a tff.tf_computation',
+        'only usable inside a `tff.tensorflow.computation`',
     ):
       functional_model.predict_on_batch(
           functional_model.initial_weights, example_batch[0]

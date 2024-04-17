@@ -123,9 +123,9 @@ class VariableModel(metaclass=abc.ABCMeta):
   def forward_pass(self, batch_input, training=True) -> BatchOutput:
     """Runs the forward pass and returns results.
 
-    This method must be serializable in a `tff.tf_computation` or other backend
-    decorator. Any pure-Python or unserializable logic will not be runnable in
-    the federated system.
+    This method must be serializable in a `tff.tensorflow.computation` or other
+    backend decorator. Any pure-Python or unserializable logic will not be
+    runnable in the federated system.
 
     This method should not modify any variables that are part of the model
     parameters, that is, variables that influence the predictions (exceptions
@@ -253,9 +253,10 @@ class VariableModel(metaclass=abc.ABCMeta):
     This method and the `report_local_unfinalized_metrics()` method should have
     the same keys (i.e., metric names). A finalizer returned by this method is a
     function (typically a `tf.function` decorated callable or a
-    `tff.tf_computation` decoreated TFF Computation) that takes in a metric's
-    unfinalized values (returned by `report_local_unfinalized_metrics()`), and
-    returns the finalized metric values.
+    `tff.tensorflow.computation` decorated TFF Computation) that takes in a
+    metric's unfinalized values (returned by
+    `report_local_unfinalized_metrics()`), and returns the finalized metric
+    values.
 
     This method and the `report_local_unfinalized_metrics()` method will be used
     together to build a cross-client metrics aggregator. See the documentation
@@ -265,10 +266,10 @@ class VariableModel(metaclass=abc.ABCMeta):
       An `collections.OrderedDict` of metric names to finalizers. The metric
       names must be
       the same as those from the `report_local_unfinalized_metrics()` method. A
-      finalizer is a `tf.function` (or `tff.tf_computation`) decorated callable
-      that takes in a metric's unfinalized values, and returns the finalized
-      values. This method and the `report_local_unfinalized_metrics()` method
-      will be used together to build a cross-client metrics aggregator in
+      finalizer is a `tf.function` (or `tff.tensorflow.computation`) decorated
+      callable that takes in a metric's unfinalized values, and returns the
+      finalized values. This method and the `report_local_unfinalized_metrics()`
+      method will be used together to build a cross-client metrics aggregator in
       federated training processes or evaluation computations.
     """
     pass

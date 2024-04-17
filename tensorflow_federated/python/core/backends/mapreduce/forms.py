@@ -289,7 +289,7 @@ class MapReduceForm(typed_object.TypedObject):
 
     Note: All the computations supplied here as arguments must be TensorFlow
     computations, i.e., instances of `tff.Computation` constructed by the
-    `tff.tf_computation` decorator/wrapper.
+    `tff.tensorflow.computation` decorator/wrapper.
 
     Args:
       type_signature: The type signature of the corresponding `tff.Computation`

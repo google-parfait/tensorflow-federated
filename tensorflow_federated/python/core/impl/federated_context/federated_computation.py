@@ -70,7 +70,8 @@ federated_computation.__doc__ = """Decorates/wraps Python functions as TFF feder
   one slices and dices `tf.Tensor` instances using a variety of TensorFlow ops,
   in the former one slices and dices `tff.Value` instances using TFF operators.
 
-  The supported modes of usage are identical to those for `tff.tf_computation`.
+  The supported modes of usage are identical to those for
+  `tff.tensorflow.computation`.
 
   Example:
 
@@ -90,12 +91,13 @@ federated_computation.__doc__ = """Decorates/wraps Python functions as TFF feder
 
   Args:
     *args: Either a Python function, or TFF type spec, or both (function first),
-      or neither. See also `tff.tf_computation` for an extended documentation.
+      or neither. See also `tff.tensorflow.computation` for an extended
+      documentation.
 
   Returns:
     If invoked with a function as an argument, returns an instance of a TFF
     computation constructed based on this function. If called without one, as
     in the typical decorator style of usage, returns a callable that expects
     to be called with the function definition supplied as a parameter. See
-    also `tff.tf_computation` for an extended documentation.
+    also `tff.tensorflow.computation` for an extended documentation.
   """

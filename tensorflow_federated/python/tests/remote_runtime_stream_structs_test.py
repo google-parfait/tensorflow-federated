@@ -55,7 +55,7 @@ class RemoteRuntimeStreamStructsTest(parameterized.TestCase):
         [(None, tf.zeros(shape=small_tensor_shape, dtype=tf.float32))] * 6
     )
 
-    @tff.tf_computation(
+    @tff.tensorflow.computation(
         tff.StructType(
             [(None, tff.TensorType(np.float32, small_tensor_shape))] * 6
         )
@@ -80,7 +80,7 @@ class RemoteRuntimeStreamStructsTest(parameterized.TestCase):
         ('f', tf.zeros(shape=small_tensor_shape, dtype=tf.float32)),
     ])
 
-    @tff.tf_computation(
+    @tff.tensorflow.computation(
         tff.StructType([
             (
                 'a',
@@ -139,7 +139,7 @@ class RemoteRuntimeStreamStructsTest(parameterized.TestCase):
         ('e', tf.zeros(shape=small_tensor_shape, dtype=tf.float32)),
     ])
 
-    @tff.tf_computation(
+    @tff.tensorflow.computation(
         tff.StructType([
             (
                 'a',

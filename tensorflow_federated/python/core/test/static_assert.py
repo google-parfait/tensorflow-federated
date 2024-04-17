@@ -36,9 +36,9 @@ def assert_contains_secure_aggregation(comp):
 
   Args:
     comp: A `tff.Computation`, often a function annotated with
-      `tff.federated_computation` or `tff.tf_computation`. Note that polymorphic
-      functions (those without the types of their arguments explicitly
-      specified) will not yet be `tff.Computation`s.
+      `tff.federated_computation` or `tff.tensorflow.computation`. Note that
+      polymorphic functions (those without the types of their arguments
+      explicitly specified) will not yet be `tff.Computation`s.
 
   Raises:
     AssertionError if `comp` does not contain a secure aggregation call.
@@ -62,9 +62,9 @@ def assert_not_contains_secure_aggregation(comp):
 
   Args:
     comp: A `tff.Computation`, often a function annotated with
-      `tff.federated_computation` or `tff.tf_computation`. Note that polymorphic
-      functions (those without the types of their arguments explicitly
-      specified) will not yet be `tff.Computation`s.
+      `tff.federated_computation` or `tff.tensorflow.computation`. Note that
+      polymorphic functions (those without the types of their arguments
+      explicitly specified) will not yet be `tff.Computation`s.
 
   Raises:
     AssertionError if `comp` contains a secure aggregation call.
@@ -84,9 +84,9 @@ def assert_contains_unsecure_aggregation(comp):
 
   Args:
     comp: A `tff.Computation`, often a function annotated with
-      `tff.federated_computation` or `tff.tf_computation`. Note that polymorphic
-      functions (those without the types of their arguments explicitly
-      specified) will not yet be `tff.Computation`s.
+      `tff.federated_computation` or `tff.tensorflow.computation`. Note that
+      polymorphic functions (those without the types of their arguments
+      explicitly specified) will not yet be `tff.Computation`s.
 
   Raises:
     AssertionError if `comp` does not contain an unsecure aggregation call.
@@ -110,9 +110,9 @@ def assert_not_contains_unsecure_aggregation(comp):
 
   Args:
     comp: A `tff.Computation`, often a function annotated with
-      `tff.federated_computation` or `tff.tf_computation`. Note that polymorphic
-      functions (those without the types of their arguments explicitly
-      specified) will not yet be `tff.Computation`s.
+      `tff.federated_computation` or `tff.tensorflow.computation`. Note that
+      polymorphic functions (those without the types of their arguments
+      explicitly specified) will not yet be `tff.Computation`s.
 
   Raises:
     AssertionError if `comp` contains an unsecure aggregation call.

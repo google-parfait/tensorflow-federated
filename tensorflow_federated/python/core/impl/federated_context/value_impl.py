@@ -148,7 +148,7 @@ class Value(typed_object.TypedObject, metaclass=abc.ABCMeta):
     raise TypeError(
         'Federated computation values do not support boolean operations. '
         'If you were attempting to perform logic on tensors, consider moving '
-        'this logic into a tff.tf_computation.'
+        'this logic into a `tff.tensorflow.computation`.'
     )
 
   def __len__(self):
@@ -263,8 +263,9 @@ def to_value(
     `tuple`s, `namedtuple`s, and `Struct`s, all of which are mapped to
     TFF tuple type.
 
-  * Computations (constructed with either the `tff.tf_computation` or with the
-    `tff.federated_computation` decorator), typically mapped to TFF functions.
+  * Computations (constructed with either the `tff.tensorflow.computation` or
+    with the `tff.federated_computation` decorator), typically mapped to TFF
+    functions.
 
   * Placement literals (`tff.CLIENTS`, `tff.SERVER`), mapped to values of the
     TFF placement type.

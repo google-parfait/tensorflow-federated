@@ -25,7 +25,7 @@ class KerasOptimizer(optimizer.Optimizer):
   """Adapter for keras optimzier as `tff.learning.optimizers.Optimizer`.
 
   This class is expected to be instantiated in the context of
-  `tff.tf_computation` in which it is to be used. This is because the
+  `tff.tensorflow.computation` in which it is to be used. This is because the
   `optimizer_fn` provided in constructor is going to be invoked, which will
   create a keras optimizer instance, and we will force the creation of
   `tf.Variable` objects which store the state of that keras optimizer.
@@ -33,13 +33,13 @@ class KerasOptimizer(optimizer.Optimizer):
   If this class is supposed to be used as a "server optimizer", set
   `disjoint_init_and_next` to True, which means that the `initialize` and `next`
   methods are going to be invoked in the context of *different*
-  `tff.tf_computations`, and TFF needs to carry the optimizer variables between
-  the invocations.
+  `tff.tensorflow.computation`s, and TFF needs to carry the optimizer variables
+  between the invocations.
 
   If this class is supposed to be used as a "client optimizer", set
   `disjoint_init_and_next` to False, which means that the `initialize` and
   `next` methods are going to be invoked in the context of *the same*
-  `tff.tf_computation` and we don't need to pass the variables of keras
+  `tff.tensorflow.computation` and we don't need to pass the variables of keras
   optimizer to TFF to handle.
 
   NOTE: This class is not meant to be exposed in public API for now. Rather, it
@@ -63,7 +63,7 @@ class KerasOptimizer(optimizer.Optimizer):
         optimizer.
       disjoint_init_and_next: A boolean, determining whether the `initialize`
         and `next` methods are going to be invoked in the context of the same
-        `tff.tf_computation`.
+        `tff.tensorflow.computation`.
     """
     self._optimizer = optimizer_fn()
     self._disjoint_init_and_next = disjoint_init_and_next
@@ -128,7 +128,7 @@ def build_or_verify_tff_optimizer(
     disjoint_init_and_next: Optional if `optimizer_fn` is a
       `tff.learning.optimizers.Optimizer`. A boolean, determining whether the
       `initialize` and `next` methods are going to be invoked in the context of
-      the same `tff.tf_computation` if `optimizer_fn` is a callable.
+      the same `tff.tensorflow.computation` if `optimizer_fn` is a callable.
 
   Raises:
     TypeError: Input `optimizer_fn` is not `tff.learning.optimizers.Optimizer`

@@ -416,8 +416,8 @@ def functional_model_from_keras(
   sample weights aren't supported in model serialization and deserialization.
 
   IMPORTANT: The returned model must only be used in a graph context (for
-  example inside a `tff.tf_computation` decorated callable). It will raise an
-  error otherwise.
+  example inside a `tff.tensorflow.computation` decorated callable). It will
+  raise an error otherwise.
 
   Args:
     keras_model: A `tf.keras.Model` object, should be uncompiled. If compiled,
@@ -436,8 +436,9 @@ def functional_model_from_keras(
     contains a batch normalization layer, 2) the Keras model is with
     non-trainable variable, 3) error occurs when converting the Keras model, 4)
     the Keras model shares variable across layers, 5) the FunctionalModel is
-    used outside of a tff.tf_computation decorated callable or a graph context,
-    6) the Keras model contains a loss function with non-None sample weights.
+    used outside of a `tff.tensorflow.computation` decorated callable or a graph
+    context, 6) the Keras model contains a loss function with non-None sample
+    weights.
   """
   # We're going to do something fancy here:
   #
@@ -453,9 +454,10 @@ def functional_model_from_keras(
   # **WARNING** Caveats:
   #
   # 1. This model _must_ be used inside a graph context (e.g. a
-  #    `tff.tf_computation` decorated callable, aka a `tff.Computation`). Keras
-  #    appears to create extra variables in the eager context that are not part
-  #    of the user specified model, and end up not being compatible.
+  #    `tff.tensorflow.computation` decorated callable, aka a
+  #    `tff.Computation`). Keras appears to create extra variables in the eager
+  #    context that are not part of the user specified model, and end up not
+  #    being compatible.
   #
   # 2. We have found that this trick does NOT work with non-trainable variables
   #    that are updated during training. Namely layers such as
@@ -570,8 +572,9 @@ def functional_model_from_keras(
     with tf.init_scope():
       if tf.executing_eagerly():
         raise KerasFunctionalModelError(
-            'tf.keras.Model used as a FunctionalModel is only usable inside a '
-            'tff.tf_computation decorated callable or a graph context.'
+            '`tf.keras.Model` used as a `FunctionalModel` is only usable inside'
+            ' a `tff.tensorflow.computation` decorated callable or a graph'
+            ' context.'
         )
     # Make a copy of the weights container; can't mutate Python containers
     # inside a tf.function.
@@ -651,9 +654,9 @@ def keras_model_from_functional_weights(
   structure of tensors that was used to train a `FunctionalModel`
 
   IMPORTANT: this method must be run in a graph context (e.g. inside a
-  `tf.Graph` context, or a `tff.tf_computation` decorated callable), otherwise
-  the Keras model construction will differ from how the `FunctionalModel` was
-  originally created.
+  `tf.Graph` context, or a `tff.tensorflow.computation` decorated callable),
+  otherwise the Keras model construction will differ from how the
+  `FunctionalModel` was originally created.
 
   Args:
     model_weights: A nested structure of tensors matching the structure of

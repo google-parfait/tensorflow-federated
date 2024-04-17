@@ -31,7 +31,8 @@ class AstGenerationTest(absltest.TestCase):
     )
 
   def test_flattens_to_tf_computation(self):
-    @tff.tf_computation
+
+    @tff.tensorflow.computation
     def five():
       return 5
 
@@ -50,7 +51,8 @@ class AstGenerationTest(absltest.TestCase):
     # pyformat: enable
 
   def test_only_one_random_only_generates_a_single_call_to_random(self):
-    @tff.tf_computation
+
+    @tff.tensorflow.computation
     def rand():
       return tf.random.normal([])
 

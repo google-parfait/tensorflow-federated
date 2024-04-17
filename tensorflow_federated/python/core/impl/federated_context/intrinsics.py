@@ -512,7 +512,7 @@ def federated_value(value, placement):
 
   Deprecation warning: Using `tff.federated_value` with arguments other than
   simple Python constants is deprecated. When placing the result of a
-  `tf_computation`, prefer `tff.federated_eval`.
+  `tff.tensorflow.computation`, prefer `tff.federated_eval`.
 
   Args:
     value: A value of a non-federated TFF type to be placed.
@@ -531,7 +531,8 @@ def federated_value(value, placement):
         (
             'Deprecation warning: Using `tff.federated_value` with arguments'
             ' other than simple Python constants is deprecated. When placing'
-            ' the result of a `tf_computation`, prefer `tff.federated_eval`.'
+            ' the result of a `tff.tensorflow.computation`, prefer'
+            ' `tff.federated_eval`.'
         ),
         DeprecationWarning,
     )

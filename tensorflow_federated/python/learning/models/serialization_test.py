@@ -585,7 +585,8 @@ class FunctionalModelTest(tf.test.TestCase, parameterized.TestCase):
     dataset = get_dataset()
     functional_model = model_fn(input_spec=dataset.element_spec)
 
-    # The wrapped keras model can only be used inside a `tff.tf_computation`.
+    # The wrapped keras model can only be used inside a
+    # `tensorflow_computation.tf_computation`.
     @tensorflow_computation.tf_computation
     def _predict_on_batch(dataset, model_weights):
       example_batch = get_example_batch(dataset)
@@ -604,7 +605,8 @@ class FunctionalModelTest(tf.test.TestCase, parameterized.TestCase):
     dataset = get_dataset()
     functional_model = model_fn(input_spec=dataset.element_spec)
 
-    # The wrapped keras model can only be used inside a `tff.tf_computation`.
+    # The wrapped keras model can only be used inside a
+    # `tensorflow_computation.tf_computation`.
     @tensorflow_computation.tf_computation
     def _predict_on_batch(dataset):
       tff_model = functional.model_from_functional(functional_model)
@@ -715,7 +717,8 @@ class FunctionalModelTest(tf.test.TestCase, parameterized.TestCase):
     serialization.save_functional_model(functional_model, path)
     loaded_model = serialization.load_functional_model(path)
 
-    # The wrapped keras model can only be used inside a `tff.tf_computation`.
+    # The wrapped keras model can only be used inside a
+    # `tff.tensorflow.computation`.
     @tensorflow_computation.tf_computation
     def _predict_on_batch(dataset):
       tff_model = functional.model_from_functional(loaded_model)

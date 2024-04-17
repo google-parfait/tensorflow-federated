@@ -30,12 +30,12 @@ class NoClientAggregationsTest(parameterized.TestCase):
   def test_executes_null_aggregate(self):
     unit_type = tff.StructWithPythonType([], tuple)
 
-    @tff.tf_computation(unit_type, unit_type)
+    @tff.tensorflow.computation(unit_type, unit_type)
     def accumulate(a, b):
       del b  # Unused
       return a
 
-    @tff.tf_computation(unit_type)
+    @tff.tensorflow.computation(unit_type)
     def report(a):
       return a
 
@@ -78,7 +78,7 @@ class DatasetManipulationTest(parameterized.TestCase):
   @tff.test.with_contexts(*test_contexts.get_all_contexts())
   def test_executes_passthru_dataset(self):
 
-    @tff.tf_computation(tff.SequenceType(np.int64))
+    @tff.tensorflow.computation(tff.SequenceType(np.int64))
     def passthru_dataset(ds):
       return ds
 
@@ -90,18 +90,18 @@ class DatasetManipulationTest(parameterized.TestCase):
   def test_executes_dataset_concat_aggregation(self):
     element_type = tff.TensorType(np.float32, [2])
 
-    @tff.tf_computation
+    @tff.tensorflow.computation
     def create_empty_ds():
       empty_tensor = tf.zeros(
           shape=(0,) + element_type.shape, dtype=element_type.dtype
       )
       return tf.data.Dataset.from_tensor_slices(empty_tensor)
 
-    @tff.tf_computation
+    @tff.tensorflow.computation
     def concat_datasets(ds1, ds2):
       return ds1.concatenate(ds2)
 
-    @tff.tf_computation
+    @tff.tensorflow.computation
     def identity(ds):
       return ds
 
@@ -213,7 +213,7 @@ class FederatedComputationTest(parameterized.TestCase):
   @tff.test.with_contexts(*test_contexts.get_all_contexts())
   def test_repeated_invocations_of_map(self):
 
-    @tff.tf_computation(np.int32)
+    @tff.tensorflow.computation(np.int32)
     def add_one(x):
       return x + 1
 
@@ -230,7 +230,7 @@ class FederatedComputationTest(parameterized.TestCase):
   @tff.test.with_contexts(*test_contexts.get_all_contexts())
   def test_polymorphism(self):
 
-    @tff.tf_computation(np.int32)
+    @tff.tensorflow.computation(np.int32)
     def add_one(x):
       return x + 1
 
@@ -300,7 +300,7 @@ class FederatedComputationTest(parameterized.TestCase):
   def test_bad_type_coercion_raises(self):
     tensor_type = tff.TensorType(np.float32, [None])
 
-    @tff.tf_computation(tensor_type)
+    @tff.tensorflow.computation(tensor_type)
     def foo(x):
       # We will pass in a tensor which passes the TFF type check, but fails the
       # reshape.
@@ -336,7 +336,7 @@ class FederatedComputationTest(parameterized.TestCase):
     max_key = 5
     selectee_type = tff.TensorType(np.str_, [None])
 
-    @tff.tf_computation(selectee_type, np.int32)
+    @tff.tensorflow.computation(selectee_type, np.int32)
     def gather(selectee, key):
       return tf.gather(selectee, key)
 
@@ -374,7 +374,7 @@ class TensorFlowComputationTest(tf.test.TestCase, parameterized.TestCase):
   def test_create_call_take_two_from_stateful_dataset(self):
     vocab = ['a', 'b', 'c', 'd', 'e', 'f']
 
-    @tff.tf_computation(tff.SequenceType(np.str_))
+    @tff.tensorflow.computation(tff.SequenceType(np.str_))
     def take_two(ds):
       table = tf.lookup.StaticVocabularyTable(
           tf.lookup.KeyValueTensorInitializer(
@@ -396,10 +396,10 @@ class TensorFlowComputationTest(tf.test.TestCase, parameterized.TestCase):
       with tf.control_dependencies([variable.assign_add(1)]):
         return variable.read_value()
 
-    count_one_1 = tff.tf_computation(count_one_body)
-    count_one_2 = tff.tf_computation(count_one_body)
+    count_one_1 = tff.tensorflow.computation(count_one_body)
+    count_one_2 = tff.tensorflow.computation(count_one_body)
 
-    @tff.tf_computation
+    @tff.tensorflow.computation
     def count_one_twice():
       return count_one_1(), count_one_1(), count_one_2()
 
@@ -408,7 +408,7 @@ class TensorFlowComputationTest(tf.test.TestCase, parameterized.TestCase):
   @tff.test.with_contexts(*test_contexts.get_all_contexts())
   def test_dynamic_lookup_table(self):
 
-    @tff.tf_computation(
+    @tff.tensorflow.computation(
         tff.TensorType(np.str_, [None]),
         tff.TensorType(np.str_, [None]),
     )
@@ -424,7 +424,7 @@ class TensorFlowComputationTest(tf.test.TestCase, parameterized.TestCase):
   @tff.test.with_contexts(*test_contexts.get_all_contexts())
   def test_reinitialize_dynamic_lookup_table(self):
 
-    @tff.tf_computation(
+    @tff.tensorflow.computation(
         tff.TensorType(np.str_, [None]),
         tff.TensorType(np.str_, []),
     )
@@ -442,7 +442,8 @@ class TensorFlowComputationTest(tf.test.TestCase, parameterized.TestCase):
 
   @tff.test.with_contexts(*test_contexts.get_all_contexts())
   def test_returns_constant(self):
-    @tff.tf_computation
+
+    @tff.tensorflow.computation
     def foo():
       return 10
 
@@ -451,7 +452,8 @@ class TensorFlowComputationTest(tf.test.TestCase, parameterized.TestCase):
 
   @tff.test.with_contexts(*test_contexts.get_all_contexts())
   def test_returns_empty_tuple(self):
-    @tff.tf_computation
+
+    @tff.tensorflow.computation
     def foo():
       return ()
 
@@ -460,7 +462,8 @@ class TensorFlowComputationTest(tf.test.TestCase, parameterized.TestCase):
 
   @tff.test.with_contexts(*test_contexts.get_all_contexts())
   def test_returns_variable(self):
-    @tff.tf_computation
+
+    @tff.tensorflow.computation
     def foo():
       return tf.Variable(10, name='var')
 
@@ -469,7 +472,8 @@ class TensorFlowComputationTest(tf.test.TestCase, parameterized.TestCase):
 
   @tff.test.with_contexts(*test_contexts.get_all_contexts())
   def test_takes_infinite_dataset(self):
-    @tff.tf_computation
+
+    @tff.tensorflow.computation
     def foo(ds):
       return ds.take(10).reduce(np.int64(0), lambda x, y: x + y)
 
@@ -481,7 +485,8 @@ class TensorFlowComputationTest(tf.test.TestCase, parameterized.TestCase):
 
   @tff.test.with_contexts(*test_contexts.get_all_contexts())
   def test_returns_infinite_dataset(self):
-    @tff.tf_computation
+
+    @tff.tensorflow.computation
     def foo():
       return tf.data.Dataset.range(10).repeat()
 
@@ -496,7 +501,7 @@ class TensorFlowComputationTest(tf.test.TestCase, parameterized.TestCase):
   @tff.test.with_contexts(*test_contexts.get_all_contexts())
   def test_returns_result_with_typed_fn(self):
 
-    @tff.tf_computation(np.int32, np.int32)
+    @tff.tensorflow.computation(np.int32, np.int32)
     def foo(x, y):
       return x + y
 
@@ -506,7 +511,7 @@ class TensorFlowComputationTest(tf.test.TestCase, parameterized.TestCase):
   @tff.test.with_contexts(*test_contexts.get_all_contexts())
   def test_raises_type_error_with_typed_fn(self):
 
-    @tff.tf_computation(np.int32, np.int32)
+    @tff.tensorflow.computation(np.int32, np.int32)
     def foo(x, y):
       return x + y
 
@@ -515,7 +520,8 @@ class TensorFlowComputationTest(tf.test.TestCase, parameterized.TestCase):
 
   @tff.test.with_contexts(*test_contexts.get_all_contexts())
   def test_returns_result_with_polymorphic_fn(self):
-    @tff.tf_computation
+
+    @tff.tensorflow.computation
     def foo(x, y):
       return x + y
 
@@ -529,7 +535,8 @@ class NonDeterministicTest(parameterized.TestCase):
 
   @tff.test.with_contexts(*test_contexts.get_all_contexts())
   def test_computation_called_once_is_invoked_once(self):
-    @tff.tf_computation
+
+    @tff.tensorflow.computation
     def get_random():
       return tf.random.normal([])
 
@@ -543,7 +550,8 @@ class NonDeterministicTest(parameterized.TestCase):
 
   @tff.test.with_contexts(*test_contexts.get_all_contexts())
   def test_computation_called_twice_is_invoked_twice(self):
-    @tff.tf_computation
+
+    @tff.tensorflow.computation
     def get_random():
       return tf.random.normal([])
 

@@ -990,7 +990,7 @@ def to_type(obj: object) -> Type:
   obj = MyDataClass(...)
   type_spec = tff.types.to_type(obj)
 
-  @tff.tf_computation(type_spec)
+  @tff.tensorflow.computation(type_spec)
   def work(my_data):
     assert isinstance(my_data, MyDataClass)
     ...

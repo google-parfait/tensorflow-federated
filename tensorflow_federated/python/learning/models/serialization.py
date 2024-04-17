@@ -241,8 +241,8 @@ def save(model: variable.VariableModel, path: str, input_type=None) -> None:
   returned. All
   method behavior is retained, but the Python type does not cross serialization
   boundaries. The return type of `metric_finalizers` will be an OrderedDict of
-  str to `tff.tf_computation` (annotated TFF computations) which could be
-  different from that of the model before serialization.
+  str to `tff.tensorflow.computation` (annotated TFF computations) which could
+  be different from that of the model before serialization.
 
   Args:
     model: The `tff.learning.models.VariableModel` to save.

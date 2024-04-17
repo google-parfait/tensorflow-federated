@@ -28,7 +28,7 @@ class ExecutionContextIntegrationTest(parameterized.TestCase):
   )
   def test_simple_no_arg_tf_computation_with_int_result(self):
 
-    @tff.tf_computation
+    @tff.tensorflow.computation
     def comp():
       return tf.constant(10)
 
@@ -41,7 +41,7 @@ class ExecutionContextIntegrationTest(parameterized.TestCase):
   )
   def test_one_arg_tf_computation_with_int_param_and_result(self):
 
-    @tff.tf_computation(np.int32)
+    @tff.tensorflow.computation(np.int32)
     def comp(x):
       return tf.add(x, 10)
 
@@ -54,7 +54,7 @@ class ExecutionContextIntegrationTest(parameterized.TestCase):
   )
   def test_three_arg_tf_computation_with_int_params_and_result(self):
 
-    @tff.tf_computation(np.int32, np.int32, np.int32)
+    @tff.tensorflow.computation(np.int32, np.int32, np.int32)
     def comp(x, y, z):
       return tf.multiply(tf.add(x, y), z)
 
@@ -67,7 +67,7 @@ class ExecutionContextIntegrationTest(parameterized.TestCase):
   )
   def test_tf_computation_with_dataset_params_and_int_result(self):
 
-    @tff.tf_computation(tff.SequenceType(np.int32))
+    @tff.tensorflow.computation(tff.SequenceType(np.int32))
     def comp(ds):
       return ds.reduce(np.int32(0), lambda x, y: x + y)
 
@@ -81,7 +81,7 @@ class ExecutionContextIntegrationTest(parameterized.TestCase):
   )
   def test_tf_computation_with_structured_result(self):
 
-    @tff.tf_computation
+    @tff.tensorflow.computation
     def comp():
       return collections.OrderedDict([
           ('a', tf.constant(10)),
@@ -134,7 +134,7 @@ class ExecutionContextIntegrationTest(parameterized.TestCase):
   )
   def test_tuple_argument_can_accept_unnamed_elements(self):
 
-    @tff.tf_computation(np.int32, np.int32)
+    @tff.tensorflow.computation(np.int32, np.int32)
     def foo(x, y):
       return x + y
 

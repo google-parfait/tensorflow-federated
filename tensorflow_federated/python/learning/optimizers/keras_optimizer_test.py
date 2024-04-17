@@ -36,8 +36,8 @@ class KerasOptimizerTest(tf.test.TestCase, parameterized.TestCase):
   def test_disjoint_init_and_next_true(self, momentum):
     """Tests behavior expected as 'TFF server optimizer'.
 
-    This test creates two `tff.tf_computation`s, which would correspond to parts
-    of the two arguments for creation of a `tff.templates.IterativeProcess`.
+    This test creates two `tff.Computation`s, which would correspond to parts of
+    the two arguments for creation of a `tff.templates.IterativeProcess`.
 
     The `KerasOptimizers` is instantiated in both of these computations, and
     only one of its `initialize` and `next` methods is invoked in each of them.

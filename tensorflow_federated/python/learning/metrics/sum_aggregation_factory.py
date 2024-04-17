@@ -104,8 +104,8 @@ class SumThenFinalizeFactory(factory.UnweightedAggregationFactory):
       metric_finalizers: An `collections.OrderedDict` of metric names to
         finalizers, should have same keys as the unfinalized metrics. A
         finalizer is a function (typically a `tf.function` decorated callable or
-        a `tff.tf_computation` decoreated TFF Computation) that takes in a
-        metric's unfinalized values, and returns the finalized metric values.
+        a `tff.tensorflow.computation` decorated TFF Computation) that takes in
+        a metric's unfinalized values, and returns the finalized metric values.
         This can be obtained from
         `tff.learning.models.VariableModel.metric_finalizers()`.
       initial_unfinalized_metrics: Optional. An `collections.OrderedDict` of

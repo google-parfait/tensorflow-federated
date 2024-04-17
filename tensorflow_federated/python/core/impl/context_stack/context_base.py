@@ -19,9 +19,9 @@ depending on the context in which they are invoked. For example:
 *   During top-level Python simulations, computation invocations result in the
     computation being serialized and evaluated by the TensorFlow native runtime.
 
-*   In functions decorated wtih `@tff.tf_computation`, computation invocations
-    must import the body of the invoked function into the current TensorFlow
-    graph.
+*   In functions decorated with `@tff.tensorflow.computation`, computation
+    invocations must import the body of the invoked function into the current
+    TensorFlow graph.
 
 Code can customize the way in which each of these calls are evaluated by setting
 a specific context using a global or thread-local context stack.

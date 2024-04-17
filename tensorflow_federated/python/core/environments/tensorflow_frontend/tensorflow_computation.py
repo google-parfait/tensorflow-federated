@@ -52,7 +52,7 @@ def _tf_wrapper_fn(
   del name  # Unused.
   if not type_analysis.is_tensorflow_compatible_type(parameter_type):
     raise TypeError(
-        '`tf_computation`s can accept only parameter types with '
+        '`tff.tensorflow.computation`s can accept only parameter types with '
         'constituents `SequenceType`, `StructType` '
         'and `TensorType`; you have attempted to create one '
         'with the type {}.'.format(parameter_type)
@@ -90,12 +90,12 @@ tf_computation.__doc__ = """Decorates/wraps Python functions and defuns as TFF T
   1. Convert an existing function inline into a TFF computation. This is the
      simplest mode of usage, and how one can embed existing non-TFF code for
      use with the TFF framework. In this mode, one invokes
-     `tff.tf_computation` with a pair of arguments, the first being a
+     `tff.tensorflow.computation` with a pair of arguments, the first being a
      function/defun that contains the logic, and the second being the TFF type
      of the parameter:
 
      ```python
-     foo = tff.tf_computation(lambda x: x > 10, tf.int32)
+     foo = tff.tensorflow.computation(lambda x: x > 10, tf.int32)
      ```
 
      After executing the above code snippet, `foo` becomes an instance of the
@@ -111,7 +111,7 @@ tf_computation.__doc__ = """Decorates/wraps Python functions and defuns as TFF T
      a computation from the standard TensorFlow operator `tf.add`:
 
      ```python
-     foo = tff.tf_computation(tf.add, (tf.int32, tf.int32))
+     foo = tff.tensorflow.computation(tf.add, (tf.int32, tf.int32))
      ```
 
      The resulting type signature is as expected:
@@ -125,19 +125,19 @@ tf_computation.__doc__ = """Decorates/wraps Python functions and defuns as TFF T
      function as well:
 
      ```python
-     foo = tf_computation(lambda: tf.constant(10))
+     foo = tff.tensorflow.computation(lambda: tf.constant(10))
      ```
 
   2. Decorate a Python function or a TensorFlow defun with a TFF type to wrap
      it as a TFF computation. The only difference between this mode of usage
      and the one mentioned above is that instead of passing the function/defun
-     as an argument, `tff.tf_computation` along with the optional type specifier
+     as an argument, `tff.tensorflow.computation` along with the optional type specifier
      is written above the function/defun's body.
 
      Here's an example of a computation that accepts a parameter:
 
      ```python
-     @tff.tf_computation(tf.int32)
+     @tff.tensorflow.computation(tf.int32)
      def foo(x):
        return x > 10
      ```
@@ -146,13 +146,13 @@ tf_computation.__doc__ = """Decorates/wraps Python functions and defuns as TFF T
      example already given earlier:
 
      ```python
-     foo = tff.tf_computation(lambda x: x > 10, tf.int32)
+     foo = tff.tensorflow.computation(lambda x: x > 10, tf.int32)
      ```
 
      Here's an example of a no-parameter computation:
 
      ```python
-     @tff.tf_computation
+     @tff.tensorflow.computation
      def foo():
        return tf.constant(10)
      ```
@@ -160,24 +160,25 @@ tf_computation.__doc__ = """Decorates/wraps Python functions and defuns as TFF T
      Again, this is merely syntactic sugar for the example given earlier:
 
      ```python
-     foo = tff.tf_computation(lambda: tf.constant(10))
+     foo = tff.tensorflow.computation(lambda: tf.constant(10))
      ```
 
-     If the Python function has multiple decorators, `tff.tf_computation` should
-     be the outermost one (the one that appears first in the sequence).
+     If the Python function has multiple decorators,
+     `tff.tensorflow.computation` should be the outermost one (the one that
+     appears first in the sequence).
 
   3. Create a polymorphic callable to be instantiated based on arguments,
      similarly to TensorFlow defuns that have been defined without an input
      signature.
 
      This mode of usage is symmetric to those above. One simply omits the type
-     specifier, and applies `tff.tf_computation` as a decorator or wrapper to a
-     function/defun that does expect parameters.
+     specifier, and applies `tff.tensorflow.computation` as a decorator or
+     wrapper to a function/defun that does expect parameters.
 
      Here's an example of wrapping a lambda as a polymorphic callable:
 
      ```python
-     foo = tff.tf_computation(lambda x, y: x > y)
+     foo = tff.tensorflow.computation(lambda x, y: x > y)
      ```
 
      The resulting `foo` can be used in the same ways as if it were had the
@@ -194,7 +195,7 @@ tf_computation.__doc__ = """Decorates/wraps Python functions and defuns as TFF T
      Here's an example of creating a polymorphic callable via decorator:
 
      ```python
-     @tff.tf_computation
+     @tff.tensorflow.computation
      def foo(x, y):
        return x > y
      ```

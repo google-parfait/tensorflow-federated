@@ -54,7 +54,8 @@ def build_whimsy_merge_computation(
 def build_sum_merge_computation(
     arg_type: tff.Type,
 ) -> tff.Computation:
-  @tff.tf_computation(arg_type, arg_type)
+
+  @tff.tensorflow.computation(arg_type, arg_type)
   def merge(arg0, arg1):
     return arg0 + arg1
 
@@ -115,7 +116,7 @@ def build_sum_merge_with_first_arg_computation(
 ) -> tff.Computation:
   """Assumes original_arg_type is federated, and compatible with summing with merge_result_type."""
 
-  @tff.tf_computation(original_arg_type[0].member, merge_result_type)
+  @tff.tensorflow.computation(original_arg_type[0].member, merge_result_type)
   def add(x, y):
     return x + y
 

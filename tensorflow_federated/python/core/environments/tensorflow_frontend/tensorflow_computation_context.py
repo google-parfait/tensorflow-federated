@@ -32,7 +32,7 @@ def get_session_token() -> tf.Tensor:
   if not isinstance(context, TensorFlowComputationContext):
     raise context_base.ContextError(
         'Session tokens can only be retrieved from within the '
-        '`TensorFlowComputationContext (in a `@tff.tf_computation`). '
+        '`TensorFlowComputationContext (in a `@tff.tensorflow.computation`). '
         f'Instead, the context {context} of type {type(context)} was found.'
     )
   return context.session_token
@@ -83,8 +83,8 @@ class TensorFlowComputationContext(context_base.SyncContext):
             )
         )
 
-    # We are invoking a tff.tf_computation inside of another
-    # tf_computation.
+    # We are invoking a `tff.tensorflow.computation` inside of another
+    # `tff.tensorflow.computation`.
     py_typecheck.check_type(comp, computation_impl.ConcreteComputation)
     computation_proto = computation_impl.ConcreteComputation.get_proto(comp)
     computation_oneof = computation_proto.WhichOneof('computation')

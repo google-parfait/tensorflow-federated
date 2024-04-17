@@ -35,8 +35,8 @@ def schedule_learning_rate(
   Args:
     optimizer: A `tff.learning.optimizers.Optimizer` which uses a learning rate.
     schedule_fn: A callable mapping integer round number to a floating point
-      learning rate. To be invoked in the cotext of a `tff.tf_computation`, thus
-      should support a `tf.Tensor` input.
+      learning rate. To be invoked in the context of a
+      `tff.tensorflow.computation`, thus should support a `tf.Tensor` input.
 
   Returns:
     A `tff.learning.optimizers.Optimizer`.

@@ -163,7 +163,7 @@ def create_functional_metric_fns(
 
   # Force tracing and creation of `variable_creation_indices`. This must happen
   # in a graph context so that we get the same Keras behavior as when
-  # `initialize` eventualy is run inside a `tff.tf_computation`.
+  # `initialize` eventualy is run inside a `tff.tensorflow.computation`.
   with tf.Graph().as_default():
     initialize.get_concrete_function()
 

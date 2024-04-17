@@ -100,8 +100,8 @@ def _jax_wrapper_fn(
 jax_computation = computation_wrapper.ComputationWrapper(_jax_wrapper_fn)
 jax_computation.__doc__ = """Decorates/wraps Python functions containing JAX code as TFF computations.
 
-  This wrapper can be used in a similar manner to `tff.tf_computation`, with
-  exception of the following:
+  This wrapper can be used in a similar manner to `tff.tensorflow.computation`,
+  with exception of the following:
 
   * The code in the wrapped Python function must be JAX code that can be
     compiled to XLA (e.g., code that one would expect to be able to annotate

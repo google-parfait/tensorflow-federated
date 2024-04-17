@@ -28,7 +28,7 @@ def _create_tff_parallel_clients_with_dataset_reduce():
   def dataset_reduce_fn(ds, initial_val):
     return ds.reduce(initial_val, reduce_fn)
 
-  @tff.tf_computation(tff.SequenceType(np.int64))
+  @tff.tensorflow.computation(tff.SequenceType(np.int64))
   def dataset_reduce_fn_wrapper(ds):
     initial_val = tf.Variable(np.int64(1.0))
     return dataset_reduce_fn(ds, initial_val)
@@ -51,7 +51,7 @@ def _create_tff_parallel_clients_with_iter_dataset():
       initial_val = reduce_fn(initial_val, batch)
     return initial_val
 
-  @tff.tf_computation(tff.SequenceType(np.int64))
+  @tff.tensorflow.computation(tff.SequenceType(np.int64))
   def dataset_reduce_fn_wrapper(ds):
     initial_val = tf.Variable(np.int64(1.0))
     return dataset_reduce_fn(ds, initial_val)

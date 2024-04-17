@@ -361,11 +361,11 @@ def _build_check_non_finite_leaves_computation(
       `tff.types.TensorType`s or `tff.types.StructWithPythonType`s.
 
   Returns:
-    A TFF computation (constructed by the `tff.tf_computation` decoration) that
-    takes in a client-side value as input, and returns a value of the same
-    structure as the client value, with all the leaves being a `tf.int64` 0/1
-    scalar tensor indicating whether the corresponding leaf tensor in the input
-    client value has any non-finite (`NaN` or `Inf`) value.
+    A TFF computation (constructed by the `tff.tensorflow.computation`
+    decoration) that takes in a client-side value as input, and returns a value
+    of the same structure as the client value, with all the leaves being a
+    `tf.int64` 0/1 scalar tensor indicating whether the corresponding leaf
+    tensor in the input client value has any non-finite (`NaN` or `Inf`) value.
 
   Raises:
     TypeError: if `value_type` contains types other than `tff.types.TensorType`
