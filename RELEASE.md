@@ -12,6 +12,11 @@
 *   Removed the `check_foo()` methods on building blocks.
 *   Removed `tff.data`, this symbol is not used.
 
+## Bug Fixes
+
+*   Fix a bug where the pip package default executor stack cannot execute
+    computations that have `Lambda`s under `sequence_*` intrinsics.
+
 # Release 0.75.0
 
 ## Major Features and Improvements

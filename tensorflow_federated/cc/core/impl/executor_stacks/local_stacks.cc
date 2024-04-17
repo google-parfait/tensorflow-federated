@@ -32,12 +32,14 @@ absl::StatusOr<std::shared_ptr<Executor>> CreateLocalExecutor(
         leaf_executor_fn,
     std::function<absl::StatusOr<std::shared_ptr<Executor>>(int32_t)>
         client_leaf_executor_fn) {
-  std::shared_ptr<Executor> server = CreateReferenceResolvingExecutor(
-      CreateSequenceExecutor(TFF_TRY(leaf_executor_fn(-1))));
+  std::shared_ptr<Executor> server =
+      CreateReferenceResolvingExecutor(CreateSequenceExecutor(
+          CreateReferenceResolvingExecutor(TFF_TRY(leaf_executor_fn(-1)))));
   std::shared_ptr<Executor> client = server;
   if (client_leaf_executor_fn != nullptr) {
     client = CreateReferenceResolvingExecutor(
-        CreateSequenceExecutor(TFF_TRY(client_leaf_executor_fn(-1))));
+        CreateSequenceExecutor(CreateReferenceResolvingExecutor(
+            TFF_TRY(client_leaf_executor_fn(-1)))));
   }
   return CreateReferenceResolvingExecutor(TFF_TRY(CreateFederatingExecutor(
       /*server_child=*/server, /*client_child=*/client, cardinalities)));
