@@ -113,7 +113,7 @@ jax_computation.__doc__ = """Decorates/wraps Python functions containing JAX cod
   Example:
 
   ```
-  @tff.jax_computation(np.int32)
+  @tff.jax.computation(np.int32)
   def comp(x):
     return jax.numpy.add(x, np.int32(10))
   ```
