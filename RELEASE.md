@@ -1,5 +1,7 @@
 # Unreleased
 
+# Release 0.76.0
+
 ## Major Features and Improvements
 
 *   Added a `Literal` to the TFF language, part 2. This change updates the
