@@ -394,9 +394,8 @@ TEST_F(XLAExecutorTest,
 
   TFF_ASSERT_OK_AND_ASSIGN(OwnedValueId embedded_fn,
                            test_executor_->CreateValue(computation));
-  CheckMaterializeStatusIs(
-      embedded_fn, StatusIs(absl::StatusCode::kInvalidArgument,
-                            HasSubstr("Tensor parameters of unknown shape")));
+  CheckMaterializeStatusIs(embedded_fn,
+                           StatusIs(absl::StatusCode::kInvalidArgument));
 }
 
 TEST_F(XLAExecutorTest, CreateValueComputationTensorParameterUnknownRankFails) {
@@ -419,9 +418,8 @@ TEST_F(XLAExecutorTest, CreateValueComputationTensorParameterUnknownRankFails) {
 
   TFF_ASSERT_OK_AND_ASSIGN(OwnedValueId embedded_fn,
                            test_executor_->CreateValue(computation));
-  CheckMaterializeStatusIs(
-      embedded_fn, StatusIs(absl::StatusCode::kInvalidArgument,
-                            HasSubstr("Tensor parameters of unknown rank")));
+  CheckMaterializeStatusIs(embedded_fn,
+                           StatusIs(absl::StatusCode::kInvalidArgument));
 }
 
 TEST_F(XLAExecutorTest, CreateValueComputationLiteralReturnsResult) {

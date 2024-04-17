@@ -1309,6 +1309,8 @@ cc_library(
     deps = [
         ":status_macros",
         "//tensorflow_federated/proto/v0:array_cc_proto",
+        "//tensorflow_federated/proto/v0:computation_cc_proto",
+        "//tensorflow_federated/proto/v0:data_type_cc_proto",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
@@ -1329,6 +1331,7 @@ cc_test(
         "//tensorflow_federated/cc/common_libs:oss_test_main",
         "//tensorflow_federated/proto/v0:array_cc_proto",
         "//tensorflow_federated/proto/v0:computation_cc_proto",
+        "//tensorflow_federated/proto/v0:data_type_cc_proto",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@eigen_archive//:eigen3",

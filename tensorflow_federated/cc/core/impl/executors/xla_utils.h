@@ -20,11 +20,21 @@ limitations under the License
 #include "tensorflow/compiler/xla/literal.h"
 #include "tensorflow/compiler/xla/shape.h"
 #include "tensorflow_federated/proto/v0/array.pb.h"
+#include "tensorflow_federated/proto/v0/computation.pb.h"
+#include "tensorflow_federated/proto/v0/data_type.pb.h"
 
 namespace tensorflow_federated {
 
+// Creates a xla::PrimitiveType from a ::tensorflow_federated::v0::DataType.
+absl::StatusOr<xla::PrimitiveType> PrimitiveTypeFromDataType(
+    v0::DataType data_type);
+
+// Creates a xla::Shape from a v0::TensorType.
+absl::StatusOr<xla::Shape> ShapeFromTensorType(
+    const v0::TensorType& tensor_type_pb);
+
 // Creates a xla::Shape from a v0::ArrayShape.
-absl::StatusOr<xla::Shape> ShapeFromArrayShape(xla::PrimitiveType element_type,
+absl::StatusOr<xla::Shape> ShapeFromArrayShape(v0::DataType data_type,
                                                const v0::ArrayShape& shape_pb);
 
 // Creates a xla::Literal from a v0::Array.

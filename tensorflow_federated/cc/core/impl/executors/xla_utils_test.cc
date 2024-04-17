@@ -35,54 +35,96 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/status_matchers.h"
 #include "tensorflow_federated/proto/v0/array.pb.h"
 #include "tensorflow_federated/proto/v0/computation.pb.h"
+#include "tensorflow_federated/proto/v0/data_type.pb.h"
 
 namespace tensorflow_federated {
 namespace {
 
+TEST(ShapeFromTensorTypeTest, TestReturnsShape_fully_defined) {
+  std::initializer_list<int64_t> dims = {2, 3};
+  v0::TensorType type_pb;
+  type_pb.set_dtype(v0::DataType::DT_INT32);
+  type_pb.mutable_dims()->Assign(dims.begin(), dims.end());
+  const xla::Shape& expected_shape = xla::ShapeUtil::MakeShape(
+      xla::primitive_util::NativeToPrimitiveType<int32_t>(), {2, 3});
+
+  const xla::Shape& actual_shape = TFF_ASSERT_OK(ShapeFromTensorType(type_pb));
+
+  EXPECT_TRUE(xla::Shape::Equal()(actual_shape, expected_shape));
+}
+
+TEST(ShapeFromTensorTypeTest, TestReturnsShape_scalar) {
+  std::initializer_list<int64_t> dims = {};
+  v0::TensorType type_pb;
+  type_pb.set_dtype(v0::DataType::DT_INT32);
+  type_pb.mutable_dims()->Assign(dims.begin(), dims.end());
+  const xla::Shape& expected_shape = xla::ShapeUtil::MakeShape(
+      xla::primitive_util::NativeToPrimitiveType<int32_t>(), {});
+
+  const xla::Shape& actual_shape = TFF_ASSERT_OK(ShapeFromTensorType(type_pb));
+
+  EXPECT_TRUE(xla::Shape::Equal()(actual_shape, expected_shape));
+}
+
+TEST(ShapeFromTensorTypeTest, TestFails_partially_defined) {
+  std::initializer_list<int64_t> dims = {2, -1};
+  v0::TensorType type_pb;
+  type_pb.set_dtype(v0::DataType::DT_INT32);
+  type_pb.mutable_dims()->Assign(dims.begin(), dims.end());
+
+  const absl::StatusOr<xla::Shape>& result = ShapeFromTensorType(type_pb);
+
+  EXPECT_EQ(result.status().code(), absl::StatusCode::kInvalidArgument);
+}
+
+TEST(ShapeFromTensorTypeTest, TestFails_unknown) {
+  std::initializer_list<int64_t> dims = {};
+  v0::TensorType type_pb;
+  type_pb.set_dtype(v0::DataType::DT_INT32);
+  type_pb.mutable_dims()->Assign(dims.begin(), dims.end());
+  type_pb.set_unknown_rank(true);
+
+  const absl::StatusOr<xla::Shape>& result = ShapeFromTensorType(type_pb);
+
+  EXPECT_EQ(result.status().code(), absl::StatusCode::kInvalidArgument);
+}
+
 TEST(ShapeFromArrayShapeTest, TestReturnsShape_fully_defined) {
-  xla::PrimitiveType element_type =
-      xla::primitive_util::NativeToPrimitiveType<int32_t>();
   const v0::ArrayShape& shape_pb = testing::CreateArrayShape({2, 3});
   const xla::Shape& expected_shape = xla::ShapeUtil::MakeShape(
       xla::primitive_util::NativeToPrimitiveType<int32_t>(), {2, 3});
 
   const xla::Shape& actual_shape =
-      TFF_ASSERT_OK(ShapeFromArrayShape(element_type, shape_pb));
+      TFF_ASSERT_OK(ShapeFromArrayShape(v0::DataType::DT_INT32, shape_pb));
 
   EXPECT_TRUE(xla::Shape::Equal()(actual_shape, expected_shape));
 }
 
 TEST(ShapeFromArrayShapeTest, TestReturnsShape_scalar) {
-  xla::PrimitiveType element_type =
-      xla::primitive_util::NativeToPrimitiveType<int32_t>();
   const v0::ArrayShape& shape_pb = testing::CreateArrayShape({});
   const xla::Shape& expected_shape = xla::ShapeUtil::MakeShape(
       xla::primitive_util::NativeToPrimitiveType<int32_t>(), {});
 
   const xla::Shape& actual_shape =
-      TFF_ASSERT_OK(ShapeFromArrayShape(element_type, shape_pb));
+      TFF_ASSERT_OK(ShapeFromArrayShape(v0::DataType::DT_INT32, shape_pb));
 
   EXPECT_TRUE(xla::Shape::Equal()(actual_shape, expected_shape));
 }
 
 TEST(ShapeFromArrayShapeTest, TestFails_partially_defined) {
-  xla::PrimitiveType element_type =
-      xla::primitive_util::NativeToPrimitiveType<int32_t>();
   const v0::ArrayShape& shape_pb = testing::CreateArrayShape({2, -1});
 
   const absl::StatusOr<xla::Shape>& result =
-      tensorflow_federated::ShapeFromArrayShape(element_type, shape_pb);
+      ShapeFromArrayShape(v0::DataType::DT_INT32, shape_pb);
 
   EXPECT_EQ(result.status().code(), absl::StatusCode::kInvalidArgument);
 }
 
 TEST(ShapeFromArrayShapeTest, TestFails_unknown) {
-  xla::PrimitiveType element_type =
-      xla::primitive_util::NativeToPrimitiveType<int32_t>();
   const v0::ArrayShape& shape_pb = testing::CreateArrayShape({}, true);
 
   const absl::StatusOr<xla::Shape>& result =
-      tensorflow_federated::ShapeFromArrayShape(element_type, shape_pb);
+      ShapeFromArrayShape(v0::DataType::DT_INT32, shape_pb);
 
   EXPECT_EQ(result.status().code(), absl::StatusCode::kInvalidArgument);
 }
