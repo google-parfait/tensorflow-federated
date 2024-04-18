@@ -854,13 +854,17 @@ message Selection {
 // examples emitted by a mobile app, files on a filesystem, data to obtain from
 // a location on the web, etc., and the specification, in addition to the
 // origin of the data, could include things like example selection criteria,
-// data decoding or simple transformations. For now, this structure is simply a
-// URI to be interpreted by the runtime environment. To be extended as needed.
+// data decoding or simple transformations. For now, this structure is a
+// specification to be interpreted by the runtime environment. To be extended
+// as needed.
 message Data {
   oneof data {
     // A specification of the data stream as a URI to be interpreted by the
     // environment.
-    string uri = 1;
+    string uri = 1 [deprecated = true];
+
+    // A specification of the data stream to be interpreted by the environment.
+    bytes content = 2;
   }
 }
 
