@@ -17,6 +17,8 @@ limitations under the License
 
 #include <fcntl.h>
 
+#include <cstddef>
+#include <cstdint>
 #include <string>
 #include <utility>
 #include <vector>
@@ -24,9 +26,14 @@ limitations under the License
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
 #include "absl/flags/flag.h"
+#include "absl/log/check.h"
+#include "absl/status/status.h"
 #include "google/protobuf/io/zero_copy_stream_impl.h"
+#include "third_party/protobuf/text_format.h"
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/framework/types.pb.h"
+#include "tensorflow/core/platform/status.h"
+#include "tensorflow/core/platform/tstring.h"
 #include "tensorflow_federated/cc/core/impl/executors/session_provider.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_matchers.h"
 #include "tensorflow_federated/cc/core/impl/executors/value_test_utils.h"

@@ -12,16 +12,22 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License
 ==============================================================================*/
+
 #include "tensorflow_federated/cc/core/impl/executors/dataset_conversions.h"
 
+#include <cstdint>
 #include <memory>
+#include <string>
 #include <vector>
 
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
+#include "absl/status/status.h"
+#include "tensorflow/core/data/standalone.h"
+#include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/framework/types.pb.h"
-#include "tensorflow_federated/cc/core/impl/executors/executor.h"
-#include "tensorflow_federated/cc/core/impl/executors/mock_executor.h"
+#include "tensorflow/core/platform/tstring.h"
+#include "tensorflow_federated/cc/core/impl/executors/protobuf_matchers.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_matchers.h"
 #include "tensorflow_federated/cc/core/impl/executors/value_test_utils.h"
 

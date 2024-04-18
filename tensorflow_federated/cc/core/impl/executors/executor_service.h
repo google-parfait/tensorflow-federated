@@ -16,21 +16,20 @@ limitations under the License
 #ifndef THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTORS_EXECUTOR_SERVICE_H_
 #define THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTORS_EXECUTOR_SERVICE_H_
 
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <string>
-#include <utility>
+#include <string_view>
 
 #include "absl/base/thread_annotations.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/random/random.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "absl/strings/numbers.h"
-#include "absl/strings/str_cat.h"
-#include "absl/strings/substitute.h"
 #include "absl/synchronization/mutex.h"
-#include "grpcpp/grpcpp.h"
+#include "include/grpcpp/grpcpp.h"
+#include "include/grpcpp/support/status.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_conversion.h"

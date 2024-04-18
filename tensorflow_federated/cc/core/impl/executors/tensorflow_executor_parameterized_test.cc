@@ -30,6 +30,8 @@ limitations under the License
 #include "absl/status/statusor.h"
 #include "absl/types/span.h"
 #include "google/protobuf/io/zero_copy_stream_impl.h"
+#include "third_party/protobuf/text_format.h"
+#include "tensorflow/c/eager/c_api.h"
 #include "tensorflow/c/eager/tfe_context_internal.h"
 #include "tensorflow/c/tf_status.h"
 #include "tensorflow/cc/framework/ops.h"

@@ -15,10 +15,13 @@ limitations under the License
 
 #include "tensorflow_federated/cc/core/impl/executors/struct_traversal_order.h"
 
+#include <cstdint>
 #include <vector>
 
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_matchers.h"
 
 namespace tensorflow_federated {

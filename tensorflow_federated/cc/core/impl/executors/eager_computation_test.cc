@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License
 ==============================================================================*/
+
 #include "tensorflow_federated/cc/core/impl/executors/eager_computation.h"
 
 #include <cstdint>
@@ -28,6 +29,7 @@ limitations under the License
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/types/span.h"
+#include "third_party/protobuf/text_format.h"
 #include "tensorflow/c/eager/c_api.h"
 #include "tensorflow/c/eager/c_api_experimental.h"
 #include "tensorflow/c/eager/immediate_execution_tensor_handle.h"

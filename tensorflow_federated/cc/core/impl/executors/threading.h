@@ -22,6 +22,8 @@ limitations under the License
 #include <functional>
 #include <future>  // NOLINT
 #include <memory>
+#include <string>
+#include <string_view>
 #include <thread>  // NOLINT
 #include <type_traits>
 #include <utility>
@@ -32,6 +34,7 @@ limitations under the License
 #include "absl/status/statusor.h"
 #include "absl/synchronization/mutex.h"
 #include "absl/types/span.h"
+#include "absl/utility/utility.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
 
 namespace tensorflow_federated {
@@ -41,7 +44,7 @@ namespace tensorflow_federated {
 // This thread pool is safe for tasks that for DAGs of dependencies, as it
 // guarantees that work added to the pool will be run threads in the order added
 // to the pool. The pool is _NOT_ safe from other forms of synchronization and
-// communication, and callers are responsbile ensuring threads do not deadlock
+// communication, and callers are responsible ensuring threads do not deadlock
 // in such cases.
 class ThreadPool {
  public:

@@ -12,16 +12,17 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License
 ==============================================================================*/
+
 #ifndef THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTORS_DTENSOR_EXECUTOR_H_
 #define THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTORS_DTENSOR_EXECUTOR_H_
 
-#include <map>
+#include <cstdint>
 #include <memory>
 #include <optional>
 #include <string>
 
-#include "absl/status/statusor.h"
 #include "tensorflow/c/eager/c_api.h"
+#include "tensorflow/c/tf_status.h"
 #include "tensorflow/dtensor/cc/mesh_type.h"
 #include "tensorflow/dtensor/cc/tensor_layout.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"

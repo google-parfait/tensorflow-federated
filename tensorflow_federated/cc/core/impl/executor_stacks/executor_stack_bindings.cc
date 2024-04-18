@@ -16,7 +16,7 @@ limitations under the License
 #include <memory>
 #include <vector>
 
-#include "grpcpp/grpcpp.h"
+#include "include/grpcpp/grpcpp.h"
 #include "include/pybind11/detail/common.h"
 #include "include/pybind11/pybind11.h"
 #include "include/pybind11/stl.h"

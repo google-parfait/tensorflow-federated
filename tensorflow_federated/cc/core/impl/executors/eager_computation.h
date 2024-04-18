@@ -12,17 +12,18 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License
 ==============================================================================*/
+
 #ifndef THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTORS_EAGER_COMPUTATION_H_
 #define THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTORS_EAGER_COMPUTATION_H_
 
 #include <map>
-#include <memory>
 #include <optional>
 #include <string>
 #include <vector>
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/types/span.h"
 #include "tensorflow/c/eager/c_api.h"
 #include "tensorflow/c/eager/tfe_tensorhandle_internal.h"
 #include "tensorflow/core/framework/function.pb.h"
@@ -32,7 +33,7 @@ limitations under the License
 namespace tensorflow_federated {
 // Class responsible for converting a GraphDef into FunctionDef and executing it
 // with TF2 eager C APIs.
-// This class only owns the Function Defination derived from
+// This class only owns the Function Definition derived from
 // Computation->Tensorflow proto. It does not manage any resources or their
 // lifetime.
 //

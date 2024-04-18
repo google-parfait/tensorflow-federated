@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License
 ==============================================================================*/
+
 #include "tensorflow_federated/cc/core/impl/executors/dtensor_executor.h"
 
 #include <cstdint>
@@ -25,15 +26,18 @@ limitations under the License
 #include <utility>
 #include <vector>
 
+#include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_split.h"
+#include "absl/types/span.h"
 #include "tensorflow/c/eager/c_api.h"
 #include "tensorflow/c/eager/tfe_tensorhandle_internal.h"
 #include "tensorflow/c/tf_status.h"
 #include "tensorflow/c/tf_tensor.h"
 #include "tensorflow/c/tf_tensor_internal.h"
+#include "tensorflow/dtensor/cc/mesh_type.h"
 #include "tensorflow/dtensor/cc/tensor_layout.h"
 #include "tensorflow_federated/cc/core/impl/executors/dtensor_api.h"
 #include "tensorflow_federated/cc/core/impl/executors/eager_computation.h"
@@ -79,7 +83,7 @@ class Value {
                                         ParallelTasks& tasks) = 0;
 
   // Method for executing computation with given arguments.
-  // This method is relavent only for ComputationValue.
+  // This method is relevant only for ComputationValue.
   virtual absl::StatusOr<std::shared_ptr<Value>> Call(
       std::optional<std::shared_ptr<Value>> arg, TFE_Context* context,
       std::optional<std::string> device_name) = 0;

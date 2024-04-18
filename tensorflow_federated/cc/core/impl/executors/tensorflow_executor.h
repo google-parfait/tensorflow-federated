@@ -16,8 +16,8 @@ limitations under the License
 #ifndef THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTORS_TENSORFLOW_EXECUTOR_H_
 #define THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTORS_TENSORFLOW_EXECUTOR_H_
 
+#include <cstdint>
 #include <memory>
-#include <optional>
 
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 

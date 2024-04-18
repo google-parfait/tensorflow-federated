@@ -27,12 +27,14 @@ limitations under the License
 #include <memory>
 #include <optional>
 #include <string>
-#include <vector>
 
+#include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
-#include "grpcpp/grpcpp.h"
+#include "include/grpcpp/impl/channel_interface.h"
+#include "include/grpcpp/security/credentials.h"
+#include "include/grpcpp/support/channel_arguments.h"
 #include "include/pybind11/cast.h"
 #include "include/pybind11/detail/common.h"
 #include "include/pybind11/pybind11.h"
@@ -41,11 +43,12 @@ limitations under the License
 #include "pybind11_abseil/absl_casters.h"
 #include "pybind11_abseil/status_casters.h"
 #include "pybind11_protobuf/native_proto_caster.h"
+#include "tensorflow/c/eager/c_api.h"
 #include "tensorflow/c/safe_ptr.h"
-#include "tensorflow/c/tf_status.h"
 #include "tensorflow/c/tf_tensor.h"
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/platform/status.h"
+#include "tensorflow/core/platform/strcat.h"
 #include "tensorflow/dtensor/cc/tensor_layout.h"
 #include "tensorflow/python/eager/pywrap_tfe.h"
 #include "tensorflow/python/lib/core/ndarray_tensor.h"

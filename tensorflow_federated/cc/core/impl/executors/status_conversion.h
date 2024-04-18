@@ -17,7 +17,7 @@ limitations under the License
 #define THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTORS_STATUS_CONVERSION_H_
 
 #include "absl/status/status.h"
-#include "grpcpp/grpcpp.h"
+#include "include/grpcpp/support/status.h"
 
 namespace tensorflow_federated {
 
