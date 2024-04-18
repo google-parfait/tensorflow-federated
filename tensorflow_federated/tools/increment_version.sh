@@ -46,6 +46,10 @@ main() {
     echo "error: Expected '${release_file}' to exist." 1>&2
   fi
 
+  # Grab the latest version before begining to update the version.
+  local latest_version="$(latest_version)"
+  echo "Updating version from ${latest_version} to ${version}"
+
   # Confirm release notes.
   local unreleased_notes="$(unreleased_notes)"
   echo "${unreleased_notes}" | sed "s/# Unreleased/# Release ${version}/g"
@@ -60,7 +64,6 @@ main() {
       "${release_file}"
 
   # Update version.
-  local latest_version="$(latest_version)"
   find "third_party/tensorflow_federated/" -type f \
       -not -path "${release_file}" \
       | xargs sed --in-place "s/${latest_version}/${version}/g"
