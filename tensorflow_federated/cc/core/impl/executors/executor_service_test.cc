@@ -28,7 +28,9 @@ limitations under the License
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/types/span.h"
-#include "grpcpp/grpcpp.h"
+#include "include/grpcpp/grpcpp.h"
+#include "include/grpcpp/support/status.h"
+#include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/mock_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/protobuf_matchers.h"
@@ -430,7 +432,7 @@ TEST_F(ExecutorServiceTest, ComputeTwoValuesReturnsAppropriateValues) {
       .WillOnce([this] { return TestId(0); })
       .WillOnce([this] { return TestId(1); });
 
-  // We expect materializing the 0th id to retun 3, the 1st to return 4.
+  // We expect materializing the 0th id to return 3, the 1st to return 4.
   EXPECT_CALL(*executor_ptr_, Materialize(::testing::_, ::testing::_))
       .WillRepeatedly(
           [&expected_three, &expected_four](ValueId id, v0::Value* val) {
@@ -463,7 +465,7 @@ TEST_F(ExecutorServiceTest, ComputeTwoValuesReturnsAppropriateValues) {
   TFF_ASSERT_OK(grpc_to_absl(first_compute_response_status));
   TFF_ASSERT_OK(grpc_to_absl(second_compute_response_status));
 
-  // We expect materializing the 0th id to retun 3, the 1st to return 4.
+  // We expect materializing the 0th id to return 3, the 1st to return 4.
   EXPECT_THAT(first_compute_response_pb.value(),
               testing::EqualsProto(expected_three));
   EXPECT_THAT(second_compute_response_pb.value(),

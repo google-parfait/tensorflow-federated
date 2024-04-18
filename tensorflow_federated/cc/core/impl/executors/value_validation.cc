@@ -15,7 +15,7 @@ limitations under the License
 
 #include "tensorflow_federated/cc/core/impl/executors/value_validation.h"
 
-#include <string>
+#include <cstdint>
 #include <string_view>
 
 #include "absl/status/status.h"

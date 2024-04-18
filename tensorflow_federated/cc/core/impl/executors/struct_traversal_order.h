@@ -17,12 +17,15 @@ limitations under the License
 #define THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTORS_STRUCT_TRAVERSAL_ORDER_H_
 
 #include <algorithm>
+#include <cstdint>
 #include <numeric>
 #include <string>
 #include <utility>
 #include <vector>
 
+#include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
 #include "tensorflow_federated/proto/v0/computation.pb.h"
 
 namespace tensorflow_federated {

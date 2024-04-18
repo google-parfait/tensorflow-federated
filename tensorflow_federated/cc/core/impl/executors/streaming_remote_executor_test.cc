@@ -404,8 +404,8 @@ TEST_F(StreamingRemoteExecutorTest, CreateValueWithError) {
     OwnedValueId value_ref =
         TFF_ASSERT_OK(test_executor_->CreateValue(tensor_two));
     v0::Value materialized_value;
-    // If the CreateValue fails we dont expect a Compute call on the other side.
-    // Nor do we expect a dispose, because no value has been created.
+    // If the CreateValue fails we don't expect a Compute call on the other
+    // side. Nor do we expect a dispose, because no value has been created.
     absl::Status materialize_status =
         test_executor_->Materialize(value_ref, &materialized_value);
     EXPECT_THAT(materialize_status,

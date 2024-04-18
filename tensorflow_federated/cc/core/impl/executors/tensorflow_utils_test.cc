@@ -17,7 +17,6 @@ limitations under the License
 
 #include <complex>
 #include <cstdint>
-#include <initializer_list>
 #include <string>
 
 #include "googletest/include/gtest/gtest.h"

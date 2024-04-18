@@ -15,6 +15,7 @@ limitations under the License
 
 #include "tensorflow_federated/cc/core/impl/executors/data_executor.h"
 
+#include <cstdint>
 #include <future>  // NOLINT
 #include <memory>
 #include <optional>
@@ -23,8 +24,10 @@ limitations under the License
 #include <vector>
 
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "tensorflow_federated/cc/core/impl/executors/data_backend.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
+#include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
 #include "tensorflow_federated/cc/core/impl/executors/threading.h"
 
 namespace tensorflow_federated {

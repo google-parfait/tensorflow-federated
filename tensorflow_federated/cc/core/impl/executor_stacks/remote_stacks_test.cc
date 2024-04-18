@@ -24,7 +24,7 @@ limitations under the License
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "include/grpc/support/time.h"
-#include "grpcpp/grpcpp.h"
+#include "include/grpcpp/grpcpp.h"
 #include "include/grpcpp/impl/call.h"
 #include "include/grpcpp/security/credentials.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"

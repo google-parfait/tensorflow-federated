@@ -15,8 +15,8 @@ limitations under the License
 
 #include "tensorflow_federated/cc/core/impl/executors/threading.h"
 
+#include <cstdint>
 #include <functional>
-#include <future>  // NOLINT
 #include <string_view>
 #include <thread>  // NOLINT
 #include <utility>

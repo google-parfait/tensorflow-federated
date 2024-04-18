@@ -27,9 +27,10 @@ limitations under the License
 #include <utility>
 
 #include "googlemock/include/gmock/gmock.h"
+#include "googletest/include/gtest/gtest.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "grpcpp/grpcpp.h"
+#include "include/grpcpp/support/status.h"
 
 namespace tensorflow_federated {
 namespace internal_status {

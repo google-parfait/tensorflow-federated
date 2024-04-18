@@ -19,17 +19,17 @@ limitations under the License
 #include <future>  // NOLINT
 #include <memory>
 #include <optional>
-#include <string>
 #include <string_view>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 
 #include "absl/base/thread_annotations.h"
+#include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/synchronization/mutex.h"
-#include "grpcpp/grpcpp.h"
+#include "include/grpcpp/grpcpp.h"
+#include "include/grpcpp/support/status.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_conversion.h"

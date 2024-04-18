@@ -15,7 +15,6 @@ limitations under the License
 
 #include "tensorflow_federated/cc/core/impl/executors/remote_executor.h"
 
-#include <cstdint>
 #include <functional>
 #include <memory>
 #include <optional>
@@ -27,11 +26,16 @@ limitations under the License
 
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
-#include "absl/container/flat_hash_map.h"
+#include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/synchronization/notification.h"
 #include "absl/time/time.h"
+#include "include/grpcpp/channel.h"
+#include "include/grpcpp/create_channel.h"
+#include "include/grpcpp/security/credentials.h"
+#include "include/grpcpp/support/status.h"
+#include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/mock_grpc.h"
 #include "tensorflow_federated/cc/core/impl/executors/protobuf_matchers.h"
@@ -255,8 +259,8 @@ TEST_F(RemoteExecutorTest, CreateValueWithError) {
     OwnedValueId value_ref =
         TFF_ASSERT_OK(test_executor_->CreateValue(tensor_two));
     v0::Value materialized_value;
-    // If the CreateValue fails we dont expect a Compute call on the other side.
-    // Nor do we expect a dispose, because no value has been created.
+    // If the CreateValue fails we don't expect a Compute call on the other
+    // side. Nor do we expect a dispose, because no value has been created.
     absl::Status materialize_status =
         test_executor_->Materialize(value_ref, &materialized_value);
     EXPECT_THAT(materialize_status,
@@ -412,7 +416,7 @@ TEST_F(RemoteExecutorTest, CreateCallError) {
     OwnedValueId call_result =
         TFF_ASSERT_OK(test_executor_->CreateCall(fn, std::nullopt));
 
-    // We expect the executor to shortcircuit and never call Compute if an
+    // We expect the executor to short circuit and never call Compute if an
     // intermediate result errors out.
     materialize_status =
         test_executor_->Materialize(call_result, &materialized_value);
@@ -525,7 +529,8 @@ TEST_F(RemoteExecutorTest, CreateStructWithError) {
     OwnedValueId struct_result =
         TFF_ASSERT_OK(test_executor_->CreateStruct(struct_to_create));
 
-    // If the CreateStruct fails we dont expect a Compute call on the other side
+    // If the CreateStruct fails we don't expect a Compute call on the other
+    // side.
     v0::Value materialized_value;
     absl::Status materialize_status =
         test_executor_->Materialize(struct_result, &materialized_value);
@@ -611,7 +616,7 @@ TEST_F(RemoteExecutorTest, CreateSelectionWithError) {
     OwnedValueId selection_result =
         TFF_ASSERT_OK(test_executor_->CreateSelection(source_value, 1));
 
-    // If the CreateSelection fails we dont expect a Compute call on the other
+    // If the CreateSelection fails we don't expect a Compute call on the other
     // side
     materialize_status =
         test_executor_->Materialize(selection_result, &materialized_value);

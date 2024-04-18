@@ -17,6 +17,10 @@ limitations under the License
 
 #include <string_view>
 
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
+
 namespace tensorflow_federated {
 
 absl::StatusOr<SequenceIntrinsic> SequenceIntrinsicFromUri(
