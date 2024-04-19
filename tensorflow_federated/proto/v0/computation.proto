@@ -864,8 +864,9 @@ message Data {
     string uri = 1 [deprecated = true];
 
     // A specification of the data stream to be interpreted by the environment.
-    bytes content = 2;
+    google.protobuf.Any content = 3;
   }
+  reserved 2;
 }
 
 // A representation of a section of XLA code (experimental-only).
