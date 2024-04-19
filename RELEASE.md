@@ -1,5 +1,9 @@
 # Unreleased
 
+## Breaking Changes
+
+*   Updated to use gRPC version `v1.59.1`.
+
 # Release 0.76.0
 
 ## Major Features and Improvements
