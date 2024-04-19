@@ -1,5 +1,7 @@
 # Unreleased
 
+*   Added an implementation of `__eq__()` on `tff.framework.Data`.
+
 # Release 0.76.0
 
 ## Major Features and Improvements

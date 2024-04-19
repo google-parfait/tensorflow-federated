@@ -30,6 +30,11 @@ from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_serialization
 
 
+_TEST_DATA = building_blocks.Data(
+    'data', computation_types.TensorType(np.int32)
+)
+
+
 def _to_python(obj):
   if isinstance(obj, np.ndarray):
     return obj.tolist()
@@ -496,6 +501,64 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
     # Note: This is not an equality comparison because ser/de is not an identity
     # transform: it will drop the container from `StructWithPythonType`.
     target.type_signature.check_assignable_from(deserialized.type_signature)
+
+
+class DataTest(parameterized.TestCase):
+
+  def test_eq_returns_true(self):
+    type_signature = computation_types.TensorType(np.int32)
+    data = building_blocks.Data('data', type_signature)
+    other = building_blocks.Data('data', type_signature)
+
+    self.assertIsNot(data, other)
+    self.assertEqual(data, other)
+
+  @parameterized.named_parameters(
+      (
+          'different_uri',
+          building_blocks.Data('data', computation_types.TensorType(np.int32)),
+          building_blocks.Data(
+              'different', computation_types.TensorType(np.int32)
+          ),
+      ),
+      (
+          'different_type_signature',
+          building_blocks.Data('data', computation_types.TensorType(np.int32)),
+          building_blocks.Data(
+              'data', computation_types.TensorType(np.float32)
+          ),
+      ),
+  )
+  def test_eq_returns_false(self, data, other):
+    self.assertIsNot(data, other)
+    self.assertNotEqual(data, other)
+
+  def test_hash_returns_same_value(self):
+    type_signature = computation_types.TensorType(np.int32)
+    data = building_blocks.Data('data', type_signature)
+    other = building_blocks.Data('data', type_signature)
+
+    self.assertEqual(hash(data), hash(other))
+
+  @parameterized.named_parameters(
+      (
+          'different_uri',
+          building_blocks.Data('data', computation_types.TensorType(np.int32)),
+          building_blocks.Data(
+              'different', computation_types.TensorType(np.int32)
+          ),
+      ),
+      (
+          'different_type_signature',
+          building_blocks.Data('data', computation_types.TensorType(np.int32)),
+          building_blocks.Data(
+              'data', computation_types.TensorType(np.float32)
+          ),
+      ),
+  )
+  def test_hash_returns_different_value(self, data, other):
+    self.assertNotEqual(data, other)
+    self.assertNotEqual(hash(data), hash(other))
 
 
 class LiteralTest(parameterized.TestCase):
@@ -992,7 +1055,6 @@ class LiteralTest(parameterized.TestCase):
       ),
   )
   def test_hash_returns_same_value(self, literal, other):
-    self.assertEqual(literal, other)
     self.assertEqual(hash(literal), hash(other))
 
   @parameterized.named_parameters(
