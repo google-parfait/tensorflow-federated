@@ -264,7 +264,9 @@ class FileProgramStateManager(
 
     path = self._get_path_for_version(version)
     if await file_utils.exists(path):
-      raise program_state_manager.ProgramStateExistsError(version)
+      raise program_state_manager.ProgramStateExistsError(
+          version=version, path=self._root_dir
+      )
     materialized_state = await value_reference.materialize_value(program_state)
 
     def _serialize(value):

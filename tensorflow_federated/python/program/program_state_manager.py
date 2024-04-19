@@ -38,8 +38,11 @@ ProgramStateStructure = TypeVar(
 class ProgramStateExistsError(Exception):
   """Raised when the program state already exists."""
 
-  def __init__(self, version: int):
-    super().__init__(f'Program state already exists for version: {version}.')
+  def __init__(self, *, version: int, path: str):
+    super().__init__(
+        f'Program state already exists for version [{version}] at path'
+        f' [{path}].'
+    )
 
 
 class ProgramStateNotFoundError(Exception):
