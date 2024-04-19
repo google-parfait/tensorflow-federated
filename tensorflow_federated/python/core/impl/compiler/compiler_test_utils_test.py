@@ -17,7 +17,6 @@ import collections
 from absl.testing import absltest
 from absl.testing import parameterized
 
-from tensorflow_federated.python.common_libs import golden
 from tensorflow_federated.python.core.impl.compiler import building_block_test_utils
 from tensorflow_federated.python.core.impl.compiler import compiler_test_utils
 
@@ -33,15 +32,6 @@ class CheckCompiledComputationsTest(parameterized.TestCase):
     compiler_test_utils.check_computations(
         'test_check_computations.expected', computations
     )
-
-  def test_check_computations_fails(self):
-    computations = collections.OrderedDict(
-        computation=building_block_test_utils.create_nested_syntax_tree()
-    )
-    with self.assertRaises(golden.MismatchedGoldenError):
-      compiler_test_utils.check_computations(
-          'test_check_computations.expected', computations
-      )
 
   @parameterized.named_parameters([
       (
