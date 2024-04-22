@@ -28,11 +28,14 @@ limitations under the License
 
 #include "absl/base/thread_annotations.h"
 #include "absl/container/flat_hash_map.h"
+#include "absl/log/check.h"
+#include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/synchronization/mutex.h"
 #include "absl/types/span.h"
+#include "absl/utility/utility.h"
 #include "tensorflow/core/profiler/lib/traceme.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
 #include "tensorflow_federated/proto/v0/computation.pb.h"
@@ -272,7 +275,7 @@ class ExecutorBase : public Executor,
     VLOG(1) << path_view;
     // Safe to pass in a view here: `TraceMe` internally copies to an owned
     // `std::string`.
-    return absl::make_optional<tensorflow::profiler::TraceMe>(path_view);
+    return std::make_optional<tensorflow::profiler::TraceMe>(path_view);
   }
 
   // Clears all currently tracked values from the executor.

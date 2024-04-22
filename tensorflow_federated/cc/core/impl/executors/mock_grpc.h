@@ -20,7 +20,10 @@ limitations under the License
 
 #include "googlemock/include/gmock/gmock.h"
 #include "absl/strings/str_cat.h"
-#include "grpcpp/grpcpp.h"
+#include "include/grpcpp/grpcpp.h"
+#include "include/grpcpp/security/credentials.h"
+#include "include/grpcpp/security/server_credentials.h"
+#include "include/grpcpp/support/status.h"
 #include "tensorflow_federated/proto/v0/executor.grpc.pb.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
 

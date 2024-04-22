@@ -21,7 +21,7 @@ namespace tensorflow_federated {
 namespace {
 
 ////////////////////////////////////////////////////////////////////////////////
-// The Python module defintion `executor_test_utils_bindings`.
+// The Python module definition `executor_test_utils_bindings`.
 //
 // This will be used with `import executor_test_utils_bindings` in Python. This
 // module should _not_ be directly imported into the public pip API. The methods

@@ -21,7 +21,6 @@ limitations under the License
 
 #include "googlemock/include/gmock/gmock.h"
 #include "absl/status/status.h"
-#include "absl/status/statusor.h"
 #include "tensorflow_federated/cc/core/impl/executors/data_backend.h"
 #include "tensorflow_federated/cc/core/impl/executors/protobuf_matchers.h"
 #include "tensorflow_federated/proto/v0/computation.pb.h"

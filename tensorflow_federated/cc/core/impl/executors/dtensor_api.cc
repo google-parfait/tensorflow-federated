@@ -12,11 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License
 ==============================================================================*/
+
 #include "tensorflow_federated/cc/core/impl/executors/dtensor_api.h"
 
 #include <cstring>
 #include <memory>
-#include <optional>
 #include <string>
 
 #include "absl/strings/str_cat.h"
@@ -25,9 +25,9 @@ limitations under the License
 #include "tensorflow/c/eager/tfe_op_internal.h"
 #include "tensorflow/c/tf_status.h"
 #include "tensorflow/dtensor/cc/dtensor_device.h"
-#include "tensorflow/dtensor/cc/dtensor_device_util.h"
 #include "tensorflow/dtensor/cc/mesh_type.h"
 #include "tensorflow/dtensor/cc/tensor_layout.h"
+#include "tensorflow/dtensor/cc/tensor_with_layout.h"
 
 extern "C" {
 

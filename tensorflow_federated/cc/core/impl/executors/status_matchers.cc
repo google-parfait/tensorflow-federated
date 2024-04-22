@@ -19,7 +19,7 @@ limitations under the License
 #include <string>
 #include <string_view>
 
-#include "googlemock/include/gmock/gmock.h"
+#include "googletest/include/gtest/gtest.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 

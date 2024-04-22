@@ -17,7 +17,6 @@ limitations under the License
 
 #include <utility>
 
-#include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_matchers.h"
 

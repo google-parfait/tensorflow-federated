@@ -16,7 +16,6 @@ limitations under the License
 #ifndef THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTORS_CARDINALITIES_H_
 #define THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTORS_CARDINALITIES_H_
 
-#include <cstdint>
 #include <string>
 #include <string_view>
 
@@ -35,7 +34,7 @@ using CardinalityMap = absl::btree_map<std::string, int>;
 const std::string_view kClientsUri = "clients";
 const std::string_view kServerUri = "server";
 
-// Returns the number of clients specifed by the provided `cardinalities`.
+// Returns the number of clients specified by the provided `cardinalities`.
 absl::StatusOr<int> NumClientsFromCardinalities(
     const CardinalityMap& cardinalities);
 

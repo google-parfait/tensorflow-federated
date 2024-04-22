@@ -21,7 +21,7 @@ limitations under the License
 #include <memory>
 
 #include "absl/status/statusor.h"
-#include "grpcpp/grpcpp.h"
+#include "include/grpcpp/grpcpp.h"
 #include "include/grpcpp/security/server_credentials.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"

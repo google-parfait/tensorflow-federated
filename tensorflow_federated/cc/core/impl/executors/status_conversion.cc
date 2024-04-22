@@ -15,7 +15,10 @@ limitations under the License
 
 #include "tensorflow_federated/cc/core/impl/executors/status_conversion.h"
 
+#include <string>
+
 #include "absl/status/status.h"
+#include "include/grpcpp/support/status.h"
 
 namespace tensorflow_federated {
 

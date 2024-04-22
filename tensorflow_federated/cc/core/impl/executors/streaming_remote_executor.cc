@@ -24,18 +24,20 @@ limitations under the License
 #include <string>
 #include <string_view>
 #include <tuple>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 
 #include "absl/base/thread_annotations.h"
-#include "absl/container/inlined_vector.h"
+#include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/match.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
-#include "grpcpp/grpcpp.h"
+#include "absl/strings/string_view.h"
+#include "absl/synchronization/mutex.h"
+#include "include/grpcpp/grpcpp.h"
+#include "include/grpcpp/support/status.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/federated_intrinsics.h"
@@ -174,7 +176,7 @@ absl::StatusOr<v0::Value> CreateSelectionFederatedStructComputation(
     const v0::FederatedType& parameter_type_pb) {
   if (!parameter_type_pb.member().has_struct_()) {
     // We don't want to create and send RPCs for computations that don't require
-    // them, make this an error conditon.
+    // them, make this an error condition.
     return absl::InvalidArgumentError(
         absl::StrCat("parameter_type_pb is a not a federated structure type: ",
                      parameter_type_pb.ShortDebugString()));
