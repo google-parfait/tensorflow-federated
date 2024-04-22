@@ -137,7 +137,7 @@ The **computations** are implementations of the abstract interface
 [`tff.Computation`](https://www.tensorflow.org/federated/api_docs/python/tff/Computation).
 
 For example, in the TFF platform you can use the
-[`tff.tf_computation`](https://www.tensorflow.org/federated/api_docs/python/tff/tf_computation)
+[`tff.tensorflow.computation`](https://www.tensorflow.org/federated/api_docs/python/tff/tf_computation)
 or
 [`tff.federated_computation`](https://www.tensorflow.org/federated/api_docs/python/tff/federated_computation)
 decorators to create a

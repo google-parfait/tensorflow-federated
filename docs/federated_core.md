@@ -249,17 +249,17 @@ additional elements.
 It provides the following programing abstractions currently exposed in the
 public API:
 
-*   **TensorFlow** computations (`tff.tf_computation`). These are sections of
-    TensorFlow code wrapped as reusable components in TFF using the
-    `tff.tf_computation` decorator. They always have functional types, and
-    unlike functions in TensorFlow, they can take structured parameters or
+*   **TensorFlow** computations (`tff.tensorflow.computation`). These are
+    sections of TensorFlow code wrapped as reusable components in TFF using the
+    `tff.tensorflow.computation` decorator. They always have functional types,
+    and unlike functions in TensorFlow, they can take structured parameters or
     return structured results of a sequence type.
 
     Here's one example, a TF computation of type `(int32* -> int)` that uses the
     `tf.data.Dataset.reduce` operator to compute a sum of integers:
 
     ```python
-    @tff.tf_computation(tff.SequenceType(np.int32))
+    @tff.tensorflow.computation(tff.SequenceType(np.int32))
     def add_up_integers(x):
       return x.reduce(np.int32(0), lambda x, y: x + y)
     ```

@@ -70,7 +70,7 @@ def build_federated_averaging_process(
 
   whimsy_model = model_fn()
 
-  @tff.tf_computation
+  @tff.tensorflow.computation
   def server_init_tf():
     model = model_fn()
     server_optimizer = server_optimizer_fn()
@@ -94,7 +94,7 @@ def build_federated_averaging_process(
       stateful_fedavg_tf.ClientState,
   )
 
-  @tff.tf_computation(
+  @tff.tensorflow.computation(
       server_state_type,
       model_weights_type.trainable,
       client_state_type.iters_count,
@@ -107,7 +107,7 @@ def build_federated_averaging_process(
         model, server_optimizer, server_state, model_delta, total_iters_count
     )
 
-  @tff.tf_computation(server_state_type)
+  @tff.tensorflow.computation(server_state_type)
   def server_message_fn(server_state):
     return stateful_fedavg_tf.build_server_broadcast_message(server_state)
 
@@ -115,7 +115,9 @@ def build_federated_averaging_process(
   element_type = tff.types.tensorflow_to_type(whimsy_model.input_spec)
   tf_dataset_type = tff.SequenceType(element_type)
 
-  @tff.tf_computation(tf_dataset_type, client_state_type, server_message_type)
+  @tff.tensorflow.computation(
+      tf_dataset_type, client_state_type, server_message_type
+  )
   def client_update_fn(tf_dataset, client_state, server_message):
     model = model_fn()
     client_optimizer = client_optimizer_fn()

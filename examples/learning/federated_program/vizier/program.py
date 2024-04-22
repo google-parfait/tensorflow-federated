@@ -84,7 +84,7 @@ def _check_problem_statement(problem: pyvizier.ProblemStatement):
     )
 
 
-@tff.tf_computation
+@tff.tensorflow.computation
 def _update_hparams(hparams, parameters):
   hparams['finalizer']['learning_rate'] = parameters['finalizer/learning_rate']
   return hparams

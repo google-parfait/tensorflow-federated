@@ -332,7 +332,7 @@ class SimpleFedAvgTest(tf.test.TestCase, parameterized.TestCase):
           y=np.ones([1], dtype=np.int32),
       )
 
-    batch = tff.tf_computation(deterministic_batch)()
+    batch = tff.tensorflow.computation(deterministic_batch)()
     federated_data = [tf.data.Dataset.from_tensor_slices(batch).batch(1)]
 
     loss = 1.0
@@ -551,7 +551,7 @@ class RNNTest(tf.test.TestCase, parameterized.TestCase):
           y=np.array([[1, 2, 3, 4, 0]], dtype=np.int32),
       )
 
-    batch = tff.tf_computation(deterministic_batch)()
+    batch = tff.tensorflow.computation(deterministic_batch)()
     federated_data = [[batch]]
 
     loss_list = []

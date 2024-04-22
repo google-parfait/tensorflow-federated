@@ -12,7 +12,7 @@ computation and how the computation is evaluated by TFF.
 ```python
 tff.backends.native.set_sync_local_cpp_execution_context()  # 3
 
-@tff.tf_computation(np.int32)  # 2
+@tff.tensorflow.computation(np.int32)  # 2
 def add_one(x):  # 1
   return x + 1
 
@@ -21,7 +21,7 @@ result = add_one(2) # 4
 
 1.  Write a *Python* function.
 
-1.  Decorate the *Python* function with `@tff.tf_computation`.
+1.  Decorate the *Python* function with `@tff.tensorflow.computation`.
 
     Note: For now, it is only important that the Python function is decorated
     not the specifics of the decorator itself; this is explained in more detail
@@ -33,7 +33,7 @@ result = add_one(2) # 4
 
 **From a TFF perspective:**
 
-When the Python is **parsed**, the `@tff.tf_computation` decorator will
+When the Python is **parsed**, the `@tff.tensorflow.computation` decorator will
 [trace](tracing.md) the Python function and construct a TFF computation.
 
 When the decorated Python function is **invoked**, it is the TFF computation
@@ -46,7 +46,7 @@ set.
 ```python
 tff.backends.native.set_sync_local_cpp_execution_context()
 
-@tff.tf_computation(np.int32)
+@tff.tensorflow.computation(np.int32)
 def add_one(x):
   return x + 1
 

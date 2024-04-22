@@ -31,13 +31,13 @@ def initialize():
   return tff.federated_value(0, tff.SERVER)
 
 
-@tff.tf_computation(tff.SequenceType(np.int32))
+@tff.tensorflow.computation(tff.SequenceType(np.int32))
 def _sum_dataset(dataset: tf.data.Dataset) -> int:
   """Returns the sum of all the integers in `dataset`."""
   return dataset.reduce(tf.cast(0, tf.int32), tf.add)
 
 
-@tff.tf_computation(np.int32, np.int32)
+@tff.tensorflow.computation(np.int32, np.int32)
 def _sum_integers(x: int, y: int) -> int:
   """Returns the sum two integers."""
   return x + y

@@ -5,8 +5,8 @@ federated computations, expressed through a combination of TFF's federated
 operators that model distributed communication, and local processing logic.
 
 Currently local processing logic can be expressed using TensorFlow APIs (via
-`@tff.tf_computation`) at the frontend, and is executed via the TensorFlow
-runtime at the backend. However, we aim to support multiple other
+`@tff.tensorflow.computation`) at the frontend, and is executed via the
+TensorFlow runtime at the backend. However, we aim to support multiple other
 (non-TensorFlow) frontend and backend frameworks for local computations,
 including non-ML frameworks (e.g., for logic expressed in SQL or general-purpose
 programming languages).

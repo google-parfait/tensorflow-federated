@@ -62,7 +62,7 @@ def _build_client_update_fn(
 ):
   """Returns computatoin for client update."""
 
-  @tff.tf_computation(server_message_type, tf_dataset_type)
+  @tff.tensorflow.computation(server_message_type, tf_dataset_type)
   def client_update_fn(server_message, tf_dataset):
     model = model_fn()
     client_optimizer = client_optimizer_fn()
@@ -78,7 +78,7 @@ def _build_client_update_fn(
     client_update_type_spec = client_update_fn.type_signature.result
     batch_type = tff.types.tensorflow_to_type(model_fn().input_spec)
 
-    @tff.tf_computation(client_update_type_spec, batch_type)
+    @tff.tensorflow.computation(client_update_type_spec, batch_type)
     def client_update_batch_fn(client_data, batch):
       model = model_fn()
       client_optimizer = client_optimizer_fn()
@@ -90,7 +90,7 @@ def _build_client_update_fn(
           client_optimizer,
       )
 
-    @tff.tf_computation(server_message_type)
+    @tff.tensorflow.computation(server_message_type)
     def initialize_client_data(server_message):
       model = model_fn()
       return init_client_ouput(model, server_message)
@@ -133,7 +133,7 @@ def build_federated_averaging_process(
       whimsy_model.metric_finalizers(),
   )
 
-  @tff.tf_computation(
+  @tff.tensorflow.computation(
       layout_map={
           'weights': 'batch,unsharded',
           'SGD/m/weights': 'batch,unsharded',
@@ -153,7 +153,7 @@ def build_federated_averaging_process(
   server_state_type = server_init_tf.type_signature.result
   model_weights_type = server_state_type.model
 
-  @tff.tf_computation(
+  @tff.tensorflow.computation(
       server_state_type,
       model_weights_type.trainable,
       layout_map={
@@ -167,7 +167,7 @@ def build_federated_averaging_process(
     _initialize_optimizer_vars(model, server_optimizer)
     return server_update(model, server_optimizer, server_state, model_delta)
 
-  @tff.tf_computation(server_state_type)
+  @tff.tensorflow.computation(server_state_type)
   def server_message_fn(server_state):
     return build_server_broadcast_message(server_state)
 

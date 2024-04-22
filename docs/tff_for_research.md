@@ -25,9 +25,9 @@ types of logic.
     is implemented at this level.
 
 1.  TensorFlow Federated orchestration logic, which binds together the
-    individual `tf.function`s from 1. by wrapping them as `tff.tf_computation`s
-    and then orchestrating them using abstractions like
-    `tff.federated_broadcast` and `tff.federated_mean` inside a
+    individual `tf.function`s from 1. by wrapping them as
+    `tff.tensorflow.computation`s and then orchestrating them using abstractions
+    like `tff.federated_broadcast` and `tff.federated_mean` inside a
     `tff.federated_computation`. See, for example, this
     [orchestration for Federated Averaging](https://github.com/tensorflow/federated/blob/main/examples/simple_fedavg/simple_fedavg_tff.py#L112-L140).
 
