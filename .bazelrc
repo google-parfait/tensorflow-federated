@@ -33,9 +33,10 @@ build --define=allow_oversize_protos=true
 # explicit __init__.py files.
 # build --incompatible_default_to_explicit_init_py
 
-# Processor native optimizations (depends on build host capabilities).
-build --copt=-march=native
-build --host_copt=-march=native
+# Haswell processor and later optimizations. This covers most processors deployed
+# today, includin Colab CPU runtimes.
+build --copt=-march=haswell
+build --host_copt=-march=haswell
 # Only use level three optimizations for target, not necessarily for host
 # since host artifacts don't need to be fast.
 build --copt=-O3

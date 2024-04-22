@@ -1,6 +1,9 @@
 # Unreleased
 
 *   Added an implementation of `__eq__()` on `tff.framework.Data`.
+*   Fix #4588: Target Haswell CPU architectures (`-march=haswell`) instead of
+    whatever is native to the build infrastructure to ensure that binaries in
+    the pip package and executable on Colab CPU runtimes.
 
 # Release 0.76.0
 
