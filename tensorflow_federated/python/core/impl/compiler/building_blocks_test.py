@@ -1158,17 +1158,17 @@ class RepresentationTest(absltest.TestCase):
   def test_returns_string_for_call_with_arg(self):
     fn_type = computation_types.FunctionType(np.int32, np.int32)
     fn = building_blocks.Reference('a', fn_type)
-    arg = building_blocks.Data('data', np.int32)
+    arg = building_blocks.Literal(1, computation_types.TensorType(np.int32))
     comp = building_blocks.Call(fn, arg)
 
-    self.assertEqual(comp.compact_representation(), 'a(data)')
-    self.assertEqual(comp.formatted_representation(), 'a(data)')
+    self.assertEqual(comp.compact_representation(), 'a(1)')
+    self.assertEqual(comp.formatted_representation(), 'a(1)')
     # pyformat: disable
     self.assertEqual(
         comp.structural_representation(),
         '       Call\n'
         '      /    \\\n'
-        'Ref(a)      data'
+        'Ref(a)      Lit(1)'
     )
     # pyformat: enable
 

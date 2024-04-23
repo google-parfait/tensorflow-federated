@@ -1582,6 +1582,8 @@ def _structural_representation(comp):
       return 'Sel({})'.format(key)
     elif isinstance(comp, Struct):
       return 'Struct'
+    elif isinstance(comp, Literal):
+      return f'Lit({comp.value})'
     else:
       raise TypeError('Unexpected type found: {}.'.format(type(comp)))
 
@@ -1622,6 +1624,7 @@ def _structural_representation(comp):
             Intrinsic,
             Placement,
             Reference,
+            Literal,
         ),
     ):
       return [node_label]
