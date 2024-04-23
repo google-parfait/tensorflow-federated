@@ -1,0 +1,126 @@
+/*
+ * Copyright 2022 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+syntax = "proto3";
+
+package tensorflow_federated.aggregation;
+
+// Client resource passed to the Aggregation Protocol either as an inlined
+// binary data or as a resource URI.
+message ClientResource {
+  oneof resource_kind {
+    bytes inline_bytes = 1
+        ;
+    string uri = 2;
+  }
+}
+
+// Polymorhic client-to-server message carrying protocol specific content.
+message ClientMessage {
+  oneof protocol_kind {
+    SimpleAggregation simple_aggregation = 1;
+  }
+
+  message SimpleAggregation {
+    ClientResource input = 1;
+  }
+}
+
+// Polymorhic server-to-client message carrying protocol specific content.
+message ServerMessage {
+  oneof protocol_kind {
+    SimpleAggregation simple_aggregation = 2;
+  }
+
+  message SimpleAggregation {
+    oneof content_kind {
+      CloseMessage close_message = 1;
+    }
+
+    message CloseMessage {
+      // The status code, which should be an enum value of absl::StatusCode.
+      int32 code = 1;
+      // An optional diagnostic message.
+      string message = 2;
+    }
+  }
+}
+
+// Describes the overall protocol state.
+enum ProtocolState {
+  PROTOCOL_STATE_UNKNOWN = 0;
+  // The initial state indicating that the protocol was created.
+  PROTOCOL_CREATED = 1;
+  // The protocol `Start` method has been called.
+  PROTOCOL_STARTED = 2;
+  // The protocol `Complete` method has been called but there is outstanding
+  // work.
+  PROTOCOL_COMPLETING = 3;
+  // The protocol has finished successfully.
+  PROTOCOL_COMPLETED = 4;
+  // The protocol `Abort` method has been called.
+  PROTOCOL_ABORTED = 5;
+}
+
+// Status of the aggregation protocol.
+message StatusMessage {
+  // The below buckets are mutually exclusive and exhaustive, such that
+  // it should always be the case that:
+  //     #clients = num_clients_completed
+  //                + num_clients_failed
+  //                + num_clients_pending
+  //                + num_clients_aborted
+  //
+  // Number of clients that have successfully completed the aggregation
+  // protocol.
+  int64 num_clients_completed = 1;
+
+  // Number of clients that started the aggregation protocol but failed
+  // to complete e.g. dropped out in the middle of the protocol.
+  int64 num_clients_failed = 2;
+
+  // Number of clients that started the aggregation protocol but have not
+  // finished yet (either successfully or not).
+  int64 num_clients_pending = 3;
+
+  // Number of clients that started the aggregation protocol but were aborted by
+  // the server before they could complete e.g. if progress on the session was
+  // no longer needed.
+  int64 num_clients_aborted = 4;
+
+  // The below buckets provide a breakdown of the aggregated inputs that have
+  // been submitted by the completed clients.
+  // The below should always be true:
+  //      num_clients_completed = num_inputs_aggregated_and_included
+  //                              + num_inputs_aggregated_and_pending
+  //                              + num_inputs_discarded.
+  //
+  // Number of inputs that were successfully aggregated and included in the
+  // final result of the protocol.
+  int64 num_inputs_aggregated_and_included = 5;
+
+  // Number of inputs that were received and are pending i.e. the inputs have
+  // not been included in the final result of the protocol yet.
+  int64 num_inputs_aggregated_and_pending = 6;
+
+  // Number of inputs that were received by the protocol but discarded for
+  // whatever reason, for example if the protocol has reached a state where it
+  // no longer needs client inputs to complete.
+  int64 num_inputs_discarded = 7;
+
+  // Current state of the protocol
+  ProtocolState protocol_state = 8;
+}

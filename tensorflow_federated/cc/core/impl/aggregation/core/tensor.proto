@@ -1,0 +1,114 @@
+/*
+ * Copyright 2023 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+syntax = "proto3";
+
+package tensorflow_federated.aggregation;
+
+// Data types for individual tensor values.
+enum DataType {
+  // The constants below should be kept in sync with tensorflow::Datatype:
+  // https://github.com/tensorflow/tensorflow/blob/master/tensorflow/core/framework/types.proto
+  // While not strictly required, that has a number of benefits, including
+  // easier porting of tensors from tensorflow::Tensor to aggregation tensors.
+  DT_INVALID = 0;
+  DT_FLOAT = 1;
+  DT_DOUBLE = 2;
+  DT_INT32 = 3;
+  DT_STRING = 7;
+  DT_INT64 = 9;
+  DT_UINT64 = 23;
+  // TODO: b/222605809 - Add other types
+}
+
+// Tensor shape (e.g. dimensions)
+message TensorShapeProto {
+  // Sizes of each dimension in the tensor.
+  // Values must be >= -1, however values of -1 are reserved for "unknown".
+  //
+  // The order of entries in `dim_sizes` matters: It indicates the layout of the
+  // values in the tensor in-memory representation.
+  //
+  // The first entry in `dim_sizes` is the outermost dimension used to layout
+  // the values, the last entry is the innermost dimension.  This matches the
+  // in-memory layout of row-major tensors.
+  //
+  // A scalar tensor has a shape with zero dimensions.
+  repeated int64 dim_sizes = 1;
+}
+
+// This message describes aggregation tensor name, type, and shape.
+message TensorSpecProto {
+  // Tensor name
+  string name = 1;
+
+  // Type of the tensor values.
+  DataType dtype = 2;
+
+  // Shape of the tensor.
+  TensorShapeProto shape = 3;
+}
+
+// Optional descriptor of the sparse index encoding, that is applicable only
+// to sparse tensors. If this message is empty (default) that means that
+// the tensor is dense.
+// The best way to think about SparsityEncoding as a way to describe mapping
+// of the indices in the tensor content to the indices in the dense tensor.
+message SparsityEncoding {
+  // TODO: b/266974165 - Implement SparsityEncoding.
+}
+
+// Protocol buffer representation of a tensor.
+message TensorProto {
+  // Type of the tensor values.
+  DataType dtype = 1;
+
+  // Shape of the tensor.
+  TensorShapeProto shape = 2;
+
+  // Optional descriptor of sparse index encoding.
+  SparsityEncoding sparsity_encoding = 3;
+
+  // Serialized tensor values packed into a single blob. The exact format of the
+  // blob depends on dtype. If this field is set, none of the repeated fields
+  // below should be set.
+  //
+  // For numeric data types, the following applies:
+  // For a dense tensor, the content matches in-memory representation of a
+  // C-style row-major multi-dimensional array of values.
+  // For a sparse tensor, the content matches in-memory representation of a
+  // one dimensional array of non-zero values, which order is described by
+  // the `sparsity_encoding`.
+  // The values must be encoded using little-endian byte layout.
+  bytes content = 4;
+
+  // The repeated fields below facilitate representing data in a alternate
+  // manner. They cannot be used at the same time as the content field above.
+  // At most one of the repeated fields below should be set, and the field that
+  // is set should correspond to the dtype field above.
+
+  // DT_FLOAT
+  repeated float float_val = 5;
+
+  // DT_DOUBLE
+  repeated double double_val = 6;
+
+  // DT_INT32
+  repeated int32 int_val = 7;
+
+  // DT_INT64
+  repeated int64 int64_val = 8;
+}

@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package tensorflow_federated.aggregation;
+
+import "tensorflow_federated/cc/core/impl/aggregation/core/tensor.proto";
+
+// Internal state representation of an AggVectorAggregator.
+message AggVectorAggregatorState {
+  uint64 num_inputs = 1;
+  bytes vector_data = 2;
+}
+
+// Internal state representation of a FederatedMeanAggregator.
+message FederatedMeanAggregatorState {
+  uint64 num_inputs = 1;
+  bytes weights_sum = 2;
+  bytes weighted_values_sum = 3;
+}
+
+// Internal state representation of a OneDimGroupingAggregator.
+message OneDimGroupingAggregatorState {
+  uint64 num_inputs = 1;
+  bytes vector_data = 2;
+}
+
+// Internal state representation of a GroupByAggregator.
+message GroupByAggregatorState {
+  uint64 num_inputs = 1;
+  // TODO: b/335276781 - Consider storing key combiner state more efficiently
+  // such that string keys that appear in multiple combinations are only stored
+  // once.
+  repeated TensorProto keys = 2;
+  repeated OneDimGroupingAggregatorState nested_aggregators = 3;
+}
