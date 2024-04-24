@@ -2,7 +2,7 @@
 
 ## Major Features and Improvements
 
-*   Added an implementation of `__eq__()` on `tff.framework.Data`.
+*   Added an implementation of `__eq__()` on `building blocks`.
 
 ## Bug Fixes
 

@@ -168,15 +168,6 @@ class ComputationBuildingBlock(typed_object.TypedObject, metaclass=abc.ABCMeta):
     """Returns a concise representation of this computation building block."""
     return self.compact_representation()
 
-  def __hash__(self):
-    if self._cached_hash is None:
-      self._cached_hash = self._uncached_hash()
-    return self._cached_hash
-
-  @abc.abstractmethod
-  def _uncached_hash(self):
-    raise NotImplementedError
-
 
 class Reference(ComputationBuildingBlock):
   """A reference to a name defined earlier in TFF's internal language.
@@ -238,8 +229,21 @@ class Reference(ComputationBuildingBlock):
   def context(self):
     return self._context
 
-  def _uncached_hash(self):
-    return hash((self._name, self.type_signature))
+  def __eq__(self, other: object) -> bool:
+    if self is other:
+      return True
+    elif not isinstance(other, Reference):
+      return NotImplemented
+    # Important: References are only equal to each other if they are the same
+    # object because two references with the same `name` are different if they
+    # are in different locations within the same scope, in different scopes, or
+    # in different contexts.
+    return False
+
+  def __hash__(self):
+    if self._cached_hash is None:
+      self._cached_hash = hash((self._name, self._type_signature))
+    return self._cached_hash
 
   def __repr__(self):
     return "Reference('{}', {!r}{})".format(
@@ -337,9 +341,6 @@ class Selection(ComputationBuildingBlock):
         selection=selection,
     )
 
-  def _uncached_hash(self):
-    return hash((self._source, self._name, self._index))
-
   def children(self) -> Iterator[ComputationBuildingBlock]:
     yield self._source
 
@@ -361,6 +362,26 @@ class Selection(ComputationBuildingBlock):
     else:
       field_to_index = structure.name_to_index_map(self.source.type_signature)  # pytype: disable=wrong-arg-types
       return field_to_index[self._name]
+
+  def __eq__(self, other: object) -> bool:
+    if self is other:
+      return True
+    elif not isinstance(other, Selection):
+      return NotImplemented
+    return (
+        self._source,
+        self._name,
+        self._index,
+    ) == (
+        other._source,
+        other._name,
+        other._index,
+    )
+
+  def __hash__(self):
+    if self._cached_hash is None:
+      self._cached_hash = hash((self._source, self._name, self._index))
+    return self._cached_hash
 
   def __repr__(self):
     if self._name is not None:
@@ -463,11 +484,25 @@ class Struct(ComputationBuildingBlock, structure.Struct):
         struct=pb.Struct(element=elements),
     )
 
-  def _uncached_hash(self):
-    return structure.Struct.__hash__(self)
-
   def children(self) -> Iterator[ComputationBuildingBlock]:
     return (element for _, element in structure.iter_elements(self))
+
+  def __eq__(self, other: object) -> bool:
+    if self is other:
+      return True
+    elif not isinstance(other, Struct):
+      return NotImplemented
+    if self._type_signature != other._type_signature:
+      return False
+    return structure.Struct.__eq__(self, other)
+
+  def __hash__(self):
+    if self._cached_hash is None:
+      self._cached_hash = hash((
+          structure.Struct.__hash__(self),
+          self._type_signature,
+      ))
+    return self._cached_hash
 
   def __repr__(self):
     def _element_repr(element):
@@ -559,9 +594,6 @@ class Call(ComputationBuildingBlock):
         type=type_serialization.serialize_type(self.type_signature), call=call
     )
 
-  def _uncached_hash(self):
-    return hash((self._function, self._argument))
-
   def children(self) -> Iterator[ComputationBuildingBlock]:
     yield self._function
     if self._argument is not None:
@@ -574,6 +606,24 @@ class Call(ComputationBuildingBlock):
   @property
   def argument(self) -> Optional[ComputationBuildingBlock]:
     return self._argument
+
+  def __eq__(self, other: object) -> bool:
+    if self is other:
+      return True
+    elif not isinstance(other, Call):
+      return NotImplemented
+    return (
+        self._function,
+        self._argument,
+    ) == (
+        other._function,
+        other._argument,
+    )
+
+  def __hash__(self):
+    if self._cached_hash is None:
+      self._cached_hash = hash((self._function, self._argument))
+    return self._cached_hash
 
   def __repr__(self):
     if self._argument is not None:
@@ -663,9 +713,6 @@ class Lambda(ComputationBuildingBlock):
     # https://developers.google.com/protocol-buffers/docs/reference/python-generated#keyword-conflicts
     return pb.Computation(type=type_signature, **{'lambda': fn})  # pytype: disable=wrong-keyword-args
 
-  def _uncached_hash(self):
-    return hash((self._parameter_name, self._parameter_type, self._result))
-
   def children(self) -> Iterator[ComputationBuildingBlock]:
     yield self._result
 
@@ -680,6 +727,30 @@ class Lambda(ComputationBuildingBlock):
   @property
   def result(self) -> ComputationBuildingBlock:
     return self._result
+
+  def __eq__(self, other: object) -> bool:
+    if self is other:
+      return True
+    elif not isinstance(other, Lambda):
+      return NotImplemented
+    return (
+        self._parameter_name,
+        self._parameter_type,
+        self._result,
+    ) == (
+        other._parameter_name,
+        other._parameter_type,
+        other._result,
+    )
+
+  def __hash__(self):
+    if self._cached_hash is None:
+      self._cached_hash = hash((
+          self._parameter_name,
+          self._parameter_type,
+          self._result,
+      ))
+    return self._cached_hash
 
   def __repr__(self) -> str:
     return "Lambda('{}', {!r}, {!r})".format(
@@ -792,9 +863,6 @@ class Block(ComputationBuildingBlock):
         ),
     )
 
-  def _uncached_hash(self):
-    return hash((tuple(self._locals), self._result))
-
   def children(self) -> Iterator[ComputationBuildingBlock]:
     for _, value in self._locals:
       yield value
@@ -807,6 +875,18 @@ class Block(ComputationBuildingBlock):
   @property
   def result(self) -> ComputationBuildingBlock:
     return self._result
+
+  def __eq__(self, other: object) -> bool:
+    if self is other:
+      return True
+    elif not isinstance(other, Block):
+      return NotImplemented
+    return (self._locals, self._result) == (other._locals, other._result)
+
+  def __hash__(self):
+    if self._cached_hash is None:
+      self._cached_hash = hash((tuple(self._locals), self._result))
+    return self._cached_hash
 
   def __repr__(self) -> str:
     return 'Block([{}], {!r})'.format(
@@ -871,9 +951,6 @@ class Intrinsic(ComputationBuildingBlock):
       )
     return intrinsic_def
 
-  def _uncached_hash(self):
-    return hash((self._uri, self.type_signature))
-
   def children(self) -> Iterator[ComputationBuildingBlock]:
     del self
     return iter(())
@@ -881,6 +958,24 @@ class Intrinsic(ComputationBuildingBlock):
   @property
   def uri(self) -> str:
     return self._uri
+
+  def __eq__(self, other: object) -> bool:
+    if self is other:
+      return True
+    elif not isinstance(other, Intrinsic):
+      return NotImplemented
+    return (
+        self._uri,
+        self._type_signature,
+    ) == (
+        other._uri,
+        other._type_signature,
+    )
+
+  def __hash__(self):
+    if self._cached_hash is None:
+      self._cached_hash = hash((self._uri, self._type_signature))
+    return self._cached_hash
 
   def __repr__(self) -> str:
     return "Intrinsic('{}', {!r})".format(self._uri, self.type_signature)
@@ -930,13 +1025,6 @@ class Data(ComputationBuildingBlock):
         type=type_serialization.serialize_type(self.type_signature),
         data=pb.Data(uri=self._uri),
     )
-
-  def _uncached_hash(self):
-    # TODO: b/328241949 - Implement equality on all computation building blocks.
-    # This method intentionally fails, should never be invoked, and can be
-    # removed once `_uncached_hash()` is not an abstract method on the
-    # superclass.
-    return NotImplementedError
 
   def children(self) -> Iterator[ComputationBuildingBlock]:
     del self
@@ -1015,9 +1103,6 @@ class CompiledComputation(ComputationBuildingBlock):
   def _proto(self) -> pb.Computation:
     return self._proto_representation
 
-  def _uncached_hash(self):
-    return hash(self._proto_representation.SerializeToString())
-
   def children(self) -> Iterator[ComputationBuildingBlock]:
     del self
     return iter(())
@@ -1025,6 +1110,30 @@ class CompiledComputation(ComputationBuildingBlock):
   @property
   def name(self) -> str:
     return self._name
+
+  def __eq__(self, other: object) -> bool:
+    if self is other:
+      return True
+    elif not isinstance(other, CompiledComputation):
+      return NotImplemented
+    return (
+        self._proto_representation,
+        self._name,
+        self._type_signature,
+    ) == (
+        other._proto_representation,
+        other._name,
+        other._type_signature,
+    )
+
+  def __hash__(self):
+    if self._cached_hash is None:
+      self._cached_hash = hash((
+          self._proto_representation.SerializeToString(),
+          self._name,
+          self._type_signature,
+      ))
+    return self._cached_hash
 
   def __repr__(self) -> str:
     return "CompiledComputation('{}', {!r})".format(
@@ -1066,9 +1175,6 @@ class Placement(ComputationBuildingBlock):
         placement=pb.Placement(uri=self._literal.uri),
     )
 
-  def _uncached_hash(self):
-    return hash(self._literal)
-
   def children(self) -> Iterator[ComputationBuildingBlock]:
     del self
     return iter(())
@@ -1076,6 +1182,18 @@ class Placement(ComputationBuildingBlock):
   @property
   def uri(self) -> str:
     return self._literal.uri
+
+  def __eq__(self, other: object) -> bool:
+    if self is other:
+      return True
+    elif not isinstance(other, Placement):
+      return NotImplemented
+    return self._literal == other._literal
+
+  def __hash__(self):
+    if self._cached_hash is None:
+      self._cached_hash = hash((self._literal))
+    return self._cached_hash
 
   def __repr__(self) -> str:
     return "Placement('{}')".format(self.uri)
@@ -1143,13 +1261,6 @@ class Literal(ComputationBuildingBlock):
     )
     literal_pb = pb.Literal(value=value_pb)
     return pb.Computation(type=type_pb, literal=literal_pb)
-
-  def _uncached_hash(self):
-    # TODO: b/328241949 - Implement equality on all computation building blocks.
-    # This method intentionally fails, should never be invoked, and can be
-    # removed once `_uncached_hash()` is not an abstract method on the
-    # superclass.
-    return NotImplementedError
 
   def children(self) -> Iterator[ComputationBuildingBlock]:
     return iter(())
