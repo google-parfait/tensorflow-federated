@@ -427,9 +427,11 @@ class XLAExecutor : public ExecutorBase<ValueFuture> {
   }
 
   absl::Status Materialize(ValueFuture value, v0::Value* value_pb) final {
-    // TODO: b/235642979 - This pattern is known to potentially segfault under
-    // heavy load.
     XLAExecutorValue executor_value = TFF_TRY(Wait(value));
+    // TODO: b/337049385 - Use of ParallelTasks here is known to potentially
+    // segfault when under heavy load and large structures in the `value` future
+    // because of thread exhaustion. See how the TensorFlowExecutor limits the
+    // number of parallel threads for potential ideas.
     ParallelTasks tasks;
     TFF_TRY(MaterializeXLAValue(executor_value, value_pb, tasks));
     TFF_TRY(tasks.WaitAll());
