@@ -1,5 +1,7 @@
 # Unreleased
 
+# Release 0.77.0
+
 ## Major Features and Improvements
 
 *   Added an implementation of `__eq__()` on `building blocks`.
