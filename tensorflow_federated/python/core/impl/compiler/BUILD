@@ -438,6 +438,5 @@ py_test(
     deps = [
         ":building_block_test_utils",
         ":compiler_test_utils",
-        "//tensorflow_federated/python/common_libs:golden",
     ],
 )
