@@ -347,12 +347,16 @@ class CreateFederatedGetitemCallTest(parameterized.TestCase):
 class CreateFederatedAggregateTest(absltest.TestCase):
 
   def test_raises_type_error_with_none_value(self):
-    zero = building_blocks.Data('z', np.int32)
+    zero = building_blocks.Literal(0, computation_types.TensorType(np.int32))
     accumulate_type = computation_types.StructType((np.int32, np.int32))
-    accumulate_result = building_blocks.Data('a', np.int32)
+    accumulate_result = building_blocks.Literal(
+        1, computation_types.TensorType(np.int32)
+    )
     accumulate = building_blocks.Lambda('x', accumulate_type, accumulate_result)
     merge_type = computation_types.StructType((np.int32, np.int32))
-    merge_result = building_blocks.Data('m', np.int32)
+    merge_result = building_blocks.Literal(
+        2, computation_types.TensorType(np.int32)
+    )
     merge = building_blocks.Lambda('x', merge_type, merge_result)
     report_ref = building_blocks.Reference('r', np.int32)
     report = building_blocks.Lambda(
@@ -364,13 +368,19 @@ class CreateFederatedAggregateTest(absltest.TestCase):
       )
 
   def test_raises_type_error_with_none_zero(self):
-    value_type = computation_types.FederatedType(np.int32, placements.CLIENTS)
-    value = building_blocks.Data('v', value_type)
+    value = building_block_factory.create_federated_value(
+        building_blocks.Literal(0, computation_types.TensorType(np.int32)),
+        placement=placements.CLIENTS,
+    )
     accumulate_type = computation_types.StructType((np.int32, np.int32))
-    accumulate_result = building_blocks.Data('a', np.int32)
+    accumulate_result = building_blocks.Literal(
+        1, computation_types.TensorType(np.int32)
+    )
     accumulate = building_blocks.Lambda('x', accumulate_type, accumulate_result)
     merge_type = computation_types.StructType((np.int32, np.int32))
-    merge_result = building_blocks.Data('m', np.int32)
+    merge_result = building_blocks.Literal(
+        2, computation_types.TensorType(np.int32)
+    )
     merge = building_blocks.Lambda('x', merge_type, merge_result)
     report_ref = building_blocks.Reference('r', np.int32)
     report = building_blocks.Lambda(
@@ -382,11 +392,15 @@ class CreateFederatedAggregateTest(absltest.TestCase):
       )
 
   def test_raises_type_error_with_none_accumulate(self):
-    value_type = computation_types.FederatedType(np.int32, placements.CLIENTS)
-    value = building_blocks.Data('v', value_type)
-    zero = building_blocks.Data('z', np.int32)
+    value = building_block_factory.create_federated_value(
+        building_blocks.Literal(0, computation_types.TensorType(np.int32)),
+        placement=placements.CLIENTS,
+    )
+    zero = building_blocks.Literal(1, computation_types.TensorType(np.int32))
     merge_type = computation_types.StructType((np.int32, np.int32))
-    merge_result = building_blocks.Data('m', np.int32)
+    merge_result = building_blocks.Literal(
+        2, computation_types.TensorType(np.int32)
+    )
     merge = building_blocks.Lambda('x', merge_type, merge_result)
     report_ref = building_blocks.Reference('r', np.int32)
     report = building_blocks.Lambda(
@@ -398,11 +412,15 @@ class CreateFederatedAggregateTest(absltest.TestCase):
       )
 
   def test_raises_type_error_with_none_merge(self):
-    value_type = computation_types.FederatedType(np.int32, placements.CLIENTS)
-    value = building_blocks.Data('v', value_type)
-    zero = building_blocks.Data('z', np.int32)
+    value = building_block_factory.create_federated_value(
+        building_blocks.Literal(0, computation_types.TensorType(np.int32)),
+        placement=placements.CLIENTS,
+    )
+    zero = building_blocks.Literal(1, computation_types.TensorType(np.int32))
     accumulate_type = computation_types.StructType((np.int32, np.int32))
-    accumulate_result = building_blocks.Data('a', np.int32)
+    accumulate_result = building_blocks.Literal(
+        2, computation_types.TensorType(np.int32)
+    )
     accumulate = building_blocks.Lambda('x', accumulate_type, accumulate_result)
     report_ref = building_blocks.Reference('r', np.int32)
     report = building_blocks.Lambda(
@@ -414,14 +432,20 @@ class CreateFederatedAggregateTest(absltest.TestCase):
       )
 
   def test_raises_type_error_with_none_report(self):
-    value_type = computation_types.FederatedType(np.int32, placements.CLIENTS)
-    value = building_blocks.Data('v', value_type)
-    zero = building_blocks.Data('z', np.int32)
+    value = building_block_factory.create_federated_value(
+        building_blocks.Literal(0, computation_types.TensorType(np.int32)),
+        placement=placements.CLIENTS,
+    )
+    zero = building_blocks.Literal(1, computation_types.TensorType(np.int32))
     accumulate_type = computation_types.StructType((np.int32, np.int32))
-    accumulate_result = building_blocks.Data('a', np.int32)
+    accumulate_result = building_blocks.Literal(
+        2, computation_types.TensorType(np.int32)
+    )
     accumulate = building_blocks.Lambda('x', accumulate_type, accumulate_result)
     merge_type = computation_types.StructType((np.int32, np.int32))
-    merge_result = building_blocks.Data('m', np.int32)
+    merge_result = building_blocks.Literal(
+        3, computation_types.TensorType(np.int32)
+    )
     merge = building_blocks.Lambda('x', merge_type, merge_result)
     with self.assertRaises(TypeError):
       building_block_factory.create_federated_aggregate(
@@ -429,14 +453,20 @@ class CreateFederatedAggregateTest(absltest.TestCase):
       )
 
   def test_returns_federated_aggregate(self):
-    value_type = computation_types.FederatedType(np.int32, placements.CLIENTS)
-    value = building_blocks.Data('v', value_type)
-    zero = building_blocks.Data('z', np.int32)
+    value = building_block_factory.create_federated_value(
+        building_blocks.Literal(0, computation_types.TensorType(np.int32)),
+        placement=placements.CLIENTS,
+    )
+    zero = building_blocks.Literal(1, computation_types.TensorType(np.int32))
     accumulate_type = computation_types.StructType((np.int32, np.int32))
-    accumulate_result = building_blocks.Data('a', np.int32)
+    accumulate_result = building_blocks.Literal(
+        2, computation_types.TensorType(np.int32)
+    )
     accumulate = building_blocks.Lambda('x', accumulate_type, accumulate_result)
     merge_type = computation_types.StructType((np.int32, np.int32))
-    merge_result = building_blocks.Data('m', np.int32)
+    merge_result = building_blocks.Literal(
+        3, computation_types.TensorType(np.int32)
+    )
     merge = building_blocks.Lambda('x', merge_type, merge_result)
     report_ref = building_blocks.Reference('r', np.int32)
     report = building_blocks.Lambda(
@@ -447,7 +477,8 @@ class CreateFederatedAggregateTest(absltest.TestCase):
     )
     self.assertEqual(
         comp.compact_representation(),
-        'federated_aggregate(<v,z,(x -> a),(x -> m),(r -> r)>)',
+        'federated_aggregate(<federated_value_at_clients(0),1,(x -> 2),(x ->'
+        ' 3),(r -> r)>)',
     )
     self.assertEqual(str(comp.type_signature), 'int32@SERVER')
 
@@ -455,7 +486,7 @@ class CreateFederatedAggregateTest(absltest.TestCase):
 class CreateFederatedApplyTest(absltest.TestCase):
 
   def test_raises_type_error_with_none_fn(self):
-    arg = building_blocks.Data('y', np.int32)
+    arg = building_blocks.Literal(1, computation_types.TensorType(np.int32))
     with self.assertRaises(TypeError):
       building_block_factory.create_federated_apply(None, arg)
 
@@ -468,11 +499,14 @@ class CreateFederatedApplyTest(absltest.TestCase):
   def test_returns_federated_apply(self):
     ref = building_blocks.Reference('x', np.int32)
     fn = building_blocks.Lambda(ref.name, ref.type_signature, ref)
-    arg_type = computation_types.FederatedType(np.int32, placements.SERVER)
-    arg = building_blocks.Data('y', arg_type)
+    arg = building_block_factory.create_federated_value(
+        building_blocks.Literal(1, computation_types.TensorType(np.int32)),
+        placement=placements.SERVER,
+    )
     comp = building_block_factory.create_federated_apply(fn, arg)
     self.assertEqual(
-        comp.compact_representation(), 'federated_apply(<(x -> x),y>)'
+        comp.compact_representation(),
+        'federated_apply(<(x -> x),federated_value_at_server(1)>)',
     )
     self.assertEqual(str(comp.type_signature), 'int32@SERVER')
 
@@ -484,10 +518,15 @@ class CreateFederatedBroadcastTest(absltest.TestCase):
       building_block_factory.create_federated_broadcast(None)
 
   def test_returns_federated_broadcast(self):
-    value_type = computation_types.FederatedType(np.int32, placements.SERVER)
-    value = building_blocks.Data('v', value_type)
+    value = building_block_factory.create_federated_value(
+        building_blocks.Literal(1, computation_types.TensorType(np.int32)),
+        placement=placements.SERVER,
+    )
     comp = building_block_factory.create_federated_broadcast(value)
-    self.assertEqual(comp.compact_representation(), 'federated_broadcast(v)')
+    self.assertEqual(
+        comp.compact_representation(),
+        'federated_broadcast(federated_value_at_server(1))',
+    )
     self.assertEqual(str(comp.type_signature), 'int32@CLIENTS')
 
 
@@ -501,11 +540,11 @@ class CreateFederatedEvalTest(absltest.TestCase):
     self.assert_type_error(None, placements.CLIENTS)
 
   def test_raises_type_error_with_nonfunctional_fn(self):
-    fn = building_blocks.Data('y', np.int32)
+    fn = building_blocks.Literal(1, computation_types.TensorType(np.int32))
     self.assert_type_error(fn, placements.CLIENTS)
 
   def test_returns_federated_eval(self):
-    fn = building_blocks.Data(
+    fn = building_blocks.Reference(
         'y', computation_types.FunctionType(None, np.int32)
     )
     comp = building_block_factory.create_federated_eval(fn, placements.CLIENTS)
@@ -518,7 +557,7 @@ class CreateFederatedEvalTest(absltest.TestCase):
 class CreateFederatedMapTest(absltest.TestCase):
 
   def test_raises_type_error_with_none_fn(self):
-    arg = building_blocks.Data('y', np.int32)
+    arg = building_blocks.Literal(1, computation_types.TensorType(np.int32))
     with self.assertRaises(TypeError):
       building_block_factory.create_federated_map(None, arg)
 
@@ -531,11 +570,14 @@ class CreateFederatedMapTest(absltest.TestCase):
   def test_returns_federated_map(self):
     ref = building_blocks.Reference('x', np.int32)
     fn = building_blocks.Lambda(ref.name, ref.type_signature, ref)
-    arg_type = computation_types.FederatedType(np.int32, placements.CLIENTS)
-    arg = building_blocks.Data('y', arg_type)
+    arg = building_block_factory.create_federated_value(
+        building_blocks.Literal(1, computation_types.TensorType(np.int32)),
+        placement=placements.CLIENTS,
+    )
     comp = building_block_factory.create_federated_map(fn, arg)
     self.assertEqual(
-        comp.compact_representation(), 'federated_map(<(x -> x),y>)'
+        comp.compact_representation(),
+        'federated_map(<(x -> x),federated_value_at_clients(1)>)',
     )
     self.assertEqual(str(comp.type_signature), '{int32}@CLIENTS')
 
@@ -543,7 +585,7 @@ class CreateFederatedMapTest(absltest.TestCase):
 class CreateFederatedMapAllEqualTest(absltest.TestCase):
 
   def test_raises_type_error_with_none_fn(self):
-    arg = building_blocks.Data('y', np.int32)
+    arg = building_blocks.Literal(1, computation_types.TensorType(np.int32))
     with self.assertRaises(TypeError):
       building_block_factory.create_federated_map_all_equal(None, arg)
 
@@ -556,13 +598,14 @@ class CreateFederatedMapAllEqualTest(absltest.TestCase):
   def test_returns_federated_map_all_equal(self):
     ref = building_blocks.Reference('x', np.int32)
     fn = building_blocks.Lambda(ref.name, ref.type_signature, ref)
-    arg_type = computation_types.FederatedType(
-        np.int32, placements.CLIENTS, all_equal=True
+    arg = building_block_factory.create_federated_value(
+        building_blocks.Literal(1, computation_types.TensorType(np.int32)),
+        placement=placements.CLIENTS,
     )
-    arg = building_blocks.Data('y', arg_type)
     comp = building_block_factory.create_federated_map_all_equal(fn, arg)
     self.assertEqual(
-        comp.compact_representation(), 'federated_map_all_equal(<(x -> x),y>)'
+        comp.compact_representation(),
+        'federated_map_all_equal(<(x -> x),federated_value_at_clients(1)>)',
     )
     self.assertEqual(str(comp.type_signature), 'int32@CLIENTS')
 
@@ -570,7 +613,7 @@ class CreateFederatedMapAllEqualTest(absltest.TestCase):
 class CreateFederatedMapOrApplyTest(absltest.TestCase):
 
   def test_raises_type_error_with_none_fn(self):
-    arg = building_blocks.Data('y', np.int32)
+    arg = building_blocks.Literal(1, computation_types.TensorType(np.int32))
     with self.assertRaises(TypeError):
       building_block_factory.create_federated_map_or_apply(None, arg)
 
@@ -583,24 +626,30 @@ class CreateFederatedMapOrApplyTest(absltest.TestCase):
   def test_returns_federated_apply(self):
     ref = building_blocks.Reference('x', np.int32)
     fn = building_blocks.Lambda(ref.name, ref.type_signature, ref)
-    arg_type = computation_types.FederatedType(np.int32, placements.SERVER)
-    arg = building_blocks.Data('y', arg_type)
+    arg = building_block_factory.create_federated_value(
+        building_blocks.Literal(1, computation_types.TensorType(np.int32)),
+        placement=placements.SERVER,
+    )
     comp = building_block_factory.create_federated_map_or_apply(fn, arg)
     self.assertEqual(
-        comp.compact_representation(), 'federated_apply(<(x -> x),y>)'
+        comp.compact_representation(),
+        'federated_apply(<(x -> x),federated_value_at_server(1)>)',
     )
     self.assertEqual(str(comp.type_signature), 'int32@SERVER')
 
   def test_returns_federated_map(self):
     ref = building_blocks.Reference('x', np.int32)
     fn = building_blocks.Lambda(ref.name, ref.type_signature, ref)
-    arg_type = computation_types.FederatedType(np.int32, placements.CLIENTS)
-    arg = building_blocks.Data('y', arg_type)
+    arg = building_block_factory.create_federated_value(
+        building_blocks.Literal(1, computation_types.TensorType(np.int32)),
+        placement=placements.CLIENTS,
+    )
     comp = building_block_factory.create_federated_map_or_apply(fn, arg)
     self.assertEqual(
-        comp.compact_representation(), 'federated_map(<(x -> x),y>)'
+        comp.compact_representation(),
+        'federated_map_all_equal(<(x -> x),federated_value_at_clients(1)>)',
     )
-    self.assertEqual(str(comp.type_signature), '{int32}@CLIENTS')
+    self.assertEqual(str(comp.type_signature), 'int32@CLIENTS')
 
 
 class CreateFederatedMeanTest(absltest.TestCase):
@@ -610,20 +659,30 @@ class CreateFederatedMeanTest(absltest.TestCase):
       building_block_factory.create_federated_mean(None, None)
 
   def test_returns_federated_mean(self):
-    value_type = computation_types.FederatedType(np.int32, placements.CLIENTS)
-    value = building_blocks.Data('v', value_type)
+    value = building_block_factory.create_federated_value(
+        building_blocks.Literal(1, computation_types.TensorType(np.int32)),
+        placement=placements.CLIENTS,
+    )
     comp = building_block_factory.create_federated_mean(value, None)
-    self.assertEqual(comp.compact_representation(), 'federated_mean(v)')
+    self.assertEqual(
+        comp.compact_representation(),
+        'federated_mean(federated_value_at_clients(1))',
+    )
     self.assertEqual(str(comp.type_signature), 'int32@SERVER')
 
   def test_returns_federated_weighted_mean(self):
-    value_type = computation_types.FederatedType(np.int32, placements.CLIENTS)
-    value = building_blocks.Data('v', value_type)
-    weight_type = computation_types.FederatedType(np.int32, placements.CLIENTS)
-    weight = building_blocks.Data('w', weight_type)
+    value = building_block_factory.create_federated_value(
+        building_blocks.Literal(1, computation_types.TensorType(np.int32)),
+        placement=placements.CLIENTS,
+    )
+    weight = building_block_factory.create_federated_value(
+        building_blocks.Literal(2, computation_types.TensorType(np.int32)),
+        placement=placements.CLIENTS,
+    )
     comp = building_block_factory.create_federated_mean(value, weight)
     self.assertEqual(
-        comp.compact_representation(), 'federated_weighted_mean(<v,w>)'
+        comp.compact_representation(),
+        'federated_weighted_mean(<federated_value_at_clients(1),federated_value_at_clients(2)>)',
     )
     self.assertEqual(str(comp.type_signature), 'int32@SERVER')
 
@@ -631,10 +690,15 @@ class CreateFederatedMeanTest(absltest.TestCase):
 class CreateFederatedMinTest(absltest.TestCase):
 
   def test_returns_federated_min(self):
-    value_type = computation_types.FederatedType(np.int32, placements.CLIENTS)
-    value = building_blocks.Data('v', value_type)
+    value = building_block_factory.create_federated_value(
+        building_blocks.Literal(1, computation_types.TensorType(np.int32)),
+        placement=placements.CLIENTS,
+    )
     comp = building_block_factory.create_federated_min(value)
-    self.assertEqual(comp.compact_representation(), 'federated_min(v)')
+    self.assertEqual(
+        comp.compact_representation(),
+        'federated_min(federated_value_at_clients(1))',
+    )
     self.assertEqual(
         comp.type_signature.compact_representation(), 'int32@SERVER'
     )
@@ -643,10 +707,15 @@ class CreateFederatedMinTest(absltest.TestCase):
 class CreateFederatedMaxTest(absltest.TestCase):
 
   def test_returns_federated_max(self):
-    value_type = computation_types.FederatedType(np.int32, placements.CLIENTS)
-    value = building_blocks.Data('v', value_type)
+    value = building_block_factory.create_federated_value(
+        building_blocks.Literal(1, computation_types.TensorType(np.int32)),
+        placement=placements.CLIENTS,
+    )
     comp = building_block_factory.create_federated_max(value)
-    self.assertEqual(comp.compact_representation(), 'federated_max(v)')
+    self.assertEqual(
+        comp.compact_representation(),
+        'federated_max(federated_value_at_clients(1))',
+    )
     self.assertEqual(
         comp.type_signature.compact_representation(), 'int32@SERVER'
     )
@@ -663,17 +732,21 @@ class CreateFederatedSecureModularSumTest(absltest.TestCase):
       building_block_factory.create_federated_secure_modular_sum(None, modulus)
 
   def test_raises_type_error_with_none_modulus(self):
-    value_type = computation_types.FederatedType(np.int32, placements.CLIENTS)
-    value = building_blocks.Data('v', value_type)
+    value = building_block_factory.create_federated_value(
+        building_blocks.Literal(1, computation_types.TensorType(np.int32)),
+        placement=placements.CLIENTS,
+    )
 
     with self.assertRaises(TypeError):
       building_block_factory.create_federated_secure_modular_sum(value, None)
 
   def test_returns_federated_sum(self):
-    value_type = computation_types.FederatedType(np.int32, placements.CLIENTS)
-    value = building_blocks.Data('v', value_type)
+    value = building_block_factory.create_federated_value(
+        building_blocks.Literal(1, computation_types.TensorType(np.int32)),
+        placement=placements.CLIENTS,
+    )
     modulus_type = computation_types.TensorType(np.int32)
-    modulus = building_blocks.Data('m', modulus_type)
+    modulus = building_blocks.Literal(2, modulus_type)
     comp = building_block_factory.create_federated_secure_modular_sum(
         value, modulus
     )
@@ -701,20 +774,25 @@ class CreateFederatedSecureSumTest(absltest.TestCase):
       building_block_factory.create_federated_secure_sum(None, max_input)
 
   def test_raises_type_error_with_none_max_input(self):
-    value_type = computation_types.FederatedType(np.int32, placements.CLIENTS)
-    value = building_blocks.Data('v', value_type)
+    value = building_block_factory.create_federated_value(
+        building_blocks.Literal(1, computation_types.TensorType(np.int32)),
+        placement=placements.CLIENTS,
+    )
 
     with self.assertRaises(TypeError):
       building_block_factory.create_federated_secure_sum(value, None)
 
   def test_returns_federated_sum(self):
-    value_type = computation_types.FederatedType(np.int32, placements.CLIENTS)
-    value = building_blocks.Data('v', value_type)
+    value = building_block_factory.create_federated_value(
+        building_blocks.Literal(1, computation_types.TensorType(np.int32)),
+        placement=placements.CLIENTS,
+    )
     max_value_type = computation_types.TensorType(np.int32)
-    max_value = building_blocks.Data('m', max_value_type)
+    max_value = building_blocks.Literal(2, max_value_type)
     comp = building_block_factory.create_federated_secure_sum(value, max_value)
     self.assertEqual(
-        comp.compact_representation(), 'federated_secure_sum(<v,m>)'
+        comp.compact_representation(),
+        'federated_secure_sum(<federated_value_at_clients(1),2>)',
     )
     self.assertEqual(
         comp.type_signature.compact_representation(), 'int32@SERVER'
@@ -734,22 +812,27 @@ class CreateFederatedSecureSumBitwidthTest(absltest.TestCase):
       )
 
   def test_raises_type_error_with_none_bitwidth(self):
-    value_type = computation_types.FederatedType(np.int32, placements.CLIENTS)
-    value = building_blocks.Data('v', value_type)
+    value = building_block_factory.create_federated_value(
+        building_blocks.Literal(1, computation_types.TensorType(np.int32)),
+        placement=placements.CLIENTS,
+    )
 
     with self.assertRaises(TypeError):
       building_block_factory.create_federated_secure_sum_bitwidth(value, None)
 
   def test_returns_federated_sum(self):
-    value_type = computation_types.FederatedType(np.int32, placements.CLIENTS)
-    value = building_blocks.Data('v', value_type)
+    value = building_block_factory.create_federated_value(
+        building_blocks.Literal(1, computation_types.TensorType(np.int32)),
+        placement=placements.CLIENTS,
+    )
     bitwidth_type = computation_types.TensorType(np.int32)
-    bitwidth = building_blocks.Data('b', bitwidth_type)
+    bitwidth = building_blocks.Literal(2, bitwidth_type)
     comp = building_block_factory.create_federated_secure_sum_bitwidth(
         value, bitwidth
     )
     self.assertEqual(
-        comp.compact_representation(), 'federated_secure_sum_bitwidth(<v,b>)'
+        comp.compact_representation(),
+        'federated_secure_sum_bitwidth(<federated_value_at_clients(1),2>)',
     )
     self.assertEqual(
         comp.type_signature.compact_representation(), 'int32@SERVER'
@@ -763,26 +846,28 @@ class CreateFederatedSelectTest(parameterized.TestCase):
       ('secure', True, 'federated_secure_select'),
   )
   def test_returns_federated_select(self, secure, name):
-    client_keys = building_blocks.Data(
-        'client_keys',
-        computation_types.FederatedType(
-            computation_types.TensorType(np.int32, [5]), placements.CLIENTS
+    client_keys = building_block_factory.create_federated_value(
+        building_blocks.Literal(
+            np.array([5, 4, 3, 2, 1]),
+            computation_types.TensorType(np.int32, [5]),
         ),
+        placement=placements.CLIENTS,
     )
-    max_key = building_blocks.Data(
-        'max_key', computation_types.FederatedType(np.int32, placements.SERVER)
+    max_key = building_block_factory.create_federated_value(
+        building_blocks.Literal(1, computation_types.TensorType(np.int32)),
+        placement=placements.SERVER,
     )
     server_val_type = computation_types.SequenceType(np.str_)
-    server_val = building_blocks.Data(
+    server_val = building_blocks.Reference(
         'server_val',
         computation_types.FederatedType(server_val_type, placements.SERVER),
     )
-    select_fn = building_blocks.Data(
+    select_fn = building_blocks.Reference(
         'select_fn',
         computation_types.FunctionType(
             computation_types.StructType([
                 ('some_name_for_server_val', server_val_type),
-                ('some_namme_for_key', np.int32),
+                ('some_name_for_key', np.int32),
             ]),
             np.str_,
         ),
@@ -792,7 +877,8 @@ class CreateFederatedSelectTest(parameterized.TestCase):
     )
     self.assertEqual(
         comp.compact_representation(),
-        f'{name}(<client_keys,max_key,server_val,(a -> select_fn(a))>)',
+        f'{name}(<federated_value_at_clients([5 4 3 2'
+        ' 1]),federated_value_at_server(1),server_val,(a -> select_fn(a))>)',
     )
     self.assertEqual(
         comp.type_signature.compact_representation(), '{str*}@CLIENTS'
@@ -806,10 +892,15 @@ class CreateFederatedSumTest(absltest.TestCase):
       building_block_factory.create_federated_sum(None)
 
   def test_returns_federated_sum(self):
-    value_type = computation_types.FederatedType(np.int32, placements.CLIENTS)
-    value = building_blocks.Data('v', value_type)
+    value = building_block_factory.create_federated_value(
+        building_blocks.Literal(1, computation_types.TensorType(np.int32)),
+        placement=placements.CLIENTS,
+    )
     comp = building_block_factory.create_federated_sum(value)
-    self.assertEqual(comp.compact_representation(), 'federated_sum(v)')
+    self.assertEqual(
+        comp.compact_representation(),
+        'federated_sum(federated_value_at_clients(1))',
+    )
     self.assertEqual(str(comp.type_signature), 'int32@SERVER')
 
 
@@ -821,7 +912,7 @@ class CreateFederatedUnzipTest(absltest.TestCase):
 
   def test_returns_tuple_federated_map_with_empty_value(self):
     value_type = computation_types.FederatedType([], placements.CLIENTS)
-    value = building_blocks.Data('v', value_type)
+    value = building_blocks.Reference('v', value_type)
     with self.assertRaises(ValueError):
       building_block_factory.create_federated_unzip(value)
 
@@ -829,7 +920,7 @@ class CreateFederatedUnzipTest(absltest.TestCase):
     value_type = computation_types.FederatedType(
         (np.int32,), placements.CLIENTS
     )
-    value = building_blocks.Data('v', value_type)
+    value = building_blocks.Reference('v', value_type)
     comp = building_block_factory.create_federated_unzip(value)
     self.assertEqual(
         comp.compact_representation(),
@@ -842,7 +933,7 @@ class CreateFederatedUnzipTest(absltest.TestCase):
     value_type = computation_types.FederatedType(
         type_signature, placements.CLIENTS
     )
-    value = building_blocks.Data('v', value_type)
+    value = building_blocks.Reference('v', value_type)
     comp = building_block_factory.create_federated_unzip(value)
     self.assertEqual(
         comp.compact_representation(),
@@ -854,7 +945,7 @@ class CreateFederatedUnzipTest(absltest.TestCase):
     value_type = computation_types.FederatedType(
         (np.int32, np.int32), placements.CLIENTS
     )
-    value = building_blocks.Data('v', value_type)
+    value = building_blocks.Reference('v', value_type)
     comp = building_block_factory.create_federated_unzip(value)
     golden.check_string(
         'tuple_federated_map_with_two_values_unnamed.expected',
@@ -871,7 +962,7 @@ class CreateFederatedUnzipTest(absltest.TestCase):
     value_type = computation_types.FederatedType(
         type_signature, placements.CLIENTS
     )
-    value = building_blocks.Data('v', value_type)
+    value = building_blocks.Reference('v', value_type)
     comp = building_block_factory.create_federated_unzip(value)
     golden.check_string(
         'tuple_federated_map_with_two_values_named.expected',
@@ -885,7 +976,7 @@ class CreateFederatedUnzipTest(absltest.TestCase):
     value_type = computation_types.FederatedType(
         (np.int32, np.bool_), placements.CLIENTS
     )
-    value = building_blocks.Data('v', value_type)
+    value = building_blocks.Reference('v', value_type)
     comp = building_block_factory.create_federated_unzip(value)
     golden.check_string(
         'tuple_federated_map_with_two_values_different_typed.expected',
@@ -897,7 +988,7 @@ class CreateFederatedUnzipTest(absltest.TestCase):
 
   def test_returns_tuple_federated_apply_with_one_value_unnamed(self):
     value_type = computation_types.FederatedType((np.int32,), placements.SERVER)
-    value = building_blocks.Data('v', value_type)
+    value = building_blocks.Reference('v', value_type)
     comp = building_block_factory.create_federated_unzip(value)
     self.assertEqual(
         comp.compact_representation(),
@@ -910,7 +1001,7 @@ class CreateFederatedUnzipTest(absltest.TestCase):
     value_type = computation_types.FederatedType(
         type_signature, placements.SERVER
     )
-    value = building_blocks.Data('v', value_type)
+    value = building_blocks.Reference('v', value_type)
     comp = building_block_factory.create_federated_unzip(value)
     self.assertEqual(
         comp.compact_representation(),
@@ -922,7 +1013,7 @@ class CreateFederatedUnzipTest(absltest.TestCase):
     value_type = computation_types.FederatedType(
         (np.int32, np.int32), placements.SERVER
     )
-    value = building_blocks.Data('v', value_type)
+    value = building_blocks.Reference('v', value_type)
     comp = building_block_factory.create_federated_unzip(value)
     golden.check_string(
         'tuple_federated_apply_with_two_values_unnamed.expected',
@@ -937,7 +1028,7 @@ class CreateFederatedUnzipTest(absltest.TestCase):
     value_type = computation_types.FederatedType(
         type_signature, placements.SERVER
     )
-    value = building_blocks.Data('v', value_type)
+    value = building_blocks.Reference('v', value_type)
     comp = building_block_factory.create_federated_unzip(value)
     golden.check_string(
         'tuple_federated_apply_with_two_values_named.expected',
@@ -951,7 +1042,7 @@ class CreateFederatedUnzipTest(absltest.TestCase):
     value_type = computation_types.FederatedType(
         (np.int32, np.bool_), placements.SERVER
     )
-    value = building_blocks.Data('v', value_type)
+    value = building_blocks.Reference('v', value_type)
     comp = building_block_factory.create_federated_unzip(value)
     golden.check_string(
         'tuple_federated_apply_with_two_values_different_typed.expected',
@@ -967,32 +1058,32 @@ class CreateFederatedValueTest(absltest.TestCase):
       building_block_factory.create_federated_value(None, placements.CLIENTS)
 
   def test_raises_type_error_with_none_placement(self):
-    value = building_blocks.Data('v', np.int32)
+    value = building_blocks.Literal(1, computation_types.TensorType(np.int32))
     with self.assertRaises(TypeError):
       building_block_factory.create_federated_value(value, None)
 
   def test_raises_type_error_with_unknown_placement(self):
-    value = building_blocks.Data('v', np.int32)
+    value = building_blocks.Literal(1, computation_types.TensorType(np.int32))
     with self.assertRaises(TypeError):
       building_block_factory.create_federated_value(value, 'unknown')
 
   def test_returns_federated_value_at_clients(self):
-    value = building_blocks.Data('v', np.int32)
+    value = building_blocks.Literal(1, computation_types.TensorType(np.int32))
     comp = building_block_factory.create_federated_value(
         value, placements.CLIENTS
     )
     self.assertEqual(
-        comp.compact_representation(), 'federated_value_at_clients(v)'
+        comp.compact_representation(), 'federated_value_at_clients(1)'
     )
     self.assertEqual(str(comp.type_signature), 'int32@CLIENTS')
 
   def test_returns_federated_value_at_server(self):
-    value = building_blocks.Data('v', np.int32)
+    value = building_blocks.Literal(1, computation_types.TensorType(np.int32))
     comp = building_block_factory.create_federated_value(
         value, placements.SERVER
     )
     self.assertEqual(
-        comp.compact_representation(), 'federated_value_at_server(v)'
+        comp.compact_representation(), 'federated_value_at_server(1)'
     )
     self.assertEqual(str(comp.type_signature), 'int32@SERVER')
 
@@ -1011,7 +1102,7 @@ class CreateFederatedZipTest(parameterized.TestCase, absltest.TestCase):
 
   def test_raises_type_error_with_empty_value(self):
     value_type = computation_types.StructType([])
-    value = building_blocks.Data('v', value_type)
+    value = building_blocks.Reference('v', value_type)
     with self.assertRaisesRegex(TypeError, 'at least one FederatedType'):
       building_block_factory.create_federated_zip(value)
 
@@ -1057,7 +1148,7 @@ class CreateFederatedZipTest(parameterized.TestCase, absltest.TestCase):
     expected_zipped_type = computation_types.FederatedType(
         expected_zipped_type, placements.CLIENTS
     )
-    value = building_blocks.Data('v', value_type)
+    value = building_blocks.Reference('v', value_type)
     comp = building_block_factory.create_federated_zip(value)
     self.assertEqual(
         comp.formatted_representation(), 'federated_zip_at_clients(v)'
@@ -1108,7 +1199,7 @@ class CreateFederatedZipTest(parameterized.TestCase, absltest.TestCase):
     expected_zipped_type = computation_types.FederatedType(
         expected_zipped_type, placements.SERVER
     )
-    value = building_blocks.Data('v', value_type)
+    value = building_blocks.Reference('v', value_type)
     comp = building_block_factory.create_federated_zip(value)
     self.assertEqual(
         comp.formatted_representation(), 'federated_zip_at_server(v)'
@@ -1127,7 +1218,7 @@ class CreateFederatedZipTest(parameterized.TestCase, absltest.TestCase):
     value_type = computation_types.StructType(
         [('a', client_type), ('b', server_type)]
     )
-    value = building_blocks.Data('v', value_type)
+    value = building_blocks.Reference('v', value_type)
     self.assertEqual(
         value.type_signature.compact_representation(),
         '<a=int32@CLIENTS,b=int32@SERVER>',
@@ -1148,7 +1239,7 @@ class CreateFederatedZipTest(parameterized.TestCase, absltest.TestCase):
     value_type = computation_types.StructType(
         [('a', client_type), ('b', tuple_type)]
     )
-    value = building_blocks.Data('v', value_type)
+    value = building_blocks.Reference('v', value_type)
     self.assertEqual(
         value.type_signature.compact_representation(),
         '<a=int32@CLIENTS,b=<c=int32@SERVER,d=int32@SERVER>>',
@@ -1163,7 +1254,7 @@ class CreateFederatedZipTest(parameterized.TestCase, absltest.TestCase):
     value_type = computation_types.StructType(
         [('a', client_type), ('b', np.int32)]
     )
-    value = building_blocks.Data('v', value_type)
+    value = building_blocks.Reference('v', value_type)
     self.assertEqual(
         value.type_signature.compact_representation(),
         '<a=int32@CLIENTS,b=int32>',
@@ -1181,7 +1272,7 @@ class CreateFederatedZipTest(parameterized.TestCase, absltest.TestCase):
     value_type = computation_types.StructType(
         [('a', client_type), ('b', tuple_type)]
     )
-    value = building_blocks.Data('v', value_type)
+    value = building_blocks.Reference('v', value_type)
     self.assertEqual(
         value.type_signature.compact_representation(),
         '<a=int32@CLIENTS,b=<c=int32,d=int32>>',
@@ -1194,7 +1285,7 @@ class CreateSequenceMapTest(absltest.TestCase):
 
   def test_raises_type_error_with_none_fn(self):
     arg_type = computation_types.SequenceType(np.int32)
-    arg = building_blocks.Data('y', arg_type)
+    arg = building_blocks.Reference('y', arg_type)
     with self.assertRaises(TypeError):
       building_block_factory.create_sequence_map(None, arg)
 
@@ -1208,7 +1299,7 @@ class CreateSequenceMapTest(absltest.TestCase):
     ref = building_blocks.Reference('x', np.int32)
     fn = building_blocks.Lambda(ref.name, ref.type_signature, ref)
     arg_type = computation_types.SequenceType(np.int32)
-    arg = building_blocks.Data('y', arg_type)
+    arg = building_blocks.Reference('y', arg_type)
     comp = building_block_factory.create_sequence_map(fn, arg)
     self.assertEqual(
         comp.compact_representation(), 'sequence_map(<(x -> x),y>)'
@@ -1219,35 +1310,35 @@ class CreateSequenceMapTest(absltest.TestCase):
 class CreateSequenceReduceTest(absltest.TestCase):
 
   def test_raises_type_error_with_none_value(self):
-    zero = building_blocks.Data('z', np.int32)
+    zero = building_blocks.Reference('z', np.int32)
     op_type = computation_types.StructType((np.int32, np.int32))
-    op_result = building_blocks.Data('o', np.int32)
+    op_result = building_blocks.Reference('o', np.int32)
     op = building_blocks.Lambda('x', op_type, op_result)
     with self.assertRaises(TypeError):
       building_block_factory.create_sequence_reduce(None, zero, op)
 
   def test_raises_type_error_with_none_zero(self):
     value_type = computation_types.SequenceType(np.int32)
-    value = building_blocks.Data('v', value_type)
+    value = building_blocks.Reference('v', value_type)
     op_type = computation_types.StructType((np.int32, np.int32))
-    op_result = building_blocks.Data('o', np.int32)
+    op_result = building_blocks.Reference('o', np.int32)
     op = building_blocks.Lambda('x', op_type, op_result)
     with self.assertRaises(TypeError):
       building_block_factory.create_sequence_reduce(value, None, op)
 
   def test_raises_type_error_with_none_op(self):
     value_type = computation_types.SequenceType(np.int32)
-    value = building_blocks.Data('v', value_type)
-    zero = building_blocks.Data('z', np.int32)
+    value = building_blocks.Reference('v', value_type)
+    zero = building_blocks.Reference('z', np.int32)
     with self.assertRaises(TypeError):
       building_block_factory.create_sequence_reduce(value, zero, None)
 
   def test_returns_sequence_reduce(self):
     value_type = computation_types.SequenceType(np.int32)
-    value = building_blocks.Data('v', value_type)
-    zero = building_blocks.Data('z', np.int32)
+    value = building_blocks.Reference('v', value_type)
+    zero = building_blocks.Reference('z', np.int32)
     op_type = computation_types.StructType((np.int32, np.int32))
-    op_result = building_blocks.Data('o', np.int32)
+    op_result = building_blocks.Reference('o', np.int32)
     op = building_blocks.Lambda('x', op_type, op_result)
     comp = building_block_factory.create_sequence_reduce(value, zero, op)
     self.assertEqual(
@@ -1264,7 +1355,7 @@ class CreateSequenceSumTest(absltest.TestCase):
 
   def test_returns_federated_sum(self):
     value_type = computation_types.SequenceType(np.int32)
-    value = building_blocks.Data('v', value_type)
+    value = building_blocks.Reference('v', value_type)
     comp = building_block_factory.create_sequence_sum(value)
     self.assertEqual(comp.compact_representation(), 'sequence_sum(v)')
     self.assertEqual(str(comp.type_signature), 'int32')
@@ -1277,31 +1368,31 @@ class CreateNamedTupleTest(absltest.TestCase):
       building_block_factory.create_named_tuple(None, ('a',))
 
   def test_raises_type_error_with_wrong_comp_type(self):
-    comp = building_blocks.Data('data', np.int32)
+    comp = building_blocks.Reference('data', np.int32)
     with self.assertRaises(TypeError):
       building_block_factory.create_named_tuple(comp, ('a',))
 
   def test_raises_type_error_with_wrong_names_type_string(self):
     type_signature = computation_types.StructType((np.int32, np.int32))
-    comp = building_blocks.Data('data', type_signature)
+    comp = building_blocks.Reference('data', type_signature)
     with self.assertRaises(TypeError):
       building_block_factory.create_named_tuple(comp, 'a')
 
   def test_raises_type_error_with_wrong_names_type_ints(self):
     type_signature = computation_types.StructType((np.int32, np.int32))
-    comp = building_blocks.Data('data', type_signature)
+    comp = building_blocks.Reference('data', type_signature)
     with self.assertRaises(TypeError):
       building_block_factory.create_named_tuple(comp, 'a')
 
   def test_raises_value_error_with_wrong_lengths(self):
     type_signature = computation_types.StructType((np.int32, np.int32))
-    comp = building_blocks.Data('data', type_signature)
+    comp = building_blocks.Reference('data', type_signature)
     with self.assertRaises(ValueError):
       building_block_factory.create_named_tuple(comp, ('a',))
 
   def test_creates_named_tuple_from_unamed_tuple(self):
     type_signature = computation_types.StructType((np.int32, np.int32))
-    comp = building_blocks.Data('data', type_signature)
+    comp = building_blocks.Reference('data', type_signature)
     named_comp = building_block_factory.create_named_tuple(comp, ('a', 'b'))
     expected_type_signature = computation_types.StructType(
         (('a', np.int32), ('b', np.int32))
@@ -1312,7 +1403,7 @@ class CreateNamedTupleTest(absltest.TestCase):
     type_signature = computation_types.StructType(
         (('a', np.int32), ('b', np.int32))
     )
-    comp = building_blocks.Data('data', type_signature)
+    comp = building_blocks.Reference('data', type_signature)
     named_comp = building_block_factory.create_named_tuple(comp, ('c', 'd'))
     expected_type_signature = computation_types.StructType(
         (('c', np.int32), ('d', np.int32))
