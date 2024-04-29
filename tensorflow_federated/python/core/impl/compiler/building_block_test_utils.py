@@ -15,10 +15,20 @@
 
 import numpy as np
 
+from google.protobuf import any_pb2
+from tensorflow_federated.python.core.impl.compiler import array
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
+
+
+def create_any_proto_from_array(value: np.ndarray):
+  """Creates an `Any` proto for the given `np.array` value."""
+  test_proto = array.to_proto(value)
+  any_proto = any_pb2.Any()
+  any_proto.Pack(test_proto)
+  return any_proto
 
 
 def create_chained_calls(functions, arg):

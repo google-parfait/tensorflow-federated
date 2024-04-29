@@ -135,10 +135,12 @@ py_library(
     testonly = True,
     srcs = ["building_block_test_utils.py"],
     deps = [
+        ":array",
         ":building_block_factory",
         ":building_blocks",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
+        "@com_google_protobuf//:protobuf_python",
     ],
 )
 
