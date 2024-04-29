@@ -24,7 +24,10 @@ py_library(
 py_library(
     name = "graph_optimizations",
     srcs = ["graph_optimizations.py"],
-    deps = [":graph_spec"],
+    deps = [
+        ":graph_spec",
+        "@org_tensorflow//tensorflow/python/grappler:tf_optimizer",
+    ],
 )
 
 py_test(
