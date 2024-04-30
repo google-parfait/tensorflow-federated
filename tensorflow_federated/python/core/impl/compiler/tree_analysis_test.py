@@ -70,8 +70,7 @@ class NodesDependentOnPredicateTest(absltest.TestCase):
       tree_analysis.extract_nodes_consuming(None, lambda x: True)
 
   def test_raises_on_none_predicate(self):
-    data_type = computation_types.StructType([])
-    data = building_blocks.Data('whimsy', data_type)
+    data = building_blocks.Literal(1, computation_types.TensorType(np.int32))
     with self.assertRaises(TypeError):
       tree_analysis.extract_nodes_consuming(data, None)
 
@@ -192,20 +191,18 @@ class BroadcastDependentOnAggregateTest(absltest.TestCase):
         building_block_test_utils.create_whimsy_called_federated_broadcast()
     )
     value_type = broadcast.type_signature
-    zero = building_blocks.Data('zero', value_type.member)
-    accumulate_result = building_blocks.Data(
-        'accumulate_result', value_type.member
-    )
+    zero = building_blocks.Literal(1, value_type.member)
+    accumulate_result = building_blocks.Literal(2, value_type.member)
     accumulate = building_blocks.Lambda(
         'accumulate_parameter',
         [value_type.member, value_type.member],
         accumulate_result,
     )
-    merge_result = building_blocks.Data('merge_result', value_type.member)
+    merge_result = building_blocks.Literal(3, value_type.member)
     merge = building_blocks.Lambda(
         'merge_parameter', [value_type.member, value_type.member], merge_result
     )
-    report_result = building_blocks.Data('report_result', value_type.member)
+    report_result = building_blocks.Literal(4, value_type.member)
     report = building_blocks.Lambda(
         'report_parameter', value_type.member, report_result
     )
@@ -254,20 +251,18 @@ class AggregateDependentOnAggregateTest(absltest.TestCase):
         building_block_test_utils.create_whimsy_called_federated_broadcast()
     )
     value_type = broadcast.type_signature
-    zero = building_blocks.Data('zero', value_type.member)
-    accumulate_result = building_blocks.Data(
-        'accumulate_result', value_type.member
-    )
+    zero = building_blocks.Literal(1, value_type.member)
+    accumulate_result = building_blocks.Literal(2, value_type.member)
     accumulate = building_blocks.Lambda(
         'accumulate_parameter',
         [value_type.member, value_type.member],
         accumulate_result,
     )
-    merge_result = building_blocks.Data('merge_result', value_type.member)
+    merge_result = building_blocks.Literal(3, value_type.member)
     merge = building_blocks.Lambda(
         'merge_parameter', [value_type.member, value_type.member], merge_result
     )
-    report_result = building_blocks.Data('report_result', value_type.member)
+    report_result = building_blocks.Literal(4, value_type.member)
     report = building_blocks.Lambda(
         'report_parameter', value_type.member, report_result
     )
@@ -496,7 +491,7 @@ class CheckHasUniqueNamesTest(absltest.TestCase):
     tree_analysis.check_has_unique_names(lambda_1)
 
   def test_ok_on_multiple_no_arg_lambdas(self):
-    data = building_blocks.Data('x', np.int32)
+    data = building_blocks.Literal(1, computation_types.TensorType(np.int32))
     lambda_1 = building_blocks.Lambda(None, None, data)
     lambda_2 = building_blocks.Lambda(None, None, data)
     tup = building_blocks.Struct([lambda_1, lambda_2])
@@ -516,30 +511,30 @@ class CheckHasUniqueNamesTest(absltest.TestCase):
     tree_analysis.check_has_unique_names(lambda_2)
 
   def test_ok_on_single_block(self):
-    x_data = building_blocks.Data('x', np.int32)
+    x_data = building_blocks.Literal(1, computation_types.TensorType(np.int32))
     single_block = building_blocks.Block([('x', x_data)], x_data)
     tree_analysis.check_has_unique_names(single_block)
 
   def test_raises_on_sequential_binding_of_same_variable_in_block(self):
-    x_data = building_blocks.Data('x', np.int32)
+    x_data = building_blocks.Literal(1, computation_types.TensorType(np.int32))
     block = building_blocks.Block([('x', x_data), ('x', x_data)], x_data)
     with self.assertRaises(tree_analysis.NonuniqueNameError):
       tree_analysis.check_has_unique_names(block)
 
   def test_ok_on_sequential_binding_of_different_variable_in_block(self):
-    x_data = building_blocks.Data('x', np.int32)
+    x_data = building_blocks.Literal(1, computation_types.TensorType(np.int32))
     block = building_blocks.Block([('x', x_data), ('y', x_data)], x_data)
     tree_analysis.check_has_unique_names(block)
 
   def test_raises_block_rebinding_of_lambda_variable(self):
-    x_data = building_blocks.Data('x', np.int32)
+    x_data = building_blocks.Literal(1, computation_types.TensorType(np.int32))
     single_block = building_blocks.Block([('x', x_data)], x_data)
     lambda_1 = building_blocks.Lambda('x', np.int32, single_block)
     with self.assertRaises(tree_analysis.NonuniqueNameError):
       tree_analysis.check_has_unique_names(lambda_1)
 
   def test_ok_block_binding_of_new_variable(self):
-    x_data = building_blocks.Data('x', np.int32)
+    x_data = building_blocks.Literal(1, computation_types.TensorType(np.int32))
     single_block = building_blocks.Block([('x', x_data)], x_data)
     lambda_1 = building_blocks.Lambda('y', np.int32, single_block)
     tree_analysis.check_has_unique_names(lambda_1)
@@ -547,7 +542,7 @@ class CheckHasUniqueNamesTest(absltest.TestCase):
   def test_raises_lambda_rebinding_of_block_variable(self):
     x_ref = building_blocks.Reference('x', np.int32)
     lambda_1 = building_blocks.Lambda('x', np.int32, x_ref)
-    x_data = building_blocks.Data('x', np.int32)
+    x_data = building_blocks.Literal(1, computation_types.TensorType(np.int32))
     single_block = building_blocks.Block([('x', x_data)], lambda_1)
     with self.assertRaises(tree_analysis.NonuniqueNameError):
       tree_analysis.check_has_unique_names(single_block)
@@ -555,7 +550,7 @@ class CheckHasUniqueNamesTest(absltest.TestCase):
   def test_ok_lambda_binding_of_new_variable(self):
     y_ref = building_blocks.Reference('y', np.int32)
     lambda_1 = building_blocks.Lambda('y', np.int32, y_ref)
-    x_data = building_blocks.Data('x', np.int32)
+    x_data = building_blocks.Literal(1, computation_types.TensorType(np.int32))
     single_block = building_blocks.Block([('x', x_data)], lambda_1)
     tree_analysis.check_has_unique_names(single_block)
 

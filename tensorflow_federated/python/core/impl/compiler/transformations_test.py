@@ -240,9 +240,9 @@ class ToCallDominantTest(absltest.TestCase):
         int_to_int_type, int_type
     )
     call_ext = building_blocks.Call(
-        building_blocks.Data('call_with_one', int_to_int_to_int_type),
+        building_blocks.Reference('call_with_one', int_to_int_to_int_type),
         building_blocks.Lambda(
-            'x', int_type, building_blocks.Data('num', int_type)
+            'x', int_type, building_blocks.Reference('num', int_type)
         ),
     )
     after = transformations.to_call_dominant(call_ext)

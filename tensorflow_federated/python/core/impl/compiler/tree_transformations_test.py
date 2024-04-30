@@ -192,7 +192,7 @@ class RemoveMappedOrAppliedIdentityTest(parameterized.TestCase):
 
   def test_does_not_remove_called_lambda(self):
     fn = building_block_test_utils.create_identity_function('a', np.int32)
-    arg = building_blocks.Data('data', np.int32)
+    arg = building_blocks.Literal(1, computation_types.TensorType(np.int32))
     call = building_blocks.Call(fn, arg)
     comp = call
 
@@ -203,9 +203,7 @@ class RemoveMappedOrAppliedIdentityTest(parameterized.TestCase):
     self.assertEqual(
         transformed_comp.compact_representation(), comp.compact_representation()
     )
-    self.assertEqual(
-        transformed_comp.compact_representation(), '(a -> a)(data)'
-    )
+    self.assertEqual(transformed_comp.compact_representation(), '(a -> a)(1)')
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertFalse(modified)
 
@@ -218,19 +216,28 @@ class RemoveUnusedBlockLocalsTest(absltest.TestCase):
 
   def test_should_transform_block(self):
     blk = building_blocks.Block(
-        [('x', building_blocks.Data('a', np.int32))],
-        building_blocks.Data('b', np.int32),
+        [(
+            'x',
+            building_blocks.Literal(1, computation_types.TensorType(np.int32)),
+        )],
+        building_blocks.Literal(2, computation_types.TensorType(np.int32)),
     )
     self.assertTrue(self._unused_block_remover.should_transform(blk))
 
   def test_should_not_transform_data(self):
-    data = building_blocks.Data('b', np.int32)
+    data = building_blocks.Literal(2, computation_types.TensorType(np.int32))
     self.assertFalse(self._unused_block_remover.should_transform(data))
 
   def test_removes_block_with_unused_reference(self):
-    input_data = building_blocks.Data('b', np.int32)
+    input_data = building_blocks.Literal(
+        2, computation_types.TensorType(np.int32)
+    )
     blk = building_blocks.Block(
-        [('x', building_blocks.Data('a', np.int32))], input_data
+        [(
+            'x',
+            building_blocks.Literal(1, computation_types.TensorType(np.int32)),
+        )],
+        input_data,
     )
     data, modified = transformation_utils.transform_postorder(
         blk, self._unused_block_remover.transform
@@ -241,7 +248,9 @@ class RemoveUnusedBlockLocalsTest(absltest.TestCase):
     )
 
   def test_unwraps_block_with_empty_locals(self):
-    input_data = building_blocks.Data('b', np.int32)
+    input_data = building_blocks.Literal(
+        1, computation_types.TensorType(np.int32)
+    )
     blk = building_blocks.Block([], input_data)
     data, modified = transformation_utils.transform_postorder(
         blk, self._unused_block_remover.transform
@@ -252,9 +261,15 @@ class RemoveUnusedBlockLocalsTest(absltest.TestCase):
     )
 
   def test_removes_nested_blocks_with_unused_reference(self):
-    input_data = building_blocks.Data('b', np.int32)
+    input_data = building_blocks.Literal(
+        2, computation_types.TensorType(np.int32)
+    )
     blk = building_blocks.Block(
-        [('x', building_blocks.Data('a', np.int32))], input_data
+        [(
+            'x',
+            building_blocks.Literal(1, computation_types.TensorType(np.int32)),
+        )],
+        input_data,
     )
     higher_level_blk = building_blocks.Block([('y', input_data)], blk)
     data, modified = transformation_utils.transform_postorder(
@@ -267,7 +282,10 @@ class RemoveUnusedBlockLocalsTest(absltest.TestCase):
 
   def test_leaves_single_used_reference(self):
     blk = building_blocks.Block(
-        [('x', building_blocks.Data('a', np.int32))],
+        [(
+            'x',
+            building_blocks.Literal(1, computation_types.TensorType(np.int32)),
+        )],
         building_blocks.Reference('x', np.int32),
     )
     transformed_blk, modified = transformation_utils.transform_postorder(
@@ -281,7 +299,12 @@ class RemoveUnusedBlockLocalsTest(absltest.TestCase):
   def test_leaves_chained_used_references(self):
     blk = building_blocks.Block(
         [
-            ('x', building_blocks.Data('a', np.int32)),
+            (
+                'x',
+                building_blocks.Literal(
+                    1, computation_types.TensorType(np.int32)
+                ),
+            ),
             ('y', building_blocks.Reference('x', np.int32)),
         ],
         building_blocks.Reference('y', np.int32),
@@ -297,10 +320,17 @@ class RemoveUnusedBlockLocalsTest(absltest.TestCase):
   def test_removes_locals_referencing_each_other_but_unreferenced_in_result(
       self,
   ):
-    input_data = building_blocks.Data('b', np.int32)
+    input_data = building_blocks.Literal(
+        2, computation_types.TensorType(np.int32)
+    )
     blk = building_blocks.Block(
         [
-            ('x', building_blocks.Data('a', np.int32)),
+            (
+                'x',
+                building_blocks.Literal(
+                    1, computation_types.TensorType(np.int32)
+                ),
+            ),
             ('y', building_blocks.Reference('x', np.int32)),
         ],
         input_data,
@@ -318,8 +348,18 @@ class RemoveUnusedBlockLocalsTest(absltest.TestCase):
     ref = building_blocks.Reference('y', np.int32)
     blk = building_blocks.Block(
         [
-            ('x', building_blocks.Data('a', np.int32)),
-            ('y', building_blocks.Data('b', np.int32)),
+            (
+                'x',
+                building_blocks.Literal(
+                    1, computation_types.TensorType(np.int32)
+                ),
+            ),
+            (
+                'y',
+                building_blocks.Literal(
+                    2, computation_types.TensorType(np.int32)
+                ),
+            ),
         ],
         ref,
     )
@@ -327,7 +367,7 @@ class RemoveUnusedBlockLocalsTest(absltest.TestCase):
         blk, self._unused_block_remover.transform
     )
     self.assertTrue(modified)
-    self.assertEqual(transformed_blk.compact_representation(), '(let y=b in y)')
+    self.assertEqual(transformed_blk.compact_representation(), '(let y=2 in y)')
 
 
 class UniquifyReferenceNamesTest(TransformTestBase):
@@ -361,28 +401,26 @@ class UniquifyReferenceNamesTest(TransformTestBase):
 
   def test_single_level_block(self):
     ref = building_blocks.Reference('a', np.int32)
-    data = building_blocks.Data('data', np.int32)
-    block = building_blocks.Block((('a', data), ('a', ref), ('a', ref)), ref)
+    lit = building_blocks.Literal(1, computation_types.TensorType(np.int32))
+    block = building_blocks.Block((('a', lit), ('a', ref), ('a', ref)), ref)
 
     transformed_comp, modified = tree_transformations.uniquify_reference_names(
         block
     )
 
-    self.assertEqual(
-        block.compact_representation(), '(let a=data,a=a,a=a in a)'
-    )
+    self.assertEqual(block.compact_representation(), '(let a=1,a=a,a=a in a)')
     self.assertEqual(
         transformed_comp.compact_representation(),
-        '(let a=data,_var1=a,_var2=_var1 in _var2)',
+        '(let a=1,_var1=a,_var2=_var1 in _var2)',
     )
     tree_analysis.check_has_unique_names(transformed_comp)
     self.assertTrue(modified)
 
   def test_nested_blocks(self):
     x_ref = building_blocks.Reference('a', np.int32)
-    data = building_blocks.Data('data', np.int32)
-    block1 = building_blocks.Block([('a', data), ('a', x_ref)], x_ref)
-    block2 = building_blocks.Block([('a', data), ('a', x_ref)], block1)
+    lit = building_blocks.Literal(1, computation_types.TensorType(np.int32))
+    block1 = building_blocks.Block([('a', lit), ('a', x_ref)], x_ref)
+    block2 = building_blocks.Block([('a', lit), ('a', x_ref)], block1)
 
     transformed_comp, modified = tree_transformations.uniquify_reference_names(
         block2
@@ -390,20 +428,20 @@ class UniquifyReferenceNamesTest(TransformTestBase):
 
     self.assertEqual(
         block2.compact_representation(),
-        '(let a=data,a=a in (let a=data,a=a in a))',
+        '(let a=1,a=a in (let a=1,a=a in a))',
     )
     self.assertEqual(
         transformed_comp.compact_representation(),
-        '(let a=data,_var1=a in (let _var2=data,_var3=_var2 in _var3))',
+        '(let a=1,_var1=a in (let _var2=1,_var3=_var2 in _var3))',
     )
     tree_analysis.check_has_unique_names(transformed_comp)
     self.assertTrue(modified)
 
   def test_nested_lambdas(self):
-    data = building_blocks.Data('data', np.int32)
-    input1 = building_blocks.Reference('a', data.type_signature)
+    lit = building_blocks.Literal(1, computation_types.TensorType(np.int32))
+    input1 = building_blocks.Reference('a', lit.type_signature)
     first_level_call = building_blocks.Call(
-        building_blocks.Lambda('a', input1.type_signature, input1), data
+        building_blocks.Lambda('a', input1.type_signature, input1), lit
     )
     input2 = building_blocks.Reference('b', first_level_call.type_signature)
     second_level_call = building_blocks.Call(
@@ -416,7 +454,7 @@ class UniquifyReferenceNamesTest(TransformTestBase):
     )
 
     self.assertEqual(
-        transformed_comp.compact_representation(), '(b -> b)((a -> a)(data))'
+        transformed_comp.compact_representation(), '(b -> b)((a -> a)(1))'
     )
     tree_analysis.check_has_unique_names(transformed_comp)
     self.assertFalse(modified)
@@ -430,8 +468,8 @@ class UniquifyReferenceNamesTest(TransformTestBase):
     )
     second_lambda = building_blocks.Lambda('a', np.int32, lower_block)
     second_call = building_blocks.Call(second_lambda, x_ref)
-    data = building_blocks.Data('data', np.int32)
-    last_block = building_blocks.Block([('a', data), ('a', x_ref)], second_call)
+    lit = building_blocks.Literal(1, computation_types.TensorType(np.int32))
+    last_block = building_blocks.Block([('a', lit), ('a', x_ref)], second_call)
 
     transformed_comp, modified = tree_transformations.uniquify_reference_names(
         last_block
@@ -439,12 +477,12 @@ class UniquifyReferenceNamesTest(TransformTestBase):
 
     self.assertEqual(
         last_block.compact_representation(),
-        '(let a=data,a=a in (a -> (let a=a,a=a in (a -> a)(a)))(a))',
+        '(let a=1,a=a in (a -> (let a=a,a=a in (a -> a)(a)))(a))',
     )
     self.assertEqual(
         transformed_comp.compact_representation(),
         (
-            '(let a=data,_var1=a in (_var2 -> (let _var3=_var2,_var4=_var3 in'
+            '(let a=1,_var1=a in (_var2 -> (let _var3=_var2,_var4=_var3 in'
             ' (_var5 -> _var5)(_var4)))(_var1))'
         ),
     )
@@ -452,17 +490,17 @@ class UniquifyReferenceNamesTest(TransformTestBase):
     self.assertTrue(modified)
 
   def test_blocks_nested_inside_of_locals(self):
-    data = building_blocks.Data('data', np.int32)
-    lower_block = building_blocks.Block([('a', data)], data)
-    middle_block = building_blocks.Block([('a', lower_block)], data)
-    higher_block = building_blocks.Block([('a', middle_block)], data)
+    lit = building_blocks.Literal(1, computation_types.TensorType(np.int32))
+    lower_block = building_blocks.Block([('a', lit)], lit)
+    middle_block = building_blocks.Block([('a', lower_block)], lit)
+    higher_block = building_blocks.Block([('a', middle_block)], lit)
     y_ref = building_blocks.Reference('a', np.int32)
-    lower_block_with_y_ref = building_blocks.Block([('a', y_ref)], data)
+    lower_block_with_y_ref = building_blocks.Block([('a', y_ref)], lit)
     middle_block_with_y_ref = building_blocks.Block(
-        [('a', lower_block_with_y_ref)], data
+        [('a', lower_block_with_y_ref)], lit
     )
     higher_block_with_y_ref = building_blocks.Block(
-        [('a', middle_block_with_y_ref)], data
+        [('a', middle_block_with_y_ref)], lit
     )
     multiple_bindings_highest_block = building_blocks.Block(
         [('a', higher_block), ('a', higher_block_with_y_ref)],
@@ -476,19 +514,17 @@ class UniquifyReferenceNamesTest(TransformTestBase):
     tree_analysis.check_has_unique_names(transformed_comp)
 
   def test_keeps_existing_nonoverlapping_names(self):
-    data = building_blocks.Data('data', np.int32)
-    block = building_blocks.Block([('a', data), ('b', data)], data)
+    lit = building_blocks.Literal(1, computation_types.TensorType(np.int32))
+    block = building_blocks.Block([('a', lit), ('b', lit)], lit)
     comp = block
 
     transformed_comp, modified = tree_transformations.uniquify_reference_names(
         comp
     )
 
+    self.assertEqual(block.compact_representation(), '(let a=1,b=1 in 1)')
     self.assertEqual(
-        block.compact_representation(), '(let a=data,b=data in data)'
-    )
-    self.assertEqual(
-        transformed_comp.compact_representation(), '(let a=data,b=data in data)'
+        transformed_comp.compact_representation(), '(let a=1,b=1 in 1)'
     )
     self.assertFalse(modified)
 
@@ -1008,7 +1044,7 @@ class StripPlacementTest(parameterized.TestCase):
       tree_transformations.strip_placement(None)
 
   def test_computation_non_federated_type(self):
-    before = building_blocks.Data('x', np.int32)
+    before = building_blocks.Literal(1, computation_types.TensorType(np.int32))
     after, modified = tree_transformations.strip_placement(before)
     self.assertEqual(before, after)
     self.assertFalse(modified)
@@ -1052,7 +1088,12 @@ class StripPlacementTest(parameterized.TestCase):
     block = building_blocks.Block(
         [
             ('y', fed_ref),
-            ('x', building_blocks.Data('whimsy', np.int32)),
+            (
+                'x',
+                building_blocks.Literal(
+                    1, computation_types.TensorType(np.int32)
+                ),
+            ),
             ('z', building_blocks.Reference('x', np.int32)),
         ],
         building_blocks.Reference('y', fed_ref.type_signature),
@@ -1061,7 +1102,9 @@ class StripPlacementTest(parameterized.TestCase):
 
   def test_passes_noarg_lambda(self):
     lam = building_blocks.Lambda(
-        None, None, building_blocks.Data('a', np.int32)
+        None,
+        None,
+        building_blocks.Literal(1, computation_types.TensorType(np.int32)),
     )
     fed_int_type = computation_types.FederatedType(np.int32, placements.SERVER)
     fed_eval = building_blocks.Intrinsic(
@@ -1176,8 +1219,12 @@ class StripPlacementTest(parameterized.TestCase):
     type_test_utils.assert_types_identical(after.type_signature, list_type)
 
   def test_strip_placement_removes_federated_value_at_server(self):
-    int_data = building_blocks.Data('x', np.int32)
-    float_data = building_blocks.Data('x', np.float32)
+    int_data = building_blocks.Literal(
+        1, computation_types.TensorType(np.int32)
+    )
+    float_data = building_blocks.Literal(
+        2.0, computation_types.TensorType(np.float32)
+    )
     fed_int = building_block_factory.create_federated_value(
         int_data, placements.SERVER
     )
@@ -1199,8 +1246,12 @@ class StripPlacementTest(parameterized.TestCase):
     type_test_utils.assert_types_identical(after.type_signature, tuple_type)
 
   def test_strip_placement_federated_value_at_clients(self):
-    int_data = building_blocks.Data('x', np.int32)
-    float_data = building_blocks.Data('x', np.float32)
+    int_data = building_blocks.Literal(
+        1, computation_types.TensorType(np.int32)
+    )
+    float_data = building_blocks.Literal(
+        2.0, computation_types.TensorType(np.float32)
+    )
     fed_int = building_block_factory.create_federated_value(
         int_data, placements.CLIENTS
     )

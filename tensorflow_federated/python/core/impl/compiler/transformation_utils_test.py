@@ -43,7 +43,7 @@ def _construct_complex_symbol_tree():
 
 def _construct_simple_block(type_signature):
   """Constructs minimal example of LET construct in TFF."""
-  test_arg = building_blocks.Data('data', type_signature)
+  test_arg = building_blocks.Literal(1, type_signature)
   result = building_blocks.Reference('x', test_arg.type_signature)
   simple_block = building_blocks.Block([('x', test_arg)], result)
   return simple_block
@@ -185,7 +185,7 @@ class TransformationUtilsTest(parameterized.TestCase):
       transformation_utils.transform_postorder(None, transform)
 
   def test_transform_postorder_fails_on_none_transform(self):
-    comp = building_blocks.Data('x', np.int32)
+    comp = building_blocks.Literal(1, computation_types.TensorType(np.int32))
     with self.assertRaises(TypeError):
       transformation_utils.transform_postorder(comp, None)
 
@@ -234,7 +234,7 @@ class TransformationUtilsTest(parameterized.TestCase):
 
   def test_transform_postorder_with_block_and_data_to_reference(self):
     ref = building_blocks.Reference('x', np.int32)
-    data = building_blocks.Data('a', np.int32)
+    data = building_blocks.Literal(1, computation_types.TensorType(np.int32))
     blk = building_blocks.Block([('x', data)], ref)
 
     def _transformation_fn(comp):
@@ -246,7 +246,7 @@ class TransformationUtilsTest(parameterized.TestCase):
         blk, _transformation_fn
     )
     self.assertTrue(modified)
-    self.assertEqual(transformed.compact_representation(), '(let x=a in a)')
+    self.assertEqual(transformed.compact_representation(), '(let x=1 in 1)')
 
   @parameterized.named_parameters(
       _construct_trivial_instance_of_all_computation_building_blocks()
@@ -619,7 +619,7 @@ class TransformationUtilsTest(parameterized.TestCase):
       self,
   ):
     result = building_blocks.Reference('x', np.int32)
-    arg = building_blocks.Data('input_data', np.int32)
+    arg = building_blocks.Literal(1, computation_types.TensorType(np.int32))
     block = building_blocks.Block([('x', arg)], result)
     empty_symbol_tree = transformation_utils.SymbolTree(UpdatableTracker)
     value_holder = []
@@ -642,7 +642,7 @@ class TransformationUtilsTest(parameterized.TestCase):
       self,
   ):
     result = building_blocks.Reference('x', np.int32)
-    arg = building_blocks.Data('input_data', np.int32)
+    arg = building_blocks.Literal(1, computation_types.TensorType(np.int32))
     arg2 = building_blocks.Reference('x', np.int32)
     block = building_blocks.Block([('x', arg), ('x', arg2)], result)
     empty_symbol_tree = transformation_utils.SymbolTree(UpdatableTracker)
@@ -1020,7 +1020,9 @@ class TransformationUtilsTest(parameterized.TestCase):
   def test_ingest_variable_binding_adds_node_to_empty_tree(self):
     symbol_tree = transformation_utils.SymbolTree(FakeTracker)
     shadow_symbol_tree = transformation_utils.SymbolTree(FakeTracker)
-    payload_to_add = FakeTracker('x', building_blocks.Data('a', np.int32))
+    payload_to_add = FakeTracker(
+        'x', building_blocks.Literal(1, computation_types.TensorType(np.int32))
+    )
     shadow_symbol_tree._add_younger_sibling(
         transformation_utils.SequentialBindingNode(payload_to_add)
     )
@@ -1034,13 +1036,15 @@ class TransformationUtilsTest(parameterized.TestCase):
   def test_ingest_variable_binding_adds_node_to_nonempty_tree(self):
     symbol_tree = _construct_complex_symbol_tree()
     shadow_symbol_tree = _construct_complex_symbol_tree()
-    payload_to_add = FakeTracker('x', building_blocks.Data('a', np.int32))
+    payload_to_add = FakeTracker(
+        'x', building_blocks.Literal(1, computation_types.TensorType(np.int32))
+    )
     shadow_symbol_tree._add_younger_sibling(
         transformation_utils.SequentialBindingNode(payload_to_add)
     )
 
     symbol_tree.ingest_variable_binding(
-        'x', building_blocks.Data('a', np.int32)
+        'x', building_blocks.Reference('a', np.int32)
     )
 
     self.assertEqual(symbol_tree, shadow_symbol_tree)
@@ -1049,36 +1053,39 @@ class TransformationUtilsTest(parameterized.TestCase):
     symbol_tree = transformation_utils.SymbolTree(FakeTracker)
     symbol_tree.drop_scope_down(1)
     symbol_tree.ingest_variable_binding(
-        'y', building_blocks.Data('b', np.int32)
+        'y', building_blocks.Literal(2, computation_types.TensorType(np.int32))
     )
     resolved_y = symbol_tree.get_payload_with_name('y')
-    self.assertEqual(resolved_y.value.uri, 'b')
+    self.assertEqual(resolved_y.value.value, 2)
     self.assertEqual(str(resolved_y.value.type_signature), 'int32')
     symbol_tree.walk_to_scope_beginning()
     symbol_tree.ingest_variable_binding(
-        'y', building_blocks.Data('d', np.bool_)
+        'y',
+        building_blocks.Literal(3.0, computation_types.TensorType(np.float32)),
     )
     changed_y = symbol_tree.get_payload_with_name('y')
-    self.assertEqual(changed_y.value.uri, 'd')
-    self.assertEqual(str(changed_y.value.type_signature), 'bool')
+    self.assertEqual(changed_y.value.value, 3.0)
+    self.assertEqual(str(changed_y.value.type_signature), 'float32')
 
   def test_ingest_variable_overwrite_leaves_unrelated_node_alone(self):
     symbol_tree = transformation_utils.SymbolTree(FakeTracker)
     symbol_tree.drop_scope_down(0)
     symbol_tree.ingest_variable_binding(
-        'x', building_blocks.Data('a', np.bool_)
+        'x',
+        building_blocks.Literal(3.0, computation_types.TensorType(np.float32)),
     )
     symbol_tree.drop_scope_down(1)
     symbol_tree.ingest_variable_binding(
-        'y', building_blocks.Data('b', np.int32)
+        'y', building_blocks.Literal(1, computation_types.TensorType(np.int32))
     )
     resolved_x = symbol_tree.get_payload_with_name('x')
-    self.assertEqual(resolved_x.value.uri, 'a')
-    self.assertEqual(str(resolved_x.value.type_signature), 'bool')
+    self.assertEqual(resolved_x.value.value, 3.0)
+    self.assertEqual(str(resolved_x.value.type_signature), 'float32')
     symbol_tree.pop_scope_up()
     symbol_tree.drop_scope_down(1)
     symbol_tree.ingest_variable_binding(
-        'y', building_blocks.Data('d', np.bool_)
+        'y',
+        building_blocks.Literal(4.0, computation_types.TensorType(np.float32)),
     )
     same_x = symbol_tree.get_payload_with_name('x')
     self.assertEqual(same_x.value, resolved_x.value)
@@ -1087,17 +1094,19 @@ class TransformationUtilsTest(parameterized.TestCase):
     symbol_tree = _construct_complex_symbol_tree()
     symbol_tree.drop_scope_down(0)
     symbol_tree.ingest_variable_binding(
-        'x', building_blocks.Data('a', np.bool_)
+        'x',
+        building_blocks.Literal(3.0, computation_types.TensorType(np.float32)),
     )
     symbol_tree.drop_scope_down(1)
     symbol_tree.ingest_variable_binding(
-        'y', building_blocks.Data('b', np.int32)
+        'y', building_blocks.Literal(1, computation_types.TensorType(np.int32))
     )
     symbol_tree.pop_scope_up()
     symbol_tree.drop_scope_down(1)
     with self.assertRaises(ValueError):
       symbol_tree.ingest_variable_binding(
-          'z', building_blocks.Data('c', np.int32)
+          'z',
+          building_blocks.Literal(2, computation_types.TensorType(np.int32)),
       )
 
   def test_symbol_tree_add_sibling(self):
@@ -1300,9 +1309,9 @@ class TransformationUtilsTest(parameterized.TestCase):
     )
 
   def test_bound_variable_tracker_equality_names(self):
-    data = building_blocks.Data('bound_data', np.int32)
-    whimsy_tracker = TrivialBoundVariableTracker('x', data)
-    second_whimsy_tracker = TrivialBoundVariableTracker('x', data)
+    lit = building_blocks.Literal(1, computation_types.TensorType(np.int32))
+    whimsy_tracker = TrivialBoundVariableTracker('x', lit)
+    second_whimsy_tracker = TrivialBoundVariableTracker('x', lit)
     self.assertEqual(whimsy_tracker, second_whimsy_tracker)
     second_whimsy_tracker.name = 'y'
     self.assertNotEqual(whimsy_tracker, second_whimsy_tracker)
@@ -1311,10 +1320,10 @@ class TransformationUtilsTest(parameterized.TestCase):
 
   def test_bound_variable_tracker_equality_values(self):
     whimsy_tracker = TrivialBoundVariableTracker(
-        'x', building_blocks.Data('bound_data', np.int32)
+        'x', building_blocks.Literal(1, computation_types.TensorType(np.int32))
     )
     second_whimsy_tracker = TrivialBoundVariableTracker(
-        'x', building_blocks.Data('other_data', np.int32)
+        'x', building_blocks.Literal(2, computation_types.TensorType(np.int32))
     )
     self.assertNotEqual(whimsy_tracker, second_whimsy_tracker)
 
@@ -1332,26 +1341,24 @@ class TransformationUtilsTest(parameterized.TestCase):
 
   def test_reference_tracker_initializes(self):
     whimsy_tracker = transformation_utils.ReferenceCounter(
-        'x', building_blocks.Data('bound_data', np.int32)
+        'x', building_blocks.Literal(1, computation_types.TensorType(np.int32))
     )
     self.assertEqual(whimsy_tracker.name, 'x')
-    self.assertEqual(
-        whimsy_tracker.value.compact_representation(), 'bound_data'
-    )
+    self.assertEqual(whimsy_tracker.value.compact_representation(), '1')
     self.assertEqual(whimsy_tracker.count, 0)
 
   def test_reference_tracker_updates(self):
     whimsy_tracker = transformation_utils.ReferenceCounter(
-        'x', building_blocks.Data('bound_data', np.int32)
+        'x', building_blocks.Literal(1, computation_types.TensorType(np.int32))
     )
     for k in range(10):
       whimsy_tracker.update()
       self.assertEqual(whimsy_tracker.count, k + 1)
 
   def test_reference_tracker_equality_instances(self):
-    data = building_blocks.Data('bound_data', np.int32)
-    whimsy_tracker = transformation_utils.ReferenceCounter('x', data)
-    second_whimsy_tracker = transformation_utils.ReferenceCounter('x', data)
+    lit = building_blocks.Literal(1, computation_types.TensorType(np.int32))
+    whimsy_tracker = transformation_utils.ReferenceCounter('x', lit)
+    second_whimsy_tracker = transformation_utils.ReferenceCounter('x', lit)
     self.assertEqual(whimsy_tracker, second_whimsy_tracker)
     whimsy_tracker.update()
     self.assertNotEqual(whimsy_tracker, second_whimsy_tracker)
@@ -1359,7 +1366,9 @@ class TransformationUtilsTest(parameterized.TestCase):
     self.assertEqual(whimsy_tracker, second_whimsy_tracker)
 
   def test_get_count_of_references_to_variables_simple_block(self):
-    simple_block = _construct_simple_block(np.int32)
+    simple_block = _construct_simple_block(
+        computation_types.TensorType(np.int32)
+    )
     context_stack = transformation_utils.get_count_of_references_to_variables(
         simple_block
     )
@@ -1383,12 +1392,14 @@ class TransformationUtilsTest(parameterized.TestCase):
   def test_get_count_of_references_to_variables_simple_block_two_references(
       self,
   ):
-    simple_block = _construct_simple_block(np.int32)
+    simple_block = _construct_simple_block(
+        computation_types.TensorType(np.int32)
+    )
     ref = simple_block.result
     result = building_blocks.Struct([ref, ref])
     simple_block = building_blocks.Block(simple_block.locals, result)
     self.assertEqual(
-        simple_block.compact_representation(), '(let x=data in <x,x>)'
+        simple_block.compact_representation(), '(let x=1 in <x,x>)'
     )
     context_stack = transformation_utils.get_count_of_references_to_variables(
         simple_block
@@ -1411,7 +1422,9 @@ class TransformationUtilsTest(parameterized.TestCase):
   def test_get_count_of_references_to_variables_nested_blocks_conflicting_names(
       self,
   ):
-    first_block = _construct_simple_block(np.int32)
+    first_block = _construct_simple_block(
+        computation_types.TensorType(np.int32)
+    )
     outer_block_output = building_blocks.Reference(
         'x', first_block.type_signature
     )
@@ -1420,7 +1433,7 @@ class TransformationUtilsTest(parameterized.TestCase):
     )
 
     self.assertEqual(
-        second_block.compact_representation(), '(let x=(let x=data in x) in x)'
+        second_block.compact_representation(), '(let x=(let x=1 in x) in x)'
     )
     context_stack = transformation_utils.get_count_of_references_to_variables(
         second_block
@@ -1457,11 +1470,11 @@ class TransformationUtilsTest(parameterized.TestCase):
     inner_lambda = building_blocks.Lambda('x', np.int32, innermost_x)
     second_x = building_blocks.Reference('x', np.int32)
     called_lambda = building_blocks.Call(inner_lambda, second_x)
-    block_input = building_blocks.Data('data', np.int32)
-    block = building_blocks.Block([('x', block_input)], called_lambda)
-    self.assertEqual(
-        block.compact_representation(), '(let x=data in (x -> x)(x))'
+    block_input = building_blocks.Literal(
+        1, computation_types.TensorType(np.int32)
     )
+    block = building_blocks.Block([('x', block_input)], called_lambda)
+    self.assertEqual(block.compact_representation(), '(let x=1 in (x -> x)(x))')
     context_stack = transformation_utils.get_count_of_references_to_variables(
         block
     )
@@ -1558,13 +1571,13 @@ class TransformationUtilsTest(parameterized.TestCase):
       self,
   ):
     used1 = building_blocks.Reference('used1', np.int32)
-    used2 = building_blocks.Data('used2', np.int32)
+    used2 = building_blocks.Literal(2, computation_types.TensorType(np.int32))
     ref = building_blocks.Reference('x', used1.type_signature)
     lower_block = building_blocks.Block([('x', used1)], ref)
     higher_block = building_blocks.Block([('used1', used2)], lower_block)
     self.assertEqual(
         higher_block.compact_representation(),
-        '(let used1=used2 in (let x=used1 in x))',
+        '(let used1=2 in (let x=used1 in x))',
     )
     context_stack = transformation_utils.get_count_of_references_to_variables(
         higher_block
@@ -1592,14 +1605,14 @@ class TransformationUtilsTest(parameterized.TestCase):
 
   def test_get_count_of_references_to_variables_nested_block_no_overwrite(self):
     used1 = building_blocks.Reference('used1', np.int32)
-    used2 = building_blocks.Data('used2', np.int32)
+    used2 = building_blocks.Literal(2, computation_types.TensorType(np.int32))
     user_inlined_lower_block = building_blocks.Block([('x', used1)], used1)
     user_inlined_higher_block = building_blocks.Block(
         [('used1', used2)], user_inlined_lower_block
     )
     self.assertEqual(
         user_inlined_higher_block.compact_representation(),
-        '(let used1=used2 in (let x=used1 in used1))',
+        '(let used1=2 in (let x=used1 in used1))',
     )
     second_context_stack = (
         transformation_utils.get_count_of_references_to_variables(
@@ -1635,14 +1648,14 @@ class TransformationUtilsTest(parameterized.TestCase):
     inner_block = building_blocks.Block([('x', intermediate_arg)], innermost)
     item1 = building_blocks.Reference('x', np.int32)
     mediate_tuple = building_blocks.Struct([item1, inner_block])
-    used = building_blocks.Data('used', np.int32)
-    used1 = building_blocks.Data('used1', np.int32)
+    used = building_blocks.Literal(0, computation_types.TensorType(np.int32))
+    used1 = building_blocks.Literal(1, computation_types.TensorType(np.int32))
     outer_block = building_blocks.Block(
         [('x', used), ('y', used1)], mediate_tuple
     )
     self.assertEqual(
         outer_block.compact_representation(),
-        '(let x=used,y=used1 in <x,(let x=y in x)>)',
+        '(let x=0,y=1 in <x,(let x=y in x)>)',
     )
     context_stack = transformation_utils.get_count_of_references_to_variables(
         outer_block
@@ -1747,7 +1760,7 @@ class TransformPreorderTest(parameterized.TestCase):
       transformation_utils.transform_preorder(None, transform)
 
   def test_transform_preorder_fails_on_none_transform(self):
-    comp = building_blocks.Data('x', np.int32)
+    comp = building_blocks.Literal(1, computation_types.TensorType(np.int32))
     with self.assertRaises(TypeError):
       transformation_utils.transform_preorder(comp, None)
 
@@ -1911,24 +1924,28 @@ class TransformPreorderTest(parameterized.TestCase):
     self.assertEqual(leaf_name_order, list(preorder_nodes))
 
   def test_transform_preorder_passes_transform_through_tuple_correctly(self):
-    def transform_data_to_reference(comp):
-      if isinstance(comp, building_blocks.Data):
-        return building_blocks.Reference(comp.uri, comp.type_signature), True
+
+    def transform_intrinsic_to_reference(comp):
+      if isinstance(comp, building_blocks.Literal):
+        return (
+            building_blocks.Reference(str(comp.value), comp.type_signature),
+            True,
+        )
       return comp, False
 
     tuple_holding_data = building_blocks.Struct(
-        [building_blocks.Data('a', np.int32)]
+        [building_blocks.Literal(1, computation_types.TensorType(np.int32))]
     )
-    data_replaced, modified = transformation_utils.transform_preorder(
-        tuple_holding_data, transform_data_to_reference
+    literal_replaced, modified = transformation_utils.transform_preorder(
+        tuple_holding_data, transform_intrinsic_to_reference
     )
     self.assertTrue(modified)
     self.assertEqual(
-        data_replaced.compact_representation(),
+        literal_replaced.compact_representation(),
         tuple_holding_data.compact_representation(),
     )
-    self.assertLen(data_replaced, 1)
-    self.assertIsInstance(data_replaced[0], building_blocks.Reference)
+    self.assertLen(literal_replaced, 1)
+    self.assertIsInstance(literal_replaced[0], building_blocks.Reference)
 
 
 class GetUniqueNamesTest(absltest.TestCase):
@@ -1951,15 +1968,15 @@ class GetUniqueNamesTest(absltest.TestCase):
     self.assertCountEqual(names, ('x', 'y'))
 
   def test_returns_names_single_block(self):
-    data = building_blocks.Data('x', np.int32)
-    block = building_blocks.Block([('x', data)], data)
+    lit = building_blocks.Literal(1, computation_types.TensorType(np.int32))
+    block = building_blocks.Block([('x', lit)], lit)
     names = transformation_utils.get_unique_names(block)
     self.assertCountEqual(names, ('x',))
 
   def test_returns_names_nested_blocks_with_different_variable_name(self):
-    data = building_blocks.Data('x', np.int32)
-    block_1 = building_blocks.Block([('x', data)], data)
-    block_2 = building_blocks.Block([('y', data)], block_1)
+    lit = building_blocks.Literal(1, computation_types.TensorType(np.int32))
+    block_1 = building_blocks.Block([('x', lit)], lit)
+    block_2 = building_blocks.Block([('y', lit)], block_1)
     names = transformation_utils.get_unique_names(block_2)
     self.assertCountEqual(names, ('x', 'y'))
 
@@ -1970,9 +1987,9 @@ class GetUniqueNamesTest(absltest.TestCase):
 
   def test_captures_unbound_reference_name(self):
     ref_to_z = building_blocks.Reference('z', np.int32)
-    data = building_blocks.Data('x', np.int32)
-    block_1 = building_blocks.Block([('x', data)], ref_to_z)
-    block_2 = building_blocks.Block([('y', data)], block_1)
+    lit = building_blocks.Literal(1, computation_types.TensorType(np.int32))
+    block_1 = building_blocks.Block([('x', lit)], ref_to_z)
+    block_2 = building_blocks.Block([('y', lit)], block_1)
     names = transformation_utils.get_unique_names(block_2)
     self.assertCountEqual(names, ('x', 'y', 'z'))
 
