@@ -41,7 +41,7 @@ main() {
     usage
   fi
 
-  local release_file="third_party/tensorflow_federated/RELEASE.md"
+  local release_file="tensorflow_federated/RELEASE.md"
   if [[ ! -f "${release_file}" ]]; then
     echo "error: Expected '${release_file}' to exist." 1>&2
   fi
@@ -64,7 +64,7 @@ main() {
       "${release_file}"
 
   # Update version.
-  find "third_party/tensorflow_federated/" -type f \
+  find "tensorflow_federated/" -type f \
       -not -path "${release_file}" \
       | xargs sed --in-place "s/${latest_version}/${version}/g"
 }
