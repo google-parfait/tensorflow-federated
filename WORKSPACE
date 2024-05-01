@@ -5,6 +5,7 @@ load(
     "git_repository",
     "new_git_repository",
 )
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 #
 # Direct dependencies
@@ -17,8 +18,28 @@ git_repository(
 )
 
 git_repository(
+    name = "com_google_benchmark",
+    remote = "https://github.com/google/benchmark.git",
+    tag = "v1.8.3",
+)
+
+http_archive(
+  name = "com_google_cc_differential_privacy",
+  url = "https://github.com/google/differential-privacy/archive/refs/tags/v3.0.0.tar.gz",
+  sha256 = "6e6e1cd7a819695caae408f4fa938129ab7a86e83fe2410137c85e50131abbe0",
+  strip_prefix = "differential-privacy-3.0.0/cc",
+)
+
+http_archive(
+  name = "com_google_differential_privacy",
+  url = "https://github.com/google/differential-privacy/archive/refs/tags/v3.0.0.tar.gz",
+  sha256 = "6e6e1cd7a819695caae408f4fa938129ab7a86e83fe2410137c85e50131abbe0",
+  strip_prefix = "differential-privacy-3.0.0",
+)
+
+git_repository(
     name = "com_google_absl",
-    commit = "66665d8d2e3fedff340b83f9841ca427145a7b26",
+    commit = "fb3621f4f897824c0dbe0615fa94543df6192f30",
     remote = "https://github.com/abseil/abseil-cpp.git",
 )
 

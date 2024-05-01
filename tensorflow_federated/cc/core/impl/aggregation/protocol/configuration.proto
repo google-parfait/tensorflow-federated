@@ -1,0 +1,68 @@
+/*
+ * Copyright 2022 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+syntax = "proto3";
+
+package tensorflow_federated.aggregation;
+
+import "tensorflow_federated/cc/core/impl/aggregation/core/tensor.proto";
+
+option java_package = "tensorflowfederated.aggregation";
+option java_multiple_files = true;
+
+// Configuration describing the kind of aggregation to perform.
+message Configuration {
+  // Represents a single aggregation operation, combining one or more input
+  // tensors from a collection of clients into one or more output tensors on the
+  // server.
+  message IntrinsicConfig {
+    // The uri of the aggregation intrinsic (e.g. 'federated_sum').
+    string intrinsic_uri = 1;
+
+    // Describes an argument to the aggregation operation.
+    message IntrinsicArg {
+      oneof arg {
+        // Input tensor provided by each client.
+        TensorSpecProto input_tensor = 2;
+
+        // Constant parameter that is independent of client data (e.g. a modulus
+        // for a federated modular sum operation).
+        TensorProto parameter = 3;
+      }
+    }
+
+    // List of arguments for the aggregation operation. The arguments can be
+    // dependent on client data (in which case they must be retrieved from
+    // clients) or they can be independent of client data (in which case they
+    // can be configured server-side). For now we assume all client-independent
+    // arguments are constants. The arguments must be in the order expected by
+    // the server.
+    repeated IntrinsicArg intrinsic_args = 4;
+
+    // List of server-side outputs produced by the aggregation operation.
+    repeated TensorSpecProto output_tensors = 5;
+
+    // List of inner aggregation intrinsics. This can be used to delegate parts
+    // of the aggregation logic (e.g. a groupby intrinsic may want to delegate
+    // a sum operation to a sum intrinsic).
+    repeated IntrinsicConfig inner_intrinsics = 6;
+  }
+
+  // A list of client-to-server aggregations to perform.
+  repeated IntrinsicConfig intrinsic_configs = 2;
+
+  reserved 1;
+}

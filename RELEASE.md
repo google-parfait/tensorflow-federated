@@ -1,5 +1,11 @@
 # Unreleased
 
+## Major Features and Improvements
+
+*   Moved aggregation from https://github.com/google-parfait/federated-compute
+    to TFF to consolidate the federated language and remove circular
+    dependencies.
+
 # Release 0.77.0
 
 ## Major Features and Improvements
@@ -8,7 +14,7 @@
 
 ## Bug Fixes
 
-*   Fix #4588: Target Haswell CPU architectures (`-march=haswell`) instead of
+*   Fixed #4588: Target Haswell CPU architectures (`-march=haswell`) instead of
     whatever is native to the build infrastructure to ensure that binaries in
     the pip package and executable on Colab CPU runtimes.
 
@@ -29,7 +35,7 @@
 
 ## Bug Fixes
 
-*   Fix a bug where the pip package default executor stack cannot execute
+*   Fixed a bug where the pip package default executor stack cannot execute
     computations that have `Lambda`s under `sequence_*` intrinsics.
 
 # Release 0.75.0

@@ -683,6 +683,14 @@ cc_library(
     name = "protobuf_matchers",
     testonly = True,
     hdrs = ["protobuf_matchers.h"],
+    # TODO: b/337290794 - Temporarily add `aggregation` package to the visibility of test utilities
+    # located in the `executor` package.
+    visibility = [
+        ":executors_packages",
+        "//tensorflow_federated/cc/core/impl:impl_users",
+        "//tensorflow_federated/cc/core/impl/aggregation:__subpackages__",
+        "//tensorflow_federated/cc/core/impl/executor_stacks:executor_stacks_packages",
+    ],
     deps = [
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/strings",
@@ -904,6 +912,14 @@ cc_library(
     testonly = True,
     srcs = ["status_matchers.cc"],
     hdrs = ["status_matchers.h"],
+    # TODO: b/337290794 - Temporarily add `aggregation` package to the visibility of test utilities
+    # located in the `executor` package.
+    visibility = [
+        ":executors_packages",
+        "//tensorflow_federated/cc/core/impl:impl_users",
+        "//tensorflow_federated/cc/core/impl/aggregation:__subpackages__",
+        "//tensorflow_federated/cc/core/impl/executor_stacks:executor_stacks_packages",
+    ],
     deps = [
         "@com_github_grpc_grpc//:grpc++",
         "@com_google_absl//absl/status",
