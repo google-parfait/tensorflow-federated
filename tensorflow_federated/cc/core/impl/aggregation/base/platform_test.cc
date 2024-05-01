@@ -21,7 +21,6 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/base/base_name.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/testing/testing.h"
-#include "tensorflow_federated/cc/core/impl/executors/status_matchers.h"
 
 namespace tensorflow_federated {
 

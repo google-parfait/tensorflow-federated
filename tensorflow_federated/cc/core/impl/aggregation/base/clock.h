@@ -19,9 +19,9 @@
 
 #include <map>
 #include <memory>
-#include <optional>
 #include <vector>
 
+#include "absl/base/thread_annotations.h"
 #include "absl/synchronization/mutex.h"
 #include "absl/time/time.h"
 
@@ -33,7 +33,7 @@ namespace tensorflow_federated {
  */
 class Clock {
  public:
-  // Returns a pointer to the global realtime clock. The caller does not
+  // Returns a pointer to the global real time clock. The caller does not
   // own the returned pointer and should not delete it. The returned clock
   // is thread-safe.
   static Clock* RealClock();
@@ -66,7 +66,7 @@ class Clock {
                           const std::shared_ptr<Waiter>& waiter);
 
  protected:
-  // Accessors shared for derived clases.
+  // Accessors shared for derived classes.
   absl::Mutex* mutex() { return &mu_; }
 
   // Internal version of now which is called under mutex.

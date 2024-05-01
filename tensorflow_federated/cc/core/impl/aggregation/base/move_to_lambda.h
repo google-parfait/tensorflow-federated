@@ -17,6 +17,7 @@
 #ifndef THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_AGGREGATION_BASE_MOVE_TO_LAMBDA_H_
 #define THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_AGGREGATION_BASE_MOVE_TO_LAMBDA_H_
 
+#include <type_traits>
 #include <utility>
 
 namespace tensorflow_federated {

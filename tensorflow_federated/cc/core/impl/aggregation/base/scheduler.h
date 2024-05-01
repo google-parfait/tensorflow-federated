@@ -25,11 +25,9 @@
  * tasks and futures.
  */
 
+#include <cstddef>
 #include <functional>
 #include <memory>
-
-#include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
-#include "tensorflow_federated/cc/core/impl/aggregation/base/move_to_lambda.h"
 
 namespace tensorflow_federated {
 

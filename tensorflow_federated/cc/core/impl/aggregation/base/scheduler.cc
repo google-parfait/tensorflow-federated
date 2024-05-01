@@ -16,7 +16,8 @@
 
 #include "tensorflow_federated/cc/core/impl/aggregation/base/scheduler.h"
 
-#include <array>
+#include <cstddef>
+#include <deque>
 #include <functional>
 #include <memory>
 #include <queue>
@@ -24,8 +25,10 @@
 #include <utility>
 #include <vector>
 
-#include "absl/synchronization/blocking_counter.h"
+#include "absl/base/thread_annotations.h"
 #include "absl/synchronization/mutex.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/base/move_to_lambda.h"
 
 namespace tensorflow_federated {
 

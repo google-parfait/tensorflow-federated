@@ -18,16 +18,10 @@
 
 #include <stdio.h>
 
-#include <array>
-#include <memory>
 #include <string>
-#include <utility>
 
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
-#include "absl/base/log_severity.h"
-#include "absl/strings/str_format.h"
-#include "tensorflow_federated/cc/core/impl/aggregation/base/base_name.h"
 
 namespace tensorflow_federated {
 namespace {
