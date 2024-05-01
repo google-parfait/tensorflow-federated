@@ -17,12 +17,15 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/base/scheduler.h"
 
 #include <atomic>
-#include <cstdlib>  // for std::rand
+#include <cstdint>
+#include <cstdlib>
+#include <vector>
 
-#include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
 #include "absl/synchronization/blocking_counter.h"
-#include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
+#include "absl/synchronization/mutex.h"
+#include "absl/time/clock.h"
+#include "absl/time/time.h"
 
 namespace tensorflow_federated {
 namespace base {

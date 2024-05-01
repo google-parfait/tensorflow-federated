@@ -25,6 +25,7 @@
 #include "googletest/include/gtest/gtest.h"
 #include "absl/time/civil_time.h"
 #include "absl/time/time.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/base/clock.h"
 
 namespace tensorflow_federated {
 namespace {
@@ -147,7 +148,7 @@ TEST(SimulatedClockTest, MultipleWaiters) {
   EXPECT_THAT(output, ElementsAre(3, 2));
 }
 
-// Verifies that a new timer can be scheduled when anoter timer is triggered.
+// Verifies that a new timer can be scheduled when another timer is triggered.
 TEST(SimulatedClockTest, RecursiveWakeup) {
   std::vector<int> output;
   absl::Time t = GetTestInitialTime();

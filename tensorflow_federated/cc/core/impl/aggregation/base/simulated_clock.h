@@ -17,6 +17,8 @@
 #ifndef THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_AGGREGATION_BASE_SIMULATED_CLOCK_H_
 #define THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_AGGREGATION_BASE_SIMULATED_CLOCK_H_
 
+#include "absl/base/thread_annotations.h"
+#include "absl/time/time.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/clock.h"
 
 namespace tensorflow_federated {

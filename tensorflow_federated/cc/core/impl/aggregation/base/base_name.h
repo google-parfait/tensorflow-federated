@@ -18,6 +18,7 @@
 #define THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_AGGREGATION_BASE_BASE_NAME_H_
 
 #include <string>
+
 #include "absl/strings/string_view.h"
 
 namespace tensorflow_federated {

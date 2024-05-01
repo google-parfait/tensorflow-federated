@@ -19,17 +19,18 @@
 #include <stdlib.h>
 #include <sys/stat.h>
 
-#include <cstdio>
 #include <fstream>
 #include <sstream>
 #include <string>
-
-#include "absl/status/status.h"
 
 #ifdef _WIN32
 #include <direct.h>
 #endif
 
+#include "google/protobuf/message.h"
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
+#include "absl/strings/cord.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/strings/strip.h"

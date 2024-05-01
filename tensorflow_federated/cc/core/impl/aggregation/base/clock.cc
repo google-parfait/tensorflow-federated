@@ -17,14 +17,16 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/base/clock.h"
 
 #include <algorithm>
+#include <cmath>
 #include <iterator>
 #include <memory>
+#include <thread>
 #include <utility>
 #include <vector>
 
-#include <thread>
-
+#include "absl/base/thread_annotations.h"
 #include "absl/synchronization/mutex.h"
+#include "absl/time/clock.h"
 #include "absl/time/time.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 
@@ -152,7 +154,7 @@ Clock::WaiterList Clock::GetExpiredWaiters() {
 }
 
 // Called at the end of dispatch loop to check post-dispatch conditions,
-// reset re-entracy level, and schedule a next dispatch if needed.
+// reset re-entrancy level, and schedule a next dispatch if needed.
 // Returns true if the dispatch loop has ended.
 // Returns false if more the dispatch loop needs to be repeated.
 bool Clock::FinishDispatchAndScheduleNextWakeup() {

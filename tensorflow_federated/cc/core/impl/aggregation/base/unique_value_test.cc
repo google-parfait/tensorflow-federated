@@ -16,11 +16,11 @@
 
 #include "tensorflow_federated/cc/core/impl/aggregation/base/unique_value.h"
 
+#include <optional>
 #include <utility>
 
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
-#include "absl/strings/str_cat.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 
 namespace tensorflow_federated {

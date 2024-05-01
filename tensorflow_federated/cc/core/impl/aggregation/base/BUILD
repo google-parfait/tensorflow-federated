@@ -48,8 +48,6 @@ cc_test(
     deps = [
         ":base",
         "//tensorflow_federated/cc/common_libs:oss_test_main",
-        "@com_google_absl//absl/base:log_severity",
-        "@com_google_absl//absl/strings:str_format",
     ],
 )
 
@@ -61,7 +59,6 @@ cc_test(
         ":base",
         "//tensorflow_federated/cc/common_libs:oss_test_main",
         "//tensorflow_federated/cc/core/impl/aggregation/testing",
-        "//tensorflow_federated/cc/core/impl/executors:status_matchers",
         "@com_google_absl//absl/strings:cord",
     ],
 )
@@ -72,6 +69,7 @@ cc_library(
     hdrs = ["scheduler.h"],
     deps = [
         ":base",
+        "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/synchronization",
     ],
 )
@@ -81,10 +79,10 @@ cc_test(
     size = "small",
     srcs = ["scheduler_test.cc"],
     deps = [
-        ":base",
         ":scheduler",
         "//tensorflow_federated/cc/common_libs:oss_test_main",
         "@com_google_absl//absl/synchronization",
+        "@com_google_absl//absl/time",
     ],
 )
 
@@ -111,7 +109,6 @@ cc_test(
         ":base",
         ":unique_value",
         "//tensorflow_federated/cc/common_libs:oss_test_main",
-        "@com_google_absl//absl/strings",
     ],
 )
 
@@ -121,6 +118,7 @@ cc_library(
     hdrs = ["clock.h"],
     deps = [
         ":base",
+        "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/synchronization",
         "@com_google_absl//absl/time",
     ],
@@ -131,13 +129,19 @@ cc_library(
     testonly = 1,
     srcs = ["simulated_clock.cc"],
     hdrs = ["simulated_clock.h"],
-    deps = [":clock"],
+    deps = [
+        ":clock",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/synchronization",
+        "@com_google_absl//absl/time",
+    ],
 )
 
 cc_test(
     name = "simulated_clock_test",
     srcs = ["simulated_clock_test.cc"],
     deps = [
+        ":clock",
         ":simulated_clock",
         "//tensorflow_federated/cc/common_libs:oss_test_main",
         "@com_google_absl//absl/time",

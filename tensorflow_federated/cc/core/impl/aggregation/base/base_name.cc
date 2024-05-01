@@ -16,9 +16,7 @@
 
 #include "tensorflow_federated/cc/core/impl/aggregation/base/base_name.h"
 
-#include <string.h>
-
-#include <cstdint>
+#include <cstring>
 #include <string>
 
 namespace tensorflow_federated {

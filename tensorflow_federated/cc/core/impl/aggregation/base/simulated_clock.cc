@@ -16,6 +16,9 @@
 
 #include "tensorflow_federated/cc/core/impl/aggregation/base/simulated_clock.h"
 
+#include "absl/synchronization/mutex.h"
+#include "absl/time/time.h"
+
 namespace tensorflow_federated {
 
 absl::Time SimulatedClock::Now() {
