@@ -347,9 +347,7 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     )
     comp = building_blocks.Lambda('param', client_int_type, body)
     intrinsic_defaults = [
-        building_block_test_utils.create_whimsy_called_federated_map(
-            'test', computation_types.StructType([])
-        ),
+        building_block_test_utils.create_whimsy_called_federated_map('test'),
     ]
     with self.assertRaises(transformations.NonAlignableAlongIntrinsicError):
       transformations.force_align_and_split_by_intrinsics(
@@ -362,9 +360,7 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     )
     called_intrinsics = building_blocks.Struct([federated_broadcast])
     comp = building_blocks.Lambda(None, None, called_intrinsics)
-    call = building_block_test_utils.create_whimsy_called_federated_broadcast(
-        computation_types.StructType([])
-    )
+    call = building_block_test_utils.create_whimsy_called_federated_broadcast()
     self.assert_splits_on(comp, call)
 
   def test_splits_on_selected_intrinsic_broadcast(self):
@@ -373,9 +369,7 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     )
     called_intrinsics = building_blocks.Struct([federated_broadcast])
     comp = building_blocks.Lambda('a', np.int32, called_intrinsics)
-    call = building_block_test_utils.create_whimsy_called_federated_broadcast(
-        computation_types.StructType([])
-    )
+    call = building_block_test_utils.create_whimsy_called_federated_broadcast()
     self.assert_splits_on(comp, call)
 
   def test_splits_on_selected_intrinsic_nested_in_tuple_broadcast(self):
@@ -392,9 +386,7 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     second_broadcast = building_block_factory.create_federated_broadcast(sel)
     result = transformations.to_call_dominant(second_broadcast)
     comp = building_blocks.Lambda('a', np.int32, result)
-    call = building_block_test_utils.create_whimsy_called_federated_broadcast(
-        computation_types.StructType([])
-    )
+    call = building_block_test_utils.create_whimsy_called_federated_broadcast()
     self.assert_splits_on(comp, call)
 
   def test_splits_on_multiple_of_selected_intrinsic_broadcast(self):
@@ -406,9 +398,7 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
         federated_broadcast,
     ])
     comp = building_blocks.Lambda('a', np.int32, called_intrinsics)
-    call = building_block_test_utils.create_whimsy_called_federated_broadcast(
-        computation_types.StructType([])
-    )
+    call = building_block_test_utils.create_whimsy_called_federated_broadcast()
     self.assert_splits_on(comp, call)
 
   def test_splits_on_selected_intrinsic_aggregate(self):
@@ -422,7 +412,7 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     called_intrinsics = building_blocks.Struct([federated_aggregate])
     comp = building_blocks.Lambda('d', np.int32, called_intrinsics)
     call = building_block_test_utils.create_whimsy_called_federated_aggregate(
-        value_type=computation_types.StructType([])
+        value_type=np.int32
     )
     self.assert_splits_on(comp, call)
 
@@ -439,9 +429,7 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
         federated_aggregate,
     ])
     comp = building_blocks.Lambda('d', np.int32, called_intrinsics)
-    call = building_block_test_utils.create_whimsy_called_federated_aggregate(
-        value_type=computation_types.StructType([])
-    )
+    call = building_block_test_utils.create_whimsy_called_federated_aggregate()
     self.assert_splits_on(comp, call)
 
   def test_splits_on_selected_intrinsic_secure_sum_bitwidth(self):
@@ -450,8 +438,8 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     )
     called_intrinsics = building_blocks.Struct([federated_secure_sum_bitwidth])
     comp = building_blocks.Lambda('a', np.int32, called_intrinsics)
-    call = building_block_test_utils.create_whimsy_called_federated_secure_sum_bitwidth(
-        computation_types.StructType([])
+    call = (
+        building_block_test_utils.create_whimsy_called_federated_secure_sum_bitwidth()
     )
     self.assert_splits_on(comp, call)
 
@@ -464,8 +452,8 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
         federated_secure_sum_bitwidth,
     ])
     comp = building_blocks.Lambda('a', np.int32, called_intrinsics)
-    call = building_block_test_utils.create_whimsy_called_federated_secure_sum_bitwidth(
-        computation_types.StructType([])
+    call = (
+        building_block_test_utils.create_whimsy_called_federated_secure_sum_bitwidth()
     )
     self.assert_splits_on(comp, call)
 
@@ -486,9 +474,7 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     ])
     comp = building_blocks.Lambda('d', np.int32, called_intrinsics)
     null_aggregate = (
-        building_block_test_utils.create_whimsy_called_federated_aggregate(
-            value_type=computation_types.StructType([])
-        )
+        building_block_test_utils.create_whimsy_called_federated_aggregate()
     )
     secure_sum_bitwidth_uri = federated_secure_sum_bitwidth.function.uri
     aggregate_uri = null_aggregate.function.uri
@@ -533,12 +519,8 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     self.assert_splits_on(
         comp,
         [
-            building_block_test_utils.create_whimsy_called_federated_aggregate(
-                value_type=computation_types.StructType([])
-            ),
-            building_block_test_utils.create_whimsy_called_federated_secure_sum_bitwidth(
-                computation_types.StructType([])
-            ),
+            building_block_test_utils.create_whimsy_called_federated_aggregate(),
+            building_block_test_utils.create_whimsy_called_federated_secure_sum_bitwidth(),
         ],
     )
 
@@ -563,12 +545,8 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     self.assert_splits_on(
         comp,
         [
-            building_block_test_utils.create_whimsy_called_federated_aggregate(
-                value_type=computation_types.StructType([])
-            ),
-            building_block_test_utils.create_whimsy_called_federated_secure_sum_bitwidth(
-                computation_types.StructType([])
-            ),
+            building_block_test_utils.create_whimsy_called_federated_aggregate(),
+            building_block_test_utils.create_whimsy_called_federated_secure_sum_bitwidth(),
         ],
     )
 
@@ -585,12 +563,8 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     transformations.force_align_and_split_by_intrinsics(
         comp,
         [
-            building_block_test_utils.create_whimsy_called_federated_aggregate(
-                value_type=computation_types.StructType([])
-            ),
-            building_block_test_utils.create_whimsy_called_federated_secure_sum_bitwidth(
-                computation_types.StructType([])
-            ),
+            building_block_test_utils.create_whimsy_called_federated_aggregate(),
+            building_block_test_utils.create_whimsy_called_federated_secure_sum_bitwidth(),
         ],
     )
 

@@ -2453,28 +2453,30 @@ class RepresentationTest(absltest.TestCase):
 
     self.assertEqual(
         comp.compact_representation(),
-        'federated_aggregate(<data,data,(a -> data),(b -> data),(c -> data)>)',
+        'federated_aggregate(<federated_value_at_clients(1),1,(a -> 1),(b -> 1)'
+        ',(c -> 1)>)',
     )
     # pyformat: disable
     self.assertEqual(
         comp.formatted_representation(),
         'federated_aggregate(<\n'
-        '  data,\n'
-        '  data,\n'
-        '  (a -> data),\n'
-        '  (b -> data),\n'
-        '  (c -> data)\n'
+        '  federated_value_at_clients(1),\n'
+        '  1,\n'
+        '  (a -> 1),\n'
+        '  (b -> 1),\n'
+        '  (c -> 1)\n'
         '>)'
     )
     self.assertEqual(
         comp.structural_representation(),
-        '                    Call\n'
-        '                   /    \\\n'
-        'federated_aggregate      Struct\n'
-        '                         |\n'
-        '                         [data, data, Lambda(a), Lambda(b), Lambda(c)]\n'
-        '                                      |          |          |\n'
-        '                                      data       data       data'
+        '                     Call\n'
+        '                    /    \\\n'
+        ' federated_aggregate      Struct\n'
+        '                          |\n'
+        '                          [Call, Lit(1),  Lambda(a), Lambda(b), '
+        'Lambda(c)]\n'
+        '                          /    \\          |          |          |\n'
+        'federated_value_at_clients      Lit(1)    Lit(1)     Lit(1)     Lit(1)'
     )
     # pyformat: enable
 
@@ -2484,14 +2486,15 @@ class RepresentationTest(absltest.TestCase):
     )
 
     self.assertEqual(
-        comp.compact_representation(), 'federated_map(<(a -> a),data>)'
+        comp.compact_representation(),
+        'federated_map(<(a -> a),federated_value_at_clients(1)>)',
     )
     # pyformat: disable
     self.assertEqual(
         comp.formatted_representation(),
         'federated_map(<\n'
         '  (a -> a),\n'
-        '  data\n'
+        '  federated_value_at_clients(1)\n'
         '>)'
     )
     self.assertEqual(
@@ -2500,9 +2503,9 @@ class RepresentationTest(absltest.TestCase):
         '             /    \\\n'
         'federated_map      Struct\n'
         '                   |\n'
-        '                   [Lambda(a), data]\n'
-        '                    |\n'
-        '                    Ref(a)'
+        '                   [Lambda(a),                           Call]\n'
+        '                    |                                   /    \\\n'
+        '                    Ref(a)    federated_value_at_clients      Lit(1)'
     )
     # pyformat: enable
 

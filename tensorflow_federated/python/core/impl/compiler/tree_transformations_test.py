@@ -66,7 +66,7 @@ def _create_chained_whimsy_federated_maps(functions, arg):
               str(fn.parameter_type), str(arg.type_signature.member)
           )
       )
-    call = building_block_factory.create_federated_map(fn, arg)
+    call = building_block_factory.create_federated_map_all_equal(fn, arg)
     arg = call
   return call
 
@@ -79,21 +79,14 @@ class RemoveMappedOrAppliedIdentityTest(parameterized.TestCase):
 
   # pyformat: disable
   @parameterized.named_parameters(
-      ('federated_apply',
-       intrinsic_defs.FEDERATED_APPLY.uri,
-       building_block_test_utils.create_whimsy_called_federated_apply),
       ('federated_map',
        intrinsic_defs.FEDERATED_MAP.uri,
        building_block_test_utils.create_whimsy_called_federated_map),
       ('federated_map_all_equal',
        intrinsic_defs.FEDERATED_MAP_ALL_EQUAL.uri,
        building_block_test_utils.create_whimsy_called_federated_map_all_equal),
-      ('sequence_map',
-       intrinsic_defs.SEQUENCE_MAP.uri,
-       building_block_test_utils.create_whimsy_called_sequence_map),
   )
   # pyformat: enable
-
   def test_removes_intrinsic(self, uri, factory):
     call = factory(parameter_name='a')
     comp = call
@@ -103,9 +96,54 @@ class RemoveMappedOrAppliedIdentityTest(parameterized.TestCase):
     )
 
     self.assertEqual(
-        comp.compact_representation(), '{}(<(a -> a),data>)'.format(uri)
+        comp.compact_representation(),
+        '{}(<(a -> a),federated_value_at_clients(1)>)'.format(uri),
     )
-    self.assertEqual(transformed_comp.compact_representation(), 'data')
+    self.assertEqual(
+        transformed_comp.compact_representation(),
+        'federated_value_at_clients(1)',
+    )
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+    self.assertTrue(modified)
+
+  def test_removes_federated_apply(self):
+    call = building_block_test_utils.create_whimsy_called_federated_apply(
+        parameter_name='a'
+    )
+    comp = call
+
+    transformed_comp, modified = (
+        tree_transformations.remove_mapped_or_applied_identity(comp)
+    )
+
+    self.assertEqual(
+        comp.compact_representation(),
+        'federated_apply(<(a -> a),federated_value_at_server(1)>)',
+    )
+    self.assertEqual(
+        transformed_comp.compact_representation(),
+        'federated_value_at_server(1)',
+    )
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+    self.assertTrue(modified)
+
+  def test_removes_sequence_map(self):
+    call = building_block_test_utils.create_whimsy_called_sequence_map(
+        parameter_name='a'
+    )
+    comp = call
+
+    transformed_comp, modified = (
+        tree_transformations.remove_mapped_or_applied_identity(comp)
+    )
+    self.assertEqual(
+        comp.compact_representation(),
+        'sequence_map(<(a -> a),data>)',
+    )
+    self.assertEqual(
+        transformed_comp.compact_representation(),
+        'data',
+    )
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
@@ -147,18 +185,21 @@ class RemoveMappedOrAppliedIdentityTest(parameterized.TestCase):
 
     self.assertEqual(
         comp.compact_representation(),
-        '(let b=data in federated_map(<(a -> a),data>))',
+        '(let b=1 in federated_map(<(a -> a),federated_value_at_clients(1)>))',
     )
     self.assertEqual(
-        transformed_comp.compact_representation(), '(let b=data in data)'
+        transformed_comp.compact_representation(),
+        '(let b=1 in federated_value_at_clients(1))',
     )
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
   def test_removes_chained_federated_maps(self):
     fn = building_block_test_utils.create_identity_function('a', np.int32)
-    arg_type = computation_types.FederatedType(np.int32, placements.CLIENTS)
-    arg = building_blocks.Data('data', arg_type)
+    arg = building_block_factory.create_federated_value(
+        building_blocks.Literal(1, computation_types.TensorType(np.int32)),
+        placement=placements.CLIENTS,
+    )
     call = _create_chained_whimsy_federated_maps([fn, fn], arg)
     comp = call
 
@@ -168,9 +209,13 @@ class RemoveMappedOrAppliedIdentityTest(parameterized.TestCase):
 
     self.assertEqual(
         comp.compact_representation(),
-        'federated_map(<(a -> a),federated_map(<(a -> a),data>)>)',
+        'federated_map_all_equal(<(a -> a),federated_map_all_equal(<(a ->'
+        ' a),federated_value_at_clients(1)>)>)',
     )
-    self.assertEqual(transformed_comp.compact_representation(), 'data')
+    self.assertEqual(
+        transformed_comp.compact_representation(),
+        'federated_value_at_clients(1)',
+    )
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 

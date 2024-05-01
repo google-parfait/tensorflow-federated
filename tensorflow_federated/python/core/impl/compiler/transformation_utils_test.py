@@ -293,15 +293,13 @@ class TransformationUtilsTest(parameterized.TestCase):
     leaf_name_order = []
 
     def transform(comp):
-      if isinstance(comp, building_blocks.Data):
-        leaf_name_order.append(comp.uri)
+      if isinstance(comp, building_blocks.Literal):
+        leaf_name_order.append(comp.value)
       return comp, False
 
     transformation_utils.transform_postorder(complex_ast, transform)
 
-    self.assertEqual(
-        leaf_name_order, ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k']
-    )
+    self.assertEqual(leaf_name_order, [1, 2, 3, 4, 5, 6, 7, 10, 8, 9, 11])
 
   def test_transform_postorder_walks_block_locals_postorder(self):
     complex_ast = building_block_test_utils.create_nested_syntax_tree()
@@ -337,30 +335,30 @@ class TransformationUtilsTest(parameterized.TestCase):
       if isinstance(comp, building_blocks.Block):
         for name, _ in comp.locals:
           leaf_name_order.append(name)
-      elif isinstance(comp, building_blocks.Data):
-        leaf_name_order.append(comp.uri)
+      elif isinstance(comp, building_blocks.Literal):
+        leaf_name_order.append(comp.value)
       return comp, False
 
     transformation_utils.transform_postorder(complex_ast, transform)
     postorder_nodes = [
-        'a',
-        'b',
-        'c',
-        'd',
+        1,
+        2,
+        3,
+        4,
         't',
-        'e',
-        'f',
+        5,
+        6,
         'u',
-        'g',
+        7,
         'v',
-        'h',
-        'i',
-        'j',
+        10,
+        8,
+        9,
         'w',
         'x',
         'y',
         'z',
-        'k',
+        11,
     ]
 
     self.assertEqual(leaf_name_order, list(postorder_nodes))
@@ -500,17 +498,15 @@ class TransformationUtilsTest(parameterized.TestCase):
 
     def transform(comp, ctxt_tree):
       del ctxt_tree
-      if isinstance(comp, building_blocks.Data):
-        leaf_order.append(comp.uri)
+      if isinstance(comp, building_blocks.Literal):
+        leaf_order.append(comp.value)
       return comp, False
 
     empty_context_tree = transformation_utils.SymbolTree(FakeTracker)
     transformation_utils.transform_postorder_with_symbol_bindings(
         outer_comp, transform, empty_context_tree
     )
-    self.assertEqual(
-        leaf_order, ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k']
-    )
+    self.assertEqual(leaf_order, [1, 2, 3, 4, 5, 6, 7, 10, 8, 9, 11])
 
   def test_transform_postorder_hooks_walks_block_locals_postorder(self):
     block_locals_order = []
@@ -565,8 +561,8 @@ class TransformationUtilsTest(parameterized.TestCase):
       if isinstance(comp, building_blocks.Block):
         for name, _ in comp.locals:
           named_node_order.append(name)
-      elif isinstance(comp, building_blocks.Data):
-        named_node_order.append(comp.uri)
+      elif isinstance(comp, building_blocks.Literal):
+        named_node_order.append(comp.value)
       return comp, False
 
     empty_context_tree = transformation_utils.SymbolTree(FakeTracker)
@@ -574,24 +570,24 @@ class TransformationUtilsTest(parameterized.TestCase):
         outer_comp, transform, empty_context_tree
     )
     correct_results = [
-        'a',
-        'b',
-        'c',
-        'd',
+        1,
+        2,
+        3,
+        4,
         't',
-        'e',
-        'f',
+        5,
+        6,
         'u',
-        'g',
+        7,
         'v',
-        'h',
-        'i',
-        'j',
+        10,
+        8,
+        9,
         'w',
         'x',
         'y',
         'z',
-        'k',
+        11,
     ]
     self.assertEqual(named_node_order, correct_results)
 
@@ -1851,15 +1847,13 @@ class TransformPreorderTest(parameterized.TestCase):
     leaf_name_order = []
 
     def transform(comp):
-      if isinstance(comp, building_blocks.Data):
-        leaf_name_order.append(comp.uri)
+      if isinstance(comp, building_blocks.Literal):
+        leaf_name_order.append(comp.value)
       return comp, False
 
     transformation_utils.transform_preorder(complex_ast, transform)
 
-    self.assertEqual(
-        leaf_name_order, ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k']
-    )
+    self.assertEqual(leaf_name_order, [1, 2, 3, 4, 5, 6, 7, 10, 8, 9, 11])
 
   def test_transform_preorder_walks_block_locals_preorder(self):
     complex_ast = building_block_test_utils.create_nested_syntax_tree()
@@ -1895,30 +1889,30 @@ class TransformPreorderTest(parameterized.TestCase):
       if isinstance(comp, building_blocks.Block):
         for name, _ in comp.locals:
           leaf_name_order.append(name)
-      elif isinstance(comp, building_blocks.Data):
-        leaf_name_order.append(comp.uri)
+      elif isinstance(comp, building_blocks.Literal):
+        leaf_name_order.append(comp.value)
       return comp, False
 
     transformation_utils.transform_preorder(complex_ast, transform)
     preorder_nodes = [
         'y',
         'z',
-        'a',
-        'b',
+        1,
+        2,
         'v',
         't',
-        'c',
-        'd',
+        3,
+        4,
         'u',
-        'e',
-        'f',
-        'g',
+        5,
+        6,
+        7,
         'x',
-        'h',
+        10,
         'w',
-        'i',
-        'j',
-        'k',
+        8,
+        9,
+        11,
     ]
 
     self.assertEqual(leaf_name_order, list(preorder_nodes))
