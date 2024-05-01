@@ -14,13 +14,9 @@
  * limitations under the License.
  */
 
-#include "tensorflow_federated/cc/core/impl/aggregation/core/group_by_aggregator.h"
-
 #include <cstdint>
-#include <memory>
 #include <string>
 #include <utility>
-#include <vector>
 
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"

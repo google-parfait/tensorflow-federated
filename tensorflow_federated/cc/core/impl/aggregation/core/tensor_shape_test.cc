@@ -16,7 +16,7 @@
 
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_shape.h"
 
-#include <climits>
+#include <cstdint>
 #include <vector>
 
 #include "googlemock/include/gmock/gmock.h"

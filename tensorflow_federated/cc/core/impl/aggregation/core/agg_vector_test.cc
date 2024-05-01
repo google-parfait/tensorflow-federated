@@ -16,11 +16,11 @@
 
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_vector.h"
 
-#include <utility>
+#include <cstddef>
 
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
-#include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/agg_vector_iterator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/testing/test_data.h"
 

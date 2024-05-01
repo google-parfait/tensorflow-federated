@@ -13,11 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 #include "tensorflow_federated/cc/core/impl/aggregation/core/one_dim_grouping_aggregator.h"
 
 #include <climits>
 #include <cstdint>
-#include <memory>
 #include <utility>
 
 #include "googlemock/include/gmock/gmock.h"

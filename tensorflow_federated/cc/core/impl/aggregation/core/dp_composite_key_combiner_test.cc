@@ -13,11 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_composite_key_combiner.h"
 
 #include <cstdint>
 #include <initializer_list>
-#include <memory>
 #include <vector>
 
 #include "googlemock/include/gmock/gmock.h"

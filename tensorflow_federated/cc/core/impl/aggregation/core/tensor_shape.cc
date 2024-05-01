@@ -16,6 +16,8 @@
 
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_shape.h"
 
+#include <cstddef>
+#include <cstdint>
 #include <utility>
 
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"

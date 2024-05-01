@@ -18,6 +18,7 @@
 #define THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_AGGREGATION_CORE_TENSOR_H_
 
 #include <cmath>
+#include <cstddef>
 #include <memory>
 #include <type_traits>
 #include <utility>

@@ -18,8 +18,6 @@
 #define THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_AGGREGATION_CORE_AGG_VECTOR_H_
 
 #include <cstddef>
-#include <memory>
-#include <utility>
 
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_vector_iterator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_data.h"

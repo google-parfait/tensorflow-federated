@@ -16,7 +16,6 @@
 
 #include <cstdint>
 #include <memory>
-#include <string>
 #include <utility>
 
 #include "googlemock/include/gmock/gmock.h"

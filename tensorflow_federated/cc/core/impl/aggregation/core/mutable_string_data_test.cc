@@ -13,9 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "tensorflow_federated/cc/core/impl/aggregation/core/mutable_string_data.h"
 
-#include <string>
+#include "tensorflow_federated/cc/core/impl/aggregation/core/mutable_string_data.h"
 
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
