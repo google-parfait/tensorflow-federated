@@ -24,7 +24,6 @@
 #include "tensorflow/core/framework/types.pb.h"
 #include "tensorflow/core/protobuf/struct.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
-#include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_shape.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_spec.h"

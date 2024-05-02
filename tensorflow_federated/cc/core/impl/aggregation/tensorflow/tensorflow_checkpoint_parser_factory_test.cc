@@ -18,7 +18,6 @@
 
 #include <memory>
 #include <string>
-#include <utility>
 
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
@@ -27,7 +26,6 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/base/platform.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/protocol/checkpoint_parser.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/testing/testing.h"
-#include "tensorflow_federated/cc/core/impl/executors/status_matchers.h"
 
 namespace tensorflow_federated::aggregation::tensorflow {
 namespace {

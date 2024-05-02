@@ -18,7 +18,6 @@
 
 #include <cstdint>
 #include <utility>
-#include <vector>
 
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
@@ -28,7 +27,6 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/tensorflow/checkpoint_reader.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/testing/test_data.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/testing/testing.h"
-#include "tensorflow_federated/cc/core/impl/executors/status_matchers.h"
 
 namespace tensorflow_federated::aggregation::tensorflow {
 namespace {

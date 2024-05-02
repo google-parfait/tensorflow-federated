@@ -16,10 +16,7 @@
 
 #include "tensorflow_federated/cc/core/impl/aggregation/tensorflow/checkpoint_reader.h"
 
-#include <cstddef>
 #include <cstdint>
-#include <initializer_list>
-#include <memory>
 #include <utility>
 
 #include "googlemock/include/gmock/gmock.h"
@@ -27,6 +24,7 @@
 #include "absl/strings/string_view.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/platform.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/testing/testing.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_matchers.h"
 

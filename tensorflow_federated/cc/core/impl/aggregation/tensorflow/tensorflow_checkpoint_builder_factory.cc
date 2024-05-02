@@ -28,9 +28,8 @@
 #include "absl/strings/cord.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
-#include "tensorflow/core/platform/env.h"
 #include "tensorflow/core/platform/file_system.h"
-#include "tensorflow/core/platform/status.h"
+#include "tensorflow/tsl/platform/env.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/protocol/checkpoint_builder.h"
@@ -39,7 +38,7 @@
 namespace tensorflow_federated::aggregation::tensorflow {
 namespace {
 
-using ::tensorflow::Env;
+using tsl::Env;
 
 // A CheckpointBuilder implementation that builds TensorFlow checkpoints using a
 // CheckpointWriter.

@@ -16,13 +16,12 @@
 
 #include "tensorflow_federated/cc/core/impl/aggregation/tensorflow/converters.h"
 
+#include <cstdint>
 #include <initializer_list>
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
-
-#include "tensorflow_federated/cc/core/impl/executors/status_matchers.h"
 
 // clang-format off
 #include "tensorflow_federated/cc/core/impl/aggregation/testing/parse_text_proto.h"
@@ -44,6 +43,7 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/core/vector_string_data.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/testing/test_data.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/testing/testing.h"
+#include "tensorflow_federated/cc/core/impl/executors/status_matchers.h"
 
 namespace tensorflow_federated::aggregation::tensorflow {
 namespace {

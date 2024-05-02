@@ -16,8 +16,7 @@
 
 #include "tensorflow_federated/cc/core/impl/aggregation/tensorflow/tensorflow_checkpoint_parser_factory.h"
 
-#include <stdint.h>
-
+#include <cstdint>
 #include <limits>
 #include <memory>
 #include <string>
@@ -25,13 +24,12 @@
 
 #include "absl/cleanup/cleanup.h"
 #include "absl/random/random.h"
-#include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
-#include "tensorflow/core/platform/env.h"
 #include "tensorflow/core/platform/file_system.h"
+#include "tensorflow/tsl/platform/env.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/protocol/checkpoint_parser.h"
