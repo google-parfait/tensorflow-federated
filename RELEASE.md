@@ -11,6 +11,8 @@
 ## Major Features and Improvements
 
 *   Added an implementation of `__eq__()` on `building blocks`.
+*   Added a new field, `content`, to the `Data` building block and updated
+    tests.
 
 ## Bug Fixes
 

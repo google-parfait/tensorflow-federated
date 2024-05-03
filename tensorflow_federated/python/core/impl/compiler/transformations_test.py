@@ -125,7 +125,10 @@ class ToCallDominantTest(absltest.TestCase):
     int_type = computation_types.to_type(np.int32)
     int_to_int_type = computation_types.FunctionType(int_type, int_type)
     bb = building_blocks
-    int_to_int_fn = bb.Data('ext', int_to_int_type)
+    any_proto = building_block_test_utils.create_any_proto_from_array(
+        np.array([1, 2, 3])
+    )
+    int_to_int_fn = bb.Data(any_proto, int_to_int_type)
     before = bb.Lambda(
         'x',
         int_type,
@@ -155,7 +158,10 @@ class ToCallDominantTest(absltest.TestCase):
     int_to_int_type = computation_types.FunctionType(int_type, int_type)
     int_thunk_type = computation_types.FunctionType(None, int_type)
     bb = building_blocks
-    int_to_int_fn = bb.Data('ext', int_to_int_type)
+    any_proto = building_block_test_utils.create_any_proto_from_array(
+        np.array([1, 2, 3])
+    )
+    int_to_int_fn = bb.Data(any_proto, int_to_int_type)
 
     # -> (let result = ext(x) in (-> result))
     # Each call of the outer lambda should create a single binding, with
@@ -222,7 +228,10 @@ class ToCallDominantTest(absltest.TestCase):
         [(None, int_type), (None, int_type)]
     )
     get_two_int_type = computation_types.FunctionType(None, two_int_type)
-    call_ext = bb.Call(bb.Data('ext', get_two_int_type))
+    any_proto = building_block_test_utils.create_any_proto_from_array(
+        np.array([1, 2, 3])
+    )
+    call_ext = bb.Call(bb.Data(any_proto, get_two_int_type))
     before = bb.Selection(call_ext, index=0)
     after = transformations.to_call_dominant(before)
     expected = bb.Block(
@@ -376,9 +385,13 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     first_broadcast = (
         building_block_test_utils.create_whimsy_called_federated_broadcast()
     )
+    any_proto = building_block_test_utils.create_any_proto_from_array(
+        np.array([1, 2, 3])
+    )
     packed_broadcast = building_blocks.Struct([
         building_blocks.Data(
-            'a', computation_types.FederatedType(np.int32, placements.SERVER)
+            any_proto,
+            computation_types.FederatedType(np.int32, placements.SERVER),
         ),
         first_broadcast,
     ])
@@ -1810,8 +1823,11 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
             building_blocks.Reference('arg', arg_type), index=server_data_index
         )
     )
+    any_proto = building_block_test_utils.create_any_proto_from_array(
+        np.array([1, 2, 3])
+    )
     packed_broadcast = building_blocks.Struct(
-        [building_blocks.Data('a', server_val_type), first_broadcast]
+        [building_blocks.Data(any_proto, server_val_type), first_broadcast]
     )
     sel = building_blocks.Selection(packed_broadcast, index=0)
     second_broadcast = building_block_factory.create_federated_broadcast(sel)

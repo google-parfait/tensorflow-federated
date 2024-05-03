@@ -94,13 +94,16 @@ class TrivialBoundVariableTracker(transformation_utils.BoundVariableTracker):
 
 def _construct_trivial_instance_of_all_computation_building_blocks():
   cbb_list = []
+  any_proto = building_block_test_utils.create_any_proto_from_array(
+      np.array(1, np.int32)
+  )
   ref_to_x = building_blocks.Reference('x', np.int32)
   cbb_list.append(('reference', ref_to_x))
   lam = building_blocks.Lambda('x', np.int32, ref_to_x)
   cbb_list.append(('lambda', lam))
   block = building_blocks.Block([('x', ref_to_x)], lam)
   cbb_list.append(('block', block))
-  data = building_blocks.Data('x', np.int32)
+  data = building_blocks.Data(any_proto, np.int32)
   cbb_list.append(('data', data))
   function_type = computation_types.FunctionType(np.int32, np.int32)
   intrinsic = building_blocks.Intrinsic('whimsy_intrinsic', function_type)

@@ -128,21 +128,25 @@ class RemoveMappedOrAppliedIdentityTest(parameterized.TestCase):
     self.assertTrue(modified)
 
   def test_removes_sequence_map(self):
+    any_proto = building_block_test_utils.create_any_proto_from_array(
+        np.array(1, np.int32)
+    )
     call = building_block_test_utils.create_whimsy_called_sequence_map(
-        parameter_name='a'
+        parameter_name='a', any_proto=any_proto
     )
     comp = call
 
     transformed_comp, modified = (
         tree_transformations.remove_mapped_or_applied_identity(comp)
     )
+    data_str = str(id(any_proto))
     self.assertEqual(
         comp.compact_representation(),
-        'sequence_map(<(a -> a),data>)',
+        f'sequence_map(<(a -> a),{data_str}>)',
     )
     self.assertEqual(
         transformed_comp.compact_representation(),
-        'data',
+        data_str,
     )
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
@@ -153,18 +157,21 @@ class RemoveMappedOrAppliedIdentityTest(parameterized.TestCase):
     arg_type = computation_types.FederatedType(
         parameter_type, placements.CLIENTS
     )
-    arg = building_blocks.Data('data', arg_type)
+    any_proto = building_block_test_utils.create_any_proto_from_array(
+        np.array(1, np.int32)
+    )
+    arg = building_blocks.Data(any_proto, arg_type)
     call = building_block_factory.create_federated_map(fn, arg)
     comp = call
 
     transformed_comp, modified = (
         tree_transformations.remove_mapped_or_applied_identity(comp)
     )
-
+    str_data = str(id(any_proto))
     self.assertEqual(
-        comp.compact_representation(), 'federated_map(<(c -> c),data>)'
+        comp.compact_representation(), f'federated_map(<(c -> c),{str_data}>)'
     )
-    self.assertEqual(transformed_comp.compact_representation(), 'data')
+    self.assertEqual(transformed_comp.compact_representation(), str_data)
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 

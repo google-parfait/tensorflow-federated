@@ -323,20 +323,27 @@ def create_whimsy_called_federated_sum(
   return building_block_factory.create_federated_sum(value)
 
 
-def create_whimsy_called_sequence_map(parameter_name, parameter_type=np.int32):
+def create_whimsy_called_sequence_map(
+    # TODO: b/338284242 - Remove any proto from function constructor once the
+    # compiler tests no longer use string equality.
+    parameter_name,
+    parameter_type=np.int32,
+    any_proto=any_pb2.Any(),
+):
   r"""Returns a whimsy called sequence map.
 
                Call
               /    \
-  sequence_map      data
+  sequence_map      Data(id)
 
   Args:
     parameter_name: The name of the parameter.
     parameter_type: The type of the parameter.
+    any_proto: The any proto to use for the data block.
   """
   fn = create_identity_function(parameter_name, parameter_type)
   arg_type = computation_types.SequenceType(parameter_type)
-  arg = building_blocks.Data('data', arg_type)
+  arg = building_blocks.Data(any_proto, arg_type)
   return building_block_factory.create_sequence_map(fn, arg)
 
 

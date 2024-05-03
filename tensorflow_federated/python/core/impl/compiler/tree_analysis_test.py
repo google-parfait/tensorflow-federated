@@ -349,7 +349,9 @@ def _create_trivial_mean(value_type=np.int32):
   fed_value_type = computation_types.FederatedType(
       value_type, placements.CLIENTS
   )
-  any_proto = 'any_proto'
+  any_proto = building_block_test_utils.create_any_proto_from_array(
+      np.array([1, 2, 3])
+  )
   values = building_blocks.Data(any_proto, fed_value_type)
 
   return building_block_factory.create_federated_mean(values, None)
@@ -360,7 +362,9 @@ def _create_trivial_secure_sum(value_type=np.int32):
   federated_type = computation_types.FederatedType(
       value_type, placements.CLIENTS
   )
-  any_proto = 'any_proto'
+  any_proto = building_block_test_utils.create_any_proto_from_array(
+      np.array([1, 2, 3])
+  )
   value = building_blocks.Data(any_proto, federated_type)
   bitwidth = building_blocks.Data(any_proto, value_type)
   return building_block_factory.create_federated_secure_sum_bitwidth(
@@ -392,6 +396,9 @@ class ContainsAggregationShared(parameterized.TestCase):
   @parameterized.named_parameters([
       ('non_aggregation_intrinsics', non_aggregation_intrinsics),
       ('trivial_mean', trivial_mean),
+      # TODO: b/120439632 - Enable once federated_mean accepts structured
+      # weight.
+      # ('trivial_weighted_mean', trivial_weighted_mean),
       ('trivial_secure_sum', trivial_secure_sum),
   ])
   def test_returns_none(self, comp):
@@ -399,9 +406,12 @@ class ContainsAggregationShared(parameterized.TestCase):
     self.assertEmpty(tree_analysis.find_secure_aggregation_in_tree(comp))
 
   def test_throws_on_unresolvable_function_call(self):
+    any_proto = building_block_test_utils.create_any_proto_from_array(
+        np.array([1, 2, 3])
+    )
     comp = building_blocks.Call(
         building_blocks.Data(
-            'unknown_func',
+            any_proto,
             computation_types.FunctionType(
                 None,
                 computation_types.FederatedType(np.int32, placements.CLIENTS),
@@ -419,12 +429,15 @@ class ContainsAggregationShared(parameterized.TestCase):
   ):
     input_type = computation_types.FederatedType(np.int32, placements.CLIENTS)
     output_type = np.int32
+    any_proto = building_block_test_utils.create_any_proto_from_array(
+        np.array([1, 2, 3])
+    )
     comp = building_blocks.Call(
         building_blocks.Data(
-            'unknown_func',
+            any_proto,
             computation_types.FunctionType(input_type, output_type),
         ),
-        building_blocks.Data('client_data', input_type),
+        building_blocks.Data(any_proto, input_type),
     )
 
     self.assertEmpty(tree_analysis.find_unsecure_aggregation_in_tree(comp))

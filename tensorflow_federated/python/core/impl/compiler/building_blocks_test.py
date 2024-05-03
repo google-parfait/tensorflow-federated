@@ -17,10 +17,12 @@ from absl.testing import parameterized
 import numpy as np
 import tree
 
+from google.protobuf import any_pb2
 from tensorflow_federated.proto.v0 import array_pb2
 from tensorflow_federated.proto.v0 import computation_pb2
 from tensorflow_federated.proto.v0 import data_type_pb2
 from tensorflow_federated.python.common_libs import structure
+from tensorflow_federated.python.core.impl.compiler import array
 from tensorflow_federated.python.core.impl.compiler import building_block_test_utils
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import computation_factory
@@ -411,25 +413,39 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
     self._serialize_deserialize_roundtrip_test(concrete_federated_map)
 
   def test_basic_functionality_of_data_class(self):
+    test_proto = array.to_proto(np.array([1, 2, 3], np.int32))
+    any_proto = any_pb2.Any()
+    any_proto.Pack(test_proto)
     x = building_blocks.Data(
-        '/tmp/mydata', computation_types.SequenceType(np.int32)
+        any_proto, computation_types.SequenceType(np.int32)
     )
     self.assertEqual(str(x.type_signature), 'int32*')
-    self.assertEqual(x.uri, '/tmp/mydata')
+    self.assertEqual(x.content, any_proto)
+    arr = array_pb2.Array()
+    x.content.Unpack(arr)
+    self.assertEqual(arr, test_proto)
+    as_string = str(any_proto)
     self.assertEqual(
-        repr(x), "Data('/tmp/mydata', SequenceType(TensorType(np.int32)))"
+        repr(x), f'Data({as_string}, SequenceType(TensorType(np.int32)))'
     )
-    self.assertEqual(x.compact_representation(), '/tmp/mydata')
+    as_id_string = str(id(any_proto))
+    self.assertEqual(
+        x.compact_representation(),
+        as_id_string,
+    )
     x_proto = x.proto
     self.assertEqual(
         type_serialization.deserialize_type(x_proto.type), x.type_signature
     )
     self.assertEqual(x_proto.WhichOneof('computation'), 'data')
-    self.assertEqual(x_proto.data.uri, x.uri)
+    self.assertEqual(x_proto.data.content, x.content)
     self._serialize_deserialize_roundtrip_test(x)
 
   def test_data_children_is_empty(self):
-    data = building_blocks.Data('a', np.int32)
+    any_proto = building_block_test_utils.create_any_proto_from_array(
+        np.array(1, np.int32)
+    )
+    data = building_blocks.Data(any_proto, np.int32)
     self.assertEqual([], list(data.children()))
 
   def test_basic_functionality_of_compiled_computation_class(self):
@@ -1433,57 +1449,75 @@ class IntrinsicTest(parameterized.TestCase):
 class DataTest(parameterized.TestCase):
 
   def test_eq_returns_true(self):
+    any_proto = building_block_test_utils.create_any_proto_from_array(
+        np.array([1, 2, 3], np.int32)
+    )
     type_signature = computation_types.TensorType(np.int32)
-    data = building_blocks.Data('data', type_signature)
-    other = building_blocks.Data('data', type_signature)
+    data = building_blocks.Data(any_proto, type_signature)
+    other = building_blocks.Data(any_proto, type_signature)
 
     self.assertIsNot(data, other)
     self.assertEqual(data, other)
 
-  @parameterized.named_parameters(
-      (
-          'different_uri',
-          building_blocks.Data('data', computation_types.TensorType(np.int32)),
-          building_blocks.Data(
-              'different', computation_types.TensorType(np.int32)
-          ),
-      ),
-      (
-          'different_type_signature',
-          building_blocks.Data('data', computation_types.TensorType(np.int32)),
-          building_blocks.Data(
-              'data', computation_types.TensorType(np.float32)
-          ),
-      ),
-  )
-  def test_eq_returns_false(self, data, other):
+  def test_eq_returns_false_different_content(self):
+    any_proto1 = building_block_test_utils.create_any_proto_from_array(
+        np.array([1, 2, 3], np.int32)
+    )
+    type_signature = computation_types.TensorType(np.int32)
+    data = building_blocks.Data(any_proto1, type_signature)
+
+    any_proto2 = building_block_test_utils.create_any_proto_from_array(
+        np.array([4], np.int32)
+    )
+    other = building_blocks.Data(any_proto2, type_signature)
+    self.assertIsNot(data, other)
+    self.assertNotEqual(data, other)
+
+  def test_eq_returns_false_different_type_signatures(self):
+    any_proto = building_block_test_utils.create_any_proto_from_array(
+        np.array([1, 1, 1], np.int32)
+    )
+    type_signature1 = computation_types.TensorType(np.int32)
+    type_signature2 = computation_types.TensorType(np.float32)
+    data = building_blocks.Data(any_proto, type_signature1)
+    other = building_blocks.Data(any_proto, type_signature2)
+
     self.assertIsNot(data, other)
     self.assertNotEqual(data, other)
 
   def test_hash_returns_same_value(self):
+    any_proto = building_block_test_utils.create_any_proto_from_array(
+        np.array([1, 2, 3], np.int32)
+    )
     type_signature = computation_types.TensorType(np.int32)
-    data = building_blocks.Data('data', type_signature)
-    other = building_blocks.Data('data', type_signature)
+    data = building_blocks.Data(any_proto, type_signature)
+    other = building_blocks.Data(any_proto, type_signature)
 
     self.assertEqual(hash(data), hash(other))
 
-  @parameterized.named_parameters(
-      (
-          'different_uri',
-          building_blocks.Data('data', computation_types.TensorType(np.int32)),
-          building_blocks.Data(
-              'different', computation_types.TensorType(np.int32)
-          ),
-      ),
-      (
-          'different_type_signature',
-          building_blocks.Data('data', computation_types.TensorType(np.int32)),
-          building_blocks.Data(
-              'data', computation_types.TensorType(np.float32)
-          ),
-      ),
-  )
-  def test_hash_returns_different_value(self, data, other):
+  def test_hash_returns_different_value_for_different_content(self):
+    any_proto1 = building_block_test_utils.create_any_proto_from_array(
+        np.array([1, 2, 3], np.int32)
+    )
+    type_signature = computation_types.TensorType(np.int32)
+    data = building_blocks.Data(any_proto1, type_signature)
+
+    any_proto2 = building_block_test_utils.create_any_proto_from_array(
+        np.array([4], np.int32)
+    )
+    other = building_blocks.Data(any_proto2, type_signature)
+    self.assertNotEqual(data, other)
+    self.assertNotEqual(hash(data), hash(other))
+
+  def test_hash_returns_different_value_for_different_type_signatures(self):
+    any_proto = building_block_test_utils.create_any_proto_from_array(
+        np.array([1, 1, 1], np.int32)
+    )
+    type_signature1 = computation_types.TensorType(np.int32)
+    type_signature2 = computation_types.TensorType(np.float32)
+    data = building_blocks.Data(any_proto, type_signature1)
+    other = building_blocks.Data(any_proto, type_signature2)
+
     self.assertNotEqual(data, other)
     self.assertNotEqual(hash(data), hash(other))
 
@@ -2313,11 +2347,15 @@ class RepresentationTest(absltest.TestCase):
     self.assertEqual(comp.structural_representation(), 'Compiled(a)')
 
   def test_returns_string_for_data(self):
-    comp = building_blocks.Data('data', np.int32)
+    any_proto = building_block_test_utils.create_any_proto_from_array(
+        np.array([1, 2, 3], np.int32)
+    )
+    comp = building_blocks.Data(any_proto, np.int32)
 
-    self.assertEqual(comp.compact_representation(), 'data')
-    self.assertEqual(comp.formatted_representation(), 'data')
-    self.assertEqual(comp.structural_representation(), 'data')
+    expected = str(id(any_proto))
+    self.assertEqual(comp.compact_representation(), expected)
+    self.assertEqual(comp.formatted_representation(), expected)
+    self.assertEqual(comp.structural_representation(), f'Data({expected})')
 
   def test_returns_string_for_intrinsic(self):
     comp_type = computation_types.TensorType(np.int32)
