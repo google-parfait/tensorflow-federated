@@ -18,6 +18,7 @@
 #define THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_AGGREGATION_PROTOCOL_SIMPLE_AGGREGATION_LATENCY_AGGREGATOR_H_
 
 #include <cmath>
+#include <cstddef>
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"

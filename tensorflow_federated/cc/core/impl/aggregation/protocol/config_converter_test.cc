@@ -20,8 +20,6 @@
 #include <utility>
 #include <vector>
 
-#include "tensorflow_federated/cc/core/impl/executors/status_matchers.h"
-
 // clang-format off
 #include "tensorflow_federated/cc/core/impl/aggregation/testing/parse_text_proto.h"
 // clang-format on
@@ -37,6 +35,7 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/protocol/configuration.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/testing/test_data.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/testing/testing.h"
+#include "tensorflow_federated/cc/core/impl/executors/status_matchers.h"
 
 namespace tensorflow_federated {
 namespace aggregation {

@@ -45,6 +45,8 @@ cc_library(
     hdrs = ["cancelable_callback.h"],
     deps = [
         "//tensorflow_federated/cc/core/impl/aggregation/base:clock",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/synchronization",
         "@com_google_absl//absl/time",
     ],
 )

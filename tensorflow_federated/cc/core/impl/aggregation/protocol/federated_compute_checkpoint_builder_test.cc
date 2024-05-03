@@ -31,8 +31,9 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/protocol/checkpoint_builder.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/protocol/checkpoint_header.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/testing/test_data.h"
+// clang-format off
 #include "tensorflow_federated/cc/core/impl/aggregation/testing/testing.h"
-#include "tensorflow_federated/cc/core/impl/executors/status_matchers.h"
+// clang-format on
 
 namespace tensorflow_federated::aggregation {
 namespace {

@@ -17,7 +17,6 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/protocol/aggregation_protocol.h"
 
 #include <pybind11/pybind11.h>
-
 #include <cstdint>
 #include <string>
 

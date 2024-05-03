@@ -19,19 +19,15 @@
 #include <atomic>
 #include <cstdint>
 #include <functional>
-#include <initializer_list>
 #include <memory>
-
-#include "tensorflow_federated/cc/core/impl/executors/protobuf_matchers.h"
-#include "tensorflow_federated/cc/core/impl/executors/status_matchers.h"
-// clang-format off
-#include "tensorflow_federated/cc/core/impl/aggregation/testing/parse_text_proto.h"
-// clang-format on
 #include <optional>
 #include <string>
 #include <utility>
 #include <vector>
 
+// clang-format off
+#include "tensorflow_federated/cc/core/impl/aggregation/testing/parse_text_proto.h"
+// clang-format on
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
 #include "absl/status/status.h"
@@ -58,6 +54,8 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/testing/mocks.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/testing/test_data.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/testing/testing.h"
+#include "tensorflow_federated/cc/core/impl/executors/protobuf_matchers.h"
+#include "tensorflow_federated/cc/core/impl/executors/status_matchers.h"
 
 namespace tensorflow_federated::aggregation {
 namespace {

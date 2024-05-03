@@ -18,6 +18,8 @@
 #include <memory>
 #include <utility>
 
+#include "absl/base/thread_annotations.h"
+#include "absl/synchronization/mutex.h"
 #include "absl/time/time.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/clock.h"
 

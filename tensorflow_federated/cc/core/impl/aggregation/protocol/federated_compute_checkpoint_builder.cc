@@ -17,7 +17,6 @@
 #include <cstdint>
 #include <memory>
 #include <string>
-#include <utility>
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
