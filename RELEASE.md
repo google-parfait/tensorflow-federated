@@ -6,6 +6,10 @@
     to TFF to consolidate the federated language and remove circular
     dependencies.
 
+## Breaking Changes
+
+*   Updated `rules_license` to version `0.0.8`.
+
 # Release 0.77.0
 
 ## Major Features and Improvements

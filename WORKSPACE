@@ -106,7 +106,7 @@ git_repository(
 git_repository(
     name = "rules_license",
     remote = "https://github.com/bazelbuild/rules_license.git",
-    tag = "0.0.4",
+    tag = "0.0.8",
 )
 
 git_repository(
