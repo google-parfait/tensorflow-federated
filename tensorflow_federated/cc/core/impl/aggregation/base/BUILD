@@ -116,6 +116,7 @@ cc_library(
     name = "clock",
     srcs = ["clock.cc"],
     hdrs = ["clock.h"],
+    visibility = ["//visibility:public"],
     deps = [
         ":base",
         "@com_google_absl//absl/base:core_headers",
