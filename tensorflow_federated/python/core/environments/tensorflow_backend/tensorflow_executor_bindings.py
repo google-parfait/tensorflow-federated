@@ -19,4 +19,3 @@ import tensorflow as tf  # pylint: disable=unused-import
 from tensorflow_federated.cc.core.impl.executors import executor_bindings
 
 create_tensorflow_executor = executor_bindings.create_tensorflow_executor
-create_dtensor_executor = executor_bindings.create_dtensor_executor

@@ -97,7 +97,6 @@ def optimize_tensorflow_comp(tf_computation, config_proto):
           original_tf.parameter if original_tf.HasField('parameter') else None
       ),
       result=original_tf.result,
-      layout_map=original_tf.layout_map,
   )
   optimized_proto = computation_pb2.Computation(
       type=tf_proto.type, tensorflow=tf_result_proto

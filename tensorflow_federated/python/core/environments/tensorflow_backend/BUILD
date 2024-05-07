@@ -46,7 +46,6 @@ py_test(
     deps = [
         ":compiled_computation_transformations",
         ":tensorflow_computation_transformations",
-        "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
         "//tensorflow_federated/python/core/impl/compiler:tensorflow_computation_factory",
         "//tensorflow_federated/python/core/impl/compiler:tensorflow_computation_test_utils",
@@ -128,7 +127,6 @@ py_test(
     ],
     deps = [
         ":tensorflow_executor_bindings",
-        "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/proto/v0:executor_py_pb2",
         "//tensorflow_federated/python/core/impl/compiler:tensorflow_computation_factory",
         "//tensorflow_federated/python/core/impl/executors:executor_bindings",

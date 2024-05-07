@@ -19,7 +19,6 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.proto.v0 import computation_pb2
 from tensorflow_federated.proto.v0 import executor_pb2
 from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_executor_bindings
 from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_factory
@@ -58,32 +57,22 @@ def _test_map_integers(tensor):
   return table.lookup(tensor)
 
 
-def get_executor(use_tf_executor):
-  if use_tf_executor:
-    return tensorflow_executor_bindings.create_tensorflow_executor()
-  else:
-    # Empty string for device name and mesh
-    return tensorflow_executor_bindings.create_dtensor_executor('', '', -1)
+def get_executor():
+  return tensorflow_executor_bindings.create_tensorflow_executor()
 
 
 class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
 
-  @parameterized.named_parameters(
-      ('tf_executor', True),
-      ('dtensor_executor', False),
-  )
-  def test_construction(self, use_tf_executor):
+  def test_construction(
+      self,
+  ):
     try:
-      get_executor(use_tf_executor)
+      get_executor()
     except Exception:  # pylint: disable=broad-except
       self.fail('Raised `Exception` unexpectedly.')
 
-  @parameterized.named_parameters(
-      ('tf_executor', True),
-      ('dtensor_executor', False),
-  )
-  def test_create_value(self, use_tf_executor):
-    executor = get_executor(use_tf_executor)
+  def test_create_value(self):
+    executor = get_executor()
     # 1. Test a simple tensor.
     expected_type_spec = computation_types.TensorType(np.int64, [3])
     value_pb, _ = value_serialization.serialize_value(
@@ -233,12 +222,8 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
         result_type_spec, struct_of_sequence_type
     )
 
-  @parameterized.named_parameters(
-      ('tf_executor', True),
-      ('dtensor_executor', False),
-  )
-  def test_create_struct(self, use_tf_executor):
-    executor = get_executor(use_tf_executor)
+  def test_create_struct(self):
+    executor = get_executor()
     expected_type_spec = computation_types.TensorType(np.int64, [3])
     value_pb, _ = value_serialization.serialize_value(
         tf.constant([1, 2, 3]), expected_type_spec
@@ -275,12 +260,8 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
     )
     self.assertAllClose([[(1, 2, 3), (1, 2, 3)], (1, 2, 3)], deserialized_value)
 
-  @parameterized.named_parameters(
-      ('tf_executor', True),
-      ('dtensor_executor', False),
-  )
-  def test_create_selection(self, use_tf_executor):
-    executor = get_executor(use_tf_executor)
+  def test_create_selection(self):
+    executor = get_executor()
     expected_type_spec = computation_types.TensorType(np.int64, [3])
     value_pb, _ = value_serialization.serialize_value(
         tf.constant([1, 2, 3]), expected_type_spec
@@ -314,12 +295,8 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
     )
     self.assertAllClose((1, 2, 3), deserialized_value)
 
-  @parameterized.named_parameters(
-      ('tf_executor', True),
-      ('dtensor_executor', False),
-  )
-  def test_call_with_arg(self, use_tf_executor):
-    executor = get_executor(use_tf_executor)
+  def test_call_with_arg(self):
+    executor = get_executor()
     value_pb, _ = value_serialization.serialize_value(
         tf.constant([1, 2, 3]),
         computation_types.TensorType(np.int64, [3]),
@@ -340,12 +317,8 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
     result_tensor, _ = value_serialization.deserialize_value(result_value_pb)
     self.assertAllEqual(result_tensor, [2, 4, 6])
 
-  @parameterized.named_parameters(
-      ('tf_executor', True),
-      ('dtensor_executor', False),
-  )
-  def test_call_no_arg(self, use_tf_executor=True):
-    executor = get_executor(use_tf_executor)
+  def test_call_no_arg(self):
+    executor = get_executor()
 
     foo, _ = tensorflow_computation_factory.create_constant(
         123.0, computation_types.TensorType(np.float32)
@@ -362,55 +335,6 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
     executor = tensorflow_executor_bindings.create_tensorflow_executor()
     with self.assertRaisesRegex(Exception, 'NOT_FOUND'):
       executor.materialize(0)
-
-
-class DtensorExecutorBindingTest(parameterized.TestCase, tf.test.TestCase):
-
-  @parameterized.named_parameters(
-      ('sharded_input', True),
-      ('replicated_input', False),
-  )
-  def test_call_with_arg_dtensor_executor_with_mesh(self, sharded_input):
-    mesh_dim_name = 'batch'
-    mesh = tf.experimental.dtensor.create_mesh(
-        devices=['CPU:%d' % i for i in range(8)], mesh_dims=[(mesh_dim_name, 8)]
-    )
-    # dtensor.run_on method is used to set mesh for the dtensor device.
-    with tf.experimental.dtensor.run_on(mesh):
-      executor = tensorflow_executor_bindings.create_dtensor_executor(
-          tf.experimental.dtensor.device_name(), mesh.to_string(), -1
-      )
-      value_pb, _ = value_serialization.serialize_value(
-          tf.constant([1, 2, 3, 4, 5, 6, 7, 8]),
-          computation_types.TensorType(np.int64, [8]),
-      )
-
-      value_ref = executor.create_value(value_pb)
-      arg = executor.create_struct((value_ref.ref, value_ref.ref))
-
-      mesh_dim_name = 'batch'
-      spec = {}
-      if sharded_input:
-        spec['arg_a'] = mesh_dim_name
-      else:
-        spec['arg_a'] = 'unsharded'
-      layout_map = computation_pb2.TensorFlow.LayoutMap(
-          name_to_sharding_spec=spec
-      )
-
-      proto, _ = tensorflow_computation_factory.create_binary_operator(
-          tf.add,
-          computation_types.TensorType(np.int64),
-          computation_types.TensorType(np.int64),
-          layout_map,
-      )
-
-      comp_pb = executor_pb2.Value(computation=proto)
-      comp = executor.create_value(comp_pb)
-      result = executor.create_call(comp.ref, arg.ref)
-      result_value_pb = executor.materialize(result.ref)
-      result_tensor, _ = value_serialization.deserialize_value(result_value_pb)
-      self.assertAllEqual(result_tensor, [2, 4, 6, 8, 10, 12, 14, 16])
 
 
 if __name__ == '__main__':

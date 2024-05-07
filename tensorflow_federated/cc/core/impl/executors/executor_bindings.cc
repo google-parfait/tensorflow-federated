@@ -25,7 +25,6 @@ limitations under the License
 #include <cstdint>
 #include <limits>
 #include <memory>
-#include <optional>
 #include <string>
 
 #include "absl/log/log.h"
@@ -49,14 +48,11 @@ limitations under the License
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/platform/status.h"
 #include "tensorflow/core/platform/strcat.h"
-#include "tensorflow/dtensor/cc/tensor_layout.h"
-#include "tensorflow/python/eager/pywrap_tfe.h"
 #include "tensorflow/python/lib/core/ndarray_tensor.h"
 #include "tensorflow/python/lib/core/ndarray_tensor_bridge.h"
 #include "tensorflow/python/lib/core/safe_pyobject_ptr.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/core/impl/executors/composing_executor.h"
-#include "tensorflow_federated/cc/core/impl/executors/dtensor_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/federating_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/reference_resolving_executor.h"
@@ -191,33 +187,6 @@ PYBIND11_MODULE(executor_bindings, m) {
   m.def("create_tensorflow_executor", &CreateTensorFlowExecutor,
         py::arg("max_concurrent_computation_calls") = -1,
         "Creates a TensorFlowExecutor.");
-  m.def(
-      "create_dtensor_executor",
-      [](const std::string& device_name = "", std::string serialized_mesh = "",
-         int max_concurrent_computation_calls =
-             -1) -> absl::StatusOr<std::shared_ptr<Executor>> {
-        PyObject* context = GetPyEagerContext();
-        std::optional<tensorflow::dtensor::Mesh> mesh_opt = std::nullopt;
-        if (!serialized_mesh.empty()) {
-          auto mesh = tensorflow::dtensor::Mesh::FromString(serialized_mesh);
-          if (!mesh.ok()) {
-            return absl::InvalidArgumentError(mesh.status().ToString());
-          }
-          mesh_opt = mesh.value();
-        }
-
-        auto executor = CreateDTensorExecutor(
-            /*context=*/GetContextHandle(context),
-            /*dtensor_device_name=*/device_name.empty()
-                ? std::nullopt
-                : std::optional<std::string>(device_name),
-            /*mesh=*/mesh_opt,
-            /*dtensor_converter=*/nullptr,  // Use default converter.
-            /*max_concurrent_computation_calls=*/
-            max_concurrent_computation_calls);
-        return executor;
-      },
-      "Creates a DTensorExecutor.");
   m.def("create_reference_resolving_executor",
         &CreateReferenceResolvingExecutor,
         "Creates a ReferenceResolvingExecutor", py::arg("inner_executor"));

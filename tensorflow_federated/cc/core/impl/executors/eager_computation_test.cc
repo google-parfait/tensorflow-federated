@@ -50,9 +50,6 @@ limitations under the License
 #include "tensorflow/core/framework/types.pb.h"
 #include "tensorflow/core/graph/graph.h"
 #include "tensorflow/core/platform/status.h"
-#include "tensorflow/dtensor/cc/mesh_type.h"
-#include "tensorflow/dtensor/cc/tensor_layout.h"
-#include "tensorflow_federated/cc/core/impl/executors/dtensor_api.h"
 #include "tensorflow_federated/cc/testing/status_matchers.h"
 
 namespace tensorflow_federated {
@@ -201,87 +198,6 @@ TEST_F(EagerComputationTest, CallNoArgOneOutWithGroupedInitialize) {
   EXPECT_EQ(1, expected[0]);
   EXPECT_EQ(2, expected[1]);
   EXPECT_EQ(3, expected[2]);
-
-  TF_DeleteStatus(status);
-}
-
-TEST_F(EagerComputationTest, CallNoArgOneOutWithInitializeVariableWithLayout) {
-  TF_Status* status = TF_NewStatus();
-  std::unique_ptr<TFE_ContextOptions, decltype(&TFE_DeleteContextOptions)> opts(
-      TFE_NewContextOptions(), TFE_DeleteContextOptions);
-  std::unique_ptr<TFE_Context, decltype(&TFE_DeleteContext)> context(
-      TFE_NewContext(opts.get(), status), TFE_DeleteContext);
-  EXPECT_EQ(TF_GetCode(status), TF_OK) << TF_Message(status);
-
-  tensorflow::Scope root = tensorflow::Scope::NewRootScope();
-  tensorflow::TensorShape shape({4});
-  tensorflow::ops::VarHandleOp var(root, tensorflow::DT_INT32, shape);
-  auto var_init = tensorflow::ops::AssignVariableOp(
-      root, var, tensorflow::ops::Const(root, {1, 2, 3, 4}, shape));
-  tensorflow::ops::ReadVariableOp read_var(root, var, tensorflow::DT_INT32);
-
-  auto fn = ComputationV(root, /*in_binding=*/std::nullopt,
-                         /*out_binding=*/TensorB(read_var),
-                         /*init_op=*/var_init);
-
-  TFE_SetLogicalCpuDevices(context.get(), 2, "/job:localhost/replica:0/task:0",
-                           status);
-
-  auto mesh = tensorflow::dtensor::Mesh::CreateMesh(
-      "TestMesh",
-      /*dim_names=*/{"x"},
-      /*mesh_shape=*/{2},
-      /*global_device_ids=*/{0, 1},
-      /*global_devices_str=*/
-      {"/job:localhost/task:0/device:CPU:0",
-       "/job:localhost/task:0/device:CPU:1"},
-      /*local_device_ids=*/{0, 1},
-      /*local_devices_str=*/
-      {"/job:localhost/task:0/device:CPU:0",
-       "/job:localhost/task:0/device:CPU:1"},
-      /*use_xla_spmd=*/false);
-
-  std::string device_name = "/job:localhost/replica:0/task:0/device:CUSTOM:1";
-  TFE_DTENSOR_RegisterDTensorDevice(context.get(), tensorflow::wrap(&mesh),
-                                    device_name.c_str(), status);
-
-  auto layout_or = tensorflow::dtensor::Layout::GetLayout({"x"}, mesh);
-  ASSERT_TRUE(layout_or.ok());
-  std::map<std::string, tensorflow::dtensor::Layout> layout_map{
-      {"VarHandleOp", layout_or.value()}};
-
-  TFF_ASSERT_OK_AND_ASSIGN(
-      auto comp, EagerComputation::FromProto(fn.tensorflow(), layout_map));
-
-  TFF_ASSERT_OK_AND_ASSIGN(auto result,
-                           comp.Call(context.get(), std::nullopt, device_name));
-
-  ASSERT_EQ(1, result.size());
-  TFE_TensorHandle* result_dtensor_handle = result[0];
-  tensorflow::ImmediateExecutionTensorHandle* dtensor =
-      tensorflow::unwrap(result_dtensor_handle);
-  std::string summary;
-  ASSERT_TRUE(dtensor->SummarizeValue(summary).ok());
-  EXPECT_THAT(summary, AllOf(testing::HasSubstr("CPU:0\": [1 2]"),
-                             testing::HasSubstr("CPU:1\": [3 4]"),
-                             testing::HasSubstr("sharding_specs:x")));
-
-  auto result_tensor_handle = TFE_DTENSOR_DTensorToTensor(
-      context.get(), result_dtensor_handle, device_name.c_str(), status);
-  TF_Tensor* result_tensor =
-      TFE_TensorHandleResolve(result_tensor_handle, status);
-  EXPECT_EQ(TF_GetCode(status), TF_OK) << TF_Message(status);
-
-  int32_t expected[4];
-  memcpy(&expected[0], TF_TensorData(result_tensor),
-         TF_TensorByteSize(result_tensor));
-  TF_DeleteTensor(result_tensor);
-  TFE_DeleteTensorHandle(result_tensor_handle);
-  TFE_DeleteTensorHandle(result_dtensor_handle);
-  EXPECT_EQ(1, expected[0]);
-  EXPECT_EQ(2, expected[1]);
-  EXPECT_EQ(3, expected[2]);
-  EXPECT_EQ(4, expected[3]);
 
   TF_DeleteStatus(status);
 }

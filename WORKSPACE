@@ -93,11 +93,6 @@ http_archive(
     name = "org_tensorflow",
     url = "https://github.com/tensorflow/tensorflow/archive/refs/tags/v2.14.0.tar.gz",
     patches = [
-        # Depending on restricted visibility BUILD target om external git
-        # repository does not seem to be supported.
-        # E.g. issue: https://github.com/bazelbuild/bazel/issues/3744
-        # TODO: b/263201501 - Make DTensor C++ API public and remove this patch.
-        "//third_party/tensorflow:dtensor_internal_visibility.patch",
         "//third_party/tensorflow:internal_visibility.patch",
         "//third_party/tensorflow:python_toolchain.patch",
         "//third_party/tensorflow:tf2xla_visibility.patch",

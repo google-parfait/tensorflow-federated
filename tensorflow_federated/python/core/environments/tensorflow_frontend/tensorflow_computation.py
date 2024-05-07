@@ -46,7 +46,6 @@ def _tf_wrapper_fn(
     parameter_type,
     unpack: Optional[bool],
     name: Optional[str] = None,
-    **kwargs
 ):
   """Wrapper function to plug Tensorflow logic into the TFF framework."""
   del name  # Unused.
@@ -62,10 +61,9 @@ def _tf_wrapper_fn(
       fn, parameter_type, unpack
   )
   context_stack = context_stack_impl.context_stack
-  layout_map = kwargs.get('layout_map')
   comp_pb, extra_type_spec = (
       tensorflow_serialization.serialize_py_fn_as_tf_computation(
-          fn, parameter_type, context_stack, layout_map
+          fn, parameter_type, context_stack
       )
   )
   return computation_impl.ConcreteComputation(
