@@ -18,6 +18,12 @@ git_repository(
 )
 
 git_repository(
+    name = "com_github_grpc_grpc",
+    remote = "https://github.com/grpc/grpc.git",
+    tag = "v1.50.0",
+)
+
+git_repository(
     name = "com_google_benchmark",
     remote = "https://github.com/google/benchmark.git",
     tag = "v1.8.3",
@@ -119,12 +125,20 @@ git_repository(
 # Inlined transitive dependencies, grouped by direct dependency.
 #
 
-# Required by pybind11_abseil and pybind11_protobuf
+# Required by pybind11_abseil and pybind11_protobuf.
 new_git_repository(
     name = "pybind11",
     build_file = "@pybind11_bazel//:pybind11.BUILD",
     remote = "https://github.com/pybind/pybind11.git",
     tag = "v2.9.2",
+)
+
+# Required by com_github_grpc_grpc. This commit is determined by
+# https://github.com/grpc/grpc/blob/v1.59.0/bazel/grpc_deps.bzl.
+git_repository(
+    name = "upb",
+    remote = "https://github.com/protocolbuffers/upb.git",
+    commit = "e4635f223e7d36dfbea3b722a4ca4807a7e882e2",
 )
 
 #
@@ -151,19 +165,10 @@ load("@com_google_protobuf//:protobuf_deps.bzl", "protobuf_deps")
 
 protobuf_deps()
 
-git_repository(
-    name = "com_github_grpc_grpc",
-    remote = "https://github.com/grpc/grpc.git",
-    tag = "v1.59.1",
-)
-
-load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps")
-
-grpc_deps()
-
-# TODO: b/260598663 - Temporarily disable the direct dependency on
-# `grpc_extra_deps`, for now we pick this dependency up from the TensorFlow
-# workspace.
-# load("@com_github_grpc_grpc//bazel:grpc_extra_deps.bzl", "grpc_extra_deps")
+#load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps")
 #
-# grpc_extra_deps()
+#grpc_deps()
+#
+#load("@com_github_grpc_grpc//bazel:grpc_extra_deps.bzl", "grpc_extra_deps")
+#
+#grpc_extra_deps()
