@@ -23,6 +23,7 @@ py_library(
     deps = [
         ":optimizer",
         "//tensorflow_federated/python/common_libs:structure",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
@@ -33,6 +34,8 @@ py_test(
         ":adafactor",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
+        "@pypi_absl_py//:pkg",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
@@ -42,6 +45,7 @@ py_library(
     deps = [
         ":optimizer",
         "//tensorflow_federated/python/common_libs:structure",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
@@ -52,6 +56,8 @@ py_test(
         ":adagrad",
         ":optimizer",
         ":optimizer_test_utils",
+        "@pypi_absl_py//:pkg",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
@@ -61,6 +67,7 @@ py_library(
     deps = [
         ":optimizer",
         "//tensorflow_federated/python/common_libs:structure",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
@@ -71,6 +78,8 @@ py_test(
         ":adam",
         ":optimizer",
         ":optimizer_test_utils",
+        "@pypi_absl_py//:pkg",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
@@ -93,7 +102,10 @@ py_library(
 py_library(
     name = "keras_optimizer",
     srcs = ["keras_optimizer.py"],
-    deps = [":optimizer"],
+    deps = [
+        ":optimizer",
+        "@pypi_tensorflow//:pkg",
+    ],
 )
 
 py_test(
@@ -106,6 +118,8 @@ py_test(
         ":sgdm",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
+        "@pypi_absl_py//:pkg",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
@@ -125,31 +139,47 @@ py_test(
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
+        "@pypi_absl_py//:pkg",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
 py_library(
     name = "optimizer",
     srcs = ["optimizer.py"],
+    deps = [
+        "@pypi_numpy//:pkg",
+        "@pypi_tensorflow//:pkg",
+    ],
 )
 
 py_test(
     name = "optimizer_test",
     srcs = ["optimizer_test.py"],
-    deps = [":optimizer"],
+    deps = [
+        ":optimizer",
+        "@pypi_absl_py//:pkg",
+        "@pypi_tensorflow//:pkg",
+    ],
 )
 
 py_library(
     name = "optimizer_test_utils",
     testonly = True,
     srcs = ["optimizer_test_utils.py"],
-    deps = [":optimizer"],
+    deps = [
+        ":optimizer",
+        "@pypi_tensorflow//:pkg",
+    ],
 )
 
 py_test(
     name = "optimizer_test_utils_test",
     srcs = ["optimizer_test_utils_test.py"],
-    deps = [":optimizer_test_utils"],
+    deps = [
+        ":optimizer_test_utils",
+        "@pypi_tensorflow//:pkg",
+    ],
 )
 
 py_library(
@@ -158,6 +188,7 @@ py_library(
     deps = [
         ":optimizer",
         "//tensorflow_federated/python/common_libs:structure",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
@@ -168,13 +199,18 @@ py_test(
         ":optimizer",
         ":optimizer_test_utils",
         ":rmsprop",
+        "@pypi_absl_py//:pkg",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
 py_library(
     name = "scheduling",
     srcs = ["scheduling.py"],
-    deps = [":optimizer"],
+    deps = [
+        ":optimizer",
+        "@pypi_tensorflow//:pkg",
+    ],
 )
 
 py_test(
@@ -188,6 +224,8 @@ py_test(
         ":scheduling",
         ":sgdm",
         ":yogi",
+        "@pypi_absl_py//:pkg",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
@@ -197,6 +235,7 @@ py_library(
     deps = [
         ":optimizer",
         "//tensorflow_federated/python/common_libs:structure",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
@@ -207,6 +246,8 @@ py_test(
         ":optimizer",
         ":optimizer_test_utils",
         ":sgdm",
+        "@pypi_absl_py//:pkg",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
@@ -216,6 +257,7 @@ py_library(
     deps = [
         ":optimizer",
         "//tensorflow_federated/python/common_libs:structure",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
@@ -226,5 +268,7 @@ py_test(
         ":optimizer",
         ":optimizer_test_utils",
         ":yogi",
+        "@pypi_absl_py//:pkg",
+        "@pypi_tensorflow//:pkg",
     ],
 )

@@ -34,6 +34,8 @@ py_library(
         "//tensorflow_federated/python/program:file_program_state_manager",
         "//tensorflow_federated/python/program:release_manager",
         "//tensorflow_federated/python/program:value_reference",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
     ],
 )
 
@@ -58,6 +60,9 @@ py_test(
         "//tensorflow_federated/python/program:file_program_state_manager",
         "//tensorflow_federated/python/program:native_platform",
         "//tensorflow_federated/python/program:release_manager",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
@@ -86,6 +91,7 @@ py_library(
         "//tensorflow_federated/python/program:program_state_manager",
         "//tensorflow_federated/python/program:release_manager",
         "//tensorflow_federated/python/program:value_reference",
+        "@pypi_absl_py//:pkg",
     ],
 )
 
@@ -107,6 +113,8 @@ py_test(
         "//tensorflow_federated/python/program:native_platform",
         "//tensorflow_federated/python/program:program_state_manager",
         "//tensorflow_federated/python/program:release_manager",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
     ],
 )
 
@@ -123,6 +131,7 @@ py_library(
         "//tensorflow_federated/python/program:release_manager",
         "//tensorflow_federated/python/program:structure_utils",
         "//tensorflow_federated/python/program:value_reference",
+        "@pypi_google_vizier//:pkg",
     ],
 )
 
@@ -140,5 +149,7 @@ py_test(
         "//tensorflow_federated/python/program:native_platform",
         "//tensorflow_federated/python/program:program_state_manager",
         "//tensorflow_federated/python/program:release_manager",
+        "@pypi_absl_py//:pkg",
+        "@pypi_google_vizier//:pkg",
     ],
 )

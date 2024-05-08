@@ -10,7 +10,11 @@ licenses(["notice"])
 py_library(
     name = "computations",
     srcs = ["computations.py"],
-    deps = ["//tensorflow_federated"],
+    deps = [
+        "//tensorflow_federated",
+        "@pypi_numpy//:pkg",
+        "@pypi_tensorflow//:pkg",
+    ],
 )
 
 py_library(
@@ -26,6 +30,8 @@ py_binary(
         ":computations",
         ":program_logic",
         "//tensorflow_federated",
+        "@pypi_absl_py//:pkg",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
@@ -36,5 +42,8 @@ py_test(
         ":computations",
         ":program_logic",
         "//tensorflow_federated",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
+        "@pypi_tensorflow//:pkg",
     ],
 )

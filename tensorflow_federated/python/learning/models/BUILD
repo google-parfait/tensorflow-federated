@@ -29,6 +29,8 @@ py_library(
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/types:computation_types",
+        "@pypi_numpy//:pkg",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
@@ -56,6 +58,8 @@ py_library(
         "//tensorflow_federated/python/learning/metrics:keras_utils",
         "//tensorflow_federated/python/learning/metrics:types",
         "//tensorflow_federated/python/tensorflow_libs:variable_utils",
+        "@pypi_numpy//:pkg",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
@@ -72,6 +76,8 @@ py_test(
         "//tensorflow_federated/python/learning/metrics:aggregator",
         "//tensorflow_federated/python/learning/metrics:types",
         "//tensorflow_federated/python/tensorflow_libs:variable_utils",
+        "@pypi_numpy//:pkg",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
@@ -88,6 +94,8 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:type_conversions",
         "//tensorflow_federated/python/learning/metrics:counters",
         "//tensorflow_federated/python/learning/metrics:keras_finalizer",
+        "@pypi_absl_py//:pkg",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
@@ -108,13 +116,19 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/learning/metrics:aggregator",
         "//tensorflow_federated/python/learning/metrics:counters",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
 py_library(
     name = "model_examples",
     srcs = ["model_examples.py"],
-    deps = [":variable"],
+    deps = [
+        ":variable",
+        "@pypi_tensorflow//:pkg",
+    ],
 )
 
 py_test(
@@ -125,6 +139,8 @@ py_test(
         ":model_examples",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
+        "@pypi_absl_py//:pkg",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
@@ -142,6 +158,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
@@ -153,6 +170,9 @@ py_test(
         ":variable",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/types:computation_types",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
@@ -163,6 +183,7 @@ py_library(
         ":model_weights",
         ":variable",
         "//tensorflow_federated/python/core/impl/types:computation_types",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
@@ -173,6 +194,9 @@ py_test(
         ":model_weights",
         ":reconstruction_model",
         "//tensorflow_federated/python/core/impl/types:computation_types",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
@@ -190,6 +214,9 @@ py_test(
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
@@ -201,11 +228,16 @@ py_library(
         ":functional",
         ":variable",
         "//tensorflow_federated/python/learning/metrics:types",
+        "@pypi_numpy//:pkg",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
 py_library(
     name = "variable",
     srcs = ["variable.py"],
-    deps = ["//tensorflow_federated/python/learning/metrics:types"],
+    deps = [
+        "//tensorflow_federated/python/learning/metrics:types",
+        "@pypi_tensorflow//:pkg",
+    ],
 )

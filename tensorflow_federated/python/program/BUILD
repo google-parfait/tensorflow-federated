@@ -47,6 +47,7 @@ py_library(
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
+        "@pypi_numpy//:pkg",
     ],
 )
 
@@ -57,6 +58,8 @@ py_test(
         ":client_id_data_source",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
     ],
 )
 
@@ -78,6 +81,7 @@ py_library(
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
@@ -88,6 +92,9 @@ py_test(
         ":dataset_data_source",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
@@ -116,6 +123,8 @@ py_test(
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
     ],
 )
 
@@ -129,6 +138,9 @@ py_library(
         ":value_reference",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:serializable",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
@@ -140,6 +152,10 @@ py_test(
         ":file_utils",
         ":program_state_manager",
         ":program_test_utils",
+        "@pypi_absl_py//:pkg",
+        "@pypi_dm_tree//:pkg",
+        "@pypi_numpy//:pkg",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
@@ -152,6 +168,8 @@ py_library(
         ":structure_utils",
         ":value_reference",
         "//tensorflow_federated/python/common_libs:py_typecheck",
+        "@pypi_numpy//:pkg",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
@@ -164,6 +182,10 @@ py_test(
         ":program_test_utils",
         ":release_manager",
         ":structure_utils",
+        "@pypi_absl_py//:pkg",
+        "@pypi_dm_tree//:pkg",
+        "@pypi_numpy//:pkg",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
@@ -173,13 +195,19 @@ py_library(
     deps = [
         ":structure_utils",
         "//tensorflow_federated/python/common_libs:py_typecheck",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
 py_test(
     name = "file_utils_test",
     srcs = ["file_utils_test.py"],
-    deps = [":file_utils"],
+    deps = [
+        ":file_utils",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
+        "@pypi_tensorflow//:pkg",
+    ],
 )
 
 py_library(
@@ -188,6 +216,7 @@ py_library(
     deps = [
         ":release_manager",
         ":value_reference",
+        "@pypi_absl_py//:pkg",
     ],
 )
 
@@ -197,6 +226,10 @@ py_test(
     deps = [
         ":logging_release_manager",
         ":program_test_utils",
+        "@pypi_absl_py//:pkg",
+        "@pypi_dm_tree//:pkg",
+        "@pypi_numpy//:pkg",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
@@ -216,6 +249,10 @@ py_test(
     deps = [
         ":memory_release_manager",
         ":program_test_utils",
+        "@pypi_absl_py//:pkg",
+        "@pypi_dm_tree//:pkg",
+        "@pypi_numpy//:pkg",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
@@ -254,6 +291,10 @@ py_test(
         "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
+        "@pypi_absl_py//:pkg",
+        "@pypi_dm_tree//:pkg",
+        "@pypi_numpy//:pkg",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
@@ -289,6 +330,8 @@ py_test(
         "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
     ],
 )
 
@@ -305,7 +348,10 @@ py_library(
 py_test(
     name = "program_state_manager_test",
     srcs = ["program_state_manager_test.py"],
-    deps = [":program_state_manager"],
+    deps = [
+        ":program_state_manager",
+        "@pypi_absl_py//:pkg",
+    ],
 )
 
 py_library(
@@ -316,6 +362,10 @@ py_library(
         ":value_reference",
         "//tensorflow_federated/python/common_libs:serializable",
         "//tensorflow_federated/python/core/impl/types:computation_types",
+        "@pypi_attrs//:pkg",
+        "@pypi_dm_tree//:pkg",
+        "@pypi_numpy//:pkg",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
@@ -326,6 +376,8 @@ py_library(
         ":structure_utils",
         ":value_reference",
         "//tensorflow_federated/python/common_libs:py_typecheck",
+        "@pypi_attrs//:pkg",
+        "@pypi_dm_tree//:pkg",
     ],
 )
 
@@ -335,6 +387,10 @@ py_test(
     deps = [
         ":program_test_utils",
         ":release_manager",
+        "@pypi_absl_py//:pkg",
+        "@pypi_dm_tree//:pkg",
+        "@pypi_numpy//:pkg",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
@@ -347,6 +403,7 @@ py_library(
         "//tensorflow_federated/python/common_libs:serializable",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
@@ -357,12 +414,19 @@ py_test(
         ":program_test_utils",
         ":serialization_utils",
         "//tensorflow_federated/python/core/impl/types:computation_types",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
 py_library(
     name = "structure_utils",
     srcs = ["structure_utils.py"],
+    deps = [
+        "@pypi_attrs//:pkg",
+        "@pypi_dm_tree//:pkg",
+    ],
 )
 
 py_test(
@@ -371,6 +435,10 @@ py_test(
     deps = [
         ":program_test_utils",
         ":structure_utils",
+        "@pypi_absl_py//:pkg",
+        "@pypi_dm_tree//:pkg",
+        "@pypi_numpy//:pkg",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
@@ -382,6 +450,8 @@ py_library(
         ":structure_utils",
         ":value_reference",
         "//tensorflow_federated/python/common_libs:py_typecheck",
+        "@pypi_numpy//:pkg",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
@@ -391,6 +461,10 @@ py_test(
     deps = [
         ":program_test_utils",
         ":tensorboard_release_manager",
+        "@pypi_absl_py//:pkg",
+        "@pypi_dm_tree//:pkg",
+        "@pypi_numpy//:pkg",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
@@ -401,6 +475,7 @@ py_library(
         ":structure_utils",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:typed_object",
+        "@pypi_numpy//:pkg",
     ],
 )
 
@@ -410,5 +485,9 @@ py_test(
     deps = [
         ":program_test_utils",
         ":value_reference",
+        "@pypi_absl_py//:pkg",
+        "@pypi_dm_tree//:pkg",
+        "@pypi_numpy//:pkg",
+        "@pypi_tensorflow//:pkg",
     ],
 )

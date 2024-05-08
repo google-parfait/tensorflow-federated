@@ -14,13 +14,21 @@ py_binary(
     deps = [
         ":simple_fedavg_tff",
         "//tensorflow_federated",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
 py_library(
     name = "simple_fedavg_tf",
     srcs = ["simple_fedavg_tf.py"],
-    deps = ["//tensorflow_federated"],
+    deps = [
+        "//tensorflow_federated",
+        "@pypi_attrs//:pkg",
+        "@pypi_numpy//:pkg",
+        "@pypi_tensorflow//:pkg",
+    ],
 )
 
 py_library(
@@ -29,6 +37,7 @@ py_library(
     deps = [
         ":simple_fedavg_tf",
         "//tensorflow_federated",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
@@ -42,5 +51,9 @@ py_cpu_gpu_test(
         ":simple_fedavg_tf",
         ":simple_fedavg_tff",
         "//tensorflow_federated",
+        "@pypi_absl_py//:pkg",
+        "@pypi_attrs//:pkg",
+        "@pypi_numpy//:pkg",
+        "@pypi_tensorflow//:pkg",
     ],
 )

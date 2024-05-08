@@ -27,4 +27,5 @@ bzl_library(
 py_binary(
     name = "build_docs",
     srcs = ["build_docs.py"],
+    deps = ["@pypi_absl_py//:pkg"],
 )
