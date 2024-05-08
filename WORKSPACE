@@ -115,14 +115,6 @@ git_repository(
     tag = "0.23.0",
 )
 
-git_repository(
-    name = "tensorflow_compression",
-    remote = "https://github.com/tensorflow/compression.git",
-    # The version of this dependency should match the version in
-    # https://github.com/tensorflow/federated/blob/main/requirements.txt.
-    tag = "v2.14.0",
-)
-
 #
 # Inlined transitive dependencies, grouped by direct dependency.
 #

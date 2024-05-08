@@ -9,6 +9,8 @@
 ## Breaking Changes
 
 *   Updated `rules_license` to version `0.0.8`.
+*   Removed `elias_gamma_encode` module.
+*   Removed `tensorflow_compression` dependency.
 
 # Release 0.77.0
 

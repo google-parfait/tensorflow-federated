@@ -54,8 +54,5 @@ cc_library(
 cc_binary(
     name = "worker_binary",
     linkopts = ["-lrt"],
-    deps = [
-        ":worker_main",
-        "@tensorflow_compression//tensorflow_compression/cc:run_length_gamma_kernels",  # buildcleaner: keep, RunLengthGammaEncode
-    ],
+    deps = [":worker_main"],
 )
