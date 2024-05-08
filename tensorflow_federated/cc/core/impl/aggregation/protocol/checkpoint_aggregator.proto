@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+package tensorflow_federated.aggregation;
+
+// Internal state representation of a CheckpointAggregator.
+message CheckpointAggregatorState {
+  repeated bytes aggregators = 1;
+}

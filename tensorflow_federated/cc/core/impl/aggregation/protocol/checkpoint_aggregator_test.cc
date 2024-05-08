@@ -60,6 +60,9 @@ using ::testing::ByMove;
 using ::testing::Invoke;
 using ::testing::Return;
 using ::testing::StrEq;
+using testing::TestWithParam;
+
+using CheckpointAggregatorTest = TestWithParam<bool>;
 
 Configuration default_configuration() {
   // One "federated_sum" intrinsic with a single scalar int32 tensor.
@@ -401,19 +404,26 @@ TEST(CheckpointAggregatorTest, CreateMismatchingInputAndOutputShape) {
               StatusIs(INVALID_ARGUMENT));
 }
 
-TEST(CheckpointAggregatorTest, CreateFromIntrinsicsAccumulateSuccess) {
+TEST_P(CheckpointAggregatorTest, CreateFromIntrinsicsAccumulateSuccess) {
   std::vector<Intrinsic> intrinsics;
   intrinsics.push_back({"federated_sum",
                         {TensorSpec("foo", DT_INT32, {})},
                         {TensorSpec("foo_out", DT_INT32, {})},
                         {},
                         {}});
-  auto aggregator = CheckpointAggregator::Create(&intrinsics);
+  auto aggregator = CheckpointAggregator::Create(&intrinsics).value();
+
+  if (GetParam()) {
+    auto serialized_state = std::move(*aggregator).Serialize().value();
+    aggregator =
+        CheckpointAggregator::Deserialize(&intrinsics, serialized_state)
+            .value();
+  }
   MockCheckpointParser parser;
   EXPECT_CALL(parser, GetTensor(StrEq("foo"))).WillOnce(Invoke([] {
     return Tensor::Create(DT_INT32, {}, CreateTestData({2}));
   }));
-  EXPECT_OK((*aggregator)->Accumulate(parser));
+  TFF_EXPECT_OK(aggregator->Accumulate(parser));
 }
 
 TEST(CheckpointAggregatorTest, AccumulateMissingTensor) {
@@ -467,8 +477,15 @@ TEST(CheckpointAggregatorTest, AccumulateAfterAbort) {
   EXPECT_THAT(aggregator->Accumulate(parser), StatusIs(ABORTED));
 }
 
-TEST(CheckpointAggregatorTest, ReportZeroInputs) {
+TEST_P(CheckpointAggregatorTest, ReportZeroInputs) {
   auto aggregator = CreateWithDefaultConfig();
+
+  if (GetParam()) {
+    auto serialized_state = std::move(*aggregator).Serialize().value();
+    aggregator = CheckpointAggregator::Deserialize(default_configuration(),
+                                                   serialized_state)
+                     .value();
+  }
 
   MockCheckpointBuilder builder;
   EXPECT_CALL(builder, Add(StrEq("foo_out"), IsTensor<int32_t>({}, {0})))
@@ -476,7 +493,7 @@ TEST(CheckpointAggregatorTest, ReportZeroInputs) {
   EXPECT_OK(aggregator->Report(builder));
 }
 
-TEST(CheckpointAggregatorTest, ReportOneInput) {
+TEST_P(CheckpointAggregatorTest, ReportOneInput) {
   auto aggregator = CreateWithDefaultConfig();
   MockCheckpointParser parser;
   EXPECT_CALL(parser, GetTensor(StrEq("foo"))).WillOnce(Invoke([] {
@@ -484,13 +501,20 @@ TEST(CheckpointAggregatorTest, ReportOneInput) {
   }));
   EXPECT_OK(aggregator->Accumulate(parser));
 
+  if (GetParam()) {
+    auto serialized_state = std::move(*aggregator).Serialize().value();
+    aggregator = CheckpointAggregator::Deserialize(default_configuration(),
+                                                   serialized_state)
+                     .value();
+  }
+
   MockCheckpointBuilder builder;
   EXPECT_CALL(builder, Add(StrEq("foo_out"), IsTensor<int32_t>({}, {2})))
       .WillOnce(Return(absl::OkStatus()));
   EXPECT_OK(aggregator->Report(builder));
 }
 
-TEST(CheckpointAggregatorTest, ReportTwoInputs) {
+TEST_P(CheckpointAggregatorTest, ReportTwoInputs) {
   auto aggregator = CreateWithDefaultConfig();
   MockCheckpointParser parser;
   EXPECT_CALL(parser, GetTensor(StrEq("foo")))
@@ -501,13 +525,20 @@ TEST(CheckpointAggregatorTest, ReportTwoInputs) {
   EXPECT_OK(aggregator->Accumulate(parser));
   EXPECT_OK(aggregator->Accumulate(parser));
 
+  if (GetParam()) {
+    auto serialized_state = std::move(*aggregator).Serialize().value();
+    aggregator = CheckpointAggregator::Deserialize(default_configuration(),
+                                                   serialized_state)
+                     .value();
+  }
+
   MockCheckpointBuilder builder;
   EXPECT_CALL(builder, Add(StrEq("foo_out"), IsTensor<int32_t>({}, {5})))
       .WillOnce(Return(absl::OkStatus()));
   EXPECT_OK(aggregator->Report(builder));
 }
 
-TEST(CheckpointAggregatorTest, ReportMultipleTensors) {
+TEST_P(CheckpointAggregatorTest, ReportMultipleTensors) {
   Configuration config_message = PARSE_TEXT_PROTO(R"pb(
     intrinsic_configs {
       intrinsic_uri: "federated_sum"
@@ -550,6 +581,14 @@ TEST(CheckpointAggregatorTest, ReportMultipleTensors) {
                           CreateTestData({1.f, 2.f, 3.f, 4.f}));
   }));
   EXPECT_OK(aggregator->Accumulate(parser));
+
+  if (GetParam()) {
+    auto serialized_state = std::move(*aggregator).Serialize().value();
+    aggregator =
+        CheckpointAggregator::Deserialize(config_message, serialized_state)
+            .value();
+  }
+
   MockCheckpointBuilder builder;
   EXPECT_CALL(builder, Add(StrEq("foo_out"), IsTensor<int32_t>({3}, {1, 2, 3})))
       .WillOnce(Return(absl::OkStatus()));
@@ -631,7 +670,7 @@ TEST(CheckpointAggregatorTest, ReportWithFailedCanReportPrecondition) {
   EXPECT_THAT(aggregator->Report(builder), StatusIs(FAILED_PRECONDITION));
 }
 
-TEST(CheckpointAggregatorTest, ReportFedSqlZeroInputs) {
+TEST_P(CheckpointAggregatorTest, ReportFedSqlZeroInputs) {
   // One intrinsic:
   //    fedsql_group_by with two grouping keys key1 and key2, only the first one
   //    of which should be output, and two inner GoogleSQL:sum intrinsics bar
@@ -697,6 +736,13 @@ TEST(CheckpointAggregatorTest, ReportFedSqlZeroInputs) {
   )pb");
   auto aggregator = Create(config_message);
 
+  if (GetParam()) {
+    auto serialized_state = std::move(*aggregator).Serialize().value();
+    aggregator =
+        CheckpointAggregator::Deserialize(config_message, serialized_state)
+            .value();
+  }
+
   MockCheckpointBuilder builder;
   // Verify that empty tensors are added to the result checkpoint.
   EXPECT_CALL(builder, Add(StrEq("key1_out"), IsTensor<string_view>({0}, {})))
@@ -708,7 +754,7 @@ TEST(CheckpointAggregatorTest, ReportFedSqlZeroInputs) {
   EXPECT_OK(aggregator->Report(builder));
 }
 
-TEST(CheckpointAggregatorTest, ReportFedSqlsOneInput) {
+TEST_P(CheckpointAggregatorTest, ReportFedSqlsOneInput) {
   auto aggregator = CreateWithDefaultFedSqlConfig();
 
   MockCheckpointParser parser;
@@ -720,6 +766,13 @@ TEST(CheckpointAggregatorTest, ReportFedSqlsOneInput) {
   }));
   EXPECT_OK(aggregator->Accumulate(parser));
 
+  if (GetParam()) {
+    auto serialized_state = std::move(*aggregator).Serialize().value();
+    aggregator = CheckpointAggregator::Deserialize(
+                     default_fedsql_configuration(), serialized_state)
+                     .value();
+  }
+
   MockCheckpointBuilder builder;
   EXPECT_CALL(builder, Add(StrEq("key1_out"), IsTensor<float>({2}, {1.f, 2.f})))
       .WillOnce(Return(absl::OkStatus()));
@@ -728,7 +781,7 @@ TEST(CheckpointAggregatorTest, ReportFedSqlsOneInput) {
   EXPECT_OK(aggregator->Report(builder));
 }
 
-TEST(CheckpointAggregatorTest, ReportFedSqlsTwoInputs) {
+TEST_P(CheckpointAggregatorTest, ReportFedSqlsTwoInputs) {
   auto aggregator = CreateWithDefaultFedSqlConfig();
 
   MockCheckpointParser parser1;
@@ -739,6 +792,13 @@ TEST(CheckpointAggregatorTest, ReportFedSqlsTwoInputs) {
     return Tensor::Create(DT_FLOAT, {3}, CreateTestData({.1f, .2f, .3f}));
   }));
   EXPECT_OK(aggregator->Accumulate(parser1));
+
+  if (GetParam()) {
+    auto serialized_state = std::move(*aggregator).Serialize().value();
+    aggregator = CheckpointAggregator::Deserialize(
+                     default_fedsql_configuration(), serialized_state)
+                     .value();
+  }
 
   MockCheckpointParser parser2;
   EXPECT_CALL(parser2, GetTensor(StrEq("key1"))).WillOnce(Invoke([] {
@@ -759,7 +819,7 @@ TEST(CheckpointAggregatorTest, ReportFedSqlsTwoInputs) {
   EXPECT_OK(aggregator->Report(builder));
 }
 
-TEST(CheckpointAggregatorTest, ReportFedSqlsEmptyInput) {
+TEST_P(CheckpointAggregatorTest, ReportFedSqlsEmptyInput) {
   auto aggregator = CreateWithDefaultFedSqlConfig();
 
   MockCheckpointParser parser;
@@ -771,6 +831,13 @@ TEST(CheckpointAggregatorTest, ReportFedSqlsEmptyInput) {
   }));
   EXPECT_OK(aggregator->Accumulate(parser));
 
+  if (GetParam()) {
+    auto serialized_state = std::move(*aggregator).Serialize().value();
+    aggregator = CheckpointAggregator::Deserialize(
+                     default_fedsql_configuration(), serialized_state)
+                     .value();
+  }
+
   MockCheckpointBuilder builder;
   EXPECT_CALL(builder, Add(StrEq("key1_out"), IsTensor<float>({0}, {})))
       .WillOnce(Return(absl::OkStatus()));
@@ -779,7 +846,7 @@ TEST(CheckpointAggregatorTest, ReportFedSqlsEmptyInput) {
   EXPECT_OK(aggregator->Report(builder));
 }
 
-TEST(CheckpointAggregatorTest, MergeSuccess) {
+TEST_P(CheckpointAggregatorTest, MergeSuccess) {
   auto aggregator1 = CreateWithDefaultConfig();
   MockCheckpointParser parser1;
   EXPECT_CALL(parser1, GetTensor(StrEq("foo"))).WillOnce(Invoke([] {
@@ -794,7 +861,25 @@ TEST(CheckpointAggregatorTest, MergeSuccess) {
   }));
   EXPECT_OK(aggregator2->Accumulate(parser2));
 
+  if (GetParam()) {
+    auto serialized_state1 = std::move(*aggregator1).Serialize().value();
+    aggregator1 = CheckpointAggregator::Deserialize(default_configuration(),
+                                                    serialized_state1)
+                      .value();
+    auto serialized_state2 = std::move(*aggregator2).Serialize().value();
+    aggregator2 = CheckpointAggregator::Deserialize(default_configuration(),
+                                                    serialized_state2)
+                      .value();
+  }
+
   EXPECT_OK(aggregator1->MergeWith(std::move(*aggregator2)));
+
+  if (GetParam()) {
+    auto serialized_state1 = std::move(*aggregator1).Serialize().value();
+    aggregator1 = CheckpointAggregator::Deserialize(default_configuration(),
+                                                    serialized_state1)
+                      .value();
+  }
 
   MockCheckpointBuilder builder;
   EXPECT_CALL(builder, Add(StrEq("foo_out"), IsTensor<int32_t>({}, {12})))
@@ -929,6 +1014,35 @@ TEST(CheckpointAggregatorTest, ConcurrentAccumulationAbortWhileQueued) {
   resume_aggregation_notification.Notify();
   scheduler->WaitUntilIdle();
 }
+
+TEST(CheckpointAggregatorTest, SerializeAfterReport) {
+  auto aggregator = CreateWithDefaultConfig();
+
+  MockCheckpointBuilder builder;
+  EXPECT_CALL(builder, Add(StrEq("foo_out"), IsTensor<int32_t>({}, {0})))
+      .WillOnce(Return(absl::OkStatus()));
+  TFF_EXPECT_OK(aggregator->Report(builder));
+  EXPECT_THAT(std::move(*aggregator).Serialize(), StatusIs(ABORTED));
+}
+
+TEST(CheckpointAggregatorTest, SerializeAfterAbort) {
+  auto aggregator = CreateWithDefaultConfig();
+  aggregator->Abort();
+  EXPECT_THAT(std::move(*aggregator).Serialize(), StatusIs(ABORTED));
+}
+
+TEST(CheckpointAggregatorTest, DeserializeInvalidState) {
+  std::string serialized_state = "invalid";
+  EXPECT_THAT(CheckpointAggregator::Deserialize(default_configuration(),
+                                                serialized_state),
+              StatusIs(INVALID_ARGUMENT));
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    CheckpointAggregatorTestInstantiation, CheckpointAggregatorTest,
+    testing::ValuesIn<bool>({false, true}),
+    [](const testing::TestParamInfo<CheckpointAggregatorTest::ParamType>&
+           info) { return info.param ? "SerializeDeserialize" : "None"; });
 
 }  // namespace
 }  // namespace aggregation

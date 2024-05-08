@@ -41,6 +41,16 @@ proto_library(
     deps = ["//tensorflow_federated/cc/core/impl/aggregation/core:tensor_proto"],
 )
 
+proto_library(
+    name = "checkpoint_aggregator_proto",
+    srcs = ["checkpoint_aggregator.proto"],
+)
+
+cc_proto_library(
+    name = "checkpoint_aggregator_cc_proto",
+    deps = [":checkpoint_aggregator_proto"],
+)
+
 cc_proto_library(
     name = "configuration_cc_proto",
     visibility = ["//visibility:public"],
@@ -99,6 +109,7 @@ cc_library(
     hdrs = ["checkpoint_aggregator.h"],
     visibility = ["//visibility:public"],
     deps = [
+        ":checkpoint_aggregator_cc_proto",
         ":checkpoint_builder",
         ":checkpoint_parser",
         ":config_converter",

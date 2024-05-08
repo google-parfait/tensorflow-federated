@@ -36,6 +36,7 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator_factory.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator_registry.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_spec.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/protocol/checkpoint_aggregator.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/protocol/checkpoint_builder.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/protocol/checkpoint_parser.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/protocol/config_converter.h"
@@ -67,13 +68,50 @@ absl::Status CheckpointAggregator::ValidateConfig(
 
 absl::StatusOr<std::unique_ptr<CheckpointAggregator>>
 CheckpointAggregator::Create(const Configuration& configuration) {
+  return CreateInternal(configuration, nullptr);
+}
+
+absl::StatusOr<std::unique_ptr<CheckpointAggregator>>
+CheckpointAggregator::Create(const std::vector<Intrinsic>* intrinsics) {
+  return CreateInternal(intrinsics, nullptr);
+}
+
+absl::StatusOr<std::unique_ptr<CheckpointAggregator>>
+CheckpointAggregator::Deserialize(const Configuration& configuration,
+                                  std::string serialized_state) {
+  CheckpointAggregatorState aggregator_state;
+  if (!aggregator_state.ParseFromString(serialized_state)) {
+    return absl::InvalidArgumentError("Failed to parse serialized state.");
+  }
+  return CreateInternal(configuration, &aggregator_state);
+}
+
+absl::StatusOr<std::unique_ptr<CheckpointAggregator>>
+CheckpointAggregator::Deserialize(const std::vector<Intrinsic>* intrinsics,
+                                  std::string serialized_state) {
+  CheckpointAggregatorState aggregator_state;
+  if (!aggregator_state.ParseFromString(serialized_state)) {
+    return absl::InvalidArgumentError("Failed to parse serialized state.");
+  }
+  return CreateInternal(intrinsics, &aggregator_state);
+}
+
+absl::StatusOr<std::unique_ptr<CheckpointAggregator>>
+CheckpointAggregator::CreateInternal(
+    const Configuration& configuration,
+    const CheckpointAggregatorState* aggregator_state) {
   TFF_ASSIGN_OR_RETURN(std::vector<Intrinsic> intrinsics,
                        ParseFromConfig(configuration));
 
   std::vector<std::unique_ptr<TensorAggregator>> aggregators;
-  for (const Intrinsic& intrinsic : intrinsics) {
+  for (int i = 0; i < intrinsics.size(); ++i) {
+    const Intrinsic& intrinsic = intrinsics[i];
+    const std::string* serialized_aggregator = nullptr;
+    if (aggregator_state != nullptr) {
+      serialized_aggregator = &aggregator_state->aggregators(i);
+    }
     TFF_ASSIGN_OR_RETURN(std::unique_ptr<TensorAggregator> aggregator,
-                         CreateAggregator(intrinsic));
+                         CreateAggregator(intrinsic, serialized_aggregator));
     aggregators.push_back(std::move(aggregator));
   }
 
@@ -82,11 +120,18 @@ CheckpointAggregator::Create(const Configuration& configuration) {
 }
 
 absl::StatusOr<std::unique_ptr<CheckpointAggregator>>
-CheckpointAggregator::Create(const std::vector<Intrinsic>* intrinsics) {
+CheckpointAggregator::CreateInternal(
+    const std::vector<Intrinsic>* intrinsics,
+    const CheckpointAggregatorState* aggregator_state) {
   std::vector<std::unique_ptr<TensorAggregator>> aggregators;
-  for (const Intrinsic& intrinsic : *intrinsics) {
+  for (int i = 0; i < intrinsics->size(); ++i) {
+    const Intrinsic& intrinsic = (*intrinsics)[i];
+    const std::string* serialized_aggregator = nullptr;
+    if (aggregator_state != nullptr) {
+      serialized_aggregator = &aggregator_state->aggregators(i);
+    }
     TFF_ASSIGN_OR_RETURN(std::unique_ptr<TensorAggregator> aggregator,
-                         CreateAggregator(intrinsic));
+                         CreateAggregator(intrinsic, serialized_aggregator));
     aggregators.push_back(std::move(aggregator));
   }
 
@@ -201,14 +246,33 @@ absl::Status CheckpointAggregator::Report(
 
 void CheckpointAggregator::Abort() { aggregation_finished_ = true; }
 
+absl::StatusOr<std::string> CheckpointAggregator::Serialize() && {
+  absl::MutexLock lock(&aggregation_mu_);
+  if (aggregation_finished_) {
+    return absl::AbortedError("Aggregation has already been finished.");
+  }
+  CheckpointAggregatorState state;
+  google::protobuf::RepeatedPtrField<std::string>* aggregators_proto =
+      state.mutable_aggregators();
+  aggregators_proto->Reserve(aggregators_.size());
+  for (const auto& aggregator : aggregators_) {
+    aggregators_proto->Add(std::move(*aggregator).Serialize().value());
+  }
+  return state.SerializeAsString();
+}
+
 absl::StatusOr<std::unique_ptr<TensorAggregator>>
-CheckpointAggregator::CreateAggregator(const Intrinsic& intrinsic) {
+CheckpointAggregator::CreateAggregator(
+    const Intrinsic& intrinsic, const std::string* serialized_aggregator) {
   // Resolve the intrinsic_uri to the registered TensorAggregatorFactory.
   TFF_ASSIGN_OR_RETURN(const TensorAggregatorFactory* factory,
                        GetAggregatorFactory(intrinsic.uri));
 
   // Use the factory to create the TensorAggregator instance.
-  return factory->Create(intrinsic);
+  if (serialized_aggregator == nullptr) {
+    return factory->Create(intrinsic);
+  }
+  return factory->Deserialize(intrinsic, *serialized_aggregator);
 }
 
 std::vector<std::unique_ptr<TensorAggregator>>

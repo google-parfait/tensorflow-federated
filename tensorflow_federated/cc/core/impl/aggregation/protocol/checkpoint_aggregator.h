@@ -22,6 +22,7 @@
 #include <atomic>
 #include <memory>
 #include <optional>
+#include <string>
 #include <vector>
 
 #include "absl/base/attributes.h"
@@ -31,6 +32,7 @@
 #include "absl/synchronization/mutex.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/intrinsic.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/protocol/checkpoint_aggregator.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/protocol/checkpoint_builder.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/protocol/checkpoint_parser.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/protocol/configuration.pb.h"
@@ -62,6 +64,20 @@ class CheckpointAggregator {
   static absl::StatusOr<std::unique_ptr<CheckpointAggregator>> Create(
       const std::vector<Intrinsic>* intrinsics ABSL_ATTRIBUTE_LIFETIME_BOUND);
 
+  // Creates an instance of CheckpointAggregator based on the given
+  // configuration and serialized state.
+  static absl::StatusOr<std::unique_ptr<CheckpointAggregator>> Deserialize(
+      const Configuration& configuration, std::string serialized_state);
+
+  // Creates an instance of CheckpointAggregator based on the given intrinsics
+  // and serialized state.
+  // The `intrinsics` are expected to be created using `ParseFromConfig` which
+  // validates the configuration. CheckpointAggregator does not take any
+  // ownership, and `intrinsics` must outlive it.
+  static absl::StatusOr<std::unique_ptr<CheckpointAggregator>> Deserialize(
+      const std::vector<Intrinsic>* intrinsics ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      std::string serialized_state);
+
   // Accumulates a checkpoint via nested tensor aggregators. The tensors are
   // provided by the CheckpointParser instance.
   absl::Status Accumulate(CheckpointParser& checkpoint_parser);
@@ -75,6 +91,8 @@ class CheckpointAggregator {
   // Signal that the aggregation must be aborted and the report can't be
   // produced.
   void Abort();
+  // Serialize the internal state of the checkpoint aggregator as a string.
+  absl::StatusOr<std::string> Serialize() &&;
 
  private:
   CheckpointAggregator(
@@ -85,9 +103,18 @@ class CheckpointAggregator {
       std::vector<Intrinsic> intrinsics,
       std::vector<std::unique_ptr<TensorAggregator>> aggregators);
 
-  // Creates an aggregation intrinsic based on the intrinsic configuration.
+  // Creates an aggregation intrinsic based on the intrinsic configuration and
+  // optional serialized state.
   static absl::StatusOr<std::unique_ptr<TensorAggregator>> CreateAggregator(
-      const Intrinsic& intrinsic);
+      const Intrinsic& intrinsic, const std::string* serialized_aggregator);
+
+  static absl::StatusOr<std::unique_ptr<CheckpointAggregator>> CreateInternal(
+      const Configuration& configuration,
+      const CheckpointAggregatorState* aggregator_state);
+
+  static absl::StatusOr<std::unique_ptr<CheckpointAggregator>> CreateInternal(
+      const std::vector<Intrinsic>* intrinsics,
+      const CheckpointAggregatorState* aggregator_state);
 
   // Used by the implementation of Merge.
   std::vector<std::unique_ptr<TensorAggregator>> TakeAggregators() &&;
