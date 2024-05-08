@@ -44,8 +44,6 @@ tensorflow-privacy==0.9.0
 tqdm~=4.64
 typing-extensions>=4.5.0,==4.5.*
 
-# Requires TF x.y.* for ABI compatibility.
-tensorflow-compression>=2.14.0,==2.14.*
 # The version of this dependency should match the version in
 # https://github.com/tensorflow/federated/blob/main/WORKSPACE.
 tensorflow>=2.14.0,==2.14.*

@@ -71,7 +71,6 @@ REQUIRED_PACKAGES = [
     'portpicker~=1.6',
     'scipy~=1.9.3',
     'semantic-version~=2.6',
-    'tensorflow-compression>=2.14.0,==2.14.*',
     'tensorflow-model-optimization==0.7.5',
     'tensorflow-privacy==0.9.0',
     'tensorflow>=2.14.0,==2.14.*',
