@@ -44,17 +44,24 @@ py_library(
 py_library(
     name = "client_weight_lib",
     srcs = ["client_weight_lib.py"],
+    deps = ["@pypi_tensorflow//:pkg"],
 )
 
 py_library(
     name = "dataset_reduce",
     srcs = ["dataset_reduce.py"],
+    deps = ["@pypi_tensorflow//:pkg"],
 )
 
 py_cpu_gpu_test(
     name = "dataset_reduce_test",
     srcs = ["dataset_reduce_test.py"],
-    deps = [":dataset_reduce"],
+    deps = [
+        ":dataset_reduce",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
+        "@pypi_tensorflow//:pkg",
+    ],
 )
 
 py_cpu_gpu_test(
@@ -81,6 +88,9 @@ py_cpu_gpu_test(
         "//tensorflow_federated/python/learning/models:test_models",
         "//tensorflow_federated/python/learning/models:variable",
         "//tensorflow_federated/python/tensorflow_libs:tensorflow_test_utils",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
@@ -116,6 +126,8 @@ py_test(
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:iterative_process",
         "//tensorflow_federated/python/core/test:static_assert",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
     ],
 )
 
@@ -128,6 +140,7 @@ py_library(
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
         "//tensorflow_federated/python/core/impl/types:placements",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
@@ -141,6 +154,9 @@ py_test(
         "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
@@ -163,5 +179,6 @@ py_library(
         "//tensorflow_federated/python/learning/models:functional",
         "//tensorflow_federated/python/learning/models:model_weights",
         "//tensorflow_federated/python/learning/models:variable",
+        "@pypi_tensorflow//:pkg",
     ],
 )

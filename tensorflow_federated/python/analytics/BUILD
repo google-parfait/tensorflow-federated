@@ -39,7 +39,10 @@ py_library(
 py_library(
     name = "data_processing",
     srcs = ["data_processing.py"],
-    deps = ["//tensorflow_federated/python/common_libs:py_typecheck"],
+    deps = [
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "@pypi_tensorflow//:pkg",
+    ],
 )
 
 py_test(
@@ -48,6 +51,8 @@ py_test(
     deps = [
         ":data_processing",
         ":histogram_test_utils",
+        "@pypi_absl_py//:pkg",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
@@ -55,11 +60,13 @@ py_library(
     name = "histogram_test_utils",
     testonly = True,
     srcs = ["histogram_test_utils.py"],
+    deps = ["@pypi_tensorflow//:pkg"],
 )
 
 py_library(
     name = "histogram_processing",
     srcs = ["histogram_processing.py"],
+    deps = ["@pypi_tensorflow//:pkg"],
 )
 
 py_test(
@@ -68,6 +75,8 @@ py_test(
     deps = [
         ":histogram_processing",
         ":histogram_test_utils",
+        "@pypi_absl_py//:pkg",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
@@ -86,13 +95,18 @@ py_library(
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
+        "@pypi_numpy//:pkg",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
 py_test(
     name = "differential_privacy_test",
     srcs = ["differential_privacy_test.py"],
-    deps = [":differential_privacy"],
+    deps = [
+        ":differential_privacy",
+        "@pypi_absl_py//:pkg",
+    ],
 )
 
 py_test(
@@ -102,5 +116,8 @@ py_test(
         ":count_distinct",
         "//tensorflow_federated/python/core/backends/test:execution_contexts",
         "//tensorflow_federated/python/core/impl/types:computation_types",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
+        "@pypi_tensorflow//:pkg",
     ],
 )

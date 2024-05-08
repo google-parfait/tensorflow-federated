@@ -39,6 +39,8 @@ py_library(
         "//tensorflow_federated/python/core/impl/executors:executor_factory",
         "//tensorflow_federated/python/core/impl/executors:executors_errors",
         "//tensorflow_federated/python/core/impl/types:placements",
+        "@pypi_absl_py//:pkg",
+        "@pypi_cachetools//:pkg",
     ],
 )
 
@@ -55,6 +57,7 @@ py_test(
         "//tensorflow_federated/python/core/impl/executors:executor_factory",
         "//tensorflow_federated/python/core/impl/executors:executor_test_utils_bindings",
         "//tensorflow_federated/python/core/impl/types:placements",
+        "@pypi_absl_py//:pkg",
     ],
 )
 
@@ -69,6 +72,8 @@ py_library(
         "//tensorflow_federated/python/core/impl/executors:remote_executor",
         "//tensorflow_federated/python/core/impl/executors:remote_executor_grpc_stub",
         "//tensorflow_federated/python/core/impl/types:placements",
+        "@pypi_absl_py//:pkg",
+        "@pypi_portpicker//:pkg",
     ],
 )
 
@@ -97,6 +102,8 @@ py_test(
         ":executor_stack_bindings",
         "//tensorflow_federated/python/core/impl/executors:executor_bindings",
         "//tensorflow_federated/python/core/impl/types:placements",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
     ],
 )
 
@@ -108,6 +115,7 @@ py_library(
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/impl/executors:executor_base",
         "//tensorflow_federated/python/core/impl/executors:executor_factory",
+        "@pypi_cachetools//:pkg",
     ],
 )
 
@@ -121,5 +129,6 @@ py_test(
         "//tensorflow_federated/python/core/impl/executors:executor_base",
         "//tensorflow_federated/python/core/impl/executors:executor_factory",
         "//tensorflow_federated/python/core/impl/types:placements",
+        "@pypi_absl_py//:pkg",
     ],
 )

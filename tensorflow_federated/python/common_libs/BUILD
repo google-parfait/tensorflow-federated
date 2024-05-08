@@ -33,7 +33,10 @@ py_library(
 py_test(
     name = "async_utils_test",
     srcs = ["async_utils_test.py"],
-    deps = [":async_utils"],
+    deps = [
+        ":async_utils",
+        "@pypi_absl_py//:pkg",
+    ],
 )
 
 py_library(
@@ -44,13 +47,17 @@ py_library(
 py_test(
     name = "deprecation_test",
     srcs = ["deprecation_test.py"],
-    deps = [":deprecation"],
+    deps = [
+        ":deprecation",
+        "@pypi_absl_py//:pkg",
+    ],
 )
 
 py_library(
     name = "golden",
     testonly = True,
     srcs = ["golden.py"],
+    deps = ["@pypi_absl_py//:pkg"],
 )
 
 py_test(
@@ -70,19 +77,29 @@ py_test(
         "golden_test_goldens/test_check_string_succeeds.expected",
         "golden_test_goldens/test_check_string_updates.expected",
     ],
-    deps = [":golden"],
+    deps = [
+        ":golden",
+        "@pypi_absl_py//:pkg",
+    ],
 )
 
 py_library(
     name = "py_typecheck",
     srcs = ["py_typecheck.py"],
+    deps = [
+        "@pypi_attrs//:pkg",
+        "@pypi_typing_extensions//:pkg",
+    ],
 )
 
 py_test(
     name = "py_typecheck_test",
     size = "small",
     srcs = ["py_typecheck_test.py"],
-    deps = [":py_typecheck"],
+    deps = [
+        ":py_typecheck",
+        "@pypi_absl_py//:pkg",
+    ],
 )
 
 py_library(
@@ -97,7 +114,10 @@ py_test(
     name = "retrying_test",
     size = "small",
     srcs = ["retrying_test.py"],
-    deps = [":retrying"],
+    deps = [
+        ":retrying",
+        "@pypi_absl_py//:pkg",
+    ],
 )
 
 py_library(
@@ -108,25 +128,39 @@ py_library(
 py_library(
     name = "structure",
     srcs = ["structure.py"],
-    deps = [":py_typecheck"],
+    deps = [
+        ":py_typecheck",
+        "@pypi_attrs//:pkg",
+        "@pypi_dm_tree//:pkg",
+    ],
 )
 
 py_test(
     name = "structure_test",
     size = "small",
     srcs = ["structure_test.py"],
-    deps = [":structure"],
+    deps = [
+        ":structure",
+        "@pypi_absl_py//:pkg",
+        "@pypi_attrs//:pkg",
+    ],
 )
 
 py_library(
     name = "tracing",
     srcs = ["tracing.py"],
-    deps = [":py_typecheck"],
+    deps = [
+        ":py_typecheck",
+        "@pypi_absl_py//:pkg",
+    ],
 )
 
 py_test(
     name = "tracing_test",
     size = "small",
     srcs = ["tracing_test.py"],
-    deps = [":tracing"],
+    deps = [
+        ":tracing",
+        "@pypi_absl_py//:pkg",
+    ],
 )

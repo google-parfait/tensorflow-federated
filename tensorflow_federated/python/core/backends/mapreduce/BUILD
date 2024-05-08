@@ -48,6 +48,8 @@ py_library(
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_analysis",
+        "@pypi_absl_py//:pkg",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
@@ -76,6 +78,9 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
         "//tensorflow_federated/python/core/impl/types:type_test_utils",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
@@ -108,6 +113,9 @@ py_test(
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
@@ -134,6 +142,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
@@ -160,6 +169,10 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:type_test_utils",
         "//tensorflow_federated/python/core/templates:iterative_process",
         "//tensorflow_federated/python/tensorflow_libs:serialization_utils",
+        "@pypi_absl_py//:pkg",
+        "@pypi_dm_tree//:pkg",
+        "@pypi_numpy//:pkg",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
@@ -179,6 +192,8 @@ py_library(
         "//tensorflow_federated/python/core/impl/federated_context:value_impl",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
+        "@pypi_numpy//:pkg",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
@@ -198,5 +213,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/templates:iterative_process",
+        "@pypi_numpy//:pkg",
+        "@pypi_tensorflow//:pkg",
     ],
 )

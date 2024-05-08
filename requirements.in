@@ -1,0 +1,53 @@
+# Requirements for the TensorFlow Federated development environment.
+#
+# If you add a *new* dependency and it is required by the TensorFlow Federated
+# package, also add the dependency to
+# https://github.com/google-parfait/tensorflow-federated/blob/main/tensorflow_federated/tools/development/setup.py.
+#
+# If you update the version of an *existing* dependency and it is required by
+# the TensorFlow Federated package, also update the version of the dependency in
+# https://github.com/google-parfait/tensorflow-federated/blob/main/tensorflow_federated/tools/development/setup.py.
+#
+# *   For packages that have a stable release, we use a version that is
+#     compatible with that release (e.g. `~=x.y`). See
+#     https://peps.python.org/pep-0440/#compatible-release for more information.
+# *   For packages that do not have a stable release, we use a version that
+#     matches a release that has been tested (e.g. `==x.y.z`). See
+#     https://peps.python.org/pep-0440/#version-matching for more information.
+#
+# Note: There is bug in `pip` when multiple packages use the compatible release
+# operator `~=` to specify a version and one of those versions ends in `0`. See
+# https://github.com/pypa/pip/issues/9613 for more information. In this case,
+# use the equivalent clause `>=x.0,==x.*` instead of `~=x.0`.
+#
+# This assumes that the packages follows Semantic Versioning, see
+# https://semver.org/. If a package follows a different versioning scheme or
+# requires unique handling, we use a different version specifier and comment the
+# versioning scheme or reasoning.
+
+absl-py>=1.0,==1.*
+attrs~=23.1
+cachetools~=5.3
+dm-tree==0.1.8
+dp-accounting==0.4.3
+farmhashpy==0.4.0
+google-vizier==0.1.11
+grpcio~=1.46
+jaxlib==0.4.14
+jax==0.4.14
+numpy~=1.25
+portpicker~=1.6
+scipy~=1.9.3
+semantic-version~=2.6
+tensorflow-model-optimization==0.7.5
+tensorflow-privacy==0.9.0
+tqdm~=4.64
+typing-extensions>=4.5.0,==4.5.*
+
+# The version of this dependency should match the version in
+# https://github.com/google-parfait/tensorflow-federated/blob/main/WORKSPACE.
+tensorflow>=2.14.0,==2.14.*
+
+# TODO: b/315515548 - Required because current dependencies are pulling in later
+# versions which are causing opaque failures.
+googleapis-common-protos==1.61.0

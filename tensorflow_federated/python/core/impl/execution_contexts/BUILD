@@ -51,6 +51,7 @@ py_test(
     deps = [
         ":async_execution_context",
         "//tensorflow_federated/python/core/impl/executors:executors_errors",
+        "@pypi_absl_py//:pkg",
     ],
 )
 
@@ -70,6 +71,7 @@ py_test(
     deps = [
         ":compiler_pipeline",
         "//tensorflow_federated/python/core/impl/computation:computation_base",
+        "@pypi_absl_py//:pkg",
     ],
 )
 
@@ -91,6 +93,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:type_analysis",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
         "//tensorflow_federated/python/core/impl/types:typed_object",
+        "@pypi_attrs//:pkg",
     ],
 )
 
@@ -104,6 +107,8 @@ py_test(
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
     ],
 )
 

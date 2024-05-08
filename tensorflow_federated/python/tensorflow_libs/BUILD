@@ -24,7 +24,10 @@ py_library(
 py_library(
     name = "graph_optimizations",
     srcs = ["graph_optimizations.py"],
-    deps = [":graph_spec"],
+    deps = [
+        ":graph_spec",
+        "@pypi_absl_py//:pkg",
+    ],
 )
 
 py_test(
@@ -33,29 +36,42 @@ py_test(
     deps = [
         ":graph_optimizations",
         ":graph_spec",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
 py_library(
     name = "graph_spec",
     srcs = ["graph_spec.py"],
+    deps = [
+        "@pypi_attrs//:pkg",
+        "@pypi_tensorflow//:pkg",
+    ],
 )
 
 py_test(
     name = "graph_spec_test",
     srcs = ["graph_spec_test.py"],
-    deps = [":graph_spec"],
+    deps = [
+        ":graph_spec",
+        "@pypi_tensorflow//:pkg",
+    ],
 )
 
 py_library(
     name = "graph_utils",
     srcs = ["graph_utils.py"],
+    deps = ["@pypi_tensorflow//:pkg"],
 )
 
 py_test(
     name = "graph_utils_test",
     srcs = ["graph_utils_test.py"],
-    deps = [":graph_utils"],
+    deps = [
+        ":graph_utils",
+        "@pypi_absl_py//:pkg",
+        "@pypi_tensorflow//:pkg",
+    ],
 )
 
 py_library(
@@ -64,6 +80,7 @@ py_library(
     deps = [
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "@com_google_protobuf//:protobuf_python",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
@@ -74,31 +91,45 @@ py_test(
     deps = [
         ":serialization_utils",
         "@com_google_protobuf//:protobuf_python",
+        "@pypi_absl_py//:pkg",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
 py_library(
     name = "tensor_utils",
     srcs = ["tensor_utils.py"],
-    deps = ["//tensorflow_federated/python/common_libs:py_typecheck"],
+    deps = [
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "@pypi_tensorflow//:pkg",
+    ],
 )
 
 py_test(
     name = "tensor_utils_test",
     size = "small",
     srcs = ["tensor_utils_test.py"],
-    deps = [":tensor_utils"],
+    deps = [
+        ":tensor_utils",
+        "@pypi_numpy//:pkg",
+        "@pypi_tensorflow//:pkg",
+    ],
 )
 
 py_library(
     name = "tensorflow_test_utils",
     testonly = True,
     srcs = ["tensorflow_test_utils.py"],
+    deps = ["@pypi_tensorflow//:pkg"],
 )
 
 py_library(
     name = "variable_utils",
     srcs = ["variable_utils.py"],
+    deps = [
+        "@pypi_numpy//:pkg",
+        "@pypi_tensorflow//:pkg",
+    ],
 )
 
 py_test(
@@ -106,17 +137,25 @@ py_test(
     size = "small",
     timeout = "moderate",
     srcs = ["variable_utils_test.py"],
-    deps = [":variable_utils"],
+    deps = [
+        ":variable_utils",
+        "@pypi_absl_py//:pkg",
+        "@pypi_tensorflow//:pkg",
+    ],
 )
 
 py_library(
     name = "version_check",
     srcs = ["version_check.py"],
+    deps = ["@pypi_semantic_version//:pkg"],
 )
 
 py_test(
     name = "version_check_test",
     size = "small",
     srcs = ["version_check_test.py"],
-    deps = [":version_check"],
+    deps = [
+        ":version_check",
+        "@pypi_absl_py//:pkg",
+    ],
 )

@@ -1,7 +1,9 @@
 # Unreleased
 
-*   Enable support for models with non-trainable variables in
+*   Enabled support for models with non-trainable variables in
     `tff.learning.models.functional_model_from_keras`.
+*   Updated to use a hermetic Python environment.
+*   Updated to load Python dependencies using Bazel.
 
 ## Breaking Changes
 

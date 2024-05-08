@@ -617,6 +617,10 @@ py_binary(
     name = "make_reduce_lambda_test_graph",
     testonly = True,
     srcs = ["make_reduce_lambda_test_graph.py"],
+    deps = [
+        "@pypi_absl_py//:pkg",
+        "@pypi_tensorflow//:pkg",
+    ],
 )
 
 genrule(
@@ -634,6 +638,10 @@ py_binary(
     name = "make_structural_reduce_test_graph",
     testonly = True,
     srcs = ["make_structural_reduce_test_graph.py"],
+    deps = [
+        "@pypi_absl_py//:pkg",
+        "@pypi_tensorflow//:pkg",
+    ],
 )
 
 cc_library(
