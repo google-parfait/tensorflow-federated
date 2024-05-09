@@ -1,5 +1,7 @@
 # Unreleased
 
+# Release 0.78.0
+
 ## Major Features and Improvements
 
 *   Moved aggregation from https://github.com/google-parfait/federated-compute
