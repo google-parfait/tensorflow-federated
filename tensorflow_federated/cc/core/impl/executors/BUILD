@@ -674,6 +674,7 @@ cc_library(
         "//tensorflow_federated/proto/v0:executor_cc_grpc_proto",
         "//tensorflow_federated/proto/v0:executor_cc_proto",
         "@com_github_grpc_grpc//:grpc++",
+        "@com_github_grpc_grpc//:grpc_security_base",
         "@com_google_absl//absl/strings",
         "@com_google_googletest//:gtest",
     ],

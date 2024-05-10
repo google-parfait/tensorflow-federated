@@ -1,5 +1,9 @@
 # Unreleased
 
+## Breaking Changes
+
+*   Updated `com_github_grpc_grpc` to version `1.50.0`.
+
 # Release 0.78.0
 
 ## Major Features and Improvements
