@@ -27,7 +27,7 @@ limitations under the License
 #include "absl/status/statusor.h"
 #include "absl/types/span.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
-#include "tensorflow_federated/cc/core/impl/executors/protobuf_matchers.h"
+#include "tensorflow_federated/cc/core/impl/testing/protobuf_matchers.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow_federated {

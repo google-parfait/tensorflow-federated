@@ -48,7 +48,7 @@ cc_test(
         "//tensorflow_federated/cc/core/impl/aggregation/testing",
         "//tensorflow_federated/cc/core/impl/aggregation/testing:parse_text_proto",
         "//tensorflow_federated/cc/core/impl/aggregation/testing:test_data",
-        "//tensorflow_federated/cc/core/impl/executors:status_matchers",
+        "//tensorflow_federated/cc/core/impl/testing:status_matchers",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings:string_view",
         "@org_tensorflow//tensorflow/core:framework",
@@ -86,7 +86,7 @@ cc_test(
         "//tensorflow_federated/cc/core/impl/aggregation/base",
         "//tensorflow_federated/cc/core/impl/aggregation/core:tensor",
         "//tensorflow_federated/cc/core/impl/aggregation/testing",
-        "//tensorflow_federated/cc/core/impl/executors:status_matchers",
+        "//tensorflow_federated/cc/core/impl/testing:status_matchers",
         "@com_google_absl//absl/strings",
     ],
 )

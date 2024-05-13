@@ -50,9 +50,9 @@ limitations under the License
 #include "tensorflow/dtensor/proto/layout.pb.h"
 #include "tensorflow_federated/cc/core/impl/executors/dtensor_api.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
-#include "tensorflow_federated/cc/core/impl/executors/protobuf_matchers.h"
-#include "tensorflow_federated/cc/core/impl/executors/status_matchers.h"
 #include "tensorflow_federated/cc/core/impl/executors/value_test_utils.h"
+#include "tensorflow_federated/cc/core/impl/testing/protobuf_matchers.h"
+#include "tensorflow_federated/cc/core/impl/testing/status_matchers.h"
 
 namespace tensorflow_federated {
 namespace {

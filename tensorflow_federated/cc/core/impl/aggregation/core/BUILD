@@ -178,8 +178,8 @@ cc_test(
         "//tensorflow_federated/cc/core/impl/aggregation/base",
         "//tensorflow_federated/cc/core/impl/aggregation/testing",
         "//tensorflow_federated/cc/core/impl/aggregation/testing:test_data",
-        "//tensorflow_federated/cc/core/impl/executors:protobuf_matchers",
-        "//tensorflow_federated/cc/core/impl/executors:status_matchers",
+        "//tensorflow_federated/cc/core/impl/testing:protobuf_matchers",
+        "//tensorflow_federated/cc/core/impl/testing:status_matchers",
     ],
 )
 
@@ -205,7 +205,7 @@ cc_test(
         "//tensorflow_federated/cc/core/impl/aggregation/base",
         "//tensorflow_federated/cc/core/impl/aggregation/testing",
         "//tensorflow_federated/cc/core/impl/aggregation/testing:test_data",
-        "//tensorflow_federated/cc/core/impl/executors:status_matchers",
+        "//tensorflow_federated/cc/core/impl/testing:status_matchers",
     ],
 )
 
@@ -217,7 +217,7 @@ cc_test(
         ":intrinsic",
         "//tensorflow_federated/cc/common_libs:oss_test_main",
         "//tensorflow_federated/cc/core/impl/aggregation/base",
-        "//tensorflow_federated/cc/core/impl/executors:status_matchers",
+        "//tensorflow_federated/cc/core/impl/testing:status_matchers",
     ],
 )
 
@@ -260,7 +260,7 @@ cc_test(
         "//tensorflow_federated/cc/core/impl/aggregation/base",
         "//tensorflow_federated/cc/core/impl/aggregation/testing",
         "//tensorflow_federated/cc/core/impl/aggregation/testing:test_data",
-        "//tensorflow_federated/cc/core/impl/executors:status_matchers",
+        "//tensorflow_federated/cc/core/impl/testing:status_matchers",
     ],
 )
 
@@ -277,7 +277,7 @@ cc_test(
         "//tensorflow_federated/cc/core/impl/aggregation/base",
         "//tensorflow_federated/cc/core/impl/aggregation/testing",
         "//tensorflow_federated/cc/core/impl/aggregation/testing:test_data",
-        "//tensorflow_federated/cc/core/impl/executors:status_matchers",
+        "//tensorflow_federated/cc/core/impl/testing:status_matchers",
     ],
 )
 
@@ -303,7 +303,7 @@ cc_test(
         "//tensorflow_federated/cc/core/impl/aggregation/base",
         "//tensorflow_federated/cc/core/impl/aggregation/testing",
         "//tensorflow_federated/cc/core/impl/aggregation/testing:test_data",
-        "//tensorflow_federated/cc/core/impl/executors:status_matchers",
+        "//tensorflow_federated/cc/core/impl/testing:status_matchers",
     ],
 )
 
@@ -319,7 +319,7 @@ cc_test(
         "//tensorflow_federated/cc/core/impl/aggregation/base",
         "//tensorflow_federated/cc/core/impl/aggregation/testing",
         "//tensorflow_federated/cc/core/impl/aggregation/testing:test_data",
-        "//tensorflow_federated/cc/core/impl/executors:status_matchers",
+        "//tensorflow_federated/cc/core/impl/testing:status_matchers",
         "@com_google_absl//absl/types:span",
     ],
 )
@@ -330,7 +330,7 @@ cc_test(
     deps = [
         ":tensor",
         "//tensorflow_federated/cc/common_libs:oss_test_main",
-        "//tensorflow_federated/cc/core/impl/executors:status_matchers",
+        "//tensorflow_federated/cc/core/impl/testing:status_matchers",
     ],
 )
 
@@ -341,7 +341,7 @@ cc_test(
         ":tensor",
         ":vector_string_data",
         "//tensorflow_federated/cc/common_libs:oss_test_main",
-        "//tensorflow_federated/cc/core/impl/executors:status_matchers",
+        "//tensorflow_federated/cc/core/impl/testing:status_matchers",
     ],
 )
 
@@ -352,7 +352,7 @@ cc_test(
         ":mutable_string_data",
         ":tensor",
         "//tensorflow_federated/cc/common_libs:oss_test_main",
-        "//tensorflow_federated/cc/core/impl/executors:status_matchers",
+        "//tensorflow_federated/cc/core/impl/testing:status_matchers",
         "@com_google_absl//absl/strings:string_view",
     ],
 )
@@ -368,7 +368,7 @@ cc_test(
         "//tensorflow_federated/cc/core/impl/aggregation/base",
         "//tensorflow_federated/cc/core/impl/aggregation/testing",
         "//tensorflow_federated/cc/core/impl/aggregation/testing:test_data",
-        "//tensorflow_federated/cc/core/impl/executors:status_matchers",
+        "//tensorflow_federated/cc/core/impl/testing:status_matchers",
     ],
 )
 
@@ -385,7 +385,7 @@ cc_test(
         "//tensorflow_federated/cc/core/impl/aggregation/base",
         "//tensorflow_federated/cc/core/impl/aggregation/testing",
         "//tensorflow_federated/cc/core/impl/aggregation/testing:test_data",
-        "//tensorflow_federated/cc/core/impl/executors:status_matchers",
+        "//tensorflow_federated/cc/core/impl/testing:status_matchers",
     ],
 )
 
@@ -403,7 +403,7 @@ cc_test(
         "//tensorflow_federated/cc/core/impl/aggregation/base",
         "//tensorflow_federated/cc/core/impl/aggregation/testing",
         "//tensorflow_federated/cc/core/impl/aggregation/testing:test_data",
-        "//tensorflow_federated/cc/core/impl/executors:status_matchers",
+        "//tensorflow_federated/cc/core/impl/testing:status_matchers",
     ],
 )
 
@@ -419,7 +419,7 @@ cc_test(
         "//tensorflow_federated/cc/core/impl/aggregation/base",
         "//tensorflow_federated/cc/core/impl/aggregation/testing",
         "//tensorflow_federated/cc/core/impl/aggregation/testing:test_data",
-        "//tensorflow_federated/cc/core/impl/executors:status_matchers",
+        "//tensorflow_federated/cc/core/impl/testing:status_matchers",
     ],
 )
 
@@ -437,7 +437,7 @@ cc_test(
         "//tensorflow_federated/cc/core/impl/aggregation/base",
         "//tensorflow_federated/cc/core/impl/aggregation/testing",
         "//tensorflow_federated/cc/core/impl/aggregation/testing:test_data",
-        "//tensorflow_federated/cc/core/impl/executors:status_matchers",
+        "//tensorflow_federated/cc/core/impl/testing:status_matchers",
         "@com_google_absl//absl/strings",
     ],
 )
