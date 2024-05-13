@@ -51,7 +51,7 @@ py_test(
     ],
     deps = [
         "//tensorflow_federated/cc/core/impl/aggregation/core:tensor_py_pb2",
+        "//tensorflow_federated/cc/core/impl/aggregation/protocol:aggregation_protocol_messages_py_pb2",
         "//tensorflow_federated/cc/core/impl/aggregation/protocol:configuration_py_pb2",
-        "//tensorflow_federated/cc/core/impl/aggregation/protocol:py_pb2",
     ],
 )

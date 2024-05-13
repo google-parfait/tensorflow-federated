@@ -21,18 +21,18 @@ package(
 )
 
 proto_library(
-    name = "proto",
+    name = "aggregation_protocol_messages_proto",
     srcs = ["aggregation_protocol_messages.proto"],
 )
 
 cc_proto_library(
-    name = "cc_proto",
-    deps = [":proto"],
+    name = "aggregation_protocol_messages_cc_proto",
+    deps = [":aggregation_protocol_messages_proto"],
 )
 
 py_proto_library(
-    name = "py_pb2",
-    deps = [":proto"],
+    name = "aggregation_protocol_messages_py_pb2",
+    deps = [":aggregation_protocol_messages_proto"],
 )
 
 proto_library(
@@ -66,7 +66,7 @@ cc_library(
     name = "aggregation_protocol",
     hdrs = ["aggregation_protocol.h"],
     deps = [
-        ":cc_proto",
+        ":aggregation_protocol_messages_cc_proto",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings:cord",

@@ -24,7 +24,7 @@ pybind_extension(
     srcs = ["aggregation_protocol.cc"],
     deps = [
         "//tensorflow_federated/cc/core/impl/aggregation/protocol:aggregation_protocol",
-        "//tensorflow_federated/cc/core/impl/aggregation/protocol:cc_proto",
+        "//tensorflow_federated/cc/core/impl/aggregation/protocol:aggregation_protocol_messages_cc_proto",
         "//tensorflow_federated/cc/core/impl/aggregation/protocol:configuration_cc_proto",
         "@com_google_absl//absl/status",
         "@pybind11_abseil//pybind11_abseil:absl_casters",
