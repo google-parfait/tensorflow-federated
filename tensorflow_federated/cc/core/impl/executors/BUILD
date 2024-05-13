@@ -828,6 +828,9 @@ cc_test(
     timeout = "short",
     srcs = ["sequence_executor_test.cc"],
     flaky = True,
+    tags = [
+        "nokokoro",  # TODO: b/340292788 - Temporarily disable flaky test.
+    ],
     deps = [
         ":executor",
         ":executor_test_base",
