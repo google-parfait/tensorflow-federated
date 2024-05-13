@@ -43,7 +43,7 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_shape.h"
 // clang-format off
-#include "tensorflow_federated/cc/core/impl/executors/status_matchers.h"
+#include "tensorflow_federated/cc/core/impl/testing/status_matchers.h"
 // clang-format on
 
 namespace tensorflow_federated::aggregation {

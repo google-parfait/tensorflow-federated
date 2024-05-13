@@ -16,3 +16,10 @@ package(
     default_applicable_licenses = ["//:package_license"],
     default_visibility = ["//visibility:private"],
 )
+
+package_group(
+    name = "aggregation_packages",
+    packages = [
+        "//tensorflow_federated/cc/core/impl/aggregation/...",
+    ],
+)

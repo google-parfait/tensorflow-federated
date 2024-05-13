@@ -20,7 +20,7 @@
 #include "googletest/include/gtest/gtest.h"
 #include "absl/time/time.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
-#include "tensorflow_federated/cc/core/impl/executors/status_matchers.h"
+#include "tensorflow_federated/cc/core/impl/testing/status_matchers.h"
 
 namespace tensorflow_federated::aggregation {
 namespace {

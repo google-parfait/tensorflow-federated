@@ -53,7 +53,7 @@ limitations under the License
 #include "tensorflow/dtensor/cc/mesh_type.h"
 #include "tensorflow/dtensor/cc/tensor_layout.h"
 #include "tensorflow_federated/cc/core/impl/executors/dtensor_api.h"
-#include "tensorflow_federated/cc/core/impl/executors/status_matchers.h"
+#include "tensorflow_federated/cc/core/impl/testing/status_matchers.h"
 
 namespace tensorflow_federated {
 namespace {

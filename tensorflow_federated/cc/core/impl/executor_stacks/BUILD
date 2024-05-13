@@ -58,7 +58,7 @@ cc_test(
         "//tensorflow_federated/cc/core/impl/executors:cardinalities",
         "//tensorflow_federated/cc/core/impl/executors:executor",
         "//tensorflow_federated/cc/core/impl/executors:mock_executor",
-        "//tensorflow_federated/cc/core/impl/executors:status_matchers",
+        "//tensorflow_federated/cc/core/impl/testing:status_matchers",
         "@com_google_absl//absl/status:statusor",
     ],
 )
@@ -96,7 +96,7 @@ cc_test(
         "//tensorflow_federated/cc/core/impl/executors:composing_executor",
         "//tensorflow_federated/cc/core/impl/executors:executor",
         "//tensorflow_federated/cc/core/impl/executors:mock_executor",
-        "//tensorflow_federated/cc/core/impl/executors:status_matchers",
+        "//tensorflow_federated/cc/core/impl/testing:status_matchers",
         "@com_github_grpc_grpc//:gpr",
         "@com_github_grpc_grpc//:grpc++",
         "@com_google_absl//absl/status",

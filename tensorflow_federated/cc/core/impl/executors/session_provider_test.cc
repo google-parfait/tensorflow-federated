@@ -18,7 +18,7 @@ limitations under the License
 #include <utility>
 
 #include "googletest/include/gtest/gtest.h"
-#include "tensorflow_federated/cc/core/impl/executors/status_matchers.h"
+#include "tensorflow_federated/cc/core/impl/testing/status_matchers.h"
 
 namespace tensorflow_federated {
 
