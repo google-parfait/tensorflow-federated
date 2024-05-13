@@ -12,7 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License
 ==============================================================================*/
-#include "tensorflow_federated/cc/core/impl/executors/status_matchers.h"
+
+#include "tensorflow_federated/cc/core/impl/testing/status_matchers.h"
 
 #include <cstdint>
 #include <ostream>
