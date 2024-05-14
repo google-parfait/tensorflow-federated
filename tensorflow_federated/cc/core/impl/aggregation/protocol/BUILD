@@ -146,7 +146,7 @@ cc_test(
         "//tensorflow_federated/cc/core/impl/aggregation/testing:mocks",
         "//tensorflow_federated/cc/core/impl/aggregation/testing:parse_text_proto",
         "//tensorflow_federated/cc/core/impl/aggregation/testing:test_data",
-        "//tensorflow_federated/cc/core/impl/executors:status_matchers",
+        "//tensorflow_federated/cc/core/impl/testing:status_matchers",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/synchronization",
@@ -264,6 +264,6 @@ cc_test(
         "//tensorflow_federated/cc/core/impl/aggregation/testing",
         "//tensorflow_federated/cc/core/impl/aggregation/testing:parse_text_proto",
         "//tensorflow_federated/cc/core/impl/aggregation/testing:test_data",
-        "//tensorflow_federated/cc/core/impl/executors:status_matchers",
+        "//tensorflow_federated/cc/core/impl/testing:status_matchers",
     ],
 )

@@ -34,8 +34,8 @@ limitations under the License
 #include "tensorflow/core/platform/status.h"
 #include "tensorflow/core/platform/tstring.h"
 #include "tensorflow_federated/cc/core/impl/executors/session_provider.h"
-#include "tensorflow_federated/cc/core/impl/executors/status_matchers.h"
 #include "tensorflow_federated/cc/core/impl/executors/value_test_utils.h"
+#include "tensorflow_federated/cc/core/impl/testing/status_matchers.h"
 
 ABSL_FLAG(std::string, reduce_graph_path, "",
           "Path to a serialized GraphDef containing a dataset reduce.");
