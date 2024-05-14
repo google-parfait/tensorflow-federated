@@ -1,32 +1,44 @@
+# Dependencies for the TensorFlow Federated bazel environment.
+#
+# If you add a new or update a repository, follow these guidelines:
+#
+# *   Repositories must be deterministic (i.e., not a branch).
+# *   Prefer to use an `http_archive` rule with a `sha256` parameter.
+# *   Prefer for the repository to be a released product (i.e., a tag).
+# *   Configuration must be documented when a commit is used instead of a
+#     released product.
+
 workspace(name = "org_tensorflow_federated")
 
 load(
-    "@bazel_tools//tools/build_defs/repo:git.bzl",
-    "git_repository",
-    "new_git_repository",
+    "@bazel_tools//tools/build_defs/repo:http.bzl",
+    "http_archive",
+    "new_http_archive",
 )
-load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 #
 # Direct dependencies
 #
 
-git_repository(
+http_archive(
     name = "bazel_skylib",
-    remote = "https://github.com/bazelbuild/bazel-skylib.git",
-    tag = "1.3.0",
+    url = "https://github.com/bazelbuild/bazel-skylib/archive/refs/tags/1.3.0.tar.gz",
+    sha256 = "3b620033ca48fcd6f5ef2ac85e0f6ec5639605fa2f627968490e52fc91a9932f",
+    strip_prefix = "bazel-skylib-1.3.0",
 )
 
-git_repository(
+http_archive(
     name = "com_github_grpc_grpc",
-    remote = "https://github.com/grpc/grpc.git",
-    tag = "v1.50.0",
+    url = "https://github.com/grpc/grpc/archive/refs/tags/v1.50.0.tar.gz",
+    sha256 = "76900ab068da86378395a8e125b5cc43dfae671e09ff6462ddfef18676e2165a",
+    strip_prefix = "grpc-v1.50.0",
 )
 
-git_repository(
+http_archive(
     name = "com_google_benchmark",
-    remote = "https://github.com/google/benchmark.git",
-    tag = "v1.8.3",
+    remote = "https://github.com/google/benchmark/archive/refs/tags/v1.8.3.tar.gz",
+    sha256 = "6bc180a57d23d4d9515519f92b0c83d61b05b5bab188961f36ac7b06b0d9e9ce",
+    strip_prefix = "benchmark-v1.8.3",
 )
 
 http_archive(
@@ -43,40 +55,47 @@ http_archive(
   strip_prefix = "differential-privacy-3.0.0",
 )
 
-git_repository(
+# This commit is determined by
+# https://github.com/tensorflow/tensorflow/blob/master/third_party/absl/workspace.bzl#L10.
+http_archive(
     name = "com_google_absl",
-    commit = "fb3621f4f897824c0dbe0615fa94543df6192f30",
-    remote = "https://github.com/abseil/abseil-cpp.git",
+    url = "https://github.com/abseil/abseil-cpp/archive/fb3621f4f897824c0dbe0615fa94543df6192f30.tar.gz",
+    sha256 = "0320586856674d16b0b7a4d4afb22151bdc798490bb7f295eddd8f6a62b46fea",
+    strip_prefix = "abseil-cpp-fb3621f4f897824c0dbe0615fa94543df6192f30",
 )
 
-git_repository(
+http_archive(
     name = "com_google_googletest",
-    remote = "https://github.com/google/googletest.git",
-    tag = "release-1.12.1",
+    url = "https://github.com/google/googletest/archive/refs/tags/release-1.12.1.tar.gz",
+    sha256 = "81964fe578e9bd7c94dfdb09c8e4d6e6759e19967e397dbea48d1c10e45d0df2",
+    strip_prefix = "googletest-release-1.12.1",
 )
 
-git_repository(
+http_archive(
     name = "com_google_protobuf",
-    remote = "https://github.com/protocolbuffers/protobuf.git",
-    tag = "v3.21.9",
+    url = "https://github.com/protocolbuffers/protobuf/archive/refs/tags/v3.21.9.tar.gz",
+    sha256 = "1add10f9bd92775b91f326da259f243881e904dd509367d5031d4c782ba82810",
+    strip_prefix = "protocolbuffers-v3.21.9",
 )
 
 # TODO: b/333391041 - Temporarily disable the direct dependency on
 # `eigen`, for now we pick this dependency up from the TensorFlow workspace.
-# new_git_repository(
+# new_http_repository(
 #     name = "eigen",
-#     tag = "3.4.0",
-#     remote = "https://gitlab.com/libeigen/eigen.git",
+#     url = "https://gitlab.com/libeigen/eigen/archive/refs/tags/3.4.0.tar.gz",
+#     sha256 = "",
+#     strip_prefix = "eigen-3.4.0",
 #     build_file = "//third_party/eigen:eigen.BUILD",
 #     repo_mapping = {
 #         "@eigen": "@eigen_archive",
 #     },
 # )
 
-git_repository(
+# The version of TensorFlow should match the version in
+# https://github.com/tensorflow/federated/blob/main/requirements.txt.
+http_archive(
     name = "org_tensorflow",
-    # The version of this dependency should match the version in
-    # https://github.com/tensorflow/federated/blob/main/requirements.txt.
+    url = "https://github.com/tensorflow/tensorflow/archive/refs/tags/v2.14.0.tar.gz",
     patches = [
         # Depending on restricted visibility BUILD target om external git
         # repository does not seem to be supported.
@@ -87,38 +106,43 @@ git_repository(
         "//third_party/tensorflow:python_toolchain.patch",
         "//third_party/tensorflow:tf2xla_visibility.patch",
     ],
-    remote = "https://github.com/tensorflow/tensorflow.git",
-    tag = "v2.14.0",
+    sha256 = "ce357fd0728f0d1b0831d1653f475591662ec5bca736a94ff789e6b1944df19f",
+    strip_prefix = "tensorflow-v2.14.0",
 )
 
-git_repository(
+http_archive(
     name = "pybind11_abseil",
-    commit = "38111ef06d426f75bb335a3b58aa0342f6ce0ce3",
-    remote = "https://github.com/pybind/pybind11_abseil.git",
+    url = "https://github.com/pybind/pybind11_abseil/archive/38111ef06d426f75bb335a3b58aa0342f6ce0ce3.tar.gz",
+    sha256 = "6b669901b2ea8b302533c76439d260e502977b1e67c13ddae4cd1a7d7ca1db6a",
+    strip_prefix = "pybind11_abseil-38111ef06d426f75bb335a3b58aa0342f6ce0ce3",
 )
 
-git_repository(
+http_archive(
     name = "pybind11_bazel",
-    remote = "https://github.com/pybind/pybind11_bazel.git",
-    tag = "v2.11.1",
+    url = "https://github.com/pybind/pybind11_bazel/archive/refs/tags/v2.11.1.tar.gz",
+    sha256 = "e8355ee56c2ff772334b4bfa22be17c709e5573f6d1d561c7176312156c27bd4",
+    strip_prefix = "pybind11_bazel-v2.11.1",
 )
 
-git_repository(
+http_archive(
     name = "pybind11_protobuf",
-    commit = "80f3440cd8fee124e077e2e47a8a17b78b451363",
-    remote = "https://github.com/pybind/pybind11_protobuf.git",
+    url = "https://github.com/pybind/pybind11_protobuf/archive/80f3440cd8fee124e077e2e47a8a17b78b451363.tar.gz",
+    sha256 = "ba2c54a8b4d1dd0a68c58159e37b1f863c0d9d1dc815558288195493bcc31682",
+    strip_prefix = "pybind11_protobuf-80f3440cd8fee124e077e2e47a8a17b78b451363",
 )
 
-git_repository(
+http_archive(
     name = "rules_license",
-    remote = "https://github.com/bazelbuild/rules_license.git",
-    tag = "0.0.8",
+    url = "https://github.com/bazelbuild/rules_license/archive/refs/tags/0.0.8.tar.gz",
+    sha256 = "8c1155797cb5f5697ea8c6eac6c154cf51aa020e368813d9d9b949558c84f2da",
+    strip_prefix = "rules_license-0.0.8",
 )
 
-git_repository(
+http_archive(
     name = "rules_python",
-    remote = "https://github.com/bazelbuild/rules_python.git",
-    tag = "0.23.0",
+    url = "https://github.com/bazelbuild/rules_python/archive/refs/tags/0.23.0.tar.gz",
+    sha256 = "8272287b125a23bfc79650ecbbc045ebcaee4d632338b1a50aad34357bcbadce",
+    strip_prefix = "rules_python-0.23.0",
 )
 
 #
@@ -126,19 +150,21 @@ git_repository(
 #
 
 # Required by pybind11_abseil and pybind11_protobuf.
-new_git_repository(
+new_http_archive(
     name = "pybind11",
+    url = "https://github.com/pybind/pybind11/archive/refs/tags/v2.9.2.tar.gz",
+    sha256 = "6bd528c4dbe2276635dc787b6b1f2e5316cf6b49ee3e150264e455a0d68d19c1",
+    strip_prefix = "pybind11-v2.9.2",
     build_file = "@pybind11_bazel//:pybind11.BUILD",
-    remote = "https://github.com/pybind/pybind11.git",
-    tag = "v2.9.2",
 )
 
 # Required by com_github_grpc_grpc. This commit is determined by
 # https://github.com/grpc/grpc/blob/v1.50.0/bazel/grpc_deps.bzl#L344.
-git_repository(
+http_archive(
     name = "upb",
-    remote = "https://github.com/protocolbuffers/upb.git",
-    commit = "e4635f223e7d36dfbea3b722a4ca4807a7e882e2",
+    url = "https://github.com/protocolbuffers/upb/archive/e4635f223e7d36dfbea3b722a4ca4807a7e882e2.tar.gz",
+    sha256 = "017a7e8e4e842d01dba5dc8aa316323eee080cd1b75986a7d1f94d87220e6502",
+    strip_prefix = "upb-e4635f223e7d36dfbea3b722a4ca4807a7e882e2",
 )
 
 #
