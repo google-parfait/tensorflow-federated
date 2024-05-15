@@ -38,7 +38,6 @@ from tensorflow_federated.python.learning.metrics import keras_finalizer
 from tensorflow_federated.python.learning.metrics import keras_utils
 from tensorflow_federated.python.learning.metrics import types
 from tensorflow_federated.python.learning.models import variable
-from tensorflow_federated.python.tensorflow_libs import variable_utils
 
 
 Weight = Union[np.ndarray, int, float]
@@ -477,15 +476,6 @@ def functional_model_from_keras(
             'incompatible with `tff.learning.models.FunctionalModel`. Consider '
             'using group normalization instead.'
         )
-    if keras_model.non_trainable_variables:
-      raise KerasFunctionalModelError(
-          'Received a Keras model with non-trainable variables. Keras models'
-          ' with non-trainable variables are currently not supported by'
-          ' FunctionalModel. Most training algorithms (e.g. Federated'
-          ' Averaging) will not aggregate them, and they are not updated'
-          ' locally by the optimizer. We can relax this in the future if we'
-          ' have APIs that support updating non-trainable variables.'
-      )
   elif not callable(keras_model):
     raise ValueError(
         '`keras_model` must be a `tf.keras.Model` or a no-arg '
@@ -508,42 +498,43 @@ def functional_model_from_keras(
   # also setup ops to inject the current model weights, because the cloned model
   # will be re-initialized from scratch.
   with tf.Graph().as_default() as g:
-    with variable_utils.record_variable_creation_scope() as captured_variables:
-      if isinstance(keras_model, tf.keras.Model):
-        try:
-          cloned_model = tf.keras.models.clone_model(keras_model)
-        except RuntimeError as e:
-          raise KerasFunctionalModelError(
-              'Encountered a error converting the Keras model. Often this '
-              'occurs when the `tf.keras.Model` has a layer that receives '
-              'inputs from other layers directly (e.g. shared embeddings).'
-              'To avoid the problem, wrap the `tf.keras.Model` construction in '
-              'a no-arg callable (e.g. lambda) and pass that callable to '
-              '`functional_model_from_keras`'
-          ) from e
-        if len(cloned_model.variables) != len(keras_model.variables):
-          raise KerasFunctionalModelError(
-              'The input Keras model is likely sharing variables across layers '
-              'which is unsupported. Cloning the model will duplicate these '
-              'variables and result in unexpected training gradients.'
-          )
-      else:
-        cloned_model = keras_model()
+    if isinstance(keras_model, tf.keras.Model):
+      try:
+        cloned_model = tf.keras.models.clone_model(keras_model)
+      except RuntimeError as e:
+        raise KerasFunctionalModelError(
+            'Encountered a error converting the Keras model. Often this '
+            'occurs when the `tf.keras.Model` has a layer that receives '
+            'inputs from other layers directly (e.g. shared embeddings).'
+            'To avoid the problem, wrap the `tf.keras.Model` construction in '
+            'a no-arg callable (e.g. lambda) and pass that callable to '
+            '`functional_model_from_keras`'
+        ) from e
+      if len(cloned_model.variables) != len(keras_model.variables):
+        raise KerasFunctionalModelError(
+            'The input Keras model is likely sharing variables across layers '
+            'which is unsupported. Cloning the model will duplicate these '
+            'variables and result in unexpected training gradients.'
+        )
+    else:
+      cloned_model = keras_model()
+    captured_variables = cloned_model.variables
+    captured_trainable_variables = cloned_model.trainable_variables
+    captured_nontrainable_variables = cloned_model.non_trainable_variables
 
-      # Ensure our cloned model has the same weights as the current model.
-      # We'll feed in the current model waits into the palceholders for
-      # assignmnet in a session below.
-      def assign_placeholder(v):
-        p = tf.compat.v1.placeholder(dtype=v.dtype)
-        return v.assign(p), p
+    # Ensure our cloned model has the same weights as the current model.
+    # We'll feed in the current model waits into the placeholders for
+    # assignmnet in a session below.
+    def assign_placeholder(v):
+      p = tf.compat.v1.placeholder(dtype=v.dtype)
+      return v.assign(p), p
 
-      assign_ops, placeholders = zip(
-          *(assign_placeholder(v) for v in cloned_model.variables)
-      )
-  trainable_variables = tuple(v for v in captured_variables if v.trainable)
-  non_trainable_variables = tuple(
-      v for v in captured_variables if not v.trainable
-  )
+    assign_ops, placeholders = zip(
+        *(assign_placeholder(v) for v in cloned_model.variables)
+    )
+
+  trainable_variables = tuple(v for v in captured_trainable_variables)
+  non_trainable_variables = tuple(v for v in captured_nontrainable_variables)
 
   # Here we get the initial weights from the incoming keras model in the order
   # they are constructed; and also ensure that the values are set to the
