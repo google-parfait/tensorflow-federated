@@ -55,7 +55,6 @@ py_library(
         "//tensorflow_federated/python/learning/metrics:keras_finalizer",
         "//tensorflow_federated/python/learning/metrics:keras_utils",
         "//tensorflow_federated/python/learning/metrics:types",
-        "//tensorflow_federated/python/tensorflow_libs:variable_utils",
     ],
 )
 
