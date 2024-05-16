@@ -32,9 +32,9 @@ cc_test(
     srcs = ["latency_aggregator_test.cc"],
     deps = [
         ":latency_aggregator",
-        "//tensorflow_federated/cc/common_libs:oss_test_main",
         "//tensorflow_federated/cc/core/impl/aggregation/base",
-        "//tensorflow_federated/cc/core/impl/testing:status_matchers",
+        "//tensorflow_federated/cc/testing:oss_test_main",
+        "//tensorflow_federated/cc/testing:status_matchers",
         "@com_google_absl//absl/time",
     ],
 )
@@ -56,9 +56,9 @@ cc_test(
     srcs = ["cancelable_callback_test.cc"],
     deps = [
         ":cancelable_callback",
-        "//tensorflow_federated/cc/common_libs:oss_test_main",
         "//tensorflow_federated/cc/core/impl/aggregation/base:clock",
         "//tensorflow_federated/cc/core/impl/aggregation/base:simulated_clock",
+        "//tensorflow_federated/cc/testing:oss_test_main",
         "@com_google_absl//absl/synchronization",
         "@com_google_absl//absl/time",
     ],
@@ -101,7 +101,6 @@ cc_test(
     srcs = ["simple_aggregation_protocol_test.cc"],
     deps = [
         ":simple_aggregation",
-        "//tensorflow_federated/cc/common_libs:oss_test_main",
         "//tensorflow_federated/cc/core/impl/aggregation/base",
         "//tensorflow_federated/cc/core/impl/aggregation/base:scheduler",
         "//tensorflow_federated/cc/core/impl/aggregation/base:simulated_clock",
@@ -115,8 +114,9 @@ cc_test(
         "//tensorflow_federated/cc/core/impl/aggregation/testing:mocks",
         "//tensorflow_federated/cc/core/impl/aggregation/testing:parse_text_proto",
         "//tensorflow_federated/cc/core/impl/aggregation/testing:test_data",
-        "//tensorflow_federated/cc/core/impl/testing:protobuf_matchers",
-        "//tensorflow_federated/cc/core/impl/testing:status_matchers",
+        "//tensorflow_federated/cc/testing:oss_test_main",
+        "//tensorflow_federated/cc/testing:protobuf_matchers",
+        "//tensorflow_federated/cc/testing:status_matchers",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings:cord",

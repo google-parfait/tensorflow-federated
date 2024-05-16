@@ -31,7 +31,7 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/composing_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/mock_executor.h"
-#include "tensorflow_federated/cc/core/impl/testing/status_matchers.h"
+#include "tensorflow_federated/cc/testing/status_matchers.h"
 
 using absl::StatusCode;
 using ::testing::AnyOfArray;

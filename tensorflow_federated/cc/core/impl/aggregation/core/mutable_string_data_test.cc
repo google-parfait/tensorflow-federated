@@ -20,7 +20,7 @@
 #include "googletest/include/gtest/gtest.h"
 #include "absl/strings/string_view.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
-#include "tensorflow_federated/cc/core/impl/testing/status_matchers.h"
+#include "tensorflow_federated/cc/testing/status_matchers.h"
 
 namespace tensorflow_federated {
 namespace aggregation {

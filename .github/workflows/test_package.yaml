@@ -1,0 +1,45 @@
+name: Test python package
+
+on: [push, workflow_dispatch]  # yamllint disable-line rule:truthy
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  package-test-job:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Set up bazel
+      uses: actions/cache@v3
+      with:
+        path: "/home/runner/.cache/bazel"
+        key: bazelisk
+
+    - name: Set up python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
+
+    - name: Set up python environment
+      run: |
+        pip install --upgrade pip
+        pip --version
+        pip install --upgrade numpy~=1.25
+        pip freeze
+
+    - name: Test python package
+      run: |
+        mkdir "dist"
+        ls -la .
+        bazel run //tensorflow_federated/tools/python_package:build_python_package \
+            --build_tag_filters="-nokokoro,-nopresubmit" \
+            -- \
+            --python="python3.11" \
+            --output_dir="dist"
+        ls -la "dist"

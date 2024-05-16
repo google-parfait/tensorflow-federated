@@ -23,7 +23,7 @@ limitations under the License
 #include "absl/status/status.h"
 #include "absl/types/span.h"
 #include "tensorflow_federated/cc/core/impl/executors/value_test_utils.h"
-#include "tensorflow_federated/cc/core/impl/testing/status_matchers.h"
+#include "tensorflow_federated/cc/testing/status_matchers.h"
 #include "tensorflow_federated/proto/v0/computation.pb.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
 

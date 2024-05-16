@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License
 ==============================================================================*/
 
-#include "tensorflow_federated/cc/core/impl/testing/status_matchers.h"
+#include "tensorflow_federated/cc/testing/status_matchers.h"
 
 #include <cstdint>
 #include <ostream>

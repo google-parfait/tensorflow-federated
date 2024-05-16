@@ -47,7 +47,7 @@ cc_test(
     srcs = ["monitoring_test.cc"],
     deps = [
         ":base",
-        "//tensorflow_federated/cc/common_libs:oss_test_main",
+        "//tensorflow_federated/cc/testing:oss_test_main",
     ],
 )
 
@@ -57,8 +57,8 @@ cc_test(
     srcs = ["platform_test.cc"],
     deps = [
         ":base",
-        "//tensorflow_federated/cc/common_libs:oss_test_main",
         "//tensorflow_federated/cc/core/impl/aggregation/testing",
+        "//tensorflow_federated/cc/testing:oss_test_main",
         "@com_google_absl//absl/strings:cord",
     ],
 )
@@ -80,7 +80,7 @@ cc_test(
     srcs = ["scheduler_test.cc"],
     deps = [
         ":scheduler",
-        "//tensorflow_federated/cc/common_libs:oss_test_main",
+        "//tensorflow_federated/cc/testing:oss_test_main",
         "@com_google_absl//absl/synchronization",
         "@com_google_absl//absl/time",
     ],
@@ -93,7 +93,7 @@ cc_test(
     deps = [
         ":base",
         ":unique_value",
-        "//tensorflow_federated/cc/common_libs:oss_test_main",
+        "//tensorflow_federated/cc/testing:oss_test_main",
     ],
 )
 
@@ -108,7 +108,7 @@ cc_test(
     deps = [
         ":base",
         ":unique_value",
-        "//tensorflow_federated/cc/common_libs:oss_test_main",
+        "//tensorflow_federated/cc/testing:oss_test_main",
     ],
 )
 
@@ -144,7 +144,7 @@ cc_test(
     deps = [
         ":clock",
         ":simulated_clock",
-        "//tensorflow_federated/cc/common_libs:oss_test_main",
+        "//tensorflow_federated/cc/testing:oss_test_main",
         "@com_google_absl//absl/time",
     ],
 )

@@ -23,11 +23,11 @@ cc_library(
     srcs = ["testing.cc"],
     hdrs = ["testing.h"],
     deps = [
-        "//tensorflow_federated/cc/common_libs:oss_test_main",
         "//tensorflow_federated/cc/core/impl/aggregation/base",
         "//tensorflow_federated/cc/core/impl/aggregation/core:intrinsic",
         "//tensorflow_federated/cc/core/impl/aggregation/core:tensor",
-        "//tensorflow_federated/cc/core/impl/testing:status_matchers",
+        "//tensorflow_federated/cc/testing:oss_test_main",
+        "//tensorflow_federated/cc/testing:status_matchers",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/status",

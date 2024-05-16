@@ -13,9 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License
 ==============================================================================*/
 
-#ifndef THIRD_PARTY_TENSORFLOW_FEDERATED_CC_COMMON_LIBS_OSS_TEST_MAIN_H_
-#define THIRD_PARTY_TENSORFLOW_FEDERATED_CC_COMMON_LIBS_OSS_TEST_MAIN_H_
-
 #include <cstdio>
 
 #include "googletest/include/gtest/gtest.h"
@@ -27,5 +24,3 @@ GTEST_API_ int main(int argc, char **argv) {
   absl::ParseCommandLine(argc, argv);
   return RUN_ALL_TESTS();
 }
-
-#endif  // THIRD_PARTY_TENSORFLOW_FEDERATED_CC_COMMON_LIBS_OSS_TEST_MAIN_H_
