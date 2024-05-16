@@ -41,14 +41,14 @@ cc_test(
     srcs = ["converters_test.cc"],
     deps = [
         ":converters",
-        "//tensorflow_federated/cc/common_libs:oss_test_main",
         "//tensorflow_federated/cc/core/impl/aggregation/base",
         "//tensorflow_federated/cc/core/impl/aggregation/core:tensor",
         "//tensorflow_federated/cc/core/impl/aggregation/core:vector_string_data",
         "//tensorflow_federated/cc/core/impl/aggregation/testing",
         "//tensorflow_federated/cc/core/impl/aggregation/testing:parse_text_proto",
         "//tensorflow_federated/cc/core/impl/aggregation/testing:test_data",
-        "//tensorflow_federated/cc/core/impl/testing:status_matchers",
+        "//tensorflow_federated/cc/testing:oss_test_main",
+        "//tensorflow_federated/cc/testing:status_matchers",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings:string_view",
         "@org_tensorflow//tensorflow/core:framework",
@@ -82,11 +82,11 @@ cc_test(
     srcs = ["checkpoint_reader_test.cc"],
     deps = [
         ":checkpoint_reader",
-        "//tensorflow_federated/cc/common_libs:oss_test_main",
         "//tensorflow_federated/cc/core/impl/aggregation/base",
         "//tensorflow_federated/cc/core/impl/aggregation/core:tensor",
         "//tensorflow_federated/cc/core/impl/aggregation/testing",
-        "//tensorflow_federated/cc/core/impl/testing:status_matchers",
+        "//tensorflow_federated/cc/testing:oss_test_main",
+        "//tensorflow_federated/cc/testing:status_matchers",
         "@com_google_absl//absl/strings",
     ],
 )
@@ -110,10 +110,10 @@ cc_test(
     deps = [
         ":checkpoint_reader",
         ":checkpoint_writer",
-        "//tensorflow_federated/cc/common_libs:oss_test_main",
         "//tensorflow_federated/cc/core/impl/aggregation/core:tensor",
         "//tensorflow_federated/cc/core/impl/aggregation/testing",
         "//tensorflow_federated/cc/core/impl/aggregation/testing:test_data",
+        "//tensorflow_federated/cc/testing:oss_test_main",
     ],
 )
 
@@ -141,11 +141,11 @@ cc_test(
     srcs = ["tensorflow_checkpoint_builder_factory_test.cc"],
     deps = [
         ":tensorflow_checkpoint_builder_factory",
-        "//tensorflow_federated/cc/common_libs:oss_test_main",
         "//tensorflow_federated/cc/core/impl/aggregation/core:tensor",
         "//tensorflow_federated/cc/core/impl/aggregation/protocol:checkpoint_builder",
         "//tensorflow_federated/cc/core/impl/aggregation/testing",
         "//tensorflow_federated/cc/core/impl/aggregation/testing:test_data",
+        "//tensorflow_federated/cc/testing:oss_test_main",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:cord",
@@ -176,10 +176,10 @@ cc_test(
     srcs = ["tensorflow_checkpoint_parser_factory_test.cc"],
     deps = [
         ":tensorflow_checkpoint_parser_factory",
-        "//tensorflow_federated/cc/common_libs:oss_test_main",
         "//tensorflow_federated/cc/core/impl/aggregation/base",
         "//tensorflow_federated/cc/core/impl/aggregation/protocol:checkpoint_parser",
         "//tensorflow_federated/cc/core/impl/aggregation/testing",
+        "//tensorflow_federated/cc/testing:oss_test_main",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings:cord",
         "@org_tensorflow//tensorflow/cc:cc_ops",

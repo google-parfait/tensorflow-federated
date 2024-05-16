@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License
 ==============================================================================*/
 
-#ifndef THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTORS_STATUS_MATCHERS_H_
-#define THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTORS_STATUS_MATCHERS_H_
+#ifndef THIRD_PARTY_TENSORFLOW_FEDERATED_CC_TESTING_STATUS_MATCHERS_H_
+#define THIRD_PARTY_TENSORFLOW_FEDERATED_CC_TESTING_STATUS_MATCHERS_H_
 
 // TODO: b/199461150 - remove this file and the associated .cc file.
 
@@ -473,4 +473,4 @@ inline ::testing::Matcher<grpc::Status> GrpcStatusIs(
 
 }  // namespace tensorflow_federated
 
-#endif  // THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTORS_STATUS_MATCHERS_H_
+#endif  // THIRD_PARTY_TENSORFLOW_FEDERATED_CC_TESTING_STATUS_MATCHERS_H_

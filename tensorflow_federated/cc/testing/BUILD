@@ -2,21 +2,30 @@ package(
     default_applicable_licenses = ["//:package_license"],
     default_visibility = [
         ":testing_packages",
-        "//tensorflow_federated/cc/core/impl:impl_users",
-        "//tensorflow_federated/cc/core/impl/aggregation:aggregation_packages",
-        "//tensorflow_federated/cc/core/impl/executor_stacks:executor_stacks_packages",
-        "//tensorflow_federated/cc/core/impl/executors:executors_packages",
+        "//tensorflow_federated/cc/core/impl:impl_packages",
+        "//tensorflow_federated/cc/simulation:simulation_packages",
     ],
 )
 
 package_group(
     name = "testing_packages",
     packages = [
-        "//tensorflow_federated/cc/core/impl/testing/...",
+        "//tensorflow_federated/cc/testing/...",
     ],
 )
 
 licenses(["notice"])
+
+cc_library(
+    name = "oss_test_main",
+    testonly = 1,
+    srcs = ["oss_test_main.cc"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "@com_google_absl//absl/flags:parse",
+        "@com_google_googletest//:gtest",
+    ],
+)
 
 cc_library(
     name = "protobuf_matchers",

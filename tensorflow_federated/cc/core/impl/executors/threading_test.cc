@@ -28,7 +28,7 @@ limitations under the License
 #include "absl/synchronization/notification.h"
 #include "absl/time/clock.h"
 #include "absl/time/time.h"
-#include "tensorflow_federated/cc/core/impl/testing/status_matchers.h"
+#include "tensorflow_federated/cc/testing/status_matchers.h"
 
 namespace tensorflow_federated {
 

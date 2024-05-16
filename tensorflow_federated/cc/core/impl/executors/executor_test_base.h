@@ -21,8 +21,8 @@ limitations under the License
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
-#include "tensorflow_federated/cc/core/impl/testing/protobuf_matchers.h"
-#include "tensorflow_federated/cc/core/impl/testing/status_matchers.h"
+#include "tensorflow_federated/cc/testing/protobuf_matchers.h"
+#include "tensorflow_federated/cc/testing/status_matchers.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow_federated {
