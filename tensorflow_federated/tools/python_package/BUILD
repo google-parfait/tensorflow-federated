@@ -45,6 +45,37 @@ sh_binary(
     ],
 )
 
+sh_binary(
+    name = "build_python_package_v2",
+    srcs = ["build_python_package_v2.sh"],
+    data = [
+        ":setup",
+        "//tensorflow_federated",
+        "//tensorflow_federated/data:worker_binary",
+        "//tensorflow_federated/proto",
+        "//tensorflow_federated/proto/v0",
+        "//tensorflow_federated/python",
+        "//tensorflow_federated/python/analytics/hierarchical_histogram",
+        "//tensorflow_federated/python/common_libs",
+        "//tensorflow_federated/python/core",
+        "//tensorflow_federated/python/core/environments",
+        "//tensorflow_federated/python/core/environments/jax_frontend",
+        "//tensorflow_federated/python/core/environments/tensorflow_backend",
+        "//tensorflow_federated/python/core/environments/tensorflow_frontend",
+        "//tensorflow_federated/python/core/environments/xla_backend",
+        "//tensorflow_federated/python/core/impl",
+        "//tensorflow_federated/python/core/impl/compiler",
+        "//tensorflow_federated/python/core/impl/computation",
+        "//tensorflow_federated/python/core/impl/context_stack",
+        "//tensorflow_federated/python/core/impl/execution_contexts",
+        "//tensorflow_federated/python/core/impl/executor_stacks",
+        "//tensorflow_federated/python/core/impl/executors",
+        "//tensorflow_federated/python/core/impl/federated_context",
+        "//tensorflow_federated/python/core/impl/utils",
+        "//tensorflow_federated/python/tensorflow_libs",
+    ],
+)
+
 filegroup(
     name = "setup",
     srcs = ["setup.py"],

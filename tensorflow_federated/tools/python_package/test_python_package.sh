@@ -13,64 +13,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# Tool to test the TensorFlow Federated pip package.
+# Tool to test the TensorFlow Federated Python package.
 set -e
 
-usage() {
-  local script_name=$(basename "${0}")
-  local options=(
-      "--python=python3.11"
-      "--package=<path>"
-  )
-  echo "usage: ${script_name} ${options[@]}"
-  echo "  --python=python3.11  The Python version used by the environment to"
-  echo "                       build the Python package."
-  echo "  --package=<path>     A path to a local pip package."
-  exit 1
-}
-
 main() {
-  # Parse the arguments.
-  local python="python3.11"
-  local package=""
-
-  while [[ "$#" -gt 0 ]]; do
-    option="$1"
-    case "${option}" in
-      --python=*)
-        python="${option#*=}"
-        shift
-        ;;
-      --package=*)
-        package="${option#*=}"
-        shift
-        ;;
-      *)
-        echo "error: unrecognized option '${option}'" 1>&2
-        usage
-        ;;
-    esac
-  done
-
-  if [[ -z "${package}" ]]; then
-    echo "error: required option `--package`" 1>&2
-    usage
-  elif [[ ! -f "${package}" ]]; then
-    echo "error: the file '${package}' does not exist" 1>&2
-    usage
-  fi
-
   # Create a working directory.
   local temp_dir="$(mktemp -d)"
   trap "rm -rf ${temp_dir}" EXIT
-  pushd "${temp_dir}"
 
   # Create a Python environment.
-  "${python}" -m venv "venv"
-  source "venv/bin/activate"
+  python3 -m venv "${temp_dir}/venv"
+  source "${temp_dir}/venv/bin/activate"
   python --version
   pip install --upgrade "pip"
   pip --version
+
+  # Get the Python package.
+  local package="$(ls "dist/tensorflow_federated-"*".whl" | head -n1)"
+  if [[ ! -f "${package}" ]]; then
+    echo "error: the file '${package}' does not exist." 1>&2
+    exit 1
+  fi
 
   # Test the Python package.
   pip install --upgrade "${package}"
