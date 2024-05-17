@@ -899,23 +899,26 @@ class FunctionalModelFromKerasTest(tf.test.TestCase):
     self.assertGreater(initial_loss, 2.0)
     self.assertLess(final_loss, 0.2)
 
-  def test_keras_model_with_non_trainable_variables_fails(self):
+  def test_keras_model_with_non_trainable_variables(self):
     inputs = tf.keras.layers.Input(shape=[1])
     d = tf.keras.layers.Dense(1)
     d.trainable = False
     outputs = d(inputs)
     keras_model = tf.keras.Model(inputs=inputs, outputs=outputs)
-    with self.assertRaisesRegex(
-        functional.KerasFunctionalModelError, 'non-trainable variables'
-    ):
-      functional.functional_model_from_keras(
-          keras_model,
-          tf.keras.losses.MeanSquaredError(),
-          input_spec=(
-              tf.TensorSpec(shape=[None, 1]),
-              tf.TensorSpec(shape=[None, 1]),
-          ),
-      )
+    functional_model = functional.functional_model_from_keras(
+        keras_model,
+        tf.keras.losses.MeanSquaredError(),
+        input_spec=(
+            tf.TensorSpec(shape=[None, 1]),
+            tf.TensorSpec(shape=[None, 1]),
+        ),
+    )
+    self.assertEmpty(functional_model.initial_weights[0])
+    self.assertLen(
+        functional_model.initial_weights[1],
+        2,
+        msg='We expect two variables, one for the kernel and one for the bias.',
+    )
 
   def test_keras_model_with_batch_normalization_fails(self):
     model = tf.keras.models.Sequential([

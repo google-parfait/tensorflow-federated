@@ -477,15 +477,6 @@ def functional_model_from_keras(
             'incompatible with `tff.learning.models.FunctionalModel`. Consider '
             'using group normalization instead.'
         )
-    if keras_model.non_trainable_variables:
-      raise KerasFunctionalModelError(
-          'Received a Keras model with non-trainable variables. Keras models'
-          ' with non-trainable variables are currently not supported by'
-          ' FunctionalModel. Most training algorithms (e.g. Federated'
-          ' Averaging) will not aggregate them, and they are not updated'
-          ' locally by the optimizer. We can relax this in the future if we'
-          ' have APIs that support updating non-trainable variables.'
-      )
   elif not callable(keras_model):
     raise ValueError(
         '`keras_model` must be a `tf.keras.Model` or a no-arg '
@@ -540,10 +531,15 @@ def functional_model_from_keras(
       assign_ops, placeholders = zip(
           *(assign_placeholder(v) for v in cloned_model.variables)
       )
-  trainable_variables = tuple(v for v in captured_variables if v.trainable)
-  non_trainable_variables = tuple(
-      v for v in captured_variables if not v.trainable
-  )
+
+    trainable_variables = tuple(
+        v for v in captured_variables if v in cloned_model.trainable_variables
+    )
+    non_trainable_variables = tuple(
+        v
+        for v in captured_variables
+        if v in cloned_model.non_trainable_variables
+    )
 
   # Here we get the initial weights from the incoming keras model in the order
   # they are constructed; and also ensure that the values are set to the

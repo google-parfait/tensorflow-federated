@@ -1,5 +1,8 @@
 # Unreleased
 
+*   Enable support for models with non-trainable variables in
+    `tff.learning.models.functional_model_from_keras`.
+
 ## Breaking Changes
 
 *   Updated `com_github_grpc_grpc` to version `1.50.0`.
