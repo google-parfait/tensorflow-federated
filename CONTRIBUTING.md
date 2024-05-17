@@ -37,7 +37,7 @@ information on using pull requests.
 ## Collaborations
 
 If you are interested in collaborating to grow the TFF ecosystem, please see the
-[collaborations page](https://github.com/tensorflow/federated/blob/main/docs/collaborations/README.md)
+[collaborations page](https://github.com/google-parfait/tensorflow-federated/blob/main/docs/collaborations/README.md)
 and/or join our [Discord server](https://discord.com/invite/5shux83qZ5) to
 engage in conversations with other developers building on or contributing to the
 TFF ecosystem.
@@ -80,7 +80,7 @@ git diff --name-only \
 
 Include a license at the top of new files.
 
-*   [Python license example](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/__init__.py#L1)
+*   [Python license example](https://github.com/google-parfait/tensorflow-federated/blob/main/tensorflow_federated/python/__init__.py#L1)
 
 ### TensorFlow Guidelines.
 

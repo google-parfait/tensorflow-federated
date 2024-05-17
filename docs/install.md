@@ -72,8 +72,8 @@ build tool used to compile Tensorflow Federated.
 ### 3. Clone the Tensorflow Federated repository.
 
 <pre class="prettyprint lang-bsh">
-<code class="devsite-terminal">git clone https://github.com/tensorflow/federated.git</code>
-<code class="devsite-terminal">cd "federated"</code>
+<code class="devsite-terminal">git clone https://github.com/google-parfait/tensorflow-federated.git</code>
+<code class="devsite-terminal">cd "tensorflow-federated"</code>
 </pre>
 
 ### 4. Create a virtual environment.

@@ -127,10 +127,10 @@ landing_page:
     items:
     - heading: "TF Federated on GitHub"
       image_path: /resources/images/github-card-16x9.png
-      path: https://github.com/tensorflow/federated
+      path: https://github.com/google-parfait/tensorflow-federated
       buttons:
       - label: "View on GitHub"
-        path: https://github.com/tensorflow/federated
+        path: https://github.com/google-parfait/tensorflow-federated
     - heading: "Federated Learning: Collaborative Machine Learning without Centralized Training Data"
       image_path: /resources/images/google-research-card-16x9.png
       path: https://ai.googleblog.com/2017/04/federated-learning-collaborative.html

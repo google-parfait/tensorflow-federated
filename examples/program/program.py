@@ -33,7 +33,7 @@ From the perspective of roles/ownership:
 *   This example is the author of the program and the program logic
 
 Please read
-https://github.com/tensorflow/federated/blob/main/docs/program/federated_program.md
+https://github.com/google-parfait/tensorflow-federated/blob/main/docs/program/federated_program.md
 for more information.
 
 Usage:

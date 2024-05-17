@@ -178,7 +178,7 @@ You can find examples of how to define your own custom
 `tff.learning.models.VariableModel` in the second part of our
 [image classification](tutorials/federated_learning_for_image_classification.ipynb)
 tutorial, as well as in the example models we use for testing in
-[`model_examples.py`](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/learning/models/model_examples.py).
+[`model_examples.py`](https://github.com/google-parfait/tensorflow-federated/blob/main/tensorflow_federated/python/learning/models/model_examples.py).
 
 ### Converters for Keras
 

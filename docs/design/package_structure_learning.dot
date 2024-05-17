@@ -4,14 +4,14 @@ digraph {
   edge [color="#616161"]
 
   subgraph cluster_learning {
-    graph [label="Learning", href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/learning" target="_parent"]
-    algorithms [label="algorithms", href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/learning/algorithms" target="_parent"]
-    programs [label="programs", href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/learning/programs" target="_parent"]
-    templates [label="templates", href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/learning/templates" target="_parent"]
-    optimizers [label="optimizers", href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/learning/optimizers" target="_parent"]
-    models [label="models", href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/learning/models" target="_parent"]
-    metrics [label="metrics", href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/learning/metrics" target="_parent"]
-    learning [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/learning" target="_parent"]
+    graph [label="Learning", href="https://github.com/google-parfait/tensorflow-federated/blob/main/tensorflow_federated/python/learning" target="_parent"]
+    algorithms [label="algorithms", href="https://github.com/google-parfait/tensorflow-federated/blob/main/tensorflow_federated/python/learning/algorithms" target="_parent"]
+    programs [label="programs", href="https://github.com/google-parfait/tensorflow-federated/blob/main/tensorflow_federated/python/learning/programs" target="_parent"]
+    templates [label="templates", href="https://github.com/google-parfait/tensorflow-federated/blob/main/tensorflow_federated/python/learning/templates" target="_parent"]
+    optimizers [label="optimizers", href="https://github.com/google-parfait/tensorflow-federated/blob/main/tensorflow_federated/python/learning/optimizers" target="_parent"]
+    models [label="models", href="https://github.com/google-parfait/tensorflow-federated/blob/main/tensorflow_federated/python/learning/models" target="_parent"]
+    metrics [label="metrics", href="https://github.com/google-parfait/tensorflow-federated/blob/main/tensorflow_federated/python/learning/metrics" target="_parent"]
+    learning [href="https://github.com/google-parfait/tensorflow-federated/blob/main/tensorflow_federated/python/learning" target="_parent"]
   }
 
   programs -> templates

@@ -1,22 +1,22 @@
 # Federated Program Developer Guide
 
 This documentation is for anyone who is interested in authoring
-[federated program logic](https://github.com/tensorflow/federated/blob/main/docs/program/federated_program.md#program-logic)
+[federated program logic](https://github.com/google-parfait/tensorflow-federated/blob/main/docs/program/federated_program.md#program-logic)
 or a
-[federated program](https://github.com/tensorflow/federated/blob/main/docs/program/federated_program.md#program).
+[federated program](https://github.com/google-parfait/tensorflow-federated/blob/main/docs/program/federated_program.md#program).
 It assumes knowledge of TensorFlow Federated, especially its type system, and
-[federated programs](https://github.com/tensorflow/federated/blob/main/docs/program/federated_program.md).
+[federated programs](https://github.com/google-parfait/tensorflow-federated/blob/main/docs/program/federated_program.md).
 
 [TOC]
 
 ## Program Logic
 
 This section defines guidelines for how
-[program logic](https://github.com/tensorflow/federated/blob/main/docs/program/federated_program.md#program-logic)
+[program logic](https://github.com/google-parfait/tensorflow-federated/blob/main/docs/program/federated_program.md#program-logic)
 should be authored.
 
 See the example
-[program_logic.py](https://github.com/tensorflow/federated/blob/main/examples/program/program_logic.py)
+[program_logic.py](https://github.com/google-parfait/tensorflow-federated/blob/main/examples/program/program_logic.py)
 for more information.
 
 ### Document Type Signatures
@@ -192,7 +192,7 @@ Note: It is ok to release all the values if that is what is required.
 **Do** define the program logic as an
 [asynchronous function](https://docs.python.org/3/reference/compound_stmts.html#coroutine-function-definition).
 The
-[components](https://github.com/tensorflow/federated/blob/main/docs/program/federated_program.md#components)
+[components](https://github.com/google-parfait/tensorflow-federated/blob/main/docs/program/federated_program.md#components)
 of TFF's federated program library use
 [asyncio](https://docs.python.org/3/library/asyncio.html) to execute Python
 concurrently and defining the program logic as an asynchronous function makes it
@@ -213,23 +213,23 @@ def program_logic(...) -> None:
 ### Tests
 
 **Do** provide unit tests for the program logic (e.g.
-[program_logic_test.py](https://github.com/tensorflow/federated/blob/main/examples/program/program_logic_test.py)).
+[program_logic_test.py](https://github.com/google-parfait/tensorflow-federated/blob/main/examples/program/program_logic_test.py)).
 
 ## Program
 
 This section defines guidelines for how a
-[program](https://github.com/tensorflow/federated/blob/main/docs/program/federated_program.md#program)
+[program](https://github.com/google-parfait/tensorflow-federated/blob/main/docs/program/federated_program.md#program)
 should be authored.
 
 See the example
-[program.py](https://github.com/tensorflow/federated/blob/main/examples/program/program.py)
+[program.py](https://github.com/google-parfait/tensorflow-federated/blob/main/examples/program/program.py)
 for more information.
 
 ### Document the Program
 
 **Do** document the details of the program to the customer in the docstring of
 the module (e.g.
-[program.py](https://github.com/tensorflow/federated/blob/main/examples/program/program.py)):
+[program.py](https://github.com/google-parfait/tensorflow-federated/blob/main/examples/program/program.py)):
 
 *   How to manually run the program.
 *   What platform, computations, and data sources are used in the program.

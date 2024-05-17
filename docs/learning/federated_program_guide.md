@@ -1,11 +1,11 @@
 # Learning Federated Program Developer Guide
 
 This documentation is for anyone who is interested in authoring
-[federated program logic](https://github.com/tensorflow/federated/blob/main/docs/program/federated_program.md#program-logic)
+[federated program logic](https://github.com/google-parfait/tensorflow-federated/blob/main/docs/program/federated_program.md#program-logic)
 in
 [`tff.learning`](https://www.tensorflow.org/federated/api_docs/python/tff/learning).
 It assumes knowledge of `tff.learning` and the
-[Federated Program Developer Guide](https://github.com/tensorflow/federated/blob/main/docs/program/guide.md).
+[Federated Program Developer Guide](https://github.com/google-parfait/tensorflow-federated/blob/main/docs/program/guide.md).
 
 [TOC]
 

@@ -7,8 +7,8 @@ especially its type system.
 For more information about federated program, see:
 
 *   [API Documentation](https://www.tensorflow.org/federated/api_docs/python/tff/program)
-*   [Examples](https://github.com/tensorflow/federated/blob/main/examples/program)
-*   [Developer Guide](https://github.com/tensorflow/federated/blob/main/docs/program/guide.md)
+*   [Examples](https://github.com/google-parfait/tensorflow-federated/blob/main/examples/program)
+*   [Developer Guide](https://github.com/google-parfait/tensorflow-federated/blob/main/docs/program/guide.md)
 
 [TOC]
 
@@ -144,7 +144,7 @@ decorators to create a
 [`tff.framework.ConcreteComputation`](https://www.tensorflow.org/federated/api_docs/python/tff/framework/ConcreteComputation):
 
 See
-[life of a computation](https://github.com/tensorflow/federated/blob/main/docs/design/life_of_a_computation.md)
+[life of a computation](https://github.com/google-parfait/tensorflow-federated/blob/main/docs/design/life_of_a_computation.md)
 for more information.
 
 ### Program Logic

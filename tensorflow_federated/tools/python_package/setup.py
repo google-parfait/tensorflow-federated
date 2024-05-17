@@ -55,7 +55,7 @@ DOCLINES = __doc__.split('\n')
 PROJECT_NAME = 'tensorflow_federated'
 
 # The version of a dependency should match the version and follow the guidlines
-# in https://github.com/tensorflow/federated/blob/main/requirements.txt.
+# in https://github.com/google-parfait/tensorflow-federated/blob/main/requirements.txt.
 REQUIRED_PACKAGES = [
     'absl-py>=1.0,==1.*',
     'attrs~=23.1',
@@ -129,9 +129,13 @@ setuptools.setup(
     ],
     keywords='tensorflow federated machine learning',
     project_urls={
-        'Issues': 'https://github.com/tensorflow/federated/issues',
-        'Releases': 'https://github.com/tensorflow/federated/releases',
-        'Source': 'https://github.com/tensorflow/federated',
+        'Issues': (
+            'https://github.com/google-parfait/tensorflow-federated/issues'
+        ),
+        'Releases': (
+            'https://github.com/google-parfait/tensorflow-federated/releases'
+        ),
+        'Source': 'https://github.com/google-parfait/tensorflow-federated',
         'Documentation': 'https://www.tensorflow.org/federated',
     },
     packages=setuptools.find_packages(exclude=['tools']),

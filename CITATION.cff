@@ -6,4 +6,4 @@ authors:
 title: "TensorFlow Federated"
 version: 0.78.0
 date-released: 2018-12-12
-url: "https://github.com/tensorflow/federated"
+url: "https://github.com/google-parfait/tensorflow-federated"

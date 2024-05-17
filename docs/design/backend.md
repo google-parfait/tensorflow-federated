@@ -9,7 +9,7 @@ an [AST](compilation.md#ast), meaning a backend constructs environments that
 evaluate an AST.
 
 The
-[backends](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/backends)
+[backends](https://github.com/google-parfait/tensorflow-federated/blob/main/tensorflow_federated/python/core/backends)
 package contains backends which may extend the TFF compiler and/or the TFF
 runtime; these extensions can be found in the corresponding backend.
 
@@ -27,7 +27,7 @@ low-level abstraction.
 ```
 
 The **blue** nodes are provided by TFF
-[core](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core).
+[core](https://github.com/google-parfait/tensorflow-federated/blob/main/tensorflow_federated/python/core).
 
 The **green**, **red**, **yellow**, and **purple** nodes are provided by the
 [native](#native), [mapreduce](#mapreduce), and [reference](#reference) backends
@@ -41,7 +41,7 @@ inheritance.
 ## Native
 
 The
-[native](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/backends/native)
+[native](https://github.com/google-parfait/tensorflow-federated/blob/main/tensorflow_federated/python/core/backends/native)
 backend composes of the TFF compiler and TFF runtime in order to compile and
 execute an AST in a way that is reasonably efficient and debuggable.
 
@@ -54,7 +54,7 @@ intrinsics.
 ### Compiler
 
 The
-[compiler.transform_to_native_form](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/backends/native/compiler.py)
+[compiler.transform_to_native_form](https://github.com/google-parfait/tensorflow-federated/blob/main/tensorflow_federated/python/core/backends/native/compiler.py)
 function compiles an AST into a [native form](#native-form).
 
 ### Runtime
@@ -81,37 +81,37 @@ set_default_context.set_default_context(context)
 However, there are some common configurations:
 
 The
-[execution_context.set_sync_local_cpp_execution_context](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/backends/native/execution_context.py)
+[execution_context.set_sync_local_cpp_execution_context](https://github.com/google-parfait/tensorflow-federated/blob/main/tensorflow_federated/python/core/backends/native/execution_context.py)
 function constructs an `ExecutionContext` with a native compiler and a
 [local execution stack](execution.md#local-execution-stack).
 
 ## MapReduce
 
 The
-[mapreduce](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/backends/mapreduce)
+[mapreduce](https://github.com/google-parfait/tensorflow-federated/blob/main/tensorflow_federated/python/core/backends/mapreduce)
 backend contains the data structures and compiler required to construct a form
 that can be executed on MapReduce-like runtimes.
 
 ### `MapReduceForm`
 
 A
-[forms.MapReduceForm](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/backends/mapreduce/forms.py)
+[forms.MapReduceForm](https://github.com/google-parfait/tensorflow-federated/blob/main/tensorflow_federated/python/core/backends/mapreduce/forms.py)
 is a data structure defining the representation of logic that can be executed on
 MapReduce-like runtimes. This logic is organized as a collection of TensorFlow
 functions, see the
-[forms](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/backends/mapreduce/forms.py)
+[forms](https://github.com/google-parfait/tensorflow-federated/blob/main/tensorflow_federated/python/core/backends/mapreduce/forms.py)
 module for more information about the nature of these functions.
 
 ### Compiler
 
 The
-[compiler](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/backends/mapreduce/compiler.py)
+[compiler](https://github.com/google-parfait/tensorflow-federated/blob/main/tensorflow_federated/python/core/backends/mapreduce/compiler.py)
 module contains [Building Block](compilation.md#building-block) and
 [TensorFlow Computation](compilation.md#tensorflow-computation) transformations
 required to compile an AST to a [MapReduceForm](#canonicalform).
 
 The
-[form_utils](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/backends/mapreduce/form_utils.py)
+[form_utils](https://github.com/google-parfait/tensorflow-federated/blob/main/tensorflow_federated/python/core/backends/mapreduce/form_utils.py)
 module contains the compiler for the MapReduce backend and constructs a
 [MapReduceForm](#canonicalform).
 

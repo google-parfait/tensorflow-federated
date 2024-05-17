@@ -3,6 +3,8 @@
 ## Breaking Changes
 
 *   Updated `com_github_grpc_grpc` to version `1.50.0`.
+*   Moved the TFF repository from https://github.com/tensorflow/federated to
+    https://github.com/google-parfait/tensorflow-federated.
 
 # Release 0.78.0
 

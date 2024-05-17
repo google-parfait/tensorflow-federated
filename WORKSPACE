@@ -88,7 +88,7 @@ http_archive(
 # )
 
 # The version of TensorFlow should match the version in
-# https://github.com/tensorflow/federated/blob/main/requirements.txt.
+# https://github.com/google-parfait/tensorflow-federated/blob/main/requirements.txt.
 http_archive(
     name = "org_tensorflow",
     url = "https://github.com/tensorflow/tensorflow/archive/refs/tags/v2.14.0.tar.gz",

@@ -2,11 +2,11 @@
 #
 # If you add a *new* dependency and it is required by the TensorFlow Federated
 # package, also add the dependency to
-# https://github.com/tensorflow/federated/blob/main/tensorflow_federated/tools/development/setup.py.
+# https://github.com/google-parfait/tensorflow-federated/blob/main/tensorflow_federated/tools/development/setup.py.
 #
 # If you update the version of an *existing* dependency and it is required by
 # the TensorFlow Federated package, also update the version of the dependency in
-# https://github.com/tensorflow/federated/blob/main/tensorflow_federated/tools/development/setup.py.
+# https://github.com/google-parfait/tensorflow-federated/blob/main/tensorflow_federated/tools/development/setup.py.
 #
 # *   For packages that have a stable release, we use a version that is
 #     compatible with that release (e.g. `~=x.y`). See
@@ -45,7 +45,7 @@ tqdm~=4.64
 typing-extensions>=4.5.0,==4.5.*
 
 # The version of this dependency should match the version in
-# https://github.com/tensorflow/federated/blob/main/WORKSPACE.
+# https://github.com/google-parfait/tensorflow-federated/blob/main/WORKSPACE.
 tensorflow>=2.14.0,==2.14.*
 
 # TODO: b/315515548 - Required because current dependencies are pulling in later

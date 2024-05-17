@@ -4,11 +4,11 @@ digraph {
   edge [color="#616161"]
 
   subgraph cluster_backends {
-    graph [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/backends" target="_parent"]
-    mapreduce [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/backends/mapreduce" target="_parent"]
-    native [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/backends/native" target="_parent"]
-    backends_test [label="test", href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/backends/test" target="_parent"]
-    xla [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/backends/xla" target="_parent"]
+    graph [href="https://github.com/google-parfait/tensorflow-federated/blob/main/tensorflow_federated/python/core/backends" target="_parent"]
+    mapreduce [href="https://github.com/google-parfait/tensorflow-federated/blob/main/tensorflow_federated/python/core/backends/mapreduce" target="_parent"]
+    native [href="https://github.com/google-parfait/tensorflow-federated/blob/main/tensorflow_federated/python/core/backends/native" target="_parent"]
+    backends_test [label="test", href="https://github.com/google-parfait/tensorflow-federated/blob/main/tensorflow_federated/python/core/backends/test" target="_parent"]
+    xla [href="https://github.com/google-parfait/tensorflow-federated/blob/main/tensorflow_federated/python/core/backends/xla" target="_parent"]
   }
 
   // TODO: b/233800075 - Remove dependency from `native` to `mapreduce`.
@@ -21,11 +21,11 @@ digraph {
   backends_test -> tensorflow_frontend [arrowhead="none", style="invisible"]
 
   subgraph cluster_environments {
-    graph [label="Environments", href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/environments" target="_parent"]
-    jax_frontend [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/environments/jax_frontend" target="_parent"]
-    xla_backend [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/environments/xla_backend" target="_parent"]
-    tensorflow_frontend [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/environments/tensorflow_frontend" target="_parent"]
-    tensorflow_backend [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/environments/tensorflow_backend" target="_parent"]
+    graph [label="Environments", href="https://github.com/google-parfait/tensorflow-federated/blob/main/tensorflow_federated/python/core/environments" target="_parent"]
+    jax_frontend [href="https://github.com/google-parfait/tensorflow-federated/blob/main/tensorflow_federated/python/core/environments/jax_frontend" target="_parent"]
+    xla_backend [href="https://github.com/google-parfait/tensorflow-federated/blob/main/tensorflow_federated/python/core/environments/xla_backend" target="_parent"]
+    tensorflow_frontend [href="https://github.com/google-parfait/tensorflow-federated/blob/main/tensorflow_federated/python/core/environments/tensorflow_frontend" target="_parent"]
+    tensorflow_backend [href="https://github.com/google-parfait/tensorflow-federated/blob/main/tensorflow_federated/python/core/environments/tensorflow_backend" target="_parent"]
   }
 
   jax_frontend -> xla_backend
@@ -38,9 +38,9 @@ digraph {
   tensorflow_backend -> templates [arrowhead="none", style="invisible"]
 
   subgraph cluster_core_1 {
-    framework [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/framework" target="_parent"]
-    test [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/test" target="_parent"]
-    templates [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/templates" target="_parent"]
+    framework [href="https://github.com/google-parfait/tensorflow-federated/blob/main/tensorflow_federated/python/core/framework" target="_parent"]
+    test [href="https://github.com/google-parfait/tensorflow-federated/blob/main/tensorflow_federated/python/core/test" target="_parent"]
+    templates [href="https://github.com/google-parfait/tensorflow-federated/blob/main/tensorflow_federated/python/core/templates" target="_parent"]
   }
 
   framework -> execution_contexts [arrowhead="none", style="invisible"]
@@ -48,16 +48,16 @@ digraph {
   templates -> execution_contexts [arrowhead="none", style="invisible"]
 
   subgraph cluster_core_2 {
-    graph [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl" target="_parent"]
-    execution_contexts [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/execution_contexts" target="_parent"]
-    executor_stacks [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/executor_stacks" target="_parent"]
-    executors [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/executors" target="_parent"]
-    federated_context [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/federated_context" target="_parent"]
-    computation [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/computation" target="_parent"]
-    compiler [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/compiler" target="_parent"]
-    utils [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/utils" target="_parent"]
-    types [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/types" target="_parent"]
-    context_stack [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/context_stack" target="_parent"]
+    graph [href="https://github.com/google-parfait/tensorflow-federated/blob/main/tensorflow_federated/python/core/impl" target="_parent"]
+    execution_contexts [href="https://github.com/google-parfait/tensorflow-federated/blob/main/tensorflow_federated/python/core/impl/execution_contexts" target="_parent"]
+    executor_stacks [href="https://github.com/google-parfait/tensorflow-federated/blob/main/tensorflow_federated/python/core/impl/executor_stacks" target="_parent"]
+    executors [href="https://github.com/google-parfait/tensorflow-federated/blob/main/tensorflow_federated/python/core/impl/executors" target="_parent"]
+    federated_context [href="https://github.com/google-parfait/tensorflow-federated/blob/main/tensorflow_federated/python/core/impl/federated_context" target="_parent"]
+    computation [href="https://github.com/google-parfait/tensorflow-federated/blob/main/tensorflow_federated/python/core/impl/computation" target="_parent"]
+    compiler [href="https://github.com/google-parfait/tensorflow-federated/blob/main/tensorflow_federated/python/core/impl/compiler" target="_parent"]
+    utils [href="https://github.com/google-parfait/tensorflow-federated/blob/main/tensorflow_federated/python/core/impl/utils" target="_parent"]
+    types [href="https://github.com/google-parfait/tensorflow-federated/blob/main/tensorflow_federated/python/core/impl/types" target="_parent"]
+    context_stack [href="https://github.com/google-parfait/tensorflow-federated/blob/main/tensorflow_federated/python/core/impl/context_stack" target="_parent"]
   }
 
   execution_contexts -> executor_stacks
@@ -90,9 +90,9 @@ digraph {
   types -> proto [arrowhead="none", style="invisible"]
 
   subgraph cluster_core_3 {
-    tensorflow_libs [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/tensorflow_libs" target="_parent"]
-    common_libs [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/common_libs" target="_parent"]
-    proto [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/proto" target="_parent"]
+    tensorflow_libs [href="https://github.com/google-parfait/tensorflow-federated/blob/main/tensorflow_federated/python/tensorflow_libs" target="_parent"]
+    common_libs [href="https://github.com/google-parfait/tensorflow-federated/blob/main/tensorflow_federated/python/common_libs" target="_parent"]
+    proto [href="https://github.com/google-parfait/tensorflow-federated/blob/main/tensorflow_federated/proto" target="_parent"]
   }
 
   tensorflow_libs -> common_libs

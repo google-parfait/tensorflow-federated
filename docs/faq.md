@@ -45,8 +45,8 @@ calling `sess.run` on the output tensor repeatedly within the same session.
 
 ## How can I contribute?
 
-See the [README](https://github.com/tensorflow/federated/blob/main/README.md),
-[contributing](https://github.com/tensorflow/federated/blob/main/CONTRIBUTING.md)
+See the [README](https://github.com/google-parfait/tensorflow-federated/blob/main/README.md),
+[contributing](https://github.com/google-parfait/tensorflow-federated/blob/main/CONTRIBUTING.md)
 guidelines, and [collaborations](collaborations/README.md).
 
 ## What is the relationship between FedJAX and TensorFlow Federated?

@@ -17,12 +17,12 @@ computations, such as aggregated analytics over decentralized data.
 
 TFF's interfaces are organized in two layers:
 
-*   [Federated Learning (FL) API](https://github.com/tensorflow/federated/blob/main/docs/federated_learning.md)
+*   [Federated Learning (FL) API](https://github.com/google-parfait/tensorflow-federated/blob/main/docs/federated_learning.md)
     The `tff.learning` layer offers a set of high-level interfaces that allow
     developers to apply the included implementations of federated training and
     evaluation to their existing TensorFlow models.
 
-*   [Federated Core (FC) API](https://github.com/tensorflow/federated/blob/main/docs/federated_core.md)
+*   [Federated Core (FC) API](https://github.com/google-parfait/tensorflow-federated/blob/main/docs/federated_core.md)
     At the core of the system is a set of lower-level interfaces for concisely
     expressing novel federated algorithms by combining TensorFlow with
     distributed communication operators within a strongly-typed functional
@@ -37,14 +37,14 @@ and try it out yourself!
 ## Installation
 
 See the
-[install](https://github.com/tensorflow/federated/blob/main/docs/install.md)
+[install](https://github.com/google-parfait/tensorflow-federated/blob/main/docs/install.md)
 documentation for instructions on how to install TensorFlow Federated as a
 package or build TensorFlow Federated from source.
 
 ## Getting Started
 
 See the
-[get started](https://github.com/tensorflow/federated/blob/main/docs/get_started.md)
+[get started](https://github.com/google-parfait/tensorflow-federated/blob/main/docs/get_started.md)
 documentation for instructions on how to use TensorFlow Federated.
 
 ## Contributing
@@ -80,13 +80,14 @@ There are a number of ways to contribute depending on what you're interested in:
     infrastructure.
 
 Please be sure to review the
-[contribution](https://github.com/tensorflow/federated/blob/main/CONTRIBUTING.md#guidelines)
+[contribution](https://github.com/google-parfait/tensorflow-federated/blob/main/CONTRIBUTING.md#guidelines)
 guidelines on how to contribute.
 
 ## Issues
 
-Use [GitHub issues](https://github.com/tensorflow/federated/issues) for tracking
-requests and bugs.
+Use
+[GitHub issues](https://github.com/google-parfait/tensorflow-federated/issues)
+for tracking requests and bugs.
 
 ## Questions
 

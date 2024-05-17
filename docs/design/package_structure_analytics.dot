@@ -4,11 +4,11 @@ digraph {
   edge [color="#616161"]
 
   subgraph cluster_analytics {
-    graph [label="Analytics", href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/analytics" target="_parent"]
-    iblt [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/analytics/heavy_hitters/iblt" target="_parent"]
-    heavy_hitters [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/analytics/heavy_hitters" target="_parent"]
-    hierarchical_histogram [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/analytics/hierarchical_histogram" target="_parent"]
-    analytics [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/analytics" target="_parent"]
+    graph [label="Analytics", href="https://github.com/google-parfait/tensorflow-federated/blob/main/tensorflow_federated/python/analytics" target="_parent"]
+    iblt [href="https://github.com/google-parfait/tensorflow-federated/blob/main/tensorflow_federated/python/analytics/heavy_hitters/iblt" target="_parent"]
+    heavy_hitters [href="https://github.com/google-parfait/tensorflow-federated/blob/main/tensorflow_federated/python/analytics/heavy_hitters" target="_parent"]
+    hierarchical_histogram [href="https://github.com/google-parfait/tensorflow-federated/blob/main/tensorflow_federated/python/analytics/hierarchical_histogram" target="_parent"]
+    analytics [href="https://github.com/google-parfait/tensorflow-federated/blob/main/tensorflow_federated/python/analytics" target="_parent"]
   }
 
   iblt -> heavy_hitters
