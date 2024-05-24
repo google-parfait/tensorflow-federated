@@ -1,5 +1,7 @@
 # Unreleased
 
+# Release 0.79.0
+
 *   Enable support for models with non-trainable variables in
     `tff.learning.models.functional_model_from_keras`.
 
