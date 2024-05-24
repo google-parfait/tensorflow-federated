@@ -1,5 +1,9 @@
 # Unreleased
 
+## Breaking Changes
+
+*   Updated `rules_python` to version `0.31.0`.
+
 # Release 0.79.0
 
 *   Enable support for models with non-trainable variables in

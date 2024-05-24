@@ -136,9 +136,9 @@ http_archive(
 
 http_archive(
     name = "rules_python",
-    url = "https://github.com/bazelbuild/rules_python/archive/refs/tags/0.23.0.tar.gz",
-    sha256 = "8272287b125a23bfc79650ecbbc045ebcaee4d632338b1a50aad34357bcbadce",
-    strip_prefix = "rules_python-0.23.0",
+    url = "https://github.com/bazelbuild/rules_python/archive/refs/tags/0.31.0.tar.gz",
+    sha256 = "c68bdc4fbec25de5b5493b8819cfc877c4ea299c0dcb15c244c5a00208cde311",
+    strip_prefix = "rules_python-0.31.0",
 )
 
 #
@@ -166,6 +166,10 @@ http_archive(
 #
 # Transitive dependencies, grouped by direct dependency.
 #
+
+load("@rules_python//python:repositories.bzl", "py_repositories")
+
+py_repositories()
 
 load("@org_tensorflow//tensorflow:workspace3.bzl", "tf_workspace3")
 
