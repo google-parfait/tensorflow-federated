@@ -61,9 +61,7 @@ py_test(
 
 py_library(
     name = "iblt_lib",
-    srcs = [
-        "iblt_lib.py",
-    ],
+    srcs = ["iblt_lib.py"],
     deps = [
         ":chunkers",
         ":hyperedge_hashers",
@@ -72,17 +70,13 @@ py_library(
 
 py_library(
     name = "chunkers",
-    srcs = [
-        "chunkers.py",
-    ],
+    srcs = ["chunkers.py"],
     deps = ["//tensorflow_federated/python/common_libs:py_typecheck"],
 )
 
 py_library(
     name = "hyperedge_hashers",
-    srcs = [
-        "hyperedge_hashers.py",
-    ],
+    srcs = ["hyperedge_hashers.py"],
 )
 
 py_test(

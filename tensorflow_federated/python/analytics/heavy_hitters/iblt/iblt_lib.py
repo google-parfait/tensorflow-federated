@@ -47,16 +47,6 @@ https://arxiv.org/abs/1101.2245
 To make effective use of fixed precision arithmetic our TensorFlow
 implementation makes use of arithmetic in a finite prime field of size
 field_size, i.e., does arithmetic modulo field_size.
-
-The IbltEncoder class below uses tf.strings.to_hash_bucket_fast() for hashing
-whereas the IbltDecoder class uses farmhash.fingerprint64(). These two functions
-are consistent since tf.strings.to_hash_bucket_fast() is implemented using
-farmhash.fingerprint64(). Note that the TensorFlow documentation of the
-tf.strings.to_hash_bucket_fast() states that the values of this hash function
-are deterministic on the content of the string and will never change.
-CAUTION: If this is no longer the case and the implementation of
-tf.strings.to_hash_bucket_fast() changes, then IbltDecoder.get_freq_estimates()
-would fail.
 """
 
 from typing import Optional, Union

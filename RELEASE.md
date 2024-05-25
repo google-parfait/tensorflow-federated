@@ -8,6 +8,7 @@
 
 *   Enable support for models with non-trainable variables in
     `tff.learning.models.functional_model_from_keras`.
+*   Removed `farmhashpy` dependency.
 
 ## Breaking Changes
 

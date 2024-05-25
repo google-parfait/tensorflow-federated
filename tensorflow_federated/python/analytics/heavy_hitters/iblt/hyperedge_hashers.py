@@ -13,8 +13,6 @@
 # limitations under the License.
 """Hashers that implement different hash function families to use with IBLTs."""
 
-import farmhash
-import numpy as np
 import tensorflow as tf
 
 _SEPARATOR = ';'
@@ -83,28 +81,6 @@ class RandomHyperEdgeHasher:
     self._salt = [str(seed + i) + _SEPARATOR for i in range(repetitions)]
     self._table_size = table_size
     self._repetitions = repetitions
-
-  def get_hash_indices(self, data_strings: list[str]) -> list[list[int]]:
-    """Computes the indices at which `data_strings` in IBLT.
-
-    Args:
-      data_strings: A list of strings to be hashed.
-
-    Returns:
-      hash_indices: A vector of `repetitions` hash values of `data_string`,
-      in {0,...,`table_size`-1}.
-    """
-    all_hash_indices = []
-    for data_string in data_strings:
-      hash_indices = []
-      for i in range(self._repetitions):
-        hash_indices.append(
-            farmhash.fingerprint64(str(self._salt[i]) + data_string)
-            % self._table_size
-        )
-      all_hash_indices.append(hash_indices)
-
-    return all_hash_indices
 
   def get_hash_indices_tf(self, input_strings: tf.Tensor) -> tf.Tensor:
     """Returns a `tf.Tensor` containing the indices of `input_string` in IBLT.
@@ -177,65 +153,6 @@ class CoupledHyperEdgeHasher:
     self._repetitions = repetitions
     self._rescale_factor = rescale_factor
     self._rescaled_table_size = table_size / (self._rescale_factor + 1.0)
-
-  def _get_hash_indices_single(self, data_string: str) -> list[int]:
-    """Computes the indices of `data_string` in IBLT."""
-    position = self._hash_to_float(
-        data_string, (0.5, self._rescale_factor + 0.5)
-    )
-    hash_indices = []
-    for i in range(self._repetitions):
-      salted_string = str(self._salt[i]) + data_string
-      offset = self._hash_to_float(salted_string, (-0.5, 0.5))
-      hash_indices.append(
-          int(np.floor((position + offset) * self._rescaled_table_size))
-      )
-    return hash_indices
-
-  def get_hash_indices(self, data_strings: list[str]) -> list[list[int]]:
-    """Computes the indices at which the given strings in IBLT.
-
-    Args:
-      data_strings: A list of strings to be hashed.
-
-    Returns:
-      hash_indices: vector of `repetitions` hash values of `data_string`,
-      in {0,...,`table_size`-1}.
-    """
-    all_hash_indices = []
-    for data_string in data_strings:
-      all_hash_indices.append(self._get_hash_indices_single(data_string))
-    return all_hash_indices
-
-  def _hash_to_float(
-      self,
-      input_string: str,
-      hash_range: tuple[float, float],
-      precision: int = tf.int32.max,
-  ) -> float:
-    """Hashes a string and returns a `float`.
-
-    `hash_range` is evenly divided into a number of buckets. The hashed value of
-    `input_string` is mapped to one of the bucket.
-
-    TODO: b/158684105 - Update this function to directly map the hash to the
-    index rather than converting hash -> float -> index.
-
-    Args:
-      input_string: An input string.
-      hash_range: A tuple representing the range for the hashed value.
-      precision: The number of buckets in `hash_range`. Must be a positive
-        integer.
-
-    Returns:
-      A float value being the lower bound of the bucket that the hashed string
-      value falls into.
-    """
-    (low, high) = hash_range
-    hashed_value = farmhash.fingerprint64(input_string)
-    hashed_value = hashed_value % precision
-    hashed_value = ((float(hashed_value) / precision) * (high - low)) + low
-    return hashed_value
 
   def _hash_to_float_tf(
       self,

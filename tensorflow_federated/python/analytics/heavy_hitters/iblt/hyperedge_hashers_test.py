@@ -20,7 +20,7 @@ import tensorflow as tf
 
 from tensorflow_federated.python.analytics.heavy_hitters.iblt import hyperedge_hashers
 
-# Table of critial values for chi square tests with 5% level of significance.
+# Table of critical values for chi square tests with 5% level of significance.
 # The keys in the table are degrees of freedom.
 _CHI_SQUARE_CRITICAL_VALUE = {
     4: 9.487,
@@ -112,22 +112,13 @@ class HyperedgeHashersTest(tf.test.TestCase, parameterized.TestCase):
         seed, table_size, repetitions
     )
     data_strings_tensor = tf.constant(data_strings, dtype=tf.string)
-    hashes = np.array(hasher.get_hash_indices(data_strings))
     hashes_tensor = hasher.get_hash_indices_tf(data_strings_tensor)
     with self.cached_session() as sess:
       hashes_tensor = sess.run(hashes_tensor)
 
-    # Both functions should return the same indices.
-    self.assertAllEqual(list(hashes), list(np.squeeze(hashes_tensor[:, :, 2])))
-
     # Indices should be in the table.
-    self.assertAllInRange(hashes, 0, table_size)
+    self.assertAllInRange(hashes_tensor, 0, table_size)
 
-    # The return shape should be as expected.
-    if not data_strings:  # when data_string is empty
-      self.assertEqual(hashes.shape, (len(data_strings),))
-    else:
-      self.assertEqual(hashes.shape, (len(data_strings), repetitions))
     self.assertEqual(hashes_tensor.shape, (len(data_strings), repetitions, 3))
 
   @parameterized.named_parameters(
@@ -162,21 +153,12 @@ class HyperedgeHashersTest(tf.test.TestCase, parameterized.TestCase):
     )
     data_strings = [str(x) for x in range(data_strings_upper_bound)]
     data_strings_tensor = tf.constant(data_strings, dtype=tf.string)
-    hashes = np.array(hasher.get_hash_indices(data_strings))
     hashes_tensor = hasher.get_hash_indices_tf(data_strings_tensor)
     with self.cached_session() as sess:
       hashes_tensor = sess.run(hashes_tensor)
 
-    _, counts = np.unique(hashes, return_counts=True)
-    min_conflicts = data_strings_upper_bound / table_size
-    # No more than 10 * min_conflicts strings are hashed to the same int64 value
-    self.assertLess(np.max(counts), 10 * min_conflicts)
-
     # All indices should be uniformly distributed.
     degrees_of_freedom = table_size - 1
-    self._assert_distribution_uniform(
-        hashes, degrees_of_freedom, is_uniform=True
-    )
     self._assert_distribution_uniform(
         np.squeeze(hashes_tensor[:, :, 2]), degrees_of_freedom, is_uniform=True
     )
@@ -240,33 +222,15 @@ class HyperedgeHashersTest(tf.test.TestCase, parameterized.TestCase):
         seed, table_size, repetitions, rescale_factor
     )
     data_strings_tensor = tf.constant(data_strings, dtype=tf.string)
-    hashes = np.array(hasher.get_hash_indices(data_strings))
     hashes_tensor = hasher.get_hash_indices_tf(data_strings_tensor)
     with self.cached_session() as sess:
       hashes_tensor = sess.run(hashes_tensor)
 
-    # Both functions should return the same indices.
-    self.assertAllEqual(list(hashes), list(np.squeeze(hashes_tensor[:, :, 2])))
-
     # Indices should be in the table.
-    self.assertAllInRange(hashes, 0, table_size)
+    self.assertAllInRange(hashes_tensor, 0, table_size)
 
     # The return shape should be as expected.
-    if not data_strings:  # when data_string is empty
-      self.assertEqual(hashes.shape, (len(data_strings),))
-    else:
-      self.assertEqual(hashes.shape, (len(data_strings), repetitions))
     self.assertEqual(hashes_tensor.shape, (len(data_strings), repetitions, 3))
-
-    # In coupled hashing, all the indices for each string should be at most
-    # `table_size/rescale_factor` distance from each other.
-    if data_strings:
-      max_per_element_index_difference = np.max(
-          np.max(hashes, axis=1) - np.min(hashes, axis=1)
-      )
-      self.assertLess(
-          max_per_element_index_difference, table_size / float(rescale_factor)
-      )
 
   @parameterized.named_parameters(
       ('table_size_500', 100, 500, 3, 4, 10000),
@@ -300,21 +264,13 @@ class HyperedgeHashersTest(tf.test.TestCase, parameterized.TestCase):
     )
     data_strings = [str(x) for x in range(data_strings_upper_bound)]
     data_strings_tensor = tf.constant(data_strings, dtype=tf.string)
-    hashes = np.array(hasher.get_hash_indices(data_strings))
     hashes_tensor = hasher.get_hash_indices_tf(data_strings_tensor)
     with self.cached_session() as sess:
       hashes_tensor = sess.run(hashes_tensor)
 
-    _, counts = np.unique(hashes, return_counts=True)
-    min_conflicts = data_strings_upper_bound / table_size
-    # No more than 10 * min_conflicts strings are hashed to the same int64 value
-    self.assertLess(np.max(counts), 10 * min_conflicts)
-
     # All indices should not be uniformly distributed.
     degrees_of_freedom = table_size - 1
-    self._assert_distribution_uniform(
-        hashes, degrees_of_freedom, is_uniform=False
-    )
+
     self._assert_distribution_uniform(
         np.squeeze(hashes_tensor[:, :, 2]), degrees_of_freedom, is_uniform=False
     )
@@ -322,13 +278,11 @@ class HyperedgeHashersTest(tf.test.TestCase, parameterized.TestCase):
     # Indices in the middle should be uniformly distributed.
     lower_bound = max(1, math.ceil(table_size / 2) - 10)
     upper_bound = min(table_size - 1, math.ceil(table_size / 2) + 10)
-    middle_indices = (lower_bound <= hashes) & (hashes < upper_bound)
-    hashes_in_the_middle = hashes[middle_indices]
-    hashes_tensor_in_the_middle = hashes_tensor[:, :, 2][middle_indices]
-    degrees_of_freedom = len(hashes_in_the_middle) - 1
-    self._assert_distribution_uniform(
-        hashes_in_the_middle, degrees_of_freedom, is_uniform=True
+    middle_indices = (lower_bound <= np.squeeze(hashes_tensor[:, :, 2])) & (
+        np.squeeze(hashes_tensor[:, :, 2]) < upper_bound
     )
+    hashes_tensor_in_the_middle = hashes_tensor[:, :, 2][middle_indices]
+    degrees_of_freedom = len(hashes_tensor_in_the_middle) - 1
     self._assert_distribution_uniform(
         hashes_tensor_in_the_middle, degrees_of_freedom, is_uniform=True
     )

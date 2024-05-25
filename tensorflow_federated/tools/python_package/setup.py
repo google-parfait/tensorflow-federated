@@ -62,7 +62,6 @@ REQUIRED_PACKAGES = [
     'cachetools~=5.3',
     'dm-tree==0.1.8',
     'dp-accounting==0.4.3',
-    'farmhashpy==0.4.0',
     'google-vizier==0.1.11',
     'grpcio~=1.46',
     'jaxlib==0.4.14',
