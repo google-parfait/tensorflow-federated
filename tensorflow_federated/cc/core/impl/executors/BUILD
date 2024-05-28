@@ -1163,6 +1163,7 @@ cc_library(
     name = "value_test_utils",
     testonly = True,
     hdrs = ["value_test_utils.h"],
+    visibility = ["//visibility:public"],
     deps = [
         ":cardinalities",
         ":dataset_conversions",
