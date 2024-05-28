@@ -14,7 +14,7 @@
 """An implementation of stateful federated evaluation."""
 
 import collections
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from typing import Optional, Union
 
 import tensorflow as tf
@@ -22,13 +22,14 @@ import tensorflow as tf
 from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
+from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
-from tensorflow_federated.python.learning import federated_evaluation
+from tensorflow_federated.python.learning import dataset_reduce
 from tensorflow_federated.python.learning.metrics import sum_aggregation_factory
 from tensorflow_federated.python.learning.models import functional
 from tensorflow_federated.python.learning.models import model_weights as model_weights_lib
@@ -41,6 +42,150 @@ from tensorflow_federated.python.learning.templates import learning_process
 
 
 _AggregationProcess = aggregation_process.AggregationProcess
+
+
+def _build_local_evaluation(
+    model_fn: Callable[[], variable.VariableModel],
+    model_weights_type: computation_types.StructType,
+    batch_type: computation_types.Type,
+    use_experimental_simulation_loop: bool = False,
+) -> computation_base.Computation:
+  """Builds the local TFF computation for evaluation of the given model.
+
+  This produces an unplaced function that evaluates a
+  `tff.learning.models.VariableModel`
+  on a `tf.data.Dataset`. This function can be mapped to placed data, i.e.
+  is mapped to client placed data in `build_federated_evaluation`.
+
+  The TFF type notation for the returned computation is:
+
+  ```
+  (<M, D*> → <local_outputs=N, num_examples=tf.int64>)
+  ```
+
+  Where `M` is the model weights type structure, `D` is the type structure of a
+  single data point, and `N` is the type structure of the local metrics.
+
+  Args:
+    model_fn: A no-arg function that returns a
+      `tff.learning.models.VariableModel`.
+    model_weights_type: The `tff.Type` of the model parameters that will be used
+      to initialize the model during evaluation.
+    batch_type: The type of one entry in the dataset.
+    use_experimental_simulation_loop: Controls the reduce loop function for
+      input dataset. An experimental reduce loop is used for simulation.
+
+  Returns:
+    A federated computation (an instance of `tff.Computation`) that accepts
+    model parameters and sequential data, and returns the evaluation metrics.
+  """
+
+  @tensorflow_computation.tf_computation(
+      model_weights_type, computation_types.SequenceType(batch_type)
+  )
+  @tf.function
+  def client_eval(incoming_model_weights, dataset):
+    """Returns local outputs after evaluating `model_weights` on `dataset`."""
+    with tf.init_scope():
+      model = model_fn()
+    model_weights = model_weights_lib.ModelWeights.from_model(model)
+    tf.nest.map_structure(
+        lambda v, t: v.assign(t), model_weights, incoming_model_weights
+    )
+
+    def reduce_fn(num_examples, batch):
+      model_output = model.forward_pass(batch, training=False)
+      if model_output.num_examples is None:
+        # Compute shape from the size of the predictions if model didn't use the
+        # batch size.
+        return (
+            num_examples
+            + tf.shape(model_output.predictions, out_type=tf.int64)[0]
+        )
+      else:
+        return num_examples + tf.cast(model_output.num_examples, tf.int64)
+
+    dataset_reduce_fn = dataset_reduce.build_dataset_reduce_fn(
+        use_experimental_simulation_loop
+    )
+    num_examples = dataset_reduce_fn(
+        reduce_fn, dataset, lambda: tf.zeros([], dtype=tf.int64)
+    )
+    model_output = model.report_local_unfinalized_metrics()
+    return collections.OrderedDict(
+        local_outputs=model_output, num_examples=num_examples
+    )
+
+  return client_eval
+
+
+def _build_functional_local_evaluation(
+    model: functional.FunctionalModel,
+    model_weights_type: computation_types.StructType,
+    batch_type: Union[
+        computation_types.StructType, computation_types.TensorType
+    ],
+) -> computation_base.Computation:
+  """Creates client evaluation logic for a functional model.
+
+  This produces an unplaced function that evaluates a
+  `tff.learning.models.FunctionalModel` on a `tf.data.Dataset`. This function
+  can be mapped to placed data.
+
+  The TFF type notation for the returned computation is:
+
+  ```
+  (<M, D*> → <local_outputs=N>)
+  ```
+
+  Where `M` is the model weights type structure, `D` is the type structure of a
+  single data point, and `N` is the type structure of the local metrics.
+
+  Args:
+    model: A `tff.learning.models.FunctionalModel`.
+    model_weights_type: The `tff.Type` of the model parameters that will be used
+      in the forward pass.
+    batch_type: The type of one entry in the dataset.
+
+  Returns:
+    A federated computation (an instance of `tff.Computation`) that accepts
+    model parameters and sequential data, and returns the evaluation metrics.
+  """
+
+  @tensorflow_computation.tf_computation(
+      model_weights_type, computation_types.SequenceType(batch_type)
+  )
+  @tf.function
+  def local_eval(weights, dataset):
+    metrics_state = model.initialize_metrics_state()
+
+    for batch in iter(dataset):
+      if isinstance(batch, Mapping):
+        x = batch['x']
+        y = batch['y']
+      else:
+        x, y = batch
+
+      batch_output = model.predict_on_batch(weights, x, training=False)
+      batch_loss = model.loss(output=batch_output, label=y)
+      predictions = tf.nest.flatten(batch_output)[0]
+      batch_num_examples = tf.shape(predictions)[0]
+
+      # TODO: b/272099796 - Update `update_metrics_state` of FunctionalModel
+      metrics_state = model.update_metrics_state(
+          metrics_state,
+          batch_output=variable.BatchOutput(
+              loss=batch_loss,
+              predictions=batch_output,
+              num_examples=batch_num_examples,
+          ),
+          labels=y,
+      )
+
+    unfinalized_metrics = metrics_state
+    return unfinalized_metrics
+
+  return local_eval
 
 
 def _build_fed_eval_client_work(
@@ -85,7 +230,7 @@ def _build_fed_eval_client_work(
   def init_fn():
     return metrics_aggregation_process.initialize()
 
-  client_update_computation = federated_evaluation.build_local_evaluation(
+  client_update_computation = _build_local_evaluation(
       model_fn, model_weights_type, batch_type, use_experimental_simulation_loop
   )
 
@@ -143,7 +288,7 @@ def _build_functional_fed_eval_client_work(
   )
   tuple_weights_type = (weights_type.trainable, weights_type.non_trainable)
   batch_type = computation_types.tensorflow_to_type(model.input_spec)
-  local_eval = federated_evaluation.build_functional_local_evaluation(
+  local_eval = _build_functional_local_evaluation(
       model,
       tuple_weights_type,  # pytype: disable=wrong-arg-types
       batch_type,

@@ -29,9 +29,4 @@ digraph {
   models -> learning
   optimizers -> learning
   metrics -> learning
-
-  // TODO: b/151441025 - This visibility is temporary and can be removed once the
-  // circular dependencies between `learning` and its subpackages are removed.
-  metrics -> learning [dir=back, color="#ff0000"]
-  models -> learning [dir=back, color="#ff0000"]
 }

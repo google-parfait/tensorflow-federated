@@ -30,7 +30,6 @@ py_library(
     deps = [
         ":client_weight_lib",
         ":debug_measurements",
-        ":federated_evaluation",
         ":model_update_aggregator",
         "//tensorflow_federated/python/learning/algorithms",
         "//tensorflow_federated/python/learning/metrics",
@@ -55,33 +54,6 @@ py_cpu_gpu_test(
     name = "dataset_reduce_test",
     srcs = ["dataset_reduce_test.py"],
     deps = [":dataset_reduce"],
-)
-
-py_cpu_gpu_test(
-    name = "federated_evaluation_test",
-    srcs = ["federated_evaluation_test.py"],
-    deps = [
-        ":dataset_reduce",
-        ":federated_evaluation",
-        "//tensorflow_federated/python/core/backends/native:execution_contexts",
-        "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
-        "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
-        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:placements",
-        "//tensorflow_federated/python/core/impl/types:type_test_utils",
-        "//tensorflow_federated/python/core/templates:measured_process",
-        "//tensorflow_federated/python/core/test:static_assert",
-        "//tensorflow_federated/python/learning/metrics:aggregator",
-        "//tensorflow_federated/python/learning/metrics:counters",
-        "//tensorflow_federated/python/learning/models:functional",
-        "//tensorflow_federated/python/learning/models:keras_utils",
-        "//tensorflow_federated/python/learning/models:model_examples",
-        "//tensorflow_federated/python/learning/models:model_weights",
-        "//tensorflow_federated/python/learning/models:test_models",
-        "//tensorflow_federated/python/learning/models:variable",
-        "//tensorflow_federated/python/tensorflow_libs:tensorflow_test_utils",
-    ],
 )
 
 py_library(
@@ -141,27 +113,5 @@ py_test(
         "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
-    ],
-)
-
-py_library(
-    name = "federated_evaluation",
-    srcs = ["federated_evaluation.py"],
-    deps = [
-        ":dataset_reduce",
-        "//tensorflow_federated/python/common_libs:deprecation",
-        "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
-        "//tensorflow_federated/python/core/impl/computation:computation_base",
-        "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
-        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:placements",
-        "//tensorflow_federated/python/core/templates:iterative_process",
-        "//tensorflow_federated/python/core/templates:measured_process",
-        "//tensorflow_federated/python/learning/metrics:aggregator",
-        "//tensorflow_federated/python/learning/metrics:types",
-        "//tensorflow_federated/python/learning/models:functional",
-        "//tensorflow_federated/python/learning/models:model_weights",
-        "//tensorflow_federated/python/learning/models:variable",
     ],
 )
