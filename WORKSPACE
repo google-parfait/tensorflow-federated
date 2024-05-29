@@ -91,7 +91,7 @@ http_archive(
 # https://github.com/google-parfait/tensorflow-federated/blob/main/requirements.txt.
 http_archive(
     name = "org_tensorflow",
-    url = "https://github.com/tensorflow/tensorflow/archive/refs/tags/v2.14.0.tar.gz",
+    url = "https://github.com/tensorflow/tensorflow/archive/refs/tags/v2.16.1.tar.gz",
     patches = [
         # Depending on restricted visibility BUILD target om external git
         # repository does not seem to be supported.
@@ -102,8 +102,8 @@ http_archive(
         "//third_party/tensorflow:python_toolchain.patch",
         "//third_party/tensorflow:tf2xla_visibility.patch",
     ],
-    sha256 = "ce357fd0728f0d1b0831d1653f475591662ec5bca736a94ff789e6b1944df19f",
-    strip_prefix = "tensorflow-2.14.0",
+    sha256 = "c729e56efc945c6df08efe5c9f5b8b89329c7c91b8f40ad2bb3e13900bd4876d",
+    strip_prefix = "tensorflow-2.16.1",
 )
 
 http_archive(
