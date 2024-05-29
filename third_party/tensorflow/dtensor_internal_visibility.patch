@@ -1,5 +1,5 @@
 diff --git tensorflow/dtensor/BUILD tensorflow/dtensor/BUILD
-index 841e31e31a5..3b1f3ad4b7f 100644
+index b8117e927a2..b79f991107b 100644
 --- tensorflow/dtensor/BUILD
 +++ tensorflow/dtensor/BUILD
 @@ -24,6 +24,6 @@ package_group(

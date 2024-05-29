@@ -72,7 +72,7 @@ REQUIRED_PACKAGES = [
     'semantic-version~=2.6',
     'tensorflow-model-optimization==0.7.5',
     'tensorflow-privacy==0.9.0',
-    'tensorflow>=2.14.0,==2.14.*',
+    'tensorflow~=2.16.1',
     'tqdm~=4.64',
     'typing-extensions>=4.5.0,==4.5.*',
     # TODO: b/315515548 - Required because current dependencies are pulling in
