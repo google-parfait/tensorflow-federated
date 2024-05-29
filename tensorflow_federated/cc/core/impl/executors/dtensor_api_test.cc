@@ -40,7 +40,7 @@ limitations under the License
 #include "tensorflow/dtensor/cc/mesh_type.h"
 #include "tensorflow/dtensor/cc/tensor_layout.h"
 #include "tensorflow/dtensor/proto/layout.pb.h"
-#include "tensorflow/tsl/platform/statusor.h"
+#include "tsl/platform/statusor.h"
 
 namespace tensorflow_federated {
 namespace dtensor {

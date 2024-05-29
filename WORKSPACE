@@ -52,7 +52,7 @@ http_archive(
 )
 
 # This commit is determined by
-# https://github.com/tensorflow/tensorflow/blob/master/third_party/absl/workspace.bzl#L10.
+# https://github.com/tensorflow/tensorflow/blob/v2.16.1/third_party/absl/workspace.bzl#L10.
 http_archive(
     name = "com_google_absl",
     url = "https://github.com/abseil/abseil-cpp/archive/fb3621f4f897824c0dbe0615fa94543df6192f30.tar.gz",
@@ -91,7 +91,7 @@ http_archive(
 # https://github.com/google-parfait/tensorflow-federated/blob/main/requirements.txt.
 http_archive(
     name = "org_tensorflow",
-    url = "https://github.com/tensorflow/tensorflow/archive/refs/tags/v2.14.0.tar.gz",
+    url = "https://github.com/tensorflow/tensorflow/archive/refs/tags/v2.16.1.tar.gz",
     patches = [
         # Depending on restricted visibility BUILD target om external git
         # repository does not seem to be supported.
@@ -102,8 +102,8 @@ http_archive(
         "//third_party/tensorflow:python_toolchain.patch",
         "//third_party/tensorflow:tf2xla_visibility.patch",
     ],
-    sha256 = "ce357fd0728f0d1b0831d1653f475591662ec5bca736a94ff789e6b1944df19f",
-    strip_prefix = "tensorflow-2.14.0",
+    sha256 = "c729e56efc945c6df08efe5c9f5b8b89329c7c91b8f40ad2bb3e13900bd4876d",
+    strip_prefix = "tensorflow-2.16.1",
 )
 
 http_archive(
@@ -141,6 +141,13 @@ http_archive(
     strip_prefix = "rules_python-0.31.0",
 )
 
+http_archive(
+    name = "xla",
+    url = "https://github.com/openxla/xla/archive/940e3a27542b7ce76666173e7b287aa2a9263916.tar.gz",
+    sha256 = "bcdc778e5a456839869dea796117b723bdea488075bd9555fe118fd8d6fcf25e",
+    strip_prefix = "xla-940e3a27542b7ce76666173e7b287aa2a9263916",
+)
+
 #
 # Inlined transitive dependencies, grouped by direct dependency.
 #
@@ -170,6 +177,26 @@ http_archive(
 load("@rules_python//python:repositories.bzl", "py_repositories")
 
 py_repositories()
+
+load("@xla//:workspace4.bzl", "xla_workspace4")
+
+xla_workspace4()
+
+load("@xla//:workspace3.bzl", "xla_workspace3")
+
+xla_workspace3()
+
+load("@xla//:workspace2.bzl", "xla_workspace2")
+
+xla_workspace2()
+
+load("@xla//:workspace1.bzl", "xla_workspace1")
+
+xla_workspace1()
+
+load("@xla//:workspace0.bzl", "xla_workspace0")
+
+xla_workspace0()
 
 load("@org_tensorflow//tensorflow:workspace3.bzl", "tf_workspace3")
 

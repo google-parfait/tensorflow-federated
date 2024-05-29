@@ -32,7 +32,7 @@ cc_library(
         "@org_tensorflow//tensorflow/core:framework",
         "@org_tensorflow//tensorflow/core:protos_all_cc",
         "@org_tensorflow//tensorflow/core/platform:tstring",
-        "@org_tensorflow//tensorflow/tsl/platform:refcount",
+        "@tsl//tsl/platform:refcount",
     ],
 )
 
@@ -132,7 +132,7 @@ cc_library(
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:cord",
         "@org_tensorflow//tensorflow/core/platform:env",
-        "@org_tensorflow//tensorflow/tsl/platform:env",
+        "@tsl//tsl/platform:env",
     ],
 )
 
@@ -167,7 +167,7 @@ cc_library(
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:cord",
         "@org_tensorflow//tensorflow/core/platform:env",
-        "@org_tensorflow//tensorflow/tsl/platform:env",
+        "@tsl//tsl/platform:env",
     ],
 )
 
