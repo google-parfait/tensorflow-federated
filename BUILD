@@ -19,5 +19,5 @@ filegroup(
     name = "setup",
     srcs = ["setup.py"],
     tags = ["ignore_srcs"],
-    visibility = ["//tensorflow_federated/tools/python_package:python_package_tool"],
+    visibility = ["//tools/python_package:python_package_tool"],
 )

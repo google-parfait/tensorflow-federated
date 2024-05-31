@@ -18,8 +18,8 @@ sh_binary(
     name = "build_python_package",
     srcs = ["build_python_package.sh"],
     data = [
+        "//:setup",
         "//tensorflow_federated",
-        "//tensorflow_federated:setup",
         "//tensorflow_federated/data:worker_binary",
         "//tensorflow_federated/proto",
         "//tensorflow_federated/proto/v0",
