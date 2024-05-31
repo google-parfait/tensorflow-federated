@@ -2,7 +2,6 @@
 
 ## Breaking Changes
 
-*   Move the `tools` package to the root of the repository.
 *   Updated `bazel` to version `6.5.0`.
 *   Updated `rules_python` to version `0.31.0`.
 *   Deleted deprecated `tff.learning.build_federated_evaluation`, which was

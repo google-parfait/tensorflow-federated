@@ -8,7 +8,7 @@ package(
 
 package_group(
     name = "tools_packages",
-    packages = ["//tools/..."],
+    packages = ["//tensorflow_federated/tools/..."],
 )
 
 licenses(["notice"])

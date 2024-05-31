@@ -20,7 +20,7 @@ licenses(["notice"])
 py_library(
     name = "jax_frontend",
     srcs = ["__init__.py"],
-    visibility = ["//tools/python_package:python_package_tool"],
+    visibility = ["//tensorflow_federated/tools/python_package:python_package_tool"],
 )
 
 py_library(
