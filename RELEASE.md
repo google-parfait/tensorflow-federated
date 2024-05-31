@@ -2,13 +2,14 @@
 
 ## Breaking Changes
 
+*   Updated `bazel` to version `6.5.0`.
 *   Updated `rules_python` to version `0.31.0`.
-*   Delete deprecated `tff.learning.build_federated_evaluation`, which was
+*   Deleted deprecated `tff.learning.build_federated_evaluation`, which was
     superseded by `tff.learning.algorithms.build_fed_eval`.
 
 # Release 0.79.0
 
-*   Enable support for models with non-trainable variables in
+*   Enabled support for models with non-trainable variables in
     `tff.learning.models.functional_model_from_keras`.
 *   Removed `farmhashpy` dependency.
 

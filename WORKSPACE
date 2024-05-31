@@ -52,7 +52,7 @@ http_archive(
 )
 
 # This commit is determined by
-# https://github.com/tensorflow/tensorflow/blob/master/third_party/absl/workspace.bzl#L10.
+# https://github.com/tensorflow/tensorflow/blob/v2.16.1/third_party/absl/workspace.bzl#L10.
 http_archive(
     name = "com_google_absl",
     url = "https://github.com/abseil/abseil-cpp/archive/fb3621f4f897824c0dbe0615fa94543df6192f30.tar.gz",
@@ -106,11 +106,13 @@ http_archive(
     strip_prefix = "tensorflow-2.14.0",
 )
 
+# This commit is determined by
+# https://github.com/tensorflow/tensorflow/blob/v2.16.1/third_party/pybind11_abseil/workspace.bzl#L11.
 http_archive(
     name = "pybind11_abseil",
-    url = "https://github.com/pybind/pybind11_abseil/archive/38111ef06d426f75bb335a3b58aa0342f6ce0ce3.tar.gz",
-    sha256 = "6b669901b2ea8b302533c76439d260e502977b1e67c13ddae4cd1a7d7ca1db6a",
-    strip_prefix = "pybind11_abseil-38111ef06d426f75bb335a3b58aa0342f6ce0ce3",
+    url = "https://github.com/pybind/pybind11_abseil/archive/2c4932ed6f6204f1656e245838f4f5eae69d2e29.tar.gz",
+    sha256 = "0223b647b8cc817336a51e787980ebc299c8d5e64c069829bf34b69d72337449",
+    strip_prefix = "pybind11_abseil-2c4932ed6f6204f1656e245838f4f5eae69d2e29",
 )
 
 http_archive(
@@ -120,6 +122,8 @@ http_archive(
     strip_prefix = "pybind11_bazel-2.11.1",
 )
 
+# This commit is determined by
+# https://github.com/tensorflow/tensorflow/blob/v2.16.1/tensorflow/workspace2.bzl#L788.
 http_archive(
     name = "pybind11_protobuf",
     url = "https://github.com/pybind/pybind11_protobuf/archive/80f3440cd8fee124e077e2e47a8a17b78b451363.tar.gz",
