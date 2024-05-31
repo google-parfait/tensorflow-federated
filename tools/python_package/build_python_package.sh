@@ -63,7 +63,7 @@ main() {
   # Create a working directory.
   local temp_dir="$(mktemp -d)"
   trap "rm -rf ${temp_dir}" EXIT
-  cp -LR "tensorflow_federated" "${temp_dir}"
+  cp -LR "." "${temp_dir}"
   pushd "${temp_dir}"
 
   # Create a Python environment.
