@@ -1,5 +1,4 @@
-load("@rules_python//python:defs.bzl", "py_binary", "py_library")
-load("//tensorflow_federated/tools:build_defs.bzl", "py_cpu_gpu_test")
+load("@rules_python//python:defs.bzl", "py_binary", "py_library", "py_test")
 
 package(
     default_applicable_licenses = ["//:package_license"],
@@ -32,7 +31,7 @@ py_library(
     ],
 )
 
-py_cpu_gpu_test(
+py_test(
     name = "simple_fedavg_test",
     size = "medium",
     srcs = ["simple_fedavg_test.py"],

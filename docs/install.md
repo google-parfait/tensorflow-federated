@@ -89,7 +89,7 @@ build tool used to compile Tensorflow Federated.
 
 <pre class="prettyprint lang-bsh">
 <code class="devsite-terminal">mkdir "/tmp/tensorflow_federated"</code>
-<code class="devsite-terminal">bazel run //tensorflow_federated/tools/python_package:build_python_package -- \
+<code class="devsite-terminal">bazel run //tools/python_package:build_python_package -- \
     --output_dir="/tmp/tensorflow_federated"</code>
 </pre>
 

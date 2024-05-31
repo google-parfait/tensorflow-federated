@@ -1,5 +1,5 @@
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
-load("//tensorflow_federated/tools:build_defs.bzl", "py_cpu_gpu_test")
+load("//tools:build_defs.bzl", "py_cpu_gpu_test")
 
 package(
     default_applicable_licenses = ["//:package_license"],
@@ -23,7 +23,7 @@ licenses(["notice"])
 py_library(
     name = "compiler",
     srcs = ["__init__.py"],
-    visibility = ["//tensorflow_federated/tools/python_package:python_package_tool"],
+    visibility = ["//tools/python_package:python_package_tool"],
 )
 
 py_library(

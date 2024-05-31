@@ -17,7 +17,7 @@ package_group(
     name = "data_users",
     includes = [
         "//tensorflow_federated/python:python_packages",
-        "//tensorflow_federated/tools:tools_packages",
+        "//tools:tools_packages",
     ],
 )
 

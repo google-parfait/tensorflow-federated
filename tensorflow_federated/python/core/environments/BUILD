@@ -28,5 +28,5 @@ licenses(["notice"])
 py_library(
     name = "environments",
     srcs = ["__init__.py"],
-    visibility = ["//tensorflow_federated/tools/python_package:python_package_tool"],
+    visibility = ["//tools/python_package:python_package_tool"],
 )

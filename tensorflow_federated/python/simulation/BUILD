@@ -15,7 +15,7 @@ package_group(
 
 package_group(
     name = "simulation_users",
-    includes = ["//tensorflow_federated/tools:tools_packages"],
+    includes = ["//tools:tools_packages"],
 )
 
 licenses(["notice"])

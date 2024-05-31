@@ -12,7 +12,7 @@ It assumes knowledge of `tff.learning` and the
 ## Program Logic
 
 This section defines guidelines for how
-[program logic](http://g3doc/tensorflow_federated/g3doc/program/federated_program.md#program-logic)
+[program logic](https://github.com/google-parfait/tensorflow-federated/blob/main/docs/program/federated_program.md#program-logic)
 should be authored **in `tff.learning`**.
 
 ### Learning Components
@@ -25,5 +25,5 @@ and
 ## Program
 
 Typically
-[programs](http://g3doc/tensorflow_federated/g3doc/program/federated_program.md#programs)
+[programs](https://github.com/google-parfait/tensorflow-federated/blob/main/docs/program/federated_program.md#programs)
 are not authored in `tff.learning`.

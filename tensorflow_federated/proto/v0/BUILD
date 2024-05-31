@@ -13,7 +13,7 @@ licenses(["notice"])
 py_library(
     name = "v0",
     srcs = ["__init__.py"],
-    visibility = ["//tensorflow_federated/tools/python_package:python_package_tool"],
+    visibility = ["//tools/python_package:python_package_tool"],
 )
 
 proto_library(
