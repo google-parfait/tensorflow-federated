@@ -139,9 +139,6 @@ common --experimental_repo_remote_exec
 
 # Config-specific options should come above this line.
 
-# Here are bazelrc configs for release builds
-build --config=v2
-
 build:cuda --action_env=TF_CUDA_VERSION="12"
 build:cuda --action_env=TF_CUDNN_VERSION="8"
 build:cuda --repo_env=TF_CUDA_COMPUTE_CAPABILITIES="sm_60,sm_70,sm_75,compute_80"
