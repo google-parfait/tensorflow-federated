@@ -13,11 +13,13 @@ license(
 
 licenses(["notice"])
 
-exports_files(["LICENSE"])
+exports_files([
+    "LICENSE",
+    "README.md",
+])
 
 filegroup(
-    name = "setup",
-    srcs = ["setup.py"],
-    tags = ["ignore_srcs"],
+    name = "pyproject_toml",
+    srcs = ["pyproject.toml"],
     visibility = ["//tools/python_package:python_package_tool"],
 )
