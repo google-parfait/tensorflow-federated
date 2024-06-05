@@ -67,6 +67,7 @@ main() {
   # Update version.
   find "tensorflow_federated/" -type f \
       -not -path "${release_file}" \
+      | xargs file --mime|sed -e '/charset=binary/d' -e 's/:.*//' \
       | xargs sed --in-place "s/${latest_version}/${version}/g"
 }
 
