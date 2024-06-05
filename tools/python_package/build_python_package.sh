@@ -33,9 +33,6 @@ main() {
   while [[ "$#" -gt 0 ]]; do
     option="$1"
     case "${option}" in
-      --python=*)
-        shift
-        ;;
       --output_dir=*)
         output_dir="${option#*=}"
         shift
@@ -63,7 +60,7 @@ main() {
   fi
 
   # Create a temp directory.
-  local temp_dir="$(mktemp -d)"
+  local temp_dir="$(mktemp --directory)"
   trap "rm -rf ${temp_dir}" EXIT
 
   # Create a Python environment.
