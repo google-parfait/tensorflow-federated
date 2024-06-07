@@ -452,7 +452,7 @@ cc_binary(
         ":aggregator",
         ":intrinsic",
         ":tensor",
-        "@com_google_benchmark//:benchmark_main",
+        "@com_google_benchmark//:benchmark",
     ],
 )
 
@@ -468,6 +468,6 @@ cc_binary(
         ":mutable_string_data",
         ":tensor",
         ":tensor_cc_proto",
-        "@com_google_benchmark//:benchmark_main",
+        "@com_google_benchmark//:benchmark",
     ],
 )

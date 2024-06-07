@@ -19,7 +19,7 @@
 #include <utility>
 #include <vector>
 
-#include "include/benchmark/benchmark.h"
+#include "benchmark/benchmark.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/intrinsic.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/mutable_vector_data.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.h"
@@ -61,3 +61,6 @@ BENCHMARK(BM_FederatedSumAccumulate);
 }  // namespace
 }  // namespace aggregation
 }  // namespace tensorflow_federated
+
+// Run the benchmark
+BENCHMARK_MAIN();
