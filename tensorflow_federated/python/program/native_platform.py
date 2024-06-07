@@ -14,13 +14,8 @@
 """A federated platform implemented using native TFF components."""
 
 import asyncio
-from collections.abc import Awaitable, Callable
-import functools
-import typing
 from typing import Optional, TypeVar, Union
 
-from tensorflow_federated.python.common_libs import async_utils
-from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.execution_contexts import async_execution_context
@@ -43,33 +38,22 @@ _StructStructure = Union[
 ]
 
 
-class AwaitableValueReference(value_reference.MaterializableValueReference):
-  """A `tff.program.MaterializableValueReference` backed by a coroutine function."""
+class NativeValueReference(value_reference.MaterializableValueReference):
+  """A `tff.program.MaterializableValueReference` backed by a task."""
 
   def __init__(
       self,
-      fn: Callable[[], Awaitable[value_reference.MaterializedValue]],
+      task: asyncio.Task,
       type_signature: value_reference.MaterializableTypeSignature,
   ):
-    """Returns an initialized `tff.program.AwaitableValueReference`.
+    """Returns an initialized `tff.program.NativeValueReference`.
 
     Args:
-      fn: A function that returns an `Awaitable` representing the referenced
-        value.
+      task: An `asyncio.Task` to run.
       type_signature: The `tff.Type` of this object.
     """
-    if not callable(fn):
-      raise TypeError(
-          f'Expected a function that returns an `Awaitable`, found {type(fn)}.'
-      )
-    py_typecheck.check_type(
-        type_signature,
-        typing.get_args(value_reference.MaterializableTypeSignature),
-    )
-
-    self._fn = fn
+    self._task = task
     self._type_signature = type_signature
-    self._value = None
 
   @property
   def type_signature(self) -> value_reference.MaterializableTypeSignature:
@@ -78,121 +62,79 @@ class AwaitableValueReference(value_reference.MaterializableValueReference):
 
   async def get_value(self) -> value_reference.MaterializedValue:
     """Returns the referenced value as a numpy scalar or array."""
-    if self._value is None:
-      self._value = await self._fn()
-    return self._value
+    return await self._task
 
   def __eq__(self, other: object) -> bool:
     if self is other:
       return True
-    elif not isinstance(other, AwaitableValueReference):
+    elif not isinstance(other, NativeValueReference):
       return NotImplemented
     return (
-        self._type_signature == other._type_signature and self._fn == other._fn
+        self._type_signature,
+        self._task,
+    ) == (
+        other._type_signature,
+        other._task,
     )
 
 
-def _wrap_in_shared_awaitable(
-    fn: Callable[..., Awaitable[object]]
-) -> Callable[..., async_utils.SharedAwaitable]:
-  """Wraps the returned awaitable in a `tff.async_utils.SharedAwaitable`.
-
-  Args:
-    fn: A function that returns an `Awaitable`.
-
-  Returns:
-    A function that returns a `tff.async_utils.SharedAwaitable`
-  """
-  if not callable(fn):
-    raise TypeError(
-        f'Expected a function that returns an `Awaitable`, found {type(fn)}.'
-    )
-
-  @functools.cache
-  def wrapper(*args: object, **kwargs: object) -> async_utils.SharedAwaitable:
-    awaitable = fn(*args, **kwargs)
-    return async_utils.SharedAwaitable(awaitable)
-
-  return wrapper
-
-
-def _create_structure_of_awaitable_references(
-    fn: Callable[[], Awaitable[value_reference.MaterializableStructure]],
+def _create_structure_of_references(
+    task: asyncio.Task,
     type_signature: computation_types.Type,
-) -> _StructStructure[AwaitableValueReference]:
-  """Returns a structure of `tff.program.AwaitableValueReference`s.
+) -> _StructStructure[NativeValueReference]:
+  """Returns a structure of `tff.program.NativeValueReference`s.
 
   Args:
-    fn: A function that returns an `Awaitable` used to create the structure of
-      `tff.program.AwaitableValueReference`s.
-    type_signature: The `tff.Type` of the value returned by `coro_fn`; must
-      contain only structures, server-placed values, or tensors.
+    task: A task used to create the structure of
+      `tff.program.NativeValueReference`s.
+    type_signature: The `tff.Type` of the value returned by `task`; must contain
+      only structures, server-placed values, or tensors.
 
   Raises:
     NotImplementedError: If `type_signature` contains an unexpected type.
   """
-  if not callable(fn):
-    raise TypeError(
-        f'Expected a function that returns an `Awaitable`, found {type(fn)}.'
-    )
-  py_typecheck.check_type(type_signature, computation_types.Type)
-
-  # A `async_utils.SharedAwaitable` is required to materialize structures of
-  # values multiple times. This happens when a value is released using multiple
-  # `tff.program.ReleaseManager`s.
-  fn = _wrap_in_shared_awaitable(fn)
 
   if isinstance(type_signature, computation_types.StructType):
 
-    async def _to_structure(
-        fn: Callable[[], Awaitable[value_reference.MaterializableStructure]]
-    ) -> structure.Struct:
-      value = await fn()
+    async def _to_structure(task: asyncio.Task) -> structure.Struct:
+      value = await task
       return structure.from_container(value)
 
-    fn = functools.partial(_to_structure, fn)
-
-    # A `tff.async_utils.SharedAwaitable` is required to materialize structures
-    # of values concurrently. This happens when the structure is flattened and
-    # the `tff.program.AwaitableValueReference`s are materialized concurrently,
-    # see `tff.program.materialize_value` for an example.
-    fn = _wrap_in_shared_awaitable(fn)
+    coro = _to_structure(task)
+    task = asyncio.create_task(coro)
 
     async def _get_item(
-        fn: Callable[[], Awaitable[value_reference.MaterializableStructure]],
-        index: int,
+        task: asyncio.Task, index: int
     ) -> value_reference.MaterializedValue:
-      value = await fn()
+      value = await task
       return value[index]
 
     elements = []
     element_types = structure.iter_elements(type_signature)
     for index, (name, element_type) in enumerate(element_types):
-      element_fn = functools.partial(_get_item, fn, index)
-      element = _create_structure_of_awaitable_references(
-          element_fn, element_type
-      )
+      element = _get_item(task, index)
+      element_task = asyncio.create_task(element)
+      element = _create_structure_of_references(element_task, element_type)
       elements.append((name, element))
     return structure.Struct(elements)
   elif (
       isinstance(type_signature, computation_types.FederatedType)
       and type_signature.placement == placements.SERVER
   ):
-    return _create_structure_of_awaitable_references(fn, type_signature.member)
+    return _create_structure_of_references(task, type_signature.member)
   elif isinstance(type_signature, computation_types.SequenceType):
-    return AwaitableValueReference(fn, type_signature)
+    return NativeValueReference(task, type_signature)
   elif isinstance(type_signature, computation_types.TensorType):
-    return AwaitableValueReference(fn, type_signature)
+    return NativeValueReference(task, type_signature)
   else:
     raise NotImplementedError(f'Unexpected type found: {type_signature}.')
 
 
-async def _materialize_structure_of_value_references(
+async def _materialize_structure_of_references(
     value: value_reference.MaterializableStructure,
     type_signature: computation_types.Type,
 ) -> _StructStructure[value_reference.MaterializedValue]:
   """Returns a structure of materialized values."""
-  py_typecheck.check_type(type_signature, computation_types.Type)
 
   async def _materialize(
       value: value_reference.MaterializableValue,
@@ -206,14 +148,14 @@ async def _materialize_structure_of_value_references(
     value = structure.from_container(value)
     element_types = list(structure.iter_elements(type_signature))
     element_awaitables = [
-        _materialize_structure_of_value_references(v, t)
+        _materialize_structure_of_references(v, t)
         for v, (_, t) in zip(value, element_types)
     ]
     elements = await asyncio.gather(*element_awaitables)
     elements = [(n, v) for v, (n, _) in zip(elements, element_types)]
     return structure.Struct(elements)
   elif isinstance(type_signature, computation_types.FederatedType):
-    return await _materialize_structure_of_value_references(
+    return await _materialize_structure_of_references(
         value, type_signature.member
     )
   elif isinstance(type_signature, computation_types.SequenceType):
@@ -233,17 +175,13 @@ class NativeFederatedContext(federated_context.FederatedContext):
     Args:
       context: An `tff.framework.AsyncExecutionContext`.
     """
-    py_typecheck.check_type(
-        context, async_execution_context.AsyncExecutionContext
-    )
-
     self._context = context
 
   def invoke(
       self,
       comp: computation_base.Computation,
       arg: Optional[federated_context.ComputationArgValue],
-  ) -> structure_utils.Structure[AwaitableValueReference]:
+  ) -> structure_utils.Structure[NativeValueReference]:
     """Invokes the `comp` with the argument `arg`.
 
     Args:
@@ -264,7 +202,6 @@ class NativeFederatedContext(federated_context.FederatedContext):
       ValueError: If the result type of `comp` does not contain only structures,
       server-placed values, or tensors.
     """
-    py_typecheck.check_type(comp, computation_base.Computation)
     result_type = comp.type_signature.result
     if not federated_context.contains_only_server_placed_data(result_type):
       raise ValueError(
@@ -278,12 +215,13 @@ class NativeFederatedContext(federated_context.FederatedContext):
         arg: value_reference.MaterializableStructure,
     ) -> value_reference.MaterializedStructure:
       if comp.type_signature.parameter is not None:
-        arg = await _materialize_structure_of_value_references(
+        arg = await _materialize_structure_of_references(
             arg, comp.type_signature.parameter
         )
       return await context.invoke(comp, arg)
 
-    coro_fn = functools.partial(_invoke, self._context, comp, arg)
-    result = _create_structure_of_awaitable_references(coro_fn, result_type)
+    coro = _invoke(self._context, comp, arg)
+    task = asyncio.create_task(coro)
+    result = _create_structure_of_references(task, result_type)
     result = type_conversions.type_to_py_container(result, result_type)
     return result

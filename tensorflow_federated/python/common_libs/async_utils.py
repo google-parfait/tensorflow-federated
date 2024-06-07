@@ -14,92 +14,9 @@
 """Concurrency utilities for use with Python `async`."""
 
 import asyncio
-import sys
 import threading
 
-
 from tensorflow_federated.python.common_libs import tracing
-
-
-class SharedAwaitable:
-  """A wrapper allowing `async` functions to be `await`ed from multiple places.
-
-  `async` functions (those that start with `async def`) are typically `await`ed
-  immediately at their callsite, as in `await foo()`. However, if users want to
-  `await` this value from multiple `async` functions without running `foo()`
-  twice, it can be useful to write something like this:
-
-  ```python
-  foo_coroutine = foo()
-
-  async def fn_one():
-    ...
-    x = await foo_coroutine
-    ...
-
-  async def fn_two():
-    ...
-    x = await foo_coroutine
-    ...
-  ```
-
-  Unfortunately, directly `await`ing the result of an `async` function multiple
-  times is not supported, and will fail with an exception:
-
-  `RuntimeError: cannot reuse already awaited coroutine`
-
-  `SharedAwaitable` fixes this problem:
-
-  ```python
-  foo_coroutine = SharedAwaitable(foo())
-
-  async def fn_one():
-    ...
-    x = await foo_coroutine
-    ...
-
-  async def fn_two():
-    ...
-    x = await foo_coroutine
-    ...
-  ```
-  """
-
-  def __init__(self, awaitable):
-    """Creates a new `SharedAwaitable` from an existing `awaitable`."""
-    self._awaitable = awaitable
-    self._event = None
-    self._result = None
-    self._exception = None
-
-  def __await__(self):
-    # If it's the first await, spawn a separate task to actually run the
-    # awaitable and report back with the result.
-    if self._event is None:
-      self._event = asyncio.Event()
-
-      async def get_result():
-        try:
-          self._result = await self._awaitable
-        except:  # pylint: disable=bare-except
-          self._exception = sys.exc_info()
-        finally:
-          assert self._event is not None
-          self._event.set()
-
-      asyncio.create_task(get_result())
-
-    # Then wait for the result to be reported back.
-
-    async def waiter():
-      assert self._event is not None
-      await self._event.wait()
-      if self._exception is not None:
-        _, exception, traceback = self._exception
-        raise exception.with_traceback(traceback)  # pytype: disable=attribute-error
-      return self._result
-
-    return waiter().__await__()
 
 
 class AsyncThreadRunner:

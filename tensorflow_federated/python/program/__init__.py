@@ -13,6 +13,7 @@
 # limitations under the License.
 """Libraries for creating federated programs."""
 
+# pylint: disable=g-importing-member
 from tensorflow_federated.python.program.client_id_data_source import ClientIdDataSource
 from tensorflow_federated.python.program.client_id_data_source import ClientIdDataSourceIterator
 from tensorflow_federated.python.program.data_source import FederatedDataSource
@@ -29,8 +30,8 @@ from tensorflow_federated.python.program.file_release_manager import CSVSaveMode
 from tensorflow_federated.python.program.file_release_manager import SavedModelFileReleaseManager
 from tensorflow_federated.python.program.logging_release_manager import LoggingReleaseManager
 from tensorflow_federated.python.program.memory_release_manager import MemoryReleaseManager
-from tensorflow_federated.python.program.native_platform import AwaitableValueReference
 from tensorflow_federated.python.program.native_platform import NativeFederatedContext
+from tensorflow_federated.python.program.native_platform import NativeValueReference
 # TODO: b/268497846 - Temporarily disable the `PrefetchingDataSource`, this can
 # be added back to the API surface once the source of the flaky tests can be
 # resolved.
@@ -60,3 +61,4 @@ from tensorflow_federated.python.program.value_reference import MaterializableVa
 from tensorflow_federated.python.program.value_reference import materialize_value
 from tensorflow_federated.python.program.value_reference import MaterializedStructure
 from tensorflow_federated.python.program.value_reference import MaterializedValue
+# pylint: enable=g-importing-member
