@@ -18,10 +18,7 @@ set -e
 
 usage() {
   local script_name=$(basename "${0}")
-  local options=(
-      "--package=<path>"
-  )
-  echo "usage: ${script_name} ${options[@]}"
+  echo "usage: ${script_name} --package=<path>"
   echo "  --package=<path>  A path to a local Python package."
 }
 

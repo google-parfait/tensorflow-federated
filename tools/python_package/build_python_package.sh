@@ -18,10 +18,7 @@ set -e
 
 usage() {
   local script_name=$(basename "${0}")
-  local options=(
-      "--output_dir=<path>"
-  )
-  echo "usage: ${script_name} ${options[@]}"
+  echo "usage: ${script_name} --output_dir=<path>"
   echo "  --output_dir=<path>  An optional output directory (defaults to"
   echo "                       '{BUILD_WORKING_DIRECTORY}/dist')."
 }
