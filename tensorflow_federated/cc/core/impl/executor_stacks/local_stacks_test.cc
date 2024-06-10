@@ -49,13 +49,4 @@ TEST_F(LocalStacksTest, CustomLeafExecutorIsCalled) {
   TFF_EXPECT_OK(CreateLocalExecutor(cards_, mock_executor_fn.AsStdFunction()));
 }
 
-TEST_F(LocalStacksTest, CustomLeafExecutorForClientIsCalled) {
-  MockFunction<absl::StatusOr<std::shared_ptr<Executor>>(std::optional<int>)>
-      mock_executor_fn;
-  EXPECT_CALL(mock_executor_fn, Call(::testing::_))
-      .Times(2)
-      .WillRepeatedly(Return(test_executor_));
-  TFF_EXPECT_OK(CreateLocalExecutor(cards_, mock_executor_fn.AsStdFunction(),
-                                    mock_executor_fn.AsStdFunction()));
-}
 }  // namespace tensorflow_federated

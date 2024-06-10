@@ -34,7 +34,6 @@ def serialize_py_fn_as_tf_computation(
     fn,
     parameter_type: Optional[computation_types.Type],
     context_stack,
-    layout_map=None,
 ):
   """Serializes a TF computation with a given parameter type.
 
@@ -53,8 +52,6 @@ def serialize_py_fn_as_tf_computation(
       parameter, or `None` if the fn doesn't declare any parameters. Either an
       instance of `computation_types.Type`.
     context_stack: The context stack to use.
-    layout_map: Sharding spec for variables or inputs when DTensor based
-      executor is used.
 
   Returns:
     A tuple of (`pb.Computation`, `tff.Type`), where the computation contains
@@ -155,7 +152,6 @@ def serialize_py_fn_as_tf_computation(
       result=result_binding,
       session_token_tensor_name=session_token_tensor.name,
       initialize_op=init_op_name,
-      layout_map=pb.TensorFlow.LayoutMap(name_to_sharding_spec=layout_map),
   )
   return (
       pb.Computation(

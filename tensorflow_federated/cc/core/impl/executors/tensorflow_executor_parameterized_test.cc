@@ -47,7 +47,6 @@ limitations under the License
 #include "tensorflow/core/platform/tstring.h"
 #include "tensorflow_federated/cc/core/impl/executors/array_shape_test_utils.h"
 #include "tensorflow_federated/cc/core/impl/executors/array_test_utils.h"
-#include "tensorflow_federated/cc/core/impl/executors/dtensor_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
 #include "tensorflow_federated/cc/core/impl/executors/tensorflow_executor.h"
@@ -104,7 +103,6 @@ inline v0::TensorFlow::Binding StructB(
 
 // Placeholder Classes for parameterized testing
 class TensorflowExecutor {};
-class DTensorExecutor {};
 
 template <class T>
 std::shared_ptr<Executor> CreateExecutor(TFE_Context* context);
@@ -115,24 +113,11 @@ std::shared_ptr<Executor> CreateExecutor<TensorflowExecutor>(
   return CreateTensorFlowExecutor(/*max_concurrent_computation_calls=*/10);
 }
 
-template <>
-std::shared_ptr<Executor> CreateExecutor<DTensorExecutor>(
-    TFE_Context* context) {
-  return CreateDTensorExecutor(context, std::nullopt, std::nullopt,
-                               /*DTensor converter=*/nullptr,
-                               /*max_concurrent_computation_calls=*/10);
-}
-
 // Enum for Parameterized typed tests.
-enum ExecutorId { kDTensorExecutor, kTensorFlowExecutor };
+enum ExecutorId { kTensorFlowExecutor };
 
 template <class T>
 ExecutorId ExecutorType() {}
-
-template <>
-ExecutorId ExecutorType<DTensorExecutor>() {
-  return kDTensorExecutor;
-}
 
 template <>
 ExecutorId ExecutorType<TensorflowExecutor>() {
@@ -258,7 +243,7 @@ class TensorFlowBasedExecutorsTest : public ::testing::Test {
   }
 };
 
-typedef Types<TensorflowExecutor, DTensorExecutor> Implementations;
+typedef Types<TensorflowExecutor> Implementations;
 
 TYPED_TEST_SUITE(TensorFlowBasedExecutorsTest, Implementations);
 
@@ -313,9 +298,6 @@ v0::Value CreateDatasetReduceComputationV() {
 }
 
 TYPED_TEST(TensorFlowBasedExecutorsTest, CallReduceOnSequence) {
-  if (this->Type() == kDTensorExecutor) {
-    GTEST_SKIP() << "Sequences not supported in DTensor Executor yet";
-  }
   int64_t start = 0;
   int64_t stop = 10;
   int64_t step = 2;
@@ -352,9 +334,6 @@ TYPED_TEST(TensorFlowBasedExecutorsTest, RoundTripStructOfNestedTensors) {
 }
 
 TYPED_TEST(TensorFlowBasedExecutorsTest, RoundTripSequence) {
-  if (this->Type() == kDTensorExecutor) {
-    GTEST_SKIP() << "Sequences not supported in DTensor Executor yet";
-  }
   tensorflow::tstring graph_def = CreateSerializedRangeDatasetGraphDef(
       /*start=*/0, /*stop=*/10, /*step=*/1);
   v0::Value value_pb;
@@ -571,9 +550,6 @@ TYPED_TEST(TensorFlowBasedExecutorsTest, CallWithComputationId) {
 
 TYPED_TEST(TensorFlowBasedExecutorsTest,
            CallArgsIntoSequenceRequiresAtLeastOneArgument) {
-  if (this->Type() == kDTensorExecutor) {
-    GTEST_SKIP() << "Sequences not supported in DTensor Executor yet";
-  }
   OwnedValueId args_into_sequence =
       TFF_ASSERT_OK(this->test_executor_->CreateValue(ArgsIntoSequenceV()));
   OwnedValueId structures =
@@ -586,9 +562,6 @@ TYPED_TEST(TensorFlowBasedExecutorsTest,
 
 TYPED_TEST(TensorFlowBasedExecutorsTest,
            CallArgsIntoSequenceStructureReturnsSequence) {
-  if (this->Type() == kDTensorExecutor) {
-    GTEST_SKIP() << "Sequences not supported in DTensor Executor yet";
-  }
   OwnedValueId args_into_sequence =
       TFF_ASSERT_OK(this->test_executor_->CreateValue(ArgsIntoSequenceV()));
   OwnedValueId structures =
@@ -604,9 +577,6 @@ TYPED_TEST(TensorFlowBasedExecutorsTest,
 }
 
 TYPED_TEST(TensorFlowBasedExecutorsTest, ArgsIntoSequenceReturnsReducible) {
-  if (this->Type() == kDTensorExecutor) {
-    GTEST_SKIP() << "Sequences not supported in DTensor Executor yet";
-  }
   v0::Value elements_pb =
       StructV({TensorV(int64_t{1}), TensorV(int64_t{10}), TensorV(int64_t{100}),
                TensorV(int64_t{1000})});

@@ -75,7 +75,6 @@ def disable_grappler_for_partitioned_calls(proto):
       if original_tf.HasField('parameter')
       else None,
       result=original_tf.result,
-      layout_map=original_tf.layout_map,
   )
   new_proto = computation_pb2.Computation(type=proto.type, tensorflow=tf_block)
   return new_proto

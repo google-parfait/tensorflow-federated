@@ -133,12 +133,7 @@ def build_federated_averaging_process(
       whimsy_model.metric_finalizers(),
   )
 
-  @tff.tensorflow.computation(
-      layout_map={
-          'weights': 'batch,unsharded',
-          'SGD/m/weights': 'batch,unsharded',
-      },
-  )
+  @tff.tensorflow.computation()
   def server_init_tf():
     model = model_fn()
     model_weights = tff.learning.models.ModelWeights.from_model(model)
@@ -156,10 +151,6 @@ def build_federated_averaging_process(
   @tff.tensorflow.computation(
       server_state_type,
       model_weights_type.trainable,
-      layout_map={
-          'weights': 'batch,unsharded',
-          'SGD/m/weights': 'batch,unsharded',
-      },
   )
   def server_update_fn(server_state, model_delta):
     model = model_fn()

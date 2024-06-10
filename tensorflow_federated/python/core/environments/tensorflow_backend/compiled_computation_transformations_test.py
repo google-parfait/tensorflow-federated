@@ -16,7 +16,6 @@ from absl.testing import absltest
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.proto.v0 import computation_pb2
 from tensorflow_federated.python.core.environments.tensorflow_backend import compiled_computation_transformations
 from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_computation_transformations
 from tensorflow_federated.python.core.impl.compiler import building_blocks
@@ -25,10 +24,10 @@ from tensorflow_federated.python.core.impl.compiler import tensorflow_computatio
 from tensorflow_federated.python.core.impl.types import computation_types
 
 
-def _create_compiled_computation(py_fn, parameter_type, layout_map=None):
+def _create_compiled_computation(py_fn, parameter_type):
   proto, type_signature = (
       tensorflow_computation_factory.create_computation_for_py_fn(
-          py_fn, parameter_type, layout_map
+          py_fn, parameter_type
       )
   )
   return building_blocks.CompiledComputation(
@@ -64,9 +63,6 @@ class TensorFlowOptimizerTest(absltest.TestCase):
     tuple_type = computation_types.TensorType(np.int32)
     proto, function_type = tensorflow_computation_factory.create_identity(
         tuple_type,
-        layout_map=computation_pb2.TensorFlow.LayoutMap(
-            name_to_sharding_spec={'v': 'unsharded'}
-        ),
     )
     compiled_computation = building_blocks.CompiledComputation(
         proto, name=None, type_signature=function_type
@@ -81,12 +77,6 @@ class TensorFlowOptimizerTest(absltest.TestCase):
     self.assertIsInstance(transformed_comp, building_blocks.CompiledComputation)
     self.assertTrue(transformed_comp.proto.tensorflow.HasField('parameter'))
     self.assertFalse(transformed_comp.proto.tensorflow.initialize_op)
-    self.assertEqual(
-        transformed_comp.proto.tensorflow.layout_map.name_to_sharding_spec.get(
-            'v'
-        ),
-        'unsharded',
-    )
 
   def test_transform_compiled_computation_returns_compiled_computation_without_empty_fields(
       self,
@@ -103,9 +93,6 @@ class TensorFlowOptimizerTest(absltest.TestCase):
     self.assertTrue(mutated)
     self.assertIsInstance(transformed_comp, building_blocks.CompiledComputation)
     self.assertFalse(transformed_comp.proto.tensorflow.HasField('parameter'))
-    self.assertEmpty(
-        transformed_comp.proto.tensorflow.layout_map.name_to_sharding_spec
-    )
     self.assertFalse(transformed_comp.proto.tensorflow.initialize_op)
 
   def test_transform_compiled_computation_semantic_equivalence(self):

@@ -214,7 +214,6 @@ def create_binary_operator(
     operator: Callable[..., object],
     operand_type: computation_types.Type,
     second_operand_type: Optional[computation_types.Type] = None,
-    layout_map: Optional[pb.TensorFlow.LayoutMap] = None,
 ) -> ComputationProtoAndType:
   """Returns a tensorflow computation computing a binary operation.
 
@@ -240,8 +239,6 @@ def create_binary_operator(
       seocnd argument to the constructed binary operator. If `None`, operator
       uses `operand_type` for both arguments. Must contain only named tuples and
       tensor types.
-    layout_map: Optional LayoutMap to be included in the returned tensorflow
-      computation.
 
   Raises:
     TypeError: If the constraints of `operand_type` are violated or `operator`
@@ -291,7 +288,6 @@ def create_binary_operator(
       graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
       parameter=parameter_binding,
       result=result_binding,
-      layout_map=layout_map,
   )
   return _tensorflow_comp(tensorflow, type_signature)
 
@@ -436,7 +432,6 @@ def create_empty_tuple() -> ComputationProtoAndType:
 
 def create_identity(
     type_signature: computation_types.Type,
-    layout_map: Optional[pb.TensorFlow.LayoutMap] = None,
 ) -> ComputationProtoAndType:
   """Returns a tensorflow computation representing an identity function.
 
@@ -448,8 +443,6 @@ def create_identity(
   Args:
     type_signature: A `computation_types.Type` to use as the parameter type and
       result type of the identity function.
-    layout_map: Optional LayoutMap to be included in the returned tensorflow
-      computation.
 
   Raises:
     TypeError: If `type_signature` contains any types which cannot appear in
@@ -476,13 +469,12 @@ def create_identity(
         f'TensorFlow identity cannot be created for type {type_signature}'
     )
 
-  return create_computation_for_py_fn(identity_fn, parameter_type, layout_map)
+  return create_computation_for_py_fn(identity_fn, parameter_type)
 
 
 def create_computation_for_py_fn(
     fn: Callable[..., object],
     parameter_type: Optional[computation_types.Type],
-    layout_map: Optional[pb.TensorFlow.LayoutMap] = None,
 ) -> ComputationProtoAndType:
   """Returns a tensorflow computation returning the result of `fn`.
 
@@ -492,8 +484,6 @@ def create_computation_for_py_fn(
   Args:
     fn: A Python function.
     parameter_type: A `computation_types.Type` or `None`.
-    layout_map: Optional LayoutMap to be included in the returned tensorflow
-      computation.
   """
   if parameter_type is not None:
     py_typecheck.check_type(parameter_type, computation_types.Type)
@@ -516,6 +506,5 @@ def create_computation_for_py_fn(
       graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
       parameter=parameter_binding,
       result=result_binding,
-      layout_map=layout_map,
   )
   return _tensorflow_comp(tensorflow, type_signature)

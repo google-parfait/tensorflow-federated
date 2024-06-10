@@ -72,7 +72,6 @@ py_library(
         "//tensorflow_federated/python/core/impl/execution_contexts:sync_execution_context",
         "//tensorflow_federated/python/core/impl/executor_stacks:cpp_executor_factory",
         "//tensorflow_federated/python/core/impl/executors:executor_bindings",
-        "//tensorflow_federated/python/core/impl/executors:executor_factory",
     ],
 )
 
