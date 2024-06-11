@@ -19,10 +19,10 @@ import unittest
 
 from absl.testing import absltest
 from absl.testing import parameterized
+from google.protobuf import message
 import numpy as np
 import tensorflow as tf
 
-from google.protobuf import message
 from tensorflow_federated.python.program import file_utils
 
 
