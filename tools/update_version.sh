@@ -87,6 +87,7 @@ main() {
     exit 1
   fi
 
+  # Get the `RELEASE.md`.
   local release_file="tensorflow_federated/RELEASE.md"
   if [[ ! -f "${release_file}" ]]; then
     echo "error: expected the release file '${release_file}' to exist" 1>&2
@@ -105,7 +106,7 @@ main() {
     fi
   fi
 
-  # Update RELEASE.md.
+  # Update `RELEASE.md`.
   sed --in-place \
       "s/# Unreleased/# Unreleased\n\n# Release ${version}/" \
       "${release_file}"
