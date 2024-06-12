@@ -20,9 +20,12 @@
 #include <cmath>
 #include <cstddef>
 #include <memory>
+#include <string>
 #include <type_traits>
 #include <utility>
+#include <vector>
 
+#include "absl/strings/str_cat.h"
 #include "absl/types/span.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_vector.h"
@@ -108,6 +111,13 @@ class Tensor final {
     return AggVector<T>(data_.get());
   }
 
+  // Returns the elements of the tensor as a vector of strings. This can be
+  // called on tensors of any type. The elements of the tensor are formatted as
+  // strings using absl::StrCat.
+  std::vector<std::string> AsStringVector() const {
+    DTYPE_CASES(dtype_, T, return TensorValuesToStringVector<T>());
+  }
+
   // Provides access to the (numerical) tensor data as an integral scalar.
   // Values are automatically casted and rounded.
   template <typename T, typename std::enable_if<
@@ -172,6 +182,18 @@ class Tensor final {
     TFF_CHECK(internal::TypeTraits<T>::kDataType == dtype_)
         << "Incompatible tensor dtype()";
     return reinterpret_cast<const T*>(data_->data());
+  }
+
+  template <typename T>
+  std::vector<std::string> TensorValuesToStringVector() const {
+    std::vector<std::string> vec(num_elements());
+    if (num_elements() > 0) {
+      AggVector<T> agg_vector = AsAggVector<T>();
+      for (auto [i, v] : agg_vector) {
+        vec[i] = absl::StrCat(v);
+      }
+    }
+    return vec;
   }
 
   // Tensor data type.
