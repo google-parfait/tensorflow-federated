@@ -1,5 +1,8 @@
 # Unreleased
 
+*   Added a helper function to get a vector of strings for the elements of a
+    tensor in order to aid in formatting.
+
 # Release 0.80.0
 
 ## Breaking Changes
