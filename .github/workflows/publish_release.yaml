@@ -72,9 +72,10 @@ jobs:
     - name: Get the description
       run: |
         description='$(sed --quiet \
-            "/^# Release ${{ env.version }}$/,/^# Release /p" \
+            "/^## Release ${{ env.version }}$/,/^## Release /p" \
             "RELEASE.md" \
-            | head --lines=-1)'
+            | head --lines=-1 \
+            | sed "s/^#//")'
         {
           echo "description<<EOF"
           echo "${description}"

@@ -23,12 +23,16 @@ usage() {
 }
 
 get_latest_version() {
-  sed --silent --regexp-extended 's/^# Release (.*)$/\1/p' "${release_file}" \
+  sed --silent --regexp-extended \
+      's/^## Release (.*)$/\1/p' \
+      "${release_file}" \
       | head --lines=1
 }
 
 get_unreleased_notes() {
-  sed --silent '0,/^# Release /p' "${release_file}" \
+  sed --silent \
+      '/^## Unreleased$/,/^## Release /p' \
+      "${release_file}" \
       | head --lines=-1
 }
 
@@ -99,7 +103,7 @@ main() {
 
   # Confirm release notes.
   if [[ "${yes}" != "true" ]]; then
-    get_unreleased_notes | sed "s/# Unreleased/# Release ${version}/"
+    get_unreleased_notes | sed "s/^## Unreleased$/## Release ${version}/"
     read -r -p "Do these release notes look correct (y/n)?"
     if [[ "${REPLY}" != "y" ]]; then
       exit 0
@@ -108,7 +112,7 @@ main() {
 
   # Update `RELEASE.md`.
   sed --in-place \
-      "s/# Unreleased/# Unreleased\n\n# Release ${version}/" \
+      "s/^## Unreleased$/## Unreleased\n\n## Release ${version}/" \
       "${release_file}"
 
   # Update files.

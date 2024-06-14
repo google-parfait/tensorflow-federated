@@ -1,61 +1,78 @@
-# Unreleased
+# Release Notes
 
-*   Added a helper function to get a vector of strings for the elements of a
-    tensor in order to aid in formatting.
+All notable changes to this project will be documented in this file.
 
-# Release 0.80.0
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to
+[Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Breaking Changes
+## Unreleased
 
-*   Move the `tools` package to the root of the repository.
+### Added
+
+*   A helper function to get a vector of strings for the elements of a tensor in
+    order to aid in formatting.
+
+### Changed
+
+*   The format of the release notes (i.e., `RELEASE.md`) to be based on
+    https://keepachangelog.com/en/1.1.0/.
+
+## Release 0.80.0
+
+### Breaking Changes
+
+*   Moved the `tools` package to the root of the repository.
 *   Updated `bazel` to version `6.5.0`.
 *   Updated `rules_python` to version `0.31.0`.
 *   Deleted deprecated `tff.learning.build_federated_evaluation`, which was
     superseded by `tff.learning.algorithms.build_fed_eval`.
 
-# Release 0.79.0
+## Release 0.79.0
+
+### Major Features and Improvements
 
 *   Enabled support for models with non-trainable variables in
     `tff.learning.models.functional_model_from_keras`.
+
+### Breaking Changes
+
 *   Removed `farmhashpy` dependency.
-
-## Breaking Changes
-
 *   Updated `com_github_grpc_grpc` to version `1.50.0`.
 *   Moved the TFF repository from https://github.com/tensorflow/federated to
     https://github.com/google-parfait/tensorflow-federated.
 
-# Release 0.78.0
+## Release 0.78.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   Moved aggregation from https://github.com/google-parfait/federated-compute
     to TFF to consolidate the federated language and remove circular
     dependencies.
 
-## Breaking Changes
+### Breaking Changes
 
 *   Updated `rules_license` to version `0.0.8`.
 *   Removed `elias_gamma_encode` module.
 *   Removed `tensorflow_compression` dependency.
 
-# Release 0.77.0
+## Release 0.77.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   Added an implementation of `__eq__()` on `building blocks`.
 *   Added a new field, `content`, to the `Data` building block and updated
     tests.
 
-## Bug Fixes
+### Bug Fixes
 
 *   Fixed #4588: Target Haswell CPU architectures (`-march=haswell`) instead of
     whatever is native to the build infrastructure to ensure that binaries in
     the pip package and executable on Colab CPU runtimes.
 
-# Release 0.76.0
+## Release 0.76.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   Added a `Literal` to the TFF language, part 2. This change updates the
     tracing and execution portions of TFF to begin using the `Literal`.
@@ -63,19 +80,19 @@
     `tff.learning.optimizers.build_adafactor`
 *   Added a new field, `content`, to the `Data` proto.
 
-## Breaking Changes
+### Breaking Changes
 
 *   Removed the `check_foo()` methods on building blocks.
 *   Removed `tff.data`, this symbol is not used.
 
-## Bug Fixes
+### Bug Fixes
 
 *   Fixed a bug where the pip package default executor stack cannot execute
     computations that have `Lambda`s under `sequence_*` intrinsics.
 
-# Release 0.75.0
+## Release 0.75.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   Updated the type annotation for MaterializedValue to include the Python
     scalar types in addition to the numpy scalar types.
@@ -85,20 +102,20 @@
     `tff.learning.algorithms.build_weighted_fed_avg_with_optimizer_schedule` to
     support `tff.learning.models.FunctionalModel`.
 
-## Breaking Changes
+### Breaking Changes
 
 *   Deleted the `tff.learning.framework` namespace⚰️.
 
-## Bug Fixes
+### Bug Fixes
 
 *   Fixed logic for determining if a value can be cast to a specific dtype.
 *   Fixed a bug where repeated calls to
     `FilePerUserClientData.create_tf_dataset_for_client` could blow up memory
     usage
 
-# Release 0.74.0
+## Release 0.74.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   Make some of the C++ executor APIs public visibility for downstream repos.
 *   Moved the `DataType` protobuf object into its own module. Moving the
@@ -113,14 +130,14 @@
 *   Improved the errors raised by JAX computations for various types.
 *   Updated tutorials to use recommended `tff.learning` APIs.
 
-## Breaking Changes
+### Breaking Changes
 
 *   Removed the runtime-agnostic support for `tf.RaggedTensor` and
     `tf.SparseTensor`.
 
-# Release 0.73.0
+## Release 0.73.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   Make some of the C++ executor APIs public visibility for downstream repos.
 *   `tff.learning.algorithms.build_fed_kmeans` supports floating point weights,
@@ -129,38 +146,38 @@
     `tff.learning.metrics.finalize_then_sample` and
     `tff.learning.metrics.FinalizeThenSampleFactory`.
 
-## Breaking Changes
+### Breaking Changes
 
 *   Remove the ability to return `SequenceType` from `tff.federated_computation`
     decorated callables.
 
-## Bug Fixes
+### Bug Fixes
 
 *   `tff.learning` algorithms now correctly do *not* include metrics for clients
     that had zero weight due to model updates containing non-finite values.
     Previously the update was rejected, but the metrics still aggregated.
 
-# Release 0.72.0
+## Release 0.72.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   Added an async XLA runtime under `tff.backends.xla`.
 
-## Breaking Changes
+### Breaking Changes
 
 *   Updated `tensorflow-privacy` version to `0.9.0`.
 *   Removed the deprecated `type_signature` parameter from the
     `tff.program.ReleaseManager.release` method.
 
-# Release 0.71.0
+## Release 0.71.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   Added new environment-specific packages to TFF.
 
-# Release 0.70.0
+## Release 0.70.0
 
-## Breaking Changes
+### Breaking Changes
 
 *   Temporarily disable `tff.program.PrefetchingDataSource` due to flakiness
     from a lack of determinism.
@@ -170,19 +187,19 @@
 *   Removed support for creating a `tff.TensorType` using a `tf.dtypes.DType`.
 *   Removed `tff.check_return_type`.
 
-## Bug Fixes
+### Bug Fixes
 
 *   Declared `OwnedValueId::INVALID_ID` as a static constexpr.
 
-# Release 0.69.0
+## Release 0.69.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   The `local_unfinalized_metrics_type` argument to
     tff.learning.metrics.(secure_)sum_then_finalize is now optional (and is not
     actually used). It will be removed in a future release.
 
-## Breaking Changes
+### Breaking Changes
 
 *   tff.learning.metrics.(secure_)sum_then_finalize now return polymorphic
     computations. They can still be passed into algorithm builders (e.g.
@@ -192,9 +209,9 @@
     `tensorflow_to_type` instead.
 *   Removed support for calling `tff.TensorType` using a `tf.dtypes.DType`.
 
-# Release 0.68.0
+## Release 0.68.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   Added `tff.types.tensorflow_to_type` function to convert structures
     containing tensorflow type specs into a `tff.Type`.
@@ -205,7 +222,7 @@
 *   Deprecated the `type_signature` parameter for the
     `tff.program.ReleaseManager.release` method.
 
-## Breaking Changes
+### Breaking Changes
 
 *   Removed the implementation of `tff.Value.__add__`.
 *   Removed the deprecated `tff.Type.check_*()` functions, use `isinstance`
@@ -218,15 +235,15 @@
 *   Removed support for handling `tf.RaggedTensor` and `tf.SparseTensor` using
     `infer_type`.
 
-# Release 0.67.0
+## Release 0.67.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   Updated the representation of a tff.TensorType.dtype to be a `np.dtype`
     instead of `tf.dtypes.Dtype`.
 *   Added `tff.program.DelayedReleaseManager`.
 
-## Breaking Changes
+### Breaking Changes
 
 *   Removed `check_allowed_ops` from the `framework` package.
 *   Removed `check_disallowed_ops` from the `framework` package.
@@ -236,27 +253,27 @@
 *   Removed `type_from_tensors` from the `framework` package.
 *   Updated the version of `rules_python` to `0.23.0`.
 
-## Bug Fixes
+### Bug Fixes
 
 *   Temporary pin `googleapis-common-protos` to version `1.61.0` to work around
     an issue with a transitive dependency.
 
-# Release 0.66.0
+## Release 0.66.0
 
-## Breaking Changes
+### Breaking Changes
 
 *   Removed the capability to pass a `tf.TensorShape` as the shape of a
     `tff.TensorType`.
 
-## Bug Fixes
+### Bug Fixes
 
 *   Correctly materialize `SERVER` placed values out of the C++ execution stack
     when using StreamingRemoteExecutor instead of returning an error about
     placement not found.
 
-# Release 0.65.0
+## Release 0.65.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   Update the representation of a `tff.TensorType.shape` to be a
     `tff.types.ArrayShape` instead of `tf.TensorShape`.
@@ -264,15 +281,15 @@
 *   Updated `type_to_py_container``to be able to handle`tff.SequenceTypes` with
     an unknown Python type.
 
-## Breaking Changes
+### Breaking Changes
 
 *   Moved `tff.structure_from_tensor_type_tree` to
     `tff.types.structure_from_tensor_type_tree`.
 *   Remove the capability to pass an `int` as the shape of a `tff.TensorType`.
 
-# Release 0.64.0
+## Release 0.64.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   Updated the TFF project and the Python package to be compatible with Python
     3.11.
@@ -280,7 +297,7 @@
     to support multiple trials in parallel.
 *   Added support for using non-OrderedDict mapping types.
 
-## Breaking Changes
+### Breaking Changes
 
 *   Updated the version of `grpc` to `v1.59.1`.
 *   Updated the version of `bazel` to `6.1.0`.
@@ -288,16 +305,16 @@
 *   Updated the version of `numpy` to `~=1.25`.
 *   Updated the version of `com_google_googletest` to `1.12.1`.
 
-## Bug Fixes
+### Bug Fixes
 
 *   Fixed import path for Vizier in federated program example.
 *   Fixed serialization of TenshorShape in error message to be human readable.
 *   Fixed bug in `tff.program.FileProgramStateManager` removing old program
     state.
 
-# Release 0.63.0
+## Release 0.63.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   Added `tff.federated_min` and `tff.federated_max` intrinsics.
 *   Added a `get_value()` method to `tff.program.SavedModelFileReleaseManager,`
@@ -310,7 +327,7 @@
 *   Added parallelism to Vizier program logic.
 *   Enabled building protos with certain Bazel versions.
 
-## Breaking Changes
+### Breaking Changes
 
 *   Updated the version of `attrs` to `23.1`.
 *   Updated the version of `cachetools` to `~=5.3`.
@@ -329,7 +346,7 @@
     use `isinstance` checks instead.
 *   Deleted go-related BUILD targets for TFF proto files.
 
-## Bug Fixes
+### Bug Fixes
 
 *   Removed non-existent GCP doc from TFF guides.
 *   Cleaned up exceptions in the `tff.program` package for consistency and
@@ -339,23 +356,23 @@
 *   Fixed a `UnicodeDecodeError` in the FedRecon tutorial.
 *   Fixed Python 3.11 related errors.
 
-# Release 0.62.0
+## Release 0.62.0
 
-## Breaking Changes
+### Breaking Changes
 
 *   Removed `context` argument from
     `tff.learning.algorithms.build_personalization_eval_computation`. Now a
     personalization function only takes a model, a train dataset, and a test
     dataset as arguments.
 
-## Bug Fixes
+### Bug Fixes
 
 *   Fix a rare infinite loop issue caused by very small float values when using
     `tff.learning.ddp_secure_aggregator`.
 
-# Release 0.61.0
+## Release 0.61.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   Updated the type annotation for the `dtype` parameter to `tff.TensorType`.
 *   Added adaptive tuning function to `ThresholdSampling` class.
@@ -366,7 +383,7 @@
 *   Switched `tff.learning.algorithms.build_fed_recon_eval` to use a stateful
     metrics aggregator.
 
-## Breaking Changes
+### Breaking Changes
 
 *   Removed `tff.learning.models.ReconstructionModel.from_keras_model`, which
     has been replaced by
@@ -376,21 +393,21 @@
     `check_not_none`. They are unused or can be replaced by Python type
     annotations.
 
-## Bug Fixes
+### Bug Fixes
 
 *   Fixed a small bug in the TFF SGDM optimizer, to only track momentum as a
     hparam if it is both specified and nonzero.
 
-# Release 0.60.0
+## Release 0.60.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   DTensor TF executor is now integrated with the default TFF C++ worker.
 *   Added federated program documentation and guidelines.
 *   Removed the `pytype` dependency from TFF.
 *   `tff.learning.algorithms.build_fed_recon_eval` now supports TFF optimizers.
 
-## Breaking Changes
+### Breaking Changes
 
 *   Updated `tff.types.deserialize_type` to not accept/return `None`.
 *   Removed the `tff.framework.ComputationBuildingBlock.is_foo` methods.
@@ -400,42 +417,42 @@
     that global and local variables are disjoint, raise ValueError if they are
     not.
 
-## Bug Fixes
+### Bug Fixes
 
 *   Fixed `tff.learning.models.ReconstructionModel.has_only_global_variables`
     (it was returning incorrect value).
 
-# Release 0.59.0
+## Release 0.59.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   Removed compression for `worker_binary`.
 *   Allowed tensor and numpy float-like objects in optimizer hyperparameters.
 *   Improved API/filtering logic in `FilteringReleaseManager`.
 
-## Breaking Changes
+### Breaking Changes
 
 *   Renamed `build_personalization_eval` to
     `build_personalization_eval_computation`.
 *   Updated `tff.to_type` implementation and type annotation to not
     accept/return `None`.
 
-## Bug Fixes
+### Bug Fixes
 
 *   Fixed and documented pytype errors in the `program` package.
 *   Fixed bug in how `tff.program.NativeFederatedContext` handles arguments of
     various types.
 
-# Release 0.58.0
+## Release 0.58.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   Updated algorithms built from `tff.learning.models.FunctionalModel` to allow
     nested outputs.
 *   Added the `PrefetchingDataSource` back to the `tff.program` API now that the
     flakiness has been fixed.
 
-## Bug Fixes
+### Bug Fixes
 
 *   Changed return type of
     `tff.simulation.compose_dataset_computation_with_learning_process` to be a
@@ -445,13 +462,13 @@
 *   Cleaned up error messages and typing information in
     `tff.learning.optimizers`.
 
-# Release 0.57.0
+## Release 0.57.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   Allow functional models to return a structure.
 
-## Breaking Changes
+### Breaking Changes
 
 *   Removed support for handling `attrs` as containers in the `tff.program` API.
 *   Migrated the `personalization_eval` module to the algorithms package.
@@ -462,21 +479,21 @@
 *   Updated to `dp-accounting` version `0.4.1`.
 *   Updated to `tensorflow-privacy` version `0.8.9`.
 
-# Release 0.56.0
+## Release 0.56.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   Added Vizier backed tuning program logic to `tff.learning`.
 *   Updated the `tff.learning.programs.EvaluationManager` to clean up states
     after recording the evaluation is completed.
 
-## Breaking Changes
+### Breaking Changes
 
 *   Removed deprecated `tff.learning.framework.ServerState` symbol.
 
-# Release 0.55.0
+## Release 0.55.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   Removed `nest_asyncio` dependency from tutorials.
 *   Added a new
@@ -486,17 +503,17 @@
 *   Updated `tff.learning.programs.EvaluationManager` to set the evaluation
     deadline from the start time.
 
-## Breaking Changes
+### Breaking Changes
 
 *   Python runtime deleted; C++ runtime covers all known use-cases.
 
-## Bug Fixes
+### Bug Fixes
 
 *   Fixed a bug attempting to push `tf.data.Dataset` iterator ops onto GPUs.
 
-# Release 0.54.0
+## Release 0.54.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   Added attributes to `tff.learning.programs.EvaluationManager`, this enables
     constructing new `EvaluationManager`s from existing ones.
@@ -506,7 +523,7 @@
 *   Replaced usage of `attrs` in `tff.aggregators` with `typing.NamedTuple`.
 *   Removed introducing dependency on relayout op for control edges.
 
-## Breaking Changes
+### Breaking Changes
 
 *   Removed `run_server` and `server_context` from the `tff.simulation` API.
 *   Removed the following symbols from the `tff.framework` API:
@@ -515,14 +532,14 @@
     *   `tff.framework.DataExecutor`
     *   `tff.framework.EagerTFExecutor`
 
-## Bug Fixes
+### Bug Fixes
 
 *   Removed use of deprecated tff.learning symbols, and clear cell image
     outputs.
 
-# Release 0.53.0
+## Release 0.53.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   Updated TF version to 2.12.0.
 *   Relaxed runtime type checks on `tff.learning.templates.LearningProcess` to
@@ -532,7 +549,7 @@
 *   Updated the `tff.program.FederatedDataSourceIterator`s so that they can be
     serialized.
 
-## Breaking Changes
+### Breaking Changes
 
 *   Deleted the `forward_pass` attribute from the `FunctionalModel` interface.
 *   Removed `from_keras_model`, `MetricsFinalizersType`, `BatchOutput`, `Model`,
@@ -546,32 +563,32 @@
 *   Renamed the `tff.backends.test` APIs to:
     `tff.backends.test.(create|set)_(sync|async)_test_cpp_execution_context`.
 
-# Release 0.52.0
+## Release 0.52.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   Exposed `tff.backends.mapreduce.consolidate_and_extract_local_processing` as
     public API.
 *   Updated the federated program API to be able to handle `tff.Serializable`
     objects.
 
-## Breaking Changes
+### Breaking Changes
 
 *   Deprecated handling `attrs` classes as containers in the `tff.program` API.
 *   Updated `tff.learning.algorithms` implementations to use
     `tff.learning.models.FunctionalModel.loss` instead of
     `FunctionalModel.forward_pass`.
 
-## Bug Fixes
+### Bug Fixes
 
 *   Avoid using `sys.stdout` and `sys.stderr` in `subprocess.Popen` when
     executing inside an IPython context.
 *   Added a `SequenceExecutor` to the C++ execution stack to handle `sequence_*`
     intrinsics.
 
-# Release 0.51.0
+## Release 0.51.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   Enabled, improved, and fixed Python type annotations in some modules.
 *   Added the interface of `loss_fn` to `tff.learning.models.FunctionalModel`,
@@ -580,21 +597,21 @@
     protos that are sent to child executors.
 *   Added an executor binding for `DTensor` based executor.
 
-## Breaking Changes
+### Breaking Changes
 
 *   Deprecated `tff.framework.DataBackend`. Python execution is deprecated
     instead use CPP Execution.
 
-## Bug Fixes
+### Bug Fixes
 
 *   Fixed the formulation of the JIT constructed mapped selection computation
     that is sent to the remote machine in streaming mode.
 *   Fixed the usage of `np.bytes_` types that incorrectly truncate byte string
     with null terminator.
 
-# Release 0.50.0
+## Release 0.50.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   Added client learning rate measurements to
     `tff.learning.algorithms.build_weighted_fed_avg_with_optimizer_schedule`
@@ -604,7 +621,7 @@
     layout information is specified for input parameters or variables in the
     graph.
 
-## Breaking Changes
+### Breaking Changes
 
 *   Deprecated the following API, Python execution is deprecated instead use CPP
     execution:
@@ -620,21 +637,21 @@
 *   Remove the `executors_errors` module from the `tff.framework` API, use
     `tff.framework.RetryableError` instead.
 
-## Bug Fixes
+### Bug Fixes
 
 *   Fixed potential lifetime issue in C++ RemoteExecutor
 *   Enabled and fixed python type annotations in many packages.
 *   Fixed one-off error in evaluation criteria in training program logic.
 
-# Release 0.49.0
+## Release 0.49.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   Created the Baselines API of the GLDv2 (landmark) dataset for simulation,
     with a GLDv2 preprocessing function, a GLDv2 tasks function, and a Google
     mirror of the GLDv2 baselines tasks.
 
-## Breaking Changes
+### Breaking Changes
 
 *   Temporarily removed `tff.program.PrefetchingDataSource`, the
     PrefetchingDataSourceIterator tests are flaky and it's not immediately clear
@@ -675,20 +692,20 @@
     function to match the name of
     `execution_context.(create|set)_(sync|async)_local_cpp_execution_context`.
 
-## Bug Fixes
+### Bug Fixes
 
 *   Fixed bug in FLAIR download URLs.
 *   Enabled and fixed python type annotations in many packages.
 
-# Release 0.48.0
+## Release 0.48.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   Implemented divisive split logic needed by DistributeAggregateForm, which is
     currently under development and will replace MapReduceForm and BroadcastForm
     in the future.
 
-## Breaking Changes
+### Breaking Changes
 
 *   Renamed the `cpp_execution_context.(create|set)_local_cpp_execution_context`
     function to match the name of
@@ -698,24 +715,24 @@
 *   Removed `ExecutorService` from the public API.
 *   Deleted the local async python execution context.
 
-## Bug Fixes
+### Bug Fixes
 
 *   Enabled and fixed python type annotations in some modules in the
     `executors`, `types`, and `core` package.
 
-# Release 0.47.0
+## Release 0.47.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   Added a `LayoutMap` message in the computation proto for TensorFlow
     `DTensor` based execution.
 
-## Breaking Changes
+### Breaking Changes
 
 *   Removed the `compiler_fn` parameter from the high level
     `*_mergeable_execution_context` functions.
 
-## Bug Fixes
+### Bug Fixes
 
 *   Aligned the context types allowed by the
     `tff.program.NativeFederatedContext` and the
@@ -723,9 +740,9 @@
 *   Updated `build_functional_model_delta_update` to use `ReduceDataset` ops to
     rely on MLIR Bridge for XLA compilation and TPU usage.
 
-# Release 0.46.0
+## Release 0.46.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   Added parameter and implementation for C++ remote executor to stream the
     values in a structure across the gRPC interface.
@@ -734,20 +751,20 @@
 *   Replaced `GroupNorm` implementation with implementation from Keras.
 *   Added `tff.simulations.datasets.flair` APIs for the FLAIR dataset.
 
-## Breaking Changes
+### Breaking Changes
 
 *   Removed file extension for `model_output_manager` used in
     `tff.learning.programs`
 
-## Bug Fixes
+### Bug Fixes
 
 *   Enabled and fixed python type annotations in some modules.
 *   Changed `tff.learning.algorithms.build_weighted_fed_prox` parameter
     validation to allow `proximal_strength = 0.0`, matching the pydoc.
 
-# Release 0.45.0
+## Release 0.45.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   Integrated the `CppToPythonExecutorBridge` into the `CPPExecutorFactory`.
 *   Changed Python Remote Executor to decompose and stream structures in Compute
@@ -755,7 +772,7 @@
     `stream_structs` to
     `tff.backends.native.set_localhost_cpp_execution_context()` API.
 
-## Breaking Changes
+### Breaking Changes
 
 *   Renamed `tff.backends.native.set_localhost_cpp_execution_context()` to
     `backends.native.set_sync_local_cpp_execution_context()`.
@@ -765,15 +782,15 @@
 *   Removed the `SyncSerializeAndExecuteCPPContext` and
     `AsyncSerializeAndExecuteCPPContext` classes.
 
-## Bug Fixes
+### Bug Fixes
 
 *   Fixed usage of `typing.Generic` in the learning package.
 *   Enabled pytype analysis for some modules.
 *   Fixed lint and formatting issues for some modules.
 
-# Release 0.44.0
+## Release 0.44.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   Improved the Python type annotations for `tff.program` API.
 *   Extended the metrics interface on FunctionalModel to accept the entire
@@ -781,20 +798,20 @@
     predictions).
 *   Introduced a DTensor Executor.
 
-## Bug Fixes
+### Bug Fixes
 
 *   Fixed async RuntimeWarning in the `tff.program.NativeFederatedContext`.
 
-# Release 0.43.0
+## Release 0.43.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   Improve serialization method to allow structures larger than 2 GiB (~500
     million model parameters):
     *   `tff.learning.models.FunctionalModel`
     *   `tff.programs.FileProgramStateManager`
 
-## Bug Fixes
+### Bug Fixes
 
 *   Fix a bug using `copy.deepcopy` for structures of awaitables (non-pickable)
     in `tff.learning.programs`.
@@ -802,20 +819,20 @@
     `tff.learning.programs.EvaluationManager` where the restarted evaluation
     would overwrite released metrics.
 
-# Release 0.42.0
+## Release 0.42.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   Reduced memory usage for entropy compression.
 *   Updated `com_google_protobuf` version to `v3.19.0`.
 *   Removed dependency on `six`.
 
-## Breaking Changes
+### Breaking Changes
 
 *   Removed default value for the key parameter from the abstract base class
     `tff.program.ReleaseManager`.
 
-## Bug Fixes
+### Bug Fixes
 
 *   Fixed a whitespace syntax issue with shutting down a process when using the
     localhost C++ execution context.
@@ -823,9 +840,9 @@
     raises on non-integer inputs.
 *   Only wait a subprocess instance if it is not None.
 
-# Release 0.41.0
+## Release 0.41.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   TFF-C++ runtime now installed by default. Note that this release will have a
     significantly larger PIP package size.
@@ -835,28 +852,28 @@
 *   Updated `tensorflow_compression` to version `2.11.0`.
 *   Updated `bazel_skylib` to version `1.3.0`.
 
-# Release 0.40.0
+## Release 0.40.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   Skip model updates that are non-finite in
     `tff.learning.templates.build_apply_optimizer_finalizer`.
 
-## Breaking Changes
+### Breaking Changes
 
 *   Removed deprecated APIs in `tff.learning.framework`
 *   Update the Python package scripts to use Python 3.10 by default.
 *   Remove module wildcard imports from **init**.py files in TFF.
 *   Update the Python package scripts to use Python 3.10 by default.
 
-## Bug Fixes
+### Bug Fixes
 
 *   Remove `functools.wraps` within `tff.tf_computation`.
 *   Fix typo in iNaturalist dataset docstring.
 
-# Release 0.39.0
+## Release 0.39.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   Added `tff.learning.models.FunctionModel` support to all methods in
     `tff.learning.algorithms`.
@@ -871,14 +888,14 @@
     *   `tff.learning.framework.build_model_delta_optimizer_process`
     *   `tff.learning.framework.ClientDeltaFn`
 
-## Bug Fixes
+### Bug Fixes
 
 *   Fixed a bug in the “Client-efficient large-model federated learning”
     tutorial to use the correct dense shape.
 
-# Release 0.38.0
+## Release 0.38.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   Added `tff.learning.models.FunctionalModel` support to
     `tff.learning.algorithms.build_mime_lite`.
@@ -888,7 +905,7 @@
 *   Added `tff.simulation.datasets.gldv2.get_synthetic`.
 *   Added prefetching data source in `tff.program.PrefetchingDataSource`.
 
-## Breaking Changes
+### Breaking Changes
 
 *   Deleted deprecated
     `tff.learning.framework.build_encoded_broadcast_process_from_model`.
@@ -897,21 +914,21 @@
     `tff.learning.models.ModelWeights`. Code should be updated before the next
     release.
 
-## Bug Fixes
+### Bug Fixes
 
 *   Fixed a bug with variable creation order of metrics in
     `tff.learning.models.functional_model_from_keras`.
 *   Improved `tff.tf_computation` tracing to also trace `functools.partial`
     objects.
 
-## Known Bugs
+### Known Bugs
 
 *   Colab compatibility: TFF requires Python 3.9 while Colab runtime uses Python
     3.7.
 
-# Release 0.37.0
+## Release 0.37.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   Added support for Python 3.10.
 *   Improved support for `numpy` values in the `tff.program` API.
@@ -920,13 +937,13 @@
 *   Added new metrics aggregation factories under `tff.learning.metrics`.
 *   Parallelized aggregation in `tff.framework.ComposingExecutorFactory`.
 
-## Breaking Changes
+### Breaking Changes
 
 *   Updated to use `jax` and `jaxlib` version `0.3.14`.
 *   Renamed `tff.program.CoroValueReference` to
     `tff.program.AwaitableValueReference` to reflect the relaxed contract.
 
-## Bug Fixes
+### Bug Fixes
 
 *   Improved documentation for `tff.simulation.build_uniform_sampling_fn`,
     `tff.learning.robust_aggregator`,
@@ -942,14 +959,14 @@
 *   Fixed bug in the federated program API when using multiple release managers
     to release the same value.
 
-## Thanks to our Contributors
+### Thanks to our Contributors
 
 This release contains contributions from many people at Google, as well as:
 Madhava Jay, nbishdev@
 
-# Release 0.36.0
+## Release 0.36.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   Added support for `tff.learning.models.FunctionalModel` to
     `tff.learning.algorithms.build_fed_sgd` and
@@ -957,20 +974,20 @@ Madhava Jay, nbishdev@
 *   Increased the gRPC message limit from 1 GB to 2 GB.
 *   Added hyperparameter getters/setters to various components in tff.learning.
 
-## Breaking Changes
+### Breaking Changes
 
 *   Updated `tensorflow` to version `2.10`.
 
-## Bug Fixes
+### Bug Fixes
 
 *   Improved documentation for
     `tff.analytics.heavy_hitters.iblt.build_iblt_computation()`.
 *   Fixed incorrect docstring of `tff.federated_select`.
 *   Fixed typo in federated program example.
 
-# Release 0.35.0
+## Release 0.35.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   Added get/set_hparams methods to `tff.learning.templates.ClientWorkProcess`.
 *   Added `tff.learning.algorithms.build_mime_lite_with_optimizer_schedule`.
@@ -981,24 +998,24 @@ Madhava Jay, nbishdev@
     `tff.program.ClientIdDataSourceIterator`, for working with a data source of
     ids of federated clients.
 
-## Breaking Changes
+### Breaking Changes
 
 *   Removed prototype IREE backend.
 *   Added new dependency on TensorFlow Compression.
 
-## Bug Fixes
+### Bug Fixes
 
 *   Fixed implementation of the `loading_remote_data` tutorial.
 *   Corrected the docstring of
     `tff.simulation.datasets.stackoverflow.get_synthetic`.
 
-## Known Bugs
+### Known Bugs
 
 *   TFF's Python 3.9 typing conflicts with Colab's Python 3.7 runtime.
 
-# Release 0.34.0
+## Release 0.34.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   Updated to use `Bazel` version `5.3.0`.
 *   Updated the conventions used to specify the version of a Python dependency,
@@ -1017,7 +1034,7 @@ Madhava Jay, nbishdev@
     to the GitHub repo (so not part of the PIP package) which detail a technical
     deep dive into TFF.
 
-## Breaking Changes
+### Breaking Changes
 
 *   Bumped tf-privacy version to `0.8.4`.
 *   Bumped tf-model-optimization version to `0.8.3`.
@@ -1030,65 +1047,65 @@ Madhava Jay, nbishdev@
     and no longer takes an `initialize` argument.
 *   `MapReduceForm` no longer contains an `initialize` attribute.
 
-## Bug Fixes
+### Bug Fixes
 
 *   Relaxed overly strict type equivalence check to assignability in TFF-TF code
     generation.
 
-# Release 0.33.0
+## Release 0.33.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   Extend `tff.analytics.heavy_hitters.iblt` with `create_chunker` API for
     encoding non-Unicode strings.
 *   Extend `tff.aggregators.DifferentiallyPrivateFactory.tree_aggregation` with
     an optional `record_aggregation_factory` argument.
 
-## Breaking Changes
+### Breaking Changes
 
 *   Replaced `ModularClippingSumFactory` with `SecureModularSumFactory` in
     `tff.analytics.build_hierarchical_histogram_process`.
 
-## Known Bugs
+### Known Bugs
 
 *   TFF's python 3.9 typing conflicts with Colab's Python 3.7 support.
 
-# Release 0.32.0
+## Release 0.32.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   Add a MimeLite implementation that allows from optimizer learning rate
     scheduling in
     `tff.learning.algorithms.build_mime_lite_with_optimizer_schedule`.
 
-## Breaking Changes
+### Breaking Changes
 
 *   None
 
-## Bug Fixes
+### Bug Fixes
 
 *   None
 
-## Known Bugs
+### Known Bugs
 
 *   TFF's python 3.9 typing conflicts with Colab's Python 3.7 support.
 
-# Release 0.31.0
+## Release 0.31.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   Added `ReleaseManager`s to make authoring program logic more convenient.
 *   Updated TFFs `attrs` dependency to version `21.4.0`.
 *   Update TFFs `tensorflow-privacy` dependency to version `0.8.1`.
 
-## Breaking Changes
+### Breaking Changes
 
 *   Changed `tff.learning.BatchOutput` from an attrs class to a namedtuple.
 *   Removed unused `tff.learning.framework.parameter_count_from_model` API.
 
-# Release 0.30.0
+## Release 0.30.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   Add tests for `namedtuple`s in the `tff.program` package.
 *   Add `num_subrounds` parameter to the mergeable context, allowing callers to
@@ -1097,7 +1114,7 @@ Madhava Jay, nbishdev@
     updates to the helper function `create_functional_metric_fns` and the
     downstream caller `tff.learning.algorithms.build_weighted_fed_avg`.
 
-## Bug Fixes
+### Bug Fixes
 
 *   Fix typo in the types constructed for testing the `tff.program` package.
 *   Fix some program example typos.
@@ -1110,9 +1127,9 @@ Madhava Jay, nbishdev@
 *   Use Python 3.7 compatible type annotations until Colab updates to Python
     3.9.
 
-# Release 0.29.0
+## Release 0.29.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   Update the `MemoryReleaseManager` to save `type_signature` when releasing
     values.
@@ -1121,32 +1138,32 @@ Madhava Jay, nbishdev@
 *   Update the TFF contributions and collaboration links to point to the Discord
     server.
 
-## Breaking Changes
+### Breaking Changes
 
 *   Move Python executor stacks file to `python_executor_stacks.py` in
     `executor_stacks` directory.
 
-## Bug Fixes
+### Bug Fixes
 
 *   Ensure that dataset deserialization will return ragged and sparse tensors,
     as needed according to the TFF type of the dataset.
 *   Make `metric_finalizers` use metric constructors if available.
 
-# Release 0.28.0
+## Release 0.28.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   Updated tutorials to use `tff.learning.algorithms` API.
 *   Asynchronous TFF execution contexts no longer assume a single global
     cardinality; they concurrently invoke any computation for which concurrency
     is requested.
 
-## Breaking Changes
+### Breaking Changes
 
 *   Removed `tff.learning.build_federated_averaging_process`; users should
     migrate to `tff.learning.algorithms.build_weighted_fed_avg`.
 
-## Bug Fixes
+### Bug Fixes
 
 *   Clarified semantics for TFF-C++ multimachine `Dispose`, `DisposeExecutor`,
     and executor keying, to avoid raising exceptions and spamming logs in the
@@ -1157,7 +1174,7 @@ Madhava Jay, nbishdev@
     `MergeableCompForm`, removing spurious failures on dependent-aggregation
     checking.
 
-## Known Bugs
+### Known Bugs
 
 *   Serialization / deserialization of tf.data.Datasets yielding non-dense
     tensors for multimachine runtime may encounter issues:
@@ -1166,23 +1183,23 @@ Madhava Jay, nbishdev@
     *   `tff.framework.serialize_value` may fail to serialize tf.data.Datasets
         yielding SparseTensors.
 
-# Release 0.27.0
+## Release 0.27.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   New Colab notebook illustrating how to use `DataBackend` to load remote
     datasets.
 *   Added a CreateDataDescriptor helper function.
 *   Added a worker binary serving the TFF-C++ executor service.
 
-## Bug Fixes
+### Bug Fixes
 
 *   Fixed bug with intermediate aggregation and controller failures, causing
     hangs.
 
-# Release 0.26.0
+## Release 0.26.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   Updated TensorFlow to `2.9.1`.
 *   Update pybind11 to `2.9.2`.
@@ -1198,13 +1215,13 @@ Madhava Jay, nbishdev@
 *   Adds convenience function for setting a local async CPP execution context.
 *   Move jax components into a non-experimental namespace.
 
-## Breaking Changes
+### Breaking Changes
 
 *   Switch compilation flag `_GLIBCXX_USE_CXX11_ABI` to `1`.
 
-# Release 0.25.0
+## Release 0.25.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   Adds error message logging to TFF C++ execution context.
 *   Adds test coverage for C++ runtime with aggregators.
@@ -1216,7 +1233,7 @@ Madhava Jay, nbishdev@
     *   Relax the type check on LearningProcess from strictly SequenceType to
         also allow structures of SequenceType.
 
-## Breaking Changes
+### Breaking Changes
 
 *   Remove usage of `tff.test.TestCase`, `tff.test.main()`, and delete
     `test_case` module.
@@ -1228,13 +1245,13 @@ Madhava Jay, nbishdev@
 *   Remove usage of deprecated numpy types.
 *   Replace depreciated `random_integers` with `randint`.
 
-## Bug Fixes
+### Bug Fixes
 
 *   Fix numpy warning.
 
-# Release 0.24.0
+## Release 0.24.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   Added `asyncio.run` call to metrics manager release calls to ensure
     compatibility with
@@ -1247,38 +1264,38 @@ Madhava Jay, nbishdev@
     `tff.learning.templates.LearningProcess`.
 *   Added logging of expected sequential computations to local TFF-C++ runtime.
 
-## Breaking Changes
+### Breaking Changes
 
 *   Moved asserts from `tff.test.TestCase` to `tff.test.*` as functions.
 *   Removed `assert_type_assignable_from` function.
 *   Moved `assert_nested_struct_eq` to the `type_conversions_test` module.
 *   Removed `client_train_process` and fedavg_ds_loop comparisons.
 
-## Bug Fixes
+### Bug Fixes
 
 *   Fixed comparisons to enums in the benchmarks package.
 *   Fixed `async_utils.SharedAwaitable` exception raiser.
 *   Fixed various lint errors.
 
-# Release 0.23.0
+## Release 0.23.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   Deprecated `tff.learning.build_federated_averaging_process`.
 *   Added an API to convert `tf.keras.metrics.Metric` to a set of pure
     `tf.functions`.
 
-## Breaking Changes
+### Breaking Changes
 
 *   Renamed `ProgramStateManager.version` to `ProgramStateManager.get_versions`.
 
-## Bug Fixes
+### Bug Fixes
 
 *   Fixed the "datasets/" path in the working with TFF's ClientData tutorial.
 
-# Release 0.22.0
+## Release 0.22.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   Updated .bazelversion to `5.1.1`.
 *   Updated the `tff.program` API to use `asyncio`.
@@ -1289,25 +1306,25 @@ Madhava Jay, nbishdev@
 *   `tff.analytics`
     *   Added new `analytic_gauss_stddev` API.
 
-## Breaking Changes
+### Breaking Changes
 
 *   Renamed `ProgramStateManager.version` to `ProgramStateManager.get_versions`.
 
-## Bug Fixes
+### Bug Fixes
 
 *   Fixed some Python lint errors related to linting Python 3.9.
 *   Cleaned up stale TODOs throughout the codebase.
 
-## Known Bugs
+### Known Bugs
 
 *   Version 0.21.0 currently fails to import in
     [colab](https://colab.research.google.com) if the version of Python is less
     than Python 3.9. Please use a runtime with a version of Python greater than
     Python 3.9 or use TFF version 0.20.0.
 
-# Release 0.21.0
+## Release 0.21.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   `tff.analytics`
     *   Added new `tff.analytics.IbltFactory` aggregation factory.
@@ -1334,18 +1351,18 @@ Madhava Jay, nbishdev@
         cardinalities, rather than resetting the cardinality in the remote
         service.
 
-## Breaking Changes
+### Breaking Changes
 
 *   Removed support for Python 3.7 and 3.8, TFF supports 3.9 and later.
 *   Removed deprecated attributes `report_local_outputs` and
     `federated_output_computation` from `tff.learning.Model`
 *   Removed the `ingest` method from `tff.Context`
 
-## Bug Fixes
+### Bug Fixes
 
 *   Multiple typos in tests, code comments, and pydoc.
 
-## Known Bugs
+### Known Bugs
 
 *   Sequences (datasets) of SparseTensors don't work on the C++ runtime.
 *   Computations when `CLIENTS` cardinality is zero doesn't work on the Python
@@ -1353,9 +1370,9 @@ Madhava Jay, nbishdev@
 *   Assigning variables to a Keras model after construction inside a `model_fn`
     results in a non-deterministic graph.
 
-# Release 0.20.0
+## Release 0.20.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   Added `tff.program` API; this API is still in active development but can be
     used to compose shared and platform specific: program logic, components, and
@@ -1435,7 +1452,7 @@ Madhava Jay, nbishdev@
 *   Added `com_google_absl` version `20211102.0`.
 *   Added `tensorflow_org` version `v2.8.0`.
 
-## Breaking Changes
+### Breaking Changes
 
 *   Removed support for building source on MacOS.
 *   Removed support for Python 3.6.
@@ -1457,7 +1474,7 @@ Madhava Jay, nbishdev@
 *   Removed `tff.learning.framework.EnhancedModel`.
 *   Removed `tff.learning.framework.build_stateless_mean`.
 
-## Bug Fixes
+### Bug Fixes
 
 *   Fixed broken links in documentation.
 *   Fixed many pytype errors.
@@ -1465,9 +1482,9 @@ Madhava Jay, nbishdev@
 *   Fixed bug where `tff.simulation.datasets.gldv2.load_data()` would result in
     an error.
 
-# Release 0.19.0
+## Release 0.19.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   Introduced new intrinsics: `federated_select` and `federated_secure_select`.
 *   New `tff.structure_from_tensor_type_tree` to help manipulate structures of
@@ -1478,7 +1495,7 @@ Madhava Jay, nbishdev@
 *   Initial experimental support for `tff.jax_computation`.
 *   Extend `tff.tf_computation` support to `SpareTensor` and `RaggedTensor`.
 
-## Breaking Changes
+### Breaking Changes
 
 *   Update gRPC dependency to 1.34.
 *   Moved `ClientData` interface and implementations to
@@ -1494,7 +1511,7 @@ Madhava Jay, nbishdev@
 *   Removes `HDF5ClientData` and `h5py` pip dependency.
 *   Removes `setattr` functionality on `tff.ValueImpl`.
 
-## Bug Fixes
+### Bug Fixes
 
 *   Improved `tf.GraphDef` comparisons.
 *   Force close generators used for sending functions to computation wrappers,
@@ -1505,9 +1522,9 @@ Madhava Jay, nbishdev@
 *   Fix `ClientData.create_dataset_from_all_clients` consuming unreasonable
     amounts of memory/compute time.
 
-# Release 0.18.0
+## Release 0.18.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   Extended the `tff.simulation` package to add many new tools for running
     simulations (checkpoints and metrics managers, client sampling functions).
@@ -1521,7 +1538,7 @@ Madhava Jay, nbishdev@
     `federated_secure_sum` intrinsic.
 *   Added the `tff.experimental` package to expose less stable API.
 
-## Breaking Changes
+### Breaking Changes
 
 *   Replaced the `tff.aggregators.AggregationProcessFactory` abstract base class
     with the `tff.aggregators.UnweightedAggregationFactory` and the
@@ -1538,13 +1555,13 @@ Madhava Jay, nbishdev@
 *   Updated `tensorflow-addons` package dependency to `0.12.0`.
 *   Updated `tensorflow-model-optimization` package dependency to `0.5.0`.
 
-## Bug Fixes
+### Bug Fixes
 
 *   Fixed issue with the `sequence_reduce` intrinsic handling federated types.
 
-# Release 0.17.0
+## Release 0.17.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   New `tff.aggregators` package with interfaces for stateful aggregation
     compositions.
@@ -1561,7 +1578,7 @@ Madhava Jay, nbishdev@
     with `use_experimental_simulation_loop` argument to better utilize multi-GPU
     setups.
 
-## Breaking Changes
+### Breaking Changes
 
 *   Removed `tff.utils.StatefulFn`, replaced by `tff.templates.MeasuredProcess`.
 *   Removed `tff.learning.assign_weights_to_keras_model`
@@ -1572,7 +1589,7 @@ Madhava Jay, nbishdev@
 *   Updated TensorFlow dependency to `2.3.0`.
 *   Updated TensorFlow Model Optimization dependency to `0.4.0`.
 
-## Bug Fixes
+### Bug Fixes
 
 *   Fixed streaming mode hang in remote executor.
 *   Wrap `collections.namedtuple._asdict` calls in `collections.OrderedDict` to
@@ -1584,7 +1601,7 @@ Madhava Jay, nbishdev@
 *   Fix TFF ingestion of Keras models with shared embeddings.
 *   Closed hole in compilation to CanonicalForm.
 
-## Known Bugs
+### Known Bugs
 
 *   "Federated Learning for Image Classification" tutorial fails to load
     `projector` plugin for tensorboard.
@@ -1592,31 +1609,31 @@ Madhava Jay, nbishdev@
 *   Certain Keras models with activity regularization fail in execution with
     unliftable error (https://github.com/tensorflow/federated/issues/913).
 
-## Thanks to our Contributors
+### Thanks to our Contributors
 
 This release contains contributions from many people at Google, as well as:
 
 amitport, ronaldseoh
 
-# Release 0.16.1
+## Release 0.16.1
 
-## Bug Fixes
+### Bug Fixes
 
 *   Fixed issue preventing Python `list`s from being `all_equal` values.
 
-# Release 0.16.0
+## Release 0.16.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   Mirrored user-provided types and minimize usage of `AnonymousTuple`.
 
-## Breaking Changes
+### Breaking Changes
 
 *   Renamed `AnonymousTuple` to `Struct`.
 
-# Release 0.15.0
+## Release 0.15.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   Updated `tensorflow-addons` package dependency to `0.9.0`.
 *   Added API to expose the native backend more conveniently. See
@@ -1636,7 +1653,7 @@ amitport, ronaldseoh
 *   Enabled usage of GPUs on remote workers.
 *   Documentation improvements.
 
-## Breaking Changes
+### Breaking Changes
 
 *   The `IterativeProcess` return from
     `tff.learning.build_federated_averaging_process` and
@@ -1651,29 +1668,29 @@ amitport, ronaldseoh
     to ensure compilation results can be cached. Any custom implementations of
     this interface should be updated accordingly.
 
-## Bug Fixes
+### Bug Fixes
 
 *   Fixed issue for missing variable initialization for variables explicitly not
     added to any collections.
 *   Fixed issue where table initializers were not run if the
     `tff.tf_computation` decorated function used no variables.
 
-## Thanks to our Contributors
+### Thanks to our Contributors
 
 This release contains contributions from many people at Google, as well as:
 
 jvmcns@
 
-# Release 0.14.0
+## Release 0.14.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   Multiple TFF execution speedups.
 *   New `tff.templates.MeasuredProcess` specialization of `IterativeProcess`.
 *   Increased optimization of the `tff.templates.IterativeProcess` ->
     `tff.backends.mapreduce.CanonicalForm` compiler.
 
-## Breaking Changes
+### Breaking Changes
 
 *   Moved `tff.utils.IterativeProcess` to `tff.templates.IterativeProcess`.
 *   Removed `tff.learning.TrainableModel`, client optimizers are now arguments
@@ -1681,54 +1698,54 @@ jvmcns@
 *   Bump required version of pip packages for tensorflow (2.2), numpy (1.18),
     pandas (0.24), grpcio (1.29).
 
-## Bug Fixes
+### Bug Fixes
 
 *   Issue with GPUs in multimachine simulations not being utilized, and bug on
     deserializing datasets with GPU-backed runtime.
 *   TensorFlow lookup table initialization failures.
 
-## Known Bugs
+### Known Bugs
 
 *   In some situations, TF will attempt to push Datasets inside of tf.functions
     over GPU device boundaries, which fails by default. This can be hit by
     certain usages of TFF,
     [e.g. as tracked here](https://github.com/tensorflow/federated/issues/832).
 
-## Thanks to our Contributors
+### Thanks to our Contributors
 
 This release contains contributions from many people at Google, as well as:
 
 jvmcns@
 
-# Release 0.13.1
+## Release 0.13.1
 
-## Bug Fixes
+### Bug Fixes
 
 *   Fixed issues in tutorial notebooks.
 
-# Release 0.13.0
+## Release 0.13.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   Updated `absl-py` package dependency to `0.9.0`.
 *   Updated `h5py` package dependency to `2.8.0`.
 *   Updated `numpy` package dependency to `1.17.5`.
 *   Updated `tensorflow-privacy` package dependency to `0.2.2`.
 
-## Breaking Changes
+### Breaking Changes
 
 *   Deprecated `dummy_batch` parameter of the `tff.learning.from_keras_model`
     function.
 
-## Bug Fixes
+### Bug Fixes
 
 *   Fixed issues with executor service using old executor API.
 *   Fixed issues with remote executor test using old executor API.
 *   Fixed issues in tutorial notebooks.
 
-# Release 0.12.0
+## Release 0.12.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   Upgraded tensorflow dependency from `2.0.0` to `2.1.0`.
 *   Upgraded tensorflow-addons dependency from `0.6.0` to `0.7.0`.
@@ -1757,7 +1774,7 @@ jvmcns@
 *   Automatically call `tff.federated_zip` on inputs to other federated
     intrinsics.
 
-## Breaking Changes
+### Breaking Changes
 
 *   Dropped support for Python2.
 *   Renamed `tff.framework.create_local_executor` (and similar methods) to
@@ -1765,23 +1782,23 @@ jvmcns@
 *   Deprecated `federated_apply()`, instead use `federated_map()` for all
     placements.
 
-## Bug Fixes
+### Bug Fixes
 
 *   Fixed problem with different instances of the same model having different
     named types. `tff.learning.ModelWeights` no longer names the tuple fields
     returned for model weights, instead relying on an ordered list.
 *   `tff.sequence_*` on unplaced types now correctly returns a `tff.Value`.
 
-## Known Bugs
+### Known Bugs
 
 *   `tff.sequence_*`.. operations are not implemented yet on the new
     high-performance executor stack.
 *   A subset of previously-allowed lambda captures are no longer supported on
     the new execution stack.
 
-# Release 0.11.0
+## Release 0.11.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   Python 2 support is now deprecated and will be removed in a future release.
 *   `federated_map` now works with both `tff.SERVER` and `tff.CLIENT`
@@ -1790,12 +1807,12 @@ jvmcns@
     recursively.
 *   Added retry logic to gRPC calls in the execution stack.
 
-## Breaking Changes
+### Breaking Changes
 
 *   `collections.OrderedDict` is now required in many places rather than
     standard Python dictionaries.
 
-## Bug Fixes
+### Bug Fixes
 
 *   Fixed computation of the number of examples when Keras is using multiple
     inputs.
@@ -1805,15 +1822,15 @@ jvmcns@
 *   Fixed support for `dir()` in `ValueImpl`.
 *   Fixed a number of issues in the Colab / Jupyter notebook tutorials.
 
-# Release 0.10.1
+## Release 0.10.1
 
-## Bug Fixes
+### Bug Fixes
 
 *   Updated to use `grpcio` `1.24.3`.
 
-# Release 0.10.0
+## Release 0.10.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   Add a `federated_sample` aggregation that is used to collect a sample of
     client values on the server using reservoir sampling.
@@ -1826,9 +1843,9 @@ jvmcns@
     asynchronous.
 *   PY2 and PY3 compatibility.
 
-# Release 0.9.0
+## Release 0.9.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   TFF is now fully compatible and dependent on TensorFlow 2.0
 *   Add stateful aggregation with differential privacy using TensorFlow Privacy
@@ -1839,61 +1856,61 @@ jvmcns@
     starting simulations on GCP.
 *   New libraries for creating synthetic IID and non-IID datsets in simulation.
 
-## Breaking Changes
+### Breaking Changes
 
 *   `examples` package split to `simulation` and `research`.
 
-## Bug Fixes
+### Bug Fixes
 
 *   Various error message string improvements.
 *   Dataset serialization fixed for V1/V2 datasets.
 *   `tff.federated_aggregate` supports `accumulate`, `merge` and `report`
     methods with signatures containing tensors with undefined dimensions.
 
-# Release 0.8.0
+## Release 0.8.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   Improvements in the executor stack: caching, deduplication, bi-directional
     streaming mode, ability to specify physical devices.
 *   Components for integration with custom mapreduce backends
     (`tff.backends.mapreduce`).
-*   Improvements in simulation dataset APIs: ConcreteClientData, random seeds,
+*   Improvements in simulation dataset APIs: `ConcreteClientData`, random seeds,
     stack overflow dataset, updated documentation.
 *   Utilities for encoding and various flavors of aggregation.
 
-## Breaking Changes
+### Breaking Changes
 
 *   Removed support for the deprecated `tf.data.Dataset` string iterator handle.
 *   Bumps the required versions of grpcio and tf-nightly.
 
-## Bug Fixes
+### Bug Fixes
 
 *   Fixes in notebooks, typos, etc.
 *   Assorted fixes to align with TF 2.0.
 *   Fixes thread cleanup on process exit in the high-performance executor.
 
-## Thanks to our Contributors
+### Thanks to our Contributors
 
 This release contains contributions from many people at Google, as well as:
 
 Gui-U@, Krishna Pillutla, Sergii Khomenko.
 
-# Release 0.7.0
+## Release 0.7.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   High-performance simulation components and tutorials.
 
-## Breaking Changes
+### Breaking Changes
 
 *   Refactoring/consolidation in utility functions in tff.framework.
 *   Switches some of the tutorials to new PY3-only executor stack components.
 
-## Bug Fixes
+### Bug Fixes
 
 *   Includes the `examples` directory in the pip package.
-*   Pip installs for TensorFlow and TFF in turorials.
+*   Pip installs for TensorFlow and TFF in tutorials.
 *   Patches for asyncio in tutorials for use in Jupyter notebooks.
 *   Python 3 compatibility issues.
 *   Support for `federated_map_all_equal` in the reference executor.
@@ -1901,13 +1918,13 @@ Gui-U@, Krishna Pillutla, Sergii Khomenko.
 *   Fixes missed link in compatibility section of readme.
 *   Adds some of the missing intrinsic reductions.
 
-## Thanks to our Contributors
+### Thanks to our Contributors
 
 This release contains contributions from many people at Google.
 
-# Release 0.6.0
+## Release 0.6.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   Support for multiple outputs and loss functions in `keras` models.
 *   Support for stateful broadcast and aggregation functions in federated
@@ -1917,24 +1934,24 @@ This release contains contributions from many people at Google.
 *   Shuffle `client_ids` in `create_tf_dataset_from_all_clients` by default to
     aid optimization.
 
-## Breaking Changes
+### Breaking Changes
 
 *   Dependencies added to `requirements.txt`; in particular, `grpcio` and
     `portpicker`.
 
-## Bug Fixes
+### Bug Fixes
 
 *   Removes dependency on `tf.data.experimental.NestedStructure`.
 
-## Thanks to our Contributors
+### Thanks to our Contributors
 
 This release contains contributions from many people at Google, as well as:
 
 Dheeraj R Reddy, @Squadrick.
 
-# Release 0.5.0
+## Release 0.5.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   Removed source level TF dependencies and switched from `tensorflow` to
     `tf-nightly` dependency.
@@ -1943,57 +1960,57 @@ Dheeraj R Reddy, @Squadrick.
 *   New AST transformations and optimizations.
 *   Preserve Python container usage in `tff.tf_computation`.
 
-## Bug Fixes
+### Bug Fixes
 
 *   Updated TFF model to reflect Keras `tf.keras.model.weights` order.
 *   Keras model with multiple inputs. #416
 
-# Release 0.4.0
+## Release 0.4.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   New `tff.simulation.TransformingClientData` API and associated infinite
     EMNIST dataset (see http://tensorflow.org/federated/api_docs/python/tff for
     details)
 
-## Breaking Change
+### Breaking Change
 
 *   Normalized `func` to `fn` across the repository (rename some parameters and
     functions)
 
-## Bug Fixes
+### Bug Fixes
 
 *   Wrapped Keras models can now be used with
     `tff.learning.build_federated_evaluation`
 *   Keras models with non-trainable variables in intermediate layers (e.g.
-    BatchNormalization) can be assigned back to Keras models with
+    `BatchNormalization`) can be assigned back to Keras models with
     `tff.learning.ModelWeights.assign_weights_to`
 
-# Release 0.3.0
+## Release 0.3.0
 
-## Breaking Changes
+### Breaking Changes
 
 *   Rename `tff.learning.federated_average` to `tff.learning.federated_mean`.
 *   Rename 'func' arguments to 'fn' throughout the API.
 
-## Bug Fixes
+### Bug Fixes
 
 *   Assorted fixes to typos in documentation and setup scripts.
 
-# Release 0.2.0
+## Release 0.2.0
 
-## Major Features and Improvements
+### Major Features and Improvements
 
 *   Updated to use TensorFlow version 1.13.1.
 *   Implemented Federated SGD in `tff.learning.build_federated_sgd_process()`.
 
-## Breaking Changes
+### Breaking Changes
 
 *   `next()` function of `tff.utils.IteratedProcess`s returned by
     `build_federated_*_process()` no longer unwraps single value tuples (always
     returns a tuple).
 
-## Bug Fixes
+### Bug Fixes
 
 *   Modify setup.py to require TensorFlow 1.x and not upgrade to 2.0 alpha.
 *   Stop unpacking single value tuples in `next()` function of objects returned
@@ -2001,6 +2018,6 @@ Dheeraj R Reddy, @Squadrick.
 *   Clear cached Keras sessions when wrapping Keras models to avoid referencing
     stale graphs.
 
-# Release 0.1.0
+## Release 0.1.0
 
-Initial public release.
+*   Initial public release.
