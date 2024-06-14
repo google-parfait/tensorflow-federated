@@ -21,6 +21,10 @@ and this project adheres to
     to `DPGroupByFactory`, because closed-domain histogram algorithm will use
     `DPGroupingFederatedSum` but not demand a positive `linfinity_bound`.
 
+### Removed
+
+*   The `tff.async_utils` package, use `asyncio` instead.
+
 ## Release 0.80.0
 
 ### Breaking Changes

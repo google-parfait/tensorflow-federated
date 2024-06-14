@@ -30,12 +30,6 @@ py_library(
     deps = [":tracing"],
 )
 
-py_test(
-    name = "async_utils_test",
-    srcs = ["async_utils_test.py"],
-    deps = [":async_utils"],
-)
-
 py_library(
     name = "deprecation",
     srcs = ["deprecation.py"],

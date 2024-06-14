@@ -15,7 +15,6 @@ py_library(
         ":version",
         "//tensorflow_federated/python/aggregators",
         "//tensorflow_federated/python/analytics",
-        "//tensorflow_federated/python/common_libs:async_utils",
         "//tensorflow_federated/python/common_libs:deprecation",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/common_libs:tracing",

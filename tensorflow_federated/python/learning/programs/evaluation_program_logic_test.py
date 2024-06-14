@@ -58,7 +58,9 @@ class _NumpyMatcher:
     return f'_NumpyMatcher({self._value})'
 
 
-class ExtractAndRewrapMetricsTest(tf.test.TestCase):
+class ExtractAndRewrapMetricsTest(
+    tf.test.TestCase, unittest.IsolatedAsyncioTestCase
+):
 
   def test_extracts_substructure_adds_prefix(self):
     test_structure = collections.OrderedDict(
@@ -105,13 +107,15 @@ class ExtractAndRewrapMetricsTest(tf.test.TestCase):
             path=('foo', 'bad_path'),
         )
 
-  def test_federated_value_structure(self):
+  async def test_federated_value_structure(self):
 
     def awaitable_value(value, value_type):
       async def _value():
         return value
 
-      return native_platform.AwaitableValueReference(_value, value_type)
+      coro = _value()
+      task = asyncio.create_task(coro)
+      return native_platform.NativeValueReference(task, value_type)
 
     test_value = collections.OrderedDict(
         a=awaitable_value('foo', computation_types.TensorType(np.str_)),
