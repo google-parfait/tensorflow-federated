@@ -165,7 +165,7 @@ TEST(DPGroupingFederatedSumTest, CatchInvalidNormType) {
               HasSubstr("numerical Tensors"));
 }
 
-TEST(DPGroupingFederatedSumTest, CatchInvalidNormValues) {
+TEST(DPGroupingFederatedSumTest, PermitNegativeNormValues) {
   Intrinsic intrinsic{kDPSumUri,
                       {CreateTensorSpec("value", DT_INT64)},
                       {CreateTensorSpec("value", DT_INT64)},
@@ -173,9 +173,7 @@ TEST(DPGroupingFederatedSumTest, CatchInvalidNormValues) {
                       {}};
 
   auto aggregator_status = CreateTensorAggregator(intrinsic);
-  EXPECT_THAT(aggregator_status, StatusIs(INVALID_ARGUMENT));
-  EXPECT_THAT(aggregator_status.status().message(),
-              HasSubstr("must be positive"));
+  TFF_EXPECT_OK(aggregator_status);
 }
 
 Intrinsic CreateDefaultIntrinsic() {

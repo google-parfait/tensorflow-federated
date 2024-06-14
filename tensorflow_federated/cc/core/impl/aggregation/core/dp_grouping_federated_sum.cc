@@ -40,10 +40,9 @@ namespace aggregation {
 
 // Below is an implementation of a sum grouping aggregator for numeric types,
 // with clipping of Linfinity, L1, and L2 norms as determined by the
-// parameters linfinity_bound_, l1_bound_, and l2_bound_.
-// l1_bound_ and l2_bound_ can take on values <= 0 (which happens when they are
-// not provided by the customer) in which case we do not make any adjustments
-// to data meant for aggregation.
+// parameters linfinity_bound_, l1_bound_, and l2_bound_. They can take on non-
+// positive values, in which case the aggregator does not make any adjustments
+// to data.
 template <typename InputT, typename OutputT>
 class DPGroupingFederatedSum final
     : public OneDimGroupingAggregator<InputT, OutputT> {
@@ -68,9 +67,12 @@ class DPGroupingFederatedSum final
         l2_bound_(l2_bound) {}
 
  private:
-  // The following method clamps the input value to the linfinity bound.
+  // The following method clamps the input value to the linfinity bound if given
   inline InputT Clamp(const InputT& input_value) {
-    return std::min(std::max(input_value, -linfinity_bound_), linfinity_bound_);
+    return (linfinity_bound_ <= 0)
+               ? input_value
+               : std::min(std::max(input_value, -linfinity_bound_),
+                          linfinity_bound_);
   }
 
   // The following method returns a scalar such that, when it is applied to
@@ -170,10 +172,6 @@ template <typename InputT, typename OutputT>
 StatusOr<std::unique_ptr<TensorAggregator>> CreateDPGroupingFederatedSum(
     InputT linfinity_bound, double l1_bound, double l2_bound,
     const OneDimGroupingAggregatorState* aggregator_state) {
-  if (linfinity_bound <= 0) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "DPGroupingFederatedSum: Linfinity bound must be positive.";
-  }
   return aggregator_state == nullptr
              ? std::make_unique<DPGroupingFederatedSum<InputT, OutputT>>(
                    linfinity_bound, l1_bound, l2_bound)

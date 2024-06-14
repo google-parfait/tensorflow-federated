@@ -484,11 +484,24 @@ StatusOr<std::unique_ptr<TensorAggregator>> DPGroupByFactory::CreateInternal(
   }
 
   // Currently, we only support nested sums.
-  // The following check will be Updated when this changes.
+  // The following check will be updated when this changes.
   for (const auto& intrinsic : intrinsic.nested_intrinsics) {
     if (intrinsic.uri != kDPSumUri) {
       return TFF_STATUS(UNIMPLEMENTED) << "DPGroupByFactory: Currently, only "
                                           "nested DP sums are supported.";
+    }
+
+    // Ensure that each nested intrinsic provides a positive Linfinity bound
+    bool has_linfinity_bound = false;
+    const Tensor& linfinity_tensor = intrinsic.parameters[kLinfinityIndex];
+    DataType linfinity_dtype = linfinity_tensor.dtype();
+    NUMERICAL_ONLY_DTYPE_CASES(
+        linfinity_dtype, InputType,
+        has_linfinity_bound = linfinity_tensor.CastToScalar<InputType>() > 0);
+    if (!has_linfinity_bound) {
+      return TFF_STATUS(INVALID_ARGUMENT)
+             << "DPGroupByFactory: Each nested intrinsic must provide a "
+                "positive Linfinity bound.";
     }
   }
 

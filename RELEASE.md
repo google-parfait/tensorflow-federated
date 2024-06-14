@@ -18,6 +18,14 @@ and this project adheres to
 *   The format of the release notes (i.e., `RELEASE.md`) to be based on
     https://keepachangelog.com/en/1.1.0/.
 
+## Release 0.81.0
+
+### Major Features and Improvements
+
+*   Moved constraint on linfinity_bound from DPGroupingFederatedSumFactory to
+    DPGroupByFactory, because closed-domain histogram algorithm will use
+    DPGroupingFederatedSum but not demand a positive linfinity_bound.
+
 ## Release 0.80.0
 
 ### Breaking Changes

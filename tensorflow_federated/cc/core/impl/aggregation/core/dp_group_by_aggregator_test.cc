@@ -252,6 +252,15 @@ TEST(DPGroupByAggregatorTest, CatchInvalidParameterValues) {
   EXPECT_THAT(bad_l0_bound.message(), HasSubstr("L0 bound must be positive"));
 }
 
+TEST(DPGroupByAggregatorTest, CatchInvalidLinfinityBound) {
+  Intrinsic intrinsic =
+      CreateIntrinsic<int64_t, int64_t>(1.0, 0.001, 10, -1, 2, 3);
+  auto aggregator_status = CreateTensorAggregator(intrinsic).status();
+  EXPECT_THAT(aggregator_status,
+              StatusIs(INVALID_ARGUMENT,
+                       HasSubstr("must provide a positive Linfinity bound.")));
+}
+
 TEST(DPGroupByAggregatorTest, Deserialize_FailToParseProto) {
   auto intrinsic = CreateIntrinsic<int64_t, int64_t>(100, 0.01, 1);
   std::string invalid_state("invalid_state");
