@@ -19,12 +19,16 @@ bzl_library(
     visibility = [
         "//tensorflow_federated:__subpackages__",  # Scheuklappen: keep
     ],
-    deps = [
-        "@rules_python//python:defs.bzl",
-    ],
+    deps = ["@rules_python//python:defs.bzl"],
 )
 
 py_binary(
     name = "build_docs",
     srcs = ["build_docs.py"],
+)
+
+filegroup(
+    name = "update_version",
+    srcs = ["update_version.sh"],
+    tags = ["ignore_srcs"],
 )

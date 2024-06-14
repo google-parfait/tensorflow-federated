@@ -46,11 +46,6 @@ sh_binary(
 )
 
 sh_binary(
-    name = "publish_python_package",
-    srcs = ["publish_python_package.sh"],
-)
-
-sh_binary(
     name = "test_python_package",
     srcs = ["test_python_package.sh"],
 )
