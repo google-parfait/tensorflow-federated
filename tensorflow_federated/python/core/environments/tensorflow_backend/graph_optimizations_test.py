@@ -11,12 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for graph_optimizations.py."""
 
 import tensorflow as tf
 
-from tensorflow_federated.python.tensorflow_libs import graph_optimizations
-from tensorflow_federated.python.tensorflow_libs import graph_spec
+from tensorflow_federated.python.core.environments.tensorflow_backend import graph_optimizations
+from tensorflow_federated.python.core.environments.tensorflow_backend import graph_spec
 
 
 def _make_redundant_add_one_graph():

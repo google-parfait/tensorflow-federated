@@ -23,6 +23,7 @@ and this project adheres to
 
 ### Removed
 
+*   The dependency on `semantic-version`.
 *   The `tff.async_utils` package, use `asyncio` instead.
 
 ## Release 0.80.0

@@ -27,14 +27,14 @@ py_library(
     name = "compiled_computation_transformations",
     srcs = ["compiled_computation_transformations.py"],
     deps = [
+        ":graph_optimizations",
+        ":graph_spec",
         ":tensorflow_computation_transformations",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
         "//tensorflow_federated/python/core/impl/compiler:transformation_utils",
         "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
-        "//tensorflow_federated/python/tensorflow_libs:graph_optimizations",
-        "//tensorflow_federated/python/tensorflow_libs:graph_spec",
         "//tensorflow_federated/python/tensorflow_libs:serialization_utils",
     ],
 )
@@ -51,6 +51,32 @@ py_test(
         "//tensorflow_federated/python/core/impl/compiler:tensorflow_computation_test_utils",
         "//tensorflow_federated/python/core/impl/types:computation_types",
     ],
+)
+
+py_library(
+    name = "graph_optimizations",
+    srcs = ["graph_optimizations.py"],
+    deps = [":graph_spec"],
+)
+
+py_test(
+    name = "graph_optimizations_test",
+    srcs = ["graph_optimizations_test.py"],
+    deps = [
+        ":graph_optimizations",
+        ":graph_spec",
+    ],
+)
+
+py_library(
+    name = "graph_spec",
+    srcs = ["graph_spec.py"],
+)
+
+py_test(
+    name = "graph_spec_test",
+    srcs = ["graph_spec_test.py"],
+    deps = [":graph_spec"],
 )
 
 py_library(

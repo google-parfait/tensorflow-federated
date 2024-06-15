@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """TFF-independent data class for the data TFF keeps in its TF protos."""
+
 from collections.abc import Sequence
 from typing import Optional
 

@@ -16,7 +16,7 @@
 from absl import logging
 
 from tensorflow.python.grappler import tf_optimizer
-from tensorflow_federated.python.tensorflow_libs import graph_spec
+from tensorflow_federated.python.core.environments.tensorflow_backend import graph_spec
 
 
 def optimize_graph_spec(graph_spec_obj, config_proto):

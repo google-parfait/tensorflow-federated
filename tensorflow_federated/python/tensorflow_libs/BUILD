@@ -22,32 +22,6 @@ py_library(
 )
 
 py_library(
-    name = "graph_optimizations",
-    srcs = ["graph_optimizations.py"],
-    deps = [":graph_spec"],
-)
-
-py_test(
-    name = "graph_optimizations_test",
-    srcs = ["graph_optimizations_test.py"],
-    deps = [
-        ":graph_optimizations",
-        ":graph_spec",
-    ],
-)
-
-py_library(
-    name = "graph_spec",
-    srcs = ["graph_spec.py"],
-)
-
-py_test(
-    name = "graph_spec_test",
-    srcs = ["graph_spec_test.py"],
-    deps = [":graph_spec"],
-)
-
-py_library(
     name = "graph_utils",
     srcs = ["graph_utils.py"],
 )
@@ -107,16 +81,4 @@ py_test(
     timeout = "moderate",
     srcs = ["variable_utils_test.py"],
     deps = [":variable_utils"],
-)
-
-py_library(
-    name = "version_check",
-    srcs = ["version_check.py"],
-)
-
-py_test(
-    name = "version_check_test",
-    size = "small",
-    srcs = ["version_check_test.py"],
-    deps = [":version_check"],
 )
