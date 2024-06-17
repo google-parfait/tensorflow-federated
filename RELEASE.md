@@ -24,6 +24,7 @@ and this project adheres to
 *   Moved constraint on `linfinity_bound` from `DPGroupingFederatedSumFactory`
     to `DPGroupByFactory`, because closed-domain histogram algorithm will use
     `DPGroupingFederatedSum` but not demand a positive `linfinity_bound`.
+*   Updated Jax and Jaxlib deps from 0.4.14 to 0.4.29.
 
 ### Removed
 
