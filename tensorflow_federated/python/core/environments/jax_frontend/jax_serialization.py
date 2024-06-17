@@ -152,12 +152,12 @@ def _tff_type_to_xla_serializer_arg(
 
 
 def _jax_shape_dtype_struct_to_tff_tensor(
-    val: jax.ShapeDtypeStruct,
+    val: jax.stages.OutInfo,
 ) -> computation_types.TensorType:
-  """Converts `jax.ShapeDtypeStruct` to `computation_types.TensorType`.
+  """Converts `jax.stages.OutInfo` to `computation_types.TensorType`.
 
   Args:
-    val: An instance of `jax.ShapeDtypeStruct`.
+    val: An instance of `jax.stages.OutInfo`.
 
   Returns:
     A corresponding instance of `computation_types.TensorType`.
@@ -165,7 +165,7 @@ def _jax_shape_dtype_struct_to_tff_tensor(
   Raises:
     TypeError: if arg type mismatches.
   """
-  py_typecheck.check_type(val, jax.ShapeDtypeStruct)
+  py_typecheck.check_type(val, jax.stages.OutInfo)
   return computation_types.TensorType(val.dtype, val.shape)
 
 
@@ -215,15 +215,15 @@ def serialize_jax_computation(
 
   context = jax_computation_context.JaxComputationContext()
   with context_stack.install(context):
-    tracer_callable = jax.xla_computation(fn, return_shape=True)
-    compiled_xla, returned_shape = tracer_callable(*args, **kwargs)
+    lowered = jax.jit(fn).lower(*args, **kwargs)
+    compiled_xla = lowered.compiler_ir('hlo')
 
-  if isinstance(returned_shape, jax.ShapeDtypeStruct):
-    returned_type_spec = _jax_shape_dtype_struct_to_tff_tensor(returned_shape)
+  if isinstance(lowered.out_info, jax.stages.OutInfo):
+    returned_type_spec = _jax_shape_dtype_struct_to_tff_tensor(lowered.out_info)
   else:
     returned_type_spec = computation_types.to_type(
         jax.tree_util.tree_map(
-            _jax_shape_dtype_struct_to_tff_tensor, returned_shape
+            _jax_shape_dtype_struct_to_tff_tensor, lowered.out_info
         )
     )
 
