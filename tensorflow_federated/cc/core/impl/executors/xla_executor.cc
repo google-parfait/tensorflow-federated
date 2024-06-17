@@ -33,14 +33,12 @@ limitations under the License
 #include "absl/types/span.h"
 #include "tensorflow/compiler/tf2xla/literal_util.h"
 #include "tensorflow/compiler/tf2xla/type_util.h"
-#include "tensorflow/compiler/xla/client/client.h"
-#include "tensorflow/compiler/xla/client/client_library.h"
-#include "tensorflow/compiler/xla/client/global_data.h"
-#include "tensorflow/compiler/xla/client/xla_computation.h"
 #include "tensorflow/compiler/xla/literal.h"
+#include "tensorflow/compiler/xla/pjrt/cpu/cpu_client.h"
+#include "tensorflow/compiler/xla/pjrt/pjrt_client.h"
+#include "tensorflow/compiler/xla/pjrt/pjrt_executable.h"
 #include "tensorflow/compiler/xla/service/hlo.pb.h"
 #include "tensorflow/compiler/xla/shape.h"
-#include "tensorflow/compiler/xla/stream_executor/platform.h"
 #include "tensorflow/compiler/xla/xla.pb.h"
 #include "tensorflow/compiler/xla/xla_data.pb.h"
 #include "tensorflow/core/framework/tensor.h"
@@ -74,18 +72,18 @@ namespace {
 // a TFF v0::Value.
 class ServiceTensor {
  public:
-  ServiceTensor(std::unique_ptr<xla::GlobalData> data, xla::PrimitiveType dtype)
+  ServiceTensor(std::unique_ptr<xla::PjRtBuffer> data, xla::PrimitiveType dtype)
       : data_(std::move(data)), dtype_(dtype) {}
 
   xla::PrimitiveType dtype() const { return dtype_; }
-  xla::GlobalData* global_data() const { return data_.get(); }
+  xla::PjRtBuffer* buffer() const { return data_.get(); }
 
  private:
-  // XLA computations can be called with GlobalData* arguments, returning
-  // GlobalData unique_ptrs. GlobalData represents an allocation of data in the
-  // associated XLA service, so operating GlobalData-to-GlobalData in this way
+  // XLA computations can be called with PjRtBuffer* arguments, returning
+  // PjRtBuffer unique_ptrs. PjRtBuffer represents an allocation of data in the
+  // associated XLA service, so operating PjRtBuffer-to-PjRtBuffer in this way
   // minimizes transfers.
-  std::unique_ptr<xla::GlobalData> data_;
+  std::unique_ptr<xla::PjRtBuffer> data_;
   const xla::PrimitiveType dtype_;
   // Since we hold a unique pointer internally, ServiceTensor is uncopyable
   // and non-copy-constructable.
@@ -98,15 +96,15 @@ class ServiceTensor {
 // materialized at the appropriate time.
 class Computation {
  public:
-  Computation(xla::ExecutionHandle&& compiled_computation,
+  Computation(std::unique_ptr<xla::PjRtLoadedExecutable>&& compiled_computation,
               v0::Xla::Binding arg_binding, v0::Xla::Binding result_binding,
               v0::Type computation_type)
-      : xla_computation_(std::move(compiled_computation)),
+      : executable_(std::move(compiled_computation)),
         arg_binding_(std::move(arg_binding)),
         result_binding_(std::move(result_binding)),
         computation_type_(std::move(computation_type)) {}
 
-  const xla::ExecutionHandle& xla_computation() { return xla_computation_; }
+  xla::PjRtLoadedExecutable& executable() { return *executable_; }
   const v0::Xla::Binding& arg_binding() { return arg_binding_; }
   const v0::Xla::Binding& result_binding() { return result_binding_; }
   const v0::Type& type() { return computation_type_; }
@@ -121,7 +119,7 @@ class Computation {
   // tensors, this assumption will need to be relaxed for these cases.
   // One option might involve preserving the proto and recompiling on the
   // fly, adding to an internal cache of v0::Type to xla::ExecutionHandles.
-  const xla::ExecutionHandle xla_computation_;
+  std::unique_ptr<xla::PjRtLoadedExecutable> executable_;
   const v0::Xla::Binding arg_binding_;
   const v0::Xla::Binding result_binding_;
   const v0::Type computation_type_;
@@ -134,10 +132,9 @@ class XLAExecutorValue {
  public:
   enum class ValueType { TENSOR, STRUCT, COMPUTATION, UNKNOWN };
 
-  explicit XLAExecutorValue(std::unique_ptr<xla::GlobalData> global_data,
+  explicit XLAExecutorValue(std::unique_ptr<xla::PjRtBuffer> buffer,
                             xla::PrimitiveType dtype)
-      : value_(std::make_shared<ServiceTensor>(std::move(global_data), dtype)) {
-  }
+      : value_(std::make_shared<ServiceTensor>(std::move(buffer), dtype)) {}
   explicit XLAExecutorValue(absl::Span<const XLAExecutorValue> value_vector)
       : value_(std::vector<XLAExecutorValue>(value_vector.begin(),
                                              value_vector.end())) {}
@@ -287,7 +284,7 @@ int ComputeNumElementsFromBinding(const v0::Xla::Binding& binding) {
 // appropriate locations.
 absl::Status FlattenValuesIntoBinding(
     const v0::Xla::Binding& binding, const XLAExecutorValue& value,
-    std::vector<xla::GlobalData*>& flat_vector) {
+    std::vector<xla::PjRtBuffer*>& flat_vector) {
   switch (binding.binding_case()) {
     case v0::Xla::Binding::kTensor: {
       int32_t tensor_index_in_vector = binding.tensor().index();
@@ -297,7 +294,7 @@ absl::Status FlattenValuesIntoBinding(
             "binding with non-tensor XLAExecutorValue. XLAExecutorValueType: ",
             value.type()));
       }
-      xla::GlobalData* tensor_data = value.tensor()->global_data();
+      xla::PjRtBuffer* tensor_data = value.tensor()->buffer();
       // The index of the binding indicates the position of this tensor in the
       // flat sequence which will be e.g. passed to XLA client's Execute method
       // as its argument.
@@ -364,7 +361,8 @@ using ValueFuture = std::shared_future<absl::StatusOr<XLAExecutorValue>>;
 
 class XLAExecutor : public ExecutorBase<ValueFuture> {
  public:
-  explicit XLAExecutor(xla::Client* xla_client) : xla_client_(xla_client) {}
+  explicit XLAExecutor(std::unique_ptr<xla::PjRtClient> pjrt_client)
+      : pjrt_client_(std::move(pjrt_client)) {}
 
   std::string_view ExecutorName() final { return "XLAExecutor"; }
   absl::StatusOr<ValueFuture> CreateExecutorValue(
@@ -441,7 +439,7 @@ class XLAExecutor : public ExecutorBase<ValueFuture> {
  private:
   // Pointer to local XLA client. Assumed to be valid through the lifetime of
   // the executor.
-  xla::Client* xla_client_;
+  std::unique_ptr<xla::PjRtClient> pjrt_client_;
 
   absl::StatusOr<XLAExecutorValue> CreateValueTensor(
       const v0::Value& value_pb) {
@@ -454,13 +452,20 @@ class XLAExecutor : public ExecutorBase<ValueFuture> {
           "Failed to convert v0::Value proto to XLA literal. Message: ",
           to_literal_status.message()));
     }
-    absl::StatusOr<std::unique_ptr<xla::GlobalData>> data_in_server =
-        xla_client_->TransferToServer(tensor_literal);
-    if (!data_in_server.ok()) {
+    // Change this code to be smarter about device assignment instead
+    // of just assigning to the first device.
+    absl::StatusOr<std::unique_ptr<xla::PjRtBuffer>> buffer =
+        pjrt_client_->BufferFromHostLiteral(
+            tensor_literal, pjrt_client_->addressable_devices()[0]);
+    if (!buffer.ok()) {
       return absl::InvalidArgumentError(absl::StrCat(
           "Failed to transfer XLA literal to local server. Message: ",
           to_literal_status.message()));
     }
+    // We may want to move this to a higher level, e.g. await all
+    // creations for a structure at once. `tensor_literal` must live until
+    // `Await` returns here.
+    (*buffer)->GetReadyFuture().Await();
     xla::PrimitiveType element_type;
     absl::Status status =
         tensorflow::DataTypeToPrimitiveType(t.dtype(), &element_type);
@@ -469,7 +474,7 @@ class XLAExecutor : public ExecutorBase<ValueFuture> {
           "Failure to convert tensorflow::DataType to XLA primitive: ",
           status.message()));
     }
-    return XLAExecutorValue(std::move(*data_in_server), element_type);
+    return XLAExecutorValue(std::move(*buffer), element_type);
   }
 
   absl::StatusOr<XLAExecutorValue> CreateValueComputation(
@@ -496,10 +501,13 @@ class XLAExecutor : public ExecutorBase<ValueFuture> {
           TFF_TRY(ComputeFlatShapesFromType(
               comp_pb.type().function().parameter(), arg_binding, &arg_shapes));
         }
+        xla::CompileOptions compile_options;
+        compile_options.argument_layouts = std::move(arg_shapes);
         // Compile the computation, resulting in caching the executable in
         // the XLA service.
-        absl::StatusOr<xla::ExecutionHandle> computation_handle =
-            xla_client_->Compile(xla_comp, arg_shapes);
+        absl::StatusOr<std::unique_ptr<xla::PjRtLoadedExecutable>>
+            computation_handle =
+                pjrt_client_->Compile(xla_comp, compile_options);
         if (!computation_handle.ok()) {
           return absl::InternalError(
               absl::StrCat("Failed to compile XLA computation. Message: ",
@@ -513,15 +521,23 @@ class XLAExecutor : public ExecutorBase<ValueFuture> {
             comp_pb.type()));
       }
       case v0::Computation::kLiteral: {
-        absl::StatusOr<std::unique_ptr<xla::GlobalData>> data =
-            xla_client_->TransferToServer(
-                TFF_TRY(LiteralFromArray(comp_pb.literal().value())));
-        if (!data.ok()) {
+        // Investigate smarter device selection beyond just assigning to the
+        // first device.
+        const xla::Literal literal =
+            TFF_TRY(LiteralFromArray(comp_pb.literal().value()));
+        absl::StatusOr<std::unique_ptr<xla::PjRtBuffer>> buffer =
+            pjrt_client_->BufferFromHostLiteral(
+                literal, pjrt_client_->addressable_devices()[0]);
+        // We may want to move this to a higher level, e.g. await all
+        // creations for a structure at once. `literal` must live until
+        // `Await()` here finishes.
+        (*buffer)->GetReadyFuture().Await();
+        if (!buffer.ok()) {
           return absl::InvalidArgumentError(absl::StrCat(
               "Failed to transfer XLA literal to local server. Message: ",
-              data.status().message()));
+              buffer.status().message()));
         }
-        return XLAExecutorValue(std::move(data.value()),
+        return XLAExecutorValue(std::move(*buffer),
                                 TFF_TRY(PrimitiveTypeFromDataType(
                                     comp_pb.literal().value().dtype())));
       }
@@ -572,8 +588,8 @@ class XLAExecutor : public ExecutorBase<ValueFuture> {
         return tasks.add_task([&executor_value, value_pb, this]() {
           std::shared_ptr<ServiceTensor> tensor_in_service =
               executor_value.tensor();
-          absl::StatusOr<xla::Literal> result_literal =
-              xla_client_->Transfer(*(tensor_in_service->global_data()));
+          absl::StatusOr<std::shared_ptr<xla::Literal>> result_literal =
+              tensor_in_service->buffer()->ToLiteralSync();
           if (!result_literal.ok()) {
             return absl::InternalError(absl::StrCat(
                 "Error transferring tensor from XLA service to host. Message: ",
@@ -581,7 +597,7 @@ class XLAExecutor : public ExecutorBase<ValueFuture> {
           }
           tensorflow::Tensor tensor_out;
           absl::Status tensor_conversion = tensorflow::LiteralToHostTensor(
-              *result_literal,
+              **result_literal,
               TFF_TRY(tensorflow::EncodePrimitiveTypeAsDataType(
                   tensor_in_service->dtype())),
               &tensor_out);
@@ -612,51 +628,50 @@ class XLAExecutor : public ExecutorBase<ValueFuture> {
 
   absl::StatusOr<XLAExecutorValue> CallComputation(
       std::shared_ptr<Computation> fn, std::optional<XLAExecutorValue> arg) {
-    int num_parameter_elements =
-        ComputeNumElementsFromBinding(fn->arg_binding());
-    std::vector<xla::GlobalData*> arg_vector(num_parameter_elements);
+    std::vector<xla::PjRtBuffer*> arg_vector(
+        ComputeNumElementsFromBinding(fn->arg_binding()));
     if (arg.has_value()) {
       TFF_TRY(
           FlattenValuesIntoBinding(fn->arg_binding(), arg.value(), arg_vector));
     }
-    absl::StatusOr<std::unique_ptr<xla::GlobalData>> result =
-        xla_client_->Execute(fn->xla_computation(), arg_vector);
-    if (!result.ok()) {
+    std::vector<std::vector<xla::PjRtBuffer*>> arg_handles{
+        std::move(arg_vector)};
+    xla::ExecuteOptions execute_options;
+    execute_options.untuple_result = true;
+    // Investigate how to use PjRt asynchronously.
+    execute_options.execution_mode =
+        xla::ExecuteOptions::ExecutionMode::kSynchronous;
+    for (int i = 0; i < arg_handles[0].size(); ++i) {
+      execute_options.non_donatable_input_indices.insert(i);
+    }
+
+    absl::StatusOr<std::vector<std::vector<std::unique_ptr<xla::PjRtBuffer>>>>
+        per_device_result =
+            fn->executable().Execute(arg_handles, execute_options);
+    if (!per_device_result.ok()) {
       return absl::InternalError(
           absl::StrCat("Error calling XLA computation. Message: ",
-                       result.status().message()));
+                       per_device_result.status().message()));
     }
+    std::vector<std::unique_ptr<xla::PjRtBuffer>>& result =
+        (*per_device_result)[0];
     const v0::Xla::Binding& result_binding = fn->result_binding();
     switch (result_binding.binding_case()) {
       case v0::Xla::Binding::kTensor: {
         // JAX tracing always compiles results to be tuples, which would
         // result in length 1 tuples.
-        absl::StatusOr<std::vector<std::unique_ptr<xla::GlobalData>>>
-            maybe_global_data_vector = xla_client_->DeconstructTuple(**result);
-        if (!maybe_global_data_vector.ok()) {
-          return absl::InternalError(absl::StrCat(
-              "Error destructuring tuple in XLA executor. Message: ",
-              maybe_global_data_vector.status().message()));
-        }
-        if (maybe_global_data_vector->size() != 1) {
+        if (result.size() != 1) {
           return absl::InternalError(
               absl::StrCat("Expected a 1-tuple representing a single tensor "
                            "output, instead output was a tuple with",
-                           maybe_global_data_vector->size(), " elements."));
+                           result.size(), " elements."));
         }
         return XLAExecutorValue(
-            std::move(maybe_global_data_vector.value()[0]),
+            std::move(result[0]),
             TFF_TRY(PrimitiveTypeFromDataType(
                 fn->type().function().result().tensor().dtype())));
       }
       case v0::Xla::Binding::kStruct: {
-        absl::StatusOr<std::vector<std::unique_ptr<xla::GlobalData>>>
-            global_data_vector = xla_client_->DeconstructTuple(**result);
-        if (!global_data_vector.ok()) {
-          return absl::InternalError(absl::StrCat(
-              "Error destructuring tuple in XLA executor. Message: ",
-              global_data_vector.status().message()));
-        }
         // We begin by constructing a vector of tensor-backed XLAExecutorValues.
         // For this purpose, we must compute the datatypes of the GlobalData
         // elements (XLA will need them to materialize values from the XLA
@@ -672,9 +687,8 @@ class XLAExecutor : public ExecutorBase<ValueFuture> {
         flat_value_vector.reserve(flat_tensor_types.size());
         for (int i = 0; i < flat_tensor_types.size(); i++) {
           flat_value_vector.emplace_back(XLAExecutorValue(
-              std::move((*global_data_vector)[i]),
-              TFF_TRY(
-                  PrimitiveTypeFromDataType(flat_tensor_types[i].dtype()))));
+              std::move(result[i]), TFF_TRY(PrimitiveTypeFromDataType(
+                                        flat_tensor_types[i].dtype()))));
         }
         // We repackage the flat result as an XLAExecutorValue of the same
         // structure as the result binding. This structure should additionally
@@ -690,35 +704,19 @@ class XLAExecutor : public ExecutorBase<ValueFuture> {
   }
 };
 
-absl::StatusOr<xla::Client*> GetXLAClient(std::string_view platform_name) {
-  absl::StatusOr<xla::se::Platform*> platform =
-      xla::se::PlatformManager::PlatformWithName(platform_name);
-  if (!platform.ok()) {
-    return absl::InternalError(
-        absl::StrCat("Failed to find specified platform ", platform_name,
-                     " in PlatformManager. You may be missing a build "
-                     "dependency to register the platform. Message: ",
-                     platform.status().message()));
-  }
-  xla::LocalClientOptions options;
-  options.set_platform(*platform);
-  absl::StatusOr<xla::Client*> constructed_client =
-      xla::ClientLibrary::GetOrCreateLocalClient(options);
-  if (!constructed_client.ok()) {
-    return absl::InternalError(
-        absl::StrCat("Failed to construct XLA client. Message: ",
-                     constructed_client.status().message()));
-  }
-  return *constructed_client;
-}
-
 }  // namespace
 
 absl::StatusOr<std::shared_ptr<Executor>> CreateXLAExecutor(
     std::string_view platform_name) {
-  LOG(INFO) << "Creating XLAExecutor for platform: " << platform_name;
-  xla::Client* client = TFF_TRY(GetXLAClient(platform_name));
-  return std::make_shared<XLAExecutor>(client);
+  LOG(INFO)
+      << "Currently only CPU is supported, but received platform request: "
+      << platform_name;
+  // Add support for GPU and TPU.
+  xla::CpuClientOptions client_options;
+  client_options.asynchronous = false;
+  std::unique_ptr<xla::PjRtClient> client =
+      TFF_TRY(xla::GetTfrtCpuClient(client_options));
+  return std::make_shared<XLAExecutor>(std::move(client));
 }
 
 }  // namespace tensorflow_federated
