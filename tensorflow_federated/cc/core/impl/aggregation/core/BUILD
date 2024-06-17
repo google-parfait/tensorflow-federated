@@ -75,6 +75,7 @@ cc_library(
         "tensor_data.h",
         "tensor_shape.h",
         "tensor_spec.h",
+        "vector_string_data.h",
     ],
     visibility = ["//visibility:public"],
     deps = [
@@ -146,7 +147,6 @@ cc_library(
         ":intrinsic",
         ":tensor",
         ":tensor_cc_proto",
-        ":vector_string_data",
         "//tensorflow_federated/cc/core/impl/aggregation/base",
         "@com_google_absl//absl/container:fixed_array",
         "@com_google_absl//absl/container:flat_hash_map",
@@ -219,12 +219,6 @@ cc_test(
         "//tensorflow_federated/cc/testing:oss_test_main",
         "//tensorflow_federated/cc/testing:status_matchers",
     ],
-)
-
-cc_library(
-    name = "vector_string_data",
-    hdrs = ["vector_string_data.h"],
-    deps = [":tensor"],
 )
 
 cc_library(
@@ -336,10 +330,12 @@ cc_test(
 
 cc_test(
     name = "vector_string_data_test",
-    srcs = ["vector_string_data_test.cc"],
+    srcs = [
+        "vector_string_data.h",
+        "vector_string_data_test.cc",
+    ],
     deps = [
         ":tensor",
-        ":vector_string_data",
         "//tensorflow_federated/cc/testing:oss_test_main",
         "//tensorflow_federated/cc/testing:status_matchers",
     ],

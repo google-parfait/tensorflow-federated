@@ -314,6 +314,18 @@ TEST(TensorTest, FromProto_Float_WithoutContent_Success) {
   EXPECT_THAT(*t, IsTensor({3}, values));
 }
 
+TEST(TensorTest, FromProto_String_WithoutContent_Success) {
+  std::initializer_list<string_view> values{"a", "b", "c", "d"};
+  TensorProto tensor_proto;
+  tensor_proto.set_dtype(DT_STRING);
+  tensor_proto.mutable_shape()->add_dim_sizes(4);
+  for (auto v : values) {
+    tensor_proto.add_string_val(std::string(v));
+  }
+  auto t = Tensor::FromProto(tensor_proto);
+  EXPECT_THAT(t, IsOkAndHolds(IsTensor({4}, values)));
+}
+
 TEST(TensorTest, LargeStringValuesSerialization) {
   std::string s1(123456, 'a');
   std::string s2(7890, 'b');
@@ -361,7 +373,7 @@ TEST(TensorTest, FromProto_MultipleFields) {
   EXPECT_THAT(s, StatusIs(INVALID_ARGUMENT));
   EXPECT_THAT(
       s.message(),
-      HasSubstr("Tensor proto contains multiple representations of data"));
+      HasSubstr("Tensor proto contains multiple representations of data."));
 }
 
 TEST(TensorTest, FromProto_MismatchedType) {

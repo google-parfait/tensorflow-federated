@@ -95,20 +95,23 @@ message TensorProto {
   // The values must be encoded using little-endian byte layout.
   bytes content = 4;
 
-  // The repeated fields below facilitate representing data in a alternate
+  // The repeated fields below facilitate representing data in an alternate
   // manner. They cannot be used at the same time as the content field above.
   // At most one of the repeated fields below should be set, and the field that
   // is set should correspond to the dtype field above.
 
   // DT_FLOAT
-  repeated float float_val = 5;
+  repeated float float_val = 5 [packed = true];
 
   // DT_DOUBLE
-  repeated double double_val = 6;
+  repeated double double_val = 6 [packed = true];
 
   // DT_INT32
-  repeated int32 int_val = 7;
+  repeated int32 int_val = 7 [packed = true];
 
   // DT_INT64
-  repeated int64 int64_val = 8;
+  repeated int64 int64_val = 8 [packed = true];
+
+  // DT_STRING
+  repeated string string_val = 9;
 }

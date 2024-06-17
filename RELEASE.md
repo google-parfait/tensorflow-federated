@@ -12,6 +12,8 @@ and this project adheres to
 
 *   A helper function to get a vector of strings for the elements of a tensor in
     order to aid in formatting.
+*   A field `string_val` to the `tensor` proto to allow representing string
+    values explicitly.
 
 ### Changed
 

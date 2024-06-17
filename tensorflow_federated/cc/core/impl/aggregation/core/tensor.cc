@@ -24,6 +24,7 @@
 #include <utility>
 #include <vector>
 
+#include "absl/types/span.h"
 #include "google/protobuf/io/coded_stream.h"
 #include "google/protobuf/io/zero_copy_stream_impl_lite.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
@@ -31,6 +32,7 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_data.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_shape.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/vector_string_data.h"
 
 namespace tensorflow_federated {
 namespace aggregation {
@@ -261,18 +263,33 @@ class VectorNumericData : public TensorData {
 };
 
 template <typename T>
-Status CreateDataFromVector(DataType datatype_from_proto, std::vector<T> values,
-                            std::unique_ptr<TensorData>& data) {
-  if (data != nullptr) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "Tensor proto contains multiple representations of data.";
-  }
+StatusOr<std::unique_ptr<TensorData>> CreateDataFromNumericVector(
+    DataType datatype_from_proto, absl::Span<const T> values,
+    std::unique_ptr<TensorData>& data) {
   if (internal::TypeTraits<T>::kDataType != datatype_from_proto) {
     return TFF_STATUS(INVALID_ARGUMENT)
            << "Tensor proto contains data of unexpected data type.";
   }
-  data = std::make_unique<VectorNumericData<T>>(std::move(values));
-  return TFF_STATUS(OK);
+  if (data != nullptr) {
+    return TFF_STATUS(INVALID_ARGUMENT)
+           << "Tensor proto contains multiple representations of data.";
+  }
+  return std::make_unique<VectorNumericData<T>>(
+      std::vector<T>(values.begin(), values.end()));
+}
+
+StatusOr<std::unique_ptr<TensorData>> CreateDataFromStringVector(
+    DataType datatype_from_proto, std::vector<std::string> values,
+    std::unique_ptr<TensorData>& data) {
+  if (internal::TypeTraits<string_view>::kDataType != datatype_from_proto) {
+    return TFF_STATUS(INVALID_ARGUMENT)
+           << "Tensor proto contains data of unexpected data type.";
+  }
+  if (data != nullptr) {
+    return TFF_STATUS(INVALID_ARGUMENT)
+           << "Tensor proto contains data of unexpected data type.";
+  }
+  return std::make_unique<VectorStringData>(std::move(values));
 }
 
 StatusOr<Tensor> Tensor::FromProto(const TensorProto& tensor_proto) {
@@ -291,32 +308,44 @@ StatusOr<Tensor> Tensor::FromProto(const TensorProto& tensor_proto) {
                     data, DecodeContent<T>(std::move(content), num_values)));
   }
   if (tensor_proto.float_val_size() > 0) {
-    TFF_RETURN_IF_ERROR(CreateDataFromVector(
-        tensor_proto.dtype(),
-        std::vector<float>(tensor_proto.float_val().begin(),
-                           tensor_proto.float_val().end()),
-        data));
+    TFF_ASSIGN_OR_RETURN(
+        data, CreateDataFromNumericVector(
+                  tensor_proto.dtype(),
+                  absl::Span<const float>(tensor_proto.float_val().data(),
+                                          tensor_proto.float_val().size()),
+                  data));
   }
   if (tensor_proto.double_val_size() > 0) {
-    TFF_RETURN_IF_ERROR(CreateDataFromVector(
-        tensor_proto.dtype(),
-        std::vector<double>(tensor_proto.double_val().begin(),
-                            tensor_proto.double_val().end()),
-        data));
+    TFF_ASSIGN_OR_RETURN(
+        data, CreateDataFromNumericVector(
+                  tensor_proto.dtype(),
+                  absl::Span<const double>(tensor_proto.double_val().data(),
+                                           tensor_proto.double_val().size()),
+                  data));
   }
   if (tensor_proto.int_val_size() > 0) {
-    TFF_RETURN_IF_ERROR(
-        CreateDataFromVector(tensor_proto.dtype(),
-                             std::vector<int>(tensor_proto.int_val().begin(),
-                                              tensor_proto.int_val().end()),
-                             data));
+    TFF_ASSIGN_OR_RETURN(
+        data, CreateDataFromNumericVector(
+                  tensor_proto.dtype(),
+                  absl::Span<const int>(tensor_proto.int_val().data(),
+                                        tensor_proto.int_val().size()),
+                  data));
   }
   if (tensor_proto.int64_val_size() > 0) {
-    TFF_RETURN_IF_ERROR(CreateDataFromVector(
-        tensor_proto.dtype(),
-        std::vector<int64_t>(tensor_proto.int64_val().begin(),
-                             tensor_proto.int64_val().end()),
-        data));
+    TFF_ASSIGN_OR_RETURN(
+        data, CreateDataFromNumericVector(
+                  tensor_proto.dtype(),
+                  absl::Span<const int64_t>(tensor_proto.int64_val().data(),
+                                            tensor_proto.int64_val().size()),
+                  data));
+  }
+  if (tensor_proto.string_val_size() > 0) {
+    TFF_ASSIGN_OR_RETURN(
+        data, CreateDataFromStringVector(
+                  tensor_proto.dtype(),
+                  std::vector<std::string>(tensor_proto.string_val().begin(),
+                                           tensor_proto.string_val().end()),
+                  data));
   }
   if (data == nullptr) {
     if (shape.NumElements().value() != 0) {

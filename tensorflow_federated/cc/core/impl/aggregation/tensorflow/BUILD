@@ -43,7 +43,6 @@ cc_test(
         ":converters",
         "//tensorflow_federated/cc/core/impl/aggregation/base",
         "//tensorflow_federated/cc/core/impl/aggregation/core:tensor",
-        "//tensorflow_federated/cc/core/impl/aggregation/core:vector_string_data",
         "//tensorflow_federated/cc/core/impl/aggregation/testing",
         "//tensorflow_federated/cc/core/impl/aggregation/testing:parse_text_proto",
         "//tensorflow_federated/cc/core/impl/aggregation/testing:test_data",
