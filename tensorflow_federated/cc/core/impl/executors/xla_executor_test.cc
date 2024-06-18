@@ -443,7 +443,6 @@ TEST_F(XLAExecutorTest, CreateAndMaterializeNoArgCallSingleTensor) {
   xla::XlaOp constant = xla::ConstantR0<float>(&builder, 2.0);
   // To mimic the Python tracing which always returns tuples, event for single
   // element results, after passing through MLIR
-  // (https://github.com/google/jax/blob/38f91bdaa564a4de1e06bde7d191af0bff610bbf/jax/_src/api.py#L958),
   // results are always in tuples.
   xla::Tuple(&builder, {constant});
   tensorflow::StatusOr<xla::XlaComputation> xla_computation = builder.Build();
@@ -523,7 +522,6 @@ TEST_F(XLAExecutorTest, CreateAndMaterializeIdentityScalar) {
       &builder, 0, xla::ShapeUtil::MakeScalarShape(xla::F32), "x");
   // To mimic the Python tracing which always returns tuples, event for single
   // element results, after passing through MLIR
-  // (https://github.com/google/jax/blob/38f91bdaa564a4de1e06bde7d191af0bff610bbf/jax/_src/api.py#L958),
   // results are always in tuples.
   xla::Tuple(&builder, {parameter});
   tensorflow::StatusOr<xla::XlaComputation> xla_computation = builder.Build();

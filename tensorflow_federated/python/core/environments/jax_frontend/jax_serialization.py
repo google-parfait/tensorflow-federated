@@ -165,7 +165,6 @@ def _jax_shape_dtype_struct_to_tff_tensor(
   Raises:
     TypeError: if arg type mismatches.
   """
-  py_typecheck.check_type(val, jax.ShapeDtypeStruct)
   return computation_types.TensorType(val.dtype, val.shape)
 
 
@@ -214,18 +213,38 @@ def serialize_jax_computation(
   tensor_indexes = list(np.argsort([x.tensor_index for x in flattened_obj]))
 
   context = jax_computation_context.JaxComputationContext()
-  with context_stack.install(context):
-    tracer_callable = jax.xla_computation(fn, return_shape=True)
-    compiled_xla, returned_shape = tracer_callable(*args, **kwargs)
+  # TODO: b/347811116 - Remove this version check when the JAX version can be
+  # upgraded.
+  if jax.__version_info__ > (0, 4, 29):
+    with context_stack.install(context):
+      lowered = jax.jit(fn).lower(*args, **kwargs)
+      compiled_xla = lowered.compiler_ir('hlo')
 
-  if isinstance(returned_shape, jax.ShapeDtypeStruct):
-    returned_type_spec = _jax_shape_dtype_struct_to_tff_tensor(returned_shape)
+    if isinstance(lowered.out_info, jax.stages.OutInfo):
+      returned_type_spec = _jax_shape_dtype_struct_to_tff_tensor(
+          jax.ShapeDtypeStruct(
+              shape=lowered.out_info.shape, dtype=lowered.out_info.dtype
+          )
+      )
+    else:
+      returned_type_spec = computation_types.to_type(
+          jax.tree_util.tree_map(
+              _jax_shape_dtype_struct_to_tff_tensor, lowered.out_info
+          )
+      )
   else:
-    returned_type_spec = computation_types.to_type(
-        jax.tree_util.tree_map(
-            _jax_shape_dtype_struct_to_tff_tensor, returned_shape
-        )
-    )
+    with context_stack.install(context):
+      tracer_callable = jax.xla_computation(fn, return_shape=True)
+      compiled_xla, returned_shape = tracer_callable(*args, **kwargs)
+
+    if isinstance(returned_shape, jax.ShapeDtypeStruct):
+      returned_type_spec = _jax_shape_dtype_struct_to_tff_tensor(returned_shape)
+    else:
+      returned_type_spec = computation_types.to_type(
+          jax.tree_util.tree_map(
+              _jax_shape_dtype_struct_to_tff_tensor, returned_shape
+          )
+      )
 
   computation_type = computation_types.FunctionType(
       parameter_type, returned_type_spec
