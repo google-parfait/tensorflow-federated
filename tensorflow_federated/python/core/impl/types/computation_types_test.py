@@ -610,7 +610,7 @@ class SequenceTypeTest(parameterized.TestCase):
         )
     )
     self.assertIs(type_spec.element.python_container, tuple)
-    first_element, second_element = type_spec.element
+    (_, first_element), (_, second_element) = type_spec.element
     self.assertIs(first_element.python_container, tuple)
     self.assertIs(second_element.python_container, tuple)
 
@@ -1201,7 +1201,7 @@ class ToTypeTest(parameterized.TestCase):
   def test_namedtuple_unpackable(self):
     elems = [('item' + str(k), np.int32) for k in range(2)]
     t = computation_types.to_type(elems)
-    a, b = t
+    (_, a), (_, b) = t
     self.assertIsInstance(a, computation_types.TensorType)
     self.assertIsInstance(b, computation_types.TensorType)
 

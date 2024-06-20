@@ -578,6 +578,9 @@ class StructType(structure.Struct, Type, metaclass=_Intern):
         isinstance(other, StructType) and structure.Struct.__eq__(self, other)
     )
 
+  def __iter__(self) -> Iterator[tuple[Optional[str], Type]]:
+    return structure.iter_elements(self)
+
   def is_assignable_from(self, source_type: Type) -> bool:
     if self is source_type:
       return True

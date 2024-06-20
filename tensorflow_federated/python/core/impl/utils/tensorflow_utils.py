@@ -1169,8 +1169,10 @@ def coerce_dataset_elements_to_tff_type_spec(
           ]
           return collections.OrderedDict(values)
       else:
+        field_types = [types for _, types in type_spec]
         return tuple(
-            _to_representative_value(t, e) for t, e in zip(type_spec, elements)
+            _to_representative_value(t, e)
+            for t, e in zip(field_types, elements)
         )
     else:
       raise ValueError(

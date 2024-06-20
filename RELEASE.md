@@ -10,6 +10,7 @@ and this project adheres to
 
 ### Added
 
+*   An `__iter__` method to `tff.StructType`.
 *   A function to `DPCompositeKeyCombiner` that allows retrieval of an ordinal.
     Intended for use by the closed-domain DP histogram aggregation core.
 *   Constants for invalid ordinals and default `l0_bound_`.
