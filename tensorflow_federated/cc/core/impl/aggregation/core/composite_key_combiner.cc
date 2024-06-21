@@ -205,18 +205,19 @@ CompositeKeyCombiner::CreateOrdinals(
     iterators.push_back(t->data().data());
   }
 
-  for (int i = 0; i < num_elements; ++i) {
+  while (ordinals->size() != num_elements) {
     // Iterate over all the TensorDataIterators at once to get the value for the
     // composite key.
     CompositeKey composite_key(tensors.size(), 0);
     // Construct a composite key by iterating through tensors and copying the
     // 64-bit representation of data elements.
     uint64_t* key_ptr = composite_key.data();
-    for (int j = 0; j < tensors.size(); ++j) {
+    auto data_type_iter = dtypes_.begin();
+    for (auto& itr : iterators) {
       // Copy the 64-bit representation of the element into the position in the
       // composite key data corresponding to this tensor.
-      DTYPE_CASES(dtypes()[j], T,
-                  CopyToDest<T>(iterators[j], key_ptr++, intern_pool_));
+      DTYPE_CASES(*(data_type_iter++), T,
+                  CopyToDest<T>(itr, key_ptr++, intern_pool_));
     }
 
     // Get the ordinal associated with the composite key

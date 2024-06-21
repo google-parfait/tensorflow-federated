@@ -17,6 +17,7 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_composite_key_combiner.h"
 
 #include <cstdint>
+#include <cstdlib>
 #include <initializer_list>
 #include <vector>
 
@@ -414,6 +415,112 @@ TEST(DPCompositeKeyCombinerTest,
   EXPECT_THAT(output[1], IsTensor<string_view>({4}, {"abc", "de", "", "abc"}));
   EXPECT_THAT(output[2],
               IsTensor<string_view>({4}, {"fghi", "jklmn", "o", "pqrs"}));
+}
+
+// Test that the ordinal returned by GetOrdinalFromDomainTensors is consistent
+// with GetOutputKeys.
+TEST(DPCompositeKeyCombinerTest, AccumulateAndGetOrdinal_NumericTypes) {
+  for (int i = 0; i < NUM_REPETITIONS; i++) {
+    // Make a combiner that makes <= 2 composite keys per Accumulate call
+    DPCompositeKeyCombiner combiner(
+        std::vector<DataType>{DT_FLOAT, DT_INT32, DT_INT64}, 2);
+
+    // Create tensors that we will use to call Accumulate.
+    Tensor t1 =
+        Tensor::Create(DT_FLOAT, {3}, CreateTestData<float>({1.1, 1.2, 1.3}))
+            .value();
+    Tensor t2 =
+        Tensor::Create(DT_INT32, {3}, CreateTestData<int32_t>({1, 2, 3}))
+            .value();
+    Tensor t3 =
+        Tensor::Create(DT_INT64, {3}, CreateTestData<int64_t>({4, 5, 6}))
+            .value();
+    StatusOr<Tensor> result =
+        combiner.Accumulate(InputTensorList({&t1, &t2, &t3}));
+
+    // Create tensors which describe the domain of each key.
+    OutputTensorList domain_tensors;
+    domain_tensors.push_back(
+        Tensor::Create(DT_FLOAT, {2}, CreateTestData<float>({0, 1.2})).value());
+    domain_tensors.push_back(
+        Tensor::Create(DT_INT32, {1}, CreateTestData<int32_t>({2})).value());
+    domain_tensors.push_back(
+        Tensor::Create(DT_INT64, {1}, CreateTestData<int64_t>({5})).value());
+
+    // (0, 2, 5) was never Accumulated
+    EXPECT_EQ(combiner.GetOrdinal(domain_tensors, {0, 0, 0}), kNoOrdinal);
+
+    // (1.2, 2, 5) was either Accumulated or dropped (-1).
+    int64_t ordinal = combiner.GetOrdinal(domain_tensors, {1, 0, 0});
+    OutputTensorList output = combiner.GetOutputKeys();
+    if (ordinal == kNoOrdinal) {
+      // (1.2, 2, 5) should not be present in the output
+      bool match_zero = (abs(1.2 - output[0].AsSpan<float>()[0]) < 1e-6) &&
+                        (2 == output[1].AsSpan<int32_t>()[0]) &&
+                        (5 == output[2].AsSpan<int64_t>()[0]);
+      bool match_one = (abs(1.2 - output[0].AsSpan<float>()[1]) < 1e-6) &&
+                       (2 == output[1].AsSpan<int32_t>()[1]) &&
+                       (5 == output[2].AsSpan<int64_t>()[1]);
+      EXPECT_FALSE(match_zero || match_one);
+    } else {
+      // (1.2, 2, 5) should be at the row indexed by ordinal
+      EXPECT_TRUE(abs(1.2 - output[0].AsSpan<float>()[ordinal]) < 1e-6);
+      EXPECT_EQ(2, output[1].AsSpan<int32_t>()[ordinal]);
+      EXPECT_EQ(5, output[2].AsSpan<int64_t>()[ordinal]);
+    }
+  }
+}
+
+TEST(DPCompositeKeyCombinerTest, AccumulateAndGetOrdinal_StringTypes) {
+  for (int i = 0; i < NUM_REPETITIONS; i++) {
+    DPCompositeKeyCombiner combiner(
+        std::vector<DataType>{DT_FLOAT, DT_STRING, DT_STRING}, 2);
+    Tensor t1 =
+        Tensor::Create(DT_FLOAT, {3}, CreateTestData<float>({1.1, 1.2, 1.3}))
+            .value();
+    Tensor t2 = Tensor::Create(DT_STRING, {3},
+                               CreateTestData<string_view>({"abc", "de", ""}))
+                    .value();
+    Tensor t3 =
+        Tensor::Create(DT_STRING, {3},
+                       CreateTestData<string_view>({"fghi", "jklmn", "o"}))
+            .value();
+    StatusOr<Tensor> result =
+        combiner.Accumulate(InputTensorList({&t1, &t2, &t3}));
+
+    // Create tensors which describe the domain of each key.
+    OutputTensorList domain_tensors;
+    domain_tensors.push_back(
+        Tensor::Create(DT_FLOAT, {2}, CreateTestData<float>({0, 1.2})).value());
+    domain_tensors.push_back(
+        Tensor::Create(DT_STRING, {1}, CreateTestData<string_view>({"de"}))
+            .value());
+    domain_tensors.push_back(
+        Tensor::Create(DT_STRING, {1}, CreateTestData<string_view>({"jklmn"}))
+            .value());
+
+    // (0, "de", "jklmn") was never Accumulated.
+    EXPECT_EQ(combiner.GetOrdinal(domain_tensors, {0, 0, 0}), kNoOrdinal);
+
+    // (1.2, "de", "jklmn") was either Accumulated or dropped.
+    int64_t ordinal = combiner.GetOrdinal(domain_tensors, {1, 0, 0});
+    OutputTensorList output = combiner.GetOutputKeys();
+    if (ordinal == kNoOrdinal) {
+      // (1.2, "de", "jklmn") should not be present in the output
+      bool match_zero = (abs(1.2 - output[0].AsSpan<float>()[0]) < 1e-6) &&
+                        ("de" == output[1].AsSpan<string_view>()[0]) &&
+                        ("jklmn" == output[2].AsSpan<string_view>()[0]);
+      bool match_one = (abs(1.2 - output[0].AsSpan<float>()[1]) < 1e-6) &&
+                       ("de" == output[1].AsSpan<string_view>()[1]) &&
+                       ("jklmn" == output[2].AsSpan<string_view>()[1]);
+      EXPECT_FALSE(match_zero || match_one);
+    } else {
+      // (1.2, "de", "jklmn") should be at the row indexed by ordinal
+      EXPECT_TRUE(abs(1.2 - output[0].AsSpan<float>()[ordinal]) < 1e-6);
+      EXPECT_EQ("de", output[1].AsSpan<string_view>()[ordinal]);
+      EXPECT_EQ("jklmn", output[2].AsSpan<string_view>()[ordinal]);
+    }
+  }
 }
 
 }  // namespace

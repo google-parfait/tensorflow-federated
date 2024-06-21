@@ -153,6 +153,9 @@ class CompositeKeyCombiner {
   }
   inline int64_t& GetCompositeKeyNext() { return composite_key_next_; }
   inline CompositeKeyOrderedVector& GetKeyVec() { return ordered_keys_; }
+  inline std::unordered_set<std::string>& GetInternPool() {
+    return intern_pool_;
+  }
 
  private:
   // The data types of the tensors in valid inputs to Accumulate, in this exact

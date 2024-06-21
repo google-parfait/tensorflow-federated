@@ -19,19 +19,25 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <limits>
 #include <vector>
 
+#include "absl/container/fixed_array.h"
 #include "absl/random/random.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/composite_key_combiner.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/input_tensor_list.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.pb.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_shape.h"
 
 namespace tensorflow_federated {
 namespace aggregation {
+
+// Indicate that a composite key is not mapped to a valid ordinal.
+constexpr int64_t kNoOrdinal = -1;
+// Default l0_bound_ value.
+constexpr int64_t kDefaultL0Bound = -1;
 
 // Child class of CompositeKeyCombiner that enforces contribution bounding
 // inside Accumulate: ensures that the number of unique composite keys that are
@@ -47,13 +53,12 @@ class DPCompositeKeyCombiner : public CompositeKeyCombiner {
   DPCompositeKeyCombiner& operator=(DPCompositeKeyCombiner&&) = delete;
 
   // Creates a CompositeKeyCombiner if inputs are valid or crashes otherwise.
-  explicit DPCompositeKeyCombiner(
-      const std::vector<DataType>& dtypes,
-      int64_t l0_bound = std::numeric_limits<int64_t>::max());
+  explicit DPCompositeKeyCombiner(const std::vector<DataType>& dtypes,
+                                  int64_t l0_bound = kDefaultL0Bound);
 
-  // If the number of contributions is <= l0_bound_, call the parent
-  // Accumulate. Otherwise, call AccumulateWithBound which will ensure there
-  // are <= l0_bound_ contributions.
+  // If an l0_bound_ was not given or number of contributions is <= l0_bound_,
+  // call parent's Accumulate. Otherwise, call AccumulateWithBound which will
+  // ensure there are <= l0_bound_ contributions.
   StatusOr<Tensor> Accumulate(const InputTensorList& tensors) override;
 
   // AccumulateWithBound will first create the set of unique composite keys in
@@ -67,9 +72,24 @@ class DPCompositeKeyCombiner : public CompositeKeyCombiner {
   StatusOr<Tensor> AccumulateWithBound(const InputTensorList& tensors,
                                        TensorShape& shape, size_t num_elements);
 
+  // Given a list of tensors (where each describes a key's domain) and indices
+  // to tensor values, make a CompositeKey out of the data at those indices and
+  // then retrieve the ordinal associated with that composite key (or
+  // kNoOrdinal).
+  // This function will be used within the Report() method of the closed-domain
+  // DP histogram aggregation core.
+  int64_t GetOrdinal(const OutputTensorList& domain_tensors,
+                     const absl::FixedArray<size_t>& indices);
+
  private:
   const int64_t l0_bound_;
   absl::BitGen bitgen_;
+
+  // Given a list of tensors (where each describes a key's domain) and indices
+  // to tensor values, make a CompositeKey out of the data at those indices.
+  CompositeKey MakeCompositeKeyFromDomainTensors(
+      const OutputTensorList& domain_tensors,
+      const absl::FixedArray<size_t>& indices);
 
   // Friend class that supports the operations done in
   // DPCompositeKeyCombiner::AccumulateWithBound.

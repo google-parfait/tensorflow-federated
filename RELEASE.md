@@ -8,6 +8,17 @@ and this project adheres to
 
 ## Unreleased
 
+### Added
+
+*   A function to `DPCompositeKeyCombiner` that allows retrieval of an ordinal.
+    Intended for use by the closed-domain DP histogram aggregation core.
+*   Constants for invalid ordinals and default `l0_bound_`.
+
+### Changed
+
+*   How `DPCompositeKeyCombiner` handles invalid `l0_bound_` values.
+*   The default `l0_bound_` value in `DPCompositeKeyCombiner` to new constant.
+
 ## Release 0.81.0
 
 ### Added
