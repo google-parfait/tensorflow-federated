@@ -18,6 +18,10 @@ and this project adheres to
 
 *   How `DPCompositeKeyCombiner` handles invalid `l0_bound_` values.
 *   The default `l0_bound_` value in `DPCompositeKeyCombiner` to new constant.
+*   Organization of DP histogram code. Previously, open-domain histogram class +
+    factory class lived side-by-side in `dp_group_by_aggregator.h/cc`. Now split
+    into `dp_open_domain_histogram.h/cc` and `dp_group_by_factory.h/cc`, which
+    will ease future addition of code for closed-domain histogram.
 
 ## Release 0.81.0
 

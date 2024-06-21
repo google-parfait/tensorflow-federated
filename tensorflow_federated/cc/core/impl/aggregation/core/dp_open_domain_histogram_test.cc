@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "tensorflow_federated/cc/core/impl/aggregation/core/dp_group_by_aggregator.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/dp_open_domain_histogram.h"
 
 #include <cmath>
 #include <cstdint>
@@ -53,7 +53,7 @@ using ::testing::HasSubstr;
 using testing::IsTrue;
 using testing::TestWithParam;
 
-using DPGroupByAggregatorTest = TestWithParam<bool>;
+using DPOpenDomainHistogramTest = TestWithParam<bool>;
 
 TensorSpec CreateTensorSpec(std::string name, DataType dtype) {
   return TensorSpec(name, dtype, {-1});
@@ -180,7 +180,7 @@ Intrinsic CreateIntrinsic(double epsilon = 1000.0, double delta = 0.001,
 }
 
 // First batch of tests validate the intrinsic(s)
-TEST(DPGroupByAggregatorTest, CatchWrongNumberOfParameters) {
+TEST(DPOpenDomainHistogramTest, CatchWrongNumberOfParameters) {
   Intrinsic too_few{kDPGroupByUri,
                     {CreateTensorSpec("key", DT_STRING)},
                     {CreateTensorSpec("key_out", DT_STRING)},
@@ -203,7 +203,7 @@ TEST(DPGroupByAggregatorTest, CatchWrongNumberOfParameters) {
               HasSubstr("Expected 3 parameters but got 4 of them"));
 }
 
-TEST(DPGroupByAggregatorTest, CatchInvalidParameterTypes) {
+TEST(DPOpenDomainHistogramTest, CatchInvalidParameterTypes) {
   Intrinsic intrinsic0{
       kDPGroupByUri,
       {CreateTensorSpec("key", DT_STRING)},
@@ -235,7 +235,7 @@ TEST(DPGroupByAggregatorTest, CatchInvalidParameterTypes) {
   EXPECT_THAT(bad_l0_bound.message(), HasSubstr("must be numerical"));
 }
 
-TEST(DPGroupByAggregatorTest, CatchInvalidParameterValues) {
+TEST(DPOpenDomainHistogramTest, CatchInvalidParameterValues) {
   Intrinsic intrinsic0 = CreateIntrinsic<int64_t, int64_t>(-1, 0.001, 10);
   auto bad_epsilon = CreateTensorAggregator(intrinsic0).status();
   EXPECT_THAT(bad_epsilon, StatusIs(INVALID_ARGUMENT));
@@ -252,7 +252,7 @@ TEST(DPGroupByAggregatorTest, CatchInvalidParameterValues) {
   EXPECT_THAT(bad_l0_bound.message(), HasSubstr("L0 bound must be positive"));
 }
 
-TEST(DPGroupByAggregatorTest, CatchInvalidLinfinityBound) {
+TEST(DPOpenDomainHistogramTest, CatchInvalidLinfinityBound) {
   Intrinsic intrinsic =
       CreateIntrinsic<int64_t, int64_t>(1.0, 0.001, 10, -1, 2, 3);
   auto aggregator_status = CreateTensorAggregator(intrinsic).status();
@@ -261,7 +261,7 @@ TEST(DPGroupByAggregatorTest, CatchInvalidLinfinityBound) {
                        HasSubstr("must provide a positive Linfinity bound.")));
 }
 
-TEST(DPGroupByAggregatorTest, Deserialize_FailToParseProto) {
+TEST(DPOpenDomainHistogramTest, Deserialize_FailToParseProto) {
   auto intrinsic = CreateIntrinsic<int64_t, int64_t>(100, 0.01, 1);
   std::string invalid_state("invalid_state");
   Status s = DeserializeTensorAggregator(intrinsic, invalid_state).status();
@@ -269,7 +269,7 @@ TEST(DPGroupByAggregatorTest, Deserialize_FailToParseProto) {
   EXPECT_THAT(s.message(), HasSubstr("Failed to parse"));
 }
 
-TEST(DPGroupByAggregatorTest, CatchUnsupportedNestedIntrinsic) {
+TEST(DPOpenDomainHistogramTest, CatchUnsupportedNestedIntrinsic) {
   Intrinsic intrinsic = {kDPGroupByUri,
                          {CreateTensorSpec("key", DT_STRING)},
                          {CreateTensorSpec("key_out", DT_STRING)},
@@ -287,8 +287,8 @@ TEST(DPGroupByAggregatorTest, CatchUnsupportedNestedIntrinsic) {
                                                      "DP sums are supported"));
 }
 
-// Function to execute the DPGroupByAggregator on one input where there is just
-// one key per contribution and each contribution is to one aggregation
+// Function to execute the DPOpenDomainHistogram on one input where there is
+// just one key per contribution and each contribution is to one aggregation
 template <typename InputType>
 StatusOr<OutputTensorList> SingleKeySingleAgg(
     const Intrinsic& intrinsic, const TensorShape shape,
@@ -321,7 +321,7 @@ StatusOr<OutputTensorList> SingleKeySingleAgg(
 
 // Second batch of tests are dedicated to norm bounding when there is only one
 // inner aggregation (GROUP BY key, SUM(value))
-TEST_P(DPGroupByAggregatorTest, SingleKeySingleAggWithL0Bound) {
+TEST_P(DPOpenDomainHistogramTest, SingleKeySingleAggWithL0Bound) {
   // L0 bounding involves randomness so we should repeat things to catch errors.
   for (int i = 0; i < 9; i++) {
     auto intrinsic = CreateIntrinsic<int64_t, int64_t>(100, 0.01, 1);
@@ -358,7 +358,7 @@ TEST_P(DPGroupByAggregatorTest, SingleKeySingleAggWithL0Bound) {
   }
 }
 
-TEST_P(DPGroupByAggregatorTest, SingleKeySingleAggWithL0LinfinityBounds) {
+TEST_P(DPOpenDomainHistogramTest, SingleKeySingleAggWithL0LinfinityBounds) {
   for (int i = 0; i < 9; i++) {
     // Use the same setup as before but now impose a maximum magnitude of 12
     auto intrinsic = CreateIntrinsic<int64_t, int64_t>(100, 0.01, 1, 12);
@@ -395,7 +395,7 @@ TEST_P(DPGroupByAggregatorTest, SingleKeySingleAggWithL0LinfinityBounds) {
   }
 }
 
-TEST_P(DPGroupByAggregatorTest, SingleKeySingleAggWithL0LinfinityL1Bounds) {
+TEST_P(DPOpenDomainHistogramTest, SingleKeySingleAggWithL0LinfinityL1Bounds) {
   for (int i = 0; i < 9; i++) {
     // L0 bound is 4 (four keys), Linfinity bound is 50 (|value| <= 50),
     // and L1 bound is 100 (sum over |value| is <= 100)
@@ -415,7 +415,7 @@ TEST_P(DPGroupByAggregatorTest, SingleKeySingleAggWithL0LinfinityL1Bounds) {
   }
 }
 
-TEST_P(DPGroupByAggregatorTest, SingleKeySingleAggWithAllBounds) {
+TEST_P(DPOpenDomainHistogramTest, SingleKeySingleAggWithAllBounds) {
   for (int i = 0; i < 9; i++) {
     // L0 bound is 4 (four keys), Linfinity bound is 50 (|value| <= 50),
     // L1 bound is 100 (sum over |value| is <= 100), and L2 bound is 10
@@ -459,8 +459,8 @@ Intrinsic CreateIntrinsic2Agg(double epsilon = 1000.0, double delta = 0.001,
   return intrinsic;
 }
 
-// Function to execute the DPGroupByAggregator on one input where there is just
-// one key per contribution and each contribution is to two aggregations
+// Function to execute the DPOpenDomainHistogram on one input where there is
+// just one key per contribution and each contribution is to two aggregations
 template <typename InputType>
 StatusOr<OutputTensorList> SingleKeyDoubleAgg(
     const Intrinsic& intrinsic, const TensorShape shape,
@@ -497,7 +497,7 @@ StatusOr<OutputTensorList> SingleKeyDoubleAgg(
   return std::move(*group_by_aggregator).Report();
 }
 
-TEST_P(DPGroupByAggregatorTest, SingleKeyDoubleAggWithAllBounds) {
+TEST_P(DPOpenDomainHistogramTest, SingleKeyDoubleAggWithAllBounds) {
   for (int i = 0; i < 9; i++) {
     // L0 bound is 4.
     // For agg 1, Linfinity bound is 20 and no other bounds provided.
@@ -589,7 +589,7 @@ StatusOr<OutputTensorList> DoubleKeyDoubleAgg(
   return std::move(*group_by_aggregator).Report();
 }
 
-TEST_P(DPGroupByAggregatorTest, DoubleKeyDoubleAggWithAllBounds) {
+TEST_P(DPOpenDomainHistogramTest, DoubleKeyDoubleAggWithAllBounds) {
   for (int i = 0; i < 9; i++) {
     // L0 bound is 4.
     // For agg 1, Linfinity bound is 20 and no other bounds provided.
@@ -645,7 +645,7 @@ Intrinsic CreateIntrinsicNoKeys(double epsilon = 100.0, double delta = 0.001,
   return intrinsic;
 }
 
-TEST_P(DPGroupByAggregatorTest, NoKeyTripleAggWithAllBounds) {
+TEST_P(DPOpenDomainHistogramTest, NoKeyTripleAggWithAllBounds) {
   Intrinsic intrinsic = CreateIntrinsicNoKeys<int32_t, int64_t>(
       1000, 0.01, 100, 10, 9, 8,  // limit to 8
       100, 9, -1,                 // limit to 9
@@ -677,7 +677,7 @@ TEST_P(DPGroupByAggregatorTest, NoKeyTripleAggWithAllBounds) {
 
 // Check that noise is added at all: the noised sum should not be the same as
 // the unnoised sum. The chance of a false negative shrinks with epsilon.
-TEST_P(DPGroupByAggregatorTest, NoiseAddedForSmallEpsilons) {
+TEST_P(DPOpenDomainHistogramTest, NoiseAddedForSmallEpsilons) {
   Intrinsic intrinsic = CreateIntrinsic<int32_t, int64_t>(0.05, 1e-8, 2, 1);
   auto dpgba = CreateTensorAggregator(intrinsic).value();
   int num_inputs = 4000;
@@ -709,7 +709,7 @@ TEST_P(DPGroupByAggregatorTest, NoiseAddedForSmallEpsilons) {
 
 // Check that SetupNoiseAndThreshold is capable of switching between
 // distributions
-TEST_P(DPGroupByAggregatorTest, SetupNoiseAndThreshold_CorrectDistribution) {
+TEST_P(DPOpenDomainHistogramTest, SetupNoiseAndThreshold_CorrectDistribution) {
   Intrinsic intrinsic1{kDPGroupByUri,
                        {CreateTensorSpec("key", DT_STRING)},
                        {CreateTensorSpec("key_out", DT_STRING)},
@@ -727,7 +727,7 @@ TEST_P(DPGroupByAggregatorTest, SetupNoiseAndThreshold_CorrectDistribution) {
   auto agg1 = CreateTensorAggregator(intrinsic1).value();
   auto report = std::move(*agg1).Report();
   auto laplace_was_used =
-      dynamic_cast<DPGroupByAggregator&>(*agg1).laplace_was_used();
+      dynamic_cast<DPOpenDomainHistogram&>(*agg1).laplace_was_used();
   ASSERT_EQ(laplace_was_used.size(), 2);
   EXPECT_TRUE(laplace_was_used[0]);
   EXPECT_FALSE(laplace_was_used[1]);
@@ -740,7 +740,7 @@ TEST_P(DPGroupByAggregatorTest, SetupNoiseAndThreshold_CorrectDistribution) {
   auto agg2 = CreateTensorAggregator(intrinsic2).value();
   auto report2 = std::move(*agg2).Report();
   laplace_was_used =
-      dynamic_cast<DPGroupByAggregator&>(*agg2).laplace_was_used();
+      dynamic_cast<DPOpenDomainHistogram&>(*agg2).laplace_was_used();
   ASSERT_EQ(laplace_was_used.size(), 1);
   EXPECT_FALSE(laplace_was_used[0]);
 
@@ -750,13 +750,13 @@ TEST_P(DPGroupByAggregatorTest, SetupNoiseAndThreshold_CorrectDistribution) {
   auto agg3 = CreateTensorAggregator(intrinsic3).value();
   auto report3 = std::move(*agg3).Report();
   laplace_was_used =
-      dynamic_cast<DPGroupByAggregator&>(*agg3).laplace_was_used();
+      dynamic_cast<DPOpenDomainHistogram&>(*agg3).laplace_was_used();
   ASSERT_EQ(laplace_was_used.size(), 1);
   EXPECT_FALSE(laplace_was_used[0]);
 }
 
 // Check that CalculateLaplaceThreshold computes the right threshold
-TEST(DPGroupByAggregatorTest, CalculateLaplaceThreshold_Succeeds) {
+TEST(DPOpenDomainHistogramTest, CalculateLaplaceThreshold_Succeeds) {
   // Case 1: adjusted delta less than 1/2
   double delta = 0.468559;  // = 1-(9/10)^6
   double linfinity_bound = 1;
@@ -769,7 +769,7 @@ TEST(DPGroupByAggregatorTest, CalculateLaplaceThreshold_Succeeds) {
   // We'll work with eps = 1 for simplicity
   auto threshold_wrapper = internal::CalculateLaplaceThreshold<double>(
       1.0, delta, l0_sensitivity, linfinity_bound, l1_sensitivity);
-  ASSERT_OK(threshold_wrapper.status());
+  TFF_ASSERT_OK(threshold_wrapper.status());
 
   double laplace_tail_bound = 1.22497855;
   // = -(l1_sensitivity / 1.0) * std::log(2.0 * adjusted_delta),
@@ -782,7 +782,7 @@ TEST(DPGroupByAggregatorTest, CalculateLaplaceThreshold_Succeeds) {
   delta = 0.77123207545039;  // 1-(9/10)^14
   threshold_wrapper = internal::CalculateLaplaceThreshold<double>(
       1.0, delta, l0_sensitivity, linfinity_bound, l1_sensitivity);
-  ASSERT_OK(threshold_wrapper.status());
+  TFF_ASSERT_OK(threshold_wrapper.status());
 
   laplace_tail_bound = -0.0887529;
   // = (l1_sensitivity / 1.0) * std::log(2.0 - 2.0 * adjusted_delta),
@@ -798,7 +798,7 @@ TEST(DPGroupByAggregatorTest, CalculateLaplaceThreshold_Succeeds) {
 // This test has a small probability of failing due to false positives: noise
 // could push the 0 past the threshold. It also has a small probability of
 // failing due to false negatives: noise could push the 100 below the threshold.
-TEST_P(DPGroupByAggregatorTest, SingleKeyDropAggregatesWithValueZero) {
+TEST_P(DPOpenDomainHistogramTest, SingleKeyDropAggregatesWithValueZero) {
   // epsilon = 1, delta= 1e-8, L0 bound = 2, Linfinity bound = 1
   Intrinsic intrinsic =
       CreateIntrinsic2Agg<int32_t, int64_t>(1.0, 1e-8, 2, 1, -1, -1, 1, -1, -1);
@@ -850,9 +850,9 @@ TEST_P(DPGroupByAggregatorTest, SingleKeyDropAggregatesWithValueZero) {
 // When there are no grouping keys, aggregation will be scalar. Hence, the sole
 // "group" does not need to be dropped for DP (because it exists whether or not
 // a given client contributed data)
-// This test should never fail because DPGroupByAggregator & its factory check
+// This test should never fail because DPOpenDomainHistogram & its factory check
 // for the no key case and force aggregates to survive.
-TEST_P(DPGroupByAggregatorTest, NoKeyNoDrop) {
+TEST_P(DPOpenDomainHistogramTest, NoKeyNoDrop) {
   Intrinsic intrinsic = CreateIntrinsicNoKeys<int32_t, int64_t>(
       1.0, 1e-8, 3, 10, 9, 8,  // limit to 8
       100, 9, -1,              // limit to 9
@@ -886,7 +886,7 @@ TEST_P(DPGroupByAggregatorTest, NoKeyNoDrop) {
 
 // Test to verify that Report() still drops key columns that were given empty
 // labels.
-TEST_P(DPGroupByAggregatorTest,
+TEST_P(DPOpenDomainHistogramTest,
        Accumulate_MultipleKeyTensors_SomeKeysNotInOutput_Succeeds) {
   const TensorShape shape = {4};
   Intrinsic intrinsic{
@@ -977,7 +977,7 @@ TEST_P(DPGroupByAggregatorTest,
 
 // Finally, test merge: intermediary aggregates should not be clipped or noised
 
-TEST_P(DPGroupByAggregatorTest, MergeDoesNotDistortData_SingleKey) {
+TEST_P(DPOpenDomainHistogramTest, MergeDoesNotDistortData_SingleKey) {
   // For any single user's data we will give to the aggregators, the norm bounds
   // below do nothing: each Accumulate call has 1 distinct key and a value of 1,
   // which satisfies the L0 bound and Linfinity bound constraints.
@@ -1034,7 +1034,7 @@ TEST_P(DPGroupByAggregatorTest, MergeDoesNotDistortData_SingleKey) {
   EXPECT_THAT(result.value()[1], IsTensor<int64_t>({3}, {1, 1000, 1000}));
 }
 
-TEST_P(DPGroupByAggregatorTest, MergeDoesNotDistortData_MultiKey) {
+TEST_P(DPOpenDomainHistogramTest, MergeDoesNotDistortData_MultiKey) {
   Intrinsic intrinsic =
       CreateIntrinsic2Key2Agg<int64_t, int64_t>(100, 0.001, 1, 1, -1, -1);
   auto agg1 = CreateTensorAggregator(intrinsic).value();
@@ -1088,7 +1088,7 @@ TEST_P(DPGroupByAggregatorTest, MergeDoesNotDistortData_MultiKey) {
   EXPECT_THAT(result.value()[2], IsTensor<int64_t>({2}, {1001, 1000}));
 }
 
-TEST_P(DPGroupByAggregatorTest, MergeDoesNotDistortData_NoKeys) {
+TEST_P(DPOpenDomainHistogramTest, MergeDoesNotDistortData_NoKeys) {
   Intrinsic intrinsic{"fedsql_dp_group_by",
                       {},
                       {},
@@ -1104,7 +1104,7 @@ TEST_P(DPGroupByAggregatorTest, MergeDoesNotDistortData_NoKeys) {
       Tensor::Create(DT_INT64, {1}, CreateTestData<int64_t>({1})).value();
   Tensor data2 =
       Tensor::Create(DT_INT64, {1}, CreateTestData<int64_t>({1})).value();
-  EXPECT_OK(agg1->Accumulate({&data1, &data2}));
+  TFF_EXPECT_OK(agg1->Accumulate({&data1, &data2}));
   // Aggregate should be 1, 1
 
   for (int i = 0; i < 1000; i++) {
@@ -1112,7 +1112,7 @@ TEST_P(DPGroupByAggregatorTest, MergeDoesNotDistortData_NoKeys) {
         Tensor::Create(DT_INT64, {1}, CreateTestData<int64_t>({10})).value();
     Tensor data4 =
         Tensor::Create(DT_INT64, {1}, CreateTestData<int64_t>({10})).value();
-    EXPECT_OK(agg2->Accumulate({&data3, &data4}));
+    TFF_EXPECT_OK(agg2->Accumulate({&data3, &data4}));
   }
   // Aggregate should be 8000, 9000 due to contribution bounding.
 
@@ -1124,20 +1124,19 @@ TEST_P(DPGroupByAggregatorTest, MergeDoesNotDistortData_NoKeys) {
   }
 
   auto merge_status = agg1->MergeWith(std::move(*agg2));
-  EXPECT_OK(merge_status);
+  TFF_ASSERT_OK(merge_status);
   auto result = std::move(*agg1).Report();
-  ASSERT_OK(result);
+  TFF_ASSERT_OK(result.status());
   ASSERT_EQ(result.value().size(), 2);
   EXPECT_THAT(result.value()[0], IsTensor<int64_t>({1}, {8001}));
   EXPECT_THAT(result.value()[1], IsTensor<int64_t>({1}, {9001}));
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    DPGroupByAggregatorTestInstantiation, DPGroupByAggregatorTest,
+    DPOpenDomainHistogramTestInstantiation, DPOpenDomainHistogramTest,
     testing::ValuesIn<bool>({false, true}),
-    [](const testing::TestParamInfo<DPGroupByAggregatorTest::ParamType>& info) {
-      return info.param ? "SerializeDeserialize" : "None";
-    });
+    [](const testing::TestParamInfo<DPOpenDomainHistogramTest::ParamType>&
+           info) { return info.param ? "SerializeDeserialize" : "None"; });
 
 }  // namespace
 }  // namespace aggregation

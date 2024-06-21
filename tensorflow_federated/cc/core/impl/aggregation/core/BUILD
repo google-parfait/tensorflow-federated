@@ -124,8 +124,9 @@ cc_library(
     srcs = [
         "composite_key_combiner.cc",
         "dp_composite_key_combiner.cc",
-        "dp_group_by_aggregator.cc",
+        "dp_group_by_factory.cc",
         "dp_grouping_federated_sum.cc",
+        "dp_open_domain_histogram.cc",
         "federated_mean.cc",
         "federated_sum.cc",
         "group_by_aggregator.cc",
@@ -135,7 +136,8 @@ cc_library(
     hdrs = [
         "composite_key_combiner.h",
         "dp_composite_key_combiner.h",
-        "dp_group_by_aggregator.h",
+        "dp_group_by_factory.h",
+        "dp_open_domain_histogram.h",
         "group_by_aggregator.h",
         "one_dim_grouping_aggregator.h",
     ],
@@ -386,8 +388,8 @@ cc_test(
 )
 
 cc_test(
-    name = "dp_group_by_aggregator_test",
-    srcs = ["dp_group_by_aggregator_test.cc"],
+    name = "dp_open_domain_histogram_test",
+    srcs = ["dp_open_domain_histogram_test.cc"],
     deps = [
         ":aggregation_cores",
         ":aggregator",

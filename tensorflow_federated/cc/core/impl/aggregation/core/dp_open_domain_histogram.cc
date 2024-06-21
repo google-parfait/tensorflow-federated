@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "tensorflow_federated/cc/core/impl/aggregation/core/dp_group_by_aggregator.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/dp_open_domain_histogram.h"
 
 #include <cmath>
 #include <cstddef>
@@ -44,7 +44,6 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator.h"
-#include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator_registry.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_spec.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/vector_string_data.h"
 
@@ -186,7 +185,7 @@ StatusOr<NoiseAndThresholdBundle<OutputType>> SetupNoiseAndThreshold(
 // Noise is added to each value stored in a column tensor. If the noised value
 // falls below a given threshold, then the index of that value is removed from a
 // set of survivors.
-// NoiseAndThreshold will be called by DPGroupByAggregator::Report on multiple
+// NoiseAndThreshold will be called by DPOpenDomainHistogram::Report on multiple
 // tensors. Upon completion, Report will copy a value at index i in an output
 // tensor of NoiseAndThreshold if i is in the set of survivors.
 // NB: It is possible to write NoiseAndThreshold to cull values that lie below
@@ -275,7 +274,7 @@ StatusOr<Tensor> CopyOnlySurvivors<string_view>(
 }
 }  // namespace internal
 
-DPGroupByAggregator::DPGroupByAggregator(
+DPOpenDomainHistogram::DPOpenDomainHistogram(
     const std::vector<TensorSpec>& input_key_specs,
     const std::vector<TensorSpec>* output_key_specs,
     const std::vector<Intrinsic>* intrinsics,
@@ -291,7 +290,7 @@ DPGroupByAggregator::DPGroupByAggregator(
       l0_bound_(l0_bound) {}
 
 std::unique_ptr<DPCompositeKeyCombiner>
-DPGroupByAggregator::CreateDPKeyCombiner(
+DPOpenDomainHistogram::CreateDPKeyCombiner(
     const std::vector<TensorSpec>& input_key_specs,
     const std::vector<TensorSpec>* output_key_specs, int64_t l0_bound) {
   // If there are no input keys, support a columnar aggregation that aggregates
@@ -309,7 +308,7 @@ DPGroupByAggregator::CreateDPKeyCombiner(
       l0_bound);
 }
 
-StatusOr<Tensor> DPGroupByAggregator::CreateOrdinalsByGroupingKeysForMerge(
+StatusOr<Tensor> DPOpenDomainHistogram::CreateOrdinalsByGroupingKeysForMerge(
     const InputTensorList& inputs) {
   if (num_keys_per_input() > 0) {
     InputTensorList keys(num_keys_per_input());
@@ -328,11 +327,11 @@ StatusOr<Tensor> DPGroupByAggregator::CreateOrdinalsByGroupingKeysForMerge(
                         inputs[0]->shape(), std::move(ordinals));
 }
 
-StatusOr<OutputTensorList> DPGroupByAggregator::Report() && {
+StatusOr<OutputTensorList> DPOpenDomainHistogram::Report() && {
   TFF_RETURN_IF_ERROR(CheckValid());
   if (!CanReport()) {
     return TFF_STATUS(FAILED_PRECONDITION)
-           << "DPGroupByAggregator::Report: the report goal isn't met";
+           << "DPOpenDomainHistogram::Report: the report goal isn't met";
   }
   // Compute the noiseless aggregate.
   OutputTensorList noiseless_aggregate = std::move(*this).TakeOutputs();
@@ -403,134 +402,6 @@ StatusOr<OutputTensorList> DPGroupByAggregator::Report() && {
   }
   return final_histogram;
 }
-
-StatusOr<std::unique_ptr<TensorAggregator>> DPGroupByFactory::Create(
-    const Intrinsic& intrinsic) const {
-  return CreateInternal(intrinsic, nullptr);
-}
-
-StatusOr<std::unique_ptr<TensorAggregator>> DPGroupByFactory::Deserialize(
-    const Intrinsic& intrinsic, std::string serialized_state) const {
-  GroupByAggregatorState aggregator_state;
-  if (!aggregator_state.ParseFromString(serialized_state)) {
-    return TFF_STATUS(INVALID_ARGUMENT) << "DPGroupByFactory::Deserialize: "
-                                           "Failed to parse serialized state.";
-  }
-  return CreateInternal(intrinsic, &aggregator_state);
-}
-
-StatusOr<std::unique_ptr<TensorAggregator>> DPGroupByFactory::CreateInternal(
-    const Intrinsic& intrinsic,
-    const GroupByAggregatorState* aggregator_state) const {
-  // Check if the intrinsic is well-formed.
-  TFF_RETURN_IF_ERROR(GroupByFactory::CheckIntrinsic(intrinsic, kDPGroupByUri));
-
-  // DPGroupByAggregator expects parameters
-  constexpr int64_t kEpsilonIndex = 0;
-  constexpr int64_t kDeltaIndex = 1;
-  constexpr int64_t kL0Index = 2;
-  constexpr int kNumInnerParameters = 3;
-
-  // Ensure that the parameters list is valid and retrieve the values if so.
-  if (intrinsic.parameters.size() != kNumInnerParameters) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "DPGroupByFactory: Expected " << kNumInnerParameters
-           << " parameters"
-              " but got "
-           << intrinsic.parameters.size() << " of them.";
-  }
-
-  // Epsilon must be a positive number
-  if (internal::GetTypeKind(intrinsic.parameters[kEpsilonIndex].dtype()) !=
-      internal::TypeKind::kNumeric) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "DPGroupByFactory: Epsilon must be numerical.";
-  }
-  double epsilon = intrinsic.parameters[kEpsilonIndex].CastToScalar<double>();
-  if (epsilon <= 0) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "DPGroupByFactory: Epsilon must be positive.";
-  }
-  double epsilon_per_agg = epsilon / intrinsic.nested_intrinsics.size();
-
-  // Delta must be a number between 0 and 1
-  if (internal::GetTypeKind(intrinsic.parameters[kDeltaIndex].dtype()) !=
-      internal::TypeKind::kNumeric) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "DPGroupByFactory: Delta must be numerical.";
-  }
-  double delta = intrinsic.parameters[kDeltaIndex].CastToScalar<double>();
-  if (delta <= 0 || delta >= 1) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "DPGroupByFactory: Delta must lie between 0 and 1.";
-  }
-  double delta_per_agg = delta / intrinsic.nested_intrinsics.size();
-
-  // L0 bound must be a positive number
-  if (internal::GetTypeKind(intrinsic.parameters[kL0Index].dtype()) !=
-      internal::TypeKind::kNumeric) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "DPGroupByFactory: L0 bound must be numerical.";
-  }
-  int64_t l0_bound = intrinsic.parameters[kL0Index].CastToScalar<int64_t>();
-  if (l0_bound <= 0) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "DPGroupByFactory: L0 bound must be positive.";
-  }
-  // If no keys are given, scalar aggregation will occur. There is exactly one
-  // "group" in that case.
-  if (intrinsic.inputs.empty()) {
-    l0_bound = 1;
-  }
-
-  // Currently, we only support nested sums.
-  // The following check will be updated when this changes.
-  for (const auto& intrinsic : intrinsic.nested_intrinsics) {
-    if (intrinsic.uri != kDPSumUri) {
-      return TFF_STATUS(UNIMPLEMENTED) << "DPGroupByFactory: Currently, only "
-                                          "nested DP sums are supported.";
-    }
-
-    // Ensure that each nested intrinsic provides a positive Linfinity bound
-    bool has_linfinity_bound = false;
-    const Tensor& linfinity_tensor = intrinsic.parameters[kLinfinityIndex];
-    DataType linfinity_dtype = linfinity_tensor.dtype();
-    NUMERICAL_ONLY_DTYPE_CASES(
-        linfinity_dtype, InputType,
-        has_linfinity_bound = linfinity_tensor.CastToScalar<InputType>() > 0);
-    if (!has_linfinity_bound) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "DPGroupByFactory: Each nested intrinsic must provide a "
-                "positive Linfinity bound.";
-    }
-  }
-
-  // Create nested aggregators.
-  std::vector<std::unique_ptr<OneDimBaseGroupingAggregator>> nested_aggregators;
-  TFF_ASSIGN_OR_RETURN(nested_aggregators, GroupByFactory::CreateAggregators(
-                                               intrinsic, aggregator_state));
-
-  // Create the DP key combiner, and only populate the key combiner with state
-  // if there are keys.
-  auto key_combiner = DPGroupByAggregator::CreateDPKeyCombiner(
-      intrinsic.inputs, &intrinsic.outputs, l0_bound);
-  if (aggregator_state != nullptr && key_combiner != nullptr) {
-    TFF_RETURN_IF_ERROR(GroupByFactory::PopulateKeyCombinerFromState(
-        *key_combiner, *aggregator_state));
-  }
-
-  int num_inputs = aggregator_state ? aggregator_state->num_inputs() : 0;
-
-  // Use new rather than make_unique here because the factory function that uses
-  // a non-public constructor can't use std::make_unique, and we don't want to
-  // add a dependency on absl::WrapUnique.
-  return std::unique_ptr<DPGroupByAggregator>(new DPGroupByAggregator(
-      intrinsic.inputs, &intrinsic.outputs, &(intrinsic.nested_intrinsics),
-      std::move(key_combiner), std::move(nested_aggregators), epsilon_per_agg,
-      delta_per_agg, l0_bound, num_inputs));
-}
-
-REGISTER_AGGREGATOR_FACTORY(std::string(kDPGroupByUri), DPGroupByFactory);
 
 }  // namespace aggregation
 }  // namespace tensorflow_federated

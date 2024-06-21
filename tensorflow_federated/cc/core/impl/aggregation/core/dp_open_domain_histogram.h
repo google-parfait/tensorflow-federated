@@ -14,13 +14,12 @@
  * limitations under the License.
  */
 
-#ifndef THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_AGGREGATION_CORE_DP_GROUP_BY_AGGREGATOR_H_
-#define THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_AGGREGATION_CORE_DP_GROUP_BY_AGGREGATOR_H_
+#ifndef THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_AGGREGATION_CORE_DP_OPEN_DOMAIN_HISTOGRAM_H_
+#define THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_AGGREGATION_CORE_DP_OPEN_DOMAIN_HISTOGRAM_H_
 
 #include <cmath>
 #include <cstdint>
 #include <memory>
-#include <string>
 #include <vector>
 
 #include "absl/status/statusor.h"
@@ -35,7 +34,6 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator.h"
-#include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator_factory.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_spec.h"
 
 namespace tensorflow_federated {
@@ -77,13 +75,13 @@ static absl::StatusOr<OutputType> CalculateLaplaceThreshold(
 }
 }  // namespace internal
 
-// DPGroupByAggregator is a child class of GroupByAggregator.
+// DPOpenDomainHistogram is a child class of GroupByAggregator.
 // ::AggregateTensorsInternal enforces a bound on the number of composite keys
 // (ordinals) that any one aggregation can contribute to.
 // ::Report adds noise to aggregates and removes composite keys that have value
 // below a threshold.
 // This class is not thread safe.
-class DPGroupByAggregator : public GroupByAggregator {
+class DPOpenDomainHistogram : public GroupByAggregator {
  public:
   // Performs the same checks as TensorAggregator::Report but also checks
   // magnitude of DP budget. If too large, simply releases noiseless aggregate.
@@ -99,9 +97,9 @@ class DPGroupByAggregator : public GroupByAggregator {
  protected:
   friend class DPGroupByFactory;
 
-  // Constructs a DPGroupByAggregator.
+  // Constructs a DPOpenDomainHistogram.
   // This constructor is meant for use by the DPGroupByFactory; most callers
-  // should instead create a DPGroupByAggregator from an intrinsic using the
+  // should instead create a DPOpenDomainHistogram from an intrinsic using the
   // factory, i.e.
   // `(*GetAggregatorFactory("fedsql_dp_group_by"))->Create(intrinsic)`
   //
@@ -109,9 +107,9 @@ class DPGroupByAggregator : public GroupByAggregator {
   // * epsilon_per_agg: the privacy budget per nested intrinsic.
   // * delta_per_agg: the privacy failure parameter per nested intrinsic.
   // * l0_bound: the maximum number of composite keys one user can contribute to
-  //   (assuming each DPGroupByAggregator::AggregateTensorsInternal call
+  //   (assuming each DPOpenDomainHistogram::AggregateTensorsInternal call
   //    contains data from a unique user)
-  DPGroupByAggregator(
+  DPOpenDomainHistogram(
       const std::vector<TensorSpec>& input_key_specs,
       const std::vector<TensorSpec>* output_key_specs,
       const std::vector<Intrinsic>* intrinsics,
@@ -127,7 +125,7 @@ class DPGroupByAggregator : public GroupByAggregator {
       const std::vector<TensorSpec>& input_key_specs,
       const std::vector<TensorSpec>* output_key_specs, int64_t l0_bound);
 
-  // When merging two DPGroupByAggregators, norm bounding the aggregates will
+  // When merging two DPOpenDomainHistograms, norm bounding the aggregates will
   // destroy accuracy and is not needed for privacy. Hence, this function calls
   // CompositeKeyCombiner::Accumulate, which has no L0 norm bounding.
   StatusOr<Tensor> CreateOrdinalsByGroupingKeysForMerge(
@@ -143,28 +141,7 @@ class DPGroupByAggregator : public GroupByAggregator {
   std::vector<bool> laplace_was_used_;
 };
 
-// Factory class for the DPGroupByAggregator.
-class DPGroupByFactory final : public TensorAggregatorFactory {
- public:
-  DPGroupByFactory() = default;
-
-  // DPGroupByFactory isn't copyable or moveable.
-  DPGroupByFactory(const DPGroupByFactory&) = delete;
-  DPGroupByFactory& operator=(const DPGroupByFactory&) = delete;
-
-  StatusOr<std::unique_ptr<TensorAggregator>> Create(
-      const Intrinsic& intrinsic) const override;
-
-  StatusOr<std::unique_ptr<TensorAggregator>> Deserialize(
-      const Intrinsic& intrinsic, std::string serialized_state) const override;
-
- private:
-  StatusOr<std::unique_ptr<TensorAggregator>> CreateInternal(
-      const Intrinsic& intrinsic,
-      const GroupByAggregatorState* aggregator_state) const;
-};
-
 }  // namespace aggregation
 }  // namespace tensorflow_federated
 
-#endif  // THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_AGGREGATION_CORE_DP_GROUP_BY_AGGREGATOR_H_
+#endif  // THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_AGGREGATION_CORE_DP_OPEN_DOMAIN_HISTOGRAM_H_
