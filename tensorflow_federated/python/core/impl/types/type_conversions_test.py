@@ -760,30 +760,6 @@ class TypeToPyContainerTest(absltest.TestCase):
         expected_nested_structure,
     )
 
-  def test_sequence_type_with_collections_sequence_elements(self):
-    dataset_yielding_sequences = tf.data.Dataset.range(5).map(lambda t: (t, t))
-    converted_dataset = type_conversions.type_to_py_container(
-        dataset_yielding_sequences,
-        computation_types.SequenceType((np.int64, np.int64)),
-    )
-    actual_elements = list(converted_dataset)
-    expected_elements = list(dataset_yielding_sequences)
-    self.assertEqual(actual_elements, expected_elements)
-
-  def test_sequence_type_with_collections_mapping_elements(self):
-    dataset_yielding_mappings = tf.data.Dataset.range(5).map(
-        lambda t: collections.OrderedDict(a=t, b=t)
-    )
-    converted_dataset = type_conversions.type_to_py_container(
-        dataset_yielding_mappings,
-        computation_types.SequenceType(
-            collections.OrderedDict(a=np.int64, b=np.int64)
-        ),
-    )
-    actual_elements = list(converted_dataset)
-    expected_elements = list(dataset_yielding_mappings)
-    self.assertEqual(actual_elements, expected_elements)
-
 
 class StructureFromTensorTypeTreeTest(absltest.TestCase):
 

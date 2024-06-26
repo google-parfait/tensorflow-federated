@@ -414,12 +414,6 @@ def type_to_py_container(value, type_spec: computation_types.Type):
     element_type = structure_type_spec.element
     if isinstance(value, list):
       return [type_to_py_container(element, element_type) for element in value]
-    elif isinstance(value, tf.data.Dataset):
-      # `tf.data.Dataset` does not understand `Struct`, so the dataset
-      # in `value` must already be yielding Python containers. This is because
-      # when TFF is constructing datasets it always uses the proper Python
-      # container, so we simply return `value` here without modification.
-      return value
     else:
       # Assume that the type of value does not understand `Struct` and that the
       # value must yield Python containers.
