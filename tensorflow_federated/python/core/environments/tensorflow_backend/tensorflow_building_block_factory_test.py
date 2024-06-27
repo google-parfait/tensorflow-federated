@@ -17,9 +17,9 @@ from absl.testing import absltest
 import numpy as np
 
 from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_building_block_factory
+from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_computation_test_utils
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
-from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_test_utils
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 

@@ -1,4 +1,5 @@
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
+load("//tools:build_defs.bzl", "py_cpu_gpu_test")
 
 package(
     default_applicable_licenses = ["//:package_license"],
@@ -45,10 +46,10 @@ py_test(
     srcs = ["compiled_computation_transformations_test.py"],
     deps = [
         ":compiled_computation_transformations",
+        ":tensorflow_computation_factory",
+        ":tensorflow_computation_test_utils",
         ":tensorflow_computation_transformations",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
-        "//tensorflow_federated/python/core/impl/compiler:tensorflow_computation_factory",
-        "//tensorflow_federated/python/core/impl/compiler:tensorflow_computation_test_utils",
         "//tensorflow_federated/python/core/impl/types:computation_types",
     ],
 )
@@ -83,12 +84,12 @@ py_library(
     name = "tensorflow_building_block_factory",
     srcs = ["tensorflow_building_block_factory.py"],
     deps = [
+        ":tensorflow_computation_factory",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/compiler:building_block_factory",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
         "//tensorflow_federated/python/core/impl/compiler:intrinsic_defs",
-        "//tensorflow_federated/python/core/impl/compiler:tensorflow_computation_factory",
         "//tensorflow_federated/python/core/impl/types:array_shape",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
@@ -102,11 +103,58 @@ py_test(
     srcs = ["tensorflow_building_block_factory_test.py"],
     deps = [
         ":tensorflow_building_block_factory",
+        ":tensorflow_computation_test_utils",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
         "//tensorflow_federated/python/core/impl/compiler:intrinsic_defs",
-        "//tensorflow_federated/python/core/impl/compiler:tensorflow_computation_test_utils",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
+    ],
+)
+
+py_library(
+    name = "tensorflow_computation_factory",
+    srcs = ["tensorflow_computation_factory.py"],
+    deps = [
+        "//tensorflow_federated/proto/v0:computation_py_pb2",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/common_libs:structure",
+        "//tensorflow_federated/python/core/impl/compiler:local_computation_factory_base",
+        "//tensorflow_federated/python/core/impl/types:array_shape",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:type_analysis",
+        "//tensorflow_federated/python/core/impl/types:type_conversions",
+        "//tensorflow_federated/python/core/impl/types:type_serialization",
+        "//tensorflow_federated/python/core/impl/types:type_transformations",
+        "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
+        "//tensorflow_federated/python/tensorflow_libs:serialization_utils",
+    ],
+)
+
+py_cpu_gpu_test(
+    name = "tensorflow_computation_factory_test",
+    srcs = ["tensorflow_computation_factory_test.py"],
+    deps = [
+        ":tensorflow_computation_factory",
+        ":tensorflow_computation_test_utils",
+        "//tensorflow_federated/proto/v0:computation_py_pb2",
+        "//tensorflow_federated/python/common_libs:structure",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:placements",
+        "//tensorflow_federated/python/core/impl/types:type_factory",
+        "//tensorflow_federated/python/core/impl/types:type_serialization",
+    ],
+)
+
+py_library(
+    name = "tensorflow_computation_test_utils",
+    testonly = True,
+    srcs = ["tensorflow_computation_test_utils.py"],
+    deps = [
+        "//tensorflow_federated/proto/v0:computation_py_pb2",
+        "//tensorflow_federated/python/common_libs:structure",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:type_serialization",
+        "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
     ],
 )
 
@@ -125,10 +173,10 @@ py_test(
     size = "small",
     srcs = ["tensorflow_computation_transformations_test.py"],
     deps = [
+        ":tensorflow_computation_factory",
         ":tensorflow_computation_transformations",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
-        "//tensorflow_federated/python/core/impl/compiler:tensorflow_computation_factory",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
         "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
@@ -152,9 +200,9 @@ py_test(
         "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
     ],
     deps = [
+        ":tensorflow_computation_factory",
         ":tensorflow_executor_bindings",
         "//tensorflow_federated/proto/v0:executor_py_pb2",
-        "//tensorflow_federated/python/core/impl/compiler:tensorflow_computation_factory",
         "//tensorflow_federated/python/core/impl/executors:executor_bindings",
         "//tensorflow_federated/python/core/impl/executors:value_serialization",
         "//tensorflow_federated/python/core/impl/types:computation_types",
@@ -168,11 +216,11 @@ py_library(
     srcs = ["tensorflow_tree_transformations.py"],
     deps = [
         ":tensorflow_building_block_factory",
+        ":tensorflow_computation_factory",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/impl/compiler:building_block_factory",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
         "//tensorflow_federated/python/core/impl/compiler:intrinsic_defs",
-        "//tensorflow_federated/python/core/impl/compiler:tensorflow_computation_factory",
         "//tensorflow_federated/python/core/impl/compiler:transformation_utils",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_analysis",
