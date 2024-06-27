@@ -8,6 +8,8 @@ and this project adheres to
 
 ## Unreleased
 
+## Release 0.82.0
+
 ### Added
 
 *   Add a serialized raw array content field to the Array proto.
