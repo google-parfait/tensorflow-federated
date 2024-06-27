@@ -24,6 +24,7 @@ from tensorflow_federated.python.analytics import data_processing
 from tensorflow_federated.python.analytics.heavy_hitters.iblt import chunkers
 from tensorflow_federated.python.analytics.heavy_hitters.iblt import iblt_lib
 from tensorflow_federated.python.analytics.heavy_hitters.iblt import iblt_tensor
+from tensorflow_federated.python.core.backends.mapreduce import intrinsics as mapreduce_intrinsics
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
@@ -117,7 +118,8 @@ def build_iblt_computation(
     secure_sum_bitwidth: The bitwidth used for federated secure sum. The default
       value is `None`, which disables secure sum. If not `None`, must be in the
       range `[1,62]`. Note that when this parameter is not `None`, the IBLT
-      sketches are summed via `federated_secure_modular_sum` with modulus equal
+      sketches are summed via
+      `tff.backends.mapreduce.federated_secure_modular_sum` with modulus equal
       to IBLT's default field size, and other values (client count, string count
       tensor) are aggregated via `federated_secure_sum` with
       `max_input=2**secure_sum_bitwidth - 1`.
@@ -279,7 +281,7 @@ def build_iblt_computation(
     )
 
   def secure_modular_sum(x):
-    return intrinsics.federated_secure_modular_sum(
+    return mapreduce_intrinsics.federated_secure_modular_sum(
         x, modulus=np.int64(iblt_lib.DEFAULT_FIELD_SIZE)
     )
 

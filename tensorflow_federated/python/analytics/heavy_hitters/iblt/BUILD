@@ -109,6 +109,7 @@ py_library(
         ":iblt_lib",
         ":iblt_tensor",
         "//tensorflow_federated/python/analytics:data_processing",
+        "//tensorflow_federated/python/core/backends/mapreduce:intrinsics",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
         "//tensorflow_federated/python/core/impl/computation:computation_base",
         "//tensorflow_federated/python/core/impl/federated_context:federated_computation",

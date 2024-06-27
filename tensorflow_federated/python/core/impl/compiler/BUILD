@@ -58,7 +58,6 @@ py_library(
     deps = [
         ":building_blocks",
         ":intrinsic_defs",
-        ":tensorflow_computation_factory",
         ":transformation_utils",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
@@ -78,8 +77,6 @@ py_test(
         "$(location building_block_factory_test_goldens/constructs_correct_computation_clients.expected)",
         "--golden",
         "$(location building_block_factory_test_goldens/constructs_correct_computation_server.expected)",
-        "--golden",
-        "$(location building_block_factory_test_goldens/federated_secure_modular_sum.expected)",
         "--golden",
         "$(location building_block_factory_test_goldens/replaces_single_element.expected)",
         "--golden",
@@ -106,7 +103,6 @@ py_test(
     data = [
         "building_block_factory_test_goldens/constructs_correct_computation_clients.expected",
         "building_block_factory_test_goldens/constructs_correct_computation_server.expected",
-        "building_block_factory_test_goldens/federated_secure_modular_sum.expected",
         "building_block_factory_test_goldens/replaces_single_element.expected",
         "building_block_factory_test_goldens/skips_unnamed_element.expected",
         "building_block_factory_test_goldens/tuple_federated_apply_with_two_values_different_typed.expected",

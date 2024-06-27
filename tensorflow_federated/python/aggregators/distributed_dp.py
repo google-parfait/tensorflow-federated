@@ -386,8 +386,9 @@ class DistributedDpSumFactory(factory.UnweightedAggregationFactory):
     #    #3. inner-server: clips to [0, 2^b]
     #        Ensures the aggregated value range does not grow by log_2(n).
     #        NOTE: If underlying SecAgg is implemented using the new
-    #        `tff.federated_secure_modular_sum()` operator with the same
-    #        modular clipping range, then this would correspond to a no-op.
+    #        `tff.backends.mapreduce.federated_secure_modular_sum()` operator
+    #        with the same modular clipping range, then this would correspond to
+    #        a no-op.
     #    #4. outer-server: clips to [-2^(b-1), 2^(b-1)]
     #        Keeps aggregated values centered near 0 out of the logical SecAgg
     #        black box for outer aggregators.

@@ -108,7 +108,9 @@ def round_comp(server_state, client_data):
   secure_aggs = [
     tff.federated_secure_sum_bitwidth(client_updates[1], bitwidth()),
     tff.federated_secure_sum(client_updates[2], max_input()),
-    tff.federated_secure_modular_sum(client_updates[3], modulus())]
+    tff.backends.mapreduce.federated_secure_modular_sum(
+        client_updates[3], modulus()),
+  ]
 
   global_update = [simple_agg] + secure_aggs
 
@@ -288,6 +290,7 @@ abstract types in addition to those defined earlier:
 # TODO: b/138261370 - Cover this in the general set of guidelines for
 # deployment.
 
+# pylint: disable=g-importing-member
 from tensorflow_federated.python.core.backends.mapreduce.compiler import consolidate_and_extract_local_processing
 from tensorflow_federated.python.core.backends.mapreduce.compiler import parse_tff_to_tf
 from tensorflow_federated.python.core.backends.mapreduce.form_utils import check_computation_compatible_with_map_reduce_form
@@ -301,3 +304,5 @@ from tensorflow_federated.python.core.backends.mapreduce.form_utils import get_s
 from tensorflow_federated.python.core.backends.mapreduce.forms import BroadcastForm
 from tensorflow_federated.python.core.backends.mapreduce.forms import DistributeAggregateForm
 from tensorflow_federated.python.core.backends.mapreduce.forms import MapReduceForm
+from tensorflow_federated.python.core.backends.mapreduce.intrinsics import federated_secure_modular_sum
+# pylint: enable=g-importing-member

@@ -21,6 +21,7 @@ from absl.testing import parameterized
 import numpy as np
 import tree
 
+from tensorflow_federated.python.core.backends.mapreduce import intrinsics as mapreduce_intrinsics
 from tensorflow_federated.python.core.backends.test import cpp_execution_contexts
 from tensorflow_federated.python.core.backends.test import execution_contexts
 from tensorflow_federated.python.core.impl.execution_contexts import async_execution_context
@@ -131,7 +132,7 @@ class SecureModularSumTest(
 
     @federated_computation.federated_computation(tff_type)
     def modular_sum_by_five(arg):
-      return intrinsics.federated_secure_modular_sum(arg, modulus)
+      return mapreduce_intrinsics.federated_secure_modular_sum(arg, modulus)
 
     actual_result = modular_sum_by_five(arg)
 
@@ -169,7 +170,7 @@ class SecureModularSumTest(
 
     @federated_computation.federated_computation(tff_type)
     def modular_sum_by_five(arg):
-      return intrinsics.federated_secure_modular_sum(arg, modulus)
+      return mapreduce_intrinsics.federated_secure_modular_sum(arg, modulus)
 
     self.assertEqual(expected_result, await modular_sum_by_five(arg))
 
@@ -215,7 +216,7 @@ class SecureModularSumTest(
 
     @federated_computation.federated_computation(tff_type)
     def modular_sum_by_five(arg):
-      return intrinsics.federated_secure_modular_sum(arg, modulus)
+      return mapreduce_intrinsics.federated_secure_modular_sum(arg, modulus)
 
     self.assertEqual(expected_result, modular_sum_by_five(arg))
 

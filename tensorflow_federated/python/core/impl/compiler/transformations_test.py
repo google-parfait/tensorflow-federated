@@ -1035,7 +1035,7 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
         (None, client_val_type),
         ('intermediate_state', intermediate_state_type),
     ]
-    intrinsic_call = building_block_factory.create_federated_secure_modular_sum(
+    intrinsic_call = building_block_factory.create_federated_secure_sum(
         building_blocks.Selection(
             building_blocks.Reference('arg', arg_type), index=client_data_index
         ),
@@ -1046,7 +1046,6 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
             ),
             index=0,
         ),
-        preapply_modulus=False,
     )
     comp = building_blocks.Lambda('arg', arg_type, intrinsic_call)
 
@@ -1057,12 +1056,12 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
     before, intrinsic, after = (
         transformations.divisive_force_align_and_split_by_intrinsics(
             comp,
-            [intrinsic_defs.FEDERATED_SECURE_MODULAR_SUM],
+            [intrinsic_defs.FEDERATED_SECURE_SUM],
             before_comp_allowed_original_arg_subparameters=[
-                (client_data_index,)
+                (client_data_index,),
             ],
             intrinsic_comp_allowed_original_arg_subparameters=[
-                (intermediate_state_index,)
+                (intermediate_state_index,),
             ],
             after_comp_allowed_original_arg_subparameters=[
                 (server_data_index,),
@@ -1073,12 +1072,12 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
 
     self.check_split_signatures(comp, before, intrinsic, after)
 
-    # Check that the federated_secure_modular_sum intrinsic is only present in
-    # the intrinsic comp.
+    # Check that the federated_secure_sum intrinsic is only present in the
+    # intrinsic comp.
     self.assertEmpty(self.find_intrinsics_in_comp(before))
     self.assertEqual(
         self.find_intrinsics_in_comp(intrinsic),
-        [intrinsic_defs.FEDERATED_SECURE_MODULAR_SUM.uri],
+        [intrinsic_defs.FEDERATED_SECURE_SUM.uri],
     )
     self.assertEmpty(self.find_intrinsics_in_comp(after))
 
@@ -1653,8 +1652,8 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
             building_blocks.Reference('arg', arg_type), index=client_data_index
         )
     )
-    federated_secure_modular_sum_call = (
-        building_block_factory.create_federated_secure_modular_sum(
+    federated_secure_sum_call = (
+        building_block_factory.create_federated_secure_sum(
             building_blocks.Selection(
                 building_blocks.Reference('arg', arg_type),
                 index=client_data_index,
@@ -1666,15 +1665,11 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
                 ),
                 index=0,
             ),
-            preapply_modulus=False,
         )
     )
     block_locals = [
         ('federated_sum_result', federated_sum_call),
-        (
-            'federated_secure_modular_sum_result',
-            federated_secure_modular_sum_call,
-        ),
+        ('federated_secure_sum_result', federated_secure_sum_call),
     ]
     comp = building_blocks.Lambda(
         'arg',
@@ -1687,8 +1682,8 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
                     federated_sum_call.type_signature,
                 ),
                 building_blocks.Reference(
-                    'federated_secure_modular_sum_result',
-                    federated_secure_modular_sum_call.type_signature,
+                    'federated_secure_sum_result',
+                    federated_secure_sum_call.type_signature,
                 ),
                 building_blocks.Selection(
                     building_blocks.Reference('arg', arg_type),
@@ -1706,15 +1701,15 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
         transformations.divisive_force_align_and_split_by_intrinsics(
             comp,
             [
-                intrinsic_defs.FEDERATED_SECURE_MODULAR_SUM,
+                intrinsic_defs.FEDERATED_SECURE_SUM,
                 intrinsic_defs.FEDERATED_SUM,
                 intrinsic_defs.FEDERATED_MEAN,
             ],
             before_comp_allowed_original_arg_subparameters=[
-                (client_data_index,)
+                (client_data_index,),
             ],
             intrinsic_comp_allowed_original_arg_subparameters=[
-                (intermediate_state_index,)
+                (intermediate_state_index,),
             ],
             after_comp_allowed_original_arg_subparameters=[
                 (server_data_index,),
@@ -1725,14 +1720,14 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
 
     self.check_split_signatures(comp, before, intrinsic, after)
 
-    # Check that the federated_sum and federated_secure_modular_sum intrinsics
-    # are only present in the intrinsic comp.
+    # Check that the federated_sum and federated_secure_sum intrinsics are only
+    # present in the intrinsic comp.
     self.assertEmpty(self.find_intrinsics_in_comp(before))
     self.assertEqual(
         set(self.find_intrinsics_in_comp(intrinsic)),
         set([
             intrinsic_defs.FEDERATED_SUM.uri,
-            intrinsic_defs.FEDERATED_SECURE_MODULAR_SUM.uri,
+            intrinsic_defs.FEDERATED_SECURE_SUM.uri,
         ]),
     )
     self.assertEmpty(self.find_intrinsics_in_comp(after))
@@ -1748,7 +1743,7 @@ class DivisiveForceAlignAndSplitByIntrinsicsTest(absltest.TestCase):
     self.assertNotIsInstance(
         intrinsic.result.locals[0][1].argument, building_blocks.Struct
     )
-    # The federated_secure_modular_sum call takes two args.
+    # The federated_secure_sum call takes two args.
     self.assertIsInstance(
         intrinsic.result.locals[1][1].argument, building_blocks.Struct
     )

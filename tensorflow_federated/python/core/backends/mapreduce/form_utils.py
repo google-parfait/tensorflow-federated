@@ -26,6 +26,7 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.backends.mapreduce import compiler
 from tensorflow_federated.python.core.backends.mapreduce import forms
+from tensorflow_federated.python.core.backends.mapreduce import intrinsics as mapreduce_intrinsics
 from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_building_block_factory
 from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_tree_transformations
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
@@ -187,8 +188,10 @@ def get_computation_for_map_reduce_form(
     secure_sum_result = intrinsics.federated_secure_sum(
         secure_sum_input, mrf.secure_sum_max_input()
     )
-    secure_modular_sum_result = intrinsics.federated_secure_modular_sum(
-        secure_modular_sum_input, mrf.secure_modular_sum_modulus()
+    secure_modular_sum_result = (
+        mapreduce_intrinsics.federated_secure_modular_sum(
+            secure_modular_sum_input, mrf.secure_modular_sum_modulus()
+        )
     )
     update_arg = intrinsics.federated_zip((
         server_state,
@@ -310,6 +313,49 @@ def _check_function_signature_compatible_with_broadcast_form(
     )
 
 
+def _check_contains_only_reducible_intrinsics(
+    comp: building_blocks.ComputationBuildingBlock,
+):
+  """Checks that `comp` contains intrinsics reducible to aggregate or broadcast.
+
+  Args:
+    comp: Instance of `building_blocks.ComputationBuildingBlock` to check for
+      presence of intrinsics not currently immediately reducible to
+      `FEDERATED_AGGREGATE` or `FEDERATED_BROADCAST`, or local processing.
+
+  Raises:
+    ValueError: If we encounter an intrinsic under `comp` that is not reducible.
+  """
+  reducible_uris = (
+      intrinsic_defs.FEDERATED_AGGREGATE.uri,
+      intrinsic_defs.FEDERATED_APPLY.uri,
+      intrinsic_defs.FEDERATED_BROADCAST.uri,
+      intrinsic_defs.FEDERATED_EVAL_AT_CLIENTS.uri,
+      intrinsic_defs.FEDERATED_EVAL_AT_SERVER.uri,
+      intrinsic_defs.FEDERATED_MAP_ALL_EQUAL.uri,
+      intrinsic_defs.FEDERATED_MAP.uri,
+      intrinsic_defs.FEDERATED_SECURE_SUM_BITWIDTH.uri,
+      intrinsic_defs.FEDERATED_SECURE_SUM.uri,
+      intrinsic_defs.FEDERATED_VALUE_AT_CLIENTS.uri,
+      intrinsic_defs.FEDERATED_VALUE_AT_SERVER.uri,
+      intrinsic_defs.FEDERATED_ZIP_AT_CLIENTS.uri,
+      intrinsic_defs.FEDERATED_ZIP_AT_SERVER.uri,
+      mapreduce_intrinsics.FEDERATED_SECURE_MODULAR_SUM.uri,
+  )
+
+  def _check(comp):
+    if (
+        isinstance(comp, building_blocks.Intrinsic)
+        and comp.uri not in reducible_uris
+    ):
+      raise ValueError(
+          'Encountered an Intrinsic not currently reducible to aggregate or '
+          'broadcast, the intrinsic {}'.format(comp.compact_representation())
+      )
+
+  tree_analysis.visit_postorder(comp, _check)
+
+
 def check_computation_compatible_with_map_reduce_form(
     comp: computation_impl.ConcreteComputation,
     *,
@@ -363,7 +409,7 @@ def check_computation_compatible_with_map_reduce_form(
   )
   comp_tree = _replace_lambda_body_with_call_dominant_form(comp_tree)
 
-  tree_analysis.check_contains_only_reducible_intrinsics(comp_tree)
+  _check_contains_only_reducible_intrinsics(comp_tree)
   tree_analysis.check_broadcast_not_dependent_on_aggregate(comp_tree)
 
   return comp_tree
@@ -452,7 +498,7 @@ def _split_ast_on_aggregate(bb):
           tensorflow_building_block_factory.create_null_federated_aggregate(),
           tensorflow_building_block_factory.create_null_federated_secure_sum_bitwidth(),
           tensorflow_building_block_factory.create_null_federated_secure_sum(),
-          tensorflow_building_block_factory.create_null_federated_secure_modular_sum(),
+          mapreduce_intrinsics.create_null_federated_secure_modular_sum(),
       ],
   )
 

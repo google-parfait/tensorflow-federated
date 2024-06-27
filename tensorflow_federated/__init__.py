@@ -40,7 +40,6 @@ from tensorflow_federated.python.core.impl.federated_context.intrinsics import f
 from tensorflow_federated.python.core.impl.federated_context.intrinsics import federated_max
 from tensorflow_federated.python.core.impl.federated_context.intrinsics import federated_mean
 from tensorflow_federated.python.core.impl.federated_context.intrinsics import federated_min
-from tensorflow_federated.python.core.impl.federated_context.intrinsics import federated_secure_modular_sum
 from tensorflow_federated.python.core.impl.federated_context.intrinsics import federated_secure_select
 from tensorflow_federated.python.core.impl.federated_context.intrinsics import federated_secure_sum
 from tensorflow_federated.python.core.impl.federated_context.intrinsics import federated_secure_sum_bitwidth

@@ -23,6 +23,7 @@ import tree
 from tensorflow_federated.python.core.backends.mapreduce import distribute_aggregate_test_utils
 from tensorflow_federated.python.core.backends.mapreduce import form_utils
 from tensorflow_federated.python.core.backends.mapreduce import forms
+from tensorflow_federated.python.core.backends.mapreduce import intrinsics as mapreduce_intrinsics
 from tensorflow_federated.python.core.backends.mapreduce import mapreduce_test_utils
 from tensorflow_federated.python.core.backends.test import execution_contexts
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
@@ -521,8 +522,10 @@ def get_iterative_process_for_minimal_sum_example():
     secure_sum_update = intrinsics.federated_secure_sum(
         client_updates[2], max_input=1
     )
-    secure_modular_sum_update = intrinsics.federated_secure_modular_sum(
-        client_updates[3], modulus=8
+    secure_modular_sum_update = (
+        mapreduce_intrinsics.federated_secure_modular_sum(
+            client_updates[3], modulus=8
+        )
     )
     new_server_state = intrinsics.federated_zip([
         unsecure_update,
@@ -1096,7 +1099,7 @@ class GetMapReduceFormTest(FederatedFormTestCase, parameterized.TestCase):
 
   def test_returns_map_reduce_form_with_secure_modular_sum_modulus(self):
     mrf = self.get_map_reduce_form_for_client_to_server_fn(
-        lambda data: intrinsics.federated_secure_modular_sum(data, 22)
+        lambda data: mapreduce_intrinsics.federated_secure_modular_sum(data, 22)
     )
     self.assertEqual(mrf.secure_modular_sum_modulus(), (22,))
 

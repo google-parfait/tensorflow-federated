@@ -17,6 +17,8 @@ digraph {
   native -> backends_test [dir=back, color="#ff0000"]
   // TODO: b/233801300 - Remove dependency from `mapreduce` to `test`.
   mapreduce -> backends_test [color="#ff0000"]
+  // TODO: b/349685709 - Remove dependency from `test` to `mapreduce`.
+  backends_test -> mapreduce [color="#ff0000"]
   backends_test -> jax_frontend [arrowhead="none", style="invisible"]
   backends_test -> tensorflow_frontend [arrowhead="none", style="invisible"]
 

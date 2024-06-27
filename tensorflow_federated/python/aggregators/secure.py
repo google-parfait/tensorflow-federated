@@ -25,6 +25,7 @@ import tensorflow as tf
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import primitives
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.core.backends.mapreduce import intrinsics as mapreduce_intrinsics
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
@@ -54,14 +55,15 @@ class SecureModularSumFactory(factory.UnweightedAggregationFactory):
   """`AggregationProcess` factory for securely summing values under a modulus.
 
   The created `tff.templates.AggregationProcess` uses the
-  `tff.federated_secure_modular_sum` operator for movement of values from
-  `tff.CLIENTS` to `tff.SERVER`.
+  `tff.backends.mapreduce.federated_secure_modular_sum` operator for movement of
+  values from `tff.CLIENTS` to `tff.SERVER`.
 
   The aggregator requires integer types, and values in range `[0, modulus-1]`
   (if `symmetric_range` is `False`) or in range `[-(modulus-1), +(modulus-1)]`
   (if `symmetric_range` is `True`). In the latter case, additional computation
-  is needed for correct reduction to the `tff.federated_secure_modular_sum` with
-  `2*modulus-1` as the modulus for actual secure summation.
+  is needed for correct reduction to the
+  `tff.backends.mapreduce.federated_secure_modular_sum` with `2*modulus-1` as
+  the modulus for actual secure summation.
 
   The aggregator always returns a value in those ranges, implemented as a
   modular summation, regardless of input values. That is, if an input value at
@@ -78,16 +80,17 @@ class SecureModularSumFactory(factory.UnweightedAggregationFactory):
   The `* %s x` operator symbolizes modular "wrap around" to range `[-x, x]`.
 
   The implementation of the case of `symmetric_range` is `True` is by delegation
-  to `federated_secure_modular_sum` with modulus `2*modulus-1` is, which is
-  equivalent to modular clip to range `[-(modulus-1), +(modulus-1)]`, and then
-  representing `x` in that range as `(x + 2*modulus-1) % 2*modulus-1`, which is
-  congruent with `x` under the desired modulus, thus compatible with secure
-  aggregation. This is reverted after summation by modular clip to the initial
-  range `[-(modulus-1), +(modulus-1)]`.
+  to `tff.backends.mapreduce.federated_secure_modular_sum` with modulus
+  `2*modulus-1` is, which is equivalent to modular clip to range `[-(modulus-1),
+  +(modulus-1)]`, and then representing `x` in that range as `(x + 2*modulus-1)
+  % 2*modulus-1`, which is congruent with `x` under the desired modulus, thus
+  compatible with secure aggregation. This is reverted after summation by
+  modular clip to the initial range `[-(modulus-1), +(modulus-1)]`.
 
-  NOTE: Unlike `tff.federated_secure_modular_sum`, the `modulus` cannot be a
-  structure of integers. If different moduli are needed for different tensors,
-  recommended way of to achieve it is using the compositon of aggregators.
+  NOTE: Unlike `tff.backends.mapreduce.federated_secure_modular_sum`, the
+  `modulus` cannot be a structure of integers. If different moduli are needed
+  for different tensors, recommended way of to achieve it is using the
+  compositon of aggregators.
   """
 
   def __init__(
@@ -135,12 +138,13 @@ class SecureModularSumFactory(factory.UnweightedAggregationFactory):
     def next_fn(state, value):
       if self._symmetric_range:
         # Sum in [-M+1, M-1].
-        # Delegation to `federated_secure_modular_sum` with modulus 2*M-1 is
-        # equivalent to modular clip to range [-M+1, M-1]. Then, represent `x`
-        # in that range as `(x + 2*M-1) % 2*M-1` which is congruent with `x`
-        # under the desired modulus, thus compatible with secure aggregation.
-        # This is reverted after summation by modular clip to the initial range.
-        summed_value = intrinsics.federated_secure_modular_sum(
+        # Delegation to `tff.backends.mapreduce.federated_secure_modular_sum`
+        # with modulus 2*M-1 is equivalent to modular clip to range [-M+1, M-1].
+        # Then, represent `x` in that range as `(x + 2*M-1) % 2*M-1` which is
+        # congruent with `x` under the desired modulus, thus compatible with
+        # secure aggregation. This is reverted after summation by modular clip
+        # to the initial range.
+        summed_value = mapreduce_intrinsics.federated_secure_modular_sum(
             value, 2 * self._modulus - 1
         )
         summed_value = intrinsics.federated_map(
@@ -150,7 +154,7 @@ class SecureModularSumFactory(factory.UnweightedAggregationFactory):
             summed_value,
         )
       else:
-        summed_value = intrinsics.federated_secure_modular_sum(
+        summed_value = mapreduce_intrinsics.federated_secure_modular_sum(
             value, self._modulus
         )
       empty_measurements = intrinsics.federated_value((), placements.SERVER)

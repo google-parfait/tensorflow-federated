@@ -32,8 +32,35 @@ py_library(
     name = "compiler",
     srcs = ["compiler.py"],
     deps = [
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/common_libs:structure",
+        "//tensorflow_federated/python/core/backends/mapreduce:intrinsics",
+        "//tensorflow_federated/python/core/environments/tensorflow_backend:tensorflow_building_block_factory",
         "//tensorflow_federated/python/core/environments/tensorflow_backend:tensorflow_tree_transformations",
+        "//tensorflow_federated/python/core/impl/compiler:building_block_factory",
+        "//tensorflow_federated/python/core/impl/compiler:building_blocks",
+        "//tensorflow_federated/python/core/impl/compiler:intrinsic_defs",
+        "//tensorflow_federated/python/core/impl/compiler:tensorflow_computation_factory",
         "//tensorflow_federated/python/core/impl/computation:computation_impl",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:placements",
+        "//tensorflow_federated/python/core/impl/types:type_conversions",
+    ],
+)
+
+py_test(
+    name = "compiler_test",
+    srcs = ["compiler_test.py"],
+    deps = [
+        ":compiler",
+        "//tensorflow_federated/python/core/backends/mapreduce:intrinsics",
+        "//tensorflow_federated/python/core/environments/tensorflow_backend:tensorflow_tree_transformations",
+        "//tensorflow_federated/python/core/impl/compiler:building_blocks",
+        "//tensorflow_federated/python/core/impl/compiler:intrinsic_defs",
+        "//tensorflow_federated/python/core/impl/compiler:tree_analysis",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:placements",
+        "//tensorflow_federated/python/core/impl/types:type_test_utils",
     ],
 )
 
@@ -64,6 +91,7 @@ py_test(
     deps = [
         ":cpp_execution_contexts",
         ":execution_contexts",
+        "//tensorflow_federated/python/core/backends/mapreduce:intrinsics",
         "//tensorflow_federated/python/core/impl/execution_contexts:async_execution_context",
         "//tensorflow_federated/python/core/impl/execution_contexts:sync_execution_context",
         "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
@@ -91,6 +119,7 @@ py_test(
     srcs = ["execution_contexts_test.py"],
     deps = [
         ":execution_contexts",
+        "//tensorflow_federated/python/core/backends/mapreduce:intrinsics",
         "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
         "//tensorflow_federated/python/core/impl/types:computation_types",

@@ -76,12 +76,12 @@ def count(
   """
   counter = 0
 
-  def _function(building_block):
+  def _fn(building_block):
     nonlocal counter
     if predicate is None or predicate(building_block):
       counter += 1
 
-  visit_postorder(tree, _function)
+  visit_postorder(tree, _fn)
   return counter
 
 
@@ -93,52 +93,12 @@ def contains(
   return count(tree, predicate) != 0
 
 
-def count_types(
-    tree: building_blocks.ComputationBuildingBlock, types: _TypeOrTupleOfTypes
-) -> int:
-  """Returns the number of instances of `types` in `tree`.
-
-  Args:
-    tree: A tree of `building_blocks.ComputationBuildingBlock`s to count.
-    types: A `building_blocks.ComputationBuildingBlock` type or a tuple of
-      `building_blocks.ComputationBuildingBlock` types; the same as what is
-      accepted by `isinstance`.
-  """
-  return count(tree, lambda x: isinstance(x, types))
-
-
-def contains_types(
-    tree: building_blocks.ComputationBuildingBlock, types: _TypeOrTupleOfTypes
+def contains_only(
+    tree: building_blocks.ComputationBuildingBlock,
+    predicate: _BuildingBlockPredicate,
 ) -> bool:
-  """Checks if `tree` contains any instance of `types`.
-
-  Args:
-    tree: A tree of `building_blocks.ComputationBuildingBlock`s to test.
-    types: A `building_blocks.ComputationBuildingBlock` type or a tuple of
-      `building_blocks.ComputationBuildingBlock` types; the same as what is
-      accepted by `isinstance`.
-
-  Returns:
-    `True` if `tree` contains any instance of `types`, otherwise `False`.
-  """
-  return count_types(tree, types) > 0
-
-
-def contains_only_types(
-    tree: building_blocks.ComputationBuildingBlock, types: _TypeOrTupleOfTypes
-) -> bool:
-  """Checks if `tree` contains only instances of `types`.
-
-  Args:
-    tree: A tree of `building_blocks.ComputationBuildingBlock`s to test.
-    types: A `building_blocks.ComputationBuildingBlock` type or a tuple of
-      `building_blocks.ComputationBuildingBlock` types; the same as what is
-      accepted by `isinstance`.
-
-  Returns:
-    `True` if `tree` contains only instances of `types`, otherwise `False`.
-  """
-  return count(tree, lambda x: not isinstance(x, types)) == 0
+  """Returns whether or not a building block in `tree` matches `predicate`."""
+  return not contains(tree, lambda x: not predicate(x))
 
 
 def check_has_single_placement(comp, single_placement):
@@ -174,7 +134,9 @@ def check_has_single_placement(comp, single_placement):
   visit_postorder(comp, _check_single_placement)
 
 
-def check_contains_only_reducible_intrinsics(comp):
+def check_contains_only_reducible_intrinsics(
+    comp: building_blocks.ComputationBuildingBlock,
+):
   """Checks that `comp` contains intrinsics reducible to aggregate or broadcast.
 
   Args:
@@ -185,7 +147,6 @@ def check_contains_only_reducible_intrinsics(comp):
   Raises:
     ValueError: If we encounter an intrinsic under `comp` that is not reducible.
   """
-  py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
   reducible_uris = (
       intrinsic_defs.FEDERATED_AGGREGATE.uri,
       intrinsic_defs.FEDERATED_APPLY.uri,
@@ -194,7 +155,6 @@ def check_contains_only_reducible_intrinsics(comp):
       intrinsic_defs.FEDERATED_EVAL_AT_SERVER.uri,
       intrinsic_defs.FEDERATED_MAP.uri,
       intrinsic_defs.FEDERATED_MAP_ALL_EQUAL.uri,
-      intrinsic_defs.FEDERATED_SECURE_MODULAR_SUM.uri,
       intrinsic_defs.FEDERATED_SECURE_SUM_BITWIDTH.uri,
       intrinsic_defs.FEDERATED_SECURE_SUM.uri,
       intrinsic_defs.FEDERATED_VALUE_AT_CLIENTS.uri,

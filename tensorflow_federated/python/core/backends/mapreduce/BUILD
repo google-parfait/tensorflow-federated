@@ -8,6 +8,9 @@ package(
 
         # TODO: b/233800075 - Remove dependency from `native` to `mapreduce`.
         "//tensorflow_federated/python/core/backends/native:native_packages",
+
+        # TODO: b/349685709 - Remove dependency from `test` to `mapreduce`.
+        "//tensorflow_federated/python/core/backends/test:test_packages",
     ],
 )
 
@@ -26,6 +29,7 @@ py_library(
         ":compiler",
         ":form_utils",
         ":forms",
+        ":intrinsics",
     ],
 )
 
@@ -117,6 +121,7 @@ py_library(
     deps = [
         ":compiler",
         ":forms",
+        ":intrinsics",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/environments/tensorflow_backend:tensorflow_building_block_factory",
@@ -145,6 +150,7 @@ py_test(
         ":distribute_aggregate_test_utils",
         ":form_utils",
         ":forms",
+        ":intrinsics",
         ":mapreduce_test_utils",
         "//tensorflow_federated/python/core/backends/test:execution_contexts",
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
@@ -176,6 +182,53 @@ py_library(
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
         "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
+        "//tensorflow_federated/python/core/impl/federated_context:value_impl",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:placements",
+    ],
+)
+
+py_library(
+    name = "intrinsics",
+    srcs = ["intrinsics.py"],
+    deps = [
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/common_libs:structure",
+        "//tensorflow_federated/python/core/impl/compiler:building_block_factory",
+        "//tensorflow_federated/python/core/impl/compiler:building_blocks",
+        "//tensorflow_federated/python/core/impl/compiler:intrinsic_defs",
+        "//tensorflow_federated/python/core/impl/compiler:tensorflow_computation_factory",
+        "//tensorflow_federated/python/core/impl/context_stack:context_base",
+        "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
+        "//tensorflow_federated/python/core/impl/context_stack:symbol_binding_context",
+        "//tensorflow_federated/python/core/impl/federated_context:value_impl",
+        "//tensorflow_federated/python/core/impl/federated_context:value_utils",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:placements",
+        "//tensorflow_federated/python/core/impl/types:type_analysis",
+        "//tensorflow_federated/python/core/impl/types:type_conversions",
+    ],
+)
+
+py_test(
+    name = "intrinsics_test",
+    srcs = ["intrinsics_test.py"],
+    args = [
+        "--golden",
+        "$(location intrinsics_test_goldens/federated_secure_modular_sum.expected)",
+    ],
+    data = [
+        "intrinsics_test_goldens/federated_secure_modular_sum.expected",
+    ],
+    deps = [
+        ":intrinsics",
+        "//tensorflow_federated/python/common_libs:golden",
+        "//tensorflow_federated/python/core/impl/compiler:building_block_factory",
+        "//tensorflow_federated/python/core/impl/compiler:building_blocks",
+        "//tensorflow_federated/python/core/impl/context_stack:context_base",
+        "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
+        "//tensorflow_federated/python/core/impl/context_stack:context_stack_test_utils",
+        "//tensorflow_federated/python/core/impl/federated_context:federated_computation_context",
         "//tensorflow_federated/python/core/impl/federated_context:value_impl",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",

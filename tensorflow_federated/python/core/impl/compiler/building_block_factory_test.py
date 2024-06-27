@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import collections
-import re
 from unittest import mock
 
 from absl.testing import absltest
@@ -715,48 +714,6 @@ class CreateFederatedMaxTest(absltest.TestCase):
     self.assertEqual(
         comp.compact_representation(),
         'federated_max(federated_value_at_clients(1))',
-    )
-    self.assertEqual(
-        comp.type_signature.compact_representation(), 'int32@SERVER'
-    )
-
-
-class CreateFederatedSecureModularSumTest(absltest.TestCase):
-
-  def test_raises_type_error_with_none_value(self):
-    modulus = mock.create_autospec(
-        building_blocks.CompiledComputation, spec_set=True, instance=True
-    )
-
-    with self.assertRaises(TypeError):
-      building_block_factory.create_federated_secure_modular_sum(None, modulus)
-
-  def test_raises_type_error_with_none_modulus(self):
-    value = building_block_factory.create_federated_value(
-        building_blocks.Literal(1, computation_types.TensorType(np.int32)),
-        placement=placements.CLIENTS,
-    )
-
-    with self.assertRaises(TypeError):
-      building_block_factory.create_federated_secure_modular_sum(value, None)
-
-  def test_returns_federated_sum(self):
-    value = building_block_factory.create_federated_value(
-        building_blocks.Literal(1, computation_types.TensorType(np.int32)),
-        placement=placements.CLIENTS,
-    )
-    modulus_type = computation_types.TensorType(np.int32)
-    modulus = building_blocks.Literal(2, modulus_type)
-    comp = building_block_factory.create_federated_secure_modular_sum(
-        value, modulus
-    )
-    # Regex replaces compiled computations such as `comp#b03f` to ensure a
-    # consistent output.
-    golden.check_string(
-        'federated_secure_modular_sum.expected',
-        re.sub(
-            r'comp\#\w*', 'some_compiled_comp', comp.formatted_representation()
-        ),
     )
     self.assertEqual(
         comp.type_signature.compact_representation(), 'int32@SERVER'
@@ -1565,24 +1522,18 @@ class ZipUpToTest(absltest.TestCase):
     self.assertIsNone(zipped)
 
   def test_zips_struct_of_federated_values_under_struct(self):
-    comp = building_blocks.Struct(
-        [
-            building_blocks.Struct([
-                building_blocks.Reference(
-                    'x',
-                    computation_types.FederatedType(
-                        np.int32, placements.CLIENTS
-                    ),
-                ),
-                building_blocks.Reference(
-                    'y',
-                    computation_types.FederatedType(
-                        np.int32, placements.CLIENTS
-                    ),
-                ),
-            ])
-        ]
-    )
+    comp = building_blocks.Struct([
+        building_blocks.Struct([
+            building_blocks.Reference(
+                'x',
+                computation_types.FederatedType(np.int32, placements.CLIENTS),
+            ),
+            building_blocks.Reference(
+                'y',
+                computation_types.FederatedType(np.int32, placements.CLIENTS),
+            ),
+        ])
+    ])
     zippable_type = computation_types.StructType([(
         None,
         computation_types.FederatedType(
@@ -1600,30 +1551,28 @@ class ZipUpToTest(absltest.TestCase):
   def test_assignability_with_names(self):
     # This would correspond to an implicit downcast in TFF's typesystem; the
     # result would not be assignable to the requested type.
-    comp = building_blocks.Struct(
-        [
-            building_blocks.Struct([
-                (
-                    'a',
-                    building_blocks.Reference(
-                        'x',
-                        computation_types.FederatedType(
-                            np.int32, placements.CLIENTS
-                        ),
+    comp = building_blocks.Struct([
+        building_blocks.Struct([
+            (
+                'a',
+                building_blocks.Reference(
+                    'x',
+                    computation_types.FederatedType(
+                        np.int32, placements.CLIENTS
                     ),
                 ),
-                (
-                    'b',
-                    building_blocks.Reference(
-                        'y',
-                        computation_types.FederatedType(
-                            np.int32, placements.CLIENTS
-                        ),
+            ),
+            (
+                'b',
+                building_blocks.Reference(
+                    'y',
+                    computation_types.FederatedType(
+                        np.int32, placements.CLIENTS
                     ),
                 ),
-            ])
-        ]
-    )
+            ),
+        ])
+    ])
     unnamed_zippable_type = computation_types.StructType([(
         None,
         computation_types.FederatedType(

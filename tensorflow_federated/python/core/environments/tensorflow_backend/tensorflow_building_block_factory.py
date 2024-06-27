@@ -115,16 +115,6 @@ def create_null_federated_map() -> building_blocks.Call:
   )
 
 
-def create_null_federated_secure_modular_sum():
-  return building_block_factory.create_federated_secure_modular_sum(
-      building_block_factory.create_federated_value(
-          building_blocks.Struct([]), placements.CLIENTS
-      ),
-      building_blocks.Struct([]),
-      preapply_modulus=False,
-  )
-
-
 def create_null_federated_secure_sum():
   return building_block_factory.create_federated_secure_sum(
       building_block_factory.create_federated_value(
