@@ -62,11 +62,11 @@ def from_proto(array_pb: array_pb2.Array) -> Array:
     value = array_pb.uint64_list.value
   elif dtype is np.float16:
     value = array_pb.float16_list.value
-    # Values of dtype np.float16 are packed to and unpacked from a protobuf
-    # field of type int32 using the following logic in order to maintain
-    # compatibility with how other external environments (e.g. TensorFlow, Jax)
-    # represent values of np.float16.
-    value = np.array(value, dtype=np.uint16).astype(np.float16)
+    # Values of dtype `np.float16` are packed to and unpacked from a protobuf
+    # field of type `int32` using the following logic in order to maintain
+    # compatibility with how other external environments (e.g., TensorFlow, JAX)
+    # represent values of `np.float16`.
+    value = np.array(value, np.uint16).astype(np.float16).tolist()
   elif dtype is np.float32:
     value = array_pb.float32_list.value
   elif dtype is np.float64:
@@ -92,11 +92,19 @@ def from_proto(array_pb: array_pb2.Array) -> Array:
   else:
     raise NotImplementedError(f'Unexpected dtype found: {dtype}.')
 
+  # Strings are stored as bytes in `array_pb2.Array` and trailing null values
+  # are dropped when using `np.bytes_`, use `np.object_` instead.
+  if dtype is np.str_:
+    dtype = np.object_
+
   # `Array` is a `Union` of native Python types and numpy types. However, the
   # protobuf representation of `Array` contains additional information like
   # dtype and shape. This information is lost when returning native Python types
   # making it impossible to infer the original dtype later. Therefore, a numpy
-  # value should always be returned from this function.
+  # value should almost always be returned from this function. String values are
+  # an exception to this because it's not possible to represent null-terminated
+  # scalar strings using numpy and this is ok because string types can only be
+  # inferred as string types.
   if not array_shape.is_shape_scalar(shape):
     value = np.array(value, dtype).reshape(shape)
   else:
@@ -107,39 +115,49 @@ def from_proto(array_pb: array_pb2.Array) -> Array:
 
 
 def to_proto(
-    array: Array, *, dtype_hint: Optional[type[np.generic]] = None
+    value: Array, *, dtype_hint: Optional[type[np.generic]] = None
 ) -> array_pb2.Array:
-  """Returns a `Array` for the `array`."""
+  """Returns an `array_pb2.Array` for the `value`."""
 
   if dtype_hint is not None:
-    if not is_compatible_dtype(array, dtype_hint):
+    if not is_compatible_dtype(value, dtype_hint):
       raise ValueError(
-          f"Expected '{array}' to be compatible with '{dtype_hint}'."
+          f"Expected '{value}' to be compatible with '{dtype_hint}'."
       )
-
-  if isinstance(array, (np.ndarray, np.generic)):
-    if dtype_hint is not None:
-      dtype = dtype_hint
-    else:
-      dtype = array.dtype.type
-    shape = array.shape
-    if array.dtype.type is np.str_:
-      array = array.astype(np.bytes_)
-    value = array.flatten().tolist()
-  elif isinstance(array, (bool, int, float, complex, str, bytes)):
-    if dtype_hint is not None:
-      dtype = dtype_hint
-    else:
-      dtype = dtype_utils.infer_dtype(array)
-    shape = ()
-    if isinstance(array, str):
-      array = array.encode()
-    value = [array]
+    dtype = dtype_hint
+    # Cast values with a dtype of `np.number`, no other dtypes are compatible.
+    if np.issubdtype(dtype, np.number):
+      value = np.asarray(value).astype(dtype)
   else:
-    raise NotImplementedError(f'Unexpected array found: {array}.')
+    if isinstance(value, (np.ndarray, np.generic)):
+      dtype = value.dtype.type
+      # If the value has a dtype of `np.bytes_` or `np.object_`, the serialized
+      # dtype should still be a `np.str_`.
+      if np.issubdtype(dtype, np.bytes_) or np.issubdtype(dtype, np.object_):
+        dtype = np.str_
+    else:
+      dtype = dtype_utils.infer_dtype(value)
+
+  def _has_dtype(value, dtype):
+    if isinstance(value, (np.ndarray, np.generic)):
+      value_dtype = value.dtype
+    else:
+      value_dtype = type(value)
+    return np.issubdtype(value_dtype, dtype)
+
+  # Normalize to a numpy value; strings are stored as bytes in `array_pb2.Array`
+  # and trailing null values are dropped when using `np.bytes_`, so use
+  # `np.object_` instead.
+  if _has_dtype(value, np.str_):
+    value = np.asarray(value, np.bytes_)
+  elif _has_dtype(value, np.bytes_):
+    value = np.asarray(value, np.object_)
+  elif not isinstance(value, (np.ndarray, np.generic)):
+    value = np.asarray(value)
 
   dtype_pb = dtype_utils.to_proto(dtype)
-  shape_pb = array_shape.to_proto(shape)
+  shape_pb = array_shape.to_proto(value.shape)
+  value = value.flatten().tolist()
 
   if dtype is np.bool_:
     return array_pb2.Array(
@@ -196,11 +214,11 @@ def to_proto(
         uint64_list=array_pb2.Array.Uint64List(value=value),
     )
   elif dtype is np.float16:
-    # Values of dtype np.float16 are packed to and unpacked from a protobuf
-    # field of type int32 using the following logic in order to maintain
-    # compatibility with how other external environments (e.g. TensorFlow, Jax)
-    # represent values of np.float16.
-    value = np.array(value, dtype=np.float16).astype(np.uint16).tolist()
+    # Values of dtype `np.float16` are packed to and unpacked from a protobuf
+    # field of type `int32` using the following logic in order to maintain
+    # compatibility with how other external environments (e.g., TensorFlow, JAX)
+    # represent values of `np.float16`.
+    value = np.array(value, np.float16).astype(np.uint16).tolist()
     return array_pb2.Array(
         dtype=dtype_pb,
         shape=shape_pb,
@@ -256,13 +274,13 @@ def _can_cast(obj: object, dtype: type[np.generic]) -> bool:
     # `np.can_cast` does not operate on non-scalar arrays. See
     # https://numpy.org/doc/stable/reference/generated/numpy.can_cast.html for
     # more information.
-    return all(np.can_cast(x, dtype) for x in obj.flatten())
+    return all(_can_cast(x, dtype) for x in obj.flatten())
   elif isinstance(obj, (np.generic, bool, int, float, complex)):
     return np.can_cast(obj, dtype)
   elif isinstance(obj, (str, bytes)):
     # `np.can_cast` interprets strings as dtype-like specifications rather than
     # strings.
-    return dtype is np.str_ or dtype is np.bytes_
+    return np.issubdtype(dtype, np.character)
   else:
     return False
 

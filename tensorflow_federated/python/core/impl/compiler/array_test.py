@@ -111,9 +111,7 @@ class ArrayTest(parameterized.TestCase):
               dtype=data_type_pb2.DataType.DT_HALF,
               shape=array_pb2.ArrayShape(dim=[]),
               float16_list=array_pb2.Array.IntList(
-                  value=[
-                      np.array(1.0, dtype=np.float16).astype(np.uint16).item(),
-                  ]
+                  value=[np.array(1.0, np.float16).astype(np.uint16).item()]
               ),
           ),
           np.float16(1.0),
@@ -143,7 +141,7 @@ class ArrayTest(parameterized.TestCase):
               shape=array_pb2.ArrayShape(dim=[]),
               complex64_list=array_pb2.Array.FloatList(value=[1.0, 1.0]),
           ),
-          np.complex64((1.0 + 1.0j)),
+          np.complex64(1.0 + 1.0j),
       ),
       (
           'complex128',
@@ -152,33 +150,63 @@ class ArrayTest(parameterized.TestCase):
               shape=array_pb2.ArrayShape(dim=[]),
               complex128_list=array_pb2.Array.DoubleList(value=[1.0, 1.0]),
           ),
-          np.complex128((1.0 + 1.0j)),
+          np.complex128(1.0 + 1.0j),
       ),
       (
           'string',
           array_pb2.Array(
               dtype=data_type_pb2.DataType.DT_STRING,
               shape=array_pb2.ArrayShape(dim=[]),
-              string_list=array_pb2.Array.BytesList(value=[b'a']),
+              string_list=array_pb2.Array.BytesList(value=[b'abc']),
           ),
-          np.str_(b'a'),
+          b'abc',
       ),
       (
-          'array',
+          'string_null_terminated',
+          array_pb2.Array(
+              dtype=data_type_pb2.DataType.DT_STRING,
+              shape=array_pb2.ArrayShape(dim=[]),
+              string_list=array_pb2.Array.BytesList(value=[b'abc\x00\x00']),
+          ),
+          b'abc\x00\x00',
+      ),
+      (
+          'array_int32',
           array_pb2.Array(
               dtype=data_type_pb2.DataType.DT_INT32,
               shape=array_pb2.ArrayShape(dim=[2, 3]),
               int32_list=array_pb2.Array.IntList(value=[1, 2, 3, 4, 5, 6]),
           ),
-          np.array([[1, 2, 3], [4, 5, 6]]),
+          np.array([[1, 2, 3], [4, 5, 6]], np.int32),
+      ),
+      (
+          'array_string',
+          array_pb2.Array(
+              dtype=data_type_pb2.DataType.DT_STRING,
+              shape=array_pb2.ArrayShape(dim=[2]),
+              string_list=array_pb2.Array.BytesList(value=[b'abc', b'def']),
+          ),
+          np.array([b'abc', b'def'], np.object_),
+      ),
+      (
+          'array_string_null_terminated',
+          array_pb2.Array(
+              dtype=data_type_pb2.DataType.DT_STRING,
+              shape=array_pb2.ArrayShape(dim=[2]),
+              string_list=array_pb2.Array.BytesList(
+                  value=[b'abc\x00\x00', b'def\x00\x00']
+              ),
+          ),
+          np.array([b'abc\x00\x00', b'def\x00\x00'], np.object_),
       ),
   )
   def test_from_proto_returns_value(self, proto, expected_value):
     actual_value = array.from_proto(proto)
 
-    if isinstance(expected_value, np.ndarray):
-      np.testing.assert_array_equal(actual_value, expected_value)
+    if isinstance(actual_value, (np.ndarray, np.generic)):
+      np.testing.assert_array_equal(actual_value, expected_value, strict=True)
     else:
+      self.assertIsInstance(actual_value, type(expected_value))
       self.assertEqual(actual_value, expected_value)
 
   @parameterized.named_parameters(
@@ -263,15 +291,33 @@ class ArrayTest(parameterized.TestCase):
       ),
       (
           'string',
-          'a',
+          'abc',
           array_pb2.Array(
               dtype=data_type_pb2.DataType.DT_STRING,
               shape=array_pb2.ArrayShape(dim=[]),
-              string_list=array_pb2.Array.BytesList(value=[b'a']),
+              string_list=array_pb2.Array.BytesList(value=[b'abc']),
           ),
       ),
       (
-          'generic',
+          'bytes',
+          b'abc',
+          array_pb2.Array(
+              dtype=data_type_pb2.DataType.DT_STRING,
+              shape=array_pb2.ArrayShape(dim=[]),
+              string_list=array_pb2.Array.BytesList(value=[b'abc']),
+          ),
+      ),
+      (
+          'bytes_null_terminated',
+          b'abc\x00\x00',
+          array_pb2.Array(
+              dtype=data_type_pb2.DataType.DT_STRING,
+              shape=array_pb2.ArrayShape(dim=[]),
+              string_list=array_pb2.Array.BytesList(value=[b'abc\x00\x00']),
+          ),
+      ),
+      (
+          'generic_int32',
           np.int32(1),
           array_pb2.Array(
               dtype=data_type_pb2.DataType.DT_INT32,
@@ -280,12 +326,68 @@ class ArrayTest(parameterized.TestCase):
           ),
       ),
       (
-          'array',
+          'generic_string',
+          np.str_('abc'),
+          array_pb2.Array(
+              dtype=data_type_pb2.DataType.DT_STRING,
+              shape=array_pb2.ArrayShape(dim=[]),
+              string_list=array_pb2.Array.BytesList(value=[b'abc']),
+          ),
+      ),
+      (
+          'generic_bytes',
+          np.bytes_(b'abc'),
+          array_pb2.Array(
+              dtype=data_type_pb2.DataType.DT_STRING,
+              shape=array_pb2.ArrayShape(dim=[]),
+              string_list=array_pb2.Array.BytesList(value=[b'abc']),
+          ),
+      ),
+      (
+          'generic_bytes_null_terminated',
+          np.object_(b'abc\x00\x00'),
+          array_pb2.Array(
+              dtype=data_type_pb2.DataType.DT_STRING,
+              shape=array_pb2.ArrayShape(dim=[]),
+              string_list=array_pb2.Array.BytesList(value=[b'abc\x00\x00']),
+          ),
+      ),
+      (
+          'array_int32',
           np.array([[1, 2, 3], [4, 5, 6]], np.int32),
           array_pb2.Array(
               dtype=data_type_pb2.DataType.DT_INT32,
               shape=array_pb2.ArrayShape(dim=[2, 3]),
               int32_list=array_pb2.Array.IntList(value=[1, 2, 3, 4, 5, 6]),
+          ),
+      ),
+      (
+          'array_string',
+          np.array(['abc', 'def'], np.str_),
+          array_pb2.Array(
+              dtype=data_type_pb2.DataType.DT_STRING,
+              shape=array_pb2.ArrayShape(dim=[2]),
+              string_list=array_pb2.Array.BytesList(value=[b'abc', b'def']),
+          ),
+      ),
+      (
+          'array_bytes',
+          np.array([b'abc', b'def'], np.bytes_),
+          array_pb2.Array(
+              dtype=data_type_pb2.DataType.DT_STRING,
+              shape=array_pb2.ArrayShape(dim=[2]),
+              string_list=array_pb2.Array.BytesList(value=[b'abc', b'def']),
+          ),
+      ),
+      (
+          'array_bytes_null_terminated',
+          np.array([b'abc\x00', b'def\x00'], np.object_),
+          array_pb2.Array(
+              dtype=data_type_pb2.DataType.DT_STRING,
+              shape=array_pb2.ArrayShape(dim=[2]),
+              string_list=array_pb2.Array.BytesList(
+                  value=[b'abc\x00', b'def\x00']
+              ),
           ),
       ),
   )
@@ -394,9 +496,7 @@ class ArrayTest(parameterized.TestCase):
               dtype=data_type_pb2.DataType.DT_HALF,
               shape=array_pb2.ArrayShape(dim=[]),
               float16_list=array_pb2.Array.IntList(
-                  value=[
-                      np.array(1.0, dtype=np.float16).astype(np.uint16).item(),
-                  ]
+                  value=[np.array(1.0, np.float16).astype(np.uint16).item()]
               ),
           ),
       ),
@@ -442,12 +542,12 @@ class ArrayTest(parameterized.TestCase):
       ),
       (
           'string',
-          'a',
+          'abc',
           np.str_,
           array_pb2.Array(
               dtype=data_type_pb2.DataType.DT_STRING,
               shape=array_pb2.ArrayShape(dim=[]),
-              string_list=array_pb2.Array.BytesList(value=[b'a']),
+              string_list=array_pb2.Array.BytesList(value=[b'abc']),
           ),
       ),
       (
@@ -533,6 +633,15 @@ class ArrayTest(parameterized.TestCase):
   def test_to_proto_raises_not_implemented_error(self, value):
     with self.assertRaises(NotImplementedError):
       array.to_proto(value)
+
+  @parameterized.named_parameters(
+      ('bytes', b'abc', np.bytes_),
+  )
+  def test_to_proto_raises_not_implemented_error_with_dtype_hint(
+      self, value, dtype
+  ):
+    with self.assertRaises(NotImplementedError):
+      array.to_proto(value, dtype_hint=dtype)
 
   @parameterized.named_parameters(
       ('scalar', 1, np.int64),
