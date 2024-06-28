@@ -18,6 +18,8 @@ sh_binary(
     name = "build_python_package",
     srcs = ["build_python_package.sh"],
     data = [
+        "//:LICENSE",
+        "//:README.md",
         "//:pyproject_toml",
         "//tensorflow_federated",
         "//tensorflow_federated/data:worker_binary",
