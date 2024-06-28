@@ -27,6 +27,8 @@ and this project adheres to
     will ease future addition of code for closed-domain histogram.
 *   Moved `tff.federated_secure_modular_sum` to the mapreduce backend, use
     `tff.backends.mapreduce.federated_secure_modular_sum` instead.
+*   `DPGroupByAggregator` changes how it checks the intrinsic based on number of
+    domain tensors in the parameter field.
 
 ## Release 0.81.0
 

@@ -189,18 +189,7 @@ TEST(DPOpenDomainHistogramTest, CatchWrongNumberOfParameters) {
   auto too_few_status = CreateTensorAggregator(too_few).status();
   EXPECT_THAT(too_few_status, StatusIs(INVALID_ARGUMENT));
   EXPECT_THAT(too_few_status.message(),
-              HasSubstr("Expected 3 parameters but got 1 of them"));
-
-  // Too many parameters
-  Intrinsic too_many{kDPGroupByUri,
-                     {CreateTensorSpec("key", DT_STRING)},
-                     {CreateTensorSpec("key_out", DT_STRING)},
-                     {CreateManyTopLevelParameters()},
-                     {}};
-  auto too_many_status = CreateTensorAggregator(too_many).status();
-  EXPECT_THAT(too_many_status, StatusIs(INVALID_ARGUMENT));
-  EXPECT_THAT(too_many_status.message(),
-              HasSubstr("Expected 3 parameters but got 4 of them"));
+              HasSubstr("Expected at least 3 parameters but got 1 of them"));
 }
 
 TEST(DPOpenDomainHistogramTest, CatchInvalidParameterTypes) {
@@ -244,7 +233,7 @@ TEST(DPOpenDomainHistogramTest, CatchInvalidParameterValues) {
   Intrinsic intrinsic1 = CreateIntrinsic<int64_t, int64_t>(1.0, -1, 10);
   auto bad_delta = CreateTensorAggregator(intrinsic1).status();
   EXPECT_THAT(bad_delta, StatusIs(INVALID_ARGUMENT));
-  EXPECT_THAT(bad_delta.message(), HasSubstr("Delta must lie between 0 and 1"));
+  EXPECT_THAT(bad_delta.message(), HasSubstr("delta must lie between 0 and 1"));
 
   Intrinsic intrinsic2 = CreateIntrinsic<int64_t, int64_t>(1.0, 0.001, -1);
   auto bad_l0_bound = CreateTensorAggregator(intrinsic2).status();

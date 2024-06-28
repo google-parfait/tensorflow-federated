@@ -63,15 +63,52 @@ StatusOr<std::unique_ptr<TensorAggregator>> DPGroupByFactory::CreateInternal(
   constexpr int64_t kEpsilonIndex = 0;
   constexpr int64_t kDeltaIndex = 1;
   constexpr int64_t kL0Index = 2;
-  constexpr int kNumInnerParameters = 3;
+  constexpr int kNumOpenDomainParameters = 3;
 
   // Ensure that the parameters list is valid and retrieve the values if so.
-  if (intrinsic.parameters.size() != kNumInnerParameters) {
+  if (intrinsic.parameters.size() < kNumOpenDomainParameters) {
     return TFF_STATUS(INVALID_ARGUMENT)
-           << "DPGroupByFactory: Expected " << kNumInnerParameters
+           << "DPGroupByFactory: Expected at least " << kNumOpenDomainParameters
            << " parameters"
               " but got "
            << intrinsic.parameters.size() << " of them.";
+  }
+  bool open_domain = intrinsic.parameters.size() == kNumOpenDomainParameters;
+  if (!open_domain) {
+    // The number of domain tensors should be one more than the number of
+    // grouping keys. The extra one contains the names of the keys (as strings).
+    int64_t num_keys = intrinsic.inputs.size();
+    std::vector<DataType> expected_types(num_keys);
+    for (auto i = 0; i < num_keys; i++) {
+      expected_types[i] = intrinsic.inputs[i].dtype();
+    }
+    int64_t num_domain_tensors =
+        intrinsic.parameters.size() - kNumOpenDomainParameters;
+    if (num_keys + 1 != num_domain_tensors) {
+      return TFF_STATUS(INVALID_ARGUMENT)
+             << "DPGroupByFactory: Expected " << num_keys + 1
+             << " domain tensors but got " << num_domain_tensors << " of them.";
+    }
+
+    // The type of the first domain tensor should be string.
+    DataType domain_type =
+        intrinsic.parameters[kNumOpenDomainParameters].dtype();
+    if (domain_type != DT_STRING) {
+      return TFF_STATUS(INVALID_ARGUMENT)
+             << "DPGroupByFactory: First domain tensor should have string type "
+             << "but got " << DataType_Name(domain_type);
+    }
+    // Any other tensor should match corresponding grouping key.
+    for (int i = 0; i < num_keys; i++) {
+      domain_type =
+          intrinsic.parameters[kNumOpenDomainParameters + i + 1].dtype();
+      if (domain_type != expected_types[i]) {
+        return TFF_STATUS(INVALID_ARGUMENT)
+               << "DPGroupByFactory: Domain tensor for key " << i
+               << " should have type " << DataType_Name(expected_types[i])
+               << " but got " << DataType_Name(domain_type) << " instead.";
+      }
+    }
   }
 
   // Epsilon must be a positive number
@@ -87,29 +124,43 @@ StatusOr<std::unique_ptr<TensorAggregator>> DPGroupByFactory::CreateInternal(
   }
   double epsilon_per_agg = epsilon / intrinsic.nested_intrinsics.size();
 
-  // Delta must be a number between 0 and 1
+  // Delta must be a number
   if (internal::GetTypeKind(intrinsic.parameters[kDeltaIndex].dtype()) !=
       internal::TypeKind::kNumeric) {
     return TFF_STATUS(INVALID_ARGUMENT)
            << "DPGroupByFactory: Delta must be numerical.";
   }
   double delta = intrinsic.parameters[kDeltaIndex].CastToScalar<double>();
-  if (delta <= 0 || delta >= 1) {
-    return TFF_STATUS(INVALID_ARGUMENT)
-           << "DPGroupByFactory: Delta must lie between 0 and 1.";
+  if (open_domain) {
+    // If open-domain, delta must lie between 0 and 1.
+    if (delta <= 0 || delta >= 1) {
+      return TFF_STATUS(INVALID_ARGUMENT)
+             << "DPGroupByFactory: For open-domain DP histograms, delta must "
+                "lie between 0 and 1.";
+    }
+  } else {
+    // Else, delta must be less than 1. A non-positive delta requires a positive
+    // L1 bound.
+    if (delta >= 1) {
+      return TFF_STATUS(INVALID_ARGUMENT)
+             << "DPGroupByFactory: For closed-domain DP histograms, delta must "
+                "be less than 1.";
+    }
   }
   double delta_per_agg = delta / intrinsic.nested_intrinsics.size();
 
-  // L0 bound must be a positive number
+  // L0 bound must be a number
   if (internal::GetTypeKind(intrinsic.parameters[kL0Index].dtype()) !=
       internal::TypeKind::kNumeric) {
     return TFF_STATUS(INVALID_ARGUMENT)
            << "DPGroupByFactory: L0 bound must be numerical.";
   }
+  // If open-domain, L0 bound must be positive
   int64_t l0_bound = intrinsic.parameters[kL0Index].CastToScalar<int64_t>();
-  if (l0_bound <= 0) {
+  if (open_domain && l0_bound <= 0) {
     return TFF_STATUS(INVALID_ARGUMENT)
-           << "DPGroupByFactory: L0 bound must be positive.";
+           << "DPGroupByFactory: For open-domain DP histograms, L0 bound must "
+              "be positive.";
   }
   // If no keys are given, scalar aggregation will occur. There is exactly one
   // "group" in that case.
@@ -125,17 +176,44 @@ StatusOr<std::unique_ptr<TensorAggregator>> DPGroupByFactory::CreateInternal(
                                           "nested DP sums are supported.";
     }
 
-    // Ensure that each nested intrinsic provides a positive Linfinity bound
+    // Check if nested intrinsic provides a positive Linfinity bound
     bool has_linfinity_bound = false;
     const Tensor& linfinity_tensor = intrinsic.parameters[kLinfinityIndex];
     DataType linfinity_dtype = linfinity_tensor.dtype();
     NUMERICAL_ONLY_DTYPE_CASES(
         linfinity_dtype, InputType,
         has_linfinity_bound = linfinity_tensor.CastToScalar<InputType>() > 0);
-    if (!has_linfinity_bound) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "DPGroupByFactory: Each nested intrinsic must provide a "
-                "positive Linfinity bound.";
+    if (open_domain) {
+      if (!has_linfinity_bound) {
+        return TFF_STATUS(INVALID_ARGUMENT)
+               << "DPGroupByFactory: For open-domain DP histograms, each "
+                  "nested "
+                  "intrinsic must provide a positive Linfinity bound.";
+      }
+    } else {
+      // Either L1 is positive, or L2 is positive, or both Linfinity is positive
+      // and L0 is positive.
+      const Tensor& l1_tensor = intrinsic.parameters[kL1Index];
+      bool has_l1_bound = l1_tensor.CastToScalar<double>() > 0;
+      const Tensor& l2_tensor = intrinsic.parameters[kL2Index];
+      bool has_l2_bound = l2_tensor.CastToScalar<double>() > 0;
+      if ((!has_linfinity_bound || l0_bound <= 0) && !has_l1_bound &&
+          !has_l2_bound) {
+        return TFF_STATUS(INVALID_ARGUMENT)
+               << "DPGroupByFactory: Closed-domain DP histograms require "
+                  "either an L1 bound, an L2 bound, or both Linfinity and L0 "
+                  "bounds.";
+      }
+      // If delta is 0, we will employ the Laplace mechanism (Gaussian requires
+      // a positive delta). But the Laplace mechanism requires a positive L1
+      // bound.
+      // If query author did not provide any delta (which will be indicated with
+      // -1), we again have to use the Laplace mechanism.
+      if (delta <= 0 && !has_l1_bound) {
+        return TFF_STATUS(INVALID_ARGUMENT)
+               << "DPGroupByFactory: Closed-domain DP histograms require "
+                  "either a positive delta or an L1 bound.";
+      }
     }
   }
 
@@ -155,13 +233,18 @@ StatusOr<std::unique_ptr<TensorAggregator>> DPGroupByFactory::CreateInternal(
 
   int num_inputs = aggregator_state ? aggregator_state->num_inputs() : 0;
 
-  // Use new rather than make_unique here because the factory function that uses
-  // a non-public constructor can't use std::make_unique, and we don't want to
-  // add a dependency on absl::WrapUnique.
-  return std::unique_ptr<DPOpenDomainHistogram>(new DPOpenDomainHistogram(
-      intrinsic.inputs, &intrinsic.outputs, &(intrinsic.nested_intrinsics),
-      std::move(key_combiner), std::move(nested_aggregators), epsilon_per_agg,
-      delta_per_agg, l0_bound, num_inputs));
+  if (open_domain) {
+    // Use new rather than make_unique here because the factory function that
+    // uses a non-public constructor can't use std::make_unique, and we don't
+    // want to add a dependency on absl::WrapUnique.
+    return std::unique_ptr<DPOpenDomainHistogram>(new DPOpenDomainHistogram(
+        intrinsic.inputs, &intrinsic.outputs, &(intrinsic.nested_intrinsics),
+        std::move(key_combiner), std::move(nested_aggregators), epsilon_per_agg,
+        delta_per_agg, l0_bound, num_inputs));
+  }
+
+  return TFF_STATUS(UNIMPLEMENTED) << "DPGroupByFactory: Closed-domain DP "
+                                      "histograms are not yet implemented.";
 }
 
 REGISTER_AGGREGATOR_FACTORY(std::string(kDPGroupByUri), DPGroupByFactory);

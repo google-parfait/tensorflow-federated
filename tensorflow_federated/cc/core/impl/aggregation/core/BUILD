@@ -406,6 +406,23 @@ cc_test(
 )
 
 cc_test(
+    name = "dp_closed_domain_histogram_test",
+    srcs = ["dp_closed_domain_histogram_test.cc"],
+    deps = [
+        ":aggregation_cores",
+        ":aggregator",
+        ":dp_fedsql_constants",
+        ":intrinsic",
+        ":tensor",
+        ":tensor_cc_proto",
+        "//tensorflow_federated/cc/core/impl/aggregation/base",
+        "//tensorflow_federated/cc/core/impl/aggregation/testing:test_data",
+        "//tensorflow_federated/cc/testing:oss_test_main",
+        "//tensorflow_federated/cc/testing:status_matchers",
+    ],
+)
+
+cc_test(
     name = "grouping_federated_sum_test",
     srcs = ["grouping_federated_sum_test.cc"],
     deps = [
