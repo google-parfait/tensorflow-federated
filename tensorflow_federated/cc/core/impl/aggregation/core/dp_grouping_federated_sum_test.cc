@@ -127,44 +127,6 @@ std::vector<Tensor> CreateDPGFSParameters(InputType linfinity_bound,
       linfinity_bound, l1_bound, l2_bound);
 }
 
-TEST(DPGroupingFederatedSumTest, CatchInvalidNormType) {
-  Intrinsic intrinsic1{
-      kDPSumUri,
-      {CreateTensorSpec("value", DT_INT64)},
-      {CreateTensorSpec("value", DT_INT64)},
-      {CreateGenericDPGFSParameters<string_view, double, double>("x", -1, -1)},
-      {}};
-
-  auto aggregator_status1 = CreateTensorAggregator(intrinsic1);
-  EXPECT_THAT(aggregator_status1, StatusIs(INVALID_ARGUMENT));
-  EXPECT_THAT(aggregator_status1.status().message(),
-              HasSubstr("numerical Tensors"));
-
-  Intrinsic intrinsic2{
-      kDPSumUri,
-      {CreateTensorSpec("value", DT_INT64)},
-      {CreateTensorSpec("value", DT_INT64)},
-      {CreateGenericDPGFSParameters<int64_t, string_view, double>(10, "x", -1)},
-      {}};
-
-  auto aggregator_status2 = CreateTensorAggregator(intrinsic2);
-  EXPECT_THAT(aggregator_status2, StatusIs(INVALID_ARGUMENT));
-  EXPECT_THAT(aggregator_status2.status().message(),
-              HasSubstr("numerical Tensors"));
-
-  Intrinsic intrinsic3{
-      kDPSumUri,
-      {CreateTensorSpec("value", DT_INT64)},
-      {CreateTensorSpec("value", DT_INT64)},
-      {CreateGenericDPGFSParameters<int64_t, double, string_view>(10, -1, "x")},
-      {}};
-
-  auto aggregator_status3 = CreateTensorAggregator(intrinsic3);
-  EXPECT_THAT(aggregator_status3, StatusIs(INVALID_ARGUMENT));
-  EXPECT_THAT(aggregator_status3.status().message(),
-              HasSubstr("numerical Tensors"));
-}
-
 TEST(DPGroupingFederatedSumTest, PermitNegativeNormValues) {
   Intrinsic intrinsic{kDPSumUri,
                       {CreateTensorSpec("value", DT_INT64)},

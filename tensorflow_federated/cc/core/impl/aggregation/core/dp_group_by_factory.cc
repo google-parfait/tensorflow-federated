@@ -176,9 +176,28 @@ StatusOr<std::unique_ptr<TensorAggregator>> DPGroupByFactory::CreateInternal(
                                           "nested DP sums are supported.";
     }
 
+    // Verify presence of all norm bounds
+    if (intrinsic.parameters.size() != kNumDPSumParameters) {
+      return TFF_STATUS(INVALID_ARGUMENT)
+             << "DPGroupByFactory: Linfinity, L1, and L2 bounds are expected.";
+    }
+
+    // Verify that the norm bounds are in numerical Tensors
+    for (const auto& parameter_tensor : intrinsic.parameters) {
+      if (internal::GetTypeKind(parameter_tensor.dtype()) !=
+          internal::TypeKind::kNumeric) {
+        return TFF_STATUS(INVALID_ARGUMENT)
+               << "DPGroupByFactory: Norm bounds must be stored in"
+                  " numerical Tensors.";
+      }
+    }
+
+    const auto& linfinity_tensor = intrinsic.parameters[kLinfinityIndex];
+    const double l1 = intrinsic.parameters[kL1Index].CastToScalar<double>();
+    const double l2 = intrinsic.parameters[kL2Index].CastToScalar<double>();
+
     // Check if nested intrinsic provides a positive Linfinity bound
     bool has_linfinity_bound = false;
-    const Tensor& linfinity_tensor = intrinsic.parameters[kLinfinityIndex];
     DataType linfinity_dtype = linfinity_tensor.dtype();
     NUMERICAL_ONLY_DTYPE_CASES(
         linfinity_dtype, InputType,
@@ -193,10 +212,8 @@ StatusOr<std::unique_ptr<TensorAggregator>> DPGroupByFactory::CreateInternal(
     } else {
       // Either L1 is positive, or L2 is positive, or both Linfinity is positive
       // and L0 is positive.
-      const Tensor& l1_tensor = intrinsic.parameters[kL1Index];
-      bool has_l1_bound = l1_tensor.CastToScalar<double>() > 0;
-      const Tensor& l2_tensor = intrinsic.parameters[kL2Index];
-      bool has_l2_bound = l2_tensor.CastToScalar<double>() > 0;
+      bool has_l1_bound = l1 > 0;
+      bool has_l2_bound = l2 > 0;
       if ((!has_linfinity_bound || l0_bound <= 0) && !has_l1_bound &&
           !has_l2_bound) {
         return TFF_STATUS(INVALID_ARGUMENT)

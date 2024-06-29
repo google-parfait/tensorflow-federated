@@ -241,6 +241,124 @@ TEST(DPClosedDomainHistogramTest, CatchWrongKeyTypes) {
                 + " but got " + DataType_Name(DT_DOUBLE) + " instead"));
 }
 
+std::vector<Tensor> CreateNParameters(int n) {
+  std::vector<Tensor> parameters;
+  for (int i = 0; i < n; i++) {
+    parameters.push_back(
+        Tensor::Create(DT_DOUBLE, {}, CreateTestData<double>({10})).value());
+  }
+  return parameters;
+}
+
+TEST(DPClosedDomainHistogramTest, CatchInnerParameters_WrongNumber) {
+  // Too few parameters (only linfinity bound)
+  Intrinsic intrinsic1{kDPGroupByUri,
+                       {CreateTensorSpec("key", DT_STRING)},
+                       {CreateTensorSpec("key_out", DT_STRING)},
+                       {CreateTopLevelParameters()},
+                       {}};
+  intrinsic1.nested_intrinsics.push_back(
+      Intrinsic{kDPSumUri,
+                {CreateTensorSpec("value", DT_DOUBLE)},
+                {CreateTensorSpec("value", DT_DOUBLE)},
+                {CreateNParameters(1)},
+                {}});
+
+  auto aggregator_status = CreateTensorAggregator(intrinsic1);
+  EXPECT_THAT(aggregator_status, StatusIs(INVALID_ARGUMENT));
+  EXPECT_THAT(aggregator_status.status().message(),
+              HasSubstr("Linfinity, L1, and L2 bounds are expected"));
+
+  // Too many parameters (linfinity, l1, l2, ??)
+  Intrinsic intrinsic2{kDPGroupByUri,
+                       {CreateTensorSpec("key", DT_STRING)},
+                       {CreateTensorSpec("key_out", DT_STRING)},
+                       {CreateTopLevelParameters()},
+                       {}};
+  intrinsic2.nested_intrinsics.push_back(
+      Intrinsic{kDPSumUri,
+                {CreateTensorSpec("value", DT_DOUBLE)},
+                {CreateTensorSpec("value", DT_DOUBLE)},
+                {CreateNParameters(4)},
+                {}});
+  auto aggregator_status2 = CreateTensorAggregator(intrinsic2);
+  EXPECT_THAT(aggregator_status2, StatusIs(INVALID_ARGUMENT));
+  EXPECT_THAT(aggregator_status2.status().message(),
+              HasSubstr("Linfinity, L1, and L2 bounds are expected"));
+}
+
+template <typename LinfType, typename L1Type, typename L2Type>
+std::vector<Tensor> CreateGenericDPGFSParameters(LinfType linfinity_bound,
+                                                 L1Type l1_bound,
+                                                 L2Type l2_bound) {
+  std::vector<Tensor> parameters;
+
+  parameters.push_back(
+      Tensor::Create(internal::TypeTraits<LinfType>::kDataType, {},
+                     CreateTestData<LinfType>({linfinity_bound}))
+          .value());
+
+  parameters.push_back(Tensor::Create(internal::TypeTraits<L1Type>::kDataType,
+                                      {}, CreateTestData<L1Type>({l1_bound}))
+                           .value());
+
+  parameters.push_back(Tensor::Create(internal::TypeTraits<L2Type>::kDataType,
+                                      {}, CreateTestData<L2Type>({l2_bound}))
+                           .value());
+
+  return parameters;
+}
+TEST(DPClosedDomainHistogramTest, CatchInnerParameters_WrongTypes) {
+  Intrinsic intrinsic1{kDPGroupByUri,
+                       {CreateTensorSpec("key", DT_STRING)},
+                       {CreateTensorSpec("key_out", DT_STRING)},
+                       {CreateTopLevelParameters()},
+                       {}};
+  intrinsic1.nested_intrinsics.push_back(Intrinsic{
+      kDPSumUri,
+      {CreateTensorSpec("value", DT_INT64)},
+      {CreateTensorSpec("value", DT_INT64)},
+      {CreateGenericDPGFSParameters<string_view, double, double>("x", -1, -1)},
+      {}});
+  auto aggregator_status1 = CreateTensorAggregator(intrinsic1);
+  EXPECT_THAT(aggregator_status1, StatusIs(INVALID_ARGUMENT));
+  EXPECT_THAT(aggregator_status1.status().message(),
+              HasSubstr("numerical Tensors"));
+
+  Intrinsic intrinsic2{kDPGroupByUri,
+                       {CreateTensorSpec("key", DT_STRING)},
+                       {CreateTensorSpec("key_out", DT_STRING)},
+                       {CreateTopLevelParameters()},
+                       {}};
+  intrinsic2.nested_intrinsics.push_back(Intrinsic{
+      kDPSumUri,
+      {CreateTensorSpec("value", DT_INT64)},
+      {CreateTensorSpec("value", DT_INT64)},
+      {CreateGenericDPGFSParameters<int64_t, string_view, double>(10, "x", -1)},
+      {}});
+
+  auto aggregator_status2 = CreateTensorAggregator(intrinsic2);
+  EXPECT_THAT(aggregator_status2, StatusIs(INVALID_ARGUMENT));
+  EXPECT_THAT(aggregator_status2.status().message(),
+              HasSubstr("numerical Tensors"));
+
+  Intrinsic intrinsic3{kDPGroupByUri,
+                       {CreateTensorSpec("key", DT_STRING)},
+                       {CreateTensorSpec("key_out", DT_STRING)},
+                       {CreateTopLevelParameters()},
+                       {}};
+  intrinsic3.nested_intrinsics.push_back(Intrinsic{
+      kDPSumUri,
+      {CreateTensorSpec("value", DT_INT64)},
+      {CreateTensorSpec("value", DT_INT64)},
+      {CreateGenericDPGFSParameters<int64_t, double, string_view>(10, -1, "x")},
+      {}});
+  auto aggregator_status3 = CreateTensorAggregator(intrinsic3);
+  EXPECT_THAT(aggregator_status3, StatusIs(INVALID_ARGUMENT));
+  EXPECT_THAT(aggregator_status3.status().message(),
+              HasSubstr("numerical Tensors"));
+}
+
 TEST(DPOpenDomainHistogramTest, CatchInvalidParameterValues) {
   // Negative epsilon
   Intrinsic intrinsic0 = CreateIntrinsic<int64_t, int64_t>(-1, 0.001, 10);

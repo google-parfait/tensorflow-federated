@@ -248,24 +248,6 @@ class DPGroupingFederatedSumFactory final
                 "mismatched shapes.";
     }
 
-    // Verify presence of all norm bounds
-    constexpr int64_t kNumParameters = 3;
-    if (intrinsic.parameters.size() != kNumParameters) {
-      return TFF_STATUS(INVALID_ARGUMENT)
-             << "DPGroupingFederatedSumFactory: Linfinity, L1,"
-                " and L2 bounds are expected.";
-    }
-
-    // Verify that the norm bounds are in numerical Tensors
-    for (const auto& parameter_tensor : intrinsic.parameters) {
-      if (internal::GetTypeKind(parameter_tensor.dtype()) !=
-          internal::TypeKind::kNumeric) {
-        return TFF_STATUS(INVALID_ARGUMENT)
-               << "DPGroupingFederatedSumFactory: Norm bounds must be stored in"
-                  " numerical Tensors.";
-      }
-    }
-
     const auto& linfinity_tensor = intrinsic.parameters[kLinfinityIndex];
     const double l1 = intrinsic.parameters[kL1Index].CastToScalar<double>();
     const double l2 = intrinsic.parameters[kL2Index].CastToScalar<double>();

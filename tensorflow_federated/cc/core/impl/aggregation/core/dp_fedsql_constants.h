@@ -35,6 +35,7 @@ constexpr char kDPSumUri[] = "GoogleSQL:$differential_privacy_sum";
 constexpr int kLinfinityIndex = 0;
 constexpr int kL1Index = 1;
 constexpr int kL2Index = 2;
+constexpr int kNumDPSumParameters = 3;
 
 }  // namespace aggregation
 }  // namespace tensorflow_federated

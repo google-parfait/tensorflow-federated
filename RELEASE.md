@@ -29,6 +29,9 @@ and this project adheres to
     `tff.backends.mapreduce.federated_secure_modular_sum` instead.
 *   `DPGroupByAggregator` changes how it checks the intrinsic based on number of
     domain tensors in the parameter field.
+*   `DPGroupByFactory` is now responsible for checking number and type of the
+    parameters in the `DPGroupingFederatedSum` intrinsic, since the factory is
+    now accessing those parameters.
 
 ## Release 0.81.0
 
