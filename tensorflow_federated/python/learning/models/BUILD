@@ -49,10 +49,10 @@ py_library(
     deps = [
         ":variable",
         "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/environments/tensorflow_frontend:variable_utils",
         "//tensorflow_federated/python/learning/metrics:keras_finalizer",
         "//tensorflow_federated/python/learning/metrics:keras_utils",
         "//tensorflow_federated/python/learning/metrics:types",
-        "//tensorflow_federated/python/tensorflow_libs:variable_utils",
     ],
 )
 
@@ -63,12 +63,12 @@ py_test(
         ":functional",
         ":variable",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/core/environments/tensorflow_frontend:variable_utils",
         "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/learning/metrics:aggregator",
         "//tensorflow_federated/python/learning/metrics:types",
-        "//tensorflow_federated/python/tensorflow_libs:variable_utils",
     ],
 )
 

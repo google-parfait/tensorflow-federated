@@ -20,6 +20,7 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.core.backends.native import execution_contexts
+from tensorflow_federated.python.core.environments.tensorflow_frontend import variable_utils
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
@@ -27,7 +28,6 @@ from tensorflow_federated.python.learning.metrics import aggregator
 from tensorflow_federated.python.learning.metrics import types
 from tensorflow_federated.python.learning.models import functional
 from tensorflow_federated.python.learning.models import variable
-from tensorflow_federated.python.tensorflow_libs import variable_utils
 
 
 def initial_weights():
@@ -626,6 +626,7 @@ class ModelFromFunctionalModelTest(tf.test.TestCase):
     metrics_aggregation_computation = metrics_aggregator(
         tff_model.metric_finalizers(), unfinalized_metrics_type
     )
+
     # Tell TFF that the argument is CLIENTS placed, so that when this
     # computation is later invoked on a list of values, TFF will teach each
     # element of the list as a single client value. This cannot be inferred from

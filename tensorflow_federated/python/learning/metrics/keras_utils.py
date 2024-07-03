@@ -20,7 +20,7 @@ from typing import Any, TypeVar, Union
 
 import tensorflow as tf
 
-from tensorflow_federated.python.tensorflow_libs import variable_utils
+from tensorflow_federated.python.core.environments.tensorflow_frontend import variable_utils
 
 StateVar = TypeVar('StateVar')
 MetricConstructor = Callable[[], tf.keras.metrics.Metric]

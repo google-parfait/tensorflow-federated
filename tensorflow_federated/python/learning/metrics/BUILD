@@ -162,7 +162,7 @@ py_test(
 py_library(
     name = "keras_utils",
     srcs = ["keras_utils.py"],
-    deps = ["//tensorflow_federated/python/tensorflow_libs:variable_utils"],
+    deps = ["//tensorflow_federated/python/core/environments/tensorflow_frontend:variable_utils"],
 )
 
 py_test(
