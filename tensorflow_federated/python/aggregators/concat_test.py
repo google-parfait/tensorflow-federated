@@ -227,21 +227,27 @@ class ConcatFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
     self.assertAllClose(output.result, expected_sum, atol=0)
 
   @parameterized.named_parameters(
-      ('scalar', np.float32, [1, 2, 3], [3, 4, 5], 26.0 / 12),
-      ('rank_1_tensor', (np.float32, [2]), [(1, 1), (5, 5)], [3, 1], (2, 2)),
+      ('scalar', np.float32, [1.0, 2.0, 3.0], [3.0, 4.0, 5.0], 26.0 / 12.0),
+      (
+          'rank_1_tensor',
+          (np.float32, [2]),
+          [(1.0, 1.0), (5.0, 5.0)],
+          [3.0, 1.0],
+          (2.0, 2.0),
+      ),
       (
           'rank_2_tensor',
           (np.float32, [2, 2]),
-          [((1, 1), (1, 1)), ((5, 5), (5, 5))],
-          [3, 1],
-          ((2, 2), (2, 2)),
+          [((1.0, 1.0), (1.0, 1.0)), ((5.0, 5.0), (5.0, 5.0))],
+          [3.0, 1.0],
+          ((2.0, 2.0), (2.0, 2.0)),
       ),
       (
           'nested',
           _test_struct_type_nested,
-          [_make_test_struct_nested(1), _make_test_struct_nested(5)],
-          [3, 1],
-          _make_test_struct_nested(2),
+          [_make_test_struct_nested(1.0), _make_test_struct_nested(5.0)],
+          [3.0, 1.0],
+          _make_test_struct_nested(2.0),
       ),
   )
   def test_concat_mean(

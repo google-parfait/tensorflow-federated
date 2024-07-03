@@ -485,7 +485,7 @@ class BuildMergeSamplesComputationTest(tf.test.TestCase):
       )
       reservoir_b['random_values'] = [5, 5, 5, 5, 5]  # all tied with `a`
       reservoir_b['samples'] = collections.OrderedDict(
-          a=[[-1, -1, -1]] * 5, b=[[-1] * 5, [False] * 5]
+          a=[[-1, -1, -1]] * 5, b=[[-1.0] * 5, [False] * 5]
       )
       merged_reservoir = merge_computation(reservoir_a, reservoir_b)
       self.assertAllEqual(
@@ -534,7 +534,10 @@ class BuildFinalizeSampleTest(tf.test.TestCase):
     example_type = computation_types.to_type(
         collections.OrderedDict(
             a=TensorType(np.int32),
-            b=[TensorType(np.float32, [3]), TensorType(np.bool_)],
+            b=[
+                TensorType(np.float32, [3]),
+                TensorType(np.bool_),
+            ],
         )
     )
     finalize_computation = sampling._build_finalize_sample_computation(
@@ -552,7 +555,11 @@ class BuildFinalizeSampleTest(tf.test.TestCase):
     )
     reservoir['random_values'] = [3, 5, 7]
     test_samples = collections.OrderedDict(
-        a=[3, 9, 27], b=[[[0, 1, 2], [1, 2, 3], [2, 3, 4]], [True, False, True]]
+        a=[3, 9, 27],
+        b=[
+            [[0.0, 1.0, 2.0], [1.0, 2.0, 3.0], [2.0, 3.0, 4.0]],
+            [True, False, True],
+        ],
     )
     reservoir['samples'] = test_samples
     self.assertAllEqual(finalize_computation(reservoir), test_samples)
@@ -564,7 +571,7 @@ class BuildCheckNonFiniteLeavesComputationTest(
 
   @parameterized.named_parameters(
       ('float32_nan', np.float32, np.nan, True),
-      ('half_nan', np.half, np.nan, True),
+      ('float16_nan', np.float16, np.nan, True),
       ('float64_inf', np.float64, np.inf, True),
       ('int32_finite', np.int32, 1, False),
       ('bool_finite', np.bool_, False, False),

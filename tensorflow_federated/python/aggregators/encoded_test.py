@@ -149,9 +149,9 @@ class EncodedSumFactoryExecutionTest(tf.test.TestCase):
     state = process.initialize()
 
     client_data = [
-        [[1.0, -1.0], 2],
-        [[2.0, 4.0], 3],
-        [[3.0, 5.0], 5],
+        [[1.0, -1.0], 2.0],
+        [[2.0, 4.0], 3.0],
+        [[3.0, 5.0], 5.0],
     ]
     for _ in range(3):
       output = process.next(state, client_data)

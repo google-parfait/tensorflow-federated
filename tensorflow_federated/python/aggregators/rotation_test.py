@@ -265,54 +265,54 @@ class RotationsExecutionTest(tf.test.TestCase, parameterized.TestCase):
       state = output.state
 
   @parameterized.named_parameters(
-      ('scalar_hd', np.float32, [1, 2, 3, 4], 2.5, _hadamard_mean),
+      ('scalar_hd', np.float32, [1.0, 2.0, 3.0, 4.0], 2.5, _hadamard_mean),
       (
           'rank_1_tensor_hd',
           (np.float32, [2]),
-          [(1, 1), (6, 6)],
+          [(1.0, 1.0), (6.0, 6.0)],
           (3.5, 3.5),
           _hadamard_mean,
       ),
       (
           'rank_2_tensor_hd',
           (np.float32, [1, 2]),
-          [((-1, -1),), ((5, 5),)],
-          ((2, 2),),
+          [((-1.0, -1.0),), ((5.0, 5.0),)],
+          ((2.0, 2.0),),
           _hadamard_mean,
       ),
       (
           'nested_hd',
           _test_struct_type_nested,
           [
-              _make_test_struct_value_nested(123),
-              _make_test_struct_value_nested(-321),
+              _make_test_struct_value_nested(123.0),
+              _make_test_struct_value_nested(-321.0),
           ],
-          _make_test_struct_value_nested(-99),
+          _make_test_struct_value_nested(-99.0),
           _hadamard_mean,
       ),
-      ('scalar_dft', np.float32, [1, 2, 3, 4], 2.5, _dft_mean),
+      ('scalar_dft', np.float32, [1.0, 2.0, 3.0, 4.0], 2.5, _dft_mean),
       (
           'rank_1_tensor_dft',
           (np.float32, [2]),
-          [(1, 1), (6, 6)],
+          [(1.0, 1.0), (6.0, 6.0)],
           (3.5, 3.5),
           _dft_mean,
       ),
       (
           'rank_2_tensor_dft',
           (np.float32, [1, 2]),
-          [((-1, -1),), ((5, 5),)],
-          ((2, 2),),
+          [((-1.0, -1.0),), ((5.0, 5.0),)],
+          ((2.0, 2.0),),
           _dft_mean,
       ),
       (
           'nested_dft',
           _test_struct_type_nested,
           [
-              _make_test_struct_value_nested(123),
-              _make_test_struct_value_nested(-321),
+              _make_test_struct_value_nested(123.0),
+              _make_test_struct_value_nested(-321.0),
           ],
-          _make_test_struct_value_nested(-99),
+          _make_test_struct_value_nested(-99.0),
           _dft_mean,
       ),
   )

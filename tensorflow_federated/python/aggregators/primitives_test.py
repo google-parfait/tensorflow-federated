@@ -896,7 +896,8 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(-1, call_secure_sum([-(2**31), -1 + 2**31]))
 
   @parameterized.named_parameters(
-      ('float32', np.float32), ('float64', np.float64)
+      ('float32', np.float32),
+      ('float64', np.float64),
   )
   def test_numeric_border_conditions_float(self, float_type):
     """Tests that certain border conditions do not cause numeric issues."""
@@ -927,11 +928,21 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
         float_type, np_val_fn(-(10**6) * 1.0), np_val_fn(10**6 * 1.0)
     )
     self.assertAllClose(
-        1111001.0, call_secure_sum([10**6, 10**5, 10**4, 1000, 1])
+        1111001.0,
+        call_secure_sum(
+            [(10**6) * 1.0, (10**5) * 1.0, (10**4) * 1.0, 1000.0, 1.0]
+        ),
     )
     self.assertAllClose(
         1011001.0,
-        call_secure_sum([10**6, 10**5, 10**4, 1000, 1, -(10**5)]),
+        call_secure_sum([
+            (10**6) * 1.0,
+            (10**5) * 1.0,
+            (10**4) * 1.0,
+            1000.0,
+            1.0,
+            -(10**5) * 1.0,
+        ]),
     )
 
   @parameterized.named_parameters(

@@ -66,7 +66,7 @@ def from_proto(array_pb: array_pb2.Array) -> Array:
     # field of type `int32` using the following logic in order to maintain
     # compatibility with how other external environments (e.g., TensorFlow, JAX)
     # represent values of `np.float16`.
-    value = np.array(value, np.uint16).astype(np.float16).tolist()
+    value = np.asarray(value, np.uint16).view(np.float16).tolist()
   elif dtype is np.float32:
     value = array_pb.float32_list.value
   elif dtype is np.float64:
@@ -90,7 +90,7 @@ def from_proto(array_pb: array_pb2.Array) -> Array:
   elif dtype is np.str_:
     value = array_pb.string_list.value
   else:
-    raise NotImplementedError(f'Unexpected dtype found: {dtype}.')
+    raise NotImplementedError(f'Unexpected `dtype` found: {dtype}.')
 
   # Strings are stored as bytes in `array_pb2.Array` and trailing null values
   # are dropped when using `np.bytes_`, use `np.object_` instead.
@@ -120,14 +120,13 @@ def to_proto(
   """Returns an `array_pb2.Array` for the `value`."""
 
   if dtype_hint is not None:
-    if not is_compatible_dtype(value, dtype_hint):
+    if not dtype_utils.is_valid_dtype(dtype_hint):
       raise ValueError(
-          f"Expected '{value}' to be compatible with '{dtype_hint}'."
+          f'Expected `dtype_hint` to be a valid dtype, found {dtype_hint}.'
       )
+    if not is_compatible_dtype(value, dtype_hint):
+      raise ValueError(f'Expected {value} to be compatible with {dtype_hint}.')
     dtype = dtype_hint
-    # Cast values with a dtype of `np.number`, no other dtypes are compatible.
-    if np.issubdtype(dtype, np.number):
-      value = np.asarray(value).astype(dtype)
   else:
     if isinstance(value, (np.ndarray, np.generic)):
       dtype = value.dtype.type
@@ -138,22 +137,26 @@ def to_proto(
     else:
       dtype = dtype_utils.infer_dtype(value)
 
-  def _has_dtype(value, dtype):
-    if isinstance(value, (np.ndarray, np.generic)):
-      value_dtype = value.dtype
-    else:
-      value_dtype = type(value)
-    return np.issubdtype(value_dtype, dtype)
-
   # Normalize to a numpy value; strings are stored as bytes in `array_pb2.Array`
   # and trailing null values are dropped when using `np.bytes_`, so use
   # `np.object_` instead.
-  if _has_dtype(value, np.str_):
-    value = np.asarray(value, np.bytes_)
-  elif _has_dtype(value, np.bytes_):
-    value = np.asarray(value, np.object_)
-  elif not isinstance(value, (np.ndarray, np.generic)):
-    value = np.asarray(value)
+  if dtype is np.str_:
+
+    def _contains_type(value, classinfo):
+      if isinstance(value, (np.ndarray, np.generic)):
+        if value.size == 0:
+          return False
+        item = value.item(0)
+      else:
+        item = value
+      return isinstance(item, classinfo)
+
+    if _contains_type(value, str):
+      value = np.asarray(value, np.bytes_)
+    else:
+      value = np.asarray(value, np.object_)
+  else:
+    value = np.asarray(value, dtype)
 
   dtype_pb = dtype_utils.to_proto(dtype)
   shape_pb = array_shape.to_proto(value.shape)
@@ -218,7 +221,7 @@ def to_proto(
     # field of type `int32` using the following logic in order to maintain
     # compatibility with how other external environments (e.g., TensorFlow, JAX)
     # represent values of `np.float16`.
-    value = np.array(value, np.float16).astype(np.uint16).tolist()
+    value = np.asarray(value, np.float16).view(np.uint16).tolist()
     return array_pb2.Array(
         dtype=dtype_pb,
         shape=shape_pb,
@@ -265,7 +268,7 @@ def to_proto(
         string_list=array_pb2.Array.BytesList(value=value),
     )
   else:
-    raise NotImplementedError(f'Unexpected dtype found: {dtype}.')
+    raise NotImplementedError(f'Unexpected `dtype` found: {dtype}.')
 
 
 def _can_cast(obj: object, dtype: type[np.generic]) -> bool:
@@ -304,12 +307,14 @@ def is_compatible_dtype(value: Array, dtype: type[np.generic]) -> bool:
     value_dtype = type(value)
 
   # Check dtype kind and skip checking dtype size because `np.bool_` does not
-  # have a size and values with a dtype `np.str_` and `np.bytes_` have a
-  # variable length.
+  # have a size and values with a dtype `np.str_`, `np.bytes_`, and `np.object_`
+  # have a variable length.
   if np.issubdtype(value_dtype, np.bool_):
     return dtype is np.bool_
   elif np.issubdtype(value_dtype, np.character):
-    return dtype is np.str_ or dtype is np.bytes_
+    return dtype is np.str_
+  elif np.issubdtype(value_dtype, np.object_):
+    return dtype is np.str_
 
   # Check dtype kind.
   if np.issubdtype(value_dtype, np.integer):

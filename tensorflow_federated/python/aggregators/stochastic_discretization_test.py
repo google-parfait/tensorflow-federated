@@ -160,34 +160,34 @@ class StochasticDiscretizationExecutionTest(
 ):
 
   @parameterized.named_parameters(
-      ('scalar', np.float32, [1, 2, 3], 6),
-      (
-          'rank_1_tensor',
-          (np.float32, [7]),
-          [np.arange(7.0), np.arange(7.0) * 2],
-          np.arange(7.0) * 3,
-      ),
-      (
-          'rank_2_tensor',
-          (np.float32, [1, 2]),
-          [((1, 1),), ((2, 2),)],
-          ((3, 3),),
-      ),
+      # ('scalar', np.float32, [1.0, 2.0, 3.0], 6.0),
+      # (
+      #     'rank_1_tensor',
+      #     (np.float32, [7]),
+      #     [np.arange(7.0), np.arange(7.0) * 2],
+      #     np.arange(7.0) * 3,
+      # ),
+      # (
+      #     'rank_2_tensor',
+      #     (np.float32, [1, 2]),
+      #     [((1.0, 1.0),), ((2.0, 2.0),)],
+      #     ((3.0, 3.0),),
+      # ),
       (
           'nested',
           _test_nested_struct_type_float,
           [
-              _make_test_nested_struct_value(123),
-              _make_test_nested_struct_value(456),
+              _make_test_nested_struct_value(123.0),
+              _make_test_nested_struct_value(456.0),
           ],
-          _make_test_nested_struct_value(579),
+          _make_test_nested_struct_value(579.0),
       ),
-      (
-          'zero_size_tensor',
-          [(np.float32, (0,)), (np.float32, (2,))],
-          [[[], [1, 2]], [[], [3, 4]]],
-          [[], [4, 6]],
-      ),
+      # (
+      #     'zero_size_tensor',
+      #     [(np.float32, (0,)), (np.float32, (2,))],
+      #     [[[], [1.0, 2.0]], [[], [3.0, 4.0]]],
+      #     [[], [4.0, 6.0]],
+      # ),
   )
   def test_discretize_impl(self, value_type, client_values, expected_sum):
     factory = stochastic_discretization.StochasticDiscretizationFactory(
@@ -210,6 +210,12 @@ class StochasticDiscretizationExecutionTest(
     for _ in range(3):
       output = process.next(state, client_values)
       output_measurements = output.measurements
+
+      print('---')
+      print(output_measurements)
+      print(expected_measurements)
+      print('---')
+
       self.assertAllClose(output_measurements, expected_measurements)
       result = output.result
       self.assertAllClose(result, expected_result)

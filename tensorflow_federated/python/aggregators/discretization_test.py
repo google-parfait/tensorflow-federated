@@ -192,7 +192,7 @@ class DiscretizationFactoryExecutionTest(
 ):
 
   @parameterized.named_parameters(
-      ('scalar', np.float32, [1, 2, 3], 6, False),
+      ('scalar', np.float32, [1.0, 2.0, 3.0], 6.0, False),
       (
           'rank_1_tensor',
           (np.float32, [7]),
@@ -203,21 +203,21 @@ class DiscretizationFactoryExecutionTest(
       (
           'rank_2_tensor',
           (np.float32, [1, 2]),
-          [((1, 1),), ((2, 2),)],
-          ((3, 3),),
+          [((1.0, 1.0),), ((2.0, 2.0),)],
+          ((3.0, 3.0),),
           False,
       ),
       (
           'nested',
           _test_nested_struct_type_float,
           [
-              _make_test_nested_struct_value(123),
-              _make_test_nested_struct_value(456),
+              _make_test_nested_struct_value(123.0),
+              _make_test_nested_struct_value(456.0),
           ],
-          _make_test_nested_struct_value(579),
+          _make_test_nested_struct_value(579.0),
           False,
       ),
-      ('stochastic', np.float32, [1, 2, 3], 6, True),
+      ('stochastic', np.float32, [1.0, 2.0, 3.0], 6.0, True),
   )
   def test_sum(self, value_type, client_data, expected_sum, stochastic):
     """Integration test with sum."""
