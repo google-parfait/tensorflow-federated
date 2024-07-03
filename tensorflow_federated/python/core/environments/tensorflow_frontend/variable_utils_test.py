@@ -18,7 +18,7 @@ import operator
 from absl.testing import parameterized
 import tensorflow as tf
 
-from tensorflow_federated.python.tensorflow_libs import variable_utils
+from tensorflow_federated.python.core.environments.tensorflow_frontend import variable_utils
 
 
 class RecordVariableCreationScopeTest(tf.test.TestCase):
