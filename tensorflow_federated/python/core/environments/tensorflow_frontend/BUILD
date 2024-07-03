@@ -87,6 +87,7 @@ py_library(
     srcs = ["tensorflow_serialization.py"],
     deps = [
         ":tensorflow_computation_context",
+        ":variable_utils",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/impl/computation:computation_wrapper",
@@ -95,7 +96,6 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:type_serialization",
         "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
         "//tensorflow_federated/python/tensorflow_libs:serialization_utils",
-        "//tensorflow_federated/python/tensorflow_libs:variable_utils",
     ],
 )
 
@@ -111,4 +111,17 @@ py_test(
         "//tensorflow_federated/python/tensorflow_libs:serialization_utils",
         "//tensorflow_federated/python/tensorflow_libs:tensorflow_test_utils",
     ],
+)
+
+py_library(
+    name = "variable_utils",
+    srcs = ["variable_utils.py"],
+)
+
+py_test(
+    name = "variable_utils_test",
+    size = "small",
+    timeout = "moderate",
+    srcs = ["variable_utils_test.py"],
+    deps = [":variable_utils"],
 )

@@ -34,11 +34,11 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.core.environments.tensorflow_frontend import variable_utils
 from tensorflow_federated.python.learning.metrics import keras_finalizer
 from tensorflow_federated.python.learning.metrics import keras_utils
 from tensorflow_federated.python.learning.metrics import types
 from tensorflow_federated.python.learning.models import variable
-from tensorflow_federated.python.tensorflow_libs import variable_utils
 
 
 Weight = Union[np.ndarray, int, float]

@@ -69,16 +69,3 @@ py_library(
     testonly = True,
     srcs = ["tensorflow_test_utils.py"],
 )
-
-py_library(
-    name = "variable_utils",
-    srcs = ["variable_utils.py"],
-)
-
-py_test(
-    name = "variable_utils_test",
-    size = "small",
-    timeout = "moderate",
-    srcs = ["variable_utils_test.py"],
-    deps = [":variable_utils"],
-)
