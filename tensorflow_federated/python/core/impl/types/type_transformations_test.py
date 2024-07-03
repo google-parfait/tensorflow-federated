@@ -66,34 +66,38 @@ def _convert_tuple_to_tensor(type_spec):
 class StripPlacementTest(parameterized.TestCase):
 
   @parameterized.named_parameters([
-      ('noop_for_non_federated', np.int32, np.int32),
+      (
+          'noop_for_non_federated',
+          computation_types.TensorType(np.int32),
+          computation_types.TensorType(np.int32),
+      ),
       (
           'removes_server',
           computation_types.FederatedType(np.int32, placements.SERVER),
-          np.int32,
+          computation_types.TensorType(np.int32),
       ),
       (
           'removes_clients',
           computation_types.FederatedType(np.int32, placements.CLIENTS),
-          np.int32,
+          computation_types.TensorType(np.int32),
       ),
       (
           'removes_nested',
-          [computation_types.FederatedType(np.int32, placements.SERVER)],
-          [np.int32],
+          computation_types.StructType(
+              [computation_types.FederatedType(np.int32, placements.SERVER)]
+          ),
+          computation_types.StructType([np.int32]),
       ),
       (
           'removes_multiple',
-          [
+          computation_types.StructType([
               computation_types.FederatedType(np.int32, placements.SERVER),
               computation_types.FederatedType(np.float16, placements.CLIENTS),
-          ],
-          [np.int32, np.float16],
+          ]),
+          computation_types.StructType([np.int32, np.float16]),
       ),
   ])
   def test_strips_placement(self, argument, expected):
-    argument = computation_types.to_type(argument)
-    expected = computation_types.to_type(expected)
     self.assertEqual(expected, type_transformations.strip_placement(argument))
 
 

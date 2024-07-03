@@ -46,7 +46,7 @@ class ToCallDominantTest(absltest.TestCase):
     )
 
   def test_inlines_references(self):
-    int_type = computation_types.to_type(np.int32)
+    int_type = computation_types.TensorType(np.int32)
     int_ref = lambda name: building_blocks.Reference(name, int_type)
     int_fn = lambda name, result: building_blocks.Lambda(name, int_type, result)
     before = int_fn(
@@ -64,7 +64,7 @@ class ToCallDominantTest(absltest.TestCase):
     self.assert_compact_representations_equal(after, expected)
 
   def test_inlines_selections(self):
-    int_type = computation_types.to_type(np.int32)
+    int_type = computation_types.TensorType(np.int32)
     structed = computation_types.StructType([int_type])
     double = computation_types.StructType([structed])
     bb = building_blocks
@@ -88,7 +88,7 @@ class ToCallDominantTest(absltest.TestCase):
     self.assert_compact_representations_equal(after, expected)
 
   def test_inlines_structs(self):
-    int_type = computation_types.to_type(np.int32)
+    int_type = computation_types.TensorType(np.int32)
     structed = computation_types.StructType([int_type])
     double = computation_types.StructType([structed])
     bb = building_blocks
@@ -110,7 +110,7 @@ class ToCallDominantTest(absltest.TestCase):
     self.assert_compact_representations_equal(after, expected)
 
   def test_inlines_selection_from_struct(self):
-    int_type = computation_types.to_type(np.int32)
+    int_type = computation_types.TensorType(np.int32)
     bb = building_blocks
     before = bb.Lambda(
         'x',
@@ -122,7 +122,7 @@ class ToCallDominantTest(absltest.TestCase):
     self.assert_compact_representations_equal(after, expected)
 
   def test_creates_binding_for_each_call(self):
-    int_type = computation_types.to_type(np.int32)
+    int_type = computation_types.TensorType(np.int32)
     int_to_int_type = computation_types.FunctionType(int_type, int_type)
     bb = building_blocks
     any_proto = building_block_test_utils.create_any_proto_from_array(
@@ -154,7 +154,7 @@ class ToCallDominantTest(absltest.TestCase):
     self.assert_compact_representations_equal(after, expected)
 
   def test_evaluates_called_lambdas(self):
-    int_type = computation_types.to_type(np.int32)
+    int_type = computation_types.TensorType(np.int32)
     int_to_int_type = computation_types.FunctionType(int_type, int_type)
     int_thunk_type = computation_types.FunctionType(None, int_type)
     bb = building_blocks

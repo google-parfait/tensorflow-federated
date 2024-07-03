@@ -1097,11 +1097,12 @@ class CreateFederatedZipTest(parameterized.TestCase, absltest.TestCase):
           collections.OrderedDict(
               a=INT_AT_CLIENTS, b=INT_AT_CLIENTS, c=BOOL_AT_CLIENTS
           ),
-          collections.OrderedDict(a=np.int32, b=np.int32, c=np.bool_),
+          computation_types.StructType(
+              collections.OrderedDict(a=np.int32, b=np.int32, c=np.bool_)
+          ),
       ),
   ])
   def test_returns_zip_at_clients(self, value_type, expected_zipped_type):
-    value_type = computation_types.to_type(value_type)
     expected_zipped_type = computation_types.FederatedType(
         expected_zipped_type, placements.CLIENTS
     )
@@ -1148,11 +1149,12 @@ class CreateFederatedZipTest(parameterized.TestCase, absltest.TestCase):
           collections.OrderedDict(
               a=INT_AT_SERVER, b=INT_AT_SERVER, c=BOOL_AT_SERVER
           ),
-          collections.OrderedDict(a=np.int32, b=np.int32, c=np.bool_),
+          computation_types.StructType(
+              collections.OrderedDict(a=np.int32, b=np.int32, c=np.bool_)
+          ),
       ),
   ])
   def test_returns_zip_at_server(self, value_type, expected_zipped_type):
-    value_type = computation_types.to_type(value_type)
     expected_zipped_type = computation_types.FederatedType(
         expected_zipped_type, placements.SERVER
     )

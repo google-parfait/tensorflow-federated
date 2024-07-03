@@ -734,9 +734,10 @@ def _federated_select(client_keys, max_key, server_val, select_fn, secure):
         secure,
         expected_type=expected_server_val_type,
     )
-  select_fn_param_type = computation_types.to_type(
-      [server_val.type_signature.member, np.int32]  # pytype: disable=attribute-error
-  )
+  select_fn_param_type = computation_types.StructType([
+      server_val.type_signature.member,  # pytype: disable=attribute-error
+      np.int32,
+  ])
   select_fn = value_impl.to_value(
       select_fn, type_spec=None, parameter_type_hint=select_fn_param_type
   )

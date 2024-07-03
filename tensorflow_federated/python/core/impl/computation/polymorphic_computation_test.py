@@ -92,7 +92,7 @@ class PolymorphicComputationTest(absltest.TestCase):
         fn(20, x=True), 'name=2,type=<int32,x=bool>,arg=<20,x=True>,unpack=True'
     )
     fn_with_bool_arg = fn.fn_for_argument_type(
-        computation_types.to_type(np.bool_)
+        computation_types.TensorType(np.bool_)
     )
     self.assertEqual(
         fn_with_bool_arg(True), 'name=3,type=bool,arg=True,unpack=None'
@@ -105,7 +105,7 @@ class PolymorphicComputationTest(absltest.TestCase):
         fn(0, x=False), 'name=2,type=<int32,x=bool>,arg=<0,x=False>,unpack=True'
     )
     fn_with_bool_arg = fn.fn_for_argument_type(
-        computation_types.to_type(np.bool_)
+        computation_types.TensorType(np.bool_)
     )
     self.assertEqual(
         fn_with_bool_arg(False), 'name=3,type=bool,arg=False,unpack=None'

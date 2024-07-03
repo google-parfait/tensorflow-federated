@@ -309,8 +309,13 @@ class ValueSerializationtest(tf.test.TestCase, parameterized.TestCase):
 
     ds = tf.data.Dataset.range(5).map(make_test_tuple)
     ds_repr = dataset_fn(ds)
-    element_type = computation_types.to_type(
-        test_tuple_type(np.int64, np.int32, np.float32)
+    element_type = computation_types.StructWithPythonType(
+        [
+            ('a', np.int64),
+            ('b', np.int32),
+            ('c', np.float32),
+        ],
+        container_type=test_tuple_type,
     )
     sequence_type = computation_types.SequenceType(element_type)
     value_proto, value_type = value_serialization.serialize_value(
@@ -383,7 +388,7 @@ class ValueSerializationtest(tf.test.TestCase, parameterized.TestCase):
 
     ds = tf.data.Dataset.range(5).map(_make_nested_tf_structure)
     ds_repr = dataset_fn(ds)
-    element_type = computation_types.to_type(
+    element_type = computation_types.StructType(
         collections.OrderedDict(
             b=np.int32,
             a=tuple([
@@ -448,7 +453,7 @@ class ValueSerializationtest(tf.test.TestCase, parameterized.TestCase):
     x = collections.OrderedDict(
         a=10, b=[20, 30], c=collections.OrderedDict(d=40)
     )
-    x_type = computation_types.to_type(
+    x_type = computation_types.StructType(
         collections.OrderedDict(
             a=np.int32,
             b=[np.int32, np.int32],
@@ -464,7 +469,7 @@ class ValueSerializationtest(tf.test.TestCase, parameterized.TestCase):
 
   def test_serialize_deserialize_nested_tuple_value_without_names(self):
     x = (10, 20)
-    x_type = computation_types.to_type((np.int32, np.int32))
+    x_type = computation_types.StructType([np.int32, np.int32])
     value_proto, value_type = value_serialization.serialize_value(x, x_type)
     type_test_utils.assert_types_identical(value_type, x_type)
     y, type_spec = value_serialization.deserialize_value(value_proto)
@@ -487,7 +492,7 @@ class ValueSerializationtest(tf.test.TestCase, parameterized.TestCase):
 
   def test_deserialize_federated_value_with_unset_member_type(self):
     x = 10
-    x_type = computation_types.to_type(np.int32)
+    x_type = computation_types.TensorType(np.int32)
     member_proto, _ = value_serialization.serialize_value(x, x_type)
     fully_specified_type_at_clients = type_serialization.serialize_type(
         computation_types.FederatedType(np.int32, placements.CLIENTS)
@@ -516,10 +521,10 @@ class ValueSerializationtest(tf.test.TestCase, parameterized.TestCase):
       self,
   ):
     x = 10
-    x_type = computation_types.to_type(np.int32)
+    x_type = computation_types.TensorType(np.int32)
     int_member_proto, _ = value_serialization.serialize_value(x, x_type)
     y = 10.0
-    y_type = computation_types.to_type(np.float32)
+    y_type = computation_types.TensorType(np.float32)
     float_member_proto, _ = value_serialization.serialize_value(y, y_type)
     fully_specified_type_at_clients = type_serialization.serialize_type(
         computation_types.FederatedType(np.int32, placements.CLIENTS)
@@ -569,15 +574,11 @@ class ValueSerializationtest(tf.test.TestCase, parameterized.TestCase):
 
   def test_deserialize_federated_value_promotes_types(self):
     x = [10]
-    smaller_type = computation_types.StructType(
-        [(None, computation_types.to_type(np.int32))]
-    )
+    smaller_type = computation_types.StructType([(None, np.int32)])
     smaller_type_member_proto, _ = value_serialization.serialize_value(
         x, smaller_type
     )
-    larger_type = computation_types.StructType(
-        [('a', computation_types.to_type(np.int32))]
-    )
+    larger_type = computation_types.StructType([('a', np.int32)])
     larger_type_member_proto, _ = value_serialization.serialize_value(
         x, larger_type
     )

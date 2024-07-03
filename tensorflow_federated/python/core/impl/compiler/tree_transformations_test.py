@@ -1239,7 +1239,7 @@ class StripPlacementTest(parameterized.TestCase):
     self.assertEqual(after.compact_representation(), '(x -> x)((x -> x)(x))')
 
   def test_unwrap_removes_federated_zips_at_server(self):
-    list_type = computation_types.to_type([np.int32, np.float32] * 2)
+    list_type = computation_types.StructType([np.int32, np.float32] * 2)
     server_list_type = computation_types.FederatedType(
         list_type, placements.SERVER
     )
@@ -1255,7 +1255,7 @@ class StripPlacementTest(parameterized.TestCase):
     type_test_utils.assert_types_identical(after.type_signature, list_type)
 
   def test_unwrap_removes_federated_zips_at_clients(self):
-    list_type = computation_types.to_type([np.int32, np.float32] * 2)
+    list_type = computation_types.StructType([np.int32, np.float32] * 2)
     clients_list_type = computation_types.FederatedType(
         list_type, placements.SERVER
     )
@@ -1348,12 +1348,13 @@ class StripPlacementTest(parameterized.TestCase):
     server_int_type = computation_types.FederatedType(
         int_type, placements.SERVER
     )
-    tupled_int_type = computation_types.to_type((int_type, int_type))
-    tupled_server_int_type = computation_types.to_type(
-        (server_int_type, server_int_type)
-    )
+    tupled_int_type = computation_types.StructType([int_type, int_type])
+    tupled_server_int_type = computation_types.StructType([
+        server_int_type,
+        server_int_type,
+    ])
     fed_ref = building_blocks.Reference('x', server_int_type)
-    before = building_blocks.Struct([fed_ref, fed_ref], container_type=tuple)
+    before = building_blocks.Struct([fed_ref, fed_ref])
     after, modified = tree_transformations.strip_placement(before)
     self.assertTrue(modified)
     self.assert_has_no_intrinsics_nor_federated_types(after)
