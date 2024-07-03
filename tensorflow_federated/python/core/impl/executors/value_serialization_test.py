@@ -424,9 +424,11 @@ class ValueSerializationtest(tf.test.TestCase, parameterized.TestCase):
       self.assertAllClose(actual, expected)
 
   def test_serialize_deserialize_tensor_value_with_bad_shape(self):
-    x = tf.constant([10, 20, 30])
+    value = tf.constant([10, 20, 30])
+    type_spec = computation_types.TensorType(np.int32)
+
     with self.assertRaises(TypeError):
-      value_serialization.serialize_value(x, np.int32)
+      value_serialization.serialize_value(value, type_spec)
 
   def test_serialize_deserialize_computation_value(self):
 

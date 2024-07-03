@@ -336,7 +336,7 @@ def serialize_value(
 
   Args:
     value: A value to be serialized.
-    type_spec: Optional type spec, a `tff.Type` or something convertible to it.
+    type_spec: An optional `tff.Type`.
 
   Returns:
     A 2-tuple of serialized value and `tff.Type` that represents the TFF type of
@@ -346,8 +346,6 @@ def serialize_value(
     TypeError: If the arguments are of the wrong types.
     ValueError: If the value is malformed.
   """
-  if type_spec is not None:
-    type_spec = computation_types.to_type(type_spec)
   if isinstance(value, computation_pb2.Computation):
     return _serialize_computation(value, type_spec)
   elif isinstance(value, computation_impl.ConcreteComputation):
