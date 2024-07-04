@@ -72,26 +72,6 @@ class ValueSerializationtest(tf.test.TestCase, parameterized.TestCase):
     self.assertAllEqual(x, y)
 
   @parameterized.named_parameters(TENSOR_SERIALIZATION_TEST_PARAMS)
-  def test_serialize_deserialize_tensor_value_without_hint_graph_mode(
-      self, x, serialize_type_spec
-  ):
-    # Test serializing non-eager tensors.
-    with tf.Graph().as_default():
-      tensor_x = tf.convert_to_tensor(x)
-      value_proto, value_type = value_serialization.serialize_value(
-          tensor_x, serialize_type_spec
-      )
-    type_test_utils.assert_types_identical(value_type, serialize_type_spec)
-    y, deserialize_type_spec = value_serialization.deserialize_value(
-        value_proto
-    )
-    type_test_utils.assert_types_identical(
-        deserialize_type_spec, serialize_type_spec
-    )
-    self.assertEqual(y.dtype, serialize_type_spec.dtype)
-    self.assertAllEqual(x, y)
-
-  @parameterized.named_parameters(TENSOR_SERIALIZATION_TEST_PARAMS)
   def test_serialize_deserialize_tensor_value_with_hint(
       self, x, serialize_type_spec
   ):

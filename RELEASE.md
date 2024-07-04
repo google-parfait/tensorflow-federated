@@ -8,6 +8,10 @@ and this project adheres to
 
 ## Unreleased
 
+### Removed
+
+*   Serializing raw `tf.Tensor` values to the `Value` protobuf.
+
 ## Release 0.82.0
 
 ### Added

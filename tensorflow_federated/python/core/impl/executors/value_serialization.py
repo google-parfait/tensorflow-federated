@@ -100,15 +100,6 @@ def _serialize_tensor_value(
     ValueError: If the value is malformed.
   """
   original_value = value
-  if tf.is_tensor(value):
-    if isinstance(value, tf.Variable):
-      value = value.read_value()
-    if isinstance(value, tf.Tensor) and not tf.is_symbolic_tensor(value):
-      value = value.numpy()
-    else:
-      # Attempt to extract the value using the current graph context.
-      with tf.compat.v1.Session() as sess:
-        value = sess.run(value)
   # If we got a string or bytes scalar, wrap it in numpy so it has a dtype and
   # shape.
   if isinstance(value, (np.bytes_, np.str_, bytes, str)):
