@@ -267,29 +267,33 @@ class SerializationUtilsTypeSpecTest(parameterized.TestCase):
 
 class SerializationUtilsElementSpecTest(parameterized.TestCase):
 
-  # pyformat: disable
   @parameterized.named_parameters(
       ('tensor_spec', tf.TensorSpec(shape=(3,), dtype=np.int32, name=None)),
-      ('list',
-       [
-           tf.TensorSpec(shape=(3,), dtype=np.int32, name=None),
-           tf.TensorSpec(shape=(3,), dtype=np.int32, name=None),
-           tf.TensorSpec(shape=(3,), dtype=np.int32, name=None),
-       ]),
-      ('dict',
-       {
-           'a': tf.TensorSpec(shape=(3,), dtype=np.int32, name=None),
-           'b': tf.TensorSpec(shape=(3,), dtype=np.int32, name=None),
-           'c': tf.TensorSpec(shape=(3,), dtype=np.int32, name=None),
-       }),
-      ('named_tuple',
-       _TestNamedTuple(
-           a=tf.TensorSpec(shape=(3,), dtype=np.int32, name=None),
-           b=tf.TensorSpec(shape=(3,), dtype=np.int32, name=None),
-           c=tf.TensorSpec(shape=(3,), dtype=np.int32, name=None),
-       )),
+      (
+          'list',
+          [
+              tf.TensorSpec(shape=(3,), dtype=np.int32, name=None),
+              tf.TensorSpec(shape=(3,), dtype=np.int32, name=None),
+              tf.TensorSpec(shape=(3,), dtype=np.int32, name=None),
+          ],
+      ),
+      (
+          'dict',
+          {
+              'a': tf.TensorSpec(shape=(3,), dtype=np.int32, name=None),
+              'b': tf.TensorSpec(shape=(3,), dtype=np.int32, name=None),
+              'c': tf.TensorSpec(shape=(3,), dtype=np.int32, name=None),
+          },
+      ),
+      (
+          'named_tuple',
+          _TestNamedTuple(
+              a=tf.TensorSpec(shape=(3,), dtype=np.int32, name=None),
+              b=tf.TensorSpec(shape=(3,), dtype=np.int32, name=None),
+              c=tf.TensorSpec(shape=(3,), dtype=np.int32, name=None),
+          ),
+      ),
   )
-  # pyformat: enable
   def test_pack_and_unpack_element_spec(self, value):
     value_bytes = serialization_utils.pack_element_spec(value)
     actual_value, actual_size = serialization_utils.unpack_element_spec_from(

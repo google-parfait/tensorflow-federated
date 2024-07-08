@@ -50,16 +50,18 @@ class DatasetDataSourceIteratorTest(parameterized.TestCase):
     with self.assertRaises(TypeError):
       dataset_data_source.DatasetDataSourceIterator(datasets, federated_type)
 
-  # pyformat: disable
   @parameterized.named_parameters(
       ('function', computation_types.FunctionType(np.int32, np.int32)),
       ('placement', computation_types.PlacementType()),
       ('sequence', computation_types.SequenceType(np.int32)),
-      ('struct', computation_types.StructWithPythonType(
-          [np.bool_, np.int32, np.str_], list)),
+      (
+          'struct',
+          computation_types.StructWithPythonType(
+              [np.bool_, np.int32, np.str_], list
+          ),
+      ),
       ('tensor', computation_types.TensorType(np.int32)),
   )
-  # pyformat: enable
   def test_init_raises_type_error_with_federated_type(self, federated_type):
     datasets = [tf.data.Dataset.from_tensor_slices([1, 2, 3])] * 3
 

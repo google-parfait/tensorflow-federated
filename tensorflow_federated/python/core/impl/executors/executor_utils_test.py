@@ -23,24 +23,30 @@ from tensorflow_federated.python.core.impl.types import computation_types
 
 class TypeUtilsTest(parameterized.TestCase):
 
-  # pyformat: disable
   @parameterized.named_parameters([
-      ('buiding_block_and_type_spec',
-       building_block_factory.create_identity(
-           computation_types.TensorType(np.int32)),
-       computation_types.FunctionType(np.int32, np.int32),
-       computation_types.FunctionType(np.int32, np.int32)),
-      ('buiding_block_and_none',
-       building_block_factory.create_identity(
-           computation_types.TensorType(np.int32)),
-       None,
-       computation_types.FunctionType(np.int32, np.int32)),
-      ('int_and_type_spec',
-       10,
-       computation_types.TensorType(np.int32),
-       computation_types.TensorType(np.int32)),
+      (
+          'buiding_block_and_type_spec',
+          building_block_factory.create_identity(
+              computation_types.TensorType(np.int32)
+          ),
+          computation_types.FunctionType(np.int32, np.int32),
+          computation_types.FunctionType(np.int32, np.int32),
+      ),
+      (
+          'buiding_block_and_none',
+          building_block_factory.create_identity(
+              computation_types.TensorType(np.int32)
+          ),
+          None,
+          computation_types.FunctionType(np.int32, np.int32),
+      ),
+      (
+          'int_and_type_spec',
+          10,
+          computation_types.TensorType(np.int32),
+          computation_types.TensorType(np.int32),
+      ),
   ])
-  # pyformat: enable
   def test_reconcile_value_with_type_spec_returns_type(
       self, value, type_spec, expected_type
   ):
@@ -49,33 +55,36 @@ class TypeUtilsTest(parameterized.TestCase):
     )
     self.assertEqual(actual_type, expected_type)
 
-  # pyformat: disable
   @parameterized.named_parameters([
-      ('building_block_and_bad_type_spec',
-       building_block_factory.create_identity(
-           computation_types.TensorType(np.int32)),
-       computation_types.TensorType(np.int32)),
+      (
+          'building_block_and_bad_type_spec',
+          building_block_factory.create_identity(
+              computation_types.TensorType(np.int32)
+          ),
+          computation_types.TensorType(np.int32),
+      ),
       ('int_and_none', 10, None),
   ])
-  # pyformat: enable
   def test_reconcile_value_with_type_spec_raises_type_error(
       self, value, type_spec
   ):
     with self.assertRaises(TypeError):
       executor_utils.reconcile_value_with_type_spec(value, type_spec)
 
-  # pyformat: disable
   @parameterized.named_parameters([
-      ('value_type_and_type_spec',
-       computation_types.TensorType(np.int32),
-       computation_types.TensorType(np.int32),
-       computation_types.TensorType(np.int32)),
-      ('value_type_and_none',
-       computation_types.TensorType(np.int32),
-       None,
-       computation_types.TensorType(np.int32)),
+      (
+          'value_type_and_type_spec',
+          computation_types.TensorType(np.int32),
+          computation_types.TensorType(np.int32),
+          computation_types.TensorType(np.int32),
+      ),
+      (
+          'value_type_and_none',
+          computation_types.TensorType(np.int32),
+          None,
+          computation_types.TensorType(np.int32),
+      ),
   ])
-  # pyformat: enable
   def test_reconcile_value_type_with_type_spec_returns_type(
       self, value_type, type_spec, expected_type
   ):

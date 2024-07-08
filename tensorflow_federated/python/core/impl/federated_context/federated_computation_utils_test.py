@@ -77,30 +77,56 @@ class ZeroOrOneArgFnToBuildingBlockTest(parameterized.TestCase):
     )
     self.assertEqual(str(result), fn_str)
 
-  # pyformat: disable
   @parameterized.named_parameters(
-      ('tuple',
-       lambda x: (x[1], x[0]),
-       computation_types.StructType([np.int32, np.float32]),
-       computation_types.StructWithPythonType([
-           (None, np.float32), (None, np.int32)], tuple)),
-      ('list',
-       lambda x: [x[1], x[0]],
-       computation_types.StructType([np.int32, np.float32]),
-       computation_types.StructWithPythonType([
-           (None, np.float32), (None, np.int32)], list)),
-      ('odict',
-       lambda x: collections.OrderedDict([('A', x[1]), ('B', x[0])]),
-       computation_types.StructType([np.int32, np.float32]),
-       computation_types.StructWithPythonType([
-           ('A', np.float32), ('B', np.int32)], collections.OrderedDict)),
-      ('namedtuple',
-       lambda x: TestNamedTuple(x=x[1], y=x[0]),
-       computation_types.StructType([np.int32, np.float32]),
-       computation_types.StructWithPythonType([
-           ('x', np.float32), ('y', np.int32)], TestNamedTuple)),
+      (
+          'tuple',
+          lambda x: (x[1], x[0]),
+          computation_types.StructType([np.int32, np.float32]),
+          computation_types.StructWithPythonType(
+              [
+                  (None, np.float32),
+                  (None, np.int32),
+              ],
+              tuple,
+          ),
+      ),
+      (
+          'list',
+          lambda x: [x[1], x[0]],
+          computation_types.StructType([np.int32, np.float32]),
+          computation_types.StructWithPythonType(
+              [
+                  (None, np.float32),
+                  (None, np.int32),
+              ],
+              list,
+          ),
+      ),
+      (
+          'odict',
+          lambda x: collections.OrderedDict([('A', x[1]), ('B', x[0])]),
+          computation_types.StructType([np.int32, np.float32]),
+          computation_types.StructWithPythonType(
+              [
+                  ('A', np.float32),
+                  ('B', np.int32),
+              ],
+              collections.OrderedDict,
+          ),
+      ),
+      (
+          'namedtuple',
+          lambda x: TestNamedTuple(x=x[1], y=x[0]),
+          computation_types.StructType([np.int32, np.float32]),
+          computation_types.StructWithPythonType(
+              [
+                  ('x', np.float32),
+                  ('y', np.int32),
+              ],
+              TestNamedTuple,
+          ),
+      ),
   )
-  # pyformat: enable
   def test_returns_result_with_py_container(
       self, fn, parameter_type, expected_result_type
   ):

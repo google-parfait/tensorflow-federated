@@ -28,53 +28,91 @@ from tensorflow_federated.python.program import federated_context
 
 class ContainsOnlyServerPlacedDataTest(parameterized.TestCase):
 
-  # pyformat: disable
   @parameterized.named_parameters(
-      ('struct_unnamed', computation_types.StructWithPythonType(
-          [np.bool_, np.int32, np.str_], list)),
-      ('struct_named', computation_types.StructWithPythonType([
-          ('a', np.bool_),
-          ('b', np.int32),
-          ('c', np.str_),
-      ], collections.OrderedDict)),
-      ('struct_nested', computation_types.StructWithPythonType([
-          ('x', computation_types.StructWithPythonType([
-              ('a', np.bool_),
-              ('b', np.int32),
-          ], collections.OrderedDict)),
-          ('y', computation_types.StructWithPythonType([
-              ('c', np.str_),
-          ], collections.OrderedDict)),
-      ], collections.OrderedDict)),
-      ('federated_struct', computation_types.FederatedType(
-          computation_types.StructWithPythonType([
-              ('a', np.bool_),
-              ('b', np.int32),
-              ('c', np.str_),
-          ], collections.OrderedDict),
-          placements.SERVER)),
-      ('federated_sequence', computation_types.FederatedType(
-          computation_types.SequenceType(np.int32),
-          placements.SERVER)),
-      ('federated_tensor', computation_types.FederatedType(
-          np.int32, placements.SERVER)),
+      (
+          'struct_unnamed',
+          computation_types.StructWithPythonType(
+              [np.bool_, np.int32, np.str_], list
+          ),
+      ),
+      (
+          'struct_named',
+          computation_types.StructWithPythonType(
+              [
+                  ('a', np.bool_),
+                  ('b', np.int32),
+                  ('c', np.str_),
+              ],
+              collections.OrderedDict,
+          ),
+      ),
+      (
+          'struct_nested',
+          computation_types.StructWithPythonType(
+              [
+                  (
+                      'x',
+                      computation_types.StructWithPythonType(
+                          [
+                              ('a', np.bool_),
+                              ('b', np.int32),
+                          ],
+                          collections.OrderedDict,
+                      ),
+                  ),
+                  (
+                      'y',
+                      computation_types.StructWithPythonType(
+                          [
+                              ('c', np.str_),
+                          ],
+                          collections.OrderedDict,
+                      ),
+                  ),
+              ],
+              collections.OrderedDict,
+          ),
+      ),
+      (
+          'federated_struct',
+          computation_types.FederatedType(
+              computation_types.StructWithPythonType(
+                  [
+                      ('a', np.bool_),
+                      ('b', np.int32),
+                      ('c', np.str_),
+                  ],
+                  collections.OrderedDict,
+              ),
+              placements.SERVER,
+          ),
+      ),
+      (
+          'federated_sequence',
+          computation_types.FederatedType(
+              computation_types.SequenceType(np.int32), placements.SERVER
+          ),
+      ),
+      (
+          'federated_tensor',
+          computation_types.FederatedType(np.int32, placements.SERVER),
+      ),
       ('sequence', computation_types.SequenceType(np.int32)),
       ('tensor', computation_types.TensorType(np.int32)),
   )
-  # pyformat: enable
   def test_returns_true(self, type_signature):
     result = federated_context.contains_only_server_placed_data(type_signature)
 
     self.assertTrue(result)
 
-  # pyformat: disable
   @parameterized.named_parameters(
-      ('federated_tensor', computation_types.FederatedType(
-          np.int32, placements.CLIENTS)),
+      (
+          'federated_tensor',
+          computation_types.FederatedType(np.int32, placements.CLIENTS),
+      ),
       ('function', computation_types.FunctionType(np.int32, np.int32)),
       ('placement', computation_types.PlacementType()),
   )
-  # pyformat: enable
   def test_returns_false(self, type_signature):
     result = federated_context.contains_only_server_placed_data(type_signature)
 
@@ -111,14 +149,16 @@ class CheckInFederatedContextTest(parameterized.TestCase):
     with self.assertRaises(ValueError):
       federated_context.check_in_federated_context()
 
-  # pyformat: disable
   @parameterized.named_parameters(
-      ('async_cpp',
-       execution_contexts.create_async_local_cpp_execution_context()),
-      ('sync_cpp',
-       execution_contexts.create_sync_local_cpp_execution_context()),
+      (
+          'async_cpp',
+          execution_contexts.create_async_local_cpp_execution_context(),
+      ),
+      (
+          'sync_cpp',
+          execution_contexts.create_sync_local_cpp_execution_context(),
+      ),
   )
-  # pyformat: enable
   def test_raises_value_error_with_context(self, context):
     with self.assertRaises(ValueError):
       federated_context.check_in_federated_context()

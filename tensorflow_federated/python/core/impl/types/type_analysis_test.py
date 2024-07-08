@@ -25,22 +25,26 @@ from tensorflow_federated.python.core.impl.types import type_analysis
 
 class CountTypesTest(parameterized.TestCase):
 
-  # pyformat: disable
   @parameterized.named_parameters([
-      ('one',
-       computation_types.TensorType(np.int32),
-       lambda t: isinstance(t, computation_types.TensorType),
-       1),
-      ('three',
-       computation_types.StructType([np.int32] * 3),
-       lambda t: isinstance(t, computation_types.TensorType),
-       3),
-      ('nested',
-       computation_types.StructType([[np.int32] * 3] * 3),
-       lambda t: isinstance(t, computation_types.TensorType),
-       9),
+      (
+          'one',
+          computation_types.TensorType(np.int32),
+          lambda t: isinstance(t, computation_types.TensorType),
+          1,
+      ),
+      (
+          'three',
+          computation_types.StructType([np.int32] * 3),
+          lambda t: isinstance(t, computation_types.TensorType),
+          3,
+      ),
+      (
+          'nested',
+          computation_types.StructType([[np.int32] * 3] * 3),
+          lambda t: isinstance(t, computation_types.TensorType),
+          9,
+      ),
   ])
-  # pyformat: enable
   def test_returns_result(self, type_signature, predicate, expected_result):
     result = type_analysis.count(type_signature, predicate)
     self.assertEqual(result, expected_result)
@@ -48,22 +52,28 @@ class CountTypesTest(parameterized.TestCase):
 
 class ContainsTypesTest(parameterized.TestCase):
 
-  # pyformat: disable
   @parameterized.named_parameters([
-      ('one_type',
-       computation_types.TensorType(np.int32),
-       computation_types.TensorType),
-      ('two_types',
-       computation_types.StructType([np.int32]),
-       (computation_types.StructType, computation_types.TensorType)),
-      ('less_types',
-       computation_types.TensorType(np.int32),
-       (computation_types.StructType, computation_types.TensorType)),
-      ('more_types',
-       computation_types.StructType([np.int32]),
-       computation_types.TensorType),
+      (
+          'one_type',
+          computation_types.TensorType(np.int32),
+          computation_types.TensorType,
+      ),
+      (
+          'two_types',
+          computation_types.StructType([np.int32]),
+          (computation_types.StructType, computation_types.TensorType),
+      ),
+      (
+          'less_types',
+          computation_types.TensorType(np.int32),
+          (computation_types.StructType, computation_types.TensorType),
+      ),
+      (
+          'more_types',
+          computation_types.StructType([np.int32]),
+          computation_types.TensorType,
+      ),
   ])
-  # pyformat: enable
   def test_returns_true(self, type_signature, types):
     result = type_analysis.contains(
         type_signature, lambda x: isinstance(x, types)
@@ -86,35 +96,41 @@ class ContainsTypesTest(parameterized.TestCase):
 
 class ContainsOnlyTypesTest(parameterized.TestCase):
 
-  # pyformat: disable
   @parameterized.named_parameters([
-      ('one_type',
-       computation_types.TensorType(np.int32),
-       computation_types.TensorType),
-      ('two_types',
-       computation_types.StructType([np.int32]),
-       (computation_types.StructType, computation_types.TensorType)),
-      ('less_types',
-       computation_types.TensorType(np.int32),
-       (computation_types.StructType, computation_types.TensorType)),
+      (
+          'one_type',
+          computation_types.TensorType(np.int32),
+          computation_types.TensorType,
+      ),
+      (
+          'two_types',
+          computation_types.StructType([np.int32]),
+          (computation_types.StructType, computation_types.TensorType),
+      ),
+      (
+          'less_types',
+          computation_types.TensorType(np.int32),
+          (computation_types.StructType, computation_types.TensorType),
+      ),
   ])
-  # pyformat: enable
   def test_returns_true(self, type_signature, types):
     result = type_analysis.contains_only(
         type_signature, lambda x: isinstance(x, types)
     )
     self.assertTrue(result)
 
-  # pyformat: disable
   @parameterized.named_parameters([
-      ('one_type',
-       computation_types.TensorType(np.int32),
-       computation_types.StructType),
-      ('more_types',
-       computation_types.StructType([np.int32]),
-       computation_types.TensorType),
+      (
+          'one_type',
+          computation_types.TensorType(np.int32),
+          computation_types.StructType,
+      ),
+      (
+          'more_types',
+          computation_types.StructType([np.int32]),
+          computation_types.TensorType,
+      ),
   ])
-  # pyformat: enable
   def test_returns_false(self, type_signature, types):
     result = type_analysis.contains_only(
         type_signature, lambda x: isinstance(x, types)
@@ -124,68 +140,94 @@ class ContainsOnlyTypesTest(parameterized.TestCase):
 
 class CheckAllAbstractTypesAreBoundTest(parameterized.TestCase):
 
-  # pyformat: disable
   @parameterized.named_parameters([
       ('tensor_type', computation_types.TensorType(np.int32)),
-      ('function_type_with_no_arg',
-       computation_types.FunctionType(None, np.int32)),
-      ('function_type_with_int_arg',
-       computation_types.FunctionType(np.int32, np.int32)),
-      ('function_type_with_abstract_arg',
-       computation_types.FunctionType(
-           computation_types.AbstractType('T'),
-           computation_types.AbstractType('T'))),
-      ('tuple_tuple_function_type_with_abstract_arg',
-       computation_types.StructType([
-           computation_types.StructType([
-               computation_types.FunctionType(
-                   computation_types.AbstractType('T'),
-                   computation_types.AbstractType('T')),
-           ])
-       ])),
-      ('function_type_with_unbound_function_arg',
-       computation_types.FunctionType(
-           computation_types.FunctionType(
-               None, computation_types.AbstractType('T')),
-           computation_types.AbstractType('T'))),
-      ('function_type_with_sequence_arg',
-       computation_types.FunctionType(
-           computation_types.SequenceType(
-               computation_types.AbstractType('T')),
-           np.int32)),
-      ('function_type_with_two_abstract_args',
-       computation_types.FunctionType(
-           computation_types.StructType([
-               computation_types.AbstractType('T'),
-               computation_types.AbstractType('U'),
-           ]),
-           computation_types.StructType([
-               computation_types.AbstractType('T'),
-               computation_types.AbstractType('U'),
-           ]))),
+      (
+          'function_type_with_no_arg',
+          computation_types.FunctionType(None, np.int32),
+      ),
+      (
+          'function_type_with_int_arg',
+          computation_types.FunctionType(np.int32, np.int32),
+      ),
+      (
+          'function_type_with_abstract_arg',
+          computation_types.FunctionType(
+              computation_types.AbstractType('T'),
+              computation_types.AbstractType('T'),
+          ),
+      ),
+      (
+          'tuple_tuple_function_type_with_abstract_arg',
+          computation_types.StructType([
+              computation_types.StructType([
+                  computation_types.FunctionType(
+                      computation_types.AbstractType('T'),
+                      computation_types.AbstractType('T'),
+                  ),
+              ])
+          ]),
+      ),
+      (
+          'function_type_with_unbound_function_arg',
+          computation_types.FunctionType(
+              computation_types.FunctionType(
+                  None, computation_types.AbstractType('T')
+              ),
+              computation_types.AbstractType('T'),
+          ),
+      ),
+      (
+          'function_type_with_sequence_arg',
+          computation_types.FunctionType(
+              computation_types.SequenceType(
+                  computation_types.AbstractType('T')
+              ),
+              np.int32,
+          ),
+      ),
+      (
+          'function_type_with_two_abstract_args',
+          computation_types.FunctionType(
+              computation_types.StructType([
+                  computation_types.AbstractType('T'),
+                  computation_types.AbstractType('U'),
+              ]),
+              computation_types.StructType([
+                  computation_types.AbstractType('T'),
+                  computation_types.AbstractType('U'),
+              ]),
+          ),
+      ),
   ])
-  # pyformat: enable
   def test_does_not_raise_type_error(self, type_spec):
     try:
       type_analysis.check_all_abstract_types_are_bound(type_spec)
     except TypeError:
       self.fail('Raised `TypeError` unexpectedly.')
 
-  # pyformat: disable
   @parameterized.named_parameters([
       ('abstract_type', computation_types.AbstractType('T')),
-      ('function_type_with_no_arg',
-       computation_types.FunctionType(
-           None, computation_types.AbstractType('T'))),
-      ('function_type_with_int_arg',
-       computation_types.FunctionType(
-           np.int32, computation_types.AbstractType('T'))),
-      ('function_type_with_abstract_arg',
-       computation_types.FunctionType(
-           computation_types.AbstractType('T'),
-           computation_types.AbstractType('U'))),
+      (
+          'function_type_with_no_arg',
+          computation_types.FunctionType(
+              None, computation_types.AbstractType('T')
+          ),
+      ),
+      (
+          'function_type_with_int_arg',
+          computation_types.FunctionType(
+              np.int32, computation_types.AbstractType('T')
+          ),
+      ),
+      (
+          'function_type_with_abstract_arg',
+          computation_types.FunctionType(
+              computation_types.AbstractType('T'),
+              computation_types.AbstractType('U'),
+          ),
+      ),
   ])
-  # pyformat: enable
   def test_raises_type_error(self, type_spec):
     with self.assertRaises(TypeError):
       type_analysis.check_all_abstract_types_are_bound(type_spec)
@@ -425,28 +467,38 @@ class IsStructureOfIntegersTest(parameterized.TestCase):
 
 class IsSingleIntegerOrMatchesStructure(parameterized.TestCase):
 
-  # pyformat: disable
   @parameterized.named_parameters(
-      ('single int',
-       computation_types.TensorType(np.int32),
-       computation_types.TensorType(np.int32)),
-      ('struct',
-       computation_types.StructType([np.int32, np.int32]),
-       computation_types.StructType([np.int32, np.int32])),
-      ('struct with named fields',
-       computation_types.StructType([('x', np.int32)]),
-       computation_types.StructType([('x', np.int32)])),
-      ('single int for complex tensor',
-       computation_types.TensorType(np.int32),
-       computation_types.TensorType(np.int32, [5, 97, 204])),
-      ('different kinds of ints',
-       computation_types.TensorType(np.int32),
-       computation_types.TensorType(np.int8)),
-      ('single int_for_struct',
-       computation_types.TensorType(np.int32),
-       computation_types.StructType([np.int32, np.int32])),
+      (
+          'single int',
+          computation_types.TensorType(np.int32),
+          computation_types.TensorType(np.int32),
+      ),
+      (
+          'struct',
+          computation_types.StructType([np.int32, np.int32]),
+          computation_types.StructType([np.int32, np.int32]),
+      ),
+      (
+          'struct with named fields',
+          computation_types.StructType([('x', np.int32)]),
+          computation_types.StructType([('x', np.int32)]),
+      ),
+      (
+          'single int for complex tensor',
+          computation_types.TensorType(np.int32),
+          computation_types.TensorType(np.int32, [5, 97, 204]),
+      ),
+      (
+          'different kinds of ints',
+          computation_types.TensorType(np.int32),
+          computation_types.TensorType(np.int8),
+      ),
+      (
+          'single int_for_struct',
+          computation_types.TensorType(np.int32),
+          computation_types.StructType([np.int32, np.int32]),
+      ),
   )
-  # pyformat: enable
   def test_returns_true(self, type_sig, shape_type):
     self.assertTrue(
         type_analysis.is_single_integer_or_matches_structure(
@@ -454,19 +506,23 @@ class IsSingleIntegerOrMatchesStructure(parameterized.TestCase):
         )
     )
 
-  # pyformat: disable
   @parameterized.named_parameters(
-      ('miscounted struct',
-       computation_types.StructType([np.int32, np.int32, np.int32]),
-       computation_types.StructType([np.int32, np.int32])),
-      ('miscounted struct 2',
-       computation_types.StructType([np.int32, np.int32]),
-       computation_types.StructType([np.int32, np.int32, np.int32])),
-      ('misnamed struct',
-       computation_types.StructType([('x', np.int32)]),
-       computation_types.StructType([('y', np.int32)])),
+      (
+          'miscounted struct',
+          computation_types.StructType([np.int32, np.int32, np.int32]),
+          computation_types.StructType([np.int32, np.int32]),
+      ),
+      (
+          'miscounted struct 2',
+          computation_types.StructType([np.int32, np.int32]),
+          computation_types.StructType([np.int32, np.int32, np.int32]),
+      ),
+      (
+          'misnamed struct',
+          computation_types.StructType([('x', np.int32)]),
+          computation_types.StructType([('y', np.int32)]),
+      ),
   )
-  # pyformat: enable
   def test_returns_false(self, type_sig, shape_type):
     self.assertFalse(
         type_analysis.is_single_integer_or_matches_structure(

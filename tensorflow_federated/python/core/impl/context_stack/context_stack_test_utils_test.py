@@ -26,26 +26,32 @@ from tensorflow_federated.python.core.impl.context_stack import context_stack_te
 
 class WithContextTest(parameterized.TestCase, unittest.IsolatedAsyncioTestCase):
 
-  # pyformat: disable
   @parameterized.named_parameters(
-      ('context_and_no_environment',
-       context_stack_test_utils.TestContext(),
-       None),
-      ('context_and_empty_environment',
-       context_stack_test_utils.TestContext(),
-       []),
-      ('context_and_1_environment',
-       context_stack_test_utils.TestContext(),
-       [context_stack_test_utils.test_environment()]),
-      ('context_and_3_environment',
-       context_stack_test_utils.TestContext(),
-       [
-           context_stack_test_utils.test_environment(),
-           context_stack_test_utils.test_environment(),
-           context_stack_test_utils.test_environment(),
-       ]),
+      (
+          'context_and_no_environment',
+          context_stack_test_utils.TestContext(),
+          None,
+      ),
+      (
+          'context_and_empty_environment',
+          context_stack_test_utils.TestContext(),
+          [],
+      ),
+      (
+          'context_and_1_environment',
+          context_stack_test_utils.TestContext(),
+          [context_stack_test_utils.test_environment()],
+      ),
+      (
+          'context_and_3_environment',
+          context_stack_test_utils.TestContext(),
+          [
+              context_stack_test_utils.test_environment(),
+              context_stack_test_utils.test_environment(),
+              context_stack_test_utils.test_environment(),
+          ],
+      ),
   )
-  # pyformat: enable
   def test_installs_context_fn_sync_no_arg(self, context, environments):
     context_fn = lambda: context
     environment_fn = None if environments is None else lambda: environments
@@ -73,26 +79,33 @@ class WithContextTest(parameterized.TestCase, unittest.IsolatedAsyncioTestCase):
         calls = [mock.call(e) for e in environments]
         self.assertEqual(mock_enter_context.mock_calls, calls)
 
-  # pyformat: disable
   @parameterized.named_parameters(
-      ('context_and_no_environment',
-       context_stack_test_utils.TestContext(),
-       None),
-      ('context_and_empty_environment',
-       context_stack_test_utils.TestContext(),
-       []),
-      ('context_and_1_environment',
-       context_stack_test_utils.TestContext(),
-       [context_stack_test_utils.test_environment()]),
-      ('context_and_3_environment',
-       context_stack_test_utils.TestContext(),
-       [
-           context_stack_test_utils.test_environment(),
-           context_stack_test_utils.test_environment(),
-           context_stack_test_utils.test_environment(),
-       ]),
+      (
+          'context_and_no_environment',
+          context_stack_test_utils.TestContext(),
+          None,
+      ),
+      (
+          'context_and_empty_environment',
+          context_stack_test_utils.TestContext(),
+          [],
+      ),
+      (
+          'context_and_1_environment',
+          context_stack_test_utils.TestContext(),
+          [context_stack_test_utils.test_environment()],
+      ),
+      (
+          'context_and_3_environment',
+          context_stack_test_utils.TestContext(),
+          [
+              context_stack_test_utils.test_environment(),
+              context_stack_test_utils.test_environment(),
+              context_stack_test_utils.test_environment(),
+          ],
+      ),
   )
-  # pyformat: enable
+
   def test_installs_context_fn_sync_args(self, context, environments):
     context_fn = lambda: context
     environment_fn = None if environments is None else lambda: environments
@@ -121,26 +134,33 @@ class WithContextTest(parameterized.TestCase, unittest.IsolatedAsyncioTestCase):
         calls = [mock.call(e) for e in environments]
         self.assertEqual(mock_enter_context.mock_calls, calls)
 
-  # pyformat: disable
   @parameterized.named_parameters(
-      ('context_and_no_environment',
-       context_stack_test_utils.TestContext(),
-       None),
-      ('context_and_empty_environment',
-       context_stack_test_utils.TestContext(),
-       []),
-      ('context_and_1_environment',
-       context_stack_test_utils.TestContext(),
-       [context_stack_test_utils.test_environment()]),
-      ('context_and_3_environment',
-       context_stack_test_utils.TestContext(),
-       [
-           context_stack_test_utils.test_environment(),
-           context_stack_test_utils.test_environment(),
-           context_stack_test_utils.test_environment(),
-       ]),
+      (
+          'context_and_no_environment',
+          context_stack_test_utils.TestContext(),
+          None,
+      ),
+      (
+          'context_and_empty_environment',
+          context_stack_test_utils.TestContext(),
+          [],
+      ),
+      (
+          'context_and_1_environment',
+          context_stack_test_utils.TestContext(),
+          [context_stack_test_utils.test_environment()],
+      ),
+      (
+          'context_and_3_environment',
+          context_stack_test_utils.TestContext(),
+          [
+              context_stack_test_utils.test_environment(),
+              context_stack_test_utils.test_environment(),
+              context_stack_test_utils.test_environment(),
+          ],
+      ),
   )
-  # pyformat: enable
+
   def test_installs_context_fn_sync_kwargs(self, context, environments):
     context_fn = lambda: context
     environment_fn = None if environments is None else lambda: environments
@@ -169,26 +189,33 @@ class WithContextTest(parameterized.TestCase, unittest.IsolatedAsyncioTestCase):
         calls = [mock.call(e) for e in environments]
         self.assertEqual(mock_enter_context.mock_calls, calls)
 
-  # pyformat: disable
   @parameterized.named_parameters(
-      ('context_and_no_environment',
-       context_stack_test_utils.TestContext(),
-       None),
-      ('context_and_empty_environment',
-       context_stack_test_utils.TestContext(),
-       []),
-      ('context_and_1_environment',
-       context_stack_test_utils.TestContext(),
-       [context_stack_test_utils.test_environment()]),
-      ('context_and_3_environment',
-       context_stack_test_utils.TestContext(),
-       [
-           context_stack_test_utils.test_environment(),
-           context_stack_test_utils.test_environment(),
-           context_stack_test_utils.test_environment(),
-       ]),
+      (
+          'context_and_no_environment',
+          context_stack_test_utils.TestContext(),
+          None,
+      ),
+      (
+          'context_and_empty_environment',
+          context_stack_test_utils.TestContext(),
+          [],
+      ),
+      (
+          'context_and_1_environment',
+          context_stack_test_utils.TestContext(),
+          [context_stack_test_utils.test_environment()],
+      ),
+      (
+          'context_and_3_environment',
+          context_stack_test_utils.TestContext(),
+          [
+              context_stack_test_utils.test_environment(),
+              context_stack_test_utils.test_environment(),
+              context_stack_test_utils.test_environment(),
+          ],
+      ),
   )
-  # pyformat: enable
+
   def test_installs_context_fn_sync_return(self, context, environments):
     context_fn = lambda: context
     environment_fn = None if environments is None else lambda: environments
@@ -220,26 +247,33 @@ class WithContextTest(parameterized.TestCase, unittest.IsolatedAsyncioTestCase):
       # Assert that the return value is returned by the decorator.
       self.assertEqual(x, 1)
 
-  # pyformat: disable
   @parameterized.named_parameters(
-      ('context_and_no_environment',
-       context_stack_test_utils.TestContext(),
-       None),
-      ('context_and_empty_environment',
-       context_stack_test_utils.TestContext(),
-       []),
-      ('context_and_1_environment',
-       context_stack_test_utils.TestContext(),
-       [context_stack_test_utils.test_environment()]),
-      ('context_and_3_environment',
-       context_stack_test_utils.TestContext(),
-       [
-           context_stack_test_utils.test_environment(),
-           context_stack_test_utils.test_environment(),
-           context_stack_test_utils.test_environment(),
-       ]),
+      (
+          'context_and_no_environment',
+          context_stack_test_utils.TestContext(),
+          None,
+      ),
+      (
+          'context_and_empty_environment',
+          context_stack_test_utils.TestContext(),
+          [],
+      ),
+      (
+          'context_and_1_environment',
+          context_stack_test_utils.TestContext(),
+          [context_stack_test_utils.test_environment()],
+      ),
+      (
+          'context_and_3_environment',
+          context_stack_test_utils.TestContext(),
+          [
+              context_stack_test_utils.test_environment(),
+              context_stack_test_utils.test_environment(),
+              context_stack_test_utils.test_environment(),
+          ],
+      ),
   )
-  # pyformat: enable
+
   async def test_installs_context_fn_async(self, context, environments):
     context_fn = lambda: context
     environment_fn = None if environments is None else lambda: environments
@@ -267,26 +301,33 @@ class WithContextTest(parameterized.TestCase, unittest.IsolatedAsyncioTestCase):
         calls = [mock.call(e) for e in environments]
         self.assertEqual(mock_enter_context.mock_calls, calls)
 
-  # pyformat: disable
   @parameterized.named_parameters(
-      ('context_and_no_environment',
-       context_stack_test_utils.TestContext(),
-       None),
-      ('context_and_empty_environment',
-       context_stack_test_utils.TestContext(),
-       []),
-      ('context_and_1_environment',
-       context_stack_test_utils.TestContext(),
-       [context_stack_test_utils.test_environment()]),
-      ('context_and_3_environments',
-       context_stack_test_utils.TestContext(),
-       [
-           context_stack_test_utils.test_environment(),
-           context_stack_test_utils.test_environment(),
-           context_stack_test_utils.test_environment(),
-       ]),
+      (
+          'context_and_no_environment',
+          context_stack_test_utils.TestContext(),
+          None,
+      ),
+      (
+          'context_and_empty_environment',
+          context_stack_test_utils.TestContext(),
+          [],
+      ),
+      (
+          'context_and_1_environment',
+          context_stack_test_utils.TestContext(),
+          [context_stack_test_utils.test_environment()],
+      ),
+      (
+          'context_and_3_environments',
+          context_stack_test_utils.TestContext(),
+          [
+              context_stack_test_utils.test_environment(),
+              context_stack_test_utils.test_environment(),
+              context_stack_test_utils.test_environment(),
+          ],
+      ),
   )
-  # pyformat: enable
+
   def test_installs_context_test_case(self, context, environments):
     context_fn = lambda: context
     environment_fn = None if environments is None else lambda: environments

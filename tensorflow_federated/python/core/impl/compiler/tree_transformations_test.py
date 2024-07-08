@@ -77,16 +77,18 @@ class RemoveMappedOrAppliedIdentityTest(parameterized.TestCase):
     with self.assertRaises(TypeError):
       tree_transformations.remove_mapped_or_applied_identity(None)
 
-  # pyformat: disable
   @parameterized.named_parameters(
-      ('federated_map',
-       intrinsic_defs.FEDERATED_MAP.uri,
-       building_block_test_utils.create_whimsy_called_federated_map),
-      ('federated_map_all_equal',
-       intrinsic_defs.FEDERATED_MAP_ALL_EQUAL.uri,
-       building_block_test_utils.create_whimsy_called_federated_map_all_equal),
+      (
+          'federated_map',
+          intrinsic_defs.FEDERATED_MAP.uri,
+          building_block_test_utils.create_whimsy_called_federated_map,
+      ),
+      (
+          'federated_map_all_equal',
+          intrinsic_defs.FEDERATED_MAP_ALL_EQUAL.uri,
+          building_block_test_utils.create_whimsy_called_federated_map_all_equal,
+      ),
   )
-  # pyformat: enable
   def test_removes_intrinsic(self, uri, factory):
     call = factory(parameter_name='a')
     comp = call
