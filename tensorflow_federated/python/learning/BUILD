@@ -115,3 +115,16 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:placements",
     ],
 )
+
+py_library(
+    name = "tensor_utils",
+    srcs = ["tensor_utils.py"],
+    deps = ["//tensorflow_federated/python/common_libs:py_typecheck"],
+)
+
+py_test(
+    name = "tensor_utils_test",
+    size = "small",
+    srcs = ["tensor_utils_test.py"],
+    deps = [":tensor_utils"],
+)

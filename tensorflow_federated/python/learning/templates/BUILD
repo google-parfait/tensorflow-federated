@@ -45,10 +45,10 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:type_analysis",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
         "//tensorflow_federated/python/core/templates:measured_process",
+        "//tensorflow_federated/python/learning:tensor_utils",
         "//tensorflow_federated/python/learning/models:model_weights",
         "//tensorflow_federated/python/learning/optimizers:keras_optimizer",
         "//tensorflow_federated/python/learning/optimizers:optimizer",
-        "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
     ],
 )
 
@@ -292,13 +292,13 @@ py_library(
         "//tensorflow_federated/python/core/templates:measured_process",
         "//tensorflow_federated/python/learning:client_weight_lib",
         "//tensorflow_federated/python/learning:dataset_reduce",
+        "//tensorflow_federated/python/learning:tensor_utils",
         "//tensorflow_federated/python/learning/metrics:aggregator",
         "//tensorflow_federated/python/learning/metrics:types",
         "//tensorflow_federated/python/learning/models:functional",
         "//tensorflow_federated/python/learning/models:model_weights",
         "//tensorflow_federated/python/learning/models:variable",
         "//tensorflow_federated/python/learning/optimizers:optimizer",
-        "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
     ],
 )
 
@@ -343,13 +343,13 @@ py_library(
         "//tensorflow_federated/python/core/templates:measured_process",
         "//tensorflow_federated/python/learning:client_weight_lib",
         "//tensorflow_federated/python/learning:dataset_reduce",
+        "//tensorflow_federated/python/learning:tensor_utils",
         "//tensorflow_federated/python/learning/metrics:aggregator",
         "//tensorflow_federated/python/learning/metrics:types",
         "//tensorflow_federated/python/learning/models:functional",
         "//tensorflow_federated/python/learning/models:model_weights",
         "//tensorflow_federated/python/learning/models:variable",
         "//tensorflow_federated/python/learning/optimizers:optimizer",
-        "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
     ],
 )
 

@@ -17,7 +17,7 @@ import collections
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.tensorflow_libs import tensor_utils
+from tensorflow_federated.python.learning import tensor_utils
 
 
 class TensorUtilsTest(tf.test.TestCase):

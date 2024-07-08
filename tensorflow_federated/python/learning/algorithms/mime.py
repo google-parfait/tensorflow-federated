@@ -42,6 +42,7 @@ from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import client_weight_lib
 from tensorflow_federated.python.learning import dataset_reduce
+from tensorflow_federated.python.learning import tensor_utils
 from tensorflow_federated.python.learning.metrics import aggregator as metric_aggregator
 from tensorflow_federated.python.learning.metrics import types
 from tensorflow_federated.python.learning.models import functional
@@ -54,7 +55,6 @@ from tensorflow_federated.python.learning.templates import client_works
 from tensorflow_federated.python.learning.templates import composers
 from tensorflow_federated.python.learning.templates import distributors
 from tensorflow_federated.python.learning.templates import learning_process
-from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
 
 def _choose_client_weight(weighting, has_non_finite_delta, num_examples):
@@ -438,9 +438,7 @@ def _build_functional_client_update_fn_for_mime_lite(
           train_reduce_fn, data, initial_training_weights
       )
 
-      incoming_training_weights, _ = (
-          incoming_weights  # pytype: disable=attribute-error
-      )
+      incoming_training_weights, _ = incoming_weights  # pytype: disable=attribute-error
       trainable_weights, _ = model_weights
       client_weights_delta = tf.nest.map_structure(
           tf.subtract, incoming_training_weights, trainable_weights

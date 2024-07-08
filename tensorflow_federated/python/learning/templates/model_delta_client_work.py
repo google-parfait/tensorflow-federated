@@ -34,6 +34,7 @@ from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import client_weight_lib
 from tensorflow_federated.python.learning import dataset_reduce
+from tensorflow_federated.python.learning import tensor_utils
 from tensorflow_federated.python.learning.metrics import aggregator
 from tensorflow_federated.python.learning.metrics import types
 from tensorflow_federated.python.learning.models import functional
@@ -41,7 +42,6 @@ from tensorflow_federated.python.learning.models import model_weights as model_w
 from tensorflow_federated.python.learning.models import variable
 from tensorflow_federated.python.learning.optimizers import optimizer as optimizer_base
 from tensorflow_federated.python.learning.templates import client_works
-from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
 
 # TODO: b/213433744 - Make this method private.

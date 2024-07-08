@@ -61,6 +61,7 @@ from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import measured_process as measured_process_lib
 from tensorflow_federated.python.learning import client_weight_lib
+from tensorflow_federated.python.learning import tensor_utils
 from tensorflow_federated.python.learning.metrics import aggregator as metrics_aggregators
 from tensorflow_federated.python.learning.metrics import keras_finalizer as metrics_finalizers_lib
 from tensorflow_federated.python.learning.models import reconstruction_model
@@ -71,7 +72,6 @@ from tensorflow_federated.python.learning.templates import client_works
 from tensorflow_federated.python.learning.templates import composers
 from tensorflow_federated.python.learning.templates import distributors
 from tensorflow_federated.python.learning.templates import learning_process
-from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
 # Type aliases for readability.
 ReconstructionModel = reconstruction_model.ReconstructionModel

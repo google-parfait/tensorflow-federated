@@ -19,8 +19,8 @@ import os.path
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.learning import tensor_utils
 from tensorflow_federated.python.simulation.datasets import client_data
-from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
 
 class FilePerUserClientData(client_data.ClientData):

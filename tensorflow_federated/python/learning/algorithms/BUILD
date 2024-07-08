@@ -187,6 +187,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/templates:measured_process",
         "//tensorflow_federated/python/learning:client_weight_lib",
+        "//tensorflow_federated/python/learning:tensor_utils",
         "//tensorflow_federated/python/learning/metrics:aggregator",
         "//tensorflow_federated/python/learning/metrics:keras_finalizer",
         "//tensorflow_federated/python/learning/models:reconstruction_model",
@@ -197,7 +198,6 @@ py_library(
         "//tensorflow_federated/python/learning/templates:composers",
         "//tensorflow_federated/python/learning/templates:distributors",
         "//tensorflow_federated/python/learning/templates:learning_process",
-        "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
     ],
 )
 
@@ -294,6 +294,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/templates:measured_process",
         "//tensorflow_federated/python/learning:dataset_reduce",
+        "//tensorflow_federated/python/learning:tensor_utils",
         "//tensorflow_federated/python/learning/metrics:aggregator",
         "//tensorflow_federated/python/learning/metrics:types",
         "//tensorflow_federated/python/learning/models:functional",
@@ -305,7 +306,6 @@ py_library(
         "//tensorflow_federated/python/learning/templates:composers",
         "//tensorflow_federated/python/learning/templates:distributors",
         "//tensorflow_federated/python/learning/templates:learning_process",
-        "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
     ],
 )
 
@@ -377,6 +377,7 @@ py_library(
         "//tensorflow_federated/python/core/templates:measured_process",
         "//tensorflow_federated/python/learning:client_weight_lib",
         "//tensorflow_federated/python/learning:dataset_reduce",
+        "//tensorflow_federated/python/learning:tensor_utils",
         "//tensorflow_federated/python/learning/metrics:aggregator",
         "//tensorflow_federated/python/learning/metrics:types",
         "//tensorflow_federated/python/learning/models:functional",
@@ -389,7 +390,6 @@ py_library(
         "//tensorflow_federated/python/learning/templates:composers",
         "//tensorflow_federated/python/learning/templates:distributors",
         "//tensorflow_federated/python/learning/templates:learning_process",
-        "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
     ],
 )
 
