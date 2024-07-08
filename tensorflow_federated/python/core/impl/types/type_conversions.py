@@ -396,8 +396,8 @@ def type_to_py_container(value, type_spec: computation_types.Type):
       not present in the corresponding index of `type_spec`.
   """
   if isinstance(type_spec, computation_types.FederatedType):
-    if type_spec.all_equal:  # pytype: disable=attribute-error
-      structure_type_spec = type_spec.member  # pytype: disable=attribute-error
+    if type_spec.all_equal:
+      structure_type_spec = type_spec.member
     else:
       if not isinstance(value, list):
         raise TypeError(
@@ -429,7 +429,7 @@ def type_to_py_container(value, type_spec: computation_types.Type):
     # avoid re-converting. This is a possibly dangerous assumption.
     return value
 
-  container_type = structure_type_spec.python_container  # pytype: disable=attribute-error
+  container_type = structure_type_spec.python_container
 
   # Ensure that names are only added, not mismatched or removed
   names_from_value = structure.name_list_with_nones(value)

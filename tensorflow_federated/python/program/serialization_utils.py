@@ -213,7 +213,7 @@ def unpack_type_spec_from(
   type_spec_bytes, *_ = struct.unpack_from(f'!{length}s', buffer, offset=offset)
   proto = computation_pb2.Type.FromString(type_spec_bytes)
   type_spec = type_serialization.deserialize_type(proto)
-  return type_spec, length_size + length  # pytype: disable=bad-return-type
+  return type_spec, length_size + length
 
 
 def pack_element_spec(

@@ -88,7 +88,7 @@ def local_cpp_executor_factory(
       try:
         # `get_ipython` is automatically present in the environment when
         # running in a notebook.
-        get_ipython()  # pytype: disable=name-error
+        get_ipython()  # pylint: disable=undefined-variable  # pytype: disable=name-error
         return True
       except NameError:
         return False

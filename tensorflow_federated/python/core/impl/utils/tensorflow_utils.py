@@ -759,7 +759,7 @@ def append_to_list_structure_for_element_type_spec(nested, value, type_spec):
     # Convert the members to tensors to ensure that they are properly
     # typed and grouped before being passed to
     # tf.data.Dataset.from_tensor_slices.
-    nested.append(tf.convert_to_tensor(value, type_spec.dtype))  # pytype: disable=attribute-error
+    nested.append(tf.convert_to_tensor(value, type_spec.dtype))
   elif isinstance(type_spec, computation_types.StructType):
     elements = structure.to_elements(type_spec)
     if isinstance(nested, collections.OrderedDict):
