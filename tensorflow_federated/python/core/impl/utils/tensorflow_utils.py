@@ -15,7 +15,6 @@
 
 import collections
 from collections.abc import Iterable, Mapping
-import dataclasses
 import itertools
 import typing
 from typing import Optional
@@ -305,9 +304,6 @@ def capture_result_from_graph(
     return _get_bindings_for_elements(name_value_pairs, graph, type(result))
   elif attrs.has(type(result)):
     name_value_pairs = attrs.asdict(result, recurse=False).items()
-    return _get_bindings_for_elements(name_value_pairs, graph, type(result))
-  elif dataclasses.is_dataclass(result):
-    name_value_pairs = result.__dict__.copy().items()
     return _get_bindings_for_elements(name_value_pairs, graph, type(result))
   elif isinstance(result, structure.Struct):
     return _get_bindings_for_elements(

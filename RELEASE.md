@@ -11,6 +11,7 @@ and this project adheres to
 ### Removed
 
 *   Serializing raw `tf.Tensor` values to the `Value` protobuf.
+*   Partial support for `dataclasses`.
 
 ## Release 0.82.0
 

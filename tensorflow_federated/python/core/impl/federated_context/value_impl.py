@@ -15,7 +15,6 @@
 
 import abc
 from collections.abc import Hashable, Mapping
-import dataclasses
 import itertools
 import typing
 from typing import Optional, Union
@@ -354,9 +353,6 @@ def to_value(
     result = _dictlike_items_to_value(items, type_spec, type(arg))
   elif attrs.has(type(arg)):
     items = attrs.asdict(arg, recurse=False).items()
-    result = _dictlike_items_to_value(items, type_spec, type(arg))
-  elif dataclasses.is_dataclass(arg):
-    items = arg.__dict__.copy().items()
     result = _dictlike_items_to_value(items, type_spec, type(arg))
   elif isinstance(arg, Mapping):
     result = _dictlike_items_to_value(arg.items(), type_spec, type(arg))
