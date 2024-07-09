@@ -119,6 +119,43 @@ cc_library(
     deps = [":tensor"],
 )
 
+cc_library(
+    name = "domain_iterator",
+    srcs = ["domain_iterator.cc"],
+    hdrs = [
+        "domain_iterator.h",
+        "dp_composite_key_combiner.h",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":aggregation_cores",
+        ":tensor",
+        ":tensor_cc_proto",
+        "//tensorflow_federated/cc/core/impl/aggregation/base",
+        "@com_google_absl//absl/container:fixed_array",
+        "@com_google_absl//absl/random",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
+cc_test(
+    name = "domain_iterator_test",
+    srcs = ["domain_iterator_test.cc"],
+    deps = [
+        ":aggregation_cores",
+        ":aggregator",
+        ":domain_iterator",
+        ":tensor",
+        ":tensor_cc_proto",
+        "//tensorflow_federated/cc/core/impl/aggregation/base",
+        "//tensorflow_federated/cc/core/impl/aggregation/testing",
+        "//tensorflow_federated/cc/core/impl/aggregation/testing:test_data",
+        "//tensorflow_federated/cc/testing:oss_test_main",
+        "//tensorflow_federated/cc/testing:status_matchers",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
 # TODO: b/352020454 - Create one library per cc & hh pair. Make them aggregation_cores deps.
 cc_library(
     name = "aggregation_cores",

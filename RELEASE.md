@@ -8,6 +8,13 @@ and this project adheres to
 
 ## Unreleased
 
+### Added
+
+*   A `DomainIteratorForKeys` class, which allows calling code to loop through
+    all composite keys in a predetermined order. At each step, `operator*()`
+    produces a pointer to the value that a specified grouping key takes. Meant
+    for use in `DPClosedDomainHistogram::Report()`.
+
 ### Changed
 
 *   The `tff.learning.programs.train_model` program logic to save a deep copy of
