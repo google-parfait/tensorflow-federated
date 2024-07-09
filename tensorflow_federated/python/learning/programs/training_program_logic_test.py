@@ -91,15 +91,44 @@ def _create_test_context() -> federated_context.FederatedContext:
   )
 
 
+class _FakeDataSourceIterator(data_source.FederatedDataSourceIterator):
+  """A fake iterator that tracks the number of times it has been selected."""
+
+  def __init__(self, round_num: int):
+    self._round_num = round_num
+
+  def select(self, k: int) -> object:
+    del k  # Unused.
+    self._round_num += 1
+    return self._round_num
+
+  @classmethod
+  def from_bytes(cls, buffer: bytes) -> '_FakeDataSourceIterator':
+    return _FakeDataSourceIterator(int.from_bytes(buffer, 'big'))
+
+  def to_bytes(self) -> bytes:
+    return self._round_num.to_bytes(4, 'big')
+
+  @property
+  def federated_type(self) -> computation_types.FederatedType:
+    return computation_types.FederatedType(
+        computation_types.SequenceType(element=TensorType(np.int32)),
+        computation_types.Placement.SERVER,
+    )
+
+
+def _assert_data_source_iterators_equal(
+    iterator1: data_source.FederatedDataSourceIterator,
+    iterator2: data_source.FederatedDataSourceIterator,
+):
+  return iterator1.to_bytes() == iterator2.to_bytes()
+
+
 def _create_mock_datasource() -> mock.Mock:
   mock_datasource = mock.create_autospec(
       data_source.FederatedDataSource, instance=True, spec_set=True
   )
-  mock_datasource_iterator = mock.create_autospec(
-      data_source.FederatedDataSourceIterator, instance=True, spec_set=True
-  )
-
-  mock_datasource.iterator.return_value = mock_datasource_iterator
+  mock_datasource.iterator.return_value = _FakeDataSourceIterator(0)
   return mock_datasource
 
 
@@ -199,9 +228,6 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     )
 
     mock_train_data_source = _create_mock_datasource()
-    mock_train_data_source_iterator = (
-        mock_train_data_source.iterator.return_value
-    )
 
     await training_program_logic.train_model(
         train_process=training_process,
@@ -233,10 +259,15 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
                     state=any_algorithm_state,
                     round_number=0,
                     next_evaluation_timestamp_seconds=0,
-                    data_iterator=mock_train_data_source_iterator,
+                    data_iterator=mock.ANY,
                 )
             )
         ],
+    )
+    # Assert that the initial data iterator was used to load the program state.
+    _assert_data_source_iterators_equal(
+        mock_program_state_manager.save.call_args_list[0][0][0].data_iterator,
+        _FakeDataSourceIterator(0),
     )
     expected_state_manager_call_list = []
     # Expect saving the initial state (version 0) and training rounds 1
@@ -248,7 +279,7 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
                   state=any_algorithm_state,
                   round_number=round_num,
                   next_evaluation_timestamp_seconds=None,
-                  data_iterator=mock_train_data_source_iterator,
+                  data_iterator=mock.ANY,
               ),
               version=round_num,
           )
@@ -257,6 +288,14 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
         mock_program_state_manager.save.call_args_list,
         expected_state_manager_call_list,
     )
+    # Assert that the data iterator was saved correctly for each round.
+    for round_num in range(0, training_rounds + 1):
+      _assert_data_source_iterators_equal(
+          mock_program_state_manager.save.call_args_list[round_num][0][
+              0
+          ].data_iterator,
+          _FakeDataSourceIterator(round_num),
+      )
 
     # Assert that training metrics were released every round.
     self.assertSequenceEqual(
@@ -331,9 +370,6 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     )
 
     mock_train_data_source = _create_mock_datasource()
-    mock_train_data_source_iterator = (
-        mock_train_data_source.iterator.return_value
-    )
 
     # Patch `datetime.now` so that each round looks like it takes 20
     # seconds. With evaluation periodicity of 25 seconds and training
@@ -376,10 +412,17 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
                     state=any_algorithm_state,
                     round_number=0,
                     next_evaluation_timestamp_seconds=0,
-                    data_iterator=mock_train_data_source_iterator,
+                    data_iterator=mock.ANY,
                 )
             )
         ],
+    )
+    # Assert that the initial data iterator was used to load the program state.
+    _assert_data_source_iterators_equal(
+        mock_program_state_manager.load_latest.call_args_list[0][0][
+            0
+        ].data_iterator,
+        _FakeDataSourceIterator(0),
     )
     # The next evaluation time of the first round is None. The last round will
     # always be evaluated, and the next evaluation time won't be updated.
@@ -400,7 +443,7 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
                   next_evaluation_timestamp_seconds=next_evaluation_timestamps[
                       round_num
                   ],
-                  data_iterator=mock_train_data_source_iterator,
+                  data_iterator=mock.ANY,
               ),
               version=round_num,
           )
@@ -409,6 +452,12 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
         mock_program_state_manager.save.call_args_list,
         expected_state_manager_call_list,
     )
+    # Assert that the data iterator was saved correctly for each round.
+    for round_num in range(0, training_rounds + 1):
+      _assert_data_source_iterators_equal(
+          mock_program_state_manager.save.call_args_list[0][0][0].data_iterator,
+          _FakeDataSourceIterator(round_num),
+      )
 
     # Assert that training metrics were released every round.
     self.assertSequenceEqual(
@@ -460,9 +509,6 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
       manager.release.return_value = None
 
     mock_train_data_source = _create_mock_datasource()
-    mock_train_data_source_iterator = (
-        mock_train_data_source.iterator.return_value
-    )
 
     await training_program_logic.train_model(
         train_process=training_process,
@@ -493,10 +539,17 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
                     state=any_algorithm_state,
                     round_number=0,
                     next_evaluation_timestamp_seconds=0,
-                    data_iterator=mock_train_data_source_iterator,
+                    data_iterator=mock.ANY,
                 )
             )
         ],
+    )
+    # Assert that the initial data iterator was used to load the program state.
+    _assert_data_source_iterators_equal(
+        mock_program_state_manager.load_latest.call_args_list[0][0][
+            0
+        ].data_iterator,
+        _FakeDataSourceIterator(0),
     )
     expected_state_manager_call_list = []
     # Expect saving the initial state (version 0) and training rounds 1
@@ -508,7 +561,7 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
                   state=any_algorithm_state,
                   round_number=round_num,
                   next_evaluation_timestamp_seconds=None,
-                  data_iterator=mock_train_data_source_iterator,
+                  data_iterator=mock.ANY,
               ),
               version=round_num,
           )
@@ -517,6 +570,12 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
         mock_program_state_manager.save.call_args_list,
         expected_state_manager_call_list,
     )
+    # Assert that the data iterator was saved correctly for each round.
+    for round_num in range(0, training_rounds + 1):
+      _assert_data_source_iterators_equal(
+          mock_program_state_manager.save.call_args_list[0][0][0].data_iterator,
+          _FakeDataSourceIterator(round_num),
+      )
 
     # Assert that training metrics were released every round.
     self.assertSequenceEqual(
@@ -565,9 +624,6 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
       manager.release.return_value = None
 
     mock_train_data_source = _create_mock_datasource()
-    mock_train_data_source_iterator = (
-        mock_train_data_source.iterator.return_value
-    )
 
     await training_program_logic.train_model(
         initial_train_state=initial_train_state,
@@ -592,10 +648,17 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
                     state=initial_train_state,
                     round_number=0,
                     next_evaluation_timestamp_seconds=0,
-                    data_iterator=mock_train_data_source_iterator,
+                    data_iterator=mock.ANY,
                 )
             )
         ],
+    )
+    # Assert that the initial data iterator was used to load the program state.
+    _assert_data_source_iterators_equal(
+        mock_program_state_manager.load_latest.call_args_list[0][0][
+            0
+        ].data_iterator,
+        _FakeDataSourceIterator(0),
     )
     self.assertEqual(
         mock_program_state_manager.save.call_args_list[0],
@@ -604,10 +667,15 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
                 state=initial_train_state,
                 round_number=0,
                 next_evaluation_timestamp_seconds=None,
-                data_iterator=mock_train_data_source_iterator,
+                data_iterator=mock.ANY,
             ),
             version=0,
         ),
+    )
+    # Assert that the data iterator was saved correctly for each round.
+    _assert_data_source_iterators_equal(
+        mock_program_state_manager.save.call_args_list[0][0][0].data_iterator,
+        _FakeDataSourceIterator(0),
     )
 
   @context_stack_test_utils.with_context(_create_test_context)
@@ -617,9 +685,6 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     training_process = _create_mock_train_process()
 
     mock_train_data_source = _create_mock_datasource()
-    mock_train_data_source_iterator = (
-        mock_train_data_source.iterator.return_value
-    )
 
     # Create a mock state manager that returns a previous state for round 10
     # (one before the last requested round).
@@ -632,7 +697,7 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
             state=training_state,
             round_number=training_rounds - 1,
             next_evaluation_timestamp_seconds=None,
-            data_iterator=mock_train_data_source_iterator,
+            data_iterator=_FakeDataSourceIterator(training_rounds - 1),
         ),
         training_rounds - 1,
     )]
@@ -681,10 +746,17 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
                     state=any_algorithm_state,
                     round_number=0,
                     next_evaluation_timestamp_seconds=0,
-                    data_iterator=mock_train_data_source_iterator,
+                    data_iterator=mock.ANY,
                 )
             )
         ],
+    )
+    # Assert that the initial data iterator was used to load the program state.
+    _assert_data_source_iterators_equal(
+        mock_program_state_manager.load_latest.call_args_list[0][0][
+            0
+        ].data_iterator,
+        _FakeDataSourceIterator(0),
     )
     self.assertEqual(
         mock_program_state_manager.save.call_args_list,
@@ -696,12 +768,17 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
                     state=any_algorithm_state,
                     round_number=training_rounds,
                     next_evaluation_timestamp_seconds=None,
-                    data_iterator=mock_train_data_source_iterator,
+                    data_iterator=mock.ANY,
                 ),
                 version=training_rounds,
             )
         ],
         msg=mock_program_state_manager.save.call_args_list,
+    )
+    # Assert that the data iterator was saved correctly for each round.
+    _assert_data_source_iterators_equal(
+        mock_program_state_manager.save.call_args_list[0][0][0].data_iterator,
+        _FakeDataSourceIterator(training_rounds),
     )
 
     # Assert that training metrics were released for the resumed round and the
@@ -731,9 +808,6 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     training_process = _create_mock_train_process()
 
     mock_train_data_source = _create_mock_datasource()
-    mock_train_data_source_iterator = (
-        mock_train_data_source.iterator.return_value
-    )
 
     # Create a mock state manager that returns a previous state that already
     # completed the entire training process.
@@ -746,7 +820,7 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
             state=training_state,
             round_number=training_rounds,
             next_evaluation_timestamp_seconds=None,
-            data_iterator=mock_train_data_source_iterator,
+            data_iterator=_FakeDataSourceIterator(training_rounds),
         ),
         training_rounds,
     )]
@@ -793,10 +867,17 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
                     state=any_algorithm_state,
                     round_number=0,
                     next_evaluation_timestamp_seconds=0,
-                    data_iterator=mock_train_data_source_iterator,
+                    data_iterator=mock.ANY,
                 )
             )
         ],
+    )
+    # Assert that the initial data iterator was used to load the program state.
+    _assert_data_source_iterators_equal(
+        mock_program_state_manager.load_latest.call_args_list[0][0][
+            0
+        ].data_iterator,
+        _FakeDataSourceIterator(0),
     )
     mock_program_state_manager.save.assert_not_called()
 

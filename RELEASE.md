@@ -8,6 +8,11 @@ and this project adheres to
 
 ## Unreleased
 
+### Changed
+
+*   Modified the `tff.learning.programs.train_model` program logic to save a
+    deep copy of the data source iterator within the program state.
+
 ### Removed
 
 *   Serializing raw `tf.Tensor` values to the `Value` protobuf.

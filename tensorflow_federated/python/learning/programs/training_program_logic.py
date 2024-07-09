@@ -23,6 +23,7 @@ duration of time based on the `evaluation_period` parameter.
 
 import asyncio
 from collections.abc import Coroutine
+import copy
 import datetime
 from typing import NamedTuple, Optional, Union
 
@@ -39,7 +40,16 @@ from tensorflow_federated.python.program import value_reference
 
 
 class ProgramState(NamedTuple):
-  """A structure representing the program state."""
+  """A structure representing the program state.
+
+  Attributes:
+    state: The state of the training process.
+    round_number: The current round number.
+    next_evaluation_timestamp_seconds: The timestamp of the next evaluation in
+      seconds.
+    data_iterator: The `tff.program.FederatedDataSourceIterator` used for
+      training.
+  """
 
   state: composers.LearningAlgorithmState
   round_number: int
@@ -107,10 +117,13 @@ async def train_model(
 
   This method will save the initial state (result of `train_process.initialize`
   or passed via `initial_train_state`) using `program_state_manager`. If the
-  state manager is  configured to keep the first version (e.g.
+  state manager is configured to keep the first version (e.g.
   `tff.program.FileStateProgramManager`'s `keep_first` parameter), then round
   zero (the initialization) will be retained so that future experiments can use
-  the same starting point.
+  the same starting point. If there is a previous program state, this method
+  will load the latest state and resume from that state. In this case, the data
+  source iterator will be restored from that state instead of being created from
+  the input `train_data_source`.
 
   If the `initial_train_state` is not None, its type signature should be the
   same as the type_signature of the result of `train_process.initialize`.
@@ -214,7 +227,7 @@ async def train_model(
             train_state,
             start_round,
             next_evaluation_timestamp_seconds,
-            train_data_iterator,
+            copy.deepcopy(train_data_iterator),
         ),
         version=start_round,
     )
@@ -295,7 +308,7 @@ async def train_model(
                 train_state,
                 round_num,
                 next_evaluation_timestamp_seconds,
-                train_data_iterator,
+                copy.deepcopy(train_data_iterator),
             ),
             version=round_num,
         )
