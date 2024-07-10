@@ -8,6 +8,10 @@ and this project adheres to
 
 ## Unreleased
 
+### Added
+
+*   Support for handling `ml_dtypes.bfloat16` dtypes.
+
 ### Changed
 
 *   The `tff.learning.programs.train_model` program logic to save a deep copy of

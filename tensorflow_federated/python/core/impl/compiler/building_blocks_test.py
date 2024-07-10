@@ -14,6 +14,7 @@
 
 from absl.testing import absltest
 from absl.testing import parameterized
+import ml_dtypes
 import numpy as np
 import tree
 
@@ -1725,6 +1726,7 @@ class LiteralTest(parameterized.TestCase):
       ('float64', 1.0, computation_types.TensorType(np.float64)),
       ('complex64', (1.0 + 1.0j), computation_types.TensorType(np.complex64)),
       ('complex128', (1.0 + 1.0j), computation_types.TensorType(np.complex128)),
+      ('bfloat16', 1.0, computation_types.TensorType(ml_dtypes.bfloat16)),
       ('str', 'a', computation_types.TensorType(np.str_)),
       ('bytes', b'a', computation_types.TensorType(np.str_)),
       ('generic_int', np.int32(1), computation_types.TensorType(np.int32)),

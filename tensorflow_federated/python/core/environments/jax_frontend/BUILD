@@ -45,6 +45,7 @@ py_test(
         "//tensorflow_federated/python/core/impl/computation:computation_impl",
         "//tensorflow_federated/python/core/impl/computation:polymorphic_computation",
         "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//third_party/py/ml_dtypes",
     ],
 )
 

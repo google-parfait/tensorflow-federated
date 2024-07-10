@@ -17,6 +17,7 @@ import collections
 from absl.testing import absltest
 from absl.testing import parameterized
 import jax
+import ml_dtypes
 import numpy as np
 
 from tensorflow_federated.python.core.environments.jax_frontend import jax_computation
@@ -90,6 +91,7 @@ class JaxComputationTest(parameterized.TestCase):
       ('float16', computation_types.TensorType(np.float16)),
       ('float32', computation_types.TensorType(np.float32)),
       ('complex64', computation_types.TensorType(np.complex64)),
+      ('bfloat16', computation_types.TensorType(ml_dtypes.bfloat16)),
       ('generic', computation_types.TensorType(np.int32)),
       ('array', computation_types.TensorType(np.int32, shape=[3])),
   )

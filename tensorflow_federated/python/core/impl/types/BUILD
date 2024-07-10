@@ -58,6 +58,7 @@ py_library(
     srcs = ["computation_types.py"],
     deps = [
         ":array_shape",
+        ":dtype_utils",
         ":placements",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
@@ -92,13 +93,19 @@ py_test(
 py_library(
     name = "dtype_utils",
     srcs = ["dtype_utils.py"],
-    deps = ["//tensorflow_federated/proto/v0:data_type_py_pb2"],
+    deps = [
+        "//tensorflow_federated/proto/v0:data_type_py_pb2",
+        "//third_party/py/ml_dtypes",
+    ],
 )
 
 py_test(
     name = "dtype_utils_test",
     srcs = ["dtype_utils_test.py"],
-    deps = [":dtype_utils"],
+    deps = [
+        ":dtype_utils",
+        "//third_party/py/ml_dtypes",
+    ],
 )
 
 py_library(
