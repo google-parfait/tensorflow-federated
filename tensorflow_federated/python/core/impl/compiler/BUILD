@@ -32,6 +32,7 @@ py_library(
         "//tensorflow_federated/proto/v0:array_py_pb2",
         "//tensorflow_federated/python/core/impl/types:array_shape",
         "//tensorflow_federated/python/core/impl/types:dtype_utils",
+        "//third_party/py/ml_dtypes",
     ],
 )
 
@@ -42,6 +43,7 @@ py_test(
         ":array",
         "//tensorflow_federated/proto/v0:array_py_pb2",
         "//tensorflow_federated/proto/v0:data_type_py_pb2",
+        "//third_party/py/ml_dtypes",
     ],
 )
 
@@ -174,6 +176,7 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
+        "//third_party/py/ml_dtypes",
         "@com_google_protobuf//:protobuf_python",
     ],
 )

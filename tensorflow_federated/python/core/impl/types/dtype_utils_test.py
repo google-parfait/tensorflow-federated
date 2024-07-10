@@ -14,6 +14,7 @@
 
 from absl.testing import absltest
 from absl.testing import parameterized
+import ml_dtypes
 import numpy as np
 
 from tensorflow_federated.python.core.impl.types import dtype_utils
@@ -52,6 +53,7 @@ class ArrayShapeTest(parameterized.TestCase):
       ('float64', np.float64),
       ('complex64', np.complex64),
       ('complex128', np.complex128),
+      ('bfloat16', ml_dtypes.bfloat16),
       ('str', np.str_),
   )
   def test_is_valid_dtype_returns_true(self, dtype):

@@ -15,6 +15,7 @@
 
 from typing import Optional, Union
 
+import ml_dtypes
 import numpy as np
 
 from tensorflow_federated.proto.v0 import array_pb2
@@ -79,6 +80,13 @@ def from_proto(array_pb: array_pb2.Array) -> Array:
       )
     value = iter(array_pb.complex64_list.value)
     value = [complex(real, imag) for real, imag in zip(value, value)]
+  elif dtype is ml_dtypes.bfloat16:
+    value = array_pb.bfloat16_list.value
+    # Values of dtype `np.float16` are packed to and unpacked from a protobuf
+    # field of type `int32` using the following logic in order to maintain
+    # compatibility with how other external environments (e.g., TensorFlow, JAX)
+    # represent values of `np.float16`.
+    value = np.asarray(value, np.uint16).view(ml_dtypes.bfloat16).tolist()
   elif dtype is np.complex128:
     if len(array_pb.complex128_list.value) % 2 != 0:
       raise ValueError(
@@ -261,6 +269,17 @@ def to_proto(
         shape=shape_pb,
         complex128_list=array_pb2.Array.DoubleList(value=packed_value),
     )
+  elif dtype is ml_dtypes.bfloat16:
+    # Values of dtype `np.float16` are packed to and unpacked from a protobuf
+    # field of type `int32` using the following logic in order to maintain
+    # compatibility with how other external environments (e.g., TensorFlow, JAX)
+    # represent values of `np.float16`.
+    value = np.asarray(value, ml_dtypes.bfloat16).view(np.uint16).tolist()
+    return array_pb2.Array(
+        dtype=dtype_pb,
+        shape=shape_pb,
+        bfloat16_list=array_pb2.Array.IntList(value=value),
+    )
   elif dtype is np.str_:
     return array_pb2.Array(
         dtype=dtype_pb,
@@ -271,21 +290,16 @@ def to_proto(
     raise NotImplementedError(f'Unexpected `dtype` found: {dtype}.')
 
 
-def _can_cast(obj: object, dtype: type[np.generic]) -> bool:
+def _can_cast(value: object, dtype: type[np.generic]) -> bool:
   """Returns `True` if `obj` can be cast to the `dtype`."""
-  if isinstance(obj, np.ndarray):
-    # `np.can_cast` does not operate on non-scalar arrays. See
-    # https://numpy.org/doc/stable/reference/generated/numpy.can_cast.html for
-    # more information.
-    return all(_can_cast(x, dtype) for x in obj.flatten())
-  elif isinstance(obj, (np.generic, bool, int, float, complex)):
-    return np.can_cast(obj, dtype)
-  elif isinstance(obj, (str, bytes)):
-    # `np.can_cast` interprets strings as dtype-like specifications rather than
-    # strings.
-    return np.issubdtype(dtype, np.character)
+  if dtype is ml_dtypes.bfloat16:
+    return (
+        value >= ml_dtypes.finfo(ml_dtypes.bfloat16).min
+        and value <= ml_dtypes.finfo(ml_dtypes.bfloat16).max
+    )
   else:
-    return False
+    value = np.asarray(value)
+    return np.can_cast(value, dtype)
 
 
 def is_compatible_dtype(value: Array, dtype: type[np.generic]) -> bool:
@@ -321,7 +335,9 @@ def is_compatible_dtype(value: Array, dtype: type[np.generic]) -> bool:
     if not np.issubdtype(dtype, np.integer):
       return False
   elif np.issubdtype(value_dtype, np.floating):
-    if not np.issubdtype(dtype, np.floating):
+    if not np.issubdtype(dtype, np.floating) and not np.issubdtype(
+        dtype, ml_dtypes.bfloat16
+    ):
       return False
   elif np.issubdtype(value_dtype, np.complexfloating):
     if not np.issubdtype(dtype, np.complexfloating):
