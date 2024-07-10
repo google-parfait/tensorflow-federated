@@ -11,7 +11,10 @@ and this project adheres to
 ### Added
 
 *   Added some TFF executor classes to the public API (`ComposingExecutor`,
-    `ExecutorTestBase`, `MockExecutor`, `ThreadPool`).
+    `ExecutorTestBase`, `MockExecutor`, `ThreadPool`, `CPPExecutorFactory`,
+    `Executor`).
+*   Added some TFF executor helper functions to the public API
+    (`create_composing_child`, `create_referencing_resolving_executor`).
 *   Added some compiler transformation helper functions to the public API
     (`replace_intrinsics_with_bodies`, `unique_name_generator`,
     `transform_preorder`, `to_call_dominant`).
