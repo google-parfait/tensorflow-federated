@@ -189,7 +189,12 @@ StatusOr<Tensor> DPCompositeKeyCombiner::AccumulateWithBound(
 // Retrieve the ordinal associated with the composite key formed by the data in
 // domain_tensors at the given indices (or kNoOrdinal if not found).
 int64_t DPCompositeKeyCombiner::GetOrdinal(
-    TensorSpan domain_tensors, const absl::FixedArray<size_t>& indices) {
+    TensorSpan domain_tensors, const absl::FixedArray<int64_t>& indices) {
+  for (auto index : indices) {
+    TFF_CHECK(index >= 0) << "DPCompositeKeyCombiner::GetOrdinal: Indices must "
+                             "be non-negative.";
+  }
+
   size_t expected_num_keys = dtypes().size();
   TFF_CHECK(domain_tensors.size() == expected_num_keys)
       << "DPCompositeKeyCombiner::GetOrdinal: The number of tensors in the "
@@ -208,7 +213,7 @@ int64_t DPCompositeKeyCombiner::GetOrdinal(
 // Populates composite_key with data drawn from domain_tensors. Indices specify
 // which domain elements to copy.
 CompositeKey DPCompositeKeyCombiner::MakeCompositeKeyFromDomainTensors(
-    TensorSpan domain_tensors, const absl::FixedArray<size_t>& indices) {
+    TensorSpan domain_tensors, const absl::FixedArray<int64_t>& indices) {
   auto data_type_iter = dtypes().begin();
   for (auto& domain_tensor : domain_tensors) {
     // Check that the data types of the input tensors match those provided to

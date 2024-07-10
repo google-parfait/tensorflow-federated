@@ -48,6 +48,8 @@ and this project adheres to
     `TensorSpan` (alias of `absl::Span<const Tensor>`). This will make it
     possible to retrieve the slice of `intrinsic.parameters` that contains the
     domain information and pass it to `DPClosedDomainHistogram`.
+*   Switched type of `indices` in `GetOrdinal` from `FixedArray<size_t>` to
+    `FixedArray<int64_t>`, to better align with internal standards.
 
 ## Release 0.81.0
 

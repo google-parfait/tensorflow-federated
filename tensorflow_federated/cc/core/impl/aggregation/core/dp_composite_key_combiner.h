@@ -81,7 +81,7 @@ class DPCompositeKeyCombiner : public CompositeKeyCombiner {
   // This function will be used within the Report() method of the closed-domain
   // DP histogram aggregation core.
   int64_t GetOrdinal(TensorSpan domain_tensors,
-                     const absl::FixedArray<size_t>& indices);
+                     const absl::FixedArray<int64_t>& indices);
 
  private:
   const int64_t l0_bound_;
@@ -90,7 +90,7 @@ class DPCompositeKeyCombiner : public CompositeKeyCombiner {
   // Given a span of tensors (where each describes a key's domain) and indices
   // to tensor values, make a CompositeKey out of the data at those indices.
   CompositeKey MakeCompositeKeyFromDomainTensors(
-      TensorSpan domain_tensors, const absl::FixedArray<size_t>& indices);
+      TensorSpan domain_tensors, const absl::FixedArray<int64_t>& indices);
 
   // Friend class that supports the operations done in
   // DPCompositeKeyCombiner::AccumulateWithBound.
