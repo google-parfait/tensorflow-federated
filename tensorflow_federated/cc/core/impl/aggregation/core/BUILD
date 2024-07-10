@@ -119,10 +119,12 @@ cc_library(
     deps = [":tensor"],
 )
 
+# TODO: b/352020454 - Create one library per cc & hh pair. Make them aggregation_cores deps.
 cc_library(
     name = "aggregation_cores",
     srcs = [
         "composite_key_combiner.cc",
+        "dp_closed_domain_histogram.cc",
         "dp_composite_key_combiner.cc",
         "dp_group_by_factory.cc",
         "dp_grouping_federated_sum.cc",
@@ -135,6 +137,7 @@ cc_library(
     ],
     hdrs = [
         "composite_key_combiner.h",
+        "dp_closed_domain_histogram.h",
         "dp_composite_key_combiner.h",
         "dp_group_by_factory.h",
         "dp_open_domain_histogram.h",

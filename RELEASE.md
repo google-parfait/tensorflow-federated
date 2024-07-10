@@ -26,6 +26,8 @@ and this project adheres to
 *   A function to `DPCompositeKeyCombiner` that allows retrieval of an ordinal.
     Intended for use by the closed-domain DP histogram aggregation core.
 *   Constants for invalid ordinals and default `l0_bound_`.
+*   New `DPClosedDomainHistogram` class. Sibling of `DPOpenDomainHistogram` that
+    is constructed from DP parameters plus domain information. No noising yet.
 
 ### Changed
 
