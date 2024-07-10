@@ -10,8 +10,10 @@ and this project adheres to
 
 ### Changed
 
-*   Modified the `tff.learning.programs.train_model` program logic to save a
-    deep copy of the data source iterator within the program state.
+*   The `tff.learning.programs.train_model` program logic to save a deep copy of
+    the data source iterator within the program state.
+*   The file-backed native program components to not flatten and unflatten
+    values.
 
 ### Removed
 

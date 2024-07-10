@@ -719,31 +719,31 @@ class FileProgramStateManagerSaveTest(
   # pyformat: disable
   @parameterized.named_parameters(
       # materialized values
-      ('none', None, [None]),
-      ('bool', True, [True]),
-      ('int', 1, [1]),
-      ('str', 'a', ['a']),
-      ('tensor_int', tf.constant(1), [tf.constant(1)]),
-      ('tensor_str', tf.constant('a'), [tf.constant('a')]),
-      ('tensor_array', tf.constant([1] * 3), [tf.constant([1] * 3)]),
-      ('numpy_int', np.int32(1), [np.int32(1)]),
+      ('none', None, None),
+      ('bool', True, True),
+      ('int', 1, 1),
+      ('str', 'a', 'a'),
+      ('tensor_int', tf.constant(1), tf.constant(1)),
+      ('tensor_str', tf.constant('a'), tf.constant('a')),
+      ('tensor_array', tf.constant([1] * 3), tf.constant([1] * 3)),
+      ('numpy_int', np.int32(1), np.int32(1)),
       ('numpy_array',
        np.array([1] * 3, np.int32),
-       [np.array([1] * 3, np.int32)]),
+       np.array([1] * 3, np.int32)),
 
       # materializable value references
       ('materializable_value_reference_tensor',
        program_test_utils.TestMaterializableValueReference(1),
-       [1]),
+       1),
       ('materializable_value_reference_sequence',
        program_test_utils.TestMaterializableValueReference(
            tf.data.Dataset.from_tensor_slices([1, 2, 3])),
-       [tf.data.Dataset.from_tensor_slices([1, 2, 3])]),
+       tf.data.Dataset.from_tensor_slices([1, 2, 3])),
 
       # serializable values
       ('serializable_value',
        program_test_utils.TestSerializable(1, 2),
-       [program_test_utils.TestSerializable(1, 2).to_bytes()]),
+       program_test_utils.TestSerializable(1, 2).to_bytes()),
 
       # structures
       ('list',
@@ -774,12 +774,14 @@ class FileProgramStateManagerSaveTest(
            [5],
        ],
        [
-           True,
-           1,
-           'a',
-           2,
-           program_test_utils.TestSerializable(3, 4).to_bytes(),
-           5,
+           [
+               True,
+               1,
+               'a',
+               2,
+               program_test_utils.TestSerializable(3, 4).to_bytes(),
+           ],
+           [5],
        ]),
       ('dict',
        {
@@ -789,14 +791,14 @@ class FileProgramStateManagerSaveTest(
            'd': program_test_utils.TestMaterializableValueReference(2),
            'e': program_test_utils.TestSerializable(3, 4),
        },
-       [
-           True,
-           1,
-           'a',
-           2,
-           program_test_utils.TestSerializable(3, 4).to_bytes(),
-       ]),
-      ('dict_empty', {}, []),
+       {
+           'a': True,
+           'b': 1,
+           'c': 'a',
+           'd': 2,
+           'e': program_test_utils.TestSerializable(3, 4).to_bytes(),
+       }),
+      ('dict_empty', {}, {}),
       ('dict_nested',
        {
            'x': {
@@ -808,14 +810,16 @@ class FileProgramStateManagerSaveTest(
            },
            'y': {'a': 5},
        },
-       [
-           True,
-           1,
-           'a',
-           2,
-           program_test_utils.TestSerializable(3, 4).to_bytes(),
-           5,
-       ]),
+       {
+           'x': {
+               'a': True,
+               'b': 1,
+               'c': 'a',
+               'd': 2,
+               'e': program_test_utils.TestSerializable(3, 4).to_bytes(),
+           },
+           'y': {'a': 5},
+       }),
       ('named_tuple',
        program_test_utils.TestNamedTuple1(
            a=True,
@@ -824,13 +828,13 @@ class FileProgramStateManagerSaveTest(
            d=program_test_utils.TestMaterializableValueReference(2),
            e=program_test_utils.TestSerializable(3, 4),
        ),
-       [
-           True,
-           1,
-           'a',
-           2,
-           program_test_utils.TestSerializable(3, 4).to_bytes(),
-       ]),
+       program_test_utils.TestNamedTuple1(
+           a=True,
+           b=1,
+           c='a',
+           d=2,
+           e=program_test_utils.TestSerializable(3, 4).to_bytes(),
+       )),
       ('named_tuple_nested',
        program_test_utils.TestNamedTuple3(
            x=program_test_utils.TestNamedTuple1(
@@ -842,14 +846,16 @@ class FileProgramStateManagerSaveTest(
            ),
            y=program_test_utils.TestNamedTuple2(a=5),
        ),
-       [
-           True,
-           1,
-           'a',
-           2,
-           program_test_utils.TestSerializable(3, 4).to_bytes(),
-           5,
-       ]),
+       program_test_utils.TestNamedTuple3(
+           x=program_test_utils.TestNamedTuple1(
+               a=True,
+               b=1,
+               c='a',
+               d=2,
+               e=program_test_utils.TestSerializable(3, 4).to_bytes(),
+           ),
+           y=program_test_utils.TestNamedTuple2(a=5),
+       )),
   )
   # pyformat: enable
   async def test_writes_program_state(self, program_state, expected_value):

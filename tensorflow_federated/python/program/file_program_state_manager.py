@@ -50,11 +50,10 @@ class FileProgramStateManager(
   simulation and run with the same version of TensorFlow Federated.
 
   Program state is saved to the file system using the SavedModel (see
-  `tf.saved_model`) format. When the program state is saved, if the program
-  state is a value reference or a structure containing value references, each
-  value reference is materialized. The program state is then flattened and saved
-  using the SavedModel format. The structure of the program state is discarded,
-  but is required to load the program state.
+  `tf.saved_model`) format. When the program state is saved, each
+  `tff.program.MaterializableValueReference` is materialized and each
+  `tff.Serializable` is serialized. The structure of the program state is
+  discarded, but is required to load the program state.
 
   Note: The SavedModel format can only contain values that can be converted to a
   `tf.Tensor` (see `tf.convert_to_tensor`), releasing any other values will
@@ -182,8 +181,7 @@ class FileProgramStateManager(
     path = self._get_path_for_version(version)
     if not await file_utils.exists(path):
       raise program_state_manager.ProgramStateNotFoundError(version)
-    flattened_state = await file_utils.read_saved_model(path)
-    program_state = structure_utils.unflatten_as(structure, flattened_state)
+    program_state = await file_utils.read_saved_model(path)
 
     def _normalize(
         value: program_state_manager.ProgramStateValue,
@@ -277,7 +275,6 @@ class FileProgramStateManager(
     serialized_state = structure_utils.map_structure(
         _serialize, materialized_state
     )
-    flattened_state = structure_utils.flatten(serialized_state)
-    await file_utils.write_saved_model(flattened_state, path)
+    await file_utils.write_saved_model(serialized_state, path)
     logging.info('Program state saved: %s', path)
     await self._remove_old_program_state()
