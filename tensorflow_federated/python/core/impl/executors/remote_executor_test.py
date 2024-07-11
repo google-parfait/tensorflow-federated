@@ -151,7 +151,9 @@ class RemoteExecutorTest(parameterized.TestCase):
     )
     _set_cardinalities_with_mock(executor, mock_stub)
 
-    result = asyncio.run(executor.create_value(1, np.int32))
+    result = asyncio.run(
+        executor.create_value(1, computation_types.TensorType(np.int32))
+    )
 
     mock_stub.create_value.assert_called_once()
     self.assertIsInstance(result, remote_executor.RemoteValue)
@@ -173,7 +175,9 @@ class RemoteExecutorTest(parameterized.TestCase):
     _set_cardinalities_with_mock(executor, mock_stub)
 
     with self.assertRaises(grpc.RpcError) as context:
-      asyncio.run(executor.create_value(1, np.int32))
+      asyncio.run(
+          executor.create_value(1, computation_types.TensorType(np.int32))
+      )
 
     self.assertEqual(context.exception.code(), grpc.StatusCode.ABORTED)
 
@@ -192,7 +196,9 @@ class RemoteExecutorTest(parameterized.TestCase):
     _set_cardinalities_with_mock(executor, mock_stub)
 
     with self.assertRaises(TypeError):
-      asyncio.run(executor.create_value(1, np.int32))
+      asyncio.run(
+          executor.create_value(1, computation_types.TensorType(np.int32))
+      )
 
   @parameterized.named_parameters(
       ('false', False),

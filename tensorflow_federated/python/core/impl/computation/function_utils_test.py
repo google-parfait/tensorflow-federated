@@ -118,20 +118,41 @@ class FunctionUtilsTest(parameterized.TestCase):
     )
 
   @parameterized.named_parameters(
-      ('tuple_unnamed_1', [np.int32], [np.int32], {}),
-      ('tuple_named_1', [('a', np.int32)], [], {'a': np.int32}),
-      ('tuple_unnamed_2', [np.int32, np.bool_], [np.int32, np.bool_], {}),
+      (
+          'tuple_unnamed_1',
+          [np.int32],
+          [computation_types.TensorType(np.int32)],
+          {},
+      ),
+      (
+          'tuple_named_1',
+          [('a', np.int32)],
+          [],
+          {'a': computation_types.TensorType(np.int32)},
+      ),
+      (
+          'tuple_unnamed_2',
+          [np.int32, np.bool_],
+          [
+              computation_types.TensorType(np.int32),
+              computation_types.TensorType(np.bool_),
+          ],
+          {},
+      ),
       (
           'tuple_partially_named',
           [np.int32, ('b', np.bool_)],
-          [np.int32],
-          {'b': np.bool_},
+          [computation_types.TensorType(np.int32)],
+          {'b': computation_types.TensorType(np.bool_)},
       ),
       (
           'tuple_named_2',
           [('a', np.int32), ('b', np.bool_)],
           [],
-          {'a': np.int32, 'b': np.bool_},
+          {
+              'a': computation_types.TensorType(np.int32),
+              'b': computation_types.TensorType(np.bool_),
+          },
       ),
   )
   def test_unpack_args_from_struct_type(
@@ -140,14 +161,10 @@ class FunctionUtilsTest(parameterized.TestCase):
     args, kwargs = function_utils.unpack_args_from_struct(tuple_with_args)
     self.assertEqual(len(args), len(expected_args))
     for idx, arg in enumerate(args):
-      self.assertTrue(
-          arg.is_equivalent_to(computation_types.to_type(expected_args[idx]))
-      )
+      self.assertTrue(arg.is_equivalent_to(expected_args[idx]))
     self.assertEqual(set(kwargs.keys()), set(expected_kwargs.keys()))
     for k, v in kwargs.items():
-      self.assertTrue(
-          v.is_equivalent_to(computation_types.to_type(expected_kwargs[k]))
-      )
+      self.assertTrue(v.is_equivalent_to(expected_kwargs[k]))
 
   def test_pack_args_into_struct_without_type_spec(self):
     self.assertEqual(

@@ -216,7 +216,6 @@ class RemoteExecutor(executor_base.Executor):
   @tracing.trace(span=True)
   async def create_value(self, value, type_spec=None):
     self._check_has_executor_id()
-    type_spec = computation_types.to_type(type_spec)
 
     @tracing.trace
     def serialize_value():

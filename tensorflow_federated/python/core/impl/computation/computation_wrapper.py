@@ -164,7 +164,7 @@ def _parameter_type(
   elif len(parameters) == 1:
     # If there are multiple provided argument types but the function being
     # decorated only accepts a single argument, tuple the arguments together.
-    return computation_types.to_type(parameter_types)
+    return computation_types.StructType(parameter_types)
   if len(parameters) != len(parameter_types):
     raise TypeError(
         f'Function with {len(parameters)} parameters is '
