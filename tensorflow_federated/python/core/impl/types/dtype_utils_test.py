@@ -66,6 +66,7 @@ class ArrayShapeTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('bool', True, np.bool_),
+      ('int32', 1, np.int32),
       ('int32_min', int(np.iinfo(np.int32).min), np.int32),
       ('int32_max', int(np.iinfo(np.int32).max), np.int32),
       ('int64_min', int(np.iinfo(np.int64).min), np.int64),

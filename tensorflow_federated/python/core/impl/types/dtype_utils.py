@@ -108,7 +108,6 @@ def infer_dtype(
           f' found: {obj}.'
       )
   elif isinstance(obj, float):
-    # TODO: b/328265898 - Infer float dtypes based on the size of the value.
     return np.float32
   elif isinstance(obj, complex):
     return np.complex128
