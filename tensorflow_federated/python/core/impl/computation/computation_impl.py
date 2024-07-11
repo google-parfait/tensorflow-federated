@@ -143,11 +143,7 @@ class ConcreteComputation(computation_base.Computation):
     return self._type_signature
 
   def __call__(self, *args, **kwargs):
-    arg = function_utils.pack_args(
-        self._type_signature.parameter,  # pytype: disable=attribute-error
-        args,
-        kwargs,
-    )
+    arg = function_utils.pack_args(self._type_signature.parameter, args, kwargs)
     result = self._context_stack.current.invoke(self, arg)
     if self._transform_result is not None:
       result = self._transform_result(result)
