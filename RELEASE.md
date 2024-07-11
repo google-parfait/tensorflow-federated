@@ -17,6 +17,7 @@ and this project adheres to
 
 ### Removed
 
+*   Unused functions from `tensorflow_utils`.
 *   Serializing raw `tf.Tensor` values to the `Value` protobuf.
 *   Partial support for `dataclasses`.
 

@@ -119,7 +119,7 @@ def stamp_parameter_in_graph(parameter_name, parameter_type, graph):
     with graph.as_default():
       with tf.device('/device:cpu:0'):
         variant_tensor = tf.compat.v1.placeholder(tf.variant, shape=[])
-        ds = make_dataset_from_variant_tensor(
+        ds = _make_dataset_from_variant_tensor(
             variant_tensor, parameter_type.element
         )
     return (
@@ -137,7 +137,7 @@ def stamp_parameter_in_graph(parameter_name, parameter_type, graph):
     )
 
 
-def make_dataset_from_variant_tensor(variant_tensor, type_spec):
+def _make_dataset_from_variant_tensor(variant_tensor, type_spec):
   """Constructs a `tf.data.Dataset` from a variant tensor and type spec.
 
   Args:
@@ -367,7 +367,7 @@ def capture_result_from_graph(
     )
 
 
-def compute_map_from_bindings(source, target):
+def _compute_map_from_bindings(source, target):
   """Computes a dictionary for renaming tensors from a matching bindings pair.
 
   Args:
@@ -428,7 +428,9 @@ def compute_map_from_bindings(source, target):
       for source_element, target_element in zip(
           source.struct.element, target.struct.element
       ):
-        result.update(compute_map_from_bindings(source_element, target_element))
+        result.update(
+            _compute_map_from_bindings(source_element, target_element)
+        )
       return result
   else:
     raise ValueError("Unsupported type of binding '{}'.".format(source_oneof))
@@ -466,7 +468,7 @@ def extract_tensor_names_from_binding(binding):
     raise ValueError("Unsupported type of binding '{}'.".format(binding_oneof))
 
 
-def assemble_result_from_graph(type_spec, binding, output_map):
+def _assemble_result_from_graph(type_spec, binding, output_map):
   """Assembles a result stamped into a `tf.Graph` given type signature/binding.
 
   This method does roughly the opposite of `capture_result_from_graph`, in that
@@ -545,7 +547,7 @@ def assemble_result_from_graph(type_spec, binding, output_map):
       for (element_name, element_type), element_binding in zip(
           type_elements, binding.struct.element
       ):
-        element_object = assemble_result_from_graph(
+        element_object = _assemble_result_from_graph(
             element_type, element_binding, output_map
         )
         result_elements.append((element_name, element_object))
@@ -556,7 +558,7 @@ def assemble_result_from_graph(type_spec, binding, output_map):
           container_type, py_typecheck.SupportsNamedTuple
       ) or attrs.has(container_type):
         return container_type(**dict(result_elements))
-      return container_type(result_elements)
+      return container_type(result_elements)  # pylint: disable=too-many-function-args
   elif isinstance(type_spec, computation_types.SequenceType):
     if binding_oneof != 'sequence':
       raise ValueError(
@@ -566,7 +568,7 @@ def assemble_result_from_graph(type_spec, binding, output_map):
       sequence_oneof = binding.sequence.WhichOneof('binding')
       if sequence_oneof == 'variant_tensor_name':
         variant_tensor = output_map[binding.sequence.variant_tensor_name]
-        return make_dataset_from_variant_tensor(
+        return _make_dataset_from_variant_tensor(
             variant_tensor, type_spec.element
         )
       else:
@@ -577,24 +579,7 @@ def assemble_result_from_graph(type_spec, binding, output_map):
     raise ValueError("Unsupported type '{}'.".format(type_spec))
 
 
-def nested_structures_equal(x, y):
-  """Determines if nested structures `x` and `y` are equal.
-
-  Args:
-    x: A nested structure.
-    y: Another nested structure.
-
-  Returns:
-    `True` iff `x` and `y` are equal, `False` otherwise.
-  """
-  try:
-    tf.nest.assert_same_structure(x, y)
-  except ValueError:
-    return False
-  return tf.nest.flatten(x) == tf.nest.flatten(y)
-
-
-def make_empty_list_structure_for_element_type_spec(type_spec):
+def _make_empty_list_structure_for_element_type_spec(type_spec):
   """Creates a nested structure of empty Python lists for `type_spec`.
 
   This function prepares a nested structure made of `collections.OrderedDict`s
@@ -621,19 +606,15 @@ def make_empty_list_structure_for_element_type_spec(type_spec):
   elif isinstance(type_spec, computation_types.StructType):
     elements = structure.to_elements(type_spec)
     if all(k is not None for k, _ in elements):
-      return collections.OrderedDict(
-          [
-              (k, make_empty_list_structure_for_element_type_spec(v))
-              for k, v in elements
-          ]
-      )
+      return collections.OrderedDict([
+          (k, _make_empty_list_structure_for_element_type_spec(v))
+          for k, v in elements
+      ])
     elif all(k is None for k, _ in elements):
-      return tuple(
-          [
-              make_empty_list_structure_for_element_type_spec(v)
-              for _, v in elements
-          ]
-      )
+      return tuple([
+          _make_empty_list_structure_for_element_type_spec(v)
+          for _, v in elements
+      ])
     else:
       raise TypeError(
           'Expected a named tuple type with either all elements named or all '
@@ -645,7 +626,7 @@ def make_empty_list_structure_for_element_type_spec(type_spec):
     )
 
 
-def make_whimsy_element_for_type_spec(type_spec, none_dim_replacement=0):
+def _make_whimsy_element_for_type_spec(type_spec, none_dim_replacement=0):
   """Creates ndarray of zeros corresponding to `type_spec`.
 
   Returns a list containing this ndarray, whose type is *compatible* with, not
@@ -709,25 +690,25 @@ def make_whimsy_element_for_type_spec(type_spec, none_dim_replacement=0):
     elements = structure.to_elements(type_spec)
     elem_list = []
     for _, elem_type in elements:
-      elem_list.append(make_whimsy_element_for_type_spec(elem_type))
+      elem_list.append(_make_whimsy_element_for_type_spec(elem_type))
     return elem_list
 
 
-def append_to_list_structure_for_element_type_spec(nested, value, type_spec):
+def _append_to_list_structure_for_element_type_spec(nested, value, type_spec):
   """Adds an element `value` to `nested` lists for `type_spec`.
 
   This function appends tensor-level constituents of an element `value` to the
-  lists created by `make_empty_list_structure_for_element_type_spec`. The
+  lists created by `_make_empty_list_structure_for_element_type_spec`. The
   nested structure of `value` must match that created by the above function,
   and consistent with `type_spec`.
 
   Args:
-    nested: Output of `make_empty_list_structure_for_element_type_spec`.
+    nested: Output of `_make_empty_list_structure_for_element_type_spec`.
     value: A value (Python object) that a hierarchical structure of dictionary,
       list, and other containers holding tensor-like items that matches the
       hierarchy of `type_spec`.
     type_spec: An instance of `tff.Type` or something convertible to it, as in
-      `make_empty_list_structure_for_element_type_spec`.
+      `_make_empty_list_structure_for_element_type_spec`.
 
   Raises:
     TypeError: If the `type_spec` is not of a form described above, or the value
@@ -769,7 +750,7 @@ def append_to_list_structure_for_element_type_spec(nested, value, type_spec):
               'Value {} does not match type {}.'.format(value, type_spec)
           )
         for elem_name, elem_type in elements:
-          append_to_list_structure_for_element_type_spec(
+          _append_to_list_structure_for_element_type_spec(
               nested[elem_name], value[elem_name], elem_type
           )
       elif isinstance(value, (list, tuple)):
@@ -778,7 +759,7 @@ def append_to_list_structure_for_element_type_spec(nested, value, type_spec):
               'Value {} does not match type {}.'.format(value, type_spec)
           )
         for idx, (elem_name, elem_type) in enumerate(elements):
-          append_to_list_structure_for_element_type_spec(
+          _append_to_list_structure_for_element_type_spec(
               nested[elem_name], value[idx], elem_type
           )
       else:
@@ -794,7 +775,7 @@ def append_to_list_structure_for_element_type_spec(nested, value, type_spec):
             'Value {} does not match type {}.'.format(value, type_spec)
         )
       for idx, (_, elem_type) in enumerate(elements):
-        append_to_list_structure_for_element_type_spec(
+        _append_to_list_structure_for_element_type_spec(
             nested[idx], value[idx], elem_type
         )
     else:
@@ -809,16 +790,16 @@ def append_to_list_structure_for_element_type_spec(nested, value, type_spec):
     )
 
 
-def replace_empty_leaf_lists_with_numpy_arrays(lists, type_spec):
+def _replace_empty_leaf_lists_with_numpy_arrays(lists, type_spec):
   """Replaces empty leaf lists in `lists` with numpy arrays.
 
   This function is primarily used to ensure that an appropriate TF dtype is
   inferrable for a structure, even if no elements are actually present.
 
   Args:
-    lists: Output of `make_empty_list_structure_for_element_type_spec`.
+    lists: Output of `_make_empty_list_structure_for_element_type_spec`.
     type_spec: An instance of `tff.Type` or something convertible to it, as in
-      `make_empty_list_structure_for_element_type_spec`.
+      `_make_empty_list_structure_for_element_type_spec`.
 
   Returns:
     The transformed version of `structure`.
@@ -840,7 +821,7 @@ def replace_empty_leaf_lists_with_numpy_arrays(lists, type_spec):
     if isinstance(lists, collections.OrderedDict):
       to_return = []
       for elem_name, elem_type in elements:
-        elem_val = replace_empty_leaf_lists_with_numpy_arrays(
+        elem_val = _replace_empty_leaf_lists_with_numpy_arrays(
             lists[elem_name], elem_type
         )
         to_return.append((elem_name, elem_val))
@@ -848,7 +829,7 @@ def replace_empty_leaf_lists_with_numpy_arrays(lists, type_spec):
     elif isinstance(lists, tuple):
       to_return = []
       for idx, (_, elem_type) in enumerate(elements):
-        elem_val = replace_empty_leaf_lists_with_numpy_arrays(
+        elem_val = _replace_empty_leaf_lists_with_numpy_arrays(
             lists[idx], elem_type
         )
         to_return.append(elem_val)
@@ -904,10 +885,10 @@ def make_data_set_from_elements(graph, elements, element_type):
   py_typecheck.check_type(element_type, computation_types.Type)
 
   def _make(element_subset):
-    lists = make_empty_list_structure_for_element_type_spec(element_type)
+    lists = _make_empty_list_structure_for_element_type_spec(element_type)
     for el in element_subset:
-      append_to_list_structure_for_element_type_spec(lists, el, element_type)
-    tensor_slices = replace_empty_leaf_lists_with_numpy_arrays(
+      _append_to_list_structure_for_element_type_spec(lists, el, element_type)
+    tensor_slices = _replace_empty_leaf_lists_with_numpy_arrays(
         lists, element_type
     )
     return tf.data.Dataset.from_tensor_slices(tensor_slices)
@@ -915,7 +896,7 @@ def make_data_set_from_elements(graph, elements, element_type):
   def _work():
     if not elements:
       # Just return an empty data set with the appropriate types.
-      whimsy_element = make_whimsy_element_for_type_spec(element_type)
+      whimsy_element = _make_whimsy_element_for_type_spec(element_type)
       ds = _make([whimsy_element]).take(0)
     elif len(elements) == 1:
       ds = _make(elements)
@@ -961,7 +942,7 @@ def fetch_value_in_session(sess, value):
   Args:
     sess: The session in which to perform the fetch (as a single run).
     value: A Python object of a form analogous to that constructed by the
-      function `assemble_result_from_graph`, made of tensors and anononymous
+      function `_assemble_result_from_graph`, made of tensors and anononymous
       tuples, or a `tf.data.Dataset`.
 
   Returns:
@@ -998,7 +979,7 @@ def fetch_value_in_session(sess, value):
           # An empty list has been returned; we must pack the shape information
           # back in or the result won't typecheck.
           element_structure = v.element_spec
-          whimsy_elem = make_whimsy_element_for_type_spec(element_structure)
+          whimsy_elem = _make_whimsy_element_for_type_spec(element_structure)
           dataset_tensors = [whimsy_elem]
         dataset_results[idx] = dataset_tensors
       elif tf.is_tensor(v):
@@ -1033,60 +1014,6 @@ def _interleave_dataset_results_and_tensors(dataset_results, flat_run_tensors):
     else:
       flattened_results.append(flat_run_tensors.pop(0))
   return flattened_results
-
-
-def get_deps_for_graph_node(graph_def, node_name):
-  """Returns the set of node names that a node named `node_name` depends on.
-
-  Args:
-    graph_def: The input graph, an instance of `tf.compat.v1.GraphDef`.
-    node_name: The node name, a string.
-
-  Returns:
-    An instance of `set()` containing string names of the nodes `node_name`
-    depends on in `graph_def`.
-  """
-  py_typecheck.check_type(graph_def, tf.compat.v1.GraphDef)
-  py_typecheck.check_type(node_name, str)
-  input_map = {}
-  for node in graph_def.node:
-    input_map[node.name] = set(graph_utils.get_node_name(x) for x in node.input)
-  dependencies = set()
-  initial_singleton = set([node_name])
-  nodes_to_process = initial_singleton
-  while nodes_to_process:
-    dependencies.update(nodes_to_process)
-    nodes_to_process = set.union(
-        *[input_map[name] for name in nodes_to_process]
-    ).difference(dependencies)
-  return dependencies.difference(initial_singleton)
-
-
-def add_control_deps_for_init_op(graph_def, init_op):
-  """Adds control deps on `init_op` to `graph_def`.
-
-  Args:
-    graph_def: The input graph, an instance of `tf.compat.v1.GraphDef`.
-    init_op: The init op name, a string.
-
-  Returns:
-    The updated graph, an instance of `tf.compat.v1.GraphDef`.
-  """
-  py_typecheck.check_type(graph_def, tf.compat.v1.GraphDef)
-  py_typecheck.check_type(init_op, str)
-  init_op_str = graph_utils.get_node_name(init_op)
-  init_op_control_dep = '^{}'.format(init_op_str)
-  deps = get_deps_for_graph_node(graph_def, init_op_str).union(
-      set([init_op_str])
-  )
-  new_graph_def = tf.compat.v1.GraphDef()
-  new_graph_def.CopyFrom(graph_def)
-  for new_node in new_graph_def.node:
-    if new_node.name not in deps:
-      node_inputs = set(new_node.input)
-      if init_op_control_dep not in node_inputs:
-        new_node.input.extend([init_op_control_dep])
-  return new_graph_def
 
 
 def coerce_dataset_elements_to_tff_type_spec(
@@ -1188,7 +1115,7 @@ def coerce_dataset_elements_to_tff_type_spec(
   return dataset.map(_unwrap_args)
 
 
-def uniquify_shared_names_with_suffix(
+def _uniquify_shared_names_with_suffix(
     graph_def: tf.compat.v1.GraphDef, suffix: str
 ) -> tf.compat.v1.GraphDef:
   """Appends unique identifier to any shared names present in `graph`."""
@@ -1288,7 +1215,7 @@ def deserialize_and_call_tf_computation(
       else:
         input_map = {
             k: graph.get_tensor_by_name(v)
-            for k, v in compute_map_from_bindings(
+            for k, v in _compute_map_from_bindings(
                 computation_proto.tensorflow.parameter, arg_binding
             ).items()
         }
@@ -1310,7 +1237,7 @@ def deserialize_and_call_tf_computation(
     graph_def = serialization_utils.unpack_graph_def(
         computation_proto.tensorflow.graph_def
     )
-    graph_def = uniquify_shared_names_with_suffix(
+    graph_def = _uniquify_shared_names_with_suffix(
         graph_def, shared_names_suffix
     )
     # Note: Unlike MetaGraphDef, the GraphDef alone contains no information
@@ -1334,7 +1261,7 @@ def deserialize_and_call_tf_computation(
     new_init_op_name = output_map.pop(orig_init_op_name, None)
     return (
         new_init_op_name,
-        assemble_result_from_graph(
+        _assemble_result_from_graph(
             type_spec.result,  # pytype: disable=attribute-error
             computation_proto.tensorflow.result,
             output_map,

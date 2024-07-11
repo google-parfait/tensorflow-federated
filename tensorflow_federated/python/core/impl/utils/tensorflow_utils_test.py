@@ -485,7 +485,7 @@ class GraphUtilsTest(tf.test.TestCase):
           ]),
           graph,
       )
-    result = tensorflow_utils.compute_map_from_bindings(source, target)
+    result = tensorflow_utils._compute_map_from_bindings(source, target)
     self.assertAllEqual(
         result,
         collections.OrderedDict(
@@ -500,7 +500,7 @@ class GraphUtilsTest(tf.test.TestCase):
     target = pb.TensorFlow.Binding(
         sequence=pb.TensorFlow.SequenceBinding(variant_tensor_name='bar')
     )
-    result = tensorflow_utils.compute_map_from_bindings(source, target)
+    result = tensorflow_utils._compute_map_from_bindings(source, target)
     self.assertEqual(str(result), "OrderedDict([('foo', 'bar')])")
 
   def test_extract_tensor_names_from_binding_with_tuple_of_tensors(self):
@@ -541,7 +541,7 @@ class GraphUtilsTest(tf.test.TestCase):
     tensor_a = tf.constant(1, name='A')
     tensor_b = tf.constant(2, name='B')
     output_map = {'P': tensor_a, 'Q': tensor_b}
-    result = tensorflow_utils.assemble_result_from_graph(
+    result = tensorflow_utils._assemble_result_from_graph(
         type_spec, binding, output_map
     )
     self.assertIsInstance(result, test_named_tuple)
@@ -560,7 +560,7 @@ class GraphUtilsTest(tf.test.TestCase):
         {'X': tf.constant(1), 'Y': tf.constant(2)}
     )
     output_map = {'foo': tf.data.experimental.to_variant(data_set)}
-    result = tensorflow_utils.assemble_result_from_graph(
+    result = tensorflow_utils._assemble_result_from_graph(
         type_spec, binding, output_map
     )
     self.assertIsInstance(result, tf.data.Dataset)
@@ -585,7 +585,7 @@ class GraphUtilsTest(tf.test.TestCase):
         {'X': tf.constant(1), 'Y': tf.constant(2)}
     )
     output_map = {'foo': tf.data.experimental.to_variant(data_set)}
-    result = tensorflow_utils.assemble_result_from_graph(
+    result = tensorflow_utils._assemble_result_from_graph(
         type_spec, binding, output_map
     )
     self.assertIsInstance(result, tf.data.Dataset)
@@ -597,24 +597,24 @@ class GraphUtilsTest(tf.test.TestCase):
         ),
     )
 
-  def test_make_whimsy_element_for_type_spec_raises_sequence_type(self):
+  def test__make_whimsy_element_for_type_spec_raises_sequence_type(self):
     type_spec = computation_types.SequenceType(np.float32)
     with self.assertRaisesRegex(
         ValueError, 'Cannot construct array for TFF type'
     ):
-      tensorflow_utils.make_whimsy_element_for_type_spec(type_spec)
+      tensorflow_utils._make_whimsy_element_for_type_spec(type_spec)
 
-  def test_make_whimsy_element_for_type_spec_raises_negative_none_dim_replacement(
+  def test__make_whimsy_element_for_type_spec_raises_negative_none_dim_replacement(
       self,
   ):
     with self.assertRaisesRegex(ValueError, 'nonnegative'):
-      tensorflow_utils.make_whimsy_element_for_type_spec(tf.float32, -1)
+      tensorflow_utils._make_whimsy_element_for_type_spec(tf.float32, -1)
 
   def test_make_whimsy_element_tensor_type(self):
     type_spec = computation_types.TensorType(
         np.float32, [None, 10, None, 10, 10]
     )
-    elem = tensorflow_utils.make_whimsy_element_for_type_spec(type_spec)
+    elem = tensorflow_utils._make_whimsy_element_for_type_spec(type_spec)
     correct_elem = np.zeros([0, 10, 0, 10, 10], np.float32)
     self.assertAllClose(elem, correct_elem)
 
@@ -622,7 +622,7 @@ class GraphUtilsTest(tf.test.TestCase):
     type_spec = computation_types.TensorType(
         np.float32, [None, 10, None, 10, 10]
     )
-    elem = tensorflow_utils.make_whimsy_element_for_type_spec(
+    elem = tensorflow_utils._make_whimsy_element_for_type_spec(
         type_spec, none_dim_replacement=1
     )
     correct_elem = np.zeros([1, 10, 1, 10, 10], np.float32)
@@ -635,7 +635,7 @@ class GraphUtilsTest(tf.test.TestCase):
     unnamedtuple = computation_types.StructType(
         [('x', tensor1), ('y', tensor2)]
     )
-    elem = tensorflow_utils.make_whimsy_element_for_type_spec(namedtuple)
+    elem = tensorflow_utils._make_whimsy_element_for_type_spec(namedtuple)
     correct_list = [
         np.zeros([0, 10, 0, 10, 10], np.float32),
         np.zeros([10, 0, 10], np.int32),
@@ -643,18 +643,12 @@ class GraphUtilsTest(tf.test.TestCase):
     self.assertEqual(len(elem), len(correct_list))
     for k, _ in enumerate(elem):
       self.assertAllClose(elem[k], correct_list[k])
-    unnamed_elem = tensorflow_utils.make_whimsy_element_for_type_spec(
+    unnamed_elem = tensorflow_utils._make_whimsy_element_for_type_spec(
         unnamedtuple
     )
     self.assertEqual(len(unnamed_elem), len(correct_list))
     for k, _ in enumerate(unnamed_elem):
       self.assertAllClose(unnamed_elem[k], correct_list[k])
-
-  def test_nested_structures_equal(self):
-    self.assertTrue(
-        tensorflow_utils.nested_structures_equal([10, 20], [10, 20])
-    )
-    self.assertFalse(tensorflow_utils.nested_structures_equal([10, 20], ['x']))
 
   def test_make_data_set_from_elements_in_eager_context(self):
     ds = tensorflow_utils.make_data_set_from_elements(None, [10, 20], tf.int32)
@@ -967,16 +961,16 @@ class GraphUtilsTest(tf.test.TestCase):
 
   def test_make_empty_list_structure_for_element_type_spec_w_tuple_dict(self):
     type_spec = [tf.int32, [('a', tf.bool), ('b', tf.float32)]]
-    result = tensorflow_utils.make_empty_list_structure_for_element_type_spec(
+    result = tensorflow_utils._make_empty_list_structure_for_element_type_spec(
         type_spec
     )
     self.assertEqual(str(result), "([], OrderedDict([('a', []), ('b', [])]))")
 
-  def test_append_to_list_structure_for_element_type_spec_w_tuple_dict(self):
+  def test__append_to_list_structure_for_element_type_spec_w_tuple_dict(self):
     nested = tuple([[], collections.OrderedDict([('a', []), ('b', [])])])
     type_spec = [tf.int32, [('a', tf.bool), ('b', tf.float32)]]
     for value in [[10, {'a': True, 'b': 30}], (40, [False, 60])]:
-      tensorflow_utils.append_to_list_structure_for_element_type_spec(
+      tensorflow_utils._append_to_list_structure_for_element_type_spec(
           nested, value, type_spec
       )
     self.assertEqual(
@@ -996,7 +990,7 @@ class GraphUtilsTest(tf.test.TestCase):
     value = {'a': 10}
     type_spec = [('a', tf.int32), ('b', tf.int32)]
     with self.assertRaises(TypeError):
-      tensorflow_utils.append_to_list_structure_for_element_type_spec(
+      tensorflow_utils._append_to_list_structure_for_element_type_spec(
           nested, value, type_spec
       )
 
@@ -1005,7 +999,7 @@ class GraphUtilsTest(tf.test.TestCase):
     value = {'a': 10, 'b': 20, 'c': 30}
     type_spec = [('a', tf.int32), ('b', tf.int32)]
     with self.assertRaises(TypeError):
-      tensorflow_utils.append_to_list_structure_for_element_type_spec(
+      tensorflow_utils._append_to_list_structure_for_element_type_spec(
           nested, value, type_spec
       )
 
@@ -1014,7 +1008,7 @@ class GraphUtilsTest(tf.test.TestCase):
     value = [10]
     type_spec = [tf.int32, tf.int32]
     with self.assertRaises(TypeError):
-      tensorflow_utils.append_to_list_structure_for_element_type_spec(
+      tensorflow_utils._append_to_list_structure_for_element_type_spec(
           nested, value, type_spec
       )
 
@@ -1023,14 +1017,14 @@ class GraphUtilsTest(tf.test.TestCase):
     value = [10, 20, 30]
     type_spec = [tf.int32, tf.int32]
     with self.assertRaises(TypeError):
-      tensorflow_utils.append_to_list_structure_for_element_type_spec(
+      tensorflow_utils._append_to_list_structure_for_element_type_spec(
           nested, value, type_spec
       )
 
-  def test_replace_empty_leaf_lists_with_numpy_arrays(self):
+  def test__replace_empty_leaf_lists_with_numpy_arrays(self):
     lists = tuple([[], collections.OrderedDict([('a', []), ('b', [])])])
     type_spec = [tf.int32, [('a', tf.bool), ('b', tf.float32)]]
-    result = tensorflow_utils.replace_empty_leaf_lists_with_numpy_arrays(
+    result = tensorflow_utils._replace_empty_leaf_lists_with_numpy_arrays(
         lists, type_spec
     )
 
@@ -1047,14 +1041,14 @@ class GraphUtilsTest(tf.test.TestCase):
     )
 
   def _test_list_structure(self, type_spec, elements, expected_output_str):
-    result = tensorflow_utils.make_empty_list_structure_for_element_type_spec(
+    result = tensorflow_utils._make_empty_list_structure_for_element_type_spec(
         type_spec
     )
     for element_value in elements:
-      tensorflow_utils.append_to_list_structure_for_element_type_spec(
+      tensorflow_utils._append_to_list_structure_for_element_type_spec(
           result, element_value, type_spec
       )
-    result = tensorflow_utils.replace_empty_leaf_lists_with_numpy_arrays(
+    result = tensorflow_utils._replace_empty_leaf_lists_with_numpy_arrays(
         result, type_spec
     )
     self.assertEqual(
@@ -1205,7 +1199,7 @@ class GraphUtilsTest(tf.test.TestCase):
 
   def test_make_dataset_from_variant_tensor_constructs_dataset(self):
     with tf.Graph().as_default():
-      ds = tensorflow_utils.make_dataset_from_variant_tensor(
+      ds = tensorflow_utils._make_dataset_from_variant_tensor(
           tf.data.experimental.to_variant(tf.data.Dataset.range(5)), tf.int64
       )
       self.assertIsInstance(ds, tf.data.Dataset)
@@ -1216,95 +1210,16 @@ class GraphUtilsTest(tf.test.TestCase):
   def test_make_dataset_from_variant_tensor_fails_with_bad_tensor(self):
     with self.assertRaises(TypeError):
       with tf.Graph().as_default():
-        tensorflow_utils.make_dataset_from_variant_tensor(
+        tensorflow_utils._make_dataset_from_variant_tensor(
             tf.constant(10), tf.int32
         )
 
   def test_make_dataset_from_variant_tensor_fails_with_bad_type(self):
     with self.assertRaises(TypeError):
       with tf.Graph().as_default():
-        tensorflow_utils.make_dataset_from_variant_tensor(
+        tensorflow_utils._make_dataset_from_variant_tensor(
             tf.data.experimental.to_variant(tf.data.Dataset.range(5)), 'a'
         )
-
-  def test_get_deps_for_graph_node(self):
-    # Creates a graph (double edges are regular dependencies, single edges are
-    # control dependencies) like this:
-    #                      foo
-    #                   //      \\
-    #               foo:0        foo:1
-    #                  ||       //
-    #       abc       bar      //
-    #     //    \   //   \\   //
-    #  abc:0     bak       baz
-    #    ||
-    #   def
-    #    |
-    #   ghi
-    #
-    graph_def = tf.compat.v1.GraphDef(
-        node=[
-            tf.compat.v1.NodeDef(name='foo', input=[]),
-            tf.compat.v1.NodeDef(name='bar', input=['foo:0']),
-            tf.compat.v1.NodeDef(name='baz', input=['foo:1', 'bar']),
-            tf.compat.v1.NodeDef(name='bak', input=['bar', '^abc']),
-            tf.compat.v1.NodeDef(name='abc', input=[]),
-            tf.compat.v1.NodeDef(name='def', input=['abc:0']),
-            tf.compat.v1.NodeDef(name='ghi', input=['^def']),
-        ]
-    )
-
-    def _get_deps(x):
-      return ','.join(
-          sorted(list(tensorflow_utils.get_deps_for_graph_node(graph_def, x)))
-      )
-
-    self.assertEqual(_get_deps('foo'), '')
-    self.assertEqual(_get_deps('bar'), 'foo')
-    self.assertEqual(_get_deps('baz'), 'bar,foo')
-    self.assertEqual(_get_deps('bak'), 'abc,bar,foo')
-    self.assertEqual(_get_deps('abc'), '')
-    self.assertEqual(_get_deps('def'), 'abc')
-    self.assertEqual(_get_deps('ghi'), 'abc,def')
-
-  def test_add_control_deps_for_init_op(self):
-    # Creates a graph (double edges are regular dependencies, single edges are
-    # control dependencies) like this:
-    #
-    #  ghi
-    #   |
-    #  def
-    #   ||
-    #  def:0         foo
-    #   ||        //     ||
-    #  abc      bar      ||
-    #     \   //   \\    ||
-    #      bak        baz
-    #
-    graph_def = tf.compat.v1.GraphDef(
-        node=[
-            tf.compat.v1.NodeDef(name='foo', input=[]),
-            tf.compat.v1.NodeDef(name='bar', input=['foo']),
-            tf.compat.v1.NodeDef(name='baz', input=['foo', 'bar']),
-            tf.compat.v1.NodeDef(name='bak', input=['bar', '^abc']),
-            tf.compat.v1.NodeDef(name='abc', input=['def:0']),
-            tf.compat.v1.NodeDef(name='def', input=['^ghi']),
-            tf.compat.v1.NodeDef(name='ghi', input=[]),
-        ]
-    )
-    new_graph_def = tensorflow_utils.add_control_deps_for_init_op(
-        graph_def, 'abc'
-    )
-    self.assertEqual(
-        ','.join(
-            '{}({})'.format(node.name, ','.join(node.input))
-            for node in new_graph_def.node
-        ),
-        (
-            'foo(^abc),bar(foo,^abc),baz(foo,bar,^abc),'
-            'bak(bar,^abc),abc(def:0),def(^ghi),ghi()'
-        ),
-    )
 
   def test_coerce_dataset_elements_noop(self):
     x = tf.data.Dataset.range(5)
