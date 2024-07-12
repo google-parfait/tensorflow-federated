@@ -41,22 +41,6 @@ class ConcreteComputation(computation_base.Computation):
     return value._computation_proto  # pylint: disable=protected-access
 
   @classmethod
-  def with_type(
-      cls,
-      value: 'ConcreteComputation',
-      type_spec: computation_types.FunctionType,
-  ) -> 'ConcreteComputation':
-    py_typecheck.check_type(value, cls)
-    py_typecheck.check_type(type_spec, computation_types.Type)
-    # Ensure we are assigning a type-safe signature.
-    value.type_signature.check_assignable_from(type_spec)
-    # pylint: disable=protected-access
-    return cls(
-        value._computation_proto, value._context_stack, annotated_type=type_spec
-    )
-    # pylint: enable=protected-access
-
-  @classmethod
   def from_building_block(
       cls, building_block: building_blocks.ComputationBuildingBlock
   ) -> 'ConcreteComputation':
@@ -71,8 +55,6 @@ class ConcreteComputation(computation_base.Computation):
     )
 
   def to_building_block(self):
-    # TODO: b/161560999 - currently destroys annotated type.
-    # This should perhaps be fixed by adding `type_parameter` to `from_proto`.
     return building_blocks.ComputationBuildingBlock.from_proto(
         self._computation_proto
     )
