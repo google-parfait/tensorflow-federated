@@ -76,33 +76,6 @@ namespace py = ::pybind11;
 
 namespace {
 
-TFE_Context* GetContextHandle(PyObject* py_context) {
-  tensorflow::Safe_PyObjectPtr py_context_handle(
-      PyObject_GetAttrString(py_context, "_handle"));
-  if (py_context_handle == nullptr) {
-    // Current Python code makes sure this never happens. If it does, or
-    // becomes hard to maintain, we can call the ensure_initialized() method
-    // here.
-    PyErr_SetString(
-        PyExc_TypeError,
-        "Expected `context` argument in EagerTensor constructor to have a "
-        "`_handle` attribute but it did not. Was eager Context initialized?");
-    return nullptr;
-  }
-
-  auto* ctx = reinterpret_cast<TFE_Context*>(
-      PyCapsule_GetPointer(py_context_handle.get(), nullptr));
-  if (ctx == nullptr) {
-    PyErr_SetString(PyExc_TypeError,
-                    tensorflow::strings::StrCat(
-                        "Expected context._handle to contain a PyCapsule "
-                        "encoded pointer to TFE_Context. Got ",
-                        Py_TYPE(py_context_handle.get())->tp_name)
-                        .c_str());
-  }
-  return ctx;
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 // The Python module defintion `executor_bindings`.
 //
