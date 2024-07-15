@@ -119,11 +119,27 @@ cc_library(
     deps = [":tensor"],
 )
 
+cc_test(
+    name = "domain_iterator_test",
+    srcs = ["domain_iterator_test.cc"],
+    deps = [
+        ":aggregation_cores",
+        ":aggregator",
+        ":tensor",
+        ":tensor_cc_proto",
+        "//tensorflow_federated/cc/core/impl/aggregation/base",
+        "//tensorflow_federated/cc/core/impl/aggregation/testing:test_data",
+        "//tensorflow_federated/cc/testing:oss_test_main",
+        "//tensorflow_federated/cc/testing:status_matchers",
+    ],
+)
+
 # TODO: b/352020454 - Create one library per cc & hh pair. Make them aggregation_cores deps.
 cc_library(
     name = "aggregation_cores",
     srcs = [
         "composite_key_combiner.cc",
+        "domain_iterator.cc",
         "dp_closed_domain_histogram.cc",
         "dp_composite_key_combiner.cc",
         "dp_group_by_factory.cc",
@@ -137,6 +153,7 @@ cc_library(
     ],
     hdrs = [
         "composite_key_combiner.h",
+        "domain_iterator.h",
         "dp_closed_domain_histogram.h",
         "dp_composite_key_combiner.h",
         "dp_group_by_factory.h",

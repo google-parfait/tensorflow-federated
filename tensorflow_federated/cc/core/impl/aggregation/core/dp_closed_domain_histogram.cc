@@ -25,7 +25,9 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_core.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/composite_key_combiner.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/domain_iterator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_composite_key_combiner.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/dp_fedsql_constants.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/group_by_aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/input_tensor_list.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/intrinsic.h"
@@ -74,6 +76,41 @@ StatusOr<Tensor> DPClosedDomainHistogram::CreateOrdinalsByGroupingKeysForMerge(
                         inputs[0]->shape(), std::move(ordinals));
 }
 
+template <typename T>
+StatusOr<Tensor> CreateOutputKeyTensor(
+    internal::DomainIteratorForKeys& domain_iterator) {
+  MutableVectorData<T> output_key_data;
+  while (!domain_iterator.wrapped_around()) {
+    const T* key_ptr = reinterpret_cast<const T*>(*domain_iterator);
+    output_key_data.push_back(*key_ptr);
+    ++domain_iterator;
+  }
+  return Tensor::Create(
+      internal::TypeTraits<T>::kDataType,
+      {static_cast<int64_t>(output_key_data.size())},
+      std::make_unique<MutableVectorData<T>>(output_key_data));
+}
+
+template <typename T>
+StatusOr<Tensor> CreateOutputAggregationTensor(
+    internal::DomainIteratorForAggregations& domain_iterator) {
+  MutableVectorData<T> output_agg_data;
+  while (!domain_iterator.wrapped_around()) {
+    const T* agg_ptr = reinterpret_cast<const T*>(*domain_iterator);
+    T value = 0;
+    if (agg_ptr != nullptr) {
+      value = *agg_ptr;
+    }
+    // Future Cl: add noise via differential_privacy::NoiseMechanism
+    output_agg_data.push_back(value);
+    ++domain_iterator;
+  }
+  return Tensor::Create(
+      internal::TypeTraits<T>::kDataType,
+      {static_cast<int64_t>(output_agg_data.size())},
+      std::make_unique<MutableVectorData<T>>(output_agg_data));
+}
+
 StatusOr<OutputTensorList> DPClosedDomainHistogram::Report() && {
   TFF_RETURN_IF_ERROR(CheckValid());
   if (!CanReport()) {
@@ -83,8 +120,47 @@ StatusOr<OutputTensorList> DPClosedDomainHistogram::Report() && {
   // Compute the noiseless aggregate.
   OutputTensorList noiseless_aggregate = std::move(*this).TakeOutputs();
 
-  // Future work will add noise to the aggregate.
-  return noiseless_aggregate;
+  if (epsilon_per_agg_ > kEpsilonThreshold) {
+    return noiseless_aggregate;
+  }
+
+  OutputTensorList noisy_aggregate;
+
+  // For each of the requested output keys, make a Tensor populated with values
+  // of that key. The order is determined by a DomainIteratorForKeys object.
+  for (int64_t i = 0; i < num_keys_per_input(); ++i) {
+    if (output_key_specs()[i].name().empty()) {
+      continue;
+    }
+    internal::DomainIteratorForKeys domain_iterator(domain_tensors_, i);
+    StatusOr<Tensor> output_key_tensor;
+    DTYPE_CASES(output_key_specs()[i].dtype(), T,
+                output_key_tensor = CreateOutputKeyTensor<T>(domain_iterator));
+    if (!output_key_tensor.ok()) {
+      return output_key_tensor.status();
+    }
+    noisy_aggregate.push_back(std::move(*output_key_tensor));
+  }
+
+  // For each column of noiseless aggregates, make a Tensor populated with noisy
+  // values. Data is pulled from that column via a DomainIteratorForValues
+  // object.
+  for (int64_t i = num_keys_per_input(); i < noiseless_aggregate.size(); ++i) {
+    DPCompositeKeyCombiner& dp_key_combiner =
+        reinterpret_cast<DPCompositeKeyCombiner&>(*key_combiner());
+    internal::DomainIteratorForAggregations domain_iterator(
+        domain_tensors_, noiseless_aggregate[i], dp_key_combiner);
+    StatusOr<Tensor> output_agg_tensor;
+    NUMERICAL_ONLY_DTYPE_CASES(
+        noiseless_aggregate[i].dtype(), T,
+        output_agg_tensor = CreateOutputAggregationTensor<T>(domain_iterator));
+    if (!output_agg_tensor.ok()) {
+      return output_agg_tensor.status();
+    }
+    noisy_aggregate.push_back(std::move(*output_agg_tensor));
+  }
+
+  return noisy_aggregate;
 }
 
 }  // namespace aggregation
