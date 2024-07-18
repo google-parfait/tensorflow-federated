@@ -8,6 +8,11 @@ and this project adheres to
 
 ## Unreleased
 
+### Added
+
+*   Added some TFF executor classes to the public API (`ComposingExecutor`,
+    `ExecutorTestBase`, `MockExecutor`, `ThreadPool`).
+
 ## Release 0.83.0
 
 ### Changed

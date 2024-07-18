@@ -58,6 +58,7 @@ cc_library(
     name = "composing_executor",
     srcs = ["composing_executor.cc"],
     hdrs = ["composing_executor.h"],
+    visibility = ["//visibility:public"],
     deps = [
         ":cardinalities",
         ":computations",
@@ -399,6 +400,7 @@ cc_library(
     testonly = True,
     srcs = [],
     hdrs = ["executor_test_base.h"],
+    visibility = ["//visibility:public"],
     deps = [
         ":executor",
         "//tensorflow_federated/cc/testing:protobuf_matchers",
@@ -532,6 +534,7 @@ cc_library(
     testonly = True,
     srcs = ["mock_executor.cc"],
     hdrs = ["mock_executor.h"],
+    visibility = ["//visibility:public"],
     deps = [
         ":executor",
         "//tensorflow_federated/cc/testing:protobuf_matchers",
@@ -981,6 +984,7 @@ cc_library(
     name = "threading",
     srcs = ["threading.cc"],
     hdrs = ["threading.h"],
+    visibility = ["//visibility:public"],
     deps = [
         ":status_macros",
         "@com_google_absl//absl/base:core_headers",
