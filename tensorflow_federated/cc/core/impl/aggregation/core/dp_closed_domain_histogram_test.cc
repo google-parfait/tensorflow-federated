@@ -102,9 +102,9 @@ std::vector<Tensor> CreateTopLevelParameters(EpsilonType epsilon,
 
   // First tensor contains the names of keys
   int64_t num_keys = key_types.size();
-  MutableVectorData<string_view> key_names(num_keys);
+  MutableVectorData<string_view> key_names;
   for (int i = 0; i < num_keys; i++) {
-    key_names[i] = "key" + std::to_string(i);
+    key_names.push_back(absl::StrCat("key", std::to_string(i)));
   }
   parameters.push_back(
       Tensor::Create(DT_STRING, {num_keys},
@@ -171,8 +171,8 @@ Intrinsic CreateInnerIntrinsic(InputType linfinity_bound, double l1_bound,
 }
 
 template <typename InputType, typename OutputType>
-Intrinsic CreateIntrinsic(double epsilon = 1000.0, double delta = 0.001,
-                          int64_t l0_bound = 100,
+Intrinsic CreateIntrinsic(double epsilon = kEpsilonThreshold,
+                          double delta = 0.001, int64_t l0_bound = 100,
                           InputType linfinity_bound = 100, double l1_bound = -1,
                           double l2_bound = -1,
                           std::vector<DataType> key_types = {DT_STRING}) {
@@ -372,7 +372,7 @@ TEST(DPClosedDomainHistogramTest, CatchInnerParameters_WrongTypes) {
               HasSubstr("numerical Tensors"));
 }
 
-TEST(DPOpenDomainHistogramTest, CatchInvalidParameterValues) {
+TEST(DPClosedDomainHistogramTest, CatchInvalidParameterValues) {
   // Negative epsilon
   Intrinsic intrinsic0 = CreateIntrinsic<int64_t, int64_t>(-1, 0.001, 10);
   auto bad_epsilon = CreateTensorAggregator(intrinsic0).status();
@@ -395,16 +395,18 @@ TEST(DPOpenDomainHistogramTest, CatchInvalidParameterValues) {
               HasSubstr("either an L1 bound, an L2 bound,"
                         " or both Linfinity and L0 bounds"));
 
-  // Delta not provided (implied 0) and L1 bound not provided
+  // Delta not provided and only an L2 bound was provided
   Intrinsic intrinsic3 =
-      CreateIntrinsic<int64_t, int64_t>(1, -1, 10, 10, -1, -1);
+      CreateIntrinsic<int64_t, int64_t>(1, -1, -1, -1, -1, 3);
   auto bad_delta2 = CreateTensorAggregator(intrinsic3).status();
   EXPECT_THAT(bad_delta2, StatusIs(INVALID_ARGUMENT));
-  EXPECT_THAT(bad_delta2.message(),
-              HasSubstr("either a positive delta or an L1 bound"));
+  EXPECT_THAT(
+      bad_delta2.message(),
+      HasSubstr("either a positive delta or one of the following: "
+                "(a) an L1 bound (b) an Linfinity bound and an L0 bound"));
 }
 
-// Second batch of tests validate the aggregator itself.
+// Second batch of tests validate the aggregator itself, without DP noise.
 
 // Make sure we can successfully create a DPClosedDomainHistogram object.
 TEST(DPClosedDomainHistogramTest, CreateAggregator_Success) {
@@ -426,12 +428,13 @@ TEST(DPClosedDomainHistogramTest, CreateAggregator_Success) {
   EXPECT_EQ(domain_tensors[0].AsSpan<string_view>()[2], "c");
 }
 
-// Make sure the Report is what we expect.
+// Make sure the Report without DP noise contains all composite keys and their
+// aggregations.
 // One key taking values in the set {"a", "b", "c"}
 TEST(DPClosedDomainHistogramTest, NoiselessReport_OneKey) {
   // Create intrinsic with one string key ({"a", "b", "c"} is default domain)
-  Intrinsic intrinsic =
-      CreateIntrinsic<int64_t, int64_t>(1, 0.001, 10, 10, -1, -1, {DT_STRING});
+  Intrinsic intrinsic = CreateIntrinsic<int64_t, int64_t>(
+      kEpsilonThreshold, 0.001, 10, 10, -1, -1, {DT_STRING});
   // Create a DPClosedDomainHistogram object
   auto status = CreateTensorAggregator(intrinsic);
   TFF_EXPECT_OK(status);
@@ -458,8 +461,7 @@ TEST(DPClosedDomainHistogramTest, NoiselessReport_OneKey) {
   auto report_status = std::move(*agg).Report();
   TFF_EXPECT_OK(report_status);
   auto& report = report_status.value();
-  EXPECT_EQ(report.size(), 2);
-  EXPECT_EQ(report[0].shape(), TensorShape({3}));
+  ASSERT_EQ(report.size(), 2);
   EXPECT_THAT(report[0], IsTensor<string_view>({3}, {"a", "b", "c"}));
   EXPECT_THAT(report[1], IsTensor<int64_t>({3}, {5, 0, 1}));
 }
@@ -468,7 +470,7 @@ TEST(DPClosedDomainHistogramTest, NoiselessReport_OneKey) {
 // Number of possible composite keys is 9 = 3 * 3.
 TEST(DPClosedDomainHistogramTest, NoiselessReport_TwoKeys) {
   Intrinsic intrinsic = CreateIntrinsic<int64_t, int64_t>(
-      1, 0.001, 10, 10, -1, -1, {DT_STRING, DT_INT64});
+      kEpsilonThreshold, 0.001, 10, 10, -1, -1, {DT_STRING, DT_INT64});
   // Create a DPClosedDomainHistogram object
   auto status = CreateTensorAggregator(intrinsic);
   TFF_EXPECT_OK(status);
@@ -499,7 +501,7 @@ TEST(DPClosedDomainHistogramTest, NoiselessReport_TwoKeys) {
   TFF_EXPECT_OK(report_status);
   auto& report = report_status.value();
   // three tensors (columns): first key, second key, aggregation
-  EXPECT_EQ(report.size(), 3);
+  ASSERT_EQ(report.size(), 3);
 
   // first key: letters cycle as a, b, c, a, b, c, a, b, c
   EXPECT_THAT(report[0], IsTensor<string_view>({9}, {"a", "b", "c", "a", "b",
@@ -516,7 +518,7 @@ TEST(DPClosedDomainHistogramTest, NoiselessReport_TwoKeys) {
 // Same as above except we do not output the key that takes numerical values.
 TEST(DPClosedDomainHistogramTest, NoiselessReport_TwoKeys_DropSecondKey) {
   Intrinsic intrinsic = CreateIntrinsic<int64_t, int64_t>(
-      1, 0.001, 10, 10, -1, -1, {DT_STRING, DT_INT64});
+      kEpsilonThreshold, 0.001, 10, 10, -1, -1, {DT_STRING, DT_INT64});
   intrinsic.outputs[1] = CreateTensorSpec("", DT_INT64);
 
   // Create a DPClosedDomainHistogram object
@@ -549,7 +551,7 @@ TEST(DPClosedDomainHistogramTest, NoiselessReport_TwoKeys_DropSecondKey) {
   TFF_EXPECT_OK(report_status);
   auto& report = report_status.value();
   // two tensors (columns): first key of letters, then aggregation
-  EXPECT_EQ(report.size(), 2);
+  ASSERT_EQ(report.size(), 2);
 
   // first key: letters cycle as a, b, c, a, b, c, a, b, c
   EXPECT_THAT(report[0], IsTensor<string_view>({9}, {"a", "b", "c", "a", "b",
@@ -559,6 +561,140 @@ TEST(DPClosedDomainHistogramTest, NoiselessReport_TwoKeys_DropSecondKey) {
   // (a0 is the composite key at index 0, c1 is at index 5, a2 is at index 6)
   EXPECT_THAT(report[1], IsTensor<int64_t>({9}, {-3, 0, 0, 0, 0, 1, 5, 0, 0}));
 }
+
+// Third batch of tests evaluates the noise addition
+
+// Check that noise is added at all: the noised sum should not be the same as
+// the unnoised sum. The chance of a false negative shrinks with epsilon.
+TEST(DPClosedDomainHistogramTest, NoiseAddedForSmallEpsilons) {
+  Intrinsic intrinsic = CreateIntrinsic<int32_t, int64_t>(0.05, 1e-8, 2, 1);
+  auto aggregator = CreateTensorAggregator(intrinsic).value();
+  int num_inputs = 4000;
+  for (int i = 0; i < num_inputs; i++) {
+    Tensor keys =
+        Tensor::Create(DT_STRING, {2}, CreateTestData<string_view>({"a", "b"}))
+            .value();
+    Tensor values =
+        Tensor::Create(DT_INT32, {2}, CreateTestData<int32_t>({1, 1})).value();
+    auto acc_status = aggregator->Accumulate({&keys, &values});
+    EXPECT_THAT(acc_status, IsOk());
+  }
+  EXPECT_EQ(aggregator->GetNumInputs(), num_inputs);
+  EXPECT_TRUE(aggregator->CanReport());
+
+  auto report = std::move(*aggregator).Report();
+  EXPECT_THAT(report, IsOk());
+
+  // There must be 2 columns, one for keys and one for aggregated values.
+  ASSERT_EQ(report->size(), 2);
+
+  const auto& values = report.value()[1].AsSpan<int64_t>();
+
+  // There must be 3 rows, one per key (a, b, c)
+  ASSERT_EQ(values.size(), 3);
+
+  // We expect that there is some perturbation in the output.
+  EXPECT_TRUE(values[0] != num_inputs || values[1] != num_inputs ||
+              values[2] != num_inputs);
+}
+
+// Check that we are capable of switching between distributions depending on
+// the given norm bounds.
+
+// Scenario 1: L0 and Linf were given.
+// Much of this test was copied from a corresponding DPOpenDomainHistogram test.
+TEST(DPClosedDomainHistogramTest, CorrectDistribution_L0AndLinf) {
+  Intrinsic intrinsic1{kDPGroupByUri,
+                       {CreateTensorSpec("key", DT_STRING)},
+                       {CreateTensorSpec("key_out", DT_STRING)},
+                       {CreateTopLevelParameters(1.0, 1e-10, 2)},
+                       {}};
+  // "Baseline" aggregation where Laplace was chosen
+  intrinsic1.nested_intrinsics.push_back(
+      CreateInnerIntrinsic<int32_t, int64_t>(10, -1, -1));
+
+  // Aggregation where a given L2 norm bound is sufficiently smaller than L_0 *
+  // L_inf, which means Gaussian is preferred.
+  intrinsic1.nested_intrinsics.push_back(
+      CreateInnerIntrinsic<int32_t, int64_t>(10, -1, 2));
+
+  auto agg1 = CreateTensorAggregator(intrinsic1).value();
+  auto report = std::move(*agg1).Report();
+  auto laplace_was_used =
+      dynamic_cast<DPClosedDomainHistogram&>(*agg1).laplace_was_used();
+  ASSERT_EQ(laplace_was_used.size(), 2);
+  EXPECT_TRUE(laplace_was_used[0]);
+  EXPECT_FALSE(laplace_was_used[1]);
+
+  // If a user can contribute to L0 = x groups and there is only an L_inf bound,
+  // Laplace noise is linear in x while Gaussian noise scales with sqrt(x).
+  // Hence, we should use Gaussian when we loosen x (from 2 to 20)
+  Intrinsic intrinsic2 =
+      CreateIntrinsic<int32_t, int64_t>(1.0, 1e-10, 20, 10, -1, -1);
+  auto agg2 = CreateTensorAggregator(intrinsic2).value();
+  auto report2 = std::move(*agg2).Report();
+  laplace_was_used =
+      dynamic_cast<DPClosedDomainHistogram&>(*agg2).laplace_was_used();
+  ASSERT_EQ(laplace_was_used.size(), 1);
+  EXPECT_FALSE(laplace_was_used[0]);
+
+  // Gaussian noise should also be used if delta was loosened enough
+  Intrinsic intrinsic3 =
+      CreateIntrinsic<int32_t, int64_t>(1.0, 1e-3, 2, 10, -1, -1);
+  auto agg3 = CreateTensorAggregator(intrinsic3).value();
+  auto report3 = std::move(*agg3).Report();
+  laplace_was_used =
+      dynamic_cast<DPClosedDomainHistogram&>(*agg3).laplace_was_used();
+  ASSERT_EQ(laplace_was_used.size(), 1);
+  EXPECT_FALSE(laplace_was_used[0]);
+}
+
+// Scenario 2: if only the L1 norm bound is given, use Laplace noise.
+// if only the L2 norm bound is given, use Gaussian noise.
+TEST(DPClosedDomainHistogramTest, CorrectDistribution_OnlyL1OrOnlyL2) {
+  Intrinsic intrinsic1 =
+      CreateIntrinsic<int32_t, int64_t>(1.0, 1e-10, -1, -1, 1, -1);
+  auto agg1 = CreateTensorAggregator(intrinsic1).value();
+  auto report1 = std::move(*agg1).Report();
+  auto laplace_was_used =
+      dynamic_cast<DPClosedDomainHistogram&>(*agg1).laplace_was_used();
+  ASSERT_EQ(laplace_was_used.size(), 1);
+  EXPECT_TRUE(laplace_was_used[0]);
+
+  Intrinsic intrinsic2 =
+      CreateIntrinsic<int32_t, int64_t>(1.0, 1e-10, -1, -1, -1, 1);
+  auto agg2 = CreateTensorAggregator(intrinsic2).value();
+  auto report2 = std::move(*agg2).Report();
+  laplace_was_used =
+      dynamic_cast<DPClosedDomainHistogram&>(*agg2).laplace_was_used();
+  ASSERT_EQ(laplace_was_used.size(), 1);
+  EXPECT_FALSE(laplace_was_used[0]);
+}
+
+// Scenario 3: if both L1 and L2 are given, use the distribution that has the
+// smaller variance.
+TEST(DPClosedDomainHistogramTest, CorrectDistribution_L1AndL2) {
+  // First: Laplace has smaller variance.
+  Intrinsic intrinsic1 =
+      CreateIntrinsic<int32_t, int64_t>(1.0, 1e-8, -1, -1, 10, 10);
+  auto agg1 = CreateTensorAggregator(intrinsic1).value();
+  auto report1 = std::move(*agg1).Report();
+  auto laplace_was_used =
+      dynamic_cast<DPClosedDomainHistogram&>(*agg1).laplace_was_used();
+  ASSERT_EQ(laplace_was_used.size(), 1);
+  EXPECT_TRUE(laplace_was_used[0]);
+
+  // Second: Gaussian has smaller variance.
+  Intrinsic intrinsic2 =
+      CreateIntrinsic<int32_t, int64_t>(1.0, 1e-8, -1, -1, 46, 10);
+  auto agg2 = CreateTensorAggregator(intrinsic2).value();
+  auto report2 = std::move(*agg2).Report();
+  laplace_was_used =
+      dynamic_cast<DPClosedDomainHistogram&>(*agg2).laplace_was_used();
+  ASSERT_EQ(laplace_was_used.size(), 1);
+  EXPECT_FALSE(laplace_was_used[0]);
+}
+
 }  // namespace
 }  // namespace aggregation
 }  // namespace tensorflow_federated

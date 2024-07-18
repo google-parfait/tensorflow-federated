@@ -22,6 +22,7 @@
 #include <vector>
 
 #include "absl/container/fixed_array.h"
+#include "algorithms/numerical-mechanisms.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_core.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/composite_key_combiner.h"
@@ -37,6 +38,8 @@
 
 namespace tensorflow_federated {
 namespace aggregation {
+
+using differential_privacy::NumericalMechanism;
 
 // DPClosedDomainHistogram is a child class of GroupByAggregator.
 // ::AggregateTensorsInternal enforces a bound on the number of composite keys
@@ -92,6 +95,12 @@ class DPClosedDomainHistogram : public GroupByAggregator {
   // CompositeKeyCombiner::Accumulate, which has no L0 norm bounding.
   StatusOr<Tensor> CreateOrdinalsByGroupingKeysForMerge(
       const InputTensorList& inputs) override;
+
+  // Use the privacy parameters and norm bounds to create a noise-generating
+  // mechanism for the i-th aggregation. Decides between Gaussian and Laplace
+  // based on variance.
+  // StatusOr<std::unique_ptr<NumericalMechanism>> CreateIthMechanism(int64_t
+  // i);
 
   // Given indices that specify a combination of keys, increment the index
   // corresponding to a particular key. If the index is at the edge of the key's
