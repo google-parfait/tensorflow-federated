@@ -13,6 +13,11 @@ and this project adheres to
 *   Added some TFF executor classes to the public API (`ComposingExecutor`,
     `ExecutorTestBase`, `MockExecutor`, `ThreadPool`).
 
+### Changed
+
+*   Modified the model output release frequency to every 10 rounds and the final
+    round in `tff.learning.programs.train_model`.
+
 ## Release 0.83.0
 
 ### Changed

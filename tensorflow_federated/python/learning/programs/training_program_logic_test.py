@@ -181,11 +181,11 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     )
 
   @context_stack_test_utils.with_context(_create_test_context)
-  async def test_integration_runs_5_training_rounds_two_eval_rounds_from_scratch(
+  async def test_integration_runs_11_training_rounds_two_eval_rounds_from_scratch(
       self,
   ):
     train_num_clients = 5
-    training_rounds = 5
+    training_rounds = 11
     training_process = _create_mock_train_process()
 
     # Create a mock state manager that returns no previous state, starting
@@ -205,7 +205,7 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
       manager.release.return_value = None
 
     # Setup the meta evaluation manager to have no previous state, and launch
-    # evaluations on the second, fourth, and last rounds (indexes 2, 4, and 5).
+    # evaluations every 5 rounds and at the last round.
     mock_evaluation_manager = mock.create_autospec(
         evaluation_program_logic.EvaluationManager, instance=True, spec_set=True
     )
@@ -220,7 +220,7 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
       return asyncio.create_task(return_round_num())
 
     mock_evaluation_coros = tuple(
-        fake_evaluation(train_round) for train_round in (2, 4, 5)
+        fake_evaluation(train_round) for train_round in (5, 10, 11)
     )
 
     mock_evaluation_manager.start_evaluation.side_effect = list(
@@ -238,7 +238,7 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
         model_output_manager=mock_model_output_manager,
         evaluation_manager=mock_evaluation_manager,
         train_metrics_manager=mock_train_metrics_manager,
-        evaluation_periodicity=2,
+        evaluation_periodicity=5,
     )
     await asyncio.gather(*mock_evaluation_coros)
 
@@ -311,16 +311,17 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
         [
             mock.call(
                 any_algorithm_state,
-                key=f'final_training_checkpoint_round_{training_rounds}',
+                key=f'training_checkpoint_round_{round_num}',
             )
+            for round_num in (10, 11)
         ],
         mock_model_output_manager.release.call_args_list,
     )
 
-    # Assert that evaluation were started in round 2, 4, and 5.
+    # Assert that evaluation were started every 5 rounds and at the last round.
     mock_evaluation_manager.resume_from_previous_state.assert_called_once()
     self.assertSequenceEqual(
-        [mock.call(round_num, mock.ANY, mock.ANY) for round_num in (2, 4, 5)],
+        [mock.call(round_num, mock.ANY, mock.ANY) for round_num in (5, 10, 11)],
         mock_evaluation_manager.start_evaluation.call_args_list,
     )
     mock_evaluation_manager.wait_for_evaluations_to_finish.assert_called_once()
@@ -473,7 +474,7 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
         [
             mock.call(
                 any_algorithm_state,
-                key=f'final_training_checkpoint_round_{training_rounds}',
+                key=f'training_checkpoint_round_{training_rounds}',
             )
         ],
         mock_model_output_manager.release.call_args_list,
@@ -591,7 +592,7 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
         [
             mock.call(
                 any_algorithm_state,
-                key=f'final_training_checkpoint_round_{training_rounds}',
+                key=f'training_checkpoint_round_{training_rounds}',
             )
         ],
         mock_model_output_manager.release.call_args_list,
@@ -791,7 +792,7 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
         [
             mock.call(
                 any_algorithm_state,
-                key=f'final_training_checkpoint_round_{training_rounds}',
+                key=f'training_checkpoint_round_{training_rounds}',
             )
         ],
         mock_model_output_manager.release.call_args_list,

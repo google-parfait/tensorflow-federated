@@ -334,13 +334,20 @@ async def train_model(
               key=round_num,
           )
       )
-
-  task_manager.add_task(
-      model_output_manager.release(
-          train_state,
-          key=f'final_training_checkpoint_round_{train_total_rounds}',
+    # TODO: b/321269562 - Replace the hardcoded release interval with a stateful
+    # `ReleaseManager` that enables customizable release frequencies.
+    # Release the train state every 10 rounds or at the last round. This is a
+    # short-term solution to release the train state periodically with a
+    # hardcoded periodicity. For long-term solution, see b/321269562 for more
+    # details.
+    if round_num % 10 == 0 or round_num == train_total_rounds:
+      logging.info('Releasing training checkpoint for round %d', round_num)
+      task_manager.add_task(
+          model_output_manager.release(
+              train_state,
+              key=f'training_checkpoint_round_{round_num}',
+          )
       )
-  )
   # Wait for all pending tasks to complete before exiting the program.
   await task_manager.wait_for_all_tasks()
   if evaluation_manager is not None:
