@@ -32,7 +32,7 @@ MetricsConstructor = Callable[[], MetricStructure]
 def create_functional_metric_fns(
     metrics_constructor: Union[
         MetricConstructor, MetricsConstructor, MetricConstructors
-    ]
+    ],
 ) -> tuple[
     Callable[[], StateVar],
     Callable[[StateVar, Any, Any, Any], StateVar],
@@ -58,7 +58,8 @@ def create_functional_metric_fns(
     >>>    tf.keras.metrics.Accuracy)
     >>> initialize, update, finalize = metric_fns
     >>> state = initialize()
-    >>> state = update(state, [1.0, 1.0], [0.0, 1.0])
+    >>> batch_output = tff.learning.models.BatchOutput(predictions=[0.0, 1.0])
+    >>> state = update(state, [1.0, 1.0], batch_output)
     >>> finalize(state)  # == 0.5
 
   Args:
@@ -219,7 +220,7 @@ def create_functional_metric_fns(
     # has an explicit loss function.
     if not hasattr(batch_output, 'predictions'):
       raise ValueError(
-          'The input to a functional metrics `update` method must'
+          'The input to a functional metrics `update` method must '
           'have a `predictions` attribute, such as when feeding in'
           ' a `tff.learning.models.BatchOutput` structure.'
       )
