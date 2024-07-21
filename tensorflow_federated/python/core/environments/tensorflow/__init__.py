@@ -14,5 +14,6 @@
 """Libraries for interacting with a TensorFlow frontend and backend."""
 
 # pylint: disable=g-importing-member
+from tensorflow_federated.python.core.environments.tensorflow_backend.tensorflow_tree_transformations import replace_intrinsics_with_bodies
 from tensorflow_federated.python.core.environments.tensorflow_frontend.tensorflow_computation import tf_computation as computation
 # pylint: enable=g-importing-member

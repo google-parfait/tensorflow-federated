@@ -17,7 +17,11 @@ py_library(
     srcs = ["__init__.py"],
     visibility = ["//tensorflow_federated:__pkg__"],
     deps = [
+        "//tensorflow_federated/python/core/impl/compiler:building_block_factory",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
+        "//tensorflow_federated/python/core/impl/compiler:intrinsic_defs",
+        "//tensorflow_federated/python/core/impl/compiler:transformation_utils",
+        "//tensorflow_federated/python/core/impl/compiler:transformations",
         "//tensorflow_federated/python/core/impl/computation:computation_impl",
         "//tensorflow_federated/python/core/impl/computation:computation_serialization",
         "//tensorflow_federated/python/core/impl/context_stack:context_base",

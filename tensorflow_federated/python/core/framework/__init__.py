@@ -14,6 +14,7 @@
 """Libraries for extending the TensorFlow Federated core library."""
 
 # pylint: disable=g-importing-member
+from tensorflow_federated.python.core.impl.compiler.building_block_factory import unique_name_generator
 from tensorflow_federated.python.core.impl.compiler.building_blocks import Block
 from tensorflow_federated.python.core.impl.compiler.building_blocks import Call
 from tensorflow_federated.python.core.impl.compiler.building_blocks import CompiledComputation
@@ -27,6 +28,21 @@ from tensorflow_federated.python.core.impl.compiler.building_blocks import Refer
 from tensorflow_federated.python.core.impl.compiler.building_blocks import Selection
 from tensorflow_federated.python.core.impl.compiler.building_blocks import Struct
 from tensorflow_federated.python.core.impl.compiler.building_blocks import UnexpectedBlockError
+from tensorflow_federated.python.core.impl.compiler.intrinsic_defs import FEDERATED_AGGREGATE
+from tensorflow_federated.python.core.impl.compiler.intrinsic_defs import FEDERATED_APPLY
+from tensorflow_federated.python.core.impl.compiler.intrinsic_defs import FEDERATED_BROADCAST
+from tensorflow_federated.python.core.impl.compiler.intrinsic_defs import FEDERATED_EVAL_AT_CLIENTS
+from tensorflow_federated.python.core.impl.compiler.intrinsic_defs import FEDERATED_EVAL_AT_SERVER
+from tensorflow_federated.python.core.impl.compiler.intrinsic_defs import FEDERATED_MAP
+from tensorflow_federated.python.core.impl.compiler.intrinsic_defs import FEDERATED_MAP_ALL_EQUAL
+from tensorflow_federated.python.core.impl.compiler.intrinsic_defs import FEDERATED_SUM
+from tensorflow_federated.python.core.impl.compiler.intrinsic_defs import FEDERATED_VALUE_AT_CLIENTS
+from tensorflow_federated.python.core.impl.compiler.intrinsic_defs import FEDERATED_VALUE_AT_SERVER
+from tensorflow_federated.python.core.impl.compiler.intrinsic_defs import FEDERATED_ZIP_AT_CLIENTS
+from tensorflow_federated.python.core.impl.compiler.intrinsic_defs import FEDERATED_ZIP_AT_SERVER
+from tensorflow_federated.python.core.impl.compiler.transformation_utils import transform_postorder
+from tensorflow_federated.python.core.impl.compiler.transformation_utils import transform_preorder
+from tensorflow_federated.python.core.impl.compiler.transformations import to_call_dominant
 from tensorflow_federated.python.core.impl.computation.computation_impl import ConcreteComputation
 from tensorflow_federated.python.core.impl.computation.computation_serialization import deserialize_computation
 from tensorflow_federated.python.core.impl.computation.computation_serialization import serialize_computation

@@ -12,6 +12,9 @@ and this project adheres to
 
 *   Added some TFF executor classes to the public API (`ComposingExecutor`,
     `ExecutorTestBase`, `MockExecutor`, `ThreadPool`).
+*   Added some compiler transformation helper functions to the public API
+    (`replace_intrinsics_with_bodies`, `unique_name_generator`,
+    `transform_preorder`, `to_call_dominant`).
 
 ### Changed
 
