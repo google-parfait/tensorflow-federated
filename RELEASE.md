@@ -15,6 +15,8 @@ and this project adheres to
 *   Added some compiler transformation helper functions to the public API
     (`replace_intrinsics_with_bodies`, `unique_name_generator`,
     `transform_preorder`, `to_call_dominant`).
+*   Added a method to get the number of checkpoints aggregated to the
+    CheckpointAggregator API.
 
 ### Changed
 

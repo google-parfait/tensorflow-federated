@@ -84,6 +84,15 @@ class CheckpointAggregator {
   // Merges with another compatible instance of CheckpointAggregator consuming
   // it in the process.
   absl::Status MergeWith(CheckpointAggregator&& other);
+  // Returns the number of inputs that have been aggregated into this
+  // CheckpointAggregator, including those that have been merged in from a
+  // separate CheckpointAggregator and/or those that were aggregated before the
+  // aggregator was serialized and deserialized.
+  //
+  // Returns an error if the aggregation has already been finished, or if the
+  // number of checkpoints aggregated is undefined because the inner
+  // aggregators have aggregated different numbers of tensors.
+  absl::StatusOr<int> GetNumCheckpointsAggregated() const;
   // Returns true if the report can be processed.
   bool CanReport() const;
   // Builds the report using the supplied CheckpointBuilder instance.

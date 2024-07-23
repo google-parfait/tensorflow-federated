@@ -18,6 +18,7 @@
 
 #include <cstddef>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -192,6 +193,28 @@ absl::Status CheckpointAggregator::MergeWith(CheckpointAggregator&& other) {
     }
   }
   return absl::OkStatus();
+}
+
+absl::StatusOr<int> CheckpointAggregator::GetNumCheckpointsAggregated() const {
+  absl::MutexLock lock(&aggregation_mu_);
+  if (aggregation_finished_) {
+    return absl::AbortedError("Aggregation has already been finished.");
+  }
+  std::optional<int> num_inputs;
+  for (const auto& aggregator : aggregators_) {
+    TFF_CHECK(aggregator != nullptr)
+        << "CreateReport() has already been called.";
+    if (!num_inputs.has_value()) {
+      num_inputs = aggregator->GetNumInputs();
+    } else {
+      if (aggregator->GetNumInputs() != *num_inputs) {
+        return absl::FailedPreconditionError(
+            "The number of inputs aggregated by each inner aggregator does not "
+            "match.");
+      }
+    }
+  }
+  return *num_inputs;
 }
 
 bool CheckpointAggregator::CanReport() const {
