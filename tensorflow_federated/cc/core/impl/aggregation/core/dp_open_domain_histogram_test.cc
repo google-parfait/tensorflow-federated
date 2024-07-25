@@ -120,17 +120,6 @@ std::vector<Tensor> CreateFewTopLevelParameters() {
   return parameters;
 }
 
-std::vector<Tensor> CreateManyTopLevelParameters() {
-  std::vector<Tensor> parameters;
-
-  for (int i = 0; i < 4; i++) {
-    auto t = CreateTestData({1.0});
-    parameters.push_back(Tensor::Create(DT_DOUBLE, {}, std::move(t)).value());
-  }
-
-  return parameters;
-}
-
 template <typename InputType>
 std::vector<Tensor> CreateNestedParameters(InputType linfinity_bound,
                                            double l1_bound, double l2_bound) {
@@ -164,8 +153,8 @@ Intrinsic CreateInnerIntrinsic(InputType linfinity_bound, double l1_bound,
 }
 
 template <typename InputType, typename OutputType>
-Intrinsic CreateIntrinsic(double epsilon = 1000.0, double delta = 0.001,
-                          int64_t l0_bound = 100,
+Intrinsic CreateIntrinsic(double epsilon = kEpsilonThreshold,
+                          double delta = 0.001, int64_t l0_bound = 100,
                           InputType linfinity_bound = 100, double l1_bound = -1,
                           double l2_bound = -1) {
   Intrinsic intrinsic{kDPGroupByUri,
@@ -313,7 +302,8 @@ StatusOr<OutputTensorList> SingleKeySingleAgg(
 TEST_P(DPOpenDomainHistogramTest, SingleKeySingleAggWithL0Bound) {
   // L0 bounding involves randomness so we should repeat things to catch errors.
   for (int i = 0; i < 9; i++) {
-    auto intrinsic = CreateIntrinsic<int64_t, int64_t>(100, 0.01, 1);
+    auto intrinsic =
+        CreateIntrinsic<int64_t, int64_t>(kEpsilonThreshold, 0.01, 1);
     auto result = SingleKeySingleAgg<int64_t>(intrinsic, {4},
                                               {"zero", "one", "two", "zero"},
                                               {1, 3, 15, 27}, GetParam());
@@ -350,7 +340,8 @@ TEST_P(DPOpenDomainHistogramTest, SingleKeySingleAggWithL0Bound) {
 TEST_P(DPOpenDomainHistogramTest, SingleKeySingleAggWithL0LinfinityBounds) {
   for (int i = 0; i < 9; i++) {
     // Use the same setup as before but now impose a maximum magnitude of 12
-    auto intrinsic = CreateIntrinsic<int64_t, int64_t>(100, 0.01, 1, 12);
+    auto intrinsic =
+        CreateIntrinsic<int64_t, int64_t>(kEpsilonThreshold, 0.01, 1, 12);
     auto result = SingleKeySingleAgg<int64_t>(intrinsic, {4},
                                               {"zero", "one", "two", "zero"},
                                               {1, 3, 15, 27}, GetParam());
@@ -388,7 +379,8 @@ TEST_P(DPOpenDomainHistogramTest, SingleKeySingleAggWithL0LinfinityL1Bounds) {
   for (int i = 0; i < 9; i++) {
     // L0 bound is 4 (four keys), Linfinity bound is 50 (|value| <= 50),
     // and L1 bound is 100 (sum over |value| is <= 100)
-    auto intrinsic = CreateIntrinsic<int64_t, int64_t>(100, 0.01, 4, 50, 100);
+    auto intrinsic =
+        CreateIntrinsic<int64_t, int64_t>(kEpsilonThreshold, 0.01, 4, 50, 100);
     auto result = SingleKeySingleAgg<int64_t>(
         intrinsic, {5}, {"zero", "one", "two", "three", "four"},
         {60, 60, 60, 60, 60}, GetParam());
@@ -408,8 +400,8 @@ TEST_P(DPOpenDomainHistogramTest, SingleKeySingleAggWithAllBounds) {
   for (int i = 0; i < 9; i++) {
     // L0 bound is 4 (four keys), Linfinity bound is 50 (|value| <= 50),
     // L1 bound is 100 (sum over |value| is <= 100), and L2 bound is 10
-    auto intrinsic =
-        CreateIntrinsic<int64_t, int64_t>(100, 0.01, 4, 50, 100, 10);
+    auto intrinsic = CreateIntrinsic<int64_t, int64_t>(kEpsilonThreshold, 0.01,
+                                                       4, 50, 100, 10);
     auto result = SingleKeySingleAgg<int64_t>(
         intrinsic, {5}, {"zero", "one", "two", "three", "four"},
         {60, 60, 60, 60, 60}, GetParam());
@@ -428,8 +420,8 @@ TEST_P(DPOpenDomainHistogramTest, SingleKeySingleAggWithAllBounds) {
 // Third: test norm bounding when there are multiple inner aggregations
 // (SUM(value1), SUM(value2)  GROUP BY key)
 template <typename InputType, typename OutputType>
-Intrinsic CreateIntrinsic2Agg(double epsilon = 1000.0, double delta = 0.001,
-                              int64_t l0_bound = 100,
+Intrinsic CreateIntrinsic2Agg(double epsilon = kEpsilonThreshold,
+                              double delta = 0.001, int64_t l0_bound = 100,
                               InputType linfinity_bound1 = 100,
                               double l1_bound1 = -1, double l2_bound1 = -1,
                               InputType linfinity_bound2 = 100,
@@ -491,8 +483,8 @@ TEST_P(DPOpenDomainHistogramTest, SingleKeyDoubleAggWithAllBounds) {
     // L0 bound is 4.
     // For agg 1, Linfinity bound is 20 and no other bounds provided.
     // For agg 2, Linfinity bound is 50, L1 bound is 100, L2 bound is 10.
-    auto intrinsic = CreateIntrinsic2Agg<int64_t, int64_t>(1000, 0.01, 4, 20,
-                                                           -1, -1, 50, 100, 10);
+    auto intrinsic = CreateIntrinsic2Agg<int64_t, int64_t>(
+        2 * kEpsilonThreshold, 0.01, 4, 20, -1, -1, 50, 100, 10);
     auto result = SingleKeyDoubleAgg<int64_t>(
         intrinsic, {5}, {"zero", "one", "two", "three", "four"},
         {60, 60, 60, 60, 60}, {60, 60, 60, 60, 60}, GetParam());
@@ -515,8 +507,8 @@ TEST_P(DPOpenDomainHistogramTest, SingleKeyDoubleAggWithAllBounds) {
 // Fourth: test norm bounding, when there are multiple keys and multiple inner
 // aggregations. (SUM(value1), SUM(value2)  GROUP BY key1, key 2)
 template <typename InputType, typename OutputType>
-Intrinsic CreateIntrinsic2Key2Agg(double epsilon = 100.0, double delta = 0.001,
-                                  int64_t l0_bound = 100,
+Intrinsic CreateIntrinsic2Key2Agg(double epsilon = kEpsilonThreshold,
+                                  double delta = 0.001, int64_t l0_bound = 100,
                                   InputType linfinity_bound1 = 100,
                                   double l1_bound1 = -1, double l2_bound1 = -1,
                                   InputType linfinity_bound2 = 100,
@@ -584,7 +576,7 @@ TEST_P(DPOpenDomainHistogramTest, DoubleKeyDoubleAggWithAllBounds) {
     // For agg 1, Linfinity bound is 20 and no other bounds provided.
     // For agg 2, Linfinity bound is 50, L1 bound is 100, L2 bound is 10.
     auto intrinsic = CreateIntrinsic2Key2Agg<int64_t, int64_t>(
-        1000, 0.01, 4, 20, -1, -1, 50, 100, 10);
+        2 * kEpsilonThreshold, 0.01, 4, 20, -1, -1, 50, 100, 10);
     auto result = DoubleKeyDoubleAgg<int64_t>(
         intrinsic, {5}, {"red", "green", "green", "blue", "gray"},
         {"zero", "one", "two", "three", "four"}, {60, 60, 60, 60, 60},
@@ -608,8 +600,8 @@ TEST_P(DPOpenDomainHistogramTest, DoubleKeyDoubleAggWithAllBounds) {
 
 // Fifth: test norm bounding on key-less data (norm bound = magnitude bound)
 template <typename InputType, typename OutputType>
-Intrinsic CreateIntrinsicNoKeys(double epsilon = 100.0, double delta = 0.001,
-                                int64_t l0_bound = 100,
+Intrinsic CreateIntrinsicNoKeys(double epsilon = kEpsilonThreshold,
+                                double delta = 0.001, int64_t l0_bound = 100,
                                 InputType linfinity_bound1 = 100,
                                 double l1_bound1 = -1, double l2_bound1 = -1,
                                 InputType linfinity_bound2 = 100,
@@ -636,9 +628,9 @@ Intrinsic CreateIntrinsicNoKeys(double epsilon = 100.0, double delta = 0.001,
 
 TEST_P(DPOpenDomainHistogramTest, NoKeyTripleAggWithAllBounds) {
   Intrinsic intrinsic = CreateIntrinsicNoKeys<int32_t, int64_t>(
-      1000, 0.01, 100, 10, 9, 8,  // limit to 8
-      100, 9, -1,                 // limit to 9
-      100, -1, -1);               // 100
+      3 * kEpsilonThreshold, 0.01, 100, 10, 9, 8,  // limit to 8
+      100, 9, -1,                                  // limit to 9
+      100, -1, -1);                                // 100
 
   auto group_by_aggregator = CreateTensorAggregator(intrinsic).value();
   Tensor t1 = Tensor::Create(DT_INT32, {}, CreateTestData({11})).value();
@@ -971,7 +963,7 @@ TEST_P(DPOpenDomainHistogramTest, MergeDoesNotDistortData_SingleKey) {
   // below do nothing: each Accumulate call has 1 distinct key and a value of 1,
   // which satisfies the L0 bound and Linfinity bound constraints.
   Intrinsic intrinsic =
-      CreateIntrinsic<int64_t, int64_t>(100, 0.001, 1, 1, -1, -1);
+      CreateIntrinsic<int64_t, int64_t>(kEpsilonThreshold, 0.001, 1, 1, -1, -1);
   auto agg1 = CreateTensorAggregator(intrinsic).value();
   auto agg2 = CreateTensorAggregator(intrinsic).value();
 
@@ -1024,8 +1016,8 @@ TEST_P(DPOpenDomainHistogramTest, MergeDoesNotDistortData_SingleKey) {
 }
 
 TEST_P(DPOpenDomainHistogramTest, MergeDoesNotDistortData_MultiKey) {
-  Intrinsic intrinsic =
-      CreateIntrinsic2Key2Agg<int64_t, int64_t>(100, 0.001, 1, 1, -1, -1);
+  Intrinsic intrinsic = CreateIntrinsic2Key2Agg<int64_t, int64_t>(
+      2 * kEpsilonThreshold, 0.001, 1, 1, -1, -1);
   auto agg1 = CreateTensorAggregator(intrinsic).value();
   auto agg2 = CreateTensorAggregator(intrinsic).value();
 
@@ -1078,11 +1070,12 @@ TEST_P(DPOpenDomainHistogramTest, MergeDoesNotDistortData_MultiKey) {
 }
 
 TEST_P(DPOpenDomainHistogramTest, MergeDoesNotDistortData_NoKeys) {
-  Intrinsic intrinsic{"fedsql_dp_group_by",
-                      {},
-                      {},
-                      {CreateTopLevelParameters(100, 0.01, 100)},
-                      {}};
+  Intrinsic intrinsic{
+      "fedsql_dp_group_by",
+      {},
+      {},
+      {CreateTopLevelParameters(2 * kEpsilonThreshold, 0.01, 100)},
+      {}};
   intrinsic.nested_intrinsics.push_back(
       CreateInnerIntrinsic<int64_t, int64_t>(10, 9, 8));
   intrinsic.nested_intrinsics.push_back(

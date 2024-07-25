@@ -22,6 +22,8 @@ and this project adheres to
 
 *   Modified the model output release frequency to every 10 rounds and the final
     round in `tff.learning.programs.train_model`.
+*   Loosened the `kEpsilonThreshold` constant and updated the tests of
+    `DPOpenDomainHistogram` accordingly.
 
 ## Release 0.83.0
 

@@ -38,7 +38,7 @@ constexpr int kL2Index = 2;
 constexpr int kNumDPSumParameters = 3;
 
 // The epsilon beyond which we will not use DP noise
-constexpr double kEpsilonThreshold = 20.0;
+constexpr double kEpsilonThreshold = 1e20;
 
 }  // namespace aggregation
 }  // namespace tensorflow_federated

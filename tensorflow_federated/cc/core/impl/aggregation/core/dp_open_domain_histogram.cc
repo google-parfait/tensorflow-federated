@@ -335,7 +335,7 @@ StatusOr<OutputTensorList> DPOpenDomainHistogram::Report() && {
   OutputTensorList noiseless_aggregate = std::move(*this).TakeOutputs();
 
   // We skip noise addition if epsilon is too large to be meaningful
-  if (epsilon_per_agg_ > kEpsilonThreshold) {
+  if (epsilon_per_agg_ >= kEpsilonThreshold) {
     return noiseless_aggregate;
   }
 
