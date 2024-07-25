@@ -33,6 +33,9 @@ and this project adheres to
     aggregate for each possible combinations of keys. Those composite keys that
     `GroupByAggregator` did not already assign an aggregate to are assigned 0.
     Future CL will add noise.
+*   Modified `tff.learning.algorithms.build_weighted_fed_avg` to generate
+    different training graphs when `use_experimental_simulation_loop=True` and
+    `model_fn` is of type `tff.learning.models.FunctionalModel`.
 
 ## Release 0.83.0
 

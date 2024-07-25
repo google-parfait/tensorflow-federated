@@ -256,6 +256,7 @@ def build_weighted_fed_avg(
             optimizer=client_optimizer_fn,
             client_weighting=client_weighting,
             metrics_aggregator=metrics_aggregator,
+            use_experimental_simulation_loop=use_experimental_simulation_loop,
         )
     )
   else:

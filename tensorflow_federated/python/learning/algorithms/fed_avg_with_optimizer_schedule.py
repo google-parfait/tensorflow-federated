@@ -150,6 +150,7 @@ def build_scheduled_client_work(
     client_update = build_client_update_fn(
         model_fn,
         weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES,
+        use_experimental_simulation_loop=use_experimental_simulation_loop,
     )
     return client_update(optimizer, initial_model_weights, dataset)
 

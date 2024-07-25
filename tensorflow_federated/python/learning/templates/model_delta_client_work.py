@@ -427,12 +427,15 @@ def build_functional_model_delta_update(
     model: functional.FunctionalModel,
     *,
     weighting: client_weight_lib.ClientWeighting,
+    use_experimental_simulation_loop: bool,
 ):
   """Creates client update logic in FedAvg.
 
   Args:
     model: A `tff.learning.models.FunctionalModel`.
     weighting: A `tff.learning.ClientWeighting` value.
+    use_experimental_simulation_loop: Controls the reduce loop function for the
+      input dataset. An experimental reduce loop is used for simulation.
 
   Returns:
     A `tf.function`.
@@ -488,14 +491,20 @@ def build_functional_model_delta_update(
       )
       return model_weights, optimizer_state, metrics_state, num_examples
 
-    initial_training_state = (
-        initial_weights,
-        optimizer.initialize(trainable_tensor_specs),
-        model.initialize_metrics_state(),
-        tf.constant(0, tf.int64),  # num_examples
+    initial_training_state = tf.function(
+        lambda: (
+            initial_weights,
+            optimizer.initialize(trainable_tensor_specs),
+            model.initialize_metrics_state(),
+            tf.constant(0, tf.int64),  # num_examples
+        )
     )
-    final_training_state = dataset.reduce(
-        initial_state=initial_training_state, reduce_func=reduce_func
+
+    ds_reduce_fn = dataset_reduce.build_dataset_reduce_fn(
+        use_experimental_simulation_loop
+    )
+    final_training_state = ds_reduce_fn(
+        reduce_func, dataset, initial_training_state
     )
     model_weights, _, metrics_state, num_examples = final_training_state
     trainable_weights, _ = model_weights
@@ -536,6 +545,7 @@ def build_functional_model_delta_client_work(
     optimizer: optimizer_base.Optimizer,
     client_weighting: client_weight_lib.ClientWeighting,
     metrics_aggregator: Optional[types.MetricsAggregatorType] = None,
+    use_experimental_simulation_loop: bool = False,
 ) -> client_works.ClientWorkProcess:
   """Creates a `ClientWorkProcess` for federated averaging.
 
@@ -553,6 +563,8 @@ def build_functional_model_delta_client_work(
       `tff.learning.models.VariableModel.metric_finalizers()`) and returns a
       `tff.Computation` for aggregating the unfinalized metrics.  If `None`,
       this is set to `tff.learning.metrics.sum_then_finalize`.
+    use_experimental_simulation_loop: Controls the reduce loop function for the
+      input dataset. An experimental reduce loop is used for simulation.
 
   Returns:
     A `ClientWorkProcess`.
@@ -583,7 +595,9 @@ def build_functional_model_delta_client_work(
         initial_model_weights.non_trainable,
     )
     client_update = build_functional_model_delta_update(
-        model=model, weighting=client_weighting
+        model=model,
+        weighting=client_weighting,
+        use_experimental_simulation_loop=use_experimental_simulation_loop,
     )
     return client_update(optimizer, initial_model_weights, dataset)
 

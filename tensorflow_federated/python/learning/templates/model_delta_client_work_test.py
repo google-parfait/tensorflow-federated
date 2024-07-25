@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import collections
+import itertools
 from unittest import mock
 
 from absl.testing import parameterized
@@ -696,10 +697,25 @@ class FunctionalModelDeltaClientWorkExecutionTest(
 ):
 
   @parameterized.named_parameters(
-      ('uniform', client_weight_lib.ClientWeighting.UNIFORM),
-      ('num_examples', client_weight_lib.ClientWeighting.NUM_EXAMPLES),
+      (
+          f'{weighting[0]}_{is_simulation_loop[0]}',
+          weighting[1],
+          is_simulation_loop[1],
+      )
+      for weighting, is_simulation_loop in itertools.product(
+          [
+              ('uniform', client_weight_lib.ClientWeighting.UNIFORM),
+              ('num_examples', client_weight_lib.ClientWeighting.NUM_EXAMPLES),
+          ],
+          [
+              ('simulation', True),
+              ('non_simulation', False),
+          ],
+      )
   )
-  def test_functional_model_matches_model_fn(self, weighting):
+  def test_functional_model_matches_model_fn(
+      self, weighting, is_simulation_loop
+  ):
     dataset = create_test_dataset()
 
     # Build a FunctionalModel based client_model_update procedure. This will
@@ -719,7 +735,9 @@ class FunctionalModelDeltaClientWorkExecutionTest(
     def client_update_functional_model(model_weights, dataset):
       model_delta_fn = (
           model_delta_client_work.build_functional_model_delta_update(
-              model=functional_model, weighting=weighting
+              model=functional_model,
+              weighting=weighting,
+              use_experimental_simulation_loop=is_simulation_loop,
           )
       )
       return model_delta_fn(
@@ -743,7 +761,9 @@ class FunctionalModelDeltaClientWorkExecutionTest(
 
     client_update_model_fn = (
         model_delta_client_work.build_model_delta_update_with_tff_optimizer(
-            model_fn=model_fn, weighting=weighting
+            model_fn=model_fn,
+            weighting=weighting,
+            use_experimental_simulation_loop=is_simulation_loop,
         )
     )
     model_fn_optimizer = sgdm.build_sgdm(learning_rate=0.1)
