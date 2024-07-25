@@ -82,6 +82,37 @@ class JaxSerializationTest(absltest.TestCase):
     self.assertEqual(str(comp_pb.xla.parameter), '')
     self.assertEqual(str(comp_pb.xla.result), 'tensor {\n  index: 0\n}\n')
 
+  def test_serialize_jax_with_unused_arg_to_int32(self):
+    self.skipTest('b/355470450: unused arguments are pruned in jax.jit')
+
+    def traced_fn(x):
+      del x
+      return 10
+
+    parameter_type = computation_types.to_type(np.int32)
+    comp_pb, annotated_type = jax_serialization.serialize_jax_computation(
+        traced_fn, parameter_type, context_stack_impl.context_stack
+    )
+    self.assertIsInstance(comp_pb, pb.Computation)
+    self.assertEqual(comp_pb.WhichOneof('computation'), 'xla')
+    type_spec = type_serialization.deserialize_type(comp_pb.type)
+    type_test_utils.assert_types_equivalent(
+        type_spec,
+        computation_types.FunctionType(
+            parameter=parameter_type, result=np.int32
+        ),
+    )
+    type_test_utils.assert_types_identical(
+        annotated_type,
+        computation_types.FunctionType(
+            parameter=parameter_type, result=np.int32
+        ),
+    )
+    xla_comp = xla_serialization.unpack_xla_computation(comp_pb.xla.hlo_module)
+    self.assertNotEmpty(xla_comp.as_hlo_text())
+    self.assertEqual(str(comp_pb.xla.parameter), 'tensor {\n  index: 0\n}\n')
+    self.assertEqual(str(comp_pb.xla.result), 'tensor {\n  index: 0\n}\n')
+
   def test_serialize_jax_with_int32_to_int32(self):
     def traced_fn(x):
       return x + 10

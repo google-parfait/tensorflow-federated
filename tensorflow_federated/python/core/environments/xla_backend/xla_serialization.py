@@ -231,14 +231,25 @@ def xla_computation_and_bindings_to_tff_type(
   """
   py_typecheck.check_type(xla_computation, xla_client.XlaComputation)
   program_shape = xla_computation.program_shape()
-  return computation_types.FunctionType(
-      xla_shapes_and_binding_to_tff_type(
-          program_shape.parameter_shapes(), parameter_binding
-      ),
-      xla_shapes_and_binding_to_tff_type(
-          [program_shape.result_shape()], result_binding
-      ),
-  )
+  try:
+    parameter_type = xla_shapes_and_binding_to_tff_type(
+        program_shape.parameter_shapes(), parameter_binding
+    )
+  except ValueError as e:
+    raise ValueError(
+        'Failed to construct TFF type from parameter binding:'
+        f'{program_shape.parameter_shapes()=}, {parameter_binding=}'
+    ) from e
+  try:
+    result_type = xla_shapes_and_binding_to_tff_type(
+        [program_shape.result_shape()], result_binding
+    )
+  except ValueError as e:
+    raise ValueError(
+        'Failed to construct TFF type from result binding:'
+        f'{program_shape.result_shape()=}, {result_binding=}'
+    ) from e
+  return computation_types.FunctionType(parameter_type, result_type)
 
 
 def xla_shapes_and_binding_to_tff_type(
@@ -275,12 +286,11 @@ def xla_shapes_and_binding_to_tff_type(
       index = binding.tensor.index
       if (index < 0) or (index >= len(tensor_shapes)):
         raise ValueError(
-            'Binding refers to an inexistent index {}.'.format(index)
+            f'Binding refers to an inexistent {index=}, must be in [0,'
+            f' {len(tensor_shapes)}).'
         )
       if index not in unused_shape_indexes:
-        raise ValueError(
-            'Duplicate bindings referring to index {}.'.format(index)
-        )
+        raise ValueError(f'Duplicate bindings referring to {index=}')
       unused_shape_indexes.remove(index)
       shape = tensor_shapes[index]
       return computation_types.TensorType(
@@ -292,12 +302,12 @@ def xla_shapes_and_binding_to_tff_type(
       )
     if kind is None:
       return None
-    raise ValueError('Unrecognized binding type {}.'.format(kind))
+    raise ValueError(f'Unrecognized binding {kind=}')
 
   tff_type = _get_type(binding)
   if unused_shape_indexes:
     raise ValueError(
-        'Binding fails to capture tensors {}.'.format(unused_shape_indexes)
+        f'Binding fails to capture tensors {unused_shape_indexes=}'
     )
   return tff_type
 
