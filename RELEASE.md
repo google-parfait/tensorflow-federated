@@ -20,6 +20,8 @@ and this project adheres to
 
 ### Changed
 
+*   Fixed a bug in `tff.jax.computation` that raised an error when the
+    computation had unused arguments.
 *   Modified the model output release frequency to every 10 rounds and the final
     round in `tff.learning.programs.train_model`.
 *   Loosened the `kEpsilonThreshold` constant and updated the tests of

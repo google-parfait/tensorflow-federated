@@ -83,8 +83,6 @@ class JaxSerializationTest(absltest.TestCase):
     self.assertEqual(str(comp_pb.xla.result), 'tensor {\n  index: 0\n}\n')
 
   def test_serialize_jax_with_unused_arg_to_int32(self):
-    self.skipTest('b/355470450: unused arguments are pruned in jax.jit')
-
     def traced_fn(x):
       del x
       return 10

@@ -217,9 +217,11 @@ def serialize_jax_computation(
   # upgraded.
   if jax.__version_info__ > (0, 4, 29):
     with context_stack.install(context):
-      lowered = jax.jit(fn).lower(*args, **kwargs)
+      lowered = jax.jit(fn, keep_unused=True).lower(*args, **kwargs)
       compiled_xla = lowered.compiler_ir('hlo')
 
+    # Test if the output is a tuple, or a single array and construct the
+    # return spec accordingly.
     if isinstance(lowered.out_info, jax.stages.OutInfo):
       returned_type_spec = _jax_shape_dtype_struct_to_tff_tensor(
           jax.ShapeDtypeStruct(
