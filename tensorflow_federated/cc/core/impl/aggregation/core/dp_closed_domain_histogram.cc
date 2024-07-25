@@ -21,6 +21,7 @@
 #include <utility>
 #include <vector>
 
+#include "absl/container/fixed_array.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_core.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/composite_key_combiner.h"
@@ -34,10 +35,30 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_aggregator.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_data.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_shape.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_spec.h"
 
 namespace tensorflow_federated {
 namespace aggregation {
+namespace {
+// Given a tensor containing a column of aggregates and an ordinal, push the
+// aggregate associated with that ordinal to the back of a MutableVectorData
+// container. If the ordinal is kNoOrdinal, push 0 instead.
+template <typename T>
+void CopyAggregateFromColumn(const Tensor& column_of_aggregates,
+                             int64_t ordinal, MutableVectorData<T>& container) {
+  // Get the aggregate we will be copying over if it exists.
+  // Future CL will initialize value to a random number instead of 0.
+  T value = 0;
+  if (ordinal != kNoOrdinal) {
+    value += column_of_aggregates.AsSpan<T>()[ordinal];
+  }
+
+  // Add to the container.
+  container.push_back(value);
+}
+}  // namespace
 
 DPClosedDomainHistogram::DPClosedDomainHistogram(
     const std::vector<TensorSpec>& input_key_specs,
@@ -74,17 +95,126 @@ StatusOr<Tensor> DPClosedDomainHistogram::CreateOrdinalsByGroupingKeysForMerge(
                         inputs[0]->shape(), std::move(ordinals));
 }
 
+// Advance the indices that specify a composite key. Boolean output indicates if
+// we can continue advancing the indices.
+bool DPClosedDomainHistogram::IncrementDomainIndices(
+    absl::FixedArray<int64_t>& domain_indices, int64_t which_key) {
+  ++domain_indices[which_key];
+  // If we've reached the end of a key's domain...
+  if (domain_indices[which_key] == domain_tensors_[which_key].num_elements()) {
+    // ...reset to 0
+    domain_indices[which_key] = 0;
+
+    // If we've completely iterated through the composite key domain, indicate
+    // that we cannot progress any further.
+    if (which_key + 1 == domain_tensors_.size()) {
+      return false;
+    }
+
+    // Otherwise, recurse (perform a carry)
+    return IncrementDomainIndices(domain_indices, which_key + 1);
+  }
+  // It is still possible to increment the domain indices.
+  return true;
+}
+
 StatusOr<OutputTensorList> DPClosedDomainHistogram::Report() && {
   TFF_RETURN_IF_ERROR(CheckValid());
   if (!CanReport()) {
     return TFF_STATUS(FAILED_PRECONDITION)
            << "DPOpenDomainHistogram::Report: the report goal isn't met";
   }
-  // Compute the noiseless aggregate.
-  OutputTensorList noiseless_aggregate = std::move(*this).TakeOutputs();
+  // Compute the noiseless aggregates.
+  OutputTensorList noiseless_aggregates = std::move(*this).TakeOutputs();
 
-  // Future work will add noise to the aggregate.
-  return noiseless_aggregate;
+  OutputTensorList noisy_aggregates;
+
+  // Calculate size of domain of composite keys.
+  int64_t domain_size = 1;
+  for (const auto& domain_tensor : domain_tensors_) {
+    domain_size *= domain_tensor.num_elements();
+  }
+
+  // Create MutableVectorData containers, one for each output tensor, that are
+  // each big enough to hold domain_size elements.
+  // If all output tensors had the same type like int64_t we could create an
+  // std::vector<MutableVectorData<int64_t>> container to hold them.
+  // But the types being contained could vary, so we instead make a vector of
+  // TensorData pointers that each point to a MutableVectorData object.
+  std::vector<std::unique_ptr<TensorData>> noisy_aggregate_data;
+  for (const Tensor& tensor : noiseless_aggregates) {
+    DTYPE_CASES(tensor.dtype(), T,
+                auto container = std::make_unique<MutableVectorData<T>>();
+                container->reserve(domain_size);
+                noisy_aggregate_data.push_back(std::move(container)););
+  }
+
+  // Iterate through the domain of composite keys.
+  absl::FixedArray<int64_t> domain_indices(domain_tensors_.size(), 0);
+  do {
+    // Each composite key is associated with a row of the output. i-th entry of
+    // that row will be written to i-th entry of noisy_aggregate_data.
+    int64_t key_to_output = 0;
+    for (int64_t i = 0; i < noisy_aggregate_data.size(); i++) {
+      // Get the TensorData container we will be writing to (a column).
+      TensorData& container = *(noisy_aggregate_data[i]);
+
+      // Search for the next key that is specified as part of the output.
+      while (key_to_output < num_keys_per_input() &&
+             output_key_specs()[key_to_output].name().empty()) {
+        key_to_output++;
+      }
+
+      // The first batch of entries in this row of the output are the grouping
+      // keys that make up the composite key and were specified to be output.
+      if (key_to_output < num_keys_per_input()) {
+        // Get the tensor that specifies the domain for this key
+        const Tensor& domain_tensor = domain_tensors_[key_to_output];
+
+        // Get the index of the value in domain_tensor that we will be copying.
+        int64_t index_in_tensor = domain_indices[key_to_output];
+
+        // Copy over to the container after changing to MutableVectorData.
+        DTYPE_CASES(domain_tensor.dtype(), T,
+                    dynamic_cast<MutableVectorData<T>&>(container).push_back(
+                        domain_tensor.AsSpan<T>()[index_in_tensor]));
+
+        // Move on to the next key.
+        key_to_output++;
+      } else {
+        // The second batch of entries are the actual aggregates.
+
+        // Get the ordinal for the composite key indexed by domain_indices
+        auto& dp_key_combiner =
+            dynamic_cast<DPCompositeKeyCombiner&>(*(key_combiner()));
+        int64_t ordinal =
+            dp_key_combiner.GetOrdinal(domain_tensors_, domain_indices);
+
+        // Get the current column of aggregates
+        const Tensor& column_of_aggregates = noiseless_aggregates[i];
+
+        // Copy the number associated with the ordinal to the container.
+        NUMERICAL_ONLY_DTYPE_CASES(
+            column_of_aggregates.dtype(), T,
+            CopyAggregateFromColumn<T>(
+                column_of_aggregates, ordinal,
+                dynamic_cast<MutableVectorData<T>&>(container)));
+      }
+    }
+  } while (IncrementDomainIndices(domain_indices));
+
+  // Turn the TensorData objects into Tensors.
+  for (int64_t i = 0; i < noisy_aggregate_data.size(); ++i) {
+    DataType dtype = noiseless_aggregates[i].dtype();
+    TensorShape shape({domain_size});
+    TFF_ASSIGN_OR_RETURN(
+        auto new_tensor,
+        Tensor::Create(dtype, shape, std::move(noisy_aggregate_data[i])));
+    noisy_aggregates.push_back(std::move(new_tensor));
+  }
+
+  // Future work will add noise to the aggregates.
+  return noisy_aggregates;
 }
 
 }  // namespace aggregation

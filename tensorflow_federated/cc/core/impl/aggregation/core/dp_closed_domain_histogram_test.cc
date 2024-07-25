@@ -24,6 +24,7 @@
 
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
+#include "absl/strings/str_cat.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_vector.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_vector_aggregator.h"
@@ -38,6 +39,7 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_shape.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/tensor_spec.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/testing/test_data.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/testing/testing.h"
 #include "tensorflow_federated/cc/testing/status_matchers.h"
 
 namespace tensorflow_federated {
@@ -174,10 +176,20 @@ Intrinsic CreateIntrinsic(double epsilon = 1000.0, double delta = 0.001,
                           InputType linfinity_bound = 100, double l1_bound = -1,
                           double l2_bound = -1,
                           std::vector<DataType> key_types = {DT_STRING}) {
+  std::vector<TensorSpec> input_key_specs;
+  for (int i = 0; i < key_types.size(); i++) {
+    input_key_specs.push_back(
+        CreateTensorSpec(absl::StrCat("key", i), key_types[i]));
+  }
+  std::vector<TensorSpec> output_key_specs;
+  for (int i = 0; i < key_types.size(); i++) {
+    output_key_specs.push_back(CreateTensorSpec(
+        absl::StrCat("key", std::to_string(i), "_out"), key_types[i]));
+  }
   Intrinsic intrinsic{
       kDPGroupByUri,
-      {CreateTensorSpec("key", DT_STRING)},
-      {CreateTensorSpec("key_out", DT_STRING)},
+      input_key_specs,
+      output_key_specs,
       {CreateTopLevelParameters(epsilon, delta, l0_bound, key_types)},
       {}};
   intrinsic.nested_intrinsics.push_back(
@@ -236,10 +248,10 @@ TEST(DPClosedDomainHistogramTest, CatchWrongKeyTypes) {
                       {}};
   auto wrong_key_types_status = CreateTensorAggregator(intrinsic).status();
   EXPECT_THAT(wrong_key_types_status, StatusIs(INVALID_ARGUMENT));
-  EXPECT_THAT(
-      wrong_key_types_status.message(),
-      HasSubstr("tensor for key 0 should have type " + DataType_Name(DT_STRING)
-                + " but got " + DataType_Name(DT_DOUBLE) + " instead"));
+  EXPECT_THAT(wrong_key_types_status.message(),
+              HasSubstr(absl::StrCat("tensor for key 0 should have type ",
+                                     DataType_Name(DT_STRING), " but got ",
+                                     DataType_Name(DT_DOUBLE), " instead")));
 }
 
 std::vector<Tensor> CreateNParameters(int n) {
@@ -414,6 +426,139 @@ TEST(DPClosedDomainHistogramTest, CreateAggregator_Success) {
   EXPECT_EQ(domain_tensors[0].AsSpan<string_view>()[2], "c");
 }
 
+// Make sure the Report is what we expect.
+// One key taking values in the set {"a", "b", "c"}
+TEST(DPClosedDomainHistogramTest, NoiselessReport_OneKey) {
+  // Create intrinsic with one string key ({"a", "b", "c"} is default domain)
+  Intrinsic intrinsic =
+      CreateIntrinsic<int64_t, int64_t>(1, 0.001, 10, 10, -1, -1, {DT_STRING});
+  // Create a DPClosedDomainHistogram object
+  auto status = CreateTensorAggregator(intrinsic);
+  TFF_EXPECT_OK(status);
+  auto& agg = status.value();
+
+  // Accumulate twice
+  Tensor key1 =
+      Tensor::Create(DT_STRING, {2}, CreateTestData<string_view>({"c", "a"}))
+          .value();
+  Tensor value1 =
+      Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({1, 8})).value();
+  auto acc_status = agg->Accumulate({&key1, &value1});
+  TFF_EXPECT_OK(acc_status);
+  Tensor key2 =
+      Tensor::Create(DT_STRING, {1}, CreateTestData<string_view>({"a"}))
+          .value();
+  Tensor value2 =
+      Tensor::Create(DT_INT64, {1}, CreateTestData<int64_t>({-3})).value();
+  acc_status = agg->Accumulate({&key2, &value2});
+  TFF_EXPECT_OK(acc_status);
+
+  // Report should look like {a: 5, b: 0, c: 1}
+  EXPECT_TRUE(agg->CanReport());
+  auto report_status = std::move(*agg).Report();
+  TFF_EXPECT_OK(report_status);
+  auto& report = report_status.value();
+  EXPECT_EQ(report.size(), 2);
+  EXPECT_EQ(report[0].shape(), TensorShape({3}));
+  EXPECT_THAT(report[0], IsTensor<string_view>({3}, {"a", "b", "c"}));
+  EXPECT_THAT(report[1], IsTensor<int64_t>({3}, {5, 0, 1}));
+}
+
+// Two keys taking values in the sets {"a", "b", "c"} and {0, 1, 2}
+// Number of possible composite keys is 9 = 3 * 3.
+TEST(DPClosedDomainHistogramTest, NoiselessReport_TwoKeys) {
+  Intrinsic intrinsic = CreateIntrinsic<int64_t, int64_t>(
+      1, 0.001, 10, 10, -1, -1, {DT_STRING, DT_INT64});
+  // Create a DPClosedDomainHistogram object
+  auto status = CreateTensorAggregator(intrinsic);
+  TFF_EXPECT_OK(status);
+  auto& agg = status.value();
+
+  // Accumulate twice
+  Tensor key1a =
+      Tensor::Create(DT_STRING, {2}, CreateTestData<string_view>({"c", "a"}))
+          .value();
+  Tensor key1b =
+      Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({1, 2})).value();
+  Tensor value1 =
+      Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({1, 8})).value();
+  auto acc_status = agg->Accumulate({&key1a, &key1b, &value1});
+  TFF_EXPECT_OK(acc_status);
+  Tensor key2a =
+      Tensor::Create(DT_STRING, {2}, CreateTestData<string_view>({"a", "a"}))
+          .value();
+  Tensor key2b =
+      Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({0, 2})).value();
+  Tensor value2 =
+      Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({-3, -3})).value();
+  acc_status = agg->Accumulate({&key2a, &key2b, &value2});
+  TFF_EXPECT_OK(acc_status);
+
+  EXPECT_TRUE(agg->CanReport());
+  auto report_status = std::move(*agg).Report();
+  TFF_EXPECT_OK(report_status);
+  auto& report = report_status.value();
+  // three tensors (columns): first key, second key, aggregation
+  EXPECT_EQ(report.size(), 3);
+
+  // first key: letters cycle as a, b, c, a, b, c, a, b, c
+  EXPECT_THAT(report[0], IsTensor<string_view>({9}, {"a", "b", "c", "a", "b",
+                                                     "c", "a", "b", "c"}));
+
+  // second key: numbers cycle as 0, 0, 0, 1, 1, 1, 2, 2, 2
+  EXPECT_THAT(report[1], IsTensor<int64_t>({9}, {0, 0, 0, 1, 1, 1, 2, 2, 2}));
+
+  // Report should map a0 to -3, c1 to 1, a2 to 5 = 8-3, and all else to 0.
+  // (a0 is the composite key at index 0, c1 is at index 5, a2 is at index 6)
+  EXPECT_THAT(report[2], IsTensor<int64_t>({9}, {-3, 0, 0, 0, 0, 1, 5, 0, 0}));
+}
+
+// Same as above except we do not output the key that takes numerical values.
+TEST(DPClosedDomainHistogramTest, NoiselessReport_TwoKeys_DropSecondKey) {
+  Intrinsic intrinsic = CreateIntrinsic<int64_t, int64_t>(
+      1, 0.001, 10, 10, -1, -1, {DT_STRING, DT_INT64});
+  intrinsic.outputs[1] = CreateTensorSpec("", DT_INT64);
+
+  // Create a DPClosedDomainHistogram object
+  auto status = CreateTensorAggregator(intrinsic);
+  TFF_EXPECT_OK(status);
+  auto& agg = status.value();
+
+  // Accumulate twice
+  Tensor key1a =
+      Tensor::Create(DT_STRING, {2}, CreateTestData<string_view>({"c", "a"}))
+          .value();
+  Tensor key1b =
+      Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({1, 2})).value();
+  Tensor value1 =
+      Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({1, 8})).value();
+  auto acc_status = agg->Accumulate({&key1a, &key1b, &value1});
+  TFF_EXPECT_OK(acc_status);
+  Tensor key2a =
+      Tensor::Create(DT_STRING, {2}, CreateTestData<string_view>({"a", "a"}))
+          .value();
+  Tensor key2b =
+      Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({0, 2})).value();
+  Tensor value2 =
+      Tensor::Create(DT_INT64, {2}, CreateTestData<int64_t>({-3, -3})).value();
+  acc_status = agg->Accumulate({&key2a, &key2b, &value2});
+  TFF_EXPECT_OK(acc_status);
+
+  EXPECT_TRUE(agg->CanReport());
+  auto report_status = std::move(*agg).Report();
+  TFF_EXPECT_OK(report_status);
+  auto& report = report_status.value();
+  // two tensors (columns): first key of letters, then aggregation
+  EXPECT_EQ(report.size(), 2);
+
+  // first key: letters cycle as a, b, c, a, b, c, a, b, c
+  EXPECT_THAT(report[0], IsTensor<string_view>({9}, {"a", "b", "c", "a", "b",
+                                                     "c", "a", "b", "c"}));
+
+  // Report should map a0 to -3, c1 to 1, a2 to 5 = 8-3, and all else to 0.
+  // (a0 is the composite key at index 0, c1 is at index 5, a2 is at index 6)
+  EXPECT_THAT(report[1], IsTensor<int64_t>({9}, {-3, 0, 0, 0, 0, 1, 5, 0, 0}));
+}
 }  // namespace
 }  // namespace aggregation
 }  // namespace tensorflow_federated

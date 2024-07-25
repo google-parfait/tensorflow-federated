@@ -21,6 +21,7 @@
 #include <memory>
 #include <vector>
 
+#include "absl/container/fixed_array.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_core.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/composite_key_combiner.h"
@@ -91,6 +92,17 @@ class DPClosedDomainHistogram : public GroupByAggregator {
   // CompositeKeyCombiner::Accumulate, which has no L0 norm bounding.
   StatusOr<Tensor> CreateOrdinalsByGroupingKeysForMerge(
       const InputTensorList& inputs) override;
+
+  // Given indices that specify a combination of keys, increment the index
+  // corresponding to a particular key. If the index is at the edge of the key's
+  // domain, wrap around and recurse to the next key.
+  // Return true if we can continue incrementing, false if we've reached the
+  // end of the entire domain of composite keys.
+  // Assumes that which_key is in the range [0, domain_tensors_.size()]
+  // and that the i-th entry of domain_indices is in the range
+  // [0, domain_tensors_[i].num_elements()]
+  bool IncrementDomainIndices(absl::FixedArray<int64_t>& domain_indices,
+                              int64_t which_key = 0);
 
   double epsilon_per_agg_;
   double delta_per_agg_;

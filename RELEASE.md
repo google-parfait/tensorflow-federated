@@ -17,6 +17,9 @@ and this project adheres to
     `transform_preorder`, `to_call_dominant`).
 *   Added a method to get the number of checkpoints aggregated to the
     CheckpointAggregator API.
+*   The function `DPClosedDomainHistogram::IncrementDomainIndices`. It allows
+    calling code to iterate through the domain of composite keys (in a do-while
+    loop).
 
 ### Changed
 
@@ -26,6 +29,10 @@ and this project adheres to
     round in `tff.learning.programs.train_model`.
 *   Loosened the `kEpsilonThreshold` constant and updated the tests of
     `DPOpenDomainHistogram` accordingly.
+*   The behavior of `DPClosedDomainHistogram::Report()`: it now produces an
+    aggregate for each possible combinations of keys. Those composite keys that
+    `GroupByAggregator` did not already assign an aggregate to are assigned 0.
+    Future CL will add noise.
 
 ## Release 0.83.0
 
