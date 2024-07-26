@@ -35,10 +35,10 @@ limitations under the License
 #include "tensorflow/compiler/tf2xla/type_util.h"
 #include "tensorflow/compiler/xla/client/client.h"
 #include "tensorflow/compiler/xla/client/client_library.h"
-#include "tensorflow/compiler/xla/client/global_data.h"
 #include "tensorflow/compiler/xla/client/xla_computation.h"
 #include "tensorflow/compiler/xla/literal.h"
 #include "tensorflow/compiler/xla/service/hlo.pb.h"
+#include "tensorflow/compiler/xla/service/service.h"
 #include "tensorflow/compiler/xla/shape.h"
 #include "tensorflow/compiler/xla/stream_executor/platform.h"
 #include "tensorflow/compiler/xla/xla.pb.h"
@@ -650,29 +650,34 @@ class XLAExecutor : public ExecutorBase<ValueFuture> {
                 fn->type().function().result().tensor().dtype())));
       }
       case v0::Xla::Binding::kStruct: {
-        absl::StatusOr<std::vector<std::unique_ptr<xla::GlobalData>>>
-            global_data_vector = xla_client_->DeconstructTuple(**result);
-        if (!global_data_vector.ok()) {
-          return absl::InternalError(absl::StrCat(
-              "Error destructuring tuple in XLA executor. Message: ",
-              global_data_vector.status().message()));
-        }
+        const int num_result_elements =
+            ComputeNumElementsFromBinding(result_binding);
+        std::vector<std::unique_ptr<xla::GlobalData>> global_data_vector;
+          absl::StatusOr<std::vector<std::unique_ptr<xla::GlobalData>>>
+              status_global_data_vector =
+                  xla_client_->DeconstructTuple(**result);
+          if (!status_global_data_vector.ok()) {
+            return absl::InternalError(absl::StrCat(
+                "Error while destructuring tuple in XLA executor for binding: ",
+                result_binding.DebugString(), "\nXLA message: ",
+                status_global_data_vector.status().message()));
+          }
+          global_data_vector = std::move(status_global_data_vector).value();
         // We begin by constructing a vector of tensor-backed XLAExecutorValues.
         // For this purpose, we must compute the datatypes of the GlobalData
         // elements (XLA will need them to materialize values from the XLA
         // client), from the combination of the return type of the function and
         // the result binding.
         std::vector<XLAExecutorValue> flat_value_vector;
-        int result_elements = ComputeNumElementsFromBinding(result_binding);
         // Preallocate the flat types tensor as required to assign directly to
         // its elements.
-        std::vector<v0::TensorType> flat_tensor_types(result_elements);
+        std::vector<v0::TensorType> flat_tensor_types(num_result_elements);
         TFF_TRY(FlattenTypeToTensors(fn->type().function().result(),
                                      result_binding, &flat_tensor_types));
         flat_value_vector.reserve(flat_tensor_types.size());
         for (int i = 0; i < flat_tensor_types.size(); i++) {
           flat_value_vector.emplace_back(XLAExecutorValue(
-              std::move((*global_data_vector)[i]),
+              std::move(global_data_vector[i]),
               TFF_TRY(
                   PrimitiveTypeFromDataType(flat_tensor_types[i].dtype()))));
         }

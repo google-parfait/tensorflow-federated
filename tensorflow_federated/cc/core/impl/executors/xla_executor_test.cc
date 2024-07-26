@@ -544,9 +544,7 @@ TEST_F(XLAExecutorTest, CreateAndMaterializeIdentityScalar) {
   CheckMaterializeEqual(called_fn, arg_value);
 }
 
-// NOLINTBEGIN
 TEST_F(XLAExecutorTest, CreateAndMaterializeIdentitySingletonStruct) {
-  GTEST_SKIP() << "b/355521231 - re-enable once single structs work";
   xla::XlaBuilder builder("float_scalar_singleton_struct");
   xla::XlaOp parameter = xla::Parameter(
       &builder, 0, xla::ShapeUtil::MakeScalarShape(xla::F32), "x");
@@ -574,7 +572,6 @@ TEST_F(XLAExecutorTest, CreateAndMaterializeIdentitySingletonStruct) {
       test_executor_->CreateCall(embedded_fn.ref(), embedded_arg));
   CheckMaterializeEqual(called_fn, arg_value);
 }
-// NOLINTEND
 
 TEST_F(XLAExecutorTest, CreateAndMaterializeIdentityNestedStruct) {
   xla::XlaBuilder builder("float_nested_struct_identity");
