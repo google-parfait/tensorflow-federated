@@ -315,7 +315,7 @@ TEST_F(XLAExecutorTest, CreateSelectionOOBImmediate) {
 TEST_F(XLAExecutorTest, CreateValueComputationTensorNonFunctionalTypeFails) {
   xla::XlaBuilder builder("float_unk_shape_tensor_identity");
   xla::Parameter(&builder, 0, xla::ShapeUtil::MakeScalarShape(xla::F32), "x");
-  tensorflow::StatusOr<xla::XlaComputation> xla_computation = builder.Build();
+  absl::StatusOr<xla::XlaComputation> xla_computation = builder.Build();
   ASSERT_TRUE(xla_computation.ok());
   v0::Type float_tensor_type;
   float_tensor_type.mutable_tensor()->set_dtype(v0::DataType::DT_FLOAT);
@@ -342,7 +342,7 @@ TEST_F(XLAExecutorTest,
        CreateValueComputationTensorMismatchedTypeAndBindingFails) {
   xla::XlaBuilder builder("float_unk_shape_tensor_identity");
   xla::Parameter(&builder, 0, xla::ShapeUtil::MakeScalarShape(xla::F32), "x");
-  tensorflow::StatusOr<xla::XlaComputation> xla_computation = builder.Build();
+  absl::StatusOr<xla::XlaComputation> xla_computation = builder.Build();
   ASSERT_TRUE(xla_computation.ok());
   v0::Type float_tensor;
   float_tensor.mutable_tensor()->set_dtype(v0::DataType::DT_FLOAT);
@@ -376,7 +376,7 @@ TEST_F(XLAExecutorTest,
   xla::XlaBuilder builder("float_unk_shape_tensor_identity");
   xla::Parameter(&builder, 0,
                  XLAShapeWithUnknownDims(tensorflow::DT_FLOAT, num_dims), "x");
-  tensorflow::StatusOr<xla::XlaComputation> xla_computation = builder.Build();
+  absl::StatusOr<xla::XlaComputation> xla_computation = builder.Build();
   ASSERT_TRUE(xla_computation.ok());
   v0::Type float_unk_shape_tensor;
   float_unk_shape_tensor.mutable_tensor()->set_dtype(v0::DataType::DT_FLOAT);
@@ -402,7 +402,7 @@ TEST_F(XLAExecutorTest, CreateValueComputationTensorParameterUnknownRankFails) {
   xla::XlaBuilder builder("float_unk_rank_tensor_identity");
   xla::Parameter(&builder, 0, UnknownRankShapeWithDtype(tensorflow::DT_FLOAT),
                  "x");
-  tensorflow::StatusOr<xla::XlaComputation> xla_computation = builder.Build();
+  absl::StatusOr<xla::XlaComputation> xla_computation = builder.Build();
   ASSERT_TRUE(xla_computation.ok());
   v0::Type float_unk_rank_tensor;
   float_unk_rank_tensor.mutable_tensor()->set_dtype(v0::DataType::DT_FLOAT);
@@ -445,7 +445,7 @@ TEST_F(XLAExecutorTest, CreateAndMaterializeNoArgCallSingleTensor) {
   // element results, after passing through MLIR
   // results are always in tuples.
   xla::Tuple(&builder, {constant});
-  tensorflow::StatusOr<xla::XlaComputation> xla_computation = builder.Build();
+  absl::StatusOr<xla::XlaComputation> xla_computation = builder.Build();
   ASSERT_TRUE(xla_computation.ok());
   auto tensor_type = TensorT(v0::DataType::DT_FLOAT);
   v0::Type function_type = NoArgFunctionT(tensor_type);
@@ -468,7 +468,7 @@ TEST_F(XLAExecutorTest, CreateAndMaterializeNoArgCallTensorStructure) {
   auto float_one = xla::ConstantR0<float>(&builder, 1.0);
   auto float_two = xla::ConstantR0<float>(&builder, 2.0);
   xla::Tuple(&builder, {float_one, float_two});
-  tensorflow::StatusOr<xla::XlaComputation> xla_computation = builder.Build();
+  absl::StatusOr<xla::XlaComputation> xla_computation = builder.Build();
   ASSERT_TRUE(xla_computation.ok());
 
   v0::Type return_type = FlatStructT(v0::DataType::DT_FLOAT, 2);
@@ -493,7 +493,7 @@ TEST_F(XLAExecutorTest, CreateAndMaterializeNoArgCallNestedTensorStructure) {
   auto float_two = xla::ConstantR0<float>(&builder, 2.0);
   auto float_three = xla::ConstantR0<float>(&builder, 3.0);
   xla::Tuple(&builder, {float_one, float_two, float_three});
-  tensorflow::StatusOr<xla::XlaComputation> xla_computation = builder.Build();
+  absl::StatusOr<xla::XlaComputation> xla_computation = builder.Build();
   ASSERT_TRUE(xla_computation.ok());
 
   // We construct a return type <tf.float32, <tf.float32, tf.float32>>
@@ -521,10 +521,9 @@ TEST_F(XLAExecutorTest, CreateAndMaterializeIdentityScalar) {
   xla::XlaOp parameter = xla::Parameter(
       &builder, 0, xla::ShapeUtil::MakeScalarShape(xla::F32), "x");
   // To mimic the Python tracing which always returns tuples, event for single
-  // element results, after passing through MLIR
-  // results are always in tuples.
+  // element results, after passing through MLIR results are always in tuples.
   xla::Tuple(&builder, {parameter});
-  tensorflow::StatusOr<xla::XlaComputation> xla_computation = builder.Build();
+  absl::StatusOr<xla::XlaComputation> xla_computation = builder.Build();
   ASSERT_TRUE(xla_computation.ok());
   v0::Type float_tensor_type = TensorT(v0::DataType::DT_FLOAT);
   v0::Type function_type = IdentityFunctionT(float_tensor_type);
@@ -545,6 +544,38 @@ TEST_F(XLAExecutorTest, CreateAndMaterializeIdentityScalar) {
   CheckMaterializeEqual(called_fn, arg_value);
 }
 
+// NOLINTBEGIN
+TEST_F(XLAExecutorTest, CreateAndMaterializeIdentitySingletonStruct) {
+  GTEST_SKIP() << "b/355521231 - re-enable once single structs work";
+  xla::XlaBuilder builder("float_scalar_singleton_struct");
+  xla::XlaOp parameter = xla::Parameter(
+      &builder, 0, xla::ShapeUtil::MakeScalarShape(xla::F32), "x");
+  // To mimic the Python tracing which always returns tuples, event for single
+  // element results, after passing through MLIR results are always in tuples.
+  xla::Tuple(&builder, {parameter});
+  absl::StatusOr<xla::XlaComputation> xla_computation = builder.Build();
+  ASSERT_TRUE(xla_computation.ok());
+  v0::Type single_float_struct_type =
+      StructT({TensorT(v0::DataType::DT_FLOAT)});
+  v0::Type function_type = IdentityFunctionT(single_float_struct_type);
+  auto binding =
+      std::get<0>(TFF_ASSERT_OK(BindingFromType(single_float_struct_type, 0)));
+  v0::Value computation = ComputationV(
+      // Identical parameter and result bindings.
+      binding, binding, std::move(*xla_computation), function_type);
+
+  v0::Value arg_value = StructV({TensorV(2.0f)});
+  TFF_ASSERT_OK_AND_ASSIGN(OwnedValueId embedded_fn,
+                           test_executor_->CreateValue(computation));
+  TFF_ASSERT_OK_AND_ASSIGN(OwnedValueId embedded_arg,
+                           test_executor_->CreateValue(arg_value));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      OwnedValueId called_fn,
+      test_executor_->CreateCall(embedded_fn.ref(), embedded_arg));
+  CheckMaterializeEqual(called_fn, arg_value);
+}
+// NOLINTEND
+
 TEST_F(XLAExecutorTest, CreateAndMaterializeIdentityNestedStruct) {
   xla::XlaBuilder builder("float_nested_struct_identity");
   auto x = xla::Parameter(&builder, 0,
@@ -554,7 +585,7 @@ TEST_F(XLAExecutorTest, CreateAndMaterializeIdentityNestedStruct) {
   auto z = xla::Parameter(&builder, 2,
                           xla::ShapeUtil::MakeScalarShape(xla::F32), "z");
   xla::Tuple(&builder, {x, y, z});
-  tensorflow::StatusOr<xla::XlaComputation> xla_computation = builder.Build();
+  absl::StatusOr<xla::XlaComputation> xla_computation = builder.Build();
   ASSERT_TRUE(xla_computation.ok());
 
   v0::Type nested_struct_type = NestedStructT(v0::DataType::DT_FLOAT);
@@ -586,7 +617,7 @@ TEST_F(XLAExecutorTest, CallAndMaterializeIdentityPartiallyNonScalarStruct) {
                           xla::ShapeUtil::MakeScalarShape(xla::F32), "x");
   auto y = xla::Parameter(&builder, 1, non_scalar_shape, "y");
   xla::Tuple(&builder, {x, y});
-  tensorflow::StatusOr<xla::XlaComputation> xla_computation = builder.Build();
+  absl::StatusOr<xla::XlaComputation> xla_computation = builder.Build();
   ASSERT_TRUE(xla_computation.ok());
 
   // Create a computation type to match the above.
@@ -620,7 +651,7 @@ TEST_F(XLAExecutorTest,
   auto z = xla::Parameter(&builder, 2,
                           xla::ShapeUtil::MakeScalarShape(xla::F32), "z");
   xla::Tuple(&builder, {x, xla::Add(y, z)});
-  tensorflow::StatusOr<xla::XlaComputation> xla_computation = builder.Build();
+  absl::StatusOr<xla::XlaComputation> xla_computation = builder.Build();
   ASSERT_TRUE(xla_computation.ok());
   v0::Type nested_struct_type = NestedStructT(v0::DataType::DT_FLOAT);
   v0::Type result_type = FlatStructT(v0::DataType::DT_FLOAT, 2);
