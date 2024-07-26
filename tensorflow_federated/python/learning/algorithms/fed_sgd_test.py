@@ -20,7 +20,7 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.core.test import static_assert
-from tensorflow_federated.python.learning import dataset_reduce
+from tensorflow_federated.python.learning import loop_builder
 from tensorflow_federated.python.learning import model_update_aggregator
 from tensorflow_federated.python.learning.algorithms import fed_sgd
 from tensorflow_federated.python.learning.metrics import aggregator
@@ -143,9 +143,9 @@ class FederatedSgdTest(tf.test.TestCase, parameterized.TestCase):
       ('non-simulation', False), ('simulation', True)
   )
   @mock.patch.object(
-      dataset_reduce,
+      loop_builder,
       '_dataset_reduce_fn',
-      wraps=dataset_reduce._dataset_reduce_fn,
+      wraps=loop_builder._dataset_reduce_fn,
   )
   @tensorflow_test_utils.skip_test_for_multi_gpu
   def test_client_tf_dataset_reduce_fn(self, simulation, mock_method):
@@ -250,9 +250,9 @@ class FunctionalFederatedSgdTest(tf.test.TestCase, parameterized.TestCase):
       ('non-simulation', False), ('simulation', True)
   )
   @mock.patch.object(
-      dataset_reduce,
+      loop_builder,
       '_dataset_reduce_fn',
-      wraps=dataset_reduce._dataset_reduce_fn,
+      wraps=loop_builder._dataset_reduce_fn,
   )
   @tensorflow_test_utils.skip_test_for_multi_gpu
   def test_client_tf_dataset_reduce_fn(self, simulation, mock_method):

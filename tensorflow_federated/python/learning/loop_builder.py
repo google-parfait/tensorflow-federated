@@ -14,11 +14,29 @@
 """Dataset reduce functions for federated optimization algorithms."""
 
 from collections.abc import Callable, Iterable
+import enum
 from typing import Any, Union
 
 import tensorflow as tf
 
 _ReduceFnCallable = Callable[[Any, tf.Tensor], Any]
+
+
+@enum.unique
+class LoopImplementation(enum.Enum):
+  """An enum to specify which implementation of the training loop to use.
+
+  Attributes:
+    DATASET_ITERATOR: A training loop that uses Dataset iterator ops. This is
+      required when running on hosts with multiple GPUs to effectively leverage
+      all GPUs on the host.
+    DATASET_REDUCE: A training loop that uses the DatasetReduce op. This is
+      required when running on hosts with TPUs to allow the MLIR Bridge to
+      compile the reduction function to XLA HLO for TPUs.
+  """
+
+  DATASET_ITERATOR = enum.auto()
+  DATASET_REDUCE = enum.auto()
 
 
 def _dataset_reduce_fn(
@@ -44,14 +62,18 @@ def _for_iter_dataset_fn(
   return update_state
 
 
-def build_dataset_reduce_fn(
-    simulation_flag: bool = True,
+def build_training_loop(
+    loop_implementation: LoopImplementation,
 ) -> Callable[
     [_ReduceFnCallable, Union[tf.data.Dataset, Iterable[Any]], Any], tf.Tensor
 ]:
   # TODO: b/162683412 - remove `Iterable` after pytype fix.
   """Returns a reduce loop function on input dataset."""
-  if simulation_flag:
+  if loop_implementation == LoopImplementation.DATASET_ITERATOR:
     return _for_iter_dataset_fn
-  else:
+  elif loop_implementation == LoopImplementation.DATASET_REDUCE:
     return _dataset_reduce_fn
+  else:
+    raise NotImplementedError(
+        f"Unknown implementation requested: {loop_implementation}"
+    )

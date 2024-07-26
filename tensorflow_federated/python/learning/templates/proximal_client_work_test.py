@@ -27,7 +27,7 @@ from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import client_weight_lib
-from tensorflow_federated.python.learning import dataset_reduce
+from tensorflow_federated.python.learning import loop_builder
 from tensorflow_federated.python.learning.models import functional
 from tensorflow_federated.python.learning.models import model_examples
 from tensorflow_federated.python.learning.models import model_weights
@@ -340,9 +340,9 @@ class ProximalClientWorkExecutionTest(tf.test.TestCase, parameterized.TestCase):
       ('non-simulation', False), ('simulation', True)
   )
   @mock.patch.object(
-      dataset_reduce,
+      loop_builder,
       '_dataset_reduce_fn',
-      wraps=dataset_reduce._dataset_reduce_fn,
+      wraps=loop_builder._dataset_reduce_fn,
   )
   def test_client_tf_dataset_reduce_fn(self, simulation, mock_method):
     client_tf = (

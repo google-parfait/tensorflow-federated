@@ -31,7 +31,7 @@ from tensorflow_federated.python.core.templates import iterative_process
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.core.test import static_assert
 from tensorflow_federated.python.learning import client_weight_lib
-from tensorflow_federated.python.learning import dataset_reduce
+from tensorflow_federated.python.learning import loop_builder
 from tensorflow_federated.python.learning import model_update_aggregator
 from tensorflow_federated.python.learning.algorithms import fed_avg
 from tensorflow_federated.python.learning.algorithms import mime
@@ -191,9 +191,9 @@ class MimeLiteClientWorkExecutionTest(tf.test.TestCase, parameterized.TestCase):
       ('non-simulation', False), ('simulation', True)
   )
   @mock.patch.object(
-      dataset_reduce,
+      loop_builder,
       '_dataset_reduce_fn',
-      wraps=dataset_reduce._dataset_reduce_fn,
+      wraps=loop_builder._dataset_reduce_fn,
   )
   @tensorflow_test_utils.skip_test_for_multi_gpu
   def test_client_tf_dataset_reduce_fn(self, simulation, mock_method):
@@ -280,9 +280,9 @@ class MimeLiteFunctionalClientWorkExecutionTest(
       ('non-simulation', False), ('simulation', True)
   )
   @mock.patch.object(
-      dataset_reduce,
+      loop_builder,
       '_dataset_reduce_fn',
-      wraps=dataset_reduce._dataset_reduce_fn,
+      wraps=loop_builder._dataset_reduce_fn,
   )
   @tensorflow_test_utils.skip_test_for_gpu
   def test_client_tf_dataset_reduce_fn(self, simulation, mock_method):
@@ -390,9 +390,9 @@ class MimeLiteTest(tf.test.TestCase, parameterized.TestCase):
       ('simulation_tff_optimizer', True),
   )
   @mock.patch.object(
-      dataset_reduce,
+      loop_builder,
       '_dataset_reduce_fn',
-      wraps=dataset_reduce._dataset_reduce_fn,
+      wraps=loop_builder._dataset_reduce_fn,
   )
   def test_client_tf_dataset_reduce_fn(self, simulation, mock_method):
     mime.build_weighted_mime_lite(

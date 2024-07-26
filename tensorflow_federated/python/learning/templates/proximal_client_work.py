@@ -34,7 +34,7 @@ from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import client_weight_lib
-from tensorflow_federated.python.learning import dataset_reduce
+from tensorflow_federated.python.learning import loop_builder
 from tensorflow_federated.python.learning import tensor_utils
 from tensorflow_federated.python.learning.metrics import aggregator
 from tensorflow_federated.python.learning.metrics import types
@@ -74,8 +74,10 @@ def build_model_delta_update_with_tff_optimizer(
     A `tf.function`.
   """
   model = model_fn()
-  dataset_reduce_fn = dataset_reduce.build_dataset_reduce_fn(
-      use_experimental_simulation_loop
+  dataset_reduce_fn = loop_builder.build_training_loop(
+      loop_builder.LoopImplementation.DATASET_ITERATOR
+      if use_experimental_simulation_loop
+      else loop_builder.LoopImplementation.DATASET_REDUCE
   )
 
   @tf.function
@@ -183,8 +185,10 @@ def build_model_delta_update_with_keras_optimizer(
     A `tf.function`.
   """
   model = model_fn()
-  dataset_reduce_fn = dataset_reduce.build_dataset_reduce_fn(
-      use_experimental_simulation_loop
+  dataset_reduce_fn = loop_builder.build_training_loop(
+      loop_builder.LoopImplementation.DATASET_ITERATOR
+      if use_experimental_simulation_loop
+      else loop_builder.LoopImplementation.DATASET_REDUCE
   )
 
   @tf.function
@@ -265,8 +269,8 @@ def _build_functional_model_delta_update(
   Returns:
     A `tf.function`.
   """
-  dataset_reduce_fn = dataset_reduce.build_dataset_reduce_fn(
-      simulation_flag=True
+  dataset_reduce_fn = loop_builder.build_training_loop(
+      loop_builder.LoopImplementation.DATASET_ITERATOR
   )
 
   @tf.function

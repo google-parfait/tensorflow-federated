@@ -21,7 +21,7 @@ import tensorflow as tf
 from tensorflow_federated.python.aggregators import factory_utils
 from tensorflow_federated.python.core.templates import iterative_process
 from tensorflow_federated.python.core.test import static_assert
-from tensorflow_federated.python.learning import dataset_reduce
+from tensorflow_federated.python.learning import loop_builder
 from tensorflow_federated.python.learning import model_update_aggregator
 from tensorflow_federated.python.learning.algorithms import fed_prox
 from tensorflow_federated.python.learning.metrics import aggregator
@@ -64,9 +64,9 @@ class FedProxConstructionTest(parameterized.TestCase):
       ('simulation_tff_optimizer', True),
   )
   @mock.patch.object(
-      dataset_reduce,
+      loop_builder,
       '_dataset_reduce_fn',
-      wraps=dataset_reduce._dataset_reduce_fn,
+      wraps=loop_builder._dataset_reduce_fn,
   )
   def test_client_tf_dataset_reduce_fn(self, simulation, mock_method):
     fed_prox.build_weighted_fed_prox(

@@ -46,14 +46,14 @@ py_library(
 )
 
 py_library(
-    name = "dataset_reduce",
-    srcs = ["dataset_reduce.py"],
+    name = "loop_builder",
+    srcs = ["loop_builder.py"],
 )
 
 py_cpu_gpu_test(
-    name = "dataset_reduce_test",
-    srcs = ["dataset_reduce_test.py"],
-    deps = [":dataset_reduce"],
+    name = "loop_builder_test",
+    srcs = ["loop_builder_test.py"],
+    deps = [":loop_builder"],
 )
 
 py_library(

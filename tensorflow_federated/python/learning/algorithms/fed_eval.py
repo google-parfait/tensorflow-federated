@@ -29,7 +29,7 @@ from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
-from tensorflow_federated.python.learning import dataset_reduce
+from tensorflow_federated.python.learning import loop_builder
 from tensorflow_federated.python.learning.metrics import sum_aggregation_factory
 from tensorflow_federated.python.learning.models import functional
 from tensorflow_federated.python.learning.models import model_weights as model_weights_lib
@@ -105,8 +105,10 @@ def _build_local_evaluation(
       else:
         return num_examples + tf.cast(model_output.num_examples, tf.int64)
 
-    dataset_reduce_fn = dataset_reduce.build_dataset_reduce_fn(
-        use_experimental_simulation_loop
+    dataset_reduce_fn = loop_builder.build_training_loop(
+        loop_builder.LoopImplementation.DATASET_ITERATOR
+        if use_experimental_simulation_loop
+        else loop_builder.LoopImplementation.DATASET_REDUCE
     )
     num_examples = dataset_reduce_fn(
         reduce_fn, dataset, lambda: tf.zeros([], dtype=tf.int64)

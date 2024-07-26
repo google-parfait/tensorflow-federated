@@ -29,7 +29,7 @@ from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_test_utils
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import client_weight_lib
-from tensorflow_federated.python.learning import dataset_reduce
+from tensorflow_federated.python.learning import loop_builder
 from tensorflow_federated.python.learning.metrics import counters
 from tensorflow_federated.python.learning.models import functional
 from tensorflow_federated.python.learning.models import keras_utils
@@ -561,9 +561,9 @@ class ModelDeltaClientWorkExecutionTest(
       ('non-simulation', False), ('simulation', True)
   )
   @mock.patch.object(
-      dataset_reduce,
+      loop_builder,
       '_dataset_reduce_fn',
-      wraps=dataset_reduce._dataset_reduce_fn,
+      wraps=loop_builder._dataset_reduce_fn,
   )
   def test_client_tf_dataset_reduce_fn(self, simulation, mock_method):
     client_tf = (

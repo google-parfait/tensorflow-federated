@@ -41,7 +41,7 @@ from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import client_weight_lib
-from tensorflow_federated.python.learning import dataset_reduce
+from tensorflow_federated.python.learning import loop_builder
 from tensorflow_federated.python.learning import tensor_utils
 from tensorflow_federated.python.learning.metrics import aggregator as metric_aggregator
 from tensorflow_federated.python.learning.metrics import types
@@ -80,8 +80,10 @@ def _build_client_update_fn_for_mime_lite(
   @tensorflow_computation.tf_computation
   def client_update_fn(global_optimizer_state, initial_weights, data):
     model = model_fn()
-    dataset_reduce_fn = dataset_reduce.build_dataset_reduce_fn(
-        use_experimental_simulation_loop
+    dataset_reduce_fn = loop_builder.build_training_loop(
+        loop_builder.LoopImplementation.DATASET_ITERATOR
+        if use_experimental_simulation_loop
+        else loop_builder.LoopImplementation.DATASET_REDUCE
     )
     weight_tensor_specs = type_conversions.type_to_tf_tensor_specs(
         model_weights_lib.weights_type_from_model(model)
@@ -320,8 +322,10 @@ def _build_functional_client_update_fn_for_mime_lite(
 
   @tensorflow_computation.tf_computation
   def client_update_fn(global_optimizer_state, incoming_weights, data):
-    dataset_reduce_fn = dataset_reduce.build_dataset_reduce_fn(
-        use_experimental_simulation_loop
+    dataset_reduce_fn = loop_builder.build_training_loop(
+        loop_builder.LoopImplementation.DATASET_ITERATOR
+        if use_experimental_simulation_loop
+        else loop_builder.LoopImplementation.DATASET_REDUCE
     )
     weight_tensor_specs = tf.nest.map_structure(
         lambda t: tf.TensorSpec(shape=t.shape, dtype=t.dtype),
