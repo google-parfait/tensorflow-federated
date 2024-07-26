@@ -51,7 +51,7 @@ def build_model_delta_update_with_tff_optimizer(
     *,
     weighting: client_weight_lib.ClientWeighting,
     delta_l2_regularizer: float,
-    use_experimental_simulation_loop: bool = False,
+    loop_implementation: loop_builder.LoopImplementation,
 ):
   """Creates client update logic in FedProx using a TFF optimizer.
 
@@ -67,17 +67,15 @@ def build_model_delta_update_with_tff_optimizer(
     weighting: A `tff.learning.ClientWeighting` value.
     delta_l2_regularizer: A nonnegative float, L2 regularization strength of the
       model delta.
-    use_experimental_simulation_loop: Controls the reduce loop function for the
-      input dataset. An experimental reduce loop is used for simulation.
+    loop_implementation: Changes the implementation of the training loop
+      generated. See `tff.learning.LoopImplementation` for more details.
 
   Returns:
     A `tf.function`.
   """
   model = model_fn()
   dataset_reduce_fn = loop_builder.build_training_loop(
-      loop_builder.LoopImplementation.DATASET_ITERATOR
-      if use_experimental_simulation_loop
-      else loop_builder.LoopImplementation.DATASET_REDUCE
+      loop_implementation=loop_implementation
   )
 
   @tf.function
@@ -164,7 +162,7 @@ def build_model_delta_update_with_keras_optimizer(
     model_fn,
     weighting,
     delta_l2_regularizer,
-    use_experimental_simulation_loop: bool = False,
+    loop_implementation: loop_builder.LoopImplementation,
 ):
   """Creates client update logic in FedProx using a `tf.keras` optimizer.
 
@@ -178,17 +176,15 @@ def build_model_delta_update_with_keras_optimizer(
     weighting: A `tff.learning.ClientWeighting` value.
     delta_l2_regularizer: A nonnegative float, L2 regularization strength of the
       model delta.
-    use_experimental_simulation_loop: Controls the reduce loop function for the
-      input dataset. An experimental reduce loop is used for simulation.
+    loop_implementation: Changes the implementation of the training loop
+      generated. See `tff.learning.LoopImplementation` for more details.
 
   Returns:
     A `tf.function`.
   """
   model = model_fn()
   dataset_reduce_fn = loop_builder.build_training_loop(
-      loop_builder.LoopImplementation.DATASET_ITERATOR
-      if use_experimental_simulation_loop
-      else loop_builder.LoopImplementation.DATASET_REDUCE
+      loop_implementation=loop_implementation
   )
 
   @tf.function
@@ -392,7 +388,7 @@ def build_model_delta_client_work(
     delta_l2_regularizer: float,
     metrics_aggregator: Optional[types.MetricsAggregatorType] = None,
     *,
-    use_experimental_simulation_loop: bool = False,
+    loop_implementation: loop_builder.LoopImplementation,
 ) -> client_works.ClientWorkProcess:
   """Creates a `ClientWorkProcess` for the FedProx algorithm.
 
@@ -430,10 +426,8 @@ def build_model_delta_client_work(
       `tff.learning.models.VariableModel.report_local_unfinalized_metrics()`),
       and returns a `tff.Computation` for aggregating the unfinalized metrics.
       If `None`, this is set to `tff.learning.metrics.sum_then_finalize`.
-    use_experimental_simulation_loop: Controls the reduce loop function for
-      input dataset. An experimental reduce loop is used for simulation. It is
-      currently necessary to set this flag to True for performant GPU
-      simulations.
+    loop_implementation: Changes the implementation of the training loop
+      generated. See `tff.learning.LoopImplementation` for more details.
 
   Returns:
     A `ClientWorkProcess`.
@@ -480,7 +474,7 @@ def build_model_delta_client_work(
           model_fn=model_fn,
           weighting=client_weighting,
           delta_l2_regularizer=delta_l2_regularizer,
-          use_experimental_simulation_loop=use_experimental_simulation_loop,
+          loop_implementation=loop_implementation,
       )
       return client_update(optimizer, initial_model_weights, dataset)
 
@@ -493,7 +487,7 @@ def build_model_delta_client_work(
           model_fn=model_fn,
           weighting=client_weighting,
           delta_l2_regularizer=delta_l2_regularizer,
-          use_experimental_simulation_loop=use_experimental_simulation_loop,
+          loop_implementation=loop_implementation,
       )
       return client_update(keras_optimizer, initial_model_weights, dataset)
 

@@ -30,6 +30,7 @@ py_library(
     deps = [
         ":client_weight_lib",
         ":debug_measurements",
+        ":loop_builder",
         ":model_update_aggregator",
         "//tensorflow_federated/python/learning/algorithms",
         "//tensorflow_federated/python/learning/metrics",

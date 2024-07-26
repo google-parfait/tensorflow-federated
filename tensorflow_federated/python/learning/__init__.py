@@ -45,6 +45,7 @@ from tensorflow_federated.python.learning import templates
 from tensorflow_federated.python.learning.client_weight_lib import ClientWeighting
 from tensorflow_federated.python.learning.debug_measurements import add_debug_measurements
 from tensorflow_federated.python.learning.debug_measurements import add_debug_measurements_with_mixed_dtype
+from tensorflow_federated.python.learning.loop_builder import LoopImplementation
 from tensorflow_federated.python.learning.model_update_aggregator import compression_aggregator
 from tensorflow_federated.python.learning.model_update_aggregator import ddp_secure_aggregator
 from tensorflow_federated.python.learning.model_update_aggregator import dp_aggregator

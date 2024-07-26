@@ -19,10 +19,10 @@ from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
-from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.templates import errors
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning.templates import hparams_base
+from tensorflow_federated.python.learning.templates import type_checks
 
 
 class ClientResult(NamedTuple):
@@ -42,20 +42,6 @@ class ClientDataTypeError(TypeError):
 
 class ClientResultTypeError(TypeError):
   """`TypeError` for incorrect structure of result of client work."""
-
-
-# TODO: b/240314933 - Move this (or refactor this) to a more general location.
-def _is_allowed_client_data_type(type_spec: computation_types.Type) -> bool:
-  """Determines whether a given type is a (possibly nested) sequence type."""
-  if isinstance(type_spec, computation_types.SequenceType):
-    return type_analysis.is_tensorflow_compatible_type(type_spec.element)
-  elif isinstance(type_spec, computation_types.StructType):
-    return all(
-        _is_allowed_client_data_type(element_type)
-        for element_type in type_spec.children()
-    )
-  else:
-    return False
 
 
 # TODO: b/240314933 - Move this (or refactor this) to a more general location.
@@ -122,16 +108,7 @@ def _type_check_next_fn_parameters(next_fn: computation_base.Computation):
         'The second input argument of `next_fn` must be placed at CLIENTS '
         f'but found {second_next_param}.'
     )
-  if client_data_param.placement != placements.CLIENTS:
-    raise errors.TemplatePlacementError(
-        'The third input argument of `next_fn` must be placed at CLIENTS '
-        f'but found {client_data_param}.'
-    )
-  if not _is_allowed_client_data_type(client_data_param.member):
-    raise ClientDataTypeError(
-        'The third input argument of `next_fn` must be a sequence or '
-        f'a structure of squences, but found {client_data_param}.'
-    )
+  type_checks.check_is_client_placed_structure_of_sequences(client_data_param)
 
 
 # TODO: b/240314933 - Move this (or refactor this) to a more general location.

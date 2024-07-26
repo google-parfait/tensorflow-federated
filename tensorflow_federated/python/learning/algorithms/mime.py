@@ -73,7 +73,7 @@ def _build_client_update_fn_for_mime_lite(
     model_fn: Callable[[], variable.VariableModel],
     optimizer: optimizer_base.Optimizer,
     client_weighting: client_weight_lib.ClientWeighting,
-    use_experimental_simulation_loop: bool = False,
+    loop_implementation: loop_builder.LoopImplementation,
 ):
   """Builds the `tf_computation` for Mime Lite client training."""
 
@@ -81,9 +81,7 @@ def _build_client_update_fn_for_mime_lite(
   def client_update_fn(global_optimizer_state, initial_weights, data):
     model = model_fn()
     dataset_reduce_fn = loop_builder.build_training_loop(
-        loop_builder.LoopImplementation.DATASET_ITERATOR
-        if use_experimental_simulation_loop
-        else loop_builder.LoopImplementation.DATASET_REDUCE
+        loop_implementation=loop_implementation
     )
     weight_tensor_specs = type_conversions.type_to_tf_tensor_specs(
         model_weights_lib.weights_type_from_model(model)
@@ -192,7 +190,7 @@ def _build_mime_lite_client_work(
         factory.WeightedAggregationFactory
     ] = None,
     metrics_aggregator: Optional[types.MetricsAggregatorType] = None,
-    use_experimental_simulation_loop: bool = False,
+    loop_implementation: loop_builder.LoopImplementation = loop_builder.LoopImplementation.DATASET_REDUCE,
 ) -> client_works.ClientWorkProcess:
   """Creates a `ClientWorkProcess` for Mime Lite.
 
@@ -218,10 +216,8 @@ def _build_mime_lite_client_work(
       `tff.learning.models.VariableModel.report_local_unfinalized_metrics()`),
       and returns a `tff.Computation` for aggregating the unfinalized metrics.
       If `None`, this is set to `tff.learning.metrics.sum_then_finalize`.
-    use_experimental_simulation_loop: Controls the reduce loop function for
-      input dataset. An experimental reduce loop is used for simulation. It is
-      currently necessary to set this flag to True for performant GPU
-      simulations.
+    loop_implementation: Changes the implementation of the training loop
+      generated. See `tff.learning.LoopImplementation` for more details.
 
   Returns:
     A `ClientWorkProcess`.
@@ -265,7 +261,10 @@ def _build_mime_lite_client_work(
     return intrinsics.federated_zip((optimizer_state, aggregator_state))
 
   client_update_fn = _build_client_update_fn_for_mime_lite(
-      model_fn, optimizer, client_weighting, use_experimental_simulation_loop
+      model_fn,
+      optimizer,
+      client_weighting,
+      loop_implementation=loop_implementation,
   )
 
   @tensorflow_computation.tf_computation(
@@ -316,16 +315,14 @@ def _build_functional_client_update_fn_for_mime_lite(
     model: functional.FunctionalModel,
     optimizer: optimizer_base.Optimizer,
     client_weighting: client_weight_lib.ClientWeighting,
-    use_experimental_simulation_loop: bool = False,
+    loop_implementation: loop_builder.LoopImplementation,
 ) -> Callable[..., Any]:
   """Builds the `tf_computation` for client training for FunctionalModels."""
 
   @tensorflow_computation.tf_computation
   def client_update_fn(global_optimizer_state, incoming_weights, data):
     dataset_reduce_fn = loop_builder.build_training_loop(
-        loop_builder.LoopImplementation.DATASET_ITERATOR
-        if use_experimental_simulation_loop
-        else loop_builder.LoopImplementation.DATASET_REDUCE
+        loop_implementation=loop_implementation
     )
     weight_tensor_specs = tf.nest.map_structure(
         lambda t: tf.TensorSpec(shape=t.shape, dtype=t.dtype),
@@ -481,7 +478,7 @@ def _build_mime_lite_functional_client_work(
         factory.WeightedAggregationFactory
     ] = None,
     metrics_aggregator: Optional[types.MetricsAggregatorType] = None,
-    use_experimental_simulation_loop: bool = False,
+    loop_implementation: loop_builder.LoopImplementation = loop_builder.LoopImplementation.DATASET_REDUCE,
 ) -> client_works.ClientWorkProcess:
   """Creates a `ClientWorkProcess` for MimeLite with FunctionalModels.
 
@@ -503,10 +500,8 @@ def _build_mime_lite_functional_client_work(
       `tff.learning.models.VariableModel.report_local_unfinalized_metrics()`),
       and returns a `tff.Computation` for aggregating the unfinalized metrics.
       If `None`, this is set to `tff.learning.metrics.sum_then_finalize`.
-    use_experimental_simulation_loop: Controls the reduce loop function for
-      input dataset. An experimental reduce loop is used for simulation. It is
-      currently necessary to set this flag to True for performant GPU
-      simulations.
+    loop_implementation: Changes the implementation of the training loop
+      generated. See `tff.learning.LoopImplementation` for more details.
 
   Returns:
     A `ClientWorkProcess`.
@@ -558,7 +553,7 @@ def _build_mime_lite_functional_client_work(
       model=model,
       optimizer=optimizer,
       client_weighting=client_weighting,
-      use_experimental_simulation_loop=use_experimental_simulation_loop,
+      loop_implementation=loop_implementation,
   )
 
   aggregator_state_type, _ = init_fn.type_signature.result.member
@@ -624,7 +619,7 @@ def _build_scheduled_mime_lite_client_work(
         factory.WeightedAggregationFactory
     ] = None,
     metrics_aggregator: Optional[types.MetricsAggregatorType] = None,
-    use_experimental_simulation_loop: bool = False,
+    loop_implementation: loop_builder.LoopImplementation = loop_builder.LoopImplementation.DATASET_REDUCE,
 ) -> client_works.ClientWorkProcess:
   """Creates `ClientWorkProcess` for Mimelite with learning rate schedule.
 
@@ -654,10 +649,8 @@ def _build_scheduled_mime_lite_client_work(
       `tff.learning.models.VariableModel.report_local_unfinalized_metrics()`),
       and returns a `tff.Computation` for aggregating the unfinalized metrics.
       If `None`, this is set to `tff.learning.metrics.sum_then_finalize`.
-    use_experimental_simulation_loop: Controls the reduce loop function for
-      input dataset. An experimental reduce loop is used for simulation. It is
-      currently necessary to set this flag to True for performant GPU
-      simulations.
+    loop_implementation: Changes the implementation of the training loop
+      generated. See `tff.learning.LoopImplementation` for more details.
 
   Returns:
     A `ClientWorkProcess`.
@@ -669,7 +662,7 @@ def _build_scheduled_mime_lite_client_work(
         client_weighting,
         full_gradient_aggregator,
         metrics_aggregator,
-        use_experimental_simulation_loop,
+        loop_implementation=loop_implementation,
     )
   elif isinstance(model_fn, functional.FunctionalModel):
     client_work = _build_mime_lite_functional_client_work(
@@ -678,7 +671,7 @@ def _build_scheduled_mime_lite_client_work(
         client_weighting,
         full_gradient_aggregator,
         metrics_aggregator,
-        use_experimental_simulation_loop,
+        loop_implementation=loop_implementation,
     )
   else:
     raise TypeError(
@@ -754,7 +747,7 @@ def build_weighted_mime_lite(
         factory.WeightedAggregationFactory
     ] = None,
     metrics_aggregator: Optional[types.MetricsAggregatorType] = None,
-    use_experimental_simulation_loop: bool = False,
+    loop_implementation: loop_builder.LoopImplementation = loop_builder.LoopImplementation.DATASET_REDUCE,
 ) -> learning_process.LearningProcess:
   """Builds a learning process that performs Mime Lite.
 
@@ -842,10 +835,8 @@ def build_weighted_mime_lite(
       `tff.learning.models.VariableModel.report_local_unfinalized_metrics()`),
       and returns a `tff.Computation` for aggregating the unfinalized metrics.
       If `None`, this is set to `tff.learning.metrics.sum_then_finalize`.
-    use_experimental_simulation_loop: Controls the reduce loop function for
-      input dataset. An experimental reduce loop is used for simulation. It is
-      currently necessary to set this flag to True for performant GPU
-      simulations.
+    loop_implementation: Changes the implementation of the training loop
+      generated. See `tff.learning.LoopImplementation` for more details.
 
   Returns:
     A `tff.learning.templates.LearningProcess`.
@@ -904,7 +895,7 @@ def build_weighted_mime_lite(
         client_weighting=client_weighting,
         full_gradient_aggregator=full_gradient_aggregator,
         metrics_aggregator=metrics_aggregator,
-        use_experimental_simulation_loop=use_experimental_simulation_loop,
+        loop_implementation=loop_implementation,
     )
   elif isinstance(model_fn, functional.FunctionalModel):
     client_work = _build_mime_lite_functional_client_work(
@@ -913,7 +904,7 @@ def build_weighted_mime_lite(
         client_weighting=client_weighting,
         full_gradient_aggregator=full_gradient_aggregator,
         metrics_aggregator=metrics_aggregator,
-        use_experimental_simulation_loop=use_experimental_simulation_loop,
+        loop_implementation=loop_implementation,
     )
   else:
     raise TypeError(
@@ -943,7 +934,7 @@ def build_unweighted_mime_lite(
         factory.UnweightedAggregationFactory
     ] = None,
     metrics_aggregator: types.MetricsAggregatorType = metric_aggregator.sum_then_finalize,
-    use_experimental_simulation_loop: bool = False,
+    loop_implementation: loop_builder.LoopImplementation = loop_builder.LoopImplementation.DATASET_REDUCE,
 ) -> learning_process.LearningProcess:
   """Builds a learning process that performs Mime Lite.
 
@@ -1025,10 +1016,8 @@ def build_unweighted_mime_lite(
       `tff.learning.models.VariableModel.report_local_unfinalized_metrics()`),
       and returns a `tff.Computation` for aggregating the unfinalized metrics.
       If `None`, this is set to `tff.learning.metrics.sum_then_finalize`.
-    use_experimental_simulation_loop: Controls the reduce loop function for
-      input dataset. An experimental reduce loop is used for simulation. It is
-      currently necessary to set this flag to True for performant GPU
-      simulations.
+    loop_implementation: Changes the implementation of the training loop
+      generated. See `tff.learning.LoopImplementation` for more details.
 
   Returns:
     A `tff.learning.templates.LearningProcess`.
@@ -1055,7 +1044,7 @@ def build_unweighted_mime_lite(
           full_gradient_aggregator
       ),
       metrics_aggregator=metrics_aggregator,
-      use_experimental_simulation_loop=use_experimental_simulation_loop,
+      loop_implementation=loop_implementation,
   )
 
 
@@ -1075,7 +1064,7 @@ def build_mime_lite_with_optimizer_schedule(
         factory.WeightedAggregationFactory
     ] = None,
     metrics_aggregator: Optional[types.MetricsAggregatorType] = None,
-    use_experimental_simulation_loop: bool = False,
+    loop_implementation: loop_builder.LoopImplementation = loop_builder.LoopImplementation.DATASET_REDUCE,
 ) -> learning_process.LearningProcess:
   """Builds a learning process for Mime Lite with optimizer scheduling.
 
@@ -1167,10 +1156,8 @@ def build_mime_lite_with_optimizer_schedule(
       `tff.learning.models.VariableModel.report_local_unfinalized_metrics()`),
       and returns a `tff.Computation` for aggregating the unfinalized metrics.
       If `None`, this is set to `tff.learning.metrics.sum_then_finalize`.
-    use_experimental_simulation_loop: Controls the reduce loop function for
-      input dataset. An experimental reduce loop is used for simulation. It is
-      currently necessary to set this flag to True for performant GPU
-      simulations.
+    loop_implementation: Changes the implementation of the training loop
+      generated. See `tff.learning.LoopImplementation` for more details.
 
   Returns:
     A `tff.learning.templates.LearningProcess`.
@@ -1229,7 +1216,7 @@ def build_mime_lite_with_optimizer_schedule(
       client_weighting=client_weighting,
       full_gradient_aggregator=full_gradient_aggregator,
       metrics_aggregator=metrics_aggregator,
-      use_experimental_simulation_loop=use_experimental_simulation_loop,
+      loop_implementation=loop_implementation,
   )
   finalizer = apply_optimizer_finalizer.build_apply_optimizer_finalizer(
       server_optimizer, model_weights_type
