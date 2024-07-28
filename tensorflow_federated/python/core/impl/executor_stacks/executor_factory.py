@@ -60,6 +60,7 @@ def local_cpp_executor_factory(
   Raises:
     RuntimeError: If an internal C++ worker binary can not be found.
   """
+  print('dalyk in local_cpp_executor_factory')
 
   # This path is specified relative to this file because the relative location
   # of the worker binary will remain the same when this function is executed
