@@ -8,6 +8,8 @@ and this project adheres to
 
 ## Unreleased
 
+## Release 0.84.0
+
 ### Added
 
 *   Added some TFF executor classes to the public API (`ComposingExecutor`,
