@@ -44,6 +44,11 @@ class DatasetReduceTest(tf.test.TestCase, parameterized.TestCase):
           loop_builder.LoopImplementation.DATASET_REDUCE,
           loop_builder._dataset_reduce_fn,
       ),
+      (
+          'slice_iteration',
+          loop_builder.LoopImplementation.SLICE_FOLDL,
+          loop_builder._slice_foldl_fn,
+      ),
   )
   def test_build_training_loop(self, implementation, reduce_fn):
     dataset_reduce_fn = loop_builder.build_training_loop(implementation)
@@ -65,6 +70,23 @@ class DatasetReduceTest(tf.test.TestCase, parameterized.TestCase):
       total_cnt, total_sum = reduce_fn(
           reduce_fn=lambda x, y: (x[0] + 1, x[1] + y),
           dataset=ds,
+          initial_state_fn=lambda: (tf.constant(0.0), tf.constant(0.1)),
+      )
+      self.assertEqual(total_cnt, np.float32(10))
+      self.assertEqual(total_sum, np.float32(4.6))
+
+  def test_reduction_math_is_correct_slice_fold(self):
+    with self.subTest('single_tensor'):
+      ds = tf.range(10, dtype=tf.int32)
+      total_sum = loop_builder._slice_foldl_fn(
+          reduce_fn=lambda x, y: x + y, dataset_as_arrays=ds
+      )
+      self.assertEqual(total_sum, np.int32(45))
+    with self.subTest('structure_of_tensors'):
+      ds = tf.range(10, dtype=tf.float32) * 0.1
+      total_cnt, total_sum = loop_builder._slice_foldl_fn(
+          reduce_fn=lambda x, y: (x[0] + 1, x[1] + y),
+          dataset_as_arrays=ds,
           initial_state_fn=lambda: (tf.constant(0.0), tf.constant(0.1)),
       )
       self.assertEqual(total_cnt, np.float32(10))

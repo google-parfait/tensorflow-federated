@@ -33,10 +33,18 @@ class LoopImplementation(enum.Enum):
     DATASET_REDUCE: A training loop that uses the DatasetReduce op. This is
       required when running on hosts with TPUs to allow the MLIR Bridge to
       compile the reduction function to XLA HLO for TPUs.
+    SLICE_FOLDL: A training loop that expects a nested structure of tensors
+      representing all the steps of the dataset such that iterating over the 0th
+      dimension is equivalent to iterating over the dataset. These tensors
+      should be in the shape `[<# of batches>, <batch size>, <... examples shape
+      ... >]`, so that the size of the dataset is `# of batches * batch size`.
+      Note: this loop implementation requires either padding out the last batch
+        or discarding partial batches.
   """
 
   DATASET_ITERATOR = enum.auto()
   DATASET_REDUCE = enum.auto()
+  SLICE_FOLDL = enum.auto()
 
 
 def _dataset_reduce_fn(
@@ -62,6 +70,25 @@ def _for_iter_dataset_fn(
   return update_state
 
 
+def _slice_foldl_fn(
+    reduce_fn: _ReduceFnCallable,
+    dataset_as_arrays: Any,
+    initial_state_fn: Callable[[], Any] = lambda: tf.constant(0),
+) -> Any:
+  """Applies a reduction across the slices of `dataset_as_arrays`."""
+  return tf.foldl(
+      fn=reduce_fn,
+      elems=dataset_as_arrays,
+      initializer=initial_state_fn(),
+      # Since `reduce_fn` is generally a training step, future steps depend
+      # on the model weights updated in the previous step setting up a data
+      # dependency on execution. Parallelism here will allow any next step
+      # "pre-work" to occur, but we limited to 2 steps at a time to put a cap on
+      # memory usage.
+      parallel_iterations=2,
+  )
+
+
 def build_training_loop(
     loop_implementation: LoopImplementation,
 ) -> Callable[
@@ -73,6 +100,8 @@ def build_training_loop(
     return _for_iter_dataset_fn
   elif loop_implementation == LoopImplementation.DATASET_REDUCE:
     return _dataset_reduce_fn
+  elif loop_implementation == LoopImplementation.SLICE_FOLDL:
+    return _slice_foldl_fn
   else:
     raise NotImplementedError(
         f"Unknown implementation requested: {loop_implementation}"

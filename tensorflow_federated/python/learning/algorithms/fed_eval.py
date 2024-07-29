@@ -48,7 +48,7 @@ def _build_local_evaluation(
     model_fn: Callable[[], variable.VariableModel],
     model_weights_type: computation_types.StructType,
     batch_type: computation_types.Type,
-    use_experimental_simulation_loop: bool = False,
+    loop_implementation: loop_builder.LoopImplementation,
 ) -> computation_base.Computation:
   """Builds the local TFF computation for evaluation of the given model.
 
@@ -72,8 +72,8 @@ def _build_local_evaluation(
     model_weights_type: The `tff.Type` of the model parameters that will be used
       to initialize the model during evaluation.
     batch_type: The type of one entry in the dataset.
-    use_experimental_simulation_loop: Controls the reduce loop function for
-      input dataset. An experimental reduce loop is used for simulation.
+    loop_implementation: Changes the implementation of the training loop
+      generated. See `tff.learning.LoopImplementation` for more details.
 
   Returns:
     A federated computation (an instance of `tff.Computation`) that accepts
@@ -106,9 +106,7 @@ def _build_local_evaluation(
         return num_examples + tf.cast(model_output.num_examples, tf.int64)
 
     dataset_reduce_fn = loop_builder.build_training_loop(
-        loop_builder.LoopImplementation.DATASET_ITERATOR
-        if use_experimental_simulation_loop
-        else loop_builder.LoopImplementation.DATASET_REDUCE
+        loop_implementation=loop_implementation
     )
     num_examples = dataset_reduce_fn(
         reduce_fn, dataset, lambda: tf.zeros([], dtype=tf.int64)
@@ -194,7 +192,7 @@ def _build_fed_eval_client_work(
     model_fn: Callable[[], variable.VariableModel],
     metrics_aggregation_process: Optional[_AggregationProcess],
     model_weights_type: computation_types.StructType,
-    use_experimental_simulation_loop: bool = False,
+    loop_implementation: loop_builder.LoopImplementation,
 ) -> client_works.ClientWorkProcess:
   """Builds a `ClientWorkProcess` that performs model evaluation at clients."""
 
@@ -233,7 +231,10 @@ def _build_fed_eval_client_work(
     return metrics_aggregation_process.initialize()
 
   client_update_computation = _build_local_evaluation(
-      model_fn, model_weights_type, batch_type, use_experimental_simulation_loop
+      model_fn,
+      model_weights_type,
+      batch_type,
+      loop_implementation=loop_implementation,
   )
 
   @federated_computation.federated_computation(
@@ -359,7 +360,7 @@ def build_fed_eval(
     metrics_aggregation_process: Optional[
         aggregation_process.AggregationProcess
     ] = None,
-    use_experimental_simulation_loop: bool = False,
+    loop_implementation: loop_builder.LoopImplementation = loop_builder.LoopImplementation.DATASET_REDUCE,
 ) -> learning_process.LearningProcess:
   """Builds a learning process that performs federated evaluation.
 
@@ -416,8 +417,8 @@ def build_fed_eval(
       None, the `tff.templates.AggregationProcess` created by the
       `SumThenFinalizeFactory` with metric finalizers defined in the model is
       used.
-    use_experimental_simulation_loop: Controls the reduce loop function for
-      input dataset. An experimental reduce loop is used for simulation.
+    loop_implementation: Changes the implementation of the training loop
+      generated. See `tff.learning.LoopImplementation` for more details.
 
   Returns:
     A `tff.learning.templates.LearningProcess` performs federated evaluation on
@@ -467,7 +468,7 @@ def build_fed_eval(
         model_fn,
         metrics_aggregation_process,
         model_weights_type,
-        use_experimental_simulation_loop,
+        loop_implementation=loop_implementation,
     )
 
   client_work_result_type = computation_types.FederatedType(

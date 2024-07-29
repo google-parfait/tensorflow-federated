@@ -14,11 +14,15 @@
 
 from unittest import mock
 
-from absl.testing import absltest
 from absl.testing import parameterized
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory_utils
+from tensorflow_federated.python.core.backends.native import execution_contexts
+from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.core.impl.types import placements
+from tensorflow_federated.python.core.impl.types import type_test_utils
 from tensorflow_federated.python.core.test import static_assert
 from tensorflow_federated.python.learning import loop_builder
 from tensorflow_federated.python.learning import model_update_aggregator
@@ -29,7 +33,16 @@ from tensorflow_federated.python.learning.models import test_models
 from tensorflow_federated.python.learning.optimizers import sgdm
 
 
-class FedAvgTest(parameterized.TestCase):
+def _create_client_dataset(*, num_batches: int, batch_size: int):
+  return {
+      'x': np.ones(shape=[num_batches, batch_size, 2], dtype=np.float32),
+      'y': (
+          np.zeros(shape=[num_batches, batch_size, 1], dtype=np.float32) + 0.01
+      ),
+  }
+
+
+class FedAvgTest(tf.test.TestCase, parameterized.TestCase):
   """Tests construction of the FedAvg training process."""
 
   @parameterized.product(
@@ -56,24 +69,96 @@ class FedAvgTest(parameterized.TestCase):
     self.assertEqual(mock_model_fn.call_count, 3)
 
   @parameterized.named_parameters(
-      ('non-simulation_tff_optimizer', False),
-      ('simulation_tff_optimizer', True),
+      ('dataset_reduce', loop_builder.LoopImplementation.DATASET_REDUCE),
+      ('dataset_iterator', loop_builder.LoopImplementation.DATASET_ITERATOR),
   )
   @mock.patch.object(
       loop_builder,
-      '_dataset_reduce_fn',
-      wraps=loop_builder._dataset_reduce_fn,
+      'build_training_loop',
+      wraps=loop_builder.build_training_loop,
   )
-  def test_client_tf_dataset_reduce_fn(self, simulation, mock_method):
+  def test_client_tf_dataset_reduce_fn(self, loop_implementation, mock_method):
     fed_avg.build_weighted_fed_avg(
         model_fn=model_examples.LinearRegression,
         client_optimizer_fn=sgdm.build_sgdm(1.0),
-        use_experimental_simulation_loop=simulation,
+        loop_implementation=loop_implementation,
     )
-    if simulation:
-      mock_method.assert_not_called()
-    else:
-      mock_method.assert_called()
+    mock_method.assert_called_once_with(loop_implementation=loop_implementation)
+
+  def test_client_slice_foldl_reduce(self):
+    learning_process = fed_avg.build_weighted_fed_avg(
+        model_fn=model_examples.LinearRegression,
+        client_optimizer_fn=sgdm.build_sgdm(1.0),
+        loop_implementation=loop_builder.LoopImplementation.SLICE_FOLDL,
+    )
+    type_test_utils.assert_types_equivalent(
+        learning_process.next.type_signature.parameter[1],
+        computation_types.FederatedType(
+            {
+                'x': computation_types.TensorType(
+                    shape=(None, None, 2), dtype=np.float32
+                ),
+                'y': computation_types.TensorType(
+                    shape=(None, None, 1), dtype=np.float32
+                ),
+            },
+            placements.CLIENTS,
+        ),
+    )
+    num_batches = 4
+    batch_size = 8
+    dataset_as_arrays = {
+        'x': np.ones(shape=[num_batches, batch_size, 2], dtype=np.float32),
+        'y': (
+            np.zeros(shape=[num_batches, batch_size, 1], dtype=np.float32)
+            + 0.01
+        ),
+    }
+    state = learning_process.initialize()
+    output = learning_process.next(state, [dataset_as_arrays])
+    self.assertEqual(output.metrics['client_work']['train']['num_examples'], 32)
+    self.assertGreater(output.metrics['client_work']['train']['loss'], 0.0)
+
+  def test_training_loops_produce_same_result(self):
+    num_rounds = 3
+    client_dataset_arrays = [
+        _create_client_dataset(num_batches=4, batch_size=2),
+        _create_client_dataset(num_batches=2, batch_size=2),
+    ]
+    client_datasets = [
+        tf.data.Dataset.from_tensor_slices(arrays)
+        for arrays in client_dataset_arrays
+    ]
+    outputs = []
+    for loop_implementation in [
+        loop_builder.LoopImplementation.DATASET_REDUCE,
+        loop_builder.LoopImplementation.DATASET_ITERATOR,
+    ]:
+      learning_process = fed_avg.build_weighted_fed_avg(
+          model_fn=model_examples.LinearRegression,
+          client_optimizer_fn=sgdm.build_sgdm(1.0),
+          loop_implementation=loop_implementation,
+      )
+      state = learning_process.initialize()
+      for _ in range(num_rounds):
+        output = learning_process.next(state, client_datasets)
+        state = output.state
+      outputs.append(output)
+    for loop_implementation in [
+        loop_builder.LoopImplementation.SLICE_FOLDL,
+    ]:
+      learning_process = fed_avg.build_weighted_fed_avg(
+          model_fn=model_examples.LinearRegression,
+          client_optimizer_fn=sgdm.build_sgdm(1.0),
+          loop_implementation=loop_implementation,
+      )
+      state = learning_process.initialize()
+      for _ in range(num_rounds):
+        output = learning_process.next(state, client_dataset_arrays)
+        state = output.state
+      outputs.append(output)
+    for a, b in zip(outputs, outputs[1:]):
+      self.assertAllClose(a, b)
 
   @mock.patch.object(fed_avg, 'build_weighted_fed_avg')
   def test_build_weighted_fed_avg_called_by_unweighted_fed_avg(
@@ -214,4 +299,5 @@ class FunctionalFedAvgTest(parameterized.TestCase):
 
 
 if __name__ == '__main__':
-  absltest.main()
+  execution_contexts.set_sync_local_cpp_execution_context()
+  tf.test.main()

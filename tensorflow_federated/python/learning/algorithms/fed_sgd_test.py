@@ -88,14 +88,14 @@ def _initial_weights_unconnected() -> model_weights.ModelWeights:
 class FederatedSgdTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
-      ('non-simulation', False),
-      ('simulation', True),
+      ('dataset_reduce', loop_builder.LoopImplementation.DATASET_REDUCE),
+      ('dataset_iterator', loop_builder.LoopImplementation.DATASET_ITERATOR),
   )
   @tensorflow_test_utils.skip_test_for_multi_gpu
-  def test_client_update(self, simulation):
+  def test_client_update(self, loop_implementation):
     dataset = _dataset()
     client_update = fed_sgd._build_client_update(
-        _model_fn(), use_experimental_simulation_loop=simulation
+        _model_fn(), loop_implementation=loop_implementation
     )
     client_result, model_output = client_update(_initial_weights(), dataset)
 
@@ -106,14 +106,14 @@ class FederatedSgdTest(tf.test.TestCase, parameterized.TestCase):
     self.assertDictContainsSubset({'num_examples': 8}, model_output)
 
   @parameterized.named_parameters(
-      ('non-simulation', False),
-      ('simulation', True),
+      ('dataset_reduce', loop_builder.LoopImplementation.DATASET_REDUCE),
+      ('dataset_iterator', loop_builder.LoopImplementation.DATASET_ITERATOR),
   )
   @tensorflow_test_utils.skip_test_for_multi_gpu
-  def test_client_update_with_unconnected_weights(self, simulation):
+  def test_client_update_with_unconnected_weights(self, loop_implementation):
     dataset = _dataset()
     client_update = fed_sgd._build_client_update(
-        _model_fn_unconnected(), use_experimental_simulation_loop=simulation
+        _model_fn_unconnected(), loop_implementation=loop_implementation
     )
     client_result, model_output = client_update(
         _initial_weights_unconnected(), dataset
@@ -129,7 +129,8 @@ class FederatedSgdTest(tf.test.TestCase, parameterized.TestCase):
   def test_non_finite_aggregation(self, bad_value):
     dataset = _dataset()
     client_update = fed_sgd._build_client_update(
-        _model_fn(), use_experimental_simulation_loop=False
+        _model_fn(),
+        loop_implementation=loop_builder.LoopImplementation.DATASET_REDUCE,
     )
     init_weights = _initial_weights()
     init_weights.trainable[1] = bad_value
@@ -140,24 +141,22 @@ class FederatedSgdTest(tf.test.TestCase, parameterized.TestCase):
     )
 
   @parameterized.named_parameters(
-      ('non-simulation', False), ('simulation', True)
+      ('dataset_reduce', loop_builder.LoopImplementation.DATASET_REDUCE),
+      ('dataset_iterator', loop_builder.LoopImplementation.DATASET_ITERATOR),
   )
   @mock.patch.object(
       loop_builder,
-      '_dataset_reduce_fn',
-      wraps=loop_builder._dataset_reduce_fn,
+      'build_training_loop',
+      wraps=loop_builder.build_training_loop,
   )
   @tensorflow_test_utils.skip_test_for_multi_gpu
-  def test_client_tf_dataset_reduce_fn(self, simulation, mock_method):
+  def test_client_tf_dataset_reduce_fn(self, loop_implementation, mock_method):
     dataset = _dataset()
     client_update = fed_sgd._build_client_update(
-        _model_fn(), use_experimental_simulation_loop=simulation
+        _model_fn(), loop_implementation=loop_implementation
     )
     client_update(_initial_weights(), dataset)
-    if simulation:
-      mock_method.assert_not_called()
-    else:
-      mock_method.assert_called()
+    mock_method.assert_called_once_with(loop_implementation=loop_implementation)
 
   @parameterized.named_parameters(
       ('robust_aggregator', model_update_aggregator.robust_aggregator),
@@ -193,15 +192,15 @@ class FederatedSgdTest(tf.test.TestCase, parameterized.TestCase):
 class FunctionalFederatedSgdTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
-      ('non-simulation', False),
-      ('simulation', True),
+      ('dataset_reduce', loop_builder.LoopImplementation.DATASET_REDUCE),
+      ('dataset_iterator', loop_builder.LoopImplementation.DATASET_ITERATOR),
   )
   @tensorflow_test_utils.skip_test_for_multi_gpu
-  def test_client_update(self, simulation):
+  def test_client_update(self, loop_implementation):
     dataset = _dataset()
     model = _build_functional_model()
     client_update = fed_sgd._build_functional_client_update(
-        model, use_experimental_simulation_loop=simulation
+        model, loop_implementation=loop_implementation
     )
     client_result, model_output = client_update(_initial_weights(), dataset)
     # Both trainable parameters should have gradients. Model deltas for squared
@@ -211,15 +210,15 @@ class FunctionalFederatedSgdTest(tf.test.TestCase, parameterized.TestCase):
     self.assertDictContainsSubset({'num_examples': 8}, model_output)
 
   @parameterized.named_parameters(
-      ('non-simulation', False),
-      ('simulation', True),
+      ('dataset_reduce', loop_builder.LoopImplementation.DATASET_REDUCE),
+      ('dataset_iterator', loop_builder.LoopImplementation.DATASET_ITERATOR),
   )
   @tensorflow_test_utils.skip_test_for_multi_gpu
-  def test_client_update_with_unconnected_weights(self, simulation):
+  def test_client_update_with_unconnected_weights(self, loop_implementation):
     dataset = _dataset()
     model = _build_functional_model_unconnected()
     client_update = fed_sgd._build_functional_client_update(
-        model, use_experimental_simulation_loop=simulation
+        model, loop_implementation=loop_implementation
     )
     client_result, model_output = client_update(
         _initial_weights_unconnected(), dataset
@@ -235,7 +234,8 @@ class FunctionalFederatedSgdTest(tf.test.TestCase, parameterized.TestCase):
     dataset = _dataset()
     model = _build_functional_model()
     client_update = fed_sgd._build_functional_client_update(
-        model, use_experimental_simulation_loop=False
+        model,
+        loop_implementation=loop_builder.LoopImplementation.DATASET_REDUCE,
     )
     init_weights = _initial_weights()
     # Set a non-finite bias to force non-finite gradients.
@@ -247,25 +247,23 @@ class FunctionalFederatedSgdTest(tf.test.TestCase, parameterized.TestCase):
     )
 
   @parameterized.named_parameters(
-      ('non-simulation', False), ('simulation', True)
+      ('dataset_reduce', loop_builder.LoopImplementation.DATASET_REDUCE),
+      ('dataset_iterator', loop_builder.LoopImplementation.DATASET_ITERATOR),
   )
   @mock.patch.object(
       loop_builder,
-      '_dataset_reduce_fn',
-      wraps=loop_builder._dataset_reduce_fn,
+      'build_training_loop',
+      wraps=loop_builder.build_training_loop,
   )
   @tensorflow_test_utils.skip_test_for_multi_gpu
-  def test_client_tf_dataset_reduce_fn(self, simulation, mock_method):
+  def test_client_tf_dataset_reduce_fn(self, loop_implementation, mock_method):
     dataset = _dataset()
     model = _build_functional_model()
     client_update = fed_sgd._build_functional_client_update(
-        model, use_experimental_simulation_loop=simulation
+        model, loop_implementation=loop_implementation
     )
     client_update(_initial_weights(), dataset)
-    if simulation:
-      mock_method.assert_not_called()
-    else:
-      mock_method.assert_called()
+    mock_method.assert_called_once_with(loop_implementation=loop_implementation)
 
   def test_build_functional_client_work_without_functional_model_fails(self):
     with self.assertRaisesRegex(TypeError, 'FunctionalModel'):

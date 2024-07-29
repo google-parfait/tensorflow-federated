@@ -60,25 +60,22 @@ class FedProxConstructionTest(parameterized.TestCase):
     self.assertEqual(mock_model_fn.call_count, 3)
 
   @parameterized.named_parameters(
-      ('non-simulation_tff_optimizer', False),
-      ('simulation_tff_optimizer', True),
+      ('dataset_iterator', loop_builder.LoopImplementation.DATASET_ITERATOR),
+      ('sdataset_reduce', loop_builder.LoopImplementation.DATASET_REDUCE),
   )
   @mock.patch.object(
       loop_builder,
-      '_dataset_reduce_fn',
-      wraps=loop_builder._dataset_reduce_fn,
+      'build_training_loop',
+      wraps=loop_builder.build_training_loop,
   )
-  def test_client_tf_dataset_reduce_fn(self, simulation, mock_method):
+  def test_client_tf_dataset_reduce_fn(self, loop_implementation, mock_method):
     fed_prox.build_weighted_fed_prox(
         model_fn=model_examples.LinearRegression,
         proximal_strength=1.0,
         client_optimizer_fn=sgdm.build_sgdm(1.0),
-        use_experimental_simulation_loop=simulation,
+        loop_implementation=loop_implementation,
     )
-    if simulation:
-      mock_method.assert_not_called()
-    else:
-      mock_method.assert_called()
+    mock_method.assert_called_once_with(loop_implementation=loop_implementation)
 
   @parameterized.named_parameters(
       ('weighted', fed_prox.build_unweighted_fed_prox),

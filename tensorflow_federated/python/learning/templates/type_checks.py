@@ -42,6 +42,10 @@ def check_is_client_placed_structure_of_sequences(
   def is_structure_of_sequences(member_spec: computation_types.Type) -> bool:
     if isinstance(member_spec, computation_types.SequenceType):
       return type_analysis.is_tensorflow_compatible_type(member_spec.element)
+    elif isinstance(member_spec, computation_types.TensorType):
+      # An alternative form of sequence is a tensor with a leading 0th dimension
+      # of unknown size. This is assumed to represent the number of batches.
+      return len(member_spec.shape) >= 1 and member_spec.shape[0] is None
     elif isinstance(member_spec, computation_types.StructType):
       return all(
           is_structure_of_sequences(element_type)

@@ -64,28 +64,24 @@ class ClientScheduledFedAvgTest(parameterized.TestCase):
     )
 
   @parameterized.named_parameters(
-      ('non_simulation', False),
-      ('simulation', True),
+      ('dataset_reduce', loop_builder.LoopImplementation.DATASET_REDUCE),
+      ('dataset_iterator', loop_builder.LoopImplementation.DATASET_ITERATOR),
   )
   @mock.patch.object(
       loop_builder,
-      '_dataset_reduce_fn',
-      wraps=loop_builder._dataset_reduce_fn,
+      'build_training_loop',
+      wraps=loop_builder.build_training_loop,
   )
-  def test_client_tf_dataset_reduce_fn(self, use_simulation, mock_reduce):
+  def test_client_tf_dataset_reduce_fn(self, loop_implementation, mock_reduce):
     client_learning_rate_fn = lambda x: 0.5
     client_optimizer_fn = tf.keras.optimizers.SGD
     fed_avg_with_optimizer_schedule.build_weighted_fed_avg_with_optimizer_schedule(
         model_fn=model_examples.LinearRegression,
         client_learning_rate_fn=client_learning_rate_fn,
         client_optimizer_fn=client_optimizer_fn,
-        use_experimental_simulation_loop=use_simulation,
+        loop_implementation=loop_implementation,
     )
-
-    if use_simulation:
-      mock_reduce.assert_not_called()
-    else:
-      mock_reduce.assert_called()
+    mock_reduce.assert_called_once_with(loop_implementation=loop_implementation)
 
   @parameterized.named_parameters([
       ('keras_optimizer', lambda x: tf.keras.optimizers.SGD()),

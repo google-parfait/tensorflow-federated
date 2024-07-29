@@ -53,22 +53,21 @@ from tensorflow_federated.python.learning.templates import learning_process
 
 
 def _build_client_update(
-    model: variable.VariableModel, use_experimental_simulation_loop: bool
+    model: variable.VariableModel,
+    loop_implementation: loop_builder.LoopImplementation,
 ):
   """Creates client update logic for FedSGD.
 
   Args:
     model: A `tff.learning.models.VariableModel` used to compute gradients.
-    use_experimental_simulation_loop: Controls the reduce loop function for
-      input dataset. An experimental reduce loop is used for simulation.
+    loop_implementation: Changes the implementation of the training loop
+      generated. See `tff.learning.LoopImplementation` for more details.
 
   Returns:
     A `tf.function`.
   """
   dataset_reduce_fn = loop_builder.build_training_loop(
-      loop_builder.LoopImplementation.DATASET_ITERATOR
-      if use_experimental_simulation_loop
-      else loop_builder.LoopImplementation.DATASET_REDUCE
+      loop_implementation=loop_implementation
   )
 
   @tf.function
@@ -138,7 +137,7 @@ def _build_client_update(
 def _build_fed_sgd_client_work(
     model_fn: Callable[[], variable.VariableModel],
     metrics_aggregator: types.MetricsAggregatorType,
-    use_experimental_simulation_loop: bool = False,
+    loop_implementation: loop_builder.LoopImplementation = loop_builder.LoopImplementation.DATASET_REDUCE,
 ) -> client_works.ClientWorkProcess:
   """Creates a `tff.learning.templates.ClientWorkProcess` for federated SGD.
 
@@ -154,10 +153,8 @@ def _build_fed_sgd_client_work(
       type of
       `tff.learning.models.VariableModel.report_local_unfinalized_metrics()`),
       and returns a `tff.Computation` for aggregating the unfinalized metrics.
-    use_experimental_simulation_loop: Controls the reduce loop function for
-      input dataset. An experimental reduce loop is used for simulation. It is
-      currently necessary to set this flag to True for performant GPU
-      simulations.
+    loop_implementation: Changes the implementation of the training loop
+      generated. See `tff.learning.LoopImplementation` for more details.
 
   Returns:
     A `tff.learning.templates.ClientWorkProcess`.
@@ -180,7 +177,7 @@ def _build_fed_sgd_client_work(
   @tensorflow_computation.tf_computation(weights_type, data_type)
   def client_update_computation(initial_model_weights, dataset):
     client_update = _build_client_update(
-        model_fn(), use_experimental_simulation_loop
+        model_fn(), loop_implementation=loop_implementation
     )
     return client_update(initial_model_weights, dataset)
 
@@ -205,22 +202,21 @@ def _build_fed_sgd_client_work(
 
 
 def _build_functional_client_update(
-    model: functional.FunctionalModel, use_experimental_simulation_loop: bool
+    model: functional.FunctionalModel,
+    loop_implementation: loop_builder.LoopImplementation,
 ) -> Callable[[Any, Any], client_works.ClientResult]:
   """Creates client update logic for FedSGD.
 
   Args:
     model: A `tff.learning.models.FunctionalModel` used to compute gradients.
-    use_experimental_simulation_loop: Controls the reduce loop function for
-      input dataset. An experimental reduce loop is used for simulation.
+    loop_implementation: Changes the implementation of the training loop
+      generated. See `tff.learning.LoopImplementation` for more details.
 
   Returns:
     A `tf.function`.
   """
   dataset_reduce_fn = loop_builder.build_training_loop(
-      loop_builder.LoopImplementation.DATASET_ITERATOR
-      if use_experimental_simulation_loop
-      else loop_builder.LoopImplementation.DATASET_REDUCE
+      loop_implementation=loop_implementation
   )
 
   @tf.function
@@ -312,7 +308,7 @@ def _build_functional_client_update(
 def _build_functional_fed_sgd_client_work(
     model: functional.FunctionalModel,
     metrics_aggregator: types.MetricsAggregatorType,
-    use_experimental_simulation_loop: bool = False,
+    loop_implementation: loop_builder.LoopImplementation = loop_builder.LoopImplementation.DATASET_REDUCE,
 ) -> client_works.ClientWorkProcess:
   """Creates a `tff.learning.templates.ClientWorkProcess` for federated SGD.
 
@@ -328,10 +324,8 @@ def _build_functional_fed_sgd_client_work(
       type of
       `tff.learning.models.VariableModel.report_local_unfinalized_metrics()`),
       and returns a `tff.Computation` for aggregating the unfinalized metrics.
-    use_experimental_simulation_loop: Controls the reduce loop function for
-      input dataset. An experimental reduce loop is used for simulation. It is
-      currently necessary to set this flag to True for performant GPU
-      simulations.
+    loop_implementation: Changes the implementation of the training loop
+      generated. See `tff.learning.LoopImplementation` for more details.
 
   Returns:
     A `tff.learning.templates.ClientWorkProcess`.
@@ -358,7 +352,7 @@ def _build_functional_fed_sgd_client_work(
   @tensorflow_computation.tf_computation(weights_type, data_type)
   def client_update_computation(initial_model_weights, dataset):
     client_update = _build_functional_client_update(
-        model, use_experimental_simulation_loop
+        model, loop_implementation=loop_implementation
     )
     return client_update(initial_model_weights, dataset)
 
@@ -398,7 +392,7 @@ def build_fed_sgd(
     model_distributor: Optional[distributors.DistributionProcess] = None,
     model_aggregator: Optional[factory.WeightedAggregationFactory] = None,
     metrics_aggregator: Optional[types.MetricsAggregatorType] = None,
-    use_experimental_simulation_loop: bool = False,
+    loop_implementation: loop_builder.LoopImplementation = loop_builder.LoopImplementation.DATASET_REDUCE,
 ) -> learning_process.LearningProcess:
   """Builds a learning process that performs federated SGD.
 
@@ -460,8 +454,8 @@ def build_fed_sgd(
       type of
       `tff.learning.models.VariableModel.report_local_unfinalized_metrics()`),
       and returns a `tff.Computation` for aggregating the unfinalized metrics.
-    use_experimental_simulation_loop: Controls the reduce loop function for
-      input dataset. An experimental reduce loop is used for simulation.
+    loop_implementation: Changes the implementation of the training loop
+      generated. See `tff.learning.LoopImplementation` for more details.
 
   Returns:
     A `tff.learning.templates.LearningProcess`.
@@ -510,15 +504,11 @@ def build_fed_sgd(
     metrics_aggregator = metric_aggregator.sum_then_finalize
   if not callable(model_fn):
     client_work = _build_functional_fed_sgd_client_work(
-        model_fn,
-        metrics_aggregator,
-        use_experimental_simulation_loop=use_experimental_simulation_loop,
+        model_fn, metrics_aggregator, loop_implementation=loop_implementation
     )
   else:
     client_work = _build_fed_sgd_client_work(
-        model_fn,
-        metrics_aggregator,
-        use_experimental_simulation_loop=use_experimental_simulation_loop,
+        model_fn, metrics_aggregator, loop_implementation=loop_implementation
     )
   finalizer = apply_optimizer_finalizer.build_apply_optimizer_finalizer(
       server_optimizer_fn, model_weights_type
