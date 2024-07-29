@@ -25,6 +25,8 @@ and this project adheres to
 
 ### Changed
 
+*   Fixed a bug in `tff.learning.programs.EvaluationManager` that raised an
+    error when the version IDs of two state-saving operations were the same.
 *   Fixed a bug in `tff.jax.computation` that raised an error when the
     computation had unused arguments.
 *   Fixed a bug when using `tff.backends.xla` execution stack that raised errors

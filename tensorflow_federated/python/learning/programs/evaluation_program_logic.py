@@ -74,6 +74,7 @@ from tensorflow_federated.python.learning.templates import learning_process
 from tensorflow_federated.python.program import data_source as data_source_lib
 from tensorflow_federated.python.program import federated_context
 from tensorflow_federated.python.program import file_program_state_manager
+from tensorflow_federated.python.program import program_state_manager
 from tensorflow_federated.python.program import release_manager
 from tensorflow_federated.python.program import value_reference
 
@@ -103,6 +104,51 @@ def _pop_value(
 
 _EVAL_MANAGER_KEY = 'eval_manager'
 _EVAL_NAME_PATTERN = 'evaluation_of_train_round_{round_num:05d}'
+
+
+class AutoVersionAdvanceingStateManager:
+  """A file state manager that automatically advances the version number."""
+
+  def __init__(
+      self,
+      state_manager: file_program_state_manager.FileProgramStateManager,
+  ):
+    """Initializes the AutoVersionAdvanceingStateManager.
+
+    Args:
+      state_manager: The file state manager to use for saving and loading state.
+    """
+    self._state_manager = state_manager
+    self._next_version = 0
+    self._lock = asyncio.Lock()  # Lock for concurrency safety.
+
+  async def load_latest(
+      self, structure: program_state_manager.ProgramStateStructure
+  ) -> program_state_manager.ProgramStateStructure:
+    """Returns the latest program state.
+
+    Args:
+      structure: The structure of the saved program state for the given
+        `version` used to support serialization and deserialization of
+        user-defined classes in the structure.
+    """
+    async with self._lock:
+      state, version = await self._state_manager.load_latest(structure)
+      self._next_version = version + 1
+      return state
+
+  async def save(
+      self,
+      program_state: program_state_manager.ProgramStateStructure,
+  ) -> None:
+    """Saves `program_state` and automatically advances the version number.
+
+    Args:
+      program_state: A `tff.program.ProgramStateStructure` to save.
+    """
+    async with self._lock:
+      await self._state_manager.save(program_state, version=self._next_version)
+      self._next_version += 1
 
 
 class EvaluationManager:
@@ -184,8 +230,9 @@ class EvaluationManager:
     self._create_evaluation_process_fn = create_process_fn
     self._cohort_size = cohort_size
     self._duration = duration
-    self._state_manager = create_state_manager_fn(_EVAL_MANAGER_KEY)
-    self._next_version = 0
+    self._state_manager = AutoVersionAdvanceingStateManager(
+        create_state_manager_fn(_EVAL_MANAGER_KEY)
+    )
     self._evaluating_training_checkpoints = np.zeros([0], np.int32)
     self._evaluation_start_timestamp_seconds = np.zeros([0], np.int32)
     self._pending_tasks: set[asyncio.Task] = set()
@@ -262,7 +309,7 @@ class EvaluationManager:
 
   async def resume_from_previous_state(self) -> None:
     """Load the most recent state and restart in-progress evaluations."""
-    loaded_state, loaded_version = await self._state_manager.load_latest((
+    loaded_state = await self._state_manager.load_latest((
         self._evaluating_training_checkpoints,
         self._evaluation_start_timestamp_seconds,
     ))
@@ -273,7 +320,6 @@ class EvaluationManager:
         self._evaluating_training_checkpoints,
         self._evaluation_start_timestamp_seconds,
     ) = loaded_state
-    self._next_version = loaded_version + 1
     train_round_nums = self._evaluating_training_checkpoints.tolist()
     _logging.info(
         'Resuming previous evaluations found for training rounds: %s',
@@ -403,9 +449,7 @@ class EvaluationManager:
             self._evaluating_training_checkpoints,
             self._evaluation_start_timestamp_seconds,
         ),
-        version=self._next_version,
     )
-    self._next_version += 1
 
   async def record_evaluations_finished(self, train_round: int) -> None:
     """Removes evaluation for `train_round` from the internal state manager.
@@ -438,9 +482,7 @@ class EvaluationManager:
             self._evaluating_training_checkpoints,
             self._evaluation_start_timestamp_seconds,
         ),
-        version=self._next_version,
     )
-    self._next_version += 1
 
 
 def extract_and_rewrap_metrics(

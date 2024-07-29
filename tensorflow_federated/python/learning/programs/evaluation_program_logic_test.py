@@ -398,7 +398,7 @@ class EvaluationManagerTest(tf.test.TestCase, unittest.IsolatedAsyncioTestCase):
         datetime.datetime(2022, 10, 28, 5, 15).timestamp(),
         datetime.datetime(2022, 10, 28, 5, 25).timestamp(),
     ]).astype(np.int32)
-    manager._next_version = 1
+    manager._state_manager._next_version = 1
     await manager.record_evaluations_finished(5)
     # Only train_round 15 should be saved after 5 finishes.
     self.assertSequenceEqual(
@@ -417,6 +417,53 @@ class EvaluationManagerTest(tf.test.TestCase, unittest.IsolatedAsyncioTestCase):
     ):
       await manager.record_evaluations_finished(7)
     await manager.wait_for_evaluations_to_finish()
+    self.assertEmpty(manager._pending_tasks)
+
+  async def test_record_two_evaluations_finished_removes_from_state(self):
+    mock_data_source = mock.create_autospec(
+        data_source.FederatedDataSource, instance=True, spec_set=True
+    )
+    mock_metrics_manager = mock.create_autospec(
+        release_manager.ReleaseManager, instance=True, spec_set=True
+    )
+    # Create a state manager with two inflight evaluations.
+    mock_meta_eval_manager = mock.create_autospec(
+        file_program_state_manager.FileProgramStateManager,
+        instance=True,
+        spec_set=True,
+    )
+    mock_create_state_manager = mock.Mock(side_effect=[mock_meta_eval_manager])
+    mock_create_process_fn = mock.Mock()
+    manager = evaluation_program_logic.EvaluationManager(
+        data_source=mock_data_source,
+        aggregated_metrics_manager=mock_metrics_manager,
+        create_state_manager_fn=mock_create_state_manager,
+        create_process_fn=mock_create_process_fn,
+        cohort_size=10,
+        duration=datetime.timedelta(milliseconds=10),
+    )
+    # Directly set the state, avoid starting asyncio.Task for the resumed evals.
+    manager._evaluating_training_checkpoints = np.asarray([5, 15]).astype(
+        np.int32
+    )
+    manager._evaluation_start_timestamp_seconds = np.asarray([
+        datetime.datetime(2022, 10, 28, 5, 15).timestamp(),
+        datetime.datetime(2022, 10, 28, 5, 25).timestamp(),
+    ]).astype(np.int32)
+    manager._state_manager._next_version = 1
+    task1 = asyncio.create_task(manager.record_evaluations_finished(5))
+    task2 = asyncio.create_task(manager.record_evaluations_finished(15))
+    finished, _ = await asyncio.wait([task1, task2])
+    self.assertLen(finished, 2)
+    # Assert that all evaluations were removed from the state manager without
+    # version conflicts.
+    self.assertSequenceEqual(
+        mock_meta_eval_manager.save.call_args_list,
+        [
+            mock.call((_NumpyMatcher([15]), mock.ANY), version=1),
+            mock.call((_NumpyMatcher([]), _NumpyMatcher([])), version=2),
+        ],
+    )
     self.assertEmpty(manager._pending_tasks)
 
   async def test_resume_previous_evaluations(self):

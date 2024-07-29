@@ -32,6 +32,7 @@ py_library(
         "//tensorflow_federated/python/program:data_source",
         "//tensorflow_federated/python/program:federated_context",
         "//tensorflow_federated/python/program:file_program_state_manager",
+        "//tensorflow_federated/python/program:program_state_manager",
         "//tensorflow_federated/python/program:release_manager",
         "//tensorflow_federated/python/program:value_reference",
     ],
