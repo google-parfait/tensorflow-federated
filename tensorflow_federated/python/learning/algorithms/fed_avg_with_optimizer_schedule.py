@@ -31,6 +31,7 @@ from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import client_weight_lib
+from tensorflow_federated.python.learning import loop_builder
 from tensorflow_federated.python.learning.algorithms import fed_avg
 from tensorflow_federated.python.learning.metrics import aggregator as metric_aggregator
 from tensorflow_federated.python.learning.metrics import types
@@ -57,7 +58,7 @@ def build_scheduled_client_work(
     learning_rate_fn: Callable[[int], float],
     optimizer_fn: Callable[[float], TFFOrKerasOptimizer],
     metrics_aggregator: types.MetricsAggregatorType,
-    use_experimental_simulation_loop: bool = False,
+    loop_implementation: loop_builder.LoopImplementation = loop_builder.LoopImplementation.DATASET_REDUCE,
 ) -> client_works.ClientWorkProcess:
   """Creates a `ClientWorkProcess` for federated averaging.
 
@@ -87,10 +88,8 @@ def build_scheduled_client_work(
       type of
       `tff.learning.models.VariableModel.report_local_unfinalized_metrics()`),
       and returns a `tff.Computation` for aggregating the unfinalized metrics.
-    use_experimental_simulation_loop: Controls the reduce loop function for
-      input dataset. An experimental reduce loop is used for simulation. It is
-      currently necessary to set this flag to True for performant GPU
-      simulations.
+    loop_implementation: Changes the implementation of the training loop
+      generated. See `tff.learning.LoopImplementation` for more details.
 
   Returns:
     A `ClientWorkProcess`.
@@ -135,12 +134,12 @@ def build_scheduled_client_work(
   elif isinstance(whimsy_optimizer, optimizer_base.Optimizer):
     build_client_update_fn = functools.partial(
         model_delta_client_work.build_model_delta_update_with_tff_optimizer,
-        use_experimental_simulation_loop=use_experimental_simulation_loop,
+        loop_implementation=loop_implementation,
     )
   else:
     build_client_update_fn = functools.partial(
         model_delta_client_work.build_model_delta_update_with_keras_optimizer,
-        use_experimental_simulation_loop=use_experimental_simulation_loop,
+        loop_implementation=loop_implementation,
     )
 
   @tensorflow_computation.tf_computation(weights_type, data_type, np.int32)
@@ -150,7 +149,7 @@ def build_scheduled_client_work(
     client_update = build_client_update_fn(
         model_fn,
         weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES,
-        use_experimental_simulation_loop=use_experimental_simulation_loop,
+        loop_implementation=loop_implementation,
     )
     return client_update(optimizer, initial_model_weights, dataset)
 
@@ -210,7 +209,7 @@ def build_weighted_fed_avg_with_optimizer_schedule(
     model_distributor: Optional[distributors.DistributionProcess] = None,
     model_aggregator: Optional[factory.WeightedAggregationFactory] = None,
     metrics_aggregator: Optional[types.MetricsAggregatorType] = None,
-    use_experimental_simulation_loop: bool = False,
+    loop_implementation: loop_builder.LoopImplementation = loop_builder.LoopImplementation.DATASET_REDUCE,
 ) -> learning_process.LearningProcess:
   """Builds a learning process for FedAvg with client optimizer scheduling.
 
@@ -296,10 +295,8 @@ def build_weighted_fed_avg_with_optimizer_schedule(
       `tff.learning.models.VariableModel.report_local_unfinalized_metrics()`),
       and returns a `tff.Computation` for aggregating the unfinalized metrics.
       If `None`, this is set to `tff.learning.metrics.sum_then_finalize`.
-    use_experimental_simulation_loop: Controls the reduce loop function for
-      input dataset. An experimental reduce loop is used for simulation. It is
-      currently necessary to set this flag to True for performant GPU
-      simulations.
+    loop_implementation: Changes the implementation of the training loop
+      generated. See `tff.learning.LoopImplementation` for more details.
 
   Returns:
     A `LearningProcess`.
@@ -344,7 +341,7 @@ def build_weighted_fed_avg_with_optimizer_schedule(
       client_learning_rate_fn,
       client_optimizer_fn,
       metrics_aggregator,
-      use_experimental_simulation_loop,
+      loop_implementation,
   )
   finalizer = apply_optimizer_finalizer.build_apply_optimizer_finalizer(
       server_optimizer_fn, model_weights_type

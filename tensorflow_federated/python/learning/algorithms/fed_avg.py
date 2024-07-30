@@ -41,6 +41,7 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.learning import client_weight_lib
+from tensorflow_federated.python.learning import loop_builder
 from tensorflow_federated.python.learning.metrics import aggregator as metric_aggregator
 from tensorflow_federated.python.learning.metrics import types
 from tensorflow_federated.python.learning.models import functional
@@ -76,7 +77,7 @@ def build_weighted_fed_avg(
     model_distributor: Optional[distributors.DistributionProcess] = None,
     model_aggregator: Optional[factory.WeightedAggregationFactory] = None,
     metrics_aggregator: Optional[types.MetricsAggregatorType] = None,
-    use_experimental_simulation_loop: bool = False,
+    loop_implementation: loop_builder.LoopImplementation = loop_builder.LoopImplementation.DATASET_REDUCE,
 ) -> learning_process.LearningProcess:
   """Builds a learning process that performs federated averaging.
 
@@ -156,10 +157,8 @@ def build_weighted_fed_avg(
       `tff.learning.models.VariableModel.report_local_unfinalized_metrics()`),
       and returns a `tff.Computation` for aggregating the unfinalized metrics.
       If `None`, this is set to `tff.learning.metrics.sum_then_finalize`.
-    use_experimental_simulation_loop: Controls the reduce loop function for
-      input dataset. An experimental reduce loop is used for simulation. It is
-      currently necessary to set this flag to True for performant GPU
-      simulations.
+    loop_implementation: Changes the implementation of the training loop
+      generated. See `tff.learning.LoopImplementation` for more details.
 
   Returns:
     A `tff.learning.templates.LearningProcess`.
@@ -256,7 +255,7 @@ def build_weighted_fed_avg(
             optimizer=client_optimizer_fn,
             client_weighting=client_weighting,
             metrics_aggregator=metrics_aggregator,
-            use_experimental_simulation_loop=use_experimental_simulation_loop,
+            loop_implementation=loop_implementation,
         )
     )
   else:
@@ -265,7 +264,7 @@ def build_weighted_fed_avg(
         optimizer=client_optimizer_fn,
         client_weighting=client_weighting,
         metrics_aggregator=metrics_aggregator,
-        use_experimental_simulation_loop=use_experimental_simulation_loop,
+        loop_implementation=loop_implementation,
     )
   finalizer = apply_optimizer_finalizer.build_apply_optimizer_finalizer(
       server_optimizer_fn, model_weights_type
@@ -294,7 +293,7 @@ def build_unweighted_fed_avg(
     model_distributor: Optional[distributors.DistributionProcess] = None,
     model_aggregator: Optional[factory.UnweightedAggregationFactory] = None,
     metrics_aggregator: types.MetricsAggregatorType = metric_aggregator.sum_then_finalize,
-    use_experimental_simulation_loop: bool = False,
+    loop_implementation: loop_builder.LoopImplementation = loop_builder.LoopImplementation.DATASET_REDUCE,
 ) -> learning_process.LearningProcess:
   """Builds a learning process that performs federated averaging.
 
@@ -368,10 +367,8 @@ def build_unweighted_fed_avg(
       `tff.learning.models.VariableModel.report_local_unfinalized_metrics()`),
       and returns a `tff.Computation` for aggregating the unfinalized metrics.
       If `None`, this is set to `tff.learning.metrics.sum_then_finalize`.
-    use_experimental_simulation_loop: Controls the reduce loop function for
-      input dataset. An experimental reduce loop is used for simulation. It is
-      currently necessary to set this flag to True for performant GPU
-      simulations.
+    loop_implementation: Changes the implementation of the training loop
+      generated. See `tff.learning.LoopImplementation` for more details.
 
   Returns:
     A `tff.learning.templates.LearningProcess`.
@@ -392,5 +389,5 @@ def build_unweighted_fed_avg(
       model_distributor=model_distributor,
       model_aggregator=factory_utils.as_weighted_aggregator(model_aggregator),
       metrics_aggregator=metrics_aggregator,
-      use_experimental_simulation_loop=use_experimental_simulation_loop,
+      loop_implementation=loop_implementation,
   )

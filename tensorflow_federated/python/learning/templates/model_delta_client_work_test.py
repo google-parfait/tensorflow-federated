@@ -361,12 +361,16 @@ class ModelDeltaClientWorkExecutionTest(
     dataset = create_test_dataset()
     client_update_keras = (
         model_delta_client_work.build_model_delta_update_with_keras_optimizer(
-            model_fn=create_model, weighting=weighting
+            model_fn=create_model,
+            weighting=weighting,
+            loop_implementation=loop_builder.LoopImplementation.DATASET_REDUCE,
         )
     )
     client_update_tff = (
         model_delta_client_work.build_model_delta_update_with_tff_optimizer(
-            model_fn=create_model, weighting=weighting
+            model_fn=create_model,
+            weighting=weighting,
+            loop_implementation=loop_builder.LoopImplementation.DATASET_REDUCE,
         )
     )
     keras_result = client_update_keras(
@@ -385,56 +389,56 @@ class ModelDeltaClientWorkExecutionTest(
 
   @parameterized.named_parameters(
       (
-          'non-simulation_noclip_uniform',
-          False,
+          'dataset_reduce_noclip_uniform',
+          loop_builder.LoopImplementation.DATASET_REDUCE,
           {},
           0.1,
           client_weight_lib.ClientWeighting.UNIFORM,
       ),
       (
-          'non-simulation_noclip_num_examples',
-          False,
+          'dataset_reduce_noclip_num_examples',
+          loop_builder.LoopImplementation.DATASET_REDUCE,
           {},
           0.1,
           client_weight_lib.ClientWeighting.NUM_EXAMPLES,
       ),
       (
-          'simulation_noclip_uniform',
-          True,
+          'dataset_iterator_noclip_uniform',
+          loop_builder.LoopImplementation.DATASET_ITERATOR,
           {},
           0.1,
           client_weight_lib.ClientWeighting.UNIFORM,
       ),
       (
-          'simulation_noclip_num_examples',
-          True,
+          'dataset_iterator_noclip_num_examples',
+          loop_builder.LoopImplementation.DATASET_ITERATOR,
           {},
           0.1,
           client_weight_lib.ClientWeighting.NUM_EXAMPLES,
       ),
       (
-          'non-simulation_clipnorm',
-          False,
+          'dataset_reduce_clipnorm',
+          loop_builder.LoopImplementation.DATASET_REDUCE,
           {'clipnorm': 0.2},
           0.05,
           client_weight_lib.ClientWeighting.NUM_EXAMPLES,
       ),
       (
-          'non-simulation_clipvalue',
-          False,
+          'dataset_reduce_clipvalue',
+          loop_builder.LoopImplementation.DATASET_REDUCE,
           {'clipvalue': 0.1},
           0.02,
           client_weight_lib.ClientWeighting.NUM_EXAMPLES,
       ),
   )
   def test_client_tf(
-      self, simulation, optimizer_kwargs, expected_norm, weighting
+      self, loop_implementation, optimizer_kwargs, expected_norm, weighting
   ):
     client_tf = (
         model_delta_client_work.build_model_delta_update_with_keras_optimizer(
             model_fn=create_model,
             weighting=weighting,
-            use_experimental_simulation_loop=simulation,
+            loop_implementation=loop_implementation,
         )
     )
     optimizer = tf.keras.optimizers.SGD(learning_rate=0.1, **optimizer_kwargs)
@@ -464,6 +468,7 @@ class ModelDeltaClientWorkExecutionTest(
         model_delta_client_work.build_model_delta_update_with_keras_optimizer(
             model_fn=create_model,
             weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES,
+            loop_implementation=loop_builder.LoopImplementation.DATASET_REDUCE,
         )
     )
     optimizer = tf.keras.optimizers.SGD(learning_rate=0.1)
@@ -488,6 +493,7 @@ class ModelDeltaClientWorkExecutionTest(
         model_delta_client_work.build_model_delta_update_with_keras_optimizer(
             model_fn=create_model,
             weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES,
+            loop_implementation=loop_builder.LoopImplementation.DATASET_REDUCE,
         )
     )
     optimizer = tf.keras.optimizers.SGD(learning_rate=0.1)
@@ -558,28 +564,17 @@ class ModelDeltaClientWorkExecutionTest(
     self.assertEqual(output.measurements['train']['num_examples'], 16)
 
   @parameterized.named_parameters(
-      ('non-simulation', False), ('simulation', True)
+      ('dataset_reduce', loop_builder.LoopImplementation.DATASET_REDUCE),
+      ('dataset_iterator', loop_builder.LoopImplementation.DATASET_ITERATOR),
   )
-  @mock.patch.object(
-      loop_builder,
-      '_dataset_reduce_fn',
-      wraps=loop_builder._dataset_reduce_fn,
-  )
-  def test_client_tf_dataset_reduce_fn(self, simulation, mock_method):
-    client_tf = (
-        model_delta_client_work.build_model_delta_update_with_keras_optimizer(
-            model_fn=create_model,
-            weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES,
-            use_experimental_simulation_loop=simulation,
-        )
+  @mock.patch.object(loop_builder, 'build_training_loop')
+  def test_client_tf_dataset_loops(self, loop_implementation, mock_method):
+    model_delta_client_work.build_model_delta_update_with_keras_optimizer(
+        model_fn=create_model,
+        weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES,
+        loop_implementation=loop_implementation,
     )
-    optimizer = tf.keras.optimizers.SGD(learning_rate=0.1)
-    dataset = create_test_dataset()
-    client_tf(optimizer, create_test_initial_weights(), dataset)
-    if simulation:
-      mock_method.assert_not_called()
-    else:
-      mock_method.assert_called()
+    mock_method.assert_called_once_with(loop_implementation=loop_implementation)
 
   @parameterized.named_parameters(
       ('tff_simple', sgdm.build_sgdm(learning_rate=1.0)),
@@ -672,7 +667,9 @@ class ModelDeltaClientWorkExecutionTest(
 
     client_update_tff = (
         model_delta_client_work.build_model_delta_update_with_tff_optimizer(
-            model_fn=create_model, weighting=weighting
+            model_fn=create_model,
+            weighting=weighting,
+            loop_implementation=loop_builder.LoopImplementation.DATASET_REDUCE,
         )
     )
     result1 = client_update_tff(
@@ -680,7 +677,9 @@ class ModelDeltaClientWorkExecutionTest(
     )
     client_update_tff = (
         model_delta_client_work.build_model_delta_update_with_tff_optimizer(
-            model_fn=create_model, weighting=weighting
+            model_fn=create_model,
+            weighting=weighting,
+            loop_implementation=loop_builder.LoopImplementation.DATASET_REDUCE,
         )
     )
     result2 = client_update_tff(
@@ -708,13 +707,19 @@ class FunctionalModelDeltaClientWorkExecutionTest(
               ('num_examples', client_weight_lib.ClientWeighting.NUM_EXAMPLES),
           ],
           [
-              ('simulation', True),
-              ('non_simulation', False),
+              (
+                  'dataset_iterator',
+                  loop_builder.LoopImplementation.DATASET_ITERATOR,
+              ),
+              (
+                  'dataset_reduce',
+                  loop_builder.LoopImplementation.DATASET_REDUCE,
+              ),
           ],
       )
   )
   def test_functional_model_matches_model_fn(
-      self, weighting, is_simulation_loop
+      self, weighting, loop_implementation
   ):
     dataset = create_test_dataset()
 
@@ -737,7 +742,7 @@ class FunctionalModelDeltaClientWorkExecutionTest(
           model_delta_client_work.build_functional_model_delta_update(
               model=functional_model,
               weighting=weighting,
-              use_experimental_simulation_loop=is_simulation_loop,
+              loop_implementation=loop_implementation,
           )
       )
       return model_delta_fn(
@@ -763,7 +768,7 @@ class FunctionalModelDeltaClientWorkExecutionTest(
         model_delta_client_work.build_model_delta_update_with_tff_optimizer(
             model_fn=model_fn,
             weighting=weighting,
-            use_experimental_simulation_loop=is_simulation_loop,
+            loop_implementation=loop_implementation,
         )
     )
     model_fn_optimizer = sgdm.build_sgdm(learning_rate=0.1)

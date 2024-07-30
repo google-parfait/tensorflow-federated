@@ -32,6 +32,9 @@ and this project adheres to
 *   Fixed a bug when using `tff.backends.xla` execution stack that raised errors
     when single element structures were returned from `tff.jax.computation`
     wrapped methods.
+*   Rename the boolean `use_experimental_simulation_loop` parameter to
+    `loop_implementation` that accepts an `tff.learning.LoopImplementation` enum
+    for all `tff.learning.algorithms` methods.
 *   Modified the model output release frequency to every 10 rounds and the final
     round in `tff.learning.programs.train_model`.
 *   Loosened the `kEpsilonThreshold` constant and updated the tests of

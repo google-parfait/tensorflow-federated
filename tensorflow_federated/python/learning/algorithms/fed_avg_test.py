@@ -56,24 +56,21 @@ class FedAvgTest(parameterized.TestCase):
     self.assertEqual(mock_model_fn.call_count, 3)
 
   @parameterized.named_parameters(
-      ('non-simulation_tff_optimizer', False),
-      ('simulation_tff_optimizer', True),
+      ('dataset_reduce', loop_builder.LoopImplementation.DATASET_REDUCE),
+      ('dataset_iterator', loop_builder.LoopImplementation.DATASET_ITERATOR),
   )
   @mock.patch.object(
       loop_builder,
-      '_dataset_reduce_fn',
-      wraps=loop_builder._dataset_reduce_fn,
+      'build_training_loop',
+      wraps=loop_builder.build_training_loop,
   )
-  def test_client_tf_dataset_reduce_fn(self, simulation, mock_method):
+  def test_client_tf_dataset_reduce_fn(self, loop_implementation, mock_method):
     fed_avg.build_weighted_fed_avg(
         model_fn=model_examples.LinearRegression,
         client_optimizer_fn=sgdm.build_sgdm(1.0),
-        use_experimental_simulation_loop=simulation,
+        loop_implementation=loop_implementation,
     )
-    if simulation:
-      mock_method.assert_not_called()
-    else:
-      mock_method.assert_called()
+    mock_method.assert_called_once_with(loop_implementation=loop_implementation)
 
   @mock.patch.object(fed_avg, 'build_weighted_fed_avg')
   def test_build_weighted_fed_avg_called_by_unweighted_fed_avg(

@@ -49,7 +49,7 @@ def build_model_delta_update_with_tff_optimizer(
     model_fn: Callable[[], variable.VariableModel],
     *,
     weighting: client_weight_lib.ClientWeighting,
-    use_experimental_simulation_loop: bool = False,
+    loop_implementation: loop_builder.LoopImplementation,
 ):
   """Creates client update logic in FedAvg using a TFF optimizer.
 
@@ -63,17 +63,15 @@ def build_model_delta_update_with_tff_optimizer(
   Args:
     model_fn: A no-arg callable returning a `tff.learning.models.VariableModel`.
     weighting: A `tff.learning.ClientWeighting` value.
-    use_experimental_simulation_loop: Controls the reduce loop function for the
-      input dataset. An experimental reduce loop is used for simulation.
+    loop_implementation: Changes the implementation of the training loop
+      generated. See `tff.learning.LoopImplementation` for more details.
 
   Returns:
     A `tf.function`.
   """
   model = model_fn()
   dataset_reduce_fn = loop_builder.build_training_loop(
-      loop_implementation=loop_builder.LoopImplementation.DATASET_ITERATOR
-      if use_experimental_simulation_loop
-      else loop_builder.LoopImplementation.DATASET_REDUCE
+      loop_implementation=loop_implementation
   )
 
   @tf.function
@@ -162,7 +160,7 @@ def build_model_delta_update_with_tff_optimizer(
 
 # TODO: b/213433744 - Make this method private.
 def build_model_delta_update_with_keras_optimizer(
-    model_fn, weighting, use_experimental_simulation_loop: bool = False
+    model_fn, weighting, loop_implementation: loop_builder.LoopImplementation
 ):
   """Creates client update logic in FedAvg using a `tf.keras` optimizer.
 
@@ -174,17 +172,15 @@ def build_model_delta_update_with_keras_optimizer(
   Args:
     model_fn: A no-arg callable returning a `tff.learning.models.VariableModel`.
     weighting: A `tff.learning.ClientWeighting` value.
-    use_experimental_simulation_loop: Controls the reduce loop function for the
-      input dataset. An experimental reduce loop is used for simulation.
+    loop_implementation: Changes the implementation of the training loop
+      generated. See `tff.learning.LoopImplementation` for more details.
 
   Returns:
     A `tf.function`.
   """
   model = model_fn()
   dataset_reduce_fn = loop_builder.build_training_loop(
-      loop_implementation=loop_builder.LoopImplementation.DATASET_ITERATOR
-      if use_experimental_simulation_loop
-      else loop_builder.LoopImplementation.DATASET_REDUCE
+      loop_implementation=loop_implementation
   )
 
   @tf.function
@@ -267,7 +263,7 @@ def build_model_delta_client_work(
     client_weighting: client_weight_lib.ClientWeighting,
     metrics_aggregator: Optional[types.MetricsAggregatorType] = None,
     *,
-    use_experimental_simulation_loop: bool = False,
+    loop_implementation: loop_builder.LoopImplementation = loop_builder.LoopImplementation.DATASET_REDUCE,
 ) -> client_works.ClientWorkProcess:
   """Creates a `ClientWorkProcess` for federated averaging.
 
@@ -299,10 +295,8 @@ def build_model_delta_client_work(
       `tff.learning.models.VariableModel.metric_finalizers()`) returns a
       `tff.Computation` for aggregating the unfinalized metrics.  If `None`,
       this is set to `tff.learning.metrics.sum_then_finalize`.
-    use_experimental_simulation_loop: Controls the reduce loop function for
-      input dataset. An experimental reduce loop is used for simulation. It is
-      currently necessary to set this flag to True for performant GPU
-      simulations.
+    loop_implementation: Changes the implementation of the training loop
+      generated. See `tff.learning.LoopImplementation` for more details.
 
   Returns:
     A `ClientWorkProcess`.
@@ -359,7 +353,7 @@ def build_model_delta_client_work(
       client_update = build_model_delta_update_with_tff_optimizer(
           model_fn=model_fn,
           weighting=client_weighting,
-          use_experimental_simulation_loop=use_experimental_simulation_loop,
+          loop_implementation=loop_implementation,
       )
       return client_update(
           optimizer, initial_model_weights, dataset, optimizer_hparams
@@ -398,7 +392,7 @@ def build_model_delta_client_work(
       client_update = build_model_delta_update_with_keras_optimizer(
           model_fn=model_fn,
           weighting=client_weighting,
-          use_experimental_simulation_loop=use_experimental_simulation_loop,
+          loop_implementation=loop_implementation,
       )
       return client_update(keras_optimizer, initial_model_weights, dataset)
 
@@ -431,15 +425,15 @@ def build_functional_model_delta_update(
     model: functional.FunctionalModel,
     *,
     weighting: client_weight_lib.ClientWeighting,
-    use_experimental_simulation_loop: bool,
+    loop_implementation: loop_builder.LoopImplementation,
 ):
   """Creates client update logic in FedAvg.
 
   Args:
     model: A `tff.learning.models.FunctionalModel`.
     weighting: A `tff.learning.ClientWeighting` value.
-    use_experimental_simulation_loop: Controls the reduce loop function for the
-      input dataset. An experimental reduce loop is used for simulation.
+    loop_implementation: Changes the implementation of the training loop
+      generated. See `tff.learning.LoopImplementation` for more details.
 
   Returns:
     A `tf.function`.
@@ -505,9 +499,7 @@ def build_functional_model_delta_update(
     )
 
     ds_reduce_fn = loop_builder.build_training_loop(
-        loop_implementation=loop_builder.LoopImplementation.DATASET_ITERATOR
-        if use_experimental_simulation_loop
-        else loop_builder.LoopImplementation.DATASET_REDUCE
+        loop_implementation=loop_implementation
     )
     final_training_state = ds_reduce_fn(
         reduce_func, dataset, initial_training_state
@@ -551,7 +543,7 @@ def build_functional_model_delta_client_work(
     optimizer: optimizer_base.Optimizer,
     client_weighting: client_weight_lib.ClientWeighting,
     metrics_aggregator: Optional[types.MetricsAggregatorType] = None,
-    use_experimental_simulation_loop: bool = False,
+    loop_implementation: loop_builder.LoopImplementation = loop_builder.LoopImplementation.DATASET_REDUCE,
 ) -> client_works.ClientWorkProcess:
   """Creates a `ClientWorkProcess` for federated averaging.
 
@@ -569,8 +561,8 @@ def build_functional_model_delta_client_work(
       `tff.learning.models.VariableModel.metric_finalizers()`) and returns a
       `tff.Computation` for aggregating the unfinalized metrics.  If `None`,
       this is set to `tff.learning.metrics.sum_then_finalize`.
-    use_experimental_simulation_loop: Controls the reduce loop function for the
-      input dataset. An experimental reduce loop is used for simulation.
+    loop_implementation: Changes the implementation of the training loop
+      generated. See `tff.learning.LoopImplementation` for more details.
 
   Returns:
     A `ClientWorkProcess`.
@@ -603,7 +595,7 @@ def build_functional_model_delta_client_work(
     client_update = build_functional_model_delta_update(
         model=model,
         weighting=client_weighting,
-        use_experimental_simulation_loop=use_experimental_simulation_loop,
+        loop_implementation=loop_implementation,
     )
     return client_update(optimizer, initial_model_weights, dataset)
 

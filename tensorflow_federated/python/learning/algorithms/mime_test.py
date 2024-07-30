@@ -188,28 +188,26 @@ def _create_dataset():
 class MimeLiteClientWorkExecutionTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
-      ('non-simulation', False), ('simulation', True)
+      ('dataset_reduce', loop_builder.LoopImplementation.DATASET_REDUCE),
+      ('dataset_iterator', loop_builder.LoopImplementation.DATASET_ITERATOR),
   )
   @mock.patch.object(
       loop_builder,
-      '_dataset_reduce_fn',
-      wraps=loop_builder._dataset_reduce_fn,
+      'build_training_loop',
+      wraps=loop_builder.build_training_loop,
   )
   @tensorflow_test_utils.skip_test_for_multi_gpu
-  def test_client_tf_dataset_reduce_fn(self, simulation, mock_method):
+  def test_client_tf_dataset_reduce_fn(self, loop_implementation, mock_method):
     process = mime._build_mime_lite_client_work(
         model_fn=_create_model,
         optimizer=sgdm.build_sgdm(learning_rate=0.1, momentum=0.9),
         client_weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES,
-        use_experimental_simulation_loop=simulation,
+        loop_implementation=loop_implementation,
     )
     client_data = [_create_dataset()]
     client_model_weights = [_initial_weights()]
     process.next(process.initialize(), client_model_weights, client_data)
-    if simulation:
-      mock_method.assert_not_called()
-    else:
-      mock_method.assert_called()
+    mock_method.assert_called_once_with(loop_implementation=loop_implementation)
 
   @parameterized.named_parameters(
       ('adagrad', adagrad.build_adagrad(0.1)),
@@ -277,29 +275,27 @@ class MimeLiteFunctionalClientWorkExecutionTest(
 ):
 
   @parameterized.named_parameters(
-      ('non-simulation', False), ('simulation', True)
+      ('dataset_reduce', loop_builder.LoopImplementation.DATASET_REDUCE),
+      ('dataset_iterator', loop_builder.LoopImplementation.DATASET_ITERATOR),
   )
   @mock.patch.object(
       loop_builder,
-      '_dataset_reduce_fn',
-      wraps=loop_builder._dataset_reduce_fn,
+      'build_training_loop',
+      wraps=loop_builder.build_training_loop,
   )
   @tensorflow_test_utils.skip_test_for_gpu
-  def test_client_tf_dataset_reduce_fn(self, simulation, mock_method):
+  def test_client_tf_dataset_reduce_fn(self, loop_implementation, mock_method):
     model = test_models.build_functional_linear_regression()
     process = mime._build_mime_lite_functional_client_work(
         model=model,
         optimizer=sgdm.build_sgdm(learning_rate=0.1, momentum=0.9),
         client_weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES,
-        use_experimental_simulation_loop=simulation,
+        loop_implementation=loop_implementation,
     )
     client_data = [_create_dataset().map(lambda d: (d['x'], d['y']))]
     client_model_weights = [model.initial_weights]
     process.next(process.initialize(), client_model_weights, client_data)
-    if simulation:
-      mock_method.assert_not_called()
-    else:
-      mock_method.assert_called()
+    mock_method.assert_called_once_with(loop_implementation=loop_implementation)
 
   @parameterized.named_parameters(
       ('adagrad', adagrad.build_adagrad(0.1)),
@@ -386,24 +382,21 @@ class MimeLiteTest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(mock_model_fn.call_count, 3)
 
   @parameterized.named_parameters(
-      ('non-simulation_tff_optimizer', False),
-      ('simulation_tff_optimizer', True),
+      ('dataset_reduce', loop_builder.LoopImplementation.DATASET_REDUCE),
+      ('dataset_iterator', loop_builder.LoopImplementation.DATASET_ITERATOR),
   )
   @mock.patch.object(
       loop_builder,
-      '_dataset_reduce_fn',
-      wraps=loop_builder._dataset_reduce_fn,
+      'build_training_loop',
+      wraps=loop_builder.build_training_loop,
   )
-  def test_client_tf_dataset_reduce_fn(self, simulation, mock_method):
+  def test_client_tf_dataset_reduce_fn(self, loop_implementation, mock_method):
     mime.build_weighted_mime_lite(
         model_fn=model_examples.LinearRegression,
         base_optimizer=sgdm.build_sgdm(learning_rate=0.01, momentum=0.9),
-        use_experimental_simulation_loop=simulation,
+        loop_implementation=loop_implementation,
     )
-    if simulation:
-      mock_method.assert_not_called()
-    else:
-      mock_method.assert_called()
+    mock_method.assert_called_once_with(loop_implementation=loop_implementation)
 
   @mock.patch.object(mime, 'build_weighted_mime_lite')
   def test_build_weighted_mime_lite_called_by_unweighted_mime_lite(
