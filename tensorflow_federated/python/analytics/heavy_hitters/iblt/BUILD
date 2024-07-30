@@ -45,6 +45,8 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/templates:aggregation_process",
+        "@pypi_numpy//:pkg",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
@@ -56,6 +58,9 @@ py_test(
         ":iblt_factory",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/impl/types:computation_types",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
@@ -65,18 +70,25 @@ py_library(
     deps = [
         ":chunkers",
         ":hyperedge_hashers",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
 py_library(
     name = "chunkers",
     srcs = ["chunkers.py"],
-    deps = ["//tensorflow_federated/python/common_libs:py_typecheck"],
+    deps = [
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
+        "@pypi_tensorflow//:pkg",
+    ],
 )
 
 py_library(
     name = "hyperedge_hashers",
     srcs = ["hyperedge_hashers.py"],
+    deps = ["@pypi_tensorflow//:pkg"],
 )
 
 py_test(
@@ -85,20 +97,35 @@ py_test(
     timeout = "long",
     srcs = ["iblt_lib_test.py"],
     shard_count = 4,
-    deps = [":iblt_lib"],
+    deps = [
+        ":iblt_lib",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
+        "@pypi_tensorflow//:pkg",
+    ],
 )
 
 py_test(
     name = "chunkers_test",
     srcs = ["chunkers_test.py"],
-    deps = [":chunkers"],
+    deps = [
+        ":chunkers",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
+        "@pypi_tensorflow//:pkg",
+    ],
 )
 
 py_test(
     name = "hyperedge_hashers_test",
     size = "medium",
     srcs = ["hyperedge_hashers_test.py"],
-    deps = [":hyperedge_hashers"],
+    deps = [
+        ":hyperedge_hashers",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
+        "@pypi_tensorflow//:pkg",
+    ],
 )
 
 py_library(
@@ -116,6 +143,9 @@ py_library(
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
+        "@pypi_attrs//:pkg",
+        "@pypi_numpy//:pkg",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
@@ -131,6 +161,9 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/impl/types:type_test_utils",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
@@ -140,6 +173,8 @@ py_library(
     deps = [
         ":chunkers",
         ":iblt_lib",
+        "@pypi_numpy//:pkg",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
@@ -149,6 +184,8 @@ py_test(
     deps = [
         ":iblt_lib",
         ":iblt_tensor",
+        "@pypi_absl_py//:pkg",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
@@ -168,6 +205,9 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
+        "@pypi_attrs//:pkg",
+        "@pypi_numpy//:pkg",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
@@ -182,13 +222,20 @@ py_test(
         "//tensorflow_federated/python/aggregators:sum_factory",
         "//tensorflow_federated/python/core/backends/test:execution_contexts",
         "//tensorflow_federated/python/core/impl/types:computation_types",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
 py_library(
     name = "subsample_process",
     srcs = ["subsample_process.py"],
-    deps = [":iblt_factory"],
+    deps = [
+        ":iblt_factory",
+        "@pypi_scipy//:pkg",
+        "@pypi_tensorflow//:pkg",
+    ],
 )
 
 py_test(
@@ -198,5 +245,8 @@ py_test(
         ":iblt_factory",
         ":iblt_lib",
         ":subsample_process",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
+        "@pypi_tensorflow//:pkg",
     ],
 )

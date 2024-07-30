@@ -44,17 +44,24 @@ py_library(
 py_library(
     name = "client_weight_lib",
     srcs = ["client_weight_lib.py"],
+    deps = ["@pypi_tensorflow//:pkg"],
 )
 
 py_library(
     name = "loop_builder",
     srcs = ["loop_builder.py"],
+    deps = ["@pypi_tensorflow//:pkg"],
 )
 
 py_cpu_gpu_test(
     name = "loop_builder_test",
     srcs = ["loop_builder_test.py"],
-    deps = [":loop_builder"],
+    deps = [
+        ":loop_builder",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
+        "@pypi_tensorflow//:pkg",
+    ],
 )
 
 py_library(
@@ -89,6 +96,8 @@ py_test(
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:iterative_process",
         "//tensorflow_federated/python/core/test:static_assert",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
     ],
 )
 
@@ -101,6 +110,7 @@ py_library(
         "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
         "//tensorflow_federated/python/core/impl/types:placements",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
@@ -114,18 +124,28 @@ py_test(
         "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
 py_library(
     name = "tensor_utils",
     srcs = ["tensor_utils.py"],
-    deps = ["//tensorflow_federated/python/common_libs:py_typecheck"],
+    deps = [
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "@pypi_tensorflow//:pkg",
+    ],
 )
 
 py_test(
     name = "tensor_utils_test",
     size = "small",
     srcs = ["tensor_utils_test.py"],
-    deps = [":tensor_utils"],
+    deps = [
+        ":tensor_utils",
+        "@pypi_numpy//:pkg",
+        "@pypi_tensorflow//:pkg",
+    ],
 )

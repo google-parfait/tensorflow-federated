@@ -31,7 +31,7 @@ cachetools~=5.3
 dm-tree==0.1.8
 dp-accounting==0.4.3
 google-vizier==0.1.11
-grpcio~=1.46
+grpcio~=1.64
 jaxlib==0.4.14
 jax==0.4.14
 ml_dtypes>=0.2.0,==0.2.*
@@ -45,7 +45,7 @@ typing-extensions>=4.5.0,==4.5.*
 
 # The version of this dependency should match the version in
 # https://github.com/google-parfait/tensorflow-federated/blob/main/WORKSPACE.
-tensorflow>=2.14.0,==2.14.*
+tensorflow~=2.17.0
 
 # TODO: b/315515548 - Required because current dependencies are pulling in later
 # versions which are causing opaque failures.

@@ -64,19 +64,27 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/templates:iterative_process",
         "//tensorflow_federated/python/learning/templates:learning_process",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
+        "@pypi_tensorflow//:pkg",
     ],
 )
 
 py_library(
     name = "sampling_utils",
     srcs = ["sampling_utils.py"],
+    deps = ["@pypi_numpy//:pkg"],
 )
 
 py_test(
     name = "sampling_utils_test",
     size = "small",
     srcs = ["sampling_utils_test.py"],
-    deps = [":sampling_utils"],
+    deps = [
+        ":sampling_utils",
+        "@pypi_absl_py//:pkg",
+        "@pypi_tensorflow//:pkg",
+    ],
 )
 
 py_library(
@@ -88,6 +96,7 @@ py_library(
         "//tensorflow_federated/python/core/templates:iterative_process",
         "//tensorflow_federated/python/program:program_state_manager",
         "//tensorflow_federated/python/program:release_manager",
+        "@pypi_absl_py//:pkg",
     ],
 )
 
@@ -103,5 +112,7 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/templates:iterative_process",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
     ],
 )

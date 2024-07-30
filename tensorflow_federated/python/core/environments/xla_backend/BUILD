@@ -33,6 +33,8 @@ py_library(
         "//tensorflow_federated/python/core/impl/compiler:local_computation_factory_base",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_analysis",
+        "//third_party/jax",
+        "@pypi_numpy//:pkg",
     ],
 )
 
@@ -45,6 +47,9 @@ py_test(
         ":runtime",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//third_party/jax",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
     ],
 )
 
@@ -60,6 +65,8 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_analysis",
         "//tensorflow_federated/python/core/impl/types:typed_object",
+        "//third_party/jax",
+        "@pypi_numpy//:pkg",
     ],
 )
 
@@ -71,6 +78,9 @@ py_test(
         ":xla_serialization",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//third_party/jax",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
     ],
 )
 
@@ -80,7 +90,10 @@ py_library(
     tags = [
         "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
     ],
-    deps = ["//tensorflow_federated/cc/core/impl/executors:executor_bindings"],
+    deps = [
+        "//tensorflow_federated/cc/core/impl/executors:executor_bindings",
+        "@pypi_tensorflow//:pkg",  # TODO: b/305743962 - Remove the tensorflow dependency.
+    ],
 )
 
 py_test(
@@ -89,7 +102,10 @@ py_test(
     tags = [
         "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
     ],
-    deps = [":xla_executor_bindings"],
+    deps = [
+        ":xla_executor_bindings",
+        "@pypi_absl_py//:pkg",
+    ],
 )
 
 py_library(
@@ -101,7 +117,9 @@ py_library(
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
+        "//third_party/jax",
         "@com_google_protobuf//:protobuf_python",
+        "@pypi_numpy//:pkg",
     ],
 )
 
@@ -114,6 +132,9 @@ py_test(
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
+        "//third_party/jax",
         "@com_google_protobuf//:protobuf_python",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
     ],
 )

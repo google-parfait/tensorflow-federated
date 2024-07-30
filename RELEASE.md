@@ -8,6 +8,10 @@ and this project adheres to
 
 ## Unreleased
 
+### Changes
+
+*   `tensorflow` version increased to 2.17.0.
+
 ### Added
 
 *   `tff.tensorflow.transform_args` and `tff.tnesorflow.transform_result`, these
@@ -42,7 +46,8 @@ and this project adheres to
     function in `dp_noise_mechanisms`.
 *   `DPGroupByFactory::CreateInternal`: when `delta` is not provided, check if
     the right norm bounds are provided to compute L1 sensitivity (for the
-    Laplace mech).
+    Laplace mech). <<<<<<< dest: d5040728512b - kengf: Creation of
+    ConstantImageIdFetcher
 *   CreateRemoteExecutorStack now allows the composing executor to be specified
     and assigns client values to leaf executors such that all leaf executors
     receive the same number of clients, except for potentially the last leaf

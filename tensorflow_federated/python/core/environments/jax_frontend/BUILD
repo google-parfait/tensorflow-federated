@@ -33,6 +33,8 @@ py_library(
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_analysis",
+        "//third_party/jax",
+        "@pypi_numpy//:pkg",
     ],
 )
 
@@ -45,6 +47,10 @@ py_test(
         "//tensorflow_federated/python/core/impl/computation:computation_impl",
         "//tensorflow_federated/python/core/impl/computation:polymorphic_computation",
         "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//third_party/jax",
+        "//third_party/py/ml_dtypes",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
     ],
 )
 
@@ -61,6 +67,8 @@ py_test(
     deps = [
         ":jax_computation",
         ":jax_computation_context",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
     ],
 )
 
@@ -79,6 +87,8 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_analysis",
         "//tensorflow_federated/python/core/impl/types:typed_object",
+        "//third_party/jax",
+        "@pypi_numpy//:pkg",
     ],
 )
 
@@ -95,5 +105,8 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
         "//tensorflow_federated/python/core/impl/types:type_test_utils",
+        "//third_party/jax",
+        "@pypi_absl_py//:pkg",
+        "@pypi_numpy//:pkg",
     ],
 )

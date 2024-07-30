@@ -1,3 +1,5 @@
+load("//tools:build_defs.bzl", "tff_cc_binary", "tff_cc_library")
+
 package(
     default_applicable_licenses = ["//:package_license"],
     default_visibility = [
@@ -23,7 +25,7 @@ package_group(
 
 licenses(["notice"])
 
-cc_library(
+tff_cc_library(
     name = "servers",
     srcs = ["servers.cc"],
     hdrs = ["servers.h"],
@@ -40,7 +42,7 @@ cc_library(
     ],
 )
 
-cc_library(
+tff_cc_library(
     name = "worker_main",
     srcs = ["worker_main.cc"],
     deps = [
@@ -51,7 +53,7 @@ cc_library(
     ],
 )
 
-cc_binary(
+tff_cc_binary(
     name = "worker_binary",
     linkopts = ["-lrt"],
     deps = [":worker_main"],
