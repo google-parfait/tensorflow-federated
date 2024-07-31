@@ -38,7 +38,7 @@ _test_struct_type = [(np.float32, (3,)), np.float32]
 
 
 def _make_test_struct_value(x):
-  return [tf.constant(x, dtype=tf.float32, shape=(3,)), x]
+  return [np.full(shape=[3], fill_value=x, dtype=np.float32), x]
 
 
 def _clipped_mean(clip=2.0):

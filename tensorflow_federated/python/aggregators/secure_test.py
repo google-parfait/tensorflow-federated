@@ -224,8 +224,8 @@ class SecureModularSumFactoryExecutionTest(
     )
     state = process.initialize()
     client_data = [
-        (tf.constant([1, 2]), tf.constant(3)),
-        (tf.constant([4, 5]), tf.constant(6)),
+        (np.array([1, 2], np.int32), np.array(3, np.int32)),
+        (np.array([4, 5], np.int32), np.array(6, np.int32)),
     ]
     output = process.next(state, client_data)
     self.assertAllEqual([5, 7], output.result[0])

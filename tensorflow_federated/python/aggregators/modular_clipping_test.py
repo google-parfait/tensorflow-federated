@@ -33,7 +33,7 @@ _int_at_clients = computation_types.FederatedType(np.int32, placements.CLIENTS)
 
 
 def _make_test_struct_value(x):
-  return [tf.constant(x, dtype=tf.int32, shape=(3,)), x]
+  return [np.full(shape=[3], fill_value=x, dtype=np.int32), x]
 
 
 def _test_factory(clip_lower=-2, clip_upper=2, estimate_stddev=False):

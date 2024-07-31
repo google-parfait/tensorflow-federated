@@ -43,10 +43,10 @@ _test_nested_struct_type_float = collections.OrderedDict(
 def _make_test_nested_struct_value(value):
   return collections.OrderedDict(
       a=[
-          tf.constant(value, dtype=np.float32),
-          [tf.constant(value, dtype=np.float32, shape=[2, 2, 1])],
+          np.array(value, dtype=np.float32),
+          [np.full(shape=[2, 2, 1], fill_value=value, dtype=np.float32)],
       ],
-      b=tf.constant(value, dtype=np.float32, shape=(3, 3)),
+      b=np.full(shape=[3, 3], fill_value=value, dtype=np.float32),
   )
 
 
@@ -164,8 +164,11 @@ class DeterministicDiscretizationExecutionTest(
       (
           'rank_1_tensor',
           (np.float32, [7]),
-          [np.arange(7.0), np.arange(7.0) * 2],
-          np.arange(7.0) * 3,
+          [
+              np.arange(7.0, dtype=np.float32),
+              np.arange(7.0, dtype=np.float32) * 2,
+          ],
+          np.arange(7.0, dtype=np.float32) * 3,
       ),
       (
           'rank_2_tensor',

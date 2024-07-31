@@ -49,8 +49,8 @@ def _concat_sum():
 
 def _make_test_struct_nested(value):
   return collections.OrderedDict(
-      a=[np.array(value, np.float32), [np.ones([2, 2, 2]) * value]],
-      b=np.ones((3, 3)) * value,
+      a=[np.array(value, np.float32), [np.ones([2, 2, 2], np.float32) * value]],
+      b=np.ones([3, 3], np.float32) * value,
   )
 
 

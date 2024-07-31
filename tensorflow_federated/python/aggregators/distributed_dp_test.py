@@ -61,7 +61,7 @@ def _make_test_factory(**new_kwargs):
 
 
 def _make_onehot(value, dim=100):
-  return value * tf.one_hot(indices=0, depth=dim)
+  return value * tf.one_hot(indices=0, depth=dim).numpy()
 
 
 def _run_query(query, records, global_state=None, weights=None):
@@ -409,7 +409,7 @@ class DistributedDpExecutionTest(tf.test.TestCase, parameterized.TestCase):
 
     dim = 99
     padded_dim = 100.0 if rotation_type == 'dft' else 128.0
-    value_type = (np.float32, _make_onehot(0.0, dim).shape.as_list())
+    value_type = (np.float32, _make_onehot(0.0, dim).shape)
     process = ddp_factory.create(computation_types.to_type(value_type))
     state = process.initialize()
     _, discrete_state, _ = ddp_factory._unpack_state(state)

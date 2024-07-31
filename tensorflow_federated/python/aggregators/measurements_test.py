@@ -40,7 +40,7 @@ def _get_norm(value):
 
 def _make_struct(x):
   # L2 norm of this struct is just 2 * x.
-  return [tf.constant(x, dtype=tf.float32, shape=(3,)), x]
+  return [np.full(shape=[3], fill_value=x, dtype=np.float32), x]
 
 
 def _get_min_norm(value):

@@ -43,10 +43,10 @@ _test_nested_struct_type_float = collections.OrderedDict(
 def _make_test_nested_struct_value(value):
   return collections.OrderedDict(
       a=[
-          tf.constant(value, dtype=np.float16),
-          [tf.constant(value, dtype=np.float32, shape=[2, 2, 1])],
+          np.array(value, dtype=np.float16),
+          [np.full(shape=[2, 2, 1], fill_value=value, dtype=np.float32)],
       ],
-      b=tf.constant(value, dtype=np.float16, shape=(3, 3)),
+      b=np.full(shape=[3, 3], fill_value=value, dtype=np.float16),
   )
 
 
@@ -160,19 +160,22 @@ class StochasticDiscretizationExecutionTest(
 ):
 
   @parameterized.named_parameters(
-      # ('scalar', np.float32, [1.0, 2.0, 3.0], 6.0),
-      # (
-      #     'rank_1_tensor',
-      #     (np.float32, [7]),
-      #     [np.arange(7.0), np.arange(7.0) * 2],
-      #     np.arange(7.0) * 3,
-      # ),
-      # (
-      #     'rank_2_tensor',
-      #     (np.float32, [1, 2]),
-      #     [((1.0, 1.0),), ((2.0, 2.0),)],
-      #     ((3.0, 3.0),),
-      # ),
+      ('scalar', np.float32, [1.0, 2.0, 3.0], 6.0),
+      (
+          'rank_1_tensor',
+          (np.float32, [7]),
+          [
+              np.arange(7.0, dtype=np.float32),
+              np.arange(7.0, dtype=np.float32) * 2,
+          ],
+          np.arange(7.0, dtype=np.float32) * 3,
+      ),
+      (
+          'rank_2_tensor',
+          (np.float32, [1, 2]),
+          [((1.0, 1.0),), ((2.0, 2.0),)],
+          ((3.0, 3.0),),
+      ),
       (
           'nested',
           _test_nested_struct_type_float,
@@ -182,12 +185,12 @@ class StochasticDiscretizationExecutionTest(
           ],
           _make_test_nested_struct_value(579.0),
       ),
-      # (
-      #     'zero_size_tensor',
-      #     [(np.float32, (0,)), (np.float32, (2,))],
-      #     [[[], [1.0, 2.0]], [[], [3.0, 4.0]]],
-      #     [[], [4.0, 6.0]],
-      # ),
+      (
+          'zero_size_tensor',
+          [(np.float32, (0,)), (np.float32, (2,))],
+          [[[], [1.0, 2.0]], [[], [3.0, 4.0]]],
+          [[], [4.0, 6.0]],
+      ),
   )
   def test_discretize_impl(self, value_type, client_values, expected_sum):
     factory = stochastic_discretization.StochasticDiscretizationFactory(
@@ -210,12 +213,6 @@ class StochasticDiscretizationExecutionTest(
     for _ in range(3):
       output = process.next(state, client_values)
       output_measurements = output.measurements
-
-      print('---')
-      print(output_measurements)
-      print(expected_measurements)
-      print('---')
-
       self.assertAllClose(output_measurements, expected_measurements)
       result = output.result
       self.assertAllClose(result, expected_result)

@@ -70,10 +70,16 @@ class UnweightedAsWeightedAggregationTest(tf.test.TestCase):
     state = aggregator.initialize()
     uniform_output = aggregator.next(state, test_data, uniform_weights)
 
-    for seed in range(0, 30, 3):
-      random_weights = [
-          tf.random.stateless_uniform((), [seed + i, 0]) for i in range(3)
-      ]
+    # Arbitrary, but non-uniform weights. These are excepted to not change the
+    # output.
+    non_uniform_weights = [
+        [0.5, 1.0, 0.5],
+        [2.0, 0.0, 0.0],
+        [2.0, 3.0, 1.0],
+        [0.01, 0.1, 1.0],
+        [10.0, 0.1, 21.0],
+    ]
+    for random_weights in non_uniform_weights:
       random_output = aggregator.next(state, test_data, random_weights)
       self.assertAllEqual(uniform_output.state, random_output.state)
       self.assertAllEqual(uniform_output.result, random_output.result)

@@ -360,10 +360,10 @@ class DPFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
       self, total_steps, expected_variance, noise_std, use_efficient
   ):
     variable_shape, tolerance = [10000], 0.05
-    record = tf.zeros(variable_shape, tf.float32)
-    record_shape = tf.nest.map_structure(lambda t: t.shape, record)
+    record = np.zeros(variable_shape, np.float32)
+    record_shape = variable_shape
     record_type = computation_types.to_type((np.float32, variable_shape))
-    specs = tf.nest.map_structure(tf.TensorSpec, record_shape)
+    specs = tf.TensorSpec(shape=record_shape, dtype=tf.float32)
 
     tree_factory = (
         differential_privacy.DifferentiallyPrivateFactory.tree_aggregation(

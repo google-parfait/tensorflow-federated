@@ -44,8 +44,11 @@ _test_struct_type_nested = collections.OrderedDict(
 
 def _make_test_struct_value_nested(value):
   return collections.OrderedDict(
-      a=[tf.cast(value, np.float32), [tf.ones([2, 1]) * value]],
-      b=tf.ones((1, 1, 2)) * value,
+      a=[
+          np.array(value, np.float32),
+          [np.full(shape=[2, 1], fill_value=value, dtype=np.float32)],
+      ],
+      b=np.ones([1, 1, 2], np.float32) * value,
   )
 
 
@@ -206,8 +209,8 @@ class RotationsExecutionTest(tf.test.TestCase, parameterized.TestCase):
       (
           'rank_1_tensor_hd',
           (np.int32, [4]),
-          [np.arange(4), np.arange(4) * 2],
-          np.arange(4) * 3,
+          [np.arange(4, dtype=np.int32), np.arange(4, dtype=np.int32) * 2],
+          np.arange(4, dtype=np.int32) * 3,
           _hadamard_sum,
       ),
       (
@@ -231,8 +234,11 @@ class RotationsExecutionTest(tf.test.TestCase, parameterized.TestCase):
       (
           'rank_1_tensor_dft',
           (np.int32, [4]),
-          [np.arange(4), np.arange(4) * 2],
-          np.arange(4) * 3,
+          [
+              np.arange(4, dtype=np.int32),
+              np.arange(4, dtype=np.int32) * 2,
+          ],
+          np.arange(4, dtype=np.int32) * 3,
           _dft_sum,
       ),
       (
@@ -343,7 +349,7 @@ class RotationsExecutionTest(tf.test.TestCase, parameterized.TestCase):
         computation_types.to_type((np.float32, input_shape))
     )
 
-    client_input = tf.ones(input_shape)
+    client_input = np.ones(input_shape, np.float32)
     output = process.next(process.initialize(), [client_input])
     inner_shape = output.measurements[name]['sum'].shape
     self.assertAllEqual(expected_inner_shape, inner_shape)
@@ -353,7 +359,9 @@ class RotationsExecutionTest(tf.test.TestCase, parameterized.TestCase):
     factory = _measured_hadamard_sum() if name == 'hd' else _measured_dft_sum()
     process = factory.create(computation_types.TensorType(np.float32, [8]))
 
-    client_input = np.array([1.0, -1.0, 2.5, -1.5, -0.5, 1.9, 2.2, -2.0])
+    client_input = np.array(
+        [1.0, -1.0, 2.5, -1.5, -0.5, 1.9, 2.2, -2.0], np.float32
+    )
     state = process.initialize()
     output = process.next(state, [client_input])
     inner_aggregand_1 = output.measurements[name]['sum']
@@ -378,7 +386,9 @@ class RotationsExecutionTest(tf.test.TestCase, parameterized.TestCase):
     factory = _measured_hadamard_sum()
     process = factory.create(computation_types.TensorType(np.float32, [256]))
 
-    client_input = 256 * tf.one_hot(indices=17, depth=256, dtype=tf.float32)
+    client_input = (
+        256 * tf.one_hot(indices=17, depth=256, dtype=tf.float32).numpy()
+    )
     output = process.next(process.initialize(), [client_input])
     inner_aggregand = output.measurements['hd']['sum']
 
@@ -395,7 +405,9 @@ class RotationsExecutionTest(tf.test.TestCase, parameterized.TestCase):
     factory = _measured_dft_sum()
     process = factory.create(computation_types.TensorType(np.float32, [256]))
 
-    client_input = 256 * tf.one_hot(indices=17, depth=256, dtype=tf.float32)
+    client_input = (
+        256 * tf.one_hot(indices=17, depth=256, dtype=tf.float32).numpy()
+    )
     output = process.next(process.initialize(), [client_input])
     inner_aggregand = output.measurements['dft']['sum']
 
