@@ -271,6 +271,9 @@ def to_proto(
     raise NotImplementedError(f'Unexpected `dtype` found: {dtype}.')
 
 
+_numpy_version = tuple(map(int, np.__version__.split('.')[:2]))
+
+
 def _can_cast(obj: object, dtype: type[np.generic]) -> bool:
   """Returns `True` if `obj` can be cast to the `dtype`."""
   if isinstance(obj, np.ndarray):
@@ -278,8 +281,17 @@ def _can_cast(obj: object, dtype: type[np.generic]) -> bool:
     # https://numpy.org/doc/stable/reference/generated/numpy.can_cast.html for
     # more information.
     return all(_can_cast(x, dtype) for x in obj.flatten())
-  elif isinstance(obj, (np.generic, bool, int, float, complex)):
+  elif isinstance(obj, np.generic):
     return np.can_cast(obj, dtype)
+  elif isinstance(obj, (bool, int, float, complex)):
+    if _numpy_version >= (2, 0):
+      try:
+        np.asarray(obj, dtype=dtype)
+        return True
+      except OverflowError:
+        return False
+    else:
+      return np.can_cast(obj, dtype)
   elif isinstance(obj, (str, bytes)):
     # `np.can_cast` interprets strings as dtype-like specifications rather than
     # strings.
