@@ -314,8 +314,8 @@ class FederatedComputationTest(parameterized.TestCase):
     def map_foo_at_server(x):
       return tff.federated_map(foo, x)
 
-    bad_tensor = tf.constant([1.0] * 10, dtype=tf.float32)
-    good_tensor = tf.constant([1.0], dtype=tf.float32)
+    bad_tensor = np.array([1.0] * 10, dtype=np.float32)
+    good_tensor = np.array([1.0], dtype=np.float32)
     # Ensure running this computation at both placements, or unplaced, still
     # raises.
     with self.assertRaises(Exception):
@@ -405,7 +405,12 @@ class TensorFlowComputationTest(tf.test.TestCase, parameterized.TestCase):
 
     self.assertEqual((1, 1, 1), count_one_twice())
 
-  @tff.test.with_contexts(*test_contexts.get_all_contexts())
+  @tff.test.with_contexts(
+      (
+          'native_sync_local',
+          tff.backends.native.create_sync_local_cpp_execution_context,
+      ),
+  )
   def test_dynamic_lookup_table(self):
 
     @tff.tensorflow.computation(

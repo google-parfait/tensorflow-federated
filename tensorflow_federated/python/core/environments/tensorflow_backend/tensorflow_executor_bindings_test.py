@@ -94,10 +94,11 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
         ('a', computation_types.TensorType(np.int64, [3])),
         ('b', computation_types.TensorType(np.float32, [])),
     ])
-    value_pb, _ = value_serialization.serialize_value(
-        collections.OrderedDict(a=tf.constant([1, 2, 3]), b=tf.constant(42.0)),
-        expected_type_spec,
+    value = collections.OrderedDict(
+        a=np.array([1, 2, 3], np.int64),
+        b=np.array(42.0, np.float32),
     )
+    value_pb, _ = value_serialization.serialize_value(value, expected_type_spec)
     value = executor.create_value(value_pb)
     self.assertIsInstance(value, executor_bindings.OwnedValueId)
     # Assert the value ID was incremented.
@@ -226,7 +227,7 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
     executor = get_executor()
     expected_type_spec = computation_types.TensorType(np.int64, [3])
     value_pb, _ = value_serialization.serialize_value(
-        tf.constant([1, 2, 3]), expected_type_spec
+        np.array([1, 2, 3], np.int64), expected_type_spec
     )
     value = executor.create_value(value_pb)
     self.assertEqual(value.ref, 0)
@@ -264,7 +265,7 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
     executor = get_executor()
     expected_type_spec = computation_types.TensorType(np.int64, [3])
     value_pb, _ = value_serialization.serialize_value(
-        tf.constant([1, 2, 3]), expected_type_spec
+        np.array([1, 2, 3], np.int64), expected_type_spec
     )
     value = executor.create_value(value_pb)
     self.assertEqual(value.ref, 0)
@@ -298,7 +299,7 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
   def test_call_with_arg(self):
     executor = get_executor()
     value_pb, _ = value_serialization.serialize_value(
-        tf.constant([1, 2, 3]),
+        np.array([1, 2, 3], np.int64),
         computation_types.TensorType(np.int64, [3]),
     )
     value_ref = executor.create_value(value_pb)
