@@ -805,7 +805,7 @@ class CreateFederatedSelectTest(parameterized.TestCase):
   def test_returns_federated_select(self, secure, name):
     client_keys = building_block_factory.create_federated_value(
         building_blocks.Literal(
-            np.array([5, 4, 3, 2, 1]),
+            np.array([5, 4, 3, 2, 1], dtype=np.int32),
             computation_types.TensorType(np.int32, [5]),
         ),
         placement=placements.CLIENTS,
