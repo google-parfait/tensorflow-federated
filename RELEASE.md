@@ -8,6 +8,10 @@ and this project adheres to
 
 ## Unreleased
 
+### Changed
+
+*   `tensorflow` verison increased to 2.16.1.
+
 ## Release 0.84.0
 
 ### Added
