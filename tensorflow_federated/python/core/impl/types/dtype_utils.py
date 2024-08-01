@@ -83,9 +83,6 @@ def is_valid_dtype(dtype: type[np.generic]) -> bool:
   return dtype in _DTYPE_TO_PROTO
 
 
-_numpy_version = tuple(map(int, np.__version__.split('.')[:2]))
-
-
 def infer_dtype(
     obj: Union[bool, int, float, complex, str, bytes],
 ) -> type[np.generic]:
@@ -100,33 +97,34 @@ def infer_dtype(
   if isinstance(obj, bool):
     return np.bool_
   elif isinstance(obj, int):
-    if _numpy_version >= (2, 0):
-      try:
-        np.asarray(obj, dtype=np.int32)
-        return np.int32
-      except OverflowError:
-        pass
-      try:
-        np.asarray(obj, dtype=np.int64)
-        return np.int64
-      except OverflowError:
-        pass
+
+    def _can_cast(
+        obj: Union[bool, int, float, complex, str, bytes],
+        dtype: type[np.generic],
+    ) -> bool:
+      # `np.can_cast` does not support Python scalars (since version 2.0).
+      # Casting the value to a numpy value and testing for an overflow is
+      # equivalent to testing the Python value.
+      numpy_version = tuple(int(x) for x in np.__version__.split('.'))
+      if numpy_version >= (2, 0):
+        try:
+          np.asarray(obj, dtype=dtype)
+          return True
+        except OverflowError:
+          return False
+      else:
+        return np.can_cast(obj, dtype)
+
+    if _can_cast(obj, np.int32):
+      return np.int32
+    elif _can_cast(obj, np.int64):
+      return np.int64
+    else:
       raise ValueError(
           'Expected `obj` to be an `int` in the range'
           f' [{np.iinfo(np.int64).min}, {np.iinfo(np.int64).max}],'
           f' found: {obj}.'
       )
-    else:
-      if np.can_cast(obj, np.int32):
-        return np.int32
-      elif np.can_cast(obj, np.int64):
-        return np.int64
-      else:
-        raise ValueError(
-            'Expected `obj` to be an `int` in the range'
-            f' [{np.iinfo(np.int64).min}, {np.iinfo(np.int64).max}],'
-            f' found: {obj}.'
-        )
   elif isinstance(obj, float):
     return np.float32
   elif isinstance(obj, complex):

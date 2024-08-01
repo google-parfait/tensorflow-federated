@@ -617,6 +617,26 @@ class ToProtoTest(parameterized.TestCase):
           ),
       ),
       (
+          'bytes',
+          b'abc',
+          np.str_,
+          array_pb2.Array(
+              dtype=data_type_pb2.DataType.DT_STRING,
+              shape=array_pb2.ArrayShape(dim=[]),
+              string_list=array_pb2.Array.BytesList(value=[b'abc']),
+          ),
+      ),
+      (
+          'bytes_null_terminated',
+          b'abc\x00\x00',
+          np.str_,
+          array_pb2.Array(
+              dtype=data_type_pb2.DataType.DT_STRING,
+              shape=array_pb2.ArrayShape(dim=[]),
+              string_list=array_pb2.Array.BytesList(value=[b'abc\x00\x00']),
+          ),
+      ),
+      (
           'generic_int32',
           np.int32(1),
           np.int32,
@@ -793,11 +813,9 @@ class ToProtoTest(parameterized.TestCase):
       ('generic', np.int64(np.iinfo(np.int64).max), np.int32),
       ('array', np.array([np.iinfo(np.int64).max] * 3, np.int64), np.int32),
   )
-  def test_raises_value_error_with_incompatible_dtype_hint(
-      self, value, dtype_hint
-  ):
+  def test_raises_value_error_with_incompatible_dtype_hint(self, value, dtype):
     with self.assertRaises(ValueError):
-      array.to_proto(value, dtype_hint=dtype_hint)
+      array.to_proto(value, dtype_hint=dtype)
 
   @parameterized.named_parameters(
       ('None', None),
@@ -808,38 +826,15 @@ class ToProtoTest(parameterized.TestCase):
       array.to_proto(value)
 
 
-class CanCastTest(parameterized.TestCase):
-
-  @parameterized.named_parameters(
-      ('scalar', 1, np.int64),
-      ('str', 'abc', np.str_),
-      ('generic', np.int32(1), np.int64),
-      ('array', np.array([[1, 2, 3], [4, 5, 6]], np.int32), np.int64),
-  )
-  def test_returns_true(self, value, dtype):
-    result = array._can_cast(value, dtype)
-    self.assertTrue(result)
-
-  @parameterized.named_parameters(
-      ('scalar', np.iinfo(np.int64).max, np.int32),
-      ('str', 'abc', np.int32),
-      ('generic', np.int64(np.iinfo(np.int64).max), np.int32),
-      ('array', np.array([np.iinfo(np.int64).max] * 3, np.int64), np.int32),
-  )
-  def test_returns_false(self, value, dtype):
-    result = array._can_cast(value, dtype)
-    self.assertFalse(result)
-
-
 class IsCompatibleDtypeTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('bool', True, np.bool_),
-      ('int8', 1, np.int32),
+      ('int8', 1, np.int8),
       ('int16', 1, np.int16),
       ('int32', 1, np.int32),
       ('int64', 1, np.int64),
-      ('uint8', 1, np.uint32),
+      ('uint8', 1, np.uint8),
       ('uint16', 1, np.uint16),
       ('uint32', 1, np.uint32),
       ('uint64', 1, np.uint64),
@@ -859,6 +854,8 @@ class IsCompatibleDtypeTest(parameterized.TestCase):
           np.array([b'abc\x00\x00', b'def\x00\x00'], np.object_),
           np.str_,
       ),
+      ('nan', np.nan, np.float32),
+      ('inf', np.inf, np.float32),
   )
   def test_returns_true(self, value, dtype):
     result = array.is_compatible_dtype(value, dtype)
@@ -866,7 +863,22 @@ class IsCompatibleDtypeTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('scalar_incompatible_dtype_kind', 1, np.float32),
-      ('scalar_incompatible_dtype_size', np.iinfo(np.int64).max, np.int32),
+      ('scalar_incompatible_dtype_size_int', np.iinfo(np.int64).max, np.int32),
+      (
+          'scalar_incompatible_dtype_size_float',
+          np.finfo(np.float64).max,
+          np.int32,
+      ),
+      (
+          'scalar_incompatible_dtype_size_complex_real',
+          complex(np.finfo(np.float64).max, 1),
+          np.complex64,
+      ),
+      (
+          'scalar_incompatible_dtype_size_complex_imaginary',
+          complex(1, np.finfo(np.float64).max),
+          np.complex64,
+      ),
       ('generic_incompatible_dtype_kind', np.int32(1), np.float32),
       (
           'generic_incompatible_dtype_size',
@@ -881,7 +893,7 @@ class IsCompatibleDtypeTest(parameterized.TestCase):
       (
           'array_incompatible_dtype_size',
           np.array([np.iinfo(np.int64).max] * 3, np.int64),
-          np.float32,
+          np.int32,
       ),
   )
   def test_returns_false(self, value, dtype):

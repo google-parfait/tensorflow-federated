@@ -271,35 +271,6 @@ def to_proto(
     raise NotImplementedError(f'Unexpected `dtype` found: {dtype}.')
 
 
-_numpy_version = tuple(map(int, np.__version__.split('.')[:2]))
-
-
-def _can_cast(obj: object, dtype: type[np.generic]) -> bool:
-  """Returns `True` if `obj` can be cast to the `dtype`."""
-  if isinstance(obj, np.ndarray):
-    # `np.can_cast` does not operate on non-scalar arrays. See
-    # https://numpy.org/doc/stable/reference/generated/numpy.can_cast.html for
-    # more information.
-    return all(_can_cast(x, dtype) for x in obj.flatten())
-  elif isinstance(obj, np.generic):
-    return np.can_cast(obj, dtype)
-  elif isinstance(obj, (bool, int, float, complex)):
-    if _numpy_version >= (2, 0):
-      try:
-        np.asarray(obj, dtype=dtype)
-        return True
-      except OverflowError:
-        return False
-    else:
-      return np.can_cast(obj, dtype)
-  elif isinstance(obj, (str, bytes)):
-    # `np.can_cast` interprets strings as dtype-like specifications rather than
-    # strings.
-    return np.issubdtype(dtype, np.character)
-  else:
-    return False
-
-
 def is_compatible_dtype(value: Array, dtype: type[np.generic]) -> bool:
   """Returns `True` if `value` is compatible with `dtype`, otherwise `False`.
 
@@ -313,23 +284,17 @@ def is_compatible_dtype(value: Array, dtype: type[np.generic]) -> bool:
     value: The value to check.
     dtype: The scalar `np.generic` to check against.
   """
+
+  # Check dtype kind.
   if isinstance(value, (np.ndarray, np.generic)):
     value_dtype = value.dtype
   else:
     value_dtype = type(value)
 
-  # Check dtype kind and skip checking dtype size because `np.bool_` does not
-  # have a size and values with a dtype `np.str_`, `np.bytes_`, and `np.object_`
-  # have a variable length.
   if np.issubdtype(value_dtype, np.bool_):
+    # Skip checking dtype size, `np.bool_` does not have a size.
     return dtype is np.bool_
-  elif np.issubdtype(value_dtype, np.character):
-    return dtype is np.str_
-  elif np.issubdtype(value_dtype, np.object_):
-    return dtype is np.str_
-
-  # Check dtype kind.
-  if np.issubdtype(value_dtype, np.integer):
+  elif np.issubdtype(value_dtype, np.integer):
     if not np.issubdtype(dtype, np.integer):
       return False
   elif np.issubdtype(value_dtype, np.floating):
@@ -338,16 +303,46 @@ def is_compatible_dtype(value: Array, dtype: type[np.generic]) -> bool:
   elif np.issubdtype(value_dtype, np.complexfloating):
     if not np.issubdtype(dtype, np.complexfloating):
       return False
+  elif np.issubdtype(value_dtype, np.character) or np.issubdtype(
+      value_dtype, np.object_
+  ):
+    # Skip checking dtype size, `np.str_`, `np.bytes_`, and `np.object_`
+    # (null-terminated bytes) have a variable length.
+    return dtype is np.str_
   else:
     return False
 
-  # Check dtype size. After checking that the `value` has a compatible kind, it
-  # is simple to check that the `value` has a compatible size by checking if it
-  # can be cast to the `dtype`.
-  if not _can_cast(value, dtype):
-    return False
+  # Check dtype size.
+  if isinstance(value, (np.ndarray, np.generic)):
+    # `np.can_cast` does not does not apply value-based logic to `np.ndarray` or
+    # numpy scalars (since version 2.0). Testing the `dtype` of the value rather
+    # the the value aligns how `np.ndarray` and `np.generic` types are handled
+    # across different versions of numpy. See
+    # https://numpy.org/doc/stable/reference/generated/numpy.can_cast.html for
+    # more information.
+    return np.can_cast(value.dtype, dtype)
+  elif isinstance(value, (int, float, complex)):
 
-  return True
+    def _can_cast(
+        obj: Union[bool, int, float, complex, str, bytes],
+        dtype: type[np.generic],
+    ) -> bool:
+      # `np.can_cast` does not support Python scalars (since version 2.0).
+      # Casting the value to a numpy value and testing for an overflow is
+      # equivalent to testing the Python value.
+      numpy_version = tuple(int(x) for x in np.__version__.split('.'))
+      if numpy_version >= (2, 0):
+        try:
+          np.asarray(obj, dtype=dtype)
+          return True
+        except OverflowError:
+          return False
+      else:
+        return np.can_cast(obj, dtype)
+
+    return _can_cast(value, dtype)
+  else:
+    return False
 
 
 def is_compatible_shape(value: Array, shape: array_shape.ArrayShape) -> bool:
