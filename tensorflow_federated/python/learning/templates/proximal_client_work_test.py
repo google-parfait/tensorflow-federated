@@ -172,7 +172,8 @@ def create_test_dataset() -> tf.data.Dataset:
 
 def create_test_initial_weights() -> model_weights.ModelWeights:
   return model_weights.ModelWeights(
-      trainable=[tf.zeros((2, 1)), tf.constant(0.0)], non_trainable=[0.0]
+      trainable=[np.zeros([2, 1], np.float32), 0.0],
+      non_trainable=[0.0],
   )
 
 

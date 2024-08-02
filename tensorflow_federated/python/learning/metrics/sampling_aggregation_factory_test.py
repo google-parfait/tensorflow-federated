@@ -55,11 +55,11 @@ def _create_functional_metric_finalizers() -> (
 
 def _create_random_unfinalized_metrics(seed: int):
   metrics = collections.OrderedDict(
-      accuracy=tf.random.stateless_uniform(shape=(), seed=[seed, seed]),
-      loss=tf.random.stateless_uniform(shape=(2,), seed=[seed, seed]),
+      accuracy=tf.random.stateless_uniform(shape=(), seed=[seed, seed]).numpy(),
+      loss=tf.random.stateless_uniform(shape=(2,), seed=[seed, seed]).numpy(),
       custom_sum=[
-          tf.random.stateless_uniform(shape=(1,), seed=[seed, seed]),
-          tf.random.stateless_uniform(shape=(2,), seed=[seed, seed]),
+          tf.random.stateless_uniform(shape=(1,), seed=[seed, seed]).numpy(),
+          tf.random.stateless_uniform(shape=(2,), seed=[seed, seed]).numpy(),
       ],
   )
   metrics_type = computation_types.StructWithPythonType(
@@ -90,12 +90,10 @@ def _create_finalized_clients_metrics(
   )
   for unfinalized_metrics in list_clients_unfinalized_metrics:
     for metric_name in metric_finalizers:
-      current_client_finalized_metric = metric_finalizers[metric_name](
-          unfinalized_metrics[metric_name]
-      )
-      total_clients_finalized_metrics[metric_name].append(
-          current_client_finalized_metric.numpy()
-      )
+      metric = metric_finalizers[metric_name](unfinalized_metrics[metric_name])
+      if isinstance(metric, tf.Tensor):
+        metric = metric.numpy()
+      total_clients_finalized_metrics[metric_name].append(metric)
   return total_clients_finalized_metrics
 
 
@@ -111,9 +109,10 @@ def _create_functional_finalized_clients_metrics(
   for unfinalized_metrics in list_clients_unfinalized_metrics:
     finalized_metrics = metric_finalizers(unfinalized_metrics)
     for metric_name in finalized_metrics:
-      total_clients_finalized_metrics[metric_name].append(
-          finalized_metrics[metric_name].numpy()
-      )
+      metric = finalized_metrics[metric_name]
+      if isinstance(metric, tf.Tensor):
+        metric = metric.numpy()
+      total_clients_finalized_metrics[metric_name].append(metric)
   return total_clients_finalized_metrics
 
 

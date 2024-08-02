@@ -11,9 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests ensuring optimizers execute as expected within a `tff.Computation`."""
 
 from absl.testing import parameterized
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.core.backends.native import execution_contexts
@@ -85,8 +85,12 @@ def _run_in_tf_computation(optimizer, spec):
 
 
 def _run_in_federated_computation(optimizer, spec):
-  weights = tf.nest.map_structure(lambda s: tf.ones(s.shape, s.dtype), spec)
-  gradients = tf.nest.map_structure(lambda s: tf.ones(s.shape, s.dtype), spec)
+  weights = tf.nest.map_structure(
+      lambda s: np.ones(s.shape, s.dtype.as_numpy_dtype()), spec
+  )
+  gradients = tf.nest.map_structure(
+      lambda s: np.ones(s.shape, s.dtype.as_numpy_dtype()), spec
+  )
 
   @federated_computation.federated_computation()
   def init_fn():

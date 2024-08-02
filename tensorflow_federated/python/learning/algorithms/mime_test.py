@@ -166,7 +166,8 @@ def _create_model():
 
 def _initial_weights():
   return model_weights.ModelWeights(
-      trainable=[tf.zeros((2, 1)), tf.constant(0.0)], non_trainable=[0.0]
+      trainable=[np.zeros([2, 1], np.float32), 0.0],
+      non_trainable=[0.0],
   )
 
 

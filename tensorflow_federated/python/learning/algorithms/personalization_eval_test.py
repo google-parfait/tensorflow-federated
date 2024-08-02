@@ -140,7 +140,7 @@ def _create_zero_model_weights(model_fn):
   """Creates the model weights with all zeros."""
   whimsy_model = model_fn()
   return tf.nest.map_structure(
-      tf.zeros_like, model_weights.ModelWeights.from_model(whimsy_model)
+      np.zeros_like, model_weights.ModelWeights.from_model(whimsy_model)
   )
 
 

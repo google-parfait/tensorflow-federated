@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import collections
 from typing import Any
 
@@ -31,8 +32,12 @@ from tensorflow_federated.python.learning.metrics import sum_aggregation_factory
 _UNUSED_METRICS_FINALIZERS = collections.OrderedDict(
     accuracy=tf.function(func=lambda x: x[0] / x[1])
 )
-_UNUSED_UNFINALIZED_METRICS = collections.OrderedDict(
-    accuracy=[tf.constant(1.0), tf.constant(2.0)]
+_UNUSED_UNFINALIZED_METRICS = collections.OrderedDict(accuracy=[1.0, 2.0])
+_UNUSED_UNFINALIZED_METRICS_TYPE = computation_types.StructWithPythonType(
+    [
+        ('accuracy', computation_types.TensorType(np.float32, [2])),
+    ],
+    container_type=collections.OrderedDict,
 )
 
 
@@ -70,14 +75,14 @@ _TEST_ARGUMENTS_KERAS_METRICS = {
     'local_unfinalized_metrics_at_clients': [
         collections.OrderedDict(
             # The unfinalized `accuracy` has two values: `total` and `count`.
-            accuracy=[tf.constant(1.0), tf.constant(2.0)],
+            accuracy=[1.0, 2.0],
             # The unfinalized `custom_sum` has three values: `total`, `scalar`,
             # and `vector`.
-            custom_sum=[tf.constant(1), tf.constant(1), tf.constant([1, 1])],
+            custom_sum=[1, 1, np.array([1, 1], np.int32)],
         ),
         collections.OrderedDict(
-            accuracy=[tf.constant(3.0), tf.constant(6.0)],
-            custom_sum=[tf.constant(1), tf.constant(1), tf.constant([1, 1])],
+            accuracy=[3.0, 6.0],
+            custom_sum=[1, 1, np.array([1, 1], np.int32)],
         ),
     ],
     'local_unfinalized_metrics_type': computation_types.to_type(
@@ -118,14 +123,14 @@ _TEST_CALLABLE_ARGUMENTS_KERAS_METRICS = {
     'local_unfinalized_metrics_at_clients': [
         collections.OrderedDict(
             # The unfinalized `accuracy` has two values: `total` and `count`.
-            accuracy=[tf.constant(1.0), tf.constant(2.0)],
+            accuracy=[1.0, 2.0],
             # The unfinalized `custom_sum` has three values: `total`, `scalar`,
             # and `vector`.
-            custom_sum=[tf.constant(1), tf.constant(1), tf.constant([1, 1])],
+            custom_sum=[1, 1, np.array([1, 1], np.int32)],
         ),
         collections.OrderedDict(
-            accuracy=[tf.constant(3.0), tf.constant(6.0)],
-            custom_sum=[tf.constant(1), tf.constant(1), tf.constant([1, 1])],
+            accuracy=[3.0, 6.0],
+            custom_sum=[1, 1, np.array([1, 1], np.int32)],
         ),
     ],
     'local_unfinalized_metrics_type': computation_types.to_type(
@@ -157,11 +162,11 @@ _TEST_ARGUMENTS_NON_KERAS_METRICS = {
     ),
     'local_unfinalized_metrics_at_clients': [
         collections.OrderedDict(
-            divide=[tf.constant(1.0), tf.constant(2.0)],
+            divide=[1.0, 2.0],
             sum=collections.OrderedDict(count_1=1, count_2=1),
         ),
         collections.OrderedDict(
-            divide=[tf.constant(3.0), tf.constant(6.0)],
+            divide=[3.0, 6.0],
             sum=collections.OrderedDict(count_1=1, count_2=1),
         ),
     ],
@@ -188,11 +193,11 @@ _TEST_METRICS_MIXED_DTYPES = {
     ),
     'local_unfinalized_metrics_at_clients': [
         collections.OrderedDict(
-            divide=[tf.constant(1.0), tf.constant(2)],
+            divide=[1.0, 2],
             sum=collections.OrderedDict(count_1=1, count_2=1.0),
         ),
         collections.OrderedDict(
-            divide=[tf.constant(3.0), tf.constant(6)],
+            divide=[3.0, 6],
             sum=collections.OrderedDict(count_1=1, count_2=1.0),
         ),
     ],
@@ -213,7 +218,7 @@ _TEST_ARGUMENTS_INVALID_INPUTS = [
         'metric_finalizers': {
             'accuracy': tf.function(func=lambda x: x[0] / x[1])
         },
-        'local_unfinalized_metrics': _UNUSED_UNFINALIZED_METRICS,
+        'local_unfinalized_metrics_type': _UNUSED_UNFINALIZED_METRICS_TYPE,
         'error_type': TypeError,
         'error_message': 'Expected .*collections.OrderedDict',
     },
@@ -222,21 +227,28 @@ _TEST_ARGUMENTS_INVALID_INPUTS = [
         'metric_finalizers': collections.OrderedDict(
             [(1, tf.function(func=lambda x: x))]
         ),
-        'local_unfinalized_metrics': _UNUSED_UNFINALIZED_METRICS,
+        'local_unfinalized_metrics_type': _UNUSED_UNFINALIZED_METRICS_TYPE,
         'error_type': TypeError,
         'error_message': 'Expected .*str',
     },
     {
         'testcase_name': 'unfinalized_metrics_not_structure_type',
         'metric_finalizers': _UNUSED_METRICS_FINALIZERS,
-        'local_unfinalized_metrics': tf.constant(1.0),
+        'local_unfinalized_metrics_type': computation_types.TensorType(
+            np.float32
+        ),
         'error_type': TypeError,
         'error_message': 'Expected .*`tff.types.StructWithPythonType`',
     },
     {
         'testcase_name': 'unfinalized_metrics_not_ordereddict',
         'metric_finalizers': _UNUSED_METRICS_FINALIZERS,
-        'local_unfinalized_metrics': [tf.constant(1.0), tf.constant(2.0)],
+        'local_unfinalized_metrics_type': (
+            computation_types.StructWithPythonType(
+                [np.float32, np.float32],
+                container_type=list,
+            )
+        ),
         'error_type': TypeError,
         'error_message': (
             'with `collections.OrderedDict` as the Python container'
@@ -247,8 +259,13 @@ _TEST_ARGUMENTS_INVALID_INPUTS = [
         'metric_finalizers': collections.OrderedDict(
             accuracy=tf.function(func=lambda x: x[0] / x[1])
         ),
-        'local_unfinalized_metrics': collections.OrderedDict(
-            loss=[tf.constant(1.0), tf.constant(2.0)]
+        'local_unfinalized_metrics_type': (
+            computation_types.StructWithPythonType(
+                [
+                    ('loss', computation_types.TensorType(np.float32, [2])),
+                ],
+                container_type=collections.OrderedDict,
+            )
         ),
         'error_type': ValueError,
         'error_message': 'The metric names in `metric_finalizers` do not match',
@@ -292,16 +309,10 @@ class SumThenFinalizeTest(parameterized.TestCase, tf.test.TestCase):
   def test_fails_with_invalid_inputs(
       self,
       metric_finalizers,
-      local_unfinalized_metrics,
+      local_unfinalized_metrics_type,
       error_type,
       error_message,
   ):
-    local_unfinalized_metrics_type = computation_types.tensorflow_to_type(
-        tf.nest.map_structure(
-            tf.TensorSpec.from_tensor,
-            local_unfinalized_metrics,
-        )
-    )
 
     with self.assertRaisesRegex(error_type, error_message):
       # Concretize on a federated type with CLIENTS placement so that the method
@@ -410,14 +421,14 @@ class SecureSumThenFinalizeTest(parameterized.TestCase, tf.test.TestCase):
     local_unfinalized_metrics_at_clients = [
         collections.OrderedDict(
             # The unfinalized `accuracy` has two values: `total` and `count`.
-            accuracy=[tf.constant(1.0), tf.constant(2.0)],
+            accuracy=[1.0, 2.0],
             # The unfinalized `custom_sum` has three values: `total`, `scalar`,
             # and `vector`.
-            custom_sum=[tf.constant(1), tf.constant(1), tf.constant([1, 1])],
+            custom_sum=[1, 1, np.array([1, 1], np.int32)],
         ),
         collections.OrderedDict(
-            accuracy=[tf.constant(3.0), tf.constant(6.0)],
-            custom_sum=[tf.constant(1), tf.constant(1), tf.constant([1, 1])],
+            accuracy=[3.0, 6.0],
+            custom_sum=[1, 1, np.array([1, 1], np.int32)],
         ),
     ]
     polymorphic_aggregator_computation = aggregator.secure_sum_then_finalize(
@@ -499,11 +510,11 @@ class SecureSumThenFinalizeTest(parameterized.TestCase, tf.test.TestCase):
     )
     local_unfinalized_metrics_at_clients = [
         collections.OrderedDict(
-            divide=[tf.constant(1.0), tf.constant(2)],
+            divide=[1.0, 2],
             sum=collections.OrderedDict(count_1=2, count_2=1.0),
         ),
         collections.OrderedDict(
-            divide=[tf.constant(3.0), tf.constant(1)],
+            divide=[3.0, 1],
             sum=collections.OrderedDict(count_1=3, count_2=3.0),
         ),
     ]
@@ -657,16 +668,10 @@ class SecureSumThenFinalizeTest(parameterized.TestCase, tf.test.TestCase):
   def test_fails_with_invalid_inputs(
       self,
       metric_finalizers,
-      local_unfinalized_metrics,
+      local_unfinalized_metrics_type,
       error_type,
       error_message,
   ):
-    local_unfinalized_metrics_type = computation_types.tensorflow_to_type(
-        tf.nest.map_structure(
-            tf.TensorSpec.from_tensor,
-            local_unfinalized_metrics,
-        )
-    )
 
     with self.assertRaisesRegex(error_type, error_message):
       # Concretize on a federated type with CLIENTS placement so that the method
@@ -720,16 +725,10 @@ class FinalizeThenSampleTest(parameterized.TestCase, tf.test.TestCase):
   def test_fails_with_invalid_inputs(
       self,
       metric_finalizers,
-      local_unfinalized_metrics,
+      local_unfinalized_metrics_type,
       error_type,
       error_message,
   ):
-    local_unfinalized_metrics_type = computation_types.tensorflow_to_type(
-        tf.nest.map_structure(
-            tf.TensorSpec.from_tensor,
-            local_unfinalized_metrics,
-        )
-    )
 
     with self.assertRaisesRegex(error_type, error_message):
       # Concretize on a federated type with CLIENTS placement so that the method
