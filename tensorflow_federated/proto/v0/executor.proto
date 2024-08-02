@@ -3,6 +3,7 @@ syntax = "proto3";
 package tensorflow_federated.v0;
 
 import "google/protobuf/any.proto";
+import "tensorflow_federated/proto/v0/array.proto";
 import "tensorflow_federated/proto/v0/computation.proto";
 
 // A service providing computation execution.
@@ -179,6 +180,9 @@ message Value {
     // as defined in `tensorflow/core/framework/tensor.proto`.
     google.protobuf.Any tensor = 1;
 
+    // An array value.
+    Array array = 6;
+
     // A serialized TFF computation; this is the canonical (and currently only)
     // way to pass any functional constructs, but the computation included here
     // does not necessarily have to be of a functional type.
@@ -193,6 +197,8 @@ message Value {
     // A value of a federated type.
     Federated federated = 5;
   }
+
+  // reserved 1;  // google.protobuf.Any tensor
 }
 
 // A reference to a value embedded in the executor, guaranteed to be unique
