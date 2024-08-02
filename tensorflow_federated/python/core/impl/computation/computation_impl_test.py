@@ -33,15 +33,13 @@ class ConcreteComputationTest(absltest.TestCase):
     # At the moment, this should succeed, as both the computation body and the
     # type are well-formed.
     computation_impl.ConcreteComputation(
-        pb.Computation(
-            **{
-                'type': type_serialization.serialize_type(
-                    computation_types.FunctionType(np.int32, np.int32)
-                ),
-                'intrinsic': pb.Intrinsic(uri='whatever'),
-            }
-        ),
-        context_stack_impl.context_stack,
+        computation_proto=pb.Computation(**{
+            'type': type_serialization.serialize_type(
+                computation_types.FunctionType(np.int32, np.int32)
+            ),
+            'intrinsic': pb.Intrinsic(uri='whatever'),
+        }),
+        context_stack=context_stack_impl.context_stack,
     )
 
     # This should fail, as the proto is not well-formed.
@@ -65,13 +63,11 @@ class ConcreteComputationTest(absltest.TestCase):
         np.int32, computation_types.StructType([(None, np.int32)])
     )
     original_comp = computation_impl.ConcreteComputation(
-        pb.Computation(
-            **{
-                'type': type_serialization.serialize_type(struct_return_type),
-                'intrinsic': pb.Intrinsic(uri='whatever'),
-            }
-        ),
-        context_stack_impl.context_stack,
+        computation_proto=pb.Computation(**{
+            'type': type_serialization.serialize_type(struct_return_type),
+            'intrinsic': pb.Intrinsic(uri='whatever'),
+        }),
+        context_stack=context_stack_impl.context_stack,
     )
 
     list_return_type = computation_types.FunctionType(
@@ -88,13 +84,11 @@ class ConcreteComputationTest(absltest.TestCase):
   def test_with_type_raises_non_assignable_type(self):
     int_return_type = computation_types.FunctionType(np.int32, np.int32)
     original_comp = computation_impl.ConcreteComputation(
-        pb.Computation(
-            **{
-                'type': type_serialization.serialize_type(int_return_type),
-                'intrinsic': pb.Intrinsic(uri='whatever'),
-            }
-        ),
-        context_stack_impl.context_stack,
+        computation_proto=pb.Computation(**{
+            'type': type_serialization.serialize_type(int_return_type),
+            'intrinsic': pb.Intrinsic(uri='whatever'),
+        }),
+        context_stack=context_stack_impl.context_stack,
     )
 
     list_return_type = computation_types.FunctionType(

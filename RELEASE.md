@@ -8,6 +8,11 @@ and this project adheres to
 
 ## Unreleased
 
+### Changed
+
+*   `tff.Computation` and `tff.framework.ConcreteComputation` to be able to
+    transform the arguments to the computation and result of the computation.
+
 ## Release 0.84.0
 
 ### Added

@@ -210,6 +210,9 @@ class AsyncExecutionContext(context_base.AsyncContext, Generic[_Computation]):
 
     with tracing.span('ExecutionContext', 'Invoke', span=True):
       if arg is not None:
+        if comp.transform_args is not None:
+          arg = comp.transform_args(arg)
+
         cardinalities = self._cardinality_inference_fn(
             arg, comp.type_signature.parameter
         )
@@ -226,6 +229,10 @@ class AsyncExecutionContext(context_base.AsyncContext, Generic[_Computation]):
               _ingest(executor, arg, comp.type_signature.parameter)
           )
 
-        return await tracing.wrap_coroutine_in_current_trace_context(
+        result = await tracing.wrap_coroutine_in_current_trace_context(
             _invoke(executor, comp, arg, result_type)
         )
+
+        if comp.transform_result is not None:
+          result = comp.transform_result(result)
+        return result

@@ -34,7 +34,8 @@ class FederatedComputationContextTest(absltest.TestCase):
     tensor_type = computation_types.TensorType(np.int32)
     computation_proto = computation_factory.create_lambda_identity(tensor_type)
     computation = computation_impl.ConcreteComputation(
-        computation_proto, context_stack_impl.context_stack
+        computation_proto=computation_proto,
+        context_stack=context_stack_impl.context_stack,
     )
     context = federated_computation_context.FederatedComputationContext(
         context_stack_impl.context_stack
