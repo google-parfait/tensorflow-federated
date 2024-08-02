@@ -22,9 +22,11 @@ from tensorflow_federated.python.common_libs import tracing
 from tensorflow_federated.python.core.backends.mapreduce import compiler
 from tensorflow_federated.python.core.environments.tensorflow_backend import compiled_computation_transformations
 from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_tree_transformations
+from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import transformations
 from tensorflow_federated.python.core.impl.computation import computation_impl
+from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 
 
 def transform_to_native_form(
@@ -106,8 +108,11 @@ def transform_to_native_form(
               disabled_grapler_form
           )
       )
-    return computation_impl.ConcreteComputation.from_building_block(
-        form_with_ids
+    return computation_impl.ConcreteComputation(
+        computation_proto=form_with_ids.proto,
+        context_stack=context_stack_impl.context_stack,
+        transform_args=tensorflow_computation.transform_args,
+        transform_result=tensorflow_computation.transform_result,
     )
   except ValueError as e:
     logging.debug('Compilation for native runtime failed with error %s', e)
@@ -140,8 +145,11 @@ def desugar_and_transform_to_native(comp):
   # adds TF cache IDs to them. It is crucial that these transformations execute
   # in this order.
   native_form = transform_to_native_form(
-      computation_impl.ConcreteComputation.from_building_block(
-          intrinsics_desugared_bb
+      computation_impl.ConcreteComputation(
+          computation_proto=intrinsics_desugared_bb.proto,
+          context_stack=context_stack_impl.context_stack,
+          transform_args=tensorflow_computation.transform_args,
+          transform_result=tensorflow_computation.transform_result,
       ),
       grappler_config=grappler_config,
   )

@@ -61,10 +61,15 @@ def _make_distribute_aggregate_form_example(
   """Constructs a DistributeAggregateFormExample given the component comps."""
 
   def _uniquify_reference_names(comp: computation_impl.ConcreteComputation):
-    return computation_impl.ConcreteComputation.from_building_block(
-        tree_transformations.uniquify_reference_names(comp.to_building_block())[
-            0
-        ]
+    building_block = comp.to_building_block()
+    transformed_comp = tree_transformations.uniquify_reference_names(
+        building_block
+    )[0]
+    return computation_impl.ConcreteComputation(
+        computation_proto=transformed_comp.proto,
+        context_stack=context_stack_impl.context_stack,
+        transform_args=comp.transform_args,
+        transform_result=comp.transform_result,
     )
 
   return DistributeAggregateFormExample(

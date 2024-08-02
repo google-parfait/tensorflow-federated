@@ -37,7 +37,8 @@ class TensorFlowComputationContextTest(absltest.TestCase):
         reference=pb.Reference(name='boogledy'),
     )
     non_tf_computation = computation_impl.ConcreteComputation(
-        bogus_proto, context_stack_impl.context_stack
+        computation_proto=bogus_proto,
+        context_stack=context_stack_impl.context_stack,
     )
 
     context = tensorflow_computation_context.TensorFlowComputationContext(

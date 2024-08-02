@@ -31,6 +31,7 @@ py_library(
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/common_libs:tracing",
         "//tensorflow_federated/python/core/impl/computation:computation_base",
+        "//tensorflow_federated/python/core/impl/computation:function_utils",
         "//tensorflow_federated/python/core/impl/context_stack:context_base",
         "//tensorflow_federated/python/core/impl/executors:cardinalities_utils",
         "//tensorflow_federated/python/core/impl/executors:executor_base",

@@ -60,10 +60,9 @@ class TensorFlowComputationContext(context_base.SyncContext):
 
   def invoke(self, comp: computation_impl.ConcreteComputation, arg):
     if comp.type_signature.parameter is not None:
-      # Note: `arg` is sometimes a `structure.Struct` and sometimes it's not,
-      # other times it's a Python structure that contains a `structure.Struct`.
-      # Here we normalize this to a Python structure to make it simpler to
-      # handle.
+      # Normalize to a Python structure to make it simpler to handle; `args` is
+      # sometimes a `tff.structure.Struct` and sometimes it is not, other times
+      # it is a Python structure that contains a `tff.structure.Struct`.
       def _to_python(obj):
         if isinstance(obj, structure.Struct):
           return structure.to_odict_or_tuple(obj)
