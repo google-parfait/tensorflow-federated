@@ -334,6 +334,8 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
               max_concurrent_computation_calls=1
           ),
           compiler_fn=tff.backends.native.desugar_and_transform_to_native,
+          transform_args=tff.tensorflow.transform_args,
+          transform_result=tff.tensorflow.transform_result,
       )
       contexts.append(context)
     mergeable_comp_context = tff.framework.MergeableCompExecutionContext(
@@ -410,6 +412,8 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
               max_concurrent_computation_calls=1
           ),
           compiler_fn=tff.backends.native.desugar_and_transform_to_native,
+          transform_args=tff.tensorflow.transform_args,
+          transform_result=tff.tensorflow.transform_result,
       )
       contexts.append(context)
     mergeable_comp_context = tff.framework.MergeableCompExecutionContext(
@@ -464,6 +468,8 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
               max_concurrent_computation_calls=1
           ),
           compiler_fn=tff.backends.native.desugar_and_transform_to_native,
+          transform_args=tff.tensorflow.transform_args,
+          transform_result=tff.tensorflow.transform_result,
       )
       contexts.append(context)
     mergeable_comp_context = tff.framework.MergeableCompExecutionContext(
@@ -500,6 +506,8 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
               max_concurrent_computation_calls=1,
           ),
           compiler_fn=tff.backends.native.desugar_and_transform_to_native,
+          transform_args=tff.tensorflow.transform_args,
+          transform_result=tff.tensorflow.transform_result,
       )
       contexts.append(context)
     mergeable_comp_context = tff.framework.MergeableCompExecutionContext(
@@ -516,7 +524,11 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
       return 1
 
     factory = tff.framework.local_cpp_executor_factory()
-    context = tff.framework.AsyncExecutionContext(factory)
+    context = tff.framework.AsyncExecutionContext(
+        executor_fn=factory,
+        transform_args=tff.tensorflow.transform_args,
+        transform_result=tff.tensorflow.transform_result,
+    )
     context = tff.framework.MergeableCompExecutionContext([context])
 
     with self.assertRaises(ValueError):
@@ -528,7 +540,11 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
       return 1
 
     factory = tff.framework.local_cpp_executor_factory()
-    context = tff.framework.AsyncExecutionContext(factory)
+    context = tff.framework.AsyncExecutionContext(
+        executor_fn=factory,
+        transform_args=tff.tensorflow.transform_args,
+        transform_result=tff.tensorflow.transform_result,
+    )
     context = tff.framework.MergeableCompExecutionContext(
         [context], compiler_fn=lambda x: x
     )

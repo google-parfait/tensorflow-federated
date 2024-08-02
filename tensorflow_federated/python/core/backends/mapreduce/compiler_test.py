@@ -21,6 +21,7 @@ from tensorflow_federated.python.core.backends.mapreduce import compiler
 from tensorflow_federated.python.core.backends.mapreduce import form_utils
 from tensorflow_federated.python.core.backends.mapreduce import mapreduce_test_utils
 from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_computation_factory
+from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_block_test_utils
 from tensorflow_federated.python.core.impl.compiler import building_blocks
@@ -43,7 +44,11 @@ DEFAULT_GRAPPLER_CONFIG = tf.compat.v1.ConfigProto()
 
 def _create_test_context():
   factory = executor_factory.local_cpp_executor_factory()
-  return sync_execution_context.SyncExecutionContext(executor_fn=factory)
+  return sync_execution_context.SyncExecutionContext(
+      executor_fn=factory,
+      transform_args=tensorflow_computation.transform_args,
+      transform_result=tensorflow_computation.transform_result,
+  )
 
 
 class CheckExtractionResultTest(absltest.TestCase):

@@ -75,6 +75,7 @@ py_library(
         ":compiler",
         "//tensorflow_federated/python/core/backends/native:compiler",
         "//tensorflow_federated/python/core/environments/tensorflow_backend:tensorflow_executor_bindings",
+        "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
         "//tensorflow_federated/python/core/impl/execution_contexts:async_execution_context",
         "//tensorflow_federated/python/core/impl/execution_contexts:sync_execution_context",
@@ -108,6 +109,7 @@ py_library(
     deps = [
         ":compiler",
         "//tensorflow_federated/python/core/backends/native:compiler",
+        "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
         "//tensorflow_federated/python/core/impl/execution_contexts:async_execution_context",
         "//tensorflow_federated/python/core/impl/execution_contexts:sync_execution_context",

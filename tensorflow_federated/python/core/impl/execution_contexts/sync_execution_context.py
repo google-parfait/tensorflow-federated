@@ -36,6 +36,8 @@ class SyncExecutionContext(context_base.SyncContext, Generic[_Computation]):
       executor_fn: executor_factory.ExecutorFactory,
       compiler_fn: Optional[Callable[[_Computation], object]] = None,
       *,
+      transform_args: Optional[Callable[[object], object]] = None,
+      transform_result: Optional[Callable[[object], object]] = None,
       cardinality_inference_fn: cardinalities_utils.CardinalityInferenceFnType = cardinalities_utils.infer_cardinalities,
   ):
     """Initializes a synchronous execution context which retries invocations.
@@ -43,6 +45,10 @@ class SyncExecutionContext(context_base.SyncContext, Generic[_Computation]):
     Args:
       executor_fn: Instance of `executor_factory.ExecutorFactory`.
       compiler_fn: A Python function that will be used to compile a computation.
+      transform_args: An `Optional` `Callable` used to transform the args before
+        they are passed to the computation.
+      transform_result: An `Optional` `Callable` used to transform the result
+        before it is returned.
       cardinality_inference_fn: A Python function specifying how to infer
         cardinalities from arguments (and their associated types). The value
         returned by this function will be passed to the `create_executor` method
@@ -53,6 +59,8 @@ class SyncExecutionContext(context_base.SyncContext, Generic[_Computation]):
     self._async_context = async_execution_context.AsyncExecutionContext(
         executor_fn=executor_fn,
         compiler_fn=compiler_fn,
+        transform_args=transform_args,
+        transform_result=transform_result,
         cardinality_inference_fn=cardinality_inference_fn,
     )
     self._async_runner = async_utils.AsyncThreadRunner()

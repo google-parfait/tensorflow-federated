@@ -55,7 +55,8 @@ def create_async_local_cpp_execution_context(
       leaf_executor_fn=_create_xla_backend_execution_stack,
   )
   return async_execution_context.AsyncExecutionContext(
-      executor_fn=factory, compiler_fn=compiler.transform_to_native_form
+      executor_fn=factory,
+      compiler_fn=compiler.transform_to_native_form,
   )
 
 
@@ -95,7 +96,8 @@ def create_sync_local_cpp_execution_context(
   # computations instead of TensorFlow, similar to "desugar intrinsics" in the
   # native backend.
   return sync_execution_context.SyncExecutionContext(
-      executor_fn=factory, compiler_fn=compiler.transform_to_native_form
+      executor_fn=factory,
+      compiler_fn=compiler.transform_to_native_form,
   )
 
 

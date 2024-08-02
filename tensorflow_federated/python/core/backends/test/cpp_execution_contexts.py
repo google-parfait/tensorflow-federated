@@ -26,6 +26,7 @@ import portpicker
 from tensorflow_federated.python.core.backends.native import compiler as native_compiler
 from tensorflow_federated.python.core.backends.test import compiler as test_compiler
 from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_executor_bindings
+from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.execution_contexts import async_execution_context
 from tensorflow_federated.python.core.impl.execution_contexts import sync_execution_context
@@ -93,7 +94,10 @@ def create_async_test_cpp_execution_context(
       leaf_executor_fn=_create_tensorflow_backend_execution_stack,
   )
   context = async_execution_context.AsyncExecutionContext(
-      executor_fn=factory, compiler_fn=_compile
+      executor_fn=factory,
+      compiler_fn=_compile,
+      transform_args=tensorflow_computation.transform_args,
+      transform_result=tensorflow_computation.transform_result,
   )
   return context
 
@@ -228,6 +232,8 @@ def create_sync_interprocess_cpp_execution_context(
   return sync_execution_context.SyncExecutionContext(
       executor_fn=ManagedServiceContext(),
       compiler_fn=native_compiler.desugar_and_transform_to_native,
+      transform_args=tensorflow_computation.transform_args,
+      transform_result=tensorflow_computation.transform_result,
   )
 
 
@@ -273,7 +279,10 @@ def create_sync_test_cpp_execution_context(
       leaf_executor_fn=_create_tensorflow_backend_execution_stack,
   )
   context = sync_execution_context.SyncExecutionContext(
-      executor_fn=factory, compiler_fn=_compile
+      executor_fn=factory,
+      compiler_fn=_compile,
+      transform_args=tensorflow_computation.transform_args,
+      transform_result=tensorflow_computation.transform_result,
   )
   return context
 
