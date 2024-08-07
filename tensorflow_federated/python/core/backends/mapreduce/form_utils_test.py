@@ -25,7 +25,7 @@ from tensorflow_federated.python.core.backends.mapreduce import form_utils
 from tensorflow_federated.python.core.backends.mapreduce import forms
 from tensorflow_federated.python.core.backends.mapreduce import intrinsics as mapreduce_intrinsics
 from tensorflow_federated.python.core.backends.mapreduce import mapreduce_test_utils
-from tensorflow_federated.python.core.backends.test import execution_contexts
+from tensorflow_federated.python.core.backends.test import cpp_execution_contexts
 from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
@@ -1505,5 +1505,7 @@ class AsFunctionOfSomeSubparametersTest(tf.test.TestCase):
 if __name__ == '__main__':
   # The test execution context replaces all secure intrinsics with insecure
   # reductions.
-  execution_contexts.set_sync_test_cpp_execution_context(default_num_clients=1)
+  cpp_execution_contexts.set_sync_test_cpp_execution_context(
+      default_num_clients=1
+  )
   absltest.main()
