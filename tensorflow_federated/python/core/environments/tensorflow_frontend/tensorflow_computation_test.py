@@ -36,35 +36,25 @@ def no_arg_fn():
   return 10
 
 
-class TransformResultTest(absltest.TestCase):
+class ToNumpyTest(parameterized.TestCase):
 
-  def test_tensor_scalar(self):
-    result = tf.constant(1)
+  @parameterized.named_parameters(
+      ('scalar', tf.constant(1), 1),
+      ('variable', tf.Variable(1, name='v1'), 1),
+      ('array', tf.constant([1, 2, 3]), np.array([1, 2, 3])),
+      (
+          'list_tensors',
+          [tf.constant(1), tf.constant(2), tf.constant(3)],
+          [1, 2, 3],
+      ),
+  )
+  def test_returns_expected_result(self, result, expected_result):
+    actual_result = tensorflow_computation._to_numpy(result)
 
-    transformed_result = tensorflow_computation._transform_result(result)
-
-    self.assertIsInstance(transformed_result, np.int32)
-    self.assertEqual(transformed_result, 1)
-
-  def test_tensor_array(self):
-    result = tf.constant(list(range(5)))
-
-    transformed_result = tensorflow_computation._transform_result(result)
-
-    self.assertIsInstance(transformed_result, np.ndarray)
-    expected_result = list(range(5))
-    for actual, expected in zip(transformed_result, expected_result):
-      self.assertEqual(actual, expected)
-
-  def test_list_of_tensors(self):
-    result = [tf.constant(x) for x in range(5)]
-
-    transformed_result = tensorflow_computation._transform_result(result)
-
-    self.assertIsInstance(transformed_result, list)
-    self.assertTrue(all(isinstance(x, np.int32) for x in transformed_result))
-    expected_result = list(range(5))
-    self.assertEqual(transformed_result, expected_result)
+    if isinstance(actual_result, (np.ndarray, np.generic)):
+      np.testing.assert_array_equal(actual_result, expected_result)
+    else:
+      self.assertEqual(actual_result, expected_result)
 
 
 class TensorFlowComputationTest(parameterized.TestCase):

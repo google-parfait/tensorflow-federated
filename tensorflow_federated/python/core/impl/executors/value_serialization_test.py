@@ -416,7 +416,8 @@ class ValueSerializationtest(tf.test.TestCase, parameterized.TestCase):
         computation_types.TensorType(np.int32)
     )
     comp = computation_impl.ConcreteComputation(
-        proto, context_stack_impl.context_stack
+        computation_proto=proto,
+        context_stack=context_stack_impl.context_stack,
     )
 
     value_proto, value_type = value_serialization.serialize_value(comp)

@@ -71,5 +71,6 @@ def deserialize_computation(
   """
   py_typecheck.check_type(computation_proto, pb.Computation)
   return computation_impl.ConcreteComputation(
-      computation_proto, context_stack_impl.context_stack
+      computation_proto=computation_proto,
+      context_stack=context_stack_impl.context_stack,
   )

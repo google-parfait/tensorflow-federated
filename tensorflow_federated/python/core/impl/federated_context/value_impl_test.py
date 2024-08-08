@@ -227,7 +227,8 @@ class ValueTest(parameterized.TestCase):
     type_spec = computation_types.TensorType(np.int32)
     computation_proto = computation_factory.create_lambda_identity(type_spec)
     computation = computation_impl.ConcreteComputation(
-        computation_proto, context_stack_impl.context_stack
+        computation_proto=computation_proto,
+        context_stack=context_stack_impl.context_stack,
     )
 
     value = value_impl.to_value(computation, type_spec=None)
