@@ -12,27 +12,20 @@ and this project adheres to
 
 ### Added
 
-*   Added some TFF executor classes to the public API (`ComposingExecutor`,
+*   TFF executor classes to the public API (`ComposingExecutor`,
     `ExecutorTestBase`, `MockExecutor`, `ThreadPool`).
-*   Added some compiler transformation helper functions to the public API
+*   Compiler transformation helper functions to the public API
     (`replace_intrinsics_with_bodies`, `unique_name_generator`,
     `transform_preorder`, `to_call_dominant`).
-*   Added a method to get the number of checkpoints aggregated to the
-    CheckpointAggregator API.
+*   A method to get the number of checkpoints aggregated to the
+    `CheckpointAggregator` API.
 *   The function `DPClosedDomainHistogram::IncrementDomainIndices`. It allows
     calling code to iterate through the domain of composite keys (in a do-while
     loop).
 
 ### Changed
 
-*   Fixed a bug in `tff.learning.programs.EvaluationManager` that raised an
-    error when the version IDs of two state-saving operations were the same.
-*   Fixed a bug in `tff.jax.computation` that raised an error when the
-    computation had unused arguments.
-*   Fixed a bug when using `tff.backends.xla` execution stack that raised errors
-    when single element structures were returned from `tff.jax.computation`
-    wrapped methods.
-*   Rename the boolean `use_experimental_simulation_loop` parameter to
+*   Renamed the boolean `use_experimental_simulation_loop` parameter to
     `loop_implementation` that accepts an `tff.learning.LoopImplementation` enum
     for all `tff.learning.algorithms` methods.
 *   Modified the model output release frequency to every 10 rounds and the final
@@ -46,6 +39,15 @@ and this project adheres to
 *   Modified `tff.learning.algorithms.build_weighted_fed_avg` to generate
     different training graphs when `use_experimental_simulation_loop=True` and
     `model_fn` is of type `tff.learning.models.FunctionalModel`.
+
+# Fixed
+
+*   `tff.learning.programs.EvaluationManager` raised an error when the version
+    IDs of two state-saving operations were the same.
+*   `tff.jax.computation` raised an error when the computation has unused
+    arguments.
+*   The `tff.backends.xla` execution stack raised an error when single element
+    structures are returned from `tff.jax.computation` wrapped methods.
 
 ## Release 0.83.0
 
@@ -66,7 +68,7 @@ and this project adheres to
 
 ### Added
 
-*   Add a serialized raw array content field to the Array proto.
+*   A serialized raw array content field to the Array proto.
 *   A function to `DPCompositeKeyCombiner` that allows retrieval of an ordinal.
     Intended for use by the closed-domain DP histogram aggregation core.
 *   Constants for invalid ordinals and default `l0_bound_`.
