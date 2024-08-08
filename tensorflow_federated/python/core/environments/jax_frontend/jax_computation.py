@@ -93,7 +93,9 @@ def _jax_wrapper_fn(
       fn, parameter_type, context_stack
   )
   return computation_impl.ConcreteComputation(
-      comp_pb, context_stack, extra_type_spec
+      computation_proto=comp_pb,
+      context_stack=context_stack,
+      annotated_type=extra_type_spec,
   )
 
 

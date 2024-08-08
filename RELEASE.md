@@ -8,6 +8,16 @@ and this project adheres to
 
 ## Unreleased
 
+### Added
+
+*   An `Array` field to the `Value` protobuf.
+
+### Changed
+
+*   How values are serialized to protobuf.
+*   `tff.Computation` and `tff.framework.ConcreteComputation` to be able to
+    transform the arguments to the computation and result of the computation.
+
 ## Release 0.84.0
 
 ### Added

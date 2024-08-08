@@ -36,12 +36,12 @@ def no_arg_fn():
   return 10
 
 
-class TransformResultTest(absltest.TestCase):
+class ToNumpyTest(absltest.TestCase):
 
   def test_tensor_scalar(self):
     result = tf.constant(1)
 
-    transformed_result = tensorflow_computation._transform_result(result)
+    transformed_result = tensorflow_computation._to_numpy(result)
 
     self.assertIsInstance(transformed_result, np.int32)
     self.assertEqual(transformed_result, 1)
@@ -49,7 +49,7 @@ class TransformResultTest(absltest.TestCase):
   def test_tensor_array(self):
     result = tf.constant(list(range(5)))
 
-    transformed_result = tensorflow_computation._transform_result(result)
+    transformed_result = tensorflow_computation._to_numpy(result)
 
     self.assertIsInstance(transformed_result, np.ndarray)
     expected_result = list(range(5))
@@ -59,7 +59,7 @@ class TransformResultTest(absltest.TestCase):
   def test_list_of_tensors(self):
     result = [tf.constant(x) for x in range(5)]
 
-    transformed_result = tensorflow_computation._transform_result(result)
+    transformed_result = tensorflow_computation._to_numpy(result)
 
     self.assertIsInstance(transformed_result, list)
     self.assertTrue(all(isinstance(x, np.int32) for x in transformed_result))

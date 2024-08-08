@@ -28,6 +28,8 @@ py_library(
     srcs = ["tensorflow_computation.py"],
     deps = [
         ":tensorflow_serialization",
+        "//tensorflow_federated/proto/v0:computation_py_pb2",
+        "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/computation:computation_impl",
         "//tensorflow_federated/python/core/impl/computation:computation_wrapper",
         "//tensorflow_federated/python/core/impl/computation:function_utils",

@@ -58,9 +58,7 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/reference_resolving_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/remote_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/sequence_executor.h"
-#include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
 #include "tensorflow_federated/cc/core/impl/executors/streaming_remote_executor.h"
-#include "tensorflow_federated/cc/core/impl/executors/tensor_serialization.h"
 #include "tensorflow_federated/cc/core/impl/executors/tensorflow_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/xla_executor.h"
 #include "tensorflow_federated/proto/v0/computation.pb.h"
@@ -87,15 +85,6 @@ PYBIND11_MODULE(executor_bindings, m) {
   py::google::ImportStatusModule();
 
   m.doc() = "Bindings for the C++ ";
-
-  // v0::Value serialization methods.
-  m.def("serialize_tensor_value",
-        [](const tensorflow::Tensor& tensor) -> absl::StatusOr<v0::Value> {
-          v0::Value value_pb;
-          TFF_TRY(SerializeTensorValue(tensor, &value_pb));
-          return value_pb;
-        });
-  m.def("deserialize_tensor_value", &DeserializeTensorValue);
 
   // Provide an `OwnedValueId` class to handle return values from the
   // `Executor` interface.
