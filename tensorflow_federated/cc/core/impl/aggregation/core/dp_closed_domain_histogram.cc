@@ -22,11 +22,14 @@
 #include <vector>
 
 #include "absl/container/fixed_array.h"
+#include "algorithms/numerical-mechanisms.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_core.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/composite_key_combiner.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/datatype.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_composite_key_combiner.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/dp_fedsql_constants.h"
+#include "tensorflow_federated/cc/core/impl/aggregation/core/dp_noise_mechanisms.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/group_by_aggregator.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/input_tensor_list.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/intrinsic.h"
@@ -41,23 +44,26 @@
 
 namespace tensorflow_federated {
 namespace aggregation {
+using differential_privacy::NumericalMechanism;
+
 namespace {
 // Given a tensor containing a column of aggregates and an ordinal, push the
 // aggregate associated with that ordinal to the back of a MutableVectorData
 // container. If the ordinal is kNoOrdinal, push 0 instead.
+// Adds noise if a mechanism is provided.
 template <typename T>
 void CopyAggregateFromColumn(const Tensor& column_of_aggregates,
-                             int64_t ordinal, MutableVectorData<T>& container) {
-  // Get the aggregate we will be copying over if it exists.
-  // Future CL will initialize value to a random number instead of 0.
-  T value = 0;
+                             int64_t ordinal, MutableVectorData<T>& container,
+                             NumericalMechanism* mechanism) {
+  T value = (mechanism == nullptr) ? 0 : mechanism->AddNoise(/*result=*/0);
   if (ordinal != kNoOrdinal) {
     value += column_of_aggregates.AsSpan<T>()[ordinal];
   }
 
-  // Add to the container.
+  // Add (possibly noisy) value to the container.
   container.push_back(value);
 }
+
 }  // namespace
 
 DPClosedDomainHistogram::DPClosedDomainHistogram(
@@ -135,6 +141,35 @@ StatusOr<OutputTensorList> DPClosedDomainHistogram::Report() && {
     domain_size *= domain_tensor.num_elements();
   }
 
+  // Make a noise mechanism for each aggregation.
+  std::vector<std::unique_ptr<NumericalMechanism>> mechanisms;
+  for (int i = 0; i < intrinsics().size(); ++i) {
+    const Intrinsic& intrinsic = intrinsics()[i];
+    // Do not bother making mechanism if epsilon is too large.
+    if (epsilon_per_agg_ >= kEpsilonThreshold) {
+      mechanisms.push_back(nullptr);
+      laplace_was_used_.push_back(false);
+      continue;
+    }
+
+    // Get norm bounds for the ith aggregation.
+    double linfinity_bound =
+        intrinsic.parameters[kLinfinityIndex].CastToScalar<double>();
+    double l1_bound = intrinsic.parameters[kL1Index].CastToScalar<double>();
+    double l2_bound = intrinsic.parameters[kL2Index].CastToScalar<double>();
+
+    // Create a noise mechanism out of those norm bounds and privacy params.
+    TFF_ASSIGN_OR_RETURN(
+        DPHistogramBundle noise_mechanism,
+        CreateDPHistogramBundle(epsilon_per_agg_, delta_per_agg_, l0_bound_,
+                                linfinity_bound, l1_bound, l2_bound,
+                                /*open_domain=*/false));
+    mechanisms.push_back(std::move(noise_mechanism.mechanism));
+
+    // Record whether Laplace will be used.
+    laplace_was_used_.push_back(noise_mechanism.use_laplace);
+  }
+
   // Create MutableVectorData containers, one for each output tensor, that are
   // each big enough to hold domain_size elements.
   // If all output tensors had the same type like int64_t we could create an
@@ -154,7 +189,13 @@ StatusOr<OutputTensorList> DPClosedDomainHistogram::Report() && {
   do {
     // Each composite key is associated with a row of the output. i-th entry of
     // that row will be written to i-th entry of noisy_aggregate_data.
+
+    // Maintain the index of the next key to output.
     int64_t key_to_output = 0;
+    // Maintain the index of the next mechanism to use.
+    int64_t mech_to_use = 0;
+
+    // Loop to populate the row of the output for the current composite key.
     for (int64_t i = 0; i < noisy_aggregate_data.size(); i++) {
       // Get the TensorData container we will be writing to (a column).
       TensorData& container = *(noisy_aggregate_data[i]);
@@ -198,7 +239,11 @@ StatusOr<OutputTensorList> DPClosedDomainHistogram::Report() && {
             column_of_aggregates.dtype(), T,
             CopyAggregateFromColumn<T>(
                 column_of_aggregates, ordinal,
-                dynamic_cast<MutableVectorData<T>&>(container)));
+                dynamic_cast<MutableVectorData<T>&>(container),
+                mechanisms[mech_to_use].get()));
+
+        // Move on to the next mechanism.
+        mech_to_use++;
       }
     }
   } while (IncrementDomainIndices(domain_indices));

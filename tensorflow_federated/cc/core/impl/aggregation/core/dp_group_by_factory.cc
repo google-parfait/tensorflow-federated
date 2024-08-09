@@ -17,6 +17,7 @@
 #include "tensorflow_federated/cc/core/impl/aggregation/core/dp_group_by_factory.h"
 
 #include <cstdint>
+#include <limits>
 #include <memory>
 #include <string>
 #include <utility>
@@ -218,10 +219,12 @@ StatusOr<std::unique_ptr<TensorAggregator>> DPGroupByFactory::CreateInternal(
                   "intrinsic must provide a positive Linfinity bound.";
       }
     } else {
-      // Either L1 is positive, or L2 is positive, or both Linfinity is positive
-      // and L0 is positive.
-      bool has_l1_bound = l1 > 0;
-      bool has_l2_bound = l2 > 0;
+      // Closed-domain histogram requires either an L1 bound, an L2 bound, or
+      // both Linfinity and L0 bounds.
+      bool has_l1_bound =
+          l1 > 0 && l1 != std::numeric_limits<double>::infinity();
+      bool has_l2_bound =
+          l2 > 0 && l2 != std::numeric_limits<double>::infinity();
       if ((!has_linfinity_bound || l0_bound <= 0) && !has_l1_bound &&
           !has_l2_bound) {
         return TFF_STATUS(INVALID_ARGUMENT)
@@ -230,14 +233,15 @@ StatusOr<std::unique_ptr<TensorAggregator>> DPGroupByFactory::CreateInternal(
                   "bounds.";
       }
       // If delta is 0, we will employ the Laplace mechanism (Gaussian requires
-      // a positive delta). But the Laplace mechanism requires a positive L1
-      // bound.
-      // If query author did not provide any delta (which will be indicated with
-      // -1), we again have to use the Laplace mechanism.
-      if (delta <= 0 && !has_l1_bound) {
+      // a positive delta). But the Laplace mechanism requires a positive and
+      // finite L1 sensitivity.
+      bool has_l1_sensitivity =
+          has_l1_bound || (has_linfinity_bound && l0_bound > 0);
+      if (delta <= 0 && !has_l1_sensitivity) {
         return TFF_STATUS(INVALID_ARGUMENT)
                << "DPGroupByFactory: Closed-domain DP histograms require "
-                  "either a positive delta or an L1 bound.";
+                  "either a positive delta or one of the following: "
+               << "(a) an L1 bound (b) an Linfinity bound and an L0 bound";
       }
     }
   }

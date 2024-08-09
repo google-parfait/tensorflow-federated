@@ -8,6 +8,24 @@ and this project adheres to
 
 ## Unreleased
 
+### Added
+
+*   The `dp_noise_mechanisms` header and source files: contains functions that
+    generate `differential_privacy::LaplaceMechanism` or
+    `differential_privacy::GaussianMechanism`, based upon privacy parameters and
+    norm bounds. Each of these functions return a `DPHistogramBundle` struct,
+    which contains the mechanism, the threshold needed for DP open-domain
+    histograms, and a boolean indicating whether Laplace noise was used.
+
+### Changed
+
+*   `DPClosedDomainHistogram::Report` and `DPOpenDomainHistogram::Report`: they
+    both use the `DPHistogramBundles` produced by the `CreateDPHistogramBundle`
+    function in `dp_noise_mechanisms`.
+*   `DPGroupByFactory::CreateInternal`: when `delta` is not provided, check if
+    the right norm bounds are provided to compute L1 sensitivity (for the
+    Laplace mech).
+
 ## Release 0.84.0
 
 ### Added

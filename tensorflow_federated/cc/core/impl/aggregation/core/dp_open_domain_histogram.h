@@ -17,12 +17,10 @@
 #ifndef THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_AGGREGATION_CORE_DP_OPEN_DOMAIN_HISTOGRAM_H_
 #define THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_AGGREGATION_CORE_DP_OPEN_DOMAIN_HISTOGRAM_H_
 
-#include <cmath>
 #include <cstdint>
 #include <memory>
 #include <vector>
 
-#include "absl/status/statusor.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/base/monitoring.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/agg_core.pb.h"
 #include "tensorflow_federated/cc/core/impl/aggregation/core/composite_key_combiner.h"
@@ -38,42 +36,6 @@
 
 namespace tensorflow_federated {
 namespace aggregation {
-
-namespace internal {
-// Computes threshold needed when Laplace noise is used to ensure DP.
-// Generalizes LaplacePartitionSelection from partition-selection.h, since it
-// permits setting norm bounds beyond l0 (max_groups_contributed).
-// l0_sensitivity and l1_sensitivity measure how much one user changes the l0
-// and l1 norms, respectively, while linfinity_bound caps the magnitude of one
-// user's contributions. This distinction is important for replacement DP.
-template <typename OutputType>
-static absl::StatusOr<OutputType> CalculateLaplaceThreshold(
-    double epsilon, double delta, int64_t l0_sensitivity,
-    OutputType linfinity_bound, double l1_sensitivity) {
-  TFF_CHECK(epsilon > 0 && delta > 0 && l0_sensitivity > 0 &&
-            linfinity_bound > 0 && l1_sensitivity > 0)
-      << "CalculateThreshold: All inputs must be positive";
-  TFF_CHECK(delta < 1) << "CalculateThreshold: delta must be less than 1";
-
-  // If probability of failing to drop a small value is
-  // 1- pow(1 - delta, 1 / l0_sensitivity)
-  // then the overall privacy failure probability is delta
-  // Below: numerically stable version of 1- pow(1 - delta, 1 / l0_sensitivity)
-  // Adapted from PartitionSelectionStrategy::CalculateAdjustedDelta.
-  double adjusted_delta = -std::expm1(log1p(-delta) / l0_sensitivity);
-
-  OutputType laplace_tail_bound;
-  if (adjusted_delta > 0.5) {
-    laplace_tail_bound = static_cast<OutputType>(
-        (l1_sensitivity / epsilon) * std::log(2 * (1 - adjusted_delta)));
-  } else {
-    laplace_tail_bound = static_cast<OutputType>(
-        -(l1_sensitivity / epsilon) * (std::log(2 * adjusted_delta)));
-  }
-
-  return linfinity_bound + laplace_tail_bound;
-}
-}  // namespace internal
 
 // DPOpenDomainHistogram is a child class of GroupByAggregator.
 // ::AggregateTensorsInternal enforces a bound on the number of composite keys

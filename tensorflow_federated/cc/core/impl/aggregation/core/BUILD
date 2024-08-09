@@ -119,6 +119,33 @@ cc_library(
     deps = [":tensor"],
 )
 
+cc_library(
+    name = "dp_noise_mechanisms",
+    srcs = ["dp_noise_mechanisms.cc"],
+    hdrs = [
+        "dp_noise_mechanisms.h",
+    ],
+    deps = [
+        ":dp_fedsql_constants",
+        "//tensorflow_federated/cc/core/impl/aggregation/base",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_cc_differential_privacy//algorithms:numerical-mechanisms",
+        "@com_google_cc_differential_privacy//algorithms:partition-selection",
+    ],
+)
+
+cc_test(
+    name = "dp_noise_mechanisms_test",
+    srcs = ["dp_noise_mechanisms_test.cc"],
+    deps = [
+        ":dp_fedsql_constants",
+        ":dp_noise_mechanisms",
+        "//tensorflow_federated/cc/core/impl/aggregation/base",
+        "//tensorflow_federated/cc/testing:oss_test_main",
+        "//tensorflow_federated/cc/testing:status_matchers",
+    ],
+)
+
 # TODO: b/352020454 - Create one library per cc & hh pair. Make them aggregation_cores deps.
 cc_library(
     name = "aggregation_cores",
@@ -148,6 +175,7 @@ cc_library(
         ":agg_core_cc_proto",
         ":aggregator",
         ":dp_fedsql_constants",
+        ":dp_noise_mechanisms",
         ":fedsql_constants",
         ":intrinsic",
         ":tensor",
@@ -159,11 +187,9 @@ cc_library(
         "@com_google_absl//absl/container:node_hash_map",
         "@com_google_absl//absl/log:check",
         "@com_google_absl//absl/random",
-        "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:span",
         "@com_google_cc_differential_privacy//algorithms:numerical-mechanisms",
-        "@com_google_cc_differential_privacy//algorithms:partition-selection",
     ],
     alwayslink = 1,
 )
