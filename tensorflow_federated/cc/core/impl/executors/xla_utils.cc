@@ -26,6 +26,7 @@ limitations under the License
 #include "tensorflow/compiler/xla/shape.h"
 #include "tensorflow/compiler/xla/shape_util.h"
 #include "tensorflow/compiler/xla/types.h"
+#include "tensorflow/compiler/xla/xla_data.pb.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
 #include "tensorflow_federated/proto/v0/array.pb.h"
 #include "tensorflow_federated/proto/v0/computation.pb.h"
@@ -64,6 +65,8 @@ absl::StatusOr<xla::PrimitiveType> PrimitiveTypeFromDataType(
       return xla::C64;
     case v0::DataType::DT_COMPLEX128:
       return xla::C128;
+    case v0::DataType::DT_BFLOAT16:
+      return xla::BF16;
     default:
       return absl::UnimplementedError(
           absl::StrCat("Unexpected DataType found:", data_type));
@@ -115,6 +118,18 @@ static void CopyFromRepeatedField(const google::protobuf::RepeatedField<int32_t>
   // represent values of np.float16.
   std::transform(src.begin(), src.end(), dest, [](int x) -> Eigen::half {
     return Eigen::numext::bit_cast<Eigen::half>(static_cast<uint16_t>(x));
+  });
+}
+
+// Overload for Eigen::bflot16.
+static void CopyFromRepeatedField(const google::protobuf::RepeatedField<int32_t>& src,
+                                  Eigen::bfloat16* dest) {
+  // Values of dtype ml_dtypes.bfloat16 are packed to and unpacked from a
+  // protobuf field of type int32 using the following logic in order to maintain
+  // compatibility with how other external environments (e.g. TensorFlow, Jax)
+  // represent values of ml_dtypes.bfloat16.
+  std::transform(src.begin(), src.end(), dest, [](int x) -> Eigen::bfloat16 {
+    return Eigen::numext::bit_cast<Eigen::bfloat16>(static_cast<uint16_t>(x));
   });
 }
 
@@ -195,6 +210,13 @@ absl::StatusOr<xla::Literal> LiteralFromArray(const v0::Array& array_pb) {
           ShapeFromArrayShape(v0::DataType::DT_HALF, array_pb.shape())));
       CopyFromRepeatedField(array_pb.float16_list().value(),
                             literal.data<xla::half>().begin());
+      return literal;
+    }
+    case v0::Array::kBfloat16List: {
+      xla::Literal literal(TFF_TRY(
+          ShapeFromArrayShape(v0::DataType::DT_BFLOAT16, array_pb.shape())));
+      CopyFromRepeatedField(array_pb.bfloat16_list().value(),
+                            literal.data<xla::bfloat16>().begin());
       return literal;
     }
     case v0::Array::kFloat32List: {

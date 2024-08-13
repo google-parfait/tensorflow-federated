@@ -14,6 +14,7 @@
 
 from absl.testing import absltest
 from absl.testing import parameterized
+import ml_dtypes
 import numpy as np
 import tree
 
@@ -1725,6 +1726,11 @@ class LiteralTest(parameterized.TestCase):
       ('float64', 1.0, computation_types.TensorType(np.float64)),
       ('complex64', (1.0 + 1.0j), computation_types.TensorType(np.complex64)),
       ('complex128', (1.0 + 1.0j), computation_types.TensorType(np.complex128)),
+      (
+          'bfloat16',
+          ml_dtypes.bfloat16(1.0),
+          computation_types.TensorType(ml_dtypes.bfloat16),
+      ),
       ('str', 'a', computation_types.TensorType(np.str_)),
       ('bytes', b'a', computation_types.TensorType(np.str_)),
       ('generic_int', np.int32(1), computation_types.TensorType(np.int32)),
@@ -1785,8 +1791,8 @@ class LiteralTest(parameterized.TestCase):
   def test_init_does_not_raise_value_error(self, value, type_signature):
     try:
       building_blocks.Literal(value, type_signature)
-    except ValueError:
-      self.fail('Raised `ValueError` unexpectedly.')
+    except ValueError as e:
+      self.fail('Raised `ValueError` unexpectedly: %s', e)
 
   @parameterized.named_parameters(
       ('str', 'a', computation_types.TensorType(np.str_), b'a'),

@@ -239,6 +239,19 @@ TEST(LiteralFromArrayTest, TestReturnsLiteral_float16) {
   EXPECT_EQ(actual_literal, expected_literal);
 }
 
+TEST(LiteralFromArrayTest, TestReturnsLiteral_bfloat16) {
+  const v0::Array& array_pb = TFF_ASSERT_OK(testing::CreateArray(
+      v0::DataType::DT_BFLOAT16, testing::CreateArrayShape({}),
+      {Eigen::bfloat16{1.0}}));
+
+  const xla::Literal& actual_literal =
+      TFF_ASSERT_OK(LiteralFromArray(array_pb));
+
+  xla::Literal expected_literal =
+      xla::LiteralUtil::CreateR0(Eigen::bfloat16{1.0});
+  EXPECT_EQ(actual_literal, expected_literal);
+}
+
 TEST(LiteralFromArrayTest, TestReturnsLiteral_float32) {
   const v0::Array& array_pb = TFF_ASSERT_OK(testing::CreateArray(
       v0::DataType::DT_FLOAT, testing::CreateArrayShape({}), {1.0}));

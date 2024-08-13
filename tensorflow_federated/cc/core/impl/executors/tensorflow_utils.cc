@@ -89,6 +89,17 @@ static void CopyFromRepeatedField(const google::protobuf::RepeatedField<int32_t>
     return Eigen::numext::bit_cast<Eigen::half>(static_cast<uint16_t>(x));
   });
 }
+// Overload for Eigen::bfloat16.
+static void CopyFromRepeatedField(const google::protobuf::RepeatedField<int32_t>& src,
+                                  Eigen::bfloat16* dest) {
+  // Values of dtype ml_dtypes.bfloat16 are packed to and unpacked from a
+  // protobuf field of type int32 using the following logic in order to maintain
+  // compatibility with how other external environments (e.g. TensorFlow, Jax)
+  // represent values of ml_dtypes.bfloat16.
+  std::transform(src.begin(), src.end(), dest, [](int x) -> Eigen::bfloat16 {
+    return Eigen::numext::bit_cast<Eigen::bfloat16>(static_cast<uint16_t>(x));
+  });
+}
 
 // Overload for complex.
 template <typename T>
@@ -184,6 +195,14 @@ absl::StatusOr<tensorflow::Tensor> TensorFromArray(const v0::Array& array_pb) {
           TFF_TRY(TensorShapeFromArrayShape(array_pb.shape())));
       CopyFromRepeatedField(array_pb.float16_list().value(),
                             tensor.flat<Eigen::half>().data());
+      return tensor;
+    }
+    case v0::Array::kBfloat16List: {
+      tensorflow::Tensor tensor(
+          tensorflow::DataTypeToEnum<Eigen::bfloat16>::value,
+          TFF_TRY(TensorShapeFromArrayShape(array_pb.shape())));
+      CopyFromRepeatedField(array_pb.bfloat16_list().value(),
+                            tensor.flat<Eigen::bfloat16>().data());
       return tensor;
     }
     case v0::Array::kFloat32List: {

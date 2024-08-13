@@ -1315,6 +1315,7 @@ def _string_representation(type_spec: Type, formatted: bool) -> str:
       if type_spec.shape is None:
         return ['{!r}(shape=None)'.format(type_spec.dtype.name)]
       elif type_spec.shape:
+
         def _value_string(value):
           return str(value) if value is not None else '?'
 

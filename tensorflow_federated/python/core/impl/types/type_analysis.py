@@ -17,6 +17,7 @@ import collections
 from collections.abc import Callable
 from typing import Optional
 
+import ml_dtypes
 import numpy as np
 
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -355,7 +356,10 @@ def check_is_sum_compatible(type_spec, type_spec_context=None):
     type_spec_context = type_spec
   py_typecheck.check_type(type_spec_context, computation_types.Type)
   if isinstance(type_spec, computation_types.TensorType):
-    if not np.issubdtype(type_spec.dtype, np.number):
+    if not (
+        np.issubdtype(type_spec.dtype, np.number)
+        or type_spec.dtype == ml_dtypes.bfloat16
+    ):
       raise SumIncompatibleError(
           type_spec, type_spec_context, f'{type_spec.dtype} is not numeric'
       )

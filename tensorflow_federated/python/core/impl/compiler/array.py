@@ -15,6 +15,7 @@
 
 from typing import Optional, Union
 
+import ml_dtypes
 import numpy as np
 
 from tensorflow_federated.proto.v0 import array_pb2
@@ -67,6 +68,13 @@ def from_proto(array_pb: array_pb2.Array) -> Array:
     # compatibility with how other external environments (e.g., TensorFlow, JAX)
     # represent values of `np.float16`.
     value = np.asarray(value, np.uint16).view(np.float16).tolist()
+  elif dtype is ml_dtypes.bfloat16:
+    value = array_pb.bfloat16_list.value
+    # Values of dtype `ml_dtypes.bfloat16` are packed to and unpacked from a
+    # protobuf field of type `int32` using the following logic in order to
+    # maintain compatibility with how other external environments (e.g.,
+    # TensorFlow, JAX) represent values of `ml_dtypes.bfloat16`.
+    value = np.asarray(value, np.uint16).view(ml_dtypes.bfloat16).tolist()
   elif dtype is np.float32:
     value = array_pb.float32_list.value
   elif dtype is np.float64:
@@ -261,6 +269,17 @@ def to_proto(
         shape=shape_pb,
         complex128_list=array_pb2.Array.DoubleList(value=packed_value),
     )
+  elif dtype is ml_dtypes.bfloat16:
+    # Values of dtype `ml_dtypes.bfloat16` are packed to and unpacked from a
+    # protobuf field of type `int32` using the following logic in order to
+    # maintain compatibility with how other external environments (e.g.,
+    # TensorFlow, JAX) represent values of `ml_dtypes.bfloat16`.
+    value = np.asarray(value, ml_dtypes.bfloat16).view(np.uint16).tolist()
+    return array_pb2.Array(
+        dtype=dtype_pb,
+        shape=shape_pb,
+        bfloat16_list=array_pb2.Array.IntList(value=value),
+    )
   elif dtype is np.str_:
     return array_pb2.Array(
         dtype=dtype_pb,
@@ -284,13 +303,14 @@ def is_compatible_dtype(value: Array, dtype: type[np.generic]) -> bool:
     value: The value to check.
     dtype: The scalar `np.generic` to check against.
   """
-
-  # Check dtype kind.
   if isinstance(value, (np.ndarray, np.generic)):
-    value_dtype = value.dtype
+    value_dtype = value.dtype.type
   else:
     value_dtype = type(value)
+  if value_dtype is dtype:
+    return True
 
+  # Check dtype kind.
   if np.issubdtype(value_dtype, np.bool_):
     # Skip checking dtype size, `np.bool_` does not have a size.
     return dtype is np.bool_

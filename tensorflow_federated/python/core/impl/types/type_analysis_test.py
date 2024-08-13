@@ -15,6 +15,7 @@ import collections
 
 from absl.testing import absltest
 from absl.testing import parameterized
+import ml_dtypes
 import numpy as np
 
 from tensorflow_federated.python.common_libs import structure
@@ -237,6 +238,7 @@ class CheckIsSumCompatibleTest(parameterized.TestCase):
 
   @parameterized.named_parameters([
       ('tensor_type', computation_types.TensorType(np.int32)),
+      ('bfloat16_type', computation_types.TensorType(ml_dtypes.bfloat16)),
       (
           'struct_type_int',
           computation_types.StructType(

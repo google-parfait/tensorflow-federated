@@ -215,6 +215,14 @@ INSTANTIATE_TEST_SUITE_P(
             tensorflow::test::AsScalar(Eigen::half{1.0}),
         },
         {
+            "bfloat16",
+            testing::CreateArray(v0::DataType::DT_BFLOAT16,
+                                 testing::CreateArrayShape({}),
+                                 {Eigen::bfloat16{1.0}})
+                .value(),
+            tensorflow::test::AsScalar(Eigen::bfloat16{1.0}),
+        },
+        {
             "float32",
             testing::CreateArray(v0::DataType::DT_FLOAT,
                                  testing::CreateArrayShape({}), {1.0})

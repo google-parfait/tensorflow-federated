@@ -15,6 +15,7 @@
 from collections.abc import Mapping
 from typing import Union
 
+import ml_dtypes
 import numpy as np
 
 from tensorflow_federated.proto.v0 import data_type_pb2
@@ -36,6 +37,7 @@ _PROTO_TO_DTYPE: Mapping[data_type_pb2.DataType, type[np.generic]] = {
     data_type_pb2.DataType.DT_DOUBLE: np.float64,
     data_type_pb2.DataType.DT_COMPLEX64: np.complex64,
     data_type_pb2.DataType.DT_COMPLEX128: np.complex128,
+    data_type_pb2.DataType.DT_BFLOAT16: ml_dtypes.bfloat16,
     data_type_pb2.DataType.DT_STRING: np.str_,
 }
 
@@ -66,6 +68,7 @@ _DTYPE_TO_PROTO: Mapping[type[np.generic], data_type_pb2.DataType] = {
     np.float64: data_type_pb2.DataType.DT_DOUBLE,
     np.complex64: data_type_pb2.DataType.DT_COMPLEX64,
     np.complex128: data_type_pb2.DataType.DT_COMPLEX128,
+    ml_dtypes.bfloat16: data_type_pb2.DataType.DT_BFLOAT16,
     np.str_: data_type_pb2.DataType.DT_STRING,
 }
 

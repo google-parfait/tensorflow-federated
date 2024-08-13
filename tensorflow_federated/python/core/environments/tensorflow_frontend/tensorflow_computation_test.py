@@ -26,6 +26,7 @@ from tensorflow_federated.python.core.impl.context_stack import get_context_stac
 from tensorflow_federated.python.core.impl.context_stack import runtime_error_context
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
+from tensorflow_federated.python.core.impl.types import type_test_utils
 
 
 def one_arg_fn(x):
@@ -422,6 +423,20 @@ class TensorFlowComputationTest(parameterized.TestCase):
 
     self.assertIsInstance(
         stack.current, runtime_error_context.RuntimeErrorContext
+    )
+
+  def test_custom_numpy_dtype(self):
+
+    @tensorflow_computation.tf_computation(tf.bfloat16)
+    def foo(x):
+      return x
+
+    type_test_utils.assert_types_identical(
+        foo.type_signature,
+        computation_types.FunctionType(
+            parameter=computation_types.TensorType(tf.bfloat16.as_numpy_dtype),
+            result=computation_types.TensorType(tf.bfloat16.as_numpy_dtype),
+        ),
     )
 
 

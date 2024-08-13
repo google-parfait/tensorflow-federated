@@ -16,6 +16,7 @@ import math
 
 from absl.testing import absltest
 from absl.testing import parameterized
+import ml_dtypes
 import numpy as np
 
 from tensorflow_federated.proto.v0 import array_pb2
@@ -117,6 +118,19 @@ class FromProtoTest(parameterized.TestCase):
               ),
           ),
           np.float16(1.0),
+      ),
+      (
+          'bfloat16',
+          array_pb2.Array(
+              dtype=data_type_pb2.DataType.DT_BFLOAT16,
+              shape=array_pb2.ArrayShape(dim=[]),
+              bfloat16_list=array_pb2.Array.IntList(
+                  value=[
+                      np.asarray(1.0, ml_dtypes.bfloat16).view(np.uint16).item()
+                  ]
+              ),
+          ),
+          ml_dtypes.bfloat16(1.0),
       ),
       (
           'float32',
@@ -350,6 +364,30 @@ class ToProtoTest(parameterized.TestCase):
           ),
       ),
       (
+          'generic_float16',
+          np.float16(1.0),
+          array_pb2.Array(
+              dtype=data_type_pb2.DataType.DT_HALF,
+              shape=array_pb2.ArrayShape(dim=[]),
+              float16_list=array_pb2.Array.IntList(
+                  value=[np.asarray(1.0, np.float16).view(np.uint16).item()]
+              ),
+          ),
+      ),
+      (
+          'generic_bfloat16',
+          ml_dtypes.bfloat16(1.0),
+          array_pb2.Array(
+              dtype=data_type_pb2.DataType.DT_BFLOAT16,
+              shape=array_pb2.ArrayShape(dim=[]),
+              bfloat16_list=array_pb2.Array.IntList(
+                  value=[
+                      np.asarray(1.0, ml_dtypes.bfloat16).view(np.uint16).item()
+                  ]
+              ),
+          ),
+      ),
+      (
           'generic_str',
           np.str_('abc'),
           array_pb2.Array(
@@ -377,12 +415,36 @@ class ToProtoTest(parameterized.TestCase):
           ),
       ),
       (
-          'array_int32_epmty',
+          'array_int32_empty',
           np.array([], np.int32),
           array_pb2.Array(
               dtype=data_type_pb2.DataType.DT_INT32,
               shape=array_pb2.ArrayShape(dim=[0]),
               int32_list=array_pb2.Array.IntList(value=[]),
+          ),
+      ),
+      (
+          'array_float16',
+          np.array([1.0], np.float16),
+          array_pb2.Array(
+              dtype=data_type_pb2.DataType.DT_HALF,
+              shape=array_pb2.ArrayShape(dim=[1]),
+              float16_list=array_pb2.Array.IntList(
+                  value=[np.asarray(1.0, np.float16).view(np.uint16).item()]
+              ),
+          ),
+      ),
+      (
+          'array_bfloat16',
+          np.array([1.0], ml_dtypes.bfloat16),
+          array_pb2.Array(
+              dtype=data_type_pb2.DataType.DT_BFLOAT16,
+              shape=array_pb2.ArrayShape(dim=[1]),
+              bfloat16_list=array_pb2.Array.IntList(
+                  value=[
+                      np.asarray(1.0, ml_dtypes.bfloat16).view(np.uint16).item()
+                  ]
+              ),
           ),
       ),
       (
@@ -604,6 +666,23 @@ class ToProtoTest(parameterized.TestCase):
               dtype=data_type_pb2.DataType.DT_COMPLEX128,
               shape=array_pb2.ArrayShape(dim=[]),
               complex128_list=array_pb2.Array.DoubleList(value=[1.0, 1.0]),
+          ),
+      ),
+      (
+          'bfloat16',
+          # Note: we must not use Python `float` here because ml_dtypes.bfloat16
+          # is declared as kind `V` (void) not `f` (float) to prevent numpy from
+          # trying to equate float16 and bfloat16 (which are not compatible).
+          ml_dtypes.bfloat16(1.0),
+          ml_dtypes.bfloat16,
+          array_pb2.Array(
+              dtype=data_type_pb2.DataType.DT_BFLOAT16,
+              shape=array_pb2.ArrayShape(dim=[]),
+              bfloat16_list=array_pb2.Array.IntList(
+                  value=[
+                      np.asarray(1.0, ml_dtypes.bfloat16).view(np.uint16).item()
+                  ]
+              ),
           ),
       ),
       (
@@ -843,6 +922,7 @@ class IsCompatibleDtypeTest(parameterized.TestCase):
       ('float64', 1.0, np.float64),
       ('complex64', (1.0 + 1.0j), np.complex64),
       ('complex128', (1.0 + 1.0j), np.complex128),
+      ('bfloat16', ml_dtypes.bfloat16(1.0), ml_dtypes.bfloat16),
       ('str', 'abc', np.str_),
       ('bytes', b'abc', np.str_),
       ('generic_int32', np.int32(1), np.int32),
@@ -863,6 +943,7 @@ class IsCompatibleDtypeTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('scalar_incompatible_dtype_kind', 1, np.float32),
+      ('scalar_incompatible_dtype_kind_bfloat16', 1.0, ml_dtypes.bfloat16),
       ('scalar_incompatible_dtype_size_int', np.iinfo(np.int64).max, np.int32),
       (
           'scalar_incompatible_dtype_size_float',

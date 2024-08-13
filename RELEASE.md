@@ -18,6 +18,7 @@ and this project adheres to
     histograms, and a boolean indicating whether Laplace noise was used.
 *   Added some TFF executor classes to the public API (CPPExecutorFactory,
     ResourceManagingExecutorFactory, RemoteExecutor, RemoteExecutorGrpcStub).
+*   Added support for `bfloat16` dtypes from the `ml_dtypes` package.
 
 ### Fixed
 
