@@ -56,6 +56,7 @@ from tensorflow_federated.python.core.impl.execution_contexts.mergeable_comp_exe
 from tensorflow_federated.python.core.impl.execution_contexts.mergeable_comp_execution_context import MergeableCompForm
 from tensorflow_federated.python.core.impl.execution_contexts.sync_execution_context import SyncExecutionContext
 from tensorflow_federated.python.core.impl.executor_stacks.executor_factory import local_cpp_executor_factory
+from tensorflow_federated.python.core.impl.executor_stacks.python_executor_stacks import ResourceManagingExecutorFactory
 from tensorflow_federated.python.core.impl.executors.cardinalities_utils import merge_cardinalities
 from tensorflow_federated.python.core.impl.executors.cardinality_carrying_base import CardinalityCarrying
 from tensorflow_federated.python.core.impl.executors.data_descriptor import CardinalityFreeDataDescriptor
@@ -65,6 +66,8 @@ from tensorflow_federated.python.core.impl.executors.executor_factory import Car
 from tensorflow_federated.python.core.impl.executors.executor_factory import ExecutorFactory
 from tensorflow_federated.python.core.impl.executors.executors_errors import RetryableError
 from tensorflow_federated.python.core.impl.executors.ingestable_base import Ingestable
+from tensorflow_federated.python.core.impl.executors.remote_executor import RemoteExecutor
+from tensorflow_federated.python.core.impl.executors.remote_executor_grpc_stub import RemoteExecutorGrpcStub
 from tensorflow_federated.python.core.impl.executors.remote_executor_stub import RemoteExecutorStub
 from tensorflow_federated.python.core.impl.executors.value_serialization import deserialize_value
 from tensorflow_federated.python.core.impl.executors.value_serialization import serialize_value

@@ -613,6 +613,7 @@ cc_library(
     name = "remote_executor",
     srcs = ["remote_executor.cc"],
     hdrs = ["remote_executor.h"],
+    visibility = ["//visibility:public"],
     deps = [
         ":cardinalities",
         ":executor",

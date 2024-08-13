@@ -16,6 +16,8 @@ and this project adheres to
     norm bounds. Each of these functions return a `DPHistogramBundle` struct,
     which contains the mechanism, the threshold needed for DP open-domain
     histograms, and a boolean indicating whether Laplace noise was used.
+*   Added some TFF executor classes to the public API (CPPExecutorFactory,
+    ResourceManagingExecutorFactory, RemoteExecutor, RemoteExecutorGrpcStub).
 
 ### Changed
 
@@ -25,6 +27,10 @@ and this project adheres to
 *   `DPGroupByFactory::CreateInternal`: when `delta` is not provided, check if
     the right norm bounds are provided to compute L1 sensitivity (for the
     Laplace mech).
+*   CreateRemoteExecutorStack now allows the composing executor to be specified
+    and assigns client values to leaf executors such that all leaf executors
+    receive the same number of clients, except for potentially the last leaf
+    executor, which may receive fewer clients.
 
 ## Release 0.84.0
 

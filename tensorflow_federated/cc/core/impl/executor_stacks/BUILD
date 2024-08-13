@@ -67,6 +67,7 @@ cc_library(
     name = "remote_stacks",
     srcs = ["remote_stacks.cc"],
     hdrs = ["remote_stacks.h"],
+    visibility = ["//visibility:public"],
     deps = [
         "//tensorflow_federated/cc/core/impl/executors:cardinalities",
         "//tensorflow_federated/cc/core/impl/executors:composing_executor",

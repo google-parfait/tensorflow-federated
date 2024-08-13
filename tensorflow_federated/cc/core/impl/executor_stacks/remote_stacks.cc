@@ -14,7 +14,9 @@ limitations under the License
 
 #include "tensorflow_federated/cc/core/impl/executor_stacks/remote_stacks.h"
 
+#include <algorithm>
 #include <chrono>  // NOLINT
+#include <cmath>
 #include <functional>
 #include <memory>
 #include <utility>
@@ -81,6 +83,7 @@ std::vector<std::shared_ptr<grpc::ChannelInterface>> FilterToLiveChannels_(
   }
   return live_channels;
 }
+
 absl::StatusOr<std::shared_ptr<Executor>> CreateRemoteExecutorStack(
     const std::vector<std::shared_ptr<grpc::ChannelInterface>>& channels,
     const CardinalityMap& cardinalities) {
@@ -120,7 +123,8 @@ absl::StatusOr<std::shared_ptr<Executor>> CreateStreamingRemoteExecutorStack(
 absl::StatusOr<std::shared_ptr<Executor>> CreateRemoteExecutorStack(
     const std::vector<std::shared_ptr<grpc::ChannelInterface>>& channels,
     const CardinalityMap& cardinalities, ExecutorFn leaf_executor_fn,
-    ComposingChildFn composing_child_fn) {
+    ComposingChildFn composing_child_fn,
+    ComposingExecutorFn composing_executor_fn) {
   int num_clients = 0;
   auto cards_iterator = cardinalities.find(kClientsUri);
   if (cards_iterator != cardinalities.end()) {
@@ -148,25 +152,27 @@ absl::StatusOr<std::shared_ptr<Executor>> CreateRemoteExecutorStack(
 
   const std::vector<std::shared_ptr<grpc::ChannelInterface>> live_channels =
       FilterToLiveChannels_(channels);
-  int remaining_num_executors = live_channels.size();
   if (live_channels.empty()) {
     return absl::UnavailableError(
         "No TFF workers are ready; try again to reconnect");
   }
   std::vector<ComposingChild> remote_executors;
+  int num_clients_values_per_executor =
+      std::ceil(static_cast<float>(num_clients) / live_channels.size());
   for (const std::shared_ptr<grpc::ChannelInterface>& channel : live_channels) {
-    int clients_for_executor = remaining_clients / remaining_num_executors;
+    int clients_for_executor =
+        std::min(num_clients_values_per_executor, remaining_clients);
     CardinalityMap cardinalities_for_executor = cardinalities;
     cardinalities_for_executor.insert_or_assign(kClientsUri,
                                                 clients_for_executor);
     remote_executors.emplace_back(
         TFF_TRY(composing_child_fn(channel, cardinalities_for_executor)));
     remaining_clients -= clients_for_executor;
-    remaining_num_executors -= 1;
   }
+
   VLOG(2) << "Addressing: " << remote_executors.size() << " Live TFF workers.";
   return CreateReferenceResolvingExecutor(
-      CreateComposingExecutor(server, remote_executors));
+      composing_executor_fn(server, remote_executors));
 }
 
 }  // namespace tensorflow_federated

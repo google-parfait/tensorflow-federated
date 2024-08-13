@@ -54,6 +54,11 @@ MockFunction<absl::StatusOr<ComposingChild>(
     std::shared_ptr<grpc::ChannelInterface>, const CardinalityMap&)>
     mock_composing_child_factory_;
 
+std::shared_ptr<Executor> composing_executor_factory(
+    std::shared_ptr<Executor> server, std::vector<ComposingChild> children) {
+  return CreateComposingExecutor(server, children);
+}
+
 // TODO: b/191092505 - Follow up and investigate removing the need to mock the
 // entire grpc ChannelInterface interface.
 class MockGrpcChannelInterface : public grpc::ChannelInterface {
@@ -138,7 +143,8 @@ TEST_F(RemoteExecutorStackTest, UnavailableChannelInterfacesReturnsError) {
           {failed_channel, connecting_channel, shutdown_channel},
           {{std::string(kClientsUri), 100}},
           mock_executor_factory_.AsStdFunction(),
-          mock_composing_child_factory_.AsStdFunction());
+          mock_composing_child_factory_.AsStdFunction(),
+          composing_executor_factory);
   EXPECT_THAT(status_or_executor.status(),
               StatusIs(StatusCode::kUnavailable,
                        HasSubstr("No TFF workers are ready")));
@@ -156,7 +162,8 @@ TEST_F(RemoteExecutorStackTest,
   absl::StatusOr<std::shared_ptr<Executor>> status_or_executor =
       CreateRemoteExecutorStack(channel_args, {{std::string(kClientsUri), 0}},
                                 mock_executor_factory_.AsStdFunction(),
-                                mock_composing_child_factory_.AsStdFunction());
+                                mock_composing_child_factory_.AsStdFunction(),
+                                composing_executor_factory);
   TFF_EXPECT_OK(status_or_executor);
 }
 
@@ -198,7 +205,8 @@ TEST_F(RemoteExecutorStackTest, FailedChannelInterfacesNotAddressed) {
   absl::StatusOr<std::shared_ptr<Executor>> status_or_executor =
       CreateRemoteExecutorStack(channel_args, {{std::string(kClientsUri), 5}},
                                 mock_executor_factory_.AsStdFunction(),
-                                mock_composing_child_factory_.AsStdFunction());
+                                mock_composing_child_factory_.AsStdFunction(),
+                                composing_executor_factory);
   TFF_EXPECT_OK(status_or_executor);
 }
 
@@ -241,7 +249,8 @@ TEST_F(RemoteExecutorStackTest, OneClientPassedToOnlyOneChild) {
   absl::StatusOr<std::shared_ptr<Executor>> status_or_executor =
       CreateRemoteExecutorStack(channel_args, one_client_cards,
                                 mock_executor_factory_.AsStdFunction(),
-                                mock_composing_child_factory_.AsStdFunction());
+                                mock_composing_child_factory_.AsStdFunction(),
+                                composing_executor_factory);
   TFF_EXPECT_OK(status_or_executor);
 }
 

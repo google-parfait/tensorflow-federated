@@ -31,6 +31,8 @@ namespace tensorflow_federated {
 using ExecutorFn = std::function<absl::StatusOr<std::shared_ptr<Executor>>()>;
 using ComposingChildFn = std::function<absl::StatusOr<ComposingChild>(
     std::shared_ptr<grpc::ChannelInterface>, const CardinalityMap&)>;
+using ComposingExecutorFn = std::function<std::shared_ptr<Executor>(
+    std::shared_ptr<Executor>, std::vector<ComposingChild>)>;
 
 // Creates an executor stack which proxies for a group of remote workers.
 //
@@ -67,7 +69,8 @@ absl::StatusOr<std::shared_ptr<Executor>> CreateStreamingRemoteExecutorStack(
 absl::StatusOr<std::shared_ptr<Executor>> CreateRemoteExecutorStack(
     const std::vector<std::shared_ptr<grpc::ChannelInterface>>& channels,
     const CardinalityMap& cardinalities, ExecutorFn leaf_executor_fn,
-    ComposingChildFn composing_child_fn);
+    ComposingChildFn composing_child_fn,
+    ComposingExecutorFn composing_executor_fn = CreateComposingExecutor);
 
 }  // namespace tensorflow_federated
 
