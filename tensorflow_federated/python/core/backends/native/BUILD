@@ -38,9 +38,11 @@ py_library(
         "//tensorflow_federated/python/core/backends/mapreduce:compiler",
         "//tensorflow_federated/python/core/environments/tensorflow_backend:compiled_computation_transformations",
         "//tensorflow_federated/python/core/environments/tensorflow_backend:tensorflow_tree_transformations",
+        "//tensorflow_federated/python/core/environments/tensorflow_frontend:tensorflow_computation",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
         "//tensorflow_federated/python/core/impl/compiler:transformations",
         "//tensorflow_federated/python/core/impl/computation:computation_impl",
+        "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
     ],
 )
 
@@ -138,6 +140,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/compiler:tree_analysis",
         "//tensorflow_federated/python/core/impl/compiler:tree_transformations",
         "//tensorflow_federated/python/core/impl/computation:computation_impl",
+        "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
         "//tensorflow_federated/python/core/impl/execution_contexts:mergeable_comp_execution_context",
         "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",

@@ -64,7 +64,11 @@ class PolymorphicComputationTest(absltest.TestCase):
         test_proto = pb.Computation(
             type=type_serialization.serialize_type(type_signature)
         )
-        super().__init__(test_proto, context_stack, type_signature)
+        super().__init__(
+            computation_proto=test_proto,
+            context_stack=context_stack,
+            annotated_type=type_signature,
+        )
 
       @property
       def name(self):

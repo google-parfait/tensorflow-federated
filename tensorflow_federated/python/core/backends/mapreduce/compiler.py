@@ -329,7 +329,10 @@ def _evaluate_to_tensorflow(
 
       def call_concrete(*args):
         concrete = computation_impl.ConcreteComputation(
-            comp.proto, context_stack_impl.context_stack
+            computation_proto=comp.proto,
+            context_stack=context_stack_impl.context_stack,
+            transform_args=tensorflow_computation.transform_args,
+            transform_result=tensorflow_computation.transform_result,
         )
         result = concrete(*args)
         if isinstance(comp.type_signature.result, computation_types.StructType):

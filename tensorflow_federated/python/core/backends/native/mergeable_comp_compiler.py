@@ -23,6 +23,7 @@ from tensorflow_federated.python.core.impl.compiler import transformations
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
 from tensorflow_federated.python.core.impl.computation import computation_impl
+from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.execution_contexts import mergeable_comp_execution_context
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
@@ -45,8 +46,9 @@ def _select_output_result_and_wrap_as_noarg_tensorflow(
       building_block_factory.select_output_from_lambda(fn, path).result,
   )
   selected_and_compiled = _compile_to_tf(selected_and_wrapped)
-  return computation_impl.ConcreteComputation.from_building_block(
-      selected_and_compiled
+  return computation_impl.ConcreteComputation(
+      computation_proto=selected_and_compiled.proto,
+      context_stack=context_stack_impl.context_stack,
   )
 
 
@@ -57,8 +59,9 @@ def _select_output_result_and_wrap_as_tensorflow(
       fn, path
   ).result
   selected_and_compiled = _compile_to_tf(selected_fn)
-  return computation_impl.ConcreteComputation.from_building_block(
-      selected_and_compiled
+  return computation_impl.ConcreteComputation(
+      computation_proto=selected_and_compiled.proto,
+      context_stack=context_stack_impl.context_stack,
   )
 
 
@@ -198,11 +201,13 @@ def compile_to_mergeable_comp_form(
       _extract_federated_aggregate_computations(before_agg)
   )
 
-  before_agg_callable = (
-      computation_impl.ConcreteComputation.from_building_block(before_agg)
+  before_agg_callable = computation_impl.ConcreteComputation(
+      computation_proto=before_agg.proto,
+      context_stack=context_stack_impl.context_stack,
   )
-  after_agg_callable = computation_impl.ConcreteComputation.from_building_block(
-      after_agg
+  after_agg_callable = computation_impl.ConcreteComputation(
+      computation_proto=after_agg.proto,
+      context_stack=context_stack_impl.context_stack,
   )
 
   if before_agg.type_signature.parameter is not None:

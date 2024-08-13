@@ -18,11 +18,14 @@ from collections.abc import Callable
 import contextlib
 from typing import Generic, Optional, TypeVar
 
+import tree
+
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import retrying
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.common_libs import tracing
 from tensorflow_federated.python.core.impl.computation import computation_base
+from tensorflow_federated.python.core.impl.computation import function_utils
 from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.execution_contexts import compiler_pipeline
 from tensorflow_federated.python.core.impl.executors import cardinalities_utils
@@ -196,10 +199,34 @@ class AsyncExecutionContext(context_base.AsyncContext, Generic[_Computation]):
       # context in conjunction with ConcreteComputations' implementation of
       # __call__.
       arg = await arg
+
     if not isinstance(comp.type_signature, computation_types.FunctionType):
       raise ValueError(
           f'Expected a `tff.FunctionType`, found {comp.type_signature}.'
       )
+
+    if arg is not None and comp.transform_args is not None:
+      # `transform_args` is not intended to handle `tff.structure.Struct`.
+      # Normalize to a Python structure to make it simpler to handle; `args` is
+      # sometimes a `tff.structure.Struct` and sometimes it is not, other times
+      # it is a Python structure that contains a `tff.structure.Struct`.
+      def _to_python(obj):
+        if isinstance(obj, structure.Struct):
+          return structure.to_odict_or_tuple(obj)
+        else:
+          return None
+
+      if isinstance(arg, structure.Struct):
+        args, kwargs = function_utils.unpack_args_from_struct(arg)
+        args = tree.traverse(_to_python, args)
+        args = comp.transform_args(args)
+        kwargs = tree.traverse(_to_python, kwargs)
+        kwargs = comp.transform_args(kwargs)
+        arg = function_utils.pack_args_into_struct(args, kwargs)
+      else:
+        arg = tree.traverse(_to_python, arg)
+        arg = comp.transform_args(arg)
+
     # Save the type signature before compiling. Compilation currently loses
     # container types, so we must remember them here so that they can be
     # restored in the output.
@@ -226,6 +253,10 @@ class AsyncExecutionContext(context_base.AsyncContext, Generic[_Computation]):
               _ingest(executor, arg, comp.type_signature.parameter)
           )
 
-        return await tracing.wrap_coroutine_in_current_trace_context(
+        result = await tracing.wrap_coroutine_in_current_trace_context(
             _invoke(executor, comp, arg, result_type)
         )
+
+        if comp.transform_result is not None:
+          result = comp.transform_result(result)
+        return result

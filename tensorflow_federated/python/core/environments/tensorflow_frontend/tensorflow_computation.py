@@ -28,17 +28,31 @@ from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_conversions
 
 
-def _transform_result(result: object) -> object:
-  def fn(obj):
-    if isinstance(obj, tf.Tensor) and not tf.is_symbolic_tensor(obj):
+def _to_numpy(value: object) -> object:
+  """Convert `value` to a numpy value."""
+
+  def _fn(obj):
+    if isinstance(obj, tf.Variable):
+      return obj.read_value().numpy()
+    elif isinstance(obj, tf.Tensor) and not tf.is_symbolic_tensor(obj):
       return obj.numpy()
     else:
       return None
 
   # Important: `tree.traverse` is used instead of `tree.map_structure`, even
-  # though mutating the structure of `result` is not required, because the
+  # though mutating the structure of `value` is not required, because the
   # `tree.map_structure` sorts `dict` keys.
-  return tree.traverse(fn, result)
+  return tree.traverse(_fn, value)
+
+
+def transform_args(args: object) -> object:
+  """Transform the arguments to TensorFlow computations."""
+  return _to_numpy(args)
+
+
+def transform_result(result: object) -> object:
+  """Transforms the result of TensorFlow computations."""
+  return _to_numpy(result)
 
 
 def _tf_wrapper_fn(
@@ -67,10 +81,11 @@ def _tf_wrapper_fn(
       )
   )
   return computation_impl.ConcreteComputation(
-      comp_pb,
-      context_stack,
-      extra_type_spec,
-      _transform_result,
+      computation_proto=comp_pb,
+      context_stack=context_stack,
+      annotated_type=extra_type_spec,
+      transform_args=transform_args,
+      transform_result=transform_result,
   )
 
 

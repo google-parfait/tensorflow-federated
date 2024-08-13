@@ -29,7 +29,8 @@ class ComputationSerializationTest(absltest.TestCase):
     type_spec = computation_types.TensorType(np.int32)
     proto = computation_factory.create_lambda_identity(type_spec)
     comp = computation_impl.ConcreteComputation(
-        proto, context_stack_impl.context_stack
+        computation_proto=proto,
+        context_stack=context_stack_impl.context_stack,
     )
     serialized_comp = computation_serialization.serialize_computation(comp)
     deserialize_comp = computation_serialization.deserialize_computation(

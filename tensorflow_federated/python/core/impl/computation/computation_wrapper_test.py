@@ -39,7 +39,11 @@ class WrappedForTest(computation_impl.ConcreteComputation):
     del name  # Unused.
     fn_type = computation_types.FunctionType(parameter_type, np.str_)
     test_proto = pb.Computation(type=type_serialization.serialize_type(fn_type))
-    super().__init__(test_proto, context_stack_impl.context_stack, fn_type)
+    super().__init__(
+        computation_proto=test_proto,
+        context_stack=context_stack_impl.context_stack,
+        annotated_type=fn_type,
+    )
 
     self._fn = function_utils.wrap_as_zero_or_one_arg_callable(
         fn, parameter_type, unpack

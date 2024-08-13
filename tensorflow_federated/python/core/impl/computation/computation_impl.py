@@ -52,7 +52,9 @@ class ConcreteComputation(computation_base.Computation):
     value.type_signature.check_assignable_from(type_spec)
     # pylint: disable=protected-access
     return cls(
-        value._computation_proto, value._context_stack, annotated_type=type_spec
+        computation_proto=value._computation_proto,
+        context_stack=value._context_stack,
+        annotated_type=type_spec,
     )
     # pylint: enable=protected-access
 
@@ -65,8 +67,8 @@ class ConcreteComputation(computation_base.Computation):
         building_block, building_blocks.ComputationBuildingBlock
     )
     return cls(
-        building_block.proto,
-        context_stack_impl.context_stack,
+        computation_proto=building_block.proto,
+        context_stack=context_stack_impl.context_stack,
         annotated_type=building_block.type_signature,  # pytype: disable=wrong-arg-types
     )
 
@@ -84,9 +86,11 @@ class ConcreteComputation(computation_base.Computation):
 
   def __init__(
       self,
+      *,
       computation_proto: pb.Computation,
       context_stack: context_stack_base.ContextStack,
       annotated_type: Optional[computation_types.FunctionType] = None,
+      transform_args: Optional[Callable[[object], object]] = None,
       transform_result: Optional[Callable[[object], object]] = None,
   ):
     """Constructs a new instance of ConcreteComputation from the computation_proto.
@@ -97,6 +101,8 @@ class ConcreteComputation(computation_base.Computation):
       context_stack: The context stack to use.
       annotated_type: Optional, type information with additional annotations
         that replaces the information in `computation_proto.type`.
+      transform_args: An `Optional` `Callable` used to transform the args before
+        they are passed to the computation.
       transform_result: An `Optional` `Callable` used to transform the result
         before it is returned.
 
@@ -129,6 +135,7 @@ class ConcreteComputation(computation_base.Computation):
     self._type_signature = type_spec
     self._context_stack = context_stack
     self._computation_proto = computation_proto
+    self._transform_args = transform_args
     self._transform_result = transform_result
 
   def __eq__(self, other: object) -> bool:
@@ -142,11 +149,17 @@ class ConcreteComputation(computation_base.Computation):
   def type_signature(self) -> computation_types.FunctionType:
     return self._type_signature
 
+  @property
+  def transform_args(self):
+    return self._transform_args
+
+  @property
+  def transform_result(self):
+    return self._transform_result
+
   def __call__(self, *args, **kwargs):
     arg = function_utils.pack_args(self._type_signature.parameter, args, kwargs)
     result = self._context_stack.current.invoke(self, arg)
-    if self._transform_result is not None:
-      result = self._transform_result(result)
     return result
 
   def __hash__(self) -> int:

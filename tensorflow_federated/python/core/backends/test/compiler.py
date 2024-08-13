@@ -25,10 +25,12 @@ from tensorflow_federated.python.core.backends.mapreduce import intrinsics as ma
 from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_building_block_factory
 from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_computation_factory
 from tensorflow_federated.python.core.environments.tensorflow_backend import tensorflow_tree_transformations
+from tensorflow_federated.python.core.environments.tensorflow_frontend import tensorflow_computation
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.computation import computation_impl
+from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_conversions
@@ -339,6 +341,9 @@ def replace_secure_intrinsics_with_bodies(comp):
   replaced_intrinsic_bodies, _ = (
       _replace_secure_intrinsics_with_insecure_bodies(comp.to_building_block())
   )
-  return computation_impl.ConcreteComputation.from_building_block(
-      replaced_intrinsic_bodies
+  return computation_impl.ConcreteComputation(
+      computation_proto=replaced_intrinsic_bodies.proto,
+      context_stack=context_stack_impl.context_stack,
+      transform_args=tensorflow_computation.transform_args,
+      transform_result=tensorflow_computation.transform_result,
   )

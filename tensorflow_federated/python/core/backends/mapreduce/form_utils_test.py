@@ -32,6 +32,7 @@ from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
 from tensorflow_federated.python.core.impl.computation import computation_impl
+from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -698,7 +699,10 @@ class GetDistributeAggregateFormTest(
     lam = building_blocks.Lambda(
         'x', init_result, building_blocks.Reference('x', init_result)
     )
-    bad_comp = computation_impl.ConcreteComputation.from_building_block(lam)
+    bad_comp = computation_impl.ConcreteComputation(
+        computation_proto=lam.proto,
+        context_stack=context_stack_impl.context_stack,
+    )
     with self.assertRaises(TypeError):
       form_utils.get_distribute_aggregate_form_for_computation(bad_comp)
 
@@ -718,8 +722,9 @@ class GetDistributeAggregateFormTest(
     not_reducible = building_blocks.Lambda(
         comp_bb.parameter_name, comp_bb.parameter_type, second_result
     )
-    bad_comp = computation_impl.ConcreteComputation.from_building_block(
-        not_reducible
+    bad_comp = computation_impl.ConcreteComputation(
+        computation_proto=not_reducible.proto,
+        context_stack=context_stack_impl.context_stack,
     )
     with self.assertRaisesRegex(ValueError, 'broadcast dependent on aggregate'):
       form_utils.get_distribute_aggregate_form_for_computation(bad_comp)
@@ -916,7 +921,10 @@ class GetMapReduceFormTest(FederatedFormTestCase, parameterized.TestCase):
     lam = building_blocks.Lambda(
         'x', init_result, building_blocks.Reference('x', init_result)
     )
-    bad_comp = computation_impl.ConcreteComputation.from_building_block(lam)
+    bad_comp = computation_impl.ConcreteComputation(
+        computation_proto=lam.proto,
+        context_stack=context_stack_impl.context_stack,
+    )
     with self.assertRaises(TypeError):
       form_utils.get_map_reduce_form_for_computation(bad_comp)
 
@@ -936,8 +944,9 @@ class GetMapReduceFormTest(FederatedFormTestCase, parameterized.TestCase):
     not_reducible = building_blocks.Lambda(
         comp_bb.parameter_name, comp_bb.parameter_type, second_result
     )
-    bad_comp = computation_impl.ConcreteComputation.from_building_block(
-        not_reducible
+    bad_comp = computation_impl.ConcreteComputation(
+        computation_proto=not_reducible.proto,
+        context_stack=context_stack_impl.context_stack,
     )
 
     with self.assertRaisesRegex(ValueError, 'broadcast dependent on aggregate'):

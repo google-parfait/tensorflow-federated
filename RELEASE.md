@@ -21,6 +21,8 @@ and this project adheres to
 
 ### Changed
 
+*   `tff.Computation` and `tff.framework.ConcreteComputation` to be able to
+    transform the arguments to the computation and result of the computation.
 *   `DPClosedDomainHistogram::Report` and `DPOpenDomainHistogram::Report`: they
     both use the `DPHistogramBundles` produced by the `CreateDPHistogramBundle`
     function in `dp_noise_mechanisms`.

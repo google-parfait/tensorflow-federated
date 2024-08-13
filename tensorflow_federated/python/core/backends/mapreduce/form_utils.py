@@ -38,6 +38,7 @@ from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
 from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.computation import computation_impl
+from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -145,8 +146,11 @@ def get_state_initialization_computation(
   initialize_tree = compiler.consolidate_and_extract_local_processing(
       initialize_tree, grappler_config
   )
-  return computation_impl.ConcreteComputation.from_building_block(
-      initialize_tree
+  return computation_impl.ConcreteComputation(
+      computation_proto=initialize_tree.proto,
+      context_stack=context_stack_impl.context_stack,
+      transform_args=initialize_computation.transform_args,
+      transform_result=initialize_computation.transform_result,
   )
 
 
@@ -1021,8 +1025,16 @@ def get_broadcast_form_for_computation(
       after_broadcast, grappler_config
   )
 
+  def _create_comp(proto):
+    return computation_impl.ConcreteComputation(
+        computation_proto=proto,
+        context_stack=context_stack_impl.context_stack,
+        transform_args=comp.transform_args,
+        transform_result=comp.transform_result,
+    )
+
   compute_server_context, client_processing = (
-      computation_impl.ConcreteComputation.from_building_block(bb)
+      _create_comp(bb.proto)
       for bb in (compute_server_context, client_processing)
   )
 
@@ -1101,6 +1113,14 @@ def get_map_reduce_form_for_computation(
   )
   update = _extract_update(after_aggregate, grappler_config)
 
+  def _create_comp(proto):
+    return computation_impl.ConcreteComputation(
+        computation_proto=proto,
+        context_stack=context_stack_impl.context_stack,
+        transform_args=comp.transform_args,
+        transform_result=comp.transform_result,
+    )
+
   blocks = (
       prepare,
       work,
@@ -1113,10 +1133,7 @@ def get_map_reduce_form_for_computation(
       secure_sum_modulus,
       update,
   )
-  comps = (
-      computation_impl.ConcreteComputation.from_building_block(bb)
-      for bb in blocks
-  )
+  comps = [_create_comp(bb.proto) for bb in blocks]
   return forms.MapReduceForm(comp.type_signature, *comps)
 
 
@@ -1433,9 +1450,14 @@ def get_distribute_aggregate_form_for_computation(
       server_result,
   )
 
-  comps = (
-      computation_impl.ConcreteComputation.from_building_block(bb)
-      for bb in blocks
-  )
+  def _create_comp(proto):
+    return computation_impl.ConcreteComputation(
+        computation_proto=proto,
+        context_stack=context_stack_impl.context_stack,
+        transform_args=comp.transform_args,
+        transform_result=comp.transform_result,
+    )
+
+  comps = [_create_comp(bb.proto) for bb in blocks]
 
   return forms.DistributeAggregateForm(comp.type_signature, *comps)
