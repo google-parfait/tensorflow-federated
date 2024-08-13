@@ -39,6 +39,8 @@ and this project adheres to
     and assigns client values to leaf executors such that all leaf executors
     receive the same number of clients, except for potentially the last leaf
     executor, which may receive fewer clients.
+*   Allow `tff.learning.programs.train_model` to accept a `should_discard_round`
+    function to decide whether a round should be discarded and retried.
 
 ## Release 0.84.0
 

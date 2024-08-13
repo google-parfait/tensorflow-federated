@@ -890,6 +890,85 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     mock_evaluation_manager.resume_from_previous_state.assert_called_once()
     mock_evaluation_manager.wait_for_evaluations_to_finish.assert_called_once()
 
+  @context_stack_test_utils.with_context(_create_test_context)
+  async def test_discards_and_retries_one_round(
+      self,
+  ):
+    train_num_clients = 5
+    training_rounds = 1
+    training_process = _create_mock_train_process()
+    training_process.next.side_effect = [
+        learning_process.LearningProcessOutput(
+            state=mock.ANY,
+            metrics=collections.OrderedDict(
+                distributor=(),
+                client_work=collections.OrderedDict(
+                    train=collections.OrderedDict()
+                ),
+                aggregator=(),
+                finalizer=collections.OrderedDict(should_reject_update=1),
+            ),
+        ),
+        learning_process.LearningProcessOutput(
+            state=mock.ANY,
+            metrics=collections.OrderedDict(
+                distributor=(),
+                client_work=collections.OrderedDict(
+                    train=collections.OrderedDict()
+                ),
+                aggregator=(),
+                finalizer=collections.OrderedDict(should_reject_update=0),
+            ),
+        ),
+    ]
+
+    def test_should_discard_round(train_result):
+      return train_result.metrics['finalizer']['should_reject_update'] == 1
+
+    # Create a mock state manager that returns no previous state, starting
+    # training from scratch.
+    mock_program_state_manager = mock.create_autospec(
+        program_state_manager.ProgramStateManager, instance=True, spec_set=True
+    )
+    mock_program_state_manager.load_latest.side_effect = [(None, 0)]
+
+    mock_model_output_manager = mock.create_autospec(
+        release_manager.ReleaseManager, instance=True, spec_set=True
+    )
+    mock_train_metrics_manager = mock.create_autospec(
+        release_manager.ReleaseManager, instance=True, spec_set=True
+    )
+    for manager in (mock_model_output_manager, mock_train_metrics_manager):
+      manager.release.return_value = None
+
+    with self.assertLogs(level='INFO') as log_output:
+      await training_program_logic.train_model(
+          train_process=training_process,
+          train_data_source=_create_mock_datasource(),
+          train_per_round_clients=train_num_clients,
+          train_total_rounds=training_rounds,
+          should_discard_round=test_should_discard_round,
+          program_state_manager=mock_program_state_manager,
+          model_output_manager=mock_model_output_manager,
+          train_metrics_manager=mock_train_metrics_manager,
+          evaluation_manager=None,
+          evaluation_periodicity=1,
+      )
+    self.assertIn(
+        'INFO:absl:Finished train round 1 with 1 discarded rounds',
+        log_output.output,
+    )
+    mock_model_output_manager.release.assert_called_once()
+    mock_train_metrics_manager.release.assert_called_once()
+    # program_state_manager.save should be called for initial state (round 0)
+    # and round 1.
+    self.assertLen(mock_program_state_manager.save.call_args_list, 2)
+    # Assert that the data iterator was saved correctly for the round 1.
+    _assert_data_source_iterators_equal(
+        mock_program_state_manager.save.call_args_list[1][0][0].data_iterator,
+        _FakeDataSourceIterator(1),
+    )
+
 
 if __name__ == '__main__':
   absltest.main()

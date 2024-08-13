@@ -22,7 +22,7 @@ duration of time based on the `evaluation_period` parameter.
 """
 
 import asyncio
-from collections.abc import Coroutine
+from collections.abc import Callable, Coroutine
 import copy
 import datetime
 from typing import NamedTuple, Optional, Union
@@ -65,8 +65,8 @@ class TaskManager:
   finishes, and provides an interface to wait for all inflight tasks to finish
   before proceeding.
 
-  This is very similar to the `asyncio.TaskGroup` method, which will be availabe
-  in Python 3.11.
+  This is very similar to the `asyncio.TaskGroup` method, which will be
+  available in Python 3.11.
   """
 
   def __init__(self):
@@ -98,6 +98,9 @@ async def train_model(
     train_data_source: data_source.FederatedDataSource,
     train_per_round_clients: int,
     train_total_rounds: int,
+    should_discard_round: Optional[
+        Callable[[learning_process.LearningProcessOutput], bool]
+    ] = None,
     program_state_manager: program_state_manager_lib.ProgramStateManager,
     model_output_manager: release_manager.ReleaseManager[
         release_manager.ReleasableStructure, str
@@ -142,6 +145,11 @@ async def train_model(
       data used during training.
     train_per_round_clients: The number of clients per round of training.
     train_total_rounds: Total number of rounds of training.
+    should_discard_round: A Callable that takes the
+      `tff.learning.templates.LearningProcessOutput` returned by
+      `training_process.next` and returns whether the round should be discarded.
+      If a round should be discarded, the program will roll back to the state of
+      the previous round and retry this round.
     program_state_manager: A `tff.program.ProgramStateManager` used to save
       program state for fault tolerance.
     model_output_manager: A `tff.program.ReleaseManager` to release the model,
@@ -270,15 +278,36 @@ async def train_model(
   # feeding each rounds state into the next round. Occasionally a "sub-loop"
   # for evaluation is created for a giving training checkpoint, that will run
   # evaluation computations in parallel.
-  for round_num in range(start_round + 1, train_total_rounds + 1):
+  round_num = start_round + 1
+  # Upon program restart, `num_discarded_rounds` will be reset, resulting in the
+  # loss of information regarding discarded rounds within the current round.
+  num_discarded_rounds = 0
+  while round_num <= train_total_rounds:
     logging.info('Running train round %d', round_num)
+    # Keep a copy of the previous iterator to ensure each retry starts from the
+    # same position. The original iterator might be modified during data
+    # selection.
+    previous_train_data_iterator = copy.deepcopy(train_data_iterator)
     round_participants_data = train_data_iterator.select(
         train_per_round_clients
     )
     train_result = await value_reference.materialize_value(
         train_process.next(train_state, round_participants_data)
     )
-    logging.info('Finished train round %d', round_num)
+    if should_discard_round is not None and should_discard_round(train_result):
+      num_discarded_rounds += 1
+      logging.info(
+          'The training round %d should be discarded. The program will retry '
+          'this round.',
+          round_num,
+      )
+      train_data_iterator = copy.deepcopy(previous_train_data_iterator)
+      continue
+    logging.info(
+        'Finished train round %d with %d discarded rounds',
+        round_num,
+        num_discarded_rounds,
+    )
     if not isinstance(train_result, learning_process.LearningProcessOutput):
       raise TypeError(
           'FederatedContext returned unexpected result type after '
@@ -348,6 +377,9 @@ async def train_model(
               key=f'training_checkpoint_round_{round_num}',
           )
       )
+    round_num += 1
+    num_discarded_rounds = 0
+
   # Wait for all pending tasks to complete before exiting the program.
   await task_manager.wait_for_all_tasks()
   if evaluation_manager is not None:
