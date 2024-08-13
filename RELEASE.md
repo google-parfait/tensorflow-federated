@@ -19,6 +19,11 @@ and this project adheres to
 *   Added some TFF executor classes to the public API (CPPExecutorFactory,
     ResourceManagingExecutorFactory, RemoteExecutor, RemoteExecutorGrpcStub).
 
+### Fixed
+
+*   A bug where `tf.string` was mistakenly allowed as a dtype to
+    `tff.types.TensorType`. This now must be `np.str_`.
+
 ### Changed
 
 *   `tff.Computation` and `tff.framework.ConcreteComputation` to be able to

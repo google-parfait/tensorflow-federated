@@ -58,6 +58,7 @@ py_library(
     srcs = ["computation_types.py"],
     deps = [
         ":array_shape",
+        ":dtype_utils",
         ":placements",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",

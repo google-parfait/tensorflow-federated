@@ -621,7 +621,7 @@ class SecureSumThenFinalizeTest(parameterized.TestCase, tf.test.TestCase):
       @federated_computation.federated_computation(
           computation_types.FederatedType(
               collections.OrderedDict(
-                  custom_sum=computation_types.TensorType(tf.string),
+                  custom_sum=computation_types.TensorType(np.str_),
               ),
               placements.CLIENTS,
           )

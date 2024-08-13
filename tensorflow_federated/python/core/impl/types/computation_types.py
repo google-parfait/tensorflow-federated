@@ -31,6 +31,7 @@ from typing_extensions import TypeGuard
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.types import array_shape
+from tensorflow_federated.python.core.impl.types import dtype_utils
 from tensorflow_federated.python.core.impl.types import placements
 
 T = TypeVar('T')
@@ -307,30 +308,6 @@ def _is_dtype_like(obj: object) -> TypeGuard[_DtypeLike]:
     return isinstance(obj, np.dtype)
 
 
-_ALLOWED_NP_DTYPES = [
-    np.bool_,
-    np.bytes_,
-    np.complex128,
-    np.complex64,
-    np.float16,
-    np.float32,
-    np.float64,
-    np.int16,
-    np.int32,
-    np.int64,
-    np.int8,
-    np.str_,
-    np.uint16,
-    np.uint32,
-    np.uint64,
-    np.uint8,
-]
-
-
-def _is_allowed_np_dtype(dtype: np.dtype) -> bool:
-  return dtype in _ALLOWED_NP_DTYPES
-
-
 def _is_array_shape_like(
     obj: object,
 ) -> TypeGuard[Union[array_shape._ArrayShapeLike]]:
@@ -359,13 +336,12 @@ def _to_dtype(dtype: _DtypeLike) -> np.dtype:
   """
   if isinstance(dtype, np.dtype):
     dtype = dtype.type
-  if dtype == np.bytes_:
+  if dtype is np.bytes_:
     dtype = np.str_
-  dtype = np.dtype(dtype)
 
-  if not _is_allowed_np_dtype(dtype):
+  if not dtype_utils.is_valid_dtype(dtype):
     raise NotImplementedError(f'Unexpected `dtype` found: {dtype}.')
-  return dtype
+  return np.dtype(dtype)
 
 
 class TensorType(Type, metaclass=_Intern):
