@@ -8,6 +8,8 @@ and this project adheres to
 
 ## Unreleased
 
+## Release 0.85.0
+
 ### Added
 
 *   The `dp_noise_mechanisms` header and source files: contains functions that
